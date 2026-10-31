@@ -12276,3 +12276,24 @@ Owner: "GO" after Phase 3 (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusH
   generated project) and the fixture compiles with the real toolchain. Phase 3's CI device check on the emulator (before the scroll fix):
   13/13 screens, cold start 538 ms, APK 1.51 MB, 0 accessibility findings, e2e incl. photo / paid / updates / crash report all OK.
 - **Not yet**: Play Store releases + Play in-app updates, iPhone, a visual diff of each update against the approved design.
+
+## v0.329.0 SHOWCASE (31 Oct 2026; Phase 5 of the Create Studio design audit, built as 0.328.0)
+Owner: "GO PHASE 5" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3; first ask: "USE REAL HOOLA CREATED VIDEOS AND IMAGES HERE FOR PERSENTATION").
+- `app/studio/showcase.py`: SLOTS = 36 picture briefs keyed by the studio page cards (film0-7 = QUICK, tpl0-9 = STARTERS, tool0-8 = ALLTOOLS,
+  sty0-8 = STYLES; guides reuse their tool's picture), STYLE suffix (no words / logos / watermarks, Indian setting), CLIPS = film0 / film2 /
+  film3 / film7. setup() = the hidden owner film "Hoola showcase" (3:4, one 5 s shot per slot, `hidden`, cast_skip) - free. ask_pictures() =
+  `service.keyframes` for the missing ones; ask_clips() = `service.generate(final)` for the 4 clip slots, refused before their pictures exist
+  (the clip card would otherwise paint and charge those 4 pictures again), and only one pending card at a time. manifest() / status() /
+  file_for(slot, pic|clip).
+- Routes: GET /api/studio/showcase (slots for every signed-in account; `owner` panel for the owner tenant), POST /api/studio/showcase/
+  setup|pictures|clips (owner only, 403 otherwise), GET /api/studio/showcase/file/<slot>?kind=pic|clip.
+- FOUND: `service.decide`, `service.approval_card` (fingerprint) and the stale-card sweep used `listing(tenant)`, which hides hidden films:
+  a hidden film's price card could never be approved ("Yeh card purana ho gaya"). All three now use `listing(tenant, hidden=True)`.
+- Pages (`studio.js`): `showcaseSwap(root)` lays the real picture (or the muted looping clip, poster = its picture; a still picture under
+  reduced motion) over each `canvas[data-art]` whose seed maps to a ready slot (`SC_SLOT`); a file that fails is removed so the drawing stays.
+  Runs after every go() and once the manifest arrives at mount. Owner panel `drawShowcase()` on Create > Engines: set up, "Make the N missing
+  pictures", "Make the 4 clips" (disabled until all pictures exist), painting / making progress, the pending card with Haan / Na, polls 5 s.
+- Verified locally (fake keys): setup hidden from lists; pictures card ₹428 (36 x ₹12); clips card ₹340 video once pictures exist; Haan ->
+  painting -> the plain "key refused" reason, ₹0 charged; Na on a hidden film's card works; test files laid over the drawn cards (7 on home,
+  the style tile on Image). The REAL showcase needs her two taps on the live server.
+- Tests: `test_v0329_showcase.py`.

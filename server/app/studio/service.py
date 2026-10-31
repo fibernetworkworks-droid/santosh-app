@@ -749,7 +749,8 @@ async def _ask(tenant: str, st: Studio, project: str, req: dict) -> dict:
 async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
     """Her tap on the price card."""
     st = await studio(tenant)
-    project = next((p["project"] for p in listing(tenant) if aid_in(st, p["project"], approval_id)), "")
+    # v0.329 hidden films too (the owner's "Hoola showcase" film is hidden from her lists, its cards still need her Haan)
+    project = next((p["project"] for p in listing(tenant, hidden=True) if aid_in(st, p["project"], approval_id)), "")
     if not project:
         raise StudioJobError("Yeh card purana ho gaya")
     p = st.load(project)
@@ -818,7 +819,7 @@ async def expire_asks(ttl_h: int = 24) -> int:
         tenant = d.name
         try:
             st = await studio(tenant)
-            for p in listing(tenant):
+            for p in listing(tenant, hidden=True):
                 proj = p["project"]
                 aps = st.load(proj).get("approvals") or {}
                 stale = []
@@ -1445,7 +1446,7 @@ async def resume_all() -> int:
 def approval_card(tenant: str, approval_id: str) -> dict | None:
     """v0.97 The pending price card as it is now (for the fingerprint-signed approval); None when gone or decided."""
     st = studio_sync(tenant)
-    for p in listing(tenant):
+    for p in listing(tenant, hidden=True):
         try:
             a = st.load(p["project"]).get("approvals", {}).get(approval_id)
         except StudioError:

@@ -956,3 +956,19 @@ small{font-size:12.5px}
 .gsteps li{padding-left:2px}
 .gsteps li::marker{color:var(--priInk);font-weight:600}
 .guide .btn .ic{margin-left:2px}
+
+/* ---------- v0.329 PHASE 5: SHOWCASE (design audit). Real Hoola-made pictures / clips laid over the drawn placeholders (the drawing
+   stays underneath until the file is in, and if it never comes); the owner's showcase panel on Engines. */
+.art.sc{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s ease;border-radius:inherit}
+.art.sc.on{opacity:1}
+.scbox{display:flex;flex-direction:column;gap:14px}
+.sch{display:flex;flex-direction:column;gap:6px}
+.sch h3{font-size:18px;font-weight:600}
+.sch p{max-width:72ch;font-size:14px}
+.scrow{display:flex;align-items:center;gap:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;flex-wrap:wrap}
+.scrow>div{flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px}
+.scrow b{font-weight:600}
+.scrow small{color:var(--mut)}
+.scrow .bar{height:6px}
+.scpend{display:flex;flex-direction:column;gap:10px}
+@media (prefers-reduced-motion:reduce){.art.sc{transition:none}}
