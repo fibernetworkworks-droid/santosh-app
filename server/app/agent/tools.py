@@ -949,9 +949,14 @@ HANDLERS.update(TEAM_HANDLERS)
 # prose IS the safety rule (confirm cards, approvals, consent, money, OTP) get a much higher cap so their
 # safety sentences survive; a property description becomes one short line. Names are untouched, so dispatch(),
 # TOOL_LABELS and every handler keep working exactly as before.
-DIET_DESC_MAX = 140      # tool description cap (chars) for ordinary tools
-DIET_SAFETY_MAX = 700    # tool description cap for safety-word tools (their rules must survive)
-DIET_PROP_MAX = 72       # property / nested description cap
+# v0.311 SAHI AUZAAR 2: the 140-char cut was the main reason Hoola picked the WRONG tool. It hit 291 of 430 tools and
+# kept only "what it is" - the "use it when / not when / prefer this over X" sentences that tell neighbours apart were
+# exactly what got cut (data_fetch lost "Prefer this over api_call / open_website / the cloud PC"; 150 descriptions
+# ended mid-sentence). Anthropic's tool guidance: the description IS where tool choice is won. Full prose costs ~7.5 KB
+# on an ordinary turn (35 -> 42.5 KB of specs); the cap below only stops a runaway description.
+DIET_DESC_MAX = 1200     # tool description cap (chars) - v0.311: 140 -> 1200 (whole descriptions, sentence edge)
+DIET_SAFETY_MAX = 1200   # tool description cap for safety-word tools (v0.311: the same - every rule survives)
+DIET_PROP_MAX = 240      # property / nested description cap (v0.311: 72 -> 240, the format hints stay)
 _DIET_KEEP_RE = re.compile(r"confirm|approval|consent|otp|password|tier-2|bhejo|manzoori|payment|money", re.I)
 
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
@@ -1023,6 +1028,14 @@ DIET_STATS["diet_chars"] = _diet_size(TOOLS)
 # the name -> family map is built here in one pass. Tools that arrived outside a named family (the campaign/base
 # specs at the top, the goal tools) are unmapped and are treated as CORE by agent/admit.py - the small always-on set.
 FAMILY_OF: dict[str, str] = {}
+
+# v0.311 SAHI AUZAAR 2: the 9 WhatsApp-campaign specs at the top had no family, so they rode on EVERY turn ("hello"
+# included) - noise next to the tool she really needed. They are the "campaign" family now: her campaign words, or a
+# chat that already has a campaign / lead list (admit.sticky_families), bring them in.
+CAMPAIGN_NAMES = ("list_lead_lists", "get_lead_list", "check_template", "submit_template", "check_template_status",
+                  "create_campaign", "confirm_send", "get_campaign_status", "control_campaign")
+for _n in CAMPAIGN_NAMES:
+    FAMILY_OF[_n] = "campaign"
 
 for _n, _v in list(globals().items()):
     if _n.endswith("_TOOLS") and isinstance(_v, list):

@@ -11581,3 +11581,38 @@ seconds Field(ge=6) - POST /api/studio/projects seconds=5 -> 422 before anything
 same 422. Fix: ge=2 on the three forms; plan() clamps at 2 instead of 6 (a 5 s clip is one short shot); the console's
 api() turns a 422 detail list into "field: reason" instead of "The server refused the request (422)". Re-checked through
 the real route: 4 s / 5 s / 8 s -> 200. Tests: tests/test_v0310_short_clips.py.
+
+## v0.311.0 AAGE BADHO + SAHI AUZAAR 2 - long jobs finish, the right tool gets picked (owner: "DO EXTREEM DEEP RESEARCH HOW CLAUDE DO LONG TASK SMOOTLY WITH PERFECT TOOL. ALSO CHECK WHY HOOLA IS FAILING FOR EVERY LONG TASK", "HOOLA NOT ABLE TO PICK RIGHT TOOL FOR RIGHT WORK ON SERVER", then "GO")
+The full RCA + Anthropic sources: docs/LONG_TASK_RCA.md. Causes 1 and 2 were REPRODUCED on v0.310 with a scripted
+brain through the real run_turn (they are the first tests of tests/test_v0311_aage_badho.py).
+LONG JOBS:
+(1) AAGE BADHO (`agent/aage.py`): v0.258's narrate ask ("ab use EK chhoti line batao") never said "and the next tool
+in the same message"; a model answering with ONLY the line returned end_turn and, with no kaam_plan, the loop took
+"Ab doosra hissa dekh raha hoon." as the final answer (repro: 2 model calls, 2 of 3 tools never ran). Now the narrate
+ask demands line + next tool in one reply, and `aage.promised()` (last sentence announces Hoola's own next/ongoing work,
+first person only - "video ban raha hai" is a THING running, not a promise; a question / card / OTP / intezaar = waits
+on her, never pushed) sends one "do it now or give the real final answer" nudge, MAX_PER_TURN=2. Setting AGENT_AAGE.
+(2) `breaker.MAX_CALLS` 30 -> 48 and `Breaker.batch(n)`: a parallel batch of read-only look-ups costs ONE call
+(repro: 4 searches a round, all fine, stopped at round 8 as "Main ek jagah atak gaya tha").
+(3) `_with_deadline`: a turn that finished a tool in the last AGENT_PROGRESS_WINDOW_S (300) gets the long deadline
+(2700 s) plan or no plan (`_PROGRESS` stamped after every tool); a turn doing nothing still times out at 900 s.
+(4) PLAN HAMESHA: PLAN_NOW at step 4 (was 6); still no plan 3 steps later -> the server writes a one-step plan (her
+request) itself (`_auto_plan`, AGENT_AUTO_PLAN): goal caps (80 steps / 150 calls / 6000 tokens), background rounds,
+restart pickup and her card now exist for every long job. The model's real final answer closes that server plan
+(`_close_auto_plan`, no "text mein mat ruko" loop over a plan it never wrote); a mere promise still goes on.
+RIGHT TOOL:
+(5) The schema diet's 140-char cut (v0.187) hit 291 of 430 tools and 150 descriptions ended mid-sentence - the
+"use when / not when / prefer this over" sentences were exactly what got cut (data_fetch lost "Prefer this over
+api_call / open_website / the cloud PC"). DIET_DESC_MAX / DIET_SAFETY_MAX 1200, DIET_PROP_MAX 72 -> 240: a plain turn's
+specs 35 -> ~42 KB.
+(6) The 9 WhatsApp-campaign specs had no family and rode on every turn: family "campaign" (EXTRA_KEYS whatsapp /
+campaign / template / leads / consent...), plus `admit.sticky_families`: a chat with a campaign (or campaign words in
+her last 6 messages) keeps them ("Kaisa raha?"). A plain "hello" now sees 56 tools (was 65).
+(7) `admit.unloaded_note`: the shared guide named 24 tools that were not loaded on a plain turn (pc_do 3x,
+computer_operator 4x, hoola_pc_do 2x...); one deterministic line now names them as NOT loaded (call tool_search first).
+NOT DONE (in the RCA plan, needs her word): long jobs moved to Claude with thinking, one tool per job (web / documents
+/ memory merges), strict schemas + usage examples, token-capped results with a page hint, the live tool-pick card on
+the VPS (`python -m app.quality tools --live`, no API key in the sandbox). Not verified on a live model here.
+Tests: NEW tests/test_v0311_aage_badho.py; rewritten to the new truth (not deleted): test_v0228 plan at step 4,
+test_v0221 long caps via auto plan, test_v0226 scripted reply no longer a promise, test_v0187 diet, test_v0245
+campaign tools not on "hello".
