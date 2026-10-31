@@ -464,6 +464,26 @@ window.HoolaBuild = function (C) {
         ${line('Navigation', d.nav)}${line('Main button', d.fab)}${line('Card', d.card)}${line('Button', d.button)}${line('Header', d.header)}${line('Transition', d.transition)}${line('Font', L(d.fonts).filter(Boolean).join(' / '))}${line('Mode', d.dark ? 'dark' : d.mode)}</section>` : ''}
       ${L(pl.tabs).length || L(pl.flow).length ? `<section class="bbox"><h4>Flow</h4>${line('Bottom tabs', L(pl.tabs).join(' · '))}${line('Flow', L(pl.flow).join(' → '))}${L(pl.rules).length ? line('Rules', L(pl.rules).join(' · ')) : ''}</section>` : ''}`;
   }
+  /* v0.325 HOOLA QA: what the device check found on a real Android emulator after the build compiled */
+  function qaBox(o) {
+    const q = M(o.an?.qa); if (!Object.keys(q).length) return '';
+    if (!q.ran) return `<section class="bbox"><h4>Device check</h4><p class="faint" style="font-size:12.5px">${esc(S(q.why) || 'Not run on this build machine.')}</p></section>`;
+    const p = M(q.perf), b = M(q.budget), tag = k => b[k] === 'over' ? 'warn' : 'ok';
+    return `<section class="bbox"><h4>Device check · ${N(q.opened)} / ${N(q.total)} screens opened without a crash</h4>
+      <div class="bln">${p.cold_ms != null ? `<span class="tag ${tag('cold_ms')}">Cold start ${N(p.cold_ms)} ms</span> ` : ''}${p.jank_pct != null ? `<span class="tag ${tag('jank_pct')}">Janky frames ${esc(S(p.jank_pct))}%</span> ` : ''}${p.apk_mb != null ? `<span class="tag ${tag('apk_mb')}">APK ${esc(S(p.apk_mb))} MB</span> ` : ''}<span class="tag ${N(q.a11y_count) ? 'warn' : 'ok'}">${N(q.a11y_count)} accessibility findings</span></div>
+      ${L(q.crashed).length ? `<div class="badc bln">Crashed: ${esc(L(q.crashed).join(', '))} (shipped as the simple version)</div>` : ''}
+      ${L(q.a11y).slice(0, 6).map(f => `<div class="bln faint">${esc(S(f.screen))}: ${esc(S(f.text))}</div>`).join('')}
+      ${L(q.shots).length ? `<div class="blooks">${L(q.shots).slice(0, 12).map(sh => `<figure>${pic(`${base(o)}/android/qa/${encodeURIComponent(sh)}`, sh)}<figcaption>${esc(sh)}</figcaption></figure>`).join('')}</div>` : ''}</section>`;
+  }
+
+  /* v0.325 every build of the app: what changed, and Bring back for a kept one */
+  function historyBox(o) {
+    const h = L(o.an?.history), kept = L(o.an?.kept_builds); if (!h.length) return '';
+    return `<section class="bbox"><h4>Versions</h4>${h.slice(0, 8).map((x, i) => `<div class="bln"><b>v${esc(S(x.version_name))}</b> · build ${N(x.build)}${i === 0 ? ' · current' : ''}
+      ${L(x.notes).slice(0, 3).map(t => `<div class="faint" style="font-size:12.5px">${esc(S(t))}</div>`).join('')}
+      ${i > 0 && kept.includes(x.build) && !anWorking(o) ? btn('rollback', 'Bring back', 'soft', ` data-build="${N(x.build)}"`) : ''}</div>`).join('')}</section>`;
+  }
+
   function androidPane(o) {
     const v = o.v || {}, a = o.an || {}, s = S(a.status);
     if (!v.approved && !s) return `<section class="bbox"><h4>Real Android app</h4><p class="muted" style="font-size:13.5px">Approve the design first: the real app is built from it.</p>${S(v.status) === 'ready' ? `<div class="acts">${btn('approve', 'Approve design', 'go')}</div>` : ''}</section>`;
@@ -477,6 +497,7 @@ window.HoolaBuild = function (C) {
     const apk = M(a.apk), dl = publicLink(a.apk_url), zip = publicLink(a.zip_url), redo = L(a.screens).filter(x => x.state === 'code').map(x => x.id);
     return `<ol class="bpipe">${pipe}</ol>
       ${s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : ''}${a.note ? `<div class="muted bln">${esc(a.note)}</div>` : ''}
+      ${qaBox(o)}${historyBox(o)}
       <div class="bcols"><section class="bbox"><h4>Screens in Kotlin</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
           ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>
@@ -526,6 +547,9 @@ window.HoolaBuild = function (C) {
           break; }
         case 'android': await call(o, '/android', {}, 'Building the Android app: every screen in Kotlin, then compile.'); o.tab = 'android'; break;
         case 'redo': await call(o, '/android', {redo: S(b.dataset.ids).split(',').filter(Boolean)}, 'Rewriting the simple screens.'); break;
+        case 'rollback': {   // v0.325 an older build again, as a new version
+          if (!confirm(`Bring back build ${S(b.dataset.build)}? It is released as a new version, so phones take it as an update.`)) break;
+          await call(o, '/rollback', {build: +b.dataset.build}, `Bringing back build ${S(b.dataset.build)}.`); break; }
         case 'reload': reloadFrames(o, true); break;
         case 'edit': {
           const r = await call(o, '/edit-mode', {}, '');

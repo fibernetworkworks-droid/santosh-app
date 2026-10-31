@@ -12204,3 +12204,75 @@ Owner: "GO" after Phase 3 (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusH
 - Engines: `OWNER()` = ctx.owner() (v2.js passes `!!ME?.arena`); non-owners see "What you can make" (the feature ticks) only; the owner
   sees the engine cards with "How to switch it on" folded.
 - Re-measured: 6 sizes, 0 texts < 4.5 : 1 light and dark. Tests: `test_v0327_studio_assets.py`.
+
+## v0.328.0 (part 1) HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0 / 0.324.0, shipped together with Phase 4 as v0.328.0 past the parallel v0.323.0 STUDIO HOME + DIRECTOR, v0.324.0 TEEN LOOK JALDI, v0.325.0 STUDIO TOOLS v0.326.0 HER TEST RUN and v0.327.0 STUDIO ASSETS + HELP)
+- **Device check after every build** (`server/app/appmaker/android/device_check.sh` + `qa.py`, stdlib only; `gen.write_project`
+  copies both into every project as `hoola_qa/` with `package.txt` + `screens.txt`): on an Android emulator the debug build opens
+  EVERY screen (extra `hoola_screen`), takes its picture, dumps its UI tree and its crash buffer; the release build is cold-started
+  3 times (`am start -W` TotalTime), scrolled (4 swipes) for `dumpsys gfxinfo` janky frames, and measured (APK bytes). `qa.report`
+  -> `report.json`: per screen opened / crash (exception, app frames, screen class, logcat excerpt) / accessibility (a tappable with no
+  words anywhere in it = unlabelled for TalkBack; a target under 48 dp at the device density) / screenshot; perf (cold median, jank %,
+  APK MB) against `BUDGET` (1500 ms, 25 %, 15 MB); `passed` = every screen opened. Budget and accessibility are reported, a crash blocks.
+- **Where it runs**: GitHub builds repo (`APP_BUILD_MODE=github`): the new `server/app_builder/hoola-build.yml` builds release + debug,
+  enables KVM, runs the check on an API 34 emulator (`continue-on-error`, never breaks a good build) and uploads `qa/report.json` +
+  `qa/screens/*.png` with the APK; her repo needs this file updated (older copies still build, the card then says so). Worker mode:
+  `HOOLA_BUILD_EMULATOR=1` + an emulator on adb -> `/jobs/<id>/qa` zip. `runners.qa_from_zip` brings both back as `result["qa"]`.
+- **The build loop acts on it** (`android/service._run`): a model-written screen that crashed on the device goes back to Opus ONCE with
+  "THIS SCREEN CRASHED ON A REAL ANDROID PHONE" + the logcat; rebuilt and re-checked; a fix that does not compile, or a second crash,
+  ships that screen's simple code-made version (the app is never handed over crashing on a screen we know about). `_keep_qa` keeps the
+  summary in the build state (`qa`: ran / passed / opened / total / crashed / perf / budget / a11y findings / shots) and the pictures
+  (`android/qa/b<n>/`, last 3 builds); `GET /api/apps/<ref>/android/qa/<screen>`; the ready note gets one plain QA line.
+- **Crashes on real users' phones**: kit `CrashGuard.kt` (installed first in MainActivity, current screen set by the shell) keeps the
+  crash (trace 60 lines, screen, versionName, Android, model; no personal data, no form contents) with `commit()` and lets Android close
+  the app as usual; `sendPending` posts it on the next start (`POST /api/app-api/<key>/crash`, no login, 20 an hour per IP).
+  `backend.crash` groups by exception + the first app frames with line numbers stripped (`c_<sha1>`), counts, screens, versions,
+  devices (200 kept), a chat note on a NEW crash; `GET /api/apps/<ref>/crashes`; `app_dekho what=crashes`; `app_banao action=fix_crash`
+  (+ phone / console "Theek karo" via `POST /api/apps/<ref>/fix_crash`) = the app screens in the stack (ScreenCartKt -> cart, else the
+  screen it happened on) rewritten with the crash as a per-screen note (`android.build(..., notes, crashes)`), a new build; the crash is
+  marked `fixing` with that build's version; the same crash from that version = `back` + a second note; a crash only in the kit is said
+  to be Hoola's own, not hers.
+- **Views**: phone build panel `_QaBox` (opened x/y, cold start / jank / APK pills against the budget, accessibility lines, the
+  screenshots) + crash list with Theek karo; console Android tab `qaBox` (same, screenshots through her login).
+- **CI** (`appgen-check.yml`): the fixture app now goes through `device_check.sh` itself (13 screens incl. the kit's sign-in / account),
+  a step gates on `report.json` (every screen opened, cold start + APK size measured, accessibility findings printed as notices); the
+  e2e reinstalls the debug build and also sends a kept crash end to end (the server check requires it grouped under the cart screen).
+- **Tool text**: the 1200-char cut had pushed out "Pakka karne ke liye ek sawaal"; the product list was shortened so the new-app
+  rules and the backend actions all fit.
+- **Verified here**: `server/tests/test_v0325_hoola_qa.py` (3: the report parser on real-shaped uiautomator / logcat / gfxinfo output,
+  the build's crash-fix loop on a fake emulator build machine incl. the shot route and the no-emulator message, crash reports grouped /
+  noted / fixed / back / kit-only); the fixture project compiles with the real toolchain (release APK 1.5 MB).
+- **Not yet**: per-app UI flow tests beyond "every screen opens" (tapping through each flow), a visual diff against the approved web
+  design, memory / ANR checks, iPhone.
+
+## v0.328.0 (part 2) APP UPDATES — App Sahayak Phase 4: a built app can be changed safely for its whole life (owner: "START PHASE 4")
+- **Only what changed is rewritten**: Kotlin screens are cached per screen under `_skey` = sha256 of that screen's approved html/css,
+  the look tokens, the tabs, the screen list, its spec row (purpose / lists / actions), the app's server lists and `KIT_REV`. A rebuild
+  of the same design asks Opus nothing (simple code-made screens get another try); a one-screen design change rewrites one screen; a
+  look / colour or data-list change touches every screen (they are in every screen's code). Was: one cache key per whole design, so any
+  change rewrote every screen (cost + regressions).
+- **Versions only go up**: `versionCode = max(last_vc + 1, version*100 + build%100)` (the old formula wrapped after 100 builds and
+  could go DOWN = Android refuses the update); `versionName = <design version>.<build>`.
+- **Changelog** (`android.history`, last 30): build, version, date, APK + sha256 + size, changed / kept / simple screens (labels + ids),
+  data revision and whether it changed, crash fixes, QA passed, rollback_of, and `release_notes` = plain "What's new" lines (her change
+  words, "Updated: Cart, Home", "New details you can fill in.", "Fixes a problem that could close the app.").
+- **Kept builds**: the last `KEEP_BUILDS` (10) APKs and project ZIPs (was: 1 APK, 3 ZIPs).
+- **Rollback** (`android.rollback` / `_rollback`): a kept build's exact project, `versionCode` / `versionName` rewritten to a NEW higher
+  version, the preview key put back, compiled and device-checked, no Opus; phones take it as an update. `app_banao action=rollback`
+  (build, 0 = the one before), `POST /api/apps/<ref>/rollback`, phone "Wapas lao", console "Bring back"; a chat note.
+- **In-app update**: `GET /api/app-api/<key>/latest` (version code / name, notes, size, APK address) + `GET /api/app-api/<key>/apk` (the
+  current APK; public like the app). Kit `AppUpdate.kt`: checked on start against `BuildConfig.VERSION_CODE`; `UpdateDialog` shows
+  "New version x.y" + What's new + Update (opens the APK link in the browser; same key = installs over, data kept) / Later (that
+  version skipped until a newer one). `Act.link` added.
+- **Her data changes** (`backend.change_schema` / `_apply_ops`, `app_banao action=data_change`, `POST /api/apps/<ref>/data_change`):
+  add (a new field is NEVER required - an old app can't send it; a choice fills its default), hide (left out of forms and the model's
+  guide, data kept; essential order fields refused), label; checked on a copy, saved with `rev`, logged in `changes`, REPLAYED after a
+  backend upgrade (`ensure`). The installed app reads the new lists from `/api/app-content` at once (kit `Db.fields` drops hidden);
+  forms collect a new field from the next build; the build's notes say "New details you can fill in."
+- **Device check fixes found in CI**: the emulator screen is 320x640, so fixed 540x1600 swipes hit nothing and the release build opens
+  on the consent screen - scrolling is now measured on the debug build's start screen with swipes from the real `wm size`, and fewer
+  than 10 frames = not measured (never "0 % jank").
+- **Verified**: `server/tests/test_v0325_app_updates.py` (4: only-changed rewrite + version up + history + latest / apk + rollback via
+  route and tool; the screen key; data changes safe for old app versions + hide keeps data + label + replay + notes + forms; the
+  generated project) and the fixture compiles with the real toolchain. Phase 3's CI device check on the emulator (before the scroll fix):
+  13/13 screens, cold start 538 ms, APK 1.51 MB, 0 accessibility findings, e2e incl. photo / paid / updates / crash report all OK.
+- **Not yet**: Play Store releases + Play in-app updates, iPhone, a visual diff of each update against the approved design.

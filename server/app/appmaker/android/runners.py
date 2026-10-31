@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import time
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -119,9 +120,32 @@ def run_worker(src: Path, key: str, progress: Progress) -> dict[str, Any]:
                 st2, apk, _ = _w("GET", f"/jobs/{job}/apk", timeout=300)
                 apk = apk if st2 == 200 else None
             st3, logb, _ = _w("GET", f"/jobs/{job}/log", timeout=60)
+            qa = None
+            if apk:                                # v0.325 the device check, when that machine has an emulator
+                st4, qb, _ = _w("GET", f"/jobs/{job}/qa", timeout=120)
+                qa = qa_from_zip(qb) if st4 == 200 else None
             return {"ok": bool(apk), "log": logb.decode(errors="replace") if st3 == 200 else j.get("tail", ""), "apk": apk,
-                    "seconds": round(time.time() - t0), "where": "worker"}
+                    "seconds": round(time.time() - t0), "where": "worker", "qa": qa}
     return {"ok": False, "log": "build timed out", "apk": None, "seconds": round(time.time() - t0), "where": "worker"}
+
+
+def qa_from_zip(zb: bytes) -> dict[str, Any] | None:
+    """v0.325 HOOLA QA: {report, shots{screen id: png}} from a zip holding report.json + screens/*.png (any folder)."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(zb)) as z:
+            names = z.namelist()
+            rep = next((n for n in names if n.endswith("report.json")), None)
+            if not rep:
+                return None
+            report = json.loads(z.read(rep))
+            shots = {}
+            for n in names:
+                m = re.search(r"screens/([a-z][a-z0-9_]{0,48})\.png$", n)
+                if m and z.getinfo(n).file_size < 6_000_000:
+                    shots[m.group(1)] = z.read(n)
+            return {"report": report, "shots": shots}
+    except (zipfile.BadZipFile, ValueError, KeyError):
+        return None
 
 
 # ---------------------------------------------------------------- github (private builds repo, workflow hoola-build.yml)
@@ -195,7 +219,7 @@ def run_github(src: Path, key: str, progress: Progress) -> dict[str, Any]:
     if not run or run.get("status") != "completed":
         return {"ok": False, "log": "GitHub build timed out", "apk": None, "seconds": round(time.time() - t0), "where": "github"}
     arts = _gh("GET", f"/repos/{repo}/actions/runs/{run['id']}/artifacts") or {}
-    apk, text = None, ""
+    apk, text, qa = None, "", None
     for a in arts.get("artifacts", []):
         if a.get("name") != f"hoola-{job}" and a.get("name") != "hoola-build":
             continue
@@ -209,9 +233,10 @@ def run_github(src: Path, key: str, progress: Progress) -> dict[str, Any]:
                     apk = z.read(n)
                 elif n.endswith("build.log"):
                     text = z.read(n).decode(errors="replace")
+        qa = qa_from_zip(zb)                       # v0.325 the device check's report + pictures (folder qa/)
     ok = run.get("conclusion") == "success" and bool(apk)
     return {"ok": ok, "log": text or f"GitHub run {run.get('conclusion')}", "apk": apk if ok else None,
-            "seconds": round(time.time() - t0), "where": "github"}
+            "seconds": round(time.time() - t0), "where": "github", "qa": qa if ok else None}
 
 
 # ---------------------------------------------------------------- local (a developer machine with the Android SDK)

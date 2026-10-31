@@ -11,11 +11,9 @@ from .tools import Ctx, ToolError
 APP_TOOLS = [
     {"name": "app_banao", "description": (
         "Design a premium NATIVE mobile app (Android + iPhone look) - her business's app, a client's app, or a PRODUCT app of "
-        "its own (music streaming like Spotify, OTT like Netflix, short video, social, chat, news, notes / to-do, habits, "
-        "expenses, fitness, meditation, recipes, free games / quiz, photo editor, weather, rides like Uber, food delivery like "
-        "Zomato, quick commerce, multi-seller shopping, buy & sell, travel / hotel / event tickets, jobs, language learning, "
-        "online courses, property portal, doctor consults, home services, payments: 33 product kinds) - and show her EVERY "
-        "screen as a tap-through prototype BEFORE anything is built. BUILT APPS HAVE THEIR OWN BACKEND: action=data (app, coll, row, set) changes a row for her (\"order accept karo\" -> set {status: Accepted}; paid=Verified ONLY when she says the money is in her bank), action=role (member, role) makes an account staff; read with app_dekho what=data / members. brief = HER EXACT WORDS, never your summary and never her "
+        "its own (music, OTT, short video, social, chat, news, fitness, games, rides, food delivery, quick commerce, "
+        "marketplace, tickets, jobs, courses, doctor consults, payments...: 33 product kinds) - and show her EVERY "
+        "screen as a tap-through prototype BEFORE anything is built. Built apps have a backend: action=data (coll, row, set; paid=Verified only when she saw the money), role, fix_crash (\'crash theek karo\'), rollback (build), data_change (ops: add / hide / label fields); read: app_dekho data / members / crashes. brief = HER EXACT WORDS, never your summary and never her "
         "own business added in (her business details go in by themselves only when the app is for her business). Don't pass "
         "goal unless she named the kind of app; a goal that doesn't fit her words is ignored. If it answers 'Pakka karne ke "
         "liye ek sawaal', ask her exactly that and call again with her answer in brief (or answers {sure: true} if she says "
@@ -60,7 +58,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -70,10 +68,13 @@ APP_TOOLS = [
          "row": {"type": "string", "description": "action=data: the row id (from app_dekho what=data)"},
          "set": {"type": "object", "description": "action=data: fields to change, e.g. {\"status\": \"Accepted\"}"},
          "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members)"},
+         "crash": {"type": "string", "description": "action=fix_crash: the crash id (app_dekho what=crashes); empty = the newest unfixed one"},
+         "build": {"type": "integer", "description": "action=rollback: the build number to bring back (app_dekho what=android history); 0 = the one before"},
+         "ops": {"type": "object", "description": "action=data_change: {add: [{coll, key, label, type, options}], hide: [{coll, key}], label: [{coll, key, label}]} - additive only, data never deleted"},
          "role": {"type": "string", "enum": ["member", "staff", "admin"]}},
          "required": ["action"]}},
     {"name": "app_dekho", "description": (
-        "Read her app designs (nothing changes). what=data (app, coll: the real rows her app's users made) | members (app) | apps | app (app: board, screens, checks, preview link, versions) | "
+        "Read her app designs (nothing changes). what=data (app, coll: the real rows her app's users made) | members (app) | crashes (app: crashes on users' phones) | apps | app (app: board, screens, checks, preview link, versions) | "
         "checks (app) | spec (app: the frozen design contract: tokens, tabs, every screen's purpose / data / actions) | "
         "library (q or industry: business types with their app goal) | brief (field, goal, style: the full ready app brief) | "
         "understand (q: what a short ask means: business type, app goal, 3 looks) | design_system (the menu she can pick from: "
@@ -91,7 +92,7 @@ APP_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
-                                             "data", "members"]},
+                                             "data", "members", "crashes"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
          "idea": {"type": "string"}, "coll": {"type": "string"}},
@@ -146,6 +147,35 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.resume(t, ref)
     if action == "delete":
         return S.delete(t, ref)
+    if action in ("rollback", "data_change"):     # v0.325 updates
+        if not _owner(ctx):
+            raise ToolError("Sirf maalkin yeh kar sakti hain.")
+        from ..appmaker import backend as BE
+        r = BE.by_key_or_ref(t, ref)
+        if action == "rollback":
+            from ..appmaker.android import service as AN
+            v = AN.rollback(t, r.id, int(a.get("build") or 0), conv)
+            return {"status": v["status"], "say": v.get("now") or "Purani build wapas aa rahi hai; card par dikhega."}
+        return BE.change_schema(r, a.get("ops") if isinstance(a.get("ops"), dict) else {}, str(a.get("instruction") or ""))
+    if action == "fix_crash":                 # v0.325 a crash from users' phones -> those screens rewritten, a new build
+        if not _owner(ctx):
+            raise ToolError("Sirf maalkin yeh kar sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker.android import service as AN
+        r = BE.by_key_or_ref(t, ref)
+        sig = str(a.get("crash") or "") or next((c["id"] for c in BE.crashes(r) if c.get("status") in ("new", "back")), "")
+        if not sig:
+            return {"say": "Abhi koi naya crash nahi hai."}
+        x, sids = BE.crash_screens(r, sig)
+        if not sids:
+            BE.crash_mark(r, sig, "kit")
+            return {"crash": x["exception"], "say": "Yeh crash app ki kisi screen mein nahi, Hoola ke apne hisse (kit) mein hai - "
+                    "Hoola team ko bhej diya. Aapki screens theek hain."}
+        note = ("THIS SCREEN CRASHED ON REAL USERS' PHONES (" + str(x.get("count")) + " times). Find the cause and fix it; keep the "
+                "approved design. CRASH:\n" + str(x.get("sample") or "")[:3000])
+        v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
+        return {"crash": x["exception"], "screens": sids, "status": v["status"],
+                "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
     if action in ("data", "role"):            # v0.314 her own app's backend: she runs it from Hoola
         if not _owner(ctx):
             raise ToolError("App ka data sirf maalkin badal sakti hain.")
@@ -235,9 +265,12 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
     if what == "android":
         from ..appmaker.android import service as AN
         return AN.get(t, ref)
-    if what in ("data", "members"):            # v0.314 the app's own backend
+    if what in ("data", "members", "crashes"):            # v0.314 the app's own backend
         from ..appmaker import backend as BE
         r = BE.by_key_or_ref(t, ref)
+        if what == "crashes":
+            return {"crashes": [{k: c.get(k) for k in ("id", "exception", "count", "screens", "versions", "devices", "status", "last")}
+                                for c in BE.crashes(r)[:20]]}
         if what == "members":
             return {"members": BE.members(r)[:200]}
         if a.get("coll"):

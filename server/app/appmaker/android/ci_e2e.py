@@ -41,11 +41,23 @@ def check() -> int:
         data = [json.loads(r.data) for r in rows]
         r = s.get(AppProject, "app_fixture")
         made = bool(r and r.backend)
+    crashes = {}
+    try:                                    # v0.325 the crash report the app sent
+        from ..backend import _crash_file
+        with session() as s:
+            r2 = s.get(AppProject, "app_fixture")
+            s.expunge(r2)
+        cf = _crash_file(r2)
+        crashes = json.loads(cf.read_text()) if cf.exists() else {}
+    except Exception as e:                  # noqa: BLE001
+        print("crash file:", e)
     print(json.dumps(data, ensure_ascii=False, indent=1))
+    print("crashes:", json.dumps(list(crashes.values())[:2], indent=1)[:1500])
     two = [d for d in data if d.get("items", "").startswith("2 x ")]
     ok = made and len(two) == 1 and abs(float(two[0].get("total") or 0) - 2 * float(first["price"])) < 0.01 \
         and len([d for d in data if str(d.get("_cid", "")).startswith("e2eDedup")]) == 1 \
-        and any(d.get("paid") == "Customer says paid" and d.get("utr") == "412345678901" for d in data)   # v0.319
+        and any(d.get("paid") == "Customer says paid" and d.get("utr") == "412345678901" for d in data) \
+        and any("hoola e2e crash" in str(c.get("exception")) and "cart" in (c.get("screens") or []) for c in crashes.values())
     print("SERVER CHECK", "OK" if ok else "FAIL")
     return 0 if ok else 1
 

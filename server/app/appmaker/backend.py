@@ -214,8 +214,11 @@ def ensure(r: AppProject) -> dict[str, Any]:
     if be.get("schema", {}).get("collections") is not None and int(be.get("v") or 1) >= SCHEMA_V:
         return be
     # v0.319 an older backend is upgraded in place: lists only GAIN fields (photo / location / paid), rows are untouched
-    be = {"schema": schema_for(r), "made": be.get("made") or now().isoformat(), "v": SCHEMA_V,
-          **({"upgraded": now().isoformat()} if be.get("made") else {})}
+    old_changes = be.get("changes") or []
+    be = {"schema": schema_for(r), "made": be.get("made") or now().isoformat(), "v": SCHEMA_V, "rev": int(be.get("rev") or 0),
+          "changes": old_changes, **({"upgraded": now().isoformat()} if be.get("made") else {})}
+    for ch in old_changes:                     # v0.325 her own data changes survive an upgrade: replayed on the new lists
+        _apply_ops(be["schema"], ch.get("ops") or {})
     with session() as s:
         row = s.get(AppProject, r.id)
         row.backend = json.dumps(be, ensure_ascii=False)
@@ -639,3 +642,179 @@ def mark_paid(r: AppProject, coll: str, row_id: str, utr: str, w: W.Who) -> dict
     except Exception:                                   # noqa: BLE001
         log.debug("paid note", exc_info=True)
     return out
+
+
+# ---------------------------------------------------------------- v0.325 HOOLA QA: crashes on real users' phones
+CRASH_KEEP = 200
+
+
+def _crash_file(r: AppProject):
+    return _files(r).parent / "crashes.json"
+
+
+def _crash_sig(trace: str) -> tuple[str, str, list[str]]:
+    """Same crash = same exception class + the same first app frames (line numbers ignored: they move between builds)."""
+    import hashlib
+    lines = [ln.strip() for ln in (trace or "").splitlines() if ln.strip()]
+    exc = next((ln for ln in lines if re.match(r"(Caused by: )?[\w.$]+(Exception|Error)\b", ln)), lines[0] if lines else "")
+    frames = [ln for ln in lines if ln.startswith("at hoola.")][:6]
+    key = re.sub(r":\d+\)", ")", exc.split(":")[0] + "|" + "|".join(frames[:3]))
+    return "c_" + hashlib.sha1(key.encode()).hexdigest()[:12], exc[:300], frames
+
+
+def crash(r: AppProject, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
+    """A crash the installed app kept and sends on its next start (no login needed; nothing personal in it)."""
+    if not isinstance(body, dict):
+        raise W.AppError("bad crash")
+    W.rate(f"cr|{bid(r)}|{ip}", 20, 3600)
+    trace = str(body.get("trace") or "")[:6000]
+    if not trace.strip():
+        raise W.AppError("empty crash")
+    sig, exc, frames = _crash_sig(trace)
+    screen = re.sub(r"[^a-z0-9_]", "", str(body.get("screen") or "").lower())[:49]
+    ver = re.sub(r"[^0-9A-Za-z.\-]", "", str(body.get("ver") or ""))[:20]
+    f = _crash_file(r)
+    with _LOCK:
+        data = _j(f.read_text(), {}) if f.exists() else {}
+        x = data.get(sig)
+        first = x is None
+        if first:
+            if len(data) >= CRASH_KEEP:
+                for k, _v in sorted(data.items(), key=lambda kv: kv[1].get("last", ""))[:len(data) - CRASH_KEEP + 1]:
+                    data.pop(k, None)
+            x = data[sig] = {"id": sig, "exception": exc, "frames": frames, "sample": trace, "count": 0, "first": now().isoformat(),
+                             "screens": [], "versions": [], "devices": [], "status": "new"}
+        x["count"] += 1
+        x["last"] = now().isoformat()
+        for k, v, n in (("screens", screen, 10), ("versions", ver, 10),
+                        ("devices", f"{str(body.get('model') or '')[:40]} / Android {str(body.get('android') or '')[:3]}", 8)):
+            if v and v not in x[k]:
+                x[k] = (x[k] + [v])[-n:]
+        came_back = x.get("status") == "fixing" and ver and x.get("fix_version") and ver == x.get("fix_version")
+        if came_back:
+            x["status"] = "back"            # it happened again in the build that was meant to fix it: say so honestly
+        f.write_text(json.dumps(data, ensure_ascii=False))
+    STATS["crashes"] = STATS.get("crashes", 0) + 1
+    if first or came_back:
+        where = f" ({screen} screen)" if screen else ""
+        try:
+            from .android.service import _note
+            _note(r, f"{r.name or 'Aapki app'} ({r.number}) ek user ke phone pe band ho gayi{where}: {exc.split(':')[0][:80]}"
+                     + (" - fix wali build mein bhi" if came_back else "") + ". Kahiye 'crash theek karo' - Hoola us screen ko asli "
+                     "crash dekh kar dobara likhegi aur nayi build banayegi.")
+        except Exception:                               # noqa: BLE001
+            log.debug("crash note", exc_info=True)
+    return {"ok": True, "id": sig, "new": first}
+
+
+def crashes(r: AppProject) -> list[dict[str, Any]]:
+    f = _crash_file(r)
+    data = _j(f.read_text(), {}) if f.exists() else {}
+    return sorted(data.values(), key=lambda x: (x.get("status") == "fixing", -int(x.get("count") or 0)))
+
+
+def crash_screens(r: AppProject, sig: str) -> tuple[dict[str, Any], list[str]]:
+    """The crash and the app's own screens in its stack (ScreenCart -> cart), else the screen it happened on."""
+    from .android import gen as G
+    x = next((c for c in crashes(r) if c["id"] == sig), None)
+    if x is None:
+        raise W.AppError("Yeh crash nahi mila.", 404)
+    ids = list(_j(r.plan, {}).get("screens") or [])
+    by_cls = {G.kotlin_name(s): s for s in ids}
+    sids: list[str] = []
+    for fr in x.get("frames") or []:
+        m = re.search(r"hoola\.app\.screens\.(Screen\w+?)(Kt)?\.", fr)
+        if m and m.group(1) in by_cls and by_cls[m.group(1)] not in sids:
+            sids.append(by_cls[m.group(1)])
+    if not sids:
+        sids = [s for s in x.get("screens") or [] if s in ids][:2]
+    return x, sids
+
+
+def crash_mark(r: AppProject, sig: str, status: str, build: int = 0, version: str = "") -> None:
+    f = _crash_file(r)
+    with _LOCK:
+        data = _j(f.read_text(), {}) if f.exists() else {}
+        if sig in data:
+            data[sig]["status"] = status
+            if build:
+                data[sig]["fix_build"] = build
+            if version:
+                data[sig]["fix_version"] = version
+            f.write_text(json.dumps(data, ensure_ascii=False))
+
+
+
+# ---------------------------------------------------------------- v0.325 UPDATES: her data changes, safe for old app versions
+def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
+    """add / hide / label fields. Only changes an app version already on people's phones survives: a new field is never
+    required (an old app could not send it; a choice fills its default); a hidden field keeps its data and is
+    only left out of the forms; nothing is ever deleted or renamed underneath existing rows."""
+    done: list[str] = []
+    colls = {c["key"]: c for c in sch.get("collections") or []}
+    for a in (ops.get("add") or [])[:12]:
+        c = colls.get(str(a.get("coll") or ""))
+        if c is None:
+            raise W.AppError(f"List '{a.get('coll')}' is app mein nahi hai.")
+        k = W._slug(a.get("key") or a.get("label"))
+        if not k or k in ("id", "owner", "created", "updated", "cid", "cart"):
+            raise W.AppError("Naye field ka naam chahiye.")
+        if any(f["key"] == k for f in c["fields"]):
+            old = next(f for f in c["fields"] if f["key"] == k)
+            if old.get("hidden"):              # bringing a hidden field back
+                old.pop("hidden", None)
+                done.append(f"{c['key']}.{k} wapas dikhega")
+                continue
+            raise W.AppError(f"'{k}' pehle se hai.")
+        if len(c["fields"]) >= W.MAX_FIELDS:
+            raise W.AppError("Is list mein aur field nahi aa sakte.")
+        typ = a.get("type") if a.get("type") in (*W.TYPES, *EXTRA_TYPES) else "text"
+        fd: dict[str, Any] = {"key": k, "label": str(a.get("label") or k.replace("_", " ").title())[:60], "type": typ,
+                              "required": False, "admin_only": bool(a.get("admin_only"))}
+        if typ == "choice":
+            opts = [str(o)[:40] for o in (a.get("options") or []) if str(o).strip()][:20]
+            if not opts:
+                raise W.AppError("Choice field ke options chahiye.")
+            fd["options"], fd["default"] = opts, opts[0]          # an old app's row (it never sends it) gets the default
+        c["fields"].append(fd)
+        done.append(f"{c['key']}.{k} joda")
+    for h in (ops.get("hide") or [])[:12]:
+        c = colls.get(str(h.get("coll") or ""))
+        f = next((x for x in (c or {}).get("fields", []) if x["key"] == h.get("key")), None)
+        if f is None:
+            raise W.AppError(f"Field '{h.get('key')}' nahi mila.")
+        if f["key"] in ("status", "name", "phone", "items", "total") and c and c["key"] == sch.get("order"):
+            raise W.AppError(f"'{f['key']}' order ke liye zaroori hai; chhupa nahi sakte.")
+        f["hidden"], f["required"] = True, False
+        done.append(f"{c['key']}.{f['key']} chhupa (data rakha hai)")
+    for lb in (ops.get("label") or [])[:12]:
+        c = colls.get(str(lb.get("coll") or ""))
+        f = next((x for x in (c or {}).get("fields", []) if x["key"] == lb.get("key")), None)
+        if f is None or not str(lb.get("label") or "").strip():
+            raise W.AppError("Kaunsa field, naya naam kya?")
+        f["label"] = str(lb["label"])[:60]
+        done.append(f"{c['key']}.{f['key']} ka naam '{f['label']}'")
+    return done
+
+
+def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[str, Any]:
+    """Her data change (tool / app data view): applied to a copy, checked, then saved with a new revision. The installed
+    app reads the new lists from /api/app-content at once (rows show the new field); forms collect it from the next build."""
+    import copy
+    be = ensure(r)
+    sch = copy.deepcopy(be["schema"])
+    done = _apply_ops(sch, ops if isinstance(ops, dict) else {})
+    if not done:
+        raise W.AppError("Kya badalna hai? (add / hide / label)")
+    be = {**be, "schema": sch, "rev": int(be.get("rev") or 0) + 1,
+          "changes": (be.get("changes") or []) + [{"at": now().isoformat(), "ops": ops, "words": str(words)[:300], "done": done}]}
+    with session() as s:
+        row = s.get(AppProject, r.id)
+        row.backend = json.dumps(be, ensure_ascii=False)
+    r.backend = json.dumps(be, ensure_ascii=False)
+    try:
+        from .android import service as AN
+        AN._CACHE.clear() if hasattr(AN, "_CACHE") else None
+    except Exception:                                    # noqa: BLE001
+        pass
+    return {"rev": be["rev"], "done": done, "say": "; ".join(done) + ". Rows mein abhi dikhega; form mein agli build se."}

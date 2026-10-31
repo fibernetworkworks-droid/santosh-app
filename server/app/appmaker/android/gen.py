@@ -267,9 +267,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import hoola.kit.Api
+import hoola.kit.AppUpdate
+import hoola.kit.UpdateDialog
 import hoola.kit.AppData
 import hoola.kit.Auth
 import hoola.kit.Cloud
+import hoola.kit.CrashGuard
 import hoola.kit.Db
 import hoola.kit.E2e
 import hoola.kit.Updates
@@ -291,6 +294,7 @@ object AppConfig {{
 class MainActivity : ComponentActivity() {{
     override fun onCreate(savedInstanceState: Bundle?) {{
         super.onCreate(savedInstanceState)
+        CrashGuard.install(this, BuildConfig.VERSION_NAME)          // v0.325 a crash on a user's phone reaches Hoola
         enableEdgeToEdge()
         Strings.init(AppTokens.look.language)
         AppData.load(this)
@@ -302,6 +306,7 @@ class MainActivity : ComponentActivity() {{
         Db.load(this)
         Db.watch(this)
         Updates.schedule(this, AppConfig.BASE_URL, AppConfig.APP_ID)   // v0.319 order updates as notifications
+        CrashGuard.sendPending(this)
         val seen = Store.get(this, "onboarded") == "1"
         // Debug builds only (Hoola's own checks open every screen and take its picture); release builds ignore it.
         val jump = if (BuildConfig.DEBUG) intent?.getStringExtra("hoola_screen")?.takeIf {{ it in AppScreens.ids }} else null
@@ -309,7 +314,10 @@ class MainActivity : ComponentActivity() {{
             HoolaTheme(AppTokens.look) {{
                 var stage by remember {{ mutableStateOf(if (seen || jump != null) "app" else "splash") }}
                 val nav = remember {{ Nav(jump ?: AppScreens.START, AppScreens.tabs, AppScreens.ids) }}
-                LaunchedEffect(Unit) {{ Api.refresh(this@MainActivity); Updates.check(this@MainActivity) }}
+                LaunchedEffect(Unit) {{
+                    Api.refresh(this@MainActivity); Updates.check(this@MainActivity)
+                    AppUpdate.check(this@MainActivity, BuildConfig.VERSION_CODE)     // v0.325 a newer build: "What's new" + Update
+                }}
                 LaunchedEffect(Unit) {{
                     while (true) {{ Db.sync(); delay(if (Db.pending.value > 0) 15_000L else 60_000L) }}
                 }}
@@ -320,8 +328,9 @@ class MainActivity : ComponentActivity() {{
                     "splash" -> SplashScreen {{ stage = if (AppScreens.HAS_CONSENT) "consent" else if (AppScreens.HAS_NOTIFY) "notify" else "app" }}
                     "consent" -> ConsentScreen {{ stage = if (AppScreens.HAS_NOTIFY) "notify" else "app"; if (!AppScreens.HAS_NOTIFY) Store.put(this@MainActivity, "onboarded", "1") }}
                     "notify" -> NotifyScreen {{ stage = "app"; Store.put(this@MainActivity, "onboarded", "1") }}
-                    else -> AppShell(nav, AppScreens.fabMain, AppScreens.fabActions, AppData.appName) {{ id -> AppScreens.Show(id) }}
+                    else -> AppShell(nav, AppScreens.fabMain, AppScreens.fabActions, AppData.appName) {{ id -> CrashGuard.screen = id; AppScreens.Show(id) }}
                 }}
+                if (stage == "app") UpdateDialog()
             }}
         }}
     }}
@@ -438,7 +447,7 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
     out = []
     for f in fields:
         k = str(f.get("key") or "")
-        if f.get("admin_only") or f.get("type") == "yes_no" or not ID_RE.match(k):
+        if f.get("admin_only") or f.get("hidden") or f.get("type") == "yes_no" or not ID_RE.match(k):
             continue
         if f.get("type") == "photo":              # v0.319
             out.append(f"        block {{ PhotoField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
@@ -654,7 +663,16 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     if key.get("p12_b64"):
         (tmp / "keys").mkdir(exist_ok=True)
         (tmp / "keys/preview.p12").write_bytes(base64.b64decode(key["p12_b64"]))
-    (tmp / ".gitignore").write_text(".gradle/\nbuild/\napp/build/\nlocal.properties\nkeys/\n")
+    # v0.325 HOOLA QA travels with the project: the build machine / builds repo runs the device check after compiling
+    qa = tmp / "hoola_qa"
+    qa.mkdir(exist_ok=True)
+    for f in ("device_check.sh", "qa.py"):
+        shutil.copy(HERE / f, qa / f)
+    (qa / "device_check.sh").chmod(0o755)
+    (qa / "package.txt").write_text(app_id + "\n")
+    shots = ids + [c for c in ("seller_info", "privacy", "delete_account") if c in (spec.get("code_screens") or [])] + list(KIT_SCREENS)
+    (qa / "screens.txt").write_text(" ".join(x for x in shots if x not in AUTH_IDS) + "\n")
+    (tmp / ".gitignore").write_text(".gradle/\nbuild/\napp/build/\nlocal.properties\nkeys/\nqa/\n")
     if out.exists():
         shutil.rmtree(out)
     tmp.rename(out)

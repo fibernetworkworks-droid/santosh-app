@@ -122,4 +122,8 @@ object Strings {
     val updatesChannel get() = t("Order updates", "ऑर्डर अपडेट", "ऑर्डर अपडेट", "Order updates")
     val newEntry get() = t("New — open the app to see it", "नया — देखने के लिए ऐप खोलें", "नवीन — पाहण्यासाठी ॲप उघडा", "Naya — dekhne ke liye app kholiye")
     val all get() = t("All", "सभी", "सर्व", "Sab")
+
+    // v0.325 updates
+    val updateTitle get() = t("New version", "नया वर्ज़न", "नवीन आवृत्ती", "Naya version")
+    val update get() = t("Update", "अपडेट करें", "अपडेट करा", "Update karein")
 }
