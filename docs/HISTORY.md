@@ -12389,7 +12389,20 @@ a big site drifted page to page.
 - Built as 0.325 / 0.326, shipped together as 0.330.0 past the parallel v0.325-v0.329 Create Studio work (all kept).
 - Shipped as 0.332.0 (built as 0.325 / 0.326, then 0.330): re-versioned past the parallel v0.330 PLAN CARD DIKHE / PLAY STORE LAUNCH and v0.331 (all kept). Code comments say v0.330.
 
-## v0.333.0 SEO PRO (31 Oct 2026, built as 0.319.0 / 0.320.0, re-versioned past the parallel v0.319-v0.332)
+## v0.333.0 NO BLINK + DRAG TO RESIZE (31 Oct 2026; built as 0.331.0, re-versioned past main's 0.331 / 0.332)
+Owner, with a screenshot of Create > Video (her real clips): "1) YOUR VIDEO SECTION VIDEO BOX IS CONTINUOUSLY GOING AND COMING BACK AFTER
+FEW INTERVAL 2) THERE SHOULD BE SLIDER FROM BOTH SIDE THUS SIDE BAR AND A YOUR VIDEO CAN BE ADJUSTED AND PROMPT WORKING SECTION WILL GET BIGGER AREA."
+- Root cause, measured with Playwright: `watchStudio` polls every 4 s (work running) / 15 s and `drawVideos` set `#results.innerHTML`, so
+  EVERY tile was rebuilt and every `<video>` reloaded: 0 of 7 tiles survived one poll on the old code. New `patch(el, html)`: same markup ->
+  nothing; otherwise each new child is matched to an old child with the same source markup and the old node is kept (7 of 7 kept). Signed
+  studio file links (`service.link`) are fixed for the whole day, so an unchanged clip really is unchanged markup.
+- Director film page: the 5 s tick re-drew the whole page while work ran; it now compares the film JSON (`DIR.sig`) and skips unchanged ticks.
+- Drag to resize: `.rz-side` on the sidebar edge (`--sbw` 200-360, default 248) and `.rz-pane` between the prompt panel and the results on
+  Video / Image / Music / Voice (`--pw` 320 up to the results keeping 360, default 380); role=separator, arrow keys +-16, Home / double-click
+  reset, widths in localStorage (`hoola.studio.sbw` / `.pw`), a thin violet line + grip on hover / drag, hidden under 900px.
+- Tests: `test_v0331_no_blink_resize.py`.
+
+## v0.334.0 SEO PRO (31 Oct 2026, built as 0.319.0 / 0.320.0 / 0.333.0, re-versioned past the parallel v0.319-v0.333)
 Owner: "https://github.com/AgriciDaniel/claude-seo.git --- check this repo for SEO" -> "ADD ALL USEFUL FEATURES FROM CLAUDE-SEO
 TO HOOLA". claude-seo (MIT, v2.5.0, commit 6be93f4) was read end to end and compared with Hoola's SEO Sahayak (v0.103) and the
 SEO Employee (v0.317). Every check that works through official routes was RE-WRITTEN in Hoola's own code and words (no code
