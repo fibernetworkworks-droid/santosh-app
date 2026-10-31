@@ -91,6 +91,24 @@ window.HoolaCreate = ctx => {
   // v0.320 the studio opens hidden, so on the FIRST open every picture had no size yet and stayed an unpainted 300x150 canvas
   // stretched over its card (squashed moons and records). A picture now paints when it gets a size, and again if it changes.
   const artRO = window.ResizeObserver ? new ResizeObserver(es => es.forEach(e => { if (e.target.clientWidth) paint(e.target); })) : null;
+  // v0.328 SHOWCASE: a card whose real Hoola-made picture (or clip) exists shows it over the drawn placeholder
+  const SC_SLOT = seed => { let m = /^t?q(\d+)$/.exec(seed); if (m) return 'film' + m[1];
+    if ((m = /^t[pt](\d+)$/.exec(seed))) return 'tpl' + m[1]; if ((m = /^t(\d+)$/.exec(seed))) return 'tool' + m[1];
+    if ((m = /^sty(\d+)$/.exec(seed))) return 'sty' + m[1];
+    if ((m = /^lr(\d+)$/.exec(seed))) { const i = ALLTOOLS.findIndex(t => t[0] === GUIDES[+m[1]]?.[1]); return i >= 0 ? 'tool' + i : ''; }
+    return ''; };
+  function showcaseSwap(root = R) {
+    const S = D.showcase?.slots; if (!S || !root) return;
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $$('canvas[data-art][data-seed]', root).forEach(c => { const slot = SC_SLOT(c.dataset.seed), it = S[slot]; if (!it || c.dataset.sc) return; c.dataset.sc = '1';
+      const base = `/api/studio/showcase/file/${slot}?kind=`, clip = it.clip && !still, el = document.createElement(clip ? 'video' : 'img');
+      el.className = 'art sc'; el.setAttribute('aria-hidden', 'true');
+      if (clip) { el.muted = true; el.loop = true; el.playsInline = true; el.autoplay = true; } else el.alt = '';
+      c.after(el);
+      blobURL(base + (clip ? 'clip' : 'pic')).then(u => { el.src = u; el.addEventListener(clip ? 'loadeddata' : 'load', () => el.classList.add('on'), {once: true}); })
+        .catch(() => el.remove());
+      if (clip && it.pic) blobURL(base + 'pic').then(u => { el.poster = u; }).catch(() => {}); });
+  }
   const paintAll = (root = R) => requestAnimationFrame(() => $$('canvas[data-art]', root).forEach(c => { if (c.clientWidth) paint(c); artRO?.observe(c); }));
 
   /* ---------------- her files ---------------- */
@@ -138,7 +156,8 @@ window.HoolaCreate = ctx => {
       if (what === 'studio' && (force || !D.studio)) D.studio = await api('GET', '/api/studio');
       if (what === 'items' && (force || !D.items)) D.items = (await api('GET', '/api/create/items')).items || [];
       if (what === 'kit' && (force || !D.kit)) D.kit = await api('GET', '/api/brand/kit');
-    } catch (e) { if (what === 'items') D.items = D.items || []; if (what === 'studio') D.studio = D.studio || {projects: [], available: false, models: []}; if (what === 'conf') D.conf = D.conf || {ready: {}, voices: {male: {}, female: {}}}; }
+      if (what === 'showcase' && (force || !D.showcase)) D.showcase = await api('GET', '/api/studio/showcase');
+    } catch (e) { if (what === 'items') D.items = D.items || []; if (what === 'studio') D.studio = D.studio || {projects: [], available: false, models: []}; if (what === 'conf') D.conf = D.conf || {ready: {}, voices: {male: {}, female: {}}}; if (what === 'showcase') D.showcase = D.showcase || {slots: {}}; }
     return D[what];
   }
   const items = kind => (D.items || []).filter(i => !kind || (Array.isArray(kind) ? kind.includes(i.kind) : i.kind === kind));
@@ -226,7 +245,7 @@ ${SPRITE}`;
     $$('#snav [data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === v ? 'page' : 'false'));
     $('#crumb').innerHTML = v === 'studio' ? '<b>Create</b>' : `Create · <b>${TITLE[v]}</b>`;
     $('#shell').classList.remove('navon');
-    (W[v] || (() => {}))(el, opts || {}); paintAll(el); hydrate(el); rails(el);
+    (W[v] || (() => {}))(el, opts || {}); paintAll(el); hydrate(el); rails(el); showcaseSwap(el);
     try { sessionStorage.setItem('hoola.create.view', v); } catch {}
   }
   const V = {}, W = {};
@@ -1348,7 +1367,24 @@ ${SPRITE}`;
   V.engines = () => `<div class="home eng">
     <div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">${OWNER() ? 'Engines' : 'What you can make'}</h2><p class="mut" style="margin-top:6px">${OWNER() ? 'The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.' : 'Everything ticked is ready to use in Create right now.'}</p></div>
       <button class="btn sec" data-recheck>${I('redo', 'width:15px;height:15px')}Check again</button></div>
+    ${OWNER() ? '<section class="box scbox" id="scbox"><p class="mut">Reading the showcase…</p></section>' : ''}
     <div id="engs"><p class="mut">Checking each engine…</p></div></div>`;
+  // v0.328 the owner's showcase panel: the hidden "Hoola showcase" film's two normal price cards, right here
+  function drawShowcase(o) {
+    const el = $('#scbox'); if (!el) return;
+    if (!o) { el.innerHTML = '<p class="mut">Could not read the showcase just now.</p>'; return; }
+    const head = `<div class="sch"><h3>Showcase: real Hoola-made pictures and clips</h3><p class="mut">They replace the drawn pictures on Studio home, Templates, the Image styles and the guides, for everyone who uses Create. Made once with your own engines; each step shows its price card first and nothing is made until you tap Haan.</p></div>`;
+    if (!o.set_up) { el.innerHTML = head + `<div><button class="btn pri" data-sc="setup">${I('spark', 'width:15px;height:15px')}Set up the showcase (free)</button></div>`; return; }
+    const pend = (o.approvals || []).map(approvalRow).join(''), pp = Math.round(o.pictures_made / o.slots * 100), cp = Math.round(o.clips_made / o.clips * 100);
+    el.innerHTML = head + `<div class="scrow"><div><b>Pictures</b><small class="num">${o.pictures_made} of ${o.slots} made · about ${inr(o.picture_inr)} each</small><span class="bar"><i style="width:${pp}%"></i></span></div>
+        ${o.pictures_made < o.slots ? `<button class="btn sec" data-sc="pictures" ${(o.painting || []).length || pend ? 'disabled' : ''}>Make the ${o.slots - o.pictures_made} missing pictures</button>` : '<span class="stchip ok">All made</span>'}</div>
+      <div class="scrow"><div><b>Clips</b><small class="num">${o.clips_made} of ${o.clips} made · 5 seconds each, they play on the film cards</small><span class="bar"><i style="width:${cp}%"></i></span></div>
+        ${o.clips_made < o.clips ? `<button class="btn sec" data-sc="clips" ${o.working || pend || o.pictures_made < o.slots ? 'disabled' : ''} title="${o.pictures_made < o.slots ? 'Make the pictures first: each clip starts from its picture' : ''}">Make the ${o.clips - o.clips_made} clips</button>` : '<span class="stchip ok">All made</span>'}</div>
+      ${(o.painting || []).length ? `<div class="box castwait"><div><b>Painting ${o.painting.length} picture${o.painting.length > 1 ? 's' : ''}…</b><small class="mut">About 20-40 seconds each, three at a time. This page updates by itself.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
+      ${o.working ? `<div class="box castwait"><div><b>Making the clips…</b><small class="mut">A few minutes. This page updates by itself.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
+      ${o.pics_error ? `<p class="perr">${esc(o.pics_error)}</p>` : ''}${o.error && !o.working ? `<p class="perr">${esc(o.error)}</p>` : ''}
+      ${pend ? `<div class="scpend"><b>Waiting for your Haan</b>${pend}</div>` : ''}`;
+  }
   function drawEngines(r) {
     const el = $('#engs'); if (!el) return;
     if (!r) { el.innerHTML = '<p class="mut">Could not check the engines just now.</p>'; return; }
@@ -1367,6 +1403,18 @@ ${SPRITE}`;
             <p class="dim" style="font-size:12.5px">Never paste a key into the chat. If one was ever shared, make a new one and delete the old.</p></details>`}</div>`; }).join('')}</div>`;
   }
   W.engines = el => {
+    const sc = async () => { if (!OWNER() || VIEW !== 'engines') return; let o = null;
+      try { const r = await api('GET', '/api/studio/showcase'); o = r.owner; D.showcase = {slots: r.slots}; } catch {}
+      drawShowcase(o); clearTimeout(poll);
+      if (o && ((o.painting || []).length || o.working || (o.approvals || []).length)) poll = setTimeout(sc, 5000); };
+    sc();
+    el.addEventListener('click', async e => { const b = e.target.closest('button'); if (!b || !b.closest('#scbox')) return;
+      if (b.dataset.sc) { b.disabled = true;
+        try { const r = await api('POST', '/api/studio/showcase/' + b.dataset.sc);
+          if (r?.waiting_owner) toast(`Price ${inr(r.inr)}: tap Haan on the card below to start`); else if (b.dataset.sc === 'setup') toast('Showcase film set up. Nothing was made or charged.'); }
+        catch (er) { toast(er.message, true); } await sc(); return; }
+      if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await sc(); }
+    });
     const run = async fresh => { try { drawEngines(await api('GET', '/api/studio/apis' + (fresh ? '?fresh=1' : ''))); } catch (e) { drawEngines(null); toast(e.message, true); } };
     run(false);
     el.addEventListener('click', async e => { const b = e.target.closest('[data-recheck]'); if (!b) return; b.disabled = true; $('#engs').style.opacity = '.55'; await run(true); $('#engs').style.opacity = ''; b.disabled = false; });
@@ -1499,6 +1547,7 @@ ${SPRITE}`;
     document.body.appendChild(host);
     R = host.attachShadow({mode: 'open'});
     R.innerHTML = shellHTML(); drawNav(); drawCredits();
+    load('showcase').then(() => showcaseSwap($('#view')));    // v0.328 real pictures over the drawn ones, once the list arrives
     { const sn = $('#snav'), fade = () => sn.classList.toggle('fadeb', sn.scrollTop + sn.clientHeight < sn.scrollHeight - 4);   // v0.306 fade only while more list is below
       sn.addEventListener('scroll', fade, {passive: true}); addEventListener('resize', fade); requestAnimationFrame(fade); }
     R.addEventListener('pointerdown', e => { if (popFor && !e.target.closest('#pop') && !popFor.contains(e.target)) closeMenu(); });

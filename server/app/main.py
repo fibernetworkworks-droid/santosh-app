@@ -2776,6 +2776,47 @@ class StudioPrice(BaseModel):
     auto: str = Field(default="quality", pattern="^(quality|value|cheap)$")   # v0.263
 
 
+# ---------------------------------------------------------------- v0.328 SHOWCASE: real Hoola-made pictures / clips on the studio pages
+@app.get("/api/studio/showcase", dependencies=[Depends(require_key)])
+async def studio_showcase(tenant: str = Depends(current_tenant)):
+    """Which studio cards have a real picture / clip (every account's studio shows them); the owner also gets her panel."""
+    from .studio import showcase
+    out: dict = {"slots": await asyncio.to_thread(showcase.manifest)}
+    if tenant == get_settings().tenant_id:
+        out["owner"] = await asyncio.to_thread(showcase.status)
+    return out
+
+
+@app.post("/api/studio/showcase/{action}", dependencies=[Depends(require_key)])
+async def studio_showcase_act(action: str, tenant: str = Depends(current_tenant)):
+    """Owner only. setup = the hidden showcase film (free); pictures / clips = the NORMAL price cards for it - nothing is
+    made or charged until she taps Haan on the card (+ phone fingerprint at /api/studio/approvals)."""
+    from .studio import service as ss
+    from .studio import showcase
+    if tenant != get_settings().tenant_id:
+        raise HTTPException(403, "The showcase is made by the owner")
+    fn = {"setup": showcase.setup, "pictures": showcase.ask_pictures, "clips": showcase.ask_clips}.get(action)
+    if not fn:
+        raise HTTPException(400, "action = setup | pictures | clips")
+    try:
+        if action != "setup":
+            await showcase.setup()
+        return await fn()
+    except (showcase.ShowcaseError, ss.StudioJobError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/studio/showcase/file/{slot}", dependencies=[Depends(require_key)])
+def studio_showcase_file(slot: str, kind: str = "pic"):
+    from .studio import showcase
+    try:
+        f = showcase.file_for(slot, kind)
+    except showcase.ShowcaseError as e:
+        raise HTTPException(404, str(e))
+    return FileResponse(f, media_type="video/mp4" if kind == "clip" else ("image/png" if f.suffix == ".png" else "image/jpeg"),
+                        headers={"Cache-Control": "private, max-age=86400"})
+
+
 @app.get("/api/studio/apis", dependencies=[Depends(require_key)])
 async def studio_apis(fresh: int = 0):
     """v0.308 Which real engine behind Create is switched on (ready / no key / key refused / unreachable), each checked
