@@ -319,9 +319,53 @@ def _pending_worker_notes(conversation_id: str) -> list[str]:
         return notes
 
 
+TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
+
+
 def _short(obj, limit: int = 6000) -> str:
+    """A tool result for the model, at most `limit` characters.
+    v0.331 SAAF KATAI: it used to be cut mid-JSON with "…(truncated)" - broken JSON, ids / links lost, and no hint how
+    to get the rest. Now long LISTS inside the result are shortened first (the JSON stays valid and says how many were
+    left out and how to get them), and only a result still too long is cut - with that same hint."""
     s = json.dumps(obj, ensure_ascii=False, default=str)
-    return s if len(s) <= limit else s[:limit] + "…(truncated)"
+    if len(s) <= limit:
+        return s
+    if isinstance(obj, (dict, list)):
+        for keep in (50, 25, 12, 6, 3):
+            slim, dropped = _slim_lists(obj, keep)
+            if dropped:
+                out = json.dumps(slim, ensure_ascii=False, default=str)
+                if len(out) <= limit:
+                    TRIM_STATS["lists"] += 1
+                    return out
+    TRIM_STATS["cut"] += 1
+    return (s[:limit] + f"…[cut: showing {limit:,} of {len(s):,} characters. For the rest ask for less - a filter, a "
+            "search word, a smaller limit or the next page - or save big data with data_fetch and read it with "
+            "data_read.]")
+
+
+def _slim_lists(obj, keep: int, depth: int = 0):
+    """(copy with every list longer than `keep` cut to its first `keep` items + a note, items dropped)."""
+    if depth > 6:
+        return obj, 0
+    if isinstance(obj, list):
+        dropped = 0
+        items = []
+        for x in obj[:keep]:
+            y, d = _slim_lists(x, keep, depth + 1)
+            items.append(y)
+            dropped += d
+        if len(obj) > keep:
+            items.append(f"…{len(obj) - keep} more not shown (ask with a filter / limit / page, or data_fetch for all)")
+            dropped += len(obj) - keep
+        return items, dropped
+    if isinstance(obj, dict):
+        out, dropped = {}, 0
+        for k, v in obj.items():
+            out[k], d = _slim_lists(v, keep, depth + 1)
+            dropped += d
+        return out, dropped
+    return obj, 0
 
 
 VOICE_NOTE = ("[Voice mode: the user is speaking to you and your reply will be read aloud by the phone. Reply in 1-3 short, "
@@ -337,6 +381,20 @@ THINK_TYPES = ("thinking", "redacted_thinking")
 import contextvars as _cv
 _THINK_NOW: _cv.ContextVar[bool] = _cv.ContextVar("hoola_think_now", default=False)   # set by the turn's step loop only
 THINK = {"ok": True, "calls": 0, "refused": 0}   # v0.232 PHASE C: Claude's adaptive thinking on the chat brain
+# v0.331 SOCH GEHRI: a long job / hard ask runs at a higher Claude effort (output_config.effort, set once per turn so the
+# prompt cache inside the turn holds). Sent via extra_body so any SDK version carries it; a 400 about it turns it off.
+_EFFORT_NOW: _cv.ContextVar[str] = _cv.ContextVar("hoola_effort_now", default="")
+EFFORT = {"ok": True, "calls": 0, "refused": 0}
+
+
+def effort_for(settings, long_job: bool, hard: bool) -> str:
+    """'' = the model's own default. Long jobs (a plan, the step-24 switch, a clearly big ask) get agent_long_effort,
+    hard reasoning asks agent_hard_effort; ordinary chat stays on the default (fast, cheap)."""
+    if long_job:
+        return str(getattr(settings, "agent_long_effort", "") or "")
+    if hard:
+        return str(getattr(settings, "agent_hard_effort", "") or "")
+    return ""
 
 
 def think_wanted(settings, goal_open: bool) -> bool:
@@ -357,6 +415,12 @@ def _loop_ok(history: list[dict]) -> bool:
     prev = history[-2] if len(history) > 1 else {}
     pc = prev.get("content") if prev.get("role") == "assistant" else None
     return isinstance(pc, list) and any(isinstance(b, dict) and b.get("type") in THINK_TYPES for b in pc)
+
+
+def _effort_refused(e: Exception) -> bool:
+    m = str(e).lower()
+    return ("effort" in m or "output_config" in m) and any(w in m for w in ("400", "invalid", "not support",
+                                                                           "unsupported", "unexpected", "extra"))
 
 
 def _think_refused(e: Exception) -> bool:
@@ -398,11 +462,27 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     if think and THINK["ok"] and _loop_ok(history):
         kw["thinking"] = {"type": "adaptive"}       # v0.232 Claude decides how much to think; thoughts stream to Soch
         THINK["calls"] += 1
+    eff = _EFFORT_NOW.get()
+    if eff and EFFORT["ok"]:
+        kw["extra_body"] = {**(kw.get("extra_body") or {}), "output_config": {"effort": eff}}
+        EFFORT["calls"] += 1
     try:
         if streaming and hasattr(api, "stream"):
             return await _claude_stream(api, kw, live)
         resp = await api.create(**kw)
     except Exception as e:
+        if "extra_body" in kw and _effort_refused(e):
+            # v0.331 this model / API refuses the effort setting: go on without it (the reply matters more)
+            EFFORT["ok"], EFFORT["refused"] = False, EFFORT["refused"] + 1
+            log.warning("effort refused, continuing without it: %s", str(e)[:200])
+            kw.pop("extra_body", None)
+            if live is not None:
+                live.reset()
+            if streaming and hasattr(api, "stream"):
+                return await _claude_stream(api, kw, live)
+            resp = await api.create(**kw)
+            _learn_claude(kw, resp)
+            return [_block_to_dict(b) for b in resp.content], resp.stop_reason
         if "thinking" not in kw or not _think_refused(e):
             raise
         THINK["ok"], THINK["refused"] = False, THINK["refused"] + 1   # this model / API refuses it: never again here
@@ -882,6 +962,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 state["max_tokens"] = settings.agent_goal_max_tokens
         # v0.232 PHASE C: this step's model call thinks out loud when a long job runs (read by _think; a contextvar so
         # sub-agents and every caller of _think keep their signature, and the team's own calls never think)
+        _long_now = bool(state.get("goal") or state.get("extended") or state.get("auto_plan") or state.get("big"))
+        if _long_now and brain != "claude" and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
+            brain = "claude"   # v0.331 a long job runs on Claude even when a cheaper brain answers ordinary chat
+        _EFFORT_NOW.set(effort_for(settings, _long_now, bool(state.get("hard"))))
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or
                                                    (state.get("hard") and getattr(settings, "hard_thinking", True)))))
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final

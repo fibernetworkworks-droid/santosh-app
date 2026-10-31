@@ -12467,10 +12467,47 @@ Webmaster API (needs her own key typed somewhere; IndexNow covers Bing), their C
 - Tests: `test_v0319_seo_pro.py` (16). `test_v103_seo` now expects the stuffing finding on its fixture page (the phrase repeats
   60 times). Not verified live: Google's URL Inspection / Sitemaps / CrUX answers (shapes from Google's docs, mocked in tests).
 
-## v0.335.0 IPHONE (App Sahayak Phase 6, owner: "START PHASE 6")
+## v0.335.0 UPI SEEDHA (31 Oct 2026, owner: "IT OPEN PAYMENT APP BUT WONT ABLE TO PAY SHOWING ERROR :: SERVER NOT RESPONDING OR LIMIT EXCEED. THIS ISSUE IS FULLY A HOOLA APP REQUEST")
+Root cause: Hoola paid a person by opening the UPI app with a `upi://pay?pa=<her friend's VPA>&am=...` link. Since
+2023-24 Google Pay, PhonePe, Paytm and others accept such links started by another app only from verified merchants
+(signed, with a merchant code); for a person's UPI ID they fail with a vague message ("server not responding", "limit
+exceeded", "security reasons"). v0.120 had the copy-and-pay way, but `P2P_LINK_BLOCKED` held PhonePe only.
+- `bazar/upiresult.py`: `P2P_LINK_DEFAULT_BLOCKED = True` - `link_blocked()` is true for every app unless this owner's
+  profile marks it "ok" (a link that really worked there, recorded by the UPI result). So send_money to a person =
+  status copy_pay: the app opens on its home screen, the phone copies the UPI ID, she pastes it in "Pay to UPI ID",
+  types the amount, enters the PIN, then taps "Ho gaya" on Hoola's card. Shop / merchant flows untouched.
+- `BLOCK_WORDS` also matches "not responding" / "exceed", so such a failure marks the app blocked.
+- Tests: test_bazar / test_v109_upi updated to the new default (link path still tested via an app marked ok) + new
+  test_v0322_google_pay_to_a_person_goes_copy_and_pay. Phone code unchanged (copy path exists since v0.120).
+- Real fix for one-tap pay to people needs a UPI merchant / PSP partnership (signed intents) - not something an app can
+  do alone.
+## v0.336.0 SOCH GEHRI + EK KAAM EK AUZAAR + SAAF KATAI + NAAP (built as 0.331; re-versioned past the parallel v0.331-v0.335; owner: "GO" for the rest of docs/LONG_TASK_RCA.md after every v0.330 test passed)
+(1) SOCH GEHRI: a long job (plan / step-24 switch / server plan / clearly big ask) runs on Claude even when CHAT_LLM picks a
+cheaper brain (AGENT_LONG_ON_CLAUDE), at Claude effort AGENT_LONG_EFFORT=xhigh (Anthropic: agentic work over ~30 min); a hard
+reasoning ask (agent/hard.py) at AGENT_HARD_EFFORT=high; plain chat keeps the model's default. Effort is set ONCE per step
+from the turn's state (a contextvar `_EFFORT_NOW`, like `_THINK_NOW`) so the prompt cache inside a turn holds; it rides as
+extra_body output_config.effort so every SDK version carries it; a 400 naming effort / output_config turns it off and the
+same call is retried without it (`EFFORT`, `_effort_refused`). AGENT_GOAL_MAX_TOKENS 6000 -> 16000: on Claude Sonnet 5.5
+thinking tokens count against max_tokens (16000 keeps a non-streamed call under the SDK's 10-minute guard).
+(2) EK KAAM EK AUZAAR: `tools.TOOL_LANES` - 20 overlapping tools (web: google_search / web_sources / open_website /
+browse_web / computer_operator / api_call / data_fetch; files: doc_studio / make_document / docs_writer / hoola_make /
+artifact_make / notebook_make; memory: remember / memory_search / yaad_khojo / gyaan_khojo / haal_ki_chats / file_read)
+now OPEN their description with "LANE: use for ... -> the neighbour", first so no cap cuts it. Renames / merges were NOT
+done on purpose: every prompt, voice list, saved procedure and test names these tools. The voice call keeps its short
+budgeted specs (`VOICE_SPECS` from the raw specs, no lanes).
+(3) SAAF KATAI: `santosh._short` no longer cuts mid-JSON with "…(truncated)": long lists shrink first (50/25/12/6/3 items +
+"…N more not shown (ask with a filter / limit / page, or data_fetch for all)"), JSON stays valid with every id / link; a
+result still too long is cut with "showing X of Y characters - ask for less / next page / data_fetch". yaad.gist reads both.
+(4) NAAP: `quality/tool_asks.FRESH` - 26 held-out asks written after the router was tuned (any tool of the right family
+counts); `python -m app.quality tools [--live] --fresh [--limit N]`; the live card now sends the "not loaded" line like a
+chat turn and has 4000 tokens (thinking counts); vps-ops job `tool_card` = the free router cards + ONE model call per FRESH
+ask (~Rs 70). Router: FRESH 25/26 -> 26/26 after "form online bhar do" / "online renewal" joined the web-job intent.
+NOT measured here: the live pick rate (no API key in the sandbox) - run vps-ops tool_card. Tests: test_v0331_soch_gehri.py (9).
+
+## v0.337.0 IPHONE (App Sahayak Phase 6, owner: "START PHASE 6")
 The REAL iPhone app from the SAME approved design and the SAME backend as the Android app (one set of accounts, orders,
 bookings, staff lists; an order placed on an iPhone shows in her Android staff app and in her chat). Built as 0.332 WIP,
-re-versioned past main's parallel v0.332-v0.334.
+re-versioned past main's parallel v0.332-v0.336.
 - `appmaker/ios/template/Sources/Kit/` (Swift, iOS 16+, ObservableObject so iOS 16 phones work):
   `Theme.swift` (Palette light/dark from the design tokens, H.c(scheme), rupees), `Data.swift` (Item, AppData from seed.json
   + /api/app-content refresh, AppState cart/form; Item.id falls back to key/name so field rows are distinct),

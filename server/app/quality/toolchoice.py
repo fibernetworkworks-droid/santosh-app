@@ -50,11 +50,13 @@ async def _first_pick(a: dict, brain: str, settings) -> dict[str, Any]:
     plan = admit.plan_for(a["text"], settings)
     fams = frozenset(plan.families) if plan is not None else None
     system = system_prompt(settings.wa_dry_run, "", None, families=fams if settings.prompt_slim else None)
+    if plan is not None:   # v0.331 exactly what a chat turn sends: the "not loaded" line rides too
+        system += admit.unloaded_note(system, plan)
     tools = plan.specs() if plan is not None else santosh.TOOLS
     t0 = time.monotonic()
     try:
         blocks, _stop, used = await santosh._think(brain, system, [{"role": "user", "content": a["text"]}],
-                                                   settings, tools, max_tokens=700)
+                                                   settings, tools, max_tokens=4000)   # v0.331 thinking counts here
     except Exception as e:
         return {"id": a["id"], "error": str(e)[:200]}
     pick = next((b for b in blocks if b.get("type") == "tool_use"), None)
@@ -69,6 +71,17 @@ async def _first_pick(a: dict, brain: str, settings) -> dict[str, Any]:
     out["right"] = bool(pick and pick["name"] in a["ok"]) or bool(out.get("found"))
     if not pick:
         out["words"] = " ".join(str(b.get("text") or "") for b in blocks if b.get("type") == "text")[:200]
+    return out
+
+
+def fresh_asks() -> list[dict]:
+    """v0.331 asks written AFTER the router was tuned (never in ASKS): every tool of the right family counts as right."""
+    from ..agent.tools import FAMILY_OF
+    from .tool_asks import FRESH
+    out = []
+    for i, (text, fams) in enumerate(FRESH):
+        ok = [n for n, f in FAMILY_OF.items() if f in fams] + [n for n in fams if n in FAMILY_OF]
+        out.append({"id": f"fresh{i + 1:02d}", "text": text, "ok": ok})
     return out
 
 
@@ -115,6 +128,6 @@ def lines(card: dict) -> list[str]:
     out = [f"Tool choice (live, {card.get('brain')}, set v{card['set']}): right first pick "
            f"{card['right']}/{card['answered']} (of them via tool_search {card['via_search']}), "
            f"answered in words {card['no_tool']}, errors {card['errors']}"]
-    out += [f"  - {r['id']}: picked {r.get('pick') or '(no tool)'}, right = {', '.join(r['ok'])}"
+    out += [f"  - {r['id']}: picked {r.get('pick') or '(no tool)'}, right = {', '.join(r['ok'][:6]) + (' …' if len(r['ok']) > 6 else '')}"
             for r in card["rows"] if "error" not in r and not r["right"]]
     return out

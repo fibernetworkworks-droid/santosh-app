@@ -67,7 +67,11 @@ def test_diet_keeps_safety_prose_and_trims_ordinary():
         diet = next(t for t in TOOLS if t["name"] == raw["name"])
         flat = " ".join(raw["description"].split())
         # v0.311: an ordinary description is kept WHOLE up to DIET_DESC_MAX (its "use when / not when" survives)
-        assert diet["description"] == flat or (len(flat) > DIET_DESC_MAX and len(diet["description"]) <= DIET_DESC_MAX + 1)
+        got = diet["description"]
+        if got.startswith("LANE: "):      # v0.331 an overlapping tool opens with its lane, then its own words follow
+            assert flat[:60] in got
+            continue
+        assert got == flat or (len(flat) > DIET_DESC_MAX and len(got) <= DIET_DESC_MAX + 1)
 
 
 # ---------------- 2. the 5-second ack ----------------
@@ -339,5 +343,5 @@ def test_enqueue_dedupes_same_job_and_state(fu):
 def test_version():
     from app.config import get_settings
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.335.0"
+    assert APP_VERSION == "0.337.0"
     assert get_settings().agent_ack_after_s == 5.0

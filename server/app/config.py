@@ -28,7 +28,10 @@ class Settings(BaseSettings):
     agent_goal_max_steps: int = 80          # model steps in one goal turn (vs 24)
     agent_goal_max_calls: int = 150         # breaker max_calls while a goal is open (vs 30)
     agent_goal_turn_s: int = 2700           # turn timeout while a goal is open (vs 900)
-    agent_goal_max_tokens: int = 6000       # per model call while a goal is open (vs 2000)
+    agent_goal_max_tokens: int = 16000      # per model call while a goal is open (v0.331: 6000 -> 16000 - thinking tokens count here)
+    agent_long_effort: str = "xhigh"       # v0.331 Claude effort for long jobs (Anthropic: xhigh = agentic work over ~30 min); '' = model default
+    agent_hard_effort: str = "high"        # v0.331 Claude effort for a hard reasoning ask (agent/hard.py); '' = model default
+    agent_long_on_claude: bool = True       # v0.331 a long job's calls go to Claude even when CHAT_LLM picks a cheaper brain
     agent_goal_rounds: int = 6              # background continuation turns per goal (v0.221: 3 -> 6; resumes after her tap are free)
     agent_goal_minutes: int = 180           # WORKING minutes of one goal (v0.221: 60 -> 180; time waiting on her never counts)
     agent_goal_resume: bool = True          # v0.221 a goal paused on her tap / OTP / answer restarts by itself once she answers

@@ -354,7 +354,8 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
                 r"market cap|ranking|table mein|data (?:la|nikal|collect|fetch)", re.I),
      ("data", "docstudio", "publicapi"), "data"),
     # a job ON a website: forms, applications, status, downloads, bookings -> the computer operator
-    (re.compile(r"form bhar|fill (?:the |this |my )?(?:\w+ )?form|(?:website|portal|site|seva)\b.{0,40}(?:form|apply|"
+    (re.compile(r"form\s+(?:\w+\s+){0,2}bhar|online\s+bhar|renew\w*.{0,30}online|online\s+renew|"  # v0.331 'form online bhar do'
+                r"fill (?:the |this |my )?(?:\w+ )?form|(?:website|portal|site|seva)\b.{0,40}(?:form|apply|"
                 r"appointment|status|download|registration|application)|(?:apply|application|registration|appointment)"
                 r".{0,40}(?:online|website|portal|site)|status check|online apply", re.I),
      ("operator",), "web job"),

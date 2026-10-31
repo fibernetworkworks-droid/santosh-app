@@ -206,7 +206,7 @@ def gist(content: Any, is_error: bool = False, width: int = 170) -> str:
     text = str(content or "")
     data: Any = None
     try:
-        data = json.loads(text.split("…(truncated)")[0]) if text[:1] in "{[" else None
+        data = json.loads(text.split("…(truncated)")[0].split("…[cut:")[0]) if text[:1] in "{[" else None
     except Exception:
         data = _salvage(text) if text[:1] == "{" else None
     if isinstance(data, dict):
