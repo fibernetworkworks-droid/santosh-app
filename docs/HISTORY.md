@@ -12466,3 +12466,54 @@ Webmaster API (needs her own key typed somewhere; IndexNow covers Bing), their C
   local), _SpeedCard (+ phone screenshot), IndexNow card, Check Google index, priority on fixes, "How we'll know".
 - Tests: `test_v0319_seo_pro.py` (16). `test_v103_seo` now expects the stuffing finding on its fixture page (the phrase repeats
   60 times). Not verified live: Google's URL Inspection / Sitemaps / CrUX answers (shapes from Google's docs, mocked in tests).
+
+## v0.335.0 IPHONE (App Sahayak Phase 6, owner: "START PHASE 6")
+The REAL iPhone app from the SAME approved design and the SAME backend as the Android app (one set of accounts, orders,
+bookings, staff lists; an order placed on an iPhone shows in her Android staff app and in her chat). Built as 0.332 WIP,
+re-versioned past main's parallel v0.332-v0.334.
+- `appmaker/ios/template/Sources/Kit/` (Swift, iOS 16+, ObservableObject so iOS 16 phones work):
+  `Theme.swift` (Palette light/dark from the design tokens, H.c(scheme), rupees), `Data.swift` (Item, AppData from seed.json
+  + /api/app-content refresh, AppState cart/form; Item.id falls back to key/name so field rows are distinct),
+  `Backend.swift` (Cloud, Keychain token, Auth signup/login/logout/delete-me, Db outbox in order with cid dedup, photos first,
+  NWPathMonitor re-sync, 401 -> sign in again), `Kit.swift` (Words en/hi/hinglish, Router tabs + a NavigationStack per tab,
+  RootView, Page, Card, MainButton, Muted, StatusPill, ListBlock, CartList, SellerScreen, AccountButton, TabSpec),
+  `Accounts.swift` (AuthScreen = the only password box, AccountScreen, RowsSection with staff status buttons + UPI pay + "I have
+  paid" UTR, FormBlock = a list's own fields read live incl. PhotosPicker (1600 px JPEG) and "Use my location", privacy +
+  in-app account deletion), `CrashGuard.swift` (signal + NSException handlers write kind + screen + app frames to a file,
+  sent to the same /api/app-api/<key>/crash on the next start; devices read "iOS x"), `E2e.swift` (DEBUG only, -hoola_e2e).
+- `appmaker/ios/gen.py` (stdlib, runs on the Mac): Android spec -> XcodeGen project.yml (bundle id, iOS 16, scheme), AppTokens,
+  AppScreens registry (design sign-in ids -> AuthScreen), HoolaApp (#if DEBUG -hoola_screen / -hoola_base / -hoola_e2e only),
+  code_screen (same decisions as Android fallback_screen), scan_screen house rules for Opus SwiftUI (no SecureField, no
+  URLSession / FileManager / UserDefaults / @AppStorage / UIApplication / WKWebView / print, imports SwiftUI Foundation Charts
+  MapKit PhotosUI only, ids must exist), screen_errors (xcodebuild "Sources/Screens/ScreenX.swift:L:C: error:"), Info.plist
+  (location / photo strings only when a list has those fields, upi + tel schemes, NSAllowsLocalNetworking only, no
+  ArbitraryLoads, ITSAppUsesNonExemptEncryption false), PrivacyInfo.xcprivacy, AppIcon 1024 opaque (service draws the design's
+  line icon with resvg; a code-drawn monogram is the fallback), hoola_qa/sim_check.sh + screens.txt + bundle.txt.
+- `appmaker/ios/prompts.py`: the SwiftUI screen / fix prompts with the exact kit sheet (iOS 16 APIs only).
+- `appmaker/ios/service.py`: build(kind sim|testflight) only on an approved, unchanged design; Opus writes each screen (cached
+  per screen + KIT_REV "i1": an update rewrites only changed screens); Mac compile via the builds repo
+  (`android/runners.py` refactored into push_tree / dispatch_wait / artifacts; branch build/<app>-ios, folder ios/, workflow
+  hoola-ios.yml); compile errors back to Opus per screen, same-error-twice or last round -> code-made screen; simulator crash ->
+  one fix with the real crash report, still crashing -> code-made; kind testflight archives + uploads the same build; Apple
+  refusals -> her exact step (`_upload_why`: missing secret, no app record, build number used, agreement, key). Build number
+  only goes up (last_bn). Bundle ID = her confirmed Play package (one identity), else in.hoola.app.<id>. No Mac -> Xcode ZIP
+  (`/api/app-ios-zip/<token>/ios-project-bN.zip`, 7 days). State lives in the app's android JSON under "ios".
+- `server/app_builder/hoola-ios.yml` (her private builds repo, macos-15): xcodegen, simulator build, sim_check, and for
+  testflight: archive with Apple cloud signing (-allowProvisioningUpdates + her App Store Connect API key from repo secrets
+  ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8 / APPLE_TEAM_ID, key file deleted after), exportArchive destination upload. Hoola's
+  server never sees the key. App Store review / release = her tap in App Store Connect.
+- Routes: POST /api/apps/{ref}/ios {kind}, GET /api/apps/{ref}/ios, /ios/qa/{name}, /api/app-ios-zip/{token}/{name}. Push +
+  kaamwatch kind `app_ios`. Tools: app_banao action=ios kind sim|testflight (testflight owner only), app_dekho what=ios.
+- Phone `lib/ui/app_ios.dart` IosBuildPanel (status, simulator shots, TestFlight confirm dialog, one-time setup steps, ZIP);
+  console build.js loadIos (same, confirm() before TestFlight).
+- CI `.github/workflows/ios-check.yml` (macos-15, path-filtered to appmaker/ios): the fixture app compiles simulator debug +
+  device release unsigned, sim_check opens all 13 screens (newest plain iPhone simulator, median launch, a shot of the full
+  app with tabs), then a real Hoola server on the Mac + E2e.swift (sign up, order through the outbox priced by the server, same
+  write twice = one row, photo up and back, paid claim, updates, crash report, sign out / in) + `android.ci_e2e check`.
+  First run: 13/13 screens, app 2.82 MB; the first run's shots showed every form field as "Name *" (fields had no id ->
+  SwiftUI reused one row) - fixed via Item.id.
+- Tests: `test_v0332_iphone.py` (13).
+- Not done / not verified: a real TestFlight upload (needs her Apple Developer account + key; the workflow is written from
+  Apple's xcodebuild docs), iPhone background order updates (Android has JobScheduler; iOS needs APNs push - next), iOS
+  in-app update prompt (TestFlight / App Store update themselves), App Store listing / screenshots upload (App Store Connect
+  API - next), 3D scenes (Android-only Scene3D).

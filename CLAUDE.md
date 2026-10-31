@@ -136,7 +136,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.334.0 (pubspec 0.334.0+374). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.335.0 (pubspec 0.335.0+375). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.334 SEO PRO (built as 0.319/0.320/0.333, claude-seo ideas, own code, `seo/pro.py`, THIRD_PARTY_NOTICES.md): health in 7 parts + priorities, page drift, AI bots map,
@@ -145,6 +145,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   tiles (7/7), Director skips unchanged re-draws; draggable sidebar + prompt-panel dividers (keys, reset, remembered).
 - v0.332 ANY DESIGN + DEPLOY SE NAHI RUKEGA: free-form sections (`custom_<name>`, 3 a page), interactive pieces (tabs, slider,
   filter, switch, sum / EMI calc), one design kit per site (`site/kit.py`); a deploy no longer fails a running build (`mark_clean_stop`).
+- v0.335 IPHONE (App Phase 6, `appmaker/ios`): same design + backend as Android -> SwiftUI kit + Xcode project (XcodeGen), Opus SwiftUI screens, Mac compile in her builds repo (`app_builder/hoola-ios.yml`), simulator check every screen, crash reports, TestFlight with HER key as a builds-repo secret; CI ios-check.yml (macOS) incl. e2e.
 - v0.331 PLAY STORE LAUNCH (App Phase 5, built as 0.330, `appmaker/android/store.py`): her own Play account via the official API (sealed service-account key), permanent package + upload key, .aab, listing / graphics / screenshots, privacy + deletion pages, data-safety answers; production only by her tap.
 - v0.330 PLAN CARD DIKHE: the console folded every `goal` event into the progress line (workspace.js quiet()) - the plan card is drawn now;
   'X banao: a, b, c' asks are big (looks_big parts after a colon).
