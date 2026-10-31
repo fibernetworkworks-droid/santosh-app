@@ -52,6 +52,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (31 Oct 2026, owner: "EVERY THING IS PERFECT NOW. SAVE THE STATE" after the Create Studio work): branch
+  `stable-2026-10-31-v316` = commit 00a9a60a = v0.316.0, live on hoola.ainewtika.com (healthz 0.316.0), pubspec 0.316.0+356.
+  Create Studio end to end: premium Create + studio sidebar (v0.304 / v0.306), Engines page (v0.308), clip Create (v0.309),
+  4-5 s clips (v0.310), Director Cast (v0.311) and Pictures (v0.316) say why on the film with Try again / Skip; also carries
+  ARENA SCREEN, HOOLA PRINT, AAGE BADHO 2, BADI WEBSITE (v0.312-v0.315). Live static files hash-checked against this commit.
+  APK release `v0.316.0-b752`: https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.316.0-b752/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-10-31-v316` as the branch.
 - NEWEST (30 Oct 2026, owner: "NOW PERFECT. SAVE THE STATE" after the reply-rendering work): branch
   `stable-2026-10-30-v292` = commit 70f3bde7 = v0.292.0, live on hoola.ainewtika.com (healthz 0.292.0), pubspec
   0.292.0+332. The chat reads like Claude end to end, and the last four versions of it were all found by testing

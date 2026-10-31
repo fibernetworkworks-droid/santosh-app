@@ -11960,3 +11960,10 @@ PHASE 1 - EYES AND BRAIN (`server/app/seo/desk.py`, NEW; tables seo_desk, seo_ro
 - Not yet (later phases): changes to her site / Google profile (Phase 2 hands + undo + impact), keyword volumes (needs
   Google Ads developer token), Business Profile posts / reviews (needs Business Profile API approval), Bing, backlinks,
   AI-visibility panel, outreach.
+
+## CHECKPOINT 31 Oct 2026 - v0.316.0 (owner: "EVERY THING IS PERFECT NOW. SAVE THE STATE")
+- Branch `stable-2026-10-31-v316` = commit 00a9a60a = v0.316.0 (pubspec 0.316.0+356), live on hoola.ainewtika.com when saved
+  (healthz 0.316.0; /static/console/studio.js, studio.css, v2.css, v2.js sha256 equal to this commit). APK `v0.316.0-b752`.
+- main had already moved to v0.317.0 (SEO EMPLOYEE, not deployed at save time); the checkpoint is the LIVE commit, not main.
+- Rollback: `cd ~/santosh_app && git fetch origin stable-2026-10-31-v316 && git checkout stable-2026-10-31-v316 &&
+  cp -r ~/santosh_app/server/app ~/apps/santosh-core/ && pm2 restart santosh --update-env`.
