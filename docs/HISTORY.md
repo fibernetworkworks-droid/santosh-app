@@ -12053,3 +12053,15 @@ THINGS FROM TEXT FOR SIDE BAR TO SMALL BUTTON" -> design audit artifact https://
 - Tests: `test_v0318_studio_design_system.py`; v0.306 credits pin moved to the new wording; the `?v=` stamp count pins in
   test_v0194 / test_v0234 moved 17 -> 18 (main's v0.317 added employees.js without moving them).
 - Next phases (audit): 2 Home + Director, 3 the six tools, 4 assets + help, 5 real Hoola showcase media (price card first).
+
+## v0.321.0 TILE KAAM KARE (31 Oct 2026, owner: "EVEN UI NOT FUCTIONING" after "Khana aur kirana NOT FUNCTIONING")
+Tapping a working tile (Google Pay, PhonePe, Uber, HDFC SMS reader...) opened the plugin sheet whose only button was
+`PluginAction(kind: linked, label: 'Taiyaar hai · Hoola se kahiye')` with no onTap - nothing happened.
+- `lib/ui/bazar_screen.dart _sheetAction`: ready plugins with an `android_package` get "<Name> kholiye" ->
+  `Native.openExternal(package:)` (MainActivity opens the launch intent, else Play Store); other ready plugins get
+  "Hoola se karwaiye" -> sends `examplesFor(p).first` into the chat. Snackbar when the app is not installed.
+- `service.catalog()`: rides now carry `android_package` (from config.package) like UPI packs. All nine UPI / cab
+  packages were already in `tool/AndroidManifest.xml` <queries>, so Android 11+ can see them.
+- "Food apps" chip removed (Swiggy / Zomato hidden since v0.319). Test: test_v0320_upi_and_cab_tiles_carry_the_app_to_open.
+- Note: a UPI app opened this way is the app's home screen; paying a person still goes through Hoola's send_money card
+  (UPI intent with the payee filled in), because the tile itself does not know whom to pay.

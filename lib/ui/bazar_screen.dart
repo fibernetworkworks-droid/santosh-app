@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
 import 'mcp_screen.dart';
@@ -272,6 +273,27 @@ class _BazarScreenState extends State<BazarScreen> {
       });
     }
     if (st == 'ready' || st == 'core') {
+      // v0.320 the button does the job: UPI / cab apps open on the phone, everything else starts the work in chat
+      final pkg = p['android_package'] as String? ?? '';
+      if (pkg.isNotEmpty) {
+        return PluginAction(kind: ActionKind.add, label: '${p['name']} kholiye', height: 46, onTap: () async {
+          Navigator.of(context).pop();
+          final res = await Native.openExternal(package: pkg);
+          if (res != 'ok' && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${p['name']} is phone par nahi mila. Play Store se install kijiye.')));
+          }
+        });
+      }
+      final ex = examplesFor(p);
+      if (ex.isNotEmpty) {
+        return PluginAction(kind: ActionKind.add, label: 'Hoola se karwaiye', height: 46, onTap: () async {
+          Navigator.of(context).pop();
+          final ok = await app.send(ex.first);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Chat mein bhej diya: "${ex.first}"' : 'Bhej nahi paya, dobara try kijiye')));
+          }
+        });
+      }
       return const PluginAction(kind: ActionKind.linked, label: 'Taiyaar hai · Hoola se kahiye', height: 46);
     }
     if (st == 'demo') return const PluginAction(kind: ActionKind.soon, label: 'Abhi demo: asli bill jald', height: 46);
@@ -328,7 +350,7 @@ class _BazarScreenState extends State<BazarScreen> {
             child: Row(children: [
               // v0.303 SAAF CONNECT: only groups that still have working plugins (handoffs, demo bills, empty shops are hidden)
               _chip('Sab', ''), _chip('Hoola karega', 'does'), _chip('SMS padhega', 'sms'),
-              _chip('UPI', 'upi'), _chip('Cab', 'ride'), _chip('Food apps', 'mcp'),
+              _chip('UPI', 'upi'), _chip('Cab', 'ride'),
             ]),
           ),
           const SizedBox(height: 18),
