@@ -1140,6 +1140,16 @@ class Api {
   Future<Map<String, dynamic>> appDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/apps/$id') as Map);
   // ---- v0.132 the native Android build (Kotlin + Compose, APK on her phone, project ZIP) ----
   Future<Map<String, dynamic>> appAndroid(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/apps/$id/android') as Map);
+  // v0.314 ASLI APP: her app's own backend (lists, rows her customers / staff made, accounts and roles)
+  Future<Map<String, dynamic>> appData(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/apps/$id/data') as Map);
+  Future<List<Map<String, dynamic>>> appRows(String id, String coll) async => List<Map<String, dynamic>>.from(
+      (((await _send('GET', '/api/apps/$id/data/$coll') as Map)['rows'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> appRowSet(String id, String coll, String row, Map<String, dynamic> set) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/apps/$id/data/$coll/$row', body: set) as Map);
+  Future<List<Map<String, dynamic>>> appMembers(String id) async => List<Map<String, dynamic>>.from(
+      (((await _send('GET', '/api/apps/$id/members') as Map)['members'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> appMemberRole(String id, String member, String role) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/apps/$id/members/$member/role', body: {'role': role}) as Map);
   // ---- v0.131 complex apps: blueprint (data model, roles, levels, login, phone features) + schema files ----
   Future<Map<String, dynamic>> appBlueprint(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/apps/$id/blueprint') as Map);

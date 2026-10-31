@@ -11,6 +11,11 @@ SKIP = {"t", "digits", "spec", "typeOf", "arrList", "AppBar", "TopTabs", "Floati
         "HoolaTheme", "onCreate", "Screens", "BottomBar", "load", "apply", "init", "refresh", "openDrawer", "get", "put", "DemoNote"}
 
 
+DB_SHOWN = {"rows", "create", "update", "fields", "label", "collections"}
+KIT_INTERNAL = {"AuthScreen", "AccountScreen", "SplashScreen", "ConsentScreen", "NotifyScreen", "SellerScreen", "PrivacyScreen",
+                "DeleteAccountScreen", "PasswordBox", "RowsSection", "RowCard", "statusKind", "say", "steps", "run"}
+
+
 def signatures(src: str) -> list[str]:
     """Public functions with their real parameter lists; members of objects get the object's name (AppData.list...)."""
     out: list[str] = []
@@ -65,7 +70,11 @@ def signatures(src: str) -> list[str]:
         i = j
         if private or name in SKIP or name.split(".")[-1] in SKIP or owner in ("Strings",):
             continue
-        if owner and owner not in ("AppData", "AppState", "Act", "Nav", "Item"):
+        if owner and owner not in ("AppData", "AppState", "Act", "Nav", "Item", "Db"):
+            continue
+        if owner == "Db" and name not in DB_SHOWN:     # v0.314 screens read / write through these only
+            continue
+        if not owner and name in KIT_INTERNAL:
             continue
         pre = f"{owner}." if owner and owner != "Item" else ("item." if owner == "Item" else "")
         line = f"{'@Composable ' if m.group(1) else ''}{pre}{name}{args}" + (f": {ret}" if ret and ret != "Unit" else "")
@@ -79,7 +88,7 @@ def kit_sheet() -> str:
     """Every public kit function / object member, one line each, straight from the Kotlin source."""
     kit = TEMPLATE / "app/src/main/java/hoola/kit"
     lines: list[str] = []
-    for name in ("Kit.kt", "Scene3D.kt", "Data.kt", "Actions.kt", "Nav.kt", "Theme.kt"):
+    for name in ("Kit.kt", "Scene3D.kt", "Data.kt", "Actions.kt", "Nav.kt", "Theme.kt", "Backend.kt", "Accounts.kt"):
         for ln in signatures((kit / name).read_text()):
             if ln not in lines:
                 lines.append(ln)
@@ -109,6 +118,14 @@ FILE CONTRACT
   Lists that exist (name: keys): {LISTS}. Business facts keys: {FACTS}.
   Cart: AddButton(item.id), AppState.cartCount, AppState.cartItems("products"), AppState.cartTotal("products"),
   rupees(amount). Form values: Field(label, key) stores in AppState.form[key].
+- REAL DATA ON THE SERVER (the app's own backend; the kit does all network work, offline-safe): lists {BACKEND}.
+  Save a form: Field(label, key) with that list's FIELD KEYS (choices: Chips(options, key)), then
+  SubmitBtn("Book now", "bookings", then = "screen_id") - it checks required fields, asks the user to sign in when the
+  list needs an account, and queues the row (sent when online). Cart checkout: Field name / phone / address keys +
+  OrderBtn("Place order") (the server prices the cart). The user's own rows: val rows = liveRows("orders") (Item list,
+  each has .id, .s("status"), .b("pending") while still sending) or block { LiveRowsBlock("orders") }. Account:
+  Auth.signedIn, Auth.name, Auth.isStaff; a profile / account / "my orders" button -> nav.go("hoola_account"); a sign-in
+  button -> nav.go("hoola_login"). NEVER write your own login / sign-up form: the app has one (code-made).
 - Actions: val c = ctx(); Act.call(c), Act.whatsapp(c, text), Act.share(c, text), Act.maps(c), Act.payUpi(c, amount, note)
   (opens the customer's own UPI app to the business's UPI ID), Act.toast(c, text), Act.copy(c, text, said).
 - Look: colours H.c.primary / accent / ink / muted / surface / bg / tint / line / primaryText / accentText; type
@@ -155,9 +172,22 @@ def fill(tpl: str, **kw: str) -> str:
     return out
 
 
+def backend_line(backend: dict | None) -> str:
+    """v0.314 the app's server lists for the model: key (create rule): field keys, required ones marked *."""
+    out = []
+    for c in (backend or {}).get("collections") or []:
+        fs = [f["key"] + ("*" if f.get("required") else "") + (f" [{'|'.join(f['options'][:6])}]" if f.get("options") else "")
+              for f in c.get("fields") or [] if not f.get("admin_only")]
+        out.append(f"{c['key']} (create {c.get('rules', {}).get('create', 'member')}): {', '.join(fs)}")
+    if (backend or {}).get("order"):
+        out.append(f"order list = {backend['order']}")
+    return "; ".join(out) or "(none)"
+
+
 def screen_system(sid: str, back: bool, ids: list[str], lists: dict[str, list[str]], facts: list[str], lang: str,
-                  icons: list[str]) -> str:
+                  icons: list[str], backend: dict | None = None) -> str:
     return fill(SCREEN_SYSTEM, FN=kotlin_name(sid), BACK="true" if back else "false", IDS=", ".join(ids),
+                BACKEND=backend_line(backend),
                 LISTS="; ".join(f"{k}: {', '.join(v)}" for k, v in lists.items()) or "(none)",
                 FACTS=", ".join(facts) or "(none)", LANG=lang, KIT=kit_sheet(), ICONS=", ".join(sorted(icons)))
 

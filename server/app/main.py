@@ -8544,6 +8544,190 @@ async def app_content(app_key: str):
     return JSONResponse(data, headers={"Cache-Control": "public, max-age=60"})
 
 
+# ---- v0.314 ASLI APP: each native app's own backend. The installed app talks to /api/app-api/<app_key>/... (accounts,
+# lists, rules checked on every call); she runs the same data from her Hoola (/api/apps/<ref>/data ...).
+def _be_call(fn):
+    from .site import webapp as W
+    try:
+        return JSONResponse(fn(), headers={"Cache-Control": "no-store"})
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+
+
+def _be_app(app_key: str, request: Request | None = None):
+    from .appmaker import backend as BE
+    r = BE.by_key(app_key)
+    tok = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip() if request is not None else ""
+    return r, BE.who(r, tok)
+
+
+@app.get("/api/app-api/{app_key}/schema")
+async def app_api_schema(app_key: str):
+    from .appmaker import backend as BE
+    return await asyncio.to_thread(_be_call, lambda: BE.public_schema(BE.by_key(app_key)))
+
+
+@app.post("/api/app-api/{app_key}/signup")
+async def app_api_signup(app_key: str, request: Request):
+    from .appmaker import backend as BE
+    body, ip = await _json_body(request), _ip(request)
+    return await asyncio.to_thread(_be_call, lambda: BE.signup(BE.by_key(app_key), str(body.get("email") or ""),
+                                                               str(body.get("password") or ""), str(body.get("name") or ""), ip))
+
+
+@app.post("/api/app-api/{app_key}/login")
+async def app_api_login(app_key: str, request: Request):
+    from .appmaker import backend as BE
+    body, ip = await _json_body(request), _ip(request)
+    return await asyncio.to_thread(_be_call, lambda: BE.login(BE.by_key(app_key), str(body.get("email") or ""),
+                                                              str(body.get("password") or ""), ip))
+
+
+@app.get("/api/app-api/{app_key}/me")
+async def app_api_me(app_key: str, request: Request):
+    from .site import webapp as W
+
+    def go():
+        _r, w = _be_app(app_key, request)
+        return {"me": W.view_member(w.m) if w.m else None}
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/logout")
+async def app_api_logout(app_key: str, request: Request):
+    from .appmaker import backend as BE
+    from .site import webapp as W
+
+    def go():
+        r, w = _be_app(app_key, request)
+        if w.m:
+            W.logout_all(BE.bid(r), w.m)
+        return {"ok": True}
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/delete-me")
+async def app_api_delete_me(app_key: str, request: Request):
+    """In-app account deletion (Play + App Store rule): the account and every row it made are removed."""
+    from .appmaker import backend as BE
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.delete_me(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/c/{coll}")
+async def app_api_rows(app_key: str, coll: str, request: Request):
+    from .appmaker import backend as BE
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return {"rows": BE.rows(r, coll, w)}
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/c/{coll}")
+async def app_api_create(app_key: str, coll: str, request: Request):
+    from .appmaker import backend as BE
+    body, ip = await _json_body(request), _ip(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.create(r, coll, body, w, ip)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.patch("/api/app-api/{app_key}/c/{coll}/{row_id}")
+async def app_api_update(app_key: str, coll: str, row_id: str, request: Request):
+    from .appmaker import backend as BE
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.update(r, coll, row_id, body, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/c/{coll}/{row_id}")
+async def app_api_update_post(app_key: str, coll: str, row_id: str, request: Request):
+    """The same change as PATCH: Android's HttpURLConnection has no PATCH, the app's outbox posts updates here."""
+    return await app_api_update(app_key, coll, row_id, request)
+
+
+@app.delete("/api/app-api/{app_key}/c/{coll}/{row_id}")
+async def app_api_delete(app_key: str, coll: str, row_id: str, request: Request):
+    from .appmaker import backend as BE
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.delete(r, coll, row_id, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/members")
+async def app_api_members(app_key: str, request: Request):
+    """Staff screen inside the app: the app's accounts (staff / admin accounts only)."""
+    from .appmaker import backend as BE
+    from .site import webapp as W
+
+    def go():
+        r, w = _be_app(app_key, request)
+        if not w.staff:
+            raise W.AppError("Iski ijaazat nahi.", 403)
+        return {"members": BE.members(r), "admin": bool(w.m and w.m.role == "admin")}
+    return await asyncio.to_thread(_be_call, go)
+
+
+def _be_owner(tenant: str, ref: str):
+    from .appmaker import service as A
+    with A.session() as s:
+        r = A._find(s, tenant, ref)
+        s.expunge(r)
+    return r
+
+
+def _be_owner_call(fn):
+    from .site import webapp as W
+    try:
+        return _appd(fn)
+    except W.AppError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/api/apps/{ref}/data", dependencies=[Depends(require_key)])
+async def apps_data(ref: str, tenant: str = Depends(current_tenant)):
+    """Her app's backend: lists, fields, rules, counts, the address the installed app talks to."""
+    from .appmaker import backend as BE
+    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_view(_be_owner(tenant, ref)))
+
+
+@app.get("/api/apps/{ref}/data/{coll}", dependencies=[Depends(require_key)])
+async def apps_data_rows(ref: str, coll: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import backend as BE
+    return await asyncio.to_thread(_be_owner_call, lambda: {"rows": BE.owner_rows(_be_owner(tenant, ref), coll)})
+
+
+@app.patch("/api/apps/{ref}/data/{coll}/{row_id}", dependencies=[Depends(require_key)])
+async def apps_data_update(ref: str, coll: str, row_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import backend as BE
+    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_update(_be_owner(tenant, ref), coll, row_id, body))
+
+
+@app.get("/api/apps/{ref}/members", dependencies=[Depends(require_key)])
+async def apps_members(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import backend as BE
+    return await asyncio.to_thread(_be_owner_call, lambda: {"members": BE.members(_be_owner(tenant, ref))})
+
+
+@app.post("/api/apps/{ref}/members/{member_id}/role", dependencies=[Depends(require_key)])
+async def apps_member_role(ref: str, member_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    """She makes an account staff / admin (a new account of a staff app sees nothing until she does)."""
+    from .appmaker import backend as BE
+    return await asyncio.to_thread(_be_owner_call, lambda: BE.set_role(_be_owner(tenant, ref), member_id,
+                                                                       str(body.get("role") or "")))
+
+
 @app.get("/api/apps/{ref}/shots/{name:path}", dependencies=[Depends(require_key)])
 async def apps_shot(ref: str, name: str, tenant: str = Depends(current_tenant)):
     from .appmaker import service as A

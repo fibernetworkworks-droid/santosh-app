@@ -241,7 +241,8 @@ window.HoolaBuild = function (C) {
     if (s === 'looks') pre.push(['looks', 'Looks']);
     return o.type === 'site'
       ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['data', 'App & data']] : [])]
-      : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Structure'], ['android', 'Android'], ['kadam', 'Steps']];
+      : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Structure'], ['android', 'Android'],
+         ...(S(o.an?.status) ? [['data', 'App data']] : []), ['kadam', 'Steps']];   // v0.314 the built app's own backend
   }
   function draw(rebuild) {
     const o = P.get(CUR); if (!o || !studio) return;
@@ -534,8 +535,48 @@ window.HoolaBuild = function (C) {
     blob(path).then(u => { d.querySelector('img').src = u; }).catch(() => { d.querySelector('span').textContent = 'Picture not found.'; });
   }
   /* ---------------- v0.305 web app: her lists, entries, members (her own login = admin) ---------------- */
+  /* v0.314 ASLI APP: the native app's own backend - every list (orders, bookings, a staff app's tables) with its rows,
+     the status changed in place, accounts with their role. New entries also reach her chat by themselves. */
+  async function loadAppData(o, box) {
+    let info;
+    try { info = await api('GET', base(o) + '/data'); } catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const cols = L(info.collections), counts = M(info.counts);
+    box.innerHTML = `<p class="stnote">${info.live ? 'People using your app order / book here; every new entry also reaches your chat.' : 'Real orders and bookings appear here once the Android app is built.'}</p>
+      <p class="stnote">${N(counts.members)} accounts · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>`;
+    const cbox = box.querySelector('.stcols');
+    for (const c of cols) {
+      let rows = [];
+      try { rows = L((await api('GET', `${base(o)}/data/${encodeURIComponent(c.key)}`)).rows); } catch (er) { toast(er.message, true); }
+      const fields = L(c.fields);
+      const sec = document.createElement('section'); sec.className = 'stcol';
+      sec.innerHTML = `<h4>${esc(S(c.label))} <span>${rows.length}</span></h4>` + (rows.length ? `<div class="sttbl"><table><thead><tr>${fields.map(f => `<th>${esc(S(f.label))}</th>`).join('')}<th>When</th></tr></thead><tbody>${rows.map(r => `<tr data-r="${esc(S(r.id))}">${fields.map(f => {
+        const v = r[f.key];
+        if (f.key === 'status' && f.type === 'choice') return `<td><select data-f="status" aria-label="Status">${L(f.options).map(op => `<option${S(op) === S(v) ? ' selected' : ''}>${esc(S(op))}</option>`).join('')}</select></td>`;
+        return `<td>${esc(f.type === 'yes_no' ? (v ? 'Yes' : 'No') : S(v)).replace(/\n/g, '<br>')}</td>`;
+      }).join('')}<td>${esc(S(r.created).slice(0, 16).replace('T', ' '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No entries yet.</p>');
+      sec.addEventListener('change', async e => {
+        const sl = e.target.closest('select[data-f]'), tr = e.target.closest('tr[data-r]'); if (!sl || !tr) return;
+        try { await api('PATCH', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}`, {status: sl.value}); toast('Saved.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      cbox.appendChild(sec);
+    }
+    const mbox = box.querySelector('.stmem');
+    try {
+      const ms = L((await api('GET', base(o) + '/members')).members);
+      mbox.innerHTML = `<h4>Accounts <span>${ms.length}</span></h4>` + (ms.length ? `<ul class="stmems">${ms.map(m => `<li data-m="${esc(S(m.id))}"><span>${esc(S(m.name) || S(m.email))} · ${esc(S(m.email))}</span>
+        <select aria-label="Role">${['member', 'staff', 'admin'].map(r => `<option${r === S(m.role) ? ' selected' : ''}>${r}</option>`).join('')}</select></li>`).join('')}</ul>` : '<p class="stempty">Nobody has signed up yet.</p>');
+      mbox.addEventListener('change', async e => {
+        const sl = e.target.closest('select'), li = e.target.closest('li[data-m]'); if (!sl || !li) return;
+        try { await api('POST', `${base(o)}/members/${encodeURIComponent(li.dataset.m)}/role`, {role: sl.value}); toast('Role changed: they sign in again.'); }
+        catch (er) { toast(er.message, true); }
+      });
+    } catch (er) { /* no accounts list */ }
+  }
+
   async function loadData(o, root) {
     const box = root.querySelector('.stdata'); if (!box) return;
+    if (o.type === 'app') return loadAppData(o, box);
     let info;
     try { info = await api('GET', base(o) + '/app'); } catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
     const sc = M(info.app), cols = L(sc.collections), counts = M(info.counts);
