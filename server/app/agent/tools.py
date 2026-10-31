@@ -975,40 +975,44 @@ def _first_sentences(text: str, cap: int) -> str:
     return ((cut[:sp] if sp >= cap // 2 else cut).rstrip(" ,;:")) + "…"
 
 
-def _diet_schema(node: object, depth: int = 0) -> object:
+def _diet_schema(node: object, depth: int = 0, prop_max: int | None = None) -> object:
     """Trim only `description` strings inside a JSON schema; types / enums / required / structure untouched."""
+    pm = DIET_PROP_MAX if prop_max is None else prop_max
     if depth > 10:
         return node
     if isinstance(node, list):
-        return [_diet_schema(x, depth + 1) for x in node]
+        return [_diet_schema(x, depth + 1, pm) for x in node]
     if isinstance(node, dict):
         out: dict = {}
         for k, v in node.items():
             if k == "description" and isinstance(v, str):
-                out[k] = _first_sentences(v, DIET_PROP_MAX)
+                out[k] = _first_sentences(v, pm)
             else:
-                out[k] = _diet_schema(v, depth + 1)
+                out[k] = _diet_schema(v, depth + 1, pm)
         return out
     return node
 
 
-def diet_tool_specs(specs: list[dict]) -> list[dict]:
+def diet_tool_specs(specs: list[dict], desc_max: int | None = None, safety_max: int | None = None,
+                    prop_max: int | None = None) -> list[dict]:
+    dm = DIET_DESC_MAX if desc_max is None else desc_max
+    sm = DIET_SAFETY_MAX if safety_max is None else safety_max
     out: list[dict] = []
     for t in specs:
         if not isinstance(t, dict) or not t.get("name"):
             out.append(t)
             continue
         desc = " ".join(str(t.get("description") or "").split())
-        cap = DIET_SAFETY_MAX if _DIET_KEEP_RE.search(desc) else DIET_DESC_MAX
+        cap = sm if _DIET_KEEP_RE.search(desc) else dm
         if len(desc) <= cap:
-            if len(desc) > DIET_DESC_MAX:
+            if len(desc) > dm:
                 DIET_STATS["kept_full"] += 1
             out.append(t)
             continue
         d = dict(t)
         d["description"] = _first_sentences(desc, cap)
         if isinstance(t.get("input_schema"), dict):
-            d["input_schema"] = _diet_schema(t["input_schema"])
+            d["input_schema"] = _diet_schema(t["input_schema"], prop_max=prop_max)
         out.append(d)
     return out
 
@@ -1021,6 +1025,10 @@ def _diet_size(specs: list[dict]) -> int:
 DIET_STATS["raw_chars"] = _diet_size(_RAW_SPECS)
 TOOLS[:] = diet_tool_specs(TOOLS)
 DIET_STATS["diet_chars"] = _diet_size(TOOLS)
+# v0.313 the VOICE CALL keeps the short v0.187 form: Gemini Live re-reads every declared tool on each call and its
+# VOICE_TOOL_BUDGET was sized on it (a call picks among few everyday tools; big work goes to santosh_kaam anyway)
+VOICE_DESC_MAX, VOICE_SAFETY_MAX, VOICE_PROP_MAX = 140, 700, 72
+VOICE_SPECS: list[dict] = diet_tool_specs(_RAW_SPECS, VOICE_DESC_MAX, VOICE_SAFETY_MAX, VOICE_PROP_MAX)
 
 
 # ---------------------------------------------------------------- v0.191 tool families (step-admitted subsets)
