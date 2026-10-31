@@ -136,9 +136,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.337.0 (pubspec 0.337.0+377). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.338.0 (pubspec 0.338.0+378). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.338 APP STORE LAUNCH (App Phase 7, `appmaker/ios/asc.py` + `appstore.py`): App Store Connect API runs IN her builds repo (key never on Hoola): listing within Apple limits, 6.9" Pro Max shots, build onto the version; Submit for Review only her tap; support page + App Privacy answers.
 - v0.336 SOCH GEHRI (built as 0.331): long jobs on Claude at effort xhigh (`santosh.effort_for`, extra_body output_config), goal calls 16k;
   `tools.TOOL_LANES` (overlapping tools open with use-for/not-for), `_short` shrinks lists not JSON, FRESH tool set + vps-ops `tool_card`.
 - v0.335 UPI SEEDHA: paying a PERSON never sends a UPI link (GPay etc. answer 'server not responding / limit exceeded') -

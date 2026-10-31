@@ -207,4 +207,4 @@ def test_cards_save_and_list(env, monkeypatch, tmp_path):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.337.0"
+    assert APP_VERSION == "0.338.0"

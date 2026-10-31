@@ -832,6 +832,8 @@ class _AppDesignPageState extends State<AppDesignPage> {
             const SizedBox(height: 10),
             Glass(child: IosBuildPanel(app: app, id: widget.id, approved: st == 'approved')),
             const SizedBox(height: 10),
+            Glass(child: AppStorePanel(app: app, id: widget.id)),
+            const SizedBox(height: 10),
           ],
           if (_map(plan['blueprint']).isNotEmpty) ...[
             Glass(child: AppBlueprintCard(app: app, v: v, busy: _busy, onAsk: st == 'planned' || st == 'looks'

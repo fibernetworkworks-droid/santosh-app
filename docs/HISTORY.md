@@ -12556,3 +12556,43 @@ re-versioned past main's parallel v0.332-v0.336.
   Apple's xcodebuild docs), iPhone background order updates (Android has JobScheduler; iOS needs APNs push - next), iOS
   in-app update prompt (TestFlight / App Store update themselves), App Store listing / screenshots upload (App Store Connect
   API - next), 3D scenes (Android-only Scene3D).
+
+## v0.338.0 APP STORE LAUNCH (App Sahayak Phase 7, owner: "START PHASE 7")
+The iPhone twin of v0.331 PLAY STORE LAUNCH: her iPhone app on the App Store from HER OWN Apple account. No Phase 7 had been
+named in the plan; the open gap after Phase 6 was the App Store side (Phase 6 stopped at TestFlight).
+- Her App Store Connect key NEVER reaches Hoola: every Apple API call runs in her private builds repo with its secrets
+  (ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8), exactly like the TestFlight upload.
+- `appmaker/ios/asc.py` (copied into each project's hoola_qa/, runs on the Mac; stdlib + cryptography): ES256 JWT (header
+  alg / kid / typ, payload iss / iat / exp 19 min / aud appstoreconnect-v1, raw r||s signature); `push`: GET /v1/apps
+  filter[bundleId] -> the editable iOS appStoreVersion (PREPARE_FOR_SUBMISSION / rejected states) or POST one (platform IOS,
+  releaseType MANUAL), versionString patched to the build's version -> appStoreVersionLocalizations (description, keywords,
+  promotionalText, supportUrl, marketingUrl; whatsNew only when not the first version) -> appInfoLocalizations (name,
+  subtitle, privacyPolicyUrl) -> appScreenshotSets APP_IPHONE_67 (old shots deleted) -> per PNG: POST /v1/appScreenshots
+  (fileName, fileSize) -> PUT every uploadOperation part to Apple's pre-signed URL with its own headers (no bearer token) ->
+  PATCH uploaded + sourceFileChecksum (MD5) -> GET /v1/builds filter[app] + filter[version]=build number, must be VALID ->
+  PATCH the version's build. `submit`: POST /v1/reviewSubmissions (platform IOS, app) -> POST /v1/reviewSubmissionItems
+  (reviewSubmission + appStoreVersion) -> PATCH submitted true. Writes asc_result.json; errors carry codes
+  (NO_APP_RECORD, NO_BUILD, BUILD_PROCESSING, MISSING_SECRET, sizes). Facts from Apple's App Store Connect API reference
+  (the JSON form of developer.apple.com/documentation/appstoreconnectapi pages). Note: Apple marks appScreenshots /
+  appScreenshotSets deprecated in favour of the App Asset Library; they still work and are what this uses.
+- `server/app_builder/hoola-ios.yml`: kinds store (simulator build, SIM_KIND=max sim_check = iPhone Pro Max shots 1320x2868,
+  `asc.py push`) and review (`asc.py submit` only; no build). `sim_check.sh` SIM_KIND=max picks the newest Pro Max.
+- `appmaker/ios/appstore.py`: listing (Opus, Apple limits 30 / 30 / 100 / 4000 / 170, guideline 2.3 rules, keywords cleaned
+  to lower-case unique words without app / iphone / android, or a template from the Play one), her edits checked;
+  support_html (public /api/app-api/<key>/support: contact, hours, how to delete the account); privacy_answers (App Privacy
+  "nutrition label", no API: contact info, location, photos, purchases, crash data, all no tracking); ONE_TIME steps (create
+  the app with the bundle ID, category, age rating None -> 4+, App Privacy, pricing, Free Apps agreement); push (needs a
+  TestFlight build + a listing + https PUBLIC_BASE_URL; background thread, store.json = version / build / listing / urls /
+  up to 6 shots starting with the full-app shot) and submit (her_tap only; status in_review, submissions kept); why_line turns
+  Apple refusals into her next step. State in the app's ios JSON under "appstore".
+- Routes: GET /api/apps/{ref}/appstore, POST /api/apps/{ref}/appstore/listing|push|submit, GET /api/app-api/{key}/support.
+  Tools: app_banao action=appstore astep listing|push (owner; submit refused), app_dekho what=appstore.
+- Phone `lib/ui/app_ios.dart` AppStorePanel (steps, editable listing with limits, push, Review ke liye bhejo with a confirm
+  dialog, one-time steps, App Privacy answers); console build.js loadAppStore (same, confirm()). Privacy page crash line now
+  says the phone's system version (Android / iOS).
+- CI ios-check.yml: the Pro Max simulator shots are measured with asc.png_size and must be an App Store 6.9-inch size.
+- Tests: `test_v0338_app_store.py` (10): JWT verified with the public key, the full push sequence on a faked Apple (calls in
+  order, two-part PUT without the token, MD5 commit, build last), refusals, version reuse + submit, missing secrets,
+  listing limits / edits / template, push + submit through a faked Mac (her tap only), support page, tool never submits.
+- Not verified: a real App Store Connect account (needs hers); Apple may require extra fields per account (export
+  compliance is answered in Info.plist; content rights / age rating / App Privacy are her one-time steps).

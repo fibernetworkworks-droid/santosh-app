@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); } }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); } }
     showBtn();
   }
 
@@ -534,6 +534,37 @@ window.HoolaBuild = function (C) {
     if (busy) setTimeout(() => { if (document.body.contains(box)) loadIos(o, root); }, 8000);
   }
 
+  /* v0.338 App Store from HER Apple account: listing within Apple's limits, push (listing + 6.9" screenshots + the TestFlight
+     build, run in her builds repo with her key), Submit for Review only after her confirm */
+  async function loadAppStore(o, root) {
+    const box = root.querySelector('.stappstore'); if (!box) return;
+    let v; try { v = await api('GET', base(o) + '/appstore'); } catch (er) { return; }
+    const step = id => (L(v.steps).find(x => x.id === id) || {}).done, l = M(v.listing), lim = M(v.limits), st = S(v.status);
+    const busy = st === 'pushing' || st === 'submitting';
+    const fld = (k, label, area) => `<label class="bln"><b>${label}</b> <span class="faint">${S(l[k]).length} / ${esc(S(lim[k]))}</span><br>${area
+      ? `<textarea data-as="${k}" rows="5" maxlength="${esc(S(lim[k]))}">${esc(S(l[k]))}</textarea>` : `<input data-as="${k}" maxlength="${esc(S(lim[k]))}" value="${esc(S(l[k]))}">`}</label>`;
+    box.innerHTML = `<section class="bbox"><h4>Apple App Store · ${L(v.steps).filter(x => x.done).length} / ${L(v.steps).length}</h4>
+      ${v.now ? `<div class="bln">${esc(S(v.now))}</div>` : ''}${v.error ? `<div class="badc bln">${esc(S(v.error))}</div>` : ''}
+      ${L(v.steps).map(x => `<div class="bln ${x.done ? '' : 'faint'}">${x.done ? '✓' : '○'} ${esc(S(x.label))}${x.value ? ' · ' + esc(S(x.value)) : ''}</div>`).join('')}
+      ${l.name ? fld('name', 'Name') + fld('subtitle', 'Subtitle') + fld('keywords', 'Keywords (comma separated)') + fld('promotionalText', 'Promotional text') + fld('description', 'Description', true) : ''}
+      <div class="acts"><button class="btn soft" type="button" data-asb="listing" ${busy ? 'disabled' : ''}>${l.name ? 'Rewrite listing' : 'Write listing'}</button>
+        ${l.name ? `<button class="btn soft" type="button" data-asb="save" ${busy ? 'disabled' : ''}>Save edits</button>` : ''}
+        <button class="btn soft" type="button" data-asb="push" ${busy || !step('testflight') || !step('listing') ? 'disabled' : ''}>Send to App Store Connect</button>
+        <button class="btn go" type="button" data-asb="submit" ${busy || !step('pushed') ? 'disabled' : ''}>Submit for review</button></div>
+      <div class="bln faint">Privacy policy: ${esc(S(v.privacy_url))}<br>Support: ${esc(S(v.support_url))}<br>Age rating: ${esc(S(v.age_rating))}</div>
+      <div class="bln"><b>Once in App Store Connect</b>${L(v.one_time).map(t => `<div class="faint">• ${esc(S(t))}</div>`).join('')}</div>
+      <div class="bln"><b>App Privacy answers</b>${L(v.privacy_answers).map(x => `<div class="faint">• ${esc(S(x.type))} - ${esc(S(x.why))}${x.linked === false ? ' (not linked)' : ''}</div>`).join('')}</div></section>`;
+    const go = async (what, body, ok) => { try { await api('POST', base(o) + '/appstore/' + what, body); if (ok) toast(ok); loadAppStore(o, root); } catch (er) { toast(er.message, true); } };
+    box.onclick = e => { const b = e.target.closest('button[data-asb]'); if (!b) return;
+      const w = b.dataset.asb;
+      if (w === 'listing') go('listing', {regen: true}, 'Listing written.');
+      if (w === 'save') { const edit = {}; box.querySelectorAll('[data-as]').forEach(x => { edit[x.dataset.as] = x.value.trim(); }); go('listing', {edit}, 'Listing saved.'); }
+      if (w === 'push') go('push', {}, 'Sending to App Store Connect (a few minutes).');
+      if (w === 'submit' && confirm('Submit this version for Apple review? Apple usually takes 1-2 days; releasing it after approval stays your choice. Are App Information, Age Rating and App Privacy filled in?')) go('submit', {her_tap: true}, 'Submitting for review.');
+    };
+    if (busy) setTimeout(() => { if (document.body.contains(box)) loadAppStore(o, root); }, 10000);
+  }
+
   /* v0.325 every build of the app: what changed, and Bring back for a kept one */
   function historyBox(o) {
     const h = L(o.an?.history), kept = L(o.an?.kept_builds); if (!h.length) return '';
@@ -555,7 +586,7 @@ window.HoolaBuild = function (C) {
     const apk = M(a.apk), dl = publicLink(a.apk_url), zip = publicLink(a.zip_url), redo = L(a.screens).filter(x => x.state === 'code').map(x => x.id);
     return `<ol class="bpipe">${pipe}</ol>
       ${s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : ''}${a.note ? `<div class="muted bln">${esc(a.note)}</div>` : ''}
-      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div><div class="stios"></div>
+      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div><div class="stios"></div><div class="stappstore"></div>
       <div class="bcols"><section class="bbox"><h4>Screens in Kotlin</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
           ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>
