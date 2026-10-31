@@ -1023,6 +1023,58 @@ def _diet_size(specs: list[dict]) -> int:
 
 
 DIET_STATS["raw_chars"] = _diet_size(_RAW_SPECS)
+# v0.331 EK KAAM EK AUZAAR: where several tools can do the same job, each one's description now STARTS with its lane
+# (use for / not for -> the neighbour). Anthropic: "If a human engineer can't definitively say which tool should be
+# used, an AI agent can't be expected to do better." Renaming / merging the tools would touch every prompt, voice list
+# and saved procedure, so the lanes are drawn in the descriptions instead - first, so no cap can ever cut them.
+TOOL_LANES: dict[str, str] = {
+    # web: answer -> quotes -> one page -> clicks -> forms
+    "google_search": "LANE: quick facts that change (prices, news, timings) as a short answer. Need the sources' own "
+                     "words -> web_sources; one known page -> open_website; clicking / logging in -> browse_web.",
+    "web_sources": "LANE: the web's own QUOTED words with links (checking a claim, comparing sites, a rule you will "
+                   "quote). A quick fact -> google_search; one known page -> open_website.",
+    "open_website": "LANE: read ONE page whose link you have. No link -> google_search; the page needs clicks, a "
+                    "search box or login -> browse_web; a data API -> data_fetch.",
+    "browse_web": "LANE: a real browser for pages that need clicking, searching inside a site or several pages. "
+                  "Reading one link -> open_website; filling a form / download / application for her -> "
+                  "computer_operator.",
+    "computer_operator": "LANE: do a JOB on a website for her (forms, applications, downloads, bookings, portal "
+                         "updates). Only looking something up -> browse_web / open_website.",
+    "api_call": "LANE: one small read from a public API. A list / many records to keep, sort or turn into a file -> "
+                "data_fetch.",
+    "data_fetch": "LANE: many records from an API (lists, top N, repos, prices) saved as a dataset for data_read / "
+                  "doc_studio data=. One small read -> api_call. Never a PC for data.",
+    # documents: which file maker
+    "doc_studio": "LANE: every designed file for her - PDF / Word / Excel / PowerPoint reports, quotations, invoices, "
+                  "proposals, decks. A plain quick file -> make_document; an interactive page -> artifact_make.",
+    "make_document": "LANE: a plain quick Office file (letter, simple list). Anything formal or designed (report, "
+                     "quotation, invoice, proposal, deck) -> doc_studio.",
+    "docs_writer": "LANE: technical docs for HER product (manuals, API reference, release notes). Any other "
+                   "document -> doc_studio.",
+    "hoola_make": "LANE: a file made FOR a connected person and sent on the Hoola Network. A file for her own chat -> "
+                  "doc_studio.",
+    "artifact_make": "LANE: an interactive page (calculator, tracker, quiz) she opens and shares. A document to read "
+                     "or print -> doc_studio.",
+    "notebook_make": "LANE: a quick item made FROM her notebook's sources (summary, FAQ, timeline). A designed file -> "
+                     "doc_studio.",
+    # memory: what to search
+    "remember": "LANE: SAVE one fact she asked you to keep. Finding a fact -> memory_search.",
+    "memory_search": "LANE: find a FACT she asked you to remember. What was said in her chats / calls / jobs -> "
+                     "yaad_khojo; her own files and documents -> gyaan_khojo; chats by date ('kal', 'is hafte') -> "
+                     "haal_ki_chats.",
+    "yaad_khojo": "LANE: what was said or decided in her chats, calls and jobs, by meaning. A saved fact -> "
+                  "memory_search; her files -> gyaan_khojo; by date -> haal_ki_chats.",
+    "gyaan_khojo": "LANE: search inside HER files and documents (Gyaan, Drive folders). A file she attached in this "
+                   "chat -> file_read; her chats -> yaad_khojo.",
+    "haal_ki_chats": "LANE: her other chats by DATE ('aaj', 'kal', 'is hafte'). By topic -> yaad_khojo.",
+    "file_read": "LANE: read a file she attached (file_id). The layout / pages of a document -> doc_preview; her "
+                 "stored files by topic -> gyaan_khojo.",
+}
+for _t in TOOLS:
+    _lane = TOOL_LANES.get(_t.get("name", ""))
+    if _lane and not str(_t.get("description") or "").startswith("LANE:"):
+        _t["description"] = _lane + " " + str(_t.get("description") or "")
+
 TOOLS[:] = diet_tool_specs(TOOLS)
 DIET_STATS["diet_chars"] = _diet_size(TOOLS)
 # v0.313 the VOICE CALL keeps the short v0.187 form: Gemini Live re-reads every declared tool on each call and its

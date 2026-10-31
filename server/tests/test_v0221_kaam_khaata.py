@@ -56,7 +56,8 @@ def test_truncated_result_is_salvaged():
     from app.agent.santosh import _short
     big = _short({"status": "ok", "file_id": "FX1", "url": "https://example.com/" + "p/" * 60 + "end.pdf",
                   "rows": ["y" * 100] * 100})
-    assert "…(truncated)" in big
+    # v0.331 SAAF KATAI: long lists shrink first, so the result stays valid JSON and keeps every id / link
+    assert "more not shown" in big and json.loads(big)["file_id"] == "FX1"
     g = yaad.gist(big)
     assert "file_id=FX1" in g and "end.pdf" in g
 

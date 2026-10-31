@@ -235,3 +235,35 @@ def check() -> list[str]:
             if f not in fams:
                 bad.append(f"{a['id']}: unknown family {f}")
     return bad
+
+
+# v0.331 FRESH: written for the v0.331 check, after the router and the cards were tuned - a held-out set. Each ask names
+# the family (or exact tools) that is right for it; any tool of that family counts (the live card scores the FIRST pick).
+FRESH: list[tuple[str, tuple[str, ...]]] = [
+    ("kal subah 9 baje doctor ka appointment calendar mein daal do", ("gcal", "life")),
+    ("Rahul ko mail karo ki meeting 4 baje hai", ("email",)),
+    ("mera last month ka GST return status batao", ("gst",)),
+    ("YouTube pe best biryani recipe video dhundo", ("youtube",)),
+    ("meri Google sheet 'sales' mein aaj ki entry add karo", ("sheets",)),
+    ("website bana do meri bakery ke liye", ("site",)),
+    ("mere drive mein resume.pdf dhundo", ("drive", "gdrive")),
+    ("staff ki salary slip bana do", ("payroll",)),
+    ("ek song bana do birthday ke liye", ("create",)),
+    ("ek form bana do feedback ke liye", ("forms",)),
+    ("presentation bana do 10 slides ki marketing par", ("slides", "docstudio")),
+    ("IndiaMART pe steel pipe ka rate batao", ("indiamart",)),
+    ("customer ki complaint register karo", ("shikayat",)),
+    ("Aaj sone ka rate kya hai?", ("google_search", "web_sources")),
+    ("Is page ko padh ke 5 points mein batao: https://en.wikipedia.org/wiki/Diwali", ("open_website",)),
+    ("ABC Traders ke liye 3 items ka quotation PDF bana do: Chair 2500 x 10, Table 6000 x 2", ("doc_studio",)),
+    ("GitHub ke top 50 Python repositories ki list ka PDF bana do", ("data_fetch", "api_call", "doc_studio")),
+    ("Maine pichhle hafte kis vendor ke baare mein baat ki thi?", ("haal_ki_chats", "yaad_khojo")),
+    ("meri gaadi ka insurance kab khatam hota hai, yaad hai?", ("memory_search", "yaad_khojo")),
+    ("mere uploaded documents mein rent agreement ki clause dhoondo", ("gyaan_khojo", "gyaan")),
+    ("Hoola ke browser mein Myntra par Nike shoes size 9 ka price dekho", ("browse_web",)),
+    ("passport renewal ka form online bhar do mere details se", ("computer_operator",)),
+    ("purane customers ko WhatsApp pe offer bhejo", ("campaign",)),
+    ("Kal Mumbai mein baarish hogi kya?", ("get_weather", "google_search")),
+    ("har somvar subah 8 baje mujhe hafte ka plan bhejna", ("create_routine",)),
+    ("Bandra mein achhe dentist dhoondo", ("maps_search", "google_search")),
+]

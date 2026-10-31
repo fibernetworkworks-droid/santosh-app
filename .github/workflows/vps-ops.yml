@@ -30,6 +30,7 @@ on:
           - web_fix
           - rea_setup
           - studio_apis
+          - tool_card
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -292,6 +293,13 @@ jobs:
                 echo 'echo "== studio keys in $CORE/.env (names only)"; for k in GEMINI_API_KEY OPENROUTER_API_KEY ANTHROPIC_API_KEY SYNC_API_KEY FAL_KEY ARK_API_KEY; do if grep -qE "^$k=.+" $CORE/.env 2>/dev/null; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
                 echo 'echo "== ffmpeg"; command -v ffmpeg >/dev/null && ffmpeg -version 2>&1 | head -1 || echo "ffmpeg missing: sudo apt install -y ffmpeg"'
                 echo 'echo "== live check (free calls only)"; cd $CORE && timeout 90 .venv/bin/python -m app.studio.apis 2>&1 | tail -30' ;;
+              tool_card)
+                # v0.331 does Hoola pick the RIGHT tool? The free router card on both sets, then ONE real model call per
+                # ask on the held-out FRESH set (26 asks, about Rs 70, ~5 min). Nothing is executed: only the first tool
+                # the model asks for is read and scored. (The full 163-ask live set needs longer than this job's 15 min:
+                # run it on the VPS itself - python -m app.quality tools --live.)
+                echo 'cd $CORE && echo "== router (free)"; timeout 120 .venv/bin/python -m app.quality tools 2>&1 | head -3; timeout 120 .venv/bin/python -m app.quality tools --fresh 2>&1 | head -3'
+                echo 'echo "== live first picks, FRESH set"; cd $CORE && timeout 720 .venv/bin/python -m app.quality tools --live --fresh --label vps-ops 2>&1 | tail -40' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
