@@ -12298,7 +12298,17 @@ Owner: "GO PHASE 5" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3; fi
   the style tile on Image). The REAL showcase needs her two taps on the live server.
 - Tests: `test_v0329_showcase.py`.
 
-## v0.330.0 PLAY STORE LAUNCH — App Sahayak Phase 5 (owner: "START PHASE 5")
+## v0.330.0 PLAN CARD DIKHE - the plan card is drawn on the console (owner, after v0.326 test A: "TEST A :: faling no plan card")
+ROOT CAUSE: the server WAS making the card (v0.326 auto plan / kaam_plan -> `goal` event), but the console never drew it:
+`HoolaProgressPolicy.quiet()` (console/workspace.js, the compact-progress clean-up) listed 'goal' with step / think / work, so
+every plan event was folded into the one "Working on it…" line. The phone draws its own goal card (lib/ui/goal_card.dart) and
+was not affected. Now 'goal' is not quiet: one card per job (cardShell keys by goal id, updated in place), steps still fold.
+Also from her second test-A ask: "Ek chhota business plan banao chai cafe ke liye: location ke options socho, kharcha ka
+hisaab lagao, menu aur rates likho, phir sab ek PDF mein do" was NOT big (2 known verbs) - `goal.looks_big` now also counts
+the parts after a colon (3+ = big), `_ask_steps` strips "uske baad / iske baad / after that" and knows socho / lagao / chuno.
+Short asks with a colon ("Time: kitna baj gaya?") stay small. Tests: test_v0315_her_test_run.py (+2), web/progress.test.cjs.
+
+## v0.331.0 PLAY STORE LAUNCH — App Sahayak Phase 5 (owner: "START PHASE 5"; built as 0.330.0, re-versioned past the parallel v0.330.0 PLAN CARD DIKHE)
 Her app on Google Play from HER OWN developer account, through Google's official Play Developer API (androidpublisher v3).
 `server/app/appmaker/android/store.py`; state in `android.store`.
 - **Identity**: `propose_package` (com.<ascii business words>.app, reserved prefixes refused), confirmed by her (`setup`), LOCKED after

@@ -136,10 +136,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.330.0 (pubspec 0.330.0+370). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.331.0 (pubspec 0.331.0+371). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.330 PLAY STORE LAUNCH (App Phase 5, `appmaker/android/store.py`): her own Play account via the official API (sealed service-account key), permanent package + upload key, .aab, listing / graphics / screenshots, privacy + deletion pages, data-safety answers; production only by her tap.
+- v0.331 PLAY STORE LAUNCH (App Phase 5, built as 0.330, `appmaker/android/store.py`): her own Play account via the official API (sealed service-account key), permanent package + upload key, .aab, listing / graphics / screenshots, privacy + deletion pages, data-safety answers; production only by her tap.
+- v0.330 PLAN CARD DIKHE: the console folded every `goal` event into the progress line (workspace.js quiet()) - the plan card is drawn now;
+  'X banao: a, b, c' asks are big (looks_big parts after a colon).
 - v0.329 SHOWCASE (Phase 5 of the design audit, built as 0.328): real Hoola pictures / clips over the drawn placeholders via ONE hidden
   owner film "Hoola showcase" (`studio/showcase.py`), normal price cards only (~₹428 + ~₹340); hidden films' cards now approvable.
 - v0.328 APP UPDATES (App Phase 4, built as 0.325/0.327): per-screen Kotlin cache (an update rewrites only changed screens), versions only go up, changelog per build, rollback = an old build re-released as a new version, in-app update prompt (/latest + /apk), safe data changes (add / hide / label, additive, replayed on upgrade).
