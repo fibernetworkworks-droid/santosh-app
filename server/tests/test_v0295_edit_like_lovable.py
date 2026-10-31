@@ -139,4 +139,4 @@ def test_tool_undo_and_version():
     from app.main import APP_VERSION
     from pathlib import Path
     assert APP_VERSION == "0.312.0"
-    assert "0.312.0+351" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert "0.312.0+352" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

@@ -11615,3 +11615,6 @@ Owner: "NOW STUCK ON PICTURE CHECK" - the Director film sat on step 4 Pictures.
   step counts as done when skipped; a skipped step (pictures or cast) hides its red box.
 - Test: `server/tests/test_v0312_director_pictures.py` (all failed / some failed charges only painted / success clears / skip
   removes pictures from the card / page markers).
+- CRISP TEXT fix: v0.311's spinning ring (`.cring`, `animation:spin ... infinite`) broke the no-looping-spinner rule pinned by
+  test_v0304 / test_v0306; both "Painting…" boxes now use the studio's own working bar (`.bar i.indet`). Version pins moved to
+  0.312.0+352 (the build number had been left at 351).
