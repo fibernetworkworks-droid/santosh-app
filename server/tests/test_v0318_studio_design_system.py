@@ -21,7 +21,8 @@ def _px(src: str, prop: str) -> set[str]:
 
 
 def test_one_text_scale():
-    assert _px(REST, "font-size") <= {"12.5", "14", "15", "18", "26"}, _px(REST, "font-size")
+    # 40 = the home headline size, reused by v0.323's film initial tiles
+    assert _px(REST, "font-size") <= {"12.5", "14", "15", "18", "26", "40"}, _px(REST, "font-size")
     assert _px(JS, "font-size") <= {"12.5", "14", "15", "18", "26"}, _px(JS, "font-size")
     assert ".hero h1{font-size:clamp(30px,3.6vw,40px)}" in CSS and ".dhero h1{font:400 26px/1.2 var(--serif)}" in CSS
 

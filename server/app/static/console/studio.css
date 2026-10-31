@@ -754,3 +754,87 @@ b,strong{font-weight:600}
 /* the page area is focused after each move (so the keyboard scrolls it); its 2px violet ring read as a stray line under
    the top bar on the phone and down the left edge on desktop. Buttons and fields keep their focus ring. */
 #view:focus,#view:focus-visible{outline:none}
+
+/* ---------- v0.320 PHASE 2: HOME + DIRECTOR (design audit). Same scale as Phase 1: 12.5 / 14 / 15 / 18 / 26, corners 8 / 12 / 16,
+   controls 32 / 40 / 48. CRISP TEXT holds: no loops, no blur, nothing held after an animation. */
+/* home ask box: one mode switch (the tabs); the box shows that mode's few settings and its price before she sends */
+#homeAgent{display:none}
+.hset{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.dd.hs{height:32px;padding:0 10px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--ink);font-size:14px}
+.dd.hs:hover{border-color:var(--line2)}
+.dd.hs .ic{color:var(--mut)}
+.hsp{font-size:12.5px;color:var(--mut);padding-left:4px;white-space:nowrap}
+/* rails: the arrow and a soft edge only on the side where more is hidden; always there on a mouse, never over a cut card */
+.rail .rtrack{scroll-snap-type:x mandatory}
+.rail.canr .rtrack{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 56px),transparent)}
+.rail.canl .rtrack{-webkit-mask-image:linear-gradient(to left,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(to left,#000 calc(100% - 56px),transparent)}
+.rail.canl.canr .rtrack{-webkit-mask-image:linear-gradient(to right,transparent,#000 56px,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(to right,transparent,#000 56px,#000 calc(100% - 56px),transparent)}
+.rarr{width:40px;height:40px;opacity:0;pointer-events:none}
+.rail.canl .rarr.prev,.rail.canr .rarr.next{opacity:1;pointer-events:auto}
+.rarr.prev{left:-6px}.rarr.next{right:-6px}
+.rarr:hover{border-color:var(--line2);background:var(--surface)}
+
+/* Director: the brief on a clean card (the painted banner made its note hard to read), options as real pills */
+.dhero{background:var(--surface);box-shadow:var(--sh2);padding:32px 24px 24px}
+.dhero .compose{box-shadow:none;background:var(--bg)}
+.dhero .crow .dd{height:32px;padding:0 10px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--ink)}
+.dhero .crow .dd:hover{border-color:var(--line2)}
+.dhero>p.mut{font-size:14px;line-height:1.5}
+.fbar{display:flex;align-items:center;gap:8px}
+.fsearch{display:flex;align-items:center;gap:6px;height:36px;padding:0 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--mut)}
+.fsearch input{border:0;outline:0;background:transparent;width:180px;font-size:14px;color:var(--ink)}
+.fsearch:focus-within{border-color:var(--pri)}
+.fbar .dd{height:36px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.films{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.fcard{display:flex;flex-direction:column;text-align:left;border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden;transition:border-color .18s,box-shadow .2s,transform .18s var(--ease)}
+.fcard:hover{border-color:var(--line2);box-shadow:var(--sh2);transform:translateY(-2px)}
+.fcard .one{position:relative;aspect-ratio:16/9;background:var(--sunk);overflow:hidden;display:block}
+.fcard .one>img,.fcard .one>video,.fcard .one>canvas{width:100%;height:100%;object-fit:cover;display:block}
+.fwork{position:absolute;left:10px;top:10px;height:24px;padding:0 9px;border-radius:99px;background:rgb(0 0 0 / .6);color:#fff;font-size:12.5px;display:inline-flex;align-items:center}
+.fb{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px;flex:1}
+.fb b{font-size:15px;font-weight:600}
+.fb small{color:var(--mut);font-size:12.5px;line-height:1.45}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.fstep{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:6px}
+.fstep .bar{height:4px}
+.fstep small{color:var(--ink);font-weight:500}
+.fgo{display:inline-flex;align-items:center;gap:4px;color:var(--priInk);font-size:14px;font-weight:500}
+.fcard:hover .fgo .ic{transform:translateX(2px) rotate(-90deg)}
+.fgo .ic{transition:transform .18s var(--ease)}
+/* a film with no picture yet: its initial on a calm colour of its own */
+/* mixed from the theme's own surface and ink, so it follows Light / Dark / System without a theme switch of its own */
+.finit{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(135deg,color-mix(in srgb,hsl(var(--fh) 55% 60%) 16%,var(--surface)),color-mix(in srgb,hsl(calc(var(--fh) + 40) 55% 55%) 30%,var(--surface)))}
+.finit b{font:400 40px/1 var(--serif);color:color-mix(in srgb,hsl(var(--fh) 50% 40%) 55%,var(--ink))}
+
+/* one film: the next step under the steps - what happens, its price, one big button */
+.nextc{display:flex;align-items:center;gap:20px;padding:18px 20px;border-radius:16px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--sh2)}
+.nextc .nxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.nextc .nxt small{font-size:12.5px;font-weight:500;color:var(--priInk)}
+.nextc .nxt b{font-size:18px;font-weight:600}
+.nextc .nxt p{font-size:14px;color:var(--mut);max-width:62ch}
+.nextc .nxb{flex:none;min-width:240px;padding:0 20px;gap:8px}
+.nextc .nxb small{opacity:.85;font-weight:500}
+.nextc.quiet{box-shadow:none;background:var(--raise)}
+.nextc.quiet .nxt small{color:var(--mut)}
+/* the film as a timeline: one segment per shot, as long as the shot */
+.tl{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.tlr{display:flex;gap:3px;height:32px}
+.tls{min-width:24px;border-radius:8px;background:var(--sunk);border:1px solid var(--line);color:var(--mut);font-size:12.5px;font-weight:500;display:grid;place-items:center;transition:background .18s,border-color .18s}
+.tls:hover{border-color:var(--pri);color:var(--priInk)}
+.tls.pic{background:var(--priSoft);color:var(--priInk)}
+.tls.made{background:var(--pri);border-color:var(--pri);color:var(--onPri)}
+.tlt{display:flex;justify-content:space-between;font-size:12.5px;color:var(--dim)}
+.scenes.story{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.sct{margin-left:auto;font-size:12.5px;font-weight:500;color:var(--dim)}
+.scene .sb b{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.scene .sm .tag,.scene .sm .mchip{height:28px;padding:0 10px;font-size:12.5px;font-weight:500}
+.scene .sm .ib{width:32px;height:32px}
+.scene.flash{box-shadow:0 0 0 3px var(--priSoft),0 0 0 4px var(--pri);transition:box-shadow .3s}
+@media (max-width:900px){.nextc{flex-direction:column;align-items:stretch}.nextc .nxb{min-width:0}.fsearch input{width:120px}}
+@media (max-width:640px){.fbar{width:100%}.fsearch{flex:1}.fsearch input{width:100%}}
+@media (prefers-reduced-motion:reduce){.fcard,.fgo .ic{transition:none}.fcard:hover{transform:none}}
+/* the older narrow rule (.crow nowrap, .dd clipped) squeezed the brief options to "Hi" and "108"; they wrap instead */
+@media (max-width:900px){.dhero .crow{flex-wrap:wrap}.dhero .crow .dd{flex:none;overflow:visible}.dhero .crow .sp{flex-basis:0}}
+/* a bare <small> took the browser's "smaller" (0.83 of its parent): the brand colour names came out 10.4px and an editor
+   hint 11.7px - below the 12.5px floor. Classes that size their own <small> still win. */
+small{font-size:12.5px}
