@@ -12191,7 +12191,21 @@ pc/ untouched; `_to_pc` itself unchanged, just no longer reached without her wor
 is inside the frozen PC operator and was not investigated.
 Tests: NEW tests/test_v0315_her_test_run.py (9).
 
-## v0.327.0 (part 1) HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0 / 0.324.0, shipped together with Phase 4 as v0.327.0 past the parallel v0.323.0 STUDIO HOME + DIRECTOR, v0.324.0 TEEN LOOK JALDI, v0.325.0 STUDIO TOOLS and v0.326.0 HER TEST RUN)
+## v0.327.0 STUDIO ASSETS + HELP (31 Oct 2026; Phase 4 of the Create Studio design audit)
+Owner: "GO" after Phase 3 (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- Brand kit (`studio.js` V.brand / W.brand rewritten): logo upload on the page via the existing POST /api/brand/logo (multipart, `clean_bg`),
+  shown from GET /api/brand/logo; colours primary / accent / dark / light as `<input type=color>` 48px with names + hex; font buttons
+  (R.FONTS poppins / mukta) render her tagline; phone + website saved as `contact`; `bkPreview()` = poster (4:5) + reel end card (9:16)
+  in her colours / font / logo, text colour by contrast (`onCol`); draft in BK.d until Save (PUT /api/brand/kit). The console does not load
+  Poppins / Mukta, so the preview font falls back on most devices; the real posters use the bundled fonts.
+- My creations: script tile = a page (`.paper`: "Script", title, lines); every `.res[data-item]` gets a `.pick` tick (LSEL), `#selbar`
+  "N selected · Download · Delete · ×", bulk delete confirms first; `.btn.danger` (not `.bad`, which the v0.308 pin keeps free).
+- Templates: "Use this" always visible. Guides: GUIDES text split into `<ol class="gsteps">` steps + "Open <tool>" button.
+- Engines: `OWNER()` = ctx.owner() (v2.js passes `!!ME?.arena`); non-owners see "What you can make" (the feature ticks) only; the owner
+  sees the engine cards with "How to switch it on" folded.
+- Re-measured: 6 sizes, 0 texts < 4.5 : 1 light and dark. Tests: `test_v0327_studio_assets.py`.
+
+## v0.328.0 (part 1) HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0 / 0.324.0, shipped together with Phase 4 as v0.328.0 past the parallel v0.323.0 STUDIO HOME + DIRECTOR, v0.324.0 TEEN LOOK JALDI, v0.325.0 STUDIO TOOLS v0.326.0 HER TEST RUN and v0.327.0 STUDIO ASSETS + HELP)
 - **Device check after every build** (`server/app/appmaker/android/device_check.sh` + `qa.py`, stdlib only; `gen.write_project`
   copies both into every project as `hoola_qa/` with `package.txt` + `screens.txt`): on an Android emulator the debug build opens
   EVERY screen (extra `hoola_screen`), takes its picture, dumps its UI tree and its crash buffer; the release build is cold-started
@@ -12230,7 +12244,7 @@ Tests: NEW tests/test_v0315_her_test_run.py (9).
 - **Not yet**: per-app UI flow tests beyond "every screen opens" (tapping through each flow), a visual diff against the approved web
   design, memory / ANR checks, iPhone.
 
-## v0.327.0 (part 2) APP UPDATES — App Sahayak Phase 4: a built app can be changed safely for its whole life (owner: "START PHASE 4")
+## v0.328.0 (part 2) APP UPDATES — App Sahayak Phase 4: a built app can be changed safely for its whole life (owner: "START PHASE 4")
 - **Only what changed is rewritten**: Kotlin screens are cached per screen under `_skey` = sha256 of that screen's approved html/css,
   the look tokens, the tabs, the screen list, its spec row (purpose / lists / actions), the app's server lists and `KIT_REV`. A rebuild
   of the same design asks Opus nothing (simple code-made screens get another try); a one-screen design change rewrites one screen; a
