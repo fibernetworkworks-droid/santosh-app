@@ -91,7 +91,7 @@ window.HoolaCreate = ctx => {
   // v0.320 the studio opens hidden, so on the FIRST open every picture had no size yet and stayed an unpainted 300x150 canvas
   // stretched over its card (squashed moons and records). A picture now paints when it gets a size, and again if it changes.
   const artRO = window.ResizeObserver ? new ResizeObserver(es => es.forEach(e => { if (e.target.clientWidth) paint(e.target); })) : null;
-  // v0.328 SHOWCASE: a card whose real Hoola-made picture (or clip) exists shows it over the drawn placeholder
+  // v0.329 SHOWCASE: a card whose real Hoola-made picture (or clip) exists shows it over the drawn placeholder
   const SC_SLOT = seed => { let m = /^t?q(\d+)$/.exec(seed); if (m) return 'film' + m[1];
     if ((m = /^t[pt](\d+)$/.exec(seed))) return 'tpl' + m[1]; if ((m = /^t(\d+)$/.exec(seed))) return 'tool' + m[1];
     if ((m = /^sty(\d+)$/.exec(seed))) return 'sty' + m[1];
@@ -1369,7 +1369,7 @@ ${SPRITE}`;
       <button class="btn sec" data-recheck>${I('redo', 'width:15px;height:15px')}Check again</button></div>
     ${OWNER() ? '<section class="box scbox" id="scbox"><p class="mut">Reading the showcase…</p></section>' : ''}
     <div id="engs"><p class="mut">Checking each engine…</p></div></div>`;
-  // v0.328 the owner's showcase panel: the hidden "Hoola showcase" film's two normal price cards, right here
+  // v0.329 the owner's showcase panel: the hidden "Hoola showcase" film's two normal price cards, right here
   function drawShowcase(o) {
     const el = $('#scbox'); if (!el) return;
     if (!o) { el.innerHTML = '<p class="mut">Could not read the showcase just now.</p>'; return; }
@@ -1547,7 +1547,7 @@ ${SPRITE}`;
     document.body.appendChild(host);
     R = host.attachShadow({mode: 'open'});
     R.innerHTML = shellHTML(); drawNav(); drawCredits();
-    load('showcase').then(() => showcaseSwap($('#view')));    // v0.328 real pictures over the drawn ones, once the list arrives
+    load('showcase').then(() => showcaseSwap($('#view')));    // v0.329 real pictures over the drawn ones, once the list arrives
     { const sn = $('#snav'), fade = () => sn.classList.toggle('fadeb', sn.scrollTop + sn.clientHeight < sn.scrollHeight - 4);   // v0.306 fade only while more list is below
       sn.addEventListener('scroll', fade, {passive: true}); addEventListener('resize', fade); requestAnimationFrame(fade); }
     R.addEventListener('pointerdown', e => { if (popFor && !e.target.closest('#pop') && !popFor.contains(e.target)) closeMenu(); });

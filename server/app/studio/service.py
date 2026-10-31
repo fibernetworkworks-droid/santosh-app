@@ -749,7 +749,7 @@ async def _ask(tenant: str, st: Studio, project: str, req: dict) -> dict:
 async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
     """Her tap on the price card."""
     st = await studio(tenant)
-    # v0.328 hidden films too (the owner's "Hoola showcase" film is hidden from her lists, its cards still need her Haan)
+    # v0.329 hidden films too (the owner's "Hoola showcase" film is hidden from her lists, its cards still need her Haan)
     project = next((p["project"] for p in listing(tenant, hidden=True) if aid_in(st, p["project"], approval_id)), "")
     if not project:
         raise StudioJobError("Yeh card purana ho gaya")

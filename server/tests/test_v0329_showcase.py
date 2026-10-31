@@ -1,4 +1,4 @@
-"""v0.328 SHOWCASE (Phase 5 of the Create Studio design audit): real Hoola-made pictures and clips instead of the drawn
+"""v0.329 SHOWCASE (Phase 5 of the Create Studio design audit): real Hoola-made pictures and clips instead of the drawn
 placeholders. No new money path: the showcase is one HIDDEN film in the owner's studio; its pictures / clips come from the
 normal price cards (keyframes / generate -> _ask -> her Haan + fingerprint). Found while building: decide() and the
 fingerprint card lookup searched only VISIBLE films, so a hidden film's card could never be approved."""
@@ -116,5 +116,5 @@ def test_pages_lay_the_real_pictures_over_the_drawn_ones():
     assert ".catch(() => el.remove())" in js                            # a missing file leaves the drawing, never "File not available"
     assert "prefers-reduced-motion: reduce" in js                      # clips stay still pictures when she asked for less motion
     assert "function drawShowcase(o)" in js and "data-sc=\"clips\"" in js and "o.pictures_made < o.slots ? 'disabled'" in js
-    blk = css[css.index("v0.328 PHASE 5: SHOWCASE"):]
+    blk = css[css.index("v0.329 PHASE 5: SHOWCASE"):]
     assert ".art.sc{" in blk and ".art.sc.on{opacity:1}" in blk and "infinite" not in blk

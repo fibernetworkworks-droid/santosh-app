@@ -1,4 +1,4 @@
-"""v0.328 SHOWCASE (Phase 5 of the Create Studio design audit): real Hoola-made pictures and clips instead of the drawn placeholders.
+"""v0.329 SHOWCASE (Phase 5 of the Create Studio design audit): real Hoola-made pictures and clips instead of the drawn placeholders.
 
 The owner asked for "REAL HOOLA CREATED VIDEOS AND IMAGES HERE FOR PRESENTATION". Nothing new spends money here: the showcase is ONE
 hidden Director film in the owner's own studio ("Hoola showcase"), one shot per slot on the studio pages. Its pictures are made by
