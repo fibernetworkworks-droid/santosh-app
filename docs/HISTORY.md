@@ -12556,3 +12556,31 @@ re-versioned past main's parallel v0.332-v0.336.
   Apple's xcodebuild docs), iPhone background order updates (Android has JobScheduler; iOS needs APNs push - next), iOS
   in-app update prompt (TestFlight / App Store update themselves), App Store listing / screenshots upload (App Store Connect
   API - next), 3D scenes (Android-only Scene3D).
+
+## v0.338.0 EDIT MEIN SAB JODO (owner: "IN EDIT MODE ADD ALL ATTACHMENT FUNCTIONS IMAGE, VIDEO, FILES ETC")
+Before: website Edit mode (v0.295) could change words, links and a picture already on the site, or remove things;
+nothing could be ADDED, and only photos could be uploaded (in chat).
+- **"+ Jodo" on everything** in the edit preview (`assets/hoola-edit.js`): she taps any words, photo or video and adds,
+  right after that block, a **photo** (pick one of hers or upload), a **video** (her MP4 / WebM / M4V up to 60 MB, or a
+  YouTube link), an **audio** clip (MP3 / M4A / OGG / WAV up to 20 MB) or a **file to download** (PDF / Word / Excel /
+  PowerPoint / TXT / CSV up to 20 MB), with an optional caption / button text. Photos and videos now get the toolbar too
+  ("Photo badlo", "+ Jodo", "Hatao"); "Photo badlo" can upload a new photo. No AI, free, each step undoable.
+- **`site/media.py`**: her files live in the site source (`src/media` + `_media.json`); a file is accepted only when its
+  first bytes match its kind (a renamed program is refused; Office files must contain their word/ xl/ ppt/ parts; text
+  must be UTF-8 without NULs), within per-kind limits and 400 MB a site. `POST /api/sites/<id>/media`.
+- **Safe markup**: `media.block` builds what is inserted (her words escaped); pages carry `data-hoola-media="NAME"`
+  (video / audio) or `data-hoola-file="NAME"` (download link) and `media.expand` writes the address for each page depth
+  (`assets/media`, `assets/files`, `../` on deeper pages), copying only files a page uses - as hard links, and version
+  copies hard-link too (`media.link_or_copy`), so a 60 MB video is stored once, not once per version.
+- `edit.insert` puts it after the BLOCK she tapped (a word / link / list item climbs to its paragraph / list / card, never
+  inside a button or heading) and the new parts get edit numbers; "Hatao" on the photo / video / file removes the whole
+  added piece, on its caption only the caption. A YouTube block keeps its edit number through `live.expand`.
+- **Bug fixed on the way**: since v0.295 a photo turned into a responsive `<picture>` lost its edit number, so tapping a
+  photo in Edit mode never reached "change photo". The `<img>` inside now keeps `data-e` + `data-hoola-img` in the edit
+  preview (stripped from the live site like every edit number).
+- Console (`build.js` addDialog / uploadTo, `.sted-kind` styles) and phone (`site_screen.dart` `_add` / `_upload`,
+  `Api.siteMedia`, file_picker) both have it. The repo's nginx sample allows 64 MB on `/api/sites/<id>/media`.
+- Tests `server/tests/test_v0338_edit_mein_sab_jodo.py` (5): file checks, every kind added and shown with the right
+  address at two depths + files copied + no edit numbers live + every link resolving, remove-as-one + Undo, the photo
+  edit number in the preview, and the toolbar's "+ Jodo" message in Chromium.
+- Not yet: a video's own poster frame (the browser shows its first frame), reordering added pieces (remove + add again).

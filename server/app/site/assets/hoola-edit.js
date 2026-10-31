@@ -40,11 +40,16 @@
     var add = function (label, fn) { var b = document.createElement('button'); b.type = 'button'; b.textContent = label;
       b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', fn); bar.appendChild(b); };
     var k = where(el), e = el.getAttribute('data-e');
+    var media = isMedia(el);
+    if (el.tagName === 'IMG') add('Photo badlo', function () { hide(); send({t: 'image', k: k, e: e, img: el.getAttribute('data-hoola-img') || ''}); });
     if (el.tagName === 'A') add('Link', function () { send({t: 'link', k: k, e: e, href: el.getAttribute('href') || '', text: text(el)}); });
-    if (el.tagName !== 'IMG') add('AI se badlo', function () { send({t: 'ai', k: k, e: e, text: text(el)}); });
-    add('Hatao', function () { done(false); send({t: 'remove', k: k, e: e, text: text(el)}); });
+    if (el.tagName !== 'IMG' && !media) add('AI se badlo', function () { send({t: 'ai', k: k, e: e, text: text(el)}); });
+    add('+ Jodo', function () { done(true); hide(); send({t: 'add', k: k, e: e, text: text(el)}); });   // v0.338 photo / video / audio / file
+    add('Hatao', function () { done(false); hide(); send({t: 'remove', k: k, e: e, text: text(el) || (media ? 'video / audio' : 'photo')}); });
     place(el);
   }
+  function hide() { bar.style.display = 'none'; }
+  function isMedia(el) { return el.hasAttribute('data-hoola-media') || el.hasAttribute('data-hs-yt') || el.hasAttribute('data-hoola-video'); }
   function done(save) {
     if (!cur) return;
     var el = cur; cur = null;
@@ -61,10 +66,7 @@
     ev.preventDefault(); ev.stopPropagation();
     if (cur) done(true);
     if (!el || !where(el)) return;
-    if (el.tagName === 'IMG' || el.closest('picture')) {
-      send({t: 'image', k: where(el), e: el.getAttribute('data-e'), img: el.getAttribute('data-hoola-img') || ''});
-      return;
-    }
+    if (el.tagName === 'IMG' || isMedia(el)) { tools(el); return; }   // v0.338 photos / videos get the toolbar too
     cur = el; before = text(el);
     el.setAttribute('contenteditable', 'plaintext-only');
     if (el.contentEditable !== 'plaintext-only') el.setAttribute('contenteditable', 'true');

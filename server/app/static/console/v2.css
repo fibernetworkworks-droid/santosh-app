@@ -2015,6 +2015,13 @@ body.albon{overflow:hidden}
   .ar-bar{grid-template-columns:96px 1fr 30px}
 }
 
+/* v0.338 Edit mode: what she can add (photo / video / YouTube / audio / file) */
+.sted-kinds{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.sted-kind{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--hair);border-radius:999px;font-size:13.5px;cursor:pointer}
+.sted-kind:has(input:checked){border-color:var(--pri);background:var(--pri-soft);color:var(--pri-ink)}
+.sted-for{display:grid;gap:10px;margin-bottom:10px}
+.sted-c.wide select,.sted-c.wide input[type=file]{width:100%;padding:8px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--raise);color:var(--ink);font:inherit}
+
 /* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim

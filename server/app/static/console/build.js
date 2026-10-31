@@ -611,7 +611,7 @@ window.HoolaBuild = function (C) {
         case 'reload': reloadFrames(o, true); break;
         case 'edit': {
           const r = await call(o, '/edit-mode', {}, '');
-          if (r) { o.edit = true; o.photos = L(r.photos); o.tokens = M(r.tokens); o.editPage = ''; o.editY = 0; o.framesFor = ''; draw(); toast('Edit mode: click any words on the page and type. Free, no AI.'); }
+          if (r) { o.edit = true; o.photos = L(r.photos); o.media = L(r.media); o.tokens = M(r.tokens); o.editPage = ''; o.editY = 0; o.framesFor = ''; draw(); toast('Edit mode: click any words on the page and type. Free, no AI.'); }
           break; }
         case 'edit-done': o.edit = false; o.framesFor = ''; draw(); break;
         case 'undo': { const r = await call(o, '/undo', {}, 'Undone.'); if (r) reloadFrames(o, true); break; }
@@ -735,7 +735,7 @@ window.HoolaBuild = function (C) {
   }
 
   /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */
-  function dialog(title, inner) {
+  function dialog(title, inner, setup) {
     return new Promise(done => {
       const d = document.createElement('div'); d.className = 'blb sted-dlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', title);
       d.innerHTML = `<form class="sted-card" autocomplete="off"><h3>${esc(title)}</h3>${inner}<div class="acts"><button class="btn soft" type="button" data-x>Cancel</button><button class="btn go" type="submit">Save</button></div></form>`;
@@ -745,8 +745,45 @@ window.HoolaBuild = function (C) {
       f.addEventListener('submit', e => { e.preventDefault(); shut(new FormData(f)); });
       f.addEventListener('click', e => { const c = e.target.closest('[data-pick]'); if (!c) return; f.querySelectorAll('[data-pick]').forEach(x => x.setAttribute('aria-pressed', String(x === c))); f.elements.pick.value = c.dataset.pick; });
       addEventListener('keydown', key); document.body.appendChild(d);
+      if (setup) setup(f);
       const first = f.querySelector('input,button'); if (first) first.focus();
     });
+  }
+  /* v0.338 EDIT MEIN SAB JODO: a photo / video / YouTube / audio / file she adds after what she clicked */
+  const ADD_KINDS = [['photo', 'Photo', 'image/jpeg,image/png,image/webp'], ['video', 'Video', 'video/mp4,video/webm,.m4v'],
+                     ['youtube', 'YouTube link', ''], ['audio', 'Audio', 'audio/mpeg,audio/mp4,audio/ogg,audio/wav,.m4a'],
+                     ['file', 'File to download', '.pdf,.docx,.xlsx,.pptx,.txt,.csv']];
+  async function uploadTo(o, kind, file, about = '') {
+    const fd = new FormData(); fd.append('file', file); fd.append('about', about);
+    toast(`Uploading ${file.name}…`);
+    try {
+      const r = await api('POST', base(o) + (kind === 'photo' ? '/photo' : '/media'), undefined, {form: fd});
+      if (kind === 'photo') o.photos = L(o.photos).concat([{name: S(r.name), about}]);
+      else o.media = L(o.media).concat([{name: S(r.name), kind: S(r.kind), ext: S(r.ext), size: S(r.size), about}]);
+      return S(r.name);
+    } catch (er) { toast(er.message, true); return ''; }
+  }
+  async function addDialog(o, k, e) {
+    const have = kind => kind === 'photo' ? L(o.photos).map(p => [S(p.name), S(p.about) || S(p.name)])
+      : L(o.media).filter(m => S(m.kind) === kind).map(m => [S(m.name), `${S(m.about) || S(m.name)} (${S(m.ext).toUpperCase()}, ${S(m.size)})`]);
+    const f = await dialog('Add below this', `<div class="sted-kinds" role="radiogroup" aria-label="What to add">${ADD_KINDS.map(([v, n], i) => `<label class="sted-kind"><input type="radio" name="kind" value="${v}"${i ? '' : ' checked'}> ${n}</label>`).join('')}</div>
+      ${ADD_KINDS.filter(([v]) => v !== 'youtube').map(([v, , acc]) => `<div class="sted-for" data-for="${v}"${v === 'photo' ? '' : ' hidden'}>
+        ${have(v).length ? `<label class="sted-c wide"><span>Use one you already added</span><select name="have_${v}"><option value="">—</option>${have(v).map(([nm, lab]) => `<option value="${esc(nm)}">${esc(lab)}</option>`).join('')}</select></label>` : ''}
+        <label class="sted-c wide"><span>${have(v).length ? 'Or upload' : 'Upload'}</span><input type="file" name="file_${v}" accept="${acc}"></label></div>`).join('')}
+      <div class="sted-for" data-for="youtube" hidden><label class="sted-c wide"><span>YouTube link</span><input name="url" placeholder="https://youtu.be/…"></label></div>
+      <label class="sted-c wide"><span>Caption / button text (optional)</span><input name="caption" maxlength="160"></label>
+      <p class="sted-note">Videos up to 60 MB (MP4 / WebM), audio and files up to 20 MB. Visitors see it right away after you save.</p>`,
+      dlg => dlg.addEventListener('change', ev => { if (ev.target.name === 'kind') dlg.querySelectorAll('.sted-for').forEach(x => { x.hidden = x.dataset.for !== ev.target.value; }); }));
+    if (!f) return;
+    const kind = S(f.get('kind')), caption = S(f.get('caption')).trim();
+    const spec = {kind, caption};
+    if (kind === 'youtube') { spec.url = S(f.get('url')).trim(); if (!spec.url) return toast('Paste the YouTube link.', true); }
+    else {
+      const file = f.get('file_' + kind);
+      spec.name = file && file.size ? await uploadTo(o, kind, file, caption) : S(f.get('have_' + kind));
+      if (!spec.name) return toast('Choose a file to add.', true);
+    }
+    editSend(o, {k, e, op: 'insert', value: JSON.stringify(spec)});
   }
   async function editSend(o, body) {
     try { const r = await api('POST', base(o) + '/edit', body); toast(S(r?.say) || 'Saved.'); reloadFrames(o, true); }
@@ -776,11 +813,17 @@ window.HoolaBuild = function (C) {
       const f = await dialog('Link', `<label class="sted-c wide"><span>Where should "${esc(S(d.text).slice(0, 40))}" go?</span><input name="href" value="${esc(S(d.href))}" placeholder="https://… · tel:+91… · mailto:… · contact/"></label>`);
       if (f) editSend(o, {k, e, op: 'link', value: S(f.get('href')).trim()}); return;
     }
-    if (d.t === 'image') {
-      const ph = L(o.photos); if (!ph.length) return toast('No photos yet: send photos in the chat and say which section they are for.', true);
-      const f = await dialog('Choose a picture', `<input type="hidden" name="pick" value="${esc(S(d.img))}"><div class="sted-ph">${ph.map(p => `<button type="button" class="btn soft" data-pick="${esc(S(p.name))}" aria-pressed="${S(p.name) === S(d.img)}">${esc(S(p.about) || S(p.name))}${p.ai ? ' · AI' : ''}</button>`).join('')}</div>`);
-      if (f && S(f.get('pick')) && S(f.get('pick')) !== S(d.img)) editSend(o, {k, e, op: 'image', value: S(f.get('pick'))}); return;
+    if (d.t === 'image') {     // v0.338 her own photo can be uploaded right here
+      const ph = L(o.photos);
+      const f = await dialog('Change the picture', `<input type="hidden" name="pick" value="${esc(S(d.img))}">${ph.length ? `<div class="sted-ph">${ph.map(p => `<button type="button" class="btn soft" data-pick="${esc(S(p.name))}" aria-pressed="${S(p.name) === S(d.img)}">${esc(S(p.about) || S(p.name))}${p.ai ? ' · AI' : ''}</button>`).join('')}</div>` : ''}
+        <label class="sted-c wide"><span>${ph.length ? 'Or upload a new photo' : 'Upload a photo'} (JPEG, PNG, WebP)</span><input type="file" name="file" accept="image/jpeg,image/png,image/webp"></label>`);
+      if (!f) return;
+      let pick = S(f.get('pick'));
+      const file = f.get('file');
+      if (file && file.size) { pick = await uploadTo(o, 'photo', file); if (!pick) return; }
+      if (pick && pick !== S(d.img)) editSend(o, {k, e, op: 'image', value: pick}); return;
     }
+    if (d.t === 'add') return addDialog(o, k, e);
     if (d.t === 'ai') { const inp = studio.querySelector('#stIn'); if (inp) { inp.value = `"${S(d.text).slice(0, 80)}" ko `; inp.focus(); } }
   });
   function reset() { appEl.classList.remove('st'); P.clear(); CUR = null; showBtn(); if (studio) { studio.innerHTML = ''; delete studio.dataset.k; } }

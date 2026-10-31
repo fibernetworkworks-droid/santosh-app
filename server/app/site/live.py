@@ -120,7 +120,9 @@ def expand(html: str, site: dict[str, Any], endpoint: str, icon) -> tuple[str, l
             problems.append("video: not a YouTube link")
             return '<p class="muted"><em class="blank">[YouTube video link]</em></p>'
         title = _attr(tag, "data-title") or w["play"]
-        return (f'<figure class="hs-video" data-hs-yt="{vid}" data-title="{esc(title)}">'
+        en = _attr(tag, "data-e")               # v0.338 Edit mode can still pick (and remove) a video she added
+        mark = f' data-e="{esc(en)}"' if en.isdigit() else ""
+        return (f'<figure class="hs-video" data-hs-yt="{vid}" data-title="{esc(title)}"{mark}>'
                 f'<button type="button" class="hs-load hs-play" aria-label="{esc(w["play"])}: {esc(title)}">'
                 f'{icon("play")}<span>{esc(title)}</span></button></figure>')
 

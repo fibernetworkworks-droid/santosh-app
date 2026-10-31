@@ -5,6 +5,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -813,6 +814,7 @@ class _SitePreviewState extends State<SitePreview> {
   bool _edit = false;
   String _editUrl = '';
   List<Map<String, dynamic>> _photos = const [];
+  List<Map<String, dynamic>> _media = const [];        // v0.338 her videos / audio / files
   Map<String, dynamic> _tokens = const {};
 
   @override
@@ -843,6 +845,7 @@ class _SitePreviewState extends State<SitePreview> {
       final r = await widget.app.api!.siteAct(widget.siteId, 'edit-mode');
       _editUrl = _s(r['url']);
       _photos = _list(r['photos']);
+      _media = _list(r['media']);
       _tokens = _map(r['tokens']);
       setState(() => _edit = true);
       await _web.loadRequest(Uri.parse(widget.app.api!.absolute(_editUrl)));
@@ -908,16 +911,21 @@ class _SitePreviewState extends State<SitePreview> {
         if (yes == true) await _send({'k': k, 'e': e, 'op': 'remove'}, page, y);
         break;
       case 'image':
-        if (_photos.isEmpty) return _snack('Abhi koi photo nahi: chat mein photo bhejiye aur bataiye kahan lagani hai.');
-        final pick = await showModalBottomSheet<String>(context: context, builder: (c) => SafeArea(
+        var pick = await showModalBottomSheet<String>(context: context, builder: (c) => SafeArea(
               child: ListView(shrinkWrap: true, children: [
                 const ListTile(title: Text('Kaunsi photo lagayein?')),
+                ListTile(leading: const Icon(Icons.upload_rounded), title: const Text('Nayi photo upload karein'),
+                    onTap: () => Navigator.pop(c, '\u0000upload')),
                 for (final p in _photos)
                   ListTile(leading: Icon(p['ai'] == true ? Icons.auto_awesome_rounded : Icons.photo_rounded),
                       title: Text(_s(p['about']).isEmpty ? _s(p['name']) : _s(p['about'])),
                       selected: _s(p['name']) == _s(d['img']), onTap: () => Navigator.pop(c, _s(p['name']))),
               ])));
-        if (pick != null && pick != _s(d['img'])) await _send({'k': k, 'e': e, 'op': 'image', 'value': pick}, page, y);
+        if (pick == '\u0000upload') pick = await _upload('photo', '');
+        if (pick != null && pick.isNotEmpty && pick != _s(d['img'])) await _send({'k': k, 'e': e, 'op': 'image', 'value': pick}, page, y);
+        break;
+      case 'add':
+        await _add(k, e, page, y);
         break;
       case 'ai':
         final w = await _ask('AI se kya badlein?', '"${_s(d['text'])}" ko ', 'jaise: aur chhota aur mazedaar likho');
@@ -931,6 +939,70 @@ class _SitePreviewState extends State<SitePreview> {
         }
         break;
     }
+  }
+
+  // v0.338 EDIT MEIN SAB JODO: photo / video / YouTube / audio / file below what she tapped
+  static const _exts = {'photo': ['jpg', 'jpeg', 'png', 'webp'], 'video': ['mp4', 'webm', 'm4v'],
+                        'audio': ['mp3', 'm4a', 'ogg', 'wav'], 'file': ['pdf', 'docx', 'xlsx', 'pptx', 'txt', 'csv']};
+
+  Future<String?> _upload(String kind, String about) async {
+    final res = await FilePicker.platform.pickFiles(withData: true, type: FileType.custom, allowedExtensions: _exts[kind]!);
+    final f = (res == null || res.files.isEmpty) ? null : res.files.first;
+    if (f == null || f.bytes == null) return null;
+    _snack('${f.name} upload ho rahi hai…');
+    try {
+      final r = kind == 'photo'
+          ? await widget.app.api!.sitePhoto(widget.siteId, f.name, f.bytes!, about)
+          : await widget.app.api!.siteMedia(widget.siteId, f.name, f.bytes!, about);
+      final nm = _s(r['name']);
+      if (kind == 'photo') {
+        _photos = [..._photos, {'name': nm, 'about': about}];
+      } else {
+        _media = [..._media, {'name': nm, 'kind': kind, 'about': about}];
+      }
+      return nm;
+    } catch (er) {
+      _snack('$er');
+      return null;
+    }
+  }
+
+  Future<void> _add(String k, String e, String page, int y) async {
+    final kind = await showModalBottomSheet<String>(context: context, builder: (c) => SafeArea(
+          child: ListView(shrinkWrap: true, children: [
+            const ListTile(title: Text('Iske neeche kya jodein?')),
+            for (final o in const [['photo', 'Photo', Icons.photo_rounded], ['video', 'Video (60 MB tak)', Icons.videocam_rounded],
+                                   ['youtube', 'YouTube link', Icons.smart_display_rounded], ['audio', 'Audio', Icons.audiotrack_rounded],
+                                   ['file', 'File (PDF, Word, Excel…)', Icons.description_rounded]])
+              ListTile(leading: Icon(o[2] as IconData), title: Text(o[1] as String), onTap: () => Navigator.pop(c, o[0] as String)),
+          ])));
+    if (kind == null) return;
+    final cap = await _ask('Caption / button ka naam (optional)', '', 'jaise: Hamari dukaan ka video');
+    if (cap == null) return;
+    final spec = <String, dynamic>{'kind': kind, 'caption': cap};
+    if (kind == 'youtube') {
+      final u = await _ask('YouTube link', '', 'https://youtu.be/…');
+      if (u == null || u.isEmpty) return;
+      spec['url'] = u;
+    } else {
+      final have = kind == 'photo' ? _photos : _media.where((m) => _s(m['kind']) == kind).toList();
+      String? nm;
+      if (have.isNotEmpty) {
+        nm = await showModalBottomSheet<String>(context: context, builder: (c) => SafeArea(
+              child: ListView(shrinkWrap: true, children: [
+                ListTile(leading: const Icon(Icons.upload_rounded), title: const Text('Nayi upload karein'),
+                    onTap: () => Navigator.pop(c, '')),
+                for (final m in have)
+                  ListTile(title: Text(_s(m['about']).isEmpty ? _s(m['name']) : _s(m['about'])),
+                      onTap: () => Navigator.pop(c, _s(m['name']))),
+              ])));
+        if (nm == null) return;
+      }
+      if (nm == null || nm.isEmpty) nm = await _upload(kind, cap);
+      if (nm == null || nm.isEmpty) return;
+      spec['name'] = nm;
+    }
+    await _send({'k': k, 'e': e, 'op': 'insert', 'value': jsonEncode(spec)}, page, y);
   }
 
   Future<void> _undo() async {
