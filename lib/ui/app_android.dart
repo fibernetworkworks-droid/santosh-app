@@ -545,3 +545,152 @@ class _AppDataPanelState extends State<AppDataPanel> {
     ]);
   }
 }
+
+/// v0.330 Play Store launch from HER OWN developer account: steps, the permanent package name, her Play service-account key
+/// (pasted here, sealed on the server, never shown again, never in chat), the listing, the store bundle, Internal testing,
+/// and Production - only from this button, after a confirm.
+class StorePanel extends StatefulWidget {
+  const StorePanel({super.key, required this.app, required this.id});
+  final Santosh app;
+  final String id;
+  @override
+  State<StorePanel> createState() => _StorePanelState();
+}
+
+class _StorePanelState extends State<StorePanel> {
+  Map<String, dynamic>? _v;
+  bool _busy = false;
+  bool _open = false;
+  final _pkg = TextEditingController();
+  final _key = TextEditingController();
+  Santosh get app => widget.app;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _pkg.dispose();
+    _key.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = Map<String, dynamic>.from(await app.api!.call('GET', '/api/apps/${widget.id}/store') as Map);
+      if (mounted) {
+        setState(() => _v = v);
+        if (_pkg.text.isEmpty) _pkg.text = _s(v['package']).isEmpty ? _s(v['proposed']) : _s(v['package']);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _act(String what, [Map<String, dynamic> body = const {}, String ok = '']) async {
+    setState(() => _busy = true);
+    try {
+      final v = Map<String, dynamic>.from(await app.api!.call('POST', '/api/apps/${widget.id}/store/$what', body: body) as Map);
+      if (mounted) setState(() => _v = v);
+      if (ok.isNotEmpty && mounted) _snack(context, ok);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _production() async {
+    final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
+      title: const Text('Production par bhejein?'),
+      content: const Text('Google ke review ke baad yeh app Play Store par SAB ke liye dikhegi. Pehle Internal testing mein dekh liya hai na?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abhi nahi')),
+        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, bhejo')),
+      ],
+    ));
+    if (yes == true) await _act('publish', {'track': 'production', 'her_tap': true}, 'Production par bhej rahi hoon');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _v;
+    final steps = _list(v?['steps']);
+    final done = steps.where((x) => x['done'] == true).length;
+    final st = _s(v?['status']);
+    final lst = _map(v?['listing']);
+    final working = st == 'building' || st == 'uploading';
+    bool d(String id) => steps.any((x) => x['id'] == id && x['done'] == true);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      InkWell(onTap: () => setState(() => _open = !_open), child: Row(children: [
+        const Icon(Icons.storefront_rounded, color: C.accent, size: 20),
+        const SizedBox(width: 6),
+        Expanded(child: Text('Google Play Store', style: display(15))),
+        if (v != null) Pill('$done/${steps.length}', fg: done == steps.length ? C.ok : C.accent),
+        Icon(_open ? Icons.expand_less : Icons.expand_more, color: C.muted),
+      ])),
+      if (v != null && _s(v['now']).isNotEmpty)
+        Padding(padding: const EdgeInsets.only(top: 4), child: Row(children: [
+          if (working) const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+          if (working) const SizedBox(width: 8),
+          Expanded(child: Text(_s(v['now']), style: const TextStyle(color: C.ink, fontSize: 12.5))),
+        ])),
+      if (v != null && _s(v['error']).isNotEmpty)
+        Text(_s(v['error']), style: const TextStyle(color: C.bad, fontSize: 12.5)),
+      if (_open && v != null) ...[
+        const SizedBox(height: 6),
+        for (final x in steps)
+          Text('${x['done'] == true ? '✓' : '○'} ${_s(x['label'])}${_s(x['value']).isEmpty ? '' : ' · ${_s(x['value'])}'}',
+              style: TextStyle(color: x['done'] == true ? C.ok : C.muted, fontSize: 12.5)),
+        const SizedBox(height: 10),
+        Text('Package name (hamesha ke liye - Play ise badalne nahi deta)', style: display(12.5)),
+        TextField(controller: _pkg, enabled: v['locked'] != true, style: const TextStyle(color: C.ink),
+            decoration: const InputDecoration(hintText: 'com.aapkidukaan.app')),
+        if (v['locked'] != true)
+          TextButton(onPressed: _busy ? null : () => _act('setup', {'package': _pkg.text.trim()}, 'Package pakka'), child: const Text('Package pakka karo')),
+        const SizedBox(height: 6),
+        Text(_s(v['account']).isEmpty ? 'Aapka Play developer account' : 'Play account jud gaya: ${_s(v['account'])}', style: display(12.5)),
+        if (_s(v['account']).isEmpty) ...[
+          const Text('Play Console > Setup > API access > service account ki JSON key yahan paste kijiye (chat mein kabhi nahi). '
+              'Server par band (sealed) rahegi, dobara dikhegi nahi.', style: TextStyle(color: C.muted, fontSize: 12)),
+          TextField(controller: _key, maxLines: 3, style: const TextStyle(color: C.ink, fontSize: 11),
+              decoration: const InputDecoration(hintText: '{"type": "service_account", ...}')),
+          TextButton(onPressed: _busy ? null : () async {
+            await _act('credentials', {'json': _key.text.trim()}, 'Play account jud gaya');
+            _key.clear();
+          }, child: const Text('Key jodo')),
+        ] else
+          TextButton(onPressed: _busy ? null : () => _act('forget', {}, 'Key hata di'), child: const Text('Key hatao')),
+        const SizedBox(height: 6),
+        if (_s(lst['title']).isNotEmpty) ...[
+          Text(_s(lst['title']), style: display(13)),
+          Text(_s(lst['short']), style: const TextStyle(color: C.chip, fontSize: 12.5)),
+          Text(_s(lst['full']), maxLines: 6, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12)),
+        ],
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          GlassButton(label: _s(lst['title']).isEmpty ? 'Listing banao' : 'Listing dobara likho', height: 36,
+              onTap: _busy || !d('package') ? null : () => _act('listing', {'regen': true})),
+          GlassButton(label: 'Store bundle banao', height: 36, onTap: _busy || working || !d('package') ? null : () => _act('build', {}, 'Bundle ban raha hai')),
+          GlassButton(label: 'Internal testing par bhejo', color: C.accent, height: 36,
+              onTap: _busy || working || !d('bundle') || !d('account') ? null : () => _act('publish', {'track': 'internal'}, 'Google Play par bhej rahi hoon')),
+          GlassButton(label: 'Production (sab ke liye)', height: 36,
+              onTap: _busy || working || !d('internal') ? null : _production),
+        ]),
+        const SizedBox(height: 8),
+        Text('Play Console mein aapko khud (ek baar):', style: display(12.5)),
+        for (final c in ((v['console_steps'] as List?) ?? const []))
+          Text('• $c', style: const TextStyle(color: C.muted, fontSize: 11.5)),
+        if (_list(v['data_safety']).isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text('Data safety form ke jawab:', style: display(12.5)),
+          for (final x in _list(v['data_safety']))
+            Text('• ${_s(x['type'])} - ${_s(x['why'])}${x['optional'] == true ? ' (optional)' : ''}',
+                style: const TextStyle(color: C.muted, fontSize: 11.5)),
+        ],
+        for (final rel in _list(v['releases']).take(3))
+          Text('${_s(rel['track'])} · v${_s(rel['version_name'])} · ${_s(rel['status'])}', style: const TextStyle(color: C.ok, fontSize: 12)),
+      ],
+    ]);
+  }
+}

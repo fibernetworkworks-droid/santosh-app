@@ -12298,7 +12298,55 @@ Owner: "GO PHASE 5" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3; fi
   the style tile on Image). The REAL showcase needs her two taps on the live server.
 - Tests: `test_v0329_showcase.py`.
 
-## v0.330.0 ANY DESIGN (web design Phase 6 step 2; owner: "START PHASE 2")
+## v0.330.0 PLAN CARD DIKHE - the plan card is drawn on the console (owner, after v0.326 test A: "TEST A :: faling no plan card")
+ROOT CAUSE: the server WAS making the card (v0.326 auto plan / kaam_plan -> `goal` event), but the console never drew it:
+`HoolaProgressPolicy.quiet()` (console/workspace.js, the compact-progress clean-up) listed 'goal' with step / think / work, so
+every plan event was folded into the one "Working on it…" line. The phone draws its own goal card (lib/ui/goal_card.dart) and
+was not affected. Now 'goal' is not quiet: one card per job (cardShell keys by goal id, updated in place), steps still fold.
+Also from her second test-A ask: "Ek chhota business plan banao chai cafe ke liye: location ke options socho, kharcha ka
+hisaab lagao, menu aur rates likho, phir sab ek PDF mein do" was NOT big (2 known verbs) - `goal.looks_big` now also counts
+the parts after a colon (3+ = big), `_ask_steps` strips "uske baad / iske baad / after that" and knows socho / lagao / chuno.
+Short asks with a colon ("Time: kitna baj gaya?") stay small. Tests: test_v0315_her_test_run.py (+2), web/progress.test.cjs.
+
+## v0.331.0 PLAY STORE LAUNCH — App Sahayak Phase 5 (owner: "START PHASE 5"; built as 0.330.0, re-versioned past the parallel v0.330.0 PLAN CARD DIKHE)
+Her app on Google Play from HER OWN developer account, through Google's official Play Developer API (androidpublisher v3).
+`server/app/appmaker/android/store.py`; state in `android.store`.
+- **Identity**: `propose_package` (com.<ascii business words>.app, reserved prefixes refused), confirmed by her (`setup`), LOCKED after
+  the first upload (Play never allows a change). A separate UPLOAD key per app (`_upload_key`: PKCS12 RSA 2048, alias "preview" so the
+  fixed Gradle file signs with it, sealed `store/upload.key.sealed`); the public certificate at `/api/apps/<ref>/store-cert`.
+- **Her Play key**: the service-account JSON from Play Console > API access, typed / chosen in the app (phone `StorePanel`, console file
+  input) - never in chat; `set_credentials` checks it is a service account, keeps only the needed fields, seals it (`store/play.sealed`),
+  returns only a masked e-mail; "Key hatao" forgets it. Tokens via google-auth (`_token`, scope androidpublisher).
+- **Listing**: Opus (`LISTING_SYSTEM`: facts only, no superlatives / emoji / other brands - Play's metadata policy) or a template; clipped
+  to 30 / 80 / 4000; her edits checked against the limits. **Graphics** (`graphics`): 512 px icon (first letter on the app's own
+  gradient) and 1024x500 feature graphic (the name), Pillow; **screenshots** (`screenshots`): the device check's pictures of the latest
+  build (2-8, kit screens left out).
+- **Pages Play asks for** (public, per app): `/api/app-api/<key>/privacy` (the app's privacy paragraphs + a crash-report paragraph) and
+  `/api/app-api/<key>/delete-account` (the in-app path + her contact). **Data safety** (`data_safety`): the form's answers from what the
+  app's lists really hold (email, name, phone, address, location only on tap, photos only chosen, purchase history, crash logs; never
+  shared, HTTPS, deletion in app + on request) - Google has no API for that form, so she enters them.
+- **Store bundle** (`build_bundle` / `_build_bundle`): the latest build's exported project, `applicationId` = the store package,
+  `versionCode` above every preview / store build (preview builds then continue above it), the upload key + its password put back,
+  `RN.build(..., "aab")` (worker `?kind=aab` -> bundleRelease; builds-repo workflow input `kind` (new hoola-build.yml); local
+  bundleRelease); the .aab kept in `store/`.
+- **Upload** (`publish` / `_publish`): edits.insert -> bundles.upload -> tracks/<track> (release with "What's new" from the changelog)
+  -> listings/en-IN -> icon + featureGraphic (delete + upload) -> phoneScreenshots -> edits.commit. Internal testing by the tool
+  (`app_banao action=store step=internal`) or her tap; PRODUCTION only with her tap in the app (`her_tap`, confirm dialog), the tool
+  refuses. A never-reviewed app's "draft only" refusal = the release goes as a draft and her note says to finish it once in Play
+  Console. Google's refusals are shown as they are (e.g. missing permission). Package locked after the first upload.
+- **Views**: phone `StorePanel` (steps x/8, package, key, listing, buttons, the one-time Play Console steps, data-safety answers,
+  releases); console Android tab Play box (same). Tools `app_dekho what=store`, `app_banao action=store step=setup|listing|bundle|internal`.
+- **Fixed on the way**: Phase 4's rollback restored the preview key but not its password (the exported project blanks `?: "..."`), so a
+  real build machine would have failed to sign it; both rollback and the store bundle now put the password back.
+- **Verified**: `server/tests/test_v0330_play_store.py` (2: setup / key sealing / listing limits / graphics / pages / data safety; the
+  bundle + version codes + the exact Play API sequence on a faked Google + package lock + production only by tap + the draft fallback +
+  a Google refusal); the AAB built here with the real toolchain (3.7 MB, valid bundle) and CI now builds it (bundleRelease + check).
+- **Not yet / honest limits**: Google's API cannot create the app entry or fill the data-safety / content-rating forms - she does those
+  once in Play Console (listed in the panel); the first upload of a brand-new app may need one "Review release" click there.
+  **iPhone (App Store / TestFlight) is the next phase**: it needs a Swift / SwiftUI kit (the HoolaKit equivalent), macOS builds, and
+  her Apple Developer account (team, certificates, App Store Connect API key).
+
+## v0.332.0 ANY DESIGN (web design Phase 6 step 2; owner: "START PHASE 2")
 Three limits, measured in the code: a section could only be one of 30 library types (21 places looked a type up in
 `T.SECTIONS`), the site runtime had no interactive pieces beyond FAQ / lightbox / before-after (so a calculator, tabs or
 a filter needed section JS, which the sanitiser rightly strips), and every section styled its own buttons and cards, so
@@ -12319,13 +12367,13 @@ a big site drifted page to page.
   / universal selectors, no url / @import / font-face). Stored on the look, put in site.css after the base styles,
   and every section prompt carries `kit.prompt_line` (use these classes). One kit per site, not per change.
   Scripted tests run with SITE_KIT=false (conftest); its own suite turns it on.
-- Tests `server/tests/test_v0330_any_design.py` (6): free-form sections in the site map (dedupe, cap, names), her words
+- Tests `server/tests/test_v0332_any_design.py` (6): free-form sections in the site map (dedupe, cap, names), her words
   add one and it is built + on the page, the kit cleaner, one kit per site that every section prompt names, and every
   interactive piece clicked in Chromium (tabs + arrow keys + ARIA, filter, switch, sum calculator 1,850 -> 1,970, EMI
   8,885 / total 1,06,619 / interest 6,619 -> 4,707 for 24 months, slider arrows).
 - Seen in the sandbox and NOT from this work: `test_v0319_app_features.py` fails the same 4 ways on untouched main.
 
-## v0.330.0 DEPLOY SE NAHI RUKEGA (owner's screenshot: S-0003 "Server ruk gaya tha, kaam beech mein ruk gaya")
+## v0.332.0 DEPLOY SE NAHI RUKEGA (owner's screenshot: S-0003 "Server ruk gaya tha, kaam beech mein ruk gaya")
 - Checked the server log first: clean shutdowns ("Shutting down" -> "Started server process"), no crash, no out-of-memory.
   Deploys landed at 07:27, 07:58, 08:17, 08:38 and 09:04 (several sessions shipping). A dead website job gets ONE
   automatic restart (`recover_stuck`, v0.223, against crash loops), so S-0003's build, restarted after 08:38, was marked
@@ -12336,6 +12384,7 @@ a big site drifted page to page.
   plain "Phir se chalao" card.
 - A site map being made (big sites, stage `sitemap`) used to be dropped back to the plan on any restart; it now starts
   again once (its size and words are kept on the board: map_want / map_words).
-- Tests `server/tests/test_v0330_deploy_se_nahi.py` (4): a build that lived through two deploys continues, a real crash
+- Tests `server/tests/test_v0332_deploy_se_nahi.py` (4): a build that lived through two deploys continues, a real crash
   still stops after one restart, a site map job starts again then gives up honestly after a crash.
 - Built as 0.325 / 0.326, shipped together as 0.330.0 past the parallel v0.325-v0.329 Create Studio work (all kept).
+- Shipped as 0.332.0 (built as 0.325 / 0.326, then 0.330): re-versioned past the parallel v0.330 PLAN CARD DIKHE / PLAY STORE LAUNCH and v0.331 (all kept). Code comments say v0.330.

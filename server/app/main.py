@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.330.0"   # v0.330.0 ANY DESIGN + DEPLOY SE NAHI RUKEGA. ANY DESIGN (web design Phase 6 step 2, owner: "START PHASE 2"): (1) FREE-FORM sections - beyond the 30 library types, a page may carry up to 3 sections Opus designs from a name + brief (type custom_<name>, taxonomy.custom_type / is_section / label_of): the site map planner adds them when no type fits (calculators, plan comparisons, processes, size guides) and her words add them through change() (add type custom + name); (2) INTERACTIVE PIECES in the site runtime that sections use by attribute, no section JS: tabs (ARIA tablist, arrow keys), slider (scroll-snap + arrows), filter, monthly/yearly switch, calculator (sum of qty x rate + add-ons, or a loan EMI with total and interest), taught in RUNTIME_GUIDE; (3) ONE DESIGN KIT per site (site/kit.py): once a look is chosen Opus writes .k-* components (button, card, section head, badge, quote, stat, media frame, list...) from the look's art direction and the site variables; the cleaner keeps only kit rules (no element / id / global selectors, no url / import / fonts); every section is told to use it; it sits in site.css after the base styles (SITE_KIT, made once a site). DEPLOY SE NAHI RUKEGA (owner's screenshot: S-0003 "Server ruk gaya tha, kaam beech mein ruk gaya"): the log showed clean shutdowns, not a crash - 5 deploys in under 2 hours, and a dead job gets ONE automatic restart, so a long build that lived through two deploys was marked failed. The app's shutdown now marks every running website job (site.service.mark_clean_stop), so after a deploy it continues from its saved sections however many deploys land; a real crash still uses up the one restart; a site map being made starts again (board map_want / map_words). Built as 0.325 / 0.326, re-versioned past the parallel v0.325-v0.329 Studio work. Previous: v0.329.0 SHOWCASE (built as 0.328; owner: "GO PHASE 5" of the Create Studio design audit - "USE REAL HOOLA CREATED VIDEOS AND IMAGES HERE FOR PRESENTATION"). The drawn placeholders (bottles, moons, records, faceless heads) get real Hoola-made pictures and clips laid over them on Studio home, Templates, the Image styles and the guides, for every account. NO new money path: app/studio/showcase.py makes ONE hidden film in the owner's studio ("Hoola showcase", 36 shots = 8 film types + 10 templates + 9 tools + 9 styles, 3:4, 5 s, no text in any picture); its pictures come from the normal opening-pictures card (~₹428 = 36 x ₹12) and its 4 clips (Ad film, Music video, Wedding, Festival greeting) from the normal make-the-shots card (~₹340), each only after her Haan + phone fingerprint; clips only after the pictures (else the clip card would paint and charge 4 pictures twice), one card at a time. Owner panel on Create > Engines; GET /api/studio/showcase (slots for everyone, panel for the owner), POST /api/studio/showcase/setup|pictures|clips (owner only), GET /api/studio/showcase/file/<slot>. FOUND: decide() and the fingerprint card lookup searched only VISIBLE films, so a hidden film's price card could never be approved ("Yeh card purana ho gaya") - both (and the stale-card sweep) now include hidden films. A missing file leaves the drawing; reduced motion = still pictures. Previous: v0.328.0 HOOLA QA + APP UPDATES (App Sahayak Phases 3 + 4, owner: "START PHASE 3", "START PHASE 4"). PHASE 4 UPDATES: Kotlin is cached PER SCREEN (key = that screen's approved design + look + tabs + its spec row + the server lists + kit rev), so an update rewrites only the screens that changed; versionCode never goes down (last_vc + 1); versionName <design>.<build>; every build gets a changelog entry (changed / kept / simple screens, data revision, crash fixes, QA, plain "What's new" lines); the last 10 APKs + projects are kept; rollback = a kept build's exact project rebuilt under a NEW higher version (no Opus; phones take it as an update; tool app_banao action=rollback, POST /api/apps/<ref>/rollback, phone "Wapas lao", console "Bring back"); the installed app asks GET /api/app-api/<key>/latest on start and offers Update (UpdateDialog, the APK from /api/app-api/<key>/apk opens in the browser, installs over the old one, keeps data); her data changes (app_banao action=data_change / POST /api/apps/<ref>/data_change: add / hide / label fields) are additive only - a new field is never required, a hidden field keeps its data and leaves the forms (kit Db.fields filters it), essential order fields can't be hidden - with a revision, replayed after a backend upgrade, and shown in the next build's notes. Device check: scrolling measured on the start screen with real screen-size swipes, "0 frames" = not measured (never 0 % jank). PHASE 3 HOOLA QA (App Sahayak Phase 3, owner: "START PHASE 3" - "as reliable and robust as real human app development"): every native build gets a DEVICE CHECK on a real Android emulator after it compiles (device_check.sh + qa.py travel in the project as hoola_qa/; the GitHub builds repo workflow hoola-build.yml and a worker with HOOLA_BUILD_EMULATOR=1 run it): every screen opened (crash -> logcat), screenshot, UI-tree accessibility check (unlabelled tappables, targets under 48 dp), release cold start x3, janky frames while scrolling, APK size vs budget (1500 ms / 25% / 15 MB). A screen that CRASHES on the device goes back to Opus once with the real crash; still crashing or not compiling = its simple code-made version; the report + pictures are kept per build (qa state, /api/apps/<ref>/android/qa/<screen>) and shown on the phone build panel + console Android tab; the ready note carries one QA line. CRASHES FROM USERS: kit CrashGuard keeps a crash (trace, screen, versions, model - nothing personal) and sends it on the next start (POST /api/app-api/<key>/crash, no login, rate-limited); grouped by exception + app frames (line numbers ignored), a chat note on a new crash, GET /api/apps/<ref>/crashes, app_dekho what=crashes, app_banao action=fix_crash / "Theek karo" = the crashed screens rewritten with the crash, a new build; the same crash in the fixing version = "back" + another note; a kit-only crash is said to be Hoola's. CI: the fixture app goes through the real device check (13 screens, cold start, APK size measured, report gated) and the e2e sends a crash report end to end. Tool texts: the new-app rules kept inside the 1200 cut. Built as 0.323.0 - 0.327.0, re-versioned past the parallel v0.323.0 - v0.327.0. Previous: v0.327.0 STUDIO ASSETS + HELP (owner: "GO" = Phase 4 of the Create Studio design audit). Brand kit: the logo is uploaded on the page (POST /api/brand/logo, optional plain-background removal; was "send it in chat and say brand logo set karo"), four colours as real 48px pickers with names (were 10px labels), the font shown in her own tagline, phone + website, and a LIVE preview - a poster and a reel end card in her colours, font and logo, text colour picked for contrast - saved with one button. My
+APP_VERSION = "0.332.0"   # v0.332.0 ANY DESIGN + DEPLOY SE NAHI RUKEGA. ANY DESIGN (web design Phase 6 step 2, owner: "START PHASE 2"): (1) FREE-FORM sections - beyond the 30 library types, a page may carry up to 3 sections Opus designs from a name + brief (type custom_<name>, taxonomy.custom_type / is_section / label_of): the site map planner adds them when no type fits (calculators, plan comparisons, processes, size guides) and her words add them through change() (add type custom + name); (2) INTERACTIVE PIECES in the site runtime that sections use by attribute, no section JS: tabs (ARIA tablist, arrow keys), slider (scroll-snap + arrows), filter, monthly/yearly switch, calculator (sum of qty x rate + add-ons, or a loan EMI with total and interest), taught in RUNTIME_GUIDE; (3) ONE DESIGN KIT per site (site/kit.py): once a look is chosen Opus writes .k-* components (button, card, section head, badge, quote, stat, media frame, list...) from the look's art direction and the site variables; the cleaner keeps only kit rules (no element / id / global selectors, no url / import / fonts); every section is told to use it; it sits in site.css after the base styles (SITE_KIT, made once a site). DEPLOY SE NAHI RUKEGA (owner's screenshot: S-0003 "Server ruk gaya tha, kaam beech mein ruk gaya"): the log showed clean shutdowns, not a crash - 5 deploys in under 2 hours, and a dead job gets ONE automatic restart, so a long build that lived through two deploys was marked failed. The app's shutdown now marks every running website job (site.service.mark_clean_stop), so after a deploy it continues from its saved sections however many deploys land; a real crash still uses up the one restart; a site map being made starts again (board map_want / map_words). Built as 0.325 / 0.326, re-versioned past the parallel v0.325-v0.331 work (Studio, plan cards, Play Store). Previous: v0.331.0 PLAY STORE LAUNCH (App Sahayak Phase 5, owner: "START PHASE 5"): her app on Google Play from HER OWN developer account through the official Play Developer API (appmaker/android/store.py). Permanent package name proposed (com.<business>.app) and confirmed by her, locked after the first upload; a separate UPLOAD key per app (sealed; Play App Signing keeps the real key); her Play service-account JSON typed into the app (phone panel / console file input), checked, sealed, never returned (masked e-mail only), never in chat; listing by Opus within Play's limits (30 / 80 / 4000, metadata policy) or a template, her edits checked; 512 px icon + 1024x500 feature graphic from the app's colours; phone screenshots from the device check; public privacy policy + account-deletion pages per app (/api/app-api/<key>/privacy | delete-account); data-safety answers from the real lists; the store bundle (.aab) = the latest build's project under the store package, version code above every build, signed with the upload key (runners kind=aab: worker ?kind=aab, builds-repo workflow input kind, local bundleRelease); upload = edit -> bundle -> track -> listing -> icon / feature graphic / screenshots -> commit, internal testing by the tool or her tap, PRODUCTION only by her tap after a confirm (tool refuses), a never-reviewed app falls back to a draft release with a plain note, Google refusals said plainly; the console steps she does once (create app, content rating...) listed. Also fixed: rollback restored the key but not its password (the exported project blanks it) - a real build machine would have failed to sign. CI builds the real AAB. Built as 0.330.0, re-versioned past the parallel v0.330.0. Previous: v0.330.0 PLAN CARD DIKHE (her test A): the console folded every long-job plan (goal event) into the progress line, so the plan card the server made was never drawn - now it is a card, one per job, updated in place; "X banao: a, b, c, d" asks count as big (looks_big parts after a colon), plan steps strip "uske baad". | v0.329.0 SHOWCASE (built as 0.328; owner: "GO PHASE 5" of the Create Studio design audit - "USE REAL HOOLA CREATED VIDEOS AND IMAGES HERE FOR PRESENTATION"). The drawn placeholders
 
 
 def _quiet_http_logs() -> None:
@@ -8861,6 +8861,30 @@ async def app_api_apk(app_key: str):
                         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
+@app.get("/api/app-api/{app_key}/privacy", response_class=HTMLResponse)
+async def app_api_privacy(app_key: str):
+    """v0.330 the app's privacy policy page (the URL Play Console asks for)."""
+    from .appmaker import backend as BE
+    from .appmaker.android import store as ST
+    from .site import webapp as W
+    try:
+        return HTMLResponse(await asyncio.to_thread(lambda: ST.privacy_html(BE.by_key(app_key))))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+
+
+@app.get("/api/app-api/{app_key}/delete-account", response_class=HTMLResponse)
+async def app_api_delete_page(app_key: str):
+    """v0.330 how to delete the account (Play's required data-deletion URL)."""
+    from .appmaker import backend as BE
+    from .appmaker.android import store as ST
+    from .site import webapp as W
+    try:
+        return HTMLResponse(await asyncio.to_thread(lambda: ST.delete_html(BE.by_key(app_key))))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+
+
 @app.get("/api/app-api/{app_key}/updates")
 async def app_api_updates(app_key: str, request: Request, since: str = ""):
     """v0.319 the app's background check: her rows that moved (customer) / new orders (staff) since `since`."""
@@ -8984,6 +9008,47 @@ async def apps_data_file(ref: str, fid: str, tenant: str = Depends(current_tenan
     except Exception:
         raise HTTPException(404, "not found")
     return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
+@app.get("/api/apps/{ref}/store", dependencies=[Depends(require_key)])
+async def apps_store(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.330 Play Store launch: steps, package, account (masked), listing, bundle, releases, data safety, the pages."""
+    from .appmaker.android import store as ST
+    return await asyncio.to_thread(_appd, ST.get, tenant, ref)
+
+
+@app.post("/api/apps/{ref}/store/{what}", dependencies=[Depends(require_key)])
+async def apps_store_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """setup {package} | credentials {json} (her Play service-account key: sealed, never shown) | forget | listing {regen, edit}
+    | build | publish {track, her_tap} - production only from her tap in the app (her_tap=true is sent by the app's button)."""
+    from .appmaker.android import store as ST
+    body = body or {}
+    if what == "setup":
+        return await asyncio.to_thread(_appd, ST.setup, tenant, ref, str(body.get("package") or ""))
+    if what == "credentials":
+        raw = body.get("json")
+        return await asyncio.to_thread(_appd, ST.set_credentials, tenant, ref, raw if isinstance(raw, str) else json.dumps(raw or {}))
+    if what == "forget":
+        return await asyncio.to_thread(_appd, ST.forget_credentials, tenant, ref)
+    if what == "listing":
+        return await asyncio.to_thread(_appd, ST.listing, tenant, ref, bool(body.get("regen")),
+                                       body.get("edit") if isinstance(body.get("edit"), dict) else None)
+    if what == "build":
+        return await asyncio.to_thread(_appd, ST.build_bundle, tenant, ref)
+    if what == "publish":
+        return await asyncio.to_thread(_appd, ST.publish, tenant, ref, str(body.get("track") or "internal"), bool(body.get("her_tap")))
+    raise HTTPException(404, "unknown")
+
+
+@app.get("/api/apps/{ref}/store-cert", dependencies=[Depends(require_key)])
+async def apps_store_cert(ref: str, tenant: str = Depends(current_tenant)):
+    """The upload certificate (public part), if Play Console asks for it."""
+    from .appmaker.android import store as ST
+    try:
+        data, name = await asyncio.to_thread(ST.upload_cert, tenant, ref)
+    except ST.StoreError:
+        raise HTTPException(404, "not found")
+    return Response(data, media_type="application/x-pem-file", headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @app.get("/api/apps/{ref}/crashes", dependencies=[Depends(require_key)])

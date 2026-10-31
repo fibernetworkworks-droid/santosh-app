@@ -150,4 +150,4 @@ def test_persona_teaches_slow_tools_and_still_formats(env):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.330.0"
+    assert main.APP_VERSION == "0.332.0"

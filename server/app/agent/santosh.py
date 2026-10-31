@@ -723,7 +723,8 @@ def _auto_plan(conversation_id: str, tenant_id: str, state: dict, settings, ctx)
 
 _CLAUSE_SPLIT = re.compile(r"\s*(?:[,;\n]|\s(?:aur\s+phir|aur\s+fir|uske\s+baad|iske\s+baad|phir|fir|then|and\s+then|"
                            r"after\s+that|aakhir\s+mein|finally)\s)\s*", re.I)
-_CLAUSE_LEAD = re.compile(r"^(?:aur|and|phir|fir|then|pehle|first|aakhir\s+mein|finally|[-*•]|\d{1,2}[.)])\s*", re.I)
+_CLAUSE_LEAD = re.compile(r"^(?:(?:aur|and|phir|fir|then|pehle|first|aakhir\s+mein|finally|uske\s+baad|iske\s+baad|"
+                          r"after\s+that|[-*•]|\d{1,2}[.)])\s*)+", re.I)
 
 
 def _ask_steps(req: str) -> tuple[str, list[str]]:
@@ -736,7 +737,7 @@ def _ask_steps(req: str) -> tuple[str, list[str]]:
         c = _CLAUSE_LEAD.sub("", (c or "").strip(" .")).strip(" .")
         if not c:
             continue
-        if parts and not (_VERB.search(c) or re.search(r"\b(?:karo|karna|do|dena|dekho|batao|likho|bhejo|dhoondo|dhundo|dhoondho|nikalo|banao|lao|kholo|padho|bharo|check)\b", c, re.I)):
+        if parts and not (_VERB.search(c) or re.search(r"\b(?:karo|karna|do|dena|dekho|batao|likho|bhejo|dhoondo|dhundo|dhoondho|nikalo|banao|lao|kholo|padho|bharo|check|socho|lagao|chuno|bhar|bata)\b", c, re.I)):
             parts[-1] = (parts[-1] + ", " + c)[:160]     # 'top 8 brands, unki price, range' is ONE step, not three
         elif len(c.split()) >= 2:
             parts.append(c[:160])
