@@ -81,8 +81,17 @@ window.HoolaCreate = ctx => {
   // v0.304 a shape button draws its shape; a rail scrolls sideways with arrows (no orphan card on its own row)
   const ratioI = a => { const [w, h] = a.split(':').map(Number), k = 16 / Math.max(w, h); return `<i class="rbox" style="width:${Math.round(w * k)}px;height:${Math.round(h * k)}px" aria-hidden="true"></i>`; };
   const rail = (inner, cls) => `<div class="rail"><button type="button" class="rarr prev" data-rail="-1" aria-label="Scroll back">${I('down', 'width:16px;height:16px;transform:rotate(90deg)')}</button><div class="${cls} rtrack">${inner}</div><button type="button" class="rarr next" data-rail="1" aria-label="Scroll on">${I('down', 'width:16px;height:16px;transform:rotate(-90deg)')}</button></div>`;
+  // v0.320 a rail shows its arrow and a soft edge only on the side where more cards are hidden (the cut card read as broken)
+  function rails(root = R) {
+    $$('.rail', root).forEach(r => { const t = $('.rtrack', r); if (!t || t.dataset.rs) return; t.dataset.rs = '1';
+      const sync = () => { r.classList.toggle('canl', t.scrollLeft > 4); r.classList.toggle('canr', t.scrollLeft + t.clientWidth < t.scrollWidth - 4); };
+      t.addEventListener('scroll', sync, {passive: true}); if (window.ResizeObserver) new ResizeObserver(sync).observe(t); sync(); });
+  }
   const art = (kind, seed, extra = '') => `<canvas class="art" data-art="${kind}" data-seed="${esc(seed)}" aria-hidden="true" ${extra}></canvas>`;
-  const paintAll = (root = R) => requestAnimationFrame(() => $$('canvas[data-art]', root).forEach(c => { if (c.clientWidth) paint(c); }));
+  // v0.320 the studio opens hidden, so on the FIRST open every picture had no size yet and stayed an unpainted 300x150 canvas
+  // stretched over its card (squashed moons and records). A picture now paints when it gets a size, and again if it changes.
+  const artRO = window.ResizeObserver ? new ResizeObserver(es => es.forEach(e => { if (e.target.clientWidth) paint(e.target); })) : null;
+  const paintAll = (root = R) => requestAnimationFrame(() => $$('canvas[data-art]', root).forEach(c => { if (c.clientWidth) paint(c); artRO?.observe(c); }));
 
   /* ---------------- her files ---------------- */
   async function blobURL(path) {
@@ -155,7 +164,7 @@ window.HoolaCreate = ctx => {
 
   /* ---------------- shell ---------------- */
   const NAV = [
-    ['l', 'Studio'], ['studio', 'Studio home', 'home'],
+    ['studio', 'Studio home', 'home'],
     ['l', 'Agents'], ['a', 'director', 'Director', 'Brief to finished film', 'clap', 'linear-gradient(135deg,#EE8F35,#B347E6)'],
     ['a', 'script', 'Script writer', 'Ads, films, episodes', 'pen', 'linear-gradient(135deg,#6E55F0,#2F6F8F)'],
     ['a', 'casting', 'AI casting', 'Characters that stay the same', 'cast', 'linear-gradient(135deg,#C2417A,#6E55F0)'],
@@ -180,8 +189,6 @@ window.HoolaCreate = ctx => {
     <div class="top">
       <button class="ib menuBtn" id="menuBtn" aria-label="Open menu">${I('menu')}</button>
       <div class="crumb" id="crumb"></div>
-      <button class="pillbtn" data-close>${I('chat', 'width:15px;height:15px')}<span>Chat</span></button>
-      <button class="pillbtn" data-go="library">${I('lib', 'width:15px;height:15px')}<span>My creations</span></button>
     </div>
     <div class="view" id="view"></div>
   </main>
@@ -196,7 +203,8 @@ ${SPRITE}`;
     $('#snav').innerHTML = NAV.map(n => {
       if (n[0] === 'l') return `<div class="sl"${st()}>${n[1]}</div>`;
       if (n[0] === 'a') return `<button class="agent" data-go="${n[1]}"${st()}><span class="ai" style="background:${n[5]}">${I(n[4], 'width:16px;height:16px')}</span><div style="min-width:0;flex:1"><b>${n[2]}</b><small>${n[3]}</small></div><span class="ago" aria-hidden="true">${I('down', 'width:14px;height:14px;transform:rotate(-90deg)')}</span></button>`;
-      if (n[0] === 't') return `<div class="tgrid"${st()}>${TOOLS.map(([k, t, ic]) => `<button class="tg" data-go="${k}">${I(ic, 'width:16px;height:16px')}<span>${t}</span></button>`).join('')}</div>`;
+      // v0.318 tools are rows like every other item (one row style for the whole sidebar), not a bordered grid
+      if (n[0] === 't') return TOOLS.map(([k, t, ic]) => `<button class="sn" data-go="${k}"${st()}>${I(ic)}<span>${t}</span></button>`).join('');
       return `<button class="sn" data-go="${n[0]}"${st()}>${I(n[2])}<span>${n[1]}</span></button>`;
     }).join('');
   }
@@ -205,18 +213,20 @@ ${SPRITE}`;
     if (!s || !s.month_limit_usd) { el.innerHTML = '<span class="mut">Your AI spend is in Account</span>'; return; }
     const k = s.usd_inr || 85, used = (s.month_spent_usd || 0) * k, lim = s.month_limit_usd * k;
     const pct = Math.min(100, used / lim * 100);   // v0.306 the meter fills from empty, and says how much is used
-    el.innerHTML = `<div class="crow1"><span class="mut">Video Studio</span><b class="num">${inr(used)} <span class="dim">/ ${inr(lim)}</span></b></div><div class="bar"><i style="width:0%"></i></div><small class="dim">${pct < 1 && used > 0 ? '<1' : Math.round(pct)}% of this month’s limit used</small>`;
+    // v0.318 what she has LEFT leads (600, never bold 700), the spend sits under the bar in the readable grey
+    el.innerHTML = `<div class="crow1"><span class="mut">This month</span><b class="num">${inr(Math.max(0, lim - used))} left</b></div><div class="bar"><i style="width:0%"></i></div><small class="dim">${inr(used)} of ${inr(lim)} spent · ${pct < 1 && used > 0 ? '<1' : Math.round(pct)}%</small>`;
     requestAnimationFrame(() => requestAnimationFrame(() => { const b = el.querySelector('.bar i'); if (b) b.style.width = pct.toFixed(1) + '%'; }));
   }
   function go(v, opts) {
+    if (v === 'projects') { DIR.project = ''; DIR.view = null; v = 'director'; }   // v0.320 one film list: Film projects opens the Director's
     if (!V[v]) v = 'studio';
     clearTimeout(poll); poll = 0; alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
-    VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
+    artRO?.disconnect(); VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
     el.className = 'view enter'; el.innerHTML = V[v](opts || {}); el.scrollTop = 0;
     $$('#snav [data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === v ? 'page' : 'false'));
     $('#crumb').innerHTML = v === 'studio' ? '<b>Create</b>' : `Create · <b>${TITLE[v]}</b>`;
     $('#shell').classList.remove('navon');
-    (W[v] || (() => {}))(el, opts || {}); paintAll(el); hydrate(el);
+    (W[v] || (() => {}))(el, opts || {}); paintAll(el); hydrate(el); rails(el);
     try { sessionStorage.setItem('hoola.create.view', v); } catch {}
   }
   const V = {}, W = {};
@@ -325,6 +335,19 @@ ${SPRITE}`;
     video: 'Steam rising from a kulhad of chai on a rainy Mumbai balcony, slow dolly in, warm evening light…',
     music: 'A happy Bollywood-style jingle for my sweet shop, dhol and shehnai, 30 seconds…',
     voice: 'Namaste! Is Diwali, Newtika Chai laaya hai ek khaas offer…'};
+  // v0.320 the ask box carries the few settings that matter for the chosen mode and what it costs, before she sends.
+  // [key, state object, choices, menu title, label]; read lazily (the tools' state objects are declared further down)
+  const hsList = m => ({
+    director: [['aspect', DIR, ['16:9', '9:16', '1:1'], 'Shape', v => v], ['seconds', DIR, [15, 30, 45, 60, 90, 120], 'Length', v => v < 60 ? v + ' s' : v / 60 + ' min'],
+      ['language', DIR, ['Hindi', 'Hinglish', 'English', 'Tamil', 'Telugu', 'Marathi', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi'], 'Spoken language', v => v]],
+    image: [['aspect', IMG, ASPECTS, 'Shape', v => v], ['count', IMG, [1, 2, 3, 4], 'How many', v => v + (v > 1 ? ' pictures' : ' picture')]],
+    video: [['aspect', VID, ['9:16', '16:9', '1:1'], 'Shape', v => v], ['seconds', VID, [4, 5, 6, 8, 10, 12, 15], 'Length', v => v + ' s']],
+    music: [['lang', MU, CYC.lang, 'Language', v => v]],
+    voice: [['lang', VO, LANGS, 'Language', v => v]]}[m] || []);
+  const hsPrice = m => ({director: 'Storyboard free', image: '~' + inr(imgCost()), video: 'Price before it starts', music: '~₹7', voice: 'Paise a line'}[m] || '');
+  const hsHTML = () => { const m = AGENTS[homeAgent][0];
+    return hsList(m).map(([k, o, , , f], i) => `<button type="button" class="dd hs" data-hs="${i}">${i === 0 ? I('grid', 'width:15px;height:15px') : ''}<span>${esc(f(o[k]))}</span>${I('down', 'width:14px;height:14px')}</button>`).join('')
+      + `<span class="hsp num">${esc(hsPrice(m))}</span>`; };
   V.studio = () => `
 <div class="home">
   <div class="hero">
@@ -337,6 +360,7 @@ ${SPRITE}`;
       <textarea id="homeq" rows="2" placeholder="A 30-second Diwali ad for my chai brand, warm family moments, ends on our logo…"></textarea>
       <div class="crow">
         <button type="button" class="dd" id="homeAgent" aria-label="Who makes it">${I(AGENTS[homeAgent][2], 'width:15px;height:15px')}<span>${AGENTS[homeAgent][1]}</span>${I('down', 'width:14px;height:14px')}</button>
+        <span class="hset" id="homeSet">${hsHTML()}</span>
         <span class="sp"></span>
         <button class="send" aria-label="Start">${I('send')}</button>
       </div>
@@ -347,7 +371,7 @@ ${SPRITE}`;
   </div>
   <section><div class="sec-h"><h2>Direct your film</h2><a data-go="director">Open Director</a></div>
     ${rail(QUICK.map(([t, k, d], i) => `<button class="qcard" data-quick="${i}"><span class="thumb">${art(k, 'q' + i)}<span class="dur">${d}</span></span><b>${t}</b></button>`).join(''), 'qs')}</section>
-  <section id="tools"><div class="sec-h"><h2>Studio tools</h2><span class="dim" style="font-size:13px">Every tool shares your cast and brand kit</span></div>
+  <section id="tools"><div class="sec-h"><h2>Studio tools</h2><span class="dim" style="font-size:14px">Every tool shares your cast and brand kit</span></div>
     <div class="tools">${ALLTOOLS.map(([v, t, s, k, tag], i) => `<button class="tool" data-go="${v}"><span class="thumb">${art(k, 't' + i)}</span><div style="min-width:0"><b>${t}${tag ? ` <span class="tag ${tag}">${tag === 'hot' ? 'Popular' : 'New'}</span>` : ''}</b><small>${s}</small></div></button>`).join('')}</div></section>
   <section><div class="sec-h"><h2>Your recent creations</h2><a data-go="library">See all</a></div><div class="row" id="recent"></div></section>
   <section><div class="sec-h"><h2>Start from a template</h2><a data-go="templates">See all</a></div>
@@ -363,7 +387,7 @@ ${SPRITE}`;
     load('items').then(() => redraw('studio', drawRecent));
     const agent = i => { homeAgent = i; $('#homeAgent').innerHTML = `${I(AGENTS[i][2], 'width:15px;height:15px')}<span>${AGENTS[i][1]}</span>${I('down', 'width:14px;height:14px')}`;
       $$('[data-mode]', el).forEach(t => t.setAttribute('aria-selected', String(+t.dataset.mode === i)));
-      $('#homeq').placeholder = MODE_HINT[AGENTS[i][0]] || ''; };
+      $('#homeq').placeholder = MODE_HINT[AGENTS[i][0]] || ''; $('#homeSet').innerHTML = hsHTML(); };
     $('#homeAgent', el).addEventListener('click', e => menu(e.currentTarget, AGENTS.map(([v, label, icon, sub]) => ({v, label, icon, sub})), AGENTS[homeAgent][0],
       v => { agent(AGENTS.findIndex(a => a[0] === v)); $('#homeq').focus(); }, 'Who makes it'));
     $('#homeForm', el).addEventListener('submit', e => {
@@ -378,6 +402,8 @@ ${SPRITE}`;
     el.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.mode) { agent(+b.dataset.mode); $('#homeq').focus(); return; }
+      if (b.dataset.hs) { const [k, o, L, title, f] = hsList(AGENTS[homeAgent][0])[+b.dataset.hs];
+        menu(b, L.map(v => ({v, label: f(v)})), o[k], v => { o[k] = L.find(x => String(x) === String(v)) ?? v; $('#homeSet').innerHTML = hsHTML(); }, title); return; }
       if (b.dataset.rail) { const t = b.parentElement.querySelector('.rtrack'); t.scrollBy({left: +b.dataset.rail * t.clientWidth * .8, behavior: 'smooth'}); return; }
       if (b.dataset.fill) { agent(+b.dataset.agent); const t = $('#homeq'); t.value = b.dataset.fill + ': '; t.focus(); }
       if (b.dataset.quick) { const q = QUICK[+b.dataset.quick]; DIR.brief = q[3]; DIR.project = ''; DIR.seconds = parseInt(q[2]) * (q[2].includes('min') ? 60 : 1); go('director', {focus: true}); }
@@ -403,8 +429,8 @@ ${SPRITE}`;
     <div class="seg" role="group" aria-label="Kind"><button aria-pressed="${!IMG.refs.length}" data-imode="new">New picture</button><button aria-pressed="${!!IMG.refs.length}" data-imode="edit">Change my photo</button></div>
     <div class="prow"><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Engine</small><b>Hoola image engine</b></div><span class="tag">Readable Indian scripts</span></div>
     <div class="box">
-      <h3>Describe your picture <span class="dim num" style="font-size:12px;font-weight:400;margin-left:auto" id="imgCount">${IMG.prompt.length} / 4000</span><button type="button" class="lnk" data-ienh>${I('wand', 'width:14px;height:14px')} Enhance</button></h3>
-      <button class="refs" type="button" data-addref><span class="stack">${IMG.refs.length ? IMG.refs.map(r => `<i><img alt="" ${r.local ? `src="${esc(r.local)}"` : `data-src="${itemPath(r.file_id)}"`}></i>`).join('') : `<i>${I('image', 'width:16px;height:16px;margin:10px 6px')}</i>`}</span><div><b>${IMG.refs.length ? IMG.refs.length + ' reference' + (IMG.refs.length > 1 ? 's' : '') : 'Add references'}</b> <span class="dim" style="font-size:12px">${IMG.refs.length ? '' : 'optional'}</span><small>Your photo, product or character · PNG, JPG, WebP · up to 3</small></div>${IMG.refs.length ? `<span class="ib" data-clearrefs aria-label="Remove references">${I('x', 'width:15px;height:15px')}</span>` : ''}</button>
+      <h3>Describe your picture <span class="dim num" style="font-size:12.5px;font-weight:400;margin-left:auto" id="imgCount">${IMG.prompt.length} / 4000</span><button type="button" class="lnk" data-ienh>${I('wand', 'width:14px;height:14px')} Enhance</button></h3>
+      <button class="refs" type="button" data-addref><span class="stack">${IMG.refs.length ? IMG.refs.map(r => `<i><img alt="" ${r.local ? `src="${esc(r.local)}"` : `data-src="${itemPath(r.file_id)}"`}></i>`).join('') : `<i>${I('image', 'width:16px;height:16px;margin:10px 6px')}</i>`}</span><div><b>${IMG.refs.length ? IMG.refs.length + ' reference' + (IMG.refs.length > 1 ? 's' : '') : 'Add references'}</b> <span class="dim" style="font-size:12.5px">${IMG.refs.length ? '' : 'optional'}</span><small>Your photo, product or character · PNG, JPG, WebP · up to 3</small></div>${IMG.refs.length ? `<span class="ib" data-clearrefs aria-label="Remove references">${I('x', 'width:15px;height:15px')}</span>` : ''}</button>
       <textarea id="imgq" rows="5" maxlength="4000" placeholder="A festive Diwali poster for Newtika Chai: a clay kulhad with steam, diyas, marigold, headline 'Har shaam khaas' in Hindi">${esc(IMG.prompt)}</textarea>
       <div class="btool">
         <button class="ib" aria-label="Clear" data-iclear>${I('trash', 'width:16px;height:16px')}</button>
@@ -612,7 +638,13 @@ ${SPRITE}`;
     if (out?.url) return `<video muted playsinline preload="metadata" src="${esc(out.url)}"${out.thumb ? ` poster="${esc(out.thumb)}"` : ''}></video>`;
     for (const s of p.shots || []) { const t = (s.take_list || []).find(x => x.picked) || (s.take_list || []).slice(-1)[0]; if (t?.url) return `<video muted playsinline preload="metadata" src="${esc(t.url)}"></video>`; }
     const kf = (p.shots || []).find(s => s.keyframe); if (kf) return `<img alt="" src="${esc(kf.keyframe)}">`;
-    return art('film', p.project);
+    return initTile(p.project);
+  }
+  // v0.320 a film with no picture yet: its initial on a calm colour of its own (the same drawn moon on every card made films look alike)
+  function initTile(name) {
+    let h = 0; for (const c of String(name)) h = (h * 31 + c.codePointAt(0)) % 360;
+    const ch = [...String(name).trim()][0] || '·';
+    return `<span class="finit" style="--fh:${h}" aria-hidden="true"><b>${esc(ch.toUpperCase())}</b></span>`;
   }
   // the price card: line by line, the total on the Haan button; nothing runs before it, never more than it
   function approvalRow(a) {
@@ -754,19 +786,21 @@ ${SPRITE}`;
   V.director = o => {
     const p = DIR.view;
     if (!DIR.project || !p) return `<div class="dir">
-  <div class="dhero">${art('film', 'dirhero')}<span class="tag hot">Director agent</span><h1>Brief in, finished film out</h1>
+  <div class="dhero"><span class="tag hot">Director agent</span><h1>Brief in, finished film out</h1>
     <form class="compose" id="dirForm" style="width:min(760px,100%)"><label for="dirq" class="sr">Your film brief</label><textarea id="dirq" rows="3" placeholder="A 45-second Diwali ad for Newtika Chai: a family comes home, Dadi makes chai, ends on our logo">${esc(DIR.brief)}</textarea>
       <div class="crow"><button type="button" class="dd" data-dcyc="aspect">${I('grid', 'width:15px;height:15px')}<span>${DIR.aspect}</span></button><button type="button" class="dd" data-dcyc="seconds"><span>${DIR.seconds} s</span></button><button type="button" class="dd" data-dcyc="language"><span>${DIR.language}</span></button><button type="button" class="dd" data-dcyc="music">${I('music', 'width:15px;height:15px')}<span>${DIR.music || 'No music'}</span></button><button type="button" class="dd" data-dnewmodel>${I('spark', 'width:15px;height:15px')}<span>${esc(mOf(DIR.model)?.name || 'Hoola Auto')}</span>${I('down', 'width:14px;height:14px')}</button><button type="button" class="dd" data-dnewres><span>${DIR.res}</span>${I('down', 'width:14px;height:14px')}</button><span class="sp"></span><button class="send" aria-label="Plan the film">${I('send')}</button></div></form>
     <p class="mut" style="max-width:560px">Hoola writes the storyboard for free. Pictures, shots and music each show their price first; nothing is spent until you tap Haan.</p></div>
   ${DIR.busy ? `<div class="box"><b>${esc(DIR.busy)}…</b><div class="bar"><i class="indet"></i></div></div>` : ''}
-  <section><div class="sec-h"><h2>Your films</h2><span class="dim" style="font-size:13px">${(D.studio?.projects || []).length} projects</span></div><div class="scenes" id="films"></div></section></div>`;
+  <section><div class="sec-h"><h2>Your films</h2><div class="fbar"><label class="fsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search your films</span><input id="fq" type="search" placeholder="Search films" value="${esc(DIR.fq || '')}"></label><button type="button" class="dd" data-fsort><span>${{new: 'Recent first', az: 'Name A–Z', step: 'Furthest along'}[DIR.fsort || 'new']}</span>${I('down', 'width:14px;height:14px')}</button></div></div><div class="films" id="films"></div></section></div>`;
     const st = stepState(p), cur = STEPS.find(([k]) => !st[k])?.[0] || 'done';
     const nx = p.next || {};
     return `<div class="dir">
   <div class="sec-h" style="margin:0;align-items:center"><div style="min-width:0"><button class="lnk" data-dirback>${I('left', 'width:14px;height:14px')} All films</button><h2 style="font:400 26px/1.25 var(--serif);margin-top:4px">${esc(p.project)}</h2><p class="mut" style="margin-top:4px;max-width:760px">${esc((p.brief || '').slice(0, 280))}</p></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="dd" data-pmodel title="The model for the whole film">${I('spark', 'width:15px;height:15px')}<span>${esc(mOf(p.prefs?.model)?.name || 'Hoola Auto')}</span>${I('down', 'width:14px;height:14px')}</button><button class="dd" data-pres title="Resolution of the shots"><span>${esc(p.prefs?.resolution || 'By quality')}</span>${I('down', 'width:14px;height:14px')}</button>${p.working ? `<button class="btn sec" data-dcancel>${I('x', 'width:15px;height:15px')}Stop</button>` : ''}<button class="btn pri" data-next="${esc(nx.kind || '')}" ${['wait', 'done'].includes(nx.kind) ? 'disabled' : ''}>${esc(nextLabel(nx))}${nx.inr ? ` <small class="num">${inr(nx.inr)}</small>` : ''}</button></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="dd" data-pmodel title="The model for the whole film">${I('spark', 'width:15px;height:15px')}<span>${esc(mOf(p.prefs?.model)?.name || 'Hoola Auto')}</span>${I('down', 'width:14px;height:14px')}</button><button class="dd" data-pres title="Resolution of the shots"><span>${esc(p.prefs?.resolution || 'By quality')}</span>${I('down', 'width:14px;height:14px')}</button>${p.working ? `<button class="btn sec" data-dcancel>${I('x', 'width:15px;height:15px')}Stop</button>` : ''}</div></div>
   ${moneyLine(p.money) ? `<div class="moneybar">${moneyLine(p.money)}</div>` : ''}
   <div class="pipe" role="list">${STEPS.map(([k, t], i) => `<button role="listitem" class="${st[k] ? 'done' : ''}" ${k === cur ? 'aria-current="step"' : ''} data-step="${k}"><i>${st[k] ? '✓' : i + 1}</i>${t}</button>`).join('')}</div>
+  <div class="nextc${['wait', 'done'].includes(nx.kind) ? ' quiet' : ''}"><div class="nxt"><small>${nx.kind === 'done' ? 'All steps done' : nx.kind === 'wait' ? 'Working' : 'Next step · ' + (NEXT_STEP[nx.kind] || '')}</small><b>${esc(nextLabel(nx))}</b><p>${NEXT_WHY[nx.kind] || ''}</p></div>
+    ${nx.kind === 'done' ? '' : `<button class="create nxb" data-next="${esc(nx.kind || '')}" ${['wait', 'done'].includes(nx.kind) ? 'disabled' : ''}>${I('spark', 'width:17px;height:17px')}<span>${esc(nextLabel(nx))}</span>${nx.inr ? `<small class="num">${inr(nx.inr)}</small>` : nx.kind === 'plan' ? '<small>Free</small>' : ''}</button>`}</div>
   ${(p.approvals || []).length ? `<section class="box"><h3>Waiting for your Haan</h3>${p.approvals.map(approvalRow).join('')}</section>` : ''}
   ${p.progress && p.working ? `<div class="box"><div style="display:flex;justify-content:space-between"><b>Making ${p.progress.total} shot${p.progress.total === 1 ? '' : 's'} · ${esc(p.progress.quality || '')}</b><span class="num mut">${p.progress.pct}%${p.progress.eta_s ? ' · about ' + Math.ceil(p.progress.eta_s / 60) + ' min' : ''}</span></div><div class="bar"><i style="width:${p.progress.pct}%"></i></div></div>` : ''}
   ${(p.outputs || []).length ? `<section><div class="sec-h"><h2>Your film</h2></div><div class="outs">${p.outputs.slice().reverse().map(o => `<div class="out"><video controls playsinline preload="metadata" src="${esc(o.url)}"${o.thumb ? ` poster="${esc(o.thumb)}"` : ''}></video><small>${o.preview ? 'Preview' : 'Final'} · ${o.seconds || ''} s · ${o.mb} MB <a href="${esc(o.url)}" download="${esc(o.name || 'hoola-film.mp4')}">Download</a></small></div>`).join('')}</div></section>` : ''}
@@ -774,9 +808,10 @@ ${SPRITE}`;
     <div class="prow2"><label class="fld">Name<input id="cname" maxlength="40" value="${esc(DIR.castDraft?.name || '')}"></label><label class="fld">Voice<select id="cvoice"><option value="female">Female</option><option value="male">Male</option></select></label></div>
     <label class="fld">Looks like<textarea id="cdesc" rows="2" maxlength="400" placeholder="28, warm smile, long black hair in a braid, mustard kurta">${esc(DIR.castDraft?.description || '')}</textarea></label>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn pri" data-castgo>${I('cast', 'width:15px;height:15px')}Make this character</button><button class="lnk" data-castskip>Skip: no fixed characters in this film</button></div><p class="note">An AI character keeps the same face in every shot. A real person needs their permission (add from the chat with their photo).</p></section>
-  <section><div class="sec-h"><h2>Storyboard · ${(p.shots || []).length} shots · ${p.seconds || 0} s</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-dpreview>${I('play', 'width:14px;height:14px')}Free preview</button><button class="btn sec" data-castopen>${I('cast', 'width:15px;height:15px')}Cast</button><button class="btn sec" data-dmusic>${I('music', 'width:15px;height:15px')}Music</button><button class="btn sec" data-replan>${I('redo', 'width:15px;height:15px')}Rewrite</button></div></div>
+  <section><div class="sec-h"><h2>Storyboard · ${(p.shots || []).length} shots · ${p.seconds || 0} s</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-dpreview>${I('play', 'width:14px;height:14px')}Free preview</button><button class="btn sec" data-dmore aria-haspopup="menu">More${I('down', 'width:14px;height:14px')}</button><span hidden><button data-castopen></button><button data-dmusic></button><button data-replan></button></span></div></div>
+    ${timeline(p.shots || [])}
     ${p.planning && !(p.shots || []).length ? `<div class="box"><b>Writing the storyboard…</b><div class="bar"><i class="indet"></i></div></div>` : ''}
-    <div class="scenes">${(p.shots || []).map((s, i) => sceneCard(s, i)).join('')}</div></section>
+    <div class="scenes story">${(() => { let t = 0; return (p.shots || []).map((s, i) => { const a = t; t += +s.duration || 0; return sceneCard(s, i, a); }).join(''); })()}</div></section>
   ${(p.painting || []).length ? `<div class="box castwait"><div><b>Painting ${p.painting.length} opening picture${p.painting.length > 1 ? 's' : ''}…</b><small class="mut">About 20-40 seconds each, three at a time. Each shot then starts from its picture.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
   ${p.pics_error && !(p.painting || []).length && !p.prefs?.pics_skip ? `<div class="box casterr">${I('x', 'width:15px;height:15px')}<div><b>${esc(p.pics_error)}</b><div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">${(p.shots || []).some(x => !x.keyframe) ? '<button class="btn sec" data-picsretry>Try again for the missing pictures</button>' : ''}<button class="lnk" data-picsskip>Skip pictures: make the shots from the words</button></div></div></div>` : ''}
   ${(p.casting || []).length ? `<div class="box castwait"><div><b>Painting ${p.casting.map(esc).join(', ')}'s picture…</b><small class="mut">About 20-40 seconds. The character then stays the same in every shot.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
@@ -784,19 +819,42 @@ ${SPRITE}`;
   ${(p.character_list || []).length ? `<section><div class="sec-h"><h2>Cast</h2></div><div class="cast">${p.character_list.map(c => `<div class="actor"><span class="thumb">${c.image ? `<img alt="" src="${esc(c.image)}">` : art('cast', c.name)}</span><div><b>${esc(c.name)}</b><small>${esc(c.description.slice(0, 80))}</small></div></div>`).join('')}</div></section>` : ''}
 </div>`;
   };
+  // v0.320 the next step says what happens and what it costs, right under the steps (it sat alone in the top corner)
+  const NEXT_STEP = {plan: 'Storyboard', keyframes: 'Pictures', generate: 'Shots', assemble: 'Final film'};
+  const NEXT_WHY = {plan: 'Hoola writes the scenes, camera moves and spoken lines. The storyboard is free.',
+    keyframes: 'Hoola paints the first frame of every shot, so faces and products stay the same across the film.',
+    generate: 'Each shot is filmed from its picture by the best ready model. Pick the take you like on each shot.',
+    assemble: 'The picked shots, music and titles are joined into one film you can download.',
+    wait: 'Hoola is working on it. This page updates by itself; you can leave and come back.',
+    done: 'Your film is below. Change any shot and make it again whenever you like.'};
+  const clock = n => { n = Math.round(+n || 0); return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`; };
+  // v0.320 the film as a timeline: one segment per shot, as long as the shot, numbered; a tap jumps to that shot
+  function timeline(shots) {
+    if (!shots.length) return '';
+    const tot = shots.reduce((a, x) => a + (+x.duration || 0), 0) || 1; let t = 0;
+    return `<div class="tl"><div class="tlr" role="list" aria-label="Film timeline">${shots.map((x, i) => { const a = t; t += +x.duration || 0;
+      const made = (x.take_list || []).some(k => k.picked) ? ' made' : x.keyframe ? ' pic' : '';
+      return `<button role="listitem" class="tls${made}" style="flex:${+x.duration || 1}" data-jump="${esc(x.id)}" title="Scene ${i + 1} · ${clock(a)} to ${clock(t)}"><span>${i + 1}</span></button>`; }).join('')}</div>
+      <div class="tlt num"><span>0:00</span><span>${clock(tot / 2)}</span><span>${clock(tot)}</span></div></div>`;
+  }
   function nextLabel(n) {
     return {plan: 'Write the storyboard', keyframes: 'Paint the opening pictures', generate: 'Make the shots', assemble: 'Make the final film', wait: 'Working…', done: 'Film ready'}[n.kind] || 'Next';
   }
-  function sceneCard(s, i) {
+  // v0.320 a failed shot says what happened in plain words; the machine text (ffmpeg, hex addresses) stays on hover only
+  const plainErr = e => /api.?key|unauthori[sz]ed|\b40[13]\b|invalid key/i.test(e) ? 'The video service refused the key. Check Create > Setup > Engines.'
+    : /quota|\b429\b|rate.?limit|busy|overloaded/i.test(e) ? 'The video service is busy right now. Try again in a few minutes.'
+    : /safety|blocked|policy|moderation/i.test(e) ? 'The video service would not make this shot. Change its words and try again.'
+    : /0x[0-9a-f]{4,}|\[[a-z]+ @|traceback|filtergraph|errno|exception/i.test(e) ? 'This shot could not be made. Try again, or change its words.' : e.slice(0, 160);
+  function sceneCard(s, i, t0 = 0) {
     const take = (s.take_list || []).find(t => t.picked) || (s.take_list || []).slice(-1)[0];
     const media = take?.url ? `<video controls playsinline preload="metadata" src="${esc(take.url)}"></video>` : s.keyframe ? `<img alt="" src="${esc(s.keyframe)}">` : art('film', s.id);
     const ph = {paint: 'Painting', video: 'Making', queued: 'Queued', lipsync: 'Lip sync', retrying: 'Retrying', failed: 'Failed', done: 'Picked', pictured: 'Picture ready'}[s.phase] || '';
     return `<div class="scene" data-shot="${esc(s.id)}"><div class="one">${media}${['paint', 'video', 'queued', 'lipsync', 'retrying'].includes(s.phase) ? `<span class="ring"></span><span class="pct">${s.pct != null ? s.pct + '%' : ph}</span>` : ''}</div>
-      <div class="sb"><b>${i + 1} · ${esc(s.kind)}${ph ? ` <span class="tag${s.phase === 'failed' ? ' hot' : ''}">${ph}</span>` : ''}</b>
-        <small class="clamp" data-ptext>${esc(s.prompt)}</small>${take && take.billed_inr != null && take.quality !== 'preview' ? `<small class="moneyl num">${esc(take.model_label || '')} · you pay ${money(take.billed_inr)}${take.est_inr != null && take.est_inr > take.billed_inr + 0.05 ? ` (card ${money(take.est_inr)})` : ''}${take.actual_inr != null ? ` · provider ${money(take.actual_inr)}` : ''}</small>` : ''}${s.dialogue ? `<small>“${esc(s.dialogue)}”</small>` : ''}${s.error ? `<small class="bad clamp" title="${esc(s.error)}">${esc(s.error.slice(0, 160))}</small>` : ''}
+      <div class="sb"><b>${i + 1} · ${esc(s.kind)}${ph ? ` <span class="tag${s.phase === 'failed' ? ' hot' : ''}">${ph}</span>` : ''}<span class="sct num">${clock(t0)} – ${clock(t0 + (+s.duration || 0))}</span></b>
+        <small class="clamp" data-ptext>${esc(s.prompt)}</small>${take && take.billed_inr != null && take.quality !== 'preview' ? `<small class="moneyl num">${esc(take.model_label || '')} · you pay ${money(take.billed_inr)}${take.est_inr != null && take.est_inr > take.billed_inr + 0.05 ? ` (card ${money(take.est_inr)})` : ''}${take.actual_inr != null ? ` · provider ${money(take.actual_inr)}` : ''}</small>` : ''}${s.dialogue ? `<small>“${esc(s.dialogue)}”</small>` : ''}${s.error ? `<small class="bad clamp" title="${esc(s.error)}">${esc(plainErr(s.error))}</small>` : ''}
         <div class="sm"><span class="tag">${s.duration} s</span><button class="tag mchip" data-smodel="${esc(s.id)}" title="Model for this scene">${esc(s.model_label || 'Auto')} ▾</button>${(s.characters || []).map(c => `<span class="mention">@${esc(c)}</span>`).join('')}<span style="flex:1"></span>
           ${(s.take_list || []).length > 1 ? (s.take_list || []).map(t => `<button class="tk${t.picked ? ' on' : ''}" data-take="${t.n}" aria-label="Use take ${t.n}${t.model_label ? ' by ' + esc(t.model_label) : ''}" title="${esc(t.model_label || '')}">${t.n}${new Set((s.take_list || []).map(x => x.model)).size > 1 && t.model_label ? ' · ' + esc(t.model_label) : ''}</button>`).join('') : ''}
-          <button class="ib" style="width:28px;height:28px" aria-label="Edit scene" data-edit>${I('pen', 'width:14px;height:14px')}</button></div></div></div>`;
+          <button class="ib" aria-label="Edit scene" data-edit>${I('pen', 'width:14px;height:14px')}</button></div></div></div>`;
   }
   async function dirLoad() {
     if (!DIR.project) return;
@@ -805,9 +863,16 @@ ${SPRITE}`;
   }
   function drawFilms() {
     const el = $('#films'); if (!el) return;
-    const ps = D.studio?.projects || [];
-    el.innerHTML = ps.map(p => `<button class="scene" data-openproj="${esc(p.project)}" style="text-align:left"><div class="one">${projMedia(p)}</div><div class="sb"><b>${esc(p.project)}</b><small>${esc((p.brief || '').slice(0, 90))}</small><span class="bar" style="margin-top:6px"><i style="width:${Math.round(Object.values(stepState(p)).filter(Boolean).length / STEPS.length * 100)}%"></i></span></div></button>`).join('')
-      || `<p class="mut">No films yet. Write a brief above.</p>`;
+    const q = (DIR.fq || '').trim().toLowerCase(), done = p => Object.values(stepState(p)).filter(Boolean).length;
+    let ps = (D.studio?.projects || []).filter(p => !q || (p.project + ' ' + (p.brief || '')).toLowerCase().includes(q));
+    if (DIR.fsort === 'az') ps = ps.slice().sort((a, b) => a.project.localeCompare(b.project));
+    if (DIR.fsort === 'step') ps = ps.slice().sort((a, b) => done(b) - done(a));
+    // v0.320 each film says where it is ("Step 4 of 8 · Pictures") and offers Continue; a thin bar alone said nothing
+    el.innerHTML = ps.map(p => { const st = stepState(p), i = STEPS.findIndex(([k]) => !st[k]), busy = p.working || p.planning || (p.painting || []).length;
+      const where = i < 0 ? 'Film ready' : `Step ${i + 1} of ${STEPS.length} · ${STEPS[i][1]}`;
+      return `<button class="fcard" data-openproj="${esc(p.project)}"><span class="one">${projMedia(p)}${busy ? '<span class="fwork">Working</span>' : ''}</span><span class="fb"><b>${esc(p.project)}</b><small class="clamp2">${esc((p.brief || '').slice(0, 140))}</small>
+        <span class="fstep"><span class="bar"><i style="width:${Math.round(done(p) / STEPS.length * 100)}%"></i></span><small>${where}</small></span><span class="fgo">${i < 0 ? 'Open' : 'Continue'}${I('down', 'width:14px;height:14px;transform:rotate(-90deg)')}</span></span></button>`; }).join('')
+      || (q ? `<p class="mut">No film matches “${esc(DIR.fq)}”.</p>` : `<p class="mut">No films yet. Write a brief above; the storyboard is free.</p>`);
     paintAll(el);
   }
   async function newFilm() {
@@ -824,7 +889,8 @@ ${SPRITE}`;
   W.director = async (el, o) => {
     const n = alive;
     if (DIR.project && !DIR.view) { await dirLoad(); if (n !== alive) return; go('director', o); return; }
-    if (!DIR.project) { load('studio').then(() => redraw('director', drawFilms)); }
+    if (!DIR.project) { load('studio').then(() => redraw('director', drawFilms));
+      $('#fq', el)?.addEventListener('input', e => { DIR.fq = e.target.value; drawFilms(); }); }
     else { const tick = async () => { if (VIEW !== 'director' || !DIR.project) return; await dirLoad(); const p = DIR.view;
         if (p && VIEW === 'director' && !$(':focus', el)?.matches('textarea,input')) { const y = $('#view').scrollTop; go('director'); $('#view').scrollTop = y; }
         else poll = setTimeout(tick, 5000); };
@@ -859,6 +925,11 @@ ${SPRITE}`;
           music: v => v ? v[0].toUpperCase() + v.slice(1) : 'No music'}[k];
         menu(b, opt(L, fmt), DIR[k], v => { DIR[k] = v; b.querySelector('span').textContent = k === 'seconds' ? v + ' s' : (v || 'No music'); },
           {aspect: 'Shape', seconds: 'Length', language: 'Spoken language', music: 'Music (Google Lyria)'}[k]); return; }
+      if (b.hasAttribute('data-dmore')) { menu(b, [{v: 'castopen', label: 'Add a character', sub: 'The same face in every shot'}, {v: 'dmusic', label: 'Add music', sub: 'Google Lyria, the price shows first'},
+        {v: 'replan', label: 'Rewrite the storyboard', sub: 'Shots made so far stay in the film'}], '', v => el.querySelector(`[data-${v}]`)?.click(), 'More for this film'); return; }
+      if (b.dataset.jump) { const c = el.querySelector(`.scene[data-shot="${CSS.escape(b.dataset.jump)}"]`); if (c) { c.scrollIntoView({behavior: 'smooth', block: 'center'}); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); } return; }
+      if (b.hasAttribute('data-fsort')) { menu(b, [{v: 'new', label: 'Recent first'}, {v: 'az', label: 'Name A–Z'}, {v: 'step', label: 'Furthest along'}], DIR.fsort || 'new',
+        v => { DIR.fsort = v; b.querySelector('span').textContent = {new: 'Recent first', az: 'Name A–Z', step: 'Furthest along'}[v]; drawFilms(); }, 'Sort films'); return; }
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); return; }
       if (b.hasAttribute('data-dirback')) { DIR.project = ''; DIR.view = null; go('director'); return; }
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await dirLoad(); go('director'); return; }
@@ -909,7 +980,7 @@ ${SPRITE}`;
   W.script = el => {
     const q = $('#scq'); q.addEventListener('input', () => SC.brief = q.value);
     load('items').then(() => redraw('script', () => { const l = $('#sclist'); if (!l) return; const its = items('script');
-      l.innerHTML = its.map(it => `<button class="mrow${it.id === SC.id ? ' on' : ''}" data-scopen="${it.id}"><b>${esc(it.title)}</b><small>${when(it.created)}</small></button>`).join('') || '<p class="mut" style="font-size:13px">Scripts you write are kept here.</p>'; }));
+      l.innerHTML = its.map(it => `<button class="mrow${it.id === SC.id ? ' on' : ''}" data-scopen="${it.id}"><b>${esc(it.title)}</b><small>${when(it.created)}</small></button>`).join('') || '<p class="mut" style="font-size:14px">Scripts you write are kept here.</p>'; }));
     let t = 0; const doc = $('#scdoc');
     doc?.addEventListener('input', () => { SC.text = doc.innerText; clearTimeout(t); t = setTimeout(() => SC.id && api('PUT', `/api/create/items/${encodeURIComponent(SC.id)}/text`, {text: SC.text}).catch(e => toast(e.message, true)), 800); });
     el.addEventListener('click', async e => {
@@ -940,7 +1011,7 @@ ${SPRITE}`;
       <p class="note">Hoola draws a four-view sheet (front, three-quarter, side, back) so the face stays the same in every shot. Only fictional people here; a real person needs their permission.</p></div>
   </aside><section><div class="dir" style="padding-top:18px">
     <div id="casel"></div>
-    <section><div class="sec-h"><h2>Your cast</h2><span class="dim" style="font-size:13px">Same face and outfit in every shot</span></div><div class="cast" id="castgrid"></div></section></div></section></div>`;
+    <section><div class="sec-h"><h2>Your cast</h2><span class="dim" style="font-size:14px">Same face and outfit in every shot</span></div><div class="cast" id="castgrid"></div></section></div></section></div>`;
   function drawCast() {
     const g = $('#castgrid'); if (!g) return;
     const its = items('cast'), jobs = running('cast');
@@ -1062,7 +1133,7 @@ ${SPRITE}`;
       ...(VO.g !== 'female' ? Object.entries(vs.male).map(([n, d]) => [n, n, 'Male · ' + d, 'portrait']) : [])];
     return `<div class="gen"><div class="panel"><div class="pbody">
     ${toolTabs('voice')}
-    <div class="box"><h3>Script <span class="dim num" style="font-size:12px;font-weight:400" id="voCount">${VO.text.length} / 5000</span></h3>
+    <div class="box"><h3>Script <span class="dim num" style="font-size:12.5px;font-weight:400" id="voCount">${VO.text.length} / 5000</span></h3>
       <textarea id="voq" rows="6" maxlength="5000" placeholder="Is Diwali, apne ghar ko roshan kijiye. Newtika chai ke saath, har shaam khaas.">${esc(VO.text)}</textarea></div>
     <div class="lbl">Language</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi'].map(l => `<button class="chip" aria-pressed="${l === VO.lang}" data-volang="${l}">${l}</button>`).join('')}</div>
     <div class="lbl">Voice</div><div class="seg"><button aria-pressed="${VO.g === 'all'}" data-vog="all">All</button><button aria-pressed="${VO.g === 'female'}" data-vog="female">Female</button><button aria-pressed="${VO.g === 'male'}" data-vog="male">Male</button></div>
@@ -1108,7 +1179,7 @@ ${SPRITE}`;
   function drawDub() {
     const l = $('#dublist'), v = $('#dubview'); if (!l) return;
     const its = items('dub');
-    l.innerHTML = its.map(it => `<button class="mrow${it.id === DB.sel ? ' on' : ''}" data-dubsel="${it.id}"><b>${esc(it.title)}</b><small>${when(it.created)}</small></button>`).join('') || '<p class="mut" style="font-size:13px">Your dubbed videos are kept here.</p>';
+    l.innerHTML = its.map(it => `<button class="mrow${it.id === DB.sel ? ' on' : ''}" data-dubsel="${it.id}"><b>${esc(it.title)}</b><small>${when(it.created)}</small></button>`).join('') || '<p class="mut" style="font-size:14px">Your dubbed videos are kept here.</p>';
     const jobs = running('dub'), bad = failed('dub');
     const it = its.find(x => x.id === DB.sel) || (!jobs.length && its[0]); if (it) DB.sel = it.id;
     if (jobs.length) { v.innerHTML = jobs.map(j => `<div class="box"><b>${esc(j.title)}</b><small class="mut">${esc(j.step === 'listening' ? 'Listening to who says what' : j.step ? j.step[0].toUpperCase() + j.step.slice(1) : 'Starting')}…</small><div class="bar"><i class="indet"></i></div></div>`).join(''); return; }
@@ -1159,13 +1230,13 @@ ${SPRITE}`;
     <h3>Quick asks</h3><div class="aitools">${[['Cut the silences', 'cut'], ['Hindi captions', 'text'], ['Make it 9:16', 'grid'], ['Beat-synced cuts', 'music'], ['Brighter colours', 'wand'], ['Shorter intro', 'minus']].map(([t, ic]) => `<button data-ai="${t}">${I(ic, 'width:14px;height:14px')}${t}</button>`).join('')}</div>
     <button class="create" style="flex:none" id="edGo" ${ED.clips.length ? '' : 'disabled'}>${I('cut', 'width:16px;height:16px')}Make the edit</button>
     ${lt ? `<a class="btn sec" href="${esc(lt.url)}" download="${esc(lt.name || 'hoola-edit.mp4')}">${I('dl', 'width:16px;height:16px')}Download v${lt.n}</a>` : ''}
-    ${j?.post_caption ? `<h3>Post caption</h3><p class="mut" style="font-size:13px">${esc(j.post_caption)}</p>` : ''}</div>
+    ${j?.post_caption ? `<h3>Post caption</h3><p class="mut" style="font-size:14px">${esc(j.post_caption)}</p>` : ''}</div>
   <div class="timeline"><div class="tlbar"><span>Story order</span><span style="flex:1"></span><span class="num">${ED.clips.length} clip${ED.clips.length === 1 ? '' : 's'}${j?.versions?.length ? ' · ' + j.versions.length + ' version' + (j.versions.length > 1 ? 's' : '') : ''}</span></div>
     <div class="strip">${ED.clips.map((c, i) => `<span class="sclip" style="flex:${c.type.startsWith('video/') ? 3 : 1}"><b>${i + 1}</b>${esc(c.name)}</span>`).join('') || '<span class="mut" style="padding:10px">Clips play in this order. Move them up or down on the left.</span>'}</div>
     ${j?.versions?.length > 1 ? `<div class="vers">${j.versions.map(v => `<span class="tag">v${v.n}</span>`).join('')}</div>` : ''}</div></div>`; };
   function drawEdJobs() {
     const el = $('#edjobs'); if (!el) return;
-    el.innerHTML = (ED.jobs || []).slice(0, 8).map(j => `<button class="mrow${j.id === ED.job ? ' on' : ''}" data-edjob="${esc(j.id)}"><b>${esc(j.title || j.brief || 'Edit')}</b><small>${esc(j.platform_label || '')} · ${esc(j.status)}</small></button>`).join('') || '<p class="mut" style="font-size:13px">Your edits are kept here.</p>';
+    el.innerHTML = (ED.jobs || []).slice(0, 8).map(j => `<button class="mrow${j.id === ED.job ? ' on' : ''}" data-edjob="${esc(j.id)}"><b>${esc(j.title || j.brief || 'Edit')}</b><small>${esc(j.platform_label || '')} · ${esc(j.status)}</small></button>`).join('') || '<p class="mut" style="font-size:14px">Your edits are kept here.</p>';
   }
   async function edLoad() {
     try { const r = await api('GET', '/api/video/jobs'); ED.jobs = r.jobs || []; ED.platforms = r.platforms || ED.platforms; } catch { ED.jobs = ED.jobs || []; }
@@ -1213,7 +1284,7 @@ ${SPRITE}`;
   let libQ = '', libSort = 'new';
   const LIBS = {new: 'Newest first', old: 'Oldest first', az: 'Name A–Z'};
   const LIBF = [['all', 'All'], ['image', 'Pictures'], ['cast', 'Cast'], ['song', 'Songs'], ['voice', 'Voice-overs'], ['dub', 'Dubs'], ['script', 'Scripts'], ['film', 'Films']];
-  V.library = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">My creations</h2><span class="dim" style="font-size:13px">Kept until you delete them</span></div>
+  V.library = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">My creations</h2><span class="dim" style="font-size:14px">Kept until you delete them</span></div>
     <div class="libbar"><div class="chips">${LIBF.map(([k, n]) => `<button class="chip" aria-pressed="${k === libF}" data-lib="${k}">${n}</button>`).join('')}</div>
       <span class="sp"></span><label class="lsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search my creations</span><input id="libq" type="search" placeholder="Search" value="${esc(libQ)}"></label>
       <button type="button" class="dd" id="libSort" aria-label="Sort">${I('layers', 'width:15px;height:15px')}<span>${LIBS[libSort]}</span>${I('down', 'width:14px;height:14px')}</button></div>
@@ -1243,7 +1314,7 @@ ${SPRITE}`;
   /* ---------------- v0.308 ENGINES: the real AI services behind Create, checked live; keys never come to the browser ---------------- */
   const EST = {ready: ['Ready', 'ok'], unchecked: ['Key set', 'ok'], missing: ['No key', 'off'], refused: ['Key refused', 'bad'], unreachable: ['Not reachable', 'bad']};
   V.engines = () => `<div class="home eng">
-    <div class="sec-h" style="margin:0"><div><h2 style="font:400 28px/1.2 var(--serif)">Engines</h2><p class="mut" style="margin-top:6px">The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.</p></div>
+    <div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">Engines</h2><p class="mut" style="margin-top:6px">The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.</p></div>
       <button class="btn sec" data-recheck>${I('redo', 'width:15px;height:15px')}Check again</button></div>
     <div id="engs"><p class="mut">Checking each engine…</p></div></div>`;
   function drawEngines(r) {
@@ -1261,21 +1332,21 @@ ${SPRITE}`;
             <li>On the VPS, add one line to <code>~/apps/santosh-core/.env</code>: <code>${esc(e.env[0])}=your-key</code></li>
             <li>Restart: <code>pm2 restart santosh --update-env</code></li>
             <li>Press <b>Check again</b> (or run the VPS ops job <code>studio_apis</code>).</li></ol>
-            <p class="dim" style="font-size:12px">Never paste a key into the chat. If one was ever shared, make a new one and delete the old.</p></details>`}</div>`; }).join('')}</div>`;
+            <p class="dim" style="font-size:12.5px">Never paste a key into the chat. If one was ever shared, make a new one and delete the old.</p></details>`}</div>`; }).join('')}</div>`;
   }
   W.engines = el => {
     const run = async fresh => { try { drawEngines(await api('GET', '/api/studio/apis' + (fresh ? '?fresh=1' : ''))); } catch (e) { drawEngines(null); toast(e.message, true); } };
     run(false);
     el.addEventListener('click', async e => { const b = e.target.closest('[data-recheck]'); if (!b) return; b.disabled = true; $('#engs').style.opacity = '.55'; await run(true); $('#engs').style.opacity = ''; b.disabled = false; });
   };
-  V.projects = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">Film projects</h2><button class="btn pri" data-newfilm>${I('plus', 'width:16px;height:16px')}New film</button></div><div class="scenes" id="films"></div></div>`;
+  V.projects = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">Film projects</h2><button class="btn pri" data-newfilm>${I('plus', 'width:16px;height:16px')}New film</button></div><div class="scenes" id="films"></div></div>`;
   W.projects = el => { load('studio', true).then(() => redraw('projects', drawFilms));
     el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
       if (b.hasAttribute('data-newfilm')) { DIR.project = ''; DIR.view = null; go('director', {focus: true}); }
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); } }); };
   V.brand = () => { const k = D.kit; if (!k) return `<div class="home"><p class="mut">Loading your brand kit…</p></div>`;
     const c = k.colors || {};
-    return `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">Brand kit</h2><span class="dim" style="font-size:13px">Pictures can use it with one switch; the Brand tool in chat uses it everywhere</span></div>
+    return `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">Brand kit</h2><span class="dim" style="font-size:14px">Pictures can use it with one switch; the Brand tool in chat uses it everywhere</span></div>
     <div class="tools">
       <div class="box"><h3>Name</h3><input id="bkname" maxlength="120" value="${esc(k.name || '')}" placeholder="Your business name"></div>
       <div class="box"><h3>Tagline</h3><input id="bktag" maxlength="160" value="${esc(k.tagline || '')}" placeholder="Har shaam khaas"></div>
@@ -1293,7 +1364,7 @@ ${SPRITE}`;
     ['Dub a video into Tamil', 'dubbing', 'portrait', 'Upload your video (up to 3 minutes), pick up to 4 languages and press Dub now. Every language comes back as its own video with its words on screen here.'],
     ['Edit with words, not clicks', 'editor', 'city', 'Add your clips in order, say what you want (a 30 s reel, cuts on the beat, Hindi captions) and press Make the edit. Ask for changes in plain words.'],
     ['A voice-over in your Hoola’s voice', 'voice', 'voice', 'Write the script, pick Your Hoola’s voice or any of 22 voices, the language and the style, and press Make voice-over.']];
-  V.learn = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">How-to guides</h2></div>
+  V.learn = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">How-to guides</h2></div>
     <div class="guides">${GUIDES.map(([t, v, k, s], i) => `<div class="guide"><span class="thumb">${art(k, 'lr' + i)}</span><div><b>${t}</b><p class="mut">${s}</p><button class="btn sec" data-go="${v}">Open ${TITLE[v]}</button></div></div>`).join('')}</div></div>`;
 
   /* ---------------- icons ---------------- */

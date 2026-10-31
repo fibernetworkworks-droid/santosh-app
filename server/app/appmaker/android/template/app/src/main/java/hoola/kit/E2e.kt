@@ -55,6 +55,26 @@ object E2e {
         if (!a.ok || !b.ok) return "dedup calls failed ${a.code} ${b.code}"
         if (a.body.optString("id") != b.body.optString("id")) return "same write made two rows"
         say("dedup ok ${a.body.optString("id")}")
+        // v0.319 a photo up and back (the server re-encodes it), the UPI "I have paid" claim, the updates check
+        val bmp = android.graphics.Bitmap.createBitmap(320, 240, android.graphics.Bitmap.Config.ARGB_8888)
+        bmp.eraseColor(android.graphics.Color.rgb(200, 80, 40))
+        val jpg = java.io.ByteArrayOutputStream().also { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
+        val up = Cloud.upload(jpg, Auth.token())
+        val fid = up.body.optString("id")
+        if (!up.ok || !fid.startsWith("f_")) return "photo upload ${up.code} ${up.error}"
+        val back = Cloud.bytes("/files/$fid", Auth.token()) ?: return "photo not served back"
+        if (back.size < 100 || back[0] != 0xFF.toByte() || back[1] != 0xD8.toByte()) return "served photo is not a JPEG"
+        say("photo ok $fid ${back.size} bytes")
+        Db.paid(order, mine.id, "412345678901")
+        tries = 0
+        while (Db.pending.value > 0 && tries < 20) { Db.sync(); delay(500); tries++ }
+        if (!Db.refresh(order)) return "refresh after paid failed"
+        val paidRow = Db.rows(order).firstOrNull { it.id == mine.id } ?: return "order gone after paid"
+        if (paidRow.s("paid") != "Customer says paid" || paidRow.s("utr") != "412345678901") return "paid claim not saved: ${paidRow.s("paid")}"
+        say("paid claim ok")
+        val upd = Cloud.call("GET", "/updates", null, Auth.token())
+        if (!upd.ok || upd.body.optString("now").isEmpty()) return "updates check ${upd.code}"
+        say("updates ok")
         // the account screen's data path: a signed-out user sees nothing private
         val before = Db.rows(order).size
         Auth.logout(ctx)

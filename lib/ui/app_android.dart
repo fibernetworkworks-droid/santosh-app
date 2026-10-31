@@ -278,10 +278,12 @@ class _AppDataPanelState extends State<AppDataPanel> {
     await _load();
   }
 
-  Future<void> _status(Map<String, dynamic> r, String to) async {
+  Future<void> _status(Map<String, dynamic> r, String to) => _set(r, {'status': to});
+
+  Future<void> _set(Map<String, dynamic> r, Map<String, dynamic> set) async {
     setState(() => _busy = true);
     try {
-      await app.api!.appRowSet(widget.id, _coll, _s(r['id']), {'status': to});
+      await app.api!.appRowSet(widget.id, _coll, _s(r['id']), set);
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -318,7 +320,7 @@ class _AppDataPanelState extends State<AppDataPanel> {
     final fields = _list(cur['fields']);
     final status = fields.firstWhere((f) => _s(f['key']) == 'status', orElse: () => const <String, dynamic>{});
     final opts = ((status['options'] as List?) ?? const []).map((e) => '$e').toList();
-    final shown = fields.where((f) => !['status', 'total', 'items'].contains(_s(f['key']))).take(5).toList();
+    final shown = fields.where((f) => !['status', 'total', 'items', 'paid', 'utr'].contains(_s(f['key']))).take(5).toList();
     final headKey = shown.isEmpty ? 'id' : _s(shown.first['key']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
@@ -363,9 +365,27 @@ class _AppDataPanelState extends State<AppDataPanel> {
               if (r['total'] is num && (r['total'] as num) > 0)
                 Text('₹${(r['total'] as num).toStringAsFixed((r['total'] as num) % 1 == 0 ? 0 : 2)}',
                     style: const TextStyle(color: C.ok, fontWeight: FontWeight.w800)),
+              // v0.319 photos her app's users sent, delivery locations (tap = map), the UPI "I have paid" claim
+              for (final f in fields.where((f) => _s(f['type']) == 'photo' && _s(r[_s(f['key'])]).startsWith('f_')).take(2))
+                Padding(padding: const EdgeInsets.only(top: 6), child: ClipRRect(borderRadius: BorderRadius.circular(10),
+                    child: Image.network(app.api!.absolute('/api/apps/${widget.id}/files/${_s(r[_s(f['key'])])}'),
+                        headers: app.api!.authHeaders, height: 150, width: double.infinity, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink()))),
               for (final f in shown.skip(1))
-                if (_s(r[_s(f['key'])]).isNotEmpty)
-                  Text('${_s(f['label'])}: ${_s(r[_s(f['key'])])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+                if (_s(r[_s(f['key'])]).isNotEmpty && _s(f['type']) != 'photo')
+                  _s(f['type']) == 'location'
+                      ? InkWell(
+                          onTap: () => launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(_s(r[_s(f['key'])]))}'),
+                              mode: LaunchMode.externalApplication),
+                          child: Text('${_s(f['label'])}: ${_s(r[_s(f['key'])])} (map)', style: const TextStyle(color: C.teal, fontSize: 12)))
+                      : Text('${_s(f['label'])}: ${_s(r[_s(f['key'])])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+              if (_s(r['paid']).isNotEmpty && _s(r['paid']) != 'No')
+                Row(children: [
+                  Expanded(child: Text('${_s(r['paid'])}${_s(r['utr']).isEmpty ? '' : ' · UTR ${_s(r['utr'])}'}',
+                      style: TextStyle(color: _s(r['paid']) == 'Verified' ? C.ok : C.warn, fontSize: 12.5, fontWeight: FontWeight.w700))),
+                  if (_s(r['paid']) == 'Customer says paid')
+                    TextButton(onPressed: _busy ? null : () => _set(r, {'paid': 'Verified'}), child: const Text('Bank mein mila: Verified')),
+                ]),
               if (opts.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [

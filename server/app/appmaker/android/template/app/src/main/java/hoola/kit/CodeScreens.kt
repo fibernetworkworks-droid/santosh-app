@@ -4,6 +4,10 @@ package hoola.kit
 // Continue disabled until ticked), notification explainer, seller details + grievance officer (E-Commerce Rules 2020),
 // privacy policy and in-app account deletion (both stores require it; v0.314 it really deletes on the server).
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,9 +62,13 @@ fun ConsentScreen(onDone: () -> Unit) {
 
 @Composable
 fun NotifyScreen(onDone: () -> Unit) {
+    // v0.319 Continue asks Android's own notification permission (Android 13+), after this screen explained why
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onDone() }
     Page(Strings.notifyTitle, back = false, large = true, bottomBar = {
         Btn(Strings.later, modifier = Modifier.weight(1f), kind = BtnKind.Ghost) { onDone() }
-        Btn(Strings.cont, modifier = Modifier.weight(1f)) { onDone() }
+        Btn(Strings.cont, modifier = Modifier.weight(1f)) {
+            if (Build.VERSION.SDK_INT >= 33) ask.launch(Manifest.permission.POST_NOTIFICATIONS) else onDone()
+        }
     }) {
         block { Center { Box(Modifier.size(96.dp).background(H.c.tint, RoundedCornerShape(28.dp)), contentAlignment = Alignment.Center) { HIcon("bell", size = 44.dp, tint = H.c.primaryText) } } }
         block { Body(Strings.notifyWhy) }

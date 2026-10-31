@@ -2104,6 +2104,7 @@ body.albon{overflow:hidden}
 .sttbl{overflow:auto;border:1px solid var(--hair);border-radius:10px}
 .sttbl table{border-collapse:collapse;width:100%;font-size:13px}
 .sttbl th,.sttbl td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.sttbl img.stphoto{display:block;width:72px;height:54px;object-fit:cover;border-radius:6px;background:var(--line)}   /* v0.319 app photos */
 .sttbl th{font-weight:600;color:var(--mut);background:var(--raise)}
 .stmems{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .stmems li{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}

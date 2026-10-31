@@ -12034,7 +12034,107 @@ Hoola - they accept only apps they approved as partners. So "Khana aur kirana" c
   approved set FOOD_PARTNER_APPROVED=true and restart.
 - Test: test_v0303_saaf_connect.py::test_v0319_swiggy_zomato_hidden_until_partner_approval.
 
-## v0.320.0 TEEN LOOK JALDI (owner: "3 DESIGN IS TAKING TOO MUCH TIME")
+## v0.320.0 STUDIO DESIGN SYSTEM (31 Oct 2026; built as 0.318.0, re-versioned past main's 0.318 / 0.319)
+Owner: "MAKE IT PREMIUM AND HUMAN NATIVE LOOK WITH REAL PERFECT WORKFLOW... FIRST DO PERFECT DEEP DESIGN... CHECK EVERY MINUTE
+THINGS FROM TEXT FOR SIDE BAR TO SMALL BUTTON" -> design audit artifact https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3 -> "GO PHASE 1".
+- Audit method: Playwright walks all 16 studio pages (light + dark at 1440, home at 390) and reads every visible text / button / field
+  from the shadow root (size, weight, colour, contrast against the real background, height, corners, clipping). Before: 15 text sizes,
+  246 texts < 4.5 : 1 (the faint grey #8B8B92 = 3.4 on white, 2.9 on the sidebar), 48 texts at 700 (from <b>), 4 at 10px, 10 corner
+  sizes, 30 button heights, 50 controls < 30px (links 19px, switches 21px, tile actions 28px), a violet focus ring on #view that read
+  as a stray line under the top bar, phone mode tabs running off the screen.
+- `studio.css`: sizes / corners moved IN PLACE to the scale (the v0.285 `.pop` menu block left exactly as pinned); block
+  "v0.318 STUDIO DESIGN SYSTEM" at the end: `--dim` = color-mix(--mut 92%, --bg) (>= 4.9 : 1 on white / sidebar / sunk, light and dark),
+  b,strong 600, buttons 40 / main action 48 / tile actions 32 / links 32 / switches 40x24, sidebar one row style (agents without boxes,
+  priSoft pill when open), status words (.tag.new / .tag.hot / .perr) mixed toward the ink, `#view` focus ring off, phone `.modes` wrap.
+- `studio.js`: tools render as `.sn` rows (no `.tgrid`), the first "Studio" label removed, top bar keeps only the page name (Chat /
+  My creations were duplicates of Back to chat / Assets), credits lead with "₹N left" and "₹used of ₹limit spent · N%".
+- After: 6 sizes, 3 weights, 0 texts < 4.5 : 1 in light and dark, corners 8 / 12 / 16 / pill, 7 controls < 32px left (4 switches at
+  24px inside 40px rows, 3 outbound links on the owner-only Engines page).
+- Tests: `test_v0318_studio_design_system.py`; v0.306 credits pin moved to the new wording; the `?v=` stamp count pins in
+  test_v0194 / test_v0234 moved 17 -> 18 (main's v0.317 added employees.js without moving them).
+- Next phases (audit): 2 Home + Director, 3 the six tools, 4 assets + help, 5 real Hoola showcase media (price card first).
+
+## v0.321.0 TILE KAAM KARE (31 Oct 2026, owner: "EVEN UI NOT FUCTIONING" after "Khana aur kirana NOT FUNCTIONING")
+Tapping a working tile (Google Pay, PhonePe, Uber, HDFC SMS reader...) opened the plugin sheet whose only button was
+`PluginAction(kind: linked, label: 'Taiyaar hai · Hoola se kahiye')` with no onTap - nothing happened.
+- `lib/ui/bazar_screen.dart _sheetAction`: ready plugins with an `android_package` get "<Name> kholiye" ->
+  `Native.openExternal(package:)` (MainActivity opens the launch intent, else Play Store); other ready plugins get
+  "Hoola se karwaiye" -> sends `examplesFor(p).first` into the chat. Snackbar when the app is not installed.
+- `service.catalog()`: rides now carry `android_package` (from config.package) like UPI packs. All nine UPI / cab
+  packages were already in `tool/AndroidManifest.xml` <queries>, so Android 11+ can see them.
+- "Food apps" chip removed (Swiggy / Zomato hidden since v0.319). Test: test_v0320_upi_and_cab_tiles_carry_the_app_to_open.
+- Note: a UPI app opened this way is the app's home screen; paying a person still goes through Hoola's send_money card
+  (UPI intent with the payee filled in), because the tile itself does not know whom to pay.
+
+## v0.322.0 APP FEATURES — App Sahayak Phase 2: real phone features in built apps (owner: "START PHASE 2"; built as 0.320.0 / 0.321.0, re-versioned past the parallel v0.320.0 STUDIO DESIGN SYSTEM and v0.321.0 TILE KAAM KARE)
+Phase 1 (v0.318) gave every native app its own backend; this phase gives the apps the phone features that make them
+real, each the way Play / App Store allow it, with NO new library in the generated project (platform + androidx.core /
+activity only, so the build stays as robust as before).
+- **Photos**: new field type `photo` (app backends only; kept through `webapp.clean_schema` by `backend.EXTRA_TYPES`):
+  service requests (photo of the problem), enquiries, community posts, product-app feedback, staff-app `file` fields (max 2
+  per list). Kit `PhotoField(label, key)` = Android Photo Picker (`PickVisualMedia`, no storage permission; falls back to the
+  document picker on old phones), `Photos.shrink` to 1600 px JPEG in the app cache, the form keeps `local:<file>`;
+  `Db.sync` uploads each `local:` photo first (`Cloud.upload`, saved in the outbox so a retry sends it once), puts the
+  server id in its place, then sends the row. Server `POST /api/app-api/<key>/files` (6 MB, account needed unless a list is
+  public-create, rate 30 / 10 min): Pillow opens it, `exif_transpose`, RGB, 1600 px, re-encoded JPEG q82 = EXIF / GPS /
+  camera data gone; `GET .../files/<id>` only for the sender, staff, her (`/api/apps/<ref>/files/<id>`), or anyone when the
+  photo sits in a public-read list. A row's photo id must exist in this app and belong to the person using it.
+  `RemotePhoto(src)` shows a server or local photo (LRU cache).
+- **Location**: new field type `location` (order delivery pin, service location, staff-app `point` fields, max 1 per
+  list). Kit `LocationField` = a plain explanation dialog first (Play "prominent disclosure"), then Android's dialog
+  (coarse + fine; approximate is enough), `LocationManagerCompat.getCurrentLocation` with a 15 s timeout and last-known
+  fallback, "lat,lng" in the field, a Map button. Server normalises / checks "lat,lng". The manifest asks for location
+  ONLY when a list has a location field (`gen.uses_location`); never background location.
+- **Order updates as notifications**: `Updates.kt` - JobScheduler periodic 15 min (network required, persisted, needs
+  RECEIVE_BOOT_COMPLETED), the job (`UpdatesJob`, BIND_JOB_SERVICE) restores Cloud / Auth from prefs, asks
+  `GET /api/app-api/<key>/updates?since=` and shows normal notifications (channel "Order updates", tap opens the app);
+  the first check only sets the mark (no old news); also one check at every app start. Server `backend.updates`: a
+  customer hears that HER rows moved (status / paid changes are stamped `_ev` by `backend.update`), a staff account hears
+  about NEW rows in order-like lists. POST_NOTIFICATIONS is asked by the first-run NotifyScreen's Continue (Android 13+).
+  Instant push (FCM) needs the business's own Firebase project: a later step, written as such in the kit.
+- **UPI "I have paid"**: orders gain `paid` (No / Customer says paid / Verified, staff-only) + `utr` (staff-only). Kit
+  `PaidBox` on the customer's own UPI order: Pay by UPI (her own UPI ID, `Act.payUpi`) + "I have paid" with the 12-digit
+  reference -> `Db.paid` (outbox op `paid`) -> `POST .../c/<orders>/<row>/paid` (own row only, 6-24 alnum) -> "Customer says
+  paid" + a chat note to HER to check her own bank; only she marks Verified (phone button "Bank mein mila: Verified",
+  console select, tool `app_banao action=data set {paid: Verified}` - the tool text says never on the customer's word).
+- **Search / filters**: `GET .../c/<list>?q=&status=&limit=&offset=`; the app's lists get a search box + status chips
+  (on the cached rows, offline too) once a list has more than 4 rows.
+- **Upgrade**: a v1 app backend (built before this) is rebuilt in place on first use (`SCHEMA_V` 2, fields only added,
+  rows untouched, `upgraded` stamp).
+- **Owner views**: phone App ka data shows photos (authorised `Image.network`), location (tap = map), paid + UTR with a
+  Verified button; console App data shows photo thumbnails, map links and a paid select.
+- **Tool text**: `app_banao` (5.6 KB) is cut to 1200 characters for the model, so v0.318's backend notes at its END never
+  reached the model; the backend actions now sit in the first sentences of `app_banao` and `app_dekho`.
+- **Verified here**: the generated fixture project compiled with the real toolchain (`assembleDebug assembleRelease`,
+  R8) after fixing an overload ambiguity in `LocationManagerCompat.getCurrentLocation`; tests
+  `server/tests/test_v0319_app_features.py` (4: schema v2 + upgrade, photos (EXIF/GPS stripped, access rules, size / type
+  refusals), location checks, the paid claim + note + Verified + 409, updates for customer / staff, search + paging, photo
+  ownership, the generated project's manifest / kit / fallback forms / guide); CI e2e extended (photo up + back, the paid
+  claim, the updates call; the server check requires the paid row).
+- **Not yet**: QR / barcode scanning and camera capture inside the app (need CameraX / ML Kit: next), instant FCM push,
+  file (PDF) fields, maps drawn inside the app (the Map button opens Google Maps), payments other than her own UPI.
+
+## v0.323.0 STUDIO HOME + DIRECTOR (31 Oct 2026; Phase 2 of the Create Studio design audit)
+Owner: "GO PHASE 2" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- Home (`studio.js` V.studio): `hsList(mode)` / `hsPrice(mode)` / `hsHTML()` put the mode's settings inside the ask box as 32px pills
+  (Director aspect / seconds / language -> DIR, Image aspect / count -> IMG, Video aspect / seconds -> VID, Song lang -> MU, Voice lang -> VO)
+  with the price ("Storyboard free", "~₹3", "~₹7", "Paise a line", "Price before it starts"); `#homeAgent` hidden (tabs are the one switch;
+  its v0.304 code stays). `rails(root)` toggles `.canl` / `.canr` on scroll + resize: arrow and 56px edge fade only on the hidden side.
+- FOUND while testing: on the FIRST open every `canvas[data-art]` stayed 300x150 (the studio host opens hidden, paintAll's rAF saw
+  clientWidth 0) - the squashed moons / records. `artRO` (ResizeObserver) paints each canvas when it gets a size and again on resize;
+  disconnected on every go().
+- Director list: go('projects') = the Director list (DIR.project cleared); search `#fq` + sort (recent / name / furthest along);
+  `.fcard` with the film's first picture or `initTile(name)` (initial on a colour mixed from --surface / --ink, so Light / Dark / System
+  all work), "Step N of 8 · <step>" + Continue; the brief on a clean card (painted banner removed), option pills bordered 32px.
+- One film: `.nextc` Next step card under the steps (NEXT_STEP / NEXT_WHY, the price on one 48px button, `data-next` kept) - the
+  header no longer carries it; `timeline(shots)` = one segment per shot sized by its seconds (picture / made states), tap = scroll +
+  flash; `sceneCard(s, i, t0)` shows "0:06 – 0:11"; Free preview stays, Cast / Music / Rewrite in a More menu (hidden buttons
+  clicked, so the old handlers run); `plainErr()` = failed shots in plain words, the raw text in `title`.
+- `small{font-size:12.5px}` (a bare <small> was 10.4px on Brand kit, 11.7px in the editor). Re-measured: 6 text sizes, 0 texts
+  below 4.5 : 1 in light and dark. Phone: Director brief pills wrap (an old 900px rule squeezed them to "Hi" / "108").
+- Tests: `test_v0323_studio_home_director.py`; v0.318 scale pin allows 40 (headline size reused by the initials).
+
+## v0.324.0 TEEN LOOK JALDI (owner: "3 DESIGN IS TAKING TOO MUCH TIME")
 Cause, from the code: `site/service._make_looks` made the 3 looks one after another, and inside each look every Opus
 call waited for the one before: pictures (shot list + images), then per look the art direction (site_art, xhigh),
 the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots - about 12 slow calls in a row,
@@ -12050,5 +12150,6 @@ the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots 
   scope - the parallel section writer (`_write_sections`, since v0.225) included - so they were not charged to her and
   an Arena run's budget (v0.307, `_spent_inr` reads usage) undercounted. Both pools now carry it.
 - Two console tests pinned 17 `?v=` stamps while main already had 18 (employees.js); pins raised to 18.
-- Tests `server/tests/test_v0320_teen_look_jaldi.py` (3): with a slow fake Opus the look calls overlap (peak >= 3),
+- Tests `server/tests/test_v0324_teen_look_jaldi.py` (3): with a slow fake Opus the look calls overlap (peak >= 3),
   3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
+- Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).

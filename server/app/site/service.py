@@ -1041,7 +1041,7 @@ def _look_sections(r: Site) -> list[dict[str, Any]]:
 
 
 def _in_ctx(fn):
-    """v0.320 a worker thread does not inherit the caller's context, so AI calls made there were not charged to her
+    """v0.324 a worker thread does not inherit the caller's context, so AI calls made there were not charged to her
     usage (nor to an Arena run's budget). The wrapped function runs inside a copy of the caller's context."""
     import contextvars
     ctx = contextvars.copy_context()
@@ -1049,7 +1049,7 @@ def _in_ctx(fn):
 
 
 def _look_copy(r: Site, style: str, tokens: dict[str, Any], dna: dict[str, Any] | None):
-    """v0.320 one look's own view of the site (style + tokens + art direction), so the looks can be written at the same
+    """v0.324 one look's own view of the site (style + tokens + art direction), so the looks can be written at the same
     time without one thread changing the style another is writing with."""
     from types import SimpleNamespace
     d = {c.key: getattr(r, c.key) for c in Site.__table__.columns}
@@ -1058,7 +1058,7 @@ def _look_copy(r: Site, style: str, tokens: dict[str, Any], dna: dict[str, Any] 
 
 
 def _make_looks(r: Site) -> None:
-    """v0.320 TEEN LOOK JALDI: the 3 looks used to be made one after another, and inside a look every Opus call waited
+    """v0.324 TEEN LOOK JALDI: the 3 looks used to be made one after another, and inside a look every Opus call waited
     for the one before (pictures, then per look: art direction, hero, 2 sections, screenshots) - about 12 slow calls in
     a row. Now in three waves: (1) the pictures and the 3 art directions together, (2) every look's sections together
     (SITE_LOOK_PARALLEL at once), (3) the 3 screenshots together. The art directions still come out different: a look

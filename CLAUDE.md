@@ -136,11 +136,18 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.320.0 (pubspec 0.320.0+360). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.324.0 (pubspec 0.324.0+364). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.320 TEEN LOOK JALDI: the 3 looks in waves (pictures + 3 art directions together, all look sections together, 3 screenshots
+- v0.324 TEEN LOOK JALDI: the 3 looks in waves (pictures + 3 art directions together, all look sections together, 3 screenshots
   together; `_look_copy`, SITE_LOOK_PARALLEL 6) instead of ~12 calls in a row; `_in_ctx` = thread AI calls charged to her / the Arena.
+- v0.323 STUDIO HOME + DIRECTOR (Phase 2 of the design audit): ask box settings + price, rails arrow only where more is hidden,
+  art paints on the FIRST open (was unpainted), one film list (search / sort / step / Continue), next-step card, shot timeline, More menu.
+- v0.322 APP FEATURES (App Phase 2, built as 0.320 / 0.321): photo fields (Photo Picker, outbox upload, server re-encode), location fields (disclosure + system dialog), order-update notifications (JobScheduler + /updates), UPI "I have paid" + UTR (she verifies), search / status filters.
+- v0.321 TILE KAAM KARE: the plugin sheet's button acts - UPI / cab apps open (`android_package` for rides too), other working
+  plugins send their first example ask into the chat; was a dead 'Taiyaar hai' label. Empty 'Food apps' chip removed.
+- v0.320 STUDIO DESIGN SYSTEM (built as 0.318, Phase 1 of the design audit): one text scale 12.5/14/15/18/26/40, weights <= 600,
+  readable grey (0 texts < 4.5:1), corners 8/12/16, controls 32/40/48, one-row sidebar, top bar = page name, phone mode tabs wrap.
 - v0.319 KHANA BAAD MEIN: Swiggy (Food / Instamart / Dineout) + Zomato refuse non-partner sign-in -> hidden in the clean view
   (`service.PARTNER_GATED`) until `FOOD_PARTNER_APPROVED=true`; Roz ke kaam loses 'Khana aur kirana' meanwhile.
 - v0.318 ASLI APP (App Phase 1, built as 0.314/0.316/0.317): each native app has its OWN backend (`appmaker/backend.py`, `/api/app-api/<key>/...`): accounts, server-priced orders / bookings / staff lists, cid dedup, kit Backend.kt (Keystore token, offline outbox) + Accounts.kt, CI e2e on a real server.

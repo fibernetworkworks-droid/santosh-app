@@ -1,4 +1,4 @@
-"""v0.320 TEEN LOOK JALDI (owner: "3 DESIGN IS TAKING TOO MUCH TIME"): the 3 looks were made one after another and every
+"""v0.324 TEEN LOOK JALDI (owner: "3 DESIGN IS TAKING TOO MUCH TIME"): the 3 looks were made one after another and every
 Opus call inside a look waited for the one before (about 12 slow calls in a row). Now the pictures + the 3 art
 directions run together, then every look's sections together, then the 3 screenshots together. These tests drive the
 real look maker with a slow fake Opus: the calls overlap, the 3 looks still come out (hero + page top each, in their
@@ -68,5 +68,5 @@ def test_in_ctx_carries_the_usage_scope_into_a_thread():
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.320.0"
-    assert "0.320.0+360" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.324.0"
+    assert "0.324.0+364" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
