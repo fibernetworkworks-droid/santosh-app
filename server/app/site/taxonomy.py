@@ -783,7 +783,7 @@ def check() -> list[str]:
     return bad
 
 
-# ---------------------------------------------------------------- v0.325 ANY DESIGN: free-form sections
+# ---------------------------------------------------------------- v0.330 ANY DESIGN: free-form sections
 # Besides the section library above, a page may carry FREE-FORM sections Opus designs from a name + brief ("EMI
 # calculator", "Compare our 3 plans", "How an order travels"): type custom_<name>, at most CUSTOM_PER_PAGE a page.
 CUSTOM = re.compile(r"custom_[a-z0-9_]{1,30}")

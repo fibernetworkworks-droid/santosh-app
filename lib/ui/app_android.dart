@@ -92,11 +92,43 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
     }
   }
 
+  List<Map<String, dynamic>> _crashes = const [];
+
   Future<void> _load() async {
     try {
       final v = await app.api!.appAndroid(widget.id);
       if (mounted) setState(() => _v = v);
     } catch (_) {}
+    try {   // v0.325 crashes her app's users' phones sent
+      final c = await app.api!.call('GET', '/api/apps/${widget.id}/crashes');
+      if (mounted) setState(() => _crashes = _list((c as Map?)?['crashes']));
+    } catch (_) {}
+  }
+
+  Future<void> _rollback(int build) async {
+    setState(() => _busy = true);
+    try {
+      final r = await app.api!.appAct(widget.id, 'rollback', {'build': build});
+      if (mounted) _snack(context, _s(r['now']).isEmpty ? 'Build $build wapas aa rahi hai' : _s(r['now']));
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _fixCrash(String crash) async {
+    setState(() => _busy = true);
+    try {
+      final r = await app.api!.appAct(widget.id, 'fix_crash', {'crash': crash});
+      if (mounted) _snack(context, _s(r['say']).isEmpty ? 'Crash theek ho raha hai' : _s(r['say']));
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _build([List<String>? redo]) async {
@@ -183,6 +215,44 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
         const Text('Yeh preview build hai (aapke phone ke liye). Play Store par daalna agla kadam hai, aapke apne developer account se.',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
       ],
+      if (_map(v['qa']).isNotEmpty) _QaBox(app: app, id: widget.id, qa: _map(v['qa'])),
+      if (_list(v['history']).isNotEmpty) ...[       // v0.325 every build: what changed, and a way back
+        const SizedBox(height: 10),
+        Text('Versions (${_list(v['history']).length})', style: display(13)),
+        for (final (i, h) in _list(v['history']).take(6).indexed)
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(10)),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('v${_s(h['version_name'])} · build ${_i(h['build'])}${i == 0 ? ' · abhi wali' : ''}',
+                    style: TextStyle(color: i == 0 ? C.ok : C.ink, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                for (final n in ((h['notes'] as List?) ?? const []).take(3))
+                  Text('• $n', style: const TextStyle(color: C.muted, fontSize: 11.5)),
+              ])),
+              if (i > 0 && !working && ((v['kept_builds'] as List?) ?? const []).contains(h['build']))
+                TextButton(onPressed: _busy ? null : () => _rollback(_i(h['build'])), child: const Text('Wapas lao')),
+            ]),
+          ),
+      ],
+      if (_crashes.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        Text('Users ke phone pe crash (${_crashes.length})', style: display(13)),
+        for (final c in _crashes.take(5))
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              Expanded(child: Text('${_s(c['exception']).split(':').first} · ${_i(c['count'])} baar'
+                  '${((c['screens'] as List?) ?? const []).isEmpty ? '' : ' · ${(c['screens'] as List).join(', ')}'} · ${_s(c['status'])}',
+                  style: TextStyle(color: _s(c['status']) == 'fixing' ? C.muted : C.warn, fontSize: 12))),
+              if (_s(c['status']) == 'new' || _s(c['status']) == 'back')
+                TextButton(onPressed: _busy ? null : () => _fixCrash(_s(c['id'])), child: const Text('Theek karo')),
+            ]),
+          ),
+      ],
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 6, children: [
         if (widget.approved && !working)
@@ -199,6 +269,56 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
             if (context.mounted) _snack(context, 'ZIP ka link copy bhi ho gaya (laptop par Android Studio mein kholiye).');
           }),
       ]),
+    ]);
+  }
+}
+
+/// v0.325 HOOLA QA: what the device check found on a real Android emulator after this build compiled.
+class _QaBox extends StatelessWidget {
+  const _QaBox({required this.app, required this.id, required this.qa});
+  final Santosh app;
+  final String id;
+  final Map<String, dynamic> qa;
+
+  @override
+  Widget build(BuildContext context) {
+    if (qa['ran'] != true) {
+      return Padding(padding: const EdgeInsets.only(top: 8),
+          child: Text('Device check nahi chala: ${_s(qa['why'])}', style: const TextStyle(color: C.faint, fontSize: 11.5)));
+    }
+    final perf = _map(qa['perf']);
+    final budget = _map(qa['budget']);
+    final shots = ((qa['shots'] as List?) ?? const []).map((e) => '$e').toList();
+    final a11y = _list(qa['a11y']);
+    Color c(String k) => budget[k] == 'over' ? C.warn : C.ok;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const SizedBox(height: 10),
+      Row(children: [
+        Icon(qa['passed'] == true ? Icons.verified_rounded : Icons.error_outline_rounded,
+            color: qa['passed'] == true ? C.ok : C.bad, size: 18),
+        const SizedBox(width: 6),
+        Expanded(child: Text('Device check: ${_i(qa['opened'])}/${_i(qa['total'])} screens bina crash ke khuli', style: display(13))),
+      ]),
+      const SizedBox(height: 4),
+      Wrap(spacing: 6, runSpacing: 6, children: [
+        if (perf['cold_ms'] != null) Pill('Khulti hai ${perf['cold_ms']} ms', fg: c('cold_ms')),
+        if (perf['jank_pct'] != null) Pill('Janky frames ${perf['jank_pct']}%', fg: c('jank_pct')),
+        if (perf['apk_mb'] != null) Pill('APK ${perf['apk_mb']} MB', fg: c('apk_mb')),
+        Pill('${_i(qa['a11y_count'])} accessibility', fg: _i(qa['a11y_count']) == 0 ? C.ok : C.warn),
+      ]),
+      if (((qa['crashed'] as List?) ?? const []).isNotEmpty)
+        Text('Crash: ${(qa['crashed'] as List).join(', ')} (inhe saada version mila)', style: const TextStyle(color: C.bad, fontSize: 12)),
+      for (final f in a11y.take(4))
+        Text('• ${_s(f['screen'])}: ${_s(f['text'])}', style: const TextStyle(color: C.muted, fontSize: 11.5)),
+      if (shots.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        SizedBox(height: 170, child: ListView(scrollDirection: Axis.horizontal, children: [
+          for (final sh in shots)
+            Padding(padding: const EdgeInsets.only(right: 6), child: ClipRRect(borderRadius: BorderRadius.circular(8),
+                child: Image.network(app.api!.absolute('/api/apps/$id/android/qa/$sh'), headers: app.api!.authHeaders,
+                    height: 170, fit: BoxFit.fitHeight, errorBuilder: (_, __, ___) => const SizedBox(width: 1)))),
+        ])),
+      ],
     ]);
   }
 }

@@ -734,6 +734,7 @@ function showWorkspace() {
 CREATE = window.HoolaCreate ? HoolaCreate({api, esc, toast, conv: () => CONV,
   newConv: async () => { const c = await api('POST', '/api/conversations'); await openConv(c.id, false, {noPush: true}); return c.id; },
   avatar: () => ME?.avatar?.gender === 'f' ? '/static/santosh-happy.png' : '/static/santosh-head.png',
+  owner: () => !!ME?.arena,   // v0.327 Create > Engines shows the services + server steps only to the owner
   version: (document.querySelector('script[src*="/studio.js"]')?.getAttribute('src') || '').split('v=')[1] || '',
   onClose: () => drawNav()}) : null;
 document.addEventListener('click', e => {

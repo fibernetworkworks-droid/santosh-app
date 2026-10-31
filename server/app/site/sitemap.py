@@ -133,7 +133,7 @@ def _section_list(raw: Any, first_hero: bool = True, limit: int = 8) -> list[dic
     for s in raw if isinstance(raw, list) else []:
         t = str((s or {}).get("type") or "").strip() if isinstance(s, dict) else str(s or "")
         name = _tidy((s or {}).get("name"), 40) if isinstance(s, dict) else ""
-        if t == "custom" or (t.startswith("custom_") and not T.is_section(t)):     # v0.325 a free-form section
+        if t == "custom" or (t.startswith("custom_") and not T.is_section(t)):     # v0.330 a free-form section
             if not name and t == "custom":
                 continue
             t = T.custom_type(name or t)

@@ -12154,7 +12154,151 @@ the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots 
   3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
 - Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).
 
-## v0.325.0 ANY DESIGN (web design Phase 6 step 2; owner: "START PHASE 2")
+## v0.325.0 STUDIO TOOLS (31 Oct 2026; Phase 3 of the Create Studio design audit)
+Owner: "GO" after Phase 2 went live (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- `toolTabs()` and its four uses removed (Image / Video / Music / Voice): the sidebar is the one way between tools. `.gen` = 380px controls.
+- Video: `<details class="adv vmore">` holds Resolution / Sound + Takes / Spoken lines, summary `.vsum` (1080p · sound on · 1 take · Hindi),
+  open state in VID.more. `projState(p)` -> Draft / Making / Ready / Needs attention (`.stchip`); "N s" only when made; in the Video
+  gallery `vnote(ps)` = ONE notice for all failed clips (the distinct reason, "Nothing was charged for them"), per-tile red lines only elsewhere.
+- Image: `itemTile` caption = date · style · aspect (it.meta.model, e.g. gemini-3.1-flash-image, no longer shown); `.stys` 3 x 3 grid,
+  labels wrap; `.panel .prow b` wraps (model / engine names were cut).
+- Dubbing: DUB_TOP (Hindi, Tamil, Telugu, Bengali, Marathi, English) then "All languages" fold, `#dubn` "N of 4 picked".
+- Voice: voice rows use `initTile(name)` (her own Hoola voice keeps its wave art). Editor: empty player = `.framemsg.drop` (tap or drag
+  files; dragover / drop upload), `#edGo` reads "Add clips to start" until there are clips.
+- Not done, said so: Music waveforms were already real (decoded audio, `wave()`), the audit called them decorative; voice play samples
+  need a server sample per voice (not built); genres not regrouped.
+- Re-measured: 6 text sizes, 0 texts < 4.5 : 1 light and dark. Tests: `test_v0325_studio_tools.py`.
+## v0.326.0 HER TEST RUN - plan card, one file, no quiet PC (owner, after testing v0.314: "TEST 3 :: FAIL ( PLAN CARD NOT APPER ) DIRECT RESULT , TEST 4 : PASS ( BUT CREATED SEVERAL PDF AS 1ST AND 2ND PDF HAS ISSUE AI CREATED 3 RD ONE , NEED WORK ON IT ) , TEST 6: PASS BUT WORK CONTINUE ON PC AND AFTER 10 MIN GET THE TASK FAIL RESULT"; tests 1, 2, 5 passed)
+Built on her branch as 0.315; re-versioned 0.315 -> 0.326 past the parallel v0.315-v0.325.
+(1) PLAN CARD: her test 3 ask ("marketing plan banao: research karo, ideas likho, calendar banao, PDF mein do") DID get
+PLAN_FIRST (looks_big true); the model skipped it and finished in 5 steps, before v0.314's server plan at step 7. Now a
+big ask (state["big"]) gets the server plan right after the FIRST tool round, and the plan's steps are read off her own
+words (`santosh._ask_steps`: "goal: a, b, phir c, aur d" -> goal + steps; a comma part with no action word joins the step
+before it, so "top 8 brands, unki price, range" stays one step; under 2 real clauses = one step). The note asks the model to
+tick `kaam_plan step n done`; the real final answer still closes the plan (`_close_auto_plan`).
+(2) EK HI FILE: doc_studio published the card BEFORE its preview / QA; a QA warning came back to the model, which built
+file 2, then file 3 - all three in her chat. Now the QA runs first; a "warn" draft is held (`_HELD`, once per turn) and the
+model gets "NOT sent to her - fix exactly these"; the next doc_studio call delivers whatever it makes; `send_held=true`
+sends the held draft as is; the turn's end (`flush_held`, santosh `_run_turn` finally) delivers a held draft nobody
+replaced, so a file is never lost. A delivered file's note says "her FINAL file - no other version unless she asks".
+Setting DOC_HOLD_DRAFTS.
+(3) NO QUIET PC: Amazon / Flipkart refuse Hoola's server; browse_web's "site_blocks_server" told the model to use
+computer_operator ("it moves the job to her PC"), and computer_operator where=auto did exactly that via `_to_pc` - her
+test 6 ran on her PC and failed 10 minutes later. Now where=auto + a refused site = ask first (`_ask_for_pc`: finish with
+the sites that open, then "Aapke PC par Chrome mein kar doon?"), unless she placed the job on her PC (`_pc_is_hers`:
+ctx.place / where._asked / where.working). browse_web's hint says the same. No frozen PC file touched (pc_tools.py,
+pc/ untouched; `_to_pc` itself unchanged, just no longer reached without her word). Why the PC job failed after 10 min
+is inside the frozen PC operator and was not investigated.
+Tests: NEW tests/test_v0315_her_test_run.py (9).
+
+## v0.327.0 STUDIO ASSETS + HELP (31 Oct 2026; Phase 4 of the Create Studio design audit)
+Owner: "GO" after Phase 3 (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- Brand kit (`studio.js` V.brand / W.brand rewritten): logo upload on the page via the existing POST /api/brand/logo (multipart, `clean_bg`),
+  shown from GET /api/brand/logo; colours primary / accent / dark / light as `<input type=color>` 48px with names + hex; font buttons
+  (R.FONTS poppins / mukta) render her tagline; phone + website saved as `contact`; `bkPreview()` = poster (4:5) + reel end card (9:16)
+  in her colours / font / logo, text colour by contrast (`onCol`); draft in BK.d until Save (PUT /api/brand/kit). The console does not load
+  Poppins / Mukta, so the preview font falls back on most devices; the real posters use the bundled fonts.
+- My creations: script tile = a page (`.paper`: "Script", title, lines); every `.res[data-item]` gets a `.pick` tick (LSEL), `#selbar`
+  "N selected · Download · Delete · ×", bulk delete confirms first; `.btn.danger` (not `.bad`, which the v0.308 pin keeps free).
+- Templates: "Use this" always visible. Guides: GUIDES text split into `<ol class="gsteps">` steps + "Open <tool>" button.
+- Engines: `OWNER()` = ctx.owner() (v2.js passes `!!ME?.arena`); non-owners see "What you can make" (the feature ticks) only; the owner
+  sees the engine cards with "How to switch it on" folded.
+- Re-measured: 6 sizes, 0 texts < 4.5 : 1 light and dark. Tests: `test_v0327_studio_assets.py`.
+
+## v0.328.0 (part 1) HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0 / 0.324.0, shipped together with Phase 4 as v0.328.0 past the parallel v0.323.0 STUDIO HOME + DIRECTOR, v0.324.0 TEEN LOOK JALDI, v0.325.0 STUDIO TOOLS v0.326.0 HER TEST RUN and v0.327.0 STUDIO ASSETS + HELP)
+- **Device check after every build** (`server/app/appmaker/android/device_check.sh` + `qa.py`, stdlib only; `gen.write_project`
+  copies both into every project as `hoola_qa/` with `package.txt` + `screens.txt`): on an Android emulator the debug build opens
+  EVERY screen (extra `hoola_screen`), takes its picture, dumps its UI tree and its crash buffer; the release build is cold-started
+  3 times (`am start -W` TotalTime), scrolled (4 swipes) for `dumpsys gfxinfo` janky frames, and measured (APK bytes). `qa.report`
+  -> `report.json`: per screen opened / crash (exception, app frames, screen class, logcat excerpt) / accessibility (a tappable with no
+  words anywhere in it = unlabelled for TalkBack; a target under 48 dp at the device density) / screenshot; perf (cold median, jank %,
+  APK MB) against `BUDGET` (1500 ms, 25 %, 15 MB); `passed` = every screen opened. Budget and accessibility are reported, a crash blocks.
+- **Where it runs**: GitHub builds repo (`APP_BUILD_MODE=github`): the new `server/app_builder/hoola-build.yml` builds release + debug,
+  enables KVM, runs the check on an API 34 emulator (`continue-on-error`, never breaks a good build) and uploads `qa/report.json` +
+  `qa/screens/*.png` with the APK; her repo needs this file updated (older copies still build, the card then says so). Worker mode:
+  `HOOLA_BUILD_EMULATOR=1` + an emulator on adb -> `/jobs/<id>/qa` zip. `runners.qa_from_zip` brings both back as `result["qa"]`.
+- **The build loop acts on it** (`android/service._run`): a model-written screen that crashed on the device goes back to Opus ONCE with
+  "THIS SCREEN CRASHED ON A REAL ANDROID PHONE" + the logcat; rebuilt and re-checked; a fix that does not compile, or a second crash,
+  ships that screen's simple code-made version (the app is never handed over crashing on a screen we know about). `_keep_qa` keeps the
+  summary in the build state (`qa`: ran / passed / opened / total / crashed / perf / budget / a11y findings / shots) and the pictures
+  (`android/qa/b<n>/`, last 3 builds); `GET /api/apps/<ref>/android/qa/<screen>`; the ready note gets one plain QA line.
+- **Crashes on real users' phones**: kit `CrashGuard.kt` (installed first in MainActivity, current screen set by the shell) keeps the
+  crash (trace 60 lines, screen, versionName, Android, model; no personal data, no form contents) with `commit()` and lets Android close
+  the app as usual; `sendPending` posts it on the next start (`POST /api/app-api/<key>/crash`, no login, 20 an hour per IP).
+  `backend.crash` groups by exception + the first app frames with line numbers stripped (`c_<sha1>`), counts, screens, versions,
+  devices (200 kept), a chat note on a NEW crash; `GET /api/apps/<ref>/crashes`; `app_dekho what=crashes`; `app_banao action=fix_crash`
+  (+ phone / console "Theek karo" via `POST /api/apps/<ref>/fix_crash`) = the app screens in the stack (ScreenCartKt -> cart, else the
+  screen it happened on) rewritten with the crash as a per-screen note (`android.build(..., notes, crashes)`), a new build; the crash is
+  marked `fixing` with that build's version; the same crash from that version = `back` + a second note; a crash only in the kit is said
+  to be Hoola's own, not hers.
+- **Views**: phone build panel `_QaBox` (opened x/y, cold start / jank / APK pills against the budget, accessibility lines, the
+  screenshots) + crash list with Theek karo; console Android tab `qaBox` (same, screenshots through her login).
+- **CI** (`appgen-check.yml`): the fixture app now goes through `device_check.sh` itself (13 screens incl. the kit's sign-in / account),
+  a step gates on `report.json` (every screen opened, cold start + APK size measured, accessibility findings printed as notices); the
+  e2e reinstalls the debug build and also sends a kept crash end to end (the server check requires it grouped under the cart screen).
+- **Tool text**: the 1200-char cut had pushed out "Pakka karne ke liye ek sawaal"; the product list was shortened so the new-app
+  rules and the backend actions all fit.
+- **Verified here**: `server/tests/test_v0325_hoola_qa.py` (3: the report parser on real-shaped uiautomator / logcat / gfxinfo output,
+  the build's crash-fix loop on a fake emulator build machine incl. the shot route and the no-emulator message, crash reports grouped /
+  noted / fixed / back / kit-only); the fixture project compiles with the real toolchain (release APK 1.5 MB).
+- **Not yet**: per-app UI flow tests beyond "every screen opens" (tapping through each flow), a visual diff against the approved web
+  design, memory / ANR checks, iPhone.
+
+## v0.328.0 (part 2) APP UPDATES — App Sahayak Phase 4: a built app can be changed safely for its whole life (owner: "START PHASE 4")
+- **Only what changed is rewritten**: Kotlin screens are cached per screen under `_skey` = sha256 of that screen's approved html/css,
+  the look tokens, the tabs, the screen list, its spec row (purpose / lists / actions), the app's server lists and `KIT_REV`. A rebuild
+  of the same design asks Opus nothing (simple code-made screens get another try); a one-screen design change rewrites one screen; a
+  look / colour or data-list change touches every screen (they are in every screen's code). Was: one cache key per whole design, so any
+  change rewrote every screen (cost + regressions).
+- **Versions only go up**: `versionCode = max(last_vc + 1, version*100 + build%100)` (the old formula wrapped after 100 builds and
+  could go DOWN = Android refuses the update); `versionName = <design version>.<build>`.
+- **Changelog** (`android.history`, last 30): build, version, date, APK + sha256 + size, changed / kept / simple screens (labels + ids),
+  data revision and whether it changed, crash fixes, QA passed, rollback_of, and `release_notes` = plain "What's new" lines (her change
+  words, "Updated: Cart, Home", "New details you can fill in.", "Fixes a problem that could close the app.").
+- **Kept builds**: the last `KEEP_BUILDS` (10) APKs and project ZIPs (was: 1 APK, 3 ZIPs).
+- **Rollback** (`android.rollback` / `_rollback`): a kept build's exact project, `versionCode` / `versionName` rewritten to a NEW higher
+  version, the preview key put back, compiled and device-checked, no Opus; phones take it as an update. `app_banao action=rollback`
+  (build, 0 = the one before), `POST /api/apps/<ref>/rollback`, phone "Wapas lao", console "Bring back"; a chat note.
+- **In-app update**: `GET /api/app-api/<key>/latest` (version code / name, notes, size, APK address) + `GET /api/app-api/<key>/apk` (the
+  current APK; public like the app). Kit `AppUpdate.kt`: checked on start against `BuildConfig.VERSION_CODE`; `UpdateDialog` shows
+  "New version x.y" + What's new + Update (opens the APK link in the browser; same key = installs over, data kept) / Later (that
+  version skipped until a newer one). `Act.link` added.
+- **Her data changes** (`backend.change_schema` / `_apply_ops`, `app_banao action=data_change`, `POST /api/apps/<ref>/data_change`):
+  add (a new field is NEVER required - an old app can't send it; a choice fills its default), hide (left out of forms and the model's
+  guide, data kept; essential order fields refused), label; checked on a copy, saved with `rev`, logged in `changes`, REPLAYED after a
+  backend upgrade (`ensure`). The installed app reads the new lists from `/api/app-content` at once (kit `Db.fields` drops hidden);
+  forms collect a new field from the next build; the build's notes say "New details you can fill in."
+- **Device check fixes found in CI**: the emulator screen is 320x640, so fixed 540x1600 swipes hit nothing and the release build opens
+  on the consent screen - scrolling is now measured on the debug build's start screen with swipes from the real `wm size`, and fewer
+  than 10 frames = not measured (never "0 % jank").
+- **Verified**: `server/tests/test_v0325_app_updates.py` (4: only-changed rewrite + version up + history + latest / apk + rollback via
+  route and tool; the screen key; data changes safe for old app versions + hide keeps data + label + replay + notes + forms; the
+  generated project) and the fixture compiles with the real toolchain. Phase 3's CI device check on the emulator (before the scroll fix):
+  13/13 screens, cold start 538 ms, APK 1.51 MB, 0 accessibility findings, e2e incl. photo / paid / updates / crash report all OK.
+- **Not yet**: Play Store releases + Play in-app updates, iPhone, a visual diff of each update against the approved design.
+
+## v0.329.0 SHOWCASE (31 Oct 2026; Phase 5 of the Create Studio design audit, built as 0.328.0)
+Owner: "GO PHASE 5" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3; first ask: "USE REAL HOOLA CREATED VIDEOS AND IMAGES HERE FOR PERSENTATION").
+- `app/studio/showcase.py`: SLOTS = 36 picture briefs keyed by the studio page cards (film0-7 = QUICK, tpl0-9 = STARTERS, tool0-8 = ALLTOOLS,
+  sty0-8 = STYLES; guides reuse their tool's picture), STYLE suffix (no words / logos / watermarks, Indian setting), CLIPS = film0 / film2 /
+  film3 / film7. setup() = the hidden owner film "Hoola showcase" (3:4, one 5 s shot per slot, `hidden`, cast_skip) - free. ask_pictures() =
+  `service.keyframes` for the missing ones; ask_clips() = `service.generate(final)` for the 4 clip slots, refused before their pictures exist
+  (the clip card would otherwise paint and charge those 4 pictures again), and only one pending card at a time. manifest() / status() /
+  file_for(slot, pic|clip).
+- Routes: GET /api/studio/showcase (slots for every signed-in account; `owner` panel for the owner tenant), POST /api/studio/showcase/
+  setup|pictures|clips (owner only, 403 otherwise), GET /api/studio/showcase/file/<slot>?kind=pic|clip.
+- FOUND: `service.decide`, `service.approval_card` (fingerprint) and the stale-card sweep used `listing(tenant)`, which hides hidden films:
+  a hidden film's price card could never be approved ("Yeh card purana ho gaya"). All three now use `listing(tenant, hidden=True)`.
+- Pages (`studio.js`): `showcaseSwap(root)` lays the real picture (or the muted looping clip, poster = its picture; a still picture under
+  reduced motion) over each `canvas[data-art]` whose seed maps to a ready slot (`SC_SLOT`); a file that fails is removed so the drawing stays.
+  Runs after every go() and once the manifest arrives at mount. Owner panel `drawShowcase()` on Create > Engines: set up, "Make the N missing
+  pictures", "Make the 4 clips" (disabled until all pictures exist), painting / making progress, the pending card with Haan / Na, polls 5 s.
+- Verified locally (fake keys): setup hidden from lists; pictures card ₹428 (36 x ₹12); clips card ₹340 video once pictures exist; Haan ->
+  painting -> the plain "key refused" reason, ₹0 charged; Na on a hidden film's card works; test files laid over the drawn cards (7 on home,
+  the style tile on Image). The REAL showcase needs her two taps on the live server.
+- Tests: `test_v0329_showcase.py`.
+
+## v0.330.0 ANY DESIGN (web design Phase 6 step 2; owner: "START PHASE 2")
 Three limits, measured in the code: a section could only be one of 30 library types (21 places looked a type up in
 `T.SECTIONS`), the site runtime had no interactive pieces beyond FAQ / lightbox / before-after (so a calculator, tabs or
 a filter needed section JS, which the sanitiser rightly strips), and every section styled its own buttons and cards, so
@@ -12175,8 +12319,23 @@ a big site drifted page to page.
   / universal selectors, no url / @import / font-face). Stored on the look, put in site.css after the base styles,
   and every section prompt carries `kit.prompt_line` (use these classes). One kit per site, not per change.
   Scripted tests run with SITE_KIT=false (conftest); its own suite turns it on.
-- Tests `server/tests/test_v0325_any_design.py` (6): free-form sections in the site map (dedupe, cap, names), her words
+- Tests `server/tests/test_v0330_any_design.py` (6): free-form sections in the site map (dedupe, cap, names), her words
   add one and it is built + on the page, the kit cleaner, one kit per site that every section prompt names, and every
   interactive piece clicked in Chromium (tabs + arrow keys + ARIA, filter, switch, sum calculator 1,850 -> 1,970, EMI
   8,885 / total 1,06,619 / interest 6,619 -> 4,707 for 24 months, slider arrows).
 - Seen in the sandbox and NOT from this work: `test_v0319_app_features.py` fails the same 4 ways on untouched main.
+
+## v0.330.0 DEPLOY SE NAHI RUKEGA (owner's screenshot: S-0003 "Server ruk gaya tha, kaam beech mein ruk gaya")
+- Checked the server log first: clean shutdowns ("Shutting down" -> "Started server process"), no crash, no out-of-memory.
+  Deploys landed at 07:27, 07:58, 08:17, 08:38 and 09:04 (several sessions shipping). A dead website job gets ONE
+  automatic restart (`recover_stuck`, v0.223, against crash loops), so S-0003's build, restarted after 08:38, was marked
+  failed after 09:04. Her finished sections were safe on disk; "Continue" resumes from them.
+- Fix: the app's shutdown (main.lifespan after `yield`, first thing) calls `site.service.mark_clean_stop()`, which
+  gives every website job running in this process a fresh restart allowance (`recovered = 0`). After a deploy the job
+  continues however many deploys land; a real crash (no shutdown ran) still uses up the one restart and shows the
+  plain "Phir se chalao" card.
+- A site map being made (big sites, stage `sitemap`) used to be dropped back to the plan on any restart; it now starts
+  again once (its size and words are kept on the board: map_want / map_words).
+- Tests `server/tests/test_v0330_deploy_se_nahi.py` (4): a build that lived through two deploys continues, a real crash
+  still stops after one restart, a site map job starts again then gives up honestly after a crash.
+- Built as 0.325 / 0.326, shipped together as 0.330.0 past the parallel v0.325-v0.329 Create Studio work (all kept).

@@ -29,6 +29,7 @@ from urllib.parse import parse_qs, urlparse
 SECRET = os.environ.get("HOOLA_BUILD_SECRET", "")
 HOME = Path(os.environ.get("HOOLA_BUILD_HOME", "/srv/hoola-build"))
 TIMEOUT = int(os.environ.get("HOOLA_BUILD_TIMEOUT", "1500"))
+EMULATOR = os.environ.get("HOOLA_BUILD_EMULATOR", "") == "1"     # v0.325 HOOLA QA: run the device check on this machine
 MAX_ZIP = 60 * 1024 * 1024
 MAX_FILES = 3000
 KEEP_JOBS_S = 24 * 3600
@@ -84,6 +85,9 @@ def build(job: str) -> None:
         apks = sorted((work / "app/build/outputs/apk/release").glob("*.apk")) if p.returncode == 0 else []
         if apks:
             shutil.copy(apks[0], HOME / "jobs" / f"{job}.apk")
+            if EMULATOR and (work / "hoola_qa/device_check.sh").exists():
+                j.update(stage="device check")
+                qa_check(job, work, env, logf)
             j.update(status="ok", stage="done")
         else:
             j.update(status="failed", stage="failed")
@@ -102,6 +106,36 @@ def build(job: str) -> None:
         j["tail"] = ""
 
 
+def qa_check(job: str, work: Path, env: dict, logf: Path) -> None:
+    """v0.325 HOOLA QA on this machine's emulator (HOOLA_BUILD_EMULATOR=1 + a running emulator / device on adb): every
+    screen opened, screenshots, accessibility, cold start, scrolling, APK size -> jobs/<job>.qa.zip. Never fails the build."""
+    out = HOME / "jobs" / f"{job}_qa"
+    try:
+        with open(logf, "a") as lf:
+            subprocess.run(["./gradlew", "--no-daemon", "--console=plain", "assembleDebug"], cwd=work, env=env,
+                           stdout=lf, stderr=subprocess.STDOUT, timeout=TIMEOUT)
+            dbg = sorted((work / "app/build/outputs/apk/debug").glob("*.apk"))
+            rel = sorted((work / "app/build/outputs/apk/release").glob("*.apk"))
+            if not dbg:
+                return
+            ids = (work / "hoola_qa/screens.txt").read_text().split()
+            pkg = (work / "hoola_qa/package.txt").read_text().strip()
+            subprocess.run(["bash", str(work / "hoola_qa/device_check.sh"), str(dbg[0]), str(rel[0]) if rel else "", str(out), pkg, *ids],
+                           env=env, stdout=lf, stderr=subprocess.STDOUT, timeout=1200)
+        if (out / "report.json").exists():
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                z.write(out / "report.json", "report.json")
+                for f in sorted((out / "screens").glob("*.png")):
+                    z.write(f, f"screens/{f.name}")
+            (HOME / "jobs" / f"{job}.qa.zip").write_bytes(buf.getvalue())
+    except Exception as e:                       # noqa: BLE001 - the device check never breaks a good build
+        with open(logf, "a") as lf:
+            lf.write(f"\ndevice check skipped: {e}\n")
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
+
+
 def runner() -> None:
     while True:
         job = Q.get()
@@ -112,7 +146,7 @@ def runner() -> None:
         now = time.time()
         for k, v in list(JOBS.items()):
             if now - v.get("ended", now) > KEEP_JOBS_S:
-                for ext in (".log", ".apk"):
+                for ext in (".log", ".apk", ".qa.zip"):
                     (HOME / "jobs" / f"{k}{ext}").unlink(missing_ok=True)
                 JOBS.pop(k, None)
 
@@ -170,7 +204,7 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):                             # noqa: N802
         if not self._ok(b""):
             return
-        m = re.fullmatch(r"/jobs/([0-9a-f]{16})(/apk|/log)?", urlparse(self.path).path)
+        m = re.fullmatch(r"/jobs/([0-9a-f]{16})(/apk|/log|/qa)?", urlparse(self.path).path)
         if urlparse(self.path).path == "/health":
             return self._send(200, json.dumps({"ok": True, "queued": Q.qsize()}).encode())
         if not m or m.group(1) not in JOBS:
@@ -179,6 +213,9 @@ class H(BaseHTTPRequestHandler):
         if what == "/apk":
             f = HOME / "jobs" / f"{job}.apk"
             return self._send(200, f.read_bytes(), "application/vnd.android.package-archive") if f.exists() else self._send(404, b"{}")
+        if what == "/qa":
+            f = HOME / "jobs" / f"{job}.qa.zip"
+            return self._send(200, f.read_bytes(), "application/zip") if f.exists() else self._send(404, b"{}")
         if what == "/log":
             f = HOME / "jobs" / f"{job}.log"
             return self._send(200, f.read_bytes() if f.exists() else b"", "text/plain")

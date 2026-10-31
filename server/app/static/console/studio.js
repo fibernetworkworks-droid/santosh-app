@@ -91,6 +91,24 @@ window.HoolaCreate = ctx => {
   // v0.320 the studio opens hidden, so on the FIRST open every picture had no size yet and stayed an unpainted 300x150 canvas
   // stretched over its card (squashed moons and records). A picture now paints when it gets a size, and again if it changes.
   const artRO = window.ResizeObserver ? new ResizeObserver(es => es.forEach(e => { if (e.target.clientWidth) paint(e.target); })) : null;
+  // v0.329 SHOWCASE: a card whose real Hoola-made picture (or clip) exists shows it over the drawn placeholder
+  const SC_SLOT = seed => { let m = /^t?q(\d+)$/.exec(seed); if (m) return 'film' + m[1];
+    if ((m = /^t[pt](\d+)$/.exec(seed))) return 'tpl' + m[1]; if ((m = /^t(\d+)$/.exec(seed))) return 'tool' + m[1];
+    if ((m = /^sty(\d+)$/.exec(seed))) return 'sty' + m[1];
+    if ((m = /^lr(\d+)$/.exec(seed))) { const i = ALLTOOLS.findIndex(t => t[0] === GUIDES[+m[1]]?.[1]); return i >= 0 ? 'tool' + i : ''; }
+    return ''; };
+  function showcaseSwap(root = R) {
+    const S = D.showcase?.slots; if (!S || !root) return;
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $$('canvas[data-art][data-seed]', root).forEach(c => { const slot = SC_SLOT(c.dataset.seed), it = S[slot]; if (!it || c.dataset.sc) return; c.dataset.sc = '1';
+      const base = `/api/studio/showcase/file/${slot}?kind=`, clip = it.clip && !still, el = document.createElement(clip ? 'video' : 'img');
+      el.className = 'art sc'; el.setAttribute('aria-hidden', 'true');
+      if (clip) { el.muted = true; el.loop = true; el.playsInline = true; el.autoplay = true; } else el.alt = '';
+      c.after(el);
+      blobURL(base + (clip ? 'clip' : 'pic')).then(u => { el.src = u; el.addEventListener(clip ? 'loadeddata' : 'load', () => el.classList.add('on'), {once: true}); })
+        .catch(() => el.remove());
+      if (clip && it.pic) blobURL(base + 'pic').then(u => { el.poster = u; }).catch(() => {}); });
+  }
   const paintAll = (root = R) => requestAnimationFrame(() => $$('canvas[data-art]', root).forEach(c => { if (c.clientWidth) paint(c); artRO?.observe(c); }));
 
   /* ---------------- her files ---------------- */
@@ -138,7 +156,8 @@ window.HoolaCreate = ctx => {
       if (what === 'studio' && (force || !D.studio)) D.studio = await api('GET', '/api/studio');
       if (what === 'items' && (force || !D.items)) D.items = (await api('GET', '/api/create/items')).items || [];
       if (what === 'kit' && (force || !D.kit)) D.kit = await api('GET', '/api/brand/kit');
-    } catch (e) { if (what === 'items') D.items = D.items || []; if (what === 'studio') D.studio = D.studio || {projects: [], available: false, models: []}; if (what === 'conf') D.conf = D.conf || {ready: {}, voices: {male: {}, female: {}}}; }
+      if (what === 'showcase' && (force || !D.showcase)) D.showcase = await api('GET', '/api/studio/showcase');
+    } catch (e) { if (what === 'items') D.items = D.items || []; if (what === 'studio') D.studio = D.studio || {projects: [], available: false, models: []}; if (what === 'conf') D.conf = D.conf || {ready: {}, voices: {male: {}, female: {}}}; if (what === 'showcase') D.showcase = D.showcase || {slots: {}}; }
     return D[what];
   }
   const items = kind => (D.items || []).filter(i => !kind || (Array.isArray(kind) ? kind.includes(i.kind) : i.kind === kind));
@@ -226,7 +245,7 @@ ${SPRITE}`;
     $$('#snav [data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === v ? 'page' : 'false'));
     $('#crumb').innerHTML = v === 'studio' ? '<b>Create</b>' : `Create · <b>${TITLE[v]}</b>`;
     $('#shell').classList.remove('navon');
-    (W[v] || (() => {}))(el, opts || {}); paintAll(el); hydrate(el); rails(el);
+    (W[v] || (() => {}))(el, opts || {}); paintAll(el); hydrate(el); rails(el); showcaseSwap(el);
     try { sessionStorage.setItem('hoola.create.view', v); } catch {}
   }
   const V = {}, W = {};
@@ -287,7 +306,7 @@ ${SPRITE}`;
       : `<span class="audio-ic">${I(it.kind === 'voice' ? 'mic' : 'music', 'width:28px;height:28px')}</span>`;
     return `<div class="res${tall ? ' tall' : ''}" data-item="${it.id}"><button class="thumb" data-open="${it.id}" aria-label="Open ${esc(it.title)}">${media}${it.mime.startsWith('video/') ? `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(it.kind)}</span>` : ''}</button>
       <span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button>${it.mime.startsWith('image/') ? `<button data-ref="${it.id}" aria-label="Use as a reference">${I('layers')}</button>` : ''}<button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span>
-      <b class="rt">${esc(it.title)}</b><small>${when(it.created)}${it.meta?.model ? ' · ' + esc(it.meta.model) : ''}</small></div>`;
+      <b class="rt">${esc(it.title)}</b><small>${[when(it.created), it.meta?.style, it.meta?.aspect].filter(Boolean).map(esc).join(' · ')}</small></div>`;
   }
   // the hover actions on result tiles, shared by every page that lists her creations
   async function itemAction(b) {
@@ -375,7 +394,7 @@ ${SPRITE}`;
     <div class="tools">${ALLTOOLS.map(([v, t, s, k, tag], i) => `<button class="tool" data-go="${v}"><span class="thumb">${art(k, 't' + i)}</span><div style="min-width:0"><b>${t}${tag ? ` <span class="tag ${tag}">${tag === 'hot' ? 'Popular' : 'New'}</span>` : ''}</b><small>${s}</small></div></button>`).join('')}</div></section>
   <section><div class="sec-h"><h2>Your recent creations</h2><a data-go="library">See all</a></div><div class="row" id="recent"></div></section>
   <section><div class="sec-h"><h2>Start from a template</h2><a data-go="templates">See all</a></div>
-    ${rail(STARTERS.map(([t, v, k], i) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tp' + i)}<span class="use">Use</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join(''), 'row')}</section>
+    ${rail(STARTERS.map(([t, v, k], i) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tp' + i)}<span class="use">Use this</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join(''), 'row')}</section>
 </div>`;
   function drawRecent() {
     const el = $('#recent'); if (!el) return;
@@ -422,10 +441,8 @@ ${SPRITE}`;
   const STYLES = ['', 'Photoreal', 'Cinematic', 'Festive glow', 'Product studio', 'Watercolour', 'Anime', '3D clay', 'Indian folk art'];
   const ASPECTS = ['1:1', '4:5', '9:16', '16:9', '3:4', '4:3'];
   const imgCost = () => (IMG.quality === 'best' ? 12 : 3) * IMG.count;
-  function toolTabs(k) { return `<div class="seg" role="group" aria-label="Studio">${TOOLS.slice(0, 5).map(([v, tt]) => `<button aria-pressed="${v === k}" data-go="${v}">${tt}</button>`).join('')}</div>`; }
   V.image = () => `<div class="gen">
   <div class="panel"><div class="pbody">
-    ${toolTabs('image')}
     <div class="seg" role="group" aria-label="Kind"><button aria-pressed="${!IMG.refs.length}" data-imode="new">New picture</button><button aria-pressed="${!!IMG.refs.length}" data-imode="edit">Change my photo</button></div>
     <div class="prow"><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Engine</small><b>Hoola image engine</b></div><span class="tag">Readable Indian scripts</span></div>
     <div class="box">
@@ -613,7 +630,6 @@ ${SPRITE}`;
   V.video = () => { const m = vm();
     return `<div class="gen">
   <div class="panel" style="position:relative"><div class="pbody">
-    ${toolTabs('video')}
     <button class="prow" data-pickmodel><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Model</small><b>${VID.compare.length ? VID.compare.map(k => esc(mOf(k)?.name || k)).join(' vs ') : m ? esc(m.name) : 'Hoola Auto · ' + {quality: 'best quality', value: 'best value', cheap: 'lowest price'}[VID.auto]}</b></div>${VID.compare.length ? '<span class="tag">Side by side</span>' : m ? `<span class="tag num">${money(rateAt(m, VID.res))}/s</span>` : '<span class="tag">Recommended</span>'}${I('chev', 'color:var(--dim)')}</button>
     ${VID.compare.length ? `<button class="lnk" data-uncompare style="align-self:flex-start">${I('x', 'width:13px;height:13px')} Stop comparing, use one model</button>` : ''}
     <div class="box">
@@ -623,10 +639,11 @@ ${SPRITE}`;
     <div class="lbl">Camera</div><div class="chips cams">${CAMS.map(([c, d]) => `<button class="chip" aria-pressed="${c === VID.camera}" data-vcam="${esc(c)}" title="${esc(d)}">${esc(c)}</button>`).join('')}</div>
     <div class="lbl">Shape</div><div class="grid-opts">${['9:16', '16:9', '1:1'].map(a => `<button class="go shp" aria-pressed="${a === VID.aspect}" data-vasp="${a}">${ratioI(a)}<span>${a}</span></button>`).join('')}</div>
     <div class="lbl">Length</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${lenOpts(m).map(s => `<button class="go" aria-pressed="${s === VID.seconds}" data-vsec="${s}">${s} s</button>`).join('')}</div>
+    <details class="adv vmore"${VID.more ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}More settings<span class="vsum">${esc(VID.res)} · ${VID.audio ? 'sound on' : 'silent'} · ${VID.takes} take${VID.takes > 1 ? 's' : ''} · ${esc(VID.language || 'Hindi')}</span></summary>
     <div class="lbl">Resolution</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${resOpts(m).map(r => `<button class="go" aria-pressed="${r === VID.res}" data-vres="${r}">${r}</button>`).join('')}</div>
     <div class="prow2"><div class="prow"><span class="pi">${I('sound', 'width:16px;height:16px')}</span><div><small>Sound</small><b>${VID.audio ? 'On' : 'Off'}</b></div><button class="sw" role="switch" aria-checked="${VID.audio}" data-vaudio aria-label="Sound"><i></i></button></div>
       <div class="prow"><span class="pi">${I('layers', 'width:16px;height:16px')}</span><div><small>Takes</small><b class="num">${VID.takes}</b></div><span class="stepper" style="height:32px;border:0;padding:0"><button data-vtake="-1" aria-label="Fewer takes">${I('minus', 'width:14px;height:14px')}</button><button data-vtake="1" aria-label="More takes">${I('plus', 'width:14px;height:14px')}</button></span></div></div>
-    <div class="lbl">Spoken lines in</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu'].map(l => `<button class="chip" aria-pressed="${l === VID.language}" data-vlang="${l}">${l}</button>`).join('')}</div>
+    <div class="lbl">Spoken lines in</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu'].map(l => `<button class="chip" aria-pressed="${l === VID.language}" data-vlang="${l}">${l}</button>`).join('')}</div></details>
     <div class="pricebox" id="vprice"></div>
   </div>
   <div class="pfoot"><button class="btn sec" id="vidPrev" title="An animatic from pictures, to check the story">Free preview</button><button class="create" id="vidGo">${I('spark', 'width:17px;height:17px')}<span>Create</span><small class="num" id="vidCost">…</small></button></div></div>
@@ -656,10 +673,16 @@ ${SPRITE}`;
       <small class="apn">Nothing is spent until you tap Haan. You are never charged more than ${inr(a.inr)}.</small>
       <div class="apb"><button class="btn sec" data-no="${esc(a.id)}">Na</button><button class="btn pri" data-yes="${esc(a.id)}">Haan, make it · ${inr(a.inr)}</button></div></div>`;
   }
-  function projTile(p) {
+  // v0.325 what state a clip / film is in, in one word
+  function projState(p) {
     const busy = p.working || p.planning || (p.painting || []).length;
-    return `<div class="res${busy ? ' gening' : ''}" data-proj="${esc(p.project)}"><button class="thumb" data-openproj="${esc(p.project)}" aria-label="Open ${esc(p.project)}" title="${VIEW === 'video' ? 'Play' : 'Open in Director'}">${projMedia(p)}${busy ? `<span class="ring"></span><span class="pct">${p.progress?.pct != null ? p.progress.pct + '%' : p.planning ? 'Writing the plan' : 'Working'}</span>` : `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(p.aspect)}</span><span class="dur num">${p.seconds || 0} s</span>`}</button>
-      <b class="rt">${esc(p.project)}</b><small>${esc((p.brief || '').slice(0, 80))}</small>${p.error && !busy ? `<small class="perr">${I('x', 'width:13px;height:13px')}${esc(p.error)}</small>` : ''}${moneyLine(p.money)}${(p.approvals || []).map(approvalRow).join('')}</div>`;
+    const made = (p.outputs || []).some(o => o.url) || (p.shots || []).some(x => (x.take_list || []).some(t => t.url));
+    return busy ? ['Making', 'mk'] : p.error ? ['Needs attention', 'na'] : made ? ['Ready', 'ok'] : ['Draft', 'dr'];
+  }
+  function projTile(p) {
+    const busy = p.working || p.planning || (p.painting || []).length, [stl, stc] = projState(p);
+    return `<div class="res${busy ? ' gening' : ''}" data-proj="${esc(p.project)}"><button class="thumb" data-openproj="${esc(p.project)}" aria-label="Open ${esc(p.project)}" title="${VIEW === 'video' ? 'Play' : 'Open in Director'}">${projMedia(p)}${busy ? `<span class="ring"></span><span class="pct">${p.progress?.pct != null ? p.progress.pct + '%' : p.planning ? 'Writing the plan' : 'Working'}</span>` : `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(p.aspect)}</span>${stc === 'ok' ? `<span class="dur num">${p.seconds || 0} s</span>` : ''}`}</button>
+      <b class="rt">${esc(p.project)}<span class="stchip ${stc}">${stl}</span></b><small>${esc((p.brief || '').slice(0, 80))}</small>${p.error && !busy && VIEW !== 'video' ? `<small class="perr">${I('x', 'width:13px;height:13px')}${esc(p.error)}</small>` : ''}${moneyLine(p.money)}${(p.approvals || []).map(approvalRow).join('')}</div>`;
   }
   // v0.263 estimate vs what she pays vs what the providers reported, for a film / clip
   function moneyLine(mo) {
@@ -670,12 +693,18 @@ ${SPRITE}`;
     try { await api('POST', `/api/studio/approvals/${encodeURIComponent(aid)}`, {yes}); toast(yes ? 'Started. Nothing more is spent without you.' : 'Declined, nothing spent'); return true; }
     catch (e) { toast(e.status === 428 ? fp : e.message, true); return false; }
   }
+  // v0.325 failures as ONE calm notice above the clips (a red line under every tile read as a gallery of failures)
+  function vnote(ps) {
+    const bad = ps.filter(p => p.error && !(p.working || p.planning || (p.painting || []).length)); if (!bad.length) return '';
+    const why = [...new Set(bad.map(p => p.error))];
+    return `<div class="vnote" style="grid-column:1/-1">${I('x', 'width:15px;height:15px')}<div><b>${bad.length} clip${bad.length > 1 ? 's' : ''} could not start.</b><small>${esc(why.length === 1 ? why[0] : 'Open a clip marked “Needs attention” to see why.')} Nothing was charged for them.</small></div></div>`;
+  }
   function drawVideos() {
     const el = $('#results'); if (!el) return;
     const ps = (D.studio?.projects || []);
     el.innerHTML = (D.studio && D.studio.available === false ? `<div class="empty" style="grid-column:1/-1"><div><h2>Video Studio is off on this server</h2><p class="mut">It needs ffmpeg and STUDIO_ON on the server.</p></div></div>` : '')
       + (VID.busy ? `<div class="res gening"><span class="thumb">${art('film', 'vb')}<span class="ring"></span><span class="pct">${esc(VID.busy)}</span></span><b class="rt">${esc(VID.prompt.slice(0, 48))}</b><small>Hoola is writing the shot plan; the price card comes next</small></div>` : '')
-      + (ps.map(projTile).join('') || (VID.busy ? '' : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot, pick a model, see the price, press Create.</p></div></div>`));
+      + vnote(ps) + (ps.map(projTile).join('') || (VID.busy ? '' : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot, pick a model, see the price, press Create.</p></div></div>`));
     paintAll(el);
   }
   function watchStudio(view, draw) {
@@ -746,6 +775,7 @@ ${SPRITE}`;
     const R = resOpts(m); if (R.length && !R.includes(VID.res)) VID.res = R.find(r => RES.indexOf(r) >= RES.indexOf(VID.res)) || R[R.length - 1];
   }
   W.video = (el, o) => {
+    $('.vmore', el)?.addEventListener('toggle', e => { VID.more = e.target.open; });   // v0.325 More settings stays as she left it
     const q = $('#vidq'); q.addEventListener('input', () => VID.prompt = q.value);
     load('studio').then(() => redraw('video', drawVideos)); watchStudio('video', drawVideos);
     models().then(() => { if (VIEW === 'video' && VID.model && !vm()) { VID.model = ''; } livePrice(); });
@@ -1048,7 +1078,6 @@ ${SPRITE}`;
   const CYC = {lang: ['Hindi', 'Hinglish', 'Punjabi', 'Tamil', 'Telugu', 'Marathi', 'Bengali', 'English'], vox: ['Duet', 'Female', 'Male', 'Choir'], mood: ['Warm', 'Joyful', 'Romantic', 'Energetic', 'Sad', 'Devotional', 'Epic', 'Calm'], len: ['30 s', '1 min', '2 min', '3 min']};
   const vocal = () => MU.tab === 'Song';
   V.music = () => `<div class="gen"><div class="panel"><div class="pbody">
-    ${toolTabs('music')}
     <div class="seg" role="group" aria-label="Kind">${['Song', 'Instrumental', 'Jingle', 'Score'].map(t => `<button aria-pressed="${t === MU.tab}" data-mtab="${t}">${t}</button>`).join('')}</div>
     <div class="box"><h3>Describe the ${MU.tab.toLowerCase()}</h3><textarea id="muq" rows="3" maxlength="1200" placeholder="A warm Hindi duet about a chai shop where two strangers meet every rainy evening, soft guitar, tabla, big chorus">${esc(MU.brief)}</textarea></div>
     <div class="lbl">Genre</div><div class="chips">${GENRES.map(g => `<button class="chip" aria-pressed="${g === MU.genre}" data-genre="${esc(g)}">${g}</button>`).join('')}</div>
@@ -1132,12 +1161,11 @@ ${SPRITE}`;
       ...(VO.g !== 'male' ? Object.entries(vs.female).map(([n, d]) => [n, n, 'Female · ' + d, 'portrait']) : []),
       ...(VO.g !== 'female' ? Object.entries(vs.male).map(([n, d]) => [n, n, 'Male · ' + d, 'portrait']) : [])];
     return `<div class="gen"><div class="panel"><div class="pbody">
-    ${toolTabs('voice')}
     <div class="box"><h3>Script <span class="dim num" style="font-size:12.5px;font-weight:400" id="voCount">${VO.text.length} / 5000</span></h3>
       <textarea id="voq" rows="6" maxlength="5000" placeholder="Is Diwali, apne ghar ko roshan kijiye. Newtika chai ke saath, har shaam khaas.">${esc(VO.text)}</textarea></div>
     <div class="lbl">Language</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi'].map(l => `<button class="chip" aria-pressed="${l === VO.lang}" data-volang="${l}">${l}</button>`).join('')}</div>
     <div class="lbl">Voice</div><div class="seg"><button aria-pressed="${VO.g === 'all'}" data-vog="all">All</button><button aria-pressed="${VO.g === 'female'}" data-vog="female">Female</button><button aria-pressed="${VO.g === 'male'}" data-vog="male">Male</button></div>
-    <div class="vlist">${list.map(([k, n, d, a]) => `<button class="opt" role="radio" aria-checked="${k === VO.voice}" data-vo="${esc(k)}"><span class="thumb">${art(a, 'vo' + k)}</span><div><b>${esc(n)}</b><small>${esc(d)}</small></div></button>`).join('')}</div>
+    <div class="vlist">${list.map(([k, n, d, a]) => `<button class="opt" role="radio" aria-checked="${k === VO.voice}" data-vo="${esc(k)}"><span class="thumb">${k === 'mine' ? art(a, 'vo' + k) : initTile(n)}</span><div><b>${esc(n)}</b><small>${esc(d)}</small></div></button>`).join('')}</div>
     <div class="lbl">Style</div><div class="grid-opts">${Object.keys(D.conf?.styles ? Object.fromEntries(D.conf.styles.map(s => [s, 1])) : {friendly: 1, calm: 1, excited: 1, news: 1, story: 1, ad: 1}).map(s => `<button class="go" aria-pressed="${s === VO.style}" data-vostyle="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join('')}</div>
     <div class="lbl">Pace <span class="num" id="spd">${VO.speed.toFixed(1)}x</span></div><input class="slider" type="range" min="0.6" max="1.6" step="0.1" value="${VO.speed}" id="voSpeed" aria-label="Pace">
   </div><div class="pfoot"><button class="create" id="voGo">${I('sound', 'width:17px;height:17px')}Make voice-over</button></div></div>
@@ -1167,10 +1195,12 @@ ${SPRITE}`;
   /* ---------------- dubbing ---------------- */
   const LANGS = ['Hindi', 'Hinglish', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Odia', 'Urdu', 'English', 'Spanish', 'Arabic'];
   const DB = {src: null, to: ['Tamil'], keep: true, sel: '', tab: ''};
+  const DUB_TOP = ['Hindi', 'Tamil', 'Telugu', 'Bengali', 'Marathi', 'English'];
   V.dubbing = () => `<div class="split"><aside>
     <button class="refs" data-dubsrc>${DB.src ? `<span class="stack"><i>${I('video', 'width:16px;height:16px;margin:10px 6px')}</i></span><div><b>${esc(DB.src.name)}</b><small>${(DB.src.size / 1048576).toFixed(1)} MB · tap to change</small></div>` : `<span class="stack"><i>${I('upload', 'width:16px;height:16px;margin:10px 6px')}</i></span><div><b>Upload your video</b><small>MP4 / MOV / WebM · up to 25 MB and 3 minutes</small></div>`}</button>
     ${DB.src ? `<video class="srcv" controls playsinline src="${esc(DB.src.local)}"></video>` : ''}
-    <div class="lbl">Dub into · up to 4</div><div class="langs">${LANGS.map(l => `<button class="chip" aria-pressed="${DB.to.includes(l)}" data-lang="${l}">${l}</button>`).join('')}</div>
+    <div class="lbl">Dub into <span class="dim num" id="dubn" style="margin-left:auto">${DB.to.length} of 4 picked</span></div><div class="langs">${LANGS.filter(l => DUB_TOP.includes(l)).map(l => `<button class="chip" aria-pressed="${DB.to.includes(l)}" data-lang="${l}">${l}</button>`).join('')}</div>
+    <details class="adv"${DB.to.some(l => !DUB_TOP.includes(l)) ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}All languages</summary><div class="langs">${LANGS.filter(l => !DUB_TOP.includes(l)).map(l => `<button class="chip" aria-pressed="${DB.to.includes(l)}" data-lang="${l}">${l}</button>`).join('')}</div></details>
     <div class="prow"><div><b style="white-space:normal">Keep music and background sound</b><small>The original plays softly under the new voices</small></div><button class="sw" role="switch" aria-checked="${DB.keep}" data-dkeep aria-label="Keep music and background sound"><i></i></button></div>
     <button class="create" style="flex:none" id="dubGo">${I('dub', 'width:17px;height:17px')}Dub now</button>
     <p class="note">Hoola listens once, writes each line in the new language and speaks it in a voice matched to each speaker. Voices are matched, not cloned; lips are not re-synced (lip sync is a paid Video Studio step).</p>
@@ -1203,7 +1233,7 @@ ${SPRITE}`;
         b.disabled = true; toast('Uploading ' + f.name);
         try { DB.src = await upload(f, /^video\//); go('dubbing'); } catch (er) { toast(er.message, true); b.disabled = false; } return; }
       if (b.dataset.lang) { const l = b.dataset.lang; if (DB.to.includes(l)) DB.to = DB.to.filter(x => x !== l); else if (DB.to.length < 4) DB.to.push(l); else { toast('Up to 4 languages at a time'); return; }
-        $$('[data-lang]').forEach(x => x.setAttribute('aria-pressed', String(DB.to.includes(x.dataset.lang)))); return; }
+        $$('[data-lang]').forEach(x => x.setAttribute('aria-pressed', String(DB.to.includes(x.dataset.lang)))); const n = $('#dubn'); if (n) n.textContent = DB.to.length + ' of 4 picked'; return; }
       if (b.hasAttribute('data-dkeep')) { DB.keep = !DB.keep; b.setAttribute('aria-checked', String(DB.keep)); return; }
       if (b.dataset.dubsel) { DB.sel = b.dataset.dubsel; drawDub(); return; }
       if (b.id === 'dubGo') { if (!DB.src) { toast('Upload your video first'); return; } if (!DB.to.length) { toast('Pick a language'); return; }
@@ -1221,14 +1251,14 @@ ${SPRITE}`;
       <span class="ord"><button class="ib" data-mv="${i}|-1" aria-label="Move up" ${i ? '' : 'disabled'}>${I('send', 'width:13px;height:13px')}</button><button class="ib" data-rm="${i}" aria-label="Remove">${I('x', 'width:13px;height:13px')}</button></span></div>`).join('')
       : `<button class="refs" data-addclip><span class="stack"><i>${I('upload', 'width:16px;height:16px;margin:10px 6px')}</i></span><div><b>Add your clips</b><small>Videos, photos, music · up to 8 · 25 MB each</small></div></button>`}
     <div class="lbl">Recent edits</div><div class="mini" id="edjobs"></div></div>
-  <div class="viewer"><div class="screen"><div class="frame">${lt?.url ? `<video controls playsinline src="${esc(lt.url)}"></video>` : j && j.status !== 'failed' ? `<div class="framemsg"><span class="ring"></span><b>${esc(ED_STATUS[j.status] || 'Working')}</b><small>${j.progress || 0}%</small></div>` : `<div class="framemsg">${I('cut', 'width:30px;height:30px')}<b>Your edit plays here</b><small>Add clips, say what you want, press Make the edit</small></div>`}</div></div>
+  <div class="viewer"><div class="screen"><div class="frame">${lt?.url ? `<video controls playsinline src="${esc(lt.url)}"></video>` : j && j.status !== 'failed' ? `<div class="framemsg"><span class="ring"></span><b>${esc(ED_STATUS[j.status] || 'Working')}</b><small>${j.progress || 0}%</small></div>` : (ED.clips.length ? `<div class="framemsg">${I('cut', 'width:30px;height:30px')}<b>Your edit plays here</b><small>Say what you want below, then press Make the edit</small></div>` : `<button type="button" class="framemsg drop" data-addclip>${I('upload', 'width:30px;height:30px')}<b>Drop videos, photos or music here</b><small>or tap to choose · up to 8 · 25 MB each</small></button>`)}</div></div>
     ${j?.error ? `<p class="bad" style="padding:0 16px">${esc(j.error)}</p>` : ''}
     <form class="ask" id="edAsk">${I('spark', 'width:16px;height:16px;color:var(--pri)')}<input id="edq" maxlength="1500" placeholder="${lt ? 'Change it: make the intro shorter, add Hindi captions, slower music…' : 'Say what to make: a 30 s reel, fast cuts on the beat, captions in Hindi…'}" aria-label="Tell Hoola what to change" value="${esc(lt ? '' : ED.brief)}"><button class="send" style="width:32px;height:32px" aria-label="${lt ? 'Change' : 'Make the edit'}">${I('send', 'width:16px;height:16px')}</button></form></div>
   <div class="insp"><h3>Made for</h3><select id="edplat" class="sel">${(ED.platforms || [{id: 'reel', label: 'Instagram Reel'}]).map(p => `<option value="${esc(p.id)}"${p.id === ED.platform ? ' selected' : ''}>${esc(p.label)}${p.aspect ? ' · ' + p.aspect : ''}</option>`).join('')}</select>
     <h3>Length</h3><div class="grid-opts">${['', '15', '30', '60'].map(s => `<button class="go" aria-pressed="${s === ED.length}" data-edlen="${s}">${s ? s + ' s' : 'Auto'}</button>`).join('')}</div>
     <div class="prow"><div><b>Captions</b><small>Words on screen</small></div><button class="sw" role="switch" aria-checked="${ED.captions}" data-edcap aria-label="Captions"><i></i></button></div>
     <h3>Quick asks</h3><div class="aitools">${[['Cut the silences', 'cut'], ['Hindi captions', 'text'], ['Make it 9:16', 'grid'], ['Beat-synced cuts', 'music'], ['Brighter colours', 'wand'], ['Shorter intro', 'minus']].map(([t, ic]) => `<button data-ai="${t}">${I(ic, 'width:14px;height:14px')}${t}</button>`).join('')}</div>
-    <button class="create" style="flex:none" id="edGo" ${ED.clips.length ? '' : 'disabled'}>${I('cut', 'width:16px;height:16px')}Make the edit</button>
+    <button class="create" style="flex:none" id="edGo" ${ED.clips.length ? '' : 'disabled'}>${I('cut', 'width:16px;height:16px')}${ED.clips.length ? 'Make the edit' : 'Add clips to start'}</button>
     ${lt ? `<a class="btn sec" href="${esc(lt.url)}" download="${esc(lt.name || 'hoola-edit.mp4')}">${I('dl', 'width:16px;height:16px')}Download v${lt.n}</a>` : ''}
     ${j?.post_caption ? `<h3>Post caption</h3><p class="mut" style="font-size:14px">${esc(j.post_caption)}</p>` : ''}</div>
   <div class="timeline"><div class="tlbar"><span>Story order</span><span style="flex:1"></span><span class="num">${ED.clips.length} clip${ED.clips.length === 1 ? '' : 's'}${j?.versions?.length ? ' · ' + j.versions.length + ' version' + (j.versions.length > 1 ? 's' : '') : ''}</span></div>
@@ -1248,6 +1278,12 @@ ${SPRITE}`;
     const j = ED.jobs?.find(x => x.id === ED.job);
     if (j && ['queued', 'watching', 'planning', 'rendering', 'checking'].includes(j.status)) poll = setTimeout(async () => { await edLoad(); if (VIEW === 'editor') go('editor'); }, 4000);
     $('#edplat').addEventListener('change', e => ED.platform = e.target.value);
+    // v0.325 drop files straight onto the player
+    const drop = $('.framemsg.drop', el);
+    if (drop) { drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); }); drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+      drop.addEventListener('drop', async e => { e.preventDefault(); drop.classList.remove('over');
+        const fs = [...(e.dataTransfer?.files || [])].filter(f => /^(video|image|audio)\//.test(f.type)).slice(0, 8 - ED.clips.length);
+        for (const f of fs) { try { toast('Uploading ' + f.name); ED.clips.push(await upload(f)); } catch (er) { toast(er.message, true); } } if (fs.length) go('editor'); }); }
     $('#edAsk').addEventListener('submit', async e => { e.preventDefault(); const t = $('#edq').value.trim(); if (!t) return;
       const cur = ED.jobs?.find(x => x.id === ED.job);
       if (cur?.latest) { try { await api('POST', `/api/video/jobs/${encodeURIComponent(cur.id)}/revise`, {instruction: t}); toast('Making the change'); await edLoad(); go('editor'); } catch (er) { toast(er.message, true); } }
@@ -1274,7 +1310,7 @@ ${SPRITE}`;
   let tplCat = 'All';
   const TCAT = {All: () => true, Video: s => s[1] === 'video', Image: s => s[1] === 'image', Music: s => s[1] === 'music', Voice: s => s[1] === 'voice'};
   V.templates = () => `<div class="home"><div class="hero" style="padding-top:0"><h1>Templates</h1><p class="mut">Pick one, change the words, press Create.</p><div class="chips" style="justify-content:center">${Object.keys(TCAT).map(c => `<button class="chip" aria-pressed="${c === tplCat}" data-cat="${c}">${c}</button>`).join('')}</div></div>
-    <section><div class="sec-h"><h2>Starters</h2></div><div class="qs">${STARTERS.map((s, i) => [s, i]).filter(([s]) => TCAT[tplCat](s)).map(([[t, v, k], i]) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tt' + i)}<span class="use">Use</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join('')}</div></section>
+    <section><div class="sec-h"><h2>Starters</h2></div><div class="qs">${STARTERS.map((s, i) => [s, i]).filter(([s]) => TCAT[tplCat](s)).map(([[t, v, k], i]) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tt' + i)}<span class="use">Use this</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join('')}</div></section>
     <section><div class="sec-h"><h2>Films with the Director</h2></div><div class="qs">${QUICK.map(([t, k, d], i) => `<button class="qcard" data-quick="${i}"><span class="thumb">${art(k, 'tq' + i)}<span class="dur">${d}</span></span><b>${t}</b></button>`).join('')}</div></section></div>`;
   W.templates = el => el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.cat) { tplCat = b.dataset.cat; go('templates'); }
@@ -1288,6 +1324,7 @@ ${SPRITE}`;
     <div class="libbar"><div class="chips">${LIBF.map(([k, n]) => `<button class="chip" aria-pressed="${k === libF}" data-lib="${k}">${n}</button>`).join('')}</div>
       <span class="sp"></span><label class="lsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search my creations</span><input id="libq" type="search" placeholder="Search" value="${esc(libQ)}"></label>
       <button type="button" class="dd" id="libSort" aria-label="Sort">${I('layers', 'width:15px;height:15px')}<span>${LIBS[libSort]}</span>${I('down', 'width:14px;height:14px')}</button></div>
+    <div class="selbar" id="selbar" hidden></div>
     <div class="sgrid lib" id="results"></div></div>`;
   function drawLib() {
     const el = $('#results'); if (!el) return;
@@ -1295,16 +1332,29 @@ ${SPRITE}`;
     const order = (L, t, k) => L.sort((a, b) => libSort === 'az' ? String(t(a)).localeCompare(String(t(b))) : libSort === 'old' ? k(a) - k(b) : k(b) - k(a));
     const its = order((libF === 'film' ? [] : items(libF === 'all' ? '' : libF).filter(i => i.kind !== 'script' || libF === 'script' || libF === 'all')).filter(i => hit(i.title)), i => i.title, i => i.created || 0);
     const films = order(((libF === 'all' || libF === 'film') ? (D.studio?.projects || []).filter(p => (p.outputs || []).length) : []).filter(p => hit(p.title || p.name)), p => p.title || p.name, p => p.updated || p.created || 0);
-    el.innerHTML = films.map(projTile).join('') + its.map(it => it.kind === 'script' ? `<div class="res" data-item="${it.id}"><button class="thumb doc-th" data-scopen="${it.id}">${I('pen', 'width:26px;height:26px')}</button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${when(it.created)}</small></div>` : it.kind === 'song' || it.kind === 'voice' ? `<div class="res" data-item="${it.id}"><button class="thumb" data-open="${it.id}">${art(it.kind === 'voice' ? 'voice' : 'music', it.id)}</button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${esc(it.kind === 'song' ? 'Song' : 'Voice-over')} · ${when(it.created)}</small></div>` : itemTile(it)).join('')
+    el.innerHTML = films.map(projTile).join('') + its.map(it => it.kind === 'script' ? `<div class="res" data-item="${it.id}"><button class="thumb doc-th" data-scopen="${it.id}"><span class="paper"><small>Script</small><b>${esc(it.title)}</b><i></i><i></i><i></i><i></i></span></button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${when(it.created)}</small></div>` : it.kind === 'song' || it.kind === 'voice' ? `<div class="res" data-item="${it.id}"><button class="thumb" data-open="${it.id}">${art(it.kind === 'voice' ? 'voice' : 'music', it.id)}</button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${esc(it.kind === 'song' ? 'Song' : 'Voice-over')} · ${when(it.created)}</small></div>` : itemTile(it)).join('')
       || (q ? `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing matches “${esc(libQ)}”</h2><p class="mut">Try another word, or clear the search.</p></div></div>` : '') || `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing here yet</h2><p class="mut">Pictures, songs, voice-overs, dubs, scripts and films you make in Create are kept here.</p></div></div>`;
-    paintAll(el); hydrate(el);
+    // v0.327 every tile can be ticked; a bar appears with Download / Delete for all of them at once
+    $$('.res[data-item]', el).forEach(t => { const id = t.dataset.item; if ($('.pick', t)) return;
+      t.insertAdjacentHTML('afterbegin', `<button type="button" class="pick" data-pick="${esc(id)}" aria-pressed="${LSEL.has(id)}" aria-label="Select">${I('check', 'width:14px;height:14px')}</button>`); });
+    selBar(); paintAll(el); hydrate(el);
   }
+  const LSEL = new Set();
+  function selBar() { const bar = $('#selbar'); if (!bar) return; const n = [...LSEL].filter(id => (D.items || []).some(x => x.id === id)).length;
+    bar.hidden = !n; if (n) bar.innerHTML = `<b class="num">${n} selected</b><span class="sp"></span><button class="btn sec" data-seldl>${I('dl', 'width:15px;height:15px')}Download</button><button class="btn sec danger" data-seldel>${I('trash', 'width:15px;height:15px')}Delete</button><button class="ib" data-selclear aria-label="Clear the selection">${I('x', 'width:16px;height:16px')}</button>`; }
   W.library = el => {
     Promise.all([load('items'), load('studio')]).then(() => redraw('library', drawLib));
     $('#libq', el).addEventListener('input', e => { libQ = e.target.value; drawLib(); });
     $('#libSort', el).addEventListener('click', e => menu(e.currentTarget, Object.entries(LIBS).map(([v, label]) => ({v, label})), libSort,
       v => { libSort = v; $('#libSort span').textContent = LIBS[v]; drawLib(); }, 'Sort by'));
     el.addEventListener('click', async e => { const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.pick) { const id = b.dataset.pick; LSEL.has(id) ? LSEL.delete(id) : LSEL.add(id); b.setAttribute('aria-pressed', String(LSEL.has(id))); b.closest('.res')?.classList.toggle('picked', LSEL.has(id)); selBar(); return; }
+      if (b.hasAttribute('data-selclear')) { LSEL.clear(); drawLib(); return; }
+      if (b.hasAttribute('data-seldl')) { for (const id of LSEL) { const it = (D.items || []).find(x => x.id === id); if (it) download(itemPath(id), it.title + '.' + (it.mime.split('/')[1] || 'bin').replace('mpeg', 'mp3').replace('x-wav', 'wav')); } return; }
+      if (b.hasAttribute('data-seldel')) { const ids = [...LSEL].filter(id => (D.items || []).some(x => x.id === id));
+        if (!ids.length || !confirm(`Delete ${ids.length} item${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return; b.disabled = true; let gone = 0;
+        for (const id of ids) { try { await api('DELETE', itemPath(id)); D.items = D.items.filter(x => x.id !== id); LSEL.delete(id); gone++; } catch (er) { toast(er.message, true); } }
+        toast(`Deleted ${gone}`); drawLib(); return; }
       if (b.dataset.lib) { libF = b.dataset.lib; $$('[data-lib]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); drawLib(); return; }
       if (b.dataset.scopen) { try { const r = await api('GET', itemPath(b.dataset.scopen), undefined, {raw: true}); SC.text = await r.text(); SC.id = b.dataset.scopen; go('script'); } catch (er) { toast(er.message, true); } return; }
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); return; }
@@ -1312,22 +1362,40 @@ ${SPRITE}`;
       await itemAction(b); });
   };
   /* ---------------- v0.308 ENGINES: the real AI services behind Create, checked live; keys never come to the browser ---------------- */
+  const OWNER = () => !!ctx.owner?.();     // v0.327 the console tells the studio when the viewer is the owner
   const EST = {ready: ['Ready', 'ok'], unchecked: ['Key set', 'ok'], missing: ['No key', 'off'], refused: ['Key refused', 'bad'], unreachable: ['Not reachable', 'bad']};
   V.engines = () => `<div class="home eng">
-    <div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">Engines</h2><p class="mut" style="margin-top:6px">The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.</p></div>
+    <div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">${OWNER() ? 'Engines' : 'What you can make'}</h2><p class="mut" style="margin-top:6px">${OWNER() ? 'The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.' : 'Everything ticked is ready to use in Create right now.'}</p></div>
       <button class="btn sec" data-recheck>${I('redo', 'width:15px;height:15px')}Check again</button></div>
+    ${OWNER() ? '<section class="box scbox" id="scbox"><p class="mut">Reading the showcase…</p></section>' : ''}
     <div id="engs"><p class="mut">Checking each engine…</p></div></div>`;
+  // v0.329 the owner's showcase panel: the hidden "Hoola showcase" film's two normal price cards, right here
+  function drawShowcase(o) {
+    const el = $('#scbox'); if (!el) return;
+    if (!o) { el.innerHTML = '<p class="mut">Could not read the showcase just now.</p>'; return; }
+    const head = `<div class="sch"><h3>Showcase: real Hoola-made pictures and clips</h3><p class="mut">They replace the drawn pictures on Studio home, Templates, the Image styles and the guides, for everyone who uses Create. Made once with your own engines; each step shows its price card first and nothing is made until you tap Haan.</p></div>`;
+    if (!o.set_up) { el.innerHTML = head + `<div><button class="btn pri" data-sc="setup">${I('spark', 'width:15px;height:15px')}Set up the showcase (free)</button></div>`; return; }
+    const pend = (o.approvals || []).map(approvalRow).join(''), pp = Math.round(o.pictures_made / o.slots * 100), cp = Math.round(o.clips_made / o.clips * 100);
+    el.innerHTML = head + `<div class="scrow"><div><b>Pictures</b><small class="num">${o.pictures_made} of ${o.slots} made · about ${inr(o.picture_inr)} each</small><span class="bar"><i style="width:${pp}%"></i></span></div>
+        ${o.pictures_made < o.slots ? `<button class="btn sec" data-sc="pictures" ${(o.painting || []).length || pend ? 'disabled' : ''}>Make the ${o.slots - o.pictures_made} missing pictures</button>` : '<span class="stchip ok">All made</span>'}</div>
+      <div class="scrow"><div><b>Clips</b><small class="num">${o.clips_made} of ${o.clips} made · 5 seconds each, they play on the film cards</small><span class="bar"><i style="width:${cp}%"></i></span></div>
+        ${o.clips_made < o.clips ? `<button class="btn sec" data-sc="clips" ${o.working || pend || o.pictures_made < o.slots ? 'disabled' : ''} title="${o.pictures_made < o.slots ? 'Make the pictures first: each clip starts from its picture' : ''}">Make the ${o.clips - o.clips_made} clips</button>` : '<span class="stchip ok">All made</span>'}</div>
+      ${(o.painting || []).length ? `<div class="box castwait"><div><b>Painting ${o.painting.length} picture${o.painting.length > 1 ? 's' : ''}…</b><small class="mut">About 20-40 seconds each, three at a time. This page updates by itself.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
+      ${o.working ? `<div class="box castwait"><div><b>Making the clips…</b><small class="mut">A few minutes. This page updates by itself.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
+      ${o.pics_error ? `<p class="perr">${esc(o.pics_error)}</p>` : ''}${o.error && !o.working ? `<p class="perr">${esc(o.error)}</p>` : ''}
+      ${pend ? `<div class="scpend"><b>Waiting for your Haan</b>${pend}</div>` : ''}`;
+  }
   function drawEngines(r) {
     const el = $('#engs'); if (!el) return;
     if (!r) { el.innerHTML = '<p class="mut">Could not check the engines just now.</p>'; return; }
     el.innerHTML = `<div class="eg-feats">${r.features.map(f => `<span class="eg-feat ${f.ready ? 'eg-on' : ''}" title="${esc(f.why || 'Ready')}">${I(f.ready ? 'check' : 'x', 'width:13px;height:13px')}${esc(f.name)}</span>`).join('')}</div>
       <p class="dim" style="font-size:12.5px;margin:10px 0 2px">Checked ${when(r.checked_at).replace('Just now', 'just now')} with free calls only (a key or model list), never a paid job.${r.ffmpeg ? '' : ' ffmpeg is missing on the server: dubbing and the editor need it.'}</p>
-      <div class="eg-list">${r.engines.map(e => { const [label, tone] = EST[e.state] || [e.state, 'off'], good = tone === 'ok';
+      ${OWNER() ? '' : '<!-- engines: owner only -->'}<div class="eg-list"${OWNER() ? '' : ' hidden'}>${r.engines.map(e => { const [label, tone] = EST[e.state] || [e.state, 'off'], good = tone === 'ok';
         return `<div class="eg-card eg-${tone}"><div class="eg-h"><b>${esc(e.name)}</b><span class="eg-st eg-${tone}">${label}</span></div>
           <p class="mut eg-d">${esc(e.detail)}</p>
           <div class="eg-p">${e.powers.map(p => `<span>${esc(p)}</span>`).join('')}</div>
           <p class="dim eg-c">${esc(e.cost)}${e.need ? '' : ' · optional'}</p>
-          ${good ? '' : `<details class="eg-how"${e.need ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}How to switch it on</summary><ol>
+          ${good ? '' : `<details class="eg-how"><summary>${I('down', 'width:14px;height:14px')}How to switch it on</summary><ol>
             <li>Get a key: <a href="${esc(e.get)}" target="_blank" rel="noopener noreferrer">${esc(e.get.replace(/^https:\/\//, ''))}</a></li>
             <li>On the VPS, add one line to <code>~/apps/santosh-core/.env</code>: <code>${esc(e.env[0])}=your-key</code></li>
             <li>Restart: <code>pm2 restart santosh --update-env</code></li>
@@ -1335,6 +1403,18 @@ ${SPRITE}`;
             <p class="dim" style="font-size:12.5px">Never paste a key into the chat. If one was ever shared, make a new one and delete the old.</p></details>`}</div>`; }).join('')}</div>`;
   }
   W.engines = el => {
+    const sc = async () => { if (!OWNER() || VIEW !== 'engines') return; let o = null;
+      try { const r = await api('GET', '/api/studio/showcase'); o = r.owner; D.showcase = {slots: r.slots}; } catch {}
+      drawShowcase(o); clearTimeout(poll);
+      if (o && ((o.painting || []).length || o.working || (o.approvals || []).length)) poll = setTimeout(sc, 5000); };
+    sc();
+    el.addEventListener('click', async e => { const b = e.target.closest('button'); if (!b || !b.closest('#scbox')) return;
+      if (b.dataset.sc) { b.disabled = true;
+        try { const r = await api('POST', '/api/studio/showcase/' + b.dataset.sc);
+          if (r?.waiting_owner) toast(`Price ${inr(r.inr)}: tap Haan on the card below to start`); else if (b.dataset.sc === 'setup') toast('Showcase film set up. Nothing was made or charged.'); }
+        catch (er) { toast(er.message, true); } await sc(); return; }
+      if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await sc(); }
+    });
     const run = async fresh => { try { drawEngines(await api('GET', '/api/studio/apis' + (fresh ? '?fresh=1' : ''))); } catch (e) { drawEngines(null); toast(e.message, true); } };
     run(false);
     el.addEventListener('click', async e => { const b = e.target.closest('[data-recheck]'); if (!b) return; b.disabled = true; $('#engs').style.opacity = '.55'; await run(true); $('#engs').style.opacity = ''; b.disabled = false; });
@@ -1344,28 +1424,73 @@ ${SPRITE}`;
     el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
       if (b.hasAttribute('data-newfilm')) { DIR.project = ''; DIR.view = null; go('director', {focus: true}); }
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); } }); };
+  // v0.327 BRAND KIT: her logo uploaded right here, real colour pickers with names, the font shown in her own tagline,
+  // phone + website, and a LIVE preview (a poster and a reel end card) that changes as she types. Saved with one button.
+  const BK_ROLES = [['primary', 'Main colour'], ['accent', 'Highlight'], ['dark', 'Dark text'], ['light', 'Light background']];
+  const BK_FAM = {poppins: "'Poppins', var(--sans)", mukta: "'Mukta', var(--sans)"};
+  const BK = {d: null, logo: ''};
+  const lum = h => { const m = /^#?([0-9a-f]{6})$/i.exec(h || ''); if (!m) return 1; const n = parseInt(m[1], 16);
+    return [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [.2126, .7152, .0722][i], 0); };
+  const onCol = (bg, d, l) => { const x = lum(bg), cr = c => { const y = lum(c); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }; return cr(d) >= cr(l) ? d : l; };
+  function bkDraft() { const k = D.kit || {};
+    return BK.d || (BK.d = {name: k.name || '', tagline: k.tagline || '', tone: k.tone || '', font: k.font || 'poppins', colors: {...(k.colors || {})},
+      phone: k.contact?.phone || '', website: k.contact?.website || ''}); }
+  function bkPreview() { const d = bkDraft(), c = d.colors, p = c.primary || '#1565C0', a = c.accent || '#F5A623', dk = c.dark || '#111111', lt = c.light || '#FFFFFF';
+    const tp = onCol(p, dk, lt), ta = onCol(a, dk, lt), fam = BK_FAM[d.font] || 'var(--sans)', name = esc(d.name || 'Your business'), tag = esc(d.tagline || 'Your tagline here');
+    const logo = BK.logo ? `<img alt="" src="${esc(BK.logo)}">` : `<i>${esc((d.name || 'H').trim()[0] || 'H')}</i>`;
+    return `<div class="bkph"><b>Live preview</b><small>Changes as you type. Saved only when you press Save.</small></div>
+      <div class="bkpv"><div class="bkposter" style="background:${p};color:${tp};font-family:${fam}"><div class="bkp-top"><span class="bkp-logo">${logo}</span><b>${name}</b></div>
+        <div class="bkp-mid"><small>Festive offer</small><h4>${tag}</h4></div><span class="bkp-cta" style="background:${a};color:${ta}">Order now</span>
+        <small class="bkp-foot">${esc([d.phone, d.website].filter(Boolean).join(' · ') || 'Phone · website')}</small></div>
+      <div class="bkend" style="background:${dk};color:${onCol(dk, dk, lt)};font-family:${fam}"><span class="bkp-logo">${logo}</span><b>${name}</b><small>${tag}</small><i style="background:${a}"></i></div></div>
+      <small class="dim">Poster and reel end card, in your colours and font${d.font === 'mukta' ? ' (Mukta also writes Hindi and Marathi)' : ''}.</small>`; }
   V.brand = () => { const k = D.kit; if (!k) return `<div class="home"><p class="mut">Loading your brand kit…</p></div>`;
-    const c = k.colors || {};
-    return `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">Brand kit</h2><span class="dim" style="font-size:14px">Pictures can use it with one switch; the Brand tool in chat uses it everywhere</span></div>
-    <div class="tools">
-      <div class="box"><h3>Name</h3><input id="bkname" maxlength="120" value="${esc(k.name || '')}" placeholder="Your business name"></div>
-      <div class="box"><h3>Tagline</h3><input id="bktag" maxlength="160" value="${esc(k.tagline || '')}" placeholder="Har shaam khaas"></div>
-      <div class="box"><h3>Colours</h3><div style="display:flex;gap:8px;flex-wrap:wrap">${['primary', 'accent', 'dark', 'light'].filter(x => c[x]).map(x => `<span class="swatch"><i style="background:${esc(c[x])}"></i><small>${x} ${esc(c[x])}</small></span>`).join('')}</div></div>
-      <div class="box"><h3>Font</h3><b>${esc((k.fonts || {})[k.font] || k.font || 'Default')}</b></div>
-      <div class="box"><h3>Tone</h3><input id="bktone" maxlength="200" value="${esc(k.tone || '')}" placeholder="Warm, simple Hinglish"></div>
-      <div class="box"><h3>Logo</h3><span class="mut">${k.logo ? 'Your logo is set ✓' : 'No logo yet: send it in chat and say “brand logo set karo”.'}</span></div>
-    </div><div><button class="btn pri" data-bksave>${I('check', 'width:16px;height:16px')}Save</button></div></div>`; };
-  W.brand = el => { if (!D.kit) load('kit').then(() => { if (VIEW === 'brand') go('brand'); });
-    el.addEventListener('click', async e => { const b = e.target.closest('[data-bksave]'); if (!b) return; b.disabled = true;
-      try { D.kit = await api('PUT', '/api/brand/kit', {name: $('#bkname').value.trim(), tagline: $('#bktag').value.trim(), tone: $('#bktone').value.trim()}); toast('Brand kit saved'); } catch (er) { toast(er.message, true); } b.disabled = false; }); };
+    const d = bkDraft(), c = d.colors;
+    return `<div class="home bk"><div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">Brand kit</h2><p class="mut" style="margin-top:6px">Pictures, posters and films use it with one switch; the Brand tool in chat uses it everywhere.</p></div>
+      <button class="btn pri" data-bksave>${I('check', 'width:16px;height:16px')}Save</button></div>
+    <div class="bkgrid"><div class="bkform">
+      <section class="box"><h3>Logo</h3><div class="bklogo"><span class="bklimg" id="bkLogo">${BK.logo ? `<img alt="Your logo" src="${esc(BK.logo)}">` : I('image', 'width:22px;height:22px')}</span>
+        <div><b>${k.logo ? 'Your logo' : 'No logo yet'}</b><small>PNG, JPG, WebP or SVG, up to 15 MB. Hoola reads its colours.</small>
+          <div class="bkbtns"><button class="btn sec" data-bklogo>${I('upload', 'width:15px;height:15px')}${k.logo ? 'Replace logo' : 'Upload logo'}</button><label class="bkchk"><input type="checkbox" id="bkclean"> Remove a plain background</label></div></div></div></section>
+      <section class="box"><h3>Name and words</h3>
+        <label class="fld">Business name<input id="bkname" maxlength="120" value="${esc(d.name)}" placeholder="Newtika Chai"></label>
+        <label class="fld">Tagline<input id="bktag" maxlength="160" value="${esc(d.tagline)}" placeholder="Har shaam khaas"></label>
+        <label class="fld">Tone<input id="bktone" maxlength="200" value="${esc(d.tone)}" placeholder="Warm, simple Hinglish"></label>
+        <div class="prow2"><label class="fld">Phone<input id="bkphone" maxlength="40" inputmode="tel" value="${esc(d.phone)}" placeholder="98xxxxxx10"></label><label class="fld">Website<input id="bkweb" maxlength="140" value="${esc(d.website)}" placeholder="newtika.in"></label></div></section>
+      <section class="box"><h3>Colours</h3><div class="bkcols">${BK_ROLES.map(([r, n]) => `<label class="bkcol"><input type="color" id="bkc-${r}" value="${esc((c[r] || '#888888').toLowerCase())}" aria-label="${n}"><span><b>${n}</b><small class="num" id="bkh-${r}">${esc((c[r] || '').toUpperCase())}</small></span></label>`).join('')}</div></section>
+      <section class="box"><h3>Font</h3><div class="bkfonts">${Object.entries(k.fonts || {}).map(([f, l]) => `<button type="button" class="bkfont" aria-pressed="${f === d.font}" data-bkfont="${esc(f)}"><span style="font-family:${BK_FAM[f] || 'var(--sans)'}">${esc(d.tagline || d.name || 'Har shaam khaas')}</span><small>${esc(l)}</small></button>`).join('')}</div></section>
+    </div><aside class="bkprev" id="bkPrev">${bkPreview()}</aside></div></div>`; };
+  W.brand = el => {
+    if (!D.kit) { load('kit').then(() => { if (VIEW === 'brand') go('brand'); }); return; }
+    const redrawPrev = () => { const pv = $('#bkPrev'); if (pv) pv.innerHTML = bkPreview(); };
+    if (D.kit.logo && !BK.logo) blobURL('/api/brand/logo?t=' + (D.kit.updated || 0)).then(u => { BK.logo = u; const L = $('#bkLogo'); if (L) L.innerHTML = `<img alt="Your logo" src="${esc(u)}">`; redrawPrev(); }).catch(() => {});
+    const d = bkDraft();
+    for (const [id, k] of [['bkname', 'name'], ['bktag', 'tagline'], ['bktone', 'tone'], ['bkphone', 'phone'], ['bkweb', 'website']])
+      $('#' + id, el).addEventListener('input', e => { d[k] = e.target.value; redrawPrev(); });
+    for (const [r] of BK_ROLES) $('#bkc-' + r, el).addEventListener('input', e => { d.colors[r] = e.target.value.toUpperCase(); $('#bkh-' + r).textContent = d.colors[r]; redrawPrev(); });
+    el.addEventListener('click', async e => { const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.bkfont) { d.font = b.dataset.bkfont; $$('[data-bkfont]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); redrawPrev(); return; }
+      if (b.hasAttribute('data-bklogo')) { const [f] = await pick('image/png,image/jpeg,image/webp,image/svg+xml'); if (!f) return;
+        if (f.size > 15 * 1024 * 1024) { toast('The logo is bigger than 15 MB', true); return; }
+        b.disabled = true; const fd = new FormData(); fd.append('file', f, f.name); fd.append('clean_bg', String(!!$('#bkclean')?.checked));
+        try { const r = await api('POST', '/api/brand/logo', undefined, {form: fd}); D.kit = r.kit; BK.d = null; BK.logo = URL.createObjectURL(f); toast('Logo saved. Colours read from it.'); go('brand'); }
+        catch (er) { toast(er.message, true); b.disabled = false; } return; }
+      if (b.hasAttribute('data-bksave')) { b.disabled = true;
+        try { D.kit = await api('PUT', '/api/brand/kit', {name: d.name.trim(), tagline: d.tagline.trim(), tone: d.tone.trim(), font: d.font,
+            colors: Object.fromEntries(BK_ROLES.map(([r]) => [r, d.colors[r]]).filter(([, v]) => v)), contact: {phone: d.phone.trim(), website: d.website.trim()}});
+          BK.d = null; toast('Brand kit saved'); go('brand'); } catch (er) { toast(er.message, true); b.disabled = false; } }
+    });
+  };
   const GUIDES = [['Make your first ad film', 'director', 'film', 'Write one line in Director. Hoola writes the storyboard for free. Paint the opening pictures, watch the free preview, then make the HD shots and the final film. Every paid step shows its price first.'],
     ['Keep a character the same in every shot', 'casting', 'cast', 'Cast the character once in AI casting. In your film, add it from Cast: Hoola keeps the face, hair and outfit the same in every shot.'],
     ['Write and sing a Hindi song', 'music', 'music', 'Describe the song, press Write with Hoola for the lyrics (or paste yours), pick the singers and mood, and press Create song.'],
     ['Dub a video into Tamil', 'dubbing', 'portrait', 'Upload your video (up to 3 minutes), pick up to 4 languages and press Dub now. Every language comes back as its own video with its words on screen here.'],
     ['Edit with words, not clicks', 'editor', 'city', 'Add your clips in order, say what you want (a 30 s reel, cuts on the beat, Hindi captions) and press Make the edit. Ask for changes in plain words.'],
     ['A voice-over in your Hoola’s voice', 'voice', 'voice', 'Write the script, pick Your Hoola’s voice or any of 22 voices, the language and the style, and press Make voice-over.']];
-  V.learn = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">How-to guides</h2></div>
-    <div class="guides">${GUIDES.map(([t, v, k, s], i) => `<div class="guide"><span class="thumb">${art(k, 'lr' + i)}</span><div><b>${t}</b><p class="mut">${s}</p><button class="btn sec" data-go="${v}">Open ${TITLE[v]}</button></div></div>`).join('')}</div></div>`;
+  // v0.327 each guide is a few numbered steps (the steps were buried in one paragraph) and the button that starts it
+  const steps = t => t.split(/(?<=\.)\s+(?=[A-Z])/).filter(Boolean);
+  V.learn = () => `<div class="home"><div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">How-to guides</h2><p class="mut" style="margin-top:6px">Short steps for each tool. Every paid step shows its price first.</p></div></div>
+    <div class="guides">${GUIDES.map(([t, v, k, s], i) => `<div class="guide"><span class="thumb">${art(k, 'lr' + i)}</span><div><b>${t}</b><ol class="gsteps">${steps(s).map(x => `<li>${esc(x)}</li>`).join('')}</ol><button class="btn sec" data-go="${v}">Open ${TITLE[v]}${I('down', 'width:14px;height:14px;transform:rotate(-90deg)')}</button></div></div>`).join('')}</div></div>`;
 
   /* ---------------- icons ---------------- */
   const SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -1422,6 +1547,7 @@ ${SPRITE}`;
     document.body.appendChild(host);
     R = host.attachShadow({mode: 'open'});
     R.innerHTML = shellHTML(); drawNav(); drawCredits();
+    load('showcase').then(() => showcaseSwap($('#view')));    // v0.329 real pictures over the drawn ones, once the list arrives
     { const sn = $('#snav'), fade = () => sn.classList.toggle('fadeb', sn.scrollTop + sn.clientHeight < sn.scrollHeight - 4);   // v0.306 fade only while more list is below
       sn.addEventListener('scroll', fade, {passive: true}); addEventListener('resize', fade); requestAnimationFrame(fade); }
     R.addEventListener('pointerdown', e => { if (popFor && !e.target.closest('#pop') && !popFor.contains(e.target)) closeMenu(); });

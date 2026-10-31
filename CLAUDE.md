@@ -136,11 +136,21 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.325.0 (pubspec 0.325.0+365). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.330.0 (pubspec 0.330.0+370). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.325 ANY DESIGN: free-form sections (`custom_<name>`, taxonomy.label_of, 3 a page, planner + her words), interactive pieces
-  by attribute (tabs, slider, filter, switch, sum / EMI calculator in hoola-site.js), one design kit per site (`site/kit.py`, .k-*).
+- v0.330 ANY DESIGN + DEPLOY SE NAHI RUKEGA: free-form sections (`custom_<name>`, 3 a page), interactive pieces (tabs, slider,
+  filter, switch, sum / EMI calc), one design kit per site (`site/kit.py`); a deploy no longer fails a running build (`mark_clean_stop`).
+- v0.329 SHOWCASE (Phase 5 of the design audit, built as 0.328): real Hoola pictures / clips over the drawn placeholders via ONE hidden
+  owner film "Hoola showcase" (`studio/showcase.py`), normal price cards only (~₹428 + ~₹340); hidden films' cards now approvable.
+- v0.328 APP UPDATES (App Phase 4, built as 0.325/0.327): per-screen Kotlin cache (an update rewrites only changed screens), versions only go up, changelog per build, rollback = an old build re-released as a new version, in-app update prompt (/latest + /apk), safe data changes (add / hide / label, additive, replayed on upgrade).
+- v0.328 HOOLA QA (App Phase 3, built as 0.323-0.327): device check after every native build (`android/device_check.sh` + `qa.py`: every screen on an emulator, crash -> Opus fix with the real crash, a11y, cold start / jank / APK budget), crash reports from users' phones (kit CrashGuard, grouped, chat note, fix_crash rebuild).
+- v0.327 STUDIO ASSETS + HELP (Phase 4 of the design audit): Brand kit logo upload + colour pickers + font + live poster preview,
+  My creations tick-to-select Download / Delete + script pages, templates "Use this", guide steps, Engines details owner-only.
+- v0.326 HER TEST RUN (v0.314 test): big ask = server plan card after round 1, steps from her words (`santosh._ask_steps`);
+  doc_studio QA before the card, a warned draft held for ONE fix (`docstudio_tools._HELD`, `flush_held`); a server-refused site asks before her PC.
+- v0.325 STUDIO TOOLS (Phase 3 of the design audit): no tool tab rows, 380px tool layout, Video More settings + status chips +
+  ONE failure notice, picture captions date/style, 3x3 styles, Dubbing top languages + counter, voice colour marks, Editor drop zone.
 - v0.324 TEEN LOOK JALDI: the 3 looks in waves (pictures + 3 art directions together, all look sections together, 3 screenshots
   together; `_look_copy`, SITE_LOOK_PARALLEL 6) instead of ~12 calls in a row; `_in_ctx` = thread AI calls charged to her / the Arena.
 - v0.323 STUDIO HOME + DIRECTOR (Phase 2 of the design audit): ask box settings + price, rails arrow only where more is hidden,

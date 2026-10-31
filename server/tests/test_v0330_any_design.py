@@ -1,4 +1,4 @@
-"""v0.325 ANY DESIGN (web design Phase 6 step 2): (1) free-form sections - beyond the 30 library types, the site map
+"""v0.330 ANY DESIGN (web design Phase 6 step 2): (1) free-form sections - beyond the 30 library types, the site map
 and her own words can add a section Opus designs from a name ("EMI calculator"), at most 3 a page; (2) interactive
 pieces in the site runtime that sections use by attribute (tabs, slider, filter, switch, calculator incl. a loan EMI),
 checked in a real browser; (3) ONE design kit per site (.k-* components from the look's art direction) that every
@@ -190,5 +190,5 @@ def test_interactive_pieces_work_in_a_real_browser(tmp_path):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.325.0"
-    assert "0.325.0+365" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.330.0"
+    assert "0.330.0+370" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

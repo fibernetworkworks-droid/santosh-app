@@ -610,6 +610,7 @@ def _sitemap_begin(r: Site, want: int, words: str = "") -> Site:
     want = max(10, min(int(want), SM.max_pages()))
     board = _j(r.board, {})
     board["now"] = f"Site map bana raha hoon (~{want} pages)"
+    board["map_want"], board["map_words"] = want, _tidy(words, 2000)    # v0.330 a restart can start it again
     r = _save(r.id, stage="sitemap", board=board, error="")
     _start(r.id, "sitemap", want=want, words=words)
     return _load(r.id)                         # inline (tests) the site map is already there
@@ -749,9 +750,14 @@ def recover_stuck(now_ts: float | None = None) -> int:
         upd = r.updated_at.replace(tzinfo=r.updated_at.tzinfo or timezone.utc).timestamp() if r.updated_at else 0
         if busy(r.id) or (upd >= _BOOT and t - upd < STALE_S):
             continue
+        out += 1
+        b = _j(r.board, {})
+        if (r.recovered or 0) < 1 and not r.stop and b.get("map_want"):     # v0.330 start the site map again
+            _save(r.id, recovered=(r.recovered or 0) + 1)
+            _start(r.id, "sitemap", want=int(b["map_want"]), words=str(b.get("map_words") or ""))
+            continue
         r = _save(r.id, stage="plan", error="Site map banate waqt server ruk gaya; 'bada site map banao' phir se kahiye.")
         _emit(r, push=True)
-        out += 1
     with session() as s:
         rows = s.scalars(select(Site).where(Site.status.in_(("building", "checking", "looks")))).all()
         for r in rows:
@@ -778,6 +784,25 @@ def recover_stuck(now_ts: float | None = None) -> int:
             _work(r, "error", "Kaam beech mein ruk gaya", r.error)
             _emit(r, push=True)
     return out
+
+
+def mark_clean_stop() -> int:
+    """v0.330 DEPLOY SE NAHI RUKEGA: the server is being restarted ON PURPOSE (a deploy: pm2 restart runs the app's
+    shutdown). Every website job running right now gets a fresh restart allowance, so the next boot picks it up again
+    however many deploys land during a long build - only a real crash (no shutdown) uses up the one auto-restart.
+    Her finished sections are already on disk; the build continues from them."""
+    with _LOCK:
+        live = [sid for sid, th in _RUNNING.items() if th.is_alive()]
+    n = 0
+    for sid in live:
+        try:
+            _save(sid, recovered=0)
+            n += 1
+        except Exception:
+            log.exception("clean stop mark failed for %s", sid)
+    if n:
+        log.info("server stopping on purpose: %s website job(s) will continue after the restart", n)
+    return n
 
 
 def _load(site_id: str) -> Site:
@@ -820,7 +845,7 @@ def _ctx(r: Site) -> dict[str, Any]:
             "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.301 photos always from here (launch too)
             "alt": _alt(r),
             "app": app_schema(r) or None,                                   # v0.305 the web app (account + staff pages)
-            "kit_css": (look.get("kit") or {}).get("css", ""),              # v0.325 the site's design kit
+            "kit_css": (look.get("kit") or {}).get("css", ""),              # v0.330 the site's design kit
             "app_api": app_api(r) if app_schema(r) else ""}
 
 
@@ -935,7 +960,7 @@ def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], ex
         f"\nTHIS PAGE: {page['title']} ({page.get('why', '')}). THIS SECTION: {T.label_of(s)} "
         f"(type {s['type']}), design: {s.get('design')}. SECTION_ID: {sec_id(slug, s['type'])}.",
         "HEADING: this section is the page's ONLY <h1>." if s["type"] == "hero" else "HEADING: use <h2>, never <h1>.",
-        ("FREE-FORM SECTION (v0.325): no library pattern - design it from scratch for exactly this purpose, as a top studio "
+        ("FREE-FORM SECTION (v0.330): no library pattern - design it from scratch for exactly this purpose, as a top studio "
          "would; use the interactive pieces (tabs, carousel, filter, toggle, calc) when they make it work better."
          if s["type"] not in T.SECTIONS else ""),
         f"Other sections on this page (don't repeat them): {', '.join(others) or 'none'}.",
@@ -1303,7 +1328,7 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
 
 
 def _ensure_kit(r: Site) -> Site:
-    """v0.325 the chosen look's design kit, made once before the first sections are written (fails soft)."""
+    """v0.330 the chosen look's design kit, made once before the first sections are written (fails soft)."""
     look = _j(r.look, {})
     if not K.on() or look.get("kit") or not look.get("tokens"):
         return r
@@ -1603,7 +1628,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     for x in res.get("add") or []:
         typ, slug = x.get("type"), x.get("page")
         name = _tidy(x.get("name"), 40)
-        if typ == "custom" or (typ and typ not in T.SECTIONS and name):     # v0.325 a free-form section she asked for
+        if typ == "custom" or (typ and typ not in T.SECTIONS and name):     # v0.330 a free-form section she asked for
             typ = T.custom_type(name or str(x.get("instruction") or "")[:30])
         if T.is_section(typ):
             for p in plan["pages"]:

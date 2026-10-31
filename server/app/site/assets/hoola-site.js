@@ -301,7 +301,7 @@
     }
     btn.addEventListener('click', open);
   }
-  // ------------------------------------------------------------ v0.325 ANY DESIGN: interactive pieces sections use by attribute
+  // ------------------------------------------------------------ v0.330 ANY DESIGN: interactive pieces sections use by attribute
   function pressed(list, on) { list.forEach(function (b) { b.setAttribute('aria-pressed', b === on ? 'true' : 'false'); }); }
   function tabs() {
     $$('[data-hoola-tabs]').forEach(function (box, n) {

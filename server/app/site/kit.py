@@ -1,4 +1,4 @@
-"""v0.325 ANY DESIGN - the site's own DESIGN KIT (web design Phase 6 step 2).
+"""v0.330 ANY DESIGN - the site's own DESIGN KIT (web design Phase 6 step 2).
 
 Before this every section styled its own buttons, cards and titles inside its #id, so on a big site page 40's cards
 drifted from page 3's. Now, once a look is chosen, Opus writes ONE kit for the site - its buttons, cards, section

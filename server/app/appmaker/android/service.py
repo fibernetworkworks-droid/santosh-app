@@ -17,6 +17,7 @@ import logging
 import re
 import secrets
 import threading
+import shutil
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -36,6 +37,7 @@ log = logging.getLogger("santosh.appmaker.android")
 _LOCK = threading.Lock()
 _RUNNING: dict[str, threading.Thread] = {}
 APK_LINK_DAYS = 7
+KEEP_BUILDS = 10          # v0.325 APKs + project ZIPs kept per app (history, rollback)
 STATES = ("writing", "written", "compiling", "fixing", "done", "code")
 
 
@@ -123,7 +125,8 @@ def _app_key(r: AppProject) -> str:
 
 
 # ---------------------------------------------------------------- start
-def build(tenant: str, ref: str, conv: str = "", only: list[str] | None = None) -> dict[str, Any]:
+def build(tenant: str, ref: str, conv: str = "", only: list[str] | None = None, notes: dict[str, str] | None = None,
+          crashes: list[str] | None = None) -> dict[str, Any]:
     """Her tap / words 'Android app banao' on an approved design."""
     with session() as s:
         r = AS._find(s, tenant, ref)
@@ -142,7 +145,9 @@ def build(tenant: str, ref: str, conv: str = "", only: list[str] | None = None) 
     n = int(st.get("build") or 0) + 1
     _put(r.id, status="writing", build=n, design_version=r.version, design_hash=h, error="", note="", rounds=0,
          started=now().isoformat(), ended="", now="Screens Kotlin mein likh raha hoon", states={}, where="",
-         conv=conv or r.conv, redo=list(only or []))
+         conv=conv or r.conv, redo=list(only or []),
+         notes={k: str(v)[:4000] for k, v in (notes or {}).items()},     # v0.325 per screen: e.g. the crash a user's phone sent
+         fix_crashes=list(crashes or []), rollback=0)
     _start(r.id)
     return view(AS._load(r.id))
 
@@ -268,8 +273,11 @@ def _run(r: AppProject) -> None:
     work = _dir(r)
     base = (AS._settings().public_base_url or "").rstrip("/")
     key = _key(r)
-    sp = SP.build(r, ctx["plan"], ctx["tokens"], ctx["facts"], screens, work, version_code=r.version * 100 + (n % 100),
+    # v0.325 versions only go UP (an update always installs over the old one): never below the last build's code
+    vc = max(int(st.get("last_vc") or 0) + 1, r.version * 100 + (n % 100))
+    sp = SP.build(r, ctx["plan"], ctx["tokens"], ctx["facts"], screens, work, version_code=vc,
                   base_url=base, app_key=_app_key(r))
+    sp["app"]["version_name"] = f"{r.version}.{n}"
     sp["preview_key"] = key
     sp["scenes"] = _scenes(r, ctx, work)
     # v0.314 ASLI APP: the app's own backend (accounts + saved data) exists before a single screen is written, and the
@@ -277,8 +285,11 @@ def _run(r: AppProject) -> None:
     from .. import backend as BE
     sp["seed"]["backend"] = BE.seed_hint(r)
     ids = [s["id"] for s in sp["screens"]]
+    if st.get("rollback"):                         # v0.325 an older build again, under a new (higher) version
+        return _rollback(r, st, n, sp, work)
     cache = _cache(r)
     redo = set(st.get("redo") or [])
+    written: list[str] = []                        # v0.325 the screens Opus (re)wrote in this build = the update's real change
     kt: dict[str, str] = {}
     code_only: set[str] = set()
     _put(r.id, states={sid: "writing" for sid in ids}, total=len(ids))
@@ -289,7 +300,7 @@ def _run(r: AppProject) -> None:
         if sid in G.AUTH_IDS:                        # v0.314 the kit's own sign-in screen stands in for the design's
             _states(r.id, {sid: "written"})
             continue
-        f = cache / f"{st.get('design_hash', '')[:12]}-{sid}.kt"
+        f = cache / f"{_skey(sid, ctx, sp, screens)}-{sid}.kt"      # v0.325 per screen: an update rewrites only what changed
         if f.exists() and sid not in redo:
             kt[sid] = f.read_text()
             _states(r.id, {sid: "written"})
@@ -297,7 +308,7 @@ def _run(r: AppProject) -> None:
         _states(r.id, {sid: "writing"}, f"Kotlin: {next(s['label'] for s in sp['screens'] if s['id'] == sid)} ({i + 1}/{len(ids)})")
         _emit(r.id)
         try:
-            src, probs = write_screen(r, sid, ctx, sp, screens.get(sid) or {})
+            src, probs = write_screen(r, sid, ctx, sp, screens.get(sid) or {}, (st.get("notes") or {}).get(sid, ""))
         except Exception as e:                       # noqa: BLE001
             from ...site import ai as SA
             if isinstance(e, SA.AiError):            # v0.140 Opus 5.5 unreachable: stop, never hand her a model-less app
@@ -310,13 +321,14 @@ def _run(r: AppProject) -> None:
         else:
             kt[sid] = src
             f.write_text(src)
+            written.append(sid)
             _states(r.id, {sid: "written"})
     src_dir = work / "project"
     sp["screens_kt"] = kt
     res = G.write_project(sp, src_dir)
     zip_bytes = RN.zip_project(src_dir, export=True)
     (work / f"project-b{n}.zip").write_bytes(zip_bytes)
-    _prune(work, "project-b", 3)
+    _prune(work, "project-b", KEEP_BUILDS)
     _put(r.id, zip=f"project-b{n}.zip", zip_size=len(zip_bytes), package=res["app_id"], kinds=res["screens"],
          zip_token=secrets.token_urlsafe(24), zip_expires=(now() + timedelta(days=APK_LINK_DAYS)).isoformat())
     if not RN.describe()["ready"] and RN._override is None:
@@ -369,7 +381,7 @@ def _run(r: AppProject) -> None:
                 src = ""
             if src and not G.scan_screen(src, sid, ids):
                 kt[sid] = src
-                (cache / f"{st.get('design_hash', '')[:12]}-{sid}.kt").write_text(src)
+                (cache / f"{_skey(sid, ctx, sp, screens)}-{sid}.kt").write_text(src)
             else:
                 kt.pop(sid, None)
                 code_only.add(sid)
@@ -378,12 +390,60 @@ def _run(r: AppProject) -> None:
         G.write_project(sp, src_dir)
     if not (result.get("ok") and result.get("apk")):
         raise AndroidError("APK nahi bana (" + "; ".join(ER.parse(result.get("log") or "")["other"][:2]) + ")")
+    # v0.325 HOOLA QA: a screen that CRASHED on the device check goes back to Opus once with the real crash; still
+    # crashing (or the fix does not compile) = its simple code-made version. The build that ships is re-checked.
+    crashed = _crashed_screens((result.get("qa") or {}).get("report"), ids)
+    if crashed:
+        _put(r.id, status="fixing", now="Device check: " + ", ".join(list(crashed)[:4]) + " crash hui - theek kar raha hoon")
+        _emit(r.id)
+        for sid, crash in crashed.items():
+            if sid not in kt:
+                continue
+            _states(r.id, {sid: "fixing"}, f"Crash theek: {sid}")
+            try:
+                src = _ask(PR.fix_system(sid, ids), "THIS SCREEN CRASHED ON A REAL ANDROID PHONE (device check). Find the cause "
+                           "and fix it (empty lists, missing keys, index out of range, null values...).\nCRASH:\n"
+                           + str(crash.get("excerpt") or crash.get("exception") or "")[:3500] + "\n\nFILE:\n```kotlin\n" + kt[sid] + "```")
+            except Exception as e:                    # noqa: BLE001
+                from ...site import ai as SA
+                if isinstance(e, SA.AiError):
+                    raise AndroidError(str(e)) from e
+                src = ""
+            if src and not G.scan_screen(src, sid, ids + list(G.KIT_SCREENS)):
+                kt[sid] = src
+                (cache / f"{_skey(sid, ctx, sp, screens)}-{sid}.kt").write_text(src)
+            else:
+                kt.pop(sid, None)
+                code_only.add(sid)
+        sp["screens_kt"] = kt
+        G.write_project(sp, src_dir)
+        again = RN.build(src_dir, r.id.replace("_", "-")[:60].lower(), lambda stage: _put(r.id, stage=stage))
+        if not (again.get("ok") and again.get("apk")):          # the fix did not compile: those screens go code-made
+            for sid in crashed:
+                kt.pop(sid, None)
+                code_only.add(sid)
+            sp["screens_kt"] = kt
+            G.write_project(sp, src_dir)
+            again = RN.build(src_dir, r.id.replace("_", "-")[:60].lower(), lambda stage: _put(r.id, stage=stage))
+        if again.get("ok") and again.get("apk"):
+            result = again
+        still = _crashed_screens((result.get("qa") or {}).get("report"), ids)
+        if still and set(still) & set(kt):                       # second crash of an Opus screen: the simple version ships
+            for sid in still:
+                kt.pop(sid, None)
+                code_only.add(sid)
+            sp["screens_kt"] = kt
+            G.write_project(sp, src_dir)
+            last = RN.build(src_dir, r.id.replace("_", "-")[:60].lower(), lambda stage: _put(r.id, stage=stage))
+            if last.get("ok") and last.get("apk"):
+                result = last
+    _keep_qa(r, n, result.get("qa"))
     apk = result["apk"]
     name = f"{AS._tidy(r.name, 30).replace(' ', '-') or 'app'}-v{r.version}-b{n}.apk"
     (work / "apk").mkdir(exist_ok=True)
-    for old in (work / "apk").glob("*.apk"):
-        old.unlink()
-    (work / "apk" / name).write_bytes(apk)
+    (work / "apk" / name).write_bytes(apk)        # v0.325 the last KEEP_BUILDS APKs stay (rollback, history)
+    for old in sorted((work / "apk").glob("*.apk"), key=lambda x: x.stat().st_mtime, reverse=True)[KEEP_BUILDS:]:
+        old.unlink(missing_ok=True)
     zb = RN.zip_project(src_dir, export=True)
     (work / f"project-b{n}.zip").write_bytes(zb)
     _put(r.id, zip_size=len(zb))
@@ -395,8 +455,14 @@ def _run(r: AppProject) -> None:
               "version_name": sp["app"]["version_name"], "token": token,
               "expires": (now() + timedelta(days=APK_LINK_DAYS)).isoformat(), "at": now().isoformat()},
          stats={"model": len(kt), "code": len(code_only)}, kinds={sid: ("code" if sid in code_only else "model") for sid in ids})
+    _history(r, n, sp, name, sha, len(apk), written, sorted(code_only), st)
+    if st.get("fix_crashes"):               # v0.325 the crashes this build was made to fix: watched in that version
+        from .. import backend as BE
+        for sig in st["fix_crashes"]:
+            BE.crash_mark(r, sig, "fixing", n, sp["app"]["version_name"])
     _note(r, f"Android app taiyaar: {r.name or 'App'} (v{r.version}, build {n}). {len(kt)} screens Opus ne Kotlin mein likhi"
-             + (f", {len(code_only)} saada (code se)" if code_only else "") + ". 'Phone pe install karo' dabaiye.")
+             + (f", {len(code_only)} saada (code se)" if code_only else "") + "." + qa_line(state(AS._load(r.id)).get("qa"))
+             + " 'Phone pe install karo' dabaiye.")
     _emit(r.id, push=True)
 
 
@@ -416,6 +482,213 @@ def _note(r: AppProject, text: str) -> None:
         notify(conv, text)
     except Exception:
         log.debug("note", exc_info=True)
+
+
+# ---------------------------------------------------------------- v0.325 UPDATES: per-screen cache, history, rollback
+def _skey(sid: str, ctx: dict[str, Any], sp: dict[str, Any], screens: dict[str, dict[str, Any]]) -> str:
+    """What one screen's Kotlin depends on: its own approved design, the look, the tabs / screen list, its row in the spec
+    (purpose, lists, actions) and the app's server lists. Same key = the Kotlin from an earlier build is reused as is."""
+    scr = screens.get(sid) or {}
+    me = next((x for x in sp.get("screens") or [] if x.get("id") == sid), {})
+    blob = json.dumps({"t": {k: ctx["tokens"].get(k) for k in sorted(ctx["tokens"])}, "tabs": (ctx.get("plan") or {}).get("tabs", []),
+                       "ids": [x.get("id") for x in sp.get("screens") or []], "html": scr.get("html") or "", "css": scr.get("css") or "",
+                       "me": me, "be": (sp.get("seed") or {}).get("backend") or {}, "kit": KIT_REV}, sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+
+KIT_REV = "k3"            # bump when the kit's public API changes in a way old screen code may not compile against
+
+
+def _history(r: AppProject, n: int, sp: dict[str, Any], apk_name: str, sha: str, size: int, written: list[str], code: list[str],
+             st: dict[str, Any], rollback_of: int = 0) -> None:
+    """One changelog entry per build: what changed (screens rewritten vs kept), data changes, crash fixes, the device check."""
+    from .. import backend as BE
+    cur = state(AS._load(r.id))
+    be = BE.ensure(r)
+    ids = [x["id"] for x in sp.get("screens") or []]
+    labels = {x["id"]: x.get("label") or x["id"] for x in sp.get("screens") or []}
+    prev = (cur.get("history") or [{}])[-1] if cur.get("history") else {}
+    vs = AS._j(r.versions, [])
+    entry = {"build": n, "version_name": sp["app"]["version_name"], "version_code": sp["app"]["version_code"],
+             "at": now().isoformat(), "apk": apk_name, "sha256": sha, "size": size, "design_version": r.version,
+             "design_note": (vs[-1].get("note") if vs else "") or "",
+             "changed": [labels.get(x, x) for x in written], "kept": len([x for x in ids if x not in written]),
+             "simple": [labels.get(x, x) for x in code], "changed_ids": list(written), "simple_ids": list(code),
+             "schema_rev": int(be.get("rev") or 0),
+             "schema_changed": int(be.get("rev") or 0) != int(prev.get("schema_rev") or 0) if prev else False,
+             "crash_fixes": len(st.get("fix_crashes") or []), "qa_passed": (cur.get("qa") or {}).get("passed"),
+             "rollback_of": rollback_of}
+    entry["notes"] = release_notes(entry)
+    hist = (cur.get("history") or []) + [entry]
+    _put(r.id, history=hist[-30:], last_vc=sp["app"]["version_code"])
+
+
+def release_notes(e: dict[str, Any]) -> list[str]:
+    """Plain 'What's new' lines for the app's update prompt (no internals)."""
+    out = []
+    if e.get("rollback_of"):
+        out.append(f"Back to the version of build {e['rollback_of']}.")
+    if e.get("design_note") and e.get("changed") and not e.get("rollback_of"):
+        out.append(str(e["design_note"])[:140].rstrip(".") + ".")
+    if e.get("changed") and not e.get("rollback_of"):
+        ch = e["changed"]
+        out.append("Updated: " + ", ".join(ch[:5]) + (f" and {len(ch) - 5} more" if len(ch) > 5 else "") + ".")
+    if e.get("schema_changed"):
+        out.append("New details you can fill in.")
+    if e.get("crash_fixes"):
+        out.append("Fixes a problem that could close the app.")
+    return out or ["Improvements and fixes."]
+
+
+def _rollback(r: AppProject, st: dict[str, Any], n: int, sp: dict[str, Any], work: Path) -> None:
+    """An older build again: its exact project, a NEW version code (phones only install upward), rebuilt + checked."""
+    import zipfile as _zf
+    k = int(st.get("rollback") or 0)
+    z = work / f"project-b{k}.zip"
+    if not z.exists():
+        raise AndroidError(f"Build {k} ka project ab nahi hai (sirf aakhri {KEEP_BUILDS} rakhe jaate hain).")
+    src_dir = work / "project-rb"
+    shutil.rmtree(src_dir, ignore_errors=True)
+    with _zf.ZipFile(z) as zf:
+        for m in zf.infolist():
+            dest = (src_dir / m.filename).resolve()
+            if not str(dest).startswith(str(src_dir.resolve())):
+                continue
+            zf.extract(m, src_dir)
+    g = src_dir / "app/build.gradle.kts"
+    t = g.read_text()
+    t = re.sub(r"versionCode = \d+", f"versionCode = {int(sp['app']['version_code'])}", t)
+    t = re.sub(r'versionName = "[^"]*"', f'versionName = "{sp["app"]["version_name"]}"', t)
+    g.write_text(t)
+    (src_dir / "gradlew").chmod(0o755)
+    key = sp.get("preview_key") or {}
+    if key.get("p12_b64"):
+        (src_dir / "keys").mkdir(exist_ok=True)
+        (src_dir / "keys/preview.p12").write_bytes(base64.b64decode(key["p12_b64"]))
+    if not RN.describe()["ready"] and RN._override is None:
+        raise AndroidError("Build machine set nahi hai: purani build dobara nahi ban sakti.")
+    _put(r.id, status="building", now=f"Build {k} wapas la rahi hoon (nayi version {sp['app']['version_name']})")
+    _emit(r.id)
+    result = RN.build(src_dir, r.id.replace("_", "-")[:60].lower(), lambda stage: _put(r.id, stage=stage))
+    if not (result.get("ok") and result.get("apk")):
+        raise AndroidError("Purani build dobara compile nahi hui (" + "; ".join(ER.parse(result.get("log") or "")["other"][:2]) + ")")
+    _keep_qa(r, n, result.get("qa"))
+    apk = result["apk"]
+    name = f"{AS._tidy(r.name, 30).replace(' ', '-') or 'app'}-v{r.version}-b{n}.apk"
+    (work / "apk").mkdir(exist_ok=True)
+    (work / "apk" / name).write_bytes(apk)
+    (work / f"project-b{n}.zip").write_bytes(RN.zip_project(src_dir, export=True))
+    shutil.rmtree(src_dir, ignore_errors=True)
+    sha = hashlib.sha256(apk).hexdigest()
+    _put(r.id, status="ready", ended=now().isoformat(), now="", error="", rollback=0,
+         apk={"file": name, "sha256": sha, "size": len(apk), "package": sp["app"]["app_id"], "version_code": sp["app"]["version_code"],
+              "version_name": sp["app"]["version_name"], "token": secrets.token_urlsafe(24),
+              "expires": (now() + timedelta(days=APK_LINK_DAYS)).isoformat(), "at": now().isoformat()})
+    _history(r, n, sp, name, sha, len(apk), [], [], st, rollback_of=k)
+    _note(r, f"{r.name or 'App'} ki build {k} wapas aa gayi, nayi version {sp['app']['version_name']} ke roop mein (phones isi ko "
+             "update ki tarah lenge)." + qa_line(state(AS._load(r.id)).get("qa")))
+    _emit(r.id, push=True)
+
+
+def rollback(tenant: str, ref: str, to_build: int, conv: str = "") -> dict[str, Any]:
+    """Her tap / words 'pichhli wali wapas lao': that build's project rebuilt under a new version (no Opus, nothing rewritten)."""
+    with session() as s:
+        r = AS._find(s, tenant, ref)
+        s.expunge(r)
+    st = state(r)
+    hist = st.get("history") or []
+    if not to_build:
+        to_build = next((h["build"] for h in reversed(hist[:-1]) if not h.get("rollback_of")), 0) if len(hist) > 1 else 0
+    if not to_build or not any(h.get("build") == to_build for h in hist):
+        raise AndroidError("Kaunsi build wapas laani hai? (history mein dekhiye)")
+    if st.get("status") in ("writing", "building", "fixing"):
+        raise AndroidError("Abhi ek build chal rahi hai; khatam hone dijiye.")
+    n = int(st.get("build") or 0) + 1
+    _put(r.id, status="building", build=n, rollback=int(to_build), error="", note="", rounds=0, started=now().isoformat(),
+         ended="", now=f"Build {to_build} wapas la rahi hoon", conv=conv or r.conv, redo=[], notes={}, fix_crashes=[])
+    _start(r.id)
+    return view(AS._load(r.id))
+
+
+def latest(r: AppProject) -> dict[str, Any]:
+    """What the installed app asks on start: the newest build's version, its 'What's new' and where the APK is."""
+    st = state(r)
+    apk = st.get("apk") or {}
+    hist = st.get("history") or []
+    e = next((h for h in reversed(hist) if h.get("version_code") == apk.get("version_code")), hist[-1] if hist else {})
+    base = (AS._settings().public_base_url or "").rstrip("/")
+    return {"version_code": int(apk.get("version_code") or 0), "version_name": apk.get("version_name") or "",
+            "notes": (e or {}).get("notes") or [], "size": apk.get("size") or 0,
+            "url": f"{base}/api/app-api/{st.get('app_key')}/apk" if apk.get("file") and st.get("app_key") else ""}
+
+
+def apk_current(r: AppProject) -> tuple[Path, str]:
+    st = state(r)
+    apk = st.get("apk") or {}
+    f = _dir(r) / "apk" / str(apk.get("file") or "")
+    if not apk.get("file") or not f.exists():
+        raise AndroidError("not found")
+    return f, apk["file"]
+
+
+# ---------------------------------------------------------------- v0.325 HOOLA QA (the device check)
+def _crashed_screens(report: dict[str, Any] | None, ids: list[str]) -> dict[str, dict[str, Any]]:
+    """{screen id: crash} for the app's own screens that crashed on the device check (kit screens are Hoola's to fix)."""
+    out: dict[str, dict[str, Any]] = {}
+    for sid, x in ((report or {}).get("screens") or {}).items():
+        if sid in ids and isinstance(x, dict) and not x.get("opened"):
+            out[sid] = x.get("crash") or {"exception": "the app closed on this screen"}
+    return out
+
+
+def _keep_qa(r: AppProject, n: int, qa: dict[str, Any] | None) -> None:
+    """The device check's report (summary in the build state) and its pictures (android/qa/b<n>/<screen>.png)."""
+    if not qa or not isinstance(qa.get("report"), dict):
+        _put(r.id, qa={"ran": False, "why": "no emulator on this build machine (GitHub builds repo: use the v0.325 hoola-build.yml)"})
+        return
+    rep = qa["report"]
+    d = _dir(r) / "qa" / f"b{n}"
+    d.mkdir(parents=True, exist_ok=True)
+    for sid, png in (qa.get("shots") or {}).items():
+        if re.fullmatch(r"[a-z][a-z0-9_]{0,48}", sid) and png[:8] == b"\x89PNG\r\n\x1a\n":
+            (d / f"{sid}.png").write_bytes(png)
+    import shutil
+    for old in sorted((x for x in (_dir(r) / "qa").glob("b*") if x.is_dir()), key=lambda x: x.stat().st_mtime, reverse=True)[3:]:
+        shutil.rmtree(old, ignore_errors=True)
+    find = [{"screen": sid, "kind": f.get("kind"), "text": f.get("text")} for sid, x in (rep.get("screens") or {}).items()
+            for f in (x.get("a11y") or [])][:16]
+    _put(r.id, qa={"ran": True, "build": n, "passed": bool(rep.get("passed")), "opened": rep.get("opened"), "total": rep.get("total"),
+                   "crashed": rep.get("crashed") or [], "perf": rep.get("perf") or {}, "budget": rep.get("budget") or {},
+                   "limits": rep.get("limits") or {}, "a11y_count": rep.get("a11y_count") or 0, "a11y": find,
+                   "shots": sorted(p.stem for p in d.glob("*.png")), "at": now().isoformat()})
+
+
+def qa_line(qa: dict[str, Any] | None) -> str:
+    """One plain sentence about the device check for her chat note ('' when it did not run)."""
+    if not qa or not qa.get("ran"):
+        return ""
+    p, b = qa.get("perf") or {}, qa.get("budget") or {}
+    bits = [f"Device check: {qa.get('opened')}/{qa.get('total')} screens bina crash ke khuli"]
+    if p.get("cold_ms") is not None:
+        bits.append(f"app {p['cold_ms']} ms mein khulti hai" + (" (thodi dheemi)" if b.get("cold_ms") == "over" else ""))
+    if p.get("apk_mb") is not None:
+        bits.append(f"APK {p['apk_mb']} MB")
+    if qa.get("a11y_count"):
+        bits.append(f"{qa['a11y_count']} accessibility baatein")
+    return " " + ", ".join(bits) + "."
+
+
+def qa_shot(tenant: str, ref: str, name: str) -> Path:
+    with session() as s:
+        r = AS._find(s, tenant, ref)
+        s.expunge(r)
+    qa = state(r).get("qa") or {}
+    if not re.fullmatch(r"[a-z][a-z0-9_]{0,48}", name or "") or not qa.get("build"):
+        raise AndroidError("not found")
+    f = _dir(r) / "qa" / f"b{qa['build']}" / f"{name}.png"
+    if not f.exists():
+        raise AndroidError("not found")
+    return f
 
 
 # ---------------------------------------------------------------- views / files
@@ -443,7 +716,9 @@ def view(r: AppProject) -> dict[str, Any]:
             "zip_url": (f"{base}/api/app-zip/{st['zip_token']}/{st['zip']}" if st.get("zip_token") and st.get("zip")
                         and st.get("zip_expires", "") > now().isoformat() else ""),
             "apk": {k: apk.get(k) for k in ("file", "sha256", "size", "package", "version_code", "version_name", "at")} if apk else {},
-            "apk_url": link, "approved": bool(r.approved_hash), "say": _say(r, st, link), "model": _model_label()}
+            "apk_url": link, "approved": bool(r.approved_hash), "say": _say(r, st, link), "model": _model_label(),
+            "qa": st.get("qa") or {}, "history": list(reversed((st.get("history") or [])[-12:])),
+            "kept_builds": sorted(int(p.stem.split("-b")[-1]) for p in _dir(r).glob("project-b*.zip") if p.stem.split("-b")[-1].isdigit())}
 
 
 def _say(r: AppProject, st: dict[str, Any], link: str) -> str:

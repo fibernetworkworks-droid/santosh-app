@@ -274,7 +274,7 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   * <div data-hoola-video="YOUTUBE LINK" data-title="..."></div> = a video that plays on tap (only a link from FACTS).
   * <a class="btn btn-primary" data-hoola-pay="499" data-for="Kaju katli 1 kg">Pay ₹499</a> = pay by UPI to her UPI ID,
     ONLY when FACTS has "upi" and only her own prices; never invent an amount.
-- INTERACTIVE PIECES (v0.325, attributes only - no section JS needed; restyle them inside your #SECTION_ID):
+- INTERACTIVE PIECES (v0.330, attributes only - no section JS needed; restyle them inside your #SECTION_ID):
   * Tabs: <div data-hoola-tabs><div><button data-tab="veg">Veg</button><button data-tab="sweet">Sweets</button></div>
     <div data-panel="veg">...</div><div data-panel="sweet">...</div></div>
   * Slider: <div data-hoola-carousel><div class="hs-track"><article>...</article>...</div></div> (arrows added for you).

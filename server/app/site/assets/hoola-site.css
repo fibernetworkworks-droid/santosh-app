@@ -177,7 +177,7 @@ details.faq[open] summary::after{transform:rotate(45deg)}
   .hs-ddl{position:static;box-shadow:none;border:0;padding:0 0 8px 12px;min-width:0;max-height:none}
   .hs-ddl a{border-bottom:0;padding:10px 4px}
 }
-/* v0.325 ANY DESIGN: interactive pieces (sections restyle them inside their own #id) */
+/* v0.330 ANY DESIGN: interactive pieces (sections restyle them inside their own #id) */
 [data-hoola-tabs] [role=tablist]{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
 [data-tab]{font:inherit;font-weight:600;padding:10px 16px;min-height:44px;border-radius:999px;border:1px solid var(--c-line);background:var(--c-bg);color:inherit;cursor:pointer}
 [data-tab][aria-selected=true]{background:var(--c-primary);color:var(--c-on-primary);border-color:var(--c-primary)}
