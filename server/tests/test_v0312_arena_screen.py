@@ -1,4 +1,4 @@
-"""v0.311 ARENA SCREEN: the Design Arena gets an owner-only page in the web console. Server side: the console's /me says
+"""v0.312 ARENA SCREEN: the Design Arena gets an owner-only page in the web console. Server side: the console's /me says
 whether this user may see it, run cards carry the business name, screenshots are served only for Arena sites and only to
 the owner, recent duels name the builder, a run orphaned by a restart reads 'interrupted'. Then the page itself in a real
 browser (Playwright + Chromium, skipped without one): the sidebar item, the score row, the runs table, a run's website
@@ -24,7 +24,7 @@ def _seed():
     briefs = A.pick(3, 1)
     crit = lambda v: {c: v for c in A.CRITERIA}
     ids = []
-    for i, (ver, j, lcp) in enumerate((("0.309.0", 6.8, 2600), ("0.311.0", 7.9, 1900))):
+    for i, (ver, j, lcp) in enumerate((("0.309.0", 6.8, 2600), ("0.312.0", 7.9, 1900))):
         with session() as s:
             run = A.ArenaRun(version=ver, seed=1, n=3, budget_inr=1500, spent_inr=420 + i, status="done", note=f"run {i}")
             s.add(run)
@@ -90,7 +90,7 @@ def test_console_wiring():
     for k in ("/api/arena/start", "/api/arena/compare", "/api/arena/duel", "/api/arena/shot/"):
         assert k in ar
     css = (CONSOLE / "v2.css").read_text()
-    blk = css[css.index("v0.311 DESIGN ARENA"):css.index("v0.288 SIDEBAR FULLY VISIBLE")]   # sits before the sidebar's last word
+    blk = css[css.index("v0.312 DESIGN ARENA"):css.index("v0.288 SIDEBAR FULLY VISIBLE")]   # sits before the sidebar's last word
     assert "#" not in blk.split("*/", 1)[1].replace("#arena", "").replace("/* =====", "")                       # theme tokens only, no raw colours
 
 
@@ -192,5 +192,5 @@ def test_arena_screen_in_a_real_browser(arena_server):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.311.0"
-    assert "0.311.0+351" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.312.0"
+    assert "0.312.0+352" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

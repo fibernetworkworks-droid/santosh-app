@@ -11582,11 +11582,30 @@ same 422. Fix: ge=2 on the three forms; plan() clamps at 2 instead of 6 (a 5 s c
 api() turns a 422 detail list into "field: reason" instead of "The server refused the request (422)". Re-checked through
 the real route: 4 s / 5 s / 8 s -> 200. Tests: tests/test_v0310_short_clips.py.
 
-## v0.311.0 ARENA SCREEN (owner: "add an Arena screen to the console")
+
+## v0.311.0 DIRECTOR CAST FIX (31 Oct 2026)
+Owner: "DIRECTOR FLOW ::: STUCK ON CAST -- I TRY TO ADD CAST BUT NOT WORKING".
+Reproduced on a local server through the real routes (new film + one shot -> POST /characters -> price card ₹12 ->
+POST /approvals/{id} yes): decide() starts _paint_character in the background and returns; the painter failed (there:
+a refused key) and the ONLY trace was a chat note (_note) - the film showed character_list [], no painting state, no
+error, so the Director sat on step 3 Cast with nothing to see. A success also showed nothing for its 20-40 s.
+Fix (studio/service.py + studio.js / studio.css):
+- `_casting` (per tenant+film) holds the names being painted -> view()["casting"]; the Director shows "Painting
+  <name>'s picture…" with a ring and polls (5 s) while it runs.
+- A failure is written ON the film: cast_error in plain words via _paint_why (the Gemini key refused -> check Create >
+  Setup > Engines; busy / out of quota; the description blocked; else the short reason) + "Nothing was charged" (the
+  charge is only in the success branch); cast_last keeps name / look / voice so "Try again" refills the form even
+  after a reload. A later success clears the error.
+- "Skip: no fixed characters" (in the cast form and on the error box) sets prefs.cast_skip (StudioSettings.cast_skip,
+  _clean_prefs) and the Cast step counts as done - a film can go on without a fixed cast.
+Screens: the failed state (red reason, Try again, Skip) and the painting state, from the real page.
+Tests: tests/test_v0311_director_cast.py.
+
+## v0.312.0 ARENA SCREEN (owner: "add an Arena screen to the console")
 The Design Arena (v0.307) was API-only. Now it has its own page in the web console.
 - **Who sees it**: `/api/console/me` returns `arena: true` only for the owner (tenant == TENANT_ID); the sidebar item
   "Arena" (trophy icon) and the view `#v-arena` appear only then. Every `/api/arena/*` call is still refused (403) for anyone else.
-- **Page** (`server/app/static/console/arena.js`, `window.HoolaArena({api, esc, toast})`, CSS block "v0.311 DESIGN ARENA" at
+- **Page** (`server/app/static/console/arena.js`, `window.HoolaArena({api, esc, toast})`, CSS block "v0.312 DESIGN ARENA" at
   the end of v2.css, theme tokens only):
   - Score row: judge score of the latest finished run, % of sites with no blocking issue, median LCP, blind duels won.
   - New run form: websites, brief-set seed, budget (capped at `SITE_ARENA_MAX_INR`), note, live cost estimate (₹100-300 a
@@ -11603,5 +11622,6 @@ The Design Arena (v0.307) was API-only. Now it has its own page in the web conso
   and `max_inr`, runs carry `budget_inr`; a run still marked running after a server restart reads **interrupted**
   (`arena._status`) instead of running forever.
 - Everything from the server goes on the page through `esc()` (judge lines, business names, URLs); no inline handlers.
-- Tests `server/tests/test_v0311_arena_screen.py` (4): server side, wiring, and a real-browser walkthrough (light + dark
+- Tests `server/tests/test_v0312_arena_screen.py` (4): server side, wiring, and a real-browser walkthrough (light + dark
   at 1440, open a run, scores, compare, duel picker; 390px phone with no sideways scroll; no page errors).
+- Built as 0.311.0, re-versioned 0.312.0 on merge past the parallel v0.311.0 DIRECTOR CAST FIX (both kept).

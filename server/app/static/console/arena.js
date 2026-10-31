@@ -1,4 +1,4 @@
-/* v0.311 DESIGN ARENA screen (owner only): start a scored run, watch it build, read each website's score card,
+/* v0.312 DESIGN ARENA screen (owner only): start a scored run, watch it build, read each website's score card,
    compare two versions, and run blind duels against another builder's public site.
    Talks only to /api/arena/* (the server refuses anyone but the owner). Every value from the server goes on the
    page through esc() - business names, judge lines and rival URLs are data. */
