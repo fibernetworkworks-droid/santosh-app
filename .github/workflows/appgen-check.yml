@@ -50,7 +50,7 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon -q buildEnvironment 2>&1 | grep -iE "kotlin-gradle-plugin|com.android.tools.build:gradle" | head -8 | tee env.txt || true
           while IFS= read -r l; do echo "::notice::${l}"; done < env.txt
-          ./gradlew --no-daemon --console=plain assembleRelease assembleDebug 2>&1 | tee build.log
+          ./gradlew --no-daemon --console=plain assembleRelease assembleDebug bundleRelease 2>&1 | tee build.log
       - name: Kotlin errors as annotations
         if: failure()
         run: |
@@ -61,6 +61,8 @@ jobs:
       - name: APK checks
         working-directory: ${{ runner.temp }}/proj
         run: |
+          AAB=$(ls app/build/outputs/bundle/release/*.aab | head -1)      # v0.330 the Play Store bundle builds too
+          ls -la "$AAB" && unzip -l "$AAB" | grep -q "base/manifest/AndroidManifest.xml"
           APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
           ls -la "$APK"
           unzip -t "$APK" > /dev/null

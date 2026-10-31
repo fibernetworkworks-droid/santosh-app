@@ -80,12 +80,14 @@ def build(job: str) -> None:
     env["GRADLE_OPTS"] = "-Dorg.gradle.daemon=false"
     try:
         with open(logf, "w") as lf:
-            p = subprocess.run(["./gradlew", "--no-daemon", "--console=plain", "assembleRelease"], cwd=work, env=env,
-                               stdout=lf, stderr=subprocess.STDOUT, timeout=TIMEOUT)
-        apks = sorted((work / "app/build/outputs/apk/release").glob("*.apk")) if p.returncode == 0 else []
+            aab = j.get("kind") == "aab"
+            p = subprocess.run(["./gradlew", "--no-daemon", "--console=plain", "bundleRelease" if aab else "assembleRelease"],
+                               cwd=work, env=env, stdout=lf, stderr=subprocess.STDOUT, timeout=TIMEOUT)
+        out_dir = work / ("app/build/outputs/bundle/release" if aab else "app/build/outputs/apk/release")
+        apks = sorted(out_dir.glob("*.aab" if aab else "*.apk")) if p.returncode == 0 else []
         if apks:
             shutil.copy(apks[0], HOME / "jobs" / f"{job}.apk")
-            if EMULATOR and (work / "hoola_qa/device_check.sh").exists():
+            if EMULATOR and not aab and (work / "hoola_qa/device_check.sh").exists():
                 j.update(stage="device check")
                 qa_check(job, work, env, logf)
             j.update(status="ok", stage="done")
@@ -197,7 +199,8 @@ class H(BaseHTTPRequestHandler):
         except (ValueError, zipfile.BadZipFile) as e:
             return self._send(400, json.dumps({"error": str(e)}).encode())
         job = uuid.uuid4().hex[:16]
-        JOBS[job] = {"app": app, "status": "queued", "stage": "queued", "queued": time.time(), "ahead": Q.qsize()}
+        kind = "aab" if (parse_qs(u.query).get("kind") or [""])[0] == "aab" else "apk"      # v0.330 Play Store bundle
+        JOBS[job] = {"app": app, "status": "queued", "stage": "queued", "queued": time.time(), "ahead": Q.qsize(), "kind": kind}
         Q.put(job)
         self._send(200, json.dumps({"job": job, "ahead": Q.qsize() - 1}).encode())
 

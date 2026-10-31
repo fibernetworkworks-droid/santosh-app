@@ -12307,3 +12307,97 @@ Also from her second test-A ask: "Ek chhota business plan banao chai cafe ke liy
 hisaab lagao, menu aur rates likho, phir sab ek PDF mein do" was NOT big (2 known verbs) - `goal.looks_big` now also counts
 the parts after a colon (3+ = big), `_ask_steps` strips "uske baad / iske baad / after that" and knows socho / lagao / chuno.
 Short asks with a colon ("Time: kitna baj gaya?") stay small. Tests: test_v0315_her_test_run.py (+2), web/progress.test.cjs.
+
+## v0.331.0 PLAY STORE LAUNCH — App Sahayak Phase 5 (owner: "START PHASE 5"; built as 0.330.0, re-versioned past the parallel v0.330.0 PLAN CARD DIKHE)
+Her app on Google Play from HER OWN developer account, through Google's official Play Developer API (androidpublisher v3).
+`server/app/appmaker/android/store.py`; state in `android.store`.
+- **Identity**: `propose_package` (com.<ascii business words>.app, reserved prefixes refused), confirmed by her (`setup`), LOCKED after
+  the first upload (Play never allows a change). A separate UPLOAD key per app (`_upload_key`: PKCS12 RSA 2048, alias "preview" so the
+  fixed Gradle file signs with it, sealed `store/upload.key.sealed`); the public certificate at `/api/apps/<ref>/store-cert`.
+- **Her Play key**: the service-account JSON from Play Console > API access, typed / chosen in the app (phone `StorePanel`, console file
+  input) - never in chat; `set_credentials` checks it is a service account, keeps only the needed fields, seals it (`store/play.sealed`),
+  returns only a masked e-mail; "Key hatao" forgets it. Tokens via google-auth (`_token`, scope androidpublisher).
+- **Listing**: Opus (`LISTING_SYSTEM`: facts only, no superlatives / emoji / other brands - Play's metadata policy) or a template; clipped
+  to 30 / 80 / 4000; her edits checked against the limits. **Graphics** (`graphics`): 512 px icon (first letter on the app's own
+  gradient) and 1024x500 feature graphic (the name), Pillow; **screenshots** (`screenshots`): the device check's pictures of the latest
+  build (2-8, kit screens left out).
+- **Pages Play asks for** (public, per app): `/api/app-api/<key>/privacy` (the app's privacy paragraphs + a crash-report paragraph) and
+  `/api/app-api/<key>/delete-account` (the in-app path + her contact). **Data safety** (`data_safety`): the form's answers from what the
+  app's lists really hold (email, name, phone, address, location only on tap, photos only chosen, purchase history, crash logs; never
+  shared, HTTPS, deletion in app + on request) - Google has no API for that form, so she enters them.
+- **Store bundle** (`build_bundle` / `_build_bundle`): the latest build's exported project, `applicationId` = the store package,
+  `versionCode` above every preview / store build (preview builds then continue above it), the upload key + its password put back,
+  `RN.build(..., "aab")` (worker `?kind=aab` -> bundleRelease; builds-repo workflow input `kind` (new hoola-build.yml); local
+  bundleRelease); the .aab kept in `store/`.
+- **Upload** (`publish` / `_publish`): edits.insert -> bundles.upload -> tracks/<track> (release with "What's new" from the changelog)
+  -> listings/en-IN -> icon + featureGraphic (delete + upload) -> phoneScreenshots -> edits.commit. Internal testing by the tool
+  (`app_banao action=store step=internal`) or her tap; PRODUCTION only with her tap in the app (`her_tap`, confirm dialog), the tool
+  refuses. A never-reviewed app's "draft only" refusal = the release goes as a draft and her note says to finish it once in Play
+  Console. Google's refusals are shown as they are (e.g. missing permission). Package locked after the first upload.
+- **Views**: phone `StorePanel` (steps x/8, package, key, listing, buttons, the one-time Play Console steps, data-safety answers,
+  releases); console Android tab Play box (same). Tools `app_dekho what=store`, `app_banao action=store step=setup|listing|bundle|internal`.
+- **Fixed on the way**: Phase 4's rollback restored the preview key but not its password (the exported project blanks `?: "..."`), so a
+  real build machine would have failed to sign it; both rollback and the store bundle now put the password back.
+- **Verified**: `server/tests/test_v0330_play_store.py` (2: setup / key sealing / listing limits / graphics / pages / data safety; the
+  bundle + version codes + the exact Play API sequence on a faked Google + package lock + production only by tap + the draft fallback +
+  a Google refusal); the AAB built here with the real toolchain (3.7 MB, valid bundle) and CI now builds it (bundleRelease + check).
+- **Not yet / honest limits**: Google's API cannot create the app entry or fill the data-safety / content-rating forms - she does those
+  once in Play Console (listed in the panel); the first upload of a brand-new app may need one "Review release" click there.
+  **iPhone (App Store / TestFlight) is the next phase**: it needs a Swift / SwiftUI kit (the HoolaKit equivalent), macOS builds, and
+  her Apple Developer account (team, certificates, App Store Connect API key).
+
+## v0.332.0 ANY DESIGN (web design Phase 6 step 2; owner: "START PHASE 2")
+Three limits, measured in the code: a section could only be one of 30 library types (21 places looked a type up in
+`T.SECTIONS`), the site runtime had no interactive pieces beyond FAQ / lightbox / before-after (so a calculator, tabs or
+a filter needed section JS, which the sanitiser rightly strips), and every section styled its own buttons and cards, so
+a big site drifted page to page.
+- **Free-form sections**: type `custom_<name>` (`taxonomy.custom_type`, `is_section`, `label_of`; CUSTOM_PER_PAGE 3). The
+  site map planner may add {"type": "custom", "name": "EMI calculator", "design": ...} when no library type fits; her
+  words add one through change() (CHANGE_SYSTEM add: type custom + name). The section writer is told it is FREE-FORM
+  (design from scratch for that purpose, use the interactive pieces). Every label lookup now goes through `label_of`.
+- **Interactive pieces** in `assets/hoola-site.js` (+ default styles in hoola-site.css, taught in RUNTIME_GUIDE), all
+  by attribute, keyboard + ARIA: `data-hoola-tabs` (tablist, arrow keys), `data-hoola-carousel` (scroll-snap track +
+  arrows that disable at the ends), `data-hoola-filter`, `data-hoola-toggle` (monthly / yearly), `form data-hoola-calc`
+  = "sum" (base + qty x data-rate + data-add for checked boxes / options) or "emi" (amount, yearly rate, months -> EMI,
+  total, interest; en-IN rupees). Values written as text.
+- **Design kit** (`site/kit.py`, SITE_KIT on): once a look is chosen, before the first sections are written, one Opus call
+  (site_art) writes `.k-*` components (btn, btn-ghost, card, eyebrow, title, sub, head, badge, media, quote, stat, list,
+  divider, chip) from the look's art direction using only the site variables. `kit.clean` keeps only kit rules (every
+  selector a `.k-` class chain; media / supports wrappers kept; `@keyframes k-*` kept; no element / id / :root / attribute
+  / universal selectors, no url / @import / font-face). Stored on the look, put in site.css after the base styles,
+  and every section prompt carries `kit.prompt_line` (use these classes). One kit per site, not per change.
+  Scripted tests run with SITE_KIT=false (conftest); its own suite turns it on.
+- Tests `server/tests/test_v0332_any_design.py` (6): free-form sections in the site map (dedupe, cap, names), her words
+  add one and it is built + on the page, the kit cleaner, one kit per site that every section prompt names, and every
+  interactive piece clicked in Chromium (tabs + arrow keys + ARIA, filter, switch, sum calculator 1,850 -> 1,970, EMI
+  8,885 / total 1,06,619 / interest 6,619 -> 4,707 for 24 months, slider arrows).
+- Seen in the sandbox and NOT from this work: `test_v0319_app_features.py` fails the same 4 ways on untouched main.
+
+## v0.332.0 DEPLOY SE NAHI RUKEGA (owner's screenshot: S-0003 "Server ruk gaya tha, kaam beech mein ruk gaya")
+- Checked the server log first: clean shutdowns ("Shutting down" -> "Started server process"), no crash, no out-of-memory.
+  Deploys landed at 07:27, 07:58, 08:17, 08:38 and 09:04 (several sessions shipping). A dead website job gets ONE
+  automatic restart (`recover_stuck`, v0.223, against crash loops), so S-0003's build, restarted after 08:38, was marked
+  failed after 09:04. Her finished sections were safe on disk; "Continue" resumes from them.
+- Fix: the app's shutdown (main.lifespan after `yield`, first thing) calls `site.service.mark_clean_stop()`, which
+  gives every website job running in this process a fresh restart allowance (`recovered = 0`). After a deploy the job
+  continues however many deploys land; a real crash (no shutdown ran) still uses up the one restart and shows the
+  plain "Phir se chalao" card.
+- A site map being made (big sites, stage `sitemap`) used to be dropped back to the plan on any restart; it now starts
+  again once (its size and words are kept on the board: map_want / map_words).
+- Tests `server/tests/test_v0332_deploy_se_nahi.py` (4): a build that lived through two deploys continues, a real crash
+  still stops after one restart, a site map job starts again then gives up honestly after a crash.
+- Built as 0.325 / 0.326, shipped together as 0.330.0 past the parallel v0.325-v0.329 Create Studio work (all kept).
+- Shipped as 0.332.0 (built as 0.325 / 0.326, then 0.330): re-versioned past the parallel v0.330 PLAN CARD DIKHE / PLAY STORE LAUNCH and v0.331 (all kept). Code comments say v0.330.
+
+## v0.333.0 NO BLINK + DRAG TO RESIZE (31 Oct 2026; built as 0.331.0, re-versioned past main's 0.331 / 0.332)
+Owner, with a screenshot of Create > Video (her real clips): "1) YOUR VIDEO SECTION VIDEO BOX IS CONTINUOUSLY GOING AND COMING BACK AFTER
+FEW INTERVAL 2) THERE SHOULD BE SLIDER FROM BOTH SIDE THUS SIDE BAR AND A YOUR VIDEO CAN BE ADJUSTED AND PROMPT WORKING SECTION WILL GET BIGGER AREA."
+- Root cause, measured with Playwright: `watchStudio` polls every 4 s (work running) / 15 s and `drawVideos` set `#results.innerHTML`, so
+  EVERY tile was rebuilt and every `<video>` reloaded: 0 of 7 tiles survived one poll on the old code. New `patch(el, html)`: same markup ->
+  nothing; otherwise each new child is matched to an old child with the same source markup and the old node is kept (7 of 7 kept). Signed
+  studio file links (`service.link`) are fixed for the whole day, so an unchanged clip really is unchanged markup.
+- Director film page: the 5 s tick re-drew the whole page while work ran; it now compares the film JSON (`DIR.sig`) and skips unchanged ticks.
+- Drag to resize: `.rz-side` on the sidebar edge (`--sbw` 200-360, default 248) and `.rz-pane` between the prompt panel and the results on
+  Video / Image / Music / Voice (`--pw` 320 up to the results keeping 360, default 380); role=separator, arrow keys +-16, Home / double-click
+  reset, widths in localStorage (`hoola.studio.sbw` / `.pw`), a thin violet line + grip on hover / drag, hidden under 900px.
+- Tests: `test_v0331_no_blink_resize.py`.
