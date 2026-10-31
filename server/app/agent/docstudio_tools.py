@@ -206,7 +206,7 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
 
 
 def make_pdf(title: str, text: str, kw: dict[str, Any], author: str = "", prepared_for: str = "") -> dict[str, Any]:
-    """v0.309 HOOLA PRINT: designed HTML printed by Chromium (docstudio/htmlpdf.py), the Claude way. Chromium missing,
+    """v0.313 HOOLA PRINT: designed HTML printed by Chromium (docstudio/htmlpdf.py), the Claude way. Chromium missing,
     DOC_ENGINE=reportlab, or any print failure -> the v0.192 ReportLab Document Studio, so a PDF always comes back."""
     from ..config import get_settings
     if (getattr(get_settings(), "doc_engine", "chromium") or "chromium") == "chromium" and htmlpdf.available():

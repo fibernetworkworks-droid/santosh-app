@@ -1,4 +1,4 @@
-"""v0.309.0 HOOLA PRINT - PDFs made the way Claude makes them: a designed HTML page printed by Chromium.
+"""v0.313.0 HOOLA PRINT - PDFs made the way Claude makes them: a designed HTML page printed by Chromium.
 
 The owner sent three PDFs Claude made (a business plan, a 46-page delivery plan, a research thesis) and asked for the
 same. Their metadata settled the method: all three are HTML + CSS printed by Chrome (Skia/PDF, Liberation / Arial
@@ -38,7 +38,7 @@ from . import designs
 
 log = logging.getLogger("santosh.docstudio.print")
 
-ENGINE_VERSION = "v0.309.0"
+ENGINE_VERSION = "v0.313.0"
 FONT_DIR = Path(__file__).resolve().parent.parent / "fonts"
 PRINT_FONTS = FONT_DIR / "print"
 STATS = {"printed": 0, "fallback": 0, "art_opus": 0, "art_router": 0, "review": 0, "review_changed": 0,
@@ -62,7 +62,7 @@ TABLES = ("dark", "tint", "lines")
 CALLOUTS = {"note": "Note", "tip": "Tip", "info": "Note", "important": "Important", "warning": "Warning",
             "caution": "Caution", "success": "Done", "check": "Check", "human": "Your step", "gate": "Gate",
             "key": "Key takeaways", "summary": "Summary"}
-# v0.309 every word Hoola itself prints on the page, in the document's language (a Hindi report used to say
+# v0.313 every word Hoola itself prints on the page, in the document's language (a Hindi report used to say
 # 'Contents', 'Inside', 'Prepared by' in English); other scripts fall back to English until they get their set
 LABELS = {
     "en": {"contents": "Contents", "inside": "Inside", "for": "Prepared for", "by": "Prepared by", "date": "Date",
@@ -557,7 +557,7 @@ def _stack(fam: str) -> str:
 
 
 GUTTER = 10.0   # mm inside the 8 mm page margin = text 18 mm from the paper; the numbers hang in this strip
-GRID = {   # v0.309.0 THE PAGE SYSTEM - every measure below comes from these (measured audit: 8 text edges -> 2)
+GRID = {   # v0.313.0 THE PAGE SYSTEM - every measure below comes from these (measured audit: 8 text edges -> 2)
     "inset": 5.0,       # mm: the ONE indent - text inside any box (note, key number, code, quote, filled table) and lists
     "hang": 3.0,        # mm: gap between a hanging heading number (in the margin) and the heading text
     "scale": (1.125, 1.35, 1.8),   # h3, h2, h1 as multiples of the body size (one ratio ladder, nothing in between)
@@ -572,7 +572,7 @@ def line_mm(spec: dict[str, Any]) -> float:
 
 
 def _css(spec: dict[str, Any], P: dict[str, str]) -> str:
-    """The inside pages as ONE system (v0.309.0, from a measured audit of the printed layout):
+    """The inside pages as ONE system (v0.313.0, from a measured audit of the printed layout):
     - two left edges only: the text edge (0) and the inset (GRID inset) - paragraphs, headings, plain tables and the
       contents titles start on the text edge; text inside every box and every list starts on the inset; heading and
       contents numbers hang in the margin so they never push the words right;
@@ -585,7 +585,7 @@ def _css(spec: dict[str, Any], P: dict[str, str]) -> str:
     size, lh, _gap = DENSITY.get(spec["density"], DENSITY["normal"])
     L = line_mm(spec)
     IN, HANG = GRID["inset"], GRID["hang"]
-    # v0.309 MEASURE: Butterick's 45-90 characters a line; prose is capped at ~84 (an average letter is ~.483 em in
+    # v0.313 MEASURE: Butterick's 45-90 characters a line; prose is capped at ~84 (an average letter is ~.483 em in
     # Inter / Source Serif - measured: 97 characters filled the 174 mm column at 10.5 pt). Tables, boxes, code and
     # key numbers keep the full column.
     measure = min(174.0, round(GRID["measure"] * .483 * size * 25.4 / 72, 1))
@@ -701,7 +701,7 @@ justify-content:space-between;align-items:flex-end;gap:8mm}}
 
 def _cover_css(spec: dict[str, Any], P: dict[str, str]) -> str:
     head, _body = TYPES.get(spec["type"], TYPES["sans"])
-    EDGE = GUTTER + 8      # v0.309.0 the cover's text edge = the inside pages' text edge (18 mm from the paper)
+    EDGE = GUTTER + 8      # v0.313.0 the cover's text edge = the inside pages' text edge (18 mm from the paper)
     return f"""
 @page{{size:A4;margin:0}}
 body{{padding:0}}          /* the inside pages' gutter must never reach the full-bleed cover */
@@ -1169,7 +1169,7 @@ def _css_str(text: str) -> str:
 
 def page_bands_css(title: str, right: str, left_foot: str, P: dict[str, str], spec: dict[str, Any],
                    cover_slot: bool) -> str:
-    """v0.309 The running header and footer as CSS page-margin boxes (Chrome 131+). Unlike the old header templates
+    """v0.313 The running header and footer as CSS page-margin boxes (Chrome 131+). Unlike the old header templates
     they are drawn with the document's OWN fonts (measured: a Hindi title prints correctly), they line up with the
     18 mm text edge through their own margins, and page 1 stays bare when it is the cover's slot."""
     _head, body = TYPES.get(spec["type"], TYPES["sans"])
@@ -1271,7 +1271,7 @@ class Printer:
         if full_bleed:
             kw["margin"] = {"top": "0", "bottom": "0", "left": "0", "right": "0"}
         else:
-            # v0.309.0 the page margin is 8 mm and the text column is padded 10 mm inside it (GUTTER): the words still
+            # v0.313.0 the page margin is 8 mm and the text column is padded 10 mm inside it (GUTTER): the words still
             # start 18 mm from the paper edge, and the hanging section numbers live in that 10 mm strip - Chromium
             # clips anything printed in the true page margin, which is where they vanished.
             kw["margin"] = {"top": "22mm", "bottom": "20mm", "left": "8mm", "right": "8mm"}

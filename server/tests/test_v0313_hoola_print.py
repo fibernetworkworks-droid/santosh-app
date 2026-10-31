@@ -1,4 +1,4 @@
-"""v0.309.0 HOOLA PRINT: PDFs made the way Claude makes them (designed HTML printed by Chromium).
+"""v0.313.0 HOOLA PRINT: PDFs made the way Claude makes them (designed HTML printed by Chromium).
 
 Pure parts (parser, colours, art-direction guard rails, HTML) always run; the print tests run where Chromium can print
 (the VPS, this sandbox) and skip elsewhere.
@@ -254,7 +254,7 @@ def test_doc_studio_tool_delivers_a_printed_pdf(chrome, monkeypatch):
     assert out["design"]["engine"] == "chromium" and "Design matched" in out["note"]
 
 
-# ---------------------------------------------------------------- v0.309.0 THE PAGE SYSTEM (measured, not eyeballed)
+# ---------------------------------------------------------------- v0.313.0 THE PAGE SYSTEM (measured, not eyeballed)
 ALL_PARTS = """# Executive Summary
 Revenue of **Rs 4.2 crore**, up 18% on last year, because raw material costs fell in the second half of the year.
 [stat: Rs 4.2 Cr | Revenue]
@@ -380,7 +380,7 @@ def test_cover_is_full_bleed_and_bands_sit_12mm_from_the_edge(chrome):
     assert 9 <= H_mm - t * 25.4 / 72 <= 15                   # header 9-15 mm below the top edge
 
 
-# ---------------------------------------------------------------- v0.309 review round: faults found by stress inputs
+# ---------------------------------------------------------------- v0.313 review round: faults found by stress inputs
 def test_link_cannot_grow_an_attribute():
     from app.docstudio.htmlpdf import _inline
     out = _inline('[x](https://a.in/"onfocus="alert(1)"autofocus=")')
@@ -456,7 +456,7 @@ def test_chromium_no_is_asked_again_after_ten_minutes(monkeypatch):
     H._AVAILABLE.clear()
 
 
-# ---------------------------------------------------------------- v0.309 world-class round (research -> deployed)
+# ---------------------------------------------------------------- v0.313 world-class round (research -> deployed)
 def test_prose_lines_stay_within_90_characters(chrome):
     para = ("Operating cash flow stayed positive in all four quarters of the year, and the largest single outflow was "
             "the new packing machine bought in the third quarter, paid partly from an SBI term loan. ") * 6
