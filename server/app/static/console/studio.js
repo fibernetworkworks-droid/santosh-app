@@ -155,7 +155,7 @@ window.HoolaCreate = ctx => {
 
   /* ---------------- shell ---------------- */
   const NAV = [
-    ['l', 'Studio'], ['studio', 'Studio home', 'home'],
+    ['studio', 'Studio home', 'home'],
     ['l', 'Agents'], ['a', 'director', 'Director', 'Brief to finished film', 'clap', 'linear-gradient(135deg,#EE8F35,#B347E6)'],
     ['a', 'script', 'Script writer', 'Ads, films, episodes', 'pen', 'linear-gradient(135deg,#6E55F0,#2F6F8F)'],
     ['a', 'casting', 'AI casting', 'Characters that stay the same', 'cast', 'linear-gradient(135deg,#C2417A,#6E55F0)'],
@@ -180,8 +180,6 @@ window.HoolaCreate = ctx => {
     <div class="top">
       <button class="ib menuBtn" id="menuBtn" aria-label="Open menu">${I('menu')}</button>
       <div class="crumb" id="crumb"></div>
-      <button class="pillbtn" data-close>${I('chat', 'width:15px;height:15px')}<span>Chat</span></button>
-      <button class="pillbtn" data-go="library">${I('lib', 'width:15px;height:15px')}<span>My creations</span></button>
     </div>
     <div class="view" id="view"></div>
   </main>
@@ -196,7 +194,8 @@ ${SPRITE}`;
     $('#snav').innerHTML = NAV.map(n => {
       if (n[0] === 'l') return `<div class="sl"${st()}>${n[1]}</div>`;
       if (n[0] === 'a') return `<button class="agent" data-go="${n[1]}"${st()}><span class="ai" style="background:${n[5]}">${I(n[4], 'width:16px;height:16px')}</span><div style="min-width:0;flex:1"><b>${n[2]}</b><small>${n[3]}</small></div><span class="ago" aria-hidden="true">${I('down', 'width:14px;height:14px;transform:rotate(-90deg)')}</span></button>`;
-      if (n[0] === 't') return `<div class="tgrid"${st()}>${TOOLS.map(([k, t, ic]) => `<button class="tg" data-go="${k}">${I(ic, 'width:16px;height:16px')}<span>${t}</span></button>`).join('')}</div>`;
+      // v0.318 tools are rows like every other item (one row style for the whole sidebar), not a bordered grid
+      if (n[0] === 't') return TOOLS.map(([k, t, ic]) => `<button class="sn" data-go="${k}"${st()}>${I(ic)}<span>${t}</span></button>`).join('');
       return `<button class="sn" data-go="${n[0]}"${st()}>${I(n[2])}<span>${n[1]}</span></button>`;
     }).join('');
   }
@@ -205,7 +204,8 @@ ${SPRITE}`;
     if (!s || !s.month_limit_usd) { el.innerHTML = '<span class="mut">Your AI spend is in Account</span>'; return; }
     const k = s.usd_inr || 85, used = (s.month_spent_usd || 0) * k, lim = s.month_limit_usd * k;
     const pct = Math.min(100, used / lim * 100);   // v0.306 the meter fills from empty, and says how much is used
-    el.innerHTML = `<div class="crow1"><span class="mut">Video Studio</span><b class="num">${inr(used)} <span class="dim">/ ${inr(lim)}</span></b></div><div class="bar"><i style="width:0%"></i></div><small class="dim">${pct < 1 && used > 0 ? '<1' : Math.round(pct)}% of this month’s limit used</small>`;
+    // v0.318 what she has LEFT leads (600, never bold 700), the spend sits under the bar in the readable grey
+    el.innerHTML = `<div class="crow1"><span class="mut">This month</span><b class="num">${inr(Math.max(0, lim - used))} left</b></div><div class="bar"><i style="width:0%"></i></div><small class="dim">${inr(used)} of ${inr(lim)} spent · ${pct < 1 && used > 0 ? '<1' : Math.round(pct)}%</small>`;
     requestAnimationFrame(() => requestAnimationFrame(() => { const b = el.querySelector('.bar i'); if (b) b.style.width = pct.toFixed(1) + '%'; }));
   }
   function go(v, opts) {
@@ -347,7 +347,7 @@ ${SPRITE}`;
   </div>
   <section><div class="sec-h"><h2>Direct your film</h2><a data-go="director">Open Director</a></div>
     ${rail(QUICK.map(([t, k, d], i) => `<button class="qcard" data-quick="${i}"><span class="thumb">${art(k, 'q' + i)}<span class="dur">${d}</span></span><b>${t}</b></button>`).join(''), 'qs')}</section>
-  <section id="tools"><div class="sec-h"><h2>Studio tools</h2><span class="dim" style="font-size:13px">Every tool shares your cast and brand kit</span></div>
+  <section id="tools"><div class="sec-h"><h2>Studio tools</h2><span class="dim" style="font-size:14px">Every tool shares your cast and brand kit</span></div>
     <div class="tools">${ALLTOOLS.map(([v, t, s, k, tag], i) => `<button class="tool" data-go="${v}"><span class="thumb">${art(k, 't' + i)}</span><div style="min-width:0"><b>${t}${tag ? ` <span class="tag ${tag}">${tag === 'hot' ? 'Popular' : 'New'}</span>` : ''}</b><small>${s}</small></div></button>`).join('')}</div></section>
   <section><div class="sec-h"><h2>Your recent creations</h2><a data-go="library">See all</a></div><div class="row" id="recent"></div></section>
   <section><div class="sec-h"><h2>Start from a template</h2><a data-go="templates">See all</a></div>
@@ -403,8 +403,8 @@ ${SPRITE}`;
     <div class="seg" role="group" aria-label="Kind"><button aria-pressed="${!IMG.refs.length}" data-imode="new">New picture</button><button aria-pressed="${!!IMG.refs.length}" data-imode="edit">Change my photo</button></div>
     <div class="prow"><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Engine</small><b>Hoola image engine</b></div><span class="tag">Readable Indian scripts</span></div>
     <div class="box">
-      <h3>Describe your picture <span class="dim num" style="font-size:12px;font-weight:400;margin-left:auto" id="imgCount">${IMG.prompt.length} / 4000</span><button type="button" class="lnk" data-ienh>${I('wand', 'width:14px;height:14px')} Enhance</button></h3>
-      <button class="refs" type="button" data-addref><span class="stack">${IMG.refs.length ? IMG.refs.map(r => `<i><img alt="" ${r.local ? `src="${esc(r.local)}"` : `data-src="${itemPath(r.file_id)}"`}></i>`).join('') : `<i>${I('image', 'width:16px;height:16px;margin:10px 6px')}</i>`}</span><div><b>${IMG.refs.length ? IMG.refs.length + ' reference' + (IMG.refs.length > 1 ? 's' : '') : 'Add references'}</b> <span class="dim" style="font-size:12px">${IMG.refs.length ? '' : 'optional'}</span><small>Your photo, product or character · PNG, JPG, WebP · up to 3</small></div>${IMG.refs.length ? `<span class="ib" data-clearrefs aria-label="Remove references">${I('x', 'width:15px;height:15px')}</span>` : ''}</button>
+      <h3>Describe your picture <span class="dim num" style="font-size:12.5px;font-weight:400;margin-left:auto" id="imgCount">${IMG.prompt.length} / 4000</span><button type="button" class="lnk" data-ienh>${I('wand', 'width:14px;height:14px')} Enhance</button></h3>
+      <button class="refs" type="button" data-addref><span class="stack">${IMG.refs.length ? IMG.refs.map(r => `<i><img alt="" ${r.local ? `src="${esc(r.local)}"` : `data-src="${itemPath(r.file_id)}"`}></i>`).join('') : `<i>${I('image', 'width:16px;height:16px;margin:10px 6px')}</i>`}</span><div><b>${IMG.refs.length ? IMG.refs.length + ' reference' + (IMG.refs.length > 1 ? 's' : '') : 'Add references'}</b> <span class="dim" style="font-size:12.5px">${IMG.refs.length ? '' : 'optional'}</span><small>Your photo, product or character · PNG, JPG, WebP · up to 3</small></div>${IMG.refs.length ? `<span class="ib" data-clearrefs aria-label="Remove references">${I('x', 'width:15px;height:15px')}</span>` : ''}</button>
       <textarea id="imgq" rows="5" maxlength="4000" placeholder="A festive Diwali poster for Newtika Chai: a clay kulhad with steam, diyas, marigold, headline 'Har shaam khaas' in Hindi">${esc(IMG.prompt)}</textarea>
       <div class="btool">
         <button class="ib" aria-label="Clear" data-iclear>${I('trash', 'width:16px;height:16px')}</button>
@@ -759,7 +759,7 @@ ${SPRITE}`;
       <div class="crow"><button type="button" class="dd" data-dcyc="aspect">${I('grid', 'width:15px;height:15px')}<span>${DIR.aspect}</span></button><button type="button" class="dd" data-dcyc="seconds"><span>${DIR.seconds} s</span></button><button type="button" class="dd" data-dcyc="language"><span>${DIR.language}</span></button><button type="button" class="dd" data-dcyc="music">${I('music', 'width:15px;height:15px')}<span>${DIR.music || 'No music'}</span></button><button type="button" class="dd" data-dnewmodel>${I('spark', 'width:15px;height:15px')}<span>${esc(mOf(DIR.model)?.name || 'Hoola Auto')}</span>${I('down', 'width:14px;height:14px')}</button><button type="button" class="dd" data-dnewres><span>${DIR.res}</span>${I('down', 'width:14px;height:14px')}</button><span class="sp"></span><button class="send" aria-label="Plan the film">${I('send')}</button></div></form>
     <p class="mut" style="max-width:560px">Hoola writes the storyboard for free. Pictures, shots and music each show their price first; nothing is spent until you tap Haan.</p></div>
   ${DIR.busy ? `<div class="box"><b>${esc(DIR.busy)}…</b><div class="bar"><i class="indet"></i></div></div>` : ''}
-  <section><div class="sec-h"><h2>Your films</h2><span class="dim" style="font-size:13px">${(D.studio?.projects || []).length} projects</span></div><div class="scenes" id="films"></div></section></div>`;
+  <section><div class="sec-h"><h2>Your films</h2><span class="dim" style="font-size:14px">${(D.studio?.projects || []).length} projects</span></div><div class="scenes" id="films"></div></section></div>`;
     const st = stepState(p), cur = STEPS.find(([k]) => !st[k])?.[0] || 'done';
     const nx = p.next || {};
     return `<div class="dir">
@@ -909,7 +909,7 @@ ${SPRITE}`;
   W.script = el => {
     const q = $('#scq'); q.addEventListener('input', () => SC.brief = q.value);
     load('items').then(() => redraw('script', () => { const l = $('#sclist'); if (!l) return; const its = items('script');
-      l.innerHTML = its.map(it => `<button class="mrow${it.id === SC.id ? ' on' : ''}" data-scopen="${it.id}"><b>${esc(it.title)}</b><small>${when(it.created)}</small></button>`).join('') || '<p class="mut" style="font-size:13px">Scripts you write are kept here.</p>'; }));
+      l.innerHTML = its.map(it => `<button class="mrow${it.id === SC.id ? ' on' : ''}" data-scopen="${it.id}"><b>${esc(it.title)}</b><small>${when(it.created)}</small></button>`).join('') || '<p class="mut" style="font-size:14px">Scripts you write are kept here.</p>'; }));
     let t = 0; const doc = $('#scdoc');
     doc?.addEventListener('input', () => { SC.text = doc.innerText; clearTimeout(t); t = setTimeout(() => SC.id && api('PUT', `/api/create/items/${encodeURIComponent(SC.id)}/text`, {text: SC.text}).catch(e => toast(e.message, true)), 800); });
     el.addEventListener('click', async e => {
@@ -940,7 +940,7 @@ ${SPRITE}`;
       <p class="note">Hoola draws a four-view sheet (front, three-quarter, side, back) so the face stays the same in every shot. Only fictional people here; a real person needs their permission.</p></div>
   </aside><section><div class="dir" style="padding-top:18px">
     <div id="casel"></div>
-    <section><div class="sec-h"><h2>Your cast</h2><span class="dim" style="font-size:13px">Same face and outfit in every shot</span></div><div class="cast" id="castgrid"></div></section></div></section></div>`;
+    <section><div class="sec-h"><h2>Your cast</h2><span class="dim" style="font-size:14px">Same face and outfit in every shot</span></div><div class="cast" id="castgrid"></div></section></div></section></div>`;
   function drawCast() {
     const g = $('#castgrid'); if (!g) return;
     const its = items('cast'), jobs = running('cast');
@@ -1062,7 +1062,7 @@ ${SPRITE}`;
       ...(VO.g !== 'female' ? Object.entries(vs.male).map(([n, d]) => [n, n, 'Male · ' + d, 'portrait']) : [])];
     return `<div class="gen"><div class="panel"><div class="pbody">
     ${toolTabs('voice')}
-    <div class="box"><h3>Script <span class="dim num" style="font-size:12px;font-weight:400" id="voCount">${VO.text.length} / 5000</span></h3>
+    <div class="box"><h3>Script <span class="dim num" style="font-size:12.5px;font-weight:400" id="voCount">${VO.text.length} / 5000</span></h3>
       <textarea id="voq" rows="6" maxlength="5000" placeholder="Is Diwali, apne ghar ko roshan kijiye. Newtika chai ke saath, har shaam khaas.">${esc(VO.text)}</textarea></div>
     <div class="lbl">Language</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi'].map(l => `<button class="chip" aria-pressed="${l === VO.lang}" data-volang="${l}">${l}</button>`).join('')}</div>
     <div class="lbl">Voice</div><div class="seg"><button aria-pressed="${VO.g === 'all'}" data-vog="all">All</button><button aria-pressed="${VO.g === 'female'}" data-vog="female">Female</button><button aria-pressed="${VO.g === 'male'}" data-vog="male">Male</button></div>
@@ -1108,7 +1108,7 @@ ${SPRITE}`;
   function drawDub() {
     const l = $('#dublist'), v = $('#dubview'); if (!l) return;
     const its = items('dub');
-    l.innerHTML = its.map(it => `<button class="mrow${it.id === DB.sel ? ' on' : ''}" data-dubsel="${it.id}"><b>${esc(it.title)}</b><small>${when(it.created)}</small></button>`).join('') || '<p class="mut" style="font-size:13px">Your dubbed videos are kept here.</p>';
+    l.innerHTML = its.map(it => `<button class="mrow${it.id === DB.sel ? ' on' : ''}" data-dubsel="${it.id}"><b>${esc(it.title)}</b><small>${when(it.created)}</small></button>`).join('') || '<p class="mut" style="font-size:14px">Your dubbed videos are kept here.</p>';
     const jobs = running('dub'), bad = failed('dub');
     const it = its.find(x => x.id === DB.sel) || (!jobs.length && its[0]); if (it) DB.sel = it.id;
     if (jobs.length) { v.innerHTML = jobs.map(j => `<div class="box"><b>${esc(j.title)}</b><small class="mut">${esc(j.step === 'listening' ? 'Listening to who says what' : j.step ? j.step[0].toUpperCase() + j.step.slice(1) : 'Starting')}…</small><div class="bar"><i class="indet"></i></div></div>`).join(''); return; }
@@ -1159,13 +1159,13 @@ ${SPRITE}`;
     <h3>Quick asks</h3><div class="aitools">${[['Cut the silences', 'cut'], ['Hindi captions', 'text'], ['Make it 9:16', 'grid'], ['Beat-synced cuts', 'music'], ['Brighter colours', 'wand'], ['Shorter intro', 'minus']].map(([t, ic]) => `<button data-ai="${t}">${I(ic, 'width:14px;height:14px')}${t}</button>`).join('')}</div>
     <button class="create" style="flex:none" id="edGo" ${ED.clips.length ? '' : 'disabled'}>${I('cut', 'width:16px;height:16px')}Make the edit</button>
     ${lt ? `<a class="btn sec" href="${esc(lt.url)}" download="${esc(lt.name || 'hoola-edit.mp4')}">${I('dl', 'width:16px;height:16px')}Download v${lt.n}</a>` : ''}
-    ${j?.post_caption ? `<h3>Post caption</h3><p class="mut" style="font-size:13px">${esc(j.post_caption)}</p>` : ''}</div>
+    ${j?.post_caption ? `<h3>Post caption</h3><p class="mut" style="font-size:14px">${esc(j.post_caption)}</p>` : ''}</div>
   <div class="timeline"><div class="tlbar"><span>Story order</span><span style="flex:1"></span><span class="num">${ED.clips.length} clip${ED.clips.length === 1 ? '' : 's'}${j?.versions?.length ? ' · ' + j.versions.length + ' version' + (j.versions.length > 1 ? 's' : '') : ''}</span></div>
     <div class="strip">${ED.clips.map((c, i) => `<span class="sclip" style="flex:${c.type.startsWith('video/') ? 3 : 1}"><b>${i + 1}</b>${esc(c.name)}</span>`).join('') || '<span class="mut" style="padding:10px">Clips play in this order. Move them up or down on the left.</span>'}</div>
     ${j?.versions?.length > 1 ? `<div class="vers">${j.versions.map(v => `<span class="tag">v${v.n}</span>`).join('')}</div>` : ''}</div></div>`; };
   function drawEdJobs() {
     const el = $('#edjobs'); if (!el) return;
-    el.innerHTML = (ED.jobs || []).slice(0, 8).map(j => `<button class="mrow${j.id === ED.job ? ' on' : ''}" data-edjob="${esc(j.id)}"><b>${esc(j.title || j.brief || 'Edit')}</b><small>${esc(j.platform_label || '')} · ${esc(j.status)}</small></button>`).join('') || '<p class="mut" style="font-size:13px">Your edits are kept here.</p>';
+    el.innerHTML = (ED.jobs || []).slice(0, 8).map(j => `<button class="mrow${j.id === ED.job ? ' on' : ''}" data-edjob="${esc(j.id)}"><b>${esc(j.title || j.brief || 'Edit')}</b><small>${esc(j.platform_label || '')} · ${esc(j.status)}</small></button>`).join('') || '<p class="mut" style="font-size:14px">Your edits are kept here.</p>';
   }
   async function edLoad() {
     try { const r = await api('GET', '/api/video/jobs'); ED.jobs = r.jobs || []; ED.platforms = r.platforms || ED.platforms; } catch { ED.jobs = ED.jobs || []; }
@@ -1213,7 +1213,7 @@ ${SPRITE}`;
   let libQ = '', libSort = 'new';
   const LIBS = {new: 'Newest first', old: 'Oldest first', az: 'Name A–Z'};
   const LIBF = [['all', 'All'], ['image', 'Pictures'], ['cast', 'Cast'], ['song', 'Songs'], ['voice', 'Voice-overs'], ['dub', 'Dubs'], ['script', 'Scripts'], ['film', 'Films']];
-  V.library = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">My creations</h2><span class="dim" style="font-size:13px">Kept until you delete them</span></div>
+  V.library = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">My creations</h2><span class="dim" style="font-size:14px">Kept until you delete them</span></div>
     <div class="libbar"><div class="chips">${LIBF.map(([k, n]) => `<button class="chip" aria-pressed="${k === libF}" data-lib="${k}">${n}</button>`).join('')}</div>
       <span class="sp"></span><label class="lsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search my creations</span><input id="libq" type="search" placeholder="Search" value="${esc(libQ)}"></label>
       <button type="button" class="dd" id="libSort" aria-label="Sort">${I('layers', 'width:15px;height:15px')}<span>${LIBS[libSort]}</span>${I('down', 'width:14px;height:14px')}</button></div>
@@ -1243,7 +1243,7 @@ ${SPRITE}`;
   /* ---------------- v0.308 ENGINES: the real AI services behind Create, checked live; keys never come to the browser ---------------- */
   const EST = {ready: ['Ready', 'ok'], unchecked: ['Key set', 'ok'], missing: ['No key', 'off'], refused: ['Key refused', 'bad'], unreachable: ['Not reachable', 'bad']};
   V.engines = () => `<div class="home eng">
-    <div class="sec-h" style="margin:0"><div><h2 style="font:400 28px/1.2 var(--serif)">Engines</h2><p class="mut" style="margin-top:6px">The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.</p></div>
+    <div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">Engines</h2><p class="mut" style="margin-top:6px">The real AI services behind Create. Keys live only on your server (the .env), never in the app or the chat.</p></div>
       <button class="btn sec" data-recheck>${I('redo', 'width:15px;height:15px')}Check again</button></div>
     <div id="engs"><p class="mut">Checking each engine…</p></div></div>`;
   function drawEngines(r) {
@@ -1261,21 +1261,21 @@ ${SPRITE}`;
             <li>On the VPS, add one line to <code>~/apps/santosh-core/.env</code>: <code>${esc(e.env[0])}=your-key</code></li>
             <li>Restart: <code>pm2 restart santosh --update-env</code></li>
             <li>Press <b>Check again</b> (or run the VPS ops job <code>studio_apis</code>).</li></ol>
-            <p class="dim" style="font-size:12px">Never paste a key into the chat. If one was ever shared, make a new one and delete the old.</p></details>`}</div>`; }).join('')}</div>`;
+            <p class="dim" style="font-size:12.5px">Never paste a key into the chat. If one was ever shared, make a new one and delete the old.</p></details>`}</div>`; }).join('')}</div>`;
   }
   W.engines = el => {
     const run = async fresh => { try { drawEngines(await api('GET', '/api/studio/apis' + (fresh ? '?fresh=1' : ''))); } catch (e) { drawEngines(null); toast(e.message, true); } };
     run(false);
     el.addEventListener('click', async e => { const b = e.target.closest('[data-recheck]'); if (!b) return; b.disabled = true; $('#engs').style.opacity = '.55'; await run(true); $('#engs').style.opacity = ''; b.disabled = false; });
   };
-  V.projects = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">Film projects</h2><button class="btn pri" data-newfilm>${I('plus', 'width:16px;height:16px')}New film</button></div><div class="scenes" id="films"></div></div>`;
+  V.projects = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">Film projects</h2><button class="btn pri" data-newfilm>${I('plus', 'width:16px;height:16px')}New film</button></div><div class="scenes" id="films"></div></div>`;
   W.projects = el => { load('studio', true).then(() => redraw('projects', drawFilms));
     el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
       if (b.hasAttribute('data-newfilm')) { DIR.project = ''; DIR.view = null; go('director', {focus: true}); }
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); } }); };
   V.brand = () => { const k = D.kit; if (!k) return `<div class="home"><p class="mut">Loading your brand kit…</p></div>`;
     const c = k.colors || {};
-    return `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">Brand kit</h2><span class="dim" style="font-size:13px">Pictures can use it with one switch; the Brand tool in chat uses it everywhere</span></div>
+    return `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">Brand kit</h2><span class="dim" style="font-size:14px">Pictures can use it with one switch; the Brand tool in chat uses it everywhere</span></div>
     <div class="tools">
       <div class="box"><h3>Name</h3><input id="bkname" maxlength="120" value="${esc(k.name || '')}" placeholder="Your business name"></div>
       <div class="box"><h3>Tagline</h3><input id="bktag" maxlength="160" value="${esc(k.tagline || '')}" placeholder="Har shaam khaas"></div>
@@ -1293,7 +1293,7 @@ ${SPRITE}`;
     ['Dub a video into Tamil', 'dubbing', 'portrait', 'Upload your video (up to 3 minutes), pick up to 4 languages and press Dub now. Every language comes back as its own video with its words on screen here.'],
     ['Edit with words, not clicks', 'editor', 'city', 'Add your clips in order, say what you want (a 30 s reel, cuts on the beat, Hindi captions) and press Make the edit. Ask for changes in plain words.'],
     ['A voice-over in your Hoola’s voice', 'voice', 'voice', 'Write the script, pick Your Hoola’s voice or any of 22 voices, the language and the style, and press Make voice-over.']];
-  V.learn = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 28px/1.2 var(--serif)">How-to guides</h2></div>
+  V.learn = () => `<div class="home"><div class="sec-h" style="margin:0"><h2 style="font:400 26px/1.2 var(--serif)">How-to guides</h2></div>
     <div class="guides">${GUIDES.map(([t, v, k, s], i) => `<div class="guide"><span class="thumb">${art(k, 'lr' + i)}</span><div><b>${t}</b><p class="mut">${s}</p><button class="btn sec" data-go="${v}">Open ${TITLE[v]}</button></div></div>`).join('')}</div></div>`;
 
   /* ---------------- icons ---------------- */

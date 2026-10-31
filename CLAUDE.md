@@ -136,10 +136,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.320.0 (pubspec 0.320.0+360). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.321.0 (pubspec 0.321.0+361). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.320 APP FEATURES (App Phase 2): photo fields (Photo Picker, outbox upload, server re-encode), location fields (disclosure + system dialog), order-update notifications (JobScheduler + /updates), UPI "I have paid" + UTR (she verifies), search / status filters.
+- v0.321 APP FEATURES (App Phase 2, built as 0.320): photo fields (Photo Picker, outbox upload, server re-encode), location fields (disclosure + system dialog), order-update notifications (JobScheduler + /updates), UPI "I have paid" + UTR (she verifies), search / status filters.
+- v0.320 STUDIO DESIGN SYSTEM (built as 0.318, Phase 1 of the design audit): one text scale 12.5/14/15/18/26/40, weights <= 600,
+  readable grey (0 texts < 4.5:1), corners 8/12/16, controls 32/40/48, one-row sidebar, top bar = page name, phone mode tabs wrap.
 - v0.319 KHANA BAAD MEIN: Swiggy (Food / Instamart / Dineout) + Zomato refuse non-partner sign-in -> hidden in the clean view
   (`service.PARTNER_GATED`) until `FOOD_PARTNER_APPROVED=true`; Roz ke kaam loses 'Khana aur kirana' meanwhile.
 - v0.318 ASLI APP (App Phase 1, built as 0.314/0.316/0.317): each native app has its OWN backend (`appmaker/backend.py`, `/api/app-api/<key>/...`): accounts, server-priced orders / bookings / staff lists, cid dedup, kit Backend.kt (Keystore token, offline outbox) + Accounts.kt, CI e2e on a real server.

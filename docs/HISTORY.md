@@ -12034,7 +12034,27 @@ Hoola - they accept only apps they approved as partners. So "Khana aur kirana" c
   approved set FOOD_PARTNER_APPROVED=true and restart.
 - Test: test_v0303_saaf_connect.py::test_v0319_swiggy_zomato_hidden_until_partner_approval.
 
-## v0.320.0 APP FEATURES — App Sahayak Phase 2: real phone features in built apps (owner: "START PHASE 2")
+## v0.320.0 STUDIO DESIGN SYSTEM (31 Oct 2026; built as 0.318.0, re-versioned past main's 0.318 / 0.319)
+Owner: "MAKE IT PREMIUM AND HUMAN NATIVE LOOK WITH REAL PERFECT WORKFLOW... FIRST DO PERFECT DEEP DESIGN... CHECK EVERY MINUTE
+THINGS FROM TEXT FOR SIDE BAR TO SMALL BUTTON" -> design audit artifact https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3 -> "GO PHASE 1".
+- Audit method: Playwright walks all 16 studio pages (light + dark at 1440, home at 390) and reads every visible text / button / field
+  from the shadow root (size, weight, colour, contrast against the real background, height, corners, clipping). Before: 15 text sizes,
+  246 texts < 4.5 : 1 (the faint grey #8B8B92 = 3.4 on white, 2.9 on the sidebar), 48 texts at 700 (from <b>), 4 at 10px, 10 corner
+  sizes, 30 button heights, 50 controls < 30px (links 19px, switches 21px, tile actions 28px), a violet focus ring on #view that read
+  as a stray line under the top bar, phone mode tabs running off the screen.
+- `studio.css`: sizes / corners moved IN PLACE to the scale (the v0.285 `.pop` menu block left exactly as pinned); block
+  "v0.318 STUDIO DESIGN SYSTEM" at the end: `--dim` = color-mix(--mut 92%, --bg) (>= 4.9 : 1 on white / sidebar / sunk, light and dark),
+  b,strong 600, buttons 40 / main action 48 / tile actions 32 / links 32 / switches 40x24, sidebar one row style (agents without boxes,
+  priSoft pill when open), status words (.tag.new / .tag.hot / .perr) mixed toward the ink, `#view` focus ring off, phone `.modes` wrap.
+- `studio.js`: tools render as `.sn` rows (no `.tgrid`), the first "Studio" label removed, top bar keeps only the page name (Chat /
+  My creations were duplicates of Back to chat / Assets), credits lead with "₹N left" and "₹used of ₹limit spent · N%".
+- After: 6 sizes, 3 weights, 0 texts < 4.5 : 1 in light and dark, corners 8 / 12 / 16 / pill, 7 controls < 32px left (4 switches at
+  24px inside 40px rows, 3 outbound links on the owner-only Engines page).
+- Tests: `test_v0318_studio_design_system.py`; v0.306 credits pin moved to the new wording; the `?v=` stamp count pins in
+  test_v0194 / test_v0234 moved 17 -> 18 (main's v0.317 added employees.js without moving them).
+- Next phases (audit): 2 Home + Director, 3 the six tools, 4 assets + help, 5 real Hoola showcase media (price card first).
+
+## v0.321.0 APP FEATURES — App Sahayak Phase 2: real phone features in built apps (owner: "START PHASE 2"; built as 0.320.0, re-versioned past the parallel v0.320.0 STUDIO DESIGN SYSTEM)
 Phase 1 (v0.318) gave every native app its own backend; this phase gives the apps the phone features that make them
 real, each the way Play / App Store allow it, with NO new library in the generated project (platform + androidx.core /
 activity only, so the build stays as robust as before).
