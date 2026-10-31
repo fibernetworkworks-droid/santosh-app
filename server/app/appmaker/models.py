@@ -41,6 +41,7 @@ class AppProject(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     conv: Mapped[str] = mapped_column(String(64), default="")
     android: Mapped[str | None] = mapped_column(Text, nullable=True)   # v0.132 native build state (JSON)
+    backend: Mapped[str | None] = mapped_column(Text, nullable=True)   # v0.314 the app's own backend: {schema, made, ...} (JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 

@@ -234,3 +234,174 @@ class AndroidBuildCard extends StatelessWidget {
     ]));
   }
 }
+
+/// v0.314 ASLI APP: her app's own backend on the app design page. Every list the installed app keeps (orders, bookings,
+/// requests, or a staff app's tables) with its newest rows; she moves a row's status with one tap, and makes an account
+/// staff / admin (a staff app's new account sees nothing until she does). New orders also reach her chat by themselves.
+class AppDataPanel extends StatefulWidget {
+  const AppDataPanel({super.key, required this.app, required this.id});
+  final Santosh app;
+  final String id;
+  @override
+  State<AppDataPanel> createState() => _AppDataPanelState();
+}
+
+class _AppDataPanelState extends State<AppDataPanel> {
+  Map<String, dynamic>? _v;
+  String _coll = '';
+  List<Map<String, dynamic>> _rows = const [];
+  List<Map<String, dynamic>>? _members;
+  bool _busy = false;
+  String _err = '';
+  Santosh get app => widget.app;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = await app.api!.appData(widget.id);
+      final colls = _list(v['collections']);
+      final coll = _coll.isNotEmpty ? _coll : (_s(v['order']).isNotEmpty ? _s(v['order']) : (colls.isEmpty ? '' : _s(colls.first['key'])));
+      final rows = coll.isEmpty ? <Map<String, dynamic>>[] : await app.api!.appRows(widget.id, coll);
+      if (mounted) setState(() { _v = v; _coll = coll; _rows = rows; _err = ''; });
+    } catch (e) {
+      if (mounted) setState(() => _err = '$e');
+    }
+  }
+
+  Future<void> _pick(String coll) async {
+    setState(() { _coll = coll; _rows = const []; });
+    await _load();
+  }
+
+  Future<void> _status(Map<String, dynamic> r, String to) async {
+    setState(() => _busy = true);
+    try {
+      await app.api!.appRowSet(widget.id, _coll, _s(r['id']), {'status': to});
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _loadMembers() async {
+    try {
+      final m = await app.api!.appMembers(widget.id);
+      if (mounted) setState(() => _members = m);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _role(Map<String, dynamic> m, String role) async {
+    try {
+      await app.api!.appMemberRole(widget.id, _s(m['id']), role);
+      await _loadMembers();
+      if (mounted) _snack(context, '${_s(m['email'])}: $role');
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _v;
+    final colls = _list(v?['collections']);
+    final counts = _map(v?['counts']);
+    final cur = colls.firstWhere((c) => _s(c['key']) == _coll, orElse: () => const <String, dynamic>{});
+    final fields = _list(cur['fields']);
+    final status = fields.firstWhere((f) => _s(f['key']) == 'status', orElse: () => const <String, dynamic>{});
+    final opts = ((status['options'] as List?) ?? const []).map((e) => '$e').toList();
+    final shown = fields.where((f) => !['status', 'total', 'items'].contains(_s(f['key']))).take(5).toList();
+    final headKey = shown.isEmpty ? 'id' : _s(shown.first['key']);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Icon(Icons.storage_rounded, color: C.teal, size: 20),
+        const SizedBox(width: 6),
+        Expanded(child: Text('App ka data', style: display(15))),
+        if (v != null) Pill('${_i(counts['members'])} accounts', fg: C.teal),
+        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+      ]),
+      if (_err.isNotEmpty)
+        Text(_err, style: const TextStyle(color: C.bad, fontSize: 12.5))
+      else if (v == null)
+        const Text('Load ho raha hai…', style: TextStyle(color: C.muted, fontSize: 12.5))
+      else ...[
+        Text(v['live'] == true
+            ? 'Aapki app ke log yahin order / booking karte hain; har nayi entry chat mein bhi aati hai.'
+            : 'Android app banne ke baad yahan asli orders / bookings aayengi.',
+            style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        const SizedBox(height: 8),
+        SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
+          for (final c in colls)
+            Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(
+              label: Text('${_s(c['label'])} ${_i(counts[_s(c['key'])])}'),
+              selected: _s(c['key']) == _coll,
+              onSelected: (_) => _pick(_s(c['key'])),
+            )),
+        ])),
+        const SizedBox(height: 8),
+        if (_rows.isEmpty) const Text('Abhi koi entry nahi.', style: TextStyle(color: C.faint, fontSize: 12.5)),
+        for (final r in _rows.take(30))
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(_s(r[headKey]).isEmpty ? _s(r['id']) : _s(r[headKey]),
+                    style: const TextStyle(color: C.ink, fontWeight: FontWeight.w700))),
+                if (_s(r['status']).isNotEmpty) Pill(_s(r['status']), fg: C.accent),
+              ]),
+              if (_s(r['items']).isNotEmpty) Text(_s(r['items']), style: const TextStyle(color: C.chip, fontSize: 12.5)),
+              if (r['total'] is num && (r['total'] as num) > 0)
+                Text('₹${(r['total'] as num).toStringAsFixed((r['total'] as num) % 1 == 0 ? 0 : 2)}',
+                    style: const TextStyle(color: C.ok, fontWeight: FontWeight.w800)),
+              for (final f in shown.skip(1))
+                if (_s(r[_s(f['key'])]).isNotEmpty)
+                  Text('${_s(f['label'])}: ${_s(r[_s(f['key'])])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+              if (opts.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
+                  for (final o in opts)
+                    Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(
+                      label: Text(o, style: const TextStyle(fontSize: 12)),
+                      selected: _s(r['status']) == o,
+                      onSelected: _busy || _s(r['status']) == o ? null : (_) => _status(r, o),
+                    )),
+                ])),
+              ],
+            ]),
+          ),
+        const SizedBox(height: 4),
+        TextButton.icon(
+          onPressed: _members == null ? _loadMembers : () => setState(() => _members = null),
+          icon: const Icon(Icons.people_alt_rounded, size: 18),
+          label: Text(_members == null ? 'Accounts aur roles' : 'Accounts chhupao'),
+        ),
+        if (_members != null)
+          for (final m in _members!)
+            Row(children: [
+              Expanded(child: Text('${_s(m['name']).isEmpty ? _s(m['email']) : _s(m['name'])} · ${_s(m['email'])}',
+                  style: const TextStyle(color: C.ink, fontSize: 12.5))),
+              DropdownButton<String>(
+                value: ['member', 'staff', 'admin'].contains(_s(m['role'])) ? _s(m['role']) : 'member',
+                dropdownColor: C.bgBottom,
+                items: const [
+                  DropdownMenuItem(value: 'member', child: Text('member')),
+                  DropdownMenuItem(value: 'staff', child: Text('staff')),
+                  DropdownMenuItem(value: 'admin', child: Text('admin')),
+                ],
+                onChanged: (x) { if (x != null && x != _s(m['role'])) _role(m, x); },
+              ),
+            ]),
+      ],
+    ]);
+  }
+}

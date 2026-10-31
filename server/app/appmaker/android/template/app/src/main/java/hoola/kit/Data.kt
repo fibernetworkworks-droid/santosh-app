@@ -47,14 +47,21 @@ object AppData {
     /** Bumped on every new content: the app shell re-draws the screen with it. */
     val version = mutableStateOf(0)
 
+    private var backendJson = JSONObject()
+
     fun load(ctx: Context) {
         val seed = try { ctx.assets.open("seed.json").bufferedReader().use { it.readText() } } catch (_: Exception) { "{}" }
+        backendJson = try { JSONObject(seed).optJSONObject("backend") ?: JSONObject() } catch (_: Exception) { JSONObject() }
         val cached = Store.get(ctx, "content")
         apply(if (cached.isNotEmpty()) cached else seed, fromServer = cached.isNotEmpty())
     }
 
+    /** v0.314 the app's own lists on the server (fields + rules), from the build; a newer server copy wins. */
+    fun backend(): JSONObject = backendJson
+
     fun apply(json: String, fromServer: Boolean = false) {
         root = try { JSONObject(json) } catch (_: Exception) { JSONObject() }
+        root.optJSONObject("backend")?.let { if (it.has("collections")) backendJson = it }
         facts = Item(root.optJSONObject("facts") ?: JSONObject())
         demoLists.clear()
         root.optJSONArray("demo_lists")?.let { a -> for (i in 0 until a.length()) demoLists.add(a.optString(i)) }

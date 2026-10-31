@@ -27,6 +27,9 @@ TEMPLATE = HERE / "template"
 KIT_FILES = ["Theme.kt", "Data.kt", "Api.kt", "Kit.kt", "Nav.kt", "Strings.kt", "Actions.kt", "CodeScreens.kt"]
 CODE_SCREENS = ("splash", "consent", "notify_permission", "seller_info", "privacy", "delete_account")
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
+# v0.314 the kit's own account screens (code-made, always present) and the design's sign-in screens they stand in for
+KIT_SCREENS = ("hoola_login", "hoola_account")
+AUTH_IDS = ("login", "signup", "register", "login_staff", "otp_login", "sign_in")
 
 
 def kotlin_name(sid: str) -> str:
@@ -194,21 +197,25 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
     label = {s["id"]: s.get("label") or s["id"] for s in scr}
     icon = {s["id"]: icon_for(s["id"], s.get("icon") or "") for s in scr}
     tab_rows = ",\n        ".join(f"TabSpec({kstr(t)}, {kstr(label[t])}, {kstr(icon[t])})" for t in tabs)
-    whens = "\n".join(f"            {kstr(s)} -> {kotlin_name(s)}()" for s in ids if s in have)
+    whens = "\n".join(f"            {kstr(s)} -> " + ("AuthScreen()" if s in AUTH_IDS else f"{kotlin_name(s)}()")
+                      for s in ids if s in have or s in AUTH_IDS)
     code_when = {"seller_info": "SellerScreen()", "privacy": "PrivacyScreen()", "delete_account": "DeleteAccountScreen()"}
     cwhens = "\n".join(f"            {kstr(c)} -> {code_when[c]}" for c in code if c in code_when)
-    all_ids = ", ".join(kstr(x) for x in ids + [c for c in code if c in code_when])
+    cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()'
+    all_ids = ", ".join(kstr(x) for x in ids + [c for c in code if c in code_when] + list(KIT_SCREENS))
     fab = spec.get("fab") or {}
     fab_main = (f"FabAction({kstr(fab['label'])}, {kstr(fab.get('icon') or 'plus')}, {kstr(fab['go'])})"
                 if fab.get("go") in ids else "null")
     fab_actions = ", ".join(f"FabAction({kstr(a['label'])}, {kstr(a.get('icon') or 'dot')}, {kstr(a['go'])})"
                             for a in (fab.get("actions") or []) if a.get("go") in ids)
-    imports = "\n".join(f"import hoola.app.screens.{kotlin_name(s)}" for s in ids if s in have)
+    imports = "\n".join(f"import hoola.app.screens.{kotlin_name(s)}" for s in ids if s in have and s not in AUTH_IDS)
     return f'''package hoola.app
 
 // Made by Hoola App Sahayak from the approved design: which screens exist, the tabs, the FAB and the start.
 
 import androidx.compose.runtime.Composable
+import hoola.kit.AccountScreen
+import hoola.kit.AuthScreen
 import hoola.kit.DeleteAccountScreen
 import hoola.kit.Empty
 import hoola.kit.FabAction
@@ -261,6 +268,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import hoola.kit.Api
 import hoola.kit.AppData
+import hoola.kit.Auth
+import hoola.kit.Cloud
+import hoola.kit.Db
+import hoola.kit.E2e
+import kotlinx.coroutines.delay
 import hoola.kit.AppShell
 import hoola.kit.ConsentScreen
 import hoola.kit.HoolaTheme
@@ -282,6 +294,12 @@ class MainActivity : ComponentActivity() {{
         Strings.init(AppTokens.look.language)
         AppData.load(this)
         Api.init(AppConfig.BASE_URL, AppConfig.APP_ID)
+        // v0.314 the app's own backend: accounts, saved data, the offline outbox (sent when the network is back)
+        Cloud.init(AppConfig.BASE_URL, AppConfig.APP_ID)
+        if (BuildConfig.DEBUG) intent?.getStringExtra("hoola_test_server")?.let {{ Cloud.testServer(it) }}
+        Auth.load(this)
+        Db.load(this)
+        Db.watch(this)
         val seen = Store.get(this, "onboarded") == "1"
         // Debug builds only (Hoola's own checks open every screen and take its picture); release builds ignore it.
         val jump = if (BuildConfig.DEBUG) intent?.getStringExtra("hoola_screen")?.takeIf {{ it in AppScreens.ids }} else null
@@ -290,6 +308,12 @@ class MainActivity : ComponentActivity() {{
                 var stage by remember {{ mutableStateOf(if (seen || jump != null) "app" else "splash") }}
                 val nav = remember {{ Nav(jump ?: AppScreens.START, AppScreens.tabs, AppScreens.ids) }}
                 LaunchedEffect(Unit) {{ Api.refresh(this@MainActivity) }}
+                LaunchedEffect(Unit) {{
+                    while (true) {{ Db.sync(); delay(if (Db.pending.value > 0) 15_000L else 60_000L) }}
+                }}
+                LaunchedEffect(Unit) {{
+                    if (BuildConfig.DEBUG && intent?.getBooleanExtra("hoola_e2e", false) == true) E2e.run(this@MainActivity)
+                }}
                 when (stage) {{
                     "splash" -> SplashScreen {{ stage = if (AppScreens.HAS_CONSENT) "consent" else if (AppScreens.HAS_NOTIFY) "notify" else "app" }}
                     "consent" -> ConsentScreen {{ stage = if (AppScreens.HAS_NOTIFY) "notify" else "app"; if (!AppScreens.HAS_NOTIFY) Store.put(this@MainActivity, "onboarded", "1") }}
@@ -308,6 +332,7 @@ def manifest_xml(spec: dict[str, Any]) -> str:
 <!-- Made by Hoola App Sahayak. Only the permissions the design's features need; restricted ones are never added. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -384,8 +409,42 @@ def resources(spec: dict[str, Any], out: Path) -> None:
 
 
 # ---------------------------------------------------------------- the code-made screen (always compiles)
-def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str]) -> str:
-    """A plain, honest screen built only from kit blocks: title, purpose, the records of its list, its actions."""
+FORM_WORDS = ("book", "form", "enquir", "request", "enrol", "register", "apply", "contact", "feedback", "new_", "add_")
+CART_WORDS = ("cart", "checkout", "basket", "order_review")
+CART_BLOCK = """        val cart = AppState.cartItems("products")
+        if (cart.isEmpty()) block { Empty("cart", "Cart") }
+        cart.forEach { (rec, q) -> block { HCard { Title(rec.name); Small("$q x " + rupees(rec.price)) } } }
+        if (cart.isNotEmpty()) block { Title(rupees(AppState.cartTotal("products"))) }"""
+
+
+def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str]:
+    """v0.314 the list's own fields as Field boxes (keys = the server's field keys) + the button that really saves."""
+    out = []
+    for f in fields:
+        k = str(f.get("key") or "")
+        if f.get("admin_only") or f.get("type") == "yes_no" or not ID_RE.match(k):
+            continue
+        if f.get("type") == "choice" and f.get("options"):
+            opts = ", ".join(kstr(o) for o in f["options"][:8])
+            out.append(f"        block {{ Label({kstr(f.get('label') or k)}) }}")
+            out.append(f"        block {{ Chips(listOf({opts}), {kstr(k)}) }}")
+            continue
+        kb = {"phone": "KeyboardType.Phone", "email": "KeyboardType.Email", "number": "KeyboardType.Number"}.get(
+            str(f.get("type")), "KeyboardType.Text")
+        lines = 3 if f.get("type") == "long_text" else 1
+        hint = "YYYY-MM-DD" if f.get("type") == "date" else ""
+        label = str(f.get("label") or k) + (" *" if f.get("required") else "")
+        out.append(f"        block {{ Field({kstr(label)}, {kstr(k)}, keyboard = {kb}, lines = {lines}, hint = {kstr(hint)}) }}")
+    btn = ("OrderBtn(\"Place order\", modifier = Modifier.fillMaxWidth())" if order else
+           f"SubmitBtn(\"Send\", {kstr(coll)}, modifier = Modifier.fillMaxWidth(), then = \"hoola_account\")")
+    out.append(f"        block {{ {btn} }}")
+    return out
+
+
+def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dict[str, Any] | None = None) -> str:
+    """A plain, honest screen built only from kit blocks: title, purpose, the records of its list, its actions.
+    v0.314: a list the app keeps on its server shows the user's REAL rows (liveRows), a cart places a real order and a
+    booking / enquiry / request screen gets that list's own form with a button that really saves."""
     sid = s["id"]
     lists = [x for x in (s.get("lists") or []) if re.fullmatch(r"[a-z][a-z0-9_]*", x)]
     lst = lists[0] if lists else ""
@@ -394,7 +453,22 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str]) -> str:
     rows = []
     if s.get("purpose"):
         rows.append(f"        block {{ Small({kstr(s['purpose'])}) }}")
-    if lst:
+    colls = {str(c.get("key")): c for c in (backend or {}).get("collections") or []
+             if isinstance(c, dict) and ID_RE.match(str(c.get("key") or ""))}
+    order = str((backend or {}).get("order") or "")
+    form = ""
+    if order in colls and any(w in sid for w in CART_WORDS):
+        form = order
+    elif any(w in sid for w in FORM_WORDS):
+        form = next((k for k, c in colls.items() if k != order and (c.get("rules") or {}).get("create") in ("public", "member")), "")
+    live = lst if lst in colls and not form else ""
+    if form:
+        if form == order:
+            rows.append(CART_BLOCK)
+        rows += _form_rows(form, colls[form].get("fields") or [], form == order)
+    elif live:
+        rows.append(f"        block {{ LiveRowsBlock({kstr(live)}) }}")
+    elif lst:
         nxt = next((a["go"] for a in acts), "")
         click = f"{{ nav.open({kstr(nxt)}, {kstr(lst)}, rec.id) }}" if nxt else "null"
         rows.append(f'''        val items = AppData.list({kstr(lst)})
@@ -411,6 +485,10 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str]) -> str:
         }}''')
     else:
         rows.append(f"        block {{ Empty({kstr(icon_for(sid))}, {kstr(s.get('label') or sid)}) }}")
+    if sid in ("profile", "account", "me", "my_account", "settings") and colls:
+        # v0.314 the user's own account (sign in, their orders / bookings, sign out) lives on the kit's account screen
+        rows.append('        block { Btn(if (Auth.signedIn) Auth.name else "Sign in", modifier = Modifier.fillMaxWidth(), icon = "user") '
+                    '{ nav.go(if (Auth.signedIn) "hoola_account" else "hoola_login") } }')
     for a in acts:
         rows.append(f"        block {{ Btn({kstr(a.get('label') or a['go'])}, modifier = Modifier.fillMaxWidth(), kind = BtnKind.Tonal) "
                     f"{{ nav.go({kstr(a['go'])}) }} }}")
@@ -422,6 +500,7 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str]) -> str:
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import hoola.kit.*
 
 @Composable
@@ -466,7 +545,7 @@ def scan_screen(src: str, sid: str, ids: list[str]) -> list[str]:
         if m:
             p.append(f"{why} ({m.group(0)})")
     for go in re.findall(r"nav\.(?:go|open)\(\s*\"([^\"]+)\"", src):
-        if go not in ids:
+        if go not in ids and go not in KIT_SCREENS:
             p.append(f'nav.go("{go}"): no such screen (use one of the SCREEN IDS)')
     if len(src) > 60000:
         p.append("screen file too long (max 60 KB)")
@@ -522,14 +601,26 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     made: dict[str, str] = {}
     for s in scr:
         sid = s["id"]
+        if sid in AUTH_IDS:              # v0.314 the kit's own sign-in screen stands in for the design's
+            made[sid] = "kit"
+            continue
         src = given.get(sid)
         if src and not scan_screen(src, sid, ids):
             made[sid] = "model"
         else:
-            src = fallback_screen(s, ids, tabs)
+            src = fallback_screen(s, ids, tabs, (spec.get("seed") or {}).get("backend") or {})
             made[sid] = "code"
         (appd / "screens" / f"{kotlin_name(sid)}.kt").write_text(src)
     (appd / "AppScreens.kt").write_text(screens_kt(spec, set(ids)))
+    # v0.314 debug builds only: Hoola's emulator test may reach a test server on the host (10.0.2.2) without https;
+    # the release build keeps the https-only config written by resources()
+    dbg = tmp / "app/src/debug/res/xml"
+    dbg.mkdir(parents=True, exist_ok=True)
+    (dbg / "network_security_config.xml").write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\n<network-security-config>\n'
+        '    <base-config cleartextTrafficPermitted="false" />\n'
+        '    <domain-config cleartextTrafficPermitted="true"><domain includeSubdomains="false">10.0.2.2</domain></domain-config>\n'
+        '</network-security-config>\n')
     (main / "assets").mkdir(exist_ok=True)
     (main / "assets/seed.json").write_text(json.dumps(spec.get("seed") or {}, ensure_ascii=False))
     for name, path in (spec.get("scenes") or {}).items():      # v0.140 stills of the app's 3D scenes for Scene3D(name)

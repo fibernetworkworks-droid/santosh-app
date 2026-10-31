@@ -2,7 +2,7 @@ package hoola.kit
 
 // Made by Hoola App Sahayak. Screens written by code, never by the model: splash, DPDP consent (unticked box,
 // Continue disabled until ticked), notification explainer, seller details + grievance officer (E-Commerce Rules 2020),
-// privacy policy and in-app account deletion (both stores require it).
+// privacy policy and in-app account deletion (both stores require it; v0.314 it really deletes on the server).
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,12 +16,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(onDone: () -> Unit) {
@@ -100,13 +106,26 @@ fun PrivacyScreen() {
 @Composable
 fun DeleteAccountScreen() {
     val context = ctx()
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
     Page(Strings.deleteTitle) {
         block { Body(Strings.deleteWhat) }
         block {
-            Btn(Strings.deleteYes, kind = BtnKind.Danger, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Btn(if (busy) Strings.deleting else Strings.deleteYes, kind = BtnKind.Danger, enabled = !busy,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 AppState.form.clear(); AppState.cart.clear()
-                Store.put(context, "delete_requested", "1")
-                Act.toast(context, Strings.deleteDone)
+                if (!Auth.signedIn) {
+                    Store.put(context, "delete_requested", "1")
+                    Act.toast(context, Strings.deleteDone)
+                } else {
+                    // v0.314 the server removes the account and everything it made, then the phone forgets it too
+                    busy = true
+                    scope.launch {
+                        val e = Auth.deleteAccount(context)
+                        busy = false
+                        Act.toast(context, e ?: Strings.deleteDone)
+                    }
+                }
             }
         }
     }
