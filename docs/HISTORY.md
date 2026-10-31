@@ -12307,3 +12307,16 @@ Also from her second test-A ask: "Ek chhota business plan banao chai cafe ke liy
 hisaab lagao, menu aur rates likho, phir sab ek PDF mein do" was NOT big (2 known verbs) - `goal.looks_big` now also counts
 the parts after a colon (3+ = big), `_ask_steps` strips "uske baad / iske baad / after that" and knows socho / lagao / chuno.
 Short asks with a colon ("Time: kitna baj gaya?") stay small. Tests: test_v0315_her_test_run.py (+2), web/progress.test.cjs.
+
+## v0.331.0 NO BLINK + DRAG TO RESIZE (31 Oct 2026)
+Owner, with a screenshot of Create > Video (her real clips): "1) YOUR VIDEO SECTION VIDEO BOX IS CONTINUOUSLY GOING AND COMING BACK AFTER
+FEW INTERVAL 2) THERE SHOULD BE SLIDER FROM BOTH SIDE THUS SIDE BAR AND A YOUR VIDEO CAN BE ADJUSTED AND PROMPT WORKING SECTION WILL GET BIGGER AREA."
+- Root cause, measured with Playwright: `watchStudio` polls every 4 s (work running) / 15 s and `drawVideos` set `#results.innerHTML`, so
+  EVERY tile was rebuilt and every `<video>` reloaded: 0 of 7 tiles survived one poll on the old code. New `patch(el, html)`: same markup ->
+  nothing; otherwise each new child is matched to an old child with the same source markup and the old node is kept (7 of 7 kept). Signed
+  studio file links (`service.link`) are fixed for the whole day, so an unchanged clip really is unchanged markup.
+- Director film page: the 5 s tick re-drew the whole page while work ran; it now compares the film JSON (`DIR.sig`) and skips unchanged ticks.
+- Drag to resize: `.rz-side` on the sidebar edge (`--sbw` 200-360, default 248) and `.rz-pane` between the prompt panel and the results on
+  Video / Image / Music / Voice (`--pw` 320 up to the results keeping 360, default 380); role=separator, arrow keys +-16, Home / double-click
+  reset, widths in localStorage (`hoola.studio.sbw` / `.pw`), a thin violet line + grip on hover / drag, hidden under 900px.
+- Tests: `test_v0331_no_blink_resize.py`.
