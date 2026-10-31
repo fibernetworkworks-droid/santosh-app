@@ -1,0 +1,274 @@
+--------- beginning of system
+10-31 15:25:48.541   523   554 D ActivityManager: sync unfroze 2192 com.google.android.documentsui for 3
+--------- beginning of main
+10-31 15:25:48.543  1694  1694 W MediaProvider: WorkProfileOwnerApps cache is empty
+10-31 15:25:48.550   843   912 D StylusManager: Stylus InputDevice changed: 13 virtio_input_multi_touch_10
+10-31 15:25:48.550   843   912 D StylusManager: Stylus InputDevice changed: 12 virtio_input_multi_touch_9
+10-31 15:25:48.557   843   843 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+10-31 15:25:48.572   843   843 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+10-31 15:25:48.575   843   912 D StylusManager: Stylus InputDevice changed: 10 virtio_input_multi_touch_7
+10-31 15:25:48.582   843   843 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+10-31 15:25:48.582   843   912 D StylusManager: Stylus InputDevice changed: 14 virtio_input_multi_touch_11
+10-31 15:25:48.582   843   912 D StylusManager: Stylus InputDevice changed: 11 virtio_input_multi_touch_8
+10-31 15:25:48.584   843   843 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+10-31 15:25:48.589   523   554 D ActivityManager: sync unfroze 2810 com.android.chrome for 3
+10-31 15:25:48.594  1030  1030 V MediaPlayerList: mPackageChangedBroadcastReceiver: action: android.intent.action.PACKAGE_DATA_CLEARED
+10-31 15:25:48.595  1030  1030 V MediaPlayerList: mPackageChangedBroadcastReceiver: action: android.intent.action.PACKAGE_DATA_CLEARED
+10-31 15:25:48.600   523  1412 D CompatibilityChangeReporter: Compat change id reported: 161252188; UID 10192; state: DISABLED
+10-31 15:25:48.601   523  1412 W ActivityTaskManager: callingPackage for (uid=2000, pid=7432) has no WPC
+10-31 15:25:48.602   523  1412 D CompatibilityChangeReporter: Compat change id reported: 265464455; UID 10192; state: DISABLED
+10-31 15:25:48.603   523  1412 D CompatibilityChangeReporter: Compat change id reported: 265452344; UID 10192; state: DISABLED
+10-31 15:25:48.603   523  1412 D CompatibilityChangeReporter: Compat change id reported: 266124927; UID 10192; state: DISABLED
+10-31 15:25:48.604   523  1412 D CompatibilityChangeReporter: Compat change id reported: 265451093; UID 10192; state: DISABLED
+10-31 15:25:48.605   523  1412 D CompatibilityChangeReporter: Compat change id reported: 265456536; UID 10192; state: DISABLED
+10-31 15:25:48.606   523  1412 D CompatibilityChangeReporter: Compat change id reported: 255940284; UID 10192; state: DISABLED
+10-31 15:25:48.606   523  1412 D CompatibilityChangeReporter: Compat change id reported: 236283604; UID 10192; state: DISABLED
+10-31 15:25:48.606   523  1412 D CompatibilityChangeReporter: Compat change id reported: 263959004; UID 10192; state: DISABLED
+10-31 15:25:48.607   523  1412 D CompatibilityChangeReporter: Compat change id reported: 264304459; UID 10192; state: DISABLED
+10-31 15:25:48.607   523  1412 D CompatibilityChangeReporter: Compat change id reported: 264301586; UID 10192; state: DISABLED
+10-31 15:25:48.607   523  1412 D CompatibilityChangeReporter: Compat change id reported: 254631730; UID 10192; state: DISABLED
+10-31 15:25:48.608   523  1412 D CompatibilityChangeReporter: Compat change id reported: 273509367; UID 10192; state: DISABLED
+10-31 15:25:48.608   523  1412 D CompatibilityChangeReporter: Compat change id reported: 263259275; UID 10192; state: DISABLED
+10-31 15:25:48.608   523  1412 D CompatibilityChangeReporter: Compat change id reported: 174042980; UID 10192; state: DISABLED
+10-31 15:25:48.608   523  1412 D CompatibilityChangeReporter: Compat change id reported: 174042936; UID 10192; state: DISABLED
+10-31 15:25:48.609   523  1412 D CompatibilityChangeReporter: Compat change id reported: 181136395; UID 10192; state: DISABLED
+10-31 15:25:48.623  1694  2742 I MediaProvider: Begin Intent { act=android.intent.action.PACKAGE_DATA_CLEARED dat=package: flg=0x5000010 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+10-31 15:25:48.624  1694  2742 D MediaProvider: Deleted 0 Android/media items belonging to in.hoola.preview.fixture on /data/user/0/com.google.android.providers.media.module/databases/external.db
+10-31 15:25:48.625  1694  2742 D MediaGrants: Removed 0 media_grants for 0 user for in.hoola.preview.fixture. Reason: Package orphaned
+10-31 15:25:48.638  5612  7211 I Icing   : doRemovePackageData in.hoola.preview.fixture
+10-31 15:25:48.639   523   600 D SafetySourceDataValidator: No cert check requested for package com.google.android.permissioncontroller
+10-31 15:25:48.643   845   845 D PersistedStoragePackageUninstalledReceiver: Received android.intent.action.PACKAGE_DATA_CLEARED for in.hoola.preview.fixture for u0
+10-31 15:25:48.647  1694  2742 I MediaProvider: End Intent { act=android.intent.action.PACKAGE_DATA_CLEARED dat=package: flg=0x5000010 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+10-31 15:25:48.646   843   912 D StylusManager: Stylus InputDevice changed: 9 virtio_input_multi_touch_6
+10-31 15:25:48.648   843   912 D StylusManager: Stylus InputDevice changed: 7 virtio_input_multi_touch_4
+10-31 15:25:48.658   843   912 D StylusManager: Stylus InputDevice changed: 5 virtio_input_multi_touch_2
+10-31 15:25:48.661   843   912 D StylusManager: Stylus InputDevice changed: 8 virtio_input_multi_touch_5
+10-31 15:25:48.663  5538  7132 I Fitness : FitCleanupIntentOperation received Intent android.intent.action.PACKAGE_DATA_CLEARED [CONTEXT service_id=17 ]
+10-31 15:25:48.673   843   912 D StylusManager: Stylus InputDevice changed: 4 virtio_input_multi_touch_1
+10-31 15:25:48.681  5612  5612 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+10-31 15:25:48.681  5612  5612 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+10-31 15:25:48.682   843   912 D StylusManager: Stylus InputDevice changed: 6 virtio_input_multi_touch_3
+10-31 15:25:48.684  1662  1677 I ogle.android.as: Background concurrent copying GC freed 22910(1133KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 6724KB/13MB, paused 26us,12us total 441.921ms
+10-31 15:25:48.685  5538  7451 I ProximityAuth: [RecentAppsMediator] Package added: (user=UserHandle{0}) in.hoola.preview.fixture
+10-31 15:25:48.686  1104  1115 I s.nexuslauncher: Background concurrent copying GC freed 42418(2620KB) AllocSpace objects, 2(32KB) LOS objects, 49% free, 6286KB/12MB, paused 21us,11us total 464.234ms
+10-31 15:25:48.688   523   545 W system_server: Long monitor contention with owner android.bg (553) at android.content.res.Resources android.app.ResourcesManager.createResources(android.content.res.ResourcesKey, java.lang.ClassLoader, android.app.ResourcesManager$ApkAssetsSupplier)(ResourcesManager.java:1040) waiters=0 in android.content.res.Resources android.app.ResourcesManager.createResources(android.content.res.ResourcesKey, java.lang.ClassLoader, android.app.ResourcesManager$ApkAssetsSupplier) for 139ms
+10-31 15:25:48.690   523  1412 D CompatibilityChangeReporter: Compat change id reported: 194480991; UID 10192; state: ENABLED
+10-31 15:25:48.694  5538  7451 I Fitness : FitCleanupIntentOperation received Intent android.intent.action.PACKAGE_REMOVED [CONTEXT service_id=17 ]
+10-31 15:25:48.695  5612  5612 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+10-31 15:25:48.696  5612  7414 I Auth    : [SupervisedAccountIntentOperation] onHandleIntent(): android.intent.action.PACKAGE_ADDED
+10-31 15:25:48.696   523  1412 D CompatibilityChangeReporter: Compat change id reported: 184838306; UID 10192; state: DISABLED
+10-31 15:25:48.697   523  1412 D CompatibilityChangeReporter: Compat change id reported: 185004937; UID 10192; state: DISABLED
+10-31 15:25:48.697   523  1412 D CompatibilityChangeReporter: Compat change id reported: 197654537; UID 10192; state: ENABLED
+10-31 15:25:48.698   523  1412 D CompatibilityChangeReporter: Compat change id reported: 205907456; UID 10192; state: ENABLED
+10-31 15:25:48.699   843   874 V WindowManagerShell: Transition requested: android.os.BinderProxy@292cf63 TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=25 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=in.hoola.preview.fixture/hoola.app.MainActivity } baseActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} topActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} origActivity=null realActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} numActivities=1 lastActiveTime=186551 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@d44a760} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{57ab419 hoola.app.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
+10-31 15:25:48.700   523  1412 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=in.hoola.preview.fixture/hoola.app.MainActivity (has extras)} with LAUNCH_MULTIPLE from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+10-31 15:25:48.704   523   553 W WindowMagnificationMgr: requestConnection duplicated request: connect=false, mConnectionState=DISCONNECTED
+10-31 15:25:48.707   523   553 W WindowMagnificationMgr: requestConnection duplicated request: connect=false, mConnectionState=DISCONNECTED
+10-31 15:25:48.708   523   607 W ActivityTaskManager: takeTaskSnapshot: taskId=25 not found or not visible
+10-31 15:25:48.711   843   901 D SplashScreenView: Build android.window.SplashScreenView{b03d589 V.E...... ......ID 0,0-0,0}
+10-31 15:25:48.711   843   901 D SplashScreenView: Icon: view: android.widget.ImageView{ca7d98e V.ED..... ......I. 0,0-0,0 #10204f0 android:id/splashscreen_icon_view} drawable: com.android.wm.shell.startingsurface.SplashscreenIconDrawableFactory$ImmobileIconDrawable@99515af size: 160
+10-31 15:25:48.711   843   901 D SplashScreenView: Branding: view: android.view.View{56fbdbc G.ED..... ......I. 0,0-0,0 #10204ef android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-31 15:25:48.711   523   545 D CompatibilityChangeReporter: Compat change id reported: 135634846; UID 10192; state: DISABLED
+10-31 15:25:48.713   523   555 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10192; state: ENABLED
+10-31 15:25:48.717   401   401 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+10-31 15:25:48.721   523   613 D CompatibilityChangeReporter: Compat change id reported: 265195908; UID 10192; state: ENABLED
+10-31 15:25:48.722   337   337 D Zygote  : Forked child process 7489
+10-31 15:25:48.724   523   555 I ActivityManager: Start proc 7489:in.hoola.preview.fixture/u0a192 for next-top-activity {in.hoola.preview.fixture/hoola.app.MainActivity}
+10-31 15:25:48.727  7489  7489 I preview.fixture: Late-enabling -Xcheck:jni
+10-31 15:25:48.731   523   607 D CoreBackPreview: Window{5a84603 u0 Splash Screen in.hoola.preview.fixture}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@c06cd6, mPriority=0, mIsAnimationCallback=false}
+10-31 15:25:48.757   843   874 V WindowManagerShell: onTransitionReady android.os.BinderProxy@292cf63: {id=39 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@d23bb43} m=OPEN f=NONE leash=Surface(name=Task=25)/@0x6180854 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{android.window.IWindowContainerToken$Stub$Proxy@41755c0} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xfbd53fd sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+10-31 15:25:48.758   843   874 V WindowManagerShell: Playing animation for (#39)android.os.BinderProxy@292cf63@0
+10-31 15:25:48.758   843   874 V WindowManagerShell:  try handler com.android.wm.shell.transition.DefaultMixedHandler@ec9a93e
+10-31 15:25:48.758   843   874 V WindowManagerShell:  try handler com.android.wm.shell.keyguard.KeyguardTransitionHandler@162239f
+10-31 15:25:48.758   843   874 V WindowManagerShell:  try handler com.android.wm.shell.activityembedding.ActivityEmbeddingController@99dccec
+10-31 15:25:48.758   843   874 V WindowManagerShell:  try handler com.android.wm.shell.recents.RecentsTransitionHandler@72858b5
+10-31 15:25:48.758   843   874 V ShellRecents: RecentsTransitionHandler.startAnimation: no controller found
+10-31 15:25:48.758   843   874 V WindowManagerShell:  try handler com.android.wm.shell.pip.PipTransition@8331b4a
+10-31 15:25:48.758   843   874 V WindowManagerShell:  try handler com.android.wm.shell.splitscreen.StageCoordinator@54f5abb
+10-31 15:25:48.758   843   874 V WindowManagerShell:  try handler com.android.wm.shell.transition.RemoteTransitionHandler@810cbd8
+10-31 15:25:48.758   843   874 V WindowManagerShell: Transition doesn't have explicit remote, search filters for match for {id=39 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@d23bb43} m=OPEN f=NONE leash=Surface(name=Task=25)/@0x6180854 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{android.window.IWindowContainerToken$Stub$Proxy@41755c0} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xfbd53fd sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+10-31 15:25:48.758   843   874 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@8b211c4, appThread = android.app.IApplicationThread$Stub$Proxy@6d378ad, debugName = LauncherToDream }}
+10-31 15:25:48.758   843   874 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=TOP topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@99d47e2, appThread = android.app.IApplicationThread$Stub$Proxy@eaaa773, debugName = QuickstepLaunchHome }}
+10-31 15:25:48.758   843   874 V WindowManagerShell:  Delegate animation for #39 to null
+10-31 15:25:48.758   843   874 V WindowManagerShell:  try handler com.android.wm.shell.transition.DefaultTransitionHandler@dd7e96d
+10-31 15:25:48.758   843   874 V WindowManagerShell: start default transition animation, info = {id=39 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@d23bb43} m=OPEN f=NONE leash=Surface(name=Task=25)/@0x6180854 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{android.window.IWindowContainerToken$Stub$Proxy@41755c0} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xfbd53fd sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+10-31 15:25:48.758   843   874 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@e83c23e animAttr=0x13 type=OPEN isEntrance=false
+10-31 15:25:48.759   843   874 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@bf5c44a animAttr=0x12 type=OPEN isEntrance=true
+10-31 15:25:48.759   843   874 V WindowManagerShell:  animated by com.android.wm.shell.transition.DefaultTransitionHandler@dd7e96d
+10-31 15:25:48.764  7489  7489 I preview.fixture: Using CollectorTypeCC GC.
+10-31 15:25:48.765  7489  7489 W preview.fixture: Unexpected CPU variant for x86: x86_64.
+10-31 15:25:48.765  7489  7489 W preview.fixture: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, tremont, kabylake, default
+10-31 15:25:48.774   843   874 V WindowManagerShell: Transition animation finished (aborted=false), notifying core (#39)android.os.BinderProxy@292cf63@0
+10-31 15:25:48.780  1666  1666 I GsaVoiceInteractionSrv: O received Intent { act=android.intent.action.PACKAGE_REMOVED dat=package: flg=0x4000010 (has extras) }
+10-31 15:25:48.782  1666  1666 I GsaVoiceInteractionSrv: O received Intent { act=android.intent.action.PACKAGE_ADDED dat=package: flg=0x4000010 (has extras) }
+10-31 15:25:48.783  1666  1666 I GsaVoiceInteractionSrv: O received Intent { act=android.intent.action.PACKAGE_REPLACED dat=package: flg=0x4000010 (has extras) }
+10-31 15:25:48.787   843   874 V WindowManagerShell: Track 0 became idle
+10-31 15:25:48.788   843   874 V WindowManagerShell: All active transition animations finished
+10-31 15:25:48.826   413   431 I adbd    : jdwp connection from 7489
+10-31 15:25:48.840  5538  5546 I .gms.persistent: Background concurrent copying GC freed 163899(7610KB) AllocSpace objects, 9(428KB) LOS objects, 49% free, 13MB/27MB, paused 18us,15us total 610.167ms
+10-31 15:25:48.842  5612  7418 W SQLiteLog: (28) double-quoted string literal: "in.hoola.preview.fixture"
+10-31 15:25:48.849   523   542 V WindowManager: Sent Transition #39 createdAt=10-31 15:25:48.690 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=25 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=in.hoola.preview.fixture/hoola.app.MainActivity } baseActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} topActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} origActivity=null realActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} numActivities=1 lastActiveTime=186551 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{e1bac3e Task{bb935e4 #25 type=standard A=10192:in.hoola.preview.fixture}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{6376a9f hoola.app.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
+10-31 15:25:48.849   523   542 V WindowManager:     startWCT=WindowContainerTransaction { changes = {} hops = [] errorCallbackToken=null taskFragmentOrganizer=null }
+10-31 15:25:48.849   523   542 V WindowManager:     info={id=39 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{e1bac3e Task{bb935e4 #25 type=standard A=10192:in.hoola.preview.fixture}}} m=OPEN f=NONE leash=Surface(name=Task=25)/@0x13349dc sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{RemoteToken{7b0be51 Task{14b0cd7 #1 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0x8df044f sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+10-31 15:25:48.849   523   542 V WindowManager: Finish Transition #39: created at 10-31 15:25:48.690 collect-started=0.04ms request-sent=8.721ms started=10.249ms ready=57.435ms sent=58.542ms finished=93.875ms
+10-31 15:25:48.863  7489  7489 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10192; state: ENABLED
+10-31 15:25:48.864  7489  7489 D CompatibilityChangeReporter: Compat change id reported: 242716250; UID 10192; state: ENABLED
+10-31 15:25:48.866  1662  1662 I AiAiEcho: AppFetcherImpl onPackageChanged in.hoola.preview.fixture.
+10-31 15:25:48.868   523  1864 D CompatibilityChangeReporter: Compat change id reported: 170503758; UID 10192; state: ENABLED
+10-31 15:25:48.870  1662  2993 I AiAiEcho: AppIndexer Package:[in.hoola.preview.fixture] UserProfile:[0] Enabled:[true].
+10-31 15:25:48.870  1662  2993 I AiAiEcho: AppFetcherImplV2 updateApps package:[in.hoola.preview.fixture], userId:[0], reason:[package is updated.].
+10-31 15:25:48.872  7489  7489 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+10-31 15:25:48.872  7489  7489 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+10-31 15:25:48.873  7489  7489 W ziparchive: Unable to open '/data/app/~~Cog2ueXvR1s9Gvxr-Q9WXQ==/in.hoola.preview.fixture-7IotQI4rqPFUNQqRVY36Ng==/base.dm': No such file or directory
+10-31 15:25:48.874  7489  7489 W ziparchive: Unable to open '/data/app/~~Cog2ueXvR1s9Gvxr-Q9WXQ==/in.hoola.preview.fixture-7IotQI4rqPFUNQqRVY36Ng==/base.dm': No such file or directory
+10-31 15:25:48.879  5538  7450 I FontLog : Package in.hoola.preview.fixture has no metadata [CONTEXT service_id=132 ]
+10-31 15:25:48.884   523   553 E system_server: No package ID 7f found for resource ID 0x7f080107.
+10-31 15:25:48.884   523   553 E system_server: No package ID 7f found for resource ID 0x7f150560.
+10-31 15:25:48.899  1662  1662 I AiAiEcho: AppFetcherImpl onPackageChanged com.google.android.contacts.
+10-31 15:25:48.899   523   534 I system_server: Background young concurrent copying GC freed 341348(15MB) AllocSpace objects, 30(840KB) LOS objects, 30% free, 34MB/49MB, paused 91us,67us total 100.418ms
+10-31 15:25:48.900  1662  3427 I AiAiEcho: AppIndexer Package:[com.google.android.contacts] UserProfile:[0] Enabled:[true].
+10-31 15:25:48.900  1662  3427 I AiAiEcho: AppFetcherImplV2 updateApps package:[com.google.android.contacts], userId:[0], reason:[package is updated.].
+10-31 15:25:48.910  5538  5571 W ChimeraUtils: Module com.google.android.gms.nearby_en missing resource null(0)
+10-31 15:25:48.917  4425  4573 I Bugle   : BroadcastReceiverAsyncWorkTracker: Acknowledging broadcast of bdxy@6e6bf2d
+10-31 15:25:48.935   523  2042 D CompatibilityChangeReporter: Compat change id reported: 161252188; UID 10192; state: DISABLED
+10-31 15:25:48.941  5612  7211 I Icing   : Indexing com.google.android.gms-apps from com.google.android.gms
+10-31 15:25:48.978  5612  7211 I Icing   : Indexing done com.google.android.gms-apps
+10-31 15:25:49.006  5612  7211 I Icing   : Indexing com.google.android.gms-internal.3p:MobileApplication from com.google.android.gms
+10-31 15:25:49.006  5538  7132 I Fitness : OnPackageChangedOperation got intent: Intent { act=android.intent.action.PACKAGE_CHANGED dat=package: flg=0x45000010 pkg=com.google.android.gms cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) } [CONTEXT service_id=17 ]
+10-31 15:25:49.008  5612  7211 I Icing   : Indexing done com.google.android.gms-internal.3p:MobileApplication
+10-31 15:25:49.029  5538  5571 W ChimeraUtils: Module com.google.android.gms.nearby_en missing resource null(0)
+10-31 15:25:49.038  5538  7450 I Fitness : FitCleanupIntentOperation received Intent android.intent.action.PACKAGE_CHANGED [CONTEXT service_id=17 ]
+10-31 15:25:49.070  5538  6490 W ChimeraUtils: Module com.google.android.gms.nearby_en missing resource null(0)
+10-31 15:25:49.071  1847  6324 D t       : Starting download: https://dl.google.com/mdi-serving/agsa-apa-smart-action-models/1129/262d6f61914ff6e28557d9adfcb3632975ddf9d2
+10-31 15:25:49.071  1847  6324 V t       : Is http uri, downloading (uri: https://dl.google.com/mdi-serving/agsa-apa-smart-action-models/1129/262d6f61914ff6e28557d9adfcb3632975ddf9d2)
+10-31 15:25:49.073  5538  6490 W ChimeraUtils: Module com.google.android.gms.nearby_en missing resource null(0)
+10-31 15:25:49.077  5612  6113 I Icing   : Indexing com.google.android.gms-apps from com.google.android.gms
+10-31 15:25:49.083  5612  6113 I Icing   : Indexing done com.google.android.gms-apps
+10-31 15:25:49.087  5612  6113 I Icing   : Indexing com.google.android.gms-internal.3p:MobileApplication from com.google.android.gms
+10-31 15:25:49.089  1847  6324 E MDD     : DownloadProgressMonitor: Can't find file group for uri: android://com.google.android.googlequicksearchbox/files/datadownload/shared/public/datadownloadfile_1793460254716
+10-31 15:25:49.136  5612  6113 I Icing   : Indexing done com.google.android.gms-internal.3p:MobileApplication
+10-31 15:25:49.143  5612  6113 I Icing   : Indexing com.google.android.gms-internal.3p:MobileApplication from com.google.android.gms
+10-31 15:25:49.146  5612  6113 I Icing   : Indexing done com.google.android.gms-internal.3p:MobileApplication
+10-31 15:25:49.150  5612  6113 I Icing   : Indexing com.google.android.gms-apps from com.google.android.gms
+10-31 15:25:49.198  5612  6113 I Icing   : Indexing done com.google.android.gms-apps
+10-31 15:25:49.319  7489  7489 D nativeloader: Configuring clns-6 for other apk /data/app/~~Cog2ueXvR1s9Gvxr-Q9WXQ==/in.hoola.preview.fixture-7IotQI4rqPFUNQqRVY36Ng==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~Cog2ueXvR1s9Gvxr-Q9WXQ==/in.hoola.preview.fixture-7IotQI4rqPFUNQqRVY36Ng==/lib/x86_64:/data/app/~~Cog2ueXvR1s9Gvxr-Q9WXQ==/in.hoola.preview.fixture-7IotQI4rqPFUNQqRVY36Ng==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/in.hoola.preview.fixture
+10-31 15:25:49.339  7489  7489 V GraphicsEnvironment: Currently set values for:
+10-31 15:25:49.339  7489  7489 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+10-31 15:25:49.339  7489  7489 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+10-31 15:25:49.340  7489  7489 V GraphicsEnvironment: ANGLE GameManagerService for in.hoola.preview.fixture: false
+10-31 15:25:49.340  7489  7489 V GraphicsEnvironment: in.hoola.preview.fixture is not listed in per-application setting
+10-31 15:25:49.340  7489  7489 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+10-31 15:25:49.441   523  1652 I ActivityManager: Flag disabled. Ignoring finishAttachApplication from uid: 10192. pid: 7489
+10-31 15:25:49.466  7489  7517 D libEGL  : loaded /vendor/lib64/egl/libEGL_emulation.so
+10-31 15:25:49.470  7489  7517 D libEGL  : loaded /vendor/lib64/egl/libGLESv1_CM_emulation.so
+10-31 15:25:49.482  7489  7517 D libEGL  : loaded /vendor/lib64/egl/libGLESv2_emulation.so
+10-31 15:25:49.551   336   373 I netd    : tetherGetStats() -> {[]} <0.44ms>
+10-31 15:25:49.565   336   373 I netd    : bandwidthSetGlobalAlert(2097152) <0.13ms>
+10-31 15:25:49.763   523  1652 D ConnectivityService: requestNetwork for uid/pid:10192/7489 activeRequest: null callbackRequest: 182 [NetworkRequest [ REQUEST id=183, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647
+10-31 15:25:49.764   523   765 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=183, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]
+10-31 15:25:49.764   523   765 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=183, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]
+10-31 15:25:49.764   523   765 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=183, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]
+10-31 15:25:49.765   523   772 D ConnectivityService: NetReassign [183 : null → 100] [c 0] [a 1] [i 1]
+10-31 15:25:49.765   523   765 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=183, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]
+10-31 15:25:49.767  7489  7489 D CompatibilityChangeReporter: Compat change id reported: 194532703; UID 10192; state: ENABLED
+10-31 15:25:49.767  7489  7489 D CompatibilityChangeReporter: Compat change id reported: 253665015; UID 10192; state: ENABLED
+10-31 15:25:49.768   523  2050 D CompatibilityChangeReporter: Compat change id reported: 271850009; UID 10192; state: ENABLED
+10-31 15:25:49.768   523  2050 D CompatibilityChangeReporter: Compat change id reported: 253665015; UID 10192; state: ENABLED
+10-31 15:25:49.768   523  2050 D CompatibilityChangeReporter: Compat change id reported: 194532703; UID 10192; state: ENABLED
+10-31 15:25:49.795  7489  7489 D CompatibilityChangeReporter: Compat change id reported: 237531167; UID 10192; state: DISABLED
+10-31 15:25:49.796  7489  7489 W OpenGLRenderer: Unknown dataspace 0
+10-31 15:25:49.864  1847  2450 I A       : NGA Sync: MDD Task: MDD.WIFI.CHARGING.PERIODIC.TASK done.
+10-31 15:25:49.864  1847  2450 I A       : NGA Sync: isNgaSyncEnabled: false; enableFileGroupPopulator: false; requiresMddAssets: false
+10-31 15:25:49.864  1847  2380 I A       : Refresh account policy.
+10-31 15:25:49.923  2349  4082 I DialerOmtpVvmCarrierConfigHelper: com.android.voicemail.impl.OmtpVvmCarrierConfigHelper.handleEvent:527 OmtpEvent:CONFIG_STATUS_SMS_TIME_OUT PhoneAccountHandle: [ComponentName: com.android.phone/com.android.services.telephony.TelephonyConnectionService subId: 1] [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.924  2349  2349 I DialerRetryPolicy: com.android.voicemail.impl.scheduling.RetryPolicy.onCompleted:118 discarding deferred status [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.924  2349  2349 I DialerTaskExecutor: com.android.voicemail.impl.scheduling.TaskExecutor.prepareStop:371 no more tasks, stopping service if no task are added in 5000 millis [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.925  2349  2349 I DialerLogcatLoggingBindings: com.android.dialer.logging.logcat.LogcatLoggingBindings.logImpression:41 Impression: VVM_AUTO_RETRY_ACTIVATION
+10-31 15:25:49.925  2349  2349 I DialerTaskReceiver: com.android.voicemail.impl.scheduling.TaskReceiver.onReceive:68 task received [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.925  2349  2349 I DialerTaskReceiver: com.android.voicemail.impl.scheduling.TaskReceiver.onReceive:73 TaskExecutor already running [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.925  2349  2349 I DialerTasks: com.android.voicemail.impl.scheduling.Tasks.createTask:59 Task.createTask create task:com.android.voicemail.impl.ActivationTask [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.926  2349  2349 I DialerRetryPolicy: com.android.voicemail.impl.scheduling.RetryPolicy.onCreate:81 retry #2 for com.android.voicemail.impl.ActivationTask@d596ae8 queued, executing in 5000 [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.927  2349  2349 I DialerTaskExecutor: com.android.voicemail.impl.scheduling.TaskExecutor.addTask:299 com.android.voicemail.impl.ActivationTask@d596ae8 added [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.928  2349  2349 I DialerTaskExecutor: com.android.voicemail.impl.scheduling.TaskExecutor.runNextTask:345 minimal wait time:4998 [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.928  2349  2349 I DialerTaskExecutor: com.android.voicemail.impl.scheduling.TaskExecutor.sleep:355 sleep for 4998 millis [CONTEXT enable_persistent_logger=true ]
+10-31 15:25:49.942  7489  7489 D CompatibilityChangeReporter: Compat change id reported: 193247900; UID 10192; state: ENABLED
+10-31 15:25:49.994   523  1652 D CoreBackPreview: Window{5784502 u0 in.hoola.preview.fixture/hoola.app.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@1c62168, mPriority=0, mIsAnimationCallback=false}
+10-31 15:25:50.030  7489  7515 W OpenGLRenderer: Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-31 15:25:50.046   135   135 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device VINTF manifest.
+10-31 15:25:50.046  7489  7515 I Gralloc4: mapper 4.x is not supported
+--------- beginning of kernel
+10-31 15:25:50.248     0     0 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+10-31 15:25:50.279   843   843 D StatusBarIconController: ignoring old pipeline callbacks, because the new mobile icons are enabled
+10-31 15:25:50.332  7489  7489 W preview.fixture: Accessing hidden method Landroid/os/SystemProperties;->addChangeCallback(Ljava/lang/Runnable;)V (unsupported, reflection, allowed)
+10-31 15:25:50.333   523   542 W ziparchive: Unable to open '/data/app/~~Cog2ueXvR1s9Gvxr-Q9WXQ==/in.hoola.preview.fixture-7IotQI4rqPFUNQqRVY36Ng==/base.dm': No such file or directory
+10-31 15:25:50.336  7489  7506 I OpenGLRenderer: Davey! duration=881ms; Flags=1, FrameTimelineVsyncId=17294, IntendedVsync=187302161634, Vsync=187652161620, InputEventId=0, HandleInputStart=187655787880, AnimationStart=187655790946, PerformTraversalsStart=187655893507, DrawStart=187910342205, FrameDeadline=187318828300, FrameInterval=187655525702, FrameStartTime=16666666, SyncQueued=187918577884, SyncStart=187918767347, IssueDrawCommandsStart=187921782062, SwapBuffers=188070185700, FrameCompleted=188183431733, DequeueBufferDuration=3246, QueueBufferDuration=549815, GpuCompleted=188183373153, SwapBuffersCompleted=188183431733, DisplayPresentTime=0, CommandSubmissionCompleted=188070185700, 
+10-31 15:25:50.337   523   542 I ActivityTaskManager: Displayed in.hoola.preview.fixture/hoola.app.MainActivity for user 0: +1s733ms
+10-31 15:25:50.354   843   900 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=falsecallback=android.view.ViewRootImpl$$ExternalSyntheticLambda17@3275dcb
+10-31 15:25:50.355   523  1412 D CoreBackPreview: Window{5a84603 u0 Splash Screen in.hoola.preview.fixture EXITING}: Setting back callback null
+10-31 15:25:50.355   523  1412 W InputManager-JNI: Input channel object '5a84603 Splash Screen in.hoola.preview.fixture (client)' was disposed without first being removed with the input manager!
+10-31 15:25:50.362  1847  4184 I PBSessionCacheImpl: Deleted sessionId[8124985366214156] from persistence.
+10-31 15:25:50.365  1847  2516 W SearchServiceCore: Abort, client detached.
+10-31 15:25:50.365  1104  1139 I ImeTracker: com.google.android.apps.nexuslauncher:262e8fa9: onRequestHide at ORIGIN_CLIENT_HIDE_SOFT_INPUT reason HIDE_SOFT_INPUT
+10-31 15:25:50.366   523  1653 D CompatibilityChangeReporter: Compat change id reported: 214016041; UID 10192; state: ENABLED
+10-31 15:25:50.370   523  1653 I ImeTracker: in.hoola.preview.fixture:f74e54bc: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
+10-31 15:25:50.370   523  1653 I ImeTracker: in.hoola.preview.fixture:f74e54bc: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-31 15:25:50.370   523  2042 W InputMethodManagerService: Ignoring hideSoftInput of uid 10169 : com.android.internal.inputmethod.IInputMethodClient$Stub$Proxy@e94a9ac
+10-31 15:25:50.370   523  2042 I ImeTracker: com.google.android.apps.nexuslauncher:262e8fa9: onCancelled at PHASE_SERVER_CLIENT_FOCUSED
+10-31 15:25:50.377   843   915 D EGL_emulation: app_time_stats: avg=558.88ms min=1.40ms max=1573.28ms count=4
+10-31 15:25:50.378  1104  2184 D OneSearchSuggestProvider: Shut down the binder channel
+10-31 15:25:50.378  1104  3121 I IPCThreadState: oneway function results for code 2 on binder at 0x73ae3dc79990 will be dropped but finished with status UNKNOWN_TRANSACTION
+10-31 15:25:50.585     0     0 I logd    : logdr: UID=2000 GID=2000 PID=7529 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
+10-31 15:25:50.390  5538  5551 I FontLog : Received query Noto Color Emoji Compat, URI content://com.google.android.gms.fonts [CONTEXT service_id=132 ]
+10-31 15:25:50.390  5538  5551 I FontLog : Query [emojicompat-emoji-font] resolved to {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+10-31 15:25:50.397  5538  5551 I FontLog : Fetch {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} end status Status{statusCode=SUCCESS, resolution=null} [CONTEXT service_id=132 ]
+10-31 15:25:50.399  1548  1548 I GoogleInputMethodService: GoogleInputMethodService.onFinishInput():3227 
+10-31 15:25:50.399  7489  7522 D TrafficStats: tagSocket(98) with statsTag=0xffffffff, statsUid=-1
+10-31 15:25:50.404  1548  1548 I GoogleInputMethodService: GoogleInputMethodService.updateDeviceLockedStatus():2087 repeatCheckTimes = 0, unlocked = true
+10-31 15:25:50.404  1548  1548 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=in.hoola.preview.fixture fieldId=0 fieldName=null extras=null}, false)
+10-31 15:25:50.404  1548  1548 I GoogleInputMethodService: GoogleInputMethodService.shouldHideHeaderOnInitialState():4008 ShouldHideHeaderOnInitialState = false
+10-31 15:25:50.405  1548  1548 I GoogleInputMethodService: GoogleInputMethodService.updateDeviceLockedStatus():2087 repeatCheckTimes = 2, unlocked = true
+10-31 15:25:50.406  5538  5739 I FontLog : Pulling font file for id = 14, cache size = 12 [CONTEXT service_id=132 ]
+10-31 15:25:50.411   336  7538 I resolv  : GetAddrInfoHandler::run: {100 100 100 983140 10192 0}
+10-31 15:25:50.414   336  7539 I resolv  : res_nmkquery: (QUERY, IN, AAAA)
+10-31 15:25:50.423   336  7539 I resolv  : res_nsend: used send_dg 33 terrno: 0
+10-31 15:25:50.423   336  7539 I resolv  : doQuery: rcode=3, ancount=0, return value=33
+10-31 15:25:50.423  5538  5739 I FontLog : Pulling font file for id = 14, cache size = 12 [CONTEXT service_id=132 ]
+10-31 15:25:50.423   336  7540 I resolv  : res_nmkquery: (QUERY, IN, A)
+10-31 15:25:50.428   336  7540 I resolv  : res_nsend: used send_dg 33 terrno: 0
+10-31 15:25:50.428   336  7540 I resolv  : doQuery: rcode=3, ancount=0, return value=33
+10-31 15:25:50.452  7489  7523 D TrafficStats: tagSocket(101) with statsTag=0xffffffff, statsUid=-1
+10-31 15:25:50.551   336   373 I netd    : setProcSysNet(4, 2, wlan0, retrans_time_ms, 750) <0.05ms>
+10-31 15:25:50.551   336   373 I netd    : setProcSysNet(4, 2, wlan0, ucast_solicit, 10) <0.02ms>
+10-31 15:25:50.551   336   373 I netd    : setProcSysNet(6, 2, wlan0, retrans_time_ms, 750) <0.02ms>
+10-31 15:25:50.552   336   373 I netd    : setProcSysNet(6, 2, wlan0, ucast_solicit, 10) <0.01ms>
+10-31 15:25:50.599   523  1653 W ProcessStats: Tracking association SourceState{7d17112 in.hoola.preview.fixture/10192 BTop #12854} whose proc state 2 is better than process ProcessState{deadba1 com.google.android.gms.persistent/10131 pkg=com.google.android.gms} proc state 4 (2870 skipped)
+10-31 15:25:50.646  7489  7489 I HOOLA_E2E: signed up e2e1793460350346@example.com
+10-31 15:25:51.172  7489  7489 I HOOLA_E2E: order row_6912756f519d total 530.0 status New
+10-31 15:25:51.220  7489  7489 I HOOLA_E2E: dedup ok row_2831329184ce
+10-31 15:25:51.381  7489  7489 I HOOLA_E2E: photo ok f_3b9cdb2cb06ed33e 737 bytes
+10-31 15:25:51.636     0     0 I logd    : logdr: UID=2000 GID=2000 PID=7543 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
+10-31 15:25:51.701   523  3144 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+10-31 15:25:51.962  7489  7489 I HOOLA_E2E: paid claim ok
+10-31 15:25:51.976  7489  7489 I HOOLA_E2E: updates ok
+10-31 15:25:52.083  1847  1847 E A       : disposing SearchServiceClient after timeout []
+10-31 15:25:52.660     0     0 I logd    : logdr: UID=2000 GID=2000 PID=7546 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
+10-31 15:25:52.477  7489  7489 I HOOLA_E2E: crash report ok
+10-31 15:25:52.599  7489  7489 I HOOLA_E2E: login again ok, 2 orders
+10-31 15:25:52.599  7489  7489 I HOOLA_E2E: HOOLA_E2E OK
+10-31 15:25:52.826     0     0 W healthd : battery l=100 v=5000 t=25.0 h=2 st=2 c=900000 fc=3000000 cc=10 chg=a
+10-31 15:25:53.082  7409  7412 I AidlLazyServiceRegistrar: Process has 0 (of 1 available) client(s) in use after notification artd has clients: 0
+10-31 15:25:53.082  7409  7412 I AidlLazyServiceRegistrar: Trying to shut down the service. No clients in use for any service in process.
+10-31 15:25:53.084  7409  7412 I AidlLazyServiceRegistrar: Unregistered all clients and exiting
+10-31 15:25:53.284     0     0 I servicemanager: Notifying artd they don't (previously: do) have clients when we now have no record of a client
+10-31 15:25:53.287     0     0 I servicemanager: Unregistering artd
+10-31 15:25:53.288     0     0 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+10-31 15:25:53.291     0     0 I init    : Service 'artd' (pid 7409) exited with status 0 oneshot service took 4.956000 seconds in background
+10-31 15:25:53.293     0     0 I init    : Sending signal 9 to service 'artd' (pid 7409) process group...
+10-31 15:25:53.294     0     0 I libprocessgroup: Successfully killed process cgroup uid 1082 pid 7409 in 0ms
+10-31 15:25:53.677     0     0 I logd    : logdr: UID=2000 GID=2000 PID=7549 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
+10-31 15:25:53.544  7554  7554 W BpBinder: Linking to death on android.gui.ISurfaceComposer but there are no threads (yet?) listening to incoming transactions. See ProcessState::startThreadPool and ProcessState::setThreadPoolMaxThreadCount. Generally you should setup the binder threadpool before other initialization steps.
+10-31 15:25:53.545  7554  7554 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+10-31 15:25:53.550   135   135 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device VINTF manifest.
+10-31 15:25:53.550  7554  7555 I Gralloc4: mapper 4.x is not supported
+10-31 15:25:53.753     0     0 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+10-31 15:25:53.813     0     0 I logd    : logdr: UID=2000 GID=2000 PID=7556 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns

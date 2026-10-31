@@ -1,0 +1,13 @@
+home 1
+categories 1
+product 1
+cart 1
+orders 1
+profile 1
+dashboard 1
+support 1
+seller_info 1
+privacy 1
+delete_account 1
+hoola_login 1
+hoola_account 1

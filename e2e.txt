@@ -1,0 +1,10 @@
+--------- beginning of main
+10-31 15:25:50.646  7489  7489 I HOOLA_E2E: signed up e2e1793460350346@example.com
+10-31 15:25:51.172  7489  7489 I HOOLA_E2E: order row_6912756f519d total 530.0 status New
+10-31 15:25:51.220  7489  7489 I HOOLA_E2E: dedup ok row_2831329184ce
+10-31 15:25:51.381  7489  7489 I HOOLA_E2E: photo ok f_3b9cdb2cb06ed33e 737 bytes
+10-31 15:25:51.962  7489  7489 I HOOLA_E2E: paid claim ok
+10-31 15:25:51.976  7489  7489 I HOOLA_E2E: updates ok
+10-31 15:25:52.477  7489  7489 I HOOLA_E2E: crash report ok
+10-31 15:25:52.599  7489  7489 I HOOLA_E2E: login again ok, 2 orders
+10-31 15:25:52.599  7489  7489 I HOOLA_E2E: HOOLA_E2E OK

@@ -1,0 +1,109 @@
+{
+ "v": 1,
+ "screens": {
+  "home": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/home.png"
+  },
+  "categories": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/categories.png"
+  },
+  "product": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/product.png"
+  },
+  "cart": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/cart.png"
+  },
+  "orders": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/orders.png"
+  },
+  "profile": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/profile.png"
+  },
+  "dashboard": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/dashboard.png"
+  },
+  "support": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/support.png"
+  },
+  "seller_info": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/seller_info.png"
+  },
+  "privacy": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/privacy.png"
+  },
+  "delete_account": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/delete_account.png"
+  },
+  "hoola_login": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/hoola_login.png"
+  },
+  "hoola_account": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/hoola_account.png"
+  }
+ },
+ "perf": {
+  "cold_ms": 519,
+  "cold_all": [
+   522,
+   519,
+   450
+  ],
+  "jank_pct": 25.58,
+  "frames": 43,
+  "apk_mb": 1.51
+ },
+ "budget": {
+  "cold_ms": "ok",
+  "apk_mb": "ok",
+  "jank_pct": "over"
+ },
+ "limits": {
+  "cold_ms": 1500,
+  "apk_mb": 15.0,
+  "jank_pct": 25.0
+ },
+ "opened": 13,
+ "total": 13,
+ "crashed": [],
+ "a11y_count": 0,
+ "passed": true
+}
