@@ -327,6 +327,7 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                   "app": [{"key": c["key"], "label": c["label"]} for c in app_schema(r).get("collections", [])]})
         if plan.get("big"):                  # v0.315 the big site's size and its lists of pages
             v["size"] = SM.counts(plan)
+            v["seo_gate"] = plan.get("gate") or []           # v0.319 look-alike / place pages warning (scaled content)
             v["collections"] = [{"key": c["key"], "label": c["label"], "items": len(c["items"]),
                                  "examples": [i["title"] for i in c["items"][:6]]} for c in SM.collections(plan)]
             v["plan"]["groups"] = [{"group": g or "", "pages": [p["slug"] for p in ps]}
@@ -637,7 +638,9 @@ def sitemap_job(site_id: str, want: int = 25, words: str = "") -> None:
         else:                                 # this job's own thread still counts as busy: the build starts right after it
             _BUILD_AFTER.add(site_id)
         return
-    r = _save(site_id, plan=plan, stage="plan", board=_board(r, plan, now_line=f"Site map taiyaar: {n['total']} pages"))
+    gate = plan.get("gate") or []
+    line = f"Site map taiyaar: {n['total']} pages" + (f". SEO note: {gate[0]['say']}" if gate else "")
+    r = _save(site_id, plan=plan, stage="plan", board=_board(r, plan, now_line=line[:300]))
     _emit(r, push=True)
 
 

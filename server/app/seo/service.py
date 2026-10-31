@@ -17,6 +17,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import logging
@@ -70,6 +71,7 @@ class SeoSite(Base):
     last_crawl: Mapped[str] = mapped_column(String(20), default="")
     cwv: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    pro: Mapped[str | None] = mapped_column(Text, nullable=True)   # v0.319 health / E-E-A-T / local / AI bots / drift
 
 
 class SeoPage(Base):
@@ -209,6 +211,48 @@ def _fetch(url: str, max_bytes: int = 4_000_000) -> tuple[int, str, str, int]:
             c.close()
 
 
+def _meta(url: str) -> tuple[int, dict[str, str], list[str]]:
+    """v0.319 GET the home page step by step -> (status, final response headers, every URL on the way). Hops > 1 =
+    a redirect chain."""
+    c, own = _client()
+    hops: list[str] = []
+    try:
+        for _ in range(6):
+            url = _safe(url)
+            hops.append(url)
+            try:
+                r = c.get(url, headers={"User-Agent": UA}, follow_redirects=False)
+            except httpx.HTTPError as e:
+                raise SeoError(f"{url} khula nahi ({type(e).__name__}).")
+            if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("location"):
+                url = urljoin(url, r.headers["location"])
+                continue
+            return r.status_code, {k.lower(): v for k, v in r.headers.items()}, hops
+        raise SeoError("Bahut zyada redirect.")
+    finally:
+        if own:
+            c.close()
+
+
+def _sizes(urls: list[str], limit: int = 40) -> dict[str, int]:
+    """v0.319 picture weights from HEAD (Content-Length) for up to `limit` pictures; any failure is just left out."""
+    c, own = _client()
+    out: dict[str, int] = {}
+    try:
+        for u in list(dict.fromkeys(urls))[:limit]:
+            try:
+                r = c.head(_safe(u), headers={"User-Agent": UA}, follow_redirects=True, timeout=10)
+                n = int(r.headers.get("content-length") or 0)
+                if r.status_code < 400 and n:
+                    out[u] = n
+            except (SeoError, httpx.HTTPError, ValueError, AttributeError, TypeError):
+                continue
+    finally:
+        if own:
+            c.close()
+    return out
+
+
 class _Page(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -221,6 +265,12 @@ class _Page(HTMLParser):
         self.jsonld: list[str] = []
         self.text: list[str] = []
         self.mixed = 0                          # v0.317 http:// pictures / scripts / styles on an https page
+        self.og: dict[str, str] = {}            # v0.319 SEO PRO: what drift / quality / images / hreflang / E-E-A-T read
+        self.hreflang: list[tuple[str, str]] = []
+        self.author, self.published = "", ""
+        self.imgs: list[dict[str, Any]] = []
+        self.tel: list[str] = []
+        self.scripts, self.root, self.map = 0, False, False
         self._in, self._buf, self._skip = "", [], 0
 
     def handle_starttag(self, tag, attrs):
@@ -235,15 +285,40 @@ class _Page(HTMLParser):
                 self.robots = a.get("content", "").lower()
             elif n == "viewport":
                 self.viewport = True
+            elif n in ("og:title", "og:description", "og:image", "og:url", "twitter:card"):
+                self.og[n] = a.get("content", "")[:200]
+            elif n == "author":
+                self.author = self.author or a.get("content", "")[:80]
+            elif n in ("article:published_time", "article:modified_time", "date"):
+                self.published = self.published or a.get("content", "")[:30]
         elif tag == "link" and "canonical" in a.get("rel", "").lower():
             self.canonical = a.get("href", "")
+        elif tag == "link" and "alternate" in a.get("rel", "").lower() and a.get("hreflang") and a.get("href"):
+            self.hreflang.append((a["hreflang"].strip(), a["href"]))
         elif tag == "a" and a.get("href"):
             self.links.append(a["href"])
+            if a["href"].startswith("tel:"):
+                self.tel.append(a["href"][4:])
+            if "author" in a.get("rel", "").lower() and not self.author:
+                self.author = "link"
+            if re.search(r"google\.[a-z.]+/maps|maps\.app\.goo\.gl|goo\.gl/maps", a["href"]):
+                self.map = True
+        elif tag == "time" and a.get("datetime"):
+            self.published = self.published or a["datetime"][:30]
         elif tag == "img":
             self.mixed += a.get("src", "").startswith("http://")
             self.img += 1
             if not a.get("alt", "").strip():
                 self.img_no_alt += 1
+            src = a.get("src") or a.get("data-src") or ""
+            if src and not src.startswith("data:") and len(self.imgs) < 40:
+                num = lambda v: int(v) if str(v).isdigit() else None          # noqa: E731
+                self.imgs.append({"src": src, "w": num(a.get("width", "")), "h": num(a.get("height", "")),
+                                  "loading": a.get("loading", "").lower()})
+        elif tag == "iframe" and re.search(r"google\.[a-z.]+/maps", a.get("src", "")):
+            self.map = True
+        elif tag in ("div", "main") and a.get("id", "") in ("root", "app", "__next", "__nuxt", "svelte"):
+            self.root = True
         elif tag in ("script", "iframe", "link") and (a.get("src") or (a.get("href") if tag == "link" else "") or "").startswith("http://") \
                 and (tag != "link" or re.search(r"stylesheet|icon|preload", a.get("rel", ""), re.I)):
             self.mixed += 1
@@ -253,6 +328,7 @@ class _Page(HTMLParser):
             self._in, self._buf = "jsonld", []
         elif tag in ("script", "style", "noscript", "svg"):
             self._skip += 1
+            self.scripts += tag == "script"
         elif tag in ("title", "h1", "h2"):
             self._in, self._buf = tag, []
 
@@ -293,7 +369,22 @@ def _parse(url: str, status: int, html: str, size: int, home: str, city: str = "
                      j, re.I):
             local = True
     path = urlparse(url).path.rstrip("/")
-    d = {"url": url, "status": status, "title": p.title[:300], "description": p.description[:400], "h1": p.h1[:5], "h2": p.h2[:15],
+    from . import pro as P
+    sch = P.schema_parse(p.jsonld)
+    for j in p.jsonld:                        # author / date / sameAs inside JSON-LD count too
+        if not p.author and re.search(r'"author"\s*:', j):
+            p.author = "schema"
+        if not p.published:
+            m = re.search(r'"date(?:Published|Modified)"\s*:\s*"([^"]{8,30})"', j)
+            p.published = m.group(1) if m else ""
+    body = re.sub(r"\s+", " ", " ".join(p.text)).strip()
+    d0 = {"canonical": canon, "schema_types": sch["types"], "schema_hash": sch["hash"], "schema_problems": sch["problems"],
+          "og": p.og, "hreflang": [(h, urljoin(url, u)) for h, u in p.hreflang[:30]], "author": p.author, "published": p.published,
+          "imgs": [{**i, "src": urljoin(url, i["src"])} for i in p.imgs], "map": p.map,
+          "phones": sorted({x.strip() for x in p.tel + P._PHONE.findall(body[:20000])})[:8],
+          "text_sample": body[:6000], "text_hash": hashlib.sha1(body.encode()).hexdigest()[:16],
+          "js_shell": words < 80 and (p.root or p.scripts >= 4), "sameas": any('"sameAs"' in j for j in p.jsonld)}
+    d = {**d0, "url": url, "status": status, "title": p.title[:300], "description": p.description[:400], "h1": p.h1[:5], "h2": p.h2[:15],
          "words": words, "img": p.img, "img_no_alt": p.img_no_alt, "viewport": p.viewport, "https": url.startswith("https://"),
          "noindex": "noindex" in p.robots, "lang": p.lang, "bytes": size, "schema_local": local,
          "canonical_other": canon if canon and canon.rstrip("/") != url.rstrip("/") else "",
@@ -301,6 +392,14 @@ def _parse(url: str, status: int, html: str, size: int, home: str, city: str = "
          "mixed": p.mixed if url.startswith("https://") else 0}
     host = urlparse(home).hostname
     links = []
+    ext: set[str] = set()
+    for h in p.links:
+        u = urljoin(url, h)
+        hn = urlparse(u).hostname or ""
+        if urlparse(u).scheme in ("http", "https") and hn and hn.removeprefix("www.") != (host or "").removeprefix("www."):
+            ext.add(u.split("#")[0][:200])
+    d["ext"] = sorted(ext)[:40]
+    d["ext_links"] = len({urlparse(u).hostname for u in ext if not re.search(r"facebook|instagram|twitter|x\.com|youtube|linkedin|wa\.me|whatsapp|google", u)})
     for h in p.links:
         u = urldefrag(urljoin(url, h))[0]
         pu = urlparse(u)
@@ -327,7 +426,8 @@ def _site(s, tenant: str, ref: str = "") -> SeoSite:
 
 def _site_view(r: SeoSite) -> dict:
     return {"id": r.id, "url": r.url, "name": r.name, "business": _j(r.business, {}), "services": _j(r.services, []),
-            "gsc_property": r.gsc_property, "score": r.score, "last_crawl": r.last_crawl, "cwv": _j(r.cwv, {})}
+            "gsc_property": r.gsc_property, "score": r.score, "last_crawl": r.last_crawl, "cwv": _j(r.cwv, {}),
+            "health": (_j(r.pro or "", {}).get("health") or {}).get("total")}
 
 
 def save_site(tenant: str, url: str = "", name: str = "", site: str = "", services: list | None = None, **biz: Any) -> dict:
@@ -449,29 +549,67 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap:
             time.sleep(_PAUSE)
     if not pages:
         raise SeoError("Website ka ek bhi page nahi khula.")
+    # v0.319 SEO PRO inputs: home headers + redirect hops, picture weights, llms.txt, AI crawler access
+    from . import pro as P
+    try:
+        _st, headers, hops = _meta(home)
+    except SeoError:
+        headers, hops = None, None
+    sizes = _sizes([i["src"] for p in pages[:15] for i in (p.get("imgs") or [])[:6]])
+    try:
+        llms = _fetch(urljoin(home, "/llms.txt"), 100_000)[0] < 400
+    except SeoError:
+        llms = False
+    bots = P.ai_bots(robots_txt, home)
     all_issues = []
+    core: dict[str, list[dict]] = {}
+    drift: list[dict] = []
     stamp = now().isoformat(timespec="seconds")
+    with session() as s:
+        row = s.get(SeoSite, sid)
+        biz = {**_j(row.business, {}), "name": row.name, "url": row.url}
+        services = _j(row.services, [])
+        cwv_m = _j(row.cwv, {}).get("mobile")
     with _LOCK, session() as s:
+        before = {}
         for old in s.scalars(select(SeoPage).where(SeoPage.site_id == sid)).all():
+            before[old.url.rstrip("/")] = _j(old.data, {})
             s.delete(old)
         for p in pages:
             iss = R.page_issues(p, city) if p.get("status", 599) != 599 else [
                 {"code": "unreachable", "level": "bad", "text": f"Page nahi khula: {p.get('error', '')}", "fix": "Server / link check karein."}]
+            core[p["url"]] = list(iss)
+            iss = iss + (P.page_checks(p, sizes) if p.get("status", 599) != 599 else [])
             for i in iss:
                 i["url"] = p["url"]
             all_issues += iss
+            if before.get(p["url"].rstrip("/")):
+                drift += P.drift(before[p["url"].rstrip("/")], p)
             s.add(SeoPage(tenant_id=tenant, site_id=sid, url=p["url"][:600], data=json.dumps(p, ensure_ascii=False),
-                          issues=json.dumps(iss, ensure_ascii=False), score=R.score(iss)))
+                          issues=json.dumps(iss, ensure_ascii=False), score=R.score(core[p["url"]])))
         for i in R.site_issues(pages, robots_txt, sitemap_ok):
             i["url"] = home
             all_issues.append(i)
+            core.setdefault(home, []).append(i)
         all_issues += R.link_issues(pages, sitemap_urls, home, redirects)   # v0.317 broken / redirected links, orphans, depth, dups
+        all_issues += bots["issues"] + P.site_checks(pages, biz, services, home, headers, hops, llms)
+        if before:                                       # pages that were there last time and are gone now
+            gone = sorted(set(before) - {p["url"].rstrip("/") for p in pages})
+            if gone and len(pages) >= len(before) * 0.8:
+                drift += [{"rule": "page_gone", "level": "warn", "url": u, "text": "Pichhli jaanch mein yeh page tha, ab nahi mila."} for u in gone[:20]]
+        ok_pages = [p for p in pages if p.get("status", 599) < 400]
+        nap_iss = [i for i in all_issues if i["code"] == "nap"]
+        pro = {"at": stamp, "health": P.health(all_issues, len(pages), cwv_m, home), "eeat": P.eeat(ok_pages, biz),
+               "local": P.local_score(ok_pages, biz, nap_iss), "ai_bots": bots["rows"], "llms": llms,
+               "drift": drift[:60], "headers": sorted((headers or {}).keys())[:30] if headers is not None else None, "hops": hops}
         # tasks: keep her decisions, add new, mark fixed what disappeared
         tasks = {t.key: t for t in s.scalars(select(SeoTask).where(SeoTask.site_id == sid)).all()}
         now_keys = set()
         new = 0
         for i in all_issues:
             k = f"{i['code']}|{i['url']}"[:700]
+            if k in now_keys:          # v0.319 two findings of one kind on one page = one task (the first, most specific)
+                continue
             now_keys.add(k)
             t = tasks.get(k)
             if t is None:
@@ -484,13 +622,15 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap:
                     t.status = "open"          # came back / not really fixed
         fixed = 0
         for k, t in tasks.items():
-            if k not in now_keys and t.status in ("open", "done"):
+            if k not in now_keys and t.status in ("open", "done") and not t.code.startswith("gsc_"):
                 t.status = "fixed"
                 fixed += 1
-        site_score = round(sum(R.score([x for x in all_issues if x["url"] == p["url"]]) for p in pages) / len(pages))
+        # the SEO score keeps its v0.103 meaning (core on-page checks) so a baseline stays comparable; SEO PRO = `pro`
+        site_score = round(sum(R.score(core.get(p["url"], [])) for p in pages) / len(pages))
         site_score = max(0, site_score - 10 * sum(1 for i in all_issues if i["code"] in ("robots_block",)))
         r = s.get(SeoSite, sid)
         r.score, r.last_crawl = site_score, stamp
+        r.pro = json.dumps(pro, ensure_ascii=False)
     bad = sum(1 for i in all_issues if i["level"] == "bad")
     warn = sum(1 for i in all_issues if i["level"] == "warn")
     say = (f"{len(pages)} page jaanche. SEO score {site_score}/100. {bad} zaroori, {warn} dhyaan wali baatein"
@@ -498,8 +638,13 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap:
     if blocked:
         say += f" {len(blocked)} page robots.txt ki wajah se chhode."
     _publish(tenant, "seo_update", {"site": sid, "score": site_score, "bad": bad, "warn": warn, "pages": len(pages)}, conv)
+    hl = pro["health"]
+    say += f" Health {hl['total']}/100" + (f" ({hl['counts']['critical']} critical)" if hl["counts"]["critical"] else "") + "."
+    if drift:
+        say += f" Pichhli jaanch se {len(drift)} badlav" + (f", {sum(1 for x in drift if x['level'] == 'bad')} zaroori" if any(x["level"] == "bad" for x in drift) else "") + "."
     return {"pages": len(pages), "score": site_score, "bad": bad, "warn": warn, "new": new, "fixed": fixed, "sitemap": sitemap_ok,
-            "blocked": blocked[:20], "top": sorted(all_issues, key=lambda i: {"bad": 0, "warn": 1, "info": 2}[i["level"]])[:8], "say": say}
+            "blocked": blocked[:20], "top": sorted(all_issues, key=lambda i: {"bad": 0, "warn": 1, "info": 2}[i["level"]])[:8],
+            "health": hl, "drift": drift[:30], "say": say}
 
 
 def pages(tenant: str, site: str = "") -> list[dict]:
@@ -520,8 +665,13 @@ def tasks(tenant: str, site: str = "", status: str = "open") -> list[dict]:
         if status:
             q = q.where(SeoTask.status == status)
         rows = s.scalars(q).all()
-        out = [{"id": t.id, "code": t.code, "url": t.url, "level": t.level, "text": t.text, "fix": t.fix, "status": t.status} for t in rows]
-    return sorted(out, key=lambda t: ({"bad": 0, "warn": 1, "info": 2}.get(t["level"], 3), t["url"]))
+        home = s.get(SeoSite, sid).url
+        from . import pro as P
+        out = [{"id": t.id, "code": t.code, "url": t.url, "level": t.level, "text": t.text, "fix": t.fix, "status": t.status,
+                "category": P.category(t.code), "priority": P.priority({"code": t.code, "level": t.level, "url": t.url}, home)}
+               for t in rows]
+    order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    return sorted(out, key=lambda t: (order.get(t["priority"], 4), t["url"]))
 
 
 def close_task(tenant: str, task_id: str, status: str = "done") -> dict:
@@ -580,7 +730,8 @@ def pagespeed(tenant: str, site: str = "", url: str = "", strategy: str = "mobil
     grades = {"lcp": R.cwv_grade("lcp", lcp), "inp": R.cwv_grade("inp", inp), "cls": R.cwv_grade("cls", cls)}
     field = any(v != "na" for v in grades.values())
     out = {"url": target, "strategy": q["strategy"], "lcp_ms": lcp, "inp_ms": inp, "cls": cls, "grades": grades, "field_data": field,
-           "origin_level": origin, "lab_score": perf, "fixes": ops[:6], "checked": today(tenant).isoformat()}
+           "origin_level": origin, "lab_score": perf, "fixes": ops[:6], "checked": today(tenant).isoformat(),
+           "lcp_parts": lcp_parts(lh)}
     with session() as s:
         row = s.get(SeoSite, sid)
         cw = _j(row.cwv, {})
@@ -596,7 +747,221 @@ def pagespeed(tenant: str, site: str = "", url: str = "", strategy: str = "mobil
         say += f" Lab score {perf}/100."
     if ops:
         say += " Sabse bada sudhaar: " + ops[0]["title"] + "."
-    return {**out, "say": say}
+    lp = out["lcp_parts"]
+    if lp:
+        big = max(lp, key=lambda x: x["ms"])
+        say += f" LCP mein sabse zyada samay: {big['label']} ({big['ms']} ms)."
+    shot = (((lh.get("audits") or {}).get("final-screenshot") or {}).get("details") or {}).get("data") or ""
+    return {**out, "say": say, "shot": shot if shot.startswith("data:image/") and len(shot) < 400_000 else ""}
+
+
+LCP_PART_NAMES = {"ttfb": "Server ka pehla jawab (TTFB)", "timetofirstbyte": "Server ka pehla jawab (TTFB)",
+                  "loaddelay": "Badi photo ka der se shuru hona (load delay)", "resourceloaddelay": "Badi photo ka der se shuru hona (load delay)",
+                  "loadtime": "Badi photo download (load time)", "resourceloadduration": "Badi photo download (load time)",
+                  "loadduration": "Badi photo download (load time)", "renderdelay": "Dikhne mein der (render delay)",
+                  "elementrenderdelay": "Dikhne mein der (render delay)"}
+
+
+def lcp_parts(lh: dict) -> list[dict]:
+    """v0.319 the four parts of LCP from the Lighthouse result (TTFB / load delay / load time / render delay), so the fix
+    goes at the slow part. Reads both the newer insight audit and the older element audit; [] when neither is there."""
+    au = (lh or {}).get("audits") or {}
+    rows: list[dict] = []
+    for key in ("lcp-breakdown-insight", "largest-contentful-paint-element", "lcp-phases-insight"):
+        det = (au.get(key) or {}).get("details") or {}
+        cands = [det] + [x for x in det.get("items") or [] if isinstance(x, dict)]
+        for c in cands:
+            for it in c.get("items") or []:
+                if not isinstance(it, dict):
+                    continue
+                name = str(it.get("subpart") or it.get("phase") or it.get("label") or "")
+                ms = it.get("duration", it.get("timing"))
+                k = re.sub(r"[^a-z]", "", name.lower())
+                if k in LCP_PART_NAMES and isinstance(ms, (int, float)):
+                    rows.append({"part": k, "label": LCP_PART_NAMES[k], "ms": round(ms)})
+        if rows:
+            break
+    return rows[:4]
+
+
+CRUX_API = "https://chromeuxreport.googleapis.com/v1/records:queryHistoryRecord"
+
+
+def crux_history(tenant: str, site: str = "") -> dict:
+    """v0.319 25 weeks of real-visitor speed (p75 LCP / INP / CLS, phones) from Chrome's CrUX History API, so a slow
+    month shows as a line, not one number. Needs the server's Google API key (PAGESPEED_API_KEY with CrUX enabled)."""
+    from ..config import get_settings
+    key = getattr(get_settings(), "pagespeed_api_key", "") or ""
+    if not key:
+        raise SeoError("CrUX history ke liye server par PAGESPEED_API_KEY chahiye (Chrome UX Report API chalu).")
+    with session() as s:
+        home = _site(s, tenant, site).url
+    body = {"origin": home.rstrip("/"), "formFactor": "PHONE",
+            "metrics": ["largest_contentful_paint", "interaction_to_next_paint", "cumulative_layout_shift"]}
+    c, own = _client()
+    try:
+        r = c.post(CRUX_API + "?key=" + quote(key), json=body, timeout=30)
+    except httpx.HTTPError as e:
+        raise SeoError(f"CrUX se baat nahi hui ({type(e).__name__}).")
+    finally:
+        if own:
+            c.close()
+    if r.status_code == 404:
+        return {"weeks": [], "say": "Is site par Chrome ke paas abhi kaafi asli visitors ka data nahi."}
+    if r.status_code != 200:
+        raise SeoError(f"CrUX ne jawab nahi diya ({r.status_code}).")
+    rec = r.json().get("record") or {}
+    per = rec.get("collectionPeriods") or []
+    m = rec.get("metrics") or {}
+
+    def p75(name):
+        return ((m.get(name) or {}).get("percentilesTimeseries") or {}).get("p75s") or []
+    lcp, inp, cls = p75("largest_contentful_paint"), p75("interaction_to_next_paint"), p75("cumulative_layout_shift")
+    weeks = []
+    for i, pp in enumerate(per):
+        ld = pp.get("lastDate") or {}
+        end = f"{ld.get('year', 0):04d}-{ld.get('month', 0):02d}-{ld.get('day', 0):02d}"
+        g = lambda arr: arr[i] if i < len(arr) else None                       # noqa: E731
+        c_ = g(cls)
+        weeks.append({"end": end, "lcp_ms": g(lcp), "inp_ms": g(inp), "cls": float(c_) if c_ not in (None, "") else None})
+    return {"weeks": weeks[-25:], "say": f"{len(weeks)} hafton ka asli speed data (Chrome)."}
+
+
+# ---------------------------------------------------------------- v0.319 Search Console: URL Inspection + Sitemaps
+INSPECT_API = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect"
+
+
+def gsc_inspect(tenant: str, site: str = "", urls: list[str] | None = None, limit: int = 25) -> list[dict]:
+    """Ask Google itself whether each page is indexed (URL Inspection API, read-only; Google allows 2,000 a day per site,
+    Hoola asks for at most `limit`). -> [{url, verdict, coverage, indexed, last_crawl, google_canonical, rich: [...]}]."""
+    with session() as s:
+        r = _site(s, tenant, site)
+        prop, home = r.gsc_property, r.url
+    prop = prop or _auto_property(tenant, site)
+    out = []
+    for u in list(dict.fromkeys(urls or [home]))[:limit]:
+        try:
+            js = _gsc(tenant, "POST", INSPECT_API, {"inspectionUrl": u, "siteUrl": prop, "languageCode": "en-IN"})
+        except SeoError as e:
+            out.append({"url": u, "error": str(e)[:160]})
+            continue
+        ir = js.get("inspectionResult") or {}
+        ix = ir.get("indexStatusResult") or {}
+        rich = []
+        for d in (ir.get("richResultsResult") or {}).get("detectedItems") or []:
+            iss = [x.get("issueMessage", "") for it in d.get("items") or [] for x in it.get("issues") or []]
+            rich.append({"type": d.get("richResultType", ""), "issues": iss[:4]})
+        cov = ix.get("coverageState", "")
+        out.append({"url": u, "verdict": ix.get("verdict", ""), "coverage": cov,
+                    "indexed": ix.get("verdict") == "PASS" or cov.lower().startswith("submitted and indexed") or cov.lower() == "indexed, not submitted in sitemap",
+                    "robots": ix.get("robotsTxtState", ""), "fetch": ix.get("pageFetchState", ""), "last_crawl": ix.get("lastCrawlTime", ""),
+                    "google_canonical": ix.get("googleCanonical", ""), "user_canonical": ix.get("userCanonical", ""), "rich": rich})
+    return out
+
+
+def gsc_sitemaps(tenant: str, site: str = "") -> list[dict]:
+    """The sitemaps Search Console knows for her site: last read, pending, errors / warnings, pages submitted."""
+    with session() as s:
+        r = _site(s, tenant, site)
+        prop = r.gsc_property
+    prop = prop or _auto_property(tenant, site)
+    js = _gsc(tenant, "GET", f"/sites/{quote(prop, safe='')}/sitemaps")
+    out = []
+    for m in js.get("sitemap") or []:
+        sub = sum(int(c.get("submitted") or 0) for c in m.get("contents") or [])
+        out.append({"path": m.get("path", ""), "last_read": m.get("lastDownloaded", ""), "pending": bool(m.get("isPending")),
+                    "errors": int(m.get("errors") or 0), "warnings": int(m.get("warnings") or 0), "submitted": sub})
+    return out
+
+
+def index_issues(inspected: list[dict], maps: list[dict] | None, home: str) -> list[dict]:
+    """URL Inspection + Sitemaps results -> fix-list issues (codes gsc_*; synced by sync_tasks, not by the crawl)."""
+    out = []
+    for x in inspected:
+        if x.get("error") or x.get("indexed"):
+            continue
+        cov = x.get("coverage") or x.get("verdict") or "not indexed"
+        lvl = "bad" if x["url"].rstrip("/") == home.rstrip("/") else "warn"
+        why = ("Google ne page dekha par index nahi kiya: page ko aur kaam ka banaiye, andar se link dijiye." if "crawled" in cov.lower()
+               else "Google ko page mila par abhi padha nahi: andar ke links aur sitemap mein rakhiye." if "discovered" in cov.lower()
+               else "Search Console mein URL Inspection kholke wajah dekhiye; theek karke 'Request indexing' dabaiye.")
+        out.append({"code": "gsc_not_indexed", "level": lvl, "url": x["url"], "text": f"Google index mein nahi: {cov}.", "fix": why})
+        if x.get("google_canonical") and x.get("user_canonical") and x["google_canonical"].rstrip("/") != x["user_canonical"].rstrip("/"):
+            out.append({"code": "gsc_not_indexed", "level": "info", "url": x["url"],
+                        "text": f"Google ne doosra page asli maana: {x['google_canonical']}", "fix": "Dono pages alag banaiye ya canonical sahi kijiye."})
+    for m in maps or []:
+        if m["errors"] or m["warnings"]:
+            out.append({"code": "gsc_sitemap", "level": "warn" if m["errors"] else "info", "url": m["path"],
+                        "text": f"Search Console: sitemap mein {m['errors']} error, {m['warnings']} warning.",
+                        "fix": "Search Console > Sitemaps mein dekhiye; galat / band URLs hataiye."})
+    if maps == []:
+        out.append({"code": "gsc_sitemap", "level": "warn", "url": home, "text": "Search Console mein koi sitemap jama nahi.",
+                    "fix": "Search Console > Sitemaps mein apna sitemap.xml jama kijiye."})
+    return out
+
+
+def sync_tasks(tenant: str, sid: str, issues: list[dict], prefix: str) -> dict:
+    """Tasks owned by another check (codes starting with `prefix`, e.g. 'gsc_'): add new, keep her decisions, mark fixed
+    what is gone. The crawl leaves these codes alone."""
+    stamp = now().isoformat(timespec="seconds")
+    new = fixed = 0
+    with _LOCK, session() as s:
+        have = {t.key: t for t in s.scalars(select(SeoTask).where(SeoTask.site_id == sid)).all() if t.code.startswith(prefix)}
+        keys = set()
+        for i in issues:
+            k = f"{i['code']}|{i['url']}"[:700]
+            if k in keys:
+                continue
+            keys.add(k)
+            t = have.get(k)
+            if t is None:
+                s.add(SeoTask(tenant_id=tenant, site_id=sid, key=k, code=i["code"], url=i["url"][:600], level=i["level"],
+                              text=i["text"], fix=i["fix"], seen=stamp))
+                new += 1
+            else:
+                t.text, t.fix, t.seen, t.level = i["text"], i["fix"], stamp, i["level"]
+                if t.status == "fixed":
+                    t.status = "open"
+        for k, t in have.items():
+            if k not in keys and t.status in ("open", "done"):
+                t.status = "fixed"
+                fixed += 1
+    return {"new": new, "fixed": fixed}
+
+
+# ---------------------------------------------------------------- v0.319 IndexNow (Bing, Yandex, Naver, Seznam ...)
+INDEXNOW_API = "https://api.indexnow.org/indexnow"
+
+
+def indexnow_check(home: str, key: str) -> bool:
+    """Her site must serve /<key>.txt containing the key (that file is her consent and the protocol's proof)."""
+    if not key:
+        return False
+    try:
+        st_, _f, body, _n = _fetch(urljoin(home, f"/{key}.txt"), 10_000)
+    except SeoError:
+        return False
+    return st_ < 400 and body.strip() == key
+
+
+def indexnow_submit(home: str, key: str, urls: list[str]) -> dict:
+    """Tell IndexNow engines these of HER pages changed (same host only, max 500 a call). Never used for Google: Google does
+    not read IndexNow, and its Indexing API is only for job posts / live streams."""
+    host = urlparse(home).hostname or ""
+    mine = [u for u in dict.fromkeys(urls) if (urlparse(u).hostname or "") == host][:500]
+    if not mine:
+        return {"sent": 0}
+    c, own = _client()
+    try:
+        r = c.post(INDEXNOW_API, json={"host": host, "key": key, "keyLocation": urljoin(home, f"/{key}.txt"), "urlList": mine}, timeout=30)
+    except httpx.HTTPError as e:
+        raise SeoError(f"IndexNow se baat nahi hui ({type(e).__name__}).")
+    finally:
+        if own:
+            c.close()
+    if r.status_code not in (200, 202):
+        raise SeoError(f"IndexNow ne mana kiya ({r.status_code}).")
+    return {"sent": len(mine)}
 
 
 # ---------------------------------------------------------------- Search Console (official API, her read-only sign-in)
@@ -703,7 +1068,7 @@ def _gsc(tenant: str, method: str, path: str, body: dict | None = None) -> dict:
         for force in (False, True):
             h = {"Authorization": f"Bearer {_token(tenant, force)}"}
             try:
-                r = c.request(method, GSC_API + path, headers=h, json=body, timeout=60)
+                r = c.request(method, (GSC_API + path) if path.startswith("/") else path, headers=h, json=body, timeout=60)
             except httpx.HTTPError as e:
                 raise SeoError(f"Search Console se baat nahi hui ({type(e).__name__}).")
             if r.status_code == 401 and not force:
@@ -884,13 +1249,41 @@ def content_brief(tenant: str, keyword: str, site: str = "", conv: str = "") -> 
     return {**out, "say": f"'{kw}' ke liye page ka plan taiyaar (title, headings, FAQ). Aapki haan ke baad final; website par aap / web wale lagayenge."}
 
 
-def schema_draft(tenant: str, site: str = "", conv: str = "") -> dict:
+def pro_view(tenant: str, site: str = "") -> dict:
+    """v0.319 SEO PRO block of the last crawl: health (7 parts), E-E-A-T, local score, AI crawler map, what changed."""
     with session() as s:
         r = _site(s, tenant, site)
-        b = {**_j(r.business, {}), "name": r.name, "url": r.url}
+        pro = _j(r.pro or "", {})
+    if not pro:
+        raise SeoError("Pehle website ki jaanch (audit) chalaiye.")
+    return pro
+
+
+def schema_draft(tenant: str, site: str = "", conv: str = "", kind: str = "", url: str = "") -> dict:
+    """LocalBusiness by default; v0.319 kind = organization | website | breadcrumb | service | product | article (for `url`,
+    one of her crawled pages), only from what she gave and what the page shows."""
+    with session() as s:
+        r = _site(s, tenant, site)
+        b = {**_j(r.business, {}), "name": r.name, "url": r.url, "services": _j(r.services, [])}
         sid = r.id
+        page = {}
+        if url:
+            row = next((x for x in s.scalars(select(SeoPage).where(SeoPage.site_id == sid)).all()
+                        if x.url.rstrip("/") == url.rstrip("/")), None)
+            page = {**(_j(row.data, {}) if row else {}), "url": url}
     if not b.get("name"):
         raise SeoError("Business ka naam bataiye.")
+    kind = (kind or "local").lower().strip()
+    if kind not in ("local", "localbusiness"):
+        from . import pro as P
+        try:
+            d = P.schema_template(kind, b, page)
+        except ValueError as e:
+            raise SeoError(str(e))
+        code = '<script type="application/ld+json">\n' + json.dumps(d, ensure_ascii=False, indent=2) + "\n</script>"
+        out = _draft(tenant, sid, "schema", f"{d['@type']} schema", code, conv)
+        return {**out, "say": f"{d['@type']} JSON-LD taiyaar (sirf jo jaankari mili wahi bhari; khaali cheezein chhod di). "
+                              "Lagane ke baad Google Rich Results Test se jaanchiye."}
     code = R.local_schema(b)
     out = _draft(tenant, sid, "schema", "LocalBusiness schema", code, conv)
     missing = [k for k in ("phone", "street", "city", "pin", "hours") if not b.get(k)]

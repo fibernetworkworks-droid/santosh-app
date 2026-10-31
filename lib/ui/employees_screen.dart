@@ -1,9 +1,12 @@
 /// v0.317 HIRE AN EMPLOYEE (Profile > Employees): the Employee Hub (hire / pause / let go) and the SEO Desk of a
 /// hired SEO Specialist (onboarding, KPIs against the baseline, the 90-day plan, alerts, schedule, run-now buttons).
 /// A desk exists only while its employee is hired. Same server as the web console: /api/employees*, /api/seo/desk...
+/// v0.319 SEO PRO on the desk: health in 7 parts, Google's index answer, AI search bots, trust (E-E-A-T), local score,
+/// speed parts + phone screenshot, IndexNow, and "how we'll know" on every plan item.
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -329,6 +332,21 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
           Text(_s(it['title']), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           if (_s(it['why']).isNotEmpty)
             Padding(padding: const EdgeInsets.only(top: 3), child: Text(_s(it['why']), style: const TextStyle(color: C.muted, fontSize: 12.5))),
+          if (_s(it['signal']).isNotEmpty)
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text("How we'll know", style: TextStyle(fontSize: 12.5, color: C.muted)),
+                childrenPadding: const EdgeInsets.only(bottom: 4),
+                expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Early sign: ${_s(it['signal'])}', style: const TextStyle(fontSize: 12.5)),
+                  const SizedBox(height: 3),
+                  Text('Not working if: ${_s(it['fail_check'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                ],
+              ),
+            ),
           DropdownButton<String>(
             value: _s(it['status']),
             isDense: true,
@@ -404,6 +422,19 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
         const SizedBox(height: 6),
         Text('Baseline from ${_s((d['baseline'] as Map?)?['date'])}. Google data runs three days behind.',
             style: const TextStyle(color: C.faint, fontSize: 11.5)),
+        if ((d['pro'] as Map?)?['health'] != null) ...[
+          const SizedBox(height: 14),
+          _HealthCard(Map<String, dynamic>.from(d['pro'] as Map), Map<String, dynamic>.from((d['index'] as Map?) ?? const {})),
+          const SizedBox(height: 10),
+          _BotsCard(_list((d['pro'] as Map)['ai_bots'])),
+          const SizedBox(height: 10),
+          _ScoreCard('Trust signals (E-E-A-T)', Map<String, dynamic>.from(((d['pro'] as Map)['eeat'] as Map?) ?? const {}), 'key'),
+          const SizedBox(height: 10),
+          _ScoreCard('Local search', Map<String, dynamic>.from(((d['pro'] as Map)['local'] as Map?) ?? const {}), 'label'),
+          const SizedBox(height: 10),
+          _SpeedCard(Map<String, dynamic>.from(((d['latest'] as Map?)?['cwv'] as Map?) ?? const {}),
+              Map<String, dynamic>.from((d['shots'] as Map?) ?? const {})),
+        ],
         const SizedBox(height: 16),
         Text('90-day plan', style: display(15)),
         for (final c in _cols.take(4)) ...[
@@ -444,7 +475,35 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
               child: const Text('Refresh numbers')),
           OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.seoRun('monthly'), 'The PDF arrives in your chat.'),
               child: const Text('Monthly report now')),
+          OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.seoRun('index'), 'Asking Google about your key pages.'),
+              child: const Text('Check Google index')),
         ]),
+        const SizedBox(height: 12),
+        Glass(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('IndexNow', style: display(14)),
+            const SizedBox(height: 4),
+            Text(
+                _s((d['indexnow'] as Map?)?['key']).isEmpty
+                    ? 'Tell Bing and other IndexNow engines about changed pages every week. Google does not use it.'
+                    : 'Put a file named ${_s((d['indexnow'] as Map?)?['key'])}.txt with only that key inside at the top of your website.',
+                style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            const SizedBox(height: 8),
+            OutlinedButton(
+                onPressed: _busy
+                    ? null
+                    : () async {
+                        try {
+                          final r = await widget.app.api!.seoRun('indexnow');
+                          if (mounted) _snack(context, _s(r['say']));
+                          await _load();
+                        } catch (e) {
+                          if (mounted) _snack(context, '$e');
+                        }
+                      },
+                child: Text(_s((d['indexnow'] as Map?)?['key']).isEmpty ? 'Turn on' : 'Check the file')),
+          ]),
+        ),
         const SizedBox(height: 16),
         Text('Open fixes on the website', style: display(15)),
         const SizedBox(height: 6),
@@ -453,7 +512,8 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
             dense: true,
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.circle, size: 10, color: _s(t['level']) == 'bad' ? C.bad : (_s(t['level']) == 'warn' ? C.warn : C.muted)),
-            title: Text(_s(t['text']), style: const TextStyle(fontSize: 13.5)),
+            title: Text('${_s(t['priority']).isEmpty ? '' : '${_s(t['priority']).toUpperCase()} · '}${_s(t['text'])}',
+                style: const TextStyle(fontSize: 13.5)),
             subtitle: Text('${_s(t['url'])}\n${_s(t['fix'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
           ),
       ]);
@@ -466,6 +526,149 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: children),
         ),
       ),
+    );
+  }
+}
+
+
+// ------------------------------------------------------------------ v0.319 SEO PRO cards
+Widget _bar(String label, num? score, num max) {
+  final v = score == null || max <= 0 ? 0.0 : (score / max).clamp(0, 1).toDouble();
+  return Padding(
+    padding: const EdgeInsets.only(top: 7),
+    child: Row(children: [
+      Expanded(flex: 5, child: Text(label, style: const TextStyle(fontSize: 12.5))),
+      Expanded(
+        flex: 4,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(value: v, minHeight: 6, backgroundColor: C.faint.withOpacity(.25), color: C.violet),
+        ),
+      ),
+      SizedBox(
+          width: 52,
+          child: Text(score == null ? '–' : (max == 100 ? '$score' : '$score/$max'),
+              textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, color: C.muted))),
+    ]),
+  );
+}
+
+Widget _head(String title, dynamic total) => Row(children: [
+      Expanded(child: Text(title, style: display(14))),
+      Text(total == null ? '–' : '$total', style: display(20)),
+      const Text('/100', style: TextStyle(color: C.muted, fontSize: 12)),
+    ]);
+
+class _HealthCard extends StatelessWidget {
+  const _HealthCard(this.pro, this.index);
+  final Map<String, dynamic> pro;
+  final Map<String, dynamic> index;
+
+  @override
+  Widget build(BuildContext context) {
+    final h = Map<String, dynamic>.from(pro['health'] as Map);
+    final counts = Map<String, dynamic>.from((h['counts'] as Map?) ?? const {});
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _head('Website health', h['total']),
+        Text(['critical', 'high', 'medium', 'low'].map((k) => '${_s(counts[k])} $k').join(' · '),
+            style: const TextStyle(color: C.muted, fontSize: 12)),
+        for (final p in _list(h['parts'])) _bar('${_s(p['label'])} (${_s(p['weight'])})', p['score'] as num?, 100),
+        if (index['checked'] != null && index['checked'] != 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text("${_s(index['indexed'])} of ${_s(index['checked'])} key pages are in Google's index (Google's own answer).",
+                style: const TextStyle(fontSize: 12.5)),
+          ),
+      ]),
+    );
+  }
+}
+
+class _BotsCard extends StatelessWidget {
+  const _BotsCard(this.bots);
+  final List<Map<String, dynamic>> bots;
+  static const _kinds = {'google': 'Google', 'search': 'AI search', 'user': 'On request', 'training': 'Training only'};
+
+  @override
+  Widget build(BuildContext context) {
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('AI search', style: display(14)),
+        const SizedBox(height: 4),
+        const Text('Search bots decide if ChatGPT, Claude or Perplexity can show you. Blocking training bots costs nothing in search.',
+            style: TextStyle(color: C.muted, fontSize: 12)),
+        for (final b in bots)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(children: [
+              Expanded(child: Text(_s(b['bot']), style: const TextStyle(fontSize: 13))),
+              Text(_kinds[_s(b['kind'])] ?? _s(b['kind']), style: const TextStyle(color: C.muted, fontSize: 12)),
+              const SizedBox(width: 8),
+              _Tag(b['allowed'] == true ? 'Allowed' : 'Blocked',
+                  b['allowed'] == true ? C.ok : (_s(b['kind']) == 'training' ? C.muted : C.bad)),
+            ]),
+          ),
+      ]),
+    );
+  }
+}
+
+class _ScoreCard extends StatelessWidget {
+  const _ScoreCard(this.title, this.data, this.labelKey);
+  final String title;
+  final Map<String, dynamic> data;
+  final String labelKey;
+
+  @override
+  Widget build(BuildContext context) {
+    String cap(String x) => x.isEmpty ? x : x[0].toUpperCase() + x.substring(1);
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _head(title, data['total']),
+        for (final p in _list(data['parts'])) _bar(cap(_s(p[labelKey])), p['score'] as num?, (p['max'] as num?) ?? 100),
+        if (_s(data['note']).isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 8), child: Text(_s(data['note']), style: const TextStyle(color: C.faint, fontSize: 11.5))),
+      ]),
+    );
+  }
+}
+
+class _SpeedCard extends StatelessWidget {
+  const _SpeedCard(this.cwv, this.shots);
+  final Map<String, dynamic> cwv;
+  final Map<String, dynamic> shots;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = _list(cwv['lcp_parts']);
+    final mx = parts.fold<num>(1, (a, p) => (p['ms'] as num) > a ? p['ms'] as num : a);
+    final shot = _s((shots['mobile'] as Map?)?['img']);
+    Uint8List? img;
+    if (shot.startsWith('data:image/') && shot.contains(',')) {
+      try {
+        img = base64Decode(shot.substring(shot.indexOf(',') + 1));
+      } catch (_) {}
+    }
+    return Glass(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Speed on phones', style: display(14)),
+            const SizedBox(height: 4),
+            Text(
+                cwv['lcp_ms'] == null
+                    ? 'Speed appears after the weekly check.'
+                    : 'Main content shows in ${((cwv['lcp_ms'] as num) / 1000).toStringAsFixed(1)} s (good is 2.5 s or less).',
+                style: const TextStyle(fontSize: 12.5)),
+            for (final p in parts) _bar(_s(p['label']), p['ms'] as num?, mx),
+          ]),
+        ),
+        if (img != null) ...[
+          const SizedBox(width: 10),
+          ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(img, width: 84, fit: BoxFit.cover)),
+        ],
+      ]),
     );
   }
 }

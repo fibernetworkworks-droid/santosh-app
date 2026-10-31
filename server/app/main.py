@@ -6661,8 +6661,8 @@ def seo_run(job: str, body: dict | None = None, tenant: str = Depends(current_te
     from .employee import hire
     from .seo import desk
     from .seo import service as seo
-    if job not in ("first", "hourly", "daily", "weekly", "monthly", "roadmap"):
-        raise HTTPException(404, "job: first | hourly | daily | weekly | monthly | roadmap")
+    if job not in ("first", "hourly", "daily", "weekly", "monthly", "roadmap", "index", "speed_history", "indexnow"):
+        raise HTTPException(404, "job: first | hourly | daily | weekly | monthly | roadmap | index | speed_history | indexnow")
     if not hire.is_hired(tenant, desk.KEY):
         raise HTTPException(400, "SEO Specialist abhi hired nahi hai.")
     sid = _hire_call(lambda: seo.sites(tenant) and desk.desk_view(tenant, str((body or {}).get("site") or ""))["site"]["id"])
@@ -6670,7 +6670,9 @@ def seo_run(job: str, body: dict | None = None, tenant: str = Depends(current_te
         raise HTTPException(400, "Pehle onboarding: website ka address.")
     if job == "roadmap":
         return _hire_call(desk.build_roadmap, tenant, sid)
-    threading.Thread(target=lambda: desk.run_job(tenant, sid, job), daemon=True).start()
+    if job == "indexnow":             # v0.319 her IndexNow key + is the file live on her site
+        return _hire_call(desk.indexnow_key, tenant, str((body or {}).get("site") or ""))
+    threading.Thread(target=lambda: desk.run_now(tenant, sid, job), daemon=True).start()
     return {"started": job, "site": sid}
 
 

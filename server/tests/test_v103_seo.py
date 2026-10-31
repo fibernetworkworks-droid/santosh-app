@@ -113,7 +113,9 @@ def test_audit_learns(seo):
     assert ("title_short", "shop.example") in codes and ("city", "shop.example") in codes and ("schema", "shop.example") in codes
     assert ("noindex", "contact") in codes and ("img_alt", "shop.example") in codes
     assert ("dup_title", "shop.example") in codes
-    assert not any(t["url"].endswith("/services") and t["level"] != "info" for t in ts)
+    # v0.319: the fixture repeats one phrase 60 times - the SEO PRO content check rightly calls that keyword stuffing
+    assert not any(t["url"].endswith("/services") and t["level"] != "info" and t["code"] != "stuffing" for t in ts)
+    assert any(t["url"].endswith("/services") and t["code"] == "stuffing" for t in ts)
     assert all("private" not in p["url"] for p in S.pages(T))
     assert 0 < r["score"] < 100
     STATE["home"] = HOME.replace("<title>Sharma Dental</title>", "<title>Best Dentist in Akola | Sharma Dental Clinic</title>")
