@@ -27,6 +27,10 @@ from . import taxonomy as T
 log = logging.getLogger("santosh.site.sitemap")
 
 LEGAL = ("privacy", "refund", "disclaimer", "terms")
+# v0.319 scaled-content gate (Google spam policy): a LIST of places is held to 50 pages and warned at 30; any list where half
+# the items have nothing of their own beyond the name is warned. Same numbers as the SEO audit (seo/pro.py).
+LOCATION_LIST = re.compile(r"\b(locations?|cities|city|areas?|branch(es)?|shehar|ilaka|zones?|service-areas?|coverage)\b", re.I)
+LOCATION_WARN, LOCATION_STOP = 30, 50
 FIELD_KEY = re.compile(r"[^a-z0-9_]")
 PLACE = re.compile(r"\{\{\s*([a-z0-9_]+)\s*\}\}")
 BIG_WORDS = re.compile(r"\b(bad[ia] website|large website|big website|complete website|full website|portal|directory|"
@@ -190,6 +194,7 @@ def clean(raw: Any, br: dict[str, Any], base: dict[str, Any], want: int) -> dict
     # collections: a listing page + a hidden template page; items filled by code
     room = max(0, max_pages() - len(pages))
     cols: list[dict[str, Any]] = []
+    gate: list[dict[str, Any]] = []
     for c in raw.get("collections") if isinstance(raw.get("collections"), list) else []:
         if not isinstance(c, dict) or len(cols) >= 8 or room <= 0:
             continue
@@ -205,6 +210,9 @@ def clean(raw: Any, br: dict[str, Any], base: dict[str, Any], want: int) -> dict
             if len(fields) >= 10:
                 break
         cap = room - (0 if key in known else 1)          # its own listing page counts too
+        is_loc = bool(LOCATION_LIST.search(f"{key} {c.get('label') or ''}"))
+        if is_loc:                                       # v0.319 scaled-content gate: location pages stop at 50
+            cap = min(cap, LOCATION_STOP)
         if cap <= 0:
             continue
         items, iseen = [], set()
@@ -224,6 +232,14 @@ def clean(raw: Any, br: dict[str, Any], base: dict[str, Any], want: int) -> dict
             continue
         room -= len(items) + (0 if key in known else 1)
         label = _tidy(c.get("label"), 40) or key.replace("-", " ").title()
+        same = len(items) - len({json.dumps(it["data"], sort_keys=True) for it in items})
+        empty = sum(1 for it in items if not any(it["data"].values()))
+        if (is_loc and len(items) >= LOCATION_WARN) or (len(items) >= 10 and (same + empty) * 2 >= len(items)):
+            gate.append({"collection": key, "items": len(items), "location": is_loc, "same": same, "empty": empty,
+                         "say": (f"{label}: {len(items)} pages" + (" for places" if is_loc else "") +
+                                 f", {same + empty} of them have nothing of their own beyond the name. Google treats many "
+                                 "look-alike pages as scaled content: give each its own facts (price, timing, photos, a review) "
+                                 "or keep fewer.")})
         cols.append({"key": key, "label": label, "item_label": _tidy(c.get("item_label"), 30) or label,
                      "fields": fields, "items": items})
         if key not in known:                 # its listing page
@@ -240,7 +256,7 @@ def clean(raw: Any, br: dict[str, Any], base: dict[str, Any], want: int) -> dict
                       "template_of": key, "sections": tsecs})
     legal = [p for p in base.get("pages", []) if p["slug"] in LEGAL]
     plan = {"brief_id": base.get("brief_id"), "pages": pages + legal, "collections": cols, "cta": base.get("cta"),
-            "legal": base.get("legal"), "big": True, "want": want, "notes": _tidy(raw.get("notes"), 200)}
+            "legal": base.get("legal"), "big": True, "want": want, "notes": _tidy(raw.get("notes"), 200), "gate": gate}
     return plan
 
 

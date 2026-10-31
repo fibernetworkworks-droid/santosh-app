@@ -16,14 +16,20 @@ SEO_TOOLS = [
         "honoured), checks every page + site, makes the fix list with the exact fix. action=speed: site, url, strategy mobile|"
         "desktop -> Core Web Vitals (PageSpeed Insights). action=performance: site, days -> Search Console clicks / impressions / "
         "CTR / position vs previous period, striking-distance + low-CTR opportunities, cannibalisation (needs her Search Console "
-        "connected in the app). action=brief: keyword (new page plan). action=schema (LocalBusiness JSON-LD). action=gbp_post: "
+        "connected in the app). action=brief: keyword (new page plan). action=schema: kind local (LocalBusiness, default) | "
+        "organization | website | breadcrumb | service | product | article, url (which page) -> JSON-LD draft. action=inspect: "
+        "urls [her pages] -> Google's own index verdict per page (Search Console URL Inspection). action=crux -> 25 weeks of "
+        "real-visitor speed (Chrome UX Report). action=gbp_post: "
         "topic, offer. action=review_reply: review, stars, reviewer. action=approve: draft_id, text (ONLY when she says it is "
         "final). action=task: task_id, status done|ignored|open. action=report (Excel). action=settings: weekday, morning_time. "
         "v0.317 HIRED SEO EMPLOYEE (only when she hired it in Employees): action=report_pdf (the monthly PDF report now), "
-        "action=roadmap (rebuild the 90-day plan draft), action=plan_item: item_id, status planned|doing|waiting_her|done|skipped."),
+        "action=roadmap (rebuild the 90-day plan draft), action=plan_item: item_id, status planned|doing|waiting_her|done|skipped, "
+        "action=indexnow (her IndexNow key file; once she puts it on the site, changed pages go to Bing / IndexNow weekly)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["site", "audit", "speed", "performance", "brief", "schema", "gbp_post", "review_reply",
-                                               "approve", "task", "report", "settings", "report_pdf", "roadmap", "plan_item"]},
+                                               "approve", "task", "report", "settings", "report_pdf", "roadmap", "plan_item",
+                                               "inspect", "crux", "indexnow"]},
+         "kind": {"type": "string"}, "urls": {"type": "array", "items": {"type": "string"}},
          "item_id": {"type": "string"},
          "site": {"type": "string"}, "url": {"type": "string"}, "name": {"type": "string"}, "city": {"type": "string"},
          "state": {"type": "string"}, "street": {"type": "string"}, "pin": {"type": "string"}, "phone": {"type": "string"},
@@ -38,9 +44,13 @@ SEO_TOOLS = [
         "Read SEO work (nothing changes). what=summary (score, open fixes, weekly numbers, Search Console link) | sites | tasks "
         "(status open|done|fixed|ignored) | pages | keywords (plan from her services + city, with Search Console positions) | "
         "drafts | gsc (connected? properties) | rules (Google spam policies she must not break + Business Profile checklist) | "
-        "desk (v0.317 the hired SEO Employee: KPIs vs baseline, 90-day plan board, alerts, schedule; says if not hired)."),
+        "desk (v0.317 the hired SEO Employee: KPIs vs baseline, 90-day plan board, alerts, schedule; says if not hired) | "
+        "health (v0.319 last audit: health score in 7 parts with critical/high/medium/low counts, E-E-A-T signals, local "
+        "score, which AI search / training bots robots.txt lets in) | changes (what changed on her pages since the last audit) | "
+        "updates (Google's confirmed core / spam updates, to explain a rise or drop)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["summary", "sites", "tasks", "pages", "keywords", "drafts", "gsc", "rules", "desk"]},
+         "what": {"type": "string", "enum": ["summary", "sites", "tasks", "pages", "keywords", "drafts", "gsc", "rules", "desk",
+                                             "health", "changes", "updates"]},
          "site": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
@@ -73,7 +83,14 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "brief":
             return S.content_brief(t, _s(a.get("keyword")), site, conv)
         if action == "schema":
-            return S.schema_draft(t, site, conv)
+            return S.schema_draft(t, site, conv, _s(a.get("kind")), _s(a.get("url")))
+        if action == "inspect":
+            urls = [str(u) for u in (a.get("urls") or []) if str(u).strip()] or ([_s(a.get("url"))] if a.get("url") else None)
+            rows = S.gsc_inspect(t, site, urls, limit=20)
+            ok = [x for x in rows if not x.get("error")]
+            return {"pages": rows, "say": f"Google ke hisaab se {sum(1 for x in ok if x['indexed'])} / {len(ok)} page index mein."}
+        if action == "crux":
+            return S.crux_history(t, site)
         if action == "gbp_post":
             return S.gbp_post(t, _s(a.get("topic")), _s(a.get("offer")), site, conv)
         if action == "review_reply":
@@ -90,13 +107,15 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if not _owner(ctx):
                 raise ToolError("Sirf owner.")
             return S.save_settings(t, **{k: a[k] for k in ("weekday", "morning_time") if k in a})
-        if action in ("report_pdf", "roadmap", "plan_item"):
+        if action in ("report_pdf", "roadmap", "plan_item", "indexnow"):
             from ..employee import hire
             from ..seo import desk as D
             if not hire.is_hired(t, D.KEY):
                 raise ToolError("SEO Specialist hired nahi hai: Employees mein hire karne ke baad yeh kaam hota hai.")
             if action == "plan_item":
                 return D.set_item(t, _s(a.get("item_id")), _s(a.get("status")))
+            if action == "indexnow":
+                return D.indexnow_key(t, site)
             sid = D.desk_view(t, site).get("site", {}).get("id")
             if not sid:
                 raise ToolError("Pehle onboarding: Employees > SEO Specialist mein website jodiye.")
@@ -137,8 +156,20 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             v = D.desk_view(t, site)
             if v.get("onboarded"):
                 v.pop("sites", None)
+                v.pop("shots", None)                  # pictures are for the screen, not the model
                 v["open_tasks"] = v.get("open_tasks", [])[:10]
             return v
+        if what == "health":
+            pro = S.pro_view(t, site)
+            return {k: pro.get(k) for k in ("at", "health", "eeat", "local", "ai_bots", "llms")}
+        if what == "changes":
+            pro = S.pro_view(t, site)
+            return {"at": pro.get("at"), "changes": pro.get("drift") or [],
+                    "say": f"Pichhli jaanch se {len(pro.get('drift') or [])} badlav." if pro.get("drift") else "Pichhli jaanch se koi badlav nahi."}
+        if what == "updates":
+            from ..seo import pro as P
+            return {"updates": [{"date": d, "name": n, "kind": k} for d, n, k in P.UPDATES[-12:]],
+                    "source": "Google Search Status Dashboard / Search Central (confirmed updates only)"}
     except (S.SeoError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("what galat")

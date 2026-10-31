@@ -12402,7 +12402,71 @@ FEW INTERVAL 2) THERE SHOULD BE SLIDER FROM BOTH SIDE THUS SIDE BAR AND A YOUR V
   reset, widths in localStorage (`hoola.studio.sbw` / `.pw`), a thin violet line + grip on hover / drag, hidden under 900px.
 - Tests: `test_v0331_no_blink_resize.py`.
 
-## v0.334.0 SOCH GEHRI + EK KAAM EK AUZAAR + SAAF KATAI + NAAP (built as 0.331; re-versioned past the parallel v0.331-v0.333; owner: "GO" for the rest of docs/LONG_TASK_RCA.md after every v0.330 test passed)
+## v0.334.0 SEO PRO (31 Oct 2026, built as 0.319.0 / 0.320.0 / 0.333.0, re-versioned past the parallel v0.319-v0.333)
+Owner: "https://github.com/AgriciDaniel/claude-seo.git --- check this repo for SEO" -> "ADD ALL USEFUL FEATURES FROM CLAUDE-SEO
+TO HOOLA". claude-seo (MIT, v2.5.0, commit 6be93f4) was read end to end and compared with Hoola's SEO Sahayak (v0.103) and the
+SEO Employee (v0.317). Every check that works through official routes was RE-WRITTEN in Hoola's own code and words (no code
+copied; credit + MIT text in `THIRD_PARTY_NOTICES.md`). Not taken, on purpose: Google results scraping (site: lookups, SERP /
+competitor scoring, briefs from results), DataForSEO / Ahrefs / Moz / Firecrawl and other paid data, crawler impersonation
+(--ua-matrix), AI-text "humanising", the Indexing API for ordinary pages (Google: job posts / live streams only), Bing
+Webmaster API (needs her own key typed somewhere; IndexNow covers Bing), their CC BY-SA phrase list and CC BY prompts.
+
+- `server/app/seo/pro.py` (new, pure functions):
+  - `health()` = 100-point score in 7 parts (technical 22, content 23, on-page 20, schema 10, speed 10, AI search 10, images
+    5); each issue costs bad 25 / warn 10 / info 3 scaled by its share of pages; speed part from field CWV (poor -35, needs
+    improvement -15) else the lab score; any Google-blocking issue caps the total at 40. `priority()` = critical (site or home
+    out of Google) / high / medium / low; `category()` maps every issue code.
+  - `drift()` = 17 rules old crawl vs new (status_error, title_removed/changed, desc_changed, h1_removed/changed (<0.6 similar),
+    canonical_changed/removed, noindex_added, schema_removed/changed/added, og_removed, h2_changed, content_changed,
+    words_dropped (>30%), hreflang_removed) + page_gone in the crawl.
+  - `ai_bots()` = 17 crawlers with kind google / search / user / training; a blocked SEARCH bot = warn (that AI cannot cite
+    her), a blocked TRAINING bot = info (her choice), Googlebot blocked = bad.
+  - `schema_parse()` (invalid JSON, no @context, retired types HowTo / SpecialAnnouncement / CourseInfo / EstimatedSalary /
+    LearningVideo / VehicleListing / ClaimReview / PracticeProblem, FAQPage no rich result since 7 May 2026, required fields per
+    type) + `schema_template()` organization / website / breadcrumb / service / product / article (empty fields left out).
+  - `quality()` page-type word floors (home 500, service 800, blog 1500, product 300, location 500; info only - word count is
+    not a ranking factor), readability (avg > 26 words), stuffing (one word > 4.5% of 300+), own English + Hinglish filler list,
+    numbers without a source link, blog without author / date. `js_only` = < 80 words in raw HTML with an app root / 4+ scripts.
+  - `image_issues()` weight bands KB hero 200/300/700, content 100/200/500, thumb 50/100/200 (HEAD Content-Length, up to 40
+    pictures a crawl), no width/height, no lazy below the first 3, JPG/PNG share. `hreflang_page/site()` codes, self link,
+    x-default, return links, targets that 404 / noindex.
+  - `site_checks()` near duplicates (5-word shingles, Jaccard >= 0.8), one templated title on 10+ pages, scaled pages per folder
+    (warn 100 / stop 500; location folders 30 / 50; unique share < 40% warn, < 30% bad), NAP (phone vs hers, many phones, pin on
+    home / contact), *.business.site links (closed 2024), parasite / hacked pages (betting, pills, essays... not in her services),
+    security headers (HSTS, nosniff, referrer, frame), redirect hops > 1, llms.txt (info; Google does not need it), E-E-A-T.
+  - `eeat()` 20 / 25 / 25 / 30 from what the crawl sees (signals, not a Google number); `local_score()` Google profile 25,
+    reviews 20, on-page 20, NAP 15, schema 10, sameAs 10 - parts Hoola cannot measure yet (GBP API) say "not checked" and do not
+    count. `envelope()` first principle / fail check / leading signal per workstream. `UPDATES` = Google's confirmed core /
+    spam / policy / schema changes 2024-2026 (official sources only), `updates_between()` padded a week back.
+- `seo/service.py`: the parser keeps canonical, schema types / hash / problems, og tags, hreflang, author / date (meta, rel,
+  <time>, JSON-LD), up to 40 pictures, outside links, phones (tel: + Indian mobile pattern), map link, 6,000-character text
+  sample + hash, js_shell, sameAs. `crawl()` adds `_meta()` (home headers + every hop), `_sizes()` (HEAD), llms.txt, AI bots,
+  `pro.page_checks()` per page and `pro.site_checks()`; compares every page with its last crawl (drift); saves
+  `SeoSite.pro` (health, eeat, local, ai_bots, llms, drift, headers, hops). The SEO SCORE keeps its v0.103 meaning (core checks
+  only) so a v0.317 baseline stays comparable; two findings of one kind on one page = one task; tasks carry category +
+  priority and sort by priority. New: `lcp_parts()` (TTFB / load delay / load time / render delay from Lighthouse) + the
+  final screenshot in `pagespeed()`, `crux_history()` (CrUX History API, 25 weeks, needs PAGESPEED_API_KEY with CrUX on),
+  `gsc_inspect()` (URL Inspection API, <= 25 a week), `gsc_sitemaps()`, `index_issues()` + `sync_tasks()` (codes gsc_*,
+  which the crawl leaves alone), `indexnow_check()` / `indexnow_submit()` (api.indexnow.org, her host only), `pro_view()`,
+  `schema_draft(kind, url)`.
+- `seo/desk.py`: SeoDesk columns index / shots / crux / indexnow_key; roadmap columns fail_check / signal (Opus is asked for
+  them, rules fill from the envelope). Weekly adds drift events (each urgent change its own alert, the rest one line), the
+  clicks-drop alert (>= 25% week on week from >= 20 clicks, naming Google updates in the window), the Google index check, CrUX
+  history, the desktop screenshot, IndexNow for changed pages when her key file is live. Hourly watch compares the home page
+  with its last crawl and alerts once per new urgent change. Desk view + monthly report carry health, index, E-E-A-T, Google
+  changes this month, early sign / not-working-if per next step. Jobs index / speed_history / indexnow via /api/seo/run/{job};
+  `run_now()` writes a failed run on the desk.
+- `site/sitemap.py` scaled-content gate for Hoola-built big websites: a LIST of places stops at 50 pages; a place list from 30,
+  or any list where half the items have nothing beyond the name, gets a warning in `plan.gate` (shown as the board's line and
+  `seo_gate` in the site view). Nothing is dropped silently.
+- Tools: `seo` action=schema kind/url, inspect (urls), crux, indexnow (hired); `seo_dekho` what=health | changes | updates.
+- Console `employees.js` + v2.css `em-*` SEO PRO block: health bars, Google index line, AI search table, E-E-A-T (open each
+  part), local score, phone speed + LCP parts + 25-week line, Google's screenshots, IndexNow card, priority column, "How we'll
+  know" on plan items, Check Google index button. Phone `employees_screen.dart`: _HealthCard, _BotsCard, _ScoreCard (E-E-A-T,
+  local), _SpeedCard (+ phone screenshot), IndexNow card, Check Google index, priority on fixes, "How we'll know".
+- Tests: `test_v0319_seo_pro.py` (16). `test_v103_seo` now expects the stuffing finding on its fixture page (the phrase repeats
+  60 times). Not verified live: Google's URL Inspection / Sitemaps / CrUX answers (shapes from Google's docs, mocked in tests).
+## v0.335.0 SOCH GEHRI + EK KAAM EK AUZAAR + SAAF KATAI + NAAP (built as 0.331; re-versioned past the parallel v0.331-v0.334; owner: "GO" for the rest of docs/LONG_TASK_RCA.md after every v0.330 test passed)
 (1) SOCH GEHRI: a long job (plan / step-24 switch / server plan / clearly big ask) runs on Claude even when CHAT_LLM picks a
 cheaper brain (AGENT_LONG_ON_CLAUDE), at Claude effort AGENT_LONG_EFFORT=xhigh (Anthropic: agentic work over ~30 min); a hard
 reasoning ask (agent/hard.py) at AGENT_HARD_EFFORT=high; plain chat keeps the model's default. Effort is set ONCE per step

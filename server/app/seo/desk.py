@@ -27,6 +27,7 @@ from sqlalchemy import DateTime, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now, session
+from . import pro as P
 from . import rules as R
 from . import service as S
 
@@ -57,6 +58,10 @@ class SeoDesk(Base):
     roadmap_status: Mapped[str] = mapped_column(String(12), default="none")   # none | draft | approved
     state: Mapped[str] = mapped_column(String(16), default="new")     # new | first_run | ready | error
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    index: Mapped[str | None] = mapped_column(Text, nullable=True)       # v0.319 URL Inspection + Sitemaps API, weekly
+    shots: Mapped[str | None] = mapped_column(Text, nullable=True)       # v0.319 {mobile, desktop} screenshots (PageSpeed)
+    crux: Mapped[str | None] = mapped_column(Text, nullable=True)        # v0.319 25 weeks of real-visitor speed
+    indexnow_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class SeoRoadmapItem(Base):
@@ -74,6 +79,8 @@ class SeoRoadmapItem(Base):
     status: Mapped[str] = mapped_column(String(12), default="planned")
     source: Mapped[str] = mapped_column(String(8), default="rules")    # opus | rules
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    fail_check: Mapped[str | None] = mapped_column(Text, nullable=True)  # v0.319 how we would know it did not work
+    signal: Mapped[str | None] = mapped_column(Text, nullable=True)      # v0.319 the early number that shows it working
 
 
 class SeoEvent(Base):
@@ -229,7 +236,8 @@ def _refresh_numbers(tenant: str, sid: str, with_speed: bool = False, store: boo
         try:
             sp = S.pagespeed(tenant, sid)
             out["cwv"] = {"lcp_ms": sp.get("lcp_ms"), "inp_ms": sp.get("inp_ms"), "cls": sp.get("cls"), "lab": sp.get("lab_score"),
-                          "field": bool(sp.get("field_data"))}
+                          "field": bool(sp.get("field_data")), "lcp_parts": sp.get("lcp_parts") or []}
+            _save_shot(sid, "mobile", sp.get("shot"))
         except S.SeoError:
             pass
     if S.gsc_status(tenant)["connected"]:
@@ -244,6 +252,17 @@ def _refresh_numbers(tenant: str, sid: str, with_speed: bool = False, store: boo
         except S.SeoError as e:
             out["ga4_error"] = str(e)[:200]
     return out
+
+
+def _save_shot(sid: str, kind: str, shot: str | None) -> None:
+    if not shot:
+        return
+    with session() as s:
+        d = s.get(SeoDesk, sid)
+        if d:
+            sh = _j(d.shots or "", {})
+            sh[kind] = {"img": shot, "at": now().isoformat(timespec="seconds")}
+            d.shots = json.dumps(sh)
 
 
 def _ga4(tenant: str, method: str, url: str, body: dict | None = None) -> dict:
@@ -333,11 +352,15 @@ business from its REAL audit and Search Console data. Work in the order agencies
 and cities she named, then local (Google Business Profile, reviews), then authority (real local links / PR, never bought
 links), then AI-search visibility (answer-first pages, FAQs, consistent business facts). Never plan: buying links, fake
 reviews, doorway or mass AI pages, keyword stuffing, promising rankings. Each item is one concrete piece of work a
-person can check as done. 10-18 items over 13 weeks, most impact first."""
+person can check as done. 10-18 items over 13 weeks, most impact first. For every item also say how we would know it
+FAILED (a check with a time limit) and the LEADING SIGNAL that shows it working early - she trusts a plan that can be
+proven wrong."""
 
 PLAN_FIELDS = ('Reply JSON: {"items": [{"week": 1-13, "workstream": one of ' + json.dumps(list(WORKSTREAMS)) +
                ', "title": "short task", "why": "one line, with the real number or page from the data", '
-               '"impact": 1-3, "effort": 1-3, "owner": "hoola" or "her"}]}')
+               '"impact": 1-3, "effort": 1-3, "owner": "hoola" or "her", '
+               '"fail_check": "how we would know it did not work, with a time limit", '
+               '"signal": "the early number that shows it working"}]}')
 
 
 def _plan_inputs(tenant: str, sid: str) -> dict[str, Any]:
@@ -358,7 +381,11 @@ def _plan_inputs(tenant: str, sid: str) -> dict[str, Any]:
                 "issues": sorted(codes.values(), key=lambda c: ({"bad": 0, "warn": 1, "info": 2}.get(c["level"], 3), -c["count"]))[:20],
                 "opportunities": [o for o in ({**(R.opportunity(q) or {}), "query": q.get("query"), "page": q.get("page"),
                                                "position": q.get("position")} for q in rows[:200]) if o.get("do")][:12],
-                "baseline": _j(d.baseline, {}) if d else {}}
+                "baseline": _j(d.baseline, {}) if d else {},
+                "health": (_j(site.pro or "", {}) if site else {}).get("health"),
+                "eeat": {k: v for k, v in ((_j(site.pro or "", {}) if site else {}).get("eeat") or {}).items() if k == "total"},
+                "ai_bots_blocked": [b["bot"] for b in (_j(site.pro or "", {}) if site else {}).get("ai_bots") or []
+                                    if not b["allowed"] and b["kind"] in ("search", "google")]}
 
 
 def _rules_roadmap(inp: dict[str, Any]) -> list[dict[str, Any]]:
@@ -407,7 +434,9 @@ def _clean_items(raw: Any) -> list[dict[str, Any]]:
             week, impact, effort = 1, 2, 2
         out.append({"week": week, "workstream": ws if ws in WORKSTREAMS else "technical",
                     "title": str(it["title"]).strip()[:150], "why": str(it.get("why") or "").strip()[:300],
-                    "impact": impact, "effort": effort, "owner": "her" if str(it.get("owner")).lower() == "her" else "hoola"})
+                    "impact": impact, "effort": effort, "owner": "her" if str(it.get("owner")).lower() == "her" else "hoola",
+                    "fail_check": str(it.get("fail_check") or "").strip()[:240] or P.envelope(ws)["fail_check"],
+                    "signal": str(it.get("signal") or "").strip()[:240] or P.envelope(ws)["signal"]})
     return out
 
 
@@ -469,7 +498,10 @@ def roadmap(tenant: str, site: str = "") -> list[dict[str, Any]]:
     with session() as s:
         sid = S._site(s, tenant, site).id
         return [{"id": r.id, "week": r.week, "workstream": r.workstream, "title": r.title, "why": r.why, "impact": r.impact,
-                 "effort": r.effort, "owner": r.owner, "status": r.status, "source": r.source}
+                 "effort": r.effort, "owner": r.owner, "status": r.status, "source": r.source,
+                 "principle": P.envelope(r.workstream)["principle"],
+                 "fail_check": r.fail_check or P.envelope(r.workstream)["fail_check"],
+                 "signal": r.signal or P.envelope(r.workstream)["signal"]}
                 for r in s.scalars(select(SeoRoadmapItem).where(SeoRoadmapItem.site_id == sid)
                                    .order_by(SeoRoadmapItem.week, SeoRoadmapItem.impact.desc())).all()]
 
@@ -517,7 +549,11 @@ def desk_view(tenant: str, site: str = "") -> dict[str, Any]:
         base, latest = _j(d.baseline, {}), _j(d.latest, {})
         info = {"state": d.state, "roadmap_status": d.roadmap_status, "baseline_at": d.baseline_at,
                 "goals": _j(d.goals, {}), "competitors": _j(d.competitors, []), "ga4_property": d.ga4_property,
-                "stamps": _j(d.stamps, {}), "watch": _j(d.watch, {})}
+                "stamps": _j(d.stamps, {}), "watch": _j(d.watch, {}),
+                "index": _j(d.index or "", {}), "shots": {k: v for k, v in _j(d.shots or "", {}).items() if isinstance(v, dict)},
+                "crux": _j(d.crux or "", {}), "indexnow": {"key": d.indexnow_key or ""}}
+        site_row = s.get(S.SeoSite, sid)
+        pro = _j((site_row.pro if site_row else "") or "", {})
         events = [{"kind": e.kind, "level": e.level, "text": e.text, "at": e.at.isoformat() if e.at else ""}
                   for e in s.scalars(select(SeoEvent).where(SeoEvent.site_id == sid).order_by(SeoEvent.at.desc())).all()[:25]]
     rm = roadmap(tenant, sid)
@@ -526,6 +562,7 @@ def desk_view(tenant: str, site: str = "") -> dict[str, Any]:
     return {"hired": True, "status": st, "onboarded": True, "trust": trust, "site": view, "sites": sites, **info,
             "baseline": base, "latest": latest, "kpis": kpis(base, latest), "board": board, "roadmap_count": len(rm),
             "events": events, "google": S.gsc_status(tenant), "open_tasks": S.tasks(tenant, sid, "open")[:30],
+            "pro": {k: pro.get(k) for k in ("at", "health", "eeat", "local", "ai_bots", "llms", "drift", "hops")},
             "schedule": schedule_view(tenant, info["stamps"])}
 
 
@@ -534,7 +571,8 @@ def schedule_view(tenant: str, stamps: dict[str, str]) -> list[dict[str, str]]:
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     return [{"job": "Watch: site up, Google not blocked", "every": "Every hour", "last": stamps.get("hourly", "")},
             {"job": "Google numbers (Search Console, Analytics)", "every": "Every day, 6 am", "last": stamps.get("daily", "")},
-            {"job": "Full website check + speed", "every": f"Every {days[st['weekday']]}", "last": stamps.get("weekly", "")},
+            {"job": "Full website check + speed + what changed + Google index check", "every": f"Every {days[st['weekday']]}",
+             "last": stamps.get("weekly", "")},
             {"job": "Weekly note in chat", "every": f"{days[st['weekday']]} {st['morning_time']}", "last": ""},
             {"job": "Monthly report (PDF)", "every": "1st of every month", "last": stamps.get("monthly", "")}]
 
@@ -554,6 +592,12 @@ def watch(tenant: str, sid: str) -> dict[str, Any]:
         state["status"] = status
         d, _links = S._parse(home, status, html, len(html), home)
         state["noindex"] = bool(d.get("noindex"))
+        with session() as s:               # v0.319 the home page against its last full crawl: urgent changes only
+            hp = next((x for x in s.scalars(select(S.SeoPage).where(S.SeoPage.site_id == sid)).all()
+                       if x.url.rstrip("/") == home.rstrip("/")), None)
+            hp_data = _j(hp.data, {}) if hp else {}
+        d["status"] = status
+        state["drift"] = sorted({x["rule"] for x in P.drift(hp_data, d) if x["level"] == "bad" and x["rule"] != "noindex_added"})
     except S.SeoError as e:
         state.update(up=False, status=599, error=str(e)[:200], noindex=False)
     robots = ""
@@ -582,6 +626,12 @@ def watch(tenant: str, sid: str) -> dict[str, Any]:
             S._publish(tenant, "seo_alert", {"site": sid, "text": text})
         elif was_bad and not now_bad:
             _event(tenant, sid, "recovered", "ok", ok_text, {"check": key})
+    for rule in sorted(set(state.get("drift") or []) - set(prev.get("drift") or [])):
+        text = f"Home page: {next((x['text'] for x in P.drift(hp_data, d) if x['rule'] == rule), rule)}" if state.get("up") else ""
+        if text:
+            alerts.append(text)
+            _event(tenant, sid, "alert", "bad", text, {"check": rule})
+            S._publish(tenant, "seo_alert", {"site": sid, "text": text})
     if prev.get("sitemap") and not state["sitemap"]:
         alerts.append("sitemap.xml ab nahi mil raha.")
         _event(tenant, sid, "alert", "warn", "sitemap.xml ab nahi mil raha.", {"check": "sitemap"})
@@ -616,15 +666,142 @@ def weekly(tenant: str, sid: str) -> dict[str, Any]:
         out["audit"] = S.crawl(tenant, sid, max_pages=int(_hire_setting(tenant, "max_pages") or 200), cap=500)
     except S.SeoError as e:
         out["audit_error"] = str(e)
+    with session() as s:
+        d = s.get(SeoDesk, sid)
+        prev_gsc = (_j(d.latest, {}) if d else {}).get("gsc") or {}
     latest = _refresh_numbers(tenant, sid, with_speed=True, store=True)   # the weekly snapshot = the report's trend line
     with session() as s:
         d = s.get(SeoDesk, sid)
         if d:
             d.latest = json.dumps(latest, ensure_ascii=False)
     a = out.get("audit") or {}
-    _event(tenant, sid, "run", "info", f"Weekly check: {a.get('pages', 0)} pages, score {a.get('score')}, "
+    hl = a.get("health") or {}
+    _event(tenant, sid, "run", "info", f"Weekly check: {a.get('pages', 0)} pages, score {a.get('score')}, health {hl.get('total', '–')}/100, "
            f"{a.get('new', 0)} new issues, {a.get('fixed', 0)} fixed.")
+    out["drift"] = drift_events(tenant, sid, a.get("drift") or [])
+    out["drop"] = drop_alert(tenant, sid, prev_gsc, latest.get("gsc") or {})
+    for name, fn in (("index", index_check), ("crux", speed_history), ("indexnow", indexnow_weekly)):
+        try:
+            out[name] = fn(tenant, sid, a) if name == "indexnow" else fn(tenant, sid)
+        except S.SeoError as e:
+            out[name + "_error"] = str(e)[:200]
+        except Exception as e:   # noqa: BLE001 - one extra never stops the weekly run
+            log.info("seo weekly %s skipped: %s", name, e)
+            out[name + "_error"] = type(e).__name__
+    try:
+        _save_shot(sid, "desktop", S.pagespeed(tenant, sid, strategy="desktop").get("shot"))
+    except S.SeoError:
+        pass
     return out
+
+
+# ---------------------------------------------------------------- v0.319 SEO PRO weekly extras
+def drift_events(tenant: str, sid: str, drift: list[dict[str, Any]]) -> dict[str, int]:
+    """What changed on her pages since last week: each urgent change is its own alert (title / H1 / schema gone, noindex,
+    canonical moved, page broken); the rest is one line on the desk."""
+    bad = [x for x in drift if x["level"] == "bad"]
+    for x in bad[:8]:
+        text = f"{x['url']}: {x['text']}"
+        _event(tenant, sid, "alert", "bad", text, {"drift": x["rule"]})
+        S._publish(tenant, "seo_alert", {"site": sid, "text": text})
+    rest = [x for x in drift if x["level"] != "bad"]
+    if rest:
+        kinds: dict[str, int] = {}
+        for x in rest:
+            kinds[x["rule"]] = kinds.get(x["rule"], 0) + 1
+        _event(tenant, sid, "note", "info", f"{len(rest)} changes on your pages since the last check: "
+               + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in sorted(kinds.items(), key=lambda kv: -kv[1])[:5]) + ".",
+               {"drift": rest[:30]})
+    return {"bad": len(bad), "other": len(rest)}
+
+
+def drop_alert(tenant: str, sid: str, prev: dict[str, Any], cur: dict[str, Any]) -> dict[str, Any] | None:
+    """Clicks down 25%+ week on week (28-day windows, at least 20 clicks before): one alert, with Google's own confirmed
+    updates in that window named so she knows if it was Google or the site."""
+    a, b = prev.get("clicks"), cur.get("clicks")
+    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)) or a < 20 or b > a * 0.75:
+        return None
+    ups = P.updates_between(prev.get("start") or cur.get("start") or "", cur.get("end") or "")
+    pct = round((a - b) * 100 / a)
+    text = f"Clicks from Google fell {pct}% ({a} -> {b}, 28 days)." + (
+        f" Google rolled out: {'; '.join(u['name'] for u in ups[-3:])}. Compare the pages that lost clicks before changing anything."
+        if ups else " No confirmed Google update in this window: check the pages that lost clicks and the alerts above.")
+    _event(tenant, sid, "alert", "warn", text, {"updates": ups})
+    S._publish(tenant, "seo_alert", {"site": sid, "text": text})
+    return {"pct": pct, "updates": ups}
+
+
+def index_check(tenant: str, sid: str) -> dict[str, Any]:
+    """Ask Google (URL Inspection API) about the pages that matter most: the home page, the top pages from Search
+    Console and the newest pages; read the Sitemaps report. Not-indexed pages become fix-list items (codes gsc_*)."""
+    if not S.gsc_status(tenant)["connected"]:
+        raise S.SeoError("Search Console not connected.")
+    with session() as s:
+        site = s.get(S.SeoSite, sid)
+        home = site.url
+        last = s.scalars(select(S.SeoStat).where(S.SeoStat.site_id == sid).order_by(S.SeoStat.end.desc())).first()
+        rows = _j(last.rows, []) if last else []
+        crawled = [p.url for p in s.scalars(select(S.SeoPage).where(S.SeoPage.site_id == sid)).all()]
+    top = [r.get("page") for r in sorted(rows, key=lambda r: -int(r.get("impressions") or 0)) if r.get("page")]
+    pick = [home] + top[:12] + [u for u in crawled if u not in top][:12]
+    limit = int(_hire_setting(tenant, "inspect_limit") or 25)
+    inspected = S.gsc_inspect(tenant, sid, pick, limit=limit)
+    try:
+        maps = S.gsc_sitemaps(tenant, sid)
+    except S.SeoError:
+        maps = None
+    sync = S.sync_tasks(tenant, sid, S.index_issues(inspected, maps, home), "gsc_")
+    ok = [x for x in inspected if not x.get("error")]
+    view = {"at": now().isoformat(timespec="seconds"), "checked": len(ok), "indexed": sum(1 for x in ok if x["indexed"]),
+            "pages": inspected, "sitemaps": maps}
+    with session() as s:
+        d = s.get(SeoDesk, sid)
+        if d:
+            d.index = json.dumps(view, ensure_ascii=False)
+    _event(tenant, sid, "run", "info" if view["indexed"] == view["checked"] else "warn",
+           f"Google index check: {view['indexed']} of {view['checked']} key pages are in Google." + (f" {sync['new']} new to fix." if sync["new"] else ""))
+    return {**view, **sync}
+
+
+def speed_history(tenant: str, sid: str) -> dict[str, Any]:
+    h = S.crux_history(tenant, sid)
+    with session() as s:
+        d = s.get(SeoDesk, sid)
+        if d:
+            d.crux = json.dumps({**h, "at": now().isoformat(timespec="seconds")})
+    return {"weeks": len(h.get("weeks") or [])}
+
+
+def indexnow_key(tenant: str, site: str = "") -> dict[str, Any]:
+    """Her IndexNow key (made once): she (or her web person) puts /<key>.txt on the site; from then on the weekly run tells
+    Bing and the other IndexNow engines which pages changed. Placing the file is her OK."""
+    import secrets
+    _hired(tenant)
+    with session() as s:
+        d = _desk(s, tenant, site)
+        if not d.indexnow_key:
+            d.indexnow_key = secrets.token_hex(16)
+        key, sid = d.indexnow_key, d.site_id
+        home = s.get(S.SeoSite, sid).url
+    live = S.indexnow_check(home, key)
+    return {"key": key, "file": urljoin(home, f"/{key}.txt"), "live": live,
+            "say": "IndexNow is on: changed pages go to Bing and the other IndexNow engines every week." if live else
+            f"Put a file named {key}.txt at {urljoin(home, '/')} containing only the key, then press Check."}
+
+
+def indexnow_weekly(tenant: str, sid: str, audit: dict[str, Any]) -> dict[str, Any]:
+    with session() as s:
+        d = s.get(SeoDesk, sid)
+        key = d.indexnow_key if d else ""
+        home = s.get(S.SeoSite, sid).url
+    if not key or not S.indexnow_check(home, key):
+        return {"sent": 0, "live": False}
+    changed = [x["url"] for x in audit.get("drift") or [] if x["rule"] in
+               ("title_changed", "desc_changed", "h1_changed", "content_changed", "schema_added", "schema_changed")]
+    res = S.indexnow_submit(home, key, changed)
+    if res["sent"]:
+        _event(tenant, sid, "run", "info", f"IndexNow: told Bing and others about {res['sent']} changed pages.")
+    return {**res, "live": True}
 
 
 def _hire_setting(tenant: str, k: str) -> Any:
@@ -672,6 +849,22 @@ def report_markdown(tenant: str, sid: str) -> tuple[str, str]:
     stat_items = [x for x in k if x["now"] is not None][:4]
     for x in stat_items:
         lines.append(f"[stat: {fmt(x['now'])} | {x['name']}]")
+    with session() as s:
+        pro = _j((s.get(S.SeoSite, sid).pro or ""), {})
+        idx = _j(s.get(SeoDesk, sid).index or "", {})
+    hl = pro.get("health") or {}
+    if hl.get("parts"):
+        lines.append("# Website health")
+        lines.append(f"Health score {hl['total']}/100 from the last full check ({hl['counts']['critical']} critical, "
+                     f"{hl['counts']['high']} high, {hl['counts']['medium']} medium, {hl['counts']['low']} low).")
+        lines.append("| Part | Weight | Score |")
+        lines.append("|---|---|---|")
+        for x in hl["parts"]:
+            lines.append(f"| {x['label']} | {x['weight']} | {x['score']}/100 |")
+        if idx.get("checked"):
+            lines.append(f"Google says {idx['indexed']} of the {idx['checked']} most important pages are in its index (URL Inspection).")
+        if (pro.get("eeat") or {}).get("total") is not None:
+            lines.append(f"Trust signals (E-E-A-T) seen on the site: {pro['eeat']['total']}/100.")
     lines.append("# Where things stand against the baseline")
     lines.append(f"Baseline taken on {base.get('date', '–')}. Search Console data ends three days before today; that is Google's own delay.")
     lines.append("| Measure | Baseline | Now | Change |")
@@ -695,6 +888,12 @@ def report_markdown(tenant: str, sid: str) -> tuple[str, str]:
         for q in rows[:10]:
             lines.append(f"| {str(q.get('query', ''))[:60]} | {q.get('clicks', 0)} | {q.get('impressions', 0)} | {q.get('position', 0)} |")
         lines.append("Source: Google Search Console")
+    ups = P.updates_between((S.today(tenant) - timedelta(days=31)).isoformat(), S.today(tenant).isoformat())
+    if ups:
+        lines.append("# Google changes this month")
+        lines.append("Confirmed by Google; a rise or fall in the same weeks may be Google, not the website.")
+        for u in ups:
+            lines.append(f"- {u['date']}: {u['name']}")
     lines.append("# Work done this period")
     if done:
         for x in done[:15]:
@@ -703,7 +902,7 @@ def report_markdown(tenant: str, sid: str) -> tuple[str, str]:
         lines.append("No plan items marked done yet.")
     lines.append("# Next month")
     for x in open_[:8]:
-        lines.append(f"1. {x['title']} — {x['why'][:120]}")
+        lines.append(f"1. {x['title']} — {x['why'][:120]} Early sign: {x['signal'][:110]} Not working if: {x['fail_check'][:110]}")
     tasks = S.tasks(tenant, sid, "open")
     if tasks:
         lines.append("# Open fixes on the website")
@@ -769,8 +968,12 @@ def run_job(tenant: str, sid: str, job: str, at: datetime | None = None) -> dict
         res = weekly(tenant, sid)
     elif job == "monthly":
         res = monthly_report(tenant, sid)
+    elif job == "index":                       # v0.319 'Run now' for the Google index check / speed history alone
+        return index_check(tenant, sid)
+    elif job == "speed_history":
+        return speed_history(tenant, sid)
     else:
-        raise S.SeoError("job: first | hourly | daily | weekly | monthly")
+        raise S.SeoError("job: first | hourly | daily | weekly | monthly | index | speed_history")
     with session() as s:
         d = s.get(SeoDesk, sid)
         if d:
@@ -782,6 +985,15 @@ def run_job(tenant: str, sid: str, job: str, at: datetime | None = None) -> dict
                 st["monthly_key"] = local.strftime("%Y-%m")
             d.stamps = json.dumps(st)
     return res
+
+
+def run_now(tenant: str, sid: str, job: str) -> None:
+    """'Run now' from the desk (a background thread): a failure is written on the desk instead of vanishing."""
+    try:
+        run_job(tenant, sid, job)
+    except Exception as e:   # noqa: BLE001
+        log.info("seo run-now %s failed: %s", job, e)
+        _event(tenant, sid, "run", "warn", f"{job.replace('_', ' ').title()} could not run: {str(e)[:200]}")
 
 
 def run_due(at: datetime | None = None, force: bool = False) -> list[tuple[str, str, str]]:
