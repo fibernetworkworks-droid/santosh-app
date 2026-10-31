@@ -44,7 +44,8 @@ def test_project_from_the_android_spec(tmp_path):
     assert "AccountButton()" in (out / "Sources/Screens/ScreenProfile.swift").read_text()
     plist = (out / "Info.plist").read_text()
     assert "NSLocationWhenInUseUsageDescription" in plist          # the order form has a location field
-    assert "<string>upi</string>" in plist and "ITSAppUsesNonExemptEncryption" in plist
+    assert "<string>upi</string>" in plist and "ITSAppUsesNonExemptEncryption" in plist and "NSAllowsLocalNetworking" in plist
+    assert "NSAllowsArbitraryLoads" not in plist
     yml = (out / "project.yml").read_text()
     assert 'iOS: "16.0"' in yml and "PRODUCT_BUNDLE_IDENTIFIER: in.hoola.preview.fixture" in yml and "scheme: {}" in yml
     png = (out / "Resources/Assets.xcassets/AppIcon.appiconset/icon.png").read_bytes()
@@ -53,7 +54,7 @@ def test_project_from_the_android_spec(tmp_path):
     assert (out / "hoola_qa/screens.txt").read_text().split()[-2:] == ["hoola_login", "hoola_account"]
     # debug-only test hooks; a release build has neither
     app = (out / "Sources/App/HoolaApp.swift").read_text()
-    assert app.count("#if DEBUG") == 2 and "-hoola_screen" in app and "-hoola_base" in app
+    assert app.count("#if DEBUG") == 3 and "-hoola_screen" in app and "-hoola_base" in app and "-hoola_e2e" in app
 
 
 def test_bundle_id_rules():

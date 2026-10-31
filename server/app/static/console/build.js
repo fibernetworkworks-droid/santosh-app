@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') loadStore(o, ot); }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); } }
     showBtn();
   }
 
@@ -510,6 +510,30 @@ window.HoolaBuild = function (C) {
     };
   }
 
+  /* v0.332 IPHONE: the same design + backend as a SwiftUI app, compiled on a Mac (her builds repo), every screen opened in an
+     iPhone simulator; TestFlight with HER App Store Connect key (a secret in her builds repo, never here) after a confirm */
+  async function loadIos(o, root) {
+    const box = root.querySelector('.stios'); if (!box) return;
+    let v; try { v = await api('GET', base(o) + '/ios'); } catch (er) { return; }
+    const q = M(v.qa), p = M(q.perf), tf = M(v.testflight), run = M(v.runner), st = S(v.status);
+    const busy = ['writing', 'building', 'fixing', 'uploading'].includes(st);
+    box.innerHTML = `<section class="bbox"><h4>iPhone app${st ? ' · ' + esc(st) : ''}</h4>
+      <div class="bln">${esc(S(v.now) || S(v.say))}</div>${v.error ? `<div class="badc bln">${esc(S(v.error))}</div>` : ''}
+      <div class="bln faint">Bundle ID: ${esc(S(v.bundle_id))}</div>
+      ${tf.build ? `<div class="bln">TestFlight: v${esc(S(tf.version))} (build ${esc(S(tf.build))})</div>` : ''}
+      ${q.ran ? `<div class="bln">iPhone simulator: ${esc(S(q.opened))} / ${esc(S(q.total))} screens opened without a crash${p.launch_ms != null ? ` · opens in ${esc(S(p.launch_ms))} ms` : ''}${p.app_mb != null ? ` · ${esc(S(p.app_mb))} MB` : ''}</div>
+        ${L(q.shots).length ? `<div class="blooks">${L(q.shots).slice(0, 14).map(sh => `<figure>${pic(`${base(o)}/ios/qa/${encodeURIComponent(sh)}`, sh)}<figcaption>${esc(sh)}</figcaption></figure>`).join('')}</div>` : ''}` : ''}
+      ${run.ready ? '' : `<div class="bln faint">iPhone apps compile only on a Mac. Once: put server/app_builder/hoola-ios.yml in your private GitHub builds repo (.github/workflows/). For TestFlight add the repo secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID (App Store Connect > Users and Access > Integrations; never paste the key here or in chat) and create the app once in App Store Connect with this bundle ID.</div>`}
+      <div class="acts"><button class="btn soft" type="button" data-io="sim" ${busy ? 'disabled' : ''}>${v.build ? 'Build the iPhone app again' : 'Build the iPhone app'}</button>
+        <button class="btn go" type="button" data-io="testflight" ${busy || st !== 'ready' || !run.ready ? 'disabled' : ''}>Send to TestFlight</button>
+        ${v.zip_url ? `<a class="btn soft" href="${esc(S(v.zip_url))}">Xcode project (ZIP)</a>` : ''}</div></section>`;
+    box.onclick = async e => { const b = e.target.closest('button[data-io]'); if (!b) return;
+      const kind = b.dataset.io;
+      if (kind === 'testflight' && !confirm('Send this build to TestFlight on your Apple account? Only your testers see it; sending to the App Store stays your tap in App Store Connect.')) return;
+      try { await api('POST', base(o) + '/ios', {kind}); toast(kind === 'testflight' ? 'Sending to TestFlight.' : 'Building the iPhone app.'); loadIos(o, root); } catch (er) { toast(er.message, true); } };
+    if (busy) setTimeout(() => { if (document.body.contains(box)) loadIos(o, root); }, 8000);
+  }
+
   /* v0.325 every build of the app: what changed, and Bring back for a kept one */
   function historyBox(o) {
     const h = L(o.an?.history), kept = L(o.an?.kept_builds); if (!h.length) return '';
@@ -531,7 +555,7 @@ window.HoolaBuild = function (C) {
     const apk = M(a.apk), dl = publicLink(a.apk_url), zip = publicLink(a.zip_url), redo = L(a.screens).filter(x => x.state === 'code').map(x => x.id);
     return `<ol class="bpipe">${pipe}</ol>
       ${s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : ''}${a.note ? `<div class="muted bln">${esc(a.note)}</div>` : ''}
-      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div>
+      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div><div class="stios"></div>
       <div class="bcols"><section class="bbox"><h4>Screens in Kotlin</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
           ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>

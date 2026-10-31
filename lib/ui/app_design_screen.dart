@@ -12,6 +12,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../state.dart';
 import 'glass.dart';
 import 'app_android.dart';
+import 'app_ios.dart';
 import 'site_screen.dart' show SiteStages;
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -828,6 +829,8 @@ class _AppDesignPageState extends State<AppDesignPage> {
             Glass(child: AppDataPanel(app: app, id: widget.id)),
             const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
+            const SizedBox(height: 10),
+            Glass(child: IosBuildPanel(app: app, id: widget.id, approved: st == 'approved')),
             const SizedBox(height: 10),
           ],
           if (_map(plan['blueprint']).isNotEmpty) ...[
