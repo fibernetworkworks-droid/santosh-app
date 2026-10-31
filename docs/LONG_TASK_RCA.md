@@ -119,3 +119,103 @@ Two of these were reproduced with a scripted model on the real `run_turn` (repro
    Claude's feature list, before `kaam_plan finish done`.
 8. **Measure it.** A long-task card in `app.quality`: 20 real multi-step asks scored on finished / stopped /
    false-stuck, run before and after.
+
+---
+
+# Part D - why Hoola picks the WRONG tool (measured on v0.310.0, 31 Oct 2026)
+
+Measured by loading the real registry (`app.agent.tools`), the router (`admit.plan_for`) and the prompt builder.
+No model was called: there is no API key in the sandbox, so `python -m app.quality tools --live` must run on the VPS.
+
+## What the model is given
+- **430 tools in total**, 132 families, about 418 KB of specs (~105k tokens).
+- **Every turn sees 65-96 tools.** "hello" alone gets 65 tools (35 KB): 18 families are always on, plus 10
+  WhatsApp-campaign tools that have no family and so ride on every turn.
+  - Anthropic: tool-selection accuracy "degrades once you exceed 30-50 available tools".
+- **A 41-49 KB system prompt** of rules sits on top of that.
+- **The router itself is fine.**
+  - Its own 163-ask card scores 163/163 tools "in view".
+  - On 26 NEW asks written for this check, the right family was in view 25 times (the APK check missed `appcheck`).
+  - So the problem is not "the tool is missing". It is "the model has 65-96 tools whose descriptions are cut,
+    and it must choose".
+
+## The root causes
+1. **The "schema diet" cuts away the "when to use which" text.** This is the biggest cause.
+   - `tools.py` (v0.187) cuts every tool description to 140 characters (700 if it mentions confirm / payment /
+     OTP) and every parameter description to 72.
+   - It hits **291 of 430 tools**, and 150 descriptions now END MID-SENTENCE with "…".
+   - What is cut is exactly the part that tells similar tools apart:
+     - `google_search` loses "use it whenever the answer could have changed since your training".
+     - `web_sources` loses "when the answer must stand on the sources' own words … or when google_search is not
+       answering".
+     - `open_website` loses "pages that need login or JavaScript come back empty; then use google_search".
+     - `data_fetch` loses "Prefer this over api_call / open_website / the cloud PC". That is the exact rule whose
+       absence caused the 100-repo PDF going to the PC.
+     - `make_document` loses its whole content format and "Returns file_id (attach to email / hoola_send)".
+   - Anthropic says tool descriptions are where the effort pays most ("small refinements … dramatic improvements";
+     the team "spent more time optimizing tools than the overall prompt").
+   - Hoola did the opposite: it moved that text into a long prompt, or deleted it.
+2. **Overlapping tools for the same job, with no clear line between them.**
+   - Web: google_search, web_sources, open_website, browse_web, computer_operator.
+   - Files and documents: make_document, doc_studio, docs_writer, hoola_make, artifact_make, notebook_make.
+   - Memory: remember, memory_search, yaad_khojo, gyaan_khojo, haal_ki_chats.
+   - 22 tools say they make or handle PDF / Word / Excel.
+   - Anthropic: "If a human engineer can't definitively say which tool should be used … an AI agent can't be
+     expected to do better."
+3. **No naming scheme.**
+   - Verbs are mixed English and Hinglish: `photo_banao`, `app_banao`, `make_document`, `gyaan_khojo`,
+     `indiamart_khoj`, `seekhe_kaam`, `haan_karo`.
+   - Some desks are one-word tools: `chai`, `paisa`, `seva`, `ads`, `niryat`.
+   - There are no `service_action` prefixes (Anthropic: namespace by service, e.g. `asana_projects_search`).
+4. **The prompt names tools that are not loaded.**
+   - Even with no PC family loaded, the prompt mentions `pc_do` 5 times and `hoola_pc_do` twice.
+   - The model is pushed toward tools it cannot see. `pick.py` exists only to block that afterwards, and it
+     covers the PC only.
+5. **The cheap brain picks.**
+   - GLM / OmniRoute choose the tools at temperature 0.6, with thinking disabled.
+   - Claude's tool-choice training, `strict` tool schemas, the tool search tool and tool-use examples are all
+     absent.
+6. **Raw truncation of tool results.**
+   - `_short` cuts every result at 6,000 characters of raw JSON, ending in "…(truncated)", with no hint of how to
+     get the rest.
+   - Anthropic: truncate with a steer ("use a narrower query / page=2"), and return meaningful fields, not raw
+     JSON.
+
+## How Claude does it (sources in Part B)
+- **Few tools in view.**
+  - Tool search with `defer_loading`: keep the 3-5 most-used tools loaded and let the model search the rest.
+  - The definitions shrank from 77K to 8.7K tokens, and selection accuracy rose from 79.5% to 88.1% (Opus 4.5).
+- **Full, specific descriptions** that say what the tool does, when to use it, when NOT to, and how it differs
+  from its neighbour. They are written like docs for a new teammate, and checked against evals.
+- **Consolidated, namespaced tools**, e.g. one `schedule_event` instead of list + create.
+- **1-5 real usage examples per tool** for complex inputs (72% -> 90% correct parameters).
+- **`strict: true`**, so the tool name and its inputs always match the schema.
+- **Concise results by default** (`response_format`), with a 25k-token cap and a truncation hint.
+- **Measure picks on real transcripts**, then have Claude rewrite weak descriptions. A tool-testing agent cut task
+  time by 40%.
+
+## The fix plan (needs GO; PC files not touched)
+1. **Remove the 140-character cut.**
+   - Give every tool a full description in one format: what it does; use when; do NOT use when (name the
+     neighbour); what it returns.
+   - Keep this prose in the tool, not the prompt. Prompt caching (Claude) pays for the size.
+2. **A smaller always-on set.**
+   - About 12 core tools plus `tool_search`.
+   - Everything else is deferred, found by the router or by search.
+   - The 10 WhatsApp-campaign tools get their own family.
+3. **One tool per job.**
+   - Web: `web_search` (short answer) -> `web_read` (one page / quotes) -> `browser_task` (logins, clicks).
+   - Documents: one `doc_make` (the doc_studio engine; make_document becomes its quick mode).
+   - Memory: one `memory_find` (facts + diary + Gyaan + old chats, with a `scope` field).
+   - The old names stay as aliases in `dispatch`, so nothing breaks.
+4. **Clean the prompt.** Drop every tool name that is not loaded this turn; the routing rules live in the tool
+   descriptions.
+5. **Picks on Claude.**
+   - Tool picking for owner asks goes to Claude (or at least GLM thinking on, at temperature 0.2).
+   - Add `strict: true` and 1-3 usage examples to the 30 most-used tools.
+6. **Smarter truncation.** Cap results at a token budget with a hint ("showing 20 of 340 - call again with
+   page=2 or a filter"), plus a concise / detailed mode for the big readers.
+7. **Measure.**
+   - Run `python -m app.quality tools --live` on the VPS before and after.
+   - Add the 26 fresh asks from this check plus 50 more taken from her real chats (`harness_events`), scored on
+     the first pick and on the finished job.
