@@ -46,12 +46,13 @@ CODES: dict[str, tuple[str, bool]] = {
 }
 # Words some apps put in their failure text when they refuse a payment link to a person's UPI ID.
 BLOCK_WORDS = re.compile(r"security|risk|not allowed|not permitted|declined by|limit exceeded|unsafe|suspicious|"
-                         r"payment link|merchant", re.I)
+                         r"payment link|merchant|not responding|exceed", re.I)   # v0.322 her GPay: "server not responding / limit exceeded"
 DONE = ("completed", "paid")
 
 # v0.120 Apps known to refuse a payment link to a PERSON's UPI ID started by another app ("security reasons").
 # PhonePe: seen on the owner's OnePlus 22 Oct 2026. Others are learned per owner when they refuse.
 P2P_LINK_BLOCKED = {"com.phonepe.app"}
+P2P_LINK_DEFAULT_BLOCKED = True   # v0.322 every app, unless she saw the link work in it
 BLOCK_KEEP_DAYS = 60   # apps change their rules; after this the link is tried again
 
 
@@ -60,9 +61,14 @@ def _blocked_map(user) -> dict[str, str]:
 
 
 def link_blocked(user, package: str) -> bool:
-    """True when this app refuses Hoola's payment link for a person (built-in list or learned for this owner)."""
+    """True when this app refuses Hoola's payment link for a person (built-in list or learned for this owner).
+    v0.322: EVERY UPI app is treated as refusing by default (her live test 31 Oct: Google Pay and others answered "server
+    not responding / limit exceeded" - since 2023-24 the big apps only accept signed MERCHANT links), so a payment to a
+    person always goes the copy-UPI-ID way; an app she has seen accept the link ("ok") gets the link again."""
     if not package:
         return False
+    if P2P_LINK_DEFAULT_BLOCKED and _blocked_map(user).get(package) != "ok":
+        return True
     seen = _blocked_map(user).get(package)
     if seen == "ok":
         return False   # she saw the link work in this app: trust that over the built-in list

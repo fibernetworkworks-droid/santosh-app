@@ -146,7 +146,8 @@ def test_upi_to_person_always_needs_tap_even_with_caps(bz):
     assert res["open"]["kind"] == "upi_copy" and res["open"]["vpa"] == "priya.demo@okaxis" and res["open"]["package"] == "com.phonepe.app"
     r2 = svc.run("default", conv, "paytm", "send_money", {"to": "Priya", "amount_rupees": 500, "note": "dinner"})
     res2 = svc.decide("default", r2["approval_id"], "approve")
-    assert res2["open"]["url"].startswith("paytmmp://pay?pa=priya.demo%40okaxis") and res2["open"]["package"] == "net.one97.paytm"
+    # v0.322 every UPI app refuses a link to a person now (her GPay: "server not responding / limit exceeded")
+    assert res2["open"]["kind"] == "upi_copy" and res2["open"]["package"] == "net.one97.paytm"
     with pytest.raises(Exception):
         svc.add_contact("default", "Bad", upi_id="not-a-vpa")
 

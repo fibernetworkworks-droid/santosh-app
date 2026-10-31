@@ -136,11 +136,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.335.0 (pubspec 0.335.0+375). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.336.0 (pubspec 0.336.0+376). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.335 SOCH GEHRI (built as 0.331): long jobs on Claude at effort xhigh (`santosh.effort_for`, extra_body output_config), goal calls 16k;
+- v0.336 SOCH GEHRI (built as 0.331): long jobs on Claude at effort xhigh (`santosh.effort_for`, extra_body output_config), goal calls 16k;
   `tools.TOOL_LANES` (overlapping tools open with use-for/not-for), `_short` shrinks lists not JSON, FRESH tool set + vps-ops `tool_card`.
+- v0.335 UPI SEEDHA: paying a PERSON never sends a UPI link (GPay etc. answer 'server not responding / limit exceeded') -
+  copy-UPI-ID + open the app for every app by default (`upiresult.P2P_LINK_DEFAULT_BLOCKED`); an app marked ok keeps the link.
 - v0.334 SEO PRO (built as 0.319/0.320/0.333, claude-seo ideas, own code, `seo/pro.py`, THIRD_PARTY_NOTICES.md): health in 7 parts + priorities, page drift, AI bots map,
   schema / quality / images / hreflang / scaled / NAP / E-E-A-T / local checks, URL Inspection + Sitemaps, CrUX, IndexNow, place lists cap 50.
 - v0.333 NO BLINK + DRAG TO RESIZE (built as 0.331): the Video Studio poll rebuilt every tile (0/7 kept -> videos blinked); `patch()` keeps unchanged

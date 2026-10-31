@@ -34,6 +34,19 @@ def _send(bz, pack="bhim", amount=500):
     return svc.decide("default", r["approval_id"], "approve")["open"]
 
 
+def _link_ok(pkg):
+    """v0.322 links to a person are off by default; an app she saw accept the link gets it again."""
+    from app.bazar.db import User
+    from app.db import session
+    with session() as s:
+        u = s.get(User, "default")
+        if u is None:
+            from app.bazar import service
+            service.ensure_user(s, "default")
+            u = s.get(User, "default")
+        u.profile = {**(u.profile or {}), "upi_link_blocked": {**((u.profile or {}).get("upi_link_blocked") or {}), pkg: "ok"}}
+
+
 def _txn(ref):
     from app.bazar.db import Transaction
     from app.db import session
@@ -60,6 +73,7 @@ def test_parse_npci_strings():
 
 
 def test_open_carries_ref_payee_amount_and_success_closes_it(bz):
+    _link_ok("in.org.npci.upiapp")
     op = _send(bz)
     assert op["kind"] == "upi" and op["txn_ref"] and op["vpa"] == "priya.demo@okaxis" and op["amount"] == "₹500"
     assert "tr=" + op["txn_ref"] in op["url"] and "am=500.00" in op["url"]
@@ -141,7 +155,9 @@ def test_v120_phonepe_goes_copy_and_pay_and_apps_learn(bz):
     assert cards[-1]["ask"] and cards[-1]["mode"] == "copy"
     from app.bazar import upiresult
     assert upiresult.record("default", op["txn_ref"], answer="done")["status"] == "completed"
-    # BHIM still gets the link; when she says it refused, BHIM learns copy-and-pay too
+    # v0.322 BHIM (every app) is copy-and-pay by default too; one she marked ok gets the link, and learns back on refusal
+    assert _send(bz, pack="bhim", amount=300)["kind"] == "upi_copy"
+    _link_ok("in.org.npci.upiapp")
     op2 = _send(bz, pack="bhim", amount=200)
     assert op2["kind"] == "upi" and op2["url"].startswith("upi://pay")
     upiresult.record("default", op2["txn_ref"], answer="blocked")
@@ -155,3 +171,11 @@ def test_v120_phonepe_goes_copy_and_pay_and_apps_learn(bz):
         u.profile = {**(u.profile or {}), "upi_link_blocked": {"com.phonepe.app": "ok"}}
     op4 = _send(bz, pack="phonepe", amount=50)
     assert op4["kind"] == "upi"
+
+
+def test_v0322_google_pay_to_a_person_goes_copy_and_pay(bz):
+    """Her live test: Google Pay opened by Hoola's link said 'server not responding / limit exceeded'."""
+    op = _send(bz, pack="google-pay")
+    assert op["kind"] == "upi_copy" and op["url"] == "" and op["vpa"] == "priya.demo@okaxis"
+    from app.bazar import upiresult
+    assert upiresult.BLOCK_WORDS.search("Server not responding or limit exceeded")

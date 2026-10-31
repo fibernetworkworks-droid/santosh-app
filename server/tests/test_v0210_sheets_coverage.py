@@ -21,7 +21,7 @@ NEW = ["sheet_clear", "sheet_copy_tab", "sheet_duplicate_tab", "sheet_delete_tab
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.335.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.336.0"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 def test_registry_has_24_tools():
