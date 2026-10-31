@@ -799,8 +799,8 @@ def init_db(url: str | None = None):
     from .kalam import service as _kalam  # noqa: F401
     from .ads import service as _ads  # noqa: F401
     from .seo import service as _seo  # noqa: F401
-    from .seo import desk as _seo_desk  # noqa: F401  (v0.314 SEO Employee desk)
-    from .employee import hire as _hire  # noqa: F401  (v0.314 hired employees)
+    from .seo import desk as _seo_desk  # noqa: F401  (v0.317 SEO Employee desk)
+    from .employee import hire as _hire  # noqa: F401  (v0.317 hired employees)
     from .thok import service as _thok  # noqa: F401
     from .niryat import service as _niryat  # noqa: F401
     from .franchise import service as _franchise  # noqa: F401

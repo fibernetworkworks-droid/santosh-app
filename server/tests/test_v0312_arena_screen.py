@@ -24,7 +24,7 @@ def _seed():
     briefs = A.pick(3, 1)
     crit = lambda v: {c: v for c in A.CRITERIA}
     ids = []
-    for i, (ver, j, lcp) in enumerate((("0.309.0", 6.8, 2600), ("0.316.0", 7.9, 1900))):
+    for i, (ver, j, lcp) in enumerate((("0.309.0", 6.8, 2600), ("0.317.0", 7.9, 1900))):
         with session() as s:
             run = A.ArenaRun(version=ver, seed=1, n=3, budget_inr=1500, spent_inr=420 + i, status="done", note=f"run {i}")
             s.add(run)
@@ -192,5 +192,5 @@ def test_arena_screen_in_a_real_browser(arena_server):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.316.0"
-    assert "0.316.0+356" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.317.0"
+    assert "0.317.0+357" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

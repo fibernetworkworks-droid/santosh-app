@@ -34,7 +34,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SITE_CRITIQUE", "off")
     monkeypatch.setenv("DOC_ART", "false")          # v0.313: no Opus art direction for PDFs in tests (router picks)
     monkeypatch.setenv("DOC_REVIEW", "false")       # v0.313: no Opus page review in tests (its own tests fake it)
-    monkeypatch.setenv("SEO_AI", "false")           # v0.314: no Opus roadmap call in tests (its own tests fake it)
+    monkeypatch.setenv("SEO_AI", "false")           # v0.317: no Opus roadmap call in tests (its own tests fake it)
     monkeypatch.setenv("SITE_AI_PHOTOS", "0")       # v0.292: no image-model calls in scripted site tests
     monkeypatch.setenv("SITE_LOOK_SECTIONS", "1")   # v0.292: looks stay hero-only unless a test asks for more
     monkeypatch.setenv("KAAM_WATCH", "false")        # v0.136: job-watch notes only in its own tests

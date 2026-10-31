@@ -157,7 +157,7 @@ def site_issues(pages: list[dict], robots: str, sitemap_ok: bool) -> list[dict]:
 
 def link_issues(pages: list[dict], sitemap_urls: set[str] | None = None, home: str = "",
                 redirects: dict[str, str] | None = None) -> list[dict]:
-    """v0.314 site-wide link checks a full crawl makes possible (pages carry `out` links, `depth`, `redirected_from`):
+    """v0.317 site-wide link checks a full crawl makes possible (pages carry `out` links, `depth`, `redirected_from`):
     broken internal links (with the pages that link to them), links that go through a redirect, orphans (in the sitemap
     but no page links to them), pages more than 3 clicks deep, duplicate descriptions, mixed content."""
     out: list[dict] = []

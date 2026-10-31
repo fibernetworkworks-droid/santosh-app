@@ -1,4 +1,4 @@
-/* v0.314 HIRE AN EMPLOYEE: the Employee Hub (hire / pause / let go) and the SEO Desk of a hired SEO Specialist
+/* v0.317 HIRE AN EMPLOYEE: the Employee Hub (hire / pause / let go) and the SEO Desk of a hired SEO Specialist
    (onboarding, KPIs against the baseline, the 90-day plan board, alerts, schedule, run-now buttons).
    Talks to /api/employees* and /api/seo/{onboard,desk,roadmap,run,gsc/link}. Every value from the server goes on the
    page through esc() - site names, issue texts and plan items are data. */

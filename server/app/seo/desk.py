@@ -1,4 +1,4 @@
-"""v0.314 THE SEO EMPLOYEE (Phase 0 + 1 of docs/SEO_EMPLOYEE_PLAN.md): what a hired SEO Specialist does on its own.
+"""v0.317 THE SEO EMPLOYEE (Phase 0 + 1 of docs/SEO_EMPLOYEE_PLAN.md): what a hired SEO Specialist does on its own.
 
     hire (employee/hire.py) -> onboard (her site, goals, cities, competitors, trust)
         -> first run: full crawl (up to 500 pages), speed, Search Console, Google Analytics -> BASELINE (frozen)

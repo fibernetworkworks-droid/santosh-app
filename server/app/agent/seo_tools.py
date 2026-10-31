@@ -19,7 +19,7 @@ SEO_TOOLS = [
         "connected in the app). action=brief: keyword (new page plan). action=schema (LocalBusiness JSON-LD). action=gbp_post: "
         "topic, offer. action=review_reply: review, stars, reviewer. action=approve: draft_id, text (ONLY when she says it is "
         "final). action=task: task_id, status done|ignored|open. action=report (Excel). action=settings: weekday, morning_time. "
-        "v0.314 HIRED SEO EMPLOYEE (only when she hired it in Employees): action=report_pdf (the monthly PDF report now), "
+        "v0.317 HIRED SEO EMPLOYEE (only when she hired it in Employees): action=report_pdf (the monthly PDF report now), "
         "action=roadmap (rebuild the 90-day plan draft), action=plan_item: item_id, status planned|doing|waiting_her|done|skipped."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["site", "audit", "speed", "performance", "brief", "schema", "gbp_post", "review_reply",
@@ -38,7 +38,7 @@ SEO_TOOLS = [
         "Read SEO work (nothing changes). what=summary (score, open fixes, weekly numbers, Search Console link) | sites | tasks "
         "(status open|done|fixed|ignored) | pages | keywords (plan from her services + city, with Search Console positions) | "
         "drafts | gsc (connected? properties) | rules (Google spam policies she must not break + Business Profile checklist) | "
-        "desk (v0.314 the hired SEO Employee: KPIs vs baseline, 90-day plan board, alerts, schedule; says if not hired)."),
+        "desk (v0.317 the hired SEO Employee: KPIs vs baseline, 90-day plan board, alerts, schedule; says if not hired)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["summary", "sites", "tasks", "pages", "keywords", "drafts", "gsc", "rules", "desk"]},
          "site": {"type": "string"}, "status": {"type": "string"}},

@@ -105,10 +105,10 @@ IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4
 IC.bana = '<path d="M4 5h16v14H4zM4 10h16M10 10v9"/>';
 IC.arena = '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>';   // v0.312 Design Arena (owner only)
 let AR = null;         // v0.312 the Arena screen (arena.js)
-IC.hire = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"/>';   // v0.314 Employees
-IC.seodesk = '<path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35M8 11h6M11 8v6"/>';                     // v0.314 SEO Desk
-let EMP = null;        // v0.314 the Employee Hub + desks (employees.js)
-function syncEmployees(hired) {                     // v0.314 a desk appears in the sidebar only while its employee is hired
+IC.hire = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"/>';   // v0.317 Employees
+IC.seodesk = '<path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35M8 11h6M11 8v6"/>';                     // v0.317 SEO Desk
+let EMP = null;        // v0.317 the Employee Hub + desks (employees.js)
+function syncEmployees(hired) {                     // v0.317 a desk appears in the sidebar only while its employee is hired
   if (ME) ME.employees = hired || {};
   const want = !!(hired && hired.seo), has = NAV.some(([k]) => k === 'seodesk');
   if (want && !has) NAV.splice(NAV.findIndex(([k]) => k === 'hire') + 1, 0, ['seodesk', 'SEO Desk']);
@@ -222,7 +222,7 @@ async function enter() {
   $('#uini').textContent = (ME.owner || ME.email || 'H').trim().charAt(0).toUpperCase();
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
   $('#greet').innerHTML = esc(h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
-  if (window.HoolaEmployees && !EMP) {           // v0.314 Employees for everyone; a desk only once its employee is hired
+  if (window.HoolaEmployees && !EMP) {           // v0.317 Employees for everyone; a desk only once its employee is hired
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees});
     if (!NAV.some(([k]) => k === 'hire')) NAV.push(['hire', 'Employees']);
   }

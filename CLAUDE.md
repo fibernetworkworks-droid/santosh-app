@@ -129,9 +129,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.316.0 (pubspec 0.316.0+356). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (17 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js) + the version pins in tests (grep the old number in
+- Current version: v0.317.0 (pubspec 0.317.0+357). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.317 SEO EMPLOYEE Phase 0+1 (`docs/SEO_EMPLOYEE_PLAN.md`): hire from Employees (console + Profile; `employee/hire.py`), desk only while
+  hired; `seo/desk.py` onboarding -> 500-page audit + Search Console + Analytics -> baseline -> Opus 90-day plan; hourly/daily/weekly/monthly jobs.
 - v0.316 DIRECTOR PICTURES FIX (built as 0.312): failed opening pictures went only to the chat and Director sat on Pictures; now "Painting N…",
   the reason on the film (pics_error, only painted ones charged), Try again for the missing ones, Skip = shots from the words (prefs.pics_skip).
   "Painting…" boxes use the studio's working bar (no looping spinner after v0.304, CRISP TEXT).

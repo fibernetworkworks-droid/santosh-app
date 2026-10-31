@@ -1,4 +1,4 @@
-/// v0.314 HIRE AN EMPLOYEE (Profile > Employees): the Employee Hub (hire / pause / let go) and the SEO Desk of a
+/// v0.317 HIRE AN EMPLOYEE (Profile > Employees): the Employee Hub (hire / pause / let go) and the SEO Desk of a
 /// hired SEO Specialist (onboarding, KPIs against the baseline, the 90-day plan, alerts, schedule, run-now buttons).
 /// A desk exists only while its employee is hired. Same server as the web console: /api/employees*, /api/seo/desk...
 library;

@@ -2109,7 +2109,7 @@ body.albon{overflow:hidden}
 .stmems li{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
 
 
-/* v0.314 EMPLOYEES + SEO DESK (employees.js): the hub's cards and the desk (KPIs against the baseline, the 90-day board,
+/* v0.317 EMPLOYEES + SEO DESK (employees.js): the hub's cards and the desk (KPIs against the baseline, the 90-day board,
    activity, schedule, fixes). Only console tokens; no new colours. */
 .em-sub{display:block;margin-top:4px;font-size:14px}
 .em-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px}

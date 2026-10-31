@@ -1,4 +1,4 @@
-"""v0.314 SEO EMPLOYEE Phase 0 + 1: hire from the Employee Hub (desk only after hiring), onboarding -> full audit ->
+"""v0.317 SEO EMPLOYEE Phase 0 + 1: hire from the Employee Hub (desk only after hiring), onboarding -> full audit ->
 frozen baseline -> 90-day roadmap (Opus faked, rules fallback), KPIs against the baseline, hourly watch alerts on change,
 daily / weekly / monthly jobs on her clock, Google Analytics organic numbers, the monthly report PDF, the API + tools.
 Mock website + Google APIs from test_v103_seo."""

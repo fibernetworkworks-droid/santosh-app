@@ -41,7 +41,7 @@ log = logging.getLogger("santosh.seo")
 _LOCK = threading.Lock()
 UA = "HoolaSEO/1.0 (site owner's own audit)"
 GSC_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly"
-GA4_SCOPE = "https://www.googleapis.com/auth/analytics.readonly"   # v0.314 optional: organic sessions + leads for the SEO Employee
+GA4_SCOPE = "https://www.googleapis.com/auth/analytics.readonly"   # v0.317 optional: organic sessions + leads for the SEO Employee
 GSC_API = "https://www.googleapis.com/webmasters/v3"
 PSI_API = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
 _http: httpx.Client | None = None          # tests inject a mock transport
@@ -135,7 +135,7 @@ class SeoGoogle(Base):
     expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(12), default="ok")
     last_error: Mapped[str] = mapped_column(Text, default="")
-    scopes: Mapped[str | None] = mapped_column(Text, nullable=True)       # v0.314 what she granted (Analytics is optional)
+    scopes: Mapped[str | None] = mapped_column(Text, nullable=True)       # v0.317 what she granted (Analytics is optional)
 
 
 class SeoSettings(Base):
@@ -220,7 +220,7 @@ class _Page(HTMLParser):
         self.img, self.img_no_alt = 0, 0
         self.jsonld: list[str] = []
         self.text: list[str] = []
-        self.mixed = 0                          # v0.314 http:// pictures / scripts / styles on an https page
+        self.mixed = 0                          # v0.317 http:// pictures / scripts / styles on an https page
         self._in, self._buf, self._skip = "", [], 0
 
     def handle_starttag(self, tag, attrs):
@@ -371,7 +371,7 @@ def sites(tenant: str) -> list[dict]:
 
 # ---------------------------------------------------------------- crawl + audit
 def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap: int = 60) -> dict:
-    """cap: 60 for a one-off check; the hired SEO Employee (v0.314 seo/desk.py) crawls up to 500."""
+    """cap: 60 for a one-off check; the hired SEO Employee (v0.317 seo/desk.py) crawls up to 500."""
     with session() as s:
         r = _site(s, tenant, site)
         sid, home, city = r.id, r.url, _j(r.business, {}).get("city", "")
@@ -410,7 +410,7 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap:
     host = (urlparse(home).hostname or "").removeprefix("www.")
     queue, seen, pages, blocked = [], set(), [], []
     depth: dict[str, int] = {}
-    redirects: dict[str, str] = {}                  # v0.314 every internal redirect seen, even to a page already checked
+    redirects: dict[str, str] = {}                  # v0.317 every internal redirect seen, even to a page already checked
     for u in seeds:
         u = urldefrag(u)[0]
         if (urlparse(u).hostname or "").removeprefix("www.") == host and u not in seen:
@@ -465,7 +465,7 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap:
         for i in R.site_issues(pages, robots_txt, sitemap_ok):
             i["url"] = home
             all_issues.append(i)
-        all_issues += R.link_issues(pages, sitemap_urls, home, redirects)   # v0.314 broken / redirected links, orphans, depth, dups
+        all_issues += R.link_issues(pages, sitemap_urls, home, redirects)   # v0.317 broken / redirected links, orphans, depth, dups
         # tasks: keep her decisions, add new, mark fixed what disappeared
         tasks = {t.key: t for t in s.scalars(select(SeoTask).where(SeoTask.site_id == sid)).all()}
         now_keys = set()
@@ -801,7 +801,7 @@ def performance(tenant: str, site: str = "", days: int = 28, conv: str = "", sto
     for a in qs:
         mix[a["intent"]] = mix.get(a["intent"], 0) + a["impressions"]
     long_q = sum(1 for a in qs if len(a["query"].split()) >= 6)
-    if store:          # v0.314 the SEO Employee's daily pull reads numbers only; the weekly snapshot stays the trend
+    if store:          # v0.317 the SEO Employee's daily pull reads numbers only; the weekly snapshot stays the trend
         with session() as s:
             s.add(SeoStat(tenant_id=tenant, site_id=sid, start=start.isoformat(), end=end.isoformat(), clicks=cur["clicks"],
                           impressions=cur["impressions"], ctr=cur["ctr"], position=cur["position"],
