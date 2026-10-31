@@ -75,6 +75,15 @@ object E2e {
         val upd = Cloud.call("GET", "/updates", null, Auth.token())
         if (!upd.ok || upd.body.optString("now").isEmpty()) return "updates check ${upd.code}"
         say("updates ok")
+        // v0.324 a crash kept from a "last run" reaches the server on the next start (CrashGuard.sendPending)
+        Store.put(ctx, "crash_pending", JSONObject().put("trace", "java.lang.IllegalStateException: hoola e2e crash\n" +
+            "\tat hoola.app.screens.ScreenCartKt.ScreenCart(ScreenCart.kt:42)\n\tat hoola.kit.PageKt.Page(Kit.kt:10)")
+            .put("screen", "cart").put("ver", "e2e").put("android", 34).put("model", "emulator").toString())
+        CrashGuard.sendPending(ctx)
+        tries = 0
+        while (Store.get(ctx, "crash_pending").isNotEmpty() && tries < 20) { delay(500); tries++ }
+        if (Store.get(ctx, "crash_pending").isNotEmpty()) return "crash report not sent"
+        say("crash report ok")
         // the account screen's data path: a signed-out user sees nothing private
         val before = Db.rows(order).size
         Auth.logout(ctx)

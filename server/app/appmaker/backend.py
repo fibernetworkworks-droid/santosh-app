@@ -639,3 +639,103 @@ def mark_paid(r: AppProject, coll: str, row_id: str, utr: str, w: W.Who) -> dict
     except Exception:                                   # noqa: BLE001
         log.debug("paid note", exc_info=True)
     return out
+
+
+# ---------------------------------------------------------------- v0.324 HOOLA QA: crashes on real users' phones
+CRASH_KEEP = 200
+
+
+def _crash_file(r: AppProject):
+    return _files(r).parent / "crashes.json"
+
+
+def _crash_sig(trace: str) -> tuple[str, str, list[str]]:
+    """Same crash = same exception class + the same first app frames (line numbers ignored: they move between builds)."""
+    import hashlib
+    lines = [ln.strip() for ln in (trace or "").splitlines() if ln.strip()]
+    exc = next((ln for ln in lines if re.match(r"(Caused by: )?[\w.$]+(Exception|Error)\b", ln)), lines[0] if lines else "")
+    frames = [ln for ln in lines if ln.startswith("at hoola.")][:6]
+    key = re.sub(r":\d+\)", ")", exc.split(":")[0] + "|" + "|".join(frames[:3]))
+    return "c_" + hashlib.sha1(key.encode()).hexdigest()[:12], exc[:300], frames
+
+
+def crash(r: AppProject, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
+    """A crash the installed app kept and sends on its next start (no login needed; nothing personal in it)."""
+    if not isinstance(body, dict):
+        raise W.AppError("bad crash")
+    W.rate(f"cr|{bid(r)}|{ip}", 20, 3600)
+    trace = str(body.get("trace") or "")[:6000]
+    if not trace.strip():
+        raise W.AppError("empty crash")
+    sig, exc, frames = _crash_sig(trace)
+    screen = re.sub(r"[^a-z0-9_]", "", str(body.get("screen") or "").lower())[:49]
+    ver = re.sub(r"[^0-9A-Za-z.\-]", "", str(body.get("ver") or ""))[:20]
+    f = _crash_file(r)
+    with _LOCK:
+        data = _j(f.read_text(), {}) if f.exists() else {}
+        x = data.get(sig)
+        first = x is None
+        if first:
+            if len(data) >= CRASH_KEEP:
+                for k, _v in sorted(data.items(), key=lambda kv: kv[1].get("last", ""))[:len(data) - CRASH_KEEP + 1]:
+                    data.pop(k, None)
+            x = data[sig] = {"id": sig, "exception": exc, "frames": frames, "sample": trace, "count": 0, "first": now().isoformat(),
+                             "screens": [], "versions": [], "devices": [], "status": "new"}
+        x["count"] += 1
+        x["last"] = now().isoformat()
+        for k, v, n in (("screens", screen, 10), ("versions", ver, 10),
+                        ("devices", f"{str(body.get('model') or '')[:40]} / Android {str(body.get('android') or '')[:3]}", 8)):
+            if v and v not in x[k]:
+                x[k] = (x[k] + [v])[-n:]
+        came_back = x.get("status") == "fixing" and ver and x.get("fix_version") and ver == x.get("fix_version")
+        if came_back:
+            x["status"] = "back"            # it happened again in the build that was meant to fix it: say so honestly
+        f.write_text(json.dumps(data, ensure_ascii=False))
+    STATS["crashes"] = STATS.get("crashes", 0) + 1
+    if first or came_back:
+        where = f" ({screen} screen)" if screen else ""
+        try:
+            from .android.service import _note
+            _note(r, f"{r.name or 'Aapki app'} ({r.number}) ek user ke phone pe band ho gayi{where}: {exc.split(':')[0][:80]}"
+                     + (" - fix wali build mein bhi" if came_back else "") + ". Kahiye 'crash theek karo' - Hoola us screen ko asli "
+                     "crash dekh kar dobara likhegi aur nayi build banayegi.")
+        except Exception:                               # noqa: BLE001
+            log.debug("crash note", exc_info=True)
+    return {"ok": True, "id": sig, "new": first}
+
+
+def crashes(r: AppProject) -> list[dict[str, Any]]:
+    f = _crash_file(r)
+    data = _j(f.read_text(), {}) if f.exists() else {}
+    return sorted(data.values(), key=lambda x: (x.get("status") == "fixing", -int(x.get("count") or 0)))
+
+
+def crash_screens(r: AppProject, sig: str) -> tuple[dict[str, Any], list[str]]:
+    """The crash and the app's own screens in its stack (ScreenCart -> cart), else the screen it happened on."""
+    from .android import gen as G
+    x = next((c for c in crashes(r) if c["id"] == sig), None)
+    if x is None:
+        raise W.AppError("Yeh crash nahi mila.", 404)
+    ids = list(_j(r.plan, {}).get("screens") or [])
+    by_cls = {G.kotlin_name(s): s for s in ids}
+    sids: list[str] = []
+    for fr in x.get("frames") or []:
+        m = re.search(r"hoola\.app\.screens\.(Screen\w+?)(Kt)?\.", fr)
+        if m and m.group(1) in by_cls and by_cls[m.group(1)] not in sids:
+            sids.append(by_cls[m.group(1)])
+    if not sids:
+        sids = [s for s in x.get("screens") or [] if s in ids][:2]
+    return x, sids
+
+
+def crash_mark(r: AppProject, sig: str, status: str, build: int = 0, version: str = "") -> None:
+    f = _crash_file(r)
+    with _LOCK:
+        data = _j(f.read_text(), {}) if f.exists() else {}
+        if sig in data:
+            data[sig]["status"] = status
+            if build:
+                data[sig]["fix_build"] = build
+            if version:
+                data[sig]["fix_version"] = version
+            f.write_text(json.dumps(data, ensure_ascii=False))

@@ -8578,6 +8578,17 @@ async def apps_act(ref: str, action: str, body: dict | None = None, tenant: str 
         from .appmaker.android import service as AN
         only = [str(x) for x in body.get("redo") or [] if isinstance(x, str)][:60] if isinstance(body.get("redo"), list) else None
         return await asyncio.to_thread(_appd, AN.build, tenant, ref, conv, only)
+    if action == "fix_crash":                 # v0.324 her tap on a crash from users' phones (same path as the tool)
+        from .agent.app_tools import _act
+        from .agent.tools import Ctx, ToolError
+        from .site import webapp as W
+
+        def go():
+            try:
+                return _act(Ctx(tenant_id=tenant, conversation_id=conv), "fix_crash", {"app": ref, "crash": str(body.get("crash") or "")})
+            except (ToolError, W.AppError) as e:
+                raise HTTPException(400, str(e))
+        return await asyncio.to_thread(_appd, go)
     raise HTTPException(404, "unknown action")
 
 
@@ -8602,6 +8613,17 @@ async def apps_android_file(ref: str, what: str, tenant: str = Depends(current_t
     except AN.AS.AppError as e:
         raise HTTPException(404, str(e))
     raise HTTPException(404, "not found")
+
+
+@app.get("/api/apps/{ref}/android/qa/{name}", dependencies=[Depends(require_key)])
+async def apps_android_qa(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    """v0.324 HOOLA QA: a screen's picture from the device check of the latest build."""
+    from .appmaker.android import service as AN
+    try:
+        f = await asyncio.to_thread(AN.qa_shot, tenant, ref, name)
+    except AN.AS.AppError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type="image/png", headers={"Cache-Control": "private, max-age=600"})
 
 
 @app.get("/api/app-apk/{token}/{name}")
@@ -8749,6 +8771,14 @@ async def app_api_file(app_key: str, fid: str, request: Request):
                                                              "X-Content-Type-Options": "nosniff"})
 
 
+@app.post("/api/app-api/{app_key}/crash")
+async def app_api_crash(app_key: str, request: Request):
+    """v0.324 HOOLA QA: a crash an installed app kept from its last run (no login; nothing personal in it)."""
+    from .appmaker import backend as BE
+    body, ip = await _json_body(request), _ip(request)
+    return await asyncio.to_thread(_be_call, lambda: BE.crash(BE.by_key(app_key), body, ip))
+
+
 @app.get("/api/app-api/{app_key}/updates")
 async def app_api_updates(app_key: str, request: Request, since: str = ""):
     """v0.319 the app's background check: her rows that moved (customer) / new orders (staff) since `since`."""
@@ -8872,6 +8902,13 @@ async def apps_data_file(ref: str, fid: str, tenant: str = Depends(current_tenan
     except Exception:
         raise HTTPException(404, "not found")
     return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
+@app.get("/api/apps/{ref}/crashes", dependencies=[Depends(require_key)])
+async def apps_crashes(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.324 crashes on her app users' phones, grouped (same exception + same app frames), newest problems first."""
+    from .appmaker import backend as BE
+    return await asyncio.to_thread(_be_owner_call, lambda: {"crashes": BE.crashes(_be_owner(tenant, ref))[:100]})
 
 
 @app.get("/api/apps/{ref}/members", dependencies=[Depends(require_key)])
