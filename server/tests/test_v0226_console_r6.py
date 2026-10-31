@@ -48,5 +48,5 @@ def test_today_survives_a_partial_answer():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.321.0"
-    assert "0.321.0+361" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.322.0"
+    assert "0.322.0+362" in (ROOT / "pubspec.yaml").read_text()

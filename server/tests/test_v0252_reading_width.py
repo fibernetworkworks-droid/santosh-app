@@ -7,8 +7,8 @@ CSS = (ROOT / "server" / "app" / "static" / "console" / "v2.css").read_text()
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.321.0"
-    assert "0.321.0+361" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.322.0"
+    assert "0.322.0+362" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_column_matches_the_composer():
