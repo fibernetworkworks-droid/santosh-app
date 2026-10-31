@@ -99,7 +99,9 @@ would make before design starts). Plan the WHOLE site from the owner's words and
  "notes": "one line: how the site is organised"}
 Rules:
 - The first page is "home". Every page's first section is "hero" (home: a full hero; other pages: a compact page header).
-- Up to 8 sections per page, each type at most once per page. Use only the section types listed.
+- Up to 8 sections per page, each type at most once per page. Use the section types listed; when none fits (a loan /
+  price calculator, a plan comparison, a step-by-step process, a size guide, an interactive menu...), add a FREE-FORM
+  section: {"type": "custom", "name": "EMI calculator", "design": "what it does and how it looks"} (max 3 a page).
 - Repeated things (many products, services, branches, areas, doctors, courses, projects, blog posts) are a COLLECTION, not
   separate designed pages. A collection's items come only from the owner's words / facts / an obvious list she implied
   (e.g. the areas of a city she named). Item data she did not give = "" (never invent prices, timings, specs, names of
@@ -131,14 +133,24 @@ def prompt(br: dict[str, Any], facts: dict[str, Any], words: str, want: int, cur
 
 
 def _section_list(raw: Any, first_hero: bool = True, limit: int = 8) -> list[dict[str, Any]]:
-    out, seen = [], set()
+    out, seen, custom = [], set(), 0
     for s in raw if isinstance(raw, list) else []:
         t = str((s or {}).get("type") or "").strip() if isinstance(s, dict) else str(s or "")
-        if t not in T.SECTIONS or t == "whatsapp_float" or t in seen:
+        name = _tidy((s or {}).get("name"), 40) if isinstance(s, dict) else ""
+        if t == "custom" or (t.startswith("custom_") and not T.is_section(t)):     # v0.330 a free-form section
+            if not name and t == "custom":
+                continue
+            t = T.custom_type(name or t)
+        if not T.is_section(t) or t == "whatsapp_float" or t in seen:
             continue
+        if t not in T.SECTIONS:
+            if custom >= T.CUSTOM_PER_PAGE:
+                continue
+            custom += 1
         seen.add(t)
-        out.append({"type": t, "label": T.SECTIONS[t]["label"],
-                    "design": _tidy((s or {}).get("design") if isinstance(s, dict) else "", 400) or T.SECTIONS[t]["variants"][0]})
+        design = _tidy((s or {}).get("design") if isinstance(s, dict) else "", 400)
+        out.append({"type": t, "label": name or T.label_of(t),
+                    "design": design or (T.SECTIONS[t]["variants"][0] if t in T.SECTIONS else name)})
     if first_hero:
         out = [x for x in out if x["type"] != "hero"]
         out.insert(0, {"type": "hero", "label": T.SECTIONS["hero"]["label"],

@@ -250,7 +250,9 @@ window.HoolaWorkspace = ctx => {
 window.HoolaProgressPolicy = {
   quiet(kind,p={}) {
     if (/(^|_)ask($|_)|approval|confirm|draft|quote|_sign/.test(kind)) return false;
-    return ['step','think','work','log','say','goal','browser','operator_task','pc_task','pc_step','pc_job','memory_saved','procedure'].includes(kind);
+    // v0.330 the long-job plan ('goal') is Claude's todo list: ONE card per job, updated in place - she must SEE it
+    // (her test: the server made the plan, the console folded it into the progress line, so no card ever showed)
+    return ['step','think','work','log','say','browser','operator_task','pc_task','pc_step','pc_job','memory_saved','procedure'].includes(kind);
   },
   phase(kind,p={}) {
     if (/(^|_)ask($|_)|approval|confirm/.test(kind)||p.status==='needs_approval')return 'Your approval is required';

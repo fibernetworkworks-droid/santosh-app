@@ -56,7 +56,10 @@ DOCSTUDIO_TOOLS = [
          "data_heading": {"type": "string", "description": "heading above the data part"},
          "part": {"type": "string", "enum": ["build", "add"],
                   "description": "add = keep this text for later (long documents written over several calls, same "
-                  "title); build (default) = the saved parts + this text become the file"}},
+                  "title); build (default) = the saved parts + this text become the file"},
+         "send_held": {"type": "boolean",
+                       "description": "true = send the draft that was held for a fix exactly as it is (only after a "
+                       "held_for_fix answer you could not fix)"}},
          "required": ["kind", "title"]}},
     {"name": "doc_preview",
      "description": (
@@ -120,10 +123,48 @@ def data_markdown(doc: dict, fields: list[str] | None = None, layout: str = "bot
     return "\n".join(out)
 
 
+# v0.315 EK HI FILE: conv -> (tenant, name, bytes) of a draft held back for one fix; conv -> a hold was used this job
+_HELD: dict[str, tuple[str, str, bytes]] = {}
+_HELD_ONCE: dict[str, bool] = {}
+STATS: dict[str, int] = {"held": 0, "sent_held": 0, "flushed": 0}
+
+
+def _hold_drafts() -> bool:
+    from ..config import get_settings
+    return bool(getattr(get_settings(), "doc_hold_drafts", True))
+
+
+def flush_held(conversation_id: str) -> bool:
+    """The turn is over: a held draft that was never replaced goes to her now (a file is never lost)."""
+    _HELD_ONCE.pop(conversation_id, None)
+    got = _HELD.pop(conversation_id, None)
+    if not got:
+        return False
+    from types import SimpleNamespace
+    tenant, name, data = got
+    try:
+        _deliver(SimpleNamespace(tenant_id=tenant, conversation_id=conversation_id), name, data, "docstudio")
+        STATS["flushed"] += 1
+        return True
+    except Exception:
+        import logging
+        logging.getLogger("santosh.docstudio").exception("held draft delivery failed")
+        return False
+
+
 async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, charts=None,
                      filename="", style="auto", cover="auto", toc="auto", subject="", data="",
                      data_fields=None, data_layout="both", data_heading="", part="build", author="",
-                     prepared_for="", **_):
+                     prepared_for="", send_held=False, **_):
+    if send_held:   # v0.315 the model could not fix the held draft: send it as it is
+        conv = getattr(ctx, "conversation_id", "") or ""
+        got = _HELD.pop(conv, None)
+        _HELD_ONCE.pop(conv, None)
+        if not got:
+            raise ToolError("No held draft - the file already reached her (or none was made).")
+        STATS["sent_held"] += 1
+        view = await asyncio.to_thread(_deliver, ctx, got[1], got[2], "docstudio")
+        return view | {"note": "The draft is in chat now; this is her FINAL file."}
     kind = str(kind or "").lower().strip()
     if kind not in ("pdf", "docx", "xlsx", "pptx"):
         raise ToolError("kind: pdf | docx | xlsx | pptx")
@@ -181,11 +222,28 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
     data = res.pop("data", b"")
     if dp.exists():
         dp.unlink(missing_ok=True)       # v0.238 the parts are now in the file
-    view = await asyncio.to_thread(_deliver, ctx, _safe(str(filename or title), "." + kind), data, "docstudio")
+    name = _safe(str(filename or title), "." + kind)
     prev = await asyncio.to_thread(preview.preview, kind, data, res)
     prev.pop("images", None)
     qa = prev.get("qa") or {}
-    notes = ["The file card is in chat; file_id email / hoola_send ke liye ready hai."]
+    conv = getattr(ctx, "conversation_id", "") or ""
+    if qa.get("status") == "warn" and conv and _hold_drafts() and not _HELD_ONCE.get(conv):
+        # v0.315 EK HI FILE: the check runs BEFORE the card. A draft with problems is held back (her chat used to get
+        # file 1 and file 2 with the problems, then the fixed file 3); the model gets ONE try to fix it. The next
+        # doc_studio call delivers whatever it makes, and the turn's end delivers a held draft nobody replaced.
+        _HELD[conv] = (getattr(ctx, "tenant_id", ""), name, data)
+        _HELD_ONCE[conv] = True
+        STATS["held"] += 1
+        return {"status": "held_for_fix", "made": kind, "issues": qa.get("issues"),
+                "note": ("This draft was NOT sent to her - the check found problems: " + str(qa.get("issues"))[:600] +
+                         ". Fix exactly these and call doc_studio again with the corrected content (same kind and "
+                         "title). If they cannot be fixed, call doc_studio with send_held=true to send this draft as "
+                         "it is. Do not tell her about the draft.")}
+    _HELD.pop(conv, None)
+    _HELD_ONCE.pop(conv, None)
+    view = await asyncio.to_thread(_deliver, ctx, name, data, "docstudio")
+    notes = ["The file card is in chat; file_id email / hoola_send ke liye ready hai. This is her FINAL file - do "
+             "not make another version unless she asks for a change."]
     if qa.get("status") == "warn":
         notes.append(f"QA ne kaha: {qa.get('issues')}")
     if kind == "pdf" and res.get("design"):

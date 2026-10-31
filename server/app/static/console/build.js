@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') loadStore(o, ot); }
     showBtn();
   }
 
@@ -464,6 +464,60 @@ window.HoolaBuild = function (C) {
         ${line('Navigation', d.nav)}${line('Main button', d.fab)}${line('Card', d.card)}${line('Button', d.button)}${line('Header', d.header)}${line('Transition', d.transition)}${line('Font', L(d.fonts).filter(Boolean).join(' / '))}${line('Mode', d.dark ? 'dark' : d.mode)}</section>` : ''}
       ${L(pl.tabs).length || L(pl.flow).length ? `<section class="bbox"><h4>Flow</h4>${line('Bottom tabs', L(pl.tabs).join(' · '))}${line('Flow', L(pl.flow).join(' → '))}${L(pl.rules).length ? line('Rules', L(pl.rules).join(' · ')) : ''}</section>` : ''}`;
   }
+  /* v0.325 HOOLA QA: what the device check found on a real Android emulator after the build compiled */
+  function qaBox(o) {
+    const q = M(o.an?.qa); if (!Object.keys(q).length) return '';
+    if (!q.ran) return `<section class="bbox"><h4>Device check</h4><p class="faint" style="font-size:12.5px">${esc(S(q.why) || 'Not run on this build machine.')}</p></section>`;
+    const p = M(q.perf), b = M(q.budget), tag = k => b[k] === 'over' ? 'warn' : 'ok';
+    return `<section class="bbox"><h4>Device check · ${N(q.opened)} / ${N(q.total)} screens opened without a crash</h4>
+      <div class="bln">${p.cold_ms != null ? `<span class="tag ${tag('cold_ms')}">Cold start ${N(p.cold_ms)} ms</span> ` : ''}${p.jank_pct != null ? `<span class="tag ${tag('jank_pct')}">Janky frames ${esc(S(p.jank_pct))}%</span> ` : ''}${p.apk_mb != null ? `<span class="tag ${tag('apk_mb')}">APK ${esc(S(p.apk_mb))} MB</span> ` : ''}<span class="tag ${N(q.a11y_count) ? 'warn' : 'ok'}">${N(q.a11y_count)} accessibility findings</span></div>
+      ${L(q.crashed).length ? `<div class="badc bln">Crashed: ${esc(L(q.crashed).join(', '))} (shipped as the simple version)</div>` : ''}
+      ${L(q.a11y).slice(0, 6).map(f => `<div class="bln faint">${esc(S(f.screen))}: ${esc(S(f.text))}</div>`).join('')}
+      ${L(q.shots).length ? `<div class="blooks">${L(q.shots).slice(0, 12).map(sh => `<figure>${pic(`${base(o)}/android/qa/${encodeURIComponent(sh)}`, sh)}<figcaption>${esc(sh)}</figcaption></figure>`).join('')}</div>` : ''}</section>`;
+  }
+
+  /* v0.330 Google Play from HER OWN developer account: steps, package, her service-account key (file -> sealed, never shown),
+     listing, bundle, Internal testing, Production only after a confirm */
+  async function loadStore(o, root) {
+    const box = root.querySelector('.ststore'); if (!box || !S(o.an?.status)) return;
+    let v; try { v = await api('GET', base(o) + '/store'); } catch (er) { return; }
+    const step = id => (L(v.steps).find(x => x.id === id) || {}).done, l = M(v.listing);
+    box.innerHTML = `<section class="bbox"><h4>Google Play Store · ${L(v.steps).filter(x => x.done).length} / ${L(v.steps).length}</h4>
+      ${v.now ? `<div class="bln">${esc(S(v.now))}</div>` : ''}${v.error ? `<div class="badc bln">${esc(S(v.error))}</div>` : ''}
+      ${L(v.steps).map(x => `<div class="bln ${x.done ? '' : 'faint'}">${x.done ? '✓' : '○'} ${esc(S(x.label))}${x.value ? ' · ' + esc(S(x.value)) : ''}</div>`).join('')}
+      <form class="stapp" data-st="setup"><label for="stPkg"><b>Package name</b> <span>Permanent: Google never lets it change.</span></label>
+        <div class="row"><input id="stPkg" value="${esc(S(v.package) || S(v.proposed))}" ${v.locked ? 'disabled' : ''}><button class="btn soft" type="submit" ${v.locked ? 'disabled' : ''}>Confirm</button></div></form>
+      ${v.account ? `<div class="bln">Play account linked: ${esc(S(v.account))} <button class="btn soft" type="button" data-st="forget">Remove key</button></div>`
+        : `<label class="bln"><b>Your Play service-account key (JSON file)</b> <span class="faint">Play Console > Setup > API access. Sealed on the server, never shown again; never paste it in chat.</span><br><input type="file" accept=".json,application/json" data-st="key"></label>`}
+      ${l.title ? `<div class="bln"><b>${esc(S(l.title))}</b><div class="faint">${esc(S(l.short))}</div></div>` : ''}
+      <div class="acts"><button class="btn soft" type="button" data-st="listing" ${step('package') ? '' : 'disabled'}>${l.title ? 'Rewrite listing' : 'Write listing'}</button>
+        <button class="btn soft" type="button" data-st="build" ${step('package') ? '' : 'disabled'}>Build store bundle</button>
+        <button class="btn go" type="button" data-st="internal" ${step('bundle') && step('account') ? '' : 'disabled'}>Send to Internal testing</button>
+        <button class="btn soft" type="button" data-st="production" ${step('internal') ? '' : 'disabled'}>Production (everyone)</button></div>
+      <div class="bln faint">Privacy policy: ${esc(S(v.privacy_url))}<br>Data deletion: ${esc(S(v.delete_url))}</div>
+      ${L(v.console_steps).map(t => `<div class="bln faint">• ${esc(S(t))}</div>`).join('')}
+      ${L(v.data_safety).length ? `<div class="bln"><b>Data safety answers</b>${L(v.data_safety).map(x => `<div class="faint">• ${esc(S(x.type))} - ${esc(S(x.why))}</div>`).join('')}</div>` : ''}</section>`;
+    const go = async (what, body, ok) => { try { await api('POST', base(o) + '/store/' + what, body); if (ok) toast(ok); loadStore(o, root); } catch (er) { toast(er.message, true); } };
+    box.querySelector('form[data-st=setup]')?.addEventListener('submit', e => { e.preventDefault(); go('setup', {package: box.querySelector('#stPkg').value.trim()}, 'Package confirmed.'); });
+    box.querySelector('input[data-st=key]')?.addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return; go('credentials', {json: await f.text()}, 'Play account linked.'); });
+    box.onclick = e => { const b = e.target.closest('button[data-st]'); if (!b) return;
+      const w = b.dataset.st;
+      if (w === 'forget') go('forget', {}, 'Key removed.');
+      if (w === 'listing') go('listing', {regen: true}, 'Listing written.');
+      if (w === 'build') go('build', {}, 'Building the store bundle.');
+      if (w === 'internal') go('publish', {track: 'internal'}, 'Sending to Google Play (Internal testing).');
+      if (w === 'production' && confirm('Send to Production? After Google review the app is public on the Play Store for everyone.')) go('publish', {track: 'production', her_tap: true}, 'Sending to Production.');
+    };
+  }
+
+  /* v0.325 every build of the app: what changed, and Bring back for a kept one */
+  function historyBox(o) {
+    const h = L(o.an?.history), kept = L(o.an?.kept_builds); if (!h.length) return '';
+    return `<section class="bbox"><h4>Versions</h4>${h.slice(0, 8).map((x, i) => `<div class="bln"><b>v${esc(S(x.version_name))}</b> · build ${N(x.build)}${i === 0 ? ' · current' : ''}
+      ${L(x.notes).slice(0, 3).map(t => `<div class="faint" style="font-size:12.5px">${esc(S(t))}</div>`).join('')}
+      ${i > 0 && kept.includes(x.build) && !anWorking(o) ? btn('rollback', 'Bring back', 'soft', ` data-build="${N(x.build)}"`) : ''}</div>`).join('')}</section>`;
+  }
+
   function androidPane(o) {
     const v = o.v || {}, a = o.an || {}, s = S(a.status);
     if (!v.approved && !s) return `<section class="bbox"><h4>Real Android app</h4><p class="muted" style="font-size:13.5px">Approve the design first: the real app is built from it.</p>${S(v.status) === 'ready' ? `<div class="acts">${btn('approve', 'Approve design', 'go')}</div>` : ''}</section>`;
@@ -477,6 +531,7 @@ window.HoolaBuild = function (C) {
     const apk = M(a.apk), dl = publicLink(a.apk_url), zip = publicLink(a.zip_url), redo = L(a.screens).filter(x => x.state === 'code').map(x => x.id);
     return `<ol class="bpipe">${pipe}</ol>
       ${s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : ''}${a.note ? `<div class="muted bln">${esc(a.note)}</div>` : ''}
+      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div>
       <div class="bcols"><section class="bbox"><h4>Screens in Kotlin</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
           ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>
@@ -526,6 +581,9 @@ window.HoolaBuild = function (C) {
           break; }
         case 'android': await call(o, '/android', {}, 'Building the Android app: every screen in Kotlin, then compile.'); o.tab = 'android'; break;
         case 'redo': await call(o, '/android', {redo: S(b.dataset.ids).split(',').filter(Boolean)}, 'Rewriting the simple screens.'); break;
+        case 'rollback': {   // v0.325 an older build again, as a new version
+          if (!confirm(`Bring back build ${S(b.dataset.build)}? It is released as a new version, so phones take it as an update.`)) break;
+          await call(o, '/rollback', {build: +b.dataset.build}, `Bringing back build ${S(b.dataset.build)}.`); break; }
         case 'reload': reloadFrames(o, true); break;
         case 'edit': {
           const r = await call(o, '/edit-mode', {}, '');
@@ -566,15 +624,18 @@ window.HoolaBuild = function (C) {
       const sec = document.createElement('section'); sec.className = 'stcol';
       sec.innerHTML = `<h4>${esc(S(c.label))} <span>${rows.length}</span></h4>` + (rows.length ? `<div class="sttbl"><table><thead><tr>${fields.map(f => `<th>${esc(S(f.label))}</th>`).join('')}<th>When</th></tr></thead><tbody>${rows.map(r => `<tr data-r="${esc(S(r.id))}">${fields.map(f => {
         const v = r[f.key];
-        if (f.key === 'status' && f.type === 'choice') return `<td><select data-f="status" aria-label="Status">${L(f.options).map(op => `<option${S(op) === S(v) ? ' selected' : ''}>${esc(S(op))}</option>`).join('')}</select></td>`;
+        if ((f.key === 'status' || f.key === 'paid') && f.type === 'choice') return `<td><select data-f="${f.key}" aria-label="${esc(S(f.label))}">${L(f.options).map(op => `<option${S(op) === S(v) ? ' selected' : ''}>${esc(S(op))}</option>`).join('')}</select></td>`;
+        if (f.type === 'photo') return `<td>${/^f_[0-9a-f]{16}$/.test(S(v)) ? pic(`${base(o)}/files/${S(v)}`, S(f.label), 'stphoto') : ''}</td>`;   // v0.319
+        if (f.type === 'location' && S(v)) return `<td><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(S(v))}" target="_blank" rel="noopener">${esc(S(v))}</a></td>`;
         return `<td>${esc(f.type === 'yes_no' ? (v ? 'Yes' : 'No') : S(v)).replace(/\n/g, '<br>')}</td>`;
       }).join('')}<td>${esc(S(r.created).slice(0, 16).replace('T', ' '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No entries yet.</p>');
       sec.addEventListener('change', async e => {
         const sl = e.target.closest('select[data-f]'), tr = e.target.closest('tr[data-r]'); if (!sl || !tr) return;
-        try { await api('PATCH', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}`, {status: sl.value}); toast('Saved.'); }
+        try { await api('PATCH', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}`, {[sl.dataset.f]: sl.value}); toast('Saved.'); }
         catch (er) { toast(er.message, true); }
       });
       cbox.appendChild(sec);
+      hydrate(sec);              // v0.319 photos load with her login
     }
     const mbox = box.querySelector('.stmem');
     try {

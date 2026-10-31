@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import time
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -95,10 +96,10 @@ def _w(method: str, path: str, body: bytes = b"", timeout: int = 60) -> tuple[in
         return e.code, e.read(), dict(e.headers or {})
 
 
-def run_worker(src: Path, key: str, progress: Progress) -> dict[str, Any]:
+def run_worker(src: Path, key: str, progress: Progress, kind: str = "apk") -> dict[str, Any]:
     t0 = time.time()
     data = zip_project(src)
-    st, body, _h = _w("POST", f"/build?app={urllib.parse.quote(key)}", data, timeout=120)
+    st, body, _h = _w("POST", f"/build?app={urllib.parse.quote(key)}" + ("&kind=aab" if kind == "aab" else ""), data, timeout=120)
     if st != 200:
         raise BuildUnavailable(f"build machine said {st}: {body[:200].decode(errors='replace')}")
     job = json.loads(body)["job"]
@@ -119,9 +120,32 @@ def run_worker(src: Path, key: str, progress: Progress) -> dict[str, Any]:
                 st2, apk, _ = _w("GET", f"/jobs/{job}/apk", timeout=300)
                 apk = apk if st2 == 200 else None
             st3, logb, _ = _w("GET", f"/jobs/{job}/log", timeout=60)
+            qa = None
+            if apk and kind != "aab":              # v0.325 the device check, when that machine has an emulator
+                st4, qb, _ = _w("GET", f"/jobs/{job}/qa", timeout=120)
+                qa = qa_from_zip(qb) if st4 == 200 else None
             return {"ok": bool(apk), "log": logb.decode(errors="replace") if st3 == 200 else j.get("tail", ""), "apk": apk,
-                    "seconds": round(time.time() - t0), "where": "worker"}
+                    "seconds": round(time.time() - t0), "where": "worker", "qa": qa}
     return {"ok": False, "log": "build timed out", "apk": None, "seconds": round(time.time() - t0), "where": "worker"}
+
+
+def qa_from_zip(zb: bytes) -> dict[str, Any] | None:
+    """v0.325 HOOLA QA: {report, shots{screen id: png}} from a zip holding report.json + screens/*.png (any folder)."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(zb)) as z:
+            names = z.namelist()
+            rep = next((n for n in names if n.endswith("report.json")), None)
+            if not rep:
+                return None
+            report = json.loads(z.read(rep))
+            shots = {}
+            for n in names:
+                m = re.search(r"screens/([a-z][a-z0-9_]{0,48})\.png$", n)
+                if m and z.getinfo(n).file_size < 6_000_000:
+                    shots[m.group(1)] = z.read(n)
+            return {"report": report, "shots": shots}
+    except (zipfile.BadZipFile, ValueError, KeyError):
+        return None
 
 
 # ---------------------------------------------------------------- github (private builds repo, workflow hoola-build.yml)
@@ -150,7 +174,7 @@ class _NoAuthRedirect(urllib.request.HTTPRedirectHandler):
         return urllib.request.Request(newurl, headers={"User-Agent": "Hoola-AppBuild"})
 
 
-def run_github(src: Path, key: str, progress: Progress) -> dict[str, Any]:
+def run_github(src: Path, key: str, progress: Progress, kind: str = "apk") -> dict[str, Any]:
     s = _settings()
     repo = s.app_build_gh_repo.strip()
     t0 = time.time()
@@ -175,7 +199,8 @@ def run_github(src: Path, key: str, progress: Progress) -> dict[str, Any]:
     else:
         _gh("POST", f"/repos/{repo}/git/refs", {"ref": f"refs/heads/{branch}", "sha": c["sha"]})
     job = hashlib.sha256(f"{key}{c['sha']}{time.time()}".encode()).hexdigest()[:16]
-    _gh("POST", f"/repos/{repo}/actions/workflows/hoola-build.yml/dispatches", {"ref": branch, "inputs": {"job": job}})
+    inputs = {"job": job, **({"kind": "aab"} if kind == "aab" else {})}     # v0.330 a Play Store bundle (new hoola-build.yml)
+    _gh("POST", f"/repos/{repo}/actions/workflows/hoola-build.yml/dispatches", {"ref": branch, "inputs": inputs})
     progress("queued")
     run = None
     limit = s.app_build_timeout_s
@@ -195,7 +220,7 @@ def run_github(src: Path, key: str, progress: Progress) -> dict[str, Any]:
     if not run or run.get("status") != "completed":
         return {"ok": False, "log": "GitHub build timed out", "apk": None, "seconds": round(time.time() - t0), "where": "github"}
     arts = _gh("GET", f"/repos/{repo}/actions/runs/{run['id']}/artifacts") or {}
-    apk, text = None, ""
+    apk, text, qa = None, "", None
     for a in arts.get("artifacts", []):
         if a.get("name") != f"hoola-{job}" and a.get("name") != "hoola-build":
             continue
@@ -205,17 +230,18 @@ def run_github(src: Path, key: str, progress: Progress) -> dict[str, Any]:
             zb = r.read()
         with zipfile.ZipFile(io.BytesIO(zb)) as z:
             for n in z.namelist():
-                if n.endswith(".apk"):
+                if n.endswith(".aab" if kind == "aab" else ".apk"):
                     apk = z.read(n)
                 elif n.endswith("build.log"):
                     text = z.read(n).decode(errors="replace")
+        qa = qa_from_zip(zb)                       # v0.325 the device check's report + pictures (folder qa/)
     ok = run.get("conclusion") == "success" and bool(apk)
     return {"ok": ok, "log": text or f"GitHub run {run.get('conclusion')}", "apk": apk if ok else None,
-            "seconds": round(time.time() - t0), "where": "github"}
+            "seconds": round(time.time() - t0), "where": "github", "qa": qa if ok else None}
 
 
 # ---------------------------------------------------------------- local (a developer machine with the Android SDK)
-def run_local(src: Path, key: str, progress: Progress) -> dict[str, Any]:
+def run_local(src: Path, key: str, progress: Progress, kind: str = "apk") -> dict[str, Any]:
     t0 = time.time()
     progress("compiling")
     env = {k: v for k, v in os.environ.items() if not any(w in k.upper() for w in ("KEY", "TOKEN", "SECRET", "PASS"))}
@@ -223,13 +249,14 @@ def run_local(src: Path, key: str, progress: Progress) -> dict[str, Any]:
     if not env["HOOLA_PREVIEW_KEY_PASS"]:
         env.pop("HOOLA_PREVIEW_KEY_PASS")
     try:
-        p = subprocess.run(["./gradlew", "--no-daemon", "--console=plain", "assembleRelease"], cwd=src, env=env,
+        p = subprocess.run(["./gradlew", "--no-daemon", "--console=plain", "bundleRelease" if kind == "aab" else "assembleRelease"], cwd=src, env=env,
                            capture_output=True, text=True, timeout=_settings().app_build_timeout_s)
         out = (p.stdout or "") + "\n" + (p.stderr or "")
     except subprocess.TimeoutExpired as e:
         out = (e.stdout or b"").decode(errors="replace") if isinstance(e.stdout, bytes) else str(e.stdout or "")
         return {"ok": False, "log": out + "\nbuild timed out", "apk": None, "seconds": round(time.time() - t0), "where": "local"}
-    apk_p = next(iter(sorted((src / "app/build/outputs/apk/release").glob("*.apk"))), None) if (src / "app/build/outputs/apk/release").exists() else None
+    od = src / ("app/build/outputs/bundle/release" if kind == "aab" else "app/build/outputs/apk/release")
+    apk_p = next(iter(sorted(od.glob("*.aab" if kind == "aab" else "*.apk"))), None) if od.exists() else None
     apk = apk_p.read_bytes() if (p.returncode == 0 and apk_p) else None
     return {"ok": bool(apk), "log": out, "apk": apk, "seconds": round(time.time() - t0), "where": "local"}
 
@@ -244,9 +271,10 @@ def set_runner(fn: Callable[[Path, str, Progress], dict[str, Any]] | None) -> No
     _override = fn
 
 
-def build(src: Path, key: str, progress: Progress) -> dict[str, Any]:
+def build(src: Path, key: str, progress: Progress, kind: str = "apk") -> dict[str, Any]:
+    """kind 'apk' = the preview build (+ device check); 'aab' = v0.330 the Play Store bundle (result['apk'] holds its bytes)."""
     if _override:
-        return _override(src, key, progress)
+        return _override(src, key, progress, kind) if kind != "apk" else _override(src, key, progress)
     m = mode()
     if not m:
         raise BuildUnavailable("no build machine set up")
@@ -255,6 +283,6 @@ def build(src: Path, key: str, progress: Progress) -> dict[str, Any]:
         shutil.rmtree(work)
     shutil.copytree(src, work)
     try:
-        return RUNNERS[m](work, key, progress)
+        return RUNNERS[m](work, key, progress, kind)
     finally:
         shutil.rmtree(work, ignore_errors=True)

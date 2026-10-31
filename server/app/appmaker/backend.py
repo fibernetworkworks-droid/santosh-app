@@ -31,6 +31,9 @@ log = logging.getLogger("santosh.appmaker.backend")
 STATS = {"schemas": 0, "orders": 0, "dedup": 0, "notes": 0, "notes_capped": 0, "deleted_accounts": 0}
 CID = re.compile(r"^[A-Za-z0-9_-]{8,48}$")
 NOTE_CAP_PER_HOUR = 30
+SCHEMA_V = 2                     # v0.319 photo / location / paid fields
+MAX_UPLOAD = 6 * 1024 * 1024     # what the phone may send (it shrinks to ~1600 px first); stored re-encoded, smaller
+STATS.update({"uploads": 0, "upload_refused": 0, "paid_claims": 0, "updates": 0})
 _KEYS: dict[str, tuple[float, str]] = {}           # app_key -> (when, project id)
 _NOTES: dict[str, list[float]] = {}
 _LOCK = threading.Lock()
@@ -70,11 +73,17 @@ def _who_fields() -> list[dict[str, Any]]:
 CUSTOMER = {"create": "member", "read": "own", "update": "admin", "delete": "admin"}
 
 
+PAID = ["No", "Customer says paid", "Verified"]
+
+
 def _orders() -> dict[str, Any]:
     return {"key": "orders", "label": "Orders", "rules": dict(CUSTOMER), "fields": [
         _f("items", "Items", "long_text", admin_only=True), _f("total", "Total (Rs)", "number", admin_only=True),
-        *_who_fields(), _f("address", "Delivery address", "long_text"), _f("note", "Note", "long_text"),
-        _f("pay", "Payment", "choice", options=["Cash on delivery", "UPI"], default="Cash on delivery"), _status("orders")]}
+        *_who_fields(), _f("address", "Delivery address", "long_text"), _f("pin", "Delivery location", "location"),
+        _f("note", "Note", "long_text"),
+        _f("pay", "Payment", "choice", options=["Cash on delivery", "UPI"], default="Cash on delivery"), _status("orders"),
+        # v0.319 the customer's word that she paid by UPI + the UPI reference she typed; only the owner marks it Verified
+        _f("paid", "Paid?", "choice", admin_only=True, options=PAID, default="No"), _f("utr", "UPI reference", admin_only=True)]}
 
 
 GOAL_LISTS: dict[str, list[dict[str, Any]]] = {
@@ -86,7 +95,8 @@ GOAL_LISTS: dict[str, list[dict[str, Any]]] = {
         *_who_fields(), _f("note", "Note", "long_text"), _status("bookings")]}],
     "service_request": [{"key": "requests", "label": "Service requests", "rules": dict(CUSTOMER), "fields": [
         _f("service", "Service", required=True), _f("problem", "What is the problem", "long_text", required=True),
-        _f("address", "Address", "long_text"), _f("date", "Preferred date", "date"), *_who_fields(), _status("requests")]}],
+        _f("photo", "Photo of the problem", "photo"), _f("address", "Address", "long_text"), _f("pin", "Location", "location"),
+        _f("date", "Preferred date", "date"), *_who_fields(), _status("requests")]}],
     "learning": [{"key": "enrolments", "label": "Enrolments", "rules": dict(CUSTOMER), "fields": [
         _f("course", "Course / batch", required=True), _f("student", "Student name", required=True),
         _f("phone", "Mobile number", "phone", required=True), _f("note", "Note", "long_text"), _status("enrolments")]}],
@@ -95,10 +105,11 @@ GOAL_LISTS: dict[str, list[dict[str, Any]]] = {
     "events": [{"key": "registrations", "label": "Registrations", "rules": dict(CUSTOMER), "fields": [
         _f("event", "Event", required=True), _f("people", "People", "number"), *_who_fields(), _status("registrations")]}],
     "catalogue": [{"key": "enquiries", "label": "Enquiries", "rules": {**CUSTOMER, "create": "public"}, "fields": [
-        _f("item", "Item"), _f("message", "Message", "long_text", required=True), *_who_fields(), _status("enquiries")]}],
+        _f("item", "Item"), _f("message", "Message", "long_text", required=True), _f("photo", "Photo", "photo"),
+        *_who_fields(), _status("enquiries")]}],
     "community": [
         {"key": "posts", "label": "Posts", "rules": {"create": "admin", "read": "public", "update": "admin", "delete": "admin"},
-         "fields": [_f("title", "Title", required=True), _f("body", "Text", "long_text", required=True)]},
+         "fields": [_f("title", "Title", required=True), _f("body", "Text", "long_text", required=True), _f("photo", "Photo", "photo")]},
         {"key": "messages", "label": "Messages", "rules": dict(CUSTOMER), "fields": [
             _f("message", "Message", "long_text", required=True), _f("name", "Name")]}],
 }
@@ -107,7 +118,7 @@ PRODUCT_LISTS = [
      "fields": [_f("item", "Item", required=True), _f("note", "Note", "long_text")]},
     {"key": "feedback", "label": "Feedback", "rules": {"create": "member", "read": "own", "update": "admin", "delete": "admin"},
      "fields": [_f("message", "Message", "long_text", required=True),
-                _f("rating", "Rating", "choice", options=["1", "2", "3", "4", "5"], default="5")]},
+                _f("rating", "Rating", "choice", options=["1", "2", "3", "4", "5"], default="5"), _f("photo", "Screenshot", "photo")]},
 ]
 STAFF_RULES = {"create": "admin", "read": "admin", "update": "admin", "delete": "admin"}   # 'admin' = staff + admin roles
 # blueprint plumbing that never becomes an in-app list (the org chart and permissions live in Hoola; join / line tables
@@ -117,7 +128,11 @@ SKIP_ENT = re.compile(r"(_line|_item|_step|_answer|_dependency|_schedule|_rule|_
 INFRA_MODULES = ("core", "approvals", "reports")
 DM_TYPE = {"text": "text", "long": "long_text", "int": "number", "decimal": "number", "money": "number", "bool": "yes_no",
            "date": "date", "datetime": "text", "time": "text", "phone": "phone", "email": "email", "url": "text",
-           "enum": "choice", "ref": "text", "uuid": "text"}
+           "enum": "choice", "ref": "text", "uuid": "text", "file": "photo", "point": "location"}
+# v0.319 kinds the app backend adds on top of the web-app engine's vocabulary (kept through clean_schema, checked here)
+EXTRA_TYPES = ("photo", "location")
+LOC = re.compile(r"^\s*(-?\d{1,2}(?:\.\d{1,7})?)\s*,\s*(-?\d{1,3}(?:\.\d{1,7})?)\s*$")
+FILE_ID = re.compile(r"^f_[0-9a-f]{16}$")
 
 
 def _complex_lists(plan: dict[str, Any], goal: str = "") -> list[dict[str, Any]]:
@@ -135,9 +150,13 @@ def _complex_lists(plan: dict[str, Any], goal: str = "") -> list[dict[str, Any]]
     ents.sort(key=lambda e: order.get(D.ENTITIES[e][0], 99))
     out = []
     for e in ents:
-        fields = []
+        fields, extra = [], {"photo": 0, "location": 0}
         for f in D.parse_fields(D.ENTITIES[e][2]):
             t = DM_TYPE.get(f["type"])
+            if t in extra:                      # at most 2 photos and 1 location per staff list
+                extra[t] += 1
+                if extra[t] > (2 if t == "photo" else 1):
+                    continue
             if not t or W._slug(f["name"]) in ("id", "owner", "created", "updated") or \
                     re.search(r"(?i)(password|pin|otp|cvv|card|aadhaar|pan_no|account_no|ifsc|token|secret)", f["name"]):
                 continue
@@ -167,6 +186,11 @@ def schema_for(r: AppProject) -> dict[str, Any]:
     else:
         lists, kind = [dict(x) for x in GOAL_LISTS.get(r.goal) or GOAL_LISTS["catalogue"]], "customer"
     sch = W.clean_schema({"collections": lists, "signup": True})
+    want = {(c["key"], f["key"]): f["type"] for c in lists for f in c["fields"] if f.get("type") in EXTRA_TYPES}
+    for c in sch["collections"]:                # clean_schema turned photo / location into text: give them back
+        for f in c["fields"]:
+            if (c["key"], f["key"]) in want:
+                f["type"] = want[(c["key"], f["key"])]
     sch["kind"] = kind
     sch["order"] = "orders" if any(c["key"] == "orders" for c in sch["collections"]) else ""
     return sch
@@ -187,9 +211,14 @@ def ensure(r: AppProject) -> dict[str, Any]:
     """The app's backend, made on first need (the Android build makes it before writing a single screen)."""
     W.ensure_tables()
     be = _j(r.backend, {})
-    if be.get("schema", {}).get("collections") is not None:
+    if be.get("schema", {}).get("collections") is not None and int(be.get("v") or 1) >= SCHEMA_V:
         return be
-    be = {"schema": schema_for(r), "made": now().isoformat(), "v": 1}
+    # v0.319 an older backend is upgraded in place: lists only GAIN fields (photo / location / paid), rows are untouched
+    old_changes = be.get("changes") or []
+    be = {"schema": schema_for(r), "made": be.get("made") or now().isoformat(), "v": SCHEMA_V, "rev": int(be.get("rev") or 0),
+          "changes": old_changes, **({"upgraded": now().isoformat()} if be.get("made") else {})}
+    for ch in old_changes:                     # v0.325 her own data changes survive an upgrade: replayed on the new lists
+        _apply_ops(be["schema"], ch.get("ops") or {})
     with session() as s:
         row = s.get(AppProject, r.id)
         row.backend = json.dumps(be, ensure_ascii=False)
@@ -314,6 +343,7 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
         items, total = _priced(r, body.get("cart"))
         extra = {"items": items, "total": total}
     data = {k: v for k, v in body.items() if k not in ("cid", "cart")}
+    _check_extra(r, c, data, w)
     out = W.create(site, sch, coll, data, w, ip)
     if extra or cid:
         _merge(out["id"], {**extra, **({"_cid": cid} if cid else {})})
@@ -325,13 +355,26 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     return out
 
 
-def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200) -> list[dict[str, Any]]:
-    return W.rows(bid(r), schema(r), coll, w, limit)
+def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", status: str = "", offset: int = 0) -> list[dict[str, Any]]:
+    """v0.319 + search (q, any field) and a status filter, newest first; offset pages through them."""
+    got = W.rows(bid(r), schema(r), coll, w, 1000 if (q or status or offset) else limit)
+    if status:
+        got = [x for x in got if str(x.get("status") or "") == status]
+    if q:
+        t = q.strip().lower()[:80]
+        got = [x for x in got if t in json.dumps(x, ensure_ascii=False).lower()]
+    offset = max(0, int(offset or 0))
+    return got[offset:offset + max(1, min(int(limit or 200), 1000))]
 
 
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
     body = {k: v for k, v in (body if isinstance(body, dict) else {}).items() if k not in ("cid", "cart")}
-    return W.update(bid(r), schema(r), coll, row_id, body, w)
+    sch = schema(r)
+    _check_extra(r, W.coll(sch, coll), body, w)
+    out = W.update(bid(r), sch, coll, row_id, body, w)
+    if any(k in body for k in ("status", "paid")):
+        _merge(row_id, {"_ev": now().isoformat()})     # v0.319 the moment her row moved: the app's update check reads it
+    return out
 
 
 def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
@@ -434,3 +477,344 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
     sch = schema(r)
     return {"kind": sch.get("kind"), "order": sch.get("order"), "signup": sch.get("signup", True),
             "collections": sch["collections"]}
+
+
+# ---------------------------------------------------------------- v0.319 photos, location, updates, "I paid"
+def _check_extra(r: AppProject, c: dict[str, Any], data: dict[str, Any], w: W.Who) -> None:
+    """Photo fields carry a file this app holds and this person may use; location fields are a real "lat,lng"."""
+    for f in c["fields"]:
+        k, t = f["key"], f.get("type")
+        if t not in EXTRA_TYPES or k not in data or data[k] in (None, ""):
+            continue
+        v = str(data[k]).strip()
+        if t == "location":
+            m = LOC.match(v)
+            if not m or abs(float(m.group(1))) > 90 or abs(float(m.group(2))) > 180:
+                raise W.AppError(f"{f['label']}: location sahi nahi (lat,lng).")
+            data[k] = f"{float(m.group(1)):.6f},{float(m.group(2)):.6f}"
+        else:
+            meta = _file_meta(r, v)
+            if meta is None or not (w.staff or (w.id and meta.get("owner") == w.id) or (not meta.get("owner") and not w.id)):
+                raise W.AppError(f"{f['label']}: yeh photo is account ki nahi.", 403)
+            if (c.get("rules") or {}).get("read") == "public" and not meta.get("public"):
+                meta["public"] = True
+                _files(r).joinpath(v + ".json").write_text(json.dumps(meta))
+            data[k] = v
+
+
+def _files(r: AppProject):
+    from . import kit as K
+    d = K.app_dir(r.tenant_id, r.id) / "backend" / "files"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _file_meta(r: AppProject, fid: str) -> dict[str, Any] | None:
+    if not FILE_ID.match(fid or ""):
+        return None
+    f = _files(r) / (fid + ".json")
+    return _j(f.read_text(), None) if f.exists() else None
+
+
+def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "") -> dict[str, Any]:
+    """A photo from the app: any common image the phone sends, stored as a fresh JPEG (EXIF / GPS dropped by the
+    re-encode), at most 1600 px. Needs an account unless the app has a list anybody may write to."""
+    import io
+    import secrets as _sec
+    from PIL import Image, ImageOps
+    sch = schema(r)
+    if w.m is None and not w.owner and not any((c.get("rules") or {}).get("create") == "public" for c in sch["collections"]):
+        raise W.AppError("Pehle login kijiye.", 401)
+    if not w.owner:
+        W.rate(f"up|{bid(r)}|{w.id or ip}", 30, 600)
+    if not raw or len(raw) > MAX_UPLOAD:
+        STATS["upload_refused"] += 1
+        raise W.AppError("Photo bahut badi hai (6 MB tak).", 413)
+    try:
+        Image.MAX_IMAGE_PIXELS = 40_000_000
+        im = Image.open(io.BytesIO(raw))
+        if (im.format or "").upper() not in ("JPEG", "PNG", "WEBP", "HEIF", "HEIC", "GIF"):
+            raise ValueError(im.format)
+        im = ImageOps.exif_transpose(im)
+        im = im.convert("RGB")
+        im.thumbnail((1600, 1600))
+        out = io.BytesIO()
+        im.save(out, "JPEG", quality=82, optimize=True)
+    except Exception:                                   # noqa: BLE001
+        STATS["upload_refused"] += 1
+        raise W.AppError("Yeh photo nahi khuli (JPEG / PNG / WebP bhejiye).", 415)
+    fid = "f_" + _sec.token_hex(8)
+    d = _files(r)
+    (d / (fid + ".jpg")).write_bytes(out.getvalue())
+    (d / (fid + ".json")).write_text(json.dumps({"owner": w.id, "at": now().isoformat(), "size": out.tell(),
+                                                 "w": im.width, "h": im.height, "public": False}))
+    STATS["uploads"] += 1
+    return {"id": fid, "w": im.width, "h": im.height, "size": out.tell()}
+
+
+def file_for(r: AppProject, fid: str, w: W.Who):
+    """The stored photo, for the person who sent it, staff, her, or anyone when it sits in a public list."""
+    meta = _file_meta(r, fid)
+    f = _files(r) / (fid + ".jpg") if meta is not None else None
+    if f is None or not f.exists():
+        raise W.AppError("not found", 404)
+    if not (meta.get("public") or w.staff or (w.id and meta.get("owner") == w.id)):
+        raise W.AppError("not found", 404)
+    return f
+
+
+def updates(r: AppProject, w: W.Who, since: str = "") -> dict[str, Any]:
+    """What changed for this person since `since` (the app's background check, every 15+ minutes): a customer hears that
+    HER rows moved (status / paid), a staff account hears about NEW rows in the order-like lists."""
+    from datetime import datetime, timedelta
+    if w.m is None:
+        raise W.AppError("Pehle login kijiye.", 401)
+    sch, site = schema(r), bid(r)
+    try:
+        t0 = datetime.fromisoformat(since[:32]) if since else now() - timedelta(hours=6)
+    except ValueError:
+        t0 = now() - timedelta(hours=6)
+    from datetime import timezone
+    t0 = t0 if t0.tzinfo else t0.replace(tzinfo=timezone.utc)
+    t0n = t0.astimezone(timezone.utc).replace(tzinfo=None)      # SQLite hands rows back without a zone (UTC)
+    items = []
+    colls = {c["key"]: c for c in sch["collections"]}
+    with session() as s:
+        q = s.query(W.SiteAppRow).filter(W.SiteAppRow.site_id == site, W.SiteAppRow.updated_at > t0)
+        if not w.staff:
+            q = q.filter(W.SiteAppRow.owner == w.m.id)
+        for row in q.order_by(W.SiteAppRow.updated_at.asc()).limit(50).all():
+            c = colls.get(row.coll)
+            if c is None:
+                continue
+            d = _j(row.data, {})
+            created = row.created_at.replace(tzinfo=None) if row.created_at else None
+            changed = row.updated_at.replace(tzinfo=None) if row.updated_at else None
+            fresh = created is not None and created > t0n
+            try:
+                ev = datetime.fromisoformat(str(d.get("_ev") or "")) if d.get("_ev") else None
+            except ValueError:
+                ev = None
+            moved = ev is not None and ev > t0 and changed is not None
+            head = next((str(d.get(f["key"]) or "") for f in c["fields"] if f.get("type") in ("text", "long_text")
+                         and d.get(f["key"]) and f["key"] not in ("items", "utr")), c["label"])
+            if w.staff and fresh and row.coll in NEWS and row.owner != w.m.id:
+                items.append({"kind": "new", "coll": row.coll, "id": row.id, "title": f"New {NEWS[row.coll]}: {head[:60]}",
+                              "status": d.get("status", "")})
+            elif row.owner == w.m.id and moved:
+                items.append({"kind": "status", "coll": row.coll, "id": row.id, "title": head[:60],
+                              "status": d.get("status", ""), "paid": d.get("paid", "")})
+    STATS["updates"] += 1
+    return {"now": now().isoformat(), "items": items}
+
+
+def mark_paid(r: AppProject, coll: str, row_id: str, utr: str, w: W.Who) -> dict[str, Any]:
+    """The customer says she paid by UPI and types the UPI reference. Nothing is verified here (Hoola never sees money):
+    the row reads "Customer says paid" and the owner gets a note to check her own bank app; only she marks Verified."""
+    sch = schema(r)
+    if coll != sch.get("order"):
+        raise W.AppError("Yeh list payment ki nahi.", 400)
+    if w.m is None:
+        raise W.AppError("Pehle login kijiye.", 401)
+    ref = re.sub(r"\s", "", str(utr or ""))
+    if not re.fullmatch(r"[A-Za-z0-9]{6,24}", ref):
+        raise W.AppError("UPI reference / UTR sahi nahi (6-24 akshar / ank).")
+    c = W.coll(sch, coll)
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        if row is None or row.site_id != bid(r) or row.coll != coll or row.owner != w.m.id:
+            raise W.AppError("Yeh order nahi mila.", 404)
+        d = _j(row.data, {})
+        if d.get("paid") == "Verified":
+            raise W.AppError("Is order ka payment pehle hi pakka hai.", 409)
+        d.update({"paid": "Customer says paid", "utr": ref[:24]})
+        row.data, row.updated_at = json.dumps(d, ensure_ascii=False), now()
+        s.flush()
+        s.expunge(row)
+    STATS["paid_claims"] += 1
+    out = W.row_view(c, row, w)
+    total = out.get("total")
+    try:
+        from .android.service import _note
+        _note(r, f"{out.get('name') or 'Customer'} ne {r.name or 'aapki app'} ke order ka payment UPI se bheja bataya"
+                 + (f" (Rs {total:g})" if isinstance(total, (int, float)) else "") + f", UTR {ref[-12:]}. Apne bank / UPI app "
+                 "mein check karke kahiye 'payment verified' - tab tak order 'Customer says paid' hai.")
+    except Exception:                                   # noqa: BLE001
+        log.debug("paid note", exc_info=True)
+    return out
+
+
+# ---------------------------------------------------------------- v0.325 HOOLA QA: crashes on real users' phones
+CRASH_KEEP = 200
+
+
+def _crash_file(r: AppProject):
+    return _files(r).parent / "crashes.json"
+
+
+def _crash_sig(trace: str) -> tuple[str, str, list[str]]:
+    """Same crash = same exception class + the same first app frames (line numbers ignored: they move between builds)."""
+    import hashlib
+    lines = [ln.strip() for ln in (trace or "").splitlines() if ln.strip()]
+    exc = next((ln for ln in lines if re.match(r"(Caused by: )?[\w.$]+(Exception|Error)\b", ln)), lines[0] if lines else "")
+    frames = [ln for ln in lines if ln.startswith("at hoola.")][:6]
+    key = re.sub(r":\d+\)", ")", exc.split(":")[0] + "|" + "|".join(frames[:3]))
+    return "c_" + hashlib.sha1(key.encode()).hexdigest()[:12], exc[:300], frames
+
+
+def crash(r: AppProject, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
+    """A crash the installed app kept and sends on its next start (no login needed; nothing personal in it)."""
+    if not isinstance(body, dict):
+        raise W.AppError("bad crash")
+    W.rate(f"cr|{bid(r)}|{ip}", 20, 3600)
+    trace = str(body.get("trace") or "")[:6000]
+    if not trace.strip():
+        raise W.AppError("empty crash")
+    sig, exc, frames = _crash_sig(trace)
+    screen = re.sub(r"[^a-z0-9_]", "", str(body.get("screen") or "").lower())[:49]
+    ver = re.sub(r"[^0-9A-Za-z.\-]", "", str(body.get("ver") or ""))[:20]
+    f = _crash_file(r)
+    with _LOCK:
+        data = _j(f.read_text(), {}) if f.exists() else {}
+        x = data.get(sig)
+        first = x is None
+        if first:
+            if len(data) >= CRASH_KEEP:
+                for k, _v in sorted(data.items(), key=lambda kv: kv[1].get("last", ""))[:len(data) - CRASH_KEEP + 1]:
+                    data.pop(k, None)
+            x = data[sig] = {"id": sig, "exception": exc, "frames": frames, "sample": trace, "count": 0, "first": now().isoformat(),
+                             "screens": [], "versions": [], "devices": [], "status": "new"}
+        x["count"] += 1
+        x["last"] = now().isoformat()
+        for k, v, n in (("screens", screen, 10), ("versions", ver, 10),
+                        ("devices", f"{str(body.get('model') or '')[:40]} / Android {str(body.get('android') or '')[:3]}", 8)):
+            if v and v not in x[k]:
+                x[k] = (x[k] + [v])[-n:]
+        came_back = x.get("status") == "fixing" and ver and x.get("fix_version") and ver == x.get("fix_version")
+        if came_back:
+            x["status"] = "back"            # it happened again in the build that was meant to fix it: say so honestly
+        f.write_text(json.dumps(data, ensure_ascii=False))
+    STATS["crashes"] = STATS.get("crashes", 0) + 1
+    if first or came_back:
+        where = f" ({screen} screen)" if screen else ""
+        try:
+            from .android.service import _note
+            _note(r, f"{r.name or 'Aapki app'} ({r.number}) ek user ke phone pe band ho gayi{where}: {exc.split(':')[0][:80]}"
+                     + (" - fix wali build mein bhi" if came_back else "") + ". Kahiye 'crash theek karo' - Hoola us screen ko asli "
+                     "crash dekh kar dobara likhegi aur nayi build banayegi.")
+        except Exception:                               # noqa: BLE001
+            log.debug("crash note", exc_info=True)
+    return {"ok": True, "id": sig, "new": first}
+
+
+def crashes(r: AppProject) -> list[dict[str, Any]]:
+    f = _crash_file(r)
+    data = _j(f.read_text(), {}) if f.exists() else {}
+    return sorted(data.values(), key=lambda x: (x.get("status") == "fixing", -int(x.get("count") or 0)))
+
+
+def crash_screens(r: AppProject, sig: str) -> tuple[dict[str, Any], list[str]]:
+    """The crash and the app's own screens in its stack (ScreenCart -> cart), else the screen it happened on."""
+    from .android import gen as G
+    x = next((c for c in crashes(r) if c["id"] == sig), None)
+    if x is None:
+        raise W.AppError("Yeh crash nahi mila.", 404)
+    ids = list(_j(r.plan, {}).get("screens") or [])
+    by_cls = {G.kotlin_name(s): s for s in ids}
+    sids: list[str] = []
+    for fr in x.get("frames") or []:
+        m = re.search(r"hoola\.app\.screens\.(Screen\w+?)(Kt)?\.", fr)
+        if m and m.group(1) in by_cls and by_cls[m.group(1)] not in sids:
+            sids.append(by_cls[m.group(1)])
+    if not sids:
+        sids = [s for s in x.get("screens") or [] if s in ids][:2]
+    return x, sids
+
+
+def crash_mark(r: AppProject, sig: str, status: str, build: int = 0, version: str = "") -> None:
+    f = _crash_file(r)
+    with _LOCK:
+        data = _j(f.read_text(), {}) if f.exists() else {}
+        if sig in data:
+            data[sig]["status"] = status
+            if build:
+                data[sig]["fix_build"] = build
+            if version:
+                data[sig]["fix_version"] = version
+            f.write_text(json.dumps(data, ensure_ascii=False))
+
+
+
+# ---------------------------------------------------------------- v0.325 UPDATES: her data changes, safe for old app versions
+def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
+    """add / hide / label fields. Only changes an app version already on people's phones survives: a new field is never
+    required (an old app could not send it; a choice fills its default); a hidden field keeps its data and is
+    only left out of the forms; nothing is ever deleted or renamed underneath existing rows."""
+    done: list[str] = []
+    colls = {c["key"]: c for c in sch.get("collections") or []}
+    for a in (ops.get("add") or [])[:12]:
+        c = colls.get(str(a.get("coll") or ""))
+        if c is None:
+            raise W.AppError(f"List '{a.get('coll')}' is app mein nahi hai.")
+        k = W._slug(a.get("key") or a.get("label"))
+        if not k or k in ("id", "owner", "created", "updated", "cid", "cart"):
+            raise W.AppError("Naye field ka naam chahiye.")
+        if any(f["key"] == k for f in c["fields"]):
+            old = next(f for f in c["fields"] if f["key"] == k)
+            if old.get("hidden"):              # bringing a hidden field back
+                old.pop("hidden", None)
+                done.append(f"{c['key']}.{k} wapas dikhega")
+                continue
+            raise W.AppError(f"'{k}' pehle se hai.")
+        if len(c["fields"]) >= W.MAX_FIELDS:
+            raise W.AppError("Is list mein aur field nahi aa sakte.")
+        typ = a.get("type") if a.get("type") in (*W.TYPES, *EXTRA_TYPES) else "text"
+        fd: dict[str, Any] = {"key": k, "label": str(a.get("label") or k.replace("_", " ").title())[:60], "type": typ,
+                              "required": False, "admin_only": bool(a.get("admin_only"))}
+        if typ == "choice":
+            opts = [str(o)[:40] for o in (a.get("options") or []) if str(o).strip()][:20]
+            if not opts:
+                raise W.AppError("Choice field ke options chahiye.")
+            fd["options"], fd["default"] = opts, opts[0]          # an old app's row (it never sends it) gets the default
+        c["fields"].append(fd)
+        done.append(f"{c['key']}.{k} joda")
+    for h in (ops.get("hide") or [])[:12]:
+        c = colls.get(str(h.get("coll") or ""))
+        f = next((x for x in (c or {}).get("fields", []) if x["key"] == h.get("key")), None)
+        if f is None:
+            raise W.AppError(f"Field '{h.get('key')}' nahi mila.")
+        if f["key"] in ("status", "name", "phone", "items", "total") and c and c["key"] == sch.get("order"):
+            raise W.AppError(f"'{f['key']}' order ke liye zaroori hai; chhupa nahi sakte.")
+        f["hidden"], f["required"] = True, False
+        done.append(f"{c['key']}.{f['key']} chhupa (data rakha hai)")
+    for lb in (ops.get("label") or [])[:12]:
+        c = colls.get(str(lb.get("coll") or ""))
+        f = next((x for x in (c or {}).get("fields", []) if x["key"] == lb.get("key")), None)
+        if f is None or not str(lb.get("label") or "").strip():
+            raise W.AppError("Kaunsa field, naya naam kya?")
+        f["label"] = str(lb["label"])[:60]
+        done.append(f"{c['key']}.{f['key']} ka naam '{f['label']}'")
+    return done
+
+
+def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[str, Any]:
+    """Her data change (tool / app data view): applied to a copy, checked, then saved with a new revision. The installed
+    app reads the new lists from /api/app-content at once (rows show the new field); forms collect it from the next build."""
+    import copy
+    be = ensure(r)
+    sch = copy.deepcopy(be["schema"])
+    done = _apply_ops(sch, ops if isinstance(ops, dict) else {})
+    if not done:
+        raise W.AppError("Kya badalna hai? (add / hide / label)")
+    be = {**be, "schema": sch, "rev": int(be.get("rev") or 0) + 1,
+          "changes": (be.get("changes") or []) + [{"at": now().isoformat(), "ops": ops, "words": str(words)[:300], "done": done}]}
+    with session() as s:
+        row = s.get(AppProject, r.id)
+        row.backend = json.dumps(be, ensure_ascii=False)
+    r.backend = json.dumps(be, ensure_ascii=False)
+    try:
+        from .android import service as AN
+        AN._CACHE.clear() if hasattr(AN, "_CACHE") else None
+    except Exception:                                    # noqa: BLE001
+        pass
+    return {"rev": be["rev"], "done": done, "say": "; ".join(done) + ". Rows mein abhi dikhega; form mein agli build se."}

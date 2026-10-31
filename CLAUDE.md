@@ -136,11 +136,35 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.320.0 (pubspec 0.320.0+360). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.333.0 (pubspec 0.333.0+373). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.320 SEO PRO (claude-seo ideas, own code, `seo/pro.py`, THIRD_PARTY_NOTICES.md): health in 7 parts + priorities, page drift, AI bots map,
+- v0.333 SEO PRO (built as 0.319/0.320, claude-seo ideas, own code, `seo/pro.py`, THIRD_PARTY_NOTICES.md): health in 7 parts + priorities, page drift, AI bots map,
   schema / quality / images / hreflang / scaled / NAP / E-E-A-T / local checks, URL Inspection + Sitemaps, CrUX, IndexNow, place lists cap 50.
+- v0.332 ANY DESIGN + DEPLOY SE NAHI RUKEGA: free-form sections (`custom_<name>`, 3 a page), interactive pieces (tabs, slider,
+  filter, switch, sum / EMI calc), one design kit per site (`site/kit.py`); a deploy no longer fails a running build (`mark_clean_stop`).
+- v0.331 PLAY STORE LAUNCH (App Phase 5, built as 0.330, `appmaker/android/store.py`): her own Play account via the official API (sealed service-account key), permanent package + upload key, .aab, listing / graphics / screenshots, privacy + deletion pages, data-safety answers; production only by her tap.
+- v0.330 PLAN CARD DIKHE: the console folded every `goal` event into the progress line (workspace.js quiet()) - the plan card is drawn now;
+  'X banao: a, b, c' asks are big (looks_big parts after a colon).
+- v0.329 SHOWCASE (Phase 5 of the design audit, built as 0.328): real Hoola pictures / clips over the drawn placeholders via ONE hidden
+  owner film "Hoola showcase" (`studio/showcase.py`), normal price cards only (~₹428 + ~₹340); hidden films' cards now approvable.
+- v0.328 APP UPDATES (App Phase 4, built as 0.325/0.327): per-screen Kotlin cache (an update rewrites only changed screens), versions only go up, changelog per build, rollback = an old build re-released as a new version, in-app update prompt (/latest + /apk), safe data changes (add / hide / label, additive, replayed on upgrade).
+- v0.328 HOOLA QA (App Phase 3, built as 0.323-0.327): device check after every native build (`android/device_check.sh` + `qa.py`: every screen on an emulator, crash -> Opus fix with the real crash, a11y, cold start / jank / APK budget), crash reports from users' phones (kit CrashGuard, grouped, chat note, fix_crash rebuild).
+- v0.327 STUDIO ASSETS + HELP (Phase 4 of the design audit): Brand kit logo upload + colour pickers + font + live poster preview,
+  My creations tick-to-select Download / Delete + script pages, templates "Use this", guide steps, Engines details owner-only.
+- v0.326 HER TEST RUN (v0.314 test): big ask = server plan card after round 1, steps from her words (`santosh._ask_steps`);
+  doc_studio QA before the card, a warned draft held for ONE fix (`docstudio_tools._HELD`, `flush_held`); a server-refused site asks before her PC.
+- v0.325 STUDIO TOOLS (Phase 3 of the design audit): no tool tab rows, 380px tool layout, Video More settings + status chips +
+  ONE failure notice, picture captions date/style, 3x3 styles, Dubbing top languages + counter, voice colour marks, Editor drop zone.
+- v0.324 TEEN LOOK JALDI: the 3 looks in waves (pictures + 3 art directions together, all look sections together, 3 screenshots
+  together; `_look_copy`, SITE_LOOK_PARALLEL 6) instead of ~12 calls in a row; `_in_ctx` = thread AI calls charged to her / the Arena.
+- v0.323 STUDIO HOME + DIRECTOR (Phase 2 of the design audit): ask box settings + price, rails arrow only where more is hidden,
+  art paints on the FIRST open (was unpainted), one film list (search / sort / step / Continue), next-step card, shot timeline, More menu.
+- v0.322 APP FEATURES (App Phase 2, built as 0.320 / 0.321): photo fields (Photo Picker, outbox upload, server re-encode), location fields (disclosure + system dialog), order-update notifications (JobScheduler + /updates), UPI "I have paid" + UTR (she verifies), search / status filters.
+- v0.321 TILE KAAM KARE: the plugin sheet's button acts - UPI / cab apps open (`android_package` for rides too), other working
+  plugins send their first example ask into the chat; was a dead 'Taiyaar hai' label. Empty 'Food apps' chip removed.
+- v0.320 STUDIO DESIGN SYSTEM (built as 0.318, Phase 1 of the design audit): one text scale 12.5/14/15/18/26/40, weights <= 600,
+  readable grey (0 texts < 4.5:1), corners 8/12/16, controls 32/40/48, one-row sidebar, top bar = page name, phone mode tabs wrap.
 - v0.319 KHANA BAAD MEIN: Swiggy (Food / Instamart / Dineout) + Zomato refuse non-partner sign-in -> hidden in the clean view
   (`service.PARTNER_GATED`) until `FOOD_PARTNER_APPROVED=true`; Roz ke kaam loses 'Khana aur kirana' meanwhile.
 - v0.318 ASLI APP (App Phase 1, built as 0.314/0.316/0.317): each native app has its OWN backend (`appmaker/backend.py`, `/api/app-api/<key>/...`): accounts, server-priced orders / bookings / staff lists, cid dedup, kit Backend.kt (Keystore token, offline outbox) + Accounts.kt, CI e2e on a real server.

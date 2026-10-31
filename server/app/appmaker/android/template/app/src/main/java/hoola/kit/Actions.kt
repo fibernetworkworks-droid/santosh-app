@@ -55,6 +55,9 @@ object Act {
         if (!open(ctx, uri)) copy(ctx, vpa, Strings.upiCopied)
     }
 
+    /** v0.325 a web link in the phone's browser (the update's APK download, a policy page). */
+    fun link(ctx: Context, url: String) { if (url.startsWith("https://") || url.startsWith("http://10.0.2.2")) open(ctx, url) }
+
     fun copy(ctx: Context, text: String, said: String = "") {
         val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
         cm.setPrimaryClip(ClipData.newPlainText("text", text))

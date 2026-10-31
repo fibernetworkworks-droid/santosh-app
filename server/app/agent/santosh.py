@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
 import time
 import json
 import logging
@@ -686,10 +687,10 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     return text
 
 
-AUTO_PLAN_NOTE = ("[System: tumne plan nahi likha tha, isliye server ne yeh plan bana diya: \"{goal}\" "
-                  "(1 step: poora kaam). Ab lambe kaam ki seema mil gayi hai - ruko mat. Chaho to `kaam_plan set` se "
-                  "asli steps likh do (jo ho chuka use done), warna isi tarah aage badho; kaam poora hone par seedha "
-                  "aakhri jawab do.]")
+AUTO_PLAN_NOTE = ("[System: tumne plan nahi likha tha, isliye server ne yeh plan bana diya aur use card par dikha "
+                  "diya: \"{goal}\" ({n} steps: {steps}). Ab lambe kaam ki seema mil gayi hai - ruko mat. Har step "
+                  "hone par `kaam_plan step n done` likho (card par dikhta hai); chaho to `kaam_plan set` se behtar "
+                  "steps likh do. Kaam poora hone par seedha aakhri jawab do.]")
 
 
 def _auto_plan(conversation_id: str, tenant_id: str, state: dict, settings, ctx) -> str:
@@ -700,9 +701,10 @@ def _auto_plan(conversation_id: str, tenant_id: str, state: dict, settings, ctx)
     req = " ".join(str(state.get("request") or "").split())
     if not req or req.startswith("["):
         return ""
-    line = req if len(req) <= 160 else req[:157].rstrip() + "…"
+    goal_line, steps = _ask_steps(req)
+    line = goal_line if len(goal_line) <= 160 else goal_line[:157].rstrip() + "…"
     try:
-        v = _goal.set_goal(tenant_id, conversation_id, line, [line],
+        v = _goal.set_goal(tenant_id, conversation_id, line, steps or [line],
                            origin=getattr(ctx, "actor", "owner") or "owner")
         _goal.mark_step(tenant_id, v["id"], 1, "current", conv=conversation_id)
     except Exception:
@@ -715,7 +717,33 @@ def _auto_plan(conversation_id: str, tenant_id: str, state: dict, settings, ctx)
     state["max_tokens"] = max(state.get("max_tokens") or 0, settings.agent_goal_max_tokens)
     _LONG_TURN.add(conversation_id)
     STATS_LONG["auto_plan"] += 1
-    return AUTO_PLAN_NOTE.format(goal=line.replace('"', "'"))
+    return AUTO_PLAN_NOTE.format(goal=line.replace('"', "'"), n=len(v.get("steps") or [1]),
+                                 steps="; ".join(f"{x['n']}. {x['text']}" for x in (v.get("steps") or []))[:900])
+
+
+_CLAUSE_SPLIT = re.compile(r"\s*(?:[,;\n]|\s(?:aur\s+phir|aur\s+fir|uske\s+baad|iske\s+baad|phir|fir|then|and\s+then|"
+                           r"after\s+that|aakhir\s+mein|finally)\s)\s*", re.I)
+_CLAUSE_LEAD = re.compile(r"^(?:(?:aur|and|phir|fir|then|pehle|first|aakhir\s+mein|finally|uske\s+baad|iske\s+baad|"
+                          r"after\s+that|[-*•]|\d{1,2}[.)])\s*)+", re.I)
+
+
+def _ask_steps(req: str) -> tuple[str, list[str]]:
+    """v0.315 her ask as (goal, steps) for the server's plan: 'X: a, b, phir c, aur d' -> goal X, steps a..d.
+    Fewer than 2 real clauses = one step (the whole ask). Words only, never a model call."""
+    head, rest = (req.split(":", 1) + [""])[:2] if ":" in req[:200] else (req, req)
+    from .goal import _VERB
+    parts: list[str] = []
+    for c in _CLAUSE_SPLIT.split(re.sub(r"(?<=[.!?।])\s+", "\n", rest)):
+        c = _CLAUSE_LEAD.sub("", (c or "").strip(" .")).strip(" .")
+        if not c:
+            continue
+        if parts and not (_VERB.search(c) or re.search(r"\b(?:karo|karna|do|dena|dekho|batao|likho|bhejo|dhoondo|dhundo|dhoondho|nikalo|banao|lao|kholo|padho|bharo|check|socho|lagao|chuno|bhar|bata)\b", c, re.I)):
+            parts[-1] = (parts[-1] + ", " + c)[:160]     # 'top 8 brands, unki price, range' is ONE step, not three
+        elif len(c.split()) >= 2:
+            parts.append(c[:160])
+    if len(parts) < 2:
+        return req, [req[:200]]
+    return (head.strip(" .") or req), parts[:8]
 
 
 def _aage_promised(text: str) -> bool:
@@ -1107,15 +1135,18 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 state["plan_nudged"] = True
                 STATS_LONG["plan_now"] += 1
                 results.append({"type": "text", "text": _goal.PLAN_NOW})
-            elif (not state.get("goal") and state.get("plan_nudged") and not state.get("auto_plan")
-                  and getattr(settings, "agent_auto_plan", True)
-                  and ran_steps >= int(getattr(settings, "agent_plan_after_steps", 4) or 0) + 3
+            if (not state.get("goal") and not state.get("auto_plan") and getattr(settings, "agent_auto_plan", True)
                   and (getattr(ctx, "actor", "owner") or "owner") in ("owner", "goal", "routine")
                   and not any(b.get("name") == "kaam_plan" for b in tblocks)
-                  and _goal.active_for(conversation_id) is None):
+                  and _goal.active_for(conversation_id) is None
+                  and (state.get("big")
+                       or (state.get("plan_nudged")
+                           and ran_steps >= int(getattr(settings, "agent_plan_after_steps", 4) or 0) + 3))):
                 # v0.311 PLAN HAMESHA: the plan was asked for and the model still works without one. Everything that
                 # keeps a long job alive (80 steps / 150 calls / 45 min, background rounds, restart pickup, her card)
                 # only exists once a plan exists - so the SERVER writes it now instead of hoping the model will.
+                # v0.315 a clearly big ask (PLAN_FIRST was given) gets it right after the FIRST tool round: her test
+                # 3 ("marketing plan: research, ideas, calendar, PDF") finished in 5 steps with no card at all.
                 note = _auto_plan(conversation_id, tenant_id, state, settings, ctx)
                 if note:
                     results.append({"type": "text", "text": note})
@@ -1598,6 +1629,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         finally:
             _ACKED.discard(conversation_id)   # v0.187 no ack after this turn for any reason
+            try:   # v0.315 EK HI FILE: a document draft held for a fix that nobody replaced reaches her now
+                from .docstudio_tools import flush_held
+                flush_held(conversation_id)
+            except Exception:
+                log.exception("held draft flush failed")
             _NO_STREAM.discard(conversation_id)   # v0.191 wake over: the chat streams normally again
             if live is not None:
                 live.stopped = live.stopped or conversation_id in _stopped

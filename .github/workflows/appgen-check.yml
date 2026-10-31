@@ -50,7 +50,7 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon -q buildEnvironment 2>&1 | grep -iE "kotlin-gradle-plugin|com.android.tools.build:gradle" | head -8 | tee env.txt || true
           while IFS= read -r l; do echo "::notice::${l}"; done < env.txt
-          ./gradlew --no-daemon --console=plain assembleRelease assembleDebug 2>&1 | tee build.log
+          ./gradlew --no-daemon --console=plain assembleRelease assembleDebug bundleRelease 2>&1 | tee build.log
       - name: Kotlin errors as annotations
         if: failure()
         run: |
@@ -61,6 +61,8 @@ jobs:
       - name: APK checks
         working-directory: ${{ runner.temp }}/proj
         run: |
+          AAB=$(ls app/build/outputs/bundle/release/*.aab | head -1)      # v0.330 the Play Store bundle builds too
+          ls -la "$AAB" && unzip -l "$AAB" | grep -q "base/manifest/AndroidManifest.xml"
           APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
           ls -la "$APK"
           unzip -t "$APK" > /dev/null
@@ -120,7 +122,25 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash server/app/appmaker/android/ci_smoke.sh "$(find out -name '*debug*.apk' | head -1)" shots home categories product cart orders profile dashboard support seller_info privacy delete_account hoola_login hoola_account && bash server/app/appmaker/android/ci_e2e.sh shots
+          script: bash server/app/appmaker/android/device_check.sh "$(find out -name '*debug*.apk' | head -1)" "$(find out -name '*release*.apk' | head -1)" shots in.hoola.preview.fixture home categories product cart orders profile dashboard support seller_info privacy delete_account hoola_login hoola_account; bash server/app/appmaker/android/ci_e2e.sh shots "$(find out -name '*debug*.apk' | head -1)"
+      - name: HOOLA QA report (every screen opened, budget, accessibility)
+        if: always()
+        run: |
+          [ -f shots/report.json ] || { echo "::error::no device check report"; exit 1; }
+          python3 - <<'PY'
+          import json, sys
+          r = json.load(open("shots/report.json"))
+          print(json.dumps({k: r[k] for k in ("opened", "total", "crashed", "perf", "budget", "a11y_count")}, indent=1))
+          for sid, x in r["screens"].items():
+              for f in x["a11y"][:3]:
+                  print(f"::notice::{sid}: {f['text']}")
+          if not r["passed"] or r["total"] < 13:
+              print("::error::device check failed: " + ", ".join(r["crashed"]) )
+              sys.exit(1)
+          if r["perf"]["cold_ms"] is None or r["perf"]["apk_mb"] is None:
+              print("::error::device check did not measure cold start / APK size")
+              sys.exit(1)
+          PY
       - name: The order the app placed is on the server (priced by the server, sent once)
         if: always()
         working-directory: server

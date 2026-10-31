@@ -12034,7 +12034,362 @@ Hoola - they accept only apps they approved as partners. So "Khana aur kirana" c
   approved set FOOD_PARTNER_APPROVED=true and restart.
 - Test: test_v0303_saaf_connect.py::test_v0319_swiggy_zomato_hidden_until_partner_approval.
 
-## v0.320.0 SEO PRO (31 Oct 2026, built as 0.319.0, re-versioned past the parallel v0.319 KHANA BAAD MEIN)
+## v0.320.0 STUDIO DESIGN SYSTEM (31 Oct 2026; built as 0.318.0, re-versioned past main's 0.318 / 0.319)
+Owner: "MAKE IT PREMIUM AND HUMAN NATIVE LOOK WITH REAL PERFECT WORKFLOW... FIRST DO PERFECT DEEP DESIGN... CHECK EVERY MINUTE
+THINGS FROM TEXT FOR SIDE BAR TO SMALL BUTTON" -> design audit artifact https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3 -> "GO PHASE 1".
+- Audit method: Playwright walks all 16 studio pages (light + dark at 1440, home at 390) and reads every visible text / button / field
+  from the shadow root (size, weight, colour, contrast against the real background, height, corners, clipping). Before: 15 text sizes,
+  246 texts < 4.5 : 1 (the faint grey #8B8B92 = 3.4 on white, 2.9 on the sidebar), 48 texts at 700 (from <b>), 4 at 10px, 10 corner
+  sizes, 30 button heights, 50 controls < 30px (links 19px, switches 21px, tile actions 28px), a violet focus ring on #view that read
+  as a stray line under the top bar, phone mode tabs running off the screen.
+- `studio.css`: sizes / corners moved IN PLACE to the scale (the v0.285 `.pop` menu block left exactly as pinned); block
+  "v0.318 STUDIO DESIGN SYSTEM" at the end: `--dim` = color-mix(--mut 92%, --bg) (>= 4.9 : 1 on white / sidebar / sunk, light and dark),
+  b,strong 600, buttons 40 / main action 48 / tile actions 32 / links 32 / switches 40x24, sidebar one row style (agents without boxes,
+  priSoft pill when open), status words (.tag.new / .tag.hot / .perr) mixed toward the ink, `#view` focus ring off, phone `.modes` wrap.
+- `studio.js`: tools render as `.sn` rows (no `.tgrid`), the first "Studio" label removed, top bar keeps only the page name (Chat /
+  My creations were duplicates of Back to chat / Assets), credits lead with "₹N left" and "₹used of ₹limit spent · N%".
+- After: 6 sizes, 3 weights, 0 texts < 4.5 : 1 in light and dark, corners 8 / 12 / 16 / pill, 7 controls < 32px left (4 switches at
+  24px inside 40px rows, 3 outbound links on the owner-only Engines page).
+- Tests: `test_v0318_studio_design_system.py`; v0.306 credits pin moved to the new wording; the `?v=` stamp count pins in
+  test_v0194 / test_v0234 moved 17 -> 18 (main's v0.317 added employees.js without moving them).
+- Next phases (audit): 2 Home + Director, 3 the six tools, 4 assets + help, 5 real Hoola showcase media (price card first).
+
+## v0.321.0 TILE KAAM KARE (31 Oct 2026, owner: "EVEN UI NOT FUCTIONING" after "Khana aur kirana NOT FUNCTIONING")
+Tapping a working tile (Google Pay, PhonePe, Uber, HDFC SMS reader...) opened the plugin sheet whose only button was
+`PluginAction(kind: linked, label: 'Taiyaar hai · Hoola se kahiye')` with no onTap - nothing happened.
+- `lib/ui/bazar_screen.dart _sheetAction`: ready plugins with an `android_package` get "<Name> kholiye" ->
+  `Native.openExternal(package:)` (MainActivity opens the launch intent, else Play Store); other ready plugins get
+  "Hoola se karwaiye" -> sends `examplesFor(p).first` into the chat. Snackbar when the app is not installed.
+- `service.catalog()`: rides now carry `android_package` (from config.package) like UPI packs. All nine UPI / cab
+  packages were already in `tool/AndroidManifest.xml` <queries>, so Android 11+ can see them.
+- "Food apps" chip removed (Swiggy / Zomato hidden since v0.319). Test: test_v0320_upi_and_cab_tiles_carry_the_app_to_open.
+- Note: a UPI app opened this way is the app's home screen; paying a person still goes through Hoola's send_money card
+  (UPI intent with the payee filled in), because the tile itself does not know whom to pay.
+
+## v0.322.0 APP FEATURES — App Sahayak Phase 2: real phone features in built apps (owner: "START PHASE 2"; built as 0.320.0 / 0.321.0, re-versioned past the parallel v0.320.0 STUDIO DESIGN SYSTEM and v0.321.0 TILE KAAM KARE)
+Phase 1 (v0.318) gave every native app its own backend; this phase gives the apps the phone features that make them
+real, each the way Play / App Store allow it, with NO new library in the generated project (platform + androidx.core /
+activity only, so the build stays as robust as before).
+- **Photos**: new field type `photo` (app backends only; kept through `webapp.clean_schema` by `backend.EXTRA_TYPES`):
+  service requests (photo of the problem), enquiries, community posts, product-app feedback, staff-app `file` fields (max 2
+  per list). Kit `PhotoField(label, key)` = Android Photo Picker (`PickVisualMedia`, no storage permission; falls back to the
+  document picker on old phones), `Photos.shrink` to 1600 px JPEG in the app cache, the form keeps `local:<file>`;
+  `Db.sync` uploads each `local:` photo first (`Cloud.upload`, saved in the outbox so a retry sends it once), puts the
+  server id in its place, then sends the row. Server `POST /api/app-api/<key>/files` (6 MB, account needed unless a list is
+  public-create, rate 30 / 10 min): Pillow opens it, `exif_transpose`, RGB, 1600 px, re-encoded JPEG q82 = EXIF / GPS /
+  camera data gone; `GET .../files/<id>` only for the sender, staff, her (`/api/apps/<ref>/files/<id>`), or anyone when the
+  photo sits in a public-read list. A row's photo id must exist in this app and belong to the person using it.
+  `RemotePhoto(src)` shows a server or local photo (LRU cache).
+- **Location**: new field type `location` (order delivery pin, service location, staff-app `point` fields, max 1 per
+  list). Kit `LocationField` = a plain explanation dialog first (Play "prominent disclosure"), then Android's dialog
+  (coarse + fine; approximate is enough), `LocationManagerCompat.getCurrentLocation` with a 15 s timeout and last-known
+  fallback, "lat,lng" in the field, a Map button. Server normalises / checks "lat,lng". The manifest asks for location
+  ONLY when a list has a location field (`gen.uses_location`); never background location.
+- **Order updates as notifications**: `Updates.kt` - JobScheduler periodic 15 min (network required, persisted, needs
+  RECEIVE_BOOT_COMPLETED), the job (`UpdatesJob`, BIND_JOB_SERVICE) restores Cloud / Auth from prefs, asks
+  `GET /api/app-api/<key>/updates?since=` and shows normal notifications (channel "Order updates", tap opens the app);
+  the first check only sets the mark (no old news); also one check at every app start. Server `backend.updates`: a
+  customer hears that HER rows moved (status / paid changes are stamped `_ev` by `backend.update`), a staff account hears
+  about NEW rows in order-like lists. POST_NOTIFICATIONS is asked by the first-run NotifyScreen's Continue (Android 13+).
+  Instant push (FCM) needs the business's own Firebase project: a later step, written as such in the kit.
+- **UPI "I have paid"**: orders gain `paid` (No / Customer says paid / Verified, staff-only) + `utr` (staff-only). Kit
+  `PaidBox` on the customer's own UPI order: Pay by UPI (her own UPI ID, `Act.payUpi`) + "I have paid" with the 12-digit
+  reference -> `Db.paid` (outbox op `paid`) -> `POST .../c/<orders>/<row>/paid` (own row only, 6-24 alnum) -> "Customer says
+  paid" + a chat note to HER to check her own bank; only she marks Verified (phone button "Bank mein mila: Verified",
+  console select, tool `app_banao action=data set {paid: Verified}` - the tool text says never on the customer's word).
+- **Search / filters**: `GET .../c/<list>?q=&status=&limit=&offset=`; the app's lists get a search box + status chips
+  (on the cached rows, offline too) once a list has more than 4 rows.
+- **Upgrade**: a v1 app backend (built before this) is rebuilt in place on first use (`SCHEMA_V` 2, fields only added,
+  rows untouched, `upgraded` stamp).
+- **Owner views**: phone App ka data shows photos (authorised `Image.network`), location (tap = map), paid + UTR with a
+  Verified button; console App data shows photo thumbnails, map links and a paid select.
+- **Tool text**: `app_banao` (5.6 KB) is cut to 1200 characters for the model, so v0.318's backend notes at its END never
+  reached the model; the backend actions now sit in the first sentences of `app_banao` and `app_dekho`.
+- **Verified here**: the generated fixture project compiled with the real toolchain (`assembleDebug assembleRelease`,
+  R8) after fixing an overload ambiguity in `LocationManagerCompat.getCurrentLocation`; tests
+  `server/tests/test_v0319_app_features.py` (4: schema v2 + upgrade, photos (EXIF/GPS stripped, access rules, size / type
+  refusals), location checks, the paid claim + note + Verified + 409, updates for customer / staff, search + paging, photo
+  ownership, the generated project's manifest / kit / fallback forms / guide); CI e2e extended (photo up + back, the paid
+  claim, the updates call; the server check requires the paid row).
+- **Not yet**: QR / barcode scanning and camera capture inside the app (need CameraX / ML Kit: next), instant FCM push,
+  file (PDF) fields, maps drawn inside the app (the Map button opens Google Maps), payments other than her own UPI.
+
+## v0.323.0 STUDIO HOME + DIRECTOR (31 Oct 2026; Phase 2 of the Create Studio design audit)
+Owner: "GO PHASE 2" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- Home (`studio.js` V.studio): `hsList(mode)` / `hsPrice(mode)` / `hsHTML()` put the mode's settings inside the ask box as 32px pills
+  (Director aspect / seconds / language -> DIR, Image aspect / count -> IMG, Video aspect / seconds -> VID, Song lang -> MU, Voice lang -> VO)
+  with the price ("Storyboard free", "~₹3", "~₹7", "Paise a line", "Price before it starts"); `#homeAgent` hidden (tabs are the one switch;
+  its v0.304 code stays). `rails(root)` toggles `.canl` / `.canr` on scroll + resize: arrow and 56px edge fade only on the hidden side.
+- FOUND while testing: on the FIRST open every `canvas[data-art]` stayed 300x150 (the studio host opens hidden, paintAll's rAF saw
+  clientWidth 0) - the squashed moons / records. `artRO` (ResizeObserver) paints each canvas when it gets a size and again on resize;
+  disconnected on every go().
+- Director list: go('projects') = the Director list (DIR.project cleared); search `#fq` + sort (recent / name / furthest along);
+  `.fcard` with the film's first picture or `initTile(name)` (initial on a colour mixed from --surface / --ink, so Light / Dark / System
+  all work), "Step N of 8 · <step>" + Continue; the brief on a clean card (painted banner removed), option pills bordered 32px.
+- One film: `.nextc` Next step card under the steps (NEXT_STEP / NEXT_WHY, the price on one 48px button, `data-next` kept) - the
+  header no longer carries it; `timeline(shots)` = one segment per shot sized by its seconds (picture / made states), tap = scroll +
+  flash; `sceneCard(s, i, t0)` shows "0:06 – 0:11"; Free preview stays, Cast / Music / Rewrite in a More menu (hidden buttons
+  clicked, so the old handlers run); `plainErr()` = failed shots in plain words, the raw text in `title`.
+- `small{font-size:12.5px}` (a bare <small> was 10.4px on Brand kit, 11.7px in the editor). Re-measured: 6 text sizes, 0 texts
+  below 4.5 : 1 in light and dark. Phone: Director brief pills wrap (an old 900px rule squeezed them to "Hi" / "108").
+- Tests: `test_v0323_studio_home_director.py`; v0.318 scale pin allows 40 (headline size reused by the initials).
+
+## v0.324.0 TEEN LOOK JALDI (owner: "3 DESIGN IS TAKING TOO MUCH TIME")
+Cause, from the code: `site/service._make_looks` made the 3 looks one after another, and inside each look every Opus
+call waited for the one before: pictures (shot list + images), then per look the art direction (site_art, xhigh),
+the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots - about 12 slow calls in a row,
+15-25 minutes before she could choose.
+- Now three waves: (1) the pictures and the 3 art directions at the same time (art directions do not need the
+  pictures); a look whose direction came out too close to another (`Q.closeness >= SIBLING_CLOSE`) is asked once more
+  with the others shown, the same rule the sequential version had; (2) every look's hero + sections at the same time
+  (`SITE_LOOK_PARALLEL`, default 6; a failed hero still fails the looks, a failed extra section is skipped as before);
+  (3) the 3 assemblies + screenshots at the same time. Stop is checked between waves and before every section.
+- Each look writes from its own copy of the site row (`_look_copy`: style + tokens + art direction), so parallel
+  threads never share a mutable style.
+- `_in_ctx`: worker threads run inside a copy of the caller's context. Before, AI calls made in threads lost the usage
+  scope - the parallel section writer (`_write_sections`, since v0.225) included - so they were not charged to her and
+  an Arena run's budget (v0.307, `_spent_inr` reads usage) undercounted. Both pools now carry it.
+- Two console tests pinned 17 `?v=` stamps while main already had 18 (employees.js); pins raised to 18.
+- Tests `server/tests/test_v0324_teen_look_jaldi.py` (3): with a slow fake Opus the look calls overlap (peak >= 3),
+  3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
+- Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).
+
+## v0.325.0 STUDIO TOOLS (31 Oct 2026; Phase 3 of the Create Studio design audit)
+Owner: "GO" after Phase 2 went live (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- `toolTabs()` and its four uses removed (Image / Video / Music / Voice): the sidebar is the one way between tools. `.gen` = 380px controls.
+- Video: `<details class="adv vmore">` holds Resolution / Sound + Takes / Spoken lines, summary `.vsum` (1080p · sound on · 1 take · Hindi),
+  open state in VID.more. `projState(p)` -> Draft / Making / Ready / Needs attention (`.stchip`); "N s" only when made; in the Video
+  gallery `vnote(ps)` = ONE notice for all failed clips (the distinct reason, "Nothing was charged for them"), per-tile red lines only elsewhere.
+- Image: `itemTile` caption = date · style · aspect (it.meta.model, e.g. gemini-3.1-flash-image, no longer shown); `.stys` 3 x 3 grid,
+  labels wrap; `.panel .prow b` wraps (model / engine names were cut).
+- Dubbing: DUB_TOP (Hindi, Tamil, Telugu, Bengali, Marathi, English) then "All languages" fold, `#dubn` "N of 4 picked".
+- Voice: voice rows use `initTile(name)` (her own Hoola voice keeps its wave art). Editor: empty player = `.framemsg.drop` (tap or drag
+  files; dragover / drop upload), `#edGo` reads "Add clips to start" until there are clips.
+- Not done, said so: Music waveforms were already real (decoded audio, `wave()`), the audit called them decorative; voice play samples
+  need a server sample per voice (not built); genres not regrouped.
+- Re-measured: 6 text sizes, 0 texts < 4.5 : 1 light and dark. Tests: `test_v0325_studio_tools.py`.
+## v0.326.0 HER TEST RUN - plan card, one file, no quiet PC (owner, after testing v0.314: "TEST 3 :: FAIL ( PLAN CARD NOT APPER ) DIRECT RESULT , TEST 4 : PASS ( BUT CREATED SEVERAL PDF AS 1ST AND 2ND PDF HAS ISSUE AI CREATED 3 RD ONE , NEED WORK ON IT ) , TEST 6: PASS BUT WORK CONTINUE ON PC AND AFTER 10 MIN GET THE TASK FAIL RESULT"; tests 1, 2, 5 passed)
+Built on her branch as 0.315; re-versioned 0.315 -> 0.326 past the parallel v0.315-v0.325.
+(1) PLAN CARD: her test 3 ask ("marketing plan banao: research karo, ideas likho, calendar banao, PDF mein do") DID get
+PLAN_FIRST (looks_big true); the model skipped it and finished in 5 steps, before v0.314's server plan at step 7. Now a
+big ask (state["big"]) gets the server plan right after the FIRST tool round, and the plan's steps are read off her own
+words (`santosh._ask_steps`: "goal: a, b, phir c, aur d" -> goal + steps; a comma part with no action word joins the step
+before it, so "top 8 brands, unki price, range" stays one step; under 2 real clauses = one step). The note asks the model to
+tick `kaam_plan step n done`; the real final answer still closes the plan (`_close_auto_plan`).
+(2) EK HI FILE: doc_studio published the card BEFORE its preview / QA; a QA warning came back to the model, which built
+file 2, then file 3 - all three in her chat. Now the QA runs first; a "warn" draft is held (`_HELD`, once per turn) and the
+model gets "NOT sent to her - fix exactly these"; the next doc_studio call delivers whatever it makes; `send_held=true`
+sends the held draft as is; the turn's end (`flush_held`, santosh `_run_turn` finally) delivers a held draft nobody
+replaced, so a file is never lost. A delivered file's note says "her FINAL file - no other version unless she asks".
+Setting DOC_HOLD_DRAFTS.
+(3) NO QUIET PC: Amazon / Flipkart refuse Hoola's server; browse_web's "site_blocks_server" told the model to use
+computer_operator ("it moves the job to her PC"), and computer_operator where=auto did exactly that via `_to_pc` - her
+test 6 ran on her PC and failed 10 minutes later. Now where=auto + a refused site = ask first (`_ask_for_pc`: finish with
+the sites that open, then "Aapke PC par Chrome mein kar doon?"), unless she placed the job on her PC (`_pc_is_hers`:
+ctx.place / where._asked / where.working). browse_web's hint says the same. No frozen PC file touched (pc_tools.py,
+pc/ untouched; `_to_pc` itself unchanged, just no longer reached without her word). Why the PC job failed after 10 min
+is inside the frozen PC operator and was not investigated.
+Tests: NEW tests/test_v0315_her_test_run.py (9).
+
+## v0.327.0 STUDIO ASSETS + HELP (31 Oct 2026; Phase 4 of the Create Studio design audit)
+Owner: "GO" after Phase 3 (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- Brand kit (`studio.js` V.brand / W.brand rewritten): logo upload on the page via the existing POST /api/brand/logo (multipart, `clean_bg`),
+  shown from GET /api/brand/logo; colours primary / accent / dark / light as `<input type=color>` 48px with names + hex; font buttons
+  (R.FONTS poppins / mukta) render her tagline; phone + website saved as `contact`; `bkPreview()` = poster (4:5) + reel end card (9:16)
+  in her colours / font / logo, text colour by contrast (`onCol`); draft in BK.d until Save (PUT /api/brand/kit). The console does not load
+  Poppins / Mukta, so the preview font falls back on most devices; the real posters use the bundled fonts.
+- My creations: script tile = a page (`.paper`: "Script", title, lines); every `.res[data-item]` gets a `.pick` tick (LSEL), `#selbar`
+  "N selected · Download · Delete · ×", bulk delete confirms first; `.btn.danger` (not `.bad`, which the v0.308 pin keeps free).
+- Templates: "Use this" always visible. Guides: GUIDES text split into `<ol class="gsteps">` steps + "Open <tool>" button.
+- Engines: `OWNER()` = ctx.owner() (v2.js passes `!!ME?.arena`); non-owners see "What you can make" (the feature ticks) only; the owner
+  sees the engine cards with "How to switch it on" folded.
+- Re-measured: 6 sizes, 0 texts < 4.5 : 1 light and dark. Tests: `test_v0327_studio_assets.py`.
+
+## v0.328.0 (part 1) HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0 / 0.324.0, shipped together with Phase 4 as v0.328.0 past the parallel v0.323.0 STUDIO HOME + DIRECTOR, v0.324.0 TEEN LOOK JALDI, v0.325.0 STUDIO TOOLS v0.326.0 HER TEST RUN and v0.327.0 STUDIO ASSETS + HELP)
+- **Device check after every build** (`server/app/appmaker/android/device_check.sh` + `qa.py`, stdlib only; `gen.write_project`
+  copies both into every project as `hoola_qa/` with `package.txt` + `screens.txt`): on an Android emulator the debug build opens
+  EVERY screen (extra `hoola_screen`), takes its picture, dumps its UI tree and its crash buffer; the release build is cold-started
+  3 times (`am start -W` TotalTime), scrolled (4 swipes) for `dumpsys gfxinfo` janky frames, and measured (APK bytes). `qa.report`
+  -> `report.json`: per screen opened / crash (exception, app frames, screen class, logcat excerpt) / accessibility (a tappable with no
+  words anywhere in it = unlabelled for TalkBack; a target under 48 dp at the device density) / screenshot; perf (cold median, jank %,
+  APK MB) against `BUDGET` (1500 ms, 25 %, 15 MB); `passed` = every screen opened. Budget and accessibility are reported, a crash blocks.
+- **Where it runs**: GitHub builds repo (`APP_BUILD_MODE=github`): the new `server/app_builder/hoola-build.yml` builds release + debug,
+  enables KVM, runs the check on an API 34 emulator (`continue-on-error`, never breaks a good build) and uploads `qa/report.json` +
+  `qa/screens/*.png` with the APK; her repo needs this file updated (older copies still build, the card then says so). Worker mode:
+  `HOOLA_BUILD_EMULATOR=1` + an emulator on adb -> `/jobs/<id>/qa` zip. `runners.qa_from_zip` brings both back as `result["qa"]`.
+- **The build loop acts on it** (`android/service._run`): a model-written screen that crashed on the device goes back to Opus ONCE with
+  "THIS SCREEN CRASHED ON A REAL ANDROID PHONE" + the logcat; rebuilt and re-checked; a fix that does not compile, or a second crash,
+  ships that screen's simple code-made version (the app is never handed over crashing on a screen we know about). `_keep_qa` keeps the
+  summary in the build state (`qa`: ran / passed / opened / total / crashed / perf / budget / a11y findings / shots) and the pictures
+  (`android/qa/b<n>/`, last 3 builds); `GET /api/apps/<ref>/android/qa/<screen>`; the ready note gets one plain QA line.
+- **Crashes on real users' phones**: kit `CrashGuard.kt` (installed first in MainActivity, current screen set by the shell) keeps the
+  crash (trace 60 lines, screen, versionName, Android, model; no personal data, no form contents) with `commit()` and lets Android close
+  the app as usual; `sendPending` posts it on the next start (`POST /api/app-api/<key>/crash`, no login, 20 an hour per IP).
+  `backend.crash` groups by exception + the first app frames with line numbers stripped (`c_<sha1>`), counts, screens, versions,
+  devices (200 kept), a chat note on a NEW crash; `GET /api/apps/<ref>/crashes`; `app_dekho what=crashes`; `app_banao action=fix_crash`
+  (+ phone / console "Theek karo" via `POST /api/apps/<ref>/fix_crash`) = the app screens in the stack (ScreenCartKt -> cart, else the
+  screen it happened on) rewritten with the crash as a per-screen note (`android.build(..., notes, crashes)`), a new build; the crash is
+  marked `fixing` with that build's version; the same crash from that version = `back` + a second note; a crash only in the kit is said
+  to be Hoola's own, not hers.
+- **Views**: phone build panel `_QaBox` (opened x/y, cold start / jank / APK pills against the budget, accessibility lines, the
+  screenshots) + crash list with Theek karo; console Android tab `qaBox` (same, screenshots through her login).
+- **CI** (`appgen-check.yml`): the fixture app now goes through `device_check.sh` itself (13 screens incl. the kit's sign-in / account),
+  a step gates on `report.json` (every screen opened, cold start + APK size measured, accessibility findings printed as notices); the
+  e2e reinstalls the debug build and also sends a kept crash end to end (the server check requires it grouped under the cart screen).
+- **Tool text**: the 1200-char cut had pushed out "Pakka karne ke liye ek sawaal"; the product list was shortened so the new-app
+  rules and the backend actions all fit.
+- **Verified here**: `server/tests/test_v0325_hoola_qa.py` (3: the report parser on real-shaped uiautomator / logcat / gfxinfo output,
+  the build's crash-fix loop on a fake emulator build machine incl. the shot route and the no-emulator message, crash reports grouped /
+  noted / fixed / back / kit-only); the fixture project compiles with the real toolchain (release APK 1.5 MB).
+- **Not yet**: per-app UI flow tests beyond "every screen opens" (tapping through each flow), a visual diff against the approved web
+  design, memory / ANR checks, iPhone.
+
+## v0.328.0 (part 2) APP UPDATES — App Sahayak Phase 4: a built app can be changed safely for its whole life (owner: "START PHASE 4")
+- **Only what changed is rewritten**: Kotlin screens are cached per screen under `_skey` = sha256 of that screen's approved html/css,
+  the look tokens, the tabs, the screen list, its spec row (purpose / lists / actions), the app's server lists and `KIT_REV`. A rebuild
+  of the same design asks Opus nothing (simple code-made screens get another try); a one-screen design change rewrites one screen; a
+  look / colour or data-list change touches every screen (they are in every screen's code). Was: one cache key per whole design, so any
+  change rewrote every screen (cost + regressions).
+- **Versions only go up**: `versionCode = max(last_vc + 1, version*100 + build%100)` (the old formula wrapped after 100 builds and
+  could go DOWN = Android refuses the update); `versionName = <design version>.<build>`.
+- **Changelog** (`android.history`, last 30): build, version, date, APK + sha256 + size, changed / kept / simple screens (labels + ids),
+  data revision and whether it changed, crash fixes, QA passed, rollback_of, and `release_notes` = plain "What's new" lines (her change
+  words, "Updated: Cart, Home", "New details you can fill in.", "Fixes a problem that could close the app.").
+- **Kept builds**: the last `KEEP_BUILDS` (10) APKs and project ZIPs (was: 1 APK, 3 ZIPs).
+- **Rollback** (`android.rollback` / `_rollback`): a kept build's exact project, `versionCode` / `versionName` rewritten to a NEW higher
+  version, the preview key put back, compiled and device-checked, no Opus; phones take it as an update. `app_banao action=rollback`
+  (build, 0 = the one before), `POST /api/apps/<ref>/rollback`, phone "Wapas lao", console "Bring back"; a chat note.
+- **In-app update**: `GET /api/app-api/<key>/latest` (version code / name, notes, size, APK address) + `GET /api/app-api/<key>/apk` (the
+  current APK; public like the app). Kit `AppUpdate.kt`: checked on start against `BuildConfig.VERSION_CODE`; `UpdateDialog` shows
+  "New version x.y" + What's new + Update (opens the APK link in the browser; same key = installs over, data kept) / Later (that
+  version skipped until a newer one). `Act.link` added.
+- **Her data changes** (`backend.change_schema` / `_apply_ops`, `app_banao action=data_change`, `POST /api/apps/<ref>/data_change`):
+  add (a new field is NEVER required - an old app can't send it; a choice fills its default), hide (left out of forms and the model's
+  guide, data kept; essential order fields refused), label; checked on a copy, saved with `rev`, logged in `changes`, REPLAYED after a
+  backend upgrade (`ensure`). The installed app reads the new lists from `/api/app-content` at once (kit `Db.fields` drops hidden);
+  forms collect a new field from the next build; the build's notes say "New details you can fill in."
+- **Device check fixes found in CI**: the emulator screen is 320x640, so fixed 540x1600 swipes hit nothing and the release build opens
+  on the consent screen - scrolling is now measured on the debug build's start screen with swipes from the real `wm size`, and fewer
+  than 10 frames = not measured (never "0 % jank").
+- **Verified**: `server/tests/test_v0325_app_updates.py` (4: only-changed rewrite + version up + history + latest / apk + rollback via
+  route and tool; the screen key; data changes safe for old app versions + hide keeps data + label + replay + notes + forms; the
+  generated project) and the fixture compiles with the real toolchain. Phase 3's CI device check on the emulator (before the scroll fix):
+  13/13 screens, cold start 538 ms, APK 1.51 MB, 0 accessibility findings, e2e incl. photo / paid / updates / crash report all OK.
+- **Not yet**: Play Store releases + Play in-app updates, iPhone, a visual diff of each update against the approved design.
+
+## v0.329.0 SHOWCASE (31 Oct 2026; Phase 5 of the Create Studio design audit, built as 0.328.0)
+Owner: "GO PHASE 5" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3; first ask: "USE REAL HOOLA CREATED VIDEOS AND IMAGES HERE FOR PERSENTATION").
+- `app/studio/showcase.py`: SLOTS = 36 picture briefs keyed by the studio page cards (film0-7 = QUICK, tpl0-9 = STARTERS, tool0-8 = ALLTOOLS,
+  sty0-8 = STYLES; guides reuse their tool's picture), STYLE suffix (no words / logos / watermarks, Indian setting), CLIPS = film0 / film2 /
+  film3 / film7. setup() = the hidden owner film "Hoola showcase" (3:4, one 5 s shot per slot, `hidden`, cast_skip) - free. ask_pictures() =
+  `service.keyframes` for the missing ones; ask_clips() = `service.generate(final)` for the 4 clip slots, refused before their pictures exist
+  (the clip card would otherwise paint and charge those 4 pictures again), and only one pending card at a time. manifest() / status() /
+  file_for(slot, pic|clip).
+- Routes: GET /api/studio/showcase (slots for every signed-in account; `owner` panel for the owner tenant), POST /api/studio/showcase/
+  setup|pictures|clips (owner only, 403 otherwise), GET /api/studio/showcase/file/<slot>?kind=pic|clip.
+- FOUND: `service.decide`, `service.approval_card` (fingerprint) and the stale-card sweep used `listing(tenant)`, which hides hidden films:
+  a hidden film's price card could never be approved ("Yeh card purana ho gaya"). All three now use `listing(tenant, hidden=True)`.
+- Pages (`studio.js`): `showcaseSwap(root)` lays the real picture (or the muted looping clip, poster = its picture; a still picture under
+  reduced motion) over each `canvas[data-art]` whose seed maps to a ready slot (`SC_SLOT`); a file that fails is removed so the drawing stays.
+  Runs after every go() and once the manifest arrives at mount. Owner panel `drawShowcase()` on Create > Engines: set up, "Make the N missing
+  pictures", "Make the 4 clips" (disabled until all pictures exist), painting / making progress, the pending card with Haan / Na, polls 5 s.
+- Verified locally (fake keys): setup hidden from lists; pictures card ₹428 (36 x ₹12); clips card ₹340 video once pictures exist; Haan ->
+  painting -> the plain "key refused" reason, ₹0 charged; Na on a hidden film's card works; test files laid over the drawn cards (7 on home,
+  the style tile on Image). The REAL showcase needs her two taps on the live server.
+- Tests: `test_v0329_showcase.py`.
+
+## v0.330.0 PLAN CARD DIKHE - the plan card is drawn on the console (owner, after v0.326 test A: "TEST A :: faling no plan card")
+ROOT CAUSE: the server WAS making the card (v0.326 auto plan / kaam_plan -> `goal` event), but the console never drew it:
+`HoolaProgressPolicy.quiet()` (console/workspace.js, the compact-progress clean-up) listed 'goal' with step / think / work, so
+every plan event was folded into the one "Working on it…" line. The phone draws its own goal card (lib/ui/goal_card.dart) and
+was not affected. Now 'goal' is not quiet: one card per job (cardShell keys by goal id, updated in place), steps still fold.
+Also from her second test-A ask: "Ek chhota business plan banao chai cafe ke liye: location ke options socho, kharcha ka
+hisaab lagao, menu aur rates likho, phir sab ek PDF mein do" was NOT big (2 known verbs) - `goal.looks_big` now also counts
+the parts after a colon (3+ = big), `_ask_steps` strips "uske baad / iske baad / after that" and knows socho / lagao / chuno.
+Short asks with a colon ("Time: kitna baj gaya?") stay small. Tests: test_v0315_her_test_run.py (+2), web/progress.test.cjs.
+
+## v0.331.0 PLAY STORE LAUNCH — App Sahayak Phase 5 (owner: "START PHASE 5"; built as 0.330.0, re-versioned past the parallel v0.330.0 PLAN CARD DIKHE)
+Her app on Google Play from HER OWN developer account, through Google's official Play Developer API (androidpublisher v3).
+`server/app/appmaker/android/store.py`; state in `android.store`.
+- **Identity**: `propose_package` (com.<ascii business words>.app, reserved prefixes refused), confirmed by her (`setup`), LOCKED after
+  the first upload (Play never allows a change). A separate UPLOAD key per app (`_upload_key`: PKCS12 RSA 2048, alias "preview" so the
+  fixed Gradle file signs with it, sealed `store/upload.key.sealed`); the public certificate at `/api/apps/<ref>/store-cert`.
+- **Her Play key**: the service-account JSON from Play Console > API access, typed / chosen in the app (phone `StorePanel`, console file
+  input) - never in chat; `set_credentials` checks it is a service account, keeps only the needed fields, seals it (`store/play.sealed`),
+  returns only a masked e-mail; "Key hatao" forgets it. Tokens via google-auth (`_token`, scope androidpublisher).
+- **Listing**: Opus (`LISTING_SYSTEM`: facts only, no superlatives / emoji / other brands - Play's metadata policy) or a template; clipped
+  to 30 / 80 / 4000; her edits checked against the limits. **Graphics** (`graphics`): 512 px icon (first letter on the app's own
+  gradient) and 1024x500 feature graphic (the name), Pillow; **screenshots** (`screenshots`): the device check's pictures of the latest
+  build (2-8, kit screens left out).
+- **Pages Play asks for** (public, per app): `/api/app-api/<key>/privacy` (the app's privacy paragraphs + a crash-report paragraph) and
+  `/api/app-api/<key>/delete-account` (the in-app path + her contact). **Data safety** (`data_safety`): the form's answers from what the
+  app's lists really hold (email, name, phone, address, location only on tap, photos only chosen, purchase history, crash logs; never
+  shared, HTTPS, deletion in app + on request) - Google has no API for that form, so she enters them.
+- **Store bundle** (`build_bundle` / `_build_bundle`): the latest build's exported project, `applicationId` = the store package,
+  `versionCode` above every preview / store build (preview builds then continue above it), the upload key + its password put back,
+  `RN.build(..., "aab")` (worker `?kind=aab` -> bundleRelease; builds-repo workflow input `kind` (new hoola-build.yml); local
+  bundleRelease); the .aab kept in `store/`.
+- **Upload** (`publish` / `_publish`): edits.insert -> bundles.upload -> tracks/<track> (release with "What's new" from the changelog)
+  -> listings/en-IN -> icon + featureGraphic (delete + upload) -> phoneScreenshots -> edits.commit. Internal testing by the tool
+  (`app_banao action=store step=internal`) or her tap; PRODUCTION only with her tap in the app (`her_tap`, confirm dialog), the tool
+  refuses. A never-reviewed app's "draft only" refusal = the release goes as a draft and her note says to finish it once in Play
+  Console. Google's refusals are shown as they are (e.g. missing permission). Package locked after the first upload.
+- **Views**: phone `StorePanel` (steps x/8, package, key, listing, buttons, the one-time Play Console steps, data-safety answers,
+  releases); console Android tab Play box (same). Tools `app_dekho what=store`, `app_banao action=store step=setup|listing|bundle|internal`.
+- **Fixed on the way**: Phase 4's rollback restored the preview key but not its password (the exported project blanks `?: "..."`), so a
+  real build machine would have failed to sign it; both rollback and the store bundle now put the password back.
+- **Verified**: `server/tests/test_v0330_play_store.py` (2: setup / key sealing / listing limits / graphics / pages / data safety; the
+  bundle + version codes + the exact Play API sequence on a faked Google + package lock + production only by tap + the draft fallback +
+  a Google refusal); the AAB built here with the real toolchain (3.7 MB, valid bundle) and CI now builds it (bundleRelease + check).
+- **Not yet / honest limits**: Google's API cannot create the app entry or fill the data-safety / content-rating forms - she does those
+  once in Play Console (listed in the panel); the first upload of a brand-new app may need one "Review release" click there.
+  **iPhone (App Store / TestFlight) is the next phase**: it needs a Swift / SwiftUI kit (the HoolaKit equivalent), macOS builds, and
+  her Apple Developer account (team, certificates, App Store Connect API key).
+
+## v0.332.0 ANY DESIGN (web design Phase 6 step 2; owner: "START PHASE 2")
+Three limits, measured in the code: a section could only be one of 30 library types (21 places looked a type up in
+`T.SECTIONS`), the site runtime had no interactive pieces beyond FAQ / lightbox / before-after (so a calculator, tabs or
+a filter needed section JS, which the sanitiser rightly strips), and every section styled its own buttons and cards, so
+a big site drifted page to page.
+- **Free-form sections**: type `custom_<name>` (`taxonomy.custom_type`, `is_section`, `label_of`; CUSTOM_PER_PAGE 3). The
+  site map planner may add {"type": "custom", "name": "EMI calculator", "design": ...} when no library type fits; her
+  words add one through change() (CHANGE_SYSTEM add: type custom + name). The section writer is told it is FREE-FORM
+  (design from scratch for that purpose, use the interactive pieces). Every label lookup now goes through `label_of`.
+- **Interactive pieces** in `assets/hoola-site.js` (+ default styles in hoola-site.css, taught in RUNTIME_GUIDE), all
+  by attribute, keyboard + ARIA: `data-hoola-tabs` (tablist, arrow keys), `data-hoola-carousel` (scroll-snap track +
+  arrows that disable at the ends), `data-hoola-filter`, `data-hoola-toggle` (monthly / yearly), `form data-hoola-calc`
+  = "sum" (base + qty x data-rate + data-add for checked boxes / options) or "emi" (amount, yearly rate, months -> EMI,
+  total, interest; en-IN rupees). Values written as text.
+- **Design kit** (`site/kit.py`, SITE_KIT on): once a look is chosen, before the first sections are written, one Opus call
+  (site_art) writes `.k-*` components (btn, btn-ghost, card, eyebrow, title, sub, head, badge, media, quote, stat, list,
+  divider, chip) from the look's art direction using only the site variables. `kit.clean` keeps only kit rules (every
+  selector a `.k-` class chain; media / supports wrappers kept; `@keyframes k-*` kept; no element / id / :root / attribute
+  / universal selectors, no url / @import / font-face). Stored on the look, put in site.css after the base styles,
+  and every section prompt carries `kit.prompt_line` (use these classes). One kit per site, not per change.
+  Scripted tests run with SITE_KIT=false (conftest); its own suite turns it on.
+- Tests `server/tests/test_v0332_any_design.py` (6): free-form sections in the site map (dedupe, cap, names), her words
+  add one and it is built + on the page, the kit cleaner, one kit per site that every section prompt names, and every
+  interactive piece clicked in Chromium (tabs + arrow keys + ARIA, filter, switch, sum calculator 1,850 -> 1,970, EMI
+  8,885 / total 1,06,619 / interest 6,619 -> 4,707 for 24 months, slider arrows).
+- Seen in the sandbox and NOT from this work: `test_v0319_app_features.py` fails the same 4 ways on untouched main.
+
+## v0.332.0 DEPLOY SE NAHI RUKEGA (owner's screenshot: S-0003 "Server ruk gaya tha, kaam beech mein ruk gaya")
+- Checked the server log first: clean shutdowns ("Shutting down" -> "Started server process"), no crash, no out-of-memory.
+  Deploys landed at 07:27, 07:58, 08:17, 08:38 and 09:04 (several sessions shipping). A dead website job gets ONE
+  automatic restart (`recover_stuck`, v0.223, against crash loops), so S-0003's build, restarted after 08:38, was marked
+  failed after 09:04. Her finished sections were safe on disk; "Continue" resumes from them.
+- Fix: the app's shutdown (main.lifespan after `yield`, first thing) calls `site.service.mark_clean_stop()`, which
+  gives every website job running in this process a fresh restart allowance (`recovered = 0`). After a deploy the job
+  continues however many deploys land; a real crash (no shutdown ran) still uses up the one restart and shows the
+  plain "Phir se chalao" card.
+- A site map being made (big sites, stage `sitemap`) used to be dropped back to the plan on any restart; it now starts
+  again once (its size and words are kept on the board: map_want / map_words).
+- Tests `server/tests/test_v0332_deploy_se_nahi.py` (4): a build that lived through two deploys continues, a real crash
+  still stops after one restart, a site map job starts again then gives up honestly after a crash.
+- Built as 0.325 / 0.326, shipped together as 0.330.0 past the parallel v0.325-v0.329 Create Studio work (all kept).
+- Shipped as 0.332.0 (built as 0.325 / 0.326, then 0.330): re-versioned past the parallel v0.330 PLAN CARD DIKHE / PLAY STORE LAUNCH and v0.331 (all kept). Code comments say v0.330.
+
+## v0.333.0 SEO PRO (31 Oct 2026, built as 0.319.0 / 0.320.0, re-versioned past the parallel v0.319-v0.332)
 Owner: "https://github.com/AgriciDaniel/claude-seo.git --- check this repo for SEO" -> "ADD ALL USEFUL FEATURES FROM CLAUDE-SEO
 TO HOOLA". claude-seo (MIT, v2.5.0, commit 6be93f4) was read end to end and compared with Hoola's SEO Sahayak (v0.103) and the
 SEO Employee (v0.317). Every check that works through official routes was RE-WRITTEN in Hoola's own code and words (no code
