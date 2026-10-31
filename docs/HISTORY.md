@@ -12133,3 +12133,23 @@ Owner: "GO PHASE 2" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
 - `small{font-size:12.5px}` (a bare <small> was 10.4px on Brand kit, 11.7px in the editor). Re-measured: 6 text sizes, 0 texts
   below 4.5 : 1 in light and dark. Phone: Director brief pills wrap (an old 900px rule squeezed them to "Hi" / "108").
 - Tests: `test_v0323_studio_home_director.py`; v0.318 scale pin allows 40 (headline size reused by the initials).
+
+## v0.324.0 TEEN LOOK JALDI (owner: "3 DESIGN IS TAKING TOO MUCH TIME")
+Cause, from the code: `site/service._make_looks` made the 3 looks one after another, and inside each look every Opus
+call waited for the one before: pictures (shot list + images), then per look the art direction (site_art, xhigh),
+the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots - about 12 slow calls in a row,
+15-25 minutes before she could choose.
+- Now three waves: (1) the pictures and the 3 art directions at the same time (art directions do not need the
+  pictures); a look whose direction came out too close to another (`Q.closeness >= SIBLING_CLOSE`) is asked once more
+  with the others shown, the same rule the sequential version had; (2) every look's hero + sections at the same time
+  (`SITE_LOOK_PARALLEL`, default 6; a failed hero still fails the looks, a failed extra section is skipped as before);
+  (3) the 3 assemblies + screenshots at the same time. Stop is checked between waves and before every section.
+- Each look writes from its own copy of the site row (`_look_copy`: style + tokens + art direction), so parallel
+  threads never share a mutable style.
+- `_in_ctx`: worker threads run inside a copy of the caller's context. Before, AI calls made in threads lost the usage
+  scope - the parallel section writer (`_write_sections`, since v0.225) included - so they were not charged to her and
+  an Arena run's budget (v0.307, `_spent_inr` reads usage) undercounted. Both pools now carry it.
+- Two console tests pinned 17 `?v=` stamps while main already had 18 (employees.js); pins raised to 18.
+- Tests `server/tests/test_v0324_teen_look_jaldi.py` (3): with a slow fake Opus the look calls overlap (peak >= 3),
+  3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
+- Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).
