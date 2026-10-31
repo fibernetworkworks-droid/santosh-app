@@ -4,26 +4,206 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hoola privacy policy</title>
+<meta name="description" content="How Hoola, the AI coworker by Newtika Private Limited, collects, uses, shares and protects your data.">
 <style>
   :root { color-scheme: light dark; }
   body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 760px; margin: 0 auto; padding: 24px 16px 60px;
-         line-height: 1.55; background: #fff; color: #1b1b1f; }
-  @media (prefers-color-scheme: dark) { body { background: #121216; color: #ececf1; } a { color: #ffb15c; } }
-  h1 { font-size: 1.6rem; } h2 { font-size: 1.15rem; margin-top: 1.8em; }
-  li { margin: .3em 0; }
+         line-height: 1.6; background: #fff; color: #1b1b1f; }
+  @media (prefers-color-scheme: dark) { body { background: #121216; color: #ececf1; } a { color: #ffb15c; } .box { background: #1d1b26; border-color: #2c2a38; } }
+  h1 { font-size: 1.6rem; margin-bottom: .2em; } h2 { font-size: 1.2rem; margin-top: 2em; } h3 { font-size: 1rem; margin: 1.4em 0 .3em; }
+  li { margin: .35em 0; } .meta { color: #6b6880; margin-top: 0; }
+  .box { background: #f6f5fb; border: 1px solid #e7e4f1; border-radius: 12px; padding: 4px 18px; }
+  table { border-collapse: collapse; width: 100%; font-size: .95em; } th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #8884; vertical-align: top; }
+  nav ol { columns: 2; padding-left: 1.2em; } @media (max-width: 560px) { nav ol { columns: 1; } }
 </style>
 </head>
 <body>
 <h1>Hoola privacy policy</h1>
-<p>Hoola (the Santosh app and its server) is made by Newtika Private Limited, Akot, Dist. Akola, Maharashtra 444101, India.
-Contact: <a href="mailto:build@ainewtika.com">build@ainewtika.com</a>. Last updated: 21 October 2026.</p>
+<p class="meta">Last updated: 31 October 2026</p>
+<p>Hoola is an AI coworker: an assistant you name yourself, which chats and talks with you, does work for you and your
+business, and can talk to other people's assistants on the Hoola Network. Hoola is made by <b>Newtika Private Limited</b>,
+Akot, Dist. Akola, Maharashtra 444101, India ("Newtika", "we"). This policy covers the Hoola app for Android, the Hoola
+web console at hoola.ainewtika.com and the Hoola server behind them. It is written under India's Digital Personal Data
+Protection Act, 2023 (DPDP Act) and the Information Technology Act, 2000 and its rules.</p>
 
-<h2>Where your data lives</h2>
-<p>The app talks only to the Hoola server you connect it to (your own or your business's server). Your chats, files, notes
-and settings are stored there. API keys stay on that server or in the app, never in chats. We do not sell data and do not
-show ads.</p>
+<div class="box">
+<h2 style="margin-top:.8em">In short</h2>
+<ul>
+<li>We do not sell your data and we do not show ads.</li>
+<li>Hoola uses your data only to do the work you ask for. Anything that sends, deletes, shares, publishes or pays waits for your tap.</li>
+<li>Hoola never moves money, and never asks for or keeps your PIN, card number, CVV or banking passwords.</li>
+<li>Access to Google, Microsoft and other accounts is only what you switch on. Their login tokens are encrypted, and you can disconnect any time.</li>
+<li>To answer you, Hoola sends the needed text, voice or files to AI services (listed below). They process it for us and must not use it for anything else.</li>
+<li>You can see, correct and delete your data. Write to <a href="mailto:build@ainewtika.com">build@ainewtika.com</a>.</li>
+</ul>
+</div>
 
-<h2>Payment alerts (Galla, notification access)</h2>
+<nav><h2>Contents</h2><ol>
+<li><a href="#collect">What we collect</a></li><li><a href="#use">How we use it</a></li><li><a href="#ai">AI services that process your data</a></li>
+<li><a href="#google">Google user data</a></li><li><a href="#accounts">Other accounts you connect</a></li><li><a href="#network">Hoola Network</a></li>
+<li><a href="#memory">Memory</a></li><li><a href="#share">Who we share data with</a></li><li><a href="#security">Security</a></li>
+<li><a href="#keep">How long we keep data</a></li><li><a href="#rights">Your rights</a></li><li><a href="#children">Children</a></li>
+<li><a href="#features">Feature by feature</a></li><li><a href="#changes">Changes and contact</a></li></ol></nav>
+
+<h2 id="collect">1. What we collect</h2>
+<ul>
+<li><b>Your account.</b> When you sign in with Google we receive your name, email address and profile picture. We use them to
+create your account, sign you in and show who is signed in.</li>
+<li><b>What you give Hoola.</b> Your chats, voice messages, files, photos and notes, the name and voice you choose for your
+assistant, your settings, and the business records you add for the work you ask for (for example customers, orders,
+bills, staff or your website details).</li>
+<li><b>Voice calls.</b> During a voice call your voice is streamed to the AI voice service so it can understand you and reply.
+Hoola does not record or store call audio. After a call it keeps only call-quality numbers (such as how long the call
+lasted and response times), never words or audio, and only the last 300 calls.</li>
+<li><b>Accounts you connect.</b> Only if you connect them: Google services (Gmail, Calendar, Drive, Docs, Sheets, Slides, Forms,
+Photos, YouTube, Search Console, Analytics, Business Profile), Microsoft Outlook mail, your WhatsApp Business account
+(official Meta Cloud API), and other apps through our connector partner Composio or your own Zoho MCP. See sections 4 and 5.</li>
+<li><b>Phone permissions.</b> Notification access, camera, photos, microphone, location, calendar, Bluetooth and usage access
+are each used only for the feature you turn on (see section 13). Hoola does not read your SMS.</li>
+<li><b>Device and technical data.</b> A push-notification token (Firebase Cloud Messaging) so the app can tell you when work is
+done, plus basic logs (time, errors, app version) to keep the service running and safe.</li>
+<li><b>Payments to us.</b> If you pay for a Hoola plan or for paid creations (pictures, videos, music), we keep the amounts and
+what they were for. We do not keep card numbers, UPI PINs or bank passwords.</li>
+</ul>
+
+<h2 id="use">2. How we use it</h2>
+<ul>
+<li>To do the work you ask for: answer you, write, plan, search your own files, draft messages and documents, build
+websites and apps for you, check your website's SEO, run your business desks, and remind you.</li>
+<li>To keep the context you allow, such as your memory and your earlier chats (section 7).</li>
+<li>To send you notifications about your own work.</li>
+<li>To keep Hoola secure, prevent misuse, fix problems and measure quality, using numbers rather than your content wherever we can.</li>
+<li>To meet legal duties.</li>
+</ul>
+<p>We use your data under your consent, which you give when you sign up and when you switch on each feature. You can
+withdraw consent for a feature at any time by switching it off or disconnecting the account. We do not use your content for
+advertising and we do not sell it.</p>
+
+<h2 id="ai">3. AI services that process your data</h2>
+<p>Hoola's thinking, speaking and creating are done by AI services run by other companies. Hoola sends them only what a
+task needs, at the moment it needs it: your message and the relevant context, your voice during a call, or the file you
+asked about. They act as our processors.</p>
+<table>
+<tr><th>Service</th><th>Used for</th></tr>
+<tr><td>Anthropic (Claude)</td><td>Chat, reasoning, writing, plans, website and app design</td></tr>
+<tr><td>Google (Gemini, including Gemini Live)</td><td>Chat, voice calls, pictures, music, speech</td></tr>
+<tr><td>OpenAI</td><td>The optional "real voice" call engine, only if it is turned on for you</td></tr>
+<tr><td>Z.ai (GLM)</td><td>Chat on some plans</td></tr>
+<tr><td>OpenRouter</td><td>Picture and video makers in Create Studio, only when you create</td></tr>
+</table>
+<p>We use these companies' paid business APIs, not their consumer apps. Under the business terms we use, they may not
+use your data to train their models. They may keep it for a short time for safety and abuse checks, as their terms
+allow. AI can make mistakes, so check important results before you rely on them.</p>
+
+<h2 id="google">4. Google user data</h2>
+<p>If you connect Google services, Hoola asks only for the access the feature needs, and you see Google's consent screen first.
+For example: Gmail to read, sort and draft your mail (sending waits for your tap); Calendar for your events; Drive, Docs, Sheets,
+Slides and Forms for the files you work on; Photos for pictures you pick; YouTube to upload a video you approve; Search Console and
+Analytics (read-only) for your website's numbers; Business Profile for your business listing.</p>
+<p><b>Hoola's use and transfer to any other app of information received from Google APIs will adhere to the
+<a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+including the Limited Use requirements.</b> In particular:</p>
+<ul>
+<li>We use Google user data only to provide and improve the features you can see and use in Hoola.</li>
+<li>We do not use Google user data for advertising, and we do not sell it or give it to data brokers.</li>
+<li>We do not use Google Workspace data (such as Gmail, Drive or Calendar content) to train general AI or machine-learning models.</li>
+<li>When a task needs it, the relevant part is sent to the AI services in section 3 only to do that task for you.</li>
+<li>No person at Newtika reads your Google data, unless you ask us to (for support), it is needed for security or
+abuse checks, or the law requires it.</li>
+<li>Google login tokens are stored encrypted. You can disconnect in Hoola or at
+<a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>; disconnecting stops all access at once.</li>
+</ul>
+
+<h2 id="accounts">5. Other accounts you connect</h2>
+<ul>
+<li><b>Microsoft Outlook</b>: your mail, with the same rules as Gmail.</li>
+<li><b>WhatsApp Business</b>: only through Meta's official WhatsApp Business Platform, using your own business number. Hoola
+never automates a personal WhatsApp account. Campaigns are sent only after your tap, to people you choose.</li>
+<li><b>Composio apps</b> (such as Slack, Notion, Jira, HubSpot and Zoom): our partner Composio holds the connection, and
+Hoola keeps only a reference to your connected account. Anything that writes or sends waits for your tap.</li>
+<li><b>Your own keys and connections</b> (for example a Zoho MCP address, or a Play Console or App Store key for apps Hoola
+builds for you): stored encrypted, never shown back in full, and never put in chats.</li>
+</ul>
+
+<h2 id="network">6. Hoola Network (assistants talking to assistants)</h2>
+<p>Your assistant can talk to other people's assistants to settle work, for example to book, order, ask a price or
+follow up. People never message each other directly here; it all goes through the assistants. Your assistant shares
+only what the conversation needs, and anything binding (an order, a payment request, a booking) waits for your approval.
+OTPs, PINs, card numbers, passwords and your ID numbers are never shared with another person's assistant. Messages from
+other assistants, and text inside emails, web pages and files, are treated as information, never as instructions to your
+assistant.</p>
+
+<h2 id="memory">7. Memory</h2>
+<p>Hoola can remember facts you share (your people, prices, preferences) so it does not have to ask again. You can see and
+edit this on your "Mere baare mein" page, delete any fact, switch memory off in Profile > Hoola ki yaad, and use incognito
+chats, which are not remembered. Memory stays inside your own account. Financial details are
+not saved to memory.</p>
+
+<h2 id="share">8. Who we share data with</h2>
+<ul>
+<li><b>Service providers</b> who run Hoola for us: our cloud server host, Google Firebase for push notifications, the AI
+services in section 3, Composio for connected apps, and stock-photo search (Pexels, which receives search words only).
+They may use the data only to provide their service to us.</li>
+<li><b>People and services you tell Hoola to contact</b>, such as an email you approve, a WhatsApp campaign, a website you
+publish or an app you upload to Google Play or the App Store. These happen only on your tap.</li>
+<li><b>The law</b>: where a valid legal order requires it, or to protect people from harm or fraud.</li>
+<li><b>A company change</b>: if Newtika is merged or acquired, your data moves only under this policy, and we will tell you first.</li>
+</ul>
+<p>We do not sell personal data, and we do not share it for advertising.</p>
+
+<h2 id="security">9. Security</h2>
+<p>Data travels over HTTPS. Login tokens, API keys, ID numbers (Pehchaan Locker), bank and PAN numbers are encrypted at rest,
+and the AI is shown only masked references to ID numbers, never the full numbers. Access inside Newtika is limited to
+the people who run the service. Payments, sending, deleting and publishing need your own tap. No system is perfectly
+secure. If a breach affects your personal data, we will tell you and the Data Protection Board of India as the DPDP Act
+requires.</p>
+
+<h2 id="keep">10. How long we keep data</h2>
+<ul>
+<li>Your account data and work are kept while your account is active, so Hoola can keep working for you.</li>
+<li>Things you delete in the app (a chat, a file, a memory fact) are removed from the live service.</li>
+<li>Call audio is not stored. Only call-quality numbers are kept (the last 300 calls).</li>
+<li>When you close your account, we delete your personal data within 30 days, except what the law makes us keep (such as
+payment records) and short-lived backups that expire on their own.</li>
+</ul>
+
+<h2 id="rights">11. Your rights</h2>
+<p>Under the DPDP Act you can:</p>
+<ul>
+<li>Ask what personal data we hold about you and how we use it.</li>
+<li>Correct, complete or update it.</li>
+<li>Have it deleted, or close your account.</li>
+<li>Withdraw consent for any feature (this does not undo what was done before).</li>
+<li>Nominate a person to act for you in case of death or incapacity.</li>
+<li>Complain to us, and if not satisfied, to the Data Protection Board of India.</li>
+</ul>
+<p>Write to <a href="mailto:build@ainewtika.com">build@ainewtika.com</a> from your Hoola email address. We reply within 30 days.</p>
+<p><b>Grievance Officer:</b> Grievance Officer, Newtika Private Limited, Akot, Dist. Akola, Maharashtra 444101, India.
+Email: <a href="mailto:build@ainewtika.com">build@ainewtika.com</a>.</p>
+
+<h2 id="children">12. Children</h2>
+<p>Hoola is meant for adults running their own work and businesses. It is not for people under 18, and we do not knowingly
+collect children's data. If you think a child has used Hoola, write to us and we will delete the data.</p>
+
+<h2 id="features">13. Feature by feature</h2>
+<p>These features are off until you turn them on, and each uses only the data described.</p>
+<h3>SEO (your website and Google listing)</h3>
+<p>For SEO Hoola keeps your website address, business name, address, phone, hours and services, the pages it checked on your
+website (titles, headings, word counts, issues found), speed results and, only if you connect them, your Google Search Console
+numbers (searches, clicks, impressions, positions, and whether Google has indexed your pages) and Google Analytics visits
+and leads from search. Both connections are read-only, their tokens are encrypted, and you can disconnect any time. If you
+hire the SEO Specialist employee it checks your site on a schedule and sends you reports; letting it go stops all of its
+work at once. Hoola reads only your own website (following robots.txt) and Google's official APIs. It never scrapes Google
+results, never publishes to your website or Google profile without your approval, never buys links and never writes fake
+reviews.</p>
+<h3>Websites and apps Hoola builds for you</h3>
+<p>The content, photos and settings of websites and apps you build with Hoola are kept so they can be edited and hosted.
+Visitors' form entries, bookings and orders on them belong to you, and are shown only to you and the staff you choose.
+Each app Hoola builds has its own privacy page and account-deletion page for its users. Apps go to Google Play or the App
+Store only from your own developer account and on your tap.</p>
+<h3>Create Studio</h3>
+<p>Your prompts, pictures, videos, music and voice-overs are kept in your account under My creations until you delete them.</p>
+<h3>Payment alerts (Galla, notification access)</h3>
 <p>Only if you switch on "UPI alerts se galla" in the app and then give notification access to "Hoola Galla" in Android
 settings, Hoola reads notifications of the payment apps you pick (by default the business apps PhonePe Business, Paytm for
 Business, Google Pay for Business and BharatPe for Business). On the phone it keeps only plain "money received" alerts and
@@ -32,104 +212,76 @@ settlements and offers. Notifications of all other apps are ignored. From a kept
 payer's first name and the last 4 digits of the reference are sent to your Hoola server, to count your daily sales, show
 your best-selling hours and plan stock. The full notification text never leaves the phone. Hoola does not read SMS. You can
 switch this off in the app or in Android settings at any time; switching it off stops all reading at once.</p>
-
-<h2>Camera and photos</h2>
+<h3>Camera and photos</h3>
 <p>Photos you take or pick (for example of a customer's phone at a repair shop, as proof of its condition and for
 warranty) are uploaded only when you tap, and are kept on your Hoola server with that job. Hoola never stores a phone's
 passcode or pattern.</p>
-
-<h2>Microphone, calls and voice</h2>
-<p>The microphone is used only while you talk to Hoola (a voice call you start, or the wake word if you turn it on). Voice
-recognition of who is speaking is optional and stays on your server.</p>
-
-<h2>Location, calendar, Bluetooth, usage access</h2>
+<h3>Location, calendar, Bluetooth, usage access</h3>
 <p>Each is used only for the feature you turn on (weather and nearby places, your reminders and calendar, controlling your
 own devices, your own reel-scrolling report). Usage access reads only how long reel apps were open, never their content.</p>
-
-<h2>Phone Doctor (phone check)</h2>
+<h3>Phone Doctor (phone check)</h3>
 <p>When you ask Hoola to fix a phone problem, the app reads only the phone's own state: battery level, temperature and
 health, free storage and memory, network type, SIM state and signal strength, sound / Do Not Disturb / date-time settings,
 the Android version and security patch date, and, if you gave usage access, the names of the 5 apps used most in the last
 24 hours with their minutes. It never reads messages, contacts, photos, passwords or what is inside any app. Hoola only
 opens a settings screen for you; it never changes a setting by itself. The last 20 checks are kept; you can delete them
 with your data.</p>
-
-<h2>GST work (GST Sahayak)</h2>
+<h3>GST work (GST Sahayak)</h3>
 <p>For GST work Hoola keeps what you give it: your clients' names, GSTINs and contact numbers, their sales and purchase
 bills, GSTR-2B data and notices, and the returns it prepares. Each client's data is used only for that client's GST. The
 GST portal password and OTPs are never asked for or stored; on the portal you type the password yourself and the taxpayer
 files with their own EVC OTP or DSC. Hoola never pays tax: the challan is always paid by the taxpayer.</p>
-
-<h2>Payroll</h2>
+<h3>Payroll</h3>
 <p>For payroll Hoola keeps your employees' names, pay, attendance, UAN, ESIC numbers, PAN and bank account details. PAN and
 bank account numbers are stored encrypted and shown only as the last 4 digits; the AI model is never given them in full.
 They are used only to make payslips, the bank salary file, the PF ECR and ESIC sheet, and TDS. Hoola never pays salaries
 and never logs in to your bank: you upload the bank file and pay yourself. One employee's salary is never shown to another.</p>
-
-<h2>Financial analysis</h2>
+<h3>Financial analysis</h3>
 <p>When you give Hoola your Tally export, bank statement or outstanding list, it keeps the figures, transactions and party
 names to work out your profit, ratios, cash forecast and who owes what. It never moves money, never applies for loans and
 never sends your reports or reminders to anyone without your approval. Its numbers are analysis, not financial advice.</p>
-
-<h2>Audit work</h2>
+<h3>Audit work</h3>
 <p>For audits Hoola keeps the client's trial balances, day-book entries, findings, samples and confirmation details for that
 engagement only. It never sends letters or queries to a client or third party without your approval, never signs, and
 never forms or issues an audit opinion or UDIN: those stay with the auditor.</p>
-
-<h2>Insurance agent work</h2>
+<h3>Insurance agent work</h3>
 <p>If you are an insurance agent, Hoola keeps your clients' names, phone numbers, dates of birth, city, family members,
 income, loans and goals, and their policies (insurer, plan, policy number, premium, cover, due dates, nominee) and claim
 papers, only to remind you of renewals, work out cover gaps and track claims. It never collects or pays a premium (the
 client pays the insurer directly), never signs a proposal or fills a health declaration for a client, never sends advice
 or reminders to a client without your approval, and never shares one client's details with another. A client who does
 not want messages is skipped.</p>
-
-<h2>SEO (your website and Google listing)</h2>
-<p>For SEO Hoola keeps your website address, business name, address, phone, hours and the services you list, the pages it
-checked on your website (titles, headings, word counts, issues found), PageSpeed results and, only if you connect Google
-Search Console, your site's search numbers (queries, clicks, impressions, positions). The Search Console connection is
-read-only and its tokens are stored encrypted; you can disconnect it any time. Hoola reads only your own website (it
-follows robots.txt) and Google's official APIs; it never scrapes Google results, never publishes anything to your website
-or Google profile, never buys links and never writes fake reviews. Drafts become final only on your approval and you put
-them up yourself.</p>
-
-<h2>Wholesale (thok) work</h2>
+<h3>Wholesale (thok) work</h3>
 <p>For wholesale work Hoola keeps your firm details, your parties' names, phone numbers, GSTINs, addresses, credit limits and
 routes, your items and prices, orders, bills, payments you record (including cheque numbers and dates) and supplier bills,
 only to make your GST bills, track who owes what, remind you of cheques and dues and suggest what to reorder. It never
 takes or pays money, never logs in to the GST / e-way bill portal or your bank, and never sends a bill or reminder to a
 party without your approval. One party's account is never shown to another.</p>
-
-<h2>Export work</h2>
+<h3>Export work</h3>
 <p>For exports Hoola keeps your firm details (IEC, GSTIN, LUT, RCMC, AD bank as you give them), your foreign buyers' names,
 countries, contacts and payment terms, and each shipment's proforma, invoice, packing list, shipping bill and bill of lading
 numbers and the payments you record, only to make your documents, check the rules and remind you before the RBI
 realisation date. It never logs in to ICEGATE, the DGFT portal or your bank, never books foreign exchange, never moves
 money, and never sends a proforma, invoice or reminder to a buyer without your approval.</p>
-
-<h2>Franchise outlets</h2>
+<h3>Franchise outlets</h3>
 <p>If you run franchise outlets, Hoola keeps your brand agreements' money terms and dates (royalty %, fees, minimum
 guarantee, term, notice), your outlets (rent, lease dates, targets, manager's phone), daily sales and monthly costs, royalty
 statements, licence numbers and dates, and your SOP audit results, only to work out royalty, profit and due dates and to
 remind you. It never pays royalty, never files on licence portals, and never sends a report to your franchisor or a note
 to a manager without your approval.</p>
-
-<h2>Contractor work</h2>
+<h3>Contractor work</h3>
 <p>For contracting work Hoola keeps your firm and registration details, the tenders you track (dates, EMD, documents
 ready), your works' agreement terms, BOQs, measurement-book entries, RA bills and what was passed and paid, your petty
 contractors' names, phones and bills, site material and the site diary, only to prepare bills, track money and dates and
 draft letters. It never logs in to a tender portal or submits a bid, never pays anyone, never changes a measurement, and
 never sends a bill or letter to a department without your approval.</p>
-
-<h2>Identity numbers (Pehchaan Locker)</h2>
+<h3>Identity numbers (Pehchaan Locker)</h3>
 <p>ID numbers you give (Aadhaar, PAN and others) are stored encrypted on your server and typed only into the forms you ask
 Hoola to fill.</p>
 
-<h2>Money</h2>
-<p>Hoola never moves money. Payments, stock orders and messages to others wait for your own tap.</p>
-
-<h2>Deleting your data</h2>
-<p>You can delete items in the app, or ask the owner of your Hoola server (or us at the email above) to delete your account
-data.</p>
+<h2 id="changes">14. Changes and contact</h2>
+<p>If we change this policy we will update the date at the top. If a change is important, we will tell you in the app
+before it applies. Questions or requests: <a href="mailto:build@ainewtika.com">build@ainewtika.com</a>, Newtika Private
+Limited, Akot, Dist. Akola, Maharashtra 444101, India.</p>
 </body>
 </html>
