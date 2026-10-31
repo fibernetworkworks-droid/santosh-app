@@ -12134,7 +12134,27 @@ Owner: "GO PHASE 2" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
   below 4.5 : 1 in light and dark. Phone: Director brief pills wrap (an old 900px rule squeezed them to "Hi" / "108").
 - Tests: `test_v0323_studio_home_director.py`; v0.318 scale pin allows 40 (headline size reused by the initials).
 
-## v0.324.0 HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0, re-versioned past the parallel v0.323.0 STUDIO HOME + DIRECTOR)
+## v0.324.0 TEEN LOOK JALDI (owner: "3 DESIGN IS TAKING TOO MUCH TIME")
+Cause, from the code: `site/service._make_looks` made the 3 looks one after another, and inside each look every Opus
+call waited for the one before: pictures (shot list + images), then per look the art direction (site_art, xhigh),
+the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots - about 12 slow calls in a row,
+15-25 minutes before she could choose.
+- Now three waves: (1) the pictures and the 3 art directions at the same time (art directions do not need the
+  pictures); a look whose direction came out too close to another (`Q.closeness >= SIBLING_CLOSE`) is asked once more
+  with the others shown, the same rule the sequential version had; (2) every look's hero + sections at the same time
+  (`SITE_LOOK_PARALLEL`, default 6; a failed hero still fails the looks, a failed extra section is skipped as before);
+  (3) the 3 assemblies + screenshots at the same time. Stop is checked between waves and before every section.
+- Each look writes from its own copy of the site row (`_look_copy`: style + tokens + art direction), so parallel
+  threads never share a mutable style.
+- `_in_ctx`: worker threads run inside a copy of the caller's context. Before, AI calls made in threads lost the usage
+  scope - the parallel section writer (`_write_sections`, since v0.225) included - so they were not charged to her and
+  an Arena run's budget (v0.307, `_spent_inr` reads usage) undercounted. Both pools now carry it.
+- Two console tests pinned 17 `?v=` stamps while main already had 18 (employees.js); pins raised to 18.
+- Tests `server/tests/test_v0324_teen_look_jaldi.py` (3): with a slow fake Opus the look calls overlap (peak >= 3),
+  3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
+- Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).
+
+## v0.325.0 (part 1) HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0 / 0.324.0, shipped together with Phase 4 as v0.325.0 past the parallel v0.323.0 STUDIO HOME + DIRECTOR and v0.324.0 TEEN LOOK JALDI)
 - **Device check after every build** (`server/app/appmaker/android/device_check.sh` + `qa.py`, stdlib only; `gen.write_project`
   copies both into every project as `hoola_qa/` with `package.txt` + `screens.txt`): on an Android emulator the debug build opens
   EVERY screen (extra `hoola_screen`), takes its picture, dumps its UI tree and its crash buffer; the release build is cold-started
@@ -12167,8 +12187,41 @@ Owner: "GO PHASE 2" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
   e2e reinstalls the debug build and also sends a kept crash end to end (the server check requires it grouped under the cart screen).
 - **Tool text**: the 1200-char cut had pushed out "Pakka karne ke liye ek sawaal"; the product list was shortened so the new-app
   rules and the backend actions all fit.
-- **Verified here**: `server/tests/test_v0324_hoola_qa.py` (3: the report parser on real-shaped uiautomator / logcat / gfxinfo output,
+- **Verified here**: `server/tests/test_v0325_hoola_qa.py` (3: the report parser on real-shaped uiautomator / logcat / gfxinfo output,
   the build's crash-fix loop on a fake emulator build machine incl. the shot route and the no-emulator message, crash reports grouped /
   noted / fixed / back / kit-only); the fixture project compiles with the real toolchain (release APK 1.5 MB).
 - **Not yet**: per-app UI flow tests beyond "every screen opens" (tapping through each flow), a visual diff against the approved web
   design, memory / ANR checks, iPhone.
+
+## v0.325.0 (part 2) APP UPDATES — App Sahayak Phase 4: a built app can be changed safely for its whole life (owner: "START PHASE 4")
+- **Only what changed is rewritten**: Kotlin screens are cached per screen under `_skey` = sha256 of that screen's approved html/css,
+  the look tokens, the tabs, the screen list, its spec row (purpose / lists / actions), the app's server lists and `KIT_REV`. A rebuild
+  of the same design asks Opus nothing (simple code-made screens get another try); a one-screen design change rewrites one screen; a
+  look / colour or data-list change touches every screen (they are in every screen's code). Was: one cache key per whole design, so any
+  change rewrote every screen (cost + regressions).
+- **Versions only go up**: `versionCode = max(last_vc + 1, version*100 + build%100)` (the old formula wrapped after 100 builds and
+  could go DOWN = Android refuses the update); `versionName = <design version>.<build>`.
+- **Changelog** (`android.history`, last 30): build, version, date, APK + sha256 + size, changed / kept / simple screens (labels + ids),
+  data revision and whether it changed, crash fixes, QA passed, rollback_of, and `release_notes` = plain "What's new" lines (her change
+  words, "Updated: Cart, Home", "New details you can fill in.", "Fixes a problem that could close the app.").
+- **Kept builds**: the last `KEEP_BUILDS` (10) APKs and project ZIPs (was: 1 APK, 3 ZIPs).
+- **Rollback** (`android.rollback` / `_rollback`): a kept build's exact project, `versionCode` / `versionName` rewritten to a NEW higher
+  version, the preview key put back, compiled and device-checked, no Opus; phones take it as an update. `app_banao action=rollback`
+  (build, 0 = the one before), `POST /api/apps/<ref>/rollback`, phone "Wapas lao", console "Bring back"; a chat note.
+- **In-app update**: `GET /api/app-api/<key>/latest` (version code / name, notes, size, APK address) + `GET /api/app-api/<key>/apk` (the
+  current APK; public like the app). Kit `AppUpdate.kt`: checked on start against `BuildConfig.VERSION_CODE`; `UpdateDialog` shows
+  "New version x.y" + What's new + Update (opens the APK link in the browser; same key = installs over, data kept) / Later (that
+  version skipped until a newer one). `Act.link` added.
+- **Her data changes** (`backend.change_schema` / `_apply_ops`, `app_banao action=data_change`, `POST /api/apps/<ref>/data_change`):
+  add (a new field is NEVER required - an old app can't send it; a choice fills its default), hide (left out of forms and the model's
+  guide, data kept; essential order fields refused), label; checked on a copy, saved with `rev`, logged in `changes`, REPLAYED after a
+  backend upgrade (`ensure`). The installed app reads the new lists from `/api/app-content` at once (kit `Db.fields` drops hidden);
+  forms collect a new field from the next build; the build's notes say "New details you can fill in."
+- **Device check fixes found in CI**: the emulator screen is 320x640, so fixed 540x1600 swipes hit nothing and the release build opens
+  on the consent screen - scrolling is now measured on the debug build's start screen with swipes from the real `wm size`, and fewer
+  than 10 frames = not measured (never "0 % jank").
+- **Verified**: `server/tests/test_v0325_app_updates.py` (4: only-changed rewrite + version up + history + latest / apk + rollback via
+  route and tool; the screen key; data changes safe for old app versions + hide keeps data + label + replay + notes + forms; the
+  generated project) and the fixture compiles with the real toolchain. Phase 3's CI device check on the emulator (before the scroll fix):
+  13/13 screens, cold start 538 ms, APK 1.51 MB, 0 accessibility findings, e2e incl. photo / paid / updates / crash report all OK.
+- **Not yet**: Play Store releases + Play in-app updates, iPhone, a visual diff of each update against the approved design.

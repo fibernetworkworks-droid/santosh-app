@@ -1040,52 +1040,110 @@ def _look_sections(r: Site) -> list[dict[str, Any]]:
     return [s for s in home.get("sections", []) if s["type"] != "hero" and s["type"] in T.SECTIONS][:n - 1]
 
 
+def _in_ctx(fn):
+    """v0.324 a worker thread does not inherit the caller's context, so AI calls made there were not charged to her
+    usage (nor to an Arena run's budget). The wrapped function runs inside a copy of the caller's context."""
+    import contextvars
+    ctx = contextvars.copy_context()
+    return lambda *a, **k: ctx.copy().run(fn, *a, **k)
+
+
+def _look_copy(r: Site, style: str, tokens: dict[str, Any], dna: dict[str, Any] | None):
+    """v0.324 one look's own view of the site (style + tokens + art direction), so the looks can be written at the same
+    time without one thread changing the style another is writing with."""
+    from types import SimpleNamespace
+    d = {c.key: getattr(r, c.key) for c in Site.__table__.columns}
+    d.update(style=style, look=_jd({"tokens": tokens, "dna": dna}))
+    return SimpleNamespace(**d)
+
+
 def _make_looks(r: Site) -> None:
+    """v0.324 TEEN LOOK JALDI: the 3 looks used to be made one after another, and inside a look every Opus call waited
+    for the one before (pictures, then per look: art direction, hero, 2 sections, screenshots) - about 12 slow calls in
+    a row. Now in three waves: (1) the pictures and the 3 art directions together, (2) every look's sections together
+    (SITE_LOOK_PARALLEL at once), (3) the 3 screenshots together. The art directions still come out different: a look
+    too close to another is asked once more with the others shown (the old sequential rule)."""
+    from concurrent.futures import ThreadPoolExecutor
     from . import checks as C
-    if _ensure_pictures(r):
-        r = _load(r.id)
     facts = _j(r.facts, {})
-    looks = []
-    more = _look_sections(r)
     styles = _j(r.styles, [])[:3] or [r.style]
-    for i, style in enumerate(styles):
-        if _load(r.id).stop:
-            _save(r.id, status="stopped")
-            return
-        _work(r, "start", f"Look {i + 1}: {T.STYLES[style]['label']}", f"Look {i + 1} / {len(styles)} ban raha hai")
-        br = L.brief(r.field, r.goal, style)
-        tk = B.tokens(style, br["palettes"][0], facts.get("brand_colors"))
-        dna = Q.make_dna(br["text"], style, _j(r.plan, {}), _facts_text(facts), r.brief or "",
-                         [lk.get("dna") for lk in looks if lk.get("dna")])
-        r.style, r.look = style, _jd({"tokens": tk, "dna": dna})
-        sec = {"type": "hero", "design": br["designs"].get("hero") or T.HEROES[br["hero"]]}
-        hero = write_section(r, "home", sec, [], AI.HERO_LOOK_NOTE)
+    more = _look_sections(r)
+    labels = [T.SECTIONS[s["type"]]["label"] for s in more]
+    briefs = [L.brief(r.field, r.goal, st) for st in styles]
+    toks = [B.tokens(st, br["palettes"][0], facts.get("brand_colors")) for st, br in zip(styles, briefs)]
+    _work(r, "start", "3 looks soch raha hoon", f"{len(styles)} design ek saath")
+
+    def dna_of(i: int, siblings: list) -> dict[str, Any] | None:
+        return Q.make_dna(briefs[i]["text"], styles[i], _j(r.plan, {}), _facts_text(facts), r.brief or "", siblings)
+
+    # wave 1: pictures + art directions at the same time
+    with ThreadPoolExecutor(max_workers=len(styles) + 1, thread_name_prefix=f"look-{r.id[:6]}") as ex:
+        pics = ex.submit(_in_ctx(_ensure_pictures), r)
+        dfuts = [ex.submit(_in_ctx(dna_of), i, []) for i in range(len(styles))]
+        dnas = [f.result() for f in dfuts]
+        try:
+            pics.result()
+        except Exception:
+            log.info("pictures before looks failed", exc_info=True)
+    for i in range(1, len(dnas)):          # too close to an earlier look: once more, with the others shown
+        if dnas[i] and any(o and Q.closeness(Q.fingerprint(dnas[i]), Q.fingerprint(o)) >= Q.SIBLING_CLOSE for o in dnas[:i]):
+            dnas[i] = dna_of(i, [o for o in dnas[:i] if o]) or dnas[i]
+    if _load(r.id).stop:
+        _save(r.id, status="stopped")
+        return
+    r = _load(r.id)                        # the pictures are on the row now
+    views = [_look_copy(r, st, tk, dn) for st, tk, dn in zip(styles, toks, dnas)]
+    dirs = []
+    for i in range(len(styles)):
         d = B.site_dir(r.tenant_id, r.id) / "looks" / str(i)
         d.mkdir(parents=True, exist_ok=True)
-        (d / "hero.json").write_text(json.dumps(hero))
-        secs = {"home__hero": hero}
-        labels = [T.SECTIONS[s["type"]]["label"] for s in more]
-        for s in more:                       # v0.292 the page top under the hero, in this look's own art direction
-            k = sec_key("home", s["type"])
-            try:
-                secs[k] = write_section(r, "home", s, [x for x in labels if x != T.SECTIONS[s["type"]]["label"]])
-            except Exception as e:
-                log.info("look %s section %s skipped: %s", i, k, e)
-                continue
-            (d / f"{k}.json").write_text(json.dumps(secs[k]))
+        dirs.append(d)
+    _work(r, "start", "3 looks ban rahe hain", f"{len(styles) * (1 + len(more))} hisse ek saath")
+
+    # wave 2: every look's hero + page-top sections at the same time
+    jobs = [(i, {"type": "hero", "design": briefs[i]["designs"].get("hero") or T.HEROES[briefs[i]["hero"]]}, True)
+            for i in range(len(styles))] + [(i, s, False) for i in range(len(styles)) for s in more]
+    secs: list[dict[str, dict[str, Any]]] = [{} for _ in styles]
+
+    def one(job):
+        i, sec, hero = job
+        if _load(r.id).stop:
+            return
+        k = sec_key("home", sec["type"])
+        try:
+            out = (write_section(views[i], "home", sec, [], AI.HERO_LOOK_NOTE) if hero else
+                   write_section(views[i], "home", sec, [x for x in labels if x != T.SECTIONS[sec["type"]]["label"]]))
+        except Exception as e:
+            if hero:
+                raise
+            log.info("look %s section %s skipped: %s", i, k, e)
+            return
+        secs[i][k] = out
+        (dirs[i] / ("hero.json" if hero else f"{k}.json")).write_text(json.dumps(out))
+    width = max(1, min(12, int(getattr(_settings(), "site_look_parallel", 6) or 1)))
+    with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"look-{r.id[:6]}") as ex:
+        list(ex.map(_in_ctx(one), jobs))   # a hero that fails raises here, as before
+    if _load(r.id).stop:
+        _save(r.id, status="stopped")
+        return
+
+    # wave 3: assemble + screenshots of the 3 looks at the same time
+    def shoot(i: int) -> dict[str, Any]:
         mini_plan = {"pages": [{"slug": "home", "title": "Home", "sections": [{"type": "hero"}] + [
-            {"type": s["type"]} for s in more if sec_key("home", s["type"]) in secs]}], "cta": _j(r.plan, {}).get("cta")}
+            {"type": s["type"]} for s in more if sec_key("home", s["type"]) in secs[i]]}], "cta": _j(r.plan, {}).get("cta")}
         ctx = _ctx(r)
-        ctx["tokens"], ctx["plan"], ctx["alt"] = tk, mini_plan, None
-        out = d / "site"
-        B.assemble(ctx, mini_plan, secs, {p["name"]: p for p in _j(r.photos, [])}, out)
+        ctx["tokens"], ctx["plan"], ctx["alt"] = toks[i], mini_plan, None
+        out = dirs[i] / "site"
+        B.assemble(ctx, mini_plan, secs[i], {p["name"]: p for p in _j(r.photos, [])}, out)
         shots = {}
         try:
-            rep = C.run(out, mini_plan, d / "shots", video=False)
+            rep = C.run(out, mini_plan, dirs[i] / "shots", video=False)
             shots = rep["pages"].get("home", {}).get("shots", {})
         except C.CheckError as e:
             log.info("look screenshots skipped: %s", e)
-        looks.append({"style": style, "label": T.STYLES[style]["label"], "tokens": tk, "shots": shots, "dna": dna})
+        return {"style": styles[i], "label": T.STYLES[styles[i]]["label"], "tokens": toks[i], "shots": shots, "dna": dnas[i]}
+    with ThreadPoolExecutor(max_workers=len(styles), thread_name_prefix=f"look-{r.id[:6]}") as ex:
+        looks = list(ex.map(_in_ctx(shoot), range(len(styles))))
     r = _save(r.id, looks=looks, style=styles[0], status="looks", stage="look",
               board=_board(r, now_line="3 looks taiyaar: ek chuniye"))
     _work(r, "waiting", "Look chuniye", "3 looks taiyaar")
@@ -1215,7 +1273,7 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
         progress(f"{line} ✓")
 
     with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"site-{r.id[:6]}") as ex:
-        futs = [ex.submit(one, *t) for t in todo]
+        futs = [ex.submit(_in_ctx(one), *t) for t in todo]
         for f in as_completed(futs):
             try:
                 f.result()
