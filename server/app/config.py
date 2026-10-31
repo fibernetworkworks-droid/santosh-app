@@ -214,6 +214,7 @@ class Settings(BaseSettings):
     site_ai_photos: int = 6                # v0.292 pictures a site gets before its looks (her own photos first, AI fills the gap; 0 = off)
     pexels_api_key: str = ""               # v0.292 optional licensed stock photos (official Pexels API) when the image models fail
     site_look_sections: int = 3            # v0.292 sections of the home page each of the 3 looks shows (hero + the next ones)
+    site_look_parallel: int = 6            # v0.320 look sections written at the same time (3 looks x hero + page top)
     site_critique_pages: int = 6           # v0.292 pages Opus reviews from their real screenshots (site_critique=all)
     site_max_pages: int = 150              # v0.315 BADI WEBSITE: most pages one site may have (designed + list items + legal)
     site_max_ai_pages: int = 40            # v0.315 most pages with their OWN designed sections (each section = one Opus call)
