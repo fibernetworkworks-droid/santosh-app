@@ -206,6 +206,10 @@ class Settings(BaseSettings):
     pexels_api_key: str = ""               # v0.292 optional licensed stock photos (official Pexels API) when the image models fail
     site_look_sections: int = 3            # v0.292 sections of the home page each of the 3 looks shows (hero + the next ones)
     site_critique_pages: int = 6           # v0.292 pages Opus reviews from their real screenshots (site_critique=all)
+    site_max_pages: int = 150              # v0.313 BADI WEBSITE: most pages one site may have (designed + list items + legal)
+    site_max_ai_pages: int = 40            # v0.313 most pages with their OWN designed sections (each section = one Opus call)
+    site_parallel_big: int = 5             # v0.313 sections written at the same time on a big site
+    site_check_pages: int = 40             # v0.313 pages the browser checks open on a big site (+2 items of every list)
     site_arena_max_inr: float = 3000       # v0.307 Design Arena: rupee ceiling of one run (each site ~Rs 100-300 with Opus)
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead

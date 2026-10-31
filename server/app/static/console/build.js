@@ -174,7 +174,8 @@ window.HoolaBuild = function (C) {
   function siteCard(o) {
     const v = o.v, s = S(v.status), b = M(v.board), pv = previewPath(v.preview);
     let body = '';
-    if (s === 'planned') body = L(v.plan?.pages).slice(0, 8).map(p => `<div class="bln faint">• ${esc(p.title)}: ${esc(L(p.sections).join(', '))}</div>`).join('')
+    if (s === 'planned' && v.mapping) body = nowLine('Planning the site map (big site)…', true);   // v0.313
+    else if (s === 'planned') body = (v.size ? sizeLine(v) : '') + L(v.plan?.pages).slice(0, 8).map(p => `<div class="bln faint">• ${esc(p.title)}: ${esc(L(p.sections).join(', '))}</div>`).join('')
       + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Haan, make 3 looks', 'go')}</div>`;
     else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
     else if (working(o)) body = nowLine(b.now, true) + progress(o)
@@ -379,10 +380,24 @@ window.HoolaBuild = function (C) {
     return `<section class="bbox"><h4>Steps (the real work, as it happened)</h4><ol class="bsteps">${rows.map(r => `<li class="${r.state}"><time>${r.t ? clock(r.t) : ''}</time><i>${mk[r.state] || '·'}</i><span>${esc(r.text)}${r.secs ? ` <em>· ${r.secs} sec</em>` : ''}</span></li>`).join('')}</ol>
       <p class="faint" style="font-size:12px;margin-top:8px">Timed steps are from after this console opened; earlier ones come from the board.</p></section>`;
   }
+  /* v0.313 big sites: how many pages, which come from lists (one designed template each), the menu groups */
+  function sizeLine(v) {
+    const z = M(v.size);
+    return `<div class="bln"><b>${esc(String(z.total || 0))} pages</b> <span class="faint">· ${esc(String(z.designed || 0))} designed · ${esc(String(z.items || 0))} from lists · ${esc(String(z.legal || 0))} legal</span></div>`;
+  }
+  function bigPlan(v, pl) {
+    const byslug = Object.fromEntries(L(pl.pages).map(p => [p.slug, p]));
+    const cols = L(v.collections).map(c => `<div class="bln">• <b>${esc(c.label)}</b>: ${esc(String(c.items))} pages from one template <span class="faint">(${esc(L(c.examples).join(', '))}${c.items > L(c.examples).length ? ', …' : ''})</span></div>`).join('');
+    const groups = L(pl.groups).map(g => `<div class="bln">${g.group ? `<b>${esc(g.group)}</b>: ` : '• '}${esc(L(g.pages).map(sg => M(byslug[sg]).title || sg).join(' · '))}</div>`).join('');
+    return sizeLine(v) + (cols ? `<h5 class="bsub">Lists</h5>${cols}` : '') + (groups ? `<h5 class="bsub">Menu</h5>${groups}` : '')
+      + `<h5 class="bsub">Designed pages and their sections</h5>`
+      + L(pl.pages).map(p => `<div class="bln faint">• ${esc(p.title)}: ${esc(L(p.sections).join(', '))}</div>`).join('');
+  }
   function planPane(o) {
     const v = o.v || {}, pl = M(v.plan), qs = L(v.questions);
+    if (o.type === 'site' && v.mapping) return `<div class="stempty">${spin()} Opus is planning the whole site map: pages, menu groups and lists of pages…</div>`;
     const list = o.type === 'site'
-      ? L(pl.pages).map(p => `<div class="bln">• <b>${esc(p.title)}</b>: ${esc(L(p.sections).join(', '))}</div>`).join('')
+      ? (v.size ? bigPlan(v, pl) : L(pl.pages).map(p => `<div class="bln">• <b>${esc(p.title)}</b>: ${esc(L(p.sections).join(', '))}</div>`).join(''))
       : `<div class="bln"><b>${L(pl.screens).length + L(pl.code_screens).length} screens</b>${L(pl.tabs).length ? ` · bottom tabs: ${esc(L(pl.tabs).join(' · '))}` : ''}</div>`
         + (L(pl.flow).length ? `<div class="bln faint">Raasta: ${esc(L(pl.flow).join(' → '))}</div>` : '')
         + L(pl.screens).map(s => `<div class="bln">• ${esc(s.label)}${s.tab ? ' <span class="tag v">tab</span>' : ''}${s.design ? ` <span class="faint">${esc(S(s.design).slice(0, 90))}</span>` : ''}</div>`).join('')

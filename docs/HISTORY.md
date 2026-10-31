@@ -11625,3 +11625,43 @@ The Design Arena (v0.307) was API-only. Now it has its own page in the web conso
 - Tests `server/tests/test_v0312_arena_screen.py` (4): server side, wiring, and a real-browser walkthrough (light + dark
   at 1440, open a run, scores, compare, duel picker; 390px phone with no sideways scroll; no page errors).
 - Built as 0.311.0, re-versioned 0.312.0 on merge past the parallel v0.311.0 DIRECTOR CAST FIX (both kept).
+
+## v0.313.0 BADI WEBSITE (web design Phase 6 step 1; owner: "IT SHOULD BUILD ANY WORLD COMPLEX 100 PAGES WEBSITE SMOOTHLY WITH ALL FEATURES" -> "START PHASE 1")
+Measured first: a site was at most 7 pages + legal (`library.brief` pages[:7]), from 26 fixed page types, one level deep
+(`rel_of` = "../"), with no pages made from data and no way to add a page after the plan.
+- **Site map by Opus** (`server/app/site/sitemap.py`, kind site_art): a big ask (`SM.wanted`: a page count >= 10 in her
+  words, or "badi / complete / portal / e-commerce..." = 25; website action=new + page_count; action=grow on a site she
+  has) starts a background job (stage `sitemap`, plan card says "site map ban raha hai"). Opus returns pages (any purpose,
+  slug, nav, menu group, parent, why, description, up to 8 sections from the section library) and COLLECTIONS (lists:
+  products, areas, courses, doctors, posts...: fields, items from her words only, a template of up to 6 sections).
+  `SM.clean` makes it safe: home first with a hero, hero first on every page, known section types only, no duplicates,
+  no legal pages (Hoola adds them), parents that exist, reserved field keys, items trimmed to the room left
+  (`SITE_MAX_PAGES` 150 total incl. each list's own listing page, `SITE_MAX_AI_PAGES` 40 designed pages).
+- **One template, many pages**: each list = a listing page + a hidden template page in plan["pages"]
+  (`template_of`, slug `<key>-item`), so the builder, board, estimate, fix rounds and edits treat it like any page; Opus
+  writes it once with `{{title}}` / `{{field}}` placeholders. `build.assemble` skips it as a file and renders every item
+  at `/<key>/<item>/` (`SM.fill_attr_safe`: escaped values, a value nobody gave = visible `[Field]` blank in text and
+  empty inside attributes). The listing page gets a code-made grid of all items. 100 items cost the same AI as one.
+- **Big-site navigation** (only when plan["big"]; small sites byte-identical): grouped menu (`build._mega`, button +
+  list per group, sub pages inside their group, Esc / outside click closes, phone = stacked groups), breadcrumbs on every
+  page + BreadcrumbList JSON-LD, site search (`assets/search.json` + `hoola-site.js search()`: DOM built with
+  textContent), every page in sitemap.xml, footer capped at 14 links. `rel_of` follows the slug's depth; `_ok_href`
+  accepts `../../`.
+- **Writers know the site**: `_big_lines` gives each section the site size, its page's purpose and up to 24 internal
+  links with hrefs that work from that page; template sections get the placeholder rules; listing pages are told the
+  grid follows.
+- **Scale**: `SITE_PARALLEL_BIG` (5) sections at once; checks open designed pages (up to `SITE_CHECK_PAGES` 40) + 2
+  items of every list in Chromium, and `checks.link_scan` reads EVERY page's links from the files (scores
+  pages_checked / pages_total); `_fixable` maps section ids back through the plan (slugs may hold '-'); critique skips
+  templates; the estimate says how many pages it buys (`... N pages (M lists se, bina AI kharch)`).
+- **Her words change lists**: change() shows Opus the lists; `items_add` / `items_remove` add or drop pages with no
+  new AI sections. A built site that grows (action=grow) builds only the new parts (`_BUILD_AFTER`).
+- **Console** plan card / studio: size line (total · designed · from lists · legal), Lists with examples, Menu groups.
+- Recovery: a site-map job that died with the process goes back to the plan with a plain line (`recover_stuck`).
+- Tests `server/tests/test_v0313_badi_website.py` (6): cleaning rules, a 60-page site built end to end (AI only for
+  designed sections, 50 item pages filled, no `{{` left, blanks, breadcrumbs, grouped menu, search index, sitemap,
+  every link resolves), chat adds / removes items with no new sections, id mapping, small sites unchanged. Checked in
+  Chromium by eye: menu dropdown, search, listing grid, item page, phone menu, no sideways scroll, no page errors.
+- Not yet (next steps of the plan): the phone app's plan card still lists pages flat (works, long); items are not
+  translated by the second language (titles / data stay in the original); her own CSV / sheet as a list source;
+  editing an item page by hand (item pages are not in Edit mode; change them in words).

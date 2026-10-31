@@ -61,7 +61,8 @@ def page_url(slug: str, rel: str) -> str:
 
 
 def rel_of(slug: str) -> str:
-    return "" if slug == "home" else "../"
+    """v0.313 a page is as deep as its slug: 'about' -> '../', 'products/ghee' (a collection item) -> '../../'."""
+    return "" if slug == "home" else "../" * (slug.count("/") + 1)
 
 
 # ---------------------------------------------------------------- colours / tokens
@@ -158,7 +159,7 @@ def _ok_href(h: str) -> bool:
         return True
     if low.startswith("https://"):
         return True
-    if re.match(r"^(\./|\.\./)?[\w\-/]*(\.html)?/?(#[\w-]*)?$", h):
+    if re.match(r"^(\./|(\.\./)+)?[\w\-/]*(\.html)?/?(#[\w-]*)?$", h):     # v0.313 item pages sit two levels deep
         return True
     return False
 
@@ -419,7 +420,32 @@ ICON_CALL = ('<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><p
 
 # ---------------------------------------------------------------- page chrome (code, not the model)
 def nav_pages(plan: dict[str, Any]) -> list[dict[str, Any]]:
-    return [p for p in plan.get("pages", []) if p["slug"] not in LEGAL_PAGES and p["slug"] != "admin"]
+    # v0.313 a collection's hidden template page and (in a big site) sub pages never sit in the top menu
+    return [p for p in plan.get("pages", []) if p["slug"] not in LEGAL_PAGES and p["slug"] != "admin"
+            and not p.get("template_of") and not (plan.get("big") and p.get("parent"))]
+
+
+def menu_pages(plan: dict[str, Any]) -> list[dict[str, Any]]:
+    """v0.313 every page a big site's grouped menu lists (sub pages too, inside their group)."""
+    return [p for p in plan.get("pages", []) if p["slug"] not in LEGAL_PAGES and p["slug"] != "admin" and not p.get("template_of")]
+
+
+def _mega(plan: dict[str, Any], slug: str, rel: str) -> str:
+    """v0.313 big sites: the menu groups its pages (a button opens each group's list; one tap target per link)."""
+    from . import sitemap as SM
+    out = []
+    for i, (g, ps) in enumerate(SM.groups(plan, menu_pages(plan))):
+        if not g or len(ps) == 1:
+            for p in ps:
+                cur = ' aria-current="page"' if p["slug"] == slug else ""
+                out.append(f'<li><a href="{page_url(p["slug"], rel)}"{cur}>{esc(p.get("nav") or p["title"])}</a></li>')
+            continue
+        cur = any(p["slug"] == slug for p in ps)
+        items = "".join('<li><a href="' + page_url(p["slug"], rel) + '"' + (' aria-current="page"' if p["slug"] == slug else "")
+                        + ">" + esc(p.get("nav") or p["title"]) + "</a></li>" for p in ps)
+        out.append(f'<li class="hs-dd{" hs-cur" if cur else ""}"><button type="button" class="hs-ddb" aria-expanded="false" '
+                   f'aria-controls="hs-dd-{i}">{esc(g)}</button><ul class="hs-ddl" id="hs-dd-{i}">{items}</ul></li>')
+    return "".join(out)
 
 
 # ---------------------------------------------------------------- v0.305 web app pages (code only, never the model)
@@ -482,6 +508,11 @@ def header(site: dict[str, Any], plan: dict[str, Any], slug: str, rel: str, logo
         hl = {"hinglish": "hi-Latn"}.get(sw["lang"], sw["lang"])
         cta = f'<a class="hs-lang" href="{tgt}" hreflang="{esc(hl)}" lang="{esc(hl)}">{esc(sw["label"])}</a>' + cta
     brand = (f'<img src="{rel}assets/img/logo.png" alt="{esc(f.get("name"))} logo" width="120" height="40">' if logo else "")
+    if plan.get("big"):                      # v0.313 grouped menu + site search on big sites
+        links = [_mega(plan, slug, rel)]
+        glass = expand_icons('<i data-icon="search"></i>')[0]
+        cta = (f'<button type="button" class="hs-search-b" aria-label="Search this site" data-root="{rel or "./"}">'
+               f'{glass}</button>') + cta
     return (f'<a class="skip" href="#main">Skip to content</a><header class="hs-head"><div class="wrap hs-bar">'
             f'<a class="hs-brand" href="{page_url("home", rel)}">{brand}<span>{esc(f.get("name") or "")}</span></a>'
             f'<nav aria-label="Main"><ul class="hs-links">{"".join(links)}</ul></nav>{cta}'
@@ -506,7 +537,8 @@ def cta_button(site: dict[str, Any], rel: str, cls: str) -> str:
 
 def footer(site: dict[str, Any], plan: dict[str, Any], rel: str) -> str:
     f = site["facts"]
-    quick = "".join(f'<li><a href="{page_url(p["slug"], rel)}">{esc(p.get("nav") or p["title"])}</a></li>' for p in nav_pages(plan))
+    quick = "".join(f'<li><a href="{page_url(p["slug"], rel)}">{esc(p.get("nav") or p["title"])}</a></li>'
+                    for p in nav_pages(plan)[:14 if plan.get("big") else None])
     legal = "".join(f'<a href="{page_url(p["slug"], rel)}">{esc(p["title"])}</a>' for p in plan.get("pages", [])
                     if p["slug"] in LEGAL_PAGES)
     contact = []
@@ -603,9 +635,21 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
         notice = ('<div class="wrap muted" style="padding:10px 0;font-size:.85rem">As per the rules of the Bar Council of India, '
                   'this website is for information only and is not an advertisement or solicitation. '
                   f'<a href="{page_url("disclaimer", rel)}">Disclaimer</a></div>')
+    crumb = ""
+    if plan.get("big") and page["slug"] != "home" and page["slug"] not in LEGAL_PAGES:    # v0.313 where am I, on a big site
+        from . import sitemap as SM
+        trail = SM.crumbs(plan, page)
+        crumb = ('<nav class="hs-crumbs wrap" aria-label="Breadcrumb"><ol>' + "".join(
+            f'<li><a href="{page_url(sg, rel)}">{esc(t)}</a></li>' if i < len(trail) - 1 else f'<li aria-current="page">{esc(t)}</li>'
+            for i, (t, sg) in enumerate(trail)) + '</ol></nav>')
+        if base_url:
+            items = [{"@type": "ListItem", "position": i + 1, "name": t,
+                      "item": base_url.rstrip("/") + "/" + ("" if sg == "home" else sg + "/")} for i, (t, sg) in enumerate(trail)]
+            ld += ('<script type="application/ld+json">' + json.dumps({"@context": "https://schema.org", "@type": "BreadcrumbList",
+                                                                       "itemListElement": items}, ensure_ascii=False).replace("</", "<\\/") + '</script>')
     return (f'<!doctype html><html lang="{lang}"><head>{"".join(meta)}{links}{ld}</head>'
             f'<body class="look-{esc(site["tokens"]["style"])}">{header(site, plan, page["slug"], rel, logo)}{notice}'
-            f'<main id="main">{body}</main>{footer(site, plan, rel)}{floats(site)}'
+            f'<main id="main">{crumb}{body}</main>{footer(site, plan, rel)}{floats(site)}'
             f'<script src="{rel}assets/hoola-site.js" defer></script><script src="{rel}assets/site.js" defer></script>'
             + (f'<script src="{rel}assets/hoola-app.js" defer></script>' if site.get("app_api") else "")
             + '</body></html>')
@@ -709,38 +753,57 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         if sec.get("js"):
             js_all.append(sec["js"])
     files = 0
-    for page in plan.get("pages", []):
+    from . import sitemap as SM
+    big = bool(plan.get("big"))
+    cols = {c["key"]: c for c in SM.collections(plan)}
+    tpls = {p["slug"]: p for p in plan.get("pages", []) if p.get("template_of")}
+
+    def render(slug: str, secs: list[dict[str, Any]], rel: str, key_slug: str = "", item: dict[str, Any] | None = None,
+               fields: list[dict[str, Any]] | None = None) -> str:
+        """The page body from its sections (v0.313: an item page = its collection's template, filled with the item)."""
+        parts = []
+        for i, s in enumerate(secs):
+            key = f"{key_slug or slug}__{s['type']}"
+            sec = sections.get(key)
+            if not sec:
+                continue
+            h = sec["html"]
+            if item is not None:
+                h = SM.fill_attr_safe(h, item, fields or [])
+            h, missing = expand_images(h, photos, rel, first_eager=(i == 0))
+            if missing:
+                problems.append(f"{key}: photo not found: {', '.join(m for m in missing if m)}")
+            from . import live as LV            # v0.301 booking / map / video / UPI placeholders -> the real things
+            h, lprob = LV.expand(h, site, form_endpoint, lambda n: expand_icons(f'<i data-icon="{n}"></i>')[0])
+            problems.extend(f"{key}: {x}" for x in lprob)
+            h, unknown = expand_icons(h)
+            if unknown:
+                problems.append(f"{key}: unknown icon: {', '.join(sorted(set(unknown)))}")
+            if site.get("edit") and item is None:   # v0.295 the edit preview knows which section a click belongs to
+                h = h.replace("<section ", f'<section data-k="{esc(key)}" ', 1)
+            else:                          # the real site (and an item page, shared by all items) has no edit numbers
+                from .edit import strip
+                h = strip(h)
+            if form_endpoint:          # every enquiry form that has no endpoint yet (v0.301: a booking form may sit beside it)
+                h = re.sub(r'data-hoola-form(?![^>]*data-endpoint)', f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', h)
+            parts.append(h)
+        return "\n".join(parts)
+
+    for page in plan.get("pages", []) + (SM.item_pages(plan) if big else []):
+        if page.get("template_of"):          # v0.313 a collection's template is not a page of its own
+            continue
         slug, rel = page["slug"], rel_of(page["slug"])
         if slug in LEGAL_PAGES:
             body = legal_page(slug, site)
         elif slug in ("account", "admin") and (site.get("app") or {}).get("collections") and not page.get("sections"):
             body = app_page(slug, site)
+        elif page.get("template") in tpls:   # v0.313 one collection item
+            c = cols.get(page["collection"]) or {"fields": []}
+            body = render(slug, tpls[page["template"]].get("sections", []), rel, page["template"], page["item"], c["fields"])
         else:
-            parts = []
-            for i, s in enumerate(page.get("sections", [])):
-                key = f"{slug}__{s['type']}"
-                sec = sections.get(key)
-                if not sec:
-                    continue
-                h = sec["html"]
-                h, missing = expand_images(h, photos, rel, first_eager=(i == 0))
-                if missing:
-                    problems.append(f"{key}: photo not found: {', '.join(m for m in missing if m)}")
-                from . import live as LV            # v0.301 booking / map / video / UPI placeholders -> the real things
-                h, lprob = LV.expand(h, site, form_endpoint, lambda n: expand_icons(f'<i data-icon="{n}"></i>')[0])
-                problems += [f"{key}: {x}" for x in lprob]
-                h, unknown = expand_icons(h)
-                if unknown:
-                    problems.append(f"{key}: unknown icon: {', '.join(sorted(set(unknown)))}")
-                if site.get("edit"):           # v0.295 the edit preview knows which section a click belongs to
-                    h = h.replace("<section ", f'<section data-k="{esc(key)}" ', 1)
-                else:                          # the real site never carries the edit numbers
-                    from .edit import strip
-                    h = strip(h)
-                if form_endpoint:          # every enquiry form that has no endpoint yet (v0.301: a booking form may sit beside it)
-                    h = re.sub(r'data-hoola-form(?![^>]*data-endpoint)', f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', h)
-                parts.append(h)
-            body = "\n".join(parts)
+            body = render(slug, page.get("sections", []), rel)
+            if big and page.get("collection") in cols:     # the listing of its items, made by code
+                body += "\n" + SM.grid(cols[page["collection"]], rel)
         dest = out / page_path(slug)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(page_html(site, plan, page, body, rel, logo, base_url), encoding="utf-8")
@@ -751,7 +814,10 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                                             '<section class="hs"><div class="wrap"><h1>Page not found</h1>'
                                             f'<p><a class="btn btn-primary" href="./">Home</a></p></div></section>', "", logo, ""),
                                   encoding="utf-8")
-    urls = [(base_url.rstrip("/") + "/" + ("" if p["slug"] == "home" else p["slug"] + "/")) for p in plan.get("pages", [])]
+    every = SM.real_pages(plan) if big else plan.get("pages", [])
+    urls = [(base_url.rstrip("/") + "/" + ("" if p["slug"] == "home" else p["slug"] + "/")) for p in every]
+    if big:                                  # v0.313 the site search reads this (titles, addresses, one line each)
+        (out / "assets" / "search.json").write_text(json.dumps(SM.search_entries(plan), ensure_ascii=False), encoding="utf-8")
     if base_url:
         (out / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/'
                                          'sitemap/0.9">' + "".join(f"<url><loc>{esc(u)}</loc></url>" for u in urls) + "</urlset>")

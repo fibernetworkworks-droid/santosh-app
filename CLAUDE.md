@@ -129,9 +129,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.312.0 (pubspec 0.312.0+352). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.313.0 (pubspec 0.313.0+353). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (17 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.313 BADI WEBSITE (`site/sitemap.py`): big asks / page_count / action=grow -> Opus site map (40 designed pages, menu groups,
+  parents) + LISTS = one template -> a page per item by code (150 total); mega menu, breadcrumbs, search, link scan of every page.
 - v0.312 ARENA SCREEN (console `arena.js`, sidebar Arena, owner only via console me `arena`): start / stop runs with a cost estimate,
   runs table, per-site score cards with screenshots (`/api/arena/shot/<site>`), compare two runs, blind duels + win table.
 - v0.311 DIRECTOR CAST FIX: a failed character picture reported only to the chat and Director sat on Cast; now "Painting <name>…",
