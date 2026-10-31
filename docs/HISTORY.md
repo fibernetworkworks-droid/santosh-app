@@ -12053,3 +12053,63 @@ THINGS FROM TEXT FOR SIDE BAR TO SMALL BUTTON" -> design audit artifact https://
 - Tests: `test_v0318_studio_design_system.py`; v0.306 credits pin moved to the new wording; the `?v=` stamp count pins in
   test_v0194 / test_v0234 moved 17 -> 18 (main's v0.317 added employees.js without moving them).
 - Next phases (audit): 2 Home + Director, 3 the six tools, 4 assets + help, 5 real Hoola showcase media (price card first).
+
+## v0.321.0 TILE KAAM KARE (31 Oct 2026, owner: "EVEN UI NOT FUCTIONING" after "Khana aur kirana NOT FUNCTIONING")
+Tapping a working tile (Google Pay, PhonePe, Uber, HDFC SMS reader...) opened the plugin sheet whose only button was
+`PluginAction(kind: linked, label: 'Taiyaar hai · Hoola se kahiye')` with no onTap - nothing happened.
+- `lib/ui/bazar_screen.dart _sheetAction`: ready plugins with an `android_package` get "<Name> kholiye" ->
+  `Native.openExternal(package:)` (MainActivity opens the launch intent, else Play Store); other ready plugins get
+  "Hoola se karwaiye" -> sends `examplesFor(p).first` into the chat. Snackbar when the app is not installed.
+- `service.catalog()`: rides now carry `android_package` (from config.package) like UPI packs. All nine UPI / cab
+  packages were already in `tool/AndroidManifest.xml` <queries>, so Android 11+ can see them.
+- "Food apps" chip removed (Swiggy / Zomato hidden since v0.319). Test: test_v0320_upi_and_cab_tiles_carry_the_app_to_open.
+- Note: a UPI app opened this way is the app's home screen; paying a person still goes through Hoola's send_money card
+  (UPI intent with the payee filled in), because the tile itself does not know whom to pay.
+
+## v0.322.0 APP FEATURES — App Sahayak Phase 2: real phone features in built apps (owner: "START PHASE 2"; built as 0.320.0 / 0.321.0, re-versioned past the parallel v0.320.0 STUDIO DESIGN SYSTEM and v0.321.0 TILE KAAM KARE)
+Phase 1 (v0.318) gave every native app its own backend; this phase gives the apps the phone features that make them
+real, each the way Play / App Store allow it, with NO new library in the generated project (platform + androidx.core /
+activity only, so the build stays as robust as before).
+- **Photos**: new field type `photo` (app backends only; kept through `webapp.clean_schema` by `backend.EXTRA_TYPES`):
+  service requests (photo of the problem), enquiries, community posts, product-app feedback, staff-app `file` fields (max 2
+  per list). Kit `PhotoField(label, key)` = Android Photo Picker (`PickVisualMedia`, no storage permission; falls back to the
+  document picker on old phones), `Photos.shrink` to 1600 px JPEG in the app cache, the form keeps `local:<file>`;
+  `Db.sync` uploads each `local:` photo first (`Cloud.upload`, saved in the outbox so a retry sends it once), puts the
+  server id in its place, then sends the row. Server `POST /api/app-api/<key>/files` (6 MB, account needed unless a list is
+  public-create, rate 30 / 10 min): Pillow opens it, `exif_transpose`, RGB, 1600 px, re-encoded JPEG q82 = EXIF / GPS /
+  camera data gone; `GET .../files/<id>` only for the sender, staff, her (`/api/apps/<ref>/files/<id>`), or anyone when the
+  photo sits in a public-read list. A row's photo id must exist in this app and belong to the person using it.
+  `RemotePhoto(src)` shows a server or local photo (LRU cache).
+- **Location**: new field type `location` (order delivery pin, service location, staff-app `point` fields, max 1 per
+  list). Kit `LocationField` = a plain explanation dialog first (Play "prominent disclosure"), then Android's dialog
+  (coarse + fine; approximate is enough), `LocationManagerCompat.getCurrentLocation` with a 15 s timeout and last-known
+  fallback, "lat,lng" in the field, a Map button. Server normalises / checks "lat,lng". The manifest asks for location
+  ONLY when a list has a location field (`gen.uses_location`); never background location.
+- **Order updates as notifications**: `Updates.kt` - JobScheduler periodic 15 min (network required, persisted, needs
+  RECEIVE_BOOT_COMPLETED), the job (`UpdatesJob`, BIND_JOB_SERVICE) restores Cloud / Auth from prefs, asks
+  `GET /api/app-api/<key>/updates?since=` and shows normal notifications (channel "Order updates", tap opens the app);
+  the first check only sets the mark (no old news); also one check at every app start. Server `backend.updates`: a
+  customer hears that HER rows moved (status / paid changes are stamped `_ev` by `backend.update`), a staff account hears
+  about NEW rows in order-like lists. POST_NOTIFICATIONS is asked by the first-run NotifyScreen's Continue (Android 13+).
+  Instant push (FCM) needs the business's own Firebase project: a later step, written as such in the kit.
+- **UPI "I have paid"**: orders gain `paid` (No / Customer says paid / Verified, staff-only) + `utr` (staff-only). Kit
+  `PaidBox` on the customer's own UPI order: Pay by UPI (her own UPI ID, `Act.payUpi`) + "I have paid" with the 12-digit
+  reference -> `Db.paid` (outbox op `paid`) -> `POST .../c/<orders>/<row>/paid` (own row only, 6-24 alnum) -> "Customer says
+  paid" + a chat note to HER to check her own bank; only she marks Verified (phone button "Bank mein mila: Verified",
+  console select, tool `app_banao action=data set {paid: Verified}` - the tool text says never on the customer's word).
+- **Search / filters**: `GET .../c/<list>?q=&status=&limit=&offset=`; the app's lists get a search box + status chips
+  (on the cached rows, offline too) once a list has more than 4 rows.
+- **Upgrade**: a v1 app backend (built before this) is rebuilt in place on first use (`SCHEMA_V` 2, fields only added,
+  rows untouched, `upgraded` stamp).
+- **Owner views**: phone App ka data shows photos (authorised `Image.network`), location (tap = map), paid + UTR with a
+  Verified button; console App data shows photo thumbnails, map links and a paid select.
+- **Tool text**: `app_banao` (5.6 KB) is cut to 1200 characters for the model, so v0.318's backend notes at its END never
+  reached the model; the backend actions now sit in the first sentences of `app_banao` and `app_dekho`.
+- **Verified here**: the generated fixture project compiled with the real toolchain (`assembleDebug assembleRelease`,
+  R8) after fixing an overload ambiguity in `LocationManagerCompat.getCurrentLocation`; tests
+  `server/tests/test_v0319_app_features.py` (4: schema v2 + upgrade, photos (EXIF/GPS stripped, access rules, size / type
+  refusals), location checks, the paid claim + note + Verified + 409, updates for customer / staff, search + paging, photo
+  ownership, the generated project's manifest / kit / fallback forms / guide); CI e2e extended (photo up + back, the paid
+  claim, the updates call; the server check requires the paid row).
+- **Not yet**: QR / barcode scanning and camera capture inside the app (need CameraX / ML Kit: next), instant FCM push,
+  file (PDF) fields, maps drawn inside the app (the Map button opens Google Maps), payments other than her own UPI.

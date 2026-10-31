@@ -44,7 +44,8 @@ def check() -> int:
     print(json.dumps(data, ensure_ascii=False, indent=1))
     two = [d for d in data if d.get("items", "").startswith("2 x ")]
     ok = made and len(two) == 1 and abs(float(two[0].get("total") or 0) - 2 * float(first["price"])) < 0.01 \
-        and len([d for d in data if str(d.get("_cid", "")).startswith("e2eDedup")]) == 1
+        and len([d for d in data if str(d.get("_cid", "")).startswith("e2eDedup")]) == 1 \
+        and any(d.get("paid") == "Customer says paid" and d.get("utr") == "412345678901" for d in data)   # v0.319
     print("SERVER CHECK", "OK" if ok else "FAIL")
     return 0 if ok else 1
 

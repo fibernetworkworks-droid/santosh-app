@@ -1448,7 +1448,9 @@ def catalog(tenant_id: str) -> dict[str, Any]:
                   "status": pack_status(s, user, p), "does": (p.description or "")[:220], "logo": logos.pack_logo(p.id),
                   # v0.109 the phone checks which of these apps are really installed (green tick only then)
                   **({"android_package": p.config["android_package"]} if p.executor == "upi"
-                     and p.config.get("android_package") else {})}
+                     and p.config.get("android_package") else {}),
+                  # v0.320 cab apps too, so the sheet's button opens the real app
+                  **({"android_package": p.config["package"]} if p.executor == "ride" and p.config.get("package") else {})}
                  for p in reg.all()]
         packs = [p for p in packs if shown(p["executor"], p["status"], p["pack_id"])]
         packs += [{"pack_id": r.id, "name": r.name, "category": "My MCP servers", "kind": "MCP server", "executor": "mcp",

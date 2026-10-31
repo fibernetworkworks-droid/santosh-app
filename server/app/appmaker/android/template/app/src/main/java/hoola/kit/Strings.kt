@@ -93,4 +93,33 @@ object Strings {
     val cartEmpty get() = t("Your cart is empty.", "आपका कार्ट खाली है।", "तुमची कार्ट रिकामी आहे.", "Aapka cart khaali hai.")
     val staffView get() = t("Everyone's entries (staff view)", "सबकी एंट्री (स्टाफ़)", "सर्वांच्या नोंदी (स्टाफ)", "Sabki entries (staff)")
     val deleting get() = t("Deleting…", "हटा रहे हैं…", "हटवत आहे…", "Hata rahe hain…")
+
+    // v0.319 photos, location, notifications, UPI paid, search
+    val addPhoto get() = t("Add photo", "फ़ोटो जोड़ें", "फोटो जोडा", "Photo jodiye")
+    val changePhoto get() = t("Change photo", "फ़ोटो बदलें", "फोटो बदला", "Photo badliye")
+    val remove get() = t("Remove", "हटाएँ", "काढा", "Hataiye")
+    val photoFailed get() = t("That photo could not be used.", "यह फ़ोटो नहीं लग पाई।", "हा फोटो वापरता आला नाही.", "Yeh photo nahi lag payi.")
+    val useMyLocation get() = t("Use my location", "मेरी लोकेशन लें", "माझे लोकेशन घ्या", "Meri location lijiye")
+    val finding get() = t("Finding…", "ढूँढ रहे हैं…", "शोधत आहे…", "Dhoondh rahe hain…")
+    val openMap get() = t("Map", "नक्शा", "नकाशा", "Map")
+    val locationTitle get() = t("Use your location?", "आपकी लोकेशन लें?", "तुमचे लोकेशन घ्यायचे?", "Aapki location lein?")
+    val locationWhy get() = t("Only to fill this address, only now while the app is open. It is saved with this entry and nowhere else.",
+        "सिर्फ़ यह पता भरने के लिए, सिर्फ़ अभी जब ऐप खुला है। यह इसी एंट्री के साथ सेव होगी, और कहीं नहीं।",
+        "फक्त हा पत्ता भरण्यासाठी, फक्त आत्ता ॲप उघडे असताना. हे फक्त या नोंदीसोबत सेव होईल.",
+        "Sirf yeh pata bharne ke liye, sirf abhi jab app khula hai. Yeh isi entry ke saath save hogi, aur kahin nahi.")
+    val locationDenied get() = t("Location not allowed. You can type the address.", "लोकेशन की अनुमति नहीं मिली। पता लिख दीजिए।",
+        "लोकेशनची परवानगी नाही. पत्ता लिहा.", "Location ki ijaazat nahi mili. Pata likh dijiye.")
+    val locationFailed get() = t("Could not find the location. Please type the address.", "लोकेशन नहीं मिली। पता लिख दीजिए।",
+        "लोकेशन सापडले नाही. पत्ता लिहा.", "Location nahi mili. Pata likh dijiye.")
+    val iPaid get() = t("I have paid", "मैंने भुगतान कर दिया", "मी पैसे दिले", "Maine pay kar diya")
+    val utr get() = t("UPI reference / UTR", "UPI रेफ़रेंस / UTR", "UPI संदर्भ / UTR", "UPI reference / UTR")
+    val utrWhy get() = t("Type the 12-digit reference from your UPI app. The shop checks it in its own bank.",
+        "अपने UPI ऐप से 12 अंकों का रेफ़रेंस लिखें। दुकान अपने बैंक में जाँच लेगी।",
+        "तुमच्या UPI ॲपमधील 12 अंकी संदर्भ लिहा. दुकान आपल्या बँकेत तपासेल.",
+        "Apne UPI app se 12 ank ka reference likhiye. Dukaan apne bank mein check kar legi.")
+    val paidSaid get() = t("Thanks! The shop will confirm your payment.", "धन्यवाद! दुकान आपका भुगतान पक्का करेगी।",
+        "धन्यवाद! दुकान तुमचे पेमेंट पक्के करेल.", "Shukriya! Dukaan aapka payment pakka karegi.")
+    val updatesChannel get() = t("Order updates", "ऑर्डर अपडेट", "ऑर्डर अपडेट", "Order updates")
+    val newEntry get() = t("New — open the app to see it", "नया — देखने के लिए ऐप खोलें", "नवीन — पाहण्यासाठी ॲप उघडा", "Naya — dekhne ke liye app kholiye")
+    val all get() = t("All", "सभी", "सर्व", "Sab")
 }

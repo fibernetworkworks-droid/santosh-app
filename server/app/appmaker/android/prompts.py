@@ -13,7 +13,8 @@ SKIP = {"t", "digits", "spec", "typeOf", "arrList", "AppBar", "TopTabs", "Floati
 
 DB_SHOWN = {"rows", "create", "update", "fields", "label", "collections"}
 KIT_INTERNAL = {"AuthScreen", "AccountScreen", "SplashScreen", "ConsentScreen", "NotifyScreen", "SellerScreen", "PrivacyScreen",
-                "DeleteAccountScreen", "PasswordBox", "RowsSection", "RowCard", "statusKind", "say", "steps", "run"}
+                "DeleteAccountScreen", "PasswordBox", "RowsSection", "RowCard", "statusKind", "say", "steps", "run",
+                "shrink", "load", "allowed", "here", "PaidBox"}
 
 
 def signatures(src: str) -> list[str]:
@@ -88,7 +89,7 @@ def kit_sheet() -> str:
     """Every public kit function / object member, one line each, straight from the Kotlin source."""
     kit = TEMPLATE / "app/src/main/java/hoola/kit"
     lines: list[str] = []
-    for name in ("Kit.kt", "Scene3D.kt", "Data.kt", "Actions.kt", "Nav.kt", "Theme.kt", "Backend.kt", "Accounts.kt"):
+    for name in ("Kit.kt", "Scene3D.kt", "Data.kt", "Actions.kt", "Nav.kt", "Theme.kt", "Backend.kt", "Accounts.kt", "Features.kt"):
         for ln in signatures((kit / name).read_text()):
             if ln not in lines:
                 lines.append(ln)
@@ -126,6 +127,9 @@ FILE CONTRACT
   each has .id, .s("status"), .b("pending") while still sending) or block { LiveRowsBlock("orders") }. Account:
   Auth.signedIn, Auth.name, Auth.isStaff; a profile / account / "my orders" button -> nav.go("hoola_account"); a sign-in
   button -> nav.go("hoola_login"). NEVER write your own login / sign-up form: the app has one (code-made).
+  Fields marked [photo]: PhotoField(label, key) (system photo picker, no permission; sent by the outbox); show a saved one
+  with RemotePhoto(row.s(key)). Fields marked [location]: LocationField(label, key) ("Use my location" with the
+  explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.
 - Actions: val c = ctx(); Act.call(c), Act.whatsapp(c, text), Act.share(c, text), Act.maps(c), Act.payUpi(c, amount, note)
   (opens the customer's own UPI app to the business's UPI ID), Act.toast(c, text), Act.copy(c, text, said).
 - Look: colours H.c.primary / accent / ink / muted / surface / bg / tint / line / primaryText / accentText; type
@@ -177,6 +181,7 @@ def backend_line(backend: dict | None) -> str:
     out = []
     for c in (backend or {}).get("collections") or []:
         fs = [f["key"] + ("*" if f.get("required") else "") + (f" [{'|'.join(f['options'][:6])}]" if f.get("options") else "")
+              + (f"[{f['type']}]" if f.get("type") in ("photo", "location") else "")
               for f in c.get("fields") or [] if not f.get("admin_only")]
         out.append(f"{c['key']} (create {c.get('rules', {}).get('create', 'member')}): {', '.join(fs)}")
     if (backend or {}).get("order"):

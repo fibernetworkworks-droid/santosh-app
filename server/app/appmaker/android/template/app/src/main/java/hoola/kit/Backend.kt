@@ -62,6 +62,52 @@ object Cloud {
 
     val ready: Boolean get() = key.isNotEmpty() && (base.startsWith("https://") || base.startsWith("http://10.0.2.2"))
 
+    /** v0.319 a photo (JPEG bytes) -> {id}. */
+    internal suspend fun upload(bytes: ByteArray, token: String): Reply = withContext(Dispatchers.IO) {
+        if (!ready) return@withContext Reply(0, JSONObject())
+        var c: HttpURLConnection? = null
+        try {
+            c = (URL("$base/api/app-api/$key/files").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 15000
+                readTimeout = 60000
+                instanceFollowRedirects = false
+                doOutput = true
+                setFixedLengthStreamingMode(bytes.size)
+                setRequestProperty("Content-Type", "image/jpeg")
+                setRequestProperty("Accept", "application/json")
+                if (token.isNotEmpty()) setRequestProperty("Authorization", "Bearer $token")
+            }
+            c.outputStream.use { it.write(bytes) }
+            val code = c.responseCode
+            val text = (if (code in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
+            Reply(code, try { JSONObject(text) } catch (_: Exception) { JSONObject() })
+        } catch (_: Exception) {
+            Reply(0, JSONObject())
+        } finally {
+            c?.disconnect()
+        }
+    }
+
+    /** v0.319 raw bytes of a server file (a photo), null when it can't be had. */
+    internal suspend fun bytes(path: String, token: String): ByteArray? = withContext(Dispatchers.IO) {
+        if (!ready) return@withContext null
+        var c: HttpURLConnection? = null
+        try {
+            c = (URL("$base/api/app-api/$key$path").openConnection() as HttpURLConnection).apply {
+                connectTimeout = 10000
+                readTimeout = 30000
+                instanceFollowRedirects = false
+                if (token.isNotEmpty()) setRequestProperty("Authorization", "Bearer $token")
+            }
+            if (c.responseCode != 200) null else c.inputStream.use { s -> s.readBytes().takeIf { it.size < 8_000_000 } }
+        } catch (_: Exception) {
+            null
+        } finally {
+            c?.disconnect()
+        }
+    }
+
     internal suspend fun call(method: String, path: String, body: JSONObject? = null, token: String = ""): Reply =
         withContext(Dispatchers.IO) {
             if (!ready) return@withContext Reply(0, JSONObject())
@@ -300,6 +346,47 @@ object Db {
         kick()
     }
 
+    /** v0.319 the customer says she paid this UPI order (+ her UPI reference); the business checks its own bank. */
+    fun paid(coll: String, id: String, utr: String) {
+        synchronized(this) {
+            outbox.put(JSONObject().put("op", "paid").put("coll", coll).put("id", id).put("data", JSONObject().put("utr", utr)))
+            persist()
+        }
+        cache[coll] = (cache[coll] ?: emptyList()).map { r ->
+            if (r.id == id) Item(JSONObject(r.o.toString()).put("paid", "Customer says paid").put("utr", utr)) else r
+        }
+        kick()
+    }
+
+    /** Sends the job's "local:<file>" photos and puts the server's ids in their place (saved, so a retry sends each once).
+     *  null = go on with the row; a Reply = stop (no network / signed out). A photo the server refuses is dropped. */
+    private suspend fun sendPhotos(job: JSONObject): Reply? {
+        val data = job.optJSONObject("data") ?: return null
+        val show = job.optJSONObject("show")
+        for (k in data.keys().asSequence().toList()) {
+            val v = data.optString(k)
+            if (!v.startsWith("local:")) continue
+            val f = java.io.File(v.removePrefix("local:"))
+            val bytes = try { f.readBytes() } catch (_: Exception) { null }
+            if (bytes == null) {
+                data.remove(k); show?.remove(k)
+                continue
+            }
+            val r = Cloud.upload(bytes, Auth.token())
+            if (r.ok && r.body.optString("id").startsWith("f_")) {
+                data.put(k, r.body.optString("id"))
+                f.delete()
+            } else if (r.retry || r.code == 401) {
+                return r
+            } else {
+                data.remove(k); show?.remove(k)
+                withContext(Dispatchers.Main) { lastError.value = r.error.ifEmpty { Strings.photoFailed } }
+            }
+            synchronized(this) { persist() }
+        }
+        return null
+    }
+
     fun kick() { scope.launch { sync() } }
 
     private fun persist() {
@@ -317,10 +404,21 @@ object Db {
             while (true) {
                 val job = synchronized(this) { outbox.optJSONObject(0) } ?: break
                 val coll = job.optString("coll")
+                // v0.319 photos picked on this phone go up first; the row then carries the server's file id
+                val up = sendPhotos(job)
+                if (up != null && up.retry) return false
+                if (up != null && up.code == 401) {
+                    withContext(Dispatchers.Main) {
+                        if (Auth.signedIn) Auth.clear(ctx)
+                        lastError.value = Strings.loginAgain
+                    }
+                    return false
+                }
                 val r = when (job.optString("op")) {
                     "create" -> Cloud.call("POST", "/c/$coll", JSONObject((job.optJSONObject("data") ?: JSONObject()).toString())
                         .put("cid", job.optString("cid")), Auth.token())
                     "update" -> Cloud.call("POST", "/c/$coll/${job.optString("id")}", job.optJSONObject("data") ?: JSONObject(), Auth.token())
+                    "paid" -> Cloud.call("POST", "/c/$coll/${job.optString("id")}/paid", job.optJSONObject("data") ?: JSONObject(), Auth.token())
                     else -> Reply(400, JSONObject())
                 }
                 if (r.retry) return false

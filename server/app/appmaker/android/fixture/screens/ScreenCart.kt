@@ -44,6 +44,7 @@ fun ScreenCart() {
         block { Field("Name", "name") }
         block { Field("Mobile number", "phone", keyboard = KeyboardType.Phone) }
         block { Field("Delivery address", "address", lines = 3, hint = "House, street, area") }
+        block { LocationField("Delivery location", "pin") }
         block { CheckRow("Leave at the door", "door") }
         block { Chips(listOf("Cash on delivery", "UPI"), "pay") }
         if (AppState.picks["pay"] == "UPI" && total > 0) block {
