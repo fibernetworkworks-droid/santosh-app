@@ -6,7 +6,11 @@ import SwiftUI
 /// One record (product, order, booking ...). Reads never fail: a missing key gives "" / 0.
 struct Item: Identifiable {
     let o: [String: Any]
-    var id: String { let i = s("id"); return i.isEmpty ? s("name") : i }
+    /// a record's id; a field / option row (no id) is identified by its key, else its name
+    var id: String {
+        for k in ["id", "key", "name"] { let v = s(k); if !v.isEmpty { return v } }
+        return String(describing: o.keys.sorted())
+    }
     func s(_ k: String, _ d: String = "") -> String {
         guard let v = o[k], !(v is NSNull) else { return d }
         if let x = v as? String { return x }

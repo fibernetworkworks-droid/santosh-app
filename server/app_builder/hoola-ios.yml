@@ -1,0 +1,95 @@
+# v0.332 IPHONE: Hoola App Builder for iPhone apps on GitHub Actions (macOS). Put this file in the SAME private builds repo
+# as hoola-build.yml, as .github/workflows/hoola-ios.yml (main branch). Hoola pushes each app's iPhone project to the
+# branch build/<app>-ios under ios/ and starts this workflow:
+#   kind=sim         compile (simulator, unsigned) + open EVERY screen in an iPhone simulator (crash check + pictures)
+#   kind=testflight  the same check, then archive, sign with Apple's cloud signing and upload to TestFlight
+# Results come back as the artifact hoola-<job> (build.log, qa/report.json, qa/screens/*.png, upload.log).
+#
+# TestFlight needs, ONCE, in this repo: Settings > Secrets and variables > Actions > New repository secret:
+#   ASC_KEY_ID      App Store Connect > Users and Access > Integrations > Team Keys: the key's ID (Admin access)
+#   ASC_ISSUER_ID   the Issuer ID shown on that page
+#   ASC_KEY_P8      the whole text of the downloaded AuthKey_XXXX.p8 file
+#   APPLE_TEAM_ID   developer.apple.com > Membership: Team ID (10 letters / digits)
+# and the app itself created once in App Store Connect (My Apps > + > New App) with the bundle ID Hoola shows.
+# The key lives only here (GitHub encrypts it); Hoola's server never sees it.
+name: hoola-ios
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: build id
+        required: true
+      kind:
+        description: sim (simulator check) or testflight (upload to TestFlight)
+        required: false
+        default: sim
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - name: XcodeGen
+        run: |
+          xcodebuild -version
+          brew install xcodegen > /dev/null 2>&1 || true
+          cd ios && xcodegen generate --quiet
+      - name: Build for the simulator
+        working-directory: ios
+        run: |
+          set -o pipefail
+          P=$(ls -d *.xcodeproj | head -1)
+          xcodebuild -project "$P" -scheme App -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build > build.log 2>&1 \
+            || (grep -E "error:" build.log | head -80; exit 1)
+      - name: Every screen on an iPhone simulator (HOOLA QA)
+        continue-on-error: true
+        run: |
+          APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          bash ios/hoola_qa/sim_check.sh "$APP" "$(cat ios/hoola_qa/bundle.txt)" qa $(cat ios/hoola_qa/screens.txt)
+      - name: Archive + upload to TestFlight
+        if: inputs.kind == 'testflight'
+        working-directory: ios
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -o pipefail
+          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
+            [ -n "${!v}" ] || { echo "MISSING_SECRET $v" | tee upload.log; exit 1; }
+          done
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          P=$(ls -d *.xcodeproj | head -1)
+          xcodebuild -project "$P" -scheme App -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            "${AUTH[@]}" archive > upload.log 2>&1 || (grep -E "error:|error -" upload.log | head -40; rm -f "$KEY"; exit 1)
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" >> upload.log 2>&1 || (tail -60 upload.log; rm -f "$KEY"; exit 1)
+          rm -f "$KEY"
+          echo "UPLOADED_TO_TESTFLIGHT" | tee -a upload.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hoola-${{ inputs.job }}
+          path: |
+            ios/build.log
+            ios/upload.log
+            qa/report.json
+            qa/screens/*.png
+          retention-days: 2
+          if-no-files-found: ignore

@@ -48,6 +48,36 @@ jobs:
         run: |
           APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
           bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ios-shots" $(cat hoola_qa/screens.txt)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: server/requirements.txt
+      - name: A real Hoola server for the app's backend (e2e)
+        working-directory: server
+        env:
+          DATABASE_URL: sqlite:///${{ runner.temp }}/e2e.db
+          WA_DRY_RUN: "true"
+          SEMANTIC_OFF: "1"
+          MEMORY_AUTO: "false"
+          HOOLA_ENRICH: "false"
+        run: |
+          pip install -q -r requirements.txt || pip install -q fastapi "uvicorn[standard]" sqlalchemy pydantic-settings httpx anthropic \
+            python-multipart cryptography pillow resvg-py
+          python -m app.appmaker.android.ci_e2e prepare
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8077 > "$RUNNER_TEMP/uvicorn.log" 2>&1 &
+          for i in $(seq 1 120); do curl -sf -o /dev/null http://127.0.0.1:8077/api/app-api/akf1c7a2e0000000000000001/schema && break; sleep 1; done
+          curl -sf http://127.0.0.1:8077/api/app-api/akf1c7a2e0000000000000001/schema | head -c 200
+      - name: The iPhone app against the real server (sign up, order, paid claim, crash report)
+        run: bash server/app/appmaker/ios/ci_e2e.sh in.hoola.preview.fixture ios-shots
+      - name: The order the iPhone app placed is on the server (priced by the server, sent once)
+        if: always()
+        working-directory: server
+        env:
+          DATABASE_URL: sqlite:///${{ runner.temp }}/e2e.db
+        run: |
+          python -m app.appmaker.android.ci_e2e check
+          tail -20 "$RUNNER_TEMP/uvicorn.log" || true
       - name: HOOLA QA report
         if: always()
         run: |

@@ -8619,6 +8619,10 @@ async def apps_act(ref: str, action: str, body: dict | None = None, tenant: str 
         from .appmaker.android import service as AN
         only = [str(x) for x in body.get("redo") or [] if isinstance(x, str)][:60] if isinstance(body.get("redo"), list) else None
         return await asyncio.to_thread(_appd, AN.build, tenant, ref, conv, only)
+    if action == "ios":                       # v0.332 IPHONE: kind sim (simulator check) | testflight (her Apple account)
+        from .appmaker.ios import service as IO
+        only = [str(x) for x in body.get("redo") or [] if isinstance(x, str)][:60] if isinstance(body.get("redo"), list) else None
+        return await asyncio.to_thread(_appd, IO.build, tenant, ref, conv, str(body.get("kind") or "sim"), only)
     if action == "rollback":                  # v0.325 an older build again, under a new version
         from .appmaker.android import service as AN
         return await asyncio.to_thread(_appd, AN.rollback, tenant, ref, int(body.get("build") or 0), conv)
@@ -8679,6 +8683,35 @@ async def apps_android_qa(ref: str, name: str, tenant: str = Depends(current_ten
     except AN.AS.AppError:
         raise HTTPException(404, "not found")
     return FileResponse(f, media_type="image/png", headers={"Cache-Control": "private, max-age=600"})
+
+
+@app.get("/api/apps/{ref}/ios", dependencies=[Depends(require_key)])
+async def apps_ios(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.332 IPHONE: the iPhone build of an approved design (SwiftUI screens, Mac compile, simulator check, TestFlight)."""
+    from .appmaker.ios import service as IO
+    return await asyncio.to_thread(_appd, IO.get, tenant, ref)
+
+
+@app.get("/api/apps/{ref}/ios/qa/{name}", dependencies=[Depends(require_key)])
+async def apps_ios_qa(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    """v0.332 a screen's picture from the iPhone simulator check of the latest build."""
+    from .appmaker.ios import service as IO
+    try:
+        f = await asyncio.to_thread(IO.qa_shot, tenant, ref, name)
+    except IO.AS.AppError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type="image/png", headers={"Cache-Control": "private, max-age=600"})
+
+
+@app.get("/api/app-ios-zip/{token}/{name}")
+async def app_ios_zip(token: str, name: str):
+    """Public by its random token (7 days): the Xcode project of her iPhone app (open on a Mac)."""
+    from .appmaker.ios import service as IO
+    try:
+        f = await asyncio.to_thread(IO.zip_by_token, token, name)
+    except IO.IosError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type="application/zip", filename=name, headers={"Cache-Control": "private, no-store"})
 
 
 @app.get("/api/app-apk/{token}/{name}")

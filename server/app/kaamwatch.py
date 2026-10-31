@@ -44,6 +44,7 @@ KINDS: dict[str, dict[str, Any]] = {
     "app_board": {"label": "App design", "map": {"ready": "waiting", "approved": "done", "draft": "working"},
                   "waiting_say": "design taiyaar: dekh kar 'Design pakka' dabaiye"},
     "app_android": {"label": "Android app", "map": {"ready": "done", "zip": "done"}},
+    "app_ios": {"label": "iPhone app", "map": {"ready": "done", "zip": "done", "uploading": "working"}},
     "site_board": {"label": "Website", "map": {"ready": "waiting", "building": "working", "live": "done"},
                    "waiting_say": "website taiyaar: preview dekh kar live karne ka faisla aapka"},
     "video_job": {"label": "Video edit", "map": {}},

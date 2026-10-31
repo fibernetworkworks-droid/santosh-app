@@ -158,6 +158,7 @@ import SwiftUI
 
 @MainActor
 func screenView(_ id: String) -> AnyView {{
+    CrashGuard.screen(id)
     switch id {{
 {body}
     default: return AnyView(Page(id) {{ Muted(Words.nothingYet) }})
@@ -180,6 +181,7 @@ struct HoolaApp: App {
         let a = ProcessInfo.processInfo.arguments
         if let i = a.firstIndex(of: "-hoola_base"), i + 1 < a.count { Cloud.base = a[i + 1] }
         #endif
+        CrashGuard.install()
         AppData.shared.load()
         Auth.shared.load()
         Db.shared.load()
@@ -189,8 +191,12 @@ struct HoolaApp: App {
         WindowGroup {
             RootView(start: HoolaApp.debugStart)
                 .task {
+                    await CrashGuard.sendPending()
                     await AppData.shared.refresh()
                     await Db.shared.sync()
+                    #if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("-hoola_e2e") { await E2e.run() }
+                    #endif
                 }
         }
     }
@@ -474,6 +480,11 @@ def info_plist(spec: dict[str, Any]) -> str:
         <string>upi</string>
         <string>tel</string>
     </array>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UIApplicationSceneManifest</key>

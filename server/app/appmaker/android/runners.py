@@ -174,10 +174,10 @@ class _NoAuthRedirect(urllib.request.HTTPRedirectHandler):
         return urllib.request.Request(newurl, headers={"User-Agent": "Hoola-AppBuild"})
 
 
-def run_github(src: Path, key: str, progress: Progress, kind: str = "apk") -> dict[str, Any]:
+def push_tree(src: Path, key: str, progress: Progress, prefix: str = "app") -> tuple[str, str, str]:
+    """The project as one commit on branch build/<key> of her private builds repo -> (repo, branch, commit sha)."""
     s = _settings()
     repo = s.app_build_gh_repo.strip()
-    t0 = time.time()
     branch = f"build/{key}"
     head = _gh("GET", f"/repos/{repo}/git/ref/heads/main") or _gh("GET", f"/repos/{repo}/git/ref/heads/master")
     if not head:
@@ -191,24 +191,28 @@ def run_github(src: Path, key: str, progress: Progress, kind: str = "apk") -> di
         if p.is_dir() or rel.startswith((".gradle/", "build/", "app/build/")):
             continue
         b = _gh("POST", f"/repos/{repo}/git/blobs", {"content": base64.b64encode(p.read_bytes()).decode(), "encoding": "base64"})
-        tree.append({"path": f"app/{rel}", "mode": "100755" if rel == "gradlew" else "100644", "type": "blob", "sha": b["sha"]})
+        tree.append({"path": f"{prefix}/{rel}", "mode": "100755" if rel == "gradlew" or rel.endswith(".sh") else "100644",
+                     "type": "blob", "sha": b["sha"]})
     t = _gh("POST", f"/repos/{repo}/git/trees", {"base_tree": base_tree, "tree": tree})
     c = _gh("POST", f"/repos/{repo}/git/commits", {"message": f"build {key}", "tree": t["sha"], "parents": [base_sha]})
     if _gh("GET", f"/repos/{repo}/git/ref/heads/{branch}"):
         _gh("PATCH", f"/repos/{repo}/git/refs/heads/{branch}", {"sha": c["sha"], "force": True})
     else:
         _gh("POST", f"/repos/{repo}/git/refs", {"ref": f"refs/heads/{branch}", "sha": c["sha"]})
-    job = hashlib.sha256(f"{key}{c['sha']}{time.time()}".encode()).hexdigest()[:16]
-    inputs = {"job": job, **({"kind": "aab"} if kind == "aab" else {})}     # v0.330 a Play Store bundle (new hoola-build.yml)
-    _gh("POST", f"/repos/{repo}/actions/workflows/hoola-build.yml/dispatches", {"ref": branch, "inputs": inputs})
+    return repo, branch, c["sha"]
+
+
+def dispatch_wait(repo: str, branch: str, sha: str, workflow: str, inputs: dict[str, str], progress: Progress,
+                  t0: float, limit: int) -> dict[str, Any] | None:
+    """Start the builds repo's workflow on that branch and wait for the run of that commit (None = timed out)."""
+    _gh("POST", f"/repos/{repo}/actions/workflows/{workflow}/dispatches", {"ref": branch, "inputs": inputs})
     progress("queued")
     run = None
-    limit = s.app_build_timeout_s
     while time.time() - t0 < limit + 300:
         time.sleep(10)
         runs = _gh("GET", f"/repos/{repo}/actions/runs?branch={urllib.parse.quote(branch)}&event=workflow_dispatch&per_page=5") or {}
         for r in runs.get("workflow_runs", []):
-            if r.get("head_sha") == c["sha"]:
+            if r.get("head_sha") == sha:
                 run = r
                 break
         if not run:
@@ -216,18 +220,36 @@ def run_github(src: Path, key: str, progress: Progress, kind: str = "apk") -> di
         if run.get("status") == "in_progress":
             progress("compiling")
         if run.get("status") == "completed":
-            break
-    if not run or run.get("status") != "completed":
-        return {"ok": False, "log": "GitHub build timed out", "apk": None, "seconds": round(time.time() - t0), "where": "github"}
+            return run
+    return None
+
+
+def artifacts(repo: str, run: dict[str, Any], names: tuple[str, ...]) -> list[bytes]:
+    """The zips of the run's artifacts with these names."""
+    s = _settings()
+    out = []
     arts = _gh("GET", f"/repos/{repo}/actions/runs/{run['id']}/artifacts") or {}
-    apk, text, qa = None, "", None
     for a in arts.get("artifacts", []):
-        if a.get("name") != f"hoola-{job}" and a.get("name") != "hoola-build":
+        if a.get("name") not in names:
             continue
         req = urllib.request.Request(f"{GH}/repos/{repo}/actions/artifacts/{a['id']}/zip",
                                      headers={"Authorization": f"Bearer {s.app_build_gh_token}", "User-Agent": "Hoola-AppBuild"})
         with urllib.request.build_opener(_NoAuthRedirect).open(req, timeout=300) as r:
-            zb = r.read()
+            out.append(r.read())
+    return out
+
+
+def run_github(src: Path, key: str, progress: Progress, kind: str = "apk") -> dict[str, Any]:
+    s = _settings()
+    t0 = time.time()
+    repo, branch, sha = push_tree(src, key, progress)
+    job = hashlib.sha256(f"{key}{sha}{time.time()}".encode()).hexdigest()[:16]
+    inputs = {"job": job, **({"kind": "aab"} if kind == "aab" else {})}     # v0.330 a Play Store bundle (new hoola-build.yml)
+    run = dispatch_wait(repo, branch, sha, "hoola-build.yml", inputs, progress, t0, s.app_build_timeout_s)
+    if not run:
+        return {"ok": False, "log": "GitHub build timed out", "apk": None, "seconds": round(time.time() - t0), "where": "github"}
+    apk, text, qa = None, "", None
+    for zb in artifacts(repo, run, (f"hoola-{job}", "hoola-build")):
         with zipfile.ZipFile(io.BytesIO(zb)) as z:
             for n in z.namelist():
                 if n.endswith(".aab" if kind == "aab" else ".apk"):
