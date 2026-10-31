@@ -301,7 +301,98 @@
     }
     btn.addEventListener('click', open);
   }
-  function start() { nav(); groups(); search(); forms(); lightbox(); compare(); embeds(); booking(); motion(); }
+  // ------------------------------------------------------------ v0.330 ANY DESIGN: interactive pieces sections use by attribute
+  function pressed(list, on) { list.forEach(function (b) { b.setAttribute('aria-pressed', b === on ? 'true' : 'false'); }); }
+  function tabs() {
+    $$('[data-hoola-tabs]').forEach(function (box, n) {
+      var btns = $$('[data-tab]', box), panels = $$('[data-panel]', box);
+      if (!btns.length) return;
+      var list = btns[0].parentNode; list.setAttribute('role', 'tablist');
+      function show(b, focus) {
+        btns.forEach(function (x) { var on = x === b; x.setAttribute('aria-selected', on ? 'true' : 'false'); x.tabIndex = on ? 0 : -1; });
+        panels.forEach(function (p) { p.hidden = p.getAttribute('data-panel') !== b.getAttribute('data-tab'); });
+        if (focus) b.focus();
+      }
+      btns.forEach(function (b, i) {
+        var id = 'hs-tab-' + n + '-' + i, pid = 'hs-panel-' + n + '-' + i;
+        var p = panels.filter(function (x) { return x.getAttribute('data-panel') === b.getAttribute('data-tab'); })[0];
+        b.setAttribute('role', 'tab'); b.id = id; b.type = 'button';
+        if (p) { p.setAttribute('role', 'tabpanel'); p.id = pid; p.setAttribute('aria-labelledby', id); b.setAttribute('aria-controls', pid); }
+        b.addEventListener('click', function () { show(b); });
+        b.addEventListener('keydown', function (e) {
+          var k = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+          if (k) { e.preventDefault(); show(btns[(i + k + btns.length) % btns.length], true); }
+        });
+      });
+      show(btns.filter(function (b) { return b.getAttribute('aria-selected') === 'true'; })[0] || btns[0]);
+    });
+  }
+  function carousel() {
+    $$('[data-hoola-carousel]').forEach(function (box) {
+      var track = box.querySelector('.hs-track') || box.firstElementChild;
+      if (!track || box.querySelector('.hs-car-nav')) return;
+      track.classList.add('hs-track'); track.setAttribute('tabindex', '0');
+      var nav = d.createElement('div'); nav.className = 'hs-car-nav';
+      function mk(dir, label) {
+        var b = d.createElement('button'); b.type = 'button'; b.className = 'hs-car-' + dir; b.setAttribute('aria-label', label);
+        b.textContent = dir === 'prev' ? '\u2039' : '\u203A';
+        b.addEventListener('click', function () { track.scrollBy({ left: (dir === 'prev' ? -1 : 1) * track.clientWidth * 0.9, behavior: still ? 'auto' : 'smooth' }); });
+        nav.appendChild(b); return b;
+      }
+      var p = mk('prev', box.getAttribute('data-prev') || 'Previous'), nx = mk('next', box.getAttribute('data-next') || 'Next');
+      function ends() { p.disabled = track.scrollLeft < 4; nx.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4; }
+      track.addEventListener('scroll', ends, { passive: true }); box.appendChild(nav); ends();
+    });
+  }
+  function filters() {
+    $$('[data-hoola-filter]').forEach(function (box) {
+      var btns = $$('[data-filter]', box), items = $$('[data-cat]', box);
+      btns.forEach(function (b) {
+        b.type = 'button';
+        b.addEventListener('click', function () {
+          var f = b.getAttribute('data-filter'); pressed(btns, b);
+          items.forEach(function (it) { it.hidden = !(f === 'all' || (' ' + it.getAttribute('data-cat') + ' ').indexOf(' ' + f + ' ') >= 0); });
+        });
+      });
+      if (btns.length) pressed(btns, btns[0]);
+    });
+  }
+  function toggles() {
+    $$('[data-hoola-toggle]').forEach(function (box) {
+      var btns = $$('[data-set]', box), parts = $$('[data-when]', box);
+      function set(b) { pressed(btns, b); var v = b.getAttribute('data-set'); parts.forEach(function (x) { x.hidden = x.getAttribute('data-when') !== v; }); }
+      btns.forEach(function (b) { b.type = 'button'; b.addEventListener('click', function () { set(b); }); });
+      if (btns.length) set(btns[0]);
+    });
+  }
+  function money(n, pre) { return (pre || '') + (isFinite(n) ? Math.round(n).toLocaleString('en-IN') : '-'); }
+  function calcs() {
+    $$('form[data-hoola-calc]').forEach(function (f) {
+      var mode = f.getAttribute('data-hoola-calc') || 'sum', pre = f.getAttribute('data-prefix') || '\u20B9';
+      function num(name) { var el = f.querySelector('[name="' + name + '"]'); return el ? parseFloat(el.value) || 0 : 0; }
+      function out(sel, v) { $$(sel, f).forEach(function (o) { o.textContent = money(v, pre); }); }
+      function run() {
+        if (mode === 'emi') {
+          var p = num('amount'), r = num('rate') / 1200, m = Math.round(num('months'));
+          var emi = m > 0 ? (r > 0 ? p * r * Math.pow(1 + r, m) / (Math.pow(1 + r, m) - 1) : p / m) : NaN;
+          out('[data-calc-out]', emi); out('[data-calc-total]', emi * m); out('[data-calc-interest]', emi * m - p);
+          return;
+        }
+        var total = parseFloat(f.getAttribute('data-base')) || 0;
+        $$('input,select', f).forEach(function (el) {
+          if (el.type === 'checkbox' || el.type === 'radio') { if (el.checked) total += parseFloat(el.getAttribute('data-add')) || 0; }
+          else if (el.tagName === 'SELECT') { var o = el.options[el.selectedIndex]; total += o ? parseFloat(o.getAttribute('data-add')) || 0 : 0; }
+          else if (el.hasAttribute('data-rate')) { total += (parseFloat(el.value) || 0) * (parseFloat(el.getAttribute('data-rate')) || 0); }
+        });
+        out('[data-calc-out]', total);
+      }
+      f.addEventListener('input', run); f.addEventListener('change', run);
+      f.addEventListener('submit', function (e) { e.preventDefault(); run(); });
+      $$('output[data-calc-out]', f).forEach(function (o) { o.setAttribute('aria-live', 'polite'); });
+      run();
+    });
+  }
+  function start() { nav(); groups(); search(); forms(); lightbox(); compare(); embeds(); booking(); tabs(); carousel(); filters(); toggles(); calcs(); motion(); }
   W.HoolaSite = { start: start };      // v0.305 the React export starts it again after a route change
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', start); else start();
 })();

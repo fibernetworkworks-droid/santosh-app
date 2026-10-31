@@ -2156,3 +2156,27 @@ body.albon{overflow:hidden}
 .em-trust label{display:grid;grid-template-columns:auto 1fr;gap:0 10px;align-items:baseline;cursor:pointer}
 .em-trust label>*:not(input){grid-column:2}
 .em-trust input[type=radio]{width:auto;margin:0;grid-row:1 / span 2;align-self:start;margin-top:3px}
+/* v0.319 SEO PRO blocks on the desk */
+.em-pro{margin-top:14px}
+.em-big{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.em-big small{font-size:13px;font-weight:400;color:var(--mut);margin-left:2px}
+.em-bar{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(60px,1fr) auto;gap:10px;align-items:center;font-size:13.5px;margin-top:7px}
+.em-bar i{display:block;height:6px;border-radius:3px;background:var(--hair);overflow:hidden}
+.em-bar i b{display:block;height:100%;background:var(--pri)}
+.em-bar em{font-style:normal;font-variant-numeric:tabular-nums;color:var(--mut);min-width:44px;text-align:right}
+.em-env{margin:0;font-size:13px}
+.em-env summary{cursor:pointer;color:var(--mut)}
+.em-env summary .em-bar{display:inline-grid;width:calc(100% - 20px);vertical-align:middle;margin-top:4px}
+.em-env p{margin:4px 0 0}
+.em-env ul{margin:6px 0 4px;padding-left:4px;list-style:none;display:grid;gap:3px}
+.em-env .okc{color:var(--ok)}
+.em-bots td{padding:5px 8px}
+.em-spark{width:100%;height:44px;margin-top:6px}
+.em-spark polyline{fill:none;stroke:var(--pri);stroke-width:2}
+.em-spark .em-good{stroke:var(--ok);stroke-dasharray:3 3;stroke-width:1}
+.em-shots{display:flex;gap:12px;align-items:flex-start;margin-top:8px}
+.em-shot{margin:0;flex:1 1 0;min-width:0}
+.em-shot-mobile{flex:0 0 120px}
+.em-shot img{width:100%;height:auto;border:1px solid var(--hair);border-radius:8px;display:block}
+.em-shot figcaption{font-size:12px;margin-top:4px}
+.em-note code{font-size:12.5px;word-break:break-all}

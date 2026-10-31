@@ -216,6 +216,7 @@ class Settings(BaseSettings):
     pexels_api_key: str = ""               # v0.292 optional licensed stock photos (official Pexels API) when the image models fail
     site_look_sections: int = 3            # v0.292 sections of the home page each of the 3 looks shows (hero + the next ones)
     site_look_parallel: int = 6            # v0.324 look sections written at the same time (3 looks x hero + page top)
+    site_kit: bool = True                  # v0.330 one design kit per site (.k-* components every section uses)
     site_critique_pages: int = 6           # v0.292 pages Opus reviews from their real screenshots (site_critique=all)
     site_max_pages: int = 150              # v0.315 BADI WEBSITE: most pages one site may have (designed + list items + legal)
     site_max_ai_pages: int = 40            # v0.315 most pages with their OWN designed sections (each section = one Opus call)

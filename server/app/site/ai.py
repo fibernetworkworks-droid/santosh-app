@@ -274,6 +274,18 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   * <div data-hoola-video="YOUTUBE LINK" data-title="..."></div> = a video that plays on tap (only a link from FACTS).
   * <a class="btn btn-primary" data-hoola-pay="499" data-for="Kaju katli 1 kg">Pay ₹499</a> = pay by UPI to her UPI ID,
     ONLY when FACTS has "upi" and only her own prices; never invent an amount.
+- INTERACTIVE PIECES (v0.330, attributes only - no section JS needed; restyle them inside your #SECTION_ID):
+  * Tabs: <div data-hoola-tabs><div><button data-tab="veg">Veg</button><button data-tab="sweet">Sweets</button></div>
+    <div data-panel="veg">...</div><div data-panel="sweet">...</div></div>
+  * Slider: <div data-hoola-carousel><div class="hs-track"><article>...</article>...</div></div> (arrows added for you).
+  * Filter: <div data-hoola-filter><button data-filter="all">All</button><button data-filter="cake">Cakes</button>
+    ... <article data-cat="cake party">...</article></div>
+  * Switch (e.g. monthly / yearly prices she gave): <div data-hoola-toggle><button data-set="month">Monthly</button>
+    <button data-set="year">Yearly</button> ... <span data-when="month">...</span><span data-when="year">...</span></div>
+  * Calculator: <form data-hoola-calc="sum" data-base="0"> number inputs with data-rate="RATE" (value x rate),
+    checkboxes / radios / <option> with data-add="AMOUNT", and <output data-calc-out>; or data-hoola-calc="emi" with
+    inputs name="amount", name="rate" (yearly %), name="months" and outputs data-calc-out (EMI), data-calc-total,
+    data-calc-interest. Rates and amounts ONLY from FACTS / her words (a loan EMI calculator needs no prices of hers).
 - Type weights available for both fonts: 400, 500, 600, 700 (use 500 / 600 for UI labels, eyebrows, buttons, sub-heads;
   700 for big display headings).
 - Contact actions: tel:+91..., https://wa.me/91XXXXXXXXXX?text=..., mailto:, https://maps.google.com/?q=... ONLY with values
@@ -313,7 +325,8 @@ CHANGE_SYSTEM = """The owner asked for a change to her website, in her own words
 exactly what must change. Return JSON:
 {"say": "one short line in her language saying what you will do",
  "sections": [{"key": "page__type", "instruction": "precise instruction for the designer"}],
- "add": [{"page": "slug", "type": "section type", "after": "page__type or ''", "instruction": "..."}],
+ "add": [{"page": "slug", "type": "section type, or 'custom' + a name for anything the library has no type for (EMI calculator,
+          plan comparison, size guide...)", "name": "for custom", "after": "page__type or ''", "instruction": "..."}],
  "remove": ["page__type"],
  "tokens": {"primary": "#hex", "accent": "#hex", "bg": "#hex", "radius": 12}  (only colour / shape changes she asked),
  "facts": {"phone": "...", "whatsapp": "...", "email": "...", "address": "...", "hours": "...", "name": "..."} (only new facts she gave),
