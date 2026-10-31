@@ -12153,3 +12153,18 @@ the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots 
 - Tests `server/tests/test_v0324_teen_look_jaldi.py` (3): with a slow fake Opus the look calls overlap (peak >= 3),
   3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
 - Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).
+
+## v0.325.0 STUDIO TOOLS (31 Oct 2026; Phase 3 of the Create Studio design audit)
+Owner: "GO" after Phase 2 went live (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- `toolTabs()` and its four uses removed (Image / Video / Music / Voice): the sidebar is the one way between tools. `.gen` = 380px controls.
+- Video: `<details class="adv vmore">` holds Resolution / Sound + Takes / Spoken lines, summary `.vsum` (1080p · sound on · 1 take · Hindi),
+  open state in VID.more. `projState(p)` -> Draft / Making / Ready / Needs attention (`.stchip`); "N s" only when made; in the Video
+  gallery `vnote(ps)` = ONE notice for all failed clips (the distinct reason, "Nothing was charged for them"), per-tile red lines only elsewhere.
+- Image: `itemTile` caption = date · style · aspect (it.meta.model, e.g. gemini-3.1-flash-image, no longer shown); `.stys` 3 x 3 grid,
+  labels wrap; `.panel .prow b` wraps (model / engine names were cut).
+- Dubbing: DUB_TOP (Hindi, Tamil, Telugu, Bengali, Marathi, English) then "All languages" fold, `#dubn` "N of 4 picked".
+- Voice: voice rows use `initTile(name)` (her own Hoola voice keeps its wave art). Editor: empty player = `.framemsg.drop` (tap or drag
+  files; dragover / drop upload), `#edGo` reads "Add clips to start" until there are clips.
+- Not done, said so: Music waveforms were already real (decoded audio, `wave()`), the audit called them decorative; voice play samples
+  need a server sample per voice (not built); genres not regrouped.
+- Re-measured: 6 text sizes, 0 texts < 4.5 : 1 light and dark. Tests: `test_v0325_studio_tools.py`.
