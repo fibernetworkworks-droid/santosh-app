@@ -12022,3 +12022,14 @@ budget, crash reports back), 4 updates (migrations, versions, rollback, in-app u
   chips, accounts with a role picker. **Console**: Build studio tab "App data" for apps (tables, status select, accounts).
 - **Not yet** (next phases): health / HR records of staff apps stay out (they need encrypted fields), file / photo fields,
   password reset by email (a user who forgets asks the shop), push notifications to app users, Play Store, iPhone.
+
+## v0.319.0 KHANA BAAD MEIN (31 Oct 2026, owner: "Khana aur kirana --- NOT FUCTIONING NEED THERE APPROVAL --- NOT ACCEPTING THE REQUIEST")
+Her live test: Swiggy's and Zomato's official MCP servers are up (401 = sign in first), but their sign-in refuses
+Hoola - they accept only apps they approved as partners. So "Khana aur kirana" could never work for anyone yet.
+- `bazar/service.py`: `PARTNER_GATED` = swiggy-food, swiggy-instamart, swiggy-dineout, zomato; `shown(executor, status,
+  pack_id)` hides them in the clean view unless `FOOD_PARTNER_APPROVED=true` (new core setting) or the user's own
+  link already works (status ready). Applied to catalog (so Roz ke kaam's food section disappears), connections and
+  bazar_find. Endpoints and code untouched, so approval = one .env line.
+- Next step for food: Newtika applies for Swiggy / Zomato MCP partner access (business email, app details); when
+  approved set FOOD_PARTNER_APPROVED=true and restart.
+- Test: test_v0303_saaf_connect.py::test_v0319_swiggy_zomato_hidden_until_partner_approval.

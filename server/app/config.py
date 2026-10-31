@@ -295,6 +295,9 @@ class Settings(BaseSettings):
     # v0.303 SAAF CONNECT (owner: "REMOVE ALL JUST KEEP COMPOSIO MCPS AND WORKING PLUG IN"): the Connect tab and
     # bazar_find show only what really works (Composio apps + working plugins); false = the old full catalogue
     connect_clean: bool = True
+    # v0.319 Swiggy / Zomato accept only partner-approved apps at their sign-in (her live test: the request is refused).
+    # Until Newtika is approved these stay hidden in the clean view; true = show them again.
+    food_partner_approved: bool = False
     composio_api_key: str = ""                        # VPS .env only (COMPOSIO_API_KEY), never in chat or the repo
     composio_webhook_secret: str = ""                 # COMPOSIO_WEBHOOK_SECRET: signs "connection expired" events
     composio_base_url: str = "https://backend.composio.dev/api/v3.1"
