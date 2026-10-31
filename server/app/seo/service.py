@@ -41,6 +41,7 @@ log = logging.getLogger("santosh.seo")
 _LOCK = threading.Lock()
 UA = "HoolaSEO/1.0 (site owner's own audit)"
 GSC_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly"
+GA4_SCOPE = "https://www.googleapis.com/auth/analytics.readonly"   # v0.314 optional: organic sessions + leads for the SEO Employee
 GSC_API = "https://www.googleapis.com/webmasters/v3"
 PSI_API = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
 _http: httpx.Client | None = None          # tests inject a mock transport
@@ -134,6 +135,7 @@ class SeoGoogle(Base):
     expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(12), default="ok")
     last_error: Mapped[str] = mapped_column(Text, default="")
+    scopes: Mapped[str | None] = mapped_column(Text, nullable=True)       # v0.314 what she granted (Analytics is optional)
 
 
 class SeoSettings(Base):
@@ -218,6 +220,7 @@ class _Page(HTMLParser):
         self.img, self.img_no_alt = 0, 0
         self.jsonld: list[str] = []
         self.text: list[str] = []
+        self.mixed = 0                          # v0.314 http:// pictures / scripts / styles on an https page
         self._in, self._buf, self._skip = "", [], 0
 
     def handle_starttag(self, tag, attrs):
@@ -237,9 +240,15 @@ class _Page(HTMLParser):
         elif tag == "a" and a.get("href"):
             self.links.append(a["href"])
         elif tag == "img":
+            self.mixed += a.get("src", "").startswith("http://")
             self.img += 1
             if not a.get("alt", "").strip():
                 self.img_no_alt += 1
+        elif tag in ("script", "iframe", "link") and (a.get("src") or (a.get("href") if tag == "link" else "") or "").startswith("http://") \
+                and (tag != "link" or re.search(r"stylesheet|icon|preload", a.get("rel", ""), re.I)):
+            self.mixed += 1
+            if tag == "script":
+                self._skip += 1
         elif tag == "script" and a.get("type", "").lower() == "application/ld+json":
             self._in, self._buf = "jsonld", []
         elif tag in ("script", "style", "noscript", "svg"):
@@ -288,7 +297,8 @@ def _parse(url: str, status: int, html: str, size: int, home: str, city: str = "
          "words": words, "img": p.img, "img_no_alt": p.img_no_alt, "viewport": p.viewport, "https": url.startswith("https://"),
          "noindex": "noindex" in p.robots, "lang": p.lang, "bytes": size, "schema_local": local,
          "canonical_other": canon if canon and canon.rstrip("/") != url.rstrip("/") else "",
-         "is_home": url.rstrip("/") == home.rstrip("/"), "is_contact": any(w in path.lower() for w in ("contact", "sampark"))}
+         "is_home": url.rstrip("/") == home.rstrip("/"), "is_contact": any(w in path.lower() for w in ("contact", "sampark")),
+         "mixed": p.mixed if url.startswith("https://") else 0}
     host = urlparse(home).hostname
     links = []
     for h in p.links:
@@ -360,12 +370,14 @@ def sites(tenant: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------- crawl + audit
-def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "") -> dict:
+def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap: int = 60) -> dict:
+    """cap: 60 for a one-off check; the hired SEO Employee (v0.314 seo/desk.py) crawls up to 500."""
     with session() as s:
         r = _site(s, tenant, site)
         sid, home, city = r.id, r.url, _j(r.business, {}).get("city", "")
-    max_pages = max(1, min(int(max_pages or 25), 60))
+    max_pages = max(1, min(int(max_pages or 25), max(1, min(int(cap or 60), 500))))
     robots_txt, sitemap_ok, seeds = "", False, [home]
+    sitemap_urls: set[str] = set()
     try:
         st_, _, robots_txt, _ = _fetch(urljoin(home, "/robots.txt"), 200_000)
         if st_ >= 400:
@@ -385,20 +397,26 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "") -> d
             locs = re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", xml)
             subs = [u for u in locs if u.endswith(".xml")]
             seeds += [u for u in locs if not u.endswith(".xml")]
+            sitemap_urls.update(u for u in locs if not u.endswith(".xml"))
             for sub in subs[:3]:
                 try:
                     st2, _, x2, _ = _fetch(sub, 3_000_000)
                     if st2 < 400:
-                        seeds += [u for u in re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", x2) if not u.endswith(".xml")]
+                        sub_locs = [u for u in re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", x2) if not u.endswith(".xml")]
+                        seeds += sub_locs
+                        sitemap_urls.update(sub_locs)
                 except SeoError:
                     pass
     host = (urlparse(home).hostname or "").removeprefix("www.")
     queue, seen, pages, blocked = [], set(), [], []
+    depth: dict[str, int] = {}
+    redirects: dict[str, str] = {}                  # v0.314 every internal redirect seen, even to a page already checked
     for u in seeds:
         u = urldefrag(u)[0]
         if (urlparse(u).hostname or "").removeprefix("www.") == host and u not in seen:
             seen.add(u)
             queue.append(u)
+    depth[urldefrag(home)[0]] = 0
     while queue and len(pages) < max_pages:
         u = queue.pop(0)
         if robots_txt and not rp.can_fetch(UA, u) and not rp.can_fetch("*", u):
@@ -409,15 +427,21 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "") -> d
         except SeoError as e:
             pages.append({"url": u, "status": 599, "error": str(e)})
             continue
+        if final != u:
+            redirects[u] = final
         if final != u and any(x.get("url") == final for x in pages):
             continue                                            # a redirect to a page already checked
         d, links = _parse(final, status, html, size, home, city)
         if final != u:
             d["redirected_from"] = u
             seen.add(final)
+        d["depth"] = depth.get(u, depth.get(final))           # clicks from the home page (None = only in the sitemap)
+        d["out"] = sorted({l2.split("?")[0] for l2 in links})[:300]
         pages.append(d)
         for l2 in links:
             l2 = l2.split("?")[0]
+            if d["depth"] is not None and (l2 not in depth or depth[l2] > d["depth"] + 1):
+                depth[l2] = d["depth"] + 1
             if l2 not in seen and len(seen) < max_pages * 4:
                 seen.add(l2)
                 queue.append(l2)
@@ -441,6 +465,7 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "") -> d
         for i in R.site_issues(pages, robots_txt, sitemap_ok):
             i["url"] = home
             all_issues.append(i)
+        all_issues += R.link_issues(pages, sitemap_urls, home, redirects)   # v0.314 broken / redirected links, orphans, depth, dups
         # tasks: keep her decisions, add new, mark fixed what disappeared
         tasks = {t.key: t for t in s.scalars(select(SeoTask).where(SeoTask.site_id == sid)).all()}
         now_keys = set()
@@ -596,7 +621,7 @@ def start_link(tenant: str) -> str:
     with session() as s:
         s.add(MailLinkState(state=state, tenant_id=tenant, provider="seo"))
     q = {"client_id": st.google_oauth_client_id, "redirect_uri": acc._redirect_uri(), "response_type": "code",
-         "scope": " ".join(["openid", "email", GSC_SCOPE]), "access_type": "offline", "prompt": "consent", "state": state,
+         "scope": " ".join(["openid", "email", GSC_SCOPE, GA4_SCOPE]), "access_type": "offline", "prompt": "consent", "state": state,
          "include_granted_scopes": "true"}
     return mail_acc.GOOGLE_AUTH + "?" + urlencode(q)
 
@@ -632,6 +657,7 @@ def finish_link(code: str, state: str) -> dict:
         g.refresh_token_enc = acc.encrypt(tok["refresh_token"])
         g.expiry = now() + timedelta(seconds=int(tok.get("expires_in", 3600)))
         g.status, g.last_error = "ok", ""
+        g.scopes = tok.get("scope") or ""
         addr = g.address
     try:
         _auto_property(tenant)
@@ -696,7 +722,8 @@ def _gsc(tenant: str, method: str, path: str, body: dict | None = None) -> dict:
 def gsc_status(tenant: str) -> dict:
     with session() as s:
         g = s.get(SeoGoogle, tenant)
-        return {"connected": bool(g), "address": g.address if g else "", "status": g.status if g else "", "can_link": gsc_ready()}
+        return {"connected": bool(g), "address": g.address if g else "", "status": g.status if g else "", "can_link": gsc_ready(),
+                "analytics": bool(g and GA4_SCOPE in (g.scopes or "").split())}
 
 
 def gsc_properties(tenant: str) -> list[dict]:
@@ -715,7 +742,7 @@ def _auto_property(tenant: str, site: str = "") -> str:
         return pick
 
 
-def performance(tenant: str, site: str = "", days: int = 28, conv: str = "") -> dict:
+def performance(tenant: str, site: str = "", days: int = 28, conv: str = "", store: bool = True) -> dict:
     """Last `days` (final data ends ~3 days ago) vs the period before: totals, top queries / pages, opportunities."""
     with session() as s:
         r = _site(s, tenant, site)
@@ -774,9 +801,11 @@ def performance(tenant: str, site: str = "", days: int = 28, conv: str = "") -> 
     for a in qs:
         mix[a["intent"]] = mix.get(a["intent"], 0) + a["impressions"]
     long_q = sum(1 for a in qs if len(a["query"].split()) >= 6)
-    with session() as s:
-        s.add(SeoStat(tenant_id=tenant, site_id=sid, start=start.isoformat(), end=end.isoformat(), clicks=cur["clicks"],
-                      impressions=cur["impressions"], ctr=cur["ctr"], position=cur["position"], rows=json.dumps(qs[:300], ensure_ascii=False)))
+    if store:          # v0.314 the SEO Employee's daily pull reads numbers only; the weekly snapshot stays the trend
+        with session() as s:
+            s.add(SeoStat(tenant_id=tenant, site_id=sid, start=start.isoformat(), end=end.isoformat(), clicks=cur["clicks"],
+                          impressions=cur["impressions"], ctr=cur["ctr"], position=cur["position"],
+                          rows=json.dumps(qs[:300], ensure_ascii=False)))
 
     def ch(a, b):
         return round((a - b) * 100 / b) if b else None

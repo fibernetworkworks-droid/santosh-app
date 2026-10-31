@@ -2108,3 +2108,50 @@ body.albon{overflow:hidden}
 .stmems{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .stmems li{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
 
+
+/* v0.314 EMPLOYEES + SEO DESK (employees.js): the hub's cards and the desk (KPIs against the baseline, the 90-day board,
+   activity, schedule, fixes). Only console tokens; no new colours. */
+.em-sub{display:block;margin-top:4px;font-size:14px}
+.em-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px}
+.em-card{display:flex;flex-direction:column;gap:6px}
+.em-card h4{margin:10px 0 2px;font-size:13px;font-weight:600;color:var(--mut)}
+.em-card ul{margin:0;padding-left:18px;font-size:14px;line-height:1.5}
+.em-card .acts{margin-top:auto;padding-top:12px;display:flex;flex-wrap:wrap;gap:8px}
+.em-soon{opacity:.72}
+.em-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.em-h h3{margin:0}
+.em-pitch{margin:2px 0 0;font-size:14px}
+.em-leave{color:var(--bad)}
+.em-kpis .kpi small i.okc{color:var(--ok)} .em-kpis .kpi small i.badc{color:var(--bad);font-size:inherit}
+.em-note{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:12px 0}
+.em-note b{font-weight:600}
+.em-note span{flex:1 1 320px;color:var(--mut);font-size:14px}
+.em-kpis{margin-top:14px}
+.em-kpis .kpi small{display:block;margin-top:4px;font-size:12px;color:var(--mut)}
+.em-kpis .kpi small i{font-style:normal;font-weight:600;margin-left:4px}
+.em-small{font-size:12.5px;margin:6px 0 0}
+.em-board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:10px}
+@media (max-width:980px){.em-board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.em-board{grid-template-columns:1fr}}
+.em-col h4{margin:0 0 8px;font-size:13px;font-weight:600}
+.em-item{border:1px solid var(--hair);border-radius:10px;padding:10px;margin-bottom:8px;display:grid;gap:6px;font-size:14px}
+.em-item p{margin:0;font-size:13px;line-height:1.45}
+.em-item select{justify-self:start;padding:4px 8px;border:1px solid var(--hair);border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:13px}
+.em-meta{display:flex;align-items:center;gap:8px;font-size:12px}
+.em-feed{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:14px}
+.em-feed li{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline}
+.em-feed time{font-size:12px;white-space:nowrap}
+.em-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.em-tbl th{text-align:left;font-weight:600;color:var(--mut);padding:6px 8px;border-bottom:1px solid var(--hair)}
+.em-tbl td{padding:7px 8px;border-bottom:1px solid var(--hair);vertical-align:top}
+.em-url{word-break:break-all;max-width:220px}
+.em-run{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px}
+.em-form{max-width:860px}
+.em-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.em-wide{grid-column:1/-1}
+@media (max-width:620px){.em-fields{grid-template-columns:1fr}}
+.em-trust{border:1px solid var(--hair);border-radius:10px;padding:10px 14px;margin:14px 0;display:grid;gap:8px;font-size:14px}
+.em-trust legend{font-weight:600;padding:0 4px}
+.em-trust label{display:grid;grid-template-columns:auto 1fr;gap:0 10px;align-items:baseline;cursor:pointer}
+.em-trust label>*:not(input){grid-column:2}
+.em-trust input[type=radio]{width:auto;margin:0;grid-row:1 / span 2;align-self:start;margin-top:3px}

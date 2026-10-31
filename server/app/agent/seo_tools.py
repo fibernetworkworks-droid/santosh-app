@@ -18,10 +18,13 @@ SEO_TOOLS = [
         "CTR / position vs previous period, striking-distance + low-CTR opportunities, cannibalisation (needs her Search Console "
         "connected in the app). action=brief: keyword (new page plan). action=schema (LocalBusiness JSON-LD). action=gbp_post: "
         "topic, offer. action=review_reply: review, stars, reviewer. action=approve: draft_id, text (ONLY when she says it is "
-        "final). action=task: task_id, status done|ignored|open. action=report (Excel). action=settings: weekday, morning_time."),
+        "final). action=task: task_id, status done|ignored|open. action=report (Excel). action=settings: weekday, morning_time. "
+        "v0.314 HIRED SEO EMPLOYEE (only when she hired it in Employees): action=report_pdf (the monthly PDF report now), "
+        "action=roadmap (rebuild the 90-day plan draft), action=plan_item: item_id, status planned|doing|waiting_her|done|skipped."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["site", "audit", "speed", "performance", "brief", "schema", "gbp_post", "review_reply",
-                                               "approve", "task", "report", "settings"]},
+                                               "approve", "task", "report", "settings", "report_pdf", "roadmap", "plan_item"]},
+         "item_id": {"type": "string"},
          "site": {"type": "string"}, "url": {"type": "string"}, "name": {"type": "string"}, "city": {"type": "string"},
          "state": {"type": "string"}, "street": {"type": "string"}, "pin": {"type": "string"}, "phone": {"type": "string"},
          "schema_type": {"type": "string"}, "hours": {"type": "string"}, "price_range": {"type": "string"},
@@ -34,9 +37,10 @@ SEO_TOOLS = [
     {"name": "seo_dekho", "description": (
         "Read SEO work (nothing changes). what=summary (score, open fixes, weekly numbers, Search Console link) | sites | tasks "
         "(status open|done|fixed|ignored) | pages | keywords (plan from her services + city, with Search Console positions) | "
-        "drafts | gsc (connected? properties) | rules (Google spam policies she must not break + Business Profile checklist)."),
+        "drafts | gsc (connected? properties) | rules (Google spam policies she must not break + Business Profile checklist) | "
+        "desk (v0.314 the hired SEO Employee: KPIs vs baseline, 90-day plan board, alerts, schedule; says if not hired)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["summary", "sites", "tasks", "pages", "keywords", "drafts", "gsc", "rules"]},
+         "what": {"type": "string", "enum": ["summary", "sites", "tasks", "pages", "keywords", "drafts", "gsc", "rules", "desk"]},
          "site": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
@@ -86,6 +90,19 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if not _owner(ctx):
                 raise ToolError("Sirf owner.")
             return S.save_settings(t, **{k: a[k] for k in ("weekday", "morning_time") if k in a})
+        if action in ("report_pdf", "roadmap", "plan_item"):
+            from ..employee import hire
+            from ..seo import desk as D
+            if not hire.is_hired(t, D.KEY):
+                raise ToolError("SEO Specialist hired nahi hai: Employees mein hire karne ke baad yeh kaam hota hai.")
+            if action == "plan_item":
+                return D.set_item(t, _s(a.get("item_id")), _s(a.get("status")))
+            sid = D.desk_view(t, site).get("site", {}).get("id")
+            if not sid:
+                raise ToolError("Pehle onboarding: Employees > SEO Specialist mein website jodiye.")
+            if action == "roadmap":
+                return D.build_roadmap(t, sid)
+            return D.monthly_report(t, sid, conv)
     except (S.SeoError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")
@@ -115,6 +132,13 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return st
         if what == "rules":
             return {"never": list(R.NEVER), "gbp_checklist": R.GBP_CHECKLIST, "cwv": R.CWV}
+        if what == "desk":
+            from ..seo import desk as D
+            v = D.desk_view(t, site)
+            if v.get("onboarded"):
+                v.pop("sites", None)
+                v["open_tasks"] = v.get("open_tasks", [])[:10]
+            return v
     except (S.SeoError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("what galat")

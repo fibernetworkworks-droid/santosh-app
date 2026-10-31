@@ -16,6 +16,7 @@ from .events import bus
 from .whatsapp import WhatsAppError, get_whatsapp
 
 log = logging.getLogger("santosh.worker")
+_SEO_DESK_BUSY = {"on": False}     # v0.314 one SEO Employee sweep at a time
 
 # Meta error codes that mean "this number will never work" (no retry).
 PERMANENT_CODES = {131026, 131021, 131009, 131008, 132000, 132001, 132012, 133010}
@@ -835,6 +836,21 @@ async def employee_jobs() -> None:
             seo.send_morning(tenant)
     except Exception:
         log.exception("seo weekly failed")
+    try:                                   # v0.314 the hired SEO Employee's 24/7 loop (hourly watch ... monthly report)
+        from .seo import desk as seo_desk
+        if not _SEO_DESK_BUSY["on"]:
+            _SEO_DESK_BUSY["on"] = True
+
+            def _sweep():
+                try:
+                    seo_desk.run_due()
+                except Exception:
+                    log.exception("seo desk sweep failed")
+                finally:
+                    _SEO_DESK_BUSY["on"] = False
+            asyncio.get_running_loop().run_in_executor(None, _sweep)   # never blocks the worker loop (crawls take minutes)
+    except Exception:
+        log.exception("seo desk failed")
     try:
         from .telecall import service as telecall
         for tenant in telecall.due_mornings():

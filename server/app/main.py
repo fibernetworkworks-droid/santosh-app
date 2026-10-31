@@ -1467,7 +1467,9 @@ def console_password(body: ConsolePasswordIn, tenant: str = Depends(current_tena
 @app.get("/api/console/me", dependencies=[Depends(require_key)])
 def console_me(tenant: str = Depends(current_tenant)):
     from .console import service as console
-    return {**console.me(tenant), "arena": tenant == get_settings().tenant_id}   # v0.312 the owner's Arena screen
+    from .employee import hire
+    return {**console.me(tenant), "arena": tenant == get_settings().tenant_id,   # v0.312 the owner's Arena screen
+            "employees": hire.hired_keys(tenant)}                               # v0.314 desks appear only for hired employees
 
 
 @app.get("/api/console/conversations", dependencies=[Depends(require_key)])
@@ -6579,6 +6581,97 @@ def _seo(fn, *a, **k):
         return fn(*a, **k)
     except (seo.SeoError, ValueError) as e:
         raise HTTPException(400, str(e))
+
+
+# ---------------------------------------------------------------- v0.314 HIRE AN EMPLOYEE + the SEO Employee desk
+def _hire_call(fn, *a, **k):
+    from .employee import hire
+    from .seo import service as seo
+    try:
+        return fn(*a, **k)
+    except (hire.HireError, seo.SeoError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/employees", dependencies=[Depends(require_key)])
+def employees_catalog(tenant: str = Depends(current_tenant)):
+    from .employee import hire
+    return {"employees": hire.catalog(tenant), "hired": hire.hired_keys(tenant)}
+
+
+@app.post("/api/employees/{key}/hire", dependencies=[Depends(require_key)])
+def employees_hire(key: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    from .employee import hire
+    return _hire_call(hire.hire, tenant, key, str((body or {}).get("trust") or "seekh"))
+
+
+@app.post("/api/employees/{key}/{action}", dependencies=[Depends(require_key)])
+def employees_action(key: str, action: str, tenant: str = Depends(current_tenant)):
+    from .employee import hire
+    fn = {"pause": hire.pause, "resume": hire.resume, "leave": hire.leave}.get(action)
+    if fn is None:
+        raise HTTPException(404, "action: pause | resume | leave")
+    return _hire_call(fn, tenant, key)
+
+
+@app.put("/api/employees/{key}/settings", dependencies=[Depends(require_key)])
+def employees_settings(key: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .employee import hire
+    allowed = {k: body[k] for k in ("trust", "max_pages", "report_to") if k in body}
+    return _hire_call(hire.save_settings, tenant, key, **allowed)
+
+
+@app.post("/api/seo/onboard", dependencies=[Depends(require_key)])
+def seo_onboard(body: dict, tenant: str = Depends(current_tenant)):
+    from .seo import desk
+
+    def lst(v):
+        if isinstance(v, str):
+            return [x.strip() for x in v.replace("\n", ",").split(",") if x.strip()]
+        return [str(x) for x in (v or [])]
+    wd = body.get("weekday")
+    return _hire_call(desk.onboard, tenant, str(body.get("url") or ""), str(body.get("name") or ""), str(body.get("city") or ""),
+                lst(body.get("services")), str(body.get("goal") or ""), str(body.get("customers") or ""), lst(body.get("cities")),
+                lst(body.get("competitors")), str(body.get("trust") or "seekh"), int(wd) if wd not in (None, "") else None,
+                str(body.get("morning_time") or ""))
+
+
+@app.get("/api/seo/desk", dependencies=[Depends(require_key)])
+def seo_desk(site: str = "", tenant: str = Depends(current_tenant)):
+    from .seo import desk
+    return _hire_call(desk.desk_view, tenant, site)
+
+
+@app.post("/api/seo/roadmap/approve", dependencies=[Depends(require_key)])
+def seo_roadmap_approve(body: dict | None = None, tenant: str = Depends(current_tenant)):
+    from .seo import desk
+    return _hire_call(desk.approve_roadmap, tenant, str((body or {}).get("site") or ""))
+
+
+@app.post("/api/seo/roadmap/item/{item_id}", dependencies=[Depends(require_key)])
+def seo_roadmap_item(item_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .seo import desk
+    return _hire_call(desk.set_item, tenant, item_id, str(body.get("status") or ""))
+
+
+@app.post("/api/seo/run/{job}", dependencies=[Depends(require_key)])
+def seo_run(job: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """'Run now' on the desk: the job starts in the background and its result lands on the desk / in chat."""
+    import threading
+    from .employee import hire
+    from .seo import desk
+    from .seo import service as seo
+    if job not in ("first", "hourly", "daily", "weekly", "monthly", "roadmap"):
+        raise HTTPException(404, "job: first | hourly | daily | weekly | monthly | roadmap")
+    if not hire.is_hired(tenant, desk.KEY):
+        raise HTTPException(400, "SEO Specialist abhi hired nahi hai.")
+    sid = _hire_call(lambda: seo.sites(tenant) and desk.desk_view(tenant, str((body or {}).get("site") or ""))["site"]["id"])
+    if not sid:
+        raise HTTPException(400, "Pehle onboarding: website ka address.")
+    if job == "roadmap":
+        return _hire_call(desk.build_roadmap, tenant, sid)
+    threading.Thread(target=lambda: desk.run_job(tenant, sid, job), daemon=True).start()
+    return {"started": job, "site": sid}
 
 
 async def _finish_seo_link(request: Request) -> HTMLResponse:
