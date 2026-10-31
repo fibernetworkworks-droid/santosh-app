@@ -1,0 +1,471 @@
+/// v0.317 HIRE AN EMPLOYEE (Profile > Employees): the Employee Hub (hire / pause / let go) and the SEO Desk of a
+/// hired SEO Specialist (onboarding, KPIs against the baseline, the 90-day plan, alerts, schedule, run-now buttons).
+/// A desk exists only while its employee is hired. Same server as the web console: /api/employees*, /api/seo/desk...
+library;
+
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../state.dart';
+import 'glass.dart';
+
+String _s(dynamic v) => v == null ? '' : '$v';
+List<Map<String, dynamic>> _list(dynamic l) =>
+    List<Map<String, dynamic>>.from(((l as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
+String _num(dynamic v) {
+  if (v == null || v == '') return '–';
+  if (v is double) return v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 1);
+  return '$v';
+}
+
+const _ws = {'technical': 'Technical', 'content': 'Content', 'local': 'Local', 'authority': 'Authority',
+    'ai_search': 'AI search', 'reporting': 'Reporting'};
+const _cols = [['planned', 'Planned'], ['doing', 'Doing'], ['waiting_her', 'Waiting for you'], ['done', 'Done'], ['skipped', 'Skipped']];
+
+// ------------------------------------------------------------------ the hub
+class EmployeesScreen extends StatefulWidget {
+  const EmployeesScreen({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<EmployeesScreen> createState() => _EmployeesScreenState();
+}
+
+class _EmployeesScreenState extends State<EmployeesScreen> {
+  List<Map<String, dynamic>> _emps = [];
+  bool _loaded = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final d = await widget.app.api!.employees();
+      if (mounted) {
+        setState(() {
+          _emps = _list(d['employees']);
+          _loaded = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loaded = true);
+        _snack(context, '$e');
+      }
+    }
+  }
+
+  Future<void> _act(String key, String action) async {
+    if (action == 'leave') {
+      final ok = await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+                title: const Text('Let go?'),
+                content: const Text('Its jobs stop at once. Its history stays, read-only.'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                  TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Let go')),
+                ],
+              ));
+      if (ok != true) return;
+    }
+    setState(() => _busy = true);
+    try {
+      await widget.app.api!.employeeAct(key, action);
+      if (mounted) {
+        _snack(context, switch (action) {
+          'hire' => 'Hired. Set it up on its desk.',
+          'pause' => 'Paused. No jobs run until you resume.',
+          'resume' => 'Back at work.',
+          _ => 'Let go. Its jobs have stopped.',
+        });
+      }
+      await _load();
+      if (action == 'hire' && key == 'seo' && mounted) _openDesk();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  void _openDesk() => Navigator.of(context)
+      .push(MaterialPageRoute(builder: (_) => SeoDeskScreen(app: widget.app)))
+      .then((_) => _load());
+
+  Widget _card(Map<String, dynamic> e) {
+    final st = _s(e['status']);
+    final hired = st == 'hired' || st == 'paused';
+    final live = e['live'] == true;
+    Widget list(String title, dynamic xs) {
+      final items = ((xs as List?) ?? const []).map((x) => '$x').toList();
+      if (items.isEmpty) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(color: C.muted, fontSize: 12, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          for (final x in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('•  ', style: TextStyle(color: C.accent)),
+                Expanded(child: Text(x, style: const TextStyle(fontSize: 13.5, height: 1.35))),
+              ]),
+            ),
+        ]),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Glass(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(_s(e['name']), style: display(16))),
+            if (st == 'hired') const _Tag('Working', C.ok),
+            if (st == 'paused') const _Tag('Paused', C.warn),
+            if (!live) const _Tag('Coming soon', C.muted),
+          ]),
+          const SizedBox(height: 6),
+          Text(_s(e['pitch']), style: const TextStyle(fontSize: 14, height: 1.35)),
+          if (live) ...[list('What it does', e['does']), list('What it needs', e['needs']), list('What it will never do', e['never'])],
+          const SizedBox(height: 12),
+          if (live && !hired) GradientButton(label: 'Hire ${_s(e['name'])}', icon: Icons.person_add_alt_1_rounded,
+              onTap: _busy ? null : () => _act(_s(e['key']), 'hire')),
+          if (hired)
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              FilledButton.icon(onPressed: _busy ? null : _openDesk, icon: const Icon(Icons.dashboard_rounded), label: const Text('Open desk')),
+              OutlinedButton(onPressed: _busy ? null : () => _act(_s(e['key']), st == 'paused' ? 'resume' : 'pause'),
+                  child: Text(st == 'paused' ? 'Resume' : 'Pause')),
+              TextButton(onPressed: _busy ? null : () => _act(_s(e['key']), 'leave'),
+                  child: const Text('Let go', style: TextStyle(color: C.bad))),
+            ]),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Employees')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+            const Text('Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.',
+                style: TextStyle(color: C.muted, fontSize: 13.5, height: 1.35)),
+            const SizedBox(height: 14),
+            if (!_loaded) const Center(child: CircularProgressIndicator()),
+            for (final e in _emps) _card(e),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag(this.text, this.color);
+  final String text;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(color: color.withOpacity(.16), borderRadius: BorderRadius.circular(20)),
+        child: Text(text, style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w600)),
+      );
+}
+
+// ------------------------------------------------------------------ the SEO desk
+class SeoDeskScreen extends StatefulWidget {
+  const SeoDeskScreen({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<SeoDeskScreen> createState() => _SeoDeskScreenState();
+}
+
+class _SeoDeskScreenState extends State<SeoDeskScreen> {
+  Map<String, dynamic>? _d;
+  bool _busy = false;
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    _poll?.cancel();
+    try {
+      final d = await widget.app.api!.seoDesk();
+      if (!mounted) return;
+      setState(() => _d = d);
+      if (_s(d['state']) == 'first_run') _poll = Timer(const Duration(seconds: 10), _load);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _call(Future<Map<String, dynamic>> Function() fn, String done) async {
+    setState(() => _busy = true);
+    try {
+      await fn();
+      if (mounted) _snack(context, done);
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _connect() async {
+    try {
+      final url = await widget.app.api!.seoGscLink();
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _onboard() async {
+    final f = {for (final k in ['url', 'name', 'city', 'services', 'goal', 'customers', 'competitors']) k: TextEditingController()};
+    String trust = 'seekh';
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: C.bgBottom,
+      builder: (c) => StatefulBuilder(
+        builder: (c, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(c).viewInsets.bottom + 16),
+          child: SingleChildScrollView(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text('Set up your SEO Specialist', style: display(17)),
+              const SizedBox(height: 4),
+              const Text('Then it checks your whole website, reads your Google numbers, saves a baseline and writes a 90-day plan.',
+                  style: TextStyle(color: C.muted, fontSize: 13)),
+              const SizedBox(height: 12),
+              for (final row in const [
+                ['url', 'Website address', 'yourbusiness.in'],
+                ['name', 'Business name', 'Sharma Dental Clinic'],
+                ['city', 'City', 'Nagpur'],
+                ['services', 'What you sell (comma separated)', 'Root canal, implants, braces'],
+                ['goal', 'What do you want from Google?', 'More calls for implants'],
+                ['customers', 'Who are your customers?', 'Families in Dharampeth and Sadar'],
+                ['competitors', "Competitors' websites (optional)", 'smiledental.in, citydentist.in'],
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TextField(controller: f[row[0]], decoration: InputDecoration(labelText: row[1], hintText: row[2])),
+                ),
+              const Text('How much may it do on its own?', style: TextStyle(fontWeight: FontWeight.w600)),
+              RadioListTile<String>(
+                  value: 'seekh', groupValue: trust, onChanged: (v) => setSheet(() => trust = v ?? 'seekh'),
+                  title: const Text('Seekh'), subtitle: const Text('Asks you before every change outside Hoola')),
+              RadioListTile<String>(
+                  value: 'saathi', groupValue: trust, onChanged: (v) => setSheet(() => trust = v ?? 'seekh'),
+                  title: const Text('Saathi'), subtitle: const Text('Small, undoable changes; tells you the same day')),
+              const SizedBox(height: 8),
+              GradientButton(label: 'Start work', icon: Icons.play_arrow_rounded, onTap: () => Navigator.pop(c, true)),
+            ]),
+          ),
+        ),
+      ),
+    );
+    if (ok != true) return;
+    final body = <String, dynamic>{for (final e in f.entries) e.key: e.value.text.trim(), 'trust': trust};
+    if (_s(body['url']).isEmpty) {
+      if (mounted) _snack(context, 'Website address chahiye.');
+      return;
+    }
+    await _call(() => widget.app.api!.seoOnboard(body), 'Started. The first check takes 10-15 minutes.');
+  }
+
+  Widget _kpi(Map<String, dynamic> k) {
+    final ch = k['change_pct'];
+    final good = k['good'] == true;
+    return SizedBox(
+      width: 150,
+      child: Glass(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_num(k['now']), style: display(20)),
+          const SizedBox(height: 2),
+          Text(_s(k['name']), style: const TextStyle(color: C.muted, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text('from ${_num(k['baseline'])}${ch == null ? '' : '  ${(ch as num) >= 0 ? '+' : ''}$ch%'}',
+              style: TextStyle(fontSize: 11.5, color: ch == null ? C.faint : (good ? C.ok : C.bad))),
+        ]),
+      ),
+    );
+  }
+
+  Widget _item(Map<String, dynamic> it) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Glass(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            _Tag(_ws[_s(it['workstream'])] ?? _s(it['workstream']), C.violet),
+            const SizedBox(width: 8),
+            Text('Week ${_s(it['week'])}${_s(it['owner']) == 'her' ? ' · needs you' : ''}',
+                style: const TextStyle(color: C.muted, fontSize: 12)),
+          ]),
+          const SizedBox(height: 6),
+          Text(_s(it['title']), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          if (_s(it['why']).isNotEmpty)
+            Padding(padding: const EdgeInsets.only(top: 3), child: Text(_s(it['why']), style: const TextStyle(color: C.muted, fontSize: 12.5))),
+          DropdownButton<String>(
+            value: _s(it['status']),
+            isDense: true,
+            underline: const SizedBox.shrink(),
+            items: [for (final c in _cols) DropdownMenuItem(value: c[0], child: Text(c[1], style: const TextStyle(fontSize: 13)))],
+            onChanged: _busy
+                ? null
+                : (v) {
+                    if (v != null) _call(() => widget.app.api!.seoRoadmapItem(_s(it['id']), v), 'Updated.');
+                  },
+          ),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = _d;
+    final children = <Widget>[];
+    if (d == null) {
+      children.add(const Center(child: CircularProgressIndicator()));
+    } else if (d['hired'] != true) {
+      children.add(const Text('The SEO Specialist is not hired. Hire it in Employees first.', style: TextStyle(fontSize: 14)));
+    } else if (d['onboarded'] != true) {
+      children.addAll([
+        const Text('Five questions, then your SEO Specialist starts: full website check, Google numbers, a baseline and a 90-day plan.',
+            style: TextStyle(fontSize: 14, height: 1.35)),
+        const SizedBox(height: 14),
+        GradientButton(label: 'Set up', icon: Icons.rocket_launch_rounded, onTap: _busy ? null : _onboard),
+      ]);
+    } else {
+      final site = Map<String, dynamic>.from((d['site'] as Map?) ?? const {});
+      final google = Map<String, dynamic>.from((d['google'] as Map?) ?? const {});
+      final board = Map<String, dynamic>.from((d['board'] as Map?) ?? const {});
+      final state = _s(d['state']);
+      children.addAll([
+        Row(children: [
+          Expanded(child: Text(_s(site['name']).isEmpty ? _s(site['url']) : _s(site['name']), style: display(17))),
+          _Tag(switch (state) { 'ready' => 'Working', 'first_run' => 'First check running', 'error' => 'Stopped', _ => state },
+              state == 'error' ? C.bad : (state == 'ready' ? C.ok : C.warn)),
+        ]),
+        Text(_s(site['url']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        const SizedBox(height: 12),
+        if (google['connected'] != true)
+          Glass(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Connect Google', style: display(14)),
+              const SizedBox(height: 4),
+              const Text('Search Console (and Analytics, if you use it) give the real numbers: clicks, searches, leads. Read-only.',
+                  style: TextStyle(color: C.muted, fontSize: 12.5)),
+              const SizedBox(height: 8),
+              FilledButton(onPressed: _connect, child: const Text('Connect Google')),
+            ]),
+          ),
+        if (_s(d['roadmap_status']) == 'draft') ...[
+          const SizedBox(height: 10),
+          Glass(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Your 90-day plan is ready', style: display(14)),
+              const SizedBox(height: 4),
+              Text('${_s(d['roadmap_count'])} steps from the real audit. Read them below and approve to start the weekly work.',
+                  style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              const SizedBox(height: 8),
+              FilledButton(
+                  onPressed: _busy ? null : () => _call(widget.app.api!.seoRoadmapApprove, 'Plan approved.'),
+                  child: const Text('Approve plan')),
+            ]),
+          ),
+        ],
+        const SizedBox(height: 14),
+        Wrap(spacing: 10, runSpacing: 10, children: [for (final k in _list(d['kpis'])) _kpi(k)]),
+        const SizedBox(height: 6),
+        Text('Baseline from ${_s((d['baseline'] as Map?)?['date'])}. Google data runs three days behind.',
+            style: const TextStyle(color: C.faint, fontSize: 11.5)),
+        const SizedBox(height: 16),
+        Text('90-day plan', style: display(15)),
+        for (final c in _cols.take(4)) ...[
+          const SizedBox(height: 10),
+          Text('${c[1]} (${_list(board[c[0]]).length})', style: const TextStyle(color: C.muted, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          for (final it in _list(board[c[0]])) _item(it),
+        ],
+        const SizedBox(height: 16),
+        Text('Activity and alerts', style: display(15)),
+        const SizedBox(height: 6),
+        for (final e in _list(d['events']).take(12))
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+                switch (_s(e['level'])) { 'bad' => Icons.error_rounded, 'warn' => Icons.warning_rounded, 'ok' => Icons.check_circle_rounded, _ => Icons.info_rounded },
+                color: switch (_s(e['level'])) { 'bad' => C.bad, 'warn' => C.warn, 'ok' => C.ok, _ => C.muted }),
+            title: Text(_s(e['text']), style: const TextStyle(fontSize: 13.5)),
+            subtitle: Text(_s(e['at']).replaceFirst('T', ' ').split('.').first, style: const TextStyle(fontSize: 11.5, color: C.faint)),
+          ),
+        const SizedBox(height: 16),
+        Text('Runs 24/7', style: display(15)),
+        const SizedBox(height: 6),
+        for (final j in _list(d['schedule']))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(children: [
+              Expanded(child: Text(_s(j['job']), style: const TextStyle(fontSize: 13.5))),
+              Text(_s(j['every']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            ]),
+          ),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.seoRun('weekly'), 'Full check started.'),
+              child: const Text('Full check now')),
+          OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.seoRun('daily'), 'Refreshing numbers.'),
+              child: const Text('Refresh numbers')),
+          OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.seoRun('monthly'), 'The PDF arrives in your chat.'),
+              child: const Text('Monthly report now')),
+        ]),
+        const SizedBox(height: 16),
+        Text('Open fixes on the website', style: display(15)),
+        const SizedBox(height: 6),
+        for (final t in _list(d['open_tasks']).take(15))
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.circle, size: 10, color: _s(t['level']) == 'bad' ? C.bad : (_s(t['level']) == 'warn' ? C.warn : C.muted)),
+            title: Text(_s(t['text']), style: const TextStyle(fontSize: 13.5)),
+            subtitle: Text('${_s(t['url'])}\n${_s(t['fix'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          ),
+      ]);
+    }
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('SEO Desk')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: children),
+        ),
+      ),
+    );
+  }
+}

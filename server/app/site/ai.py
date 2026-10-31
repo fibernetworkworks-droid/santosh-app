@@ -48,8 +48,8 @@ EFFORT = {"app_art": "xhigh", "app_critique": "high", "app": "high", "app_code":
           "build": "high", "site_art": "xhigh", "site_critique": "high", "site_edit": "medium"}
 APP_KINDS = APP_KINDS + ("app_art", "app_critique")
 SITE_KINDS = ("build", "site_art", "site_critique", "site_edit")   # v0.225 Website Sahayak on the same Opus path
-DOC_KINDS = ("doc_art", "doc_critique")       # v0.313 HOOLA PRINT: the PDF look + the page review, same Opus path
-EFFORT.update({"doc_art": "medium", "doc_critique": "medium"})
+DOC_KINDS = ("doc_art", "doc_critique", "seo_plan")   # v0.317 + the SEO Employee's 90-day plan       # v0.313 HOOLA PRINT: the PDF look + the page review, same Opus path
+EFFORT.update({"doc_art": "medium", "doc_critique": "medium", "seo_plan": "high"})
 
 
 def _opus_kind(kind: str) -> bool:

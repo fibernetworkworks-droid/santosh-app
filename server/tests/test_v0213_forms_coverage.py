@@ -25,7 +25,7 @@ NEW_TYPES = ["page", "grid", "checkbox_grid", "upload"]
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.317.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.318.0"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 def test_registry_has_13_tools():

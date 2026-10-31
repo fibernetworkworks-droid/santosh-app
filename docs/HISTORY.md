@@ -11896,8 +11896,73 @@ Owner: "NOW STUCK ON PICTURE CHECK" - the Director film sat on step 4 Pictures.
   test_v0304 / test_v0306; both "Painting…" boxes now use the studio's own working bar (`.bar i.indet`). Version pins moved to
   0.316.0+356 (the build number had been left at 351).
 
-## v0.317.0 ASLI APP — App Sahayak Phase 1: every native app gets its own backend (owner: "HOOLA MUST CAN BUILD AND DEVLOPE A END TO END ANY DESIGN ANY COMPLEXITY ... AS RELIBLE AND ROBUST AS REAL HUMAN APP DEVLOPMENT" -> "GO PHASE 1")
-Built as 0.314.0, re-versioned 0.316.0 and then 0.317.0 past the parallel v0.314.0 (AAGE BADHO 2), v0.315.0 (BADI WEBSITE) and v0.316.0 (DIRECTOR PICTURES FIX).
+## v0.317.0 SEO EMPLOYEE Phase 0 + 1 — hire an AI employee; the SEO Specialist's eyes and brain (31 Oct 2026, owner: "GO PHASE 0 AND 1")
+Plan: `docs/SEO_EMPLOYEE_PLAN.md` (researched how world-class SEO agencies work: audit + baseline first, 90-day roadmap,
+monthly sprints over technical / content / local / authority / AI search, weekly + monthly reporting, change log and
+measured impact; Google's spam policies as hard lines). This version = Phase 0 (hire frame) + Phase 1 (eyes and brain).
+Built on v0.103 SEO Sahayak (crawl, PageSpeed, Search Console, drafts) and the v0.58 Employee frame - nothing replaced.
+
+PHASE 0 - HIRE
+- `server/app/employee/hire.py` (NEW): table `hired_employees` (tenant, key, status hired | paused | left, trust seekh |
+  saathi | bharosa, settings JSON, hired_at, left_at; registered in db.init_db + per-engine self-heal). CATALOG: `seo`
+  SEO Specialist (live: what it does / needs / will never do) + Social Media Manager, Accounts Assistant, Telecaller,
+  Customer Support as "coming" (can't be hired; HireError). hire / pause / resume / leave (leave stamps left_at, keeps
+  history; hiring again makes a new row), hired_keys (what the surfaces show), working_tenants (hired AND not paused =
+  the 24/7 loop), settings / save_settings (trust column + JSON).
+- API: GET /api/employees, POST /api/employees/{key}/hire, POST /api/employees/{key}/pause|resume|leave,
+  PUT /api/employees/{key}/settings (trust, max_pages, report_to). `/api/console/me` now carries `employees`.
+  (A helper named `_emp` already existed lower in main.py for the v0.58 routes and silently replaced the new one - the new
+  helper is `_hire_call`.)
+- Console: `static/console/employees.js` (HoolaEmployees: hub + desk), views `v-hire` / `v-seodesk` in v2.html, sidebar
+  "Employees" for everyone and "SEO Desk" inserted / removed live by `syncEmployees` in v2.js (only while hired), CSS
+  block "v0.317 EMPLOYEES + SEO DESK" at the end of v2.css (console tokens only). Checked by rendering the real files with
+  sample data: two layout faults found and fixed (the notes inherited `.tile`'s column direction so `flex:1 1 320px`
+  became 320 px of HEIGHT; the trust radios inherited `.ar-form input{width:100%}`).
+- Phone: `lib/ui/employees_screen.dart` (EmployeesScreen hub + SeoDeskScreen + onboarding sheet), Profile > "Employees
+  · hire AI staff", api.dart employees / employeeAct / employeeSettings / seoDesk / seoOnboard / seoRoadmapApprove /
+  seoRoadmapItem / seoRun. (`withOpacity`, not `withValues` - CI's Flutter is 3.24.)
+
+PHASE 1 - EYES AND BRAIN (`server/app/seo/desk.py`, NEW; tables seo_desk, seo_roadmap, seo_events)
+- Onboarding (`onboard`): her site + business, goal, customers, cities, competitors, trust, weekly-note day/time ->
+  first run in the background: full crawl (200 pages, cap 500 for a hired employee; one-off checks keep 60), speed,
+  Search Console (28 days, final data) + Google Analytics -> FROZEN baseline -> roadmap draft. State new -> first_run ->
+  ready | error (an error is retried by the scheduler).
+- Crawl (seo/service.py + rules.link_issues): click depth from home, each page's internal links, sitemap URLs, every
+  redirect (also those to an already-crawled page - a test caught that they were skipped), mixed content in the parser.
+  New issues: broken_link (with the pages that link to the 404), redirect_link, orphan (in the sitemap, no inlinks),
+  deep (> 3 clicks), dup_desc, mixed. Texts in Hinglish like the rest of the fix list.
+- Google Analytics: optional `analytics.readonly` scope added to the SAME Google sign-in as Search Console (scopes kept in
+  seo_google.scopes; gsc_status.analytics). Admin API accountSummaries + dataStreams pick the property whose web stream
+  is her site; Data API runReport -> Organic Search sessions + keyEvents (leads / orders she marked), same window.
+- Roadmap (`build_roadmap`): Opus (site/ai kind `seo_plan`, effort high, 4,000 tokens, 90 s cap) gets the real audit
+  (issues by code and count), Search Console opportunities, her goals / services / competitors and the baseline, and
+  returns 10-18 items {week, workstream technical | content | local | authority | ai_search | reporting, title, why,
+  impact, effort, owner hoola | her}; cleaned to the fixed fields. Off / slow / unusable -> the rules plan (issues by
+  severity, opportunities, then GBP, service + city pages, FAQ for AI answers, real local links, the 90-day review). A
+  rewrite replaces only PLANNED items; done work and an approved plan stay. (A test caught that the first run read
+  Search Console without saving the snapshot, so the plan never saw the opportunities - first and weekly runs now store it.)
+- Desk (`desk_view`): KPIs against the baseline (score, urgent issues, clicks, impressions, position, organic visits,
+  leads, mobile LCP - each with change % and good / bad direction), the board, events, schedule, open fixes, Google status.
+- 24/7 (`run_due` from worker.py in an executor, one sweep at a time, every ~4 minutes; only hired and not paused):
+  hourly watch (home up, robots.txt `Disallow: /`, home noindex, sitemap) alerting once per CHANGE with a recovery note;
+  daily Google numbers (28-day, not stored; fills the baseline once if Google was connected after hiring); weekly full
+  check + speed + stored snapshot on her weekday; monthly Hoola Print PDF report on the 1st (Key takeaways, KPI table vs
+  baseline, clicks trend chart, top searches, work done, next month, open fixes) delivered to chat. Each job stamped in
+  seo_desk.stamps so it runs once; a failing job is written on the desk and never stops the others.
+- Tools: `seo` action report_pdf / roadmap / plan_item, `seo_dekho` what=desk (only for a hired employee).
+- Read-only toward her site and Google in this phase (Phase 2 = hands with the trust gate and undo).
+- Tests: tests/test_v0317_seo_employee.py (11): hire / pause / resume / leave and the desk only after hiring; onboarding ->
+  baseline (Search Console + Analytics) -> Opus roadmap (junk cleaned) -> approve -> rebuild keeps done work; the rules
+  roadmap without a model; the full crawl's link checks; watch alerts once per change + recovery; the scheduler runs
+  each job once on her clock and nothing while paused; daily keeps speed and fills a late baseline; the monthly PDF;
+  the API end to end; the tools; console + phone wiring. Related suites (v0.103 SEO, v0.58 employee + inbox, Hoola Print,
+  routines) green: 75.
+- Not yet (later phases): changes to her site / Google profile (Phase 2 hands + undo + impact), keyword volumes (needs
+  Google Ads developer token), Business Profile posts / reviews (needs Business Profile API approval), Bing, backlinks,
+  AI-visibility panel, outreach.
+
+## v0.318.0 ASLI APP — App Sahayak Phase 1: every native app gets its own backend (owner: "HOOLA MUST CAN BUILD AND DEVLOPE A END TO END ANY DESIGN ANY COMPLEXITY ... AS RELIBLE AND ROBUST AS REAL HUMAN APP DEVLOPMENT" -> "GO PHASE 1")
+Built as 0.314.0, re-versioned 0.316.0, 0.317.0 and then 0.318.0 past the parallel v0.314.0 (AAGE BADHO 2), v0.315.0 (BADI WEBSITE) v0.316.0 (DIRECTOR PICTURES FIX) and v0.317.0 (SEO EMPLOYEE).
 The gap it closes: a built Android app could only SHOW her public facts / products (`/api/app-content`); orders, bookings,
 logins and the blueprint's tables existed only on paper. Phase plan given to the owner: 1 real backend (this), 2 feature
 engine (push, camera, uploads, maps, QR, payments flow ...), 3 engineering like a team (generated tests, performance
