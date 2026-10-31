@@ -150,4 +150,4 @@ def test_phone_screen_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.325.0"
+    assert APP_VERSION == "0.326.0"

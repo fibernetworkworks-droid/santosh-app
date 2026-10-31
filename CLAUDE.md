@@ -136,9 +136,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.325.0 (pubspec 0.325.0+365). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.326.0 (pubspec 0.326.0+366). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.326 HER TEST RUN (v0.314 test): big ask = server plan card after round 1, steps from her words (`santosh._ask_steps`);
+  doc_studio QA before the card, a warned draft held for ONE fix (`docstudio_tools._HELD`, `flush_held`); a server-refused site asks before her PC.
 - v0.325 STUDIO TOOLS (Phase 3 of the design audit): no tool tab rows, 380px tool layout, Video More settings + status chips +
   ONE failure notice, picture captions date/style, 3x3 styles, Dubbing top languages + counter, voice colour marks, Editor drop zone.
 - v0.324 TEEN LOOK JALDI: the 3 looks in waves (pictures + 3 art directions together, all look sections together, 3 screenshots
