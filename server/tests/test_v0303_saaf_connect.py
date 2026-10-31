@@ -50,3 +50,23 @@ def test_switch_off_brings_everything_back(clean, monkeypatch):
     from app.config import get_settings
     get_settings.cache_clear()
     assert clean.catalog("default")["total"] == 694
+
+
+def test_v0319_swiggy_zomato_hidden_until_partner_approval(clean, monkeypatch):
+    gated = {"swiggy-food", "swiggy-instamart", "swiggy-dineout", "zomato"}
+    cat = clean.catalog("default")
+    assert not gated & {p["pack_id"] for p in cat["packs"]}
+    assert all(s["id"] != "food" for s in cat["top"])                  # Roz ke kaam: no "Khana aur kirana"
+    assert not gated & {a["pack_id"] for a in clean.connections("default")}
+    assert not gated & {p["pack_id"] for p in clean.find("default", "swiggy se biryani mangao")["packs"]}
+    monkeypatch.setenv("FOOD_PARTNER_APPROVED", "true")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    assert gated <= {p["pack_id"] for p in clean.catalog("default")["packs"]}
+
+
+def test_v0320_upi_and_cab_tiles_carry_the_app_to_open(clean):
+    cat = {p["pack_id"]: p for p in clean.catalog("default")["packs"]}
+    assert cat["google-pay"]["android_package"] == "com.google.android.apps.nbu.paisa.user"
+    assert cat["uber-india"]["android_package"] == "com.ubercab"
+    assert cat["ola"]["android_package"] == "com.olacabs.customer"

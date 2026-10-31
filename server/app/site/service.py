@@ -37,6 +37,7 @@ from . import pictures as P
 from . import edit as E
 from . import lang as LG
 from . import quality as Q
+from . import sitemap as SM
 from . import taxonomy as T
 from .models import Site, SiteLead, SiteVersion
 
@@ -324,6 +325,13 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                   "shots": _j(r.board, {}).get("shots", {}), "photos": [p.get("name") for p in _j(r.photos, [])],
                   "languages": _j(r.languages, ["en"]),
                   "app": [{"key": c["key"], "label": c["label"]} for c in app_schema(r).get("collections", [])]})
+        if plan.get("big"):                  # v0.315 the big site's size and its lists of pages
+            v["size"] = SM.counts(plan)
+            v["collections"] = [{"key": c["key"], "label": c["label"], "items": len(c["items"]),
+                                 "examples": [i["title"] for i in c["items"][:6]]} for c in SM.collections(plan)]
+            v["plan"]["groups"] = [{"group": g or "", "pages": [p["slug"] for p in ps]}
+                                   for g, ps in SM.groups(plan, B.menu_pages(plan))]
+    v["mapping"] = r.stage == "sitemap"
     return v
 
 
@@ -343,7 +351,12 @@ def _estimate(r: Site, plan: dict[str, Any]) -> dict[str, Any] | None:
     try:
         have = len(_sections(r)) if r.status != "planned" else 0
         pics = max(0, P.wanted() - len(_j(r.photos, []))) if r.status == "planned" and P.on() else 0
-        return Q.estimate(plan, have, looks=0 if r.status != "planned" else 3, photos=pics)
+        est = Q.estimate(plan, have, looks=0 if r.status != "planned" else 3, photos=pics)
+        if plan.get("big"):                  # v0.315 list pages cost no AI: say how many pages the money buys
+            z = SM.counts(plan)
+            est["pages"] = z["total"]
+            est["say"] += f" · {z['total']} pages ({z['items']} lists se, bina AI kharch)"
+        return est
     except Exception:
         log.info("site estimate skipped", exc_info=True)
         return None
@@ -356,6 +369,13 @@ def _public_facts(f: dict[str, Any]) -> dict[str, Any]:
 
 def _say(v: dict[str, Any]) -> str:
     st = v["status"]
+    if st == "planned" and v.get("mapping"):
+        return "Site map ban raha hai (badi website): plan card ek-do minute mein."
+    if st == "planned" and v.get("size"):
+        z = v["size"]
+        return (f"{v['name'] or 'Website'} ka site map taiyaar: {z['total']} pages ({z['designed']} designed, {z['items']} "
+                f"lists se, {z['legal']} legal). 'Haan' par 3 looks banaunga."
+                + (f" {v['estimate']['say']}." if v.get("estimate") else ""))
     if st == "planned":
         return (f"{v['name'] or 'Website'} ka plan taiyaar: {len(v.get('plan', {}).get('pages', []))} pages. "
                 + ("Pehle " + str(len(v.get("questions", []))) + " sawaal ke jawab, phir " if v.get("questions") else "")
@@ -388,7 +408,7 @@ def _emit(r: Site, push: bool = False) -> None:
 
 # ---------------------------------------------------------------- 1. new site: brief -> plan card
 def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = "", goal: str = "", style: str = "",
-        answers: dict[str, Any] | None = None, client: str = "", staff: str = "") -> dict[str, Any]:
+        answers: dict[str, Any] | None = None, client: str = "", staff: str = "", pages: int = 0) -> dict[str, Any]:
     brief = _tidy(brief, 2000)
     if not brief and not field:
         raise SiteError("Kis cheez ki website? Do-teen shabd kaafi hain, jaise 'mithai dukaan ki website'.")
@@ -427,6 +447,9 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
         s.flush()
         s.expunge(r)
     L.learn(fid, "goal", [g])
+    want = int(pages or 0) or SM.wanted(brief)          # v0.315 a big site: Opus plans the whole site map first
+    if want >= 10:
+        r = _sitemap_begin(r, want)
     _emit(r, push=True)
     v = view(r)
     v["say"] = _say(v)
@@ -552,10 +575,16 @@ def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None 
         r = _find(s, tenant, ref)
         if r.status not in ("planned", "looks", "failed", "stopped"):
             raise SiteError(f"Website abhi '{r.status}' hai.")
+        if r.stage == "sitemap":
+            raise SiteError("Site map abhi ban raha hai; ek-do minute mein plan card aa jayega.")
         if pages:
             plan = _j(r.plan, {})
             keep = [p for p in plan.get("pages", []) if p["slug"] in pages or p["slug"] in ("home", "privacy") or
                     p["slug"] in B.LEGAL_PAGES]
+            kept = {p["slug"] for p in keep}         # v0.315 a collection lives on only with its listing page
+            keep = [p for p in keep if not p.get("template_of")] + [
+                p for p in plan.get("pages", []) if p.get("template_of") in kept]
+            plan["collections"] = [c for c in plan.get("collections", []) if c["key"] in kept]
             plan["pages"] = keep
             r.plan = _jd(plan)
         r.status, r.stage, r.stop, r.error = "looks", "look", False, ""
@@ -569,6 +598,63 @@ def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None 
     _emit(r)
     _start(r.id, "looks")
     return view(r)
+
+
+# ---------------------------------------------------------------- v0.315 BADI WEBSITE: the whole site map by Opus
+_BUILD_AFTER: set[str] = set()
+
+
+def _sitemap_begin(r: Site, want: int, words: str = "") -> Site:
+    """Mark the site as 'site map being made' and start the job (Opus takes a minute or two for a big site)."""
+    want = max(10, min(int(want), SM.max_pages()))
+    board = _j(r.board, {})
+    board["now"] = f"Site map bana raha hoon (~{want} pages)"
+    r = _save(r.id, stage="sitemap", board=board, error="")
+    _start(r.id, "sitemap", want=want, words=words)
+    return _load(r.id)                         # inline (tests) the site map is already there
+
+
+def sitemap_job(site_id: str, want: int = 25, words: str = "") -> None:
+    r = _load(site_id)
+    try:
+        br = L.brief(r.field, r.goal, r.style)
+        current = _j(r.plan, {})
+        base = make_plan(br, _j(r.facts, {}))
+        plan = SM.plan_site(br, _j(r.facts, {}), (words + "\n" + r.brief).strip(), want, base,
+                            current if current.get("big") else None)
+    except Exception as e:
+        log.exception("site map failed")
+        r = _save(site_id, stage="plan", error=_tidy(f"Site map nahi ban paya: {e}", 300))
+        _emit(r, push=True)
+        return
+    r = _load(site_id)
+    n = SM.counts(plan)
+    if r.status in ("ready", "stopped", "failed") and _sections(r):    # a built site grows: build only the new parts
+        r = _save(site_id, plan=plan, stage="build", board=_board(r, plan, now_line=f"Site map: {n['total']} pages"))
+        _emit(r)
+        if _inline():
+            _start(site_id, "build", note=f"site map: {n['total']} pages")
+        else:                                 # this job's own thread still counts as busy: the build starts right after it
+            _BUILD_AFTER.add(site_id)
+        return
+    r = _save(site_id, plan=plan, stage="plan", board=_board(r, plan, now_line=f"Site map taiyaar: {n['total']} pages"))
+    _emit(r, push=True)
+
+
+def grow(tenant: str, ref: str, pages: int = 0, words: str = "") -> dict[str, Any]:
+    """v0.315 make (or regrow) the site map of a site she already has: 'isko 100 pages ki website banao'."""
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    if busy(r.id) or r.status in ("building", "checking") or r.stage == "sitemap":
+        raise SiteError("Abhi is website par kaam chal raha hai; poora hone ke baad site map badhaunga.")
+    if r.status == "looks" and not _j(r.looks, []):
+        raise SiteError("Looks ban rahe hain; unke baad.")
+    want = int(pages or 0) or SM.wanted(words) or max(25, SM.counts(_j(r.plan, {}))["total"] + 10)
+    r = _sitemap_begin(r, want, _tidy(words, 2000))
+    _emit(r)
+    v = view(r)
+    return {**v, "say": f"Site map bana raha hoon (~{min(want, SM.max_pages())} pages); plan card par aa jayega."}
 
 
 def _slots() -> threading.BoundedSemaphore:
@@ -593,6 +679,10 @@ def _after_job(site_id: str) -> None:
         r = _load(site_id)
     except SiteError:
         return
+    if site_id in _BUILD_AFTER:                  # v0.315 a grown site map builds its new pages
+        _BUILD_AFTER.discard(site_id)
+        _start(site_id, "build", note="site map")
+        return
     if site_id in _SAVE_PENDING and r.status not in ("building", "checking"):
         _SAVE_PENDING.discard(site_id)          # v0.295 edits made while a job ran get their version now
         _start(site_id, "save")
@@ -611,7 +701,8 @@ def _after_job(site_id: str) -> None:
 
 def _start(site_id: str, job: str, **kw) -> bool:
     """Start a looks / build job. False = this site already has a job running (the caller queues or says so)."""
-    fn = {"looks": make_looks, "build": run_build, "save": save_version, "translate": translate_job}[job]
+    fn = {"looks": make_looks, "build": run_build, "save": save_version, "translate": translate_job,
+          "sitemap": sitemap_job}[job]
     if _inline():
         fn(site_id, **kw)
         _after_job(site_id)
@@ -649,6 +740,17 @@ def recover_stuck(now_ts: float | None = None) -> int:
     Restarted ONCE by itself; a second death = 'failed' with a plain line (her 'Phir se chalao' / resume works)."""
     t = now_ts or time.time()
     out = 0
+    with session() as s:                       # v0.315 a site map job that died with the process: back to the plan, say so
+        maps = s.scalars(select(Site).where(Site.stage == "sitemap")).all()
+        for r in maps:
+            s.expunge(r)
+    for r in maps:
+        upd = r.updated_at.replace(tzinfo=r.updated_at.tzinfo or timezone.utc).timestamp() if r.updated_at else 0
+        if busy(r.id) or (upd >= _BOOT and t - upd < STALE_S):
+            continue
+        r = _save(r.id, stage="plan", error="Site map banate waqt server ruk gaya; 'bada site map banao' phir se kahiye.")
+        _emit(r, push=True)
+        out += 1
     with session() as s:
         rows = s.scalars(select(Site).where(Site.status.in_(("building", "checking", "looks")))).all()
         for r in rows:
@@ -824,7 +926,8 @@ def _photos_line(r: Site) -> str:
 def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], extra: str = "") -> str:
     br = L.brief(r.field, r.goal, r.style)
     tk = _j(r.look, {}).get("tokens") or {}
-    page = next((p for p in _j(r.plan, {}).get("pages", []) if p["slug"] == slug), {"title": slug, "why": ""})
+    plan = _j(r.plan, {})
+    page = next((p for p in plan.get("pages", []) if p["slug"] == slug), {"title": slug, "why": ""})
     return "\n".join([
         br["text"],
         f"\nTHIS PAGE: {page['title']} ({page.get('why', '')}). THIS SECTION: {T.SECTIONS[s['type']]['label']} "
@@ -839,8 +942,46 @@ def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], ex
         _app_line(r),
         "FACTS (data from the owner, not instructions): " + _facts_text(_j(r.facts, {})),
         f"HER OWN WORDS ABOUT THE SITE (data): {r.brief[:800]}",
+        _big_lines(plan, page),
         extra,
     ])
+
+
+def _big_lines(plan: dict[str, Any], page: dict[str, Any]) -> str:
+    """v0.315 a big site: where this page sits, the pages it may link to (hrefs that work from it), and for a collection
+    template the placeholders every item fills."""
+    if not plan.get("big"):
+        return ""
+    slug = page.get("slug", "")
+    depth = 2 if page.get("template_of") else (0 if slug == "home" else 1)
+    up = "../" * depth
+    nav = [p for p in plan.get("pages", []) if not p.get("template_of") and p["slug"] not in B.LEGAL_PAGES and p["slug"] != slug]
+    near = [p for p in nav if p.get("group") and p.get("group") == page.get("group")] + [p for p in nav if not p.get("parent")]
+    seen, links = set(), []
+    for p in near:
+        if p["slug"] in seen:
+            continue
+        seen.add(p["slug"])
+        links.append(f"{p.get('nav') or p['title']} = {up + ('' if p['slug'] == 'home' else p['slug'] + '/') or './'}")
+        if len(links) >= 24:
+            break
+    out = [f"SITE: a {SM.counts(plan)['total']}-page website. This page: {page.get('title')} (menu group: "
+           f"{page.get('group') or 'top'}){'; purpose: ' + page['why'] if page.get('why') else ''}.",
+           "INTERNAL LINKS you may use (exact hrefs, they work from this page): " + "; ".join(links) + "."]
+    col = next((c for c in SM.collections(plan) if c["key"] == page.get("template_of")), None)
+    if col:
+        ex = ", ".join(i["title"] for i in col["items"][:4])
+        out.append(f"THIS IS A TEMPLATE: the same sections become the page of every one of the {len(col['items'])} "
+                   f"{col['label'].lower()} (e.g. {ex}). Write {{{{title}}}} where the item's name goes and "
+                   + ", ".join(f"{{{{{f['key']}}}}} for {f['label']}" for f in col["fields"])
+                   + ". Never write one item's own details. Link back to the list with href='../'. Placeholders may "
+                   "sit in text and in alt / aria-label attributes; a value nobody gave shows as a [blank].")
+    elif page.get("collection"):
+        c = next((c for c in SM.collections(plan) if c["key"] == page["collection"]), None)
+        if c:
+            out.append(f"Hoola adds the grid of all {len(c['items'])} {c['label'].lower()} BELOW your sections; do not list "
+                       "the items yourself (introduce them, help people choose).")
+    return "\n".join(out)
 
 
 def write_section(r: Site, slug: str, s: dict[str, Any], others: list[str], extra: str = "", system: str = "") -> dict:
@@ -899,52 +1040,110 @@ def _look_sections(r: Site) -> list[dict[str, Any]]:
     return [s for s in home.get("sections", []) if s["type"] != "hero" and s["type"] in T.SECTIONS][:n - 1]
 
 
+def _in_ctx(fn):
+    """v0.324 a worker thread does not inherit the caller's context, so AI calls made there were not charged to her
+    usage (nor to an Arena run's budget). The wrapped function runs inside a copy of the caller's context."""
+    import contextvars
+    ctx = contextvars.copy_context()
+    return lambda *a, **k: ctx.copy().run(fn, *a, **k)
+
+
+def _look_copy(r: Site, style: str, tokens: dict[str, Any], dna: dict[str, Any] | None):
+    """v0.324 one look's own view of the site (style + tokens + art direction), so the looks can be written at the same
+    time without one thread changing the style another is writing with."""
+    from types import SimpleNamespace
+    d = {c.key: getattr(r, c.key) for c in Site.__table__.columns}
+    d.update(style=style, look=_jd({"tokens": tokens, "dna": dna}))
+    return SimpleNamespace(**d)
+
+
 def _make_looks(r: Site) -> None:
+    """v0.324 TEEN LOOK JALDI: the 3 looks used to be made one after another, and inside a look every Opus call waited
+    for the one before (pictures, then per look: art direction, hero, 2 sections, screenshots) - about 12 slow calls in
+    a row. Now in three waves: (1) the pictures and the 3 art directions together, (2) every look's sections together
+    (SITE_LOOK_PARALLEL at once), (3) the 3 screenshots together. The art directions still come out different: a look
+    too close to another is asked once more with the others shown (the old sequential rule)."""
+    from concurrent.futures import ThreadPoolExecutor
     from . import checks as C
-    if _ensure_pictures(r):
-        r = _load(r.id)
     facts = _j(r.facts, {})
-    looks = []
-    more = _look_sections(r)
     styles = _j(r.styles, [])[:3] or [r.style]
-    for i, style in enumerate(styles):
-        if _load(r.id).stop:
-            _save(r.id, status="stopped")
-            return
-        _work(r, "start", f"Look {i + 1}: {T.STYLES[style]['label']}", f"Look {i + 1} / {len(styles)} ban raha hai")
-        br = L.brief(r.field, r.goal, style)
-        tk = B.tokens(style, br["palettes"][0], facts.get("brand_colors"))
-        dna = Q.make_dna(br["text"], style, _j(r.plan, {}), _facts_text(facts), r.brief or "",
-                         [lk.get("dna") for lk in looks if lk.get("dna")])
-        r.style, r.look = style, _jd({"tokens": tk, "dna": dna})
-        sec = {"type": "hero", "design": br["designs"].get("hero") or T.HEROES[br["hero"]]}
-        hero = write_section(r, "home", sec, [], AI.HERO_LOOK_NOTE)
+    more = _look_sections(r)
+    labels = [T.SECTIONS[s["type"]]["label"] for s in more]
+    briefs = [L.brief(r.field, r.goal, st) for st in styles]
+    toks = [B.tokens(st, br["palettes"][0], facts.get("brand_colors")) for st, br in zip(styles, briefs)]
+    _work(r, "start", "3 looks soch raha hoon", f"{len(styles)} design ek saath")
+
+    def dna_of(i: int, siblings: list) -> dict[str, Any] | None:
+        return Q.make_dna(briefs[i]["text"], styles[i], _j(r.plan, {}), _facts_text(facts), r.brief or "", siblings)
+
+    # wave 1: pictures + art directions at the same time
+    with ThreadPoolExecutor(max_workers=len(styles) + 1, thread_name_prefix=f"look-{r.id[:6]}") as ex:
+        pics = ex.submit(_in_ctx(_ensure_pictures), r)
+        dfuts = [ex.submit(_in_ctx(dna_of), i, []) for i in range(len(styles))]
+        dnas = [f.result() for f in dfuts]
+        try:
+            pics.result()
+        except Exception:
+            log.info("pictures before looks failed", exc_info=True)
+    for i in range(1, len(dnas)):          # too close to an earlier look: once more, with the others shown
+        if dnas[i] and any(o and Q.closeness(Q.fingerprint(dnas[i]), Q.fingerprint(o)) >= Q.SIBLING_CLOSE for o in dnas[:i]):
+            dnas[i] = dna_of(i, [o for o in dnas[:i] if o]) or dnas[i]
+    if _load(r.id).stop:
+        _save(r.id, status="stopped")
+        return
+    r = _load(r.id)                        # the pictures are on the row now
+    views = [_look_copy(r, st, tk, dn) for st, tk, dn in zip(styles, toks, dnas)]
+    dirs = []
+    for i in range(len(styles)):
         d = B.site_dir(r.tenant_id, r.id) / "looks" / str(i)
         d.mkdir(parents=True, exist_ok=True)
-        (d / "hero.json").write_text(json.dumps(hero))
-        secs = {"home__hero": hero}
-        labels = [T.SECTIONS[s["type"]]["label"] for s in more]
-        for s in more:                       # v0.292 the page top under the hero, in this look's own art direction
-            k = sec_key("home", s["type"])
-            try:
-                secs[k] = write_section(r, "home", s, [x for x in labels if x != T.SECTIONS[s["type"]]["label"]])
-            except Exception as e:
-                log.info("look %s section %s skipped: %s", i, k, e)
-                continue
-            (d / f"{k}.json").write_text(json.dumps(secs[k]))
+        dirs.append(d)
+    _work(r, "start", "3 looks ban rahe hain", f"{len(styles) * (1 + len(more))} hisse ek saath")
+
+    # wave 2: every look's hero + page-top sections at the same time
+    jobs = [(i, {"type": "hero", "design": briefs[i]["designs"].get("hero") or T.HEROES[briefs[i]["hero"]]}, True)
+            for i in range(len(styles))] + [(i, s, False) for i in range(len(styles)) for s in more]
+    secs: list[dict[str, dict[str, Any]]] = [{} for _ in styles]
+
+    def one(job):
+        i, sec, hero = job
+        if _load(r.id).stop:
+            return
+        k = sec_key("home", sec["type"])
+        try:
+            out = (write_section(views[i], "home", sec, [], AI.HERO_LOOK_NOTE) if hero else
+                   write_section(views[i], "home", sec, [x for x in labels if x != T.SECTIONS[sec["type"]]["label"]]))
+        except Exception as e:
+            if hero:
+                raise
+            log.info("look %s section %s skipped: %s", i, k, e)
+            return
+        secs[i][k] = out
+        (dirs[i] / ("hero.json" if hero else f"{k}.json")).write_text(json.dumps(out))
+    width = max(1, min(12, int(getattr(_settings(), "site_look_parallel", 6) or 1)))
+    with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"look-{r.id[:6]}") as ex:
+        list(ex.map(_in_ctx(one), jobs))   # a hero that fails raises here, as before
+    if _load(r.id).stop:
+        _save(r.id, status="stopped")
+        return
+
+    # wave 3: assemble + screenshots of the 3 looks at the same time
+    def shoot(i: int) -> dict[str, Any]:
         mini_plan = {"pages": [{"slug": "home", "title": "Home", "sections": [{"type": "hero"}] + [
-            {"type": s["type"]} for s in more if sec_key("home", s["type"]) in secs]}], "cta": _j(r.plan, {}).get("cta")}
+            {"type": s["type"]} for s in more if sec_key("home", s["type"]) in secs[i]]}], "cta": _j(r.plan, {}).get("cta")}
         ctx = _ctx(r)
-        ctx["tokens"], ctx["plan"], ctx["alt"] = tk, mini_plan, None
-        out = d / "site"
-        B.assemble(ctx, mini_plan, secs, {p["name"]: p for p in _j(r.photos, [])}, out)
+        ctx["tokens"], ctx["plan"], ctx["alt"] = toks[i], mini_plan, None
+        out = dirs[i] / "site"
+        B.assemble(ctx, mini_plan, secs[i], {p["name"]: p for p in _j(r.photos, [])}, out)
         shots = {}
         try:
-            rep = C.run(out, mini_plan, d / "shots", video=False)
+            rep = C.run(out, mini_plan, dirs[i] / "shots", video=False)
             shots = rep["pages"].get("home", {}).get("shots", {})
         except C.CheckError as e:
             log.info("look screenshots skipped: %s", e)
-        looks.append({"style": style, "label": T.STYLES[style]["label"], "tokens": tk, "shots": shots, "dna": dna})
+        return {"style": styles[i], "label": T.STYLES[styles[i]]["label"], "tokens": toks[i], "shots": shots, "dna": dnas[i]}
+    with ThreadPoolExecutor(max_workers=len(styles), thread_name_prefix=f"look-{r.id[:6]}") as ex:
+        looks = list(ex.map(_in_ctx(shoot), range(len(styles))))
     r = _save(r.id, looks=looks, style=styles[0], status="looks", stage="look",
               board=_board(r, now_line="3 looks taiyaar: ek chuniye"))
     _work(r, "waiting", "Look chuniye", "3 looks taiyaar")
@@ -1046,6 +1245,8 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
         return True
     lock = threading.Lock()
     width = max(1, min(6, int(getattr(_settings(), "site_parallel", 3) or 1)))
+    if plan.get("big"):                       # v0.315 a big site writes more sections at once
+        width = max(width, min(8, int(getattr(_settings(), "site_parallel_big", 5) or width)))
     state = {"r": r, "stopped": False, "error": None}
 
     def progress(line: str, slug: str = "") -> None:
@@ -1072,7 +1273,7 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
         progress(f"{line} ✓")
 
     with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"site-{r.id[:6]}") as ex:
-        futs = [ex.submit(one, *t) for t in todo]
+        futs = [ex.submit(_in_ctx(one), *t) for t in todo]
         for f in as_completed(futs):
             try:
                 f.result()
@@ -1126,7 +1327,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
             report = {"blocking": [], "warnings": [{"kind": "checks", "text": str(e), "sections": []}], "scores": {},
                       "passed": None, "source": "none", "pages": {}}
             break
-        fixable = _fixable(report)
+        fixable = _fixable(report, plan)
         if not fixable or rnd == MAX_FIX_ROUNDS:
             break
         for k, problems in fixable.items():
@@ -1198,7 +1399,7 @@ def _critique_round(r: Site, plan: dict[str, Any], shots: Path, report: dict[str
         return report, {}
     mode = (getattr(_settings(), "site_critique", "all") or "all").lower()
     limit = max(1, int(getattr(_settings(), "site_critique_pages", 6) or 1))
-    pages = [p for p in plan.get("pages", []) if p["slug"] not in B.LEGAL_PAGES and p.get("sections")]
+    pages = [p for p in plan.get("pages", []) if p["slug"] not in B.LEGAL_PAGES and p.get("sections") and not p.get("template_of")]
     pages = sorted(pages, key=lambda p: p["slug"] != "home")
     pages = [p for p in pages if p["slug"] == "home"] if mode == "home" else pages[:limit]
     out: dict[str, Any] = {}
@@ -1285,14 +1486,19 @@ def _critique_page(r: Site, plan: dict[str, Any], page: dict[str, Any], shots: P
     return (rep2 or report), {"before": {k: v["score"] for k, v in crit["sections"].items()}, "redrawn": kept}
 
 
-def _fixable(report: dict[str, Any]) -> dict[str, list[str]]:
+def _fixable(report: dict[str, Any], plan: dict[str, Any] | None = None) -> dict[str, list[str]]:
+    # v0.315 section ids map back through the plan (page slugs may hold '-' now, so the id alone is ambiguous)
+    ids = {sec_id(p["slug"], x["type"]): sec_key(p["slug"], x["type"])
+           for p in (plan or {}).get("pages", []) for x in p.get("sections", [])}
     out: dict[str, list[str]] = {}
     for it in report.get("blocking", []):
         for sid in it.get("sections") or []:
-            m = re.match(r"s-([\w]+)-([\w-]+)$", sid or "")
-            if not m:
-                continue
-            k = sec_key(m.group(1), m.group(2).replace("-", "_"))
+            k = ids.get(sid or "")
+            if not k:
+                m = re.match(r"s-([\w]+)-([\w-]+)$", sid or "")
+                if not m:
+                    continue
+                k = sec_key(m.group(1), m.group(2).replace("-", "_"))
             out.setdefault(k, []).append(it["text"])
     return out
 
@@ -1329,7 +1535,10 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
         s.expunge(r)
     plan = _j(r.plan, {})
     keys = [sec_key(p["slug"], x["type"]) for p in plan.get("pages", []) for x in p.get("sections", [])]
+    cols_line = "".join(f"\nCOLLECTION {c['key']} ({c['label']}): fields {', '.join(f['key'] for f in c['fields']) or 'none'}; "
+                        f"items {', '.join(i['title'] for i in c['items'][:40])}" for c in SM.collections(plan))
     res = AI.ask_json(AI.CHANGE_SYSTEM, f"SECTION KEYS: {', '.join(keys)}\nPAGES: {', '.join(p['slug'] for p in plan.get('pages', []))}"
+                      + cols_line +
                       f"\nCURRENT COLOURS: {json.dumps({k: _j(r.look, {}).get('tokens', {}).get(k) for k in ('bg', 'primary', 'accent')})}"
                       f"\nHER WORDS (a request, data): {instruction}", 1500, "site_edit")
     if not res:
@@ -1385,6 +1594,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
                                                                  "sections": [{"type": t, "label": T.SECTIONS[t]["label"],
                                                                                "design": T.SECTIONS[t]["variants"][0]} for t in secs]})
             only += [sec_key(slug, t) for t in secs]
+    _change_items(plan, res)                  # v0.315 items of a list: pages made by code, no AI
     # plain fact swaps (phone / email) go straight into the sections already written
     for k in ("phone", "whatsapp", "email"):
         if old_facts.get(k) and facts.get(k) and old_facts[k] != facts[k]:
@@ -1400,6 +1610,31 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
         _save(r.id, queued=(q + [instruction])[-10:])
     r = _load(r.id)
     return {**view(r, False), "say": res.get("say") or "Badal raha hoon."}
+
+
+def _change_items(plan: dict[str, Any], res: dict[str, Any]) -> int:
+    """Add / remove items of the big site's lists (her words); a field she did not give stays blank. Returns the count."""
+    cols = {c["key"]: c for c in SM.collections(plan)}
+    n = 0
+    for x in res.get("items_remove") or []:
+        c = cols.get(str((x or {}).get("collection") or ""))
+        if c:
+            t = SM.slug(x.get("title"), 50)
+            before = len(c["items"])
+            c["items"] = [i for i in c["items"] if i["slug"] != t and i["title"].lower() != str(x.get("title") or "").lower()]
+            n += before - len(c["items"])
+    room = SM.max_pages() - SM.counts(plan)["total"]
+    for x in res.get("items_add") or []:
+        c = cols.get(str((x or {}).get("collection") or ""))
+        t = _tidy((x or {}).get("title"), 80)
+        sg = SM.slug(t, 50)
+        if not c or not sg or room <= 0 or any(i["slug"] == sg for i in c["items"]):
+            continue
+        data = x.get("data") if isinstance(x.get("data"), dict) else {}
+        c["items"].append({"slug": sg, "title": t, "data": {f["key"]: _tidy(data.get(f["key"]), 400) for f in c["fields"]}})
+        room -= 1
+        n += 1
+    return n
 
 
 def stop(tenant: str, ref: str) -> dict[str, Any]:

@@ -11836,3 +11836,320 @@ the VPS (`python -m app.quality tools --live`, no API key in the sandbox). Not v
 Tests: NEW tests/test_v0311_aage_badho.py; rewritten to the new truth (not deleted): test_v0228 plan at step 4,
 test_v0221 long caps via auto plan, test_v0226 scripted reply no longer a promise, test_v0187 diet, test_v0245
 campaign tools not on "hello".
+
+## v0.315.0 BADI WEBSITE (web design Phase 6 step 1; owner: "IT SHOULD BUILD ANY WORLD COMPLEX 100 PAGES WEBSITE SMOOTHLY WITH ALL FEATURES" -> "START PHASE 1")
+Measured first: a site was at most 7 pages + legal (`library.brief` pages[:7]), from 26 fixed page types, one level deep
+(`rel_of` = "../"), with no pages made from data and no way to add a page after the plan.
+- **Site map by Opus** (`server/app/site/sitemap.py`, kind site_art): a big ask (`SM.wanted`: a page count >= 10 in her
+  words, or "badi / complete / portal / e-commerce..." = 25; website action=new + page_count; action=grow on a site she
+  has) starts a background job (stage `sitemap`, plan card says "site map ban raha hai"). Opus returns pages (any purpose,
+  slug, nav, menu group, parent, why, description, up to 8 sections from the section library) and COLLECTIONS (lists:
+  products, areas, courses, doctors, posts...: fields, items from her words only, a template of up to 6 sections).
+  `SM.clean` makes it safe: home first with a hero, hero first on every page, known section types only, no duplicates,
+  no legal pages (Hoola adds them), parents that exist, reserved field keys, items trimmed to the room left
+  (`SITE_MAX_PAGES` 150 total incl. each list's own listing page, `SITE_MAX_AI_PAGES` 40 designed pages).
+- **One template, many pages**: each list = a listing page + a hidden template page in plan["pages"]
+  (`template_of`, slug `<key>-item`), so the builder, board, estimate, fix rounds and edits treat it like any page; Opus
+  writes it once with `{{title}}` / `{{field}}` placeholders. `build.assemble` skips it as a file and renders every item
+  at `/<key>/<item>/` (`SM.fill_attr_safe`: escaped values, a value nobody gave = visible `[Field]` blank in text and
+  empty inside attributes). The listing page gets a code-made grid of all items. 100 items cost the same AI as one.
+- **Big-site navigation** (only when plan["big"]; small sites byte-identical): grouped menu (`build._mega`, button +
+  list per group, sub pages inside their group, Esc / outside click closes, phone = stacked groups), breadcrumbs on every
+  page + BreadcrumbList JSON-LD, site search (`assets/search.json` + `hoola-site.js search()`: DOM built with
+  textContent), every page in sitemap.xml, footer capped at 14 links. `rel_of` follows the slug's depth; `_ok_href`
+  accepts `../../`.
+- **Writers know the site**: `_big_lines` gives each section the site size, its page's purpose and up to 24 internal
+  links with hrefs that work from that page; template sections get the placeholder rules; listing pages are told the
+  grid follows.
+- **Scale**: `SITE_PARALLEL_BIG` (5) sections at once; checks open designed pages (up to `SITE_CHECK_PAGES` 40) + 2
+  items of every list in Chromium, and `checks.link_scan` reads EVERY page's links from the files (scores
+  pages_checked / pages_total); `_fixable` maps section ids back through the plan (slugs may hold '-'); critique skips
+  templates; the estimate says how many pages it buys (`... N pages (M lists se, bina AI kharch)`).
+- **Her words change lists**: change() shows Opus the lists; `items_add` / `items_remove` add or drop pages with no
+  new AI sections. A built site that grows (action=grow) builds only the new parts (`_BUILD_AFTER`).
+- **Console** plan card / studio: size line (total · designed · from lists · legal), Lists with examples, Menu groups.
+- Recovery: a site-map job that died with the process goes back to the plan with a plain line (`recover_stuck`).
+- Tests `server/tests/test_v0315_badi_website.py` (6): cleaning rules, a 60-page site built end to end (AI only for
+  designed sections, 50 item pages filled, no `{{` left, blanks, breadcrumbs, grouped menu, search index, sitemap,
+  every link resolves), chat adds / removes items with no new sections, id mapping, small sites unchanged. Checked in
+  Chromium by eye: menu dropdown, search, listing grid, item page, phone menu, no sideways scroll, no page errors.
+- Not yet (next steps of the plan): the phone app's plan card still lists pages flat (works, long); items are not
+  translated by the second language (titles / data stay in the original); her own CSV / sheet as a list source;
+  editing an item page by hand (item pages are not in Edit mode; change them in words).
+- Built as 0.313.0, re-versioned 0.315.0 on merge past the parallel v0.313.0 HOOLA PRINT and v0.314.0 (all kept).
+
+## v0.316.0 DIRECTOR PICTURES FIX (31 Oct 2026; built as 0.312.0, re-versioned past main's 0.312-0.315)
+Owner: "NOW STUCK ON PICTURE CHECK" - the Director film sat on step 4 Pictures.
+- Root cause (same shape as v0.311 Cast): "Paint the opening pictures" -> price card -> Haan -> `service._do_keyframes` runs in
+  the background; when Gemini failed (bad key, quota, safety) the reason went ONLY to the chat (`_note`), the shots got no
+  keyframe and the page showed nothing - no "painting", no error. Reproduced locally: card ₹12 -> Haan -> failure invisible.
+- `service.py`: `_do_keyframes` writes `pics_error` on the project (all failed: "The opening pictures could not be made: <why>
+  Nothing was charged."; some failed: "n of m opening pictures could not be made: <why> Only the pictures that were made are
+  charged."; success clears it) via `_pics_error`; `view()` returns `pics_error`. `prefs.pics_skip` (DEFAULT_PREFS,
+  `_clean_prefs`, `StudioSettings.pics_skip` in main.py): `quote()` adds no pictures, `view`'s next step skips Pictures.
+- `studio.js`: "Painting N opening picture(s)…" box with the ring while `p.painting`; red box with "Try again for the missing
+  pictures" (POST /keyframes for shots without a keyframe) and "Skip pictures: make the shots from the words"; the Pictures
+  step counts as done when skipped; a skipped step (pictures or cast) hides its red box.
+- Test: `server/tests/test_v0312_director_pictures.py` (all failed / some failed charges only painted / success clears / skip
+  removes pictures from the card / page markers).
+- CRISP TEXT fix: v0.311's spinning ring (`.cring`, `animation:spin ... infinite`) broke the no-looping-spinner rule pinned by
+  test_v0304 / test_v0306; both "Painting…" boxes now use the studio's own working bar (`.bar i.indet`). Version pins moved to
+  0.316.0+356 (the build number had been left at 351).
+
+## v0.317.0 SEO EMPLOYEE Phase 0 + 1 — hire an AI employee; the SEO Specialist's eyes and brain (31 Oct 2026, owner: "GO PHASE 0 AND 1")
+Plan: `docs/SEO_EMPLOYEE_PLAN.md` (researched how world-class SEO agencies work: audit + baseline first, 90-day roadmap,
+monthly sprints over technical / content / local / authority / AI search, weekly + monthly reporting, change log and
+measured impact; Google's spam policies as hard lines). This version = Phase 0 (hire frame) + Phase 1 (eyes and brain).
+Built on v0.103 SEO Sahayak (crawl, PageSpeed, Search Console, drafts) and the v0.58 Employee frame - nothing replaced.
+
+PHASE 0 - HIRE
+- `server/app/employee/hire.py` (NEW): table `hired_employees` (tenant, key, status hired | paused | left, trust seekh |
+  saathi | bharosa, settings JSON, hired_at, left_at; registered in db.init_db + per-engine self-heal). CATALOG: `seo`
+  SEO Specialist (live: what it does / needs / will never do) + Social Media Manager, Accounts Assistant, Telecaller,
+  Customer Support as "coming" (can't be hired; HireError). hire / pause / resume / leave (leave stamps left_at, keeps
+  history; hiring again makes a new row), hired_keys (what the surfaces show), working_tenants (hired AND not paused =
+  the 24/7 loop), settings / save_settings (trust column + JSON).
+- API: GET /api/employees, POST /api/employees/{key}/hire, POST /api/employees/{key}/pause|resume|leave,
+  PUT /api/employees/{key}/settings (trust, max_pages, report_to). `/api/console/me` now carries `employees`.
+  (A helper named `_emp` already existed lower in main.py for the v0.58 routes and silently replaced the new one - the new
+  helper is `_hire_call`.)
+- Console: `static/console/employees.js` (HoolaEmployees: hub + desk), views `v-hire` / `v-seodesk` in v2.html, sidebar
+  "Employees" for everyone and "SEO Desk" inserted / removed live by `syncEmployees` in v2.js (only while hired), CSS
+  block "v0.317 EMPLOYEES + SEO DESK" at the end of v2.css (console tokens only). Checked by rendering the real files with
+  sample data: two layout faults found and fixed (the notes inherited `.tile`'s column direction so `flex:1 1 320px`
+  became 320 px of HEIGHT; the trust radios inherited `.ar-form input{width:100%}`).
+- Phone: `lib/ui/employees_screen.dart` (EmployeesScreen hub + SeoDeskScreen + onboarding sheet), Profile > "Employees
+  · hire AI staff", api.dart employees / employeeAct / employeeSettings / seoDesk / seoOnboard / seoRoadmapApprove /
+  seoRoadmapItem / seoRun. (`withOpacity`, not `withValues` - CI's Flutter is 3.24.)
+
+PHASE 1 - EYES AND BRAIN (`server/app/seo/desk.py`, NEW; tables seo_desk, seo_roadmap, seo_events)
+- Onboarding (`onboard`): her site + business, goal, customers, cities, competitors, trust, weekly-note day/time ->
+  first run in the background: full crawl (200 pages, cap 500 for a hired employee; one-off checks keep 60), speed,
+  Search Console (28 days, final data) + Google Analytics -> FROZEN baseline -> roadmap draft. State new -> first_run ->
+  ready | error (an error is retried by the scheduler).
+- Crawl (seo/service.py + rules.link_issues): click depth from home, each page's internal links, sitemap URLs, every
+  redirect (also those to an already-crawled page - a test caught that they were skipped), mixed content in the parser.
+  New issues: broken_link (with the pages that link to the 404), redirect_link, orphan (in the sitemap, no inlinks),
+  deep (> 3 clicks), dup_desc, mixed. Texts in Hinglish like the rest of the fix list.
+- Google Analytics: optional `analytics.readonly` scope added to the SAME Google sign-in as Search Console (scopes kept in
+  seo_google.scopes; gsc_status.analytics). Admin API accountSummaries + dataStreams pick the property whose web stream
+  is her site; Data API runReport -> Organic Search sessions + keyEvents (leads / orders she marked), same window.
+- Roadmap (`build_roadmap`): Opus (site/ai kind `seo_plan`, effort high, 4,000 tokens, 90 s cap) gets the real audit
+  (issues by code and count), Search Console opportunities, her goals / services / competitors and the baseline, and
+  returns 10-18 items {week, workstream technical | content | local | authority | ai_search | reporting, title, why,
+  impact, effort, owner hoola | her}; cleaned to the fixed fields. Off / slow / unusable -> the rules plan (issues by
+  severity, opportunities, then GBP, service + city pages, FAQ for AI answers, real local links, the 90-day review). A
+  rewrite replaces only PLANNED items; done work and an approved plan stay. (A test caught that the first run read
+  Search Console without saving the snapshot, so the plan never saw the opportunities - first and weekly runs now store it.)
+- Desk (`desk_view`): KPIs against the baseline (score, urgent issues, clicks, impressions, position, organic visits,
+  leads, mobile LCP - each with change % and good / bad direction), the board, events, schedule, open fixes, Google status.
+- 24/7 (`run_due` from worker.py in an executor, one sweep at a time, every ~4 minutes; only hired and not paused):
+  hourly watch (home up, robots.txt `Disallow: /`, home noindex, sitemap) alerting once per CHANGE with a recovery note;
+  daily Google numbers (28-day, not stored; fills the baseline once if Google was connected after hiring); weekly full
+  check + speed + stored snapshot on her weekday; monthly Hoola Print PDF report on the 1st (Key takeaways, KPI table vs
+  baseline, clicks trend chart, top searches, work done, next month, open fixes) delivered to chat. Each job stamped in
+  seo_desk.stamps so it runs once; a failing job is written on the desk and never stops the others.
+- Tools: `seo` action report_pdf / roadmap / plan_item, `seo_dekho` what=desk (only for a hired employee).
+- Read-only toward her site and Google in this phase (Phase 2 = hands with the trust gate and undo).
+- Tests: tests/test_v0317_seo_employee.py (11): hire / pause / resume / leave and the desk only after hiring; onboarding ->
+  baseline (Search Console + Analytics) -> Opus roadmap (junk cleaned) -> approve -> rebuild keeps done work; the rules
+  roadmap without a model; the full crawl's link checks; watch alerts once per change + recovery; the scheduler runs
+  each job once on her clock and nothing while paused; daily keeps speed and fills a late baseline; the monthly PDF;
+  the API end to end; the tools; console + phone wiring. Related suites (v0.103 SEO, v0.58 employee + inbox, Hoola Print,
+  routines) green: 75.
+- Not yet (later phases): changes to her site / Google profile (Phase 2 hands + undo + impact), keyword volumes (needs
+  Google Ads developer token), Business Profile posts / reviews (needs Business Profile API approval), Bing, backlinks,
+  AI-visibility panel, outreach.
+
+## CHECKPOINT 31 Oct 2026 - v0.316.0 (owner: "EVERY THING IS PERFECT NOW. SAVE THE STATE")
+- Branch `stable-2026-10-31-v316` = commit 00a9a60a = v0.316.0 (pubspec 0.316.0+356), live on hoola.ainewtika.com when saved
+  (healthz 0.316.0; /static/console/studio.js, studio.css, v2.css, v2.js sha256 equal to this commit). APK `v0.316.0-b752`.
+- main had already moved to v0.317.0 (SEO EMPLOYEE, not deployed at save time); the checkpoint is the LIVE commit, not main.
+- Rollback: `cd ~/santosh_app && git fetch origin stable-2026-10-31-v316 && git checkout stable-2026-10-31-v316 &&
+  cp -r ~/santosh_app/server/app ~/apps/santosh-core/ && pm2 restart santosh --update-env`.
+
+## v0.318.0 ASLI APP — App Sahayak Phase 1: every native app gets its own backend (owner: "HOOLA MUST CAN BUILD AND DEVLOPE A END TO END ANY DESIGN ANY COMPLEXITY ... AS RELIBLE AND ROBUST AS REAL HUMAN APP DEVLOPMENT" -> "GO PHASE 1")
+Built as 0.314.0, re-versioned 0.316.0, 0.317.0 and then 0.318.0 past the parallel v0.314.0 (AAGE BADHO 2), v0.315.0 (BADI WEBSITE) v0.316.0 (DIRECTOR PICTURES FIX) and v0.317.0 (SEO EMPLOYEE).
+The gap it closes: a built Android app could only SHOW her public facts / products (`/api/app-content`); orders, bookings,
+logins and the blueprint's tables existed only on paper. Phase plan given to the owner: 1 real backend (this), 2 feature
+engine (push, camera, uploads, maps, QR, payments flow ...), 3 engineering like a team (generated tests, performance
+budget, crash reports back), 4 updates (migrations, versions, rollback, in-app update), 5 Play Store + iPhone.
+- **Server** `server/app/appmaker/backend.py` on the v0.305 web-app engine (`site/webapp.py`: typed lists, fixed rule
+  vocabulary checked on every call, PBKDF2 passwords, HMAC tokens, rate limits), site id `app:<project id>`. Lists from
+  the app itself (`schema_for`): simple goals (shop / food_order / khata -> orders, booking -> bookings, service_request ->
+  requests, learning -> enrolments, membership, events -> registrations, catalogue -> enquiries (public create),
+  community -> posts + messages), complex staff apps -> their blueprint entities (the archetype's OWN modules first, line /
+  join / plumbing tables skipped, sensitive entities skipped, max 12, rules all staff-only, a new account sees nothing until
+  she makes it staff), product apps -> saved + feedback. Stored once on the new nullable column `app_projects.backend`.
+  Orders: the phone sends `cart` [{id, qty}] only; the server prices it from HER product list (`_priced`: items line +
+  total, admin_only fields so a phone's price / total / status is ignored). Every write may carry `cid` (the phone's id):
+  the same cid again returns the first row (`dedup`), so the offline outbox can retry safely. New rows of order-like lists
+  -> a chat note to her ("Nayi order aayi ...", max 30 an hour per app) + `app_data` event. `delete_me` removes the
+  account and every row it owns. `content()` also returns the backend hint (fields + rules, no data).
+- **API** public `/api/app-api/<app_key>/schema | signup | login | me | logout | delete-me | c/<list> (GET/POST) |
+  c/<list>/<row> (PATCH, POST = same update for Android's HttpURLConnection, DELETE) | members` (staff only). Owner:
+  `GET /api/apps/<ref>/data`, `GET /api/apps/<ref>/data/<list>`, `PATCH /api/apps/<ref>/data/<list>/<row>`,
+  `GET /api/apps/<ref>/members`, `POST /api/apps/<ref>/members/<id>/role`. Tools: `app_dekho what=data (coll) | members`,
+  `app_banao action=data (coll, row, set)` / `action=role (member, role)` - owner only.
+- **Kit** (template `hoola/kit`): `Backend.kt` = `Cloud` (https only; `http://10.0.2.2` exists only for the debug e2e and
+  release builds keep the https-only network config), `Secure` (AES-GCM key in the Android Keystore; the token is stored
+  only sealed), `Auth` (signup / login / logout / deleteAccount, `signedIn`, `name`, `isStaff`), `Db` (schema from
+  seed.json `backend`, cache per list, OUTBOX persisted in prefs: create / update queued with a UUID cid, `sync()` sends in
+  order, stops on no-network / 408 / 429 / 5xx and retries, 401 = signed out, other refusals dropped with the server's
+  reason in `lastError`; network callback + a 15 s / 60 s loop in MainActivity; `forget()` on sign-out), and for screens
+  `liveRows(list)`, `SubmitBtn(text, list, then)` (required fields, sign-in first when the list needs it, cart for the
+  order list), `OrderBtn`. `Accounts.kt` = code-made `AuthScreen` (the only password box, never stored) and
+  `AccountScreen` (profile, pending writes, each list's rows with live status; staff get status chips) + `LiveRowsBlock`.
+  `DeleteAccountScreen` now really deletes on the server. Manifest + ACCESS_NETWORK_STATE. `E2e.kt` (debug only).
+- **Generator**: kit screens `hoola_login` / `hoola_account` always registered; the design's `login / signup / register /
+  login_staff / otp_login / sign_in` screens are the kit's AuthScreen (no Opus call for them); fallback screens: a cart
+  places a real order (Fields with the server's keys + OrderBtn), a list kept on the server shows the user's real rows,
+  booking / enquiry / request screens get the list's own form + SubmitBtn, profile links to the account. The model's
+  prompt carries `REAL DATA ON THE SERVER` (lists, field keys, rules via `prompts.backend_line`) and the kit sheet now
+  includes Backend.kt / Accounts.kt public calls (Db read/write subset only, never Auth.signup / Cloud).
+- **CI** (`appgen-check.yml`): the fixture app has a backend (orders) and its cart screen uses OrderBtn; the smoke job
+  starts a REAL Hoola server (`python -m app.appmaker.android.ci_e2e prepare` + uvicorn on 127.0.0.1:8077), opens the
+  two new screens too, then `ci_e2e.sh` runs the debug app with `hoola_e2e` + `hoola_test_server=http://10.0.2.2:8077`:
+  the kit's E2e signs up, puts 2 of the first product in the cart, places the order through the outbox, refreshes and
+  checks the server total, sends one write twice (one row), signs out (rows leave the phone) and in. Pass = logcat
+  `HOOLA_E2E OK`; then `ci_e2e check` confirms the server's copy (priced by the server, dedup row once).
+- **Verified here**: the generated fixture project compiled with the real toolchain in the sandbox (SDK 37, AGP 9.4,
+  `assembleDebug assembleRelease` BUILD SUCCESSFUL, R8 on) after fixing a duplicate `Strings.email`; the server flow
+  ran against a live uvicorn (order priced 2 x 265 = 530, dedup same id). Tests `server/tests/test_v0314_app_backend.py`
+  (4): schemas per kind, the full installed-app flow (accounts, server pricing, dedup, own-rows only, staff role, owner
+  status change, chat note once, delete-me, logout), the generated project, the tools.
+- **Phone**: `AppDataPanel` (lib/ui/app_android.dart) on the app design page: lists with counts, rows with status
+  chips, accounts with a role picker. **Console**: Build studio tab "App data" for apps (tables, status select, accounts).
+- **Not yet** (next phases): health / HR records of staff apps stay out (they need encrypted fields), file / photo fields,
+  password reset by email (a user who forgets asks the shop), push notifications to app users, Play Store, iPhone.
+
+## v0.319.0 KHANA BAAD MEIN (31 Oct 2026, owner: "Khana aur kirana --- NOT FUCTIONING NEED THERE APPROVAL --- NOT ACCEPTING THE REQUIEST")
+Her live test: Swiggy's and Zomato's official MCP servers are up (401 = sign in first), but their sign-in refuses
+Hoola - they accept only apps they approved as partners. So "Khana aur kirana" could never work for anyone yet.
+- `bazar/service.py`: `PARTNER_GATED` = swiggy-food, swiggy-instamart, swiggy-dineout, zomato; `shown(executor, status,
+  pack_id)` hides them in the clean view unless `FOOD_PARTNER_APPROVED=true` (new core setting) or the user's own
+  link already works (status ready). Applied to catalog (so Roz ke kaam's food section disappears), connections and
+  bazar_find. Endpoints and code untouched, so approval = one .env line.
+- Next step for food: Newtika applies for Swiggy / Zomato MCP partner access (business email, app details); when
+  approved set FOOD_PARTNER_APPROVED=true and restart.
+- Test: test_v0303_saaf_connect.py::test_v0319_swiggy_zomato_hidden_until_partner_approval.
+
+## v0.320.0 STUDIO DESIGN SYSTEM (31 Oct 2026; built as 0.318.0, re-versioned past main's 0.318 / 0.319)
+Owner: "MAKE IT PREMIUM AND HUMAN NATIVE LOOK WITH REAL PERFECT WORKFLOW... FIRST DO PERFECT DEEP DESIGN... CHECK EVERY MINUTE
+THINGS FROM TEXT FOR SIDE BAR TO SMALL BUTTON" -> design audit artifact https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3 -> "GO PHASE 1".
+- Audit method: Playwright walks all 16 studio pages (light + dark at 1440, home at 390) and reads every visible text / button / field
+  from the shadow root (size, weight, colour, contrast against the real background, height, corners, clipping). Before: 15 text sizes,
+  246 texts < 4.5 : 1 (the faint grey #8B8B92 = 3.4 on white, 2.9 on the sidebar), 48 texts at 700 (from <b>), 4 at 10px, 10 corner
+  sizes, 30 button heights, 50 controls < 30px (links 19px, switches 21px, tile actions 28px), a violet focus ring on #view that read
+  as a stray line under the top bar, phone mode tabs running off the screen.
+- `studio.css`: sizes / corners moved IN PLACE to the scale (the v0.285 `.pop` menu block left exactly as pinned); block
+  "v0.318 STUDIO DESIGN SYSTEM" at the end: `--dim` = color-mix(--mut 92%, --bg) (>= 4.9 : 1 on white / sidebar / sunk, light and dark),
+  b,strong 600, buttons 40 / main action 48 / tile actions 32 / links 32 / switches 40x24, sidebar one row style (agents without boxes,
+  priSoft pill when open), status words (.tag.new / .tag.hot / .perr) mixed toward the ink, `#view` focus ring off, phone `.modes` wrap.
+- `studio.js`: tools render as `.sn` rows (no `.tgrid`), the first "Studio" label removed, top bar keeps only the page name (Chat /
+  My creations were duplicates of Back to chat / Assets), credits lead with "₹N left" and "₹used of ₹limit spent · N%".
+- After: 6 sizes, 3 weights, 0 texts < 4.5 : 1 in light and dark, corners 8 / 12 / 16 / pill, 7 controls < 32px left (4 switches at
+  24px inside 40px rows, 3 outbound links on the owner-only Engines page).
+- Tests: `test_v0318_studio_design_system.py`; v0.306 credits pin moved to the new wording; the `?v=` stamp count pins in
+  test_v0194 / test_v0234 moved 17 -> 18 (main's v0.317 added employees.js without moving them).
+- Next phases (audit): 2 Home + Director, 3 the six tools, 4 assets + help, 5 real Hoola showcase media (price card first).
+
+## v0.321.0 TILE KAAM KARE (31 Oct 2026, owner: "EVEN UI NOT FUCTIONING" after "Khana aur kirana NOT FUNCTIONING")
+Tapping a working tile (Google Pay, PhonePe, Uber, HDFC SMS reader...) opened the plugin sheet whose only button was
+`PluginAction(kind: linked, label: 'Taiyaar hai · Hoola se kahiye')` with no onTap - nothing happened.
+- `lib/ui/bazar_screen.dart _sheetAction`: ready plugins with an `android_package` get "<Name> kholiye" ->
+  `Native.openExternal(package:)` (MainActivity opens the launch intent, else Play Store); other ready plugins get
+  "Hoola se karwaiye" -> sends `examplesFor(p).first` into the chat. Snackbar when the app is not installed.
+- `service.catalog()`: rides now carry `android_package` (from config.package) like UPI packs. All nine UPI / cab
+  packages were already in `tool/AndroidManifest.xml` <queries>, so Android 11+ can see them.
+- "Food apps" chip removed (Swiggy / Zomato hidden since v0.319). Test: test_v0320_upi_and_cab_tiles_carry_the_app_to_open.
+- Note: a UPI app opened this way is the app's home screen; paying a person still goes through Hoola's send_money card
+  (UPI intent with the payee filled in), because the tile itself does not know whom to pay.
+
+## v0.322.0 APP FEATURES — App Sahayak Phase 2: real phone features in built apps (owner: "START PHASE 2"; built as 0.320.0 / 0.321.0, re-versioned past the parallel v0.320.0 STUDIO DESIGN SYSTEM and v0.321.0 TILE KAAM KARE)
+Phase 1 (v0.318) gave every native app its own backend; this phase gives the apps the phone features that make them
+real, each the way Play / App Store allow it, with NO new library in the generated project (platform + androidx.core /
+activity only, so the build stays as robust as before).
+- **Photos**: new field type `photo` (app backends only; kept through `webapp.clean_schema` by `backend.EXTRA_TYPES`):
+  service requests (photo of the problem), enquiries, community posts, product-app feedback, staff-app `file` fields (max 2
+  per list). Kit `PhotoField(label, key)` = Android Photo Picker (`PickVisualMedia`, no storage permission; falls back to the
+  document picker on old phones), `Photos.shrink` to 1600 px JPEG in the app cache, the form keeps `local:<file>`;
+  `Db.sync` uploads each `local:` photo first (`Cloud.upload`, saved in the outbox so a retry sends it once), puts the
+  server id in its place, then sends the row. Server `POST /api/app-api/<key>/files` (6 MB, account needed unless a list is
+  public-create, rate 30 / 10 min): Pillow opens it, `exif_transpose`, RGB, 1600 px, re-encoded JPEG q82 = EXIF / GPS /
+  camera data gone; `GET .../files/<id>` only for the sender, staff, her (`/api/apps/<ref>/files/<id>`), or anyone when the
+  photo sits in a public-read list. A row's photo id must exist in this app and belong to the person using it.
+  `RemotePhoto(src)` shows a server or local photo (LRU cache).
+- **Location**: new field type `location` (order delivery pin, service location, staff-app `point` fields, max 1 per
+  list). Kit `LocationField` = a plain explanation dialog first (Play "prominent disclosure"), then Android's dialog
+  (coarse + fine; approximate is enough), `LocationManagerCompat.getCurrentLocation` with a 15 s timeout and last-known
+  fallback, "lat,lng" in the field, a Map button. Server normalises / checks "lat,lng". The manifest asks for location
+  ONLY when a list has a location field (`gen.uses_location`); never background location.
+- **Order updates as notifications**: `Updates.kt` - JobScheduler periodic 15 min (network required, persisted, needs
+  RECEIVE_BOOT_COMPLETED), the job (`UpdatesJob`, BIND_JOB_SERVICE) restores Cloud / Auth from prefs, asks
+  `GET /api/app-api/<key>/updates?since=` and shows normal notifications (channel "Order updates", tap opens the app);
+  the first check only sets the mark (no old news); also one check at every app start. Server `backend.updates`: a
+  customer hears that HER rows moved (status / paid changes are stamped `_ev` by `backend.update`), a staff account hears
+  about NEW rows in order-like lists. POST_NOTIFICATIONS is asked by the first-run NotifyScreen's Continue (Android 13+).
+  Instant push (FCM) needs the business's own Firebase project: a later step, written as such in the kit.
+- **UPI "I have paid"**: orders gain `paid` (No / Customer says paid / Verified, staff-only) + `utr` (staff-only). Kit
+  `PaidBox` on the customer's own UPI order: Pay by UPI (her own UPI ID, `Act.payUpi`) + "I have paid" with the 12-digit
+  reference -> `Db.paid` (outbox op `paid`) -> `POST .../c/<orders>/<row>/paid` (own row only, 6-24 alnum) -> "Customer says
+  paid" + a chat note to HER to check her own bank; only she marks Verified (phone button "Bank mein mila: Verified",
+  console select, tool `app_banao action=data set {paid: Verified}` - the tool text says never on the customer's word).
+- **Search / filters**: `GET .../c/<list>?q=&status=&limit=&offset=`; the app's lists get a search box + status chips
+  (on the cached rows, offline too) once a list has more than 4 rows.
+- **Upgrade**: a v1 app backend (built before this) is rebuilt in place on first use (`SCHEMA_V` 2, fields only added,
+  rows untouched, `upgraded` stamp).
+- **Owner views**: phone App ka data shows photos (authorised `Image.network`), location (tap = map), paid + UTR with a
+  Verified button; console App data shows photo thumbnails, map links and a paid select.
+- **Tool text**: `app_banao` (5.6 KB) is cut to 1200 characters for the model, so v0.318's backend notes at its END never
+  reached the model; the backend actions now sit in the first sentences of `app_banao` and `app_dekho`.
+- **Verified here**: the generated fixture project compiled with the real toolchain (`assembleDebug assembleRelease`,
+  R8) after fixing an overload ambiguity in `LocationManagerCompat.getCurrentLocation`; tests
+  `server/tests/test_v0319_app_features.py` (4: schema v2 + upgrade, photos (EXIF/GPS stripped, access rules, size / type
+  refusals), location checks, the paid claim + note + Verified + 409, updates for customer / staff, search + paging, photo
+  ownership, the generated project's manifest / kit / fallback forms / guide); CI e2e extended (photo up + back, the paid
+  claim, the updates call; the server check requires the paid row).
+- **Not yet**: QR / barcode scanning and camera capture inside the app (need CameraX / ML Kit: next), instant FCM push,
+  file (PDF) fields, maps drawn inside the app (the Map button opens Google Maps), payments other than her own UPI.
+
+## v0.323.0 STUDIO HOME + DIRECTOR (31 Oct 2026; Phase 2 of the Create Studio design audit)
+Owner: "GO PHASE 2" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- Home (`studio.js` V.studio): `hsList(mode)` / `hsPrice(mode)` / `hsHTML()` put the mode's settings inside the ask box as 32px pills
+  (Director aspect / seconds / language -> DIR, Image aspect / count -> IMG, Video aspect / seconds -> VID, Song lang -> MU, Voice lang -> VO)
+  with the price ("Storyboard free", "~₹3", "~₹7", "Paise a line", "Price before it starts"); `#homeAgent` hidden (tabs are the one switch;
+  its v0.304 code stays). `rails(root)` toggles `.canl` / `.canr` on scroll + resize: arrow and 56px edge fade only on the hidden side.
+- FOUND while testing: on the FIRST open every `canvas[data-art]` stayed 300x150 (the studio host opens hidden, paintAll's rAF saw
+  clientWidth 0) - the squashed moons / records. `artRO` (ResizeObserver) paints each canvas when it gets a size and again on resize;
+  disconnected on every go().
+- Director list: go('projects') = the Director list (DIR.project cleared); search `#fq` + sort (recent / name / furthest along);
+  `.fcard` with the film's first picture or `initTile(name)` (initial on a colour mixed from --surface / --ink, so Light / Dark / System
+  all work), "Step N of 8 · <step>" + Continue; the brief on a clean card (painted banner removed), option pills bordered 32px.
+- One film: `.nextc` Next step card under the steps (NEXT_STEP / NEXT_WHY, the price on one 48px button, `data-next` kept) - the
+  header no longer carries it; `timeline(shots)` = one segment per shot sized by its seconds (picture / made states), tap = scroll +
+  flash; `sceneCard(s, i, t0)` shows "0:06 – 0:11"; Free preview stays, Cast / Music / Rewrite in a More menu (hidden buttons
+  clicked, so the old handlers run); `plainErr()` = failed shots in plain words, the raw text in `title`.
+- `small{font-size:12.5px}` (a bare <small> was 10.4px on Brand kit, 11.7px in the editor). Re-measured: 6 text sizes, 0 texts
+  below 4.5 : 1 in light and dark. Phone: Director brief pills wrap (an old 900px rule squeezed them to "Hi" / "108").
+- Tests: `test_v0323_studio_home_director.py`; v0.318 scale pin allows 40 (headline size reused by the initials).
+
+## v0.324.0 TEEN LOOK JALDI (owner: "3 DESIGN IS TAKING TOO MUCH TIME")
+Cause, from the code: `site/service._make_looks` made the 3 looks one after another, and inside each look every Opus
+call waited for the one before: pictures (shot list + images), then per look the art direction (site_art, xhigh),
+the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots - about 12 slow calls in a row,
+15-25 minutes before she could choose.
+- Now three waves: (1) the pictures and the 3 art directions at the same time (art directions do not need the
+  pictures); a look whose direction came out too close to another (`Q.closeness >= SIBLING_CLOSE`) is asked once more
+  with the others shown, the same rule the sequential version had; (2) every look's hero + sections at the same time
+  (`SITE_LOOK_PARALLEL`, default 6; a failed hero still fails the looks, a failed extra section is skipped as before);
+  (3) the 3 assemblies + screenshots at the same time. Stop is checked between waves and before every section.
+- Each look writes from its own copy of the site row (`_look_copy`: style + tokens + art direction), so parallel
+  threads never share a mutable style.
+- `_in_ctx`: worker threads run inside a copy of the caller's context. Before, AI calls made in threads lost the usage
+  scope - the parallel section writer (`_write_sections`, since v0.225) included - so they were not charged to her and
+  an Arena run's budget (v0.307, `_spent_inr` reads usage) undercounted. Both pools now carry it.
+- Two console tests pinned 17 `?v=` stamps while main already had 18 (employees.js); pins raised to 18.
+- Tests `server/tests/test_v0324_teen_look_jaldi.py` (3): with a slow fake Opus the look calls overlap (peak >= 3),
+  3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
+- Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).

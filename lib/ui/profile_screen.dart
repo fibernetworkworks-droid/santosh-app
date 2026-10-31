@@ -123,6 +123,7 @@ import 'voice_learned_screen.dart';
 import 'call_quality_screen.dart';
 import 'voice_engine_screen.dart';
 import 'screen_link.dart';
+import 'employees_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.app, required this.onReset});
@@ -253,6 +254,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: Text('Doosre Hoola ${app.aName} ke zariye aapse kaise jud sakte hain'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AvatarSetupScreen(app: app, rulesOnly: true))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.groups_rounded, color: C.accent),
+              title: const Text('Employees · hire AI staff', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('SEO Specialist works 24/7 on your website and Google; its desk appears once you hire it'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EmployeesScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

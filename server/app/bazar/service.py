@@ -69,9 +69,15 @@ HIDDEN_STATUSES = frozenset({"demo", "no_shop_yet", "not_configured", "core", "u
 HIDDEN_EXECUTORS = frozenset({"handoff"})
 
 
-def shown(executor: str, status: str) -> bool:
-    if not core_settings().connect_clean:
+PARTNER_GATED = frozenset({"swiggy-food", "swiggy-instamart", "swiggy-dineout", "zomato"})   # v0.319
+
+
+def shown(executor: str, status: str, pack_id: str = "") -> bool:
+    st = core_settings()
+    if not st.connect_clean:
         return True
+    if pack_id in PARTNER_GATED and not st.food_partner_approved and status != "ready":
+        return False      # their sign-in refuses apps they have not approved; a linked one (ready) stays
     return status not in HIDDEN_STATUSES and executor not in HIDDEN_EXECUTORS
 
 
@@ -276,7 +282,7 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
                 if p not in hits:
                     hits.append(p)
         if core_settings().connect_clean:     # v0.303 only plugins that really work
-            hits = [p for p in hits if shown(p.executor, pack_status(s, user, p))]
+            hits = [p for p in hits if shown(p.executor, pack_status(s, user, p), p.id)]
         hits = hits[:limit]
         out = [_pack_out(s, user, p, with_tools=i < 4) for i, p in enumerate(hits)]
         res: dict[str, Any] = {"packs": out}
@@ -826,7 +832,7 @@ def connections(tenant_id: str) -> list[dict[str, Any]]:
         out = []
         for p in mcp_packs():
             st_p = pack_status(s, user, p)
-            if not shown(p.executor, st_p):
+            if not shown(p.executor, st_p, p.id):
                 continue
             out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": st_p,
                         "configured": bool(getattr(st, p.config["endpoint_setting"], "")), "logo": logos.pack_logo(p.id),
@@ -1442,9 +1448,11 @@ def catalog(tenant_id: str) -> dict[str, Any]:
                   "status": pack_status(s, user, p), "does": (p.description or "")[:220], "logo": logos.pack_logo(p.id),
                   # v0.109 the phone checks which of these apps are really installed (green tick only then)
                   **({"android_package": p.config["android_package"]} if p.executor == "upi"
-                     and p.config.get("android_package") else {})}
+                     and p.config.get("android_package") else {}),
+                  # v0.320 cab apps too, so the sheet's button opens the real app
+                  **({"android_package": p.config["package"]} if p.executor == "ride" and p.config.get("package") else {})}
                  for p in reg.all()]
-        packs = [p for p in packs if shown(p["executor"], p["status"])]
+        packs = [p for p in packs if shown(p["executor"], p["status"], p["pack_id"])]
         packs += [{"pack_id": r.id, "name": r.name, "category": "My MCP servers", "kind": "MCP server", "executor": "mcp",
                    "status": pack_status(s, user, custom_mcp.to_pack(r)), "does": (r.description or "")[:220],
                    "logo": logos.custom_logo(r)} for r in custom_mcp.user_rows(s, user.id)]

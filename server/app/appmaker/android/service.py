@@ -2,7 +2,8 @@
 
 Flow (`build`, ONLY on her approved design): every screen is written in Kotlin + Jetpack Compose by Opus from its approved
 web design + the design contract, checked against the house rules (no password / PIN / card fields, no network / files /
-intents in screens, only the kit) -> the fixed project is generated (HoolaKit, theme, navigation, legal screens by code) ->
+intents in screens, only the kit) -> the fixed project is generated (v0.314: with the app's own backend - accounts,
+saved orders / bookings / staff lists, an offline outbox - made first by appmaker/backend.py) (HoolaKit, theme, navigation, legal screens by code) ->
 built on the build machine (never this server) -> compile errors go back to the model per screen (max APP_BUILD_ROUNDS,
 stops when the same errors come back) -> a screen that still fails gets its simple code-made version, so the app always
 builds -> signed with this app's own preview key -> APK on her phone (Android's own "Install?" screen). The project ZIP is
@@ -226,11 +227,12 @@ def _design_html(s: dict[str, Any]) -> str:
 
 def write_screen(r: AppProject, sid: str, ctx: dict[str, Any], sp: dict[str, Any], scr: dict[str, Any],
                  extra: str = "") -> tuple[str, list[str]]:
-    ids = [s["id"] for s in sp["screens"]] + [c for c in ("seller_info", "privacy", "delete_account") if c in sp["code_screens"]]
+    ids = [s["id"] for s in sp["screens"]] + [c for c in ("seller_info", "privacy", "delete_account") if c in sp["code_screens"]] \
+        + list(G.KIT_SCREENS)
     me = next(s for s in sp["screens"] if s["id"] == sid)
     system = PR.screen_system(sid, back=not me["tab"], ids=ids, lists=SP.list_fields(sp["seed"]),
                               facts=sorted(k for k in sp["seed"]["facts"] if k != "privacy"), lang=AS._lang_line(r.language),
-                              icons=list(sp["icons"]))
+                              icons=list(sp["icons"]), backend=sp["seed"].get("backend"))
     prompt = (f"APP: {sp['app']['name']} ({ctx.get('goal')}).\nSCREEN: {sid} = {me['label']}"
               f"{' (a bottom tab)' if me['tab'] else ''}.\nPURPOSE: {me['purpose']}\nDATA SHOWN: {', '.join(me['data'])}\n"
               f"ACTIONS (label -> screen): {'; '.join(a['label'] + ' -> ' + a['go'] for a in me['actions'])}\n"
@@ -270,6 +272,10 @@ def _run(r: AppProject) -> None:
                   base_url=base, app_key=_app_key(r))
     sp["preview_key"] = key
     sp["scenes"] = _scenes(r, ctx, work)
+    # v0.314 ASLI APP: the app's own backend (accounts + saved data) exists before a single screen is written, and the
+    # build carries its lists so screens save for real and the kit knows the rules
+    from .. import backend as BE
+    sp["seed"]["backend"] = BE.seed_hint(r)
     ids = [s["id"] for s in sp["screens"]]
     cache = _cache(r)
     redo = set(st.get("redo") or [])
@@ -280,6 +286,9 @@ def _run(r: AppProject) -> None:
     for i, sid in enumerate(ids):
         if AS._load(r.id).stop:
             raise AndroidError("rok diya")
+        if sid in G.AUTH_IDS:                        # v0.314 the kit's own sign-in screen stands in for the design's
+            _states(r.id, {sid: "written"})
+            continue
         f = cache / f"{st.get('design_hash', '')[:12]}-{sid}.kt"
         if f.exists() and sid not in redo:
             kt[sid] = f.read_text()
@@ -526,5 +535,10 @@ def content(app_key: str) -> dict[str, Any]:
     merged = {**_j(r.facts, {}), **{k: v for k, v in facts.items() if v}}
     sd = SP.seed(r.name, r.goal, merged, _j(r.plan, {}))
     out = {"facts": sd["facts"], "lists": sd["lists"], "demo_lists": sd["demo_lists"], "at": now().isoformat()}
+    try:   # v0.314 the app's backend lists (fields + rules, no data): a newer server copy than the build wins in the app
+        from .. import backend as BE
+        out["backend"] = BE.seed_hint(r)
+    except Exception:                                     # noqa: BLE001
+        log.debug("backend hint", exc_info=True)
     _CACHE[app_key] = (time.time(), out)
     return out

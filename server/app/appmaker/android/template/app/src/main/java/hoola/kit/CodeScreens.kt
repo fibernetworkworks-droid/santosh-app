@@ -2,8 +2,12 @@ package hoola.kit
 
 // Made by Hoola App Sahayak. Screens written by code, never by the model: splash, DPDP consent (unticked box,
 // Continue disabled until ticked), notification explainer, seller details + grievance officer (E-Commerce Rules 2020),
-// privacy policy and in-app account deletion (both stores require it).
+// privacy policy and in-app account deletion (both stores require it; v0.314 it really deletes on the server).
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,12 +20,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(onDone: () -> Unit) {
@@ -52,9 +62,13 @@ fun ConsentScreen(onDone: () -> Unit) {
 
 @Composable
 fun NotifyScreen(onDone: () -> Unit) {
+    // v0.319 Continue asks Android's own notification permission (Android 13+), after this screen explained why
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onDone() }
     Page(Strings.notifyTitle, back = false, large = true, bottomBar = {
         Btn(Strings.later, modifier = Modifier.weight(1f), kind = BtnKind.Ghost) { onDone() }
-        Btn(Strings.cont, modifier = Modifier.weight(1f)) { onDone() }
+        Btn(Strings.cont, modifier = Modifier.weight(1f)) {
+            if (Build.VERSION.SDK_INT >= 33) ask.launch(Manifest.permission.POST_NOTIFICATIONS) else onDone()
+        }
     }) {
         block { Center { Box(Modifier.size(96.dp).background(H.c.tint, RoundedCornerShape(28.dp)), contentAlignment = Alignment.Center) { HIcon("bell", size = 44.dp, tint = H.c.primaryText) } } }
         block { Body(Strings.notifyWhy) }
@@ -100,13 +114,26 @@ fun PrivacyScreen() {
 @Composable
 fun DeleteAccountScreen() {
     val context = ctx()
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
     Page(Strings.deleteTitle) {
         block { Body(Strings.deleteWhat) }
         block {
-            Btn(Strings.deleteYes, kind = BtnKind.Danger, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Btn(if (busy) Strings.deleting else Strings.deleteYes, kind = BtnKind.Danger, enabled = !busy,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 AppState.form.clear(); AppState.cart.clear()
-                Store.put(context, "delete_requested", "1")
-                Act.toast(context, Strings.deleteDone)
+                if (!Auth.signedIn) {
+                    Store.put(context, "delete_requested", "1")
+                    Act.toast(context, Strings.deleteDone)
+                } else {
+                    // v0.314 the server removes the account and everything it made, then the phone forgets it too
+                    busy = true
+                    scope.launch {
+                        val e = Auth.deleteAccount(context)
+                        busy = false
+                        Act.toast(context, e ?: Strings.deleteDone)
+                    }
+                }
             }
         }
     }

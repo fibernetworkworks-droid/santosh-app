@@ -10,6 +10,7 @@ from .. import kit as K
 from . import spec as S
 
 HERE = Path(__file__).resolve().parent / "fixture"
+FIXTURE_KEY = "akf1c7a2e0000000000000001"      # v0.314 a real-format app key (the CI e2e server knows it)
 
 
 def main() -> None:
@@ -24,6 +25,12 @@ def main() -> None:
              "products": [{"name": "Atta 5 kg", "price": 265, "unit": "bag"}, {"name": "Toor dal 1 kg", "price": 158, "unit": "pack"},
                           {"name": "Amul butter 500 g", "price": 285, "unit": "pack"}]}
     sd = S.seed("Sharma Kirana", "shop", facts, plan)
+    from .. import backend as BE                    # v0.314 the app's own backend lists (orders), as a real build carries
+
+    class _P:
+        goal, plan = "shop", "{}"
+    sch = BE.schema_for(_P())
+    sd["backend"] = {"kind": sch["kind"], "order": sch["order"], "signup": True, "collections": sch["collections"]}
     for p in sd["lists"]["products"]:
         p["category"] = "Staples" if "dal" in p["name"].lower() or "atta" in p["name"].lower() else "Dairy"
 
@@ -50,7 +57,7 @@ def main() -> None:
     rel = {slot: {w: str(Path(p).relative_to(HERE.parents[4])) for w, p in d.items()} for slot, d in fonts.items()}
     kt = {f.stem.replace("Screen", "").lower(): f.read_text() for f in (HERE / "screens").glob("*.kt")}
     spec = {"app": {"name": "Sharma Kirana", "app_id": "in.hoola.preview.fixture", "version_code": 1, "version_name": "1.0",
-                    "language": "en", "base_url": "https://example.invalid", "app_key": "fixture"},
+                    "language": "en", "base_url": "https://example.invalid", "app_key": FIXTURE_KEY},
             "tokens": S.with_tints(tk), "structure": {}, "tabs": plan["tabs"], "start": "home", "flow": plan["flow"],
             "code_screens": plan["code_screens"], "screens": screens,
             "fab": S.fab_of(tk, "shop", plan, plan["labels"]) or {"label": "Cart", "icon": "cart", "go": "cart",

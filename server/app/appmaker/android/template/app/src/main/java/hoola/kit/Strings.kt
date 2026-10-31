@@ -61,4 +61,65 @@ object Strings {
     val email get() = t("Email", "ईमेल", "ईमेल", "Email")
     val address get() = t("Address", "पता", "पत्ता", "Pata")
     val hours get() = t("Hours", "समय", "वेळ", "Samay")
+
+    // v0.314 accounts + saved data
+    val loginTitle get() = t("Sign in", "साइन इन", "साइन इन", "Sign in")
+    val signupTitle get() = t("Create account", "अकाउंट बनाएँ", "अकाउंट तयार करा", "Account banaiye")
+    val login get() = t("Sign in", "साइन इन करें", "साइन इन करा", "Sign in karein")
+    val signup get() = t("Create account", "अकाउंट बनाएँ", "अकाउंट तयार करा", "Account banaiye")
+    val loginWhy get() = t("Sign in to place orders, book and see what you asked for.", "ऑर्डर, बुकिंग और अपनी जानकारी देखने के लिए साइन इन करें।",
+        "ऑर्डर, बुकिंग आणि तुमची माहिती पाहण्यासाठी साइन इन करा.", "Order, booking aur apni jaankari dekhne ke liye sign in karein.")
+    val signupWhy get() = t("Your email and a password of 8 or more letters. Nothing else is needed.", "आपका ईमेल और कम से कम 8 अक्षरों का पासवर्ड। और कुछ नहीं चाहिए।",
+        "तुमचा ईमेल आणि किमान 8 अक्षरांचा पासवर्ड. बाकी काही नको.", "Aapka email aur kam se kam 8 akshar ka password. Aur kuch nahi chahiye.")
+    val password get() = t("Password", "पासवर्ड", "पासवर्ड", "Password")
+    val haveAccount get() = t("I already have an account", "मेरा अकाउंट पहले से है", "माझे अकाउंट आधीच आहे", "Mera account pehle se hai")
+    val newHere get() = t("New here? Create an account", "नए हैं? अकाउंट बनाएँ", "नवीन आहात? अकाउंट तयार करा", "Naye hain? Account banaiye")
+    val account get() = t("My account", "मेरा अकाउंट", "माझे अकाउंट", "Mera account")
+    val notSignedIn get() = t("You are not signed in", "आप साइन इन नहीं हैं", "तुम्ही साइन इन केलेले नाही", "Aap sign in nahi hain")
+    val logout get() = t("Sign out", "साइन आउट", "साइन आउट", "Sign out")
+    val staff get() = t("Staff", "स्टाफ़", "स्टाफ", "Staff")
+    val nothingYet get() = t("Nothing here yet.", "अभी यहाँ कुछ नहीं है।", "अजून इथे काही नाही.", "Abhi yahan kuch nahi hai.")
+    val sending get() = t("Sending…", "भेज रहे हैं…", "पाठवत आहे…", "Bhej rahe hain…")
+    val saved get() = t("Saved. It reaches us as soon as you are online.", "सेव हो गया। ऑनलाइन होते ही हम तक पहुँच जाएगा।",
+        "सेव झाले. ऑनलाइन होताच आमच्यापर्यंत पोहोचेल.", "Save ho gaya. Online hote hi hum tak pahunch jayega.")
+    val pending get() = t("waiting to send", "भेजना बाकी", "पाठवणे बाकी", "bhejna baaki")
+    val offline get() = t("No internet. Please try again.", "इंटरनेट नहीं है। फिर कोशिश करें।", "इंटरनेट नाही. पुन्हा प्रयत्न करा.", "Internet nahi hai. Phir koshish karein.")
+    val tryAgain get() = t("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। फिर कोशिश करें।", "काहीतरी चुकले. पुन्हा प्रयत्न करा.", "Kuch gadbad hui. Phir koshish karein.")
+    val loginAgain get() = t("Please sign in again.", "कृपया फिर से साइन इन करें।", "कृपया पुन्हा साइन इन करा.", "Kripya phir se sign in karein.")
+    val loginFirst get() = t("Sign in first, then it is saved.", "पहले साइन इन करें, फिर सेव होगा।", "आधी साइन इन करा, मग सेव होईल.", "Pehle sign in karein, phir save hoga.")
+    val notSaved get() = t("It could not be saved.", "सेव नहीं हो पाया।", "सेव झाले नाही.", "Save nahi ho paya.")
+    val staffOnly get() = t("Only staff can add this.", "इसे सिर्फ़ स्टाफ़ जोड़ सकता है।", "हे फक्त स्टाफ जोडू शकतो.", "Ise sirf staff jod sakta hai.")
+    val required get() = t("please fill this", "यह भरना ज़रूरी है", "हे भरणे आवश्यक आहे", "yeh bharna zaroori hai")
+    val cartEmpty get() = t("Your cart is empty.", "आपका कार्ट खाली है।", "तुमची कार्ट रिकामी आहे.", "Aapka cart khaali hai.")
+    val staffView get() = t("Everyone's entries (staff view)", "सबकी एंट्री (स्टाफ़)", "सर्वांच्या नोंदी (स्टाफ)", "Sabki entries (staff)")
+    val deleting get() = t("Deleting…", "हटा रहे हैं…", "हटवत आहे…", "Hata rahe hain…")
+
+    // v0.319 photos, location, notifications, UPI paid, search
+    val addPhoto get() = t("Add photo", "फ़ोटो जोड़ें", "फोटो जोडा", "Photo jodiye")
+    val changePhoto get() = t("Change photo", "फ़ोटो बदलें", "फोटो बदला", "Photo badliye")
+    val remove get() = t("Remove", "हटाएँ", "काढा", "Hataiye")
+    val photoFailed get() = t("That photo could not be used.", "यह फ़ोटो नहीं लग पाई।", "हा फोटो वापरता आला नाही.", "Yeh photo nahi lag payi.")
+    val useMyLocation get() = t("Use my location", "मेरी लोकेशन लें", "माझे लोकेशन घ्या", "Meri location lijiye")
+    val finding get() = t("Finding…", "ढूँढ रहे हैं…", "शोधत आहे…", "Dhoondh rahe hain…")
+    val openMap get() = t("Map", "नक्शा", "नकाशा", "Map")
+    val locationTitle get() = t("Use your location?", "आपकी लोकेशन लें?", "तुमचे लोकेशन घ्यायचे?", "Aapki location lein?")
+    val locationWhy get() = t("Only to fill this address, only now while the app is open. It is saved with this entry and nowhere else.",
+        "सिर्फ़ यह पता भरने के लिए, सिर्फ़ अभी जब ऐप खुला है। यह इसी एंट्री के साथ सेव होगी, और कहीं नहीं।",
+        "फक्त हा पत्ता भरण्यासाठी, फक्त आत्ता ॲप उघडे असताना. हे फक्त या नोंदीसोबत सेव होईल.",
+        "Sirf yeh pata bharne ke liye, sirf abhi jab app khula hai. Yeh isi entry ke saath save hogi, aur kahin nahi.")
+    val locationDenied get() = t("Location not allowed. You can type the address.", "लोकेशन की अनुमति नहीं मिली। पता लिख दीजिए।",
+        "लोकेशनची परवानगी नाही. पत्ता लिहा.", "Location ki ijaazat nahi mili. Pata likh dijiye.")
+    val locationFailed get() = t("Could not find the location. Please type the address.", "लोकेशन नहीं मिली। पता लिख दीजिए।",
+        "लोकेशन सापडले नाही. पत्ता लिहा.", "Location nahi mili. Pata likh dijiye.")
+    val iPaid get() = t("I have paid", "मैंने भुगतान कर दिया", "मी पैसे दिले", "Maine pay kar diya")
+    val utr get() = t("UPI reference / UTR", "UPI रेफ़रेंस / UTR", "UPI संदर्भ / UTR", "UPI reference / UTR")
+    val utrWhy get() = t("Type the 12-digit reference from your UPI app. The shop checks it in its own bank.",
+        "अपने UPI ऐप से 12 अंकों का रेफ़रेंस लिखें। दुकान अपने बैंक में जाँच लेगी।",
+        "तुमच्या UPI ॲपमधील 12 अंकी संदर्भ लिहा. दुकान आपल्या बँकेत तपासेल.",
+        "Apne UPI app se 12 ank ka reference likhiye. Dukaan apne bank mein check kar legi.")
+    val paidSaid get() = t("Thanks! The shop will confirm your payment.", "धन्यवाद! दुकान आपका भुगतान पक्का करेगी।",
+        "धन्यवाद! दुकान तुमचे पेमेंट पक्के करेल.", "Shukriya! Dukaan aapka payment pakka karegi.")
+    val updatesChannel get() = t("Order updates", "ऑर्डर अपडेट", "ऑर्डर अपडेट", "Order updates")
+    val newEntry get() = t("New — open the app to see it", "नया — देखने के लिए ऐप खोलें", "नवीन — पाहण्यासाठी ॲप उघडा", "Naya — dekhne ke liye app kholiye")
+    val all get() = t("All", "सभी", "सर्व", "Sab")
 }

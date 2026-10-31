@@ -15,7 +15,7 @@ APP_TOOLS = [
         "expenses, fitness, meditation, recipes, free games / quiz, photo editor, weather, rides like Uber, food delivery like "
         "Zomato, quick commerce, multi-seller shopping, buy & sell, travel / hotel / event tickets, jobs, language learning, "
         "online courses, property portal, doctor consults, home services, payments: 33 product kinds) - and show her EVERY "
-        "screen as a tap-through prototype BEFORE anything is built. brief = HER EXACT WORDS, never your summary and never her "
+        "screen as a tap-through prototype BEFORE anything is built. BUILT APPS HAVE THEIR OWN BACKEND: action=data (app, coll, row, set) changes a row for her (\"order accept karo\" -> set {status: Accepted}; paid=Verified ONLY when she says the money is in her bank), action=role (member, role) makes an account staff; read with app_dekho what=data / members. brief = HER EXACT WORDS, never your summary and never her "
         "own business added in (her business details go in by themselves only when the app is for her business). Don't pass "
         "goal unless she named the kind of app; a goal that doesn't fit her words is ignored. If it answers 'Pakka karne ke "
         "liye ek sawaal', ask her exactly that and call again with her answer in brief (or answers {sure: true} if she says "
@@ -51,17 +51,29 @@ APP_TOOLS = [
         "+ the project ZIP (opens in Android Studio). redo (screen ids) rewrites only those screens. No build machine set up -> "
         "only the ZIP (say so). Nothing goes to Play Store here. action=stop / resume / delete*. "
         "Never invent prices, phone numbers or reviews ([blank] instead); never card / CVV / UPI PIN / password fields; payments = "
-        "UPI to her own UPI ID. iPhone build and store publishing come in later versions. (* owner only)"),
+        "UPI to her own UPI ID. iPhone build and store publishing come in later versions. (* owner only)" "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
+        "action=data (app, coll, row, set) changes a row for her, e.g. an order's status (\"order accept karo\" -> set {status: Accepted}); "
+        "v0.319: a customer's UPI \"I have paid\" claim reads paid=\"Customer says paid\" + utr; ONLY when she says she saw the money in "
+        "her own bank set {paid: Verified} (never on the customer's word, never by yourself). Photos / locations her app's users sent are "
+        "fields of the rows (a photo = a file id she sees in the app data view); "
+        "action=role (app, member, role staff|admin|member) makes an account staff (a staff app's new account sees nothing until then). "
+        "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete"]},
+         "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
+                                                 "data", "role"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
          "instruction": {"type": "string"}, "drop": {"type": "array", "items": {"type": "string"}}, "hash": {"type": "string"},
-         "redo": {"type": "array", "items": {"type": "string"}}, "idea": {"type": "string"}},
+         "redo": {"type": "array", "items": {"type": "string"}}, "idea": {"type": "string"},
+         "coll": {"type": "string", "description": "action=data: the app's list (orders, bookings, requests, ... or a staff list)"},
+         "row": {"type": "string", "description": "action=data: the row id (from app_dekho what=data)"},
+         "set": {"type": "object", "description": "action=data: fields to change, e.g. {\"status\": \"Accepted\"}"},
+         "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members)"},
+         "role": {"type": "string", "enum": ["member", "staff", "admin"]}},
          "required": ["action"]}},
     {"name": "app_dekho", "description": (
-        "Read her app designs (nothing changes). what=apps | app (app: board, screens, checks, preview link, versions) | "
+        "Read her app designs (nothing changes). what=data (app, coll: the real rows her app's users made) | members (app) | apps | app (app: board, screens, checks, preview link, versions) | "
         "checks (app) | spec (app: the frozen design contract: tokens, tabs, every screen's purpose / data / actions) | "
         "library (q or industry: business types with their app goal) | brief (field, goal, style: the full ready app brief) | "
         "understand (q: what a short ask means: business type, app goal, 3 looks) | design_system (the menu she can pick from: "
@@ -74,13 +86,15 @@ APP_TOOLS = [
         "android (app: the native build: status, screens written / compiled / simple, rounds, APK link + size, ZIP) | ideas "
         "(q = her words -> the best precise app idea + 2 near ones + how many ideas exist for that business; field / goal / "
         "aud filter; offset pages through them; idea = one idea's full detail). Show ideas to her as 2-3 short lines (name + "
-        "the special thing) and ask which one; then app_banao action=new idea=<id>."),
+        "the special thing) and ask which one; then app_banao action=new idea=<id>." " data (app; coll = one list: its rows, newest first - the real orders / bookings / requests her app's users made, with status) | "
+        "members (app: the app's accounts with their role)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
-                                             "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas"]},
+                                             "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
+                                             "data", "members"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
-         "idea": {"type": "string"}},
+         "idea": {"type": "string"}, "coll": {"type": "string"}},
          "required": ["what"]}},
 ]
 APP_LABELS = {"app_banao": "App design bana raha hoon", "app_dekho": "App design dekh raha hoon"}
@@ -132,14 +146,26 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.resume(t, ref)
     if action == "delete":
         return S.delete(t, ref)
+    if action in ("data", "role"):            # v0.314 her own app's backend: she runs it from Hoola
+        if not _owner(ctx):
+            raise ToolError("App ka data sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        r = BE.by_key_or_ref(t, ref)
+        if action == "role":
+            return BE.set_role(r, str(a.get("member") or ""), str(a.get("role") or ""))
+        sets = a.get("set") if isinstance(a.get("set"), dict) else {}
+        if not sets:
+            raise ToolError("Kya badalna hai? set = {status: ...}")
+        return BE.owner_update(r, str(a.get("coll") or ""), str(a.get("row") or ""), sets)
     raise ToolError(f"Unknown action {action}")
 
 
 async def app_banao(ctx: Ctx, action: str, **a) -> Any:
     from ..appmaker import service as S
+    from ..site import webapp as W
     try:
         return await asyncio.to_thread(_act, ctx, action, a)
-    except (S.AppError, KeyError) as e:
+    except (S.AppError, W.AppError, KeyError) as e:
         raise ToolError(str(e) or "Nahi mila")
 
 
@@ -209,6 +235,17 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
     if what == "android":
         from ..appmaker.android import service as AN
         return AN.get(t, ref)
+    if what in ("data", "members"):            # v0.314 the app's own backend
+        from ..appmaker import backend as BE
+        r = BE.by_key_or_ref(t, ref)
+        if what == "members":
+            return {"members": BE.members(r)[:200]}
+        if a.get("coll"):
+            rows = BE.owner_rows(r, str(a["coll"]), 100)
+            return {"coll": a["coll"], "rows": rows, "count": len(rows)}
+        v = BE.owner_view(r)
+        v["collections"] = [{"key": c["key"], "label": c["label"], "fields": [f["key"] for f in c["fields"]]} for c in v["collections"]]
+        return v
     if what == "schema":
         data, _ct = S.blueprint_file(t, ref, "schema.sql")
         txt = data.decode()
@@ -218,9 +255,10 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
 
 async def app_dekho(ctx: Ctx, what: str, **a) -> Any:
     from ..appmaker import service as S
+    from ..site import webapp as W
     try:
         return await asyncio.to_thread(_read, ctx, what, a)
-    except (S.AppError, KeyError) as e:
+    except (S.AppError, W.AppError, KeyError) as e:
         raise ToolError(str(e) or "Nahi mila")
 
 

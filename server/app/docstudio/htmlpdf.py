@@ -487,10 +487,11 @@ def _sane(spec: dict[str, Any], pick: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _ask_opus(system: str, prompt: str, kind: str, images: list[bytes] | None, timeout: float) -> dict[str, Any]:
+def _ask_opus(system: str, prompt: str, kind: str, images: list[bytes] | None, timeout: float,
+              max_tokens: int = 900) -> dict[str, Any]:
     from ..site import ai as AI
     ex = _cf.ThreadPoolExecutor(max_workers=1)
-    fut = ex.submit(AI.ask_json, system, prompt, 900, kind, images)
+    fut = ex.submit(AI.ask_json, system, prompt, max_tokens, kind, images)
     try:
         return fut.result(timeout=timeout) or {}
     finally:

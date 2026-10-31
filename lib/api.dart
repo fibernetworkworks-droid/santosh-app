@@ -986,6 +986,22 @@ class Api {
   Future<Map<String, dynamic>> seoDraftOk(String id, String text) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/seo/drafts/$id', body: {'text': text}) as Map);
   Future<String> seoGscLink() async => (await _send('GET', '/api/seo/gsc/link'))['url'] as String;
+  // v0.317 HIRE AN EMPLOYEE + the SEO Desk
+  Future<Map<String, dynamic>> employees() async => Map<String, dynamic>.from(await _send('GET', '/api/employees') as Map);
+  Future<Map<String, dynamic>> employeeAct(String key, String action) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/employees/$key/$action', body: {}) as Map);
+  Future<Map<String, dynamic>> employeeSettings(String key, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/employees/$key/settings', body: body) as Map);
+  Future<Map<String, dynamic>> seoDesk() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/seo/desk', timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> seoOnboard(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/onboard', body: body, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> seoRoadmapApprove() async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/roadmap/approve', body: {}) as Map);
+  Future<Map<String, dynamic>> seoRoadmapItem(String id, String status) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/roadmap/item/$id', body: {'status': status}) as Map);
+  Future<Map<String, dynamic>> seoRun(String job) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/run/$job', body: {}, timeout: const Duration(seconds: 120)) as Map);
   // v0.98 Bima Sahayak
   Future<Map<String, dynamic>> insSummary({int days = 15}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/insurance/summary', query: {'days': '$days'}) as Map);
@@ -1140,6 +1156,16 @@ class Api {
   Future<Map<String, dynamic>> appDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/apps/$id') as Map);
   // ---- v0.132 the native Android build (Kotlin + Compose, APK on her phone, project ZIP) ----
   Future<Map<String, dynamic>> appAndroid(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/apps/$id/android') as Map);
+  // v0.314 ASLI APP: her app's own backend (lists, rows her customers / staff made, accounts and roles)
+  Future<Map<String, dynamic>> appData(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/apps/$id/data') as Map);
+  Future<List<Map<String, dynamic>>> appRows(String id, String coll) async => List<Map<String, dynamic>>.from(
+      (((await _send('GET', '/api/apps/$id/data/$coll') as Map)['rows'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> appRowSet(String id, String coll, String row, Map<String, dynamic> set) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/apps/$id/data/$coll/$row', body: set) as Map);
+  Future<List<Map<String, dynamic>>> appMembers(String id) async => List<Map<String, dynamic>>.from(
+      (((await _send('GET', '/api/apps/$id/members') as Map)['members'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+  Future<Map<String, dynamic>> appMemberRole(String id, String member, String role) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/apps/$id/members/$member/role', body: {'role': role}) as Map);
   // ---- v0.131 complex apps: blueprint (data model, roles, levels, login, phone features) + schema files ----
   Future<Map<String, dynamic>> appBlueprint(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/apps/$id/blueprint') as Map);

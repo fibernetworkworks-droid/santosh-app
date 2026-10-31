@@ -133,6 +133,7 @@ class Settings(BaseSettings):
     doc_art: bool = True                    # Opus picks the look per document (off = the topic router picks)
     doc_review: bool = True                 # Opus looks at the printed pages and may ask for one change
     doc_model: str = ""                     # model for doc_art / doc_critique ("" = app_model, Claude Opus 5.5)
+    seo_ai: bool = True                     # v0.317 the SEO Employee asks Opus for its 90-day plan (off = the rules plan)
     studio_project_usd: float = 5.0        # starting budget of a new project
     studio_usd_inr: float = 85.0           # shown next to dollar prices on her cards
     studio_image_mode: str = "data"        # data = character photos inline; public = short-lived signed links from this server
@@ -214,7 +215,12 @@ class Settings(BaseSettings):
     site_ai_photos: int = 6                # v0.292 pictures a site gets before its looks (her own photos first, AI fills the gap; 0 = off)
     pexels_api_key: str = ""               # v0.292 optional licensed stock photos (official Pexels API) when the image models fail
     site_look_sections: int = 3            # v0.292 sections of the home page each of the 3 looks shows (hero + the next ones)
+    site_look_parallel: int = 6            # v0.324 look sections written at the same time (3 looks x hero + page top)
     site_critique_pages: int = 6           # v0.292 pages Opus reviews from their real screenshots (site_critique=all)
+    site_max_pages: int = 150              # v0.315 BADI WEBSITE: most pages one site may have (designed + list items + legal)
+    site_max_ai_pages: int = 40            # v0.315 most pages with their OWN designed sections (each section = one Opus call)
+    site_parallel_big: int = 5             # v0.315 sections written at the same time on a big site
+    site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
     site_arena_max_inr: float = 3000       # v0.307 Design Arena: rupee ceiling of one run (each site ~Rs 100-300 with Opus)
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
@@ -291,6 +297,9 @@ class Settings(BaseSettings):
     # v0.303 SAAF CONNECT (owner: "REMOVE ALL JUST KEEP COMPOSIO MCPS AND WORKING PLUG IN"): the Connect tab and
     # bazar_find show only what really works (Composio apps + working plugins); false = the old full catalogue
     connect_clean: bool = True
+    # v0.319 Swiggy / Zomato accept only partner-approved apps at their sign-in (her live test: the request is refused).
+    # Until Newtika is approved these stay hidden in the clean view; true = show them again.
+    food_partner_approved: bool = False
     composio_api_key: str = ""                        # VPS .env only (COMPOSIO_API_KEY), never in chat or the repo
     composio_webhook_secret: str = ""                 # COMPOSIO_WEBHOOK_SECRET: signs "connection expired" events
     composio_base_url: str = "https://backend.composio.dev/api/v3.1"
