@@ -688,7 +688,7 @@ def crash(r: AppProject, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
         x["last"] = now().isoformat()
         for k, v, n in (("screens", screen, 10), ("versions", ver, 10),
                         ("devices", f"{str(body.get('model') or '')[:40]} / "            # v0.332 iPhones report too
-                        + (f"iOS {re.sub(r'[^0-9.]', '', str(body.get('ios')))[:8]}" if body.get("ios")
+                        + (f"iOS {(re.search(r'\d+(?:\.\d+)*', str(body.get('ios'))) or [''])[0][:8]}" if body.get("ios")
                            else f"Android {str(body.get('android') or '')[:3]}"), 8)):
             if v and v not in x[k]:
                 x[k] = (x[k] + [v])[-n:]

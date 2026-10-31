@@ -12480,7 +12480,7 @@ re-versioned past main's parallel v0.332-v0.334.
   `Accounts.swift` (AuthScreen = the only password box, AccountScreen, RowsSection with staff status buttons + UPI pay + "I have
   paid" UTR, FormBlock = a list's own fields read live incl. PhotosPicker (1600 px JPEG) and "Use my location", privacy +
   in-app account deletion), `CrashGuard.swift` (signal + NSException handlers write kind + screen + app frames to a file,
-  sent to the same /api/app-api/<key>/crash on the next start; devices read "iOS x"), `E2e.swift` (DEBUG only, -hoola_e2e).
+  sent to the same /api/app-api/<key>/crash on the next start; devices read "iOS 26.2"), `E2e.swift` (DEBUG only, -hoola_e2e).
 - `appmaker/ios/gen.py` (stdlib, runs on the Mac): Android spec -> XcodeGen project.yml (bundle id, iOS 16, scheme), AppTokens,
   AppScreens registry (design sign-in ids -> AuthScreen), HoolaApp (#if DEBUG -hoola_screen / -hoola_base / -hoola_e2e only),
   code_screen (same decisions as Android fallback_screen), scan_screen house rules for Opus SwiftUI (no SecureField, no
@@ -12510,7 +12510,9 @@ re-versioned past main's parallel v0.332-v0.334.
   device release unsigned, sim_check opens all 13 screens (newest plain iPhone simulator, median launch, a shot of the full
   app with tabs), then a real Hoola server on the Mac + E2e.swift (sign up, order through the outbox priced by the server, same
   write twice = one row, photo up and back, paid claim, updates, crash report, sign out / in) + `android.ci_e2e check`.
-  First run: 13/13 screens, app 2.82 MB; the first run's shots showed every form field as "Name *" (fields had no id ->
+  Run 2: 13/13 screens, app 3.01 MB, median launch 2.1 s (simulator), HOOLA_E2E OK (order "2 x Atta 5 kg" = Rs 530 priced by the
+  server, dedup one row, photo 4.3 KB back, paid claim, crash report c_6a46ef34fac5 on screen cart), SERVER CHECK OK.
+  First run's shots showed every form field as "Name *" (fields had no id ->
   SwiftUI reused one row) - fixed via Item.id.
 - Tests: `test_v0332_iphone.py` (13).
 - Not done / not verified: a real TestFlight upload (needs her Apple Developer account + key; the workflow is written from
