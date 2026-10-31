@@ -11878,8 +11878,26 @@ Measured first: a site was at most 7 pages + legal (`library.brief` pages[:7]), 
   editing an item page by hand (item pages are not in Edit mode; change them in words).
 - Built as 0.313.0, re-versioned 0.315.0 on merge past the parallel v0.313.0 HOOLA PRINT and v0.314.0 (all kept).
 
-## v0.316.0 ASLI APP — App Sahayak Phase 1: every native app gets its own backend (owner: "HOOLA MUST CAN BUILD AND DEVLOPE A END TO END ANY DESIGN ANY COMPLEXITY ... AS RELIBLE AND ROBUST AS REAL HUMAN APP DEVLOPMENT" -> "GO PHASE 1")
-Built as 0.314.0, re-versioned 0.316.0 past the parallel v0.314.0 (AAGE BADHO 2) and v0.315.0 (BADI WEBSITE).
+## v0.316.0 DIRECTOR PICTURES FIX (31 Oct 2026; built as 0.312.0, re-versioned past main's 0.312-0.315)
+Owner: "NOW STUCK ON PICTURE CHECK" - the Director film sat on step 4 Pictures.
+- Root cause (same shape as v0.311 Cast): "Paint the opening pictures" -> price card -> Haan -> `service._do_keyframes` runs in
+  the background; when Gemini failed (bad key, quota, safety) the reason went ONLY to the chat (`_note`), the shots got no
+  keyframe and the page showed nothing - no "painting", no error. Reproduced locally: card ₹12 -> Haan -> failure invisible.
+- `service.py`: `_do_keyframes` writes `pics_error` on the project (all failed: "The opening pictures could not be made: <why>
+  Nothing was charged."; some failed: "n of m opening pictures could not be made: <why> Only the pictures that were made are
+  charged."; success clears it) via `_pics_error`; `view()` returns `pics_error`. `prefs.pics_skip` (DEFAULT_PREFS,
+  `_clean_prefs`, `StudioSettings.pics_skip` in main.py): `quote()` adds no pictures, `view`'s next step skips Pictures.
+- `studio.js`: "Painting N opening picture(s)…" box with the ring while `p.painting`; red box with "Try again for the missing
+  pictures" (POST /keyframes for shots without a keyframe) and "Skip pictures: make the shots from the words"; the Pictures
+  step counts as done when skipped; a skipped step (pictures or cast) hides its red box.
+- Test: `server/tests/test_v0312_director_pictures.py` (all failed / some failed charges only painted / success clears / skip
+  removes pictures from the card / page markers).
+- CRISP TEXT fix: v0.311's spinning ring (`.cring`, `animation:spin ... infinite`) broke the no-looping-spinner rule pinned by
+  test_v0304 / test_v0306; both "Painting…" boxes now use the studio's own working bar (`.bar i.indet`). Version pins moved to
+  0.316.0+356 (the build number had been left at 351).
+
+## v0.317.0 ASLI APP — App Sahayak Phase 1: every native app gets its own backend (owner: "HOOLA MUST CAN BUILD AND DEVLOPE A END TO END ANY DESIGN ANY COMPLEXITY ... AS RELIBLE AND ROBUST AS REAL HUMAN APP DEVLOPMENT" -> "GO PHASE 1")
+Built as 0.314.0, re-versioned 0.316.0 and then 0.317.0 past the parallel v0.314.0 (AAGE BADHO 2), v0.315.0 (BADI WEBSITE) and v0.316.0 (DIRECTOR PICTURES FIX).
 The gap it closes: a built Android app could only SHOW her public facts / products (`/api/app-content`); orders, bookings,
 logins and the blueprint's tables existed only on paper. Phase plan given to the owner: 1 real backend (this), 2 feature
 engine (push, camera, uploads, maps, QR, payments flow ...), 3 engineering like a team (generated tests, performance
