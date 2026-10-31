@@ -152,3 +152,32 @@ def test_browse_web_no_longer_suggests_a_quiet_move():
     src = (Path(__file__).resolve().parents[1] / "app/agent/web_tools.py").read_text()
     assert "it moves the \"\n                             \"job to her PC" not in src
     assert "Never move it to her PC or the cloud PC by" in src
+
+
+# ---------------------------------------------------------------- v0.330 her test A: the card was made but never DRAWN
+def test_the_console_draws_the_plan_card():
+    """The server made the plan; the console's progress policy folded every 'goal' event into the progress line, so
+    no card ever showed on the console. The plan is her todo list: it is a card (one per job, updated in place)."""
+    from pathlib import Path
+    js = (Path(__file__).resolve().parents[1] / "app/static/console/workspace.js").read_text()
+    quiet = js.split("quiet(kind,p={}) {", 1)[1].split("},", 1)[0]
+    folded = quiet.split("return [", 1)[1].split("]", 1)[0]                  # the list itself, not the comments
+    assert "'goal'" not in folded and "'step'" in folded                    # steps still fold, the plan does not
+    v2 = (Path(__file__).resolve().parents[1] / "app/static/console/v2.js").read_text()
+    assert "if (kind === 'goal') {" in v2 and "const key = kind + ':' + (p.id" in v2   # one card per goal id
+
+
+def test_her_test_a_asks_are_big_with_clean_steps():
+    from app.agent import goal
+    from app.agent.santosh import _ask_steps
+    a = ("Mere kapdon ke naye online store ke liye launch ki taiyari karo: pehle 3 competitor stores ki pricing check "
+         "karo, phir 10 product descriptions likho, uske baad launch week ka Instagram posting schedule banao, aur "
+         "aakhir mein sab ek Word file mein do.")
+    b = ("Ek chhota business plan banao chai cafe ke liye: location ke options socho, starting kharcha ka hisaab lagao, "
+         "menu aur rates likho, phir sab ek PDF mein do.")
+    for t in (a, b):
+        assert goal.looks_big(t)
+        assert len(_ask_steps(t)[1]) == 4
+    assert _ask_steps(a)[1][2] == "launch week ka Instagram posting schedule banao"     # 'uske baad' stripped
+    for t in ("Kal Mumbai mein baarish hogi kya?", "Time: kitna baj gaya?", "Note: kal meeting hai"):
+        assert not goal.looks_big(t)

@@ -365,7 +365,11 @@ def looks_big(text: str) -> bool:
     seq = len(_SEQ.findall(t))
     items = len(_LIST.findall(t))
     verbs = len(_VERB.findall(t))
-    return items >= 3 or seq >= 2 or (seq >= 1 and verbs >= 3) or (verbs >= 4 and words >= 25) or words >= 80
+    # v0.330 "X banao: a, b, c, phir d" = a list of parts after a colon (her chai-cafe test: 3 parts, only 2 known verbs)
+    parts = len([p for p in re.split(r"[,;]|\b(?:phir|fir|aur|then|and)\b", t.split(":", 1)[1]) if len(p.split()) >= 2]) \
+        if ":" in t[:200] else 0
+    return (items >= 3 or seq >= 2 or (seq >= 1 and verbs >= 3) or (verbs >= 4 and words >= 25) or words >= 80
+            or parts >= 3)
 
 
 PLAN_FIRST = ("[System: yeh kaam kai steps ka lagta hai. Sabse PEHLA tool call `kaam_plan set` ho — goal uske shabdon "
