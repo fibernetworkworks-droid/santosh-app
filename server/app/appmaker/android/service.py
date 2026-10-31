@@ -565,6 +565,8 @@ def _rollback(r: AppProject, st: dict[str, Any], n: int, sp: dict[str, Any], wor
     if key.get("p12_b64"):
         (src_dir / "keys").mkdir(exist_ok=True)
         (src_dir / "keys/preview.p12").write_bytes(base64.b64decode(key["p12_b64"]))
+        pw = re.sub(r"[^A-Za-z0-9]", "", str(key.get("password") or ""))     # the exported project blanked it: back in
+        g.write_text(re.sub(r'\?: "[A-Za-z0-9]*"', f'?: "{pw}"', g.read_text()))
     if not RN.describe()["ready"] and RN._override is None:
         raise AndroidError("Build machine set nahi hai: purani build dobara nahi ban sakti.")
     _put(r.id, status="building", now=f"Build {k} wapas la rahi hoon (nayi version {sp['app']['version_name']})")

@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') loadStore(o, ot); }
     showBtn();
   }
 
@@ -476,6 +476,40 @@ window.HoolaBuild = function (C) {
       ${L(q.shots).length ? `<div class="blooks">${L(q.shots).slice(0, 12).map(sh => `<figure>${pic(`${base(o)}/android/qa/${encodeURIComponent(sh)}`, sh)}<figcaption>${esc(sh)}</figcaption></figure>`).join('')}</div>` : ''}</section>`;
   }
 
+  /* v0.330 Google Play from HER OWN developer account: steps, package, her service-account key (file -> sealed, never shown),
+     listing, bundle, Internal testing, Production only after a confirm */
+  async function loadStore(o, root) {
+    const box = root.querySelector('.ststore'); if (!box || !S(o.an?.status)) return;
+    let v; try { v = await api('GET', base(o) + '/store'); } catch (er) { return; }
+    const step = id => (L(v.steps).find(x => x.id === id) || {}).done, l = M(v.listing);
+    box.innerHTML = `<section class="bbox"><h4>Google Play Store · ${L(v.steps).filter(x => x.done).length} / ${L(v.steps).length}</h4>
+      ${v.now ? `<div class="bln">${esc(S(v.now))}</div>` : ''}${v.error ? `<div class="badc bln">${esc(S(v.error))}</div>` : ''}
+      ${L(v.steps).map(x => `<div class="bln ${x.done ? '' : 'faint'}">${x.done ? '✓' : '○'} ${esc(S(x.label))}${x.value ? ' · ' + esc(S(x.value)) : ''}</div>`).join('')}
+      <form class="stapp" data-st="setup"><label for="stPkg"><b>Package name</b> <span>Permanent: Google never lets it change.</span></label>
+        <div class="row"><input id="stPkg" value="${esc(S(v.package) || S(v.proposed))}" ${v.locked ? 'disabled' : ''}><button class="btn soft" type="submit" ${v.locked ? 'disabled' : ''}>Confirm</button></div></form>
+      ${v.account ? `<div class="bln">Play account linked: ${esc(S(v.account))} <button class="btn soft" type="button" data-st="forget">Remove key</button></div>`
+        : `<label class="bln"><b>Your Play service-account key (JSON file)</b> <span class="faint">Play Console > Setup > API access. Sealed on the server, never shown again; never paste it in chat.</span><br><input type="file" accept=".json,application/json" data-st="key"></label>`}
+      ${l.title ? `<div class="bln"><b>${esc(S(l.title))}</b><div class="faint">${esc(S(l.short))}</div></div>` : ''}
+      <div class="acts"><button class="btn soft" type="button" data-st="listing" ${step('package') ? '' : 'disabled'}>${l.title ? 'Rewrite listing' : 'Write listing'}</button>
+        <button class="btn soft" type="button" data-st="build" ${step('package') ? '' : 'disabled'}>Build store bundle</button>
+        <button class="btn go" type="button" data-st="internal" ${step('bundle') && step('account') ? '' : 'disabled'}>Send to Internal testing</button>
+        <button class="btn soft" type="button" data-st="production" ${step('internal') ? '' : 'disabled'}>Production (everyone)</button></div>
+      <div class="bln faint">Privacy policy: ${esc(S(v.privacy_url))}<br>Data deletion: ${esc(S(v.delete_url))}</div>
+      ${L(v.console_steps).map(t => `<div class="bln faint">• ${esc(S(t))}</div>`).join('')}
+      ${L(v.data_safety).length ? `<div class="bln"><b>Data safety answers</b>${L(v.data_safety).map(x => `<div class="faint">• ${esc(S(x.type))} - ${esc(S(x.why))}</div>`).join('')}</div>` : ''}</section>`;
+    const go = async (what, body, ok) => { try { await api('POST', base(o) + '/store/' + what, body); if (ok) toast(ok); loadStore(o, root); } catch (er) { toast(er.message, true); } };
+    box.querySelector('form[data-st=setup]')?.addEventListener('submit', e => { e.preventDefault(); go('setup', {package: box.querySelector('#stPkg').value.trim()}, 'Package confirmed.'); });
+    box.querySelector('input[data-st=key]')?.addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return; go('credentials', {json: await f.text()}, 'Play account linked.'); });
+    box.onclick = e => { const b = e.target.closest('button[data-st]'); if (!b) return;
+      const w = b.dataset.st;
+      if (w === 'forget') go('forget', {}, 'Key removed.');
+      if (w === 'listing') go('listing', {regen: true}, 'Listing written.');
+      if (w === 'build') go('build', {}, 'Building the store bundle.');
+      if (w === 'internal') go('publish', {track: 'internal'}, 'Sending to Google Play (Internal testing).');
+      if (w === 'production' && confirm('Send to Production? After Google review the app is public on the Play Store for everyone.')) go('publish', {track: 'production', her_tap: true}, 'Sending to Production.');
+    };
+  }
+
   /* v0.325 every build of the app: what changed, and Bring back for a kept one */
   function historyBox(o) {
     const h = L(o.an?.history), kept = L(o.an?.kept_builds); if (!h.length) return '';
@@ -497,7 +531,7 @@ window.HoolaBuild = function (C) {
     const apk = M(a.apk), dl = publicLink(a.apk_url), zip = publicLink(a.zip_url), redo = L(a.screens).filter(x => x.state === 'code').map(x => x.id);
     return `<ol class="bpipe">${pipe}</ol>
       ${s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : ''}${a.note ? `<div class="muted bln">${esc(a.note)}</div>` : ''}
-      ${qaBox(o)}${historyBox(o)}
+      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div>
       <div class="bcols"><section class="bbox"><h4>Screens in Kotlin</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
           ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>

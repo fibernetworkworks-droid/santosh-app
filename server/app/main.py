@@ -8815,6 +8815,30 @@ async def app_api_apk(app_key: str):
                         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
+@app.get("/api/app-api/{app_key}/privacy", response_class=HTMLResponse)
+async def app_api_privacy(app_key: str):
+    """v0.330 the app's privacy policy page (the URL Play Console asks for)."""
+    from .appmaker import backend as BE
+    from .appmaker.android import store as ST
+    from .site import webapp as W
+    try:
+        return HTMLResponse(await asyncio.to_thread(lambda: ST.privacy_html(BE.by_key(app_key))))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+
+
+@app.get("/api/app-api/{app_key}/delete-account", response_class=HTMLResponse)
+async def app_api_delete_page(app_key: str):
+    """v0.330 how to delete the account (Play's required data-deletion URL)."""
+    from .appmaker import backend as BE
+    from .appmaker.android import store as ST
+    from .site import webapp as W
+    try:
+        return HTMLResponse(await asyncio.to_thread(lambda: ST.delete_html(BE.by_key(app_key))))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+
+
 @app.get("/api/app-api/{app_key}/updates")
 async def app_api_updates(app_key: str, request: Request, since: str = ""):
     """v0.319 the app's background check: her rows that moved (customer) / new orders (staff) since `since`."""
@@ -8938,6 +8962,47 @@ async def apps_data_file(ref: str, fid: str, tenant: str = Depends(current_tenan
     except Exception:
         raise HTTPException(404, "not found")
     return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
+@app.get("/api/apps/{ref}/store", dependencies=[Depends(require_key)])
+async def apps_store(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.330 Play Store launch: steps, package, account (masked), listing, bundle, releases, data safety, the pages."""
+    from .appmaker.android import store as ST
+    return await asyncio.to_thread(_appd, ST.get, tenant, ref)
+
+
+@app.post("/api/apps/{ref}/store/{what}", dependencies=[Depends(require_key)])
+async def apps_store_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """setup {package} | credentials {json} (her Play service-account key: sealed, never shown) | forget | listing {regen, edit}
+    | build | publish {track, her_tap} - production only from her tap in the app (her_tap=true is sent by the app's button)."""
+    from .appmaker.android import store as ST
+    body = body or {}
+    if what == "setup":
+        return await asyncio.to_thread(_appd, ST.setup, tenant, ref, str(body.get("package") or ""))
+    if what == "credentials":
+        raw = body.get("json")
+        return await asyncio.to_thread(_appd, ST.set_credentials, tenant, ref, raw if isinstance(raw, str) else json.dumps(raw or {}))
+    if what == "forget":
+        return await asyncio.to_thread(_appd, ST.forget_credentials, tenant, ref)
+    if what == "listing":
+        return await asyncio.to_thread(_appd, ST.listing, tenant, ref, bool(body.get("regen")),
+                                       body.get("edit") if isinstance(body.get("edit"), dict) else None)
+    if what == "build":
+        return await asyncio.to_thread(_appd, ST.build_bundle, tenant, ref)
+    if what == "publish":
+        return await asyncio.to_thread(_appd, ST.publish, tenant, ref, str(body.get("track") or "internal"), bool(body.get("her_tap")))
+    raise HTTPException(404, "unknown")
+
+
+@app.get("/api/apps/{ref}/store-cert", dependencies=[Depends(require_key)])
+async def apps_store_cert(ref: str, tenant: str = Depends(current_tenant)):
+    """The upload certificate (public part), if Play Console asks for it."""
+    from .appmaker.android import store as ST
+    try:
+        data, name = await asyncio.to_thread(ST.upload_cert, tenant, ref)
+    except ST.StoreError:
+        raise HTTPException(404, "not found")
+    return Response(data, media_type="application/x-pem-file", headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @app.get("/api/apps/{ref}/crashes", dependencies=[Depends(require_key)])
