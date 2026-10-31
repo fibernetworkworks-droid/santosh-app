@@ -38,7 +38,11 @@ Two of these were reproduced with a scripted model on the real `run_turn` (repro
 - Claude Code does not depend on the model to switch on its safety net. The task list is always there, and a
   "done" is checked against the list and tests.
 
-### 5. Production brain = GLM / OmniRoute, not Claude (read in code + HISTORY)
+### 5. CORRECTION (31 Oct, live healthz): the live chat brain is CLAUDE (`chat_brain: claude`), not GLM
+The points below apply ONLY if `CHAT_LLM` / a GLM or OmniRoute key is switched back on - HISTORY's "production brain
+is GLM" notes are from older versions. Causes 1-4 do not depend on the brain and were reproduced either way.
+
+### 5 (old reading). Production brain = GLM / OmniRoute (read in code + HISTORY)
 - `llm.choose` sends every text turn to the cheap brain when one is set (`CHAT_LLM=auto`), and HISTORY says the
   production brain is GLM / OmniRoute.
 - Claude-only things are then missing on long jobs:
@@ -171,7 +175,7 @@ No model was called: there is no API key in the sandbox, so `python -m app.quali
    - Even with no PC family loaded, the prompt mentions `pc_do` 5 times and `hoola_pc_do` twice.
    - The model is pushed toward tools it cannot see. `pick.py` exists only to block that afterwards, and it
      covers the PC only.
-5. **The cheap brain picks.**
+5. **The cheap brain picks** (only when GLM / OmniRoute is configured - the live server runs Claude, see the correction in Part A).
    - GLM / OmniRoute choose the tools at temperature 0.6, with thinking disabled.
    - Claude's tool-choice training, `strict` tool schemas, the tool search tool and tool-use examples are all
      absent.
