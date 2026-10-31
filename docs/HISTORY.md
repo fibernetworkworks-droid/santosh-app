@@ -12557,7 +12557,18 @@ re-versioned past main's parallel v0.332-v0.336.
   in-app update prompt (TestFlight / App Store update themselves), App Store listing / screenshots upload (App Store Connect
   API - next), 3D scenes (Android-only Scene3D).
 
-## v0.338.0 APP STORE LAUNCH (App Sahayak Phase 7, owner: "START PHASE 7")
+## v0.338.0 KAAM KARO - the file is made, the card is fair (owner: "GO 1" after the first live tool card on v0.336: right first pick 23/26)
+The vps-ops tool_card on the live server (Claude, FRESH set): 23/26 right first picks, 0 errors. The three misses, read one by
+one: (a) "ABC Traders ke liye 3 items ka quotation PDF bana do: Chair 2500 x 10, Table 6000 x 2" -> words, no tool = the one
+REAL miss (the content was given); (b) "customer ki complaint register karo" -> words = fair (no customer, no complaint named);
+(c) "passport renewal ka form online bhar do mere details se" -> id_locker first = fair (her details come before the form).
+FIX (a): replystyle.CHAT's clear-ask rule now says a FILE whose main content she gave is made NOW, small missing details
+(GST rate, address, quote number, validity, logo) blank or a plain default and named in ONE line after the file, never a
+question before the first draft; doc_studio's LANE says the same. FAIR CARD (b, c): FRESH rows may carry {"also": first
+steps that are also right, "ask_ok": one real question is right}; `_first_pick` scores `asked` (no tool + a question mark,
+only where ask_ok); the live line shows "a fair question N". Tests: test_v0337_kaam_karo.py (4). Re-run vps-ops tool_card.
+
+## v0.339.0 APP STORE LAUNCH (built as 0.338, re-versioned past the parallel v0.338) (App Sahayak Phase 7, owner: "START PHASE 7")
 The iPhone twin of v0.331 PLAY STORE LAUNCH: her iPhone app on the App Store from HER OWN Apple account. No Phase 7 had been
 named in the plan; the open gap after Phase 6 was the App Store side (Phase 6 stopped at TestFlight).
 - Her App Store Connect key NEVER reaches Hoola: every Apple API call runs in her private builds repo with its secrets
