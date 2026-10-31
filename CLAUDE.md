@@ -136,9 +136,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.318.0 (pubspec 0.318.0+358). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.319.0 (pubspec 0.319.0+359). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.319 KHANA BAAD MEIN: Swiggy (Food / Instamart / Dineout) + Zomato refuse non-partner sign-in -> hidden in the clean view
+  (`service.PARTNER_GATED`) until `FOOD_PARTNER_APPROVED=true`; Roz ke kaam loses 'Khana aur kirana' meanwhile.
 - v0.318 ASLI APP (App Phase 1, built as 0.314/0.316/0.317): each native app has its OWN backend (`appmaker/backend.py`, `/api/app-api/<key>/...`): accounts, server-priced orders / bookings / staff lists, cid dedup, kit Backend.kt (Keystore token, offline outbox) + Accounts.kt, CI e2e on a real server.
 - v0.317 SEO EMPLOYEE Phase 0+1 (`docs/SEO_EMPLOYEE_PLAN.md`): hire from Employees (console + Profile; `employee/hire.py`), desk only while
   hired; `seo/desk.py` onboarding -> 500-page audit + Search Console + Analytics -> baseline -> Opus 90-day plan; hourly/daily/weekly/monthly jobs.
