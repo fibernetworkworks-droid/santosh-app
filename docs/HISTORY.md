@@ -12190,3 +12190,17 @@ ctx.place / where._asked / where.working). browse_web's hint says the same. No f
 pc/ untouched; `_to_pc` itself unchanged, just no longer reached without her word). Why the PC job failed after 10 min
 is inside the frozen PC operator and was not investigated.
 Tests: NEW tests/test_v0315_her_test_run.py (9).
+
+## v0.327.0 STUDIO ASSETS + HELP (31 Oct 2026; Phase 4 of the Create Studio design audit)
+Owner: "GO" after Phase 3 (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- Brand kit (`studio.js` V.brand / W.brand rewritten): logo upload on the page via the existing POST /api/brand/logo (multipart, `clean_bg`),
+  shown from GET /api/brand/logo; colours primary / accent / dark / light as `<input type=color>` 48px with names + hex; font buttons
+  (R.FONTS poppins / mukta) render her tagline; phone + website saved as `contact`; `bkPreview()` = poster (4:5) + reel end card (9:16)
+  in her colours / font / logo, text colour by contrast (`onCol`); draft in BK.d until Save (PUT /api/brand/kit). The console does not load
+  Poppins / Mukta, so the preview font falls back on most devices; the real posters use the bundled fonts.
+- My creations: script tile = a page (`.paper`: "Script", title, lines); every `.res[data-item]` gets a `.pick` tick (LSEL), `#selbar`
+  "N selected · Download · Delete · ×", bulk delete confirms first; `.btn.danger` (not `.bad`, which the v0.308 pin keeps free).
+- Templates: "Use this" always visible. Guides: GUIDES text split into `<ol class="gsteps">` steps + "Open <tool>" button.
+- Engines: `OWNER()` = ctx.owner() (v2.js passes `!!ME?.arena`); non-owners see "What you can make" (the feature ticks) only; the owner
+  sees the engine cards with "How to switch it on" folded.
+- Re-measured: 6 sizes, 0 texts < 4.5 : 1 light and dark. Tests: `test_v0327_studio_assets.py`.

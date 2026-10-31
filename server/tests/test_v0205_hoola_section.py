@@ -149,4 +149,4 @@ def test_hoola_endpoints_serve_their_own_kind(hub2):
 
 def test_version_pin():
     import app.main as m
-    assert m.APP_VERSION == "0.326.0"
+    assert m.APP_VERSION == "0.327.0"
