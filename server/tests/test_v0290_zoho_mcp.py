@@ -179,4 +179,4 @@ def test_tools_action_finds_the_right_tool(zoho):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.325.0"
+    assert APP_VERSION == "0.327.0"

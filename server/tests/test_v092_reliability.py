@@ -70,6 +70,8 @@ class _FakeHubConn:
 
 
 def test_a_blocked_site_job_moves_to_her_pc(env, monkeypatch):
+    """v0.325 (her test 6): a refused site no longer moves to HER PC by itself - she is asked first. Once she has
+    placed the job on her PC (ctx.place = pc) it goes there exactly as in v0.92."""
     from app.agent import operator_tools
     from app.agent.tools import Ctx
     from app.config import get_settings
@@ -88,7 +90,10 @@ def test_a_blocked_site_job_moves_to_her_pc(env, monkeypatch):
     monkeypatch.setattr(pc_tools, "pc_do", fake_pc_do)
     ctx = Ctx(tenant_id="default", conversation_id=_conv())
     r = asyncio.run(operator_tools.computer_operator(ctx, "start", task="Papa ka Aadhaar {id:ab12cd34ef} download kar do"))
-    assert r["moved_to"] == "pc" and "PC" in r["say"] and not started
+    assert r["status"] == "site_blocks_server" and "kar doon?" in r["say"] and not started and not pc_tasks  # asked first
+    ctx.place = "pc"                                   # her yes / her own "PC par karo"
+    r = asyncio.run(operator_tools.computer_operator(ctx, "start", task="Papa ka Aadhaar {id:ab12cd34ef} download kar do"))
+    assert "PC" in r["say"] and not started
     assert "{id:ab12cd34ef}" in pc_tasks[0] and "ask_otp" in pc_tasks[0]
     assert reach.STATS["routed_pc"] >= 1
 

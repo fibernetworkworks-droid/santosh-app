@@ -119,9 +119,33 @@ async def computer_operator(ctx: Ctx, action, **a):
             from ..operator import reach
             chk = {"ok": True, "site": ""} if where == "pc" else \
                 await asyncio.to_thread(reach.check, str(a.get("task") or ""), str(a.get("start_url") or ""), True)
+            if where != "pc" and not chk["ok"] and not _pc_is_hers(ctx):
+                # v0.315 SAB SERVER PAR (v0.271's rule, here too): a site that refuses Hoola's server no longer moves
+                # to HER PC on its own - her test run ("Hoola ke browser mein ... Amazon, Flipkart") went to her PC
+                # and failed 10 minutes later. She is asked first; her yes = where=pc.
+                return _ask_for_pc(chk)
             if where == "pc" or not chk["ok"]:
                 return await _to_pc(ctx, a, chk)
     return await asyncio.to_thread(_run, ctx, str(action), a)
+
+
+def _pc_is_hers(ctx: Ctx) -> bool:
+    """She placed this job (or this chat's running website work) on HER PC: then a refused site may go there."""
+    from . import where as _where
+    conv = getattr(ctx, "conversation_id", "") or ""
+    return (getattr(ctx, "place", "") or "") == "pc" or _where._asked(conv, "pc") or _where.working(conv) == "pc"
+
+
+def _ask_for_pc(chk: dict[str, Any]) -> dict[str, Any]:
+    from ..operator import reach
+    site = chk.get("site") or ""
+    reach.STATS["told"] += 1
+    return {"status": "site_blocks_server", "site": site, "why": chk.get("why", ""), "place": "server",
+            "say": (f"{site or 'Yeh website'} Hoola ke server se nahi khulti - unki suraksha data-centre ka address rok "
+                    "deti hai. Aapke PC par Chrome mein kar doon?"),
+            "next": ("Do the rest of the job with the sites that DO open (never wait on this one), then tell her in one "
+                     "line that this site refuses Hoola's server and ASK. Only when she says yes: computer_operator "
+                     "action=start where=pc. Never move it to her PC or the cloud PC by yourself.")}
 
 
 async def _to_pc(ctx: Ctx, a: dict[str, Any], chk: dict[str, Any]) -> dict[str, Any]:

@@ -107,8 +107,10 @@ async def browse_web(ctx: Ctx, task, start_url=None, _wait=None, **_):
         chk = await asyncio.to_thread(reach.check, task, url, False)
         if not chk["ok"]:
             return {"status": "site_blocks_server", "site": chk["site"], "why": chk.get("why", ""),
-                    "next": ("This site refuses Hoola's server. For real work on it use computer_operator (it moves the "
-                             "job to her PC when the PC is online), or open_on_phone so she does it herself.")}
+                    "next": ("This site refuses Hoola's server. Finish the job with the sites that DO open, then tell "
+                             "her in one line and ASK 'Aapke PC par Chrome mein kar doon?'. Only on her yes: "
+                             "computer_operator action=start where=pc. Never move it to her PC or the cloud PC by "
+                             "yourself (v0.315); open_on_phone is the other offer.")}
     from .. import idvault
     try:   # v0.81 {id:...} references become the real number for the browser (it types Aadhaar / PAN / any number)
         task, _kinds = idvault.fill_value(task, ctx.tenant_id)

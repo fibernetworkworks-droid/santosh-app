@@ -287,7 +287,7 @@ ${SPRITE}`;
       : `<span class="audio-ic">${I(it.kind === 'voice' ? 'mic' : 'music', 'width:28px;height:28px')}</span>`;
     return `<div class="res${tall ? ' tall' : ''}" data-item="${it.id}"><button class="thumb" data-open="${it.id}" aria-label="Open ${esc(it.title)}">${media}${it.mime.startsWith('video/') ? `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(it.kind)}</span>` : ''}</button>
       <span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button>${it.mime.startsWith('image/') ? `<button data-ref="${it.id}" aria-label="Use as a reference">${I('layers')}</button>` : ''}<button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span>
-      <b class="rt">${esc(it.title)}</b><small>${when(it.created)}${it.meta?.model ? ' · ' + esc(it.meta.model) : ''}</small></div>`;
+      <b class="rt">${esc(it.title)}</b><small>${[when(it.created), it.meta?.style, it.meta?.aspect].filter(Boolean).map(esc).join(' · ')}</small></div>`;
   }
   // the hover actions on result tiles, shared by every page that lists her creations
   async function itemAction(b) {
@@ -422,10 +422,8 @@ ${SPRITE}`;
   const STYLES = ['', 'Photoreal', 'Cinematic', 'Festive glow', 'Product studio', 'Watercolour', 'Anime', '3D clay', 'Indian folk art'];
   const ASPECTS = ['1:1', '4:5', '9:16', '16:9', '3:4', '4:3'];
   const imgCost = () => (IMG.quality === 'best' ? 12 : 3) * IMG.count;
-  function toolTabs(k) { return `<div class="seg" role="group" aria-label="Studio">${TOOLS.slice(0, 5).map(([v, tt]) => `<button aria-pressed="${v === k}" data-go="${v}">${tt}</button>`).join('')}</div>`; }
   V.image = () => `<div class="gen">
   <div class="panel"><div class="pbody">
-    ${toolTabs('image')}
     <div class="seg" role="group" aria-label="Kind"><button aria-pressed="${!IMG.refs.length}" data-imode="new">New picture</button><button aria-pressed="${!!IMG.refs.length}" data-imode="edit">Change my photo</button></div>
     <div class="prow"><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Engine</small><b>Hoola image engine</b></div><span class="tag">Readable Indian scripts</span></div>
     <div class="box">
@@ -613,7 +611,6 @@ ${SPRITE}`;
   V.video = () => { const m = vm();
     return `<div class="gen">
   <div class="panel" style="position:relative"><div class="pbody">
-    ${toolTabs('video')}
     <button class="prow" data-pickmodel><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Model</small><b>${VID.compare.length ? VID.compare.map(k => esc(mOf(k)?.name || k)).join(' vs ') : m ? esc(m.name) : 'Hoola Auto · ' + {quality: 'best quality', value: 'best value', cheap: 'lowest price'}[VID.auto]}</b></div>${VID.compare.length ? '<span class="tag">Side by side</span>' : m ? `<span class="tag num">${money(rateAt(m, VID.res))}/s</span>` : '<span class="tag">Recommended</span>'}${I('chev', 'color:var(--dim)')}</button>
     ${VID.compare.length ? `<button class="lnk" data-uncompare style="align-self:flex-start">${I('x', 'width:13px;height:13px')} Stop comparing, use one model</button>` : ''}
     <div class="box">
@@ -623,10 +620,11 @@ ${SPRITE}`;
     <div class="lbl">Camera</div><div class="chips cams">${CAMS.map(([c, d]) => `<button class="chip" aria-pressed="${c === VID.camera}" data-vcam="${esc(c)}" title="${esc(d)}">${esc(c)}</button>`).join('')}</div>
     <div class="lbl">Shape</div><div class="grid-opts">${['9:16', '16:9', '1:1'].map(a => `<button class="go shp" aria-pressed="${a === VID.aspect}" data-vasp="${a}">${ratioI(a)}<span>${a}</span></button>`).join('')}</div>
     <div class="lbl">Length</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${lenOpts(m).map(s => `<button class="go" aria-pressed="${s === VID.seconds}" data-vsec="${s}">${s} s</button>`).join('')}</div>
+    <details class="adv vmore"${VID.more ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}More settings<span class="vsum">${esc(VID.res)} · ${VID.audio ? 'sound on' : 'silent'} · ${VID.takes} take${VID.takes > 1 ? 's' : ''} · ${esc(VID.language || 'Hindi')}</span></summary>
     <div class="lbl">Resolution</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${resOpts(m).map(r => `<button class="go" aria-pressed="${r === VID.res}" data-vres="${r}">${r}</button>`).join('')}</div>
     <div class="prow2"><div class="prow"><span class="pi">${I('sound', 'width:16px;height:16px')}</span><div><small>Sound</small><b>${VID.audio ? 'On' : 'Off'}</b></div><button class="sw" role="switch" aria-checked="${VID.audio}" data-vaudio aria-label="Sound"><i></i></button></div>
       <div class="prow"><span class="pi">${I('layers', 'width:16px;height:16px')}</span><div><small>Takes</small><b class="num">${VID.takes}</b></div><span class="stepper" style="height:32px;border:0;padding:0"><button data-vtake="-1" aria-label="Fewer takes">${I('minus', 'width:14px;height:14px')}</button><button data-vtake="1" aria-label="More takes">${I('plus', 'width:14px;height:14px')}</button></span></div></div>
-    <div class="lbl">Spoken lines in</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu'].map(l => `<button class="chip" aria-pressed="${l === VID.language}" data-vlang="${l}">${l}</button>`).join('')}</div>
+    <div class="lbl">Spoken lines in</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu'].map(l => `<button class="chip" aria-pressed="${l === VID.language}" data-vlang="${l}">${l}</button>`).join('')}</div></details>
     <div class="pricebox" id="vprice"></div>
   </div>
   <div class="pfoot"><button class="btn sec" id="vidPrev" title="An animatic from pictures, to check the story">Free preview</button><button class="create" id="vidGo">${I('spark', 'width:17px;height:17px')}<span>Create</span><small class="num" id="vidCost">…</small></button></div></div>
@@ -656,10 +654,16 @@ ${SPRITE}`;
       <small class="apn">Nothing is spent until you tap Haan. You are never charged more than ${inr(a.inr)}.</small>
       <div class="apb"><button class="btn sec" data-no="${esc(a.id)}">Na</button><button class="btn pri" data-yes="${esc(a.id)}">Haan, make it · ${inr(a.inr)}</button></div></div>`;
   }
-  function projTile(p) {
+  // v0.325 what state a clip / film is in, in one word
+  function projState(p) {
     const busy = p.working || p.planning || (p.painting || []).length;
-    return `<div class="res${busy ? ' gening' : ''}" data-proj="${esc(p.project)}"><button class="thumb" data-openproj="${esc(p.project)}" aria-label="Open ${esc(p.project)}" title="${VIEW === 'video' ? 'Play' : 'Open in Director'}">${projMedia(p)}${busy ? `<span class="ring"></span><span class="pct">${p.progress?.pct != null ? p.progress.pct + '%' : p.planning ? 'Writing the plan' : 'Working'}</span>` : `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(p.aspect)}</span><span class="dur num">${p.seconds || 0} s</span>`}</button>
-      <b class="rt">${esc(p.project)}</b><small>${esc((p.brief || '').slice(0, 80))}</small>${p.error && !busy ? `<small class="perr">${I('x', 'width:13px;height:13px')}${esc(p.error)}</small>` : ''}${moneyLine(p.money)}${(p.approvals || []).map(approvalRow).join('')}</div>`;
+    const made = (p.outputs || []).some(o => o.url) || (p.shots || []).some(x => (x.take_list || []).some(t => t.url));
+    return busy ? ['Making', 'mk'] : p.error ? ['Needs attention', 'na'] : made ? ['Ready', 'ok'] : ['Draft', 'dr'];
+  }
+  function projTile(p) {
+    const busy = p.working || p.planning || (p.painting || []).length, [stl, stc] = projState(p);
+    return `<div class="res${busy ? ' gening' : ''}" data-proj="${esc(p.project)}"><button class="thumb" data-openproj="${esc(p.project)}" aria-label="Open ${esc(p.project)}" title="${VIEW === 'video' ? 'Play' : 'Open in Director'}">${projMedia(p)}${busy ? `<span class="ring"></span><span class="pct">${p.progress?.pct != null ? p.progress.pct + '%' : p.planning ? 'Writing the plan' : 'Working'}</span>` : `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(p.aspect)}</span>${stc === 'ok' ? `<span class="dur num">${p.seconds || 0} s</span>` : ''}`}</button>
+      <b class="rt">${esc(p.project)}<span class="stchip ${stc}">${stl}</span></b><small>${esc((p.brief || '').slice(0, 80))}</small>${p.error && !busy && VIEW !== 'video' ? `<small class="perr">${I('x', 'width:13px;height:13px')}${esc(p.error)}</small>` : ''}${moneyLine(p.money)}${(p.approvals || []).map(approvalRow).join('')}</div>`;
   }
   // v0.263 estimate vs what she pays vs what the providers reported, for a film / clip
   function moneyLine(mo) {
@@ -670,12 +674,18 @@ ${SPRITE}`;
     try { await api('POST', `/api/studio/approvals/${encodeURIComponent(aid)}`, {yes}); toast(yes ? 'Started. Nothing more is spent without you.' : 'Declined, nothing spent'); return true; }
     catch (e) { toast(e.status === 428 ? fp : e.message, true); return false; }
   }
+  // v0.325 failures as ONE calm notice above the clips (a red line under every tile read as a gallery of failures)
+  function vnote(ps) {
+    const bad = ps.filter(p => p.error && !(p.working || p.planning || (p.painting || []).length)); if (!bad.length) return '';
+    const why = [...new Set(bad.map(p => p.error))];
+    return `<div class="vnote" style="grid-column:1/-1">${I('x', 'width:15px;height:15px')}<div><b>${bad.length} clip${bad.length > 1 ? 's' : ''} could not start.</b><small>${esc(why.length === 1 ? why[0] : 'Open a clip marked “Needs attention” to see why.')} Nothing was charged for them.</small></div></div>`;
+  }
   function drawVideos() {
     const el = $('#results'); if (!el) return;
     const ps = (D.studio?.projects || []);
     el.innerHTML = (D.studio && D.studio.available === false ? `<div class="empty" style="grid-column:1/-1"><div><h2>Video Studio is off on this server</h2><p class="mut">It needs ffmpeg and STUDIO_ON on the server.</p></div></div>` : '')
       + (VID.busy ? `<div class="res gening"><span class="thumb">${art('film', 'vb')}<span class="ring"></span><span class="pct">${esc(VID.busy)}</span></span><b class="rt">${esc(VID.prompt.slice(0, 48))}</b><small>Hoola is writing the shot plan; the price card comes next</small></div>` : '')
-      + (ps.map(projTile).join('') || (VID.busy ? '' : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot, pick a model, see the price, press Create.</p></div></div>`));
+      + vnote(ps) + (ps.map(projTile).join('') || (VID.busy ? '' : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot, pick a model, see the price, press Create.</p></div></div>`));
     paintAll(el);
   }
   function watchStudio(view, draw) {
@@ -746,6 +756,7 @@ ${SPRITE}`;
     const R = resOpts(m); if (R.length && !R.includes(VID.res)) VID.res = R.find(r => RES.indexOf(r) >= RES.indexOf(VID.res)) || R[R.length - 1];
   }
   W.video = (el, o) => {
+    $('.vmore', el)?.addEventListener('toggle', e => { VID.more = e.target.open; });   // v0.325 More settings stays as she left it
     const q = $('#vidq'); q.addEventListener('input', () => VID.prompt = q.value);
     load('studio').then(() => redraw('video', drawVideos)); watchStudio('video', drawVideos);
     models().then(() => { if (VIEW === 'video' && VID.model && !vm()) { VID.model = ''; } livePrice(); });
@@ -1048,7 +1059,6 @@ ${SPRITE}`;
   const CYC = {lang: ['Hindi', 'Hinglish', 'Punjabi', 'Tamil', 'Telugu', 'Marathi', 'Bengali', 'English'], vox: ['Duet', 'Female', 'Male', 'Choir'], mood: ['Warm', 'Joyful', 'Romantic', 'Energetic', 'Sad', 'Devotional', 'Epic', 'Calm'], len: ['30 s', '1 min', '2 min', '3 min']};
   const vocal = () => MU.tab === 'Song';
   V.music = () => `<div class="gen"><div class="panel"><div class="pbody">
-    ${toolTabs('music')}
     <div class="seg" role="group" aria-label="Kind">${['Song', 'Instrumental', 'Jingle', 'Score'].map(t => `<button aria-pressed="${t === MU.tab}" data-mtab="${t}">${t}</button>`).join('')}</div>
     <div class="box"><h3>Describe the ${MU.tab.toLowerCase()}</h3><textarea id="muq" rows="3" maxlength="1200" placeholder="A warm Hindi duet about a chai shop where two strangers meet every rainy evening, soft guitar, tabla, big chorus">${esc(MU.brief)}</textarea></div>
     <div class="lbl">Genre</div><div class="chips">${GENRES.map(g => `<button class="chip" aria-pressed="${g === MU.genre}" data-genre="${esc(g)}">${g}</button>`).join('')}</div>
@@ -1132,12 +1142,11 @@ ${SPRITE}`;
       ...(VO.g !== 'male' ? Object.entries(vs.female).map(([n, d]) => [n, n, 'Female · ' + d, 'portrait']) : []),
       ...(VO.g !== 'female' ? Object.entries(vs.male).map(([n, d]) => [n, n, 'Male · ' + d, 'portrait']) : [])];
     return `<div class="gen"><div class="panel"><div class="pbody">
-    ${toolTabs('voice')}
     <div class="box"><h3>Script <span class="dim num" style="font-size:12.5px;font-weight:400" id="voCount">${VO.text.length} / 5000</span></h3>
       <textarea id="voq" rows="6" maxlength="5000" placeholder="Is Diwali, apne ghar ko roshan kijiye. Newtika chai ke saath, har shaam khaas.">${esc(VO.text)}</textarea></div>
     <div class="lbl">Language</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi'].map(l => `<button class="chip" aria-pressed="${l === VO.lang}" data-volang="${l}">${l}</button>`).join('')}</div>
     <div class="lbl">Voice</div><div class="seg"><button aria-pressed="${VO.g === 'all'}" data-vog="all">All</button><button aria-pressed="${VO.g === 'female'}" data-vog="female">Female</button><button aria-pressed="${VO.g === 'male'}" data-vog="male">Male</button></div>
-    <div class="vlist">${list.map(([k, n, d, a]) => `<button class="opt" role="radio" aria-checked="${k === VO.voice}" data-vo="${esc(k)}"><span class="thumb">${art(a, 'vo' + k)}</span><div><b>${esc(n)}</b><small>${esc(d)}</small></div></button>`).join('')}</div>
+    <div class="vlist">${list.map(([k, n, d, a]) => `<button class="opt" role="radio" aria-checked="${k === VO.voice}" data-vo="${esc(k)}"><span class="thumb">${k === 'mine' ? art(a, 'vo' + k) : initTile(n)}</span><div><b>${esc(n)}</b><small>${esc(d)}</small></div></button>`).join('')}</div>
     <div class="lbl">Style</div><div class="grid-opts">${Object.keys(D.conf?.styles ? Object.fromEntries(D.conf.styles.map(s => [s, 1])) : {friendly: 1, calm: 1, excited: 1, news: 1, story: 1, ad: 1}).map(s => `<button class="go" aria-pressed="${s === VO.style}" data-vostyle="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join('')}</div>
     <div class="lbl">Pace <span class="num" id="spd">${VO.speed.toFixed(1)}x</span></div><input class="slider" type="range" min="0.6" max="1.6" step="0.1" value="${VO.speed}" id="voSpeed" aria-label="Pace">
   </div><div class="pfoot"><button class="create" id="voGo">${I('sound', 'width:17px;height:17px')}Make voice-over</button></div></div>
@@ -1167,10 +1176,12 @@ ${SPRITE}`;
   /* ---------------- dubbing ---------------- */
   const LANGS = ['Hindi', 'Hinglish', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Odia', 'Urdu', 'English', 'Spanish', 'Arabic'];
   const DB = {src: null, to: ['Tamil'], keep: true, sel: '', tab: ''};
+  const DUB_TOP = ['Hindi', 'Tamil', 'Telugu', 'Bengali', 'Marathi', 'English'];
   V.dubbing = () => `<div class="split"><aside>
     <button class="refs" data-dubsrc>${DB.src ? `<span class="stack"><i>${I('video', 'width:16px;height:16px;margin:10px 6px')}</i></span><div><b>${esc(DB.src.name)}</b><small>${(DB.src.size / 1048576).toFixed(1)} MB · tap to change</small></div>` : `<span class="stack"><i>${I('upload', 'width:16px;height:16px;margin:10px 6px')}</i></span><div><b>Upload your video</b><small>MP4 / MOV / WebM · up to 25 MB and 3 minutes</small></div>`}</button>
     ${DB.src ? `<video class="srcv" controls playsinline src="${esc(DB.src.local)}"></video>` : ''}
-    <div class="lbl">Dub into · up to 4</div><div class="langs">${LANGS.map(l => `<button class="chip" aria-pressed="${DB.to.includes(l)}" data-lang="${l}">${l}</button>`).join('')}</div>
+    <div class="lbl">Dub into <span class="dim num" id="dubn" style="margin-left:auto">${DB.to.length} of 4 picked</span></div><div class="langs">${LANGS.filter(l => DUB_TOP.includes(l)).map(l => `<button class="chip" aria-pressed="${DB.to.includes(l)}" data-lang="${l}">${l}</button>`).join('')}</div>
+    <details class="adv"${DB.to.some(l => !DUB_TOP.includes(l)) ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}All languages</summary><div class="langs">${LANGS.filter(l => !DUB_TOP.includes(l)).map(l => `<button class="chip" aria-pressed="${DB.to.includes(l)}" data-lang="${l}">${l}</button>`).join('')}</div></details>
     <div class="prow"><div><b style="white-space:normal">Keep music and background sound</b><small>The original plays softly under the new voices</small></div><button class="sw" role="switch" aria-checked="${DB.keep}" data-dkeep aria-label="Keep music and background sound"><i></i></button></div>
     <button class="create" style="flex:none" id="dubGo">${I('dub', 'width:17px;height:17px')}Dub now</button>
     <p class="note">Hoola listens once, writes each line in the new language and speaks it in a voice matched to each speaker. Voices are matched, not cloned; lips are not re-synced (lip sync is a paid Video Studio step).</p>
@@ -1203,7 +1214,7 @@ ${SPRITE}`;
         b.disabled = true; toast('Uploading ' + f.name);
         try { DB.src = await upload(f, /^video\//); go('dubbing'); } catch (er) { toast(er.message, true); b.disabled = false; } return; }
       if (b.dataset.lang) { const l = b.dataset.lang; if (DB.to.includes(l)) DB.to = DB.to.filter(x => x !== l); else if (DB.to.length < 4) DB.to.push(l); else { toast('Up to 4 languages at a time'); return; }
-        $$('[data-lang]').forEach(x => x.setAttribute('aria-pressed', String(DB.to.includes(x.dataset.lang)))); return; }
+        $$('[data-lang]').forEach(x => x.setAttribute('aria-pressed', String(DB.to.includes(x.dataset.lang)))); const n = $('#dubn'); if (n) n.textContent = DB.to.length + ' of 4 picked'; return; }
       if (b.hasAttribute('data-dkeep')) { DB.keep = !DB.keep; b.setAttribute('aria-checked', String(DB.keep)); return; }
       if (b.dataset.dubsel) { DB.sel = b.dataset.dubsel; drawDub(); return; }
       if (b.id === 'dubGo') { if (!DB.src) { toast('Upload your video first'); return; } if (!DB.to.length) { toast('Pick a language'); return; }
@@ -1221,14 +1232,14 @@ ${SPRITE}`;
       <span class="ord"><button class="ib" data-mv="${i}|-1" aria-label="Move up" ${i ? '' : 'disabled'}>${I('send', 'width:13px;height:13px')}</button><button class="ib" data-rm="${i}" aria-label="Remove">${I('x', 'width:13px;height:13px')}</button></span></div>`).join('')
       : `<button class="refs" data-addclip><span class="stack"><i>${I('upload', 'width:16px;height:16px;margin:10px 6px')}</i></span><div><b>Add your clips</b><small>Videos, photos, music · up to 8 · 25 MB each</small></div></button>`}
     <div class="lbl">Recent edits</div><div class="mini" id="edjobs"></div></div>
-  <div class="viewer"><div class="screen"><div class="frame">${lt?.url ? `<video controls playsinline src="${esc(lt.url)}"></video>` : j && j.status !== 'failed' ? `<div class="framemsg"><span class="ring"></span><b>${esc(ED_STATUS[j.status] || 'Working')}</b><small>${j.progress || 0}%</small></div>` : `<div class="framemsg">${I('cut', 'width:30px;height:30px')}<b>Your edit plays here</b><small>Add clips, say what you want, press Make the edit</small></div>`}</div></div>
+  <div class="viewer"><div class="screen"><div class="frame">${lt?.url ? `<video controls playsinline src="${esc(lt.url)}"></video>` : j && j.status !== 'failed' ? `<div class="framemsg"><span class="ring"></span><b>${esc(ED_STATUS[j.status] || 'Working')}</b><small>${j.progress || 0}%</small></div>` : (ED.clips.length ? `<div class="framemsg">${I('cut', 'width:30px;height:30px')}<b>Your edit plays here</b><small>Say what you want below, then press Make the edit</small></div>` : `<button type="button" class="framemsg drop" data-addclip>${I('upload', 'width:30px;height:30px')}<b>Drop videos, photos or music here</b><small>or tap to choose · up to 8 · 25 MB each</small></button>`)}</div></div>
     ${j?.error ? `<p class="bad" style="padding:0 16px">${esc(j.error)}</p>` : ''}
     <form class="ask" id="edAsk">${I('spark', 'width:16px;height:16px;color:var(--pri)')}<input id="edq" maxlength="1500" placeholder="${lt ? 'Change it: make the intro shorter, add Hindi captions, slower music…' : 'Say what to make: a 30 s reel, fast cuts on the beat, captions in Hindi…'}" aria-label="Tell Hoola what to change" value="${esc(lt ? '' : ED.brief)}"><button class="send" style="width:32px;height:32px" aria-label="${lt ? 'Change' : 'Make the edit'}">${I('send', 'width:16px;height:16px')}</button></form></div>
   <div class="insp"><h3>Made for</h3><select id="edplat" class="sel">${(ED.platforms || [{id: 'reel', label: 'Instagram Reel'}]).map(p => `<option value="${esc(p.id)}"${p.id === ED.platform ? ' selected' : ''}>${esc(p.label)}${p.aspect ? ' · ' + p.aspect : ''}</option>`).join('')}</select>
     <h3>Length</h3><div class="grid-opts">${['', '15', '30', '60'].map(s => `<button class="go" aria-pressed="${s === ED.length}" data-edlen="${s}">${s ? s + ' s' : 'Auto'}</button>`).join('')}</div>
     <div class="prow"><div><b>Captions</b><small>Words on screen</small></div><button class="sw" role="switch" aria-checked="${ED.captions}" data-edcap aria-label="Captions"><i></i></button></div>
     <h3>Quick asks</h3><div class="aitools">${[['Cut the silences', 'cut'], ['Hindi captions', 'text'], ['Make it 9:16', 'grid'], ['Beat-synced cuts', 'music'], ['Brighter colours', 'wand'], ['Shorter intro', 'minus']].map(([t, ic]) => `<button data-ai="${t}">${I(ic, 'width:14px;height:14px')}${t}</button>`).join('')}</div>
-    <button class="create" style="flex:none" id="edGo" ${ED.clips.length ? '' : 'disabled'}>${I('cut', 'width:16px;height:16px')}Make the edit</button>
+    <button class="create" style="flex:none" id="edGo" ${ED.clips.length ? '' : 'disabled'}>${I('cut', 'width:16px;height:16px')}${ED.clips.length ? 'Make the edit' : 'Add clips to start'}</button>
     ${lt ? `<a class="btn sec" href="${esc(lt.url)}" download="${esc(lt.name || 'hoola-edit.mp4')}">${I('dl', 'width:16px;height:16px')}Download v${lt.n}</a>` : ''}
     ${j?.post_caption ? `<h3>Post caption</h3><p class="mut" style="font-size:14px">${esc(j.post_caption)}</p>` : ''}</div>
   <div class="timeline"><div class="tlbar"><span>Story order</span><span style="flex:1"></span><span class="num">${ED.clips.length} clip${ED.clips.length === 1 ? '' : 's'}${j?.versions?.length ? ' · ' + j.versions.length + ' version' + (j.versions.length > 1 ? 's' : '') : ''}</span></div>
@@ -1248,6 +1259,12 @@ ${SPRITE}`;
     const j = ED.jobs?.find(x => x.id === ED.job);
     if (j && ['queued', 'watching', 'planning', 'rendering', 'checking'].includes(j.status)) poll = setTimeout(async () => { await edLoad(); if (VIEW === 'editor') go('editor'); }, 4000);
     $('#edplat').addEventListener('change', e => ED.platform = e.target.value);
+    // v0.325 drop files straight onto the player
+    const drop = $('.framemsg.drop', el);
+    if (drop) { drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); }); drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+      drop.addEventListener('drop', async e => { e.preventDefault(); drop.classList.remove('over');
+        const fs = [...(e.dataTransfer?.files || [])].filter(f => /^(video|image|audio)\//.test(f.type)).slice(0, 8 - ED.clips.length);
+        for (const f of fs) { try { toast('Uploading ' + f.name); ED.clips.push(await upload(f)); } catch (er) { toast(er.message, true); } } if (fs.length) go('editor'); }); }
     $('#edAsk').addEventListener('submit', async e => { e.preventDefault(); const t = $('#edq').value.trim(); if (!t) return;
       const cur = ED.jobs?.find(x => x.id === ED.job);
       if (cur?.latest) { try { await api('POST', `/api/video/jobs/${encodeURIComponent(cur.id)}/revise`, {instruction: t}); toast('Making the change'); await edLoad(); go('editor'); } catch (er) { toast(er.message, true); } }

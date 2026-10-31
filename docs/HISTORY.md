@@ -12154,7 +12154,44 @@ the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots 
   3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
 - Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).
 
-## v0.325.0 (part 1) HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0 / 0.324.0, shipped together with Phase 4 as v0.325.0 past the parallel v0.323.0 STUDIO HOME + DIRECTOR and v0.324.0 TEEN LOOK JALDI)
+## v0.325.0 STUDIO TOOLS (31 Oct 2026; Phase 3 of the Create Studio design audit)
+Owner: "GO" after Phase 2 went live (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- `toolTabs()` and its four uses removed (Image / Video / Music / Voice): the sidebar is the one way between tools. `.gen` = 380px controls.
+- Video: `<details class="adv vmore">` holds Resolution / Sound + Takes / Spoken lines, summary `.vsum` (1080p · sound on · 1 take · Hindi),
+  open state in VID.more. `projState(p)` -> Draft / Making / Ready / Needs attention (`.stchip`); "N s" only when made; in the Video
+  gallery `vnote(ps)` = ONE notice for all failed clips (the distinct reason, "Nothing was charged for them"), per-tile red lines only elsewhere.
+- Image: `itemTile` caption = date · style · aspect (it.meta.model, e.g. gemini-3.1-flash-image, no longer shown); `.stys` 3 x 3 grid,
+  labels wrap; `.panel .prow b` wraps (model / engine names were cut).
+- Dubbing: DUB_TOP (Hindi, Tamil, Telugu, Bengali, Marathi, English) then "All languages" fold, `#dubn` "N of 4 picked".
+- Voice: voice rows use `initTile(name)` (her own Hoola voice keeps its wave art). Editor: empty player = `.framemsg.drop` (tap or drag
+  files; dragover / drop upload), `#edGo` reads "Add clips to start" until there are clips.
+- Not done, said so: Music waveforms were already real (decoded audio, `wave()`), the audit called them decorative; voice play samples
+  need a server sample per voice (not built); genres not regrouped.
+- Re-measured: 6 text sizes, 0 texts < 4.5 : 1 light and dark. Tests: `test_v0325_studio_tools.py`.
+## v0.326.0 HER TEST RUN - plan card, one file, no quiet PC (owner, after testing v0.314: "TEST 3 :: FAIL ( PLAN CARD NOT APPER ) DIRECT RESULT , TEST 4 : PASS ( BUT CREATED SEVERAL PDF AS 1ST AND 2ND PDF HAS ISSUE AI CREATED 3 RD ONE , NEED WORK ON IT ) , TEST 6: PASS BUT WORK CONTINUE ON PC AND AFTER 10 MIN GET THE TASK FAIL RESULT"; tests 1, 2, 5 passed)
+Built on her branch as 0.315; re-versioned 0.315 -> 0.326 past the parallel v0.315-v0.325.
+(1) PLAN CARD: her test 3 ask ("marketing plan banao: research karo, ideas likho, calendar banao, PDF mein do") DID get
+PLAN_FIRST (looks_big true); the model skipped it and finished in 5 steps, before v0.314's server plan at step 7. Now a
+big ask (state["big"]) gets the server plan right after the FIRST tool round, and the plan's steps are read off her own
+words (`santosh._ask_steps`: "goal: a, b, phir c, aur d" -> goal + steps; a comma part with no action word joins the step
+before it, so "top 8 brands, unki price, range" stays one step; under 2 real clauses = one step). The note asks the model to
+tick `kaam_plan step n done`; the real final answer still closes the plan (`_close_auto_plan`).
+(2) EK HI FILE: doc_studio published the card BEFORE its preview / QA; a QA warning came back to the model, which built
+file 2, then file 3 - all three in her chat. Now the QA runs first; a "warn" draft is held (`_HELD`, once per turn) and the
+model gets "NOT sent to her - fix exactly these"; the next doc_studio call delivers whatever it makes; `send_held=true`
+sends the held draft as is; the turn's end (`flush_held`, santosh `_run_turn` finally) delivers a held draft nobody
+replaced, so a file is never lost. A delivered file's note says "her FINAL file - no other version unless she asks".
+Setting DOC_HOLD_DRAFTS.
+(3) NO QUIET PC: Amazon / Flipkart refuse Hoola's server; browse_web's "site_blocks_server" told the model to use
+computer_operator ("it moves the job to her PC"), and computer_operator where=auto did exactly that via `_to_pc` - her
+test 6 ran on her PC and failed 10 minutes later. Now where=auto + a refused site = ask first (`_ask_for_pc`: finish with
+the sites that open, then "Aapke PC par Chrome mein kar doon?"), unless she placed the job on her PC (`_pc_is_hers`:
+ctx.place / where._asked / where.working). browse_web's hint says the same. No frozen PC file touched (pc_tools.py,
+pc/ untouched; `_to_pc` itself unchanged, just no longer reached without her word). Why the PC job failed after 10 min
+is inside the frozen PC operator and was not investigated.
+Tests: NEW tests/test_v0315_her_test_run.py (9).
+
+## v0.327.0 (part 1) HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0 / 0.324.0, shipped together with Phase 4 as v0.327.0 past the parallel v0.323.0 STUDIO HOME + DIRECTOR, v0.324.0 TEEN LOOK JALDI, v0.325.0 STUDIO TOOLS and v0.326.0 HER TEST RUN)
 - **Device check after every build** (`server/app/appmaker/android/device_check.sh` + `qa.py`, stdlib only; `gen.write_project`
   copies both into every project as `hoola_qa/` with `package.txt` + `screens.txt`): on an Android emulator the debug build opens
   EVERY screen (extra `hoola_screen`), takes its picture, dumps its UI tree and its crash buffer; the release build is cold-started
@@ -12193,7 +12230,7 @@ the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots 
 - **Not yet**: per-app UI flow tests beyond "every screen opens" (tapping through each flow), a visual diff against the approved web
   design, memory / ANR checks, iPhone.
 
-## v0.325.0 (part 2) APP UPDATES — App Sahayak Phase 4: a built app can be changed safely for its whole life (owner: "START PHASE 4")
+## v0.327.0 (part 2) APP UPDATES — App Sahayak Phase 4: a built app can be changed safely for its whole life (owner: "START PHASE 4")
 - **Only what changed is rewritten**: Kotlin screens are cached per screen under `_skey` = sha256 of that screen's approved html/css,
   the look tokens, the tabs, the screen list, its spec row (purpose / lists / actions), the app's server lists and `KIT_REV`. A rebuild
   of the same design asks Opus nothing (simple code-made screens get another try); a one-screen design change rewrites one screen; a
