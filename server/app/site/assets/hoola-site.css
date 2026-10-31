@@ -177,3 +177,21 @@ details.faq[open] summary::after{transform:rotate(45deg)}
   .hs-ddl{position:static;box-shadow:none;border:0;padding:0 0 8px 12px;min-width:0;max-height:none}
   .hs-ddl a{border-bottom:0;padding:10px 4px}
 }
+/* v0.330 ANY DESIGN: interactive pieces (sections restyle them inside their own #id) */
+[data-hoola-tabs] [role=tablist]{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+[data-tab]{font:inherit;font-weight:600;padding:10px 16px;min-height:44px;border-radius:999px;border:1px solid var(--c-line);background:var(--c-bg);color:inherit;cursor:pointer}
+[data-tab][aria-selected=true]{background:var(--c-primary);color:var(--c-on-primary);border-color:var(--c-primary)}
+[data-hoola-carousel]{position:relative}
+[data-hoola-carousel] .hs-track{display:grid;grid-auto-flow:column;grid-auto-columns:min(82%,340px);gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:6px}
+[data-hoola-carousel] .hs-track::-webkit-scrollbar{display:none}
+[data-hoola-carousel] .hs-track>*{scroll-snap-align:start}
+.hs-car-nav{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.hs-car-nav button{width:44px;height:44px;border-radius:999px;border:1px solid var(--c-line);background:var(--c-bg);color:inherit;font-size:1.4rem;line-height:1;cursor:pointer}
+.hs-car-nav button:disabled{opacity:.35;cursor:default}
+[data-filter],[data-set]{font:inherit;font-weight:600;padding:9px 15px;min-height:44px;border-radius:999px;border:1px solid var(--c-line);background:var(--c-bg);color:inherit;cursor:pointer}
+[data-filter][aria-pressed=true],[data-set][aria-pressed=true]{background:var(--c-ink);color:var(--c-bg);border-color:var(--c-ink)}
+form[data-hoola-calc]{display:grid;gap:12px}
+form[data-hoola-calc] label{display:grid;gap:4px;font-weight:500}
+form[data-hoola-calc] label:has(input[type=checkbox]),form[data-hoola-calc] label:has(input[type=radio]){display:flex;align-items:center;gap:10px;min-height:44px}
+form[data-hoola-calc] input:not([type=checkbox]):not([type=radio]),form[data-hoola-calc] select{font:inherit;padding:10px 12px;border:1px solid var(--c-line);border-radius:10px;background:var(--c-bg);color:inherit;min-height:44px}
+form[data-hoola-calc] output{font-family:var(--font-head),sans-serif;font-weight:700;font-size:clamp(1.6rem,4vw,2.4rem);color:var(--c-primary-text)}

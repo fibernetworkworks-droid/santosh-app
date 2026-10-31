@@ -173,4 +173,4 @@ def test_no_murmur_on_a_short_turn(env, monkeypatch):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.331.0"
+    assert main.APP_VERSION == "0.333.0"

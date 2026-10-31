@@ -237,7 +237,7 @@ ${SPRITE}`;
     el.innerHTML = `<div class="crow1"><span class="mut">This month</span><b class="num">${inr(Math.max(0, lim - used))} left</b></div><div class="bar"><i style="width:0%"></i></div><small class="dim">${inr(used)} of ${inr(lim)} spent · ${pct < 1 && used > 0 ? '<1' : Math.round(pct)}%</small>`;
     requestAnimationFrame(() => requestAnimationFrame(() => { const b = el.querySelector('.bar i'); if (b) b.style.width = pct.toFixed(1) + '%'; }));
   }
-  // v0.331 two dividers she can drag (owner: "SLIDER FROM BOTH SIDE ... PROMPT WORKING SECTION WILL GET BIGGER AREA"): the sidebar's edge
+  // v0.333 two dividers she can drag (owner: "SLIDER FROM BOTH SIDE ... PROMPT WORKING SECTION WILL GET BIGGER AREA"): the sidebar's edge
   // (200-360px) and the edge between the prompt panel and the results (320px up to the results keeping 360px). Arrow keys move them
   // 16px, Home / double-click put them back; the widths are remembered on this device.
   const RZ = {sbw: {min: 200, max: () => 360, def: 248, from: () => $('#shell').getBoundingClientRect().left, key: 'hoola.studio.sbw'},
@@ -725,7 +725,7 @@ ${SPRITE}`;
     const why = [...new Set(bad.map(p => p.error))];
     return `<div class="vnote" style="grid-column:1/-1">${I('x', 'width:15px;height:15px')}<div><b>${bad.length} clip${bad.length > 1 ? 's' : ''} could not start.</b><small>${esc(why.length === 1 ? why[0] : 'Open a clip marked “Needs attention” to see why.')} Nothing was charged for them.</small></div></div>`;
   }
-  // v0.331 a re-draw keeps every tile whose content did not change: the 4-15 s poll used to rebuild ALL tiles, so every video
+  // v0.333 a re-draw keeps every tile whose content did not change: the 4-15 s poll used to rebuild ALL tiles, so every video
   // reloaded and the whole "Your videos" grid blinked out and back. Unchanged tiles are kept as they are (playing, scrolled, loaded).
   function patch(el, html) {
     if (el._html === html) return false;
@@ -961,7 +961,7 @@ ${SPRITE}`;
       $('#fq', el)?.addEventListener('input', e => { DIR.fq = e.target.value; drawFilms(); }); }
     else { const tick = async () => { if (VIEW !== 'director' || !DIR.project) return; await dirLoad(); const p = DIR.view;
         const sig = p ? JSON.stringify(p) : '';
-        if (p && sig === DIR.sig) { poll = setTimeout(tick, 5000); return; }        // v0.331 nothing changed: keep the page (and its videos) as it is
+        if (p && sig === DIR.sig) { poll = setTimeout(tick, 5000); return; }        // v0.333 nothing changed: keep the page (and its videos) as it is
         if (p && VIEW === 'director' && !$(':focus', el)?.matches('textarea,input')) { const y = $('#view').scrollTop; go('director'); $('#view').scrollTop = y; }
         else poll = setTimeout(tick, 5000); };
       DIR.sig = DIR.view ? JSON.stringify(DIR.view) : '';

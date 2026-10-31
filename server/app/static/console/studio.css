@@ -973,7 +973,7 @@ small{font-size:12.5px}
 .scpend{display:flex;flex-direction:column;gap:10px}
 @media (prefers-reduced-motion:reduce){.art.sc{transition:none}}
 
-/* ---------- v0.331 DRAG TO RESIZE (owner: "SLIDER FROM BOTH SIDE ... PROMPT WORKING SECTION WILL GET BIGGER AREA"): the sidebar edge and the
+/* ---------- v0.333 DRAG TO RESIZE (owner: "SLIDER FROM BOTH SIDE ... PROMPT WORKING SECTION WILL GET BIGGER AREA"): the sidebar edge and the
    prompt panel / results edge are draggable (arrow keys too); a thin violet line shows while hovering or dragging. */
 #shell{position:relative}
 #shell:not(.collapsed){grid-template-columns:var(--sbw,248px) 1fr}

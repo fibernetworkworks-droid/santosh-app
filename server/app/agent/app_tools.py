@@ -13,7 +13,7 @@ APP_TOOLS = [
         "Design a premium NATIVE mobile app (Android + iPhone look) - her business's app, a client's app, or a PRODUCT app of "
         "its own (music, OTT, short video, social, chat, news, fitness, games, rides, food delivery, quick commerce, "
         "marketplace, tickets, jobs, courses, doctor consults, payments...: 33 product kinds) - and show her EVERY "
-        "screen as a tap-through prototype BEFORE anything is built. Built apps have a backend: action=data (coll, row, set; paid=Verified only when she saw the money), role, fix_crash (\'crash theek karo\'), rollback (build), data_change (ops: add / hide / label fields); read: app_dekho data / members / crashes. brief = HER EXACT WORDS, never your summary and never her "
+        "screen as a tap-through prototype BEFORE anything is built. Built apps: action=data|role|fix_crash|rollback|data_change|store (paid=Verified only when she saw the money; Play production only by her tap); read: app_dekho data / members / crashes / store. brief = HER EXACT WORDS, never your summary and never her "
         "own business added in (her business details go in by themselves only when the app is for her business). Don't pass "
         "goal unless she named the kind of app; a goal that doesn't fit her words is ignored. If it answers 'Pakka karne ke "
         "liye ek sawaal', ask her exactly that and call again with her answer in brief (or answers {sure: true} if she says "
@@ -58,7 +58,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -70,6 +70,8 @@ APP_TOOLS = [
          "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members)"},
          "crash": {"type": "string", "description": "action=fix_crash: the crash id (app_dekho what=crashes); empty = the newest unfixed one"},
          "build": {"type": "integer", "description": "action=rollback: the build number to bring back (app_dekho what=android history); 0 = the one before"},
+         "step": {"type": "string", "enum": ["setup", "listing", "bundle", "internal"], "description": "action=store: Play Store launch step (production = only her tap in the app)"},
+         "package": {"type": "string", "description": "action=store step=setup: the permanent package name she confirmed, e.g. com.sharmakirana.app"},
          "ops": {"type": "object", "description": "action=data_change: {add: [{coll, key, label, type, options}], hide: [{coll, key}], label: [{coll, key, label}]} - additive only, data never deleted"},
          "role": {"type": "string", "enum": ["member", "staff", "admin"]}},
          "required": ["action"]}},
@@ -92,7 +94,7 @@ APP_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
-                                             "data", "members", "crashes"]},
+                                             "data", "members", "crashes", "store"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
          "idea": {"type": "string"}, "coll": {"type": "string"}},
@@ -147,6 +149,24 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.resume(t, ref)
     if action == "delete":
         return S.delete(t, ref)
+    if action == "store":                     # v0.330 Play Store launch steps (production = her tap in the app, never here)
+        if not _owner(ctx):
+            raise ToolError("Sirf maalkin yeh kar sakti hain.")
+        from ..appmaker.android import store as ST
+        from ..appmaker import backend as BE
+        r = BE.by_key_or_ref(t, ref)
+        step = str(a.get("step") or "")
+        if step == "setup":
+            v = ST.setup(t, r.id, str(a.get("package") or ""))
+        elif step == "listing":
+            v = ST.listing(t, r.id, regen=True)
+        elif step == "bundle":
+            v = ST.build_bundle(t, r.id)
+        elif step == "internal":
+            v = ST.publish(t, r.id, "internal")
+        else:
+            raise ToolError("step: setup / listing / bundle / internal (production sirf app ke button se)")
+        return {k: v.get(k) for k in ("package", "status", "now", "error", "steps", "listing", "privacy_url", "delete_url")}
     if action in ("rollback", "data_change"):     # v0.325 updates
         if not _owner(ctx):
             raise ToolError("Sirf maalkin yeh kar sakti hain.")
@@ -265,6 +285,12 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
     if what == "android":
         from ..appmaker.android import service as AN
         return AN.get(t, ref)
+    if what == "store":                        # v0.330 Play Store launch state
+        from ..appmaker import backend as BE
+        from ..appmaker.android import store as ST
+        v = ST.view(BE.by_key_or_ref(t, ref))
+        return {k: v.get(k) for k in ("package", "proposed", "account", "status", "now", "error", "steps", "listing", "bundle",
+                                      "releases", "privacy_url", "delete_url", "console_steps")}
     if what in ("data", "members", "crashes"):            # v0.314 the app's own backend
         from ..appmaker import backend as BE
         r = BE.by_key_or_ref(t, ref)
