@@ -394,7 +394,9 @@ _NARRATE = ("[System: ab use EK chhoti line batao. Us line ke THEEK DO HISSE hai
             "tumne dekh liya hai; bullet, heading, emoji; tool ke naam ya andar ki galti (kaam_plan, TypeError, "
             "thread-level listing) — woh uske kaam ki baat nahi. Kharaab khabar bhi isi shaant tareeke se: "
             "'Build abhi chal raha hai, isliye checkpoint ab likh raha hoon.' Maafi ya drama nahi.\n"
-            "Agar kaam ab POORA ho gaya hai to yeh line mat likho — seedha aakhri jawab do.{fact}]")
+            "Agar kaam ab POORA ho gaya hai to yeh line mat likho — seedha aakhri jawab do.\n"
+            "KAAM BAAKI HAI to yeh line aur AGLA TOOL CALL ek hi jawab mein do (pehle line, phir usi message mein "
+            "agla tool) - sirf line likh ke mat ruko, akeli line kaam ko wahin khatam kar deti hai.{fact}]")
 
 
 def narrate_line(facts: object = None) -> str:

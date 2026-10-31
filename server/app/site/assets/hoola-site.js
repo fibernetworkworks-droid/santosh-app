@@ -245,7 +245,63 @@
       });
     });
   }
-  function start() { nav(); forms(); lightbox(); compare(); embeds(); booking(); motion(); }
+  // ------------------------------------------------------------ v0.315 big sites: grouped menu + site search
+  function groups() {
+    $$('.hs-dd').forEach(function (li) {
+      var b = li.querySelector('.hs-ddb');
+      if (!b) return;
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = b.getAttribute('aria-expanded') !== 'true';
+        $$('.hs-ddb').forEach(function (o) { if (o !== b) o.setAttribute('aria-expanded', 'false'); });
+        b.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    });
+    d.addEventListener('click', function (e) {
+      if (!e.target.closest || !e.target.closest('.hs-dd')) $$('.hs-ddb').forEach(function (o) { o.setAttribute('aria-expanded', 'false'); });
+    });
+    d.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') $$('.hs-ddb[aria-expanded="true"]').forEach(function (o) { o.setAttribute('aria-expanded', 'false'); o.focus(); });
+    });
+  }
+  function search() {
+    var btn = d.querySelector('.hs-search-b');
+    if (!btn) return;
+    var root = btn.getAttribute('data-root') || './', box = null, list = null, input = null, data = null;
+    function close() { if (box) { box.hidden = true; btn.focus(); } }
+    function draw(q) {
+      while (list.firstChild) list.removeChild(list.firstChild);
+      q = (q || '').trim().toLowerCase();
+      var hits = (data || []).filter(function (x) { return !q || (x.t + ' ' + x.d).toLowerCase().indexOf(q) >= 0; }).slice(0, 30);
+      if (!hits.length) { var none = d.createElement('li'); none.className = 'hs-s-none'; none.textContent = q ? 'Nothing found.' : ''; list.appendChild(none); return; }
+      hits.forEach(function (x) {
+        var li = d.createElement('li'), a = d.createElement('a'), t = d.createElement('b'), s = d.createElement('span');
+        a.href = root + x.u; t.textContent = x.t; s.textContent = x.d || '';
+        a.appendChild(t); if (x.d) a.appendChild(s); li.appendChild(a); list.appendChild(li);
+      });
+    }
+    function open() {
+      if (!box) {
+        box = d.createElement('div'); box.className = 'hs-search'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-label', 'Search this site');
+        var inner = d.createElement('div'); inner.className = 'hs-search-in wrap';
+        input = d.createElement('input'); input.type = 'search'; input.placeholder = 'Search this site'; input.setAttribute('aria-label', 'Search this site');
+        var x = d.createElement('button'); x.type = 'button'; x.className = 'hs-search-x'; x.textContent = 'Close';
+        list = d.createElement('ul'); list.className = 'hs-search-r';
+        inner.appendChild(input); inner.appendChild(x); inner.appendChild(list); box.appendChild(inner); d.body.appendChild(box);
+        x.addEventListener('click', close);
+        box.addEventListener('click', function (e) { if (e.target === box) close(); });
+        box.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+        input.addEventListener('input', function () { draw(input.value); });
+      }
+      box.hidden = false; input.focus();
+      if (data) { draw(input.value); return; }
+      fetch(root + 'assets/search.json').then(function (r) { return r.json(); })
+        .then(function (j) { data = j; draw(input.value); }).catch(function () { data = []; draw(''); });
+    }
+    btn.addEventListener('click', open);
+  }
+  function start() { nav(); groups(); search(); forms(); lightbox(); compare(); embeds(); booking(); motion(); }
   W.HoolaSite = { start: start };      // v0.305 the React export starts it again after a route change
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', start); else start();
 })();

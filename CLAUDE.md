@@ -129,11 +129,20 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.312.0 (pubspec 0.312.0+352). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
+- Current version: v0.316.0 (pubspec 0.316.0+356). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (17 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.312 DIRECTOR PICTURES FIX: failed opening pictures went only to the chat and Director sat on Pictures; now "Painting N…",
+- v0.316 DIRECTOR PICTURES FIX (built as 0.312): failed opening pictures went only to the chat and Director sat on Pictures; now "Painting N…",
   the reason on the film (pics_error, only painted ones charged), Try again for the missing ones, Skip = shots from the words (prefs.pics_skip).
+  "Painting…" boxes use the studio's working bar (no looping spinner after v0.304, CRISP TEXT).
+- v0.315 BADI WEBSITE (`site/sitemap.py`): big asks / page_count / action=grow -> Opus site map (40 designed pages, menu groups,
+  parents) + LISTS = one template -> a page per item by code (150 total); mega menu, breadcrumbs, search, link scan of every page.
+- v0.314 AAGE BADHO + SAHI AUZAAR 2 (built as 0.311) (`docs/LONG_TASK_RCA.md`): a promise line never ends a job (`agent/aage.py`), a parallel batch = 1 call
+  (MAX_CALLS 48), a moving turn keeps the long deadline, the server writes the plan, full tool descriptions (cut 140 -> 1200), campaign family, unloaded tools named.
+- v0.313 HOOLA PRINT: PDFs like Claude's = designed HTML printed by Chromium (`docstudio/htmlpdf.py`): Opus picks the look, measured
+  page system, tagged PDF + bookmarks + lang, margin-box bands in our fonts, charts / captions / footnotes, print page has no script / network.
+- v0.312 ARENA SCREEN (console `arena.js`, sidebar Arena, owner only via console me `arena`): start / stop runs with a cost estimate,
+  runs table, per-site score cards with screenshots (`/api/arena/shot/<site>`), compare two runs, blind duels + win table.
 - v0.311 DIRECTOR CAST FIX: a failed character picture reported only to the chat and Director sat on Cast; now "Painting <name>…",
   the reason on the film (nothing charged), Try again refilled, Skip = no fixed characters (prefs.cast_skip).
 - v0.310 SHORT CLIPS: 4-5 s clips were refused with 422 (studio forms demanded seconds >= 6); now >= 2, and a 422 names its field.

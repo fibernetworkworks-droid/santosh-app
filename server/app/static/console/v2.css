@@ -1951,6 +1951,70 @@ body.albon{overflow:hidden}
 .slash button span{color:var(--ink);font-weight:400}
 .slash button[aria-selected="true"],.slash button:hover{background:rgb(var(--fg-rgb) / .06)}
 
+/* v0.312 DESIGN ARENA screen (arena.js, owner only): theme tokens only, no held animation, solid backgrounds under text */
+.ar-sub{font-size:13.5px}
+.ar-top{margin-bottom:12px}
+.ar-help{font-size:13px;margin:4px 0 12px}
+.ar-form label{display:grid;gap:4px;font-size:13px}
+.ar-form label>span,.ar-cmpf label>span{color:var(--mut);font-weight:500}
+.ar-form input,.ar-form select,.ar-cmpf select{width:100%;min-width:0;padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.ar-form input:focus-visible,.ar-form select:focus-visible,.ar-cmpf select:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+.ar-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.ar-fields.ar-two{grid-template-columns:minmax(0,1fr) minmax(0,2fr);margin-top:10px}
+.ar-note{margin-bottom:6px}
+.ar-est{font-size:13px;min-height:18px;margin:6px 0 10px}
+.ar-big{font-size:15px;font-weight:500;margin:2px 0 10px}
+.ar-meter{height:8px;border-radius:999px;background:var(--sunk);overflow:hidden;margin-bottom:8px}
+.ar-meter i{display:block;height:100%;background:var(--pri);border-radius:inherit}
+.ar-stop{color:var(--bad)}
+.ar-runs{margin-bottom:12px}
+.ar-small{font-size:12px;display:block}
+.btn.ar-sm{padding:5px 12px;font-size:13px;border-radius:9px}
+.ar-cmpf{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:14px 0 8px}
+.ar-cmpf>b{width:100%;font-size:14px;font-weight:600}
+.ar-cmpf label{display:grid;gap:4px;font-size:13px;flex:1 1 200px}
+.ar-cmpsum{display:flex;gap:6px;margin:6px 0 8px}
+.ar-h4{font-size:14px;font-weight:600;margin:16px 0 8px}
+.ar-duels{display:grid;gap:8px}
+.ar-duel{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--raise);display:grid;gap:5px;font-size:13.5px}
+.ar-result{margin-top:10px}
+.ar-why{font-size:13px;margin:0}
+.ar-vh{align-items:center}
+.ar-vh h2{margin:0}
+.ar-say{font-size:13.5px;margin:-8px 0 14px}
+.ar-crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 18px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--raise);margin-bottom:14px}
+.ar-bar{display:grid;grid-template-columns:110px 1fr 34px;align-items:center;gap:8px;font-size:12.5px}
+.ar-bar span{color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ar-bar i{height:6px;border-radius:999px;background:var(--sunk);overflow:hidden}
+.ar-bar b{display:block;height:100%;background:var(--pri);border-radius:inherit}
+.ar-bar em{font-style:normal;font-family:inherit;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.ar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.ar-card{display:grid;grid-template-columns:118px minmax(0,1fr);gap:12px;padding:12px;border-radius:14px}
+.ar-card.desk{grid-template-columns:minmax(0,1fr)}
+.ar-shot{border-radius:10px;overflow:hidden;background:var(--sunk);border:1px solid var(--line);aspect-ratio:390/844;max-height:260px;display:flex;align-items:flex-start;justify-content:center}
+.ar-card.desk .ar-shot{aspect-ratio:16/10;max-height:none}
+.ar-shot img{width:100%;height:100%;object-fit:cover;object-position:top}
+.ar-noshot{align-items:center;color:var(--dim);font-size:12px;text-align:center}
+.ar-body{display:grid;gap:8px;align-content:start;min-width:0}
+.ar-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.ar-head b{font-size:14.5px;font-weight:600;display:block}
+.ar-score{flex:none;font-family:inherit;min-width:44px;padding:6px 8px;border-radius:10px;background:var(--pri-soft);color:var(--pri-ink);font-weight:600;font-size:17px;text-align:center}
+.ar-chips{display:flex;flex-wrap:wrap;gap:5px}
+.ar-chips .chip{font-size:12px;padding:3px 9px}
+.ar-chips .chip.ar-bad{color:var(--bad);border-color:rgb(var(--bad-rgb) / .3)}
+.ar-line{font-size:13px;margin:0;line-height:1.45}
+.ar-line b{font-weight:600;margin-right:4px}
+.ar-extra{display:none;gap:6px;grid-column:1/-1;padding-top:10px;border-top:1px solid var(--line)}
+.ar-card.more .ar-extra{display:grid}
+.ar-card.ar-failed{opacity:.85}
+@media (max-width:640px){
+  #arena .vh{flex-wrap:wrap;gap:4px 12px}
+  .ar-sub{flex-basis:100%}
+  .ar-fields,.ar-fields.ar-two{grid-template-columns:minmax(0,1fr)}
+  .ar-card{grid-template-columns:96px minmax(0,1fr)}
+  .ar-bar{grid-template-columns:96px 1fr 30px}
+}
+
 /* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim
@@ -2043,3 +2107,4 @@ body.albon{overflow:hidden}
 .sttbl th{font-weight:600;color:var(--mut);background:var(--raise)}
 .stmems{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .stmems li{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+
