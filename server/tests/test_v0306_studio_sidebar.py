@@ -33,4 +33,5 @@ def test_js_wiring():
     js = (CON / "studio.js").read_text()
     assert "style=\"--i:${i++}\"" in js and "class=\"ago\"" in js
     assert "sn.classList.toggle('fadeb'" in js
-    assert "of this month’s limit used" in js and "b.style.width = pct.toFixed(1) + '%'" in js
+    # v0.318: what is LEFT leads the meter, the spend sits under the bar (was "N% of this month's limit used")
+    assert "left</b>" in js and "spent · " in js and "b.style.width = pct.toFixed(1) + '%'" in js
