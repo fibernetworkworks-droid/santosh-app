@@ -972,3 +972,21 @@ small{font-size:12.5px}
 .scrow .bar{height:6px}
 .scpend{display:flex;flex-direction:column;gap:10px}
 @media (prefers-reduced-motion:reduce){.art.sc{transition:none}}
+
+/* ---------- v0.331 DRAG TO RESIZE (owner: "SLIDER FROM BOTH SIDE ... PROMPT WORKING SECTION WILL GET BIGGER AREA"): the sidebar edge and the
+   prompt panel / results edge are draggable (arrow keys too); a thin violet line shows while hovering or dragging. */
+#shell{position:relative}
+#shell:not(.collapsed){grid-template-columns:var(--sbw,248px) 1fr}
+.gen{position:relative;grid-template-columns:minmax(0,var(--pw,380px)) minmax(0,1fr)}
+.rz{position:absolute;top:0;bottom:0;width:12px;margin-left:-6px;z-index:6;cursor:col-resize;touch-action:none;outline:0}
+.rz-side{left:var(--sbw,248px)}
+.rz-pane{left:var(--pw,380px)}
+.rz::after{content:"";position:absolute;left:5px;top:0;bottom:0;width:2px;border-radius:99px;background:transparent;transition:background .15s}
+.rz::before{content:"";position:absolute;left:4px;top:50%;width:4px;height:36px;margin-top:-18px;border-radius:99px;background:var(--line2);transition:background .15s,height .15s,margin-top .15s}
+.rz:hover::after,.rz.on::after,.rz:focus-visible::after{background:var(--pri)}
+.rz:hover::before,.rz.on::before,.rz:focus-visible::before{background:var(--pri);height:48px;margin-top:-24px}
+#shell.rzing,#shell.rzing *{cursor:col-resize!important;user-select:none}
+#shell.rzing iframe,#shell.rzing video{pointer-events:none}
+#shell.collapsed .rz-side{display:none}
+@media (max-width:900px){.rz{display:none}.gen{grid-template-columns:1fr}#shell:not(.collapsed){grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.rz::after,.rz::before{transition:none}}

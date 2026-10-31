@@ -204,6 +204,7 @@ window.HoolaCreate = ctx => {
     <nav class="snav" id="snav"></nav>
     <div class="credits" id="credits"></div>
   </aside>
+  <div class="rz rz-side" role="separator" aria-orientation="vertical" aria-label="Drag to resize the sidebar" tabindex="0"></div>
   <main class="main">
     <div class="top">
       <button class="ib menuBtn" id="menuBtn" aria-label="Open menu">${I('menu')}</button>
@@ -236,6 +237,30 @@ ${SPRITE}`;
     el.innerHTML = `<div class="crow1"><span class="mut">This month</span><b class="num">${inr(Math.max(0, lim - used))} left</b></div><div class="bar"><i style="width:0%"></i></div><small class="dim">${inr(used)} of ${inr(lim)} spent · ${pct < 1 && used > 0 ? '<1' : Math.round(pct)}%</small>`;
     requestAnimationFrame(() => requestAnimationFrame(() => { const b = el.querySelector('.bar i'); if (b) b.style.width = pct.toFixed(1) + '%'; }));
   }
+  // v0.331 two dividers she can drag (owner: "SLIDER FROM BOTH SIDE ... PROMPT WORKING SECTION WILL GET BIGGER AREA"): the sidebar's edge
+  // (200-360px) and the edge between the prompt panel and the results (320px up to the results keeping 360px). Arrow keys move them
+  // 16px, Home / double-click put them back; the widths are remembered on this device.
+  const RZ = {sbw: {min: 200, max: () => 360, def: 248, from: () => $('#shell').getBoundingClientRect().left, key: 'hoola.studio.sbw'},
+    pw: {min: 320, max: () => Math.max(320, ($('.gen')?.clientWidth || 1200) - 360), def: 380, from: () => $('.gen').getBoundingClientRect().left, key: 'hoola.studio.pw'}};
+  function rzSet(k, w, save) {
+    const z = RZ[k]; w = Math.round(Math.max(z.min, Math.min(z.max(), w)));
+    $('#shell').style.setProperty('--' + k, w + 'px');
+    $$('.rz-' + (k === 'sbw' ? 'side' : 'pane')).forEach(h => { h.setAttribute('aria-valuenow', String(w)); h.setAttribute('aria-valuemin', String(z.min)); h.setAttribute('aria-valuemax', String(Math.round(z.max()))); });
+    if (save) { try { localStorage.setItem(z.key, String(w)); } catch {} }
+    return w;
+  }
+  function rzBind(h, k) {
+    if (!h || h.dataset.rz) return; h.dataset.rz = '1';
+    const cur = () => parseFloat(getComputedStyle($('#shell')).getPropertyValue('--' + k)) || RZ[k].def;
+    h.addEventListener('pointerdown', e => { e.preventDefault(); h.setPointerCapture(e.pointerId); h.classList.add('on'); $('#shell').classList.add('rzing');
+      const mv = ev => rzSet(k, ev.clientX - RZ[k].from()), up = () => { h.classList.remove('on'); $('#shell').classList.remove('rzing'); rzSet(k, cur(), true);
+        h.removeEventListener('pointermove', mv); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); };
+      h.addEventListener('pointermove', mv); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up); });
+    h.addEventListener('dblclick', () => rzSet(k, RZ[k].def, true));
+    h.addEventListener('keydown', e => { const d = {ArrowLeft: -16, ArrowRight: 16}[e.key];
+      if (d) { e.preventDefault(); rzSet(k, cur() + d, true); } else if (e.key === 'Home') { e.preventDefault(); rzSet(k, RZ[k].def, true); } });
+    rzSet(k, cur());
+  }
   function go(v, opts) {
     if (v === 'projects') { DIR.project = ''; DIR.view = null; v = 'director'; }   // v0.320 one film list: Film projects opens the Director's
     if (!V[v]) v = 'studio';
@@ -246,6 +271,7 @@ ${SPRITE}`;
     $('#crumb').innerHTML = v === 'studio' ? '<b>Create</b>' : `Create · <b>${TITLE[v]}</b>`;
     $('#shell').classList.remove('navon');
     (W[v] || (() => {}))(el, opts || {}); paintAll(el); hydrate(el); rails(el); showcaseSwap(el);
+    const gen = $('.gen', el); if (gen) { gen.insertAdjacentHTML('beforeend', '<div class="rz rz-pane" role="separator" aria-orientation="vertical" aria-label="Drag to resize the prompt panel" tabindex="0"></div>'); rzBind($('.rz-pane', gen), 'pw'); }
     try { sessionStorage.setItem('hoola.create.view', v); } catch {}
   }
   const V = {}, W = {};
@@ -699,12 +725,24 @@ ${SPRITE}`;
     const why = [...new Set(bad.map(p => p.error))];
     return `<div class="vnote" style="grid-column:1/-1">${I('x', 'width:15px;height:15px')}<div><b>${bad.length} clip${bad.length > 1 ? 's' : ''} could not start.</b><small>${esc(why.length === 1 ? why[0] : 'Open a clip marked “Needs attention” to see why.')} Nothing was charged for them.</small></div></div>`;
   }
+  // v0.331 a re-draw keeps every tile whose content did not change: the 4-15 s poll used to rebuild ALL tiles, so every video
+  // reloaded and the whole "Your videos" grid blinked out and back. Unchanged tiles are kept as they are (playing, scrolled, loaded).
+  function patch(el, html) {
+    if (el._html === html) return false;
+    el._html = html;
+    const t = document.createElement('template'); t.innerHTML = html;
+    const old = new Map(); [...el.children].forEach(c => { if (c._src && !old.has(c._src)) old.set(c._src, c); });
+    const kids = [...t.content.children].map(n => { const src = n.outerHTML, keep = old.get(src); if (keep) { old.delete(src); return keep; } n._src = src; return n; });
+    kids.forEach((k, i) => { if (el.children[i] !== k) el.insertBefore(k, el.children[i] || null); });
+    while (el.children.length > kids.length) el.lastElementChild.remove();
+    return true;
+  }
   function drawVideos() {
     const el = $('#results'); if (!el) return;
     const ps = (D.studio?.projects || []);
-    el.innerHTML = (D.studio && D.studio.available === false ? `<div class="empty" style="grid-column:1/-1"><div><h2>Video Studio is off on this server</h2><p class="mut">It needs ffmpeg and STUDIO_ON on the server.</p></div></div>` : '')
+    patch(el, (D.studio && D.studio.available === false ? `<div class="empty" style="grid-column:1/-1"><div><h2>Video Studio is off on this server</h2><p class="mut">It needs ffmpeg and STUDIO_ON on the server.</p></div></div>` : '')
       + (VID.busy ? `<div class="res gening"><span class="thumb">${art('film', 'vb')}<span class="ring"></span><span class="pct">${esc(VID.busy)}</span></span><b class="rt">${esc(VID.prompt.slice(0, 48))}</b><small>Hoola is writing the shot plan; the price card comes next</small></div>` : '')
-      + vnote(ps) + (ps.map(projTile).join('') || (VID.busy ? '' : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot, pick a model, see the price, press Create.</p></div></div>`));
+      + vnote(ps) + (ps.map(projTile).join('') || (VID.busy ? '' : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot, pick a model, see the price, press Create.</p></div></div>`)));
     paintAll(el);
   }
   function watchStudio(view, draw) {
@@ -922,8 +960,11 @@ ${SPRITE}`;
     if (!DIR.project) { load('studio').then(() => redraw('director', drawFilms));
       $('#fq', el)?.addEventListener('input', e => { DIR.fq = e.target.value; drawFilms(); }); }
     else { const tick = async () => { if (VIEW !== 'director' || !DIR.project) return; await dirLoad(); const p = DIR.view;
+        const sig = p ? JSON.stringify(p) : '';
+        if (p && sig === DIR.sig) { poll = setTimeout(tick, 5000); return; }        // v0.331 nothing changed: keep the page (and its videos) as it is
         if (p && VIEW === 'director' && !$(':focus', el)?.matches('textarea,input')) { const y = $('#view').scrollTop; go('director'); $('#view').scrollTop = y; }
         else poll = setTimeout(tick, 5000); };
+      DIR.sig = DIR.view ? JSON.stringify(DIR.view) : '';
       const p = DIR.view; if (p && (p.working || p.planning || (p.painting || []).length || (p.casting || []).length || (p.approvals || []).length)) poll = setTimeout(tick, 5000); }
     $('#dirForm', el)?.addEventListener('submit', e => { e.preventDefault(); newFilm(); });
     const cyc = {aspect: ['16:9', '9:16', '1:1'], seconds: [15, 30, 45, 60, 90, 120, 180], language: ['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu', 'Bengali'], music: ['', 'festive', 'cinematic', 'upbeat', 'calm', 'corporate', 'lofi']};
@@ -1547,6 +1588,8 @@ ${SPRITE}`;
     document.body.appendChild(host);
     R = host.attachShadow({mode: 'open'});
     R.innerHTML = shellHTML(); drawNav(); drawCredits();
+    for (const k of ['sbw', 'pw']) { try { const w = +localStorage.getItem(RZ[k].key); if (w) $('#shell').style.setProperty('--' + k, w + 'px'); } catch {} }
+    rzBind($('.rz-side'), 'sbw');
     load('showcase').then(() => showcaseSwap($('#view')));    // v0.329 real pictures over the drawn ones, once the list arrives
     { const sn = $('#snav'), fade = () => sn.classList.toggle('fadeb', sn.scrollTop + sn.clientHeight < sn.scrollHeight - 4);   // v0.306 fade only while more list is below
       sn.addEventListener('scroll', fade, {passive: true}); addEventListener('resize', fade); requestAnimationFrame(fade); }
