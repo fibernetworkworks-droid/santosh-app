@@ -8578,7 +8578,21 @@ async def apps_act(ref: str, action: str, body: dict | None = None, tenant: str 
         from .appmaker.android import service as AN
         only = [str(x) for x in body.get("redo") or [] if isinstance(x, str)][:60] if isinstance(body.get("redo"), list) else None
         return await asyncio.to_thread(_appd, AN.build, tenant, ref, conv, only)
-    if action == "fix_crash":                 # v0.324 her tap on a crash from users' phones (same path as the tool)
+    if action == "rollback":                  # v0.325 an older build again, under a new version
+        from .appmaker.android import service as AN
+        return await asyncio.to_thread(_appd, AN.rollback, tenant, ref, int(body.get("build") or 0), conv)
+    if action == "data_change":               # v0.325 her data change (add / hide / label a field)
+        from .appmaker import backend as BE
+        from .site import webapp as W
+
+        def go_dc():
+            try:
+                return BE.change_schema(_be_owner(tenant, ref), body.get("ops") if isinstance(body.get("ops"), dict) else {},
+                                        str(body.get("words") or ""))
+            except W.AppError as e:
+                raise HTTPException(e.code, str(e))
+        return await asyncio.to_thread(_appd, go_dc)
+    if action == "fix_crash":                 # v0.325 her tap on a crash from users' phones (same path as the tool)
         from .agent.app_tools import _act
         from .agent.tools import Ctx, ToolError
         from .site import webapp as W
@@ -8617,7 +8631,7 @@ async def apps_android_file(ref: str, what: str, tenant: str = Depends(current_t
 
 @app.get("/api/apps/{ref}/android/qa/{name}", dependencies=[Depends(require_key)])
 async def apps_android_qa(ref: str, name: str, tenant: str = Depends(current_tenant)):
-    """v0.324 HOOLA QA: a screen's picture from the device check of the latest build."""
+    """v0.325 HOOLA QA: a screen's picture from the device check of the latest build."""
     from .appmaker.android import service as AN
     try:
         f = await asyncio.to_thread(AN.qa_shot, tenant, ref, name)
@@ -8773,10 +8787,32 @@ async def app_api_file(app_key: str, fid: str, request: Request):
 
 @app.post("/api/app-api/{app_key}/crash")
 async def app_api_crash(app_key: str, request: Request):
-    """v0.324 HOOLA QA: a crash an installed app kept from its last run (no login; nothing personal in it)."""
+    """v0.325 HOOLA QA: a crash an installed app kept from its last run (no login; nothing personal in it)."""
     from .appmaker import backend as BE
     body, ip = await _json_body(request), _ip(request)
     return await asyncio.to_thread(_be_call, lambda: BE.crash(BE.by_key(app_key), body, ip))
+
+
+@app.get("/api/app-api/{app_key}/latest")
+async def app_api_latest(app_key: str):
+    """v0.325 the installed app's update check: the newest build's version, What's new, the APK address."""
+    from .appmaker import backend as BE
+    from .appmaker.android import service as AN
+    return await asyncio.to_thread(_be_call, lambda: AN.latest(BE.by_key(app_key)))
+
+
+@app.get("/api/app-api/{app_key}/apk")
+async def app_api_apk(app_key: str):
+    """v0.325 the newest APK of this app (public like the app itself: whoever has the app may update it)."""
+    from .appmaker import backend as BE
+    from .appmaker.android import service as AN
+    from .site import webapp as W
+    try:
+        f, name = await asyncio.to_thread(lambda: AN.apk_current(BE.by_key(app_key)))
+    except (W.AppError, AN.AndroidError):
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type="application/vnd.android.package-archive", filename=name,
+                        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @app.get("/api/app-api/{app_key}/updates")
@@ -8906,7 +8942,7 @@ async def apps_data_file(ref: str, fid: str, tenant: str = Depends(current_tenan
 
 @app.get("/api/apps/{ref}/crashes", dependencies=[Depends(require_key)])
 async def apps_crashes(ref: str, tenant: str = Depends(current_tenant)):
-    """v0.324 crashes on her app users' phones, grouped (same exception + same app frames), newest problems first."""
+    """v0.325 crashes on her app users' phones, grouped (same exception + same app frames), newest problems first."""
     from .appmaker import backend as BE
     return await asyncio.to_thread(_be_owner_call, lambda: {"crashes": BE.crashes(_be_owner(tenant, ref))[:100]})
 

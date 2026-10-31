@@ -29,7 +29,7 @@ from urllib.parse import parse_qs, urlparse
 SECRET = os.environ.get("HOOLA_BUILD_SECRET", "")
 HOME = Path(os.environ.get("HOOLA_BUILD_HOME", "/srv/hoola-build"))
 TIMEOUT = int(os.environ.get("HOOLA_BUILD_TIMEOUT", "1500"))
-EMULATOR = os.environ.get("HOOLA_BUILD_EMULATOR", "") == "1"     # v0.324 HOOLA QA: run the device check on this machine
+EMULATOR = os.environ.get("HOOLA_BUILD_EMULATOR", "") == "1"     # v0.325 HOOLA QA: run the device check on this machine
 MAX_ZIP = 60 * 1024 * 1024
 MAX_FILES = 3000
 KEEP_JOBS_S = 24 * 3600
@@ -107,7 +107,7 @@ def build(job: str) -> None:
 
 
 def qa_check(job: str, work: Path, env: dict, logf: Path) -> None:
-    """v0.324 HOOLA QA on this machine's emulator (HOOLA_BUILD_EMULATOR=1 + a running emulator / device on adb): every
+    """v0.325 HOOLA QA on this machine's emulator (HOOLA_BUILD_EMULATOR=1 + a running emulator / device on adb): every
     screen opened, screenshots, accessibility, cold start, scrolling, APK size -> jobs/<job>.qa.zip. Never fails the build."""
     out = HOME / "jobs" / f"{job}_qa"
     try:

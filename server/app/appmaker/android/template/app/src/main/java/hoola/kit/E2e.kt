@@ -75,7 +75,7 @@ object E2e {
         val upd = Cloud.call("GET", "/updates", null, Auth.token())
         if (!upd.ok || upd.body.optString("now").isEmpty()) return "updates check ${upd.code}"
         say("updates ok")
-        // v0.324 a crash kept from a "last run" reaches the server on the next start (CrashGuard.sendPending)
+        // v0.325 a crash kept from a "last run" reaches the server on the next start (CrashGuard.sendPending)
         Store.put(ctx, "crash_pending", JSONObject().put("trace", "java.lang.IllegalStateException: hoola e2e crash\n" +
             "\tat hoola.app.screens.ScreenCartKt.ScreenCart(ScreenCart.kt:42)\n\tat hoola.kit.PageKt.Page(Kit.kt:10)")
             .put("screen", "cart").put("ver", "e2e").put("android", 34).put("model", "emulator").toString())

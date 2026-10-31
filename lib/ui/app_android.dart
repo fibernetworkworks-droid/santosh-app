@@ -99,10 +99,23 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
       final v = await app.api!.appAndroid(widget.id);
       if (mounted) setState(() => _v = v);
     } catch (_) {}
-    try {   // v0.324 crashes her app's users' phones sent
+    try {   // v0.325 crashes her app's users' phones sent
       final c = await app.api!.call('GET', '/api/apps/${widget.id}/crashes');
       if (mounted) setState(() => _crashes = _list((c as Map?)?['crashes']));
     } catch (_) {}
+  }
+
+  Future<void> _rollback(int build) async {
+    setState(() => _busy = true);
+    try {
+      final r = await app.api!.appAct(widget.id, 'rollback', {'build': build});
+      if (mounted) _snack(context, _s(r['now']).isEmpty ? 'Build $build wapas aa rahi hai' : _s(r['now']));
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _fixCrash(String crash) async {
@@ -203,6 +216,26 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
             style: TextStyle(color: C.faint, fontSize: 11.5)),
       ],
       if (_map(v['qa']).isNotEmpty) _QaBox(app: app, id: widget.id, qa: _map(v['qa'])),
+      if (_list(v['history']).isNotEmpty) ...[       // v0.325 every build: what changed, and a way back
+        const SizedBox(height: 10),
+        Text('Versions (${_list(v['history']).length})', style: display(13)),
+        for (final (i, h) in _list(v['history']).take(6).indexed)
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(10)),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('v${_s(h['version_name'])} · build ${_i(h['build'])}${i == 0 ? ' · abhi wali' : ''}',
+                    style: TextStyle(color: i == 0 ? C.ok : C.ink, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                for (final n in ((h['notes'] as List?) ?? const []).take(3))
+                  Text('• $n', style: const TextStyle(color: C.muted, fontSize: 11.5)),
+              ])),
+              if (i > 0 && !working && ((v['kept_builds'] as List?) ?? const []).contains(h['build']))
+                TextButton(onPressed: _busy ? null : () => _rollback(_i(h['build'])), child: const Text('Wapas lao')),
+            ]),
+          ),
+      ],
       if (_crashes.isNotEmpty) ...[
         const SizedBox(height: 10),
         Text('Users ke phone pe crash (${_crashes.length})', style: display(13)),
@@ -240,7 +273,7 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
   }
 }
 
-/// v0.324 HOOLA QA: what the device check found on a real Android emulator after this build compiled.
+/// v0.325 HOOLA QA: what the device check found on a real Android emulator after this build compiled.
 class _QaBox extends StatelessWidget {
   const _QaBox({required this.app, required this.id, required this.qa});
   final Santosh app;

@@ -1,6 +1,6 @@
 package hoola.kit
 
-// Made by Hoola App Sahayak (v0.324 HOOLA QA). When the app crashes on a real user's phone, the crash (exception, the
+// Made by Hoola App Sahayak (v0.325 HOOLA QA). When the app crashes on a real user's phone, the crash (exception, the
 // app's own code lines, the screen, app + Android version, phone model - no personal data, no form contents) is kept on
 // the phone and sent to the business's Hoola on the next start, so Hoola can fix that screen in the next build. The
 // crash still closes the app the normal Android way.

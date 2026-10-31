@@ -182,7 +182,7 @@ def backend_line(backend: dict | None) -> str:
     for c in (backend or {}).get("collections") or []:
         fs = [f["key"] + ("*" if f.get("required") else "") + (f" [{'|'.join(f['options'][:6])}]" if f.get("options") else "")
               + (f"[{f['type']}]" if f.get("type") in ("photo", "location") else "")
-              for f in c.get("fields") or [] if not f.get("admin_only")]
+              for f in c.get("fields") or [] if not f.get("admin_only") and not f.get("hidden")]
         out.append(f"{c['key']} (create {c.get('rules', {}).get('create', 'member')}): {', '.join(fs)}")
     if (backend or {}).get("order"):
         out.append(f"order list = {backend['order']}")

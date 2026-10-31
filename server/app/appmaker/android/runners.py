@@ -121,7 +121,7 @@ def run_worker(src: Path, key: str, progress: Progress) -> dict[str, Any]:
                 apk = apk if st2 == 200 else None
             st3, logb, _ = _w("GET", f"/jobs/{job}/log", timeout=60)
             qa = None
-            if apk:                                # v0.324 the device check, when that machine has an emulator
+            if apk:                                # v0.325 the device check, when that machine has an emulator
                 st4, qb, _ = _w("GET", f"/jobs/{job}/qa", timeout=120)
                 qa = qa_from_zip(qb) if st4 == 200 else None
             return {"ok": bool(apk), "log": logb.decode(errors="replace") if st3 == 200 else j.get("tail", ""), "apk": apk,
@@ -130,7 +130,7 @@ def run_worker(src: Path, key: str, progress: Progress) -> dict[str, Any]:
 
 
 def qa_from_zip(zb: bytes) -> dict[str, Any] | None:
-    """v0.324 HOOLA QA: {report, shots{screen id: png}} from a zip holding report.json + screens/*.png (any folder)."""
+    """v0.325 HOOLA QA: {report, shots{screen id: png}} from a zip holding report.json + screens/*.png (any folder)."""
     try:
         with zipfile.ZipFile(io.BytesIO(zb)) as z:
             names = z.namelist()
@@ -233,7 +233,7 @@ def run_github(src: Path, key: str, progress: Progress) -> dict[str, Any]:
                     apk = z.read(n)
                 elif n.endswith("build.log"):
                     text = z.read(n).decode(errors="replace")
-        qa = qa_from_zip(zb)                       # v0.324 the device check's report + pictures (folder qa/)
+        qa = qa_from_zip(zb)                       # v0.325 the device check's report + pictures (folder qa/)
     ok = run.get("conclusion") == "success" and bool(apk)
     return {"ok": ok, "log": text or f"GitHub run {run.get('conclusion')}", "apk": apk if ok else None,
             "seconds": round(time.time() - t0), "where": "github", "qa": qa if ok else None}

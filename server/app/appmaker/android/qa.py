@@ -1,4 +1,4 @@
-"""v0.324 HOOLA QA: the device check's report (standard library only: it runs on the build machine and in CI too).
+"""v0.325 HOOLA QA: the device check's report (standard library only: it runs on the build machine and in CI too).
 
     python3 qa.py report <out_dir>     # reads what device_check.sh collected, writes <out_dir>/report.json
 
@@ -69,7 +69,9 @@ def crash_of(text: str) -> dict[str, Any] | None:
 
 def jank_of(text: str) -> tuple[int, float] | None:
     m = re.search(r"Total frames rendered:\s*(\d+).*?Janky frames:\s*(\d+)\s*\(([\d.]+)%\)", text, re.S)
-    return (int(m.group(1)), float(m.group(3))) if m else None
+    if not m or int(m.group(1)) < 10:          # nothing scrolled (a screen that fits): not measured, never "0 % jank"
+        return None
+    return int(m.group(1)), float(m.group(3))
 
 
 def report(out: Path) -> dict[str, Any]:

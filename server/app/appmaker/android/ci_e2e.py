@@ -42,7 +42,7 @@ def check() -> int:
         r = s.get(AppProject, "app_fixture")
         made = bool(r and r.backend)
     crashes = {}
-    try:                                    # v0.324 the crash report the app sent
+    try:                                    # v0.325 the crash report the app sent
         from ..backend import _crash_file
         with session() as s:
             r2 = s.get(AppProject, "app_fixture")

@@ -2,7 +2,7 @@
 # .github/workflows/hoola-build.yml (main branch). Hoola pushes each app's project to the branch build/<app> under app/ and
 # starts this workflow; the APK + build.log come back as the artifact hoola-<job>.
 # Token for APP_BUILD_GH_TOKEN: fine-grained, only this repo: Contents read/write, Actions read/write.
-# v0.324 HOOLA QA: after compiling, every screen is opened on an Android emulator (crash check, screenshots, accessibility),
+# v0.325 HOOLA QA: after compiling, every screen is opened on an Android emulator (crash check, screenshots, accessibility),
 # cold start / scrolling / APK size measured; the report + pictures come back in the same artifact (folder qa/).
 # Replace your copy of this file with this version to get the device check (older copies still build).
 name: hoola-build

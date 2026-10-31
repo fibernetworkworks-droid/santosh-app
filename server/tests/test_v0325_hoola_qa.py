@@ -1,4 +1,4 @@
-"""v0.324 HOOLA QA (App Sahayak Phase 3): the device check after every build (every screen opened on an emulator,
+"""v0.325 HOOLA QA (App Sahayak Phase 3): the device check after every build (every screen opened on an emulator,
 crash -> back to Opus with the real crash, accessibility, cold start / scrolling / APK size budget), crash reports from
 real users' phones (grouped, a chat note, "crash theek karo" rewrites those screens), and the views. device_check.sh
 itself runs on a real emulator in CI (appgen-check.yml) on the fixture app; here its report parser is fed real-shaped

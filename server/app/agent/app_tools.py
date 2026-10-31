@@ -13,7 +13,7 @@ APP_TOOLS = [
         "Design a premium NATIVE mobile app (Android + iPhone look) - her business's app, a client's app, or a PRODUCT app of "
         "its own (music, OTT, short video, social, chat, news, fitness, games, rides, food delivery, quick commerce, "
         "marketplace, tickets, jobs, courses, doctor consults, payments...: 33 product kinds) - and show her EVERY "
-        "screen as a tap-through prototype BEFORE anything is built. Built apps have a backend: action=data (coll, row, set; paid=Verified only when she saw the money), role, fix_crash (\'crash theek karo\'); read: app_dekho data / members / crashes. brief = HER EXACT WORDS, never your summary and never her "
+        "screen as a tap-through prototype BEFORE anything is built. Built apps have a backend: action=data (coll, row, set; paid=Verified only when she saw the money), role, fix_crash (\'crash theek karo\'), rollback (build), data_change (ops: add / hide / label fields); read: app_dekho data / members / crashes. brief = HER EXACT WORDS, never your summary and never her "
         "own business added in (her business details go in by themselves only when the app is for her business). Don't pass "
         "goal unless she named the kind of app; a goal that doesn't fit her words is ignored. If it answers 'Pakka karne ke "
         "liye ek sawaal', ask her exactly that and call again with her answer in brief (or answers {sure: true} if she says "
@@ -58,7 +58,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -69,6 +69,8 @@ APP_TOOLS = [
          "set": {"type": "object", "description": "action=data: fields to change, e.g. {\"status\": \"Accepted\"}"},
          "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members)"},
          "crash": {"type": "string", "description": "action=fix_crash: the crash id (app_dekho what=crashes); empty = the newest unfixed one"},
+         "build": {"type": "integer", "description": "action=rollback: the build number to bring back (app_dekho what=android history); 0 = the one before"},
+         "ops": {"type": "object", "description": "action=data_change: {add: [{coll, key, label, type, options}], hide: [{coll, key}], label: [{coll, key, label}]} - additive only, data never deleted"},
          "role": {"type": "string", "enum": ["member", "staff", "admin"]}},
          "required": ["action"]}},
     {"name": "app_dekho", "description": (
@@ -145,7 +147,17 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.resume(t, ref)
     if action == "delete":
         return S.delete(t, ref)
-    if action == "fix_crash":                 # v0.324 a crash from users' phones -> those screens rewritten, a new build
+    if action in ("rollback", "data_change"):     # v0.325 updates
+        if not _owner(ctx):
+            raise ToolError("Sirf maalkin yeh kar sakti hain.")
+        from ..appmaker import backend as BE
+        r = BE.by_key_or_ref(t, ref)
+        if action == "rollback":
+            from ..appmaker.android import service as AN
+            v = AN.rollback(t, r.id, int(a.get("build") or 0), conv)
+            return {"status": v["status"], "say": v.get("now") or "Purani build wapas aa rahi hai; card par dikhega."}
+        return BE.change_schema(r, a.get("ops") if isinstance(a.get("ops"), dict) else {}, str(a.get("instruction") or ""))
+    if action == "fix_crash":                 # v0.325 a crash from users' phones -> those screens rewritten, a new build
         if not _owner(ctx):
             raise ToolError("Sirf maalkin yeh kar sakti hain.")
         from ..appmaker import backend as BE

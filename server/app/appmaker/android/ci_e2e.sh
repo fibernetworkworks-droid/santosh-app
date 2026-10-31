@@ -2,7 +2,7 @@
 # v0.314: runs inside the CI emulator after ci_smoke.sh. The debug build of the fixture app talks to a REAL Hoola server
 # on the runner (http://10.0.2.2:8077, debug builds only): the kit's E2e signs up, places an order through the outbox,
 # checks the server-priced copy, sends the same write twice (one row), signs out and in. Pass = logcat "HOOLA_E2E OK".
-# Usage: ci_e2e.sh out_dir [debug.apk]   (v0.324: the device check leaves the RELEASE build installed; the debug one goes back)
+# Usage: ci_e2e.sh out_dir [debug.apk]   (v0.325: the device check leaves the RELEASE build installed; the debug one goes back)
 set -u
 OUT="$1"
 [ -n "${2:-}" ] && adb install -r "$2" > /dev/null

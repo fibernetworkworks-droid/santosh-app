@@ -299,7 +299,8 @@ object Db {
         return (0 until a.length()).mapNotNull { a.optJSONObject(it) }.firstOrNull { it.optString("key") == coll }
     }
 
-    fun fields(coll: String): List<Item> = arrList(collection(coll)?.optJSONArray("fields"))
+    /** v0.325 a field the business hid is left out (its data stays on the server). */
+    fun fields(coll: String): List<Item> = arrList(collection(coll)?.optJSONArray("fields")).filter { !it.b("hidden") }
     fun label(coll: String): String = collection(coll)?.optString("label", coll) ?: coll
     fun rule(coll: String, op: String): String = collection(coll)?.optJSONObject("rules")?.optString(op, "") ?: ""
     val orderList: String get() = schema.optString("order", "")

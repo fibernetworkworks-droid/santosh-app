@@ -267,6 +267,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import hoola.kit.Api
+import hoola.kit.AppUpdate
+import hoola.kit.UpdateDialog
 import hoola.kit.AppData
 import hoola.kit.Auth
 import hoola.kit.Cloud
@@ -292,7 +294,7 @@ object AppConfig {{
 class MainActivity : ComponentActivity() {{
     override fun onCreate(savedInstanceState: Bundle?) {{
         super.onCreate(savedInstanceState)
-        CrashGuard.install(this, BuildConfig.VERSION_NAME)          // v0.324 a crash on a user's phone reaches Hoola
+        CrashGuard.install(this, BuildConfig.VERSION_NAME)          // v0.325 a crash on a user's phone reaches Hoola
         enableEdgeToEdge()
         Strings.init(AppTokens.look.language)
         AppData.load(this)
@@ -312,7 +314,10 @@ class MainActivity : ComponentActivity() {{
             HoolaTheme(AppTokens.look) {{
                 var stage by remember {{ mutableStateOf(if (seen || jump != null) "app" else "splash") }}
                 val nav = remember {{ Nav(jump ?: AppScreens.START, AppScreens.tabs, AppScreens.ids) }}
-                LaunchedEffect(Unit) {{ Api.refresh(this@MainActivity); Updates.check(this@MainActivity) }}
+                LaunchedEffect(Unit) {{
+                    Api.refresh(this@MainActivity); Updates.check(this@MainActivity)
+                    AppUpdate.check(this@MainActivity, BuildConfig.VERSION_CODE)     // v0.325 a newer build: "What's new" + Update
+                }}
                 LaunchedEffect(Unit) {{
                     while (true) {{ Db.sync(); delay(if (Db.pending.value > 0) 15_000L else 60_000L) }}
                 }}
@@ -325,6 +330,7 @@ class MainActivity : ComponentActivity() {{
                     "notify" -> NotifyScreen {{ stage = "app"; Store.put(this@MainActivity, "onboarded", "1") }}
                     else -> AppShell(nav, AppScreens.fabMain, AppScreens.fabActions, AppData.appName) {{ id -> CrashGuard.screen = id; AppScreens.Show(id) }}
                 }}
+                if (stage == "app") UpdateDialog()
             }}
         }}
     }}
@@ -441,7 +447,7 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
     out = []
     for f in fields:
         k = str(f.get("key") or "")
-        if f.get("admin_only") or f.get("type") == "yes_no" or not ID_RE.match(k):
+        if f.get("admin_only") or f.get("hidden") or f.get("type") == "yes_no" or not ID_RE.match(k):
             continue
         if f.get("type") == "photo":              # v0.319
             out.append(f"        block {{ PhotoField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
@@ -657,7 +663,7 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     if key.get("p12_b64"):
         (tmp / "keys").mkdir(exist_ok=True)
         (tmp / "keys/preview.p12").write_bytes(base64.b64decode(key["p12_b64"]))
-    # v0.324 HOOLA QA travels with the project: the build machine / builds repo runs the device check after compiling
+    # v0.325 HOOLA QA travels with the project: the build machine / builds repo runs the device check after compiling
     qa = tmp / "hoola_qa"
     qa.mkdir(exist_ok=True)
     for f in ("device_check.sh", "qa.py"):
