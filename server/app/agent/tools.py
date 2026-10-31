@@ -1046,7 +1046,9 @@ TOOL_LANES: dict[str, str] = {
                   "doc_studio data=. One small read -> api_call. Never a PC for data.",
     # documents: which file maker
     "doc_studio": "LANE: every designed file for her - PDF / Word / Excel / PowerPoint reports, quotations, invoices, "
-                  "proposals, decks. A plain quick file -> make_document; an interactive page -> artifact_make.",
+                  "proposals, decks. A plain quick file -> make_document; an interactive page -> artifact_make. "
+                  "She gave the items / prices / names = make it now; a missing GST rate, address or number stays "
+                  "blank (say so after) - never ask before the first draft.",
     "make_document": "LANE: a plain quick Office file (letter, simple list). Anything formal or designed (report, "
                      "quotation, invoice, proposal, deck) -> doc_studio.",
     "docs_writer": "LANE: technical docs for HER product (manuals, API reference, release notes). Any other "

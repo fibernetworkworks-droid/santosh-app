@@ -12557,7 +12557,58 @@ re-versioned past main's parallel v0.332-v0.336.
   in-app update prompt (TestFlight / App Store update themselves), App Store listing / screenshots upload (App Store Connect
   API - next), 3D scenes (Android-only Scene3D).
 
-## v0.338.0 EDIT MEIN SAB JODO (owner: "IN EDIT MODE ADD ALL ATTACHMENT FUNCTIONS IMAGE, VIDEO, FILES ETC")
+## v0.338.0 KAAM KARO - the file is made, the card is fair (owner: "GO 1" after the first live tool card on v0.336: right first pick 23/26)
+The vps-ops tool_card on the live server (Claude, FRESH set): 23/26 right first picks, 0 errors. The three misses, read one by
+one: (a) "ABC Traders ke liye 3 items ka quotation PDF bana do: Chair 2500 x 10, Table 6000 x 2" -> words, no tool = the one
+REAL miss (the content was given); (b) "customer ki complaint register karo" -> words = fair (no customer, no complaint named);
+(c) "passport renewal ka form online bhar do mere details se" -> id_locker first = fair (her details come before the form).
+FIX (a): replystyle.CHAT's clear-ask rule now says a FILE whose main content she gave is made NOW, small missing details
+(GST rate, address, quote number, validity, logo) blank or a plain default and named in ONE line after the file, never a
+question before the first draft; doc_studio's LANE says the same. FAIR CARD (b, c): FRESH rows may carry {"also": first
+steps that are also right, "ask_ok": one real question is right}; `_first_pick` scores `asked` (no tool + a question mark,
+only where ask_ok); the live line shows "a fair question N". Tests: test_v0337_kaam_karo.py (4). Re-run vps-ops tool_card.
+
+## v0.339.0 APP STORE LAUNCH (built as 0.338, re-versioned past the parallel v0.338) (App Sahayak Phase 7, owner: "START PHASE 7")
+The iPhone twin of v0.331 PLAY STORE LAUNCH: her iPhone app on the App Store from HER OWN Apple account. No Phase 7 had been
+named in the plan; the open gap after Phase 6 was the App Store side (Phase 6 stopped at TestFlight).
+- Her App Store Connect key NEVER reaches Hoola: every Apple API call runs in her private builds repo with its secrets
+  (ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8), exactly like the TestFlight upload.
+- `appmaker/ios/asc.py` (copied into each project's hoola_qa/, runs on the Mac; stdlib + cryptography): ES256 JWT (header
+  alg / kid / typ, payload iss / iat / exp 19 min / aud appstoreconnect-v1, raw r||s signature); `push`: GET /v1/apps
+  filter[bundleId] -> the editable iOS appStoreVersion (PREPARE_FOR_SUBMISSION / rejected states) or POST one (platform IOS,
+  releaseType MANUAL), versionString patched to the build's version -> appStoreVersionLocalizations (description, keywords,
+  promotionalText, supportUrl, marketingUrl; whatsNew only when not the first version) -> appInfoLocalizations (name,
+  subtitle, privacyPolicyUrl) -> appScreenshotSets APP_IPHONE_67 (old shots deleted) -> per PNG: POST /v1/appScreenshots
+  (fileName, fileSize) -> PUT every uploadOperation part to Apple's pre-signed URL with its own headers (no bearer token) ->
+  PATCH uploaded + sourceFileChecksum (MD5) -> GET /v1/builds filter[app] + filter[version]=build number, must be VALID ->
+  PATCH the version's build. `submit`: POST /v1/reviewSubmissions (platform IOS, app) -> POST /v1/reviewSubmissionItems
+  (reviewSubmission + appStoreVersion) -> PATCH submitted true. Writes asc_result.json; errors carry codes
+  (NO_APP_RECORD, NO_BUILD, BUILD_PROCESSING, MISSING_SECRET, sizes). Facts from Apple's App Store Connect API reference
+  (the JSON form of developer.apple.com/documentation/appstoreconnectapi pages). Note: Apple marks appScreenshots /
+  appScreenshotSets deprecated in favour of the App Asset Library; they still work and are what this uses.
+- `server/app_builder/hoola-ios.yml`: kinds store (simulator build, SIM_KIND=max sim_check = iPhone Pro Max shots 1320x2868,
+  `asc.py push`) and review (`asc.py submit` only; no build). `sim_check.sh` SIM_KIND=max picks the newest Pro Max.
+- `appmaker/ios/appstore.py`: listing (Opus, Apple limits 30 / 30 / 100 / 4000 / 170, guideline 2.3 rules, keywords cleaned
+  to lower-case unique words without app / iphone / android, or a template from the Play one), her edits checked;
+  support_html (public /api/app-api/<key>/support: contact, hours, how to delete the account); privacy_answers (App Privacy
+  "nutrition label", no API: contact info, location, photos, purchases, crash data, all no tracking); ONE_TIME steps (create
+  the app with the bundle ID, category, age rating None -> 4+, App Privacy, pricing, Free Apps agreement); push (needs a
+  TestFlight build + a listing + https PUBLIC_BASE_URL; background thread, store.json = version / build / listing / urls /
+  up to 6 shots starting with the full-app shot) and submit (her_tap only; status in_review, submissions kept); why_line turns
+  Apple refusals into her next step. State in the app's ios JSON under "appstore".
+- Routes: GET /api/apps/{ref}/appstore, POST /api/apps/{ref}/appstore/listing|push|submit, GET /api/app-api/{key}/support.
+  Tools: app_banao action=appstore astep listing|push (owner; submit refused), app_dekho what=appstore.
+- Phone `lib/ui/app_ios.dart` AppStorePanel (steps, editable listing with limits, push, Review ke liye bhejo with a confirm
+  dialog, one-time steps, App Privacy answers); console build.js loadAppStore (same, confirm()). Privacy page crash line now
+  says the phone's system version (Android / iOS).
+- CI ios-check.yml: the Pro Max simulator shots are measured with asc.png_size and must be an App Store 6.9-inch size.
+- Tests: `test_v0338_app_store.py` (10): JWT verified with the public key, the full push sequence on a faked Apple (calls in
+  order, two-part PUT without the token, MD5 commit, build last), refusals, version reuse + submit, missing secrets,
+  listing limits / edits / template, push + submit through a faked Mac (her tap only), support page, tool never submits.
+- Not verified: a real App Store Connect account (needs hers); Apple may require extra fields per account (export
+  compliance is answered in Info.plist; content rights / age rating / App Privacy are her one-time steps).
+
+## v0.340.0 EDIT MEIN SAB JODO (owner: "IN EDIT MODE ADD ALL ATTACHMENT FUNCTIONS IMAGE, VIDEO, FILES ETC")
 Before: website Edit mode (v0.295) could change words, links and a picture already on the site, or remove things;
 nothing could be ADDED, and only photos could be uploaded (in chat).
 - **"+ Jodo" on everything** in the edit preview (`assets/hoola-edit.js`): she taps any words, photo or video and adds,
@@ -12580,7 +12631,8 @@ nothing could be ADDED, and only photos could be uploaded (in chat).
   preview (stripped from the live site like every edit number).
 - Console (`build.js` addDialog / uploadTo, `.sted-kind` styles) and phone (`site_screen.dart` `_add` / `_upload`,
   `Api.siteMedia`, file_picker) both have it. The repo's nginx sample allows 64 MB on `/api/sites/<id>/media`.
-- Tests `server/tests/test_v0338_edit_mein_sab_jodo.py` (5): file checks, every kind added and shown with the right
+- Tests `server/tests/test_v0340_edit_mein_sab_jodo.py` (5): file checks, every kind added and shown with the right
   address at two depths + files copied + no edit numbers live + every link resolving, remove-as-one + Undo, the photo
   edit number in the preview, and the toolbar's "+ Jodo" message in Chromium.
 - Not yet: a video's own poster frame (the browser shows its first frame), reordering added pieces (remove + add again).
+- Built as 0.338.0, re-versioned 0.340.0 on merge past the parallel v0.338 KAAM KARO and v0.339 APP STORE LAUNCH (all kept). Code comments say v0.338.

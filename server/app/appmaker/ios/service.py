@@ -208,7 +208,7 @@ def _mac(src: Path, key: str, kind: str, progress) -> dict[str, Any]:
                            max(int(s.app_build_timeout_s or 1800), 2400))
     if not run:
         return {"ok": False, "log": "iPhone build timed out", "seconds": round(time.time() - t0)}
-    text, up, report, shots = "", "", None, {}
+    text, up, report, shots, asc = "", "", None, {}, {}
     for zb in RN.artifacts(repo, run, (f"hoola-{job}",)):
         with zipfile.ZipFile(io.BytesIO(zb)) as z:
             for nm in z.namelist():
@@ -216,12 +216,17 @@ def _mac(src: Path, key: str, kind: str, progress) -> dict[str, Any]:
                     text = z.read(nm).decode(errors="replace")
                 elif nm.endswith("upload.log"):
                     up = z.read(nm).decode(errors="replace")
+                elif nm.endswith("asc_result.json"):        # v0.338 App Store Connect answer (kinds store / review)
+                    try:
+                        asc = json.loads(z.read(nm))
+                    except ValueError:
+                        asc = {}
         qa = RN.qa_from_zip(zb)
         if qa:
             report, shots = qa["report"], qa["shots"]
     built = run.get("conclusion") == "success" or ("error:" not in text and bool(report))
     return {"ok": built and "error:" not in text, "log": text or f"GitHub run {run.get('conclusion')}", "report": report,
-            "shots": shots, "uploaded": "UPLOADED_TO_TESTFLIGHT" in up, "upload_log": up[-4000:],
+            "shots": shots, "uploaded": "UPLOADED_TO_TESTFLIGHT" in up, "upload_log": up[-4000:], "asc": asc,
             "seconds": round(time.time() - t0)}
 
 

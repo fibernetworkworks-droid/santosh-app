@@ -7,7 +7,7 @@ set -u
 APP="$1"; BID="$2"; OUT="$3"; shift 3
 mkdir -p "$OUT/screens"
 DEV=$(xcrun simctl list devices available -j | python3 -c '
-import json, sys
+import json, os, sys
 d = json.load(sys.stdin)["devices"]
 import re
 best = []
@@ -17,9 +17,10 @@ for rt, devs in d.items():
     ver = tuple(int(x) for x in re.findall(r"\d+", rt.split("iOS")[-1])[:2])
     for x in devs:
         n = x["name"]
-        if x.get("isAvailable") and n.startswith("iPhone") and "SE" not in n and "Plus" not in n and "Max" not in n:
+        big = os.environ.get("SIM_KIND") == "max"         # v0.338 App Store shots: a Pro Max (1320x2868)
+        if x.get("isAvailable") and n.startswith("iPhone") and "SE" not in n and "Plus" not in n and (("Pro Max" in n) if big else ("Max" not in n)):
             num = int((re.findall(r"\d+", n) or ["0"])[0])
-            best.append((ver, num, "Pro" not in n, x["udid"]))     # newest iOS, newest plain iPhone (6.1")
+            best.append((ver, num, big or "Pro" not in n, x["udid"]))     # newest iOS, newest plain iPhone (6.3") / Pro Max
 best.sort()
 print(best[-1][3] if best else "")')
 [ -n "$DEV" ] || { echo "::error::no iPhone simulator on this Mac"; exit 1; }

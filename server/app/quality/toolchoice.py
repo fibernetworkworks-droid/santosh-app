@@ -68,9 +68,13 @@ async def _first_pick(a: dict, brain: str, settings) -> dict[str, Any]:
         opened.admit_families(admit.route(need, settings))
         out["searched"] = need[:120]
         out["found"] = any(t["name"] in a["ok"] for t in opened.specs())
-    out["right"] = bool(pick and pick["name"] in a["ok"]) or bool(out.get("found"))
     if not pick:
         out["words"] = " ".join(str(b.get("text") or "") for b in blocks if b.get("type") == "text")[:200]
+    # v0.337 a fair card: a listed first step (her ID details before a form) is right, and so is ONE real question
+    # where the ask truly misses its subject (ask_ok) - only a wrong tool, or words where work was due, count as misses
+    out["asked"] = bool(not pick and a.get("ask_ok") and "?" in out.get("words", ""))
+    out["right"] = (bool(pick and (pick["name"] in a["ok"] or pick["name"] in (a.get("also") or ())))
+                    or bool(out.get("found")) or out["asked"])
     return out
 
 
@@ -79,9 +83,12 @@ def fresh_asks() -> list[dict]:
     from ..agent.tools import FAMILY_OF
     from .tool_asks import FRESH
     out = []
-    for i, (text, fams) in enumerate(FRESH):
+    for i, row in enumerate(FRESH):
+        text, fams = row[0], row[1]
+        extra = row[2] if len(row) > 2 else {}
         ok = [n for n, f in FAMILY_OF.items() if f in fams] + [n for n in fams if n in FAMILY_OF]
-        out.append({"id": f"fresh{i + 1:02d}", "text": text, "ok": ok})
+        out.append({"id": f"fresh{i + 1:02d}", "text": text, "ok": ok, "also": list(extra.get("also") or ()),
+                    "ask_ok": bool(extra.get("ask_ok"))})
     return out
 
 
@@ -94,7 +101,8 @@ async def live_card(asks: list[dict] | None = None, brain: str = "") -> dict[str
     done = [r for r in rows if "error" not in r]
     return {"kind": "live", "set": TOOL_SET_V, "brain": brain, "asks": len(rows), "answered": len(done),
             "right": sum(r["right"] for r in done), "via_search": sum(bool(r.get("found")) for r in done),
-            "no_tool": sum(not r["pick"] for r in done), "errors": len(rows) - len(done), "rows": rows}
+            "no_tool": sum(not r["pick"] for r in done), "asked": sum(bool(r.get("asked")) for r in done),
+            "errors": len(rows) - len(done), "rows": rows}
 
 
 def save(card: dict, label: str = "") -> dict:
@@ -127,7 +135,7 @@ def lines(card: dict) -> list[str]:
         return out
     out = [f"Tool choice (live, {card.get('brain')}, set v{card['set']}): right first pick "
            f"{card['right']}/{card['answered']} (of them via tool_search {card['via_search']}), "
-           f"answered in words {card['no_tool']}, errors {card['errors']}"]
+           f"answered in words {card['no_tool']} (a fair question {card.get('asked', 0)}), errors {card['errors']}"]
     out += [f"  - {r['id']}: picked {r.get('pick') or '(no tool)'}, right = {', '.join(r['ok'][:6]) + (' …' if len(r['ok']) > 6 else '')}"
             for r in card["rows"] if "error" not in r and not r["right"]]
     return out

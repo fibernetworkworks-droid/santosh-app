@@ -239,7 +239,7 @@ def check() -> list[str]:
 
 # v0.331 FRESH: written for the v0.331 check, after the router and the cards were tuned - a held-out set. Each ask names
 # the family (or exact tools) that is right for it; any tool of that family counts (the live card scores the FIRST pick).
-FRESH: list[tuple[str, tuple[str, ...]]] = [
+FRESH: list[tuple] = [   # (text, families-or-tools[, {"also": first steps that are also right, "ask_ok": a real question is right}])
     ("kal subah 9 baje doctor ka appointment calendar mein daal do", ("gcal", "life")),
     ("Rahul ko mail karo ki meeting 4 baje hai", ("email",)),
     ("mera last month ka GST return status batao", ("gst",)),
@@ -252,7 +252,8 @@ FRESH: list[tuple[str, tuple[str, ...]]] = [
     ("ek form bana do feedback ke liye", ("forms",)),
     ("presentation bana do 10 slides ki marketing par", ("slides", "docstudio")),
     ("IndiaMART pe steel pipe ka rate batao", ("indiamart",)),
-    ("customer ki complaint register karo", ("shikayat",)),
+    # v0.337 a fair card: the complaint ask names no customer and no complaint, so ONE real question is right too
+    ("customer ki complaint register karo", ("shikayat",), {"ask_ok": True}),
     ("Aaj sone ka rate kya hai?", ("google_search", "web_sources")),
     ("Is page ko padh ke 5 points mein batao: https://en.wikipedia.org/wiki/Diwali", ("open_website",)),
     ("ABC Traders ke liye 3 items ka quotation PDF bana do: Chair 2500 x 10, Table 6000 x 2", ("doc_studio",)),
@@ -261,7 +262,8 @@ FRESH: list[tuple[str, tuple[str, ...]]] = [
     ("meri gaadi ka insurance kab khatam hota hai, yaad hai?", ("memory_search", "yaad_khojo")),
     ("mere uploaded documents mein rent agreement ki clause dhoondo", ("gyaan_khojo", "gyaan")),
     ("Hoola ke browser mein Myntra par Nike shoes size 9 ka price dekho", ("browse_web",)),
-    ("passport renewal ka form online bhar do mere details se", ("computer_operator",)),
+    # v0.337 her details first (the Pehchaan Locker), then the form: both are a right first step
+    ("passport renewal ka form online bhar do mere details se", ("computer_operator",), {"also": ("id_locker",)}),
     ("purane customers ko WhatsApp pe offer bhejo", ("campaign",)),
     ("Kal Mumbai mein baarish hogi kya?", ("get_weather", "google_search")),
     ("har somvar subah 8 baje mujhe hafte ka plan bhejna", ("create_routine",)),
