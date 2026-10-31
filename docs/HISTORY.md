@@ -12133,3 +12133,42 @@ Owner: "GO PHASE 2" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
 - `small{font-size:12.5px}` (a bare <small> was 10.4px on Brand kit, 11.7px in the editor). Re-measured: 6 text sizes, 0 texts
   below 4.5 : 1 in light and dark. Phone: Director brief pills wrap (an old 900px rule squeezed them to "Hi" / "108").
 - Tests: `test_v0323_studio_home_director.py`; v0.318 scale pin allows 40 (headline size reused by the initials).
+
+## v0.324.0 HOOLA QA — App Sahayak Phase 3: engineered and checked like a real app team (owner: "START PHASE 3"; built as 0.323.0, re-versioned past the parallel v0.323.0 STUDIO HOME + DIRECTOR)
+- **Device check after every build** (`server/app/appmaker/android/device_check.sh` + `qa.py`, stdlib only; `gen.write_project`
+  copies both into every project as `hoola_qa/` with `package.txt` + `screens.txt`): on an Android emulator the debug build opens
+  EVERY screen (extra `hoola_screen`), takes its picture, dumps its UI tree and its crash buffer; the release build is cold-started
+  3 times (`am start -W` TotalTime), scrolled (4 swipes) for `dumpsys gfxinfo` janky frames, and measured (APK bytes). `qa.report`
+  -> `report.json`: per screen opened / crash (exception, app frames, screen class, logcat excerpt) / accessibility (a tappable with no
+  words anywhere in it = unlabelled for TalkBack; a target under 48 dp at the device density) / screenshot; perf (cold median, jank %,
+  APK MB) against `BUDGET` (1500 ms, 25 %, 15 MB); `passed` = every screen opened. Budget and accessibility are reported, a crash blocks.
+- **Where it runs**: GitHub builds repo (`APP_BUILD_MODE=github`): the new `server/app_builder/hoola-build.yml` builds release + debug,
+  enables KVM, runs the check on an API 34 emulator (`continue-on-error`, never breaks a good build) and uploads `qa/report.json` +
+  `qa/screens/*.png` with the APK; her repo needs this file updated (older copies still build, the card then says so). Worker mode:
+  `HOOLA_BUILD_EMULATOR=1` + an emulator on adb -> `/jobs/<id>/qa` zip. `runners.qa_from_zip` brings both back as `result["qa"]`.
+- **The build loop acts on it** (`android/service._run`): a model-written screen that crashed on the device goes back to Opus ONCE with
+  "THIS SCREEN CRASHED ON A REAL ANDROID PHONE" + the logcat; rebuilt and re-checked; a fix that does not compile, or a second crash,
+  ships that screen's simple code-made version (the app is never handed over crashing on a screen we know about). `_keep_qa` keeps the
+  summary in the build state (`qa`: ran / passed / opened / total / crashed / perf / budget / a11y findings / shots) and the pictures
+  (`android/qa/b<n>/`, last 3 builds); `GET /api/apps/<ref>/android/qa/<screen>`; the ready note gets one plain QA line.
+- **Crashes on real users' phones**: kit `CrashGuard.kt` (installed first in MainActivity, current screen set by the shell) keeps the
+  crash (trace 60 lines, screen, versionName, Android, model; no personal data, no form contents) with `commit()` and lets Android close
+  the app as usual; `sendPending` posts it on the next start (`POST /api/app-api/<key>/crash`, no login, 20 an hour per IP).
+  `backend.crash` groups by exception + the first app frames with line numbers stripped (`c_<sha1>`), counts, screens, versions,
+  devices (200 kept), a chat note on a NEW crash; `GET /api/apps/<ref>/crashes`; `app_dekho what=crashes`; `app_banao action=fix_crash`
+  (+ phone / console "Theek karo" via `POST /api/apps/<ref>/fix_crash`) = the app screens in the stack (ScreenCartKt -> cart, else the
+  screen it happened on) rewritten with the crash as a per-screen note (`android.build(..., notes, crashes)`), a new build; the crash is
+  marked `fixing` with that build's version; the same crash from that version = `back` + a second note; a crash only in the kit is said
+  to be Hoola's own, not hers.
+- **Views**: phone build panel `_QaBox` (opened x/y, cold start / jank / APK pills against the budget, accessibility lines, the
+  screenshots) + crash list with Theek karo; console Android tab `qaBox` (same, screenshots through her login).
+- **CI** (`appgen-check.yml`): the fixture app now goes through `device_check.sh` itself (13 screens incl. the kit's sign-in / account),
+  a step gates on `report.json` (every screen opened, cold start + APK size measured, accessibility findings printed as notices); the
+  e2e reinstalls the debug build and also sends a kept crash end to end (the server check requires it grouped under the cart screen).
+- **Tool text**: the 1200-char cut had pushed out "Pakka karne ke liye ek sawaal"; the product list was shortened so the new-app
+  rules and the backend actions all fit.
+- **Verified here**: `server/tests/test_v0324_hoola_qa.py` (3: the report parser on real-shaped uiautomator / logcat / gfxinfo output,
+  the build's crash-fix loop on a fake emulator build machine incl. the shot route and the no-emulator message, crash reports grouped /
+  noted / fixed / back / kit-only); the fixture project compiles with the real toolchain (release APK 1.5 MB).
+- **Not yet**: per-app UI flow tests beyond "every screen opens" (tapping through each flow), a visual diff against the approved web
+  design, memory / ANR checks, iPhone.

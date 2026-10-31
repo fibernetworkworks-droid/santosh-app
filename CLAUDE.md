@@ -136,9 +136,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.323.0 (pubspec 0.323.0+363). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.324.0 (pubspec 0.324.0+364). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.324 HOOLA QA (App Phase 3): device check after every native build (`android/device_check.sh` + `qa.py`: every screen on an emulator, crash -> Opus fix with the real crash, a11y, cold start / jank / APK budget), crash reports from users' phones (kit CrashGuard, grouped, chat note, fix_crash rebuild).
 - v0.323 STUDIO HOME + DIRECTOR (Phase 2 of the design audit): ask box settings + price, rails arrow only where more is hidden,
   art paints on the FIRST open (was unpainted), one film list (search / sort / step / Continue), next-step card, shot timeline, More menu.
 - v0.322 APP FEATURES (App Phase 2, built as 0.320 / 0.321): photo fields (Photo Picker, outbox upload, server re-encode), location fields (disclosure + system dialog), order-update notifications (JobScheduler + /updates), UPI "I have paid" + UTR (she verifies), search / status filters.
