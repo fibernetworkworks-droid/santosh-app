@@ -236,4 +236,4 @@ def test_quick_lane_says_it_reaches_the_job():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.310.0"
+    assert APP_VERSION == "0.311.0"

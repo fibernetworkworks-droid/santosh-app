@@ -11581,3 +11581,22 @@ seconds Field(ge=6) - POST /api/studio/projects seconds=5 -> 422 before anything
 same 422. Fix: ge=2 on the three forms; plan() clamps at 2 instead of 6 (a 5 s clip is one short shot); the console's
 api() turns a 422 detail list into "field: reason" instead of "The server refused the request (422)". Re-checked through
 the real route: 4 s / 5 s / 8 s -> 200. Tests: tests/test_v0310_short_clips.py.
+
+
+## v0.311.0 DIRECTOR CAST FIX (31 Oct 2026)
+Owner: "DIRECTOR FLOW ::: STUCK ON CAST -- I TRY TO ADD CAST BUT NOT WORKING".
+Reproduced on a local server through the real routes (new film + one shot -> POST /characters -> price card ₹12 ->
+POST /approvals/{id} yes): decide() starts _paint_character in the background and returns; the painter failed (there:
+a refused key) and the ONLY trace was a chat note (_note) - the film showed character_list [], no painting state, no
+error, so the Director sat on step 3 Cast with nothing to see. A success also showed nothing for its 20-40 s.
+Fix (studio/service.py + studio.js / studio.css):
+- `_casting` (per tenant+film) holds the names being painted -> view()["casting"]; the Director shows "Painting
+  <name>'s picture…" with a ring and polls (5 s) while it runs.
+- A failure is written ON the film: cast_error in plain words via _paint_why (the Gemini key refused -> check Create >
+  Setup > Engines; busy / out of quota; the description blocked; else the short reason) + "Nothing was charged" (the
+  charge is only in the success branch); cast_last keeps name / look / voice so "Try again" refills the form even
+  after a reload. A later success clears the error.
+- "Skip: no fixed characters" (in the cast form and on the error box) sets prefs.cast_skip (StudioSettings.cast_skip,
+  _clean_prefs) and the Cast step counts as done - a film can go on without a fixed cast.
+Screens: the failed state (red reason, Try again, Skip) and the painting state, from the real page.
+Tests: tests/test_v0311_director_cast.py.
