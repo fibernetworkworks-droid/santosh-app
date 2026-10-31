@@ -11877,3 +11877,58 @@ Measured first: a site was at most 7 pages + legal (`library.brief` pages[:7]), 
   translated by the second language (titles / data stay in the original); her own CSV / sheet as a list source;
   editing an item page by hand (item pages are not in Edit mode; change them in words).
 - Built as 0.313.0, re-versioned 0.315.0 on merge past the parallel v0.313.0 HOOLA PRINT and v0.314.0 (all kept).
+
+## v0.316.0 ASLI APP — App Sahayak Phase 1: every native app gets its own backend (owner: "HOOLA MUST CAN BUILD AND DEVLOPE A END TO END ANY DESIGN ANY COMPLEXITY ... AS RELIBLE AND ROBUST AS REAL HUMAN APP DEVLOPMENT" -> "GO PHASE 1")
+Built as 0.314.0, re-versioned 0.316.0 past the parallel v0.314.0 (AAGE BADHO 2) and v0.315.0 (BADI WEBSITE).
+The gap it closes: a built Android app could only SHOW her public facts / products (`/api/app-content`); orders, bookings,
+logins and the blueprint's tables existed only on paper. Phase plan given to the owner: 1 real backend (this), 2 feature
+engine (push, camera, uploads, maps, QR, payments flow ...), 3 engineering like a team (generated tests, performance
+budget, crash reports back), 4 updates (migrations, versions, rollback, in-app update), 5 Play Store + iPhone.
+- **Server** `server/app/appmaker/backend.py` on the v0.305 web-app engine (`site/webapp.py`: typed lists, fixed rule
+  vocabulary checked on every call, PBKDF2 passwords, HMAC tokens, rate limits), site id `app:<project id>`. Lists from
+  the app itself (`schema_for`): simple goals (shop / food_order / khata -> orders, booking -> bookings, service_request ->
+  requests, learning -> enrolments, membership, events -> registrations, catalogue -> enquiries (public create),
+  community -> posts + messages), complex staff apps -> their blueprint entities (the archetype's OWN modules first, line /
+  join / plumbing tables skipped, sensitive entities skipped, max 12, rules all staff-only, a new account sees nothing until
+  she makes it staff), product apps -> saved + feedback. Stored once on the new nullable column `app_projects.backend`.
+  Orders: the phone sends `cart` [{id, qty}] only; the server prices it from HER product list (`_priced`: items line +
+  total, admin_only fields so a phone's price / total / status is ignored). Every write may carry `cid` (the phone's id):
+  the same cid again returns the first row (`dedup`), so the offline outbox can retry safely. New rows of order-like lists
+  -> a chat note to her ("Nayi order aayi ...", max 30 an hour per app) + `app_data` event. `delete_me` removes the
+  account and every row it owns. `content()` also returns the backend hint (fields + rules, no data).
+- **API** public `/api/app-api/<app_key>/schema | signup | login | me | logout | delete-me | c/<list> (GET/POST) |
+  c/<list>/<row> (PATCH, POST = same update for Android's HttpURLConnection, DELETE) | members` (staff only). Owner:
+  `GET /api/apps/<ref>/data`, `GET /api/apps/<ref>/data/<list>`, `PATCH /api/apps/<ref>/data/<list>/<row>`,
+  `GET /api/apps/<ref>/members`, `POST /api/apps/<ref>/members/<id>/role`. Tools: `app_dekho what=data (coll) | members`,
+  `app_banao action=data (coll, row, set)` / `action=role (member, role)` - owner only.
+- **Kit** (template `hoola/kit`): `Backend.kt` = `Cloud` (https only; `http://10.0.2.2` exists only for the debug e2e and
+  release builds keep the https-only network config), `Secure` (AES-GCM key in the Android Keystore; the token is stored
+  only sealed), `Auth` (signup / login / logout / deleteAccount, `signedIn`, `name`, `isStaff`), `Db` (schema from
+  seed.json `backend`, cache per list, OUTBOX persisted in prefs: create / update queued with a UUID cid, `sync()` sends in
+  order, stops on no-network / 408 / 429 / 5xx and retries, 401 = signed out, other refusals dropped with the server's
+  reason in `lastError`; network callback + a 15 s / 60 s loop in MainActivity; `forget()` on sign-out), and for screens
+  `liveRows(list)`, `SubmitBtn(text, list, then)` (required fields, sign-in first when the list needs it, cart for the
+  order list), `OrderBtn`. `Accounts.kt` = code-made `AuthScreen` (the only password box, never stored) and
+  `AccountScreen` (profile, pending writes, each list's rows with live status; staff get status chips) + `LiveRowsBlock`.
+  `DeleteAccountScreen` now really deletes on the server. Manifest + ACCESS_NETWORK_STATE. `E2e.kt` (debug only).
+- **Generator**: kit screens `hoola_login` / `hoola_account` always registered; the design's `login / signup / register /
+  login_staff / otp_login / sign_in` screens are the kit's AuthScreen (no Opus call for them); fallback screens: a cart
+  places a real order (Fields with the server's keys + OrderBtn), a list kept on the server shows the user's real rows,
+  booking / enquiry / request screens get the list's own form + SubmitBtn, profile links to the account. The model's
+  prompt carries `REAL DATA ON THE SERVER` (lists, field keys, rules via `prompts.backend_line`) and the kit sheet now
+  includes Backend.kt / Accounts.kt public calls (Db read/write subset only, never Auth.signup / Cloud).
+- **CI** (`appgen-check.yml`): the fixture app has a backend (orders) and its cart screen uses OrderBtn; the smoke job
+  starts a REAL Hoola server (`python -m app.appmaker.android.ci_e2e prepare` + uvicorn on 127.0.0.1:8077), opens the
+  two new screens too, then `ci_e2e.sh` runs the debug app with `hoola_e2e` + `hoola_test_server=http://10.0.2.2:8077`:
+  the kit's E2e signs up, puts 2 of the first product in the cart, places the order through the outbox, refreshes and
+  checks the server total, sends one write twice (one row), signs out (rows leave the phone) and in. Pass = logcat
+  `HOOLA_E2E OK`; then `ci_e2e check` confirms the server's copy (priced by the server, dedup row once).
+- **Verified here**: the generated fixture project compiled with the real toolchain in the sandbox (SDK 37, AGP 9.4,
+  `assembleDebug assembleRelease` BUILD SUCCESSFUL, R8 on) after fixing a duplicate `Strings.email`; the server flow
+  ran against a live uvicorn (order priced 2 x 265 = 530, dedup same id). Tests `server/tests/test_v0314_app_backend.py`
+  (4): schemas per kind, the full installed-app flow (accounts, server pricing, dedup, own-rows only, staff role, owner
+  status change, chat note once, delete-me, logout), the generated project, the tools.
+- **Phone**: `AppDataPanel` (lib/ui/app_android.dart) on the app design page: lists with counts, rows with status
+  chips, accounts with a role picker. **Console**: Build studio tab "App data" for apps (tables, status select, accounts).
+- **Not yet** (next phases): health / HR records of staff apps stay out (they need encrypted fields), file / photo fields,
+  password reset by email (a user who forgets asks the shop), push notifications to app users, Play Store, iPhone.

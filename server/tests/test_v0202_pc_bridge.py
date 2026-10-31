@@ -280,4 +280,4 @@ async def test_pc_upload_direction_to_pc(monkeypatch):
 
 def test_version_pin():
     import app.main as m
-    assert m.APP_VERSION == "0.315.0"
+    assert m.APP_VERSION == "0.316.0"

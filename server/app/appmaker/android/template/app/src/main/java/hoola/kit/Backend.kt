@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -166,17 +167,25 @@ object Auth {
         return null
     }
 
-    suspend fun signup(ctx: Context, email: String, password: String, name: String): String? =
-        keep(ctx, Cloud.call("POST", "/signup", JSONObject().put("email", email.trim()).put("password", password).put("name", name.trim())))
+    // the server-side sign-out of the last account (it ends every token of that account): a new sign-in waits for it,
+    // so a late sign-out can never end the token that sign-in just got
+    private var bye: Job? = null
 
-    suspend fun login(ctx: Context, email: String, password: String): String? =
-        keep(ctx, Cloud.call("POST", "/login", JSONObject().put("email", email.trim()).put("password", password)))
+    suspend fun signup(ctx: Context, email: String, password: String, name: String): String? {
+        bye?.join()
+        return keep(ctx, Cloud.call("POST", "/signup", JSONObject().put("email", email.trim()).put("password", password).put("name", name.trim())))
+    }
+
+    suspend fun login(ctx: Context, email: String, password: String): String? {
+        bye?.join()
+        return keep(ctx, Cloud.call("POST", "/login", JSONObject().put("email", email.trim()).put("password", password)))
+    }
 
     fun logout(ctx: Context) {
         val t = token
         clear(ctx)
         Db.forget()
-        if (t.isNotEmpty()) Db.scope.launch { Cloud.call("POST", "/logout", JSONObject(), t) }
+        if (t.isNotEmpty()) bye = Db.scope.launch { Cloud.call("POST", "/logout", JSONObject(), t) }
     }
 
     /** In-app account deletion (both stores require it): the server removes the account and everything it made. */

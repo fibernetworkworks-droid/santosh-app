@@ -319,6 +319,7 @@ class _AppDataPanelState extends State<AppDataPanel> {
     final status = fields.firstWhere((f) => _s(f['key']) == 'status', orElse: () => const <String, dynamic>{});
     final opts = ((status['options'] as List?) ?? const []).map((e) => '$e').toList();
     final shown = fields.where((f) => !['status', 'total', 'items'].contains(_s(f['key']))).take(5).toList();
+    final headKey = shown.isEmpty ? 'id' : _s(shown.first['key']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         const Icon(Icons.storage_rounded, color: C.teal, size: 20),
@@ -354,8 +355,8 @@ class _AppDataPanelState extends State<AppDataPanel> {
             decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Expanded(child: Text(_s(r[shown.isEmpty ? 'id' : _s(shown.first['key'])]).isEmpty ? _s(r['id'])
-                    : _s(r[_s(shown.first['key'])]), style: const TextStyle(color: C.ink, fontWeight: FontWeight.w700))),
+                Expanded(child: Text(_s(r[headKey]).isEmpty ? _s(r['id']) : _s(r[headKey]),
+                    style: const TextStyle(color: C.ink, fontWeight: FontWeight.w700))),
                 if (_s(r['status']).isNotEmpty) Pill(_s(r['status']), fg: C.accent),
               ]),
               if (_s(r['items']).isNotEmpty) Text(_s(r['items']), style: const TextStyle(color: C.chip, fontSize: 12.5)),
