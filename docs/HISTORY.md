@@ -12113,3 +12113,23 @@ activity only, so the build stays as robust as before).
   claim, the updates call; the server check requires the paid row).
 - **Not yet**: QR / barcode scanning and camera capture inside the app (need CameraX / ML Kit: next), instant FCM push,
   file (PDF) fields, maps drawn inside the app (the Map button opens Google Maps), payments other than her own UPI.
+
+## v0.323.0 STUDIO HOME + DIRECTOR (31 Oct 2026; Phase 2 of the Create Studio design audit)
+Owner: "GO PHASE 2" (audit https://claude.ai/artifact/Utd827KreAKrmjhbRusHL3).
+- Home (`studio.js` V.studio): `hsList(mode)` / `hsPrice(mode)` / `hsHTML()` put the mode's settings inside the ask box as 32px pills
+  (Director aspect / seconds / language -> DIR, Image aspect / count -> IMG, Video aspect / seconds -> VID, Song lang -> MU, Voice lang -> VO)
+  with the price ("Storyboard free", "~₹3", "~₹7", "Paise a line", "Price before it starts"); `#homeAgent` hidden (tabs are the one switch;
+  its v0.304 code stays). `rails(root)` toggles `.canl` / `.canr` on scroll + resize: arrow and 56px edge fade only on the hidden side.
+- FOUND while testing: on the FIRST open every `canvas[data-art]` stayed 300x150 (the studio host opens hidden, paintAll's rAF saw
+  clientWidth 0) - the squashed moons / records. `artRO` (ResizeObserver) paints each canvas when it gets a size and again on resize;
+  disconnected on every go().
+- Director list: go('projects') = the Director list (DIR.project cleared); search `#fq` + sort (recent / name / furthest along);
+  `.fcard` with the film's first picture or `initTile(name)` (initial on a colour mixed from --surface / --ink, so Light / Dark / System
+  all work), "Step N of 8 · <step>" + Continue; the brief on a clean card (painted banner removed), option pills bordered 32px.
+- One film: `.nextc` Next step card under the steps (NEXT_STEP / NEXT_WHY, the price on one 48px button, `data-next` kept) - the
+  header no longer carries it; `timeline(shots)` = one segment per shot sized by its seconds (picture / made states), tap = scroll +
+  flash; `sceneCard(s, i, t0)` shows "0:06 – 0:11"; Free preview stays, Cast / Music / Rewrite in a More menu (hidden buttons
+  clicked, so the old handlers run); `plainErr()` = failed shots in plain words, the raw text in `title`.
+- `small{font-size:12.5px}` (a bare <small> was 10.4px on Brand kit, 11.7px in the editor). Re-measured: 6 text sizes, 0 texts
+  below 4.5 : 1 in light and dark. Phone: Director brief pills wrap (an old 900px rule squeezed them to "Hi" / "108").
+- Tests: `test_v0323_studio_home_director.py`; v0.318 scale pin allows 40 (headline size reused by the initials).

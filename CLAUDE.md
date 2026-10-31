@@ -136,9 +136,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.322.0 (pubspec 0.322.0+362). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.323.0 (pubspec 0.323.0+363). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.323 STUDIO HOME + DIRECTOR (Phase 2 of the design audit): ask box settings + price, rails arrow only where more is hidden,
+  art paints on the FIRST open (was unpainted), one film list (search / sort / step / Continue), next-step card, shot timeline, More menu.
 - v0.322 APP FEATURES (App Phase 2, built as 0.320 / 0.321): photo fields (Photo Picker, outbox upload, server re-encode), location fields (disclosure + system dialog), order-update notifications (JobScheduler + /updates), UPI "I have paid" + UTR (she verifies), search / status filters.
 - v0.321 TILE KAAM KARE: the plugin sheet's button acts - UPI / cab apps open (`android_package` for rides too), other working
   plugins send their first example ask into the chat; was a dead 'Taiyaar hai' label. Empty 'Food apps' chip removed.
