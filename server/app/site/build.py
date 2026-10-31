@@ -746,7 +746,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         for f in cache.glob(f"{name}-*"):
             shutil.copy(f, out / "assets" / "img" / f.name)
         photos[name] = {**meta, **made}
-    css_all = [tokens_css(tk, "../"), (ASSETS / "hoola-site.css").read_text()]
+    css_all = [tokens_css(tk, "../"), (ASSETS / "hoola-site.css").read_text(), site.get("kit_css") or ""]   # v0.325 kit
     js_all: list[str] = []
     for key, sec in sections.items():
         css_all.append(sec.get("css") or "")

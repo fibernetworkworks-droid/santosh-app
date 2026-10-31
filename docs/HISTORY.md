@@ -12153,3 +12153,30 @@ the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots 
 - Tests `server/tests/test_v0324_teen_look_jaldi.py` (3): with a slow fake Opus the look calls overlap (peak >= 3),
   3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
 - Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).
+
+## v0.325.0 ANY DESIGN (web design Phase 6 step 2; owner: "START PHASE 2")
+Three limits, measured in the code: a section could only be one of 30 library types (21 places looked a type up in
+`T.SECTIONS`), the site runtime had no interactive pieces beyond FAQ / lightbox / before-after (so a calculator, tabs or
+a filter needed section JS, which the sanitiser rightly strips), and every section styled its own buttons and cards, so
+a big site drifted page to page.
+- **Free-form sections**: type `custom_<name>` (`taxonomy.custom_type`, `is_section`, `label_of`; CUSTOM_PER_PAGE 3). The
+  site map planner may add {"type": "custom", "name": "EMI calculator", "design": ...} when no library type fits; her
+  words add one through change() (CHANGE_SYSTEM add: type custom + name). The section writer is told it is FREE-FORM
+  (design from scratch for that purpose, use the interactive pieces). Every label lookup now goes through `label_of`.
+- **Interactive pieces** in `assets/hoola-site.js` (+ default styles in hoola-site.css, taught in RUNTIME_GUIDE), all
+  by attribute, keyboard + ARIA: `data-hoola-tabs` (tablist, arrow keys), `data-hoola-carousel` (scroll-snap track +
+  arrows that disable at the ends), `data-hoola-filter`, `data-hoola-toggle` (monthly / yearly), `form data-hoola-calc`
+  = "sum" (base + qty x data-rate + data-add for checked boxes / options) or "emi" (amount, yearly rate, months -> EMI,
+  total, interest; en-IN rupees). Values written as text.
+- **Design kit** (`site/kit.py`, SITE_KIT on): once a look is chosen, before the first sections are written, one Opus call
+  (site_art) writes `.k-*` components (btn, btn-ghost, card, eyebrow, title, sub, head, badge, media, quote, stat, list,
+  divider, chip) from the look's art direction using only the site variables. `kit.clean` keeps only kit rules (every
+  selector a `.k-` class chain; media / supports wrappers kept; `@keyframes k-*` kept; no element / id / :root / attribute
+  / universal selectors, no url / @import / font-face). Stored on the look, put in site.css after the base styles,
+  and every section prompt carries `kit.prompt_line` (use these classes). One kit per site, not per change.
+  Scripted tests run with SITE_KIT=false (conftest); its own suite turns it on.
+- Tests `server/tests/test_v0325_any_design.py` (6): free-form sections in the site map (dedupe, cap, names), her words
+  add one and it is built + on the page, the kit cleaner, one kit per site that every section prompt names, and every
+  interactive piece clicked in Chromium (tabs + arrow keys + ARIA, filter, switch, sum calculator 1,850 -> 1,970, EMI
+  8,885 / total 1,06,619 / interest 6,619 -> 4,707 for 24 months, slider arrows).
+- Seen in the sandbox and NOT from this work: `test_v0319_app_features.py` fails the same 4 ways on untouched main.

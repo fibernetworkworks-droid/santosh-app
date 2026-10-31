@@ -6,6 +6,7 @@ Everything here is a starting point for the model (Opus adapts it to her busines
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # ---------------------------------------------------------------- site goals (10)
@@ -780,3 +781,33 @@ def check() -> list[str]:
             if p not in PAGES:
                 bad.append(f"goal page {p}")
     return bad
+
+
+# ---------------------------------------------------------------- v0.325 ANY DESIGN: free-form sections
+# Besides the section library above, a page may carry FREE-FORM sections Opus designs from a name + brief ("EMI
+# calculator", "Compare our 3 plans", "How an order travels"): type custom_<name>, at most CUSTOM_PER_PAGE a page.
+CUSTOM = re.compile(r"custom_[a-z0-9_]{1,30}")
+CUSTOM_PER_PAGE = 3
+
+
+def custom_type(name: str) -> str:
+    """'EMI calculator' -> 'custom_emi_calculator' (a stable key for the section file and its id)."""
+    k = re.sub(r"[^a-z0-9]+", "_", str(name or "").lower()).strip("_")[:30].strip("_")
+    return f"custom_{k or 'block'}"
+
+
+def is_section(t: Any) -> bool:
+    return isinstance(t, str) and (t in SECTIONS or bool(CUSTOM.fullmatch(t)))
+
+
+def label_of(s: Any) -> str:
+    """A section's human label: its own (custom), the library's, or made from the key."""
+    if isinstance(s, dict):
+        t = str(s.get("type") or "")
+        if s.get("label"):
+            return str(s["label"])
+    else:
+        t = str(s or "")
+    if t in SECTIONS:
+        return SECTIONS[t]["label"]
+    return t.replace("custom_", "").replace("_", " ").strip().capitalize() or "Section"
