@@ -8920,6 +8920,18 @@ async def app_api_delete_page(app_key: str):
         raise HTTPException(404, "not found")
 
 
+@app.get("/api/app-api/{app_key}/support", response_class=HTMLResponse)
+async def app_api_support(app_key: str):
+    """v0.338 the app's support page (the Support URL App Store Connect requires)."""
+    from .appmaker import backend as BE
+    from .appmaker.ios import appstore as AP
+    from .site import webapp as W
+    try:
+        return HTMLResponse(await asyncio.to_thread(lambda: AP.support_html(BE.by_key(app_key))))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+
+
 @app.get("/api/app-api/{app_key}/updates")
 async def app_api_updates(app_key: str, request: Request, since: str = ""):
     """v0.319 the app's background check: her rows that moved (customer) / new orders (staff) since `since`."""
@@ -9072,6 +9084,29 @@ async def apps_store_act(ref: str, what: str, body: dict | None = None, tenant: 
         return await asyncio.to_thread(_appd, ST.build_bundle, tenant, ref)
     if what == "publish":
         return await asyncio.to_thread(_appd, ST.publish, tenant, ref, str(body.get("track") or "internal"), bool(body.get("her_tap")))
+    raise HTTPException(404, "unknown")
+
+
+@app.get("/api/apps/{ref}/appstore", dependencies=[Depends(require_key)])
+async def apps_appstore(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.338 App Store launch: steps, listing, privacy + support pages, App Privacy answers, one-time steps, submissions."""
+    from .appmaker.ios import appstore as AP
+    return await asyncio.to_thread(_appd, AP.get, tenant, ref)
+
+
+@app.post("/api/apps/{ref}/appstore/{what}", dependencies=[Depends(require_key)])
+async def apps_appstore_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """listing {regen, edit} | push (listing + screenshots + build onto App Store Connect, via her builds repo) |
+    submit {her_tap} - Submit for Review only from her tap in the app (the app's button sends her_tap=true)."""
+    from .appmaker.ios import appstore as AP
+    body = body or {}
+    if what == "listing":
+        return await asyncio.to_thread(_appd, AP.listing, tenant, ref, bool(body.get("regen")),
+                                       body.get("edit") if isinstance(body.get("edit"), dict) else None)
+    if what == "push":
+        return await asyncio.to_thread(_appd, AP.push, tenant, ref)
+    if what == "submit":
+        return await asyncio.to_thread(_appd, AP.submit, tenant, ref, bool(body.get("her_tap")))
     raise HTTPException(404, "unknown")
 
 

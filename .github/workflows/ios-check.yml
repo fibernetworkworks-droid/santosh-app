@@ -48,6 +48,24 @@ jobs:
         run: |
           APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
           bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ios-shots" $(cat hoola_qa/screens.txt)
+      - name: App Store screenshots are 1320x2868 (iPhone Pro Max simulator, v0.338)
+        working-directory: ${{ runner.temp }}/ios
+        run: |
+          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          SIM_KIND=max bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/store-shots" home cart orders
+          python3 - "$GITHUB_WORKSPACE/store-shots/screens" <<'PY'
+          import sys
+          sys.path.insert(0, "hoola_qa")
+          import asc
+          from pathlib import Path
+          shots = sorted(Path(sys.argv[1]).glob("*.png"))
+          sizes = {p.name: asc.png_size(p.read_bytes()) for p in shots}
+          print(sizes)
+          bad = {k: v for k, v in sizes.items() if v not in asc.SIZES}
+          if len(shots) < 4 or bad:
+              print("::error::App Store screenshot sizes: " + str(bad or "missing"))
+              sys.exit(1)
+          PY
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -96,6 +114,7 @@ jobs:
           name: ios-check
           path: |
             ios-shots
+            store-shots
             ${{ runner.temp }}/ios/build.log
             ${{ runner.temp }}/ios/release.log
           if-no-files-found: ignore

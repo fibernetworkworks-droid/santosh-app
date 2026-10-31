@@ -327,8 +327,8 @@ def privacy_html(r: AppProject) -> str:
 
 
 def _crash_line() -> str:
-    return ("<h2>Crash reports</h2><p>If the app crashes, it sends the technical error (which screen, app and Android version, "
-            "phone model) so it can be fixed. It contains no personal details and nothing you typed.</p>")
+    return ("<h2>Crash reports</h2><p>If the app crashes, it sends the technical error (which screen, app version, the phone's system "
+            "version (Android / iOS) and model) so it can be fixed. It contains no personal details and nothing you typed.</p>")
 
 
 def delete_html(r: AppProject) -> str:

@@ -53,7 +53,10 @@ APP_TOOLS = [
         "SwiftUI, same design, same backend / accounts / orders as Android): screens written by Opus, compiled on a Mac (her "
         "GitHub builds repo, workflow hoola-ios.yml), every screen opened in an iPhone simulator; kind=testflight (ONLY when she "
         "asks) also uploads it to TestFlight with HER App Store Connect key (a secret in her builds repo, never in chat). App "
-        "Store review / release = her tap in App Store Connect, never here. No Mac set up -> the Xcode project ZIP (say so)." "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
+        "Store review / release = her tap in App Store Connect, never here. No Mac set up -> the Xcode project ZIP (say so). "
+        "v0.338 action=appstore (owner only) step=listing (App Store name / subtitle / keywords / description by Opus within "
+        "Apple's limits) | push (that listing + 6.9-inch screenshots + the TestFlight build onto App Store Connect, via her "
+        "builds repo; needs a TestFlight build first). Submit for Review is ONLY her tap in the app, never from chat." "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
         "action=data (app, coll, row, set) changes a row for her, e.g. an order's status (\"order accept karo\" -> set {status: Accepted}); "
         "v0.319: a customer's UPI \"I have paid\" claim reads paid=\"Customer says paid\" + utr; ONLY when she says she saw the money in "
         "her own bank set {paid: Verified} (never on the customer's word, never by yourself). Photos / locations her app's users sent are "
@@ -62,7 +65,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -78,6 +81,7 @@ APP_TOOLS = [
          "package": {"type": "string", "description": "action=store step=setup: the permanent package name she confirmed, e.g. com.sharmakirana.app"},
          "ops": {"type": "object", "description": "action=data_change: {add: [{coll, key, label, type, options}], hide: [{coll, key}], label: [{coll, key, label}]} - additive only, data never deleted"},
          "role": {"type": "string", "enum": ["member", "staff", "admin"]},
+         "astep": {"type": "string", "enum": ["listing", "push"], "description": "action=appstore: the App Store step (submit for review = only her tap in the app)"},
          "kind": {"type": "string", "enum": ["sim", "testflight"], "description": "action=ios: sim = build + simulator check (default); testflight = also upload to TestFlight (only on her ask)"}},
          "required": ["action"]}},
     {"name": "app_dekho", "description": (
@@ -95,11 +99,11 @@ APP_TOOLS = [
         "(q = her words -> the best precise app idea + 2 near ones + how many ideas exist for that business; field / goal / "
         "aud filter; offset pages through them; idea = one idea's full detail). Show ideas to her as 2-3 short lines (name + "
         "the special thing) and ask which one; then app_banao action=new idea=<id>." " data (app; coll = one list: its rows, newest first - the real orders / bookings / requests her app's users made, with status) | "
-        "members (app: the app's accounts with their role). ios (app: the iPhone build: status, screens, simulator check, TestFlight)."),
+        "members (app: the app's accounts with their role). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
-                                             "data", "members", "crashes", "store", "ios"]},
+                                             "data", "members", "crashes", "store", "ios", "appstore"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
          "idea": {"type": "string"}, "coll": {"type": "string"}},
@@ -157,6 +161,18 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = IO.build(t, ref, conv, kind, redo)
         return {"status": v["status"], "runner": v["runner"], "bundle_id": v["bundle_id"],
                 "say": v["say"] + " Card apne aap badlega (poll mat kariye)."}
+    if action == "appstore":                  # v0.338 App Store launch steps (submit for review = her tap, never here)
+        if not _owner(ctx):
+            raise ToolError("Sirf maalkin yeh kar sakti hain.")
+        from ..appmaker.ios import appstore as AP
+        stp = str(a.get("astep") or a.get("step") or "")
+        if stp == "listing":
+            v = AP.listing(t, ref, regen=True)
+        elif stp == "push":
+            v = AP.push(t, ref)
+        else:
+            raise ToolError("astep: listing / push (review ke liye bhejna sirf app ke button se)")
+        return {k: v.get(k) for k in ("status", "now", "error", "steps", "listing", "bundle_id", "privacy_url", "support_url")}
     if action == "stop":
         return S.stop(t, ref)
     if action == "resume":
@@ -299,6 +315,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
     if what == "android":
         from ..appmaker.android import service as AN
         return AN.get(t, ref)
+    if what == "appstore":                     # v0.338 App Store launch state
+        from ..appmaker.ios import appstore as AP
+        return AP.get(t, ref)
     if what == "ios":                          # v0.332 the iPhone build: status, simulator check, TestFlight
         from ..appmaker.ios import service as IO
         return IO.get(t, ref)

@@ -3,6 +3,9 @@
 # branch build/<app>-ios under ios/ and starts this workflow:
 #   kind=sim         compile (simulator, unsigned) + open EVERY screen in an iPhone simulator (crash check + pictures)
 #   kind=testflight  the same check, then archive, sign with Apple's cloud signing and upload to TestFlight
+#   kind=store       v0.338: App Store listing (name, subtitle, description, keywords, urls) + 6.9" screenshots from an
+#                    iPhone Pro Max simulator + the TestFlight build, onto the editable App Store version (asc.py push)
+#   kind=review      v0.338: Submit for Review (asc.py submit) - Hoola starts this ONLY from her tap
 # Results come back as the artifact hoola-<job> (build.log, qa/report.json, qa/screens/*.png, upload.log).
 #
 # TestFlight needs, ONCE, in this repo: Settings > Secrets and variables > Actions > New repository secret:
@@ -20,7 +23,7 @@ on:
         description: build id
         required: true
       kind:
-        description: sim (simulator check) or testflight (upload to TestFlight)
+        description: sim (simulator check) | testflight (upload to TestFlight) | store (App Store listing + screenshots) | review (submit)
         required: false
         default: sim
 jobs:
@@ -30,11 +33,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: XcodeGen
+        if: inputs.kind != 'review'
         run: |
           xcodebuild -version
           brew install xcodegen > /dev/null 2>&1 || true
           cd ios && xcodegen generate --quiet
       - name: Build for the simulator
+        if: inputs.kind != 'review'
         working-directory: ios
         run: |
           set -o pipefail
@@ -43,6 +48,7 @@ jobs:
             -destination 'generic/platform=iOS Simulator' -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build > build.log 2>&1 \
             || (grep -E "error:" build.log | head -80; exit 1)
       - name: Every screen on an iPhone simulator (HOOLA QA)
+        if: inputs.kind == 'sim' || inputs.kind == 'testflight'
         continue-on-error: true
         run: |
           APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
@@ -82,6 +88,27 @@ jobs:
             -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" >> upload.log 2>&1 || (tail -60 upload.log; rm -f "$KEY"; exit 1)
           rm -f "$KEY"
           echo "UPLOADED_TO_TESTFLIGHT" | tee -a upload.log
+      - name: App Store listing + 6.9-inch screenshots + the build (asc.py push)
+        if: inputs.kind == 'store'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          pip3 install --quiet --break-system-packages cryptography 2>/dev/null || pip3 install --quiet cryptography
+          APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          SHOTS=$(python3 -c "import json; print(' '.join(x for x in json.load(open('ios/hoola_qa/store.json')).get('shots') or [] if x != 'app_start'))")
+          SIM_KIND=max bash ios/hoola_qa/sim_check.sh "$APP" "$(cat ios/hoola_qa/bundle.txt)" qa/store $SHOTS
+          python3 ios/hoola_qa/asc.py push ios qa/store/screens | tee ios/upload.log
+      - name: Submit for Review (asc.py submit, started by her tap)
+        if: inputs.kind == 'review'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          pip3 install --quiet --break-system-packages cryptography 2>/dev/null || pip3 install --quiet cryptography
+          python3 ios/hoola_qa/asc.py submit ios | tee ios/upload.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -91,5 +118,7 @@ jobs:
             ios/upload.log
             qa/report.json
             qa/screens/*.png
+            qa/store/screens/*.png
+            ios/asc_result.json
           retention-days: 2
           if-no-files-found: ignore
