@@ -354,7 +354,7 @@ def test_sweep_leaves_live_turns_alone_and_decides_save_user(env, monkeypatch):
 
 def test_version_and_config():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.324.0"
+    assert APP_VERSION == "0.325.0"
     s = get_settings()
     assert s.agent_tool_admission is True
     assert s.agent_wake_turns is True

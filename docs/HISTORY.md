@@ -12153,3 +12153,26 @@ the hero, 2 page-top sections (SITE_LOOK_SECTIONS 3), then Chromium screenshots 
 - Tests `server/tests/test_v0324_teen_look_jaldi.py` (3): with a slow fake Opus the look calls overlap (peak >= 3),
   3 looks in 3 styles with screenshots, every call charged to her; `_in_ctx` carries the scope where a plain thread loses it.
 - Built as 0.320.0, re-versioned 0.324.0 on merge past the parallel v0.320-v0.323 Create Studio design work (all kept).
+
+## v0.325.0 HER TEST RUN - plan card, one file, no quiet PC (owner, after testing v0.314: "TEST 3 :: FAIL ( PLAN CARD NOT APPER ) DIRECT RESULT , TEST 4 : PASS ( BUT CREATED SEVERAL PDF AS 1ST AND 2ND PDF HAS ISSUE AI CREATED 3 RD ONE , NEED WORK ON IT ) , TEST 6: PASS BUT WORK CONTINUE ON PC AND AFTER 10 MIN GET THE TASK FAIL RESULT"; tests 1, 2, 5 passed)
+Built on her branch as 0.315; re-versioned 0.315 -> 0.325 past the parallel v0.315-v0.324.
+(1) PLAN CARD: her test 3 ask ("marketing plan banao: research karo, ideas likho, calendar banao, PDF mein do") DID get
+PLAN_FIRST (looks_big true); the model skipped it and finished in 5 steps, before v0.314's server plan at step 7. Now a
+big ask (state["big"]) gets the server plan right after the FIRST tool round, and the plan's steps are read off her own
+words (`santosh._ask_steps`: "goal: a, b, phir c, aur d" -> goal + steps; a comma part with no action word joins the step
+before it, so "top 8 brands, unki price, range" stays one step; under 2 real clauses = one step). The note asks the model to
+tick `kaam_plan step n done`; the real final answer still closes the plan (`_close_auto_plan`).
+(2) EK HI FILE: doc_studio published the card BEFORE its preview / QA; a QA warning came back to the model, which built
+file 2, then file 3 - all three in her chat. Now the QA runs first; a "warn" draft is held (`_HELD`, once per turn) and the
+model gets "NOT sent to her - fix exactly these"; the next doc_studio call delivers whatever it makes; `send_held=true`
+sends the held draft as is; the turn's end (`flush_held`, santosh `_run_turn` finally) delivers a held draft nobody
+replaced, so a file is never lost. A delivered file's note says "her FINAL file - no other version unless she asks".
+Setting DOC_HOLD_DRAFTS.
+(3) NO QUIET PC: Amazon / Flipkart refuse Hoola's server; browse_web's "site_blocks_server" told the model to use
+computer_operator ("it moves the job to her PC"), and computer_operator where=auto did exactly that via `_to_pc` - her
+test 6 ran on her PC and failed 10 minutes later. Now where=auto + a refused site = ask first (`_ask_for_pc`: finish with
+the sites that open, then "Aapke PC par Chrome mein kar doon?"), unless she placed the job on her PC (`_pc_is_hers`:
+ctx.place / where._asked / where.working). browse_web's hint says the same. No frozen PC file touched (pc_tools.py,
+pc/ untouched; `_to_pc` itself unchanged, just no longer reached without her word). Why the PC job failed after 10 min
+is inside the frozen PC operator and was not investigated.
+Tests: NEW tests/test_v0315_her_test_run.py (9).
