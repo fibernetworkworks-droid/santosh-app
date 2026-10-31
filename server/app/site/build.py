@@ -61,7 +61,7 @@ def page_url(slug: str, rel: str) -> str:
 
 
 def rel_of(slug: str) -> str:
-    """v0.313 a page is as deep as its slug: 'about' -> '../', 'products/ghee' (a collection item) -> '../../'."""
+    """v0.315 a page is as deep as its slug: 'about' -> '../', 'products/ghee' (a collection item) -> '../../'."""
     return "" if slug == "home" else "../" * (slug.count("/") + 1)
 
 
@@ -159,7 +159,7 @@ def _ok_href(h: str) -> bool:
         return True
     if low.startswith("https://"):
         return True
-    if re.match(r"^(\./|(\.\./)+)?[\w\-/]*(\.html)?/?(#[\w-]*)?$", h):     # v0.313 item pages sit two levels deep
+    if re.match(r"^(\./|(\.\./)+)?[\w\-/]*(\.html)?/?(#[\w-]*)?$", h):     # v0.315 item pages sit two levels deep
         return True
     return False
 
@@ -420,18 +420,18 @@ ICON_CALL = ('<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><p
 
 # ---------------------------------------------------------------- page chrome (code, not the model)
 def nav_pages(plan: dict[str, Any]) -> list[dict[str, Any]]:
-    # v0.313 a collection's hidden template page and (in a big site) sub pages never sit in the top menu
+    # v0.315 a collection's hidden template page and (in a big site) sub pages never sit in the top menu
     return [p for p in plan.get("pages", []) if p["slug"] not in LEGAL_PAGES and p["slug"] != "admin"
             and not p.get("template_of") and not (plan.get("big") and p.get("parent"))]
 
 
 def menu_pages(plan: dict[str, Any]) -> list[dict[str, Any]]:
-    """v0.313 every page a big site's grouped menu lists (sub pages too, inside their group)."""
+    """v0.315 every page a big site's grouped menu lists (sub pages too, inside their group)."""
     return [p for p in plan.get("pages", []) if p["slug"] not in LEGAL_PAGES and p["slug"] != "admin" and not p.get("template_of")]
 
 
 def _mega(plan: dict[str, Any], slug: str, rel: str) -> str:
-    """v0.313 big sites: the menu groups its pages (a button opens each group's list; one tap target per link)."""
+    """v0.315 big sites: the menu groups its pages (a button opens each group's list; one tap target per link)."""
     from . import sitemap as SM
     out = []
     for i, (g, ps) in enumerate(SM.groups(plan, menu_pages(plan))):
@@ -508,7 +508,7 @@ def header(site: dict[str, Any], plan: dict[str, Any], slug: str, rel: str, logo
         hl = {"hinglish": "hi-Latn"}.get(sw["lang"], sw["lang"])
         cta = f'<a class="hs-lang" href="{tgt}" hreflang="{esc(hl)}" lang="{esc(hl)}">{esc(sw["label"])}</a>' + cta
     brand = (f'<img src="{rel}assets/img/logo.png" alt="{esc(f.get("name"))} logo" width="120" height="40">' if logo else "")
-    if plan.get("big"):                      # v0.313 grouped menu + site search on big sites
+    if plan.get("big"):                      # v0.315 grouped menu + site search on big sites
         links = [_mega(plan, slug, rel)]
         glass = expand_icons('<i data-icon="search"></i>')[0]
         cta = (f'<button type="button" class="hs-search-b" aria-label="Search this site" data-root="{rel or "./"}">'
@@ -636,7 +636,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
                   'this website is for information only and is not an advertisement or solicitation. '
                   f'<a href="{page_url("disclaimer", rel)}">Disclaimer</a></div>')
     crumb = ""
-    if plan.get("big") and page["slug"] != "home" and page["slug"] not in LEGAL_PAGES:    # v0.313 where am I, on a big site
+    if plan.get("big") and page["slug"] != "home" and page["slug"] not in LEGAL_PAGES:    # v0.315 where am I, on a big site
         from . import sitemap as SM
         trail = SM.crumbs(plan, page)
         crumb = ('<nav class="hs-crumbs wrap" aria-label="Breadcrumb"><ol>' + "".join(
@@ -760,7 +760,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
 
     def render(slug: str, secs: list[dict[str, Any]], rel: str, key_slug: str = "", item: dict[str, Any] | None = None,
                fields: list[dict[str, Any]] | None = None) -> str:
-        """The page body from its sections (v0.313: an item page = its collection's template, filled with the item)."""
+        """The page body from its sections (v0.315: an item page = its collection's template, filled with the item)."""
         parts = []
         for i, s in enumerate(secs):
             key = f"{key_slug or slug}__{s['type']}"
@@ -790,14 +790,14 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         return "\n".join(parts)
 
     for page in plan.get("pages", []) + (SM.item_pages(plan) if big else []):
-        if page.get("template_of"):          # v0.313 a collection's template is not a page of its own
+        if page.get("template_of"):          # v0.315 a collection's template is not a page of its own
             continue
         slug, rel = page["slug"], rel_of(page["slug"])
         if slug in LEGAL_PAGES:
             body = legal_page(slug, site)
         elif slug in ("account", "admin") and (site.get("app") or {}).get("collections") and not page.get("sections"):
             body = app_page(slug, site)
-        elif page.get("template") in tpls:   # v0.313 one collection item
+        elif page.get("template") in tpls:   # v0.315 one collection item
             c = cols.get(page["collection"]) or {"fields": []}
             body = render(slug, tpls[page["template"]].get("sections", []), rel, page["template"], page["item"], c["fields"])
         else:
@@ -816,7 +816,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                                   encoding="utf-8")
     every = SM.real_pages(plan) if big else plan.get("pages", [])
     urls = [(base_url.rstrip("/") + "/" + ("" if p["slug"] == "home" else p["slug"] + "/")) for p in every]
-    if big:                                  # v0.313 the site search reads this (titles, addresses, one line each)
+    if big:                                  # v0.315 the site search reads this (titles, addresses, one line each)
         (out / "assets" / "search.json").write_text(json.dumps(SM.search_entries(plan), ensure_ascii=False), encoding="utf-8")
     if base_url:
         (out / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/'

@@ -1,4 +1,4 @@
-"""v0.313 BADI WEBSITE (web design Phase 6 step 1): a big site is planned as a whole site map by Opus - designed pages in
+"""v0.315 BADI WEBSITE (web design Phase 6 step 1): a big site is planned as a whole site map by Opus - designed pages in
 menu groups, sub pages, and LISTS (collections) whose items become pages from ONE designed template, filled by code.
 These tests drive the real builder with a fake Opus: the site map is cleaned to what the builder can trust, a 60-page
 site builds with AI calls only for designed sections (never per item), every item page is filled (no {{placeholder}}
@@ -197,5 +197,5 @@ def test_small_sites_unchanged():
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.313.0"
-    assert "0.313.0+353" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.315.0"
+    assert "0.315.0+355" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

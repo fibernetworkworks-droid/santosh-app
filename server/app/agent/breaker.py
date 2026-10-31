@@ -12,7 +12,8 @@ from typing import Any
 SAME_CALL_STEER = 2        # the 3rd identical call (same tool + same input) is not run
 TOOL_FAILS_CONSTRAIN = 3   # a tool that failed 3 times in this turn is taken away
 FAILS_IN_ROW_STOP = 4      # 4 failed calls in a row: stop
-MAX_CALLS = 30             # more tool calls than this in one turn: stop
+MAX_CALLS = 48             # more tool calls than this in one turn: stop (v0.311: 30 -> 48, so the step-24 long-job
+                           # switch is reached first; a parallel look-up batch counts once - see Breaker.batch)
 FAILS_IN_ROW_GOAL = 7      # v0.186 goal mode: more patience before a hard stop (one replan rescue first)
 
 STATS: Counter = Counter()   # steer / constrain / stop, since start (GET /api/agent/stats)
@@ -62,6 +63,13 @@ class Breaker:
             return ("Yeh bilkul same kaam (same input ke saath) pehle ho chuka hai; dobara mat chalao. Jo nateeja mila "
                     "usi se aage badho, ya alag input / alag tarika lo, ya owner ko batao.")
         return None
+
+    def batch(self, n: int) -> None:
+        """v0.311 a parallel batch of n pure look-ups is ONE step of work: it costs one call against max_calls,
+        not n. (RCA: a research job doing 4 searches a round, every call fine, was stopped at round 8 as 'atak
+        gaya'.) Same-call steering and failure counting still see every single call."""
+        if n > 1:
+            self.calls -= n - 1
 
     def after(self, name: str, ok: bool) -> None:
         if ok:

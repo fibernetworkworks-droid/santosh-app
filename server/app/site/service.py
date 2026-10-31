@@ -325,7 +325,7 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                   "shots": _j(r.board, {}).get("shots", {}), "photos": [p.get("name") for p in _j(r.photos, [])],
                   "languages": _j(r.languages, ["en"]),
                   "app": [{"key": c["key"], "label": c["label"]} for c in app_schema(r).get("collections", [])]})
-        if plan.get("big"):                  # v0.313 the big site's size and its lists of pages
+        if plan.get("big"):                  # v0.315 the big site's size and its lists of pages
             v["size"] = SM.counts(plan)
             v["collections"] = [{"key": c["key"], "label": c["label"], "items": len(c["items"]),
                                  "examples": [i["title"] for i in c["items"][:6]]} for c in SM.collections(plan)]
@@ -352,7 +352,7 @@ def _estimate(r: Site, plan: dict[str, Any]) -> dict[str, Any] | None:
         have = len(_sections(r)) if r.status != "planned" else 0
         pics = max(0, P.wanted() - len(_j(r.photos, []))) if r.status == "planned" and P.on() else 0
         est = Q.estimate(plan, have, looks=0 if r.status != "planned" else 3, photos=pics)
-        if plan.get("big"):                  # v0.313 list pages cost no AI: say how many pages the money buys
+        if plan.get("big"):                  # v0.315 list pages cost no AI: say how many pages the money buys
             z = SM.counts(plan)
             est["pages"] = z["total"]
             est["say"] += f" · {z['total']} pages ({z['items']} lists se, bina AI kharch)"
@@ -447,7 +447,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
         s.flush()
         s.expunge(r)
     L.learn(fid, "goal", [g])
-    want = int(pages or 0) or SM.wanted(brief)          # v0.313 a big site: Opus plans the whole site map first
+    want = int(pages or 0) or SM.wanted(brief)          # v0.315 a big site: Opus plans the whole site map first
     if want >= 10:
         r = _sitemap_begin(r, want)
     _emit(r, push=True)
@@ -581,7 +581,7 @@ def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None 
             plan = _j(r.plan, {})
             keep = [p for p in plan.get("pages", []) if p["slug"] in pages or p["slug"] in ("home", "privacy") or
                     p["slug"] in B.LEGAL_PAGES]
-            kept = {p["slug"] for p in keep}         # v0.313 a collection lives on only with its listing page
+            kept = {p["slug"] for p in keep}         # v0.315 a collection lives on only with its listing page
             keep = [p for p in keep if not p.get("template_of")] + [
                 p for p in plan.get("pages", []) if p.get("template_of") in kept]
             plan["collections"] = [c for c in plan.get("collections", []) if c["key"] in kept]
@@ -600,7 +600,7 @@ def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None 
     return view(r)
 
 
-# ---------------------------------------------------------------- v0.313 BADI WEBSITE: the whole site map by Opus
+# ---------------------------------------------------------------- v0.315 BADI WEBSITE: the whole site map by Opus
 _BUILD_AFTER: set[str] = set()
 
 
@@ -642,7 +642,7 @@ def sitemap_job(site_id: str, want: int = 25, words: str = "") -> None:
 
 
 def grow(tenant: str, ref: str, pages: int = 0, words: str = "") -> dict[str, Any]:
-    """v0.313 make (or regrow) the site map of a site she already has: 'isko 100 pages ki website banao'."""
+    """v0.315 make (or regrow) the site map of a site she already has: 'isko 100 pages ki website banao'."""
     with session() as s:
         r = _find(s, tenant, ref)
         s.expunge(r)
@@ -679,7 +679,7 @@ def _after_job(site_id: str) -> None:
         r = _load(site_id)
     except SiteError:
         return
-    if site_id in _BUILD_AFTER:                  # v0.313 a grown site map builds its new pages
+    if site_id in _BUILD_AFTER:                  # v0.315 a grown site map builds its new pages
         _BUILD_AFTER.discard(site_id)
         _start(site_id, "build", note="site map")
         return
@@ -740,7 +740,7 @@ def recover_stuck(now_ts: float | None = None) -> int:
     Restarted ONCE by itself; a second death = 'failed' with a plain line (her 'Phir se chalao' / resume works)."""
     t = now_ts or time.time()
     out = 0
-    with session() as s:                       # v0.313 a site map job that died with the process: back to the plan, say so
+    with session() as s:                       # v0.315 a site map job that died with the process: back to the plan, say so
         maps = s.scalars(select(Site).where(Site.stage == "sitemap")).all()
         for r in maps:
             s.expunge(r)
@@ -948,7 +948,7 @@ def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], ex
 
 
 def _big_lines(plan: dict[str, Any], page: dict[str, Any]) -> str:
-    """v0.313 a big site: where this page sits, the pages it may link to (hrefs that work from it), and for a collection
+    """v0.315 a big site: where this page sits, the pages it may link to (hrefs that work from it), and for a collection
     template the placeholders every item fills."""
     if not plan.get("big"):
         return ""
@@ -1187,7 +1187,7 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
         return True
     lock = threading.Lock()
     width = max(1, min(6, int(getattr(_settings(), "site_parallel", 3) or 1)))
-    if plan.get("big"):                       # v0.313 a big site writes more sections at once
+    if plan.get("big"):                       # v0.315 a big site writes more sections at once
         width = max(width, min(8, int(getattr(_settings(), "site_parallel_big", 5) or width)))
     state = {"r": r, "stopped": False, "error": None}
 
@@ -1429,7 +1429,7 @@ def _critique_page(r: Site, plan: dict[str, Any], page: dict[str, Any], shots: P
 
 
 def _fixable(report: dict[str, Any], plan: dict[str, Any] | None = None) -> dict[str, list[str]]:
-    # v0.313 section ids map back through the plan (page slugs may hold '-' now, so the id alone is ambiguous)
+    # v0.315 section ids map back through the plan (page slugs may hold '-' now, so the id alone is ambiguous)
     ids = {sec_id(p["slug"], x["type"]): sec_key(p["slug"], x["type"])
            for p in (plan or {}).get("pages", []) for x in p.get("sections", [])}
     out: dict[str, list[str]] = {}
@@ -1536,7 +1536,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
                                                                  "sections": [{"type": t, "label": T.SECTIONS[t]["label"],
                                                                                "design": T.SECTIONS[t]["variants"][0]} for t in secs]})
             only += [sec_key(slug, t) for t in secs]
-    _change_items(plan, res)                  # v0.313 items of a list: pages made by code, no AI
+    _change_items(plan, res)                  # v0.315 items of a list: pages made by code, no AI
     # plain fact swaps (phone / email) go straight into the sections already written
     for k in ("phone", "whatsapp", "email"):
         if old_facts.get(k) and facts.get(k) and old_facts[k] != facts[k]:

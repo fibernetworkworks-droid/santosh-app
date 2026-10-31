@@ -97,7 +97,8 @@ def test_long_turn_without_a_plan_goes_past_step_24(gz, monkeypatch):  # noqa: F
     from app.agent.santosh import STATS_LONG, run_turn
     out = asyncio.run(run_turn(conv, "30 kadam wala kaam karo", tenant_id="default"))
     assert "30 kadam ho gaye" in out
-    assert len(brain.seen) == 31 and STATS_LONG["extended"] >= 1
+    # v0.311 PLAN HAMESHA: the server writes the plan at step 7 now, long before the step-24 switch (either one = long caps)
+    assert len(brain.seen) == 31 and (STATS_LONG["extended"] >= 1 or STATS_LONG["auto_plan"] >= 1)
     assert any("kaam_plan set" in (b.get("text") or "") for m in brain.seen for msg in m["messages"]
                for b in (msg["content"] if isinstance(msg["content"], list) else []) if isinstance(b, dict))
 
@@ -180,4 +181,4 @@ def test_waiting_time_never_counts_against_the_goal(gz):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.313.0"
+    assert APP_VERSION == "0.315.0"

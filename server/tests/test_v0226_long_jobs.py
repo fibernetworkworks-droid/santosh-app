@@ -186,7 +186,7 @@ def test_message_mid_job_reaches_the_running_job_at_its_next_step(gz, monkeypatc
     from sqlalchemy import select
     conv = gz["conv"]
     brain = FakeBrain([([tu("1", "sheet_read", sheet="x")], "tool_use"),
-                       ([txt("Samajh gaya, ab PDF ki jagah Excel bana raha hoon.")], "end_turn")])
+                       ([txt("Samajh gaya, PDF ki jagah Excel bana diya.")], "end_turn")])   # v0.311: a finished reply (a mere "bana raha hoon" now keeps working)
     gate = _steer_setup(monkeypatch, brain)
 
     async def scene():
@@ -236,4 +236,4 @@ def test_quick_lane_says_it_reaches_the_job():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.313.0"
+    assert APP_VERSION == "0.315.0"

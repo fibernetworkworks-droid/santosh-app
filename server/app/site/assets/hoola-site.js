@@ -245,7 +245,7 @@
       });
     });
   }
-  // ------------------------------------------------------------ v0.313 big sites: grouped menu + site search
+  // ------------------------------------------------------------ v0.315 big sites: grouped menu + site search
   function groups() {
     $$('.hs-dd').forEach(function (li) {
       var b = li.querySelector('.hs-ddb');

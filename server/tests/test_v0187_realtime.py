@@ -33,7 +33,9 @@ def test_diet_keeps_every_tool_name_and_shrinks_hard():
     raw_names = [t["name"] for t in _RAW_SPECS]
     assert names == raw_names and len(set(names)) == len(names)     # order + uniqueness untouched
     assert DIET_STATS["raw_chars"] > 500_000
-    assert DIET_STATS["diet_chars"] < DIET_STATS["raw_chars"] * 0.75   # at least ~25% off (measured ~33%)
+    # v0.311 SAHI AUZAAR 2 reversed the hard shrink (the 140-char cut was why the wrong tool got picked): the diet now
+    # only normalises whitespace and stops runaway prose - it never grows anything
+    assert DIET_STATS["diet_chars"] <= DIET_STATS["raw_chars"]
 
 
 def test_diet_preserves_enums_required_and_types():
@@ -51,7 +53,7 @@ def test_diet_preserves_enums_required_and_types():
 
 
 def test_diet_keeps_safety_prose_and_trims_ordinary():
-    from app.agent.tools import DIET_SAFETY_MAX, _DIET_KEEP_RE, _RAW_SPECS, TOOLS
+    from app.agent.tools import DIET_DESC_MAX, DIET_SAFETY_MAX, _DIET_KEEP_RE, _RAW_SPECS, TOOLS
     safety = [t for t in _RAW_SPECS if len(t.get("description", "")) > DIET_SAFETY_MAX and _DIET_KEEP_RE.search(t["description"])]
     assert safety, "the safety whitelist should catch real safety tools"
     for raw in safety[:5]:
@@ -63,7 +65,9 @@ def test_diet_keeps_safety_prose_and_trims_ordinary():
     assert ordinary, "ordinary long descriptions exist"
     for raw in ordinary[:5]:
         diet = next(t for t in TOOLS if t["name"] == raw["name"])
-        assert len(diet["description"]) <= 141   # 140 + the ellipsis
+        flat = " ".join(raw["description"].split())
+        # v0.311: an ordinary description is kept WHOLE up to DIET_DESC_MAX (its "use when / not when" survives)
+        assert diet["description"] == flat or (len(flat) > DIET_DESC_MAX and len(diet["description"]) <= DIET_DESC_MAX + 1)
 
 
 # ---------------- 2. the 5-second ack ----------------
@@ -335,5 +339,5 @@ def test_enqueue_dedupes_same_job_and_state(fu):
 def test_version():
     from app.config import get_settings
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.313.0"
+    assert APP_VERSION == "0.315.0"
     assert get_settings().agent_ack_after_s == 5.0

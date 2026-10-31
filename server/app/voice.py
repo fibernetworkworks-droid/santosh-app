@@ -343,7 +343,8 @@ def _tool_specs() -> list[dict]:
     if get_settings().voice_side_talk:   # v0.142 Gemini itself can put the call on hold when the talk isn't for it
         from .sidetalk import TOOL as SIDE_TALK
         extra.append(SIDE_TALK)
-    specs = [_compact(t) for t in TOOLS if t["name"] in VOICE_TOOL_NAMES and not via_kaam(t["name"])] + [DELEGATE] + extra
+    from .agent.tools import VOICE_SPECS   # v0.313 the call keeps the short descriptions (chat got the full ones)
+    specs = [_compact(t) for t in VOICE_SPECS if t["name"] in VOICE_TOOL_NAMES and not via_kaam(t["name"])] + [DELEGATE] + extra
     size = len(json.dumps(specs, ensure_ascii=False))
     if size > VOICE_TOOL_BUDGET:
         # never again a call that dies of its own tool list: say it loudly in the log (a test also checks it)

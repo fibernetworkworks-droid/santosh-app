@@ -1,4 +1,4 @@
-"""v0.313 BADI WEBSITE (web design Phase 6 step 1, owner: "IT SHOULD BUILD ANY WORLD COMPLEX 100 PAGES WEBSITE"):
+"""v0.315 BADI WEBSITE (web design Phase 6 step 1, owner: "IT SHOULD BUILD ANY WORLD COMPLEX 100 PAGES WEBSITE"):
 the site map planner for big sites.
 
 Before this a site was at most 7 pages + legal, from 26 fixed page types, one level deep. Now, when she asks for a big

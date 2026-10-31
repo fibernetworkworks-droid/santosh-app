@@ -59,6 +59,9 @@ CORE_FAMILIES = frozenset({
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
 # auto-keys below - this map carries the natural language the names cannot cover.
 EXTRA_KEYS: dict[str, tuple[str, ...]] = {
+    # v0.311 WhatsApp campaigns are a family now (they were always on): her words, or a chat that already ran one
+    "campaign": ("whatsapp", "whats app", "campaign", "template", "broadcast", "lead list", "leads", "contact list",
+                 "customer list", "bulk message", "opt-in", "opt in", "consent", "व्हाट्सएप", "कैंपेन"),
     # v0.245 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
     "email": ("mail", "email", "gmail", "inbox", "khat", "newsletter", "unsubscribe", "attachment",
               "fwd", "snooze", "vacation", "spam", "ईमेल", "मेल", "इनबॉक्स"),
@@ -433,6 +436,49 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
         STATS["full_fallback"] += 1     # router over-matched: never worse than the full registry
         return None
     return adm
+
+
+_NAME_RE = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
+UNLOADED_NOTE = ("\n\nTOOLS NOT LOADED IN THIS TURN: the guide above also names {names}. They are NOT in your tool "
+                 "list right now - never call them directly and never steer the job toward them. If her ask truly "
+                 "needs one, call tool_search first; otherwise pick from the tools you have.")
+
+
+def unloaded_note(system_text: str, adm: "AdmitSet") -> str:
+    """v0.311 SAHI AUZAAR 2: the shared guide names tools of families that are not loaded (a plain 'hello' turn named
+    pc_do 3x, computer_operator 4x, hoola_pc_do 2x - 24 such tools), which pulled the model toward tools it could not
+    see. One honest line names them as NOT loaded. Deterministic for a given family set (the prompt cache holds)."""
+    seen: list[str] = []
+    for m in _NAME_RE.findall(system_text or ""):
+        if m in HANDLERS and m != "tool_search" and not adm._seen(m) and m not in seen:
+            seen.append(m)
+    if not seen:
+        return ""
+    return UNLOADED_NOTE.format(names=", ".join(seen[:30]))
+
+
+def sticky_families(conversation_id: str) -> set[str]:
+    """v0.311 families a chat keeps once it used them, whatever her next words are: a chat with a WhatsApp campaign
+    (or a lead list uploaded into it) keeps the campaign tools for "Kaisa raha?" / "Haan, sabne consent diya hai"."""
+    out: set[str] = set()
+    if not conversation_id:
+        return out
+    try:
+        from sqlalchemy import select
+        from ..db import Campaign, Message, session
+        with session() as s:
+            if s.scalars(select(Campaign.id).where(Campaign.conversation_id == conversation_id).limit(1)).first():
+                out.add("campaign")
+            else:
+                rows = s.scalars(select(Message.display).where(Message.conversation_id == conversation_id,
+                                                                Message.role == "user")
+                                 .order_by(Message.id.desc()).limit(6)).all()
+                low = " ".join(str(r or "") for r in rows).lower()
+                if any(_hit(k, low) for k in EXTRA_KEYS["campaign"]):
+                    out.add("campaign")
+    except Exception:
+        log.debug("sticky families failed", exc_info=True)
+    return out
 
 
 async def tool_search(ctx, need: str = "", **_):

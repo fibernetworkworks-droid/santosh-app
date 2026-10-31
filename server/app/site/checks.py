@@ -194,7 +194,7 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
     if available():
         raise CheckError("Website jaanch ke liye server par Playwright + Chromium chahiye (deploy/setup_sites.sh).")
     from playwright.sync_api import sync_playwright
-    if plan.get("big"):                      # v0.313 a big site: designed pages + 2 items of every list in the browser,
+    if plan.get("big"):                      # v0.315 a big site: designed pages + 2 items of every list in the browser,
         from . import sitemap as SM          # every page's links from the files (link_scan below)
         from ..config import get_settings
         pages = SM.check_slugs(plan, max(5, int(getattr(get_settings(), "site_check_pages", 40) or 40)))
@@ -353,7 +353,7 @@ HREF = re.compile(r'<a\b[^>]*\bhref="([^"#?]*)(?:[#?][^"]*)?"', re.I)
 
 
 def link_scan(out: Path, limit: int = 40) -> list[dict[str, Any]]:
-    """v0.313 every page of the built site, read as files (no browser): an internal link that leads nowhere is a problem.
+    """v0.315 every page of the built site, read as files (no browser): an internal link that leads nowhere is a problem.
     Fast enough for hundreds of pages; external, tel:, mailto: and in-page links are not followed."""
     bad: list[dict[str, Any]] = []
     root = out.resolve()

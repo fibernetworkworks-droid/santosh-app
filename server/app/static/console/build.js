@@ -174,7 +174,7 @@ window.HoolaBuild = function (C) {
   function siteCard(o) {
     const v = o.v, s = S(v.status), b = M(v.board), pv = previewPath(v.preview);
     let body = '';
-    if (s === 'planned' && v.mapping) body = nowLine('Planning the site map (big site)…', true);   // v0.313
+    if (s === 'planned' && v.mapping) body = nowLine('Planning the site map (big site)…', true);   // v0.315
     else if (s === 'planned') body = (v.size ? sizeLine(v) : '') + L(v.plan?.pages).slice(0, 8).map(p => `<div class="bln faint">• ${esc(p.title)}: ${esc(L(p.sections).join(', '))}</div>`).join('')
       + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Haan, make 3 looks', 'go')}</div>`;
     else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
@@ -380,7 +380,7 @@ window.HoolaBuild = function (C) {
     return `<section class="bbox"><h4>Steps (the real work, as it happened)</h4><ol class="bsteps">${rows.map(r => `<li class="${r.state}"><time>${r.t ? clock(r.t) : ''}</time><i>${mk[r.state] || '·'}</i><span>${esc(r.text)}${r.secs ? ` <em>· ${r.secs} sec</em>` : ''}</span></li>`).join('')}</ol>
       <p class="faint" style="font-size:12px;margin-top:8px">Timed steps are from after this console opened; earlier ones come from the board.</p></section>`;
   }
-  /* v0.313 big sites: how many pages, which come from lists (one designed template each), the menu groups */
+  /* v0.315 big sites: how many pages, which come from lists (one designed template each), the menu groups */
   function sizeLine(v) {
     const z = M(v.size);
     return `<div class="bln"><b>${esc(String(z.total || 0))} pages</b> <span class="faint">· ${esc(String(z.designed || 0))} designed · ${esc(String(z.items || 0))} from lists · ${esc(String(z.legal || 0))} legal</span></div>`;

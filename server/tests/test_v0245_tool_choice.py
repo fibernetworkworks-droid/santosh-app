@@ -75,7 +75,9 @@ def test_the_pc_comes_into_view_only_when_she_names_it():
 
 def test_tools_without_a_family_are_always_in_view():
     names, _, _ = _view("hello ji")
-    assert {"create_campaign", "list_lead_lists", "haan_karo", "confirm_send"} <= names
+    assert "haan_karo" in names
+    # v0.311 the WhatsApp-campaign specs are the "campaign" family now: not on a plain "hello" any more
+    assert not {"create_campaign", "list_lead_lists", "confirm_send"} & names
     assert {"doc_studio", "data_fetch"} <= names           # documents + data are core now
 
 
@@ -205,4 +207,4 @@ def test_cards_save_and_list(env, monkeypatch, tmp_path):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.313.0"
+    assert APP_VERSION == "0.315.0"
