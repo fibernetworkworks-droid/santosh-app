@@ -1,5 +1,9 @@
 # Long tasks: how Claude does it, and why Hoola fails (31 Oct 2026, checked on v0.310.0)
 
+STATUS (31 Oct): shipped - v0.314 (causes 1-4, tool fixes 1/2/4), v0.326 + v0.330 (her test run: plan card, one PDF, no quiet PC),
+v0.334 (effort for long jobs, tool lanes, clean cuts, FRESH tool card). All her live tests passed on v0.330. Deliberately not done:
+renaming / merging tools (lanes instead), strict schemas + usage examples (next, after the tool_card numbers).
+
 ## Part A - why Hoola fails long tasks (proved in code)
 
 Two of these were reproduced with a scripted model on the real `run_turn` (repro script kept outside the repo).

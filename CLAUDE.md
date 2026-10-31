@@ -136,9 +136,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.333.0 (pubspec 0.333.0+373). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.334.0 (pubspec 0.334.0+374). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.334 SOCH GEHRI (built as 0.331): long jobs on Claude at effort xhigh (`santosh.effort_for`, extra_body output_config), goal calls 16k;
+  `tools.TOOL_LANES` (overlapping tools open with use-for/not-for), `_short` shrinks lists not JSON, FRESH tool set + vps-ops `tool_card`.
 - v0.333 NO BLINK + DRAG TO RESIZE (built as 0.331): the Video Studio poll rebuilt every tile (0/7 kept -> videos blinked); `patch()` keeps unchanged
   tiles (7/7), Director skips unchanged re-draws; draggable sidebar + prompt-panel dividers (keys, reset, remembered).
 - v0.332 ANY DESIGN + DEPLOY SE NAHI RUKEGA: free-form sections (`custom_<name>`, 3 a page), interactive pieces (tabs, slider,
