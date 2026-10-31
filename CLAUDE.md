@@ -129,9 +129,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.311.0 (pubspec 0.311.0+351). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (16 now: theme.js, pdfview.js, studio.js, attach.js, menu.js) + the version pins in tests (grep the old number in
+- Current version: v0.313.0 (pubspec 0.313.0+353). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (17 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.312 ARENA SCREEN (console `arena.js`, sidebar Arena, owner only via console me `arena`): start / stop runs with a cost estimate,
+  runs table, per-site score cards with screenshots (`/api/arena/shot/<site>`), compare two runs, blind duels + win table.
+- v0.311 DIRECTOR CAST FIX: a failed character picture reported only to the chat and Director sat on Cast; now "Painting <name>…",
+  the reason on the film (nothing charged), Try again refilled, Skip = no fixed characters (prefs.cast_skip).
 - v0.310 SHORT CLIPS: 4-5 s clips were refused with 422 (studio forms demanded seconds >= 6); now >= 2, and a 422 names its field.
 - v0.309 CLIP CREATE FIX: Video page Create asked for the price before the background storyboard existed ("Pehle storyboard banaiye",
   no card ever). Now one call (then=generate), `studio.service.after_plan` waits for the plan then makes the card; errors on the tile.
@@ -139,7 +143,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   /models, Anthropic /models), keys never shown; GET /api/studio/apis, `python -m app.studio.apis`, vps-ops `studio_apis`, Create > Setup > Engines.
 - v0.307 DESIGN ARENA (`site/arena.py`, owner-only `/api/arena/*`): 1,000 fixed briefs, runs build n as `__arena__` + Opus judge /
   checks / originality / rupees score card, budget ceiling SITE_ARENA_MAX_INR, version compare, blind duels vs a rival's public URL.
-- v0.311 AAGE BADHO + SAHI AUZAAR 2 (`docs/LONG_TASK_RCA.md`): a promise line never ends a job (`agent/aage.py`), a parallel batch = 1 call
+- v0.313 AAGE BADHO + SAHI AUZAAR 2 (built as 0.311) (`docs/LONG_TASK_RCA.md`): a promise line never ends a job (`agent/aage.py`), a parallel batch = 1 call
   (MAX_CALLS 48), a moving turn keeps the long deadline, the server writes the plan, full tool descriptions (cut 140 -> 1200), campaign family, unloaded tools named.
 - v0.306 PREMIUM STUDIO SIDEBAR (Create): readable labels, hover-only scrollbar, fade only while more is below, active pill + growing bar,
   agent lift/tilt/arrow, tool icon pop, press on every button, one-time entrance, meter fills + %; off under reduced motion / calm.

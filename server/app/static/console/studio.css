@@ -687,3 +687,12 @@ p{margin:0}
 /* v0.309 a clip that could not get its price card says why, on its own tile */
 .res small.perr,.perr{display:flex;align-items:flex-start;gap:6px;margin-top:4px;color:var(--bad);font-size:12.5px;line-height:1.4}
 .perr .ic{flex:none;margin-top:2px}
+/* v0.311 Director cast: painting a character / why it failed (it used to sit silently on Cast) */
+.box.castwait,.box.casterr,.castwait,.casterr{display:flex;flex-direction:row;align-items:flex-start;gap:12px}
+.castwait small{display:block;font-size:12.5px;margin-top:2px}
+.cring{width:22px;height:22px;flex:none;border-radius:50%;background:conic-gradient(from var(--a),var(--pri) 0 28%,rgb(127 127 140 / .18) 28% 100%);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));animation:spin 1s linear infinite}
+.casterr{border-color:rgb(220 70 70 / .4)}
+.casterr>.ic{color:var(--bad);margin-top:3px;flex:none}
+.casterr b{font-weight:500;color:var(--bad)}
+@media (prefers-reduced-motion:reduce){.cring{animation:none}}

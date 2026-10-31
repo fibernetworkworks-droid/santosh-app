@@ -748,7 +748,7 @@ ${SPRITE}`;
   function stepState(p) {
     const shots = p.shots || [], picked = shots.length && shots.every(s => s.picked);
     const real = shots.length && shots.every(s => s.quality && s.quality !== 'preview');
-    return {brief: true, plan: shots.length > 0, cast: (p.character_list || []).length > 0, keyframes: shots.length && p.keyframes >= shots.length,
+    return {brief: true, plan: shots.length > 0, cast: (p.character_list || []).length > 0 || !!p.prefs?.cast_skip, keyframes: shots.length && p.keyframes >= shots.length,
       preview: shots.some(s => (s.take_list || []).length), generate: picked && real, music: !!p.music, assemble: (p.outputs || []).some(o => !o.preview)};
   }
   V.director = o => {
@@ -773,10 +773,12 @@ ${SPRITE}`;
   <section id="castsec" ${DIR.castOpen || o.cast ? '' : 'hidden'} class="box"><h3>Add a character <button class="ib" data-castclose aria-label="Close">${I('x', 'width:15px;height:15px')}</button></h3>
     <div class="prow2"><label class="fld">Name<input id="cname" maxlength="40" value="${esc(DIR.castDraft?.name || '')}"></label><label class="fld">Voice<select id="cvoice"><option value="female">Female</option><option value="male">Male</option></select></label></div>
     <label class="fld">Looks like<textarea id="cdesc" rows="2" maxlength="400" placeholder="28, warm smile, long black hair in a braid, mustard kurta">${esc(DIR.castDraft?.description || '')}</textarea></label>
-    <button class="btn pri" data-castgo>${I('cast', 'width:15px;height:15px')}Make this character</button><p class="note">An AI character keeps the same face in every shot. A real person needs their permission (add from the chat with their photo).</p></section>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn pri" data-castgo>${I('cast', 'width:15px;height:15px')}Make this character</button><button class="lnk" data-castskip>Skip: no fixed characters in this film</button></div><p class="note">An AI character keeps the same face in every shot. A real person needs their permission (add from the chat with their photo).</p></section>
   <section><div class="sec-h"><h2>Storyboard · ${(p.shots || []).length} shots · ${p.seconds || 0} s</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-dpreview>${I('play', 'width:14px;height:14px')}Free preview</button><button class="btn sec" data-castopen>${I('cast', 'width:15px;height:15px')}Cast</button><button class="btn sec" data-dmusic>${I('music', 'width:15px;height:15px')}Music</button><button class="btn sec" data-replan>${I('redo', 'width:15px;height:15px')}Rewrite</button></div></div>
     ${p.planning && !(p.shots || []).length ? `<div class="box"><b>Writing the storyboard…</b><div class="bar"><i class="indet"></i></div></div>` : ''}
     <div class="scenes">${(p.shots || []).map((s, i) => sceneCard(s, i)).join('')}</div></section>
+  ${(p.casting || []).length ? `<div class="box castwait"><span class="cring"></span><div><b>Painting ${p.casting.map(esc).join(', ')}'s picture…</b><small class="mut">About 20-40 seconds. The character then stays the same in every shot.</small></div></div>` : ''}
+  ${p.cast_error && !(p.casting || []).length ? `<div class="box casterr">${I('x', 'width:15px;height:15px')}<div><b>${esc(p.cast_error)}</b><div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap"><button class="btn sec" data-castretry>Try again</button><button class="lnk" data-castskip>Skip: no fixed characters</button></div></div></div>` : ''}
   ${(p.character_list || []).length ? `<section><div class="sec-h"><h2>Cast</h2></div><div class="cast">${p.character_list.map(c => `<div class="actor"><span class="thumb">${c.image ? `<img alt="" src="${esc(c.image)}">` : art('cast', c.name)}</span><div><b>${esc(c.name)}</b><small>${esc(c.description.slice(0, 80))}</small></div></div>`).join('')}</div></section>` : ''}
 </div>`;
   };
@@ -824,7 +826,7 @@ ${SPRITE}`;
     else { const tick = async () => { if (VIEW !== 'director' || !DIR.project) return; await dirLoad(); const p = DIR.view;
         if (p && VIEW === 'director' && !$(':focus', el)?.matches('textarea,input')) { const y = $('#view').scrollTop; go('director'); $('#view').scrollTop = y; }
         else poll = setTimeout(tick, 5000); };
-      const p = DIR.view; if (p && (p.working || p.planning || (p.painting || []).length || (p.approvals || []).length)) poll = setTimeout(tick, 5000); }
+      const p = DIR.view; if (p && (p.working || p.planning || (p.painting || []).length || (p.casting || []).length || (p.approvals || []).length)) poll = setTimeout(tick, 5000); }
     $('#dirForm', el)?.addEventListener('submit', e => { e.preventDefault(); newFilm(); });
     const cyc = {aspect: ['16:9', '9:16', '1:1'], seconds: [15, 30, 45, 60, 90, 120, 180], language: ['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu', 'Bengali'], music: ['', 'festive', 'cinematic', 'upbeat', 'calm', 'corporate', 'lofi']};
     el.addEventListener('click', async e => {
@@ -871,7 +873,10 @@ ${SPRITE}`;
       if (b.hasAttribute('data-castopen')) { DIR.castOpen = true; go('director'); $('#cname')?.focus(); return; }
       if (b.hasAttribute('data-castclose')) { DIR.castOpen = false; DIR.castDraft = null; $('#castsec').hidden = true; return; }
       if (b.hasAttribute('data-castgo')) { const name = $('#cname').value.trim(), description = $('#cdesc').value.trim(); if (!name || !description) { toast('Give the character a name and a look'); return; }
-        DIR.castOpen = false; DIR.castDraft = null; return act('', () => api('POST', P + '/characters', {name, description, voice: $('#cvoice').value, kind: 'person'})); }
+        DIR.lastCast = {name, description}; DIR.castOpen = false; DIR.castDraft = null; return act('', () => api('POST', P + '/characters', {name, description, voice: $('#cvoice').value, kind: 'person'})); }
+      // v0.311 a failed picture says why on the page; Try again re-opens the form as she filled it; Skip = no fixed cast
+      if (b.hasAttribute('data-castretry')) { DIR.castOpen = true; DIR.castDraft = DIR.lastCast || DIR.view?.cast_last || null; go('director'); $('#cname')?.focus(); return; }
+      if (b.hasAttribute('data-castskip')) { DIR.castOpen = false; DIR.castDraft = null; return act('Going on without a fixed cast', () => api('POST', P + '/settings', {cast_skip: true})); }
       if (b.dataset.take) { const sh = b.closest('[data-shot]').dataset.shot; return act('Take picked', () => api('POST', P + '/pick', {shot_id: sh, take: +b.dataset.take})); }
       if (b.hasAttribute('data-edit')) { const card = b.closest('[data-shot]'), sid = card.dataset.shot, s = DIR.view.shots.find(x => x.id === sid);
         const box = card.querySelector('[data-ptext]'); const ta = document.createElement('textarea'); ta.className = 'ptedit'; ta.value = s.prompt; ta.rows = 5; box.replaceWith(ta); ta.focus();

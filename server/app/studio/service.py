@@ -35,7 +35,8 @@ _studios: dict[str, tuple[Any, Studio]] = {}
 _watchers: dict[str, asyncio.Task] = {}
 _assembling: dict[str, asyncio.Task] = {}
 _planning: dict[str, asyncio.Task] = {}
-_then: dict[str, asyncio.Task] = {}      # v0.309 a clip's next step (its price card) waiting for its storyboard
+_then: dict[str, asyncio.Task] = {}
+_casting: dict[str, set] = {}             # v0.311 the characters whose reference picture is being painted right now      # v0.309 a clip's next step (its price card) waiting for its storyboard
 _painting: dict[str, set[str]] = {}         # v0.159 "tenant:project" -> shots whose opening picture is being painted
 _reviewing: set[str] = set()                # "tenant:project" while the AI looks at fresh takes
 VOICES = ("male", "female")
@@ -274,7 +275,7 @@ def _typical_s(seconds: float) -> float:
 
 
 DEFAULT_PREFS = {"voice": "", "captions": True, "caption_style": "bold", "music": "", "quality": "final",
-                 "model": "", "resolution": "", "auto": "quality"}   # v0.263 auto = quality | value | cheap       # v0.262 her model / resolution pick ("" = Hoola Auto / by quality)
+                 "model": "", "resolution": "", "auto": "quality", "cast_skip": False}   # v0.311 cast_skip = no fixed characters   # v0.263 auto = quality | value | cheap       # v0.262 her model / resolution pick ("" = Hoola Auto / by quality)
 
 
 def prefs_of(p: dict) -> dict:
@@ -489,6 +490,8 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
             "characters": list(p.get("characters", {})), "shots": shots, "outputs": outs,
             "working": working or assembling, "assembling": assembling, "approvals": pend, "updated": p.get("updated"),
             "created": p.get("created"), "estimates": est, "planning": planning, "error": p.get("error") or "",
+            "casting": sorted(_casting.get(key, ())), "cast_error": p.get("cast_error") or "",
+            "cast_last": p.get("cast_last") if p.get("cast_error") else None,
             "seconds": sum(int(x["duration"]) for x in p.get("shots", [])),
             "keyframes": sum(1 for x in p.get("shots", []) if x.get("keyframe")),
             "music": bool(mu), "logo": bool(lg), "character_list": chars, "prefs": pr, "quality_pref": want,
@@ -613,6 +616,8 @@ def _clean_prefs(d: dict, base: dict | None = None) -> dict:
     if "music" in d and d["music"] is not None:
         m = str(d["music"]).strip()[:200]
         out["music"] = m
+    if d.get("cast_skip") is not None:
+        out["cast_skip"] = bool(d["cast_skip"])
     if d.get("quality") in ("draft", "final", "premium"):
         out["quality"] = d["quality"]
     if "model" in d and d["model"] is not None:          # v0.262 checked against the studio's models when used
@@ -904,11 +909,26 @@ CHARACTER_LOOK = {
 }
 
 
+def _paint_why(e: Exception) -> str:
+    """v0.311 a painting failure in her words, not the provider's JSON."""
+    t = str(e).lower()
+    if "api key not valid" in t or "api_key_invalid" in t or "permission_denied" in t or "401" in t or "403" in t:
+        return "the picture service refused the Gemini key (check Create > Setup > Engines)."
+    if "quota" in t or "resource_exhausted" in t or "429" in t or "rate" in t:
+        return "the picture service is busy or out of quota right now; try again in a minute."
+    if "safety" in t or "blocked" in t or "prohibited" in t:
+        return "the picture service would not draw this description; change the look and try again."
+    return "the picture could not be made (" + str(e)[:120] + ")."
+
+
 async def _paint_character(tenant: str, st: Studio, project: str, a: dict) -> None:
     """v0.159 A made-up person / product / place painted once, then used as the reference in every shot."""
     p = st.load(project)
     kind = a.get("char_kind") or "person"
     aspect, prompt = CHARACTER_LOOK.get(kind, CHARACTER_LOOK["person"])
+    key = _key(tenant, project)
+    _casting.setdefault(key, set()).add(a["name"])     # v0.311 the Director shows "Painting <name>…" while this runs
+    _changed(tenant, project)
     try:
         img = await asyncio.to_thread(st.painter, prompt.format(d=a["description"] or a["name"]), aspect, [])
         d = st.home / "uploads" / "characters"
@@ -920,6 +940,7 @@ async def _paint_character(tenant: str, st: Studio, project: str, a: dict) -> No
         def fn(q):
             q["characters"][a["name"]].update(generated="nano-banana-pro", kind=kind,
                                               voice=_voice_name(a.get("voice") or "", a["description"]))
+            q["cast_error"] = ""
             st._charge(q, KEYFRAME_USD, f"character {a['name']}", "nano-banana-pro")
         p = await st.update(project, fn)
         _publish(tenant, p)
@@ -927,6 +948,21 @@ async def _paint_character(tenant: str, st: Studio, project: str, a: dict) -> No
     except Exception as e:
         log.exception("studio character paint")
         _note(tenant, p, f"Video studio '{project}': '{a['name']}' ki tasveer nahi ban payi: {str(e)[:150]}")
+        # v0.311 the reason goes ON the film too (it used to reach only the chat, and the Director just sat on Cast);
+        # nothing was charged - the charge is in the success branch only
+        why = f"{a['name']}: {_paint_why(e)} Nothing was charged."
+        try:
+            last = {"name": a["name"], "description": a.get("description") or "", "voice": a.get("voice") or ""}
+            await st.update(project, lambda q: q.update(cast_error=why, cast_last=last))
+        except Exception:  # noqa: BLE001 - the chat note above already carries it
+            log.exception("studio cast_error")
+    finally:
+        left = _casting.get(key)
+        if left is not None:
+            left.discard(a["name"])
+            if not left:
+                _casting.pop(key, None)
+        _changed(tenant, project)
 
 
 def _cap(a: dict) -> float:
