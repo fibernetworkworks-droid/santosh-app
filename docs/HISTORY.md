@@ -11961,6 +11961,13 @@ PHASE 1 - EYES AND BRAIN (`server/app/seo/desk.py`, NEW; tables seo_desk, seo_ro
   Google Ads developer token), Business Profile posts / reviews (needs Business Profile API approval), Bing, backlinks,
   AI-visibility panel, outreach.
 
+## CHECKPOINT 31 Oct 2026 - v0.316.0 (owner: "EVERY THING IS PERFECT NOW. SAVE THE STATE")
+- Branch `stable-2026-10-31-v316` = commit 00a9a60a = v0.316.0 (pubspec 0.316.0+356), live on hoola.ainewtika.com when saved
+  (healthz 0.316.0; /static/console/studio.js, studio.css, v2.css, v2.js sha256 equal to this commit). APK `v0.316.0-b752`.
+- main had already moved to v0.317.0 (SEO EMPLOYEE, not deployed at save time); the checkpoint is the LIVE commit, not main.
+- Rollback: `cd ~/santosh_app && git fetch origin stable-2026-10-31-v316 && git checkout stable-2026-10-31-v316 &&
+  cp -r ~/santosh_app/server/app ~/apps/santosh-core/ && pm2 restart santosh --update-env`.
+
 ## v0.318.0 ASLI APP — App Sahayak Phase 1: every native app gets its own backend (owner: "HOOLA MUST CAN BUILD AND DEVLOPE A END TO END ANY DESIGN ANY COMPLEXITY ... AS RELIBLE AND ROBUST AS REAL HUMAN APP DEVLOPMENT" -> "GO PHASE 1")
 Built as 0.314.0, re-versioned 0.316.0, 0.317.0 and then 0.318.0 past the parallel v0.314.0 (AAGE BADHO 2), v0.315.0 (BADI WEBSITE) v0.316.0 (DIRECTOR PICTURES FIX) and v0.317.0 (SEO EMPLOYEE).
 The gap it closes: a built Android app could only SHOW her public facts / products (`/api/app-content`); orders, bookings,
