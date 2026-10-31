@@ -11802,3 +11802,78 @@ and `@page :nth()` do NOT work - so no section name in the header (would need fo
   numbers and no Total bar, footnotes + Key takeaways printed, kicker casing. Related suites (prompt budgets,
   Document Studio, data desk, tool choice, server first, routines) 150 green.
 - Not possible in Chromium today: a running SECTION name in the header (no string-set / :nth()).
+## v0.314.0 AAGE BADHO + SAHI AUZAAR 2 (built as 0.311.0, re-versioned past the parallel v0.311.0 / v0.312.0 / v0.313.0) - long jobs finish, the right tool gets picked (owner: "DO EXTREEM DEEP RESEARCH HOW CLAUDE DO LONG TASK SMOOTLY WITH PERFECT TOOL. ALSO CHECK WHY HOOLA IS FAILING FOR EVERY LONG TASK", "HOOLA NOT ABLE TO PICK RIGHT TOOL FOR RIGHT WORK ON SERVER", then "GO")
+The full RCA + Anthropic sources: docs/LONG_TASK_RCA.md. Causes 1 and 2 were REPRODUCED on v0.310 with a scripted
+brain through the real run_turn (they are the first tests of tests/test_v0311_aage_badho.py).
+LONG JOBS:
+(1) AAGE BADHO (`agent/aage.py`): v0.258's narrate ask ("ab use EK chhoti line batao") never said "and the next tool
+in the same message"; a model answering with ONLY the line returned end_turn and, with no kaam_plan, the loop took
+"Ab doosra hissa dekh raha hoon." as the final answer (repro: 2 model calls, 2 of 3 tools never ran). Now the narrate
+ask demands line + next tool in one reply, and `aage.promised()` (last sentence announces Hoola's own next/ongoing work,
+first person only - "video ban raha hai" is a THING running, not a promise; a question / card / OTP / intezaar = waits
+on her, never pushed) sends one "do it now or give the real final answer" nudge, MAX_PER_TURN=2. Setting AGENT_AAGE.
+(2) `breaker.MAX_CALLS` 30 -> 48 and `Breaker.batch(n)`: a parallel batch of read-only look-ups costs ONE call
+(repro: 4 searches a round, all fine, stopped at round 8 as "Main ek jagah atak gaya tha").
+(3) `_with_deadline`: a turn that finished a tool in the last AGENT_PROGRESS_WINDOW_S (300) gets the long deadline
+(2700 s) plan or no plan (`_PROGRESS` stamped after every tool); a turn doing nothing still times out at 900 s.
+(4) PLAN HAMESHA: PLAN_NOW at step 4 (was 6); still no plan 3 steps later -> the server writes a one-step plan (her
+request) itself (`_auto_plan`, AGENT_AUTO_PLAN): goal caps (80 steps / 150 calls / 6000 tokens), background rounds,
+restart pickup and her card now exist for every long job. The model's real final answer closes that server plan
+(`_close_auto_plan`, no "text mein mat ruko" loop over a plan it never wrote); a mere promise still goes on.
+RIGHT TOOL:
+(5) The schema diet's 140-char cut (v0.187) hit 291 of 430 tools and 150 descriptions ended mid-sentence - the
+"use when / not when / prefer this over" sentences were exactly what got cut (data_fetch lost "Prefer this over
+api_call / open_website / the cloud PC"). DIET_DESC_MAX / DIET_SAFETY_MAX 1200, DIET_PROP_MAX 72 -> 240: a plain turn's
+specs 35 -> ~42 KB.
+(6) The 9 WhatsApp-campaign specs had no family and rode on every turn: family "campaign" (EXTRA_KEYS whatsapp /
+campaign / template / leads / consent...), plus `admit.sticky_families`: a chat with a campaign (or campaign words in
+her last 6 messages) keeps them ("Kaisa raha?"). A plain "hello" now sees 56 tools (was 65).
+(7) `admit.unloaded_note`: the shared guide named 24 tools that were not loaded on a plain turn (pc_do 3x,
+computer_operator 4x, hoola_pc_do 2x...); one deterministic line now names them as NOT loaded (call tool_search first).
+NOT DONE (in the RCA plan, needs her word): long jobs moved to Claude with thinking, one tool per job (web / documents
+/ memory merges), strict schemas + usage examples, token-capped results with a page hint, the live tool-pick card on
+the VPS (`python -m app.quality tools --live`, no API key in the sandbox). Not verified on a live model here.
+Tests: NEW tests/test_v0311_aage_badho.py; rewritten to the new truth (not deleted): test_v0228 plan at step 4,
+test_v0221 long caps via auto plan, test_v0226 scripted reply no longer a promise, test_v0187 diet, test_v0245
+campaign tools not on "hello".
+
+## v0.315.0 BADI WEBSITE (web design Phase 6 step 1; owner: "IT SHOULD BUILD ANY WORLD COMPLEX 100 PAGES WEBSITE SMOOTHLY WITH ALL FEATURES" -> "START PHASE 1")
+Measured first: a site was at most 7 pages + legal (`library.brief` pages[:7]), from 26 fixed page types, one level deep
+(`rel_of` = "../"), with no pages made from data and no way to add a page after the plan.
+- **Site map by Opus** (`server/app/site/sitemap.py`, kind site_art): a big ask (`SM.wanted`: a page count >= 10 in her
+  words, or "badi / complete / portal / e-commerce..." = 25; website action=new + page_count; action=grow on a site she
+  has) starts a background job (stage `sitemap`, plan card says "site map ban raha hai"). Opus returns pages (any purpose,
+  slug, nav, menu group, parent, why, description, up to 8 sections from the section library) and COLLECTIONS (lists:
+  products, areas, courses, doctors, posts...: fields, items from her words only, a template of up to 6 sections).
+  `SM.clean` makes it safe: home first with a hero, hero first on every page, known section types only, no duplicates,
+  no legal pages (Hoola adds them), parents that exist, reserved field keys, items trimmed to the room left
+  (`SITE_MAX_PAGES` 150 total incl. each list's own listing page, `SITE_MAX_AI_PAGES` 40 designed pages).
+- **One template, many pages**: each list = a listing page + a hidden template page in plan["pages"]
+  (`template_of`, slug `<key>-item`), so the builder, board, estimate, fix rounds and edits treat it like any page; Opus
+  writes it once with `{{title}}` / `{{field}}` placeholders. `build.assemble` skips it as a file and renders every item
+  at `/<key>/<item>/` (`SM.fill_attr_safe`: escaped values, a value nobody gave = visible `[Field]` blank in text and
+  empty inside attributes). The listing page gets a code-made grid of all items. 100 items cost the same AI as one.
+- **Big-site navigation** (only when plan["big"]; small sites byte-identical): grouped menu (`build._mega`, button +
+  list per group, sub pages inside their group, Esc / outside click closes, phone = stacked groups), breadcrumbs on every
+  page + BreadcrumbList JSON-LD, site search (`assets/search.json` + `hoola-site.js search()`: DOM built with
+  textContent), every page in sitemap.xml, footer capped at 14 links. `rel_of` follows the slug's depth; `_ok_href`
+  accepts `../../`.
+- **Writers know the site**: `_big_lines` gives each section the site size, its page's purpose and up to 24 internal
+  links with hrefs that work from that page; template sections get the placeholder rules; listing pages are told the
+  grid follows.
+- **Scale**: `SITE_PARALLEL_BIG` (5) sections at once; checks open designed pages (up to `SITE_CHECK_PAGES` 40) + 2
+  items of every list in Chromium, and `checks.link_scan` reads EVERY page's links from the files (scores
+  pages_checked / pages_total); `_fixable` maps section ids back through the plan (slugs may hold '-'); critique skips
+  templates; the estimate says how many pages it buys (`... N pages (M lists se, bina AI kharch)`).
+- **Her words change lists**: change() shows Opus the lists; `items_add` / `items_remove` add or drop pages with no
+  new AI sections. A built site that grows (action=grow) builds only the new parts (`_BUILD_AFTER`).
+- **Console** plan card / studio: size line (total · designed · from lists · legal), Lists with examples, Menu groups.
+- Recovery: a site-map job that died with the process goes back to the plan with a plain line (`recover_stuck`).
+- Tests `server/tests/test_v0315_badi_website.py` (6): cleaning rules, a 60-page site built end to end (AI only for
+  designed sections, 50 item pages filled, no `{{` left, blanks, breadcrumbs, grouped menu, search index, sitemap,
+  every link resolves), chat adds / removes items with no new sections, id mapping, small sites unchanged. Checked in
+  Chromium by eye: menu dropdown, search, listing grid, item page, phone menu, no sideways scroll, no page errors.
+- Not yet (next steps of the plan): the phone app's plan card still lists pages flat (works, long); items are not
+  translated by the second language (titles / data stay in the original); her own CSV / sheet as a list source;
+  editing an item page by hand (item pages are not in Edit mode; change them in words).
+- Built as 0.313.0, re-versioned 0.315.0 on merge past the parallel v0.313.0 HOOLA PRINT and v0.314.0 (all kept).

@@ -13,6 +13,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import shutil
 import socketserver
 import subprocess
@@ -193,7 +194,12 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
     if available():
         raise CheckError("Website jaanch ke liye server par Playwright + Chromium chahiye (deploy/setup_sites.sh).")
     from playwright.sync_api import sync_playwright
-    pages = [p["slug"] for p in plan.get("pages", [])]
+    if plan.get("big"):                      # v0.315 a big site: designed pages + 2 items of every list in the browser,
+        from . import sitemap as SM          # every page's links from the files (link_scan below)
+        from ..config import get_settings
+        pages = SM.check_slugs(plan, max(5, int(getattr(get_settings(), "site_check_pages", 40) or 40)))
+    else:
+        pages = [p["slug"] for p in plan.get("pages", []) if not p.get("template_of")]
     report: dict[str, Any] = {"pages": {}, "blocking": [], "warnings": [], "scores": {}, "source": "hoola"}
     # weight / JS budget (files, not browser): JS gzipped, biggest image
     js = b"".join((out / "assets" / n).read_bytes() for n in ("hoola-site.js", "site.js") if (out / "assets" / n).exists())
@@ -318,6 +324,13 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
     for slug, pr in report["pages"].items():
         report["blocking"] += pr["issues"]
         report["warnings"] += pr["warnings"]
+    if plan.get("big"):
+        seen = {x["text"] for x in report["blocking"]}
+        for it in link_scan(out):
+            if it["text"] not in seen:
+                report["blocking"].append(it)
+        report["scores"]["pages_checked"] = len(pages)
+        report["scores"]["pages_total"] = sum(1 for _ in out.rglob("index.html"))
     home = report["pages"].get("home", {})
     report["scores"].update({"lcp_ms": home.get("lcp_ms", 0), "cls": home.get("cls", 0), "fps": home.get("fps", 0),
                              "first_load_kb": home.get("first_load_kb", 0),
@@ -334,6 +347,39 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
         report["scores"].update(_own_scores(report))
     report["passed"] = not report["blocking"]
     return report
+
+
+HREF = re.compile(r'<a\b[^>]*\bhref="([^"#?]*)(?:[#?][^"]*)?"', re.I)
+
+
+def link_scan(out: Path, limit: int = 40) -> list[dict[str, Any]]:
+    """v0.315 every page of the built site, read as files (no browser): an internal link that leads nowhere is a problem.
+    Fast enough for hundreds of pages; external, tel:, mailto: and in-page links are not followed."""
+    bad: list[dict[str, Any]] = []
+    root = out.resolve()
+    for f in sorted(out.rglob("*.html")):
+        if f.name == "404.html":
+            continue
+        txt = f.read_text(encoding="utf-8", errors="ignore")
+        page = f.parent.relative_to(out).as_posix()
+        page = "home" if page in (".", "") else page
+        for href in set(HREF.findall(txt)):
+            if not href or re.match(r"^[a-z][a-z0-9+.-]*:", href, re.I) or href.startswith("//"):
+                continue
+            tgt = (root / href.lstrip("/")) if href.startswith("/") else (f.parent / href)
+            try:
+                tgt = tgt.resolve()
+                tgt.relative_to(root)
+            except (ValueError, OSError):
+                bad.append({"kind": "link", "text": f"Link '{href}' on {page} leaves the site folder", "sections": []})
+                continue
+            if tgt.is_dir():
+                tgt = tgt / "index.html"
+            if not tgt.exists():
+                bad.append({"kind": "link", "text": f"Broken link '{href}' on {page}", "sections": []})
+            if len(bad) >= limit:
+                return bad
+    return bad
 
 
 def _own_scores(r: dict[str, Any]) -> dict[str, int]:

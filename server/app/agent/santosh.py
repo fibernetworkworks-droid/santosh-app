@@ -260,8 +260,9 @@ def _api_ready(history: list[dict]) -> list[dict]:
 
 
 STATS_LONG: dict[str, int] = {"extended": 0, "wake_saved": 0, "deadline_extended": 0, "narrate": 0, "plan_now": 0,
-                               "plan_first": 0}   # v0.221 long-job counters
+                               "plan_first": 0, "auto_plan": 0}   # v0.221 long-job counters
 _LONG_TURN: set[str] = set()     # v0.221 turns that moved to the long-job caps mid-way (no plan when they began)
+_PROGRESS: dict[str, float] = {}  # v0.311 conv -> when its running turn last finished a tool (the deadline reads it)
 
 
 async def _with_deadline(coro, conversation_id: str, first: float, long: float):
@@ -272,7 +273,11 @@ async def _with_deadline(coro, conversation_id: str, first: float, long: float):
         done, _ = await asyncio.wait({task}, timeout=first)
         if not done and long > first:
             from . import goal as _g
-            if conversation_id in _LONG_TURN or _g.active_for(conversation_id) is not None:
+            # v0.311 a turn still MOVING (a tool finished in the last few minutes) is a long job too, plan or no
+            # plan: four ~270 s browser steps used to pass the 900 s cap at step 4 and die "bahut der se chal raha tha"
+            win = float(getattr(get_settings(), "agent_progress_window_s", 300) or 0)
+            moving = win > 0 and time.time() - _PROGRESS.get(conversation_id, 0.0) < win
+            if conversation_id in _LONG_TURN or _g.active_for(conversation_id) is not None or moving:
                 STATS_LONG["deadline_extended"] += 1
                 done, _ = await asyncio.wait({task}, timeout=long - first)
         if not done:
@@ -681,6 +686,53 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     return text
 
 
+AUTO_PLAN_NOTE = ("[System: tumne plan nahi likha tha, isliye server ne yeh plan bana diya: \"{goal}\" "
+                  "(1 step: poora kaam). Ab lambe kaam ki seema mil gayi hai - ruko mat. Chaho to `kaam_plan set` se "
+                  "asli steps likh do (jo ho chuka use done), warna isi tarah aage badho; kaam poora hone par seedha "
+                  "aakhri jawab do.]")
+
+
+def _auto_plan(conversation_id: str, tenant_id: str, state: dict, settings, ctx) -> str:
+    """v0.311 PLAN HAMESHA: a one-step plan written by the server (her request as the goal). The goal caps rise at
+    once, exactly like a kaam_plan set mid-turn. Returns the note for the model ('' when it could not be written)."""
+    from . import goal as _goal
+    from .breaker import FAILS_IN_ROW_GOAL
+    req = " ".join(str(state.get("request") or "").split())
+    if not req or req.startswith("["):
+        return ""
+    line = req if len(req) <= 160 else req[:157].rstrip() + "…"
+    try:
+        v = _goal.set_goal(tenant_id, conversation_id, line, [line],
+                           origin=getattr(ctx, "actor", "owner") or "owner")
+        _goal.mark_step(tenant_id, v["id"], 1, "current", conv=conversation_id)
+    except Exception:
+        log.exception("auto plan failed")
+        return ""
+    state["auto_plan"] = v["id"]
+    state["goal"] = v
+    b = state["breaker"]
+    b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
+    state["max_tokens"] = max(state.get("max_tokens") or 0, settings.agent_goal_max_tokens)
+    _LONG_TURN.add(conversation_id)
+    STATS_LONG["auto_plan"] += 1
+    return AUTO_PLAN_NOTE.format(goal=line.replace('"', "'"))
+
+
+def _aage_promised(text: str) -> bool:
+    from . import aage as _aage
+    return _aage.promised(text)
+
+
+def _close_auto_plan(tenant_id: str, conversation_id: str, g: dict, final_text: str) -> None:
+    from . import goal as _goal
+    try:
+        for x in _goal.steps_left(g):
+            _goal.mark_step(tenant_id, g["id"], x["n"], "done", conv=conversation_id)
+        _goal.finish(tenant_id, g["id"], "done", reason=" ".join(str(final_text or "").split())[:300])
+    except Exception:
+        log.exception("auto plan close failed")
+
+
 def _chat_tail(history: list[dict], keep: int = 8) -> str:
     """What the chat really GAVE: her own words and the tool results of the last few messages (v0.223). Hoola's own
     prose is never a source for itself - least of all the reply being checked, which sits at the end of history."""
@@ -765,13 +817,19 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if _g0:
             _extra += " " + " ".join(str(s.get("text") or "") for s in (_g0.get("steps") or []))
         adm = _admit.plan_for(state.get("request", ""), settings, extra_text=_extra)
+        if adm is not None:   # v0.311 a family this chat already works in stays in view (campaign follow-ups)
+            _sticky = await asyncio.to_thread(_admit.sticky_families, conversation_id)
+            if _sticky - adm.families:
+                adm.admit_families(_sticky)
+                adm.why.update({f: "chat" for f in _sticky})
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 
     def _system(fams) -> str:
         # v0.221 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
-        return system_prompt(settings.wa_dry_run, _ctxb, tenant_id,
+        text = system_prompt(settings.wa_dry_run, _ctxb, tenant_id,
                              families=None if (fams is None or not settings.prompt_slim) else fams) + tail
+        return text + (_admit.unloaded_note(text, adm) if adm is not None else "")
     sys_fams = frozenset(adm.families) if adm is not None else None
     system = _system(sys_fams)
     tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs
@@ -873,10 +931,25 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if not nudge and settings.agent_goal:
                 # v0.187 goal mode: text never ends a turn while the goal's steps are open
                 g = _goal.active_for(conversation_id)
+                if g is not None and state.get("auto_plan") == g.get("id") and _goal.steps_left(g) \
+                        and not _aage_promised(final_text):
+                    # v0.311 the server's own one-step plan closes with the model's real final answer (no
+                    # "text mein mat ruko" loop over a plan the model never wrote); a mere promise still goes on
+                    _close_auto_plan(tenant_id, conversation_id, g, final_text)
+                    g = None
                 if g is not None and _goal.steps_left(g) and state.get("goal_nudges", 0) < 8:
                     state["goal"] = g
                     state["goal_nudges"] = state.get("goal_nudges", 0) + 1
                     nudge = _goal.nudge_text(g)
+            if not nudge and ran_tools and getattr(settings, "agent_aage", True) \
+                    and conversation_id not in _stopped and not state.get("halted"):
+                # v0.311 AAGE BADHO: a text-only reply that only PROMISES more work ("ab doosra hissa dekh raha
+                # hoon") is not a finished job - before, the loop took it as the answer and nothing more ran
+                from . import aage as _aage
+                if state.get("aage", 0) < _aage.MAX_PER_TURN and _aage.promised(final_text):
+                    state["aage"] = state.get("aage", 0) + 1
+                    _aage.STATS["nudged"] += 1
+                    nudge = _aage.NUDGE
             if nudge:
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
@@ -908,6 +981,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _work(conversation_id, b["id"], shown, label, "start", args_in)
             try:
                 out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
+                _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
                 fine = not (isinstance(out, dict) and out.get("error"))
                 breaker.after(b["name"], fine)
                 content = _short(out)
@@ -984,6 +1058,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             # v0.189 one step asked for several pure look-ups: they run together (dsh's bounded pool, Claude Code's
             # concurrency-safe read batching), results commit strictly in the model's order. Her Rokiye still lands:
             # every _one watches for the halt itself and returns the stopped result.
+            breaker.batch(len(tblocks))   # v0.311 one batch of look-ups = one call against the cap
             outs = await asyncio.gather(*(_one(b) for b in tblocks), return_exceptions=True)
             for b, o in zip(tblocks, outs):
                 results.append(o if isinstance(o, dict) else
@@ -1032,6 +1107,18 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 state["plan_nudged"] = True
                 STATS_LONG["plan_now"] += 1
                 results.append({"type": "text", "text": _goal.PLAN_NOW})
+            elif (not state.get("goal") and state.get("plan_nudged") and not state.get("auto_plan")
+                  and getattr(settings, "agent_auto_plan", True)
+                  and ran_steps >= int(getattr(settings, "agent_plan_after_steps", 4) or 0) + 3
+                  and (getattr(ctx, "actor", "owner") or "owner") in ("owner", "goal", "routine")
+                  and not any(b.get("name") == "kaam_plan" for b in tblocks)
+                  and _goal.active_for(conversation_id) is None):
+                # v0.311 PLAN HAMESHA: the plan was asked for and the model still works without one. Everything that
+                # keeps a long job alive (80 steps / 150 calls / 45 min, background rounds, restart pickup, her card)
+                # only exists once a plan exists - so the SERVER writes it now instead of hoping the model will.
+                note = _auto_plan(conversation_id, tenant_id, state, settings, ctx)
+                if note:
+                    results.append({"type": "text", "text": note})
         history.append({"role": "user", "content": results})
         if state["breaker"].rescue_note:   # v0.187 the replan rescue rides with the results, as data for the model
             note = state["breaker"].rescue_note

@@ -18,6 +18,12 @@ SITE_TOOLS = [
         "message (or ask_form). action=answer: site + answers. action=plan_ok: ONLY when she clearly said haan to the plan "
         "-> 3 looks are made (takes a few minutes; the cards update by themselves, don't poll). action=look: site + index "
         "(0-2) she chose (+ colors_from index for 'pehle wala, doosre ke rang') -> building starts; she watches the live board. "
+        "BIG SITES (any size, up to 150 pages): action=new + page_count (e.g. 100) when she asks for a big / complete / "
+        "N-page site -> Opus plans the whole site map first (menu groups, sub pages, and LISTS such as products, areas, "
+        "courses, doctors, posts: one designed template, one page per item made by code, no AI cost per item); the plan "
+        "card comes in a minute or two. action=grow + site (+ page_count, + instruction = what to add) = make or grow the "
+        "site map of a site she has (a built site then builds only the new parts). Items of a list are added / removed "
+        "with action=change in her words. "
         "action=change: site + instruction (her words: 'hero mein meri photo', 'rang halka', 'price list hatao', 'Hindi "
         "version') -> only those parts are rebuilt, new version. action=photo: site + file_id (+ about: 'shop front', "
         "'owner'). action=undo: her last own-hand edit (words / link / photo / colours she changed in the preview's Edit "
@@ -45,7 +51,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "booking", "app", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "booking", "app", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -54,6 +60,7 @@ SITE_TOOLS = [
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
          "instruction": {"type": "string"}, "file_id": {"type": "string"}, "about": {"type": "string"},
          "pages": {"type": "array", "items": {"type": "string"}}, "client": {"type": "string"},
+         "page_count": {"type": "integer", "description": "pages she wants in total (10-150) for a big site"},
          "free": {"type": "boolean"}, "second": {"type": "string", "enum": ["", "en", "hi", "mr", "hinglish"]},
          "lead": {"type": "string"}, "yes": {"type": "boolean"}, "format": {"type": "string", "enum": ["zip", "react"]}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
@@ -98,9 +105,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     if action == "new":
         v = S.new(t, str(a.get("brief") or ""), conv, str(a.get("name") or ""), "", str(a.get("goal") or ""),
                   str(a.get("style") or ""), a.get("answers") if isinstance(a.get("answers"), dict) else None,
-                  str(a.get("client") or ""), "" if _owner(ctx) else str(ctx.actor))
+                  str(a.get("client") or ""), "" if _owner(ctx) else str(ctx.actor), int(a.get("page_count") or 0))
         return {k: v.get(k) for k in ("id", "number", "name", "status", "field_label", "goal_label", "plan", "questions",
-                                      "understood", "say")}
+                                      "understood", "say", "mapping")}
+    if action == "grow":
+        v = S.grow(t, site, int(a.get("page_count") or 0), str(a.get("instruction") or a.get("brief") or ""))
+        return {k: v.get(k) for k in ("id", "number", "status", "mapping", "say")}
     if action == "answer":
         return S.answer(t, site, a.get("answers") if isinstance(a.get("answers"), dict) else {})
     if action == "plan_ok":

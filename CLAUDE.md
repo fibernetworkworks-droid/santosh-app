@@ -129,9 +129,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.313.0 (pubspec 0.313.0+353). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.315.0 (pubspec 0.315.0+355). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (17 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.315 BADI WEBSITE (`site/sitemap.py`): big asks / page_count / action=grow -> Opus site map (40 designed pages, menu groups,
+  parents) + LISTS = one template -> a page per item by code (150 total); mega menu, breadcrumbs, search, link scan of every page.
+- v0.314 AAGE BADHO + SAHI AUZAAR 2 (built as 0.311) (`docs/LONG_TASK_RCA.md`): a promise line never ends a job (`agent/aage.py`), a parallel batch = 1 call
+  (MAX_CALLS 48), a moving turn keeps the long deadline, the server writes the plan, full tool descriptions (cut 140 -> 1200), campaign family, unloaded tools named.
 - v0.313 HOOLA PRINT: PDFs like Claude's = designed HTML printed by Chromium (`docstudio/htmlpdf.py`): Opus picks the look, measured
   page system, tagged PDF + bookmarks + lang, margin-box bands in our fonts, charts / captions / footnotes, print page has no script / network.
 - v0.312 ARENA SCREEN (console `arena.js`, sidebar Arena, owner only via console me `arena`): start / stop runs with a cost estimate,

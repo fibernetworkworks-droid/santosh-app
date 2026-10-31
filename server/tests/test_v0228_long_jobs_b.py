@@ -60,7 +60,7 @@ def test_big_ask_gets_plan_first_short_ask_does_not(gz, monkeypatch):  # noqa: F
     assert "Sabse PEHLA" not in _texts(brain)
 
 
-def test_no_plan_after_six_steps_asks_for_it_once(gz, monkeypatch):  # noqa: F811
+def test_no_plan_after_four_steps_asks_for_it_once(gz, monkeypatch):  # noqa: F811
     conv = gz["conv"]
     script = [([tu(i, "kaam_status", q=f"kaam {i}")], "tool_use") for i in range(1, 9)]
     script.append(([txt("Ho gaya.")], "end_turn"))
@@ -71,7 +71,7 @@ def test_no_plan_after_six_steps_asks_for_it_once(gz, monkeypatch):  # noqa: F81
     assert seen.count("par plan nahi likha") >= 1
     # asked exactly once (the message rides in every later call's history, so count the calls that first saw it)
     first = next(i for i, c in enumerate(brain.seen) if "par plan nahi likha" in str(c["messages"]))
-    assert first == 6                                  # after the 6th tool step, not at step 24
+    assert first == 4                                  # v0.311: after the 4th tool step (was 6), not at step 24
     assert sum(str(c["messages"][-1]).count("par plan nahi likha") for c in brain.seen) == 1
 
 
@@ -186,5 +186,5 @@ def test_phone_and_console_show_report_and_continue():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.313.0"
-    assert "0.313.0+353" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.315.0"
+    assert "0.315.0+355" in (ROOT / "pubspec.yaml").read_text()

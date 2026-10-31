@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     agent_steer: bool = True                # her message sent mid-job reaches the RUNNING job at its next step
     agent_goal_ask_on_limit: bool = True    # rounds / minutes used up = "Aage badhaun?" (her yes = a fresh budget), not 'failed'
     agent_plan_early: bool = True           # v0.228 a clearly big ask gets "plan first" up front; no plan after N steps = asked again
-    agent_plan_after_steps: int = 6         # ... tool steps without a kaam_plan before the plan is asked for (was only at 24)
+    agent_plan_after_steps: int = 4         # ... tool steps without a kaam_plan before the plan is asked for (v0.311: 6 -> 4)
+    agent_auto_plan: bool = True            # v0.311 PLAN HAMESHA: still no plan 3 steps after the ask = the server writes a one-step plan
     chat_thinking: str = "goal"             # v0.232 PHASE C: Claude thinks out loud (adaptive) - goal = only while a long job runs, on = every turn, off = never
     hard_detect: bool = True                # v0.272 SOCH KE JAWAB: spot hard reasoning asks (agent/hard.py)
     hard_thinking: bool = True              # v0.272 a hard ask thinks (adaptive) from its first call, like a long job
@@ -50,6 +51,8 @@ class Settings(BaseSettings):
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
+    agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
+    agent_progress_window_s: int = 300      # v0.311 a turn that finished a tool this recently gets the long-job deadline (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
     agent_parallel_tools: bool = True       # v0.189 a step asking several pure look-ups (search/weather/status) runs them together; everything else stays serial
     # v0.191 HARNESS-2: step-admitted tool subsets (dsh / Claude Code pattern) - the model of one turn sees only the
@@ -211,6 +214,10 @@ class Settings(BaseSettings):
     pexels_api_key: str = ""               # v0.292 optional licensed stock photos (official Pexels API) when the image models fail
     site_look_sections: int = 3            # v0.292 sections of the home page each of the 3 looks shows (hero + the next ones)
     site_critique_pages: int = 6           # v0.292 pages Opus reviews from their real screenshots (site_critique=all)
+    site_max_pages: int = 150              # v0.315 BADI WEBSITE: most pages one site may have (designed + list items + legal)
+    site_max_ai_pages: int = 40            # v0.315 most pages with their OWN designed sections (each section = one Opus call)
+    site_parallel_big: int = 5             # v0.315 sections written at the same time on a big site
+    site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
     site_arena_max_inr: float = 3000       # v0.307 Design Arena: rupee ceiling of one run (each site ~Rs 100-300 with Opus)
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
