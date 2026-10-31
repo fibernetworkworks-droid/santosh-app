@@ -838,3 +838,49 @@ b,strong{font-weight:600}
 /* a bare <small> took the browser's "smaller" (0.83 of its parent): the brand colour names came out 10.4px and an editor
    hint 11.7px - below the 12.5px floor. Classes that size their own <small> still win. */
 small{font-size:12.5px}
+
+/* ---------- v0.325 PHASE 3: THE SIX TOOLS (design audit). One studio layout: controls on the left (380px), results on the right,
+   one sticky bar with the price in the main button; the sidebar is the only way between tools (the tab rows are gone). */
+.gen{grid-template-columns:minmax(0,380px) minmax(0,1fr)}
+.pbody{padding:16px;gap:12px}
+.pfoot{padding:12px 16px max(14px,env(safe-area-inset-bottom,0px))}
+.lbl{font-size:14px;font-weight:500;color:var(--ink)}
+/* Video: Basics open, the rest folded under More settings with a summary of what is set */
+.vmore{padding:0 12px 12px}
+.vmore summary{color:var(--ink);font-weight:500}
+.vmore[open]{display:flex;flex-direction:column;gap:10px}
+.vmore[open] summary{margin-bottom:-2px}
+.vsum{margin-left:auto;font-size:12.5px;font-weight:400;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.vmore[open] .vsum{display:none}
+/* status in one word on every clip */
+.res .rt{display:flex;align-items:center;gap:8px;min-width:0}
+.stchip{flex:none;height:22px;padding:0 8px;border-radius:99px;font-size:12.5px;font-weight:500;display:inline-flex;align-items:center;margin-left:auto}
+.stchip.dr{background:var(--sunk);color:var(--mut)}
+.stchip.mk{background:var(--priSoft);color:var(--priInk)}
+.stchip.ok{background:var(--okSoft);color:color-mix(in srgb,var(--ok) 78%,var(--ink))}
+.stchip.na{background:var(--warnSoft);color:color-mix(in srgb,var(--warn) 78%,var(--ink))}
+/* one calm notice for everything that failed */
+.vnote{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--surface)}
+.vnote>.ic{color:color-mix(in srgb,var(--warn) 78%,var(--ink));margin-top:2px;flex:none}
+.vnote b{display:block;font-weight:600}
+.vnote small{display:block;color:var(--mut);margin-top:2px}
+/* Image: every style visible in a 4-column grid (the row was cut at "Produ…") */
+.stys{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;gap:10px}
+.sty .thumb{width:100%;height:auto;aspect-ratio:1}
+/* Editor: the empty player is the drop zone */
+.framemsg.drop{width:100%;border:0;cursor:pointer;color:#fff;font:inherit}
+.framemsg.drop b{font-size:15px;font-weight:600}
+.framemsg.drop:hover,.framemsg.drop.over{background:radial-gradient(120% 90% at 50% 20%,#3a3070,#0c0b16)}
+.framemsg.drop.over{outline:2px dashed rgb(255 255 255 / .6);outline-offset:-12px}
+@media (max-width:900px){.gen{grid-template-columns:1fr}}
+/* names are never cut: the model / engine / setting names wrap to a second line (the audit's "Hoola Auto · best qual…") */
+.panel .prow b{white-space:normal;overflow:visible;line-height:1.35}
+.prow2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.prow2 .prow{min-width:0;padding:10px}
+.prow2 .prow .pi{display:none}
+/* nine styles = a 3 x 3 grid, labels may wrap ("Product studio") */
+.stys{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sty small{white-space:normal;line-height:1.3}
+.vmore:not([open]){padding-bottom:0}
+/* a voice is a colour mark with its initial, not a drawn face that does not match the voice (her own Hoola voice keeps its wave) */
+.opt .thumb .finit b{font-size:18px}
