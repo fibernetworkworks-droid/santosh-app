@@ -130,11 +130,24 @@ fun LiveRowsBlock(coll: String) = RowsSection(coll)
 
 @Composable
 private fun RowsSection(coll: String) {
-    val rows = liveRows(coll)
+    val all = liveRows(coll)
     val fields = Db.fields(coll)
+    // v0.319 search (any field) + a status filter, on the phone (works offline on the cached rows)
+    var q by remember(coll) { mutableStateOf("") }
+    var st by remember(coll) { mutableStateOf("") }
+    val opts = fields.firstOrNull { it.s("key") == "status" }?.strings("options").orEmpty()
+    val rows = all.filter { r -> (st.isEmpty() || r.s("status") == st) && (q.isBlank() || r.o.toString().lowercase().contains(q.trim().lowercase())) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SectionHeader(Db.label(coll) + if (rows.isNotEmpty()) " (${rows.size})" else "")
+        SectionHeader(Db.label(coll) + if (all.isNotEmpty()) " (${all.size})" else "")
         if (Auth.isStaff && Db.rule(coll, "read") == "own") Small(Strings.staffView)
+        if (all.size > 4) {
+            OutlinedTextField(value = q, onValueChange = { q = it.take(60) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(Strings.search) }, shape = RoundedCornerShape(H.look.radius * 0.7f))
+            if (opts.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip(Strings.all, selected = st.isEmpty()) { st = "" }
+                opts.forEach { o -> Chip(o, selected = st == o) { st = if (st == o) "" else o } }
+            }
+        }
         if (rows.isEmpty()) Small(Strings.nothingYet)
         rows.take(60).forEach { r -> RowCard(coll, r, fields) }
     }
@@ -142,21 +155,38 @@ private fun RowsSection(coll: String) {
 
 @Composable
 private fun RowCard(coll: String, r: Item, fields: List<Item>) {
-    val head = fields.firstOrNull { it.s("type") != "choice" && it.s("type") != "yes_no" && r.has(it.s("key")) }
+    val c = ctx()
+    val head = fields.firstOrNull { it.s("type") in listOf("text", "long_text") && r.has(it.s("key")) && it.s("key") != "utr" }
     HCard {
         Title(head?.let { r.s(it.s("key")) } ?: Db.label(coll), maxLines = 3)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             val status = r.s("status")
             if (r.b("pending")) Pill(Strings.sending, "warn") else if (status.isNotEmpty()) Pill(status, statusKind(status))
+            val paid = r.s("paid")
+            if (paid.isNotEmpty() && paid != "No") Pill(paid, if (paid == "Verified") "ok" else "warn")
             if (r.has("total") && r.n("total") > 0) Title(rupees(r.n("total")))
         }
-        fields.filter { it !== head && it.s("key") != "status" && it.s("key") != "total" && r.has(it.s("key")) }.take(6).forEach { f ->
-            Small(f.s("label") + ": " + r.s(f.s("key")), maxLines = 4)
+        fields.filter { it.s("type") == "photo" && r.has(it.s("key")) }.take(2).forEach { f ->
+            RemotePhoto(r.s(f.s("key")), Modifier.fillMaxWidth().padding(top = 6.dp), f.s("label"))
         }
-        val st = fields.firstOrNull { it.s("key") == "status" }
-        if (Auth.isStaff && st != null && !r.b("pending")) {
+        fields.filter { it !== head && it.s("key") !in listOf("status", "total", "paid") && it.s("type") != "photo" && r.has(it.s("key")) }
+            .take(6).forEach { f ->
+                if (f.s("type") == "location") {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Small(f.s("label") + ": " + r.s(f.s("key")))
+                        Btn(Strings.openMap, kind = BtnKind.Ghost, small = true) { Act.maps(c, r.s(f.s("key"))) }
+                    }
+                } else Small(f.s("label") + ": " + r.s(f.s("key")), maxLines = 4)
+            }
+        // v0.319 the customer's own UPI order: pay to the business's UPI ID, then "I have paid" + the UPI reference
+        if (!Auth.isStaff && coll == Db.orderList && !r.b("pending") && r.s("pay") == "UPI" && r.s("paid", "No") == "No"
+            && r.s("status") != "Cancelled") {
+            PaidBox(coll, r)
+        }
+        val stf = fields.firstOrNull { it.s("key") == "status" }
+        if (Auth.isStaff && stf != null && !r.b("pending")) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                st.strings("options").forEach { opt ->
+                stf.strings("options").forEach { opt ->
                     Chip(opt, selected = r.s("status") == opt) { if (r.s("status") != opt) Db.update(coll, r.id, mapOf("status" to opt)) }
                 }
             }

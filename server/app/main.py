@@ -8712,12 +8712,63 @@ async def app_api_delete_me(app_key: str, request: Request):
 
 
 @app.get("/api/app-api/{app_key}/c/{coll}")
-async def app_api_rows(app_key: str, coll: str, request: Request):
+async def app_api_rows(app_key: str, coll: str, request: Request, q: str = "", status: str = "", limit: int = 200,
+                       offset: int = 0):
+    """v0.319 + q (search any field), status filter, limit / offset paging."""
     from .appmaker import backend as BE
 
     def go():
         r, w = _be_app(app_key, request)
-        return {"rows": BE.rows(r, coll, w)}
+        return {"rows": BE.rows(r, coll, w, limit, q, status, offset)}
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/files")
+async def app_api_upload(app_key: str, request: Request):
+    """v0.319 a photo from the app (raw image body, 6 MB at most): stored re-encoded (no EXIF / GPS), answers its id."""
+    from .appmaker import backend as BE
+    raw = await request.body()
+    ip = _ip(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.upload(r, w, raw, ip)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/files/{fid}")
+async def app_api_file(app_key: str, fid: str, request: Request):
+    from .appmaker import backend as BE
+    from .site import webapp as W
+    try:
+        r, w = await asyncio.to_thread(_be_app, app_key, request)
+        f = await asyncio.to_thread(BE.file_for, r, fid, w)
+    except W.AppError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400",
+                                                             "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/app-api/{app_key}/updates")
+async def app_api_updates(app_key: str, request: Request, since: str = ""):
+    """v0.319 the app's background check: her rows that moved (customer) / new orders (staff) since `since`."""
+    from .appmaker import backend as BE
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.updates(r, w, since)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/c/{coll}/{row_id}/paid")
+async def app_api_paid(app_key: str, coll: str, row_id: str, request: Request):
+    """v0.319 the customer says she paid by UPI (+ the UPI reference): the owner checks her own bank, Hoola never sees money."""
+    from .appmaker import backend as BE
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.mark_paid(r, coll, row_id, str(body.get("utr") or ""), w)
     return await asyncio.to_thread(_be_call, go)
 
 
@@ -8806,6 +8857,21 @@ async def apps_data_rows(ref: str, coll: str, tenant: str = Depends(current_tena
 async def apps_data_update(ref: str, coll: str, row_id: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker import backend as BE
     return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_update(_be_owner(tenant, ref), coll, row_id, body))
+
+
+@app.get("/api/apps/{ref}/files/{fid}", dependencies=[Depends(require_key)])
+async def apps_data_file(ref: str, fid: str, tenant: str = Depends(current_tenant)):
+    """v0.319 a photo her app's users sent (for her data view)."""
+    from .appmaker import backend as BE
+    from .site import webapp as W
+    try:
+        r = await asyncio.to_thread(_be_owner, tenant, ref)
+        f = await asyncio.to_thread(BE.file_for, r, fid, W.Who(owner=True))
+    except (W.AppError, HTTPException):
+        raise HTTPException(404, "not found")
+    except Exception:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 
 @app.get("/api/apps/{ref}/members", dependencies=[Depends(require_key)])

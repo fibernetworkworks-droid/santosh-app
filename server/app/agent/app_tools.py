@@ -15,7 +15,7 @@ APP_TOOLS = [
         "expenses, fitness, meditation, recipes, free games / quiz, photo editor, weather, rides like Uber, food delivery like "
         "Zomato, quick commerce, multi-seller shopping, buy & sell, travel / hotel / event tickets, jobs, language learning, "
         "online courses, property portal, doctor consults, home services, payments: 33 product kinds) - and show her EVERY "
-        "screen as a tap-through prototype BEFORE anything is built. brief = HER EXACT WORDS, never your summary and never her "
+        "screen as a tap-through prototype BEFORE anything is built. BUILT APPS HAVE THEIR OWN BACKEND: action=data (app, coll, row, set) changes a row for her (\"order accept karo\" -> set {status: Accepted}; paid=Verified ONLY when she says the money is in her bank), action=role (member, role) makes an account staff; read with app_dekho what=data / members. brief = HER EXACT WORDS, never your summary and never her "
         "own business added in (her business details go in by themselves only when the app is for her business). Don't pass "
         "goal unless she named the kind of app; a goal that doesn't fit her words is ignored. If it answers 'Pakka karne ke "
         "liye ek sawaal', ask her exactly that and call again with her answer in brief (or answers {sure: true} if she says "
@@ -53,6 +53,9 @@ APP_TOOLS = [
         "Never invent prices, phone numbers or reviews ([blank] instead); never card / CVV / UPI PIN / password fields; payments = "
         "UPI to her own UPI ID. iPhone build and store publishing come in later versions. (* owner only)" "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
         "action=data (app, coll, row, set) changes a row for her, e.g. an order's status (\"order accept karo\" -> set {status: Accepted}); "
+        "v0.319: a customer's UPI \"I have paid\" claim reads paid=\"Customer says paid\" + utr; ONLY when she says she saw the money in "
+        "her own bank set {paid: Verified} (never on the customer's word, never by yourself). Photos / locations her app's users sent are "
+        "fields of the rows (a photo = a file id she sees in the app data view); "
         "action=role (app, member, role staff|admin|member) makes an account staff (a staff app's new account sees nothing until then). "
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
@@ -70,7 +73,7 @@ APP_TOOLS = [
          "role": {"type": "string", "enum": ["member", "staff", "admin"]}},
          "required": ["action"]}},
     {"name": "app_dekho", "description": (
-        "Read her app designs (nothing changes). what=apps | app (app: board, screens, checks, preview link, versions) | "
+        "Read her app designs (nothing changes). what=data (app, coll: the real rows her app's users made) | members (app) | apps | app (app: board, screens, checks, preview link, versions) | "
         "checks (app) | spec (app: the frozen design contract: tokens, tabs, every screen's purpose / data / actions) | "
         "library (q or industry: business types with their app goal) | brief (field, goal, style: the full ready app brief) | "
         "understand (q: what a short ask means: business type, app goal, 3 looks) | design_system (the menu she can pick from: "
