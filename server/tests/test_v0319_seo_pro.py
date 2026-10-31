@@ -297,7 +297,7 @@ def test_weekly_index_check_drift_alerts_crux_shots_indexnow(seo):
     v = desk.desk_view(T)
     assert v["index"]["checked"] and len(v["crux"]["weeks"]) == 3 and v["pro"]["health"]["total"]
     assert set(v["shots"]) == {"mobile", "desktop"} and v["shots"]["mobile"]["img"].startswith("data:image/")
-    assert v["latest"]["cwv"]["lcp_parts"][0] == {"part": "timetofirstbyte", "label": "Server ka pehla jawab (TTFB)", "ms": 900}
+    assert v["latest"]["cwv"]["lcp_parts"][0] == {"part": "timetofirstbyte", "label": "Server response (TTFB)", "ms": 900}
     assert all(x["fail_check"] and x["signal"] and x["principle"] for x in desk.roadmap(T))
     title, md = desk.report_markdown(T, sid)
     assert "# Website health" in md and "Early sign:" in md and "URL Inspection" in md
@@ -341,10 +341,10 @@ def test_crux_and_lcp_parts_shapes(seo):
     assert S.lcp_parts({"audits": {"largest-contentful-paint-element": {"details": {"items": [{}, {"items": [
         {"phase": "TTFB", "timing": 500}, {"phase": "Load Delay", "timing": 100}, {"phase": "Load Time", "timing": 200},
         {"phase": "Render Delay", "timing": 50}]}]}}}}) == [
-        {"part": "ttfb", "label": "Server ka pehla jawab (TTFB)", "ms": 500},
-        {"part": "loaddelay", "label": "Badi photo ka der se shuru hona (load delay)", "ms": 100},
-        {"part": "loadtime", "label": "Badi photo download (load time)", "ms": 200},
-        {"part": "renderdelay", "label": "Dikhne mein der (render delay)", "ms": 50}]
+        {"part": "ttfb", "label": "Server response (TTFB)", "ms": 500},
+        {"part": "loaddelay", "label": "Main picture starts late", "ms": 100},
+        {"part": "loadtime", "label": "Main picture download", "ms": 200},
+        {"part": "renderdelay", "label": "Shown late (render delay)", "ms": 50}]
     assert S.lcp_parts({}) == []
     assert "LCP mein sabse zyada samay" in S.pagespeed(T)["say"]
 

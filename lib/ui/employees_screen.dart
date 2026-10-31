@@ -532,7 +532,7 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
 
 
 // ------------------------------------------------------------------ v0.319 SEO PRO cards
-Widget _bar(String label, num? score, num max) {
+Widget _bar(String label, num? score, num max, {String unit = ''}) {
   final v = score == null || max <= 0 ? 0.0 : (score / max).clamp(0, 1).toDouble();
   return Padding(
     padding: const EdgeInsets.only(top: 7),
@@ -546,8 +546,8 @@ Widget _bar(String label, num? score, num max) {
         ),
       ),
       SizedBox(
-          width: 52,
-          child: Text(score == null ? '–' : (max == 100 ? '$score' : '$score/$max'),
+          width: unit.isEmpty ? 52 : 64,
+          child: Text(score == null ? '–' : (unit.isNotEmpty ? '$score $unit' : (max == 100 ? '$score' : '$score/$max')),
               textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, color: C.muted))),
     ]),
   );
@@ -598,7 +598,7 @@ class _BotsCard extends StatelessWidget {
         const SizedBox(height: 4),
         const Text('Search bots decide if ChatGPT, Claude or Perplexity can show you. Blocking training bots costs nothing in search.',
             style: TextStyle(color: C.muted, fontSize: 12)),
-        for (final b in bots)
+        for (final b in bots.where((b) => _s(b['kind']) != 'training'))
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Row(children: [
@@ -609,6 +609,13 @@ class _BotsCard extends StatelessWidget {
                   b['allowed'] == true ? C.ok : (_s(b['kind']) == 'training' ? C.muted : C.bad)),
             ]),
           ),
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+              'Training-only bots: ${bots.where((b) => _s(b['kind']) == 'training' && b['allowed'] == true).length} allowed, '
+              '${bots.where((b) => _s(b['kind']) == 'training' && b['allowed'] != true).length} blocked (your choice; no effect on search).',
+              style: const TextStyle(color: C.muted, fontSize: 12)),
+        ),
       ]),
     );
   }
@@ -661,7 +668,7 @@ class _SpeedCard extends StatelessWidget {
                     ? 'Speed appears after the weekly check.'
                     : 'Main content shows in ${((cwv['lcp_ms'] as num) / 1000).toStringAsFixed(1)} s (good is 2.5 s or less).',
                 style: const TextStyle(fontSize: 12.5)),
-            for (final p in parts) _bar(_s(p['label']), p['ms'] as num?, mx),
+            for (final p in parts) _bar(_s(p['label']), p['ms'] as num?, mx, unit: 'ms'),
           ]),
         ),
         if (img != null) ...[

@@ -715,22 +715,22 @@ def eeat(pages: list[dict[str, Any]], biz: dict[str, Any]) -> dict[str, Any]:
     text = " ".join((p.get("text_sample") or "")[:2500].lower() for p in ok[:80])
     types = set(t for p in ok for t in p.get("schema_types") or [])
     sig = {
-        "experience": [("Asli photo / kaam ki misaal (gallery, portfolio, case study)", bool(re.search(r"gallery|portfolio|case-stud|our-work|projects", paths))),
-                       ("Graahakon ke review / testimonials", bool(re.search(r"testimonial|review|graahak", paths + " " + text)) or "Review" in types or "AggregateRating" in types),
-                       ("Kitne saal ka anubhav likha hai", bool(re.search(r"(since|se)\s+(19|20)\d\d|\d+\+?\s+(years|saal)", text)))],
+        "experience": [("Real photos / examples of work (gallery, portfolio)", bool(re.search(r"gallery|portfolio|case-stud|our-work|projects", paths))),
+                       ("Customer reviews / testimonials", bool(re.search(r"testimonial|review|graahak", paths + " " + text)) or "Review" in types or "AggregateRating" in types),
+                       ("Years in business stated", bool(re.search(r"(since|se)\s+(19|20)\d\d|\d+\+?\s+(years|saal)", text)))],
         "expertise": [("About page", bool(re.search(r"about|hamare-baare|parichay", paths))),
-                      ("Lekh par lekhak ka naam", any(p.get("author") for p in ok)),
-                      ("Team / doctor / expert ka parichay", bool(re.search(r"team|doctor|expert|founder|staff", paths))),
-                      ("Gehri jaankari wale pages (800+ shabd)", sum(1 for p in ok if int(p.get("words") or 0) >= 800) >= 2)],
+                      ("Author names on articles", any(p.get("author") for p in ok)),
+                      ("Team / expert profiles", bool(re.search(r"team|doctor|expert|founder|staff", paths))),
+                      ("In-depth pages (800+ words)", sum(1 for p in ok if int(p.get("words") or 0) >= 800) >= 2)],
         "authority": [("Organization / LocalBusiness schema", bool(types & {"Organization", "LocalBusiness"}) or any(_LOCAL_TYPES.search(t) for t in types)),
-                      ("Social / directory profiles (sameAs)", bool(biz.get("same_as")) or any(p.get("sameas") for p in ok)),
-                      ("Bahar ke bharosemand sources ke links", sum(int(p.get("ext_links") or 0) for p in ok) >= 3),
+                      ("Social / directory profiles linked (sameAs)", bool(biz.get("same_as")) or any(p.get("sameas") for p in ok)),
+                      ("Links to trusted outside sources", sum(int(p.get("ext_links") or 0) for p in ok) >= 3),
                       ("Awards / certificates / registrations", bool(re.search(r"award|certified|certificate|iso\s?\d|registered|gst|fssai|msme", text)))],
         "trust": [("Contact page", any(p.get("is_contact") for p in ok)),
-                  ("Phone number dikhta hai", any(p.get("phones") for p in ok)),
-                  ("Pura pata", bool(biz.get("pin")) and str(biz.get("pin")) in text),
+                  ("Phone number shown", any(p.get("phones") for p in ok)),
+                  ("Full address", bool(biz.get("pin")) and str(biz.get("pin")) in text),
                   ("Privacy policy", "privacy" in paths),
-                  ("Poori site https", bool(ok) and all(p.get("https") for p in ok)),
+                  ("Whole site on https", bool(ok) and all(p.get("https") for p in ok)),
                   ("Refund / terms page", bool(re.search(r"refund|terms|return", paths)))],
     }
     weights = {"experience": 20, "expertise": 25, "authority": 25, "trust": 30}
@@ -769,7 +769,7 @@ def local_score(pages: list[dict[str, Any]], biz: dict[str, Any], nap_issues: li
     onp += 8 if city and city in blob else 0
     onp += 6 if any(p.get("is_contact") for p in ok) else 0
     onp += 6 if any(p.get("map") for p in ok) else 0
-    parts.append({"key": "onpage", "label": "Shehar + contact on the site", "max": 20, "score": onp if city else None})
+    parts.append({"key": "onpage", "label": "City + contact page on the site", "max": 20, "score": onp if city else None})
     parts.append({"key": "nap", "label": "Same name / address / phone", "max": 15,
                   "score": 15 - 7 * sum(1 for i in nap_issues if i["level"] == "warn") - 3 * sum(1 for i in nap_issues if i["level"] == "info")
                   if biz.get("phone") or biz.get("pin") else None})
@@ -783,7 +783,7 @@ def local_score(pages: list[dict[str, Any]], biz: dict[str, Any], nap_issues: li
     got = [p for p in parts if p["score"] is not None]
     mx = sum(p["max"] for p in got)
     return {"total": round(100 * sum(p["score"] for p in got) / mx) if mx else None, "parts": parts,
-            "measured": mx, "note": "Google profile aur reviews tab gine jaate hain jab Hoola profile padh sake (GBP API)."}
+            "measured": mx, "note": "Google profile and reviews count once Hoola can read your profile (Google Business Profile API)."}
 
 
 def site_checks(pages: list[dict[str, Any]], biz: dict[str, Any], services: list[str] | None = None, home: str = "",

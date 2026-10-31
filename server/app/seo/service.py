@@ -755,11 +755,11 @@ def pagespeed(tenant: str, site: str = "", url: str = "", strategy: str = "mobil
     return {**out, "say": say, "shot": shot if shot.startswith("data:image/") and len(shot) < 400_000 else ""}
 
 
-LCP_PART_NAMES = {"ttfb": "Server ka pehla jawab (TTFB)", "timetofirstbyte": "Server ka pehla jawab (TTFB)",
-                  "loaddelay": "Badi photo ka der se shuru hona (load delay)", "resourceloaddelay": "Badi photo ka der se shuru hona (load delay)",
-                  "loadtime": "Badi photo download (load time)", "resourceloadduration": "Badi photo download (load time)",
-                  "loadduration": "Badi photo download (load time)", "renderdelay": "Dikhne mein der (render delay)",
-                  "elementrenderdelay": "Dikhne mein der (render delay)"}
+LCP_PART_NAMES = {"ttfb": "Server response (TTFB)", "timetofirstbyte": "Server response (TTFB)",
+                  "loaddelay": "Main picture starts late", "resourceloaddelay": "Main picture starts late",
+                  "loadtime": "Main picture download", "resourceloadduration": "Main picture download",
+                  "loadduration": "Main picture download", "renderdelay": "Shown late (render delay)",
+                  "elementrenderdelay": "Shown late (render delay)"}
 
 
 def lcp_parts(lh: dict) -> list[dict]:
