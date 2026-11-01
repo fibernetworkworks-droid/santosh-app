@@ -13548,3 +13548,34 @@ actions are on `tpm` **alone**, and there is a test that `erp`, `crm_arch` and `
 ### Files
 `server/app/enterprise/tpm.py` (new) · `server/app/agent/enterprise_tools.py` ·
 `server/tests/test_v0373_tpm_sums.py` (15 tests, worked examples computed by hand).
+
+## v0.375.0 PROOF (Phase 5 of "any world-complex website": a 100-page website as numbers)
+Owner: "START PHASE 5" (the plan's step: "a 100-page test business added to the Arena, so we measure build time, cost,
+quality and broken links against Lovable and others before calling it done").
+- `server/app/site/proof.py`, table `site_arena_proofs` (kind hoola | rival, brief, builder, url, site, version, status,
+  stage, card). BIG_SET v1 = five fixed 100-page businesses with their lists in the facts: Sanjeevani hospital (18
+  departments, 24 doctors, 20 areas; blog, Hindi, appointments app), Vidyapeeth Classes (16 courses, 10 centres, 16
+  faculty; blog, Hindi, marks portal), Annapurna Mithai (60 PRICED products, 8 branches; shop, blog, Hindi), Shubh Griha
+  Developers (12 projects, 20 localities; blog, Marathi, site-visit app), Jaldi Fiber Net (8 plans, 40 areas; blog,
+  Marathi, complaints app). Seeded and stable.
+- `build_big`: exactly an owner's path as the arena tenant (S.new pages=100 -> site map -> approve -> looks -> first
+  look -> build -> checks), then the features through her own functions (shop_setup from her priced lists,
+  design_app, blog_publish x3, set_languages), each stopped by the rupee cap (SITE_ARENA_MAX_INR) or her Stop.
+- `card` reads the FILES and records: pages planned vs built (main + each /<lang>/), `checks.link_scan` over every
+  page, `missing_files` (every local src / srcset), the arena judge on a sample of page TYPES (home, a list item, a blog
+  post, the shop, designed pages) from the checks' own screenshots, check scores, `features` verified in the output
+  (shop + cart script, blog + feed + BlogPosting, hreflang + language folders, sitemap URLs, site search, breadcrumbs,
+  grouped menu, /admin/ + app script), `file_stats` (pages readable without JavaScript, one h1, JSON-LD, HTML size),
+  rupees / minutes in total and per page.
+- RIVAL: `crawl` = one public host, breadth first, up to 150 pages, robots.txt respected, every request through
+  web._check_url (public internet only), each page RENDERED in Chromium (`_render`: links after scripts ran, title,
+  description, h1 count, JSON-LD, hreflang) + the raw HTML for "readable without JavaScript"; broken internal links;
+  sitemap.xml count. `rival_card` = the same measures + the judge on the same number of pages. `compare` = per metric
+  who is better, lower-is-better for broken links / missing files / cost / time / size.
+- API (owner only, `_arena_owner`): GET /api/arena/proofs (+ briefs, max_inr), POST /api/arena/proofs {brief_id,
+  budget_inr}, POST /api/arena/proofs/rival {brief_id, builder, url}, GET /api/arena/proofs/compare?a=&b=, POST
+  /api/arena/proofs/<id>/stop. Console Arena screen: "100-page proof" tile (start, live stage + Stop, rival form,
+  proofs table, side-by-side with the better side in green + the feature lines).
+- Tested for real at 60 pages with the test AI: site map -> build -> shop from the priced list (45+ products) -> blog,
+  0 broken links, 0 missing files. A full 100-page run with Opus is the owner's to start (cost ~₹700-2,000, 1-2 h).
+- Tests `server/tests/test_v0375_proof.py`.

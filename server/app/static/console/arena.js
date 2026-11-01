@@ -30,6 +30,8 @@ window.HoolaArena = function ({api, esc, toast}) {
     let d;
     try { d = await api('GET', '/api/arena/runs'); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>Design Arena</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    let pf = {proofs: [], briefs: [], max_inr: 3000};          // v0.375 PROOF (its own call: a failure never hides the runs)
+    try { pf = await api('GET', '/api/arena/proofs'); } catch (e) { /* older server */ }
     const runs = d.runs || [], live = runs.find(r => r.status === 'running'), last = runs.find(r => r.status === 'done' && r.summary && r.summary.sites);
     const s = last?.summary || {}, duels = d.duels || {}, maxInr = Number(d.max_inr) || 3000;
     const totals = Object.values(duels).reduce((a, v) => ({n: a.n + (v.duels || 0), w: a.w + (v.hoola || 0)}), {n: 0, w: 0});
@@ -46,9 +48,82 @@ window.HoolaArena = function ({api, esc, toast}) {
       </div>
       <div class="tile gl ar-runs"><h3>Runs</h3>${runs.length ? runsTable(runs) : '<div class="empty">No runs yet. Start one above: 6 websites is a good first run.</div>'}
         ${runs.filter(r => r.summary && r.summary.sites).length > 1 ? compareForm(runs) : ''}<div id="arCmp"></div></div>
-      <div class="tile gl"><h3>Blind duels by builder</h3>${duelTable(duels)}${recentDuels(d.recent_duels || [])}</div>`;
+      <div class="tile gl"><h3>Blind duels by builder</h3>${duelTable(duels)}${recentDuels(d.recent_duels || [])}</div>
+      ${proofTile(pf)}`;
     wire(el, runs, maxInr);
-    schedule(!!live);
+    wireProof(el, pf);
+    schedule(!!live || (pf.proofs || []).some(p => p.status === 'running'));
+  }
+
+  // ---------------------------------------------------------------- v0.375 PROOF: 100-page websites, measured like a rival's
+  const PROOF_ROWS = [['built_pages', 'Pages built'], ['planned_pages', 'Pages planned'], ['broken_links', 'Broken links'], ['missing_files', 'Missing files'],
+    ['judge', 'Judge (of 10, sample of page types)'], ['performance', 'Performance'], ['accessibility', 'Accessibility'], ['seo', 'SEO'],
+    ['readable_without_js_pct', 'Pages readable without JavaScript %'], ['one_h1_pct', 'Pages with one h1 %'], ['json_ld_pct', 'Pages with structured data %'],
+    ['sitemap_urls', 'Sitemap addresses'], ['kb_median', 'Page HTML (KB, median)'], ['inr', '₹ total'], ['inr_per_page', '₹ per page'],
+    ['minutes', 'Minutes'], ['minutes_per_page', 'Minutes per page']];
+  const FEAT = [['shop', 'Shop'], ['blog', 'Blog'], ['rss', 'RSS'], ['hreflang', 'Languages + hreflang'], ['search', 'Site search'],
+    ['breadcrumbs', 'Breadcrumbs'], ['mega_menu', 'Grouped menu'], ['web_app', 'Web app + staff panel']];
+  function proofTile(pf) {
+    const briefs = pf.briefs || [], list = pf.proofs || [], live = list.find(p => p.status === 'running' && p.kind === 'hoola');
+    const opts = briefs.map(b => `<option value="${esc(b.id)}">${esc(b.name)} · ${esc(b.city)}</option>`).join('');
+    const pick = list.filter(p => p.status === 'done').map(p => `<option value="${esc(p.proof)}">${esc(p.kind === 'hoola' ? 'Hoola v' + p.version : (RIVAL_NAME[p.builder] || p.builder))} · ${esc(p.name)}</option>`).join('');
+    return `<div class="tile gl ar-proof"><h3>100-page proof</h3>
+      <p class="muted ar-help">Five fixed 100-page businesses. Hoola builds one end to end like an owner would (site map, look, every page, then shop / blog / second language / web app), and every number is read from the finished files: pages built, broken links over every page, the judge on a sample of page types, cost and time per page. A rival's public site for the same brief is crawled and measured the same way.</p>
+      <div class="grid2">
+        ${live ? `<div class="ar-live"><b>${esc(live.name)}</b> ${tag('running')}<p class="muted">${esc(live.stage || 'Working…')}</p><button class="btn soft" type="button" data-pf-stop="${esc(live.proof)}">Stop</button></div>`
+          : `<form class="ar-form" id="pfStart" autocomplete="off"><b>Build a 100-page test site</b>
+          <label><span>Business</span><select id="pfBrief">${opts}</select></label>
+          <label><span>Budget (₹, at most ${rupees(pf.max_inr)})</span><input type="number" id="pfBudget" min="100" max="${Number(pf.max_inr) || 3000}" value="${Math.min(2500, Number(pf.max_inr) || 3000)}"></label>
+          <p class="muted">Expected about ₹700–2,000 and 1–2 hours (most pages come from its lists; the second language adds the most).</p>
+          <button class="btn go" type="submit">Start proof</button></form>`}
+        <form class="ar-form" id="pfRival" autocomplete="off"><b>Measure a rival's site</b>
+          <label><span>Same business</span><select id="pfRBrief">${opts}</select></label>
+          <label><span>Built with</span><select id="pfRName">${RIVALS.map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join('')}</select></label>
+          <label><span>Its public address</span><input id="pfUrl" type="url" placeholder="https://…" required></label>
+          <button class="btn soft" type="submit">Crawl and measure</button></form>
+      </div>
+      ${list.length ? `<div class="sttbl"><table><thead><tr><th>Site</th><th>Status</th><th>Pages</th><th>Broken</th><th>Judge</th><th>₹ / page</th><th>Min</th></tr></thead><tbody>${list.map(p => {
+        const c = p.card || {};
+        return `<tr><td><b>${esc(p.kind === 'hoola' ? 'Hoola v' + p.version : (RIVAL_NAME[p.builder] || p.builder))}</b><br><small class="muted">${esc(p.name)}</small></td>
+          <td>${tag(p.status)}${p.stage ? `<br><small class="muted">${esc(p.stage)}</small>` : ''}${c.error ? `<br><small class="badc">${esc(c.error)}</small>` : ''}</td>
+          <td>${num(c.built_pages, 0)}${c.planned_pages ? ' / ' + num(c.planned_pages, 0) : ''}${c.crawl_capped ? '+' : ''}</td><td>${num(c.broken_links, 0)}</td><td>${num(c.judge)}</td>
+          <td>${c.inr_per_page === undefined || c.inr_per_page === null ? '–' : '₹' + num(c.inr_per_page, 1)}</td><td>${num(c.minutes, 0)}</td></tr>`;
+      }).join('')}</tbody></table></div>` : '<div class="empty">No proofs yet.</div>'}
+      ${list.filter(p => p.status === 'done').length > 1 ? `<form class="ar-cmpf" id="pfCmpF"><b>Side by side</b><label><span>First</span><select id="pfA">${pick}</select></label><label><span>Second</span><select id="pfB">${pick}</select></label><button class="btn soft" type="submit">Compare</button></form>` : ''}
+      <div id="pfOut"></div></div>`;
+  }
+  function proofCompare(r) {
+    const A = r.a || {}, B = r.b || {}, name = p => p.kind === 'hoola' ? 'Hoola v' + p.version : (RIVAL_NAME[p.builder] || p.builder);
+    const m = r.metrics || {};
+    const rows = PROOF_ROWS.map(([k, n]) => {
+      const x = (A.card || {})[k], y = (B.card || {})[k], w = (m[k] || {}).better;
+      return `<tr><td>${esc(n)}</td><td class="${w === 'a' ? 'okc' : ''}">${num(x)}</td><td class="${w === 'b' ? 'okc' : ''}">${num(y)}</td></tr>`;
+    }).join('');
+    const fa = (A.card || {}).features || {}, fb = (B.card || {}).features || {};
+    const feats = FEAT.map(([k, n]) => `<tr><td>${esc(n)}</td><td>${A.kind === 'hoola' ? (fa[k] ? 'Yes' : 'No') : '–'}</td><td>${B.kind === 'hoola' ? (fb[k] ? 'Yes' : 'No') : '–'}</td></tr>`).join('');
+    return `<div class="sttbl"><table><thead><tr><th>Measure</th><th>${esc(name(A))}</th><th>${esc(name(B))}</th></tr></thead><tbody>${rows}${feats}</tbody></table></div>
+      <p class="muted">Better on ${num((r.wins || {}).a, 0)} measures: ${esc(name(A))} · ${num((r.wins || {}).b, 0)}: ${esc(name(B))}. Green = better on that line.</p>`;
+  }
+  function wireProof(el, pf) {
+    el.querySelector('#pfStart')?.addEventListener('submit', async e => {
+      e.preventDefault(); const btn = e.target.querySelector('button'); btn.disabled = true;
+      try { const r = await api('POST', '/api/arena/proofs', {brief_id: el.querySelector('#pfBrief').value, budget_inr: Number(el.querySelector('#pfBudget').value)}); toast(r.say || 'Proof started.'); draw(el); }
+      catch (err) { toast(err.message, true); btn.disabled = false; }
+    });
+    el.querySelector('#pfRival')?.addEventListener('submit', async e => {
+      e.preventDefault(); const btn = e.target.querySelector('button'); btn.disabled = true;
+      try { const r = await api('POST', '/api/arena/proofs/rival', {brief_id: el.querySelector('#pfRBrief').value, builder: el.querySelector('#pfRName').value, url: el.querySelector('#pfUrl').value.trim()}); toast(r.say || 'Measuring.'); draw(el); }
+      catch (err) { toast(err.message, true); btn.disabled = false; }
+    });
+    el.querySelectorAll('[data-pf-stop]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true; try { const r = await api('POST', `/api/arena/proofs/${encodeURIComponent(b.dataset.pfStop)}/stop`); toast(r.say || 'Stopping.'); } catch (err) { toast(err.message, true); b.disabled = false; }
+    }));
+    el.querySelector('#pfCmpF')?.addEventListener('submit', async e => {
+      e.preventDefault(); const a = el.querySelector('#pfA').value, b = el.querySelector('#pfB').value, out = el.querySelector('#pfOut');
+      if (a === b) { out.innerHTML = '<p class="muted">Pick two different sites.</p>'; return; }
+      try { out.innerHTML = proofCompare(await api('GET', `/api/arena/proofs/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`)); }
+      catch (err) { out.innerHTML = `<p class="badc">${esc(err.message)}</p>`; }
+    });
   }
 
   function startTile(maxInr) {
