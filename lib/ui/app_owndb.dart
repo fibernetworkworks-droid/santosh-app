@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
-import 'postgres_screen.dart';
 
 class AppOwnDbPanel extends StatefulWidget {
   const AppOwnDbPanel({super.key, required this.app, required this.id});
@@ -78,6 +77,72 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
     if (ok == true) _do('POST', 'owndb/link', {'conn': _conn, 'mode': _mode});
   }
 
+  /// v0.397 her database of any kind, typed here (sealed on the server, never shown again, never in chat).
+  Future<void> _addDb() async {
+    String kind = 'postgres';
+    final name = TextEditingController();
+    final secret = TextEditingController();
+    final hints = {
+      'postgres': 'postgresql://user:password@host:5432/db',
+      'mysql': 'mysql://user:password@host:3306/db',
+      'mongodb': 'mongodb+srv://user:password@cluster.mongodb.net/db',
+      'firestore': 'Firebase service-account JSON (poora text)',
+    };
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => StatefulBuilder(
+        builder: (c, set) => AlertDialog(
+          title: const Text('Apna database jodo'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              DropdownButton<String>(
+                value: kind,
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: 'postgres', child: Text('PostgreSQL (Supabase, Neon, AWS...)')),
+                  DropdownMenuItem(value: 'mysql', child: Text('MySQL (PlanetScale, TiDB, MariaDB...)')),
+                  DropdownMenuItem(value: 'mongodb', child: Text('MongoDB (Atlas...)')),
+                  DropdownMenuItem(value: 'firestore', child: Text('Firebase (Firestore)')),
+                ],
+                onChanged: (x) => set(() => kind = x ?? 'postgres'),
+              ),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (jaise Dukaan database)')),
+              TextField(
+                controller: secret,
+                minLines: kind == 'firestore' ? 4 : 1,
+                maxLines: kind == 'firestore' ? 8 : 2,
+                obscureText: kind != 'firestore',
+                enableSuggestions: false,
+                autocorrect: false,
+                decoration: InputDecoration(labelText: 'Connection', hintText: hints[kind]),
+              ),
+              const SizedBox(height: 6),
+              const Text('Server par band (sealed) rehta hai, dobara kabhi dikhaya nahi jaata. Chat mein kabhi mat likhiye.',
+                  style: TextStyle(fontSize: 11.5)),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
+            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo')),
+          ],
+        ),
+      ),
+    );
+    final sec = secret.text.trim();
+    secret.clear();
+    if (ok != true || sec.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      final r = _m(await widget.app.api!.call('POST', '/api/owndb/conns', body: {'kind': kind, 'name': name.text.trim(), 'secret': sec},
+          timeout: const Duration(seconds: 60)));
+      _say(_s(r['say']));
+    } catch (e) {
+      _say('$e');
+    }
+    if (mounted) setState(() => _busy = false);
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final linked = _v['linked'] == true;
@@ -91,8 +156,8 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
         if (linked) Pill(_s(ln['mode']) == 'primary' ? 'Data wahin' : 'Copy', fg: C.ok),
         IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
       ]),
-      Text('Is app ka data apne database mein chalaiye: Supabase, Neon, AWS, Google Cloud, Azure, DigitalOcean aur '
-          '${(_l(_v['providers']).length - 6).clamp(0, 99)}+ aur.', style: const TextStyle(color: C.muted, fontSize: 12)),
+      Text('Is app ka data apne database mein chalaiye: PostgreSQL (Supabase, Neon...), MySQL (PlanetScale, TiDB...), '
+          'MongoDB (Atlas) ya Firebase - ${_l(_v['providers']).length} prakaar.', style: const TextStyle(color: C.muted, fontSize: 12)),
       const SizedBox(height: 6),
       if (linked) ...[
         Text('${_s(ln['name'])} · ${_s(ln['label'])}', style: const TextStyle(color: C.ink, fontSize: 12.5)),
@@ -109,7 +174,7 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
           DropdownButton<String>(
             value: _conn.isEmpty ? null : _conn,
             isExpanded: true,
-            items: [for (final c in conns) DropdownMenuItem(value: _s(c['id']), child: Text('${_s(c['name'])} (${_s(c['label'])})', overflow: TextOverflow.ellipsis))],
+            items: [for (final c in conns) DropdownMenuItem(value: _s(c['id']), child: Text('${_s(c['name'])} · ${_s(c['kind'])} (${_s(c['label'])})', overflow: TextOverflow.ellipsis))],
             onChanged: (x) => setState(() => _conn = x ?? ''),
           ),
           SegmentedButton<String>(
@@ -121,10 +186,7 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
           FilledButton(onPressed: _busy || _conn.isEmpty ? null : _link, child: Text(_busy ? 'Copy ho raha hai…' : 'Data wahan le jaao')),
         ],
         TextButton.icon(
-          onPressed: () async {
-            await Navigator.push(context, MaterialPageRoute(builder: (_) => PostgresScreen(app: widget.app)));
-            _load();
-          },
+          onPressed: _busy ? null : _addDb,
           icon: const Icon(Icons.add_rounded, size: 18),
           label: const Text('Database jodo'),
         ),

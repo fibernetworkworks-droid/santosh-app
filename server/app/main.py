@@ -9976,6 +9976,22 @@ async def apps_owndb(ref: str, tenant: str = Depends(current_tenant)):
     return await asyncio.to_thread(_be_owner_call, lambda: OD.status(_be_owner(tenant, ref)))
 
 
+@app.post("/api/owndb/conns", dependencies=[Depends(require_key)])
+async def owndb_conn_add(body: dict, tenant: str = Depends(current_tenant)):
+    """v0.397 her database typed in the APP {kind: postgres|mysql|mongodb|firestore, name, secret}: checked (public host,
+    encrypted), test-connected, sealed; never returned, logged or shown to the model."""
+    from .appmaker import owndb_conns as OC
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: OC.add(tenant, str(b.get("kind") or ""), str(b.get("name") or ""),
+                                                                  str(b.get("secret") or b.get("dsn") or "")))
+
+
+@app.delete("/api/owndb/conns/{cid}", dependencies=[Depends(require_key)])
+async def owndb_conn_remove(cid: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import owndb_conns as OC
+    return await asyncio.to_thread(_be_owner_call, lambda: OC.remove(tenant, cid))
+
+
 @app.post("/api/apps/{ref}/owndb/link", dependencies=[Depends(require_key)])
 async def apps_owndb_link(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """HER TAP {conn, mode: primary|mirror}: backup, her tables, every row copied, counts compared, then live."""
