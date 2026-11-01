@@ -425,7 +425,7 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "{version}"
     CURRENT_PROJECT_VERSION: "{build}"
-    TARGETED_DEVICE_FAMILY: "1"
+    TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 targets:
   App:
@@ -597,6 +597,13 @@ def info_plist(spec: dict[str, Any]) -> str:
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
 {extra}</dict>
 </plist>

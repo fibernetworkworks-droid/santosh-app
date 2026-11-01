@@ -25,6 +25,8 @@ from typing import Any, Callable
 API = "https://api.appstoreconnect.apple.com"
 DISPLAY = "APP_IPHONE_67"                                  # the 6.7" / 6.9" iPhone slot
 SIZES = {(1320, 2868), (1290, 2796), (1260, 2736)}         # portrait sizes App Store Connect takes for it
+IPAD_DISPLAY = "APP_IPAD_PRO_3GEN_129"                     # v0.364 the 13" iPad slot (required once the app runs on iPad)
+IPAD_SIZES = {(2064, 2752), (2048, 2732)}
 LIMITS = {"name": 30, "subtitle": 30, "keywords": 100, "description": 4000, "promotionalText": 170, "whatsNew": 4000}
 EDITABLE = ("PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED", "INVALID_BINARY")
 
@@ -152,22 +154,24 @@ def info_localization(c: Client, app: str, locale: str, attrs: dict[str, str]) -
                                                              "relationships": {"appInfo": _rel("appInfos", info["id"])}}})
 
 
-def screenshots(c: Client, loc: str, shots: list[Path]) -> int:
-    """Replace the 6.9" screenshot set with these PNGs (reserve -> PUT each part -> commit with the MD5)."""
+def screenshots(c: Client, loc: str, shots: list[Path], display: str = DISPLAY, sizes: set = SIZES) -> int:
+    """Replace one screenshot set (the 6.9" iPhone one, or v0.364 the 13" iPad one) with these PNGs
+    (reserve -> PUT each part -> commit with the MD5)."""
     sets = c.call("GET", f"/v1/appStoreVersionLocalizations/{loc}/appScreenshotSets").get("data") or []
-    old = next((s for s in sets if (s.get("attributes") or {}).get("screenshotDisplayType") == DISPLAY), None)
+    old = next((s for s in sets if (s.get("attributes") or {}).get("screenshotDisplayType") == display), None)
     if old:
         for sh in c.call("GET", f"/v1/appScreenshotSets/{old['id']}/appScreenshots").get("data") or []:
             c.call("DELETE", f"/v1/appScreenshots/{sh['id']}", ok404=True)
         sid = old["id"]
     else:
-        sid = c.call("POST", "/v1/appScreenshotSets", {"data": {"type": "appScreenshotSets", "attributes": {"screenshotDisplayType": DISPLAY},
+        sid = c.call("POST", "/v1/appScreenshotSets", {"data": {"type": "appScreenshotSets", "attributes": {"screenshotDisplayType": display},
                      "relationships": {"appStoreVersionLocalization": _rel("appStoreVersionLocalizations", loc)}}})["data"]["id"]
     n = 0
     for p in shots[:10]:
         b = p.read_bytes()
-        if png_size(b) not in SIZES:
-            raise AscError(f"{p.name} is {png_size(b)[0]}x{png_size(b)[1]}; the 6.9-inch slot needs 1320x2868")
+        if png_size(b) not in sizes:
+            raise AscError(f"{p.name} is {png_size(b)[0]}x{png_size(b)[1]}; the " +
+                           ("13-inch iPad slot needs 2064x2752" if display == IPAD_DISPLAY else "6.9-inch slot needs 1320x2868"))
         res = c.call("POST", "/v1/appScreenshots", {"data": {"type": "appScreenshots", "attributes": {"fileSize": len(b), "fileName": p.name},
                      "relationships": {"appScreenshotSet": _rel("appScreenshotSets", sid)}}})["data"]
         for op in (res.get("attributes") or {}).get("uploadOperations") or []:
@@ -196,7 +200,7 @@ def attach_build(c: Client, app: str, ver: str, build_number: str) -> str:
     return rows[0]["id"]
 
 
-def push(store: dict[str, Any], shots: list[Path], c: Client) -> dict[str, Any]:
+def push(store: dict[str, Any], shots: list[Path], c: Client, ipad: list[Path] | None = None) -> dict[str, Any]:
     lst = store.get("listing") or {}
     app = find_app(c, store["bundle_id"])
     ver = editable_version(c, app, str(store["version"]))
@@ -213,8 +217,9 @@ def push(store: dict[str, Any], shots: list[Path], c: Client) -> dict[str, Any]:
         iattrs["privacyPolicyUrl"] = store["privacyPolicyUrl"]
     info_localization(c, app, locale, iattrs)
     n = screenshots(c, loc, shots) if shots else 0
+    ni = screenshots(c, loc, ipad, IPAD_DISPLAY, IPAD_SIZES) if ipad else 0      # v0.364 the iPad set
     build = attach_build(c, app, ver["id"], str(store["build"]))
-    return {"ok": True, "app": app, "version": ver["id"], "version_string": store["version"], "screenshots": n, "build": build,
+    return {"ok": True, "app": app, "version": ver["id"], "version_string": store["version"], "screenshots": n, "ipad_screenshots": ni, "build": build,
             "state": (ver.get("attributes") or {}).get("appStoreState") or "PREPARE_FOR_SUBMISSION"}
 
 
@@ -247,7 +252,9 @@ def main(argv: list[str]) -> int:
             want = [str(x) for x in store.get("shots") or []]
             folder = Path(argv[2]) if len(argv) > 2 else proj / "qa" / "store"
             shots = [folder / f"{s}.png" for s in want if (folder / f"{s}.png").exists()]
-            out = push(store, shots, c)
+            ifold = Path(argv[3]) if len(argv) > 3 else None                     # v0.364 the iPad screenshots folder
+            ipad = [ifold / f"{s}.png" for s in want if ifold and (ifold / f"{s}.png").exists()]
+            out = push(store, shots, c, ipad)
         else:
             out = submit(store, c)
         out["calls"] = len(c.calls)

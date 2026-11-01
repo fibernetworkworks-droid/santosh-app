@@ -13056,3 +13056,17 @@ Every generated Android screen was one phone column stretched edge to edge on a 
   Connect require 13" iPad screenshots, which the App Store launch (v0.339) does not make yet.
 - Tests `tests/test_v0363_badi_screen.py`. Not done: two-pane list + detail on tablets, iPad, the tablet pass in her builds
   repo workflow (hoola-build.yml runs the phone device check only).
+
+## v0.364.0 IPAD (App Sahayak Phase 28, owner: "START PHASE 28")
+v0.363 left iPad off because turning it on makes App Store Connect require 13" iPad screenshots. This phase does both.
+- `ios/gen.py`: `TARGETED_DEVICE_FAMILY: "1,2"`, Info.plist `UISupportedInterfaceOrientations~ipad` = all four (iPad
+  multitasking expects them); iPhone stays portrait. Pages already keep a 720pt column (v0.363), TabView shows iPad's own tab bar.
+- `ios/sim_check.sh`: `SIM_KIND=ipad` picks the newest available "iPad Pro 13-inch (M#)" (or 12.9-inch) simulator.
+- `ios/asc.py`: `IPAD_DISPLAY = APP_IPAD_PRO_3GEN_129`, `IPAD_SIZES` {2064x2752, 2048x2732}; `screenshots(c, loc, shots,
+  display, sizes)` handles either slot; `push(..., ipad)` uploads the iPad set after the iPhone one; `main push <proj>
+  <iphone dir> [<ipad dir>]`. `appstore.why_line` explains a wrong iPad size.
+- Her builds repo `server/app_builder/hoola-ios.yml` (kind store): a second sim_check with SIM_KIND=ipad into
+  qa/store-ipad and `asc.py push ios qa/store/screens qa/store-ipad/screens`; artifacts keep both sets. She needs this file.
+- CI `ios-check.yml`: "iPad - every screen on a 13-inch iPad Pro + the 13-inch App Store screenshots" (crash gate + size
+  check), artifacts `ipad-shots`.
+- Tests `tests/test_v0364_ipad.py`. Not verified locally (no Mac here): the first CI ios-check run on the branch is the proof.
