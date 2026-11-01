@@ -13169,3 +13169,15 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   Receipt: "Delivery time: …". Console Delivery box: slot lines + days ahead + cut-off.
 - Routes: GET /api/app-api/<key>/slots; PUT /api/apps/<ref>/delivery with `slots`.
 - Tests `tests/test_v0371_slot.py`. Not done: slots per PIN / per staff, a slot change after ordering.
+
+## v0.372.0 DUKAAN BHASHA (App Sahayak Phase 36, owner: "START PHASE 36")
+- `appmaker/storelang.py`: `PLAY` (hi-IN, mr-IN, ta-IN, te-IN, kn-IN, ml-IN, bn-BD, gu), `APPLE` ("hi"); `translate()` (Opus,
+  JSON with the same keys, cut to each limit, cached in `listing_tr[lang]` with the English source as `_src`; `_edited`
+  entries are hers and always win); `play_listings` / `apple_localizations` for the app's `i18n.langs_of`; `edit()`.
+- `android/store.py` upload: after the en-IN listing, a `listings/<code>` PUT per translated language (title, short, full);
+  translation errors are logged and skipped. `listing_lang(tenant, ref, lang, values)` + view `languages`; route
+  POST /api/apps/<ref>/store/listing_lang.
+- `ios/appstore._store_json` adds `localizations`; `ios/asc.push` writes a version localization (description, keywords,
+  promotional text, What's New after the first version, support / marketing URLs) and an app-info localization (name, subtitle,
+  privacy URL) per locale.
+- Tests `tests/test_v0372_dukaan_bhasha.py`. Not done: per-language screenshots, App Store locales beyond Hindi.

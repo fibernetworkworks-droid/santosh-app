@@ -136,7 +136,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.371.0 (pubspec 0.371.0+411). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.372.0 (pubspec 0.372.0+412). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
@@ -168,6 +168,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.369 KHUD TAZA (App Phase 33, `runners.sync_workflows`): the server keeps the builds repo's hoola-build.yml / hoola-ios.yml equal to server/app_builder/ before every build (token needs Workflows: write) - no more manual copying.
 - v0.370 HAR DEVICE JAANCH (App Phase 34): her real builds also open every screen on a tablet (Android) / 13" iPad (iPhone builds); results in qa.tablet / qa.ipad + the check line, never fail the build.
 - v0.371 SLOT (App Phase 35, `delivery.available/book/confirm`, kit `SlotPicker`): delivery time slots with capacity / days ahead / cut-off; server books under a lock, a full slot = note not refusal, races leave exactly cap.
+- v0.372 DUKAAN BHASHA (App Phase 36, `appmaker/storelang.py`): Play listings in the app's Indian languages (hi-IN, mr-IN, ta-IN...) + App Store "hi", translated once within limits, her edits win, never blocks the English upload.
 - v0.349 BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
 - v0.348 KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
 - v0.347 HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.

@@ -187,7 +187,16 @@ def _store_json(r: AppProject, ist: dict[str, Any], st: dict[str, Any]) -> dict[
             lst["whatsNew"] = "Improvements to " + ", ".join(str(x).replace("_", " ") for x in last["written"][:4]) + "."
     shots = [s for s in (ist.get("qa") or {}).get("shots") or [] if s not in ("hoola_login", "hoola_account", "privacy", "delete_account")]
     order = ["app_start"] + [s for s in shots if s != "app_start"]
+    from .. import storelang as SL                 # v0.372 DUKAAN BHASHA: Hindi (when the app speaks it) as its own localization
+    st2 = dict(st)
+    try:
+        locs = SL.apple_localizations(r, st2, lst, LIMITS)
+    except Exception:                              # noqa: BLE001  - a failed translation never blocks the English push
+        locs = {}
+    if st2.get("listing_tr") != st.get("listing_tr"):
+        _put(r, listing_tr=st2.get("listing_tr"))
     return {"version": str(tf.get("version") or ""), "build": str(tf.get("build") or ""), "locale": "en-US", "listing": lst,
+            "localizations": locs,
             "privacyPolicyUrl": f"{base}/api/app-api/{key}/privacy", "supportUrl": f"{base}/api/app-api/{key}/support",
             "shots": order[:STORE_SHOTS], "not_first": bool(st.get("pushed"))}
 

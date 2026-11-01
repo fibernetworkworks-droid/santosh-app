@@ -216,6 +216,15 @@ def push(store: dict[str, Any], shots: list[Path], c: Client, ipad: list[Path] |
     if store.get("privacyPolicyUrl"):
         iattrs["privacyPolicyUrl"] = store["privacyPolicyUrl"]
     info_localization(c, app, locale, iattrs)
+    for lc, t in (store.get("localizations") or {}).items():          # v0.372 the listing in the app's other languages
+        va = {k: _cut(k, t.get(k)) for k in ("description", "keywords", "promotionalText") if t.get(k)}
+        if t.get("whatsNew") and store.get("not_first"):
+            va["whatsNew"] = _cut("whatsNew", t["whatsNew"])
+        if va:
+            version_localization(c, ver["id"], lc, {**{k: v for k, v in vattrs.items() if k in ("supportUrl", "marketingUrl")}, **va})
+        ia = {k: _cut(k, t.get(k)) for k in ("name", "subtitle") if t.get(k)}
+        if ia:
+            info_localization(c, app, lc, {**ia, **({"privacyPolicyUrl": store["privacyPolicyUrl"]} if store.get("privacyPolicyUrl") else {})})
     n = screenshots(c, loc, shots) if shots else 0
     ni = screenshots(c, loc, ipad, IPAD_DISPLAY, IPAD_SIZES) if ipad else 0      # v0.364 the iPad set
     build = attach_build(c, app, ver["id"], str(store["build"]))
