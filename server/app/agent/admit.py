@@ -112,7 +112,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  # v0.386 Studio Project: the long game project's words
                  "game project", "game studio", "studio project", "game ka kaam", "game ka task",
                  "game bible", "game ki bible", "balance pass", "difficulty curve", "enemy stats", "level design",
-                 "game art", "sprite", "game sound", "sound effect", "game music", "game assets", "3d model for my game"),
+                 "game art", "sprite", "game sound", "sound effect", "game music", "game assets", "3d model for my game",
+                 "game qa", "game test", "game bug", "game ke bug", "playtest", "golden screen"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",

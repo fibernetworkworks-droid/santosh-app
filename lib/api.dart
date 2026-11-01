@@ -1047,6 +1047,17 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets-apply', body: {}) as Map);
   String absolute(String path) =>
       path.startsWith('http') ? path : '${baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}$path';
+  // v0.415 QA farm + bugs
+  Future<Map<String, dynamic>> gameQa(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/qa', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameQaRun(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/qa/run', body: {}) as Map);
+  Future<Map<String, dynamic>> gameQaGolden(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/qa/golden', body: {}) as Map);
+  Future<Map<String, dynamic>> gameBugNew(String id, String title, String severity) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bugs', body: {'title': title, 'severity': severity}) as Map);
+  Future<Map<String, dynamic>> gameBugDo(String id, String number, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bugs/$number/$what', body: {}) as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk

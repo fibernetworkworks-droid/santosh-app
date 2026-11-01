@@ -94,7 +94,10 @@ def main() -> int:
     print("reading the templates index (range requests)")
     with zipfile.ZipFile(HttpFile(BASE.format(v=v) + f"Godot_v{v}-stable_export_templates.tpz")) as tz:
         names = [n for n in tz.namelist() if n in ("templates/version.txt", "templates/web_nothreads_release.zip",
-                                                   "templates/web_release.zip")]
+                                                   "templates/web_release.zip",
+                                                   # v0.415 QA farm: a debug web build is the only one that prints script
+                                                   # errors in the browser (release builds hide them)
+                                                   "templates/web_nothreads_debug.zip")]
         for n in names:
             print("  ", n)
             with tz.open(n) as src, open(tdir / Path(n).name, "wb") as dst:

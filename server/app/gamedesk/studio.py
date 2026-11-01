@@ -68,6 +68,7 @@ class GameStudio(Base):
     last_summary: Mapped[str] = mapped_column(String(10), default="")      # local date of the last morning summary
     nightly: Mapped[list] = mapped_column(JSON, default=list)              # last 30 nightly results
     gates: Mapped[list | None] = mapped_column(JSON, nullable=True)        # v0.406 milestone gate checks (advisory)
+    qa: Mapped[list | None] = mapped_column(JSON, nullable=True)           # v0.415 QA farm reports (last 12)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -218,6 +219,7 @@ def view(r: GameStudio, full: bool = False) -> dict[str, Any]:
         "night": (r.nightly or [])[-1] if r.nightly else {},
         "bible": _bible_line(r),
         "assets": _assets_line(r),
+        "qa": _qa_line(r),
         "created_at": r.created_at.isoformat() if r.created_at else None}
     live_src = ((G._good(g) or [{}])[-1].get("src", "")) if g else ""
     if full:
@@ -254,6 +256,14 @@ def _bible_line(r: GameStudio) -> dict[str, Any]:
     except Exception:                                   # noqa: BLE001
         log.exception("bible line")
         return {"version": 0}
+
+
+def _qa_line(r: GameStudio) -> dict[str, Any]:
+    try:
+        from . import qa as Q
+        return Q.summary_line(r)
+    except Exception:                                   # noqa: BLE001
+        return {}
 
 
 def _assets_line(r: GameStudio) -> dict[str, Any]:
@@ -841,6 +851,14 @@ def nightly(tenant: str, ref: str) -> dict[str, Any]:
                 res["ok"] = bool(pl.get("ok"))
                 res["fps"] = pl.get("fps")
                 res["load_s"] = pl.get("load_s")
+                if res["ok"] and os.environ.get("GAME_QA_NIGHTLY", "on").lower() not in ("0", "off", "false"):
+                    try:                                # v0.415 the QA farm plays the same fresh build every night
+                        from . import qa as Q
+                        q = Q.farm(tenant, r.id, proj=job / "proj", version=live["n"])
+                        res["qa"] = {"verdict": q.get("verdict"), "filed": len(q.get("filed") or []), "fixed": q.get("fixed")}
+                    except Exception as e:              # noqa: BLE001
+                        log.exception("nightly qa")
+                        res["qa"] = {"verdict": "NOT ASSESSED", "error": type(e).__name__}
     res["seconds"] = round(time.time() - t0, 1)
     prev_ok = next((x for x in reversed(r.nightly or []) if x.get("ok")), None)
     warn = []
@@ -910,6 +928,14 @@ def gate(tenant: str, ref: str, milestone: str = "") -> dict[str, Any]:
     except Exception:                                   # noqa: BLE001
         bib = {"version": 0}
     facts["bible"] = bib
+    qa_last = (r.qa or [{}])[-1] if r.qa else {}
+    try:
+        from . import qa as Q
+        qline = Q.summary_line(r)
+    except Exception:                                   # noqa: BLE001
+        qline = {}
+    facts["qa"] = {"verdict": qa_last.get("verdict") or "not run", "version": qa_last.get("version"),
+                   "open_bugs": qline.get("open", 0), "crash_bugs": qline.get("crash_open", 0)}
     blockers, concerns, missing = [], [], []
     if not mine:
         missing.append("no tasks in this milestone")
@@ -921,6 +947,14 @@ def gate(tenant: str, ref: str, milestone: str = "") -> dict[str, Any]:
         blockers.append("last nightly build failed")
     if bib.get("errors"):
         blockers.append(f"Game Bible has {bib['errors']} error(s)")
+    if facts["qa"]["crash_bugs"]:
+        blockers.append(f"{facts['qa']['crash_bugs']} crash / blocker bug(s) open")
+    if facts["qa"]["verdict"] == "FAIL":
+        blockers.append("the last QA farm run failed")
+    if facts["qa"]["verdict"] in ("not run", "NOT ASSESSED"):
+        concerns.append("the QA bots have not checked this game yet" if facts["qa"]["verdict"] == "not run" else "the last QA run could not assess the game")
+    elif facts["qa"]["verdict"] == "CONCERNS":
+        concerns.append("the last QA farm run raised concerns")
     if facts["open"]:
         concerns.append(f"{facts['open']} task(s) still open")
     if crit and covered < len(crit):
@@ -990,6 +1024,10 @@ def summary(tenant: str, ref: str) -> str:
         else:
             lines.append("Raat ka build: FAIL - " + "; ".join((n.get("errors") or ["?"])[:2])[:200]
                          + (f". Shayad: {', '.join(n.get('suspects')[:2])}" if n.get("suspects") else "") + ".")
+    q = (r.qa or [{}])[-1] if r.qa else None
+    if q and q.get("at") and _utc(datetime.fromisoformat(q["at"])) >= day:
+        lines.append(f"QA bots: {q.get('verdict')}" + (f", {len(q.get('filed') or [])} bug(s) mile" if q.get("filed") else "")
+                     + (f", theek hue: {', '.join(q['fixed'][:3])}" if q.get("fixed") else "") + ".")
     if todo:
         lines.append(f"Aaj: {', '.join(t.number + ' ' + t.title[:40] for t in todo[:3])}.")
     if cur:

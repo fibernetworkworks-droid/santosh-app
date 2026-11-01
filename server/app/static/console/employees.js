@@ -802,6 +802,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const BUSYG = ['designing', 'queued', 'writing', 'building', 'testing'];
   let GS_BIBLE = false;        // v0.395 the Game Bible page of the open project
   let GS_ASSETS = false;       // v0.414 the Assets page of the open project
+  let GS_QA = false;           // v0.415 the QA farm + bugs page of the open project
   let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   async function game(el) {
@@ -1092,10 +1093,60 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if ((v.assets || []).some(a => a.status === 'making')) GTIMER = setTimeout(() => { if (visible(el) && GS_ASSETS) gsAssets(el, id); }, 5000);
   }
 
+  // ---------------------------------------------------------------- v0.415 QA farm + bug tracker
+  const QV = {PASS: 'ok', CONCERNS: 'warn', FAIL: 'bad', 'NOT ASSESSED': ''};
+  const BUG_ST = {open: ['bad', 'Open'], fixing: ['warn', 'Being fixed'], fixed: ['ok', 'Fixed (bot checked)'], wontfix: ['', "Won't fix"], duplicate: ['', 'Duplicate']};
+  async function gsQa(el, id) {
+    clearTimeout(GTIMER);
+    const q = encodeURIComponent(id);
+    let d;
+    try { d = await api('GET', `/api/gamestudio/${q}/qa`); }
+    catch (e) { toast(e.message, true); GS_QA = false; return gsBoard(el, id); }
+    const L = d.last || {}, gl = L.golden || {}, pf = L.perf || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="qaBack">← Board</button><h2>QA</h2>
+        ${L.verdict ? tag(QV[L.verdict] || '', L.verdict) : ''}<span class="muted em-sub">${L.at ? 'v' + num(L.version) + ' · ' + esc((L.at || '').slice(0, 16).replace('T', ' ')) : 'Not run yet'}</span>
+        <button class="btn go" type="button" id="qaRun"${d.running ? ' disabled' : ''}>${d.running ? 'Bots are playing…' : 'Run the QA bots now'}</button></div>
+      <p class="muted em-sub">Hoola's bots play a debug build of the game on desktop, mid-range phone and low-end phone speeds every night, the same way each time. A bug the bots find is fixed only when the same bot can no longer find it.</p>
+      ${L.verdict ? `<div class="tile gl qa-sum">${(L.blockers || []).map(x => `<div class="em-small">${tag('bad', 'Blocker')} ${esc(x)}</div>`).join('')}
+        ${(L.concerns || []).map(x => `<div class="em-small">${tag('warn', 'Concern')} ${esc(x)}</div>`).join('')}
+        ${(L.missing || []).map(x => `<div class="em-small">${tag('', 'Not assessed')} ${esc(x)}</div>`).join('')}
+        <div class="gd-nums">${pf.fps_avg ? `<span><b>${num(pf.fps_avg)}</b> fps average</span>` : ''}${pf.mid_phone_fps ? `<span><b>${num(pf.mid_phone_fps)}</b> fps on a mid phone</span>` : ''}${pf.load_s ? `<span><b>${num(pf.load_s)}</b> s to start</span>` : ''}</div>
+        ${(L.fixed || []).length ? `<p class="em-small">Fixed and checked by the bots: ${esc(L.fixed.join(', '))}</p>` : ''}</div>` : ''}
+      ${gl.candidate_url ? `<section class="tile gl"><h3>Start screen</h3><div class="qa-gold">
+          ${gl.golden_url ? `<figure><img src="${esc(gl.golden_url)}" alt="Golden start screen"><figcaption>Golden (approved)</figcaption></figure>` : ''}
+          <figure><img src="${esc(gl.candidate_url)}" alt="This run's start screen"><figcaption>This run${gl.diff != null ? ' · ' + (Math.round(gl.diff * 1000) / 10) + '% different' : ''}</figcaption></figure></div>
+        ${gl.verdict !== 'same' ? '<div class="acts"><button class="btn soft" type="button" id="qaGold">This is how it should look</button></div>' : ''}</section>` : ''}
+      ${(L.runs || []).length ? `<section class="tile gl"><h3>Bot runs</h3><div class="gb-scroll"><table class="gb-t"><thead><tr><th>Bot</th><th>Speed</th><th>Result</th><th>fps</th><th>Score / state</th><th>Game overs</th><th>Shots</th></tr></thead><tbody>
+        ${L.runs.map(x => `<tr><td>${esc(x.bot)} <span class="muted">#${num(x.seed)}</span></td><td>${esc(x.profile.replace('_', ' '))}</td>
+          <td>${x.ok ? tag('ok', 'OK') : tag('bad', 'Error')}${(x.errors || []).length ? `<div class="badc em-small">${esc(x.errors[0])}</div>` : ''}${(x.warnings || []).map(w => `<div class="muted em-small">${esc(w)}</div>`).join('')}</td>
+          <td>${x.fps != null ? num(x.fps) : '—'}</td><td>${esc(Object.entries(x.state || {}).map(([k, v]) => k + ' ' + v).join(', ') || '—')}</td><td>${num(x.game_overs || 0)}</td>
+          <td class="qa-shots">${(x.shot_urls || []).map(u => `<img src="${esc(u)}" alt="Bot screenshot" loading="lazy">`).join('')}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
+      <section class="tile gl"><h3>Bugs <span class="muted">${num(d.open)} open</span></h3>
+        <div class="acts"><input id="qaBugT" maxlength="200" placeholder="Report a bug, e.g. the jump button does nothing on my phone" aria-label="Bug">
+          <select id="qaBugS" aria-label="Severity"><option value="major">Major</option><option value="crash">Crash</option><option value="blocker">Blocker</option><option value="minor">Minor</option><option value="visual">Looks wrong</option><option value="perf">Slow</option></select>
+          <button class="btn soft" type="button" id="qaBugAdd">Report</button></div>
+        ${(d.bugs || []).map(b => { const [c, n] = BUG_ST[b.status] || ['', b.status]; return `<div class="qa-bug"><div class="ga-h"><b>${esc(b.number)}</b> ${esc(b.title)} ${tag(c, n)} ${tag(b.severity === 'crash' || b.severity === 'blocker' ? 'bad' : '', b.severity)}${b.regression ? ' ' + tag('bad', 'Came back ×' + num(b.regression)) : ''}</div>
+          <div class="gs-meta">${b.source === 'her' ? 'Reported by you' : `Found by bot ${esc(b.repro.bot || '')} #${num(b.repro.seed || 1)} on ${esc((b.repro.profile || '').replace('_', ' '))}`} · seen ${num(b.seen)}× · v${num(b.first_version)}${b.last_version !== b.first_version ? '–' + num(b.last_version) : ''}${b.task ? ' · task ' + esc(b.task) : ''}</div>
+          ${((b.evidence || {}).errors || []).slice(0, 2).map(e => `<div class="badc em-small">${esc(e)}</div>`).join('')}
+          <div class="acts">${['open', 'fixing'].includes(b.status) && !b.task ? `<button class="btn go gs-mini" type="button" data-qb="fix" data-n="${esc(b.number)}">Fix it (make a task)</button>` : ''}
+            ${['open', 'fixing'].includes(b.status) ? `<button class="btn soft gs-mini" type="button" data-qb="wontfix" data-n="${esc(b.number)}">Won't fix</button><button class="btn soft gs-mini" type="button" data-qb="duplicate" data-n="${esc(b.number)}">Duplicate</button>` : `<button class="btn soft gs-mini" type="button" data-qb="open" data-n="${esc(b.number)}">Reopen</button>`}</div></div>`; }).join('') || '<p class="muted em-small">No bugs.</p>'}</section>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsQa(el, id); };
+    el.querySelector('#qaBack').addEventListener('click', () => { GS_QA = false; gsBoard(el, id); });
+    el.querySelector('#qaRun').addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/qa/run`), 'The bots are playing (2-4 minutes).'));
+    el.querySelector('#qaGold')?.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/qa/golden`, {}), 'Saved as the golden start screen.'));
+    el.querySelector('#qaBugAdd').addEventListener('click', () => { const title = el.querySelector('#qaBugT').value.trim();
+      if (title.length < 4) { toast('Write the bug in one line.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/bugs`, {title, severity: el.querySelector('#qaBugS').value}), 'Bug saved.'); });
+    el.querySelectorAll('[data-qb]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bugs/${encodeURIComponent(b.dataset.n)}/${b.dataset.qb}`),
+      b.dataset.qb === 'fix' ? 'A fix task is on the board. The bug closes when the same bot cannot find it again.' : '')));
+    if (d.running) GTIMER = setTimeout(() => { if (visible(el) && GS_QA) gsQa(el, id); }, 8000);
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
     if (GS_BIBLE) return gsBible(el, id);
     if (GS_ASSETS) return gsAssets(el, id);
+    if (GS_QA) return gsQa(el, id);
     let p;
     try { p = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}`); }
     catch (e) { GS_OPEN = ''; toast(e.message, true); return game(el); }
@@ -1109,6 +1160,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gsBack">← Game Desk</button><h2>${esc(p.number)} · ${esc(p.title)}</h2>
         ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}
         <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button>
+        <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
       ${gsBars(p.milestones, p.gates || [])}
@@ -1153,9 +1205,10 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>`;
     const q = encodeURIComponent(p.id);
     const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
-    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; el.innerHTML = ''; game(el); });
     el.querySelector('#gsBib').addEventListener('click', () => { GS_BIBLE = true; gsBible(el, id); });
     el.querySelector('#gsAst').addEventListener('click', () => { GS_ASSETS = true; gsAssets(el, id); });
+    el.querySelector('#gsQaBtn').addEventListener('click', () => { GS_QA = true; gsQa(el, id); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

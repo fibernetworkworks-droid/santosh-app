@@ -15569,3 +15569,33 @@ Owner: "GO PHASE 4". `server/app/gamedesk/assets.py` (table `game_assets`), `gam
 - Tests `test_v0411_game_assets.py` (9).
 - Not verified: GLB loading in a real Godot build (no Blender in the sandbox); real photogen / Lyria / TTS output (faked).
 
+## v0.415.0 QA FARM + BUG TRACKER (Hoola Game Engine plan, Phase 5; built as 0.410.0 / 0.412.0) - 1 Nov 2026
+
+Owner: "GO PHASE 5". `server/app/gamedesk/qa.py` (table `game_bugs`, `game_studios.qa` reports).
+
+- PROBE (`template.PROBE`): HoolaProbe.state(key, value) / event(name) -> window.__hoola.state / events (the code
+  guide asks every game to report state title|playing|game_over, score, level, game_over / level_up / win).
+- BOTS (`_actions`, seeded: the plan is the replay): idle, monkey, tapper, keys, restarter (restarts after each
+  game_over event). PROFILES desktop 1x / mid_phone 4x CPU + touch / low_phone 6x (CDP Emulation.setCPUThrottlingRate).
+  `run_bot`: fps per second, frames, state / events, game overs, restarts, stuck time, memory, start / end shots.
+- FOUND LIVE: (1) a release web build prints NO script errors in the browser, so a Space-key crash passed the
+  playtest and went live -> the farm plays a DEBUG export (`engine.export_web(debug=True)`, `setup_godot.py` now
+  fetches templates/web_nothreads_debug.zip; no template = NOT ASSESSED, never a pass) and EVERY build's playtest plays
+  a debug build (`service._play_build`; play link keeps the release build; debug build never kept); a real run then
+  caught the crash in the build's fix round and shipped the fixed version. (2) keys only reach a focused canvas.
+- BUGS: errors / freezes / blank screens / broken restart / stuck screens -> `file_bug` (signature = normalised
+  text; repeats counted; a FIXED bug seen again = REGRESSION, reopened); her own reports (`report_bug`); `fix_bug` =
+  board task (role from the words, priority 1 for crash / blocker) with the criterion "QA bot X (seed, profile) no
+  longer finds B-000N"; she cannot mark a bot bug fixed by hand - every farm run replays every open bug's exact steps
+  and closes it only when it is gone.
+- GOLDEN: idle bot's start screen vs her approved one (`diff_share` on a small picture, > 3 % = looks different);
+  none = NOT ASSESSED. SPEED: fps average vs the last run (> 25 % drop = concern + perf bug).
+- Verdict PASS / CONCERNS / FAIL / NOT ASSESSED in code; kept on the project (12 runs; shots pruned); decisions log;
+  runs after every good nightly (`GAME_QA_NIGHTLY`); gate check (crash bugs / FAIL = blockers, not run = concern) and
+  the morning report read it.
+- REAL GODOT 4.7.2: the probe + restarter (4 game overs, 4 restarts), mid phone throttle (~26 vs 60 fps), the hidden
+  Space crash filed as B-0001 by the keys bot, "Fix it" -> T-0002, fixed build -> farm marked B-0001 fixed.
+- Tool `game_qa` (run / report / bugs / report_bug / fix / status / golden), API `/api/gamestudio/{id}/qa*` /
+  `/bugs*` + signed `/api/gamestudio/qa-shot/{sid}`; console board > QA (`gsQa`, `qa-*` CSS); phone `game_qa_screen.dart`.
+- Tests `test_v0415_game_qa.py` (11). VPS: run `python deploy/setup_godot.py` again once (the debug template).
+

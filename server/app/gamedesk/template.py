@@ -8,21 +8,39 @@ from __future__ import annotations
 SIZES = {"portrait": (720, 1280), "landscape": (1280, 720), "square": (1024, 1024)}
 
 PROBE = '''extends Node
-# Hoola's playtest probe (not part of the game logic): reports readiness, frames per second and memory to the page.
+# Hoola's playtest probe (not part of the game logic): reports readiness, frames per second and memory to the page,
+# and (v0.415 QA farm) what the game tells it: HoolaProbe.state("score", 12), HoolaProbe.event("game_over").
 var _t := 0.0
 var _frames := 0
+var _state := {}
+var _events: Array = []
+var _dirty := false
 
 func _ready() -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("window.__hoola = {ready: true, fps: 0, mem: 0, frames: 0}", true)
+		JavaScriptBridge.eval("window.__hoola = {ready: true, fps: 0, mem: 0, frames: 0, state: {}, events: []}", true)
+
+func state(key: String, value: Variant) -> void:
+	_state[key] = value
+	_dirty = true
+
+func event(name: String) -> void:
+	_events.append({"e": name, "f": _frames})
+	if _events.size() > 60:
+		_events.pop_front()
+	_dirty = true
 
 func _process(delta: float) -> void:
 	_frames += 1
 	_t += delta
 	if _t >= 0.5 and OS.has_feature("web"):
 		_t = 0.0
-		JavaScriptBridge.eval("if (window.__hoola) { window.__hoola.fps = %d; window.__hoola.mem = %d; window.__hoola.frames = %d; }"
-			% [Engine.get_frames_per_second(), OS.get_static_memory_usage(), _frames], true)
+		var extra := ""
+		if _dirty:
+			_dirty = false
+			extra = "window.__hoola.state = %s; window.__hoola.events = %s;" % [JSON.stringify(_state), JSON.stringify(_events)]
+		JavaScriptBridge.eval("if (window.__hoola) { window.__hoola.fps = %d; window.__hoola.mem = %d; window.__hoola.frames = %d; %s }"
+			% [Engine.get_frames_per_second(), OS.get_static_memory_usage(), _frames, extra], true)
 '''
 
 

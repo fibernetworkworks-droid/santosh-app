@@ -617,7 +617,7 @@ def _build(r: GameProject, holder: dict) -> None:
                     if _cancelled(r, holder):
                         return
                     _stage(r, "testing", "khud khel kar jaanch raha hoon", 80)
-                    play = playtest.run(vdir / "build", vdir / "shots", r.orientation)
+                    play = playtest.run(_play_build(vdir, holder), vdir / "shots", r.orientation)
                     checks.append({"step": "playtest", "ok": play["ok"], "errors": play["errors"][:6]})
                     bad = play["errors"]
         if not bad or fixed >= FIX_ROUNDS * 2:
@@ -633,6 +633,7 @@ def _build(r: GameProject, holder: dict) -> None:
             files.pop("hoola_assets.gd", None)
             if ast:
                 files["hoola_assets.gd"] = ast[0]
+    shutil.rmtree(vdir / "build_debug", ignore_errors=True)    # v0.415 the played debug build is not kept
     ok = bool(checks) and all(c["ok"] for c in checks[-3:]) and checks[-1]["step"] == "playtest" and checks[-1]["ok"]
     if fixed and ok:
         STATS["fixed"] += 1
@@ -665,6 +666,20 @@ def _build(r: GameProject, holder: dict) -> None:
     _studio_hook(r, task, ver, "" if ok else "; ".join(errors[:3])[:400])
 
 
+def _play_build(vdir: Path, holder: dict) -> Path:
+    """v0.415: Hoola plays a DEBUG web build when the debug template is there - a release web build prints no script
+    errors, so a crash that only happens on a key / tap passed the playtest and went live (found by the QA farm on a
+    real build). The play link still serves the release build. Without the debug template: the release build, as before."""
+    try:
+        if engine.debug_template():
+            ex = engine.export_web(vdir, holder=holder, debug=True)
+            if ex.get("ok"):
+                return vdir / "build_debug"
+    except engine.EngineError:
+        pass
+    return vdir / "build"
+
+
 def _src_hash(proj: Path) -> str:
     """The code's fingerprint (every .gd / project file): the nightly build proves the same code still builds the same."""
     import hashlib
@@ -677,7 +692,10 @@ def _src_hash(proj: Path) -> str:
 
 
 def _trim_builds(r: GameProject) -> None:
-    """Keep the Web builds of the newest few good versions (each ~40 MB); older versions keep code + screenshots."""
+    """Keep the Web builds of the newest few good versions (each ~40 MB); older versions keep code + screenshots.
+    The debug build Hoola played (v0.415) is never kept."""
+    for v in r.versions or []:
+        shutil.rmtree(_vdir(r, v.get("n", 0)) / "build_debug", ignore_errors=True)
     good = [v["n"] for v in _good(r)]
     for n in good[:-KEEP_BUILDS]:
         shutil.rmtree(_vdir(r, n) / "build", ignore_errors=True)

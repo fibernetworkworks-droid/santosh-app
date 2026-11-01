@@ -26,6 +26,14 @@ POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
 POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
 
+v0.415 QA farm (bots play a DEBUG web build; no model, no money):
+GET    /api/gamestudio/{id}/qa                  bugs + the last report (signed screenshot links) + history + running
+POST   /api/gamestudio/{id}/qa/run              run the farm now (background, 2-4 minutes)
+POST   /api/gamestudio/{id}/qa/golden           {rel?}  her OK: this start screen is the golden one
+POST   /api/gamestudio/{id}/bugs                {title, detail?, severity?}  her own bug report
+POST   /api/gamestudio/{id}/bugs/{B-0001}/fix|open|wontfix|duplicate   fix = a board task whose criterion is the bot
+GET    /api/gamestudio/qa-shot/{sid}?rel&exp&sig  a signed QA screenshot
+
 v0.414 Asset pipeline (her OK before anything enters the game; paid kinds only after her tap on the price card):
 GET    /api/gamestudio/{id}/assets              assets + price card + spent
 GET    /api/gamestudio/{id}/assets/suggest      what the game still needs, from the Bible (nothing priced)
@@ -357,6 +365,52 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/api/gamestudio/{sid}/assets-apply", dependencies=[Depends(require_key)])
     async def as_apply(sid: str, tenant: str = Depends(current_tenant)):
         return await acall(A.apply, tenant, sid)
+
+    # ------------------------------------------------------------ v0.415 QA farm + bug tracker
+    from . import qa as Q
+
+    async def qcall(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (Q.QaError, service.GameError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/gamestudio/qa-shot/{sid}")
+    def qa_shot(sid: str, rel: str = "", exp: int = 0, sig: str = ""):
+        p = Q.shot_file(sid, rel, exp, sig)
+        if p is None:
+            raise HTTPException(404, "screenshot link purana / galat hai")
+        return FileResponse(p, media_type="image/png", headers={"Cache-Control": "private, max-age=3600"})
+
+    @r.get("/api/gamestudio/{sid}/qa", dependencies=[Depends(require_key)])
+    async def qa_home(sid: str, tenant: str = Depends(current_tenant)):
+        d = await qcall(Q.bugs, tenant, sid)
+        st = await qcall(S.get, tenant, sid)
+        d["last"] = Q.with_links(st["id"], d.get("last") or {})
+        d["running"] = Q.running(st["id"])
+        return d
+
+    @r.post("/api/gamestudio/{sid}/qa/run", dependencies=[Depends(require_key)])
+    async def qa_run(sid: str, tenant: str = Depends(current_tenant)):
+        return await qcall(Q.start, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/qa/golden", dependencies=[Depends(require_key)])
+    async def qa_golden(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        return await qcall(Q.approve_golden, tenant, sid, str(_b(body).get("rel") or ""))
+
+    @r.post("/api/gamestudio/{sid}/bugs", dependencies=[Depends(require_key)])
+    async def bug_new(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await qcall(Q.report_bug, tenant, sid, str(b.get("title") or ""), str(b.get("detail") or ""),
+                           str(b.get("severity") or "major"))
+
+    @r.post("/api/gamestudio/{sid}/bugs/{number}/{what}", dependencies=[Depends(require_key)])
+    async def bug_do(sid: str, number: str, what: str, tenant: str = Depends(current_tenant)):
+        if what == "fix":
+            return await qcall(Q.fix_bug, tenant, sid, number)
+        if what in ("open", "wontfix", "duplicate", "fixed"):
+            return await qcall(Q.set_bug, tenant, sid, number, what)
+        raise HTTPException(404, "fix | open | wontfix | duplicate | fixed")
 
     @r.get("/play/{token}")
     def play_root(token: str):

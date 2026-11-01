@@ -101,6 +101,10 @@ HARD RULES (the build fails otherwise)
   * 4.5 added variadic functions and @abstract; 4.6 made Jolt the 3D physics and Quaternion() starts as identity;
   * still Godot 4 rules: TileMapLayer (not TileMap), instantiate() (not instance()), await (not yield),
     signal.connect(callable), Time.get_ticks_msec(), VisibleOnScreenNotifier2D.
+- QA PROBE: report to Hoola's test bots (HoolaProbe is always there): HoolaProbe.state("state", "title" / "playing" /
+  "game_over") whenever the screen state changes, HoolaProbe.state("score", score) when the score changes,
+  HoolaProbe.state("level", n), and HoolaProbe.event("game_over") / event("level_up") / event("win") when they happen.
+  These calls never change the game.
 - ASSETS: if the files include hoola_assets.gd (the HoolaAssets autoload, written by Hoola - NEVER edit or re-output
   it), use its approved art and sound: HoolaAssets.has(key), HoolaAssets.tex(key) -> Texture2D for a Sprite2D /
   TextureRect, HoolaAssets.play(key) for a sound, HoolaAssets.sound(key) -> AudioStream (music: a looping

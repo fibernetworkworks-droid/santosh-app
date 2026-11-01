@@ -2531,3 +2531,15 @@ body.albon{overflow:hidden}
 .ga-h{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .ga-item .acts{display:flex;flex-wrap:wrap;gap:6px}
 
+/* v0.415 QA FARM + BUGS */
+.qa-sum{display:flex;flex-direction:column;gap:4px;margin:10px 0}
+.qa-gold{display:flex;flex-wrap:wrap;gap:12px}
+.qa-gold figure{margin:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--mut)}
+.qa-gold img{width:180px;border-radius:8px;border:1px solid var(--line)}
+.qa-shots{display:flex;gap:4px}
+.qa-shots img{height:64px;border-radius:4px;border:1px solid var(--line)}
+.qa-bug{border-top:1px solid var(--line);padding:8px 0;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+.qa-bug .acts{display:flex;flex-wrap:wrap;gap:6px}
+#qaBugT{flex:1 1 260px;min-width:0;font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+#qaBugS{font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+

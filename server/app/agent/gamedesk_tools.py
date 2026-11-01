@@ -101,8 +101,27 @@ GAMEDESK_TOOLS.append(
          "preset": {"type": "string"}, "seed": {"type": "integer"}, "text": {"type": "string"}, "v": {"type": "integer"}},
          "required": ["action"]}})
 
+GAMEDESK_TOOLS.append(
+    {"name": "game_qa", "description": (
+        "QA farm + bug tracker of a Studio Project: Hoola's bots (idle, monkey, tapper, keys, restarter; seeded = "
+        "repeatable) play a DEBUG web build on desktop / mid phone / low phone speeds, compare the start screen with the "
+        "golden one she approved, measure fps / load / memory against the last run, and file numbered bugs with the "
+        "exact bot + seed that finds them. Actions: run (background, 2-4 min; also every night after the nightly build) "
+        "/ report (the last verdict PASS|CONCERNS|FAIL|NOT ASSESSED, quote only its facts) / bugs / report_bug (title, "
+        "detail, severity crash|blocker|major|minor|visual|perf) / fix (bug = B-0001): a board task whose criterion is "
+        "that the same bot no longer finds it - a bot bug is FIXED only when its bot cannot find it again / status (bug, "
+        "status open|wontfix|duplicate) / golden: her OK that the last start screen is how the game should look. "
+        "id = S-0001 (optional with one project). Only while the Game Developer is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["run", "report", "bugs", "report_bug", "fix", "status", "golden"]},
+         "id": {"type": "string"}, "bug": {"type": "string"}, "title": {"type": "string"}, "detail": {"type": "string"},
+         "severity": {"type": "string", "enum": ["crash", "blocker", "major", "minor", "visual", "perf"]},
+         "status": {"type": "string", "enum": ["open", "wontfix", "duplicate"]}},
+         "required": ["action"]}})
+
 GAMEDESK_LABELS = {"game_desk": "Game bana raha hoon", "game_studio": "Game project dekh raha hoon",
-                   "game_bible": "Game Bible dekh raha hoon", "game_assets": "Game ke assets dekh raha hoon"}
+                   "game_bible": "Game Bible dekh raha hoon", "game_assets": "Game ke assets dekh raha hoon",
+                   "game_qa": "Game ki QA dekh raha hoon"}
 
 
 def _short(v: dict) -> dict:
@@ -380,4 +399,49 @@ async def game_assets(ctx: Ctx, action="", id="", kind="", key="", words="", siz
     raise ToolError("action = list | suggest | make | approve | reject | apply")
 
 
-GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets}
+async def game_qa(ctx: Ctx, action="", id="", bug="", title="", detail="", severity="major", status="", **_):
+    from ..employee import hire
+    from ..gamedesk import qa as Q
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("report", "bugs") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
+        raise ToolError("Game QA badalna sirf owner ka kaam hai.")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "run":
+            res = await run(Q.start, t, id)
+            return {**res, "note": "The bots play in the background (2-4 minutes); the report lands on the QA page. Do not poll."}
+        if action in ("report", "bugs"):
+            d = await run(Q.bugs, t, id)
+            last = d.get("last") or {}
+            out = {"open": d["open"], "crash_open": d["crash_open"],
+                   "last": {k: last.get(k) for k in ("at", "version", "verdict", "blockers", "concerns", "missing", "filed", "fixed", "perf")}}
+            if action == "bugs":
+                out["bugs"] = [{k: b.get(k) for k in ("number", "title", "severity", "status", "seen", "regression", "task")}
+                               for b in d["bugs"][:30]]
+            return out
+        if action == "report_bug":
+            return {"bug": await run(Q.report_bug, t, id, title, detail, severity)}
+        if action == "fix":
+            res = await run(Q.fix_bug, t, id, bug)
+            return {"bug": res["bug"]["number"], "task": res["task"]["number"],
+                    "note": "A board task now carries the fix; the bug closes only when the same bot cannot find it again."}
+        if action == "status":
+            return {"bug": await run(Q.set_bug, t, id, bug, status)}
+        if action == "golden":
+            return await run(Q.approve_golden, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = run | report | bugs | report_bug | fix | status | golden")
+
+
+GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets,
+                     "game_qa": game_qa}
