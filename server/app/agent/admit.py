@@ -130,7 +130,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "cosec": ("cosec", "roc", "company law"),
     "contracts": ("contract", "agreement"),
     "legalres": ("legal research", "kanoon", "case law"),
-    # v0.364 Shiksha suite: school / coaching work (papers, question banks, plans) + the Python sandbox
+    # v0.370 Shiksha suite: school / coaching work (papers, question banks, plans) + the Python sandbox
     "shiksha": ("question paper", "sample paper", "test paper", "paper banao", "question bank", "sawaal banao", "mcq",
                 "syllabus", "lesson plan", "year plan", "rubric", "blueprint", "marking scheme", "answer key", "worksheet",
                 "unit test", "periodic test", "cbse", "icse", "ncert", "board exam", "class 10", "class 12", "students",

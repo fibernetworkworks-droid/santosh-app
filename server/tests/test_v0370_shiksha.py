@@ -1,4 +1,4 @@
-"""v0.364 Shiksha suite Phase 0 + 1: the locked Python sandbox, the education foundation (classes, learners + guardian
+"""v0.370 Shiksha suite Phase 0 + 1: the locked Python sandbox, the education foundation (classes, learners + guardian
 consent under DPDP s.9, shared question bank with code checks, gradebook) and the Pathyakram Sahayak (questions ->
 drafts -> teacher approval, papers from the official blueprint, year / lesson plans, rubrics, Word files, a share only
 on her app tap, Google Forms quiz from the objective questions), tools, API, employee wiring."""
@@ -223,6 +223,8 @@ def test_paper_gaps_and_official_pattern(sk):
         P.approve_paper(T, p["number"])
     with pytest.raises(P.PathyakramError, match="pattern"):
         P.make_paper(T, "Science", "10", "CBSE")                 # no section counts on record: teacher gives them
+    with pytest.raises(P.PathyakramError, match="samajh"):
+        P.make_paper(T, "Mathematics", "10", sections=[{"name": "A", "qtype": "essayish", "count": 2, "marks_each": 5}])
 
 
 def test_year_plan_uses_library_chapters(sk):
@@ -334,4 +336,4 @@ def test_tools_api_and_employee_wiring(sk, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.364.0"
+    assert APP_VERSION == "0.370.0"

@@ -851,7 +851,7 @@ def init_db(url: str | None = None):
     # v0.150 Kanoon suite
     from .vakil import models as _vakil  # noqa: F401
     from .legalres import models as _legalres  # noqa: F401
-    from .shiksha import models as _shiksha  # noqa: F401  (v0.364 Shiksha suite)
+    from .shiksha import models as _shiksha  # noqa: F401  (v0.370 Shiksha suite)
     from .pathyakram import models as _pathyakram  # noqa: F401
     from .compliance import models as _compliance  # noqa: F401
     from .contracts import models as _contracts  # noqa: F401

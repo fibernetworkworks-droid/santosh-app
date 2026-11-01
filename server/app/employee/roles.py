@@ -164,7 +164,7 @@ DUTIES: dict[str, dict] = {
     # v0.150 Kanoon suite
     "legal_junior": {"label": "Lawyer's junior", "say": "court diary, tareekhein, cause list, limitation (andaaza), drafts vakil sahab ke liye, client update drafts, fee hisaab (filing / message / fee maangna aapke tap se)",
                      "prefix": (), "tools": {"vakil", "vakil_dekho", "file_read", "lekhak", "lekhak_dekho"}},
-    # v0.364 Shiksha suite
+    # v0.370 Shiksha suite
     "curriculum_work": {"label": "Paper aur pathyakram", "say": "question bank (draft -> teacher approve), board pattern se paper + answer key, year / lesson plan, rubric; bahar bhejna aapke tap se",
                         "prefix": (), "tools": {"pathyakram", "pathyakram_dekho", "shiksha_dekho", "file_read", "gyaan_khojo", "pylab"}},
     "school_records": {"label": "School register", "say": "class, students, guardian consent, marks register (final marks teacher ke)",
@@ -829,7 +829,7 @@ READ = {
     # v0.144 Makaan suite
     "propagent_dekho", "rentdesk_dekho", "biz_rent_status", "sitesup_dekho", "interior_dekho", "archassist_dekho", "society_dekho",
     # v0.150 Kanoon suite
-    "shiksha_dekho", "pathyakram_dekho", "pylab",   # v0.364 Shiksha suite (pylab: sandboxed, nothing outside changes)
+    "shiksha_dekho", "pathyakram_dekho", "pylab",   # v0.370 Shiksha suite (pylab: sandboxed, nothing outside changes)
     "vakil_dekho", "legalres_dekho", "compliance_dekho", "contracts_dekho", "cosec_dekho", "notary_dekho", "pidesk_dekho", "dpo_dekho",
     # v0.152 Mehmaan suite
     "front_office_dekho", "event_plan_dekho", "shaadi_dekho", "tour_guide_dekho", "homestay_dekho", "banquet_dekho",

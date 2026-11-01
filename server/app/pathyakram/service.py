@@ -173,7 +173,9 @@ def blueprint(tenant: str, subject: str, grade: str, board: str = "", sections: 
             if not isinstance(s, dict):
                 continue
             qt = _s(s.get("qtype") or s.get("type"), 20).lower()
-            clean, _ = R.check_question({"qtype": qt, "text": "placeholder text", "answer": "x", "marks": 1})
+            clean, probs = R.check_question({"qtype": qt, "text": "placeholder text", "answer": "x", "marks": 1})
+            if any("samajh nahi aaya" in x for x in probs):
+                raise PathyakramError(f"Section {s.get('name') or i + 1}: qtype '{qt}' samajh nahi aaya; inmein se: {', '.join(R.QTYPES)}")
             secs.append({"name": _s(s.get("name"), 20) or "ABCDEFGH"[i % 8], "qtype": clean["qtype"],
                          "count": int(s.get("count") or 0), "marks_each": float(s.get("marks_each") or s.get("marks") or 0),
                          "choice": int(s.get("choice") or 0)})

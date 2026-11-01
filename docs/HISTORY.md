@@ -13392,3 +13392,53 @@ Built as 0.359 / 0.365 / 0.366, re-versioned past main's v0.364-v0.367. Module `
 - Desk view `pulse` (settings, trust, cap, auto today, waiting_ok, best_times, boosts); console Posting controls / Best
   times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
   social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0369_social_pulse.py` (12).
+
+## v0.370.0 SHIKSHA SUITE Phase 0 + 1: the education foundation + Pathyakram Sahayak (curriculum & exam designer)
+- Owner: "NOW LETS WORK ON AI EMPLOYEE SECTION :::: FOR EDUCATION SECTION ... MAKE A PLAN" (4 roles: tutor, curriculum &
+  exam designer, admin operations, research assistant) -> plan (Phase 0 foundation, 1 exam designer, 2 tutor, 3 admin, 4
+  research) -> "GO PHASE 0 + 1".
+- PHASE 0 `server/app/pylab/` (runner + service, tool `pylab`): model-written Python runs ONLY in a child process with its own
+  temp work folder, a clean env (no keys / tokens, `-I`), RLIMIT CPU / AS (1 GB) / FSIZE / NOFILE / CORE, a wall-clock kill of the
+  process group, `unshare -rn` (own empty network namespace) when the kernel allows it, and an audit hook installed before the
+  user code that refuses socket / subprocess / os.system / exec / spawn / fork / ctypes events, any write outside the work folder
+  and any READ outside the work folder and the Python install (so the server's code, .env, database and other users' data are
+  out of reach). Inputs: DATA DESK datasets (as <id>.csv) and her chat files; outputs (png / csv / xlsx / txt / json / md / html)
+  come back as chat files; matplotlib figures are saved automatically. `pylab.service.status()` = libraries + isolation.
+  requirements.txt + pandas, scipy, statsmodels, matplotlib (VPS: pip install them into the venv).
+- PHASE 0 `server/app/shiksha/` (models / rules / service / api, tools `shiksha` / `shiksha_dekho`): settings (institution,
+  kind, board, medium, session), classes C-01, learners S-0001 (birth YEAR only; a learner is a child unless marked adult or 18+
+  by year; a child needs guardian name + phone / email; `record_consent` = the owner / school team records the GUARDIAN's
+  consent with a method signed_form | in_person | digilocker | school_record | email_confirmed, logged; withdrawal stops the
+  work; `need_usable` guards every one-child action; `forget_learner` erases details + marks, number kept), the shared question
+  bank Q-00001 (`rules.check_question`: 11 types, MCQ = 4 distinct options + answer among them (letters mapped), Assertion-Reason
+  = the 4 standard CBSE options, True / False, numeric needs a number, subjective needs a model answer or marking points,
+  marks in halves, scheme sum checked, Bloom / difficulty normalised; fatal problems not saved; near-duplicates (fingerprint +
+  85% word overlap) skipped; open problems block approval; an edited question goes back to draft), gradebook with teacher
+  sign-off (never by Hoola / a routine). `frameworks.json`: CBSE 2026-27 paper patterns (Class 10 Maths 80 = A 20x1, B 5x2,
+  C 6x3, D 4x5, E 3x4 with C / D worked out from the totals -> andaaza; Class 12 Maths 80 and Physics 70; Science / SST /
+  English / Chemistry / Biology have no section counts on record -> the teacher gives sections), current NCERT chapter lists
+  (Ganita Prakash 7 / 8, Ganita Manjari 9, Class 10 Maths + Science, Curiosity 6 / 8; Maths 6, Science 7 / 9 incomplete ->
+  left out), CISCE 2027 marks schemes, IB / Cambridge copyright notes, DPDP Rules 2025 (G.S.R. 846(E), rule 10 verifiable
+  parental consent, in force ~May 2027; Fourth Schedule school exemption only for tracking / safety).
+- PHASE 1 `server/app/pathyakram/` (models / service / api; tools `pathyakram` / `pathyakram_dekho`): `generate` (<= 30 a call,
+  site.ai kind "edu", warns when a chapter is not in the NCERT book), `blueprint` (official pattern or her sections; totals
+  checked), `make_paper` (approved questions of the section's type + marks, chapter round-robin, least-used first, internal
+  choice slots, gaps listed; fill_missing writes drafts), `swap`, `approve_paper` (every question approved + marks = max),
+  `paper_file` (Word paper / answer key + marking scheme), `year_plan` (deterministic, chapters in order once each, revision
+  months, periodic tests / half-yearly as suggestions), `lesson_plan` (5E, all five phases required, minutes scaled to the class
+  time), `rubric` (same level count per criterion, points scaled to the total), `plan_file`, `share_request` / `decide_share`
+  (an approved paper / plan; card hash over the exact content; only POST /api/pathyakram/shares/{id}/decide with by_tap; file /
+  Google Forms quiz of the objective questions with the rest listed as left out / WhatsApp or email draft she sends herself).
+- Employee: duties `curriculum_work`, `school_records`; role `curriculum_designer`; preset `school_academics`; READ +
+  shiksha_dekho, pathyakram_dekho, pylab. Admit family "shiksha" (paper / syllabus / CBSE / NCERT / Python words). Voice: via
+  santosh_kaam only. Push: pathyakram_share (waiting only), pathyakram_paper, pathyakram_plan. Prompt line SCHOOL / COACHING.
+- App: `lib/ui/shiksha_screen.dart` (ShikshaScreen Aaj / Sawaal / Papers / Plans / Niyam, PathyakramPaperPage, PathyakramPaperCard,
+  PathyakramShareCard), Profile tile, chat cards keyed in kanoonCardKey (pkshare / pkpaper), share card in calls.
+- Tests: NEW `server/tests/test_v0370_shiksha.py` (22): sandbox analysis + files, 7 escapes blocked (socket, os.system,
+  subprocess, write outside, read /etc/passwd, list /home, ctypes), no secrets in the child, timeout, memory, her dataset;
+  question checks; frameworks honest (incomplete book empty, derived pattern unverified); guardian consent rules + sign-off +
+  forget; bank dedupe / review; generate drafts; paper from her blueprint + approve + files + swap; official pattern + gaps;
+  year plan from the library; lesson / rubric numbers; share only on her tap + Forms quiz; tools / API / employee wiring.
+- Not verified: real model output (scripted JSON in tests); a real Google Forms quiz; the official PDFs themselves (the build
+  sandbox could not open cbseacademic / ncert / cisce; facts came from searches restricted to those domains); Flutter not compiled
+  here (CI analyze); the console has no Shiksha page yet (phone + chat only).
