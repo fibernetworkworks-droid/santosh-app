@@ -435,6 +435,13 @@ class _PackPageState extends State<_PackPage> {
       case 'net':
         final i = _map(x['inputs']);
         return '${_s(i['players'])} players · ${_s(i['tick'])} Hz · server on your own cloud';
+      case 'sim':
+        return '${_s(x['kind'])} · ${_s(_map(x['report'])['integrator'])}';
+      case 'twin':
+        final b = _map(_map(x['report'])['base']);
+        return b.isEmpty ? 'read-only twin' : '${_s(b['per_day'])} parts / day · bottleneck ${_s(b['bottleneck'])} · read-only';
+      case 'vfx':
+        return '${_s(x['show'])} · ${_list(_map(x['plan'])['shots']).length} shots';
       default:
         final st = _map(x['settings']);
         return '${_s(st['mode']).toUpperCase()} · snap ${_s(st['snap_deg'])}° · ${_s(st['fps'])} fps';
@@ -505,6 +512,12 @@ class _PackPageState extends State<_PackPage> {
         ]),
         Text(_subtitle(x), style: const TextStyle(color: C.muted, fontSize: 12)),
         if (status == 'testing') const Text('Rendering and measuring…', style: TextStyle(color: C.muted, fontSize: 12.5)),
+        for (final c in _list(rep['cases']))
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('${c['ok'] == true ? '✓' : '✕'} ${_s(c['case'])}: ${_s(c['measured'])} (expected ${_s(c['expected'])})',
+                style: TextStyle(fontSize: 12, color: c['ok'] == true ? null : C.bad)),
+          ),
         if (checks.isNotEmpty)
           for (final c in checks)
             Padding(
@@ -576,7 +589,13 @@ class _PackPageState extends State<_PackPage> {
                                 ? 'The moments that should buzz: jump, coin, hit, game over'
                                 : widget.base == 'net'
                                     ? 'e.g. 16 players, 240 px/s, 30 tick'
-                                    : 'e.g. VR for Quest, seated, or AR on a phone')),
+                                    : widget.base == 'sim'
+                                        ? 'e.g. a satellite in an 800 km orbit, or a car on a curve'
+                                        : widget.base == 'twin'
+                                            ? 'Your line in a few words (the worked example runs if empty)'
+                                            : widget.base == 'vfx'
+                                                ? 'Your show in a few words (the worked example runs if empty)'
+                                                : 'e.g. VR for Quest, seated, or AR on a phone')),
                     if (_haptics)
                     DropdownButton<String>(
                       value: acts.containsKey(_actuator) ? _actuator : (acts.keys.isEmpty ? null : acts.keys.first),
@@ -588,7 +607,15 @@ class _PackPageState extends State<_PackPage> {
                   const SizedBox(height: 8),
                   GradientButton(
                     label: hired
-                        ? (_audio ? 'Render and measure' : _haptics ? 'Make and check' : widget.base == 'net' ? 'Run the bots' : 'Check and build the demo room')
+                        ? (_audio
+                            ? 'Render and measure'
+                            : _haptics
+                                ? 'Make and check'
+                                : widget.base == 'net'
+                                    ? 'Run the bots'
+                                    : widget.base == 'xr'
+                                        ? 'Check and build the demo room'
+                                        : 'Check it')
                         : 'Hire the ${widget.hireName} first',
                     icon: _audio ? Icons.surround_sound_rounded : Icons.vibration_rounded,
                     height: 48,
@@ -607,7 +634,7 @@ class _PackPageState extends State<_PackPage> {
                                     : {'studio': widget.studio, 'words': _words.text.trim(), if (_haptics) 'actuator': _actuator}),
                             _audio ? 'Rendering and measuring.' : 'Made and checked.'),
                   ),
-                  if (widget.studio.isNotEmpty && hired && widget.base != 'net')
+                  if (widget.studio.isNotEmpty && hired && !const ['net', 'twin', 'vfx'].contains(widget.base))
                     TextButton(
                         onPressed: _busy
                             ? null
@@ -687,4 +714,34 @@ class GameXrScreen extends StatelessWidget {
       hireName: 'AR / VR Engineer',
       intro: 'A WebXR room for your headset or phone browser with comfort rules checked and hand gestures scored on a test set '
           'of synthetic hands. Frame rate on your headset is not measured here.');
+}
+
+class GameSimScreen extends StatelessWidget {
+  const GameSimScreen({super.key, required this.app, required this.studio});
+  final Santosh app;
+  final String studio;
+  @override
+  Widget build(BuildContext context) => _PackPage(
+      app: app, studio: studio, base: 'sim', title: 'Simulators', listKey: 'setups', hireName: 'Simulation Engineer',
+      intro: 'Orbit, light-aircraft and car models, each checked against its textbook answer, sources cited, every scenario run twice. A training aid, not a certified device.');
+}
+
+class GameTwinScreen extends StatelessWidget {
+  const GameTwinScreen({super.key, required this.app, required this.studio});
+  final Santosh app;
+  final String studio;
+  @override
+  Widget build(BuildContext context) => _PackPage(
+      app: app, studio: studio, base: 'twin', title: 'Digital twin', listKey: 'setups', hireName: 'Twin Architect',
+      intro: 'Your line simulated with what-ifs. Every number traces to your data or a stated assumption; it reads and never controls your plant.');
+}
+
+class GameVfxScreen extends StatelessWidget {
+  const GameVfxScreen({super.key, required this.app, required this.studio});
+  final Santosh app;
+  final String studio;
+  @override
+  Widget build(BuildContext context) => _PackPage(
+      app: app, studio: studio, base: 'vfx', title: 'VFX pipeline', listKey: 'setups', hireName: 'Pipeline TD',
+      intro: 'Naming and versions, ACES colour measured, an EXR test frame, a render queue with cost per shot. Blender is not run on Hoolas server.');
 }

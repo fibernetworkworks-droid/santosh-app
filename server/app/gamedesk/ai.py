@@ -133,6 +133,9 @@ HARD RULES (the build fails otherwise)
   XROrigin3D holding an XRCamera3D plus a normal Camera3D at head height for players without a headset; start XR only
   from a tap with HoolaXR.start(origin); move only by HoolaXR.teleport(point) and turn only by HoolaXR.snap_turn(+-1)
   (never smooth motion); read hand gestures with HoolaXR.gesture(joints) -> "pinch" / "grab" / "point" / "open".
+- SIMULATOR: if the files include hoola_sim.gd (the HoolaSim autoload, a VALIDATED orbit model - NEVER edit or re-output
+  it), move spacecraft only with HoolaSim.step([position_km, velocity_kms], dt_s) (RK4, two-body + J2); draw kilometres
+  scaled to the screen; never invent another physics for orbits.
 - GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
   NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
   HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])

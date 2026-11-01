@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
+  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
@@ -899,7 +899,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -919,7 +919,10 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <button class="btn soft" type="button" data-gs-role="audio">Audio (Spatial Audio Programmer)</button>
           <button class="btn soft" type="button" data-gs-role="haptics">Haptics (Haptic Feedback Engineer)</button>
           <button class="btn soft" type="button" data-gs-role="net">Multiplayer (Network Programmer)</button>
-          <button class="btn soft" type="button" data-gs-role="xr">VR / AR (Interaction Engineer)</button></div></div>
+          <button class="btn soft" type="button" data-gs-role="xr">VR / AR (Interaction Engineer)</button>
+          <button class="btn soft" type="button" data-gs-role="sim">Simulators (Simulation Engineer)</button>
+          <button class="btn soft" type="button" data-gs-role="twin">Digital twin (Twin Architect)</button>
+          <button class="btn soft" type="button" data-gs-role="vfx">VFX pipeline (Pipeline TD)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
     el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
@@ -1537,6 +1540,69 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'xr') gsXr(el); }, 5000);
   }
 
+  // ---------------------------------------------------------------- v0.423 Game Desk roles: Simulators, Digital Twin, VFX
+  async function gsReportPage(el, cfg) {
+    // one page shape for the three report-style roles: a form, then each setup's checks + numbers + files
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', `/api/gamedesk/${cfg.base}` + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="rpBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>${esc(cfg.title)}</h2>
+        ${d.hired ? tag('ok', cfg.who + ' hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">${esc(cfg.intro)}</p>
+      <div class="tile gl"><h3>${esc(cfg.formTitle)}</h3>${cfg.form(d)}
+        <div class="acts"><button class="btn go" type="button" id="rpGo"${d.hired ? '' : ' disabled'}>${esc(cfg.go)}</button>
+          ${sid && cfg.apply ? '<button class="btn soft" type="button" id="rpApply">Put the approved one in the game</button>' : ''}</div>
+        ${d.hired ? '' : `<p class="muted em-small">Hire the ${esc(cfg.who)} in Employees first.</p>`}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {};
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(cfg.sub(x))}</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
+          ${(rp.cases || []).length ? `<table class="ph-tbl"><thead><tr><th>Reference case</th><th>Measured</th><th>Expected</th><th></th></tr></thead><tbody>${rp.cases.map(k => `<tr><td>${esc(k.case)}<div class="muted em-small">${esc(k.note)}</div></td><td>${esc(String(k.measured))}</td><td>${esc(String(k.expected))}</td><td>${tag(k.ok ? 'ok' : 'bad', k.ok ? 'pass' : 'fail')}</td></tr>`).join('')}</tbody></table>` : ''}
+          ${(rp.checks || []).length ? checksTable(rp.checks) : ''}
+          ${cfg.extra ? cfg.extra(x) : ''}
+          ${f['plot.png'] || f['layout.png'] ? `<img class="wd-prev hp-img" src="${esc(f['plot.png'] || f['layout.png'])}" alt="${esc(cfg.title)} picture" loading="lazy">` : ''}
+          <div class="acts">${Object.entries(f).filter(([k]) => !k.endsWith('.png')).map(([k, u]) => `<a class="btn soft gs-mini" href="${esc(u)}">${esc(k)}</a>`).join('')}
+            ${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-rp="approve" data-id="${esc(x.id)}">OK</button><button class="btn soft gs-mini" type="button" data-rp="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">Nothing yet.</div>'}`;
+    const again = () => gsReportPage(el, cfg);
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } again(); };
+    el.querySelector('#rpBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#rpGo').addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Checking…';
+      go(() => api('POST', `/api/gamedesk/${cfg.base}`, {...cfg.body(el), studio: sid}), 'Checked.'); });
+    el.querySelector('#rpApply')?.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/${cfg.base}/apply`, {studio: sid}), 'Rebuilding the game.'));
+    el.querySelectorAll('[data-rp]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/${cfg.base}/${encodeURIComponent(b.dataset.id)}/${b.dataset.rp}`), b.dataset.rp === 'approve' ? 'Approved.' : '')));
+  }
+
+  function gsSim(el) {
+    return gsReportPage(el, {base: 'sim', title: 'Simulators', who: 'Simulation Engineer', formTitle: 'New training model', go: 'Validate the model', apply: true,
+      intro: 'Orbit, light-aircraft and car-handling models, each checked against its textbook answer, with the data source, time step and integrator stated and every scenario run twice. A training aid, not a certified device. Weapon or combat simulators are refused.',
+      form: d => `<div class="acts"><select id="smKind" aria-label="Kind">${(d.kinds || []).map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('')}</select>
+        <input id="smWords" maxlength="300" placeholder="Anything special (e.g. 800 km orbit at 98 degrees)" aria-label="Notes"></div>`,
+      body: el2 => ({kind: el2.querySelector('#smKind').value, words: el2.querySelector('#smWords').value.trim()}),
+      sub: x => `${x.kind} · ${(x.report || {}).integrator || ''}`,
+      extra: x => (x.report || {}).source ? `<p class="muted em-small">Data: ${esc(x.report.source)}</p>` : ''});
+  }
+
+  function gsTwin(el) {
+    return gsReportPage(el, {base: 'twin', title: 'Digital twin', who: 'Digital Twin Architect', formTitle: 'Check and simulate a twin', go: 'Run the twin', apply: false,
+      intro: 'Your line as data, simulated: throughput, load per station, work in progress, lead time, the bottleneck and what-ifs. Every number must trace to your data tag or a stated assumption; the engine is checked against exact answers and queueing theory; it reads your data and never controls your plant. Without your real week it is NOT ASSESSED.',
+      form: () => `<textarea id="twModel" rows="4" placeholder='Your model as JSON (leave empty for the worked example to copy)' aria-label="Model JSON"></textarea>
+        <input id="twActual" maxlength="200" placeholder="Your real daily output, e.g. 540, 560, 548 (optional)" aria-label="Actual output">`,
+      body: el2 => { let model = null; const t = el2.querySelector('#twModel').value.trim(); if (t) { try { model = JSON.parse(t); } catch { toast('The model is not valid JSON.', true); } }
+        const actual = el2.querySelector('#twActual').value.split(/[,\s]+/).filter(Boolean).map(Number).filter(v => !isNaN(v)); return {model, actual}; },
+      sub: x => `${(x.model.stations || []).length} stations · read-only`,
+      extra: x => { const b = (x.report || {}).base, w = (x.report || {}).what_ifs || []; return b ? `<p class="em-small"><b>${num(b.per_day)} parts / day</b> · bottleneck ${esc(b.bottleneck)} · WIP ${num(b.wip_avg)} · lead time ${num(b.lead_time_min)} min</p>
+        <table class="ph-tbl"><thead><tr><th>What if</th><th>Parts / day</th><th>Change</th><th>Bottleneck then</th></tr></thead><tbody>${w.map(r => `<tr><td>${esc(r.what_if)}</td><td>${num(r.per_day)}</td><td>${num(r.change_pct)}%</td><td>${esc(r.bottleneck)}</td></tr>`).join('')}</tbody></table>` : ''; }});
+  }
+
+  function gsVfx(el) {
+    return gsReportPage(el, {base: 'vfx', title: 'VFX pipeline', who: 'VFX Pipeline TD', formTitle: 'Check a pipeline', go: 'Check the pipeline', apply: false,
+      intro: 'Naming and versions, ACES colour from every source to your screen (converted and measured), a real ACEScg EXR test frame read back, a render queue with re-queued frames and cost per shot, and every frame traced to its scene. Blender and OpenColorIO are not installed on Hoola\'s server - the render script is for your machines.',
+      form: () => `<textarea id="vxPlan" rows="4" placeholder='Your pipeline as JSON (leave empty for the worked example)' aria-label="Pipeline JSON"></textarea>`,
+      body: el2 => { const t = el2.querySelector('#vxPlan').value.trim(); let plan = null; if (t) { try { plan = JSON.parse(t); } catch { toast('The pipeline is not valid JSON.', true); } } return {plan}; },
+      sub: x => `${x.show} · ${((x.plan || {}).shots || []).length} shots`,
+      extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
     if (GS_BIBLE) return gsBible(el, id);
@@ -1563,6 +1629,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" id="gsHapBtn">Haptics</button>
         <button class="btn soft" type="button" id="gsNetBtn">Multiplayer</button>
         <button class="btn soft" type="button" id="gsXrBtn">VR / AR</button>
+        <button class="btn soft" type="button" id="gsSimBtn">Simulator</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
@@ -1619,6 +1686,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     el.querySelector('#gsHapBtn').addEventListener('click', () => { GS_ROLE = 'haptics'; GS_ROLE_SID = id; gsHaptics(el); });
     el.querySelector('#gsNetBtn').addEventListener('click', () => { GS_ROLE = 'net'; GS_ROLE_SID = id; gsNet(el); });
     el.querySelector('#gsXrBtn').addEventListener('click', () => { GS_ROLE = 'xr'; GS_ROLE_SID = id; gsXr(el); });
+    el.querySelector('#gsSimBtn').addEventListener('click', () => { GS_ROLE = 'sim'; GS_ROLE_SID = id; gsSim(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

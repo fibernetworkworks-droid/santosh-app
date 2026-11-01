@@ -309,6 +309,18 @@ class _GameDeskScreenState extends State<GameDeskScreen> {
                   icon: const Icon(Icons.view_in_ar_outlined),
                   label: const Text('VR / AR'),
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameXrScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.flight_outlined),
+                  label: const Text('Simulators'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameSimScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.factory_outlined),
+                  label: const Text('Digital twin'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameTwinScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.movie_filter_outlined),
+                  label: const Text('VFX pipeline'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameVfxScreen(app: widget.app, studio: '')))),
             ]),
             if (_loaded) GameStudioList(key: ValueKey(games.length), app: widget.app, games: games),
             for (final g in games) _card(g),

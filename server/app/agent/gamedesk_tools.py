@@ -253,6 +253,54 @@ GAMEDESK_TOOLS.append(
 
 GAMEDESK_LABELS.update({"game_net": "Multiplayer netcode jaanch raha hoon", "game_xr": "VR / AR setup jaanch raha hoon"})
 
+# v0.423 Phase 7 batch 4: training simulators, digital twin, VFX pipeline
+GAMEDESK_TOOLS.append(
+    {"name": "game_sim", "description": (
+        "Simulation Software Engineer employee: a TRAINING model validated now (seconds, free). kind orbit (two-body + J2: "
+        "params alt_km, inc_deg, dt_s, hours; scenario events {kind: burn, t, dv_mps}), flight (generic light aircraft glide: "
+        "mass_kg, S_m2, CD0, k, V_mps; events {kind: gust, t, w_mps}) or driving (single-track car: mass_kg, a_m, b_m, Cf, "
+        "Cr, V_mps, steer_deg). Each model is checked against its textbook case (orbit period, energy, J2 node drift; glide "
+        "angle, phugoid; steady yaw rate) and run twice; the source, step and integrator are stated; an orbit model is also "
+        "checked in the real Godot. Actions: setup / list / status (setup M-001) / approve / reject / apply (id = S-0001, "
+        "orbit only). REFUSE weapon / targeting / combat simulators. A training aid, not a certified device. Only while hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"}, "kind": {"type": "string", "enum": ["orbit", "flight", "driving"]},
+         "params": {"type": "object"}, "scenario": {"type": "object"}, "id": {"type": "string"},
+         "setup": {"type": "string", "description": "M-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_twin", "description": (
+        "Digital Twin Architect employee: her line as data (stations: machines, cycle_s, cv, mtbf_h, mttr_min, buffer - each "
+        "{value, source: 'tag:<her tag>' | 'assumption: ...'}; data_map entries READ-only: csv / mqtt-subscribe / opcua-read / "
+        "historian-read), simulated by Hoola's event engine (checked against exact answers and queueing theory): throughput, "
+        "utilisation, WIP, lead time, bottleneck, and what-ifs (one more machine, 20 % faster, a second shift). actual = her "
+        "real daily output to validate (within 10 %); without it say NOT ASSESSED. No model given = a worked example to copy. "
+        "Actions: setup / list / status (D-001) / approve / reject. It NEVER writes / commands / controls her plant. Only while hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject"]},
+         "words": {"type": "string"}, "model": {"type": "object"}, "actual": {"type": "array", "items": {"type": "number"}},
+         "setup": {"type": "string", "description": "D-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_vfx", "description": (
+        "VFX Pipeline Technical Director employee: a CG pipeline checked now (free): naming <show>_<seq>_<shot>_<task>_v###.####.ext "
+        "with versions, colour end to end (sources declared: srgb_texture / lin_srgb / logc3 / slog3 / acescg; working ACEScg; "
+        "view srgb_display / rec709_display) converted and measured, a real ACEScg EXR test frame written and read back, a "
+        "render queue with failed frames re-queued and cost per shot (her workers, cores, rate, fail_rate), every frame traced "
+        "to its scene sha256. plan = {show, seq, shots: [{shot, frames: [a, b], frame_min}], sources, view, workers, cores, "
+        "rate_inr_per_core_h, fail_rate}; none = a worked example. Actions: setup / list / status (V-001) / approve / reject. "
+        "Blender / OpenColorIO / OpenUSD are not installed on the server - the render script is for her machines. Only while hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject"]},
+         "words": {"type": "string"}, "plan": {"type": "object"}, "setup": {"type": "string", "description": "V-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_sim": "Simulator jaanch raha hoon", "game_twin": "Digital twin chala raha hoon",
+                        "game_vfx": "VFX pipeline jaanch raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -815,7 +863,7 @@ async def _pack_tool(ctx: Ctx, mod_name: str, who: str, action: str, ref: str, m
             return await run(M.apply, t, ref)
     except G.GameError as e:
         raise ToolError(str(e))
-    raise ToolError("action = setup | list | status | approve | reject" + (" | apply" if mod_name == "xr" else ""))
+    raise ToolError("action = setup | list | status | approve | reject" + (" | apply" if mod_name in ("xr", "sim") else ""))
 
 
 async def game_net(ctx: Ctx, action="", words="", inputs=None, id="", setup="", **_):
@@ -830,7 +878,29 @@ async def game_xr(ctx: Ctx, action="", words="", settings=None, id="", setup="",
                             {"headset_fps": "not measured here (no headset)"})
 
 
+async def game_sim(ctx: Ctx, action="", words="", kind="", params=None, scenario=None, id="", setup="", **_):
+    return await _pack_tool(ctx, "sim", "Simulation Software Engineer", action, setup if action != "apply" else id,
+                            lambda M: M.setup(ctx.tenant_id, words, kind, params if isinstance(params, dict) else None,
+                                              scenario if isinstance(scenario, dict) else None, id),
+                            {"note_device": "a training aid, not a certified flight training device"})
+
+
+async def game_twin(ctx: Ctx, action="", words="", model=None, actual=None, setup="", **_):
+    out = await _pack_tool(ctx, "twin", "Digital Twin Architect", action, setup,
+                           lambda M: M.setup(ctx.tenant_id, words, model if isinstance(model, dict) else None,
+                                             actual if isinstance(actual, list) else None),
+                           {"read_only": "the twin reads her data and never writes / commands / controls her plant"})
+    return out
+
+
+async def game_vfx(ctx: Ctx, action="", words="", plan=None, setup="", **_):
+    return await _pack_tool(ctx, "vfx", "VFX Pipeline Technical Director", action, setup,
+                            lambda M: M.setup(ctx.tenant_id, words, plan if isinstance(plan, dict) else None),
+                            {"not_here": "Blender / OpenColorIO / OpenUSD are not installed on the server"})
+
+
 GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets,
                      "game_qa": game_qa, "game_release": game_release, "game_world": game_world,
                      "game_physics": game_physics, "game_audio": game_audio, "game_haptics": game_haptics,
-                     "game_net": game_net, "game_xr": game_xr}
+                     "game_net": game_net, "game_xr": game_xr, "game_sim": game_sim, "game_twin": game_twin,
+                     "game_vfx": game_vfx}

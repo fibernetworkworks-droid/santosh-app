@@ -57,6 +57,13 @@ POST   /api/gamedesk/net/{nid}/server           {url}  HER game server (wss:// o
 GET    /api/gamedesk/xr?studio=                 AR / VR Engineer: setups (comfort, gestures, demo play link)
 POST   /api/gamedesk/xr                         {words?, settings?: {mode, locomotion, turn, snap_deg, seated, ui_m, text_deg, fps}, studio?}
 GET    /api/gamedesk/xr/{xid}  POST /api/gamedesk/xr/{xid}/approve|reject  POST /api/gamedesk/xr/apply {studio}
+GET    /api/gamedesk/sim?studio=    POST /api/gamedesk/sim {words?, kind?: orbit|flight|driving, params?, scenario?, studio?}
+GET    /api/gamedesk/sim/{id}       POST /api/gamedesk/sim/{id}/approve|reject   POST /api/gamedesk/sim/apply {studio}
+GET    /api/gamedesk/sim/{id}/file/log.csv|plot.png?sig
+GET    /api/gamedesk/twin           POST /api/gamedesk/twin {words?, model?: {stations, data_map, shift_hours, days}, actual?: [per day]}
+GET    /api/gamedesk/twin/{id}      POST /api/gamedesk/twin/{id}/approve|reject   GET .../file/layout.png?sig
+GET    /api/gamedesk/vfx            POST /api/gamedesk/vfx {plan?: {show, seq, shots, sources, working, view, workers, fail_rate...}}
+GET    /api/gamedesk/vfx/{id}       POST /api/gamedesk/vfx/{id}/approve|reject   GET .../file/kit.zip?sig
 
 v0.416 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
 GET    /api/gamestudio/{id}/releases            releases + where each platform can be built + package + itch key set?
@@ -596,7 +603,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
             from ..employee import hire
             extra = ({"library": sorted(HP.LIBRARY), "actuators": HP.ACTUATORS} if mod is HP else
                      {"zone_presets": AU.ZONE_PRESETS} if mod is AU else
-                     {"networks": NC.NETWORKS, "defaults": NC.DEFAULTS} if mod is NC else {"defaults": XR.DEFAULTS})
+                     {"networks": NC.NETWORKS, "defaults": NC.DEFAULTS} if mod is NC else
+                     {"defaults": SM.DEFAULTS, "kinds": list(SM.KINDS)} if mod is SM else
+                     {"example": TW.EXAMPLE} if mod is TW else {"example": VX.EXAMPLE} if mod is VX else {"defaults": XR.DEFAULTS})
             return {lister: await call(getattr(mod, lister), tenant, studio), "hired": await asyncio.to_thread(hire.is_working, tenant, key), **extra}
 
         @r.post(f"/api/gamedesk/{base}", dependencies=[Depends(require_key)])
@@ -654,6 +663,26 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return XR.setup(tenant, str(b.get("words") or ""), b.get("settings") if isinstance(b.get("settings"), dict) else None,
                         str(b.get("studio") or ""))
 
+    from . import sim as SM
+    from . import twin as TW
+    from . import vfx as VX
+
+    def _sim_make(tenant: str, b: dict):
+        return SM.setup(tenant, str(b.get("words") or ""), str(b.get("kind") or ""),
+                        b.get("params") if isinstance(b.get("params"), dict) else None,
+                        b.get("scenario") if isinstance(b.get("scenario"), dict) else None, str(b.get("studio") or ""))
+
+    def _twin_make(tenant: str, b: dict):
+        return TW.setup(tenant, str(b.get("words") or ""), b.get("model") if isinstance(b.get("model"), dict) else None,
+                        b.get("actual") if isinstance(b.get("actual"), list) else None, str(b.get("name") or ""))
+
+    def _vfx_make(tenant: str, b: dict):
+        return VX.setup(tenant, str(b.get("words") or ""), b.get("plan") if isinstance(b.get("plan"), dict) else None)
+
+    _pack_routes("sim", SM, SM.KEY, "Simulation Software Engineer", "setups", _sim_make, SM.sim_file,
+                 {".csv": "text/csv", ".png": "image/png"})
+    _pack_routes("twin", TW, TW.KEY, "Digital Twin Architect", "setups", _twin_make, TW.twin_file, {".png": "image/png"})
+    _pack_routes("vfx", VX, VX.KEY, "VFX Pipeline Technical Director", "setups", _vfx_make, VX.vfx_file, {".zip": "application/zip"})
     _pack_routes("net", NC, NC.KEY, "Multiplayer Network Programmer", "setups", _net_make, NC.net_file, {".zip": "application/zip"})
     _pack_routes("xr", XR, XR.KEY, "AR / VR Interaction Engineer", "setups", _xr_make, lambda *a: None, {})
     _pack_routes("audio", AU, AU.KEY, "Spatial Audio Systems Programmer", "setups", _audio_make, AU.audio_file, {".wav": "audio/wav"})

@@ -130,7 +130,7 @@ def test_tools_api_hire_and_ui(st, monkeypatch):  # noqa: F811
     monkeypatch.setattr(X, "_POOL", type("X", (), {"submit": staticmethod(lambda *a, **k: None)})())
     assert hire.CATALOG["netcode_dev"]["live"] and hire.CATALOG["xr_dev"]["live"]
     soon = sorted(k for k, e in hire.CATALOG.items() if e.get("group") == hire.GAME_GROUP and not e["live"])
-    assert soon == ["sim_dev", "twin_arch", "vfx_td"]
+    assert "netcode_dev" not in soon and "xr_dev" not in soon                    # (v0.423: the last three went live too)
     ctx = Ctx(tenant_id="default", conversation_id="c1")
     with pytest.raises(tools.ToolError, match="hired nahi"):
         asyncio.run(tools.HANDLERS["game_net"](ctx, action="setup"))

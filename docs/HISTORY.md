@@ -16023,3 +16023,60 @@ AR / VR INTERACTION ENGINEER (`gamedesk/xr.py`, table `game_xr`, tool `game_xr`,
 Console: Multiplayer + VR / AR pages (gsNet / gsXr). Phone: GameNetScreen / GameXrScreen. Tests:
 test_v0422_game_net_xr.py (9, one runs the netcode + gestures in the real Godot).
 NOT VERIFIED: a real game server on her cloud, a real headset / phone XR session, her own hands.
+
+## v0.423.0 GAME DESK ROLES 4: SIMULATORS + DIGITAL TWIN + VFX PIPELINE (Hoola Game Engine plan Phase 7 batch 4 = Game Desk plan phase 5) - 1 Nov 2026
+Owner: "GO PHASE 7" (batch 4 of 4 - Phase 7 is now built: all ten Game Desk employees are live hire cards). None of
+Blender, OpenColorIO, OpenEXR, OpenUSD, SimPy or SGP4 is installed on the server, so all three packs are numpy / scipy
+and Hoola's own code, with every limit said.
+
+SIMULATION SOFTWARE ENGINEER (`gamedesk/sim.py`, table `game_sims`, tool `game_sim`, /api/gamedesk/sim*):
+- orbit (two-body + J2, RK4; mu / Re / J2 from WGS 84 / EGM96), flight (point-mass longitudinal light aircraft, drag
+  polar, ISA sea-level air; GENERIC parameters stated as assumptions), driving (linear single-track car). Every model
+  validated against its textbook case: orbit period vs 2 pi sqrt(a^3/mu) (5676.98 s = 5676.98 s), energy drift
+  (2.9e-11), J2 node regression vs -3/2 n J2 (Re/p)^2 cos i (-4.84 vs -4.75 deg/day at 500 km / 51.6 deg; +0.90 deg/day
+  at 98 deg = the sun-synchronous behaviour; GEO period 86,164 s = a sidereal day); glide angle vs atan(CD/CL); phugoid
+  20.4 s vs Lanchester 20.4 s; steady yaw rate vs V / (L + K V^2) (exact) + understeer / characteristic speed.
+  Scenarios = data (gust, burn), run twice (identical logs). log.csv + plot.png.
+- FOUND by a test case: the first period check assumed the orbit crosses y = 0 going up, so a 98-degree orbit "failed";
+  it now measures the swept angle reaching 360 degrees (any inclination / direction).
+- HoolaSim (the orbit RK4 step in GDScript) agrees with the Python model to < 1e-4 relative after 360 steps in the
+  REAL Godot (Godot vectors are 32-bit floats - said); an approved orbit simulator goes into her game; flight / driving
+  are reports + logs (GDScript ports not built). Weapon / targeting / combat simulators are refused in code; "a
+  training aid, not a certified flight training device".
+
+DIGITAL TWIN ARCHITECT (`gamedesk/twin.py`, table `game_twins`, tool `game_twin`, /api/gamedesk/twin*):
+- her line as data (stations: machines, cycle time + variation, MTBF / MTTR, buffers; shifts, days); Hoola's own
+  discrete-event engine (blocking buffers, lognormal cycles, breakdowns, per-machine seeded streams = common random
+  numbers for what-ifs); throughput, utilisation, WIP, lead time, bottleneck, what-ifs (one more machine at the
+  bottleneck, 20 % faster, a second shift), a layout picture.
+- checks: traceability (every number {value, source: tag:<her tag> | assumption: ...}; untraced numbers and tags not in
+  the data map are NAMED), read-only (data-map kinds csv / mqtt-subscribe / opcua-read / historian-read only; write /
+  setpoint / command words refused), the LINE engine on exact answers (one steady station 90.02 vs 90 / h, the slower
+  station sets the pace 80.0 vs 80 / h, breakdowns 53.29 vs 53.33 / h over 200 days), random queueing vs theory (M/M/1
+  and M/M/3 Erlang C within 5 % at 300,000 arrivals), the run twice, and her real week (within 10 %) - without it NOT
+  ASSESSED, never "validated".
+- FOUND: my first engine check used a separate little queue loop (not the line engine the twin uses) and too few
+  customers (6-7 % off at rho 0.8); the line engine now has its own exact-answer cases and the queueing check runs long
+  enough. A 3D twin view is not built (a 2D layout is).
+
+VFX PIPELINE TECHNICAL DIRECTOR (`gamedesk/vfx.py`, table `game_vfx`, tool `game_vfx`, /api/gamedesk/vfx*):
+- naming <show>_<seq>_<shot>_<task>_v###.####.ext with versions; colour end to end (declared sources: sRGB texture,
+  linear sRGB, ARRI LogC3, Sony S-Log3, ACEScg -> working ACEScg -> sRGB / Rec.709 view), the conversion DONE and
+  measured (round-trip on a 1,485-patch chart; LogC3 and S-Log3 decode their published 18 % grey codes to 0.1800);
+  a real OpenEXR (scanline, uncompressed, HALF RGB, AP1 chromaticities) written and read back by Hoola's own reader -
+  pixels exact; a render queue (workers, per-frame failure chance, re-queue up to 3 times, every frame done or named,
+  cost per shot from core-hours x her rate, farm wall time); a publish manifest tracing every frame to shot, version,
+  scene sha256, colour space, worker, attempt.
+- kit.zip: manifest, pipeline, a Blender (Cycles, EXR) render script for HER machines, the ACEScg test EXR, README -
+  Blender / OCIO / OpenUSD are not run on the server (said).
+
+Console: Simulators / Digital twin / VFX pipeline pages (one shared report page). Phone: GameSimScreen /
+GameTwinScreen / GameVfxScreen. Tests: test_v0423_game_sim_twin_vfx.py (12, one runs HoolaSim in the real Godot).
+NOT VERIFIED: a real plant week, a real render farm / Blender run, the EXR opened in Nuke / Resolve, a certified sim.
+
+PHASE 7 SUMMARY (v0.420 - v0.423): ten Game Desk roles live as role packs on the shared desk - World, Physics, Audio,
+Haptics, Netcode, XR, Simulator (Hoola-owned autoloads HoolaWorld / HoolaPhysics / HoolaAudio / HoolaHaptics / HoolaXR /
+HoolaSim, HoolaNet kit-only) + Digital Twin and VFX Pipeline (reports + kits). Real findings that changed code: Godot
+4.7.2 tunnels past HALF a wall and only cast-ray CCD works; a sphere's level difference peaks near 60 degrees; two
+netcode bugs (stale snapshots, lost tail inputs); the XR camera sits on the floor without a headset; the platformer
+generator made unwinnable levels (fixed until 0 of 560 fail).

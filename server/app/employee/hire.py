@@ -156,8 +156,16 @@ CATALOG: dict[str, dict[str, Any]] = {
                     "needs": ["A game on the Game Desk (or just your numbers)"],
                     "never": ["Claim a number the lab did not measure", "Change your game before your OK",
                               "Fluid simulation (not built yet - said plainly)"]},
-    "sim_dev": {"name": "Simulation Software Engineer", "live": False, "icon": "game", "group": GAME_GROUP,
-                "pitch": "Flight, space and driving training simulators with cited data and repeatable scenarios."},
+    # v0.423 Phase 7 batch 4 (docs/GAME_DESK_PLAN.md phase 5)
+    "sim_dev": {"name": "Simulation Software Engineer", "live": True, "icon": "game", "group": GAME_GROUP,
+                "pitch": "Flight, space and driving training models, each validated against a textbook case, with cited data "
+                         "and repeatable scenarios.",
+                "does": ["Orbits (two-body + J2), a light-aircraft glide model or a car's handling model",
+                         "Checks each against its textbook answer: orbit period, node drift, glide angle, phugoid, yaw rate",
+                         "States the data source, the time step and the integrator; every scenario runs twice the same",
+                         "A log (CSV) and a plot; an orbit model can go into your game (HoolaSim)"],
+                "needs": ["What should be simulated, and the numbers you have"],
+                "never": ["Weapon targeting, missile or combat simulators", "Call itself a certified flight training device"]},
     "procgen_dev": {"name": "Procedural World Generation Engineer", "live": True, "icon": "game", "group": GAME_GROUP,
                     "pitch": "Islands, dungeons, cities and platform levels from rules and a seed - checked playable, "
                              "previewed, and walkable in your browser.",
@@ -168,8 +176,16 @@ CATALOG: dict[str, dict[str, Any]] = {
                              "Your OK puts the world into your game (HoolaWorld) without new code"],
                     "needs": ["Two lines: what kind of world, how big, anything special"],
                     "never": ["Copy a real game's map or levels", "Put a world in your game before your OK"]},
-    "vfx_td": {"name": "VFX Pipeline Technical Director", "live": False, "icon": "game", "group": GAME_GROUP,
-               "pitch": "CG pipeline for film and TV: shot tracking, ACES colour, EXR, render queue (Blender / OpenUSD)."},
+    "vfx_td": {"name": "VFX Pipeline Technical Director", "live": True, "icon": "game", "group": GAME_GROUP,
+               "pitch": "A CG pipeline for your shots: naming and versions, ACES colour end to end, EXR frames, a render queue "
+                        "with cost per shot.",
+               "does": ["Shot and file naming with versions that only go up",
+                        "Colour from camera / texture to ACEScg to your screen, converted and measured",
+                        "Writes a real ACEScg EXR test frame and reads it back",
+                        "Plans the render queue: failed frames re-queued, cost per shot, every frame traced to its scene",
+                        "A kit with the manifest and a Blender render script for your machines"],
+               "needs": ["Your shots (frame ranges), your sources and your farm's size and rate"],
+               "never": ["Claim Blender / OpenColorIO ran here (they are not installed on the server)"]},
     # v0.421 Phase 7 batch 2 (docs/GAME_DESK_PLAN.md phase 3)
     "audio_dev": {"name": "Spatial Audio Systems Programmer", "live": True, "icon": "game", "group": GAME_GROUP,
                   "pitch": "3D sound for your game - direction, distance, walls and room echo - measured, with headphone "
@@ -182,8 +198,17 @@ CATALOG: dict[str, dict[str, Any]] = {
                   "needs": ["The places in your game (a cave, a hall, outdoors...)"],
                   "never": ["Claim front / back or height cues a round-head model cannot give (said plainly)",
                             "Change your game before your OK"]},
-    "twin_arch": {"name": "Digital Twin Architect", "live": False, "icon": "game", "group": GAME_GROUP,
-                  "pitch": "A live 3D twin of your factory or building with what-if simulation; reads data, never controls."},
+    "twin_arch": {"name": "Digital Twin Architect", "live": True, "icon": "game", "group": GAME_GROUP,
+                  "pitch": "A twin of your line or shop floor with what-if simulation - every number traced to your data or "
+                           "a stated assumption; it reads, never controls.",
+                  "does": ["Your stations, machines, cycle times, breakdowns and shifts as a model",
+                           "Simulates throughput, utilisation, work in progress, lead time and the bottleneck",
+                           "What-ifs: one more machine, a faster station, a second shift - with the same random numbers",
+                           "Checks its own engine against exact answers and queueing theory, and against your real week",
+                           "A layout picture with each station's load"],
+                  "needs": ["Your stations and their numbers (or your data tags), and one real week's output"],
+                  "never": ["Write, command or control anything in your plant", "Call a twin validated without your real week",
+                            "A 3D twin view (not built yet)"]},
     "haptics_dev": {"name": "Haptic Feedback Systems Engineer", "live": True, "icon": "game", "group": GAME_GROUP,
                     "pitch": "One vibration pattern per meaning for your game, phone apps and your own device - checked, "
                              "with an off switch for every player.",

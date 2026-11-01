@@ -925,6 +925,9 @@ def init_db(url: str | None = None):
     from .gamedesk import haptics as _gamehaptics  # noqa: F401  (v0.421 haptics)
     from .gamedesk import netcode as _gamenet  # noqa: F401  (v0.422 multiplayer netcode)
     from .gamedesk import xr as _gamexr  # noqa: F401  (v0.422 AR / VR)
+    from .gamedesk import sim as _gamesim  # noqa: F401  (v0.423 training simulators)
+    from .gamedesk import twin as _gametwin  # noqa: F401  (v0.423 digital twin)
+    from .gamedesk import vfx as _gamevfx  # noqa: F401  (v0.423 VFX pipeline)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
