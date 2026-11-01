@@ -190,5 +190,5 @@ def test_interactive_pieces_work_in_a_real_browser(tmp_path):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.367.0"
-    assert "0.367.0+420" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.368.0"
+    assert "0.368.0+421" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
