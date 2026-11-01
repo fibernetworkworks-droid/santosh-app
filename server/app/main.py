@@ -8642,6 +8642,10 @@ async def apps_act(ref: str, action: str, body: dict | None = None, tenant: str 
         from .appmaker.android import service as AN
         only = [str(x) for x in body.get("redo") or [] if isinstance(x, str)][:60] if isinstance(body.get("redo"), list) else None
         return await asyncio.to_thread(_appd, AN.build, tenant, ref, conv, only)
+    if action == "bhasha":                    # v0.347 the languages her app carries (from the next build)
+        from .appmaker import i18n as I18
+        langs = body.get("langs") if isinstance(body.get("langs"), list) else []
+        return await asyncio.to_thread(_appd, I18.set_langs, tenant, ref, [str(x) for x in langs])
     if action == "match":                     # v0.343 design se milao: scores, Opus differences, fix = rebuild those screens
         from .appmaker import match as MT
         return await asyncio.to_thread(_appd, MT.check, tenant, ref, str(body.get("platform") or "android"), bool(body.get("fix")), conv)
@@ -9138,6 +9142,13 @@ def _code(fn, *a, **k):
         raise HTTPException(400, str(e))
     except KeyError as e:
         raise HTTPException(404, f"not found: {e}")
+
+
+@app.get("/api/apps/{ref}/bhasha", dependencies=[Depends(require_key)])
+async def apps_bhasha(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.347 the app's languages, the ones it can carry, how many words, translated share per language."""
+    from .appmaker import i18n as I18
+    return await asyncio.to_thread(_appd, I18.get, tenant, ref)
 
 
 @app.get("/api/apps/{ref}/match", dependencies=[Depends(require_key)])

@@ -326,6 +326,14 @@ def _run(r: AppProject) -> None:
     src_dir = work / "project"
     sp["screens_kt"] = kt
     res = G.write_project(sp, src_dir)
+    try:                                                     # v0.347 BHASHA: the words in her customers' languages
+        from .. import i18n as I18
+        tab = I18.for_build(r, src_dir)
+        if tab:
+            sp["i18n"] = tab
+            res = G.write_project(sp, src_dir)
+    except Exception:                                        # noqa: BLE001  (the app still ships, in its own language)
+        log.info("i18n skipped", exc_info=True)
     zip_bytes = RN.zip_project(src_dir, export=True)
     (work / f"project-b{n}.zip").write_bytes(zip_bytes)
     _prune(work, "project-b", KEEP_BUILDS)

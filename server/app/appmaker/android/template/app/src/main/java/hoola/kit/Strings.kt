@@ -6,7 +6,7 @@ object Strings {
     private var lang = "en"
     fun init(language: String) { lang = language }
     private fun t(en: String, hi: String, mr: String = hi, hing: String = en): String = when (lang) {
-        "hi" -> hi; "mr" -> mr; "hinglish" -> hing; else -> en
+        "hi" -> hi; "mr" -> mr; "hinglish" -> hing; "en" -> en; else -> I18n.tr(en)    // v0.347 other languages: the build's table
     }
 
     val back get() = t("Back", "वापस", "मागे", "Wapas")

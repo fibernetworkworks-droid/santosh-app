@@ -4,7 +4,7 @@ import SwiftUI
 
 enum Words {
     private static func t(_ en: String, _ hi: String, _ hing: String) -> String {
-        switch AppTokens.language { case "hi": return hi; case "hinglish": return hing; default: return en }
+        switch I18n.current { case "hi": return hi; case "hinglish": return hing; case "en": return en; default: return T(en) }   // v0.347
     }
     static var offline: String { t("No internet. Please try again.", "इंटरनेट नहीं है। फिर कोशिश करें।", "Internet nahi hai. Phir koshish karein.") }
     static var tryAgain: String { t("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। फिर कोशिश करें।", "Kuch gadbad hui. Phir koshish karein.") }
@@ -69,6 +69,7 @@ final class Router: ObservableObject {
 
 struct RootView: View {
     @StateObject private var router = Router.shared
+    @ObservedObject private var i18n = I18n.shared            // v0.347 a language change redraws every word
     @Environment(\.colorScheme) private var scheme
     var start: String? = nil
 
@@ -83,7 +84,7 @@ struct RootView: View {
                         NavigationStack(path: $router.paths[i]) {
                             screenView(t.id).navigationDestination(for: String.self) { screenView($0) }
                         }
-                        .tabItem { Label(t.label, systemImage: t.symbol) }
+                        .tabItem { Label(T(t.label), systemImage: t.symbol) }
                         .tag(i)
                     }
                 }
@@ -94,6 +95,7 @@ struct RootView: View {
             }
         }
         .tint(c.primary)
+        .id(i18n.lang)
     }
 }
 

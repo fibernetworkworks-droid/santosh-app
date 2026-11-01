@@ -116,6 +116,7 @@ fun AccountScreen() {
             Btn(Strings.inbox + if (n > 0) " ($n)" else "", kind = BtnKind.Tonal, icon = "bell", modifier = Modifier.fillMaxWidth()) { nav.go("hoola_inbox") }
         }
         if (me != null && Auth.isStaff) block { StatsBlock() }     // v0.340 the staff dashboard
+        block { LanguagePicker() }                                 // v0.347 the app's words in her language
         if (Db.pending.value > 0) block { Pill("${Db.pending.value} ${Strings.pending}", "warn") }
         if (Db.lastError.value.isNotEmpty()) block { Pill(Db.lastError.value, "bad") }
         Db.collections().forEach { coll ->
@@ -143,14 +144,14 @@ private fun RowsSection(coll: String) {
     val opts = fields.firstOrNull { it.s("key") == "status" }?.strings("options").orEmpty()
     val rows = all.filter { r -> (st.isEmpty() || r.s("status") == st) && (q.isBlank() || r.o.toString().lowercase().contains(q.trim().lowercase())) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SectionHeader(Db.label(coll) + if (all.isNotEmpty()) " (${all.size})" else "")
+        SectionHeader(T(Db.label(coll)) + if (all.isNotEmpty()) " (${all.size})" else "")
         if (Auth.isStaff && Db.rule(coll, "read") == "own") Small(Strings.staffView)
         if (all.size > 4) {
             OutlinedTextField(value = q, onValueChange = { q = it.take(60) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(Strings.search) }, shape = RoundedCornerShape(H.look.radius * 0.7f))
             if (opts.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(Strings.all, selected = st.isEmpty()) { st = "" }
-                opts.forEach { o -> Chip(o, selected = st == o) { st = if (st == o) "" else o } }
+                opts.forEach { o -> Chip(T(o), selected = st == o) { st = if (st == o) "" else o } }
             }
         }
         if (rows.isEmpty()) Small(Strings.nothingYet)
@@ -166,9 +167,9 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         Title(head?.let { r.s(it.s("key")) } ?: Db.label(coll), maxLines = 3)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             val status = r.s("status")
-            if (r.b("pending")) Pill(Strings.sending, "warn") else if (status.isNotEmpty()) Pill(status, statusKind(status))
+            if (r.b("pending")) Pill(Strings.sending, "warn") else if (status.isNotEmpty()) Pill(T(status), statusKind(status))
             val paid = r.s("paid")
-            if (paid.isNotEmpty() && paid != "No") Pill(paid, if (paid == "Verified") "ok" else "warn")
+            if (paid.isNotEmpty() && paid != "No") Pill(T(paid), if (paid == "Verified") "ok" else "warn")
             if (r.has("total") && r.n("total") > 0) Title(rupees(r.n("total")))
         }
         fields.filter { it.s("type") == "photo" && r.has(it.s("key")) }.take(2).forEach { f ->
@@ -178,10 +179,10 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
             .take(6).forEach { f ->
                 if (f.s("type") == "location") {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Small(f.s("label") + ": " + r.s(f.s("key")))
+                        Small(T(f.s("label")) + ": " + r.s(f.s("key")))
                         Btn(Strings.openMap, kind = BtnKind.Ghost, small = true) { Act.maps(c, r.s(f.s("key"))) }
                     }
-                } else Small(f.s("label") + ": " + r.s(f.s("key")), maxLines = 4)
+                } else Small(T(f.s("label")) + ": " + r.s(f.s("key")), maxLines = 4)
             }
         // v0.319 the customer's own UPI order: pay to the business's UPI ID, then "I have paid" + the UPI reference
         if (!Auth.isStaff && coll == Db.orderList && !r.b("pending") && r.s("pay") == "UPI" && r.s("paid", "No") == "No"
@@ -192,7 +193,7 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         if (Auth.isStaff && stf != null && !r.b("pending")) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 stf.strings("options").forEach { opt ->
-                    Chip(opt, selected = r.s("status") == opt) { if (r.s("status") != opt) Db.update(coll, r.id, mapOf("status" to opt)) }
+                    Chip(T(opt), selected = r.s("status") == opt) { if (r.s("status") != opt) Db.update(coll, r.id, mapOf("status" to opt)) }
                 }
             }
         }

@@ -25,6 +25,7 @@ enum H { static func c(_ scheme: ColorScheme) -> Palette; static var radius: CGF
 struct Palette { bg, surface, ink, muted, line, primary, onPrimary, accent, tint: Color }
     // read colours with: @Environment(\\.colorScheme) private var scheme; let c = H.c(scheme)
 func rupees(_ v: Double) -> String
+func T(_ s: String) -> String      // v0.347 the user-visible literal in the customer's language
 func openLink(_ s: String)          // "tel:...", "https://wa.me/91...", "https://maps.apple.com/?q=..."
 func payUpi(_ amount: Double, _ note: String)   // the customer's own UPI app, to the business's UPI ID
 enum Words { static var add, send, placeOrder, signIn, account, nothingYet, cartEmpty, call, privacy: String }
@@ -78,6 +79,9 @@ FILE CONTRACT
   star, plus, minus, magnifyingglass, phone, envelope, mappin.and.ellipse, clock, calendar, gift, tag, truck.box,
   shippingbox, doc.text, creditcard, square.grid.2x2, list.bullet, chevron.right, checkmark, xmark, sparkles, storefront,
   fork.knife, cross.case, graduationcap, book, wrench.and.screwdriver, car, leaf, flame, photo, camera, star.fill, heart.fill).
+- v0.347 EVERY word the user reads that you write as a literal goes through T("..."): Text(T("Our menu")),
+  MainButton(text: T("Book now")) { ... }, Page(T("Home")) { }. Write the literal in the app's language ({LANG}); the build
+  translates it for customers who pick another language. Never wrap data (item.name, prices, facts) or interpolated strings.
 - Words: in {LANG}. Real facts only (from facts / lists); a missing fact is left out, never invented.
 - Accessibility: every icon-only button gets .accessibilityLabel(...); tap targets at least 44 pt.
 

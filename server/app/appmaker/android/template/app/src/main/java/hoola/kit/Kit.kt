@@ -373,7 +373,7 @@ fun Chip(text: String, selected: Boolean = false, icon: String? = null, onClick:
 fun Chips(options: List<String>, group: String, onPick: (String) -> Unit = {}) {
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { o ->
-            Chip(o, selected = AppState.picks[group] == o) {
+            Chip(T(o), selected = AppState.picks[group] == o) {
                 if (AppState.picks[group] == o) AppState.picks.remove(group) else AppState.picks[group] = o
                 onPick(o)
             }

@@ -183,6 +183,7 @@ struct HoolaApp: App {
         if let i = a.firstIndex(of: "-hoola_base"), i + 1 < a.count { Cloud.base = a[i + 1] }
         #endif
         CrashGuard.install()
+        I18n.shared.load(AppTokens.language)                  // v0.347 the customer's language (her choice on the phone)
         Updates.register()                                   // v0.340 order updates in the background (iOS decides when)
         AppData.shared.load()
         Auth.shared.load()
@@ -231,7 +232,7 @@ def code_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dic
     order = str((backend or {}).get("order") or "")
     rows: list[str] = []
     if s.get("purpose"):
-        rows.append(f"            Muted({sstr(s['purpose'])})")
+        rows.append(f"            Muted(T({sstr(s['purpose'])}))")
     form = ""
     if order in colls and any(w in sid for w in CART_WORDS):
         form = order
@@ -254,14 +255,14 @@ def code_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dic
     if sid in ("profile", "account", "me", "my_account", "settings") and colls:
         rows.append("            AccountButton()")
     for a in acts:
-        rows.append(f"            MainButton(text: {sstr(a.get('label') or a['go'])}, tonal: true) {{ Router.shared.go({sstr(a['go'])}) }}")
+        rows.append(f"            MainButton(text: T({sstr(a.get('label') or a['go'])}), tonal: true) {{ Router.shared.go({sstr(a['go'])}) }}")
     body = "\n".join(rows)
     return f'''// Made by Hoola App Sahayak (simple version made by code).
 import SwiftUI
 
 struct {swift_name(sid)}: View {{
     var body: some View {{
-        Page({sstr(s.get("label") or sid)}) {{
+        Page(T({sstr(s.get("label") or sid)})) {{
 {body}
         }}
     }}
@@ -659,6 +660,8 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     res = tmp / "Resources"
     res.mkdir(exist_ok=True)
     (res / "seed.json").write_text(json.dumps(spec.get("seed") or {}, ensure_ascii=False))
+    if spec.get("i18n"):                                     # v0.347 the app's words in the chosen languages
+        (res / "i18n.json").write_text(json.dumps(spec["i18n"], ensure_ascii=False))
     (res / "PrivacyInfo.xcprivacy").write_text(privacy_manifest())
     tk = spec.get("tokens") or {}
     icon_dir = res / "Assets.xcassets/AppIcon.appiconset"

@@ -138,6 +138,9 @@ FILE CONTRACT
 - Look: colours H.c.primary / accent / ink / muted / surface / bg / tint / line / primaryText / accentText; type
   H.t.display / h1 / h2 / title / body / small / label / price. Never hard-code colours or font sizes; never use dark /
   light checks (the theme does both).
+- v0.347 EVERY word the user reads that you write as a literal goes through T("..."): Title(T("Our menu")),
+  Btn(T("Book now")) { ... }, Field(T("Your name"), "name"). Write the literal in the app's language ({LANG}); the build
+  translates it for customers who pick another language. Never wrap data (item.name, prices, facts) or strings with $ in T().
 - Words: in {LANG}. Real facts only (from AppData.facts / lists); a missing fact = Blank("what") or FactText(key, what).
 
 NEVER

@@ -314,6 +314,14 @@ def _run(r: AppProject) -> None:
     src_dir = work / "project"
     sp["screens_swift"] = swift
     G.write_project(sp, src_dir)
+    try:                                                     # v0.347 BHASHA: the words in her customers' languages
+        from .. import i18n as I18
+        tab = I18.for_build(r, src_dir, swift=True)
+        if tab:
+            sp["i18n"] = tab
+            G.write_project(sp, src_dir)
+    except Exception:                                        # noqa: BLE001  (the app still ships, in its own language)
+        log.info("i18n skipped", exc_info=True)
     _zip(r, n, src_dir)
     rd = ready()
     if not rd["ready"]:

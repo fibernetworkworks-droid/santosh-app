@@ -140,7 +140,7 @@ fun AppShell(nav: Nav, fabMain: FabAction?, fabActions: List<FabAction>, title: 
                 Text(title, style = H.t.h2, modifier = Modifier.padding(20.dp))
                 nav.tabs.forEach { t ->
                     NavigationDrawerItem(
-                        label = { Text(t.label, style = H.t.title) }, selected = nav.current == t.id,
+                        label = { Text(T(t.label), style = H.t.title) }, selected = nav.current == t.id,
                         icon = { HIcon(t.icon) },
                         onClick = { nav.go(t.id); scope.launch { drawerState.close() } },
                         modifier = Modifier.padding(horizontal = 12.dp),
@@ -178,7 +178,7 @@ private fun BottomBar(nav: Nav) {
             NavigationBarItem(
                 selected = nav.current == t.id, onClick = { nav.go(t.id) },
                 icon = { HIcon(t.icon, tint = if (nav.current == t.id) c.primaryText else c.muted) },
-                label = { Text(t.label, maxLines = 1) },
+                label = { Text(T(t.label), maxLines = 1) },
                 alwaysShowLabel = labels,
                 colors = NavigationBarItemDefaults.colors(indicatorColor = c.tint, selectedTextColor = c.primaryText, unselectedTextColor = c.muted),
             )
@@ -199,7 +199,7 @@ private fun FloatingPill(nav: Nav, modifier: Modifier) {
             Box(
                 Modifier.size(52.dp).background(if (on) c.primary else c.surface, CircleShape).clickable { nav.go(t.id) },
                 contentAlignment = Alignment.Center,
-            ) { HIcon(t.icon, tint = if (on) c.onPrimary else c.muted, description = t.label) }
+            ) { HIcon(t.icon, tint = if (on) c.onPrimary else c.muted, description = T(t.label)) }
         }
     }
 }
@@ -209,7 +209,7 @@ private fun Rail(nav: Nav) {
     val c = H.c
     NavigationRail(containerColor = c.surface) {
         nav.tabs.forEach { t ->
-            NavigationRailItem(selected = nav.current == t.id, onClick = { nav.go(t.id) }, icon = { HIcon(t.icon) }, label = { Text(t.label, maxLines = 1) })
+            NavigationRailItem(selected = nav.current == t.id, onClick = { nav.go(t.id) }, icon = { HIcon(t.icon) }, label = { Text(T(t.label), maxLines = 1) })
         }
     }
 }
@@ -217,7 +217,7 @@ private fun Rail(nav: Nav) {
 @Composable
 private fun TopTabs(nav: Nav) {
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        nav.tabs.forEach { t -> Chip(t.label, selected = nav.current == t.id, icon = t.icon) { nav.go(t.id) } }
+        nav.tabs.forEach { t -> Chip(T(t.label), selected = nav.current == t.id, icon = t.icon) { nav.go(t.id) } }
     }
 }
 
@@ -229,7 +229,7 @@ private fun Fab(kind: String, main: FabAction, actions: List<FabAction>, nav: Na
         if (open && kind in setOf("speed_dial", "menu")) {
             actions.forEach { a ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(a.label, style = H.t.title, modifier = Modifier.background(c.surface, RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 6.dp))
+                    Text(T(a.label), style = H.t.title, modifier = Modifier.background(c.surface, RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 6.dp))
                     SmallFloatingActionButton(onClick = { open = false; nav.go(a.go) }, containerColor = c.tint) { HIcon(a.icon, tint = c.primaryText, description = a.label) }
                 }
             }
@@ -239,7 +239,7 @@ private fun Fab(kind: String, main: FabAction, actions: List<FabAction>, nav: Na
             Unit
         }
         when (kind) {
-            "extended" -> ExtendedFloatingActionButton(text = { Text(main.label) }, icon = { HIcon(main.icon, tint = c.onPrimary) }, onClick = click,
+            "extended" -> ExtendedFloatingActionButton(text = { Text(T(main.label)) }, icon = { HIcon(main.icon, tint = c.onPrimary) }, onClick = click,
                 containerColor = c.primary, contentColor = c.onPrimary)
             "small" -> SmallFloatingActionButton(onClick = click, containerColor = c.primary) { HIcon(main.icon, tint = c.onPrimary, description = main.label) }
             "large" -> LargeFloatingActionButton(onClick = click, containerColor = c.primary) { HIcon(main.icon, size = 30.dp, tint = c.onPrimary, description = main.label) }

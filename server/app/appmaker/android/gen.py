@@ -267,6 +267,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import hoola.kit.Api
 import hoola.kit.AppUpdate
 import hoola.kit.UpdateDialog
@@ -274,6 +275,7 @@ import hoola.kit.AppData
 import hoola.kit.Auth
 import hoola.kit.Cloud
 import hoola.kit.Inbox
+import hoola.kit.I18n
 import hoola.kit.CrashGuard
 import hoola.kit.Db
 import hoola.kit.E2e
@@ -299,6 +301,7 @@ class MainActivity : ComponentActivity() {{
         CrashGuard.install(this, BuildConfig.VERSION_NAME)          // v0.325 a crash on a user's phone reaches Hoola
         enableEdgeToEdge()
         Strings.init(AppTokens.look.language)
+        I18n.load(this, AppTokens.look.language)                   // v0.347 the customer's language (her choice on the phone)
         AppData.load(this)
         Api.init(AppConfig.BASE_URL, AppConfig.APP_ID)
         // v0.314 the app's own backend: accounts, saved data, the offline outbox (sent when the network is back)
@@ -327,11 +330,13 @@ class MainActivity : ComponentActivity() {{
                 LaunchedEffect(Unit) {{
                     if (BuildConfig.DEBUG && intent?.getBooleanExtra("hoola_e2e", false) == true) E2e.run(this@MainActivity)
                 }}
+                key(I18n.lang.value) {{                     // v0.347 a language change redraws every word
                 when (stage) {{
                     "splash" -> SplashScreen {{ stage = if (AppScreens.HAS_CONSENT) "consent" else if (AppScreens.HAS_NOTIFY) "notify" else "app" }}
                     "consent" -> ConsentScreen {{ stage = if (AppScreens.HAS_NOTIFY) "notify" else "app"; if (!AppScreens.HAS_NOTIFY) Store.put(this@MainActivity, "onboarded", "1") }}
                     "notify" -> NotifyScreen {{ stage = "app"; Store.put(this@MainActivity, "onboarded", "1") }}
                     else -> AppShell(nav, AppScreens.fabMain, AppScreens.fabActions, AppData.appName) {{ id -> CrashGuard.screen = id; AppScreens.Show(id) }}
+                }}
                 }}
                 if (stage == "app") UpdateDialog()
             }}
@@ -454,20 +459,20 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
         if f.get("admin_only") or f.get("hidden") or f.get("type") == "yes_no" or not ID_RE.match(k):
             continue
         if f.get("type") == "photo":              # v0.319
-            out.append(f"        block {{ PhotoField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
+            out.append(f"        block {{ PhotoField(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
             continue
         if f.get("type") == "location":
-            out.append(f"        block {{ LocationField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
+            out.append(f"        block {{ LocationField(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
             continue
         if f.get("type") == "file":                # v0.346 a PDF document
-            out.append(f"        block {{ FileField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
+            out.append(f"        block {{ FileField(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
             continue
         if f.get("type") == "scan":                # v0.340
-            out.append(f"        block {{ ScanField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
+            out.append(f"        block {{ ScanField(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
             continue
         if f.get("type") == "choice" and f.get("options"):
             opts = ", ".join(kstr(o) for o in f["options"][:8])
-            out.append(f"        block {{ Label({kstr(f.get('label') or k)}) }}")
+            out.append(f"        block {{ Label(T({kstr(f.get('label') or k)})) }}")
             out.append(f"        block {{ Chips(listOf({opts}), {kstr(k)}) }}")
             continue
         kb = {"phone": "KeyboardType.Phone", "email": "KeyboardType.Email", "number": "KeyboardType.Number"}.get(
@@ -475,9 +480,9 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
         lines = 3 if f.get("type") == "long_text" else 1
         hint = "YYYY-MM-DD" if f.get("type") == "date" else ""
         label = str(f.get("label") or k) + (" *" if f.get("required") else "")
-        out.append(f"        block {{ Field({kstr(label)}, {kstr(k)}, keyboard = {kb}, lines = {lines}, hint = {kstr(hint)}) }}")
-    btn = ("OrderBtn(\"Place order\", modifier = Modifier.fillMaxWidth())" if order else
-           f"SubmitBtn(\"Send\", {kstr(coll)}, modifier = Modifier.fillMaxWidth(), then = \"hoola_account\")")
+        out.append(f"        block {{ Field(T({kstr(label)}), {kstr(k)}, keyboard = {kb}, lines = {lines}, hint = {kstr(hint)}) }}")
+    btn = ("OrderBtn(T(\"Place order\"), modifier = Modifier.fillMaxWidth())" if order else
+           f"SubmitBtn(T(\"Send\"), {kstr(coll)}, modifier = Modifier.fillMaxWidth(), then = \"hoola_account\")")
     out.append(f"        block {{ {btn} }}")
     return out
 
@@ -493,7 +498,7 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend:
     tab = sid in tabs
     rows = []
     if s.get("purpose"):
-        rows.append(f"        block {{ Small({kstr(s['purpose'])}) }}")
+        rows.append(f"        block {{ Small(T({kstr(s['purpose'])})) }}")
     colls = {str(c.get("key")): c for c in (backend or {}).get("collections") or []
              if isinstance(c, dict) and ID_RE.match(str(c.get("key") or ""))}
     order = str((backend or {}).get("order") or "")
@@ -513,7 +518,7 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend:
         nxt = next((a["go"] for a in acts), "")
         click = f"{{ nav.open({kstr(nxt)}, {kstr(lst)}, rec.id) }}" if nxt else "null"
         rows.append(f'''        val items = AppData.list({kstr(lst)})
-        if (items.isEmpty()) block {{ Empty({kstr(icon_for(sid))}, {kstr(s.get("label") or sid)}) }}
+        if (items.isEmpty()) block {{ Empty({kstr(icon_for(sid))}, T({kstr(s.get("label") or sid)})) }}
         items.take(40).forEach {{ rec ->
             block {{
                 HCard(onClick = {click}) {{
@@ -525,15 +530,15 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend:
             }}
         }}''')
     else:
-        rows.append(f"        block {{ Empty({kstr(icon_for(sid))}, {kstr(s.get('label') or sid)}) }}")
+        rows.append(f"        block {{ Empty({kstr(icon_for(sid))}, T({kstr(s.get('label') or sid)})) }}")
     if any(w in sid for w in DASH_WORDS) and colls:          # v0.340 staff dashboards show the live numbers
         rows.append("        block { StatsBlock() }")
     if sid in ("profile", "account", "me", "my_account", "settings") and colls:
         # v0.314 the user's own account (sign in, their orders / bookings, sign out) lives on the kit's account screen
-        rows.append('        block { Btn(if (Auth.signedIn) Auth.name else "Sign in", modifier = Modifier.fillMaxWidth(), icon = "user") '
+        rows.append('        block { Btn(if (Auth.signedIn) Auth.name else T("Sign in"), modifier = Modifier.fillMaxWidth(), icon = "user") '
                     '{ nav.go(if (Auth.signedIn) "hoola_account" else "hoola_login") } }')
     for a in acts:
-        rows.append(f"        block {{ Btn({kstr(a.get('label') or a['go'])}, modifier = Modifier.fillMaxWidth(), kind = BtnKind.Tonal) "
+        rows.append(f"        block {{ Btn(T({kstr(a.get('label') or a['go'])}), modifier = Modifier.fillMaxWidth(), kind = BtnKind.Tonal) "
                     f"{{ nav.go({kstr(a['go'])}) }} }}")
     body = "\n".join(rows)
     return f'''package hoola.app.screens
@@ -549,7 +554,7 @@ import hoola.kit.*
 @Composable
 fun {kotlin_name(sid)}() {{
     val nav = LocalNav.current
-    Page({kstr(s.get("label") or sid)}, back = {"false" if tab else "true"}) {{
+    Page(T({kstr(s.get("label") or sid)}), back = {"false" if tab else "true"}) {{
 {body}
     }}
 }}
@@ -666,6 +671,8 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
         '</network-security-config>\n')
     (main / "assets").mkdir(exist_ok=True)
     (main / "assets/seed.json").write_text(json.dumps(spec.get("seed") or {}, ensure_ascii=False))
+    if spec.get("i18n"):                                     # v0.347 the app's words in the chosen languages
+        (main / "assets/i18n.json").write_text(json.dumps(spec["i18n"], ensure_ascii=False))
     for name, path in (spec.get("scenes") or {}).items():      # v0.140 stills of the app's 3D scenes for Scene3D(name)
         p = Path(str(path))
         if re.fullmatch(r"[a-z]{1,12}", str(name)) and p.is_file() and p.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n":

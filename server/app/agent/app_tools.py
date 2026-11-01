@@ -62,7 +62,9 @@ APP_TOOLS = [
         "on it pushes (her GitHub token is linked once in the app: Website > Hosting). "
         "v0.343 action=match (platform android|ios, fix): every real app screen vs her approved design (0-100); Opus looks at "
         "the ones under 70 and lists the visible differences; fix=true (only when she asks to fix) rebuilds those screens with "
-        "the differences as notes." "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
+        "the differences as notes. v0.347 action=bhasha langs [en, hi, mr, gu, bn, ta, te, kn, ml, pa, or, ur, hinglish] (max 6, "
+        "the first = what the app starts in): the app's own words in those languages from the next build (customers pick on "
+        "My account); her business data is never translated." "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
         "action=data (app, coll, row, set) changes a row for her, e.g. an order's status (\"order accept karo\" -> set {status: Accepted}); "
         "v0.319: a customer's UPI \"I have paid\" claim reads paid=\"Customer says paid\" + utr; ONLY when she says she saw the money in "
         "her own bank set {paid: Verified} (never on the customer's word, never by yourself). Photos / locations her app's users sent are "
@@ -71,7 +73,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -89,6 +91,7 @@ APP_TOOLS = [
          "role": {"type": "string", "enum": ["member", "staff", "admin"]},
          "repo": {"type": "string", "description": "action=github: repo name in her GitHub (default <app>-app)"},
          "private": {"type": "boolean", "description": "action=github: private repo (default true); public only if she says so"},
+         "langs": {"type": "array", "items": {"type": "string"}, "description": "action=bhasha: language codes, e.g. [\"hi\", \"en\", \"mr\"]"},
          "platform": {"type": "string", "enum": ["android", "ios"], "description": "action=match: which app's screens"},
          "fix": {"type": "boolean", "description": "action=match: rebuild the screens that do not match (only when she asks)"},
          "astep": {"type": "string", "enum": ["listing", "push"], "description": "action=appstore: the App Store step (submit for review = only her tap in the app)"},
@@ -171,6 +174,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = IO.build(t, ref, conv, kind, redo)
         return {"status": v["status"], "runner": v["runner"], "bundle_id": v["bundle_id"],
                 "say": v["say"] + " Card apne aap badlega (poll mat kariye)."}
+    if action == "bhasha":                    # v0.347
+        from ..appmaker import i18n as I18
+        v = I18.set_langs(t, ref, [str(x) for x in a.get("langs") or []])
+        return {"langs": v["langs"], "say": "Agle build se app in bhashaon mein: " + ", ".join(I18.LANGS[x] for x in v["langs"])}
     if action == "match":                     # v0.343 design se milao
         from ..appmaker import match as MT
         v = MT.check(t, ref, str(a.get("platform") or "android"), bool(a.get("fix")), conv)

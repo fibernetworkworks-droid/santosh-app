@@ -834,6 +834,8 @@ class _AppDesignPageState extends State<AppDesignPage> {
             const SizedBox(height: 10),
             Glass(child: AppStorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),
+            Glass(child: BhashaPanel(app: app, id: widget.id)),
+            const SizedBox(height: 10),
             Glass(child: MatchPanel(app: app, id: widget.id)),
             const SizedBox(height: 10),
             Glass(child: AppCodePanel(app: app, id: widget.id)),

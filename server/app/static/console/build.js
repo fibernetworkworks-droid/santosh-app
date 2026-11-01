@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); } }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); loadBhasha(o, ot); } }
     showBtn();
   }
 
@@ -566,6 +566,20 @@ window.HoolaBuild = function (C) {
     if (busy) setTimeout(() => { if (document.body.contains(box)) loadAppStore(o, root); }, 10000);
   }
 
+  /* v0.347 BHASHA: the languages her app carries (customers pick on My account), from the next build */
+  async function loadBhasha(o, root) {
+    const box = root.querySelector('.stbhasha'); if (!box) return;
+    let v; try { v = await api('GET', base(o) + '/bhasha'); } catch (er) { return; }
+    const on = new Set(L(v.langs)), cov = M(v.coverage);
+    box.innerHTML = `<section class="bbox"><h4>App languages${v.words ? ' · ' + esc(S(v.words)) + ' words' : ''}</h4>
+      <div class="bln faint">Customers pick the language on My account; the app starts in the first one. Her data (product names, prices) is never translated. Up to 6.</div>
+      <div class="bln">${Object.entries(M(v.all)).map(([k, n]) => `<label style="margin-right:12px"><input type="checkbox" data-bh="${esc(k)}" ${on.has(k) ? 'checked' : ''}> ${esc(S(n))}${cov[k] != null ? ' (' + esc(S(cov[k])) + '%)' : ''}</label>`).join('')}</div>
+      <div class="acts"><button class="btn soft" type="button" data-bhs="1">Save languages</button></div></section>`;
+    box.onclick = async e => { if (!e.target.closest('button[data-bhs]')) return;
+      const langs = [...box.querySelectorAll('[data-bh]')].filter(x => x.checked).map(x => x.dataset.bh);
+      try { await api('POST', base(o) + '/bhasha', {langs}); toast('Saved: from the next build.'); loadBhasha(o, root); } catch (er) { toast(er.message, true); } };
+  }
+
   /* v0.343 DESIGN SE MILAAN: each real screen beside her approved design, 0-100, Opus's differences, rebuild on her confirm */
   async function loadMatch(o, root, plat) {
     const box = root.querySelector('.stmatch'); if (!box) return;
@@ -628,7 +642,7 @@ window.HoolaBuild = function (C) {
     const apk = M(a.apk), dl = publicLink(a.apk_url), zip = publicLink(a.zip_url), redo = L(a.screens).filter(x => x.state === 'code').map(x => x.id);
     return `<ol class="bpipe">${pipe}</ol>
       ${s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : ''}${a.note ? `<div class="muted bln">${esc(a.note)}</div>` : ''}
-      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div><div class="stios"></div><div class="stappstore"></div><div class="stmatch"></div><div class="stcode"></div>
+      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div><div class="stios"></div><div class="stappstore"></div><div class="stbhasha"></div><div class="stmatch"></div><div class="stcode"></div>
       <div class="bcols"><section class="bbox"><h4>Screens in Kotlin</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
           ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>
