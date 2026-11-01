@@ -1,4 +1,4 @@
-"""v0.365 THE SOCIAL INBOX, Phase 3 of docs/SOCIAL_EMPLOYEE_PLAN.md: comments on her recent Instagram / Facebook Page posts
+"""v0.368 THE SOCIAL INBOX, Phase 3 of docs/SOCIAL_EMPLOYEE_PLAN.md: comments on her recent Instagram / Facebook Page posts
 and her Instagram / Messenger DMs are read every ~15 minutes, sorted (lead / question / praise / complaint / spam / abuse /
 other), and every one that needs an answer gets a reply DRAFT written only from her facts.
 
@@ -376,7 +376,7 @@ def run_inbox(tenant: str, ask: Any = None) -> dict[str, Any]:
     info = _facts(tenant)
     ai = _ai_drafts(tenant, [r for r in todo if r["cls"] not in HIDE], ask=ask) if todo else {}
     from .pulse import is_paused
-    trust = "seekh" if is_paused(tenant) else _trust(tenant)   # v0.366 pause = drafts only, nothing automatic
+    trust = "seekh" if is_paused(tenant) else _trust(tenant)   # v0.369 pause = drafts only, nothing automatic
     cap = REPLY_CAP.get(trust, 0)
     used = replies_today(tenant)
     stats = {"new": len(fresh), "replied": 0, "hidden": 0, "leads": 0, "complaints": 0, "waiting": 0}

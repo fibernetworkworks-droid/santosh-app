@@ -1,6 +1,7 @@
 """v0.360 CODE CARD - how well does Developer Sahayak really code? (owner: "GO 6")
 
-`python -m app.quality code [--only id,id] [--limit N] [--label x]`; vps-ops job `code_card`.
+`python -m app.quality code [--set 1|2] [--only id,id] [--limit N] [--label x]`; vps-ops jobs `code_card` / `code_card_hard`.
+v0.365 HARD CARD: set 2 (code_tasks2) = bigger repos (Python 30 files, JavaScript 13), multi-file jobs, a vague ask.
 Each fixed practice job (code_tasks.TASKS) goes through the SAME 8-tool loop her real tasks use (devsahayak/loop.run, same
 model, same rules), against an in-memory copy of the tiny repo - no GitHub, no branch, no PR. Then it is marked:
   works    the hidden check passes on the changed repo
@@ -33,7 +34,21 @@ UNSAFE = re.compile(r"\bimport\s+(socket|subprocess|requests|httpx|urllib|ctypes
                     r"\bfrom\s+(socket|subprocess|requests|httpx|urllib|ctypes|multiprocessing|shutil)\b|"
                     r"\bos\.(system|popen|exec|spawn|remove|unlink|rmdir|fork|kill)|\b__import__\(|\beval\(|\bexec\(|"
                     r"\bopen\([^)]*['\"][wax]")
+UNSAFE_JS = re.compile(r"child_process|node:(fs|net|http|https|dgram|worker_threads|cluster)|from\s+[\"'](fs|net|http|https)[\"']|"
+                       r"require\(|\bfetch\(|\beval\(|new\s+Function\(|process\.(env|kill|binding)")
 STEPS, MINUTES, PARALLEL = 30, 6.0, 4
+
+
+def _set(n: int):
+    if int(n or 1) == 2:
+        from . import code_tasks2 as C2
+        return C2
+    return C
+
+
+def start_files(task: dict) -> dict[str, str]:
+    """The job's whole starting repo."""
+    return {**task["base"], **task["files"]} if "base" in task else C.repo(task)
 
 
 class MemGh:
@@ -57,10 +72,11 @@ class MemGh:
 
 
 # ---------------------------------------------------------------- running code safely
-def _limits():  # pragma: no cover - runs in the child
+def _limits(cap_memory: bool = True):  # pragma: no cover - runs in the child
     import resource
     resource.setrlimit(resource.RLIMIT_CPU, (20, 20))
-    resource.setrlimit(resource.RLIMIT_AS, (1536 * 1024 * 1024, 1536 * 1024 * 1024))
+    if cap_memory:                                 # V8 reserves a big address space, so node gets CPU / file / time caps only
+        resource.setrlimit(resource.RLIMIT_AS, (1536 * 1024 * 1024, 1536 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
 
 
@@ -74,16 +90,17 @@ def _write(root: str, files: dict[str, str]) -> None:
             f.write(text)
 
 
-def _py(files: dict[str, str], args: list[str], timeout: int = 60) -> tuple[int, str]:
-    """Run python in a fresh temp copy of `files`; no secrets in the child's environment."""
+def _py(files: dict[str, str], args: list[str], timeout: int = 60, exe: str = "") -> tuple[int, str]:
+    """Run python (or `exe`, e.g. node) in a fresh temp copy of `files`; no secrets in the child's environment."""
     root = tempfile.mkdtemp(prefix="hoola-codecard-")
     try:
         _write(root, files)
         env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": root, "PYTHONPATH": root,
                "PYTHONDONTWRITEBYTECODE": "1", "LANG": "C.UTF-8"}
         try:
-            r = subprocess.run([sys.executable, *args], cwd=root, env=env, capture_output=True, text=True,
-                               timeout=timeout, preexec_fn=_limits if os.name == "posix" else None)
+            lim = (lambda: _limits(cap_memory=not exe)) if os.name == "posix" else None
+            r = subprocess.run([exe or sys.executable, *args], cwd=root, env=env, capture_output=True, text=True,
+                               timeout=timeout, preexec_fn=lim)
             return r.returncode, (r.stdout + r.stderr)[-1500:]
         except subprocess.TimeoutExpired:
             return 124, "timed out"
@@ -95,11 +112,28 @@ def _pytest(files: dict[str, str], tests: list[str]) -> tuple[int, str]:
     return _py(files, ["-m", "pytest", "-q", "-p", "no:cacheprovider", "-x", *tests])
 
 
+def node() -> str:
+    return shutil.which("node") or ""
+
+
+def _tests_run(lang: str, files: dict[str, str], tests: list[str]) -> tuple[int, str]:
+    if lang == "js":
+        return _py(files, ["--test", *tests], exe=node())
+    return _pytest(files, tests)
+
+
+def _check_run(lang: str, files: dict[str, str], check: str) -> tuple[int, str]:
+    if lang == "js":
+        return _py({**files, "_hoola_check.mjs": check}, ["_hoola_check.mjs"], exe=node())
+    return _py({**files, "_hoola_check.py": check}, ["_hoola_check.py"])
+
+
 # ---------------------------------------------------------------- marking
 def score(task: dict, changed: dict[str, str], out: dict[str, Any] | None = None) -> dict[str, Any]:
     """Mark one job from what it changed ({path: final text}) and its done answer. Pure + reusable by the tests."""
     out = out or {}
-    start = C.repo(task)
+    start = start_files(task)
+    lang = task.get("lang", "py")
     final = {**start, **changed}
     row: dict[str, Any] = {"id": task["id"], "kind": task["kind"], "changed": sorted(changed), "why": []}
     real = {p: t for p, t in changed.items() if start.get(p) != t}
@@ -116,6 +150,18 @@ def score(task: dict, changed: dict[str, str], out: dict[str, Any] | None = None
     row["rules"] = not bad
     if bad:
         row["why"].append("rule: " + "; ".join(bad))
+    if task.get("ask"):                                # v0.365 a vague ask: ONE question back, nothing changed
+        said = f"{out.get('explain', '')} {out.get('cause', '')}"
+        row["works"] = not real and "?" in said and said.count("?") <= 3
+        if not row["works"]:
+            row["why"].append("guessed and changed files" if real else "did not ask one clear question")
+        row["test"] = None
+        row["right"] = row["works"]
+        return row
+    if lang == "js" and not node():
+        row.update(skipped=True, works=None, test=None, right=None)
+        row["why"].append("node not installed: JavaScript job skipped")
+        return row
     if task["kind"] == "explain":
         said = f"{out.get('explain', '')} {out.get('cause', '')}"
         row["works"] = not real and bool(re.search(task["explain_re"], said, re.I))
@@ -124,7 +170,8 @@ def score(task: dict, changed: dict[str, str], out: dict[str, Any] | None = None
         row["test"] = None
         row["right"] = row["works"] and row["scope"]
         return row
-    unsafe = [p for p, t in real.items() if p.endswith(".py") and UNSAFE.search(t)]
+    unsafe = [p for p, t in real.items() if (p.endswith(".py") and UNSAFE.search(t))
+              or (re.search(r"\.(m?js|cjs|ts)$", p) and UNSAFE_JS.search(t))]
     if unsafe:
         row.update(works=False, test=False if (task.get("must_test") or task.get("mutant")) else None, right=False,
                    unsafe=unsafe)
@@ -133,35 +180,37 @@ def score(task: dict, changed: dict[str, str], out: dict[str, Any] | None = None
     if not real and task["kind"] != "explain":
         row["why"].append("nothing changed")
     if task.get("check"):
-        rc, log = _py({**final, "_hoola_check.py": task["check"]}, ["_hoola_check.py"])
+        rc, log = _check_run(lang, final, task["check"])
         row["works"] = rc == 0
         if rc:
             row["why"].append("check failed: " + (log.strip().splitlines() or ["?"])[-1][:160])
     else:
         row["works"] = bool(real)
-    tests = [p for p, t in real.items() if re.match(r"^tests/.+\.py$", p) and "def test_" in t]
+    test_re, test_mark = ((r"^test/.+\.test\.m?js$", re.compile(r"\b(test|it)\(")) if lang == "js"
+                          else (r"^tests/.+\.py$", re.compile(r"\bdef test_")))
+    tests = [p for p, t in real.items() if re.match(test_re, p) and test_mark.search(t)]
     row["test"] = None
     if task.get("must_test") or task.get("mutant"):
         if not tests:
             row["test"] = False
             row["why"].append("no test written")
         else:
-            rc, log = _pytest(final, tests)
+            rc, log = _tests_run(lang, final, tests)
             ok = rc == 0
             if not ok:
                 row["why"].append("its own test fails: " + (log.strip().splitlines() or ["?"])[-1][:160])
-            n = sum(final[p].count("def test_") for p in tests)
+            n = sum(len(test_mark.findall(final[p])) for p in tests)
             if ok and task.get("min_tests") and n < task["min_tests"]:
                 ok = False
                 row["why"].append(f"only {n} tests (want {task['min_tests']})")
             if ok and task["kind"] == "fix":            # the test must PROVE the bug: red on the old code
-                rc_old, _ = _pytest({**start, **{p: final[p] for p in tests}}, tests)
+                rc_old, _ = _tests_run(lang, {**start, **{p: final[p] for p in tests}}, tests)
                 row["proves"] = rc_old != 0
                 if not row["proves"]:
                     ok = False
                     row["why"].append("its test also passes on the old (broken) code")
             if ok and task.get("mutant"):              # a tests job: they must catch a broken version
-                rc_m, _ = _pytest({**final, **task["mutant"]}, tests)
+                rc_m, _ = _tests_run(lang, {**final, **task["mutant"]}, tests)
                 if rc_m == 0:
                     ok = False
                     row["why"].append("tests do not catch the broken version")
@@ -171,12 +220,14 @@ def score(task: dict, changed: dict[str, str], out: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------- one job through the real loop
-def run_task(task: dict) -> dict[str, Any]:
+def run_task(task: dict, steps: int = STEPS, minutes: float = MINUTES) -> dict[str, Any]:
     from ..devsahayak import loop as L
     t0 = time.time()
     t = SimpleNamespace(repo="hoola/codecard", base="main", kind=task["kind"], text=task["request"], issue=0)
+    if task.get("lang") == "js" and not node():
+        return {**score(task, {}, {}), "seconds": 0, "steps": 0}
     try:
-        _, _, ctx, out = L.run(MemGh(C.repo(task)), t, "", [], False, "", max_steps=STEPS, minutes=MINUTES)
+        _, _, ctx, out = L.run(MemGh(start_files(task)), t, "", [], False, "", max_steps=steps, minutes=minutes)
     except Exception as e:  # noqa: BLE001 - one broken job never stops the card
         return {"id": task["id"], "kind": task["kind"], "right": False, "works": False, "scope": True, "rules": True,
                 "test": None, "why": [f"loop error: {str(e)[:160]}"], "seconds": round(time.time() - t0), "steps": 0}
@@ -188,31 +239,35 @@ def run_task(task: dict) -> dict[str, Any]:
     return row
 
 
-def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL) -> dict[str, Any]:
-    tasks = [x for x in C.TASKS if not only or x["id"] in only]
+def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL, set_: int = 1) -> dict[str, Any]:
+    mod = _set(set_)
+    steps, minutes = getattr(mod, "STEPS", STEPS), getattr(mod, "MINUTES", MINUTES)
+    tasks = [x for x in mod.TASKS if not only or x["id"] in only]
     if limit:
         tasks = tasks[:limit]
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=max(1, parallel)) as ex:
-        rows = list(ex.map(run_task, tasks))
+        rows = list(ex.map(lambda x: run_task(x, steps, minutes), tasks))
     from ..config import get_settings
     st = get_settings()
     model = getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or getattr(st, "anthropic_model", "")
+    skipped = [r for r in rows if r.get("skipped")]
+    rows_all, rows = rows, [r for r in rows if not r.get("skipped")]
     need_test = [r for r in rows if r.get("test") is not None]
     fixes = [r for r in rows if "proves" in r]
-    return {"kind": "code", "set": C.SET, "model": model, "jobs": len(rows),
+    return {"kind": "code", "set": mod.SET, "model": model, "jobs": len(rows), "skipped": len(skipped),
             "right": sum(1 for r in rows if r.get("right")), "works": sum(1 for r in rows if r.get("works")),
             "scope": sum(1 for r in rows if r.get("scope")), "rules": sum(1 for r in rows if r.get("rules")),
             "tests": sum(1 for r in need_test if r.get("test")), "tests_of": len(need_test),
             "proves": sum(1 for r in fixes if r.get("proves")), "proves_of": len(fixes),
             "steps_avg": round(sum(r.get("steps", 0) for r in rows) / max(1, len(rows)), 1),
-            "minutes": round((time.time() - t0) / 60, 1), "rows": rows}
+            "minutes": round((time.time() - t0) / 60, 1), "rows": rows_all}
 
 
 def save(cd: dict, label: str = "") -> dict:
     from .toolchoice import _dir
     cd = {**cd, "label": label, "at": int(time.time())}
-    name = f"code-{time.strftime('%Y%m%d-%H%M%S')}.json"
+    name = f"code{'' if cd.get('set', 1) == 1 else cd['set']}-{time.strftime('%Y%m%d-%H%M%S')}.json"
     (_dir() / name).write_text(json.dumps(cd, ensure_ascii=False, indent=1))
     cd["file"] = name
     return cd
@@ -225,8 +280,10 @@ def lines(cd: dict) -> list[str]:
            f"  works {cd['works']}/{cd['jobs']} · stayed in scope {cd['scope']}/{cd['jobs']} · project rules "
            f"{cd['rules']}/{cd['jobs']} · good tests {cd['tests']}/{cd['tests_of']} (fix tests that prove the bug "
            f"{cd['proves']}/{cd['proves_of']}) · {cd['steps_avg']} steps a job · {cd['minutes']} min"]
+    if cd.get("skipped"):
+        out.append(f"  ({cd['skipped']} JavaScript job(s) skipped: node is not installed on this machine)")
     for r in cd["rows"]:
-        mark = "OK  " if r.get("right") else "MISS"
+        mark = "SKIP" if r.get("skipped") else "OK  " if r.get("right") else "MISS"
         tail = "" if r.get("right") else " - " + "; ".join(r.get("why") or ["?"])
         out.append(f"  {mark} {r['id']} ({r['kind']}, {r.get('steps', 0)} steps, {r.get('seconds', 0)}s){tail}")
     return out

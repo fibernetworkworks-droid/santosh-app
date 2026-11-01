@@ -21,9 +21,38 @@ from . import ai as AI
 from . import build as B
 
 log = logging.getLogger("santosh.site")
-LANGS = {"en": "English", "hi": "हिंदी", "mr": "मराठी", "hinglish": "Hinglish"}
+LANGS = {"en": "English", "hi": "हिंदी", "mr": "मराठी", "hinglish": "Hinglish",
+         # v0.366 BHASHAYEN: the big Indian languages too (up to MAX_EXTRA extra languages a site)
+         "gu": "ગુજરાતી", "bn": "বাংলা", "ta": "தமிழ்", "te": "తెలుగు", "kn": "ಕನ್ನಡ", "ml": "മലയാളം", "pa": "ਪੰਜਾਬੀ",
+         "or": "ଓଡ଼ିଆ", "ur": "اردو"}
 NAMES = {"en": "English (India)", "hi": "Hindi in Devanagari script", "mr": "Marathi in Devanagari script",
-         "hinglish": "Hinglish: Hindi words written in Latin letters, as Indians type on phones"}
+         "hinglish": "Hinglish: Hindi words written in Latin letters, as Indians type on phones",
+         "gu": "Gujarati in Gujarati script", "bn": "Bengali (Bangla) in Bengali script", "ta": "Tamil in Tamil script",
+         "te": "Telugu in Telugu script", "kn": "Kannada in Kannada script", "ml": "Malayalam in Malayalam script",
+         "pa": "Punjabi in Gurmukhi script", "or": "Odia in Odia script", "ur": "Urdu in Nastaliq (Perso-Arabic) script"}
+ENGLISH = {"en": "English", "hi": "Hindi", "mr": "Marathi", "hinglish": "Hinglish", "gu": "Gujarati", "bn": "Bengali",
+           "ta": "Tamil", "te": "Telugu", "kn": "Kannada", "ml": "Malayalam", "pa": "Punjabi", "or": "Odia", "ur": "Urdu"}
+RTL = {"ur"}
+MAX_EXTRA = 4
+
+
+def html_lang(code: str) -> str:
+    """The value of <html lang> / hreflang for a site language."""
+    return {"en": "en-IN", "hinglish": "hi-Latn"}.get(code or "en", code or "en-IN")
+
+
+def pick(words: Any) -> list[str]:
+    """Her words / codes ('gujarati aur tamil', ['gu', 'ta']) -> language codes we support, in order, no repeats."""
+    raw = words if isinstance(words, list) else re.split(r"[,/;]|\band\b|\baur\b|\s+", str(words or ""))
+    out: list[str] = []
+    by_name = {v.lower(): k for k, v in ENGLISH.items()} | {v: k for k, v in LANGS.items()} | {
+        "hindi": "hi", "bangla": "bn", "oriya": "or", "punjabi": "pa", "angrezi": "en"}
+    for w in raw:
+        w = str(w or "").strip().lower()
+        c = w if w in LANGS else by_name.get(w, "")
+        if c and c not in out:
+            out.append(c)
+    return out
 STATS = {"translated": 0, "kept_source": 0}
 
 TRANSLATE_SYSTEM = """You translate ONE section of a small business website in India for its second language.

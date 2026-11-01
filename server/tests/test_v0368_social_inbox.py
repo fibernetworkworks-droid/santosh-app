@@ -1,4 +1,4 @@
-"""v0.365 SOCIAL MEDIA MANAGER Phase 3 - the inbox: comments on her recent Instagram / Facebook Page posts and her DMs are
+"""v0.368 SOCIAL MEDIA MANAGER Phase 3 - the inbox: comments on her recent Instagram / Facebook Page posts and her DMs are
 read, sorted (lead / question / praise / complaint / spam / abuse / other), every one gets a reply drafted from HER facts
 only; Seekh = nothing goes without her tap; Saathi / Bharosa = simple replies go on their own within the daily cap, DMs
 only inside Meta's 24-hour window, spam / abuse HIDDEN (never deleted); a complaint always waits and she is told at once;

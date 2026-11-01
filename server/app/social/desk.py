@@ -90,7 +90,7 @@ class SocialDesk(Base):
     stamps: Mapped[str] = mapped_column(Text, default="{}")
     state: Mapped[str] = mapped_column(String(16), default="new")   # new | first_run | ready | error
     calendar_status: Mapped[str] = mapped_column(String(12), default="none")   # none | draft | approved
-    settings: Mapped[str | None] = mapped_column(Text, nullable=True)            # v0.366 {paused, pause_reason, quiet}
+    settings: Mapped[str | None] = mapped_column(Text, nullable=True)            # v0.369 {paused, pause_reason, quiet}
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -119,7 +119,7 @@ class SocialPost(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    seen: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.366 1 = she OK'd this post itself, 0 = only via the plan
+    seen: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.369 1 = she OK'd this post itself, 0 = only via the plan
 
 
 class SocialEvent(Base):
@@ -211,7 +211,7 @@ def onboard(tenant: str, business: str = "", city: str = "", sells: str = "", cu
     langs = [str(x).strip()[:20] for x in (languages or ["Hinglish"]) if str(x).strip()][:4] or ["Hinglish"]
     prof = {"business": str(business).strip()[:120], "city": str(city).strip()[:80], "sells": str(sells).strip()[:300],
             "customers": str(customers).strip()[:300], "goal": str(goal).strip()[:200], "languages": langs,
-            "website": str(website).strip()[:200], "facts": str(facts or "").strip()[:2000]}   # v0.365 reply facts
+            "website": str(website).strip()[:200], "facts": str(facts or "").strip()[:2000]}   # v0.368 reply facts
     with session() as s:
         d = _desk(s, tenant)
         d.profile = json.dumps(prof, ensure_ascii=False)
@@ -281,7 +281,7 @@ def finish_link(platform: str, code: str, state: str, background: bool = True) -
         else:
             tok = M.fb_exchange(code)
             pages = M.fb_pages(tok["access_token"])
-            try:                                   # v0.365 which permissions she granted (inbox needs engagement + messaging)
+            try:                                   # v0.368 which permissions she granted (inbox needs engagement + messaging)
                 granted = ",".join(str(x) for x in (M.fb_debug_token(tok["access_token"]).get("scopes") or []))
             except M.MetaError:
                 granted = ""
@@ -313,7 +313,7 @@ def finish_link(platform: str, code: str, state: str, background: bool = True) -
             threading.Thread(target=run_now, args=(tenant, "first"), daemon=True).start()
         else:
             first_run(tenant)
-    else:                                      # v0.365 a second account: read its posts now (not at tomorrow's 7 am)
+    else:                                      # v0.368 a second account: read its posts now (not at tomorrow's 7 am)
         with session() as s:
             ids = [a.id for a in s.scalars(select(SocialAccount).where(SocialAccount.tenant_id == tenant,
                                                                        SocialAccount.platform == platform)).all()]
@@ -698,7 +698,7 @@ def calendar(tenant: str) -> list[dict[str, Any]]:
                  "hook": p.hook, "caption": p.caption, "hashtags": _j(p.hashtags, []), "visual": p.visual, "cta": p.cta,
                  "occasion": p.occasion, "status": p.status, "source": p.source, "media": _media_views(_j(p.media, [])),
                  "result": _j(p.result, {}), "error": p.error or "", "problems": _problems(p) if p.status in ("draft", "approved", "failed") else [],
-                 "plan_only": p.status == "approved" and p.seen == 0}                # v0.366 OK'd via the plan, not one by one
+                 "plan_only": p.status == "approved" and p.seen == 0}                # v0.369 OK'd via the plan, not one by one
                 for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant).order_by(SocialPost.slot)).all()]
 
 
@@ -730,7 +730,7 @@ def approve_calendar(tenant: str) -> dict[str, Any]:
         for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant, SocialPost.status == "draft")).all():
             p.status = "approved"
             _stamp_ok(p)                           # v0.355 exactly this post (caption, pictures, time) is what she said yes to
-            p.seen = 0                             # v0.366 OK'd as part of the plan only: trust decides if it goes alone
+            p.seen = 0                             # v0.369 OK'd as part of the plan only: trust decides if it goes alone
             n += 1
         _desk(s, tenant).calendar_status = "approved"
     from .pulse import trust_of
@@ -768,7 +768,7 @@ def set_post(tenant: str, post_id: str, status: str = "", caption: str | None = 
             p.approved_hash = ""
             if status == "approved":
                 _stamp_ok(p)
-                p.seen = 1                         # v0.366 her own OK for this one post
+                p.seen = 1                         # v0.369 her own OK for this one post
         elif edited and p.status in ("approved", "failed", "missed"):
             p.status, p.approved_hash = "draft", ""   # an edit after approval needs her OK again
         return {"id": p.id, "status": p.status}
@@ -888,7 +888,7 @@ def _daily_and_boosts(tenant: str) -> dict[str, Any]:
     out = daily(tenant)
     try:
         from .pulse import flag_boosts
-        out["boosts"] = flag_boosts(tenant)            # v0.366 boost-worthy posts, told once each
+        out["boosts"] = flag_boosts(tenant)            # v0.369 boost-worthy posts, told once each
     except Exception as e:       # noqa: BLE001
         log.info("boost flags failed: %s", e)
     return out
@@ -972,7 +972,7 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
     out = ["publish"] if state == "ready" else []      # v0.355 every sweep (~4 min): approved posts whose time has come
     last_i = stamps.get("inbox", "")
     if state == "ready" and (not last_i or local - datetime.fromisoformat(last_i) >= timedelta(minutes=14)):
-        out.append("inbox")                            # v0.365 comments + DMs every ~15 min
+        out.append("inbox")                            # v0.368 comments + DMs every ~15 min
     if state in ("new", "error"):
         out.append("first")
     last_h = stamps.get("hourly", "")
@@ -984,10 +984,10 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
     if state == "ready" and local.weekday() == 0 and local.hour >= 9 and stamps.get("weekly_key") != wk:
         out.append("weekly")
     if state == "ready" and local.hour >= 9 and stamps.get("morning", "")[:10] != local.date().isoformat():
-        out.append("morning")                          # v0.366
+        out.append("morning")                          # v0.369
     mk = local.strftime("%Y-%m")
     if state == "ready" and local.day == 1 and local.hour >= 9 and stamps.get("monthly_key") != mk and stamps.get("baseline_month") != mk:
-        out.append("monthly")                          # v0.366 (not in the month the baseline was taken)
+        out.append("monthly")                          # v0.369 (not in the month the baseline was taken)
     return out
 
 

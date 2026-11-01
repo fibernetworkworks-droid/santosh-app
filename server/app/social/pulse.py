@@ -1,4 +1,4 @@
-"""v0.366 SOCIAL MEDIA MANAGER Phase 4 of docs/SOCIAL_EMPLOYEE_PLAN.md - 24/7 + reports:
+"""v0.369 SOCIAL MEDIA MANAGER Phase 4 of docs/SOCIAL_EMPLOYEE_PLAN.md - 24/7 + reports:
 - Posting by trust (plan section 6): a post approved only as part of the monthly plan ("seen" = 0) goes out on its own only
   for Saathi (told the same day) / Bharosa (weekly summary), within the daily cap (0 / 6 / 15) and outside quiet hours
   (23:00-07:00 unless she sets them). Seekh: such a post waits for her OK on the day (the morning note lists it). A post she

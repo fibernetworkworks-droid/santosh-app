@@ -13229,9 +13229,121 @@ Owner: "I WANT CAD TO PERFROM ALL COMPLEX, VERY COMPLEX, HARD, VERY HARD, ULTIMA
   review notes; sandbox defaults 6 GB / 600 s. Console CAD Desk + phone CadDeskScreen: photo / STEP upload, BOM, mass,
   print, review, 3MF / GLB / DXF buttons. Tests: tests/test_v0357_engineering_desk.py (16).
 - Large STEP uploads may need nginx `client_max_body_size 60m;` on the /api/eng location.
-## v0.365.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
-Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356 / 0.358 / 0.364, re-versioned past main's
-v0.356-v0.364 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASLI ERP KAAM ...).
+
+## v0.365.0 HARD CARD (owner: "GO HARD CARD")
+Set 1 of the coding card scored 12/12 (claude-opus-5-5, 4.7 steps a job). That was too easy to show more progress, so set 2
+is harder. Built as 0.363 / 0.364, re-versioned past the parallel v0.363 ASLI ERP KAAM and v0.364 HOOLA CAD PRO.
+- `quality/code_repos.py`: two bigger practice projects; each base is correct and its own tests pass.
+  - DUKAAN (Python, 30 files): config, models, catalog, inventory, cart, coupons, GST, shipping, orders, notify, reports,
+    validators, utils, API handlers. Root AGENTS.md (settings only in config, aliases on rename, logging) and
+    app/api/AGENTS.md (handlers never raise, 400 / 404, require()). Plus docs/ARCHITECTURE.md and tests with conftest.
+  - HISAAB (JavaScript, 13 files): ES modules, paise, GST split, formats, invoices; node:test.
+- `quality/code_tasks2.py` (SET 2, 40 steps / 8 min a job), 12 jobs, each with a reference answer:
+  1. COD fee across config / models / orders / API (quote + create_order)
+  2. rename apply_coupon -> redeem_coupon with every caller + alias
+  3. carts sharing items (mutable default)
+  4. Sundays counted in delivery dates
+  5. reservation leak seen only in a red pytest run (test must not be touched)
+  6. get_order showing anyone's order (404 identical to unknown)
+  7. JS CGST + SGST off by a paisa
+  8. JS formatINR with Indian grouping + export from index
+  9. vague ask -> ONE question, no change
+  10. refactor place_order to <= 32 lines using the helpers, same numbers / errors / stock
+  11. free-shipping limit 499 -> 999 in config + quote + SMS text (no 49900 left)
+  12. cancel_order handler under the folder rules (require(), 400 / 404, never raises, idempotent)
+- `codecard.py`:
+  - `--set 2`; JavaScript checks / tests run with node (`node --test`); node gets no address-space cap because V8 reserves
+    a big one, but keeps the CPU / file / time caps;
+  - UNSAFE_JS refuses child_process / fs / net / http / fetch / eval / process.env;
+  - without node the JS jobs are SKIPPED, not failed;
+  - an `ask` job is right when nothing changed and the reply asks a question;
+  - saved as code2-*.json.
+- vps-ops `code_card_hard` (prints whether node is there; ~12 Opus jobs, roughly Rs 300-700).
+- Tests `test_v0365_hard_card.py`:
+  - both bases pass their own tests; every reference answer is right and every untouched repo fails;
+  - fix tests prove the bug;
+  - the marks catch a guess on the vague ask, no alias, a missed caller, a config-only limit change, deleting the red
+    test, and an unrefactored function;
+  - unsafe JS is never run; JS jobs are skipped without node;
+  - the real loop runs set-2 jobs; CLI + vps job.
+
+## v0.366.0 BLOG + BHASHAYEN (built as 0.359, re-versioned past the parallel v0.359-v0.363) (Phase 3c of "any world-complex website")
+Owner: "START PHASE 3C" (after 3a DUKAAN v0.351 and 3b DASHBOARD v0.357).
+- BLOG, writing stays with Kalam Sahayak (v0.101: her voice, facts checked on the web, [blanks] never guessed). Kalam gets
+  a new destination `site` (DESTS): `publish_request(dest="site", where=<website>, when=<time>)` -> `site.service.blog_target`
+  (the named site, or her only built one) -> the normal Kalam card "Aapki website ka blog: <name> (abhi | time par: ...)";
+  `decide_publish` (her Haan, card hash) -> `site.service.blog_publish`. Only blog pieces go to a site.
+- `server/app/site/blog.py`: table `site_blog_posts` (slug unique per site, title, excerpt, markdown body, category, tags,
+  cover = one of HER site photos, author, status published | scheduled | hidden, publish_at, published_at, words, tr =
+  translations per language with the source hash), `put` (same Kalam piece = same post), `set_status`, `set_cover`, `delete`,
+  `due` (scheduled -> published), `translate` (TRANSLATE_POST, kind site_edit, kept only while the source is unchanged),
+  `md_html` (Kalam's safe markdown: raw HTML escaped, only http / https / mailto / tel links; the title line and any h1
+  become the page's single h1), `card`, `rss`, `posting_ld` (BlogPosting), `latest_cards`, words in en / hi / hinglish.
+- `build.py`: `with_blog_pages` (a Blog page in the menu, or her designed blog page shows the posts below its own sections
+  minus any made-up blog_list), `/blog/page/N/` (10 a page, rel prev / next), `/blog/<post>/` (eyebrow category, h1, date,
+  reading time, author, cover eager, prose, tags, previous / next, 3 related - same category first, BlogPosting JSON-LD,
+  og:type article), `/blog/category/<cat>/`, `/blog/feed.xml`, RSS link in every head, posts + categories in sitemap.xml,
+  `<div data-hoola-posts="3">` in any section = her latest posts (RUNTIME_GUIDE: a blog section never writes posts).
+- Going live: her Haan says "publish on my website". `service._blog_rebuild` makes the checked version; when her live
+  address showed the version before, `_after_job -> _blog_go_live -> hosting.update_live` puts the new version on the same
+  addresses (no new address / DNS); else (blockers, never launched) the normal launch card. Scheduled posts:
+  `worker.tick -> service.blog_tick`. From chat, hide / show / cover make a version she launches herself; delete is ONLY her
+  tap (Blog tab / phone menu, with a confirm).
+- BHASHAYEN (`lang.py`): + gu, bn, ta, te, kn, ml, pa, or, ur (RTL: `<html dir="rtl">`, mirrored quote + menu), `pick` (her
+  words / codes), `html_lang`, MAX_EXTRA 4. `service.extra_languages / set_languages / _alts` (set_language kept for one);
+  `_translate` loops every language and the blog posts. `build.assemble` takes `site["alts"]` (a list): each language under
+  /<lang>/, `langs_all` + `root_up` + `root_base`; `lang_switch` = the v0.301 single link for two languages, a
+  `<details class="hs-langs">` menu for three or more; `<link rel="alternate" hreflang>` for every language + x-default on
+  every page when the real address is known.
+- API: GET /api/sites/<id>/blog, POST /api/sites/<id>/blog/<slug> {action hide|show|delete|cover} (her tap), POST
+  /api/sites/<id>/languages {languages}. Tools: `website` action=languages / blog (hide|show|cover), `website_dekho
+  what=blog`, `kalam` publish dest=site. Console Studio tabs Blog (write a draft with Kalam, read / edit it, publish now or
+  at a time -> the Kalam card confirmed in place, posts table with cover / hide / show / delete) and Languages (pick up to 4).
+  Phone `lib/ui/site_blog.dart` "Blog aur bhashayen" (posts + menu actions with confirms, language chips).
+- ALSO FIXED: the parallel v0.358 ENTERPRISE merge had dropped arena.js, employees.js and charts.js plus the Arena /
+  Employees / SEO Desk / Social Desk views from console v2.html (four console tests were red on main); restored.
+- Tests `server/tests/test_v0366_blog_bhashayen.py`.
+
+## v0.367.0 CRM DESK — the Salesforce desk, 100% read and write
+Owner: *"CRM Architect (crm_arch) --- NOW CHECK THIS"*, then *"MAKE CRM DESK CAN PERFROM 100 % READ AND WRITE
+WORK"*.
+
+The check found `crm_arch` **half-built** next to the ERP desk: the write engine worked, but it had **zero
+sub-jobs** and only four paper kinds. It is a desk too — now **twelve parts**: admin, object and field config,
+flow and automation, Apex, integration, data, profiles and sharing, reporting, testing, release and deployment,
+adoption, support. All twelve paper kinds are open to it, so **security work can finally produce a `matrix`** —
+which is exactly what the Salesforce security model is.
+
+### The split that makes this job different from ERP
+A CRM architect's real write work is not records, it is **configuration**.
+
+| `api` | what | where |
+|---|---|---|
+| `data` | records — leads, accounts, opportunities | `/sobjects/…` |
+| `tooling` | the org's **shape** — objects, fields, flows, permission sets | `/tooling/sobjects/…` |
+
+A wrong record is one bad row. **A wrong field or flow breaks the org for everyone.** So `api` is a *declared
+property of the run* — never guessed from the target name, never the default — and there is a test that the same
+target is not silently promoted to the tooling surface. A tooling change to production is logged as the exception
+it is.
+
+### New reads, which run at once because they change nothing
+- **`describe`** — objects, fields, flows, permission sets: the shape of her org.
+- **`soql`** — her own query, where **anything but `SELECT` is refused**.
+
+Each system spells its own URLs, so `_paths()` now holds the dialect instead of assuming OData everywhere.
+
+### Everything else is the same engine
+Dry run, her tap, batches, idempotent resume, rollback material — all of v0.363, unchanged. That is the whole
+point of having one engine: a second desk cost a table entry and a dialect, not a second engine.
+
+### Files
+`server/app/enterprise/rules.py` · `server/app/enterprise/run.py` (dialect, describe, soql, `api`) ·
+`server/app/enterprise/models.py` (`EntRun.api`) · `server/app/agent/enterprise_tools.py` ·
+`server/tests/test_v0365_crm_desk.py` (11 tests).
+## v0.368.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
+Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356 / 0.358 / 0.364 / 0.365, re-versioned past main's
+v0.356-v0.367 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASLI ERP KAAM ...).
 - `server/app/social/inbox.py` (table `social_inbox`, unique tenant + platform + item id): every ~15 min (desk job `inbox`,
   only when the desk is ready) the comments on her last 20 read posts and her DM threads (Instagram `/me/conversations`,
   Page `/conversations`) from the last 7 days. Skipped: her own comments / Page comments, threads where she spoke last,
@@ -13258,11 +13370,11 @@ v0.356-v0.364 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASL
   7 am daily run, so its comments could not be scanned; now read right after Connect.
 - Console (`employees.js` inbox tile with tabs + reply boxes, facts textarea) + phone (`SocialInboxScreen`, desk Inbox card,
   facts field). Privacy page: comments and messages paragraph (7 days, what is kept, trust, no delete, 24 h, no ads / training).
-- Tests: `server/tests/test_v0365_social_inbox.py` (11). Meta App Review needed for the new permissions before non-testers.
+- Tests: `server/tests/test_v0368_social_inbox.py` (11). Meta App Review needed for the new permissions before non-testers.
 
 
-## v0.366.0 SOCIAL MEDIA MANAGER Phase 4 - 24/7 + REPORTS (1 Nov 2026, owner: "GO PHASE 4")
-Built as 0.359 / 0.365, re-versioned past main's v0.364 HOOLA CAD PRO. Module `server/app/social/pulse.py`.
+## v0.369.0 SOCIAL MEDIA MANAGER Phase 4 - 24/7 + REPORTS (1 Nov 2026, owner: "GO PHASE 4")
+Built as 0.359 / 0.365 / 0.366, re-versioned past main's v0.364-v0.367. Module `server/app/social/pulse.py`.
 - Posting by trust (plan section 6). New nullable `social_posts.seen`: approve_calendar sets 0 (plan OK only), set_post
   approved / Publish now set 1, old rows NULL = treated as her own OK (Phase 2 behaviour kept). `publish.due` asks
   `pulse.may_go`: seen 0 + Seekh -> waits (`waiting_ok`, "Needs your OK" + "OK to post" on the card); Saathi / Bharosa ->
@@ -13279,4 +13391,4 @@ Built as 0.359 / 0.365, re-versioned past main's v0.364 HOOLA CAD PRO. Module `s
   plan text = Meta Boost / Ads Manager, 15 km of her city, Rs 300 a day x 3 days, compare leads with spend.
 - Desk view `pulse` (settings, trust, cap, auto today, waiting_ok, best_times, boosts); console Posting controls / Best
   times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
-  social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0366_social_pulse.py` (12).
+  social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0369_social_pulse.py` (12).

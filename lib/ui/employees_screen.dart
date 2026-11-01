@@ -838,7 +838,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
 
   Widget _post(Map<String, dynamic> p) {
     final st = _s(p['status']);
-    final needOk = p['plan_only'] == true && _s(_d?['trust']) == 'seekh';   // v0.366
+    final needOk = p['plan_only'] == true && _s(_d?['trust']) == 'seekh';   // v0.369
     final done = st == 'published' || st == 'publishing';
     final res = Map<String, dynamic>.from((p['result'] as Map?) ?? const {});
     final probs = ((p['problems'] as List?) ?? const []).map((e) => '$e').toList();
@@ -1154,7 +1154,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
 }
 
 
-/// v0.365 SOCIAL INBOX: comments on her posts and her DMs, sorted, each with a reply drafted from her facts.
+/// v0.368 SOCIAL INBOX: comments on her posts and her DMs, sorted, each with a reply drafted from her facts.
 /// Send / Hide / Ignore are her taps; Hoola never deletes and never messages anyone first.
 class SocialInboxScreen extends StatefulWidget {
   const SocialInboxScreen({super.key, required this.app});
@@ -1323,7 +1323,7 @@ class _SocialInboxScreenState extends State<SocialInboxScreen> {
   }
 }
 
-/// v0.365 chat card for a new social lead / complaint: opens the Inbox.
+/// v0.368 chat card for a new social lead / complaint: opens the Inbox.
 class SocialCard extends StatelessWidget {
   const SocialCard({super.key, required this.kind, required this.v, required this.app});
   final String kind;
