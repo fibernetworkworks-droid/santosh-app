@@ -12665,7 +12665,20 @@ the Android and the iPhone app. Built as 0.340, re-versioned past main's v0.340.
 - Not verified: the camera scanners on real phones (emulator / simulator have no camera); iOS runs background refresh on
   its own schedule (a phone that rarely opens the app gets fewer checks - real push would need her Apple push key).
 
-## v0.342.0 APNA CODE (App Sahayak Phase 9, owner: "START PHASE 9")
+## v0.342.0 TERMS OF SERVICE (1 Nov 2026; built as 0.341.0)
+Owner: "Terms of Service --- HOOLA" (right after her privacy policy went live at /privacy).
+- `server/app/static/terms.html` served at GET /terms (main.py `terms()`), the same look as the privacy page and linked to it.
+  17 sections: who can use (18+), account, what Hoola does, her approval first (send / delete / publish / file / paid work; never moves
+  money; does not sign or file where the law needs her), AI results are not professional advice, acceptable use (spam, fraud,
+  impersonation, real-person likeness without permission, CSAM reported, security / price-card bypass, scraping), her content and
+  creations (hers; "AI se bana" mark), websites and apps she builds (her publishing, her customers' data, her store accounts), Hoola
+  Network (binding only after her approval), connected services' own terms, fees (rupees + GST, price card first, never more than the card,
+  failed items not charged), availability "as is" + backups, suspension / closing, disclaimers + liability cap (3 months of fees, as far as
+  Indian law allows, consumer rights kept), Indian law + Akola courts, grievance officer under the IT Act (24 h acknowledgement, 15 days).
+- NOT legal advice: the owner should have a lawyer review the liability cap, indemnity, jurisdiction and refund wording before relying on them.
+- Tests: `test_v0342_terms.py`.
+
+## v0.343.0 APNA CODE (built as 0.342, re-versioned past the parallel v0.342) (App Sahayak Phase 9, owner: "START PHASE 9")
 No Phase 9 had been named; this is the last open item of the original plan's Phase 4 ("each app's code is kept with its
 full history and can be exported to her GitHub").
 - `appmaker/code.py`: `stage(r)` builds the repo content in the app's folder `github/`: android/ (copy of
@@ -12687,7 +12700,7 @@ full history and can be exported to her GitHub").
   password blanked, gradlew executable; build 2 = a second commit with the first as parent; a pre-build card refused;
   the tool only makes a card.
 
-## v0.343.0 DESIGN SE MILAAN (App Sahayak Phase 10, owner: "START PHASE 10")
+## v0.344.0 DESIGN SE MILAAN (App Sahayak Phase 10, owner: "START PHASE 10")
 No Phase 10 had been named; this is the open promise of the original plan's Phase 3 ("screenshots are compared against
 the approved design") - until now the device check only proved a screen OPENS, not that it LOOKS like her design.
 - `appmaker/match.py`: `score(design, native)` = 0.4 colour (4x4x4 palette histograms, intersection) + 0.45 layout (edge
