@@ -14339,3 +14339,25 @@ schedule slots + SLA, Opus draft with the repair round + her tap by hash, the cu
 Not verified here: the Kotlin / Swift kit compile (CI appgen-check / ios-check build them), a real Opus draft on her VPS.
 Known limits (said plainly): locks + schedules assume one server process (Pillar B moves to Postgres transactions); child
 lookups use a JSON text match on SQLite (fine to a few thousand rows per list); no realtime push of logic results (Pillar C).
+
+## v0.383.0 HOOLA CAD NEXT PHASE (1 Nov 2026)
+Owner: "GO NEXT PHASE" (after: bolts / contact, CFD, fatigue were the biggest gaps).
+- CFD (`fea.flow`, H.analyze('flow', domain=<fluid body>, inlet, outlet, flow_lpm | velocity_mm_s, fluid, max_dp_pa)):
+  the CAD script builds the FLUID as its own solid (bore / channel / box minus part); the runner exports it as
+  domain_<i>.step and the analysis box meshes THAT. Taylor-Hood P2-P1, Stokes then Picard Oseen steps (relaxed 0.7),
+  MINRES with an AMG velocity block + pressure mass diagonal (Stokes), GMRES with a nonsymmetric AMG (Oseen), direct
+  fallback, 420 s budget. Inlet: uniform direction = minus the mean inlet normal, scaled so the flux is EXACTLY her
+  flow (the first try lost ~15 % at the no-slip rim). Water / air / oil / diesel / glycerin. Measured: pipe D10 x 60,
+  creeping flow - centre speed 25.77 vs 25.46 mm/s, pressure drop +7 % (entrance), mass balance 99.9 %; Re 127 -
+  0.333 Pa vs ~0.345 Pa from Poiseuille + Shah's entrance K (about 4 %). Re > 2000 = NOT valid + Swamee-Jain estimate.
+- Fatigue: static H.analyze(..., fatigue={load: zero_to_max | reversed | ratio, life, finish, reliability, min_sf})
+  on the hot spot away from supports: Marin ka (surface), kb (size), kc, ke; steels knee at 1e6, aluminium / copper
+  strength at 5e8 (said), polymers rough; Goodman + Basquin -> predicted cycles + fatigue SF; failing = back to the
+  designer ("bigger fillet, no notch at the hot spot"). Calculator kind=fatigue with Kt and notch sensitivity.
+- Bolted joints: calc kind=joint - bolt stiffness (shank + thread), Wileman member stiffness, load factor C, 75 % proof
+  preload + torque, separation / yield / load / fatigue (rolled threads, Goodman) / slip safety factors.
+- Mesh: boundary facets get exactly one face each (corners' common face, else the nearest by the kernel);
+  surfaces sampled on an even (u, v) grid + edge points (a long cylinder had ~30x too many points and a 5.6 GB solve).
+- NOT built (said to her): true contact / bolt-preload FEA between assembly parts (an assembly is still one glued
+  body in FEA; bolts are checked by the joint calculation), turbulent (RANS) CFD, acoustics simulation.
+- Tests: tests/test_v0381_cad_next.py (10).
