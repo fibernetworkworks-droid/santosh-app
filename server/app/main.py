@@ -8885,6 +8885,10 @@ async def app_api_file(app_key: str, fid: str, request: Request):
         f = await asyncio.to_thread(BE.file_for, r, fid, w)
     except W.AppError:
         raise HTTPException(404, "not found")
+    if str(f).endswith(".pdf"):                  # v0.346 a PDF is only ever a download, never opened in a page
+        return FileResponse(f, media_type="application/pdf", filename=f"{fid}.pdf",
+                            headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff",
+                                     "Content-Security-Policy": "sandbox", "Content-Disposition": f'attachment; filename="{fid}.pdf"'})
     return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400",
                                                              "X-Content-Type-Options": "nosniff"})
 
@@ -9088,6 +9092,10 @@ async def apps_data_file(ref: str, fid: str, tenant: str = Depends(current_tenan
         raise HTTPException(404, "not found")
     except Exception:
         raise HTTPException(404, "not found")
+    if str(f).endswith(".pdf"):                  # v0.346
+        return FileResponse(f, media_type="application/pdf", filename=f"{fid}.pdf",
+                            headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff",
+                                     "Content-Security-Policy": "sandbox", "Content-Disposition": f'attachment; filename="{fid}.pdf"'})
     return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 

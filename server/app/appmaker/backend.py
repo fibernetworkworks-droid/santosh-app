@@ -32,6 +32,9 @@ STATS = {"schemas": 0, "orders": 0, "dedup": 0, "notes": 0, "notes_capped": 0, "
 CID = re.compile(r"^[A-Za-z0-9_-]{8,48}$")
 NOTE_CAP_PER_HOUR = 30
 SCHEMA_V = 2                     # v0.319 photo / location / paid fields
+MAX_DOC = 10 * 1024 * 1024        # v0.346 a PDF (prescription, ID proof, bill, resume) - kept as sent, checked, 10 MB
+# a PDF that could run something when opened is refused (scripts, launch / open actions, embedded files, forms engine, media)
+PDF_RISK = re.compile(rb"/(JavaScript|JS|Launch|EmbeddedFiles?|OpenAction|AA|RichMedia|XFA|SubmitForm|ImportData|GoToR)\b")
 MAX_UPLOAD = 6 * 1024 * 1024     # what the phone may send (it shrinks to ~1600 px first); stored re-encoded, smaller
 STATS.update({"uploads": 0, "upload_refused": 0, "paid_claims": 0, "updates": 0})
 _KEYS: dict[str, tuple[float, str]] = {}           # app_key -> (when, project id)
@@ -130,7 +133,8 @@ DM_TYPE = {"text": "text", "long": "long_text", "int": "number", "decimal": "num
            "date": "date", "datetime": "text", "time": "text", "phone": "phone", "email": "email", "url": "text",
            "enum": "choice", "ref": "text", "uuid": "text", "file": "photo", "point": "location"}
 # v0.319 kinds the app backend adds on top of the web-app engine's vocabulary (kept through clean_schema, checked here)
-EXTRA_TYPES = ("photo", "location", "scan")        # v0.340 scan = a barcode / QR read by the camera (or typed)
+EXTRA_TYPES = ("photo", "location", "scan", "file")    # v0.346 file = a PDF document        # v0.340 scan = a barcode / QR read by the camera (or typed)
+DOC_NAME = re.compile(r"(?i)(document|doc_|attachment|report|prescription|invoice|bill|resume|cv|proof|certificate|receipt|agreement|kyc)")
 SCAN_NAME = re.compile(r"(?i)(barcode|^sku$|^tag$|serial|qr_?code|^imei$)")
 LOC = re.compile(r"^\s*(-?\d{1,2}(?:\.\d{1,7})?)\s*,\s*(-?\d{1,3}(?:\.\d{1,7})?)\s*$")
 FILE_ID = re.compile(r"^f_[0-9a-f]{16}$")
@@ -151,14 +155,16 @@ def _complex_lists(plan: dict[str, Any], goal: str = "") -> list[dict[str, Any]]
     ents.sort(key=lambda e: order.get(D.ENTITIES[e][0], 99))
     out = []
     for e in ents:
-        fields, extra = [], {"photo": 0, "location": 0, "scan": 0}
+        fields, extra = [], {"photo": 0, "location": 0, "scan": 0, "file": 0}
         for f in D.parse_fields(D.ENTITIES[e][2]):
             t = DM_TYPE.get(f["type"])
             if t == "text" and SCAN_NAME.search(f["name"]):      # v0.340 codes on labels are scanned, not typed
                 t = "scan"
+            if t == "photo" and DOC_NAME.search(f["name"]):      # v0.346 papers are PDFs (a photo still works there)
+                t = "file"
             if t in extra:                      # at most 2 photos and 1 location per staff list
                 extra[t] += 1
-                if extra[t] > (2 if t in ("photo", "scan") else 1):
+                if extra[t] > (2 if t in ("photo", "scan", "file") else 1):
                     continue
             if not t or W._slug(f["name"]) in ("id", "owner", "created", "updated") or \
                     re.search(r"(?i)(password|pin|otp|cvv|card|aadhaar|pan_no|account_no|ifsc|token|secret)", f["name"]):
@@ -505,6 +511,8 @@ def _check_extra(r: AppProject, c: dict[str, Any], data: dict[str, Any], w: W.Wh
             meta = _file_meta(r, v)
             if meta is None or not (w.staff or (w.id and meta.get("owner") == w.id) or (not meta.get("owner") and not w.id)):
                 raise W.AppError(f"{f['label']}: yeh photo is account ki nahi.", 403)
+            if t == "photo" and meta.get("kind") == "pdf":         # v0.346
+                raise W.AppError(f"{f['label']}: yahan photo chahiye, PDF nahi.")
             if (c.get("rules") or {}).get("read") == "public" and not meta.get("public"):
                 meta["public"] = True
                 _files(r).joinpath(v + ".json").write_text(json.dumps(meta))
@@ -536,6 +544,8 @@ def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "") -> dict[str, Any]:
         raise W.AppError("Pehle login kijiye.", 401)
     if not w.owner:
         W.rate(f"up|{bid(r)}|{w.id or ip}", 30, 600)
+    if raw[:5] == b"%PDF-":                    # v0.346 a document
+        return _upload_pdf(r, w, raw)
     if not raw or len(raw) > MAX_UPLOAD:
         STATS["upload_refused"] += 1
         raise W.AppError("Photo bahut badi hai (6 MB tak).", 413)
@@ -561,10 +571,76 @@ def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "") -> dict[str, Any]:
     return {"id": fid, "w": im.width, "h": im.height, "size": out.tell()}
 
 
+def _upload_pdf(r: AppProject, w: W.Who, raw: bytes) -> dict[str, Any]:
+    """v0.346 a PDF: at most 10 MB, really a PDF (pypdf opens it, not encrypted, 1-200 pages), nothing in it that could run
+    (scripts, launch / open actions, embedded files, XFA forms, media). Kept byte for byte (re-writing would break signed
+    PDFs); only ever served as a download."""
+    import io
+    import secrets as _sec
+    if len(raw) > MAX_DOC:
+        STATS["upload_refused"] += 1
+        raise W.AppError("PDF bahut bada hai (10 MB tak).", 413)
+    if PDF_RISK.search(raw):
+        STATS["upload_refused"] += 1
+        raise W.AppError("Is PDF mein script ya attachment hai; saada PDF bhejiye (print -> Save as PDF).", 415)
+    try:
+        from pypdf import PdfReader
+        rd = PdfReader(io.BytesIO(raw))
+        if rd.is_encrypted:
+            raise ValueError("encrypted")
+        pages = len(rd.pages)
+        if not 1 <= pages <= 200:
+            raise ValueError(pages)
+        risky = _pdf_risky(rd)
+    except Exception:                                   # noqa: BLE001
+        STATS["upload_refused"] += 1
+        raise W.AppError("Yeh PDF nahi khula (password wala ya toota hua?).", 415)
+    if risky:                                           # inside compressed parts too (the byte scan above can miss them)
+        STATS["upload_refused"] += 1
+        raise W.AppError("Is PDF mein script ya attachment hai; saada PDF bhejiye (print -> Save as PDF).", 415)
+    fid = "f_" + _sec.token_hex(8)
+    d = _files(r)
+    (d / (fid + ".pdf")).write_bytes(raw)
+    (d / (fid + ".json")).write_text(json.dumps({"owner": w.id, "at": now().isoformat(), "size": len(raw), "kind": "pdf",
+                                                 "pages": pages, "public": False}))
+    STATS["uploads"] += 1
+    return {"id": fid, "kind": "pdf", "pages": pages, "size": len(raw)}
+
+
+def _pdf_risky(rd) -> bool:
+    """The PDF's own structure: open / page actions, named scripts, attached files, XFA forms, link actions that run or
+    fetch something, file-attachment notes."""
+    bad_actions = {"/JavaScript", "/Launch", "/ImportData", "/SubmitForm", "/GoToR", "/GoToE", "/RichMediaExecute"}
+    root = rd.trailer["/Root"].get_object()
+    if "/OpenAction" in root or "/AA" in root:
+        return True
+    names = root.get("/Names")
+    names = names.get_object() if names is not None else {}
+    if "/JavaScript" in names or "/EmbeddedFiles" in names:
+        return True
+    acro = root.get("/AcroForm")
+    if acro is not None and "/XFA" in acro.get_object():
+        return True
+    for page in rd.pages:
+        if "/AA" in page:
+            return True
+        for a in (page.get("/Annots") or []):
+            a = a.get_object()
+            if a.get("/Subtype") in ("/FileAttachment", "/RichMedia", "/Movie", "/Sound", "/Screen"):
+                return True
+            act = a.get("/A")
+            if act is not None and act.get_object().get("/S") in bad_actions:
+                return True
+            if "/AA" in a:
+                return True
+    return False
+
+
 def file_for(r: AppProject, fid: str, w: W.Who):
-    """The stored photo, for the person who sent it, staff, her, or anyone when it sits in a public list."""
+    """The stored photo / PDF, for the person who sent it, staff, her, or anyone when it sits in a public list.
+    Returns the path; its suffix (.jpg / .pdf) says what it is."""
     meta = _file_meta(r, fid)
-    f = _files(r) / (fid + ".jpg") if meta is not None else None
+    f = (_files(r) / (fid + (".pdf" if meta.get("kind") == "pdf" else ".jpg"))) if meta is not None else None
     if f is None or not f.exists():
         raise W.AppError("not found", 404)
     if not (meta.get("public") or w.staff or (w.id and meta.get("owner") == w.id)):

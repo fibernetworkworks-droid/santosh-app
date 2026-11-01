@@ -459,6 +459,9 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
         if f.get("type") == "location":
             out.append(f"        block {{ LocationField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
             continue
+        if f.get("type") == "file":                # v0.346 a PDF document
+            out.append(f"        block {{ FileField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
+            continue
         if f.get("type") == "scan":                # v0.340
             out.append(f"        block {{ ScanField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
             continue

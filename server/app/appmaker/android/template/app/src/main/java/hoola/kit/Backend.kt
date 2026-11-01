@@ -74,7 +74,8 @@ object Cloud {
                 instanceFollowRedirects = false
                 doOutput = true
                 setFixedLengthStreamingMode(bytes.size)
-                setRequestProperty("Content-Type", "image/jpeg")
+                // v0.346 a document (PDF) goes up as itself; photos as JPEG
+                setRequestProperty("Content-Type", if (bytes.size > 5 && String(bytes, 0, 5, Charsets.US_ASCII) == "%PDF-") "application/pdf" else "image/jpeg")
                 setRequestProperty("Accept", "application/json")
                 if (token.isNotEmpty()) setRequestProperty("Authorization", "Bearer $token")
             }

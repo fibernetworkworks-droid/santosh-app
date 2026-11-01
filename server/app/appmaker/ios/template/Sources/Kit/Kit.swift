@@ -35,6 +35,10 @@ enum Words {
     static var utr: String { t("UPI reference / UTR", "UPI रेफ़रेंस / UTR", "UPI reference / UTR") }
     static var privacy: String { t("Privacy policy", "गोपनीयता नीति", "Privacy policy") }
     static var call: String { t("Call", "कॉल करें", "Call karein") }
+    // v0.346
+    static var addFile: String { t("Attach PDF", "PDF जोड़ें", "PDF jodiye") }
+    static var fileFailed: String { t("Please pick a PDF under 10 MB.", "10 MB से छोटी PDF चुनें।", "10 MB se chhoti PDF chuniye.") }
+    static var remove: String { t("Remove", "हटाएँ", "Hataiye") }
     // v0.340
     static var scan: String { t("Scan", "स्कैन करें", "Scan karein") }
     static var dashboard: String { t("Dashboard", "डैशबोर्ड", "Dashboard") }

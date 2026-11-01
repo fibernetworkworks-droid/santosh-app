@@ -9,6 +9,7 @@ import Charts
 import VisionKit
 import BackgroundTasks
 import UserNotifications
+import UniformTypeIdentifiers
 
 // ---------------------------------------------------------------- scan
 struct ScanRow: View {
@@ -241,5 +242,43 @@ enum Updates {
         guard !UserDefaults.standard.bool(forKey: "hoola_notify_asked") else { return }
         UserDefaults.standard.set(true, forKey: "hoola_notify_asked")
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+    }
+}
+
+// ---------------------------------------------------------------- v0.346 a PDF document for a form
+/// The system file importer (no permission), at most 10 MB, copied into the app's own temp folder, sent by the outbox.
+struct FileRow: View {
+    let label: String
+    let key: String
+    @ObservedObject private var state = AppState.shared
+    @State private var open = false
+    @State private var note = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Button { open = true } label: { Label(label, systemImage: "doc.richtext") }
+                Spacer()
+                if !(state.form[key] ?? "").isEmpty {
+                    Text(state.form[key + "__name"] ?? "PDF").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Button(Words.remove) { state.form[key] = nil; state.form[key + "__name"] = nil }.font(.caption)
+                }
+            }
+            if !note.isEmpty { Text(note).font(.caption).foregroundStyle(.red) }
+        }
+        .fileImporter(isPresented: $open, allowedContentTypes: [.pdf]) { result in
+            guard case .success(let url) = result else { return }
+            let ok = url.startAccessingSecurityScopedResource()
+            defer { if ok { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url), data.count <= 10 * 1024 * 1024, data.prefix(5) == Data("%PDF-".utf8) else {
+                note = Words.fileFailed
+                return
+            }
+            let dest = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+            guard (try? data.write(to: dest)) != nil else { note = Words.fileFailed; return }
+            note = ""
+            state.form[key] = "local:" + dest.path
+            state.form[key + "__name"] = String(url.lastPathComponent.prefix(80))
+        }
     }
 }

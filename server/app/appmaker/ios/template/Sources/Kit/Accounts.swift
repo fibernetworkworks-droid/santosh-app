@@ -174,6 +174,8 @@ struct FormBlock: View {
                 LocationRow(label: label, key: k)
             case "scan":
                 ScanRow(label: label, key: k)
+            case "file":
+                FileRow(label: label, key: k)
             default:
                 TextField(label, text: state.binding(k)).textFieldStyle(.roundedBorder)
                     .keyboardType(f.s("type") == "phone" ? .phonePad : f.s("type") == "email" ? .emailAddress : f.s("type") == "number" ? .decimalPad : .default)

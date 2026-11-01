@@ -5,9 +5,19 @@ package hoola.kit
 //   app itself needs NO camera permission and never sees the camera), or typed when the phone has no scanner.
 // - StatsBlock: the staff dashboard - counts, status mix, rows per day (a bar chart drawn here, no chart library) and the
 //   money total, from the app's own server (staff only; customers never see the business's numbers).
+// - FileField (v0.346): a PDF document (prescription, ID proof, bill, resume) from the system file picker - no storage
+//   permission; copied into the app's own cache and sent by the outbox (the server checks it is a plain PDF, 10 MB max).
 // - Inbox: every update the app was told about (order moved, new order for staff), kept on the phone, newest first.
 
 import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -165,5 +175,64 @@ fun InboxScreen() {
                 }
             }
         }
+    }
+}
+
+
+/** v0.346 a PDF for a form: the system file picker (no permission), at most 10 MB, sent by the outbox. */
+@Composable
+fun FileField(label: String, key: String) {
+    val c = ctx()
+    val scope = rememberCoroutineScope()
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            val got = withContext(Dispatchers.IO) { Docs.copy(c, uri) }
+            if (got != null) {
+                AppState.form[key] = "local:" + got.first
+                AppState.form[key + "__name"] = got.second
+            } else Act.toast(c, Strings.fileFailed)
+        }
+    }
+    val v = AppState.form[key].orEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Label(label)
+        if (v.isNotEmpty()) Small("📄 " + AppState.form[key + "__name"].orEmpty().ifEmpty { "PDF" })
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Btn(if (v.isEmpty()) Strings.addFile else Strings.changeFile, kind = BtnKind.Tonal, icon = "receipt", small = true) {
+                pick.launch(arrayOf("application/pdf"))
+            }
+            if (v.isNotEmpty()) Btn(Strings.remove, kind = BtnKind.Ghost, small = true) { AppState.form.remove(key); AppState.form.remove(key + "__name") }
+        }
+    }
+}
+
+object Docs {
+    private const val MAX = 10 * 1024 * 1024
+
+    /** The picked PDF copied into the app's cache -> (path, file name); null = not a PDF / too big / unreadable. */
+    fun copy(ctx: Context, uri: Uri): Pair<String, String>? = try {
+        var name = "document.pdf"
+        ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cur ->
+            if (cur.moveToFirst()) name = cur.getString(0) ?: name
+        }
+        val bytes = ctx.contentResolver.openInputStream(uri)?.use { inp ->
+            val buf = java.io.ByteArrayOutputStream()
+            val chunk = ByteArray(64 * 1024)
+            while (true) {
+                val n = inp.read(chunk)
+                if (n < 0) break
+                buf.write(chunk, 0, n)
+                if (buf.size() > MAX) return null
+            }
+            buf.toByteArray()
+        } ?: return null
+        if (bytes.size < 5 || String(bytes, 0, 5, Charsets.US_ASCII) != "%PDF-") null
+        else {
+            val f = java.io.File(ctx.cacheDir, "doc_" + java.util.UUID.randomUUID().toString() + ".pdf")
+            f.writeBytes(bytes)
+            Pair(f.absolutePath, name.take(80))
+        }
+    } catch (_: Exception) {
+        null
     }
 }

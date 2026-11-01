@@ -129,6 +129,7 @@ FILE CONTRACT
   button -> nav.go("hoola_login"). NEVER write your own login / sign-up form: the app has one (code-made).
   Fields marked [photo]: PhotoField(label, key) (system photo picker, no permission; sent by the outbox); show a saved one
   with RemotePhoto(row.s(key)). Fields marked [scan]: ScanField(label, key) (v0.340 Google's code scanner, typed too).
+  Fields marked [file]: FileField(label, key) (v0.346 a PDF from the system file picker, no permission).
   A staff dashboard / report screen: block { StatsBlock() } (live counts, status mix, 14-day bars; shows nothing to customers).
   Fields marked [location]: LocationField(label, key) ("Use my location" with the
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.
@@ -183,7 +184,7 @@ def backend_line(backend: dict | None) -> str:
     out = []
     for c in (backend or {}).get("collections") or []:
         fs = [f["key"] + ("*" if f.get("required") else "") + (f" [{'|'.join(f['options'][:6])}]" if f.get("options") else "")
-              + (f"[{f['type']}]" if f.get("type") in ("photo", "location", "scan") else "")
+              + (f"[{f['type']}]" if f.get("type") in ("photo", "location", "scan", "file") else "")
               for f in c.get("fields") or [] if not f.get("admin_only") and not f.get("hidden")]
         out.append(f"{c['key']} (create {c.get('rules', {}).get('create', 'member')}): {', '.join(fs)}")
     if (backend or {}).get("order"):

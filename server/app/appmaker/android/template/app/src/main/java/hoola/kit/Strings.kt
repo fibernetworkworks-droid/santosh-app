@@ -137,4 +137,8 @@ object Strings {
     val last14 get() = t("Last 14 days", "पिछले 14 दिन", "मागील 14 दिवस", "Pichhle 14 din")
     val inbox get() = t("Updates", "अपडेट", "अपडेट", "Updates")
     val inboxEmpty get() = t("No updates yet.", "अभी कोई अपडेट नहीं।", "अजून अपडेट नाहीत.", "Abhi koi update nahi.")
+    // v0.346 documents
+    val addFile get() = t("Attach PDF", "PDF जोड़ें", "PDF जोडा", "PDF jodiye")
+    val changeFile get() = t("Change PDF", "PDF बदलें", "PDF बदला", "PDF badliye")
+    val fileFailed get() = t("Please pick a PDF under 10 MB.", "10 MB से छोटी PDF चुनें।", "10 MB पेक्षा लहान PDF निवडा.", "10 MB se chhoti PDF chuniye.")
 }

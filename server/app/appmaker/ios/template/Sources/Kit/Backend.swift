@@ -48,7 +48,8 @@ enum Cloud {
         guard ready, let url = URL(string: "\(base)/api/app-api/\(key)/files") else { return Reply(code: 0, body: [:]) }
         var req = URLRequest(url: url, timeoutInterval: 60)
         req.httpMethod = "POST"
-        req.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        // v0.346 a document (PDF) goes up as itself; photos as JPEG
+        req.setValue(jpeg.prefix(5) == Data("%PDF-".utf8) ? "application/pdf" : "image/jpeg", forHTTPHeaderField: "Content-Type")
         if !token.isEmpty { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         do {
             let (d, r) = try await URLSession.shared.upload(for: req, from: jpeg)
