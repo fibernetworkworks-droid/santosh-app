@@ -49,7 +49,7 @@ shape as `regtech` (prepares every filing, files none).
 
 | | |
 |---|---|
-| **Architects Act 1972** | the title "architect" is protected; only a Council of Architecture registered architect may use it or sign what the Act reserves. Hoola will never call itself an architect, never sign, and never let a result imply either. |
+| **Architects Act 1972** | s.37 protects the **title**, not the practice of architecture (*Council of Architecture v. Mukesh Goyal*, SC 2020) — my first draft of this plan overstated it. The **signing** limits come from the Model Building Bye-Laws, not the Act. Hoola will never call itself an architect, never sign, and never let a result imply either. |
 | **Structural** | a structural design submitted to a municipal body must carry a licensed/registered structural engineer's name and stamp. Hoola computes and shows the working; a person stamps it. |
 | **Municipal licensing** | cities license their own engineers/supervisors/architects in categories by building size. Hoola is none of them. |
 | **Fire, environment, height, lifts** | each has its own authority and its own signatory. |
@@ -77,7 +77,45 @@ Registers that matter for THIS desk (each one a named signatory Hoola can never 
 | EIA | application must come through a **QCI/NABET-accredited consultant organisation**; legal position partly **unsettled** |
 | Statutory energy audit | an **Accredited** energy auditor — a merely *Certified* one may not sign it |
 
-**The design disciplines' own provisions are still being pinned by the research running now.** Every one above is stated in this plan as
+### The design disciplines, pinned (design research landed 1 Nov 2026)
+
+**The headline, and it is good news that also sharpens the rule: in India, DESIGN is largely ungated.
+CERTIFICATES and EXECUTION are gated.**
+
+| Discipline | Is the DESIGN gated? | What is gated |
+|---|---|---|
+| **HVAC** | **No gate at all** — no licence, no stamp. MBBL Appendix E does not list a mechanical/HVAC professional | ECBC compliance route; refrigerants under the ODS Rules |
+| **Electrical** | **Design ungated** | energising needs the **Electrical Inspector's** written approval above 650 V (CEA Regs 2010, Reg. 43); the installation must be executed and certified by a **licensed contractor + supervisor**. *"Software may produce the design; it may not produce the completion/test certificate."* |
+| **Plumbing / PHE** | **Design ungated** | execution by a **ULB-licensed plumber**, with competence limits (e.g. up to 500 sqm plot, 4 storeys); STP/ETP discharge needs SPCB consent |
+| **Fire protection** | design ungated, but **this is the hardest gate in the country** | Maharashtra Fire Act 2006: only a **"Licensed Agency"** may issue **Form A / Form B**; the digital signature must match the one on its licence, no word may be added to or deleted from the Form, and licences are class-restricted. **Software must never generate this certificate.** |
+| **Architecture** | **the title is protected, not the practice** — Architects Act s.37(1) bars anyone unregistered from using *"the title and style of architect"* (criminal under s.37(2)); *Council of Architecture v. Mukesh Goyal* (SC, 17 Mar 2020) reads it as title protection | **signing** comes from MBBL App. E: an architect may sign all plans *"except engineering services of multi-storeyed/special buildings"*, within area limits |
+| **Structural** | design ungated in itself | the **Structural Stability Certificate** needs an engineer on **that Corporation's own register** |
+
+### The category I had missed entirely: the "-on-Record" appointments
+MBBL makes several **named statutory appointments** that are bigger gates than most design jobs, and the plan
+had none of them:
+
+- **Construction Engineer on Record (CER)** — **mandatory for every building except load-bearing up to 3
+  storeys**, certifies construction safety (Form-13)
+- **Geotechnical Engineer on Record (GER)** — a named appointment (MBBL 6.3.8), not just "a specialist"
+- **Quality Auditor on Record (QAR/QAAR)** — **mandatory in seismic zones IV and V**
+- **Town Planner on Record (TPR)** — named appointment
+- **Structural Design Review Panel** — an **authority-constituted** panel, not a private peer review
+- **Empanelled Architect** — a private architect who **literally is the approving authority** for residential
+  buildings up to 15 m and 500 sqm, holding a security deposit, indemnity bond and liability insurance, and
+  strikeable off the panel. A category the software must model explicitly rather than treat as "an architect".
+
+### What this changes in the build
+1. **The disciplines can go further than I assumed.** Structural, HVAC, electrical and plumbing *design* —
+   calculations, sizing, schedules, specifications — carry no Indian licence. That is the desk's real room.
+2. **The certificate is the hard line, not the design.** So the refusal is specific and small: Hoola never
+   produces Form A/B, a stability certificate, a completion certificate, a test certificate, or RERA Form
+   1/2/3. It produces the *calculation and the drawing those certificates rest on*.
+3. **An "-on-Record" role is a person, and the desk must say whose record it is.** Any paper touching CER /
+   GER / QAR / TPR work names the appointed professional and is marked as prepared for them.
+4. **One job is flagged "near-fully automatable" by the research itself**: the **document controller /
+   drawing register manager**. `architect_assistant` already holds the drawing register — so that is where
+   it belongs, extended, not a new role. Every one above is stated in this plan as
 a design constraint, and the plan's claims get replaced with quoted provisions and URLs before any code is
 written. Nothing in this desk will assert a legal requirement Hoola has not read.
 
@@ -129,6 +167,7 @@ tools, because it is one consultancy doing one project.
 | 8 | **fire & life safety** | occupant load, exit widths, travel distance, staircase count, refuge, sprinkler/hydrant demand | NBC 2016 Part 4 — computed, and the clause quoted |
 | 9 | **facade / envelope** | wind pressure, glazing selection, U-value/SHGC, thermal bridging, waterproofing details | IS 875 Part 3, ECBC — computed |
 | 10 | **acoustics / specialists** | reverberation, partition STC/Rw, traffic noise, daylight factor, vastu reading | standards + an honest "this needs a specialist" where it does |
+| 10b | **on-Record support** | the papers a CER / GER / QAR / TPR appointment rests on, each naming the appointed professional | MBBL 6.3.6 / 6.3.8 |
 | 11 | **coordination** | cross-discipline clash and consistency check, drawing register, design-stage QA, consultant RFIs | rules over the drawings/models themselves |
 
 Vastu is in because Indian clients ask for it. It is handled honestly: it is **stated as a client
