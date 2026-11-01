@@ -327,6 +327,30 @@ def site_network():
     return _site_page("network")
 
 
+@app.get("/studio")
+def site_studio():
+    """v0.349 The Create Studio page of the Hoola website (real studio screens in static/site/studio/)."""
+    return _site_page("studio")
+
+
+@app.get("/api/site/showcase")
+async def site_showcase():
+    """v0.349 Public: which showcase slots have a real Hoola-made picture / clip (the owner makes them in Create > Engines >
+    Showcase). The website's samples wall swaps its drawn scenes for these; nothing else of the owner's studio is shown."""
+    from .studio import showcase
+    return JSONResponse({"slots": await asyncio.to_thread(showcase.manifest)}, headers={"Cache-Control": "public, max-age=300"})
+
+
+@app.get("/api/site/showcase/{slot}/{kind}")
+async def site_showcase_file(slot: str, kind: str):
+    from .studio import showcase
+    try:
+        f = await asyncio.to_thread(showcase.file_for, slot, kind)
+    except showcase.ShowcaseError:
+        raise HTTPException(404, "Not made yet")
+    return FileResponse(f, headers={"Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff"})
+
+
 @app.get("/chat")
 def old_web_chat():
     """The old one-page web chat (API key in the browser) that used to be at /. The Hoola Console replaces it."""
