@@ -2491,3 +2491,7 @@ body.albon{overflow:hidden}
 .gs-rcard p{margin:4px 0 0;color:var(--mut);font-size:12.5px}
 .gs-rcard.gs-busy{border-color:var(--pri,#5B45E0)}
 
+
+/* v0.407 ABHI ABHI: her app data page is live */
+.stlive { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--mut); margin: 4px 0 8px; }
+.stlive .stdot { width: 8px; height: 8px; border-radius: 50%; background: #1e9e5a; flex: none; }

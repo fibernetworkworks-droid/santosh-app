@@ -9977,6 +9977,89 @@ async def app_api_members(app_key: str, request: Request):
     return await asyncio.to_thread(_be_call, go)
 
 
+# ---- v0.407 ABHI ABHI (App Sahayak Pillar C): real time for the native apps - one SSE stream per open app.
+def _live_stream(r, w, token: str, request: Request, colls: str):
+    from .appmaker import live as LV
+    last = request.headers.get("last-event-id") or request.query_params.get("last") or ""
+    return StreamingResponse(LV.stream(r, w, token, colls, last, gone=request.is_disconnected), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/app-api/{app_key}/live")
+async def app_api_live(app_key: str, request: Request, colls: str = ""):
+    """Live lists / order status / chat / presence / typing for a signed-in account (Bearer token in the header). Events are
+    filtered by each list's read rule; Last-Event-ID replays what a reconnect missed. 429 = too many streams (the app keeps
+    its normal refresh)."""
+    from .appmaker import live as LV
+    from .site import webapp as W
+
+    def go():
+        r, w = _be_app(app_key, request)
+        LV.admit(r, w)
+        return r, w
+    try:
+        r, w = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+    tok = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+    return _live_stream(r, w, tok, request, colls)
+
+
+@app.post("/api/app-api/{app_key}/live/typing")
+async def app_api_live_typing(app_key: str, request: Request):
+    """{thread?}: 'typing...' in a chat thread (a customer: her own; staff: the customer's member id)."""
+    from .appmaker import live as LV
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return LV.typing(r, w, str(body.get("thread") or ""))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/live/presence")
+async def app_api_live_presence(app_key: str, request: Request):
+    """Who is online now (a customer sees whether the shop's staff are online; staff see everyone)."""
+    from .appmaker import live as LV
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return LV.online(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/apps/{ref}/live", dependencies=[Depends(require_key)])
+async def apps_live(ref: str, request: Request, colls: str = "", tenant: str = Depends(current_tenant)):
+    """Her own live view of one app (console / phone): every list, every chat, who is online."""
+    from .appmaker import live as LV
+    from .site import webapp as W
+    try:
+        r = await asyncio.to_thread(_be_owner, tenant, ref)
+        w = W.Who(owner=True)
+        LV.admit(r, w)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+    except Exception:
+        return JSONResponse({"ok": False, "error": "App nahi mila."}, status_code=404)
+    return _live_stream(r, w, "", request, colls)
+
+
+@app.get("/api/apps/{ref}/live/presence", dependencies=[Depends(require_key)])
+async def apps_live_presence(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import live as LV
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.online(_be_owner(tenant, ref), W.Who(owner=True)))
+
+
+@app.post("/api/apps/{ref}/live/typing", dependencies=[Depends(require_key)])
+async def apps_live_typing(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her 'typing...' in a customer's chat thread {thread}."""
+    from .appmaker import live as LV
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.typing(_be_owner(tenant, ref), W.Who(owner=True),
+                                                                     str((body or {}).get("thread") or "")))
+
+
 def _be_owner(tenant: str, ref: str):
     from .appmaker import service as A
     with A.session() as s:

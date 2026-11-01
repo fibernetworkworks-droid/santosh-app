@@ -29,6 +29,10 @@ enum Words {
     static var sending: String { t("Sending…", "भेज रहे हैं…", "Bhej rahe hain…") }
     static var placeOrder: String { t("Place order", "ऑर्डर करें", "Order karein") }
     static var send: String { t("Send", "भेजें", "Bhejiye") }
+    static var shopOnline: String { t("Shop is online", "दुकान ऑनलाइन है", "Dukaan online hai") }    // v0.407 ABHI ABHI
+    static var isOnline: String { t("online", "ऑनलाइन", "online") }
+    static var isTyping: String { t("typing…", "लिख रहे हैं…", "likh rahe hain…") }
+    static var live: String { t("Live", "लाइव", "Live") }
     static var add: String { t("Add", "जोड़ें", "Jodiye") }
     static var payUpi: String { t("Pay by UPI", "UPI से भुगतान", "UPI se pay karein") }
     static var iPaid: String { t("I have paid", "मैंने भुगतान कर दिया", "Maine pay kar diya") }

@@ -729,12 +729,62 @@ window.HoolaBuild = function (C) {
   /* ---------------- v0.305 web app: her lists, entries, members (her own login = admin) ---------------- */
   /* v0.314 ASLI APP: the native app's own backend - every list (orders, bookings, a staff app's tables) with its rows,
      the status changed in place, accounts with their role. New entries also reach her chat by themselves. */
+  /* v0.407 ABHI ABHI: her app data page is live - a new order / a status change / a chat shows without a reload, and who is
+     online right now. One stream per open page (closed when she leaves it); while she is typing in a form on the page the
+     update waits behind a "Show" button so nothing she is filling is wiped. */
+  async function liveApp(o, box) {
+    if (box._live) box._live.abort();
+    const ctl = new AbortController(); box._live = ctl;
+    const line = box.querySelector('.stlive');
+    const people = new Map();
+    let fresh = 0, timer = 0, gotEvent = false;
+    const draw = () => {
+      if (!line) return;
+      const names = [...people.values()];
+      line.hidden = false;
+      line.innerHTML = `<span class="stdot" aria-hidden="true"></span>Live${names.length ? ' · Online: ' + names.map(n => esc(n)).join(', ') : ''}${fresh ? ` · ${fresh} new change${fresh > 1 ? 's' : ''} <button class="ib" type="button" data-livego>Show</button>` : ''}`;
+      const b = line.querySelector('[data-livego]'); if (b) b.onclick = () => { ctl.abort(); loadAppData(o, box); };
+    };
+    const changed = () => {
+      fresh++; clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!box.isConnected) return ctl.abort();
+        if (box.contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return draw();
+        ctl.abort(); loadAppData(o, box);
+      }, 600);
+      draw();
+    };
+    try { for (const p of L((await api('GET', base(o) + '/live/presence')).online)) people.set(S(p.member), S(p.name)); } catch (er) { /* older server */ }
+    try {
+      const res = await api('GET', base(o) + '/live', undefined, {raw: true, signal: ctl.signal});
+      const rd = res.body.getReader(), dec = new TextDecoder(); let buf = '';
+      draw();
+      for (;;) {
+        const {value, done} = await rd.read(); if (done) break;
+        if (!box.isConnected) { ctl.abort(); break; }
+        buf += dec.decode(value, {stream: true});
+        let i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          const block = buf.slice(0, i); buf = buf.slice(i + 2);
+          const data = block.split('\n').filter(x => x.startsWith('data: ')).map(x => x.slice(6)).join('\n'); if (!data) continue;
+          let e; try { e = JSON.parse(data); } catch { continue; }
+          if (e.type === 'row' || e.type === 'chat') { gotEvent = true; changed(); }
+          else if (e.type === 'presence') { if (e.online) people.set(S(e.member), S(e.name)); else people.delete(S(e.member)); draw(); }
+          else if (e.type === 'reset') changed();
+        }
+      }
+      if (box.isConnected && !ctl.signal.aborted) setTimeout(() => { if (box.isConnected && box._live === ctl) liveApp(o, box); }, gotEvent ? 1000 : 3000);
+    } catch (er) {
+      if (!ctl.signal.aborted && box.isConnected && line) { line.hidden = true; setTimeout(() => { if (box.isConnected && box._live === ctl) liveApp(o, box); }, 30000); }
+    }
+  }
   async function loadAppData(o, box) {
     let info;
     try { info = await api('GET', base(o) + '/data'); } catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
     const cols = L(info.collections), counts = M(info.counts);
     box.innerHTML = `<p class="stnote">${info.live ? 'People using your app order / book here; every new entry also reaches your chat.' : 'Real orders and bookings appear here once the Android app is built.'}</p>
-      <p class="stnote">${N(counts.members)} accounts · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>`;
+      <p class="stnote">${N(counts.members)} accounts · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><p class="stlive" hidden></p><div class="stcols"></div><div class="stmem"></div>`;
+    if (info.live) liveApp(o, box);
     const cbox = box.querySelector('.stcols');
     let staff = [];                // v0.352 KAAM BAANTO: her staff accounts for "With" on every row
     try { staff = L((await api('GET', base(o) + '/members')).members).filter(m => ['staff', 'admin'].includes(S(m.role))); } catch (er) { /* none */ }
