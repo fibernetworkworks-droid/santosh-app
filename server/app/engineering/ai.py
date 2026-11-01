@@ -102,6 +102,12 @@ Rules:
     (roundness 1 = ellipse, 0.3 = soft rounded rectangle); then shell / cut / fillet it like any solid;
   H.spline_sweep([(x, y, z), ...], radius) -> a round tube / handle along a smooth 3-D curve; also cq's
   .spline(...), .loft(ruled=False), .sweep(path, transition='round'), .revolve() of a spline profile.
+- DRAWING: drawing.pdf is a real A3 shop drawing measured from the model - views at a standard scale, overall and
+  step sizes, hole positions and callouts (THRU / DEEP / CBORE / CSK are recognised from the geometry, so model holes
+  with hole / cboreHole / cskHole and real depths). For a fit or tolerance she names: H.fit(20, 'H7') (bore) or
+  H.fit(20, 'g6') (shaft) - the drawing prints the ISO 286 limits. H.drawing(projection='first' | 'third',
+  tolerance='m', notes=['HARDEN TO 45 HRC'], part_no='BR-001') for her drawing rules (India default: first angle,
+  ISO 2768-m).
 - HER NUMBERS ARE CHECKS (always): for every number she gave that the box can measure add an H.expect(...) BEFORE
   `result`: H.expect(size=(L, W, H)) for her overall size, H.expect(holes={'d': H.hole(5, 'clearance'), 'count': 4})
   for each hole set (d = the drilled diameter you used), H.expect(max_size=(...)) when it must fit inside something,

@@ -552,8 +552,24 @@ def _run(pid: str) -> None:
             hlr = json.loads(hp.read_text(encoding="utf-8"))
         except ValueError:
             hlr = {}
-    (vdir / "drawing.pdf").write_bytes(render.drawing_pdf(mesh, {**res, "title": title, "material": material,
-                                                                 "mass_g": mass or 0}, hlr))
+    dj = vdir / "drawing.json"
+    page2 = render.drawing_pdf(mesh, {**res, "title": title, "material": material, "mass_g": mass or 0},
+                               None if dj.exists() else hlr)      # the vector sheet replaces the raster line page
+    pdf = page2
+    if dj.exists():                                   # v0.395 the real shop drawing first, shaded views as page 2
+        try:
+            from . import drawing as dwg
+            ds = res.get("drawing") or {}
+            iso = (vdir / "iso.png").read_bytes() if (vdir / "iso.png").exists() else None
+            sheet = dwg.make(json.loads(dj.read_text(encoding="utf-8")),
+                             {"title": title, "material": material, "mass_g": mass, "version": n, "pid": pid,
+                              "fits": ds.get("fits"), "tolerance": ds.get("tolerance"), "notes": ds.get("notes"),
+                              "part_no": ds.get("part_no")}, iso)
+            pdf = dwg.with_page2(sheet, page2)
+        except Exception as e:
+            log.warning("real drawing failed, shaded drawing kept: %s", e)
+        dj.unlink(missing_ok=True)
+    (vdir / "drawing.pdf").write_bytes(pdf)
     _after_files(vdir, res, ana, title, material)
     pr = printability(mesh, res.get("bbox") or {})
     (vdir / "mesh.json").unlink(missing_ok=True)
