@@ -256,7 +256,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            initialValue: _kind,
+            value: _kind,
             decoration: const InputDecoration(labelText: 'Key kaisi hai'),
             items: [for (final e in _kinds.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
             onChanged: (v) => setState(() => _kind = v ?? 'bearer'),
@@ -283,7 +283,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            initialValue: _env,
+            value: _env,
             decoration: const InputDecoration(labelText: 'Kaunsa system hai'),
             items: const [
               DropdownMenuItem(value: 'test', child: Text('Test / sandbox')),
