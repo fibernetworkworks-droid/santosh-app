@@ -1,4 +1,4 @@
-"""v0.401 EK DIMAAG (web Step 2, W1 of docs/WEB_PLATFORM_PLAN.md): a website's web app runs on the SAME backend as her
+"""v0.407 EK DIMAAG (web Step 2, W1 of docs/WEB_PLATFORM_PLAN.md): a website's web app runs on the SAME backend as her
 native apps - App Sahayak's backend + the DIMAAG logic engine (relations, formulas, rules, unique keys, workflows with
 maker-checker approvals and SLAs, triggers, schedules, locked functions).
 
@@ -84,7 +84,7 @@ def link(tenant: str, ref: str) -> dict[str, Any]:
 
 
 def attach(tenant: str, site_id: str, pid: str) -> dict[str, Any]:
-    """v0.401 ARCHITECT: a NEW site joins the app project her spec card drafted (its data + logic live there)."""
+    """v0.407 ARCHITECT: a NEW site joins the app project her spec card drafted (its data + logic live there)."""
     from ..appmaker.models import AppProject
     from .models import Site
     W.ensure_tables()

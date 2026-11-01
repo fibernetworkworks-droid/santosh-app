@@ -121,7 +121,7 @@ def dashboard(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
     app = None
     schema = S.app_schema(r)
     if schema:
-        from . import applink as AL                          # v0.401 a linked site's records live with its app
+        from . import applink as AL                          # v0.407 a linked site's records live with its app
         p = AL.project(r)
         app = W.daily(("app:" + p.id) if p else r.id, schema, cur_days, prev_days)
 

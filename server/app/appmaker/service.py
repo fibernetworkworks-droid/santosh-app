@@ -1534,7 +1534,7 @@ def resume(tenant: str, ref: str) -> dict[str, Any]:
 
 def apps(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
     with session() as s:
-        rows = s.scalars(select(AppProject).where(AppProject.tenant_id == tenant, AppProject.status != "spec")   # v0.401 a spec card is not an app yet
+        rows = s.scalars(select(AppProject).where(AppProject.tenant_id == tenant, AppProject.status != "spec")   # v0.407 a spec card is not an app yet
                          .order_by(AppProject.updated_at.desc()).limit(limit)).all()
         return [view(r, False) for r in rows]
 

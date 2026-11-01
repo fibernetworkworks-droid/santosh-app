@@ -1,4 +1,4 @@
-"""v0.401 HOOLA ARCHITECT (web Step 2, W13 of docs/WEB_PLATFORM_PLAN.md): her ONE line -> a full spec card she approves
+"""v0.407 HOOLA ARCHITECT (web Step 2, W13 of docs/WEB_PLATFORM_PLAN.md): her ONE line -> a full spec card she approves
 module by module -> Hoola builds the website AND its app brain from it.
 
   draft(tenant, words)          Opus reads her line as an architect would and returns the whole system: who uses it

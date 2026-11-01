@@ -1189,6 +1189,19 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
           ),
           const SizedBox(height: 10),
           _growth(Map<String, dynamic>.from((d['growth'] as Map?) ?? const {})),
+          const SizedBox(height: 10),
+          Press(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => YtAdsScreen(app: widget.app))),
+            child: Glass(
+              child: Row(children: [
+                const Icon(Icons.campaign_rounded, color: C.accent),
+                const SizedBox(width: 10),
+                Expanded(child: Text('YouTube ads', style: display(14))),
+                const Text('Your Google Ads, your tap', style: TextStyle(color: C.muted, fontSize: 12)),
+                const Icon(Icons.chevron_right_rounded, color: C.muted),
+              ]),
+            ),
+          ),
           if (_list(bt['slots']).isNotEmpty || _list(pl['boosts']).isNotEmpty) ...[
             const SizedBox(height: 10),
             Glass(
@@ -1505,6 +1518,173 @@ class SocialCard extends StatelessWidget {
           Expanded(child: Text(_s(v['text']), style: const TextStyle(fontWeight: FontWeight.w700))),
           const Icon(Icons.chevron_right_rounded, color: C.muted),
         ]),
+      ),
+    );
+  }
+}
+
+
+/// v0.401 YOUTUBE ADS (plan Y2): her own Google Ads account. A draft lives in Hoola; Create makes it PAUSED in Google;
+/// Start is her tap after a confirm (only then can money be spent); Pause any time. Full text editing is on the console.
+class YtAdsScreen extends StatefulWidget {
+  const YtAdsScreen({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<YtAdsScreen> createState() => _YtAdsScreenState();
+}
+
+class _YtAdsScreenState extends State<YtAdsScreen> {
+  Map<String, dynamic>? _v;
+  bool _busy = false;
+  static const _st = {'draft': 'Draft', 'checked': 'Google checked', 'created': 'In Google, paused', 'running': 'Running',
+      'paused': 'Paused', 'ended': 'Finished', 'failed': 'Needs a fix'};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = await widget.app.api!.socialYtAds();
+      if (mounted) setState(() => _v = v);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _do(Future<dynamic> Function() fn, String done) async {
+    setState(() => _busy = true);
+    try {
+      await fn();
+      if (mounted && done.isNotEmpty) _snack(context, done);
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<bool> _confirm(String title, String text, String ok) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(title: Text(title), content: Text(text), actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(ok)),
+        ]),
+      ) ==
+      true;
+
+  Widget _draft(Map<String, dynamic> d, String cur) {
+    final st = _s(d['status']);
+    final probs = ((d['problems'] as List?) ?? const []).map((e) => '$e').toList();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Glass(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(_s(d['video_title']).isEmpty ? _s(d['video_id']) : _s(d['video_title']),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5))),
+            _Tag(_st[st] ?? st, st == 'running' ? C.ok : (st == 'failed' ? C.bad : C.warn)),
+          ]),
+          const SizedBox(height: 4),
+          Text('${_num(d['daily'])} $cur a day x ${_num(d['days'])} days = ${_num(d['total'])} $cur'
+              '${_s(d['stop_on']).isEmpty ? '' : ' · until ${_s(d['stop_on'])}'}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          Text(((d['headlines'] as List?) ?? const []).join(' · '), style: const TextStyle(fontSize: 13)),
+          if (probs.isNotEmpty) Text(probs.join(' '), style: const TextStyle(color: C.warn, fontSize: 12.5)),
+          if (_s(d['error']).isNotEmpty) Text(_s(d['error']), style: const TextStyle(color: C.bad, fontSize: 12.5)),
+          Wrap(spacing: 8, children: [
+            if (['draft', 'checked', 'failed'].contains(st)) ...[
+              TextButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.socialYtAdsAct(_s(d['id']), 'check'), 'Google checked it.'),
+                  child: const Text('Check with Google')),
+              FilledButton(
+                  onPressed: _busy || probs.isNotEmpty ? null : () async {
+                    if (await _confirm('Create in Google Ads?', 'It is made PAUSED. Nothing is spent until you tap Start.', 'Create')) {
+                      _do(() => widget.app.api!.socialYtAdsAct(_s(d['id']), 'create'), 'Made in Google Ads, paused.');
+                    }
+                  },
+                  child: const Text('Create (paused)')),
+            ],
+            if (['created', 'paused'].contains(st))
+              FilledButton(
+                  onPressed: _busy ? null : () async {
+                    if (await _confirm('Start this YouTube ad?',
+                        'Google can spend up to ${_num(d['daily'])} $cur a day, about ${_num(d['total'])} $cur in total. You can Pause any time.', 'Start')) {
+                      _do(() => widget.app.api!.socialYtAdsAct(_s(d['id']), 'start', confirm: true), 'Started.');
+                    }
+                  },
+                  child: const Text('Start')),
+            if (st == 'running')
+              OutlinedButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.socialYtAdsAct(_s(d['id']), 'pause'), 'Paused.'),
+                  child: const Text('Pause')),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _v;
+    final a = v == null ? null : (v['account'] as Map?);
+    final cur = _s(a?['currency']);
+    final kids = <Widget>[];
+    if (v == null) {
+      kids.add(const Center(child: CircularProgressIndicator()));
+    } else if (v['configured'] != true) {
+      kids.add(const Text('YouTube ads are not set up on the server yet (Google sign-in).', style: TextStyle(fontSize: 14)));
+    } else if (a == null) {
+      kids.addAll([
+        const Text('Connect your own Google Ads account. Hoola makes ads PAUSED; money is spent only after you tap Start.',
+            style: TextStyle(fontSize: 14, height: 1.35)),
+        const SizedBox(height: 12),
+        GradientButton(label: 'Connect Google Ads', icon: Icons.link_rounded, onTap: _busy ? null : () async {
+          try {
+            final url = await widget.app.api!.socialYtAdsConnect();
+            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          } catch (e) {
+            if (mounted) _snack(context, '$e');
+          }
+        }),
+      ]);
+    } else {
+      kids.add(Text('Google account ${_s(a['email'])}${_s(a['customer_id']).isEmpty ? '' : ' · ad account ${_s(a['customer_id'])}'}',
+          style: const TextStyle(color: C.muted, fontSize: 12.5)));
+      if (_s(a['customer_id']).isEmpty) {
+        kids.add(const Padding(padding: EdgeInsets.only(top: 10), child: Text('Which ad account runs your YouTube ads?')));
+        for (final c in _list(a['customers']).where((c) => c['manager'] != true)) {
+          kids.add(ListTile(
+            dense: true,
+            title: Text(_s(c['name']).isEmpty ? _s(c['id']) : _s(c['name'])),
+            subtitle: Text('${_s(c['currency'])}${c['test'] == true ? ' · test' : ''}'),
+            onTap: _busy ? null : () => _do(() => widget.app.api!.socialYtAdsAccount(_s(c['id'])), 'Ad account chosen.'),
+          ));
+        }
+      } else {
+        final vids = _list(v['videos']);
+        kids.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Wrap(spacing: 8, children: [
+            OutlinedButton(
+                onPressed: _busy || vids.isEmpty ? null : () => _do(() => widget.app.api!.socialYtAdsNew(_s(vids.first['id'])),
+                    'Draft made from your latest video. Edit the words on the computer console if needed.'),
+                child: const Text('New ad from my latest video')),
+          ]),
+        ));
+        for (final d in _list(v['drafts'])) {
+          kids.add(_draft(d, cur));
+        }
+      }
+    }
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('YouTube ads')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: kids),
+        ),
       ),
     );
   }

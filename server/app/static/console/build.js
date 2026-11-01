@@ -9,7 +9,7 @@
 'use strict';
 window.HoolaBuild = function (C) {
   const {api, esc, toast} = C;
-  const KINDS = new Set(['site_board', 'app_board', 'app_android', 'site_spec']);   // v0.401 + the Architect's spec card
+  const KINDS = new Set(['site_board', 'app_board', 'app_android', 'site_spec']);   // v0.407 + the Architect's spec card
   const P = new Map();                 // 'site:<id>' | 'app:<id>' -> project
   let CUR = null;                      // key shown in the studio
   const studio = document.getElementById('studio'), appEl = document.getElementById('app'), sbtn = document.getElementById('studioBtn');
@@ -1014,18 +1014,19 @@ window.HoolaBuild = function (C) {
       const ln = M(v.link), live = v.linked;
       const conns = L(v.connections);
       obox.innerHTML = `<h4>Own database <span>${live ? esc(S(ln.name)) + ' · ' + esc(S(ln.mode)) + ' · ' + esc(S(ln.status)) : 'Hoola database'}</span></h4>
-        <p class="stnote">Run this app's data in your own database (Supabase, Neon, AWS, Google Cloud, Azure, DigitalOcean and ${L(v.providers).length - 6}+ more). Primary: every entry is saved there first, and what you edit there comes back into the app. Copy: a live read copy for reports.</p>
+        <p class="stnote">Run this app's data in your own database: PostgreSQL (Supabase, Neon, AWS, Google, Azure...), MySQL (PlanetScale, TiDB, MariaDB...), MongoDB (Atlas...) or Firebase - ${L(v.providers).length} kinds listed below. Primary: every entry is saved there first, and what you edit there comes back into the app. Copy: a live read copy for reports.</p>
         ${live ? `<ul class="stmems"><li><span>Where: ${esc(S(ln.label))} · schema <b>${esc(S(ln.schema))}</b></span></li>
           <li><span>Waiting to sync: ${N(v.lag)} · last sync ${esc(S(ln.last_sync || ln.live_at).slice(0, 16).replace('T', ' '))} UTC</span></li>
           ${ln.last_error ? `<li><span class="sterr">Last problem: ${esc(S(ln.last_error))}</span></li>` : ''}</ul>
           <div class="acts"><button class="btn soft" type="button" data-osync>Sync now</button><button class="btn soft" type="button" data-over>Compare counts</button><button class="btn soft" type="button" data-ooff>Disconnect</button></div><div data-oout></div>`
-        : `${conns.length ? `<form class="stapp" data-olink><div class="row"><label>Database <select name="conn">${conns.map(c => `<option value="${esc(S(c.id))}">${esc(S(c.name))} (${esc(S(c.label))})${c.can_write === false ? ' - read only' : ''}</option>`).join('')}</select></label>
+        : `${conns.length ? `<form class="stapp" data-olink><div class="row"><label>Database <select name="conn">${conns.map(c => `<option value="${esc(S(c.id))}">${esc(S(c.name))} · ${esc(S(c.kind || 'postgres'))} (${esc(S(c.label))})${c.can_write === false ? ' - read only' : ''}</option>`).join('')}</select></label>
             <label>Mode <select name="mode"><option value="primary">Primary - data lives there</option><option value="mirror">Copy - Hoola stays main</option></select></label></div>
             <div class="acts"><button class="btn go" type="submit">Move this app's data there</button></div></form>` : '<p class="stnote">No database connected yet. Add one below.</p>'}
-          <form class="stapp" data-oadd autocomplete="off"><p class="stnote">Add a database: paste its connection string (it is sealed on the server and never shown again; never paste it in chat).</p>
-            <div class="row"><input name="name" maxlength="60" placeholder="Name, e.g. Shop Supabase" aria-label="Name"></div>
-            <div class="row"><input name="dsn" type="password" autocomplete="off" placeholder="postgresql://user:password@host:5432/postgres" aria-label="Connection string"><button class="btn soft" type="submit">Connect</button></div></form>
-          <details><summary>Where to find the connection string (${L(v.providers).length} databases)</summary><ul class="stlines">${L(v.providers).map(p => `<li><b>${esc(S(p.name))}</b>: ${esc(S(p.how))}${p.note ? ' - ' + esc(S(p.note)) : ''}</li>`).join('')}</ul></details>`}`;
+          <form class="stapp" data-oadd autocomplete="off"><p class="stnote">Add a database: pick its type and paste its connection (sealed on the server, never shown again; never paste it in chat).</p>
+            <div class="row"><select name="kind" aria-label="Type"><option value="postgres">PostgreSQL (Supabase, Neon, RDS...)</option><option value="mysql">MySQL (PlanetScale, TiDB, MariaDB...)</option><option value="mongodb">MongoDB (Atlas...)</option><option value="firestore">Firebase (Firestore)</option></select>
+            <input name="name" maxlength="60" placeholder="Name, e.g. Shop database" aria-label="Name"></div>
+            <div class="row"><textarea name="dsn" rows="2" autocomplete="off" spellcheck="false" placeholder="postgresql://... | mysql://user:password@host:3306/db | mongodb+srv://user:password@cluster/db | the Firebase service-account JSON" aria-label="Connection"></textarea><button class="btn soft" type="submit">Connect</button></div></form>
+          <details><summary>Where to find the connection (${L(v.providers).length} databases)</summary><ul class="stlines">${L(v.providers).map(p => `<li><b>${esc(S(p.name))}</b> <span class="stnote">${esc(S(p.kind))}</span>: ${esc(S(p.how))}${p.note ? ' - ' + esc(S(p.note)) : ''}</li>`).join('')}</ul></details>`}`;
       const out = obox.querySelector('[data-oout]');
       const fl = obox.querySelector('[data-olink]');
       if (fl) fl.addEventListener('submit', async e => {
@@ -1039,7 +1040,7 @@ window.HoolaBuild = function (C) {
       const fa = obox.querySelector('[data-oadd]');
       if (fa) fa.addEventListener('submit', async e => {
         e.preventDefault();
-        try { const r = await api('POST', '/api/pgdb/conns', {name: fa.name.value.trim(), dsn: fa.dsn.value.trim()}); fa.dsn.value = ''; toast(S(r.say)); drawO(); }
+        try { const r = await api('POST', '/api/owndb/conns', {kind: fa.kind.value, name: fa.name.value.trim(), secret: fa.dsn.value.trim()}); fa.dsn.value = ''; toast(S(r.say)); drawO(); }
         catch (er) { fa.dsn.value = ''; toast(er.message, true); }
       });
       const bs = obox.querySelector('[data-osync]');
@@ -1497,7 +1498,7 @@ window.HoolaBuild = function (C) {
     }
   }
 
-  /* v0.401 EK DIMAAG: the linked app's logic - what runs now, the draft waiting for her tap, approvals waiting */
+  /* v0.407 EK DIMAAG: the linked app's logic - what runs now, the draft waiting for her tap, approvals waiting */
   async function logicBox(o, el, link, reload) {
     if (!el) return;
     let v;
@@ -1620,7 +1621,7 @@ window.HoolaBuild = function (C) {
     if (o.done !== -1 && (done !== o.done || ver !== o.ver)) reloadFrames(o);
     o.done = done; o.ver = ver;
   }
-  /* ---------------- v0.401 HOOLA ARCHITECT: her one line -> the spec card, module by module -> her Haan builds ---------------- */
+  /* ---------------- v0.407 HOOLA ARCHITECT: her one line -> the spec card, module by module -> her Haan builds ---------------- */
   function specCard(p, el) {
     const c = M(p), mods = L(c.modules), built = S(c.status) === 'built';
     el.classList.add('bcard', 'stspec');

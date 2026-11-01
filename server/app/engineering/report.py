@@ -156,7 +156,7 @@ def cam_png(paths: list[dict[str, Any]], size_xy: list[float], size: int = 900) 
 
 
 def analysis_pdf(title: str, part: dict[str, Any], studies: list[dict[str, Any]], pictures: list[Image.Image],
-                 cam: dict[str, Any] | None) -> bytes:
+                 cam: dict[str, Any] | None, dfm: dict[str, Any] | None = None) -> bytes:
     W, H = 1654, 2339                                # A4 portrait at 200 dpi
     pages = []
     page = Image.new("RGB", (W, H), BG)
@@ -186,6 +186,23 @@ def analysis_pdf(title: str, part: dict[str, Any], studies: list[dict[str, Any]]
         for line in cam_rows(cam):
             d.text((120, y), line, fill=INK, font=fs)
             y += 38
+    if dfm and dfm.get("rows"):
+        d.text((90, y), f"Manufacturability ({dfm['process']}): {dfm['fails']} fail, {dfm['reviews']} to review",
+               fill=INK, font=_font(34))
+        y += 56
+        for r in dfm["rows"]:
+            mark = {"pass": "PASS", "fail": "FAIL", "review": "REVIEW", "unverified": "UNVERIFIED"}[r["status"]]
+            d.text((120, y), f"{mark:<10} {r['check']}: {r['measured']}  (limit {r['limit']})"[:118],
+                   fill=(180, 40, 30) if r["status"] == "fail" else INK, font=fs)
+            y += 34
+            if r.get("fix") and r["status"] != "pass":
+                d.text((160, y), f"-> {r['fix']}"[:110], fill=MUTE, font=fs)
+                y += 34
+        d.text((120, y), "Limits: published starting points (" + (dfm["rows"][0].get("source") or "")[:80] + ")",
+               fill=MUTE, font=fs)
+        y += 34
+        d.text((120, y), "Her shop's own numbers override them (H.make(..., limits={...})).", fill=MUTE, font=fs)
+        y += 44
     y += 20
     for line in ("Method: quadratic tetrahedra (scikit-fem) on a mesh made from the part's own B-rep; loads and supports on",
                  "the named faces; linear elastic, small displacement, steady state. Peaks AT a support edge are a known",

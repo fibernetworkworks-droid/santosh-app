@@ -944,7 +944,7 @@ def _app_line(r: Site) -> str:
 
 def app_schema(r: Site) -> dict[str, Any]:
     s = _j(getattr(r, "app", "") or "", {})
-    if isinstance(s, dict) and s.get("link"):        # v0.401 EK DIMAAG: the linked app's lists (with its logic)
+    if isinstance(s, dict) and s.get("link"):        # v0.407 EK DIMAAG: the linked app's lists (with its logic)
         try:
             from . import applink as AL
             got = AL.schema(r)
@@ -2081,7 +2081,7 @@ def design_app(tenant: str, ref: str, words: str, conv: str = "") -> dict[str, A
         r = _find(s, tenant, ref)
         s.expunge(r)
     from . import applink as AL
-    if AL.linked_id(r):                     # v0.401 a linked site changes through the app's own author + her tap
+    if AL.linked_id(r):                     # v0.407 a linked site changes through the app's own author + her tap
         out = AL.logic_draft(tenant, ref, words)
         return {**view(_load(r.id), False), "draft": out, "say": out.get("say", "")}
     old = app_schema(r)
@@ -2110,7 +2110,7 @@ def app_info(tenant: str, ref: str) -> dict[str, Any]:
         r = _find(s, tenant, ref)
         s.expunge(r)
     W.ensure_tables()
-    p = AL.project(r)                       # v0.401 a linked site counts the app's rows
+    p = AL.project(r)                       # v0.407 a linked site counts the app's rows
     return {"app": app_schema(r), "counts": W.counts(("app:" + p.id) if p else r.id), "api": app_api(r),
             "linked": {"app": p.id, "number": p.number} if p else None}
 
@@ -2136,7 +2136,7 @@ def app_rows(tenant: str, ref: str, key: str) -> dict[str, Any]:
     from . import webapp as W
     r, schema, who = _owner_app(tenant, ref)
     p = _linked(r)
-    if p is not None:                       # v0.401 the app backend: her rows with their workflow buttons
+    if p is not None:                       # v0.407 the app backend: her rows with their workflow buttons
         from ..appmaker import backend as BE
         return {"rows": BE.owner_rows(p, key, 1000), "collection": W.coll(schema, key)}
     return {"rows": W.rows(r.id, schema, key, who, 1000), "collection": W.coll(schema, key)}

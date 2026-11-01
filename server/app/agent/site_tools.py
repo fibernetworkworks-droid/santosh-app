@@ -46,7 +46,7 @@ SITE_TOOLS = [
         "request (only when she said pakka / mana). action=app + instruction (her words: 'customers login karke apna "
         "order track karein', 'students marks dekhein', 'staff complaints ka status badle') = a WEB APP on the site: logins, "
         "lists of data with rules, a My account page and a staff panel at /admin/ (her data; she sees it in the studio's "
-        "Data tab). ARCHITECT (v0.401, for a portal / web app / anything with logins + data + rules, e.g. 'school ka portal', "
+        "Data tab). ARCHITECT (v0.407, for a portal / web app / anything with logins + data + rules, e.g. 'school ka portal', "
         "'society ka maintenance system', 'clinic with appointments'): action=architect + brief (her one line) = a spec CARD "
         "(pages, users, data lists, rules / workflows / approvals, features) - nothing is built; show its lines and ask. "
         "action=architect_data + spec (A-00xx) + instruction = redo only the data / rules part. action=architect_ok + spec + "
@@ -208,7 +208,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
 
 
 def _architect(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
-    """v0.401 HOOLA ARCHITECT + the site's DIMAAG logic. Drafts are free to make; only her clear haan builds / applies."""
+    """v0.407 HOOLA ARCHITECT + the site's DIMAAG logic. Drafts are free to make; only her clear haan builds / applies."""
     from ..site import applink as AL
     from ..site import architect as AR
     from ..site import webapp as W

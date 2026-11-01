@@ -1935,6 +1935,7 @@ class Santosh extends ChangeNotifier {
       case 'pathyakram_share':
       case 'pathyakram_paper':
       case 'guru_report':
+      case 'daftar_share':
       case 'compliance_filing':
       case 'compliance_cert':
       case 'compliance_alert':
@@ -2826,6 +2827,7 @@ String kanoonCardKey(String kind, Map<String, dynamic> p) {
     'pathyakram_share' => ('pkshare', sub('share')),
     'pathyakram_paper' => ('pkpaper', sub('paper')),
     'guru_report' => ('gureport', sub('share')),
+    'daftar_share' => ('dfshare', sub('share')),
     'compliance_filing' => ('cofiling', sub('filing')),
     'compliance_cert' => ('cocert', sub('cert')),
     'contracts_card' => ('ctcard', sub('card')),

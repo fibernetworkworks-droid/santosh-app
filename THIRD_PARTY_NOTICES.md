@@ -47,3 +47,83 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## ECC (agent instructions adapted for Developer Sahayak, v0.402)
+
+The specialist instructions in `server/app/devsahayak/specialists.py` (PR reviewer discipline, the per-language reviewer
+and CI-fixer notes, the focused security / silent-failure / test-coverage passes) were adapted from the agent files of the
+open-source project **ECC** by Affaan Mustafa (https://github.com/affaan-m/ECC, v2.2.3, commit b38be6a): `code-reviewer`,
+`security-reviewer`, `silent-failure-hunter`, `pr-test-analyzer`, the `*-reviewer` and `*-build-resolver` agents for
+Python, TypeScript / JavaScript, Flutter / Dart, Kotlin, Go, Java, Swift and Rust, and `database-reviewer`. The text was
+condensed and re-written for Hoola's read-only tools, CI logs and safety rules; no code was copied and nothing from ECC
+runs inside Hoola. ECC is distributed under the MIT License:
+
+```
+MIT License
+
+Copyright (c) 2026 Affaan Mustafa
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Claude Code Game Studios (ideas for the Hoola Game Crew and the game-desk fixes, v0.406)
+
+Hoola's Game Crew (`server/app/gamedesk/crew.py`), the task acceptance criteria and evidence, the "not assessed" results
+and the Godot 4.5-4.7 notes in `server/app/gamedesk/ai.py` were designed after studying the open-source project
+**Claude Code Game Studios** by Donchitos (https://github.com/Donchitos/Claude-Code-Game-Studios, release 1.2.0, commit
+05ad7c8). No code or prompt text was copied: the role descriptions, checklists, team flows and code are Hoola's own,
+written for Hoola's hosted Game Desk. These ideas came from that project:
+
+- the studio roster (3 directors, 8 department leads, specialists, plus Godot / Unity / Unreal engine specialists) and
+  the team flows (combat, narrative, UI, release, polish, audio, level, live ops, QA)
+- acceptance criteria covered by a test, a retained screenshot or the owner's answer; evidence stamped with the code it
+  proves, so evidence older than the code shows
+- "NOT ASSESSED" as a real verdict: a check with no data says so instead of passing
+- phase gates with PASS / CONCERNS / FAIL / NOT ASSESSED verdicts that advise and never block her decision
+- importing a Godot project first (class cache) before checking scripts, and the list of Godot 4.5-4.7 changes (taken
+  from Godot's own migration guides, which that project cites)
+
+Not used on purpose: the Claude Code slash commands, hooks, local file layout and agent prompt files (Hoola is a hosted
+service, not a terminal template), and its per-agent model choices.
+
+Claude Code Game Studios is licensed under the MIT License:
+
+```
+MIT License
+
+Copyright (c) 2026 Donchitos
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

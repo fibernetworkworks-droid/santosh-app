@@ -1,4 +1,4 @@
-"""v0.401 EK DIMAAG + HOOLA ARCHITECT (web Step 2 = W1 + W13 of docs/WEB_PLATFORM_PLAN.md).
+"""v0.407 EK DIMAAG + HOOLA ARCHITECT (web Step 2 = W1 + W13 of docs/WEB_PLATFORM_PLAN.md).
 
 W1: a website's web app runs on App Sahayak's backend + the DIMAAG logic engine. Linking moves every member and row over
 unchanged (old logins keep working), the site's own /api/site-app/<site> addresses stay, and the logic (workflows with
@@ -27,7 +27,7 @@ def _login(c, base, email, pw):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.401.0"
+    assert APP_VERSION == "0.407.0"
 
 
 def test_link_moves_everything_and_old_logins_keep_working(app_site):

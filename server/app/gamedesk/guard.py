@@ -47,10 +47,12 @@ def problems(scripts: dict[str, str]) -> list[str]:
         for m in FILE_ACCESS.finditer(code or ""):
             if not m.group(2).startswith("user://"):
                 out.append(f"{name}: files only in user:// (the game's own save slot), not {m.group(2)!r}")
-        if name != "hoola_bible.gd" and re.search(r"^\s*class_name\s+\w+", code or "", re.M):   # v0.395 found live
-            out.append(f"{name}: no class_name (Hoola's build has no class cache) - use const X = preload(\"res://{name}\")")
         if re.search(r"FileAccess\s*\.\s*open\s*\(\s*[^\"'\s]", code or ""):
             out.append(f"{name}: FileAccess.open needs a fixed 'user://...' path")
+    for name, code in scripts.items():                  # v0.406 class_name works (import step); never Hoola's own names
+        m = re.search(r"^\s*class_name\s+(HoolaBible|HoolaProbe)\b", code or "", re.M)
+        if m and name != "hoola_bible.gd":
+            out.append(f"{name}: class_name {m.group(1)} is Hoola's own name; pick another")
     if total > MAX_CHARS:
         out.append(f"code too long ({total} > {MAX_CHARS} characters)")
     if "main.gd" in scripts and not re.search(r"^\s*extends\s+Node\b", scripts["main.gd"], re.M):

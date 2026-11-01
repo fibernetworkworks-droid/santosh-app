@@ -53,7 +53,7 @@
     if (f.type === 'long_text') box = el('textarea', {id: id, name: f.key, rows: '3'});
     else if (f.type === 'choice') { box = el('select', {id: id, name: f.key}); f.options.forEach(function (o) { box.appendChild(el('option', {value: o, text: o})); }); }
     else if (f.type === 'yes_no') box = el('input', {id: id, name: f.key, type: 'checkbox'});
-    else if (f.type === 'ref' && f.to) {               // v0.401 a linked record (the order's customer, the student's class)
+    else if (f.type === 'ref' && f.to) {               // v0.407 a linked record (the order's customer, the student's class)
       box = el('select', {id: id, name: f.key}); box.appendChild(el('option', {value: '', text: t.pick}));
       refOptions(f.to).then(function (opts) {
         opts.forEach(function (o) { var op = el('option', {value: o[0], text: o[1]}); if (String(val || '') === o[0]) op.selected = true; box.appendChild(op); });
@@ -74,7 +74,7 @@
     }).catch(function () { return []; });
     return REFS[to];
   }
-  function inForm(x) { return !x.computed && !x.workflow && (!x.admin_only || staff()); }   // v0.401 the server works these out
+  function inForm(x) { return !x.computed && !x.workflow && (!x.admin_only || staff()); }   // v0.407 the server works these out
   function values(form, c) {
     var out = {};
     // by name, never form.elements[key]: a field called 'item' or 'length' would hit the collection's own method
@@ -146,13 +146,13 @@
         card.appendChild(el('p', {}, [el('strong', {text: f.label + ': '}), d.createTextNode(String(v))]));
       });
       if (r.created) card.appendChild(el('p', {'class': 'muted', text: new Date(r.created).toLocaleString()}));
-      if (r._pending) {                                // v0.401 a step waiting for approval (maker-checker)
+      if (r._pending) {                                // v0.407 a step waiting for approval (maker-checker)
         var pb = el('p', {'class': 'pill hs-app-pending', text: r._pending.label + ' · ' + t.waiting + ': ' + r._pending.waiting_for +
           ' (' + r._pending.step + '/' + r._pending.of + ')'});
         card.appendChild(pb);
         if (r._pending.can_decide) card.appendChild(decideButtons(r._pending.id));
       }
-      if ((r._actions || []).length && c.workflow) {   // v0.401 the workflow steps this person may take
+      if ((r._actions || []).length && c.workflow) {   // v0.407 the workflow steps this person may take
         var ab = el('div', {'class': 'btns hs-app-actions'});
         r._actions.forEach(function (a) {
           var b = el('button', {type: 'button', 'class': 'btn btn-primary', text: a.label + (a.approval ? ' *' : '')});
@@ -204,7 +204,7 @@
     });
     return el('div', {'class': 'btns'}, [ok, no]);
   }
-  function approvalsBox(box) {                         // v0.401 the staff inbox: every approval waiting for this person
+  function approvalsBox(box) {                         // v0.407 the staff inbox: every approval waiting for this person
     if (!schema.approvals) return;
     var sec = el('section', {'class': 'hs-app-admin hs-app-appr'}, [el('h2', {text: t.approvals})]);
     box.appendChild(sec);

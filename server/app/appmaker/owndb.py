@@ -46,38 +46,57 @@ MODES = ("primary", "mirror")
 
 # the PostgreSQL-wire databases she can bring (how to copy the connection string; every one = the same code path)
 PROVIDERS = [
-    {"key": "supabase", "name": "Supabase", "how": "Project > Connect > Session pooler (IPv4) URI, port 5432; or Direct connection",
+    {"kind": "postgres", "key": "supabase", "name": "Supabase", "how": "Project > Connect > Session pooler (IPv4) URI, port 5432; or Direct connection",
      "note": "Use the Session pooler (5432) - the Transaction pooler (6543) works too (Hoola never uses prepared statements)."},
-    {"key": "neon", "name": "Neon", "how": "Dashboard > Connection details > Connection string (pooled or direct)", "note": ""},
-    {"key": "aws_rds", "name": "Amazon RDS for PostgreSQL", "how": "RDS > Databases > Connectivity: endpoint + port; your master or app user",
+    {"kind": "postgres", "key": "neon", "name": "Neon", "how": "Dashboard > Connection details > Connection string (pooled or direct)", "note": ""},
+    {"kind": "postgres", "key": "aws_rds", "name": "Amazon RDS for PostgreSQL", "how": "RDS > Databases > Connectivity: endpoint + port; your master or app user",
      "note": "Allow Hoola's server IP in the security group (inbound 5432)."},
-    {"key": "aws_aurora", "name": "Amazon Aurora PostgreSQL", "how": "Cluster writer endpoint + port", "note": "Writer endpoint, not reader."},
-    {"key": "gcp_cloudsql", "name": "Google Cloud SQL (PostgreSQL)", "how": "Instance > Public IP + an authorised network", "note": "Add Hoola's server IP under Authorised networks."},
-    {"key": "gcp_alloydb", "name": "Google AlloyDB", "how": "Public IP on the primary instance", "note": ""},
-    {"key": "azure", "name": "Azure Database for PostgreSQL", "how": "Server > Connection strings (psql) + firewall rule", "note": "Firewall: allow Hoola's server IP."},
-    {"key": "digitalocean", "name": "DigitalOcean Managed PostgreSQL", "how": "Cluster > Connection details > Connection string", "note": "Trusted sources: add Hoola's server IP."},
-    {"key": "aiven", "name": "Aiven for PostgreSQL", "how": "Service > Overview > Service URI", "note": ""},
-    {"key": "render", "name": "Render PostgreSQL", "how": "Database > External Database URL", "note": ""},
-    {"key": "railway", "name": "Railway PostgreSQL", "how": "Postgres service > Variables > DATABASE_PUBLIC_URL", "note": ""},
-    {"key": "timescale", "name": "Timescale Cloud", "how": "Service > Connection info (service URL)", "note": ""},
-    {"key": "crunchy", "name": "Crunchy Bridge", "how": "Cluster > Connection > URL", "note": ""},
-    {"key": "tembo", "name": "Tembo", "how": "Instance > Connection string", "note": ""},
-    {"key": "xata", "name": "Xata (Postgres)", "how": "Database > Connect > PostgreSQL connection string", "note": ""},
-    {"key": "nile", "name": "Nile", "how": "Database > Connection string", "note": ""},
-    {"key": "heroku", "name": "Heroku Postgres", "how": "Data > Settings > View credentials (URI)", "note": ""},
-    {"key": "fly", "name": "Fly.io Postgres", "how": "fly postgres connect / public IPv4 + flycast", "note": "Needs a public address."},
-    {"key": "vercel", "name": "Vercel Postgres (Neon)", "how": "Storage > your database > .env.local POSTGRES_URL_NON_POOLING", "note": ""},
-    {"key": "koyeb", "name": "Koyeb Postgres", "how": "Database > Connection details", "note": ""},
-    {"key": "scaleway", "name": "Scaleway Managed PostgreSQL", "how": "Instance > Connection", "note": ""},
-    {"key": "ovh", "name": "OVHcloud Managed PostgreSQL", "how": "Service > General information > URI", "note": ""},
-    {"key": "alibaba", "name": "Alibaba Cloud ApsaraDB for PostgreSQL", "how": "Instance > Database connection (public endpoint)", "note": ""},
-    {"key": "tencent", "name": "Tencent Cloud PostgreSQL", "how": "Instance > Public network address", "note": ""},
-    {"key": "huawei", "name": "Huawei Cloud RDS for PostgreSQL", "how": "Instance > EIP address", "note": ""},
-    {"key": "cockroach", "name": "CockroachDB Cloud", "how": "Cluster > Connect > General connection string",
+    {"kind": "postgres", "key": "aws_aurora", "name": "Amazon Aurora PostgreSQL", "how": "Cluster writer endpoint + port", "note": "Writer endpoint, not reader."},
+    {"kind": "postgres", "key": "gcp_cloudsql", "name": "Google Cloud SQL (PostgreSQL)", "how": "Instance > Public IP + an authorised network", "note": "Add Hoola's server IP under Authorised networks."},
+    {"kind": "postgres", "key": "gcp_alloydb", "name": "Google AlloyDB", "how": "Public IP on the primary instance", "note": ""},
+    {"kind": "postgres", "key": "azure", "name": "Azure Database for PostgreSQL", "how": "Server > Connection strings (psql) + firewall rule", "note": "Firewall: allow Hoola's server IP."},
+    {"kind": "postgres", "key": "digitalocean", "name": "DigitalOcean Managed PostgreSQL", "how": "Cluster > Connection details > Connection string", "note": "Trusted sources: add Hoola's server IP."},
+    {"kind": "postgres", "key": "aiven", "name": "Aiven for PostgreSQL", "how": "Service > Overview > Service URI", "note": ""},
+    {"kind": "postgres", "key": "render", "name": "Render PostgreSQL", "how": "Database > External Database URL", "note": ""},
+    {"kind": "postgres", "key": "railway", "name": "Railway PostgreSQL", "how": "Postgres service > Variables > DATABASE_PUBLIC_URL", "note": ""},
+    {"kind": "postgres", "key": "timescale", "name": "Timescale Cloud", "how": "Service > Connection info (service URL)", "note": ""},
+    {"kind": "postgres", "key": "crunchy", "name": "Crunchy Bridge", "how": "Cluster > Connection > URL", "note": ""},
+    {"kind": "postgres", "key": "tembo", "name": "Tembo", "how": "Instance > Connection string", "note": ""},
+    {"kind": "postgres", "key": "xata", "name": "Xata (Postgres)", "how": "Database > Connect > PostgreSQL connection string", "note": ""},
+    {"kind": "postgres", "key": "nile", "name": "Nile", "how": "Database > Connection string", "note": ""},
+    {"kind": "postgres", "key": "heroku", "name": "Heroku Postgres", "how": "Data > Settings > View credentials (URI)", "note": ""},
+    {"kind": "postgres", "key": "fly", "name": "Fly.io Postgres", "how": "fly postgres connect / public IPv4 + flycast", "note": "Needs a public address."},
+    {"kind": "postgres", "key": "vercel", "name": "Vercel Postgres (Neon)", "how": "Storage > your database > .env.local POSTGRES_URL_NON_POOLING", "note": ""},
+    {"kind": "postgres", "key": "koyeb", "name": "Koyeb Postgres", "how": "Database > Connection details", "note": ""},
+    {"kind": "postgres", "key": "scaleway", "name": "Scaleway Managed PostgreSQL", "how": "Instance > Connection", "note": ""},
+    {"kind": "postgres", "key": "ovh", "name": "OVHcloud Managed PostgreSQL", "how": "Service > General information > URI", "note": ""},
+    {"kind": "postgres", "key": "alibaba", "name": "Alibaba Cloud ApsaraDB for PostgreSQL", "how": "Instance > Database connection (public endpoint)", "note": ""},
+    {"kind": "postgres", "key": "tencent", "name": "Tencent Cloud PostgreSQL", "how": "Instance > Public network address", "note": ""},
+    {"kind": "postgres", "key": "huawei", "name": "Huawei Cloud RDS for PostgreSQL", "how": "Instance > EIP address", "note": ""},
+    {"kind": "postgres", "key": "cockroach", "name": "CockroachDB Cloud", "how": "Cluster > Connect > General connection string",
      "note": "PostgreSQL-compatible; triggers for outside edits need CockroachDB 24.3+ (else use mirror mode)."},
-    {"key": "yugabyte", "name": "YugabyteDB Aeon", "how": "Cluster > Connect > connection string", "note": "PostgreSQL-compatible."},
-    {"key": "selfhost", "name": "Her own PostgreSQL (VPS / office server)", "how": "postgresql://user:password@public-host:5432/db?sslmode=require",
+    {"kind": "postgres", "key": "yugabyte", "name": "YugabyteDB Aeon", "how": "Cluster > Connect > connection string", "note": "PostgreSQL-compatible."},
+    {"kind": "postgres", "key": "selfhost", "name": "Her own PostgreSQL (VPS / office server)", "how": "postgresql://user:password@public-host:5432/db?sslmode=require",
      "note": "A public address with SSL; a private / LAN database is refused."},
+]
+PROVIDERS += [
+    {"kind": "mysql", "key": "planetscale", "name": "PlanetScale (MySQL)", "how": "Database > Connect > Connect with: General (host, username, password) -> mysql://user:password@host/db",
+     "note": "TLS is always on. No triggers needed: Hoola uses a timestamp column + its own fingerprint."},
+    {"kind": "mysql", "key": "tidb", "name": "TiDB Cloud (Serverless / Dedicated)", "how": "Cluster > Connect > General -> mysql://user:password@gateway...:4000/db", "note": ""},
+    {"kind": "mysql", "key": "mysql_rds", "name": "Amazon RDS / Aurora MySQL", "how": "Endpoint + port 3306; allow Hoola's server IP in the security group", "note": ""},
+    {"kind": "mysql", "key": "mysql_gcp", "name": "Google Cloud SQL for MySQL", "how": "Public IP + Authorised networks", "note": ""},
+    {"kind": "mysql", "key": "mysql_azure", "name": "Azure Database for MySQL", "how": "Server > Connect + firewall rule", "note": ""},
+    {"kind": "mysql", "key": "mysql_do", "name": "DigitalOcean Managed MySQL", "how": "Cluster > Connection details", "note": ""},
+    {"kind": "mysql", "key": "mariadb", "name": "MariaDB / MySQL on her own server", "how": "mysql://user:password@public-host:3306/db (TLS on)", "note": ""},
+    {"kind": "mysql", "key": "aiven_mysql", "name": "Aiven for MySQL", "how": "Service > Overview > Service URI", "note": ""},
+    {"kind": "mongodb", "key": "atlas", "name": "MongoDB Atlas", "how": "Database > Connect > Drivers -> mongodb+srv://user:password@cluster.../dbname",
+     "note": "Network Access: allow Hoola's server IP. Outside edits are seen live through change streams."},
+    {"kind": "mongodb", "key": "mongo_self", "name": "MongoDB on her own server", "how": "mongodb://user:password@public-host:27017/db?tls=true",
+     "note": "A replica set gives live change streams; a single server is checked by a slower scan."},
+    {"kind": "mongodb", "key": "cosmos_mongo", "name": "Azure Cosmos DB for MongoDB", "how": "Connection strings > Primary connection string", "note": ""},
+    {"kind": "mongodb", "key": "documentdb", "name": "Amazon DocumentDB", "how": "Cluster > Connectivity (tls=true)", "note": "Needs a public endpoint / SSH tunnel host."},
+    {"kind": "firestore", "key": "firebase", "name": "Firebase (Cloud Firestore)", "how": "Project settings > Service accounts > Generate new private key -> paste the whole JSON",
+     "note": "Hoola writes only under hoola_apps/<app>/...; her app's own Firestore data is never touched."},
 ]
 
 
@@ -136,6 +155,23 @@ def table_of(coll: str) -> str:
 # ---------------------------------------------------------------- connections (a small pool per app)
 _POOL: dict[str, list] = {}
 _PLOCK = threading.Lock()
+
+
+def _kind(o: dict) -> str:
+    return str(o.get("kind") or "postgres")
+
+
+def _drv(o: dict):
+    """The driver for a non-Postgres database (MySQL family / MongoDB / Firestore); None = Postgres (this module)."""
+    if _kind(o) == "postgres":
+        return None
+    from . import owndb_drivers as DRV
+    return DRV.DRIVERS[_kind(o)]
+
+
+def _secret(o: dict) -> tuple[dict, dict]:
+    from . import owndb_conns as OC
+    return OC.secret_of(o["tenant"], o["conn"])
 
 
 def _dsn(o: dict) -> dict:
@@ -323,6 +359,15 @@ def push(r: AppProject, o: dict, entries: list[tuple], conn=None) -> int:
     if not entries:
         return 0
     lists = _lists(r)
+    d = _drv(o)
+    if d is not None:                                    # v0.404 MySQL family / MongoDB / Firestore
+        try:
+            n = d.push(r, o, lists, [e for e in entries if e[2] not in SKIP])
+        except Exception as e:
+            from . import owndb_conns as OC
+            raise OwnDbError(OC.mask(str(e)), 503)
+        STATS["pushed"] += n
+        return n
     s = o["schema"]
     S = _ident(s)
 
@@ -383,6 +428,9 @@ def push_accounts(r: AppProject, o: dict, conn, force: bool = False) -> int:
     if not force and _ACC.get(r.id) == sig:
         return 0
     _ACC[r.id] = sig
+    if _drv(o) is not None:
+        _drv(o).accounts(r, o, rows)
+        return len(rows)
     S = _ident(o["schema"])
     cur = conn.cursor()
     for x in rows:
@@ -460,19 +508,24 @@ def pull(r: AppProject, o: dict) -> dict[str, int]:
     cur_pull = dict(o.get("pull") or {})
     got: dict[str, list] = {}
     gone: list = []
-    with _Conn(r.id, o) as c:
-        cur = c.cursor()
-        for coll, fields in lists.items():
-            since = cur_pull.get(coll) or "1970-01-01T00:00:00+00:00"
-            cols = ["id", "owner_id", "created_at", "_out"] + [f["key"] for f in fields]
-            cur.execute(f"SELECT {', '.join(_ident(x) for x in cols)} FROM {S}.{_ident(coll)} WHERE _out > %s "
-                        f"ORDER BY _out LIMIT {BATCH}", (since,))
-            rows = cur.fetchall()
-            if rows:
-                got[coll] = [dict(zip(cols, x)) for x in rows]
-        dseq = int(o.get("pull_deleted") or 0)
-        cur.execute(f"SELECT seq, tbl, id FROM {S}._hoola_deleted WHERE by = 'outside' AND seq > %s ORDER BY seq LIMIT {BATCH}", (dseq,))
-        gone = cur.fetchall()
+    dseq = int(o.get("pull_deleted") or 0)
+    drv = _drv(o)
+    if drv is not None:                                  # v0.404: fingerprint / change stream / listener per kind
+        got, pairs = drv.outside(r, o, lists, cur_pull)
+        gone = [(0, coll, rid) for coll, rid in pairs]
+    else:
+        with _Conn(r.id, o) as c:
+            cur = c.cursor()
+            for coll, fields in lists.items():
+                since = cur_pull.get(coll) or "1970-01-01T00:00:00+00:00"
+                cols = ["id", "owner_id", "created_at", "_out"] + [f["key"] for f in fields]
+                cur.execute(f"SELECT {', '.join(_ident(x) for x in cols)} FROM {S}.{_ident(coll)} WHERE _out > %s "
+                            f"ORDER BY _out LIMIT {BATCH}", (since,))
+                rows = cur.fetchall()
+                if rows:
+                    got[coll] = [dict(zip(cols, x)) for x in rows]
+            cur.execute(f"SELECT seq, tbl, id FROM {S}._hoola_deleted WHERE by = 'outside' AND seq > %s ORDER BY seq LIMIT {BATCH}", (dseq,))
+            gone = cur.fetchall()
     out = {"changed": 0, "created": 0, "deleted": 0, "refused": 0}
     site = "app:" + r.id
     sch_colls = {c: {f["key"]: f for f in fs} for c, fs in lists.items()}
@@ -481,7 +534,8 @@ def pull(r: AppProject, o: dict) -> dict[str, int]:
     owner = W.Who(owner=True)
     for coll, rows in got.items():
         for x in rows:
-            cur_pull[coll] = x["_out"].isoformat() if isinstance(x["_out"], datetime) else str(x["_out"])
+            if "_out" in x:
+                cur_pull[coll] = x["_out"].isoformat() if isinstance(x["_out"], datetime) else str(x["_out"])
             rid = str(x["id"])
             if not re.fullmatch(r"row_[0-9a-f]{12}", rid):
                 out["refused"] += 1
@@ -507,9 +561,15 @@ def pull(r: AppProject, o: dict) -> dict[str, int]:
                     LE.audit(r, "own_db_refused", coll=coll, row=rid, what=f"outside value refused: {e}")
                     continue
                 if row is None:
+                    made_at = x.get("created_at")
+                    if isinstance(made_at, str):
+                        try:
+                            made_at = datetime.fromisoformat(made_at)
+                        except ValueError:
+                            made_at = None
                     s.add(W.SiteAppRow(id=rid, site_id=site, coll=coll, owner=str(x.get("owner_id") or ""),
                                        data=json.dumps(clean, ensure_ascii=False),
-                                       created_at=x.get("created_at") or now(), updated_at=now()))
+                                       created_at=made_at if isinstance(made_at, datetime) else now(), updated_at=now()))
                     out["created"] += 1
                 elif clean:
                     d = {**old, **clean}                        # Hoola's own `_` values stay Hoola's
@@ -556,6 +616,20 @@ def pull(r: AppProject, o: dict) -> dict[str, int]:
 
 
 # ---------------------------------------------------------------- link / unlink / status (her taps)
+def _ensure(r: AppProject, o: dict) -> dict:
+    if _drv(o) is not None:
+        return _drv(o).ensure(r, o, _lists(r))
+    with _Conn(r.id, o, 60) as c:
+        return ensure_schema(r, c, o["schema"])
+
+
+def _accounts(r: AppProject, o: dict, force: bool = False) -> int:
+    if _drv(o) is not None:
+        return push_accounts(r, o, None, force)
+    with _Conn(r.id, o, 60) as c:
+        return push_accounts(r, o, c, force)
+
+
 def _journal_max(site: str) -> int:
     from . import backup as BK
     BK.ensure_table()
@@ -584,28 +658,29 @@ def _catch_up(r: AppProject, o: dict, cursor: int, limit: int = 20 * BATCH) -> i
 
 def link(r: AppProject, conn_ref: str, mode: str = "primary", by: str = "owner") -> dict:
     """HER TAP: this app's data into her database (backup first, tables, copy, counts compared, then live)."""
-    from ..pgdb import service as PG
     from . import backend as BE
     from . import backup as BK
+    from . import owndb_conns as OC
     mode = mode if mode in MODES else "primary"
     if cfg(r, fresh=True):
         raise OwnDbError("Yeh app pehle se ek database se judi hai; pehle 'Alag karo' dabaiye.", 409)
     try:
-        pc, d = PG._dsn(r.tenant_id, conn_ref)
-    except PG.PgError as e:
+        pv, _d = OC.secret_of(r.tenant_id, conn_ref)
+    except W.AppError as e:
         raise OwnDbError(str(e), 400)
-    if pc.can_write is False:
-        raise OwnDbError(f"'{pc.name}' ka user sirf padh sakta hai; tables banane / likhne wala user dijiye.", 400)
+    if pv.get("can_write") is False:
+        raise OwnDbError(f"'{pv['name']}' ka user sirf padh sakta hai; tables banane / likhne wala user dijiye.", 400)
+
+    class _PC:                                           # the view as attributes (name / id / label)
+        id, name, label = pv["id"], pv["name"], pv["label"]
+    pc = _PC
     s = schema_name(r)
     BK.snapshot(r, f"before linking to {pc.name}", "before")
     jid0 = _journal_max("app:" + r.id)
-    o = {"conn": pc.id, "tenant": r.tenant_id, "label": pc.label, "name": pc.name, "mode": mode, "schema": s,
+    o = {"conn": pc.id, "kind": pv["kind"], "tenant": r.tenant_id, "label": pc.label, "name": pc.name, "mode": mode, "schema": s,
          "status": "copying", "cursor": jid0, "linked_at": now().isoformat(), "by": by}
     try:
-        with _Conn(r.id, o, 60) as c:
-            made = ensure_schema(r, c, s)
-            cur = c.cursor()
-            cur.execute("SELECT count(*) FROM information_schema.triggers WHERE trigger_schema = %s", (s,))
+        made = _ensure(r, o)
         BE.patch_backend(r, set_={"owndb": {k: v for k, v in o.items() if k != "tenant"}})
         _forget(r.id)
         site = "app:" + r.id
@@ -614,10 +689,14 @@ def link(r: AppProject, conn_ref: str, mode: str = "primary", by: str = "owner")
             entries = [("insert", x.id, x.coll, x.owner or "", "", x.data or "{}",
                         x.created_at.isoformat() if x.created_at else None) for x in rows if x.coll not in SKIP]
         for i in range(0, len(entries), BATCH):
-            with _Conn(r.id, o, 60) as c:
-                push(r, o, entries[i:i + BATCH], c)
-        with _Conn(r.id, o, 60) as c:
-            push_accounts(r, o, c, force=True)
+            if _drv(o) is not None:
+                push(r, o, entries[i:i + BATCH])
+            else:
+                with _Conn(r.id, o, 60) as c:
+                    push(r, o, entries[i:i + BATCH], c)
+        _accounts(r, o, force=True)
+        if _drv(o) is not None and hasattr(_drv(o), "prime"):
+            _drv(o).prime(r, o, _lists(r))
         cursor = _catch_up(r, o, jid0)
         check = verify(r, o)
     except Exception as e:
@@ -642,7 +721,7 @@ def link(r: AppProject, conn_ref: str, mode: str = "primary", by: str = "owner")
         LE.audit(r, "own_db_linked", by=by, what=f"{pc.name} ({pc.label}) schema {s}, {mode}, {len(entries)} rows")
     except Exception:                                    # noqa: BLE001
         pass
-    return {"schema": s, "mode": mode, "copied": len(entries), "tables": made["tables"], "counts": check["counts"],
+    return {"schema": s, "kind": o["kind"], "mode": mode, "copied": len(entries), "tables": made["tables"], "counts": check["counts"],
             "say": (f"App ka data ab aapke database '{pc.name}' mein (schema {s}): {len(entries)} entries copy, ginti mel khayi. "
                     + ("Har nayi entry pehle wahin save hogi; wahan kiya badlav app mein aa jayega." if mode == "primary"
                        else "Har badlav ek minute ke andar wahan pahunchega (copy mode)."))}
@@ -656,6 +735,8 @@ def unlink(r: AppProject, by: str = "owner") -> dict:
     BE.patch_backend(r, fn=lambda b: b.__setitem__("owndb", {**(b.get("owndb") or {}), "status": "off", "off_at": now().isoformat()}))
     _forget(r.id)
     close_pool(r.id)
+    if _drv(o) is not None:
+        _drv(o).close(r.id)
     try:
         from .logic import engine as LE
         LE.audit(r, "own_db_unlinked", by=by, what=o.get("name", ""))
@@ -676,12 +757,16 @@ def verify(r: AppProject, o: dict | None = None) -> dict:
                               .group_by(W.SiteAppRow.coll)).all())
     lists = _lists(r)
     theirs: dict[str, int] = {}
-    S = _ident(o["schema"])
-    with _Conn(r.id, o) as c:
-        cur = c.cursor()
+    if _drv(o) is not None:
         for coll in lists:
-            cur.execute(f"SELECT count(*) FROM {S}.{_ident(coll)}")
-            theirs[coll] = int(cur.fetchone()[0])
+            theirs[coll] = _drv(o).count(r, o, coll)
+    else:
+        S = _ident(o["schema"])
+        with _Conn(r.id, o) as c:
+            cur = c.cursor()
+            for coll in lists:
+                cur.execute(f"SELECT count(*) FROM {S}.{_ident(coll)}")
+                theirs[coll] = int(cur.fetchone()[0])
     counts = {coll: {"app": int(mine.get(coll, 0)), "database": theirs.get(coll, 0)} for coll in lists}
     mismatch = [f"{k}: app {v['app']} / database {v['database']}" for k, v in counts.items() if v["app"] != v["database"]]
     return {"ok": not mismatch, "counts": counts, "mismatch": mismatch}
@@ -690,10 +775,9 @@ def verify(r: AppProject, o: dict | None = None) -> dict:
 def status(r: AppProject) -> dict:
     be = _j(r.backend, {})
     o = be.get("owndb") if isinstance(be.get("owndb"), dict) else None
-    from ..pgdb import service as PG
-    conns = PG.conns(r.tenant_id)
+    from . import owndb_conns as OC
     out = {"linked": bool(o and o.get("status") in ("copying", "live")), "link": o, "providers": PROVIDERS,
-           "connections": [{k: c.get(k) for k in ("id", "name", "label", "can_write", "status", "version")} for c in conns],
+           "connections": OC.connections(r.tenant_id),
            "stats": dict(STATS)}
     if o and o.get("status") == "live":
         out["lag"] = max(0, _journal_max("app:" + r.id) - int(o.get("cursor") or 0))
@@ -721,10 +805,9 @@ def tick(force: bool = False) -> int:
             continue
         try:
             be = _j(r.backend, {})
-            with _Conn(r.id, o, 60) as c:
-                if str(be.get("rev") or 0) != str(o.get("schema_rev") or ""):
-                    ensure_schema(r, c, o["schema"])          # a new list / field in the app -> new table / column there
-                push_accounts(r, o, c)
+            if str(be.get("rev") or 0) != str(o.get("schema_rev") or ""):
+                _ensure(r, o)                                 # a new list / field in the app -> new table / column there
+            _accounts(r, o)
             cursor = _catch_up(r, o, int(o.get("cursor") or 0))
             got = pull(r, o) if o.get("mode") == "primary" else {}
 

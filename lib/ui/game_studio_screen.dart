@@ -14,6 +14,7 @@ import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 int _i(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
+List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
@@ -142,10 +143,47 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
               ]),
               const SizedBox(height: 4),
               LinearProgressIndicator(value: _i(m['pct']) / 100, color: C.accent, backgroundColor: C.panel),
+              Row(children: [
+                if (_gateFor(_s(m['key'])).isNotEmpty)
+                  Text(_s(_gateFor(_s(m['key']))['verdict']), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const Spacer(),
+                TextButton(
+                    onPressed: _busy ? null : () => _gate(_s(m['key'])),
+                    child: const Text('Gate check', style: TextStyle(fontSize: 12.5))),
+              ]),
             ]),
           ),
       ]),
     );
+  }
+
+  Map<String, dynamic> _gateFor(String key) =>
+      _list(_p['gates']).firstWhere((g) => _s(g['milestone']) == key, orElse: () => <String, dynamic>{});
+
+  Future<void> _gate(String key) async {
+    setState(() => _busy = true);
+    try {
+      final g = await widget.app.api!.gameStudioGate(_s(_p['id']), key);
+      if (mounted) {
+        final lines = [
+          ..._strs(g['blockers']).map((x) => 'Blocker: $x'),
+          ..._strs(g['concerns']).map((x) => 'Concern: $x'),
+          ..._strs(g['missing']).map((x) => 'Missing: $x'),
+          ...Map<String, dynamic>.from((g['views'] as Map?) ?? const {}).entries.map((e) => '${e.key.replaceAll('_', ' ')}: ${e.value}'),
+        ];
+        await showDialog<void>(
+            context: context,
+            builder: (d) => AlertDialog(
+                  title: Text('${_s(g['name'])}: ${_s(g['verdict'])}'),
+                  content: SingleChildScrollView(child: Text([...lines, _s(g['note'])].join('\n\n'))),
+                  actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Close'))],
+                ));
+      }
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+    await _load();
   }
 
   Widget _add() {
@@ -213,18 +251,47 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('${_s(t['number'])}  ${_s(t['title'])}', style: const TextStyle(fontSize: 14, height: 1.35)),
         const SizedBox(height: 2),
-        Text('${_s(t['milestone'])} · ${_s(t['kind'])}${_s(t['source']) != 'her' ? ' · by Hoola' : ''}'
-            '${_i(t['version']) > 0 ? ' · v${_i(t['version'])}' : ''}', style: const TextStyle(color: C.muted, fontSize: 12)),
+        Text('${_s(t['role_name'])}${_s(t['role_mode']) == 'writes' ? ' (writes)' : ''} · ${_s(t['milestone'])}'
+            '${_s(t['source']) != 'her' ? ' · by Hoola' : ''}${_i(t['version']) > 0 ? ' · v${_i(t['version'])}' : ''}',
+            style: const TextStyle(color: C.muted, fontSize: 12)),
         if (_s(t['detail']).isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(t['detail']), style: const TextStyle(color: C.muted, fontSize: 12.5))),
         if (st == 'review' && _s(t['notes']).isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(t['notes']), style: const TextStyle(fontSize: 12.5))),
         if (_s(t['error']).isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(t['error']), style: const TextStyle(color: C.bad, fontSize: 12.5))),
+        // v0.406 the crew: how "done" is checked, the counted verdict, and the lead's review
+        for (final c in _list(t['criteria']))
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_s(c['status']) == 'covered' ? '✓ ' : _s(c['status']) == 'failed' ? '✕ ' : '○ ',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600,
+                      color: _s(c['status']) == 'covered' ? C.ok : _s(c['status']) == 'failed' ? C.bad : C.muted)),
+              Expanded(child: Text(_s(c['text']), style: TextStyle(fontSize: 12.5, color: _s(c['status']) == 'untested' ? C.muted : C.ink))),
+            ]),
+          ),
+        if (st == 'review' || st == 'done')
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('${_s(t['verdict'])}${t['evidence_old'] == true ? ' · evidence older than the code' : ''}',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                    color: _s(t['verdict']) == 'COMPLETE' ? C.ok : _s(t['verdict']) == 'BLOCKED' ? C.bad : C.warn)),
+          ),
+        if (_s((t['review'] as Map?)?['summary']).isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('${_s((t['review'] as Map?)?['by_name'])}: ${_s((t['review'] as Map?)?['summary'])}'
+                '${_strs((t['review'] as Map?)?['findings']).map((f) => '\n• $f').join()}', style: const TextStyle(fontSize: 12.5)),
+          ),
         const SizedBox(height: 6),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          if (st == 'todo') ...[b('start', 'Build now', main: true), b('drop', 'Drop')],
-          if (st == 'review') ...[b('ok', 'OK', main: true), b('back', 'Send back')],
+          if (st == 'todo') ...[b('start', _s(t['role_mode']) == 'writes' ? 'Write it now' : 'Build now', main: true), b('drop', 'Drop')],
+          if (st == 'review') ...[
+            b('ok', 'OK', main: true),
+            b('back', 'Send back'),
+            if (_s(t['role_mode']) != 'writes') b('review', 'Ask the lead'),
+          ],
           if (st == 'blocked') ...[b('start', 'Try again', main: true), b('drop', 'Drop')],
           if (st == 'done') b('back', 'Undo'),
         ]),

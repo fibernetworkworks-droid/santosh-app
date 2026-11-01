@@ -2112,7 +2112,7 @@ body.albon{overflow:hidden}
 .ar-proof .ar-form label{display:grid;gap:3px;font-size:13px}
 .ar-proof .sttbl td small{display:inline-block;margin-top:2px}
 
-/* v0.401 HOOLA ARCHITECT spec card + the site's Logic box */
+/* v0.407 HOOLA ARCHITECT spec card + the site's Logic box */
 .stspec .stmod{border:1px solid var(--line);border-radius:12px;padding:8px 12px 10px;margin:8px 0}
 .stspec .stmod legend{padding:0 4px;font-size:14px}
 .stspec .stmod legend label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
@@ -2302,6 +2302,8 @@ body.albon{overflow:hidden}
 .sc-quiet .sc-pl{width:220px;max-width:100%}
 .sc-h{margin-top:14px}
 .sc-growth .grid2{margin-top:6px}
+.sc-ytform{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:8px;margin:8px 0}
+.sc-ytform textarea,.sc-ytform select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
 .sc-watch{margin-top:10px}
 .sc-ugc .em-meta a{margin-left:auto;font-size:13px}
 .sc-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px}
@@ -2470,3 +2472,30 @@ body.albon{overflow:hidden}
 #systems .tbl code, #systems .kv code { font-size: 12.5px; word-break: break-all; }
 #systems .btn.small { height: 32px; padding: 0 10px; font-size: 13px; }
 @media (max-width: 720px) { #systems .tbl { font-size: 12.5px; } #systems .ent-form input, #systems .ent-form select { height: 44px; } }
+
+/* v0.406 HOOLA GAME CREW - roles, acceptance criteria, reviews, gates */
+.gs-role{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--pri-soft,rgba(91,69,224,.12));color:var(--pri,#5B45E0);margin-right:6px}
+.gs-role.gs-writes{background:var(--line);color:var(--mut)}
+.gs-crit{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+.gs-crit li{display:flex;gap:6px;align-items:flex-start}
+.gs-crit li span:first-child{width:14px;flex:none;text-align:center;font-weight:600}
+.gs-crit .gs-c-covered span:first-child{color:var(--ok,#1a7f37)}
+.gs-crit .gs-c-failed span:first-child{color:var(--bad,#c0392b)}
+.gs-crit .gs-c-untested{color:var(--mut)}
+.gs-verdict{margin-top:4px}
+.gs-review{font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.gs-review ul{margin:4px 0 0;padding-left:18px}
+.gs-writeup pre{white-space:pre-wrap;font:inherit;font-size:13px;max-height:320px;overflow:auto;margin:6px 0 0}
+.gs-gate{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.gs-gatecard{margin:8px 0;display:flex;flex-direction:column;gap:4px}
+.gs-crewbox{margin:12px 0}
+.gs-crewbox summary{cursor:pointer;font-weight:600}
+.gs-crewbox h4{margin:12px 0 6px;font-size:14px}
+.gs-team{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.gs-team input{flex:1 1 240px;min-width:0;font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.gs-team select{font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.gs-roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.gs-rcard{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
+.gs-rcard p{margin:4px 0 0;color:var(--mut);font-size:12.5px}
+.gs-rcard.gs-busy{border-color:var(--pri,#5B45E0)}
+
