@@ -130,7 +130,8 @@ DM_TYPE = {"text": "text", "long": "long_text", "int": "number", "decimal": "num
            "date": "date", "datetime": "text", "time": "text", "phone": "phone", "email": "email", "url": "text",
            "enum": "choice", "ref": "text", "uuid": "text", "file": "photo", "point": "location"}
 # v0.319 kinds the app backend adds on top of the web-app engine's vocabulary (kept through clean_schema, checked here)
-EXTRA_TYPES = ("photo", "location")
+EXTRA_TYPES = ("photo", "location", "scan")        # v0.340 scan = a barcode / QR read by the camera (or typed)
+SCAN_NAME = re.compile(r"(?i)(barcode|^sku$|^tag$|serial|qr_?code|^imei$)")
 LOC = re.compile(r"^\s*(-?\d{1,2}(?:\.\d{1,7})?)\s*,\s*(-?\d{1,3}(?:\.\d{1,7})?)\s*$")
 FILE_ID = re.compile(r"^f_[0-9a-f]{16}$")
 
@@ -150,12 +151,14 @@ def _complex_lists(plan: dict[str, Any], goal: str = "") -> list[dict[str, Any]]
     ents.sort(key=lambda e: order.get(D.ENTITIES[e][0], 99))
     out = []
     for e in ents:
-        fields, extra = [], {"photo": 0, "location": 0}
+        fields, extra = [], {"photo": 0, "location": 0, "scan": 0}
         for f in D.parse_fields(D.ENTITIES[e][2]):
             t = DM_TYPE.get(f["type"])
+            if t == "text" and SCAN_NAME.search(f["name"]):      # v0.340 codes on labels are scanned, not typed
+                t = "scan"
             if t in extra:                      # at most 2 photos and 1 location per staff list
                 extra[t] += 1
-                if extra[t] > (2 if t == "photo" else 1):
+                if extra[t] > (2 if t in ("photo", "scan") else 1):
                     continue
             if not t or W._slug(f["name"]) in ("id", "owner", "created", "updated") or \
                     re.search(r"(?i)(password|pin|otp|cvv|card|aadhaar|pan_no|account_no|ifsc|token|secret)", f["name"]):
@@ -487,6 +490,12 @@ def _check_extra(r: AppProject, c: dict[str, Any], data: dict[str, Any], w: W.Wh
         if t not in EXTRA_TYPES or k not in data or data[k] in (None, ""):
             continue
         v = str(data[k]).strip()
+        if t == "scan":                         # v0.340 whatever the label holds, as plain text (no control characters)
+            v = re.sub(r"[\x00-\x1f\x7f]", "", v)[:200]
+            if not v:
+                raise W.AppError(f"{f['label']}: code khaali hai.")
+            data[k] = v
+            continue
         if t == "location":
             m = LOC.match(v)
             if not m or abs(float(m.group(1))) > 90 or abs(float(m.group(2))) > 180:
@@ -606,6 +615,47 @@ def updates(r: AppProject, w: W.Who, since: str = "") -> dict[str, Any]:
                               "status": d.get("status", ""), "paid": d.get("paid", "")})
     STATS["updates"] += 1
     return {"now": now().isoformat(), "items": items}
+
+
+def stats(r: AppProject, w: W.Who, days: int = 14) -> dict[str, Any]:
+    """v0.340 the staff dashboard: per list the row count, the status mix, rows per day for `days` days and the money
+    total (orders' server-priced totals). Staff only (customers never see the business's numbers)."""
+    from datetime import timedelta
+    if w.m is None:
+        raise W.AppError("Pehle login kijiye.", 401)
+    if not w.staff:
+        raise W.AppError("Yeh sirf staff ke liye hai.", 403)
+    days = max(7, min(int(days or 14), 60))
+    sch, site = schema(r), bid(r)
+    today = now().date()
+    labels = [(today - timedelta(days=days - 1 - i)).isoformat() for i in range(days)]
+    out = []
+    with session() as s:
+        for c in sch["collections"]:
+            keys = {f["key"] for f in c["fields"]}
+            rows = s.query(W.SiteAppRow.data, W.SiteAppRow.created_at).filter(W.SiteAppRow.site_id == site,
+                                                                              W.SiteAppRow.coll == c["key"]).all()
+            st: dict[str, int] = {}
+            daily = dict.fromkeys(labels, 0)
+            money = 0.0
+            for data, created in rows:
+                d = _j(data, {})
+                if "status" in keys:
+                    k = str(d.get("status") or "-")[:40]
+                    st[k] = st.get(k, 0) + 1
+                day = created.date().isoformat() if created else ""
+                if day in daily:
+                    daily[day] += 1
+                if "total" in keys:
+                    try:
+                        money += float(d.get("total") or 0)
+                    except (TypeError, ValueError):
+                        pass
+            out.append({"key": c["key"], "label": c["label"], "count": len(rows),
+                        "status": dict(sorted(st.items(), key=lambda kv: -kv[1])[:8]),
+                        "daily": [daily[x] for x in labels], "total": round(money, 2) if "total" in keys else None})
+    STATS["stats"] = STATS.get("stats", 0) + 1
+    return {"now": now().isoformat(), "days": labels, "lists": out}
 
 
 def mark_paid(r: AppProject, coll: str, row_id: str, utr: str, w: W.Who) -> dict[str, Any]:

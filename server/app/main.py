@@ -8943,6 +8943,17 @@ async def app_api_updates(app_key: str, request: Request, since: str = ""):
     return await asyncio.to_thread(_be_call, go)
 
 
+@app.get("/api/app-api/{app_key}/stats")
+async def app_api_stats(app_key: str, request: Request, days: int = 14):
+    """v0.340 the staff dashboard of an installed app: counts, status mix, rows per day, money total (staff only)."""
+    from .appmaker import backend as BE
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.stats(r, w, days)
+    return await asyncio.to_thread(_be_call, go)
+
+
 @app.post("/api/app-api/{app_key}/c/{coll}/{row_id}/paid")
 async def app_api_paid(app_key: str, coll: str, row_id: str, request: Request):
     """v0.319 the customer says she paid by UPI (+ the UPI reference): the owner checks her own bank, Hoola never sees money."""

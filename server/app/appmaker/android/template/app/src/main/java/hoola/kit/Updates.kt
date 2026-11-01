@@ -72,6 +72,7 @@ object Updates {
             val text = if (it.optString("kind") == "new") Strings.newEntry
             else listOf(it.optString("status"), it.optString("paid").takeIf { p -> p.isNotEmpty() && p != "No" } ?: "")
                 .filter { s -> s.isNotEmpty() }.joinToString(" · ")
+            Inbox.add(ctx, title.ifEmpty { AppData.appName }, text, now)      // v0.340 kept in the app's inbox too
             if (show(ctx, it.optString("id").hashCode(), title, text)) shown++
         }
         return shown
