@@ -101,6 +101,13 @@ HARD RULES (the build fails otherwise)
   * 4.5 added variadic functions and @abstract; 4.6 made Jolt the 3D physics and Quaternion() starts as identity;
   * still Godot 4 rules: TileMapLayer (not TileMap), instantiate() (not instance()), await (not yield),
     signal.connect(callable), Time.get_ticks_msec(), VisibleOnScreenNotifier2D.
+- ASSETS: if the files include hoola_assets.gd (the HoolaAssets autoload, written by Hoola - NEVER edit or re-output
+  it), use its approved art and sound: HoolaAssets.has(key), HoolaAssets.tex(key) -> Texture2D for a Sprite2D /
+  TextureRect, HoolaAssets.play(key) for a sound, HoolaAssets.sound(key) -> AudioStream (music: a looping
+  AudioStreamPlayer), HoolaAssets.scene(key) -> PackedScene for a 3D model. Keys follow the Game Bible ids (enemy
+  "red_bat" -> sprite "red_bat", level "l1" -> background "bg_l1"; sounds "sfx_jump" ...). ALWAYS keep the drawn
+  fallback when has(key) is false. If HoolaAssets.CREDITS is not empty, show it in small text on the title screen.
+  Load no other files.
 - GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
   NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
   HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])

@@ -82,8 +82,27 @@ GAMEDESK_TOOLS.append(
          "ids": {"type": "array", "items": {"type": "string"}}, "runs": {"type": "integer"}},
          "required": ["action"]}})
 
+GAMEDESK_TOOLS.append(
+    {"name": "game_assets", "description": (
+        "Asset pipeline of a Studio Project: the game's art (sprite, icon, ui, background - style-locked to the Game "
+        "Bible palette), sounds (sfx made in code: free, preset + seed), music, voice lines and 3D models (Hoola's 3D "
+        "Studio). Every file is checked in code and enters the game only after her OK. Actions: list / suggest (what the "
+        "Bible still needs) / make (kind, key, words; sprite size, quality fast|best, palette_lock check|strict; sfx preset, "
+        "seed; voice text) - PAID kinds (pictures, music, voice) only get a PRICE CARD: tell her the rupees and that her "
+        "tap on the card starts it, you can never start a paid one / approve (key, v optional) / reject (key) / apply: "
+        "approved assets into the live game with no new code. Keys follow the Bible ids (enemy red_bat -> sprite red_bat, "
+        "level l1 -> bg_l1, sounds sfx_jump). id = S-0001 (optional with one project). Only while the Game Developer is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "suggest", "make", "approve", "reject", "apply"]},
+         "id": {"type": "string"}, "kind": {"type": "string", "enum": ["sprite", "icon", "ui", "background", "sfx", "music",
+                                                                        "voice", "model"]},
+         "key": {"type": "string"}, "words": {"type": "string"}, "size": {"type": "integer"},
+         "quality": {"type": "string", "enum": ["fast", "best"]}, "palette_lock": {"type": "string", "enum": ["off", "check", "strict"]},
+         "preset": {"type": "string"}, "seed": {"type": "integer"}, "text": {"type": "string"}, "v": {"type": "integer"}},
+         "required": ["action"]}})
+
 GAMEDESK_LABELS = {"game_desk": "Game bana raha hoon", "game_studio": "Game project dekh raha hoon",
-                   "game_bible": "Game Bible dekh raha hoon"}
+                   "game_bible": "Game Bible dekh raha hoon", "game_assets": "Game ke assets dekh raha hoon"}
 
 
 def _short(v: dict) -> dict:
@@ -308,4 +327,57 @@ async def game_bible(ctx: Ctx, action="", id="", kind="", entity=None, eid="", s
                     "simulate | apply | recurve")
 
 
-GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible}
+def _asset_short(v: dict) -> dict:
+    return {"assets": [{k: a.get(k) for k in ("key", "kind", "status", "version", "approved", "cost_inr", "error")
+                        if a.get(k) not in (None, "", 0)} | ({"problems": a["checks"].get("errors")} if (a.get("checks") or {}).get("errors") else {})
+                       for a in v.get("assets", [])][:40],
+            "price_card": v.get("card"), "in_game": v.get("in_game"), "spent_inr": v.get("spent_inr")}
+
+
+async def game_assets(ctx: Ctx, action="", id="", kind="", key="", words="", size=0, quality="fast", palette_lock="check",
+                      preset="", seed=0, text="", v=0, **_):
+    from ..employee import hire
+    from ..gamedesk import assets as A
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "suggest") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
+        raise ToolError("Game assets badalna sirf owner ka kaam hai.")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "list":
+            await run(A.collect_models, t, id)
+            return _asset_short(await run(A.assets, t, id))
+        if action == "suggest":
+            sug = await run(A.suggest, t, id)
+            return {"suggest": sug, "total_inr_if_all": sum(x["cost_inr"] for x in sug),
+                    "note": "Nothing is made or priced yet; ask her which ones to make."}
+        if action == "make":
+            spec = {"size": size or None, "quality": quality, "palette_lock": palette_lock, "preset": preset or None,
+                    "seed": seed or None, "text": text or None}
+            a = await run(A.request, t, id, kind, key, words, **{k: x for k, x in spec.items() if x is not None})
+            if a["status"] == "priced":
+                return {"asset": a["key"], "status": "priced", "cost_inr": a["cost_inr"],
+                        "note": f"A price card for about Rs {a['cost_inr']} is on her Assets page; ONLY her tap starts it. Never say it is made."}
+            return {"asset": a["key"], "status": a["status"], "note": "Free kind: being made now; it waits for her OK."}
+        if action == "approve":
+            return {"asset": (await run(A.approve, t, id, key, int(v or 0)))["key"], "status": "approved",
+                    "note": "Approved. action=apply puts the approved assets into the game."}
+        if action == "reject":
+            return {"asset": (await run(A.reject, t, id, key))["key"], "status": "rejected"}
+        if action == "apply":
+            await run(A.apply, t, id)
+            return {"ok": True, "note": "Rebuilding the live game with the approved assets (no new code)."}
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = list | suggest | make | approve | reject | apply")
+
+
+GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets}

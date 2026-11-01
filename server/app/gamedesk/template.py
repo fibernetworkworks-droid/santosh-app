@@ -104,6 +104,8 @@ def files(title: str, orientation: str, scripts: dict[str, str]) -> dict[str, st
     proj = project_godot(title, orientation)
     if "hoola_bible.gd" in scripts:                     # v0.395 the Game Bible is an autoload: global with no class cache
         proj = proj.replace('HoolaProbe="*res://hoola_probe.gd"', 'HoolaProbe="*res://hoola_probe.gd"\nHoolaBible="*res://hoola_bible.gd"')
+    if "hoola_assets.gd" in scripts:                    # v0.414 the approved assets
+        proj = proj.replace('HoolaProbe="*res://hoola_probe.gd"', 'HoolaProbe="*res://hoola_probe.gd"\nHoolaAssets="*res://hoola_assets.gd"')
     out = {"project.godot": proj, "main.tscn": MAIN_TSCN, "export_presets.cfg": EXPORT_PRESETS, "hoola_probe.gd": PROBE}
     out.update(scripts)
     return out

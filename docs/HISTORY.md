@@ -15536,3 +15536,36 @@ Maps, a rider's location while on shift, and live tracking of one order.
 - FIX: `POST /api/game` started a game for anyone with the key - it now checks the Game Developer hire (the tool did).
 - Tests NEW `test_v0410_architect.py` (16) incl. a REAL Mermaid render in Chromium when present; test_v0370 updated
   (hire before POST /api/game, employees.js export). Version 0.413.0 (pubspec 0.413.0+457, console ?v=0.413.0, pins).
+
+## v0.414.0 ASSET PIPELINE (built as 0.409.0) (Hoola Game Engine plan, Phase 4) - 1 Nov 2026
+
+Owner: "GO PHASE 4". `server/app/gamedesk/assets.py` (table `game_assets`), `gamedesk/sfx.py`.
+
+- Kinds: sprite 128 / icon 96 / ui 256x96 / background = the game's screen size (photogen, ~Rs 3 fast, Rs 12 best);
+  sfx (code, free); music (Lyria, ~Rs 7, instrumental + loop fades -> OGG via ffmpeg); voice (TTS, ~Rs 1); model (3D
+  Studio GLB, model calls only). Keys follow the Bible ids (enemy red_bat -> sprite red_bat, level l1 -> bg_l1).
+- STYLE LOCK in code: `art_prompt` = palette + tone + genre + "original"; sprites / icons / ui drawn on flat magenta,
+  `key_out` (soft edge), `fit` (crop to subject, 94 % fit, exact size; backgrounds cover-crop), `palette_share` (visible
+  pixels near the palette or its shades), palette_lock check | strict (`snap` every pixel) | off. PNG metadata says
+  AI-generated; HoolaAssets.CREDITS ("made with AI (Hoola)") only when an AI-made asset is in the game (not her
+  uploads or code-made sounds) and the code guide shows it on the title screen.
+- SFX: 10 presets (jump, coin, hit, explosion, powerup, laser, blip, click, hurt, select), one oscillator + slide +
+  vibrato + arpeggio + envelope + low-pass, seeded noise; the same (preset, seed) = the same bytes; -1 dBFS peak.
+- Money: paid kinds stop at status `priced` (the price card); `spend(ids)` is ONLY her tap (API POST .../assets/spend,
+  console / phone buttons); the tool returns the card and can never spend. `spent_inr` per asset.
+- `check_file` in code: opens, exact size, transparent edges for alpha kinds, the backdrop really removed (`keyed`
+  share, found by a test: an opaque picture used to pass because fitting adds clear margins), not blank / not flat,
+  budget (error over 2x), palette, audio length per kind, silence / clipping, OGG / WAV web format, GLB magic.
+  A failed version is never approvable. Her uploads: PNG / JPEG / WAV / OGG / MP3 (-> OGG) / GLB by their bytes.
+- Versions: every remake = v+1 (history, 20 kept), `approve(key, v)` picks the one in the game; 3D models collected
+  by `collect_models` (worker + list view) when the 3D Studio job is done.
+- In the game: `service._build` adds `hoola_assets.gd` (Hoola's own, the model's copy replaced) + copies approved files
+  to `res://assets/<key>.<ext>` after each write; `template.files` adds the HoolaAssets autoload; versions record
+  `assets`; `apply` = data build (no model call); source ZIP + GitHub export carry assets/ (GitHub tree now nested).
+- REAL GODOT 4.7.2: keyed sprite 128x128 + code-made coin WAV + OGG music loaded via HoolaAssets headless and in the
+  Web export (60 fps); full pipeline e2e (sprite + sfx approved -> task build v2 -> smoke log "P4 OK" -> ZIP has assets).
+- Tool `game_assets` (list / suggest / make / approve / reject / apply), API `/api/gamestudio/{id}/assets*` + signed
+  `/api/gamestudio/asset/{aid}/{v}`; console board > Assets (`gsAssets`, `ga-*` CSS); phone `game_assets_screen.dart`.
+- Tests `test_v0411_game_assets.py` (9).
+- Not verified: GLB loading in a real Godot build (no Blender in the sandbox); real photogen / Lyria / TTS output (faked).
+

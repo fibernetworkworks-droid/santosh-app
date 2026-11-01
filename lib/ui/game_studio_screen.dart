@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'game_assets_screen.dart';
 import 'game_bible_screen.dart';
 import 'glass.dart';
 
@@ -468,6 +469,15 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
                     '${(_p['bible'] as Map?)?['draft'] == true ? ' · draft waiting' : ''}'),
                 onPressed: () async {
                   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameBibleScreen(app: widget.app, id: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.palette_outlined),
+                label: Text('Assets${_i((_p['assets'] as Map?)?['count']) > 0 ? ' · ${_i((_p['assets'] as Map?)?['in_game'])} in game' : ''}'
+                    '${_i((_p['assets'] as Map?)?['waiting_ok']) > 0 ? ' · ${_i((_p['assets'] as Map?)?['waiting_ok'])} for your OK' : ''}'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameAssetsScreen(app: widget.app, id: _s(_p['id']))));
                   await _load();
                 },
               ),

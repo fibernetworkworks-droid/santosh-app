@@ -801,6 +801,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
                failed: ['bad', 'Did not work'], cancelled: ['', 'Stopped']};
   const BUSYG = ['designing', 'queued', 'writing', 'building', 'testing'];
   let GS_BIBLE = false;        // v0.395 the Game Bible page of the open project
+  let GS_ASSETS = false;       // v0.414 the Assets page of the open project
   let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   async function game(el) {
@@ -1001,9 +1002,100 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
   }
 
+  // ---------------------------------------------------------------- v0.414 asset pipeline
+  const AST_ST = {priced: ['warn', 'Waiting for your tap'], making: ['v', 'Being made'], draft: ['warn', 'Waiting for your OK'],
+                  approved: ['ok', 'In the game'], rejected: ['', 'Not used'], failed: ['bad', 'Failed its checks']};
+  function astPreview(a) {
+    if (!a.url) return '<div class="ga-empty">—</div>';
+    const u = esc(a.url);
+    if (['sprite', 'icon', 'ui', 'background'].includes(a.kind)) return `<img src="${u}" alt="${esc(a.key)}" class="ga-img ga-${esc(a.kind)}" loading="lazy">`;
+    if (['sfx', 'music', 'voice'].includes(a.kind)) return `<audio controls preload="none" src="${u}"></audio>`;
+    return `<a class="btn soft gs-mini" href="${u}" download="${esc(a.key)}.glb">Download GLB</a>`;
+  }
+  async function gsAssets(el, id) {
+    clearTimeout(GTIMER);
+    let v;
+    const q = encodeURIComponent(id);
+    try { v = await api('GET', `/api/gamestudio/${q}/assets`); }
+    catch (e) { toast(e.message, true); GS_ASSETS = false; return gsBoard(el, id); }
+    const kinds = v.kinds || {}, card = v.card || {items: [], total_inr: 0};
+    const byKind = {};
+    (v.assets || []).forEach(a => { (byKind[a.kind] = byKind[a.kind] || []).push(a); });
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gaBack">← Board</button><h2>Assets</h2>
+        <span class="muted em-sub">${num(v.in_game)} in the game · ₹${num(v.spent_inr)} spent</span>
+        <button class="btn go" type="button" id="gaApply">Put approved assets in the game</button>
+        <button class="btn soft" type="button" id="gaSug">What does the game still need?</button></div>
+      <p class="muted em-sub">Art follows the Game Bible palette. Sounds are made in code (free). Pictures, music and voice cost money: they wait on a price card until you tap it. Nothing enters the game before your OK.</p>
+      ${card.items.length ? `<div class="tile gl ga-card"><b>Price card: ₹${num(card.total_inr)}</b> for ${num(card.items.length)} asset${card.items.length === 1 ? '' : 's'}
+        <ul class="gs-log">${card.items.map(i => `<li><label><input type="checkbox" data-ga-pick="${esc(i.id)}" checked> ${esc(i.key)} <span class="muted">${esc(i.kind)} · ₹${num(i.cost_inr)}</span></label></li>`).join('')}</ul>
+        <div class="acts"><button class="btn go" type="button" id="gaSpend">Make the ticked ones</button></div></div>` : ''}
+      <div id="gaSugBox"></div>
+      <div class="tile gl ga-new"><h3>New asset</h3>
+        <div class="acts"><select id="gaKind" aria-label="Kind">${Object.entries(kinds).map(([k, x]) => `<option value="${esc(k)}">${esc(x.label)}${x.cost_inr ? ' (about ₹' + num(x.cost_inr) + ')' : ' (free)'}</option>`).join('')}</select>
+          <input id="gaKey" maxlength="40" placeholder="key, e.g. red_bat (Bible id)" aria-label="Key">
+          <input id="gaWords" maxlength="600" placeholder="What it is, e.g. a red bat with big ears, side view" aria-label="Description"></div>
+        <div class="acts"><select id="gaPreset" aria-label="Sound preset">${(v.presets || []).map(p => `<option>${esc(p)}</option>`).join('')}</select>
+          <input id="gaSeed" type="number" min="1" value="1" aria-label="Sound seed" title="Seed: the same seed makes the same sound">
+          <input id="gaText" maxlength="400" placeholder="Voice line text" aria-label="Voice text">
+          <select id="gaLock" aria-label="Palette lock"><option value="check">Palette: check</option><option value="strict">Palette: snap every pixel</option><option value="off">Palette: off</option></select>
+          <select id="gaQ" aria-label="Quality"><option value="fast">Fast (₹3)</option><option value="best">Best (₹12)</option></select>
+          <button class="btn go" type="button" id="gaMake">Make / price it</button>
+          <label class="btn soft ga-up">Upload my file<input type="file" id="gaFile" accept=".png,.jpg,.jpeg,.wav,.ogg,.mp3,.glb" hidden></label></div></div>
+      ${Object.keys(kinds).filter(k => byKind[k]).map(k => `<section class="tile gl"><h3>${esc(kinds[k].label)}s <span class="muted">${num(byKind[k].length)}</span></h3>
+        <div class="ga-grid">${byKind[k].map(a => { const [c, n] = AST_ST[a.status] || ['', a.status]; const ck = a.checks || {};
+          return `<div class="ga-item"><div class="ga-prev">${astPreview(a)}</div><div class="ga-h"><b>${esc(a.key)}</b> ${tag(c, n)}</div>
+            <div class="gs-meta">v${num(a.version)}${a.approved ? ' · in game: v' + num(a.approved) : ''}${a.meta && a.meta.w ? ' · ' + num(a.meta.w) + '×' + num(a.meta.h) : ''}${a.meta && a.meta.seconds ? ' · ' + num(a.meta.seconds) + ' s' : ''}${a.meta && a.meta.palette_share != null ? ' · palette ' + Math.round(a.meta.palette_share * 100) + '%' : ''}${a.source ? ' · ' + esc(a.source) : ''}</div>
+            ${a.words ? `<div class="gs-detail">${esc(a.words)}</div>` : ''}
+            ${(ck.errors || []).map(x => `<div class="badc em-small">${esc(x)}</div>`).join('')}${(ck.warnings || []).map(x => `<div class="muted em-small">${esc(x)}</div>`).join('')}
+            ${a.error && !(ck.errors || []).length ? `<div class="badc em-small">${esc(a.error)}</div>` : ''}
+            <div class="acts">${a.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-ga="approve" data-key="${esc(a.key)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-ga="reject" data-key="${esc(a.key)}">No</button>` : ''}
+              ${a.kind === 'sfx' && a.status !== 'making' ? `<button class="btn soft gs-mini" type="button" data-ga-again="${esc(a.key)}" data-preset="${esc((a.spec || {}).preset || '')}" data-seed="${num(((a.spec || {}).seed || 1) + 1)}">Another one</button>` : ''}
+              ${a.status !== 'making' ? `<button class="btn soft gs-mini em-leave" type="button" data-ga="remove" data-key="${esc(a.key)}">Remove</button>` : ''}</div></div>`; }).join('')}</div></section>`).join('') || '<div class="empty">No assets yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsAssets(el, id); };
+    el.querySelector('#gaBack').addEventListener('click', () => { GS_ASSETS = false; gsBoard(el, id); });
+    el.querySelector('#gaApply').addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/assets-apply`), 'Rebuilding the game with the approved assets (no new code).'));
+    el.querySelector('#gaSpend')?.addEventListener('click', () => {
+      const ids = [...el.querySelectorAll('[data-ga-pick]:checked')].map(x => x.dataset.gaPick);
+      if (!ids.length) { toast('Tick at least one.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/assets/spend`, {ids}), 'Making them. Each one waits for your OK.');
+    });
+    el.querySelector('#gaSug').addEventListener('click', async () => {
+      try { const r = await api('GET', `/api/gamestudio/${q}/assets/suggest`);
+        el.querySelector('#gaSugBox').innerHTML = r.suggest.length ? `<div class="tile gl"><b>The game still needs</b><ul class="gs-log">${r.suggest.map(x => `<li>${esc(x.key)} <span class="muted">${esc(x.kind)} · ${x.cost_inr ? '₹' + num(x.cost_inr) : 'free'}</span> ${esc(x.words || '')}
+          <button class="btn soft gs-mini" type="button" data-ga-sug='${esc(JSON.stringify(x))}'>${x.cost_inr ? 'Price it' : 'Make it'}</button></li>`).join('')}</ul></div>` : '<p class="muted em-small">Nothing missing for the Bible\'s entries.</p>';
+        el.querySelectorAll('[data-ga-sug]').forEach(b => b.addEventListener('click', () => { const x = JSON.parse(b.dataset.gaSug);
+          go(() => api('POST', `/api/gamestudio/${q}/assets`, {kind: x.kind, key: x.key, words: x.words, preset: x.preset}), x.cost_inr ? 'Added to the price card.' : 'Making it.'); }));
+      } catch (e) { toast(e.message, true); }
+    });
+    el.querySelector('#gaMake').addEventListener('click', () => {
+      const kind = el.querySelector('#gaKind').value, key = el.querySelector('#gaKey').value.trim(), words = el.querySelector('#gaWords').value.trim();
+      if (!key && !words) { toast('Give it a key or a description.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/assets`, {kind, key, words, preset: el.querySelector('#gaPreset').value, seed: Number(el.querySelector('#gaSeed').value) || 1,
+        text: el.querySelector('#gaText').value.trim(), palette_lock: el.querySelector('#gaLock').value, quality: el.querySelector('#gaQ').value}),
+        (kinds[kind] || {}).cost_inr ? 'On the price card: tap it to make.' : 'Making it.');
+    });
+    el.querySelector('#gaFile').addEventListener('change', e => {
+      const f = e.target.files[0]; if (!f) return;
+      if (f.size > 12 * 1024 * 1024) { toast('12 MB at most.', true); return; }
+      const key = el.querySelector('#gaKey').value.trim() || f.name.replace(/\.[^.]+$/, '');
+      const fr = new FileReader();
+      fr.onload = () => go(() => api('POST', `/api/gamestudio/${q}/assets/upload`, {kind: el.querySelector('#gaKind').value, key, words: el.querySelector('#gaWords').value.trim(),
+        data: String(fr.result).split(',')[1] || ''}), 'Checked. It waits for your OK.');
+      fr.readAsDataURL(f);
+    });
+    el.querySelectorAll('[data-ga]').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.ga === 'remove' && !confirm(`Remove ${b.dataset.key} and all its versions?`)) return;
+      go(() => api('POST', `/api/gamestudio/${q}/assets/${encodeURIComponent(b.dataset.key)}/${b.dataset.ga}`, {}));
+    }));
+    el.querySelectorAll('[data-ga-again]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/assets`,
+      {kind: 'sfx', key: b.dataset.gaAgain, preset: b.dataset.preset, seed: Number(b.dataset.seed)}), 'A new version is being made.')));
+    if ((v.assets || []).some(a => a.status === 'making')) GTIMER = setTimeout(() => { if (visible(el) && GS_ASSETS) gsAssets(el, id); }, 5000);
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
     if (GS_BIBLE) return gsBible(el, id);
+    if (GS_ASSETS) return gsAssets(el, id);
     let p;
     try { p = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}`); }
     catch (e) { GS_OPEN = ''; toast(e.message, true); return game(el); }
@@ -1016,7 +1108,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }).join('');
     el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gsBack">← Game Desk</button><h2>${esc(p.number)} · ${esc(p.title)}</h2>
         ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}
-        <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button></div>
+        <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button>
+        <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
       ${gsBars(p.milestones, p.gates || [])}
       ${(p.gates || [])[0] ? (() => { const gt = p.gates[0]; return `<div class="tile gl gs-gatecard"><b>Gate check · ${esc(gt.name)}: ${esc(gt.verdict)}</b>
@@ -1060,8 +1153,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>`;
     const q = encodeURIComponent(p.id);
     const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
-    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; el.innerHTML = ''; game(el); });
     el.querySelector('#gsBib').addEventListener('click', () => { GS_BIBLE = true; gsBible(el, id); });
+    el.querySelector('#gsAst').addEventListener('click', () => { GS_ASSETS = true; gsAssets(el, id); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

@@ -2513,3 +2513,21 @@ body.albon{overflow:hidden}
 .sttrack .stmap { height: 320px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line, #e5e5ea); margin-top: 8px; }
 .sttrack .chk { display: inline-flex; gap: 6px; align-items: center; margin-right: 10px; font-size: 14px; }
 .strider { width: 16px; height: 16px; border-radius: 50%; background: #1e9e5a; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+/* v0.414 ASSET PIPELINE - art, sound, music, voice, 3D */
+.ga-card{border-color:var(--warn,#c98a00);margin:12px 0}
+.ga-new{margin:12px 0}
+.ga-new .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center}
+.ga-new input,.ga-new select{font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
+.ga-new #gaWords,.ga-new #gaText{flex:1 1 240px}
+.ga-new #gaSeed{width:80px}
+.ga-up{cursor:pointer}
+.ga-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:8px}
+.ga-item{border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.ga-prev{display:flex;align-items:center;justify-content:center;min-height:96px;border-radius:8px;background:repeating-conic-gradient(var(--line) 0 25%,transparent 0 50%) 50%/16px 16px}
+.ga-img{max-width:100%;max-height:160px;image-rendering:auto}
+.ga-img.ga-sprite,.ga-img.ga-icon{image-rendering:pixelated}
+.ga-prev audio{width:100%}
+.ga-empty{color:var(--mut)}
+.ga-h{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ga-item .acts{display:flex;flex-wrap:wrap;gap:6px}
+

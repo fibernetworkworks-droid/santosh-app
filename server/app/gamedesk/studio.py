@@ -217,6 +217,7 @@ def view(r: GameStudio, full: bool = False) -> dict[str, Any]:
                                         "version", "design", "shots", "numbers")} if gv else {},
         "night": (r.nightly or [])[-1] if r.nightly else {},
         "bible": _bible_line(r),
+        "assets": _assets_line(r),
         "created_at": r.created_at.isoformat() if r.created_at else None}
     live_src = ((G._good(g) or [{}])[-1].get("src", "")) if g else ""
     if full:
@@ -253,6 +254,21 @@ def _bible_line(r: GameStudio) -> dict[str, Any]:
     except Exception:                                   # noqa: BLE001
         log.exception("bible line")
         return {"version": 0}
+
+
+def _assets_line(r: GameStudio) -> dict[str, Any]:
+    """v0.414 the asset store in one line for the board."""
+    try:
+        from . import assets as A
+        A.ensure_table()
+        with session() as s:
+            rows = s.scalars(select(A.GameAsset).where(A.GameAsset.studio_id == r.id)).all()
+            return {"count": len(rows), "in_game": sum(1 for a in rows if a.approved),
+                    "waiting_ok": sum(1 for a in rows if a.status == "draft"),
+                    "priced": round(sum(a.cost_inr for a in rows if a.status == "priced"), 2)}
+    except Exception:                                   # noqa: BLE001
+        log.exception("assets line")
+        return {"count": 0}
 
 
 def versions(tenant: str, gid: str, tasks: list[GameTask] | None = None) -> list[dict[str, Any]]:
@@ -1005,6 +1021,11 @@ def jobs(force: bool = False) -> dict[str, int]:
         try:
             if not hire.is_working(r.tenant_id, "game_dev"):
                 continue
+            try:                                        # v0.414 finished 3D Studio models become asset versions
+                from . import assets as A
+                A.collect_models(r.tenant_id)
+            except Exception:                           # noqa: BLE001
+                log.exception("collect models")
             local = _local(r.tenant_id)
             with session() as s:
                 tasks = _tasks(s, r.id)

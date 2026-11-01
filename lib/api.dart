@@ -1032,6 +1032,21 @@ class Api {
   Future<Map<String, dynamic>> gameStudioGate(String id, String milestone) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/gate', body: {'milestone': milestone},
           timeout: const Duration(seconds: 90)) as Map);
+  // v0.414 asset pipeline (paid kinds start only by gameAssetsSpend = her tap on the price card)
+  Future<Map<String, dynamic>> gameAssets(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/assets', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameAssetsSuggest(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/assets/suggest') as Map);
+  Future<Map<String, dynamic>> gameAssetsNew(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets', body: body) as Map);
+  Future<Map<String, dynamic>> gameAssetsSpend(String id, List<String> ids) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets/spend', body: {'ids': ids}) as Map);
+  Future<Map<String, dynamic>> gameAssetsDo(String id, String key, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets/$key/$what', body: {}) as Map);
+  Future<Map<String, dynamic>> gameAssetsApply(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets-apply', body: {}) as Map);
+  String absolute(String path) =>
+      path.startsWith('http') ? path : '${baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}$path';
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk

@@ -26,6 +26,16 @@ POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
 POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
 
+v0.414 Asset pipeline (her OK before anything enters the game; paid kinds only after her tap on the price card):
+GET    /api/gamestudio/{id}/assets              assets + price card + spent
+GET    /api/gamestudio/{id}/assets/suggest      what the game still needs, from the Bible (nothing priced)
+POST   /api/gamestudio/{id}/assets              {kind, key, words, size?, quality?, palette_lock?, preset?, seed?, text?...}
+POST   /api/gamestudio/{id}/assets/spend        {ids}  HER TAP: the priced assets start
+POST   /api/gamestudio/{id}/assets/upload       {kind, key, data (base64), words?}  her own file, checked by its bytes
+POST   /api/gamestudio/{id}/assets/{key}/approve|reject|remove   {v?}
+POST   /api/gamestudio/{id}/assets-apply        approved assets into the live game (no model call)
+GET    /api/gamestudio/asset/{aid}/{v}?exp&sig  a signed preview link
+
 v0.406 Hoola Game Crew:
 GET    /api/gamestudio/crew            the 49 roles (tiers, builds / writes) + the 9 team flows
 POST   /api/gamestudio/{id}/plan       {words?, team?}  team = combat | narrative | ui | level | polish | audio | live_ops | qa | release
@@ -279,6 +289,74 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if what == "recurve":
             return await bcall(B.recurve, tenant, sid, str(b.get("kind") or ""))
         raise HTTPException(404, "generate | seed | accept | reject | simulate | apply | recurve")
+
+    # ------------------------------------------------------------ v0.414 asset pipeline
+    from . import assets as A
+
+    async def acall(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (A.AssetError, service.GameError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/gamestudio/asset/{aid}/{v}")
+    def asset_file(aid: str, v: int, exp: int = 0, sig: str = ""):
+        p, media = A.file_for(aid, v, exp, sig)
+        if p is None:
+            raise HTTPException(404, "asset link purana / galat hai")
+        return FileResponse(p, media_type=media, headers={"Cache-Control": "private, max-age=3600",
+                                                          "X-Content-Type-Options": "nosniff"})
+
+    @r.get("/api/gamestudio/{sid}/assets", dependencies=[Depends(require_key)])
+    async def as_list(sid: str, tenant: str = Depends(current_tenant)):
+        await acall(A.collect_models, tenant, sid)
+        return await acall(A.assets, tenant, sid)
+
+    @r.get("/api/gamestudio/{sid}/assets/suggest", dependencies=[Depends(require_key)])
+    async def as_suggest(sid: str, tenant: str = Depends(current_tenant)):
+        return {"suggest": await acall(A.suggest, tenant, sid)}
+
+    @r.post("/api/gamestudio/{sid}/assets", dependencies=[Depends(require_key)])
+    async def as_new(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        spec = {k: b.get(k) for k in ("w", "h", "size", "quality", "palette_lock", "view", "preset", "seed", "mood", "bpm",
+                                      "text", "voice", "language") if b.get(k) not in (None, "")}
+        await acall(A.request, tenant, sid, str(b.get("kind") or ""), str(b.get("key") or ""), str(b.get("words") or ""), **spec)
+        return await acall(A.assets, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/assets/spend", dependencies=[Depends(require_key)])
+    async def as_spend(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        """HER TAP on the price card - the only way a paid asset starts."""
+        ids = [str(x) for x in (_b(body).get("ids") or []) if isinstance(x, str)]
+        return await acall(A.spend, tenant, sid, ids)
+
+    @r.post("/api/gamestudio/{sid}/assets/upload", dependencies=[Depends(require_key)])
+    async def as_upload(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        await acall(A.upload, tenant, sid, str(b.get("kind") or ""), str(b.get("key") or ""), str(b.get("data") or ""),
+                    str(b.get("words") or ""))
+        return await acall(A.assets, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/assets/{key}/{what}", dependencies=[Depends(require_key)])
+    async def as_do(sid: str, key: str, what: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        if what == "approve":
+            try:
+                v = int(b.get("v") or 0)
+            except (TypeError, ValueError):
+                v = 0
+            await acall(A.approve, tenant, sid, key, v)
+        elif what == "reject":
+            await acall(A.reject, tenant, sid, key)
+        elif what == "remove":
+            await acall(A.remove, tenant, sid, key)
+        else:
+            raise HTTPException(404, "approve | reject | remove")
+        return await acall(A.assets, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/assets-apply", dependencies=[Depends(require_key)])
+    async def as_apply(sid: str, tenant: str = Depends(current_tenant)):
+        return await acall(A.apply, tenant, sid)
 
     @r.get("/play/{token}")
     def play_root(token: str):

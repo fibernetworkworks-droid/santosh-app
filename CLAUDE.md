@@ -212,7 +212,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.413.0 (pubspec 0.413.0+457). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.414.0 (pubspec 0.414.0+458). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.410 ECC ON: review card old vs new = 8/8 caught both, false alarms 8 -> 4, nits 3 -> 0; fix card 6/6 + 6/6 with the fixer -> `dev_spec_review` + `dev_spec_fix` default ON; card rows keep what each false alarm said.
 - v0.413 PRINCIPAL SOFTWARE ARCHITECT (`docs/SOFTWARE_DESK_PLAN.md`, `app/archdesk/`): Hub group "Software Architecture, Engineering &
@@ -238,6 +238,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.414 ASSET PIPELINE (built as 0.409; Game Engine plan Phase 4, `gamedesk/assets.py` + `sfx.py`, tool game_assets): style-locked art (magenta key, exact size, palette share / strict snap), code-made sfx (preset + seed), music / voice / 3D; paid = price card + her tap; checks in code; her OK -> HoolaAssets autoload in every build.
 - v0.406 HOOLA GAME CREW + GO FIX (built as 0.403; `gamedesk/crew.py`, ideas from Claude-Code-Game-Studios): 49 roles (builds / writes), role + acceptance criteria on every task, lead review (screens + diff, only screen criteria), 9 team plans, milestone gates PASS/CONCERNS/FAIL/NOT ASSESSED; NOT ASSESSED said out loud; Godot 4.5-4.7 notes; smoke imports first (class_name ok again).
 - v0.395 GAME BIBLE (built as 0.390 / 0.394; Game Engine plan Phase 3, `gamedesk/bible.py`, tool game_bible, /api/gamestudio/{id}/bible*): names + numbers as data (kinds = templates, checks in code, palette lock), seeded balance sim, curve numbers + drafts for her OK, HoolaBible autoload in the game, data-only rebuild (no model); helpers = preload, never class_name.
 - v0.386 STUDIO PROJECT (built as 0.378 / 0.382) (Game Engine plan Phase 2, `gamedesk/studio.py`, tool game_studio, /api/gamestudio*): a game as a long project - task board (one small change each, waits for her OK, 'wapas' = version before is live), milestones, decisions log + 'why', nightly rebuild + replay (no model), morning report, restore, GitHub card.
