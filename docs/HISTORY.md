@@ -14304,3 +14304,25 @@ What each gap became (all in `server/app/engineering/`, tests `tests/test_v0365_
   tools / API / wiring.
 - Not verified: real model output (scripted JSON); a real photo through Claude vision; spoken pronunciation scoring (not built:
   call words reach the tutor as text through santosh_kaam); Flutter not compiled locally (CI).
+- PHASE 2.1 (owner: "READ THIS REPO" https://github.com/HKUDS/DeepTutor -> "GO 2.1"; DeepTutor is Apache-2.0, ideas re-written
+  in Hoola's code, attribution in the comments):
+  - MASTERY WITH A CONFIDENCE CAP (`rules.compute_mastery`, after DeepTutor learning/mastery.py): recency-weighted accuracy of
+    the last 5 checked answers (weights 0.5 / 0.7 / 0.85 / 0.95 / 1.0) capped at 0.5 after one answer and 0.8 after two - one
+    lucky answer is not mastery; hint-assisted answers earn less (`credit`). Replaces the v0.382 logistic update.
+  - SM-2 REVISION (`rules.sm2`, after DeepTutor services/practice/scheduler.py), whole days: again / hard / good / easy from
+    the score + hints (`rating`), ease 1.3-3.0, streak, lapses (new guru_mastery columns ease / streak / lapses). Settings
+    `strategy` long_term | cramming and `exam_date`: within 45 days of the exam (or cramming) a missed topic comes back the
+    same day, and `fit_exam` keeps every gap at most a third of the days left so revisions land before the exam.
+  - MASTERY PATH (`guru_paths`, `build_path` / `path_view`, after DeepTutor's Mastery Path gates): a subject as ordered
+    chapters (her list, else the NCERT book from the frameworks library); a chapter passes at mastery >= `gate` (0.8) with
+    >= `gate_attempts` (3) checked answers; the first unpassed one is CURRENT, the rest LOCKED; practice with a path draws
+    only the current chapter + due revision of passed ones (never a locked chapter); tool `guru action=path`,
+    `guru_dekho what=path`, GET / POST /api/guru/learners/{ref}/path, phone Pragati tab.
+  - GROUNDED EXPLANATIONS (`_book_sources`, setting `grounded`, default on): the student's own textbooks / notes from her
+    Gyaan (files, Drive, notes - never chats or calls) go to the ladder prompt as numbered sources with page numbers; the
+    model may cite [n]; a cite that points at no source is removed in code (`_keep_cites`); each rung that cites shows
+    "Kitaab se: [n] <title>, page p".
+  - Tests: NEW `server/tests/test_v0382_guru21.py` (6): the cap + recency; SM-2 sequence, again / cramming, exam window; capped mastery
+    + SM-2 inside answer() + exam date; path order from the NCERT library, current / locked, practice never from a locked
+    chapter, gate opens the next chapter, teacher list for an incomplete book; grounded doubt cites page 12 and drops [5];
+    grounded off; path tools.

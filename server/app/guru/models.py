@@ -17,6 +17,11 @@ class GuruSettings(Base):
     exam_mode: Mapped[bool] = mapped_column(Boolean, default=False)     # hints only, never a final answer (exam / test days)
     report_weekday: Mapped[int] = mapped_column(Integer, default=6)     # 0 = Monday ... 6 = Sunday
     language: Mapped[str] = mapped_column(String(20), default="")      # teaching language (else the school medium)
+    strategy: Mapped[str] = mapped_column(String(12), default="long_term")   # 2.1 revision: long_term | cramming
+    exam_date: Mapped[date | None] = mapped_column(Date, nullable=True)     # 2.1 next big exam: revisions squeeze to fit before it
+    gate: Mapped[float] = mapped_column(Float, default=0.8)              # 2.1 mastery needed to open the next chapter of a path
+    gate_attempts: Mapped[int] = mapped_column(Integer, default=3)       # ... with at least this many checked answers
+    grounded: Mapped[bool] = mapped_column(Boolean, default=True)        # 2.1 explain from her own books (Gyaan) with pages
     sent: Mapped[str] = mapped_column(Text, default="{}")               # once-keys for weekly reports
 
 
@@ -78,8 +83,26 @@ class GuruMastery(Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     correct: Mapped[int] = mapped_column(Integer, default=0)
     interval_days: Mapped[int] = mapped_column(Integer, default=1)
+    ease: Mapped[float] = mapped_column(Float, default=2.5)              # 2.1 SM-2 ease factor (1.3 .. 3.0)
+    streak: Mapped[int] = mapped_column(Integer, default=0)
+    lapses: Mapped[int] = mapped_column(Integer, default=0)
     due: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class GuruPath(Base):
+    """2.1 A mastery path: one learner's subject as ordered chapters (the NCERT book from the library, or the teacher's
+    list). The next chapter opens only when the current one clears the gate."""
+    __tablename__ = "guru_paths"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("gp"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    learner_id: Mapped[str] = mapped_column(String(40), index=True)
+    subject: Mapped[str] = mapped_column(String(80), default="")
+    grade: Mapped[str] = mapped_column(String(12), default="")
+    chapters: Mapped[str] = mapped_column(Text, default="[]")
+    source: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(10), default="active")    # active | done | archived
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class GuruShare(Base):

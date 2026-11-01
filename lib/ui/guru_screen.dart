@@ -108,6 +108,8 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
   final List<(String, String)> _turns = [];      // (who, text)
   Map<String, dynamic>? _question;
   Map<String, dynamic>? _progress;
+  Map<String, dynamic>? _path;
+  final _subject = TextEditingController(text: 'Mathematics');
   String _next = '';
 
   String get _ref => _s(widget.learner['number']);
@@ -116,6 +118,7 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
   void dispose() {
     _text.dispose();
     _typed.dispose();
+    _subject.dispose();
     super.dispose();
   }
 
@@ -202,6 +205,49 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
     });
   }
 
+  Future<void> _loadPath({bool build = false}) async {
+    final subj = _subject.text.trim();
+    if (subj.isEmpty) return;
+    final r = build
+        ? await _call('POST', '/api/guru/learners/$_ref/path', {'subject': subj})
+        : await _call('GET', '/api/guru/learners/$_ref/path?subject=${Uri.encodeQueryComponent(subj)}');
+    if (r != null) setState(() => _path = r);
+  }
+
+  Widget _pathBox() {
+    final p = _path;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Caption('Mastery path (chapter kram se, gate paar karke aage)'),
+      Row(children: [
+        Expanded(child: TextField(controller: _subject, decoration: const InputDecoration(labelText: 'Subject'))),
+        const SizedBox(width: 8),
+        GlassButton(label: 'Dekho', onTap: _busy ? null : () => _loadPath()),
+        const SizedBox(width: 6),
+        GlassButton(label: 'Banao', onTap: _busy ? null : () => _loadPath(build: true)),
+      ]),
+      if (p != null) ...[
+        const SizedBox(height: 6),
+        Text(_s(p['say']), style: const TextStyle(fontSize: 12.5)),
+        const SizedBox(height: 6),
+        for (final c in _list(p['chapters']))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(children: [
+              Icon(
+                  switch (_s(c['state'])) { 'passed' => Icons.check_circle_rounded, 'current' => Icons.play_circle_rounded, _ => Icons.lock_rounded },
+                  size: 18,
+                  color: switch (_s(c['state'])) { 'passed' => C.ok, 'current' => C.accent, _ => C.muted }),
+              const SizedBox(width: 6),
+              Expanded(child: Text(_s(c['chapter']), style: const TextStyle(fontSize: 13))),
+              Text('${_s(c['mastery'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+              if (c['due'] == true) const Padding(padding: EdgeInsets.only(left: 6), child: Pill('REVISION', fg: C.warn)),
+            ]),
+          ),
+      ],
+      const SizedBox(height: 12),
+    ]);
+  }
+
   Future<void> _loadProgress() async {
     final r = await _call('GET', '/api/guru/learners/$_ref/progress');
     if (r != null) setState(() => _progress = r);
@@ -275,9 +321,15 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
 
   Widget _pragati() {
     final p = _progress;
-    if (p == null) return GlassButton(label: 'Pragati dekho', icon: Icons.insights_rounded, onTap: _loadProgress);
+    if (p == null) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _pathBox(),
+        GlassButton(label: 'Pragati dekho', icon: Icons.insights_rounded, onTap: _loadProgress),
+      ]);
+    }
     final w = _map(p['week']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _pathBox(),
       Glass(child: Text('Is hafte: ${_s(w['minutes'])} min, ${_s(w['attempts'])} sawaal'
           '${w['accuracy'] != null ? ', ${((w['accuracy'] as num) * 100).round()}% sahi' : ''}',
           style: const TextStyle(fontWeight: FontWeight.w700))),

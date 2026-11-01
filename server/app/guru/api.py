@@ -30,7 +30,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.put("/settings")
     async def put_settings(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
-        return await run(G.save_settings, tenant, "owner", **{k: b.get(k) for k in ("day_minutes", "exam_mode", "report_weekday", "language")})
+        return await run(G.save_settings, tenant, "owner", **{k: b.get(k) for k in ("day_minutes", "exam_mode", "report_weekday", "language", "strategy",
+                                                                       "exam_date", "gate", "gate_attempts", "grounded") if k in b})
 
     @r.post("/sessions")
     async def post_session(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -67,6 +68,15 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.get("/learners/{ref}/progress")
     async def get_progress(ref: str, tenant: str = Depends(current_tenant)):
         return await run(G.progress, tenant, ref)
+
+    @r.get("/learners/{ref}/path")
+    async def get_path(ref: str, subject: str = "", tenant: str = Depends(current_tenant)):
+        return await run(G.path_view, tenant, ref, subject)
+
+    @r.post("/learners/{ref}/path")
+    async def post_path(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(G.build_path, tenant, ref, str(b.get("subject") or ""), str(b.get("grade") or ""), b.get("chapters"))
 
     @r.post("/learners/{ref}/report")
     async def post_report(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

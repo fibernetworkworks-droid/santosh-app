@@ -128,3 +128,57 @@ def next_review(interval_days: int, result: float, today: date) -> tuple[int, da
 
 def target_difficulty(score: float) -> str:
     return "easy" if score < 0.4 else ("medium" if score < 0.75 else "hard")
+
+
+# ---------------------------------------------------------------- 2.1 mastery with a confidence cap (after DeepTutor,
+# Apache-2.0: learning/mastery.py) - recent answers count more, and one or two lucky answers cannot "master" a topic
+RECENCY = (0.5, 0.7, 0.85, 0.95, 1.0)
+CONFIDENCE_CAP = {1: 0.5, 2: 0.8}
+
+
+def compute_mastery(results: list[float]) -> float:
+    """0..1 from a topic's checked answers in order (each 0..1, partial credit allowed)."""
+    if not results:
+        return 0.0
+    recent = results[-len(RECENCY):]
+    w = RECENCY[-len(recent):]
+    score = sum(wi * max(0.0, min(1.0, float(r))) for r, wi in zip(recent, w)) / sum(w)
+    return round(min(score, CONFIDENCE_CAP.get(len(results), 1.0)), 4)
+
+
+def credit(score: float, hints: int) -> float:
+    """A hint-assisted answer earns less (20% per hint, at most 60% off)."""
+    return max(0.0, min(1.0, score)) * (1.0 - min(0.6, 0.2 * max(0, hints)))
+
+
+# ---------------------------------------------------------------- 2.1 SM-2 revision (after DeepTutor's services/practice/
+# scheduler.py, Apache-2.0) in whole days, with an exam window that squeezes gaps to fit before her exam date
+def rating(score: float, hints: int) -> str:
+    if score < 0.5:
+        return "again"
+    if score < 0.8:
+        return "hard"
+    return "easy" if score >= 0.95 and hints == 0 else "good"
+
+
+def sm2(interval: int, ease: float, streak: int, lapses: int, rate: str, cramming: bool = False) -> tuple[int, float, int, int]:
+    if rate == "again":
+        return (0 if cramming else 1), max(1.3, ease - 0.2), 0, lapses + 1
+    if rate == "hard":
+        return max(1, round(interval * 1.2)), max(1.3, ease - 0.15), 0, lapses
+    iv = 3 if streak == 0 or interval <= 1 else round(interval * ease)
+    if rate == "easy":
+        iv, ease = round(iv * 1.3), min(3.0, ease + 0.15)
+    return min(365, max(1, iv)), ease, streak + 1, lapses
+
+
+def fit_exam(interval: int, today: date, exam: date | None) -> int:
+    """Before an exam, a revision never lands after it: at most a third of the days left (so it comes round again)."""
+    if not exam or exam <= today:
+        return interval
+    left = (exam - today).days
+    return max(0 if left <= 3 else 1, min(interval, max(1, left // 3)))
+
+
+def cramming(strategy: str, today: date, exam: date | None) -> bool:
+    return strategy == "cramming" or bool(exam and today < exam <= today + timedelta(days=45))
