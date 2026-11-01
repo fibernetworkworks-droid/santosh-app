@@ -40,7 +40,7 @@ def handler(req: httpx.Request) -> httpx.Response:
     if u.startswith("https://api.instagram.com/oauth/access_token"):
         body = parse_qs(req.content.decode())
         assert body["code"] == ["IGCODE"] and body["client_secret"] == ["igsecret"]
-        return httpx.Response(200, json={"access_token": "IG_SHORT", "user_id": 1789, "permissions": "instagram_business_basic,instagram_business_manage_insights"})
+        return httpx.Response(200, json={"access_token": "IG_SHORT", "user_id": 1789, "permissions": "instagram_business_basic,instagram_business_manage_insights,instagram_business_content_publish"})
     if u.startswith("https://graph.instagram.com/access_token"):
         return httpx.Response(200, json={"access_token": "IG_LONG", "token_type": "bearer", "expires_in": 5184000})
     if u.startswith("https://graph.instagram.com/refresh_access_token"):
@@ -151,7 +151,7 @@ def test_connect_instagram_reads_posts_baseline_and_calendar(social):
     qs = parse_qs(p.query)
     assert p.netloc == "www.instagram.com" and qs["client_id"] == ["igapp"]
     assert qs["redirect_uri"] == ["https://hoola.test/api/social/instagram/callback"]
-    assert "instagram_business_content_publish" not in qs["scope"][0]       # Phase 1 asks for read access only
+    assert "instagram_business_content_publish" in qs["scope"][0]           # v0.354 Phase 2 asks to post too (her tap per post)
     st = _state_from(url)
     r = D.finish_link("instagram", "IGCODE#_", st, background=False)
     assert r["accounts"] == ["@sharmadental"]
@@ -276,10 +276,10 @@ def test_scheduler_runs_jobs_on_her_clock(social):
     D.finish_link("instagram", "IGCODE", _state_from(D.connect_url(T, "instagram")), background=False)
     ist = timezone(timedelta(hours=5, minutes=30))
     monday9 = datetime(2026, 11, 2, 9, 30, tzinfo=ist)
-    assert set(D.due_jobs(T, monday9)) == {"hourly", "daily", "weekly"}
+    assert set(D.due_jobs(T, monday9)) == {"publish", "hourly", "daily", "weekly"}      # v0.354 publish = every sweep
     done = D.run_due(at=monday9, force=True)
-    assert {j for _, j in done} == {"hourly", "daily", "weekly"}
-    assert D.due_jobs(T, monday9 + timedelta(minutes=10)) == []
+    assert {j for _, j in done} == {"publish", "hourly", "daily", "weekly"}
+    assert D.due_jobs(T, monday9 + timedelta(minutes=10)) == ["publish"]
     from app.employee import hire
     hire.pause(T, "social")
     assert D.run_due(at=monday9 + timedelta(hours=2), force=True) == []        # paused = no jobs

@@ -6872,14 +6872,78 @@ def social_post_edit(pid: str, body: dict, tenant: str = Depends(current_tenant)
                         hook=b.get("hook"), slot=b.get("slot"), hashtags=b.get("hashtags"))
 
 
+@app.post("/api/social/media", dependencies=[Depends(require_key)])
+async def social_media_upload(file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
+    """v0.354 her photo / video for a post (the bytes must really be a picture / MP4; pictures kept as JPEG)."""
+    from .social import publish as SP
+    data = await file.read()
+    return await asyncio.to_thread(_social_call, SP.add_asset, tenant, data, file.filename or "")
+
+
+@app.post("/api/social/posts/{pid}/media", dependencies=[Depends(require_key)])
+def social_post_media(pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .social import publish as SP
+    ids = [str(x) for x in (body or {}).get("assets") or []]
+    return _social_call(SP.attach, tenant, pid, ids, append=not bool((body or {}).get("replace")))
+
+
+@app.delete("/api/social/posts/{pid}/media/{aid}", dependencies=[Depends(require_key)])
+def social_post_media_remove(pid: str, aid: str, tenant: str = Depends(current_tenant)):
+    from .social import publish as SP
+    return _social_call(SP.detach, tenant, pid, aid)
+
+
+@app.post("/api/social/posts/{pid}/poster", dependencies=[Depends(require_key)])
+async def social_post_poster(pid: str, tenant: str = Depends(current_tenant)):
+    """v0.354 a poster for this post from her Brand kit (final quality, no PROOF mark), attached to the post."""
+    from .social import publish as SP
+    return await asyncio.to_thread(_social_call, SP.make_poster, tenant, pid)
+
+
+@app.post("/api/social/posts/{pid}/publish", dependencies=[Depends(require_key)])
+def social_post_publish(pid: str, tenant: str = Depends(current_tenant)):
+    """v0.354 Publish now = her tap is her OK for exactly this post. Checks first (here, so she sees why at once), then
+    sends in the background (a Reel can take a minute while Instagram processes it); the result lands on the post."""
+    import threading
+    from .social import desk as social
+    from .social import publish as SP
+    with social.session() as s:
+        p = s.get(social.SocialPost, pid)
+        if p is None or p.tenant_id != tenant:
+            raise HTTPException(404, "Yeh post nahi mila.")
+        bad = SP.problems(p)
+    if bad:
+        raise HTTPException(400, " ".join(bad))
+
+    def _go():
+        try:
+            SP.publish_post(tenant, pid, by_tap=True)
+        except social.SocialError as e:
+            social._event(tenant, "alert", "bad", f"Could not post: {str(e)[:200]}")
+    threading.Thread(target=_go, daemon=True).start()
+    return {"started": pid}
+
+
+@app.get("/api/social/media/{aid}")
+def social_media_file(aid: str, e: str = "", s: str = ""):
+    """The picture / video behind a short-lived signed link (Instagram / Facebook fetch it from here while publishing)."""
+    from .social import desk as social
+    from .social import publish as SP
+    try:
+        path, mime = SP.open_signed(aid, e, s)
+    except social.SocialError as err:
+        raise HTTPException(404, str(err))
+    return FileResponse(path, media_type=mime)
+
+
 @app.post("/api/social/run/{job}", dependencies=[Depends(require_key)])
 def social_run(job: str, tenant: str = Depends(current_tenant)):
     """'Run now' on the desk: first check / refresh numbers / weekly note / rewrite the calendar draft (background)."""
     import threading
     from .employee import hire
     from .social import desk as social
-    if job not in ("first", "hourly", "daily", "weekly", "plan"):
-        raise HTTPException(404, "job: first | hourly | daily | weekly | plan")
+    if job not in ("first", "hourly", "daily", "weekly", "plan", "publish"):
+        raise HTTPException(404, "job: first | hourly | daily | weekly | plan | publish")
     if not hire.is_hired(tenant, social.KEY):
         raise HTTPException(400, "Social Media Manager abhi hired nahi hai.")
     if not social.accounts(tenant):

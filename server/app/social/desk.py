@@ -109,9 +109,15 @@ class SocialPost(Base):
     cta: Mapped[str] = mapped_column(String(160), default="")
     language: Mapped[str] = mapped_column(String(20), default="")
     occasion: Mapped[str] = mapped_column(String(80), default="")
-    status: Mapped[str] = mapped_column(String(12), default="draft")
+    status: Mapped[str] = mapped_column(String(12), default="draft")   # draft | approved | skipped | publishing | published | failed | missed
     source: Mapped[str] = mapped_column(String(8), default="rules")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    media: Mapped[str | None] = mapped_column(Text, nullable=True)               # v0.354 [SocialAsset ids]
+    approved_hash: Mapped[str | None] = mapped_column(String(40), nullable=True)  # v0.354 exactly what she approved
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)              # v0.354 {platform: {id, link} | {error}}
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class SocialEvent(Base):
@@ -125,7 +131,7 @@ class SocialEvent(Base):
 
 
 _READY: set[int] = set()
-TABLES = (SocialAccount, SocialMedia, SocialDesk, SocialPost, SocialEvent)
+TABLES = (SocialAccount, SocialMedia, SocialDesk, SocialPost, SocialEvent)   # + publish.SocialAsset (v0.354)
 
 
 def ensure_tables() -> None:
@@ -350,6 +356,7 @@ def accounts(tenant: str) -> list[dict[str, Any]]:
     with session() as s:
         return [{"id": a.id, "platform": a.platform, "handle": a.handle, "name": a.name, "picture": a.picture, "kind": a.kind,
                  "followers": a.followers, "status": a.status, "error": a.last_error,
+                 "can_post": a.platform != "instagram" or not a.scopes or M.IG_PUBLISH_SCOPE in (a.scopes or "").split(","),
                  "expires_at": as_utc(a.expires_at).isoformat() if a.expires_at else "",
                  "last_sync": as_utc(a.last_sync).isoformat() if a.last_sync else ""}
                 for a in s.scalars(select(SocialAccount).where(SocialAccount.tenant_id == tenant).order_by(SocialAccount.connected_at)).all()]
@@ -648,8 +655,30 @@ def calendar(tenant: str) -> list[dict[str, Any]]:
     with session() as s:
         return [{"id": p.id, "slot": p.slot, "platforms": p.platforms.split(","), "format": p.fmt, "pillar": p.pillar,
                  "hook": p.hook, "caption": p.caption, "hashtags": _j(p.hashtags, []), "visual": p.visual, "cta": p.cta,
-                 "occasion": p.occasion, "status": p.status, "source": p.source}
+                 "occasion": p.occasion, "status": p.status, "source": p.source, "media": _media_views(_j(p.media, [])),
+                 "result": _j(p.result, {}), "error": p.error or "", "problems": _problems(p) if p.status in ("draft", "approved", "failed") else []}
                 for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant).order_by(SocialPost.slot)).all()]
+
+
+def _media_views(ids: list[str]) -> list[dict[str, Any]]:
+    from .publish import SocialError as _E, asset_view
+    out = []
+    for a in ids:
+        try:
+            out.append(asset_view(a))
+        except _E:
+            continue
+    return out
+
+
+def _problems(p) -> list[str]:
+    from .publish import problems
+    return problems(p)
+
+
+def _stamp_ok(p) -> None:
+    from .publish import post_hash
+    p.approved_hash = post_hash(p)
 
 
 def approve_calendar(tenant: str) -> dict[str, Any]:
@@ -658,9 +687,10 @@ def approve_calendar(tenant: str) -> dict[str, Any]:
     with session() as s:
         for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant, SocialPost.status == "draft")).all():
             p.status = "approved"
+            _stamp_ok(p)                           # v0.354 exactly this post (caption, pictures, time) is what she said yes to
             n += 1
         _desk(s, tenant).calendar_status = "approved"
-    _event(tenant, "note", "ok", f"You approved the calendar ({n} posts). Posting comes in the next phase; for now copy them from the desk.")
+    _event(tenant, "note", "ok", f"You approved the calendar ({n} posts). Each goes out at its time once it has its picture; a post you change needs your OK again.")
     return {"approved": n}
 
 
@@ -683,12 +713,17 @@ def set_post(tenant: str, post_id: str, status: str = "", caption: str | None = 
             except ValueError:
                 raise SocialError("slot: YYYY-MM-DDTHH:MM")
             p.slot, edited = slot[:16], True
+        if p.status in ("published", "publishing"):
+            raise SocialError("Yeh post ja chuka hai; ise badla nahi ja sakta.")
         if status:
             if status not in POST_STATUS:
                 raise SocialError("status: draft | approved | skipped")
             p.status = status
-        elif edited and p.status == "approved":
-            p.status = "draft"                     # an edit after approval needs her OK again
+            p.approved_hash = ""
+            if status == "approved":
+                _stamp_ok(p)
+        elif edited and p.status in ("approved", "failed", "missed"):
+            p.status, p.approved_hash = "draft", ""   # an edit after approval needs her OK again
         return {"id": p.id, "status": p.status}
 
 
@@ -823,7 +858,8 @@ def kpis(base: dict[str, Any], latest: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def schedule_view(stamps: dict[str, str]) -> list[dict[str, str]]:
-    return [{"job": "Check connections, renew Instagram tokens", "every": "Every hour", "last": stamps.get("hourly", "")},
+    return [{"job": "Post approved posts at their time", "every": "Every few minutes", "last": stamps.get("publish", "")},
+            {"job": "Check connections, renew Instagram tokens", "every": "Every hour", "last": stamps.get("hourly", "")},
             {"job": "Fresh numbers for your recent posts", "every": "Every day, 7 am", "last": stamps.get("daily", "")},
             {"job": "What worked this week", "every": "Every Monday", "last": stamps.get("weekly", "")}]
 
@@ -860,7 +896,7 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
         has_acc = s.scalars(select(SocialAccount.id).where(SocialAccount.tenant_id == tenant)).first() is not None
     if not has_acc:
         return []
-    out = []
+    out = ["publish"] if state == "ready" else []      # v0.354 every sweep (~4 min): approved posts whose time has come
     if state in ("new", "error"):
         out.append("first")
     last_h = stamps.get("hourly", "")
@@ -877,9 +913,11 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
 def run_job(tenant: str, job: str, at: datetime | None = None) -> dict[str, Any]:
     from ..life import tz_of
     local = (at or datetime.now(tz_of(tenant))).astimezone(tz_of(tenant))
-    fn = {"first": first_run, "hourly": watch, "daily": daily, "weekly": weekly, "plan": build_plan}.get(job)
+    from .publish import run_publisher
+    fn = {"first": first_run, "hourly": watch, "daily": daily, "weekly": weekly, "plan": build_plan,
+          "publish": run_publisher}.get(job)
     if fn is None:
-        raise SocialError("job: first | hourly | daily | weekly | plan")
+        raise SocialError("job: first | hourly | daily | weekly | plan | publish")
     res = fn(tenant)
     with session() as s:
         d = _desk(s, tenant)

@@ -11,6 +11,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
@@ -779,8 +780,39 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
         'Saved. Now connect Instagram or your Facebook Page.');
   }
 
+  Future<void> _addPhoto(String id) async {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90, maxWidth: 1440);
+    if (x == null) return;
+    final bytes = await x.readAsBytes();
+    await _call(() async {
+      final a = await widget.app.api!.socialUpload(x.name, bytes);
+      return widget.app.api!.socialAttach(id, [_s(a['id'])]);
+    }, 'Photo added. Approve the post again when it looks right.');
+  }
+
+  Future<void> _publish(Map<String, dynamic> p) async {
+    final where = ((p['platforms'] as List?) ?? []).map((x) => _plat[x] ?? x).join(' and ');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Post now?'),
+        content: Text('This goes out on $where exactly as shown, to everyone who follows you.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Post now')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await _call(() => widget.app.api!.socialPublish(_s(p['id'])), 'Posting… the link appears here in a minute.');
+    Timer(const Duration(seconds: 6), _load);
+  }
+
   Widget _post(Map<String, dynamic> p) {
     final st = _s(p['status']);
+    final done = st == 'published' || st == 'publishing';
+    final res = Map<String, dynamic>.from((p['result'] as Map?) ?? const {});
+    final probs = ((p['problems'] as List?) ?? const []).map((e) => '$e').toList();
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Glass(
@@ -790,7 +822,9 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
             Expanded(child: Text(_s(p['slot']).replaceFirst('T', '  '), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
             _Tag(_s(p['format']), C.violet),
             const SizedBox(width: 6),
-            _Tag(st == 'approved' ? 'Approved' : st == 'skipped' ? 'Skipped' : 'Draft', st == 'approved' ? C.ok : (st == 'skipped' ? C.muted : C.warn)),
+            _Tag(switch (st) { 'approved' => 'Approved', 'skipped' => 'Skipped', 'publishing' => 'Posting…', 'published' => 'Posted',
+                  'failed' => 'Not posted', 'missed' => 'Missed', _ => 'Draft' },
+                st == 'approved' || st == 'published' ? C.ok : (st == 'failed' ? C.bad : (st == 'skipped' || st == 'missed' ? C.muted : C.warn))),
           ]),
           const SizedBox(height: 4),
           Text('${((p['platforms'] as List?) ?? []).map((x) => _plat[x] ?? x).join(' + ')}${_s(p['pillar']).isEmpty ? '' : ' · ${_s(p['pillar'])}'}'
@@ -811,9 +845,33 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
               ],
             ),
           ),
-          Wrap(spacing: 8, children: [
+          if (((p['media'] as List?) ?? const []).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Wrap(spacing: 6, children: [
+                for (final m in _list(p['media']))
+                  _s(m['kind']) == 'video'
+                      ? const SizedBox(width: 56, height: 70, child: Center(child: Icon(Icons.play_circle_outline_rounded)))
+                      : ClipRRect(borderRadius: BorderRadius.circular(8),
+                          child: Image.network(_s(m['url']), width: 56, height: 70, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const SizedBox(width: 56, height: 70))),
+              ]),
+            ),
+          for (final e in res.entries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: _s((e.value as Map?)?['link']).isNotEmpty
+                  ? InkWell(
+                      onTap: () => launchUrl(Uri.parse(_s((e.value as Map)['link'])), mode: LaunchMode.externalApplication),
+                      child: Text('Posted on ${_plat[e.key] ?? e.key} - open', style: const TextStyle(color: C.ok, fontSize: 12.5)))
+                  : Text('${_plat[e.key] ?? e.key}: ${_s((e.value as Map?)?['error'])}', style: const TextStyle(color: C.bad, fontSize: 12.5)),
+            ),
+          if (!done && probs.isNotEmpty)
+            Text(probs.join(' '), style: const TextStyle(color: C.warn, fontSize: 12.5)),
+          if (!done) Wrap(spacing: 8, children: [
             DropdownButton<String>(
-              value: st.isEmpty ? 'draft' : st,
+              value: ['draft', 'approved', 'skipped'].contains(st) ? st : null,
+              hint: Text(st, style: const TextStyle(fontSize: 13)),
               isDense: true,
               underline: const SizedBox.shrink(),
               items: const [
@@ -830,6 +888,11 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
               },
               child: const Text('Copy caption'),
             ),
+            TextButton(onPressed: _busy ? null : () => _addPhoto(_s(p['id'])), child: const Text('Add photo')),
+            TextButton(
+                onPressed: _busy ? null : () => _call(() => widget.app.api!.socialPoster(_s(p['id'])), 'Poster made from your Brand kit.'),
+                child: const Text('Make poster')),
+            FilledButton(onPressed: _busy || probs.isNotEmpty ? null : () => _publish(p), child: const Text('Publish now')),
           ]),
         ]),
       ),

@@ -2212,3 +2212,7 @@ body.albon{overflow:hidden}
 .sc-edit{width:100%;box-sizing:border-box;margin-top:8px;padding:8px;border:1px solid var(--hair);border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:14px}
 .sc-post .em-meta{flex-wrap:wrap;row-gap:4px}
 .sc-post .em-meta>b{flex-basis:100%;font-size:13.5px}
+.sc-media{display:flex;gap:6px;flex-wrap:wrap}
+.sc-media img,.sc-vid{width:64px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--hair);display:grid;place-items:center;font-size:20px;color:var(--mut)}
+.sc-up{cursor:pointer}
+.warnc{color:var(--warn,#b26b00)}

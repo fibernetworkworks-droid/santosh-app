@@ -28,9 +28,13 @@ IG_GRAPH = "https://graph.instagram.com"
 FB_DIALOG = "https://www.facebook.com"
 FB_GRAPH = "https://graph.facebook.com"
 
-# Phase 1 asks for read access only; publishing / comments / messages are asked for in later phases (App Review per permission).
+# Phase 1 read; v0.354 Phase 2 adds publishing (comments / messages come in Phase 3; App Review per permission).
 IG_SCOPES_READ = ["instagram_business_basic", "instagram_business_manage_insights"]
 FB_SCOPES_READ = ["pages_show_list", "pages_read_engagement", "read_insights", "business_management"]
+IG_SCOPES = IG_SCOPES_READ + ["instagram_business_content_publish"]
+FB_SCOPES = FB_SCOPES_READ + ["pages_manage_posts", "publish_video"]
+IG_PUBLISH_SCOPE = "instagram_business_content_publish"
+_sleep = __import__("time").sleep               # tests swap this out (container polling)
 
 
 class MetaError(Exception):
@@ -92,7 +96,7 @@ def _req(method: str, url: str, **kw: Any) -> dict[str, Any]:
 def ig_auth_url(state: str, scopes: list[str] | None = None) -> str:
     st = get_settings()
     q = {"client_id": st.instagram_app_id, "redirect_uri": redirect_uri("instagram"), "response_type": "code",
-         "scope": ",".join(scopes or IG_SCOPES_READ), "state": state}
+         "scope": ",".join(scopes or IG_SCOPES), "state": state}
     return IG_AUTH + "?" + urlencode(q)
 
 
@@ -171,7 +175,7 @@ def fb_auth_url(state: str) -> str:
     if st.meta_login_config_id:
         q["config_id"] = st.meta_login_config_id          # the configuration holds the permissions + asset (Page) picker
     else:
-        q["scope"] = ",".join(FB_SCOPES_READ)
+        q["scope"] = ",".join(FB_SCOPES)
     return f"{FB_DIALOG}/{_v()}/dialog/oauth?" + urlencode(q)
 
 
@@ -246,3 +250,83 @@ def parse_signed_request(signed: str) -> dict[str, Any]:
         if secret and hmac.compare_digest(sig, hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).digest()):
             return payload
     raise MetaError("signed_request ka signature mel nahi khaata.")
+
+
+# ---------------------------------------------------------------- v0.354 publishing (Phase 2) - only ever called for a post she approved
+def ig_publish_limit(ig_user: str, token: str) -> dict[str, int]:
+    """How many API posts this account has used in the moving 24 hours, and the cap (Meta: 50; read it, never assume)."""
+    js = _req("GET", f"{IG_GRAPH}/{_v()}/{ig_user}/content_publishing_limit", params={"fields": "quota_usage,config",
+                                                                                      "access_token": token})
+    row = (js.get("data") or [{}])[0]
+    return {"used": int(row.get("quota_usage") or 0), "total": int((row.get("config") or {}).get("quota_total") or 50)}
+
+
+def ig_container(ig_user: str, token: str, **params: Any) -> str:
+    js = _req("POST", f"{IG_GRAPH}/{_v()}/{ig_user}/media", data={**{k: v for k, v in params.items() if v not in (None, "")},
+                                                                 "access_token": token})
+    if not js.get("id"):
+        raise MetaError("Instagram ne post ka dabba (container) nahi banaya.")
+    return str(js["id"])
+
+
+def ig_wait(container: str, token: str, tries: int = 40, every: float = 5.0) -> None:
+    """Videos / Reels are processed by Instagram before they can be published: wait for FINISHED (max ~3 minutes)."""
+    for _ in range(tries):
+        js = _req("GET", f"{IG_GRAPH}/{_v()}/{container}", params={"fields": "status_code,status", "access_token": token})
+        code = str(js.get("status_code") or "")
+        if code in ("FINISHED", "PUBLISHED"):
+            return
+        if code in ("ERROR", "EXPIRED"):
+            raise MetaError(f"Instagram ne video nahi li: {str(js.get('status') or code)[:160]}")
+        _sleep(every)
+    raise MetaError("Instagram video ko taiyaar karne mein bahut der laga raha hai; thodi der baad dobara.")
+
+
+def ig_publish(ig_user: str, token: str, container: str) -> str:
+    js = _req("POST", f"{IG_GRAPH}/{_v()}/{ig_user}/media_publish", data={"creation_id": container, "access_token": token})
+    if not js.get("id"):
+        raise MetaError("Instagram ne post publish nahi kiya.")
+    return str(js["id"])
+
+
+def ig_permalink(media_id: str, token: str) -> str:
+    try:
+        return str(_req("GET", f"{IG_GRAPH}/{_v()}/{media_id}", params={"fields": "permalink", "access_token": token}).get("permalink") or "")
+    except MetaError:
+        return ""
+
+
+def fb_photo(page: str, token: str, url: str, message: str) -> str:
+    js = _req("POST", f"{FB_GRAPH}/{_v()}/{page}/photos", data={"url": url, "message": message, "access_token": token})
+    return str(js.get("post_id") or js.get("id") or "")
+
+
+def fb_photos_post(page: str, token: str, urls: list[str], message: str) -> str:
+    """Several pictures in one Page post: upload each unpublished, then one feed post that carries them."""
+    ids = []
+    for u in urls[:10]:
+        js = _req("POST", f"{FB_GRAPH}/{_v()}/{page}/photos", data={"url": u, "published": "false", "access_token": token})
+        ids.append(str(js.get("id") or ""))
+    data = {"message": message, "access_token": token}
+    for i, pid in enumerate(i for i in ids if i):
+        data[f"attached_media[{i}]"] = json.dumps({"media_fbid": pid})
+    return str(_req("POST", f"{FB_GRAPH}/{_v()}/{page}/feed", data=data).get("id") or "")
+
+
+def fb_text(page: str, token: str, message: str, link: str = "") -> str:
+    data = {"message": message, "access_token": token}
+    if link:
+        data["link"] = link
+    return str(_req("POST", f"{FB_GRAPH}/{_v()}/{page}/feed", data=data).get("id") or "")
+
+
+def fb_video(page: str, token: str, url: str, description: str) -> str:
+    js = _req("POST", f"{FB_GRAPH}/{_v()}/{page}/videos", data={"file_url": url, "description": description, "access_token": token})
+    return str(js.get("id") or "")
+
+
+def fb_permalink(post_id: str, token: str) -> str:
+    try:
+        return str(_req("GET", f"{FB_GRAPH}/{_v()}/{post_id}", params={"fields": "permalink_url", "access_token": token}).get("permalink_url") or "")
+    except MetaError:
+        return ""
