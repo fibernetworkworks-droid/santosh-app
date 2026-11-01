@@ -15,6 +15,7 @@ from typing import Any
 from ..db import session
 from ..site import webapp as W
 from .models import AppProject
+from . import locks as LK                     # v0.383 one cross-process lock per app
 
 SEP = "::"
 MAX_PER = 12
@@ -76,7 +77,7 @@ def save(r: AppProject, pid: str, variants: Any) -> dict[str, Any]:
             vid = vid[:20] + str(len(seen))
         seen.add(vid)
         out.append({"id": vid, "name": name, "price": int(price) if price == int(price) else price})
-    with session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         t = dict(be.get("variants") or {})

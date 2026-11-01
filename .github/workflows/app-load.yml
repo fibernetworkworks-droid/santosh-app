@@ -1,0 +1,59 @@
+name: App backend on Postgres + load proof
+
+# v0.383 PAKKI NEEV (App Sahayak Pillar B): every change to the app backend runs its suites on a REAL Postgres
+# (the same code that runs on SQLite today), then the proof: 1,000 customers order a product with 300 in stock at the
+# same moment, every 4th phone retrying, against 4 server worker processes on one database - exactly 300 orders, stock
+# never below 0, one row per retried order, no server error. Also the SQLite -> Postgres move and cross-process locks.
+
+on:
+  push:
+    paths:
+      - "server/app/appmaker/**"
+      - "server/app/site/webapp.py"
+      - "server/app/db.py"
+      - "server/app/dbmove.py"
+      - "server/tests/test_v0383_pakki_neev.py"
+      - ".github/workflows/app-load.yml"
+  workflow_dispatch:
+
+jobs:
+  postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    services:
+      pg:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: hoola
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      HOOLA_TEST_PG: postgresql+psycopg://postgres:hoola@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: server/requirements.txt
+      - name: Install
+        working-directory: server
+        run: pip install -q -r requirements.txt pytest pytest-xdist pytest-asyncio
+      - name: App backend suites on Postgres
+        working-directory: server
+        run: |
+          python -m pytest -q -p no:cacheprovider -n 4 tests/test_v0383_pakki_neev.py tests/test_v0382_dimaag.py \
+            tests/test_v0357_stock.py tests/test_v0358_coupon.py tests/test_v0371_slot.py tests/test_v0359_khata.py \
+            tests/test_v0355_gst_bill.py tests/test_v0352_kaam_baanto.py tests/test_v0314_app_backend.py
+      - name: Her move - a SQLite Hoola database copied into a fresh Postgres, every count equal
+        working-directory: server
+        env:
+          HOOLA_TEST_PG: ""
+          HOOLA_PG_ADMIN: postgresql+psycopg://postgres:hoola@127.0.0.1:5432/postgres
+        run: python -m pytest -q -p no:cacheprovider tests/test_v0383_pakki_neev.py -k "dbmove or sqlite"
+      - name: The proof - 1,000 customers, 4 worker processes, one Postgres
+        working-directory: server
+        env:
+          HOOLA_LOAD: "1"
+        run: python -m pytest -q -s -p no:cacheprovider tests/test_v0383_pakki_neev.py -k thousand

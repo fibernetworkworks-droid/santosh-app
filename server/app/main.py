@@ -9876,6 +9876,64 @@ async def apps_turant_set(ref: str, body: dict, tenant: str = Depends(current_te
                                    else TU.disable(_be_owner(tenant, ref)))
 
 
+# ---- v0.383 PAKKI NEEV: her app's data - backups, point-in-time restore (her tap), export, usage + limits
+@app.get("/api/apps/{ref}/backups", dependencies=[Depends(require_key)])
+async def apps_backups(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import backup as BK
+    return await asyncio.to_thread(_be_owner_call, lambda: {"backups": BK.snapshots(_be_owner(tenant, ref))})
+
+
+@app.post("/api/apps/{ref}/backups/now", dependencies=[Depends(require_key)])
+async def apps_backup_now(ref: str, tenant: str = Depends(current_tenant)):
+    """A snapshot now (her button)."""
+    from .appmaker import backup as BK
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.snapshot(_be_owner(tenant, ref), "by hand", "manual"))
+
+
+@app.post("/api/apps/{ref}/backups/preview", dependencies=[Depends(require_key)])
+async def apps_backup_preview(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{at: "YYYY-MM-DDTHH:MM" IST} or {name}: what a restore would change - nothing is changed."""
+    from .appmaker import backup as BK
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.preview(_be_owner(tenant, ref), str(b.get("at") or ""), str(b.get("name") or "")))
+
+
+@app.post("/api/apps/{ref}/backups/restore", dependencies=[Depends(require_key)])
+async def apps_backup_restore(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: the app's rows back to a snapshot {name} or a minute {at} (a safety snapshot is taken first)."""
+    from .appmaker import backup as BK
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.restore(_be_owner(tenant, ref), str(b.get("at") or ""),
+                                                                      str(b.get("name") or ""), bool(b.get("members"))))
+
+
+@app.get("/api/apps/{ref}/export", dependencies=[Depends(require_key)])
+async def apps_export(ref: str, tenant: str = Depends(current_tenant)):
+    """Her data as a ZIP: a CSV per list + data.json + accounts (never a password)."""
+    from .appmaker import backup as BK
+
+    def go():
+        r = _be_owner(tenant, ref)
+        return r, BK.export(r)
+    r, data = await asyncio.to_thread(_be_owner_call, go)
+    name = re.sub(r"[^A-Za-z0-9_-]+", "-", f"{r.name or 'app'}-{r.number}-data").strip("-") + ".zip"
+    return Response(data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{name}"',
+                                                                  "Cache-Control": "no-store"})
+
+
+@app.get("/api/apps/{ref}/usage", dependencies=[Depends(require_key)])
+async def apps_usage(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import meter as MT
+    return await asyncio.to_thread(_be_owner_call, lambda: MT.usage(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/usage", dependencies=[Depends(require_key)])
+async def apps_usage_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her limits {rows, files_mb, writes_day} (never above the ceiling, never below what is used)."""
+    from .appmaker import meter as MT
+    return await asyncio.to_thread(_be_owner_call, lambda: MT.set_limits(_be_owner(tenant, ref), body or {}))
+
+
 # ---- v0.382 DIMAAG: her side of the app's logic (Opus drafts, the checker proves, HER tap applies)
 @app.get("/api/apps/{ref}/logic", dependencies=[Depends(require_key)])
 async def apps_logic(ref: str, tenant: str = Depends(current_tenant)):

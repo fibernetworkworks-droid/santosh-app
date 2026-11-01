@@ -2359,3 +2359,8 @@ body.albon{overflow:hidden}
 .stlogic .stmems li{flex-wrap:wrap}
 .stlogic details{margin-top:10px;font-size:13px}
 .stlogic textarea[name=j]{font-family:ui-monospace,monospace;font-size:12.5px}
+/* v0.383 PAKKI NEEV: the data safety box (usage meters) */
+.stsafe .stmeter{flex:1;height:6px;border-radius:4px;background:var(--line);overflow:hidden;min-width:60px}
+.stsafe .stmeter i{display:block;height:100%;background:var(--pri)}
+.stsafe .stmems li{flex-wrap:wrap}
+.stsafe details{margin-top:10px;font-size:13px}

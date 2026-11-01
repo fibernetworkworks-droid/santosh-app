@@ -16,6 +16,7 @@ from typing import Any
 from ..db import now, session
 from ..site import webapp as W
 from .models import AppProject
+from . import locks as LK                     # v0.383 one cross-process lock per app
 
 CODE = re.compile(r"^[A-Z0-9]{4,16}$")
 MAX_CODES = 50
@@ -70,7 +71,7 @@ def save(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
     code = re.sub(r"\s+", "", str(body.get("code") or "")).upper()
     if not CODE.match(code):
         raise CouponError("Code 4-16 akshar ka, sirf A-Z aur 0-9 (jaise DIWALI10).")
-    with _LOCK, session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         cs = dict(be.get("coupons") or {})
@@ -153,7 +154,7 @@ def apply(r: AppProject, code: str, subtotal: float, w: W.Who) -> tuple[float, d
     code = re.sub(r"\s+", "", str(code or "")).upper()
     if not code:
         return 0.0, {}
-    with _LOCK, session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         cs = dict(be.get("coupons") or {})
@@ -177,7 +178,7 @@ def apply(r: AppProject, code: str, subtotal: float, w: W.Who) -> tuple[float, d
 def give_back(r: AppProject, code: str, who: str) -> None:
     """A cancelled order gives its coupon use back (the customer may use it again)."""
     from . import backend as BE
-    with _LOCK, session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         cs = dict(be.get("coupons") or {})

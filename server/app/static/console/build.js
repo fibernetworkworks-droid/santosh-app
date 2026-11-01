@@ -964,6 +964,46 @@ window.HoolaBuild = function (C) {
       });
     };
     try { drawL(await api('GET', base(o) + '/logic')); } catch (er) { lbox.remove(); }
+    // v0.383 PAKKI NEEV: her app's data is safe - how much it uses (and its limits), backups, a restore to any minute
+    // (preview first, then HER tap), and the whole data as a ZIP.
+    const sbox = document.createElement('section'); sbox.className = 'stcol stsafe'; box.appendChild(sbox);
+    const drawS = async () => {
+      const [u, b] = await Promise.all([api('GET', base(o) + '/usage'), api('GET', base(o) + '/backups')]);
+      const lim = M(u.limits), pc = M(u.percent);
+      const bar = (k, used, label) => `<li><span>${label}: ${N(used).toLocaleString('en-IN')} / ${N(lim[k]).toLocaleString('en-IN')}</span><span class="stmeter"><i style="width:${Math.min(100, N(pc[k]))}%"></i></span><span>${N(pc[k])}%</span></li>`;
+      sbox.innerHTML = `<h4>Data safety <span>${L(b.backups).length} backups · ${N(u.backups_mb)} MB</span></h4>
+        <p class="stnote">Every change to this app's data is written to a journal; a full backup is taken every day and before every risky change. You can bring the data back to any minute. Nothing changes until you press Restore.</p>
+        <ul class="stmems">${bar('rows', u.rows, 'Entries')}${bar('files_mb', u.files_mb, 'Files (MB)')}${bar('writes_day', u.writes_today, 'Writes today')}</ul>
+        <form class="stapp" data-slim autocomplete="off"><div class="row"><label>Entries limit <input name="rows" inputmode="numeric" value="${N(lim.rows)}"></label><label>Files MB <input name="files_mb" inputmode="numeric" value="${N(lim.files_mb)}"></label><label>Writes a day <input name="writes_day" inputmode="numeric" value="${N(lim.writes_day)}"></label><button class="btn soft" type="submit">Save limits</button></div></form>
+        <div class="acts"><button class="btn go" type="button" data-snap>Back up now</button><button class="btn soft" type="button" data-exp>Download all data (ZIP)</button></div>
+        <form class="stapp" data-pitr autocomplete="off"><p class="stnote">Bring the data back to a moment (your time, IST):</p><div class="row"><input name="at" type="datetime-local" step="60" aria-label="Moment"><button class="btn soft" type="submit">Preview</button></div><div data-pv></div></form>
+        ${L(b.backups).length ? `<details><summary>Backups (${L(b.backups).length})</summary><ul class="stmems">${L(b.backups).slice(0, 30).map(x => `<li><span>${esc(S(x.at).slice(0, 16).replace('T', ' '))} UTC · ${esc(S(x.kind))} · ${esc(S(x.why))} · ${N(x.rows)} entries</span><button class="ib" type="button" data-rname="${esc(S(x.name))}">Restore this</button></li>`).join('')}</ul></details>` : ''}`;
+      const fl = sbox.querySelector('[data-slim]');
+      fl.addEventListener('submit', async e => { e.preventDefault(); try { await api('PUT', base(o) + '/usage', {rows: fl.rows.value, files_mb: fl.files_mb.value, writes_day: fl.writes_day.value}); toast('Limits saved.'); drawS(); } catch (er) { toast(er.message, true); } });
+      sbox.querySelector('[data-snap]').addEventListener('click', async e => { e.target.disabled = true; try { const r = await api('POST', base(o) + '/backups/now'); toast(`Backed up: ${N(r.rows)} entries.`); drawS(); } catch (er) { toast(er.message, true); e.target.disabled = false; } });
+      sbox.querySelector('[data-exp]').addEventListener('click', async e => {
+        e.target.disabled = true;
+        try { const res = await api('GET', base(o) + '/export', undefined, {raw: true}); const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = 'app-data.zip'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 30000); }
+        catch (er) { toast(er.message, true); }
+        e.target.disabled = false;
+      });
+      const doRestore = async (body, label) => {
+        if (!confirm(`Restore the app's data to ${label}? A safety backup of the data as it is now is taken first.`)) return;
+        try { const r = await api('POST', base(o) + '/backups/restore', body); toast(S(r.say)); drawS(); } catch (er) { toast(er.message, true); }
+      };
+      const fp = sbox.querySelector('[data-pitr]');
+      fp.addEventListener('submit', async e => {
+        e.preventDefault(); if (!fp.at.value) return;
+        const pv = fp.querySelector('[data-pv]');
+        try {
+          const v = await api('POST', base(o) + '/backups/preview', {at: fp.at.value});
+          pv.innerHTML = `<p class="stnote">Then: ${esc(Object.entries(M(v.lists_then)).map(([k, n]) => k + ' ' + n).join(', ') || 'nothing')}. Now: ${esc(Object.entries(M(v.lists_now)).map(([k, n]) => k + ' ' + n).join(', ') || 'nothing')}. ${N(v.come_back)} come back, ${N(v.go_away)} go away, ${N(v.change)} change.</p><button class="btn go" type="button" data-rat>Restore to ${esc(fp.at.value.replace('T', ' '))}</button>`;
+          pv.querySelector('[data-rat]').addEventListener('click', () => doRestore({at: fp.at.value}, fp.at.value.replace('T', ' ')));
+        } catch (er) { pv.innerHTML = `<p class="stnote">${esc(er.message)}</p>`; }
+      });
+      sbox.querySelectorAll('[data-rname]').forEach(btn => btn.addEventListener('click', () => doRestore({name: btn.dataset.rname}, 'that backup')));
+    };
+    try { await drawS(); } catch (er) { sbox.remove(); }
     // v0.378 BAAT: her customers' messages from the app (their words = data); she replies by her own tap
     const cbx = document.createElement('section'); cbx.className = 'stcol stchat'; box.appendChild(cbx);
     const drawC = async (v, open) => {
