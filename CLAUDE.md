@@ -161,6 +161,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   slug.split('_')[0] (wrong for 525/1694) + 'version: latest' is rejected + ok no longer defaults True; new
   `ambiguous` row state (a retry can double-post); bank_int / health_int / teamcenter caps named the WRONG rule.
   NOT VERIFIED: no live tenant has answered any of it - the connect screen still does not exist.
+- v0.393 POORA KARO: v0.389 shipped two things that could not be REACHED - `sfmeta.py` (the Salesforce Metadata
+  deploy) had NO caller at all (7 green tests, zero callers: that is how dead code hides), and the new `ambiguous`
+  row state had no way out, so a run holding one sat at `failed` for ever. Both wired: crm_arch gains
+  deploy_validate -> deploy_status -> deploy_go (checkOnly = the real dry run, her tap quick-deploys it for 10
+  days, production needs the word) + the description now says WHY Tooling is not the road; every writing desk
+  gains resolve (run, n, landed) - owner only, closes a row WITHOUT sending anything or returns it for exactly
+  ONE more attempt. Enterprise routes 6 -> 11. RULE: a module's tests passing says it works, never that anything
+  calls it - grep for a caller outside its own file before calling a feature shipped.
 - Current version: v0.392.0 (pubspec 0.392.0+436). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.
