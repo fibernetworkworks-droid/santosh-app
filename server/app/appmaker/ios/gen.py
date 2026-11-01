@@ -27,7 +27,7 @@ HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "template"
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 CODE_SCREENS = ("seller_info", "privacy", "delete_account")
-KIT_SCREENS = ("hoola_login", "hoola_account", "hoola_inbox")   # v0.340 + the updates inbox
+KIT_SCREENS = ("hoola_chat", "hoola_login", "hoola_account", "hoola_inbox")   # v0.340 + the updates inbox, v0.378 + chat
 AUTH_IDS = ("login", "signup", "register", "login_staff", "otp_login", "sign_in")
 MIN_IOS = "16.0"
 
@@ -154,7 +154,8 @@ def screens_swift(spec: dict[str, Any]) -> str:
         cases.append(f"    case {sstr(sid)}: return AnyView({view})")
     cases += ['    case "seller_info": return AnyView(SellerScreen())', '    case "privacy": return AnyView(PrivacyScreen())',
               '    case "delete_account": return AnyView(DeleteAccountScreen())', '    case "hoola_login": return AnyView(AuthScreen())',
-              '    case "hoola_account": return AnyView(AccountScreen())', '    case "hoola_inbox": return AnyView(InboxScreen())']
+              '    case "hoola_account": return AnyView(AccountScreen())', '    case "hoola_inbox": return AnyView(InboxScreen())',
+              '    case "hoola_chat": return AnyView(ChatScreen())']
     body = "\n".join(cases)
     return f'''// Made by Hoola App Sahayak from the approved design: which screens exist and which view each id opens.
 import SwiftUI

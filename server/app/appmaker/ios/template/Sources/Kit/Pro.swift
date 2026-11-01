@@ -737,3 +737,93 @@ struct SlotChange: View {
         }
     }
 }
+
+
+// ---------------------------------------------------------------- v0.378 BAAT: chat between a customer and the shop
+/// The kit's chat screen ("hoola_chat"): a customer's thread with the shop; staff see every thread and reply.
+struct ChatScreen: View {
+    @ObservedObject private var auth = Auth.shared
+    @State private var threads: [Item] = []
+    @State private var open: Item? = nil
+
+    var body: some View {
+        if !auth.signedIn {
+            Page(Words.chat) { Muted(Words.signIn) }
+        } else if !auth.isStaff {
+            ChatThread(member: "", title: Words.chat)
+        } else if let t = open {
+            ChatThread(member: t.s("member"), title: t.s("name"), onBack: { open = nil })
+        } else {
+            Page(Words.customerMessages) {
+                if threads.isEmpty { Muted(Words.nothingYet) }
+                ForEach(threads, id: \.id) { t in
+                    Button { open = t } label: {
+                        Card {
+                            Text(t.s("name") + (t.n("unread") > 0 ? " (\(Int(t.n("unread"))))" : "")).font(.headline)
+                            Muted(t.s("last"))
+                        }
+                    }.buttonStyle(.plain)
+                }
+            }
+            .task {
+                while !Task.isCancelled {
+                    let r = await Cloud.call("GET", "/chat?all=1", nil, token: auth.token)
+                    if r.ok { threads = items(r.body["threads"]).map { x in var o = x.o; o["id"] = x.s("member"); return Item(o: o) } }
+                    try? await Task.sleep(nanoseconds: 10_000_000_000)
+                }
+            }
+        }
+    }
+}
+
+struct ChatThread: View {
+    let member: String
+    let title: String
+    var onBack: (() -> Void)? = nil
+    @ObservedObject private var auth = Auth.shared
+    @State private var msgs: [Item] = []
+    @State private var text = ""
+    @State private var error = ""
+
+    private var path: String { member.isEmpty ? "/chat" : "/chat/\(member)" }
+
+    var body: some View {
+        Page(title) {
+            if let b = onBack { Button(Words.back) { b() }.buttonStyle(.bordered) }
+            if msgs.isEmpty { Muted(member.isEmpty ? Words.chatHint : Words.nothingYet) }
+            ForEach(msgs.suffix(100), id: \.id) { m in
+                let mine = m.b("staff") == auth.isStaff
+                HStack {
+                    if mine { Spacer(minLength: 40) }
+                    Card {
+                        Muted(m.s("name") + " · " + String(m.s("at").prefix(16)).replacingOccurrences(of: "T", with: " "))
+                        Text(m.s("text"))
+                    }
+                    if !mine { Spacer(minLength: 40) }
+                }
+            }
+            TextField(Words.typeMessage, text: $text, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
+                .onChange(of: text) { v in if v.count > 1000 { text = String(v.prefix(1000)) } }
+            if !error.isEmpty { Muted(error) }
+            MainButton(text: Words.send) {
+                let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !t.isEmpty else { return }
+                Task {
+                    let r = await Cloud.call("POST", path, ["text": t], token: auth.token)
+                    if r.ok { text = ""; error = ""; await load() } else { error = r.error.isEmpty ? (r.offline ? Words.offline : Words.tryAgain) : r.error }
+                }
+            }
+        }
+        .task(id: member) {
+            while !Task.isCancelled {
+                await load()
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+            }
+        }
+    }
+
+    private func load() async {
+        let r = await Cloud.call("GET", path, nil, token: auth.token)
+        if r.ok { msgs = items(r.body["messages"]) }
+    }
+}

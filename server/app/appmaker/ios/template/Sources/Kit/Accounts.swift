@@ -52,7 +52,10 @@ struct AccountScreen: View {
             } else {
                 MainButton(text: Words.signIn) { Router.shared.go("hoola_login") }
             }
-            if auth.signedIn { InboxButton() }                       // v0.340 the updates inbox
+            if auth.signedIn {                                       // v0.340 the updates inbox, v0.378 the chat
+                InboxButton()
+                MainButton(text: auth.isStaff ? Words.customerMessages : Words.chat, tonal: true) { Router.shared.go("hoola_chat") }
+            }
             Group {                                                  // (grouped: a SwiftUI builder takes 10 views)
                 KhataBlock()                                         // v0.359 udhaar: hers / who owes (staff)
                 if auth.isStaff { StatsBlock() }                     // v0.340 the staff dashboard

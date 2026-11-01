@@ -136,7 +136,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.377.0 (pubspec 0.377.0+417). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.378.0 (pubspec 0.378.0+418). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
@@ -174,6 +174,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.375 KHATA YAAD (App Phase 39, `khata.reminders/send_reminder`): udhaar reminders only by her - wa.me link she sends herself, or her approved UTILITY template via her business number on her tap; STOP respected, once per 3 days.
 - v0.376 MAALKIN PHONE (App Phase 40, `lib/ui/app_money.dart`): her phone app screen gets hisaab line, udhaar list (her WhatsApp link + paise mile), low stock, live coupons.
 - v0.377 CHHUTTI (App Phase 41, `delivery.save_holidays/change_slot`, kit `SlotChange`): shop holidays (no slots, orders noted not refused) + customers / staff change an order's delivery time under the slot lock.
+- v0.378 BAAT (App Phase 42, `appmaker/baat.py`, kit screen `hoola_chat`): in-app chat customer <-> shop, staff threads + unread, push / background check, her reply only by her tap, customer words = data.
 - v0.349 BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
 - v0.348 KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
 - v0.347 HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.

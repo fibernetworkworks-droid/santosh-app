@@ -115,6 +115,10 @@ fun AccountScreen() {
             val n = Inbox.unread.value
             Btn(Strings.inbox + if (n > 0) " ($n)" else "", kind = BtnKind.Tonal, icon = "bell", modifier = Modifier.fillMaxWidth()) { nav.go("hoola_inbox") }
         }
+        if (me != null) block {                                   // v0.378 BAAT: chat with the shop / customers' messages
+            Btn(if (Auth.isStaff) Strings.customerMessages else Strings.chat, kind = BtnKind.Tonal, icon = "chat",
+                modifier = Modifier.fillMaxWidth()) { nav.go("hoola_chat") }
+        }
         if (me != null) block { KhataBlock() }                     // v0.359 udhaar: hers / who owes (staff)
         if (me != null && Auth.isStaff) block { StatsBlock() }     // v0.340 the staff dashboard
         if (me != null && Auth.isStaff) block { StopsBlock() }     // v0.350 the open stops with a location, nearest first

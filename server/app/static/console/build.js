@@ -906,6 +906,30 @@ window.HoolaBuild = function (C) {
       if (b) b.addEventListener('click', async () => { b.disabled = true; try { drawT(await api('PUT', base(o) + '/turant', {on: b.dataset.turant === '1'})); toast('Saved. It reaches phones with the next Android build.'); } catch (er) { toast(er.message, true); b.disabled = false; } });
     };
     try { drawT(await api('GET', base(o) + '/turant')); } catch (er) { tbox.remove(); }
+    // v0.378 BAAT: her customers' messages from the app (their words = data); she replies by her own tap
+    const cbx = document.createElement('section'); cbx.className = 'stcol stchat'; box.appendChild(cbx);
+    const drawC = async (v, open) => {
+      const ts = L(v.threads); if (!ts.length) { cbx.remove(); return; }
+      let thread = '';
+      if (open) {
+        const t = await api('GET', base(o) + '/chat?member=' + encodeURIComponent(open));
+        thread = `<div class="stthread">${L(t.messages).map(m => `<p class="${m.staff ? 'me' : 'them'}"><b>${esc(S(m.name))}</b>: ${esc(S(m.text))}</p>`).join('')}</div>
+          <form class="stapp" data-reply="${esc(open)}"><div class="row"><input name="t" maxlength="1000" placeholder="Reply" aria-label="Reply"><button class="btn go" type="submit">Send</button></div></form>`;
+      }
+      cbx.innerHTML = `<h4>Customer messages <span>${N(v.unread)} unread</span></h4>
+        <ul class="stmems">${ts.map(t => `<li><button class="ib" type="button" data-thr="${esc(S(t.member))}">${esc(S(t.name))}${t.unread ? ' (' + N(t.unread) + ')' : ''}</button> <span>${esc(S(t.last))}</span></li>`).join('')}</ul>${thread}`;
+    };
+    cbx.addEventListener('click', async e => {
+      const b = e.target.closest('[data-thr]'); if (!b) return;
+      try { await drawC(await api('GET', base(o) + '/chat'), b.dataset.thr); } catch (er) { toast(er.message, true); }
+    });
+    cbx.addEventListener('submit', async e => {
+      const f = e.target.closest('[data-reply]'); if (!f) return; e.preventDefault();
+      const t = f.t.value.trim(); if (!t) return;
+      try { await api('POST', base(o) + '/chat/' + encodeURIComponent(f.dataset.reply), {text: t, her_tap: true}); await drawC(await api('GET', base(o) + '/chat'), f.dataset.reply); }
+      catch (er) { toast(er.message, true); }
+    });
+    try { await drawC(await api('GET', base(o) + '/chat')); } catch (er) { cbx.remove(); }
     // v0.375 KHATA YAAD: payment reminders for customers who owe - her own WhatsApp (link) or her approved template (her tap)
     const ybox = document.createElement('section'); ybox.className = 'stcol stkhata'; box.appendChild(ybox);
     const drawY = v => {

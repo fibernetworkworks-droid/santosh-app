@@ -618,3 +618,84 @@ fun SlotChange(coll: String, r: Item) {
         Chip(Strings.cancelWord) { open = false }
     }
 }
+
+
+// ---------------------------------------------------------------- v0.378 BAAT: chat between a customer and the shop
+/** The kit's chat screen (id "hoola_chat"): a customer sees her thread with the shop and writes; staff see every customer's
+ *  thread (unread first) and reply. Refreshes every 10 seconds while open; needs a network to send. */
+@Composable
+fun ChatScreen() {
+    if (!Auth.signedIn) {
+        Page(Strings.chat) { block { Small(Strings.loginFirst) } }
+        return
+    }
+    if (Auth.isStaff) StaffChat() else ThreadView(member = "", title = Strings.chat)
+}
+
+@Composable
+private fun StaffChat() {
+    var open by remember { mutableStateOf("") }
+    var openName by remember { mutableStateOf("") }
+    var list by remember { mutableStateOf<List<Item>>(emptyList()) }
+    if (open.isNotEmpty()) {
+        ThreadView(member = open, title = openName) { open = "" }
+        return
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val r = Cloud.call("GET", "/chat?all=1", null, Auth.token())
+            if (r.ok) list = arrList(r.body.optJSONArray("threads"))
+            kotlinx.coroutines.delay(10_000)
+        }
+    }
+    Page(Strings.customerMessages) {
+        if (list.isEmpty()) block { Small(Strings.nothingYet) }
+        list.forEach { t ->
+            block {
+                ListRow(t.s("name") + if (t.i("unread") > 0) " (${t.i("unread")})" else "", t.s("last")) { open = t.s("member"); openName = t.s("name") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThreadView(member: String, title: String, onBack: (() -> Unit)? = null) {
+    val scope = rememberCoroutineScope()
+    var msgs by remember(member) { mutableStateOf<List<Item>>(emptyList()) }
+    var text by remember(member) { mutableStateOf("") }
+    var err by remember(member) { mutableStateOf("") }
+    val path = if (member.isEmpty()) "/chat" else "/chat/$member"
+    suspend fun load() {
+        val r = Cloud.call("GET", path, null, Auth.token())
+        if (r.ok) msgs = arrList(r.body.optJSONArray("messages"))
+    }
+    LaunchedEffect(member) { while (true) { load(); kotlinx.coroutines.delay(10_000) } }
+    Page(title) {
+        if (onBack != null) block { Btn(Strings.back, kind = BtnKind.Ghost, small = true) { onBack() } }
+        if (msgs.isEmpty()) block { Small(if (member.isEmpty()) Strings.chatHint else Strings.nothingYet) }
+        msgs.takeLast(100).forEach { m ->
+            block {
+                val mineSide = m.b("staff") == Auth.isStaff
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mineSide) Arrangement.End else Arrangement.Start) {
+                    HCard(modifier = Modifier.fillMaxWidth(0.82f)) {
+                        Small(m.s("name") + " · " + m.s("at").take(16).replace("T", " "))
+                        Body(m.s("text"))
+                    }
+                }
+            }
+        }
+        block {
+            OutlinedTextField(value = text, onValueChange = { text = it.take(1000) }, modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(Strings.typeMessage) }, maxLines = 4)
+            if (err.isNotEmpty()) Small(err)
+            Btn(Strings.send, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                val t = text.trim()
+                if (t.isEmpty()) return@Btn
+                scope.launch {
+                    val r = Cloud.call("POST", path, JSONObject().put("text", t), Auth.token())
+                    if (r.ok) { text = ""; err = ""; load() } else err = r.error.ifEmpty { if (r.offline) Strings.offline else Strings.tryAgain }
+                }
+            }
+        }
+    }
+}

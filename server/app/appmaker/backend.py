@@ -828,6 +828,11 @@ def updates(r: AppProject, w: W.Who, since: str = "") -> dict[str, Any]:
             elif row.owner == w.m.id and moved:
                 items.append({"kind": "status", "coll": row.coll, "id": row.id, "title": head[:60],
                               "status": d.get("status", ""), "paid": d.get("paid", "")})
+    try:                                               # v0.378 BAAT: new chat messages for this account
+        from . import baat as BT
+        items += BT.new_for(r, w, t0n)
+    except Exception:
+        log.debug("chat updates", exc_info=True)
     STATS["updates"] += 1
     return {"now": now().isoformat(), "items": items}
 

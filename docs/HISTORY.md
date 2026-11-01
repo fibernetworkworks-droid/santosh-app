@@ -13233,3 +13233,17 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
 - Kits: Android `SlotChange(coll, r)` (Pro.kt) under the slot line on order cards: "Change time" -> GET /slots chips -> POST
   -> refresh; iPhone `SlotChange` view. Console Delivery box: holidays textarea.
 - Tests `tests/test_v0377_chhutti.py`.
+
+## v0.378.0 BAAT (App Sahayak Phase 42, owner: "START PHASE 42")
+- `appmaker/baat.py`: messages = SiteAppRow coll `_chat` owned by the customer ({by, staff, name, text, order, read}); `write`
+  (customer, rate 20 / 10 min, `_clean` 1000 chars), `mine` (her thread, marks staff replies read), `threads` (staff / her:
+  newest first, last line, unread), `thread` (marks the customer's messages read), `reply` (staff any time; the owner only with
+  her_tap), `_tell_shop` (her Hoola chat, 20 notes / hour, the customer's words quoted and marked), `new_for` (feeds
+  `backend.updates` kind chat). Pushes through `turant.later` both ways.
+- Routes: GET/POST /api/app-api/<key>/chat, GET ?all=1, GET/POST /api/app-api/<key>/chat/<member>; her side GET
+  /api/apps/<ref>/chat (?member=), POST /api/apps/<ref>/chat/<member> {text, her_tap}.
+- Kits: kit screen `hoola_chat` (KIT_SCREENS, registries on both platforms, opened by the device checks): Android
+  `ChatScreen` / `StaffChat` / `ThreadView` (10-second refresh, bubbles left / right, composer), a "Message the shop" /
+  "Customer messages" button on My account; iPhone `ChatScreen` / `ChatThread`. Console "Customer messages" (threads, open,
+  reply = her tap).
+- Tests `tests/test_v0378_baat.py`. Not done: photos in chat, per-order threads, typing indicators.

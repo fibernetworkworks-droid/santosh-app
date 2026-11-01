@@ -49,6 +49,11 @@ enum Words {
     static var inboxEmpty: String { t("No updates yet.", "अभी कोई अपडेट नहीं।", "Abhi koi update nahi.") }
     static var receipt: String { t("Receipt", "रसीद", "Raseed") }           // v0.354 RASEED
     static var invoice: String { t("Tax invoice", "टैक्स इनवॉइस", "Tax invoice") }   // v0.355 GST BILL
+    static var back: String { t("Back", "वापस", "Wapas") }
+    static var chat: String { t("Message the shop", "दुकान को संदेश", "Dukaan ko message") }   // v0.378 BAAT
+    static var customerMessages: String { t("Customer messages", "ग्राहकों के संदेश", "Graahakon ke message") }
+    static var typeMessage: String { t("Type a message", "संदेश लिखें", "Message likhiye") }
+    static var chatHint: String { t("Ask anything about your order or our products.", "अपने ऑर्डर या सामान के बारे में कुछ भी पूछें।", "Apne order ya saamaan ke baare mein kuch bhi poochhiye.") }
     static var changeTime: String { t("Change time", "समय बदलें", "Samay badlein") }   // v0.377
     static var cancelWord: String { t("Cancel", "रद्द", "Cancel") }
     static var pickSlot: String { t("Delivery time", "डिलीवरी का समय", "Delivery ka samay") }   // v0.371 SLOT
