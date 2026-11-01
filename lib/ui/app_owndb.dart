@@ -1,4 +1,4 @@
-// v0.391 APNA DATABASE: this app's data in HER own database (Supabase, Neon, AWS, Google, Azure, DigitalOcean ... any
+// v0.396 APNA DATABASE: this app's data in HER own database (Supabase, Neon, AWS, Google, Azure, DigitalOcean ... any
 // PostgreSQL-wire). Pick one of her connected databases (Profile > Postgres database), primary or copy mode, her tap
 // moves the data (backup first, counts compared); sync now / compare / disconnect (her data stays in both places).
 import 'package:flutter/material.dart';

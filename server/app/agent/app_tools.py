@@ -85,7 +85,7 @@ APP_TOOLS = [
         "whole logic on / off (nothing deleted). action=approval (owner only; approval = id from app_dekho what=logic, decision "
         "approve|reject, note) = HER decision on a waiting approval, only when she says it. action=logic_run (owner only; job = "
         "schedule name) = run a timed job now. "
-        "v0.391 APNA DATABASE - an app's data in HER OWN database (Supabase, Neon, AWS RDS / Aurora, Google Cloud SQL, "
+        "v0.396 APNA DATABASE - an app's data in HER OWN database (Supabase, Neon, AWS RDS / Aurora, Google Cloud SQL, "
         "Azure, DigitalOcean, Aiven, Render, Railway, Timescale, CockroachDB, YugabyteDB, her own PostgreSQL... 28 kinds): "
         "action=own_db (owner only) = is it linked, where (label, schema), mode (primary = the data lives there and every entry is "
         "saved there first, her edits there come back; mirror = a live copy), sync lag, last problem, the counts compared, "
@@ -328,7 +328,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
-    if action == "own_db":                                              # v0.391 APNA DATABASE (read only here)
+    if action == "own_db":                                              # v0.396 APNA DATABASE (read only here)
         if not _owner(ctx):
             raise ToolError("App ka database sirf maalkin dekh sakti hain.")
         from ..appmaker import backend as BE

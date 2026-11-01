@@ -1004,7 +1004,7 @@ window.HoolaBuild = function (C) {
       sbox.querySelectorAll('[data-rname]').forEach(btn => btn.addEventListener('click', () => doRestore({name: btn.dataset.rname}, 'that backup')));
     };
     try { await drawS(); } catch (er) { sbox.remove(); }
-    // v0.391 APNA DATABASE: this app's data in HER own database (Supabase, Neon, RDS ... any PostgreSQL-wire database)
+    // v0.396 APNA DATABASE: this app's data in HER own database (Supabase, Neon, RDS ... any PostgreSQL-wire database)
     const obox = document.createElement('section'); obox.className = 'stcol stowndb'; box.appendChild(obox);
     const drawO = async () => {
       const v = await api('GET', base(o) + '/owndb');

@@ -1,4 +1,4 @@
-"""v0.391 APNA DATABASE: an app's data runs in HER own PostgreSQL-wire database (Supabase, Neon, RDS ...).
+"""v0.396 APNA DATABASE: an app's data runs in HER own PostgreSQL-wire database (Supabase, Neon, RDS ...).
 A local Postgres plays her Supabase: link (her tap, backup first, tables, copy, counts), PRIMARY write-through (an app
 write lands there inside the request; her database unreachable = the write is refused, nothing half-saved), her edits
 OUTSIDE Hoola (update / insert / delete in her table) flow back into the app with the app's logic run and values checked,

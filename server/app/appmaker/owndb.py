@@ -1,4 +1,4 @@
-"""v0.391 APNA DATABASE (App Sahayak Pillar B, own database per app): an app's data runs in HER OWN database -
+"""v0.396 APNA DATABASE (App Sahayak Pillar B, own database per app): an app's data runs in HER OWN database -
 Supabase, Neon, AWS RDS / Aurora, Google Cloud SQL / AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale,
 CockroachDB, YugabyteDB ... any PostgreSQL-wire database she connects (Profile > Postgres database, v0.147: typed only
 in the app, sealed, public host only with the checked IP pinned, SSL required).

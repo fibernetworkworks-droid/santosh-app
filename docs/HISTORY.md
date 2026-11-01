@@ -14896,3 +14896,51 @@ Owner: "GO PHASE 3". Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 5 (precision
   Phone: `lib/ui/game_bible_screen.dart` (read, drafts, simulate, apply, generate, remove; editing in the console).
 - Tests `test_v0395_game_bible.py` (10).
 
+
+## v0.396.0 APNA DATABASE - an app's data runs in HER own database (App Sahayak Pillar B: own database per app)
+Owner (1 Nov 2026): *"Own database per app --- WORK ON IT LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN
+DATABASE THERE"*.
+
+Built on v0.147 Hoola Postgres (her connection string typed only in the app, sealed with the bazar vault, public host only
+with the checked IP pinned by libpq `hostaddr`, SSL required, the password masked in every error), so EVERY PostgreSQL-wire
+database works through one code path: 28 listed with where to copy the connection string - Supabase (session pooler or
+direct; the transaction pooler works too: no prepared statements, `prepare_threshold=None`), Neon, Amazon RDS + Aurora,
+Google Cloud SQL + AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, Crunchy Bridge, Tembo, Xata, Nile,
+Heroku, Fly, Vercel, Koyeb, Scaleway, OVH, Alibaba, Tencent, Huawei, CockroachDB, YugabyteDB, her own server. NOT yet:
+MySQL-family (PlanetScale, TiDB, MariaDB - no MySQL driver on the server), MongoDB / Firebase (not SQL).
+
+`server/app/appmaker/owndb.py`:
+- Her tables: one schema per app (`hoola_a_0001`), one TABLE per list with real types (number numeric, date date, yes / no
+  boolean, the rest text), `owner_id`, `created_at`, `_hoola` jsonb (Hoola's own control values: stock taken, coupon,
+  assignment...), an index on every link field and on `_out`; `_hoola_accounts` (id, e-mail, name, role - never a password
+  hash); `_hoola_<name>` jsonb tables for udhaar / approvals / chat; `_hoola_meta`; `_hoola_deleted`. Additive only: a new
+  list / field in the app = a new table / column there on the next sync. Quoted identifiers ("order" is fine).
+- Her triggers (`_hoola_touch`, `_hoola_gone`): every write records who (`set_config('hoola.by','hoola', true)` in Hoola's
+  transactions, anything else = 'outside'); an OUTSIDE write also stamps `_out`, so a later Hoola write on other fields
+  of the same row never hides it; outside deletes are logged.
+- PRIMARY mode (the data lives there): a global SQLAlchemy `before_commit` hook flushes, takes the app-row writes the
+  journal hook queued, and upserts them into her tables in ONE transaction before Hoola commits - her database down =
+  `OwnDbError` 503 "save nahi hui", Hoola rolls back, nothing half-saved. Field-level upserts (only changed columns). The
+  journal row is marked `pushed`, so the catch-up never re-sends it (found by the test: a re-send undid her outside edit).
+  Her outside edits (table editor / SQL / other tools) come back every 20 s (or "Sync now"): rows with `_out` after the
+  cursor -> changed fields validated exactly like app input (`W._clean`; a bad value is refused + audited), Hoola's own
+  `_` values never taken from outside, outside inserts need a Hoola-shaped id (her table's id default makes one), outside
+  deletes follow; the app's logic (formulas / triggers / cascades) runs on them; every one audited ("own_db_in").
+- MIRROR mode: Hoola stays the main copy; the worker sends the journal after its cursor within ~20 s; her database being
+  down never stops her app; outside edits are not taken back (a read copy for reports / BI).
+- Link = HER tap: a backup first, schema + tables + triggers, every row copied in batches, accounts, catch-up of the writes
+  made meanwhile, counts compared per list - mismatch = not linked, the app untouched. Unlink: sync stops, data stays in
+  BOTH places. A small connection pool per app (4, keepalives, statement / lock timeouts per transaction).
+- Routes: `GET /api/apps/<ref>/owndb` (link, her databases, providers, lag), `POST .../owndb/link {conn, mode}` (her tap),
+  `.../unlink`, `.../verify` (counts), `.../sync`. Console app page: "Own database" box (status, link with mode, add a
+  database = connection string sealed on the server, provider how-to, Sync now / Compare counts / Disconnect). Phone:
+  `lib/ui/app_owndb.dart` (+ the existing Postgres screen to add one). Agent `app_banao action=own_db` = status + counts +
+  where to connect - never a connection string in chat, never the move itself.
+
+Tests `server/tests/test_v0396_apna_database.py` (a local Postgres plays her Supabase; CI app-load.yml runs it on a real
+Postgres): link + real column types + accounts without passwords, write-through inside the request, her outside update /
+insert / delete coming back with an app edit on another field of the same row kept, a bad outside value refused + audited,
+a new app field = a new column there, counts compared, her database unreachable = 503 and nothing saved, back = saving
+again, unlink keeps her data, mirror mode never blocks and catches up.
+Known limits: a write-through costs one round trip to her database per save (Mumbai region ~20-60 ms); if Hoola's own commit
+fails AFTER hers succeeded (very rare) "Compare counts" shows it; MySQL / Mongo / Firebase not yet.

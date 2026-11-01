@@ -2423,7 +2423,7 @@ body.albon{overflow:hidden}
 .gb-pl input{font:inherit;font-size:14px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 @media (max-width:720px){.gb-lv{grid-template-columns:1fr auto}.gb-lv .pbar{grid-column:1 / -1}}
 
-/* v0.391 APNA DATABASE: the own-database box */
+/* v0.396 APNA DATABASE: the own-database box */
 .stowndb select{padding:8px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
 .stowndb .stlines{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:13px}
 .stowndb .sterr{color:var(--bad)}

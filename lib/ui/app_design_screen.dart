@@ -838,7 +838,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
             const SizedBox(height: 10),
             Glass(child: AppSafetyPanel(app: app, id: widget.id)),         // v0.390 PAKKI NEEV: backups + limits
             const SizedBox(height: 10),
-            Glass(child: AppOwnDbPanel(app: app, id: widget.id)),          // v0.391 APNA DATABASE: her own database
+            Glass(child: AppOwnDbPanel(app: app, id: widget.id)),          // v0.396 APNA DATABASE: her own database
             const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),

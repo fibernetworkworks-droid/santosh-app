@@ -13,7 +13,7 @@ on:
       - "server/app/db.py"
       - "server/app/dbmove.py"
       - "server/tests/test_v0390_pakki_neev.py"
-      - "server/tests/test_v0391_apna_database.py"
+      - "server/tests/test_v0396_apna_database.py"
       - "server/app/pgdb/**"
       - ".github/workflows/app-load.yml"
   workflow_dispatch:
@@ -56,7 +56,7 @@ jobs:
         env:
           HOOLA_TEST_PG: ""
           HOOLA_PG_ADMIN: postgresql+psycopg://postgres:hoola@127.0.0.1:5432/postgres
-        run: python -m pytest -q -p no:cacheprovider tests/test_v0391_apna_database.py
+        run: python -m pytest -q -p no:cacheprovider tests/test_v0396_apna_database.py
       - name: The proof - 1,000 customers, 4 worker processes, one Postgres
         working-directory: server
         env:

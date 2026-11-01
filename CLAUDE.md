@@ -170,7 +170,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ONE more attempt. Enterprise routes 6 -> 11. RULE: a module's tests passing says it works, never that anything
   calls it - grep for a caller outside its own file before calling a feature shipped.
 
-- Current version: v0.395.0 (pubspec 0.395.0+439). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.396.0 (pubspec 0.396.0+440). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
@@ -180,6 +180,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.382 DIMAAG (App Phases 43-46 = Pillar A, `appmaker/logic/`: lang.py own locked interpreter, spec.py checker, engine.py hooks + approvals + schedules/SLA, service.py Opus draft -> her tap): links / formulas / rules / unique / workflows + maker-checker approvals / triggers / timed jobs / tested functions; kits Logic.kt / Logic.swift (RefField, WorkflowBox, RelatedBlock, AutoForm, hoola_approvals, hoola_data); `/api/apps/<ref>/logic*`, app `/approvals`, `/related/`, `/fn/`.
 - PLAN: `docs/WEB_PLATFORM_PLAN.md` - any complexity website, smoothly + reliably (W0 gate = 100-page proof + her own site, W1-W14: one backend with apps (DIMAAG), app pages, OTP login, gateway, marketplace, live, connectors, 10k-page catalogues, speed / resume / staging, gates, architect).
 - v0.390 PAKKI NEEV (Pillar B): `appmaker/locks.py` (one cross-process lock per app: pg advisory / fcntl), `BE.patch_backend` (the ONLY safe write of backend JSON), `backup.py` (journal hook + snapshots + point-in-time restore + export), `refs.py` (indexed links), `meter.py` (usage + limits), `app/dbmove.py` (SQLite -> Postgres); tests run on Postgres with HOOLA_TEST_PG; CI `app-load.yml` = 1,000 customers / 4 workers proof.
+- v0.396 APNA DATABASE (`appmaker/owndb.py`): an app's data in HER PostgreSQL-wire database (v0.147 sealed conn): schema + typed table per list + triggers; primary = before_commit write-through (down = 503, nothing half-saved) + her outside edits pulled back (validated, logic run); mirror = journal catch-up; link / unlink = her tap; `/api/apps/<ref>/owndb*`.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
