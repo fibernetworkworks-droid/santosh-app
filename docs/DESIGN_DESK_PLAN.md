@@ -181,6 +181,31 @@ engineering and never allowed to override a code requirement.
 ### Reads (official and open formats only)
 - Her own drawings and models: **IFC** (buildingSMART, open), DWG/DXF, PDF
 - Her reports: soil investigation, survey, existing-building records
+**What is actually machine-readable (digital/BIM research, landed 1 Nov 2026) — this decides Phase 6:**
+
+Two sentences from the research that change the design:
+
+> *"Without an IDS, 'we exchanged IFC' guarantees nothing checkable."*
+> *"Every Indian regulatory submission is a DWG or a PDF."*
+
+So coordination is **not** "read her IFC and look for clashes". The split is three ways:
+
+| | |
+|---|---|
+| **Genuinely open and checkable** | **IFC** (ISO 16739-1) for the model, **IDS** (buildingSMART Information Delivery Specification — XML: metadata, applicability, requirements) for the *requirement itself*, **bSDD** for resolvable property definitions, **BCF** for the coordination issue, **COBie** for handover, **gbXML / IDF** for energy, **LandXML** for survey, **E57 (ASTM E2807) / LAS** for point clouds, **GeoJSON (RFC 7946) / GeoPackage** for spatial |
+| **Open container, meaning NOT standardised** | IFC in practice — a Revit MEP model and a Tekla structural model do not agree on what "fire rating" is called or where it lives. COBie's schema is fixed, its content is not. A point cloud **carries no semantics at all** — it does not know it is a wall. Energy models describe a model but not the *compliance claim*; the baseline rules live in prose, not data |
+| **Locked, and this is the Indian default** | `.rvt`, `.pln`, `.dgn`, `.db1`, `.dwg` (reverse-engineered, not open; `.dxf` is published but lossy and geometry-only). Navisworks `.nwd` and Solibri `.smc` are closed — **BCF is the only open escape, and it carries the issue, not the model** |
+
+**Therefore, for Phase 6:**
+1. **The checkable requirement is an IDS, and Hoola must author it** — that is the only way a rule becomes
+   machine-checkable rather than a hope. An IDS Hoola writes, she reviews, and the model is validated against.
+2. **Clash and coordination output is BCF**, so it opens in whatever tool her consultants already use.
+3. **Plan for PDF and DWG as the real input**, because that is what an Indian project actually has. Reading a
+   submission set is an OCR-and-geometry problem, not an IFC problem. An IFC path is the bonus, not the base.
+4. **Never claim an energy model is "ECBC compliant" from the model alone** — the baseline assumptions are
+   prose, and two modellers can produce incomparable compliant-looking models.
+
+### Codes and standards
 - The codes themselves: IS codes, NBC 2016, ECBC — as **structured rule tables Hoola maintains**, each entry
   carrying its clause reference. Not scraped, not guessed: entered from the published standard with the
   citation, and a rule with no citation is not used.
@@ -209,7 +234,7 @@ Each ships as its own version, with tests, console and phone, the way every desk
 | **3** | **Fire & life safety + plumbing** — the two most codified, so the most checkable: occupant load, exits, travel distance, fixture units, tank and pipe sizing | highest certainty per unit of work, and fire is where a wrong answer is worst |
 | **4** | **HVAC + electrical** — heat load, duct/pipe, load schedule, cable sizing, voltage drop | the two biggest MEP spends |
 | **5** | **Geotech + facade** from her own soil and wind data | both strictly input-driven, so both refuse loudly without data |
-| **6** | **Coordination**: read her IFC, cross-discipline consistency, compliance matrix, design-stage QA, RFIs | the thing a consultancy actually sells |
+| **6** | **Coordination** on the formats that are actually checkable: Hoola authors an **IDS**, validates her model against it, emits issues as **BCF**, and reads PDF/DWG submission sets because that is what Indian projects have; plus the compliance matrix, design-stage QA and RFIs | the thing a consultancy actually sells - and IDS is what makes it real rather than a hope |
 | **7** | **Acoustics, landscape/urban, vastu** + the honest "needs a specialist" boundary | the long tail |
 | **8** | A **proof card** like the coding/tool cards: fixed design problems with known right answers, scored | the only way to claim it works |
 
