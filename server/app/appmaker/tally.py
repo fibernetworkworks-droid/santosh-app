@@ -16,6 +16,7 @@ from sqlalchemy import select
 from ..db import session
 from ..site import webapp as W
 from .models import AppProject
+from . import locks as LK                     # v0.390 one cross-process lock per app
 
 DEFAULTS = {"party": "Cash", "sales": "Sales", "cgst": "Output CGST", "sgst": "Output SGST", "igst": "Output IGST",
             "round": "Round Off"}
@@ -38,7 +39,7 @@ def set_names(r: AppProject, body: dict[str, Any]) -> dict[str, str]:
             v = re.sub(r"[\x00-\x1f<>&\"]+", " ", str(v or "")).strip()[:60]
             if v:
                 clean[k] = v
-    with session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         g = dict(be.get("gst") or {})

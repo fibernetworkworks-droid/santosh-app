@@ -13,6 +13,7 @@ import '../state.dart';
 import 'glass.dart';
 import 'app_money.dart';
 import 'app_logic.dart';
+import 'app_safety.dart';
 import 'app_android.dart';
 import 'app_ios.dart';
 import 'site_screen.dart' show SiteStages;
@@ -833,6 +834,8 @@ class _AppDesignPageState extends State<AppDesignPage> {
             Glass(child: AppMoneyPanel(app: app, id: widget.id)),          // v0.376 MAALKIN PHONE
             const SizedBox(height: 10),
             Glass(child: AppLogicPanel(app: app, id: widget.id)),          // v0.382 DIMAAG: the app's brain
+            const SizedBox(height: 10),
+            Glass(child: AppSafetyPanel(app: app, id: widget.id)),         // v0.390 PAKKI NEEV: backups + limits
             const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.388.0"   # v0.388.0 WHATSAPP LIVE BINA SERVER NUMBER: live WhatsApp (WA_DRY_RUN=false) on a server with NO server-wide number (WA_TOKEN / WA_WABA_ID / WA_PHONE_NUMBER_ID) crashed: MetaWhatsApp's constructor raised, get_whatsapp() failed inside the worker's first step (check_approvals), and EVERY worker tick failed every 2 seconds (reminders, social desk, approvals all stopped) - seen live right after v0.384's Embedded Signup set-up asked for WA_DRY_RUN=false. Now the client starts without it (server_ready false): each business's own number sends through its Business inbox with its own token, the server-number features (campaign templates) refuse with a plain error naming the missing keys, and the campaign jobs skip quietly. Previous: v0.387.0 GURU SAHAYAK - Shiksha suite Phase 2, the personal tutor (owner: "GO PHASE 2"): sessions per learner (doubt / practice / language; a child only after guardian consent, inside a daily minutes cap); a doubt is taught as a HINT LADDER one rung per ask (hint -> nudge -> worked steps -> answer), numeric answers checked by code in the pylab sandbox, photo doubts via Claude vision, exam mode / graded work = hints only; adaptive practice from the APPROVED bank (due revision first, else the weakest topic; difficulty from mastery), objective answers checked in code, written ones by AI (labelled), mastery + spaced revision; language practice with corrections; progress + weekly report card for the guardian only by her tap. PHASE 2.1 (after DeepTutor, Apache-2.0): mastery with a confidence cap, SM-2 revision + exam window / cramming, a mastery path over the NCERT chapters with a gate per chapter, explanations grounded in her own books with page cites. Role personal_tutor, preset tutor_centre, phone Profile > Personal tutor. Tests: NEW test_v0387_guru.py + test_v0387_guru21.py. Previous: v0.386.0 STUDIO PROJECT (built as 0.378 / 0.382) (Hoola Game Engine plan Phase 2, owner: "GO PHASE 2"): a game now lives for weeks, months or 1,000 days instead of one sitting. A Studio Project (gamedesk/studio.py) wraps one Game Desk game and adds what a studio runs on: a TASK BOARD where every task is ONE small change built by the Phase 1 pipeline (code -> guard -> headless play -> Web export -> Hoola plays it) and then WAITS for her OK; "wapas" makes the version before it live again (versions carry a rejected mark, so the play link and the next change both skip it); MILESTONES (Prototype -> First playable -> Alpha -> Beta -> Release) counted in code; a DECISIONS LOG Hoola reads before planning and answers "why is X like this" from (and says there is no record rather than guess); a NIGHTLY BUILD that rebuilds and replays the live code from scratch with no model call, checks the code fingerprint, flags an fps drop over 25 % and names the tasks since the last good night, adding a priority fix task when it fails; a MORNING REPORT in her chat written in code from the board; restore any old version as a new one (no model call); her GitHub on the usual card (code + TASKS / DECISIONS / CHANGELOG). Precision rules in code: one task builds at a time, none starts while another waits for her OK, a failed task never replaces the live game. Tool game_studio, /api/gamestudio*, console Game Desk board, phone GameStudioScreen.
+APP_VERSION = "0.390.0"   # v0.390.0 PAKKI NEEV (App Sahayak Pillar B, Phases 47-48, owner: "START NEXT PILLAR"): her apps' backend holds under MANY server processes and can always be brought back - one cross-process lock per app (Postgres advisory locks / an fcntl file lock on SQLite) for stock, coupons, slots, GST numbers, udhaar, approvals and every read-modify-write of the app settings (stock and coupon changes used to be able to overwrite each other), a phone retry racing itself in two processes = ONE row, a write journal from ONE before_flush hook (no write path can skip it), daily + before-change snapshots, point-in-time restore to any minute (preview, then HER tap, safety copy first), a ZIP export (no passwords), indexed links (app_refs) instead of JSON scans, usage meters + limits (80/95/100% notes), the SQLite -> Postgres move (python -m app.dbmove, counts verified), every app suite green on real Postgres, and the proof: 1,000 customers ordering 300 in stock at once against 4 worker processes on one Postgres = exactly 300 orders, retries one row each, no server error (CI app-load.yml). Previous: v0.389.0 SACH BOLO (enterprise write rails). Before: v0.387.0 GURU SAHAYAK - Shiksha suite Phase 2, the personal tutor (owner: "GO PHASE 2"): sessions per learner (doubt / practice / language; a child only after guardian consent, inside a daily minutes cap); a doubt is taught as a HINT LADDER one rung per ask (hint -> nudge -> worked steps -> answer), numeric answers checked by code in the pylab sandbox, photo doubts via Claude vision, exam mode / graded work = hints only; adaptive practice from the APPROVED bank (due revision first, else the weakest topic; difficulty from mastery), objective answers checked in code, written ones by AI (labelled), mastery + spaced revision; language practice with corrections; progress + weekly report card for the guardian only by her tap. PHASE 2.1 (after DeepTutor, Apache-2.0): mastery with a confidence cap, SM-2 revision + exam window / cramming, a mastery path over the NCERT chapters with a gate per chapter, explanations grounded in her own books with page cites. Role personal_tutor, preset tutor_centre, phone Profile > Personal tutor. Tests: NEW test_v0387_guru.py + test_v0387_guru21.py. Previous: v0.386.0 STUDIO PROJECT (built as 0.378 / 0.382) (Hoola Game Engine plan Phase 2, owner: "GO PHASE 2"): a game now lives for weeks, months or 1,000 days instead of one sitting. A Studio Project (gamedesk/studio.py) wraps one Game Desk game and adds what a studio runs on: a TASK BOARD where every task is ONE small change built by the Phase 1 pipeline (code -> guard -> headless play -> Web export -> Hoola plays it) and then WAITS for her OK; "wapas" makes the version before it live again (versions carry a rejected mark, so the play link and the next change both skip it); MILESTONES (Prototype -> First playable -> Alpha -> Beta -> Release) counted in code; a DECISIONS LOG Hoola reads before planning and answers "why is X like this" from (and says there is no record rather than guess); a NIGHTLY BUILD that rebuilds and replays the live code from scratch with no model call, checks the code fingerprint, flags an fps drop over 25 % and names the tasks since the last good night, adding a priority fix task when it fails; a MORNING REPORT in her chat written in code from the board; restore any old version as a new one (no model call); her GitHub on the usual card (code + TASKS / DECISIONS / CHANGELOG). Precision rules in code: one task builds at a time, none starts while another waits for her OK, a failed task never replaces the live game. Tool game_studio, /api/gamestudio*, console Game Desk board, phone GameStudioScreen.
 
 
 def _quiet_http_logs() -> None:
@@ -9962,6 +9962,64 @@ async def apps_turant_set(ref: str, body: dict, tenant: str = Depends(current_te
     from .appmaker import turant as TU
     return await asyncio.to_thread(_be_owner_call, lambda: TU.enable(_be_owner(tenant, ref)) if (body or {}).get("on")
                                    else TU.disable(_be_owner(tenant, ref)))
+
+
+# ---- v0.390 PAKKI NEEV: her app's data - backups, point-in-time restore (her tap), export, usage + limits
+@app.get("/api/apps/{ref}/backups", dependencies=[Depends(require_key)])
+async def apps_backups(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import backup as BK
+    return await asyncio.to_thread(_be_owner_call, lambda: {"backups": BK.snapshots(_be_owner(tenant, ref))})
+
+
+@app.post("/api/apps/{ref}/backups/now", dependencies=[Depends(require_key)])
+async def apps_backup_now(ref: str, tenant: str = Depends(current_tenant)):
+    """A snapshot now (her button)."""
+    from .appmaker import backup as BK
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.snapshot(_be_owner(tenant, ref), "by hand", "manual"))
+
+
+@app.post("/api/apps/{ref}/backups/preview", dependencies=[Depends(require_key)])
+async def apps_backup_preview(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{at: "YYYY-MM-DDTHH:MM" IST} or {name}: what a restore would change - nothing is changed."""
+    from .appmaker import backup as BK
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.preview(_be_owner(tenant, ref), str(b.get("at") or ""), str(b.get("name") or "")))
+
+
+@app.post("/api/apps/{ref}/backups/restore", dependencies=[Depends(require_key)])
+async def apps_backup_restore(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: the app's rows back to a snapshot {name} or a minute {at} (a safety snapshot is taken first)."""
+    from .appmaker import backup as BK
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.restore(_be_owner(tenant, ref), str(b.get("at") or ""),
+                                                                      str(b.get("name") or ""), bool(b.get("members"))))
+
+
+@app.get("/api/apps/{ref}/export", dependencies=[Depends(require_key)])
+async def apps_export(ref: str, tenant: str = Depends(current_tenant)):
+    """Her data as a ZIP: a CSV per list + data.json + accounts (never a password)."""
+    from .appmaker import backup as BK
+
+    def go():
+        r = _be_owner(tenant, ref)
+        return r, BK.export(r)
+    r, data = await asyncio.to_thread(_be_owner_call, go)
+    name = re.sub(r"[^A-Za-z0-9_-]+", "-", f"{r.name or 'app'}-{r.number}-data").strip("-") + ".zip"
+    return Response(data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{name}"',
+                                                                  "Cache-Control": "no-store"})
+
+
+@app.get("/api/apps/{ref}/usage", dependencies=[Depends(require_key)])
+async def apps_usage(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import meter as MT
+    return await asyncio.to_thread(_be_owner_call, lambda: MT.usage(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/usage", dependencies=[Depends(require_key)])
+async def apps_usage_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her limits {rows, files_mb, writes_day} (never above the ceiling, never below what is used)."""
+    from .appmaker import meter as MT
+    return await asyncio.to_thread(_be_owner_call, lambda: MT.set_limits(_be_owner(tenant, ref), body or {}))
 
 
 # ---- v0.382 DIMAAG: her side of the app's logic (Opus drafts, the checker proves, HER tap applies)

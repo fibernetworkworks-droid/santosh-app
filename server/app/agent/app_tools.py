@@ -85,6 +85,11 @@ APP_TOOLS = [
         "whole logic on / off (nothing deleted). action=approval (owner only; approval = id from app_dekho what=logic, decision "
         "approve|reject, note) = HER decision on a waiting approval, only when she says it. action=logic_run (owner only; job = "
         "schedule name) = run a timed job now. "
+        "v0.390 PAKKI NEEV - her app's data safety: action=data_safety (owner only; at = \"YYYY-MM-DDTHH:MM\" IST optional): "
+        "usage (entries / files / writes today vs limits), the backups, and with `at` a PREVIEW of bringing the data back "
+        "to that minute (what comes back / goes / changes) - the RESTORE itself is only HER tap on the app's Data safety "
+        "card (console app page / phone), never you. action=backup_now (owner only) = a backup this moment. action=limits "
+        "(owner only, ONLY when she asks; limits = {rows, files_mb, writes_day}) = her app's limits. "
         "v0.367 action=turant (owner only; show, or on=true / false ONLY when she asks): instant notifications for her Android app's phones "
         "(order moved, new order for staff, job given) through Hoola's Firebase - from the next build. v0.368 iPhones too once SHE puts her "
         "Apple push key into the app / console (Key ID, Team ID, .p8 - NEVER in chat; if she pastes one, do not use it and tell her to "
@@ -111,7 +116,8 @@ APP_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
                                                  "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant",
-                                                 "logic", "logic_switch", "approval", "logic_run"]},
+                                                 "logic", "logic_switch", "approval", "logic_run",
+                                                 "data_safety", "backup_now", "limits"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -131,6 +137,8 @@ APP_TOOLS = [
          "approval": {"type": "string", "description": "action=approval: the approval id"},
          "decision": {"type": "string", "enum": ["approve", "reject"], "description": "action=approval: her decision"},
          "job": {"type": "string", "description": "action=logic_run: the timed job (schedule) name"},
+         "at": {"type": "string", "description": "action=data_safety: a moment YYYY-MM-DDTHH:MM (IST) to preview a restore to"},
+         "limits": {"type": "object", "description": "action=limits: {rows, files_mb, writes_day}"},
          "variants": {"type": "array", "items": {"type": "object"}, "description": "action=variants: [{name, price}]"},
          "delivery": {"type": "object", "description": "action=delivery: {fee, free_above, pins, hours, off}"},
          "coupon": {"type": "object", "description": "action=coupon: {code, kind, value, cap, min, until, uses, once, on, delete}"},
@@ -313,6 +321,29 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action in ("data_safety", "backup_now", "limits"):               # v0.390 PAKKI NEEV
+        if not _owner(ctx):
+            raise ToolError("App ka data sirf maalkin dekh / badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import backup as BK
+        from ..appmaker import meter as MT
+        from ..site import webapp as W
+        r = BE.by_key_or_ref(t, ref)
+        try:
+            if action == "backup_now":
+                return BK.snapshot(r, "asked in chat", "manual")
+            if action == "limits":
+                return MT.set_limits(r, a.get("limits") if isinstance(a.get("limits"), dict) else {})
+            u = MT.usage(r)
+            out = {"usage": {k: u[k] for k in ("lists", "rows", "files_mb", "writes_today", "limits", "percent", "full")},
+                   "backups": BK.snapshots(r)[:10]}
+            if a.get("at"):
+                out["preview"] = BK.preview(r, str(a["at"]))
+                out["say"] = ("Restore ka asar upar hai. Wapas laane ke liye app ke 'Data safety' card par woh samay chun kar "
+                              "Restore dabaiye (pehle abhi ke data ki safety copy banegi).")
+            return out
+        except W.AppError as e:
+            raise ToolError(str(e))
     if action in ("logic", "logic_switch", "approval", "logic_run"):     # v0.382 DIMAAG
         if not _owner(ctx):
             raise ToolError("App ki logic sirf maalkin badal sakti hain.")

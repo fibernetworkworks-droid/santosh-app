@@ -2395,3 +2395,8 @@ body.albon{overflow:hidden}
 .gs-sw input[type=number]{width:56px}
 .gs-sum{white-space:pre-wrap;font:inherit;font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
 @media (max-width:720px){.gs-board{grid-template-columns:repeat(5,minmax(240px,86vw))}}
+/* v0.390 PAKKI NEEV: the data safety box (usage meters) */
+.stsafe .stmeter{flex:1;height:6px;border-radius:4px;background:var(--line);overflow:hidden;min-width:60px}
+.stsafe .stmeter i{display:block;height:100%;background:var(--pri)}
+.stsafe .stmems li{flex-wrap:wrap}
+.stsafe details{margin-top:10px;font-size:13px}

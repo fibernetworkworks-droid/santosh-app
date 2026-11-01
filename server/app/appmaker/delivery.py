@@ -15,6 +15,7 @@ from typing import Any
 from ..db import now, session
 from ..site import webapp as W
 from .models import AppProject
+from . import locks as LK                     # v0.390 one cross-process lock per app
 
 PIN = re.compile(r"(?<!\d)([1-9]\d{5})(?!\d)")
 HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -87,7 +88,7 @@ def save(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
     from . import backend as BE
     from . import stock as SK
     body = body if isinstance(body, dict) else {}
-    with session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         if body.get("off"):
@@ -212,7 +213,7 @@ def save_slots(r: AppProject, slots: Any, days: Any = 0, cutoff: Any = 0) -> dic
         raise DeliveryError("Din aur cut-off number mein.")
     if not 0 <= d <= 6 or not 0 <= c <= 720:
         raise DeliveryError("Aage ke din 0-6, cut-off 0-720 minute.")
-    with session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         g = dict(be.get("delivery") or {})
@@ -280,7 +281,7 @@ def book(r: AppProject, key: str) -> tuple[dict[str, Any], str]:
     key = str(key or "").strip()
     if not key:
         return {}, ""
-    with _SLOT_LOCK:
+    with LK.app(r.id):
         hit = next((x for x in available(r)["slots"] if x["key"] == key), None)
         if hit is None:
             STATS["slots_full"] += 1
@@ -294,7 +295,7 @@ def confirm(r: AppProject, row_id: str) -> None:
     slot's cap loses the slot and gets the note instead (never a lost order)."""
     from sqlalchemy import select
     from . import backend as BE
-    with _SLOT_LOCK:
+    with LK.app(r.id):
         with session() as s:
             row = s.get(W.SiteAppRow, row_id)
             d = BE._j(row.data, {}) if row is not None else {}
@@ -335,7 +336,7 @@ def save_holidays(r: AppProject, dates: Any) -> dict[str, Any]:
             raise DeliveryError(f"Chhutti ki tareekh YYYY-MM-DD: {d}")
         if d >= today:
             out.add(d)
-    with session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         g = dict(be.get("delivery") or {})

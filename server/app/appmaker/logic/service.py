@@ -15,7 +15,7 @@ import logging
 import threading
 from typing import Any
 
-from ...db import now, session
+from ...db import now
 from ...site import webapp as W
 from ..models import AppProject
 from . import engine as LE
@@ -88,12 +88,10 @@ def _be(r: AppProject) -> dict[str, Any]:
     return BE.ensure(r)
 
 
-def _save_be(r: AppProject, be: dict[str, Any]) -> None:
-    txt = json.dumps(be, ensure_ascii=False)
-    with session() as s:
-        row = s.get(AppProject, r.id)
-        row.backend = txt
-    r.backend = txt
+def _patch(r: AppProject, **kw) -> dict[str, Any]:
+    """v0.390 every write here changes only its own keys, under the app's cross-process lock (never a stale copy)."""
+    from .. import backend as BE
+    return BE.patch_backend(r, **kw)
 
 
 def _hash(x: Any) -> str:
@@ -185,14 +183,12 @@ def draft(r: AppProject, words: str, ask=None) -> dict[str, Any]:
 
 
 def _keep_draft(r: AppProject, out: dict[str, Any], got: dict[str, Any], words: str) -> dict[str, Any]:
-    be = _be(r)
     body = {"lists": out.get("lists") or [], "fields": out.get("fields") or [], "logic": got["spec"]}
     d = {"hash": _hash(body), **body, "words": str(words or "")[:500], "summary": str(out.get("summary") or "")[:600],
          "lines": got["summary"], "questions": [str(q)[:200] for q in (out.get("questions") or [])][:3],
          "errors": got["errors"], "warnings": got["warnings"], "schema_changes": got.get("schema_changes") or [],
          "at": now().isoformat()}
-    be["logic_draft"] = d
-    _save_be(r, be)
+    _patch(r, set_={"logic_draft": d})
     LE.audit(r, "draft", what=f"{len(got['summary'])} cheezein, {len(got['errors'])} galti")
     return {**{k: d[k] for k in ("hash", "summary", "lines", "questions", "errors", "warnings", "schema_changes")},
             "ready": not d["errors"],
@@ -216,13 +212,22 @@ def apply(r: AppProject, h: str, by: str = "owner") -> dict[str, Any]:
     if ops:
         res = BE.change_schema(r, ops, f"logic: {d.get('words') or 'logic'}")
         changes = res["done"]
-    be = _be(r)
-    rev = int(((be.get("logic") or {}).get("rev")) or 0) + 1
-    be["logic"] = {"spec": got["spec"], "on": True, "rev": rev, "applied": now().isoformat(), "by": by,
-                   "ran": ((be.get("logic") or {}).get("ran") or {}), "words": d.get("words", "")}
-    be.pop("logic_draft", None)
-    be["rev"] = int(be.get("rev") or 0) + 1                # the installed apps re-read the lists (new types / buttons)
-    _save_be(r, be)
+    try:                                                   # v0.390 her app as it was, one tap away
+        from .. import backup as BK
+        BK.snapshot(r, f"before logic: {str(d.get('words') or 'logic')[:60]}")
+    except Exception:                                      # noqa: BLE001
+        log.debug("snapshot", exc_info=True)
+    box: dict[str, int] = {}
+
+    def put(be):
+        rev_ = int(((be.get("logic") or {}).get("rev")) or 0) + 1
+        be["logic"] = {"spec": got["spec"], "on": True, "rev": rev_, "applied": now().isoformat(), "by": by,
+                       "ran": ((be.get("logic") or {}).get("ran") or {}), "words": d.get("words", "")}
+        be.pop("logic_draft", None)
+        be["rev"] = int(be.get("rev") or 0) + 1            # the installed apps re-read the lists (new types / buttons)
+        box["rev"] = rev_
+    _patch(r, fn=put)
+    rev = box["rev"]
     LE._CACHE.pop(r.id, None)
     LE._SCH.pop(r.id, None)
     done = LE.recompute_all(r)
@@ -238,23 +243,22 @@ def save(r: AppProject, logic: dict[str, Any], lists: Any = None, fields: Any = 
     got = preview(r, body)
     if got["errors"]:
         return {"ok": False, "errors": got["errors"], "warnings": got["warnings"]}
-    be = _be(r)
-    be["logic_draft"] = {"hash": _hash({**body, "logic": got["spec"]}), **body, "logic": got["spec"], "words": "console",
-                         "summary": "", "lines": got["summary"], "questions": [], "errors": [], "warnings": got["warnings"],
-                         "schema_changes": got.get("schema_changes") or [], "at": now().isoformat()}
-    _save_be(r, be)
-    return {"ok": True, **apply(r, be["logic_draft"]["hash"], by)}
+    draft_ = {"hash": _hash({**body, "logic": got["spec"]}), **body, "logic": got["spec"], "words": "console",
+              "summary": "", "lines": got["summary"], "questions": [], "errors": [], "warnings": got["warnings"],
+              "schema_changes": got.get("schema_changes") or [], "at": now().isoformat()}
+    _patch(r, set_={"logic_draft": draft_})
+    return {"ok": True, **apply(r, draft_["hash"], by)}
 
 
 def switch(r: AppProject, on: bool) -> dict[str, Any]:
-    be = _be(r)
-    lg = be.get("logic")
-    if not isinstance(lg, dict) or not lg.get("spec"):
-        raise W.AppError("Is app mein abhi koi logic nahi.", 404)
-    lg["on"] = bool(on)
-    lg["rev"] = int(lg.get("rev") or 0) + 1
-    be["rev"] = int(be.get("rev") or 0) + 1
-    _save_be(r, be)
+    def put(be):
+        lg = be.get("logic")
+        if not isinstance(lg, dict) or not lg.get("spec"):
+            raise W.AppError("Is app mein abhi koi logic nahi.", 404)
+        lg["on"] = bool(on)
+        lg["rev"] = int(lg.get("rev") or 0) + 1
+        be["rev"] = int(be.get("rev") or 0) + 1
+    _patch(r, fn=put)
     LE._CACHE.pop(r.id, None)
     LE._SCH.pop(r.id, None)
     LE.audit(r, "switch", what="on" if on else "off")
@@ -262,9 +266,7 @@ def switch(r: AppProject, on: bool) -> dict[str, Any]:
 
 
 def discard(r: AppProject) -> dict[str, Any]:
-    be = _be(r)
-    be.pop("logic_draft", None)
-    _save_be(r, be)
+    _patch(r, drop=("logic_draft",))
     return {"ok": True}
 
 
