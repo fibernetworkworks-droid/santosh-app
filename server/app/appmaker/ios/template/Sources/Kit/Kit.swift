@@ -35,6 +35,15 @@ enum Words {
     static var utr: String { t("UPI reference / UTR", "UPI रेफ़रेंस / UTR", "UPI reference / UTR") }
     static var privacy: String { t("Privacy policy", "गोपनीयता नीति", "Privacy policy") }
     static var call: String { t("Call", "कॉल करें", "Call karein") }
+    // v0.340
+    static var scan: String { t("Scan", "स्कैन करें", "Scan karein") }
+    static var dashboard: String { t("Dashboard", "डैशबोर्ड", "Dashboard") }
+    static var loading: String { t("Loading…", "लोड हो रहा है…", "Load ho raha hai…") }
+    static var total: String { t("Total", "कुल", "Total") }
+    static var last14: String { t("Last 14 days", "पिछले 14 दिन", "Pichhle 14 din") }
+    static var inbox: String { t("Updates", "अपडेट", "Updates") }
+    static var inboxEmpty: String { t("No updates yet.", "अभी कोई अपडेट नहीं।", "Abhi koi update nahi.") }
+    static var newEntry: String { t("New — open the app to see it", "नया — देखने के लिए ऐप खोलें", "Naya — dekhne ke liye app kholiye") }
 }
 
 /// Which screen each tab shows and the stack of screens opened on top of it.

@@ -295,3 +295,184 @@ class _AppStorePanelState extends State<AppStorePanel> {
     ]);
   }
 }
+
+/// v0.342 her app's code in HER GitHub: one commit per build (Android + iPhone + README + CHANGELOG, never a key).
+/// The button only makes the card in the chat; her tap on that card pushes.
+class AppCodePanel extends StatefulWidget {
+  const AppCodePanel({super.key, required this.app, required this.id});
+  final Santosh app;
+  final String id;
+  @override
+  State<AppCodePanel> createState() => _AppCodePanelState();
+}
+
+class _AppCodePanelState extends State<AppCodePanel> {
+  Map<String, dynamic>? _v;
+  bool _busy = false;
+  bool _private = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = Map<String, dynamic>.from(await widget.app.api!.call('GET', '/api/apps/${widget.id}/github') as Map);
+      if (mounted) setState(() => _v = v);
+    } catch (_) {}
+  }
+
+  Future<void> _card() async {
+    setState(() => _busy = true);
+    try {
+      await widget.app.api!.call('POST', '/api/apps/${widget.id}/github', body: {'private': _private});
+      if (mounted) _snack(context, 'Card chat mein aa gaya: wahan haan dabaiye.');
+      _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _v;
+    final commits = _list(v?['commits']);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Icon(Icons.code_rounded, color: C.accent, size: 20),
+        const SizedBox(width: 6),
+        Expanded(child: Text('Code aapke GitHub mein', style: display(15))),
+        if (commits.isNotEmpty) Pill('${commits.length} commits', fg: C.ok),
+      ]),
+      const SizedBox(height: 4),
+      const Text('Android + iPhone ka poora code, har build ek naya commit. Signing keys kabhi nahi jaati.',
+          style: TextStyle(color: C.muted, fontSize: 12)),
+      if (v != null && v['linked'] != true)
+        const Text('Pehle Website > Hosting mein apna GitHub token jodiye (sirf app mein).', style: TextStyle(color: C.warn, fontSize: 12)),
+      Row(children: [
+        Switch(value: _private, onChanged: (x) => setState(() => _private = x)),
+        Text(_private ? 'Private repo' : 'Public repo (sab dekh sakte hain)', style: const TextStyle(color: C.ink, fontSize: 12.5)),
+      ]),
+      GlassButton(label: 'Code GitHub mein daalo', height: 36,
+          onTap: _busy || v == null || v['linked'] != true || v['ready'] != true ? null : _card),
+      for (final x in commits.take(3))
+        Text('✓ build ${_s(x['build'])} · ${_s(x['repo'])} · ${_s(x['at']).substring(0, _s(x['at']).length >= 10 ? 10 : _s(x['at']).length)}',
+            style: const TextStyle(color: C.ok, fontSize: 12)),
+    ]);
+  }
+}
+
+/// v0.343 DESIGN SE MILAAN: each real app screen next to her approved design, a 0-100 match, Opus's differences for the
+/// low ones, and a rebuild of only those screens when she asks.
+class MatchPanel extends StatefulWidget {
+  const MatchPanel({super.key, required this.app, required this.id});
+  final Santosh app;
+  final String id;
+  @override
+  State<MatchPanel> createState() => _MatchPanelState();
+}
+
+class _MatchPanelState extends State<MatchPanel> {
+  Map<String, dynamic>? _v;
+  String _plat = 'android';
+  bool _busy = false;
+  bool _open = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = Map<String, dynamic>.from(await widget.app.api!.call('GET', '/api/apps/${widget.id}/match') as Map);
+      if (mounted) setState(() => _v = v);
+    } catch (_) {}
+  }
+
+  Future<void> _check(bool fix) async {
+    if (fix) {
+      final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
+        title: const Text('Yeh screens dobara banayein?'),
+        content: const Text('Jo screens design se kam mil rahi hain, sirf woh Opus dobara likhega (farak ki list ke saath). Baaki app wahi rahegi.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abhi nahi')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan')),
+        ],
+      ));
+      if (yes != true) return;
+    }
+    setState(() => _busy = true);
+    try {
+      final v = Map<String, dynamic>.from(await widget.app.api!.call('POST', '/api/apps/${widget.id}/match',
+          body: {'platform': _plat, 'fix': fix}) as Map);
+      if (mounted) {
+        setState(() => _v = v);
+        _snack(context, _s(v['say']));
+      }
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = _map(_map(_v?['match'])[_plat]);
+    final rows = _list(m['screens']);
+    final min = _i(m['min']) == 0 ? 70 : _i(m['min']);
+    final low = rows.where((x) => _i(x['score']) < min).length;
+    Widget pic(String path) => ClipRRect(borderRadius: BorderRadius.circular(8),
+        child: Image.network(widget.app.api!.absolute(path), headers: widget.app.api!.authHeaders, height: 150, fit: BoxFit.fitHeight,
+            errorBuilder: (_, __, ___) => const SizedBox(width: 70, height: 150)));
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      InkWell(onTap: () => setState(() => _open = !_open), child: Row(children: [
+        const Icon(Icons.compare_rounded, color: C.accent, size: 20),
+        const SizedBox(width: 6),
+        Expanded(child: Text('Design se milaan', style: display(15))),
+        if (m['avg'] != null) Pill('${m['avg']}%', fg: _i(m['avg']) >= min ? C.ok : C.warn),
+        Icon(_open ? Icons.expand_less : Icons.expand_more, color: C.muted),
+      ])),
+      if (_open) ...[
+        const SizedBox(height: 6),
+        Row(children: [
+          ChoiceChip(label: const Text('Android'), selected: _plat == 'android', onSelected: (_) => setState(() => _plat = 'android')),
+          const SizedBox(width: 8),
+          ChoiceChip(label: const Text('iPhone'), selected: _plat == 'ios', onSelected: (_) => setState(() => _plat = 'ios')),
+        ]),
+        if (rows.isEmpty)
+          const Text('Device check ki screenshots aate hi har screen ka milaan yahan dikhega.', style: TextStyle(color: C.muted, fontSize: 12)),
+        if (rows.isNotEmpty)
+          Text(low == 0 ? 'Sab screens design se mil rahi hain.' : '$low screen design se kam mil rahi hain.',
+              style: TextStyle(color: low == 0 ? C.ok : C.warn, fontSize: 12.5)),
+        for (final x in rows.take(12)) Padding(padding: const EdgeInsets.only(top: 10), child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(_s(x['label']), style: display(13))),
+            Pill('${_i(x['score'])}%', fg: _i(x['score']) >= min ? C.ok : C.warn),
+          ]),
+          const SizedBox(height: 4),
+          Row(children: [
+            if (_s(x['design']).isNotEmpty) pic('/api/apps/${widget.id}/shots/${_s(x['design'])}'),
+            const SizedBox(width: 8),
+            pic('/api/apps/${widget.id}/$_plat/qa/${_s(x['id'])}'),
+          ]),
+          for (final d in ((x['differences'] as List?) ?? const []))
+            Text('• $d', style: const TextStyle(color: C.muted, fontSize: 11.5)),
+        ])),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          GlassButton(label: 'Opus se farak dekho', height: 36, onTap: _busy ? null : () => _check(false)),
+          GlassButton(label: 'Theek karo (dobara banao)', color: C.accent, height: 36,
+              onTap: _busy || low == 0 ? null : () => _check(true)),
+        ]),
+      ],
+    ]);
+  }
+}

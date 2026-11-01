@@ -161,6 +161,12 @@ def push(tenant: str, eid: str, hash_: str) -> dict[str, Any]:
         if o.status != "card":
             raise GithubError(f"Yeh export '{o.status}' hai.")
         s.expunge(o)
+    if o.site_id.startswith("app:"):                 # v0.342 an app's code (appmaker/code.py), same card, same tap
+        from ..appmaker import code as CODE
+        try:
+            return CODE.push(tenant, o, hash_)
+        except CODE.CodeError as e:
+            raise GithubError(str(e))
     folder = _folder(tenant, o.site_id, o.version)
     if not folder.exists() or hash_ != _hash(o, B.fingerprint(folder)):
         raise GithubError("Card badal gaya; naya card mangiye.")

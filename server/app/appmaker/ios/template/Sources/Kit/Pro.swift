@@ -1,0 +1,245 @@
+// Made by Hoola App Sahayak (v0.340 HAR FEATURE 2), the iPhone twin of the Android kit's Pro.kt:
+// - ScanRow: a barcode / QR code read by Apple's VisionKit scanner (live camera, iPhone XS and newer), or typed.
+// - StatsBlock: the staff dashboard - counts, status mix, rows per day (Swift Charts) and the money total (staff only).
+// - Inbox + InboxScreen: every update the app was told about, kept on the phone, newest first.
+// - Updates: the background check (iOS background app refresh, when iOS allows it) -> a local notification per change,
+//   the same /updates the Android app polls. No push server and no Apple push key are needed.
+import SwiftUI
+import Charts
+import VisionKit
+import BackgroundTasks
+import UserNotifications
+
+// ---------------------------------------------------------------- scan
+struct ScanRow: View {
+    let label: String
+    let key: String
+    @ObservedObject private var state = AppState.shared
+    @State private var open = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TextField(label, text: state.binding(key)).textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+            if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
+                Button { open = true } label: { Label(Words.scan, systemImage: "barcode.viewfinder") }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .sheet(isPresented: $open) {
+            ScannerSheet { code in
+                state.form[key] = String(code.prefix(200))
+                open = false
+            }
+            .ignoresSafeArea()
+        }
+    }
+}
+
+struct ScannerSheet: UIViewControllerRepresentable {
+    let done: (String) -> Void
+
+    func makeCoordinator() -> Coord { Coord(done: done) }
+
+    func makeUIViewController(context: Context) -> DataScannerViewController {
+        let vc = DataScannerViewController(recognizedDataTypes: [.barcode()], qualityLevel: .balanced,
+                                           recognizesMultipleItems: false, isHighFrameRateTrackingEnabled: false,
+                                           isHighlightingEnabled: true)
+        vc.delegate = context.coordinator
+        DispatchQueue.main.async { try? vc.startScanning() }
+        return vc
+    }
+
+    func updateUIViewController(_ vc: DataScannerViewController, context: Context) {}
+
+    @MainActor
+    final class Coord: NSObject, DataScannerViewControllerDelegate {
+        let done: (String) -> Void
+        init(done: @escaping (String) -> Void) { self.done = done }
+
+        func dataScanner(_ dataScanner: DataScannerViewController, didAdd addedItems: [RecognizedItem], allItems: [RecognizedItem]) {
+            for item in addedItems {
+                if case .barcode(let b) = item, let s = b.payloadStringValue, !s.isEmpty {
+                    dataScanner.stopScanning()
+                    done(s.trimmingCharacters(in: .whitespacesAndNewlines))
+                    return
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- staff dashboard
+struct StatsList: Identifiable {
+    let id: String
+    let label: String
+    let count: Int
+    let total: Double?
+    let status: [(String, Int)]
+    let daily: [Int]
+}
+
+struct StatsBlock: View {
+    @ObservedObject private var auth = Auth.shared
+    @State private var lists: [StatsList] = []
+    @State private var failed = false
+    @State private var loaded = false
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        if auth.isStaff {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(Words.dashboard).font(.headline)
+                if !loaded { Muted(failed ? Words.offline : Words.loading) }
+                ForEach(lists) { l in
+                    Card {
+                        HStack {
+                            Text(l.label).font(.headline)
+                            Spacer()
+                            Text("\(l.count)").font(.title3.weight(.semibold))
+                        }
+                        if let t = l.total { Muted(Words.total + ": " + rupees(t)) }
+                        if !l.status.isEmpty {
+                            HStack { ForEach(l.status.prefix(4), id: \.0) { s in StatusPill(text: "\(s.0) \(s.1)") } }
+                        }
+                        Chart {
+                            ForEach(Array(l.daily.enumerated()), id: \.offset) { i, v in
+                                BarMark(x: .value("Day", i), y: .value("Count", v)).foregroundStyle(H.c(scheme).primary)
+                            }
+                        }
+                        .chartXAxis(.hidden)
+                        .frame(height: 72)
+                        .accessibilityLabel(Words.last14 + " " + l.label + ": " + l.daily.map(String.init).joined(separator: ", "))
+                    }
+                }
+            }
+            .task(id: auth.me?.id) { await load() }
+        }
+    }
+
+    private func load() async {
+        let r = await Cloud.call("GET", "/stats", nil, token: auth.token)
+        guard r.ok else { failed = true; return }
+        lists = items(r.body["lists"]).map { x in
+            let st = (x.o["status"] as? [String: Any] ?? [:]).compactMap { k, v in (v as? NSNumber).map { (k, $0.intValue) } }
+                .sorted { $0.1 > $1.1 }
+            let daily = (x.o["daily"] as? [Any] ?? []).compactMap { ($0 as? NSNumber)?.intValue }
+            return StatsList(id: x.s("key"), label: x.s("label"), count: Int(x.n("count")),
+                             total: x.o["total"] is NSNull || x.o["total"] == nil ? nil : x.n("total"), status: st, daily: daily)
+        }
+        loaded = true
+    }
+}
+
+// ---------------------------------------------------------------- inbox
+@MainActor
+final class Inbox: ObservableObject {
+    static let shared = Inbox()
+    @Published private(set) var items: [[String: Any]] = []
+    @Published private(set) var unread = 0
+    private let key = "hoola_inbox"
+
+    init() {
+        items = (UserDefaults.standard.array(forKey: key) as? [[String: Any]]) ?? []
+        unread = items.filter { ($0["new"] as? Bool) == true }.count
+    }
+
+    func add(_ title: String, _ text: String, _ at: String) {
+        items = [["title": title, "text": text, "at": at, "new": true]] + items.prefix(49)
+        save()
+    }
+
+    func seen() {
+        items = items.map { var x = $0; x["new"] = false; return x }
+        save()
+    }
+
+    private func save() {
+        UserDefaults.standard.set(items, forKey: key)
+        unread = items.filter { ($0["new"] as? Bool) == true }.count
+    }
+}
+
+struct InboxScreen: View {
+    @ObservedObject private var inbox = Inbox.shared
+    var body: some View {
+        Page(Words.inbox) {
+            if inbox.items.isEmpty { Muted(Words.inboxEmpty) }
+            ForEach(Array(inbox.items.enumerated()), id: \.offset) { _, x in
+                Card {
+                    Text(x["title"] as? String ?? "").font(.headline)
+                    if let t = x["text"] as? String, !t.isEmpty { Muted(t) }
+                    Muted(String((x["at"] as? String ?? "").prefix(16)).replacingOccurrences(of: "T", with: " "))
+                }
+            }
+        }
+        .onDisappear { inbox.seen() }
+    }
+}
+
+struct InboxButton: View {
+    @ObservedObject private var inbox = Inbox.shared
+    var body: some View {
+        MainButton(text: Words.inbox + (inbox.unread > 0 ? " (\(inbox.unread))" : ""), tonal: true) { Router.shared.go("hoola_inbox") }
+    }
+}
+
+// ---------------------------------------------------------------- background updates
+enum Updates {
+    static var taskId: String { (Bundle.main.bundleIdentifier ?? "app") + ".updates" }
+
+    /// At app start (before launch ends): the background job iOS runs when it suits the battery.
+    static func register() {
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: taskId, using: nil) { task in
+            guard let t = task as? BGAppRefreshTask else { task.setTaskCompleted(success: false); return }
+            schedule()
+            let job = Task { @MainActor in
+                _ = await check()
+                t.setTaskCompleted(success: true)
+            }
+            t.expirationHandler = { job.cancel() }
+        }
+    }
+
+    static func schedule() {
+        let r = BGAppRefreshTaskRequest(identifier: taskId)
+        r.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
+        try? BGTaskScheduler.shared.submit(r)
+    }
+
+    /// Asks the server what changed since the last check: one local notification per change + the inbox.
+    @MainActor
+    static func check() async -> Int {
+        guard Cloud.ready, Auth.shared.signedIn else { return 0 }
+        askOnce()
+        let since = UserDefaults.standard.string(forKey: "hoola_upd_since") ?? ""
+        let q = since.isEmpty ? "" : "?since=" + (since.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? "")
+        let r = await Cloud.call("GET", "/updates" + q, nil, token: Auth.shared.token)
+        guard r.ok else { return 0 }
+        let now = r.body["now"] as? String ?? ""
+        if !now.isEmpty { UserDefaults.standard.set(now, forKey: "hoola_upd_since") }
+        if since.isEmpty { return 0 }                 // the very first check only sets the mark: no old news
+        var shown = 0
+        for it in items(r.body["items"]) {
+            let title = it.s("title", AppData.shared.appName)
+            let text = it.s("kind") == "new" ? Words.newEntry
+                : [it.s("status"), it.s("paid") == "No" ? "" : it.s("paid")].filter { !$0.isEmpty }.joined(separator: " · ")
+            Inbox.shared.add(title, text, now)
+            let c = UNMutableNotificationContent()
+            c.title = title
+            c.body = text
+            c.sound = .default
+            try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: it.s("id") + now, content: c, trigger: nil))
+            shown += 1
+        }
+        return shown
+    }
+
+    /// The notification question, once, after the user has an account (never at first launch).
+    @MainActor
+    static func askOnce() {
+        guard !UserDefaults.standard.bool(forKey: "hoola_notify_asked") else { return }
+        UserDefaults.standard.set(true, forKey: "hoola_notify_asked")
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+    }
+}

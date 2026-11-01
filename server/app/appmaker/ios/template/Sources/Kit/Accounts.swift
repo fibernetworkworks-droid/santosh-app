@@ -52,6 +52,8 @@ struct AccountScreen: View {
             } else {
                 MainButton(text: Words.signIn) { Router.shared.go("hoola_login") }
             }
+            if auth.signedIn { InboxButton() }                       // v0.340 the updates inbox
+            if auth.isStaff { StatsBlock() }                         // v0.340 the staff dashboard
             if db.pending > 0 { Muted("\(db.pending) · \(Words.sending)") }
             if !db.lastError.isEmpty { Text(db.lastError).foregroundStyle(.red).font(.subheadline) }
             ForEach(db.collections(), id: \.self) { c in
@@ -170,6 +172,8 @@ struct FormBlock: View {
                 PhotoRow(label: label, key: k)
             case "location":
                 LocationRow(label: label, key: k)
+            case "scan":
+                ScanRow(label: label, key: k)
             default:
                 TextField(label, text: state.binding(k)).textFieldStyle(.roundedBorder)
                     .keyboardType(f.s("type") == "phone" ? .phonePad : f.s("type") == "email" ? .emailAddress : f.s("type") == "number" ? .decimalPad : .default)

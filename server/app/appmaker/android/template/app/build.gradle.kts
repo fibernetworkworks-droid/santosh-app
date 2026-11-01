@@ -69,5 +69,6 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
     implementation(libs.coroutines.android)
+    implementation(libs.gms.code.scanner)
     debugImplementation(libs.compose.ui.tooling)
 }

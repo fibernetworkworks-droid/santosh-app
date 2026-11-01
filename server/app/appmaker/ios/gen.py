@@ -27,7 +27,7 @@ HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "template"
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 CODE_SCREENS = ("seller_info", "privacy", "delete_account")
-KIT_SCREENS = ("hoola_login", "hoola_account")
+KIT_SCREENS = ("hoola_login", "hoola_account", "hoola_inbox")   # v0.340 + the updates inbox
 AUTH_IDS = ("login", "signup", "register", "login_staff", "otp_login", "sign_in")
 MIN_IOS = "16.0"
 
@@ -58,6 +58,7 @@ TAB_WORDS = [("home", "house"), ("cart", "cart"), ("order", "doc.text"), ("book"
 
 FORM_WORDS = ("book", "form", "enquir", "request", "enrol", "register", "apply", "contact", "feedback", "new_", "add_")
 CART_WORDS = ("cart", "checkout", "basket", "order_review")
+DASH_WORDS = ("dashboard", "report", "stats", "analytics", "admin", "overview")
 
 
 def swift_name(sid: str) -> str:
@@ -151,7 +152,7 @@ def screens_swift(spec: dict[str, Any]) -> str:
         cases.append(f"    case {sstr(sid)}: return AnyView({view})")
     cases += ['    case "seller_info": return AnyView(SellerScreen())', '    case "privacy": return AnyView(PrivacyScreen())',
               '    case "delete_account": return AnyView(DeleteAccountScreen())', '    case "hoola_login": return AnyView(AuthScreen())',
-              '    case "hoola_account": return AnyView(AccountScreen())']
+              '    case "hoola_account": return AnyView(AccountScreen())', '    case "hoola_inbox": return AnyView(InboxScreen())']
     body = "\n".join(cases)
     return f'''// Made by Hoola App Sahayak from the approved design: which screens exist and which view each id opens.
 import SwiftUI
@@ -182,6 +183,7 @@ struct HoolaApp: App {
         if let i = a.firstIndex(of: "-hoola_base"), i + 1 < a.count { Cloud.base = a[i + 1] }
         #endif
         CrashGuard.install()
+        Updates.register()                                   // v0.340 order updates in the background (iOS decides when)
         AppData.shared.load()
         Auth.shared.load()
         Db.shared.load()
@@ -194,6 +196,8 @@ struct HoolaApp: App {
                     await CrashGuard.sendPending()
                     await AppData.shared.refresh()
                     await Db.shared.sync()
+                    _ = await Updates.check()
+                    Updates.schedule()
                     #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("-hoola_e2e") { await E2e.run() }
                     #endif
@@ -245,6 +249,8 @@ def code_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dic
         rows.append(f"            ListBlock(list: {sstr(lst)}, next: {sstr(nxt)})")
     else:
         rows.append("            Muted(AppData.shared.facts.s(\"tagline\"))")
+    if any(w in sid for w in DASH_WORDS) and colls:          # v0.340 staff dashboards show the live numbers
+        rows.append("            StatsBlock()")
     if sid in ("profile", "account", "me", "my_account", "settings") and colls:
         rows.append("            AccountButton()")
     for a in acts:
@@ -385,6 +391,11 @@ def uses_location(spec: dict[str, Any]) -> bool:
                for f in (c.get("fields") or []) if isinstance(f, dict))
 
 
+def uses_scan(spec: dict[str, Any]) -> bool:
+    return any(f.get("type") == "scan" for c in ((spec.get("seed") or {}).get("backend") or {}).get("collections") or []
+               for f in (c.get("fields") or []) if isinstance(f, dict))
+
+
 def uses_photos(spec: dict[str, Any]) -> bool:
     return any(f.get("type") == "photo" for c in ((spec.get("seed") or {}).get("backend") or {}).get("collections") or []
                for f in (c.get("fields") or []) if isinstance(f, dict))
@@ -446,6 +457,9 @@ def info_plist(spec: dict[str, Any]) -> str:
     if uses_location(spec):
         extra += ("    <key>NSLocationWhenInUseUsageDescription</key>\n"
                   "    <string>Your location is added to your order or request only when you tap Use my location.</string>\n")
+    if uses_scan(spec):                                  # v0.340 the scanner's camera
+        extra += ("    <key>NSCameraUsageDescription</key>\n"
+                  "    <string>The camera reads a barcode or QR code only when you tap Scan. Nothing is recorded.</string>\n")
     if uses_photos(spec):
         extra += ("    <key>NSPhotoLibraryUsageDescription</key>\n"
                   "    <string>Pick a photo to send with your request. Only the photo you choose is used.</string>\n")
@@ -485,6 +499,14 @@ def info_plist(spec: dict[str, Any]) -> str:
         <key>NSAllowsLocalNetworking</key>
         <true/>
     </dict>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>$(PRODUCT_BUNDLE_IDENTIFIER).updates</string>
+    </array>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+    </array>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UIApplicationSceneManifest</key>

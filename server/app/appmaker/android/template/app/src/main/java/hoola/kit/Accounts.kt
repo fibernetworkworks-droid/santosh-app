@@ -111,6 +111,11 @@ fun AccountScreen() {
                 }
             }
         }
+        if (me != null) block {                                   // v0.340 the updates inbox (order moved, new orders)
+            val n = Inbox.unread.value
+            Btn(Strings.inbox + if (n > 0) " ($n)" else "", kind = BtnKind.Tonal, icon = "bell", modifier = Modifier.fillMaxWidth()) { nav.go("hoola_inbox") }
+        }
+        if (me != null && Auth.isStaff) block { StatsBlock() }     // v0.340 the staff dashboard
         if (Db.pending.value > 0) block { Pill("${Db.pending.value} ${Strings.pending}", "warn") }
         if (Db.lastError.value.isNotEmpty()) block { Pill(Db.lastError.value, "bad") }
         Db.collections().forEach { coll ->

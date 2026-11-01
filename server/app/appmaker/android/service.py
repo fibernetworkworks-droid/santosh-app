@@ -438,6 +438,8 @@ def _run(r: AppProject) -> None:
             if last.get("ok") and last.get("apk"):
                 result = last
     _keep_qa(r, n, result.get("qa"))
+    from .. import match as MT
+    MT.after_build(r, "android")                    # v0.343 how close each real screen is to her approved design
     apk = result["apk"]
     name = f"{AS._tidy(r.name, 30).replace(' ', '-') or 'app'}-v{r.version}-b{n}.apk"
     (work / "apk").mkdir(exist_ok=True)
