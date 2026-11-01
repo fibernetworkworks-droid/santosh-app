@@ -122,6 +122,13 @@ HARD RULES (the build fails otherwise)
   NEVER edit or re-output it), never set physics ticks or gravity yourself: it already did. Use
   HoolaPhysics.jump_velocity(height_px) for jumps, jump_height(v), air_time(v), range_of(vx, vy), gravity(), and call
   HoolaPhysics.fast(body) on every fast RigidBody2D when HoolaPhysics.needs_ccd(speed) is true.
+- AUDIO: if the files include hoola_audio.gd (the HoolaAudio autoload, MEASURED by Hoola - NEVER edit or re-output it),
+  make positional players with HoolaAudio.player2d(stream) / player3d(stream) (distance set already), call
+  HoolaAudio.set_zone(key) when the player enters a place named in HoolaAudio.zones(), and HoolaAudio.occlude(player,
+  true / false) when a wall is between a sound and the player.
+- HAPTICS: if the files include hoola_haptics.gd (the HoolaHaptics autoload - NEVER edit or re-output it), call
+  HoolaHaptics.play(name) for the moments in HoolaHaptics.names() (e.g. "jump", "coin", "hit", "game_over"); put
+  HoolaHaptics.set_enabled(on) and set_intensity(0..1) on the settings / pause screen. Never vibrate any other way.
 - GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
   NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
   HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])

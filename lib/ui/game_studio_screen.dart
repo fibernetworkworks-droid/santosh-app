@@ -492,6 +492,22 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
                 },
               ),
               OutlinedButton.icon(
+                icon: const Icon(Icons.surround_sound_outlined),
+                label: const Text('Audio'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameAudioScreen(app: widget.app, studio: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.vibration_outlined),
+                label: const Text('Haptics'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameHapticsScreen(app: widget.app, studio: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
                 icon: const Icon(Icons.rocket_launch_outlined),
                 label: const Text('Release'),
                 onPressed: () async {

@@ -15,7 +15,7 @@ from pathlib import Path
 
 log = logging.getLogger("santosh.gamedesk")
 
-PACKS = ("world", "physics")                     # gamedesk/<name>.py, in build order
+PACKS = ("world", "physics", "audio", "haptics")   # gamedesk/<name>.py, in build order (v0.421 + audio, haptics)
 
 
 def _mods():

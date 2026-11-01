@@ -38,6 +38,18 @@ POST   /api/gamedesk/physics                    {words?, inputs?: {speed, wall, 
 GET    /api/gamedesk/physics/{pid}
 POST   /api/gamedesk/physics/{pid}/approve|reject
 POST   /api/gamedesk/physics/apply              {studio}  approved settings into the live game (HoolaPhysics)
+GET    /api/gamedesk/audio?studio=              Spatial Audio Programmer: setups (zones, distances, measured report)
+POST   /api/gamedesk/audio                      {words?, plan?: {zones: [{key, rt60, wet}], min_d, max_d, px_per_m}, studio?}
+GET    /api/gamedesk/audio/{aid}                one setup
+POST   /api/gamedesk/audio/{aid}/approve|reject
+POST   /api/gamedesk/audio/apply                {studio}  approved setup into the live game (HoolaAudio)
+GET    /api/gamedesk/audio/{aid}/file/{name}?sig   walkaround.wav | distance.wav | zones.wav (signed)
+GET    /api/gamedesk/haptics?studio=            Haptics Engineer: pattern sets + checks + library + actuators
+POST   /api/gamedesk/haptics                    {words?, patterns?: {name: [{t, d, a, s}]}, actuator?, studio?}
+GET    /api/gamedesk/haptics/{hid}
+POST   /api/gamedesk/haptics/{hid}/approve|reject
+POST   /api/gamedesk/haptics/apply              {studio}  approved patterns into the live game (HoolaHaptics)
+GET    /api/gamedesk/haptics/{hid}/file/{name}?sig   kit.zip | patterns.png (signed)
 
 v0.416 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
 GET    /api/gamestudio/{id}/releases            releases + where each platform can be built + package + itch key set?
@@ -566,6 +578,60 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if fn is None:
             raise HTTPException(404, "approve | reject")
         return await call(fn, tenant, pid)
+
+    # ------------------------------------------------------------ v0.421 role packs: Spatial Audio + Haptics
+    from . import audio as AU
+    from . import haptics as HP
+
+    def _pack_routes(base: str, mod, key: str, name: str, lister: str, maker, files_fn, media: dict) -> None:
+        @r.get(f"/api/gamedesk/{base}", dependencies=[Depends(require_key)])
+        async def _list(studio: str = "", tenant: str = Depends(current_tenant)):
+            from ..employee import hire
+            extra = {"library": sorted(HP.LIBRARY), "actuators": HP.ACTUATORS} if mod is HP else {"zone_presets": AU.ZONE_PRESETS}
+            return {lister: await call(getattr(mod, lister), tenant, studio), "hired": await asyncio.to_thread(hire.is_working, tenant, key), **extra}
+
+        @r.post(f"/api/gamedesk/{base}", dependencies=[Depends(require_key)])
+        async def _make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+            _working(tenant, key, name)
+            return await call(maker, tenant, _b(body))
+
+        @r.post(f"/api/gamedesk/{base}/apply", dependencies=[Depends(require_key)])
+        async def _apply(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+            _working(tenant, key, name)
+            return await call(mod.apply, tenant, str(_b(body).get("studio") or ""))
+
+        @r.get(f"/api/gamedesk/{base}/{{xid}}", dependencies=[Depends(require_key)])
+        async def _get(xid: str, tenant: str = Depends(current_tenant)):
+            return await call(mod.get, tenant, xid)
+
+        @r.post(f"/api/gamedesk/{base}/{{xid}}/{{what}}", dependencies=[Depends(require_key)])
+        async def _do(xid: str, what: str, tenant: str = Depends(current_tenant)):
+            _working(tenant, key, name)
+            fn = {"approve": mod.approve, "reject": mod.reject}.get(what)
+            if fn is None:
+                raise HTTPException(404, "approve | reject")
+            return await call(fn, tenant, xid)
+
+        @r.get(f"/api/gamedesk/{base}/{{xid}}/file/{{fname}}")
+        def _file(xid: str, fname: str, sig: str = ""):
+            p = files_fn(xid, fname, sig)
+            if p is None:
+                raise HTTPException(404, "link purana / galat hai")
+            return FileResponse(p, media_type=media.get(p.suffix, "application/octet-stream"),
+                                headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=600"},
+                                filename=p.name if p.suffix == ".zip" else None)
+
+    def _audio_make(tenant: str, b: dict):
+        return AU.setup(tenant, str(b.get("words") or ""), b.get("plan") if isinstance(b.get("plan"), dict) else None,
+                        str(b.get("studio") or ""))
+
+    def _haptics_make(tenant: str, b: dict):
+        return HP.make(tenant, str(b.get("words") or ""), b.get("patterns") if isinstance(b.get("patterns"), dict) else None,
+                       str(b.get("actuator") or "phone_lra"), str(b.get("studio") or ""))
+
+    _pack_routes("audio", AU, AU.KEY, "Spatial Audio Systems Programmer", "setups", _audio_make, AU.audio_file, {".wav": "audio/wav"})
+    _pack_routes("haptics", HP, HP.KEY, "Haptic Feedback Systems Engineer", "sets", _haptics_make, HP.haptics_file,
+                 {".zip": "application/zip", ".png": "image/png"})
 
     @r.get("/play/{token}")
     def play_root(token: str):

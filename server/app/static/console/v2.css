@@ -2569,3 +2569,8 @@ body.albon{overflow:hidden}
 #app .ph-tbl { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
 #app .ph-tbl th, #app .ph-tbl td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 #app .ph-tbl th { font-weight: 600; color: var(--mut); }
+
+/* v0.421 GAME DESK ROLES - Audio + Haptics */
+#app .au-demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 8px 0; }
+#app .au-demos audio { width: 100%; }
+#app .hp-img { width: 100%; max-width: 640px; image-rendering: auto; }

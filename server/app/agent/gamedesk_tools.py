@@ -184,6 +184,41 @@ GAMEDESK_TOOLS.append(
 
 GAMEDESK_LABELS.update({"game_world": "World bana raha hoon", "game_physics": "Game ki physics jaanch raha hoon"})
 
+# v0.421 Phase 7 batch 2: Spatial Audio + Haptics
+GAMEDESK_TOOLS.append(
+    {"name": "game_audio", "description": (
+        "Spatial Audio Systems Programmer employee: her game's sound space, MEASURED in code (free). Reverb zones (room, "
+        "hall, cave, cathedral, outdoor or her own RT60 seconds), distance (min_d / max_d metres) and walls (occlusion "
+        "-10 dB + low-pass). Renders binaural headphone demos (a sound walking round the head, distances, each zone) and "
+        "measures: ear-to-ear time per direction vs Woodworth, level difference by side, 6 dB per doubling, each zone's "
+        "RT60 measured back, loudness -16 LUFS / peak -1 dBFS, the render twice. Actions: setup (words / plan, id = "
+        "S-0001) -> runs in the background / list / status (setup A-001) / approve (only a PASS) / reject / apply (id): "
+        "HoolaAudio goes into her game. A round-head model gives no front/back or height cue - say so if asked; in-game "
+        "sound uses Godot's panning + distance + zones. Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"}, "plan": {"type": "object", "description": "{zones: [{key, rt60, wet}], min_d, max_d}"},
+         "id": {"type": "string", "description": "Studio project (S-0001)"}, "setup": {"type": "string", "description": "A-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_haptics", "description": (
+        "Haptic Feedback Systems Engineer employee: ONE vibration pattern per meaning (jump, coin, hit, game over, level "
+        "up...; from her words or exact patterns {name: [{t, d, a, s}]} in ms / 0-1), for actuator phone_lra | phone_erm "
+        "| controller | drv2605_lra | drv2605_erm. Checked in code: pulse length for that motor, gaps >= 20 ms, no two "
+        "patterns that feel the same, battery per play; an off switch + intensity always. Kit: iPhone .ahap files + "
+        "Swift, Android Kotlin waveforms, a DRV2605 C driver compiled here, a pattern picture. Actions: make / list / "
+        "status (set H-001) / approve (only a PASS) / reject / apply (id = S-0001): HoolaHaptics goes into her game. "
+        "iPhone browsers have no vibration - say so. Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["make", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"}, "patterns": {"type": "object"},
+         "actuator": {"type": "string", "enum": ["phone_lra", "phone_erm", "controller", "drv2605_lra", "drv2605_erm"]},
+         "id": {"type": "string"}, "set": {"type": "string", "description": "H-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_audio": "Game ki awaaz jaanch raha hoon", "game_haptics": "Game ki vibration bana raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -639,6 +674,77 @@ async def game_physics(ctx: Ctx, action="", words="", inputs=None, id="", setup=
     raise ToolError("action = setup | list | status | approve | reject | apply")
 
 
+def _audio_short(v: dict) -> dict:
+    rep = v.get("report") or {}
+    out = {"number": v.get("number"), "status": v.get("status"), "zones": (v.get("plan") or {}).get("zones"),
+           "distance_m": {k: (v.get("plan") or {}).get(k) for k in ("min_d", "max_d")}}
+    if rep:
+        out["report"] = {"verdict": rep.get("verdict"), "passed": f"{rep.get('passed')}/{rep.get('total')}",
+                         "checks": [{"check": c["check"], "ok": c["ok"], "note": c["note"]} for c in rep.get("checks", [])],
+                         "limits": rep.get("limits"), "numbers": rep.get("numbers")}
+    if v.get("status") == "testing":
+        out["note"] = "Rendering and measuring in the background (a few seconds); the demos appear on the Audio page."
+    if v.get("error"):
+        out["error"] = v["error"]
+    return out
+
+
+async def game_audio(ctx: Ctx, action="", words="", plan=None, id="", setup="", **_):
+    from ..employee import hire
+    from ..gamedesk import audio as A
+    from ..gamedesk import service as G
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, A.KEY):
+        raise ToolError("Spatial Audio Systems Programmer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, "Audio setup")
+    run = asyncio.to_thread
+    try:
+        if action == "setup":
+            return _audio_short(await run(A.setup, t, words, plan if isinstance(plan, dict) else None, id))
+        if action == "list":
+            return {"setups": [_audio_short(v) for v in (await run(A.setups, t, id))[:10]]}
+        if action in ("status", "approve", "reject"):
+            return _audio_short(await run({"status": A.get, "approve": A.approve, "reject": A.reject}[action], t, setup))
+        if action == "apply":
+            return await run(A.apply, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = setup | list | status | approve | reject | apply")
+
+
+def _haptics_short(v: dict) -> dict:
+    rep = v.get("report") or {}
+    return {"number": v.get("number"), "status": v.get("status"), "actuator": v.get("actuator_name"),
+            "patterns": {k: len(e) for k, e in (v.get("patterns") or {}).items()}, "verdict": rep.get("verdict"),
+            "errors": rep.get("errors", []), "warnings": rep.get("warnings", []), "passed": rep.get("passed", []),
+            "battery": rep.get("rows"), "drv2605_compile": ((rep.get("kit") or {}).get("drv2605_compile") or {}).get("status")}
+
+
+async def game_haptics(ctx: Ctx, action="", words="", patterns=None, actuator="phone_lra", id="", set="", **_):  # noqa: A002
+    from ..employee import hire
+    from ..gamedesk import haptics as H
+    from ..gamedesk import service as G
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, H.KEY):
+        raise ToolError("Haptic Feedback Systems Engineer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, "Haptics")
+    run = asyncio.to_thread
+    try:
+        if action == "make":
+            return _haptics_short(await run(H.make, t, words, patterns if isinstance(patterns, dict) else None, actuator, id))
+        if action == "list":
+            return {"sets": [_haptics_short(v) for v in (await run(H.sets, t, id))[:10]]}
+        if action in ("status", "approve", "reject"):
+            return _haptics_short(await run({"status": H.get, "approve": H.approve, "reject": H.reject}[action], t, set))
+        if action == "apply":
+            return await run(H.apply, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = make | list | status | approve | reject | apply")
+
+
 GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets,
                      "game_qa": game_qa, "game_release": game_release, "game_world": game_world,
-                     "game_physics": game_physics}
+                     "game_physics": game_physics, "game_audio": game_audio, "game_haptics": game_haptics}

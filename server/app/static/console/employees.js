@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
+  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
@@ -899,7 +899,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return GS_ROLE === 'world' ? gsWorld(el) : gsPhysics(el);
+    if (GS_ROLE) return ({world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -915,7 +915,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <p class="muted em-small">A short design doc comes first; nothing is built until you say OK. The play link stays private until you share it.</p></div>
       <div class="tile gl gd-team"><h3>Game Desk team</h3><p class="muted em-small">Each role is its own employee (hire it in Employees). Open a project's board to work on that game, or try them here on their own.</p>
         <div class="acts"><button class="btn soft" type="button" data-gs-role="world">Worlds (Procedural World Engineer)</button>
-          <button class="btn soft" type="button" data-gs-role="physics">Physics (Physics Engine Developer)</button></div></div>
+          <button class="btn soft" type="button" data-gs-role="physics">Physics (Physics Engine Developer)</button>
+          <button class="btn soft" type="button" data-gs-role="audio">Audio (Spatial Audio Programmer)</button>
+          <button class="btn soft" type="button" data-gs-role="haptics">Haptics (Haptic Feedback Engineer)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
     el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
@@ -1393,6 +1395,82 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'physics') gsPhysics(el); }, 4000);
   }
 
+  // ---------------------------------------------------------------- v0.421 Game Desk roles: Audio + Haptics
+  function checksTable(rows) {
+    return `<table class="ph-tbl"><tbody>${(rows || []).map(c => `<tr><td>${esc(c.check)}<div class="muted em-small">${esc(c.note)}</div></td><td>${tag(c.ok ? 'ok' : 'bad', c.ok ? 'pass' : 'fail')}</td></tr>`).join('')}</tbody></table>`;
+  }
+  async function gsAudio(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/audio' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const zp = d.zone_presets || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="auBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Audio</h2>
+        ${d.hired ? tag('ok', 'Spatial Audio Programmer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">Reverb zones, distance and walls for your game, with headphone demos. Every number is measured: ear-to-ear timing for 13 directions, 6 dB per doubling of distance, each zone's echo time, demo loudness. A round-head model gives no front / back or height cue; in the game, Godot's own panning, distance and zones play it.</p>
+      <div class="tile gl"><h3>New audio setup</h3><div class="acts">${Object.keys(zp).map(k => `<label class="gs-sw"><input type="checkbox" data-au-z="${esc(k)}"${['room', 'hall'].includes(k) ? ' checked' : ''}> ${esc(k.replace('_', ' '))} <span class="muted em-small">${num(zp[k])} s</span></label>`).join('')}</div>
+        <div class="ph-grid"><label>Full volume up to (m)<input id="auMin" type="number" min="0.1" step="0.1" value="1"></label><label>Silent beyond (m)<input id="auMax" type="number" min="1" value="40"></label></div>
+        <div class="acts"><button class="btn go" type="button" id="auGo"${d.hired ? '' : ' disabled'}>Render and measure</button>${sid ? '<button class="btn soft" type="button" id="auApply">Put approved audio in the game</button>' : ''}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Spatial Audio Systems Programmer in Employees first.</p>'}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {}, nb = rp.numbers || {};
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(((x.plan || {}).zones || []).map(z => z.key + ' ' + z.rt60 + ' s').join(' · '))}</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
+          ${Object.keys(f).length ? `<div class="au-demos">${Object.entries(f).map(([k, u]) => `<div><b class="em-small">${esc(k.replace('.wav', ''))}</b><audio controls preload="none" src="${esc(u)}"></audio></div>`).join('')}</div><p class="muted em-small">Use headphones. Render ${num(nb.render_s)} s · ${num(nb.cpu_per_voice_s_per_s)} s CPU per voice per second · latency ${num(nb.latency_ms)} ms</p>` : (x.status === 'testing' ? '<p class="muted em-small">Rendering and measuring…</p>' : '')}
+          ${checksTable(rp.checks)}${rp.limits ? `<p class="muted em-small">${esc(rp.limits)}</p>` : ''}${x.error ? `<div class="badc em-small">${esc(x.error)}</div>` : ''}
+          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-au="approve" data-id="${esc(x.id)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-au="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">No audio setups yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsAudio(el); };
+    el.querySelector('#auBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#auGo').addEventListener('click', e => {
+      const zones = [...el.querySelectorAll('[data-au-z]:checked')].map(x => ({key: x.dataset.auZ, rt60: zp[x.dataset.auZ]}));
+      if (!zones.length) { toast('Pick at least one place.', true); return; }
+      e.target.disabled = true;
+      go(() => api('POST', '/api/gamedesk/audio', {plan: {zones, min_d: Number(el.querySelector('#auMin').value), max_d: Number(el.querySelector('#auMax').value)}, studio: sid}), 'Rendering and measuring.');
+    });
+    el.querySelector('#auApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/audio/apply', {studio: sid}), 'Rebuilding the game with the approved audio.'));
+    el.querySelectorAll('[data-au]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/audio/${encodeURIComponent(b.dataset.id)}/${b.dataset.au}`), b.dataset.au === 'approve' ? 'Approved.' : '')));
+    if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'audio') gsAudio(el); }, 3000);
+  }
+
+  async function gsHaptics(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/haptics' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const acts = d.actuators || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="hpBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Haptics</h2>
+        ${d.hired ? tag('ok', 'Haptic Feedback Engineer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">One vibration pattern per moment, checked for the motor (pulse length, gaps you can feel, no two that feel the same) with battery per play. Every player gets an off switch and intensity. The kit has iPhone Core Haptics files, Android code and a DRV2605 driver compiled here. iPhone browsers have no vibration.</p>
+      <div class="tile gl"><h3>New pattern set</h3>
+        <textarea id="hpWords" rows="2" maxlength="600" placeholder="The moments that should buzz, e.g. jump, coin, hit, game over, level up" aria-label="Moments"></textarea>
+        <div class="acts"><select id="hpAct" aria-label="Device">${Object.entries(acts).map(([k, a]) => `<option value="${esc(k)}">${esc(a.name)}</option>`).join('')}</select>
+          <button class="btn go" type="button" id="hpGo"${d.hired ? '' : ' disabled'}>Make and check</button>${sid ? '<button class="btn soft" type="button" id="hpApply">Put approved haptics in the game</button>' : ''}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Haptic Feedback Systems Engineer in Employees first.</p>'}</div>
+      ${(d.sets || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {}, comp = ((rp.kit || {}).drv2605_compile || {});
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(x.actuator_name)} · ${esc(Object.keys(x.patterns || {}).join(', '))}</span></h3>${tag(c, n)}</div>
+          ${f['patterns.png'] ? `<img class="wd-prev hp-img" src="${esc(f['patterns.png'])}" alt="Pattern shapes" loading="lazy">` : ''}
+          ${checkList(rp)}
+          <table class="ph-tbl"><thead><tr><th>Pattern</th><th>Length</th><th>Pulses</th><th>Energy / play</th><th>Per 1,000 plays</th></tr></thead><tbody>${Object.entries(rp.rows || {}).map(([k, r]) => `<tr><td>${esc(k)}</td><td>${num(r.ms)} ms</td><td>${num(r.pulses)}</td><td>${num(r.energy_mj)} mJ</td><td>${num(r.per_1000_plays_mwh)} mWh</td></tr>`).join('')}</tbody></table>
+          <p class="muted em-small">${esc(rp.battery_note || '')} · DRV2605 driver: ${esc(comp.status || '')}${comp.compiler ? ' (' + esc(comp.compiler) + ')' : ''}</p>
+          <div class="acts">${f['kit.zip'] ? `<a class="btn soft gs-mini" href="${esc(f['kit.zip'])}">Download the kit (ZIP)</a>` : ''}
+            <button class="btn soft gs-mini" type="button" data-hp-try="${esc(x.id)}">Feel it on this phone</button>
+            ${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-hp="approve" data-id="${esc(x.id)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-hp="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">No pattern sets yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsHaptics(el); };
+    el.querySelector('#hpBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#hpGo').addEventListener('click', e => { e.target.disabled = true;
+      go(() => api('POST', '/api/gamedesk/haptics', {words: el.querySelector('#hpWords').value.trim(), actuator: el.querySelector('#hpAct').value, studio: sid}), 'Made and checked.'); });
+    el.querySelector('#hpApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/haptics/apply', {studio: sid}), 'Rebuilding the game with the approved haptics.'));
+    el.querySelectorAll('[data-hp]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/haptics/${encodeURIComponent(b.dataset.id)}/${b.dataset.hp}`), b.dataset.hp === 'approve' ? 'Approved.' : '')));
+    el.querySelectorAll('[data-hp-try]').forEach(b => b.addEventListener('click', async () => {
+      const x = (d.sets || []).find(s => s.id === b.dataset.hpTry); if (!x) return;
+      if (!navigator.vibrate) { toast('This browser cannot vibrate (iPhone browsers and most computers cannot).', true); return; }
+      for (const [name, ev] of Object.entries(x.patterns || {})) {   // each pattern in turn, 600 ms apart: off/on timings for navigator.vibrate
+        const seq = []; let t = 0; ev.forEach(e => { seq.push(Math.max(0, e.t - t), e.d); t = e.t + e.d; }); seq.shift();
+        toast(name); navigator.vibrate(seq); await new Promise(r => setTimeout(r, t + 600));
+      }
+    }));
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
     if (GS_BIBLE) return gsBible(el, id);
@@ -1415,6 +1493,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" id="gsRelBtn">Release</button>
         <button class="btn soft" type="button" id="gsWorldBtn">Worlds</button>
         <button class="btn soft" type="button" id="gsPhysBtn">Physics</button>
+        <button class="btn soft" type="button" id="gsAudBtn">Audio</button>
+        <button class="btn soft" type="button" id="gsHapBtn">Haptics</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
@@ -1467,6 +1547,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     el.querySelector('#gsRelBtn').addEventListener('click', () => { GS_REL = true; gsRelease(el, id); });
     el.querySelector('#gsWorldBtn').addEventListener('click', () => { GS_ROLE = 'world'; GS_ROLE_SID = id; gsWorld(el); });
     el.querySelector('#gsPhysBtn').addEventListener('click', () => { GS_ROLE = 'physics'; GS_ROLE_SID = id; gsPhysics(el); });
+    el.querySelector('#gsAudBtn').addEventListener('click', () => { GS_ROLE = 'audio'; GS_ROLE_SID = id; gsAudio(el); });
+    el.querySelector('#gsHapBtn').addEventListener('click', () => { GS_ROLE = 'haptics'; GS_ROLE_SID = id; gsHaptics(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

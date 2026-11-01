@@ -921,6 +921,8 @@ def init_db(url: str | None = None):
     from .gamedesk import platforms as _gameplatforms  # noqa: F401  (v0.416 game platforms)
     from .gamedesk import world as _gameworld  # noqa: F401  (v0.420 procedural worlds)
     from .gamedesk import physics as _gamephysics  # noqa: F401  (v0.420 physics lab)
+    from .gamedesk import audio as _gameaudio  # noqa: F401  (v0.421 spatial audio)
+    from .gamedesk import haptics as _gamehaptics  # noqa: F401  (v0.421 haptics)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

@@ -398,3 +398,236 @@ class _GamePhysicsScreenState extends State<GamePhysicsScreen> {
     );
   }
 }
+
+// ================================================================ v0.421 Audio + Haptics (one shared page shape)
+class _PackPage extends StatefulWidget {
+  const _PackPage({required this.app, required this.studio, required this.base, required this.title, required this.intro,
+      required this.listKey, required this.hireName});
+  final Santosh app;
+  final String studio;
+  final String base;
+  final String title;
+  final String intro;
+  final String listKey;
+  final String hireName;
+  @override
+  State<_PackPage> createState() => _PackPageState();
+}
+
+class _PackPageState extends State<_PackPage> {
+  Map<String, dynamic> _d = {};
+  bool _loaded = false;
+  bool _busy = false;
+  final _words = TextEditingController();
+  String _actuator = 'phone_lra';
+  final Set<String> _zones = {'room', 'hall'};
+  Timer? _timer;
+
+  bool get _audio => widget.base == 'audio';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _words.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    _timer?.cancel();
+    try {
+      final d = await widget.app.api!.gamePack(widget.base, widget.studio);
+      if (!mounted) return;
+      setState(() {
+        _d = d;
+        _loaded = true;
+      });
+      if (_list(d[widget.listKey]).any((x) => _s(x['status']) == 'testing')) _timer = Timer(const Duration(seconds: 3), _load);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loaded = true);
+        _snack(context, '$e');
+      }
+    }
+  }
+
+  Future<void> _call(Future<dynamic> Function() f, String ok) async {
+    setState(() => _busy = true);
+    try {
+      await f();
+      if (mounted && ok.isNotEmpty) _snack(context, ok);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+    await _load();
+  }
+
+  Widget _card(Map<String, dynamic> x) {
+    final rep = _map(x['report']);
+    final files = _map(x['files']);
+    final status = _s(x['status']);
+    final checks = _list(rep['checks']);
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text(_s(x['number']), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5))),
+          if (_s(rep['verdict']).isNotEmpty)
+            Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(_s(rep['verdict']),
+                    style: TextStyle(color: _s(rep['verdict']) == 'PASS' ? C.ok : C.bad, fontWeight: FontWeight.w600, fontSize: 12))),
+          _tag(status),
+        ]),
+        Text(_audio
+                ? _list(_map(x['plan'])['zones']).map((z) => '${_s(z['key'])} ${_s(z['rt60'])} s').join(' · ')
+                : '${_s(x['actuator_name'])} · ${_map(x['patterns']).keys.join(', ')}',
+            style: const TextStyle(color: C.muted, fontSize: 12)),
+        if (status == 'testing') const Text('Rendering and measuring…', style: TextStyle(color: C.muted, fontSize: 12.5)),
+        if (_audio)
+          for (final c in checks)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('${c['ok'] == true ? '✓' : '✕'} ${_s(c['check'])}: ${_s(c['note'])}',
+                  style: TextStyle(fontSize: 12, color: c['ok'] == true ? null : C.bad)),
+            )
+        else
+          _checks(rep),
+        if (_s(rep['limits']).isNotEmpty) Text(_s(rep['limits']), style: const TextStyle(color: C.muted, fontSize: 11.5)),
+        const SizedBox(height: 6),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          for (final e in files.entries)
+            OutlinedButton(
+                onPressed: () => launchUrl(Uri.parse(widget.app.api!.absolute(_s(e.value))), mode: LaunchMode.externalApplication),
+                child: Text(_audio ? 'Hear ${e.key.replaceAll('.wav', '')}' : (e.key == 'kit.zip' ? 'Download the kit' : 'Pattern shapes'))),
+          if (status == 'draft')
+            FilledButton(
+                onPressed: _busy ? null : () => _call(() => widget.app.api!.gamePackDo(widget.base, _s(x['id']), 'approve'), 'Approved.'),
+                child: const Text('OK, use it')),
+          if (status == 'draft')
+            OutlinedButton(
+                onPressed: _busy ? null : () => _call(() => widget.app.api!.gamePackDo(widget.base, _s(x['id']), 'reject'), ''),
+                child: const Text('No')),
+        ]),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hired = _d['hired'] == true;
+    final items = _list(_d[widget.listKey]);
+    final presets = _map(_d['zone_presets']);
+    final acts = _map(_d['actuators']);
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.title)),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+            Text(widget.intro, style: const TextStyle(color: C.muted, fontSize: 13.5, height: 1.35)),
+            const SizedBox(height: 10),
+            if (!_loaded)
+              const Center(child: CircularProgressIndicator())
+            else ...[
+              Glass(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(_audio ? 'New audio setup' : 'New pattern set', style: display(15.5)),
+                  if (_audio)
+                    Wrap(spacing: 6, children: [
+                      for (final k in presets.keys)
+                        FilterChip(
+                            label: Text('${k.replaceAll('_', ' ')} ${_s(presets[k])} s'),
+                            selected: _zones.contains(k),
+                            onSelected: (v) => setState(() => v ? _zones.add(k) : _zones.remove(k))),
+                    ])
+                  else ...[
+                    TextField(
+                        controller: _words,
+                        maxLines: 2,
+                        maxLength: 600,
+                        decoration: const InputDecoration(hintText: 'The moments that should buzz: jump, coin, hit, game over')),
+                    DropdownButton<String>(
+                      value: acts.containsKey(_actuator) ? _actuator : (acts.keys.isEmpty ? null : acts.keys.first),
+                      isExpanded: true,
+                      items: [for (final k in acts.keys) DropdownMenuItem(value: k, child: Text(_s(_map(acts[k])['name'])))],
+                      onChanged: (v) => setState(() => _actuator = v ?? 'phone_lra'),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  GradientButton(
+                    label: hired ? (_audio ? 'Render and measure' : 'Make and check') : 'Hire the ${widget.hireName} first',
+                    icon: _audio ? Icons.surround_sound_rounded : Icons.vibration_rounded,
+                    height: 48,
+                    onTap: _busy || !hired || (_audio && _zones.isEmpty)
+                        ? null
+                        : () => _call(
+                            () => widget.app.api!.gamePackNew(
+                                widget.base,
+                                _audio
+                                    ? {
+                                        'studio': widget.studio,
+                                        'plan': {
+                                          'zones': [for (final k in _zones) {'key': k, 'rt60': presets[k]}]
+                                        }
+                                      }
+                                    : {'studio': widget.studio, 'words': _words.text.trim(), 'actuator': _actuator}),
+                            _audio ? 'Rendering and measuring.' : 'Made and checked.'),
+                  ),
+                  if (widget.studio.isNotEmpty && hired)
+                    TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _call(() => widget.app.api!.gamePackApply(widget.base, widget.studio), 'Rebuilding the game.'),
+                        child: Text(_audio ? 'Put approved audio in the game' : 'Put approved haptics in the game')),
+                ]),
+              ),
+              if (items.isEmpty) const Padding(padding: EdgeInsets.only(top: 16), child: Text('Nothing yet.', style: TextStyle(color: C.muted))),
+              for (final x in items) _card(x),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class GameAudioScreen extends StatelessWidget {
+  const GameAudioScreen({super.key, required this.app, required this.studio});
+  final Santosh app;
+  final String studio;
+  @override
+  Widget build(BuildContext context) => _PackPage(
+      app: app,
+      studio: studio,
+      base: 'audio',
+      title: 'Audio',
+      listKey: 'setups',
+      hireName: 'Spatial Audio Programmer',
+      intro: 'Reverb zones, distance and walls for your game, with headphone demos. Every number is measured. A round-head '
+          'model gives no front / back or height cue.');
+}
+
+class GameHapticsScreen extends StatelessWidget {
+  const GameHapticsScreen({super.key, required this.app, required this.studio});
+  final Santosh app;
+  final String studio;
+  @override
+  Widget build(BuildContext context) => _PackPage(
+      app: app,
+      studio: studio,
+      base: 'haptics',
+      title: 'Haptics',
+      listKey: 'sets',
+      hireName: 'Haptic Feedback Engineer',
+      intro: 'One vibration pattern per moment, checked for the motor, with battery per play and an off switch for every '
+          'player. iPhone browsers have no vibration.');
+}

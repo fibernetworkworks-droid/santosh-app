@@ -117,7 +117,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "itch.io", "steam page", "game release", "game ki release", "windows build", "mac build", "linux build", "age rating",
                  # v0.420 role packs: worlds + physics
                  "procedural world", "world generation", "dungeon", "game map", "game world", "level generator",
-                 "game physics", "physics engine", "game ki physics"),
+                 "game physics", "physics engine", "game ki physics",
+                 # v0.421 batch 2: spatial audio + haptics
+                 "spatial audio", "3d sound", "3d audio", "binaural", "reverb zone", "game ki awaaz", "haptic", "haptics",
+                 "vibration pattern", "game vibration", "rumble"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",

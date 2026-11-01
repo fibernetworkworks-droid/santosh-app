@@ -15919,3 +15919,57 @@ Verified here with Godot 4.7.2: terrain and level walk-it demos built, exported 
 2.8 / 1.4 s load); the physics lab PASS 7/7 for 400/16, 900/16 (113 ticks), 3000/8 and 20000/4 (cast-ray), each in
 about half a second. NOT VERIFIED: on her VPS, and a model-written game actually reading HoolaWorld / HoolaPhysics
 (the guide tells it how; the next real game build will show it).
+
+## v0.421.0 GAME DESK ROLES 2: SPATIAL AUDIO + HAPTICS (Hoola Game Engine plan Phase 7 batch 2 = Game Desk plan phase 3) - 1 Nov 2026
+Owner: "GO PHASE 7" (batch 2 of 4). Two more Game Desk employees went live, each a role pack (v0.420's packs.py: a
+Hoola-owned autoload in every build, the model only reads it). Batches 3-4 (multiplayer + AR/VR; VFX TD + simulation +
+digital twin) are not built yet.
+
+SPATIAL AUDIO SYSTEMS PROGRAMMER (`gamedesk/audio.py`, table `game_audio`, tool `game_audio`, /api/gamedesk/audio*):
+- renderer in numpy + scipy, licence-clean (no recorded HRTF set): Brown & Duda (1998) spherical head - Woodworth ITD
+  + a one-pole / one-zero head-shadow filter per ear (bilinear transform at 48 kHz), inverse-distance gain + air
+  absorption, occlusion = -10 dB + 800 Hz low-pass, reverb zones = early reflections + exponentially decaying noise
+  designed to an RT60.
+- every claim MEASURED (`judge`): ear-to-ear time at 13 directions by cross-correlation vs Woodworth; level
+  difference 2-8 kHz by side; 6 dB per doubling (measured -6.02 / -6.02 / -6.02); occlusion -11.6 dB overall with
+  highs -32.6 dB; each zone's RT60 measured back by Schroeder T20 (0.6 / 1.8 / 3.0 s designed -> 0.598 / 1.792 /
+  2.993 s); loudness by ITU-R BS.1770 (K-weighting + both gates) to -16 LUFS with the true peak (4x oversampled) under
+  -1 dBFS; the render twice (byte-identical).
+- THREE expectations were wrong and the checks were corrected to the physics, not loosened to pass: the measured ITD
+  runs up to 11% over Woodworth's pure delay because the head-shadow filter delays the far ear too (a real head does
+  the same at low frequencies) -> limit 40 us or 12%; the level difference PEAKS NEAR 60 degrees, not 90 (sound bends
+  round a sphere and meets behind the far ear - the bright spot) -> it must grow 0 -> 30 -> 60 and stay above the
+  30-degree value at 90; a clap cannot reach -16 LUFS without clipping -> such a demo is reported "peak-limited" at
+  its real loudness, never squashed by a compressor. Also found by the tests: numpy floats / bools leaking into the
+  report would have broken saving it (cast to Python types).
+- said plainly on the card, the tool and the hire card: a spherical head gives no front / back or height cue (the
+  cone of confusion - 30 and 150 degrees measure the same), and in-game positional sound is Godot's own panning +
+  distance + zones; the binaural render is for the headphone demos and baked ambience.
+- demos: walkaround.wav (a sound circling the head in 8 s), distance.wav, zones.wav (48 kHz stereo, signed links).
+- her OK -> HoolaAudio: a bus per zone with AudioEffectReverb (room_size / damping mapped from RT60 - an approximation,
+  said), an occlusion bus (-10 dB + low-pass), player2d / player3d set to inverse distance with her min / max,
+  set_zone(), occlude().
+
+HAPTIC FEEDBACK SYSTEMS ENGINEER (`gamedesk/haptics.py`, table `game_haptics`, tool `game_haptics`, /api/gamedesk/haptics*):
+- patterns as data (events t / d ms, amplitude, sharpness), 15 library patterns, her moments matched by words (jump,
+  coin, hit, game over...); library patterns are FITTED to the chosen motor (pulses lengthened, later pulses moved to
+  keep the gap); numbers she types are checked as they are, never changed.
+- checks in code: shortest felt pulse per actuator (phone LRA 10 ms, phone ERM 30 ms, controller 40 ms, DRV2605 LRA /
+  ERM), gaps >= 20 ms, feedback <= 1.5 s, no two patterns that feel the same (5 ms envelope + pulse count distance <
+  0.18 is named), battery per play and per 1,000 plays from on-time x amplitude^2 x a stated drive power, an off switch
+  and an intensity slider always.
+- kit.zip: Core Haptics .ahap per pattern (validated: Version, EventType, Time, EventDuration, parameters 0-1) +
+  HoolaHaptics.swift, Android HoolaHaptics.kt (VibrationEffect waveforms, amplitudes 1-255, hasAmplitudeControl
+  fallback, VIBRATE permission noted), a DRV2605 real-time-playback C driver COMPILED here with gcc -Wall -Werror
+  against stand-in Arduino / Wire headers (no compiler = NOT ASSESSED), patterns.json + a pattern picture.
+- her OK -> HoolaHaptics: play(name) on phones (Input.vibrate_handheld; on the web Android Chrome only - iPhone browsers
+  have no vibration, said) and controllers (start_joy_vibration), set_enabled / set_intensity saved in user://. The
+  console can play the set on the phone it is opened on (navigator.vibrate).
+
+Console: Audio + Haptics pages (gsAudio / gsHaptics) on the Game Desk home and every board; the Game Desk shows when any
+of its roles is hired. Phone: GameAudioScreen / GameHapticsScreen (game_roles_screen.dart). Tests:
+test_v0421_game_audio_haptics.py (10, one runs both autoloads in the real Godot).
+Verified here with Godot 4.7.2: both autoloads load and run headless (zone bus, occlusion bus, haptics with the saved
+intensity); the audio report PASS 11/11 (3 zones) and 10/10 (2 zones), render ~1.7 s; the DRV2605 driver compiles.
+NOT VERIFIED: how the demos sound to her ears, the Android / iPhone kit code compiled in a real app (not here), and a
+real DRV2605 board.
