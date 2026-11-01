@@ -8,10 +8,48 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
+def _pg_database(monkeypatch):
+    """A fresh Postgres database for one test when HOOLA_TEST_PG is set (e.g.
+    postgresql+psycopg://postgres@/?host=/var/tmp/hpg&port=55432); dropped afterwards."""
+    base = os.environ.get("HOOLA_TEST_PG", "").strip()
+    if not base:
+        return ""
+    import uuid
+
+    import psycopg
+    from sqlalchemy.engine import make_url
+    u = make_url(base)
+    name = "hoola_t_" + uuid.uuid4().hex[:12]
+    q = dict(u.query)
+    with psycopg.connect(dbname="postgres", user=u.username or "postgres", password=u.password, host=q.get("host") or u.host,
+                         port=int(q.get("port") or u.port or 5432), autocommit=True) as c:
+        c.execute(f'CREATE DATABASE "{name}"')
+    monkeypatch.setenv("DATABASE_URL", u.set(database=name).render_as_string(hide_password=False))
+    return name
+
+
+def _drop_pg(name):
+    from sqlalchemy.engine import make_url
+
+    import psycopg
+    from app import db
+    if db._engine is not None:
+        db._engine.dispose()
+    u = make_url(os.environ["HOOLA_TEST_PG"])
+    q = dict(u.query)
+    try:
+        with psycopg.connect(dbname="postgres", user=u.username or "postgres", password=u.password, host=q.get("host") or u.host,
+                             port=int(q.get("port") or u.port or 5432), autocommit=True) as c:
+            c.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+    except Exception:                                   # noqa: BLE001 - a leftover test database is harmless
+        pass
+
+
 @pytest.fixture()
 def env(tmp_path, monkeypatch):
     """Fresh database, test-mode WhatsApp that approves instantly, no real API keys."""
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+    pg_db = _pg_database(monkeypatch)                  # v0.390 PAKKI NEEV: HOOLA_TEST_PG=<url> runs the suite on Postgres
     monkeypatch.setenv("WA_DRY_RUN", "true")
     monkeypatch.setenv("DRY_RUN_APPROVAL_SECONDS", "0")
     monkeypatch.setenv("SEND_RATE_PER_SEC", "1000")
@@ -61,6 +99,8 @@ def env(tmp_path, monkeypatch):
     wa = DryRunWhatsApp(approval_seconds=0, read_ratio=0.5, reply_ratio=0.1, seed=7)
     set_whatsapp(wa)
     yield {"wa": wa, "settings": get_settings()}
+    if pg_db:
+        _drop_pg(pg_db)
     set_whatsapp(None)
     from app.agent import set_client
     set_client(None)

@@ -66,6 +66,12 @@ async def _noop(*_a, **_k):
 
 
 def test_live_mode_requires_credentials():
+    # v0.388: the client STARTS without a server-wide number (a business's own number sends through its inbox with its
+    # own token); a server-number feature still refuses, naming exactly what is missing. Before, the constructor raised
+    # and every worker tick failed every 2 seconds on a live server without WA_TOKEN.
+    import asyncio
+    wa = MetaWhatsApp("", "", "PN")
+    assert wa.server_ready is False
     with pytest.raises(WhatsAppError) as ei:
-        MetaWhatsApp("", "", "PN")
+        asyncio.run(wa.create_template("x", "hi", "UTILITY", "body", []))
     assert "WA_TOKEN" in str(ei.value) and "WA_WABA_ID" in str(ei.value)

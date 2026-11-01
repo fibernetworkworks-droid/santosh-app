@@ -32,9 +32,17 @@ def _sent_last_24h(s, tenant_id: str) -> int:
                            OutboundMessage.sent_at >= since)) or 0
 
 
+def _server_wa_off(wa) -> bool:
+    """v0.388 live mode without a server-wide WhatsApp number: the campaign jobs have nothing to do (each business's own
+    number is used by its inbox); never let them fail the whole worker tick."""
+    return not getattr(wa, "dry_run", False) and not getattr(wa, "server_ready", True)
+
+
 async def check_approvals(force: bool = False) -> None:
     st = get_settings()
     wa = get_whatsapp()
+    if _server_wa_off(wa):
+        return
     with session() as s:
         waiting = s.scalars(select(Campaign).where(Campaign.status == "awaiting_approval")).all()
         jobs = []
@@ -79,6 +87,8 @@ async def check_approvals(force: bool = False) -> None:
 async def send_batches(max_seconds: float = 5.0) -> None:
     st = get_settings()
     wa = get_whatsapp()
+    if _server_wa_off(wa):
+        return
     with session() as s:
         active = s.scalars(select(Campaign).where(Campaign.status.in_(("sending", "waiting_limit")))).all()
         active = [(c.id, c.tenant_id, c.status, c.template_id) for c in active]
@@ -347,6 +357,7 @@ async def tick() -> None:
     eventlog_jobs()
     aboutme_jobs()
     applogic_jobs()
+    game_studio_jobs()
 
 
 _logic_task: "asyncio.Task | None" = None
@@ -359,10 +370,24 @@ def applogic_jobs() -> None:
     if _logic_task is not None and not _logic_task.done():
         return
     try:
+        from .appmaker import backup as BK
         from .appmaker.logic import engine as LE
-        _logic_task = asyncio.get_running_loop().create_task(asyncio.to_thread(LE.tick))
+
+        def both():
+            LE.tick()
+            BK.daily_tick()                  # v0.390 PAKKI NEEV: a daily snapshot of every app's data + its limits watched
+        _logic_task = asyncio.get_running_loop().create_task(asyncio.to_thread(both))
     except Exception:
         log.exception("app logic jobs failed")
+
+
+def game_studio_jobs() -> None:
+    """v0.386 Studio Project: morning summaries, nightly builds, auto next task (self-throttled to every 4 minutes)."""
+    try:
+        from .gamedesk import studio
+        studio.jobs()
+    except Exception:
+        log.exception("game studio jobs failed")
 
 
 _about_last = 0.0
@@ -794,7 +819,7 @@ async def employee_jobs() -> None:
             log.exception("%s tick failed", _mod)
     # v0.150 Kanoon suite: court diary / limitation, compliance calendar, contract renewals, MCA calendar, notary renewals,
     # PI desk reminders, DPDP breach / request clocks (each throttles itself; legalres.tick does nothing)
-    for _mod in ("vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo"):
+    for _mod in ("vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "guru"):   # + Shiksha tutor weekly report cards
         try:
             import importlib
             _svc = importlib.import_module(f".{_mod}.service", __package__)

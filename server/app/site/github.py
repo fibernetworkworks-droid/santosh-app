@@ -161,6 +161,13 @@ def push(tenant: str, eid: str, hash_: str) -> dict[str, Any]:
         if o.status != "card":
             raise GithubError(f"Yeh export '{o.status}' hai.")
         s.expunge(o)
+    if o.site_id.startswith("game:"):                # v0.386 a Studio Project's game code (gamedesk/github.py), same card
+        from ..gamedesk import github as GGH
+        from ..gamedesk.service import GameError
+        try:
+            return GGH.push(tenant, o, hash_)
+        except GameError as e:
+            raise GithubError(str(e))
     if o.site_id.startswith("app:"):                 # v0.342 an app's code (appmaker/code.py), same card, same tap
         from ..appmaker import code as CODE
         try:

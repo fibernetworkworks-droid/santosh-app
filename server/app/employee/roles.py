@@ -167,6 +167,8 @@ DUTIES: dict[str, dict] = {
     # v0.381 Shiksha suite
     "curriculum_work": {"label": "Paper aur pathyakram", "say": "question bank (draft -> teacher approve), board pattern se paper + answer key, year / lesson plan, rubric; bahar bhejna aapke tap se",
                         "prefix": (), "tools": {"pathyakram", "pathyakram_dekho", "shiksha_dekho", "file_read", "gyaan_khojo", "pylab"}},
+    "tutoring": {"label": "Padhana (tutor)", "say": "doubt ishaaron se samjhana (seedha jawab nahi), practice + revision, bhasha abhyas, hafte ki report (guardian ko aapke tap se)",
+                 "prefix": (), "tools": {"guru", "guru_dekho", "shiksha_dekho", "pylab", "file_read"}},
     "school_records": {"label": "School register", "say": "class, students, guardian consent, marks register (final marks teacher ke)",
                        "prefix": (), "tools": {"shiksha", "shiksha_dekho"}},
     "legal_research": {"label": "Legal research", "say": "kanoon ke sawaal par official sources / judgments padhkar memo (har baat ka source), purana -> naya kanoon table; memo bahar bhejna aapki haan se",
@@ -400,6 +402,8 @@ ROLES: dict[str, dict] = {
     # v0.150 Kanoon suite
     "lawyer_junior": {"label": "Lawyer's junior", "say": "Court diary, tareekhein, cause list, limitation (andaaza), drafts, fee hisaab; filing / message / fee aapki haan se",
                       "duties": ["legal_junior", "reminders", "records"]},
+    "personal_tutor": {"label": "Personal tutor", "say": "Doubt ishaaron se, adaptive practice, revision, bhasha abhyas, hafte ki report; bachchon ke liye guardian ki consent aur roz ka samay",
+                       "duties": ["tutoring", "school_records", "records"]},
     "curriculum_designer": {"label": "Curriculum & exam designer", "say": "Syllabus / year plan, lesson plan, question bank, board pattern ka paper + answer key, rubric; sab teacher ke approve se, bahar aapke tap se",
                             "duties": ["curriculum_work", "school_records", "records", "research"]},
     "legal_researcher": {"label": "Legal researcher", "say": "Act aur judgments official source se, har baat ka source; memo bahar aapki haan se",
@@ -698,6 +702,11 @@ PRESETS: dict[str, dict] = {
                    "about_hint": "Kaun si courts, kaise matters (civil / criminal / family / NI 138), vakil ka naam + enrolment no., fee kaise",
                    "rules": ["Hoola salah nahi deta: har draft / tareekh vakil se pakka", "Filing, client / doosre paksh ko message, fee maangna sirf owner ki haan se",
                              "Ek client ki baat doosre client ko kabhi nahi"]},
+    "tutor_centre": {"label": "Tuition / tutor (padhana, doubt, practice)", "role": "personal_tutor", "kind": "coaching",
+                     "slot_minutes": 30, "after_hours": "quiet",
+                     "about_hint": "Kaun si classes / subjects, bachchon ki umar, roz kitna samay, kis bhasha mein",
+                     "rules": ["Seedha jawab nahi: pehle ishaara, phir step, aakhir mein hal", "Test / exam ke din sirf ishaare",
+                               "Bachche ke saath kaam guardian ki consent ke baad hi", "Report sirf guardian ko, owner ke tap se"]},
     "school_academics": {"label": "School / coaching academics (paper, syllabus, lesson plan)", "role": "curriculum_designer", "kind": "coaching",
                          "slot_minutes": 30, "after_hours": "quiet",
                          "about_hint": "Board (CBSE / ICSE / state), kaun si classes aur subjects, medium (English / Hindi), session",
@@ -829,7 +838,7 @@ READ = {
     # v0.144 Makaan suite
     "propagent_dekho", "rentdesk_dekho", "biz_rent_status", "sitesup_dekho", "interior_dekho", "archassist_dekho", "society_dekho",
     # v0.150 Kanoon suite
-    "shiksha_dekho", "pathyakram_dekho", "pylab",   # v0.381 Shiksha suite (pylab: sandboxed, nothing outside changes)
+    "shiksha_dekho", "pathyakram_dekho", "pylab", "guru_dekho",   # v0.381 Shiksha suite (pylab: sandboxed, nothing outside changes)
     "vakil_dekho", "legalres_dekho", "compliance_dekho", "contracts_dekho", "cosec_dekho", "notary_dekho", "pidesk_dekho", "dpo_dekho",
     # v0.152 Mehmaan suite
     "front_office_dekho", "event_plan_dekho", "shaadi_dekho", "tour_guide_dekho", "homestay_dekho", "banquet_dekho",

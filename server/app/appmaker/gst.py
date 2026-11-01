@@ -22,6 +22,7 @@ from typing import Any
 from ..db import now, session
 from ..site import webapp as W
 from .models import AppProject
+from . import locks as LK                     # v0.390 one cross-process lock per app
 
 STATES = {"01": "Jammu and Kashmir", "02": "Himachal Pradesh", "03": "Punjab", "04": "Chandigarh", "05": "Uttarakhand",
           "06": "Haryana", "07": "Delhi", "08": "Rajasthan", "09": "Uttar Pradesh", "10": "Bihar", "11": "Sikkim",
@@ -86,7 +87,7 @@ def set_settings(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
     """Her GST details. gstin "" switches tax invoices off (plain receipts again); issued numbers are kept."""
     body = body if isinstance(body, dict) else {}
     from . import backend as BE
-    with _LOCK, session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         g = dict(be.get("gst") or {})
@@ -147,7 +148,7 @@ def fy(dt=None) -> str:
 def number_for(r: AppProject, row_id: str) -> tuple[str, str]:
     """The row's invoice number + date: given ONCE (consecutive per financial year), the same forever after."""
     from . import backend as BE
-    with _LOCK, session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(W.SiteAppRow, row_id)
         d = BE._j(row.data, {})
         if d.get("_inv_no"):
@@ -289,7 +290,7 @@ def credit_for(r: AppProject, row_id: str, reason: str = "") -> tuple[str, str] 
     """The row's credit note number + date (given ONCE). None when the row has no invoice (nothing to credit)."""
     from . import backend as BE
     reason = re.sub(r"[\x00-\x1f]+", " ", str(reason or "")).strip()[:200] or "Order cancelled"
-    with _LOCK, session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(W.SiteAppRow, row_id)
         if row is None:
             return None

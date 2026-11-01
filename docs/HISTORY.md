@@ -14423,3 +14423,330 @@ Owner: "GO NEXT PHASE" (after: bolts / contact, CFD, fatigue were the biggest ga
 - NOT built (said to her): true contact / bolt-preload FEA between assembly parts (an assembly is still one glued
   body in FEA; bolts are checked by the joint calculation), turbulent (RANS) CFD, acoustics simulation.
 - Tests: tests/test_v0381_cad_next.py (10).
+
+## v0.386.0 STUDIO PROJECT (built as 0.378.0 / 0.382.0) (Hoola Game Engine plan, Phase 2) - 1 Nov 2026
+
+Owner: "GO PHASE 2" (after "Studio Project ... WHAT THIS TASK DO"). Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 4 + phase table.
+
+What it is: a game that lives for weeks / months / 1,000 days. A Studio Project (`server/app/gamedesk/studio.py`) wraps
+ONE Game Desk game (`gamedesk/service.py` still owns the code, versions and the private play link).
+
+- Tables `game_studios`, `game_tasks`, `game_decisions` (registered in `db.init_db`, self-heal `studio.ensure_tables`).
+- Task board: todo -> working -> review (built + played fine, waits for HER OK) -> done; blocked (build failed, live game
+  untouched, "Try again"); dropped. Each task = ONE small change, built by the Phase 1 pipeline with the task's words
+  (`service.change(..., task=id)` -> `_build` -> `_studio_hook` -> `studio.after_build`).
+- Precision rules in code: one task builds at a time; no task starts while another waits for her OK (so "wapas" undoes
+  exactly one task); "wapas" marks that version `rejected` (`service._good` skips it: play link + next change go back to
+  the version before) and puts the task back in To do with her reason; a done task can be undone only if nothing was built
+  after it. Every version records `task`, `base` and `src` (code fingerprint).
+- Milestones proto / playable / alpha / beta / release (rename + target dates), progress counted in code.
+- `plan` = Opus producer proposes 6-15 small tasks (reads the design, goal, board and her decisions); the Phase 1 refusals
+  (real money, weapon targeting, clones) apply to every task.
+- Decisions log: her notes on OK, sends-back, manual decisions; `why(q)` returns only matching decisions / finished tasks
+  ("found" empty = no record, never a guess).
+- Nightly build (`studio.nightly`, 1-5 am her time, worker `game_studio_jobs` every 4 min): the live code rebuilt and
+  replayed from scratch in a temp dir, no model call; same-code check; fps drop > 25 % vs the last good night; a failure
+  names the tasks since the last good night and adds a priority-1 fix task (source nightly).
+- Morning report (`studio.summary`, at her hour 5-12, once a day, only when the project moved in 14 days): yesterday,
+  waiting for her OK, building, stuck, last night, today, milestone %. Written in code.
+- Auto (default on): after her OK the next task starts; an idle board picks its next task from the worker.
+- Restore: any good old version's code back as a NEW version (`service.restore`, mode restore, no model call, full checks).
+- GitHub (`gamedesk/github.py`): the usual site_github card (her tap only, `site.github.push` routes `game:` exports):
+  Godot project + DESIGN / TASKS / DECISIONS / CHANGELOG / README.
+- `service._fail`: a failed CHANGE on a game that already plays leaves it `done` (live version still works).
+- Tool `game_studio` (gamedesk family: new / list / status / add / plan / start / ok / back / drop / decide / why /
+  summary / nightly / restore / settings / github; owner-only writes; hired-only). Router words: "game project",
+  "game studio", "studio project", "game ka kaam", "game ka task".
+- API `/api/gamestudio*` (see `gamedesk/api.py` docstring). Console: Game Desk > Studio projects > board (`employees.js`
+  gsHome / gsBoard, `gs-*` CSS). Phone: `lib/ui/game_studio_screen.dart` (GameStudioList on the Game Desk + GameStudioScreen).
+- Verified: `test_v0386_game_studio.py` 14 tests (fake Godot) + a REAL Godot 4.7.2 run in the sandbox (game built ->
+  task built -> OK -> nightly rebuilt the same code, 60 fps, 1.3 s load, summary right).
+- Not verified: the phone screen compiles only in CI (no Flutter in the sandbox); the nightly on the VPS needs Godot there
+  (installed v0.370 via `deploy/setup_godot.py`).
+
+## v0.387.0 GURU SAHAYAK - Shiksha suite Phase 2: the personal tutor (K-PhD)
+- Owner: "GO PHASE 2" (plan: step-by-step teaching with a hint ladder, doubts from a photo / typed / the call, adaptive
+  practice with mastery + spaced revision from the Phase 1 bank, language practice, weekly parent report, time limits, exam
+  mode with no ghostwriting).
+- `server/app/guru/` (models / rules / service / api), tools `guru` / `guru_dekho`:
+  - SESSIONS GS-00001 per learner (doubt | practice | language); a child (under 18) only after the guardian's consent
+    (`shiksha.need_usable`); a child's daily minutes cap (`day_minutes`, default 60; adults uncapped); a session idle 30 min closes.
+  - THE HINT LADDER: `doubt` asks the model (site.ai kind "edu"; a photo goes through Claude vision) for {hint, nudge, steps,
+    answer, check_question, verify_code, expected}; `rules.clean_ladder` refuses an incomplete ladder; ONLY the hint is shown;
+    each `hint` reveals the next rung (nudge, then numbered worked steps + "ab aap try kijiye", then the answer). A numeric answer
+    is checked by running verify_code in the pylab sandbox (10 s, 256 MB): "code se jaancha: sahi" or "code ne alag jawab diya
+    (x): teacher se pakka kijiye". EXAM MODE (setting) or graded work in her words ("test abhi chal raha", "kal submit") = the
+    ladder stops before the answer, said plainly.
+  - PRACTICE: `next_question` takes only APPROVED bank questions of the session's subject / class (topic filter), topic = due for
+    revision first, else the weakest; difficulty from mastery (<0.4 easy, <0.75 medium, else hard); the last 30 not repeated; the
+    answer never leaves with the question. `answer`: objective types checked in CODE (MCQ letter or text, True/False incl. sahi /
+    galat, numeric with 1% tolerance incl. fractions, fill-in), written answers by AI against the model answer + marking points
+    (labelled "AI ne jaancha"); a wrong answer shows the stored steps + answer. Mastery: logistic expectation vs difficulty, k
+    0.15, hints discount a right answer (20% each, max 60%); revision: right -> interval doubles (max 60 days), half -> same,
+    wrong -> tomorrow.
+  - LANGUAGE: mode language, `language_turn` = reply in the target language + up to 4 gentle corrections + 3 new words.
+  - PROGRESS + REPORT: `progress` (mastery per topic, week minutes / attempts / accuracy, weak + due topics), `report` (plain
+    text), `share_request` -> `guru_report` card for the GUARDIAN only (consent + a guardian contact required; hash); ONLY
+    POST /api/guru/shares/{id}/decide (by_tap) -> wa.me / mailto draft she sends. `tick`: on her report weekday after 18:00,
+    once, a card for each learner who studied this week (never a message).
+- Employee: duty `tutoring`, role `personal_tutor`, preset `tutor_centre`; READ guru_dekho; admit family "guru" (samjhao /
+  doubt / homework / tutor / spoken english ...); voice via santosh_kaam; push guru_report (waiting only); worker tick; prompt
+  line TUTOR (show ONLY the rung returned, never solve on top, exam = hints only).
+- App: `lib/ui/guru_screen.dart` (GuruScreen learner list with "CONSENT BAAKI", GuruLearnerPage Padhai / Practice / Bhasha /
+  Pragati, GuruReportCard), Profile tile "Personal tutor", card key gureport, report card in calls.
+- Tests: NEW `server/tests/test_v0387_guru.py` (12): consent + daily time + adults uncapped; ladder one rung at a time + code check;
+  code disagreement said plainly; exam mode / graded work never get the answer; incomplete ladder refused; practice from the
+  approved bank, easy first, no answer leaked, letter answers, mastery up / down, solution on a wrong answer; AI-checked
+  written answer; language corrections; idle close; report only by her tap (stale hash, wa.me to the guardian); code checks;
+  tools / API / wiring.
+- Not verified: real model output (scripted JSON); a real photo through Claude vision; spoken pronunciation scoring (not built:
+  call words reach the tutor as text through santosh_kaam); Flutter not compiled locally (CI).
+- PHASE 2.1 (owner: "READ THIS REPO" https://github.com/HKUDS/DeepTutor -> "GO 2.1"; DeepTutor is Apache-2.0, ideas re-written
+  in Hoola's code, attribution in the comments):
+  - MASTERY WITH A CONFIDENCE CAP (`rules.compute_mastery`, after DeepTutor learning/mastery.py): recency-weighted accuracy of
+    the last 5 checked answers (weights 0.5 / 0.7 / 0.85 / 0.95 / 1.0) capped at 0.5 after one answer and 0.8 after two - one
+    lucky answer is not mastery; hint-assisted answers earn less (`credit`). Replaces the v0.382 logistic update.
+  - SM-2 REVISION (`rules.sm2`, after DeepTutor services/practice/scheduler.py), whole days: again / hard / good / easy from
+    the score + hints (`rating`), ease 1.3-3.0, streak, lapses (new guru_mastery columns ease / streak / lapses). Settings
+    `strategy` long_term | cramming and `exam_date`: within 45 days of the exam (or cramming) a missed topic comes back the
+    same day, and `fit_exam` keeps every gap at most a third of the days left so revisions land before the exam.
+  - MASTERY PATH (`guru_paths`, `build_path` / `path_view`, after DeepTutor's Mastery Path gates): a subject as ordered
+    chapters (her list, else the NCERT book from the frameworks library); a chapter passes at mastery >= `gate` (0.8) with
+    >= `gate_attempts` (3) checked answers; the first unpassed one is CURRENT, the rest LOCKED; practice with a path draws
+    only the current chapter + due revision of passed ones (never a locked chapter); tool `guru action=path`,
+    `guru_dekho what=path`, GET / POST /api/guru/learners/{ref}/path, phone Pragati tab.
+  - GROUNDED EXPLANATIONS (`_book_sources`, setting `grounded`, default on): the student's own textbooks / notes from her
+    Gyaan (files, Drive, notes - never chats or calls) go to the ladder prompt as numbered sources with page numbers; the
+    model may cite [n]; a cite that points at no source is removed in code (`_keep_cites`); each rung that cites shows
+    "Kitaab se: [n] <title>, page p".
+  - Tests: NEW `server/tests/test_v0387_guru21.py` (6): the cap + recency; SM-2 sequence, again / cramming, exam window; capped mastery
+    + SM-2 inside answer() + exam date; path order from the NCERT library, current / locked, practice never from a locked
+    chapter, gate opens the next chapter, teacher list for an incomplete book; grounded doubt cites page 12 and drops [5];
+    grounded off; path tools.
+
+
+## v0.388.0 WHATSAPP LIVE BINA SERVER NUMBER (1 Nov 2026, found live after the v0.384 WhatsApp set-up)
+- Seen in her VPS log right after `WA_DRY_RUN=false` (asked by the v0.384 Embedded Signup set-up steps): "worker tick
+  failed ... Live WhatsApp needs WA_TOKEN, WA_WABA_ID, WA_PHONE_NUMBER_ID" every 2 seconds. `MetaWhatsApp.__init__` raised
+  when the server-wide number was missing; `get_whatsapp()` is the first call of the worker tick (`check_approvals`), so the
+  WHOLE tick failed - reminders, the social desk, approvals, everything behind it stopped.
+- Fix (`whatsapp/client.py`): the client starts without the three keys (`server_ready` false, `missing` kept); `_call` (the
+  server-number path: templates, template status, template sends) refuses with a plain error naming the missing keys;
+  `send_text` with a business's own number + token goes straight to Meta (her Embedded Signup channel); no number at all =
+  a plain refusal. `worker._server_wa_off` makes check_approvals / send_batches skip quietly in that state.
+- Tests: `server/tests/test_v0388_wa_live_no_server_number.py`; `test_meta_client.test_live_mode_requires_credentials`
+  rewritten to the new truth (the client starts, a server-number feature names the missing keys).
+
+## v0.389.0 SACH BOLO — the enterprise write rails made real, and three caps corrected
+Owner: *"again check in this section any thing in pending to deep research"*, then **"FIX ALL THIS"**.
+
+The audit found eight open items. Six parallel researchers read the vendors' and regulators' OWN
+documentation (primary sources only, instructed to answer "NOT FOUND" rather than fill a gap from memory).
+What came back was worse than expected: **most of the write engine could not have worked against a real
+customer system**, and three cap texts stated rules that are not true.
+
+### The rule this version is really about
+v0.363 put the ERP write guards in CODE rather than in a prompt, and that was right. But the guards protected
+the *orchestration* — plan, dry run, her tap, resume — while the **HTTP itself was assumed**. "OData is OData"
+is the same class of mistake as v0.284/v0.286 (measuring the wrong layer): every number matched and the thing
+still did not work. **A rail is not real until the vendor's own page says what it demands.**
+
+### What each vendor actually demands (`enterprise/dialect.py`, a TABLE not an if-chain)
+| | SAP | Windchill | Salesforce |
+|---|---|---|---|
+| CSRF | `X-CSRF-Token: Fetch` → **403 without** | `CSRF_NONCE` from `GET /PTC/GetCSRFToken()` | none |
+| concurrency | **`If-Match` required**: 428 without, 412 if stale | no ETag documented — a **Reserve/UndoReservation** check-out instead | none |
+| idempotency | **`RequestID` + `RepeatabilityCreation`** → `RepeatabilityResult: accepted` | none | none |
+| reads | — | pages at **25 rows** without `Prefer: odata.maxpagesize` | — |
+
+Four things in our code were therefore broken, each silently:
+1. **No CSRF token at all**, and — the subtler half — the token is bound to the SECURITY SESSION, so a fresh
+   `httpx.Client` per call could never hold one. `dialect.Call` now keeps one session open for a batch.
+2. **No `If-Match`**, so every SAP update would have come back 428.
+3. **No `Content-Type: application/json`** — only `Accept` was set.
+4. **No reservation on Windchill.** This was the dangerous one: it is not just that the PATCH fails, it is
+   that a half-finished run could leave HER change object **locked to our user, blocking her own engineers**.
+   `writing()` always releases in a `finally`, and a failed reserve means the PATCH never happens.
+
+Everything fails **closed**: a token we cannot fetch, an ETag we cannot read where one is demanded, a reserve
+we cannot take — each stops the write instead of guessing.
+
+SAP's documented idempotent create is now used, and it is **stronger than our own key**: ours protects a
+*resume*, SAP's guarantees the server state reflects a single execution. It is opt-in per customer system
+(an SPRO job) and answers 412 when off, so we send it, read the answer, and **record** what that endpoint
+really supports rather than believing it.
+
+### The CRM desk was not "100% read and write", and v0.367 should not have said so
+Salesforce's own words: *"CRUD operations on the following Tooling API objects in an active org generate the
+error `Save or update not supported in active organizations`: ApexClass, ApexComponent, ApexPage,
+ApexTrigger, CustomField, CustomObject."* So in her **live org** the config writes we shipped could not work
+at all. CustomObject is read-only by either protocol; Profile and PermissionSet have no write path; Layout is
+SOAP-only. That is most of a CRM architect's job.
+- `run._guard_target` refuses these **at plan time, before her tap** — a run that could never work no longer
+  spends her attention first.
+- `enterprise/sfmeta.py` adds the documented route: **Metadata REST `deployRequest`**, on the **same Bearer
+  token** (no SOAP, no WSDL, no new dependency). `checkOnly: true` is a REAL dry run ("doesn't commit any
+  changes"), and a clean validation **quick-deploys for 10 days without re-running tests** — which maps onto
+  dry run → her tap → execute exactly. Salesforce's production rules are enforced in code, not prose:
+  `rollbackOnError` forced true, `allowMissingFiles` forced false, `purgeOnDelete` never sent, no testLevel on
+  a config-only package (it runs no tests by default; setting one would override that).
+- **Refused rather than faked:** a field-level edit. CustomField/ValidationRule/RecordType live INSIDE
+  `objects/<Obj>.object` and Metadata REST has **no retrieve** to merge against, so a partial object file
+  would risk the rest of her object.
+
+### Composio: `slug.split("_")[0]` was wrong for 31% of the catalogue
+Measured from Composio's own published list: **525 of 1,694 toolkit slugs contain an underscore**
+(`ZOHO_BOOKS`, `ZOHO_INVENTORY`, `SAP_SUCCESSFACTORS`, `SALESFORCE_SERVICE_CLOUD`; `_1PASSWORD` splits to an
+empty string). So the toolkit lookup named an app that does not exist and the call died with
+*"<app> juda nahi hai"* **even when her account was connected** — and the knock-on turned every *read* on
+those toolkits into an approval card. `composio.toolkit_of` now takes the longest known prefix, `tool_toolkit`
+asks Composio itself (some tools carry no prefix at all), and `tool_exists` validates a slug **before** the
+plan. Two more: `"version": "latest"` is the one form documented as REJECTED for direct execution (omitting it
+selects latest), and `ok` **defaulted to True when the field was missing** — so a changed response shape would
+have reported a failed write as done, and the idempotency key would have marked the row complete for ever.
+
+### A new row state: `ambiguous`, because a retry can be worse than a failure
+Composio does not retry non-idempotent writes and says an ambiguous timeout must be resolved by reading the
+provider's state. A *failed* row gets retried by `execute()`; a row whose answer never arrived must NOT be.
+It is parked, the run cannot read `done` while one exists, and she is told to look in the system — the one
+thing only she can do. A **412** parks the same way: the row we planned against is not the row that is there.
+
+### Three cap texts named the wrong rule (and one test was keeping them wrong)
+- **bank_int** said an AA needs "RBI ka licence aur Sahamati ka empanelled audit". Both wrong for this job:
+  reading bank data makes you an **FIU**, which the RBI Master Direction (NBFC-AA, 2016, para 3) defines as
+  *"an entity registered with and regulated by any financial sector regulator"* — **not a licence, and not
+  something an audit buys**. The ₹2 crore net owned fund and the biennial CISA audit belong to the **AA**, a
+  different role which may not even store the data. Sahamati's requirement is a **conformance certification**,
+  and its RBI **SRO recognition only came on 5 June 2026**.
+- **health_int** asserted a CERT-In empanelled audit as fact. The NHA/ABDM primary documents **could not be
+  read**, and the secondary sources contradict each other (CERT-In vs STQC). The cap now says the route is
+  unverified. Worth recording: the cap is still right, but for a *different reason* than banking's — one rests
+  on a regulator's words, the other on their absence, and those should not read alike.
+- **teamcenter** was read-only because "no external agent route exists". **That premise was false.** Siemens
+  documents an official external read+write contract — Teamcenter Services (SOA, `plm00076`) with
+  Item/ItemRevision, BOM (`StructureManagement.createBOMWindows`) and `ChangeManagement`. It stays read-only
+  for the true reason: **we do not speak SOA**, and the REST surfaces (OData API Framework, LDF/OSLC) are
+  frameworks a customer's administrator *generates per installation* — which is exactly why earlier sources
+  looked contradictory. Both camps were describing real deployments.
+
+`test_v0358_enterprise.py::test_the_caps_name_the_real_gate` had pinned the wrong wording, so it was
+**rewritten to the corrected truth, not deleted** — the same call as v0.299.
+
+### What research changed but code did not (her decision, not mine)
+- **GST is reachable.** GSTN states there is **no ASP empanelment**; a software product rides an empanelled
+  **GSP's sub-licence key**, with no net-worth test and no audit on us, covering e-invoice, e-Way Bill *and*
+  GSTR-1/3B. The e-invoice mandate now reaches **₹5 crore** turnover — her customers. That is a commercial
+  contract, so `regtech` still refuses to file until she says otherwise.
+- **Income tax has a purpose-built route**: ERI **Type 2** is literally "tax software providers who file
+  through an API provided by the Income Tax Department". Gate: **₹1 crore net worth** + bank guarantee + audit
+  report + Class-II DSC.
+- **MCA21, SEBI, RBI, EPFO, ESIC: no official API exists.** EPFO/ESIC validate what we already do — generate
+  the file to the published spec and hand it to her (exactly v0.355's GSTR-1 JSON shape).
+- A **CPC-TDS Suvidha OpenAPI portal** for 24Q/26Q/27Q/27EQ exists on a government TRACES domain but only on a
+  `test-dev` host. One email to `suvidha-support@tdscpc.gov.in` settles it.
+- **No Siemens MCP server for Teamcenter exists** (a reasonably strong negative: zero hits in Siemens' own
+  doc index). Salesforce's hosted MCP **did** go GA 29 Apr 2026, and the DX MCP server reaches **end of life
+  2 Nov 2026** — which our `crm_arch` rule line already said, right to the day.
+
+### NOT VERIFIED (said plainly, because v0.367/0.372/0.374/0.375 shipped without saying it)
+**No customer SAP, Salesforce, Windchill or Teamcenter tenant has ever answered this code.** Every header and
+flow comes from the vendor's documentation, tested against recorded HTTP, not a live server. Specifically
+unconfirmed: Windchill's exact bound-action path for `Reserve`, its failure status when `CSRF_NONCE` is
+missing, whether it emits an ETag at all; whether a given SAP system has the idempotency job scheduled; the
+exact status SAP's v4 runtime returns for a missing `If-Match` (428 is documented for Gateway, so we handle
+428 and 412 both). **The connect screen still does not exist**, so none of this can be exercised yet — that
+remains the one thing standing between the engine and a real tenant.
+
+### Files
+`server/app/enterprise/dialect.py` (new) · `sfmeta.py` (new) · `run.py` · `rules.py` ·
+`server/app/bazar/composio.py` · `server/tests/entfake.py` (new) · `test_v0388_real_rails.py` (new, 35) ·
+`test_v0358_enterprise.py` · `test_v0363_erp_live.py` · `test_v0365_crm_desk.py`. 74 tests pass across the
+enterprise suites.
+
+## v0.390.0 PAKKI NEEV - the app backend under many processes, and always recoverable (App Sahayak Pillar B, Phases 47-48)
+Owner (1 Nov 2026): *"START NEXT PILLAR"* (after v0.382 DIMAAG = Pillar A).
+
+What the audit found first (all real, all fixed):
+- Stock, coupons, slots, GST numbers and udhaar each used a `threading.Lock()` - safe inside ONE process only - and each
+  feature had its OWN lock while all of them rewrite the same `AppProject.backend` JSON, so a stock change and a coupon
+  change at the same moment could overwrite each other even inside one process.
+- A phone's retry (same `cid`) racing its first try in another worker process could make TWO orders.
+- `ensure()`'s schema upgrade kept only gst + logic (every other setting would have been dropped).
+- Child lookups (an order's items) were a JSON text scan of the whole list.
+- A SQL gotcha caught by the new quota test: `coll.startswith("_")` is `LIKE '_%'` and `_` is a wildcard -> every list.
+
+What it is now:
+- `appmaker/locks.py`: `hold(key)` = one lock across threads AND processes, re-entrant per thread - Postgres
+  `pg_advisory_lock` on a dedicated pooled connection (lock_timeout bounded), SQLite an fcntl file lock beside the database
+  file. `app(app_id)` guards every money / stock / slot / number counter and every read-modify-write of the backend JSON
+  (stock, coupon, gst, khata, delivery, tally, variants, backend, logic). Keys only nest appr -> app (no deadlock).
+- `backend.patch_backend(r, set_, drop, fn)`: under the app lock, re-read the row as it is NOW, change only those keys -
+  the logic apply / switch / draft, timed-job state, data changes and limits all use it.
+- `backend.create`: the cid check + insert hold `cid:<app>:<member>:<cid>`.
+- `appmaker/backup.py`: ONE SQLAlchemy `before_flush` hook journals every insert / update / delete of an app's rows
+  (`app_journal`: row, op, before, after) in the same transaction - no write path can skip it (`_audit` excluded).
+  Snapshots (rows + accounts + backend settings, gzip JSON, atomic write): daily (worker, hourly check) and before every
+  risky change (logic apply, data change, restore); newest 14 daily + 20 before / manual kept. Point-in-time restore = the
+  newest snapshot before that minute + the journal replayed up to it (journal position read BEFORE the rows, so a write in
+  between is applied idempotently). Preview first; restore = HER tap, a "before restore" snapshot first, so a restore can
+  be undone; accounts only on request. Export ZIP: a CSV per list (Excel-safe cells), data.json, accounts.csv (never a
+  password hash). Journal kept 35 days.
+- `appmaker/refs.py`: the same flush moment indexes every top-level value that IS a row id (`row_<12 hex>`) into
+  `app_refs` (site, coll, row, field, value; one composite index); the engine's children / related / roll-ups / cascades
+  use it; rows from before are indexed once per app on first use.
+- `appmaker/meter.py`: entries per list, data size, accounts, files MB, backups MB, writes today + 14 days (from the
+  journal, so right across processes); limits rows (enforced, 507 at 100%), files MB and writes a day (watched daily);
+  80 / 95 / 100% = one chat note per level per month; she sets limits (never above the ceiling, never below the use).
+- `app/dbmove.py`: `python -m app.dbmove --to postgresql+psycopg://...` makes every table in an EMPTY target, copies in
+  dependency order in batches of 2,000 reading through the server's own column types, verifies every table's count,
+  moves Postgres id sequences past the copied ids; refuses a busy target; `--check` = counts only.
+- Tests can run on Postgres: `HOOLA_TEST_PG=<url>` gives each test its own fresh database (conftest).
+- Routes: `GET /api/apps/<ref>/backups`, `POST .../backups/now`, `POST .../backups/preview`, `POST .../backups/restore`,
+  `GET .../export`, `GET|PUT .../usage`. Agent `app_banao action=data_safety` (usage, backups, restore PREVIEW - the
+  restore is her tap), `backup_now`, `limits`. Console "Data safety" box; phone `lib/ui/app_safety.dart`.
+
+Proof (run here on Postgres 16, 4 uvicorn worker processes; CI `.github/workflows/app-load.yml` repeats it on every app
+backend change): 1,000 customers signed up and logged in (1,000 / 1,000), then all ordered 1 piece of a product with 300 in
+stock at the same moment, every 4th phone sending its order twice -> exactly 300 orders, 874 "out of stock" (409), 76
+retries got their first row back, stock 0, no 5xx, no lost request. Order latency in that stampede: p50 2.9 s, p95 7.7 s,
+p99 9.3 s (every order of one app queues on its lock - correct, not yet fast; next step in B). All 31 existing app
+backend tests + DIMAAG pass on Postgres unchanged.
+
+Decision recorded: ONE Postgres database, every query scoped by the app (tested) - not a schema per app; the 117 code
+sites that read app rows keep one path. Per-app rate limits are still per process (a note, not a hole: the per-app row
+limit and every money counter are database / lock checked).
+
+VPS: nothing new to install for this version. To move her server to Postgres (optional, when she says): install
+Postgres (set `max_locks_per_transaction = 512` or more in postgresql.conf: Hoola creates hundreds of tables in one go -
+CI hit 'out of shared memory' on the default 64), create a database + user, `python -m app.dbmove --to <url>`, set DATABASE_URL in ~/apps/santosh-core/.env,
+restart; keep santosh.db as the fallback.
+Tests `server/tests/test_v0390_pakki_neev.py`.
+
+## v0.391.0 KHULA DARWAZA (owner: "GO A")
+The front-door safety pass from "WHAT IS NEXT WORK". Built as 0.386, re-versioned past the parallel v0.386-v0.390.
+- A1, an open door?
+  - The danger: `main._resolve_tenant` / `require_key` / the voice WebSocket treat a request with NO login as the owner
+    whenever API_KEY is empty.
+  - The live answer: checked on the live server, a no-login GET https://hoola.ainewtika.com/api/me answered 401, so
+    API_KEY is set and the door is LOCKED.
+  - Kept as a guard, report only (it changes nothing about who gets in):
+    - `app/authcheck.py`: `warn_if_open()` logs one loud line at startup when API_KEY is empty, called from `lifespan`;
+    - `python -m app.authcheck [--url ...]` says set / EMPTY (never the value) and asks the running server for
+      /api/me with no login (401 = locked, 200 = OPEN);
+    - vps-ops `auth_check`: .env name check plus the live and public no-login probes.
+- A2, keys in the address: `_bearer`, `require_key` and the voice WebSocket no longer read `?key=`. A key or login token
+  in a URL lands in nginx logs and browser history.
+  - Checked before removing it: the phone (lib/api.dart, lib/live_voice.dart), every Android service, the console (the
+    WebSocket subprotocol `hoola-key.<token>`) and both desktop apps send the Authorization header; console files use
+    signed links; no test used `?key=`.
+  - The frozen Mera PC WebSocket keeps its own `?token=` (untouched).
+- A3, clean-up: the 589 KB `server/app/main.py.orig` leftover deleted. The stale CLAUDE.md line ("revise / fix_ci still
+  one-shot") corrected; both have used the loop since v0.352.
+- Full suite on this branch:
+  - 213 failed of ~3,500; all but 3 also fail on main at the same base (the known sandbox-only reds);
+  - the 3 (thok / theka tools_api, voice interruption) pass alone, so they are load flakes.
+- Tests: `test_v0391_khula_darwaza.py`:
+  - the right key in the address is refused (401) while the header works; `_bearer` ignores a query token;
+  - the voice socket closes 4401 on `?key=`;
+  - the warning fires only when empty; the probe reads 401 / 200;
+  - vps job present; main.py.orig gone; no `query_params.get("key"` left in main.py.
