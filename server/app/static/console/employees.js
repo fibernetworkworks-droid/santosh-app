@@ -690,7 +690,10 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const cam = v.cam ? `<p class="muted">${v.cam.ok ? `CNC: ${esc((v.cam.ops || []).join(', '))} · tool Ø${num(v.cam.tool_d)} mm · about ${num(v.cam.minutes)} min · simulate before cutting`
       : `CNC G-code did not run: ${esc(v.cam.error || '')}`}</p>` : '';
     const sheet = v.sheet ? `<p class="muted">Sheet ${num(v.sheet.t)} mm · flat ${num(v.sheet.length)} x ${num(v.sheet.width)} mm · R ${num(v.sheet.r)} · K ${num(v.sheet.k)}</p>` : '';
-    return `${bits.length ? `<p class="muted">${bits.join('<br>')}</p>` : ''}${ana}${cam}${sheet}${pics ? `<div class="cad-views">${pics}</div>` : ''}${bom}${plan}`;
+    // v0.403 measured manufacturability (DFM) rows
+    const dfm = v.dfm && (v.dfm.rows || []).length ? `<div class="cad-ana"><b>Manufacturability (${esc(v.dfm.process)}): ${num(v.dfm.fails)} fail, ${num(v.dfm.reviews)} to review</b>${
+      v.dfm.rows.map(r => `<div class="${r.status === 'fail' ? 'badc' : 'muted'}">${esc({pass: '✓', fail: '✗', review: '!', unverified: '?'}[r.status] || '')} ${esc(r.check)}: ${esc(r.measured)} (limit ${esc(r.limit)})${r.fix && r.status !== 'pass' ? ' - ' + esc(r.fix) : ''}</div>`).join('')}</div>` : '';
+    return `${bits.length ? `<p class="muted">${bits.join('<br>')}</p>` : ''}${ana}${dfm}${cam}${sheet}${pics ? `<div class="cad-views">${pics}</div>` : ''}${bom}${plan}`;
   }
   function cadCard(p) {
     const st = CSTATE[p.status] || ['', p.status], v = p.latest;

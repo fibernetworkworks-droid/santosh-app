@@ -102,6 +102,14 @@ Rules:
     (roundness 1 = ellipse, 0.3 = soft rounded rectangle); then shell / cut / fillet it like any solid;
   H.spline_sweep([(x, y, z), ...], radius) -> a round tube / handle along a smooth 3-D curve; also cq's
   .spline(...), .loft(ruled=False), .sweep(path, transition='round'), .revolve() of a spline profile.
+- HOW IT IS MADE (always when she names a process - 3D print / FDM / resin / SLS / MJF / metal print, CNC /
+  milling / machining, sheet metal / laser + bend, injection moulding / mass production): H.make('fdm' | 'sla' |
+  'sls' | 'mjf' | 'metal_pbf' | 'cnc' | 'sheet' | 'molding', material='aluminium', tool_d=6 (CNC: smallest end mill),
+  pull='Z' (moulding: the mould opening axis), limits={...her shop's numbers}). The box MEASURES wall thickness,
+  overhangs / supports / best orientation, sharp inside corners vs the tool, deep holes, setups, bend radius / flange
+  / hole-to-bend, draft / undercuts / wall uniformity. A FAIL comes back to you with the number and the fix: design
+  for it from the start (inside corner radius > tool radius for CNC, 1-2° draft + even 1.5-3 mm walls for moulding,
+  45° slopes instead of flat overhangs for FDM, flanges >= 4 t for sheet).
 - DRAWING: drawing.pdf is a real A3 shop drawing measured from the model - views at a standard scale, overall and
   step sizes, hole positions and callouts (THRU / DEEP / CBORE / CSK are recognised from the geometry, so model holes
   with hole / cboreHole / cskHole and real depths). For a fit or tolerance she names: H.fit(20, 'H7') (bore) or

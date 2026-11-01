@@ -90,7 +90,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
             # v0.365 analysis / calculations / sheet / CNC
             "fea", "stress analysis", "safety factor", "tolerance stack", "h7", "bolt torque", "weld size", "g-code",
             "gcode", "sheet metal", "flat pattern", "natural frequency", "deflection", "pressure drop",
-            "fatigue", "bolted joint", "vdi 2230", "cfd", "flow simulation", "preload"),
+            "fatigue", "bolted joint", "vdi 2230", "cfd", "flow simulation", "preload",
+            "dfm", "manufacturab", "printab", "injection mould", "injection mold", "draft angle", "undercut"),
     "youtube": ("youtube", "channel", "vlog", "subscriber"),
     "tv": ("tv", "channel", "dth"),
     "bt": ("bluetooth", "speaker", "music", "song", "gaana", "gaane", "volume", "ac ", "air condition", "remote",

@@ -120,7 +120,8 @@ def view(r: EngProject) -> dict[str, Any]:
         files = {f: file_url(r.id, f"v{v['n']}/{f}") for f in FILES if f in (v.get("files") or [])}
         vs.append({**{k: v.get(k) for k in ("n", "title", "size", "bbox", "volume_mm3", "checks", "assumed", "notes",
                                             "at", "seconds", "words", "plan", "material", "mass_g", "com", "parts",
-                                            "print", "review", "expect", "analysis", "cam", "sheet")}, "files": files})
+                                            "print", "review", "expect", "analysis", "cam", "sheet", "dfm")},
+                   "files": files})
     return {"id": r.id, "kind": r.kind, "title": r.title or "Part", "brief": r.brief, "status": r.status, "stage": r.stage,
             "error": r.error, "versions": vs, "latest": vs[-1] if vs else None,
             "inputs": [i.get("name") for i in (r.inputs or [])],
@@ -328,6 +329,13 @@ def _analyse(vdir: Path, res: dict[str, Any], material: str = "") -> dict[str, A
         return {"ok": False, "errors": [str(e)[:300]], "studies": [], "cam": None}
 
 
+def _dfm_problems(res: dict[str, Any]) -> list[str]:
+    """v0.403 a measured DFM fail goes back to the designer with the number, the limit and the fix."""
+    d = res.get("dfm") or {}
+    return [f"manufacturing ({d.get('process')}): {r['check']} measured {r['measured']}, limit {r['limit']}: {r['fix']}; "
+            "keep H.make unchanged" for r in d.get("rows") or [] if r.get("status") == "fail"]
+
+
 def _weak(ana: dict[str, Any]) -> list[str]:
     """Problems that send the design back for a stronger / stiffer version."""
     out = []
@@ -398,9 +406,9 @@ def _after_files(vdir: Path, res: dict[str, Any], ana: dict[str, Any], title: st
             report.flat_png(res["sheet"]).save(vdir / "flat.png", "PNG", optimize=True)
         except Exception as e:
             log.info("flat pattern: %s", e)
-    if ana.get("studies") or cam:
+    if ana.get("studies") or cam or res.get("dfm"):
         (vdir / "analysis.pdf").write_bytes(report.analysis_pdf(title, {**res, "material": material},
-                                                                ana.get("studies") or [], pics, cam))
+                                                                ana.get("studies") or [], pics, cam, res.get("dfm")))
 
 
 def printability(mesh: dict[str, Any], bbox: dict[str, Any]) -> dict[str, Any]:
@@ -493,6 +501,7 @@ def _run(pid: str) -> None:
     ask_txt = r.brief + (f"\nCHANGE: {words}" if words else "")
     look_rounds = int(os.environ.get("ENG_LOOK_ROUNDS", "1") or 0)
     strengthen = int(os.environ.get("ENG_STRENGTHEN_ROUNDS", "2") or 0)
+    dfm_rounds = int(os.environ.get("ENG_DFM_ROUNDS", "2") or 0)
     ana: dict[str, Any] = {}
     t0 = time.time()
     res: dict[str, Any] = {}
@@ -508,6 +517,10 @@ def _run(pid: str) -> None:
             probs = list(res.get("errors") or [])
             if res.get("ok"):
                 chk, probs = checks(res, d.get("size") or [])
+                if not probs and dfm_rounds > 0 and attempt < MAX_FIXES:
+                    probs = _dfm_problems(res)
+                    if probs:
+                        dfm_rounds -= 1
         if not probs and look_rounds > 0 and attempt < MAX_FIXES:
             _save(pid, status="checking", stage="Opus model ko dekh kar jaanch raha hai")
             mesh = json.loads((vdir / "mesh.json").read_text(encoding="utf-8"))
@@ -578,6 +591,7 @@ def _run(pid: str) -> None:
            "checks": chk, "assumed": d.get("assumed", ""), "notes": d.get("notes", ""), "words": words,
            "plan": d.get("plan", ""), "material": material, "mass_g": mass, "com": res.get("com"), "parts": parts,
            "print": pr, "review": review, "expect": res.get("expect") or [], "sheet": res.get("sheet"),
+           "dfm": res.get("dfm"),
            "analysis": [_ana_card(st) for st in ana.get("studies") or []],
            "cam": {k: v for k, v in (ana.get("cam") or {}).items() if k != "paths"} or None,
            "files": [f for f in FILES if (vdir / f).exists()], "seconds": round(time.time() - t0, 1),
@@ -589,6 +603,8 @@ def _run(pid: str) -> None:
               f"{bb.get('z', 0):g} mm" + (f", {len(parts)} parts" if parts else "")
               + (f", about {mass:,.0f} g ({material})" if mass else "")
               + "".join(f", {line}" for line in _ana_lines(ana))
+              + (f", banane ki jaanch ({res['dfm']['process']}): {res['dfm']['fails']} fail / {res['dfm']['reviews']} dekhna"
+                 if (res.get("dfm") or {}).get("rows") else "")
               + (f" (jaanch mein dikkat: {', '.join(bad)})" if bad else "")
               + ". STEP, STL, 3MF, drawing CAD Desk par hain.")
 
