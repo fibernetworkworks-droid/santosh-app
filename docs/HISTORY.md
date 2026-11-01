@@ -13113,3 +13113,21 @@ The apps' order updates came through a JobScheduler check every 15+ minutes. Now
 - CI: appgen-check job `fcm` compiles the shop app with a made-up Firebase test config (debug + release R8).
 - Tests `tests/test_v0367_turant.py` (Firebase faked). Not verified: a real push to a real phone (needs the VPS key + a
   build); iPhone push (needs an APNs key from her Apple account).
+
+## v0.368.0 TURANT IPHONE (App Sahayak Phase 32, owner: "START PHASE 32")
+- Server `turant.py`: `set_ios_key(r, key_id, team_id, p8)` (10-character Key ID / Team ID, the .p8 must load as an EC private
+  key) sealed into `<app dir>/apns.key.sealed` by the bazar vault, `ios_view` shows only the ids, `clear_ios_key`.
+  `_jwt` = ES256 (header alg + kid, payload iss = team + iat), cached 50 minutes. `send_ios` = HTTP/2 (`httpx.Client(http2=True)`,
+  needs `h2`, now in requirements) POST https://api.push.apple.com/3/device/<token> with apns-topic = the app's bundle id,
+  apns-push-type alert, priority 10, payload aps.alert {title, body} + sound; 400/410 Unregistered / BadDeviceToken drops it.
+  `send` splits tokens by platform (rows `_push` carry `platform`); `later` also runs when only the iPhone key is set.
+- Routes: PUT /api/apps/<ref>/turant/ios {key_id, team_id, p8} | {clear: true}; push-token takes `platform`.
+  Tool text: the key is entered only in the console / app - a key pasted in chat is never used (revoke it).
+- iPhone build (`ios/service.py` sets `sp["ios_push"]`, `ios/gen.py`): `AppTokens.pushOn`, project.yml target
+  `entitlements: {path: App.entitlements, properties: {aps-environment: production}}` (Automatic signing in her builds repo
+  adds the capability), `@UIApplicationDelegateAdaptor(HoolaAppDelegate.self)`, `PushHub.start()` after launch.
+  Kit `Push.swift`: `PushHub` (registerForRemoteNotifications when allowed; token hex -> /push-token after sign-in),
+  `HoolaAppDelegate` (token callback, foreground banner + inbox). `Updates.askOnce` starts PushHub when she allows.
+- Console: the Instant notifications box gets the iPhone key form (Key ID, Team ID, .p8 file).
+- Tests `tests/test_v0368_turant_iphone.py` (APNs faked). Not verified: a real push to a real iPhone (needs her key, a
+  TestFlight / App Store build and the VPS `pip install h2`); the simulator never receives remote pushes.

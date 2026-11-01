@@ -269,6 +269,8 @@ def _run(r: AppProject) -> None:
     sp["seed"]["backend"] = BE.seed_hint(r)          # the SAME backend as the Android app: one set of accounts and orders
     bid = bundle_id(r)
     sp["ios"] = {"bundle_id": bid, "version": f"{r.version}.{int(ast.get('build') or 0) or n}", "build": bn}
+    from .. import turant as TU                        # v0.368 TURANT IPHONE: the push capability + PushHub on
+    sp["ios_push"] = TU.ios_on(r)
     try:
         sp["ios"]["icon_png_b64"] = _icon_b64(sp)
     except Exception:                                # noqa: BLE001  no resvg: the code-drawn icon

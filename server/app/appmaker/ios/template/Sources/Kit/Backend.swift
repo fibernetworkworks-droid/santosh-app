@@ -123,6 +123,7 @@ final class Auth: ObservableObject {
         if let d = try? JSONSerialization.data(withJSONObject: m) { UserDefaults.standard.set(d, forKey: "hoola_me") }
         me = Item(o: m)
         await Db.shared.sync()
+        PushHub.signedIn()                                    // v0.368 this device's push token now belongs to this account
         return nil
     }
 

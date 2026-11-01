@@ -140,6 +140,7 @@ enum AppTokens {{
     static let start = {sstr(start)}
     static let baseUrl = {sstr(app.get("base_url") or "")}
     static let appKey = {sstr(app.get("app_key") or "")}
+    static let pushOn = {"true" if spec.get("ios_push") else "false"}          // v0.368 instant notifications (APNs) switched on
 }}
 '''
 
@@ -175,6 +176,8 @@ import SwiftUI
 
 @main
 struct HoolaApp: App {
+    @UIApplicationDelegateAdaptor(HoolaAppDelegate.self) private var delegate     // v0.368 Apple hands the push token here
+
     init() {
         Cloud.base = AppTokens.baseUrl
         Cloud.key = AppTokens.appKey
@@ -200,6 +203,7 @@ struct HoolaApp: App {
                     await Db.shared.sync()
                     _ = await Updates.check()
                     Updates.schedule()
+                    PushHub.start()                              // v0.368 instant notifications (when switched on)
                     #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("-hoola_e2e") { await E2e.run() }
                     #endif
@@ -413,6 +417,8 @@ def project_yml(spec: dict[str, Any]) -> str:
     build = str(int(ios.get("build") or app.get("version_code") or 1))
     team = re.sub(r"[^A-Z0-9]", "", str(ios.get("team_id") or ""))[:10]
     team_line = f"\n        DEVELOPMENT_TEAM: {team}" if team else ""
+    push_ent = ("\n    entitlements:\n      path: App.entitlements\n      properties:\n        aps-environment: production"
+                if spec.get("ios_push") else "")       # v0.368 the push capability (Automatic signing adds it to the App ID)
     return f'''# Made by Hoola App Sahayak. XcodeGen turns this into the Xcode project on the Mac (xcodegen generate).
 name: {name}
 options:
@@ -448,7 +454,7 @@ targets:
         INFOPLIST_FILE: Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic{team_line}
-        GENERATE_INFOPLIST_FILE: NO
+        GENERATE_INFOPLIST_FILE: NO{push_ent}
   AppUITests:
     type: bundle.ui-testing
     platform: iOS

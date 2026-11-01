@@ -260,7 +260,9 @@ enum Updates {
     static func askOnce() {
         guard !UserDefaults.standard.bool(forKey: "hoola_notify_asked") else { return }
         UserDefaults.standard.set(true, forKey: "hoola_notify_asked")
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { ok, _ in
+            if ok { Task { @MainActor in PushHub.start() } }      // v0.368 allowed -> ask Apple for the push token
+        }
     }
 }
 

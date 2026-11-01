@@ -74,7 +74,7 @@ def state(r: AppProject) -> dict[str, Any]:
 def view(r: AppProject) -> dict[str, Any]:
     st = state(r)
     return {"on": bool(st.get("configs")), "configured": configured(), "packages": sorted((st.get("configs") or {}).keys()), "at": st.get("at", ""),
-            "tokens": _count(r), "ios": False,
+            "tokens": _count(r), "ios": ios_on(r), "ios_key": ios_view(r),
             "note": ("Instant notifications reach Android phones from the next build; iPhones keep the background check."
                      if configured() else "Hoola's Firebase key is not set on the server yet - the apps keep the 15-minute check.")}
 
@@ -140,7 +140,7 @@ def disable(r: AppProject) -> dict[str, Any]:
     return view(r)
 
 
-def register(r: AppProject, w: W.Who, token: str) -> dict[str, Any]:
+def register(r: AppProject, w: W.Who, token: str, platform: str = "android") -> dict[str, Any]:
     from . import backend as BE
     if w.m is None:
         raise W.AppError("Pehle login kijiye.", 401)
@@ -152,7 +152,8 @@ def register(r: AppProject, w: W.Who, token: str) -> dict[str, Any]:
         for row in s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == site, W.SiteAppRow.coll == COLL)).all():
             if BE._j(row.data, {}).get("token") == token:
                 s.delete(row)                                  # one phone = one account at a time
-        s.add(W.SiteAppRow(site_id=site, coll=COLL, owner=w.m.id, data=json.dumps({"token": token})))
+        s.add(W.SiteAppRow(site_id=site, coll=COLL, owner=w.m.id,
+                           data=json.dumps({"token": token, "platform": "ios" if platform == "ios" else "android"})))
     STATS["tokens"] += 1
     return {"ok": True}
 
@@ -170,7 +171,7 @@ def _tokens(r: AppProject, members: list[str]) -> list[tuple[str, str]]:
     with session() as s:
         rows = s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == BE.bid(r), W.SiteAppRow.coll == COLL,
                                                     W.SiteAppRow.owner.in_(members))).all()
-        return [(x.id, BE._j(x.data, {}).get("token", "")) for x in rows]
+        return [(x.id, BE._j(x.data, {}).get("token", ""), BE._j(x.data, {}).get("platform", "android")) for x in rows]
 
 
 def staff_ids(r: AppProject) -> list[str]:
@@ -178,18 +179,32 @@ def staff_ids(r: AppProject) -> list[str]:
     return list(BE._staff_of(BE.bid(r)).keys())
 
 
+def _drop(row_id: str) -> None:
+    with session() as s:                                       # the phone uninstalled / the token rotated
+        x = s.get(W.SiteAppRow, row_id)
+        if x is not None:
+            s.delete(x)
+    STATS["dropped"] += 1
+
+
 def send(r: AppProject, members: list[str], title: str, body: str, ref: str = "") -> int:
-    """Push to these accounts' phones (only when this app's instant notifications are on). Never raises."""
-    if not members or not configured() or not state(r).get("configs"):
+    """Push to these accounts' phones (Android through FCM when switched on, iPhone through APNs when her Apple push key
+    is set - v0.368). Never raises."""
+    if not members:
         return 0
+    toks = _tokens(r, members)
+    n = send_ios(r, [(i, t) for i, t, p in toks if p == "ios"], title, body, ref)
+    andr = [(i, t) for i, t, p in toks if p != "ios"]
+    if not andr or not configured() or not state(r).get("configs"):
+        STATS["sent"] += n
+        return n
     try:
         from .. import push as P
         creds, project = P._credentials()
     except Exception:                                         # noqa: BLE001
         log.debug("turant creds", exc_info=True)
-        return 0
-    n = 0
-    for row_id, tok in _tokens(r, members):
+        return n
+    for row_id, tok in andr:
         msg = {"message": {"token": tok, "android": {"priority": "HIGH"},
                            "data": {"title": title[:80], "body": body[:200], "id": ref[:60]}}}
         try:
@@ -201,11 +216,7 @@ def send(r: AppProject, members: list[str], title: str, body: str, ref: str = ""
         if res.status_code == 200:
             n += 1
         elif res.status_code in (400, 404) and ("UNREGISTERED" in res.text or "INVALID_ARGUMENT" in res.text):
-            with session() as s:                               # the phone uninstalled / the token rotated
-                x = s.get(W.SiteAppRow, row_id)
-                if x is not None:
-                    s.delete(x)
-            STATS["dropped"] += 1
+            _drop(row_id)
         else:
             STATS["failed"] += 1
     STATS["sent"] += n
@@ -213,11 +224,129 @@ def send(r: AppProject, members: list[str], title: str, body: str, ref: str = ""
 
 
 def later(r: AppProject, members: list[str], title: str, body: str, ref: str = "") -> None:
-    """Fire and forget on Hoola's push pool (an order write never waits for Google)."""
-    if not members or not configured() or not state(r).get("configs"):
+    """Fire and forget on Hoola's push pool (an order write never waits for Google / Apple)."""
+    if not members or not ((configured() and state(r).get("configs")) or ios_on(r)):
         return
     try:
         from .. import push as P
         P._pool.submit(send, r, list(members), title, body, ref)
     except Exception:                                         # noqa: BLE001
         log.debug("turant later", exc_info=True)
+
+
+
+# ---------------------------------------------------------------- v0.368 TURANT IPHONE: Apple's push service (APNs)
+# Apple sends a push only with a key from the business's OWN Apple Developer account (Certificates, IDs & Profiles > Keys >
+# Apple Push Notifications service): Key ID, Team ID and the .p8 file, typed into her Hoola once, sealed by the server vault,
+# never shown again, never in chat. Token-based APNs: ES256 JWT (iss = team, kid = key id, 50 minutes), HTTP/2 to
+# api.push.apple.com, topic = the app's bundle id. A device token Apple calls Unregistered / BadDeviceToken is dropped.
+APNS = "https://api.push.apple.com/3/device/"
+_apns_jwt: dict[str, tuple[float, str]] = {}
+
+
+def _ios_file(r: AppProject):
+    from .android import service as AN
+    return AN._dir(r) / "apns.key.sealed"
+
+
+def ios_on(r: AppProject) -> bool:
+    return _ios_file(r).exists()
+
+
+def ios_view(r: AppProject) -> dict[str, Any]:
+    if not ios_on(r):
+        return {}
+    try:
+        k = _ios_key(r)
+        return {"key_id": k["key_id"], "team_id": k["team_id"], "at": k.get("at", "")}
+    except Exception:                                         # noqa: BLE001
+        return {"broken": True}
+
+
+def _ios_key(r: AppProject) -> dict[str, str]:
+    from ..bazar.security import vault
+    return json.loads(vault().open(_ios_file(r).read_text()))
+
+
+def set_ios_key(r: AppProject, key_id: str, team_id: str, p8: str) -> dict[str, Any]:
+    """Her Apple push key (sealed). Checked: 10-character ids and a real EC private key; never returned."""
+    import re
+    from ..bazar.security import vault
+    from ..db import now
+    key_id, team_id = str(key_id or "").strip().upper(), str(team_id or "").strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{10}", key_id) or not re.fullmatch(r"[A-Z0-9]{10}", team_id):
+        raise TurantError("Key ID aur Team ID dono 10 akshar ke hote hain (Apple Developer > Keys / Membership).")
+    p8 = str(p8 or "").strip()
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        k = serialization.load_pem_private_key(p8.encode(), password=None)
+        if not isinstance(k, ec.EllipticCurvePrivateKey):
+            raise ValueError("not EC")
+    except Exception:                                         # noqa: BLE001
+        raise TurantError("Yeh .p8 key sahi nahi lagi (Apple se download ki hui AuthKey_XXXX.p8 ka poora text chahiye).")
+    _ios_file(r).write_text(vault().seal(json.dumps({"key_id": key_id, "team_id": team_id, "p8": p8, "at": now().isoformat()})))
+    _apns_jwt.pop(r.id, None)
+    return view(r)
+
+
+def clear_ios_key(r: AppProject) -> dict[str, Any]:
+    f = _ios_file(r)
+    if f.exists():
+        f.unlink()
+    _apns_jwt.pop(r.id, None)
+    return view(r)
+
+
+def _jwt(r: AppProject) -> str:
+    hit = _apns_jwt.get(r.id)
+    if hit and time.time() - hit[0] < 50 * 60:
+        return hit[1]
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+    k = _ios_key(r)
+    b64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+    head = b64(json.dumps({"alg": "ES256", "kid": k["key_id"]}, separators=(",", ":")).encode())
+    body = b64(json.dumps({"iss": k["team_id"], "iat": int(time.time())}, separators=(",", ":")).encode())
+    key = serialization.load_pem_private_key(k["p8"].encode(), password=None)
+    der = key.sign(f"{head}.{body}".encode(), ec.ECDSA(hashes.SHA256()))
+    rr, ss = decode_dss_signature(der)
+    tok = f"{head}.{body}.{b64(rr.to_bytes(32, 'big') + ss.to_bytes(32, 'big'))}"
+    _apns_jwt[r.id] = (time.time(), tok)
+    return tok
+
+
+def _apns_client():
+    """HTTP/2 client (APNs speaks only HTTP/2; needs the h2 package)."""
+    return httpx.Client(http2=True, timeout=15)
+
+
+def send_ios(r: AppProject, toks: list[tuple[str, str]], title: str, body: str, ref: str = "") -> int:
+    if not toks or not ios_on(r):
+        return 0
+    try:
+        from .ios import service as IS
+        topic = IS.bundle_id(r)
+        jwt = _jwt(r)
+        client = _apns_client()
+    except Exception:                                         # noqa: BLE001
+        log.info("apns not ready", exc_info=True)
+        return 0
+    n = 0
+    payload = {"aps": {"alert": {"title": title[:80], "body": body[:200]}, "sound": "default"}, "id": ref[:60]}
+    with client:
+        for row_id, tok in toks:
+            try:
+                res = client.post(APNS + tok, json=payload, headers={"authorization": f"bearer {jwt}", "apns-topic": topic,
+                                                                     "apns-push-type": "alert", "apns-priority": "10"})
+            except httpx.HTTPError:
+                STATS["failed"] += 1
+                continue
+            if res.status_code == 200:
+                n += 1
+            elif res.status_code in (400, 410) and ("Unregistered" in res.text or "BadDeviceToken" in res.text):
+                _drop(row_id)
+            else:
+                STATS["failed"] += 1
+    return n

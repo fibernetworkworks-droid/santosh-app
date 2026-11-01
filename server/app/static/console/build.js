@@ -874,8 +874,20 @@ window.HoolaBuild = function (C) {
     // v0.367 TURANT: instant notifications for her Android app's phones (her tap)
     const tbox = document.createElement('section'); tbox.className = 'stcol stturant'; box.appendChild(tbox);
     const drawT = v => {
-      tbox.innerHTML = `<h4>Instant notifications <span>${v.on ? 'On' : 'Off'}</span></h4><p class="stnote">${esc(S(v.note))}${v.on ? ' Phones registered: ' + N(v.tokens) + '.' : ''}</p>
-        <div class="acts">${v.configured ? `<button class="btn ${v.on ? 'soft' : 'go'}" type="button" data-turant="${v.on ? '0' : '1'}">${v.on ? 'Switch off' : 'Switch on (next Android build)'}</button>` : ''}</div>`;
+      const ik = M(v.ios_key);
+      tbox.innerHTML = `<h4>Instant notifications <span>${v.on ? 'Android on' : 'Android off'} · ${v.ios ? 'iPhone on' : 'iPhone off'}</span></h4><p class="stnote">${esc(S(v.note))}${v.on || v.ios ? ' Phones registered: ' + N(v.tokens) + '.' : ''}</p>
+        <div class="acts">${v.configured ? `<button class="btn ${v.on ? 'soft' : 'go'}" type="button" data-turant="${v.on ? '0' : '1'}">${v.on ? 'Switch off' : 'Switch on (next Android build)'}</button>` : ''}</div>
+        <form class="stapp" autocomplete="off" data-ios><p class="stnote">iPhone: your Apple push key (Apple Developer > Keys > Apple Push Notifications service). Sealed on the server, never shown again. ${ik.key_id ? 'Set: key ' + esc(S(ik.key_id)) + ', team ' + esc(S(ik.team_id)) + '.' : ''}</p>
+        <div class="row"><input name="key_id" maxlength="10" placeholder="Key ID" aria-label="Apple Key ID"><input name="team_id" maxlength="10" placeholder="Team ID" aria-label="Apple Team ID">
+        <input name="p8" type="file" accept=".p8" aria-label="AuthKey .p8 file"><button class="btn go" type="submit">Save iPhone key</button>${v.ios ? '<button class="btn soft" type="button" data-iosclear>Remove</button>' : ''}</div></form>`;
+      const fi = tbox.querySelector('[data-ios]');
+      fi.addEventListener('submit', async e => {
+        e.preventDefault(); const f = fi.p8.files[0]; if (!f) { toast('Choose the .p8 file', true); return; }
+        try { drawT(await api('PUT', base(o) + '/turant/ios', {key_id: fi.key_id.value.trim(), team_id: fi.team_id.value.trim(), p8: await f.text()})); toast('iPhone key saved (sealed). It reaches iPhones with the next iPhone build.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      const ic = tbox.querySelector('[data-iosclear]');
+      if (ic) ic.addEventListener('click', async () => { try { drawT(await api('PUT', base(o) + '/turant/ios', {clear: true})); } catch (er) { toast(er.message, true); } });
       const b = tbox.querySelector('[data-turant]');
       if (b) b.addEventListener('click', async () => { b.disabled = true; try { drawT(await api('PUT', base(o) + '/turant', {on: b.dataset.turant === '1'})); toast('Saved. It reaches phones with the next Android build.'); } catch (er) { toast(er.message, true); b.disabled = false; } });
     };
