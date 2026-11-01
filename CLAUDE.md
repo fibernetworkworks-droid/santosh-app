@@ -52,6 +52,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the SHIKSHA work, deployed + checked on the VPS): branch
+  `stable-2026-11-01-v406` = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com, healthz 0.406.0).
+  Education AI Employees end to end: pylab sandbox + Shiksha + Pathyakram (v0.381), Guru Sahayak tutor + 2.1 (v0.387),
+  Daftar school office + Shodh research assistant (v0.403); also carries the other sessions' v0.383-v0.406 (CONNECT,
+  APNA DATABASE 1+2, DFM, GAME CREW...). APK release `v0.406.0-b1079`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.406.0-b1079/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v406` as the branch.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the CODING work, every coding card 100% live): branch
   `stable-2026-11-01-v382` = commit 5e3e06d4 = v0.382.0, pubspec 0.382.0+426 (live on hoola.ainewtika.com, healthz 0.382.0).
   Developer Sahayak codes like Claude Code: 8-tool step loop (v0.350), CI on a draft PR + fix rounds (v0.352), project rules
