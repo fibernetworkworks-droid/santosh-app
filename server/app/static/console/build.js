@@ -241,7 +241,7 @@ window.HoolaBuild = function (C) {
     if (s === 'planned') pre.push(['plan', 'Plan']);
     if (s === 'looks') pre.push(['looks', 'Looks']);
     return o.type === 'site'
-      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['dash', 'Dashboard'], ['blog', 'Blog'], ['langs', 'Languages'], ['data', 'App & data'], ['shop', 'Shop']] : [])]
+      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['dash', 'Dashboard'], ['code', 'Code'], ['blog', 'Blog'], ['langs', 'Languages'], ['data', 'App & data'], ['shop', 'Shop']] : [])]
       : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Structure'], ['android', 'Android'],
          ...(S(o.an?.status) ? [['data', 'App data']] : []), ['kadam', 'Steps']];   // v0.314 the built app's own backend
   }
@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'shop') loadShop(o, ot); if (o.tab === 'dash') loadDash(o, ot); if (o.tab === 'blog') loadBlog(o, ot); if (o.tab === 'langs') loadLangs(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); loadBhasha(o, ot); } }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'shop') loadShop(o, ot); if (o.tab === 'dash') loadDash(o, ot); if (o.tab === 'blog') loadBlog(o, ot); if (o.tab === 'code') loadCodeMode(o, ot); if (o.tab === 'langs') loadLangs(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); loadBhasha(o, ot); } }
     showBtn();
   }
 
@@ -367,6 +367,7 @@ window.HoolaBuild = function (C) {
       case 'shop': return `<div class="stshop"><div class="stempty">${spin()} Loading the shop…</div></div>`;
       case 'dash': return `<div class="stdash"><div class="stempty">${spin()} Loading the dashboard…</div></div>`;
       case 'blog': return `<div class="stblog"><div class="stempty">${spin()} Loading the blog…</div></div>`;
+      case 'code': return `<div class="stcode"><div class="stempty">${spin()} Opening the code…</div></div>`;
       case 'langs': return `<div class="stblog"><div class="stempty">${spin()} Loading the languages…</div></div>`;
       case 'screens': return screensPane(o);
       case 'dhaancha': return dnaPane(o);
@@ -1003,6 +1004,85 @@ window.HoolaBuild = function (C) {
 
   /* v0.351 DUKAAN: her shop - settings, products, orders (no AI; prices only hers; money confirmed only by her) */
   const OSTEP = {confirmed: 'Confirm (money received)', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancel'};
+  // ---------------------------------------------------------------- v0.373 CODE MODE: the site's real code, by hand or by asking
+  const CODE_OPEN = {};
+  function diffHtml(d) {
+    return S(d).split('\n').map(l => {
+      const c = l.startsWith('+++') || l.startsWith('---') ? 'f' : l.startsWith('@@') ? 'h' : l.startsWith('+') ? 'a' : l.startsWith('-') ? 'd' : '';
+      return `<span class="dl${c ? ' ' + c : ''}">${esc(l) || ' '}</span>`;
+    }).join('\n');
+  }
+  async function loadCodeMode(o, root) {
+    const box = root.querySelector('.stcode'); if (!box) return;
+    let t;
+    try { t = await api('GET', base(o) + '/code'); } catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const groups = L(t.files), all = groups.flatMap(g => L(g.files));
+    let cur = CODE_OPEN[o.id] && all.some(f => f.path === CODE_OPEN[o.id]) ? CODE_OPEN[o.id] : S(all[0]?.path);
+    box.innerHTML = `<div class="stcode-bar"><p>Your website's real code: every section's HTML, CSS and script, and the design kit. Edit by hand or ask Hoola; every save is checked for safety, becomes a new version, and Undo brings it back.</p>
+        <div class="acts"><button class="btn soft" type="button" data-x="undo">Undo last change</button><button class="btn soft" type="button" data-x="react">Download React project</button><button class="btn soft" type="button" data-x="zip">Download ZIP</button></div></div>
+      <div class="stcode-main"><nav class="stcode-files" aria-label="Files">${groups.map(g => `<div class="stcode-g"><b>${esc(S(g.title))}</b>${L(g.files).map(f => `<button type="button" data-p="${esc(S(f.path))}" class="${f.path === cur ? 'on' : ''}" title="${esc(S(f.path))}">${esc(S(f.label))}</button>`).join('')}</div>`).join('')}</nav>
+        <div class="stcode-ed"><div class="stcode-path"><code></code><span class="stcode-state"></span></div>
+          <div class="stcode-area"><pre class="stcode-ln" aria-hidden="true"></pre><textarea spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Code"></textarea></div>
+          <div class="acts"><button class="btn go" type="button" data-x="save">Save (Ctrl+S)</button><span class="stnote">Scripts may not use the network, cookies or storage; outside files and on*= handlers are removed.</span></div>
+          <form class="stcode-ask" autocomplete="off"><input name="q" placeholder="Ask Hoola to change this file - e.g. make the pricing table compare 3 plans" aria-label="Ask Hoola to change the code"><button class="btn go" type="submit">Ask</button></form>
+          <div class="stcode-out" hidden></div></div></div>`;
+    const ta = box.querySelector('textarea'), ln = box.querySelector('.stcode-ln'), pathEl = box.querySelector('.stcode-path code'),
+      state = box.querySelector('.stcode-state'), out = box.querySelector('.stcode-out');
+    let saved = '';
+    const lines = () => { const n = ta.value.split('\n').length; ln.textContent = Array.from({length: n}, (_, i) => i + 1).join('\n'); ln.scrollTop = ta.scrollTop; };
+    const dirty = () => { state.textContent = ta.value !== saved ? 'Not saved' : ''; };
+    async function open(p) {
+      if (ta.value !== saved && !window.confirm('This file has changes that are not saved. Leave it?')) return;
+      cur = p; CODE_OPEN[o.id] = p;
+      box.querySelectorAll('.stcode-files button').forEach(b => b.classList.toggle('on', b.dataset.p === p));
+      pathEl.textContent = p; ta.value = ''; ta.disabled = true;
+      try { const r = await api('GET', `${base(o)}/code?path=${encodeURIComponent(p)}`); saved = ta.value = S(r.code); }
+      catch (er) { toast(er.message, true); }
+      ta.disabled = false; lines(); dirty();
+    }
+    async function save() {
+      const b = box.querySelector('[data-x=save]'); b.disabled = true;
+      try {
+        const r = await api('PUT', base(o) + '/code', {path: cur, code: ta.value});
+        saved = ta.value = S(r.code); lines(); dirty();
+        toast(S(r.say) || 'Saved.', L(r.removed).length > 0);
+      } catch (er) { toast(er.message, true); }
+      b.disabled = false;
+    }
+    ta.addEventListener('input', () => { lines(); dirty(); });
+    ta.addEventListener('scroll', () => { ln.scrollTop = ta.scrollTop; });
+    ta.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); return; }
+      if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const a = ta.selectionStart, z = ta.selectionEnd; ta.setRangeText('  ', a, z, 'end'); lines(); dirty(); }
+    });
+    box.querySelectorAll('.stcode-files button').forEach(b => b.addEventListener('click', () => open(b.dataset.p)));
+    box.querySelector('[data-x=save]').addEventListener('click', save);
+    box.querySelector('[data-x=undo]').addEventListener('click', async () => {
+      if (!window.confirm('Undo your last change to this website?')) return;
+      try { const r = await api('POST', base(o) + '/undo', {}); toast(S(r?.say) || 'Undone.'); saved = ''; ta.value = ''; open(cur); } catch (er) { toast(er.message, true); }
+    });
+    for (const [x, fmt] of [['react', 'react'], ['zip', 'zip']]) box.querySelector(`[data-x=${x}]`).addEventListener('click', async e => {
+      e.target.disabled = true;
+      try { const r = await api('POST', base(o) + '/export', {format: fmt}); toast(S(r?.say) || 'Ready - the ZIP is in your files.'); }
+      catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
+    });
+    box.querySelector('.stcode-ask').addEventListener('submit', async e => {
+      e.preventDefault(); const f = e.target, q = S(f.q.value).trim(), btn = f.querySelector('button');
+      if (!q) return;
+      if (ta.value !== saved && !window.confirm('Your unsaved changes in this file will be replaced. Go on?')) return;
+      btn.disabled = true; out.hidden = false; out.innerHTML = `<p class="stempty">${spin()} Hoola is changing the code…</p>`;
+      try {
+        let r = await api('POST', base(o) + '/code/ask', {instruction: q, path: cur, conversation_id: C.conv?.() || ''});
+        for (let i = 0; i < 120 && r.status === 'working'; i++) { await new Promise(res => setTimeout(res, 3000)); r = await api('GET', `${base(o)}/code/task/${encodeURIComponent(S(r.task))}`); }
+        out.innerHTML = `<p>${esc(S(r.say))}</p>` + (L(r.removed).length ? `<p class="stnote">Removed for safety: ${esc(L(r.removed).join('; '))}</p>` : '') +
+          (S(r.diff) ? `<pre class="stcode-diff">${diffHtml(r.diff)}</pre>` : '');
+        if (r.status === 'done') { f.q.value = ''; saved = ''; ta.value = ''; await open(cur); }
+      } catch (er) { out.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; }
+      btn.disabled = false;
+    });
+    if (cur) open(cur);
+  }
+
   // ---------------------------------------------------------------- v0.366 BLOG: Kalam writes, her Haan publishes on this site
   const BSTAT = {published: 'Live', scheduled: 'Scheduled', hidden: 'Hidden'};
   async function loadBlog(o, root) {

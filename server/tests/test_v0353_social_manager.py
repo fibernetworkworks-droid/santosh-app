@@ -276,9 +276,10 @@ def test_scheduler_runs_jobs_on_her_clock(social):
     D.finish_link("instagram", "IGCODE", _state_from(D.connect_url(T, "instagram")), background=False)
     ist = timezone(timedelta(hours=5, minutes=30))
     monday9 = datetime(2026, 11, 2, 9, 30, tzinfo=ist)
-    assert set(D.due_jobs(T, monday9)) == {"publish", "hourly", "daily", "weekly"}      # v0.355 publish = every sweep
+    jobs = {"publish", "inbox", "hourly", "daily", "weekly", "morning"}    # v0.355 publish, v0.358 inbox, v0.359 morning
+    assert set(D.due_jobs(T, monday9)) == jobs
     done = D.run_due(at=monday9, force=True)
-    assert {j for _, j in done} == {"publish", "hourly", "daily", "weekly"}
+    assert {j for _, j in done} == jobs
     assert D.due_jobs(T, monday9 + timedelta(minutes=10)) == ["publish"]
     from app.employee import hire
     hire.pause(T, "social")

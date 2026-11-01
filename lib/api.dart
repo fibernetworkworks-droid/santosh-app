@@ -986,6 +986,18 @@ class Api {
   Future<Map<String, dynamic>> seoDraftOk(String id, String text) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/seo/drafts/$id', body: {'text': text}) as Map);
   Future<String> seoGscLink() async => (await _send('GET', '/api/seo/gsc/link'))['url'] as String;
+  // v0.370 the Game Developer's desk (Godot 4 games, played by Hoola before she sees them)
+  Future<Map<String, dynamic>> gameHome() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/game', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameNew(String brief, String orientation) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/game', body: {'brief': brief, 'orientation': orientation}) as Map);
+  Future<Map<String, dynamic>> gameApprove(String id, {String feedback = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/game/$id/approve', body: {'feedback': feedback}) as Map);
+  Future<Map<String, dynamic>> gameChange(String id, String words) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/game/$id/change', body: {'words': words}) as Map);
+  Future<Map<String, dynamic>> gameCancel(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/game/$id/cancel', body: {}) as Map);
+  Future<void> gameDelete(String id) async => _send('DELETE', '/api/game/$id');
   // v0.353 the Social Media Manager's desk
   Future<Map<String, dynamic>> socialDesk() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/social/desk', timeout: const Duration(seconds: 45)) as Map);
@@ -1006,6 +1018,18 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/poster', body: {}, timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> socialPublish(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/publish', body: {}) as Map);
+  // v0.369 posting controls: {paused} | {stop: true} | {quiet: [23, 7]}
+  Future<Map<String, dynamic>> socialSettings(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/settings', body: body) as Map);
+  // v0.368 social inbox (comments + DMs)
+  Future<Map<String, dynamic>> socialInbox(String box) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/social/inbox?box=$box', timeout: const Duration(seconds: 30)) as Map);
+  Future<Map<String, dynamic>> socialInboxReply(String id, String text) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/inbox/$id/reply', body: {'text': text}) as Map);
+  Future<Map<String, dynamic>> socialInboxHide(String id, bool hidden) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/inbox/$id/hide', body: {'hidden': hidden}) as Map);
+  Future<Map<String, dynamic>> socialInboxSet(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/inbox/$id', body: body) as Map);
   Future<Map<String, dynamic>> socialRun(String job) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/run/$job', body: {}) as Map);
   // v0.357 ENGINEERING DESK: the CAD Engineer's parts
