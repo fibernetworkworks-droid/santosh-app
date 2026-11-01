@@ -854,6 +854,25 @@ window.HoolaBuild = function (C) {
       if (off) off.addEventListener('click', async () => { try { drawDl(await api('PUT', base(o) + '/delivery', {off: true})); toast('Delivery rules removed.'); } catch (er) { toast(er.message, true); } });
     };
     try { if (S(info.order)) drawDl(await api('GET', base(o) + '/delivery')); else dbox.remove(); } catch (er) { dbox.remove(); }
+    // v0.361 HISAAB: the month's accounts + GST summary for her CA (CSV files in a ZIP)
+    const hbox = document.createElement('section'); hbox.className = 'stcol sthisaab'; box.appendChild(hbox);
+    const drawH = v => {
+      hbox.innerHTML = `<h4>Accounts <span>${esc(S(v.month))}</span></h4><p class="stnote">${esc(S(v.say))}</p>
+        <form class="stapp" autocomplete="off"><div class="row"><input name="month" type="month" value="${esc(S(v.month))}" aria-label="Month">
+        <button class="btn soft" type="submit">Show</button><button class="btn go" type="button" data-hdl>Download for CA (CSV)</button></div></form>
+        <p class="stnote">Sales register, invoice register, credit notes, HSN and rate-wise summary, udhaar. Nothing is filed - give the files to your CA.</p>`;
+      const f = hbox.querySelector('form');
+      f.addEventListener('submit', async e => { e.preventDefault(); try { drawH(await api('GET', base(o) + '/hisaab?month=' + encodeURIComponent(f.month.value))); } catch (er) { toast(er.message, true); } });
+      hbox.querySelector('[data-hdl]').addEventListener('click', async e => {
+        e.target.disabled = true;
+        try {
+          const res = await api('GET', base(o) + '/hisaab?download=1&month=' + encodeURIComponent(f.month.value), undefined, {raw: true});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = 'hisaab-' + f.month.value + '.zip'; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+        } catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
+      });
+    };
+    try { drawH(await api('GET', base(o) + '/hisaab')); } catch (er) { hbox.remove(); }
     const mbox = box.querySelector('.stmem');
     try {
       const ms = L((await api('GET', base(o) + '/members')).members);

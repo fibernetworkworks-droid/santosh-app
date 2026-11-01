@@ -13017,3 +13017,15 @@ The paper udhaar register, inside her app.
   some PINs only; the shown order total adds the same fee.
 - Her side: GET / PUT /api/apps/<ref>/delivery ({off: true} removes), tool app_banao action=delivery, console Delivery form.
 - Tests `tests/test_v0360_delivery.py`. Not done: distance-based fees, delivery slots, per-PIN fees, holidays.
+
+## v0.361.0 HISAAB (App Sahayak Phase 25, owner: "START PHASE 25")
+After invoices (v0.355), credit notes (v0.356), coupons, delivery and khata, the month has to reach her CA.
+- `appmaker/hisaab.py`: `build(r, month)` walks the app's rows once: orders placed in the month (IST) -> sales register +
+  totals (orders, cancelled, sales, discount, delivery); every row whose `_inv_date` / `_cn_date` is in the month ->
+  `gst.compute` (the same function the PDF uses) -> invoice / credit-note register rows and the HSN (code + rate) and
+  rate-wise summaries, credit notes counted negative; `_khata` entries of the month -> khata movements. `default_month()`
+  = last month in the first 5 days, else this month. `zip_bytes` = one CSV per table (UTF-8 with BOM so Excel shows Hindi,
+  `_safe` quotes cells starting with = + - @ so a customer-typed formula never runs) + README ("nothing has been filed").
+- Her side: GET /api/apps/<ref>/hisaab?month= (summary, one-line `say`) and &download=1 (ZIP), tool app_banao
+  action=hisaab, console "Accounts" box (month picker, Show, Download for CA).
+- Tests `tests/test_v0361_hisaab.py`. Not done: GSTR-1 JSON for the GST portal, Tally export, B2B vs B2C split tables.

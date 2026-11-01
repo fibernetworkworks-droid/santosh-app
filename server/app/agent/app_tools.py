@@ -75,6 +75,8 @@ APP_TOOLS = [
         "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
         "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
         "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
+        "v0.361 action=hisaab (owner only; month YYYY-MM, default this / last month): her month's orders, sales, GST, credit notes and "
+        "udhaar in one line; the CSV files for her CA download from the app data page (Accounts). Nothing is filed. "
         "v0.360 action=delivery (owner only; delivery = {fee, free_above, pins \"411001, 411002\", hours {open HH:MM, close HH:MM, days [0=Mon..6]}, "
         "off}; none = show): her shop app's delivery charge (added by the server), area and hours - an order outside them is still taken with a note. "
         "v0.359 action=khata (owner only): no member = who owes how much; member (id or name) = that customer's entries; with amount "
@@ -92,7 +94,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -106,6 +108,7 @@ APP_TOOLS = [
          "items": {"type": "object", "description": "action=stock: {product id or name: {qty, low}}"},
          "amount": {"type": "string", "description": "action=khata: payment received"},
          "mode": {"type": "string", "description": "action=khata: cash|upi|card|bank|other"},
+         "month": {"type": "string", "description": "action=hisaab: YYYY-MM"},
          "delivery": {"type": "object", "description": "action=delivery: {fee, free_above, pins, hours, off}"},
          "coupon": {"type": "object", "description": "action=coupon: {code, kind, value, cap, min, until, uses, once, on, delete}"},
          "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members); action=khata: customer id or name"},
@@ -287,6 +290,15 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action == "hisaab":                    # v0.361 HISAAB: the month's accounts
+        if not _owner(ctx):
+            raise ToolError("Hisaab sirf maalkin dekh sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import hisaab as HS
+        r = BE.by_key_or_ref(t, ref)
+        rep = HS.build(r, str(a.get("month") or ""))
+        return {k: rep[k] for k in ("month", "summary", "say", "counts")} | {
+            "download": f"/api/apps/{r.id}/hisaab?month={rep['month']}&download=1"}
     if action == "delivery":                  # v0.360 DELIVERY
         if not _owner(ctx):
             raise ToolError("Delivery niyam sirf maalkin badal sakti hain.")
