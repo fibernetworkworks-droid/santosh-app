@@ -12,7 +12,7 @@ def test_android_kit_wide():
     assert "if (maxWidth > 752.dp) (maxWidth - 720.dp) / 2 else 16.dp" in kit
     assert "if (columns == 2 && maxWidth >= 560.dp) 3 else columns" in kit
     nav = (ROOT / "android/template/app/src/main/java/hoola/kit/Nav.kt").read_text()
-    assert 'val railNow = look.nav == "rail" || (wide && barNav)' in nav and "if (railNow && nav.onTab) Rail(nav)" in nav
+    assert 'val railNow = look.nav == "rail" || (wide && barNav)' in nav and "if (railNow && (nav.onTab || split)) Rail(nav)" in nav     # v0.365 also beside an open record
     assert "if (!railNow && look.nav == \"floating_pill\"" in nav
 
 
