@@ -12637,7 +12637,35 @@ nothing could be ADDED, and only photos could be uploaded (in chat).
 - Not yet: a video's own poster frame (the browser shows its first frame), reordering added pieces (remove + add again).
 - Built as 0.338.0, re-versioned 0.340.0 on merge past the parallel v0.338 KAAM KARO and v0.339 APP STORE LAUNCH (all kept). Code comments say v0.338.
 
-## v0.341.0 TERMS OF SERVICE (1 Nov 2026)
+## v0.341.0 HAR FEATURE 2 (App Sahayak Phase 8, owner: "START PHASE 8")
+No Phase 8 had been named; it is the open half of the original Phase 2 feature list ("push notifications, UPI, camera and
+photo upload, location and maps, QR scanning, files, search with filters, charts, a notifications inbox..."), now on BOTH
+the Android and the iPhone app. Built as 0.340, re-versioned past main's v0.340.
+- SCAN field (`backend.EXTRA_TYPES` += "scan"): `_check_extra` strips control characters, trims, 200 max, empty refused;
+  complex staff lists map text fields named barcode / sku / tag / serial / qr_code / imei to scan (two a list, `SCAN_NAME`);
+  data_change can add type scan. Android kit `Pro.kt` ScanField = Google's code scanner
+  (`play-services-code-scanner` 16.1.0 in the pinned catalogue; Play services shows its own camera screen, the app needs NO
+  camera permission and never sees the camera) + a text box; iPhone kit `Pro.swift` ScanRow = VisionKit
+  DataScannerViewController in a sheet (shown only when the phone supports it; NSCameraUsageDescription only when a list
+  has a scan field) + a text field. Forms render it (`gen._form_rows` / FormBlock case "scan").
+- STAFF DASHBOARD: `backend.stats` + GET /api/app-api/<key>/stats?days= (7-60, default 14; 401 without login, 403 for a
+  customer): per list count, status mix (top 8), rows per day, and the money total of server-priced `total` fields.
+  Android StatsBlock (cards + a Canvas bar chart in the app's colours, content description with the numbers); iPhone
+  StatsBlock (Swift Charts BarMark). Shown on staff's My account and on any code-made dashboard / report / stats /
+  analytics / admin / overview screen (`DASH_WORDS`); in both model guides.
+- UPDATES INBOX: Android `Inbox` (SharedPreferences, 50, unread count set at start, Updates.check adds every item even when
+  notifications are off), iPhone `Inbox` (UserDefaults). Kit screen `hoola_inbox` (KIT_SCREENS now 3, registry + QA
+  screen lists + CI device check list), button on My account with the unread count.
+- iPhone BACKGROUND UPDATES (`Updates` in Pro.swift): BGTaskScheduler app refresh `<bundle id>.updates` registered in the
+  App init, scheduled every 15+ minutes (iOS decides), the same /updates call and "first check only sets the mark" rule
+  as Android, one local notification + an inbox entry per change; the notification question asked once after sign-in.
+  Info.plist: BGTaskSchedulerPermittedIdentifiers + UIBackgroundModes fetch. No push server and no Apple push key.
+- Tests: `test_v0340_har_feature2.py` (4). Android fixture compiled locally (assembleDebug + assembleRelease, R8) with the
+  scanner; CI appgen-check (emulator, 14 screens) and ios-check (macOS: compile, 14 simulator screens, e2e).
+- Not verified: the camera scanners on real phones (emulator / simulator have no camera); iOS runs background refresh on
+  its own schedule (a phone that rarely opens the app gets fewer checks - real push would need her Apple push key).
+
+## v0.342.0 TERMS OF SERVICE (1 Nov 2026; built as 0.341.0)
 Owner: "Terms of Service --- HOOLA" (right after her privacy policy went live at /privacy).
 - `server/app/static/terms.html` served at GET /terms (main.py `terms()`), the same look as the privacy page and linked to it.
   17 sections: who can use (18+), account, what Hoola does, her approval first (send / delete / publish / file / paid work; never moves
@@ -12648,4 +12676,4 @@ Owner: "Terms of Service --- HOOLA" (right after her privacy policy went live at
   failed items not charged), availability "as is" + backups, suspension / closing, disclaimers + liability cap (3 months of fees, as far as
   Indian law allows, consumer rights kept), Indian law + Akola courts, grievance officer under the IT Act (24 h acknowledgement, 15 days).
 - NOT legal advice: the owner should have a lawyer review the liability cap, indemnity, jurisdiction and refund wording before relying on them.
-- Tests: `test_v0341_terms.py`.
+- Tests: `test_v0342_terms.py`.

@@ -17,6 +17,9 @@ struct StatusPill: View { init(text: String) }
 struct ListBlock: View { init(list: String, next: String = "") }   // a catalogue list as cards (products get Add)
 struct CartList: View { init() }                                    // the cart lines with steppers + total
 struct AccountButton: View { init() }                               // Sign in / the user's name -> account screen
+struct StatsBlock: View { init() }        // v0.340 staff dashboard: counts, status mix, 14-day bars (shows nothing to customers)
+struct ScanRow: View { init(label: String, key: String) }   // v0.340 a [scan] field: camera barcode / QR scanner or typed
+struct InboxButton: View { init() }       // v0.340 the updates inbox ("hoola_inbox")
 enum H { static func c(_ scheme: ColorScheme) -> Palette; static var radius: CGFloat }
 struct Palette { bg, surface, ink, muted, line, primary, onPrimary, accent, tint: Color }
     // read colours with: @Environment(\\.colorScheme) private var scheme; let c = H.c(scheme)

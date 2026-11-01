@@ -126,4 +126,15 @@ object Strings {
     // v0.325 updates
     val updateTitle get() = t("New version", "नया वर्ज़न", "नवीन आवृत्ती", "Naya version")
     val update get() = t("Update", "अपडेट करें", "अपडेट करा", "Update karein")
+
+    // v0.340 scan, dashboard, inbox
+    val loading get() = t("Loading…", "लोड हो रहा है…", "लोड होत आहे…", "Load ho raha hai…")
+    val total get() = t("Total", "कुल", "एकूण", "Total")
+    val scan get() = t("Scan", "स्कैन करें", "स्कॅन करा", "Scan karein")
+    val scanHint get() = t("Scan or type the code", "कोड स्कैन करें या लिखें", "कोड स्कॅन करा किंवा लिहा", "Code scan karein ya likhein")
+    val scanFailed get() = t("Scanner not available. Type the code instead.", "स्कैनर नहीं चला। कोड लिख दें।", "स्कॅनर चालला नाही. कोड लिहा.", "Scanner nahi chala. Code likh dijiye.")
+    val dashboard get() = t("Dashboard", "डैशबोर्ड", "डॅशबोर्ड", "Dashboard")
+    val last14 get() = t("Last 14 days", "पिछले 14 दिन", "मागील 14 दिवस", "Pichhle 14 din")
+    val inbox get() = t("Updates", "अपडेट", "अपडेट", "Updates")
+    val inboxEmpty get() = t("No updates yet.", "अभी कोई अपडेट नहीं।", "अजून अपडेट नाहीत.", "Abhi koi update nahi.")
 }

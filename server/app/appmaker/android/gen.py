@@ -28,7 +28,7 @@ KIT_FILES = ["Theme.kt", "Data.kt", "Api.kt", "Kit.kt", "Nav.kt", "Strings.kt", 
 CODE_SCREENS = ("splash", "consent", "notify_permission", "seller_info", "privacy", "delete_account")
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 # v0.314 the kit's own account screens (code-made, always present) and the design's sign-in screens they stand in for
-KIT_SCREENS = ("hoola_login", "hoola_account")
+KIT_SCREENS = ("hoola_login", "hoola_account", "hoola_inbox")   # v0.340 + the updates inbox
 AUTH_IDS = ("login", "signup", "register", "login_staff", "otp_login", "sign_in")
 
 
@@ -201,7 +201,7 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
                       for s in ids if s in have or s in AUTH_IDS)
     code_when = {"seller_info": "SellerScreen()", "privacy": "PrivacyScreen()", "delete_account": "DeleteAccountScreen()"}
     cwhens = "\n".join(f"            {kstr(c)} -> {code_when[c]}" for c in code if c in code_when)
-    cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()'
+    cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()\n            "hoola_inbox" -> InboxScreen()'
     all_ids = ", ".join(kstr(x) for x in ids + [c for c in code if c in code_when] + list(KIT_SCREENS))
     fab = spec.get("fab") or {}
     fab_main = (f"FabAction({kstr(fab['label'])}, {kstr(fab.get('icon') or 'plus')}, {kstr(fab['go'])})"
@@ -219,6 +219,7 @@ import hoola.kit.AuthScreen
 import hoola.kit.DeleteAccountScreen
 import hoola.kit.Empty
 import hoola.kit.FabAction
+import hoola.kit.InboxScreen
 import hoola.kit.Page
 import hoola.kit.PrivacyScreen
 import hoola.kit.SellerScreen
@@ -272,6 +273,7 @@ import hoola.kit.UpdateDialog
 import hoola.kit.AppData
 import hoola.kit.Auth
 import hoola.kit.Cloud
+import hoola.kit.Inbox
 import hoola.kit.CrashGuard
 import hoola.kit.Db
 import hoola.kit.E2e
@@ -306,6 +308,7 @@ class MainActivity : ComponentActivity() {{
         Db.load(this)
         Db.watch(this)
         Updates.schedule(this, AppConfig.BASE_URL, AppConfig.APP_ID)   // v0.319 order updates as notifications
+        Inbox.unread.value = Inbox.count(this)          // v0.340 the unread count on the inbox button
         CrashGuard.sendPending(this)
         val seen = Store.get(this, "onboarded") == "1"
         // Debug builds only (Hoola's own checks open every screen and take its picture); release builds ignore it.
@@ -436,6 +439,7 @@ def resources(spec: dict[str, Any], out: Path) -> None:
 # ---------------------------------------------------------------- the code-made screen (always compiles)
 FORM_WORDS = ("book", "form", "enquir", "request", "enrol", "register", "apply", "contact", "feedback", "new_", "add_")
 CART_WORDS = ("cart", "checkout", "basket", "order_review")
+DASH_WORDS = ("dashboard", "report", "stats", "analytics", "admin", "overview")
 CART_BLOCK = """        val cart = AppState.cartItems("products")
         if (cart.isEmpty()) block { Empty("cart", "Cart") }
         cart.forEach { (rec, q) -> block { HCard { Title(rec.name); Small("$q x " + rupees(rec.price)) } } }
@@ -454,6 +458,9 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
             continue
         if f.get("type") == "location":
             out.append(f"        block {{ LocationField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
+            continue
+        if f.get("type") == "scan":                # v0.340
+            out.append(f"        block {{ ScanField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
             continue
         if f.get("type") == "choice" and f.get("options"):
             opts = ", ".join(kstr(o) for o in f["options"][:8])
@@ -516,6 +523,8 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend:
         }}''')
     else:
         rows.append(f"        block {{ Empty({kstr(icon_for(sid))}, {kstr(s.get('label') or sid)}) }}")
+    if any(w in sid for w in DASH_WORDS) and colls:          # v0.340 staff dashboards show the live numbers
+        rows.append("        block { StatsBlock() }")
     if sid in ("profile", "account", "me", "my_account", "settings") and colls:
         # v0.314 the user's own account (sign in, their orders / bookings, sign out) lives on the kit's account screen
         rows.append('        block { Btn(if (Auth.signedIn) Auth.name else "Sign in", modifier = Modifier.fillMaxWidth(), icon = "user") '

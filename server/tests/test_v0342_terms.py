@@ -1,4 +1,4 @@
-"""v0.341 TERMS OF SERVICE (owner: "Terms of Service --- HOOLA"): a public /terms page beside /privacy, saying only what
+"""v0.342 TERMS OF SERVICE (owner: "Terms of Service --- HOOLA"): a public /terms page beside /privacy, saying only what
 Hoola really does (her tap before sending / publishing / paid work, never moves money, price card first, failed items not
 charged, AI results are not professional advice) plus the IT Act grievance officer and Indian law."""
 from __future__ import annotations
