@@ -2022,6 +2022,15 @@ body.albon{overflow:hidden}
 .sted-for{display:grid;gap:10px;margin-bottom:10px}
 .sted-c.wide select,.sted-c.wide input[type=file]{width:100%;padding:8px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--raise);color:var(--ink);font:inherit}
 
+/* v0.351 DUKAAN: the studio's Shop tab */
+.stshop{display:grid;gap:14px}
+.stshop-sw{display:flex;flex-wrap:wrap;gap:8px}
+.stshop .stapp .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stshop .stapp label{display:grid;gap:3px;font-size:13px}.stshop .stapp label>span{color:var(--mut)}
+.stshop .stapp input:not([type=checkbox]){padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.stshop .sttbl input:not([type=checkbox]){width:100%;min-width:70px;padding:6px 8px;border:1px solid var(--hair);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px}
+.stshop .sttbl td small{color:var(--mut)}
+
 /* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim
@@ -2188,7 +2197,7 @@ body.albon{overflow:hidden}
 .em-shot figcaption{font-size:12px;margin-top:4px}
 .em-note code{font-size:12.5px;word-break:break-all}
 
-/* v0.348 Social Desk */
+/* v0.352 Social Desk */
 .sc-accs{display:grid;gap:10px;margin-top:10px}
 .sc-acc{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center}
 .sc-acc img,.sc-acc .sc-pic{width:40px;height:40px;border-radius:50%;object-fit:cover;background:var(--hair);display:block}

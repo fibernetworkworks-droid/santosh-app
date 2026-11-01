@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
     doc_hold_drafts: bool = True            # v0.315 EK HI FILE: a doc_studio draft with QA problems is held for one fix, not shown
+    dev_loop: bool = True                   # v0.350 Developer Sahayak explores + edits step by step with 8 tools (devsahayak/loop.py)
+    dev_loop_steps: int = 40                # ... at most this many model steps a task
+    dev_loop_minutes: int = 20              # ... and this many minutes
+    dev_loop_model: str = ""                 # ... '' = site_model (Opus)
+    dev_loop_effort: str = "high"           # ... Claude effort for coding
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
     agent_progress_window_s: int = 300      # v0.311 a turn that finished a tool this recently gets the long-job deadline (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
@@ -137,7 +142,7 @@ class Settings(BaseSettings):
     doc_review: bool = True                 # Opus looks at the printed pages and may ask for one change
     doc_model: str = ""                     # model for doc_art / doc_critique ("" = app_model, Claude Opus 5.5)
     seo_ai: bool = True                     # v0.317 the SEO Employee asks Opus for its 90-day plan (off = the rules plan)
-    # v0.348 SOCIAL MEDIA MANAGER (employee 2): Hoola's ONE Meta app - users connect their own Instagram / Facebook Page to it
+    # v0.352 SOCIAL MEDIA MANAGER (employee 2): Hoola's ONE Meta app - users connect their own Instagram / Facebook Page to it
     meta_app_id: str = ""                   # App settings > Basic (Facebook Login for Business + Pages)
     meta_app_secret: str = ""
     meta_login_config_id: str = ""          # Facebook Login for Business > Configurations (pages + permissions)
@@ -379,6 +384,8 @@ class Settings(BaseSettings):
     pagespeed_api_key: str = ""             # optional: PageSpeed Insights API key (higher quota for SEO checks)
     indiamart_enabled: bool = True           # v0.280 IndiaMART's own MCP (buyer search: products, prices, suppliers)
     indiamart_mcp_url: str = "https://imgpt.indiamart.com/mcp"   # no key / sign-in; read-only tools only
+    mospi_enabled: bool = True               # v0.348 MoSPI eSankhyiki: official Govt of India statistics, built in
+    mospi_mcp_url: str = "https://mcp.mospi.gov.in/mcp"   # no login, read-only
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)
     motion_keep: int = 60                      # newest videos kept per owner
     reels_gemini_model: str = ""          # Hoola Reels: understands shared reels ("" = youtube_gemini_model)

@@ -203,3 +203,32 @@ form[data-hoola-calc] output{font-family:var(--font-head),sans-serif;font-weight
 .hs-efile{margin:14px 0}
 .hs-efile a{display:inline-flex;align-items:center;gap:8px;min-height:44px}
 .hs-efile .hs-ic{width:18px;height:18px}
+/* v0.351 DUKAAN: products, buy box, cart button + drawer, checkout, UPI */
+.hs-prods{list-style:none;margin:0;padding:0;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.hs-prod{display:grid;gap:8px;align-content:start;padding:16px;border:1px solid var(--c-line);border-radius:var(--radius,14px);background:var(--c-surface,var(--c-bg))}
+.hs-prod img{width:100%;height:auto;border-radius:calc(var(--radius,14px) - 4px)}
+.hs-prod h3{margin:0;font-size:1.05rem}
+.hs-price{margin:0;font-weight:700;font-size:1.15rem}.hs-price small{font-weight:400;opacity:.75}
+.hs-buybox .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+.hs-cart-b{position:fixed;left:16px;bottom:16px;z-index:90;display:inline-flex;align-items:center;gap:6px;min-height:48px;padding:0 18px;
+  border:0;border-radius:999px;background:var(--c-primary);color:var(--c-on-primary);font:inherit;font-weight:600;cursor:pointer;
+  box-shadow:0 10px 28px -12px rgba(0,0,0,.45)}
+.hs-cart-b b{min-width:22px;height:22px;display:inline-grid;place-items:center;border-radius:999px;background:var(--c-on-primary);color:var(--c-primary);font-size:.8rem}
+.hs-shop{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45);display:flex;justify-content:flex-end}
+.hs-shop[hidden]{display:none}
+.hs-shop-in{width:min(440px,100%);height:100%;overflow:auto;background:var(--c-bg);padding:20px;display:grid;gap:12px;align-content:start}
+.hs-shop-x{justify-self:end;font:inherit;background:none;border:1px solid var(--c-line);border-radius:10px;padding:8px 12px;min-height:44px;color:inherit;cursor:pointer}
+.hs-shop h2{margin:0}
+.hs-cart{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.hs-cart li{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding-bottom:10px;border-bottom:1px solid var(--c-line)}
+.hs-cart-q{display:inline-flex;align-items:center;gap:6px}
+.hs-cart-q button{width:36px;height:36px;border-radius:10px;border:1px solid var(--c-line);background:var(--c-bg);color:inherit;font-size:1.1rem;cursor:pointer}
+.hs-cart-a{font-weight:600;min-width:70px;text-align:right}
+.hs-cart-sub{font-weight:700;font-size:1.1rem;margin:0}
+.hs-checkout{display:grid;gap:12px}
+.hs-check{display:flex;align-items:center;gap:10px;min-height:44px}
+.hs-pay-ways{border:1px solid var(--c-line);border-radius:12px;padding:8px 14px}
+.hs-shop-pay{display:grid;gap:10px;justify-items:start;padding:14px;border:1px solid var(--c-line);border-radius:14px}
+.hs-shop-pay img{background:#fff;border-radius:8px}
+.hs-status{display:inline-block;margin:0;padding:6px 12px;border-radius:999px;background:color-mix(in srgb,var(--c-primary) 12%,transparent);font-weight:600}
+.hs-shop-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:110;background:var(--c-ink);color:var(--c-bg);padding:10px 16px;border-radius:999px;font-size:.92rem}

@@ -12778,7 +12778,76 @@ stored, the report shows at most 90 characters. (2) `toolchoice._ASKS`: on an as
 '?' ("bataiye kis customer ki complaint hai", kaun sa / kis / which / बताइए) counts as the fair question - the one miss of
 the 25/26 card. Tests: test_v0347_lambe_kaam_report.py (4).
 
-## v0.348.0 SOCIAL MEDIA MANAGER Phase 1 (1 Nov 2026, built as 0.347.0, re-versioned past the parallel v0.347)
+## v0.348.0 MOSPI BUILT IN (1 Nov 2026)
+Her live test after v0.344: "India ki latest CPI inflation kitni hai?" -> Hoola answered 5.54% (Sep 2026) but said "I got
+these numbers from a search summary" and added a food figure (CFPI 7.74%) that is not MoSPI's food & beverages (7.36%).
+MoSPI was a featured connector that needed her Connect tap, and the guide sent current numbers to google_search.
+- NEW `app/mospi.py`: MoSPI eSankhyiki MCP (`https://mcp.mospi.gov.in/mcp`, stateless, no login) - tools/call JSON-RPC,
+  SSE or JSON answer, cached (datasets / indicators 6 h, metadata 1 h, data 15 min), get_data limit 50 by default.
+- NEW agent tool `mospi` (`agent/mospi_tools.py`): action=datasets | indicators | metadata | data (dataset,
+  indicator_code, base_year, frequency, classification_year, filters, user_query); rows lose empty fields and whole rows
+  are dropped (never a cut mid-JSON) above 14k chars with a "narrow the filters" note; data answers carry "quote month /
+  state / sector / base year, Source: MoSPI, provisional stays provisional, no numbers not in the result".
+- Built in for every user: family `mospi` (router keys: cpi, wpi, iip, gdp, gva, plfs, inflation, mehngai, berozgari,
+  statistics, aankde, महंगाई, बेरोजगारी ...; intent "official stats"), PARALLEL_SAFE, draftcheck READS, guide line
+  scoped to the family ("NOT google_search, never a search summary"). Featured card `mospi` now `native` (built in).
+- Settings MOSPI_ENABLED (true), MOSPI_MCP_URL. Live check: CPI (General) All India Sep 2026 = 5.54% from MoSPI itself.
+- Tests: tests/test_v0348_mospi_builtin.py (6); v0344 test updated (MoSPI is built in, not a Connect tap). Related
+  suites: 24 failures, the same 24 on pristine main eedb13e7 (app / site builders, Hoola PC, mcp_avatar - sandbox-only).
+
+## v0.349.0 MOSPI PAKKA (1 Nov 2026)
+Her test on v0.348: Hoola called `mospi`, said "MoSPI's server did not respond", and fell back to a search summary
+(5.54% / rural 6.08% / urban 4.88% are right - checked against MoSPI's own data; "CFPI 7.74%" is not MoSPI's food &
+beverages 7.36% combined / 7.71% rural / 6.75% urban). From the sandbox MoSPI answers in ~1.7 s, so the gap is the VPS
+-> mcp.mospi.gov.in path, and the client did not say WHY.
+- app/mospi.py: real User-Agent `Hoola/1.0 (+https://hoola.ainewtika.com; ...)` (python-httpx's default UA is a common
+  government-WAF block), connect 10 s / read 45 s, follow_redirects, one retry after 1.5 s on a network failure,
+  `_why()` names timeout / DNS / refused / TLS, HTTP refusals carry their code + body (logged), LAST_ERROR kept.
+- `python -m app.mospi check` (one free list_datasets call: ok, datasets, seconds or the exact error) and vps-ops job
+  `mospi_check` (getent DNS, curl with timings + remote ip, the Hoola client check, recent MoSPI log lines).
+- Tests: test_v0348_mospi_builtin.py +1 (retry once, Hoola UA, reason named, check() false on failure).
+
+## v0.350.0 KADAM-BA-KADAM CODING - Hoola codes the Claude Code way, step 1 (owner: "1. The coding tools it gets (8) --- start the work")
+Research + diagrams: artifact "How Claude Code Codes" (explore -> plan -> small edit -> run checks -> fix -> repeat). Before:
+Developer Sahayak `_gather` guessed up to 12 files ONCE (error-text paths, GitHub code search on keywords, file-name words) and
+ONE Opus call wrote every edit as JSON - a file the guess missed was never seen.
+NEW `app/devsahayak/loop.py`: the model gets 8 tools over the GitHub API (no repo code runs on Hoola's server) and works one
+move at a time - list_dir, search_code, read_file (numbered, 400 lines a call, start/end), find_usages (every line using a
+name), edit_file (ONE exact replacement, only in a file it has read; not found exactly once = refused, re-read and retry),
+new_file, show_diff, done (explain, cause, PR title / summary, test plan, risk). The project's own rules (top-level
+README / CONTRIBUTING / AGENTS.md / CLAUDE.md + build files) are read before any work. Secret / binary files are never shown
+or changed; workflow files only with allow_workflows (rules.path_problem). Edits stay in memory until done; then the SAME
+path as before takes over (`_prepare` caps + secrets + OWASP -> one commit on hoola/<task> -> PR; merge / deploy only on her
+tap). One line per step goes into the task log (`_progress`: "padha: app/calc.py", "badla: ..."), and found.loop keeps
+steps / searches / trail. Limits DEV_LOOP_STEPS 40, DEV_LOOP_MINUTES 20; model DEV_LOOP_MODEL ('' = site_model, Opus) at
+DEV_LOOP_EFFORT high, 16k tokens. No API key / the loop failing -> LoopUnavailable -> the old one-shot path (so existing tasks
+never die). revise / fix_ci rounds still use the one-shot path (next: item 2 = CI loop before the PR).
+Tests: test_v0350_kadam_ba_kadam.py (5) with a scripted model on the fake GitHub; test_tech_devsahayak.py (11) unchanged.
+NOT verified here: a live run (needs her GitHub token + the API key) - try one small fix on a test repo.
+
+## v0.351.0 DUKAAN (built as 0.344, re-versioned past the parallel v0.344-v0.350) (Phase 3a of "any world-complex website": a real shop on her website)
+Owner: "START PHASE 3" (3a shop now; 3b dashboards / charts and 3c blog + multi-language come next).
+- `server/app/site/shop.py`: products (`site_shop_products`: price in paise, unit, stock or unlimited, active, photo) and
+  orders (`site_shop_orders`: O-1001.., secret tracking token, name / phone / address / pincode / note, items, subtotal +
+  delivery + total, method upi | cod, status, UTR, history, hashed IP). The SERVER decides everything: prices come from the
+  product table never from the page, stock is taken with a conditional UPDATE (two buyers of the last piece -> one wins),
+  delivery fee + free-above + minimum order + pincodes, rate limits (12 orders / 10 min per IP, 300 a day per site).
+- Money never moves through Hoola: UPI = her UPI ID link + QR (`live.upi_link` / `qr_data_uri`); the buyer taps "Maine pay
+  kar diya" + UTR -> status `payment_told`, SHE checks her bank and confirms. COD optional. Status flow new -> payment_told ->
+  confirmed -> packed -> shipped -> delivered (or cancelled, which returns the stock).
+- Build: a "shop" page (product grid with Add to cart), a buy box on item pages, `hoola-shop.js` (cart in localStorage,
+  floating Cart button, drawer: cart -> checkout -> done with QR / UPI button / UTR form / tracking link, `?order=&t=` tracking,
+  every value set with textContent), styles in `hoola-site.css`, meta `hoola-shop` carries the options.
+- Public API (CORS, no login): GET /api/site-shop/{id}/products, POST .../order, GET .../order/{number}?t=, POST .../order/{number}/paid.
+  Owner API: GET/POST /api/sites/{ref}/shop (settings, products, from_lists = priced list items), GET .../shop/orders,
+  POST .../shop/orders/{number} (move status). New orders publish `site_order` (push).
+- Agent: `website` action=shop (turn on, settings, products) and action=shop_order (move an order), `website_dekho what=orders`.
+- Console Studio: a Shop tab (on / UPI ID / COD / pickup / delivery fee, products table, "Add my priced list items", orders with next-step buttons).
+- NOT done yet: phone Flutter screen for orders (push + chat only), emails / SMS to buyers, payment gateway (by design: her UPI only).
+- Tests `server/tests/test_v0351_dukaan.py`: rupees formatting, server-side prices / stock / payment, the last-piece race,
+  public vs owner-only endpoints, and a REAL Chromium purchase (add to cart -> checkout -> UPI QR -> UTR -> tracking).
+
+## v0.352.0 SOCIAL MEDIA MANAGER Phase 1 (1 Nov 2026, built as 0.347.0 / 0.348.0, re-versioned past the parallel v0.347-v0.351)
 Owner: "Social Media Manager — first do deep research what we have" -> "How user will put their social media details"
 -> "GO PLAN" (docs/SOCIAL_EMPLOYEE_PLAN.md) -> Meta app set up by her (HOOLA app, use cases Instagram + Pages, redirect URIs,
 keys in the VPS .env) -> "GO PHASE 1".

@@ -1,4 +1,4 @@
-"""v0.348 SOCIAL MEDIA MANAGER: Hoola's one Meta app talking to Instagram and Facebook through the official APIs only.
+"""v0.352 SOCIAL MEDIA MANAGER: Hoola's one Meta app talking to Instagram and Facebook through the official APIs only.
 
 Two sign-ins (users never type a password or a key into Hoola; each logs in on the platform's own page):
   * Instagram API with Instagram Login  - instagram.com/oauth/authorize -> short token -> 60-day token (refreshable)
