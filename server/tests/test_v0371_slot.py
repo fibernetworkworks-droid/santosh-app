@@ -45,7 +45,8 @@ def test_slots_end_to_end(droid_env, monkeypatch):
     o3 = order("2026-11-03|09:00")                               # full: still placed, with a note
     r3 = {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[o3["id"]]
     assert "slot" not in r3 and "dukaan call" in r3["delivery_note"]
-    assert "slot" not in {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[order("2026-11-02|09:00")["id"]]  # past cut-off
+    late = order("2026-11-02|09:00")["id"]                      # past its cut-off: placed, no slot
+    assert "slot" not in {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[late]
     # a cancelled order frees its place
     c.post(f"{api}/c/orders/{o2['id']}", json={"status": "Cancelled"}, headers=hr)
     assert "2026-11-03|09:00" in [s["key"] for s in c.get(f"{api}/slots").json()["slots"]]
