@@ -224,7 +224,7 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash "$RUNNER_TEMP/proj2/hoola_qa/device_check.sh" "$(ls $RUNNER_TEMP/proj2/app/build/outputs/apk/debug/*.apk | head -1)" "$(ls $RUNNER_TEMP/proj2/app/build/outputs/apk/release/*.apk | head -1)" shots2 in.hoola.preview.fixture2 $(cat $RUNNER_TEMP/proj2/hoola_qa/screens.txt)
+          script: bash "$RUNNER_TEMP/proj2/hoola_qa/device_check.sh" "$(ls $RUNNER_TEMP/proj2/app/build/outputs/apk/debug/*.apk | head -1)" "$(ls $RUNNER_TEMP/proj2/app/build/outputs/apk/release/*.apk | head -1)" shots2 in.hoola.preview.fixture2 $(cat $RUNNER_TEMP/proj2/hoola_qa/screens.txt); bash "$RUNNER_TEMP/proj2/hoola_qa/tablet_check.sh" "$(ls $RUNNER_TEMP/proj2/app/build/outputs/apk/debug/*.apk | head -1)" shots2 in.hoola.preview.fixture2 $(cat $RUNNER_TEMP/proj2/hoola_qa/screens.txt)
       - name: HOOLA QA report (field-service app)
         if: always()
         run: |

@@ -688,9 +688,10 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     # v0.325 HOOLA QA travels with the project: the build machine / builds repo runs the device check after compiling
     qa = tmp / "hoola_qa"
     qa.mkdir(exist_ok=True)
-    for f in ("device_check.sh", "qa.py"):
+    for f in ("device_check.sh", "qa.py", "tablet_check.sh"):      # v0.363 + the tablet pass
         shutil.copy(HERE / f, qa / f)
     (qa / "device_check.sh").chmod(0o755)
+    (qa / "tablet_check.sh").chmod(0o755)
     (qa / "package.txt").write_text(app_id + "\n")
     shots = ids + [c for c in ("seller_info", "privacy", "delete_account") if c in (spec.get("code_screens") or [])] + list(KIT_SCREENS)
     (qa / "screens.txt").write_text(" ".join(x for x in shots if x not in AUTH_IDS) + "\n")

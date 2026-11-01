@@ -119,18 +119,22 @@ fun AppShell(nav: Nav, fabMain: FabAction?, fabActions: List<FabAction>, title: 
     val body: @Composable () -> Unit = {
         CompositionLocalProvider(LocalNav provides nav) {
             Box(Modifier.fillMaxSize().background(c.bg).safeDrawingPadding()) {
+                // v0.363 BADI SCREEN: on a wide screen a bottom bar / floating pill becomes a side rail (thumbs reach the side)
+                val wide = isWide()
+                val barNav = look.nav in setOf("bar", "bar_labels", "bar_minimal", "bottom_app_bar", "drawer_bar", "floating_pill")
+                val railNow = look.nav == "rail" || (wide && barNav)
                 Row(Modifier.fillMaxSize()) {
-                    if (look.nav == "rail" && nav.onTab) Rail(nav)
+                    if (railNow && nav.onTab) Rail(nav)
                     Column(Modifier.weight(1f).fillMaxSize()) {
                         if (look.nav in setOf("top_tabs", "segmented_top") && nav.onTab) TopTabs(nav)
                         Box(Modifier.weight(1f).fillMaxWidth()) { Screens(nav, screen) }
-                        if (look.nav in setOf("bar", "bar_labels", "bar_minimal", "bottom_app_bar", "drawer_bar") && nav.onTab) BottomBar(nav)
+                        if (!railNow && look.nav in setOf("bar", "bar_labels", "bar_minimal", "bottom_app_bar", "drawer_bar") && nav.onTab) BottomBar(nav)
                     }
                 }
-                if (look.nav == "floating_pill" && nav.onTab) FloatingPill(nav, Modifier.align(Alignment.BottomCenter))
+                if (!railNow && look.nav == "floating_pill" && nav.onTab) FloatingPill(nav, Modifier.align(Alignment.BottomCenter))
                 if (look.fab != "none" && fabMain != null && nav.onTab && !nav.fabHidden) Fab(look.fab, fabMain, fabActions, nav,
                     Modifier.align(if (look.fab == "docked") Alignment.BottomCenter else Alignment.BottomEnd)
-                        .padding(end = if (look.fab == "docked") 0.dp else 16.dp, bottom = if (look.nav == "none" || look.nav == "rail") 20.dp else 92.dp))
+                        .padding(end = if (look.fab == "docked") 0.dp else 16.dp, bottom = if (look.nav == "none" || railNow) 20.dp else 92.dp))
             }
         }
     }

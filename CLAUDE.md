@@ -136,7 +136,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.362.0 (pubspec 0.362.0+402). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.363.0 (pubspec 0.363.0+403). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
@@ -159,6 +159,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.360 DELIVERY (App Phase 24, `appmaker/delivery.py`): server-added delivery fee (free above, after coupon), PIN area + shop hours as notes never refusals, Delivery line on receipts / GST invoices (SAC 9968), cart DeliveryLine.
 - v0.361 HISAAB (App Phase 25, `appmaker/hisaab.py`): month ZIP of CSVs for her CA - sales / invoice / credit-note registers, HSN + rate-wise summary, khata - from the invoice numbers; Excel-safe cells; nothing filed.
 - v0.362 VARIANTS (App Phase 26, `appmaker/variants.py`, kits `SizeChips` / `lineItem`): sizes with their own price ("pid::vid" = a product for pricing, stock, coupons, GST); every generated screen shows size chips unchanged.
+- v0.363 BADI SCREEN (App Phase 27, kit `isWide` + `tablet_check.sh`): Android apps on tablets / foldables / landscape - side rail instead of a bottom bar, centred 720dp column, 3-column grids; CI opens every screen at tablet size.
 - v0.349 BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
 - v0.348 KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
 - v0.347 HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.

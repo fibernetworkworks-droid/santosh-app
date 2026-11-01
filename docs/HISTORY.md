@@ -13042,3 +13042,17 @@ After invoices (v0.355), credit notes (v0.356), coupons, delivery and khata, the
   iPhone `AppData.lineItem`, `SizeChips` in list rows. Generated screens keep calling AddButton / the list rows - no rewrite.
 - Her side: GET / PUT /api/apps/<ref>/variants, tool app_banao action=variants, console Sizes table ("1 kg 60, 5 kg 280").
 - Tests `tests/test_v0362_variants.py`. Not done: two-level variants (size x colour), per-size photos.
+
+## v0.363.0 BADI SCREEN (App Sahayak Phase 27, owner: "START PHASE 27")
+Every generated Android screen was one phone column stretched edge to edge on a tablet, with the tabs far down at the bottom.
+- Kit (Android): `isWide()` (screenWidthDp >= 600). `AppShell`: on a wide screen the bar navs (bar, bar_labels,
+  bar_minimal, bottom_app_bar, drawer_bar, floating_pill) become the side `Rail` (Material's layout for wide windows), and
+  the FAB's bottom offset follows. `Page`: a `BoxWithConstraints` gives the LazyColumn side padding so the content is a
+  centred column of at most 720dp. `Grid`: 2 columns become 3 at 560dp+ of room. No generated screen changes.
+- CI: `android/tablet_check.sh <debug.apk> <out> <package> <screens...>` (copied into every project's `hoola_qa/`):
+  `wm size 1600x2560` + `wm density 320` (800dp wide), every screen opened via the debug extra, alive check + screenshot in
+  `<out>/tablet/`, size reset; fails on any crash. Run after the device check in appgen-check's `fixture2` job.
+- iPhone: `Page` keeps a 720pt column in landscape. iPad support stays off on purpose: turning it on makes App Store
+  Connect require 13" iPad screenshots, which the App Store launch (v0.339) does not make yet.
+- Tests `tests/test_v0363_badi_screen.py`. Not done: two-pane list + detail on tablets, iPad, the tablet pass in her builds
+  repo workflow (hoola-build.yml runs the phone device check only).

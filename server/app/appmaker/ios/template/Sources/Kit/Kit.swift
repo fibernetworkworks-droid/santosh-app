@@ -155,7 +155,8 @@ struct Page<Content: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) { content() }
                 .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: 720, alignment: .leading)          // v0.363 BADI SCREEN: a readable column in landscape
+                .frame(maxWidth: .infinity)
         }
         .background(c.bg.ignoresSafeArea())
         .navigationTitle(title)
