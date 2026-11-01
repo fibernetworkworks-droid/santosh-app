@@ -13081,3 +13081,12 @@ v0.363 left iPad off because turning it on makes App Store Connect require 13" i
 - CI: the v0.363 tablet pass opens each screen through the debug extra from the start tab, i.e. every non-tab screen is
   drawn in the two-pane view on the 800dp emulator; a crash fails the job.
 - Tests `tests/test_v0365_do_pane.py`. Not done: iPad split view (NavigationSplitView), drag to resize the panes.
+
+## v0.366.0 IPAD PANE (App Sahayak Phase 30, owner: "START PHASE 30")
+- SwiftUI kit `Kit.swift`: `RootView` reads `horizontalSizeClass`; `tabBody(i, id)` = compact: the old single
+  `NavigationStack(path:)`; regular (wide iPad, iPad split at half or more): `HStack` of the tab screen in its own
+  `NavigationStack` (max 420pt), a `Divider`, and a `NavigationStack(path: $router.paths[i])` whose root is `PanePlaceholder`
+  ("Choose an item on the left"). `Router.split` (set on appear / size-class change, stacks trimmed to their last screen)
+  makes `go()` replace the right side instead of pushing. Debug start screens open on the right, so the v0.364 iPad pass in
+  CI draws every screen in the two-pane view.
+- Tests `tests/test_v0366_ipad_pane.py`. Not verified locally (no Mac): CI ios-check on the branch is the proof.

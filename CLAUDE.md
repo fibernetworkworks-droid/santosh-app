@@ -136,7 +136,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.365.0 (pubspec 0.365.0+405). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.366.0 (pubspec 0.366.0+406). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
@@ -162,6 +162,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.363 BADI SCREEN (App Phase 27, kit `isWide` + `tablet_check.sh`): Android apps on tablets / foldables / landscape - side rail instead of a bottom bar, centred 720dp column, 3-column grids; CI opens every screen at tablet size.
 - v0.364 IPAD (App Phase 28, `ios/gen.py` family 1,2, `asc.IPAD_DISPLAY`): the iPhone app runs on iPad (all orientations), CI opens every screen on a 13" iPad Pro, App Store gets the 13" iPad screenshot set; builds repo needs the new hoola-ios.yml.
 - v0.365 DO PANE (App Phase 29, kit `Nav.split`): Android wide screens show list + opened record side by side (42/58), a new record replaces the right pane, Back closes it; phones unchanged.
+- v0.366 IPAD PANE (App Phase 30, kit `RootView.tabBody` + `Router.split`): wide iPads show each tab list + the opened record side by side; iPhone unchanged.
 - v0.349 BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
 - v0.348 KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
 - v0.347 HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.

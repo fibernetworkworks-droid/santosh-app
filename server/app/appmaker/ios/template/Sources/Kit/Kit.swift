@@ -84,6 +84,7 @@ enum Words {
     static var notAssigned: String { t("Not assigned", "किसी को नहीं दिया", "Kisi ko nahi diya") }
     static var onIt: String { t("is on it", "इस पर काम कर रहे हैं", "is par kaam kar rahe hain") }
     static var assignedToYou: String { t("Given to you", "आपको सौंपा गया", "Aapko diya gaya") }
+    static var chooseOne: String { t("Choose an item on the left", "बाईं ओर से कुछ चुनें", "Baayein taraf se kuch chuniye") }   // v0.366
     static var newEntry: String { t("New — open the app to see it", "नया — देखने के लिए ऐप खोलें", "Naya — dekhne ke liye app kholiye") }
 }
 
@@ -93,12 +94,15 @@ final class Router: ObservableObject {
     static let shared = Router()
     @Published var tab = 0
     @Published var paths: [[String]] = Array(repeating: [], count: max(1, AppTokens.tabs.count))
+    /// v0.366 IPAD PANE: true while a wide iPad shows each tab's list beside the opened record.
+    var split = false
 
     /// Open a screen: a tab switches tabs; anything else goes on top of the current tab. Unknown ids are ignored.
+    /// v0.366 in the two-pane view a record replaces the one on the right (Back closes it) instead of stacking.
     func go(_ id: String) {
         if let i = AppTokens.tabs.firstIndex(where: { $0.id == id }) { tab = i; paths[i] = []; return }
         guard AppTokens.screenIds.contains(id) else { return }
-        paths[tab].append(id)
+        if split { paths[tab] = [id] } else { paths[tab].append(id) }
     }
 
     func back() { if !paths[tab].isEmpty { paths[tab].removeLast() } }
@@ -108,6 +112,7 @@ struct RootView: View {
     @StateObject private var router = Router.shared
     @ObservedObject private var i18n = I18n.shared            // v0.347 a language change redraws every word
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.horizontalSizeClass) private var hsc      // v0.366 regular = a wide iPad (or iPad split at half+)
     var start: String? = nil
 
     var body: some View {
@@ -116,24 +121,55 @@ struct RootView: View {
             if AppTokens.tabs.count > 1 {
                 TabView(selection: $router.tab) {
                     ForEach(Array(AppTokens.tabs.enumerated()), id: \.offset) { i, t in
-                        NavigationStack(path: $router.paths[i]) {
-                            screenView(t.id).navigationDestination(for: String.self) { screenView($0) }
-                        }
-                        .tabItem { Label(T(t.label), systemImage: t.symbol) }
-                        .tag(i)
+                        tabBody(i, t.id)
+                            .tabItem { Label(T(t.label), systemImage: t.symbol) }
+                            .tag(i)
                     }
                 }
             } else {
-                NavigationStack(path: $router.paths[0]) {
-                    screenView(AppTokens.start).navigationDestination(for: String.self) { screenView($0) }
-                }
+                tabBody(0, AppTokens.start)
             }
         }
         .tint(c.primary)
         .id(i18n.lang)
+        .onAppear { router.split = hsc == .regular }
+        .onChange(of: hsc) { v in router.split = v == .regular; if let n = router.paths.indices.last { for k in 0...n where router.paths[k].count > 1 { router.paths[k] = [router.paths[k].last!] } } }
         // debug builds: Hoola's simulator check opens one screen INSIDE the real app (its tab, or pushed on the first tab),
         // so its buttons really navigate and its picture is what a user sees
         .onAppear { if let s = start { router.go(s) } }
+    }
+
+    /// One tab: a phone (compact) = one navigation stack; a wide iPad = the tab's list on the left and the opened record on
+    /// the right (v0.366 IPAD PANE), the right side's own stack starting from a quiet "choose one" note.
+    @ViewBuilder
+    private func tabBody(_ i: Int, _ id: String) -> some View {
+        if hsc == .regular {
+            HStack(spacing: 0) {
+                NavigationStack { screenView(id) }
+                    .frame(maxWidth: 420)
+                Divider()
+                NavigationStack(path: $router.paths[i]) {
+                    PanePlaceholder().navigationDestination(for: String.self) { screenView($0) }
+                }
+            }
+        } else {
+            NavigationStack(path: $router.paths[i]) {
+                screenView(id).navigationDestination(for: String.self) { screenView($0) }
+            }
+        }
+    }
+}
+
+/// v0.366 the right side of the iPad two-pane view before anything is opened.
+struct PanePlaceholder: View {
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "rectangle.split.2x1").font(.largeTitle).foregroundStyle(.secondary)
+            Muted(Words.chooseOne)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(H.c(scheme).bg.ignoresSafeArea())
     }
 }
 
