@@ -17,7 +17,7 @@ from .whatsapp import WhatsAppError, get_whatsapp
 
 log = logging.getLogger("santosh.worker")
 _SEO_DESK_BUSY = {"on": False}     # v0.317 one SEO Employee sweep at a time
-_SOCIAL_DESK_BUSY = {"on": False}   # v0.347
+_SOCIAL_DESK_BUSY = {"on": False}   # v0.348
 
 # Meta error codes that mean "this number will never work" (no retry).
 PERMANENT_CODES = {131026, 131021, 131009, 131008, 132000, 132001, 132012, 133010}
@@ -852,7 +852,7 @@ async def employee_jobs() -> None:
             asyncio.get_running_loop().run_in_executor(None, _sweep)   # never blocks the worker loop (crawls take minutes)
     except Exception:
         log.exception("seo desk failed")
-    try:                                   # v0.347 the hired Social Media Manager's 24/7 loop (tokens, numbers, weekly note)
+    try:                                   # v0.348 the hired Social Media Manager's 24/7 loop (tokens, numbers, weekly note)
         from .social import desk as social_desk
         if not _SOCIAL_DESK_BUSY["on"]:
             _SOCIAL_DESK_BUSY["on"] = True

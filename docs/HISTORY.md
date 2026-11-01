@@ -12777,3 +12777,42 @@ turn timeout / crash). Lists each unfinished job and open card. Free (no model c
 stored, the report shows at most 90 characters. (2) `toolchoice._ASKS`: on an ask_ok row a question in her style without a
 '?' ("bataiye kis customer ki complaint hai", kaun sa / kis / which / बताइए) counts as the fair question - the one miss of
 the 25/26 card. Tests: test_v0347_lambe_kaam_report.py (4).
+
+## v0.348.0 SOCIAL MEDIA MANAGER Phase 1 (1 Nov 2026, built as 0.347.0, re-versioned past the parallel v0.347)
+Owner: "Social Media Manager — first do deep research what we have" -> "How user will put their social media details"
+-> "GO PLAN" (docs/SOCIAL_EMPLOYEE_PLAN.md) -> Meta app set up by her (HOOLA app, use cases Instagram + Pages, redirect URIs,
+keys in the VPS .env) -> "GO PHASE 1".
+- Employee 2 on the SEO employee's frame: `employee/hire.py` CATALOG `social` is live (does / needs / never).
+- `social/meta.py`: Hoola's ONE Meta app (users never make an app or type a key). Instagram API with Instagram Login
+  (instagram.com/oauth/authorize -> api.instagram.com/oauth/access_token -> graph.instagram.com ig_exchange_token, 60
+  days; refresh_access_token), read scopes `instagram_business_basic`, `instagram_business_manage_insights`; Facebook
+  Login for Business (facebook.com/<v>/dialog/oauth with `config_id` = META_LOGIN_CONFIG_ID, else read scopes) -> 60-day
+  user token -> /me/accounts Page tokens; reads: IG /me, /me/media, per-media insights (reach, saved, shares, views,
+  total_interactions; asked together, then one by one when Meta refuses a name), FB /{page}/posts + reach
+  (post_impressions_unique, then post_total_media_view_unique); Graph version pinned `META_SOCIAL_VERSION` (v25.0);
+  `parse_signed_request` (HMAC-SHA256 with the Facebook or Instagram app secret). Config: META_APP_ID / META_APP_SECRET /
+  META_LOGIN_CONFIG_ID / INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET / META_SOCIAL_VERSION / SOCIAL_AI.
+- `social/desk.py`: tables social_accounts (tokens sealed with accounts.encrypt), social_media (her posts + numbers,
+  upserted by media id), social_desk, social_posts (the calendar), social_events. onboard (pre-filled from the SEO site /
+  Brand kit), connect_url (state `soc_ig_` / `soc_fa_` in mail_link_states, once, 30 min), finish_link (personal IG
+  refused with the switch guide; up to 10 Pages), disconnect (token + read posts deleted), sync_account (dead token =
+  status expired + one alert, recovery noted; a removed account is never written back), measure (followers, posts in
+  30 days, interactions + reach per post, engagement rate, best formats / hours / days in her time zone, top 5),
+  build_plan (Opus kind `social_plan`, 12k tokens, cleaned: dates in range, platforms instagram / facebook only, tags
+  normalised, < 6 good slots = rules plan; rules plan = 4 posts a week at her best hours, pillars rotated, Indian
+  holidays on their day), approve_calendar, set_post (an edit after approval goes back to draft), first_run (sync ->
+  frozen baseline -> plan), watch (IG token renewed under 20 days left; FB expiry warned once), daily (fresh numbers),
+  weekly (Monday note), run_due from the worker (`_SOCIAL_DESK_BUSY`, only hired + not paused tenants), meta_deletion.
+- Routes: GET /api/social/desk, POST /api/social/onboard, GET /api/social/connect/{instagram|facebook},
+  GET /api/social/{instagram|facebook}/callback (public, `_linked_page`), POST /api/social/meta/deletion (+ /deauthorize,
+  public, signed_request) -> {url, confirmation_code}, GET /api/social/meta/deletion/{code}, POST
+  /api/social/accounts/{id}/disconnect, POST /api/social/calendar/approve, POST /api/social/posts/{id}, POST
+  /api/social/run/{first|hourly|daily|weekly|plan}.
+- Console: `employees.js` `social(el)` (set-up form, account tiles + Connect / Reconnect / Disconnect, approve banner,
+  KPIs vs baseline, strategy, what works, calendar cards with status / Copy caption / Edit, activity, run-now), v2.js
+  sidebar Social Desk only while hired (`syncEmployees` loops seo + social), v2.html `v-socialdesk`, v2.css `sc-*`.
+  Phone: `SocialDeskScreen` (lib/ui/employees_screen.dart) + api.dart social* calls; hub "Open desk" per employee.
+- Also fixed: SEO desk run_due used the same lock name as first_run, so a scheduled retry of a failed first run found
+  itself "busy" (keys now `due:...`).
+- Not verified live: Meta's real responses (mocked from Meta's docs in `test_v0348_social_manager.py`, 11 tests).
+  Next: Phase 2 = publishing on her tap (needs App Review of instagram_business_content_publish / pages_manage_posts).

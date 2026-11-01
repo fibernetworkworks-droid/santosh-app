@@ -137,7 +137,7 @@ class Settings(BaseSettings):
     doc_review: bool = True                 # Opus looks at the printed pages and may ask for one change
     doc_model: str = ""                     # model for doc_art / doc_critique ("" = app_model, Claude Opus 5.5)
     seo_ai: bool = True                     # v0.317 the SEO Employee asks Opus for its 90-day plan (off = the rules plan)
-    # v0.347 SOCIAL MEDIA MANAGER (employee 2): Hoola's ONE Meta app - users connect their own Instagram / Facebook Page to it
+    # v0.348 SOCIAL MEDIA MANAGER (employee 2): Hoola's ONE Meta app - users connect their own Instagram / Facebook Page to it
     meta_app_id: str = ""                   # App settings > Basic (Facebook Login for Business + Pages)
     meta_app_secret: str = ""
     meta_login_config_id: str = ""          # Facebook Login for Business > Configurations (pages + permissions)

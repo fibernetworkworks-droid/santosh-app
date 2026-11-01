@@ -986,7 +986,7 @@ class Api {
   Future<Map<String, dynamic>> seoDraftOk(String id, String text) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/seo/drafts/$id', body: {'text': text}) as Map);
   Future<String> seoGscLink() async => (await _send('GET', '/api/seo/gsc/link'))['url'] as String;
-  // v0.347 the Social Media Manager's desk
+  // v0.348 the Social Media Manager's desk
   Future<Map<String, dynamic>> socialDesk() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/social/desk', timeout: const Duration(seconds: 45)) as Map);
   Future<Map<String, dynamic>> socialOnboard(Map<String, dynamic> body) async =>

@@ -236,7 +236,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
   }
 
-  // ------------------------------------------------------------ v0.347 the Social Desk (Social Media Manager, Phase 1)
+  // ------------------------------------------------------------ v0.348 the Social Desk (Social Media Manager, Phase 1)
   let SOC = null;
   const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page'};
   const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};

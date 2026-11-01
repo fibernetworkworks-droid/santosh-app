@@ -1,4 +1,4 @@
-"""v0.347 THE SOCIAL MEDIA MANAGER, Phase 1 of docs/SOCIAL_EMPLOYEE_PLAN.md: hire -> set up -> connect Instagram /
+"""v0.348 THE SOCIAL MEDIA MANAGER, Phase 1 of docs/SOCIAL_EMPLOYEE_PLAN.md: hire -> set up -> connect Instagram /
 Facebook Page (official Meta sign-in, tokens sealed) -> read her last posts and their numbers -> frozen BASELINE ->
 STRATEGY (pillars, rhythm, languages, hashtags) + a 30-day CALENDAR of post drafts for her approval.
 

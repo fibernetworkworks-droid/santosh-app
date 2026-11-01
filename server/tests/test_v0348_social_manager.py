@@ -1,4 +1,4 @@
-"""v0.347 SOCIAL MEDIA MANAGER Phase 1: hire -> set up -> connect Instagram (Instagram Login) and a Facebook Page (Facebook
+"""v0.348 SOCIAL MEDIA MANAGER Phase 1: hire -> set up -> connect Instagram (Instagram Login) and a Facebook Page (Facebook
 Login for Business) through Hoola's one Meta app -> read posts + numbers -> baseline -> strategy + 30-day calendar (Opus
 faked, rules fallback) -> she approves / edits; hourly token renewal, dead-token alert once, Meta data-deletion callback
 (signed_request verified), API + console + phone wiring. Meta is a mock transport; nothing is published in Phase 1."""
