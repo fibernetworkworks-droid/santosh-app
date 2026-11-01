@@ -33,7 +33,7 @@ enum Words {
     static var isOnline: String { t("online", "ऑनलाइन", "online") }
     static var isTyping: String { t("typing…", "लिख रहे हैं…", "likh rahe hain…") }
     static var live: String { t("Live", "लाइव", "Live") }
-    // v0.417 PAISA
+    // v0.418 PAISA
     static var payOnline: String { t("Pay online", "ऑनलाइन भुगतान", "Online pay karein") }
     static var opening: String { t("Opening…", "खुल रहा है…", "Khul raha hai…") }
     static var payWaiting: String { t("Waiting for the payment to be confirmed by the gateway…", "गेटवे से भुगतान की पुष्टि का इंतज़ार…", "Gateway se payment confirm hone ka intezaar…") }

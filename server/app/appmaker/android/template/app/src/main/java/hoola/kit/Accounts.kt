@@ -129,7 +129,7 @@ fun AccountScreen() {
         if (me != null && Auth.isStaff) block { StatsBlock() }     // v0.340 the staff dashboard
         if (me != null && Auth.isStaff) block { StopsBlock() }     // v0.350 the open stops with a location, nearest first
         if (me != null && Auth.isStaff && Track.on) block { ShiftBlock() }   // v0.412 NAKSHA LIVE: Start / End shift
-        if (me != null && !Auth.isStaff && Pay.plansOn) block { PlansBlock() }   // v0.417 AutoPay plans + her own, with Cancel
+        if (me != null && !Auth.isStaff && Pay.plansOn) block { PlansBlock() }   // v0.418 AutoPay plans + her own, with Cancel
         if (me != null && Auth.isStaff && Track.on) block { RidersMap() }    // v0.412 every rider on shift, live
         block { LanguagePicker() }                                 // v0.347 the app's words in her language
         if (Db.pending.value > 0) block { Pill("${Db.pending.value} ${Strings.pending}", "warn") }
@@ -218,7 +218,7 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         SlotChange(coll, r)                                                                       // v0.377 change the time
         if (r.s("delivery_note").isNotEmpty()) Small(r.s("delivery_note"), maxLines = 4)
         TrackButton(coll, r)                                      // v0.412 NAKSHA LIVE: the rider on a map while it is on its way
-        PayButton(coll, r)                                        // v0.417 PAISA: pay online through the shop's own gateway
+        PayButton(coll, r)                                        // v0.418 PAISA: pay online through the shop's own gateway
         RateBox(coll, r)                                          // v0.353 the customer rates her finished row once
         ReceiptButton(coll, r)                                    // v0.354 the receipt PDF of a finished row
         CreditButton(coll, r)                                     // v0.359 staff: this order on credit (udhaar)

@@ -1,4 +1,4 @@
-// Made by Hoola App Sahayak (v0.417 PAISA), the iPhone twin of the Android kit's Pay.kt. Online payment through the
+// Made by Hoola App Sahayak (v0.418 PAISA), the iPhone twin of the Android kit's Pay.kt. Online payment through the
 // business's OWN gateway, only when it joined one: "Pay online" asks the server to start a payment for the SERVER's total
 // and opens the gateway's own secure page. This app never sees a card, UPI PIN or bank detail and never decides that an
 // order is paid - the server marks it paid only when the GATEWAY says so. AutoPay: the customer starts a plan and approves

@@ -15802,3 +15802,44 @@ Owner, after the India ad-market check (artifact "Hoola Ad Platforms India"): "G
 - Live before this check (1 Nov, 16:13 UTC): healthz 0.416.0; console v2.html / v2.js / v2.css / employees.js byte-identical
   to main (Architecture Desk section + ar-dia styles present); /api/arch/projects answers 401 without a key.
 - Tests: 3 more in test_v0410_architect.py (inline design + full clean-up, model failure reported not raised, vps-ops job).
+
+## v0.418.0 PAISA (App Sahayak Pillar E, Phases 52-53 — owner: "START PILLAR E"; built as 0.417, re-versioned on rebase)
+Online payments in her native apps through HER own gateway. Hoola never holds money.
+- `server/app/paygate/gw.py`: Razorpay / Cashfree PG / PhonePe PG (Standard Checkout v2) through their official server APIs
+  (httpx, injectable transport for tests). It covers create order, order state, webhook verification, event parsing, refund,
+  refund state, settlements, payment links, plans, subscriptions, cancel, and transfers. A timeout is reported as
+  `ambiguous`. PhonePe does orders + refunds only.
+  - Razorpay webhook: hex HMAC-SHA256 of the body with her webhook secret.
+  - Cashfree webhook: base64 HMAC-SHA256 of timestamp + body with her client secret.
+  - PhonePe webhook: sha256(user:password).
+- `server/app/appmaker/pay.py` + tables app_pay_keys / app_payment / app_refund / app_sub (registered in db.init_db, with
+  ensure_tables):
+  - Keys: PUT /api/apps/<ref>/pay/keys. The gateway checks them first (wrong keys are never saved), then they are sealed
+    (vault). No route returns them.
+  - Pay start: POST /api/app-api/<key>/pay/c/<coll>/<id>/start, the customer's own unpaid order only. The amount is the
+    SERVER's total in paise. The same order within 25 minutes reuses the same payment.
+  - Pay page: GET /pay/p/<token>, an HMAC-signed link that lasts 30 minutes (forged = 404, expired = 410). It shows the
+    gateway's own checkout (Razorpay Checkout / Cashfree JS / PhonePe redirect) under a strict CSP. GET /pay/s/<token>
+    returns the state.
+  - Paid: `_paid` is the ONE place a payment becomes paid. It takes only what the gateway said: a verified webhook,
+    the pay-page status read (at most every 4 s), or the tick for orders still "created" 1-120 min old. The amount
+    must match; a different amount is held as `mismatch` + a chat note. A paid order gets paid=Verified + `_pay` on the
+    row (journaled -> live).
+  - Refunds: her_tap only, at most paid minus refunded minus refunds in flight. The refund number is recorded BEFORE the
+    call (the gateway's idempotency). A timeout becomes `ambiguous`; /refunds/<id>/check and the tick ask with the SAME
+    number. The webhook counts each refund once.
+  - Payment links (her tap), settlements (read-only).
+  - AutoPay: plans (her tap) live in backend.pay.plans. The customer subscribes and approves the mandate on the gateway
+    page; the consent text shows the amount, how often, how many times, and that she can cancel any time. One live
+    subscription per plan. The customer cancels her own, the owner cancels any.
+  - Split: a vendor rule she approved (hash + time; any change = approve again; at most 100%). Cashfree sends
+    order_splits on the order. Razorpay Route transfers run once per payment, recorded before sending.
+- Apps get `pay: {on, plans}` in the backend hint.
+  - Android `Pay.kt` and iPhone `Pay.swift`: PayButton on the customer's unpaid order (opens the page in the browser,
+    then waits for the gateway's word) and PlansBlock (plans + her own subscriptions with Cancel).
+  - Console: Payments box (join, webhook address + how, payments, refund / check, settlements, link, plans,
+    subscriptions, payout rule). Phone: `lib/ui/app_pay.dart` (join, payments, refund after a confirm, link).
+- Tests: tests/test_v0418_paisa.py (5) against a fake gateway in the documented shapes.
+- NOT VERIFIED: no live merchant account has answered. Cashfree subscription field names and the PhonePe v2 shapes follow
+  the docs from memory and need checking against her first real test payment. Native gateway SDKs are not used; the
+  hosted checkout is official.

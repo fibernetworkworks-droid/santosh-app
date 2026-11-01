@@ -1,6 +1,6 @@
 package hoola.kit
 
-// Made by Hoola App Sahayak (v0.417 PAISA). Online payment through the business's OWN gateway (Razorpay / Cashfree /
+// Made by Hoola App Sahayak (v0.418 PAISA). Online payment through the business's OWN gateway (Razorpay / Cashfree /
 // PhonePe), only when the business joined one. "Pay online" asks the server to start a payment for the SERVER's total,
 // then opens the gateway's own secure page in the browser. This app never sees a card, UPI PIN or bank detail, and it
 // never decides that an order is paid: the server marks it paid only when the GATEWAY says so (its signed message or the

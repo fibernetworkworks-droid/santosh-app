@@ -1,4 +1,4 @@
-// v0.417 PAISA (App Sahayak Pillar E): her own payment gateway for one app - join it (keys typed HERE, checked with the
+// v0.418 PAISA (App Sahayak Pillar E): her own payment gateway for one app - join it (keys typed HERE, checked with the
 // gateway, sealed on the server, never shown again), see online payments, refund by HER tap (after a confirm), make a
 // payment link she sends herself. Plans, AutoPay, settlements and vendor payouts are on the web console's app page.
 import 'package:flutter/material.dart';

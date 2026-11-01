@@ -762,7 +762,7 @@ def init_db(url: str | None = None):
     from .appmaker import owndb_conns as _app_owndb_conns  # noqa: F401  (v0.404 her MySQL / MongoDB / Firebase connections, sealed)
     from .appmaker import live as _app_live  # noqa: F401  (v0.407 ABHI ABHI: presence / typing signals for live apps)
     from .appmaker import track as _app_track  # noqa: F401  (v0.412 NAKSHA LIVE: rider shifts + one current position)
-    from .appmaker import pay as _app_pay  # noqa: F401  (v0.417 PAISA: her gateway keys (sealed), payments, refunds, AutoPay)
+    from .appmaker import pay as _app_pay  # noqa: F401  (v0.418 PAISA: her gateway keys (sealed), payments, refunds, AutoPay)
     from .appmaker import owndb as _app_owndb  # noqa: F401  (v0.396 her own database per app: the write-through hook)
     from .appmaker import refs as _app_refs  # noqa: F401  (v0.390 indexed links between an app's rows)
     from .site import arena as _site_arena  # noqa: F401  (v0.307 Design Arena runs / items / duels)

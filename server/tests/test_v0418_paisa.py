@@ -1,4 +1,4 @@
-"""v0.417 PAISA (App Sahayak Pillar E): online payments through HER gateway, against a fake gateway that answers in the
+"""v0.418 PAISA (App Sahayak Pillar E): online payments through HER gateway, against a fake gateway that answers in the
 documented shapes. Paid ONLY from the gateway (signed webhook or server-to-server read), never the phone; amount
 mismatch held; refunds only by her tap with a fixed number (timeout = ambiguous, checked with the same number, never twice);
 payment links; AutoPay plans with the customer's own consent + cancel; split payouts only by her approved rule, once;
