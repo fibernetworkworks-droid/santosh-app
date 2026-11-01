@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.408.0"   # v0.408.0 HOOLA MECHANISMS (owner: "GO JOINTS AND URDF"): H.joint between named assembly parts (revolute / continuous / prismatic / fixed, world frame of the zero pose) -> tree check with named problems, B-rep mass / centre of mass / inertia per part from its material, every movable joint swept through its range with exact solid overlap tests + bisection -> the FREE range and what collides where (inside her range = back to the designer), URDF package (links in joint frames, STL meshes mm x 0.001, inertials kg / m, limits rad / m, effort / velocity said when assumed) checked by our own validator after parsing it back, motion GIF (all joints swinging, one camera) and exploded view. Previous: v0.407.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 2"). EK DIMAAG (W1): a website's web app now runs on the SAME backend as her native apps - App Sahayak's backend + the DIMAAG logic engine (relations, formulas, rules, workflows with maker-checker approvals + SLA, triggers, schedules, functions). Linking moves every member and row over unchanged (same ids, same passwords; a login made before the move keeps working), the site's own /api/site-app addresses stay, new public routes for related records / approvals / functions, and her logic is drafted by App Sahayak's author + checker and goes live only on her tap; the site's pages draw the workflow buttons, approval pills and linked-record pickers. HOOLA ARCHITECT (W13): her ONE line -> a spec card (pages, users, data, rules / workflows / approvals, features) with the data model PROVED by the checker before she sees it; she approves module by module and Hoola creates the website, joins it to its app brain, applies the logic and starts the looks. Proof: a school portal from one line. Previous: v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403; owner: "GO FIX" + "USE THIS FOR HOOLA GAMING DEVELOPMENT", after studying Claude-Code-Game-Studios, MIT, ideas only - THIRD_PARTY_NOTICES.md): a whole studio inside the Game Developer desk - 49 roles as DATA (gamedesk/crew.py: 3 directors, 8 leads, 23 specialists, 15 Godot / Unity / Unreal specialists), each with what it does, how it thinks, what it checks, who reviews it, and whether it BUILDS (changes the Godot game) or WRITES (a result for her OK: sound lists, store text, Unity / Unreal plans - work Hoola cannot build yet). Every task gets a role and acceptance criteria (hers / the planner's, the role's checks, Hoola's two automatic play checks); a build covers the test criteria with evidence stamped with the code fingerprint, the lead reviews screenshots + the code diff (Claude vision) and may set only SCREEN criteria - nothing seen = not covered, her criteria only by her OK; the verdict (COMPLETE / WITH NOTES / BLOCKED / NOT ASSESSED) is counted in code. 9 team flows plan linked tasks with only that team's roles; milestone gate checks PASS / CONCERNS / FAIL / NOT ASSESSED from counted facts + three directors' views, advice only. GO FIX: (1) NOT ASSESSED said out loud - a Bible with no levels is never a clean balance pass, a nightly that could not run is recorded, the morning report says when nothing was checked; (2) Godot 4.5-4.7 changes in the code guide (typed-override returns, device ids, RichTextLabel rename...); (3) smoke() imports first, so class_name helpers work again (a real run proved it) and v0.395's ban is lifted; (4) acceptance criteria + evidence-older-than-code on every task.
+APP_VERSION = "0.409.0"   # v0.409.0 META ADS (ad plan A1; owner: "GO A1" after the India ad-market check): her Facebook / Instagram ad account by ONE Facebook Login on the HOOLA app (ads_management + ads_read, ads/metaads.py) instead of a pasted system-user token; ad accounts + Pages listed, one account chosen at once, the Ads desk (reads, leaks, budget changes on her tap) works on the login unchanged. Drafts with one goal (WhatsApp / Messenger / Instagram chats, website visits, boost a Page post), her photo, cities + km, ages, daily x days; money ads refused, META_ADS_MAX_DAILY cap; Check with Meta (validate_only, free) -> Create = campaign, ad set and ad all PAUSED -> Start only with a confirm (end time set so Meta itself stops it, campaign goes live last) -> auto-marked finished after the days. Routes /api/ads/meta/* + /api/ads/metaads*, tool ads action=meta_draft, Social Desk tile + phone MetaAdsScreen. NOT VERIFIED against a live ad account. Previous: v0.408.0 HOOLA MECHANISMS (owner: "GO JOINTS AND URDF"): H.joint between named assembly parts (revolute / continuous / prismatic / fixed, world frame of the zero pose) -> tree check with named problems, B-rep mass / centre of mass / inertia per part from its material, every movable joint swept through its range with exact solid overlap tests + bisection -> the FREE range and what collides where (inside her range = back to the designer), URDF package (links in joint frames, STL meshes mm x 0.001, inertials kg / m, limits rad / m, effort / velocity said when assumed) checked by our own validator after parsing it back, motion GIF (all joints swinging, one camera) and exploded view. Previous: v0.407.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 2"). EK DIMAAG (W1): a website's web app now runs on the SAME backend as her native apps - App Sahayak's backend + the DIMAAG logic engine (relations, formulas, rules, workflows with maker-checker approvals + SLA, triggers, schedules, functions). Linking moves every member and row over unchanged (same ids, same passwords; a login made before the move keeps working), the site's own /api/site-app addresses stay, new public routes for related records / approvals / functions, and her logic is drafted by App Sahayak's author + checker and goes live only on her tap; the site's pages draw the workflow buttons, approval pills and linked-record pickers. HOOLA ARCHITECT (W13): her ONE line -> a spec card (pages, users, data, rules / workflows / approvals, features) with the data model PROVED by the checker before she sees it; she approves module by module and Hoola creates the website, joins it to its app brain, applies the logic and starts the looks. Proof: a school portal from one line. Previous: v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403; owner: "GO FIX" + "USE THIS FOR HOOLA GAMING DEVELOPMENT", after studying Claude-Code-Game-Studios, MIT, ideas only - THIRD_PARTY_NOTICES.md): a whole studio inside the Game Developer desk - 49 roles as DATA (gamedesk/crew.py: 3 directors, 8 leads, 23 specialists, 15 Godot / Unity / Unreal specialists), each with what it does, how it thinks, what it checks, who reviews it, and whether it BUILDS (changes the Godot game) or WRITES (a result for her OK: sound lists, store text, Unity / Unreal plans - work Hoola cannot build yet). Every task gets a role and acceptance criteria (hers / the planner's, the role's checks, Hoola's two automatic play checks); a build covers the test criteria with evidence stamped with the code fingerprint, the lead reviews screenshots + the code diff (Claude vision) and may set only SCREEN criteria - nothing seen = not covered, her criteria only by her OK; the verdict (COMPLETE / WITH NOTES / BLOCKED / NOT ASSESSED) is counted in code. 9 team flows plan linked tasks with only that team's roles; milestone gate checks PASS / CONCERNS / FAIL / NOT ASSESSED from counted facts + three directors' views, advice only. GO FIX: (1) NOT ASSESSED said out loud - a Bible with no levels is never a clean balance pass, a nightly that could not run is recorded, the morning report says when nothing was checked; (2) Godot 4.5-4.7 changes in the code guide (typed-override returns, device ids, RichTextLabel rename...); (3) smoke() imports first, so class_name helpers work again (a real run proved it) and v0.395's ban is lifted; (4) acceptance criteria + evidence-older-than-code on every task.
 
 
 def _quiet_http_logs() -> None:
@@ -7150,6 +7150,84 @@ async def social_ytads_action(did: str, action: str, body: dict | None = None, t
     if fn is None:
         raise HTTPException(404, "action: check | create | start | pause")
     return await asyncio.to_thread(_gads_call, fn, tenant, did)
+
+
+def _mads_call(fn, *a, **k):
+    from .ads import metaads
+    try:
+        return fn(*a, **k)
+    except metaads.MetaAdsError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/ads/meta/connect", dependencies=[Depends(require_key)])
+def ads_meta_connect(tenant: str = Depends(current_tenant)):
+    """v0.409 META ADS (A1): Facebook Login with ads_management + ads_read on Hoola's Meta app (replaces the pasted token)."""
+    from .ads import metaads
+    return {"url": _mads_call(metaads.connect_url, tenant)}
+
+
+@app.get("/api/ads/meta/callback")
+async def ads_meta_callback(request: Request):
+    """Facebook Login sends her back here (this exact URL is saved in the HOOLA Meta app's Valid OAuth Redirect URIs)."""
+    from .ads import metaads
+    q = request.query_params
+    if q.get("error") or q.get("error_reason"):
+        return _linked_page("Facebook ads", "ads", None, q.get("error_description") or q.get("error_reason") or q.get("error") or "")
+    try:
+        v = await asyncio.to_thread(metaads.finish_link, q.get("code", ""), q.get("state", ""))
+    except metaads.MetaAdsError as e:
+        return _linked_page("Facebook ads", "ads", None, str(e))
+    return _linked_page("Facebook ads", "ads", ", ".join(v["accounts"][:3]) or "No ad account found in this login")
+
+
+@app.get("/api/ads/metaads", dependencies=[Depends(require_key)])
+def ads_metaads(tenant: str = Depends(current_tenant)):
+    """Her Facebook login, ad accounts, Pages and Facebook / Instagram ad drafts."""
+    from .ads import metaads
+    return metaads.view(tenant)
+
+
+@app.post("/api/ads/metaads/account", dependencies=[Depends(require_key)])
+def ads_metaads_account(body: dict, tenant: str = Depends(current_tenant)):
+    """{account: act_..., page: <page id>} = which ad account pays and which Page the ads run as."""
+    from .ads import metaads
+    b = body or {}
+    return _mads_call(metaads.choose, tenant, str(b.get("account") or ""), str(b.get("page") or ""))
+
+
+@app.get("/api/ads/metaads/posts", dependencies=[Depends(require_key)])
+async def ads_metaads_posts(tenant: str = Depends(current_tenant)):
+    """Her Page's recent posts (to Boost one)."""
+    from .ads import metaads
+    return {"posts": await asyncio.to_thread(_mads_call, metaads.page_posts, tenant)}
+
+
+@app.post("/api/ads/metaads/drafts", dependencies=[Depends(require_key)])
+def ads_metaads_new(body: dict, tenant: str = Depends(current_tenant)):
+    """A new Facebook / Instagram ad draft {goal: whatsapp|messenger|instagram|website|boost, ...} - stays in Hoola."""
+    from .ads import metaads
+    b = dict(body or {})
+    return _mads_call(metaads.new_draft, tenant, str(b.pop("goal", "") or "whatsapp"), **b)
+
+
+@app.post("/api/ads/metaads/drafts/{did}", dependencies=[Depends(require_key)])
+def ads_metaads_edit(did: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import metaads
+    return _mads_call(metaads.set_draft, tenant, did, **(body or {}))
+
+
+@app.post("/api/ads/metaads/drafts/{did}/{action}", dependencies=[Depends(require_key)])
+async def ads_metaads_action(did: str, action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """check (Meta validates, free) | create (in her account, all PAUSED) | start (her tap + confirm: spends) | pause."""
+    from .ads import metaads
+    b = body or {}
+    fn = {"check": metaads.check, "create": metaads.create, "pause": metaads.pause}.get(action)
+    if action == "start":
+        return await asyncio.to_thread(_mads_call, metaads.start, tenant, did, b.get("confirm") is True)
+    if fn is None:
+        raise HTTPException(404, "action: check | create | start | pause")
+    return await asyncio.to_thread(_mads_call, fn, tenant, did)
 
 
 @app.get("/api/social/inbox", dependencies=[Depends(require_key)])

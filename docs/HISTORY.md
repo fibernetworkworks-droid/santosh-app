@@ -15387,3 +15387,40 @@ Owner: "GO JOINTS AND URDF" (third item from the text-to-cad comparison; own cod
   GIF / exploded view and the URDF download.
 - Tests: tests/test_v0406_mechanisms.py (5). Not yet: SDF / MJCF, closed-chain linkages, joint torque from loads,
   self-collision matrix (SRDF), gear / belt couplings between joints.
+
+## v0.409.0 META ADS (ad plan A1) - 1 Nov 2026
+Owner, after the India ad-market check (artifact "Hoola Ad Platforms India"): "GO A1".
+- **Why:** the Ads desk (v0.111) already read her Meta insights and applied budget changes on her tap, but only after she
+  pasted a system-user token from Business Settings - almost no shop owner can make one. Meta is the biggest ad market for
+  Indian small businesses (Facebook, Instagram, click-to-WhatsApp, Messenger).
+- **Connect** (`server/app/ads/metaads.py`): Facebook Login on the HOOLA Meta app, scopes ads_management, ads_read,
+  business_management, pages_show_list, pages_read_engagement (or `META_ADS_CONFIG_ID` = a Login for Business configuration).
+  Redirect `<PUBLIC_BASE_URL>/api/ads/meta/callback`. Code -> 60-day token (sealed in `AdsSettings.meta_token`, the same
+  column the pasted token used, so `fetch_meta` / `decide_change` / the morning + weekly notes work unchanged). New
+  AdsSettings columns: meta_via (login | token), meta_expires, meta_accounts, meta_pages, meta_page, meta_scopes. One active
+  ad account = chosen at once; a closed one is refused; a login whose time is near shows "connect again".
+- **Drafts** (table `meta_ad_drafts`, Hoola only): goal whatsapp | messenger | instagram | website | boost, Page (the ad
+  runs as it; its linked Instagram account is used for the Instagram placement), photo = Social Desk asset, text /
+  headline / description, cities (looked up by Meta's adgeolocation search) + km, ages, gender, Facebook / Instagram / both,
+  daily x days. Problems listed before anything leaves Hoola: banned words (Ads desk rules), money ads (SEBI) refused, cap
+  `META_ADS_MAX_DAILY` (2000), 1-30 days, ages 18-65.
+- **Meta recipe per goal:** chats = OUTCOME_ENGAGEMENT + CONVERSATIONS + destination WHATSAPP / MESSENGER / INSTAGRAM_DIRECT
+  + CTA WHATSAPP_MESSAGE / MESSAGE_PAGE / INSTAGRAM_MESSAGE; website = OUTCOME_TRAFFIC + LINK_CLICKS + LEARN_MORE; boost =
+  OUTCOME_ENGAGEMENT + POST_ENGAGEMENT + object_story_id. Ad-set budget in minor units (paise), LOWEST_COST_WITHOUT_CAP,
+  special_ad_categories [] and is_adset_budget_sharing_enabled false on the campaign, Advantage+ audience on unless she set
+  ages / gender.
+- **Check** = Meta's validate_only on the campaign + city lookup (free). **Create** (her tap) = campaign, ad set, image,
+  creative, ad - ALL PAUSED; a half-build is named ("a paused campaign is left in Ads Manager"). **Start** needs
+  confirm=true: the ad set gets end_time = now + days (Meta itself stops it), then ad -> ad set -> campaign ACTIVE (the
+  campaign last). **Pause** any time. `daily_watch` (Social Desk daily job) marks finished ads ended + tells her.
+- Routes: GET /api/ads/meta/connect, GET /api/ads/meta/callback, GET /api/ads/metaads, POST /api/ads/metaads/account
+  {account, page}, GET /api/ads/metaads/posts, POST /api/ads/metaads/drafts, /drafts/{id}, /drafts/{id}/{check|create|start|pause}.
+- Agent: `ads` action=meta_draft (owner only, draft only - she checks / creates / starts in the app), `ads_dekho` what=meta_ads.
+- UI: phone Social Desk "Facebook & Instagram ads" -> `MetaAdsScreen` (connect, account / Page, goal buttons, edit dialog,
+  photo, Check / Create (paused) / Start with confirm / Pause); Ads desk Niyam card = "Facebook se jodo" (token paste kept as
+  "Token se jodo"); console Social Desk tile `#scMetaAds` (employees.js metaAds / wireMa).
+- Tests: `server/tests/test_v0409_meta_ads.py` (6).
+- **Needs before real use:** add `https://hoola.ainewtika.com/api/ads/meta/callback` to the HOOLA app's Valid OAuth
+  Redirect URIs; App Review for ads_management + ads_read (until then only the app's own roles / testers can connect);
+  Marketing API Full Access for volume. **NOT VERIFIED** against a live ad account - field names follow Meta's Marketing API
+  docs as known; the first real Create will show any field Meta renamed.

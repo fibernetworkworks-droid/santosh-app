@@ -180,6 +180,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.409 META ADS (A1, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
 - v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
   (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
   CSRF_NONCE and a Reserve/UndoReservation check-out (a half-run used to risk leaving HER object LOCKED); Salesforce
@@ -204,7 +205,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
   403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
   verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
-- Current version: v0.408.0 (pubspec 0.408.0+452). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.409.0 (pubspec 0.409.0+453). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.407 EK DIMAAG + ARCHITECT (web Step 2): `site/applink.py` = a website's web app on App Sahayak's backend + DIMAAG (members / rows moved, old logins work, same /api/site-app addresses; logic draft -> her tap); `site/architect.py` = her one line -> spec card (pages / users / data / logic / features) -> her Haan builds site + app brain (`/api/site-architect*`, website action=architect*).
 - v0.403 SHIKSHA 3+4: `app/daftar` school office (attendance + guardian alert card, grading UNSIGNED: sheet / OMR / Forms /
