@@ -170,6 +170,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ONE more attempt. Enterprise routes 6 -> 11. RULE: a module's tests passing says it works, never that anything
   calls it - grep for a caller outside its own file before calling a feature shipped.
 
+- v0.397 CONNECT: the door the suite was missing since v0.358 - there was nowhere to put a credential (chat refuses
+  a key on purpose: it would sit in the history, the model's context and any export). Console **Systems** page +
+  phone Profile > 'Apne system jodiye' -> POST /api/enterprise/<role>/endpoint, sealed on arrival, returned by NO
+  route (masked only); DELETE forgets the way in and keeps her runs. `run.verify` = the FIRST call in the suite that
+  ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
+  403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
+  verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
 - Current version: v0.396.0 (pubspec 0.396.0+440). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.

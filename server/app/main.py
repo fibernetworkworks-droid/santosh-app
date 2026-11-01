@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.396.0"   # v0.396.0 APNA DATABASE (App Sahayak Pillar B: own database per app, owner: "LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN DATABASE THERE"): an app's data runs in HER OWN PostgreSQL-wire database (Supabase, Neon, RDS / Aurora, Cloud SQL / AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, CockroachDB, YugabyteDB ... 28 listed) through the v0.147 sealed connection: her schema + a real typed table per list + triggers, PRIMARY = every save lands there inside the request (her database down = refused, nothing half-saved) and her edits there come back validated with the app logic run, MIRROR = a live copy that never blocks; link = her tap (backup, copy, counts compared), unlink keeps the data in both places. Previous: v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390 / 0.394; Hoola Game Engine plan Phase 3, owner: "GO PHASE 3"): every Studio Project gets ONE source of truth for its names and numbers, as DATA (gamedesk/bible.py, table game_bibles): meta, a style palette, glossary + banned words, player numbers, growth curves, and entities by kind (character, enemy, item, level, quest, screen) - each kind a TEMPLATE with typed fields, ranges, enums and references, so the 50th enemy has exactly the shape of the 1st. All checks in code: ranges, unique ids, every reference real (waves name real enemies, no quest loops), colours only from the palette (style lock), banned words, names that fit, no real-money fields. A SEEDED Monte-Carlo balance run per level (same Bible = same numbers) flags impossible levels, spikes, a too-hard first level, a too-easy late one and items you can never afford. Generators: the model writes only words, the curves set the numbers, and the result waits as a DRAFT for her OK. The game reads it: hoola_bible.gd is a HoolaBible AUTOLOAD (a real Godot run proved class_name is invisible headless), so a balance change is a DATA-ONLY rebuild with no model call. Found live and fixed: the code guide told the model to use class_name helpers, which never parse in Hoola builds - now preload, and the guard says so before a build is wasted. Tool game_bible, /api/gamestudio/{id}/bible*, console Game Bible page, phone GameBibleScreen.
+APP_VERSION = "0.397.0"   # v0.397.0 CONNECT - the screen where her own ERP / CRM is really joined, which the enterprise suite has been missing since v0.358: there was nowhere to put a credential, because the chat refuses a key on purpose (a secret typed into a conversation is in the history, in the model's context and in any export of either). Console Systems page + phone "Apne system jodiye" -> POST /api/enterprise/<role>/endpoint, sealed the instant it arrives and returned by NO route. verify() is the first call in the suite that ever reaches a customer tenant: READ-ONLY, reporting what the system ANSWERED - 401 told apart from 403, a CSRF token that cannot be fetched, an ETag a later write will need. Previous: v0.396.0 APNA DATABASE (App Sahayak Pillar B: own database per app, owner: "LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN DATABASE THERE"): an app's data runs in HER OWN PostgreSQL-wire database (Supabase, Neon, RDS / Aurora, Cloud SQL / AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, CockroachDB, YugabyteDB ... 28 listed) through the v0.147 sealed connection: her schema + a real typed table per list + triggers, PRIMARY = every save lands there inside the request (her database down = refused, nothing half-saved) and her edits there come back validated with the app logic run, MIRROR = a live copy that never blocks; link = her tap (backup, copy, counts compared), unlink keeps the data in both places. Previous: v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390 / 0.394; Hoola Game Engine plan Phase 3, owner: "GO PHASE 3"): every Studio Project gets ONE source of truth for its names and numbers, as DATA (gamedesk/bible.py, table game_bibles): meta, a style palette, glossary + banned words, player numbers, growth curves, and entities by kind (character, enemy, item, level, quest, screen) - each kind a TEMPLATE with typed fields, ranges, enums and references, so the 50th enemy has exactly the shape of the 1st. All checks in code: ranges, unique ids, every reference real (waves name real enemies, no quest loops), colours only from the palette (style lock), banned words, names that fit, no real-money fields. A SEEDED Monte-Carlo balance run per level (same Bible = same numbers) flags impossible levels, spikes, a too-hard first level, a too-easy late one and items you can never afford. Generators: the model writes only words, the curves set the numbers, and the result waits as a DRAFT for her OK. The game reads it: hoola_bible.gd is a HoolaBible AUTOLOAD (a real Godot run proved class_name is invisible headless), so a balance change is a DATA-ONLY rebuild with no model call. Found live and fixed: the code guide told the model to use class_name helpers, which never parse in Hoola builds - now preload, and the guard says so before a build is wasted. Tool game_bible, /api/gamestudio/{id}/bible*, console Game Bible page, phone GameBibleScreen.
 
 
 def _quiet_http_logs() -> None:
@@ -11348,6 +11348,67 @@ def _entrun(fn, *a, **kw):
         return fn(*a, **kw)
     except entrun.RunError as e:
         raise HTTPException(400, str(e))
+
+
+@app.get("/api/enterprise/{role}/endpoint", dependencies=[Depends(require_key)])
+def enterprise_endpoints(role: str, tenant: str = Depends(current_tenant)):
+    """Her own systems for this job: address, which environment, and the key MASKED. The key itself is sealed
+    and is never returned by any route - not here, not anywhere."""
+    from .enterprise import run as entrun
+    return _entrun(lambda: {"systems": entrun.endpoints(tenant, role),
+                            "jod_sakte_hain": _ent_systems(role)})
+
+
+def _ent_systems(role: str):
+    from .enterprise import rules as entrules
+    out = []
+    for key in entrules.systems_for(role):
+        spec = entrules.SYSTEMS.get(key) or {}
+        out.append({"system": key, "label": spec.get("label") or key, "how": spec.get("how") or "own",
+                    "note": spec.get("note") or ""})
+    return out
+
+
+@app.post("/api/enterprise/{role}/endpoint", dependencies=[Depends(require_key)])
+def enterprise_endpoint_set(role: str, body: dict, tenant: str = Depends(current_tenant)):
+    """THE ONE DOOR for an enterprise credential.
+
+    It exists only here, on a route the APP calls, because the chat refuses to take a key and should: a secret
+    pasted into a conversation is in the history, in the model's context and in any export of either. What
+    arrives here is sealed immediately (`bazar.security.vault`), stored encrypted, and read back out only
+    inside the HTTP call that uses it. Nothing returns it - this route answers with the MASKED form.
+    """
+    from .enterprise import run as entrun
+    b = body or {}
+    return _entrun(entrun.set_endpoint, tenant, role, str(b.get("system") or ""),
+                   str(b.get("base_url") or ""), str(b.get("auth") or ""),
+                   str(b.get("auth_kind") or "bearer"), str(b.get("env") or "test"),
+                   str(b.get("header_name") or ""), str(b.get("note") or ""))
+
+
+@app.post("/api/enterprise/{role}/endpoint/{system}/verify", dependencies=[Depends(require_key)])
+def enterprise_endpoint_verify(role: str, system: str, tenant: str = Depends(current_tenant)):
+    """Ask her real system whether it works. READ-ONLY - it writes nothing.
+
+    This is the first call in the whole suite that ever reaches a customer tenant, so it reports what the
+    endpoint actually ANSWERED rather than a green tick: whether the address replied, whether the credential
+    got past authentication (401 and 403 told apart), and whether the things a WRITE will need later - a CSRF
+    token, an ETag, a check-out - can be had at all."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.verify, tenant, role, system)
+
+
+@app.delete("/api/enterprise/{role}/endpoint/{system}", dependencies=[Depends(require_key)])
+def enterprise_endpoint_forget(role: str, system: str, tenant: str = Depends(current_tenant)):
+    """Forget the address and the sealed key. Her runs and papers are untouched."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.forget_endpoint, tenant, role, system)
+
+
+@app.get("/api/enterprise/{role}/runs", dependencies=[Depends(require_key)])
+def enterprise_runs(role: str, tenant: str = Depends(current_tenant)):
+    from .enterprise import run as entrun
+    return _entrun(lambda: {"runs": entrun.runs(tenant, role)})
 
 
 @app.get("/api/enterprise/{role}/run/{run_id}", dependencies=[Depends(require_key)])

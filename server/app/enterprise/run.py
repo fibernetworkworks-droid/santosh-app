@@ -697,3 +697,110 @@ def deploy_go(tenant: str, role: str, validated_id: str, by: str = "owner",
                 tenant, role, ep.env, out.get("deploy"), by)
     out["env"] = ep.env
     return out
+
+# ---------------------------------------------------------------- v0.396 CONNECT: prove the address works
+# Everything the enterprise suite does has, until now, been tested against the vendors' documentation and
+# recorded HTTP - never against a customer system, because there was nowhere for her to put a credential. This
+# is that place, and `verify` is the first call that ever reaches a real tenant.
+#
+# It is deliberately READ-ONLY and it writes NOTHING. What it reports is not "connected" as a feeling: it is
+# what the endpoint actually did when asked -
+#   - did the address answer at all, and with what HTTP code
+#   - did the credential get past authentication (401 / 403 are told apart: wrong key vs no permission)
+#   - could a CSRF token be fetched, where this system needs one for writes (SAP, Windchill)
+#   - does a row carry an ETag, where this system demands If-Match on an update (SAP)
+#   - does it accept the documented idempotent create (recorded, never assumed)
+# so that a write later fails for a real reason, not because we believed a green tick.
+VERIFY_PROBES = {
+    "sap":        "$metadata",
+    "windchill":  "PTC/GetCSRFToken()",
+    "salesforce": "sobjects",
+    "oracle":     "$metadata",
+    "teamcenter": "$metadata",
+}
+
+
+def verify(tenant: str, role: str, system: str) -> dict[str, Any]:
+    """Ask her endpoint, read-only, whether it really works - and say exactly what it answered."""
+    R.role(role)
+    ep = _endpoint(tenant, role, system)
+    if ep is None:
+        raise RunError(f"{system} ka address nahi juda.")
+    d = dialect.of(system)
+    out: dict[str, Any] = {"system": system, "env": ep.env, "address": ep.base_url, "key": ep.auth_masked,
+                           "jaanch": []}
+    def step(name: str, ok: bool | None, detail: str = "") -> None:
+        out["jaanch"].append({"kya": name, "theek": ok, "kaha": detail[:300]})
+
+    probe = VERIFY_PROBES.get(system, "$metadata")
+    try:
+        with dialect.Call(ep, timeout=30) as c:
+            code, data = c.get(probe, page=1)
+            if code == 401:
+                step("credential", False, "401 - key galat ya expire ho gayi.")
+                out["theek"] = False
+                out["aage"] = "Key dobara daaliye. Address theek lag raha hai (jawab aaya)."
+                return out
+            if code == 403:
+                step("credential", True, "Key chali, par 403 - is user ko is cheez ki permission nahi.")
+            elif code >= 400:
+                step("address", False, f"HTTP {code}: " + json.dumps(data, default=str)[:180])
+                out["theek"] = False
+                out["aage"] = "Yeh address is system ka API address nahi lagta. Admin se poora API URL maangiye."
+                return out
+            else:
+                step("address aur credential", True, f"HTTP {code} - jawab aa gaya.")
+
+            # the write prerequisites, each only where that vendor needs it
+            if d["csrf"]:
+                try:
+                    c.token(probe if system == "sap" else "")
+                    step("CSRF token (write ke liye zaroori)", True, "mil gaya.")
+                except dialect.DialectError as ex:
+                    step("CSRF token (write ke liye zaroori)", False, str(ex))
+            if d["etag"] == "required":
+                step("If-Match / ETag", None,
+                     "Yeh row padhe bina pata nahi chalta; update ke waqt row se liya jaayega. Na mile to "
+                     "Hoola woh row chhod dega - galat likhne se behtar.")
+            if d["reserve"]:
+                step("Reserve / UndoReservation", None,
+                     "Object check-out karke hi badla jaata hai; Hoola hamesha wapas chhodta hai.")
+            if d["idem"] == "sap":
+                step("Idempotent create (RequestID)", None,
+                     "Aapke system par yeh job chalu hai ya nahi, yeh pehle create par pata chalega.")
+            out["kya_kya_chahiye"] = c.support()
+    except RunError:
+        raise
+    except Exception as ex:                              # noqa: BLE001 - a network error is an ANSWER here
+        step("address", False, f"{type(ex).__name__}: {str(ex)[:200]}")
+        out["theek"] = False
+        out["aage"] = ("Address se baat hi nahi hui. Server bahar se khulta hai? Firewall / VPN dekhna padega.")
+        return out
+
+    bad = [j for j in out["jaanch"] if j["theek"] is False]
+    out["theek"] = not bad
+    if not bad:
+        with session() as s:
+            r = s.scalars(select(EntEndpoint).where(EntEndpoint.tenant_id == tenant, EntEndpoint.role == role,
+                                                    EntEndpoint.system == system)).first()
+            if r is not None:
+                r.verified_at = now()
+        out["aage"] = ("Padhna chalu hai. Likhna phir bhi ek-ek kadam se hoga: plan -> jhalak -> aapki haan."
+                       + (" PRODUCTION hai, to haan ke saath 'production' bhi likhna padega."
+                          if ep.env == "production" else ""))
+    else:
+        out["aage"] = "Jo nishan laal hai woh pehle theek karna padega; tab tak Hoola isse likhega nahi."
+    return out
+
+
+def forget_endpoint(tenant: str, role: str, system: str) -> dict[str, Any]:
+    """Remove the address and the sealed credential. Her runs and papers stay - only the way in is gone."""
+    R.role(role)
+    with session() as s:
+        r = s.scalars(select(EntEndpoint).where(EntEndpoint.tenant_id == tenant, EntEndpoint.role == role,
+                                                EntEndpoint.system == system)).first()
+        if r is None:
+            raise RunError(f"{system} ka address juda hi nahi hai.")
+        s.delete(r)
+    return {"system": system, "hata_diya": True,
+            "note": "Address aur key dono hat gaye. Purane run aur kaagaz waise hi hain."}

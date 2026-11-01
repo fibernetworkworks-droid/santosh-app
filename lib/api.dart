@@ -1082,6 +1082,17 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/eng/projects/$id/change', body: {'words': words}) as Map);
   Future<void> engDelete(String id) async => _send('DELETE', '/api/eng/projects/$id');
   // v0.317 HIRE AN EMPLOYEE + the SEO Desk
+  // ---- v0.396 CONNECT: her own enterprise system (address + key). The key goes UP only; no route returns it ----
+  Future<Map<String, dynamic>> entSystems(String role) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/enterprise/$role/endpoint') as Map);
+  Future<Map<String, dynamic>> entConnect(String role, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/enterprise/$role/endpoint', body: body) as Map);
+  Future<Map<String, dynamic>> entVerify(String role, String system) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/enterprise/$role/endpoint/$system/verify',
+          body: {}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> entForget(String role, String system) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/enterprise/$role/endpoint/$system') as Map);
+
   Future<Map<String, dynamic>> employees() async => Map<String, dynamic>.from(await _send('GET', '/api/employees') as Map);
   Future<Map<String, dynamic>> employeeAct(String key, String action) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/employees/$key/$action', body: {}) as Map);
