@@ -95,6 +95,8 @@ object Strings {
     val openWork get() = t("open", "बाकी", "बाकी", "baaki")
     val receipt get() = t("Receipt", "रसीद", "पावती", "Raseed")       // v0.354 RASEED
     val invoice get() = t("Tax invoice", "टैक्स इनवॉइस", "कर बीजक", "Tax invoice")   // v0.355 GST BILL
+    val changeTime get() = t("Change time", "समय बदलें", "वेळ बदला", "Samay badlein")     // v0.377
+    val cancelWord get() = t("Cancel", "रद्द", "रद्द", "Cancel")
     val pickSlot get() = t("Delivery time", "डिलीवरी का समय", "डिलिव्हरीची वेळ", "Delivery ka samay")   // v0.371 SLOT
     val noSlots get() = t("No slot free right now - the shop will call to fix a time.", "अभी कोई स्लॉट खाली नहीं - दुकान समय तय करने के लिए कॉल करेगी।", "आता कोणताही स्लॉट मोकळा नाही - दुकान वेळ ठरवण्यासाठी कॉल करेल.", "Abhi koi slot khaali nahi - dukaan call karke samay tay karegi.")
     val delivery get() = t("Delivery", "डिलीवरी", "डिलिव्हरी", "Delivery")    // v0.360 DELIVERY

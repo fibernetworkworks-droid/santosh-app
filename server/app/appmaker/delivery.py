@@ -38,6 +38,8 @@ def _ist():
 
 
 def is_open(g: dict[str, Any], at=None) -> bool:
+    if (at or _ist()).strftime("%Y-%m-%d") in (g.get("holidays") or []):     # v0.377 CHHUTTI: her holiday = closed
+        return False
     h = g.get("hours") or {}
     if not h.get("open") or not h.get("close"):
         return True
@@ -64,6 +66,7 @@ def view(r: AppProject) -> dict[str, Any]:
     g = settings(r)
     return {"fee": g.get("fee", 0), "free_above": g.get("free_above"), "pins": g.get("pins") or [], "hours": g.get("hours") or {},
             "open_now": is_open(g), "on": bool(g), "slots": g.get("slots") or [], "days": g.get("days", 0), "cutoff": g.get("cutoff", 0),
+            "holidays": g.get("holidays") or [],
             "note": "Orders outside the area or while closed are still taken, with a note - nobody's order is lost."}
 
 
@@ -156,7 +159,10 @@ def on_order(r: AppProject, goods: float, data: dict[str, Any]) -> tuple[float, 
             notes.append("Address mein PIN code nahi mila - dukaan confirm karegi")
     if not is_open(g):
         h = g.get("hours") or {}
-        notes.append(f"Dukaan abhi band hai - khulte hi ({h.get('open', '')}) order dekha jayega")
+        if _ist().strftime("%Y-%m-%d") in (g.get("holidays") or []):
+            notes.append("Aaj dukaan ki chhutti hai - khulte hi order dekha jayega")
+        else:
+            notes.append(f"Dukaan abhi band hai - khulte hi ({h.get('open', '')}) order dekha jayega")
         STATS["closed"] += 1
     if notes:
         out["delivery_note"] = "; ".join(notes) + "."
@@ -255,6 +261,8 @@ def available(r: AppProject) -> dict[str, Any]:
         if h.get("days") and day.weekday() not in h["days"]:
             continue
         ds = day.strftime("%Y-%m-%d")
+        if ds in (g.get("holidays") or []):                 # v0.377 no slots on her holidays
+            continue
         for sl in slots:
             start = datetime.strptime(f"{ds} {sl['start']}", "%Y-%m-%d %H:%M")
             if start - timedelta(minutes=cutoff) <= now_.replace(tzinfo=None):
@@ -306,3 +314,89 @@ def confirm(r: AppProject, row_id: str) -> None:
             d["delivery_note"] = (d.get("delivery_note", "").rstrip(".") + "; " if d.get("delivery_note") else "") + why
             row.data = json.dumps(d, ensure_ascii=False)
             STATS["slots_full"] += 1
+
+
+
+# ---------------------------------------------------------------- v0.377 CHHUTTI (App Sahayak Phase 41)
+def save_holidays(r: AppProject, dates: Any) -> dict[str, Any]:
+    """Her holidays: YYYY-MM-DD dates (past ones dropped, max 60)."""
+    from . import backend as BE
+    from . import stock as SK
+    raw = dates if isinstance(dates, list) else re.split(r"[\s,;]+", str(dates or ""))
+    out = set()
+    today = _ist().strftime("%Y-%m-%d")
+    for d in raw:
+        d = str(d).strip()
+        if not d:
+            continue
+        try:
+            datetime.strptime(d, "%Y-%m-%d")
+        except ValueError:
+            raise DeliveryError(f"Chhutti ki tareekh YYYY-MM-DD: {d}")
+        if d >= today:
+            out.add(d)
+    with session() as s:
+        row = s.get(AppProject, r.id)
+        be = BE._j(row.backend, {})
+        g = dict(be.get("delivery") or {})
+        if out:
+            g["holidays"] = sorted(out)[:60]
+        else:
+            g.pop("holidays", None)
+        be["delivery"] = g
+        row.backend = json.dumps(be, ensure_ascii=False)
+        r.backend = row.backend
+    SK._flush(r)
+    return view(r)
+
+
+def change_slot(r: AppProject, coll: str, row_id: str, key: str, w: W.Who) -> dict[str, Any]:
+    """Move an order to another free slot: its customer before the current slot's cut-off, staff any time. The new slot is
+    booked under the same lock and re-counted after the write (v0.371)."""
+    from . import backend as BE
+    g = settings(r)
+    slots, _days, cutoff = _slots_cfg(g)
+    if not slots:
+        raise DeliveryError("Is app mein delivery slots nahi hain.", 409)
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        if row is None or row.site_id != BE.bid(r) or row.coll != coll:
+            raise DeliveryError("Yeh order nahi mila.", 404)
+        d = BE._j(row.data, {})
+        owner = row.owner
+    if not (w.staff or (w.id and owner == w.id)):
+        raise DeliveryError("Yeh order nahi mila.", 404)
+    if str(d.get("status") or "").strip().lower() in ("cancelled", "delivered", "done", "completed"):
+        raise DeliveryError("Yeh order poora / cancel ho chuka - samay nahi badalta.", 409)
+    cur = str(d.get("slot") or "")
+    if cur and not w.staff:
+        start = datetime.strptime(cur.replace("|", " "), "%Y-%m-%d %H:%M")
+        if start - timedelta(minutes=cutoff) <= _ist().replace(tzinfo=None):
+            raise DeliveryError("Ab samay badalne ka waqt nikal gaya - dukaan se baat kijiye.", 409)
+    if key == cur:
+        return {"slot": cur, "slot_label": d.get("slot_label", "")}
+    sf, why = book(r, key)
+    if why:
+        raise DeliveryError(why + ".", 409)
+    old = {k: d.get(k) for k in ("slot", "slot_label", "delivery_note")}
+    BE._merge(row_id, {**sf, "_ev": now_iso()})
+    confirm(r, row_id)
+    d2 = BE._j(BE._row(BE.bid(r), row_id).data, {})
+    if d2.get("slot") != key:                          # lost the race: the order keeps exactly what it had
+        with session() as s:
+            row = s.get(W.SiteAppRow, row_id)
+            dd = BE._j(row.data, {})
+            for k, v in old.items():
+                if v in (None, ""):
+                    dd.pop(k, None)
+                else:
+                    dd[k] = v
+            row.data = json.dumps(dd, ensure_ascii=False)
+        raise DeliveryError("Yeh slot usi waqt bhar gaya - doosra chuniye.", 409)
+    if d2.get("delivery_note") and "slot" in str(d2.get("delivery_note")).lower() and not old.get("delivery_note"):
+        BE._merge(row_id, {"delivery_note": ""})       # an earlier "slot full" note no longer applies
+    return {"slot": key, "slot_label": d2.get("slot_label", "")}
+
+
+def now_iso() -> str:
+    return now().isoformat()

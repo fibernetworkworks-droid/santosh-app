@@ -202,6 +202,7 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         // v0.352 the customer sees the first name of the person on her row
         if (!Auth.isStaff && r.s("assigned_name").isNotEmpty()) Small(r.s("assigned_name") + " " + Strings.onIt)
         if (r.s("slot_label").isNotEmpty()) Small(Strings.pickSlot + ": " + r.s("slot_label"))      // v0.371 SLOT
+        SlotChange(coll, r)                                                                       // v0.377 change the time
         if (r.s("delivery_note").isNotEmpty()) Small(r.s("delivery_note"), maxLines = 4)
         RateBox(coll, r)                                          // v0.353 the customer rates her finished row once
         ReceiptButton(coll, r)                                    // v0.354 the receipt PDF of a finished row

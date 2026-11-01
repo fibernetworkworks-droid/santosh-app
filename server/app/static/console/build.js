@@ -863,7 +863,11 @@ window.HoolaBuild = function (C) {
         <form class="stapp" autocomplete="off" data-slots><p class="stnote">Delivery time slots (one per line: label, start, end, orders) - e.g. "Morning, 09:00, 11:00, 10". Blank = no slots.</p>
         <div class="row"><textarea name="slots" rows="3" aria-label="Slots">${esc(L(v.slots).map(x => [S(x.label), S(x.start), S(x.end), N(x.cap)].join(', ')).join('\n'))}</textarea></div>
         <div class="row"><label>Days ahead <input name="days" inputmode="numeric" value="${N(v.days)}"></label><label>Cut-off minutes <input name="cutoff" inputmode="numeric" value="${N(v.cutoff)}"></label>
-        <button class="btn go" type="submit">Save slots</button></div></form>`;
+        <button class="btn go" type="submit">Save slots</button></div></form>
+        <form class="stapp" autocomplete="off" data-hol><p class="stnote">Holidays (shop closed): one date per line or comma, YYYY-MM-DD. Orders on those days are still taken, with a note; no slots are offered.</p>
+        <div class="row"><textarea name="h" rows="2" aria-label="Holidays">${esc(L(v.holidays).join(', '))}</textarea><button class="btn go" type="submit">Save holidays</button></div></form>`;
+      const fh = dbox.querySelector('[data-hol]');
+      fh.addEventListener('submit', async e => { e.preventDefault(); try { drawDl(await api('PUT', base(o) + '/delivery', {holidays: fh.h.value})); toast('Holidays saved.'); } catch (er) { toast(er.message, true); } });
       const fs = dbox.querySelector('[data-slots]');
       fs.addEventListener('submit', async e => {
         e.preventDefault();

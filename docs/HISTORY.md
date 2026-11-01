@@ -13222,3 +13222,14 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   mein kholo" = the wa.me link opened in her WhatsApp, an amount box + tick = POST /khata/<member>/pay cash), /stock (qty <= low:
   "n bache" / "khatam"), /coupons (live codes with % / Rs and uses). Refresh button; nothing shown when there is nothing.
 - Tests `tests/test_v0376_maalkin_phone.py` (markers). Compiled by CI Build APK (Flutter is not reachable in the sandbox).
+
+## v0.377.0 CHHUTTI (App Sahayak Phase 41, owner: "START PHASE 41")
+- `appmaker/delivery.py`: `save_holidays(r, dates)` (YYYY-MM-DD, past dates dropped, max 60) in `backend.delivery.holidays`;
+  `is_open` is false on a holiday, `available` skips holiday days, `on_order` notes "Aaj dukaan ki chhutti hai - khulte hi order
+  dekha jayega". `change_slot(r, coll, row, key, who)`: the order's customer (before `start - cutoff` of her current slot) or
+  staff (any time), never on cancelled / delivered / done; `book` + `confirm` as v0.371; a lost race restores slot /
+  slot_label / delivery_note exactly; an old "slot full" note is cleared when a new slot is booked.
+- Routes: POST /api/app-api/<key>/c/<coll>/<id>/slot {slot}; PUT /api/apps/<ref>/delivery {holidays}.
+- Kits: Android `SlotChange(coll, r)` (Pro.kt) under the slot line on order cards: "Change time" -> GET /slots chips -> POST
+  -> refresh; iPhone `SlotChange` view. Console Delivery box: holidays textarea.
+- Tests `tests/test_v0377_chhutti.py`.

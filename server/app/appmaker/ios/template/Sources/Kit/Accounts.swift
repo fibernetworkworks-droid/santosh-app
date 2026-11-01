@@ -122,6 +122,7 @@ struct RowsSection: View {
                         Muted([r.s("slot_label").isEmpty ? "" : Words.pickSlot + ": " + r.s("slot_label"), r.s("delivery_note")].filter { !$0.isEmpty }.joined(separator: " · "))
                     }
                     Group {                                       // (grouped: a SwiftUI builder takes 10 views)
+                        SlotChange(coll: coll, r: r)                 // v0.377 move the order to another free slot
                         RateBox(coll: coll, r: r)                    // v0.353 the customer rates her finished row once
                         ReceiptButton(coll: coll, r: r)              // v0.354 the receipt PDF of a finished row
                         CreditButton(coll: coll, r: r)               // v0.359 staff: this order on credit (udhaar)

@@ -695,3 +695,45 @@ struct SlotPicker: View {
         }
     }
 }
+
+
+// ---------------------------------------------------------------- v0.377 CHHUTTI: move an order to another free slot
+struct SlotChange: View {
+    let coll: String
+    let r: Item
+    @State private var open = false
+    @State private var list: [Item] = []
+    @State private var error = ""
+
+    var body: some View {
+        if !r.s("slot").isEmpty && !r.b("pending") && !["Cancelled", "Delivered", "Done"].contains(r.s("status")) {
+            VStack(alignment: .leading, spacing: 4) {
+                if open {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(list, id: \.id) { sl in
+                                Button(sl.s("day") + " · " + sl.s("label")) {
+                                    Task {
+                                        let res = await Cloud.call("POST", "/c/\(coll)/\(r.id)/slot", ["slot": sl.s("key")], token: Auth.shared.token)
+                                        if res.ok { open = false; await Db.shared.refresh(coll) }
+                                        else { error = res.error.isEmpty ? (res.offline ? Words.offline : Words.tryAgain) : res.error }
+                                    }
+                                }.buttonStyle(.bordered)
+                            }
+                            Button(Words.cancelWord) { open = false }.buttonStyle(.bordered)
+                        }
+                    }
+                } else {
+                    Button(Words.changeTime) {
+                        open = true
+                        Task {
+                            let res = await Cloud.call("GET", "/slots", nil, token: Auth.shared.token)
+                            if res.ok { list = items(res.body["slots"]).map { x in var o = x.o; o["id"] = x.s("key"); return Item(o: o) } }
+                        }
+                    }.buttonStyle(.bordered)
+                }
+                if !error.isEmpty { Muted(error) }
+            }
+        }
+    }
+}

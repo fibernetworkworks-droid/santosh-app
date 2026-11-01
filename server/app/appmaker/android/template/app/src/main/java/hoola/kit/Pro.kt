@@ -586,3 +586,35 @@ fun SlotPicker() {
         }
     }
 }
+
+
+// ---------------------------------------------------------------- v0.377 CHHUTTI: move an order to another free slot
+/** On an order with a delivery slot: "Change time" opens the free slots; a tap asks the server (her customer before the
+ *  cut-off, staff any time) and refreshes the list. Needs a network (said plainly when there is none). */
+@Composable
+fun SlotChange(coll: String, r: Item) {
+    if (r.s("slot").isEmpty() || r.b("pending") || r.s("status") in listOf("Cancelled", "Delivered", "Done")) return
+    val c = ctx()
+    val scope = rememberCoroutineScope()
+    var open by remember(r.id) { mutableStateOf(false) }
+    var list by remember(r.id) { mutableStateOf<List<Item>>(emptyList()) }
+    if (!open) {
+        Btn(Strings.changeTime, kind = BtnKind.Ghost, small = true) {
+            open = true
+            scope.launch { val res = Cloud.call("GET", "/slots", null, Auth.token()); if (res.ok) list = arrList(res.body.optJSONArray("slots")) }
+        }
+        return
+    }
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        list.forEach { sl ->
+            Chip(sl.s("day") + " · " + sl.s("label")) {
+                scope.launch {
+                    val res = Cloud.call("POST", "/c/$coll/${r.id}/slot", JSONObject().put("slot", sl.s("key")), Auth.token())
+                    if (res.ok) { open = false; Db.refresh(coll) }
+                    else Act.toast(c, res.error.ifEmpty { if (res.offline) Strings.offline else Strings.tryAgain })
+                }
+            }
+        }
+        Chip(Strings.cancelWord) { open = false }
+    }
+}
