@@ -75,5 +75,5 @@ def test_styles_live_in_the_one_stylesheet():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.385.0"
-    assert "0.385.0+429" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.386.0"
+    assert "0.386.0+430" in (ROOT / "pubspec.yaml").read_text()

@@ -106,7 +106,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # v0.277 IndiaMART: B2B buying / sourcing words (the SOURCING intent below carries the sentence shapes)
     # v0.381 Game Desk: a game to make (the GAME intent below carries the sentence shapes)
     "gamedesk": ("godot", "game banao", "game bana", "game develop", "game design", "video game", "mobile game", "web game",
-                 "browser game", "khel banao", "गेम बनाओ", "गेम"),
+                 "browser game", "khel banao", "गेम बनाओ", "गेम",
+                 # v0.386 Studio Project: the long game project's words
+                 "game project", "game studio", "studio project", "game ka kaam", "game ka task"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",

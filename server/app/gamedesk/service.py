@@ -105,6 +105,12 @@ def _vdir(r: GameProject, n: int) -> Path:
     return _pdir(r.tenant_id, r.id) / f"v{n}"
 
 
+def _good(r: GameProject) -> list[dict]:
+    """Versions that played fine and that she did not send back (v0.386 Studio: a rejected task's version is skipped,
+    so the play link and the next change go back to the version before it)."""
+    return [v for v in (r.versions or []) if v.get("ok") and not v.get("rejected")]
+
+
 def shot_url(r: GameProject, n: int, name: str) -> str:
     return f"{play_url(r.token)}shots/v{n}/{name}" if r.token else ""
 
@@ -127,7 +133,7 @@ def play_file(token: str, path: str) -> tuple[Path | None, str]:
     if m:
         p = _vdir(r, int(m.group(1))) / "shots" / m.group(2)
         return (p, "image/png") if p.is_file() else (None, "")
-    good = [v for v in (r.versions or []) if v.get("ok")]
+    good = _good(r)
     if not good or not re.fullmatch(r"index(\.[a-z0-9.]+)?|index\.(html|js|wasm|pck|png|icon\.png|apple-touch-icon\.png|"
                                      r"audio\.worklet\.js|audio\.position\.worklet\.js)", path):
         return None, ""
@@ -141,7 +147,7 @@ def play_file(token: str, path: str) -> tuple[Path | None, str]:
 def view(r: GameProject, full: bool = False) -> dict[str, Any]:
     vers = r.versions or []
     last = vers[-1] if vers else {}
-    good = [v for v in vers if v.get("ok")]
+    good = _good(r)
     live = good[-1] if good else {}
     url = play_url(r.token) if good else ""
     say = {"designing": "Design doc likh raha hoon", "design_ready": "Design taiyaar hai: padhiye aur 'theek hai' boliye",
@@ -279,11 +285,11 @@ def _limits_build(tenant: str) -> None:
         raise GameError("Aaj ki game banane ki seema poori ho gayi; kal phir.")
 
 
-def change(tenant: str, pid: str, words: str) -> dict[str, Any]:
+def change(tenant: str, pid: str, words: str, task: str = "") -> dict[str, Any]:
     r = _get(tenant, pid)
     if r.status in BUSY:
         raise GameError("Abhi bana raha hoon; khatam hote hi badlav bataiye.")
-    if not any(v.get("ok") for v in (r.versions or [])):
+    if not bool(_good(r)):
         raise GameError("Abhi koi chalne wala version nahi; pehle design OK karke banwaiye.")
     words = re.sub(r"\s+", " ", str(words or "")).strip()[:1500]
     if not words:
@@ -292,10 +298,40 @@ def change(tenant: str, pid: str, words: str) -> dict[str, Any]:
     if why:
         raise GameError(why)
     _limits_build(tenant)
-    _save(r, status="queued", stage="line mein", pct=10, pending={"mode": "change", "words": words}, error="")
+    _save(r, status="queued", stage="line mein", pct=10, pending={"mode": "change", "words": words, "task": task or ""}, error="")
     _publish(r)
     _submit(r.id)
     return view(r)
+
+
+def restore(tenant: str, pid: str, n: int, task: str = "") -> dict[str, Any]:
+    """v0.386: an older version's code back as a NEW version (no model call; the same checks + playtest run again)."""
+    r = _get(tenant, pid)
+    if r.status in BUSY:
+        raise GameError("Abhi bana raha hoon; khatam hone dijiye.")
+    old = next((v for v in (r.versions or []) if v.get("n") == int(n or 0) and v.get("ok")), None)
+    if old is None or not (_vdir(r, old["n"]) / "proj" / "main.gd").is_file():
+        raise GameError("Woh version nahi mila (sirf chalne wale version wapas aa sakte hain).")
+    _limits_build(tenant)
+    _save(r, status="queued", stage="line mein", pct=10, error="",
+          pending={"mode": "restore", "n": old["n"], "words": f"version {old['n']} wapas", "task": task or ""})
+    _publish(r)
+    _submit(r.id)
+    return view(r)
+
+
+def reject_version(tenant: str, pid: str, n: int) -> None:
+    """v0.386: she sent a task back - that version stops being the live one (kept in history, marked)."""
+    with session() as s:
+        row = s.get(GameProject, pid)
+        if row is None or row.tenant_id != tenant:
+            raise GameError("Yeh game nahi mila.")
+        vers = [dict(v) for v in (row.versions or [])]
+        for v in vers:
+            if v.get("n") == int(n or 0):
+                v["rejected"] = True
+        row.versions = vers
+        row.updated_at = now()
 
 
 def cancel(tenant: str, pid: str) -> dict[str, Any]:
@@ -304,8 +340,10 @@ def cancel(tenant: str, pid: str) -> dict[str, Any]:
     if h:
         engine.kill(h)
     if r.status in BUSY:
+        task = (r.pending or {}).get("task", "")
         _save(r, status="cancelled", stage="rok diya", error="")
         _publish(r)
+        _studio_hook(r, task, None, "cancelled")
     return view(r)
 
 
@@ -349,7 +387,7 @@ def projects(tenant: str, limit: int = 30) -> list[dict[str, Any]]:
 def source_zip(tenant: str, pid: str) -> tuple[bytes, str]:
     """Her game's whole Godot project (opens in the Godot editor), newest good version. Never a key: there are none."""
     r = _get(tenant, pid)
-    good = [v for v in (r.versions or []) if v.get("ok")]
+    good = _good(r)
     if not good:
         raise GameError("Abhi koi chalne wala version nahi.")
     proj = _vdir(r, good[-1]["n"]) / "proj"
@@ -416,16 +454,33 @@ def run_job(pid: str) -> None:
                 _build(r, holder)
     except (ai.AiError, engine.EngineError, GameError) as e:
         STATS["failed"] += 1
-        _save(r, status="failed", stage="", error=str(e)[:400])
-        _publish(r)
+        _fail(r, str(e)[:400])
     except Exception as e:
         STATS["failed"] += 1
         log.exception("game job %s", pid)
-        _save(r, status="failed", stage="", error=f"andar ki gadbad: {type(e).__name__}")
-        _publish(r)
+        _fail(r, f"andar ki gadbad: {type(e).__name__}")
     finally:
         with _LOCK:
             _RUNNING.pop(pid, None)
+
+
+def _fail(r: GameProject, err: str) -> None:
+    task = (r.pending or {}).get("task", "")
+    # a game that already plays stays 'done' (its live version still works); only a first build is 'failed'
+    _save(r, status="done" if _good(r) else "failed", stage="", error=err, pending={})
+    _publish(r)
+    _studio_hook(r, task, None, err)
+
+
+def _studio_hook(r: GameProject, task: str, ver: dict | None, err: str = "") -> None:
+    """v0.386 Studio Project: a build that was a board task tells the board (review / blocked / back to do)."""
+    if not task:
+        return
+    try:
+        from . import studio
+        studio.after_build(r.tenant_id, task, ver, err)
+    except Exception:                                   # noqa: BLE001 - the game itself is already saved
+        log.exception("studio hook %s", task)
 
 
 def _design(r: GameProject) -> None:
@@ -447,7 +502,7 @@ def _cancelled(r: GameProject, holder: dict) -> bool:
 
 
 def _current_files(r: GameProject) -> dict[str, str]:
-    good = [v for v in (r.versions or []) if v.get("ok")]
+    good = _good(r)
     if not good:
         return {}
     proj = _vdir(r, good[-1]["n"]) / "proj"
@@ -471,8 +526,15 @@ def _build(r: GameProject, holder: dict) -> None:
     shutil.rmtree(vdir, ignore_errors=True)
     vdir.mkdir(parents=True)
     _stage(r, "writing", "code likh raha hoon" if mode == "build" else "badlav kar raha hoon", 30)
-    files = ai.change(r.design, _current_files(r), words, r.orientation, size) if mode == "change" else \
-        ai.code(r.design, r.orientation, size)
+    task = (r.pending or {}).get("task", "")
+    if mode == "restore":
+        src = _vdir(r, int((r.pending or {}).get("n") or 0)) / "proj"
+        files = {p.name: p.read_text(encoding="utf-8") for p in src.glob("*.gd") if p.name != "hoola_probe.gd"}
+        files["__notes__"] = f"Version {(r.pending or {}).get('n')} ka code wapas (koi naya code nahi likha)."
+    elif mode == "change":
+        files = ai.change(r.design, _current_files(r), words, r.orientation, size)
+    else:
+        files = ai.code(r.design, r.orientation, size)
     notes = files.pop("__notes__", "")
     checks: list[dict[str, Any]] = []
     fixed = 0
@@ -516,7 +578,8 @@ def _build(r: GameProject, holder: dict) -> None:
     if fixed and ok:
         STATS["fixed"] += 1
     errors = [] if ok else (checks[-1]["errors"] if checks else ["kuch nahi bana"])
-    ver = {"n": n, "at": now().isoformat(), "words": words, "ok": ok, "notes": notes, "fixed": fixed, "checks": checks[-4:],
+    ver = {"n": n, "at": now().isoformat(), "words": words, "ok": ok, "task": task, "base": (_good(r)[-1]["n"] if _good(r) else 0),
+           "src": _src_hash(vdir / "proj"), "notes": notes, "fixed": fixed, "checks": checks[-4:],
            "errors": errors[:6], "files": sorted(files), "shots": play.get("shots", []) if ok else [],
            "warnings": play.get("warnings", []),
            "numbers": {"fps_server": play.get("fps"), "load_s": play.get("load_s"),
@@ -528,16 +591,28 @@ def _build(r: GameProject, holder: dict) -> None:
         _save(r, versions=(r.versions or []) + [ver], token=token, status="done", stage="", pct=100, pending={}, error="")
         _trim_builds(r)
     else:
-        had_good = any(v.get("ok") for v in (r.versions or []))
+        had_good = bool(_good(r))
         _save(r, versions=(r.versions or []) + [ver], token=token, status="done" if had_good else "failed", stage="",
               pct=100, pending={}, error=("Naya badlav nahi chala, purana version abhi bhi khelne layak hai: " if had_good
                                           else "Game nahi chal paya: ") + "; ".join(errors[:2])[:300])
     _publish(r)
+    _studio_hook(r, task, ver, "" if ok else "; ".join(errors[:3])[:400])
+
+
+def _src_hash(proj: Path) -> str:
+    """The code's fingerprint (every .gd / project file): the nightly build proves the same code still builds the same."""
+    import hashlib
+    h = hashlib.sha256()
+    for p in sorted(proj.glob("*")):
+        if p.is_file() and p.suffix in (".gd", ".godot", ".tscn", ".cfg"):
+            h.update(p.name.encode())
+            h.update(p.read_bytes())
+    return h.hexdigest()[:16]
 
 
 def _trim_builds(r: GameProject) -> None:
     """Keep the Web builds of the newest few good versions (each ~40 MB); older versions keep code + screenshots."""
-    good = [v["n"] for v in (r.versions or []) if v.get("ok")]
+    good = [v["n"] for v in _good(r)]
     for n in good[:-KEEP_BUILDS]:
         shutil.rmtree(_vdir(r, n) / "build", ignore_errors=True)
 

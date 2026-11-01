@@ -347,6 +347,7 @@ async def tick() -> None:
     eventlog_jobs()
     aboutme_jobs()
     applogic_jobs()
+    game_studio_jobs()
 
 
 _logic_task: "asyncio.Task | None" = None
@@ -363,6 +364,15 @@ def applogic_jobs() -> None:
         _logic_task = asyncio.get_running_loop().create_task(asyncio.to_thread(LE.tick))
     except Exception:
         log.exception("app logic jobs failed")
+
+
+def game_studio_jobs() -> None:
+    """v0.386 Studio Project: morning summaries, nightly builds, auto next task (self-throttled to every 4 minutes)."""
+    try:
+        from .gamedesk import studio
+        studio.jobs()
+    except Exception:
+        log.exception("game studio jobs failed")
 
 
 _about_last = 0.0

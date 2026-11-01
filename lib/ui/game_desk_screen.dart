@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'game_studio_screen.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -281,6 +282,7 @@ class _GameDeskScreenState extends State<GameDeskScreen> {
                 style: TextStyle(color: ready ? C.muted : C.bad, fontSize: 13.5, height: 1.35)),
             const SizedBox(height: 12),
             if (!_loaded) const Center(child: CircularProgressIndicator()) else _newGame(ready),
+            if (_loaded) GameStudioList(key: ValueKey(games.length), app: widget.app, games: games),
             for (final g in games) _card(g),
           ]),
         ),

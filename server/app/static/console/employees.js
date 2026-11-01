@@ -694,11 +694,13 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
                writing: ['v', 'Writing code'], building: ['v', 'Building'], testing: ['v', 'Playing it'], done: ['ok', 'Ready to play'],
                failed: ['bad', 'Did not work'], cancelled: ['', 'Stopped']};
   const BUSYG = ['designing', 'queued', 'writing', 'building', 'testing'];
+  let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   async function game(el) {
     clearTimeout(GTIMER);
+    if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
-    let d;
-    try { d = await api('GET', '/api/game'); }
+    let d, sp = {projects: []};
+    try { [d, sp] = await Promise.all([api('GET', '/api/game'), api('GET', '/api/gamestudio').catch(() => ({projects: []}))]); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>Game Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
     const h = d.health || {};
     el.innerHTML = `<div class="vh"><h2>Game Desk</h2><span class="muted em-sub">Original games from your words, built in Godot 4 and played by Hoola before you see them.</span>
@@ -708,7 +710,17 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="acts"><select id="gdOr" aria-label="Screen">${(d.orientations || ['portrait']).map(o => `<option value="${esc(o)}">${esc(o[0].toUpperCase() + o.slice(1))}</option>`).join('')}</select>
           <button class="btn go" type="button" id="gdNew"${h.ready ? '' : ' disabled'}>Write the design</button></div>
         <p class="muted em-small">A short design doc comes first; nothing is built until you say OK. The play link stays private until you share it.</p></div>
+      ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
+    el.querySelectorAll('[data-gs-open]').forEach(b => b.addEventListener('click', () => { GS_OPEN = b.dataset.gsOpen; game(el); }));
+    el.querySelector('#gsNew')?.addEventListener('click', async e => {
+      const game_ = el.querySelector('#gsGame').value, goal = el.querySelector('#gsGoal').value.trim();
+      if (!game_) { toast('Pick a game that already plays.', true); return; }
+      e.target.disabled = true;
+      try { const p = await api('POST', '/api/gamestudio', {game: game_, goal}); GS_OPEN = p.id; toast('Project started. Add tasks or let Hoola plan them.'); }
+      catch (err) { toast(err.message, true); }
+      game(el);
+    });
     el.querySelector('#gdNew')?.addEventListener('click', async e => {
       const brief = el.querySelector('#gdBrief').value.trim();
       if (brief.length < 8) { toast('Write your idea in 2-3 lines first.', true); return; }
@@ -720,6 +732,124 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     el.querySelectorAll('[data-gd]').forEach(b => b.addEventListener('click', () => gact(el, b.dataset.gd, b.dataset.id, b)));
     el.querySelectorAll('img[data-qr]').forEach(img => { try { const q = window.qrcode(0, 'M'); q.addData(img.dataset.qr); q.make(); img.src = q.createDataURL(4, 2); } catch { img.remove(); } });
     if ((d.games || []).some(g => BUSYG.includes(g.status))) GTIMER = setTimeout(() => { if (visible(el)) game(el); }, 4000);
+  }
+
+  // ---------------------------------------------------------------- v0.386 Studio Project (long game projects)
+  const GS_COLS = [['todo', 'To do'], ['working', 'Hoola working'], ['review', 'Waiting for your OK'], ['blocked', 'Stuck'], ['done', 'Done']];
+  function gsBars(ms) {
+    return `<div class="gs-ms">${(ms || []).map(m => `<div class="gs-m"><div class="gs-mh"><b>${esc(m.name)}</b><span class="muted">${num(m.done)}/${num(m.total)}${m.target ? ' · ' + esc(m.target) : ''}</span></div>
+      <div class="pbar"><i style="width:${Math.max(0, Math.min(100, m.pct || 0))}%"></i></div></div>`).join('')}</div>`;
+  }
+  function gsHome(projects, games) {
+    const free = games.filter(g => g.version > 0 && !projects.some(p => p.game && p.game.id === g.id));
+    return `<section class="tile gl gs-home"><h3>Studio projects</h3>
+      <p class="muted em-small">A long project around one game: a task board, milestones, a log of decisions, a nightly build and a morning report. Each task is one small change that waits for your OK.</p>
+      ${projects.map(p => `<article class="gs-pcard"><div class="em-h"><h4>${esc(p.number)} · ${esc(p.title)}</h4>
+          ${p.counts && p.counts.review ? tag('warn', p.counts.review + ' waiting for your OK') : p.counts && p.counts.working ? tag('v', 'Hoola working') : tag('', (p.counts?.todo || 0) + ' to do')}</div>
+        ${gsBars(p.milestones)}<div class="acts"><button class="btn go" type="button" data-gs-open="${esc(p.id)}">Open board</button></div></article>`).join('')}
+      ${free.length ? `<div class="acts gs-start"><select id="gsGame" aria-label="Game">${free.map(g => `<option value="${esc(g.id)}">${esc(g.number)} · ${esc(g.title)}</option>`).join('')}</select>
+        <input id="gsGoal" maxlength="1500" placeholder="Goal, e.g. release on the Play Store in 6 months" aria-label="Project goal">
+        <button class="btn soft" type="button" id="gsNew">Start a long project</button></div>` : (projects.length ? '' : '<p class="muted em-small">Make a game first; once it plays you can turn it into a long project.</p>')}
+    </section>`;
+  }
+  function gsTask(t, p) {
+    const ms = (p.milestones || []).find(m => m.key === t.milestone);
+    const b = (a, label, cls = 'soft') => `<button class="btn ${cls}" type="button" data-gst="${a}" data-id="${esc(t.number)}">${label}</button>`;
+    return `<div class="gs-task gs-p${num(t.priority)}"><div class="gs-th"><b>${esc(t.number)}</b> ${esc(t.title)}</div>
+      <div class="gs-meta">${esc(ms ? ms.name : t.milestone)} · ${esc(t.kind)}${t.source !== 'her' ? ' · by Hoola' : ''}${t.version ? ' · v' + num(t.version) : ''}</div>
+      ${t.detail ? `<div class="gs-detail">${esc(t.detail)}</div>` : ''}${t.notes && t.status === 'review' ? `<div class="gs-detail">${esc(t.notes)}</div>` : ''}
+      ${t.error ? `<div class="badc em-small">${esc(t.error)}</div>` : ''}
+      <div class="acts">${t.status === 'todo' ? b('start', 'Build now', 'go') + b('drop', 'Drop') : ''}
+        ${t.status === 'review' ? b('ok', 'OK', 'go') + b('back', 'Send back') : ''}
+        ${t.status === 'blocked' ? b('start', 'Try again', 'go') + b('drop', 'Drop') : ''}
+        ${t.status === 'done' ? b('back', 'Undo') : ''}</div></div>`;
+  }
+  async function gsBoard(el, id) {
+    clearTimeout(GTIMER);
+    let p;
+    try { p = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}`); }
+    catch (e) { GS_OPEN = ''; toast(e.message, true); return game(el); }
+    const g = p.game || {}, n = p.night || {};
+    const url = typeof g.play_url === 'string' && /^(https:\/\/|http:\/\/127\.0\.0\.1|\/play\/)/.test(g.play_url) ? g.play_url : '';
+    const cols = GS_COLS.map(([k, label]) => {
+      const ts = (p.tasks || []).filter(t => t.status === k);
+      const show = k === 'done' ? ts.slice(-12).reverse() : ts;
+      return `<div class="gs-col gs-c-${k}"><h4>${label} <span class="muted">${num(ts.length)}</span></h4>${show.map(t => gsTask(t, p)).join('') || '<p class="muted em-small">Nothing here.</p>'}</div>`;
+    }).join('');
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gsBack">← Game Desk</button><h2>${esc(p.number)} · ${esc(p.title)}</h2>
+        ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}</div>
+      <p class="muted em-sub">${esc(p.goal || '')}</p>
+      ${gsBars(p.milestones)}
+      <div class="tile gl gs-add"><input id="gsT" maxlength="200" placeholder="New task, one small change: e.g. add a nitro boost (double tap)" aria-label="New task">
+        <select id="gsM" aria-label="Milestone">${(p.milestones || []).map(m => `<option value="${esc(m.key)}"${m.key === p.milestone ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</select>
+        <select id="gsP" aria-label="Priority"><option value="2">Normal</option><option value="1">High</option><option value="3">Low</option></select>
+        <button class="btn go" type="button" id="gsAdd">Add task</button>
+        <button class="btn soft" type="button" id="gsPlan">Let Hoola plan the next tasks</button></div>
+      <div class="gs-board" id="gsBoard">${cols}</div>
+      <div class="gs-grid">
+        <section class="tile gl"><h3>Decisions</h3>
+          <div class="acts"><input id="gsD" maxlength="600" placeholder="A decision, e.g. no guns: it is for kids" aria-label="Decision"><button class="btn soft" type="button" id="gsDec">Save</button></div>
+          <div class="acts"><input id="gsQ" maxlength="300" placeholder="Ask why, e.g. why is the jump so high?" aria-label="Ask why"><button class="btn soft" type="button" id="gsWhy">Find</button></div>
+          <div id="gsWhyOut"></div>
+          <ul class="gs-log">${(p.decisions || []).slice(0, 30).map(d => `<li><span class="muted">${esc((d.at || '').slice(0, 10))}</span> ${esc(d.text)}${d.why ? ` <span class="muted">- ${esc(d.why)}</span>` : ''}</li>`).join('')}</ul></section>
+        <section class="tile gl"><h3>Nightly build</h3>
+          <p class="em-small">${n.at ? `${n.ok ? tag('ok', 'Passed') : tag('bad', 'Failed')} ${esc((n.at || '').slice(0, 16).replace('T', ' '))} · v${num(n.version)}${n.fps ? ' · ' + num(n.fps) + ' fps' : ''}${n.load_s ? ' · ' + num(n.load_s) + ' s to start' : ''}` : 'No nightly build yet.'}</p>
+          ${n.errors && n.errors.length && !n.ok ? `<p class="badc em-small">${esc(n.errors.slice(0, 2).join('; '))}</p>` : ''}
+          ${n.suspects && n.suspects.length ? `<p class="em-small">Probably from: ${esc(n.suspects.join(', '))}</p>` : ''}
+          <div class="acts"><button class="btn soft" type="button" id="gsNight">Run it now</button><button class="btn soft" type="button" id="gsSum">Morning report now</button></div>
+          <pre class="gs-sum" id="gsSumOut" hidden></pre>
+          <h3>Settings</h3>
+          <label class="gs-sw"><input type="checkbox" id="gsAuto"${p.auto ? ' checked' : ''}> After my OK, start the next task by itself</label>
+          <label class="gs-sw"><input type="checkbox" id="gsNo"${p.nightly_on ? ' checked' : ''}> Build and play it every night</label>
+          <label class="gs-sw"><input type="checkbox" id="gsSo"${p.summary_on ? ' checked' : ''}> Morning report at <input type="number" id="gsH" min="5" max="12" value="${num(p.summary_hour)}" aria-label="Report hour"> am</label>
+          <div class="acts"><button class="btn soft" type="button" id="gsGh">Save code to my GitHub</button>
+            <button class="btn soft" type="button" id="gsPause">${p.status === 'paused' ? 'Resume project' : 'Pause project'}</button>
+            <button class="btn soft em-leave" type="button" id="gsArch">Archive</button></div></section>
+        <section class="tile gl"><h3>Versions</h3><ul class="gs-log">${(p.versions || []).map(v => `<li>${v.live ? tag('ok', 'Live') : v.rejected ? tag('', 'Sent back') : v.ok ? '' : tag('bad', 'Failed')}
+          <b>v${num(v.n)}</b> ${esc(v.task ? v.task + ' ' + v.task_title : (v.words || 'first build'))} <span class="muted">${esc((v.at || '').slice(0, 10))}</span>
+          ${v.ok && !v.live ? `<button class="btn soft gs-mini" type="button" data-gsv="${num(v.n)}">Bring back</button>` : ''}</li>`).join('')}</ul></section>
+      </div>`;
+    const q = encodeURIComponent(p.id);
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsAdd').addEventListener('click', () => {
+      const title = el.querySelector('#gsT').value.trim();
+      if (title.length < 3) { toast('Write the task in one line.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/tasks`, {title, milestone: el.querySelector('#gsM').value, priority: el.querySelector('#gsP').value}), 'Added to To do.');
+    });
+    el.querySelector('#gsPlan').addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Planning…';
+      go(() => api('POST', `/api/gamestudio/${q}/plan`, {words: el.querySelector('#gsT').value.trim()}), 'Hoola added the next tasks to To do. Drop any you do not want.'); });
+    el.querySelectorAll('[data-gst]').forEach(b => b.addEventListener('click', () => {
+      const a = b.dataset.gst, t = encodeURIComponent(b.dataset.id);
+      if (a === 'start') return go(() => api('POST', `/api/gamestudio/${q}/start`, {task: b.dataset.id}), 'Building. It will wait for your OK.');
+      let note = '';
+      if (a === 'back') { note = prompt('What was wrong? (Hoola tries again with this)') ?? null; if (note === null) return; }
+      if (a === 'ok') { note = prompt('Anything to remember about this? (optional, saved as a decision)') || ''; }
+      if (a === 'drop' && !confirm('Drop this task?')) return;
+      go(() => api('POST', `/api/gamestudio/${q}/task/${t}`, {action: a, note}));
+    }));
+    el.querySelector('#gsDec').addEventListener('click', () => { const text = el.querySelector('#gsD').value.trim(); if (text) go(() => api('POST', `/api/gamestudio/${q}/decide`, {text}), 'Saved.'); });
+    el.querySelector('#gsWhy').addEventListener('click', async () => {
+      const qq = el.querySelector('#gsQ').value.trim(); if (!qq) return;
+      try { const r = await api('GET', `/api/gamestudio/${q}/why?q=${encodeURIComponent(qq)}`);
+        el.querySelector('#gsWhyOut').innerHTML = r.found.length ? `<ul class="gs-log">${r.found.map(f => `<li><b>${esc(f.text)}</b>${f.why ? ' - ' + esc(f.why) : ''} <span class="muted">${esc((f.at || '').slice(0, 10))}</span></li>`).join('')}</ul>`
+          : '<p class="muted em-small">Nothing in the log about this.</p>'; } catch (e) { toast(e.message, true); }
+    });
+    el.querySelector('#gsNight').addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Building…'; go(() => api('POST', `/api/gamestudio/${q}/nightly`)); });
+    el.querySelector('#gsSum').addEventListener('click', async () => {
+      try { const r = await api('GET', `/api/gamestudio/${q}/summary`); const o = el.querySelector('#gsSumOut'); o.textContent = r.text; o.hidden = false; } catch (e) { toast(e.message, true); }
+    });
+    const save = () => go(() => api('POST', `/api/gamestudio/${q}/settings`, {auto: el.querySelector('#gsAuto').checked, nightly_on: el.querySelector('#gsNo').checked,
+      summary_on: el.querySelector('#gsSo').checked, summary_hour: Number(el.querySelector('#gsH').value) || 9}), 'Saved.');
+    ['#gsAuto', '#gsNo', '#gsSo', '#gsH'].forEach(s => el.querySelector(s).addEventListener('change', save));
+    el.querySelector('#gsPause').addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/settings`, {status: p.status === 'paused' ? 'active' : 'paused'})));
+    el.querySelector('#gsArch').addEventListener('click', () => { if (!confirm('Archive this project? The game stays on the desk.')) return;
+      go(async () => { await api('POST', `/api/gamestudio/${q}/settings`, {status: 'archived'}); GS_OPEN = ''; }); });
+    el.querySelector('#gsGh').addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/github`, {private: true}), 'The GitHub card is in your chat; your tap sends it.'));
+    el.querySelectorAll('[data-gsv]').forEach(b => b.addEventListener('click', () => {
+      if (confirm(`Bring back version ${b.dataset.gsv}? It is built and played again as a new version.`)) go(() => api('POST', `/api/gamestudio/${q}/restore`, {n: Number(b.dataset.gsv)}), 'Bringing it back…');
+    }));
+    if ((p.counts || {}).working || BUSYG.includes(g.status)) GTIMER = setTimeout(() => { if (visible(el) && GS_OPEN === id) gsBoard(el, id); }, 5000);
   }
 
   function gcard(g) {

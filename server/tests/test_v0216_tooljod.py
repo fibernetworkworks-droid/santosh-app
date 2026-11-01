@@ -112,8 +112,8 @@ def _assert_api_valid(msgs: list[dict]) -> None:
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.385.0"
-    assert "0.385.0+429" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.386.0"
+    assert "0.386.0+430" in (REPO / "pubspec.yaml").read_text()
 
 
 def test_tool_tailed_array_gets_result_not_text_nudge(claude_only):

@@ -14423,3 +14423,44 @@ Owner: "GO NEXT PHASE" (after: bolts / contact, CFD, fatigue were the biggest ga
 - NOT built (said to her): true contact / bolt-preload FEA between assembly parts (an assembly is still one glued
   body in FEA; bolts are checked by the joint calculation), turbulent (RANS) CFD, acoustics simulation.
 - Tests: tests/test_v0381_cad_next.py (10).
+
+## v0.386.0 STUDIO PROJECT (built as 0.378.0 / 0.382.0) (Hoola Game Engine plan, Phase 2) - 1 Nov 2026
+
+Owner: "GO PHASE 2" (after "Studio Project ... WHAT THIS TASK DO"). Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 4 + phase table.
+
+What it is: a game that lives for weeks / months / 1,000 days. A Studio Project (`server/app/gamedesk/studio.py`) wraps
+ONE Game Desk game (`gamedesk/service.py` still owns the code, versions and the private play link).
+
+- Tables `game_studios`, `game_tasks`, `game_decisions` (registered in `db.init_db`, self-heal `studio.ensure_tables`).
+- Task board: todo -> working -> review (built + played fine, waits for HER OK) -> done; blocked (build failed, live game
+  untouched, "Try again"); dropped. Each task = ONE small change, built by the Phase 1 pipeline with the task's words
+  (`service.change(..., task=id)` -> `_build` -> `_studio_hook` -> `studio.after_build`).
+- Precision rules in code: one task builds at a time; no task starts while another waits for her OK (so "wapas" undoes
+  exactly one task); "wapas" marks that version `rejected` (`service._good` skips it: play link + next change go back to
+  the version before) and puts the task back in To do with her reason; a done task can be undone only if nothing was built
+  after it. Every version records `task`, `base` and `src` (code fingerprint).
+- Milestones proto / playable / alpha / beta / release (rename + target dates), progress counted in code.
+- `plan` = Opus producer proposes 6-15 small tasks (reads the design, goal, board and her decisions); the Phase 1 refusals
+  (real money, weapon targeting, clones) apply to every task.
+- Decisions log: her notes on OK, sends-back, manual decisions; `why(q)` returns only matching decisions / finished tasks
+  ("found" empty = no record, never a guess).
+- Nightly build (`studio.nightly`, 1-5 am her time, worker `game_studio_jobs` every 4 min): the live code rebuilt and
+  replayed from scratch in a temp dir, no model call; same-code check; fps drop > 25 % vs the last good night; a failure
+  names the tasks since the last good night and adds a priority-1 fix task (source nightly).
+- Morning report (`studio.summary`, at her hour 5-12, once a day, only when the project moved in 14 days): yesterday,
+  waiting for her OK, building, stuck, last night, today, milestone %. Written in code.
+- Auto (default on): after her OK the next task starts; an idle board picks its next task from the worker.
+- Restore: any good old version's code back as a NEW version (`service.restore`, mode restore, no model call, full checks).
+- GitHub (`gamedesk/github.py`): the usual site_github card (her tap only, `site.github.push` routes `game:` exports):
+  Godot project + DESIGN / TASKS / DECISIONS / CHANGELOG / README.
+- `service._fail`: a failed CHANGE on a game that already plays leaves it `done` (live version still works).
+- Tool `game_studio` (gamedesk family: new / list / status / add / plan / start / ok / back / drop / decide / why /
+  summary / nightly / restore / settings / github; owner-only writes; hired-only). Router words: "game project",
+  "game studio", "studio project", "game ka kaam", "game ka task".
+- API `/api/gamestudio*` (see `gamedesk/api.py` docstring). Console: Game Desk > Studio projects > board (`employees.js`
+  gsHome / gsBoard, `gs-*` CSS). Phone: `lib/ui/game_studio_screen.dart` (GameStudioList on the Game Desk + GameStudioScreen).
+- Verified: `test_v0386_game_studio.py` 14 tests (fake Godot) + a REAL Godot 4.7.2 run in the sandbox (game built ->
+  task built -> OK -> nightly rebuilt the same code, 60 fps, 1.3 s load, summary right).
+- Not verified: the phone screen compiles only in CI (no Flutter in the sandbox); the nightly on the VPS needs Godot there
+  (installed v0.370 via `deploy/setup_godot.py`).
+

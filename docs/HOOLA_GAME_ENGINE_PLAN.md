@@ -219,7 +219,7 @@ All share one project memory; each can be hired alone (a solo developer hires tw
 | Phase | What | Rough time | Unlocks |
 |---|---|---|---|
 | **1 (done, v0.370)** | Game Desk: design doc → Godot → test-play → play link | done | T1 |
-| **2 Studio Project** | Long-lived projects: GitHub repo, task board, milestones, decisions log, nightly build + test, producer summary | 6-8 weeks | T1-T2 over weeks |
+| **2 Studio Project (BUILT, v0.386.0)** | Long-lived projects: task board, milestones, decisions log, nightly build + test, morning summary, versions + restore, her GitHub (card) | built | T1-T2 over weeks |
 | **3 Game Bible + specs as data** | Bible, balance sheets + simulation, templates / generators for enemies, levels, quests, UI | 6-8 weeks | repeatable content at T2 |
 | **4 Asset pipeline** | 2D art (style-locked), Blender 3D props / characters, audio (music, SFX, voice), validators, asset store | 8-12 weeks | real-looking T2 / T3 |
 | **5 QA farm** | Bot playthroughs, replay tests, golden screenshots, device performance, bug tracker | 6 weeks | precision at scale |

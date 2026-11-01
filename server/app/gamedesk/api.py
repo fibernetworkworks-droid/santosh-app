@@ -8,7 +8,23 @@ POST   /api/game/{id}/change           {words}      a new version from the curre
 POST   /api/game/{id}/cancel
 DELETE /api/game/{id}
 GET    /api/game/{id}/source           her whole Godot project as a zip (opens in the Godot editor)
-GET    /play/{token}/{path}            public but secret: the playable build + screenshots (strict CSP, gzip)"""
+GET    /play/{token}/{path}            public but secret: the playable build + screenshots (strict CSP, gzip)
+
+v0.386 Studio Project (long game projects):
+GET    /api/gamestudio                 her projects (board counts, milestones, next tasks, last night)
+POST   /api/gamestudio                 {title?, goal?, game? (G-0001) | brief?, orientation?, conversation_id?}
+GET    /api/gamestudio/{id}            the whole project: tasks, milestones, decisions, nightly, versions
+POST   /api/gamestudio/{id}/settings   {title, goal, auto, nightly_on, summary_on, summary_hour, status, milestones}
+POST   /api/gamestudio/{id}/tasks      {title, detail?, milestone?, kind?, priority?}
+POST   /api/gamestudio/{id}/plan       {words?}  Hoola proposes the next small tasks into To do
+POST   /api/gamestudio/{id}/start      {task?}   build one task (the next one if none given)
+POST   /api/gamestudio/{id}/task/{t}   {action: ok|back|drop|todo|edit, note?, title?, detail?, milestone?, priority?}
+POST   /api/gamestudio/{id}/decide     {text, why?}
+GET    /api/gamestudio/{id}/why?q=     decisions + finished tasks about q
+GET    /api/gamestudio/{id}/summary    the morning summary now
+POST   /api/gamestudio/{id}/nightly    build + play the live version again now
+POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
+POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)"""
 from __future__ import annotations
 
 import asyncio
@@ -75,6 +91,104 @@ def make_router(require_key, current_tenant) -> APIRouter:
         data, name = await call(service.source_zip, tenant, pid)
         return Response(data, media_type="application/zip",
                         headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "private, no-store"})
+
+    # ------------------------------------------------------------ v0.386 Studio Project
+    from . import studio as S
+
+    @r.get("/api/gamestudio", dependencies=[Depends(require_key)])
+    async def st_home(tenant: str = Depends(current_tenant)):
+        return {"projects": await call(S.studios, tenant), "health": service.health(),
+                "milestones": S.MILESTONES, "kinds": list(S.KINDS)}
+
+    @r.post("/api/gamestudio", dependencies=[Depends(require_key)])
+    async def st_new(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await call(S.create, tenant, str(b.get("conversation_id") or ""), str(b.get("title") or ""),
+                          str(b.get("goal") or ""), str(b.get("game") or ""), str(b.get("brief") or ""),
+                          str(b.get("orientation") or "portrait"))
+
+    @r.get("/api/gamestudio/{sid}", dependencies=[Depends(require_key)])
+    async def st_one(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(S.get, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/settings", dependencies=[Depends(require_key)])
+    async def st_set(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        keep = ("title", "goal", "auto", "nightly_on", "summary_on", "summary_hour", "status", "milestones")
+        return await call(S.settings, tenant, sid, **{k: b.get(k) for k in keep if k in b})
+
+    @r.post("/api/gamestudio/{sid}/tasks", dependencies=[Depends(require_key)])
+    async def st_add(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        try:
+            pr = int(b.get("priority") or 2)
+        except (TypeError, ValueError):
+            pr = 2
+        return await call(S.add_task, tenant, sid, str(b.get("title") or ""), str(b.get("detail") or ""),
+                          str(b.get("milestone") or ""), str(b.get("kind") or "feature"), pr)
+
+    @r.post("/api/gamestudio/{sid}/plan", dependencies=[Depends(require_key)])
+    async def st_plan(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        return await call(S.plan, tenant, sid, str(_b(body).get("words") or ""))
+
+    @r.post("/api/gamestudio/{sid}/start", dependencies=[Depends(require_key)])
+    async def st_start(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        await call(S.start_task, tenant, sid, str(_b(body).get("task") or ""))
+        return await call(S.get, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/task/{tid}", dependencies=[Depends(require_key)])
+    async def st_task(sid: str, tid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        a = str(b.get("action") or "")
+        note = str(b.get("note") or "")
+        if a == "ok":
+            return (await call(S.approve_task, tenant, sid, tid, note))["studio"]
+        if a == "back":
+            return await call(S.reject_task, tenant, sid, tid, note)
+        if a in ("drop", "todo"):
+            await call(S.edit_task, tenant, sid, tid, status="dropped" if a == "drop" else "todo")
+        elif a == "edit":
+            await call(S.edit_task, tenant, sid, tid, title=b.get("title"), detail=b.get("detail"),
+                       milestone=b.get("milestone"), priority=b.get("priority"))
+        else:
+            raise HTTPException(400, "action = ok | back | drop | todo | edit")
+        return await call(S.get, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/decide", dependencies=[Depends(require_key)])
+    async def st_decide(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await call(S.decide, tenant, sid, str(b.get("text") or ""), str(b.get("why") or ""))
+
+    @r.get("/api/gamestudio/{sid}/why", dependencies=[Depends(require_key)])
+    async def st_why(sid: str, q: str = "", tenant: str = Depends(current_tenant)):
+        return await call(S.why, tenant, sid, q)
+
+    @r.get("/api/gamestudio/{sid}/summary", dependencies=[Depends(require_key)])
+    async def st_summary(sid: str, tenant: str = Depends(current_tenant)):
+        return {"text": await call(S.summary, tenant, sid)}
+
+    @r.post("/api/gamestudio/{sid}/nightly", dependencies=[Depends(require_key)])
+    async def st_night(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(S.nightly, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/restore", dependencies=[Depends(require_key)])
+    async def st_restore(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        try:
+            n = int(_b(body).get("n") or 0)
+        except (TypeError, ValueError):
+            n = 0
+        return await call(S.restore, tenant, sid, n)
+
+    @r.post("/api/gamestudio/{sid}/github", dependencies=[Depends(require_key)])
+    async def st_github(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        from ..site.github import GithubError
+        from . import github as GGH
+        b = _b(body)
+        try:
+            return await call(GGH.request, tenant, sid, str(b.get("repo") or ""), b.get("private") is not False,
+                              str(b.get("conversation_id") or ""))
+        except GithubError as e:
+            raise HTTPException(400, str(e))
 
     @r.get("/play/{token}")
     def play_root(token: str):

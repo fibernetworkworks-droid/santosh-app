@@ -2362,3 +2362,34 @@ body.albon{overflow:hidden}
 .stlogic .stmems li{flex-wrap:wrap}
 .stlogic details{margin-top:10px;font-size:13px}
 .stlogic textarea[name=j]{font-family:ui-monospace,monospace;font-size:12.5px}
+
+/* v0.386 STUDIO PROJECT - the long game project board in the Game Desk */
+.gs-home{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.gs-pcard{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.gs-pcard h4{margin:0;font-size:15px;font-weight:600}
+.gs-start,.gs-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.gs-start input,.gs-add input,.gs-grid input:not([type=checkbox]),.gs-start select,.gs-add select{font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.gs-start input,.gs-add #gsT{flex:1 1 260px;min-width:0}
+.gs-add{margin:12px 0}
+.gs-ms{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:8px 0}
+.gs-mh{display:flex;justify-content:space-between;gap:6px;font-size:13px;margin-bottom:4px}
+.gs-mh b{font-weight:600}
+.gs-board{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px}
+.gs-col{background:var(--panel,var(--bg));border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:200px}
+.gs-col h4{margin:0;font-size:14px;font-weight:600}
+.gs-c-review{border-color:var(--warn,#c98a00)}
+.gs-task{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+.gs-task.gs-p1{border-left:3px solid var(--bad,#c0392b)}
+.gs-th{line-height:1.35}
+.gs-meta{font-size:12.5px;color:var(--mut)}
+.gs-detail{font-size:13px;color:var(--mut);white-space:pre-wrap}
+.gs-task .acts{display:flex;flex-wrap:wrap;gap:6px}
+.gs-task .btn,.gs-mini{padding:4px 10px;font-size:13px;min-height:32px}
+.gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:16px}
+.gs-grid .acts{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+.gs-grid .acts input{flex:1 1 180px;min-width:0}
+.gs-log{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13.5px;max-height:360px;overflow:auto}
+.gs-sw{display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0}
+.gs-sw input[type=number]{width:56px}
+.gs-sum{white-space:pre-wrap;font:inherit;font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+@media (max-width:720px){.gs-board{grid-template-columns:repeat(5,minmax(240px,86vw))}}
