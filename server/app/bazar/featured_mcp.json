@@ -1,5 +1,5 @@
 {
- "source": "Official vendor MCP endpoints for apps in Claude's connector directory, researched 2026-10-19; Zoho MCP (all apps, India data centre) added 2026-10-30 from help.zoho.com",
+ "source": "Official vendor MCP endpoints for apps in Claude's connector directory, researched 2026-10-19; Zoho MCP (all apps, India data centre) added 2026-10-30 from help.zoho.com; MoSPI, Upstox, Dhan, Zerodha Kite, FYERS, Groww added 2026-11-01 (endpoints probed live: initialize / OAuth metadata / DCR)",
  "connectors": [
   {
    "id": "razorpay",
@@ -19,6 +19,158 @@
    "key_format": "basic",
    "india": true,
    "caution": true
+  },
+  {
+   "id": "mospi",
+   "name": "MoSPI eSankhyiki (Govt of India statistics)",
+   "category": "Data & research",
+   "url": "https://mcp.mospi.gov.in/mcp",
+   "url_hint": "",
+   "auth": "none",
+   "does": "Official Government of India statistics: CPI inflation, GDP / national accounts, IIP, PLFS jobs, ASI industry, HCES spending and more datasets, by state and year (read-only)",
+   "source": "https://mcp.mospi.gov.in",
+   "confidence": "high",
+   "india": true,
+   "keywords": [
+    "mospi",
+    "esankhyiki",
+    "statistics",
+    "sarkari aankde",
+    "gdp",
+    "cpi",
+    "inflation",
+    "mehngai",
+    "iip",
+    "plfs",
+    "unemployment",
+    "berozgari",
+    "census",
+    "nso",
+    "data"
+   ]
+  },
+  {
+   "id": "upstox",
+   "name": "Upstox",
+   "category": "Stocks & investing",
+   "url": "https://mcp.upstox.com/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Your Upstox account: holdings, positions, funds, orders and market quotes (sign in with Upstox; read-only server)",
+   "source": "https://upstox.com/developer/api-documentation/mcp-integration/",
+   "confidence": "high",
+   "india": true,
+   "caution": true,
+   "keywords": [
+    "upstox",
+    "stocks",
+    "shares",
+    "holdings",
+    "portfolio",
+    "demat",
+    "broker"
+   ]
+  },
+  {
+   "id": "dhan",
+   "name": "Dhan",
+   "category": "Stocks & investing",
+   "url": "https://mcp.dhan.co/mcp",
+   "url_hint": "",
+   "auth": "oauth_dcr",
+   "does": "Your Dhan account: holdings, positions, funds, orders, quotes; any order waits for your tap",
+   "source": "https://mcp.dhan.co/.well-known/oauth-authorization-server",
+   "confidence": "medium",
+   "india": true,
+   "caution": true,
+   "keywords": [
+    "dhan",
+    "stocks",
+    "shares",
+    "holdings",
+    "portfolio",
+    "demat",
+    "broker",
+    "trading"
+   ]
+  },
+  {
+   "id": "zerodha-kite",
+   "name": "Zerodha Kite",
+   "category": "Stocks & investing",
+   "url": "https://mcp.kite.trade/mcp",
+   "url_hint": "",
+   "auth": "none",
+   "does": "Your Zerodha account: holdings, positions, margins, orders, MF holdings, quotes and history. First ask Hoola to log in: it gives a Kite link, you sign in on Zerodha's own page. Orders and GTTs always wait for your tap",
+   "source": "https://github.com/zerodha/kite-mcp-server",
+   "confidence": "high",
+   "india": true,
+   "caution": true,
+   "options": {
+    "session": true
+   },
+   "keywords": [
+    "zerodha",
+    "kite",
+    "stocks",
+    "shares",
+    "holdings",
+    "portfolio",
+    "demat",
+    "broker",
+    "mutual fund",
+    "coin"
+   ]
+  },
+  {
+   "id": "fyers",
+   "name": "FYERS",
+   "category": "Stocks & investing",
+   "url": "https://mcp.fyers.in/mcp",
+   "url_hint": "",
+   "auth": "none",
+   "does": "Your FYERS account: holdings, positions, funds, orders, P&L, tax P&L, watchlists, alerts, option chain. First ask Hoola to log in: it gives a FYERS link. Orders, alerts and watchlist changes wait for your tap",
+   "source": "https://mcp.fyers.in/mcp",
+   "confidence": "medium",
+   "india": true,
+   "caution": true,
+   "options": {
+    "session": true
+   },
+   "keywords": [
+    "fyers",
+    "stocks",
+    "shares",
+    "holdings",
+    "portfolio",
+    "demat",
+    "broker",
+    "option chain",
+    "p&l"
+   ]
+  },
+  {
+   "id": "groww",
+   "name": "Groww",
+   "category": "Stocks & investing",
+   "url": "https://mcp.groww.in/mcp/",
+   "url_hint": "",
+   "auth": "oauth_partner",
+   "does": "Your Groww stocks and mutual funds. Groww's sign-in only accepts pre-approved apps (Claude, Cursor); Hoola's access is pending with Groww",
+   "source": "https://groww.in/updates/groww-mcp",
+   "confidence": "high",
+   "india": true,
+   "caution": true,
+   "keywords": [
+    "groww",
+    "stocks",
+    "shares",
+    "mutual fund",
+    "sip",
+    "holdings",
+    "portfolio",
+    "broker"
+   ]
   },
   {
    "id": "zoho-mcp",

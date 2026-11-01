@@ -12690,3 +12690,32 @@ Owner: "Terms of Service --- HOOLA" (right after her privacy policy went live at
 - Tests `server/tests/test_v0343_signal_par_nishan.py`: real SIGTERM / SIGINT to the test process - marked first, then
   the old handler; a mark that raises still hands over. Also checked by hand: a real uvicorn server started, got SIGINT,
   exited 0 in 3.7 s with no traceback.
+
+## v0.344.0 MOSPI + BROKERS (1 Nov 2026)
+Owner: "GO CONNECT MOSPI, BROKERS, RAZORPAY" (after the official-MCP research report). Every endpoint was probed live
+from the sandbox (initialize, OAuth metadata, Dynamic Client Registration with Hoola's real callback, authorize page):
+- **MoSPI eSankhyiki** `https://mcp.mospi.gov.in/mcp`: no auth, 4 read tools (list_datasets -> get_indicators ->
+  get_metadata -> get_data), 31 datasets (PLFS, CPI, GDP, IIP, ASI, HCES...). Featured `mospi`, auth `none`, one tap.
+- **Upstox** `https://mcp.upstox.com/mcp` and **Dhan** `https://mcp.dhan.co/mcp`: OAuth with DCR; both registered
+  `https://hoola.ainewtika.com/bazar/link/callback` and their authorize leads to Upstox login / Dhan consent ->
+  featured `oauth_dcr` (one tap, the existing mcp_auth flow).
+- **Zerodha Kite** `https://mcp.kite.trade/mcp` (22 tools) and **FYERS** `https://mcp.fyers.in/mcp` (39 tools): no
+  OAuth; the `login` tool returns the broker's link and the broker binds the login to the MCP session id. Hoola's
+  client opened a new session per call, so NEW `bazar/connectors/mcp_session.py` SessionRemote keeps one session per
+  (account, server): plain JSON-RPC over streamable HTTP (JSON or SSE), the session id sealed in bz_kv
+  (`mcp_sid:<user>:<pack>`), a forgotten session is reopened once (she logs in again). Featured auth `none` +
+  options.session; custom_mcp.to_pack carries `session`; McpExecutor(session_factory=...) uses it when no headers.
+  Live check: same session across calls, login link returned (FYERS state = our session), holdings refused before login.
+- **Groww** `https://mcp.groww.in/mcp/`: OAuth DCR ignores our redirect and returns a fixed allow-list (Claude,
+  Cursor, localhost, Smithery) -> featured `oauth_partner` ("Hoola's access is pending").
+- **Razorpay** stays as before (merchant key_id:key_secret -> Basic). Its OAuth DCR also accepted our callback and the
+  authorize page is "Authorize AI Client - Razorpay": a one-tap option for later.
+- Safety: every broker entry is `caution` -> mcp_prefs.locked(): any tool that is not plainly a read (place_order,
+  modify / cancel, GTT, alerts, watchlist changes, exit_positions, login) always waits for her tap; get_* reads run
+  straight. Guide line in prompts (MCP servers block): give her the login link, never suggest or place a trade on its
+  own, an order only when she asks for that exact order; MoSPI workflow + quote the dataset. SEBI's retail algo framework
+  (since 1 Apr 2026) is why trading stays one-order-one-tap.
+- Logos: feat:mospi / upstox / dhan / zerodha-kite / fyers / groww in logo_domains.json.
+- Tests: tests/test_v0344_brokers_mospi.py (5). Related suites: the 18 failures seen are the same on pristine main
+  (app builder / iPhone / App Store / Play Store / site editor / mcp_avatar - sandbox-only).
+- Not done: Kotak Neo (QR login in a desktop client), 5paisa (stores PIN/TOTP: against Hoola's rules), Angel One (no MCP).

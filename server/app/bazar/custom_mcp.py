@@ -125,7 +125,7 @@ def to_pack(row: CustomMcp) -> Pack:
                 notes="caution" if caution else "", master_list_row=0, executor="mcp",
                 config={"provider": provider_of(row.id), "endpoint": real_url(row), "custom": True, "auth": row.auth,
                         "key_header": row.key_header, "owner": row.user_id, "caution": caution,
-                        "reads": reads},
+                        "reads": reads, "session": _featured_session(row.directory_ref)},
                 tools=[], keywords=sorted(words)[:20])
 
 
@@ -135,6 +135,17 @@ def _featured_caution(ref: str | None) -> bool:
     try:
         from . import featured
         return bool((featured.get(ref.split(":", 1)[1]) or {}).get("caution"))
+    except Exception:
+        return False
+
+
+def _featured_session(ref: str | None) -> bool:
+    """v0.344 the server keeps her broker login inside ONE MCP session (Zerodha Kite, FYERS): keep that session."""
+    if not ref or not ref.startswith("featured:"):
+        return False
+    try:
+        from . import featured
+        return bool(((featured.get(ref.split(":", 1)[1]) or {}).get("options") or {}).get("session"))
     except Exception:
         return False
 
