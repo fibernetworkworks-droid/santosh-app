@@ -70,7 +70,7 @@ def problems(code: str) -> list[str]:
                 bad(node, f"'{node.id}' allowed nahi")
             if node.id == "result" and isinstance(node.ctx, ast.Store):
                 sets_result = True
-            if node.id in ("cq", "math") and isinstance(node.ctx, ast.Store):
+            if node.id in ("cq", "math", "H") and isinstance(node.ctx, ast.Store):
                 bad(node, f"'{node.id}' ko badalna allowed nahi")
         elif isinstance(node, ast.Attribute):
             if node.attr.startswith("_"):

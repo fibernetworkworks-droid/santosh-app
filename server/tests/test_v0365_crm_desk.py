@@ -1,4 +1,4 @@
-"""v0.364 CRM DESK - the Salesforce desk, 100% read and write (owner: "MAKE CRM DESK CAN PERFROM 100 % READ AND
+"""v0.365 CRM DESK - the Salesforce desk, 100% read and write (owner: "MAKE CRM DESK CAN PERFROM 100 % READ AND
 WRITE WORK", after checking crm_arch and finding it half-built next to the ERP desk).
 
 The split that makes this job different from ERP is DATA versus CONFIGURATION:
@@ -137,5 +137,5 @@ def test_version():
     from pathlib import Path
 
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.364.0"
-    assert "0.364.0+404" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.365.0"
+    assert "0.365.0+405" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

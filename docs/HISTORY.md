@@ -13210,3 +13210,60 @@ it newly created — rather than quietly missing them. A rollback that silently 
 ### Files
 `server/app/enterprise/run.py` (new, the engine) · `server/app/enterprise/models.py` (EntEndpoint, EntRun,
 EntRunRow) · `server/app/agent/enterprise_tools.py` · `server/tests/test_v0363_erp_live.py` (13 tests).
+
+## v0.364.0 HOOLA CAD PRO (1 Nov 2026)
+Owner: "I WANT CAD TO PERFROM ALL COMPLEX, VERY COMPLEX, HARD, VERY HARD, ULTIMATE JOBS --- MAKE A HOOLA CAD POWERFULL".
+- `engineering/parts.py` = the H library inside the box: METRIC M2-M24 (tap / clearance / counterbore / countersink /
+  head / nut / washer sizes), `H.hole / cbore / csk / thread_note`, `socket_screw / hex_bolt / nut / washer`,
+  `spur_gear` (true involute, module / teeth / pressure angle / bore), `bearing` (608, 62x, 60x from the table),
+  `shaft` (DIN 6885 keyway), `extrusion` (2020-4040), `pipe`, `flange`. Loaded by the runner as `H`.
+- Assemblies: a `cq.Assembly` result is walked part by part (name, placement, colour) -> BOM with each part's mass,
+  "Every part valid" check, per-part colours in the views; STEP keeps the assembly tree.
+- Exports: part.step, part.stl, part.3mf, part.glb (viewer), section.dxf (section at mid-height), drawing.pdf page 2 =
+  hidden-line views from OCC (front / top / right with dashed hidden edges, iso).
+- ai.py: Opus with extended thinking (ENG_THINK_TOKENS 8000) for hard briefs and every fix; the model writes a PLAN and a
+  MATERIAL first; `ai.look` reviews the real rendered views (ENG_LOOK_ROUNDS, default 1) and sends problems into a fix.
+- Inputs: up to 3 photos / sketches (PNG/JPG/WEBP, 6 MB) and 2 STEP/STL files (40 MB; STEP must be ISO-10303-21) per job,
+  stored in the project's inputs/ folder, readable in the script only through `H.her_file(name)`.
+- Service: mass + centre of mass from the material density, 3D-print check (overhang %, fits a 220 mm bed), BOM table,
+  review notes; sandbox defaults 6 GB / 600 s. Console CAD Desk + phone CadDeskScreen: photo / STEP upload, BOM, mass,
+  print, review, 3MF / GLB / DXF buttons. Tests: tests/test_v0357_engineering_desk.py (16).
+- Large STEP uploads may need nginx `client_max_body_size 60m;` on the /api/eng location.
+
+## v0.365.0 CRM DESK — the Salesforce desk, 100% read and write
+Owner: *"CRM Architect (crm_arch) --- NOW CHECK THIS"*, then *"MAKE CRM DESK CAN PERFROM 100 % READ AND WRITE
+WORK"*.
+
+The check found `crm_arch` **half-built** next to the ERP desk: the write engine worked, but it had **zero
+sub-jobs** and only four paper kinds. It is a desk too — now **twelve parts**: admin, object and field config,
+flow and automation, Apex, integration, data, profiles and sharing, reporting, testing, release and deployment,
+adoption, support. All twelve paper kinds are open to it, so **security work can finally produce a `matrix`** —
+which is exactly what the Salesforce security model is.
+
+### The split that makes this job different from ERP
+A CRM architect's real write work is not records, it is **configuration**.
+
+| `api` | what | where |
+|---|---|---|
+| `data` | records — leads, accounts, opportunities | `/sobjects/…` |
+| `tooling` | the org's **shape** — objects, fields, flows, permission sets | `/tooling/sobjects/…` |
+
+A wrong record is one bad row. **A wrong field or flow breaks the org for everyone.** So `api` is a *declared
+property of the run* — never guessed from the target name, never the default — and there is a test that the same
+target is not silently promoted to the tooling surface. A tooling change to production is logged as the exception
+it is.
+
+### New reads, which run at once because they change nothing
+- **`describe`** — objects, fields, flows, permission sets: the shape of her org.
+- **`soql`** — her own query, where **anything but `SELECT` is refused**.
+
+Each system spells its own URLs, so `_paths()` now holds the dialect instead of assuming OData everywhere.
+
+### Everything else is the same engine
+Dry run, her tap, batches, idempotent resume, rollback material — all of v0.363, unchanged. That is the whole
+point of having one engine: a second desk cost a table entry and a dialect, not a second engine.
+
+### Files
+`server/app/enterprise/rules.py` · `server/app/enterprise/run.py` (dialect, describe, soql, `api`) ·
+`server/app/enterprise/models.py` (`EntRun.api`) · `server/app/agent/enterprise_tools.py` ·
+`server/tests/test_v0365_crm_desk.py` (11 tests).

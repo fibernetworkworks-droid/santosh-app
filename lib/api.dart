@@ -1011,8 +1011,9 @@ class Api {
   // v0.357 ENGINEERING DESK: the CAD Engineer's parts
   Future<Map<String, dynamic>> engProjects() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/eng/projects', timeout: const Duration(seconds: 30)) as Map);
-  Future<Map<String, dynamic>> engStart(String brief) async =>
-      Map<String, dynamic>.from(await _send('POST', '/api/eng/projects', body: {'brief': brief}) as Map);
+  Future<Map<String, dynamic>> engStart(String brief, {List<String> images = const []}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/eng/projects', body: {'brief': brief, 'images': images},
+          timeout: const Duration(seconds: 90)) as Map);
   Future<Map<String, dynamic>> engChange(String id, String words) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/eng/projects/$id/change', body: {'words': words}) as Map);
   Future<void> engDelete(String id) async => _send('DELETE', '/api/eng/projects/$id');

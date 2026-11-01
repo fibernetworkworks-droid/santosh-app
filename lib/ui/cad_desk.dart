@@ -4,8 +4,10 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
@@ -26,6 +28,7 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
   final _brief = TextEditingController();
   final _change = <String, TextEditingController>{};
   List<Map<String, dynamic>> _ps = [];
+  final List<String> _photos = [];          // v0.362 base64 sketch / photo with sizes written on it (max 3)
   bool _loaded = false;
   bool _busy = false;
   String _err = '';
@@ -130,6 +133,16 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
                   '${_s(v?['assumed']).isNotEmpty && _s(v?['assumed']).toLowerCase() != 'none' ? ' · Assumed: ${_s(v?['assumed'])}' : ''}',
                   style: const TextStyle(color: C.muted, fontSize: 13)),
             ),
+          if (v != null && (_s(v['material']).isNotEmpty || _list(v['parts']).isNotEmpty))
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text([
+                if (_s(v['material']).isNotEmpty) 'Material: ${_s(v['material'])}${v['mass_g'] != null ? ' · about ${_s(v['mass_g'])} g' : ''}',
+                if (_list(v['parts']).isNotEmpty) 'Parts: ${_list(v['parts']).map((x) => _s(x['name'])).join(', ')}',
+                if (v['print'] is Map && (v['print'] as Map)['overhang_pct'] != null)
+                  '3D print: ${_s((v['print'] as Map)['overhang_pct'])}% overhang',
+              ].join('\n'), style: const TextStyle(color: C.muted, fontSize: 13, height: 1.35)),
+            ),
           if (v != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -143,7 +156,8 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final f in const [['part.step', 'STEP'], ['part.stl', 'STL'], ['drawing.pdf', 'Drawing PDF']])
+                for (final f in const [['part.step', 'STEP'], ['part.stl', 'STL'], ['part.3mf', '3MF'], ['section.dxf', 'DXF'],
+                    ['drawing.pdf', 'Drawing PDF']])
                   if (files[f[0]] != null)
                     OutlinedButton(onPressed: () => _open(_s(files[f[0]])), child: Text(f[1])),
               ]),
@@ -189,16 +203,32 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 TextField(
                   controller: _brief, minLines: 2, maxLines: 5,
-                  decoration: const InputDecoration(hintText: 'e.g. L bracket 80 x 40 mm, 10 mm thick, upright 30 mm, two 8 mm holes'),
+                  decoration: const InputDecoration(hintText: 'A part or a whole assembly, with sizes in mm. e.g. gearbox with 2 spur gears, 6202 bearings, aluminium housing'),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
+                Row(children: [
+                  TextButton.icon(
+                    onPressed: _busy || _photos.length >= 3 ? null : () async {
+                      final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2400, imageQuality: 88);
+                      if (x == null) return;
+                      final b = await x.readAsBytes();
+                      setState(() => _photos.add(base64Encode(b)));
+                    },
+                    icon: const Icon(Icons.add_photo_alternate_rounded),
+                    label: Text(_photos.isEmpty ? 'Add sketch / photo' : '${_photos.length} photo(s) added'),
+                  ),
+                  if (_photos.isNotEmpty) TextButton(onPressed: () => setState(_photos.clear), child: const Text('Clear')),
+                ]),
+                const SizedBox(height: 6),
                 GradientButton(
-                  label: 'Design this part', icon: Icons.view_in_ar_rounded,
+                  label: 'Design it', icon: Icons.view_in_ar_rounded,
                   onTap: _busy ? null : () {
                     final b = _brief.text.trim();
                     if (b.isEmpty) return;
+                    final imgs = List<String>.from(_photos);
                     _brief.clear();
-                    _run(() => widget.app.api!.engStart(b), 'Designing. It takes about a minute.');
+                    setState(_photos.clear);
+                    _run(() => widget.app.api!.engStart(b, images: imgs), 'Designing. A big assembly takes a few minutes.');
                   },
                 ),
               ]),
