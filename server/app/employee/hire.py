@@ -46,7 +46,7 @@ def ensure_table() -> None:
 
 TRUST = ("seekh", "saathi", "bharosa")
 
-GAME_GROUP = "Game Development, Simulation & VR"   # v0.370 the Game Desk employees' heading in the Hub
+GAME_GROUP = "Game Development, Simulation & VR"   # v0.379 the Game Desk employees' heading in the Hub
 
 # The catalogue. `live` employees can be hired today; the others show as "coming".
 CATALOG: dict[str, dict[str, Any]] = {
@@ -110,7 +110,7 @@ CATALOG: dict[str, dict[str, Any]] = {
               "pitch": "Layout scripts and design-rule checks on GDS files (KLayout)."},
     "iiot": {"name": "Industrial IoT Architect", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
              "pitch": "SCADA and factory network design: device list, protocols, security zones, BOM (paper only)."},
-    # v0.370 GAME DESK (docs/GAME_DESK_PLAN.md): one shared desk, a pack per role; Phase 1 = the Game Developer
+    # v0.379 GAME DESK (docs/GAME_DESK_PLAN.md): one shared desk, a pack per role; Phase 1 = the Game Developer
     "game_dev": {"name": "Game Developer", "live": True, "icon": "game", "group": GAME_GROUP,
                  "pitch": "Makes original games from your words with Godot 4, tests them itself and gives you a link to play on any phone.",
                  "does": ["Writes a short design doc first: you OK it or change it",

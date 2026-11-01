@@ -41,6 +41,9 @@ What stops "any complex app" today — the plan below removes each one:
 ## The pillars (each = 1–3 App Phases; order below is the build order)
 
 ### A. Logic engine — "the app's brain" (biggest step) — Phases 43–46
+**Status: BUILT in v0.382.0 DIMAAG** (`server/app/appmaker/logic/`) — relations, formulas + roll-ups, rules + unique keys,
+workflows + maker-checker approvals + SLA, triggers, timed jobs, locked tested functions (our own interpreter, not WASM:
+no eval, no I/O, step / size / depth / time budget). Proof app (School ERP from a brief) = next, on her phone.
 - **Relations**: one-to-many and many-to-many between lists (customer → orders → order lines; class ↔ students), lookups,
   cascading rules, server-side joins; screens show related lists; kits get related pickers.
 - **Computed fields + validations**: formulas (totals, age, due dates, scores), cross-field checks, unique keys.

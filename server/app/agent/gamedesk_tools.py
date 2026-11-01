@@ -1,4 +1,4 @@
-"""v0.370 GAME DESK tool: `game_desk` = the Game Developer employee (gamedesk/service.py). Original games from her words
+"""v0.379 GAME DESK tool: `game_desk` = the Game Developer employee (gamedesk/service.py). Original games from her words
 in Godot 4: a design doc first (her OK), then code -> headless play -> Web export -> Hoola plays it -> a private play
 link. Only while the Game Developer is hired (Employees). Nothing is published: the link is hers to share."""
 from __future__ import annotations

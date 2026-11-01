@@ -95,6 +95,24 @@ enum Words {
     static var assignedToYou: String { t("Given to you", "आपको सौंपा गया", "Aapko diya gaya") }
     static var chooseOne: String { t("Choose an item on the left", "बाईं ओर से कुछ चुनें", "Baayein taraf se kuch chuniye") }   // v0.366
     static var newEntry: String { t("New — open the app to see it", "नया — देखने के लिए ऐप खोलें", "Naya — dekhne ke liye app kholiye") }
+    // v0.382 DIMAAG: the app's logic (links, workflow, approvals)
+    static var approvals: String { t("Approvals", "मंज़ूरी", "Manzoori") }
+    static var approve: String { t("Approve", "मंज़ूर करें", "Manzoor") }
+    static var reject: String { t("Reject", "मना करें", "Mana") }
+    static var waitingFor: String { t("Waiting for", "इंतज़ार", "Intezaar") }
+    static var needsApproval: String { t("needs approval", "मंज़ूरी चाहिए", "manzoori chahiye") }
+    static var noApprovals: String { t("Nothing waiting for you.", "आपके लिए कुछ नहीं रुका।", "Aapke liye kuch nahi ruka.") }
+    static var note: String { t("Note", "टिप्पणी", "Note") }
+    static var choose: String { t("Choose", "चुनें", "Chuniye") }
+    static var save: String { t("Save", "सहेजें", "Save") }
+    static var cancel: String { t("Cancel", "रद्द", "Cancel") }
+    static var step: String { t("Step", "चरण", "Step") }
+    static var askedBy: String { t("Asked by", "माँगा", "Maanga") }
+    static var allLists: String { t("All lists", "सारी सूचियाँ", "Saari lists") }
+    static var fillThis: String { t("please fill this", "यह भरना ज़रूरी है", "yeh bharna zaroori hai") }
+    static var done: String { t("Done", "हो गया", "Ho gaya") }
+    static var search: String { t("Search", "खोजें", "Khojiye") }
+    static var staffOnlyHere: String { t("For staff accounts.", "सिर्फ़ स्टाफ़ के लिए।", "Sirf staff ke liye.") }
 }
 
 /// Which screen each tab shows and the stack of screens opened on top of it.

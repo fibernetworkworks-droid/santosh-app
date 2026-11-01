@@ -911,6 +911,59 @@ window.HoolaBuild = function (C) {
       if (b) b.addEventListener('click', async () => { b.disabled = true; try { drawT(await api('PUT', base(o) + '/turant', {on: b.dataset.turant === '1'})); toast('Saved. It reaches phones with the next Android build.'); } catch (er) { toast(er.message, true); b.disabled = false; } });
     };
     try { drawT(await api('GET', base(o) + '/turant')); } catch (er) { tbox.remove(); }
+    // v0.382 DIMAAG: the app's brain - linked lists, formulas, rules, workflows + approvals, triggers, timed jobs, locked functions.
+    // Opus drafts it from her words, the checker proves it, ONLY her "Apply" tap makes it live.
+    const lbox = document.createElement('section'); lbox.className = 'stcol stlogic'; box.appendChild(lbox);
+    const drawL = v => {
+      const d = v.draft ? M(v.draft) : null;
+      const li = a => L(a).map(x => `<li>${esc(S(x))}</li>`).join('');
+      const apps = L(v.approvals).filter(a => a.status === 'pending');
+      const jobs = L(M(v.spec).schedules);
+      lbox.innerHTML = `<h4>App logic <span>${v.has_logic ? (v.on ? 'on' : 'off') + ' · rev ' + N(v.rev) : 'none yet'}</span></h4>
+        <p class="stnote">Linked lists (customer → orders → items), totals and formulas, rules, workflows with approvals, automatic actions, timed jobs and locked custom functions. Hoola drafts; nothing changes in the app until you press Apply.</p>
+        ${v.has_logic ? `<ul class="stlines">${li(v.summary)}</ul>` : ''}
+        <form class="stapp" autocomplete="off" data-ldraft><div class="row"><textarea name="w" rows="2" maxlength="2000" placeholder="${v.has_logic ? 'What should change? e.g. quotes above 50,000 need manager then director approval' : 'Leave blank for the full logic from the app brief, or describe it'}" aria-label="Logic in your words"></textarea></div>
+        <div class="acts"><button class="btn go" type="submit">Draft logic</button>${v.has_logic ? `<button class="btn soft" type="button" data-lsw="${v.on ? '0' : '1'}">${v.on ? 'Switch logic off' : 'Switch logic on'}</button>` : ''}</div></form>
+        ${d ? `<div class="stdraft"><h5>Draft ${d.errors && d.errors.length ? '· ' + N(d.errors.length) + ' problem(s)' : '· ready'}</h5>
+          ${d.summary ? `<p>${esc(S(d.summary))}</p>` : ''}<ul class="stlines">${li(d.lines)}</ul>
+          ${L(d.schema_changes).length ? `<p class="stnote">New lists / fields: ${esc(L(d.schema_changes).join('; '))}</p>` : ''}
+          ${L(d.questions).length ? `<p class="stnote">Questions: ${esc(L(d.questions).join(' '))}</p>` : ''}
+          ${L(d.errors).length ? `<ul class="sterr">${li(d.errors)}</ul>` : ''}${L(d.warnings).length ? `<ul class="stwarn">${li(d.warnings)}</ul>` : ''}
+          <div class="acts">${L(d.errors).length ? '' : `<button class="btn go" type="button" data-lapply="${esc(S(d.hash))}">Apply to my app</button>`}<button class="btn soft" type="button" data-ldiscard>Discard draft</button></div></div>` : ''}
+        ${apps.length ? `<h5>Approvals waiting (${apps.length})</h5><ul class="stmems">${apps.map(a => `<li><b>${esc(S(a.title))}</b> · ${esc(S(a.label))}: ${esc(S(a.from))} → ${esc(S(a.to))} · step ${N(a.step)}/${N(a.of)} (${esc(S(a.waiting_for))})${a.maker ? ' · asked by ' + esc(S(a.maker)) : ''}
+          <button class="btn go" type="button" data-ldec="approve" data-aid="${esc(S(a.id))}">Approve</button> <button class="btn soft" type="button" data-ldec="reject" data-aid="${esc(S(a.id))}">Reject</button></li>`).join('')}</ul>` : ''}
+        ${jobs.length ? `<h5>Timed jobs</h5><ul class="stmems">${jobs.map(j => `<li>${esc(S(j.label || j.name))} · ${esc(S(j.every))} IST${M(v.ran)[j.name] ? ' · last ' + esc(S(M(v.ran)[j.name]).slice(0, 16).replace('T', ' ')) : ''} <button class="ib" type="button" data-lrun="${esc(S(j.name))}">Run now</button></li>`).join('')}</ul>` : ''}
+        ${L(v.audit).length ? `<details><summary>What the logic did (last ${Math.min(12, L(v.audit).length)})</summary><ul class="stlines">${L(v.audit).slice(0, 12).map(x => `<li>${esc(S(x.at).slice(5, 16).replace('T', ' '))} · ${esc(S(x.kind))}${x.coll ? ' · ' + esc(S(x.coll)) : ''} · ${esc(S(x.what))}${x.by ? ' · ' + esc(S(x.by)) : ''}</li>`).join('')}</ul></details>` : ''}
+        ${v.has_logic ? `<details><summary>Edit the logic directly (advanced)</summary><form class="stapp" data-ljson><div class="row"><textarea name="j" rows="10" spellcheck="false" aria-label="Logic JSON">${esc(JSON.stringify(M(v.spec), null, 1))}</textarea></div><div class="acts"><button class="btn go" type="submit">Check and apply</button></div></form></details>` : ''}`;
+      const fd = lbox.querySelector('[data-ldraft]');
+      fd.addEventListener('submit', async e => {
+        e.preventDefault(); const b = fd.querySelector('button.go'); b.disabled = true; b.textContent = 'Drafting…';
+        try { const r = await api('POST', base(o) + '/logic/draft', {words: fd.w.value.trim()}); toast(S(r.say).slice(0, 200)); drawL(await api('GET', base(o) + '/logic')); }
+        catch (er) { toast(er.message, true); b.disabled = false; b.textContent = 'Draft logic'; }
+      });
+      const ap = lbox.querySelector('[data-lapply]');
+      if (ap) ap.addEventListener('click', async () => { ap.disabled = true; try { const r = await api('POST', base(o) + '/logic/apply', {hash: ap.dataset.lapply}); toast(S(r.say)); drawL(await api('GET', base(o) + '/logic')); } catch (er) { toast(er.message, true); ap.disabled = false; } });
+      const dc = lbox.querySelector('[data-ldiscard]');
+      if (dc) dc.addEventListener('click', async () => { try { await api('DELETE', base(o) + '/logic/draft'); drawL(await api('GET', base(o) + '/logic')); } catch (er) { toast(er.message, true); } });
+      const sw = lbox.querySelector('[data-lsw]');
+      if (sw) sw.addEventListener('click', async () => { try { const r = await api('POST', base(o) + '/logic/switch', {on: sw.dataset.lsw === '1'}); toast(S(r.say)); drawL(await api('GET', base(o) + '/logic')); } catch (er) { toast(er.message, true); } });
+      lbox.querySelectorAll('[data-ldec]').forEach(b => b.addEventListener('click', async () => {
+        b.disabled = true;
+        try { const r = await api('POST', base(o) + '/approvals/' + encodeURIComponent(b.dataset.aid), {decision: b.dataset.ldec}); toast(S(r.say)); drawL(await api('GET', base(o) + '/logic')); }
+        catch (er) { toast(er.message, true); b.disabled = false; }
+      }));
+      lbox.querySelectorAll('[data-lrun]').forEach(b => b.addEventListener('click', async () => {
+        try { const r = await api('POST', base(o) + '/logic/run/' + encodeURIComponent(b.dataset.lrun)); toast(`${N(r.acted)} entries done.`); drawL(await api('GET', base(o) + '/logic')); } catch (er) { toast(er.message, true); }
+      }));
+      const fj = lbox.querySelector('[data-ljson]');
+      if (fj) fj.addEventListener('submit', async e => {
+        e.preventDefault(); let spec;
+        try { spec = JSON.parse(fj.j.value); } catch (er) { toast('That is not valid JSON.', true); return; }
+        try { const r = await api('PUT', base(o) + '/logic', {logic: spec}); if (r.ok === false) toast(L(r.errors).slice(0, 3).join(' · '), true); else { toast(S(r.say)); drawL(await api('GET', base(o) + '/logic')); } }
+        catch (er) { toast(er.message, true); }
+      });
+    };
+    try { drawL(await api('GET', base(o) + '/logic')); } catch (er) { lbox.remove(); }
     // v0.378 BAAT: her customers' messages from the app (their words = data); she replies by her own tap
     const cbx = document.createElement('section'); cbx.className = 'stcol stchat'; box.appendChild(cbx);
     const drawC = async (v, open) => {

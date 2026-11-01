@@ -14216,3 +14216,126 @@ What each gap became (all in `server/app/engineering/`, tests `tests/test_v0365_
   convergence, assumptions) for HER engineer to sign.
 - Desk: console + phone show the analysis lines, stress / heat / mode maps, toolpath, flat pattern, and the new files.
 - VPS: `~/apps/santosh-core/.venv/bin/pip install scikit-fem pyamg` (scikit-fem needed for FEA; pyamg optional = faster).
+
+## v0.381.0 SHIKSHA SUITE Phase 0 + 1 (built as v0.364 / v0.381 / v0.379, re-versioned past main v0.380.0): the education foundation + Pathyakram Sahayak (curriculum & exam designer)
+- Owner: "NOW LETS WORK ON AI EMPLOYEE SECTION :::: FOR EDUCATION SECTION ... MAKE A PLAN" (4 roles: tutor, curriculum &
+  exam designer, admin operations, research assistant) -> plan (Phase 0 foundation, 1 exam designer, 2 tutor, 3 admin, 4
+  research) -> "GO PHASE 0 + 1".
+- PHASE 0 `server/app/pylab/` (runner + service, tool `pylab`): model-written Python runs ONLY in a child process with its own
+  temp work folder, a clean env (no keys / tokens, `-I`), RLIMIT CPU / AS (1 GB) / FSIZE / NOFILE / CORE, a wall-clock kill of the
+  process group, `unshare -rn` (own empty network namespace) when the kernel allows it, and an audit hook installed before the
+  user code that refuses socket / subprocess / os.system / exec / spawn / fork / ctypes events, any write outside the work folder
+  and any READ outside the work folder and the Python install (so the server's code, .env, database and other users' data are
+  out of reach). Inputs: DATA DESK datasets (as <id>.csv) and her chat files; outputs (png / csv / xlsx / txt / json / md / html)
+  come back as chat files; matplotlib figures are saved automatically. `pylab.service.status()` = libraries + isolation.
+  requirements.txt + pandas, scipy, statsmodels, matplotlib (VPS: pip install them into the venv).
+- PHASE 0 `server/app/shiksha/` (models / rules / service / api, tools `shiksha` / `shiksha_dekho`): settings (institution,
+  kind, board, medium, session), classes C-01, learners S-0001 (birth YEAR only; a learner is a child unless marked adult or 18+
+  by year; a child needs guardian name + phone / email; `record_consent` = the owner / school team records the GUARDIAN's
+  consent with a method signed_form | in_person | digilocker | school_record | email_confirmed, logged; withdrawal stops the
+  work; `need_usable` guards every one-child action; `forget_learner` erases details + marks, number kept), the shared question
+  bank Q-00001 (`rules.check_question`: 11 types, MCQ = 4 distinct options + answer among them (letters mapped), Assertion-Reason
+  = the 4 standard CBSE options, True / False, numeric needs a number, subjective needs a model answer or marking points,
+  marks in halves, scheme sum checked, Bloom / difficulty normalised; fatal problems not saved; near-duplicates (fingerprint +
+  85% word overlap) skipped; open problems block approval; an edited question goes back to draft), gradebook with teacher
+  sign-off (never by Hoola / a routine). `frameworks.json`: CBSE 2026-27 paper patterns (Class 10 Maths 80 = A 20x1, B 5x2,
+  C 6x3, D 4x5, E 3x4 with C / D worked out from the totals -> andaaza; Class 12 Maths 80 and Physics 70; Science / SST /
+  English / Chemistry / Biology have no section counts on record -> the teacher gives sections), current NCERT chapter lists
+  (Ganita Prakash 7 / 8, Ganita Manjari 9, Class 10 Maths + Science, Curiosity 6 / 8; Maths 6, Science 7 / 9 incomplete ->
+  left out), CISCE 2027 marks schemes, IB / Cambridge copyright notes, DPDP Rules 2025 (G.S.R. 846(E), rule 10 verifiable
+  parental consent, in force ~May 2027; Fourth Schedule school exemption only for tracking / safety).
+- PHASE 1 `server/app/pathyakram/` (models / service / api; tools `pathyakram` / `pathyakram_dekho`): `generate` (<= 30 a call,
+  site.ai kind "edu", warns when a chapter is not in the NCERT book), `blueprint` (official pattern or her sections; totals
+  checked), `make_paper` (approved questions of the section's type + marks, chapter round-robin, least-used first, internal
+  choice slots, gaps listed; fill_missing writes drafts), `swap`, `approve_paper` (every question approved + marks = max),
+  `paper_file` (Word paper / answer key + marking scheme), `year_plan` (deterministic, chapters in order once each, revision
+  months, periodic tests / half-yearly as suggestions), `lesson_plan` (5E, all five phases required, minutes scaled to the class
+  time), `rubric` (same level count per criterion, points scaled to the total), `plan_file`, `share_request` / `decide_share`
+  (an approved paper / plan; card hash over the exact content; only POST /api/pathyakram/shares/{id}/decide with by_tap; file /
+  Google Forms quiz of the objective questions with the rest listed as left out / WhatsApp or email draft she sends herself).
+- Employee: duties `curriculum_work`, `school_records`; role `curriculum_designer`; preset `school_academics`; READ +
+  shiksha_dekho, pathyakram_dekho, pylab. Admit family "shiksha" (paper / syllabus / CBSE / NCERT / Python words). Voice: via
+  santosh_kaam only. Push: pathyakram_share (waiting only), pathyakram_paper, pathyakram_plan. Prompt line SCHOOL / COACHING.
+- App: `lib/ui/shiksha_screen.dart` (ShikshaScreen Aaj / Sawaal / Papers / Plans / Niyam, PathyakramPaperPage, PathyakramPaperCard,
+  PathyakramShareCard), Profile tile, chat cards keyed in kanoonCardKey (pkshare / pkpaper), share card in calls.
+- Tests: NEW `server/tests/test_v0381_shiksha.py` (22): sandbox analysis + files, 7 escapes blocked (socket, os.system,
+  subprocess, write outside, read /etc/passwd, list /home, ctypes), no secrets in the child, timeout, memory, her dataset;
+  question checks; frameworks honest (incomplete book empty, derived pattern unverified); guardian consent rules + sign-off +
+  forget; bank dedupe / review; generate drafts; paper from her blueprint + approve + files + swap; official pattern + gaps;
+  year plan from the library; lesson / rubric numbers; share only on her tap + Forms quiz; tools / API / employee wiring.
+- Not verified: real model output (scripted JSON in tests); a real Google Forms quiz; the official PDFs themselves (the build
+  sandbox could not open cbseacademic / ncert / cisce; facts came from searches restricted to those domains); Flutter not compiled
+  here (CI analyze); the console has no Shiksha page yet (phone + chat only).
+
+
+## v0.382.0 DIMAAG - the app's logic engine (App Sahayak Phases 43-46 = Pillar A of docs/COMPLEX_APPS_PLAN.md)
+Owner (1 Nov 2026): *"Logic engine (biggest step) - Linked lists (customer → orders → items), formulas, workflows with
+approvals, automatic triggers and timed jobs, and custom logic in a locked sandbox ---- WORK ON IT AND DEPLOYE MAKE IT FULL
+AND ROBUSTLY FUCTIONAL"*.
+
+What it is: every native app (Android + iPhone + its own backend) can now carry a BRAIN, stored as `backend["logic"]`:
+- **Linked lists** (`relations`): a ref field points at a row of another list (customer → invoices → lines). The server checks
+  every link (the row exists in THIS app, in the right list, and the person may read it). Deletes follow the relation:
+  `restrict` (refused while children exist), `cascade` (children go too, max 500), `nullify` (links cleared).
+- **Formulas** computed on every write, in dependency order (a loop between formulas is refused by the checker); a child's
+  change re-computes its parents (roll-ups: `subtotal = sum(lines.amount)`, `billed = sum(where(invoices, ...).total)`).
+  Formula fields are the server's: stripped from every incoming write, never in a form. A formula that cannot run leaves
+  its field blank and is audited - an order is never lost to a formula.
+- **Rules** (`check` must be true; `old.<field>` on update) + **unique keys**. A rule that cannot run is audited and lets
+  the write through (her app never bricks); a rule that says no, or `fail("...")`, refuses with its message (422 / 409).
+- **Workflows**: states, steps (`from`, `to`, `who`: row_owner / member / assigned / staff / admin / owner, `require`d fields,
+  a `when` condition), every new row starts at the first state whatever is sent. A step that needs **approval** becomes an
+  approval request (`_approval` rows): steps staff / admin / owner, **maker-checker** (the asker never approves), one person
+  = one step, the row does not move until the last yes; a row that moved meanwhile cancels the request. **SLA**: a row
+  waiting too long in a state -> notify (+ optional move), once per waiting spell.
+  An allowed step is performed BY THE ENGINE (`info["move"]`), so a customer's own allowed step (Cancel) works although
+  customers never write staff fields; a workflow move to Cancelled runs the same give-backs as before (stock, coupon,
+  udhaar, credit note) through the new `backend.status_moved` (also from approvals / triggers / SLA).
+- **Triggers** on create / update / delete / change:<field> / enter:<state> with an optional `when`: notify (owner chat note,
+  staff / admins / row owner / assigned person by push), set fields, move, create a row in another list, assign to the
+  least busy staff, run a function (its returned map sets fields). Loops are cut: 3 levels deep, 100 automatic actions per
+  request; every action is written to the app's audit list (`_audit`, last 3,000 kept).
+- **Timed jobs** (`schedules`): hourly / daily HH:MM / weekly mon HH:MM / monthly D HH:MM (IST), `where` filter,
+  `once_per_row`; the worker runs `engine.tick()` once a minute in a thread; a slot is marked BEFORE it runs (no double
+  run after a crash), a brand-new job waits for its first real slot (no catch-up storm), 200 rows per run.
+- **Custom functions in a locked sandbox**: `logic/lang.py` is our own tokenizer + parser + tree-walking interpreter -
+  never Python eval / exec / import, no file or network access by construction (values are JSON shapes; `.key` is a dict
+  lookup, so `x.__class__` is just a missing key). Budget per run: 50,000 steps, 2,000-item lists, 20,000-char text,
+  call depth 8, 0.5 s wall clock. Body language: let / assignment / if-else if-else / for-in / break / continue / return /
+  fail(). A function reads only its params; its own tests (expect / fails) run before any save. Callable ones are exposed
+  to the app (`POST /api/app-api/<key>/fn/<name>`, rate-limited, 20,000 steps).
+- Expressions: field names, `customer.city` (a ref gives the parent row, loaded lazily), `lines.amount` (children), `me`,
+  `old`; ~60 builtins (round / sum / where / count / days_between / add_days / add_months / age / money(₹ Indian grouping) ...).
+
+Authoring (`logic/service.py`): Opus writes {lists, fields, logic} for THIS app's real lists from her words (empty words =
+the full logic from the app brief) -> `spec.check()` (every list / field / state / function name must exist, formulas
+parse, no formula loops, function tests pass) -> one repair round with the checker's errors -> kept as a DRAFT with plain
+summary lines. **Only her tap applies it** (`POST /api/apps/<ref>/logic/apply {hash}` = the exact draft she saw): new lists
+/ fields first (`_apply_ops` gained `add_list` + `ref` fields, additive only), then the logic, then every existing row gets
+its formulas once (children before parents). The console editor (`PUT /logic`) uses the same checker. One switch turns it
+all off (nothing deleted). Agent: `app_banao action=logic` (draft only) / `logic_switch` / `approval` (her decision, on her
+word) / `logic_run`; `app_dekho what=logic`.
+
+Apps: the server decorates the schema (ref fields get `to`, formula fields `computed`, the workflow field its states +
+`workflow`, parents list their `relations`, `approvals` / callable `functions` flags) and every row (`_labels` = a link's
+row name, `_actions` = the steps THIS person may press now, `_pending` = an approval waiting + `can_decide`). Kits
+`Logic.kt` / `Logic.swift`: RefField (picker, the id travels, the name shows), WorkflowBox (allowed steps / approval waiting
+with Approve / Reject), RelatedBlock (a row's linked children + Add with the link filled), AutoForm (every field of a list as
+a form), kit screens `hoola_approvals` and `hoola_data` (every list as rows + a form, so a list the logic added works before
+any redesign); RowsSection / RowCard use them; screen prompts mark `[ref:<list>]` fields. Console app page: "App logic" box
+(summary, draft from words, Apply, approvals, timed jobs Run now, audit, advanced JSON). Phone: `lib/ui/app_logic.dart`.
+
+Routes: owner `GET /api/apps/<ref>/logic`, `POST .../logic/draft`, `DELETE .../logic/draft`, `POST .../logic/apply`,
+`PUT .../logic`, `POST .../logic/switch`, `POST .../logic/test`, `POST .../logic/run/<name>`, `GET .../logic/audit`,
+`GET|POST .../approvals[/<id>]`; app `GET /api/app-api/<key>/approvals`, `POST .../approvals/<id>`,
+`GET .../c/<coll>/<row>/related/<rel>`, `POST .../fn/<name>`.
+
+Tests `server/tests/test_v0380_dimaag.py`: the locked language (no escape, budgets), the checker (unknown names, formula
+loops, bad states / triggers, failing function tests), a full invoicing app end to end (unique phone, links, formulas +
+roll-ups + her function, rules, Send needs a date, follow-up created by a trigger, 2-step maker-checker chain, enter:Paid
+trigger, conditional approval, restrict / cascade / nullify, callable function, schedule once per row, audit, off switch),
+schedule slots + SLA, Opus draft with the repair round + her tap by hash, the customer's own Cancel giving stock back, kits.
+
+Not verified here: the Kotlin / Swift kit compile (CI appgen-check / ios-check build them), a real Opus draft on her VPS.
+Known limits (said plainly): locks + schedules assume one server process (Pillar B moves to Postgres transactions); child
+lookups use a JSON text match on SQLite (fine to a few thousand rows per list); no realtime push of logic results (Pillar C).
