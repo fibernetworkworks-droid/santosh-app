@@ -199,8 +199,12 @@ class McpExecutor:
     name = "mcp"
     _cache: dict[str, tuple[float, list[dict[str, Any]]]] = {}
 
-    def __init__(self, remote_factory: Callable[[str, str], RemoteTools] | None = None):
+    def __init__(self, remote_factory: Callable[[str, str], RemoteTools] | None = None, session_factory=None):
         self.remote_factory = remote_factory or (lambda url, tok: McpHttpRemote(url, tok))
+        if session_factory is None:
+            from .mcp_session import SessionRemote
+            session_factory = lambda url, get, put, guard: SessionRemote(url, get, put, guard=guard)  # noqa: E731
+        self.session_factory = session_factory
 
     def _endpoint(self, pack: Pack, ctx: Ctx) -> str:
         if pack.config.get("endpoint"):
@@ -262,6 +266,12 @@ class McpExecutor:
                                     "MCP servers (never send keys in chat).")
                 raise ToolError(f"NOT_LINKED: Sign in to {pack.name} once (Hoola app > Connect > MCP servers > Link).")
             endpoint = self._endpoint(pack, ctx)
+            if pack.config.get("session") and not headers:
+                # v0.344 Zerodha Kite / FYERS: her broker login lives in one MCP session; keep that session id
+                from ..custom_mcp import check_url
+                from .mcp_session import store
+                get_sid, put_sid = store(ctx.session, ctx.user.id, pack.id)
+                return self.session_factory(endpoint, get_sid, put_sid, check_url)
             from .. import runner as mcp_runner
             if mcp_runner.runner_url(endpoint):   # v0.154 one-tap server on the runner box: make sure it knows it
                 mcp_runner.ensure(ctx.session, pack.id)

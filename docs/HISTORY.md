@@ -12691,7 +12691,94 @@ Owner: "Terms of Service --- HOOLA" (right after her privacy policy went live at
   the old handler; a mark that raises still hands over. Also checked by hand: a real uvicorn server started, got SIGINT,
   exited 0 in 3.7 s with no traceback.
 
-## v0.344.0 DUKAAN (Phase 3a of "any world-complex website": a real shop on her website)
+## v0.344.0 MOSPI + BROKERS (1 Nov 2026)
+Owner: "GO CONNECT MOSPI, BROKERS, RAZORPAY" (after the official-MCP research report). Every endpoint was probed live
+from the sandbox (initialize, OAuth metadata, Dynamic Client Registration with Hoola's real callback, authorize page):
+- **MoSPI eSankhyiki** `https://mcp.mospi.gov.in/mcp`: no auth, 4 read tools (list_datasets -> get_indicators ->
+  get_metadata -> get_data), 31 datasets (PLFS, CPI, GDP, IIP, ASI, HCES...). Featured `mospi`, auth `none`, one tap.
+- **Upstox** `https://mcp.upstox.com/mcp` and **Dhan** `https://mcp.dhan.co/mcp`: OAuth with DCR; both registered
+  `https://hoola.ainewtika.com/bazar/link/callback` and their authorize leads to Upstox login / Dhan consent ->
+  featured `oauth_dcr` (one tap, the existing mcp_auth flow).
+- **Zerodha Kite** `https://mcp.kite.trade/mcp` (22 tools) and **FYERS** `https://mcp.fyers.in/mcp` (39 tools): no
+  OAuth; the `login` tool returns the broker's link and the broker binds the login to the MCP session id. Hoola's
+  client opened a new session per call, so NEW `bazar/connectors/mcp_session.py` SessionRemote keeps one session per
+  (account, server): plain JSON-RPC over streamable HTTP (JSON or SSE), the session id sealed in bz_kv
+  (`mcp_sid:<user>:<pack>`), a forgotten session is reopened once (she logs in again). Featured auth `none` +
+  options.session; custom_mcp.to_pack carries `session`; McpExecutor(session_factory=...) uses it when no headers.
+  Live check: same session across calls, login link returned (FYERS state = our session), holdings refused before login.
+- **Groww** `https://mcp.groww.in/mcp/`: OAuth DCR ignores our redirect and returns a fixed allow-list (Claude,
+  Cursor, localhost, Smithery) -> featured `oauth_partner` ("Hoola's access is pending").
+- **Razorpay** stays as before (merchant key_id:key_secret -> Basic). Its OAuth DCR also accepted our callback and the
+  authorize page is "Authorize AI Client - Razorpay": a one-tap option for later.
+- Safety: every broker entry is `caution` -> mcp_prefs.locked(): any tool that is not plainly a read (place_order,
+  modify / cancel, GTT, alerts, watchlist changes, exit_positions, login) always waits for her tap; get_* reads run
+  straight. Guide line in prompts (MCP servers block): give her the login link, never suggest or place a trade on its
+  own, an order only when she asks for that exact order; MoSPI workflow + quote the dataset. SEBI's retail algo framework
+  (since 1 Apr 2026) is why trading stays one-order-one-tap.
+- Logos: feat:mospi / upstox / dhan / zerodha-kite / fyers / groww in logo_domains.json.
+- Tests: tests/test_v0344_brokers_mospi.py (5). Related suites: the 18 failures seen are the same on pristine main
+  (app builder / iPhone / App Store / Play Store / site editor / mcp_avatar - sandbox-only).
+- Not done: Kotak Neo (QR login in a desktop client), 5paisa (stores PIN/TOTP: against Hoola's rules), Angel One (no MCP).
+
+## v0.345.0 APNA CODE (built as 0.342 / 0.343, re-versioned past the parallel v0.342-v0.344) (App Sahayak Phase 9, owner: "START PHASE 9")
+No Phase 9 had been named; this is the last open item of the original plan's Phase 4 ("each app's code is kept with its
+full history and can be exported to her GitHub").
+- `appmaker/code.py`: `stage(r)` builds the repo content in the app's folder `github/`: android/ (copy of
+  android/project without keys/, build/, .gradle/, qa/, local.properties, *.p12/*.jks/*.p8; the Gradle file's `?: "pw"`
+  preview password blanked like the ZIP export), ios/ (copy of ios/project without dd/, ddr/, DerivedData, logs) when an
+  iPhone build exists, README.md (layout, Android Studio / `./gradlew assembleRelease`, `xcodegen generate` + Xcode, own
+  signing, the backend API on her Hoola server, the rules the code keeps), CHANGELOG.md (Android history notes + iPhone
+  history, newest first), .gitignore; fingerprint over every path + content. `request` = the card (published as the
+  existing `site_github` event, so the phone's GitHub card shows it and its button pushes) with repo `<slug>-app`,
+  private by default, build, files, size, hash; `push` (ONLY via POST /api/sites-github/<id>/push, her tap; `site/github.push`
+  hands app exports to it) re-stages, refuses a stale hash ("naya build aa gaya"), creates the repo if missing (private),
+  then blobs -> a FULL tree (no base_tree: removed files leave) -> a commit on top of the branch head (message = "Hoola app
+  build N (version) + iPhone ..." + what's new) -> ref; records {build, repo, commit, at} in the app state.
+- Routes: POST /api/apps/{ref}/github (through apps_act; the generic POST /api/apps/{ref}/{action} route comes first),
+  GET /api/apps/{ref}/github (linked, repo, exports, commits, ready). Tool app_banao action=github (owner, card only).
+- Phone `AppCodePanel` (app_ios.dart: private switch, button = card in chat, last commits); console `loadCode`
+  (confirm() with the card's repo / files / private, then the push).
+- Tests: `test_v0342_apna_code.py` (2): no build -> 400; card sends nothing; wrong hash refused; files present, no key,
+  password blanked, gradlew executable; build 2 = a second commit with the first as parent; a pre-build card refused;
+  the tool only makes a card.
+
+## v0.346.0 DESIGN SE MILAAN (built as 0.343 / 0.344, re-versioned past the parallel v0.343 / v0.344) (App Sahayak Phase 10, owner: "START PHASE 10")
+No Phase 10 had been named; this is the open promise of the original plan's Phase 3 ("screenshots are compared against
+the approved design") - until now the device check only proved a screen OPENS, not that it LOOKS like her design.
+- `appmaker/match.py`: `score(design, native)` = 0.4 colour (4x4x4 palette histograms, intersection) + 0.45 layout (edge
+  map on a 60x130 grid, 10x10 blocks, correlation) + 0.15 light (mean brightness gap); the native shot loses its top 4.5%
+  (status bar). Measured on real iPhone simulator shots: same screen 93, a different screen in the same colours 62-66, a
+  blank page 33, a dark page 12 -> MATCH_MIN 70. Design shots = the prototype renders `shots/<sid>-<platform>.jpg` (Android
+  as the fallback for iPhone); native = `android|ios/qa/b<n>/<sid>.png` from the device check.
+- `after_build` runs at the end of every Android and iPhone build (never fails a build, no model); `check(platform, fix)`
+  sends each screen under 70 (max 8) to Opus with BOTH pictures (DIFF_SYSTEM: visible differences as instructions, ignore
+  status bar / sample data / font rendering) and keeps the differences; fix=True -> `AN.build(only=low, notes)` /
+  `IO.build(kind sim, only, notes)` (iOS build + write_screen now take notes like Android). Notes stay with a screen until
+  a new build changes the numbers.
+- Routes: GET /api/apps/{ref}/match, POST /api/apps/{ref}/match (apps_act) {platform, fix}. Tool app_banao action=match
+  (platform, fix only when she asks). Phone `MatchPanel` (Android / iPhone chips, design + app pictures side by side, %,
+  differences, Opus se farak dekho, Theek karo with a confirm); console `loadMatch` (same, confirm()).
+- Tests: `test_v0343_design_match.py` (4): score separates a close layout from a wrong one; check lists differences only
+  for the low screen (Opus gets both images); fix rebuilds only that screen with the notes; after_build scores without a
+  model; the tool.
+
+## CHECKPOINT 1 Nov 2026 - stable-2026-11-01-v343 (owner: "SAVE THE STATE")
+Branch `stable-2026-11-01-v343` = fce446a0 = v0.343.0 (pubspec 0.343.0+383), the version live while she ran every test of the
+long-task / tool-choice work: tests 1-6 + A-D passed (v0.330), live tool card 23/26 (v0.336) -> 25/26 (v0.338; the one miss
+is "customer ki complaint register karo" answered with a question the card only spots by a '?'). APK v0.343.0-b843. Note: at the
+moment the branch was cut, another session's v0.346.0 was deployed on top - the checkpoint is the TESTED v0.343.0, not 0.346.
+
+## v0.347.0 LAMBE KAAM KI REPORT + the card reads her questions (owner: "GO 1 3")
+(1) `app/quality/longjobs.py` + `python -m app.quality longjobs [--hours 24]` + vps-ops job `long_jobs`: how her REAL long
+jobs went, read from what Hoola already records - agent_task_runs (pakka.record: every working turn with 4+ tool steps,
+outcome done / partial / stuck / stopped, steps, failures, minutes, last tools, what was left), goal_runs (plan cards:
+status, rounds, restarts picked up, hold, why it ended) and harness_events turn_failed (turns that never reached pakka -
+turn timeout / crash). Lists each unfinished job and open card. Free (no model call); her words are already masked when
+stored, the report shows at most 90 characters. (2) `toolchoice._ASKS`: on an ask_ok row a question in her style without a
+'?' ("bataiye kis customer ki complaint hai", kaun sa / kis / which / बताइए) counts as the fair question - the one miss of
+the 25/26 card. Tests: test_v0347_lambe_kaam_report.py (4).
+
+## v0.348.0 DUKAAN (built as 0.344, re-versioned past the parallel v0.344-v0.347) (Phase 3a of "any world-complex website": a real shop on her website)
 Owner: "START PHASE 3" (3a shop now; 3b dashboards / charts and 3c blog + multi-language come next).
 - `server/app/site/shop.py`: products (`site_shop_products`: price in paise, unit, stock or unlimited, active, photo) and
   orders (`site_shop_orders`: O-1001.., secret tracking token, name / phone / address / pincode / note, items, subtotal +
@@ -12710,5 +12797,5 @@ Owner: "START PHASE 3" (3a shop now; 3b dashboards / charts and 3c blog + multi-
 - Agent: `website` action=shop (turn on, settings, products) and action=shop_order (move an order), `website_dekho what=orders`.
 - Console Studio: a Shop tab (on / UPI ID / COD / pickup / delivery fee, products table, "Add my priced list items", orders with next-step buttons).
 - NOT done yet: phone Flutter screen for orders (push + chat only), emails / SMS to buyers, payment gateway (by design: her UPI only).
-- Tests `server/tests/test_v0344_dukaan.py`: rupees formatting, server-side prices / stock / payment, the last-piece race,
+- Tests `server/tests/test_v0348_dukaan.py`: rupees formatting, server-side prices / stock / payment, the last-piece race,
   public vs owner-only endpoints, and a REAL Chromium purchase (add to cart -> checkout -> UPI QR -> UTR -> tracking).

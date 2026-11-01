@@ -1,4 +1,4 @@
-"""v0.344 DUKAAN (web design Phase 7 step 1, owner: "START PHASE 3" - all features, first a real online shop).
+"""v0.348 DUKAAN (web design Phase 7 step 1, owner: "START PHASE 3" - all features, first a real online shop).
 
 A shop on any Hoola website: products with prices and stock, a cart, checkout, UPI payment to HER own UPI ID, orders she
 manages, and a private tracking link for each customer.

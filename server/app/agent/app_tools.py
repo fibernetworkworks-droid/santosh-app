@@ -56,7 +56,13 @@ APP_TOOLS = [
         "Store review / release = her tap in App Store Connect, never here. No Mac set up -> the Xcode project ZIP (say so). "
         "v0.338 action=appstore (owner only) step=listing (App Store name / subtitle / keywords / description by Opus within "
         "Apple's limits) | push (that listing + 6.9-inch screenshots + the TestFlight build onto App Store Connect, via her "
-        "builds repo; needs a TestFlight build first). Submit for Review is ONLY her tap in the app, never from chat." "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
+        "builds repo; needs a TestFlight build first). Submit for Review is ONLY her tap in the app, never from chat. "
+        "v0.342 action=github (owner only; repo optional, private default true): her app's whole code (android/ + ios/ + "
+        "README + CHANGELOG, never a signing key) to HER GitHub as one new commit per build - makes a card, ONLY her tap "
+        "on it pushes (her GitHub token is linked once in the app: Website > Hosting). "
+        "v0.343 action=match (platform android|ios, fix): every real app screen vs her approved design (0-100); Opus looks at "
+        "the ones under 70 and lists the visible differences; fix=true (only when she asks to fix) rebuilds those screens with "
+        "the differences as notes." "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
         "action=data (app, coll, row, set) changes a row for her, e.g. an order's status (\"order accept karo\" -> set {status: Accepted}); "
         "v0.319: a customer's UPI \"I have paid\" claim reads paid=\"Customer says paid\" + utr; ONLY when she says she saw the money in "
         "her own bank set {paid: Verified} (never on the customer's word, never by yourself). Photos / locations her app's users sent are "
@@ -65,7 +71,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -81,6 +87,10 @@ APP_TOOLS = [
          "package": {"type": "string", "description": "action=store step=setup: the permanent package name she confirmed, e.g. com.sharmakirana.app"},
          "ops": {"type": "object", "description": "action=data_change: {add: [{coll, key, label, type, options}], hide: [{coll, key}], label: [{coll, key, label}]} - additive only, data never deleted"},
          "role": {"type": "string", "enum": ["member", "staff", "admin"]},
+         "repo": {"type": "string", "description": "action=github: repo name in her GitHub (default <app>-app)"},
+         "private": {"type": "boolean", "description": "action=github: private repo (default true); public only if she says so"},
+         "platform": {"type": "string", "enum": ["android", "ios"], "description": "action=match: which app's screens"},
+         "fix": {"type": "boolean", "description": "action=match: rebuild the screens that do not match (only when she asks)"},
          "astep": {"type": "string", "enum": ["listing", "push"], "description": "action=appstore: the App Store step (submit for review = only her tap in the app)"},
          "kind": {"type": "string", "enum": ["sim", "testflight"], "description": "action=ios: sim = build + simulator check (default); testflight = also upload to TestFlight (only on her ask)"}},
          "required": ["action"]}},
@@ -161,6 +171,23 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = IO.build(t, ref, conv, kind, redo)
         return {"status": v["status"], "runner": v["runner"], "bundle_id": v["bundle_id"],
                 "say": v["say"] + " Card apne aap badlega (poll mat kariye)."}
+    if action == "match":                     # v0.343 design se milao
+        from ..appmaker import match as MT
+        v = MT.check(t, ref, str(a.get("platform") or "android"), bool(a.get("fix")), conv)
+        plat = str(a.get("platform") or "android")
+        rows = (v["match"].get(plat) or {}).get("screens") or []
+        return {"say": v["say"], "rebuilt": v["rebuilt"], "avg": (v["match"].get(plat) or {}).get("avg"),
+                "screens": [{k: x.get(k) for k in ("id", "label", "score", "differences")} for x in rows[:12]]}
+    if action == "github":                    # v0.342 her app's code in HER GitHub: a card, only her tap pushes
+        if not _owner(ctx):
+            raise ToolError("Sirf maalkin yeh kar sakti hain.")
+        from ..appmaker import code as CODE
+        from ..site import github as GH
+        try:
+            v = CODE.request(t, ref, str(a.get("repo") or ""), a.get("private", True) is not False, conv)
+        except GH.GithubError as e:
+            raise ToolError(str(e))
+        return {k: v.get(k) for k in ("repo", "private", "version", "files", "say")}
     if action == "appstore":                  # v0.338 App Store launch steps (submit for review = her tap, never here)
         if not _owner(ctx):
             raise ToolError("Sirf maalkin yeh kar sakti hain.")

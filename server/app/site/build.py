@@ -478,7 +478,7 @@ def with_app_pages(site: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]
     return {**plan, "pages": pages}
 
 
-# ---------------------------------------------------------------- v0.344 her shop (code only: prices come live from the API)
+# ---------------------------------------------------------------- v0.348 her shop (code only: prices come live from the API)
 def with_shop_pages(site: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
     """A site with the shop on gets a 'Shop' page in the menu (unless the plan already has one)."""
     if not (site.get("shop") or {}).get("api") or any(p["slug"] == "shop" for p in plan.get("pages", [])):
@@ -675,7 +675,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
     if site.get("app_api"):                      # v0.305 where the app script talks to (Hoola's API, never the site host)
         meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}">')
     shop = site.get("shop") or {}
-    if shop.get("api"):                          # v0.344 her shop: the cart script talks to Hoola's shop API
+    if shop.get("api"):                          # v0.348 her shop: the cart script talks to Hoola's shop API
         meta.append(f'<meta name="hoola-shop" content="{esc(shop["api"])}" data-cod="{1 if shop.get("cod") else 0}" '
                     f'data-upi="{1 if shop.get("upi") else 0}" data-pickup="{1 if shop.get("pickup") else 0}" '
                     f'data-delivery="{esc(shop.get("delivery") or "")}" data-free="{esc(shop.get("free_above") or "")}">')
@@ -768,7 +768,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     if site.get("app_api"):
         shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
     plan = with_app_pages(site, plan)
-    plan = with_shop_pages(site, plan)            # v0.344
+    plan = with_shop_pages(site, plan)            # v0.348
     if (site.get("shop") or {}).get("api"):
         shutil.copy(ASSETS / "hoola-shop.js", out / "assets" / "hoola-shop.js")
     logo = False
@@ -859,12 +859,12 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             body = legal_page(slug, site)
         elif slug in ("account", "admin") and (site.get("app") or {}).get("collections") and not page.get("sections"):
             body = app_page(slug, site)
-        elif page.get("shop_page"):           # v0.344 the code-made shop
+        elif page.get("shop_page"):           # v0.348 the code-made shop
             body = shop_page(site, rel, photos)
         elif page.get("template") in tpls:   # v0.315 one collection item
             c = cols.get(page["collection"]) or {"fields": []}
             body = render(slug, tpls[page["template"]].get("sections", []), rel, page["template"], page["item"], c["fields"])
-            body += buy_box(site, slug)      # v0.344 a list item that is a product: price + Add to cart
+            body += buy_box(site, slug)      # v0.348 a list item that is a product: price + Add to cart
         else:
             body = render(slug, page.get("sections", []), rel)
             if big and page.get("collection") in cols:     # the listing of its items, made by code

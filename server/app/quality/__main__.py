@@ -1,5 +1,6 @@
 """python -m app.quality [--live] [--judge] [--label "..."] | compare <before.json> <after.json>
-   | tools [--live] [--fresh] [--limit N] [--brain claude|glm] [--label "..."]   (v0.245 tool-choice card)"""
+   | tools [--live] [--fresh] [--limit N] [--brain claude|glm] [--label "..."]   (v0.245 tool-choice card)
+   | longjobs [--hours 24]   (v0.347 how her real long jobs went)"""
 from __future__ import annotations
 
 import asyncio
@@ -28,6 +29,11 @@ def _tools(argv: list[str]) -> int:
 def main(argv: list[str]) -> int:
     if argv and argv[0] == "tools":
         return _tools(argv[1:])
+    if argv and argv[0] == "longjobs":      # v0.347 how her real long jobs went (free, reads the records only)
+        from . import longjobs as LJ
+        hours = int(argv[argv.index("--hours") + 1]) if "--hours" in argv and len(argv) > argv.index("--hours") + 1 else 24
+        print("\n".join(LJ.lines(LJ.report(hours))))
+        return 0
     if argv and argv[0] == "hard":          # v0.272 the hard-reasoning detector card (free, no model)
         from . import hard_asks as HA
         print("\n".join(HA.lines(HA.card())))
