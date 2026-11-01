@@ -10,6 +10,7 @@ Two cards over app/quality/tool_asks.py:
 from __future__ import annotations
 
 import json
+import re
 import logging
 import time
 from typing import Any
@@ -72,10 +73,15 @@ async def _first_pick(a: dict, brain: str, settings) -> dict[str, Any]:
         out["words"] = " ".join(str(b.get("text") or "") for b in blocks if b.get("type") == "text")[:200]
     # v0.337 a fair card: a listed first step (her ID details before a form) is right, and so is ONE real question
     # where the ask truly misses its subject (ask_ok) - only a wrong tool, or words where work was due, count as misses
-    out["asked"] = bool(not pick and a.get("ask_ok") and "?" in out.get("words", ""))
+    out["asked"] = bool(not pick and a.get("ask_ok") and _ASKS.search(out.get("words", "")))
     out["right"] = (bool(pick and (pick["name"] in a["ok"] or pick["name"] in (a.get("also") or ())))
                     or bool(out.get("found")) or out["asked"])
     return out
+
+
+# v0.347 a question in her style often has no '?': "bataiye kis customer ki complaint hai" (the 25/26 card's one miss)
+_ASKS = re.compile(r"\?|\bbata(?:iye|yein|ein| dijiye| do)\b|\bkaun(?:\s*sa|\s*si|\s*se)?\b|\bkis\b|\bkya naam\b|"
+                   r"\bwhich\b|\bwho\b|\bplease share\b|बताइए|बताइये|बताएं|किस|कौन", re.I)
 
 
 def fresh_asks() -> list[dict]:

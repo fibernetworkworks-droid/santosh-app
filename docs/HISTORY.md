@@ -12767,3 +12767,13 @@ Branch `stable-2026-11-01-v343` = fce446a0 = v0.343.0 (pubspec 0.343.0+383), the
 long-task / tool-choice work: tests 1-6 + A-D passed (v0.330), live tool card 23/26 (v0.336) -> 25/26 (v0.338; the one miss
 is "customer ki complaint register karo" answered with a question the card only spots by a '?'). APK v0.343.0-b843. Note: at the
 moment the branch was cut, another session's v0.346.0 was deployed on top - the checkpoint is the TESTED v0.343.0, not 0.346.
+
+## v0.347.0 LAMBE KAAM KI REPORT + the card reads her questions (owner: "GO 1 3")
+(1) `app/quality/longjobs.py` + `python -m app.quality longjobs [--hours 24]` + vps-ops job `long_jobs`: how her REAL long
+jobs went, read from what Hoola already records - agent_task_runs (pakka.record: every working turn with 4+ tool steps,
+outcome done / partial / stuck / stopped, steps, failures, minutes, last tools, what was left), goal_runs (plan cards:
+status, rounds, restarts picked up, hold, why it ended) and harness_events turn_failed (turns that never reached pakka -
+turn timeout / crash). Lists each unfinished job and open card. Free (no model call); her words are already masked when
+stored, the report shows at most 90 characters. (2) `toolchoice._ASKS`: on an ask_ok row a question in her style without a
+'?' ("bataiye kis customer ki complaint hai", kaun sa / kis / which / बताइए) counts as the fair question - the one miss of
+the 25/26 card. Tests: test_v0347_lambe_kaam_report.py (4).
