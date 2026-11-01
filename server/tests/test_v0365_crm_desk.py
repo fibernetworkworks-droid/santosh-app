@@ -55,7 +55,7 @@ def sf(env, monkeypatch):
         paths.append((method, path))
         return answer(method, path, body)
 
-    # v0.382: the write path is dialect.Call; `paths` still records every (method, path) either way.
+    # v0.388: the write path is dialect.Call; `paths` still records every (method, path) either way.
     monkeypatch.setattr(RUN, "_odata_call", fake)
     monkeypatch.setattr(RUN.dialect, "Call",
                         fake_call(_Pairs(paths), answer))

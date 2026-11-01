@@ -1,6 +1,6 @@
 """How each enterprise system really wants to be written to - the part that is NOT generic OData.
 
-v0.382 found this by reading the vendors' own documentation instead of assuming "OData is OData". Every claim
+v0.388 found this by reading the vendors' own documentation instead of assuming "OData is OData". Every claim
 below carries the page it came from, because each one is a write that silently FAILS without it:
 
 SAP (SAP Gateway / S4HANA, OData v2 and v4)
@@ -139,7 +139,7 @@ class Call:
         h = {"Accept": "application/json"}
         h.update(self._auth())
         if body is not None:
-            h["Content-Type"] = "application/json"      # was missing entirely before v0.382
+            h["Content-Type"] = "application/json"      # was missing entirely before v0.388
         if headers:
             h.update(headers)
         res = self._c.request(method, self._url(path), json=body, params=params, headers=h)

@@ -52,7 +52,7 @@ from xml.sax.saxutils import escape
 
 log = logging.getLogger("santosh.enterprise.sfmeta")
 
-API = "68.0"                 # Winter '27 was current at v0.382; the URL version and package.xml must match
+API = "68.0"                 # Winter '27 was current at v0.388; the URL version and package.xml must match
 PIN = "64.0"                 # what we actually call: a release or two back, inside the 3-year support window
 MAX_FILES = 10000            # Salesforce: "You can deploy or retrieve up to 10,000 files at once"
 MAX_ZIP = 39 * 1024 * 1024   # "The maximum size of the deployed or retrieved .zip file is 39 MB"

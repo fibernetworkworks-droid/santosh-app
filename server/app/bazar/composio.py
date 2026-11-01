@@ -258,7 +258,7 @@ def composio_user(tenant_id: str) -> str:
 
 
 def toolkit_of(slug: str) -> str:
-    """Which app a tool slug belongs to. v0.382: NOT `slug.split("_")[0]`.
+    """Which app a tool slug belongs to. v0.388: NOT `slug.split("_")[0]`.
 
     A tool slug is TOOLKIT_ACTION, but 525 of Composio's 1,694 toolkit slugs (31%) contain an underscore
     themselves - `ZOHO_BOOKS`, `ZOHO_INVENTORY`, `ZOHO_INVOICE`, `SAP_SUCCESSFACTORS`,
@@ -317,7 +317,7 @@ def tool_exists(slug: str) -> bool | None:
 def is_read(slug: str, toolkit: str = "") -> bool:
     """SLACK_LIST_ALL_CHANNELS = read; SLACK_SEND_MESSAGE = write. Unsure = write (a card she taps).
 
-    v0.382: `toolkit` may be left out - it is then resolved properly instead of by splitting the slug. The
+    v0.388: `toolkit` may be left out - it is then resolved properly instead of by splitting the slug. The
     head is stripped only when it really matches, so a wrong toolkit can no longer turn every read into a
     write (which is what happened to Zoho Books and SAP SuccessFactors)."""
     toolkit = toolkit or toolkit_of(slug)
@@ -411,7 +411,7 @@ class Client:
         return self._req("GET", f"/tools/{slug}", params={"toolkit_versions": "latest"})
 
     def execute(self, slug: str, user_id: str, ca_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        # v0.382: the literal string "latest" is the ONE form Composio documents as REJECTED for direct
+        # v0.388: the literal string "latest" is the ONE form Composio documents as REJECTED for direct
         # execution (it raises a tool-version error); OMITTING the field selects latest on v3.1. We used to
         # send "latest", so every ERP write could have failed on a version error before reaching her system.
         # docs.composio.dev/docs/tools-direct/toolkit-versioning

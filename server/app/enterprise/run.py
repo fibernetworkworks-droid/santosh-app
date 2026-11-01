@@ -135,7 +135,7 @@ class Ambiguous(Exception):
 def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, Any]:
     from ..bazar import composio as cmp
     from ..db import session as _s
-    toolkit = cmp.tool_toolkit(slug)                 # v0.382: never slug.split("_")[0] - see composio.toolkit_of
+    toolkit = cmp.tool_toolkit(slug)                 # v0.388: never slug.split("_")[0] - see composio.toolkit_of
     with _s() as s:
         acc, state = cmp.account(s, cmp.composio_user(tenant), toolkit)
         if acc is None or state != "active":
@@ -151,7 +151,7 @@ def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, A
         raise
     if not isinstance(out, dict):
         raise Ambiguous("Composio ka jawab samajh nahi aaya.")
-    # v0.382: this used to default to TRUE when the field was missing, so a changed response shape would
+    # v0.388: this used to default to TRUE when the field was missing, so a changed response shape would
     # report a FAILED write as done - and the idempotency key would then mark the row complete for ever.
     if "successful" in out:
         ok = bool(out.get("successful"))
@@ -266,7 +266,7 @@ def read(tenant: str, role: str, system: str, target: str, query: dict[str, Any]
 
 def _is_read_slug(slug: str) -> bool:
     from ..bazar import composio as cmp
-    return cmp.is_read(slug)        # v0.382: resolves the toolkit properly; was slug.split("_")[0]
+    return cmp.is_read(slug)        # v0.388: resolves the toolkit properly; was slug.split("_")[0]
 
 
 def _rows_of(data: Any) -> list[Any]:
@@ -322,7 +322,7 @@ def plan_write(tenant: str, role: str, system: str, target: str, verb: str, rows
 
 
 # ---------------------------------------------------------------- what the vendor itself refuses
-# v0.382, from Salesforce's own documentation: "CRUD operations on the following Tooling API objects in an
+# v0.388, from Salesforce's own documentation: "CRUD operations on the following Tooling API objects in an
 # active org generate the error `Save or update not supported in active organizations`: ApexClass,
 # ApexComponent, ApexPage, ApexTrigger, CustomField, CustomObject."
 # developer.salesforce.com .../api_tooling/intro_crud_operations.htm

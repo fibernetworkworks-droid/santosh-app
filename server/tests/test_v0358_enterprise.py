@@ -80,7 +80,7 @@ def test_a_capped_job_cannot_be_made_to_write_outside():
 def test_the_caps_name_the_real_gate():
     """The limit is somebody else's rule, not our code - so it is written in terms she can act on.
 
-    v0.382 REWROTE this test rather than deleting it, because the wording it used to pin was factually
+    v0.388 REWROTE this test rather than deleting it, because the wording it used to pin was factually
     wrong and the test was keeping it that way:
       - it demanded "Sahamati" in the banking cap, but Sahamati's requirement is a CONFORMANCE
         CERTIFICATION, not a security audit; the biennial CISA IS audit belongs to the AA, not to the data

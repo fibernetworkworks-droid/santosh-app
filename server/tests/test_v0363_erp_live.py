@@ -40,7 +40,7 @@ def erp(env, monkeypatch):
         calls.append((method, path, body))
         return answer(method, path, body)
 
-    # v0.382: writes go through dialect.Call now (one session, for the CSRF token), reads still here.
+    # v0.388: writes go through dialect.Call now (one session, for the CSRF token), reads still here.
     monkeypatch.setattr(RUN, "_odata_call", fake)
     monkeypatch.setattr(RUN.dialect, "Call", fake_call(calls, answer))
     RUN.set_endpoint("t1", "erp", "sap", "https://erp.example.com/odata", "SECRET", env="test")

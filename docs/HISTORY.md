@@ -14659,6 +14659,6 @@ remains the one thing standing between the engine and a real tenant.
 
 ### Files
 `server/app/enterprise/dialect.py` (new) · `sfmeta.py` (new) · `run.py` · `rules.py` ·
-`server/app/bazar/composio.py` · `server/tests/entfake.py` (new) · `test_v0382_real_rails.py` (new, 35) ·
+`server/app/bazar/composio.py` · `server/tests/entfake.py` (new) · `test_v0388_real_rails.py` (new, 35) ·
 `test_v0358_enterprise.py` · `test_v0363_erp_live.py` · `test_v0365_crm_desk.py`. 74 tests pass across the
 enterprise suites.

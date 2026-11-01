@@ -1,4 +1,4 @@
-"""v0.382 SACH BOLO - the write rails made real, from the vendors' own documentation.
+"""v0.388 SACH BOLO - the write rails made real, from the vendors' own documentation.
 
 Every test here pins a defect that primary-source research found in v0.358-v0.375, and each one would have
 failed silently against a real customer system. The point of each is named in its docstring.
@@ -72,7 +72,7 @@ def mk(system="sap", script=None, env="test"):
 # ---------------------------------------------------------------- SAP: CSRF + If-Match
 def test_sap_write_sends_csrf_token_fetched_in_the_same_session():
     """SAP: no X-CSRF-Token on a modifying request -> 403. The token is bound to the SECURITY SESSION, so it
-    must be fetched and used on one client. Before v0.382 we sent neither, on a fresh client each call."""
+    must be fetched and used on one client. Before v0.388 we sent neither, on a fresh client each call."""
     def script(method, url, headers, body):
         if headers.get("X-CSRF-Token") == "Fetch":
             return FakeRes(200, {}, {"x-csrf-token": "TOK-123"})
