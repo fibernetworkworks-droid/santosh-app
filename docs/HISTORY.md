@@ -13089,7 +13089,52 @@ nine roles listed as "Coming soon" in the new Employees group.
 - NOT VERIFIED live: CadQuery wheel on the VPS Python; `unshare -rn` allowed on the VPS kernel (falls back to the import
   gate + guard if not); Opus's CadQuery quality on real asks. Tests: test_v0357_engineering_desk.py (10, real CadQuery).
 
-## v0.360.0 ERP KA POORA DESK — every ERP job, not just the architect
+## v0.360.0 CODE CARD (owner: "GO 6")
+Item 6 of the coding plan: a card that measures how well Developer Sahayak really codes. Built as 0.357 / 0.358 / 0.359, re-versioned past
+the parallel v0.357 DASHBOARD , v0.358 ENTERPRISE SYSTEMS and v0.359 ENGINEERING DESK.
+- `quality/code_tasks.py` (SET 1): 12 fixed practice jobs, each a tiny Python repo with the same root AGENTS.md (tests in tests/,
+  money in paise, no print(), small changes). The jobs:
+  - fix: empty average, page offset, root cause in another file than the trace, a fix next to a do-not-touch twin, SQL quote
+    bug (must be parameterised);
+  - write: GST in paise, a PIN check under a folder AGENTS.md (docstring + type hints), an optional param that keeps old calls,
+    summarize with logging (no print);
+  - tests for a discount function (must catch a mutant);
+  - a README usage section;
+  - an explain-only job (must change nothing).
+- Each job has a hidden check script, allowed files, rule checks and a reference answer (offline test only).
+- `quality/codecard.py`:
+  - every job runs through the SAME `devsahayak/loop.run` (same model / effort / rules) against an in-memory repo (`MemGh`),
+    4 in parallel, 30 steps / 6 min each;
+  - marks: works (hidden check), scope, rules, test (passes; a fix's test must FAIL on the old code; a tests job must catch the
+    mutant). RIGHT = all needed marks green.
+- Running answers: a child Python in a temp folder with only PATH / HOME / PYTHONPATH (no keys), CPU 20 s / 1.5 GB / 10 MB file
+  limits, 60 s timeout. Code importing socket / subprocess / requests / httpx / urllib / shutil, or using eval / exec /
+  os.system / file writes, is NOT run (unsafe). Only these fixed jobs' answers run, never a user's repo.
+- `python -m app.quality code [--only id,id] [--limit N] [--label x]`, saved as code-*.json next to the tool cards; vps-ops job
+  `code_card` (~12 Opus jobs, roughly Rs 150-400, ~6-12 min).
+- Tests `test_v0360_code_card.py` (18):
+  - every reference answer scores RIGHT and every untouched repo fails its check;
+  - the marks catch a caller patched instead of the root cause, a missing test, a test that doesn't prove the bug,
+    escaped-but-f-string SQL, weak tests that miss the mutant, and an explain job that edits;
+  - unsafe code is never run; the child sees no keys;
+  - a scripted model drives the real loop end to end; CLI + vps-ops job.
+
+## v0.361.0 CAD BOX CHAUTHI DEEWAR (1 Nov 2026, her VPS: `python -m app.engineering.service` -> cadquery true, no_network false)
+Ubuntu 24.04 restricts unprivileged user namespaces (AppArmor), so `unshare -rn` fails and the CAD box had no network
+namespace on her server. The guard and the runner's import gate already stopped every path a deep search could find (no
+non-underscore chain from cadquery / math reaches os / sys / subprocess / socket within 3 levels; `cq.exporters.os` was
+already refused), but a namespace-less box needs its own wall:
+- `engineering/runner.py _lockdown()`: while HER script runs, socket.socket / create_connection / getaddrinfo..., os.system /
+  popen / fork / kill / exec* / spawn* / remove / rename / chmod / putenv / setuid..., subprocess.Popen / run / call...,
+  shutil.rmtree / move / copy... raise `_Locked`; `_unlock()` puts them back before the runner's own STEP / STL export.
+- `guard.py`: os, sys, subprocess, socket, shutil, importlib, ctypes, builtins, tempfile, pathlib, io, system, popen,
+  Popen, environ, getenv, putenv, spawn, fork, modules, urllib, http, requests refused as attribute names anywhere.
+- Test test_v0361_lockdown_holds_without_a_network_namespace (ENG_NO_NET=false, a guard-bypassing os.system call is
+  stopped, normal export still works).
+- Optional on the VPS to get the namespace back (also helps the Blender 3D box): an AppArmor profile that allows userns
+  for /usr/bin/unshare (see the chat), then `python -m app.engineering.service` shows no_network true.
+
+## v0.362.0 ERP KA POORA DESK — every ERP job, not just the architect
 Owner: *"ERP --- INCLUDE ALL JOBS IN ERP FOR HOOLA AI"*.
 
 An ERP job is not one person, it is a **desk**. v0.358 shipped the architect's half; this puts the whole

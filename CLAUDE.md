@@ -145,9 +145,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.357.0 (pubspec 0.357.0+397). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.361.0 (pubspec 0.361.0+401). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.361 CAD BOX CHAUTHI DEEWAR: her VPS has no `unshare -rn` (no_network false) -> engineering runner locks socket / os.system /
+  exec / subprocess / file delete while her script runs (`runner._lockdown`), guard refuses os / sys / socket... names.
+- v0.360 CODE CARD: `python -m app.quality code` / vps-ops `code_card` = 12 practice coding jobs (`quality/code_tasks.py`) through the real dev loop, marked works / scope / rules / tests that prove the fix (`quality/codecard.py`).
 - v0.359 ENGINEERING DESK Ph.1 + CAD ENGINEER (`engineering/`: guard / runner / sandbox like blender3d, CadQuery, render.py
   z-buffer views + drawing PDF, `/api/eng/*`, tool cad_part, hire key `cad`); restored console sections + 3 scripts v0.358 dropped.
 - v0.357 DASHBOARD (built as 0.353; `static/console/charts.js` = one SVG chart drawer for console + sites, `site/dash.py`): website charts from a table (`<figure data-hoola-chart>`), her Dashboard tab / phone page / `website_dekho what=dashboard` (visits, enquiries, orders, confirmed sales vs previous period), web-app staff charts on /admin/ (`/api/site-app/<id>/stats`).
@@ -288,7 +291,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
-- v0.360 ERP KA POORA DESK: an ERP job is a DESK, not one person - the whole lifecycle now sits in the `erp`
+- v0.362 ERP KA POORA DESK: an ERP job is a DESK, not one person - the whole lifecycle now sits in the `erp`
   role as 16 parts (blueprint, functional, technical/ABAP, data, integration, basis, security+SoD, testing,
   cutover, training, support/AMS, master data, reporting, finance close, licence, upgrade). ONE duty for all
   16 (it is her one live ERP, so trust is set once; a live write is still BIG). Each part makes only its own

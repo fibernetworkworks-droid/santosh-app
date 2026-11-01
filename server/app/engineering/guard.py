@@ -20,6 +20,9 @@ BAD_ATTRS = {
     "exporters", "importers", "export", "exportStep", "exportStl", "exportBrep", "exportSvg", "exportDXF",
     "importStep", "importBrep", "importStl", "importDXF", "importSvg", "save", "load", "write", "toSvg",
     "fromBrep", "importBin", "exportBin", "occ_impl", "vis", "cq_directive",
+    # v0.361 never by name, whatever object it hangs off (the box may have no network namespace on some servers)
+    "os", "sys", "subprocess", "socket", "shutil", "importlib", "ctypes", "builtins", "tempfile", "pathlib", "io",
+    "system", "popen", "Popen", "environ", "getenv", "putenv", "spawn", "fork", "modules", "urllib", "http", "requests",
     # python internals
     "f_globals", "f_locals", "f_back", "gi_frame", "gi_code", "co_code", "func_globals", "tb_frame", "mro",
 }

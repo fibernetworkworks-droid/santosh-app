@@ -138,3 +138,20 @@ def test_catalog_has_the_engineering_group():
     eng_keys = [k for k, c in hire.CATALOG.items() if c.get("group") == "Research, CAD, Hardware & Industrial Tech"]
     assert len(eng_keys) == 10 and hire.CATALOG["cad"]["live"] is True
     assert sum(1 for k in eng_keys if hire.CATALOG[k].get("live")) == 1
+
+
+def test_v0361_lockdown_holds_without_a_network_namespace(env, monkeypatch, tmp_path):
+    """v0.361 her VPS (Ubuntu 24.04) refuses `unshare -rn`: the fourth wall must stop a program / socket by itself."""
+    pytest.importorskip("cadquery")
+    monkeypatch.setenv("ENG_NO_NET", "false")
+    from app.engineering import sandbox
+    sandbox._NET_OK = None
+    marker = tmp_path / "pwned"
+    code = (f"import cadquery as cq\nx = cq.exporters.os.system('touch {marker}')\n"     # bypasses guard on purpose
+            "result = cq.Workplane('XY').box(1, 1, 1)\n")
+    r = sandbox.run(tmp_path / "a", code)
+    assert r["ok"] is False and "band" in r["errors"][0] and not marker.exists()
+    code2 = "import cadquery as cq\nimport math\nresult = cq.Workplane('XY').box(10, 10, 10)\n"
+    r2 = sandbox.run(tmp_path / "b", code2)
+    assert r2["ok"] and (tmp_path / "b" / "part.step").exists()                         # the runner's own export still works
+    sandbox._NET_OK = None

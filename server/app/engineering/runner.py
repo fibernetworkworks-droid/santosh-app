@@ -25,6 +25,46 @@ def _gate(name, globals=None, locals=None, fromlist=(), level=0):
     return builtins.__import__(name, globals, locals, fromlist, level)
 
 
+class _Locked(Exception):
+    pass
+
+
+def _deny(*_a, **_k):
+    raise _Locked("network / programs / files band hain is box mein")
+
+
+_LOCK_TARGETS = (("socket", ("socket", "create_connection", "create_server", "socketpair", "fromfd", "getaddrinfo")),
+                 ("os", ("system", "popen", "fork", "forkpty", "kill", "killpg", "execv", "execve", "execl", "execle",
+                         "execlp", "execlpe", "execvp", "execvpe", "spawnl", "spawnle", "spawnlp", "spawnlpe", "spawnv",
+                         "spawnve", "spawnvp", "spawnvpe", "posix_spawn", "posix_spawnp", "remove", "unlink", "rmdir",
+                         "removedirs", "rename", "replace", "chmod", "chown", "putenv", "setuid", "setgid")),
+                 ("subprocess", ("Popen", "run", "call", "check_call", "check_output", "getoutput", "getstatusoutput")),
+                 ("shutil", ("rmtree", "move", "copy", "copy2", "copyfile", "copytree")))
+
+
+def _lockdown() -> list:
+    """v0.361 the fourth wall, for servers where `unshare -rn` is not allowed: while HER script runs, every function
+    that reaches the network, starts a program or deletes / moves files raises, in this process. Undone after the
+    script, before the runner's own export. Returns what to put back."""
+    import importlib
+    saved = []
+    for mod_name, names in _LOCK_TARGETS:
+        try:
+            mod = importlib.import_module(mod_name)
+        except ImportError:
+            continue
+        for n in names:
+            if hasattr(mod, n):
+                saved.append((mod, n, getattr(mod, n)))
+                setattr(mod, n, _deny)
+    return saved
+
+
+def _unlock(saved: list) -> None:
+    for mod, n, v in saved:
+        setattr(mod, n, v)
+
+
 def _shape(cq, obj):
     if isinstance(obj, cq.Workplane):
         vals = [v for v in obj.vals() if isinstance(v, cq.Shape)]
@@ -46,7 +86,11 @@ def main() -> None:
     try:
         import cadquery as cq
         g = {"__builtins__": {**SAFE_BUILTINS, "__import__": _gate}, "cq": cq, "math": math, "__name__": "hoola_part"}
-        exec(compile(job["code"], "hoola_part.py", "exec"), g)
+        saved = _lockdown()
+        try:
+            exec(compile(job["code"], "hoola_part.py", "exec"), g)
+        finally:
+            _unlock(saved)
         if "result" not in g:
             raise ValueError("script ne `result` set nahi kiya")
         shape = _shape(cq, g["result"])
