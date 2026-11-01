@@ -14944,8 +14944,62 @@ a new app field = a new column there, counts compared, her database unreachable 
 again, unlink keeps her data, mirror mode never blocks and catches up.
 Known limits: a write-through costs one round trip to her database per save (Mumbai region ~20-60 ms); if Hoola's own commit
 fails AFTER hers succeeded (very rare) "Compare counts" shows it; MySQL / Mongo / Firebase not yet.
+## v0.397.0 CONNECT — the door the whole enterprise suite was missing
+Owner: **"GO CONNECT"**.
 
-## v0.397.0 REAL DRAWINGS (1 Nov 2026)
+Since v0.358 the ten enterprise desks could do everything except touch a real system, and every version since
+has had to end with the same sentence: *no live tenant has answered any of it*. The reason was never the
+engine — it was that **there was nowhere to put a credential.** The chat refuses a key on purpose, and should:
+a secret typed into a conversation lives in the history, in the model's context, and in any export of either.
+`run.set_endpoint` existed and sealed its input properly, but nothing could call it — no route, no screen.
+
+### The one door
+`POST /api/enterprise/<role>/endpoint`, reachable from the console's new **Systems** page and the phone's
+**Profile → Apne system jodiye**. The key is sealed the instant it arrives (`bazar.security.vault`) and
+**no route returns it** — the save answer, the listing and the screens all show only the masked form.
+`DELETE` forgets the address and the key and leaves her runs and papers alone.
+
+The form asks only what a join needs: the API address (with a per-system hint, because guessing the API URL is
+the commonest reason a join fails), what kind of key it is, the key itself in a password field cleared the
+moment it is sent, and **test or production declared explicitly** — a URL that looks live is not consent, so
+`env` defaults to test and a production write still needs the word as well as her tap.
+
+### `verify` — the first call in the suite that ever reaches a customer tenant
+Read-only, writes nothing (a test asserts only `GET` is ever sent), and it reports **what the system
+answered** rather than a green tick:
+
+| it checks | because |
+|---|---|
+| the address answered, and with what code | a 404 means the address is wrong, not the key |
+| **401 vs 403** | a wrong key and a missing permission are different problems with different fixes |
+| a CSRF token can be fetched (SAP, Windchill) | without one every write 403s — better said now than at her first write |
+| an ETag will be available (SAP) | `If-Match` is mandatory there; a row we cannot read gets skipped, not written blind |
+| a check-out is needed (Windchill) | and that Hoola always releases it |
+| the documented idempotent create (SAP) | opt-in per customer system, so it is recorded on first use, never assumed |
+
+A clean check stamps `verified_at`; a failing one deliberately does **not**, so "jancha hua" can never be a
+stale badge. A dead host is an answer too, not a crash — it comes back as "address se baat hi nahi hui,
+firewall / VPN dekhna padega".
+
+### Also on the Systems page
+Her write runs, and the rows whose answer never arrived (v0.393's `ambiguous`) with the two buttons only she
+can press: **"System mein hai"** (closes the row, sends nothing) and **"Nahi gayi — dobara bhejiye"** (back in
+the queue for exactly one more attempt).
+
+### Files
+`server/app/enterprise/run.py` (`verify`, `VERIFY_PROBES`, `forget_endpoint`) ·
+`server/app/main.py` (5 routes; enterprise 11 → 16) · `server/app/static/console/enterprise.js` (new) ·
+`v2.html` / `v2.js` / `v2.css` (Systems view, nav, `IC.systems`, the v0.320 design system) ·
+`lib/api.dart` (4 calls) · `lib/ui/enterprise_screen.dart` (new) · `lib/ui/profile_screen.dart` ·
+`server/tests/test_v0396_connect.py` (18). 136 pass across the enterprise + console suites.
+
+### What this does and does not change
+It does **not** make any of the earlier work "verified live" — it makes verifying *possible*. The headers,
+the ETag rules, the reservation and the deploy are still built from the vendors' documentation and tested
+against recorded HTTP. The first real tenant she joins is what will confirm or correct them, and `verify` is
+written to tell her which.
+
+## v0.398.0 REAL DRAWINGS (built as 0.397) (1 Nov 2026)
 Owner, after the text-to-cad (earthtojake, MIT) read: "Real drawings: feature dimensions, hole callouts, tolerances.
 Ours shows only overall sizes plus a hidden-line page --- START WITH THIS". Built as our own code (their skill is
 build123d + cadgen; nothing copied).
