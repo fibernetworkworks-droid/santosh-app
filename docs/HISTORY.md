@@ -15387,3 +15387,55 @@ Owner: "GO JOINTS AND URDF" (third item from the text-to-cad comparison; own cod
   GIF / exploded view and the URDF download.
 - Tests: tests/test_v0406_mechanisms.py (5). Not yet: SDF / MJCF, closed-chain linkages, joint torque from loads,
   self-collision matrix (SRDF), gear / belt couplings between joints.
+
+## v0.409.0 ABHI ABHI (App Sahayak Pillar C, Phase 49 — owner: "START PILLAR C")
+Real time for every native app, instead of the 10-second chat poll and pull-to-refresh lists.
+- Server `server/app/appmaker/live.py`: ONE Server-Sent-Events stream per open app.
+  - Routes: GET `/api/app-api/<key>/live` (Bearer token, Last-Event-ID), POST `/live/typing`, GET `/live/presence`;
+    her own view: GET `/api/apps/<ref>/live`, `/live/presence`, POST `/live/typing`.
+  - The feed is the v0.390 journal (every write, every path, written in the same transaction). One tailer thread per
+    worker process reads new journal ids every 0.35 s, only while someone is connected, so a write made by another
+    process arrives too, with no broker to install.
+  - A gap in journal ids (Postgres can commit 12 before 11) is asked for again for 5 s, so a late commit is still delivered.
+  - Every event is filtered by the list's own read rule (`W._can_read`, the same rule the list route uses). Only field
+    keys leave, never `_` keys. Internal lists are never sent. Chat goes only to that thread's customer and staff.
+  - Presence + typing: table `app_live_signal` (registered in db.init_db + ensure_table, pruned after 5 min), read by
+    the same tailer so they work across processes. An open stream is presence: refreshed every 20 s, expires after
+    45 s, tracked per connection, so a second phone closing does not mark her offline. Customers see staff only
+    (first name, short key); staff see everyone. Typing is scoped to one thread; a customer can only type in her own.
+  - Reconnect: each row / chat event carries `id: j<journal id>`. Last-Event-ID replays the missed events (up to 300;
+    more = one `reset`, and the phone reloads its lists). A stream that falls 400 events behind gets one `reset`, not a flood.
+  - Limits: sign-in needed; 3 streams per account; 500 per app and 3,000 per process (over = 429, and the app keeps its
+    normal refresh). Every 60 s the token is checked again (signed out elsewhere = `bye`). Each stream lives 10 min,
+    then the phone reconnects.
+- Kits:
+  - Android `Live.kt` (+ `Cloud.stream` in Backend.kt): started in MainActivity onStart, stopped in onStop.
+  - iPhone `Live.swift` (URLSession bytes): started and stopped on scenePhase.
+  - Both: `liveRows` / RowsSection reload a list when it changes (debounced 250 ms, server truth, the outbox unchanged).
+    The chat screens reload on a message and show `TypingLine` + `LiveDot`. Polling drops to 60 s while live.
+    New components: LiveDot, TypingLine, LiveValue (Android).
+  - The screen-writer prompts say never to poll.
+- Console: the app data page shows "Live · Online: …" and redraws itself on a change. If she is typing in a form on
+  that page, a "Show" button appears instead, so her input is never wiped.
+- Tests: tests/test_v0407_live.py (5): the route end to end with 3 listeners (read-rule filtering, chat, typing,
+  presence, owner view), replay + reset + colls filter, a late commit + presence expiry, limits + overflow, kits.
+  Added to app-load.yml (runs on Postgres).
+- Not verified: no real phone yet (CI compiles the kits); nginx must not buffer: the route sends `X-Accel-Buffering: no`.
+  WebSocket not built (SSE + one POST covers it).
+
+## v0.410.0 ECC ON (owner: "ECC CARDS DONE, CHECK RESULT")
+The two ECC Phase 1 cards ran on the live server (claude-opus-5-5) and decided the switches.
+- review_card (12 PRs x1, 3.2 min):
+  - old: 10/12 right, caught 8/8, quiet on 2/4 clean, 8 false alarms, 3 nits, verdicts 10/12, 4.2 steps;
+  - new: 10/12 right, caught 8/8, quiet on 2/4 clean, 4 false alarms, 0 nits, verdicts 11/12, 9.7 steps;
+  - same bugs caught, half the false alarms, no nitpicks, one more right verdict, about 2.3x the steps.
+- fix_card_spec: set 2 fix jobs 6/6 and set 3 fix jobs 6/6 with the fixer specialist (every fix test proves its bug), the
+  same as without it. No harm.
+- So `dev_spec_review` and `dev_spec_fix` are now True by default (config.py).
+- Still open: both modes leave ONE medium / high comment on clean_search_parameterised and on clean_invoice_checked. The
+  card kept only counts, so it is not yet known whether those comments are wrong or fair minor points (e.g. LIKE wildcard
+  characters, a phone number in the result). The card rows now keep what each false alarm SAID (`alarms`, printed under
+  each MISS), so the next run answers that.
+- One run, k=1: a single-run result; `--k 3` gives pass@k numbers.
+- Tests: the v0.377 review suite pins the old single pass (autouse fixture); test_v0402_ecc_specialists asserts the new
+  defaults and that the card restores whatever the switch was.

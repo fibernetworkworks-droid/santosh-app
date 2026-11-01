@@ -139,6 +139,10 @@ FILE CONTRACT
   nav.go("hoola_approvals") (approvals waiting) and nav.go("hoola_data") (every list as rows + a form). A form for a list
   without a drawn screen: block { AutoForm("<list>") }. Formula fields are filled by the server: never put them in a form.
   A staff dashboard / report screen: block { StatsBlock() } (live counts, status mix, 14-day bars; shows nothing to customers).
+  REAL TIME (v0.407, the kit keeps ONE live stream while the app is open): liveRows / LiveRowsBlock already update the moment
+  the server changes a row (never add your own polling loop or delay); block { LiveDot() } = a green dot + "Shop is online"
+  (customers) / how many online (staff); an order tracking screen: LiveValue("orders", id, "status") keeps one field live;
+  a chat screen = nav.go("hoola_chat") (instant messages + "typing…" built in).
   Fields marked [location]: LocationField(label, key) ("Use my location" with the
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.
 - Actions: val c = ctx(); Act.call(c), Act.whatsapp(c, text), Act.share(c, text), Act.maps(c), Act.payUpi(c, amount, note)
