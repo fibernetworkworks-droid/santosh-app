@@ -206,7 +206,7 @@ def main() -> None:
                 if not parts:
                     raise ValueError("joints need result = cq.Assembly with named parts")
                 res["kinematics"] = kinematics.run([(n_, s_) for n_, s_, _c in parts], _parts.JOINTS, _parts.ROBOT,
-                                                   job.get("material") or "aluminium", out)
+                                                   job.get("material") or "aluminium", out, _parts.COUPLES)
             except Exception as e:
                 res["kinematics"] = {"ok": False, "problems": [f"{type(e).__name__}: {str(e)[:300]}"]}
         if _parts.MAKE:                                   # v0.403 measured design-for-manufacturing checks

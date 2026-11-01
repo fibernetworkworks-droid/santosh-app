@@ -454,8 +454,11 @@ JOINTS: list = []
 ROBOT: dict = {}
 
 
+COUPLES: list = []
+
+
 def joint(name, parent, child, kind="revolute", origin=(0, 0, 0), axis=(0, 0, 1), limits=None, effort=None,
-          velocity=None):
+          velocity=None, driver=False, closure=False):
     """A joint between two NAMED parts of the assembly, in the assembly's own (world) frame as modelled:
     kind revolute (limits in degrees) | continuous | prismatic (limits in mm) | fixed; origin = a point on the axis
     (mm); axis = direction. Joints make a tree (each part the child of one joint). -> motion check, URDF, motion GIF."""
@@ -468,12 +471,27 @@ def joint(name, parent, child, kind="revolute", origin=(0, 0, 0), axis=(0, 0, 1)
     JOINTS.append({"name": str(name), "parent": str(parent), "child": str(child), "kind": kind,
                    "origin": [float(x) for x in origin], "axis": [float(x) for x in axis],
                    "limits": [float(x) for x in limits] if limits is not None else None,
-                   "effort": effort, "velocity": velocity})
+                   "effort": effort, "velocity": velocity, "driver": bool(driver), "closure": bool(closure)})
 
 
-def robot(name="hoola_robot", materials=None):
-    """Robot description settings: the URDF robot name; materials = {part name: material} when parts differ."""
-    ROBOT.update({"name": str(name)[:60], "materials": dict(materials or {})})
+def couple(follower, leader, ratio=None, offset=0.0, teeth=None):
+    """Gear / belt / pulley coupling: joint `follower` = ratio x joint `leader` + offset. teeth=(z_leader, z_follower)
+    for a gear pair gives ratio = -z_leader / z_follower (external gears turn the other way)."""
+    if ratio is None:
+        if not teeth or len(teeth) != 2:
+            raise ValueError("couple: ratio=... or teeth=(z_leader, z_follower)")
+        ratio = -float(teeth[0]) / float(teeth[1])
+    if not ratio:
+        raise ValueError("couple: ratio must not be 0")
+    COUPLES.append({"follower": str(follower), "leader": str(leader), "ratio": float(ratio), "offset": float(offset)})
+
+
+def robot(name="hoola_robot", materials=None, payload=None, accel_deg_s2=None, gravity=None):
+    """Robot description settings: the robot name; materials = {part: material} when parts differ; payload =
+    {'part': 'gripper', 'kg': 0.5, 'at': (x, y, z) mm} for the joint torque check; accel_deg_s2 = the angular
+    acceleration the motors must give (adds I x alpha); gravity = (gx, gy, gz) m/s² if not straight down."""
+    ROBOT.update({"name": str(name)[:60], "materials": dict(materials or {}), "payload": payload,
+                  "accel_deg_s2": accel_deg_s2, "gravity": gravity})
 
 
 def make(process, material=None, tool_d=None, pull="Z", limits=None):
@@ -522,6 +540,7 @@ class _H:
     fit = staticmethod(fit)
     make = staticmethod(make)
     joint = staticmethod(joint)
+    couple = staticmethod(couple)
     robot = staticmethod(robot)
     drawing = staticmethod(drawing)
 
