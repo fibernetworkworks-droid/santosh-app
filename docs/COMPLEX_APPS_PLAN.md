@@ -72,6 +72,10 @@ lands there first, her edits there come back) or mirror (a live copy). v0.404.0 
 - Proof: load test (k6) — 1,000 concurrent customers ordering, no lost or double orders.
 
 ### C. Real time — Phase 49
+**Status: BUILT in v0.409.0 ABHI ABHI** (`server/app/appmaker/live.py`, kits `Live.kt` / `Live.swift`) — one SSE stream per open
+app fed by the journal (works across worker processes and on SQLite / Postgres), every event filtered by the list's read rule,
+instant chat, presence + typing, Last-Event-ID replay, her console app page live. Checkpoint (live dashboard + chat on her
+phone) = after the VPS deploy and the next app build. Not built: WebSocket (SSE + one POST covers it), live maps (Pillar D).
 - WebSocket / SSE channels per app: live lists, live order status, instant chat, presence ("rider online"), typing.
 - Kits: live list / live value components; offline outbox stays the source of truth.
 
