@@ -15,6 +15,7 @@ from typing import Any
 from ..db import session
 from ..site import webapp as W
 from .models import AppProject
+from . import locks as LK                     # v0.390 one cross-process lock per app
 
 _LOCK = threading.Lock()
 LOW_DEFAULT = 3
@@ -61,7 +62,7 @@ def set_items(r: AppProject, items: dict[str, Any]) -> dict[str, Any]:
     prods = BE._products(r)
     if not isinstance(items, dict):
         raise StockError("items = {product id: {qty, low}}")
-    with _LOCK, session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         st = dict(be.get("stock") or {})
@@ -109,7 +110,7 @@ def reserve(r: AppProject, want: list[tuple[str, int, str]]) -> list[tuple[str, 
         need[pid] = need.get(pid, 0) + q
         names[pid] = name
     lows: list[str] = []
-    with _LOCK, session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         st = dict(be.get("stock") or {})
@@ -149,7 +150,7 @@ def put_back(r: AppProject, taken: list[tuple[str, int]] | list[list[Any]]) -> N
     from . import backend as BE
     if not taken:
         return
-    with _LOCK, session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         st = dict(be.get("stock") or {})

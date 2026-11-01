@@ -56,6 +56,16 @@ no eval, no I/O, step / size / depth / time budget). Proof app (School ERP from 
 - Proof: a school ERP (classes, students, fees, attendance, exams, report cards) built from a brief.
 
 ### B. Per-app scalable backend — Phases 47–48
+**Status: BUILT in v0.390.0 PAKKI NEEV** — cross-process locks (Postgres advisory / file locks), lost-update fix for the
+app settings, journal + daily / before-change snapshots + point-in-time restore + export, indexed links, usage meters +
+limits, the SQLite → Postgres move, all app suites green on Postgres, and the proof (1,000 customers, 300 in stock,
+4 worker processes, one Postgres: exactly 300 orders, retries one row each, no server error). Decision: ONE Postgres
+database with every query scoped by app (tested), not a schema per app — the 117 places that read app rows stay one
+code path; per-app schemas are worth it only when an app outgrows the shared database. Next in B: order speed under a
+stampede (p50 ~3 s at 1,000 simultaneous orders: every order of one app queues on its lock).
+**v0.396.0 APNA DATABASE**: an app's data can now run in HER OWN database - Supabase, Neon, AWS, Google, Azure,
+DigitalOcean and every other PostgreSQL-wire host (28 listed): her schema, a real table per list, primary (every save
+lands there first, her edits there come back) or mirror (a live copy). MySQL / MongoDB / Firebase: not yet.
 - Each app gets its own Postgres schema (or database for big apps): migrations generated from the data model, row-level
   security per role, real transactions (SELECT … FOR UPDATE) instead of one-process locks, indexes from the queries.
 - Backups (daily + before every migration), point-in-time restore, export, per-app usage meters and quotas.

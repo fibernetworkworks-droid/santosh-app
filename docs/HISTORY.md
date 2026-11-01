@@ -14523,3 +14523,622 @@ ONE Game Desk game (`gamedesk/service.py` still owns the code, versions and the 
     + SM-2 inside answer() + exam date; path order from the NCERT library, current / locked, practice never from a locked
     chapter, gate opens the next chapter, teacher list for an incomplete book; grounded doubt cites page 12 and drops [5];
     grounded off; path tools.
+
+
+## v0.388.0 WHATSAPP LIVE BINA SERVER NUMBER (1 Nov 2026, found live after the v0.384 WhatsApp set-up)
+- Seen in her VPS log right after `WA_DRY_RUN=false` (asked by the v0.384 Embedded Signup set-up steps): "worker tick
+  failed ... Live WhatsApp needs WA_TOKEN, WA_WABA_ID, WA_PHONE_NUMBER_ID" every 2 seconds. `MetaWhatsApp.__init__` raised
+  when the server-wide number was missing; `get_whatsapp()` is the first call of the worker tick (`check_approvals`), so the
+  WHOLE tick failed - reminders, the social desk, approvals, everything behind it stopped.
+- Fix (`whatsapp/client.py`): the client starts without the three keys (`server_ready` false, `missing` kept); `_call` (the
+  server-number path: templates, template status, template sends) refuses with a plain error naming the missing keys;
+  `send_text` with a business's own number + token goes straight to Meta (her Embedded Signup channel); no number at all =
+  a plain refusal. `worker._server_wa_off` makes check_approvals / send_batches skip quietly in that state.
+- Tests: `server/tests/test_v0388_wa_live_no_server_number.py`; `test_meta_client.test_live_mode_requires_credentials`
+  rewritten to the new truth (the client starts, a server-number feature names the missing keys).
+
+## v0.389.0 SACH BOLO — the enterprise write rails made real, and three caps corrected
+Owner: *"again check in this section any thing in pending to deep research"*, then **"FIX ALL THIS"**.
+
+The audit found eight open items. Six parallel researchers read the vendors' and regulators' OWN
+documentation (primary sources only, instructed to answer "NOT FOUND" rather than fill a gap from memory).
+What came back was worse than expected: **most of the write engine could not have worked against a real
+customer system**, and three cap texts stated rules that are not true.
+
+### The rule this version is really about
+v0.363 put the ERP write guards in CODE rather than in a prompt, and that was right. But the guards protected
+the *orchestration* — plan, dry run, her tap, resume — while the **HTTP itself was assumed**. "OData is OData"
+is the same class of mistake as v0.284/v0.286 (measuring the wrong layer): every number matched and the thing
+still did not work. **A rail is not real until the vendor's own page says what it demands.**
+
+### What each vendor actually demands (`enterprise/dialect.py`, a TABLE not an if-chain)
+| | SAP | Windchill | Salesforce |
+|---|---|---|---|
+| CSRF | `X-CSRF-Token: Fetch` → **403 without** | `CSRF_NONCE` from `GET /PTC/GetCSRFToken()` | none |
+| concurrency | **`If-Match` required**: 428 without, 412 if stale | no ETag documented — a **Reserve/UndoReservation** check-out instead | none |
+| idempotency | **`RequestID` + `RepeatabilityCreation`** → `RepeatabilityResult: accepted` | none | none |
+| reads | — | pages at **25 rows** without `Prefer: odata.maxpagesize` | — |
+
+Four things in our code were therefore broken, each silently:
+1. **No CSRF token at all**, and — the subtler half — the token is bound to the SECURITY SESSION, so a fresh
+   `httpx.Client` per call could never hold one. `dialect.Call` now keeps one session open for a batch.
+2. **No `If-Match`**, so every SAP update would have come back 428.
+3. **No `Content-Type: application/json`** — only `Accept` was set.
+4. **No reservation on Windchill.** This was the dangerous one: it is not just that the PATCH fails, it is
+   that a half-finished run could leave HER change object **locked to our user, blocking her own engineers**.
+   `writing()` always releases in a `finally`, and a failed reserve means the PATCH never happens.
+
+Everything fails **closed**: a token we cannot fetch, an ETag we cannot read where one is demanded, a reserve
+we cannot take — each stops the write instead of guessing.
+
+SAP's documented idempotent create is now used, and it is **stronger than our own key**: ours protects a
+*resume*, SAP's guarantees the server state reflects a single execution. It is opt-in per customer system
+(an SPRO job) and answers 412 when off, so we send it, read the answer, and **record** what that endpoint
+really supports rather than believing it.
+
+### The CRM desk was not "100% read and write", and v0.367 should not have said so
+Salesforce's own words: *"CRUD operations on the following Tooling API objects in an active org generate the
+error `Save or update not supported in active organizations`: ApexClass, ApexComponent, ApexPage,
+ApexTrigger, CustomField, CustomObject."* So in her **live org** the config writes we shipped could not work
+at all. CustomObject is read-only by either protocol; Profile and PermissionSet have no write path; Layout is
+SOAP-only. That is most of a CRM architect's job.
+- `run._guard_target` refuses these **at plan time, before her tap** — a run that could never work no longer
+  spends her attention first.
+- `enterprise/sfmeta.py` adds the documented route: **Metadata REST `deployRequest`**, on the **same Bearer
+  token** (no SOAP, no WSDL, no new dependency). `checkOnly: true` is a REAL dry run ("doesn't commit any
+  changes"), and a clean validation **quick-deploys for 10 days without re-running tests** — which maps onto
+  dry run → her tap → execute exactly. Salesforce's production rules are enforced in code, not prose:
+  `rollbackOnError` forced true, `allowMissingFiles` forced false, `purgeOnDelete` never sent, no testLevel on
+  a config-only package (it runs no tests by default; setting one would override that).
+- **Refused rather than faked:** a field-level edit. CustomField/ValidationRule/RecordType live INSIDE
+  `objects/<Obj>.object` and Metadata REST has **no retrieve** to merge against, so a partial object file
+  would risk the rest of her object.
+
+### Composio: `slug.split("_")[0]` was wrong for 31% of the catalogue
+Measured from Composio's own published list: **525 of 1,694 toolkit slugs contain an underscore**
+(`ZOHO_BOOKS`, `ZOHO_INVENTORY`, `SAP_SUCCESSFACTORS`, `SALESFORCE_SERVICE_CLOUD`; `_1PASSWORD` splits to an
+empty string). So the toolkit lookup named an app that does not exist and the call died with
+*"<app> juda nahi hai"* **even when her account was connected** — and the knock-on turned every *read* on
+those toolkits into an approval card. `composio.toolkit_of` now takes the longest known prefix, `tool_toolkit`
+asks Composio itself (some tools carry no prefix at all), and `tool_exists` validates a slug **before** the
+plan. Two more: `"version": "latest"` is the one form documented as REJECTED for direct execution (omitting it
+selects latest), and `ok` **defaulted to True when the field was missing** — so a changed response shape would
+have reported a failed write as done, and the idempotency key would have marked the row complete for ever.
+
+### A new row state: `ambiguous`, because a retry can be worse than a failure
+Composio does not retry non-idempotent writes and says an ambiguous timeout must be resolved by reading the
+provider's state. A *failed* row gets retried by `execute()`; a row whose answer never arrived must NOT be.
+It is parked, the run cannot read `done` while one exists, and she is told to look in the system — the one
+thing only she can do. A **412** parks the same way: the row we planned against is not the row that is there.
+
+### Three cap texts named the wrong rule (and one test was keeping them wrong)
+- **bank_int** said an AA needs "RBI ka licence aur Sahamati ka empanelled audit". Both wrong for this job:
+  reading bank data makes you an **FIU**, which the RBI Master Direction (NBFC-AA, 2016, para 3) defines as
+  *"an entity registered with and regulated by any financial sector regulator"* — **not a licence, and not
+  something an audit buys**. The ₹2 crore net owned fund and the biennial CISA audit belong to the **AA**, a
+  different role which may not even store the data. Sahamati's requirement is a **conformance certification**,
+  and its RBI **SRO recognition only came on 5 June 2026**.
+- **health_int** asserted a CERT-In empanelled audit as fact. The NHA/ABDM primary documents **could not be
+  read**, and the secondary sources contradict each other (CERT-In vs STQC). The cap now says the route is
+  unverified. Worth recording: the cap is still right, but for a *different reason* than banking's — one rests
+  on a regulator's words, the other on their absence, and those should not read alike.
+- **teamcenter** was read-only because "no external agent route exists". **That premise was false.** Siemens
+  documents an official external read+write contract — Teamcenter Services (SOA, `plm00076`) with
+  Item/ItemRevision, BOM (`StructureManagement.createBOMWindows`) and `ChangeManagement`. It stays read-only
+  for the true reason: **we do not speak SOA**, and the REST surfaces (OData API Framework, LDF/OSLC) are
+  frameworks a customer's administrator *generates per installation* — which is exactly why earlier sources
+  looked contradictory. Both camps were describing real deployments.
+
+`test_v0358_enterprise.py::test_the_caps_name_the_real_gate` had pinned the wrong wording, so it was
+**rewritten to the corrected truth, not deleted** — the same call as v0.299.
+
+### What research changed but code did not (her decision, not mine)
+- **GST is reachable.** GSTN states there is **no ASP empanelment**; a software product rides an empanelled
+  **GSP's sub-licence key**, with no net-worth test and no audit on us, covering e-invoice, e-Way Bill *and*
+  GSTR-1/3B. The e-invoice mandate now reaches **₹5 crore** turnover — her customers. That is a commercial
+  contract, so `regtech` still refuses to file until she says otherwise.
+- **Income tax has a purpose-built route**: ERI **Type 2** is literally "tax software providers who file
+  through an API provided by the Income Tax Department". Gate: **₹1 crore net worth** + bank guarantee + audit
+  report + Class-II DSC.
+- **MCA21, SEBI, RBI, EPFO, ESIC: no official API exists.** EPFO/ESIC validate what we already do — generate
+  the file to the published spec and hand it to her (exactly v0.355's GSTR-1 JSON shape).
+- A **CPC-TDS Suvidha OpenAPI portal** for 24Q/26Q/27Q/27EQ exists on a government TRACES domain but only on a
+  `test-dev` host. One email to `suvidha-support@tdscpc.gov.in` settles it.
+- **No Siemens MCP server for Teamcenter exists** (a reasonably strong negative: zero hits in Siemens' own
+  doc index). Salesforce's hosted MCP **did** go GA 29 Apr 2026, and the DX MCP server reaches **end of life
+  2 Nov 2026** — which our `crm_arch` rule line already said, right to the day.
+
+### NOT VERIFIED (said plainly, because v0.367/0.372/0.374/0.375 shipped without saying it)
+**No customer SAP, Salesforce, Windchill or Teamcenter tenant has ever answered this code.** Every header and
+flow comes from the vendor's documentation, tested against recorded HTTP, not a live server. Specifically
+unconfirmed: Windchill's exact bound-action path for `Reserve`, its failure status when `CSRF_NONCE` is
+missing, whether it emits an ETag at all; whether a given SAP system has the idempotency job scheduled; the
+exact status SAP's v4 runtime returns for a missing `If-Match` (428 is documented for Gateway, so we handle
+428 and 412 both). **The connect screen still does not exist**, so none of this can be exercised yet — that
+remains the one thing standing between the engine and a real tenant.
+
+### Files
+`server/app/enterprise/dialect.py` (new) · `sfmeta.py` (new) · `run.py` · `rules.py` ·
+`server/app/bazar/composio.py` · `server/tests/entfake.py` (new) · `test_v0388_real_rails.py` (new, 35) ·
+`test_v0358_enterprise.py` · `test_v0363_erp_live.py` · `test_v0365_crm_desk.py`. 74 tests pass across the
+enterprise suites.
+
+## v0.390.0 PAKKI NEEV - the app backend under many processes, and always recoverable (App Sahayak Pillar B, Phases 47-48)
+Owner (1 Nov 2026): *"START NEXT PILLAR"* (after v0.382 DIMAAG = Pillar A).
+
+What the audit found first (all real, all fixed):
+- Stock, coupons, slots, GST numbers and udhaar each used a `threading.Lock()` - safe inside ONE process only - and each
+  feature had its OWN lock while all of them rewrite the same `AppProject.backend` JSON, so a stock change and a coupon
+  change at the same moment could overwrite each other even inside one process.
+- A phone's retry (same `cid`) racing its first try in another worker process could make TWO orders.
+- `ensure()`'s schema upgrade kept only gst + logic (every other setting would have been dropped).
+- Child lookups (an order's items) were a JSON text scan of the whole list.
+- A SQL gotcha caught by the new quota test: `coll.startswith("_")` is `LIKE '_%'` and `_` is a wildcard -> every list.
+
+What it is now:
+- `appmaker/locks.py`: `hold(key)` = one lock across threads AND processes, re-entrant per thread - Postgres
+  `pg_advisory_lock` on a dedicated pooled connection (lock_timeout bounded), SQLite an fcntl file lock beside the database
+  file. `app(app_id)` guards every money / stock / slot / number counter and every read-modify-write of the backend JSON
+  (stock, coupon, gst, khata, delivery, tally, variants, backend, logic). Keys only nest appr -> app (no deadlock).
+- `backend.patch_backend(r, set_, drop, fn)`: under the app lock, re-read the row as it is NOW, change only those keys -
+  the logic apply / switch / draft, timed-job state, data changes and limits all use it.
+- `backend.create`: the cid check + insert hold `cid:<app>:<member>:<cid>`.
+- `appmaker/backup.py`: ONE SQLAlchemy `before_flush` hook journals every insert / update / delete of an app's rows
+  (`app_journal`: row, op, before, after) in the same transaction - no write path can skip it (`_audit` excluded).
+  Snapshots (rows + accounts + backend settings, gzip JSON, atomic write): daily (worker, hourly check) and before every
+  risky change (logic apply, data change, restore); newest 14 daily + 20 before / manual kept. Point-in-time restore = the
+  newest snapshot before that minute + the journal replayed up to it (journal position read BEFORE the rows, so a write in
+  between is applied idempotently). Preview first; restore = HER tap, a "before restore" snapshot first, so a restore can
+  be undone; accounts only on request. Export ZIP: a CSV per list (Excel-safe cells), data.json, accounts.csv (never a
+  password hash). Journal kept 35 days.
+- `appmaker/refs.py`: the same flush moment indexes every top-level value that IS a row id (`row_<12 hex>`) into
+  `app_refs` (site, coll, row, field, value; one composite index); the engine's children / related / roll-ups / cascades
+  use it; rows from before are indexed once per app on first use.
+- `appmaker/meter.py`: entries per list, data size, accounts, files MB, backups MB, writes today + 14 days (from the
+  journal, so right across processes); limits rows (enforced, 507 at 100%), files MB and writes a day (watched daily);
+  80 / 95 / 100% = one chat note per level per month; she sets limits (never above the ceiling, never below the use).
+- `app/dbmove.py`: `python -m app.dbmove --to postgresql+psycopg://...` makes every table in an EMPTY target, copies in
+  dependency order in batches of 2,000 reading through the server's own column types, verifies every table's count,
+  moves Postgres id sequences past the copied ids; refuses a busy target; `--check` = counts only.
+- Tests can run on Postgres: `HOOLA_TEST_PG=<url>` gives each test its own fresh database (conftest).
+- Routes: `GET /api/apps/<ref>/backups`, `POST .../backups/now`, `POST .../backups/preview`, `POST .../backups/restore`,
+  `GET .../export`, `GET|PUT .../usage`. Agent `app_banao action=data_safety` (usage, backups, restore PREVIEW - the
+  restore is her tap), `backup_now`, `limits`. Console "Data safety" box; phone `lib/ui/app_safety.dart`.
+
+Proof (run here on Postgres 16, 4 uvicorn worker processes; CI `.github/workflows/app-load.yml` repeats it on every app
+backend change): 1,000 customers signed up and logged in (1,000 / 1,000), then all ordered 1 piece of a product with 300 in
+stock at the same moment, every 4th phone sending its order twice -> exactly 300 orders, 874 "out of stock" (409), 76
+retries got their first row back, stock 0, no 5xx, no lost request. Order latency in that stampede: p50 2.9 s, p95 7.7 s,
+p99 9.3 s (every order of one app queues on its lock - correct, not yet fast; next step in B). All 31 existing app
+backend tests + DIMAAG pass on Postgres unchanged.
+
+Decision recorded: ONE Postgres database, every query scoped by the app (tested) - not a schema per app; the 117 code
+sites that read app rows keep one path. Per-app rate limits are still per process (a note, not a hole: the per-app row
+limit and every money counter are database / lock checked).
+
+VPS: nothing new to install for this version. To move her server to Postgres (optional, when she says): install
+Postgres (set `max_locks_per_transaction = 512` or more in postgresql.conf: Hoola creates hundreds of tables in one go -
+CI hit 'out of shared memory' on the default 64), create a database + user, `python -m app.dbmove --to <url>`, set DATABASE_URL in ~/apps/santosh-core/.env,
+restart; keep santosh.db as the fallback.
+Tests `server/tests/test_v0390_pakki_neev.py`.
+
+## v0.391.0 KHULA DARWAZA (owner: "GO A")
+The front-door safety pass from "WHAT IS NEXT WORK". Built as 0.386, re-versioned past the parallel v0.386-v0.390.
+- A1, an open door?
+  - The danger: `main._resolve_tenant` / `require_key` / the voice WebSocket treat a request with NO login as the owner
+    whenever API_KEY is empty.
+  - The live answer: checked on the live server, a no-login GET https://hoola.ainewtika.com/api/me answered 401, so
+    API_KEY is set and the door is LOCKED.
+  - Kept as a guard, report only (it changes nothing about who gets in):
+    - `app/authcheck.py`: `warn_if_open()` logs one loud line at startup when API_KEY is empty, called from `lifespan`;
+    - `python -m app.authcheck [--url ...]` says set / EMPTY (never the value) and asks the running server for
+      /api/me with no login (401 = locked, 200 = OPEN);
+    - vps-ops `auth_check`: .env name check plus the live and public no-login probes.
+- A2, keys in the address: `_bearer`, `require_key` and the voice WebSocket no longer read `?key=`. A key or login token
+  in a URL lands in nginx logs and browser history.
+  - Checked before removing it: the phone (lib/api.dart, lib/live_voice.dart), every Android service, the console (the
+    WebSocket subprotocol `hoola-key.<token>`) and both desktop apps send the Authorization header; console files use
+    signed links; no test used `?key=`.
+  - The frozen Mera PC WebSocket keeps its own `?token=` (untouched).
+- A3, clean-up: the 589 KB `server/app/main.py.orig` leftover deleted. The stale CLAUDE.md line ("revise / fix_ci still
+  one-shot") corrected; both have used the loop since v0.352.
+- Full suite on this branch:
+  - 213 failed of ~3,500; all but 3 also fail on main at the same base (the known sandbox-only reds);
+  - the 3 (thok / theka tools_api, voice interruption) pass alone, so they are load flakes.
+- Tests: `test_v0391_khula_darwaza.py`:
+  - the right key in the address is refused (401) while the header works; `_bearer` ignores a query token;
+  - the voice socket closes 4401 on `?key=`;
+  - the warning fires only when empty; the probe reads 401 / 200;
+  - vps job present; main.py.orig gone; no `query_params.get("key"` left in main.py.
+
+## v0.392.0 YOUTUBE ON THE SOCIAL DESK (1 Nov 2026, owner: "GO Y1"; built as 0.391, re-versioned past the parallel v0.391 KHULA DARWAZA)
+Plan Y1 of the YouTube proposal (Y2 = YouTube ads through the Google Ads API: Demand Gen campaigns created paused, her tap
+to go live - NOT built; needs a Google Ads developer token with Basic access + the adwords scope in OAuth verification).
+Module `server/app/social/ytpost.py`, built on `app/youtube` (accounts / client / service; no new Google sign-in).
+- Account: `sync_channel` (every desk view, DB only) mirrors her default YouTube channel as SocialAccount platform youtube
+  (account_id = YouTubeAccount id or "google" for the sign-in path; no token in the social row). desk `sync_account` ->
+  `sync_youtube`: subscribers, handle, latest 50 videos into SocialMedia (<= 180 s = reel / Short, else video), so the
+  baseline / pulse / monthly PDF / best times include YouTube. Connect = `youtube.accounts.start_link`; Disconnect also
+  removes the YouTubeAccount (the "google" sign-in path stays with her Google sign-in).
+- Posting: POST_PLATFORMS + youtube, FORMATS + video. `problems`: a video file + fmt reel / video, the made-for-kids answer
+  (pulse settings `yt_kids`, YouTube requires it), a title. `publish`: Hoola-wide guard YT_DAILY_UPLOADS (default 90,
+  counted from published results across tenants); resumable upload (title <= 100 with #Shorts for reels, description =
+  caption + 3 hashtags, tags <= 500 chars, category 22, public + selfDeclaredMadeForKids + embeddable); YouTube's answer
+  "private" (unaudited API project) -> a note on the post; thumbnail from the post's picture (thumbnails.set; failure =
+  note); playlist (`yt_playlist`, PL... id validated; failure = note). Links /shorts/<id> or /watch?v=<id>. The rules plan
+  adds youtube to reels when connected; Opus is told about youtube + format video.
+- Inbox: youtube = comments only; commentThreads allThreadsRelatedToChannelId (one call, newest 50, 7 days, her own channel
+  skipped, permalink watch?v=..&lc=..); reply = comments.insert parentId; hide = setModerationStatus heldForReview /
+  published (never rejected / deleted). A YouTube read error is told once and skipped.
+- Console + phone: connect button, subscribers tile, "Also as YouTube Short" / "Also on YouTube", made-for-kids select +
+  playlist id in Posting controls, result notes. Privacy: YouTube paragraph (Google API Services User Data Policy).
+- Not done: Y2 ads; YouTube Analytics watch time in reports (views / likes / comments only); captions upload.
+- Tests `server/tests/test_v0392_social_youtube.py` (7).
+## v0.393.0 POORA KARO — the two things v0.389 could not reach
+Owner: *"IS ALL ENTERPRISE EMPLOYEE WORK DONE"*, then **"GO"**.
+
+The honest answer was no, and both gaps were in the version I had just called finished. I found them by
+checking whether the new code was *reachable*, not by re-reading what I had written — which is the only way
+this class of miss ever surfaces.
+
+### 1. `sfmeta.py` was dead code
+v0.389 built the Salesforce Metadata deploy — zip builder, `checkOnly` dry run, quick-deploy, polling,
+production guards — with **seven passing tests and no caller anywhere**. No agent action, no API route. The
+tests passed because they called the module directly, which is exactly how dead code hides: every green tick
+was true and the feature did not exist.
+
+> **Rule, recorded:** a module's tests passing says it WORKS, never that it is REACHABLE. Grep for a caller
+> outside its own file and its own tests before calling a feature shipped.
+
+Wired now, on the same discipline as every other write — `run.deploy_validate` → `deploy_status` →
+`deploy_go`:
+
+| step | what happens |
+|---|---|
+| `deploy_validate` | `checkOnly: true` — Salesforce checks every component and runs the tests in her org, commits nothing |
+| `deploy_status` | poll the id; a deploy with tests takes minutes, so it is polled and **never resubmitted** |
+| `deploy_go` | HER TAP — quick-deploys that same validation without re-running its tests (good for 10 days); a production org needs the word `production` too, because a config change breaks the org for everyone, not one record |
+
+The `crm_arch` tool description now also says *why* — that Salesforce itself refuses Tooling writes to
+CustomField / CustomObject / Apex in an active org and gives Profile / PermissionSet / Layout no REST write
+path — because a description that only lists actions leaves the model hitting the same wall. It also states
+that a lone FIELD cannot be deployed (it lives inside its object's file), so the model asks for the whole
+object or sends her to a sandbox instead of trying.
+
+### 2. The `ambiguous` row had no way out
+v0.389 added a state for a row whose answer never arrived, and told her "look in the system and tell me" —
+then gave her nothing to tell it with. `execute()` deliberately skips such a row (a retry is how a record gets
+posted twice), so a run holding one sat at `failed` **for ever**.
+
+`run.resolve(run, n, landed)` is that answer coming back, and it is owner-only because nobody else can know:
+- `landed=true` → the row is **closed without sending anything**. Proved by a test that asserts the write
+  count does not move.
+- `landed=false` → back in the queue, same idempotency key, and the next `execute()` sends it **exactly
+  once** (also asserted, because "one more attempt" is the whole point).
+Either way the run's status is recomputed, so it reopens as `running` when work returns and only reads `done`
+when no row is left in doubt. A `done` or `failed` row is refused — a failed row retries on its own and is not
+hers to re-decide.
+
+### Files
+`server/app/enterprise/run.py` (resolve + 3 deploy wrappers) · `server/app/agent/enterprise_tools.py`
+(4 actions, 5 params, the crm_arch deploy blurb) · `server/app/main.py` (5 routes: run status, resolve,
+deploy validate / status / go — enterprise routes 6 → 11) · `server/tests/test_v0389_real_rails.py`
+(42 tests, 6 new). 140 pass across the enterprise suites plus `test_agents.py`.
+
+Also renamed the suite to `test_v0389_real_rails.py`: it was written as v0.382, renamed to dodge another
+session's DIMAAG, and the number moved twice more while it was being tested.
+
+### Still not done, and still said plainly
+**The connect screen does not exist**, so none of this has touched a real system — the deploy included. **No
+live tenant has answered any of it.** Salesforce field-level edits are refused (no `retrieve` in Metadata REST
+to merge against), Teamcenter stays read-only (SOA is the contract and we do not speak it), SAP `$batch` is
+not implemented, and GST/ERI filing waits on her commercial decisions.
+## v0.394.0 HOOLA CAD CONTACT (built as 0.392) (1 Nov 2026)
+Owner pointed at the open gap: "Contact between parts in the stress check: an assembly is still checked as one glued
+piece. Bolts are checked by the joint calculation instead."
+- `engineering/contact.py` (`contact.solve(parts, spec)`), used by the analysis box when a static study has
+  contact= or bolts= (`analysis_runner._contact`; the runner now writes each assembly part as apart_<i>.brep +
+  aparts.json; bolt / screw / nut / washer / stud / rivet solids are left out because each bolt is a connector).
+- Each part its own P2 mesh, global system = parts side by side. Contact pairs from the B-rep: planar faces of two
+  parts facing each other in one plane (gap <= max(0.02 mm, 0.2 % of size)) and overlapping.
+- NODE-TO-SURFACE penalty contact (A's face nodes, with their share of the face area, projected onto B's facets,
+  B interpolated with the quadratic facet shape functions). First try = 3 Gauss points per facet: it LOCKED (a bonded
+  stack 40 % too stiff, stiffer as the penalty rose); one point per node fixed it (0.1993 vs 0.200 mm at penalty 1, 5
+  and 50 x E/h). Only facets with all three corners on the face are used (the mesher sometimes cuts a face's edge).
+- Behaviours: bonded, frictionless (open / closed active set), friction mu (stick / slip with 5 % hysteresis, slip =
+  Coulomb force mu*p opposite the slip, relaxed). Converged when < 0.2 % of points change.
+- Bolts: place_bolt finds the hole stack along the axis at (x, y): head ring (hole radius .. washer OD) on the top
+  part's top face, nut ring on the bottom part's bottom face, or the thread wall (1.5 d) of a tapped bottom part.
+  Axial connector = RBE3-style mean of the ring displacements, stiffness kb from calc.joint (shank + thread);
+  pretension calibrated with a unit-shortening solve so the bolt carries EXACTLY the asked preload with no load.
+- Weak springs 1e-10 E*h only on parts with no support of their own (1e-7 on everything carried a real share of
+  the load and broke equilibrium); a part no support / contact / bolt reaches is refused by name.
+- Equilibrium from the final solve itself (K u - rhs on the supports) - the first version left out the preload on a
+  fixed nut ring and printed 643 %.
+- Flags: separated (> 90 % of a contact open), slipped (> 90 % of the touching points sliding) - a slipped joint's
+  stresses are marked NOT valid (the parts slide until the bolt shank bears; bearing is not modelled).
+  Redesign problems: joint separates / slips / bolt over proof load.
+- Measured: frictionless stack 0.777 vs 0.8 mm (theory 4x one beam); M10 8.8 between two 30 mm blocks: preload
+  25,230 N exact, 5 kN pull adds 9 % (Shigley C 0.156 x a load-introduction factor ~0.6), 60 kN pull opens the
+  joint and the bolt carries 61.4 kN; friction 0.2: 2 kN side load held, 12 kN slips.
+- Still NOT built: bolt shank bearing / shear in the hole, contact on curved faces (pin in a bore), large sliding.
+- Tests: tests/test_v0386_contact.py (7).
+
+## v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390.0 / 0.394.0) (Hoola Game Engine plan, Phase 3) - 1 Nov 2026
+
+Owner: "GO PHASE 3". Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 5 (precision mechanisms 1-4) + phase table.
+
+- `server/app/gamedesk/bible.py`, table `game_bibles` (one per Studio Project: data, version, draft, history, applied).
+- Sections: meta (pillars, genre, audience), style (palette = style lock, tone), terms (glossary, banned words),
+  player (hp, damage, fire_rate, hit_chance, speed), curves ([base, growth] by tier for enemy / item / level), economy.
+- Kinds = TEMPLATES (`KINDS`): character, enemy, item, level (waves {enemy, count, at_s}), quest (requires), screen.
+  `clean_entity` gives every entry the template's exact shape; out-of-range is an ERROR, never silently clamped.
+- `check()` in code: types / ranges / enums, unique ids, references (waves -> enemies, quest requires, no quest loop),
+  palette lock, banned words, real-money fields / words refused, names <= 24 chars (warning), duplicate names (warning),
+  size budgets (400 entities, 200 KB). Errors refuse a change; warnings show.
+- `simulate()` Monte-Carlo per level (dt 0.25 s, up to 300 s, 200 runs default) SEEDED from the Bible hash: same Bible =
+  same numbers. Win rate, health left, score, coins; flags impossible (< 5 %), first level < 80 %, spike (> 35 points),
+  late level > 98 %, items never affordable (economy: cumulative coins vs prices).
+- Generators: `generate(kind, n, words)` - model gives words only, `apply_curves` sets the numbers by tier / order, each
+  entry validated, the batch is a DRAFT (with the base hash; stale if the Bible moved) for her OK (`accept` all / ids,
+  `reject`). `seed` = first Bible from the design doc as a draft (colours forced into the palette, broken refs dropped).
+  Her own edits (`set_entity`, `set_section`, `remove_entity`, `recurve`) apply at once, validated, logged as decisions.
+- In the game: `gd()` writes `hoola_bible.gd` (const VERSION + DATA incl. by_id), loaded as the HoolaBible AUTOLOAD
+  (`template.files` adds it). Every build carries Hoola's own copy (the model's copy is replaced); versions record
+  `bible`; `apply` = `service.data_build` (mode data: same code + new Bible, no model call, full checks + playtest).
+- REAL GODOT FINDINGS (4.7.2 in the sandbox): (1) `class_name HoolaBible` is "not declared" in a headless run (no class
+  cache) -> autoload; (2) the SAME bug hit Phase 1's GUIDE ("helpers: class_name Foo") - every helper-script game failed
+  its first smoke run; GUIDE now says `const Foo = preload("res://foo.gd")`, guard refuses class_name with that hint.
+  The Bible file with quotes / backslashes / nested dicts parsed, exported and played at 60 fps.
+- Studio: board shows the Bible line (version / in game / errors / draft), plan_tasks reads the Bible, GitHub export adds
+  BIBLE.json. Tool `game_bible` (show / template / set / remove / section / seed / generate / accept / reject / check /
+  simulate / apply / recurve). API `/api/gamestudio/{id}/bible*`. Console: board > Game Bible (`gsBible`, `gb-*` CSS).
+  Phone: `lib/ui/game_bible_screen.dart` (read, drafts, simulate, apply, generate, remove; editing in the console).
+- Tests `test_v0395_game_bible.py` (10).
+
+
+## v0.396.0 APNA DATABASE - an app's data runs in HER own database (App Sahayak Pillar B: own database per app)
+Owner (1 Nov 2026): *"Own database per app --- WORK ON IT LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN
+DATABASE THERE"*.
+
+Built on v0.147 Hoola Postgres (her connection string typed only in the app, sealed with the bazar vault, public host only
+with the checked IP pinned by libpq `hostaddr`, SSL required, the password masked in every error), so EVERY PostgreSQL-wire
+database works through one code path: 28 listed with where to copy the connection string - Supabase (session pooler or
+direct; the transaction pooler works too: no prepared statements, `prepare_threshold=None`), Neon, Amazon RDS + Aurora,
+Google Cloud SQL + AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, Crunchy Bridge, Tembo, Xata, Nile,
+Heroku, Fly, Vercel, Koyeb, Scaleway, OVH, Alibaba, Tencent, Huawei, CockroachDB, YugabyteDB, her own server. NOT yet:
+MySQL-family (PlanetScale, TiDB, MariaDB - no MySQL driver on the server), MongoDB / Firebase (not SQL).
+
+`server/app/appmaker/owndb.py`:
+- Her tables: one schema per app (`hoola_a_0001`), one TABLE per list with real types (number numeric, date date, yes / no
+  boolean, the rest text), `owner_id`, `created_at`, `_hoola` jsonb (Hoola's own control values: stock taken, coupon,
+  assignment...), an index on every link field and on `_out`; `_hoola_accounts` (id, e-mail, name, role - never a password
+  hash); `_hoola_<name>` jsonb tables for udhaar / approvals / chat; `_hoola_meta`; `_hoola_deleted`. Additive only: a new
+  list / field in the app = a new table / column there on the next sync. Quoted identifiers ("order" is fine).
+- Her triggers (`_hoola_touch`, `_hoola_gone`): every write records who (`set_config('hoola.by','hoola', true)` in Hoola's
+  transactions, anything else = 'outside'); an OUTSIDE write also stamps `_out`, so a later Hoola write on other fields
+  of the same row never hides it; outside deletes are logged.
+- PRIMARY mode (the data lives there): a global SQLAlchemy `before_commit` hook flushes, takes the app-row writes the
+  journal hook queued, and upserts them into her tables in ONE transaction before Hoola commits - her database down =
+  `OwnDbError` 503 "save nahi hui", Hoola rolls back, nothing half-saved. Field-level upserts (only changed columns). The
+  journal row is marked `pushed`, so the catch-up never re-sends it (found by the test: a re-send undid her outside edit).
+  Her outside edits (table editor / SQL / other tools) come back every 20 s (or "Sync now"): rows with `_out` after the
+  cursor -> changed fields validated exactly like app input (`W._clean`; a bad value is refused + audited), Hoola's own
+  `_` values never taken from outside, outside inserts need a Hoola-shaped id (her table's id default makes one), outside
+  deletes follow; the app's logic (formulas / triggers / cascades) runs on them; every one audited ("own_db_in").
+- MIRROR mode: Hoola stays the main copy; the worker sends the journal after its cursor within ~20 s; her database being
+  down never stops her app; outside edits are not taken back (a read copy for reports / BI).
+- Link = HER tap: a backup first, schema + tables + triggers, every row copied in batches, accounts, catch-up of the writes
+  made meanwhile, counts compared per list - mismatch = not linked, the app untouched. Unlink: sync stops, data stays in
+  BOTH places. A small connection pool per app (4, keepalives, statement / lock timeouts per transaction).
+- Routes: `GET /api/apps/<ref>/owndb` (link, her databases, providers, lag), `POST .../owndb/link {conn, mode}` (her tap),
+  `.../unlink`, `.../verify` (counts), `.../sync`. Console app page: "Own database" box (status, link with mode, add a
+  database = connection string sealed on the server, provider how-to, Sync now / Compare counts / Disconnect). Phone:
+  `lib/ui/app_owndb.dart` (+ the existing Postgres screen to add one). Agent `app_banao action=own_db` = status + counts +
+  where to connect - never a connection string in chat, never the move itself.
+
+Tests `server/tests/test_v0396_apna_database.py` (a local Postgres plays her Supabase; CI app-load.yml runs it on a real
+Postgres): link + real column types + accounts without passwords, write-through inside the request, her outside update /
+insert / delete coming back with an app edit on another field of the same row kept, a bad outside value refused + audited,
+a new app field = a new column there, counts compared, her database unreachable = 503 and nothing saved, back = saving
+again, unlink keeps her data, mirror mode never blocks and catches up.
+Known limits: a write-through costs one round trip to her database per save (Mumbai region ~20-60 ms); if Hoola's own commit
+fails AFTER hers succeeded (very rare) "Compare counts" shows it; MySQL / Mongo / Firebase not yet.
+## v0.397.0 CONNECT — the door the whole enterprise suite was missing
+Owner: **"GO CONNECT"**.
+
+Since v0.358 the ten enterprise desks could do everything except touch a real system, and every version since
+has had to end with the same sentence: *no live tenant has answered any of it*. The reason was never the
+engine — it was that **there was nowhere to put a credential.** The chat refuses a key on purpose, and should:
+a secret typed into a conversation lives in the history, in the model's context, and in any export of either.
+`run.set_endpoint` existed and sealed its input properly, but nothing could call it — no route, no screen.
+
+### The one door
+`POST /api/enterprise/<role>/endpoint`, reachable from the console's new **Systems** page and the phone's
+**Profile → Apne system jodiye**. The key is sealed the instant it arrives (`bazar.security.vault`) and
+**no route returns it** — the save answer, the listing and the screens all show only the masked form.
+`DELETE` forgets the address and the key and leaves her runs and papers alone.
+
+The form asks only what a join needs: the API address (with a per-system hint, because guessing the API URL is
+the commonest reason a join fails), what kind of key it is, the key itself in a password field cleared the
+moment it is sent, and **test or production declared explicitly** — a URL that looks live is not consent, so
+`env` defaults to test and a production write still needs the word as well as her tap.
+
+### `verify` — the first call in the suite that ever reaches a customer tenant
+Read-only, writes nothing (a test asserts only `GET` is ever sent), and it reports **what the system
+answered** rather than a green tick:
+
+| it checks | because |
+|---|---|
+| the address answered, and with what code | a 404 means the address is wrong, not the key |
+| **401 vs 403** | a wrong key and a missing permission are different problems with different fixes |
+| a CSRF token can be fetched (SAP, Windchill) | without one every write 403s — better said now than at her first write |
+| an ETag will be available (SAP) | `If-Match` is mandatory there; a row we cannot read gets skipped, not written blind |
+| a check-out is needed (Windchill) | and that Hoola always releases it |
+| the documented idempotent create (SAP) | opt-in per customer system, so it is recorded on first use, never assumed |
+
+A clean check stamps `verified_at`; a failing one deliberately does **not**, so "jancha hua" can never be a
+stale badge. A dead host is an answer too, not a crash — it comes back as "address se baat hi nahi hui,
+firewall / VPN dekhna padega".
+
+### Also on the Systems page
+Her write runs, and the rows whose answer never arrived (v0.393's `ambiguous`) with the two buttons only she
+can press: **"System mein hai"** (closes the row, sends nothing) and **"Nahi gayi — dobara bhejiye"** (back in
+the queue for exactly one more attempt).
+
+### Files
+`server/app/enterprise/run.py` (`verify`, `VERIFY_PROBES`, `forget_endpoint`) ·
+`server/app/main.py` (5 routes; enterprise 11 → 16) · `server/app/static/console/enterprise.js` (new) ·
+`v2.html` / `v2.js` / `v2.css` (Systems view, nav, `IC.systems`, the v0.320 design system) ·
+`lib/api.dart` (4 calls) · `lib/ui/enterprise_screen.dart` (new) · `lib/ui/profile_screen.dart` ·
+`server/tests/test_v0396_connect.py` (18). 136 pass across the enterprise + console suites.
+
+### What this does and does not change
+It does **not** make any of the earlier work "verified live" — it makes verifying *possible*. The headers,
+the ETag rules, the reservation and the deploy are still built from the vendors' documentation and tested
+against recorded HTTP. The first real tenant she joins is what will confirm or correct them, and `verify` is
+written to tell her which.
+
+## v0.398.0 REAL DRAWINGS (built as 0.397) (1 Nov 2026)
+Owner, after the text-to-cad (earthtojake, MIT) read: "Real drawings: feature dimensions, hole callouts, tolerances.
+Ours shows only overall sizes plus a hidden-line page --- START WITH THIS". Built as our own code (their skill is
+build123d + cadgen; nothing copied).
+- Box side `engineering/views2d.py` (runner writes drawing.json when the model is not "big"): each view = the shape
+  turned so screen right / up / toward-eye map to X / Y / Z, OCC HLRBRep looking down -Z, visible (sharp +
+  outline) and hidden edges as model-mm polylines - vector, no SVG parsing. Views: front, top and LEFT (first
+  angle, India / IS SP 46 / ISO E default) or RIGHT (third angle).
+- Hole stacks from the B-rep: coaxial inward cylinders + cones grouped per axis line, split faces merged, open ends by
+  the solid classifier -> diameter, THRU or DEEP n (from the entry face), counterbore (bigger cylinder touching the
+  entry), countersink (cone: Ø at the face + included angle); the callout goes on the view looking INTO the entry
+  face, else a parallel view marked FAR SIDE. Outside cylinders -> R (rounds) or Ø (bosses).
+- Server side `engineering/drawing.py` (reportlab, A3 landscape vector PDF): ISO 5455 scale picked so views + their
+  dimension bands + the title block fit (margins and gaps sized to the number of chains), overall sizes once each
+  (width + height on the front, depth on the top view), step heights from long horizontal edges, hole positions as
+  baseline chains from the corner (x on the view's outer side, y on its right), centre marks on every hole, callouts
+  grouped by kind with leaders to the nearest side (only the top / side view use their right side; others use the
+  band between rows; nothing off the sheet), simple collision checks on every text, notes (ISO 2768-<class>, mm, break
+  edges, DRAFT + her notes) above an ISO 7200-style title block with the projection symbol, the iso picture in the
+  largest free square. Page 2 = the old shaded views (the raster hidden-line page is dropped).
+- H.fit(d, 'H7' | 'g6' | ...) -> callout with ISO 286 limits (calc.IT / SHAFT_ES / SHAFT_EI);
+  H.drawing(projection, tolerance f|m|c|v, notes, part_no).
+- Measured: plate with 4 x Ø5.5 THRU, CBORE, CSK, blind Ø5 DEEP 8, 4 x R5 -> every callout read back from the PDF
+  text; 40-tooth gear sheet in ~1 s. Tests: tests/test_v0395_drawing.py (5).
+- Not yet: section views, GD&T frames (datums / position), thread callouts from modelled threads, auto-dims of every
+  pocket / slot (only steps + holes), multi-sheet assemblies with balloons + parts list.
+
+## v0.400.0 FAST + NEVER LOST + VISITOR TESTS (built as 0.391; web Step 1 of docs/WEB_PLATFORM_PLAN.md)
+Owner: "START STEP 1" (after the plan: "any complexity website, smoothly and reliably").
+- FAST (where a big build's time went, found by reading the pipeline):
+  - `checks.run` checked every page one after another in ONE browser -> `_check_page` (one page, every viewport) +
+    `_run_pages`: pages split over SITE_CHECK_PARALLEL (3) browsers, each its own Playwright in its own thread (the sync API
+    is per thread); small sites (< 8 pages) keep one browser; results in the plan's order; `only=` re-checks some pages.
+  - `_critique_round` looked at pages one by one and ran a FULL site check after each page (6 full checks on a big site) ->
+    every page judged at once, every weak section redrawn at once, ONE check of only the changed pages, one more judge pass
+    at once, per-section keep / revert (unchanged rule: worse score or more issues on that page = old section back), one
+    final full check for the version's report.
+  - Fix rounds called Opus for each failing section in turn -> all at once (`_in_ctx`, so usage stays hers / the Arena's).
+  - `_write_sections` rebuilt the whole preview after EVERY section (a 150-page site = ~200 full rebuilds) -> at most every
+    ASSEMBLE_EVERY_S (20 s) + once at the end. `site_parallel_big` 5 -> 8.
+- NEVER LOST (`service._recover_side_jobs`, called from recover_stuck each worker tick): a code-mode task file still
+  'working' from before the boot -> failed with "dobara kahiye"; a READY site whose extra languages have stale sections ->
+  the translate job starts again (once per boot). `proof.resume_interrupted` (worker): a Hoola proof whose thread died is
+  picked up again (max 2) - `build_big` keeps t0 + the rupee meter on the proof card, reuses the site, skips a designed app
+  and blog posts already there; a rival crawl cut short = failed with a plain line.
+- VISITOR TESTS `server/app/site/journeys.py` (SITE_JOURNEYS, on; conftest off, its own tests on): after every build
+  (`_run_build`, after the critique) and every saved edit (`save_version`) Chromium walks the built live copy at 390 px:
+  menu (open the phone menu, tap a page, it opens with an h1), form (fill the first enquiry form - booking forms skipped -
+  send, the thank-you line), shop (Add to cart -> Cart -> Aage badhein -> fill -> Order bhejiye -> "Order O-CHECK"),
+  blog (first post opens with its title as h1), lang (switch -> other <html lang>). Shop / form API calls are answered by a
+  stand-in in the browser with Hoola's own JSON shapes (relative API addresses resolved to the test origin) - nothing
+  reaches her data; every other outside request refused; each journey tried twice; menu / form / shop failures are
+  BLOCKING (hosting.blockers -> cannot go live), blog / lang warnings. `report.journeys` -> site view `checks.journeys` ->
+  console Checks tab lists each visitor test with a tick or the reason.
+- Tests `server/tests/test_v0400_fast_reliable.py`: parallel checks = serial report, critique re-checks only changed pages
+  (keep / revert per section), fewer preview rebuilds, journeys pass on a real shop site and a broken checkout blocks,
+  cut-short code task + translation recovered once, proof resumed with time / cost kept and failed after the second death.
+## v0.401.0 YOUTUBE ADS (1 Nov 2026, owner: "GO Y2"; built as 0.393 / 0.396 / 0.399 / 0.400, re-versioned past the parallel v0.393-v0.400)
+Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Field names from Google's own
+`AddDemandGenCampaign.java` (google-ads-java, v26) + the Demand Gen overview / channel-controls pages (API v26.1, 28 Oct 2026).
+- Env: GOOGLE_ADS_DEVELOPER_TOKEN (Google Ads API Center; a test-access token works only on test accounts, real ad
+  accounts need Basic access), optional GOOGLE_ADS_LOGIN_CUSTOMER_ID (manager), GOOGLE_ADS_API_VERSION (v26),
+  GADS_MAX_DAILY (2000). The adwords scope must be on Hoola's Google OAuth consent screen (sensitive -> verification).
+- Connect: state gad_ in /auth/google/callback; scopes openid email adwords, offline + consent; refresh token sealed;
+  listAccessibleCustomers + `SELECT customer.* FROM customer` per account; managers can't be chosen; one usable = picked.
+- Read: GAQL on campaign (VIDEO, DEMAND_GEN; LAST_30_DAYS by segments.date; cost_micros, impressions, clicks,
+  conversions, budget, views = video_trueview_views -> video_views -> none on UNRECOGNIZED_FIELD) -> CSV -> Ads desk
+  `import_report(platform google)`; per-campaign totals with cost a view and CTR.
+- Drafts: from her YouTube video (SocialMedia platform youtube), pre-filled from the Social Desk profile; `draft_problems`
+  (video id, 1-5 headlines <= 40, long headline <= 90, 1-5 descriptions <= 90, business <= 25, https landing link,
+  logo, daily 1..GADS_MAX_DAILY, days 1..30, Ads desk `banned` + `financial` rules). Exact Google limits are confirmed
+  by Check (validateOnly) - the local limits are conservative.
+- Create (her tap): one googleAds:mutate with temp ids -1..-5 in Google's order: campaignBudget (STANDARD, amount in
+  micros, explicitlyShared false), campaign (DEMAND_GEN, PAUSED, campaignBudget, containsEuPoliticalAdvertising
+  DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING, targetSpend {} = maximize clicks), adGroup (ENABLED, demandGenAdGroupSettings
+  .channelControls.selectedChannels youtubeInStream / youtubeInFeed / youtubeShorts true, discover / gmail / display /
+  maps false), adGroupCriterion location geoTargetConstants/2356 + language constants (hi 1023, en 1000, ...), assets
+  (IMAGE logo base64, YOUTUBE_VIDEO youtubeVideoId), adGroupAd demandGenVideoResponsiveAd (headlines, longHeadlines,
+  descriptions, videos, logoImages, businessName) + finalUrls. Start = campaignOperation update status ENABLED
+  (updateMask status) only with confirm=true; stop_on = start day + days - 1; Pause = PAUSED; daily Social Desk job ->
+  `daily_watch` pauses ended ads (event) + reads. DEVELOPER_TOKEN_NOT_APPROVED -> plain "Basic access pending".
+- Not verified against Google live (mock transport only): the ad-group criterion field names (location / language) and
+  the exact text limits - Check with Google surfaces any mismatch before anything is created.
+- Not built: legacy VIDEO campaigns (in-stream; not creatable through the API), audiences / remarketing, conversion
+  tracking set-up, Display & Video 360.
+- Console YouTube ads tile (connect, pick account, read, drafts with edit / logo / check / create / start / pause), phone
+  YtAdsScreen (connect, pick, new ad from latest video, check / create / start / pause). Privacy: Google Ads paragraph.
+  Tests `server/tests/test_v0401_youtube_ads.py` (8).
+
+## v0.402.0 ECC PHASE 1 (owner: "GO ECC PHASE 1")
+After reading github.com/affaan-m/ECC (v2.2.3, MIT; 71 agents, ~320 skills for AI coding tools on a developer's machine):
+its agent texts were adapted as SPECIALISTS for Developer Sahayak. Nothing from ECC is installed or run; the texts are
+condensed and rewritten for Hoola's read-only tools, CI logs and safety rules. Credit in THIRD_PARTY_NOTICES.md (license
+text checked byte for byte against ECC's LICENSE). Built as 0.396 / 0.400, re-versioned past the parallel v0.396-v0.400.
+- `devsahayak/specialists.py`:
+  - REVIEW_CORE, from code-reviewer:
+    - four gates before any comment: the exact added line; the concrete failure (input -> state -> outcome); callers /
+      tests read; a defensible severity;
+    - a HIGH comment carries its proof; zero comments is a valid review; never manufacture findings;
+    - ECC's false-alarm list ("add error handling" already handled upstream, magic numbers like 404, "function too
+      long" for a table...).
+  - LANG_REVIEW for python / js-ts-react / dart-flutter / kotlin-android / go / java / swift / rust / sql.
+  - FOCUS passes: security (security-reviewer), silent failures (silent-failure-hunter), tests that cover the change
+    (pr-test-analyzer).
+  - FIX_CORE, from the build-error resolvers: the first real error, root cause, the smallest fix, NEVER weaken CI (no
+    skipped / loosened tests, no ignores / suppressions, no swallowed exceptions), stop when outside the code. LANG_FIX
+    holds each language's common error -> fix table.
+  - Routing:
+    - `lang_of` (files, majority) and `lang_of_log` (log signs: traceback, TS errors, `e:` kotlin, `.dart:`, `error[E..]`,
+      `.go:`, javac...);
+    - `focus_passes`: all three for >= 150 added lines; security on sensitive words (sql / execute / token / payment /
+      otp / customer_id / phone...); silent on try / except / fallback / retry; tests when the PR has no test file;
+      docs-only = none;
+    - `merge_comments`: same file within 2 lines = one comment, highest severity, longer body.
+- Wiring, each behind its own switch, both OFF by default:
+  - `loop.run` / `loop.review_run` take `system_extra`, appended after Hoola's own system prompt (Hoola's rules first).
+  - `service.explore_review` (NEW, used by the real review AND the card): old = one exploring pass (v0.377). With
+    `dev_spec_review` = main pass + REVIEW_CORE + language reviewer, then the focused passes (`dev_spec_focus_steps` 12),
+    merged, and a high request_changes from a focused pass escalates the verdict. The card says which passes ran.
+  - `service._round`: a CI round (`<ci_log>` in the brief) with `dev_spec_fix` gets `fix_addendum(log, paths)`; her own
+    change requests never do.
+- Measuring before switching on:
+  - `quality/review_tasks.py` (SET 1): 12 practice PRs on the 30-file DUKAAN shop.
+    - 8 planted: a changed signature whose callers were not updated, f-string SQL, OTP + phone in logs, a swallowed
+      out-of-stock (oversell), rounding down against a half-up promise, an invoice endpoint without an owner check, an
+      off-by-one day loop, a mutable default list.
+    - 4 clean: the parameterised search, the owner-checked invoice, a behaviour-keeping refactor, a GSTIN check with
+      its test.
+  - `quality/reviewcard.py`:
+    - builds each PR's diff exactly like service.review and calls `explore_review` in mode old and new (the switch is
+      set per mode, modes run one after another, and it is restored);
+    - marks caught (medium / high within 3 lines of the planted line; 4 for the invoice), quiet on clean, false alarms,
+      nits, verdicts, `--k` repeats;
+    - `python -m app.quality review`, vps-ops `review_card`.
+  - `codecard --spec --kind fix` runs the fix jobs with the fixer specialist; vps-ops `fix_card_spec` = sets 2 + 3 fix
+    jobs. They must stay at hard 12/12 / mobile 10/10.
+- Tests:
+  - `test_v0402_ecc_specialists.py`: language detection, texts, focus rules, merge, explore_review old vs new (the SQL PR
+    earns the security + tests passes), card marks (near-miss = false alarm, Hoola's automatic checks not counted), both
+    modes with a scripted reviewer, the fix spec switch, settings OFF, jobs, credit.
+  - `test_v0402_ecc_ci_round.py`: a red CI round gets the fixer only when switched on.
+- Found by the tests while building: the security pass first missed the SQL-injection PR (the sensitive-word list had
+  `sql` but not `execute` / `select` / `sqlite3`); widened, plus personal-data words.

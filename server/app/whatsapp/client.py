@@ -31,15 +31,24 @@ class MetaWhatsApp:
     def __init__(self, token: str, waba_id: str, phone_number_id: str, version: str = "v21.0",
                  http: httpx.AsyncClient | None = None):
         missing = [n for n, v in (("WA_TOKEN", token), ("WA_WABA_ID", waba_id), ("WA_PHONE_NUMBER_ID", phone_number_id)) if not v]
-        if missing:
-            raise WhatsAppError(f"Live WhatsApp needs {', '.join(missing)} in the settings (or set WA_DRY_RUN=true).")
+        # v0.388 live WITHOUT a server-wide number is normal now: each business connects its OWN number (Embedded Signup,
+        # social/wabiz.py) and replies carry that number + its token. Only the server-number features (campaign templates)
+        # need these three; they raise a plain error instead of the whole client (and the worker tick) failing.
+        self.missing = missing
+        self.server_ready = not missing
         self.base = f"https://graph.facebook.com/{version}"
         self.waba_id = waba_id
         self.phone_number_id = phone_number_id
         self.http = http or httpx.AsyncClient(timeout=30, headers={"Authorization": f"Bearer {token}"})
 
+    def _need_server(self) -> None:
+        if not self.server_ready:
+            raise WhatsAppError(f"WhatsApp campaigns from the server number need {', '.join(self.missing)} in the settings; "
+                                "each business's own number works through its Business inbox.")
+
     async def _call(self, method: str, path: str, *, json: dict | None = None, params: dict | None = None,
                     attempts: int = 4) -> dict:
+        self._need_server()
         delay = 1.0
         for i in range(attempts):
             try:
@@ -103,6 +112,8 @@ class MetaWhatsApp:
         """Free-form reply. Meta only allows it within 24 h of the customer's last message (customer service window)."""
         headers = {"Authorization": f"Bearer {token}"} if token else None
         pnid = phone_number_id or self.phone_number_id
+        if not pnid:
+            raise WhatsAppError("No WhatsApp number to send from: connect the business number first.")
         body = {"messaging_product": "whatsapp", "recipient_type": "individual", "to": to, "type": "text",
                 "text": {"preview_url": False, "body": text[:4096]}}
         if headers:

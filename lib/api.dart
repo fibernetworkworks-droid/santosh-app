@@ -1021,6 +1021,14 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/why?q=${Uri.encodeQueryComponent(q)}') as Map);
   Future<Map<String, dynamic>> gameStudioSummary(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/summary') as Map);
+  // v0.395 Game Bible (the game's names and numbers as data)
+  Future<Map<String, dynamic>> gameBible(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/bible', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameBibleDo(String id, String what, {Map<String, dynamic> body = const {}}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bible/$what', body: body,
+          timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> gameBibleRemove(String id, String kind, String eid) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/gamestudio/$id/bible/entity/$kind/$eid') as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk
@@ -1050,6 +1058,17 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/ugc/$id/$action', body: body ?? {}, timeout: const Duration(seconds: 90)) as Map);
   Future<Map<String, dynamic>> socialCreator(String username) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/creator/check', body: {'username': username}) as Map);
+  // v0.401 YouTube ads (Google Ads API): drafts stay in Hoola; create = paused in Google; start = her tap + confirm
+  Future<Map<String, dynamic>> socialYtAds() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/social/ytads', timeout: const Duration(seconds: 30)) as Map);
+  Future<String> socialYtAdsConnect() async => (await _send('GET', '/api/social/ytads/connect'))['url'] as String;
+  Future<Map<String, dynamic>> socialYtAdsAccount(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/account', body: {'customer_id': id}) as Map);
+  Future<Map<String, dynamic>> socialYtAdsNew(String videoId) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts', body: {'video_id': videoId}) as Map);
+  Future<Map<String, dynamic>> socialYtAdsAct(String id, String action, {bool confirm = false}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id/$action', body: {'confirm': confirm},
+          timeout: const Duration(seconds: 90)) as Map);
   // v0.369 posting controls: {paused} | {stop: true} | {quiet: [23, 7]}
   Future<Map<String, dynamic>> socialSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/settings', body: body) as Map);
@@ -1074,6 +1093,17 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/eng/projects/$id/change', body: {'words': words}) as Map);
   Future<void> engDelete(String id) async => _send('DELETE', '/api/eng/projects/$id');
   // v0.317 HIRE AN EMPLOYEE + the SEO Desk
+  // ---- v0.396 CONNECT: her own enterprise system (address + key). The key goes UP only; no route returns it ----
+  Future<Map<String, dynamic>> entSystems(String role) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/enterprise/$role/endpoint') as Map);
+  Future<Map<String, dynamic>> entConnect(String role, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/enterprise/$role/endpoint', body: body) as Map);
+  Future<Map<String, dynamic>> entVerify(String role, String system) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/enterprise/$role/endpoint/$system/verify',
+          body: {}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> entForget(String role, String system) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/enterprise/$role/endpoint/$system') as Map);
+
   Future<Map<String, dynamic>> employees() async => Map<String, dynamic>.from(await _send('GET', '/api/employees') as Map);
   Future<Map<String, dynamic>> employeeAct(String key, String action) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/employees/$key/$action', body: {}) as Map);

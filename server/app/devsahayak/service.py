@@ -934,7 +934,11 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
         # starting from the branch's own head; the one-shot answer stays the fallback
         from . import loop as L
         try:
-            _, read, _, out = L.run(g, t, cfg.rules, paths, cfg.allow_workflows, ref_sha=ref, extra=extra,
+            spec = ""
+            if "<ci_log>" in extra and _setting("dev_spec_fix", False):   # v0.402 a red CI run gets the fixer specialist
+                from . import specialists as SP
+                spec = SP.fix_addendum(extra, paths)
+            _, read, _, out = L.run(g, t, cfg.rules, paths, cfg.allow_workflows, ref_sha=ref, extra=extra, system_extra=spec,
                                     max_steps=_setting("dev_loop_steps", 40),
                                     minutes=float(_setting("dev_loop_minutes", 20)),
                                     on_step=lambda line: _progress(t.id, line))
@@ -1086,6 +1090,44 @@ def review_view(r: DevReview) -> dict[str, Any]:
             "posted_event": r.posted_event, "url": r.url, "at": r.created_at.isoformat() if r.created_at else ""}
 
 
+def explore_review(g, repo: str, head: str, pr_text: str, diff_parts: list[str], added_lines: dict[str, set[int]],
+                   rules: str = "", findings: str = "") -> dict[str, Any]:
+    """v0.377 the exploring review + v0.402 ECC SPECIALISTS: with dev_spec_review on, the main pass gets the reviewer
+    discipline + the language reviewer, and a big / sensitive / untested PR gets focused passes (security, silent failures,
+    tests) whose comments merge into one list (same line = one comment). The review card calls this same function."""
+    from . import loop as L
+    from . import specialists as SP
+    steps, minutes = _setting("dev_review_steps", 25), float(_setting("dev_review_minutes", 10))
+    diffs = "\n\n".join(diff_parts)
+    if not _setting("dev_spec_review", False):
+        return L.review_run(g, repo, head, pr_text, diffs, added_lines, rules, findings, max_steps=steps, minutes=minutes)
+    paths = sorted(added_lines)
+    added = sum(len(v) for v in added_lines.values())
+    main = L.review_run(g, repo, head, pr_text, diffs, added_lines, rules, findings, max_steps=steps, minutes=minutes,
+                        system_extra=SP.review_addendum(paths))
+    passes = SP.focus_passes(paths, diffs, added, _setting("dev_spec_focus_lines", 150))
+    groups, extra_loops = [main.get("comments") or []], []
+    for key in passes:
+        try:
+            f = L.review_run(g, repo, head, pr_text, diffs, added_lines, rules, findings,
+                             max_steps=_setting("dev_spec_focus_steps", 12), minutes=minutes,
+                             system_extra=SP.REVIEW_CORE + "\n\n" + SP.FOCUS[key])
+        except Exception as e:  # noqa: BLE001 - a focused pass is extra; the main review stands without it
+            log.info("focused review pass %s failed: %s", key, e)
+            continue
+        groups.append(f.get("comments") or [])
+        extra_loops.append({"pass": key, **(f.get("loop") or {})})
+        if f.get("verdict") == "request_changes" and any(c.get("severity") == "high" for c in f.get("comments") or []):
+            main["verdict"] = "request_changes"
+    main["comments"] = SP.merge_comments(groups)[:30]
+    lp = main.setdefault("loop", {})
+    lp["passes"] = ["main"] + [x["pass"] for x in extra_loops]
+    lp["steps"] = int(lp.get("steps") or 0) + sum(int(x.get("steps") or 0) for x in extra_loops)
+    lp["lookups"] = int(lp.get("lookups") or 0) + sum(int(x.get("lookups") or 0) for x in extra_loops)
+    lp["read"] = sorted(set(lp.get("read") or []).union(*[set(x.get("read") or []) for x in extra_loops]))
+    return main
+
+
 def review(tenant: str, repo: str, pr_number: int, conv: str = "") -> dict[str, Any]:
     r = _repo(tenant, repo)
     g = gh(tenant)
@@ -1130,14 +1172,14 @@ def review(tenant: str, repo: str, pr_number: int, conv: str = "") -> dict[str, 
         pr_text = (f"<pr>\nRepo {r.full_name} PR #{pr_number}: {pr.get('title')}\nBy: {(pr.get('user') or {}).get('login')}\n"
                    f"{body_txt}\n</pr>")
         try:
-            out = L.review_run(g, r.full_name, head, pr_text, "\n\n".join(diff_parts), added_lines, cfg.rules,
-                               json.dumps(findings[:20], ensure_ascii=False) if findings else "",
-                               max_steps=_setting("dev_review_steps", 25),
-                               minutes=float(_setting("dev_review_minutes", 10)))
+            out = explore_review(g, r.full_name, head, pr_text, diff_parts, added_lines, cfg.rules,
+                                 json.dumps(findings[:20], ensure_ascii=False) if findings else "")
             lp = out.get("loop") or {}
             n_read, n_look = len(lp.get("read") or []), int(lp.get("lookups") or 0)
             explored = (f"\n\n_Explored before reviewing: {n_read} file{'' if n_read == 1 else 's'} read, "
-                        f"{n_look} code / caller search{'' if n_look == 1 else 'es'}, {lp.get('steps', 0)} steps._")
+                        f"{n_look} code / caller search{'' if n_look == 1 else 'es'}, {lp.get('steps', 0)} steps"
+                        + (f"; specialist passes: {', '.join(lp['passes'])}" if len(lp.get("passes") or []) > 1 else "")
+                        + "._")
         except (L.LoopUnavailable, GhError) as e:   # exploring is extra: a review never fails because of it
             L.STATS["fallback"] += 1
             log.info("review loop unavailable (%s): one-shot review", e)

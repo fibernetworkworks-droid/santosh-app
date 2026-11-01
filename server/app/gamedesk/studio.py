@@ -204,6 +204,7 @@ def view(r: GameStudio, full: bool = False) -> dict[str, Any]:
         "game": {k: gv.get(k) for k in ("id", "number", "title", "status", "say", "stage", "pct", "error", "play_url",
                                         "version", "design", "shots", "numbers")} if gv else {},
         "night": (r.nightly or [])[-1] if r.nightly else {},
+        "bible": _bible_line(r),
         "created_at": r.created_at.isoformat() if r.created_at else None}
     if full:
         d["tasks"] = [task_view(t) for t in tasks]
@@ -215,6 +216,24 @@ def view(r: GameStudio, full: bool = False) -> dict[str, Any]:
         d["next"] = [task_view(t) for t in _ordered([t for t in tasks if t.status == "todo"], r.milestones or MILESTONES)[:3]]
         d["review"] = [task_view(t) for t in tasks if t.status == "review"]
     return d
+
+
+def _bible_line(r: GameStudio) -> dict[str, Any]:
+    """v0.395 the Game Bible in one line for the board: version, version inside the game, counts, problems."""
+    try:
+        from . import bible as B
+        with session() as s:
+            b = B._row(s, r.tenant_id, r.id, make=False)
+            if b is None:
+                return {"version": 0}
+            data = b.data or B.empty()
+            c = B.check(data)
+            return {"version": b.version or 0, "applied": b.applied or 0, "draft": bool(b.draft),
+                    "counts": {k: len(v or []) for k, v in (data.get("entities") or {}).items() if v},
+                    "errors": len(c["errors"]), "warnings": len(c["warnings"])}
+    except Exception:                                   # noqa: BLE001
+        log.exception("bible line")
+        return {"version": 0}
 
 
 def versions(tenant: str, gid: str, tasks: list[GameTask] | None = None) -> list[dict[str, Any]]:
@@ -229,6 +248,7 @@ def versions(tenant: str, gid: str, tasks: list[GameTask] | None = None) -> list
         out.append({"n": v.get("n"), "at": v.get("at"), "ok": bool(v.get("ok")), "rejected": bool(v.get("rejected")),
                     "live": v.get("n") == live, "words": (v.get("words") or "")[:200], "notes": (v.get("notes") or "")[:300],
                     "task": t.number if t else "", "task_title": t.title if t else "", "src": v.get("src", ""),
+                    "bible": v.get("bible", 0),
                     "numbers": v.get("numbers") or {}})
     return out[:60]
 
@@ -359,6 +379,14 @@ def plan(tenant: str, ref: str, words: str = "") -> dict[str, Any]:
         tasks = _tasks(s, r.id)
         decs = s.scalars(select(GameDecision).where(GameDecision.studio_id == r.id).order_by(GameDecision.at)).all()
         dec_lines = [f"{d.text} ({d.why})" if d.why else d.text for d in decs]
+        try:                                            # v0.395 the Game Bible is the source of truth for every task
+            from . import bible as B
+            bb = B._row(s, tenant, r.id, make=False)
+            if bb is not None and bb.version:
+                dec_lines.append("GAME BIBLE (names / numbers live here; tasks change the Bible or read it): "
+                                 + B._summary(bb.data or B.empty())[:6000])
+        except Exception:                               # noqa: BLE001
+            pass
         s.expunge(r)
         tv = [task_view(t) for t in tasks]
     if sum(1 for t in tv if t["status"] == "todo") >= 40:

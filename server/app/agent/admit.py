@@ -108,7 +108,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "gamedesk": ("godot", "game banao", "game bana", "game develop", "game design", "video game", "mobile game", "web game",
                  "browser game", "khel banao", "गेम बनाओ", "गेम",
                  # v0.386 Studio Project: the long game project's words
-                 "game project", "game studio", "studio project", "game ka kaam", "game ka task"),
+                 "game project", "game studio", "studio project", "game ka kaam", "game ka task",
+                 "game bible", "game ki bible", "balance pass", "difficulty curve", "enemy stats", "level design"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",

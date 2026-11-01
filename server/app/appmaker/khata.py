@@ -19,6 +19,7 @@ from sqlalchemy import select
 from ..db import now, session
 from ..site import webapp as W
 from .models import AppProject
+from . import locks as LK                     # v0.390 one cross-process lock per app
 
 COLL = "_khata"
 MODES = ("cash", "upi", "card", "bank", "other")
@@ -76,7 +77,7 @@ def credit(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
         raise KhataError("Udhaar sirf staff likh sakta hai.", 403)
     sch = BE.schema(r)
     W.coll(sch, coll)
-    with _LOCK:
+    with LK.app(r.id):
         with session() as s:
             row = s.get(W.SiteAppRow, row_id)
             if row is None or row.site_id != _site(r) or row.coll != coll:
@@ -118,7 +119,7 @@ def payment(r: AppProject, member: str, amount: Any, mode: str, note: str, w: W.
     if mode not in MODES:
         raise KhataError("Kaise mila: " + " / ".join(MODES))
     note = re.sub(r"[\x00-\x1f\x7f]+", " ", str(note or "")).strip()[:200]
-    with _LOCK:
+    with LK.app(r.id):
         e = _add(r, {"member": member, "name": _who_name(r, member), "kind": "payment", "amount": amt, "mode": mode,
                      "note": note, "by": w.id or "owner"})
     STATS["payments"] += 1
@@ -128,7 +129,7 @@ def payment(r: AppProject, member: str, amount: Any, mode: str, note: str, w: W.
 def reverse_order(r: AppProject, row_id: str) -> None:
     """A credited order cancelled -> one reversing entry (the original stays, as in a paper khata)."""
     from . import backend as BE
-    with _LOCK:
+    with LK.app(r.id):
         with session() as s:
             row = s.get(W.SiteAppRow, row_id)
             d = BE._j(row.data, {}) if row is not None else {}
@@ -269,7 +270,7 @@ async def send_reminder(r: AppProject, member: str, template: str, by_tap: bool)
                                                    [p["name"].split()[0] or "ji", f"{p['balance']:,.0f}", r.name or "dukaan"])
     except WhatsAppError as e:
         raise KhataError(f"WhatsApp ne nahi liya: {e}", 502)
-    with session() as s:
+    with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
         last = dict(be.get("khata_remind") or {})

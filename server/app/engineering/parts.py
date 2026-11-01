@@ -426,6 +426,29 @@ def analyze(kind="static", **kw):
     STUDIES.append({"kind": kind, **kw})
 
 
+DRAWING: dict = {}
+FITS: list = []
+
+
+def fit(d, code):
+    """A toleranced size on the drawing: H.fit(20, 'H7') for a bore, H.fit(20, 'g6') for a shaft (ISO 286)."""
+    import re as _re
+    if not _re.fullmatch(r"(js|[A-Za-z])\d{1,2}", str(code)):
+        raise ValueError("fit like 'H7', 'H8', 'g6', 'h6', 'k6', 'p6', 'js7'")
+    if not (0 < float(d) <= 500):
+        raise ValueError("fit size 0-500 mm")
+    FITS.append({"d": float(d), "fit": str(code)})
+
+
+def drawing(projection="first", tolerance="m", notes=None, part_no=""):
+    """Drawing settings: projection 'first' (India / ISO E, default) or 'third' (US); general tolerance class of
+    ISO 2768 ('f' fine, 'm' medium, 'c' coarse, 'v' very coarse); up to 4 extra notes; her part number."""
+    if projection not in ("first", "third") or tolerance not in ("f", "m", "c", "v"):
+        raise ValueError("drawing: projection first / third, tolerance f / m / c / v")
+    DRAWING.update({"projection": projection, "tolerance": tolerance,
+                    "notes": [str(n)[:70] for n in (notes or [])][:4], "part_no": str(part_no)[:30]})
+
+
 def cam(**kw):
     """2.5D CNC G-code after the build: tool_d, stepdown, stepover, feed, plunge, rpm, ops=['face','pocket','drill','profile']."""
     if CAM:
@@ -458,6 +481,8 @@ class _H:
     expect = staticmethod(expect)
     analyze = staticmethod(analyze)
     cam = staticmethod(cam)
+    fit = staticmethod(fit)
+    drawing = staticmethod(drawing)
 
 
 H = _H()

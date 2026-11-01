@@ -242,7 +242,7 @@ def test_whatsapp_and_linkedin_routes(pf):
         assert cb.status_code == 200 and "Meghana Sharma" in cb.text
         assert "nahi juda" in c.get("/api/social/linkedin/callback?error=user_cancelled_login").text
         v = c.get("/api/social/desk").json()
-        assert v["connect"] == {"instagram": True, "facebook": True, "linkedin": True, "whatsapp": True}
+        assert {k: v["connect"][k] for k in ("instagram", "facebook", "linkedin", "whatsapp")} == {"instagram": True, "facebook": True, "linkedin": True, "whatsapp": True}
         assert {a["platform"] for a in v["accounts"]} == {"whatsapp", "linkedin"}
 
 

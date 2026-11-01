@@ -190,7 +190,147 @@ FPS_JS = r"""async () => {
 }"""
 
 
-def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: bool = True) -> dict[str, Any]:
+def _check_page(b, out: Path, slug: str, shots_dir: Path | None, axe, report: dict[str, Any]) -> dict[str, Any]:
+    """v0.400 one page in every viewport (its own browser contexts) - run() spreads pages over parallel browsers."""
+    pr: dict[str, Any] = {"issues": [], "warnings": [], "shots": {}}
+    url = f"{ORIGIN}/" + ("" if slug == "home" else f"{slug}/")
+    for vw in VIEWPORTS:
+        counter: dict[str, int] = {}
+        ctx = b.new_context(viewport={"width": vw, "height": 844 if vw < 800 else 900}, device_scale_factor=1)
+        page = ctx.new_page()
+        errors: list[str] = []
+        page.on("pageerror", lambda e, errors=errors: errors.append(str(e)[:160]))
+        page.on("console", lambda m, errors=errors: errors.append(m.text[:160]) if m.type == "error" and
+                "Content Security Policy" not in m.text else None)
+        page.route("**/*", _serve(out, counter))
+        if vw == 390:
+            cdp = ctx.new_cdp_session(page)
+            try:
+                cdp.send("Emulation.setCPUThrottlingRate", {"rate": 4})
+            except Exception:
+                pass
+        page.goto(url, wait_until="load", timeout=45000)
+        try:
+            page.evaluate("document.fonts.ready.then(() => true)")
+        except Exception:
+            pass
+        if vw == 390:
+            perf = page.evaluate(LCP_JS)
+            pr["lcp_ms"], pr["cls"] = round(perf.get("lcp") or 0), round(perf.get("cls") or 0, 3)
+            pr["first_load_kb"] = round(counter.get("bytes", 0) / 1024)
+        res = page.evaluate(PAGE_JS)
+        for it in res["issues"]:
+            it["text"] += f" ({slug}, {vw}px)" if it["kind"] == "overflow" else f" ({slug})"
+            if not any(x["text"] == it["text"] for x in pr["issues"]):
+                pr["issues"].append(it)
+        pr["warnings"] += [w for w in res["warn"] if not any(x["text"] == w["text"] for x in pr["warnings"])]
+        if vw == 390:
+            pr.update({"h1": res["h1"], "title": res["title"], "desc": res["desc"], "blanks": res["blanks"],
+                       "links": res["links"]})
+            if axe:
+                try:
+                    page.add_script_tag(content=axe.read_text())
+                    ax = page.evaluate("axe.run(document,{resultTypes:['violations']}).then(r=>r.violations."
+                                       "filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,"
+                                       "n:v.nodes.length,help:v.help})))")
+                    for v in ax:
+                        pr["issues"].append({"kind": "a11y", "text": f"{v['help']} ({v['n']}x, {slug})", "sections": []})
+                    report["source"] = "hoola+axe"
+                except Exception:
+                    log.info("axe failed", exc_info=True)
+            if slug == "home":
+                try:
+                    pr["fps"] = page.evaluate(FPS_JS)
+                except Exception:
+                    pr["fps"] = 0
+        if errors:
+            pr["issues"].append({"kind": "console", "text": f"Script error on {slug}: {errors[0]}", "sections": []})
+        if shots_dir is not None and vw in (390, 1440):
+            page.evaluate("window.scrollTo(0,0)")
+            page.wait_for_timeout(250)
+            shots_dir.mkdir(parents=True, exist_ok=True)
+            fn = shots_dir / f"{slug}-{vw}.jpg"
+            page.screenshot(path=str(fn), type="jpeg", quality=78, full_page=False)
+            pr["shots"][str(vw)] = fn.name
+            if slug == "home" and vw == 390:
+                full = shots_dir / f"{slug}-{vw}-full.jpg"
+                page.screenshot(path=str(full), type="jpeg", quality=70, full_page=True)
+                pr["shots"]["full"] = full.name
+        ctx.close()
+    # reduced motion: everything must be visible
+    ctx = b.new_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
+    page = ctx.new_page()
+    page.route("**/*", _serve(out, {}))
+    page.goto(url, wait_until="load", timeout=45000)
+    page.evaluate("window.scrollTo(0, document.scrollingElement.scrollHeight)")
+    page.wait_for_timeout(300)
+    hidden = page.evaluate("[...document.querySelectorAll('main *')].filter(e=>{const r=e.getBoundingClientRect();"
+                           "return getComputedStyle(e).opacity==='0'&&r.height>8&&r.right>0&&!e.closest('.hp,[aria-hidden=true]')}).length")
+    if hidden:
+        pr["issues"].append({"kind": "motion", "text": f"{hidden} elements stay invisible with reduced motion ({slug})",
+                             "sections": []})
+    ctx.close()
+    # internal links
+    for href in set(pr.pop("links", [])):
+        if not href or href.startswith(("http", "tel:", "mailto:", "sms:", "#", "https:")):
+            continue
+        base = Path("/" + ("" if slug == "home" else slug + "/"))
+        target = (base / href.split("#")[0]).as_posix()
+        target = os.path.normpath(target)
+        tf = out / target.lstrip("/")
+        if tf.is_dir() or target.endswith("/") or not tf.suffix:
+            tf = tf / "index.html"
+        if not tf.exists():
+            pr["issues"].append({"kind": "link", "text": f"Broken link '{href}' on {slug}", "sections": []})
+    if pr.get("h1") != 1:
+        pr["issues"].append({"kind": "h1", "text": f"{slug}: {pr.get('h1')} h1 headings (needs exactly 1)", "sections": []})
+    if not pr.get("desc"):
+        pr["warnings"].append({"kind": "seo", "text": f"{slug}: no description", "sections": []})
+    if pr.get("first_load_kb", 0) > 1024:
+        pr["issues"].append({"kind": "weight", "text": f"{slug}: first load {pr['first_load_kb']} KB (limit 1,024)",
+                             "sections": []})
+    if pr.get("lcp_ms", 0) > 2500:
+        pr["warnings"].append({"kind": "speed", "text": f"{slug}: LCP {pr['lcp_ms']} ms in Hoola's lab (target 2,500)",
+                               "sections": []})
+    return pr
+
+
+def _width(n: int) -> int:
+    from ..config import get_settings
+    w = int(getattr(get_settings(), "site_check_parallel", 3) or 1)
+    return max(1, min(w, 4, (n + 3) // 4))          # small sites keep one browser; a page needs ~4 to be worth a browser
+
+
+def _run_pages(b, out: Path, pages: list[str], shots_dir: Path | None, axe, report: dict[str, Any]) -> dict[str, dict]:
+    """v0.400 FAST: the pages in order on this browser, or split over parallel browsers (each its own Playwright in its
+    own thread - the sync API is per thread). The same checks either way; only the wall clock changes."""
+    w = _width(len(pages))
+    if w <= 1:
+        return {slug: _check_page(b, out, slug, shots_dir, axe, report) for slug in pages}
+    from concurrent.futures import ThreadPoolExecutor
+
+    from playwright.sync_api import sync_playwright
+    chunks = [pages[i::w] for i in range(w)]
+
+    def chunk(part: list[str]) -> dict[str, dict]:
+        res: dict[str, dict] = {}
+        with sync_playwright() as p2:
+            b2 = _launch(p2)
+            try:
+                for slug in part:
+                    res[slug] = _check_page(b2, out, slug, shots_dir, axe, report)
+            finally:
+                b2.close()
+        return res
+    got: dict[str, dict] = {}
+    with ThreadPoolExecutor(max_workers=w, thread_name_prefix="site-check") as ex:
+        for part in ex.map(chunk, chunks):
+            got.update(part)
+    return {slug: got[slug] for slug in pages if slug in got}      # the plan's order, whatever finished first
+
+
+def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: bool = True,
+        only: list[str] | None = None) -> dict[str, Any]:
     if available():
         raise CheckError("Website jaanch ke liye server par Playwright + Chromium chahiye (deploy/setup_sites.sh).")
     from playwright.sync_api import sync_playwright
@@ -200,6 +340,8 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
         pages = SM.check_slugs(plan, max(5, int(getattr(get_settings(), "site_check_pages", 40) or 40)))
     else:
         pages = [p["slug"] for p in plan.get("pages", []) if not p.get("template_of")]
+    if only:                                 # v0.400 re-check just the pages that changed (critique redraws)
+        pages = [x for x in pages if x in set(only)] or list(only)
     report: dict[str, Any] = {"pages": {}, "blocking": [], "warnings": [], "scores": {}, "source": "hoola"}
     # weight / JS budget (files, not browser): JS gzipped, biggest image
     js = b"".join((out / "assets" / n).read_bytes() for n in ("hoola-site.js", "site.js") if (out / "assets" / n).exists())
@@ -215,108 +357,7 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
     with sync_playwright() as p:
         b = _launch(p)
         try:
-            for slug in pages:
-                pr: dict[str, Any] = {"issues": [], "warnings": [], "shots": {}}
-                url = f"{ORIGIN}/" + ("" if slug == "home" else f"{slug}/")
-                for vw in VIEWPORTS:
-                    counter: dict[str, int] = {}
-                    ctx = b.new_context(viewport={"width": vw, "height": 844 if vw < 800 else 900}, device_scale_factor=1)
-                    page = ctx.new_page()
-                    errors: list[str] = []
-                    page.on("pageerror", lambda e, errors=errors: errors.append(str(e)[:160]))
-                    page.on("console", lambda m, errors=errors: errors.append(m.text[:160]) if m.type == "error" and
-                            "Content Security Policy" not in m.text else None)
-                    page.route("**/*", _serve(out, counter))
-                    if vw == 390:
-                        cdp = ctx.new_cdp_session(page)
-                        try:
-                            cdp.send("Emulation.setCPUThrottlingRate", {"rate": 4})
-                        except Exception:
-                            pass
-                    page.goto(url, wait_until="load", timeout=45000)
-                    try:
-                        page.evaluate("document.fonts.ready.then(() => true)")
-                    except Exception:
-                        pass
-                    if vw == 390:
-                        perf = page.evaluate(LCP_JS)
-                        pr["lcp_ms"], pr["cls"] = round(perf.get("lcp") or 0), round(perf.get("cls") or 0, 3)
-                        pr["first_load_kb"] = round(counter.get("bytes", 0) / 1024)
-                    res = page.evaluate(PAGE_JS)
-                    for it in res["issues"]:
-                        it["text"] += f" ({slug}, {vw}px)" if it["kind"] == "overflow" else f" ({slug})"
-                        if not any(x["text"] == it["text"] for x in pr["issues"]):
-                            pr["issues"].append(it)
-                    pr["warnings"] += [w for w in res["warn"] if not any(x["text"] == w["text"] for x in pr["warnings"])]
-                    if vw == 390:
-                        pr.update({"h1": res["h1"], "title": res["title"], "desc": res["desc"], "blanks": res["blanks"],
-                                   "links": res["links"]})
-                        if axe:
-                            try:
-                                page.add_script_tag(content=axe.read_text())
-                                ax = page.evaluate("axe.run(document,{resultTypes:['violations']}).then(r=>r.violations."
-                                                   "filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,"
-                                                   "n:v.nodes.length,help:v.help})))")
-                                for v in ax:
-                                    pr["issues"].append({"kind": "a11y", "text": f"{v['help']} ({v['n']}x, {slug})", "sections": []})
-                                report["source"] = "hoola+axe"
-                            except Exception:
-                                log.info("axe failed", exc_info=True)
-                        if slug == "home":
-                            try:
-                                pr["fps"] = page.evaluate(FPS_JS)
-                            except Exception:
-                                pr["fps"] = 0
-                    if errors:
-                        pr["issues"].append({"kind": "console", "text": f"Script error on {slug}: {errors[0]}", "sections": []})
-                    if shots_dir is not None and vw in (390, 1440):
-                        page.evaluate("window.scrollTo(0,0)")
-                        page.wait_for_timeout(250)
-                        shots_dir.mkdir(parents=True, exist_ok=True)
-                        fn = shots_dir / f"{slug}-{vw}.jpg"
-                        page.screenshot(path=str(fn), type="jpeg", quality=78, full_page=False)
-                        pr["shots"][str(vw)] = fn.name
-                        if slug == "home" and vw == 390:
-                            full = shots_dir / f"{slug}-{vw}-full.jpg"
-                            page.screenshot(path=str(full), type="jpeg", quality=70, full_page=True)
-                            pr["shots"]["full"] = full.name
-                    ctx.close()
-                # reduced motion: everything must be visible
-                ctx = b.new_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
-                page = ctx.new_page()
-                page.route("**/*", _serve(out, {}))
-                page.goto(url, wait_until="load", timeout=45000)
-                page.evaluate("window.scrollTo(0, document.scrollingElement.scrollHeight)")
-                page.wait_for_timeout(300)
-                hidden = page.evaluate("[...document.querySelectorAll('main *')].filter(e=>{const r=e.getBoundingClientRect();"
-                                       "return getComputedStyle(e).opacity==='0'&&r.height>8&&r.right>0&&!e.closest('.hp,[aria-hidden=true]')}).length")
-                if hidden:
-                    pr["issues"].append({"kind": "motion", "text": f"{hidden} elements stay invisible with reduced motion ({slug})",
-                                         "sections": []})
-                ctx.close()
-                # internal links
-                for href in set(pr.pop("links", [])):
-                    if not href or href.startswith(("http", "tel:", "mailto:", "sms:", "#", "https:")):
-                        continue
-                    base = Path("/" + ("" if slug == "home" else slug + "/"))
-                    target = (base / href.split("#")[0]).as_posix()
-                    target = os.path.normpath(target)
-                    tf = out / target.lstrip("/")
-                    if tf.is_dir() or target.endswith("/") or not tf.suffix:
-                        tf = tf / "index.html"
-                    if not tf.exists():
-                        pr["issues"].append({"kind": "link", "text": f"Broken link '{href}' on {slug}", "sections": []})
-                if pr.get("h1") != 1:
-                    pr["issues"].append({"kind": "h1", "text": f"{slug}: {pr.get('h1')} h1 headings (needs exactly 1)", "sections": []})
-                if not pr.get("desc"):
-                    pr["warnings"].append({"kind": "seo", "text": f"{slug}: no description", "sections": []})
-                if pr.get("first_load_kb", 0) > 1024:
-                    pr["issues"].append({"kind": "weight", "text": f"{slug}: first load {pr['first_load_kb']} KB (limit 1,024)",
-                                         "sections": []})
-                if pr.get("lcp_ms", 0) > 2500:
-                    pr["warnings"].append({"kind": "speed", "text": f"{slug}: LCP {pr['lcp_ms']} ms in Hoola's lab (target 2,500)",
-                                           "sections": []})
-                report["pages"][slug] = pr
+            report["pages"].update(_run_pages(b, out, pages, shots_dir, axe, report))
             if shots_dir is not None:
                 _og_and_video(b, out, shots_dir, video)
         finally:

@@ -142,8 +142,11 @@ window.HoolaBuild = function (C) {
       ${bl.slice(0, 8).map(x => `<div class="badc bln">⛔ ${where(x)}${esc(x.text)}</div>`).join('')}
       ${wa.slice(0, 8).map(x => `<div class="warnc bln">⚠ ${where(x)}${esc(x.text)}</div>`).join('')}
       ${!bl.length && c.passed === true ? '<div class="okc bln" style="font-weight:500">✓ All required checks passed</div>' : ''}
-      ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} spot(s) still need your details (the […] boxes)</div>` : ''}</section>`;
+      ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} spot(s) still need your details (the […] boxes)</div>` : ''}
+      ${L(c.journeys).length ? `<div class="bln faint" style="margin-top:6px">Visitor tests (Hoola used the site like a customer on a phone):</div>${L(c.journeys).map(j => `<div class="${j.ok ? 'okc' : 'badc'} bln">${j.ok ? '✓' : '✗'} ${esc(JOURNEY[S(j.name)] || S(j.name))}${j.ok ? '' : ' - ' + esc(S(j.detail))}</div>`).join('')}` : ''}</section>`;
   }
+  const JOURNEY = {menu: 'Phone menu opens and leads to a page', form: 'Enquiry form sends', shop: 'Add to cart → checkout → order',
+                   blog: 'Blog post opens', lang: 'Language switch works'};   // v0.400
   function scoresBlock(sc) {
     sc = M(sc); if (!Object.keys(sc).length) return '';
     const one = (k, lab) => { const n = sc[k]; const col = n == null ? '' : n >= 90 ? 'okc' : n >= 50 ? 'warnc' : 'badc';
@@ -964,6 +967,95 @@ window.HoolaBuild = function (C) {
       });
     };
     try { drawL(await api('GET', base(o) + '/logic')); } catch (er) { lbox.remove(); }
+    // v0.390 PAKKI NEEV: her app's data is safe - how much it uses (and its limits), backups, a restore to any minute
+    // (preview first, then HER tap), and the whole data as a ZIP.
+    const sbox = document.createElement('section'); sbox.className = 'stcol stsafe'; box.appendChild(sbox);
+    const drawS = async () => {
+      const [u, b] = await Promise.all([api('GET', base(o) + '/usage'), api('GET', base(o) + '/backups')]);
+      const lim = M(u.limits), pc = M(u.percent);
+      const bar = (k, used, label) => `<li><span>${label}: ${N(used).toLocaleString('en-IN')} / ${N(lim[k]).toLocaleString('en-IN')}</span><span class="stmeter"><i style="width:${Math.min(100, N(pc[k]))}%"></i></span><span>${N(pc[k])}%</span></li>`;
+      sbox.innerHTML = `<h4>Data safety <span>${L(b.backups).length} backups · ${N(u.backups_mb)} MB</span></h4>
+        <p class="stnote">Every change to this app's data is written to a journal; a full backup is taken every day and before every risky change. You can bring the data back to any minute. Nothing changes until you press Restore.</p>
+        <ul class="stmems">${bar('rows', u.rows, 'Entries')}${bar('files_mb', u.files_mb, 'Files (MB)')}${bar('writes_day', u.writes_today, 'Writes today')}</ul>
+        <form class="stapp" data-slim autocomplete="off"><div class="row"><label>Entries limit <input name="rows" inputmode="numeric" value="${N(lim.rows)}"></label><label>Files MB <input name="files_mb" inputmode="numeric" value="${N(lim.files_mb)}"></label><label>Writes a day <input name="writes_day" inputmode="numeric" value="${N(lim.writes_day)}"></label><button class="btn soft" type="submit">Save limits</button></div></form>
+        <div class="acts"><button class="btn go" type="button" data-snap>Back up now</button><button class="btn soft" type="button" data-exp>Download all data (ZIP)</button></div>
+        <form class="stapp" data-pitr autocomplete="off"><p class="stnote">Bring the data back to a moment (your time, IST):</p><div class="row"><input name="at" type="datetime-local" step="60" aria-label="Moment"><button class="btn soft" type="submit">Preview</button></div><div data-pv></div></form>
+        ${L(b.backups).length ? `<details><summary>Backups (${L(b.backups).length})</summary><ul class="stmems">${L(b.backups).slice(0, 30).map(x => `<li><span>${esc(S(x.at).slice(0, 16).replace('T', ' '))} UTC · ${esc(S(x.kind))} · ${esc(S(x.why))} · ${N(x.rows)} entries</span><button class="ib" type="button" data-rname="${esc(S(x.name))}">Restore this</button></li>`).join('')}</ul></details>` : ''}`;
+      const fl = sbox.querySelector('[data-slim]');
+      fl.addEventListener('submit', async e => { e.preventDefault(); try { await api('PUT', base(o) + '/usage', {rows: fl.rows.value, files_mb: fl.files_mb.value, writes_day: fl.writes_day.value}); toast('Limits saved.'); drawS(); } catch (er) { toast(er.message, true); } });
+      sbox.querySelector('[data-snap]').addEventListener('click', async e => { e.target.disabled = true; try { const r = await api('POST', base(o) + '/backups/now'); toast(`Backed up: ${N(r.rows)} entries.`); drawS(); } catch (er) { toast(er.message, true); e.target.disabled = false; } });
+      sbox.querySelector('[data-exp]').addEventListener('click', async e => {
+        e.target.disabled = true;
+        try { const res = await api('GET', base(o) + '/export', undefined, {raw: true}); const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = 'app-data.zip'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 30000); }
+        catch (er) { toast(er.message, true); }
+        e.target.disabled = false;
+      });
+      const doRestore = async (body, label) => {
+        if (!confirm(`Restore the app's data to ${label}? A safety backup of the data as it is now is taken first.`)) return;
+        try { const r = await api('POST', base(o) + '/backups/restore', body); toast(S(r.say)); drawS(); } catch (er) { toast(er.message, true); }
+      };
+      const fp = sbox.querySelector('[data-pitr]');
+      fp.addEventListener('submit', async e => {
+        e.preventDefault(); if (!fp.at.value) return;
+        const pv = fp.querySelector('[data-pv]');
+        try {
+          const v = await api('POST', base(o) + '/backups/preview', {at: fp.at.value});
+          pv.innerHTML = `<p class="stnote">Then: ${esc(Object.entries(M(v.lists_then)).map(([k, n]) => k + ' ' + n).join(', ') || 'nothing')}. Now: ${esc(Object.entries(M(v.lists_now)).map(([k, n]) => k + ' ' + n).join(', ') || 'nothing')}. ${N(v.come_back)} come back, ${N(v.go_away)} go away, ${N(v.change)} change.</p><button class="btn go" type="button" data-rat>Restore to ${esc(fp.at.value.replace('T', ' '))}</button>`;
+          pv.querySelector('[data-rat]').addEventListener('click', () => doRestore({at: fp.at.value}, fp.at.value.replace('T', ' ')));
+        } catch (er) { pv.innerHTML = `<p class="stnote">${esc(er.message)}</p>`; }
+      });
+      sbox.querySelectorAll('[data-rname]').forEach(btn => btn.addEventListener('click', () => doRestore({name: btn.dataset.rname}, 'that backup')));
+    };
+    try { await drawS(); } catch (er) { sbox.remove(); }
+    // v0.396 APNA DATABASE: this app's data in HER own database (Supabase, Neon, RDS ... any PostgreSQL-wire database)
+    const obox = document.createElement('section'); obox.className = 'stcol stowndb'; box.appendChild(obox);
+    const drawO = async () => {
+      const v = await api('GET', base(o) + '/owndb');
+      const ln = M(v.link), live = v.linked;
+      const conns = L(v.connections);
+      obox.innerHTML = `<h4>Own database <span>${live ? esc(S(ln.name)) + ' · ' + esc(S(ln.mode)) + ' · ' + esc(S(ln.status)) : 'Hoola database'}</span></h4>
+        <p class="stnote">Run this app's data in your own database (Supabase, Neon, AWS, Google Cloud, Azure, DigitalOcean and ${L(v.providers).length - 6}+ more). Primary: every entry is saved there first, and what you edit there comes back into the app. Copy: a live read copy for reports.</p>
+        ${live ? `<ul class="stmems"><li><span>Where: ${esc(S(ln.label))} · schema <b>${esc(S(ln.schema))}</b></span></li>
+          <li><span>Waiting to sync: ${N(v.lag)} · last sync ${esc(S(ln.last_sync || ln.live_at).slice(0, 16).replace('T', ' '))} UTC</span></li>
+          ${ln.last_error ? `<li><span class="sterr">Last problem: ${esc(S(ln.last_error))}</span></li>` : ''}</ul>
+          <div class="acts"><button class="btn soft" type="button" data-osync>Sync now</button><button class="btn soft" type="button" data-over>Compare counts</button><button class="btn soft" type="button" data-ooff>Disconnect</button></div><div data-oout></div>`
+        : `${conns.length ? `<form class="stapp" data-olink><div class="row"><label>Database <select name="conn">${conns.map(c => `<option value="${esc(S(c.id))}">${esc(S(c.name))} (${esc(S(c.label))})${c.can_write === false ? ' - read only' : ''}</option>`).join('')}</select></label>
+            <label>Mode <select name="mode"><option value="primary">Primary - data lives there</option><option value="mirror">Copy - Hoola stays main</option></select></label></div>
+            <div class="acts"><button class="btn go" type="submit">Move this app's data there</button></div></form>` : '<p class="stnote">No database connected yet. Add one below.</p>'}
+          <form class="stapp" data-oadd autocomplete="off"><p class="stnote">Add a database: paste its connection string (it is sealed on the server and never shown again; never paste it in chat).</p>
+            <div class="row"><input name="name" maxlength="60" placeholder="Name, e.g. Shop Supabase" aria-label="Name"></div>
+            <div class="row"><input name="dsn" type="password" autocomplete="off" placeholder="postgresql://user:password@host:5432/postgres" aria-label="Connection string"><button class="btn soft" type="submit">Connect</button></div></form>
+          <details><summary>Where to find the connection string (${L(v.providers).length} databases)</summary><ul class="stlines">${L(v.providers).map(p => `<li><b>${esc(S(p.name))}</b>: ${esc(S(p.how))}${p.note ? ' - ' + esc(S(p.note)) : ''}</li>`).join('')}</ul></details>`}`;
+      const out = obox.querySelector('[data-oout]');
+      const fl = obox.querySelector('[data-olink]');
+      if (fl) fl.addEventListener('submit', async e => {
+        e.preventDefault();
+        const name = fl.conn.selectedOptions[0].textContent;
+        if (!confirm(`Move this app's data to ${name}? A backup is taken first; every entry is copied and the counts are compared before it goes live.`)) return;
+        const b = fl.querySelector('button.go'); b.disabled = true; b.textContent = 'Copying…';
+        try { const r = await api('POST', base(o) + '/owndb/link', {conn: fl.conn.value, mode: fl.mode.value}); toast(S(r.say)); drawO(); }
+        catch (er) { toast(er.message, true); b.disabled = false; b.textContent = "Move this app's data there"; }
+      });
+      const fa = obox.querySelector('[data-oadd]');
+      if (fa) fa.addEventListener('submit', async e => {
+        e.preventDefault();
+        try { const r = await api('POST', '/api/pgdb/conns', {name: fa.name.value.trim(), dsn: fa.dsn.value.trim()}); fa.dsn.value = ''; toast(S(r.say)); drawO(); }
+        catch (er) { fa.dsn.value = ''; toast(er.message, true); }
+      });
+      const bs = obox.querySelector('[data-osync]');
+      if (bs) bs.addEventListener('click', async () => { try { await api('POST', base(o) + '/owndb/sync'); toast('Synced.'); drawO(); } catch (er) { toast(er.message, true); } });
+      const bv = obox.querySelector('[data-over]');
+      if (bv) bv.addEventListener('click', async () => {
+        try { const r = await api('POST', base(o) + '/owndb/verify'); out.innerHTML = `<p class="stnote">${r.ok ? 'All counts match: ' : 'Different: '}${esc(Object.entries(M(r.counts)).map(([k, x]) => `${k} ${N(x.app)}/${N(x.database)}`).join(', '))}</p>`; }
+        catch (er) { toast(er.message, true); }
+      });
+      const bo = obox.querySelector('[data-ooff]');
+      if (bo) bo.addEventListener('click', async () => {
+        if (!confirm('Disconnect? The app goes back to Hoola\'s database; your data stays in your database too.')) return;
+        try { const r = await api('POST', base(o) + '/owndb/unlink'); toast(S(r.say)); drawO(); } catch (er) { toast(er.message, true); }
+      });
+    };
+    try { await drawO(); } catch (er) { obox.remove(); }
     // v0.378 BAAT: her customers' messages from the app (their words = data); she replies by her own tap
     const cbx = document.createElement('section'); cbx.className = 'stcol stchat'; box.appendChild(cbx);
     const drawC = async (v, open) => {

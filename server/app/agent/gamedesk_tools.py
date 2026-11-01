@@ -56,7 +56,30 @@ GAMEDESK_TOOLS.append(
          "summary_hour": {"type": "integer"}, "repo": {"type": "string"}, "private": {"type": "boolean"}, "status": {"type": "string", "enum": ["active", "paused", "archived"]}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS = {"game_desk": "Game bana raha hoon", "game_studio": "Game project dekh raha hoon"}
+GAMEDESK_TOOLS.append(
+    {"name": "game_bible", "description": (
+        "Game Bible of a Studio Project: the game's names and numbers as DATA (meta, style palette, glossary, player, "
+        "curves, and entities: character, enemy, item, level, quest, screen). Every change is checked in code (types, "
+        "ranges, references, palette, banned words, no real money); the game reads it (HoolaBible.DATA). Actions: show / "
+        "template (kind) / set (kind, entity = JSON object; her edit, applies at once) / remove (kind, eid) / section "
+        "(section, value) / seed: first Bible from the design doc as a DRAFT / generate (kind, n, words): a DRAFT - names "
+        "from the model, numbers from the curves / accept (ids optional) / reject / check / simulate: seeded balance runs "
+        "(win rate per level, spikes, levels to afford items) - quote ONLY its numbers / apply: the Bible into the live "
+        "game with no new code / recurve (kind). Show a draft to her and ask before accept. id = S-0001 (optional with "
+        "one project). Only while the Game Developer is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["show", "template", "set", "remove", "section", "seed", "generate", "accept",
+                                               "reject", "check", "simulate", "apply", "recurve"]},
+         "id": {"type": "string", "description": "Studio project (S-0001)"},
+         "kind": {"type": "string", "enum": ["character", "enemy", "item", "level", "quest", "screen"]},
+         "entity": {"type": "object", "description": "action=set: the entry, e.g. {id, name, tier, behaviour, color}"},
+         "eid": {"type": "string"}, "section": {"type": "string", "enum": ["meta", "style", "terms", "player", "curves", "economy"]},
+         "value": {"type": "object"}, "n": {"type": "integer"}, "words": {"type": "string"},
+         "ids": {"type": "array", "items": {"type": "string"}}, "runs": {"type": "integer"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS = {"game_desk": "Game bana raha hoon", "game_studio": "Game project dekh raha hoon",
+                   "game_bible": "Game Bible dekh raha hoon"}
 
 
 def _short(v: dict) -> dict:
@@ -186,4 +209,80 @@ async def game_studio(ctx: Ctx, action="", id="", game="", brief="", orientation
                     "nightly | restore | settings | github")
 
 
-GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio}
+def _bible_short(v: dict) -> dict:
+    d = v.get("data") or {}
+    out = {"version": v.get("version"), "in_game": v.get("applied"), "counts": v.get("counts"),
+           "errors": (v.get("check") or {}).get("errors", [])[:8], "warnings": (v.get("check") or {}).get("warnings", [])[:8],
+           "meta": d.get("meta"), "palette": (d.get("style") or {}).get("palette"), "player": d.get("player"),
+           "entities": {k: [{f: e.get(f) for f in ("id", "name", "tier", "order", "hp", "damage", "price", "behaviour", "effect")
+                             if e.get(f) not in (None, "")} for e in rows][:25]
+                        for k, rows in (d.get("entities") or {}).items() if rows}}
+    dr = v.get("draft") or {}
+    if dr:
+        out["draft"] = {"kind": dr.get("kind"), "add": [{f: e.get(f) for f in ("id", "name", "tier", "hp", "damage", "price", "order")
+                                                         if e.get(f) not in (None, "")} for e in dr.get("add") or []],
+                        "errors": (dr.get("check") or {}).get("errors", [])[:6]}
+        out["note"] = "A DRAFT waits: show it to her briefly and ask; only her yes = action=accept."
+    if v.get("applied", 0) < v.get("version", 0):
+        out["note_game"] = "The live game has an older Bible; action=apply rebuilds it with no new code."
+    return out
+
+
+async def game_bible(ctx: Ctx, action="", id="", kind="", entity=None, eid="", section="", value=None, n=3, words="",
+                     ids=None, runs=0, **_):
+    from ..employee import hire
+    from ..gamedesk import bible as B
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("show", "template", "check", "simulate") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
+        raise ToolError("Game Bible badalna sirf owner ka kaam hai.")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye; game_studio action=list se dekhiye.")
+            id = mine[0]["id"]
+        if action == "show":
+            return _bible_short(await run(B.view, t, id))
+        if action == "template":
+            if kind not in B.KINDS:
+                raise ToolError("kind = " + ", ".join(B.KINDS))
+            return {"kind": kind, "fields": {f: {"type": ty, "default": d, **o} for f, (ty, d, o) in B.KINDS[kind]["fields"].items()},
+                    "note": "Numbers of enemy / item / level come from the curves by tier; set only to override."}
+        if action == "set":
+            return _bible_short(await run(B.set_entity, t, id, kind, entity if isinstance(entity, dict) else {}))
+        if action == "remove":
+            return _bible_short(await run(B.remove_entity, t, id, kind, eid))
+        if action == "section":
+            return _bible_short(await run(B.set_section, t, id, section, value if isinstance(value, dict) else {}))
+        if action == "seed":
+            return _bible_short(await run(B.seed, t, id))
+        if action == "generate":
+            return _bible_short(await run(B.generate, t, id, kind, int(n or 3), words))
+        if action == "accept":
+            return _bible_short(await run(B.accept, t, id, list(ids) if ids else None))
+        if action == "reject":
+            return _bible_short(await run(B.reject, t, id))
+        if action == "check":
+            v = await run(B.view, t, id)
+            return {"errors": v["check"]["errors"], "warnings": v["check"]["warnings"]}
+        if action == "simulate":
+            res = await run(B.sim, t, id, int(runs or B.SIM_RUNS))
+            res["note"] = "Quote only these numbers. Same Bible = same numbers (seeded)."
+            return res
+        if action == "apply":
+            await run(B.apply, t, id)
+            return {"ok": True, "note": "Rebuilding the live game with the Bible (no new code); the card updates live."}
+        if action == "recurve":
+            return _bible_short(await run(B.recurve, t, id, kind))
+    except (B.BibleError, G.GameError) as e:
+        raise ToolError(str(e))
+    raise ToolError("action = show | template | set | remove | section | seed | generate | accept | reject | check | "
+                    "simulate | apply | recurve")
+
+
+GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible}
