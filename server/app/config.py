@@ -371,6 +371,8 @@ class Settings(BaseSettings):
     pagespeed_api_key: str = ""             # optional: PageSpeed Insights API key (higher quota for SEO checks)
     indiamart_enabled: bool = True           # v0.280 IndiaMART's own MCP (buyer search: products, prices, suppliers)
     indiamart_mcp_url: str = "https://imgpt.indiamart.com/mcp"   # no key / sign-in; read-only tools only
+    mospi_enabled: bool = True               # v0.348 MoSPI eSankhyiki: official Govt of India statistics, built in
+    mospi_mcp_url: str = "https://mcp.mospi.gov.in/mcp"   # no login, read-only
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)
     motion_keep: int = 60                      # newest videos kept per owner
     reels_gemini_model: str = ""          # Hoola Reels: understands shared reels ("" = youtube_gemini_model)

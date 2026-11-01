@@ -12777,3 +12777,20 @@ turn timeout / crash). Lists each unfinished job and open card. Free (no model c
 stored, the report shows at most 90 characters. (2) `toolchoice._ASKS`: on an ask_ok row a question in her style without a
 '?' ("bataiye kis customer ki complaint hai", kaun sa / kis / which / बताइए) counts as the fair question - the one miss of
 the 25/26 card. Tests: test_v0347_lambe_kaam_report.py (4).
+
+## v0.348.0 MOSPI BUILT IN (1 Nov 2026)
+Her live test after v0.344: "India ki latest CPI inflation kitni hai?" -> Hoola answered 5.54% (Sep 2026) but said "I got
+these numbers from a search summary" and added a food figure (CFPI 7.74%) that is not MoSPI's food & beverages (7.36%).
+MoSPI was a featured connector that needed her Connect tap, and the guide sent current numbers to google_search.
+- NEW `app/mospi.py`: MoSPI eSankhyiki MCP (`https://mcp.mospi.gov.in/mcp`, stateless, no login) - tools/call JSON-RPC,
+  SSE or JSON answer, cached (datasets / indicators 6 h, metadata 1 h, data 15 min), get_data limit 50 by default.
+- NEW agent tool `mospi` (`agent/mospi_tools.py`): action=datasets | indicators | metadata | data (dataset,
+  indicator_code, base_year, frequency, classification_year, filters, user_query); rows lose empty fields and whole rows
+  are dropped (never a cut mid-JSON) above 14k chars with a "narrow the filters" note; data answers carry "quote month /
+  state / sector / base year, Source: MoSPI, provisional stays provisional, no numbers not in the result".
+- Built in for every user: family `mospi` (router keys: cpi, wpi, iip, gdp, gva, plfs, inflation, mehngai, berozgari,
+  statistics, aankde, महंगाई, बेरोजगारी ...; intent "official stats"), PARALLEL_SAFE, draftcheck READS, guide line
+  scoped to the family ("NOT google_search, never a search summary"). Featured card `mospi` now `native` (built in).
+- Settings MOSPI_ENABLED (true), MOSPI_MCP_URL. Live check: CPI (General) All India Sep 2026 = 5.54% from MoSPI itself.
+- Tests: tests/test_v0348_mospi_builtin.py (6); v0344 test updated (MoSPI is built in, not a Connect tap). Related
+  suites: 24 failures, the same 24 on pristine main eedb13e7 (app / site builders, Hoola PC, mcp_avatar - sandbox-only).

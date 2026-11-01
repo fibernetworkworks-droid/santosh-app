@@ -475,6 +475,13 @@ TOOLS.extend(INDIAMART_TOOLS)
 TOOL_LABELS.update(INDIAMART_LABELS)
 HANDLERS.update(INDIAMART_HANDLERS)
 
+# v0.348 MOSPI BUILT IN: official Government of India statistics (MoSPI eSankhyiki MCP, no login, read-only)
+from .mospi_tools import MOSPI_HANDLERS, MOSPI_LABELS, MOSPI_TOOLS  # noqa: E402
+
+TOOLS.extend(MOSPI_TOOLS)
+TOOL_LABELS.update(MOSPI_LABELS)
+HANDLERS.update(MOSPI_HANDLERS)
+
 # v0.63 seekhe hue kaam (procedures Hoola learned)
 from .procedure_tools import PROCEDURE_HANDLERS, PROCEDURE_LABELS, PROCEDURE_TOOLS  # noqa: E402
 
