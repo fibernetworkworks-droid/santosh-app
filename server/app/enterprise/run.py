@@ -31,7 +31,7 @@ from typing import Any
 from sqlalchemy import select
 
 from ..db import now, session
-from . import rules as R
+from . import dialect, rules as R
 from .models import EntEndpoint, EntRun, EntRunRow
 
 log = logging.getLogger("santosh.enterprise.run")
@@ -113,39 +113,61 @@ def _endpoint(tenant: str, role: str, system: str) -> EntEndpoint | None:
 
 # ---------------------------------------------------------------- the two rails
 def _odata_call(ep: EntEndpoint, method: str, path: str, body: Any = None,
-                params: dict | None = None) -> tuple[int, Any]:
-    import httpx
-    from ..bazar.security import vault
-    headers = {"Accept": "application/json"}
-    if ep.auth_enc:
-        secret = vault().open(ep.auth_enc)
-        if ep.auth_kind == "bearer":
-            headers["Authorization"] = "Bearer " + secret
-        elif ep.auth_kind == "basic":
-            headers["Authorization"] = "Basic " + secret
-        else:
-            headers[ep.header_name or "X-API-Key"] = secret
-    url = ep.base_url.rstrip("/") + "/" + str(path).lstrip("/")
-    with httpx.Client(timeout=60) as c:
-        res = c.request(method, url, json=body, params=params, headers=headers)
-    try:
-        return res.status_code, res.json()
-    except ValueError:
-        return res.status_code, {"text": res.text[:4000]}
+                params: dict | None = None, page: int = 0) -> tuple[int, Any]:
+    """A single READ against her endpoint. Writes do NOT come through here any more: they need one session
+    held open for the CSRF token (see dialect.Call), which a per-call client cannot give."""
+    with dialect.Call(ep) as c:
+        if method.upper() == "GET":
+            return c.get(path, params=params, page=page)
+        code, data, _ = c.raw(method, path, body=body, params=params)
+        return code, data
+
+
+class Ambiguous(Exception):
+    """The call may or may not have landed. This is NOT a failure, because a failure gets retried and a retry
+    here would double-post. The row is parked for her to decide."""
+
+    def __init__(self, detail: str):
+        super().__init__(detail)
+        self.detail = detail
 
 
 def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, Any]:
     from ..bazar import composio as cmp
     from ..db import session as _s
-    toolkit = slug.split("_")[0].lower()
+    toolkit = cmp.tool_toolkit(slug)                 # v0.382: never slug.split("_")[0] - see composio.toolkit_of
     with _s() as s:
         acc, state = cmp.account(s, cmp.composio_user(tenant), toolkit)
         if acc is None or state != "active":
             raise RunError(f"{toolkit} juda nahi hai. App mein Connectors se jodiye.")
         ca_id = acc.account_id
-    out = cmp.client().execute(slug, cmp.composio_user(tenant), ca_id, args)
-    ok = bool(out.get("successful", out.get("success", True)))
+    try:
+        out = cmp.client().execute(slug, cmp.composio_user(tenant), ca_id, args)
+    except Exception as ex:                          # noqa: BLE001
+        # Composio does not retry a non-idempotent write after a timeout, and says an ambiguous timeout must
+        # be resolved by reading the provider's state. So we never decide it for her.
+        if _looks_timeout(ex):
+            raise Ambiguous(f"Jawab aaya hi nahi ({str(ex)[:120]}). Ho sakta hai yeh row chadh gayi ho.")
+        raise
+    if not isinstance(out, dict):
+        raise Ambiguous("Composio ka jawab samajh nahi aaya.")
+    # v0.382: this used to default to TRUE when the field was missing, so a changed response shape would
+    # report a FAILED write as done - and the idempotency key would then mark the row complete for ever.
+    if "successful" in out:
+        ok = bool(out.get("successful"))
+    elif "success" in out:
+        ok = bool(out.get("success"))
+    elif out.get("error"):
+        ok = False
+    else:
+        raise Ambiguous("Composio ne saaf nahi kaha ki kaam hua ya nahi.")
     return (200 if ok else 400), out.get("data", out)
+
+
+def _looks_timeout(ex: Exception) -> bool:
+    s = (type(ex).__name__ + " " + str(ex)).lower()
+    return any(w in s for w in ("timeout", "timed out", "readerror", "connectionreset", "remoteprotocol",
+                                "incomplete", "502", "503", "504"))
 
 
 # Each system spells its own URLs. Salesforce records live under /sobjects, its CONFIGURATION lives behind the
@@ -227,7 +249,9 @@ def read(tenant: str, role: str, system: str, target: str, query: dict[str, Any]
     if rail == "odata":
         ep = _endpoint(tenant, role, system)
         q.setdefault("$top", limit)
-        code, data = _odata_call(ep, "GET", target, params=q)
+        # Windchill pages at 25 rows by DEFAULT, so our 2,000-row cap was never the thing truncating a read -
+        # silent pagination was. `Prefer: odata.maxpagesize` asks for a real page (server ceiling 2,000).
+        code, data = _odata_call(ep, "GET", target, params=q, page=limit)
         env = ep.env
     else:
         if not _is_read_slug(target):
@@ -242,7 +266,7 @@ def read(tenant: str, role: str, system: str, target: str, query: dict[str, Any]
 
 def _is_read_slug(slug: str) -> bool:
     from ..bazar import composio as cmp
-    return cmp.is_read(slug, slug.split("_")[0])
+    return cmp.is_read(slug)        # v0.382: resolves the toolkit properly; was slug.split("_")[0]
 
 
 def _rows_of(data: Any) -> list[Any]:
@@ -277,6 +301,8 @@ def plan_write(tenant: str, role: str, system: str, target: str, verb: str, rows
     rail = _rail_for(tenant, role, system)
     ep = _endpoint(tenant, role, system)
     env = ep.env if ep is not None else "production"
+    api = "tooling" if api == "tooling" else "data"
+    _guard_target(system, api, env, target, rail)
     with session() as s:
         run = EntRun(tenant_id=tenant, role=role, job=job[:24], project_id=project[:40], system=system, env=env,
                      rail=rail, op="write", verb=verb, target=target[:120],
@@ -293,6 +319,44 @@ def plan_write(tenant: str, role: str, system: str, target: str, verb: str, rows
                             idem=_hash(rid, i, key, json.dumps(row, sort_keys=True, default=str)),
                             payload=json.dumps(row, ensure_ascii=False)))
     return status(tenant, rid)
+
+
+# ---------------------------------------------------------------- what the vendor itself refuses
+# v0.382, from Salesforce's own documentation: "CRUD operations on the following Tooling API objects in an
+# active org generate the error `Save or update not supported in active organizations`: ApexClass,
+# ApexComponent, ApexPage, ApexTrigger, CustomField, CustomObject."
+# developer.salesforce.com .../api_tooling/intro_crud_operations.htm
+# So these were never going to work in HER live org, whatever we did. Saying so at plan time - before she
+# taps - is the whole difference between an honest tool and one that fails at the last step.
+SF_NO_WRITE_IN_PRODUCTION = ("apexclass", "apexcomponent", "apexpage", "apextrigger", "customfield",
+                             "customobject")
+# No write path at all over Tooling REST, in any org: read-only, or SOAP-only (Layout).
+SF_NO_WRITE_EVER = {"customobject": "CustomObject sirf padha ja sakta hai - banane/badalne ka rasta Tooling "
+                                   "mein hai hi nahi.",
+                    "profile": "Profile ka koi write rasta Tooling API mein nahi hai.",
+                    "permissionset": "PermissionSet ka koi write rasta Tooling API mein nahi hai.",
+                    "layout": "Layout sirf SOAP se badalta hai; Hoola REST par chalta hai."}
+SF_METADATA_HINT = ("Yeh cheez Metadata deploy se jaati hai (checkOnly jhalak -> aapki haan -> deploy), "
+                    "Tooling se nahi. Enterprise > CRM > Deploy dekhiye.")
+
+
+def _guard_target(system: str, api: str, env: str, target: str, rail: str) -> None:
+    """Refuse at PLAN time what the vendor will refuse at write time. A tool that discovers this after her tap
+    has already spent her attention on a run that could never work."""
+    t = (target or "").strip().lower()
+    if system == "salesforce" and api == "tooling":
+        why = SF_NO_WRITE_EVER.get(t)
+        if why:
+            raise RunError(why + " " + SF_METADATA_HINT)
+        if env == "production" and t in SF_NO_WRITE_IN_PRODUCTION:
+            raise RunError(
+                f"Salesforce khud live org mein {target} par yeh kaam mana karta hai "
+                "('Save or update not supported in active organizations'). " + SF_METADATA_HINT)
+    if rail == "composio":
+        from ..bazar import composio as cmp
+        exists = cmp.tool_exists(target)
+        if exists is False:
+            raise RunError(f"'{target}' naam ka koi Composio tool nahi hai. Sahi naam Connect tab mein milega.")
 
 
 def dry_run(tenant: str, run_id: str) -> dict[str, Any]:
@@ -387,30 +451,58 @@ def execute(tenant: str, run_id: str, batch: int = BATCH) -> dict[str, Any]:
                                                       EntRunRow.status.in_(("todo", "failed")))
                               .order_by(EntRunRow.n).limit(max(1, int(batch or BATCH)))).all())
         todo = [(r.id, r.n, r.key, r.payload) for r in todo]
-    for rid, n, key, payload in todo:
-        body = _j(payload, {})
-        try:
-            if run.rail == "odata":
-                if ep is None:
-                    raise RunError("Endpoint hata diya gaya hai.")
-                coll, item = _paths(run.system, run.api, run.target, key)
-                if run.verb == "create":
-                    code, data = _odata_call(ep, "POST", coll, body=body)
+    # ONE session for the whole batch. A SAP CSRF token is bound to the security session, so fetching it on
+    # one connection and writing on another - which is what a per-call client did - can never work.
+    unsure = 0
+    call = dialect.Call(ep) if (run.rail == "odata" and ep is not None) else None
+    try:
+        for rid, n, key, payload in todo:
+            body = _j(payload, {})
+            note: dict[str, Any] = {}
+            try:
+                if run.rail == "odata":
+                    if call is None:
+                        raise RunError("Endpoint hata diya gaya hai.")
+                    coll, item = _paths(run.system, run.api, run.target, key)
+                    if run.verb == "create":
+                        code, data, note = call.create(coll, body, idem_key=_idem_of(rid))
+                    else:
+                        # Windchill demands the object be RESERVED before a PATCH and released after. A
+                        # reservation we took and never gave back locks HER object against her own engineers,
+                        # so `writing()` always releases, and a failed reserve means we never PATCH at all.
+                        with call.writing(item):
+                            code, data, note = call.update(item, body)
                 else:
-                    code, data = _odata_call(ep, "PATCH", item, body=body)
-            else:
-                code, data = _composio_call(tenant, run.target, body)
-            ok = code < 300
-        except Exception as ex:                      # one bad row must never stop the rest
-            code, data, ok = 0, {"error": str(ex)[:400]}, False
-        with session() as s:
-            row = s.get(EntRunRow, rid)
-            row.status = "done" if ok else "failed"
-            row.result = json.dumps(data, ensure_ascii=False, default=str)[:8000]
-            row.error = "" if ok else json.dumps(data, ensure_ascii=False, default=str)[:2000]
-            row.at = now()
-        done += 1 if ok else 0
-        failed += 0 if ok else 1
+                    code, data = _composio_call(tenant, run.target, body)
+                ok = code < 300
+            except Ambiguous as amb:
+                # Parked, NOT failed: execute() retries a failed row, and a retry here could post twice.
+                with session() as s:
+                    row = s.get(EntRunRow, rid)
+                    row.status = "ambiguous"
+                    row.error = amb.detail[:2000]
+                    row.at = now()
+                unsure += 1
+                continue
+            except dialect.DialectError as ex:
+                code, data, ok = 0, {"error": str(ex)[:400], "bheja_nahi": True}, False
+            except Exception as ex:                  # one bad row must never stop the rest
+                code, data, ok = 0, {"error": str(ex)[:400]}, False
+            if note:
+                data = {"jawab": data, "note": note} if isinstance(data, (dict, list)) else {"note": note}
+            with session() as s:
+                row = s.get(EntRunRow, rid)
+                # a 412 means somebody changed the row between our read and our write: the row we planned
+                # against is not the row that is there now, so it must never be blind-retried.
+                row.status = "done" if ok else ("ambiguous" if note.get("dobara_na_bhejo") else "failed")
+                row.result = json.dumps(data, ensure_ascii=False, default=str)[:8000]
+                row.error = "" if ok else json.dumps(data, ensure_ascii=False, default=str)[:2000]
+                row.at = now()
+            done += 1 if ok else 0
+            failed += 0 if ok else 1
+    finally:
+        if call is not None:
+            call.close()
     with session() as s:
         r = s.get(EntRun, run_id)
         # only a row never tried keeps the run "running". A failed row is retryable but must not hold the run
@@ -421,12 +513,24 @@ def execute(tenant: str, run_id: str, batch: int = BATCH) -> dict[str, Any]:
                                                                 EntRunRow.status == "done")).all()))
         r.fail_count = len(list(s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
                                                                   EntRunRow.status == "failed")).all()))
+        unsure_left = len(list(s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
+                                                                  EntRunRow.status == "ambiguous")).all()))
         if left == 0:
-            r.status = "done" if r.fail_count == 0 else "failed"
+            # an UNSURE row is not a pass and not a retryable fail: the run waits for her, because only she
+            # can look in the system and say whether that record landed.
+            r.status = "done" if (r.fail_count == 0 and unsure_left == 0) else "failed"
             r.done_at = now()
     out = status(tenant, run_id)
-    out["is_baar"] = {"hue": done, "fail": failed}
+    out["is_baar"] = {"hue": done, "fail": failed, "pata_nahi": unsure}
     return out
+
+
+def _idem_of(row_id: str) -> str:
+    """The row's own idempotency hash - 32 stable hex characters, which is exactly what SAP wants for
+    RequestID, and the same on every retry (that is the whole point)."""
+    with session() as s:
+        r = s.get(EntRunRow, row_id)
+        return (r.idem if r else "") or ""
 
 
 def _run(tenant: str, run_id: str) -> EntRun:
@@ -443,11 +547,20 @@ def status(tenant: str, run_id: str) -> dict[str, Any]:
         fails = [{"n": r.n, "key": r.key, "error": (r.error or "")[:300]}
                  for r in s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
                                                             EntRunRow.status == "failed").limit(20)).all()]
+    with session() as s:
+        unsure = [{"n": r.n, "key": r.key, "kyon": (r.error or "")[:300]}
+                  for r in s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
+                                                             EntRunRow.status == "ambiguous").limit(20)).all()]
     out = {"run": run.id, "title": run.title, "system": run.system, "env": run.env, "rail": run.rail,
            "verb": run.verb, "target": run.target, "api": run.api, "status": run.status, "total": run.total,
            "hue": run.ok_count, "fail": run.fail_count, "baaki": run.total - run.ok_count - run.fail_count}
     if fails:
         out["jo_fail_hue"] = fails
+    if unsure:
+        out["pata_nahi"] = unsure
+        out["pata_nahi_kya_karein"] = ("In rows ka jawab nahi aaya - ho sakta hai chadh gayi hon. Hoola inhe "
+                                       "dobara NAHI bhejega (do baar chadhne se bachne ke liye). System mein "
+                                       "dekhkar bataiye, phir aage badhenge.")
     if run.status == "dry_run":
         out["aage"] = "Aapki haan ke baad chalega."
     return out

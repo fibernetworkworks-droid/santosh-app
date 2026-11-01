@@ -16,7 +16,22 @@ import pytest
 
 from app.enterprise import rules as R
 from app.enterprise import run as RUN
+
+from .entfake import fake_call
 from app.enterprise import service as S
+
+
+class _Pairs:
+    """This suite records (method, path) pairs; the shared fake records triples. Adapt, don't duplicate."""
+
+    def __init__(self, out):
+        self.out = out
+
+    def append(self, triple):
+        self.out.append((triple[0], triple[1]))
+
+    def __len__(self):
+        return len(self.out)
 
 
 @pytest.fixture()
@@ -24,8 +39,7 @@ def sf(env, monkeypatch):
     """A fake Salesforce that records every path, so the dialect itself is under test."""
     paths = []
 
-    def fake(ep, method, path, body=None, params=None):
-        paths.append((method, path))
+    def answer(method, path, body=None):
         if "describe" in path:
             return 200, {"fields": [{"name": "Status", "label": "Status", "type": "picklist",
                                      "nillable": False, "updateable": True}]}
@@ -37,7 +51,14 @@ def sf(env, monkeypatch):
             return 200, {"Status": "Open"}
         return 201, {"id": "x"}
 
+    def fake(ep, method, path, body=None, params=None, page=0):
+        paths.append((method, path))
+        return answer(method, path, body)
+
+    # v0.382: the write path is dialect.Call; `paths` still records every (method, path) either way.
     monkeypatch.setattr(RUN, "_odata_call", fake)
+    monkeypatch.setattr(RUN.dialect, "Call",
+                        fake_call(_Pairs(paths), answer))
     RUN.set_endpoint("t1", "crm_arch", "salesforce",
                      "https://my.salesforce.com/services/data/v61.0", "TOK", env="test")
     return paths

@@ -22,7 +22,8 @@ SYSTEMS: dict[str, dict[str, str]] = {
     "oracle":     {"label": "Oracle / NetSuite",  "how": "own", "note": "NetSuite REST, aapke apne account se (Composio ke zariye bhi)"},
     "salesforce": {"label": "Salesforce",         "how": "own", "note": "Salesforce ka apna hosted MCP server, aapke login se (OAuth)"},
     "windchill":  {"label": "PTC Windchill",      "how": "own", "note": "Windchill OData REST, aapke apne server se"},
-    "teamcenter": {"label": "Siemens Teamcenter", "how": "read_only", "note": "abhi sirf padhna: bahar se agent ka rasta har installation mein alag hai, pehle jaanch"},
+    "teamcenter": {"label": "Siemens Teamcenter", "how": "read_only",
+                   "note": "abhi sirf padhna: Siemens ka asli rasta SOA hai (REST nahi), aur jo REST milta hai woh har installation mein admin khud banata hai"},
     "shopify":    {"label": "Shopify",            "how": "own", "note": "aapki apni dukaan"},
     "composio":   {"label": "Composio apps",      "how": "own", "note": "~1,600 apps, aapki apni key (v0.294)"},
     "tally":      {"label": "TallyPrime",         "how": "own", "note": "aapke office PC par"},
@@ -97,9 +98,10 @@ ROLES: dict[str, dict[str, Any]] = {
         "systems": ["sheet"],
         "artifacts": ["spec", "mapping", "checklist", "plan", "matrix", "report", "register", "sop"],
         "writes": False,
-        "cap": ("Asli mareez ka data Hoola na padhta hai na bhejta hai. ABDM production ke liye CERT-In empanelled "
-                "security audit pehle paas karna padta hai - woh aapke sanstha ko karna hota hai, Hoola use kar nahi sakta. "
-                "Yahan tak sab kaagaz taiyaar milega; aage ka rasta audit ke baad khulta hai."),
+        "cap": ("Asli mareez ka data Hoola na padhta hai na bhejta hai. ABDM production ka rasta Hoola ne khud "
+                "jaancha NAHI hai: NHA ke asli kaagaz (milestone, sandbox se bahar aane ki shart, audit) hum padh "
+                "nahi paaye, aur bahar ki baatein ek doosre se ulat hain - koi CERT-In kehta hai, koi STQC. Jo pakka "
+                "nahi, uspe kaam nahi chalta. Yahan tak sab kaagaz taiyaar milega; aage ka rasta aapke sanstha ke naam par."),
         "rules": ["Kisi mareez ka naam, number ya report Hoola ke paas nahi aati - sirf dhaancha aur namoona data.",
                   "FHIR R4 hi likha jaata hai, kyunki ABDM wahi maangta hai."],
     },
@@ -109,9 +111,10 @@ ROLES: dict[str, dict[str, Any]] = {
         "systems": ["tally", "sheet", "composio"],
         "artifacts": ["report", "mapping", "checklist", "register", "spec", "plan", "matrix", "sop"],
         "writes": False,
-        "cap": ("Hoola kisi banking rail ko haath nahi lagata. Account Aggregator ke liye RBI ka licence aur "
-                "Sahamati ka empanelled audit chahiye - Hoola na FIU hai na AA. Hisaab, milaan aur taiyari ka saara "
-                "kaam yahan hota hai; paisa ya bank ka connection kabhi nahi."),
+        "cap": ("Hoola kisi banking rail ko haath nahi lagata. RBI ke niyam (Master Direction NBFC-AA, 2016) mein "
+                "bank ka data lene wala 'FIU' sirf wahi ban sakta hai jo khud kisi financial regulator - RBI, SEBI, "
+                "IRDAI ya PFRDA - ke paas registered ho. Hoola nahi hai, aur yeh koi audit kharidkar nahi milta. "
+                "Hisaab, milaan aur taiyari ka saara kaam yahan hota hai; paisa ya bank ka connection kabhi nahi."),
         "rules": ["Koi paisa nahi hilta, koi bank se seedha connection nahi.",
                   "Account number poora kabhi nahi likha jaata - sirf aakhri 4 ank."],
     },
@@ -133,7 +136,9 @@ ROLES: dict[str, dict[str, Any]] = {
         "writes": True,
         "cap": "",
         "rules": ["BOM mein har likhai aapki haan se.",
-                  "Teamcenter abhi sirf padhne ke liye hai: bahar se agent ka rasta jaanche bina nahi chhua jaata."],
+                  "Teamcenter abhi sirf padhne ke liye hai - isliye nahi ki Siemens mana karta hai (SOA se woh "
+                  "padhna aur likhna dono deta hai), balki isliye ki Hoola SOA nahi bolta aur uska REST har "
+                  "installation mein admin khud banata hai."],
     },
     "regtech": {
         "label": "RegTech / Compliance Automation",
