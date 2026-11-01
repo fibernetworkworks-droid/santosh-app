@@ -14536,3 +14536,129 @@ ONE Game Desk game (`gamedesk/service.py` still owns the code, versions and the 
   a plain refusal. `worker._server_wa_off` makes check_approvals / send_batches skip quietly in that state.
 - Tests: `server/tests/test_v0388_wa_live_no_server_number.py`; `test_meta_client.test_live_mode_requires_credentials`
   rewritten to the new truth (the client starts, a server-number feature names the missing keys).
+
+## v0.389.0 SACH BOLO — the enterprise write rails made real, and three caps corrected
+Owner: *"again check in this section any thing in pending to deep research"*, then **"FIX ALL THIS"**.
+
+The audit found eight open items. Six parallel researchers read the vendors' and regulators' OWN
+documentation (primary sources only, instructed to answer "NOT FOUND" rather than fill a gap from memory).
+What came back was worse than expected: **most of the write engine could not have worked against a real
+customer system**, and three cap texts stated rules that are not true.
+
+### The rule this version is really about
+v0.363 put the ERP write guards in CODE rather than in a prompt, and that was right. But the guards protected
+the *orchestration* — plan, dry run, her tap, resume — while the **HTTP itself was assumed**. "OData is OData"
+is the same class of mistake as v0.284/v0.286 (measuring the wrong layer): every number matched and the thing
+still did not work. **A rail is not real until the vendor's own page says what it demands.**
+
+### What each vendor actually demands (`enterprise/dialect.py`, a TABLE not an if-chain)
+| | SAP | Windchill | Salesforce |
+|---|---|---|---|
+| CSRF | `X-CSRF-Token: Fetch` → **403 without** | `CSRF_NONCE` from `GET /PTC/GetCSRFToken()` | none |
+| concurrency | **`If-Match` required**: 428 without, 412 if stale | no ETag documented — a **Reserve/UndoReservation** check-out instead | none |
+| idempotency | **`RequestID` + `RepeatabilityCreation`** → `RepeatabilityResult: accepted` | none | none |
+| reads | — | pages at **25 rows** without `Prefer: odata.maxpagesize` | — |
+
+Four things in our code were therefore broken, each silently:
+1. **No CSRF token at all**, and — the subtler half — the token is bound to the SECURITY SESSION, so a fresh
+   `httpx.Client` per call could never hold one. `dialect.Call` now keeps one session open for a batch.
+2. **No `If-Match`**, so every SAP update would have come back 428.
+3. **No `Content-Type: application/json`** — only `Accept` was set.
+4. **No reservation on Windchill.** This was the dangerous one: it is not just that the PATCH fails, it is
+   that a half-finished run could leave HER change object **locked to our user, blocking her own engineers**.
+   `writing()` always releases in a `finally`, and a failed reserve means the PATCH never happens.
+
+Everything fails **closed**: a token we cannot fetch, an ETag we cannot read where one is demanded, a reserve
+we cannot take — each stops the write instead of guessing.
+
+SAP's documented idempotent create is now used, and it is **stronger than our own key**: ours protects a
+*resume*, SAP's guarantees the server state reflects a single execution. It is opt-in per customer system
+(an SPRO job) and answers 412 when off, so we send it, read the answer, and **record** what that endpoint
+really supports rather than believing it.
+
+### The CRM desk was not "100% read and write", and v0.367 should not have said so
+Salesforce's own words: *"CRUD operations on the following Tooling API objects in an active org generate the
+error `Save or update not supported in active organizations`: ApexClass, ApexComponent, ApexPage,
+ApexTrigger, CustomField, CustomObject."* So in her **live org** the config writes we shipped could not work
+at all. CustomObject is read-only by either protocol; Profile and PermissionSet have no write path; Layout is
+SOAP-only. That is most of a CRM architect's job.
+- `run._guard_target` refuses these **at plan time, before her tap** — a run that could never work no longer
+  spends her attention first.
+- `enterprise/sfmeta.py` adds the documented route: **Metadata REST `deployRequest`**, on the **same Bearer
+  token** (no SOAP, no WSDL, no new dependency). `checkOnly: true` is a REAL dry run ("doesn't commit any
+  changes"), and a clean validation **quick-deploys for 10 days without re-running tests** — which maps onto
+  dry run → her tap → execute exactly. Salesforce's production rules are enforced in code, not prose:
+  `rollbackOnError` forced true, `allowMissingFiles` forced false, `purgeOnDelete` never sent, no testLevel on
+  a config-only package (it runs no tests by default; setting one would override that).
+- **Refused rather than faked:** a field-level edit. CustomField/ValidationRule/RecordType live INSIDE
+  `objects/<Obj>.object` and Metadata REST has **no retrieve** to merge against, so a partial object file
+  would risk the rest of her object.
+
+### Composio: `slug.split("_")[0]` was wrong for 31% of the catalogue
+Measured from Composio's own published list: **525 of 1,694 toolkit slugs contain an underscore**
+(`ZOHO_BOOKS`, `ZOHO_INVENTORY`, `SAP_SUCCESSFACTORS`, `SALESFORCE_SERVICE_CLOUD`; `_1PASSWORD` splits to an
+empty string). So the toolkit lookup named an app that does not exist and the call died with
+*"<app> juda nahi hai"* **even when her account was connected** — and the knock-on turned every *read* on
+those toolkits into an approval card. `composio.toolkit_of` now takes the longest known prefix, `tool_toolkit`
+asks Composio itself (some tools carry no prefix at all), and `tool_exists` validates a slug **before** the
+plan. Two more: `"version": "latest"` is the one form documented as REJECTED for direct execution (omitting it
+selects latest), and `ok` **defaulted to True when the field was missing** — so a changed response shape would
+have reported a failed write as done, and the idempotency key would have marked the row complete for ever.
+
+### A new row state: `ambiguous`, because a retry can be worse than a failure
+Composio does not retry non-idempotent writes and says an ambiguous timeout must be resolved by reading the
+provider's state. A *failed* row gets retried by `execute()`; a row whose answer never arrived must NOT be.
+It is parked, the run cannot read `done` while one exists, and she is told to look in the system — the one
+thing only she can do. A **412** parks the same way: the row we planned against is not the row that is there.
+
+### Three cap texts named the wrong rule (and one test was keeping them wrong)
+- **bank_int** said an AA needs "RBI ka licence aur Sahamati ka empanelled audit". Both wrong for this job:
+  reading bank data makes you an **FIU**, which the RBI Master Direction (NBFC-AA, 2016, para 3) defines as
+  *"an entity registered with and regulated by any financial sector regulator"* — **not a licence, and not
+  something an audit buys**. The ₹2 crore net owned fund and the biennial CISA audit belong to the **AA**, a
+  different role which may not even store the data. Sahamati's requirement is a **conformance certification**,
+  and its RBI **SRO recognition only came on 5 June 2026**.
+- **health_int** asserted a CERT-In empanelled audit as fact. The NHA/ABDM primary documents **could not be
+  read**, and the secondary sources contradict each other (CERT-In vs STQC). The cap now says the route is
+  unverified. Worth recording: the cap is still right, but for a *different reason* than banking's — one rests
+  on a regulator's words, the other on their absence, and those should not read alike.
+- **teamcenter** was read-only because "no external agent route exists". **That premise was false.** Siemens
+  documents an official external read+write contract — Teamcenter Services (SOA, `plm00076`) with
+  Item/ItemRevision, BOM (`StructureManagement.createBOMWindows`) and `ChangeManagement`. It stays read-only
+  for the true reason: **we do not speak SOA**, and the REST surfaces (OData API Framework, LDF/OSLC) are
+  frameworks a customer's administrator *generates per installation* — which is exactly why earlier sources
+  looked contradictory. Both camps were describing real deployments.
+
+`test_v0358_enterprise.py::test_the_caps_name_the_real_gate` had pinned the wrong wording, so it was
+**rewritten to the corrected truth, not deleted** — the same call as v0.299.
+
+### What research changed but code did not (her decision, not mine)
+- **GST is reachable.** GSTN states there is **no ASP empanelment**; a software product rides an empanelled
+  **GSP's sub-licence key**, with no net-worth test and no audit on us, covering e-invoice, e-Way Bill *and*
+  GSTR-1/3B. The e-invoice mandate now reaches **₹5 crore** turnover — her customers. That is a commercial
+  contract, so `regtech` still refuses to file until she says otherwise.
+- **Income tax has a purpose-built route**: ERI **Type 2** is literally "tax software providers who file
+  through an API provided by the Income Tax Department". Gate: **₹1 crore net worth** + bank guarantee + audit
+  report + Class-II DSC.
+- **MCA21, SEBI, RBI, EPFO, ESIC: no official API exists.** EPFO/ESIC validate what we already do — generate
+  the file to the published spec and hand it to her (exactly v0.355's GSTR-1 JSON shape).
+- A **CPC-TDS Suvidha OpenAPI portal** for 24Q/26Q/27Q/27EQ exists on a government TRACES domain but only on a
+  `test-dev` host. One email to `suvidha-support@tdscpc.gov.in` settles it.
+- **No Siemens MCP server for Teamcenter exists** (a reasonably strong negative: zero hits in Siemens' own
+  doc index). Salesforce's hosted MCP **did** go GA 29 Apr 2026, and the DX MCP server reaches **end of life
+  2 Nov 2026** — which our `crm_arch` rule line already said, right to the day.
+
+### NOT VERIFIED (said plainly, because v0.367/0.372/0.374/0.375 shipped without saying it)
+**No customer SAP, Salesforce, Windchill or Teamcenter tenant has ever answered this code.** Every header and
+flow comes from the vendor's documentation, tested against recorded HTTP, not a live server. Specifically
+unconfirmed: Windchill's exact bound-action path for `Reserve`, its failure status when `CSRF_NONCE` is
+missing, whether it emits an ETag at all; whether a given SAP system has the idempotency job scheduled; the
+exact status SAP's v4 runtime returns for a missing `If-Match` (428 is documented for Gateway, so we handle
+428 and 412 both). **The connect screen still does not exist**, so none of this can be exercised yet — that
+remains the one thing standing between the engine and a real tenant.
+
+### Files
+`server/app/enterprise/dialect.py` (new) · `sfmeta.py` (new) · `run.py` · `rules.py` ·
+`server/app/bazar/composio.py` · `server/tests/entfake.py` (new) · `test_v0388_real_rails.py` (new, 35) ·
+`test_v0358_enterprise.py` · `test_v0363_erp_live.py` · `test_v0365_crm_desk.py`. 74 tests pass across the
+enterprise suites.

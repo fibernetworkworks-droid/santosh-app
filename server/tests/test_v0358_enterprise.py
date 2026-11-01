@@ -78,10 +78,26 @@ def test_a_capped_job_cannot_be_made_to_write_outside():
 
 
 def test_the_caps_name_the_real_gate():
-    """The limit is a licence or an audit, not our code - so it is written in terms she can act on."""
-    assert "CERT-In" in R.cap_of("health_int")
-    assert "RBI" in R.cap_of("bank_int") and "Sahamati" in R.cap_of("bank_int")
+    """The limit is somebody else's rule, not our code - so it is written in terms she can act on.
+
+    v0.388 REWROTE this test rather than deleting it, because the wording it used to pin was factually
+    wrong and the test was keeping it that way:
+      - it demanded "Sahamati" in the banking cap, but Sahamati's requirement is a CONFORMANCE
+        CERTIFICATION, not a security audit; the biennial CISA IS audit belongs to the AA, not to the data
+        user, and the Rs 2 crore net owned fund is the AA licence's gate as well. The real bar for reading
+        bank data is that an FIU must be "an entity registered with and regulated by any financial sector
+        regulator" (RBI Master Direction NBFC-AA, 2016, para 3) - which no audit can buy.
+      - it demanded "CERT-In" in the health cap, but no NHA/ABDM primary document could be read to confirm
+        that requirement, and the secondary sources contradict each other (CERT-In vs STQC). So the cap now
+        says the route is unverified instead of asserting a rule we could not source.
+    The caps themselves did not move: all three roles still refuse. Only the REASON is now true."""
+    health = R.cap_of("health_int")
+    assert "jaancha" in health and "NAHI" in health          # unverified, and says so
+    bank = R.cap_of("bank_int")
+    assert "FIU" in bank and "regulator" in bank.lower()     # the real gate
+    assert "Sahamati ka empanelled audit" not in bank        # the wrong one, gone for good
     assert "portal" in R.cap_of("regtech")
+    assert set(R.CAPPED) == {"health_int", "bank_int", "regtech"}
 
 
 # ---------------------------------------------------------------- secrets and numbers
@@ -154,5 +170,5 @@ def test_version():
     from pathlib import Path
 
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.388.0"
-    assert "0.388.0+432" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.389.0"
+    assert "0.389.0+433" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

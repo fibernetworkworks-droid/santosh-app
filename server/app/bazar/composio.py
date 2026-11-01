@@ -257,8 +257,70 @@ def composio_user(tenant_id: str) -> str:
     return "hoola-" + hmac.new(salt.encode(), tenant_id.encode(), hashlib.sha256).hexdigest()[:32]
 
 
-def is_read(slug: str, toolkit: str) -> bool:
-    """SLACK_LIST_ALL_CHANNELS = read; SLACK_SEND_MESSAGE = write. Unsure = write (a card she taps)."""
+def toolkit_of(slug: str) -> str:
+    """Which app a tool slug belongs to. v0.388: NOT `slug.split("_")[0]`.
+
+    A tool slug is TOOLKIT_ACTION, but 525 of Composio's 1,694 toolkit slugs (31%) contain an underscore
+    themselves - `ZOHO_BOOKS`, `ZOHO_INVENTORY`, `ZOHO_INVOICE`, `SAP_SUCCESSFACTORS`,
+    `SALESFORCE_SERVICE_CLOUD`, `ACTIVE_CAMPAIGN`, and `_1PASSWORD` which splits to an empty string. So
+    splitting on the first underscore named a toolkit that does not exist, and the call died with
+    "<app> juda nahi hai" even when her account WAS connected.
+
+    Longest known prefix wins, from the live catalogue. If the catalogue is unreachable we fall back to the
+    built-in list, and only then to the first word - a guess that is now the last resort, not the only rule.
+    Composio also ships tools with no toolkit prefix at all (Shopify's `CARTS_CREATE`), which no amount of
+    string surgery can resolve, so `tool_toolkit` below asks Composio itself when it matters.
+    """
+    s = (slug or "").strip().lower()
+    if not s:
+        return ""
+    known = set(toolkits().keys()) | set(DEFAULT_TOOLKITS.keys())
+    best = ""
+    for name in known:
+        if (s == name or s.startswith(name + "_")) and len(name) > len(best):
+            best = name
+    return best or s.split("_")[0]
+
+
+def tool_toolkit(slug: str) -> str:
+    """Ask Composio which toolkit owns this tool - the only answer that is always right, because a slug need
+    not carry its toolkit at all. Cached; falls back to the prefix match when Composio cannot be reached."""
+    try:
+        rec = _cached("tk:" + slug.lower(), lambda: client().tool(slug)) or {}
+        tk = rec.get("toolkit") if isinstance(rec, dict) else None
+        if isinstance(tk, dict):
+            tk = tk.get("slug") or tk.get("name")
+        if isinstance(tk, str) and tk.strip():
+            return tk.strip().lower()
+    except Exception:                                    # noqa: BLE001 - never block a run on a lookup
+        pass
+    return toolkit_of(slug)
+
+
+def tool_exists(slug: str) -> bool | None:
+    """True / False / None = could not check. Used BEFORE a plan so a wrong slug fails while nothing is at
+    stake, instead of after her tap with half the rows already written."""
+    if not re.fullmatch(r"[A-Za-z0-9_]{3,120}", slug or ""):
+        return False
+    if not configured():
+        return None              # not "this tool does not exist" - we simply cannot ask. Never refuse on it.
+    try:
+        return bool(_cached("tk:" + slug.lower(), lambda: client().tool(slug)))
+    except ComposioError as ex:
+        # a 404 means the slug is wrong; anything else (key, network, outage) means we could not check, and
+        # refusing her run because OUR lookup failed would be the wrong way round.
+        return False if "404" in str(ex) or "not found" in str(ex).lower() else None
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+def is_read(slug: str, toolkit: str = "") -> bool:
+    """SLACK_LIST_ALL_CHANNELS = read; SLACK_SEND_MESSAGE = write. Unsure = write (a card she taps).
+
+    v0.388: `toolkit` may be left out - it is then resolved properly instead of by splitting the slug. The
+    head is stripped only when it really matches, so a wrong toolkit can no longer turn every read into a
+    write (which is what happened to Zoho Books and SAP SuccessFactors)."""
+    toolkit = toolkit or toolkit_of(slug)
     words = slug.upper().split("_")
     head = toolkit.upper().split("_")
     if words[:len(head)] == head:
@@ -349,7 +411,11 @@ class Client:
         return self._req("GET", f"/tools/{slug}", params={"toolkit_versions": "latest"})
 
     def execute(self, slug: str, user_id: str, ca_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        body: dict[str, Any] = {"user_id": user_id, "arguments": arguments, "version": "latest"}
+        # v0.388: the literal string "latest" is the ONE form Composio documents as REJECTED for direct
+        # execution (it raises a tool-version error); OMITTING the field selects latest on v3.1. We used to
+        # send "latest", so every ERP write could have failed on a version error before reaching her system.
+        # docs.composio.dev/docs/tools-direct/toolkit-versioning
+        body: dict[str, Any] = {"user_id": user_id, "arguments": arguments}
         if ca_id:                       # a no-login app (weather, maths ...) has no account to name
             body["connected_account_id"] = ca_id
         return self._req("POST", f"/tools/execute/{slug}", body=body)
