@@ -42,6 +42,7 @@ from . import kit as K
 from . import media as M
 from . import shop as SH
 from . import blog as BL
+from . import code as CD
 from . import taxonomy as T
 from .models import Site, SiteLead, SiteVersion
 
@@ -713,7 +714,7 @@ def _after_job(site_id: str) -> None:
 def _start(site_id: str, job: str, **kw) -> bool:
     """Start a looks / build job. False = this site already has a job running (the caller queues or says so)."""
     fn = {"looks": make_looks, "build": run_build, "save": save_version, "translate": translate_job,
-          "sitemap": sitemap_job}[job]
+          "sitemap": sitemap_job, "code": code_job}[job]
     if _inline():
         fn(site_id, **kw)
         _after_job(site_id)
@@ -2318,6 +2319,12 @@ def undo_edit(tenant: str, ref: str) -> dict[str, Any]:
     if last["kind"] == "theme":
         look = _j(r.look, {})
         _save(r.id, look={**look, "tokens": last["before"]})
+    elif last["kind"] == "kit":               # v0.367 her own design-kit code
+        look = _j(r.look, {})
+        _save(r.id, look={**look, "kit": {**(look.get("kit") or {}), "css": last["before"]}})
+    elif last["kind"] == "multi":             # v0.367 one code change that touched several sections
+        for k, before in last["befores"].items():
+            _put_sec(r, k, before)
     else:
         _put_sec(r, last["key"], last["before"])
     _edits_path(r).write_text(json.dumps(h))
@@ -2710,3 +2717,164 @@ def blog_tick() -> int:
         except Exception:
             log.exception("scheduled post rebuild failed")
     return n
+
+
+# ---------------------------------------------------------------- v0.367 CODE MODE (site/code.py)
+def _code_dir(r: Site) -> Path:
+    return B.site_dir(r.tenant_id, r.id) / "code_tasks"
+
+
+def _kit_css(r: Site) -> str:
+    return (_j(r.look, {}).get("kit") or {}).get("css", "")
+
+
+def code_tree(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    secs = _sections(r)
+    return {"files": CD.tree(_j(r.plan, {}), secs, _kit_css(r), T.label_of), "version": r.version,
+            "edits": len(_edits(r)), "busy": busy(r.id),
+            "say": f"{sum(len(p['files']) for p in CD.tree(_j(r.plan, {}), secs, _kit_css(r), T.label_of))} files."}
+
+
+def code_read(tenant: str, ref: str, path: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    try:
+        return CD.read(path, _sections(r), _kit_css(r))
+    except CD.CodeError as e:
+        raise SiteError(str(e))
+
+
+def code_write(tenant: str, ref: str, path: str, code: str) -> dict[str, Any]:
+    """Her own hand on the code (no AI): the same cleaner as every build, one Undo step, then a checked version."""
+    r = _editable(tenant, ref)
+    try:
+        if path == "design/kit.css":
+            look = _j(r.look, {})
+            before = _kit_css(r)
+            new = K.clean(code or "")
+            if new == before:
+                return {**code_read(tenant, ref, path), "say": "Kuch badla nahi.", "removed": []}
+            dropped = [] if len(new) >= 0.8 * len(re.sub(r"\s+", "", code or "")) else [
+                "only .k-* rules are kept in the design kit (no element / id / global selectors, no url(), no fonts)"]
+            _save(r.id, look={**look, "kit": {**(look.get("kit") or {}), "css": new}})
+            _push_edit(r, {"kind": "kit", "what": "design kit code", "before": before})
+            _after_edit(_load(r.id), "Code: design kit")
+            return {**code_read(tenant, ref, path), "removed": dropped, "say": "Design kit save ho gaya." +
+                    (" Kuch hissa hata diya: " + dropped[0] if dropped else "")}
+        key, part = CD.key_of(path)
+        secs = _sections(r)
+        if key not in secs:
+            raise SiteError("Yeh section ab nahi hai.")
+        before = secs[key]
+        new, problems = CD.clean(key, before, part, code)
+    except CD.CodeError as e:
+        raise SiteError(str(e))
+    if all(new.get(x) == before.get(x) for x in ("html", "css", "js")):
+        return {**code_read(tenant, ref, path), "say": "Kuch badla nahi.", "removed": problems}
+    _put_sec(r, key, new)
+    _push_edit(r, {"kind": "section", "key": key, "op": "code", "what": f"code: {path}", "before": before})
+    _after_edit(r, f"Code: {path}")
+    return {**code_read(tenant, ref, path), "removed": problems,
+            "say": "Save ho gaya; jaanch ke baad nayi version." + (" Safety ke liye hataya: " + "; ".join(problems[:4]) if problems else "")}
+
+
+def code_ask(tenant: str, ref: str, instruction: str, path: str = "", conv: str = "") -> dict[str, Any]:
+    """Her words -> Opus changes the code (the open file's section, or the sections her words are about). A site job;
+    the console reads the result with code_task."""
+    instruction = _tidy(instruction, 1500)
+    if not instruction:
+        raise SiteError("Kya badalna hai? Ek line likhiye.")
+    r = _editable(tenant, ref)
+    keys: list[str] = []
+    if path and path != "design/kit.css":
+        try:
+            keys = [CD.key_of(path)[0]]
+        except CD.CodeError as e:
+            raise SiteError(str(e))
+    task = secrets.token_hex(8)
+    CD.save_task(_code_dir(r), task, {"status": "working", "instruction": instruction, "keys": keys, "conv": conv,
+                                      "path": path, "say": "Code badal raha hoon..."})
+    if not _start(r.id, "code", task=task):
+        CD.save_task(_code_dir(r), task, {"status": "failed", "say": "Website abhi kisi aur kaam mein hai; thodi der baad."})
+        raise SiteError("Website abhi kisi aur kaam mein hai; thodi der baad kahiye.")
+    t = CD.load_task(_code_dir(r), task) or {}
+    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Code badal raha hoon (Opus)...",
+            **({k: t[k] for k in ("diff", "files", "summary", "removed") if k in t})}
+
+
+def code_task(tenant: str, ref: str, task: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    t = CD.load_task(_code_dir(r), task)
+    if t is None:
+        raise SiteError("Yeh kaam nahi mila.")
+    return {"task": task, **t}
+
+
+def code_job(site_id: str, task: str = "") -> None:
+    from ..usage import scope
+    r = _load(site_id)
+    folder = _code_dir(r)
+    t = CD.load_task(folder, task) or {}
+    with scope(r.tenant_id, "site"):
+        try:
+            out = _code_change(r, t.get("instruction") or "", t.get("keys") or [])
+        except Exception as e:
+            log.exception("code change failed")
+            out = {"status": "failed", "say": f"Code nahi badal paya: {_tidy(str(e), 200)}"}
+    CD.save_task(folder, task, {**t, **out})
+    if t.get("conv"):
+        try:
+            from ..events import bus
+            bus.publish(t["conv"], "site_board", {**view(_load(site_id), False), "say": out.get("say", "")})
+        except Exception:
+            log.info("code result event failed", exc_info=True)
+
+
+def _code_change(r: Site, instruction: str, keys: list[str]) -> dict[str, Any]:
+    secs = _sections(r)
+    keys = [k for k in keys if k in secs] or CD.pick(instruction, secs, T.label_of)
+    if not keys:
+        return {"status": "failed", "say": "Website mein abhi koi section nahi."}
+    files = [{"key": k, "html": E.strip(secs[k].get("html") or ""), "css": secs[k].get("css") or "",
+              "js": CD.bare_js(secs[k].get("js") or "")} for k in keys]
+    raw = AI.ask_json(CD.CODE_SYSTEM, f"HER WORDS: {instruction}\n\nSITE FACTS (data): {_facts_text(_j(r.facts, {}))[:2500]}\n"
+                      f"{K.prompt_line(_j(r.look, {}).get('kit'))}\n\nSECTIONS JSON:\n" + json.dumps(files, ensure_ascii=False),
+                      12000, "site_edit")
+    got = (raw or {}).get("files") if isinstance(raw, dict) else None
+    if not isinstance(got, list) or not got:
+        return {"status": "failed", "say": "Opus se badla hua code nahi aaya; dobara kahiye ya zyada saaf likhiye."}
+    befores, diffs, changed, problems = {}, [], [], []
+    for f in got[:6]:
+        if not isinstance(f, dict) or f.get("key") not in keys:
+            continue
+        k = f["key"]
+        before = secs[k]
+        new, probs = CD.clean(k, before, "html", str(f.get("html") or before.get("html") or ""))
+        new, probs2 = CD.clean(k, new, "css", str(f["css"]) if f.get("css") is not None else (before.get("css") or ""))
+        new, probs3 = CD.clean(k, new, "js", str(f["js"]) if f.get("js") is not None else CD.bare_js(before.get("js") or ""))
+        if all(new.get(x) == before.get(x) for x in ("html", "css", "js")):
+            continue
+        for part in CD.PARTS:
+            a = CD.read(CD.path_of(k, part), {k: before}, "")["code"]
+            b = CD.read(CD.path_of(k, part), {k: new}, "")["code"]
+            if a != b:
+                diffs.append(CD.diff(CD.path_of(k, part), a, b))
+        befores[k] = before
+        _put_sec(r, k, new)
+        changed.append(k)
+        problems += [p for p in probs + probs2 + probs3 if p not in problems]
+    if not changed:
+        return {"status": "done", "say": "Code waisa hi raha (kuch badalne ko nahi mila).", "diff": "", "files": []}
+    _push_edit(r, {"kind": "multi", "what": f"code: {instruction[:60]}", "befores": befores})
+    _assemble_edit(_load(r.id))
+    _SAVE_PENDING.add(r.id)                  # the checked version is made right after this job (_after_job)
+    summary = _tidy(str((raw or {}).get("summary") or ""), 200)
+    return {"status": "done", "files": [CD.path_of(k, "html") for k in changed], "diff": "\n".join(diffs)[:60000],
+            "summary": summary, "removed": problems[:8],
+            "say": (summary or f"{len(changed)} section ka code badal diya") + ". Jaanch ke baad nayi version; galat lage to Undo."}

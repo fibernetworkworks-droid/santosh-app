@@ -38,7 +38,11 @@ SITE_TOOLS = [
         "translates, new version); action=language + second = the old one-language form. BLOG: posts are WRITTEN by the "
         "kalam tool (kind blog) and published with kalam action=publish dest=site where=<website> (+ when) -> her Haan "
         "card; never write a post here. action=blog + slug + blog_action hide|show|cover (+ cover = one of her site photo "
-        "names) changes a post (a new version; she makes it live). Deleting a post is ONLY her tap in the app's Blog tab. action=booking + lead + yes = HER answer to a website booking "
+        "names) changes a post (a new version; she makes it live). Deleting a post is ONLY her tap in the app's Blog tab. "
+        "CODE MODE: action=code + instruction (+ file = a code path like pages/home/pricing.html from website_dekho "
+        "what=code) = Opus changes the site's REAL code (HTML / CSS / small scripts, cleaned like every build, a diff she "
+        "sees in the studio's Code tab, one Undo); use it when she talks about the code or asks for something precise in "
+        "one section (a 3-plan comparison table, a sticky header, an animation). action=booking + lead + yes = HER answer to a website booking "
         "request (only when she said pakka / mana). action=app + instruction (her words: 'customers login karke apna "
         "order track karein', 'students marks dekhein', 'staff complaints ka status badle') = a WEB APP on the site: logins, "
         "lists of data with rules, a My account page and a staff panel at /admin/ (her data; she sees it in the studio's "
@@ -60,7 +64,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "booking", "app", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -76,6 +80,7 @@ SITE_TOOLS = [
          "free": {"type": "boolean"}, "second": {"type": "string", "enum": ["", "en", "hi", "mr", "hinglish"]},
          "languages": {"type": "array", "items": {"type": "string"}, "description": "extra language codes, max 4"},
          "slug": {"type": "string"}, "blog_action": {"type": "string", "enum": ["hide", "show", "cover"]}, "cover": {"type": "string"},
+         "file": {"type": "string", "description": "code mode: one code file path (website_dekho what=code lists them)"},
          "lead": {"type": "string"}, "yes": {"type": "boolean"}, "format": {"type": "string", "enum": ["zip", "react"]}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
          "city": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}},
@@ -85,13 +90,13 @@ SITE_TOOLS = [
          "required": ["action"]}},
     {"name": "website_dekho", "description": (
         "Read her websites (nothing changes). what=sites | site (site: board, pages, sections, scores, preview link, "
-        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | blog (site: her posts - published / scheduled / hidden - and the site's languages) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
+        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | code (site, + file: the code files of the site / one file's code) | blog (site: her posts - published / scheduled / hidden - and the site's languages) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
         "find a business type, or industry) | brief (field, goal, style: the full ready brief) | understand (q: what a "
         "short ask means: business type, goal, 3 looks)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "blog", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
+         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "blog", "code", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
          "site": {"type": "string"}, "q": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
-         "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}},
+         "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}, "file": {"type": "string"}},
          "required": ["what"]}},
 ]
 SITE_LABELS = {"website": "Website bana raha hoon", "website_dekho": "Website dekh raha hoon"}
@@ -151,6 +156,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.design_app(t, site, str(a.get("instruction") or ""), conv)
     if action == "language":
         return S.set_language(t, site, str(a.get("second") or ""))
+    if action == "code":                         # v0.367 CODE MODE (a site job; the diff shows in the Code tab)
+        return S.code_ask(t, site, str(a.get("instruction") or ""), str(a.get("file") or ""), conv)
     if action == "languages":                    # v0.366 BHASHAYEN
         return S.set_languages(t, site, a.get("languages") if isinstance(a.get("languages"), list) else [])
     if action == "blog":                         # v0.366 hide / show / cover from chat (never delete: her tap only)
@@ -274,6 +281,10 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         r = SC.report(t, site, int(a.get("days") or 30))
         r.pop("site", None)
         return r
+    if what == "code":                            # v0.367 CODE MODE
+        if a.get("file"):
+            return S.code_read(t, site, str(a.get("file")))
+        return S.code_tree(t, site)
     if what == "blog":                            # v0.366 her posts + languages
         return S.blog_info(t, site)
     if what == "dashboard":                       # v0.357 the numbers behind her Dashboard tab

@@ -2082,6 +2082,30 @@ body.albon{overflow:hidden}
 .btn.soft.danger{color:var(--bad)}
 .stblog .sted-kind small{color:var(--mut)}
 
+/* v0.367 CODE MODE: the studio's Code tab (files, editor with line numbers, ask box, diff) */
+.stcode{display:grid;gap:12px}
+.stcode-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.stcode-bar p{margin:0;color:var(--mut);font-size:13.5px;max-width:72ch}
+.stcode-main{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);gap:12px;align-items:start}
+@media (max-width:760px){.stcode-main{grid-template-columns:1fr}}
+.stcode-files{border:1px solid var(--hair);border-radius:12px;background:var(--surface);padding:6px;max-height:620px;overflow:auto}
+.stcode-g{display:grid;gap:1px;margin-bottom:6px}.stcode-g b{font-size:12.5px;font-weight:600;color:var(--mut);padding:6px 8px 2px}
+.stcode-files button{all:unset;cursor:pointer;padding:6px 8px;border-radius:8px;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stcode-files button:hover{background:var(--sunk)}.stcode-files button.on{background:var(--pri-soft);color:var(--pri-ink);font-weight:500}
+.stcode-files button:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+.stcode-ed{display:grid;gap:8px;min-width:0}
+.stcode-path{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--mut)}.stcode-path code{font-family:var(--fm,ui-monospace,monospace);color:var(--ink)}
+.stcode-state{color:var(--warn)}
+.stcode-area{display:grid;grid-template-columns:auto minmax(0,1fr);border:1px solid var(--hair);border-radius:12px;overflow:hidden;background:var(--code-bg,var(--surface));height:460px}
+.stcode-ln{margin:0;padding:12px 8px 12px 12px;text-align:right;color:var(--dim);font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:hidden;user-select:none;border-right:1px solid var(--hair);background:var(--sunk)}
+.stcode-area textarea{border:0;outline:none;resize:none;padding:12px;margin:0;background:transparent;color:var(--ink);font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;overflow:auto;tab-size:2;height:100%}
+.stcode-area:focus-within{border-color:var(--pri)}
+.stcode-ask{display:flex;gap:8px}.stcode-ask input{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.stcode-out{border:1px solid var(--hair);border-radius:12px;padding:10px 12px;background:var(--surface)}.stcode-out p{margin:0 0 6px}
+.stcode-diff{margin:0;max-height:360px;overflow:auto;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre}
+.stcode-diff .dl{display:block}.stcode-diff .a{background:var(--ok-soft);color:var(--ok)}.stcode-diff .d{background:var(--warn-soft);color:var(--bad)}
+.stcode-diff .h{color:var(--pri-ink)}.stcode-diff .f{color:var(--mut)}
+
 /* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim

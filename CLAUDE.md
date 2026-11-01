@@ -145,9 +145,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.366.0 (pubspec 0.366.0+406). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.367.0 (pubspec 0.367.0+407). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.367 CODE MODE (`site/code.py`): the site's real code as files (section HTML / CSS / JS + design kit) in the Studio Code tab; her hand edits and Opus 'ask' changes go through the build's cleaner, show a diff, one Undo, a checked version; tool action=code.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
 - v0.364 HOOLA CAD PRO (`engineering/parts.py` H library: ISO fasteners, involute gears, bearings, shafts, extrusions): assemblies + BOM + mass, Opus thinks + plans, vision review of the views, her photo / STEP inputs, STEP/GLB/STL/3MF/DXF + hidden-line drawing page.

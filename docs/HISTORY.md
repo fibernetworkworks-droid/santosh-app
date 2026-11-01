@@ -13303,3 +13303,26 @@ Owner: "START PHASE 3C" (after 3a DUKAAN v0.351 and 3b DASHBOARD v0.357).
 - ALSO FIXED: the parallel v0.358 ENTERPRISE merge had dropped arena.js, employees.js and charts.js plus the Arena /
   Employees / SEO Desk / Social Desk views from console v2.html (four console tests were red on main); restored.
 - Tests `server/tests/test_v0366_blog_bhashayen.py`.
+
+## v0.367.0 CODE MODE (Phase 4 of "any world-complex website": her site's real code, like Lovable / Bolt)
+Owner: "START PHASE 4" (the plan's step: "Real React code you can open, edit in chat ('make the pricing table compare 3
+plans') and export").
+- The site's code IS its sections (HTML + section-scoped CSS + an optional small script) and its design kit (.k-*,
+  v0.330). `server/app/site/code.py` shows them as files `pages/<page>/<section>.html|css|js` + `design/kit.css`:
+  `tree`, `read` (made readable: edit numbers stripped, block tags on their own lines - whitespace-safe tags only - CSS
+  one declaration a line with `;` split only outside quotes / brackets so `url("data:...;...")` survives, the script
+  without Hoola's try-wrapper), `clean` (her or Opus's code through the SAME `build.sanitize_section` as every build:
+  no <script> / iframe / on*= / javascript: / outside src; CSS scoped to the section; scripts with network / cookies /
+  storage / eval refused; edit numbers re-tagged), `diff` (unified), `pick` (which sections her words are about).
+- `service.code_tree / code_read / code_write` (her own hand: one Undo step via the v0.295 stack, then a checked
+  version; the design kit through `kit.clean`), `code_ask` -> site job `code` (`code_job` / `_code_change`: Opus kind
+  site_edit with CODE_SYSTEM + facts + the kit line, only the asked sections may change, each part cleaned, a diff per
+  file, ONE Undo for the whole change (`kind: multi`), then the checked version via _SAVE_PENDING), `code_task` (the
+  result the console polls). `undo_edit` handles `kit` and `multi`.
+- API: GET /api/sites/<id>/code (+ ?path=), PUT /api/sites/<id>/code {path, code}, POST /api/sites/<id>/code/ask
+  {instruction, path}, GET /api/sites/<id>/code/task/<task>. Tools: `website` action=code (+ instruction, file),
+  `website_dekho what=code` (+ file).
+- Console Studio tab "Code": file list by page, editor with line numbers (Tab = 2 spaces, Ctrl/Cmd+S saves, unsaved
+  warning), "Ask Hoola to change this file" -> polled job -> coloured diff + what the cleaner removed, Undo, Download
+  React project / ZIP (v0.305 export into her files). Phone: not in this version (code editing is a computer job).
+- Tests `server/tests/test_v0367_code_mode.py`.
