@@ -320,7 +320,7 @@ def restore(tenant: str, pid: str, n: int, task: str = "") -> dict[str, Any]:
     return view(r)
 
 
-def data_build(tenant: str, pid: str, bible_version: int, task: str = "") -> dict[str, Any]:
+def data_build(tenant: str, pid: str, bible_version: int, task: str = "", words: str = "") -> dict[str, Any]:
     """v0.395 Game Bible applied to the live game: the SAME code + the new hoola_bible.gd, no model call, full checks."""
     r = _get(tenant, pid)
     if r.status in BUSY:
@@ -329,7 +329,7 @@ def data_build(tenant: str, pid: str, bible_version: int, task: str = "") -> dic
         raise GameError("Pehle game ka pehla version banne dijiye.")
     _limits_build(tenant)
     _save(r, status="queued", stage="line mein", pct=10, error="",
-          pending={"mode": "data", "words": f"Bible v{int(bible_version)} game mein", "task": task or ""})
+          pending={"mode": "data", "words": words or f"Bible v{int(bible_version)} game mein", "task": task or ""})
     _publish(r)
     _submit(r.id)
     return view(r)
@@ -342,6 +342,22 @@ def _bible(r: GameProject) -> tuple[str, int] | None:
     except Exception:                                   # noqa: BLE001 - a game without a Studio Bible builds as before
         log.exception("bible for game %s", r.id)
         return None
+
+
+def _assets(r: GameProject) -> tuple[str, dict[str, Path]] | None:
+    try:
+        from . import assets
+        return assets.for_game(r.tenant_id, r.id)
+    except Exception:                                   # noqa: BLE001 - a game without assets builds as before
+        log.exception("assets for game %s", r.id)
+        return None
+
+
+def _copy_assets(proj: Path, ast: tuple[str, dict[str, Path]] | None) -> None:
+    for rel, src in ((ast or ("", {}))[1]).items():
+        dst = proj / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
 
 
 def reject_version(tenant: str, pid: str, n: int) -> None:
@@ -420,6 +436,9 @@ def source_zip(tenant: str, pid: str) -> tuple[bytes, str]:
         for p in sorted(proj.iterdir()):
             if p.is_file() and p.suffix in (".gd", ".godot", ".tscn", ".cfg"):
                 z.write(p, f"{r.number}/{p.name}")
+        for p in sorted((proj / "assets").glob("*")) if (proj / "assets").is_dir() else []:   # v0.415 approved assets
+            if p.is_file() and p.suffix in (".png", ".wav", ".ogg", ".glb"):
+                z.write(p, f"{r.number}/assets/{p.name}")
         z.writestr(f"{r.number}/DESIGN.md", r.design or "")
         z.writestr(f"{r.number}/README.txt", "Made by Hoola Game Desk with Godot 4 (godotengine.org, MIT).\n"
                    "Open project.godot in the Godot editor 4.7+. Export: Project > Export > Web.\n")
@@ -566,6 +585,10 @@ def _build(r: GameProject, holder: dict) -> None:
     bib = _bible(r)                                     # v0.395: the Bible is always Hoola's own file, never the model's
     if bib:
         files["hoola_bible.gd"] = bib[0]
+    ast = _assets(r)                                    # v0.415: approved assets + HoolaAssets, also Hoola's own
+    files.pop("hoola_assets.gd", None)
+    if ast:
+        files["hoola_assets.gd"] = ast[0]
     checks: list[dict[str, Any]] = []
     fixed = 0
     smoke: dict[str, Any] = {}
@@ -581,6 +604,7 @@ def _build(r: GameProject, holder: dict) -> None:
         else:
             _stage(r, "building", "Godot mein chala kar dekh raha hoon", 45 + rnd * 3)
             _write(vdir / "proj", r, files)
+            _copy_assets(vdir / "proj", ast)
             smoke = engine.smoke(vdir, holder=holder)
             checks.append({"step": "play_headless", "ok": smoke["ok"], "errors": smoke["errors"][:6]})
             bad = smoke["errors"]
@@ -593,7 +617,7 @@ def _build(r: GameProject, holder: dict) -> None:
                     if _cancelled(r, holder):
                         return
                     _stage(r, "testing", "khud khel kar jaanch raha hoon", 80)
-                    play = playtest.run(vdir / "build", vdir / "shots", r.orientation)
+                    play = playtest.run(_play_build(vdir, holder), vdir / "shots", r.orientation)
                     checks.append({"step": "playtest", "ok": play["ok"], "errors": play["errors"][:6]})
                     bad = play["errors"]
         if not bad or fixed >= FIX_ROUNDS * 2:
@@ -606,12 +630,17 @@ def _build(r: GameProject, holder: dict) -> None:
             files = new
             if bib:
                 files["hoola_bible.gd"] = bib[0]
+            files.pop("hoola_assets.gd", None)
+            if ast:
+                files["hoola_assets.gd"] = ast[0]
+    shutil.rmtree(vdir / "build_debug", ignore_errors=True)    # v0.415 the played debug build is not kept
     ok = bool(checks) and all(c["ok"] for c in checks[-3:]) and checks[-1]["step"] == "playtest" and checks[-1]["ok"]
     if fixed and ok:
         STATS["fixed"] += 1
     errors = [] if ok else (checks[-1]["errors"] if checks else ["kuch nahi bana"])
     ver = {"n": n, "at": now().isoformat(), "words": words, "ok": ok, "task": task, "base": (_good(r)[-1]["n"] if _good(r) else 0),
-           "src": _src_hash(vdir / "proj"), "bible": bib[1] if bib else 0, "notes": notes, "fixed": fixed, "checks": checks[-4:],
+           "src": _src_hash(vdir / "proj"), "bible": bib[1] if bib else 0,
+           "assets": sorted(((ast or ("", {}))[1]).keys()), "notes": notes, "fixed": fixed, "checks": checks[-4:],
            "errors": errors[:6], "files": sorted(files), "shots": play.get("shots", []) if ok else [],
            "warnings": play.get("warnings", []),
            "numbers": {"fps_server": play.get("fps"), "load_s": play.get("load_s"),
@@ -637,6 +666,20 @@ def _build(r: GameProject, holder: dict) -> None:
     _studio_hook(r, task, ver, "" if ok else "; ".join(errors[:3])[:400])
 
 
+def _play_build(vdir: Path, holder: dict) -> Path:
+    """v0.415: Hoola plays a DEBUG web build when the debug template is there - a release web build prints no script
+    errors, so a crash that only happens on a key / tap passed the playtest and went live (found by the QA farm on a
+    real build). The play link still serves the release build. Without the debug template: the release build, as before."""
+    try:
+        if engine.debug_template():
+            ex = engine.export_web(vdir, holder=holder, debug=True)
+            if ex.get("ok"):
+                return vdir / "build_debug"
+    except engine.EngineError:
+        pass
+    return vdir / "build"
+
+
 def _src_hash(proj: Path) -> str:
     """The code's fingerprint (every .gd / project file): the nightly build proves the same code still builds the same."""
     import hashlib
@@ -649,7 +692,10 @@ def _src_hash(proj: Path) -> str:
 
 
 def _trim_builds(r: GameProject) -> None:
-    """Keep the Web builds of the newest few good versions (each ~40 MB); older versions keep code + screenshots."""
+    """Keep the Web builds of the newest few good versions (each ~40 MB); older versions keep code + screenshots.
+    The debug build Hoola played (v0.415) is never kept."""
+    for v in r.versions or []:
+        shutil.rmtree(_vdir(r, v.get("n", 0)) / "build_debug", ignore_errors=True)
     good = [v["n"] for v in _good(r)]
     for n in good[:-KEEP_BUILDS]:
         shutil.rmtree(_vdir(r, n) / "build", ignore_errors=True)

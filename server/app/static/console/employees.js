@@ -801,6 +801,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
                failed: ['bad', 'Did not work'], cancelled: ['', 'Stopped']};
   const BUSYG = ['designing', 'queued', 'writing', 'building', 'testing'];
   let GS_BIBLE = false;        // v0.395 the Game Bible page of the open project
+  let GS_ASSETS = false;       // v0.415 the Assets page of the open project
+  let GS_REL = false;          // v0.415 the Release page (platforms + store kit) of the open project
+  let GS_QA = false;           // v0.415 the QA farm + bugs page of the open project
   let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   async function game(el) {
@@ -1001,9 +1004,210 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
   }
 
+  // ---------------------------------------------------------------- v0.415 asset pipeline
+  const AST_ST = {priced: ['warn', 'Waiting for your tap'], making: ['v', 'Being made'], draft: ['warn', 'Waiting for your OK'],
+                  approved: ['ok', 'In the game'], rejected: ['', 'Not used'], failed: ['bad', 'Failed its checks']};
+  function astPreview(a) {
+    if (!a.url) return '<div class="ga-empty">—</div>';
+    const u = esc(a.url);
+    if (['sprite', 'icon', 'ui', 'background'].includes(a.kind)) return `<img src="${u}" alt="${esc(a.key)}" class="ga-img ga-${esc(a.kind)}" loading="lazy">`;
+    if (['sfx', 'music', 'voice'].includes(a.kind)) return `<audio controls preload="none" src="${u}"></audio>`;
+    return `<a class="btn soft gs-mini" href="${u}" download="${esc(a.key)}.glb">Download GLB</a>`;
+  }
+  async function gsAssets(el, id) {
+    clearTimeout(GTIMER);
+    let v;
+    const q = encodeURIComponent(id);
+    try { v = await api('GET', `/api/gamestudio/${q}/assets`); }
+    catch (e) { toast(e.message, true); GS_ASSETS = false; return gsBoard(el, id); }
+    const kinds = v.kinds || {}, card = v.card || {items: [], total_inr: 0};
+    const byKind = {};
+    (v.assets || []).forEach(a => { (byKind[a.kind] = byKind[a.kind] || []).push(a); });
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gaBack">← Board</button><h2>Assets</h2>
+        <span class="muted em-sub">${num(v.in_game)} in the game · ₹${num(v.spent_inr)} spent</span>
+        <button class="btn go" type="button" id="gaApply">Put approved assets in the game</button>
+        <button class="btn soft" type="button" id="gaSug">What does the game still need?</button></div>
+      <p class="muted em-sub">Art follows the Game Bible palette. Sounds are made in code (free). Pictures, music and voice cost money: they wait on a price card until you tap it. Nothing enters the game before your OK.</p>
+      ${card.items.length ? `<div class="tile gl ga-card"><b>Price card: ₹${num(card.total_inr)}</b> for ${num(card.items.length)} asset${card.items.length === 1 ? '' : 's'}
+        <ul class="gs-log">${card.items.map(i => `<li><label><input type="checkbox" data-ga-pick="${esc(i.id)}" checked> ${esc(i.key)} <span class="muted">${esc(i.kind)} · ₹${num(i.cost_inr)}</span></label></li>`).join('')}</ul>
+        <div class="acts"><button class="btn go" type="button" id="gaSpend">Make the ticked ones</button></div></div>` : ''}
+      <div id="gaSugBox"></div>
+      <div class="tile gl ga-new"><h3>New asset</h3>
+        <div class="acts"><select id="gaKind" aria-label="Kind">${Object.entries(kinds).map(([k, x]) => `<option value="${esc(k)}">${esc(x.label)}${x.cost_inr ? ' (about ₹' + num(x.cost_inr) + ')' : ' (free)'}</option>`).join('')}</select>
+          <input id="gaKey" maxlength="40" placeholder="key, e.g. red_bat (Bible id)" aria-label="Key">
+          <input id="gaWords" maxlength="600" placeholder="What it is, e.g. a red bat with big ears, side view" aria-label="Description"></div>
+        <div class="acts"><select id="gaPreset" aria-label="Sound preset">${(v.presets || []).map(p => `<option>${esc(p)}</option>`).join('')}</select>
+          <input id="gaSeed" type="number" min="1" value="1" aria-label="Sound seed" title="Seed: the same seed makes the same sound">
+          <input id="gaText" maxlength="400" placeholder="Voice line text" aria-label="Voice text">
+          <select id="gaLock" aria-label="Palette lock"><option value="check">Palette: check</option><option value="strict">Palette: snap every pixel</option><option value="off">Palette: off</option></select>
+          <select id="gaQ" aria-label="Quality"><option value="fast">Fast (₹3)</option><option value="best">Best (₹12)</option></select>
+          <button class="btn go" type="button" id="gaMake">Make / price it</button>
+          <label class="btn soft ga-up">Upload my file<input type="file" id="gaFile" accept=".png,.jpg,.jpeg,.wav,.ogg,.mp3,.glb" hidden></label></div></div>
+      ${Object.keys(kinds).filter(k => byKind[k]).map(k => `<section class="tile gl"><h3>${esc(kinds[k].label)}s <span class="muted">${num(byKind[k].length)}</span></h3>
+        <div class="ga-grid">${byKind[k].map(a => { const [c, n] = AST_ST[a.status] || ['', a.status]; const ck = a.checks || {};
+          return `<div class="ga-item"><div class="ga-prev">${astPreview(a)}</div><div class="ga-h"><b>${esc(a.key)}</b> ${tag(c, n)}</div>
+            <div class="gs-meta">v${num(a.version)}${a.approved ? ' · in game: v' + num(a.approved) : ''}${a.meta && a.meta.w ? ' · ' + num(a.meta.w) + '×' + num(a.meta.h) : ''}${a.meta && a.meta.seconds ? ' · ' + num(a.meta.seconds) + ' s' : ''}${a.meta && a.meta.palette_share != null ? ' · palette ' + Math.round(a.meta.palette_share * 100) + '%' : ''}${a.source ? ' · ' + esc(a.source) : ''}</div>
+            ${a.words ? `<div class="gs-detail">${esc(a.words)}</div>` : ''}
+            ${(ck.errors || []).map(x => `<div class="badc em-small">${esc(x)}</div>`).join('')}${(ck.warnings || []).map(x => `<div class="muted em-small">${esc(x)}</div>`).join('')}
+            ${a.error && !(ck.errors || []).length ? `<div class="badc em-small">${esc(a.error)}</div>` : ''}
+            <div class="acts">${a.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-ga="approve" data-key="${esc(a.key)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-ga="reject" data-key="${esc(a.key)}">No</button>` : ''}
+              ${a.kind === 'sfx' && a.status !== 'making' ? `<button class="btn soft gs-mini" type="button" data-ga-again="${esc(a.key)}" data-preset="${esc((a.spec || {}).preset || '')}" data-seed="${num(((a.spec || {}).seed || 1) + 1)}">Another one</button>` : ''}
+              ${a.status !== 'making' ? `<button class="btn soft gs-mini em-leave" type="button" data-ga="remove" data-key="${esc(a.key)}">Remove</button>` : ''}</div></div>`; }).join('')}</div></section>`).join('') || '<div class="empty">No assets yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsAssets(el, id); };
+    el.querySelector('#gaBack').addEventListener('click', () => { GS_ASSETS = false; gsBoard(el, id); });
+    el.querySelector('#gaApply').addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/assets-apply`), 'Rebuilding the game with the approved assets (no new code).'));
+    el.querySelector('#gaSpend')?.addEventListener('click', () => {
+      const ids = [...el.querySelectorAll('[data-ga-pick]:checked')].map(x => x.dataset.gaPick);
+      if (!ids.length) { toast('Tick at least one.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/assets/spend`, {ids}), 'Making them. Each one waits for your OK.');
+    });
+    el.querySelector('#gaSug').addEventListener('click', async () => {
+      try { const r = await api('GET', `/api/gamestudio/${q}/assets/suggest`);
+        el.querySelector('#gaSugBox').innerHTML = r.suggest.length ? `<div class="tile gl"><b>The game still needs</b><ul class="gs-log">${r.suggest.map(x => `<li>${esc(x.key)} <span class="muted">${esc(x.kind)} · ${x.cost_inr ? '₹' + num(x.cost_inr) : 'free'}</span> ${esc(x.words || '')}
+          <button class="btn soft gs-mini" type="button" data-ga-sug='${esc(JSON.stringify(x))}'>${x.cost_inr ? 'Price it' : 'Make it'}</button></li>`).join('')}</ul></div>` : '<p class="muted em-small">Nothing missing for the Bible\'s entries.</p>';
+        el.querySelectorAll('[data-ga-sug]').forEach(b => b.addEventListener('click', () => { const x = JSON.parse(b.dataset.gaSug);
+          go(() => api('POST', `/api/gamestudio/${q}/assets`, {kind: x.kind, key: x.key, words: x.words, preset: x.preset}), x.cost_inr ? 'Added to the price card.' : 'Making it.'); }));
+      } catch (e) { toast(e.message, true); }
+    });
+    el.querySelector('#gaMake').addEventListener('click', () => {
+      const kind = el.querySelector('#gaKind').value, key = el.querySelector('#gaKey').value.trim(), words = el.querySelector('#gaWords').value.trim();
+      if (!key && !words) { toast('Give it a key or a description.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/assets`, {kind, key, words, preset: el.querySelector('#gaPreset').value, seed: Number(el.querySelector('#gaSeed').value) || 1,
+        text: el.querySelector('#gaText').value.trim(), palette_lock: el.querySelector('#gaLock').value, quality: el.querySelector('#gaQ').value}),
+        (kinds[kind] || {}).cost_inr ? 'On the price card: tap it to make.' : 'Making it.');
+    });
+    el.querySelector('#gaFile').addEventListener('change', e => {
+      const f = e.target.files[0]; if (!f) return;
+      if (f.size > 12 * 1024 * 1024) { toast('12 MB at most.', true); return; }
+      const key = el.querySelector('#gaKey').value.trim() || f.name.replace(/\.[^.]+$/, '');
+      const fr = new FileReader();
+      fr.onload = () => go(() => api('POST', `/api/gamestudio/${q}/assets/upload`, {kind: el.querySelector('#gaKind').value, key, words: el.querySelector('#gaWords').value.trim(),
+        data: String(fr.result).split(',')[1] || ''}), 'Checked. It waits for your OK.');
+      fr.readAsDataURL(f);
+    });
+    el.querySelectorAll('[data-ga]').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.ga === 'remove' && !confirm(`Remove ${b.dataset.key} and all its versions?`)) return;
+      go(() => api('POST', `/api/gamestudio/${q}/assets/${encodeURIComponent(b.dataset.key)}/${b.dataset.ga}`, {}));
+    }));
+    el.querySelectorAll('[data-ga-again]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/assets`,
+      {kind: 'sfx', key: b.dataset.gaAgain, preset: b.dataset.preset, seed: Number(b.dataset.seed)}), 'A new version is being made.')));
+    if ((v.assets || []).some(a => a.status === 'making')) GTIMER = setTimeout(() => { if (visible(el) && GS_ASSETS) gsAssets(el, id); }, 5000);
+  }
+
+  // ---------------------------------------------------------------- v0.415 QA farm + bug tracker
+  const QV = {PASS: 'ok', CONCERNS: 'warn', FAIL: 'bad', 'NOT ASSESSED': ''};
+  const BUG_ST = {open: ['bad', 'Open'], fixing: ['warn', 'Being fixed'], fixed: ['ok', 'Fixed (bot checked)'], wontfix: ['', "Won't fix"], duplicate: ['', 'Duplicate']};
+  async function gsQa(el, id) {
+    clearTimeout(GTIMER);
+    const q = encodeURIComponent(id);
+    let d;
+    try { d = await api('GET', `/api/gamestudio/${q}/qa`); }
+    catch (e) { toast(e.message, true); GS_QA = false; return gsBoard(el, id); }
+    const L = d.last || {}, gl = L.golden || {}, pf = L.perf || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="qaBack">← Board</button><h2>QA</h2>
+        ${L.verdict ? tag(QV[L.verdict] || '', L.verdict) : ''}<span class="muted em-sub">${L.at ? 'v' + num(L.version) + ' · ' + esc((L.at || '').slice(0, 16).replace('T', ' ')) : 'Not run yet'}</span>
+        <button class="btn go" type="button" id="qaRun"${d.running ? ' disabled' : ''}>${d.running ? 'Bots are playing…' : 'Run the QA bots now'}</button></div>
+      <p class="muted em-sub">Hoola's bots play a debug build of the game on desktop, mid-range phone and low-end phone speeds every night, the same way each time. A bug the bots find is fixed only when the same bot can no longer find it.</p>
+      ${L.verdict ? `<div class="tile gl qa-sum">${(L.blockers || []).map(x => `<div class="em-small">${tag('bad', 'Blocker')} ${esc(x)}</div>`).join('')}
+        ${(L.concerns || []).map(x => `<div class="em-small">${tag('warn', 'Concern')} ${esc(x)}</div>`).join('')}
+        ${(L.missing || []).map(x => `<div class="em-small">${tag('', 'Not assessed')} ${esc(x)}</div>`).join('')}
+        <div class="gd-nums">${pf.fps_avg ? `<span><b>${num(pf.fps_avg)}</b> fps average</span>` : ''}${pf.mid_phone_fps ? `<span><b>${num(pf.mid_phone_fps)}</b> fps on a mid phone</span>` : ''}${pf.load_s ? `<span><b>${num(pf.load_s)}</b> s to start</span>` : ''}</div>
+        ${(L.fixed || []).length ? `<p class="em-small">Fixed and checked by the bots: ${esc(L.fixed.join(', '))}</p>` : ''}</div>` : ''}
+      ${gl.candidate_url ? `<section class="tile gl"><h3>Start screen</h3><div class="qa-gold">
+          ${gl.golden_url ? `<figure><img src="${esc(gl.golden_url)}" alt="Golden start screen"><figcaption>Golden (approved)</figcaption></figure>` : ''}
+          <figure><img src="${esc(gl.candidate_url)}" alt="This run's start screen"><figcaption>This run${gl.diff != null ? ' · ' + (Math.round(gl.diff * 1000) / 10) + '% different' : ''}</figcaption></figure></div>
+        ${gl.verdict !== 'same' ? '<div class="acts"><button class="btn soft" type="button" id="qaGold">This is how it should look</button></div>' : ''}</section>` : ''}
+      ${(L.runs || []).length ? `<section class="tile gl"><h3>Bot runs</h3><div class="gb-scroll"><table class="gb-t"><thead><tr><th>Bot</th><th>Speed</th><th>Result</th><th>fps</th><th>Score / state</th><th>Game overs</th><th>Shots</th></tr></thead><tbody>
+        ${L.runs.map(x => `<tr><td>${esc(x.bot)} <span class="muted">#${num(x.seed)}</span></td><td>${esc(x.profile.replace('_', ' '))}</td>
+          <td>${x.ok ? tag('ok', 'OK') : tag('bad', 'Error')}${(x.errors || []).length ? `<div class="badc em-small">${esc(x.errors[0])}</div>` : ''}${(x.warnings || []).map(w => `<div class="muted em-small">${esc(w)}</div>`).join('')}</td>
+          <td>${x.fps != null ? num(x.fps) : '—'}</td><td>${esc(Object.entries(x.state || {}).map(([k, v]) => k + ' ' + v).join(', ') || '—')}</td><td>${num(x.game_overs || 0)}</td>
+          <td class="qa-shots">${(x.shot_urls || []).map(u => `<img src="${esc(u)}" alt="Bot screenshot" loading="lazy">`).join('')}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
+      <section class="tile gl"><h3>Bugs <span class="muted">${num(d.open)} open</span></h3>
+        <div class="acts"><input id="qaBugT" maxlength="200" placeholder="Report a bug, e.g. the jump button does nothing on my phone" aria-label="Bug">
+          <select id="qaBugS" aria-label="Severity"><option value="major">Major</option><option value="crash">Crash</option><option value="blocker">Blocker</option><option value="minor">Minor</option><option value="visual">Looks wrong</option><option value="perf">Slow</option></select>
+          <button class="btn soft" type="button" id="qaBugAdd">Report</button></div>
+        ${(d.bugs || []).map(b => { const [c, n] = BUG_ST[b.status] || ['', b.status]; return `<div class="qa-bug"><div class="ga-h"><b>${esc(b.number)}</b> ${esc(b.title)} ${tag(c, n)} ${tag(b.severity === 'crash' || b.severity === 'blocker' ? 'bad' : '', b.severity)}${b.regression ? ' ' + tag('bad', 'Came back ×' + num(b.regression)) : ''}</div>
+          <div class="gs-meta">${b.source === 'her' ? 'Reported by you' : `Found by bot ${esc(b.repro.bot || '')} #${num(b.repro.seed || 1)} on ${esc((b.repro.profile || '').replace('_', ' '))}`} · seen ${num(b.seen)}× · v${num(b.first_version)}${b.last_version !== b.first_version ? '–' + num(b.last_version) : ''}${b.task ? ' · task ' + esc(b.task) : ''}</div>
+          ${((b.evidence || {}).errors || []).slice(0, 2).map(e => `<div class="badc em-small">${esc(e)}</div>`).join('')}
+          <div class="acts">${['open', 'fixing'].includes(b.status) && !b.task ? `<button class="btn go gs-mini" type="button" data-qb="fix" data-n="${esc(b.number)}">Fix it (make a task)</button>` : ''}
+            ${['open', 'fixing'].includes(b.status) ? `<button class="btn soft gs-mini" type="button" data-qb="wontfix" data-n="${esc(b.number)}">Won't fix</button><button class="btn soft gs-mini" type="button" data-qb="duplicate" data-n="${esc(b.number)}">Duplicate</button>` : `<button class="btn soft gs-mini" type="button" data-qb="open" data-n="${esc(b.number)}">Reopen</button>`}</div></div>`; }).join('') || '<p class="muted em-small">No bugs.</p>'}</section>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsQa(el, id); };
+    el.querySelector('#qaBack').addEventListener('click', () => { GS_QA = false; gsBoard(el, id); });
+    el.querySelector('#qaRun').addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/qa/run`), 'The bots are playing (2-4 minutes).'));
+    el.querySelector('#qaGold')?.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/qa/golden`, {}), 'Saved as the golden start screen.'));
+    el.querySelector('#qaBugAdd').addEventListener('click', () => { const title = el.querySelector('#qaBugT').value.trim();
+      if (title.length < 4) { toast('Write the bug in one line.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/bugs`, {title, severity: el.querySelector('#qaBugS').value}), 'Bug saved.'); });
+    el.querySelectorAll('[data-qb]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bugs/${encodeURIComponent(b.dataset.n)}/${b.dataset.qb}`),
+      b.dataset.qb === 'fix' ? 'A fix task is on the board. The bug closes when the same bot cannot find it again.' : '')));
+    if (d.running) GTIMER = setTimeout(() => { if (visible(el) && GS_QA) gsQa(el, id); }, 8000);
+  }
+
+  // ---------------------------------------------------------------- v0.415 platforms: downloads, store kit, itch.io
+  const PL = {linux: 'Linux', windows: 'Windows', macos: 'macOS', android: 'Android'};
+  const RST = {done: ['ok', 'Ready'], building: ['v', 'Building'], queued: ['v', 'Queued'], failed: ['bad', 'Failed'], 'not assessed': ['', 'Not built here']};
+  let GS_KIT = null;
+  async function gsRelease(el, id) {
+    clearTimeout(GTIMER);
+    const q = encodeURIComponent(id);
+    let d;
+    try { d = await api('GET', `/api/gamestudio/${q}/releases`); }
+    catch (e) { toast(e.message, true); GS_REL = false; return gsBoard(el, id); }
+    const tg = d.targets || {}, kit = GS_KIT && GS_KIT.id === id ? GS_KIT.k : null;
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="relBack">← Board</button><h2>Release</h2>
+        <span class="muted em-sub">${esc((d.identity || {}).package || '')}</span></div>
+      <p class="muted em-sub">Real downloads of the live game. Linux, Windows and macOS are built on Hoola's server; Android (APK to install, AAB for Google Play) in your private builds repo, signed with this game's own upload key. Nothing is published unless you tap.</p>
+      <div class="tile gl rel-new"><h3>New release</h3><div class="acts">${Object.keys(PL).map(p => `<label class="gs-sw"><input type="checkbox" data-rel-p="${p}"${tg[p] && tg[p].ready ? ' checked' : ''}> ${PL[p]}${tg[p] && !tg[p].ready ? ` <span class="muted em-small">(${esc(tg[p].note)})</span>` : ''}</label>`).join('')}</div>
+        <div class="acts"><select id="relFmt" aria-label="Android format"><option value="apk">Android: APK (install on a phone)</option><option value="aab">Android: AAB (Google Play)</option></select>
+          <button class="btn go" type="button" id="relGo">Build the release</button></div></div>
+      ${(d.releases || []).map(r => `<section class="tile gl"><div class="em-h"><h3>${esc(r.number)} · ${esc(r.version_name)} <span class="muted">game v${num(r.version)}</span></h3>${tag(r.status === 'done' ? 'ok' : r.status === 'failed' ? 'bad' : r.status === 'building' ? 'v' : 'warn', r.status)}</div>
+        <div class="rel-grid">${Object.entries(r.platforms || {}).map(([p, x]) => { const [c, n] = RST[x.status] || ['', x.status]; return `<div class="rel-item"><b>${esc(PL[p] || p)}</b> ${tag(c, n)}
+          ${x.mb ? `<span class="muted em-small">${num(x.mb)} MB${x.format ? ' · ' + esc(x.format.toUpperCase()) : ''}</span>` : ''}
+          ${x.url ? `<a class="btn go gs-mini" href="${esc(x.url)}">Download</a>` : ''}${x.note ? `<div class="muted em-small">${esc(x.note)}</div>` : ''}
+          ${((x.checks || {}).errors || []).map(e => `<div class="badc em-small">${esc(e)}</div>`).join('')}${((x.checks || {}).warnings || []).map(w => `<div class="muted em-small">${esc(w)}</div>`).join('')}</div>`; }).join('')}</div>
+        ${['done', 'partial'].includes(r.status) ? `<div class="acts rel-itch">${(r.itch || {}).card && r.itch.card.hash ? `<b>itch.io card:</b> ${esc(r.itch.card.target)} (${esc(Object.keys(r.itch.card.files || {}).join(', '))})
+            <button class="btn go gs-mini" type="button" data-itch-push="${esc(r.id)}" data-hash="${esc(r.itch.card.hash)}">Yes, upload to itch.io</button>` :
+          `<input data-itch-t="${esc(r.id)}" maxlength="140" placeholder="itch.io page: your-name/game-name" aria-label="itch.io page"><button class="btn soft gs-mini" type="button" data-itch-card="${esc(r.id)}">Prepare itch.io upload</button>`}
+          ${((r.itch || {}).pushed || []).slice(-1).map(p => `<span class="muted em-small">Last upload ${esc((p.at || '').slice(0, 16).replace('T', ' '))}: ${esc(p.results.map(x => x.platform + (x.ok ? ' ok' : ' failed')).join(', '))}</span>`).join('')}</div>` : ''}
+      </section>`).join('') || '<div class="empty">No releases yet.</div>'}
+      <section class="tile gl"><h3>itch.io key</h3><p class="muted em-small">${d.itch_key ? 'Your itch.io key is saved (sealed). Paste a new one to replace it.' : 'From itch.io > Settings > API keys. Only typed here, never in chat.'}</p>
+        <div class="acts"><input id="relKey" type="password" autocomplete="off" maxlength="80" placeholder="itch.io API key" aria-label="itch.io API key"><button class="btn soft" type="button" id="relKeySave">Save key</button></div></section>
+      <section class="tile gl"><h3>Store kit</h3><p class="muted em-small">Store texts for itch.io, Steam and Google Play within their limits, store images in the exact sizes, the AI disclosure, an age-rating draft and the Steam upload scripts. Nothing is published.</p>
+        <div class="acts"><button class="btn soft" type="button" id="relKit">${kit ? 'Write it again' : 'Make the store kit'}</button>${kit ? `<a class="btn go" href="${esc(kit.zip)}">Download the kit (ZIP)</a>` : ''}</div>
+        ${kit ? `<div class="rel-kit">${['itch', 'steam', 'play'].map(st => `<div><h4>${{itch: 'itch.io', steam: 'Steam', play: 'Google Play'}[st]}</h4>${Object.entries(kit[st] || {}).map(([k, v]) => `<p class="em-small"><b>${esc(k)}:</b> ${esc(Array.isArray(v) ? v.join(', ') : String(v))}</p>`).join('')}</div>`).join('')}</div>
+          <p class="em-small"><b>AI disclosure:</b> ${esc(kit.ai_disclosure)}</p>
+          <p class="em-small"><b>Age rating draft:</b> ${esc(Object.entries(kit.rating.expected).map(([k, v]) => k + ' ' + v).join(' · '))} - ${esc(kit.rating.note)}</p>
+          ${(kit.notes || []).map(n => `<p class="muted em-small">${esc(n)}</p>`).join('')}` : ''}</section>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsRelease(el, id); };
+    el.querySelector('#relBack').addEventListener('click', () => { GS_REL = false; gsBoard(el, id); });
+    el.querySelector('#relGo').addEventListener('click', () => {
+      const platforms = [...el.querySelectorAll('[data-rel-p]:checked')].map(x => x.dataset.relP);
+      if (!platforms.length) { toast('Pick at least one platform.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/releases`, {platforms, android_format: el.querySelector('#relFmt').value}), 'Building the release.');
+    });
+    el.querySelector('#relKeySave').addEventListener('click', () => { const key = el.querySelector('#relKey').value.trim(); if (!key) return;
+      go(() => api('POST', '/api/gamestudio/itch-key', {key}), 'Saved and sealed.'); });
+    el.querySelector('#relKit').addEventListener('click', async e => { e.target.disabled = true; e.target.textContent = 'Writing…';
+      try { GS_KIT = {id, k: await api('GET', `/api/gamestudio/${q}/store-kit${GS_KIT && GS_KIT.id === id ? '?regen=true' : ''}`)}; } catch (err) { toast(err.message, true); }
+      gsRelease(el, id); });
+    el.querySelectorAll('[data-itch-card]').forEach(b => b.addEventListener('click', () => {
+      const target = el.querySelector(`[data-itch-t="${CSS.escape(b.dataset.itchCard)}"]`).value.trim();
+      go(() => api('POST', `/api/gamestudio/${q}/releases/${encodeURIComponent(b.dataset.itchCard)}/itch`, {target}), 'The upload card is ready: check it, then tap Yes.');
+    }));
+    el.querySelectorAll('[data-itch-push]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm('Upload these files to your itch.io page now?')) return;
+      b.disabled = true; b.textContent = 'Uploading…';
+      go(() => api('POST', `/api/gamestudio/${q}/releases/${encodeURIComponent(b.dataset.itchPush)}/itch/push`, {hash: b.dataset.hash}), 'Uploaded to itch.io.');
+    }));
+    if ((d.releases || []).some(r => r.status === 'building')) GTIMER = setTimeout(() => { if (visible(el) && GS_REL) gsRelease(el, id); }, 6000);
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
     if (GS_BIBLE) return gsBible(el, id);
+    if (GS_ASSETS) return gsAssets(el, id);
+    if (GS_QA) return gsQa(el, id);
+    if (GS_REL) return gsRelease(el, id);
     let p;
     try { p = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}`); }
     catch (e) { GS_OPEN = ''; toast(e.message, true); return game(el); }
@@ -1016,7 +1220,10 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }).join('');
     el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gsBack">← Game Desk</button><h2>${esc(p.number)} · ${esc(p.title)}</h2>
         ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}
-        <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button></div>
+        <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button>
+        <button class="btn soft" type="button" id="gsRelBtn">Release</button>
+        <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
+        <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
       ${gsBars(p.milestones, p.gates || [])}
       ${(p.gates || [])[0] ? (() => { const gt = p.gates[0]; return `<div class="tile gl gs-gatecard"><b>Gate check · ${esc(gt.name)}: ${esc(gt.verdict)}</b>
@@ -1060,8 +1267,11 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>`;
     const q = encodeURIComponent(p.id);
     const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
-    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; GS_REL = false; el.innerHTML = ''; game(el); });
     el.querySelector('#gsBib').addEventListener('click', () => { GS_BIBLE = true; gsBible(el, id); });
+    el.querySelector('#gsAst').addEventListener('click', () => { GS_ASSETS = true; gsAssets(el, id); });
+    el.querySelector('#gsQaBtn').addEventListener('click', () => { GS_QA = true; gsQa(el, id); });
+    el.querySelector('#gsRelBtn').addEventListener('click', () => { GS_REL = true; gsRelease(el, id); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

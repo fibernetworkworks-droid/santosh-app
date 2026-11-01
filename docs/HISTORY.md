@@ -15576,3 +15576,111 @@ The six gaps left after v0.407, each closed:
 NOT VERIFIED: the real Opus spec until she runs vps-ops architect_check; no APK / iPhone build was run on a website's
 data (the phone API is proven, the native build path is App Sahayak's existing one); Arena numbers need her Arena run
 (Step 2 does not change how pages are designed, so they should match).
+
+## v0.415.0 ASSET PIPELINE (built as 0.409.0 / 0.411.0 / 0.414.0) (Hoola Game Engine plan, Phase 4) - 1 Nov 2026
+
+Owner: "GO PHASE 4". `server/app/gamedesk/assets.py` (table `game_assets`), `gamedesk/sfx.py`.
+
+- Kinds: sprite 128 / icon 96 / ui 256x96 / background = the game's screen size (photogen, ~Rs 3 fast, Rs 12 best);
+  sfx (code, free); music (Lyria, ~Rs 7, instrumental + loop fades -> OGG via ffmpeg); voice (TTS, ~Rs 1); model (3D
+  Studio GLB, model calls only). Keys follow the Bible ids (enemy red_bat -> sprite red_bat, level l1 -> bg_l1).
+- STYLE LOCK in code: `art_prompt` = palette + tone + genre + "original"; sprites / icons / ui drawn on flat magenta,
+  `key_out` (soft edge), `fit` (crop to subject, 94 % fit, exact size; backgrounds cover-crop), `palette_share` (visible
+  pixels near the palette or its shades), palette_lock check | strict (`snap` every pixel) | off. PNG metadata says
+  AI-generated; HoolaAssets.CREDITS ("made with AI (Hoola)") only when an AI-made asset is in the game (not her
+  uploads or code-made sounds) and the code guide shows it on the title screen.
+- SFX: 10 presets (jump, coin, hit, explosion, powerup, laser, blip, click, hurt, select), one oscillator + slide +
+  vibrato + arpeggio + envelope + low-pass, seeded noise; the same (preset, seed) = the same bytes; -1 dBFS peak.
+- Money: paid kinds stop at status `priced` (the price card); `spend(ids)` is ONLY her tap (API POST .../assets/spend,
+  console / phone buttons); the tool returns the card and can never spend. `spent_inr` per asset.
+- `check_file` in code: opens, exact size, transparent edges for alpha kinds, the backdrop really removed (`keyed`
+  share, found by a test: an opaque picture used to pass because fitting adds clear margins), not blank / not flat,
+  budget (error over 2x), palette, audio length per kind, silence / clipping, OGG / WAV web format, GLB magic.
+  A failed version is never approvable. Her uploads: PNG / JPEG / WAV / OGG / MP3 (-> OGG) / GLB by their bytes.
+- Versions: every remake = v+1 (history, 20 kept), `approve(key, v)` picks the one in the game; 3D models collected
+  by `collect_models` (worker + list view) when the 3D Studio job is done.
+- In the game: `service._build` adds `hoola_assets.gd` (Hoola's own, the model's copy replaced) + copies approved files
+  to `res://assets/<key>.<ext>` after each write; `template.files` adds the HoolaAssets autoload; versions record
+  `assets`; `apply` = data build (no model call); source ZIP + GitHub export carry assets/ (GitHub tree now nested).
+- REAL GODOT 4.7.2: keyed sprite 128x128 + code-made coin WAV + OGG music loaded via HoolaAssets headless and in the
+  Web export (60 fps); full pipeline e2e (sprite + sfx approved -> task build v2 -> smoke log "P4 OK" -> ZIP has assets).
+- Tool `game_assets` (list / suggest / make / approve / reject / apply), API `/api/gamestudio/{id}/assets*` + signed
+  `/api/gamestudio/asset/{aid}/{v}`; console board > Assets (`gsAssets`, `ga-*` CSS); phone `game_assets_screen.dart`.
+- Tests `test_v0411_game_assets.py` (9).
+- Not verified: GLB loading in a real Godot build (no Blender in the sandbox); real photogen / Lyria / TTS output (faked).
+
+## v0.415.0 QA FARM + BUG TRACKER (Hoola Game Engine plan, Phase 5; built as 0.410.0 / 0.412.0) - 1 Nov 2026
+
+Owner: "GO PHASE 5". `server/app/gamedesk/qa.py` (table `game_bugs`, `game_studios.qa` reports).
+
+- PROBE (`template.PROBE`): HoolaProbe.state(key, value) / event(name) -> window.__hoola.state / events (the code
+  guide asks every game to report state title|playing|game_over, score, level, game_over / level_up / win).
+- BOTS (`_actions`, seeded: the plan is the replay): idle, monkey, tapper, keys, restarter (restarts after each
+  game_over event). PROFILES desktop 1x / mid_phone 4x CPU + touch / low_phone 6x (CDP Emulation.setCPUThrottlingRate).
+  `run_bot`: fps per second, frames, state / events, game overs, restarts, stuck time, memory, start / end shots.
+- FOUND LIVE: (1) a release web build prints NO script errors in the browser, so a Space-key crash passed the
+  playtest and went live -> the farm plays a DEBUG export (`engine.export_web(debug=True)`, `setup_godot.py` now
+  fetches templates/web_nothreads_debug.zip; no template = NOT ASSESSED, never a pass) and EVERY build's playtest plays
+  a debug build (`service._play_build`; play link keeps the release build; debug build never kept); a real run then
+  caught the crash in the build's fix round and shipped the fixed version. (2) keys only reach a focused canvas.
+- BUGS: errors / freezes / blank screens / broken restart / stuck screens -> `file_bug` (signature = normalised
+  text; repeats counted; a FIXED bug seen again = REGRESSION, reopened); her own reports (`report_bug`); `fix_bug` =
+  board task (role from the words, priority 1 for crash / blocker) with the criterion "QA bot X (seed, profile) no
+  longer finds B-000N"; she cannot mark a bot bug fixed by hand - every farm run replays every open bug's exact steps
+  and closes it only when it is gone.
+- GOLDEN: idle bot's start screen vs her approved one (`diff_share` on a small picture, > 3 % = looks different);
+  none = NOT ASSESSED. SPEED: fps average vs the last run (> 25 % drop = concern + perf bug).
+- Verdict PASS / CONCERNS / FAIL / NOT ASSESSED in code; kept on the project (12 runs; shots pruned); decisions log;
+  runs after every good nightly (`GAME_QA_NIGHTLY`); gate check (crash bugs / FAIL = blockers, not run = concern) and
+  the morning report read it.
+- REAL GODOT 4.7.2: the probe + restarter (4 game overs, 4 restarts), mid phone throttle (~26 vs 60 fps), the hidden
+  Space crash filed as B-0001 by the keys bot, "Fix it" -> T-0002, fixed build -> farm marked B-0001 fixed.
+- Tool `game_qa` (run / report / bugs / report_bug / fix / status / golden), API `/api/gamestudio/{id}/qa*` /
+  `/bugs*` + signed `/api/gamestudio/qa-shot/{sid}`; console board > QA (`gsQa`, `qa-*` CSS); phone `game_qa_screen.dart`.
+- Tests `test_v0415_game_qa.py` (11). VPS: run `python deploy/setup_godot.py` again once (the debug template).
+
+
+## v0.415.0 GAME PLATFORMS (Hoola Game Engine plan, Phase 6; built as 0.413.0) - 1 Nov 2026
+Owner: "GO PHASE 6". Shipped together with Phase 4 (assets) and Phase 5 (QA farm) as ONE v0.415.0, because another
+session took v0.414 on main moments before the push (REBASE PROTOCOL: re-versioned, both works kept).
+
+What it does (`server/app/gamedesk/platforms.py`, table `game_releases`, `GameStudio.platform` JSON column):
+- RELEASE = the live version of her game exported for the platforms she picks, each file CHECKED in code
+  (`check_artifact`: exists, right kind inside - ELF / PE / .app in a zip / APK-AAB zip with a manifest - size
+  budget, sha256) and given a 7-day signed download link (`download_url`, HMAC, expiry).
+  * linux / windows / macos: exported ON the server with Godot's release templates (`--export-release`, one-file
+    builds with the data embedded), zipped with a README. macOS = universal, ad-hoc signed, NOT notarised (the README
+    and the store kit say "right-click > Open the first time"). Mac bundle ids may not contain `_` (Godot refuses).
+  * android: APK or AAB built in HER private builds repo (App Builder's GitHub runner: `runners.push_tree` +
+    `dispatch_wait` + `artifacts`, new workflow `server/app_builder/hoola-game.yml`, kept equal on the repo by
+    `runners.sync_workflows`, WORKFLOWS += hoola-game.yml) because it needs the Android SDK. Signed with the game's
+    OWN upload key (PKCS12 made with `cryptography`, sealed in the vault, never shown; the runner gets it only inside
+    the pushed tree, passed by GODOT_ANDROID_KEYSTORE_RELEASE_*). No builds repo = NOT ASSESSED, never a fake file.
+  * every game asks for NO internet permission; the package `com.hoola.<slug><hash6>` is made once per project and
+    never changes; the version code only goes up (`_next_code`).
+  * the app icon = her approved `app_icon` asset when there is one (`_app_icon`).
+- STORE KIT (`store_kit`): itch.io / Steam / Google Play texts clipped to each store's limits in code (LIMITS), store
+  images drawn in code in the exact sizes (itch cover 630x500, Steam header 920x430 / small 462x174 / main 1232x706 /
+  library 600x900, Play feature 1024x500 / icon 512x512) from the game's own screens + title + Bible palette (a bad
+  screenshot falls back to a plain background), the AI-content disclosure from the asset list, Steam upload scripts
+  (app_build / depot VDF - Hoola never logs into her Steam), one ZIP with a signed link.
+- AGE RATING DRAFT (`rating_draft`): IARC-style answers from the Game Bible entities and words (violence only from real
+  enemies / weapons, never from field names), the assets and Hoola's own rules (no real money, no chat, no location,
+  no ads) -> a DRAFT; the real rating comes from IARC / the store.
+- ITCH.IO: her own itch.io API key (typed in the app, sealed in SiteHostingKey provider "itch"); an upload is a CARD
+  (hash of release + target + files) and only her tap runs itch's official `butler push` (butler from broth.itch.zone;
+  the key is redacted from logs). Nothing is published by Hoola alone.
+- Setup: `python deploy/setup_godot.py --desktop` (or `--desktop --templates-only`) fetches the Linux / Windows / macOS
+  release templates (~310 MB).
+
+API: GET/POST /api/gamestudio/{id}/releases, GET /api/gamestudio/release/{rid}/{platform}?exp&sig, GET
+/api/gamestudio/{id}/store-kit, GET /api/gamestudio/{id}/rating, POST /api/gamestudio/itch-key, POST
+/api/gamestudio/{id}/releases/{rid}/itch (card), POST .../itch/push {hash} (her tap). Agent tool `game_release`
+(targets / build / list / store_kit / rating / itch). Console Game Desk board > Release (`gsRelease`), phone
+`lib/ui/game_release_screen.dart` + a Release button on the project screen.
+
+Verified here with the real Godot 4.7.2: release R-001 of a test game - Linux 28 MB, Windows 38 MB, macOS 60 MB
+(universal zip), each passed its check; a second release kept the package and raised the version code; store kit
+images + texts made; rating draft = E / PEGI 3 for a no-violence game. Tests `test_v0415_game_platforms.py` (9).
+NOT VERIFIED: the Android build (no Android SDK in this sandbox; the SDK install was refused here) - the first build
+in her builds repo is what will confirm it; itch.io push not run against a real account; iOS not built.

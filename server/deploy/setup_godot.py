@@ -69,15 +69,22 @@ def fetch(url: str, dest: Path) -> None:
         shutil.copyfileobj(r, f)
 
 
+# v0.415 GAME PLATFORMS: desktop builds run on this server (Android needs the Android SDK: the builds repo does it)
+DESKTOP = ("templates/linux_release.x86_64", "templates/windows_release_x86_64.exe", "templates/macos.zip")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", default="4.7.2")
     ap.add_argument("--dir", default=os.environ.get("GODOT_DIR", str(Path.home() / "apps" / "godot")))
+    ap.add_argument("--desktop", action="store_true",
+                    help="v0.415: also the Linux / Windows / macOS release templates (~310 MB) for desktop builds on this server")
+    ap.add_argument("--templates-only", action="store_true", help="skip the Godot binary (already installed)")
     a = ap.parse_args()
     v, home = a.version, Path(a.dir)
     home.mkdir(parents=True, exist_ok=True)
     binp = home / f"Godot_v{v}-stable_linux.x86_64"
-    if not binp.exists():
+    if not binp.exists() and not a.templates_only:
         z = home / "godot.zip"
         print("downloading Godot", v)
         fetch(BASE.format(v=v) + f"Godot_v{v}-stable_linux.x86_64.zip", z)
@@ -86,15 +93,20 @@ def main() -> int:
         z.unlink()
         binp.chmod(binp.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     link = home / "godot"
-    if link.exists() or link.is_symlink():
-        link.unlink()
-    link.symlink_to(binp.name)
+    if binp.exists():
+        if link.exists() or link.is_symlink():
+            link.unlink()
+        link.symlink_to(binp.name)
     tdir = Path.home() / ".local/share/godot/export_templates" / f"{v}.stable"
     tdir.mkdir(parents=True, exist_ok=True)
     print("reading the templates index (range requests)")
     with zipfile.ZipFile(HttpFile(BASE.format(v=v) + f"Godot_v{v}-stable_export_templates.tpz")) as tz:
         names = [n for n in tz.namelist() if n in ("templates/version.txt", "templates/web_nothreads_release.zip",
-                                                   "templates/web_release.zip")]
+                                                   "templates/web_release.zip",
+                                                   # v0.415 QA farm: a debug web build is the only one that prints script
+                                                   # errors in the browser (release builds hide them)
+                                                   "templates/web_nothreads_debug.zip")
+                 or (a.desktop and n in DESKTOP)]
         for n in names:
             print("  ", n)
             with tz.open(n) as src, open(tdir / Path(n).name, "wb") as dst:

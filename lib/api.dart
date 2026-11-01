@@ -1032,6 +1032,45 @@ class Api {
   Future<Map<String, dynamic>> gameStudioGate(String id, String milestone) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/gate', body: {'milestone': milestone},
           timeout: const Duration(seconds: 90)) as Map);
+  // v0.415 asset pipeline (paid kinds start only by gameAssetsSpend = her tap on the price card)
+  Future<Map<String, dynamic>> gameAssets(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/assets', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameAssetsSuggest(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/assets/suggest') as Map);
+  Future<Map<String, dynamic>> gameAssetsNew(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets', body: body) as Map);
+  Future<Map<String, dynamic>> gameAssetsSpend(String id, List<String> ids) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets/spend', body: {'ids': ids}) as Map);
+  Future<Map<String, dynamic>> gameAssetsDo(String id, String key, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets/$key/$what', body: {}) as Map);
+  Future<Map<String, dynamic>> gameAssetsApply(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets-apply', body: {}) as Map);
+  String absolute(String path) =>
+      path.startsWith('http') ? path : '${baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}$path';
+  // v0.415 QA farm + bugs
+  Future<Map<String, dynamic>> gameQa(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/qa', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameQaRun(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/qa/run', body: {}) as Map);
+  Future<Map<String, dynamic>> gameQaGolden(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/qa/golden', body: {}) as Map);
+  Future<Map<String, dynamic>> gameBugNew(String id, String title, String severity) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bugs', body: {'title': title, 'severity': severity}) as Map);
+  Future<Map<String, dynamic>> gameBugDo(String id, String number, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bugs/$number/$what', body: {}) as Map);
+  // v0.415 platforms (uploads only by gameItchPush = her tap)
+  Future<Map<String, dynamic>> gameReleases(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/releases', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameReleaseNew(String id, List<String> platforms, String format) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/releases',
+          body: {'platforms': platforms, 'android_format': format}) as Map);
+  Future<Map<String, dynamic>> gameStoreKit(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/store-kit', timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> gameItchCard(String id, String rid, String target) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/releases/$rid/itch', body: {'target': target}) as Map);
+  Future<Map<String, dynamic>> gameItchPush(String id, String rid, String hash) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/releases/$rid/itch/push', body: {'hash': hash},
+          timeout: const Duration(seconds: 900)) as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk

@@ -26,6 +26,34 @@ POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
 POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
 
+v0.415 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
+GET    /api/gamestudio/{id}/releases            releases + where each platform can be built + package + itch key set?
+POST   /api/gamestudio/{id}/releases            {platforms: [linux, windows, macos, android], android_format: apk|aab}
+GET    /api/gamestudio/release/{rid}/{platform}?exp&sig   a signed download (kit-<sid>/kit = the store kit ZIP)
+GET    /api/gamestudio/{id}/store-kit?regen     store texts (limits checked), images, AI disclosure, rating draft, Steam scripts
+GET    /api/gamestudio/{id}/rating              the age-rating draft (IARC-style answers)
+POST   /api/gamestudio/itch-key                 {key}  her itch.io API key (app only, sealed)
+POST   /api/gamestudio/{id}/releases/{rid}/itch {target: user/game}  the upload card
+POST   /api/gamestudio/{id}/releases/{rid}/itch/push {hash}  HER TAP: butler push
+
+v0.415 QA farm (bots play a DEBUG web build; no model, no money):
+GET    /api/gamestudio/{id}/qa                  bugs + the last report (signed screenshot links) + history + running
+POST   /api/gamestudio/{id}/qa/run              run the farm now (background, 2-4 minutes)
+POST   /api/gamestudio/{id}/qa/golden           {rel?}  her OK: this start screen is the golden one
+POST   /api/gamestudio/{id}/bugs                {title, detail?, severity?}  her own bug report
+POST   /api/gamestudio/{id}/bugs/{B-0001}/fix|open|wontfix|duplicate   fix = a board task whose criterion is the bot
+GET    /api/gamestudio/qa-shot/{sid}?rel&exp&sig  a signed QA screenshot
+
+v0.415 Asset pipeline (her OK before anything enters the game; paid kinds only after her tap on the price card):
+GET    /api/gamestudio/{id}/assets              assets + price card + spent
+GET    /api/gamestudio/{id}/assets/suggest      what the game still needs, from the Bible (nothing priced)
+POST   /api/gamestudio/{id}/assets              {kind, key, words, size?, quality?, palette_lock?, preset?, seed?, text?...}
+POST   /api/gamestudio/{id}/assets/spend        {ids}  HER TAP: the priced assets start
+POST   /api/gamestudio/{id}/assets/upload       {kind, key, data (base64), words?}  her own file, checked by its bytes
+POST   /api/gamestudio/{id}/assets/{key}/approve|reject|remove   {v?}
+POST   /api/gamestudio/{id}/assets-apply        approved assets into the live game (no model call)
+GET    /api/gamestudio/asset/{aid}/{v}?exp&sig  a signed preview link
+
 v0.406 Hoola Game Crew:
 GET    /api/gamestudio/crew            the 49 roles (tiers, builds / writes) + the 9 team flows
 POST   /api/gamestudio/{id}/plan       {words?, team?}  team = combat | narrative | ui | level | polish | audio | live_ops | qa | release
@@ -279,6 +307,170 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if what == "recurve":
             return await bcall(B.recurve, tenant, sid, str(b.get("kind") or ""))
         raise HTTPException(404, "generate | seed | accept | reject | simulate | apply | recurve")
+
+    # ------------------------------------------------------------ v0.415 asset pipeline
+    from . import assets as A
+
+    async def acall(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (A.AssetError, service.GameError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/gamestudio/asset/{aid}/{v}")
+    def asset_file(aid: str, v: int, exp: int = 0, sig: str = ""):
+        p, media = A.file_for(aid, v, exp, sig)
+        if p is None:
+            raise HTTPException(404, "asset link purana / galat hai")
+        return FileResponse(p, media_type=media, headers={"Cache-Control": "private, max-age=3600",
+                                                          "X-Content-Type-Options": "nosniff"})
+
+    @r.get("/api/gamestudio/{sid}/assets", dependencies=[Depends(require_key)])
+    async def as_list(sid: str, tenant: str = Depends(current_tenant)):
+        await acall(A.collect_models, tenant, sid)
+        return await acall(A.assets, tenant, sid)
+
+    @r.get("/api/gamestudio/{sid}/assets/suggest", dependencies=[Depends(require_key)])
+    async def as_suggest(sid: str, tenant: str = Depends(current_tenant)):
+        return {"suggest": await acall(A.suggest, tenant, sid)}
+
+    @r.post("/api/gamestudio/{sid}/assets", dependencies=[Depends(require_key)])
+    async def as_new(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        spec = {k: b.get(k) for k in ("w", "h", "size", "quality", "palette_lock", "view", "preset", "seed", "mood", "bpm",
+                                      "text", "voice", "language") if b.get(k) not in (None, "")}
+        await acall(A.request, tenant, sid, str(b.get("kind") or ""), str(b.get("key") or ""), str(b.get("words") or ""), **spec)
+        return await acall(A.assets, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/assets/spend", dependencies=[Depends(require_key)])
+    async def as_spend(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        """HER TAP on the price card - the only way a paid asset starts."""
+        ids = [str(x) for x in (_b(body).get("ids") or []) if isinstance(x, str)]
+        return await acall(A.spend, tenant, sid, ids)
+
+    @r.post("/api/gamestudio/{sid}/assets/upload", dependencies=[Depends(require_key)])
+    async def as_upload(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        await acall(A.upload, tenant, sid, str(b.get("kind") or ""), str(b.get("key") or ""), str(b.get("data") or ""),
+                    str(b.get("words") or ""))
+        return await acall(A.assets, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/assets/{key}/{what}", dependencies=[Depends(require_key)])
+    async def as_do(sid: str, key: str, what: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        if what == "approve":
+            try:
+                v = int(b.get("v") or 0)
+            except (TypeError, ValueError):
+                v = 0
+            await acall(A.approve, tenant, sid, key, v)
+        elif what == "reject":
+            await acall(A.reject, tenant, sid, key)
+        elif what == "remove":
+            await acall(A.remove, tenant, sid, key)
+        else:
+            raise HTTPException(404, "approve | reject | remove")
+        return await acall(A.assets, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/assets-apply", dependencies=[Depends(require_key)])
+    async def as_apply(sid: str, tenant: str = Depends(current_tenant)):
+        return await acall(A.apply, tenant, sid)
+
+    # ------------------------------------------------------------ v0.415 QA farm + bug tracker
+    from . import qa as Q
+
+    async def qcall(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (Q.QaError, service.GameError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/gamestudio/qa-shot/{sid}")
+    def qa_shot(sid: str, rel: str = "", exp: int = 0, sig: str = ""):
+        p = Q.shot_file(sid, rel, exp, sig)
+        if p is None:
+            raise HTTPException(404, "screenshot link purana / galat hai")
+        return FileResponse(p, media_type="image/png", headers={"Cache-Control": "private, max-age=3600"})
+
+    @r.get("/api/gamestudio/{sid}/qa", dependencies=[Depends(require_key)])
+    async def qa_home(sid: str, tenant: str = Depends(current_tenant)):
+        d = await qcall(Q.bugs, tenant, sid)
+        st = await qcall(S.get, tenant, sid)
+        d["last"] = Q.with_links(st["id"], d.get("last") or {})
+        d["running"] = Q.running(st["id"])
+        return d
+
+    @r.post("/api/gamestudio/{sid}/qa/run", dependencies=[Depends(require_key)])
+    async def qa_run(sid: str, tenant: str = Depends(current_tenant)):
+        return await qcall(Q.start, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/qa/golden", dependencies=[Depends(require_key)])
+    async def qa_golden(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        return await qcall(Q.approve_golden, tenant, sid, str(_b(body).get("rel") or ""))
+
+    @r.post("/api/gamestudio/{sid}/bugs", dependencies=[Depends(require_key)])
+    async def bug_new(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await qcall(Q.report_bug, tenant, sid, str(b.get("title") or ""), str(b.get("detail") or ""),
+                           str(b.get("severity") or "major"))
+
+    @r.post("/api/gamestudio/{sid}/bugs/{number}/{what}", dependencies=[Depends(require_key)])
+    async def bug_do(sid: str, number: str, what: str, tenant: str = Depends(current_tenant)):
+        if what == "fix":
+            return await qcall(Q.fix_bug, tenant, sid, number)
+        if what in ("open", "wontfix", "duplicate", "fixed"):
+            return await qcall(Q.set_bug, tenant, sid, number, what)
+        raise HTTPException(404, "fix | open | wontfix | duplicate | fixed")
+
+    # ------------------------------------------------------------ v0.415 game platforms
+    from . import platforms as PF
+
+    async def pcall(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (PF.PlatformError, service.GameError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/gamestudio/release/{rid}/{platform}")
+    def rel_file(rid: str, platform: str, exp: int = 0, sig: str = ""):
+        p = PF.kit_file(rid[4:], exp, sig) if rid.startswith("kit-") and platform == "kit" else PF.download_file(rid, platform, exp, sig)
+        if p is None:
+            raise HTTPException(404, "download link purana / galat hai")
+        return FileResponse(p, filename=p.name, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+
+    @r.get("/api/gamestudio/{sid}/releases", dependencies=[Depends(require_key)])
+    async def rel_list(sid: str, tenant: str = Depends(current_tenant)):
+        return await pcall(PF.releases, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/releases", dependencies=[Depends(require_key)])
+    async def rel_new(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        plats = [str(x) for x in (b.get("platforms") or []) if isinstance(x, str)]
+        await pcall(PF.release, tenant, sid, plats, "aab" if b.get("android_format") == "aab" else "apk")
+        return await pcall(PF.releases, tenant, sid)
+
+    @r.get("/api/gamestudio/{sid}/store-kit", dependencies=[Depends(require_key)])
+    async def rel_kit(sid: str, regen: bool = False, tenant: str = Depends(current_tenant)):
+        return await pcall(PF.store_kit, tenant, sid, regen)
+
+    @r.get("/api/gamestudio/{sid}/rating", dependencies=[Depends(require_key)])
+    async def rel_rating(sid: str, tenant: str = Depends(current_tenant)):
+        st = await pcall(S.get, tenant, sid)
+        return await pcall(PF.rating_draft, tenant, st["id"])
+
+    @r.post("/api/gamestudio/itch-key", dependencies=[Depends(require_key)])
+    async def rel_itch_key(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        """Her itch.io API key, typed in the app (never in chat); sealed."""
+        return await pcall(PF.set_itch_key, tenant, str(_b(body).get("key") or ""))
+
+    @r.post("/api/gamestudio/{sid}/releases/{rid}/itch", dependencies=[Depends(require_key)])
+    async def rel_itch(sid: str, rid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        return await pcall(PF.itch_card, tenant, sid, rid, str(_b(body).get("target") or ""))
+
+    @r.post("/api/gamestudio/{sid}/releases/{rid}/itch/push", dependencies=[Depends(require_key)])
+    async def rel_itch_push(sid: str, rid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        """HER TAP on the itch.io card - the only way anything is uploaded."""
+        return await pcall(PF.itch_push, tenant, sid, rid, str(_b(body).get("hash") or ""))
 
     @r.get("/play/{token}")
     def play_root(token: str):

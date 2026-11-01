@@ -1,0 +1,94 @@
+# v0.415 Hoola GAME builds on GitHub Actions (same private builds repo as App Builder, APP_BUILD_MODE=github).
+# Hoola keeps this file current itself (Workflows: Read and write on the token), or copy it to .github/workflows/.
+# Hoola pushes the game's Godot project to the branch build/game-<project> under hoola-game/game/ with its upload key in
+# hoola-game/keys/ (PKCS12, made for this game and kept sealed on Hoola), then starts this workflow. The APK (to install on
+# a phone) or the AAB (for Google Play) + build.log come back as the artifact hoola-game-<job>.
+# Android export runs here and not on Hoola's server because it needs the Android SDK and Java.
+name: hoola-game
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: build id
+        required: true
+      format:
+        description: apk (install on a phone) or aab (Google Play bundle)
+        required: false
+        default: apk
+      godot:
+        description: Godot version
+        required: false
+        default: "4.7.2"
+jobs:
+  game:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GV: ${{ inputs.godot }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Android SDK
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "build-tools;35.0.0" "platforms;android-35" "platform-tools" > /dev/null || true
+      - uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GV }}-android
+      - name: Godot + Android templates (official releases)
+        run: |
+          set -e
+          mkdir -p ~/godot
+          cd ~/godot
+          if [ ! -f "Godot_v${GV}-stable_linux.x86_64" ]; then
+            curl -fsSL -o g.zip "https://github.com/godotengine/godot/releases/download/${GV}-stable/Godot_v${GV}-stable_linux.x86_64.zip"
+            unzip -q g.zip && rm g.zip
+          fi
+          if [ ! -f templates/android_release.apk ]; then
+            curl -fsSL -o t.tpz "https://github.com/godotengine/godot/releases/download/${GV}-stable/Godot_v${GV}-stable_export_templates.tpz"
+            unzip -q t.tpz "templates/android_*" "templates/version.txt" && rm t.tpz
+          fi
+          T="$HOME/.local/share/godot/export_templates/${GV}.stable"
+          mkdir -p "$T" && cp templates/* "$T/"
+          chmod +x "Godot_v${GV}-stable_linux.x86_64"
+          echo "GODOT=$HOME/godot/Godot_v${GV}-stable_linux.x86_64" >> "$GITHUB_ENV"
+      - name: Editor settings (SDK + Java), debug keystore
+        run: |
+          set -e
+          MAJ="${GV%.*}"
+          mkdir -p ~/.config/godot
+          keytool -genkeypair -v -keystore ~/debug.keystore -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" > /dev/null 2>&1
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\nexport/android/debug_keystore = "%s"\nexport/android/debug_keystore_user = "androiddebugkey"\nexport/android/debug_keystore_pass = "android"\n' \
+            "$ANDROID_HOME" "$JAVA_HOME" "$HOME/debug.keystore" > ~/.config/godot/editor_settings-${MAJ}.tres
+      - name: Export
+        run: |
+          set -o pipefail
+          cd hoola-game/game
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$GITHUB_WORKSPACE/hoola-game/keys/upload.p12"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$(python3 -c 'import json;print(json.load(open("../keys/upload.json"))["alias"])')"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$(python3 -c 'import json;print(json.load(open("../keys/upload.json"))["password"])')"
+          mkdir -p ../dist/android
+          "$GODOT" --headless --path . --import 2>&1 | tail -20 | tee ../build.log
+          if [ "${{ inputs.format }}" = "aab" ]; then
+            "$GODOT" --headless --path . --install-android-build-template 2>&1 | tee -a ../build.log
+          fi
+          "$GODOT" --headless --path . --export-release "Android" "../dist/android/game.${{ inputs.format }}" 2>&1 | tee -a ../build.log
+          ls -la ../dist/android | tee -a ../build.log
+          test -s "../dist/android/game.${{ inputs.format }}"
+      - name: Keys never leave as artifacts
+        if: always()
+        run: rm -rf hoola-game/keys ~/debug.keystore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hoola-game-${{ inputs.job }}
+          path: |
+            hoola-game/dist/
+            hoola-game/build.log
+          retention-days: 3

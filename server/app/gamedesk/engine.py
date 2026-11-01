@@ -86,7 +86,7 @@ def net_isolation() -> bool:
 def health() -> dict[str, Any]:
     b = find()
     return {"installed": bool(b), "version": version() if b else "", "web_templates": bool(templates_dir()),
-            "no_network": net_isolation() if b else False}
+            "debug_template": debug_template(), "no_network": net_isolation() if b else False}
 
 
 def _limits():
@@ -173,15 +173,25 @@ def smoke(job: Path, frames: int = 600, holder: dict | None = None) -> dict[str,
     return {"ok": not errs, "errors": errs, "seconds": round(time.time() - t0, 1), "exit": code}
 
 
-def export_web(job: Path, holder: dict | None = None) -> dict[str, Any]:
-    """Web export into job/build: index.html / .js / .wasm / .pck (+ .wasm.gz and .pck.gz for small downloads)."""
+def debug_template() -> bool:
+    """v0.415 the debug web template (QA farm: release web builds print no script errors in the browser)."""
+    t = templates_dir()
+    return bool(t and (t / "web_nothreads_debug.zip").is_file())
+
+
+def export_web(job: Path, holder: dict | None = None, debug: bool = False) -> dict[str, Any]:
+    """Web export into job/build: index.html / .js / .wasm / .pck (+ .wasm.gz and .pck.gz for small downloads).
+    debug=True (QA farm) -> job/build_debug with Godot's debug template, so script errors reach the browser console."""
     if templates_dir() is None:
         raise EngineError("Godot ke Web export templates nahi mile (deploy/setup_godot.py chalaiye)")
-    out = job / "build"
+    if debug and not debug_template():
+        raise EngineError("Godot ka debug Web template nahi mila (deploy/setup_godot.py dobara chalaiye)")
+    out = job / ("build_debug" if debug else "build")
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
     t0 = time.time()
-    code, log, to = _run(job, ["--path", "proj", "--export-release", "Web", "../build/index.html"], "export.log",
+    code, log, to = _run(job, ["--path", "proj", "--export-debug" if debug else "--export-release", "Web",
+                               f"../{out.name}/index.html"], "export_debug.log" if debug else "export.log",
                          _env_int("GAME_EXPORT_TIMEOUT_S", 300), holder)
     ok = (out / "index.html").is_file() and (out / "index.wasm").is_file() and (out / "index.pck").is_file()
     if not ok:
