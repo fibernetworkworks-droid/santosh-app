@@ -284,7 +284,7 @@ class _GameDeskScreenState extends State<GameDeskScreen> {
             const SizedBox(height: 12),
             if (!_loaded) const Center(child: CircularProgressIndicator()) else _newGame(ready),
             const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 8, children: [      // v0.419 the Game Desk team (each role hired on its own)
+            Wrap(spacing: 8, runSpacing: 8, children: [      // v0.420 the Game Desk team (each role hired on its own)
               OutlinedButton.icon(
                   icon: const Icon(Icons.terrain_outlined),
                   label: const Text('Worlds'),

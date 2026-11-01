@@ -762,6 +762,7 @@ def init_db(url: str | None = None):
     from .appmaker import owndb_conns as _app_owndb_conns  # noqa: F401  (v0.404 her MySQL / MongoDB / Firebase connections, sealed)
     from .appmaker import live as _app_live  # noqa: F401  (v0.407 ABHI ABHI: presence / typing signals for live apps)
     from .appmaker import track as _app_track  # noqa: F401  (v0.412 NAKSHA LIVE: rider shifts + one current position)
+    from .appmaker import pay as _app_pay  # noqa: F401  (v0.419 PAISA: her gateway keys (sealed), payments, refunds, AutoPay)
     from .appmaker import owndb as _app_owndb  # noqa: F401  (v0.396 her own database per app: the write-through hook)
     from .appmaker import refs as _app_refs  # noqa: F401  (v0.390 indexed links between an app's rows)
     from .site import arena as _site_arena  # noqa: F401  (v0.307 Design Arena runs / items / duels)
@@ -918,8 +919,8 @@ def init_db(url: str | None = None):
     from .gamedesk import assets as _gameassets  # noqa: F401  (v0.416 asset pipeline)
     from .gamedesk import qa as _gameqa  # noqa: F401  (v0.416 QA farm + bugs)
     from .gamedesk import platforms as _gameplatforms  # noqa: F401  (v0.416 game platforms)
-    from .gamedesk import world as _gameworld  # noqa: F401  (v0.419 procedural worlds)
-    from .gamedesk import physics as _gamephysics  # noqa: F401  (v0.419 physics lab)
+    from .gamedesk import world as _gameworld  # noqa: F401  (v0.420 procedural worlds)
+    from .gamedesk import physics as _gamephysics  # noqa: F401  (v0.420 physics lab)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

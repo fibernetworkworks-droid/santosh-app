@@ -1,4 +1,4 @@
-"""v0.419 ROLE PACKS (Hoola Game Engine plan Phase 7, docs/GAME_DESK_PLAN.md section 5): each Game Desk role adds a pack
+"""v0.420 ROLE PACKS (Hoola Game Engine plan Phase 7, docs/GAME_DESK_PLAN.md section 5): each Game Desk role adds a pack
 that writes its OWN autoload into every build of her game - the same rule as the Game Bible and the assets: Hoola
 writes it from data she approved, the model only reads it (ai.GUIDE) and never edits or re-outputs it.
 

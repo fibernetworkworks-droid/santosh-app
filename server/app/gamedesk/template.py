@@ -118,7 +118,7 @@ progressive_web_app/enabled=false
 
 
 # Hoola's OWN autoloads (written by Hoola from approved data, never by the model): file -> autoload name. v0.395 Bible,
-# v0.416 assets, v0.419 the role packs (World = Procedural World Engineer, Physics = Physics Engine Developer).
+# v0.416 assets, v0.420 the role packs (World = Procedural World Engineer, Physics = Physics Engine Developer).
 HOOLA_OWN = {"hoola_bible.gd": "HoolaBible", "hoola_assets.gd": "HoolaAssets", "hoola_world.gd": "HoolaWorld",
              "hoola_physics.gd": "HoolaPhysics"}
 

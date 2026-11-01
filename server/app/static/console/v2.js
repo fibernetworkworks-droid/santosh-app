@@ -118,7 +118,7 @@ function syncEmployees(hired) {                     // v0.317 a desk appears in 
   if (ME) ME.employees = hired || {};
   let moved = false;
   for (const [key, view, label] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk']]) {   // v0.353 + Social Desk
-    const want = !!(hired && (hired[key] || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev)))), has = NAV.some(([k]) => k === view);   // v0.419 any Game Desk role opens the Game Desk
+    const want = !!(hired && (hired[key] || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev)))), has = NAV.some(([k]) => k === view);   // v0.420 any Game Desk role opens the Game Desk
     if (want && !has) NAV.splice(NAV.findIndex(([k]) => k === 'hire') + 1, 0, [view, label]);
     if (!want && has) NAV.splice(NAV.findIndex(([k]) => k === view), 1);
     if (want !== has) { moved = true; if (!want && VIEW === view) go('hire'); }

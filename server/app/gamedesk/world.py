@@ -1,4 +1,4 @@
-"""v0.419 PROCEDURAL WORLD GENERATION (Hoola Game Engine plan Phase 7, Game Desk plan role 6 - the Procedural World
+"""v0.420 PROCEDURAL WORLD GENERATION (Hoola Game Engine plan Phase 7, Game Desk plan role 6 - the Procedural World
 Generation Engineer): terrain, dungeons, cities and platformer levels from RULES and a SEED, made by CODE (numpy, no
 model, no money), checked in code, previewed, walkable, and put into her game as Hoola's own HoolaWorld autoload.
 

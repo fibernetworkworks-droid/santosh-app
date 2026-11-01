@@ -236,7 +236,7 @@ def test_hire_card_group_and_tool_gate(gd):
     cat = {e["key"]: e for e in hire.catalog("default")}
     assert cat["game_dev"]["live"] and cat["game_dev"]["group"] == hire.GAME_GROUP
     soon = [k for k, e in cat.items() if e.get("group") == hire.GAME_GROUP and not e["live"]]
-    assert len(soon) == 7                                                         # v0.419: procgen_dev + physics_dev went live
+    assert len(soon) == 7                                                         # v0.420: procgen_dev + physics_dev went live
     assert cat["procgen_dev"]["live"] and cat["physics_dev"]["live"]
     ctx = Ctx(tenant_id="default", conversation_id="c1")
     with pytest.raises(tools.ToolError, match="hire"):

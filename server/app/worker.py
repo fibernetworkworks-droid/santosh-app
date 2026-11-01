@@ -379,6 +379,8 @@ def applogic_jobs() -> None:
             BK.daily_tick()                  # v0.390 PAKKI NEEV: a daily snapshot of every app's data + its limits watched
             from .appmaker import owndb as OD
             OD.tick()                        # v0.396 APNA DATABASE: apps running in HER database - catch up, her edits back
+            from .appmaker import pay as PY
+            PY.tick()                        # v0.419 PAISA: a late / missing webhook -> ask her gateway (never the phone)
         _logic_task = asyncio.get_running_loop().create_task(asyncio.to_thread(both))
     except Exception:
         log.exception("app logic jobs failed")

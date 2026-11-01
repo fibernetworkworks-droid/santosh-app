@@ -26,7 +26,7 @@ POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
 POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
 
-v0.419 Role packs (Phase 7: the Game Desk roles; each needs ITS employee hired for changes; reading is free):
+v0.420 Role packs (Phase 7: the Game Desk roles; each needs ITS employee hired for changes; reading is free):
 GET    /api/gamedesk/worlds?studio=             Procedural World Engineer: worlds + kinds + defaults
 POST   /api/gamedesk/worlds                     {words?, kind?, seed?, params?, studio?, key?}  generate + check (a draft)
 GET    /api/gamedesk/world/{wid}                one world (checks, stats, files, demo)
@@ -485,7 +485,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         """HER TAP on the itch.io card - the only way anything is uploaded."""
         return await pcall(PF.itch_push, tenant, sid, rid, str(_b(body).get("hash") or ""))
 
-    # ------------------------------------------------------------ v0.419 role packs: Procedural World + Physics
+    # ------------------------------------------------------------ v0.420 role packs: Procedural World + Physics
     from . import physics as PH
     from . import world as WD
 

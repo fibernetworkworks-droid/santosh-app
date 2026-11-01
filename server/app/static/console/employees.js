@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', architect: 'archdesk'};   // v0.419 the Game Desk roles share it
+  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
@@ -895,7 +895,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_QA = false;           // v0.416 the QA farm + bugs page of the open project
   let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
-  let GS_ROLE = '';            // v0.419 a role page open: 'world' | 'physics' ('' = none)
+  let GS_ROLE = '';            // v0.420 a role page open: 'world' | 'physics' ('' = none)
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
@@ -1298,7 +1298,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if ((d.releases || []).some(r => r.status === 'building')) GTIMER = setTimeout(() => { if (visible(el) && GS_REL) gsRelease(el, id); }, 6000);
   }
 
-  // ---------------------------------------------------------------- v0.419 Game Desk roles: Worlds + Physics
+  // ---------------------------------------------------------------- v0.420 Game Desk roles: Worlds + Physics
   const WST = {draft: ['warn', 'Waiting for your OK'], approved: ['ok', 'In the game'], rejected: ['', 'Not used'], failed: ['bad', 'Failed its checks'],
                testing: ['v', 'Lab running']};
   function roleBack(el) { GS_ROLE = ''; if (GS_ROLE_SID) { GS_OPEN = GS_ROLE_SID; gsBoard(el, GS_ROLE_SID); } else game(el); }

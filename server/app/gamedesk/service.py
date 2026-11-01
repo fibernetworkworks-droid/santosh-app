@@ -128,7 +128,7 @@ def play_file(token: str, path: str) -> tuple[Path | None, str]:
         r = s.scalars(select(GameProject).where(GameProject.token == token)).first()
         if r is not None:
             s.expunge(r)
-    if r is None:                                       # v0.419 a role pack's demo (e.g. walk the generated world)
+    if r is None:                                       # v0.420 a role pack's demo (e.g. walk the generated world)
         from . import packs
         d = packs.demo_build(token)
         if d is None:
@@ -378,7 +378,7 @@ def _packs(r: GameProject) -> dict[str, tuple[str, dict[str, Path]]]:
 
 
 def _own_packs(files: dict[str, str], pk: dict[str, tuple[str, dict[str, Path]]]) -> None:
-    """v0.419: the role packs' files are Hoola's: whatever the model wrote under those names is dropped, a pack whose
+    """v0.420: the role packs' files are Hoola's: whatever the model wrote under those names is dropped, a pack whose
     data is gone leaves no stale file behind, and the current ones go in."""
     from . import packs
     for name in packs.files():
@@ -623,7 +623,7 @@ def _build(r: GameProject, holder: dict) -> None:
     files.pop("hoola_assets.gd", None)
     if ast:
         files["hoola_assets.gd"] = ast[0]
-    pk = _packs(r)                                      # v0.419 role packs (HoolaWorld, HoolaPhysics...): Hoola's own
+    pk = _packs(r)                                      # v0.420 role packs (HoolaWorld, HoolaPhysics...): Hoola's own
     _own_packs(files, pk)
     checks: list[dict[str, Any]] = []
     fixed = 0
