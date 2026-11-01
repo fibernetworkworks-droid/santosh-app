@@ -56,7 +56,7 @@ const callCardKinds = {
   'archassist_transmittal', 'archassist_submission', 'archassist_invoice', 'archassist_area', 'society_card', 'society_complaint',
   'society_alert',
   // v0.150 Kanoon suite (cards that wait for her)
-  'vakil_card', 'legalres_memo', 'legalres_share', 'compliance_filing', 'compliance_cert', 'contracts_card', 'cosec_filing',
+  'vakil_card', 'legalres_memo', 'legalres_share', 'pathyakram_share', 'compliance_filing', 'compliance_cert', 'contracts_card', 'cosec_filing',
   'cosec_notice', 'cosec_minutes', 'notary_print', 'notary_alert', 'pidesk_share', 'dpo_card', 'dpo_request', 'dpo_breach', 'dpo_alert',
   // v0.152 Mehmaan suite (cards that wait for her)
   'frontoffice_card', 'frontoffice_message', 'frontoffice_alert', 'eventplan_booking', 'eventplan_doc', 'eventplan_message',

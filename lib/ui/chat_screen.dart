@@ -58,6 +58,7 @@ import 'sitesup_screen.dart';
 import 'society_screen.dart';
 import 'vakil_screen.dart';
 import 'legalres_screen.dart';
+import 'shiksha_screen.dart';
 import 'compliance_screen.dart';
 import 'contracts_screen.dart';
 import 'cosec_screen.dart';
@@ -1670,6 +1671,10 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return VakilNoteCard(app: app, data: it.data);
     case 'legalres_memo':
       return LegalresMemoCard(key: ValueKey('klm${(it.data['matter'] as Map?)?['id']}:${(it.data['memo'] as Map?)?['v']}'), app: app, data: it.data);
+    case 'pathyakram_share':
+      return PathyakramShareCard(key: ValueKey('pks${(it.data['share'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'pathyakram_paper':
+      return PathyakramPaperCard(key: ValueKey('pkp${(it.data['paper'] as Map?)?['id']}'), app: app, data: it.data);
     case 'legalres_share':
       return LegalresShareCard(key: ValueKey('kls${(it.data['share'] as Map?)?['id']}'), app: app, data: it.data);
     case 'compliance_filing':

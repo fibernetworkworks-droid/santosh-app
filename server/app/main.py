@@ -5049,6 +5049,13 @@ from .dpo.api import make_router as _dpo_router  # noqa: E402
 for _mk in (_vakil_router, _legalres_router, _compliance_router, _contracts_router, _cosec_router, _notary_router, _pidesk_router, _dpo_router):
     app.include_router(_mk(require_key, current_tenant))
 
+# v0.364 Shiksha suite Phase 0 + 1: education foundation + Pathyakram (curriculum & exam designer), key-protected
+from .shiksha.api import make_router as _shiksha_router  # noqa: E402
+from .pathyakram.api import make_router as _pathyakram_router  # noqa: E402
+
+for _mk in (_shiksha_router, _pathyakram_router):
+    app.include_router(_mk(require_key, current_tenant))
+
 # v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (under /api/<mod>/*, key-protected; homestay's router also holds
 # the public calendar feed /api/homestay-ical/{tenant}/{token}.ics, which checks its own random token)
 from .frontoffice.api import make_router as _frontoffice_router  # noqa: E402
