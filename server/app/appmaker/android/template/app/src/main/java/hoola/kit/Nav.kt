@@ -61,6 +61,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.key
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -80,11 +82,19 @@ class Nav(val start: String, val tabs: List<TabSpec>, val screens: Set<String>) 
     var fabHidden by mutableStateOf(false)
     internal var drawerOpener: (() -> Unit)? = null
 
-    /** Open a screen (a tab switches tabs). Unknown ids are ignored so a stray link can't crash the app. */
+    /** v0.365 DO PANE: set by the shell while a wide screen shows the tab's list beside the opened record. */
+    var split by mutableStateOf(false)
+
+    /** Open a screen (a tab switches tabs). Unknown ids are ignored so a stray link can't crash the app.
+     *  v0.365 in the two-pane view a record replaces the one on the right (Back closes it) instead of stacking. */
     fun go(id: String) {
         if (id !in screens || id == current) return
         forward = true
-        if (tabs.any { it.id == id }) { stack.clear(); stack.add(id) } else stack.add(id)
+        if (tabs.any { it.id == id }) { stack.clear(); stack.add(id) }
+        else {
+            if (split) while (stack.size > 1) stack.removeAt(stack.lastIndex)
+            stack.add(id)
+        }
     }
 
     /** Open a record's screen: remembers which record (AppState.selected[list]). */
@@ -123,9 +133,17 @@ fun AppShell(nav: Nav, fabMain: FabAction?, fabActions: List<FabAction>, title: 
                 val wide = isWide()
                 val barNav = look.nav in setOf("bar", "bar_labels", "bar_minimal", "bottom_app_bar", "drawer_bar", "floating_pill")
                 val railNow = look.nav == "rail" || (wide && barNav)
+                // v0.365 DO PANE: on a wide screen a record opened from a tab shows beside that tab's list
+                val base = nav.stack.firstOrNull() ?: ""
+                val split = wide && nav.stack.size >= 2 && nav.tabs.any { it.id == base }
+                SideEffect { nav.split = split }
                 Row(Modifier.fillMaxSize()) {
-                    if (railNow && nav.onTab) Rail(nav)
-                    Column(Modifier.weight(1f).fillMaxSize()) {
+                    if (railNow && (nav.onTab || split)) Rail(nav)
+                    if (split) {
+                        Box(Modifier.weight(0.42f).fillMaxSize()) { key(base, AppData.version.value) { screen(base) } }
+                        Box(Modifier.width(1.dp).fillMaxSize().background(c.line))
+                    }
+                    Column(Modifier.weight(if (split) 0.58f else 1f).fillMaxSize()) {
                         if (look.nav in setOf("top_tabs", "segmented_top") && nav.onTab) TopTabs(nav)
                         Box(Modifier.weight(1f).fillMaxWidth()) { Screens(nav, screen) }
                         if (!railNow && look.nav in setOf("bar", "bar_labels", "bar_minimal", "bottom_app_bar", "drawer_bar") && nav.onTab) BottomBar(nav)
@@ -213,7 +231,7 @@ private fun Rail(nav: Nav) {
     val c = H.c
     NavigationRail(containerColor = c.surface) {
         nav.tabs.forEach { t ->
-            NavigationRailItem(selected = nav.current == t.id, onClick = { nav.go(t.id) }, icon = { HIcon(t.icon) }, label = { Text(T(t.label), maxLines = 1) })
+            NavigationRailItem(selected = nav.stack.firstOrNull() == t.id, onClick = { nav.go(t.id) },   // v0.365 the list's tab stays lit icon = { HIcon(t.icon) }, label = { Text(T(t.label), maxLines = 1) })
         }
     }
 }

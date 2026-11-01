@@ -13070,3 +13070,14 @@ v0.363 left iPad off because turning it on makes App Store Connect require 13" i
 - CI `ios-check.yml`: "iPad - every screen on a 13-inch iPad Pro + the 13-inch App Store screenshots" (crash gate + size
   check), artifacts `ipad-shots`.
 - Tests `tests/test_v0364_ipad.py`. Not verified locally (no Mac here): the first CI ios-check run on the branch is the proof.
+
+## v0.365.0 DO PANE (App Sahayak Phase 29, owner: "START PHASE 29")
+- Kit (Android) `Nav.kt`: `Nav.split` (set by the shell every frame); `go(id)` for a non-tab screen while split trims the
+  stack to the base tab first, so a record opened from the list replaces the one on the right and Back closes it.
+  `AppShell`: `split = isWide() && stack.size >= 2 && stack[0] is a tab` -> the base tab screen in a 42% left pane
+  (`key(base, AppData.version)`), a 1dp line, the stack's current screen (with its transitions) in the 58% right pane; the
+  side rail stays visible in split, its selected item = the base tab.
+- No generated screen changes; phones (and narrow windows) keep the single stack.
+- CI: the v0.363 tablet pass opens each screen through the debug extra from the start tab, i.e. every non-tab screen is
+  drawn in the two-pane view on the 800dp emulator; a crash fails the job.
+- Tests `tests/test_v0365_do_pane.py`. Not done: iPad split view (NavigationSplitView), drag to resize the panes.
