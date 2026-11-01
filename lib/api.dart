@@ -1029,6 +1029,9 @@ class Api {
           timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> gameBibleRemove(String id, String kind, String eid) async =>
       Map<String, dynamic>.from(await _send('DELETE', '/api/gamestudio/$id/bible/entity/$kind/$eid') as Map);
+  Future<Map<String, dynamic>> gameStudioGate(String id, String milestone) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/gate', body: {'milestone': milestone},
+          timeout: const Duration(seconds: 90)) as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk

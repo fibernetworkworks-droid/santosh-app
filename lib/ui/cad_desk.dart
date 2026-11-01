@@ -152,6 +152,17 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
                 child: Text(_strs(a['lines']).map((l) => l.replaceFirst('! ', '⚠ ')).join('\n'),
                     style: const TextStyle(fontSize: 13, height: 1.35)),
               ),
+          // v0.403 measured manufacturability rows
+          if (v != null && v['dfm'] is Map && _list((v['dfm'] as Map)['rows']).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                  'Banane ki jaanch (${_s((v['dfm'] as Map)['process'])}): ${_s((v['dfm'] as Map)['fails'])} fail\n' +
+                      _list((v['dfm'] as Map)['rows'])
+                          .map((r) => '${r['status'] == 'fail' ? '✗' : r['status'] == 'pass' ? '✓' : '!'} ${_s(r['check'])}: ${_s(r['measured'])}')
+                          .join('\n'),
+                  style: const TextStyle(fontSize: 13, height: 1.35)),
+            ),
           if (v != null && v['cam'] is Map)
             Padding(
               padding: const EdgeInsets.only(top: 6),

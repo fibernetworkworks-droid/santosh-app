@@ -449,6 +449,20 @@ def drawing(projection="first", tolerance="m", notes=None, part_no=""):
                     "notes": [str(n)[:70] for n in (notes or [])][:4], "part_no": str(part_no)[:30]})
 
 
+MAKE: dict = {}
+
+
+def make(process, material=None, tool_d=None, pull="Z", limits=None):
+    """How it will be MADE -> measured DFM checks after the build: 'fdm' | 'sla' | 'sls' | 'mjf' | 'metal_pbf' |
+    'cnc' (tool_d = smallest end mill) | 'sheet' (build with H.sheet / H.tray) | 'molding' (pull = mould opening
+    axis). limits = her shop's own numbers, which override the published starting points."""
+    ok = ("fdm", "sla", "sls", "mjf", "metal_pbf", "cnc", "sheet", "molding")
+    if str(process) not in ok:
+        raise ValueError(f"make: {' / '.join(ok)}")
+    MAKE.update({"process": str(process), "material": material, "tool_d": tool_d, "pull": str(pull).upper(),
+                 "limits": dict(limits or {})})
+
+
 def cam(**kw):
     """2.5D CNC G-code after the build: tool_d, stepdown, stepover, feed, plunge, rpm, ops=['face','pocket','drill','profile']."""
     if CAM:
@@ -482,6 +496,7 @@ class _H:
     analyze = staticmethod(analyze)
     cam = staticmethod(cam)
     fit = staticmethod(fit)
+    make = staticmethod(make)
     drawing = staticmethod(drawing)
 
 

@@ -90,7 +90,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
             # v0.365 analysis / calculations / sheet / CNC
             "fea", "stress analysis", "safety factor", "tolerance stack", "h7", "bolt torque", "weld size", "g-code",
             "gcode", "sheet metal", "flat pattern", "natural frequency", "deflection", "pressure drop",
-            "fatigue", "bolted joint", "vdi 2230", "cfd", "flow simulation", "preload"),
+            "fatigue", "bolted joint", "vdi 2230", "cfd", "flow simulation", "preload",
+            "dfm", "manufacturab", "printab", "injection mould", "injection mold", "draft angle", "undercut"),
     "youtube": ("youtube", "channel", "vlog", "subscriber"),
     "tv": ("tv", "channel", "dth"),
     "bt": ("bluetooth", "speaker", "music", "song", "gaana", "gaane", "volume", "ac ", "air condition", "remote",
@@ -142,6 +143,15 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "legalres": ("legal research", "kanoon", "case law"),
     # v0.381 Shiksha suite: school / coaching work (papers, question banks, plans) + the Python sandbox
     # Shiksha Phase 2: the personal tutor (doubts, practice, language practice, progress)
+    # Shiksha Phase 3: the school office (attendance, grading, timetable, report cards)
+    # Shiksha Phase 4: the research assistant (literature, gaps, references, analysis, drafts)
+    "shodh": ("research paper", "literature review", "literature survey", "thesis", "dissertation", "phd", "synopsis",
+              "doi", "citation", "references banao", "bibliography", "bibtex", "zotero", "openalex", "pubmed", "arxiv",
+              "research gap", "research question", "methodology", "regression", "anova", "t-test", "chi square",
+              "hypothesis", "shodh", "शोध", "शोध पत्र"),
+    "daftar": ("hazri", "attendance", "absent", "gair hazir", "present", "timetable", "time table", "report card",
+               "marksheet", "result banao", "grading", "copy check", "answer sheet", "omr", "check karo paper",
+               "marks chadhao", "marks enter", "sign off", "transcript", "हाज़िरी", "रिपोर्ट कार्ड", "समय सारणी"),
     "guru": ("tutor", "padhao", "padha do", "samjhao", "samjha do", "doubt", "homework", "practice karao", "revision",
              "sawaal samajh", "kaise hal", "solve karna sikhao", "hint do", "english bolna", "spoken english", "grammar",
              "pragati", "progress report", "weak topic", "पढ़ाओ", "समझाओ", "होमवर्क"),
