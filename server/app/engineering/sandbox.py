@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 RUNNER = Path(__file__).with_name("runner.py")
+ANALYSIS = Path(__file__).with_name("analysis_runner.py")
 _NET_OK: bool | None = None
 
 
@@ -37,9 +38,9 @@ def python() -> str:
     return p if p and os.path.isfile(p) else sys.executable
 
 
-def installed() -> bool:
+def installed(module: str = "cadquery") -> bool:
     try:
-        r = subprocess.run([python(), "-I", "-c", "import cadquery"], capture_output=True, timeout=60,
+        r = subprocess.run([python(), "-I", "-c", f"import {module}"], capture_output=True, timeout=60,
                            env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"})
         return r.returncode == 0
     except Exception:
@@ -77,20 +78,30 @@ def _limits():
 def run(job_dir: Path, code: str, timeout: int | None = None) -> dict[str, Any]:
     """Run one script; returns result.json (+ wall_s / isolated). A script error is in result['errors'];
     SandboxError when the runner itself could not start."""
+    return _start(job_dir, RUNNER, {"code": code, "out_dir": str(job_dir)}, "result.json", timeout)
+
+
+def analyse(job_dir: Path, studies: list, cam: dict | None, timeout: int | None = None) -> dict[str, Any]:
+    """v0.365 the after-build stage (FEA + CAM) on job_dir/part.step, same box; returns analysis.json."""
+    return _start(job_dir, ANALYSIS, {"studies": studies, "cam": cam, "out_dir": str(job_dir)}, "analysis.json",
+                  timeout or _env_int("ENG_ANALYSIS_TIMEOUT_S", 900))
+
+
+def _start(job_dir: Path, runner: Path, job: dict, result_name: str, timeout: int | None) -> dict[str, Any]:
     job_dir.mkdir(parents=True, exist_ok=True)
     (job_dir / "tmp").mkdir(exist_ok=True)
-    jp = job_dir / "job.json"
-    jp.write_text(json.dumps({"code": code, "out_dir": str(job_dir)}), encoding="utf-8")
-    res_p = job_dir / "result.json"
+    jp = job_dir / ("job.json" if runner == RUNNER else "analysis_job.json")
+    jp.write_text(json.dumps(job), encoding="utf-8")
+    res_p = job_dir / result_name
     res_p.unlink(missing_ok=True)
-    cmd = [python(), "-I", str(RUNNER), str(jp)]            # -I: the runner adds its own folder for parts.py
+    cmd = [python(), "-I", str(runner), str(jp)]            # -I: the runner adds its own folder for parts.py
     if net_isolation():
         cmd = [shutil.which("unshare") or "unshare", "-rn"] + cmd
     env = {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(job_dir), "TMPDIR": str(job_dir / "tmp"),
            "LANG": "C.UTF-8", "OMP_NUM_THREADS": str(_env_int("ENG_THREADS", 2)), "PYTHONNOUSERSITE": "1"}
     timeout = timeout or _env_int("ENG_TIMEOUT_S", 600)
     t0 = time.time()
-    with open(job_dir / "run.log", "wb") as logf:
+    with open(job_dir / ("run.log" if runner == RUNNER else "analysis.log"), "wb") as logf:
         p = subprocess.Popen(cmd, cwd=str(job_dir), env=env, stdout=logf, stderr=subprocess.STDOUT,
                              stdin=subprocess.DEVNULL, preexec_fn=_limits)
         try:
@@ -104,7 +115,7 @@ def run(job_dir: Path, code: str, timeout: int | None = None) -> dict[str, Any]:
             return {"ok": False, "errors": [f"{timeout} second mein poora nahi hua: part halka karo / loop chhota karo"],
                     "timeout": True, "wall_s": round(time.time() - t0, 1)}
     if not res_p.exists():
-        tail = (job_dir / "run.log").read_text(errors="replace")[-400:]
+        tail = (job_dir / ("run.log" if runner == RUNNER else "analysis.log")).read_text(errors="replace")[-400:]
         raise SandboxError(f"Engineering runner ne jawab nahi diya (exit {p.returncode}): {tail}")
     out = json.loads(res_p.read_text(encoding="utf-8"))
     out["wall_s"] = round(time.time() - t0, 1)

@@ -86,7 +86,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "blender": ("blender", "3d", "three d"),
     # v0.357 Engineering Desk (CAD Engineer): her words for a part / drawing / CAD files
     "eng": ("cad", "step file", ".step", "stl", "3d print", "cnc", "machin", "bracket", "flange", "enclosure", "mounting",
-            "part bana", "drawing", "dimension", "fillet", "chamfer", "solidworks", "fusion 360", "autocad", "freecad"),
+            "part bana", "drawing", "dimension", "fillet", "chamfer", "solidworks", "fusion 360", "autocad", "freecad",
+            # v0.365 analysis / calculations / sheet / CNC
+            "fea", "stress analysis", "safety factor", "tolerance stack", "h7", "bolt torque", "weld size", "g-code",
+            "gcode", "sheet metal", "flat pattern", "natural frequency", "deflection", "pressure drop"),
     "youtube": ("youtube", "channel", "vlog", "subscriber"),
     "tv": ("tv", "channel", "dth"),
     "bt": ("bluetooth", "speaker", "music", "song", "gaana", "gaane", "volume", "ac ", "air condition", "remote",

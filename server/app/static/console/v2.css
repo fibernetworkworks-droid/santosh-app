@@ -2271,3 +2271,7 @@ body.albon{overflow:hidden}
 .cad-bom{border-collapse:collapse;font-size:13px;width:100%;max-width:520px}
 .cad-bom th,.cad-bom td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}
 .cad-bom th{color:var(--mut);font-weight:600}
+
+/* v0.365 CAD analysis rows */
+.cad-ana{margin:8px 0;padding:8px 12px;border:1px solid var(--line, #e5e7eb);border-radius:8px;font-size:13.5px}
+.cad-ana b{display:block;font-weight:600;margin-bottom:2px}

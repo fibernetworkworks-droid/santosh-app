@@ -408,9 +408,11 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   // ------------------------------------------------------------ v0.357 the CAD Desk (Engineering Desk, Phase 1)
   let CTIMER = null;
   const CSTATE = {queued: ['warn', 'Queued'], designing: ['v', 'Designing'], building: ['v', 'Building'], drawing: ['v', 'Drawing'],
+                  checking: ['v', 'Checking'], analysing: ['v', 'Analysing'],
                   done: ['ok', 'Ready'], failed: ['bad', 'Failed']};
   const FILEN = [['part.step', 'STEP (CAD / CNC)'], ['part.stl', 'STL (3D print)'], ['part.3mf', '3MF (3D print)'], ['part.glb', 'GLB (3D viewer / AR)'],
-                 ['section.dxf', 'DXF section (laser / CNC)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code']];
+                 ['section.dxf', 'DXF section (laser / CNC)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code'],
+                 ['analysis.pdf', 'Analysis report PDF'], ['part.nc', 'CNC G-code'], ['flat.dxf', 'Flat pattern DXF']];
   const b64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = no; r.readAsDataURL(f); });
   async function cad(el) {
     clearTimeout(CTIMER);
@@ -419,7 +421,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     catch (e) { el.innerHTML = `<div class="vh"><h2>CAD Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
     const ps = d.projects || [];
     el.innerHTML = `<div class="vh"><h2>CAD Desk</h2><span class="muted em-sub">Describe a part with its sizes in mm. Hoola designs it, checks it and gives you STEP, STL and a drawing. Drafts for your engineer's review, not certified.</span></div>
-      <article class="tile gl cad-new"><textarea id="cadBrief" rows="4" placeholder="A single part or a whole assembly. e.g. gearbox: 2 spur gears module 2 (20 and 40 teeth) on 15 mm shafts with 6202 bearings in an aluminium housing 4 mm walls, M5 lid screws"></textarea>
+      <article class="tile gl cad-new"><textarea id="cadBrief" rows="4" placeholder="A part, a sheet-metal piece or a whole assembly, with its sizes. Add a load (kg), heat (watts), motor rpm or 'CNC' and Hoola also checks strength, heat, vibration or makes G-code. e.g. aluminium wall bracket 120 x 40, holds 25 kg at the tip, 2x M6 to the wall, safety factor 2"></textarea>
       <div class="cad-in"><label>Sketch / photo (up to 3) <input type="file" id="cadImg" accept="image/png,image/jpeg,image/webp" multiple></label>
       <label>Your STEP / STL to modify or fit (up to 2) <input type="file" id="cadFile" accept=".step,.stp,.stl" multiple></label></div>
       <div class="acts"><button class="btn go" type="button" id="cadGo">Design it</button><span class="muted">${esc(String(d.today || 0))} today</span></div></article>
@@ -462,7 +464,15 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const bom = (v.parts || []).length ? `<table class="cad-bom"><thead><tr><th>Part</th><th>Volume (mm³)</th><th>Mass (g)</th></tr></thead><tbody>${
       v.parts.map(x => `<tr><td>${esc(x.name)}</td><td>${num(x.volume_mm3)}</td><td>${x.mass_g == null ? '–' : num(x.mass_g)}</td></tr>`).join('')}</tbody></table>` : '';
     const plan = v.plan ? `<details><summary>Design plan</summary><p class="muted">${esc(v.plan)}</p></details>` : '';
-    return `${bits.length ? `<p class="muted">${bits.join('<br>')}</p>` : ''}${bom}${plan}`;
+    // v0.365 analysis (FEA), CNC and sheet metal
+    const ana = (v.analysis || []).map(a => `<div class="cad-ana"><b>${esc((a.lines || [])[0] || a.kind)}</b>${
+      (a.lines || []).slice(1).map(l => `<div class="${l.startsWith('!') ? 'badc' : 'muted'}">${esc(l.replace(/^! /, ''))}</div>`).join('')}</div>`).join('');
+    const pics = ['fea_0', 'fea_1', 'fea_2', 'cam', 'flat'].filter(k => v.files[k + '.png'])
+      .map(k => `<a href="${esc(v.files[k + '.png'])}" target="_blank" rel="noopener"><img src="${esc(v.files[k + '.png'])}" alt="${esc(k)}" loading="lazy"></a>`).join('');
+    const cam = v.cam ? `<p class="muted">${v.cam.ok ? `CNC: ${esc((v.cam.ops || []).join(', '))} · tool Ø${num(v.cam.tool_d)} mm · about ${num(v.cam.minutes)} min · simulate before cutting`
+      : `CNC G-code did not run: ${esc(v.cam.error || '')}`}</p>` : '';
+    const sheet = v.sheet ? `<p class="muted">Sheet ${num(v.sheet.t)} mm · flat ${num(v.sheet.length)} x ${num(v.sheet.width)} mm · R ${num(v.sheet.r)} · K ${num(v.sheet.k)}</p>` : '';
+    return `${bits.length ? `<p class="muted">${bits.join('<br>')}</p>` : ''}${ana}${cam}${sheet}${pics ? `<div class="cad-views">${pics}</div>` : ''}${bom}${plan}`;
   }
   function cadCard(p) {
     const st = CSTATE[p.status] || ['', p.status], v = p.latest;
