@@ -35,6 +35,7 @@ on:
           - studio_apis
           - tool_card
           - long_jobs
+          - proof
           - code_card
           - code_card_hard
           - code_card_mobile
@@ -326,6 +327,30 @@ jobs:
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.
                 echo 'cd $CORE && timeout 120 .venv/bin/python -m app.quality longjobs --hours 24 2>&1 | tail -60' ;;
+              proof)
+                # v0.376 PROOF: the Arena's 100-page proofs + rival crawls, read straight from the database (free, read-only).
+                echo 'echo "== 100-page proofs (newest first)"; cd $CORE && timeout 60 .venv/bin/python - <<"PY" 2>&1 | tail -80'
+                echo 'import json, sqlite3'
+                echo 'db = sqlite3.connect("santosh.db")'
+                echo 'try:'
+                echo '    rows = db.execute("select id, kind, brief_id, builder, url, version, status, stage, card, created_at, finished_at from site_arena_proofs order by created_at desc limit 8").fetchall()'
+                echo 'except Exception as e:'
+                echo '    rows = []; print("no proofs table yet:", e)'
+                echo 'if not rows: print("no proofs yet")'
+                echo 'for r in rows:'
+                echo '    c = json.loads(r[8] or "{}")'
+                echo '    who = "hoola v" + str(r[5]) if r[1] == "hoola" else str(r[3]) + " " + str(r[4])'
+                echo '    print("\n####", r[0], "|", who, "|", r[2], "|", r[6], "|", r[7] or "", "| started", r[9], "| ended", r[10])'
+                echo '    keys = ["built_pages", "planned_pages", "all_pages", "broken_links", "missing_files", "judge", "blocking", "performance", "accessibility", "seo", "lcp_ms", "readable_without_js_pct", "one_h1_pct", "json_ld_pct", "kb_median", "sitemap_urls", "inr", "inr_per_page", "minutes", "minutes_per_page", "crawl_capped", "error"]'
+                echo '    print("  " + " | ".join(k + "=" + str(c[k]) for k in keys if k in c))'
+                echo '    if c.get("features"): print("  features:", json.dumps(c["features"]))'
+                echo '    if c.get("judge_pages"): print("  judge by page:", json.dumps(c["judge_pages"]))'
+                echo '    if c.get("pages"): print("  pages by language:", json.dumps(c["pages"]))'
+                echo '    if c.get("broken"): print("  broken (first 5):", json.dumps(c["broken"][:5]))'
+                echo '    if c.get("missing"): print("  missing (first 5):", json.dumps(c["missing"][:5]))'
+                echo '    if c.get("notes"): print("  notes:", c["notes"])'
+                echo 'PY'
+                echo 'echo "== proof lines in the app log"; pm2 logs santosh --lines 400 --nostream --raw | grep -iE "proof|arena|site map|site build" | tail -25' ;;
               code_card)
                 # v0.360 how well does Developer Sahayak code? 12 fixed practice jobs through the real 8-tool loop (no GitHub,
                 # no PR), marked by hidden checks: works / stayed in scope / project rules / tests that prove the fix.
