@@ -13215,3 +13215,10 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   (Open in WhatsApp link, Send via business with a confirm and her template name). Tool khata says where to tap.
 - Tests `tests/test_v0375_khata_yaad.py` (WhatsApp faked). Her template example: "Namaste {{1}}, {{3}} mein aapka baaki
   Rs {{2}} hai. Suvidha se chuka dijiye." (UTILITY, approved by Meta in her account).
+
+## v0.376.0 MAALKIN PHONE (App Sahayak Phase 40, owner: "START PHASE 40")
+- Flutter `lib/ui/app_money.dart` `AppMoneyPanel(app, id)`, shown under App ka data on the app screen
+  (`app_design_screen.dart`): GET /api/apps/<id>/hisaab (the `say` line), /khata-yaad (customers who owe: name, Rs, "WhatsApp
+  mein kholo" = the wa.me link opened in her WhatsApp, an amount box + tick = POST /khata/<member>/pay cash), /stock (qty <= low:
+  "n bache" / "khatam"), /coupons (live codes with % / Rs and uses). Refresh button; nothing shown when there is nothing.
+- Tests `tests/test_v0376_maalkin_phone.py` (markers). Compiled by CI Build APK (Flutter is not reachable in the sandbox).
