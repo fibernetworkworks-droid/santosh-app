@@ -21,7 +21,9 @@ _DO_ACTIONS = ["connect", "disconnect", "endpoint", "project", "project_update",
                "item_update", "settings",
                # v0.363 the real thing: read and write against her live system
                "read", "describe", "soql", "plan_write", "dry_run", "approve", "execute", "run_status",
-               "runs", "rollback_plan"]
+               "runs", "rollback_plan",
+               # v0.373 the TPM's own sums - arithmetic on rows, never guessed by the model
+               "critical_path", "capacity", "metrics", "raid", "readiness", "chase"]
 _SEE_WHAT = ["day", "jobs", "systems", "endpoints", "runs", "run", "projects", "papers", "paper",
              "items", "settings", "rules"]
 
@@ -52,6 +54,18 @@ def _do_description(key: str, spec: dict[str, Any]) -> str:
          f"Delete is refused at any size. Over {MAX_ROWS} rows in one go is refused - split it. A production write "
          f"needs confirm_env='production' as well as her tap. action=endpoint (owner only): her own system's "
          f"address when Composio does not carry it - the credential is typed in the APP, never here.")
+    if key == "tpm":
+        d += (" --- THE SUMS, DONE IN CODE (never work these out yourself: a wrong critical path looks exactly "
+              "as confident as a right one) --- action=critical_path: rows [{id, title, days, depends_on[], "
+              "status, owner}] -> the longest chain, what is on it, and a REFUSAL if the dependencies form a "
+              "loop. action=capacity: rows [{owner, days, status}], days_available, per_owner {name: days} -> "
+              "who is over-committed and by how many days. action=metrics: rows [{created, started, done, "
+              "escaped}], committed -> MEDIAN lead and cycle time, escaped bugs, say-do %. action=raid: rows "
+              "[{id, title, owner, due, severity, status, updated}], today, stale_days -> overdue, gone quiet, "
+              "unowned, high-and-open. action=readiness: gates [{name, ok, note, blocking}] -> go / no-go with "
+              "the failing gates NAMED. action=chase: rows [{id, owner, updated, status}], today, quiet_days -> "
+              "who owes an update. Rows come from a tracker read, a sheet, or her paste - the sums work either "
+              "way.")
     js = R.jobs_of(key)
     if js:
         d += (" Is desk ke hisse (action=draft mein `job`): "
@@ -93,6 +107,10 @@ for _key, _spec in R.ROLES.items():
             "key_field": {"type": "string"}, "run": {"type": "string"}, "batch": {"type": "integer"},
             "confirm_env": {"type": "string"}, "base_url": {"type": "string"}, "auth_kind": {"type": "string"},
             "api": {"type": "string"}, "what": {"type": "string"},
+            "days_available": {"type": "number"}, "per_owner": {"type": "object"},
+            "committed": {"type": "integer"}, "today": {"type": "string"},
+            "stale_days": {"type": "integer"}, "quiet_days": {"type": "integer"},
+            "gates": {"type": "array", "items": {"type": "object"}},
             "header_name": {"type": "string"}},
             "required": ["action"]}})
     ENTERPRISE_TOOLS.append({
@@ -156,6 +174,27 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.add_item(t, role, _s(a.get("title")), _s(a.get("kind")) or "task", _s(a.get("detail")),
                               _s(a.get("owner")), _s(a.get("due")), _s(a.get("severity")), a.get("rupaye"),
                               _s(a.get("project")), _s(a.get("source")))
+        # ---- the TPM's sums: arithmetic on rows, in code (enterprise/tpm.py)
+        if action in ("critical_path", "capacity", "metrics", "raid", "readiness", "chase"):
+            from ..enterprise import tpm as TPM
+            rows = a.get("rows") if isinstance(a.get("rows"), list) else []
+            try:
+                if action == "critical_path":
+                    return TPM.critical_path(rows)
+                if action == "capacity":
+                    per = a.get("per_owner") if isinstance(a.get("per_owner"), dict) else None
+                    return TPM.capacity(rows, float(a.get("days_available") or 10), per)
+                if action == "metrics":
+                    return TPM.delivery_metrics(rows, int(a.get("committed") or 0))
+                if action == "raid":
+                    return TPM.raid_sweep(rows, _s(a.get("today")), int(a.get("stale_days") or 14))
+                if action == "readiness":
+                    gates = a.get("gates") if isinstance(a.get("gates"), list) else rows
+                    return TPM.release_readiness(gates)
+                if action == "chase":
+                    return TPM.chase(rows, _s(a.get("today")), int(a.get("quiet_days") or 3))
+            except TPM.TpmError as ex:
+                raise ToolError(str(ex))
         # ---- real work on her live system (enterprise/run.py holds the safety, not this layer)
         if action in ("read", "describe", "soql", "plan_write", "dry_run", "approve", "execute",
                       "run_status", "runs", "rollback_plan", "endpoint"):

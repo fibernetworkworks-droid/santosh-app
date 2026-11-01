@@ -303,6 +303,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
+- v0.374 TPM KE HISAAB: the TPM desk now DOES the job - six questions that each have one right answer, all
+  arithmetic in `app/enterprise/tpm.py`, NEVER in a prompt: critical_path (longest chain; REFUSES on a
+  dependency loop instead of returning a number), capacity (over-committed by how many days, open work
+  only), metrics (MEDIAN lead/cycle so one 90-day ticket cannot lie, escaped, say-do %), raid (overdue /
+  quiet / unowned / high), readiness (go-no-go, failing gates NAMED, non-blocking = warning), chase (who
+  went quiet; never invents a status). The model picks the question, never does the sum - a wrong critical
+  path looks as confident as a right one. Rows from tracker / sheet / paste. On tpm alone (tested).
 - v0.372 TPM DESK: the check found tpm thin (3 papers, 0 parts, no writes) and - the real point - about to
   DUPLICATE the 1,789-line `product` tool (discovery, RICE/ICE, PRDs, releases). So TPM is the ENGINEERING
   counterpart: 12 parts (roadmap, dependencies, architecture/ADR, NFR, debt, capacity, release train, RAID,

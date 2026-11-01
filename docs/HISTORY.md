@@ -13512,3 +13512,39 @@ plans') and export").
   warning), "Ask Hoola to change this file" -> polled job -> coloured diff + what the cleaner removed, Undo, Download
   React project / ZIP (v0.305 export into her files). Phone: not in this version (code editing is a computer job).
 - Tests `server/tests/test_v0373_code_mode.py`.
+
+## v0.374.0 TPM KE HISAAB — the technical PM's work, done in code
+Owner: *"WORK ON TPM -- THAT AI CAN PERFROM ALL TASKS IN IT"*.
+
+v0.372 gave the TPM desk its twelve parts and its papers. This makes it **do** the job — and the job is not
+prose. It is six questions that each have exactly one right answer:
+
+| question | answer |
+|---|---|
+| what is really blocking the release | the longest chain through the dependency graph |
+| who is over-committed, by how much | capacity against real estimates, open work only |
+| are we getting faster or slower | **median** lead / cycle time, escaped bugs, say-do % |
+| what is rotting in the RAID log | overdue, gone quiet, unowned, high-and-open |
+| can we ship | every gate, with the failures **named** |
+| who owes me an update | owners silent on open work |
+
+All six are arithmetic, so they live in `app/enterprise/tpm.py` and **not in a prompt**. The model picks the
+question and reads the answer out; it never does the sum. The tool description says so in those words, because
+**a wrong critical path looks exactly as confident as a right one**.
+
+### Three decisions worth recording
+**A dependency loop is refused, never answered.** A cycle is a real planning bug; returning a number would be
+worse than refusing, so `critical_path` names the loop and stops.
+
+**The median, not the mean.** Three tickets where one took 90 days: the mean reads ~34, the median reads 9. One
+outlier must not decide whether the team is getting faster.
+
+**Non-blocking gates are warnings, not stops.** `readiness` separates the two, and names the blocking failures —
+"not ready" without a reason helps nobody.
+
+Rows come from a tracker read, a sheet, or her paste, so the sums work before anything is connected. The six
+actions are on `tpm` **alone**, and there is a test that `erp`, `crm_arch` and `plm` were not given them.
+
+### Files
+`server/app/enterprise/tpm.py` (new) · `server/app/agent/enterprise_tools.py` ·
+`server/tests/test_v0373_tpm_sums.py` (15 tests, worked examples computed by hand).
