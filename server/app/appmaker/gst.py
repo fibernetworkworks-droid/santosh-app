@@ -75,7 +75,7 @@ def view(r: AppProject) -> dict[str, Any]:
     g = settings(r)
     from . import backend as BE
     prods = [{"id": k, "name": p.get("name"), "price": p.get("price"), **(g.get("items", {}).get(k) or {})}
-             for k, p in list(BE._products(r).items())[:200]]
+             for k, p in list(BE._base_products(r).items())[:200]]
     return {"on": bool(g.get("gstin")), "gstin": g.get("gstin", ""), "legal_name": g.get("legal_name", ""),
             "state": STATES.get(str(g.get("gstin", ""))[:2], ""), "rate": g.get("rate", 18), "hsn": g.get("hsn", ""),
             "inclusive": True, "products": prods, "rates": list(RATES), "issued": g.get("issued", 0),
@@ -103,7 +103,7 @@ def set_settings(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
             g["hsn"] = _hsn(body.get("hsn"))
         if isinstance(body.get("items"), dict):            # {product id: {hsn, rate}}
             items = dict(g.get("items") or {})
-            prods = BE._products(r)
+            prods = BE._base_products(r)
             for k, v in list(body["items"].items())[:500]:
                 if str(k) not in prods or not isinstance(v, dict):
                     continue
@@ -227,7 +227,9 @@ def compute(r: AppProject, c: dict[str, Any], d: dict[str, Any]) -> dict[str, An
         lines.append({"pid": "_delivery", "name": "Delivery charges", "qty": 1, "gross": round(fee, 2)})
     out, t = [], {"taxable": 0.0, "cgst": 0.0, "sgst": 0.0, "igst": 0.0, "amount": 0.0}
     for x in lines:
-        it = {"hsn": "9968"} if x["pid"] == "_delivery" else ((g.get("items") or {}).get(x["pid"], {}) if x["pid"] else {})
+        base_pid = x["pid"].split("::")[0]               # v0.362 a size keeps its product's HSN / rate
+        it = {"hsn": "9968"} if x["pid"] == "_delivery" else ((g.get("items") or {}).get(x["pid"]) or (g.get("items") or {}).get(base_pid, {})
+                                                                if x["pid"] else {})
         rate = float(it.get("rate") if it.get("rate") is not None else g.get("rate", 18))
         taxable = round(x["gross"] / (1 + rate / 100), 2)
         tax = round(x["gross"] - taxable, 2)

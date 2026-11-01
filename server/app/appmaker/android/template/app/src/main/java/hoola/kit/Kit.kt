@@ -304,6 +304,7 @@ fun AddButton(itemId: String) {
     val q = AppState.qty(itemId)
     val p = AppData.byId("products", itemId)
     if (p != null && p.b("sold_out")) { Pill(Strings.soldOut, "bad"); return }       // v0.357 STOCK
+    if (p != null && p.list("variants").isNotEmpty()) { SizeChips(p); return }       // v0.362 VARIANTS: one chip per size
     if (q == 0) Btn(Strings.add, small = true, kind = BtnKind.Tonal) { AppState.add(itemId) }
     else Stepper(q, max = AppState.maxQty(itemId)) { AppState.setQty(itemId, it) }
 }
@@ -683,3 +684,17 @@ fun rememberToggle(initial: Boolean = false) = remember { mutableStateOf(initial
 
 @Composable
 fun ToggleText(on: Boolean, yes: String, no: String) { var x by remember { mutableStateOf(on) }; Text(if (x) yes else no, style = H.t.small, modifier = Modifier.clickable { x = !x }) }
+
+
+/** v0.362 VARIANTS: the sizes of a product as chips ("1 kg ₹60"); a tap adds that size, its count shows on the chip. */
+@Composable
+fun SizeChips(p: Item) {
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        p.list("variants").forEach { v ->
+            val key = p.id + "::" + v.id
+            val n = AppState.qty(key)
+            if (v.b("sold_out")) Pill(v.s("name") + " · " + Strings.soldOut, "bad")
+            else Chip(v.s("name") + " " + rupees(v.price) + if (n > 0) " ·$n" else "", selected = n > 0) { AppState.add(key) }
+        }
+    }
+}

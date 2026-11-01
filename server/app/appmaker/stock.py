@@ -167,8 +167,11 @@ def put_back(r: AppProject, taken: list[tuple[str, int]] | list[list[Any]]) -> N
 
 
 def decorate(r: AppProject, products: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """The app's product list with `stock` (tracked ones) and `sold_out` - read fresh, not from the content cache."""
+    """The app's product list with `stock` (tracked ones) and `sold_out` - read fresh, not from the content cache.
+    v0.362 products with sizes carry `variants` (each with its own stock)."""
     st = table(r)
+    from . import variants as VR
+    products = VR.decorate(r, products, st)
     out = []
     for p in products:
         q = (st.get(str(p.get("id"))) or {}).get("qty") if isinstance(p, dict) else None

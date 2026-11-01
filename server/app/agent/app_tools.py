@@ -75,6 +75,8 @@ APP_TOOLS = [
         "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
         "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
         "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
+        "v0.362 action=variants (owner only; product = id or name, variants = [{name, price}], [] removes; no product = list): sizes / "
+        "weights of a product, each with its own price and stock - every app screen shows them as chips. "
         "v0.361 action=hisaab (owner only; month YYYY-MM, default this / last month): her month's orders, sales, GST, credit notes and "
         "udhaar in one line; the CSV files for her CA download from the app data page (Accounts). Nothing is filed. "
         "v0.360 action=delivery (owner only; delivery = {fee, free_above, pins \"411001, 411002\", hours {open HH:MM, close HH:MM, days [0=Mon..6]}, "
@@ -94,7 +96,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -109,6 +111,8 @@ APP_TOOLS = [
          "amount": {"type": "string", "description": "action=khata: payment received"},
          "mode": {"type": "string", "description": "action=khata: cash|upi|card|bank|other"},
          "month": {"type": "string", "description": "action=hisaab: YYYY-MM"},
+         "product": {"type": "string", "description": "action=variants: product id or name"},
+         "variants": {"type": "array", "items": {"type": "object"}, "description": "action=variants: [{name, price}]"},
          "delivery": {"type": "object", "description": "action=delivery: {fee, free_above, pins, hours, off}"},
          "coupon": {"type": "object", "description": "action=coupon: {code, kind, value, cap, min, until, uses, once, on, delete}"},
          "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members); action=khata: customer id or name"},
@@ -290,6 +294,20 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action == "variants":                  # v0.362 VARIANTS
+        if not _owner(ctx):
+            raise ToolError("Sizes sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import variants as VR
+        r = BE.by_key_or_ref(t, ref)
+        if a.get("product"):
+            v = VR.save(r, str(a.get("product")), a.get("variants") if isinstance(a.get("variants"), list) else [])
+        else:
+            v = VR.view(r)
+        withs = [p for p in v["products"] if p["variants"]]
+        v["say"] = ("Sizes: " + "; ".join(p["name"] + " - " + ", ".join(f"{x['name']} Rs {x['price']:g}" for x in p["variants"]) for p in withs[:8])
+                    + ".") if withs else "Kisi product ke sizes nahi."
+        return v
     if action == "hisaab":                    # v0.361 HISAAB: the month's accounts
         if not _owner(ctx):
             raise ToolError("Hisaab sirf maalkin dekh sakti hain.")

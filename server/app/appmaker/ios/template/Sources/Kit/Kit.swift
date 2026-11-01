@@ -240,6 +240,8 @@ struct ListBlock: View {
                     Spacer()
                     if list == "products" && r.b("sold_out") {
                         StatusPill(text: Words.soldOut)                                   // v0.357 STOCK
+                    } else if list == "products" && !items(r.o["variants"]).isEmpty {
+                        SizeChips(p: r)                                                   // v0.362 VARIANTS
                     } else if list == "products" {
                         Button(state.cart[r.id] == nil ? Words.add : "✓ \(state.cart[r.id] ?? 0)") { state.add(r.id) }
                             .buttonStyle(.bordered)
@@ -311,5 +313,29 @@ struct AccountButton: View {
         MainButton(text: auth.signedIn ? auth.name : Words.signIn) {
             Router.shared.go(auth.signedIn ? "hoola_account" : "hoola_login")
         }
+    }
+}
+
+
+/// v0.362 VARIANTS: the sizes of a product as buttons ("1 kg ₹60"); a tap adds that size, its count shows on it.
+struct SizeChips: View {
+    let p: Item
+    @ObservedObject private var state = AppState.shared
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+                ForEach(items(p.o["variants"]), id: \.id) { v in
+                    let key = p.id + "::" + v.id
+                    let n = state.cart[key] ?? 0
+                    if v.b("sold_out") { StatusPill(text: v.s("name") + " · " + Words.soldOut) }
+                    else {
+                        Button(v.s("name") + " " + rupees(v.price) + (n > 0 ? " ·\(n)" : "")) { state.add(key) }
+                            .buttonStyle(.bordered).tint(n > 0 ? .accentColor : .secondary)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: 220)
     }
 }

@@ -787,6 +787,23 @@ window.HoolaBuild = function (C) {
       });
     };
     try { drawGst(await api('GET', base(o) + '/gst')); } catch (er) { gbox.remove(); }
+    // v0.362 VARIANTS: sizes / weights with their own price (one line per product: "1 kg 60, 5 kg 280")
+    const vbox = document.createElement('section'); vbox.className = 'stcol stvariants'; box.appendChild(vbox);
+    const drawV = v => {
+      const ps = L(v.products); if (!ps.length) { vbox.remove(); return; }
+      vbox.innerHTML = `<h4>Sizes <span>${ps.filter(p => L(p.variants).length).length} products</span></h4><p class="stnote">${esc(S(v.note))} Write sizes as "1 kg 60, 5 kg 280".</p>
+        <div class="sttbl"><table><thead><tr><th>Product</th><th>Sizes (name price, ...)</th><th></th></tr></thead><tbody>${ps.map(p => `<tr data-p="${esc(S(p.id))}"><td>${esc(S(p.name))}</td>
+        <td><input data-k="v" value="${esc(L(p.variants).map(x => S(x.name) + ' ' + N(x.price)).join(', '))}" placeholder="e.g. 1 kg 60, 5 kg 280" aria-label="Sizes of ${esc(S(p.name))}"></td>
+        <td><button class="ib" type="button" data-vsave>Save</button></td></tr>`).join('')}</tbody></table></div>`;
+    };
+    vbox.addEventListener('click', async e => {
+      const b = e.target.closest('[data-vsave]'), tr = e.target.closest('tr[data-p]'); if (!b || !tr) return;
+      const raw = tr.querySelector('[data-k=v]').value.split(',').map(x => x.trim()).filter(Boolean);
+      const variants = raw.map(x => { const m = x.match(/^(.*?)\s+(?:₹|rs\.?\s*)?([\d.,]+)$/i); return m ? {name: m[1].trim(), price: m[2].replace(/,/g, '')} : {name: x, price: ''}; });
+      b.disabled = true;
+      try { drawV(await api('PUT', base(o) + '/variants', {product: tr.dataset.p, variants})); toast('Sizes saved.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+    });
+    try { if (S(info.order)) drawV(await api('GET', base(o) + '/variants')); else vbox.remove(); } catch (er) { vbox.remove(); }
     // v0.357 STOCK: how many of each product she has (blank = unlimited) and when to warn her
     const kbox = document.createElement('section'); kbox.className = 'stcol ststock'; box.appendChild(kbox);
     const drawStock = v => {

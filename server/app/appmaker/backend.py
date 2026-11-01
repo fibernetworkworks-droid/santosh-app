@@ -283,6 +283,12 @@ def login(r: AppProject, email: str, password: str, ip: str) -> dict[str, Any]:
 
 
 def _products(r: AppProject) -> dict[str, dict[str, Any]]:
+    """Her products + one entry per size (v0.362 VARIANTS: "pid::vid", "Name (size)", its own price)."""
+    from . import variants as VR
+    return VR.expand(r, _base_products(r))
+
+
+def _base_products(r: AppProject) -> dict[str, dict[str, Any]]:
     from .android import service as AN
     key = _j(r.android, {}).get("app_key") or ""
     try:

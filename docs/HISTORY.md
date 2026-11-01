@@ -13029,3 +13029,16 @@ After invoices (v0.355), credit notes (v0.356), coupons, delivery and khata, the
 - Her side: GET /api/apps/<ref>/hisaab?month= (summary, one-line `say`) and &download=1 (ZIP), tool app_banao
   action=hisaab, console "Accounts" box (month picker, Show, Download for CA).
 - Tests `tests/test_v0361_hisaab.py`. Not done: GSTR-1 JSON for the GST portal, Tally export, B2B vs B2C split tables.
+
+## v0.362.0 VARIANTS (App Sahayak Phase 26, owner: "CONTINUE" - back to app development itself)
+- `appmaker/variants.py`: `AppProject.backend["variants"] = {product id: [{id (slug), name, price}]}` (12 a product);
+  `save(r, product id or name, [{name, price}])`, `view`, `expand(r, base)` = base products + "pid::vid" entries ("Name
+  (size)", own price, `variant_of`), the sized product itself removed (no size = no price); `decorate` gives the app content
+  each product's `variants` with per-size `stock` / `sold_out` (product `price` = cheapest size, `sold_out` only when every
+  size is). `backend._products` = expanded (pricing, `_cart_lines`, stock keys, GST lines); `_base_products` = her list
+  (GST settings, the Sizes table). `gst.compute` looks up HSN / rate by the size, else its product.
+- Kits: Android `AppData.lineItem(list, id)` (cart lines: a product without sizes, or a size as its own item), `AppState`
+  cart / maxQty use it; `AddButton` shows `SizeChips(p)` (one chip per size with price and count, sold-out sizes as pills).
+  iPhone `AppData.lineItem`, `SizeChips` in list rows. Generated screens keep calling AddButton / the list rows - no rewrite.
+- Her side: GET / PUT /api/apps/<ref>/variants, tool app_banao action=variants, console Sizes table ("1 kg 60, 5 kg 280").
+- Tests `tests/test_v0362_variants.py`. Not done: two-level variants (size x colour), per-size photos.
