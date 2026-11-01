@@ -2112,6 +2112,14 @@ body.albon{overflow:hidden}
 .ar-proof .ar-form label{display:grid;gap:3px;font-size:13px}
 .ar-proof .sttbl td small{display:inline-block;margin-top:2px}
 
+/* v0.407 HOOLA ARCHITECT spec card + the site's Logic box */
+.stspec .stmod{border:1px solid var(--line);border-radius:12px;padding:8px 12px 10px;margin:8px 0}
+.stspec .stmod legend{padding:0 4px;font-size:14px}
+.stspec .stmod legend label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.stlogic,.stdraft{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:12px 0}
+.stdraft{background:var(--card,transparent)}
+.stlogic h4 span{color:var(--mut);font-weight:400;margin-left:6px}
+
 /* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim

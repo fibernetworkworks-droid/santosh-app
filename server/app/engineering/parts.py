@@ -450,6 +450,30 @@ def drawing(projection="first", tolerance="m", notes=None, part_no=""):
 
 
 MAKE: dict = {}
+JOINTS: list = []
+ROBOT: dict = {}
+
+
+def joint(name, parent, child, kind="revolute", origin=(0, 0, 0), axis=(0, 0, 1), limits=None, effort=None,
+          velocity=None):
+    """A joint between two NAMED parts of the assembly, in the assembly's own (world) frame as modelled:
+    kind revolute (limits in degrees) | continuous | prismatic (limits in mm) | fixed; origin = a point on the axis
+    (mm); axis = direction. Joints make a tree (each part the child of one joint). -> motion check, URDF, motion GIF."""
+    if kind not in ("revolute", "continuous", "prismatic", "fixed"):
+        raise ValueError("joint kind: revolute / continuous / prismatic / fixed")
+    if len(JOINTS) >= 40:
+        raise ValueError("40 joints tak")
+    if limits is not None and (len(limits) != 2 or not float(limits[0]) < float(limits[1])):
+        raise ValueError(f"joint {name}: limits (low, high)")
+    JOINTS.append({"name": str(name), "parent": str(parent), "child": str(child), "kind": kind,
+                   "origin": [float(x) for x in origin], "axis": [float(x) for x in axis],
+                   "limits": [float(x) for x in limits] if limits is not None else None,
+                   "effort": effort, "velocity": velocity})
+
+
+def robot(name="hoola_robot", materials=None):
+    """Robot description settings: the URDF robot name; materials = {part name: material} when parts differ."""
+    ROBOT.update({"name": str(name)[:60], "materials": dict(materials or {})})
 
 
 def make(process, material=None, tool_d=None, pull="Z", limits=None):
@@ -497,6 +521,8 @@ class _H:
     cam = staticmethod(cam)
     fit = staticmethod(fit)
     make = staticmethod(make)
+    joint = staticmethod(joint)
+    robot = staticmethod(robot)
     drawing = staticmethod(drawing)
 
 

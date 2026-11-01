@@ -9,7 +9,7 @@
 'use strict';
 window.HoolaBuild = function (C) {
   const {api, esc, toast} = C;
-  const KINDS = new Set(['site_board', 'app_board', 'app_android']);
+  const KINDS = new Set(['site_board', 'app_board', 'app_android', 'site_spec']);   // v0.407 + the Architect's spec card
   const P = new Map();                 // 'site:<id>' | 'app:<id>' -> project
   let CUR = null;                      // key shown in the studio
   const studio = document.getElementById('studio'), appEl = document.getElementById('app'), sbtn = document.getElementById('studioBtn');
@@ -1497,7 +1497,7 @@ window.HoolaBuild = function (C) {
         <span>Logins, lists of data with rules, a My account page and a staff panel at /admin/. Say who logs in, what they fill and who sees it.</span></label>
         <div class="row"><input id="stApp" placeholder="e.g. customers log in and track their order; staff update the status"><button class="btn go" type="submit">${cols.length ? 'Update app' : 'Make app'}</button></div></form>
       <div class="acts"><button class="btn soft" type="button" data-x="react">Export as React project</button></div>`;
-    box.innerHTML = design + (cols.length ? `<p class="stnote">${N(counts.members)} members · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>` : '');
+    box.innerHTML = design + (info.linked ? `<section class="stlogic" aria-label="Logic"></section>` : '') + (cols.length ? `<p class="stnote">${N(counts.members)} members · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>` : '');
     box.querySelector('.stapp').addEventListener('submit', async e => {
       e.preventDefault(); const w = box.querySelector('#stApp').value.trim(); if (!w) return;
       const b = e.target.querySelector('button'); b.disabled = true;
@@ -1509,6 +1509,7 @@ window.HoolaBuild = function (C) {
       try { const r = await api('POST', base(o) + '/export', {format: 'react'}); toast(S(r?.say) || 'React project ready.'); if (r?.file_id) C.say && toast('The ZIP is in your files: ' + S(r.name)); }
       catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
     });
+    if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
       let rows = [];
@@ -1545,6 +1546,27 @@ window.HoolaBuild = function (C) {
         });
       } catch (er) { /* no members list */ }
     }
+  }
+
+  /* v0.407 EK DIMAAG: the linked app's logic - what runs now, the draft waiting for her tap, approvals waiting */
+  async function logicBox(o, el, link, reload) {
+    if (!el) return;
+    let v;
+    try { v = await api('GET', base(o) + '/logic'); } catch (er) { el.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const d = v.draft ? M(v.draft) : null;
+    el.innerHTML = `<h4>Logic <span>app ${esc(S(link.number))}${v.rev ? ' · rev ' + esc(S(v.rev)) : ''}</span></h4>`
+      + (L(v.summary).length ? L(v.summary).slice(0, 12).map(x => `<div class="bln faint">• ${esc(S(x))}</div>`).join('') : '<p class="stempty">No rules yet. Say what should happen in "Change the app" above.</p>')
+      + (d ? `<div class="stdraft"><b>Draft waiting for you</b>${L(d.lines).slice(0, 14).map(x => `<div class="bln">• ${esc(S(x))}</div>`).join('')}
+          ${L(d.errors).slice(0, 4).map(x => `<div class="badc bln">${esc(S(x))}</div>`).join('')}
+          ${L(d.errors).length ? '' : `<div class="acts"><button class="btn go" type="button" data-lg="apply">Apply this logic</button></div>`}</div>` : '')
+      + (L(v.approvals).length ? `<div class="bln"><b>${L(v.approvals).length} approval(s) waiting</b> - staff decide them at /admin/.</div>` : '');
+    const ap = el.querySelector('[data-lg=apply]');
+    if (ap) ap.addEventListener('click', async () => {
+      if (!confirm('Apply this logic to the live website and its app? Old entries are recalculated; nothing is deleted.')) return;
+      ap.disabled = true;
+      try { const r = await api('POST', base(o) + '/logic/apply', {hash: S(d.hash)}); toast(S(r?.say) || 'Applied.'); reload(); }
+      catch (er) { toast(er.message, true); ap.disabled = false; }
+    });
   }
 
   /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */
@@ -1649,13 +1671,40 @@ window.HoolaBuild = function (C) {
     if (o.done !== -1 && (done !== o.done || ver !== o.ver)) reloadFrames(o);
     o.done = done; o.ver = ver;
   }
+  /* ---------------- v0.407 HOOLA ARCHITECT: her one line -> the spec card, module by module -> her Haan builds ---------------- */
+  function specCard(p, el) {
+    const c = M(p), mods = L(c.modules), built = S(c.status) === 'built';
+    el.classList.add('bcard', 'stspec');
+    el.innerHTML = `<div class="hd"><span class="bic" aria-hidden="true">${IC_WEB}</span><b>${esc(S(c.name) || 'Website plan')} · ${esc(S(c.number))}</b><span class="tag ${built ? 'ok' : 'warn'}">${built ? 'Building ' + esc(S(c.site)) : 'Spec: needs your Haan'}</span></div>`
+      + (c.summary ? `<p class="bsay">${esc(S(c.summary))}</p>` : '')
+      + mods.map(m => `<fieldset class="stmod"><legend><label><input type="checkbox" data-mod="${esc(S(m.key))}"${m.required || built ? ' disabled' : ''} checked> <b>${esc(S(m.title))}</b>${m.ready === false ? ' <span class="badc">needs a fix</span>' : ''}</label></legend>
+          ${L(m.lines).slice(0, 14).map(x => `<div class="bln faint">• ${esc(S(x))}</div>`).join('')}</fieldset>`).join('')
+      + L(c.questions).map(q => `<div class="warnc bln">? ${esc(S(q))}</div>`).join('')
+      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change data / rules</button><button class="btn go" type="button" data-sp="ok">Haan, build it</button></div>`);
+    el.onclick = async e => {
+      const b = e.target.closest('[data-sp]'); if (!b) return;
+      const url = `/api/site-architect/${encodeURIComponent(S(c.id))}`;
+      if (b.dataset.sp === 'data') {
+        const w = prompt('What should change in the data or rules? (e.g. late fee after the 10th, class teacher approves leave)'); if (!w) return;
+        b.disabled = true;
+        try { const r = await api('POST', url + '/data', {words: w}); specCard(r, el); toast(S(r?.say) || 'Updated.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+        return;
+      }
+      const keep = [...el.querySelectorAll('[data-mod]')].filter(x => x.checked).map(x => x.dataset.mod);
+      if (!confirm(`Build ${S(c.name) || 'this website'} with: ${keep.join(', ')}?`)) return;
+      b.disabled = true;
+      try { const r = await api('POST', url + '/approve', {hash: S(c.hash), modules: keep, conversation_id: C.conv() || ''}); toast(S(r?.say) || 'Building.'); specCard({...c, status: 'built', site: r?.number}, el); }
+      catch (er) { toast(er.message, true); b.disabled = false; }
+    };
+  }
+
   setInterval(() => { const o = P.get(CUR); if (o && isOpen() && studio.dataset.k === o.k) { const age = studio.querySelector('.pvage'); if (age) age.textContent = 'taaza · ' + ago(o.loadedAt || Date.now()); } }, 5000);
   if (sbtn) sbtn.addEventListener('click', () => { if (isOpen()) return close(); const o = P.get(CUR) || [...P.values()].sort((a, b) => b.last - a.last)[0]; if (o) open(o.k); });
   addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen() && !document.querySelector('.blb')) close(); });
 
   return {
     kinds: KINDS,
-    card(kind, p, el, live) { card(kind, p, el, live); after(kind, p); },
+    card(kind, p, el, live) { if (kind === 'site_spec') return specCard(p, el); card(kind, p, el, live); after(kind, p); },
     reset, close, isOpen,
   };
 };

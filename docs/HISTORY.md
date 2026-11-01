@@ -15320,3 +15320,70 @@ Tests `test_v0406_game_crew.py` (11); v0386 fixture takes roles; v0395's class_n
   level" > Explorer (2,880 ops/day on real accounts) > Basic after OAuth brand verification). `gads.configured()` no longer
   needs GOOGLE_ADS_DEVELOPER_TOKEN; the header is sent only when set; the not-approved message names the Cloud project's
   access level. The API Center "Apply for Basic Access" form is only for the App Conversion Tracking API now.
+
+## v0.407.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md = W1 + W13, owner: "START STEP 2")
+
+**W1 - one backend for website + apps (`server/app/site/applink.py`).** A website's web app (v0.305) used its own small
+engine: lists + simple rules only. Now a site can run on the SAME backend as her native apps - App Sahayak's
+`appmaker/backend.py` + the DIMAAG logic engine (relations, formulas, rules, unique keys, workflows with maker-checker
+approvals + SLA, triggers, schedules, locked functions).
+- `link(tenant, site)` (POST /api/sites/{ref}/link-app, idempotent): the site gets ONE App Sahayak project (status `web`,
+  its own app_key so a phone app can be built on the very same data later). Its lists become the project's lists and every
+  member + row MOVES over in one UPDATE (`site_app_rows` / `site_app_members` site_id -> `app:<pid>`): same ids, same
+  passwords. A login signed BEFORE the move keeps working (`_who` re-checks the old HMAC and finds the moved member).
+- `call(site_id, op, ...)`: every public `/api/site-app/<site>/...` address is unchanged for the site's pages. Unlinked =
+  the v0.305 engine byte-for-byte; linked = BE.signup/login/rows/create/update/delete + LE.approvals/decide/related/
+  call_public. New public routes: GET `.../c/{key}/{row}/related/{rel}`, GET `.../approvals`, POST `.../approvals/{id}`,
+  POST `.../fn/{name}` (an unlinked site answers 404 "pehle jodiye").
+- Her side: GET /api/sites/{ref}/logic, POST .../logic/draft {words} (links first, then App Sahayak's own author + checker,
+  `appmaker.logic.service.draft`), POST .../logic/apply {hash} = ONLY her tap on the exact draft; the site is rebuilt so
+  new lists / fields reach the account + staff pages. `design_app` on a linked site = a logic draft (never a silent change).
+  Console App & data tab, owner rows / members / roles, dashboard (`site/dash.py`) all read the linked app.
+- `hoola-app.js`: ref fields = a picker of the linked list (by its label field), computed + workflow fields kept out of
+  forms, list cards show `_labels`, a waiting-approval pill with Approve / Reject for those who may decide, the workflow's
+  own buttons (`_actions`), and an Approvals box on top of /admin/.
+
+**W13 - HOOLA ARCHITECT (`server/app/site/architect.py`).** Her ONE line -> a spec card, module by module:
+pages (public / after login / staff), users (roles), data (lists + fields), logic (rules, workflows, approvals), features
+(shop, blog, booking, languages). Opus (`ARCH_SYSTEM`, kind site_edit) designs it, `clean()` keeps it to a fixed shape
+(duplicate roles / pages dropped, unknown languages dropped, 150 pages max), and the data + logic words go to App
+Sahayak's OWN author + checker on a fresh `web` project in status `spec` - so the data model is PROVED before she sees it.
+Nothing is built. `approve(id, hash, modules)` is only her tap (console card / an explicit haan in chat): the website is
+created with her pages in the brief (big = site map first), joined to that project (`applink.attach`), lists + logic
+applied by the draft hash, languages / shop set, the plan approved so the 3 looks start. A module she switches off is
+skipped (data off = no app link). Spec projects are hidden from her apps list until approved.
+Routes: GET/POST /api/site-architect, GET /api/site-architect/{id}, POST .../{id}/data {words} (redo only data + rules),
+POST .../{id}/approve {hash, modules}. Tool `website` actions architect / architect_data / architect_ok / logic / logic_ok
+(the *_ok ones owner-only, tap-like). Console: `site_spec` chat card with a checkbox per module + "Haan, build it", and a
+Logic box in App & data (rules now live, the draft waiting with "Apply this logic", approvals waiting).
+Proof (tests/test_v0407_ek_dimaag.py): a school portal from one line -> students + leave requests, rule days > 0, a parent
+cannot self-approve, related leaves per student, all through the site's own addresses. Also: link migration + old tokens,
+a linked site's workflow + maker-checker approval end to end, unlinked sites unchanged.
+NOT VERIFIED: no real Opus call made (fakes in tests); the phone app does not draw the `site_spec` card yet (the model
+reads the card's lines in chat; her Haan in chat = architect_ok).
+
+## v0.408.0 HOOLA MECHANISMS (1 Nov 2026)
+Owner: "GO JOINTS AND URDF" (third item from the text-to-cad comparison; own code).
+- `engineering/kinematics.py` (CAD box, after the build, when the script calls H.joint): joints written in the
+  assembly's own frame at the zero pose - name, parent, child (assembly part NAMES), kind revolute / continuous /
+  prismatic / fixed, origin (a point on the axis, mm), axis, limits (deg / mm), effort, velocity. H.robot(name,
+  materials={part: material}); the part material comes from the design's MATERIAL line (sandbox.run(material=)).
+- tree(): duplicate names, unknown parts, two parents, zero axis, low >= high limits, loops - each NAMED; a part no
+  joint reaches is fixed to the root and said so. world_tf composes child motion = parent motion x joint motion.
+- Mass properties: OCC GProp per part (mass kg, COM mm, inertia about the COM in kg m2) - arm 120 x 20 x 20 Al =
+  0.1296 kg, Ixx 8.64e-6, Iyy 1.5984e-4, exactly m (b2 + c2) / 12.
+- Range of motion: each movable joint swept to each limit in 12 steps, the moving subtree's solids tested against
+  every other part with OCC common (> 0.5 % of the smaller volume; the joint's own parent / child pair skipped),
+  first hit bisected 6 times -> free range + what collides at what value. A collision inside her asked range goes
+  back to the designer once (ENG_KIN_ROUNDS 1).
+- URDF: link frame = its joint origin (world-aligned at zero pose), visual + collision STL in the link frame (mm,
+  scale 0.001), inertial origin = COM in the link frame, joint origin relative to the parent link, axis, limits in
+  rad / m + effort / velocity (defaults 10 N m / 1 rad s, 100 N / 0.1 m s, listed as assumed). Validated after
+  writing by parsing it back: XML, unique names, one root + a tree, limits, positive masses, inertia positive +
+  triangle rule. robot_urdf.zip = <robot>/robot.urdf + meshes/*.stl + README.
+- Motion GIF (16 frames, all joints swinging together, one camera centre + scale) and an exploded view (parts pushed
+  out from the assembly centre, deeper links further) drawn by the server from mesh.json + kin.json transforms.
+- Checks rows: Robot description (URDF), Joint <name> range (free vs asked, what collides). Console + phone show the
+  GIF / exploded view and the URDF download.
+- Tests: tests/test_v0406_mechanisms.py (5). Not yet: SDF / MJCF, closed-chain linkages, joint torque from loads,
+  self-collision matrix (SRDF), gear / belt couplings between joints.

@@ -709,7 +709,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
                   done: ['ok', 'Ready'], failed: ['bad', 'Failed']};
   const FILEN = [['part.step', 'STEP (CAD / CNC)'], ['part.stl', 'STL (3D print)'], ['part.3mf', '3MF (3D print)'], ['part.glb', 'GLB (3D viewer / AR)'],
                  ['section.dxf', 'DXF section (laser / CNC)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code'],
-                 ['analysis.pdf', 'Analysis report PDF'], ['part.nc', 'CNC G-code'], ['flat.dxf', 'Flat pattern DXF']];
+                 ['analysis.pdf', 'Analysis report PDF'], ['part.nc', 'CNC G-code'], ['flat.dxf', 'Flat pattern DXF'],
+                 ['robot_urdf.zip', 'Robot URDF (ROS)']];
   const b64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = no; r.readAsDataURL(f); });
   async function cad(el) {
     clearTimeout(CTIMER);
@@ -764,8 +765,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     // v0.365 analysis (FEA), CNC and sheet metal
     const ana = (v.analysis || []).map(a => `<div class="cad-ana"><b>${esc((a.lines || [])[0] || a.kind)}</b>${
       (a.lines || []).slice(1).map(l => `<div class="${l.startsWith('!') ? 'badc' : 'muted'}">${esc(l.replace(/^! /, ''))}</div>`).join('')}</div>`).join('');
-    const pics = ['fea_0', 'fea_1', 'fea_2', 'cam', 'flat'].filter(k => v.files[k + '.png'])
-      .map(k => `<a href="${esc(v.files[k + '.png'])}" target="_blank" rel="noopener"><img src="${esc(v.files[k + '.png'])}" alt="${esc(k)}" loading="lazy"></a>`).join('');
+    const pics = ['fea_0.png', 'fea_1.png', 'fea_2.png', 'cam.png', 'flat.png', 'motion.gif', 'explode.png'].filter(k => v.files[k])
+      .map(k => `<a href="${esc(v.files[k])}" target="_blank" rel="noopener"><img src="${esc(v.files[k])}" alt="${esc(k)}" loading="lazy"></a>`).join('');
     const cam = v.cam ? `<p class="muted">${v.cam.ok ? `CNC: ${esc((v.cam.ops || []).join(', '))} · tool Ø${num(v.cam.tool_d)} mm · about ${num(v.cam.minutes)} min · simulate before cutting`
       : `CNC G-code did not run: ${esc(v.cam.error || '')}`}</p>` : '';
     const sheet = v.sheet ? `<p class="muted">Sheet ${num(v.sheet.t)} mm · flat ${num(v.sheet.length)} x ${num(v.sheet.width)} mm · R ${num(v.sheet.r)} · K ${num(v.sheet.k)}</p>` : '';

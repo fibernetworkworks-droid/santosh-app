@@ -66,7 +66,7 @@ def extent(mesh: dict[str, Any], view: str) -> tuple[float, float, float, float]
 
 
 def draw_view(mesh: dict[str, Any], view: str, w: int, h: int, scale: float | None = None,
-              sharp: set | None = None, ss: int = 2) -> tuple[Image.Image, float]:
+              sharp: set | None = None, ss: int = 2, center: tuple[float, float] | None = None) -> tuple[Image.Image, float]:
     """(RGB image w x h, px per mm used). scale=None fits the part with a margin. A depth buffer (numpy) decides
     what is in front, so faces and edges hide correctly at any triangle size."""
     import numpy as np
@@ -75,7 +75,7 @@ def draw_view(mesh: dict[str, Any], view: str, w: int, h: int, scale: float | No
     x0, x1, y0, y1 = extent(mesh, view)
     if scale is None:
         scale = 0.84 * min(w / max(x1 - x0, 1e-6), h / max(y1 - y0, 1e-6))
-    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    cx, cy = center if center is not None else ((x0 + x1) / 2, (y0 + y1) / 2)
     W, H = w * ss, h * ss
     sx = W / 2 + (rv[:, 0] - cx) * scale * ss
     sy = H / 2 - (rv[:, 1] - cy) * scale * ss

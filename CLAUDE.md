@@ -52,6 +52,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the SHIKSHA work, deployed + checked on the VPS): branch
+  `stable-2026-11-01-v406` = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com, healthz 0.406.0).
+  Education AI Employees end to end: pylab sandbox + Shiksha + Pathyakram (v0.381), Guru Sahayak tutor + 2.1 (v0.387),
+  Daftar school office + Shodh research assistant (v0.403); also carries the other sessions' v0.383-v0.406 (CONNECT,
+  APNA DATABASE 1+2, DFM, GAME CREW...). APK release `v0.406.0-b1079`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.406.0-b1079/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v406` as the branch.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the CODING work, every coding card 100% live): branch
   `stable-2026-11-01-v382` = commit 5e3e06d4 = v0.382.0, pubspec 0.382.0+426 (live on hoola.ainewtika.com, healthz 0.382.0).
   Developer Sahayak codes like Claude Code: 8-tool step loop (v0.350), CI on a draft PR + fix rounds (v0.352), project rules
@@ -177,8 +184,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
   403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
   verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
-- Current version: v0.406.0 (pubspec 0.406.0+450). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.408.0 (pubspec 0.408.0+452). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.407 EK DIMAAG + ARCHITECT (web Step 2): `site/applink.py` = a website's web app on App Sahayak's backend + DIMAAG (members / rows moved, old logins work, same /api/site-app addresses; logic draft -> her tap); `site/architect.py` = her one line -> spec card (pages / users / data / logic / features) -> her Haan builds site + app brain (`/api/site-architect*`, website action=architect*).
 - v0.403 SHIKSHA 3+4: `app/daftar` school office (attendance + guardian alert card, grading UNSIGNED: sheet / OMR / Forms /
   code / rubric, timetable, report card from signed-off marks) + `app/shodh` research assistant (official APIs only, refs in code).
 - v0.402 ECC PHASE 1: `devsahayak/specialists.py` (ECC agents, MIT, adapted): CI fixer by language (`dev_spec_fix`), reviewer discipline + language reviewer + focused passes (`dev_spec_review`, `service.explore_review`); both OFF until `python -m app.quality review` (vps-ops `review_card`, 12 PRs old vs new) + vps-ops `fix_card_spec` say so.
@@ -210,6 +218,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.408 HOOLA MECHANISMS (`engineering/kinematics.py`, H.joint / H.robot): joint tree, B-rep mass + inertia, collision sweep -> free range (collision in her range -> redesign), robot_urdf.zip (URDF + STL meshes, validated), motion.gif + explode.png.
 - v0.405 HOOLA DFM (built as 0.404, `engineering/dfm.py`, H.make('fdm'|'sla'|'sls'|'mjf'|'metal_pbf'|'cnc'|'sheet'|'molding', ...)): measured walls / overhangs / orientation / inside corners / deep holes / setups / bends / draft / undercuts / clamp; FAIL -> redesign; limits = published starting points, her shop's numbers override.
 - v0.398 REAL DRAWINGS (built as 0.397, `engineering/views2d.py` box: kernel HLR vector views + hole stacks THRU/DEEP/CBORE/CSK + radii; `drawing.py` reportlab A3 sheet: measured dims, callouts, H.fit ISO 286, H.drawing first/third + ISO 2768, title block); page 2 = shaded views.
 - v0.394 CAD CONTACT (built as 0.392, `engineering/contact.py`): assembly FEA as separate parts - node-to-surface contacts (bonded / frictionless / friction, open + slip), preloaded bolt connectors (H.analyze(..., contact=, bolts=[...])), joint separates / slips -> redesign; bolt bearing in the hole not modelled.

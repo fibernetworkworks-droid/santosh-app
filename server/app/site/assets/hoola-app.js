@@ -11,16 +11,19 @@
       hi: 'Hello', out: 'Log out', send: 'Submit', saved: 'Saved!', fail: 'Could not save', need: 'Please log in first.',
       empty: 'Nothing here yet.', edit: 'Edit', del: 'Delete', sure: 'Delete this entry?', role: 'Role', members: 'Members',
       staffonly: 'Log in with a staff account to see this.', save: 'Save', cancel: 'Cancel', yes: 'Yes', no: 'No',
-      dash: 'Last 30 days', perday: 'New a day', total: 'Total'},
+      dash: 'Last 30 days', perday: 'New a day', total: 'Total',
+      approvals: 'Waiting for approval', approve: 'Approve', reject: 'Reject', waiting: 'Waiting for', pick: 'Choose...'},
     hinglish: {login: 'Login', signup: 'Naya account', email: 'Email', pw: 'Password (8+ akshar)', name: 'Aapka naam',
       hi: 'Namaste', out: 'Logout', send: 'Bhejiye', saved: 'Save ho gaya!', fail: 'Save nahi hua', need: 'Pehle login kijiye.',
       empty: 'Abhi kuch nahi.', edit: 'Badlo', del: 'Hatao', sure: 'Yeh entry hata dein?', role: 'Role', members: 'Members',
       staffonly: 'Yeh dekhne ke liye staff account se login kijiye.', save: 'Save', cancel: 'Rehne do', yes: 'Haan', no: 'Nahi',
-      dash: 'Pichhle 30 din', perday: 'Roz naye', total: 'Kul'},
+      dash: 'Pichhle 30 din', perday: 'Roz naye', total: 'Kul',
+      approvals: 'Manzoori ka intezaar', approve: 'Manzoor', reject: 'Na-manzoor', waiting: 'Intezaar', pick: 'Chuniye...'},
     hi: {login: 'लॉगिन', signup: 'नया अकाउंट', email: 'ईमेल', pw: 'पासवर्ड (8+ अक्षर)', name: 'आपका नाम', hi: 'नमस्ते',
       out: 'लॉगआउट', send: 'भेजिए', saved: 'सेव हो गया!', fail: 'सेव नहीं हुआ', need: 'पहले लॉगिन कीजिए।', empty: 'अभी कुछ नहीं।',
       edit: 'बदलें', del: 'हटाएँ', sure: 'यह एंट्री हटा दें?', role: 'रोल', members: 'मेंबर', staffonly: 'स्टाफ अकाउंट से लॉगिन कीजिए।',
-      save: 'सेव', cancel: 'रहने दें', yes: 'हाँ', no: 'नहीं', dash: 'पिछले 30 दिन', perday: 'रोज़ नए', total: 'कुल'}
+      save: 'सेव', cancel: 'रहने दें', yes: 'हाँ', no: 'नहीं', dash: 'पिछले 30 दिन', perday: 'रोज़ नए', total: 'कुल', approvals: 'मंज़ूरी का इंतज़ार', approve: 'मंज़ूर',
+      reject: 'नामंज़ूर', waiting: 'इंतज़ार', pick: 'चुनिए...'}
   };
   var t = T[LANG] || (LANG === 'mr' ? T.hi : T.en);
   var tok = '';
@@ -50,6 +53,12 @@
     if (f.type === 'long_text') box = el('textarea', {id: id, name: f.key, rows: '3'});
     else if (f.type === 'choice') { box = el('select', {id: id, name: f.key}); f.options.forEach(function (o) { box.appendChild(el('option', {value: o, text: o})); }); }
     else if (f.type === 'yes_no') box = el('input', {id: id, name: f.key, type: 'checkbox'});
+    else if (f.type === 'ref' && f.to) {               // v0.407 a linked record (the order's customer, the student's class)
+      box = el('select', {id: id, name: f.key}); box.appendChild(el('option', {value: '', text: t.pick}));
+      refOptions(f.to).then(function (opts) {
+        opts.forEach(function (o) { var op = el('option', {value: o[0], text: o[1]}); if (String(val || '') === o[0]) op.selected = true; box.appendChild(op); });
+      });
+    }
     else box = el('input', {id: id, name: f.key, type: {number: 'number', phone: 'tel', email: 'email', date: 'date'}[f.type] || 'text',
       inputmode: f.type === 'phone' ? 'numeric' : null});
     if (f.required && f.type !== 'yes_no') box.required = true;
@@ -57,6 +66,15 @@
     else if (f.default) box.value = f.default;
     return el('label', {'for': id}, [d.createTextNode(f.label + ' '), box]);
   }
+  var REFS = {};
+  function refOptions(to) {                            // the rows of the linked list this person may see, by their name
+    if (!REFS[to]) REFS[to] = call('GET', '/c/' + to).then(function (j) {
+      var c = C(to) || {fields: []}, lf = c.label_field || ((c.fields || []).filter(function (f) { return f.type === 'text'; })[0] || {}).key;
+      return (j.rows || []).map(function (r) { return [String(r.id), String(r[lf] || r.id)]; });
+    }).catch(function () { return []; });
+    return REFS[to];
+  }
+  function inForm(x) { return !x.computed && !x.workflow && (!x.admin_only || staff()); }   // v0.407 the server works these out
   function values(form, c) {
     var out = {};
     // by name, never form.elements[key]: a field called 'item' or 'length' would hit the collection's own method
@@ -105,7 +123,7 @@
     if (c.rules.create === 'member' && !me) { box.appendChild(el('p', {'class': 'muted', text: t.need})); return; }
     if (c.rules.create === 'admin' && !staff()) return;
     var f = el('form', {'class': 'hs-form'});
-    c.fields.forEach(function (x) { if (!x.admin_only || staff()) f.appendChild(input(x)); });
+    c.fields.forEach(function (x) { if (inForm(x)) f.appendChild(input(x)); });
     f.appendChild(el('button', {type: 'submit', 'class': 'btn btn-primary', text: t.send}));
     f.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -124,9 +142,28 @@
       c.fields.forEach(function (f) {
         var v = r[f.key]; if (v === '' || v === null || v === undefined) return;
         if (f.type === 'yes_no') v = v ? t.yes : t.no;
+        if (f.type === 'ref') v = (r._labels || {})[f.key] || v;
         card.appendChild(el('p', {}, [el('strong', {text: f.label + ': '}), d.createTextNode(String(v))]));
       });
       if (r.created) card.appendChild(el('p', {'class': 'muted', text: new Date(r.created).toLocaleString()}));
+      if (r._pending) {                                // v0.407 a step waiting for approval (maker-checker)
+        var pb = el('p', {'class': 'pill hs-app-pending', text: r._pending.label + ' · ' + t.waiting + ': ' + r._pending.waiting_for +
+          ' (' + r._pending.step + '/' + r._pending.of + ')'});
+        card.appendChild(pb);
+        if (r._pending.can_decide) card.appendChild(decideButtons(r._pending.id));
+      }
+      if ((r._actions || []).length && c.workflow) {   // v0.407 the workflow steps this person may take
+        var ab = el('div', {'class': 'btns hs-app-actions'});
+        r._actions.forEach(function (a) {
+          var b = el('button', {type: 'button', 'class': 'btn btn-primary', text: a.label + (a.approval ? ' *' : '')});
+          b.addEventListener('click', function () {
+            var body = {}; body[c.workflow] = a.to; b.disabled = true;
+            call('PATCH', '/c/' + c.key + '/' + r.id, body).then(all).catch(function (er) { b.disabled = false; alert(er.message); });
+          });
+          ab.appendChild(b);
+        });
+        card.appendChild(ab);
+      }
       if (editable(r)) {
         var eb = el('button', {type: 'button', 'class': 'btn btn-ghost', text: t.edit}), db = el('button', {type: 'button', 'class': 'btn btn-ghost', text: t.del});
         eb.addEventListener('click', function () { editor(card, c, r); });
@@ -139,7 +176,7 @@
   }
   function editor(card, c, r) {
     var f = el('form', {'class': 'hs-form'});
-    c.fields.forEach(function (x) { if (!x.admin_only || staff()) f.appendChild(input(x, r[x.key])); });
+    c.fields.forEach(function (x) { if (inForm(x)) f.appendChild(input(x, r[x.key])); });
     var no = el('button', {type: 'button', 'class': 'btn btn-ghost', text: t.cancel});
     f.appendChild(el('div', {'class': 'btns'}, [el('button', {type: 'submit', 'class': 'btn btn-primary', text: t.save}), no]));
     no.addEventListener('click', all);
@@ -156,10 +193,38 @@
     });
   }
 
+  function decideButtons(id) {
+    var ok = el('button', {type: 'button', 'class': 'btn btn-primary', text: t.approve}),
+      no = el('button', {type: 'button', 'class': 'btn btn-ghost', text: t.reject});
+    [[ok, 'approve'], [no, 'reject']].forEach(function (p) {
+      p[0].addEventListener('click', function () {
+        ok.disabled = no.disabled = true;
+        call('POST', '/approvals/' + id, {decision: p[1]}).then(all).catch(function (er) { ok.disabled = no.disabled = false; alert(er.message); });
+      });
+    });
+    return el('div', {'class': 'btns'}, [ok, no]);
+  }
+  function approvalsBox(box) {                         // v0.407 the staff inbox: every approval waiting for this person
+    if (!schema.approvals) return;
+    var sec = el('section', {'class': 'hs-app-admin hs-app-appr'}, [el('h2', {text: t.approvals})]);
+    box.appendChild(sec);
+    call('GET', '/approvals').then(function (j) {
+      var list_ = (j.approvals || []).filter(function (a) { return a.status === 'pending'; });
+      if (!list_.length) { sec.appendChild(el('p', {'class': 'muted', text: t.empty})); return; }
+      list_.forEach(function (a) {
+        var card = el('article', {'class': 'card'}, [el('h3', {text: (a.title || a.coll) + ': ' + a.label}),
+          el('p', {'class': 'muted', text: a.from + ' → ' + a.to + ' · ' + (a.maker || '') + ' · ' + t.waiting + ': ' + a.waiting_for + ' (' + a.step + '/' + a.of + ')'})]);
+        if (a.can_decide) card.appendChild(decideButtons(a.id));
+        sec.appendChild(card);
+      });
+    }).catch(function () { sec.remove(); });
+  }
+
   // ---------------------------------------------------------------- the staff panel (/admin/)
   function admin(box) {
     box.textContent = '';
     if (!staff()) { if (me) box.appendChild(el('p', {'class': 'muted', text: t.staffonly})); return; }
+    approvalsBox(box);
     var dash = el('section', {'class': 'hs-app-admin hs-app-dash'}, [el('h2', {text: t.dash})]);
     box.appendChild(dash);
     call('GET', '/stats?days=30').then(function (j) { board(dash, j); }).catch(function () { dash.remove(); });
@@ -205,6 +270,7 @@
   }
 
   function all() {
+    REFS = {};
     d.querySelectorAll('[data-hoola-app="login"]').forEach(login);
     d.querySelectorAll('[data-hoola-app="form"]').forEach(form);
     d.querySelectorAll('[data-hoola-app="admin"]').forEach(admin);

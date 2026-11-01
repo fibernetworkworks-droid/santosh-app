@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.406.0"   # v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403; owner: "GO FIX" + "USE THIS FOR HOOLA GAMING DEVELOPMENT", after studying Claude-Code-Game-Studios, MIT, ideas only - THIRD_PARTY_NOTICES.md): a whole studio inside the Game Developer desk - 49 roles as DATA (gamedesk/crew.py: 3 directors, 8 leads, 23 specialists, 15 Godot / Unity / Unreal specialists), each with what it does, how it thinks, what it checks, who reviews it, and whether it BUILDS (changes the Godot game) or WRITES (a result for her OK: sound lists, store text, Unity / Unreal plans - work Hoola cannot build yet). Every task gets a role and acceptance criteria (hers / the planner's, the role's checks, Hoola's two automatic play checks); a build covers the test criteria with evidence stamped with the code fingerprint, the lead reviews screenshots + the code diff (Claude vision) and may set only SCREEN criteria - nothing seen = not covered, her criteria only by her OK; the verdict (COMPLETE / WITH NOTES / BLOCKED / NOT ASSESSED) is counted in code. 9 team flows plan linked tasks with only that team's roles; milestone gate checks PASS / CONCERNS / FAIL / NOT ASSESSED from counted facts + three directors' views, advice only. GO FIX: (1) NOT ASSESSED said out loud - a Bible with no levels is never a clean balance pass, a nightly that could not run is recorded, the morning report says when nothing was checked; (2) Godot 4.5-4.7 changes in the code guide (typed-override returns, device ids, RichTextLabel rename...); (3) smoke() imports first, so class_name helpers work again (a real run proved it) and v0.395's ban is lifted; (4) acceptance criteria + evidence-older-than-code on every task.
+APP_VERSION = "0.408.0"   # v0.408.0 HOOLA MECHANISMS (owner: "GO JOINTS AND URDF"): H.joint between named assembly parts (revolute / continuous / prismatic / fixed, world frame of the zero pose) -> tree check with named problems, B-rep mass / centre of mass / inertia per part from its material, every movable joint swept through its range with exact solid overlap tests + bisection -> the FREE range and what collides where (inside her range = back to the designer), URDF package (links in joint frames, STL meshes mm x 0.001, inertials kg / m, limits rad / m, effort / velocity said when assumed) checked by our own validator after parsing it back, motion GIF (all joints swinging, one camera) and exploded view. Previous: v0.407.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 2"). EK DIMAAG (W1): a website's web app now runs on the SAME backend as her native apps - App Sahayak's backend + the DIMAAG logic engine (relations, formulas, rules, workflows with maker-checker approvals + SLA, triggers, schedules, functions). Linking moves every member and row over unchanged (same ids, same passwords; a login made before the move keeps working), the site's own /api/site-app addresses stay, new public routes for related records / approvals / functions, and her logic is drafted by App Sahayak's author + checker and goes live only on her tap; the site's pages draw the workflow buttons, approval pills and linked-record pickers. HOOLA ARCHITECT (W13): her ONE line -> a spec card (pages, users, data, rules / workflows / approvals, features) with the data model PROVED by the checker before she sees it; she approves module by module and Hoola creates the website, joins it to its app brain, applies the logic and starts the looks. Proof: a school portal from one line. Previous: v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403; owner: "GO FIX" + "USE THIS FOR HOOLA GAMING DEVELOPMENT", after studying Claude-Code-Game-Studios, MIT, ideas only - THIRD_PARTY_NOTICES.md): a whole studio inside the Game Developer desk - 49 roles as DATA (gamedesk/crew.py: 3 directors, 8 leads, 23 specialists, 15 Godot / Unity / Unreal specialists), each with what it does, how it thinks, what it checks, who reviews it, and whether it BUILDS (changes the Godot game) or WRITES (a result for her OK: sound lists, store text, Unity / Unreal plans - work Hoola cannot build yet). Every task gets a role and acceptance criteria (hers / the planner's, the role's checks, Hoola's two automatic play checks); a build covers the test criteria with evidence stamped with the code fingerprint, the lead reviews screenshots + the code diff (Claude vision) and may set only SCREEN criteria - nothing seen = not covered, her criteria only by her OK; the verdict (COMPLETE / WITH NOTES / BLOCKED / NOT ASSESSED) is counted in code. 9 team flows plan linked tasks with only that team's roles; milestone gate checks PASS / CONCERNS / FAIL / NOT ASSESSED from counted facts + three directors' views, advice only. GO FIX: (1) NOT ASSESSED said out loud - a Bible with no levels is never a clean balance pass, a nightly that could not run is recorded, the morning report says when nothing was checked; (2) Godot 4.5-4.7 changes in the code guide (typed-override returns, device ids, RichTextLabel rename...); (3) smoke() imports first, so class_name helpers work again (a real run proved it) and v0.395's ban is lifted; (4) acceptance criteria + evidence-older-than-code on every task.
 
 
 def _quiet_http_logs() -> None:
@@ -8373,126 +8373,101 @@ async def site_app_cors(site_id: str, rest: str):
     return Response(status_code=204, headers=_SITE_APP_CORS)
 
 
+def _site_tok(request: Request) -> str:
+    return (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+
+
+async def _site_pub(site_id: str, op: str, request: Request, body: dict | None = None, **kw):
+    """v0.407 EK DIMAAG: every public web-app call of a website - the v0.305 engine for a plain site, the App Sahayak
+    backend + DIMAAG logic for a linked one (site/applink.py). The site's pages keep the same addresses."""
+    from .site import applink as AL
+    tok, ip = _site_tok(request), _ip(request)
+    return await asyncio.to_thread(_app_call, lambda: AL.call(site_id, op, tok, body or {}, ip, **kw))
+
+
 @app.get("/api/site-app/{site_id}/schema")
-async def site_app_schema(site_id: str):
-    from .site import service as S
-    from .site import webapp as W
-    return await asyncio.to_thread(_app_call, lambda: W.public_schema(S.public_app(site_id)[1]))
+async def site_app_schema(site_id: str, request: Request):
+    return await _site_pub(site_id, "schema", request)
 
 
 @app.post("/api/site-app/{site_id}/signup")
 async def site_app_signup(site_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    ip = _ip(request)
-    return await asyncio.to_thread(_app_call, lambda: W.signup(site_id, S.public_app(site_id)[1], str(body.get("email") or ""),
-                                                                 str(body.get("password") or ""), str(body.get("name") or ""), ip))
+    return await _site_pub(site_id, "signup", request, await _json_body(request))
 
 
 @app.post("/api/site-app/{site_id}/login")
 async def site_app_login(site_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    ip = _ip(request)
-
-    def go():
-        S.public_app(site_id)
-        return W.login(site_id, str(body.get("email") or ""), str(body.get("password") or ""), ip)
-    return await asyncio.to_thread(_app_call, go)
+    return await _site_pub(site_id, "login", request, await _json_body(request))
 
 
 @app.get("/api/site-app/{site_id}/me")
 async def site_app_me(site_id: str, request: Request):
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return _app_call(lambda: {"me": W.view_member(who.m) if who.m else None})
+    return await _site_pub(site_id, "me", request)
 
 
 @app.post("/api/site-app/{site_id}/logout")
 async def site_app_logout(site_id: str, request: Request):
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    if who.m:
-        await asyncio.to_thread(W.logout_all, site_id, who.m)
-    return _app_call(lambda: {"ok": True})
+    return await _site_pub(site_id, "logout", request)
 
 
 @app.get("/api/site-app/{site_id}/c/{key}")
 async def site_app_rows(site_id: str, key: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return await asyncio.to_thread(_app_call, lambda: {"rows": W.rows(site_id, S.public_app(site_id)[1], key, who)})
+    return await _site_pub(site_id, "rows", request, key=key)
 
 
 @app.post("/api/site-app/{site_id}/c/{key}")
 async def site_app_create(site_id: str, key: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    ip = _ip(request)
-    return await asyncio.to_thread(_app_call, lambda: W.create(site_id, S.public_app(site_id)[1], key, body, who, ip))
+    return await _site_pub(site_id, "create", request, await _json_body(request), key=key)
 
 
 @app.patch("/api/site-app/{site_id}/c/{key}/{row_id}")
 async def site_app_update(site_id: str, key: str, row_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return await asyncio.to_thread(_app_call, lambda: W.update(site_id, S.public_app(site_id)[1], key, row_id, body, who))
+    return await _site_pub(site_id, "update", request, await _json_body(request), key=key, row_id=row_id)
 
 
 @app.delete("/api/site-app/{site_id}/c/{key}/{row_id}")
 async def site_app_delete(site_id: str, key: str, row_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return await asyncio.to_thread(_app_call, lambda: W.delete(site_id, S.public_app(site_id)[1], key, row_id, who))
+    return await _site_pub(site_id, "delete", request, key=key, row_id=row_id)
+
+
+@app.get("/api/site-app/{site_id}/c/{key}/{row_id}/related/{rel}")
+async def site_app_related(site_id: str, key: str, row_id: str, rel: str, request: Request):
+    """v0.407 a row's linked records (an order's lines, a class's students) - linked sites only."""
+    return await _site_pub(site_id, "related", request, key=key, row_id=row_id, rel=rel)
 
 
 @app.get("/api/site-app/{site_id}/members")
 async def site_app_members(site_id: str, request: Request):
     """Staff page: the site's members (staff / admin members only)."""
-    from .site import service as S
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-
-    def go():
-        S.public_app(site_id)
-        if not who.staff:
-            raise W.AppError("Iski ijaazat nahi.", 403)
-        return {"members": W.members(site_id), "admin": bool(who.m and who.m.role == "admin")}
-    return await asyncio.to_thread(_app_call, go)
+    return await _site_pub(site_id, "members", request)
 
 
 @app.get("/api/site-app/{site_id}/stats")
 async def site_app_stats(site_id: str, request: Request, days: int = 30):
     """v0.357 the staff panel's dashboard: rows a day, status mix, sums (staff / admin members only)."""
-    from .site import service as S
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return await asyncio.to_thread(_app_call, lambda: W.stats(site_id, S.public_app(site_id)[1], who, days))
+    return await _site_pub(site_id, "stats", request, days=days)
 
 
 @app.post("/api/site-app/{site_id}/members/{member_id}/role")
 async def site_app_role(site_id: str, member_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    who = await asyncio.to_thread(_app_who, site_id, request)
+    return await _site_pub(site_id, "role", request, await _json_body(request), member_id=member_id)
 
-    def go():
-        S.public_app(site_id)
-        if not (who.m and who.m.role == "admin"):
-            raise W.AppError("Role sirf admin badal sakta hai.", 403)
-        if member_id == who.m.id:
-            raise W.AppError("Apna role khud nahi badal sakte.", 400)
-        return W.set_role(site_id, member_id, str(body.get("role") or ""))
-    return await asyncio.to_thread(_app_call, go)
+
+@app.get("/api/site-app/{site_id}/approvals")
+async def site_app_approvals(site_id: str, request: Request):
+    """v0.407 the approvals waiting for this person (maker-checker; linked sites only)."""
+    return await _site_pub(site_id, "approvals", request)
+
+
+@app.post("/api/site-app/{site_id}/approvals/{appr_id}")
+async def site_app_decide(site_id: str, appr_id: str, request: Request):
+    return await _site_pub(site_id, "decide", request, await _json_body(request), appr_id=appr_id)
+
+
+@app.post("/api/site-app/{site_id}/fn/{name}")
+async def site_app_fn(site_id: str, name: str, request: Request):
+    """v0.407 a callable locked function of the site's logic (its own tests passed before it went live)."""
+    return await _site_pub(site_id, "fn", request, await _json_body(request), name=name)
 
 
 async def _json_body(request: Request) -> dict:
@@ -8504,6 +8479,86 @@ async def _json_body(request: Request) -> dict:
 
 
 # owner side (her Hoola login): design the app, see / change the data, members and roles
+def _site_logic(fn, *a):
+    from .site import service as S
+    from .site import webapp as W
+    try:
+        return fn(*a)
+    except W.AppError as e:
+        raise HTTPException(e.code, str(e))
+    except S.SiteError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:                       # v0.407 the Architect's own refusals carry their HTTP code
+        from .site import architect as AR
+        if isinstance(e, AR.ArchError):
+            raise HTTPException(e.code, str(e))
+        raise
+
+
+@app.get("/api/sites/{ref}/logic", dependencies=[Depends(require_key)])
+async def sites_logic(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.407 EK DIMAAG: the website app's logic (App Sahayak's DIMAAG on the linked project), its draft, its log."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.logic_view, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/logic/draft", dependencies=[Depends(require_key)])
+async def sites_logic_draft(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her words -> relations / formulas / rules / workflows / approvals drafted + checked (nothing live yet)."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.logic_draft, tenant, ref, str(body.get("words") or ""))
+
+
+@app.post("/api/sites/{ref}/logic/apply", dependencies=[Depends(require_key)])
+async def sites_logic_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """ONLY her tap: the draft she saw (by its hash) goes live on the site + its app."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.logic_apply, tenant, ref, str(body.get("hash") or ""))
+
+
+@app.post("/api/sites/{ref}/link-app", dependencies=[Depends(require_key)])
+async def sites_link_app(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.link, tenant, ref)
+
+
+@app.get("/api/site-architect", dependencies=[Depends(require_key)])
+async def site_architect_list(tenant: str = Depends(current_tenant)):
+    """v0.407 HOOLA ARCHITECT: her spec cards (waiting / built)."""
+    from .site import architect as AR
+    return {"specs": await asyncio.to_thread(AR.specs, tenant)}
+
+
+@app.post("/api/site-architect", dependencies=[Depends(require_key)])
+async def site_architect_new(body: dict, tenant: str = Depends(current_tenant)):
+    """{words, conversation_id}: her ONE line -> the full spec card (pages, users, data, rules, features). Nothing built."""
+    from .site import architect as AR
+    return await asyncio.to_thread(_site_logic, AR.draft, tenant, str(body.get("words") or ""),
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/site-architect/{ref}", dependencies=[Depends(require_key)])
+async def site_architect_card(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import architect as AR
+    return await asyncio.to_thread(_site_logic, AR.card, tenant, ref)
+
+
+@app.post("/api/site-architect/{ref}/data", dependencies=[Depends(require_key)])
+async def site_architect_data(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{words}: redo ONLY the data + rules part of the card with her change."""
+    from .site import architect as AR
+    return await asyncio.to_thread(_site_logic, AR.redraft_data, tenant, ref, str(body.get("words") or ""))
+
+
+@app.post("/api/site-architect/{ref}/approve", dependencies=[Depends(require_key)])
+async def site_architect_approve(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """ONLY her tap: {hash (the card she saw), modules [pages, users, data, logic, features]} -> Hoola builds it."""
+    from .site import architect as AR
+    mods = body.get("modules") if isinstance(body.get("modules"), list) else None
+    return await asyncio.to_thread(_site_logic, AR.approve, tenant, ref, str(body.get("hash") or ""), mods,
+                                   str(body.get("conversation_id") or ""))
+
+
 @app.post("/api/sites/{ref}/app-design", dependencies=[Depends(require_key)])
 async def sites_app_design(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .site import service as S
