@@ -161,8 +161,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   slug.split('_')[0] (wrong for 525/1694) + 'version: latest' is rejected + ok no longer defaults True; new
   `ambiguous` row state (a retry can double-post); bank_int / health_int / teamcenter caps named the WRONG rule.
   NOT VERIFIED: no live tenant has answered any of it - the connect screen still does not exist.
-- Current version: v0.391.0 (pubspec 0.391.0+435). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.392.0 (pubspec 0.392.0+436). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
+- v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
   mode = hints only), practice + capped mastery + SM-2 / exam window, NCERT mastery path with gates, book-grounded cites, guardian card.
 - v0.381 SHIKSHA SUITE 0+1: `app/pylab` locked Python sandbox (tool `pylab`), `app/shiksha` (classes, learners + guardian
@@ -200,7 +201,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.352 PEHLE CI, PHIR PR: Developer Sahayak opens a DRAFT PR when the repo has CI, fixes a red run with the loop (DEV_CI_ROUNDS 3), marks it ready only when green (`service._ci_step`, `gh.mark_ready`); no CI in 15 min = ready + note.
 - v0.351 DUKAAN (built as 0.344, `site/shop.py`, `hoola-shop.js`): a real shop on her website - cart, checkout, server-side prices + stock, her UPI QR + UTR (she confirms), COD, order tracking, Studio Shop tab, agent `website` action=shop / shop_order.
 - v0.350 KADAM-BA-KADAM CODING: Developer Sahayak explores + edits with 8 tools (`devsahayak/loop.py`, DEV_LOOP*), old one-shot = fallback;
-  revise / fix_ci still one-shot (next: CI loop before the PR).
+  revise / fix_ci went onto the loop with v0.352 (CI before the PR).
 - v0.349 MOSPI PAKKA: MoSPI client = Hoola User-Agent, retry once, exact failure reason; `python -m app.mospi check` + vps-ops `mospi_check`.
 - v0.348 MOSPI BUILT IN: agent tool `mospi` (`app/mospi.py`, MoSPI's own MCP, no login) for every user; official Indian numbers
   (CPI / GDP / IIP / PLFS...) from MoSPI first, never a search summary (her CPI test was answered from search).
@@ -209,7 +210,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
-- v0.391 YOUTUBE ON THE SOCIAL DESK (`social/ytpost.py`, plan Y1): her channel as an account, calendar Shorts / videos uploaded as approved (kids answer,
+- v0.392 YOUTUBE ON THE SOCIAL DESK (`social/ytpost.py`, plan Y1): her channel as an account, calendar Shorts / videos uploaded as approved (kids answer,
   thumbnail, playlist, private-until-audit note, YT_DAILY_UPLOADS guard), YouTube comments in the Social Inbox (hide = held for review). Y2 (YouTube ads) not built.
 - v0.388 WHATSAPP LIVE BINA SERVER NUMBER: WA_DRY_RUN=false without WA_TOKEN/WABA/PNID no longer kills every worker tick; business numbers send via their own token.
 - v0.384 SOCIAL MEDIA MANAGER Phase 6 (`social/wabiz.py` + `social/linkedin.py`): WhatsApp Business on her own number by Meta's Embedded Signup (one tap ->

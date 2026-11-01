@@ -210,7 +210,7 @@ def _ts(v: Any) -> datetime | None:
 def can_read(a: SocialAccount) -> dict[str, bool]:
     """Which inbox parts this connection was granted (old Phase 1 / 2 connections need a Reconnect)."""
     sc = set((a.scopes or "").split(",")) if a.scopes else None
-    if a.platform == "youtube":                    # v0.391 comments only (YouTube has no DMs)
+    if a.platform == "youtube":                    # v0.392 comments only (YouTube has no DMs)
         return {"comments": True, "dms": False}
     if a.platform == "instagram":
         ok_c = sc is None or "instagram_business_manage_comments" in sc
@@ -231,7 +231,7 @@ def _pull_account(tenant: str, aid: str) -> list[dict[str, Any]]:
         token, plat, uid, handle = acc.decrypt(a.token_enc) or "", a.platform, a.account_id, (a.handle or "").lstrip("@").lower()
         allowed = can_read(a)
         titles = {m.media_id: (m.permalink, m.caption) for m in s.scalars(select(SocialMedia).where(SocialMedia.account == aid)).all()}
-    if plat == "youtube":                          # v0.391 her channel's comment threads, one call
+    if plat == "youtube":                          # v0.392 her channel's comment threads, one call
         from .ytpost import comments as yt_comments
         rows_yt = []
         for c in yt_comments(tenant, uid):
@@ -327,7 +327,7 @@ def _send(row: SocialInbox, text: str) -> str:
         if a is None or a.status != "ok":
             raise SocialError("Yeh account ab jude nahi hai: Social Desk par dobara Connect kijiye.")
         token, uid, plat = acc.decrypt(a.token_enc) or "", a.account_id, a.platform
-    if plat == "youtube":                          # v0.391
+    if plat == "youtube":                          # v0.392
         from .ytpost import reply as yt_reply
         return yt_reply(row.tenant_id, uid, row.item_id, text)
     if row.kind == "dm":
@@ -344,7 +344,7 @@ def _hide(row: SocialInbox, hide: bool = True) -> None:
         if a is None:
             raise SocialError("Yeh account ab jude nahi hai.")
         token, plat, uid = acc.decrypt(a.token_enc) or "", a.platform, a.account_id
-    if plat == "youtube":                          # v0.391 held for review, never deleted
+    if plat == "youtube":                          # v0.392 held for review, never deleted
         from .ytpost import hide as yt_hide
         return yt_hide(row.tenant_id, uid, row.item_id, hide)
     (M.ig_hide if plat == "instagram" else M.fb_hide)(row.item_id, token, hide)
@@ -376,7 +376,7 @@ def run_inbox(tenant: str, ask: Any = None) -> dict[str, Any]:
     for aid in aids:
         try:
             fresh += _pull_account(tenant, aid)
-        except SocialError as e:                    # v0.391 YouTube read failed: told once, the other accounts still read
+        except SocialError as e:                    # v0.392 YouTube read failed: told once, the other accounts still read
             with session() as s:
                 d = _desk(s, tenant)
                 st = _j(d.stamps, {})

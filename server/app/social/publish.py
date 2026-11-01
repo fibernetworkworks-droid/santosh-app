@@ -241,7 +241,7 @@ def problems(p: SocialPost) -> list[str]:
             out.append(f"Instagram {HASHTAG_MAX} se zyada hashtag nahi leta.")
     if "facebook" in plats and not cap and not media:
         out.append("Facebook post khaali hai.")
-    if "youtube" in plats:                             # v0.391 her YouTube channel: a Short (reel) or a video
+    if "youtube" in plats:                             # v0.392 her YouTube channel: a Short (reel) or a video
         from .ytpost import problems as yt_problems
         out += yt_problems(p, kinds, cap)
     if "linkedin" in plats:                            # v0.384 her LinkedIn profile: text + one photo

@@ -159,7 +159,7 @@ class Settings(BaseSettings):
     linkedin_client_id: str = ""            # v0.384 LinkedIn app (Sign In with LinkedIn + Share on LinkedIn), Newtika's one app
     linkedin_client_secret: str = ""
     linkedin_version: str = "202510"
-    yt_daily_uploads: int = 90              # v0.391 Hoola-wide YouTube uploads a day (the API quota is the whole project's)        # LinkedIn-Version header (YYYYMM) for /rest/ calls
+    yt_daily_uploads: int = 90              # v0.392 Hoola-wide YouTube uploads a day (the API quota is the whole project's)        # LinkedIn-Version header (YYYYMM) for /rest/ calls
     social_ai: bool = True                  # the Social Media Manager asks Opus for its strategy + 30-day calendar (off = rules)
     studio_project_usd: float = 5.0        # starting budget of a new project
     studio_usd_inr: float = 85.0           # shown next to dollar prices on her cards

@@ -14722,8 +14722,36 @@ CI hit 'out of shared memory' on the default 64), create a database + user, `pyt
 restart; keep santosh.db as the fallback.
 Tests `server/tests/test_v0390_pakki_neev.py`.
 
+## v0.391.0 KHULA DARWAZA (owner: "GO A")
+The front-door safety pass from "WHAT IS NEXT WORK". Built as 0.386, re-versioned past the parallel v0.386-v0.390.
+- A1, an open door?
+  - The danger: `main._resolve_tenant` / `require_key` / the voice WebSocket treat a request with NO login as the owner
+    whenever API_KEY is empty.
+  - The live answer: checked on the live server, a no-login GET https://hoola.ainewtika.com/api/me answered 401, so
+    API_KEY is set and the door is LOCKED.
+  - Kept as a guard, report only (it changes nothing about who gets in):
+    - `app/authcheck.py`: `warn_if_open()` logs one loud line at startup when API_KEY is empty, called from `lifespan`;
+    - `python -m app.authcheck [--url ...]` says set / EMPTY (never the value) and asks the running server for
+      /api/me with no login (401 = locked, 200 = OPEN);
+    - vps-ops `auth_check`: .env name check plus the live and public no-login probes.
+- A2, keys in the address: `_bearer`, `require_key` and the voice WebSocket no longer read `?key=`. A key or login token
+  in a URL lands in nginx logs and browser history.
+  - Checked before removing it: the phone (lib/api.dart, lib/live_voice.dart), every Android service, the console (the
+    WebSocket subprotocol `hoola-key.<token>`) and both desktop apps send the Authorization header; console files use
+    signed links; no test used `?key=`.
+  - The frozen Mera PC WebSocket keeps its own `?token=` (untouched).
+- A3, clean-up: the 589 KB `server/app/main.py.orig` leftover deleted. The stale CLAUDE.md line ("revise / fix_ci still
+  one-shot") corrected; both have used the loop since v0.352.
+- Full suite on this branch:
+  - 213 failed of ~3,500; all but 3 also fail on main at the same base (the known sandbox-only reds);
+  - the 3 (thok / theka tools_api, voice interruption) pass alone, so they are load flakes.
+- Tests: `test_v0391_khula_darwaza.py`:
+  - the right key in the address is refused (401) while the header works; `_bearer` ignores a query token;
+  - the voice socket closes 4401 on `?key=`;
+  - the warning fires only when empty; the probe reads 401 / 200;
+  - vps job present; main.py.orig gone; no `query_params.get("key"` left in main.py.
 
-## v0.391.0 YOUTUBE ON THE SOCIAL DESK (1 Nov 2026, owner: "GO Y1")
+## v0.392.0 YOUTUBE ON THE SOCIAL DESK (1 Nov 2026, owner: "GO Y1"; built as 0.391, re-versioned past the parallel v0.391 KHULA DARWAZA)
 Plan Y1 of the YouTube proposal (Y2 = YouTube ads through the Google Ads API: Demand Gen campaigns created paused, her tap
 to go live - NOT built; needs a Google Ads developer token with Basic access + the adwords scope in OAuth verification).
 Module `server/app/social/ytpost.py`, built on `app/youtube` (accounts / client / service; no new Google sign-in).
@@ -14745,4 +14773,4 @@ Module `server/app/social/ytpost.py`, built on `app/youtube` (accounts / client 
 - Console + phone: connect button, subscribers tile, "Also as YouTube Short" / "Also on YouTube", made-for-kids select +
   playlist id in Posting controls, result notes. Privacy: YouTube paragraph (Google API Services User Data Policy).
 - Not done: Y2 ads; YouTube Analytics watch time in reports (views / likes / comments only); captions upload.
-- Tests `server/tests/test_v0391_social_youtube.py` (7).
+- Tests `server/tests/test_v0392_social_youtube.py` (7).

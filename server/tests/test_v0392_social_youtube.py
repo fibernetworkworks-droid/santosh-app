@@ -1,4 +1,4 @@
-"""v0.391 SOCIAL MEDIA MANAGER - YouTube on the Social Desk (plan Y1): her channel (Hoola's YouTube sign-in) shows as an
+"""v0.392 SOCIAL MEDIA MANAGER - YouTube on the Social Desk (plan Y1): her channel (Hoola's YouTube sign-in) shows as an
 account with subscribers + videos in the numbers; a calendar Reel / Video with YouTube ticked uploads as a Short / video
 exactly as approved (title, description, tags, made-for-kids answer, thumbnail, playlist); Google's "private until audit"
 answer is told in plain words; a Hoola-wide daily upload guard; YouTube comments in the Social Inbox (reply, hide = held

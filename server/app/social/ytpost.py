@@ -1,4 +1,4 @@
-"""v0.391 SOCIAL MEDIA MANAGER - YouTube on the Social Desk (plan Y1). Built on Hoola's YouTube module (app/youtube: her
+"""v0.392 SOCIAL MEDIA MANAGER - YouTube on the Social Desk (plan Y1). Built on Hoola's YouTube module (app/youtube: her
 channel connected by Google sign-in with youtube.upload + youtube.force-ssl + yt-analytics; tokens there, sealed):
 - her channel shows as a Social Desk account (subscribers, videos read into the baseline / pulse / monthly report);
 - a calendar post with YouTube ticked goes up as a Short (a vertical Reel) or a normal video, exactly as she approved it:

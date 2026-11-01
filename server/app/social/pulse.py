@@ -46,7 +46,7 @@ def settings(tenant: str) -> dict[str, Any]:
     q = st.get("quiet") if isinstance(st.get("quiet"), list) and len(st.get("quiet")) == 2 else QUIET_DEFAULT
     return {"paused": bool(st.get("paused")), "pause_reason": str(st.get("pause_reason") or ""), "paused_at": st.get("paused_at", ""),
             "quiet": [int(q[0]) % 24, int(q[1]) % 24],
-            "yt_kids": st.get("yt_kids") if isinstance(st.get("yt_kids"), bool) else None,      # v0.391 YouTube's made-for-kids answer
+            "yt_kids": st.get("yt_kids") if isinstance(st.get("yt_kids"), bool) else None,      # v0.392 YouTube's made-for-kids answer
             "yt_playlist": str(st.get("yt_playlist") or "")}
 
 

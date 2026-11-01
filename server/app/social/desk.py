@@ -24,9 +24,9 @@ from . import meta as M
 log = logging.getLogger("santosh.social")
 KEY = "social"
 PLATFORMS = ("instagram", "facebook")                       # Meta reading / inbox / growth
-POST_PLATFORMS = ("instagram", "facebook", "linkedin", "youtube")   # v0.384 / v0.391 where a calendar post can go
-CONNECT = ("instagram", "facebook", "linkedin", "whatsapp", "youtube")  # v0.384 / v0.391 what the desk can connect
-FORMATS = ("reel", "carousel", "image", "story", "video")       # v0.391 video = a normal (long) YouTube video
+POST_PLATFORMS = ("instagram", "facebook", "linkedin", "youtube")   # v0.384 / v0.392 where a calendar post can go
+CONNECT = ("instagram", "facebook", "linkedin", "whatsapp", "youtube")  # v0.384 / v0.392 what the desk can connect
+FORMATS = ("reel", "carousel", "image", "story", "video")       # v0.392 video = a normal (long) YouTube video
 POST_STATUS = ("draft", "approved", "skipped")
 _RUNNING: set[str] = set()
 _RUN_LOCK = threading.Lock()
@@ -238,7 +238,7 @@ def connect_url(tenant: str, platform: str) -> str:
     if platform == "whatsapp":
         from .wabiz import connect_url as wa
         return wa(tenant)
-    if platform == "youtube":                                   # v0.391 Hoola's YouTube sign-in (Profile > YouTube)
+    if platform == "youtube":                                   # v0.392 Hoola's YouTube sign-in (Profile > YouTube)
         from .ytpost import connect_url as yt
         return yt(tenant)
     if platform not in PLATFORMS:
@@ -355,7 +355,7 @@ def _upsert_account(s, tenant: str, platform: str, account_id: str) -> SocialAcc
 def disconnect(tenant: str, account: str) -> dict[str, Any]:
     from .wabiz import disconnect as wa_off
     wa_off(tenant, account)                    # v0.384 a WhatsApp number also leaves her Business inbox
-    with session() as s:                       # v0.391 a YouTube channel is unlinked in Hoola's YouTube module too
+    with session() as s:                       # v0.392 a YouTube channel is unlinked in Hoola's YouTube module too
         r = s.get(SocialAccount, account)
         yt_key = r.account_id if r is not None and r.tenant_id == tenant and r.platform == "youtube" else ""
     if yt_key and yt_key != "google":
@@ -422,7 +422,7 @@ def sync_account(account: str, limit: int = 50, insights: bool = True) -> dict[s
         if a is None:
             raise SocialError("Account nahi mila.")
         tenant, platform, pid, tok = a.tenant_id, a.platform, a.account_id, acc.decrypt(a.token_enc) or ""
-    if platform == "youtube":                                   # v0.391 subscribers + latest videos
+    if platform == "youtube":                                   # v0.392 subscribers + latest videos
         from .ytpost import sync_youtube
         return sync_youtube(account)
     if platform not in PLATFORMS:
@@ -1000,7 +1000,7 @@ def desk_view(tenant: str) -> dict[str, Any]:
     trust = next((c.get("trust") for c in hire.catalog(tenant) if c["key"] == KEY), "seekh")
     try:
         from .ytpost import sync_channel
-        sync_channel(tenant)                    # v0.391 her connected YouTube channel shows as an account
+        sync_channel(tenant)                    # v0.392 her connected YouTube channel shows as an account
     except Exception as e:       # noqa: BLE001
         log.info("youtube mirror skipped: %s", e)
     with session() as s:
