@@ -13131,3 +13131,14 @@ The apps' order updates came through a JobScheduler check every 15+ minutes. Now
 - Console: the Instant notifications box gets the iPhone key form (Key ID, Team ID, .p8 file).
 - Tests `tests/test_v0368_turant_iphone.py` (APNs faked). Not verified: a real push to a real iPhone (needs her key, a
   TestFlight / App Store build and the VPS `pip install h2`); the simulator never receives remote pushes.
+
+## v0.369.0 KHUD TAZA (App Sahayak Phase 33, owner: "START PHASE 33")
+- `android/runners.py`: `WORKFLOWS = (hoola-build.yml, hoola-ios.yml)`, `sync_workflows(repo, force)` - GET
+  /repos/<repo>/contents/.github/workflows/<name>?ref=main, compare bytes with `server/app_builder/<name>`, PUT (with the old
+  sha, branch main) when different; `SYNC` keeps updated / same / error and the time (10-minute throttle). A 403 / 404 on the
+  write = "the token cannot write workflow files - give it Workflows: Read and write, or copy the file" (the build continues on
+  the old file). `push_tree` calls it before reading main's head, so the build branch carries the new workflow.
+  `describe()` shows `workflows` in github mode. iPhone builds use the same `push_tree`.
+- `ios/service.ready` no longer tells her to copy hoola-ios.yml.
+- Tests `tests/test_v0369_khud_taza.py` (GitHub faked). One-time on GitHub: the builds repo's fine-grained token needs
+  "Workflows: Read and write" (besides contents + actions).

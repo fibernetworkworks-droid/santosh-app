@@ -92,7 +92,7 @@ def ready() -> dict[str, Any]:
     ok = RN.mode() == "github" and bool((s.app_build_gh_repo or "").strip()) and bool(s.app_build_gh_token)
     return {"ready": ok, "where": "github" if ok else "",
             "why": "" if ok else "iPhone apps compile only on a Mac: set up the private GitHub builds repo (APP_BUILD_MODE=github) "
-                                 "and copy server/app_builder/hoola-ios.yml into it."}
+                                 "(Hoola keeps its hoola-ios.yml / hoola-build.yml current itself when the token has 'Workflows: write')."}
 
 
 # ---------------------------------------------------------------- start
