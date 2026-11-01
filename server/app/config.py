@@ -166,6 +166,8 @@ class Settings(BaseSettings):
     google_ads_developer_token: str = ""   # v0.401 YouTube ads (plan Y2): Google Ads API Center token (test / Basic access)
     google_ads_login_customer_id: str = ""  # optional manager (MCC) id when her ad account sits under Hoola's manager
     google_ads_api_version: str = "v26"
+    meta_ads_config_id: str = ""            # v0.417 optional Facebook Login for Business configuration for the ads login (ads_management + ads_read)
+    meta_ads_max_daily: int = 2000          # v0.417 Hoola's ceiling on a Facebook / Instagram ad's daily budget (her account currency)
     gads_max_daily: int = 2000              # Hoola's ceiling on a YouTube ad's daily budget (her account currency)
     yt_daily_uploads: int = 90              # v0.392 Hoola-wide YouTube uploads a day (the API quota is the whole project's)        # LinkedIn-Version header (YYYYMM) for /rest/ calls
     social_ai: bool = True                  # the Social Media Manager asks Opus for its strategy + 30-day calendar (off = rules)

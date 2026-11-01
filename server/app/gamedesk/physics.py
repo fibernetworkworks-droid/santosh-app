@@ -1,4 +1,4 @@
-"""v0.417 PHYSICS ENGINE DEVELOPER (Hoola Game Engine plan Phase 7, Game Desk plan role 4): her game's physics set up
+"""v0.419 PHYSICS ENGINE DEVELOPER (Hoola Game Engine plan Phase 7, Game Desk plan role 4): her game's physics set up
 and PROVED in the real engine - Godot 4 run headless runs Hoola's physics lab, every case is compared with the
 textbook answer in code, and the settings that pass go into her game as Hoola's own HoolaPhysics autoload.
 

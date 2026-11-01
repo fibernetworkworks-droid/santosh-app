@@ -2554,7 +2554,7 @@ body.albon{overflow:hidden}
 .rel-kit h4{margin:0 0 4px;font-size:14px}
 
 
-/* v0.417 GAME DESK ROLES - Worlds + Physics */
+/* v0.419 GAME DESK ROLES - Worlds + Physics */
 #app .wd-body { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
 #app .wd-prev { width: 260px; max-width: 100%; height: auto; border-radius: 8px; image-rendering: pixelated; border: 1px solid var(--line); }
 #app .wd-info { flex: 1; min-width: 240px; }

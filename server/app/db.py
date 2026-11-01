@@ -813,6 +813,7 @@ def init_db(url: str | None = None):
     from .social import publish as _social_publish  # noqa: F401  (v0.355 Social Media Manager posting)
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .ads import gads as _gads  # noqa: F401  (v0.401 YouTube ads, Google Ads API)
+    from .ads import metaads as _metaads  # noqa: F401  (v0.417 Facebook / Instagram ads, Meta Marketing API)
     from .social import growth as _social_growth  # noqa: F401  (v0.383 Social Media Manager growth)
     from .social import inbox as _social_inbox  # noqa: F401  (v0.368 Social Media Manager inbox)
     from .thok import service as _thok  # noqa: F401
@@ -917,8 +918,8 @@ def init_db(url: str | None = None):
     from .gamedesk import assets as _gameassets  # noqa: F401  (v0.416 asset pipeline)
     from .gamedesk import qa as _gameqa  # noqa: F401  (v0.416 QA farm + bugs)
     from .gamedesk import platforms as _gameplatforms  # noqa: F401  (v0.416 game platforms)
-    from .gamedesk import world as _gameworld  # noqa: F401  (v0.417 procedural worlds)
-    from .gamedesk import physics as _gamephysics  # noqa: F401  (v0.417 physics lab)
+    from .gamedesk import world as _gameworld  # noqa: F401  (v0.419 procedural worlds)
+    from .gamedesk import physics as _gamephysics  # noqa: F401  (v0.419 physics lab)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

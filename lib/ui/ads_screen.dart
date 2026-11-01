@@ -6,9 +6,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'attach.dart';
+import 'employees_screen.dart' show MetaAdsScreen;
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -709,10 +711,24 @@ class _RulesTab extends StatelessWidget {
             Pill(meta['ready'] == true ? 'Juda hai' : 'Nahi juda', fg: meta['ready'] == true ? C.ok : C.faint),
           ]),
           if (meta['ready'] == true) Text('${meta['name']} · ${meta['account']} · ${meta['currency']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          if (meta['linked'] == true && meta['ready'] != true)
+            const Text('Facebook se juda - ab ad account chuniye (Facebook & Instagram ads).', style: TextStyle(color: C.warn, fontSize: 12.5)),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GlassButton(label: meta['ready'] == true ? 'Badlo' : 'Jodo', icon: Icons.link_rounded, height: 42, onTap: () => _meta(context))),
-            if (meta['ready'] == true) ...[
+            Expanded(
+                child: GlassButton(
+                    label: meta['linked'] == true ? 'Dobara jodo' : 'Facebook se jodo',
+                    icon: Icons.link_rounded,
+                    height: 42,
+                    onTap: () async {
+                      try {
+                        final url = await app.api!.adsMetaConnect();
+                        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                      } catch (e) {
+                        if (context.mounted) _snack(context, '$e');
+                      }
+                    })),
+            if (meta['linked'] == true) ...[
               const SizedBox(width: 8),
               Expanded(
                 child: GlassButton(label: 'Hatao', color: C.bad, height: 42, onTap: () async {
@@ -722,8 +738,16 @@ class _RulesTab extends StatelessWidget {
               ),
             ],
           ]),
+          Row(children: [
+            if (meta['linked'] == true)
+              TextButton(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MetaAdsScreen(app: app))),
+                  child: const Text('Naya ad banao')),
+            const Spacer(),
+            TextButton(onPressed: () => _meta(context), child: const Text('Token se jodo', style: TextStyle(fontSize: 12))),
+          ]),
           const SizedBox(height: 6),
-          const Text('Juda ho to Hoola roz hisaab laata hai; budget / rokna sirf aapki Haan par, aur naye ad kabhi khud nahi chalata. '
+          const Text('Juda ho to Hoola roz hisaab laata hai; budget / rokna sirf aapki Haan par. Naya ad Meta mein PAUSED banta hai, Start sirf aapke tap par. '
               'Google Ads: report export karke daaliye.', style: TextStyle(color: C.faint, fontSize: 12)),
         ]),
       ),

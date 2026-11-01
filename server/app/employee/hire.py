@@ -128,7 +128,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                "pitch": "WebXR scenes with hand tracking and gestures that open in a phone or headset browser."},
     "netcode_dev": {"name": "Multiplayer Network Programmer", "live": False, "icon": "game", "group": GAME_GROUP,
                     "pitch": "Netcode for your game: server, prediction, lag compensation, tested with bots on bad networks."},
-    # v0.417 Phase 7 batch 1 (docs/GAME_DESK_PLAN.md phase 2): each role is a PACK on the shared Game Desk
+    # v0.419 Phase 7 batch 1 (docs/GAME_DESK_PLAN.md phase 2): each role is a PACK on the shared Game Desk
     "physics_dev": {"name": "Physics Engine Developer", "live": True, "icon": "game", "group": GAME_GROUP,
                     "pitch": "Sets up your game's physics and proves it in the real engine: falling, jumping, bouncing and "
                              "fast bullets checked against textbook answers.",

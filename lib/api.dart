@@ -1069,7 +1069,7 @@ class Api {
   Future<Map<String, dynamic>> gameItchPush(String id, String rid, String hash) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/releases/$rid/itch/push', body: {'hash': hash},
           timeout: const Duration(seconds: 900)) as Map);
-  // v0.417 Game Desk roles: Procedural World Engineer + Physics Engine Developer
+  // v0.419 Game Desk roles: Procedural World Engineer + Physics Engine Developer
   Future<Map<String, dynamic>> gameWorlds(String studio) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/worlds${studio.isEmpty ? '' : '?studio=${Uri.encodeQueryComponent(studio)}'}',
           timeout: const Duration(seconds: 40)) as Map);
@@ -1128,6 +1128,22 @@ class Api {
   Future<Map<String, dynamic>> socialYtAdsAct(String id, String action, {bool confirm = false}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id/$action', body: {'confirm': confirm},
           timeout: const Duration(seconds: 90)) as Map);
+  // v0.417 META ADS (A1): Facebook Login for her ad account; drafts stay in Hoola; create = paused in Meta; start = her tap + confirm
+  Future<String> adsMetaConnect() async => (await _send('GET', '/api/ads/meta/connect'))['url'] as String;
+  Future<Map<String, dynamic>> metaAds() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/ads/metaads', timeout: const Duration(seconds: 30)) as Map);
+  Future<Map<String, dynamic>> metaAdsChoose({String account = '', String page = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/ads/metaads/account', body: {'account': account, 'page': page}) as Map);
+  Future<List<Map<String, dynamic>>> metaAdsPosts() async =>
+      (((await _send('GET', '/api/ads/metaads/posts', timeout: const Duration(seconds: 30)))['posts'] as List?) ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  Future<Map<String, dynamic>> metaAdsNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/ads/metaads/drafts', body: body) as Map);
+  Future<Map<String, dynamic>> metaAdsEdit(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/ads/metaads/drafts/$id', body: body) as Map);
+  Future<Map<String, dynamic>> metaAdsAct(String id, String action, {bool confirm = false}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/ads/metaads/drafts/$id/$action', body: {'confirm': confirm},
+          timeout: const Duration(seconds: 120)) as Map);
   // v0.369 posting controls: {paused} | {stop: true} | {quiet: [23, 7]}
   Future<Map<String, dynamic>> socialSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/settings', body: body) as Map);

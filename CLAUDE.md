@@ -184,6 +184,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.417 META ADS (A1, built as 0.409, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
 - v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
   (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
   CSRF_NONCE and a Reserve/UndoReservation check-out (a half-run used to risk leaving HER object LOCKED); Salesforce
@@ -216,8 +217,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.416.0 (pubspec 0.416.0+460). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.419.0 (pubspec 0.419.0+463). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.418 PRAYOGSHALA IN ENGLISH: all lab text, runtime, catalogue, phone screen and checker messages English (en-IN narration); a test blocks Hinglish.
 - v0.415 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin
   (same numbers, tested), 22 NCERT physics practicals within 1 %, lab3d.js runtime, tool prayog, console Lab + phone Prayogshala.
 - v0.414 EK DIMAAG 2 (web Step 2 finished): old v0.305 web apps move by themselves (`applink.migrate_all`, worker) + new ones link at once; `kind: web` backends never re-made; full school portal proof (admission -> approval -> student -> fee -> attendance -> report card, 3 roles; relation `share`); `applink.phone_app` = phone app on the SAME project / data; spec card + stories / payments / notifications / integrations + `architect.revise`; phone `SiteSpecCard`; vps-ops `architect_check` / `arena_numbers`.
@@ -245,6 +247,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.419 GAME DESK ROLES 1 (Game Engine plan Phase 7 batch 1; `gamedesk/packs.py` = Hoola-owned autoloads per role, `template.HOOLA_OWN`): Procedural World Engineer (`world.py`, tool game_world: terrain / dungeon / city / level from a seed, made twice + reachability + jump-arc checks, preview / heightmap / .glb, walk-it demo, HoolaWorld) + Physics Engine Developer (`physics.py`, tool game_physics: settings in code, Godot physics lab vs formulas, run twice; FOUND: tunnels past HALF the wall, only CAST_RAY CCD works in 4.7.2; HoolaPhysics). Fluids not built.
 - v0.416 GAME PLATFORMS (built as 0.413; Game Engine plan Phase 6, `gamedesk/platforms.py`, tool game_release): Linux / Windows / macOS (ad-hoc, not notarised) builds checked + signed downloads on the server (`setup_godot.py --desktop`), Android APK / AAB in her builds repo (`hoola-game.yml`, own sealed upload key, no internet permission), store kit, age-rating DRAFT, itch.io butler push only on her tap; iOS not built.
 - v0.416 QA FARM + BUGS (built as 0.410 / 0.412; Game Engine plan Phase 5, `gamedesk/qa.py`, tool game_qa): seeded bots (idle/monkey/tapper/keys/restarter) on desktop / phone CPU speeds play a DEBUG web build (release builds hide script errors - every build's playtest now plays debug too), probe state/events, golden start screen, numbered bugs with repro, fixed only when the bot can't find it.
 - v0.416 ASSET PIPELINE (built as 0.409 / 0.411; Game Engine plan Phase 4, `gamedesk/assets.py` + `sfx.py`, tool game_assets): style-locked art (magenta key, exact size, palette share / strict snap), code-made sfx (preset + seed), music / voice / 3D; paid = price card + her tap; checks in code; her OK -> HoolaAssets autoload in every build.

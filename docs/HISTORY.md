@@ -15755,6 +15755,69 @@ Verified here with the real Godot 4.7.2: release R-001 of a test game - Linux 28
 images + texts made; rating draft = E / PEGI 3 for a no-violence game. Tests `test_v0416_game_platforms.py` (9).
 NOT VERIFIED: the Android build (no Android SDK in this sandbox; the SDK install was refused here) - the first build
 in her builds repo is what will confirm it; itch.io push not run against a real account; iOS not built.
+## v0.417.0 META ADS (ad plan A1, built as 0.409) - 1 Nov 2026
+Owner, after the India ad-market check (artifact "Hoola Ad Platforms India"): "GO A1".
+- **Why:** the Ads desk (v0.111) already read her Meta insights and applied budget changes on her tap, but only after she
+  pasted a system-user token from Business Settings - almost no shop owner can make one. Meta is the biggest ad market for
+  Indian small businesses (Facebook, Instagram, click-to-WhatsApp, Messenger).
+- **Connect** (`server/app/ads/metaads.py`): Facebook Login on the HOOLA Meta app, scopes ads_management, ads_read,
+  business_management, pages_show_list, pages_read_engagement (or `META_ADS_CONFIG_ID` = a Login for Business configuration).
+  Redirect `<PUBLIC_BASE_URL>/api/ads/meta/callback`. Code -> 60-day token (sealed in `AdsSettings.meta_token`, the same
+  column the pasted token used, so `fetch_meta` / `decide_change` / the morning + weekly notes work unchanged). New
+  AdsSettings columns: meta_via (login | token), meta_expires, meta_accounts, meta_pages, meta_page, meta_scopes. One active
+  ad account = chosen at once; a closed one is refused; a login whose time is near shows "connect again".
+- **Drafts** (table `meta_ad_drafts`, Hoola only): goal whatsapp | messenger | instagram | website | boost, Page (the ad
+  runs as it; its linked Instagram account is used for the Instagram placement), photo = Social Desk asset, text /
+  headline / description, cities (looked up by Meta's adgeolocation search) + km, ages, gender, Facebook / Instagram / both,
+  daily x days. Problems listed before anything leaves Hoola: banned words (Ads desk rules), money ads (SEBI) refused, cap
+  `META_ADS_MAX_DAILY` (2000), 1-30 days, ages 18-65.
+- **Meta recipe per goal:** chats = OUTCOME_ENGAGEMENT + CONVERSATIONS + destination WHATSAPP / MESSENGER / INSTAGRAM_DIRECT
+  + CTA WHATSAPP_MESSAGE / MESSAGE_PAGE / INSTAGRAM_MESSAGE; website = OUTCOME_TRAFFIC + LINK_CLICKS + LEARN_MORE; boost =
+  OUTCOME_ENGAGEMENT + POST_ENGAGEMENT + object_story_id. Ad-set budget in minor units (paise), LOWEST_COST_WITHOUT_CAP,
+  special_ad_categories [] and is_adset_budget_sharing_enabled false on the campaign, Advantage+ audience on unless she set
+  ages / gender.
+- **Check** = Meta's validate_only on the campaign + city lookup (free). **Create** (her tap) = campaign, ad set, image,
+  creative, ad - ALL PAUSED; a half-build is named ("a paused campaign is left in Ads Manager"). **Start** needs
+  confirm=true: the ad set gets end_time = now + days (Meta itself stops it), then ad -> ad set -> campaign ACTIVE (the
+  campaign last). **Pause** any time. `daily_watch` (Social Desk daily job) marks finished ads ended + tells her.
+- Routes: GET /api/ads/meta/connect, GET /api/ads/meta/callback, GET /api/ads/metaads, POST /api/ads/metaads/account
+  {account, page}, GET /api/ads/metaads/posts, POST /api/ads/metaads/drafts, /drafts/{id}, /drafts/{id}/{check|create|start|pause}.
+- Agent: `ads` action=meta_draft (owner only, draft only - she checks / creates / starts in the app), `ads_dekho` what=meta_ads.
+- UI: phone Social Desk "Facebook & Instagram ads" -> `MetaAdsScreen` (connect, account / Page, goal buttons, edit dialog,
+  photo, Check / Create (paused) / Start with confirm / Pause); Ads desk Niyam card = "Facebook se jodo" (token paste kept as
+  "Token se jodo"); console Social Desk tile `#scMetaAds` (employees.js metaAds / wireMa).
+- Tests: `server/tests/test_v0417_meta_ads.py` (6).
+- **Needs before real use:** add `https://hoola.ainewtika.com/api/ads/meta/callback` to the HOOLA app's Valid OAuth
+  Redirect URIs; App Review for ads_management + ads_read (until then only the app's own roles / testers can connect);
+  Marketing API Full Access for volume. **NOT VERIFIED** against a live ad account - field names follow Meta's Marketing API
+  docs as known; the first real Create will show any field Meta renamed.
+
+### v0.417.0 follow-up: ARCHDESK LIVE CHECK (owner: "DEPLOYED — CHECK ARCHITECT ON LIVE")
+- `python -m app.archdesk check [--free]` (`archdesk/check.py`) + vps-ops job `archdesk_check`: (1) two fixed Mermaid
+  diagrams drawn in the server's own Chromium (SVG + PNG sizes), (2) the capacity sums from fixed numbers (users a day
+  marked hers, the rest assumed), (3) ONE real Opus design for a fixed sample brief, run inline exactly like her designs
+  (fix round, Markdown, PDF) as its own check tenant `__archcheck__` - her designs, daily limit and hire untouched; the
+  hire row, design row and files are removed afterwards. Also lists the mounted /api/arch/* routes (newer FastAPI nests
+  included routers as `_IncludedRouter`, so `app.routes` alone does not show them - the walk goes inside). Exit 0 = OK.
+- Live before this check (1 Nov, 16:13 UTC): healthz 0.416.0; console v2.html / v2.js / v2.css / employees.js byte-identical
+  to main (Architecture Desk section + ar-dia styles present); /api/arch/projects answers 401 without a key.
+- Tests: 3 more in test_v0410_architect.py (inline design + full clean-up, model failure reported not raised, vps-ops job).
+
+## v0.418.0 PRAYOGSHALA IN ENGLISH (owner: "FIRST MAKE ENTIER THING IN ENGLISH")
+
+Everything a learner sees in Prayogshala is English.
+- **The 22 labs**: titles, aims, part names and info, knob and meter labels, table columns and hints, steps, theory, safety notes, tour narration and quiz.
+- **Narration**: `lang` is now `en-IN`, so the browser speaks it in English.
+- **The runtime** (`static/prayog/lab3d.js`): the buttons are Run / Reset / Tour / Record reading / Zero, the tabs are Knobs / Meters / Table / Steps / Predict / About, plus the result line "True value in this lab ... your error" and every empty-state text.
+- **The pages and surfaces**: the catalogue and lab pages, the phone Prayogshala screen and its Profile tile, the tool's notes and errors, the catalogue NOTE, and the LSL checker's messages.
+
+Nothing else changed. The old and new catalogues were compared with all text stripped and are structurally identical: every number, the 3D layout, the kernels and the NCERT checks.
+
+The meter bridge was re-run in Chromium: S = 6.01 Ω against the lab's true 6.00 Ω.
+
+A new test, `test_everything_the_learner_sees_is_english`, fails if Hinglish words return to the labs, the runtime, the pages or the phone screen.
+
+The static `?v=` stamps and the service-worker cache name moved to 0.418.0, so phones fetch the new runtime.
 
 ## v0.419.0 GAME DESK ROLES 1: PROCEDURAL WORLDS + PHYSICS LAB (Hoola Game Engine plan Phase 7 batch 1 = Game Desk plan phase 2) - 1 Nov 2026
 Owner: "GO PHASE 7". Phase 7 = the nine other Game Desk roles in batches (docs/GAME_DESK_PLAN.md section 5). This is

@@ -115,7 +115,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "game art", "sprite", "game sound", "sound effect", "game music", "game assets", "3d model for my game",
                  "game qa", "game test", "game bug", "game ke bug", "playtest", "golden screen",
                  "itch.io", "steam page", "game release", "game ki release", "windows build", "mac build", "linux build", "age rating",
-                 # v0.417 role packs: worlds + physics
+                 # v0.419 role packs: worlds + physics
                  "procedural world", "world generation", "dungeon", "game map", "game world", "level generator",
                  "game physics", "physics engine", "game ki physics"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes

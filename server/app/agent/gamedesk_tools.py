@@ -141,7 +141,7 @@ GAMEDESK_LABELS = {"game_desk": "Game bana raha hoon", "game_studio": "Game proj
                    "game_bible": "Game Bible dekh raha hoon", "game_assets": "Game ke assets dekh raha hoon",
                    "game_qa": "Game ki QA dekh raha hoon", "game_release": "Game ki release dekh raha hoon"}
 
-# v0.417 Phase 7 batch 1: the Game Desk ROLE PACKS - each its own employee, each gated on ITS hire
+# v0.419 Phase 7 batch 1: the Game Desk ROLE PACKS - each its own employee, each gated on ITS hire
 GAMEDESK_TOOLS.append(
     {"name": "game_world", "description": (
         "Procedural World Generation Engineer employee: makes a world from RULES and a SEED in code (no model, free) - "

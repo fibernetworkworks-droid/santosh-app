@@ -1,4 +1,4 @@
-"""v0.417 GAME DESK ROLES, Phase 7 batch 1 (Hoola Game Engine plan Phase 7 = Game Desk plan phase 2): the Procedural World
+"""v0.419 GAME DESK ROLES, Phase 7 batch 1 (Hoola Game Engine plan Phase 7 = Game Desk plan phase 2): the Procedural World
 Generation Engineer (worlds from rules + a seed, checked in code, previewed, walkable, into the game as HoolaWorld) and
 the Physics Engine Developer (settings worked out in code, proved in Godot's own physics lab, into the game as
 HoolaPhysics). The engine is faked in most tests; the last two run the REAL Godot when it is installed (skipped in CI).
