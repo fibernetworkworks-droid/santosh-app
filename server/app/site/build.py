@@ -306,7 +306,7 @@ def photo_set(src: Path, name: str, dest: Path) -> dict[str, Any]:
     return {"name": name, "w": w0, "h": h0, "sizes": made, "avif": avif}
 
 
-def picture(meta: dict[str, Any], alt: str, rel: str, eager: bool = False, cls: str = "") -> str:
+def picture(meta: dict[str, Any], alt: str, rel: str, eager: bool = False, cls: str = "", extra: str = "") -> str:
     name = meta["name"]
     sizes = meta.get("sizes") or []
     if not sizes:
@@ -322,7 +322,7 @@ def picture(meta: dict[str, Any], alt: str, rel: str, eager: bool = False, cls: 
     srcs += f'<source type="image/webp" srcset="{srcset("webp")}" sizes="(min-width:1100px) 50vw, 100vw">'
     c = f' class="{esc(cls)}"' if cls else ""
     return (f'<picture>{srcs}<img src="{rel}assets/img/{name}-{w}.jpg" srcset="{srcset("jpg")}" '
-            f'sizes="(min-width:1100px) 50vw, 100vw" width="{ww}" height="{hh}" alt="{esc(alt)}" {load} decoding="async"{c}></picture>')
+            f'sizes="(min-width:1100px) 50vw, 100vw" width="{ww}" height="{hh}" alt="{esc(alt)}" {load} decoding="async"{c}{extra}></picture>')
 
 
 def expand_images(html: str, photos: dict[str, dict[str, Any]], rel: str, first_eager: bool) -> tuple[str, list[str]]:
@@ -338,7 +338,9 @@ def expand_images(html: str, photos: dict[str, dict[str, Any]], rel: str, first_
         if name not in photos:
             missing.append(name)
             return f'<span class="blank" role="img" aria-label="{esc(alt.group(1) if alt else "photo")}">[photo: {esc(name)}]</span>'
-        out = picture(photos[name], alt.group(1) if alt else "", rel, state["eager"], cls.group(1) if cls else "")
+        en = re.search(r'data-e=["\'](\d+)["\']', tag)      # v0.338 Edit mode can pick the photo (stripped on publish)
+        extra = f' data-e="{en.group(1)}" data-hoola-img="{esc(name)}"' if en else ""
+        out = picture(photos[name], alt.group(1) if alt else "", rel, state["eager"], cls.group(1) if cls else "", extra)
         state["eager"] = False
         return out
     return re.sub(r"<img\b[^>]*data-hoola-img=[^>]*>", rep, html), missing
@@ -773,6 +775,10 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             h, missing = expand_images(h, photos, rel, first_eager=(i == 0))
             if missing:
                 problems.append(f"{key}: photo not found: {', '.join(m for m in missing if m)}")
+            from . import media as MD                # v0.338 her videos / audio / download files
+            h, mmiss = MD.expand(h, src_root, out, rel)
+            if mmiss:
+                problems.append(f"{key}: file not found: {', '.join(mmiss)}")
             from . import live as LV            # v0.301 booking / map / video / UPI placeholders -> the real things
             h, lprob = LV.expand(h, site, form_endpoint, lambda n: expand_icons(f'<i data-icon="{n}"></i>')[0])
             problems.extend(f"{key}: {x}" for x in lprob)

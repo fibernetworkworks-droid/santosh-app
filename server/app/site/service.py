@@ -39,6 +39,7 @@ from . import lang as LG
 from . import quality as Q
 from . import sitemap as SM
 from . import kit as K
+from . import media as M
 from . import taxonomy as T
 from .models import Site, SiteLead, SiteVersion
 
@@ -325,6 +326,8 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                              "passed": checks.get("passed"), "source": checks.get("source")},
                   "shots": _j(r.board, {}).get("shots", {}), "photos": [p.get("name") for p in _j(r.photos, [])],
                   "languages": _j(r.languages, ["en"]),
+                  "media": [{k: m.get(k) for k in ("name", "kind", "ext", "bytes", "about")}      # v0.338 her uploads
+                            for m in M.manifest(B.src_dir(r.tenant_id, r.id))],
                   "app": [{"key": c["key"], "label": c["label"]} for c in app_schema(r).get("collections", [])]})
         if plan.get("big"):                  # v0.315 the big site's size and its lists of pages
             v["size"] = SM.counts(plan)
@@ -1418,7 +1421,7 @@ def _make_version(r: Site, plan: dict[str, Any], report: dict[str, Any], shots: 
     live = B.site_dir(r.tenant_id, r.id) / "live"
     if vdir.exists():
         shutil.rmtree(vdir)
-    shutil.copytree(live, vdir)
+    shutil.copytree(live, vdir, copy_function=M.link_or_copy)    # v0.338 big videos are not copied per version
     sh = {}
     for f in shots.glob("*"):
         sh[f.name] = f.name
@@ -2005,6 +2008,8 @@ def edit_mode(tenant: str, ref: str) -> dict[str, Any]:
     _assemble_edit(_load(r.id))
     return {"url": preview_url(r).rstrip("/") + "/__edit/", "edits": len(_edits(r)),
             "photos": [{"name": p["name"], "about": p.get("about", ""), "ai": bool(p.get("ai"))} for p in _j(r.photos, [])],
+            "media": [{"name": m["name"], "kind": m["kind"], "ext": m["ext"], "size": M.size_text(int(m["bytes"])),   # v0.338
+                       "about": m.get("about") or m.get("file") or ""} for m in M.manifest(B.src_dir(r.tenant_id, r.id))],
             "tokens": {k: (_j(r.look, {}).get("tokens") or {}).get(k) for k in ("primary", "accent", "bg", "surface", "ink", "radius")}}
 
 
@@ -2016,8 +2021,15 @@ def edit_element(tenant: str, ref: str, key: str, e: str, op: str, value: str = 
         raise SiteError("Yeh section ab nahi hai; preview taaza kijiye.")
     before = secs[key]
     try:
-        h, what = E.apply(before["html"], str(e), op, value, {p["name"] for p in _j(r.photos, [])}, B._ok_href)
+        if op == "insert":                    # v0.338 a photo / video / audio / file she adds after what she clicked
+            markup, what = _insert_markup(r, value)
+            h, _ = E.insert(before["html"], str(e), markup)
+            h, _n = E.tag(h)
+        else:
+            h, what = E.apply(before["html"], str(e), op, value, {p["name"] for p in _j(r.photos, [])}, B._ok_href)
     except E.EditError as er:
+        raise SiteError(str(er))
+    except M.MediaError as er:
         raise SiteError(str(er))
     if h == before["html"]:
         return {**view(r, False), "say": "Kuch badla nahi."}
@@ -2025,6 +2037,49 @@ def edit_element(tenant: str, ref: str, key: str, e: str, op: str, value: str = 
     _push_edit(r, {"kind": "section", "key": key, "op": op, "what": what, "before": before})
     out = _after_edit(r, f"Aapka badlav: {what}")
     return {**out, "say": f"Badal diya: {what}. Wapas chahiye to Undo."}
+
+
+def _insert_markup(r: Site, value: str) -> tuple[str, str]:
+    """{kind: photo|video|youtube|audio|file, name | url, caption} -> safe markup. Only HER photos and uploads, and only
+    a real YouTube link, are accepted."""
+    try:
+        spec = json.loads(value or "{}")
+    except ValueError:
+        raise SiteError("Kya jodna hai samajh nahi aaya.")
+    kind = str(spec.get("kind") or "")
+    cap = _tidy(spec.get("caption"), 160)
+    src = B.src_dir(r.tenant_id, r.id)
+    if kind == "photo":
+        name = str(spec.get("name") or "")
+        if name not in {p["name"] for p in _j(r.photos, [])}:
+            raise SiteError("Yeh photo is website mein nahi hai; pehle upload kijiye.")
+        return M.block(None, "photo", cap, photo=name), f"photo jodi ({name})"
+    if kind == "youtube":
+        from . import live as LV
+        vid = LV.youtube_id(str(spec.get("url") or ""))
+        if not vid:
+            raise SiteError("Yeh YouTube link nahi lag raha (youtube.com/watch?v=... ya youtu.be/... chahiye).")
+        return M.block(None, "youtube", cap, url=f"https://youtu.be/{vid}"), "YouTube video jodi"
+    if kind in ("video", "audio", "file"):
+        item = M.find(src, str(spec.get("name") or ""))
+        if not item or item["kind"] != kind:
+            raise SiteError("Yeh file nahi mili; dobara upload kijiye.")
+        word = {"video": "video", "audio": "audio", "file": "download file"}[kind]
+        return M.block(item, kind, cap), f"{word} jodi ({item['name']})"
+    raise SiteError("Photo, video, audio ya file mein se chuniye.")
+
+
+def add_media(tenant: str, ref: str, data: bytes, filename: str, about: str = "") -> dict[str, Any]:
+    """v0.338 one video / audio / file of hers for the site (Edit mode puts it on a page)."""
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    try:
+        item = M.add(B.src_dir(r.tenant_id, r.id), data, filename, about)
+    except M.MediaError as e:
+        raise SiteError(str(e))
+    return {"ok": True, **item, "size": M.size_text(item["bytes"]),
+            "say": f"{item['kind'].capitalize()} '{item['name']}' rakh li ({M.size_text(item['bytes'])})."}
 
 
 def set_theme(tenant: str, ref: str, tokens: dict[str, Any]) -> dict[str, Any]:

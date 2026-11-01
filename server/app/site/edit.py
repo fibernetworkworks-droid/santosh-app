@@ -47,7 +47,8 @@ def tag(html: str) -> tuple[str, int]:
     for el in soup.find_all(True):
         if el.has_attr("data-e"):
             continue
-        if (el.name == "img" and el.has_attr("data-hoola-img")) or _texty(el):
+        if ((el.name == "img" and el.has_attr("data-hoola-img")) or _texty(el)
+                or el.has_attr("data-hoola-media") or (el.name == "div" and el.has_attr("data-hoola-video"))):   # v0.338
             n += 1
             el["data-e"] = str(n)
             added += 1
@@ -81,10 +82,32 @@ def _set_text(el, value: str) -> None:
             el.append(k)
 
 
+BLOCKY = ("p", "h1", "h2", "h3", "h4", "h5", "h6", "figure", "ul", "ol", "table", "blockquote", "details", "form",
+          "article", "div", "dl", "picture", "video", "audio")
+
+
+def insert(html: str, e: str, markup: str) -> tuple[str, str]:
+    """v0.338 something she adds (photo / video / audio / file) goes in right AFTER the block she clicked: a link, a
+    word or a list item climbs to its paragraph / list / card first, so nothing lands inside a button or a heading."""
+    soup = _soup(html)
+    el = _find(soup, e)
+    anchor = el
+    while anchor.parent is not None and anchor.parent.name not in ("section", "[document]") and (
+            anchor.name not in BLOCKY or anchor.find_parent(["a", "button", "li", "h1", "h2", "h3", "p"]) is not None):
+        anchor = anchor.parent
+    if anchor.name == "section":
+        raise EditError("Yahan jod nahi sakte; section ke andar kisi cheez par click kijiye.")
+    new = _soup(markup)
+    for node in list(new.contents)[::-1]:
+        anchor.insert_after(node)
+    return str(soup), "jodi"
+
+
 def describe(html: str, e: str) -> dict[str, Any]:
     soup = _soup(html)
     el = _find(soup, e)
-    kind = "image" if el.name == "img" else ("link" if el.name == "a" else "text")
+    kind = ("image" if el.name == "img" else "media" if (el.has_attr("data-hoola-media") or el.has_attr("data-hoola-video"))
+            else "link" if el.name == "a" else "text")
     return {"e": str(e), "tag": el.name, "kind": kind, "text": el.get_text(" ", strip=True)[:MAX_TEXT],
             "href": el.get("href", "") if el.name == "a" else "", "img": el.get("data-hoola-img", "")}
 
@@ -124,8 +147,10 @@ def apply(html: str, e: str, op: str, value: str, photos: set[str], ok_href) -> 
     elif op == "remove":
         if el.name == "h1":
             raise EditError("Page ka mukhya heading (h1) hata nahi sakte; uske shabd badal dijiye.")
-        what = f'hataya: "{el.get_text(" ", strip=True)[:40] or el.name}"'
-        el.decompose()
+        what = f'hataya: "{el.get_text(" ", strip=True)[:40] or el.get("data-hoola-media") or el.name}"'
+        box = el.find_parent(class_=["hs-emedia", "hs-efile"])     # v0.338 the photo / video / file she added goes as
+        whole = box is not None and el.name != "figcaption"          # one piece; its caption alone when she picks that
+        (box if whole else el).decompose()
     else:
         raise EditError("Yeh badlav samajh nahi aaya.")
     return str(soup), what

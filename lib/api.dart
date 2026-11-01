@@ -1137,6 +1137,9 @@ class Api {
   Future<Map<String, dynamic>> siteDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/sites/$id') as Map);
   Future<Map<String, dynamic>> sitePhoto(String id, String filename, List<int> bytes, String about) async =>
       uploadFile('/api/sites/$id/photo', filename, bytes, fields: {'about': about}, tries: 1, timeout: const Duration(seconds: 180));
+  /// v0.338 a video / audio / download file for her website (Edit mode puts it on a page).
+  Future<Map<String, dynamic>> siteMedia(String id, String filename, List<int> bytes, String about) async =>
+      uploadFile('/api/sites/$id/media', filename, bytes, fields: {'about': about}, tries: 1, timeout: const Duration(seconds: 600));
   Future<Map<String, dynamic>> siteLibrary({String industry = '', String q = '', int offset = 0}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/sites-library', query: {'industry': industry, 'q': q, 'offset': '$offset'}) as Map);
   Future<List<Map<String, dynamic>>> siteLeads(String id) async => List<Map<String, dynamic>>.from(
