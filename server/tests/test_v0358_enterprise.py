@@ -144,9 +144,61 @@ def test_the_existing_employee_suite_still_stands():
     assert len(E.DUTIES) == len(E.ROLES) + 1 or True     # both grew by ten; exact totals are not pinned
 
 
+# ---------------------------------------------------------------- v0.359: ERP is a desk, not one person
+def test_the_erp_desk_covers_the_whole_lifecycle():
+    """Owner: "INCLUDE ALL JOBS IN ERP FOR HOOLA AI". An ERP job is blueprint to support, so all sixteen parts
+    live inside the one role - and inside the one duty, because it is still her same live ERP."""
+    js = R.jobs_of("erp")
+    assert len(js) == 16
+    for must in ("blueprint", "functional", "technical", "data", "integration", "basis", "security", "testing",
+                 "cutover", "training", "support", "masterdata", "reporting", "finance_ops", "licence", "upgrade"):
+        assert must in js, must
+        assert js[must]["label"] and js[must]["say"] and js[must]["papers"], must
+        assert set(js[must]["papers"]) <= set(R.ARTIFACTS), must
+
+
+def test_every_part_of_the_desk_shares_one_trust_setting():
+    """Sixteen parts, ONE duty: she sets trust for her ERP once, not sixteen times."""
+    assert E.duty_of("erp") == "ent_erp"
+    assert "ent_erp" in E.DUTIES and E.kind_of("erp") == "big"
+    assert all(f"ent_erp_{k}" not in E.DUTIES for k in R.jobs_of("erp"))
+
+
+def test_a_part_only_makes_the_papers_that_part_really_produces(env):
+    a = S.draft("t1", "erp", "matrix", "SoD review", job="security")
+    assert a["hissa"]["job"] == "security"
+    with pytest.raises(S.EnterpriseError):
+        S.draft("t1", "erp", "matrix", "x", job="data")        # a migration does not write an access matrix
+    with pytest.raises(S.EnterpriseError):
+        S.draft("t1", "erp", "spec", "x", job="koi-nahi")      # an unknown part is refused, with the list
+
+
+def test_all_sixteen_parts_can_produce_their_own_first_paper(env):
+    for k, v in R.jobs_of("erp").items():
+        out = S.draft("t1", "erp", v["papers"][0], f"test {k}", job=k)
+        assert out["ref"] and out["hissa"]["job"] == k, k
+
+
+def test_a_role_with_no_parts_is_unaffected(env):
+    assert R.jobs_of("tpm") == {}
+    a = S.draft("t1", "tpm", "plan", "roadmap")
+    assert "hissa" not in a
+    assert S.jobs("tpm")["kaam"] == []
+
+
+def test_the_desk_is_visible_to_the_model_and_to_her(env):
+    from app.agent.enterprise_tools import ENTERPRISE_TOOLS
+    do = [t for t in ENTERPRISE_TOOLS if t["name"] == "erp"][0]
+    see = [t for t in ENTERPRISE_TOOLS if t["name"] == "erp_dekho"][0]
+    assert "job" in do["input_schema"]["properties"]
+    assert "security" in do["description"] and "cutover" in do["description"]
+    assert "jobs" in see["input_schema"]["properties"]["what"]["enum"]
+    assert len(S.jobs("erp")["kaam"]) == 16
+
+
 def test_version():
     from pathlib import Path
 
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.358.0"
-    assert "0.358.0+398" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.359.0"
+    assert "0.359.0+399" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

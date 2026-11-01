@@ -310,6 +310,10 @@ _ASK = {
     "report": "a findings report: what was looked at, what was found, each with evidence, and the three things to do first",
     "test_plan": "a test plan: case, given/when/then, data needed, expected result, who runs it",
     "runbook": "a runbook: the exact steps to run it, what to check after each, and how to roll back",
+    "config": "a configuration document: each setting, the value, why it is that value, and where it is set",
+    "matrix": "an access matrix: one row per role, the permissions it gets, and any separation-of-duties clash",
+    "sop": "a step-by-step SOP a clerk can follow without help: numbered steps, what to click, what good looks like",
+    "training": "a training guide: who needs it, what they must be able to do after, and the exercises",
 }
 
 _SYSTEM_PROMPT = (
@@ -326,12 +330,29 @@ _SYSTEM_PROMPT = (
 )
 
 
+def jobs(role: str) -> dict[str, Any]:
+    """The sub-jobs inside one role. ERP is a desk, not one person: blueprint to support, sixteen of them."""
+    spec = _check_role(role)
+    js = R.jobs_of(role)
+    return _with_cap(role, {
+        "role": role, "label": spec["label"],
+        "kaam": [{"job": k, "label": v["label"], "say": v["say"], "kaagaz": v["papers"]} for k, v in js.items()],
+        "note": ("Sab ek hi duty (trust) ke andar hain - yeh sab aapka wahi ERP hai." if js else
+                 "Is kaam ke andar alag-alag hisse nahi hain.")})
+
+
 def draft(tenant: str, role: str, kind: str, about: str = "", project: str = "", note: str = "",
-          conv: str = "") -> dict[str, Any]:
+          conv: str = "", job: str = "") -> dict[str, Any]:
     """Make the paper this job exists to produce. Nothing leaves Hoola here - this only writes a record."""
     spec = _check_role(role)
-    if kind not in spec["artifacts"]:
-        raise EnterpriseError(f"Is kaam mein '{kind}' nahi banta. Ban sakte hain: " + ", ".join(spec["artifacts"]))
+    job = _s(job, 24)
+    jspec = R.jobs_of(role).get(job) if job else None
+    if job and jspec is None:
+        raise EnterpriseError(f"'{job}' naam ka hissa nahi hai. Ho sakte hain: " + ", ".join(R.jobs_of(role)) )
+    allowed = R.job_papers(role, job) if jspec else spec["artifacts"]
+    if kind not in allowed:
+        where = jspec["label"] if jspec else spec["label"]
+        raise EnterpriseError(f"{where} mein '{kind}' nahi banta. Ban sakte hain: " + ", ".join(allowed))
     guard_secret(" ".join([about, note]))
     env = _env_line(tenant, role)
     cap = R.cap_of(role)
@@ -339,13 +360,14 @@ def draft(tenant: str, role: str, kind: str, about: str = "", project: str = "",
         label=spec["label"],
         cap=("- This job is CAPPED: " + cap + " Say so at the end of the paper, in her language.\n") if cap else "")
     prompt = (f"Job: {spec['label']} - {spec['say']}\n"
-              f"Paper wanted: {kind} - {_ASK.get(kind, kind)}\n"
-              f"Systems connected: {env}\n"
-              f"House rules: {' | '.join(spec['rules'])}\n"
-              f"What she said: {about or '(nothing beyond the job itself)'}\n"
-              f"Extra note: {note or '-'}")
+              + (f"Part of the job: {jspec['label']} - {jspec['say']}\n" if jspec else "")
+              + f"Paper wanted: {kind} - {_ASK.get(kind, kind)}\n"
+              + f"Systems connected: {env}\n"
+              + f"House rules: {' | '.join(spec['rules'])}\n"
+              + f"What she said: {about or '(nothing beyond the job itself)'}\n"
+              + f"Extra note: {note or '-'}")
     got = _ai_json(sysmsg, prompt)
-    title = _s(got.get("title"), 160) or f"{kind} - {about[:60] or spec['label']}"
+    title = _s(got.get("title"), 160) or f"{kind} - {about[:60] or (jspec['label'] if jspec else spec['label'])}"
     body = mask(_s(got.get("body"), 60000))
     rows = got.get("rows") if isinstance(got.get("rows"), list) else []
     rows = [[mask(_s(c, 300)) for c in r] for r in rows if isinstance(r, list)][:400]
@@ -365,7 +387,10 @@ def draft(tenant: str, role: str, kind: str, about: str = "", project: str = "",
     out["missing"] = missing
     if missing:
         out["note"] = "Jo cheezein nahi pata, woh 'missing' mein hain - unke bina yeh kaagaz adhoora hai."
-    _publish(tenant, "enterprise_artifact", {"role": role, "ref": out["ref"], "kind": kind, "title": title}, conv)
+    if jspec:
+        out["hissa"] = {"job": job, "label": jspec["label"]}
+    _publish(tenant, "enterprise_artifact", {"role": role, "job": job, "ref": out["ref"], "kind": kind,
+                                             "title": title}, conv)
     return _with_cap(role, out)
 
 

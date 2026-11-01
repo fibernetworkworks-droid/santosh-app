@@ -18,7 +18,7 @@ from .tools import Ctx, ToolError
 
 _DO_ACTIONS = ["connect", "disconnect", "project", "project_update", "draft", "revise", "file", "item",
                "item_update", "settings"]
-_SEE_WHAT = ["day", "systems", "projects", "papers", "paper", "items", "settings", "rules"]
+_SEE_WHAT = ["day", "jobs", "systems", "projects", "papers", "paper", "items", "settings", "rules"]
 
 
 def _do_description(key: str, spec: dict[str, Any]) -> str:
@@ -28,12 +28,17 @@ def _do_description(key: str, spec: dict[str, Any]) -> str:
          f"action=connect: system ({syss}), env test|production, account, note - she links her OWN system from the "
          f"app; a key or token in chat is refused. action=disconnect: system. "
          f"action=project: title, goal. action=project_update: ref, title / goal / status open|done|parked. "
-         f"action=draft: kind ({arts}), about (what she said), project, note -> the working paper, with a `missing` "
+         f"action=draft: kind ({arts}), job (the part of the desk this is - see <job>_dekho what=jobs; leave empty "
+         f"when the job has no parts), about (what she said), project, note -> the working paper, with a `missing` "
          f"list for anything not known (a number that did not come from a system or from her is NEVER invented). "
          f"action=revise: ref, instruction. action=file: ref -> Word file. "
          f"action=item: title, kind task|gap|risk|due|finding, detail, owner, due YYYY-MM-DD, severity high|medium|low, "
          f"rupaye, project, source. action=item_update: ref, status open|doing|done|dropped, + any field. "
          f"action=settings (owner only): company, env_default, rules.")
+    js = R.jobs_of(key)
+    if js:
+        d += (" Is desk ke hisse (action=draft mein `job`): "
+              + ", ".join(f"{k} ({v['label']})" for k, v in js.items()) + ".")
     if spec["cap"]:
         d += " YAHAN TAK: " + spec["cap"]
     if not spec["writes"]:
@@ -43,6 +48,7 @@ def _do_description(key: str, spec: dict[str, Any]) -> str:
 
 def _see_description(key: str, spec: dict[str, Any]) -> str:
     return (f"Read {spec['label']} work (nothing changes). what=day (khule kaam, nikli tareekhen, bade khatre) | "
+            f"jobs (is desk ke saare hisse aur har hisse ke kaagaz) | "
             f"systems | projects (status) | papers (kind, project) | paper (ref) | items (kind, status, project) | "
             f"settings | rules.")
 
@@ -60,6 +66,7 @@ for _key, _spec in R.ROLES.items():
             "note": {"type": "string"}, "title": {"type": "string"}, "goal": {"type": "string"},
             "status": {"type": "string"}, "ref": {"type": "string"}, "kind": {"type": "string"},
             "about": {"type": "string"}, "project": {"type": "string"}, "instruction": {"type": "string"},
+            "job": {"type": "string"},
             "detail": {"type": "string"}, "owner": {"type": "string"}, "due": {"type": "string"},
             "severity": {"type": "string"}, "rupaye": {"type": ["number", "string"]},
             "source": {"type": "string"}, "company": {"type": "string"}, "env_default": {"type": "string"},
@@ -115,7 +122,8 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.set_project(t, role, _s(a.get("ref")),
                                  **{k: a[k] for k in ("title", "goal", "status") if k in a})
         if action == "draft":
-            return S.draft(t, role, _s(a.get("kind")), _s(a.get("about")), _s(a.get("project")), _s(a.get("note")), conv)
+            return S.draft(t, role, _s(a.get("kind")), _s(a.get("about")), _s(a.get("project")), _s(a.get("note")),
+                           conv, _s(a.get("job")))
         if action == "revise":
             return S.revise(t, role, _s(a.get("ref")), _s(a.get("instruction")), conv)
         if action == "file":
@@ -139,6 +147,8 @@ def _read(ctx: Ctx, role: str, what: str, a: dict[str, Any]) -> dict[str, Any]:
     try:
         if what == "day":
             return S.day(t, role)
+        if what == "jobs":
+            return S.jobs(role)
         if what == "systems":
             return S.systems(t, role)
         if what == "projects":

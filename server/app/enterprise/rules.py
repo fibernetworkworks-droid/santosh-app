@@ -29,14 +29,16 @@ SYSTEMS: dict[str, dict[str, str]] = {
     "sheet":      {"label": "Sheet / CSV",        "how": "own", "note": "koi bhi system na ho to sheet se"},
 }
 
-ARTIFACTS = ("spec", "mapping", "plan", "checklist", "register", "report", "test_plan", "runbook")
+ARTIFACTS = ("spec", "mapping", "plan", "checklist", "register", "report", "test_plan", "runbook",
+             "config", "matrix", "sop", "training")
 
 ROLES: dict[str, dict[str, Any]] = {
     "erp": {
         "label": "ERP Architect (SAP / Oracle)",
         "say": "SAP ya NetSuite ka module aur field padhkar integration spec, field mapping aur migration sheet banana",
         "systems": ["sap", "oracle", "sheet", "composio"],
-        "artifacts": ["spec", "mapping", "plan", "test_plan", "runbook"],
+        "artifacts": ["spec", "mapping", "plan", "test_plan", "runbook", "config", "matrix", "sop",
+                      "report", "register", "checklist", "training"],
         "writes": True,
         "cap": "",
         "rules": ["ERP mein koi entry aapki haan ke bina nahi jaati.",
@@ -166,3 +168,55 @@ def cap_of(key: str) -> str:
 
 def may_write(key: str) -> bool:
     return bool(role(key)["writes"])
+
+# ---------------------------------------------------------------- sub-jobs inside one role
+# An ERP "job" is not one person's work - it is a desk. The owner asked for ALL of it, so the whole lifecycle is
+# here, from the first blueprint to the support ticket years later. Every sub-job sits inside the SAME duty
+# (ent_erp) because the risk is the same - it is still her live ERP - so trust is set once for the whole desk.
+# The structure is generic: any role in ROLES may grow a JOBS entry the same way.
+JOBS: dict[str, dict[str, dict[str, Any]]] = {
+    "erp": {
+        "blueprint":   {"label": "Blueprint / design", "say": "business process samajhkar ERP ka design aur gap list",
+                        "papers": ["spec", "report", "plan"]},
+        "functional":  {"label": "Functional consultant", "say": "module ka config - FI/CO, MM, SD, PP, HR - aur uska dastavez",
+                        "papers": ["config", "spec", "sop"]},
+        "technical":   {"label": "Technical / ABAP", "say": "custom report, form, enhancement, interface ka technical spec",
+                        "papers": ["spec", "test_plan"]},
+        "data":        {"label": "Data migration", "say": "purane system se data - field mapping, safai ke niyam, load ka plan, milaan",
+                        "papers": ["mapping", "plan", "checklist", "report"]},
+        "integration": {"label": "Integration", "say": "doosre system se jodna - interface, middleware, error handling, dobara bhejna",
+                        "papers": ["spec", "mapping", "runbook", "test_plan"]},
+        "basis":       {"label": "Basis / system admin", "say": "system ka rakhrakhav, transport, patch, backup, performance",
+                        "papers": ["runbook", "checklist", "report"]},
+        "security":    {"label": "Security aur authorisation", "say": "kis role ko kya dikhe, SoD ka takraav, user access review",
+                        "papers": ["matrix", "report", "checklist"]},
+        "testing":     {"label": "Testing / UAT", "say": "test case, UAT ka round, regression, defect ki list",
+                        "papers": ["test_plan", "register", "report"]},
+        "cutover":     {"label": "Cutover aur go-live", "say": "go-live ka ghanta-dar-ghanta plan, freeze, rollback, hypercare",
+                        "papers": ["runbook", "checklist", "plan"]},
+        "training":    {"label": "Training aur change", "say": "user ko sikhana - guide, step-by-step SOP, kaun kab seekhega",
+                        "papers": ["training", "sop", "plan"]},
+        "support":     {"label": "Support / AMS", "say": "ticket, incident, root cause, SLA aur mahine ki report",
+                        "papers": ["register", "report", "sop"]},
+        "masterdata":  {"label": "Master data", "say": "vendor, customer, material, GL - ek hi sach, duplicate aur galti pakadna",
+                        "papers": ["register", "checklist", "report"]},
+        "reporting":   {"label": "Reporting aur analytics", "say": "ERP se report aur dashboard - kaunsa number kahan se aata hai",
+                        "papers": ["spec", "mapping", "report"]},
+        "finance_ops": {"label": "Finance close", "say": "month-end close ka schedule, reconciliation, controlling ka hisaab",
+                        "papers": ["checklist", "report", "sop"]},
+        "licence":     {"label": "Licence aur kharcha", "say": "kitne user, kaunsa licence, kya bach sakta hai",
+                        "papers": ["report", "register"]},
+        "upgrade":     {"label": "Upgrade / patch", "say": "version badalna - asar, test ka daayra, rollback",
+                        "papers": ["plan", "checklist", "test_plan", "report"]},
+    },
+}
+
+
+def jobs_of(role_key: str) -> dict[str, dict[str, Any]]:
+    return JOBS.get(role_key, {})
+
+
+def job_papers(role_key: str, job: str) -> list[str]:
+    """The paper kinds that sub-job really produces; the role's full list when it has no sub-jobs."""
+    j = JOBS.get(role_key, {}).get(job)
+    return list(j["papers"]) if j else list(role(role_key)["artifacts"])
