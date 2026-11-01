@@ -34,7 +34,7 @@ FB_SCOPES_READ = ["pages_show_list", "pages_read_engagement", "read_insights", "
 IG_SCOPES = IG_SCOPES_READ + ["instagram_business_content_publish", "instagram_business_manage_comments",
                                "instagram_business_manage_messages"]
 FB_SCOPES = FB_SCOPES_READ + ["pages_manage_posts", "publish_video", "pages_manage_engagement", "pages_read_user_content",
-                              "pages_messaging"]
+                              "pages_messaging", "instagram_basic", "instagram_manage_insights", "instagram_manage_comments"]
 IG_INBOX_SCOPES = ("instagram_business_manage_comments", "instagram_business_manage_messages")   # v0.368 Phase 3
 IG_PUBLISH_SCOPE = "instagram_business_content_publish"
 _sleep = __import__("time").sleep               # tests swap this out (container polling)
@@ -69,6 +69,10 @@ def configured(platform: str) -> bool:
         return base and bool(st.instagram_app_id and st.instagram_app_secret)
     if platform == "facebook":
         return base and bool(st.meta_app_id and st.meta_app_secret)
+    if platform == "whatsapp":                       # v0.384 Embedded Signup = the same Meta app + its WhatsApp configuration
+        return base and bool(st.meta_app_id and st.meta_app_secret and st.wa_es_config_id)
+    if platform == "linkedin":
+        return base and bool(st.linkedin_client_id and st.linkedin_client_secret)
     return False
 
 
@@ -389,3 +393,49 @@ def fb_send(page: str, token: str, to: str, text: str) -> str:
     js = _req("POST", f"{FB_GRAPH}/{_v()}/{page}/messages", json={"recipient": {"id": to}, "messaging_type": "RESPONSE",
                                                                  "message": {"text": text}}, params={"access_token": token})
     return str(js.get("message_id") or "")
+
+
+# ---------------------------------------------------------------- v0.383 growth (Phase 5): listening through Facebook Login
+# Hashtag search and Business Discovery exist ONLY in the Instagram API with Facebook Login (her Page linked to her
+# Instagram professional account) - not in Instagram Login. Public business / creator data only; no scraping.
+FB_IG_SCOPES = ("instagram_basic", "instagram_manage_insights", "instagram_manage_comments")
+_MEDIA_FIELDS = "id,caption,media_type,like_count,comments_count,permalink,timestamp"
+
+
+def fb_page_ig(page: str, token: str) -> dict[str, Any]:
+    """The Instagram professional account linked to her Page ({} when none)."""
+    js = _req("GET", f"{FB_GRAPH}/{_v()}/{page}", params={"fields": "instagram_business_account{id,username}", "access_token": token})
+    return js.get("instagram_business_account") or {}
+
+
+def ig_tags(ig_id: str, token: str) -> list[dict[str, Any]]:
+    """Posts by other people that tag her account."""
+    js = _req("GET", f"{FB_GRAPH}/{_v()}/{ig_id}/tags", params={
+        "fields": _MEDIA_FIELDS + ",media_url,username", "limit": 25, "access_token": token})
+    return [m for m in js.get("data") or [] if isinstance(m, dict)]
+
+
+def ig_hashtag_id(ig_id: str, token: str, tag: str) -> str:
+    js = _req("GET", f"{FB_GRAPH}/{_v()}/ig_hashtag_search", params={"user_id": ig_id, "q": tag.lstrip("#"), "access_token": token})
+    return str(((js.get("data") or [{}])[0] or {}).get("id") or "")
+
+
+def ig_hashtag_top(hashtag_id: str, ig_id: str, token: str) -> list[dict[str, Any]]:
+    js = _req("GET", f"{FB_GRAPH}/{_v()}/{hashtag_id}/top_media", params={
+        "user_id": ig_id, "fields": _MEDIA_FIELDS, "limit": 25, "access_token": token})
+    return [m for m in js.get("data") or [] if isinstance(m, dict)]
+
+
+def ig_discover(ig_id: str, token: str, username: str) -> dict[str, Any]:
+    """Business Discovery: another business / creator account's public numbers and recent posts."""
+    u = username.lstrip("@").strip()
+    f = (f"business_discovery.username({u}){{username,name,followers_count,media_count,"
+         f"media.limit(12){{{_MEDIA_FIELDS}}}}}")
+    js = _req("GET", f"{FB_GRAPH}/{_v()}/{ig_id}", params={"fields": f, "access_token": token})
+    return js.get("business_discovery") or {}
+
+
+def ig_mention_reply(ig_id: str, token: str, media_id: str, text: str) -> str:
+    """A comment from her account on a post that mentions / tags her (the official mentions edge)."""
+    js = _req("POST", f"{FB_GRAPH}/{_v()}/{ig_id}/mentions", data={"media_id": media_id, "message": text, "access_token": token})
+    return str(js.get("id") or "")

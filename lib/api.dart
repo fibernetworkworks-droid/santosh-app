@@ -1018,6 +1018,13 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/poster', body: {}, timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> socialPublish(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/publish', body: {}) as Map);
+  // v0.383 growth: watch list, customers' tagged posts (ask / permission / repost / ignore), creator check
+  Future<Map<String, dynamic>> socialWatch(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/growth/watch', body: body) as Map);
+  Future<Map<String, dynamic>> socialUgc(String id, String action, [Map<String, dynamic>? body]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ugc/$id/$action', body: body ?? {}, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> socialCreator(String username) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/creator/check', body: {'username': username}) as Map);
   // v0.369 posting controls: {paused} | {stop: true} | {quiet: [23, 7]}
   Future<Map<String, dynamic>> socialSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/settings', body: body) as Map);

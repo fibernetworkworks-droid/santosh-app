@@ -52,6 +52,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the CODING work, every coding card 100% live): branch
+  `stable-2026-11-01-v382` = commit 5e3e06d4 = v0.382.0, pubspec 0.382.0+426 (live on hoola.ainewtika.com, healthz 0.382.0).
+  Developer Sahayak codes like Claude Code: 8-tool step loop (v0.350), CI on a draft PR + fix rounds (v0.352), project rules
+  first (v0.356), ONE question on a vague ask (v0.371), PR review that explores first (v0.377). Coding cards live: easy 12/12,
+  hard 12/12 (Python + JS), mobile 10/10 (Dart + Kotlin, SDKs in ~/apps/codecard-sdk). Also carries the other sessions'
+  v0.344-v0.382 (social manager, ERP / CRM / TPM desks, CAD, game desk, blog, proof, shiksha...). APK release `v0.382.0-b1002`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.382.0-b1002/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v382` as the branch.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the long-task + tool-choice work, every live test passed): branch
   `stable-2026-11-01-v343` = commit fce446a0 = v0.343.0, pubspec 0.343.0+383 (live on hoola.ainewtika.com at her tests; healthz
   0.343.0). Long jobs finish (v0.314 AAGE BADHO: a promise never ends a job, parallel batch = 1 call, moving turn keeps its
@@ -145,7 +153,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.383.0 (pubspec 0.383.0+427). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.385.0 (pubspec 0.385.0+429). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.381 SHIKSHA SUITE 0+1: `app/pylab` locked Python sandbox (tool `pylab`), `app/shiksha` (classes, learners + guardian
   consent, shared question bank, gradebook, `frameworks.json`), `app/pathyakram` curriculum & exam designer (papers, plans, rubrics).
@@ -164,7 +172,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
-- v0.383 CAD NEXT PHASE (`fea.flow` laminar CFD on the fluid body via H.analyze('flow', domain=...), fatigue on static studies + redesign, calc `joint` VDI 2230-style + `fatigue`); true contact FEA between assembly parts still not built.
+- v0.385 CAD NEXT PHASE (built as 0.383, `fea.flow` laminar CFD on the fluid body via H.analyze('flow', domain=...), fatigue on static studies + redesign, calc `joint` VDI 2230-style + `fatigue`); true contact FEA between assembly parts still not built.
 - v0.380 HOOLA CAD ANALYSIS (built as 0.375) (`engineering/fea.py` / `cam.py` / `calc.py` / `geom.py`): FEA on the B-rep (stress + SF, heat, modes; a weak part goes back to be redesigned), faceted real threads, sheet metal + flat DXF, freeform, H.expect measured, CNC G-code, tool `eng_calc`. VPS: pip install scikit-fem pyamg.
 - v0.364 HOOLA CAD PRO (`engineering/parts.py` H library: ISO fasteners, involute gears, bearings, shafts, extrusions): assemblies + BOM + mass, Opus thinks + plans, vision review of the views, her photo / STEP inputs, STEP/GLB/STL/3MF/DXF + hidden-line drawing page.
 - v0.361 CAD BOX CHAUTHI DEEWAR: her VPS has no `unshare -rn` (no_network false) -> engineering runner locks socket / os.system /
@@ -188,6 +196,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.384 SOCIAL MEDIA MANAGER Phase 6 (`social/wabiz.py` + `social/linkedin.py`): WhatsApp Business on her own number by Meta's Embedded Signup (one tap ->
+  her Business inbox channel), LinkedIn profile posts (text + one photo); plans only for connected platforms; Company Page / X not built.
+- v0.383 SOCIAL MEDIA MANAGER Phase 5 GROWTH (`social/growth.py`, via her Page's linked Instagram = Facebook Login): tags -> UGC ask / recorded yes /
+  credited draft, 5 hashtags + 5 competitors weekly, creator check (signals + #ad), A/B hook styles.
 - v0.369 SOCIAL MEDIA MANAGER Phase 4 (`social/pulse.py`): plan posts alone only for Saathi / Bharosa (6 / 15 a day, quiet hours), Seekh = OK on the day;
   pause + emergency stop, 9 am note, Monday pulse, monthly PDF, best times, boost flags (she runs the boost).
 - v0.368 SOCIAL MEDIA MANAGER Phase 3 INBOX (`social/inbox.py`): IG + FB comments and DMs every 15 min, sorted, drafts from her facts only;

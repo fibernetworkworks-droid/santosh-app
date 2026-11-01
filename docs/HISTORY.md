@@ -14340,7 +14340,69 @@ Not verified here: the Kotlin / Swift kit compile (CI appgen-check / ios-check b
 Known limits (said plainly): locks + schedules assume one server process (Pillar B moves to Postgres transactions); child
 lookups use a JSON text match on SQLite (fine to a few thousand rows per list); no realtime push of logic results (Pillar C).
 
-## v0.383.0 HOOLA CAD NEXT PHASE (1 Nov 2026)
+## CHECKPOINT 1 Nov 2026 - CODING (owner: "SAVE THE STATE")
+Branch `stable-2026-11-01-v382` = commit 5e3e06d4 = v0.382.0 (live, healthz 0.382.0), APK `v0.382.0-b1002` (CI run 1002 on
+main, same commit). Verified in that exact commit before the branch was cut: the coding loop (loop.run), CI before the PR
+(service._ci_step, gh.mark_ready), project rules (loop.rule_paths), the vague-ask rule, the exploring PR review
+(loop.review_run), the three coding cards (codecard, code_tasks2 / 3, sdk.setup, vps-ops code_card_mobile), and the long-job
+work (aage.promised, quality/longjobs). Live coding cards at save time:
+- set 1 (Python): 12/12;
+- set 2 (Python + JS): 12/12, after v0.371;
+- set 3 (Dart + Kotlin): 10/10, first run.
+Rollback = the same VPS commands as the other checkpoints, with this branch.
+## v0.383.0 SOCIAL MEDIA MANAGER Phase 5 - GROWTH (built as 0.370 / 0.378, re-versioned past the parallel v0.370-v0.382) (1 Nov 2026, owner: "GO PHASE 5")
+Module `server/app/social/growth.py` (tables `social_watch`, `social_ugc`), Meta calls at the end of `social/meta.py`.
+- Route: Meta's hashtag search ("available for the Instagram API with Facebook Login", IG Hashtag Search reference) and
+  Business Discovery work only through Facebook Login, so growth uses her connected Facebook Page: `fb_page_ig` finds the
+  linked instagram_business_account (cached in desk stamps `ig_link`), the Page token reads tags / discovery / mentions,
+  the USER token runs hashtag search. FB_SCOPES + instagram_basic, instagram_manage_insights, instagram_manage_comments -
+  with META_LOGIN_CONFIG_ID the permissions live in the Login for Business configuration, so the owner adds them there.
+- Daily job `growth` (>= 8 am): `/tags` -> SocialUgc (her own posts skipped, each once, a note "N new posts tag you").
+  Mondays (or the first read of a new watch): hashtags (<= 5; `ig_hashtag_search` once per tag, id kept in ref_id because
+  Meta allows 30 unique searches in 7 days; `top_media`: posts, interactions, formats, 3 idea lines with links) and
+  competitors (<= 5; business_discovery: followers + change vs prev, posts in 7 / 30 days, interactions a post, formats,
+  engagement rate); one comparison line to her own numbers. Errors stay on the row (e.g. not a professional account).
+- UGC: ask (her tap only) = POST /{ig}/mentions comment "...share with credit? reply YES" - never a DM (she may not
+  message first); permission needs proof text (their words / where); refused / ignore; repost only when granted:
+  media_url downloaded -> add_asset -> SocialPost draft (source ugc, "Credit: @user", hook_style story) for her approval.
+- Creator check: business_discovery numbers + `influencer.rules.fake_signals` (signals, never a verdict) + ASCI
+  `disclosure_check` for a paid collab caption.
+- A/B hook styles: nullable `social_posts.hook_style`; Opus told to rotate and lean on the winner; rules plan rotates
+  question / number / story and puts the winner on every other post; `ab_report` matches published result ids to read
+  numbers, winner only at >= 3 posts a style and a 20% lead.
+- Not done (plan wording): an automatic Ads desk hand-off (the Ads desk analyses imported reports; the boost plan stays
+  hers to run), the Influencer desk roster (it is a talent-manager tool) - its rules are reused instead.
+- Console Growth tile, phone Growth card; privacy paragraph. Tests `server/tests/test_v0383_social_growth.py` (8).
+
+
+## v0.384.0 SOCIAL MEDIA MANAGER Phase 6 - MORE PLATFORMS (1 Nov 2026, owner: "GO PHASE 6")
+Built as 0.375 / 0.379, re-versioned past the parallel v0.379-v0.382. Modules `server/app/social/wabiz.py`, `server/app/social/linkedin.py`.
+- WhatsApp Business by Meta's Embedded Signup (v3: FB.login with config_id, response_type code; Meta posts
+  {type: WA_EMBEDDED_SIGNUP, data: {waba_id, phone_number_id}} to the window). Before: the business typed its phone number
+  id + token into the Business inbox (v0.59 `employee_channels`). Now: Social Desk Connect WhatsApp Business ->
+  `wabiz.connect_url` (state soc_wh_, MailLinkState 30 min single use) -> GET /api/social/whatsapp/start (Meta JS SDK,
+  /api/social/whatsapp/es.js listens only to facebook.com origins) -> POST /api/social/whatsapp/finish {state, code,
+  waba_id, phone_number_id}: oauth/access_token (code, no redirect_uri) -> business token; GET /{pnid} display number,
+  verified name, quality; POST /{waba}/subscribed_apps; POST /{pnid}/register {messaging_product, pin} (pin generated,
+  sealed in user_token_enc; a failure = connected + note to turn off an old two-step PIN); `employee.inbox.set_channel`
+  with her sealed token (the inbox and its replies now use her number); SocialAccount platform whatsapp (no posting,
+  can_reply None). Disconnect also removes the inbox channel. Env: WA_ES_CONFIG_ID (the WhatsApp Login for Business
+  configuration in the same Meta app). Live beyond testers: Newtika must be a Meta Tech Provider.
+- LinkedIn: Sign In with LinkedIn using OpenID Connect + Share on LinkedIn (openid profile w_member_social - self-serve,
+  no partner review). Env LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET / LINKEDIN_VERSION (YYYYMM header, default
+  202510); redirect https://<base>/api/social/linkedin/callback. Token 60 days (no refresh for non-partners) -> hourly
+  watch warns 7 days before (same as Facebook). Publishing: `publish._to_linkedin` -> /rest/images?action=initializeUpload
+  (owner urn:li:person:<sub>) -> PUT bytes -> /rest/posts (commentary escaped: \ | { } @ [ ] ( ) < > # * _ ~, 3
+  hashtags, <= 3000), post urn from x-restli-id, link /feed/update/<urn>/; 401 marks the account expired. `problems`:
+  LinkedIn takes text + photo only (Reel / Story / video refused in words).
+- Planner: posts go only to connected platforms (`_posting_platforms`); the rules plan adds LinkedIn to Our work / Tips /
+  Behind the scenes image + carousel posts when LinkedIn is connected; `set_post(platforms=...)` = "Also on LinkedIn"
+  (a change sends an approved post back to draft). LinkedIn / WhatsApp rows are skipped by Meta reading + the inbox.
+- Not built: LinkedIn Company Page posts, LinkedIn comments / numbers (Community Management API needs LinkedIn's
+  review), X (not asked).
+- Console + phone: connect buttons for all four, account tiles, Also on LinkedIn; privacy paragraphs.
+  Tests `server/tests/test_v0384_social_platforms.py` (10).
+## v0.385.0 HOOLA CAD NEXT PHASE (built as 0.383) (1 Nov 2026)
 Owner: "GO NEXT PHASE" (after: bolts / contact, CFD, fatigue were the biggest gaps).
 - CFD (`fea.flow`, H.analyze('flow', domain=<fluid body>, inlet, outlet, flow_lpm | velocity_mm_s, fluid, max_dp_pa)):
   the CAD script builds the FLUID as its own solid (bore / channel / box minus part); the runner exports it as

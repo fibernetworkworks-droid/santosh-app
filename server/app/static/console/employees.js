@@ -240,8 +240,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   // ------------------------------------------------------------ v0.353 the Social Desk (Social Media Manager, Phase 1)
-  let SOC = null, SOCTRUST = 'seekh';
-  const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page'};
+  let SOC = null, SOCTRUST = 'seekh', HAS_LI = false;
+  const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page', linkedin: 'LinkedIn', whatsapp: 'WhatsApp Business'};   // v0.384
   const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};
   const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
   async function social(el) {
@@ -256,17 +256,20 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const accs = d.accounts || [], b = d.baseline || {}, stg = d.strategy || {}, cal = d.calendar || [];
     const pl = d.pulse || {}, pst = pl.settings || {};
     SOCTRUST = d.trust || 'seekh';
+    HAS_LI = (d.accounts || []).some(a => a.platform === 'linkedin' && a.status === 'ok');
     el.innerHTML = `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">${esc(d.profile.business || '')}${d.profile.city ? ' · ' + esc(d.profile.city) : ''}</span>
         ${accs.length ? tag(sc, sn) : tag('warn', 'Connect an account')} ${d.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[d.trust] || [d.trust])[0])}</span></div>
       <div class="tile gl"><div class="em-h"><h3>Accounts</h3><span class="muted em-small">You log in on Instagram / Facebook's own page. Hoola never sees your password.</span></div>
         <div class="sc-accs">${accs.map(a => `<div class="sc-acc">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : '<span class="sc-pic"></span>'}
-          <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)} · ${num(a.followers)} followers</span>
+          <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)}${a.platform === 'whatsapp' ? ' · ' + esc(a.name || '') + ' · messages reach your Business inbox' : a.platform === 'linkedin' ? ' · your profile' : ' · ' + num(a.followers) + ' followers'}</span>
+          ${a.platform === 'whatsapp' && a.error ? `<span class="warnc em-small">${esc(a.error)}</span>` : ''}
           ${a.status !== 'ok' ? `<span class="badc em-small">${esc(a.status === 'expired' ? 'Connection ended: connect again' : a.error || a.status)}</span>` : ''}
           ${a.status === 'ok' && (a.can_post === false || a.can_reply === false) ? '<span class="warnc em-small">Reconnect to allow posting and replies</span>' : ''}</div>
           <button class="btn soft" type="button" data-scoff="${esc(a.id)}">Disconnect</button></div>`).join('')}
-        <div class="sc-connect">${['instagram', 'facebook'].map(p => d.connect[p]
+        <div class="sc-connect">${['instagram', 'facebook', 'linkedin', 'whatsapp'].map(p => d.connect[p]
           ? `<button class="btn ${accs.some(a => a.platform === p) ? 'soft' : 'go'}" type="button" data-scon="${p}">${accs.some(a => a.platform === p) ? 'Reconnect' : 'Connect'} ${PLAT[p]}</button>`
-          : `<button class="btn soft" type="button" disabled title="The server needs Hoola's Meta app keys">${PLAT[p]}: not set up on the server yet</button>`).join('')}</div>
+          : `<button class="btn soft" type="button" disabled title="The server needs Hoola's ${p === 'linkedin' ? 'LinkedIn' : 'Meta'} app keys">${PLAT[p]}: not set up on the server yet</button>`).join('')}</div>
+        <p class="muted em-small">WhatsApp Business: Meta's own window connects your number; customers' messages then reach your Business inbox. LinkedIn: posts go to your own profile (a Company Page needs LinkedIn's approval first).</p>
         <p class="muted em-small">Instagram must be a Business or Creator account (free switch in Instagram settings). A post goes out only when you approve it or tap Publish now: exactly what you approved, at its time.</p></div>
       ${d.calendar_status === 'draft' && cal.length ? `<div class="tile gl em-note"><b>Your 30-day calendar is ready</b><span>${cal.length} posts planned from your real numbers. Read them below, edit any, then approve.</span>
         <button class="btn go" type="button" id="scApprove">Approve calendar</button></div>` : ''}
@@ -303,6 +306,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           : `<div class="empty">${esc((pl.best_times || {}).note || 'After a few more posts.')}</div>`}
           ${(pl.boosts || []).length ? `<h3 class="sc-h">Worth a boost</h3>${pl.boosts.map(x => `<p class="em-small"><a href="${esc(x.permalink)}" target="_blank" rel="noopener">${esc(x.fmt)} · ${esc(x.date)}</a> <b>${esc(String(x.times))}x</b> your normal. <span class="muted">${esc(x.plan)}</span></p>`).join('')}` : ''}</div>
       </div>` : ''}
+      ${accs.length ? growthTile(d.growth || {}) : ''}
       ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
         <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
       <div class="grid2">
@@ -313,6 +317,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
             <button class="btn soft" type="button" data-scrun="monthly">Make this month's PDF</button></div></div>
       </div>`;
     wireSocial(el, d);
+    wireGrowth(el);
     if (accs.length) inbox(el);
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) social(el); }, 8000);
   }
@@ -339,8 +344,78 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" data-sccopy="${esc(p.id)}">Copy caption</button><button class="btn soft" type="button" data-scedit="${esc(p.id)}">Edit</button>
         <label class="btn soft sc-up">Add photo / video<input type="file" accept="image/*,video/mp4,video/quicktime" data-scup="${esc(p.id)}" hidden></label>
         <button class="btn soft" type="button" data-scposter="${esc(p.id)}">Make poster</button>
+        ${HAS_LI ? `<button class="btn soft" type="button" data-scli="${esc(p.id)}" aria-pressed="${(p.platforms || []).includes('linkedin')}">${(p.platforms || []).includes('linkedin') ? 'Remove LinkedIn' : 'Also on LinkedIn'}</button>` : ''}
         ${needOk ? `<button class="btn go" type="button" data-scok="${esc(p.id)}">OK to post</button>` : ''}
         <button class="btn ${needOk ? 'soft' : 'go'}" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
+  }
+
+  // ------------------------------------------------------------ v0.383 growth (Phase 5)
+  const UGS = {new: ['warn', 'New'], asked: ['v', 'Asked'], granted: ['ok', 'They said yes'], refused: ['', 'They said no'],
+               reposted: ['ok', 'Draft made'], ignored: ['', 'Ignored']};
+  function growthTile(g) {
+    const w = g.watch || {hashtags: [], competitors: []}, ab = g.ab || {}, lk = g.link || {};
+    const comp = c => { const l = c.last || {}, p = c.prev || {};
+      const df = l.followers != null && p.followers != null ? l.followers - p.followers : null;
+      return `<tr><td>@${esc(l.username || c.name)}</td><td>${l.followers != null ? num(l.followers) + (df ? ` <span class="muted">(${df > 0 ? '+' : ''}${num(df)})</span>` : '') : '–'}</td>
+        <td>${l.posts_7d != null ? num(l.posts_7d) : '–'}</td><td>${l.avg_eng != null ? num(l.avg_eng) : '–'}</td><td>${esc(((l.formats || [])[0] || {}).fmt || '–')}</td></tr>
+        ${c.error ? `<tr><td colspan="5" class="badc em-small">${esc(c.error)}</td></tr>` : ''}`; };
+    const htag = h => { const l = h.last || {};
+      return `<div class="em-item"><b>#${esc(h.name)}</b> <span class="muted">${l.posts ? `${num(l.avg_eng)} interactions a top post · best ${esc(((l.formats || [])[0] || {}).fmt || '–')}` : esc(h.error || 'Read on Monday')}</span>
+        ${(l.ideas || []).map(i => `<p class="em-small"><a href="${esc(i.permalink)}" target="_blank" rel="noopener">${esc(i.fmt)} · ${num(i.eng)}</a> <span class="muted">${esc(i.line)}</span></p>`).join('')}</div>`; };
+    const ug = u => { const [c, n] = UGS[u.status] || ['', u.status];
+      return `<div class="em-item sc-ugc" data-uid="${esc(u.id)}"><div class="em-meta"><b>@${esc(u.username)}</b>${tag(c, n)}<a class="muted" href="${esc(u.permalink)}" target="_blank" rel="noopener">open post</a></div>
+        <p class="em-small">${esc((u.caption || '').slice(0, 160))}</p>${u.proof ? `<p class="em-small okc">Their yes: ${esc(u.proof)}</p>` : ''}${u.error ? `<p class="em-small badc">${esc(u.error)}</p>` : ''}
+        <div class="acts">${['new', 'asked', 'refused'].includes(u.status) ? `<button class="btn soft" type="button" data-ugask="${esc(u.id)}">${u.status === 'new' ? 'Ask to repost' : 'Ask again'}</button>` : ''}
+          ${['new', 'asked'].includes(u.status) ? `<button class="btn soft" type="button" data-ugyes="${esc(u.id)}">They said yes</button>` : ''}
+          ${u.status === 'granted' ? `<button class="btn go" type="button" data-ugrepost="${esc(u.id)}">Make a credited draft</button>` : ''}
+          ${!['reposted', 'ignored'].includes(u.status) ? `<button class="btn soft" type="button" data-ugignore="${esc(u.id)}">Ignore</button>` : ''}</div></div>`; };
+    return `<div class="tile gl sc-growth"><div class="em-h"><h3>Growth</h3><span class="muted em-small">${lk.ok ? `Listening through your Page's Instagram @${esc(lk.username)}.` : esc(lk.reason || '')} Public business data only, never scraping.</span></div>
+      <div class="grid2"><div>
+        <h3 class="sc-h">Competitors</h3>${w.competitors.length ? `<table class="em-tbl"><thead><tr><th>Account</th><th>Followers</th><th>Posts this week</th><th>Interactions a post</th><th>Best format</th></tr></thead><tbody>${w.competitors.map(comp).join('')}</tbody></table>` : '<div class="empty">Add up to 5 Instagram business accounts you compete with.</div>'}
+        <h3 class="sc-h">Hashtags of your niche</h3>${w.hashtags.map(htag).join('') || '<div class="empty">Add up to 5 hashtags.</div>'}
+        <form class="ar-form em-form sc-watch" id="scWatch"><label><span>Competitors (usernames, comma separated)</span><input id="scComp" value="${esc(w.competitors.map(c => c.name).join(', '))}" placeholder="smiledentalakola, citydental"></label>
+          <label><span>Hashtags (comma separated)</span><input id="scTags" value="${esc(w.hashtags.map(h => h.name).join(', '))}" placeholder="akoladentist, dentalcare"></label>
+          <div class="acts"><button class="btn soft" type="submit">Save</button><button class="btn soft" type="button" data-scrun="growth">Check now</button></div></form>
+        <h3 class="sc-h">Hook styles (A/B)</h3>${(ab.styles || []).length ? `<table class="em-tbl"><tbody>${ab.styles.map(r => `<tr><td>${esc(r.style)}</td><td>${num(r.posts)} posts</td><td>${num(r.avg_eng)} interactions a post</td></tr>`).join('')}</tbody></table>` : ''}
+        <p class="muted em-small">${esc(ab.note || '')}</p>
+      </div><div>
+        <h3 class="sc-h">Customers tagging you</h3>${(g.ugc || []).map(ug).join('') || '<div class="empty">When customers tag you, their posts appear here. Ask before you repost.</div>'}
+        <h3 class="sc-h">Check a creator before a collab</h3>
+        <form class="ar-form em-form" id="scCreator"><label><span>Instagram username</span><input id="scCrUser" placeholder="foodie_akola"></label>
+          <label><span>Collab caption (optional, checked for #ad)</span><input id="scCrCap"></label><div class="acts"><button class="btn soft" type="submit">Check</button></div></form>
+        <div id="scCrOut"></div>
+      </div></div></div>`;
+  }
+
+  function wireGrowth(el) {
+    el.querySelector('#scWatch')?.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const list = id => el.querySelector(id).value.split(',').map(x => x.trim()).filter(Boolean);
+      try { await api('POST', '/api/social/growth/watch', {competitors: list('#scComp'), hashtags: list('#scTags')}); toast('Saved. Tap Check now or wait for Monday.'); social(el); }
+      catch (e) { toast(e.message, true); }
+    });
+    const act = (sel, key, action, body, done) => el.querySelectorAll(sel).forEach(b => b.addEventListener('click', async () => {
+      const bd = typeof body === 'function' ? body() : body; if (bd === null) return;
+      b.disabled = true;
+      try { await api('POST', `/api/social/ugc/${encodeURIComponent(b.dataset[key])}/${action}`, bd); toast(done); social(el); }
+      catch (e) { toast(e.message, true); b.disabled = false; }
+    }));
+    act('[data-ugask]', 'ugask', 'ask', () => confirm('Post a polite comment from your account asking to repost it with credit?') ? {} : null, 'Asked. When they reply YES, tap They said yes.');
+    act('[data-ugyes]', 'ugyes', 'permission', () => { const p = prompt('What did they say, and where? (kept as proof)'); return p ? {granted: true, proof: p} : null; }, 'Saved their yes.');
+    act('[data-ugrepost]', 'ugrepost', 'repost', {}, 'A credited draft is in your calendar - approve it like any post.');
+    act('[data-ugignore]', 'ugignore', 'ignore', {}, 'Ignored.');
+    el.querySelector('#scCreator')?.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const out = el.querySelector('#scCrOut'); out.innerHTML = '<div class="empty">Checking…</div>';
+      try {
+        const r = await api('POST', '/api/social/creator/check', {username: el.querySelector('#scCrUser').value, caption: el.querySelector('#scCrCap').value});
+        out.innerHTML = `<div class="em-item"><b>@${esc(r.username)}</b> <span class="muted">${esc(r.name || '')}</span>
+          <p class="em-small">${num(r.followers)} followers · ${r.avg_likes != null ? num(r.avg_likes) : '–'} likes + ${r.avg_comments != null ? num(r.avg_comments) : '–'} comments a post${r.eng_rate != null ? ` · ${esc(String(r.eng_rate))}%` : ''}</p>
+          ${(r.signals || []).map(x => `<p class="em-small warnc">${esc(x)}</p>`).join('') || '<p class="em-small okc">No warning signals in the public numbers.</p>'}
+          ${r.disclosure ? `<p class="em-small">${esc(JSON.stringify(r.disclosure.problems || r.disclosure.issues || r.disclosure).slice(0, 400))}</p>` : ''}
+          <p class="muted em-small">${esc(r.note)}</p></div>`;
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    });
   }
 
   // ------------------------------------------------------------ v0.368 the inbox (Phase 3)
@@ -486,6 +561,13 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}/publish`, {}); toast('Posting… the link appears here in a minute.'); setTimeout(() => social(el), 5000); }
       catch (e) { toast(e.message, true); b.disabled = false; }
     }));
+    el.querySelectorAll('[data-scli]').forEach(b => b.addEventListener('click', async () => {
+      const p = (d.calendar || []).find(x => x.id === b.dataset.scli);
+      const on = (p.platforms || []).includes('linkedin');
+      const pl = on ? p.platforms.filter(x => x !== 'linkedin') : [...(p.platforms || []), 'linkedin'];
+      try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}`, {platforms: pl}); toast(on ? 'LinkedIn removed. Approve the post again.' : 'Added to LinkedIn. Approve the post again.'); social(el); }
+      catch (e) { toast(e.message, true); }
+    }));
     el.querySelectorAll('[data-scok]').forEach(b => b.addEventListener('click', async () => {
       b.disabled = true;
       try { await api('POST', `/api/social/posts/${encodeURIComponent(b.dataset.scok)}`, {status: 'approved'}); toast('OK. It goes out at its time.'); social(el); }
@@ -512,7 +594,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
     el.querySelectorAll('[data-scrun]').forEach(b => b.addEventListener('click', async () => {
       b.disabled = true;
-      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast({plan: 'Rewriting the draft. Approved posts stay.', inbox: 'Checking comments and DMs now.', monthly: 'Making the PDF - it arrives in your chat.'}[b.dataset.scrun] || 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
+      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast({plan: 'Rewriting the draft. Approved posts stay.', inbox: 'Checking comments and DMs now.', monthly: 'Making the PDF - it arrives in your chat.', growth: 'Reading tags, hashtags and competitors now.'}[b.dataset.scrun] || 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
       catch (e) { toast(e.message, true); }
       b.disabled = false;
     }));

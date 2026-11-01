@@ -344,7 +344,8 @@ def run_inbox(tenant: str, ask: Any = None) -> dict[str, Any]:
     ensure_inbox()
     with session() as s:
         aids = [a.id for a in s.scalars(select(SocialAccount).where(SocialAccount.tenant_id == tenant,
-                                                                    SocialAccount.status == "ok")).all()]
+                                                                    SocialAccount.status == "ok",
+                                                                    SocialAccount.platform.in_(("instagram", "facebook")))).all()]
     fresh: list[dict[str, Any]] = []
     for aid in aids:
         try:
