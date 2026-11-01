@@ -1245,6 +1245,8 @@ class Api {
   // ---- v0.124 Website care, agency, GitHub export ----
   Future<Map<String, dynamic>> siteCare(String id, {int days = 30}) async => Map<String, dynamic>.from(
       await _send('GET', '/api/sites/$id/care', query: {'days': '$days'}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> siteDashboard(String id, {int days = 30}) async => Map<String, dynamic>.from(   // v0.357
+      await _send('GET', '/api/sites/$id/dashboard', query: {'days': '$days'}, timeout: const Duration(seconds: 60)) as Map);
   Future<Map<String, dynamic>> siteClients() async => Map<String, dynamic>.from(await _send('GET', '/api/sites-clients') as Map);
   Future<Map<String, dynamic>> siteAssign(String id, {String? client, String? staff}) async => Map<String, dynamic>.from(
       await _send('POST', '/api/sites/$id/assign', body: {if (client != null) 'client': client, if (staff != null) 'staff': staff}) as Map);

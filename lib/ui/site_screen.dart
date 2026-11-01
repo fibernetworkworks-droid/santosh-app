@@ -13,6 +13,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'site_dash.dart';
 import 'site_hosting.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -769,6 +770,14 @@ class _SitePageState extends State<SitePage> {
             SiteHostingPanel(app: app, siteId: widget.id, ready: st == 'ready'),
             const SizedBox(height: 12),
             SiteCarePanel(app: app, siteId: widget.id),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(   // v0.357 DASHBOARD: her numbers as charts
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => SiteDashPage(app: app, id: widget.id, name: _s(v['name'])))),
+                  icon: const Icon(Icons.insights_rounded),
+                  label: const Text('Dashboard (charts)')),
+            ),
             const SizedBox(height: 10),
           ],
           for (final ver in _list(v['versions']).take(10))

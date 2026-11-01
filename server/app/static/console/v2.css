@@ -2031,6 +2031,43 @@ body.albon{overflow:hidden}
 .stshop .sttbl input:not([type=checkbox]){width:100%;min-width:70px;padding:6px 8px;border:1px solid var(--hair);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px}
 .stshop .sttbl td small{color:var(--mut)}
 
+/* v0.357 DASHBOARD: the studio's Dashboard tab + the chart drawer (charts.js) in console colours. No held animation
+   (CRISP TEXT): the console never adds the grow-in rules. */
+.hc{position:relative;--hc0:var(--pri);--hc1:var(--teal);--hc2:var(--warn);--hc3:var(--magenta);--hc4:var(--mut);--hc5:var(--pri-ink)}
+.hc-svg{display:block;overflow:visible;outline:none;font-family:var(--fs)}
+.hc-svg:focus-visible{outline:2px solid var(--pri);outline-offset:4px;border-radius:6px}
+.hc [data-s="0"]{--c:var(--hc0)}.hc [data-s="1"]{--c:var(--hc1)}.hc [data-s="2"]{--c:var(--hc2)}
+.hc [data-s="3"]{--c:var(--hc3)}.hc [data-s="4"]{--c:var(--hc4)}.hc [data-s="5"]{--c:var(--hc5)}
+.hc-bar,.hc-slice,.hc-dot{fill:var(--c)}.hc-ring{stroke:var(--c)}
+.hc-line{fill:none;stroke:var(--c);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.hc-area{fill:var(--c);opacity:.12}.hc-dot{stroke:var(--surface);stroke-width:1.5}
+.hc-gl{stroke:var(--hair);stroke-width:1}.hc-zero{stroke:var(--line);stroke-width:1}.hc-cur{stroke:var(--line);stroke-dasharray:3 3}
+.hc-ax{fill:var(--mut);font-size:12px}.hc-lab{fill:var(--ink);font-size:13px}.hc-val{fill:var(--ink);font-size:12px;font-weight:600}
+.hc-big{fill:var(--ink);font-size:20px;font-weight:600}
+.hc-track{fill:var(--sunk)}.hc-track.hc-ring{stroke:var(--sunk)}
+.hc-slice.hc-on{opacity:.8}
+.hc-tip{position:absolute;z-index:3;pointer-events:none;background:var(--ink);color:var(--surface);border-radius:8px;padding:6px 9px;
+  font-size:12.5px;line-height:1.4;white-space:nowrap;box-shadow:var(--sh)}
+.hc-tip[hidden]{display:none}.hc-tip strong{font-weight:600}
+.hc-leg{display:flex;flex-wrap:wrap;gap:4px 14px;list-style:none;margin:8px 0 0;padding:0;font-size:13px;color:var(--mut)}
+.hc-leg li{display:flex;align-items:center;gap:6px}.hc-leg b{font-weight:600;color:var(--ink)}
+.hc-sw{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.stdash{display:grid;gap:14px}
+.stdash-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.stdash-top p{margin:0;color:var(--mut);font-size:13.5px;max-width:70ch}
+.stdash-days{display:inline-flex;border:1px solid var(--hair);border-radius:10px;overflow:hidden}
+.stdash-days button{padding:6px 12px;border:0;background:var(--surface);color:var(--mut);font:inherit;font-size:13px;cursor:pointer}
+.stdash-days button[aria-pressed=true]{background:var(--pri-soft);color:var(--pri-ink);font-weight:600}
+.stdash-kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.stdash-kpi{border:1px solid var(--hair);border-radius:12px;padding:12px 14px;background:var(--surface)}
+.stdash-kpi span{display:block;font-size:12.5px;color:var(--mut)}
+.stdash-kpi b{display:block;font-size:22px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+.stdash-kpi small{font-size:12px;color:var(--mut)}.stdash-kpi small.up{color:var(--ok)}.stdash-kpi small.down{color:var(--bad)}
+.stdash-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr))}
+.stdash-card{border:1px solid var(--hair);border-radius:12px;padding:14px;background:var(--surface);min-width:0}
+.stdash-card h4{margin:0 0 10px;font-size:14px;font-weight:600}.stdash-card.wide{grid-column:1/-1}
+.stdash-card .stempty{margin:0}
+
 /* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim

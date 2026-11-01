@@ -241,7 +241,7 @@ window.HoolaBuild = function (C) {
     if (s === 'planned') pre.push(['plan', 'Plan']);
     if (s === 'looks') pre.push(['looks', 'Looks']);
     return o.type === 'site'
-      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['data', 'App & data'], ['shop', 'Shop']] : [])]
+      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['dash', 'Dashboard'], ['data', 'App & data'], ['shop', 'Shop']] : [])]
       : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Structure'], ['android', 'Android'],
          ...(S(o.an?.status) ? [['data', 'App data']] : []), ['kadam', 'Steps']];   // v0.314 the built app's own backend
   }
@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'shop') loadShop(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); } }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'shop') loadShop(o, ot); if (o.tab === 'dash') loadDash(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); } }
     showBtn();
   }
 
@@ -365,6 +365,7 @@ window.HoolaBuild = function (C) {
       case 'jaanch': return sitePane(o);
       case 'data': return `<div class="stdata"><div class="stempty">${spin()} Loading the app…</div></div>`;
       case 'shop': return `<div class="stshop"><div class="stempty">${spin()} Loading the shop…</div></div>`;
+      case 'dash': return `<div class="stdash"><div class="stempty">${spin()} Loading the dashboard…</div></div>`;
       case 'screens': return screensPane(o);
       case 'dhaancha': return dnaPane(o);
       case 'android': return androidPane(o);
@@ -749,6 +750,52 @@ window.HoolaBuild = function (C) {
 
   /* v0.351 DUKAAN: her shop - settings, products, orders (no AI; prices only hers; money confirmed only by her) */
   const OSTEP = {confirmed: 'Confirm (money received)', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancel'};
+  // ---------------------------------------------------------------- v0.357 DASHBOARD: her website's numbers as charts
+  const DASH_DAYS = {};
+  async function loadDash(o, root) {
+    const box = root.querySelector('.stdash'); if (!box) return;
+    const days = DASH_DAYS[o.id] || 30;
+    let d;
+    try { d = await api('GET', `${base(o)}/dashboard?days=${days}`); }
+    catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const HC = window.HoolaChart, sr = M(d.series), dl = L(sr.days).map(x => S(x).slice(5));
+    const money = v => '₹' + (HC ? HC.fmt(N(v)) : N(v));
+    const kpi = k => {
+      const ch = k.change_pct, v = k.money ? money(k.value) : (HC ? HC.fmt(N(k.value)) : N(k.value)) + S(k.suffix);
+      const cls = ch == null ? '' : (ch >= 0 ? 'up' : 'down');
+      return `<div class="stdash-kpi"><span>${esc(S(k.label))}</span><b>${esc(v)}</b><small class="${cls}">${ch == null ? (k.key === 'aov' ? '' : 'no earlier data') : (ch >= 0 ? '▲ ' : '▼ ') + Math.abs(ch) + '% vs previous ' + N(d.days) + ' days'}</small></div>`;
+    };
+    const card = (id, title, wide) => `<section class="stdash-card${wide ? ' wide' : ''}"><h4>${esc(title)}</h4><div data-c="${id}"></div></section>`;
+    const app = M(d.app), lists = L(app.lists);
+    box.innerHTML = `<div class="stdash-top"><p>${esc(S(d.say))}</p><div class="stdash-days" role="group" aria-label="Period">${[7, 30, 90, 365].map(n => `<button type="button" data-days="${n}" aria-pressed="${n === N(d.days)}">${n === 365 ? '1 year' : n + ' days'}</button>`).join('')}</div></div>
+      <div class="stdash-kpis">${L(d.kpis).map(kpi).join('')}</div>
+      <div class="stdash-grid">${card('visits', 'Visits a day', true)}${card('leads', 'Enquiries and bookings')}${card('pages', 'Top pages')}
+        ${d.shop ? card('sales', 'Sales a day (confirmed, ₹)') + card('orders', 'Orders a day') + card('mix', 'Order status') + card('prods', 'Top products (₹)') : ''}
+        ${lists.length ? card('app', 'Web app: new records a day', true) : ''}</div>
+      <p class="stnote">Visits are counted by Hoola's own server (no cookies, no tracker; bots and Hoola's uptime checks are not counted). Sales count only orders you confirmed.</p>`;
+    box.querySelectorAll('[data-days]').forEach(b => b.addEventListener('click', () => { DASH_DAYS[o.id] = N(b.dataset.days); loadDash(o, root); }));
+    if (!HC) return;
+    const put = (id, spec, empty) => {
+      const el = box.querySelector(`[data-c="${id}"]`); if (!el) return;
+      const any = L(spec.series).some(x => L(x.values).some(v => N(v) !== 0));
+      if (!any) { el.innerHTML = `<p class="stempty">${esc(empty)}</p>`; return; }
+      HC.live(el, {animate: false, ...spec});
+    };
+    put('visits', {type: 'area', labels: dl, series: [{name: 'This period', values: L(sr.visits)}, {name: 'Previous period', values: L(sr.visits_prev)}]}, 'No visits counted yet. Visits are counted once the site is live on its address.');
+    put('leads', {type: 'bar', labels: dl, series: [{name: 'Enquiries', values: L(sr.enquiries)}, {name: 'Bookings', values: L(sr.bookings)}]}, 'No enquiries or bookings in this period.');
+    const tp = L(d.top_pages);
+    put('pages', {type: 'hbar', labels: tp.map(x => S(x[0])), series: [{name: 'Visits', values: tp.map(x => N(x[1]))}]}, 'No page visits yet.');
+    if (d.shop) {
+      put('sales', {type: 'bar', labels: dl, unit: '₹', series: [{name: 'Sales', values: L(sr.sales)}]}, 'No confirmed sales in this period.');
+      put('orders', {type: 'line', labels: dl, series: [{name: 'Orders', values: L(sr.orders)}]}, 'No orders in this period.');
+      const mx = L(d.status_mix);
+      put('mix', {type: 'donut', labels: mx.map(x => S(x[0])), series: [{name: 'Orders', values: mx.map(x => N(x[1]))}], totalLabel: 'orders'}, 'No orders in this period.');
+      const pr = L(d.top_products);
+      put('prods', {type: 'hbar', unit: '₹', labels: pr.map(x => `${S(x[0])} × ${N(x[1])}`), series: [{name: 'Sales', values: pr.map(x => N(x[2]))}]}, 'No confirmed sales yet.');
+    }
+    if (lists.length) put('app', {type: 'line', labels: dl, series: lists.slice(0, 6).map(x => ({name: S(x.label), values: L(x.days)}))}, 'No new records in this period.');
+  }
+
   async function loadShop(o, root) {
     const box = root.querySelector('.stshop'); if (!box) return;
     let info, ord;

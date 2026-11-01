@@ -12950,3 +12950,56 @@ Owner: "GO PHASE 2" (docs/SOCIAL_EMPLOYEE_PLAN.md: publish with her tap).
 - Tests: `test_v0355_social_publish.py` (10); Phase 1 tests updated (publish scope requested now, publish job each sweep).
 - Not verified live: Meta's real publishing (mocked from Meta's docs). Next: App Review screencasts for
   instagram_business_content_publish + pages_manage_posts, then Phase 3 (comments / DMs inbox).
+
+## v0.356.0 PEHLE NIYAM (owner: "Always read the project's rules first.")
+Item 3 of the coding plan. Built as 0.353 / 0.354, re-versioned past the parallel v0.353 / v0.355 SOCIAL MEDIA MANAGER.
+- `devsahayak/loop.py` `rule_paths(paths)`: sorts the repo's own rules files.
+  - rules: AGENTS.md / CLAUDE.md / GEMINI.md / CONTRIBUTING / CONVENTIONS / style guide at the root,
+    .github/copilot-instructions.md, .github/instructions/*.instructions.md, docs/CONTRIBUTING, .cursorrules,
+    .cursor/rules/*, .windsurfrules, .clinerules;
+  - build: package.json / pyproject / pubspec / lint configs, plus the CI workflow that tests;
+  - readme;
+  - folder rules: pkg/AGENTS.md / CLAUDE.md / CONTRIBUTING.md (node_modules / vendor skipped).
+- `_project_rules`: the first message opens with "PROJECT RULES (read first ...)".
+  - Rules go in `<project_rules>` blocks (400 lines each), then build / CI files (200 lines), then a 120-line README,
+    60 KB in all (rules are never dropped).
+  - It lists the folders that have their own rules. A repo with no rules file is told so and follows the code's own style.
+- Folder rules: `read_file` / `list_dir` in a folder attach that folder's rules once. `edit_file` / `new_file` there is
+  NOT applied until those rules have been shown ("Not applied yet: read this folder's rules first").
+- SYSTEM step 1 rewritten: the repo's rules beat the model's habits and never beat the safety rules (a rules file can't make
+  it add a secret, weaken security, touch workflows or send data). `done` gains `rules_followed`.
+- PR body gains "### Project rules": the files read + how they were followed. `found.rules` on the task.
+- The one-shot fallback (`_gather`) reads up to 4 rules + 2 build files first, on top of the normal file budget (so they
+  never push out the code), tags them `<project_rules>`, and WRITE_SYSTEM says to follow them.
+- Tests: `test_v0356_pehle_niyam.py` (5).
+
+## v0.357.0 DASHBOARD (built as 0.353, re-versioned past the parallel v0.353-v0.356) (Phase 3b of "any world-complex website": charts + dashboards)
+Owner: "Phase 3b (dashboards and charts)" (after Phase 3a DUKAAN, v0.351).
+- ONE chart drawer, `server/app/static/console/charts.js` (`window.HoolaChart`: draw / live / fromTable / fmt / num / auto):
+  inline SVG, no library, no network, nothing evaluated. Types bar (grouped series), line, area, donut, hbar. Indian
+  numbers (1,20,000; compact K / L / Cr; reads "50 lakh", "₹2.5 Cr", "12k"), nice axis ticks, legend when more than
+  one series, tooltip on hover AND with arrow keys (svg tabindex 0, Esc hides), aria-label summary, redraw on width change
+  (ResizeObserver). Colours only from CSS: `.hc` + `data-s="0..5"` -> the site's brand tokens (hoola-site.css) or the
+  console tokens (v2.css). Grow-in motion only on websites and only without reduced motion (console: no held motion).
+- WEBSITES: a section writes `<figure data-hoola-chart="bar|line|area|donut|hbar" data-unit data-suffix>` + a plain table
+  (first column labels, other columns series); the drawer turns it into a chart and keeps the table visually hidden for
+  screen readers (no numbers -> the table stays). Taught in `ai.RUNTIME_GUIDE` (only numbers from FACTS / her words, never a
+  made-up chart); the site map planner may add a growth-chart free-form section from numbers she gave. The build copies the
+  drawer as `assets/hoola-chart.js`; a page loads it only when it draws (`build.uses_charts`: a chart figure or the web
+  app's staff panel).
+- HER DASHBOARD `server/app/site/dash.py` `dashboard(tenant, ref, days 7-365)`: per IST day, this period + the one before:
+  visits (care.py, Hoola's own server count, no cookies / tracker / bots), enquiries + bookings (spam never), shop orders
+  (cancelled not counted) and SALES = only orders SHE confirmed or later, average order, conversion, top pages, top
+  products (confirmed), order status mix, web-app records a day per list (`webapp.daily`). KPI tiles carry change % vs
+  the previous period. GET /api/sites/<id>/dashboard (owner only). Console Studio tab "Dashboard" (7 / 30 / 90 / 1 year,
+  tiles, area / bar / line / donut / hbar cards, `build.js loadDash`, `.stdash` CSS); phone `lib/ui/site_dash.dart`
+  SiteDashPage (tiles + CustomPainter bars + ranked rows) from the site page's "Dashboard (charts)" button; chat
+  `website_dekho what=dashboard` (numbers + busiest days, no long series).
+- STAFF DASHBOARD in her web apps: `/admin/` on her site opens with a card per list (count, rows a day, the mix of its first
+  choice field = usually status, sums of number fields, yes / no counts) from GET /api/site-app/<id>/stats (`webapp.stats`,
+  staff / admin members and her only: visitor 401, customer 403).
+- Console stamps 18 -> 19 (charts.js loads before build.js). Free, no AI anywhere.
+- Tests `server/tests/test_v0357_dashboard.py`: Indian numbers, tables -> charts in a real browser (bars / legend / donut
+  total / line dots / hbar values, no-number table untouched), tooltip by mouse and keyboard, drawer only on pages that
+  draw, her dashboard numbers vs a seeded period (spam, cancelled, unconfirmed sales excluded), owner-only, staff-only
+  stats, console + phone wiring.
