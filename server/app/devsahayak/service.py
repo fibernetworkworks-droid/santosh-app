@@ -42,7 +42,7 @@ log = logging.getLogger("santosh.devsahayak")
 
 KINDS = {"write": "Naya code", "fix": "Bug fix", "tests": "Tests", "docs": "Docs", "explain": "Bug samjhao"}
 STATUS = {"new": "Shuru", "refused": "Roka (niyam)", "ready": "PR ke liye aapki haan", "pr_open": "PR khula", "checks_failed": "CI fail",
-          "merged": "Merge ho gaya", "closed": "PR band", "explained": "Samjha diya", "failed": "Nahi ho paya", "cancelled": "Cancel"}
+          "ci_running": "CI chal raha (draft PR)", "merged": "Merge ho gaya", "closed": "PR band", "explained": "Samjha diya", "failed": "Nahi ho paya", "cancelled": "Cancel"}
 _LAST_POLL: dict[str, datetime] = {}
 
 
@@ -845,7 +845,10 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         sha = g.commit_files(t.repo, t.branch, head_now, [(c["path"], c["new"]) for c in changes],
                              f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
         cfg = _cfg(tenant)
-        pr = g.open_pr(t.repo, t.branch, t.base, t.pr_title, t.pr_body, cfg.draft_pr)
+        # v0.351 PEHLE CI, PHIR PR: a repo with CI gets a DRAFT PR first; the tick runs her CI, fixes until it passes
+        # (up to DEV_CI_ROUNDS) and only then marks the PR ready for review
+        ci_loop = bool(_setting("dev_ci_loop", True)) and _has_ci(g, t.repo, head_now)
+        pr = g.open_pr(t.repo, t.branch, t.base, t.pr_title, t.pr_body, True if ci_loop else cfg.draft_pr)
     except GhError as e:
         _set(t.id, status="failed", error=str(e))
         raise DevError(str(e))
@@ -854,6 +857,13 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         row.status, row.head_sha, row.pr_number, row.pr_url, row.base_sha = "pr_open", sha, int(pr.get("number") or 0), \
             str(pr.get("html_url") or ""), head_now
         row.ci = json.dumps({"state": "pending", "say": "CI shuru hone wala"})
+        if ci_loop:
+            row.status, row.ci_round, row.ci_since = "ci_running", 0, now()
+            _log(row, f"draft PR #{row.pr_number} khula, CI chal raha")
+            s.flush()
+            say = (f"{row.number}: badlav draft PR #{row.pr_number} par gaya ({len(changes)} file). Aapka CI chal raha hai - "
+                   "fail hua to main khud theek karunga, aur PASS hone par hi PR review ke liye taiyaar karunga." + warn)
+            return _card(tenant, row, say)
         _log(row, f"PR #{row.pr_number} khula")
         s.flush()
         n_w = len(_j(row.checks, []))
@@ -894,18 +904,39 @@ def fix_ci(tenant: str, ref: str) -> dict[str, Any]:
 def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
     g = gh(tenant)
     cfg = _cfg(tenant)
-    on_branch = t.status in ("pr_open", "checks_failed")
+    on_branch = t.status in ("pr_open", "checks_failed", "ci_running")
     ref = t.head_sha if on_branch else t.base_sha
     read = []
     paths = [c["path"] for c in _j(t.changes, [])]
-    for p in paths:
-        text, sha = g.file(t.repo, p, ref) if on_branch else ("", "")
-        if not on_branch:
-            text = next((c["new"] for c in _j(t.changes, []) if c["path"] == p), "")
-            sha = next((c["old_sha"] for c in _j(t.changes, []) if c["path"] == p), "")
-        read.append({"path": p, "sha": sha, "text": text})
-    ctx = "\n\n".join(f'<repo_file path="{x["path"]}">\n{x["text"]}\n</repo_file>' for x in read)
-    out = _ask_model(t, ctx, cfg.rules, extra)
+    out = None
+    if on_branch and _loop_on():
+        # v0.351 a CI fix / revision on the PR branch explores and edits with the same 8 tools (devsahayak/loop.py),
+        # starting from the branch's own head; the one-shot answer stays the fallback
+        from . import loop as L
+        try:
+            _, read, _, out = L.run(g, t, cfg.rules, paths, cfg.allow_workflows, ref_sha=ref, extra=extra,
+                                    max_steps=_setting("dev_loop_steps", 40),
+                                    minutes=float(_setting("dev_loop_minutes", 20)),
+                                    on_step=lambda line: _progress(t.id, line))
+        except L.LoopUnavailable:
+            L.STATS["fallback"] += 1
+            out = None
+        except GhError:
+            raise
+        except Exception:
+            L.STATS["fallback"] += 1
+            log.exception("dev loop round failed: one-shot path")
+            out = None
+    if out is None:
+        read = []
+        for p in paths:
+            text, sha = g.file(t.repo, p, ref) if on_branch else ("", "")
+            if not on_branch:
+                text = next((c["new"] for c in _j(t.changes, []) if c["path"] == p), "")
+                sha = next((c["old_sha"] for c in _j(t.changes, []) if c["path"] == p), "")
+            read.append({"path": p, "sha": sha, "text": text})
+        ctx = "\n\n".join(f'<repo_file path="{x["path"]}">\n{x["text"]}\n</repo_file>' for x in read)
+        out = _ask_model(t, ctx, cfg.rules, extra)
     if not on_branch:   # still a prepared change: rebuild against the base
         _, base_read, _ = _gather(g, t, paths)
         prep = _prepare(tenant, t, {"files": _merge_files(_j(t.changes, []), out.get("files") or [])}, base_read, g, t.base_sha)
@@ -945,7 +976,11 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
         for c in prep["changes"]:
             allc[c["path"]] = c
         row.changes = json.dumps(list(allc.values()))
-        row.head_sha, row.status = sha, "pr_open"
+        row.head_sha = sha
+        if row.status == "ci_running":           # v0.351 the CI loop goes on: wait for CI on the new commit
+            row.ci_since = now()
+        else:
+            row.status = "pr_open"
         row.ci = json.dumps({"state": "pending", "say": "CI dobara chalega"})
         _log(row, f"naya commit {sha[:7]}")
         s.flush()
@@ -1001,6 +1036,8 @@ def refresh(tenant: str, ref: str) -> dict[str, Any]:
             row.status = "merged"
         elif pr.get("state") == "closed":
             row.status = "closed"
+        elif row.status == "ci_running":
+            pass                                  # v0.351 the CI loop (_ci_step) decides what a result means
         elif ci["state"] == "failure":
             row.status = "checks_failed"
         elif row.status == "checks_failed":
@@ -1439,12 +1476,105 @@ def overview(tenant: str) -> dict[str, Any]:
             "reviews": reviews(tenant), "actions": actions(tenant), "kinds": KINDS}
 
 
+_CI_TRIGGER = re.compile(r"\bpull_request(?:_target)?\b|^on:\s*(?:\[[^\]]*\bpush\b[^\]]*\]|push)\s*$|^\s+push\s*:", re.M)
+
+
+def _has_ci(g: Gh, repo: str, sha: str) -> bool:
+    """v0.351 does her repo run CI on a PR / push? A workflow under .github/workflows that triggers on pull_request or push.
+    (A deploy-only workflow_dispatch file is not CI.) Unknown = no loop: the PR opens as before."""
+    try:
+        files = [x["path"] for x in g.tree(repo, sha)
+                 if re.match(r"^\.github/workflows/[^/]+\.ya?ml$", x.get("path", ""))][:12]
+        for p in files:
+            text, _ = g.file(repo, p, sha)
+            if text and _CI_TRIGGER.search(text):
+                return True
+    except GhError:
+        return False
+    return False
+
+
+def _ci_ready(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str, Any]:
+    """The loop is over: draft -> ready for review (GraphQL); a token that may not do it gets a one-tap note instead."""
+    note = ""
+    try:
+        g.mark_ready(t.repo, t.pr_number)
+    except GhError as e:
+        note = " (Draft se 'Ready for review' GitHub par ek tap mein kar dijiye - token ko yeh ijazat nahi mili.)"
+        log.info("devsahayak mark ready %s: %s", t.id, e)
+    with session() as s:
+        row = s.get(DevTask, t.id)
+        row.status = "pr_open"
+        _log(row, "PR review ke liye taiyaar")
+        s.flush()
+        return _card(tenant, row, say + note)
+
+
+def _ci_step(tenant: str, tid: str, at: datetime | None = None) -> dict[str, Any] | None:
+    """v0.351 PEHLE CI, PHIR PR - one step of the loop for a draft PR: green -> ready for review; red -> read the failure and
+    commit a fix (DEV_CI_ROUNDS times at most) -> wait again; no CI result for DEV_CI_WAIT_MIN -> ready with a note;
+    still running after DEV_CI_MAX_MIN -> ready with a note. Merge stays HER tap, always."""
+    at = at or now()
+    v = refresh(tenant, tid)
+    with session() as s:
+        t = s.get(DevTask, tid)
+        s.expunge(t)
+    if t.status != "ci_running":
+        return None                                     # merged / closed meanwhile
+    ci = v.get("ci") or {}
+    state = ci.get("state")
+    since = _aware(t.ci_since) or at
+    waited = (at - since).total_seconds() / 60
+    rounds = int(t.ci_round or 0)
+    g = gh(tenant)
+    if state == "success":
+        tail = f" ({rounds} fix round ke baad)" if rounds else ""
+        return _ci_ready(tenant, t, g, f"{t.number}: aapka CI PASS{tail}. PR #{t.pr_number} ab review ke liye taiyaar hai. "
+                                       "Merge sirf aapke tap se.")
+    if state == "failure":
+        if rounds >= int(_setting("dev_ci_rounds", 3)):
+            with session() as s:
+                row = s.get(DevTask, tid)
+                row.status = "checks_failed"
+                _log(row, f"{rounds} round ke baad bhi CI fail")
+                s.flush()
+                failed = ", ".join(ci.get("failed", [])[:3])
+                return _card(tenant, row, f"{t.number}: {rounds} baar theek karne ke baad bhi CI fail ({failed}). Draft PR "
+                                          f"#{t.pr_number} wahi hai - aap / team dekhiye, ya 'phir se theek karo' boliye.")
+        with session() as s:
+            row = s.get(DevTask, tid)
+            row.ci_round = rounds + 1
+            _log(row, f"CI fail: theek karne ka round {rounds + 1}")
+            s.flush()
+            s.expunge(row)
+        fails = ci.get("failures") or []
+        log_txt = "\n".join(f"[{f.get('name')}] {f.get('text')}" for f in fails)[:12000]
+        return _round(tenant, row, f"<ci_log>\n{log_txt}\n</ci_log>\nHer CI FAILED on this draft PR branch (round "
+                                   f"{rounds + 1}). Explore, find the real cause and fix it (fix the code, not the test - "
+                                   "unless the test is wrong: then say why in risk).", "")
+    if state in ("none", None, "") and waited >= float(_setting("dev_ci_wait_min", 15)):
+        return _ci_ready(tenant, t, g, f"{t.number}: is PR par {int(waited)} minute mein koi CI nahi chala, isliye test nahi "
+                                       f"chale - PR #{t.pr_number} review ke liye taiyaar hai, dhyaan se dekhiye.")
+    if state == "pending" and waited >= float(_setting("dev_ci_max_min", 45)):
+        return _ci_ready(tenant, t, g, f"{t.number}: CI {int(waited)} minute se chal raha hai; PR #{t.pr_number} review ke "
+                                       "liye taiyaar kar diya - CI ka nateeja aate hi bataunga.")
+    return None
+
+
 def tick(at: datetime | None = None) -> None:
     """Every minute: open Hoola PRs' CI every 5 min (card when the result changes), running deploys every minute."""
     at = at or now()
     with session() as s:
         open_t = [(t.tenant_id, t.id) for t in s.scalars(select(DevTask).where(DevTask.status.in_(("pr_open", "checks_failed")))
                                                           .limit(60)).all()]
+        looping = [(t.tenant_id, t.id) for t in s.scalars(select(DevTask).where(DevTask.status == "ci_running")
+                                                           .limit(30)).all()]
+    for tenant, tid in looping:                 # v0.351 the CI loop: every minute while her CI runs on the draft PR
+        try:
+            _ci_step(tenant, tid, at)
+        except (DevError, GhError) as e:
+            log.info("devsahayak ci loop %s: %s", tid, e)
+    with session() as s:
         running = s.scalars(select(DevAction).where(DevAction.status == "running")).all()
         for a in running:
             s.expunge(a)

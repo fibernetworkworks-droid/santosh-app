@@ -94,7 +94,7 @@ def test_hire_pause_leave_and_desk_only_after_hiring(seo):
     from app.employee import hire
     from app.seo import desk
     cat = {c["key"]: c for c in hire.catalog(T)}
-    assert cat["seo"]["live"] and cat["seo"]["status"] == "none" and not cat["accounts"]["live"]   # v0.352 social went live
+    assert cat["seo"]["live"] and cat["seo"]["status"] == "none" and not cat["accounts"]["live"]   # v0.353 social went live
     assert desk.desk_view(T) == {"hired": False, "status": "none"}
     with pytest.raises(hire.HireError):
         hire.hire(T, "accounts")                             # "coming" employees can't be hired yet

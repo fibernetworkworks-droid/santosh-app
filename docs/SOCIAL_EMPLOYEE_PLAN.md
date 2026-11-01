@@ -241,7 +241,7 @@ Reuse: `brand_kits` (look), `kalam_settings` (voice + facts), `hired_employees` 
 | Phase | What ships | Needs |
 |---|---|---|
 | **0 — Meta app (Newtika, start today)** | Meta developer app "Hoola", Instagram Login + Facebook Login for Business products, privacy URL, data-deletion URL, Business Verification submitted | Owner: company documents; 1-2 weeks |
-| **1 — Hire, connect, read** (SHIPPED v0.348.0) | Hire the Social Media Manager; Social Desk; Connect Instagram + Facebook Page (dev mode testers); reads last 50 posts + insights → baseline; strategy card; first 30-day calendar (Kalam + Brand drafts); everything **draft-only** | Phase 0 app in dev mode |
+| **1 — Hire, connect, read** (SHIPPED v0.353.0) | Hire the Social Media Manager; Social Desk; Connect Instagram + Facebook Page (dev mode testers); reads last 50 posts + insights → baseline; strategy card; first 30-day calendar (Kalam + Brand drafts); everything **draft-only** | Phase 0 app in dev mode |
 | **2 — Publish with her tap** | Approve → publish now / at a slot (IG feed, carousel, Reels, Stories; FB posts / photos / Reels); carousel builder; platform previews; quota guard; publish log; YouTube Shorts + GBP posts from the same calendar | App Review for content_publish / pages_manage_posts (screencasts) |
 | **3 — Inbox** | Comments + DMs (IG + FB + YouTube + Google reviews) sorted; reply drafts; trust-based replies; spam hide; leads to WhatsApp / chat | Review for manage_comments / manage_messages / pages_messaging |
 | **4 — 24/7 + reports** | Scheduler + Saathi auto-publish of the approved plan, weekly pulse, monthly PDF vs baseline, best-time engine, boost-worthy flags, crisis pause | — |

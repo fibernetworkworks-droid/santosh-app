@@ -12847,7 +12847,21 @@ Owner: "START PHASE 3" (3a shop now; 3b dashboards / charts and 3c blog + multi-
 - Tests `server/tests/test_v0351_dukaan.py`: rupees formatting, server-side prices / stock / payment, the last-piece race,
   public vs owner-only endpoints, and a REAL Chromium purchase (add to cart -> checkout -> UPI QR -> UTR -> tracking).
 
-## v0.352.0 SOCIAL MEDIA MANAGER Phase 1 (1 Nov 2026, built as 0.347.0 / 0.348.0, re-versioned past the parallel v0.347-v0.351)
+## v0.352.0 PEHLE CI, PHIR PR (owner: "Run your CI on a draft branch, and fix until it passes, before opening the PR. --- go")
+Item 2 of the coding plan, on top of v0.350's 8-tool loop. Built as 0.351, re-versioned past the parallel v0.351 DUKAAN.
+- `devsahayak/service.py` `push()`: when `DEV_CI_LOOP` is on and the repo has a workflow that runs on pull_request / push
+  (`_has_ci`, `_CI_TRIGGER`), the PR is opened as a DRAFT and the task goes to status `ci_running` (ci_round 0, ci_since now).
+  A repo with no CI keeps the old path (normal PR, status open).
+- `tick()` walks `ci_running` tasks through `_ci_step` every minute: checks green -> `_ci_ready` (GraphQL
+  markPullRequestReadyForReview via `gh.mark_ready`, then status open + chat note); checks red -> one more round of the
+  step-by-step loop with the failing job's log as the brief (`_round`, `loop.run(ref_sha=..., extra=...)` continues on the
+  same branch) up to `DEV_CI_ROUNDS` (3), then `checks_failed` with the log for her; no check ever started in
+  `DEV_CI_WAIT_MIN` (15) -> ready with a "no tests ran" note; still pending after `DEV_CI_MAX_MIN` (45) -> ready with a note.
+- `refresh()` leaves `ci_running` alone; `models.DevTask` gains nullable `ci_round` / `ci_since` (old rows fine).
+- Merge / deploy stay her tap, as before. A GitHub error on mark_ready leaves a note to press "Ready for review" herself.
+- Tests: `test_v0352_pehle_ci.py` (draft PR, green -> ready, red -> fix round -> green, rounds cap, no CI -> plain PR, timeout).
+
+## v0.353.0 SOCIAL MEDIA MANAGER Phase 1 (1 Nov 2026, built as 0.347.0 / 0.348.0 / 0.352.0, re-versioned past the parallel v0.347-v0.352)
 Owner: "Social Media Manager — first do deep research what we have" -> "How user will put their social media details"
 -> "GO PLAN" (docs/SOCIAL_EMPLOYEE_PLAN.md) -> Meta app set up by her (HOOLA app, use cases Instagram + Pages, redirect URIs,
 keys in the VPS .env) -> "GO PHASE 1".

@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
     doc_hold_drafts: bool = True            # v0.315 EK HI FILE: a doc_studio draft with QA problems is held for one fix, not shown
+    dev_ci_loop: bool = True                # v0.351 a repo with CI gets a DRAFT PR; Hoola fixes until her CI passes, then marks it ready
+    dev_ci_rounds: int = 3                  # ... automatic fix rounds before it stops and tells her
+    dev_ci_wait_min: int = 15               # ... no CI result this long = the PR is made ready with a 'no tests ran' note
+    dev_ci_max_min: int = 45                # ... CI still running this long = ready anyway, result told when it lands
     dev_loop: bool = True                   # v0.350 Developer Sahayak explores + edits step by step with 8 tools (devsahayak/loop.py)
     dev_loop_steps: int = 40                # ... at most this many model steps a task
     dev_loop_minutes: int = 20              # ... and this many minutes
@@ -142,7 +146,7 @@ class Settings(BaseSettings):
     doc_review: bool = True                 # Opus looks at the printed pages and may ask for one change
     doc_model: str = ""                     # model for doc_art / doc_critique ("" = app_model, Claude Opus 5.5)
     seo_ai: bool = True                     # v0.317 the SEO Employee asks Opus for its 90-day plan (off = the rules plan)
-    # v0.352 SOCIAL MEDIA MANAGER (employee 2): Hoola's ONE Meta app - users connect their own Instagram / Facebook Page to it
+    # v0.353 SOCIAL MEDIA MANAGER (employee 2): Hoola's ONE Meta app - users connect their own Instagram / Facebook Page to it
     meta_app_id: str = ""                   # App settings > Basic (Facebook Login for Business + Pages)
     meta_app_secret: str = ""
     meta_login_config_id: str = ""          # Facebook Login for Business > Configurations (pages + permissions)

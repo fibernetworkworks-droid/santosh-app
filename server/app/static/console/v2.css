@@ -2197,7 +2197,7 @@ body.albon{overflow:hidden}
 .em-shot figcaption{font-size:12px;margin-top:4px}
 .em-note code{font-size:12.5px;word-break:break-all}
 
-/* v0.352 Social Desk */
+/* v0.353 Social Desk */
 .sc-accs{display:grid;gap:10px;margin-top:10px}
 .sc-acc{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center}
 .sc-acc img,.sc-acc .sc-pic{width:40px;height:40px;border-radius:50%;object-fit:cover;background:var(--hair);display:block}

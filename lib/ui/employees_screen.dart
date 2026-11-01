@@ -683,7 +683,7 @@ class _SpeedCard extends StatelessWidget {
 }
 
 
-// ------------------------------------------------------------------ v0.352 the Social Desk (Social Media Manager, Phase 1)
+// ------------------------------------------------------------------ v0.353 the Social Desk (Social Media Manager, Phase 1)
 class SocialDeskScreen extends StatefulWidget {
   const SocialDeskScreen({super.key, required this.app});
   final Santosh app;
