@@ -377,8 +377,13 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     if coll == sch.get("order") and "cart" in body:
         items, total = _priced(r, body.get("cart"))
         extra = {"items": items, "total": total}
-    code = str(body.get("coupon") or "").strip()
-    data = {k: v for k, v in body.items() if k not in ("cid", "cart", "coupon")}
+    # v0.378 the discount code / delivery slot travel as "_coupon" / "_slot" (a list may have its OWN field named
+    # coupon or slot - e.g. a scanned coupon code, a booking slot - and that field is never taken away)
+    keys = {f["key"] for f in c["fields"]}
+    code = str(body.get("_coupon") or (body.get("coupon") if "coupon" not in keys else "") or "").strip()
+    slot_in = str(body.get("_slot") or (body.get("slot") if "slot" not in keys else "") or "")
+    reserved = {"cid", "cart", "_coupon", "_slot"} | ({"coupon"} if "coupon" not in keys else set()) | ({"slot"} if "slot" not in keys else set())
+    data = {k: v for k, v in body.items() if k not in reserved}
     _check_extra(r, c, data, w)
     if extra:                                  # v0.357 STOCK: taken under one lock before the row exists (or refused)
         from . import stock as SK
@@ -390,8 +395,7 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
         d, cf = CP.apply(r, code, extra["total"], w)
         extra.update(cf)
         extra["total"] = round(extra["total"] - d, 2)
-    slot_key = str(body.get("slot") or "")
-    data.pop("slot", None)
+    slot_key = slot_in
     if extra:                                  # v0.360 DELIVERY: added after the coupon (a coupon discounts the goods only)
         from . import delivery as DL
         fee, df = DL.on_order(r, extra["total"], data)

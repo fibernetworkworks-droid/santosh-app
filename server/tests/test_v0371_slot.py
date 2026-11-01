@@ -78,7 +78,7 @@ def test_race_for_the_last_place(droid_env, monkeypatch):
 def test_kits_console():
     root = Path(__file__).resolve().parents[1]
     kt = root / "app/appmaker/android/template/app/src/main/java/hoola/kit"
-    assert "fun SlotPicker()" in (kt / "Pro.kt").read_text() and 'data["slot"] = AppState.slot.value' in (kt / "Backend.kt").read_text()
+    assert "fun SlotPicker()" in (kt / "Pro.kt").read_text() and 'data["_slot"] = AppState.slot.value' in (kt / "Backend.kt").read_text()
     sw = root / "app/appmaker/ios/template/Sources/Kit"
-    assert "struct SlotPicker: View" in (sw / "Pro.swift").read_text() and 'data["slot"] = st.slot' in (sw / "Backend.swift").read_text()
+    assert "struct SlotPicker: View" in (sw / "Pro.swift").read_text() and 'data["_slot"] = st.slot' in (sw / "Backend.swift").read_text()
     assert "Save slots" in (root / "app/static/console/build.js").read_text()

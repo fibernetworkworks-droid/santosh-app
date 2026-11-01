@@ -343,8 +343,8 @@ final class Db: ObservableObject {
             data["cart"] = lines.map { ["id": $0.0.id, "qty": $0.1] }
             show["items"] = lines.map { "\($0.1) x \($0.0.name)" }.joined(separator: "\n")
             show["total"] = st.cartTotal() - st.couponOff + deliveryFee(st.cartTotal() - st.couponOff)   // v0.360
-            if !st.coupon.isEmpty { data["coupon"] = st.coupon }      // v0.358 checked again by the server
-            if !st.slot.isEmpty { data["slot"] = st.slot }            // v0.371 booked by the server
+            if !st.coupon.isEmpty { data["_coupon"] = st.coupon }      // v0.358 checked again by the server
+            if !st.slot.isEmpty { data["_slot"] = st.slot }            // v0.371 booked by the server
         }
         create(c, data, show: show)
         for f in fields(c) { st.form.removeValue(forKey: f.s("key")) }

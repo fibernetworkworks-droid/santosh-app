@@ -93,8 +93,8 @@ def test_tool_and_kits(droid_env):
     kt = root / "app/appmaker/android/template/app/src/main/java/hoola/kit"
     assert "fun CouponBox()" in (kt / "Pro.kt").read_text() and '"/coupon"' in (kt / "Pro.kt").read_text()
     b = (kt / "Backend.kt").read_text()
-    assert "if (Db.couponsOn && AppState.cartCount > 0) CouponBox()" in b and 'data["coupon"] = AppState.coupon.value' in b
+    assert "if (Db.couponsOn && AppState.cartCount > 0) CouponBox()" in b and 'data["_coupon"] = AppState.coupon.value' in b
     sw = root / "app/appmaker/ios/template/Sources/Kit"
     assert "struct CouponBox: View" in (sw / "Pro.swift").read_text() and "CouponBox()" in (sw / "Accounts.swift").read_text()
-    assert 'data["coupon"] = st.coupon' in (sw / "Backend.swift").read_text()
+    assert 'data["_coupon"] = st.coupon' in (sw / "Backend.swift").read_text()
     assert "Coupon codes" in (root / "app/static/console/build.js").read_text()

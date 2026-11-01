@@ -68,3 +68,25 @@ def test_kits_have_the_chat_screen(tmp_path):
     IG.write_project(sp, tmp_path / "i")
     assert 'case "hoola_chat": return AnyView(ChatScreen())' in (tmp_path / "i/Sources/App/AppScreens.swift").read_text()
     assert "struct ChatScreen: View" in (root / "ios/template/Sources/Kit/Pro.swift").read_text()
+
+
+def test_own_coupon_and_slot_fields_are_kept(droid_env):
+    """v0.378 fix: a list's OWN field named coupon / slot is never taken as the discount code / delivery slot; the apps send
+    those as _coupon / _slot."""
+    from app.main import app
+    c = TestClient(app)
+    aid, conv, key, be = _built(droid_env)
+    api = f"/api/app-api/{key}"
+    from app.appmaker import backend as BE
+    BE.change_schema(BE.by_key_or_ref(__import__("tests.test_v128_appdesign", fromlist=["T"]).T, aid),
+                     {"add": [{"coll": "orders", "key": "coupon", "label": "Coupon code", "type": "scan"},
+                              {"coll": "orders", "key": "slot", "label": "Slot", "type": "text"}]})
+    p1 = c.get(f"/api/app-content/{key}").json()["lists"]["products"][0]
+    _acct(c, api, "asha@example.com", "Asha")
+    ha = _login(c, api, "asha@example.com", "Asha")
+    c.put(f"/api/apps/{aid}/coupons", json={"code": "TEN10", "kind": "percent", "value": 10})
+    o = c.post(f"{api}/c/orders", json={"name": "A", "phone": "9876543210", "coupon": " HOOLA\x07-42 ", "slot": "evening",
+                                        "_coupon": "TEN10", "cart": [{"id": p1["id"], "qty": 1}]}, headers=ha).json()
+    row = {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[o["id"]]
+    assert row["coupon"] == "HOOLA-42" and row["slot"] == "evening"            # her own fields, cleaned and kept
+    assert o["total"] < float(p1["price"])                                     # _coupon applied the discount

@@ -13247,3 +13247,7 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   "Customer messages" button on My account; iPhone `ChatScreen` / `ChatThread`. Console "Customer messages" (threads, open,
   reply = her tap).
 - Tests `tests/test_v0378_baat.py`. Not done: photos in chat, per-order threads, typing indicators.
+- v0.378 fix (found by the Phase 8 scan test): Phase 22 / 35 took any `coupon` / `slot` key in an order as the discount code /
+  delivery slot, so a list's OWN field with that name (a scanned coupon code, a booking slot) was removed. The apps now send
+  `_coupon` / `_slot`; the server reads plain `coupon` / `slot` only when the list has no such field. Test in
+  `tests/test_v0378_baat.py::test_own_coupon_and_slot_fields_are_kept`.

@@ -508,8 +508,8 @@ object Db {
             show["items"] = items.joinToString("\n") { (it, q) -> "$q x ${it.name}" }
             show["total"] = AppState.cartTotal("products") - AppState.couponOff.value +
                 deliveryFee(AppState.cartTotal("products") - AppState.couponOff.value)   // v0.360 the server adds the same
-            if (AppState.coupon.value.isNotEmpty()) data["coupon"] = AppState.coupon.value      // v0.358 checked again by the server
-            if (AppState.slot.value.isNotEmpty()) data["slot"] = AppState.slot.value            // v0.371 booked by the server
+            if (AppState.coupon.value.isNotEmpty()) data["_coupon"] = AppState.coupon.value      // v0.358 checked again by the server
+            if (AppState.slot.value.isNotEmpty()) data["_slot"] = AppState.slot.value            // v0.371 booked by the server
             show.remove("cart")
         }
         create(coll, data, show)
