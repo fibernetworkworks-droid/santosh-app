@@ -120,7 +120,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "game physics", "physics engine", "game ki physics",
                  # v0.421 batch 2: spatial audio + haptics
                  "spatial audio", "3d sound", "3d audio", "binaural", "reverb zone", "game ki awaaz", "haptic", "haptics",
-                 "vibration pattern", "game vibration", "rumble"),
+                 "vibration pattern", "game vibration", "rumble",
+                 # v0.422 batch 3: multiplayer + AR / VR
+                 "multiplayer", "netcode", "game server", "lag compensation", "webxr", "virtual reality", "vr game",
+                 "ar game", "headset", "oculus", "quest 3", "hand tracking"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",

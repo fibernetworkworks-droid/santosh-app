@@ -120,7 +120,8 @@ progressive_web_app/enabled=false
 # Hoola's OWN autoloads (written by Hoola from approved data, never by the model): file -> autoload name. v0.395 Bible,
 # v0.416 assets, v0.420 the role packs (World = Procedural World Engineer, Physics = Physics Engine Developer).
 HOOLA_OWN = {"hoola_bible.gd": "HoolaBible", "hoola_assets.gd": "HoolaAssets", "hoola_world.gd": "HoolaWorld",
-             "hoola_physics.gd": "HoolaPhysics", "hoola_audio.gd": "HoolaAudio", "hoola_haptics.gd": "HoolaHaptics"}   # v0.421 batch 2
+             "hoola_physics.gd": "HoolaPhysics", "hoola_audio.gd": "HoolaAudio", "hoola_haptics.gd": "HoolaHaptics",
+             "hoola_xr.gd": "HoolaXR", "hoola_net.gd": "HoolaNet"}   # v0.421 batch 2, v0.422 batch 3
 
 
 def files(title: str, orientation: str, scripts: dict[str, str]) -> dict[str, str]:

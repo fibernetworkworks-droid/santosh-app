@@ -50,6 +50,13 @@ GET    /api/gamedesk/haptics/{hid}
 POST   /api/gamedesk/haptics/{hid}/approve|reject
 POST   /api/gamedesk/haptics/apply              {studio}  approved patterns into the live game (HoolaHaptics)
 GET    /api/gamedesk/haptics/{hid}/file/{name}?sig   kit.zip | patterns.png (signed)
+GET    /api/gamedesk/net?studio=                Multiplayer Programmer: setups (her numbers, the bot runs, verdict)
+POST   /api/gamedesk/net                        {words?, inputs?: {players, tick, send, speed, size, interest}, studio?}
+GET    /api/gamedesk/net/{nid}  POST /api/gamedesk/net/{nid}/approve|reject   GET .../file/kit.zip?sig
+POST   /api/gamedesk/net/{nid}/server           {url}  HER game server (wss:// only; Hoola hosts nothing)
+GET    /api/gamedesk/xr?studio=                 AR / VR Engineer: setups (comfort, gestures, demo play link)
+POST   /api/gamedesk/xr                         {words?, settings?: {mode, locomotion, turn, snap_deg, seated, ui_m, text_deg, fps}, studio?}
+GET    /api/gamedesk/xr/{xid}  POST /api/gamedesk/xr/{xid}/approve|reject  POST /api/gamedesk/xr/apply {studio}
 
 v0.416 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
 GET    /api/gamestudio/{id}/releases            releases + where each platform can be built + package + itch key set?
@@ -587,7 +594,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
         @r.get(f"/api/gamedesk/{base}", dependencies=[Depends(require_key)])
         async def _list(studio: str = "", tenant: str = Depends(current_tenant)):
             from ..employee import hire
-            extra = {"library": sorted(HP.LIBRARY), "actuators": HP.ACTUATORS} if mod is HP else {"zone_presets": AU.ZONE_PRESETS}
+            extra = ({"library": sorted(HP.LIBRARY), "actuators": HP.ACTUATORS} if mod is HP else
+                     {"zone_presets": AU.ZONE_PRESETS} if mod is AU else
+                     {"networks": NC.NETWORKS, "defaults": NC.DEFAULTS} if mod is NC else {"defaults": XR.DEFAULTS})
             return {lister: await call(getattr(mod, lister), tenant, studio), "hired": await asyncio.to_thread(hire.is_working, tenant, key), **extra}
 
         @r.post(f"/api/gamedesk/{base}", dependencies=[Depends(require_key)])
@@ -629,6 +638,24 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return HP.make(tenant, str(b.get("words") or ""), b.get("patterns") if isinstance(b.get("patterns"), dict) else None,
                        str(b.get("actuator") or "phone_lra"), str(b.get("studio") or ""))
 
+    from . import netcode as NC
+    from . import xr as XR
+
+    @r.post("/api/gamedesk/net/{nid}/server", dependencies=[Depends(require_key)])
+    async def net_server(nid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _working(tenant, NC.KEY, "Multiplayer Network Programmer")
+        return await call(NC.set_server, tenant, nid, str(_b(body).get("url") or ""))
+
+    def _net_make(tenant: str, b: dict):
+        return NC.setup(tenant, str(b.get("words") or ""), b.get("inputs") if isinstance(b.get("inputs"), dict) else None,
+                        str(b.get("studio") or ""))
+
+    def _xr_make(tenant: str, b: dict):
+        return XR.setup(tenant, str(b.get("words") or ""), b.get("settings") if isinstance(b.get("settings"), dict) else None,
+                        str(b.get("studio") or ""))
+
+    _pack_routes("net", NC, NC.KEY, "Multiplayer Network Programmer", "setups", _net_make, NC.net_file, {".zip": "application/zip"})
+    _pack_routes("xr", XR, XR.KEY, "AR / VR Interaction Engineer", "setups", _xr_make, lambda *a: None, {})
     _pack_routes("audio", AU, AU.KEY, "Spatial Audio Systems Programmer", "setups", _audio_make, AU.audio_file, {".wav": "audio/wav"})
     _pack_routes("haptics", HP, HP.KEY, "Haptic Feedback Systems Engineer", "sets", _haptics_make, HP.haptics_file,
                  {".zip": "application/zip", ".png": "image/png"})

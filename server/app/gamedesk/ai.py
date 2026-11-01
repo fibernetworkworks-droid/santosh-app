@@ -129,6 +129,10 @@ HARD RULES (the build fails otherwise)
 - HAPTICS: if the files include hoola_haptics.gd (the HoolaHaptics autoload - NEVER edit or re-output it), call
   HoolaHaptics.play(name) for the moments in HoolaHaptics.names() (e.g. "jump", "coin", "hit", "game_over"); put
   HoolaHaptics.set_enabled(on) and set_intensity(0..1) on the settings / pause screen. Never vibrate any other way.
+- XR: if the files include hoola_xr.gd (the HoolaXR autoload - NEVER edit or re-output it), build the 3D scene with an
+  XROrigin3D holding an XRCamera3D plus a normal Camera3D at head height for players without a headset; start XR only
+  from a tap with HoolaXR.start(origin); move only by HoolaXR.teleport(point) and turn only by HoolaXR.snap_turn(+-1)
+  (never smooth motion); read hand gestures with HoolaXR.gesture(joints) -> "pinch" / "grab" / "point" / "open".
 - GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
   NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
   HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])

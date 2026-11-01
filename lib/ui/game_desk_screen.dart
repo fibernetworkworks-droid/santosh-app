@@ -301,6 +301,14 @@ class _GameDeskScreenState extends State<GameDeskScreen> {
                   icon: const Icon(Icons.vibration_outlined),
                   label: const Text('Haptics'),
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameHapticsScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.groups_outlined),
+                  label: const Text('Multiplayer'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameNetScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.view_in_ar_outlined),
+                  label: const Text('VR / AR'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameXrScreen(app: widget.app, studio: '')))),
             ]),
             if (_loaded) GameStudioList(key: ValueKey(games.length), app: widget.app, games: games),
             for (final g in games) _card(g),

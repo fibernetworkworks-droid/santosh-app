@@ -508,6 +508,16 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
                 },
               ),
               OutlinedButton.icon(
+                icon: const Icon(Icons.groups_outlined),
+                label: const Text('Multiplayer'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameNetScreen(app: widget.app, studio: _s(_p['id'])))),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.view_in_ar_outlined),
+                label: const Text('VR / AR'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameXrScreen(app: widget.app, studio: _s(_p['id'])))),
+              ),
+              OutlinedButton.icon(
                 icon: const Icon(Icons.rocket_launch_outlined),
                 label: const Text('Release'),
                 onPressed: () async {

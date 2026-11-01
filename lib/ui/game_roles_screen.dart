@@ -424,6 +424,22 @@ class _PackPageState extends State<_PackPage> {
   Timer? _timer;
 
   bool get _audio => widget.base == 'audio';
+  bool get _haptics => widget.base == 'haptics';
+
+  String _subtitle(Map<String, dynamic> x) {
+    switch (widget.base) {
+      case 'audio':
+        return _list(_map(x['plan'])['zones']).map((z) => '${_s(z['key'])} ${_s(z['rt60'])} s').join(' · ');
+      case 'haptics':
+        return '${_s(x['actuator_name'])} · ${_map(x['patterns']).keys.join(', ')}';
+      case 'net':
+        final i = _map(x['inputs']);
+        return '${_s(i['players'])} players · ${_s(i['tick'])} Hz · server on your own cloud';
+      default:
+        final st = _map(x['settings']);
+        return '${_s(st['mode']).toUpperCase()} · snap ${_s(st['snap_deg'])}° · ${_s(st['fps'])} fps';
+    }
+  }
 
   @override
   void initState() {
@@ -487,12 +503,9 @@ class _PackPageState extends State<_PackPage> {
                     style: TextStyle(color: _s(rep['verdict']) == 'PASS' ? C.ok : C.bad, fontWeight: FontWeight.w600, fontSize: 12))),
           _tag(status),
         ]),
-        Text(_audio
-                ? _list(_map(x['plan'])['zones']).map((z) => '${_s(z['key'])} ${_s(z['rt60'])} s').join(' · ')
-                : '${_s(x['actuator_name'])} · ${_map(x['patterns']).keys.join(', ')}',
-            style: const TextStyle(color: C.muted, fontSize: 12)),
+        Text(_subtitle(x), style: const TextStyle(color: C.muted, fontSize: 12)),
         if (status == 'testing') const Text('Rendering and measuring…', style: TextStyle(color: C.muted, fontSize: 12.5)),
-        if (_audio)
+        if (checks.isNotEmpty)
           for (final c in checks)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -508,6 +521,10 @@ class _PackPageState extends State<_PackPage> {
             OutlinedButton(
                 onPressed: () => launchUrl(Uri.parse(widget.app.api!.absolute(_s(e.value))), mode: LaunchMode.externalApplication),
                 child: Text(_audio ? 'Hear ${e.key.replaceAll('.wav', '')}' : (e.key == 'kit.zip' ? 'Download the kit' : 'Pattern shapes'))),
+          if (_s(_map(x['demo'])['play_url']).isNotEmpty)
+            FilledButton.tonal(
+                onPressed: () => launchUrl(Uri.parse(widget.app.api!.absolute(_s(_map(x['demo'])['play_url']))), mode: LaunchMode.externalApplication),
+                child: const Text('Open the demo room')),
           if (status == 'draft')
             FilledButton(
                 onPressed: _busy ? null : () => _call(() => widget.app.api!.gamePackDo(widget.base, _s(x['id']), 'approve'), 'Approved.'),
@@ -554,7 +571,13 @@ class _PackPageState extends State<_PackPage> {
                         controller: _words,
                         maxLines: 2,
                         maxLength: 600,
-                        decoration: const InputDecoration(hintText: 'The moments that should buzz: jump, coin, hit, game over')),
+                        decoration: InputDecoration(
+                            hintText: _haptics
+                                ? 'The moments that should buzz: jump, coin, hit, game over'
+                                : widget.base == 'net'
+                                    ? 'e.g. 16 players, 240 px/s, 30 tick'
+                                    : 'e.g. VR for Quest, seated, or AR on a phone')),
+                    if (_haptics)
                     DropdownButton<String>(
                       value: acts.containsKey(_actuator) ? _actuator : (acts.keys.isEmpty ? null : acts.keys.first),
                       isExpanded: true,
@@ -564,7 +587,9 @@ class _PackPageState extends State<_PackPage> {
                   ],
                   const SizedBox(height: 8),
                   GradientButton(
-                    label: hired ? (_audio ? 'Render and measure' : 'Make and check') : 'Hire the ${widget.hireName} first',
+                    label: hired
+                        ? (_audio ? 'Render and measure' : _haptics ? 'Make and check' : widget.base == 'net' ? 'Run the bots' : 'Check and build the demo room')
+                        : 'Hire the ${widget.hireName} first',
                     icon: _audio ? Icons.surround_sound_rounded : Icons.vibration_rounded,
                     height: 48,
                     onTap: _busy || !hired || (_audio && _zones.isEmpty)
@@ -579,15 +604,15 @@ class _PackPageState extends State<_PackPage> {
                                           'zones': [for (final k in _zones) {'key': k, 'rt60': presets[k]}]
                                         }
                                       }
-                                    : {'studio': widget.studio, 'words': _words.text.trim(), 'actuator': _actuator}),
+                                    : {'studio': widget.studio, 'words': _words.text.trim(), if (_haptics) 'actuator': _actuator}),
                             _audio ? 'Rendering and measuring.' : 'Made and checked.'),
                   ),
-                  if (widget.studio.isNotEmpty && hired)
+                  if (widget.studio.isNotEmpty && hired && widget.base != 'net')
                     TextButton(
                         onPressed: _busy
                             ? null
                             : () => _call(() => widget.app.api!.gamePackApply(widget.base, widget.studio), 'Rebuilding the game.'),
-                        child: Text(_audio ? 'Put approved audio in the game' : 'Put approved haptics in the game')),
+                        child: const Text('Put the approved setup in the game')),
                 ]),
               ),
               if (items.isEmpty) const Padding(padding: EdgeInsets.only(top: 16), child: Text('Nothing yet.', style: TextStyle(color: C.muted))),
@@ -630,4 +655,36 @@ class GameHapticsScreen extends StatelessWidget {
       hireName: 'Haptic Feedback Engineer',
       intro: 'One vibration pattern per moment, checked for the motor, with battery per play and an off switch for every '
           'player. iPhone browsers have no vibration.');
+}
+
+class GameNetScreen extends StatelessWidget {
+  const GameNetScreen({super.key, required this.app, required this.studio});
+  final Santosh app;
+  final String studio;
+  @override
+  Widget build(BuildContext context) => _PackPage(
+      app: app,
+      studio: studio,
+      base: 'net',
+      title: 'Multiplayer',
+      listKey: 'setups',
+      hireName: 'Network Programmer',
+      intro: 'Bots play over a good, a 150 ms / 2 % loss and a bad mobile network: rubber-banding, desync (must be 0), bandwidth '
+          'and lag compensation are measured. The game server runs on your own cloud; Hoola hosts none.');
+}
+
+class GameXrScreen extends StatelessWidget {
+  const GameXrScreen({super.key, required this.app, required this.studio});
+  final Santosh app;
+  final String studio;
+  @override
+  Widget build(BuildContext context) => _PackPage(
+      app: app,
+      studio: studio,
+      base: 'xr',
+      title: 'VR / AR',
+      listKey: 'setups',
+      hireName: 'AR / VR Engineer',
+      intro: 'A WebXR room for your headset or phone browser with comfort rules checked and hand gestures scored on a test set '
+          'of synthetic hands. Frame rate on your headset is not measured here.');
 }

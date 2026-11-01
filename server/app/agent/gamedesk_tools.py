@@ -219,6 +219,40 @@ GAMEDESK_TOOLS.append(
 
 GAMEDESK_LABELS.update({"game_audio": "Game ki awaaz jaanch raha hoon", "game_haptics": "Game ki vibration bana raha hoon"})
 
+# v0.422 Phase 7 batch 3: Multiplayer + AR / VR
+GAMEDESK_TOOLS.append(
+    {"name": "game_net", "description": (
+        "Multiplayer Network Programmer employee: netcode for her game proved by bots (free). Her numbers: players, tick "
+        "(Hz), send (snapshots/s), speed (px/s), size (px), interest (px). Bots play over three networks (good 40 ms; the "
+        "plan's 150 ms / 2 % loss / 20 ms jitter; bad mobile 300 ms / 5 % / 60 ms) with an authoritative server, client "
+        "prediction + reconciliation, interpolation and lag compensation; MEASURED: rubber-banding, desync (must be 0), "
+        "bandwidth per player, interpolation dry-outs, lag-compensated hit agreement; then the Godot netcode itself runs "
+        "with a server + 3 clients. Actions: setup (words / inputs, id = S-0001) -> background / list / status (setup "
+        "N-001) / approve / reject. A kit (game server for HER cloud + client code) is on the Multiplayer page. Hoola hosts "
+        "no game server; the netcode is not inside the game build yet (the game cannot open sockets) - say so. Only while "
+        "this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject"]},
+         "words": {"type": "string"}, "inputs": {"type": "object"}, "id": {"type": "string"},
+         "setup": {"type": "string", "description": "N-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_xr", "description": (
+        "AR / VR Interaction Engineer employee: a WebXR setup (mode vr | ar, teleport, snap turn 30/45, seated mode, panel "
+        "distance, text size, fps 72/90) with the comfort rules checked in code, hand gestures (pinch / grab / point / open) "
+        "scored on a labelled set of SYNTHETIC hands and cross-checked in the real Godot, and a demo room that opens in a "
+        "headset or phone browser (a play link). Actions: setup (words / settings, id = S-0001) -> background / list / "
+        "status (setup X-001) / approve / reject / apply (id): HoolaXR goes into her game. Frame rate on her headset is not "
+        "measured here - say so. Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"}, "settings": {"type": "object"}, "id": {"type": "string"},
+         "setup": {"type": "string", "description": "X-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_net": "Multiplayer netcode jaanch raha hoon", "game_xr": "VR / AR setup jaanch raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -745,6 +779,58 @@ async def game_haptics(ctx: Ctx, action="", words="", patterns=None, actuator="p
     raise ToolError("action = make | list | status | approve | reject | apply")
 
 
+def _report_short(v: dict, extra: dict) -> dict:
+    rep = v.get("report") or {}
+    out = {"number": v.get("number"), "status": v.get("status"), **extra}
+    if rep:
+        out["report"] = {"verdict": rep.get("verdict"), "passed": f"{rep.get('passed')}/{rep.get('total')}",
+                         "checks": [{"check": c["check"], "ok": c["ok"], "note": c["note"]} for c in rep.get("checks", [])]}
+    if v.get("status") == "testing":
+        out["note"] = "Running in the background (under a minute); the result shows on its page. Do not poll."
+    if v.get("error"):
+        out["error"] = v["error"]
+    return out
+
+
+async def _pack_tool(ctx: Ctx, mod_name: str, who: str, action: str, ref: str, make, extra) -> dict:
+    import importlib
+    from ..employee import hire
+    from ..gamedesk import service as G
+    M = importlib.import_module(f"..gamedesk.{mod_name}", __package__)
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, M.KEY):
+        raise ToolError(f"{who} hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, who)
+    run = asyncio.to_thread
+    try:
+        if action == "setup":
+            return _report_short(await run(make, M), extra)
+        if action == "list":
+            return {"setups": [_report_short(v, extra) for v in (await run(M.setups, t, ""))[:10]]}
+        if action in ("status", "approve", "reject"):
+            v = await run({"status": M.get, "approve": M.approve, "reject": M.reject}[action], t, ref)
+            return _report_short(v, extra | ({"demo": v.get("demo")} if v.get("demo") else {}))
+        if action == "apply":
+            return await run(M.apply, t, ref)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = setup | list | status | approve | reject" + (" | apply" if mod_name == "xr" else ""))
+
+
+async def game_net(ctx: Ctx, action="", words="", inputs=None, id="", setup="", **_):
+    return await _pack_tool(ctx, "netcode", "Multiplayer Network Programmer", action, setup,
+                            lambda M: M.setup(ctx.tenant_id, words, inputs if isinstance(inputs, dict) else None, id),
+                            {"hosting": "her own cloud - Hoola hosts no game server", "in_game": "not yet (the game cannot open sockets)"})
+
+
+async def game_xr(ctx: Ctx, action="", words="", settings=None, id="", setup="", **_):
+    return await _pack_tool(ctx, "xr", "AR / VR Interaction Engineer", action, setup if action != "apply" else id,
+                            lambda M: M.setup(ctx.tenant_id, words, settings if isinstance(settings, dict) else None, id),
+                            {"headset_fps": "not measured here (no headset)"})
+
+
 GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets,
                      "game_qa": game_qa, "game_release": game_release, "game_world": game_world,
-                     "game_physics": game_physics, "game_audio": game_audio, "game_haptics": game_haptics}
+                     "game_physics": game_physics, "game_audio": game_audio, "game_haptics": game_haptics,
+                     "game_net": game_net, "game_xr": game_xr}

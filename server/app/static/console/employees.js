@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
+  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
@@ -899,7 +899,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -917,7 +917,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="acts"><button class="btn soft" type="button" data-gs-role="world">Worlds (Procedural World Engineer)</button>
           <button class="btn soft" type="button" data-gs-role="physics">Physics (Physics Engine Developer)</button>
           <button class="btn soft" type="button" data-gs-role="audio">Audio (Spatial Audio Programmer)</button>
-          <button class="btn soft" type="button" data-gs-role="haptics">Haptics (Haptic Feedback Engineer)</button></div></div>
+          <button class="btn soft" type="button" data-gs-role="haptics">Haptics (Haptic Feedback Engineer)</button>
+          <button class="btn soft" type="button" data-gs-role="net">Multiplayer (Network Programmer)</button>
+          <button class="btn soft" type="button" data-gs-role="xr">VR / AR (Interaction Engineer)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
     el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
@@ -1471,6 +1473,70 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
   }
 
+  // ---------------------------------------------------------------- v0.422 Game Desk roles: Multiplayer + VR / AR
+  async function gsNet(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/net' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const df = d.defaults || {};
+    const F = [['players', 'Players'], ['tick', 'Server ticks / s'], ['send', 'Snapshots / s'], ['speed', 'Player speed (px/s)'], ['size', 'Player size (px)'], ['interest', 'Sees players within (px)']];
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="ncBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Multiplayer</h2>
+        ${d.hired ? tag('ok', 'Network Programmer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">Bots play your game's movement over a good network, the plan's 150 ms / 2 % loss network and a bad mobile one, through an authoritative server with prediction, reconciliation, interpolation and lag compensation. Measured: rubber-banding, desync (must be 0), bandwidth, hits the server agrees with. Then the Godot netcode itself runs with a server and three clients. The game server runs on your own cloud - Hoola hosts none - and the netcode is not inside the game build yet.</p>
+      <div class="tile gl"><h3>New netcode setup</h3><div class="ph-grid">${F.map(([k, l]) => `<label>${l}<input data-nc="${k}" type="number" value="${num(df[k])}"></label>`).join('')}</div>
+        <div class="acts"><button class="btn go" type="button" id="ncGo"${d.hired ? '' : ' disabled'}>Run the bots</button></div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Multiplayer Network Programmer in Employees first.</p>'}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, i = x.inputs || {}, runs = rp.runs || {};
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${num(i.players)} players · ${num(i.tick)} Hz · ${num(i.send)} snapshots/s</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
+          ${Object.keys(runs).length ? `<table class="ph-tbl"><thead><tr><th>Network</th><th>Correction p95 / max</th><th>Desync</th><th>Down / up per player</th><th>Lag-comp hits</th></tr></thead><tbody>${Object.values(runs).map(r => `<tr><td>${esc(r.net)}</td><td>${num(r.corr_p95_px)} / ${num(r.corr_max_px)} px</td><td>${num(r.desync_px_max)} px</td><td>${num(r.down_bps_per_player)} / ${num(r.up_bps_per_player)} B/s</td><td>${Math.round((r.lagcomp_agree || 0) * 100)}% (without: ${Math.round((r.no_lagcomp_agree || 0) * 100)}%)</td></tr>`).join('')}</tbody></table>` : (x.status === 'testing' ? '<p class="muted em-small">Bots are playing…</p>' : '')}
+          ${checksTable(rp.checks)}${x.error ? `<div class="badc em-small">${esc(x.error)}</div>` : ''}
+          <div class="acts">${(x.files || {})['kit.zip'] ? `<a class="btn soft gs-mini" href="${esc(x.files['kit.zip'])}">Download the kit (server for your cloud + client)</a>` : ''}
+            ${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-nc-do="approve" data-id="${esc(x.id)}">OK</button><button class="btn soft gs-mini" type="button" data-nc-do="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">No netcode setups yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsNet(el); };
+    el.querySelector('#ncBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#ncGo').addEventListener('click', e => { e.target.disabled = true;
+      const inputs = {}; el.querySelectorAll('[data-nc]').forEach(x => { inputs[x.dataset.nc] = Number(x.value); });
+      go(() => api('POST', '/api/gamedesk/net', {inputs, studio: sid}), 'The bots are playing.'); });
+    el.querySelectorAll('[data-nc-do]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/net/${encodeURIComponent(b.dataset.id)}/${b.dataset.ncDo}`), b.dataset.ncDo === 'approve' ? 'Approved.' : '')));
+    if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'net') gsNet(el); }, 4000);
+  }
+
+  async function gsXr(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/xr' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="xrBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>VR / AR</h2>
+        ${d.hired ? tag('ok', 'AR / VR Engineer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">A WebXR setup that opens in a headset or phone browser: teleport, snap turning, a seated mode, readable panels - the comfort rules are checked in code. Hand gestures are scored on a test set of synthetic hands and checked in Godot itself. Frame rate on your headset is not measured here.</p>
+      <div class="tile gl"><h3>New VR / AR setup</h3><div class="acts">
+          <select id="xrMode" aria-label="Mode"><option value="vr">VR (headset)</option><option value="ar">AR (phone or headset camera view)</option></select>
+          <select id="xrSnap" aria-label="Snap turn"><option value="30">Snap turn 30°</option><option value="45">Snap turn 45°</option></select>
+          <select id="xrFps" aria-label="Device"><option value="72">Quest-class (72 fps)</option><option value="90">90 fps headset</option></select>
+          <label class="gs-sw"><input type="checkbox" id="xrSeat" checked> Seated mode</label>
+          <button class="btn go" type="button" id="xrGo"${d.hired ? '' : ' disabled'}>Check and build the demo room</button>${sid ? '<button class="btn soft" type="button" id="xrApply">Put approved VR / AR in the game</button>' : ''}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the AR / VR Interaction Engineer in Employees first.</p>'}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, st = x.settings || {}, dm = x.demo || {}, gs = rp.gestures || {};
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc((st.mode || '').toUpperCase())} · snap ${num(st.snap_deg)}° · ${num(st.fps)} fps</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
+          ${x.status === 'testing' ? '<p class="muted em-small">Checking and building…</p>' : ''}
+          ${checkList(rp.comfort || {})}${checksTable(rp.checks)}
+          ${gs.confusion ? `<table class="ph-tbl"><thead><tr><th>Shown → read as</th>${Object.keys(gs.confusion).map(g => `<th>${esc(g)}</th>`).join('')}</tr></thead><tbody>${Object.entries(gs.confusion).map(([g, row]) => `<tr><td>${esc(g)}</td>${Object.values(row).map(v => `<td>${num(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
+          <div class="acts">${dm.play_url ? `<a class="btn go gs-mini" href="${esc(dm.play_url)}" target="_blank" rel="noopener">Open the demo room</a><span class="muted em-small">On a headset or phone browser tap to enter XR</span>` : ''}
+            ${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-xr-do="approve" data-id="${esc(x.id)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-xr-do="reject" data-id="${esc(x.id)}">No</button>` : ''}</div>
+          ${dm.status === 'failed' ? `<div class="badc em-small">Demo did not build: ${esc((dm.errors || []).join('; '))}</div>` : ''}</section>`; }).join('') || '<div class="empty">No VR / AR setups yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsXr(el); };
+    el.querySelector('#xrBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#xrGo').addEventListener('click', e => { e.target.disabled = true;
+      go(() => api('POST', '/api/gamedesk/xr', {studio: sid, settings: {mode: el.querySelector('#xrMode').value, snap_deg: Number(el.querySelector('#xrSnap').value),
+        fps: Number(el.querySelector('#xrFps').value), seated: el.querySelector('#xrSeat').checked}}), 'Checking and building the demo room.'); });
+    el.querySelector('#xrApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/xr/apply', {studio: sid}), 'Rebuilding the game with VR / AR.'));
+    el.querySelectorAll('[data-xr-do]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/xr/${encodeURIComponent(b.dataset.id)}/${b.dataset.xrDo}`), b.dataset.xrDo === 'approve' ? 'Approved.' : '')));
+    if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'xr') gsXr(el); }, 5000);
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
     if (GS_BIBLE) return gsBible(el, id);
@@ -1495,6 +1561,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" id="gsPhysBtn">Physics</button>
         <button class="btn soft" type="button" id="gsAudBtn">Audio</button>
         <button class="btn soft" type="button" id="gsHapBtn">Haptics</button>
+        <button class="btn soft" type="button" id="gsNetBtn">Multiplayer</button>
+        <button class="btn soft" type="button" id="gsXrBtn">VR / AR</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
@@ -1549,6 +1617,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     el.querySelector('#gsPhysBtn').addEventListener('click', () => { GS_ROLE = 'physics'; GS_ROLE_SID = id; gsPhysics(el); });
     el.querySelector('#gsAudBtn').addEventListener('click', () => { GS_ROLE = 'audio'; GS_ROLE_SID = id; gsAudio(el); });
     el.querySelector('#gsHapBtn').addEventListener('click', () => { GS_ROLE = 'haptics'; GS_ROLE_SID = id; gsHaptics(el); });
+    el.querySelector('#gsNetBtn').addEventListener('click', () => { GS_ROLE = 'net'; GS_ROLE_SID = id; gsNet(el); });
+    el.querySelector('#gsXrBtn').addEventListener('click', () => { GS_ROLE = 'xr'; GS_ROLE_SID = id; gsXr(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

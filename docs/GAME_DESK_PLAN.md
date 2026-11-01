@@ -137,7 +137,7 @@ chai wala bhaagta hai" starts the same flow.
 | **1** | Game Desk base + **Lead Game Engine Programmer** | Most demand (shops, schools, creators want a small branded game; studios want prototypes), result is instantly visible (a link she plays) |
 | **2 (BUILT v0.420.0)** | **Procedural World Generation** + **Physics Engine Developer** | Reuse the base and Blender; give every game bigger worlds and believable motion; fluid runs share the Engineering sandbox |
 | **3 (BUILT v0.421.0)** | **Spatial Audio** + **Haptic Feedback** | Light libraries, quick wins that make games and apps feel premium; haptics ride the app builder kits |
-| **4** | **Multiplayer Network Programmer** + **AR / VR Interaction** | Need a running game server (Colyseus / Nakama on her cloud or Hoola hosting, priced) and device testing on her phone / headset |
+| **4 (BUILT v0.422.0)** | **Multiplayer Network Programmer** + **AR / VR Interaction** | Need a running game server (Colyseus / Nakama on her cloud or Hoola hosting, priced) and device testing on her phone / headset |
 | **5** | **VFX Pipeline TD**, **Simulation Software Engineer**, **Digital Twin Architect** | Niche, heavier (render queue, flight / orbit models, plant data); twin data is read-only and needs her gateway |
 
 Each phase ships like every Hoola version: server + tests + console + phone + CI green + HISTORY section.

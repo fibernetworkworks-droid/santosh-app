@@ -162,7 +162,7 @@ def test_tools_api_hire_and_ui(st, monkeypatch):  # noqa: F811
     monkeypatch.setattr(A, "_POOL", type("X", (), {"submit": staticmethod(lambda *a, **k: None)})())
     assert hire.CATALOG["audio_dev"]["live"] and hire.CATALOG["haptics_dev"]["live"]
     soon = [k for k, e in hire.CATALOG.items() if e.get("group") == hire.GAME_GROUP and not e["live"]]
-    assert sorted(soon) == ["netcode_dev", "sim_dev", "twin_arch", "vfx_td", "xr_dev"]
+    assert {"sim_dev", "twin_arch", "vfx_td"} <= set(soon)                       # (v0.422: netcode + xr went live too)
     ctx = Ctx(tenant_id="default", conversation_id="c1")
     with pytest.raises(tools.ToolError, match="hired nahi"):
         asyncio.run(tools.HANDLERS["game_haptics"](ctx, action="make", words="jump"))

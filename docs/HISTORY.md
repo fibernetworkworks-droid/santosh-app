@@ -15973,3 +15973,53 @@ Verified here with Godot 4.7.2: both autoloads load and run headless (zone bus, 
 intensity); the audio report PASS 11/11 (3 zones) and 10/10 (2 zones), render ~1.7 s; the DRV2605 driver compiles.
 NOT VERIFIED: how the demos sound to her ears, the Android / iPhone kit code compiled in a real app (not here), and a
 real DRV2605 board.
+
+## v0.422.0 GAME DESK ROLES 3: MULTIPLAYER NETCODE + AR / VR (Hoola Game Engine plan Phase 7 batch 3 = Game Desk plan phase 4) - 1 Nov 2026
+Owner: "GO PHASE 7" (batch 3 of 4). Two more Game Desk employees live. Batch 4 (VFX TD + simulation + digital twin)
+not built yet. Also carries a re-trigger of the APK build: v0.421.0's CI run failed BEFORE any code ran (the Flutter
+setup step could not download Flutter, curl exit 35) and this session may not re-run workflows.
+
+MULTIPLAYER NETWORK PROGRAMMER (`gamedesk/netcode.py`, table `game_net`, tool `game_net`, /api/gamedesk/net*):
+- the bot run (`simulate`, deterministic event simulation): N bots at her speed through an authoritative server at her
+  tick rate, snapshots at her send rate with interest management + delta sizing against the last acknowledged
+  snapshot, a simulated network per packet (latency, jitter = out-of-order arrival, loss); clients predict their own
+  player, reconcile on every snapshot (server answer + replay of unconfirmed inputs), draw others 100 ms behind
+  (interpolation); the server rewinds for hits (lag compensation). Three networks: good 40 ms, the plan's 150 ms /
+  2 % / 20 ms, bad mobile 300 ms / 5 % / 60 ms.
+- MEASURED: rubber-banding (p95 / max correction, limit = a quarter of the player's size on the plan's network),
+  desync after inputs stop (must be exactly 0), bandwidth per player down / up (and without interest + deltas),
+  interpolation dry-outs (with the buffer this network needs: two send intervals + twice the jitter), lag-compensated
+  hit agreement vs none (100% vs 13% on the plan's network), the run twice.
+- THE BOTS FOUND TWO REAL NETCODE BUGS, both fixed in the simulation AND the Godot code: (1) a late OLDER snapshot
+  arriving after a newer one was applied - the client stepped back without the inputs it needed to replay - 12.8 px
+  of permanent desync on the bad mobile network -> snapshots older than the newest applied are dropped (2,264 dropped
+  in that run); (2) an input lost at the very end was never seen by the server (no later input revealed the gap) ->
+  4-13 px desync -> every client resends ALL unacknowledged inputs (up to 8) every tick, and the server waits 3 ticks
+  for a missing one before skipping it. After both: desync 0 px on every network, setting and seed tried, no input had
+  to be skipped; the cost (~1.8 KB/s up per player) is stated. Also corrected: my first interpolation measure mixed a
+  server-clock estimate with local arrival times (it read 45% dry); it now uses arrival times, as the Godot code does.
+- the Godot netcode (`GD_NET`, Hoola's own GDScript: shared quantised step, server tick + history, snapshot_for with
+  interest, rewind_hit, client_input / unacked / client_snapshot / remote) RUN IN THE REAL ENGINE by `godot_lab`: a
+  server + 3 clients in one headless process over an in-memory lossy link (the build box has no sockets): desync 0 px
+  on all three networks, interpolation works.
+- kit.zip: server/ (HoolaNet + a WebSocket server.gd + Dockerfile) for HER cloud, client/ HoolaNet, settings.
+- said plainly: Hoola hosts no game server (a Hoola box is an open owner decision, GAME_DESK_PLAN section 8); the
+  socket transport is not tested here; HoolaNet is NOT inside the game build yet (game code may not open sockets and
+  play links allow only their own host) - set_server stores HER wss:// address for the next step.
+
+AR / VR INTERACTION ENGINEER (`gamedesk/xr.py`, table `game_xr`, tool `game_xr`, /api/gamedesk/xr*):
+- comfort in code: teleport (smooth movement only with a vignette), snap turning 30 / 45, a seated mode, panels 1-3 m,
+  text >= 1.2 degrees (its mm height at that distance stated), fps target + triangle budget - headset frame rate NOT
+  ASSESSED (no headset).
+- gestures (pinch / grab / point / open) by rules on the 25 WebXR joints; a jointed synthetic hand model posed per
+  gesture with random size / rotation / position + 3 mm noise = 240 labelled hands: 97.9% (pinch 100, grab 97, point
+  95, open 100) with the confusion table; synthetic, said plainly. The SAME rules in GDScript (HoolaXR.gesture) agreed
+  on 80 of 80 hands in the real Godot.
+- demo: Hoola's WebXR room (floor, teleport pads, a panel sized from the text rule) built, exported and played (59 fps
+  on the server, 2.9 s load). FOUND in the screenshot: without a headset the XRCamera3D sits at the tracker pose = the
+  floor -> a normal camera at head height until a real XR session starts.
+- her OK -> HoolaXR (start from a tap via WebXR / OpenXR, snap_turn, teleport, seated_offset, gesture).
+
+Console: Multiplayer + VR / AR pages (gsNet / gsXr). Phone: GameNetScreen / GameXrScreen. Tests:
+test_v0422_game_net_xr.py (9, one runs the netcode + gestures in the real Godot).
+NOT VERIFIED: a real game server on her cloud, a real headset / phone XR session, her own hands.
