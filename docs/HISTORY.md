@@ -14266,3 +14266,41 @@ What each gap became (all in `server/app/engineering/`, tests `tests/test_v0365_
 - Not verified: real model output (scripted JSON in tests); a real Google Forms quiz; the official PDFs themselves (the build
   sandbox could not open cbseacademic / ncert / cisce; facts came from searches restricted to those domains); Flutter not compiled
   here (CI analyze); the console has no Shiksha page yet (phone + chat only).
+
+## v0.382.0 GURU SAHAYAK - Shiksha suite Phase 2: the personal tutor (K-PhD)
+- Owner: "GO PHASE 2" (plan: step-by-step teaching with a hint ladder, doubts from a photo / typed / the call, adaptive
+  practice with mastery + spaced revision from the Phase 1 bank, language practice, weekly parent report, time limits, exam
+  mode with no ghostwriting).
+- `server/app/guru/` (models / rules / service / api), tools `guru` / `guru_dekho`:
+  - SESSIONS GS-00001 per learner (doubt | practice | language); a child (under 18) only after the guardian's consent
+    (`shiksha.need_usable`); a child's daily minutes cap (`day_minutes`, default 60; adults uncapped); a session idle 30 min closes.
+  - THE HINT LADDER: `doubt` asks the model (site.ai kind "edu"; a photo goes through Claude vision) for {hint, nudge, steps,
+    answer, check_question, verify_code, expected}; `rules.clean_ladder` refuses an incomplete ladder; ONLY the hint is shown;
+    each `hint` reveals the next rung (nudge, then numbered worked steps + "ab aap try kijiye", then the answer). A numeric answer
+    is checked by running verify_code in the pylab sandbox (10 s, 256 MB): "code se jaancha: sahi" or "code ne alag jawab diya
+    (x): teacher se pakka kijiye". EXAM MODE (setting) or graded work in her words ("test abhi chal raha", "kal submit") = the
+    ladder stops before the answer, said plainly.
+  - PRACTICE: `next_question` takes only APPROVED bank questions of the session's subject / class (topic filter), topic = due for
+    revision first, else the weakest; difficulty from mastery (<0.4 easy, <0.75 medium, else hard); the last 30 not repeated; the
+    answer never leaves with the question. `answer`: objective types checked in CODE (MCQ letter or text, True/False incl. sahi /
+    galat, numeric with 1% tolerance incl. fractions, fill-in), written answers by AI against the model answer + marking points
+    (labelled "AI ne jaancha"); a wrong answer shows the stored steps + answer. Mastery: logistic expectation vs difficulty, k
+    0.15, hints discount a right answer (20% each, max 60%); revision: right -> interval doubles (max 60 days), half -> same,
+    wrong -> tomorrow.
+  - LANGUAGE: mode language, `language_turn` = reply in the target language + up to 4 gentle corrections + 3 new words.
+  - PROGRESS + REPORT: `progress` (mastery per topic, week minutes / attempts / accuracy, weak + due topics), `report` (plain
+    text), `share_request` -> `guru_report` card for the GUARDIAN only (consent + a guardian contact required; hash); ONLY
+    POST /api/guru/shares/{id}/decide (by_tap) -> wa.me / mailto draft she sends. `tick`: on her report weekday after 18:00,
+    once, a card for each learner who studied this week (never a message).
+- Employee: duty `tutoring`, role `personal_tutor`, preset `tutor_centre`; READ guru_dekho; admit family "guru" (samjhao /
+  doubt / homework / tutor / spoken english ...); voice via santosh_kaam; push guru_report (waiting only); worker tick; prompt
+  line TUTOR (show ONLY the rung returned, never solve on top, exam = hints only).
+- App: `lib/ui/guru_screen.dart` (GuruScreen learner list with "CONSENT BAAKI", GuruLearnerPage Padhai / Practice / Bhasha /
+  Pragati, GuruReportCard), Profile tile "Personal tutor", card key gureport, report card in calls.
+- Tests: NEW `server/tests/test_v0382_guru.py` (12): consent + daily time + adults uncapped; ladder one rung at a time + code check;
+  code disagreement said plainly; exam mode / graded work never get the answer; incomplete ladder refused; practice from the
+  approved bank, easy first, no answer leaked, letter answers, mastery up / down, solution on a wrong answer; AI-checked
+  written answer; language corrections; idle close; report only by her tap (stale hash, wa.me to the guardian); code checks;
+  tools / API / wiring.
+- Not verified: real model output (scripted JSON); a real photo through Claude vision; spoken pronunciation scoring (not built:
+  call words reach the tutor as text through santosh_kaam); Flutter not compiled locally (CI).

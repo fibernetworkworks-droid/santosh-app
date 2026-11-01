@@ -236,3 +236,8 @@ def test_tools_api_and_wiring(tutor, monkeypatch):
     assert c.post("/api/guru/sessions", json={"learner": "S-9999"}).status_code == 400
     from app import main
     assert TestClient(main.app).get("/api/guru").status_code in (200, 401, 403)
+
+
+def test_version():
+    from app.main import APP_VERSION
+    assert APP_VERSION == "0.382.0"
