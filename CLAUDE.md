@@ -170,7 +170,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ONE more attempt. Enterprise routes 6 -> 11. RULE: a module's tests passing says it works, never that anything
   calls it - grep for a caller outside its own file before calling a feature shipped.
 
-- Current version: v0.396.0 (pubspec 0.396.0+440). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.397.0 (pubspec 0.397.0+441). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
@@ -197,6 +197,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.397 REAL DRAWINGS (`engineering/views2d.py` box: kernel HLR vector views + hole stacks THRU/DEEP/CBORE/CSK + radii; `drawing.py` reportlab A3 sheet: measured dims, callouts, H.fit ISO 286, H.drawing first/third + ISO 2768, title block); page 2 = shaded views.
 - v0.394 CAD CONTACT (built as 0.392, `engineering/contact.py`): assembly FEA as separate parts - node-to-surface contacts (bonded / frictionless / friction, open + slip), preloaded bolt connectors (H.analyze(..., contact=, bolts=[...])), joint separates / slips -> redesign; bolt bearing in the hole not modelled.
 - v0.385 CAD NEXT PHASE (built as 0.383, `fea.flow` laminar CFD on the fluid body via H.analyze('flow', domain=...), fatigue on static studies + redesign, calc `joint` VDI 2230-style + `fatigue`); true contact FEA between assembly parts still not built.
 - v0.380 HOOLA CAD ANALYSIS (built as 0.375) (`engineering/fea.py` / `cam.py` / `calc.py` / `geom.py`): FEA on the B-rep (stress + SF, heat, modes; a weak part goes back to be redesigned), faceted real threads, sheet metal + flat DXF, freeform, H.expect measured, CNC G-code, tool `eng_calc`. VPS: pip install scikit-fem pyamg.

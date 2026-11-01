@@ -14944,3 +14944,30 @@ a new app field = a new column there, counts compared, her database unreachable 
 again, unlink keeps her data, mirror mode never blocks and catches up.
 Known limits: a write-through costs one round trip to her database per save (Mumbai region ~20-60 ms); if Hoola's own commit
 fails AFTER hers succeeded (very rare) "Compare counts" shows it; MySQL / Mongo / Firebase not yet.
+
+## v0.397.0 REAL DRAWINGS (1 Nov 2026)
+Owner, after the text-to-cad (earthtojake, MIT) read: "Real drawings: feature dimensions, hole callouts, tolerances.
+Ours shows only overall sizes plus a hidden-line page --- START WITH THIS". Built as our own code (their skill is
+build123d + cadgen; nothing copied).
+- Box side `engineering/views2d.py` (runner writes drawing.json when the model is not "big"): each view = the shape
+  turned so screen right / up / toward-eye map to X / Y / Z, OCC HLRBRep looking down -Z, visible (sharp +
+  outline) and hidden edges as model-mm polylines - vector, no SVG parsing. Views: front, top and LEFT (first
+  angle, India / IS SP 46 / ISO E default) or RIGHT (third angle).
+- Hole stacks from the B-rep: coaxial inward cylinders + cones grouped per axis line, split faces merged, open ends by
+  the solid classifier -> diameter, THRU or DEEP n (from the entry face), counterbore (bigger cylinder touching the
+  entry), countersink (cone: Ø at the face + included angle); the callout goes on the view looking INTO the entry
+  face, else a parallel view marked FAR SIDE. Outside cylinders -> R (rounds) or Ø (bosses).
+- Server side `engineering/drawing.py` (reportlab, A3 landscape vector PDF): ISO 5455 scale picked so views + their
+  dimension bands + the title block fit (margins and gaps sized to the number of chains), overall sizes once each
+  (width + height on the front, depth on the top view), step heights from long horizontal edges, hole positions as
+  baseline chains from the corner (x on the view's outer side, y on its right), centre marks on every hole, callouts
+  grouped by kind with leaders to the nearest side (only the top / side view use their right side; others use the
+  band between rows; nothing off the sheet), simple collision checks on every text, notes (ISO 2768-<class>, mm, break
+  edges, DRAFT + her notes) above an ISO 7200-style title block with the projection symbol, the iso picture in the
+  largest free square. Page 2 = the old shaded views (the raster hidden-line page is dropped).
+- H.fit(d, 'H7' | 'g6' | ...) -> callout with ISO 286 limits (calc.IT / SHAFT_ES / SHAFT_EI);
+  H.drawing(projection, tolerance f|m|c|v, notes, part_no).
+- Measured: plate with 4 x Ø5.5 THRU, CBORE, CSK, blind Ø5 DEEP 8, 4 x R5 -> every callout read back from the PDF
+  text; 40-tooth gear sheet in ~1 s. Tests: tests/test_v0395_drawing.py (5).
+- Not yet: section views, GD&T frames (datums / position), thread callouts from modelled threads, auto-dims of every
+  pocket / slot (only steps + holes), multi-sheet assemblies with balloons + parts list.
