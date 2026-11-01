@@ -134,3 +134,14 @@ Vendored unchanged at `server/app/static/vendor/maplibre/` (maplibre-gl.js, mapl
 native apps' tracking screens (Android WebView) and the console's riders map. BSD-3-Clause, full text in
 `server/app/static/vendor/maplibre/LICENSE.txt`. Map tiles come from OpenFreeMap (https://openfreemap.org, free, no key);
 the map shows their attribution: © OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors (ODbL).
+
+## Mermaid (diagram drawing for the Architecture Desk, v0.413)
+
+`server/app/archdesk/vendor/mermaid.min.js` is Mermaid 11.4.1 (https://github.com/mermaid-js/mermaid), unmodified,
+used to draw architecture diagrams inside the server's headless Chromium. It is never served to users.
+MIT License - Copyright (c) 2014-2024 Knut Sveidqvist and contributors. Permission is hereby granted, free of charge,
+to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the
+Software without restriction, including without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to
+do so, subject to the following conditions: The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

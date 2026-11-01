@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk'};    // v0.370 employee key -> its desk view when the names differ
+  const DESKS = {game_dev: 'gamedesk', architect: 'archdesk'};   // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
   async function hub(el) {
@@ -1163,5 +1163,94 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     game(el);
   }
 
-  return {hub, desk, social, cad, game};
+  // ------------------------------------------------------------ v0.410 the Architecture Desk (Principal Software Architect)
+  let ATIMER = null, AOPEN = '';
+  const AST = {reading: ['v', 'Reading the repo'], designing: ['v', 'Writing the design'], drawing: ['v', 'Drawing diagrams'],
+               waiting_her: ['warn', 'Waiting for your OK'], approved: ['ok', 'Approved'], failed: ['bad', 'Did not work'],
+               cancelled: ['', 'Stopped']};
+  const ABUSY = ['reading', 'designing', 'drawing'];
+  const VERD = {fits: ['ok', 'Fits the design'], drifts: ['warn', 'Drifts from the design'], breaks: ['bad', 'Breaks the design']};
+  async function arch(el) {
+    clearTimeout(ATIMER);
+    if (AOPEN) return archOne(el, AOPEN);
+    let d;
+    try { d = await api('GET', '/api/arch/projects'); }
+    catch (e) { el.innerHTML = `<div class="vh"><h2>Architecture Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const ps = d.projects || [];
+    el.innerHTML = `<div class="vh"><h2>Architecture Desk</h2><span class="muted em-sub">Your Principal Software Architect. Describe the system (and your GitHub repo, if there is one): you get decisions, diagrams, capacity in numbers, risks and a PDF - then your pull requests are checked against it.</span></div>
+      <article class="tile gl cad-new"><textarea id="arBrief" rows="4" maxlength="6000" placeholder="What the system must do, who uses it, how many people a day, anything it must work with. e.g. A food-delivery backend for 3 cities: customers order in the app, restaurants accept, riders deliver with live tracking. 50,000 orders a day at launch, UPI payments, Hindi + English."></textarea>
+      <div class="cad-in"><label>GitHub repo to read first (optional) <input id="arRepo" placeholder="owner/name"></label>
+      <label>Users a day <input id="arDau" inputmode="numeric" placeholder="e.g. 200000"></label>
+      <label>Requests per user a day <input id="arReq" inputmode="numeric" placeholder="e.g. 30"></label></div>
+      <div class="acts"><button class="btn go" type="button" id="arGo">Design it</button>${d.health && !d.health.diagrams ? '<span class="muted">Diagram drawing is not set up on this server - designs come without pictures.</span>' : ''}</div></article>
+      ${ps.length ? ps.map(p => { const st = AST[p.status] || ['', p.status];
+        return `<article class="tile gl cad-card"><div class="em-h"><h3>${esc(p.title)}${p.version ? ` <small class="muted">v${esc(String(p.version))}</small>` : ''}</h3>${tag(st[0], ABUSY.includes(p.status) ? p.stage || st[1] : st[1])}</div>
+          <p class="muted">${p.repo ? 'Repo ' + esc(p.repo) : 'New system'} · ${esc(when(p.created_at))}</p>${p.error ? `<p class="badc">${esc(p.error)}</p>` : ''}
+          <div class="acts"><button class="btn soft" type="button" data-aropen="${esc(p.id)}">Open</button>${p.pdf ? `<a class="btn soft" href="${esc(p.pdf)}" target="_blank" rel="noopener">PDF</a>` : ''}</div></article>`; }).join('') : '<div class="empty">No designs yet.</div>'}`;
+    el.querySelector('#arGo').addEventListener('click', async ev => {
+      const brief = el.querySelector('#arBrief').value.trim();
+      if (!brief) return;
+      const scale = {};
+      const dau = el.querySelector('#arDau').value.replace(/[, ]/g, ''), req = el.querySelector('#arReq').value.replace(/[, ]/g, '');
+      if (dau) scale.dau = Number(dau);
+      if (req) scale.requests_per_user_per_day = Number(req);
+      ev.target.disabled = true;
+      try { const p = await api('POST', '/api/arch/projects', {brief, repo: el.querySelector('#arRepo').value.trim(), scale}); AOPEN = p.id; toast('Designing. A design takes a few minutes.'); }
+      catch (e) { toast(e.message, true); }
+      arch(el);
+    });
+    el.querySelectorAll('[data-aropen]').forEach(b => b.addEventListener('click', () => { AOPEN = b.dataset.aropen; arch(el); }));
+    if (ps.some(p => ABUSY.includes(p.status))) ATIMER = setTimeout(() => { if (visible(el)) arch(el); }, 5000);
+  }
+  async function archOne(el, pid) {
+    let p;
+    try { p = await api('GET', `/api/arch/projects/${encodeURIComponent(pid)}`); }
+    catch (e) { AOPEN = ''; toast(e.message, true); return arch(el); }
+    const st = AST[p.status] || ['', p.status], busy = ABUSY.includes(p.status), d = p.design || {}, cap = p.capacity || {};
+    const md = s => window.HoolaMD ? window.HoolaMD.render(String(s || '')) : `<p>${esc(s)}</p>`;
+    const rows = (head, xs) => `<table class="cad-bom"><thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${xs.map(r => `<tr>${r.map(c => `<td>${esc(c ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    const pics = (p.diagrams || []).map(g => `<figure class="ar-dia"><figcaption>${esc(g.name)}</figcaption>${g.ok && (g.svg || g.png)
+      ? `<a href="${esc(g.svg || g.png)}" target="_blank" rel="noopener"><img src="${esc(g.png || g.svg)}" alt="${esc(g.name)}" loading="lazy"></a>`
+      : `<p class="badc">Could not be drawn: ${esc(g.error || '')}</p><pre>${esc(g.mermaid || '')}</pre>`}</figure>`).join('');
+    const capHtml = cap.rows ? rows(['Result', 'Value', 'How'], cap.rows.map(r => [r.what, r.value, r.formula]))
+      + (cap.assumed && cap.assumed.length ? `<p class="muted">Assumed, please confirm: ${esc(cap.assumed.join(', '))}</p>` : '')
+      : `<p class="muted">${esc(cap.error || '–')}</p>`;
+    const adrs = (d.adrs || []).map(a => `<details><summary><b>${esc(a.id)}</b> ${esc(a.title)}</summary><p><b>Decision:</b> ${esc(a.decision)}</p><p class="muted"><b>Context:</b> ${esc(a.context)}</p>${(a.alternatives || []).length ? `<p class="muted"><b>Not chosen:</b> ${esc(a.alternatives.join(' · '))}</p>` : ''}<p class="muted"><b>Consequences:</b> ${esc(a.consequences)}</p></details>`).join('');
+    const risks = (d.risks || []).length ? rows(['Risk', 'Likelihood', 'Impact', 'Mitigation'], d.risks.map(r => [r.risk, r.likelihood, r.impact, r.mitigation])) : '';
+    const revs = (p.reviews || []).map(r => { const v = VERD[r.verdict] || ['', r.verdict];
+      return `<article class="tile gl"><div class="em-h"><h4>PR #${esc(String(r.pr))} ${esc(r.title)}</h4>${tag(v[0], v[1])} ${tag('', r.status)}</div>${md(r.summary)}
+        ${(r.findings || []).map(f => `<p><b>${esc(f.severity)}</b> · ${esc(f.area)}${f.adr ? ' (' + esc(f.adr) + ')' : ''}: ${esc(f.finding)}<br><span class="muted">→ ${esc(f.fix)}</span></p>`).join('')}
+        ${r.status === 'draft' ? `<div class="acts"><button class="btn go" type="button" data-arpost="${esc(r.id)}">Post on PR</button><button class="btn soft" type="button" data-ardisc="${esc(r.id)}">Discard</button></div>` : ''}</article>`; }).join('');
+    el.innerHTML = `<div class="vh"><h2>${esc(p.title)}${p.version ? ` <small class="muted">v${esc(String(p.version))}</small>` : ''}</h2>${tag(st[0], busy ? p.stage || st[1] : st[1])}</div>
+      <div class="acts"><button class="btn soft" type="button" id="arBack">← All designs</button>${p.pdf ? `<a class="btn soft" href="${esc(p.pdf)}" target="_blank" rel="noopener">Download PDF</a>` : ''}
+        ${p.status === 'waiting_her' ? `<button class="btn go" type="button" id="arOk">Approve design</button>` : ''}
+        ${busy ? '<button class="btn soft" type="button" id="arStop">Stop</button>' : '<button class="btn soft em-leave" type="button" id="arDel">Delete</button>'}</div>
+      ${p.error ? `<p class="badc">${esc(p.error)}</p>` : ''}
+      ${busy ? '<div class="empty">Working on it - this page refreshes by itself.</div>' : ''}
+      ${d.summary ? `<article class="tile gl">${md(d.summary)}</article>` : ''}
+      ${pics ? `<h3 class="em-group">Diagrams</h3><div class="ar-dias">${pics}</div>` : ''}
+      ${d.title ? `<h3 class="em-group">Capacity (worked out in code)</h3><article class="tile gl">${capHtml}</article>` : ''}
+      ${(d.components || []).length ? `<h3 class="em-group">Components</h3><article class="tile gl">${rows(['Component', 'Kind', 'Does', 'Tech'], d.components.map(c => [c.name, c.kind, c.responsibility, c.tech]))}</article>` : ''}
+      ${adrs ? `<h3 class="em-group">Decisions (ADRs)</h3><article class="tile gl">${adrs}</article>` : ''}
+      ${risks ? `<h3 class="em-group">Risks</h3><article class="tile gl">${risks}</article>` : ''}
+      ${(d.open_questions || []).length ? `<h3 class="em-group">Open questions</h3><article class="tile gl"><ul>${d.open_questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul></article>` : ''}
+      ${p.markdown ? `<details class="tile gl"><summary>Full design document</summary>${md(p.markdown)}</details>` : ''}
+      ${!busy && p.version ? `<div class="cad-change"><input id="arWords" maxlength="2000" placeholder="Change it, e.g. use Postgres not MongoDB; add an admin panel; plan for 10x users"><button class="btn soft" type="button" id="arCh">Make next version</button></div>` : ''}
+      ${p.status === 'approved' && p.repo ? `<h3 class="em-group">Pull requests against this design</h3><article class="tile gl"><label class="em-row"><input type="checkbox" id="arWatch" ${p.watch_prs ? 'checked' : ''}> Read new pull requests on its own (draft notes only)</label>
+        <div class="cad-change"><input id="arPr" inputmode="numeric" placeholder="PR number"><button class="btn soft" type="button" id="arRev">Check this PR</button></div></article>${revs}` : revs}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } archOne(el, pid); };
+    el.querySelector('#arBack').addEventListener('click', () => { AOPEN = ''; arch(el); });
+    el.querySelector('#arOk')?.addEventListener('click', () => go(() => api('POST', `/api/arch/projects/${encodeURIComponent(pid)}/approve`, {}), 'Approved.'));
+    el.querySelector('#arStop')?.addEventListener('click', () => go(() => api('POST', `/api/arch/projects/${encodeURIComponent(pid)}/cancel`), 'Stopped.'));
+    el.querySelector('#arDel')?.addEventListener('click', async () => { if (!confirm('Delete this design, its versions and its PR notes?')) return;
+      try { await api('DELETE', `/api/arch/projects/${encodeURIComponent(pid)}`); AOPEN = ''; } catch (e) { toast(e.message, true); } arch(el); });
+    el.querySelector('#arCh')?.addEventListener('click', () => { const w = el.querySelector('#arWords').value.trim(); if (w) go(() => api('POST', `/api/arch/projects/${encodeURIComponent(pid)}/change`, {words: w}), 'Making the next version.'); });
+    el.querySelector('#arWatch')?.addEventListener('change', ev => go(() => api('PUT', `/api/arch/projects/${encodeURIComponent(pid)}/watch`, {watch_prs: ev.target.checked})));
+    el.querySelector('#arRev')?.addEventListener('click', ev => { const n = parseInt(el.querySelector('#arPr').value, 10); if (!n) return; ev.target.disabled = true; go(() => api('POST', `/api/arch/projects/${encodeURIComponent(pid)}/review`, {pr: n}), 'Checked - the notes are a draft until you post them.'); });
+    el.querySelectorAll('[data-arpost]').forEach(b => b.addEventListener('click', () => { if (confirm('Post these notes as one comment on the pull request?')) go(() => api('POST', `/api/arch/reviews/${encodeURIComponent(b.dataset.arpost)}/post`), 'Posted on the PR.'); }));
+    el.querySelectorAll('[data-ardisc]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/arch/reviews/${encodeURIComponent(b.dataset.ardisc)}/discard`))));
+    if (busy) ATIMER = setTimeout(() => { if (visible(el) && AOPEN === pid) archOne(el, pid); }, 5000);
+  }
+
+  return {hub, desk, social, cad, game, arch};
 };

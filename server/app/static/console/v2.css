@@ -2472,6 +2472,12 @@ body.albon{overflow:hidden}
 #systems .tbl code, #systems .kv code { font-size: 12.5px; word-break: break-all; }
 #systems .btn.small { height: 32px; padding: 0 10px; font-size: 13px; }
 @media (max-width: 720px) { #systems .tbl { font-size: 12.5px; } #systems .ent-form input, #systems .ent-form select { height: 44px; } }
+/* v0.410 Architecture Desk: diagrams grid */
+#app .ar-dias{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+#app .ar-dia{margin:0;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+#app .ar-dia figcaption{font-size:13px;font-weight:500;margin-bottom:6px}
+#app .ar-dia img{width:100%;height:auto;display:block;border-radius:8px}
+#app .ar-dia pre{white-space:pre-wrap;font-size:12px;max-height:200px;overflow:auto}
 
 /* v0.406 HOOLA GAME CREW - roles, acceptance criteria, reviews, gates */
 .gs-role{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--pri-soft,rgba(91,69,224,.12));color:var(--pri,#5B45E0);margin-right:6px}

@@ -294,7 +294,7 @@ def logic_apply(tenant: str, ref: str, h: str) -> dict[str, Any]:
     return out
 
 
-# ---------------------------------------------------------------- v0.413 every old v0.305 site moves by itself
+# ---------------------------------------------------------------- v0.414 every old v0.305 site moves by itself
 _MIGRATE = {"done": 0, "failed": 0, "last": ""}
 
 
@@ -326,7 +326,7 @@ def migrate_all(limit: int = 25) -> dict[str, Any]:
     return {"moved": len(moved), "left": max(0, len(todo) - len(moved)), "sites": moved}
 
 
-# ---------------------------------------------------------------- v0.413 the phone app on the SAME data
+# ---------------------------------------------------------------- v0.414 the phone app on the SAME data
 def phone_app(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
     """Her website's app becomes an Android / iPhone app design WITHOUT a second copy of anything: App Sahayak plans the
     screens for the site's business (its normal plan card -> 3 looks -> design -> build), on the SAME project - same id,

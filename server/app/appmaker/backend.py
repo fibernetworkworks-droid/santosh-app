@@ -225,7 +225,7 @@ def ensure(r: AppProject) -> dict[str, Any]:
     if be.get("schema", {}).get("collections") is not None and int(be.get("v") or 1) >= SCHEMA_V:
         return be
     if (be.get("schema") or {}).get("kind") == "web" and be.get("schema", {}).get("collections") is not None:
-        return _web_upgrade(r, be)     # v0.413 a website's lists are HERS (from the site / Architect), never re-made from a plan
+        return _web_upgrade(r, be)     # v0.414 a website's lists are HERS (from the site / Architect), never re-made from a plan
     # v0.319 an older backend is upgraded in place: lists only GAIN fields (photo / location / paid), rows are untouched
     from . import locks as LK
     with LK.app(r.id), session() as s:           # v0.390 under the app's lock, from the row as it is NOW
@@ -250,7 +250,7 @@ def ensure(r: AppProject) -> dict[str, Any]:
 
 
 def _web_upgrade(r: AppProject, be: dict[str, Any]) -> dict[str, Any]:
-    """v0.413 a website app's backend only gets its version number raised: lists, fields and rows stay exactly as they are."""
+    """v0.414 a website app's backend only gets its version number raised: lists, fields and rows stay exactly as they are."""
     def up(b):
         b["v"] = SCHEMA_V
     out = patch_backend(r, fn=up)

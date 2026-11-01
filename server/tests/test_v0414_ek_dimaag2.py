@@ -1,4 +1,4 @@
-"""v0.413 EK DIMAAG 2 - web Step 2 finished (W1 + W13 of docs/WEB_PLATFORM_PLAN.md).
+"""v0.414 EK DIMAAG 2 - web Step 2 finished (W1 + W13 of docs/WEB_PLATFORM_PLAN.md).
 
 1. old v0.305 sites move by themselves (worker sweep) and every NEW web app lands on the one backend at once;
    a website's lists are never re-made from an app plan when the backend version moves.
@@ -25,7 +25,7 @@ def _login(c, base, email, pw="pass-word-1"):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.413.0"
+    assert APP_VERSION == "0.414.0"
 
 
 # ---------------------------------------------------------------- 1. old sites move by themselves

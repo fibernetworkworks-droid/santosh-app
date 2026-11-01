@@ -510,7 +510,7 @@ def specs(tenant: str, limit: int = 20) -> list[dict[str, Any]]:
         return out
 
 
-# ---------------------------------------------------------------- v0.413 the live check (real Opus, nothing built)
+# ---------------------------------------------------------------- v0.414 the live check (real Opus, nothing built)
 def live_check(brief: str = "", tenant: str = "default") -> dict[str, Any]:
     """`python -m app.site.architect check ["brief"]` / vps-ops architect_check: one REAL Opus spec + the real App Sahayak
     author + checker on her server. Prints the card, builds nothing, then removes the spec (her apps list never sees it)."""

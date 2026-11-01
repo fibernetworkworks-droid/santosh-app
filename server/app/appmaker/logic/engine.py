@@ -444,7 +444,7 @@ def before_create(r: AppProject, coll: str, data: dict[str, Any], w: W.Who) -> d
 
 
 def _share_owner(r: AppProject, c: dict[str, Any], coll: str, row_id: str) -> None:
-    """v0.413 relation `share`: a row made under a parent row (attendance / marks under a student) belongs to that parent
+    """v0.414 relation `share`: a row made under a parent row (attendance / marks under a student) belongs to that parent
     row's person, so a parent reads her own child's rows ('own') while staff still see all. Set once, at create."""
     rels = [x for x in (c.get("spec") or {}).get("relations", []) if x.get("share") and x["from"] == coll]
     if not rels:

@@ -79,6 +79,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.post("/api/game", dependencies=[Depends(require_key)])
     async def make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        from ..employee import hire   # v0.410 a game starts only while the Game Developer is hired (the tool checked, the route did not)
+        if not hire.is_working(tenant, "game_dev"):
+            raise HTTPException(400, "Game Developer abhi hired nahi hai (ya paused hai). Employees mein 'Hire Game Developer' dabaiye.")
         b = _b(body)
         return await call(service.start, tenant, str(b.get("conversation_id") or ""), str(b.get("brief") or ""),
                           str(b.get("orientation") or "portrait"))

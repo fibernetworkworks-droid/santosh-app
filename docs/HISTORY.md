@@ -15508,7 +15508,36 @@ Maps, a rider's location while on shift, and live tracking of one order.
 - Not built / not verified: the Google Maps SDK with her key, road-snapped routes and real road ETA (they need a routing
   service), a "left" geofence. No real phone or emulator run yet: CI compiles the kits.
 
-## v0.413.0 EK DIMAAG 2 - web Step 2 finished (owner: "FINISH THIS ALL", after "IS STEP 2 DONE" listed six gaps)
+## v0.413.0 PRINCIPAL SOFTWARE ARCHITECT (built as 0.401 / 0.410) - the first of ten Software Architecture, Engineering & Core Systems employees (1 Nov 2026, owner: "Principal Software Architect ---- START THE WORK"; built as 0.401)
+- PLAN `docs/SOFTWARE_DESK_PLAN.md` (10 roles, where each runs, honest limits, phases). Hub group `hire.SW_GROUP` with
+  `architect` live and compiler_eng / kernel_dev / graphics_eng / dbengine_dev / distsys_eng / hypervisor_eng /
+  lowlatency_eng / mainframe_arch / refactor_eng "coming".
+- NEW `app/archdesk/`: `models.py` (arch_projects, arch_reviews; registered in db.init_db, ensure_table), `capacity.py`
+  (all sums in code, formulas shown, no users-a-day = refused, a number is hers only if she typed it or it is in her brief),
+  `diagrams.py` (vendored Mermaid 11.4.1 in `vendor/`, drawn in the server Chromium: strict security level, only file:
+  loads, `clean()` refuses click / href / javascript: / init / HTML / unknown kinds; SVG + PNG; MIT notice in
+  THIRD_PARTY_NOTICES.md), `service.py` (start / change / approve / settings / cancel / delete, `read_repo` through the
+  Developer Sahayak's token - tree minus vendor dirs, key files by priority, capped; Opus `DESIGN_SYSTEM` JSON validated
+  by `_valid`; one `FIX_SYSTEM` round per broken diagram; `markdown()`; `_pdf()` printed by docstudio's Printer with the
+  SVGs inline; `review_pr` against the approved design -> draft ArchReview; `post_review(by_tap=True)` = ONE COMMENT via
+  gh.review; `run_due` = 24/7 watch of open PRs per approved design with watch_prs, each head read once, never posts;
+  caps 6 designs / 10 reviews a day; gate `hire.is_working` for new work, `is_hired` to read), `api.py` (/api/arch/projects
+  [GET, POST], /{id} [GET, DELETE], change, approve, watch, cancel, review, /api/arch/reviews/{id}/post|discard, signed
+  /api/arch/files/{id}/v{n}/{name} with a CSP on SVG).
+- Agent tool `software_architect` (`agent/arch_tools.py`: new / list / status / change / approve / review_pr / watch /
+  cancel; owner-only writes; posting is NOT a tool action), family `arch` admitted by the architecture / system design /
+  HLD / scale / microservices / ADR / capacity router line (`admit.py`), prompt guide line (`prompts.py`). Worker hook
+  `_ARCH_DESK_BUSY` -> `run_due` in an executor.
+- Console: `employees.js` `arch()` / `archOne()` (new design form with repo + users a day + requests, list, design page:
+  summary, diagrams grid, capacity table, components, ADRs, risks, open questions, full Markdown, next version, approve,
+  PR box + watch switch, draft reviews with Post on PR / Discard), `DESKS.architect = 'archdesk'`, v2.js sidebar desk +
+  title + dispatch, v2.html section, v2.css `.ar-dia*`. Phone: NEW `lib/ui/arch_desk.dart` (ArchDeskScreen +
+  ArchDesignScreen), `employees_screen.dart` opens it, `api.dart` arch* methods.
+- FIX: `POST /api/game` started a game for anyone with the key - it now checks the Game Developer hire (the tool did).
+- Tests NEW `test_v0410_architect.py` (16) incl. a REAL Mermaid render in Chromium when present; test_v0370 updated
+  (hire before POST /api/game, employees.js export). Version 0.413.0 (pubspec 0.413.0+457, console ?v=0.413.0, pins).
+
+## v0.414.0 EK DIMAAG 2 - web Step 2 finished (owner: "FINISH THIS ALL", after "IS STEP 2 DONE" listed six gaps)
 
 The six gaps left after v0.407, each closed:
 1. **Old sites move by themselves.** `site/applink.migrate_all()` runs in the worker loop: every website that still has a
@@ -15517,7 +15546,7 @@ The six gaps left after v0.407, each closed:
    designed. Switch: `SITE_APP_LINK` (default true). The whole v0.305 web-app suite now passes on the linked path.
    Safety found on the way: `backend.ensure()` re-made a backend's lists from the app PLAN when `SCHEMA_V` moved - for a
    website that would have wiped her lists. A `kind: web` backend now only gets its version raised (`_web_upgrade`).
-2. **The full school portal from one line** (tests/test_v0413_ek_dimaag2.py): admission (parent) -> approval (teacher asks,
+2. **The full school portal from one line** (tests/test_v0414_ek_dimaag2.py): admission (parent) -> approval (teacher asks,
    principal approves, maker-checker refuses the asker) -> trigger makes the student (owned by the parent) -> trigger makes
    the fee (from the class's fee) -> fee Paid only by the principal and only with a receipt no. -> class page lists its
    admissions -> attendance once per student per day (unique) by the teacher -> report card total / percent / result worked

@@ -1,4 +1,4 @@
-/// v0.413 HOOLA ARCHITECT on the phone: her one line -> the spec card (stories, pages, users, data, rules, payments,
+/// v0.414 HOOLA ARCHITECT on the phone: her one line -> the spec card (stories, pages, users, data, rules, payments,
 /// notifications, other apps, features). She switches a part off, asks for a change in her words, or says Haan -> the
 /// website + its app brain are built. Same card as the console (event `site_spec`), updated in place.
 library;
