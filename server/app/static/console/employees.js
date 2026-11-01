@@ -240,7 +240,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let SOC = null;
   const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page'};
   const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};
-  const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.354
+  const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
   async function social(el) {
     SOC = el; clearTimeout(TIMER);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Social Desk</h2></div><div class="empty">Loading…</div>';

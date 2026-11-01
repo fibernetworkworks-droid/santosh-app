@@ -12921,3 +12921,32 @@ UI / UX --- SHOW ME THE PROTOTYPE OF THIS PAGE HERE".
   `/api/site/showcase/<slot>/<pic|clip>` (showcase slots only, 404 until made, cached a day). Until the owner makes the showcase
   (Create > Engines > Showcase, ~Rs 428 pictures + ~Rs 340 clips through the normal price cards), the tiles are drawn scenes.
 - Menus: home / Employee / Network gain "Studio". Tests: `test_v0351_studio_page.py`, `/studio` added to `test_website.py`.
+
+## v0.355.0 SOCIAL MEDIA MANAGER Phase 2 (1 Nov 2026, built as 0.354.0, re-versioned past the parallel v0.354)
+Owner: "GO PHASE 2" (docs/SOCIAL_EMPLOYEE_PLAN.md: publish with her tap).
+- `social/publish.py` (new): table social_assets (her upload or a poster; pictures re-encoded as JPEG <= 1440 px, bytes
+  checked: Pillow opens it or it starts with an MP4 `ftyp` box; video <= 100 MB), `signed_url` / `open_signed` (HMAC with
+  SECRET_KEY, 2-3 h; public GET /api/social/media/<id>?e&s for Meta's servers), `make_poster` (Brand Sahayak `make` +
+  `_page_for(proof=False)` + render, insta_post or story size, attached and replaces the media), `attach` / `detach`,
+  `post_hash` (caption + hashtags + media + platforms + format + slot), `caption_of` (hashtags appended once),
+  `problems` (IG needs media; reel = video; carousel = 2-10 photos; caption <= 2200; <= 30 hashtags; no [ ] blanks; FB
+  not empty), `publish_post(by_tap)` (her tap stamps the hash; otherwise status approved + hash match), IG: limit read
+  first (`content_publishing_limit`, stop at total-1), permission `instagram_business_content_publish` checked (Phase 1
+  connections asked to Reconnect), image / CAROUSEL (children + parent) / REELS (wait FINISHED) / STORIES -> media_publish
+  -> permalink; FB: photo / unpublished photos + feed attached_media / videos file_url / feed text -> permalink_url;
+  per-platform results, 190 marks the account expired; `due` (approved + slot <= now; > 24 h late = missed) and
+  `run_publisher` (desk job `publish`, every sweep while the desk is ready).
+- `social/meta.py`: IG_SCOPES / FB_SCOPES now ask to post; ig_publish_limit, ig_container, ig_wait (status_code
+  polling, `_sleep` swappable), ig_publish, ig_permalink, fb_photo, fb_photos_post, fb_text, fb_video, fb_permalink.
+- `social/desk.py`: social_posts gain media / approved_hash / result / error / published_at / attempts (nullable);
+  approve and approve_calendar stamp the hash; any edit (or media change) after approval = draft; published posts are
+  frozen; calendar view carries media (signed thumbnails), result, error, problems; accounts carry can_post.
+- Routes: POST /api/social/media (upload), POST /api/social/posts/{id}/media {assets, replace}, DELETE
+  /api/social/posts/{id}/media/{asset}, POST /api/social/posts/{id}/poster, POST /api/social/posts/{id}/publish (checks
+  at once, sends in the background), GET /api/social/media/{id} (signed, public), run job `publish`.
+- Console post cards: thumbnails, Add photo / video, Make poster, Publish now (confirm), Posted links / reasons,
+  "Reconnect to allow posting"; phone: Add photo (gallery), Make poster, Publish now (dialog), links.
+- Privacy policy: "Instagram and Facebook (Social Media Manager)" section (Meta App Review reads it).
+- Tests: `test_v0355_social_publish.py` (10); Phase 1 tests updated (publish scope requested now, publish job each sweep).
+- Not verified live: Meta's real publishing (mocked from Meta's docs). Next: App Review screencasts for
+  instagram_business_content_publish + pages_manage_posts, then Phase 3 (comments / DMs inbox).

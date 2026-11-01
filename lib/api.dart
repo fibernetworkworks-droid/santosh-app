@@ -998,7 +998,7 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/calendar/approve', body: {}) as Map);
   Future<Map<String, dynamic>> socialPost(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id', body: body) as Map);
-  // v0.354 Phase 2: pictures for a post, poster, publish now (her tap)
+  // v0.355 Phase 2: pictures for a post, poster, publish now (her tap)
   Future<Map<String, dynamic>> socialUpload(String filename, List<int> bytes) async => uploadFile('/api/social/media', filename, bytes);
   Future<Map<String, dynamic>> socialAttach(String id, List<String> assets) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/media', body: {'assets': assets}) as Map);

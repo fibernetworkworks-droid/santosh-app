@@ -1,4 +1,4 @@
-"""v0.354 SOCIAL MEDIA MANAGER Phase 2: a calendar post goes out to Instagram and / or her Facebook Page - only the exact
+"""v0.355 SOCIAL MEDIA MANAGER Phase 2: a calendar post goes out to Instagram and / or her Facebook Page - only the exact
 post she approved (caption + hashtags + pictures + platforms + format + time, hashed at her tap), at its time or when she
 taps Publish now. Pictures come from her upload or a Brand poster made for the post; Instagram fetches them from a
 short-lived signed link on this server (Meta's servers cannot log in). Every result (post id, link, or the plain reason it

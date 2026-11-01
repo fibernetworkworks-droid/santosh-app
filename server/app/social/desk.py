@@ -112,9 +112,9 @@ class SocialPost(Base):
     status: Mapped[str] = mapped_column(String(12), default="draft")   # draft | approved | skipped | publishing | published | failed | missed
     source: Mapped[str] = mapped_column(String(8), default="rules")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
-    media: Mapped[str | None] = mapped_column(Text, nullable=True)               # v0.354 [SocialAsset ids]
-    approved_hash: Mapped[str | None] = mapped_column(String(40), nullable=True)  # v0.354 exactly what she approved
-    result: Mapped[str | None] = mapped_column(Text, nullable=True)              # v0.354 {platform: {id, link} | {error}}
+    media: Mapped[str | None] = mapped_column(Text, nullable=True)               # v0.355 [SocialAsset ids]
+    approved_hash: Mapped[str | None] = mapped_column(String(40), nullable=True)  # v0.355 exactly what she approved
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)              # v0.355 {platform: {id, link} | {error}}
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -131,7 +131,7 @@ class SocialEvent(Base):
 
 
 _READY: set[int] = set()
-TABLES = (SocialAccount, SocialMedia, SocialDesk, SocialPost, SocialEvent)   # + publish.SocialAsset (v0.354)
+TABLES = (SocialAccount, SocialMedia, SocialDesk, SocialPost, SocialEvent)   # + publish.SocialAsset (v0.355)
 
 
 def ensure_tables() -> None:
@@ -687,7 +687,7 @@ def approve_calendar(tenant: str) -> dict[str, Any]:
     with session() as s:
         for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant, SocialPost.status == "draft")).all():
             p.status = "approved"
-            _stamp_ok(p)                           # v0.354 exactly this post (caption, pictures, time) is what she said yes to
+            _stamp_ok(p)                           # v0.355 exactly this post (caption, pictures, time) is what she said yes to
             n += 1
         _desk(s, tenant).calendar_status = "approved"
     _event(tenant, "note", "ok", f"You approved the calendar ({n} posts). Each goes out at its time once it has its picture; a post you change needs your OK again.")
@@ -896,7 +896,7 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
         has_acc = s.scalars(select(SocialAccount.id).where(SocialAccount.tenant_id == tenant)).first() is not None
     if not has_acc:
         return []
-    out = ["publish"] if state == "ready" else []      # v0.354 every sweep (~4 min): approved posts whose time has come
+    out = ["publish"] if state == "ready" else []      # v0.355 every sweep (~4 min): approved posts whose time has come
     if state in ("new", "error"):
         out.append("first")
     last_h = stamps.get("hourly", "")

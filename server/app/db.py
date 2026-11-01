@@ -802,7 +802,7 @@ def init_db(url: str | None = None):
     from .seo import service as _seo  # noqa: F401
     from .seo import desk as _seo_desk  # noqa: F401  (v0.317 SEO Employee desk)
     from .employee import hire as _hire  # noqa: F401  (v0.317 hired employees)
-    from .social import publish as _social_publish  # noqa: F401  (v0.354 Social Media Manager posting)
+    from .social import publish as _social_publish  # noqa: F401  (v0.355 Social Media Manager posting)
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .thok import service as _thok  # noqa: F401
     from .niryat import service as _niryat  # noqa: F401

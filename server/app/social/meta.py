@@ -28,7 +28,7 @@ IG_GRAPH = "https://graph.instagram.com"
 FB_DIALOG = "https://www.facebook.com"
 FB_GRAPH = "https://graph.facebook.com"
 
-# Phase 1 read; v0.354 Phase 2 adds publishing (comments / messages come in Phase 3; App Review per permission).
+# Phase 1 read; v0.355 Phase 2 adds publishing (comments / messages come in Phase 3; App Review per permission).
 IG_SCOPES_READ = ["instagram_business_basic", "instagram_business_manage_insights"]
 FB_SCOPES_READ = ["pages_show_list", "pages_read_engagement", "read_insights", "business_management"]
 IG_SCOPES = IG_SCOPES_READ + ["instagram_business_content_publish"]
@@ -252,7 +252,7 @@ def parse_signed_request(signed: str) -> dict[str, Any]:
     raise MetaError("signed_request ka signature mel nahi khaata.")
 
 
-# ---------------------------------------------------------------- v0.354 publishing (Phase 2) - only ever called for a post she approved
+# ---------------------------------------------------------------- v0.355 publishing (Phase 2) - only ever called for a post she approved
 def ig_publish_limit(ig_user: str, token: str) -> dict[str, int]:
     """How many API posts this account has used in the moving 24 hours, and the cap (Meta: 50; read it, never assume)."""
     js = _req("GET", f"{IG_GRAPH}/{_v()}/{ig_user}/content_publishing_limit", params={"fields": "quota_usage,config",

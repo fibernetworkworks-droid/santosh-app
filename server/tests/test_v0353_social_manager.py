@@ -151,7 +151,7 @@ def test_connect_instagram_reads_posts_baseline_and_calendar(social):
     qs = parse_qs(p.query)
     assert p.netloc == "www.instagram.com" and qs["client_id"] == ["igapp"]
     assert qs["redirect_uri"] == ["https://hoola.test/api/social/instagram/callback"]
-    assert "instagram_business_content_publish" in qs["scope"][0]           # v0.354 Phase 2 asks to post too (her tap per post)
+    assert "instagram_business_content_publish" in qs["scope"][0]           # v0.355 Phase 2 asks to post too (her tap per post)
     st = _state_from(url)
     r = D.finish_link("instagram", "IGCODE#_", st, background=False)
     assert r["accounts"] == ["@sharmadental"]
@@ -276,7 +276,7 @@ def test_scheduler_runs_jobs_on_her_clock(social):
     D.finish_link("instagram", "IGCODE", _state_from(D.connect_url(T, "instagram")), background=False)
     ist = timezone(timedelta(hours=5, minutes=30))
     monday9 = datetime(2026, 11, 2, 9, 30, tzinfo=ist)
-    assert set(D.due_jobs(T, monday9)) == {"publish", "hourly", "daily", "weekly"}      # v0.354 publish = every sweep
+    assert set(D.due_jobs(T, monday9)) == {"publish", "hourly", "daily", "weekly"}      # v0.355 publish = every sweep
     done = D.run_due(at=monday9, force=True)
     assert {j for _, j in done} == {"publish", "hourly", "daily", "weekly"}
     assert D.due_jobs(T, monday9 + timedelta(minutes=10)) == ["publish"]
