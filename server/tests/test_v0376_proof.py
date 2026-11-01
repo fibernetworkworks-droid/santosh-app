@@ -1,4 +1,4 @@
-"""v0.375 PROOF (web design Phase 9, owner: "START PHASE 5"): a 100-page website as numbers, read the same way for Hoola
+"""v0.376 PROOF (web design Phase 9, owner: "START PHASE 5"): a 100-page website as numbers, read the same way for Hoola
 and for any rival builder - pages built vs planned, broken links and missing files over every page, the judge on a
 sample of page types, features verified in the files, rupees and minutes per page; a rival's public site crawled in
 Chromium (robots.txt respected, one host, public internet only) and compared side by side."""
@@ -179,5 +179,5 @@ def test_owner_only_endpoints_and_console(site_env):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.375.0"
-    assert "0.375.0+415" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.376.0"
+    assert "0.376.0+416" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

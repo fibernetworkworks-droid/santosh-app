@@ -30,7 +30,7 @@ window.HoolaArena = function ({api, esc, toast}) {
     let d;
     try { d = await api('GET', '/api/arena/runs'); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>Design Arena</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
-    let pf = {proofs: [], briefs: [], max_inr: 3000};          // v0.375 PROOF (its own call: a failure never hides the runs)
+    let pf = {proofs: [], briefs: [], max_inr: 3000};          // v0.376 PROOF (its own call: a failure never hides the runs)
     try { pf = await api('GET', '/api/arena/proofs'); } catch (e) { /* older server */ }
     const runs = d.runs || [], live = runs.find(r => r.status === 'running'), last = runs.find(r => r.status === 'done' && r.summary && r.summary.sites);
     const s = last?.summary || {}, duels = d.duels || {}, maxInr = Number(d.max_inr) || 3000;
@@ -55,7 +55,7 @@ window.HoolaArena = function ({api, esc, toast}) {
     schedule(!!live || (pf.proofs || []).some(p => p.status === 'running'));
   }
 
-  // ---------------------------------------------------------------- v0.375 PROOF: 100-page websites, measured like a rival's
+  // ---------------------------------------------------------------- v0.376 PROOF: 100-page websites, measured like a rival's
   const PROOF_ROWS = [['built_pages', 'Pages built'], ['planned_pages', 'Pages planned'], ['broken_links', 'Broken links'], ['missing_files', 'Missing files'],
     ['judge', 'Judge (of 10, sample of page types)'], ['performance', 'Performance'], ['accessibility', 'Accessibility'], ['seo', 'SEO'],
     ['readable_without_js_pct', 'Pages readable without JavaScript %'], ['one_h1_pct', 'Pages with one h1 %'], ['json_ld_pct', 'Pages with structured data %'],

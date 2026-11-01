@@ -1,4 +1,4 @@
-"""v0.375 PROOF (web design Phase 9, owner: "START PHASE 5"): "can Hoola build a world-class 100-page website?" as
+"""v0.376 PROOF (web design Phase 9, owner: "START PHASE 5"): "can Hoola build a world-class 100-page website?" as
 NUMBERS, the same way for Hoola and for any other builder.
 
 1. BIG_SET: five fixed 100-page Indian businesses (never changed without a bump) - a hospital, a coaching institute, a

@@ -13549,7 +13549,51 @@ actions are on `tpm` **alone**, and there is a test that `erp`, `crm_arch` and `
 `server/app/enterprise/tpm.py` (new) · `server/app/agent/enterprise_tools.py` ·
 `server/tests/test_v0373_tpm_sums.py` (15 tests, worked examples computed by hand).
 
-## v0.375.0 PROOF (Phase 5 of "any world-complex website": a 100-page website as numbers)
+## v0.375.0 SAB DAS DESK — the remaining seven brought to the same standard
+Owner: *"MAKE ALL 7 REMAINING ROLES 100% LIKE ERP CRM TPM"*.
+
+"The same standard" turned out to be two things.
+
+### 1. A desk for every role — 90 parts
+| role | parts |
+|---|---|
+| erp | 16 |
+| crm_arch · tpm | 12 each |
+| ecom_arch · plm | 8 each |
+| bpa · supply_opt · health_int · regtech | 7 each |
+| bank_int | 6 |
+
+Each part makes only the papers that part really produces, and every paper kind each role needs is now open to
+it.
+
+### 2. The sums, where the work *is* arithmetic
+`tpm.py` proved the shape in v0.374. Four more jobs are the same kind of job, so `app/enterprise/calc.py` answers
+their questions **in code**:
+
+- **supply_opt** — `reorder` (demand × lead + safety stock, with a real sigma from daily numbers when they exist
+  and a *stated* flat cushion when they don't, plus the stockout date) and `dead_stock`.
+- **plm** — `bom_explode` (flattened tree, quantities multiplied through every level, cost rolled up from the
+  leaves) and `where_used` — what a change order really asks.
+- **bank_int** — `reconcile`: reference first, then amount **and** a date inside the window. Matching on amount
+  alone is how reconciliations go wrong. Each line is used once.
+- **regtech** — `due_calendar`: late, coming up, done, and exposure computed **only** from penalty figures she
+  gave.
+
+### Each one refuses rather than guesses
+Under 14 days of history is not a reorder point. A BOM loop has no right cost. A part with no price is **named**,
+not counted as free. A filing with no penalty figure is listed late with the amount **blank** — a made-up fine is
+worse than none.
+
+### Which job gets which sums is a table
+The other five (erp, crm_arch, bpa, ecom_arch, health_int) have **no** sums: their work is judgement and
+execution, not arithmetic. `SUMS` is a table rather than a growing if-chain, a job cannot call a sum that is not
+its own, and the old `if key == "tpm"` special case was **deleted** rather than left sitting beside it.
+
+### Files
+`server/app/enterprise/rules.py` (seven desks) · `server/app/enterprise/calc.py` (new) ·
+`server/app/agent/enterprise_tools.py` (SUMS table) · `server/tests/test_v0375_all_ten_desks.py` (21 tests).
+
+## v0.376.0 PROOF (Phase 5 of "any world-complex website": a 100-page website as numbers)
 Owner: "START PHASE 5" (the plan's step: "a 100-page test business added to the Arena, so we measure build time, cost,
 quality and broken links against Lovable and others before calling it done").
 - `server/app/site/proof.py`, table `site_arena_proofs` (kind hoola | rival, brief, builder, url, site, version, status,
@@ -13578,4 +13622,4 @@ quality and broken links against Lovable and others before calling it done").
   proofs table, side-by-side with the better side in green + the feature lines).
 - Tested for real at 60 pages with the test AI: site map -> build -> shop from the priced list (45+ products) -> blog,
   0 broken links, 0 missing files. A full 100-page run with Opus is the owner's to start (cost ~₹700-2,000, 1-2 h).
-- Tests `server/tests/test_v0375_proof.py`.
+- Tests `server/tests/test_v0376_proof.py`.

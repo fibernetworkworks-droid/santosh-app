@@ -145,9 +145,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.375.0 (pubspec 0.375.0+415). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.376.0 (pubspec 0.376.0+416). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.376 PROOF (built as 0.375; `site/proof.py`): five fixed 100-page businesses built like an owner's site + features, a proof card read from the files (pages, broken links, missing files, judge on page types, features, ₹ / min per page); rival sites crawled in Chromium and compared; console Arena '100-page proof'.
 - v0.375 PROOF (`site/proof.py`): five fixed 100-page businesses built like an owner's site + features, a proof card read from the files (pages, broken links, missing files, judge on page types, features, ₹ / min per page); rival sites crawled in Chromium and compared; console Arena '100-page proof'.
 - v0.373 CODE MODE (built as 0.367; `site/code.py`): the site's real code as files (section HTML / CSS / JS + design kit) in the Studio Code tab; her hand edits and Opus 'ask' changes go through the build's cleaner, show a diff, one Undo, a checked version; tool action=code.
 - v0.372 CODE MODE (built as 0.367; `site/code.py`): the site's real code as files (section HTML / CSS / JS + design kit) in the Studio Code tab; her hand edits and Opus 'ask' changes go through the build's cleaner, show a diff, one Undo, a checked version; tool action=code.
@@ -304,6 +305,15 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
+- v0.375 SAB DAS DESK: all ten enterprise roles now meet the ERP/CRM/TPM standard - (1) a DESK each (90
+  parts total: bpa 7, ecom_arch 8, plm 8, supply_opt 7, health_int 7, bank_int 6, regtech 7) and (2) THE
+  SUMS where the work IS arithmetic, in `app/enterprise/calc.py`: supply_opt reorder (demand x lead +
+  safety, real sigma when daily numbers exist, stockout date) + dead_stock; plm bom_explode (cost rolled
+  up from leaves, qty multiplied through levels) + where_used; bank_int reconcile (ref first, then amount
+  AND date in window - amount alone is how recons go wrong; each line used once); regtech due_calendar
+  (exposure ONLY from penalty figures she gave). Each REFUSES rather than guesses: <14 days history, a BOM
+  loop, a part with no price is NAMED not free. The other 5 have no sums (judgement, not arithmetic);
+  SUMS is a TABLE, not an if-chain, and the old `if key == "tpm"` special case was deleted.
 - v0.374 TPM KE HISAAB: the TPM desk now DOES the job - six questions that each have one right answer, all
   arithmetic in `app/enterprise/tpm.py`, NEVER in a prompt: critical_path (longest chain; REFUSES on a
   dependency loop instead of returning a number), capacity (over-committed by how many days, open work
