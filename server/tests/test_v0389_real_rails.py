@@ -465,3 +465,118 @@ def test_cannot_check_a_slug_is_not_the_same_as_the_slug_being_wrong():
     assert cmp.tool_exists("NETSUITE_CREATE_INVOICE") is None      # cannot ask
     assert cmp.tool_exists("no spaces allowed!") is False          # definitely not a slug
     RUN._guard_target("netsuite", "data", "test", "NETSUITE_CREATE_INVOICE", "composio")   # must not raise
+
+
+# ---------------------------------------------------------------- closing v0.389's own two gaps
+def test_an_unanswered_row_can_finally_be_cleared(env, monkeypatch):
+    """v0.389 shipped the `ambiguous` state with NO way out, so a run with one sat at `failed` for ever.
+    Only she can look in the system and say whether that record landed; this is that answer coming back."""
+    from app.enterprise import run as RUN
+    from .entfake import fake_call
+    calls = []
+    sent = {"n": 0}
+
+    def answer(method, path, body):
+        if method == "GET":
+            return 200, {"name": "OLD"}
+        sent["n"] += 1
+        return 201, {"ok": True}
+
+    monkeypatch.setattr(RUN, "_odata_call",
+                        lambda ep, m, p, body=None, params=None, page=0: answer(m, p, body))
+    monkeypatch.setattr(RUN.dialect, "Call", fake_call(calls, answer))
+    RUN.set_endpoint("t1", "erp", "sap", "https://erp.example.com/odata", "SECRET", env="test")
+    r = RUN.plan_write("t1", "erp", "sap", "Vendors", "create",
+                       [{"id": "V1", "name": "A"}, {"id": "V2", "name": "B"}], key_field="id")
+    RUN.dry_run("t1", r["run"]); RUN.approve("t1", r["run"]); RUN.execute("t1", r["run"], batch=50)
+
+    # park row 0 by hand, exactly as an unanswered call would
+    from app.db import session
+    from app.enterprise.models import EntRun, EntRunRow
+    from sqlalchemy import select
+    with session() as s:
+        row = s.scalars(select(EntRunRow).where(EntRunRow.run_id == r["run"], EntRunRow.n == 0)).first()
+        row.status, row.error = "ambiguous", "jawab aaya hi nahi"
+        s.get(EntRun, r["run"]).status = "failed"
+    st = RUN.status("t1", r["run"])
+    assert st["pata_nahi"] and st["pata_nahi"][0]["n"] == 0
+
+    before = sent["n"]
+    # (a) she says it DID land -> closed, and nothing is sent
+    out = RUN.resolve("t1", r["run"], 0, landed=True)
+    assert sent["n"] == before, "resolve must never write to her system"
+    assert "pata_nahi" not in out and out["status"] == "done"
+
+    # (b) the other answer puts it back for exactly one more attempt
+    with session() as s:
+        row = s.scalars(select(EntRunRow).where(EntRunRow.run_id == r["run"], EntRunRow.n == 1)).first()
+        row.status = "ambiguous"
+    RUN.resolve("t1", r["run"], 1, landed=False)
+    with session() as s:
+        again = s.scalars(select(EntRunRow).where(EntRunRow.run_id == r["run"], EntRunRow.n == 1)).first()
+        assert again.status == "todo"
+    RUN.execute("t1", r["run"], batch=50)
+    assert sent["n"] == before + 1, "exactly one more attempt, not two"
+
+
+def test_resolve_refuses_a_row_that_is_not_in_doubt(env, monkeypatch):
+    """A done or failed row is not hers to re-decide - failed rows retry on their own."""
+    from app.enterprise import run as RUN
+    from .entfake import fake_call
+    calls = []
+    monkeypatch.setattr(RUN.dialect, "Call", fake_call(calls, lambda m, p, b: (201, {"ok": 1})))
+    monkeypatch.setattr(RUN, "_odata_call", lambda *a, **k: (200, {}))
+    RUN.set_endpoint("t1", "erp", "sap", "https://e.example.com/odata", "S", env="test")
+    r = RUN.plan_write("t1", "erp", "sap", "V", "create", [{"id": "1"}], key_field="id")
+    RUN.dry_run("t1", r["run"]); RUN.approve("t1", r["run"]); RUN.execute("t1", r["run"])
+    with pytest.raises(RUN.RunError) as e:
+        RUN.resolve("t1", r["run"], 0, landed=True)
+    assert "done" in str(e.value)
+
+
+def test_the_salesforce_deploy_is_actually_reachable():
+    """v0.389's real miss: sfmeta.py was built, tested and wired to NOTHING - no action, no route. The tests
+    passed because they called it directly, which is exactly how dead code hides."""
+    from app.agent.enterprise_tools import ENTERPRISE_TOOLS
+    from app.enterprise import run as RUN
+    crm = [t for t in ENTERPRISE_TOOLS if t["name"] == "crm_arch"][0]
+    acts = crm["input_schema"]["properties"]["action"]["enum"]
+    for a in ("deploy_validate", "deploy_status", "deploy_go", "resolve"):
+        assert a in acts, a
+    for p in ("components", "test_level", "deploy", "landed", "n"):
+        assert p in crm["input_schema"]["properties"], p
+    assert "METADATA DEPLOY" in crm["description"]
+    for fn in ("deploy_validate", "deploy_status", "deploy_go", "resolve"):
+        assert callable(getattr(RUN, fn))
+
+
+def test_the_deploy_tells_the_model_why_tooling_is_not_the_road():
+    """A description that only lists actions leaves the model hitting the same wall. It must say that
+    Salesforce itself refuses Tooling writes in a live org, and that a lone field cannot be deployed."""
+    from app.agent.enterprise_tools import ENTERPRISE_TOOLS
+    d = [t for t in ENTERPRISE_TOOLS if t["name"] == "crm_arch"][0]["description"]
+    assert "refuses Tooling writes" in d and "active org" in d
+    assert "FIELD cannot be deployed alone" in d
+    # and the deploy blurb belongs to the CRM desk only
+    erp = [t for t in ENTERPRISE_TOOLS if t["name"] == "erp"][0]["description"]
+    assert "METADATA DEPLOY" not in erp
+    assert "action=resolve" in erp          # but an unanswered row can happen on any writing desk
+
+
+def test_a_deploy_needs_a_connected_org_and_the_production_word(env):
+    from app.enterprise import run as RUN
+    with pytest.raises(RUN.RunError) as e:
+        RUN.deploy_validate("t1", "crm_arch", [{"type": "Flow", "name": "F", "body": "<Flow/>"}])
+    assert "juda" in str(e.value)
+    RUN.set_endpoint("t1", "crm_arch", "salesforce", "https://x.my.salesforce.com", "TOK", env="production")
+    with pytest.raises(RUN.RunError) as e2:
+        RUN.deploy_go("t1", "crm_arch", "0Af000000000001", "owner", "")
+    assert "production" in str(e2.value).lower()
+
+
+def test_a_non_writing_desk_cannot_deploy(env):
+    """regtech / health_int / bank_int never write anywhere outside, deploy included."""
+    from app.enterprise import run as RUN
+    for role in ("regtech", "health_int", "bank_int"):
+        with pytest.raises(RUN.RunError):
+            RUN.deploy_validate("t1", role, [{"type": "Flow", "name": "F", "body": "<Flow/>"}])

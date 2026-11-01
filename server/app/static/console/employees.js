@@ -240,8 +240,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   // ------------------------------------------------------------ v0.353 the Social Desk (Social Media Manager, Phase 1)
-  let SOC = null, SOCTRUST = 'seekh', HAS_LI = false;
-  const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page', linkedin: 'LinkedIn', whatsapp: 'WhatsApp Business'};   // v0.384
+  let SOC = null, SOCTRUST = 'seekh', HAS_LI = false, HAS_YT = false;
+  const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page', linkedin: 'LinkedIn', whatsapp: 'WhatsApp Business', youtube: 'YouTube'};   // v0.384
   const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};
   const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
   async function social(el) {
@@ -257,18 +257,19 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const pl = d.pulse || {}, pst = pl.settings || {};
     SOCTRUST = d.trust || 'seekh';
     HAS_LI = (d.accounts || []).some(a => a.platform === 'linkedin' && a.status === 'ok');
+    HAS_YT = (d.accounts || []).some(a => a.platform === 'youtube' && a.status === 'ok');
     el.innerHTML = `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">${esc(d.profile.business || '')}${d.profile.city ? ' · ' + esc(d.profile.city) : ''}</span>
         ${accs.length ? tag(sc, sn) : tag('warn', 'Connect an account')} ${d.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[d.trust] || [d.trust])[0])}</span></div>
       <div class="tile gl"><div class="em-h"><h3>Accounts</h3><span class="muted em-small">You log in on Instagram / Facebook's own page. Hoola never sees your password.</span></div>
         <div class="sc-accs">${accs.map(a => `<div class="sc-acc">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : '<span class="sc-pic"></span>'}
-          <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)}${a.platform === 'whatsapp' ? ' · ' + esc(a.name || '') + ' · messages reach your Business inbox' : a.platform === 'linkedin' ? ' · your profile' : ' · ' + num(a.followers) + ' followers'}</span>
+          <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)}${a.platform === 'whatsapp' ? ' · ' + esc(a.name || '') + ' · messages reach your Business inbox' : a.platform === 'linkedin' ? ' · your profile' : a.platform === 'youtube' ? ' · ' + num(a.followers) + ' subscribers' : ' · ' + num(a.followers) + ' followers'}</span>
           ${a.platform === 'whatsapp' && a.error ? `<span class="warnc em-small">${esc(a.error)}</span>` : ''}
           ${a.status !== 'ok' ? `<span class="badc em-small">${esc(a.status === 'expired' ? 'Connection ended: connect again' : a.error || a.status)}</span>` : ''}
           ${a.status === 'ok' && (a.can_post === false || a.can_reply === false) ? '<span class="warnc em-small">Reconnect to allow posting and replies</span>' : ''}</div>
           <button class="btn soft" type="button" data-scoff="${esc(a.id)}">Disconnect</button></div>`).join('')}
-        <div class="sc-connect">${['instagram', 'facebook', 'linkedin', 'whatsapp'].map(p => d.connect[p]
+        <div class="sc-connect">${['instagram', 'facebook', 'linkedin', 'whatsapp', 'youtube'].map(p => d.connect[p]
           ? `<button class="btn ${accs.some(a => a.platform === p) ? 'soft' : 'go'}" type="button" data-scon="${p}">${accs.some(a => a.platform === p) ? 'Reconnect' : 'Connect'} ${PLAT[p]}</button>`
-          : `<button class="btn soft" type="button" disabled title="The server needs Hoola's ${p === 'linkedin' ? 'LinkedIn' : 'Meta'} app keys">${PLAT[p]}: not set up on the server yet</button>`).join('')}</div>
+          : `<button class="btn soft" type="button" disabled title="The server needs Hoola's ${p === 'linkedin' ? 'LinkedIn' : p === 'youtube' ? 'Google sign-in' : 'Meta'} app keys">${PLAT[p]}: not set up on the server yet</button>`).join('')}</div>
         <p class="muted em-small">WhatsApp Business: Meta's own window connects your number; customers' messages then reach your Business inbox. LinkedIn: posts go to your own profile (a Company Page needs LinkedIn's approval first).</p>
         <p class="muted em-small">Instagram must be a Business or Creator account (free switch in Instagram settings). A post goes out only when you approve it or tap Publish now: exactly what you approved, at its time.</p></div>
       ${d.calendar_status === 'draft' && cal.length ? `<div class="tile gl em-note"><b>Your 30-day calendar is ready</b><span>${cal.length} posts planned from your real numbers. Read them below, edit any, then approve.</span>
@@ -299,7 +300,13 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
             <button class="btn soft" type="button" id="scQSave">Save</button></div>
           <div class="acts em-run">${pst.paused ? '<button class="btn go" type="button" data-scpause="0">Resume posting</button>' : '<button class="btn soft" type="button" data-scpause="1">Pause all posting</button>'}
             <button class="btn soft sc-stop" type="button" id="scStop">Emergency stop</button></div>
-          <p class="muted em-small">Pause also stops automatic replies. Emergency stop sends every queued post back to draft.</p></div>
+          <p class="muted em-small">Pause also stops automatic replies. Emergency stop sends every queued post back to draft.</p>
+          ${HAS_YT ? `<div class="sc-quiet"><label>YouTube: are your videos made for kids? <select id="scKids" aria-label="Made for kids">
+              <option value="" ${pst.yt_kids == null ? 'selected' : ''} disabled>Choose (YouTube requires it)</option>
+              <option value="no" ${pst.yt_kids === false ? 'selected' : ''}>No</option><option value="yes" ${pst.yt_kids === true ? 'selected' : ''}>Yes</option></select></label></div>
+            <div class="sc-quiet"><label>YouTube playlist ID (optional) <input id="scPl" class="sc-pl" value="${esc(pst.yt_playlist || '')}" placeholder="PL..."></label>
+              <button class="btn soft" type="button" id="scPlSave">Save</button></div>
+            <p class="muted em-small">Until Google finishes Hoola's YouTube API audit, uploads may stay private - the post tells you, and you make it public in YouTube Studio.</p>` : ''}</div>
         <div class="tile gl"><h3>Best times for you</h3>${(pl.best_times || {}).slots && pl.best_times.slots.length
           ? `<table class="em-tbl"><tbody>${pl.best_times.slots.map(x => `<tr><td>${esc(x.day)} ${esc(x.band)}</td><td>${esc(String(x.lift))}x your normal</td><td class="muted">${num(x.posts)} posts</td></tr>`).join('')}</tbody></table>
             <p class="muted em-small">Certainty: ${esc(pl.best_times.sure)}. New calendars use these times.</p>`
@@ -337,13 +344,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <textarea class="sc-edit" rows="5" aria-label="Edit caption" hidden>${esc(p.caption)}</textarea></details>
       ${(p.media || []).length ? `<div class="sc-media">${p.media.map(m => m.kind === 'video'
           ? `<span class="sc-vid" title="Video">▶</span>` : `<img src="${esc(m.url)}" alt="Picture for this post" loading="lazy">`).join('')}</div>` : ''}
-      ${Object.entries(res).map(([pl, r]) => r.link ? `<p class="em-small okc">Posted on <a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(PLAT[pl] || pl)}</a></p>`
+      ${Object.entries(res).map(([pl, r]) => r.link ? `<p class="em-small okc">Posted on <a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(PLAT[pl] || pl)}</a></p>${r.note ? `<p class="em-small warnc">${esc(r.note)}</p>` : ''}`
           : r.error ? `<p class="em-small badc">${esc(PLAT[pl] || pl)}: ${esc(r.error)}</p>` : '').join('')}
       ${!done && (p.problems || []).length ? `<p class="em-small warnc">${(p.problems || []).map(esc).join(' ')}</p>` : ''}
       ${done ? '' : `<div class="acts"><select data-scst="${esc(p.id)}" aria-label="Status">${Object.entries(PST).map(([v, [, l]]) => `<option value="${v}"${v === p.status ? ' selected' : ''}>${l}</option>`).join('')}${DONE[p.status] ? `<option selected disabled>${esc(DONE[p.status][1])}</option>` : ''}</select>
         <button class="btn soft" type="button" data-sccopy="${esc(p.id)}">Copy caption</button><button class="btn soft" type="button" data-scedit="${esc(p.id)}">Edit</button>
         <label class="btn soft sc-up">Add photo / video<input type="file" accept="image/*,video/mp4,video/quicktime" data-scup="${esc(p.id)}" hidden></label>
         <button class="btn soft" type="button" data-scposter="${esc(p.id)}">Make poster</button>
+        ${HAS_YT && ['reel', 'video'].includes(p.format) ? `<button class="btn soft" type="button" data-scyt="${esc(p.id)}" aria-pressed="${(p.platforms || []).includes('youtube')}">${(p.platforms || []).includes('youtube') ? 'Remove YouTube' : (p.format === 'reel' ? 'Also as YouTube Short' : 'Also on YouTube')}</button>` : ''}
         ${HAS_LI ? `<button class="btn soft" type="button" data-scli="${esc(p.id)}" aria-pressed="${(p.platforms || []).includes('linkedin')}">${(p.platforms || []).includes('linkedin') ? 'Remove LinkedIn' : 'Also on LinkedIn'}</button>` : ''}
         ${needOk ? `<button class="btn go" type="button" data-scok="${esc(p.id)}">OK to post</button>` : ''}
         <button class="btn ${needOk ? 'soft' : 'go'}" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
@@ -561,6 +569,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}/publish`, {}); toast('Posting… the link appears here in a minute.'); setTimeout(() => social(el), 5000); }
       catch (e) { toast(e.message, true); b.disabled = false; }
     }));
+    el.querySelectorAll('[data-scyt]').forEach(b => b.addEventListener('click', async () => {
+      const p = (d.calendar || []).find(x => x.id === b.dataset.scyt);
+      const on = (p.platforms || []).includes('youtube');
+      const pl = on ? p.platforms.filter(x => x !== 'youtube') : [...(p.platforms || []), 'youtube'];
+      try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}`, {platforms: pl}); toast(on ? 'YouTube removed. Approve the post again.' : 'Added to YouTube. Approve the post again.'); social(el); }
+      catch (e) { toast(e.message, true); }
+    }));
+    el.querySelector('#scKids')?.addEventListener('change', async ev => {
+      try { await api('POST', '/api/social/settings', {yt_kids: ev.target.value === 'yes'}); toast('Saved for YouTube.'); }
+      catch (e) { toast(e.message, true); }
+    });
+    el.querySelector('#scPlSave')?.addEventListener('click', async () => {
+      try { await api('POST', '/api/social/settings', {yt_playlist: el.querySelector('#scPl').value.trim()}); toast('Playlist saved.'); }
+      catch (e) { toast(e.message, true); }
+    });
     el.querySelectorAll('[data-scli]').forEach(b => b.addEventListener('click', async () => {
       const p = (d.calendar || []).find(x => x.id === b.dataset.scli);
       const on = (p.platforms || []).includes('linkedin');
@@ -694,6 +717,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
                writing: ['v', 'Writing code'], building: ['v', 'Building'], testing: ['v', 'Playing it'], done: ['ok', 'Ready to play'],
                failed: ['bad', 'Did not work'], cancelled: ['', 'Stopped']};
   const BUSYG = ['designing', 'queued', 'writing', 'building', 'testing'];
+  let GS_BIBLE = false;        // v0.395 the Game Bible page of the open project
+  let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   async function game(el) {
     clearTimeout(GTIMER);
@@ -764,8 +789,118 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         ${t.status === 'blocked' ? b('start', 'Try again', 'go') + b('drop', 'Drop') : ''}
         ${t.status === 'done' ? b('back', 'Undo') : ''}</div></div>`;
   }
+  // ---------------------------------------------------------------- v0.395 Game Bible (specs as data)
+  const BIB_COLS = {character: ['role', 'age'], enemy: ['tier', 'hp', 'damage', 'speed', 'behaviour'], item: ['tier', 'effect', 'value', 'price'],
+                    level: ['order', 'duration_s', 'reward_coins'], quest: ['goal', 'target', 'count'], screen: ['purpose']};
+  function bibChip(c) { return `<span class="gb-chip" style="background:${/^#[0-9A-Fa-f]{6}$/.test(c) ? c : 'transparent'}" title="${esc(c)}"></span>`; }
+  async function gsBible(el, id) {
+    clearTimeout(GTIMER);
+    let v;
+    try { v = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}/bible`); }
+    catch (e) { toast(e.message, true); GS_BIBLE = false; return gsBoard(el, id); }
+    const d = v.data || {}, ck = v.check || {}, dr = v.draft || {}, st = d.style || {}, pl = d.player || {};
+    const q = encodeURIComponent(id);
+    const kinds = Object.keys(v.templates || {});
+    const tbl = k => {
+      const rows = (d.entities || {})[k] || [], cols = BIB_COLS[k] || [];
+      return `<section class="tile gl gb-kind"><div class="em-h"><h3>${esc(v.templates[k].label)}s <span class="muted">${num(rows.length)}</span></h3>
+        <div class="acts"><button class="btn soft" type="button" data-gb-add="${esc(k)}">Add</button>
+          <input data-gb-words="${esc(k)}" maxlength="300" placeholder="Generate: e.g. 3 night enemies" aria-label="What to generate">
+          <button class="btn soft" type="button" data-gb-gen="${esc(k)}">Generate</button></div></div>
+        ${rows.length ? `<div class="gb-scroll"><table class="gb-t"><thead><tr><th>id</th><th>Name</th>${cols.map(c => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>
+          ${rows.map(e => `<tr><td><code>${esc(e.id)}</code></td><td>${e.color ? bibChip(e.color) : ''}${esc(e.name || '')}</td>${cols.map(c => `<td>${esc(String(e[c] ?? ''))}</td>`).join('')}
+            <td class="gb-rowacts"><button class="btn soft gs-mini" type="button" data-gb-edit="${esc(k)}" data-id="${esc(e.id)}">Edit</button>
+            <button class="btn soft gs-mini em-leave" type="button" data-gb-del="${esc(k)}" data-id="${esc(e.id)}">Remove</button></td></tr>`).join('')}</tbody></table></div>`
+          : '<p class="muted em-small">None yet.</p>'}
+        <div class="gb-editor" data-gb-ed="${esc(k)}" hidden><textarea rows="10" spellcheck="false" aria-label="Entry as JSON"></textarea>
+          <div class="acts"><button class="btn go" type="button" data-gb-save="${esc(k)}">Save</button><button class="btn soft" type="button" data-gb-cancel="${esc(k)}">Cancel</button></div></div></section>`;
+    };
+    const sim = GS_SIM && GS_SIM.id === id ? GS_SIM.r : null;
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gbBack">← Board</button><h2>Game Bible</h2>
+        <span class="muted em-sub">v${num(v.version)} · in the game: v${num(v.applied)}</span>
+        ${v.version > v.applied ? '<button class="btn go" type="button" id="gbApply">Put it in the game</button>' : ''}
+        <button class="btn soft" type="button" id="gbSim">Simulate balance</button></div>
+      <p class="muted em-sub">The game's names and numbers as data. Every change is checked; the game reads it, so a balance change rebuilds with no new code.</p>
+      ${(ck.errors || []).length ? `<div class="tile gl badc"><b>Fix first</b><ul>${ck.errors.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+      ${(ck.warnings || []).length ? `<div class="tile gl"><b>Worth a look</b><ul class="gs-log">${ck.warnings.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+      ${dr.kind ? `<div class="tile gl gb-draft"><h3>Draft from Hoola, waiting for your OK</h3>
+        ${dr.kind === 'seed' ? '<p class="em-small">A first Bible from the design doc.</p>' : `<ul class="gs-log">${(dr.add || []).map(e => `<li>${e.color ? bibChip(e.color) : ''}<b>${esc(e.name)}</b> <code>${esc(e.id)}</code>
+          ${(BIB_COLS[dr.kind] || []).map(c => `<span class="muted">${esc(c)} ${esc(String(e[c] ?? ''))}</span>`).join(' · ')}</li>`).join('')}</ul>`}
+        ${((dr.check || {}).errors || []).length ? `<p class="badc em-small">${esc(dr.check.errors.slice(0, 3).join('; '))}</p>` : ''}
+        <div class="acts"><button class="btn go" type="button" id="gbOk">OK, add to the Bible</button><button class="btn soft" type="button" id="gbNo">No</button></div></div>` : ''}
+      ${!v.version && !dr.kind ? '<div class="tile gl"><p>The Bible is empty.</p><div class="acts"><button class="btn go" type="button" id="gbSeed">Make the first Bible from the design doc</button></div></div>' : ''}
+      ${sim ? `<section class="tile gl"><h3>Balance (${num(sim.runs)} plays a level, same Bible = same numbers)</h3>
+        ${sim.ok ? `<div class="gb-sim">${sim.levels.map(r => `<div class="gb-lv"><span>${esc(r.name)}</span><div class="pbar"><i style="width:${Math.round(r.win_rate * 100)}%"></i></div><b>${Math.round(r.win_rate * 100)}% win</b>
+          <span class="muted">${num(r.avg_coins)} coins</span></div>`).join('') || '<p class="muted">No levels yet.</p>'}</div>
+          ${sim.flags.length ? `<ul class="gs-log">${sim.flags.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : '<p class="em-small">No balance problems found.</p>'}
+          ${(sim.economy.items || []).length ? `<p class="em-small">${sim.economy.items.map(i => `${esc(i.name)} (${num(i.price)}): ${i.levels_to_afford ? 'after level ' + num(i.levels_to_afford) : 'never affordable'}`).join(' · ')}</p>` : ''}`
+          : `<p class="badc em-small">${esc((sim.errors || []).join('; '))}</p>`}</section>` : ''}
+      <div class="gs-grid">
+        <section class="tile gl"><h3>Style</h3><div class="gb-pal">${(st.palette || []).map(bibChip).join('')}</div>
+          <div class="acts"><input id="gbPal" value="${esc((st.palette || []).join(', '))}" placeholder="#101820, #FFB000, ..." aria-label="Palette"><button class="btn soft" type="button" id="gbPalSave">Save palette</button></div>
+          <p class="muted em-small">Every colour in the Bible must come from this palette.</p></section>
+        <section class="tile gl"><h3>Player</h3><div class="gb-pl">${['hp', 'damage', 'fire_rate', 'hit_chance', 'speed'].map(k => `<label>${esc(k)} <input type="number" step="any" data-gb-pl="${k}" value="${esc(String(pl[k] ?? ''))}"></label>`).join('')}</div>
+          <div class="acts"><button class="btn soft" type="button" id="gbPlSave">Save player</button></div></section>
+        <section class="tile gl"><h3>Curves</h3><p class="muted em-small">How numbers grow by tier: [base, growth]. Enemies, items and levels take their numbers from here.</p>
+          <textarea id="gbCurves" rows="7" spellcheck="false" aria-label="Curves">${esc(JSON.stringify(d.curves || {}, null, 1))}</textarea>
+          <div class="acts"><button class="btn soft" type="button" id="gbCurSave">Save curves</button>${['enemy', 'item', 'level'].map(k => `<button class="btn soft gs-mini" type="button" data-gb-recurve="${k}">Re-make ${k} numbers</button>`).join('')}</div></section>
+      </div>
+      ${kinds.map(tbl).join('')}
+      <section class="tile gl"><h3>Changes</h3><ul class="gs-log">${(v.history || []).map(h => `<li><b>v${num(h.v)}</b> ${esc(h.what)} <span class="muted">${esc((h.at || '').slice(0, 16).replace('T', ' '))} · ${esc(h.by)}</span></li>`).join('')}</ul></section>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBible(el, id); };
+    el.querySelector('#gbBack').addEventListener('click', () => { GS_BIBLE = false; gsBoard(el, id); });
+    el.querySelector('#gbApply')?.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/apply`), 'Rebuilding the game with the Bible (no new code).'));
+    el.querySelector('#gbSim').addEventListener('click', async e => {
+      e.target.disabled = true; e.target.textContent = 'Simulating…';
+      try { GS_SIM = {id, r: await api('POST', `/api/gamestudio/${q}/bible/simulate`, {})}; } catch (err) { toast(err.message, true); }
+      gsBible(el, id);
+    });
+    el.querySelector('#gbOk')?.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/accept`, {}), 'Added to the Bible.'));
+    el.querySelector('#gbNo')?.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/reject`, {})));
+    el.querySelector('#gbSeed')?.addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Reading the design…';
+      go(() => api('POST', `/api/gamestudio/${q}/bible/seed`, {}), 'A draft Bible is ready for your OK.'); });
+    el.querySelector('#gbPalSave').addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/section`,
+      {section: 'style', value: {palette: el.querySelector('#gbPal').value.split(/[\s,]+/).filter(Boolean)}}), 'Saved.'));
+    el.querySelector('#gbPlSave').addEventListener('click', () => {
+      const value = {}; el.querySelectorAll('[data-gb-pl]').forEach(i => { if (i.value !== '') value[i.dataset.gbPl] = Number(i.value); });
+      go(() => api('POST', `/api/gamestudio/${q}/bible/section`, {section: 'player', value}), 'Saved.');
+    });
+    el.querySelector('#gbCurSave').addEventListener('click', () => {
+      let value; try { value = JSON.parse(el.querySelector('#gbCurves').value); } catch { toast('Curves must be JSON.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/bible/section`, {section: 'curves', value}), 'Saved.');
+    });
+    el.querySelectorAll('[data-gb-recurve]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/recurve`, {kind: b.dataset.gbRecurve}), 'Numbers re-made from the curves.')));
+    const editor = (k, obj) => {
+      const box = el.querySelector(`[data-gb-ed="${CSS.escape(k)}"]`); box.hidden = false;
+      box.querySelector('textarea').value = JSON.stringify(obj, null, 1); box.querySelector('textarea').focus();
+    };
+    el.querySelectorAll('[data-gb-add]').forEach(b => b.addEventListener('click', () => {
+      const t = v.templates[b.dataset.gbAdd].fields, obj = {id: ''};
+      Object.entries(t).forEach(([f, o]) => { obj[f] = o.default; });
+      editor(b.dataset.gbAdd, obj);
+    }));
+    el.querySelectorAll('[data-gb-edit]').forEach(b => b.addEventListener('click', () => {
+      const e = ((d.entities || {})[b.dataset.gbEdit] || []).find(x => x.id === b.dataset.id); if (e) editor(b.dataset.gbEdit, e);
+    }));
+    el.querySelectorAll('[data-gb-cancel]').forEach(b => b.addEventListener('click', () => { el.querySelector(`[data-gb-ed="${CSS.escape(b.dataset.gbCancel)}"]`).hidden = true; }));
+    el.querySelectorAll('[data-gb-save]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.gbSave; let entity;
+      try { entity = JSON.parse(el.querySelector(`[data-gb-ed="${CSS.escape(k)}"] textarea`).value); } catch { toast('The entry must be JSON.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/bible/entity`, {kind: k, entity}), 'Saved.');
+    }));
+    el.querySelectorAll('[data-gb-del]').forEach(b => b.addEventListener('click', () => {
+      if (confirm(`Remove ${b.dataset.id} from the Bible?`)) go(() => api('DELETE', `/api/gamestudio/${q}/bible/entity/${encodeURIComponent(b.dataset.gbDel)}/${encodeURIComponent(b.dataset.id)}`));
+    }));
+    el.querySelectorAll('[data-gb-gen]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.gbGen, words = el.querySelector(`[data-gb-words="${CSS.escape(k)}"]`).value.trim();
+      const m = words.match(/\b(\d{1,2})\b/); b.disabled = true; b.textContent = 'Writing…';
+      go(() => api('POST', `/api/gamestudio/${q}/bible/generate`, {kind: k, n: m ? Number(m[1]) : 3, words}), 'A draft is ready for your OK.');
+    }));
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
+    if (GS_BIBLE) return gsBible(el, id);
     let p;
     try { p = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}`); }
     catch (e) { GS_OPEN = ''; toast(e.message, true); return game(el); }
@@ -777,7 +912,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       return `<div class="gs-col gs-c-${k}"><h4>${label} <span class="muted">${num(ts.length)}</span></h4>${show.map(t => gsTask(t, p)).join('') || '<p class="muted em-small">Nothing here.</p>'}</div>`;
     }).join('');
     el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gsBack">← Game Desk</button><h2>${esc(p.number)} · ${esc(p.title)}</h2>
-        ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}</div>
+        ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}
+        <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
       ${gsBars(p.milestones)}
       <div class="tile gl gs-add"><input id="gsT" maxlength="200" placeholder="New task, one small change: e.g. add a nitro boost (double tap)" aria-label="New task">
@@ -811,7 +947,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>`;
     const q = encodeURIComponent(p.id);
     const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
-    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBib').addEventListener('click', () => { GS_BIBLE = true; gsBible(el, id); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

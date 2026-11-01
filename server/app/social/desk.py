@@ -24,9 +24,9 @@ from . import meta as M
 log = logging.getLogger("santosh.social")
 KEY = "social"
 PLATFORMS = ("instagram", "facebook")                       # Meta reading / inbox / growth
-POST_PLATFORMS = ("instagram", "facebook", "linkedin")      # v0.384 where a calendar post can go
-CONNECT = ("instagram", "facebook", "linkedin", "whatsapp")  # v0.384 what the desk can connect
-FORMATS = ("reel", "carousel", "image", "story")
+POST_PLATFORMS = ("instagram", "facebook", "linkedin", "youtube")   # v0.384 / v0.392 where a calendar post can go
+CONNECT = ("instagram", "facebook", "linkedin", "whatsapp", "youtube")  # v0.384 / v0.392 what the desk can connect
+FORMATS = ("reel", "carousel", "image", "story", "video")       # v0.392 video = a normal (long) YouTube video
 POST_STATUS = ("draft", "approved", "skipped")
 _RUNNING: set[str] = set()
 _RUN_LOCK = threading.Lock()
@@ -238,6 +238,9 @@ def connect_url(tenant: str, platform: str) -> str:
     if platform == "whatsapp":
         from .wabiz import connect_url as wa
         return wa(tenant)
+    if platform == "youtube":                                   # v0.392 Hoola's YouTube sign-in (Profile > YouTube)
+        from .ytpost import connect_url as yt
+        return yt(tenant)
     if platform not in PLATFORMS:
         raise SocialError("platform: instagram | facebook | linkedin | whatsapp")
     if not M.configured(platform):
@@ -352,6 +355,12 @@ def _upsert_account(s, tenant: str, platform: str, account_id: str) -> SocialAcc
 def disconnect(tenant: str, account: str) -> dict[str, Any]:
     from .wabiz import disconnect as wa_off
     wa_off(tenant, account)                    # v0.384 a WhatsApp number also leaves her Business inbox
+    with session() as s:                       # v0.392 a YouTube channel is unlinked in Hoola's YouTube module too
+        r = s.get(SocialAccount, account)
+        yt_key = r.account_id if r is not None and r.tenant_id == tenant and r.platform == "youtube" else ""
+    if yt_key and yt_key != "google":
+        from ..youtube import accounts as YA
+        YA.remove(tenant, yt_key)
     with session() as s:
         row = s.get(SocialAccount, account)
         if row is None or row.tenant_id != tenant:
@@ -413,6 +422,9 @@ def sync_account(account: str, limit: int = 50, insights: bool = True) -> dict[s
         if a is None:
             raise SocialError("Account nahi mila.")
         tenant, platform, pid, tok = a.tenant_id, a.platform, a.account_id, acc.decrypt(a.token_enc) or ""
+    if platform == "youtube":                                   # v0.392 subscribers + latest videos
+        from .ytpost import sync_youtube
+        return sync_youtube(account)
     if platform not in PLATFORMS:
         return {"skipped": platform}                            # v0.384 LinkedIn / WhatsApp: nothing Meta-readable here
     got: list[dict[str, Any]] = []
@@ -548,7 +560,8 @@ NEVER invent prices, offers, discounts, awards, years in business or claims that
 PLAN_FIELDS = ('Reply JSON: {"pillars": [{"name": "...", "why": "one line"}], "rhythm": {"feed_per_week": 3-5, '
                '"stories_per_week": 0-7, "reels_share": 0-1}, "goal_metric": "the one number this month is judged on", '
                '"hashtags": ["#..."], "best_hours": [hour 0-23], "posts": [{"date": "YYYY-MM-DD", "time": "HH:MM", '
-               '"platforms": ["instagram","facebook"], "format": "reel|carousel|image|story", "pillar": "...", '
+               '"platforms": ["instagram","facebook","linkedin","youtube" - only from "connected"], "format": "reel|carousel|image|story|video '
+               '(video = a long YouTube video; a reel also goes to YouTube as a Short)", "pillar": "...", '
                '"hook": "...", "caption": "...", "hashtags": ["#..."], "visual": "brief", "cta": "...", '
                '"occasion": "festival or empty", "hook_style": "question|number|story|offer"}]}. Rotate hook_style '
                'across the month (A/B test); lean on the winning style in "ab" when one is named.')
@@ -645,7 +658,8 @@ def _rules_plan(inp: dict[str, Any]) -> dict[str, Any]:
         styles = ["question", "number", "story"]
         win = (inp.get("ab") or {}).get("winner")
         style = win if win and k % 2 == 0 else styles[k % 3]
-        plats = ["instagram", "facebook"] + (["linkedin"] if "linkedin" in (inp.get("connected") or []) and name in
+        plats = ["instagram", "facebook"] + (["youtube"] if "youtube" in (inp.get("connected") or []) and fmt == "reel" else []) \
+            + (["linkedin"] if "linkedin" in (inp.get("connected") or []) and name in
                                              ("Our work", "Tips & how-to", "Behind the scenes") and fmt in ("image", "carousel") else [])
         posts.append({"hook_style": "" if occ else style,
                       "date": dt.isoformat(), "time": f"{h if h is not None else hours[k % len(hours)]:02d}:00",
@@ -972,6 +986,11 @@ def schedule_view(stamps: dict[str, str]) -> list[dict[str, str]]:
             {"job": "Monthly PDF report", "every": "1st of the month", "last": stamps.get("monthly", "")}]
 
 
+def _yt_ready() -> bool:
+    from .ytpost import configured
+    return configured()
+
+
 def desk_view(tenant: str) -> dict[str, Any]:
     from ..employee import hire
     ensure_tables()
@@ -979,6 +998,11 @@ def desk_view(tenant: str) -> dict[str, Any]:
     if st not in ("hired", "paused"):
         return {"hired": False, "status": st}
     trust = next((c.get("trust") for c in hire.catalog(tenant) if c["key"] == KEY), "seekh")
+    try:
+        from .ytpost import sync_channel
+        sync_channel(tenant)                    # v0.392 her connected YouTube channel shows as an account
+    except Exception as e:       # noqa: BLE001
+        log.info("youtube mirror skipped: %s", e)
     with session() as s:
         d = s.get(SocialDesk, tenant)
         prof = _j(d.profile, {}) if d else {}
@@ -989,7 +1013,7 @@ def desk_view(tenant: str) -> dict[str, Any]:
         events = [{"kind": e.kind, "level": e.level, "text": e.text, "at": e.at.isoformat() if e.at else ""}
                   for e in s.scalars(select(SocialEvent).where(SocialEvent.tenant_id == tenant).order_by(SocialEvent.at.desc())).all()[:25]]
     return {"hired": True, "status": st, "trust": trust, "onboarded": bool(prof), "profile": prof or profile_defaults(tenant),
-            "connect": {p: M.configured(p) for p in CONNECT}, "accounts": accounts(tenant), **info,
+            "connect": {p: (_yt_ready() if p == "youtube" else M.configured(p)) for p in CONNECT}, "accounts": accounts(tenant), **info,
             "kpis": kpis(info["baseline"], info["latest"]), "calendar": calendar(tenant), "events": events,
             "schedule": schedule_view(info["stamps"]), "inbox": _inbox_counts(tenant), "pulse": _pulse_view(tenant),
             "growth": _growth_view(tenant)}

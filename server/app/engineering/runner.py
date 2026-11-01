@@ -165,6 +165,12 @@ def main() -> None:
             res["sheet"] = _parts.FLAT["sheet"]
         big = len(parts) > 40 or len(shape.Faces()) > 4000          # v0.365 big assemblies: coarser mesh, no HLR
         exported = []
+        if parts:                                         # v0.386 each part on its own for the contact analysis
+            names = []
+            for i, (n_, s_, _c) in enumerate(parts[:40]):
+                s_.exportBrep(str(out / f"apart_{i}.brep"))
+                names.append(n_)
+            (out / "aparts.json").write_text(json.dumps(names), encoding="utf-8")
         if parts:                                         # an assembly keeps its parts, names and colours in STEP / GLB
             obj.save(str(out / "part.step"))
             obj.export(str(out / "part.glb"))

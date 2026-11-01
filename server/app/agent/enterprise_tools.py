@@ -21,7 +21,9 @@ _DO_ACTIONS = ["connect", "disconnect", "endpoint", "project", "project_update",
                "item_update", "settings",
                # v0.363 the real thing: read and write against her live system
                "read", "describe", "soql", "plan_write", "dry_run", "approve", "execute", "run_status",
-               "runs", "rollback_plan",
+               "runs", "rollback_plan", "resolve",
+               # v0.389 the Salesforce config deploy (sfmeta): Tooling cannot change these in a live org
+               "deploy_validate", "deploy_status", "deploy_go",
                # the sums: arithmetic on rows, never guessed by the model. Which ones a job gets is in SUMS.
                "critical_path", "capacity", "metrics", "raid", "readiness", "chase",
                "reorder", "dead_stock", "bom", "where_used", "reconcile", "due_calendar"]
@@ -91,7 +93,22 @@ def _do_description(key: str, spec: dict[str, Any]) -> str:
          f"because a done row is never posted twice; action=run_status / runs / rollback_plan. "
          f"Delete is refused at any size. Over {MAX_ROWS} rows in one go is refused - split it. A production write "
          f"needs confirm_env='production' as well as her tap. action=endpoint (owner only): her own system's "
-         f"address when Composio does not carry it - the credential is typed in the APP, never here.")
+         f"address when Composio does not carry it - the credential is typed in the APP, never here. "
+         f"A row whose answer never arrived is marked 'pata nahi' and is NEVER re-sent on its own, because a "
+         f"retry can post the same record twice: only she can look in the system and say, with "
+         f"action=resolve (run, n, landed true|false).")
+    if key == "crm_arch":
+        # Salesforce REFUSES Tooling CRUD on these in a live org ("Save or update not supported in active
+        # organizations"), so the model must know the other road exists or it will keep hitting a wall.
+        d += (" --- CONFIGURATION IN A LIVE ORG --- Salesforce itself refuses Tooling writes to CustomField, "
+              "CustomObject, ApexClass and ApexTrigger in an active org, and gives Profile, PermissionSet and "
+              "Layout no REST write path at all. Those go by METADATA DEPLOY: action=deploy_validate "
+              "(components [{type, name, body}], test_level) is the dry run - Salesforce checks every component "
+              "and runs the tests and commits NOTHING; action=deploy_status (deploy) until done; "
+              "action=deploy_go (deploy, confirm_env) is HER tap, which quick-deploys that same validation "
+              "without re-running the tests (good for 10 days). Each component must bring its OWN complete "
+              "file. A single FIELD cannot be deployed alone - it lives inside its object's file - so ask for "
+              "the whole CustomObject or make that change in a sandbox.")
     if SUMS.get(key):
         d += (" --- THE SUMS, DONE IN CODE (never work these out yourself: a wrong number looks exactly as "
               "confident as a right one) --- " + SUMS_HELP[key])
@@ -145,6 +162,10 @@ for _key, _spec in R.ROLES.items():
             "statement": {"type": "array", "items": {"type": "object"}},
             "ledger": {"type": "array", "items": {"type": "object"}},
             "paise": {"type": "boolean"}, "ahead": {"type": "integer"},
+            # v0.389: resolve an unanswered row, and the Salesforce config deploy
+            "n": {"type": "integer"}, "landed": {"type": "boolean"},
+            "components": {"type": "array", "items": {"type": "object"}},
+            "test_level": {"type": "string"}, "deploy": {"type": "string"},
             "header_name": {"type": "string"}},
             "required": ["action"]}})
     ENTERPRISE_TOOLS.append({
@@ -257,7 +278,8 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 raise ToolError(str(ex))
         # ---- real work on her live system (enterprise/run.py holds the safety, not this layer)
         if action in ("read", "describe", "soql", "plan_write", "dry_run", "approve", "execute",
-                      "run_status", "runs", "rollback_plan", "endpoint"):
+                      "run_status", "runs", "rollback_plan", "endpoint", "resolve",
+                      "deploy_validate", "deploy_status", "deploy_go"):
             from ..enterprise import run as RUN
             try:
                 if action == "endpoint":
@@ -298,6 +320,24 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
                     return {"runs": RUN.runs(t_id, role)}
                 if action == "rollback_plan":
                     return RUN.rollback_plan(t_id, _s(a.get("run")))
+                if action == "resolve":
+                    # only SHE can say whether an unanswered row landed; this is that answer coming back
+                    if not _owner(ctx):
+                        raise ToolError("Yeh sirf owner bata sakti hain - system mein dekhkar.")
+                    if "landed" not in a:
+                        raise ToolError("landed=true (chadh gayi thi) ya landed=false (nahi gayi) batana zaroori hai.")
+                    return RUN.resolve(t_id, _s(a.get("run")), int(a.get("n") or 0), bool(a.get("landed")))
+                if action == "deploy_validate":
+                    comps = a.get("components")
+                    if not isinstance(comps, list):
+                        raise ToolError("components ek list honi chahiye: [{type, name, body}].")
+                    return RUN.deploy_validate(t_id, role, comps, _s(a.get("test_level")))
+                if action == "deploy_status":
+                    return RUN.deploy_status(t_id, role, _s(a.get("deploy")))
+                if action == "deploy_go":
+                    if not _owner(ctx):
+                        raise ToolError("Haan sirf owner deti hain.")
+                    return RUN.deploy_go(t_id, role, _s(a.get("deploy")), "owner", _s(a.get("confirm_env")))
             except RUN.RunError as ex:
                 raise ToolError(str(ex))
         if action == "item_update":

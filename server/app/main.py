@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.390.0"   # v0.390.0 PAKKI NEEV (App Sahayak Pillar B, Phases 47-48, owner: "START NEXT PILLAR"): her apps' backend holds under MANY server processes and can always be brought back - one cross-process lock per app (Postgres advisory locks / an fcntl file lock on SQLite) for stock, coupons, slots, GST numbers, udhaar, approvals and every read-modify-write of the app settings (stock and coupon changes used to be able to overwrite each other), a phone retry racing itself in two processes = ONE row, a write journal from ONE before_flush hook (no write path can skip it), daily + before-change snapshots, point-in-time restore to any minute (preview, then HER tap, safety copy first), a ZIP export (no passwords), indexed links (app_refs) instead of JSON scans, usage meters + limits (80/95/100% notes), the SQLite -> Postgres move (python -m app.dbmove, counts verified), every app suite green on real Postgres, and the proof: 1,000 customers ordering 300 in stock at once against 4 worker processes on one Postgres = exactly 300 orders, retries one row each, no server error (CI app-load.yml). Previous: v0.389.0 SACH BOLO (enterprise write rails). Before: v0.387.0 GURU SAHAYAK - Shiksha suite Phase 2, the personal tutor (owner: "GO PHASE 2"): sessions per learner (doubt / practice / language; a child only after guardian consent, inside a daily minutes cap); a doubt is taught as a HINT LADDER one rung per ask (hint -> nudge -> worked steps -> answer), numeric answers checked by code in the pylab sandbox, photo doubts via Claude vision, exam mode / graded work = hints only; adaptive practice from the APPROVED bank (due revision first, else the weakest topic; difficulty from mastery), objective answers checked in code, written ones by AI (labelled), mastery + spaced revision; language practice with corrections; progress + weekly report card for the guardian only by her tap. PHASE 2.1 (after DeepTutor, Apache-2.0): mastery with a confidence cap, SM-2 revision + exam window / cramming, a mastery path over the NCERT chapters with a gate per chapter, explanations grounded in her own books with page cites. Role personal_tutor, preset tutor_centre, phone Profile > Personal tutor. Tests: NEW test_v0387_guru.py + test_v0387_guru21.py. Previous: v0.386.0 STUDIO PROJECT (built as 0.378 / 0.382) (Hoola Game Engine plan Phase 2, owner: "GO PHASE 2"): a game now lives for weeks, months or 1,000 days instead of one sitting. A Studio Project (gamedesk/studio.py) wraps one Game Desk game and adds what a studio runs on: a TASK BOARD where every task is ONE small change built by the Phase 1 pipeline (code -> guard -> headless play -> Web export -> Hoola plays it) and then WAITS for her OK; "wapas" makes the version before it live again (versions carry a rejected mark, so the play link and the next change both skip it); MILESTONES (Prototype -> First playable -> Alpha -> Beta -> Release) counted in code; a DECISIONS LOG Hoola reads before planning and answers "why is X like this" from (and says there is no record rather than guess); a NIGHTLY BUILD that rebuilds and replays the live code from scratch with no model call, checks the code fingerprint, flags an fps drop over 25 % and names the tasks since the last good night, adding a priority fix task when it fails; a MORNING REPORT in her chat written in code from the board; restore any old version as a new one (no model call); her GitHub on the usual card (code + TASKS / DECISIONS / CHANGELOG). Precision rules in code: one task builds at a time, none starts while another waits for her OK, a failed task never replaces the live game. Tool game_studio, /api/gamestudio*, console Game Desk board, phone GameStudioScreen.
+APP_VERSION = "0.395.0"   # v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390 / 0.394; Hoola Game Engine plan Phase 3, owner: "GO PHASE 3"): every Studio Project gets ONE source of truth for its names and numbers, as DATA (gamedesk/bible.py, table game_bibles): meta, a style palette, glossary + banned words, player numbers, growth curves, and entities by kind (character, enemy, item, level, quest, screen) - each kind a TEMPLATE with typed fields, ranges, enums and references, so the 50th enemy has exactly the shape of the 1st. All checks in code: ranges, unique ids, every reference real (waves name real enemies, no quest loops), colours only from the palette (style lock), banned words, names that fit, no real-money fields. A SEEDED Monte-Carlo balance run per level (same Bible = same numbers) flags impossible levels, spikes, a too-hard first level, a too-easy late one and items you can never afford. Generators: the model writes only words, the curves set the numbers, and the result waits as a DRAFT for her OK. The game reads it: hoola_bible.gd is a HoolaBible AUTOLOAD (a real Godot run proved class_name is invisible headless), so a balance change is a DATA-ONLY rebuild with no model call. Found live and fixed: the code guide told the model to use class_name helpers, which never parse in Hoola builds - now preload, and the guard says so before a build is wasted. Tool game_bible, /api/gamestudio/{id}/bible*, console Game Bible page, phone GameBibleScreen.
 
 
 def _quiet_http_logs() -> None:
@@ -83,6 +83,8 @@ async def lifespan(app: FastAPI):
     init_db()
     _mark_jobs_on_stop_signal()   # v0.343 a deploy marks running website jobs at the signal, not at the (often aborted) end
     _quiet_http_logs()
+    from . import authcheck as _authcheck
+    _authcheck.warn_if_open()  # v0.391 an empty API_KEY = a request with no login acts as the owner: say so loudly in the log
     from . import usage as _usage
     _usage.install()          # v0.98 every Claude / Gemini call is counted (owner, feature, cost)
     stop = asyncio.Event()
@@ -218,7 +220,9 @@ def _qa_ok() -> bool:
 
 
 def _bearer(request: Request) -> str:
-    return request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.query_params.get("key", "")
+    # v0.391 header only: a key or login token in the address (?key=) lands in nginx logs and browser history; no Hoola
+    # client sends one there (phone, Android, console and both desktop apps all use the Authorization header)
+    return request.headers.get("authorization", "").removeprefix("Bearer ").strip()
 
 
 def current_tenant(request: Request) -> str:
@@ -246,7 +250,7 @@ def _resolve_tenant(request: Request) -> str:
 def require_key(request: Request) -> None:
     from . import accounts
     key = get_settings().api_key
-    got = request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.query_params.get("key", "")
+    got = request.headers.get("authorization", "").removeprefix("Bearer ").strip()   # v0.391 never ?key= (see _bearer)
     if key and got and hmac.compare_digest(got, key):
         return
     if got and accounts.tenant_for_session(got):   # a signed-in product user
@@ -1973,7 +1977,7 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
     connection dropped (network change) instead of starting a new one."""
     from . import voice as v
     st = get_settings()
-    got = ws.headers.get("authorization", "").removeprefix("Bearer ").strip() or ws.query_params.get("key", "")
+    got = ws.headers.get("authorization", "").removeprefix("Bearer ").strip()   # v0.391 header / subprotocol only, never ?key=
     # v0.142 browsers can't set headers on a WebSocket: the console sends "hoola, hoola-key.<token>" as subprotocols
     protos = [p.strip() for p in ws.headers.get("sec-websocket-protocol", "").split(",") if p.strip()]
     sub = "hoola" if "hoola" in protos else None
@@ -7032,7 +7036,9 @@ def social_settings(body: dict, tenant: str = Depends(current_tenant)):
     b = body or {}
     return _social_call(pulse.set_settings, tenant, paused=b.get("paused") if isinstance(b.get("paused"), bool) else None,
                         quiet=b.get("quiet") if isinstance(b.get("quiet"), list) else None, stop=b.get("stop") is True,
-                        reason=str(b.get("reason") or ""))
+                        reason=str(b.get("reason") or ""),
+                        yt_kids=b.get("yt_kids") if isinstance(b.get("yt_kids"), bool) else None,
+                        yt_playlist=b.get("yt_playlist") if isinstance(b.get("yt_playlist"), str) else None)
 
 
 @app.post("/api/social/growth/watch", dependencies=[Depends(require_key)])
@@ -11334,6 +11340,64 @@ def enterprise_disconnect(role: str, system: str, tenant: str = Depends(current_
 def enterprise_paper(role: str, ref: str, tenant: str = Depends(current_tenant)):
     from .enterprise import service as ent
     return _ent(ent.artifact, tenant, role, ref)
+
+
+def _entrun(fn, *a, **kw):
+    from .enterprise import run as entrun
+    try:
+        return fn(*a, **kw)
+    except entrun.RunError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/enterprise/{role}/run/{run_id}", dependencies=[Depends(require_key)])
+def enterprise_run_status(role: str, run_id: str, tenant: str = Depends(current_tenant)):
+    """One write run: how far it got, what failed, and which rows nobody can be sure about."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.status, tenant, run_id)
+
+
+@app.post("/api/enterprise/{role}/run/{run_id}/resolve", dependencies=[Depends(require_key)])
+def enterprise_run_resolve(role: str, run_id: str, body: dict,
+                           tenant: str = Depends(current_tenant)):
+    """Her answer on a row whose reply never arrived: did it land in the system or not?
+
+    Hoola refuses to decide this itself - a retry can post the same record twice - so the row waits here
+    until a person has looked. landed=true closes the row WITHOUT sending anything; landed=false puts it
+    back in the queue for exactly one more attempt."""
+    from .enterprise import run as entrun
+    if "landed" not in body:
+        raise HTTPException(400, "landed true/false batana zaroori hai.")
+    return _entrun(entrun.resolve, tenant, run_id, int(body.get("n") or 0), bool(body.get("landed")))
+
+
+@app.post("/api/enterprise/{role}/deploy/validate", dependencies=[Depends(require_key)])
+def enterprise_deploy_validate(role: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Salesforce config deploy, step 1 of 3: the dry run. Components are checked and the tests run in her
+    org, and nothing is committed. This is the only documented way to change what Tooling API refuses to
+    touch in a live org (CustomField, CustomObject, Apex) or cannot write at all (Profile, PermissionSet)."""
+    from .enterprise import run as entrun
+    comps = body.get("components")
+    if not isinstance(comps, list) or not comps:
+        raise HTTPException(400, "components chahiye: [{type, name, body}].")
+    return _entrun(entrun.deploy_validate, tenant, role, comps, str(body.get("test_level") or ""))
+
+
+@app.get("/api/enterprise/{role}/deploy/{deploy_id}", dependencies=[Depends(require_key)])
+def enterprise_deploy_status(role: str, deploy_id: str, tenant: str = Depends(current_tenant)):
+    """Step 2: poll. A deploy with tests takes minutes, so the id is kept and polled - never resubmitted."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.deploy_status, tenant, role, deploy_id)
+
+
+@app.post("/api/enterprise/{role}/deploy/{deploy_id}/go", dependencies=[Depends(require_key)])
+def enterprise_deploy_go(role: str, deploy_id: str, body: dict | None = None,
+                         tenant: str = Depends(current_tenant)):
+    """Step 3: HER TAP. Quick-deploys the validation she just saw, without re-running its tests (valid 10
+    days). A production org needs the word 'production' as well, like every other live write."""
+    from .enterprise import run as entrun
+    b = body or {}
+    return _entrun(entrun.deploy_go, tenant, role, deploy_id, "owner", str(b.get("confirm_env") or ""))
 
 
 @app.get("/api/employee", dependencies=[Depends(require_key)])

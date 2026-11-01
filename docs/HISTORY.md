@@ -14721,3 +14721,178 @@ Postgres (set `max_locks_per_transaction = 512` or more in postgresql.conf: Hool
 CI hit 'out of shared memory' on the default 64), create a database + user, `python -m app.dbmove --to <url>`, set DATABASE_URL in ~/apps/santosh-core/.env,
 restart; keep santosh.db as the fallback.
 Tests `server/tests/test_v0390_pakki_neev.py`.
+
+## v0.391.0 KHULA DARWAZA (owner: "GO A")
+The front-door safety pass from "WHAT IS NEXT WORK". Built as 0.386, re-versioned past the parallel v0.386-v0.390.
+- A1, an open door?
+  - The danger: `main._resolve_tenant` / `require_key` / the voice WebSocket treat a request with NO login as the owner
+    whenever API_KEY is empty.
+  - The live answer: checked on the live server, a no-login GET https://hoola.ainewtika.com/api/me answered 401, so
+    API_KEY is set and the door is LOCKED.
+  - Kept as a guard, report only (it changes nothing about who gets in):
+    - `app/authcheck.py`: `warn_if_open()` logs one loud line at startup when API_KEY is empty, called from `lifespan`;
+    - `python -m app.authcheck [--url ...]` says set / EMPTY (never the value) and asks the running server for
+      /api/me with no login (401 = locked, 200 = OPEN);
+    - vps-ops `auth_check`: .env name check plus the live and public no-login probes.
+- A2, keys in the address: `_bearer`, `require_key` and the voice WebSocket no longer read `?key=`. A key or login token
+  in a URL lands in nginx logs and browser history.
+  - Checked before removing it: the phone (lib/api.dart, lib/live_voice.dart), every Android service, the console (the
+    WebSocket subprotocol `hoola-key.<token>`) and both desktop apps send the Authorization header; console files use
+    signed links; no test used `?key=`.
+  - The frozen Mera PC WebSocket keeps its own `?token=` (untouched).
+- A3, clean-up: the 589 KB `server/app/main.py.orig` leftover deleted. The stale CLAUDE.md line ("revise / fix_ci still
+  one-shot") corrected; both have used the loop since v0.352.
+- Full suite on this branch:
+  - 213 failed of ~3,500; all but 3 also fail on main at the same base (the known sandbox-only reds);
+  - the 3 (thok / theka tools_api, voice interruption) pass alone, so they are load flakes.
+- Tests: `test_v0391_khula_darwaza.py`:
+  - the right key in the address is refused (401) while the header works; `_bearer` ignores a query token;
+  - the voice socket closes 4401 on `?key=`;
+  - the warning fires only when empty; the probe reads 401 / 200;
+  - vps job present; main.py.orig gone; no `query_params.get("key"` left in main.py.
+
+## v0.392.0 YOUTUBE ON THE SOCIAL DESK (1 Nov 2026, owner: "GO Y1"; built as 0.391, re-versioned past the parallel v0.391 KHULA DARWAZA)
+Plan Y1 of the YouTube proposal (Y2 = YouTube ads through the Google Ads API: Demand Gen campaigns created paused, her tap
+to go live - NOT built; needs a Google Ads developer token with Basic access + the adwords scope in OAuth verification).
+Module `server/app/social/ytpost.py`, built on `app/youtube` (accounts / client / service; no new Google sign-in).
+- Account: `sync_channel` (every desk view, DB only) mirrors her default YouTube channel as SocialAccount platform youtube
+  (account_id = YouTubeAccount id or "google" for the sign-in path; no token in the social row). desk `sync_account` ->
+  `sync_youtube`: subscribers, handle, latest 50 videos into SocialMedia (<= 180 s = reel / Short, else video), so the
+  baseline / pulse / monthly PDF / best times include YouTube. Connect = `youtube.accounts.start_link`; Disconnect also
+  removes the YouTubeAccount (the "google" sign-in path stays with her Google sign-in).
+- Posting: POST_PLATFORMS + youtube, FORMATS + video. `problems`: a video file + fmt reel / video, the made-for-kids answer
+  (pulse settings `yt_kids`, YouTube requires it), a title. `publish`: Hoola-wide guard YT_DAILY_UPLOADS (default 90,
+  counted from published results across tenants); resumable upload (title <= 100 with #Shorts for reels, description =
+  caption + 3 hashtags, tags <= 500 chars, category 22, public + selfDeclaredMadeForKids + embeddable); YouTube's answer
+  "private" (unaudited API project) -> a note on the post; thumbnail from the post's picture (thumbnails.set; failure =
+  note); playlist (`yt_playlist`, PL... id validated; failure = note). Links /shorts/<id> or /watch?v=<id>. The rules plan
+  adds youtube to reels when connected; Opus is told about youtube + format video.
+- Inbox: youtube = comments only; commentThreads allThreadsRelatedToChannelId (one call, newest 50, 7 days, her own channel
+  skipped, permalink watch?v=..&lc=..); reply = comments.insert parentId; hide = setModerationStatus heldForReview /
+  published (never rejected / deleted). A YouTube read error is told once and skipped.
+- Console + phone: connect button, subscribers tile, "Also as YouTube Short" / "Also on YouTube", made-for-kids select +
+  playlist id in Posting controls, result notes. Privacy: YouTube paragraph (Google API Services User Data Policy).
+- Not done: Y2 ads; YouTube Analytics watch time in reports (views / likes / comments only); captions upload.
+- Tests `server/tests/test_v0392_social_youtube.py` (7).
+## v0.393.0 POORA KARO — the two things v0.389 could not reach
+Owner: *"IS ALL ENTERPRISE EMPLOYEE WORK DONE"*, then **"GO"**.
+
+The honest answer was no, and both gaps were in the version I had just called finished. I found them by
+checking whether the new code was *reachable*, not by re-reading what I had written — which is the only way
+this class of miss ever surfaces.
+
+### 1. `sfmeta.py` was dead code
+v0.389 built the Salesforce Metadata deploy — zip builder, `checkOnly` dry run, quick-deploy, polling,
+production guards — with **seven passing tests and no caller anywhere**. No agent action, no API route. The
+tests passed because they called the module directly, which is exactly how dead code hides: every green tick
+was true and the feature did not exist.
+
+> **Rule, recorded:** a module's tests passing says it WORKS, never that it is REACHABLE. Grep for a caller
+> outside its own file and its own tests before calling a feature shipped.
+
+Wired now, on the same discipline as every other write — `run.deploy_validate` → `deploy_status` →
+`deploy_go`:
+
+| step | what happens |
+|---|---|
+| `deploy_validate` | `checkOnly: true` — Salesforce checks every component and runs the tests in her org, commits nothing |
+| `deploy_status` | poll the id; a deploy with tests takes minutes, so it is polled and **never resubmitted** |
+| `deploy_go` | HER TAP — quick-deploys that same validation without re-running its tests (good for 10 days); a production org needs the word `production` too, because a config change breaks the org for everyone, not one record |
+
+The `crm_arch` tool description now also says *why* — that Salesforce itself refuses Tooling writes to
+CustomField / CustomObject / Apex in an active org and gives Profile / PermissionSet / Layout no REST write
+path — because a description that only lists actions leaves the model hitting the same wall. It also states
+that a lone FIELD cannot be deployed (it lives inside its object's file), so the model asks for the whole
+object or sends her to a sandbox instead of trying.
+
+### 2. The `ambiguous` row had no way out
+v0.389 added a state for a row whose answer never arrived, and told her "look in the system and tell me" —
+then gave her nothing to tell it with. `execute()` deliberately skips such a row (a retry is how a record gets
+posted twice), so a run holding one sat at `failed` **for ever**.
+
+`run.resolve(run, n, landed)` is that answer coming back, and it is owner-only because nobody else can know:
+- `landed=true` → the row is **closed without sending anything**. Proved by a test that asserts the write
+  count does not move.
+- `landed=false` → back in the queue, same idempotency key, and the next `execute()` sends it **exactly
+  once** (also asserted, because "one more attempt" is the whole point).
+Either way the run's status is recomputed, so it reopens as `running` when work returns and only reads `done`
+when no row is left in doubt. A `done` or `failed` row is refused — a failed row retries on its own and is not
+hers to re-decide.
+
+### Files
+`server/app/enterprise/run.py` (resolve + 3 deploy wrappers) · `server/app/agent/enterprise_tools.py`
+(4 actions, 5 params, the crm_arch deploy blurb) · `server/app/main.py` (5 routes: run status, resolve,
+deploy validate / status / go — enterprise routes 6 → 11) · `server/tests/test_v0389_real_rails.py`
+(42 tests, 6 new). 140 pass across the enterprise suites plus `test_agents.py`.
+
+Also renamed the suite to `test_v0389_real_rails.py`: it was written as v0.382, renamed to dodge another
+session's DIMAAG, and the number moved twice more while it was being tested.
+
+### Still not done, and still said plainly
+**The connect screen does not exist**, so none of this has touched a real system — the deploy included. **No
+live tenant has answered any of it.** Salesforce field-level edits are refused (no `retrieve` in Metadata REST
+to merge against), Teamcenter stays read-only (SOA is the contract and we do not speak it), SAP `$batch` is
+not implemented, and GST/ERI filing waits on her commercial decisions.
+## v0.394.0 HOOLA CAD CONTACT (built as 0.392) (1 Nov 2026)
+Owner pointed at the open gap: "Contact between parts in the stress check: an assembly is still checked as one glued
+piece. Bolts are checked by the joint calculation instead."
+- `engineering/contact.py` (`contact.solve(parts, spec)`), used by the analysis box when a static study has
+  contact= or bolts= (`analysis_runner._contact`; the runner now writes each assembly part as apart_<i>.brep +
+  aparts.json; bolt / screw / nut / washer / stud / rivet solids are left out because each bolt is a connector).
+- Each part its own P2 mesh, global system = parts side by side. Contact pairs from the B-rep: planar faces of two
+  parts facing each other in one plane (gap <= max(0.02 mm, 0.2 % of size)) and overlapping.
+- NODE-TO-SURFACE penalty contact (A's face nodes, with their share of the face area, projected onto B's facets,
+  B interpolated with the quadratic facet shape functions). First try = 3 Gauss points per facet: it LOCKED (a bonded
+  stack 40 % too stiff, stiffer as the penalty rose); one point per node fixed it (0.1993 vs 0.200 mm at penalty 1, 5
+  and 50 x E/h). Only facets with all three corners on the face are used (the mesher sometimes cuts a face's edge).
+- Behaviours: bonded, frictionless (open / closed active set), friction mu (stick / slip with 5 % hysteresis, slip =
+  Coulomb force mu*p opposite the slip, relaxed). Converged when < 0.2 % of points change.
+- Bolts: place_bolt finds the hole stack along the axis at (x, y): head ring (hole radius .. washer OD) on the top
+  part's top face, nut ring on the bottom part's bottom face, or the thread wall (1.5 d) of a tapped bottom part.
+  Axial connector = RBE3-style mean of the ring displacements, stiffness kb from calc.joint (shank + thread);
+  pretension calibrated with a unit-shortening solve so the bolt carries EXACTLY the asked preload with no load.
+- Weak springs 1e-10 E*h only on parts with no support of their own (1e-7 on everything carried a real share of
+  the load and broke equilibrium); a part no support / contact / bolt reaches is refused by name.
+- Equilibrium from the final solve itself (K u - rhs on the supports) - the first version left out the preload on a
+  fixed nut ring and printed 643 %.
+- Flags: separated (> 90 % of a contact open), slipped (> 90 % of the touching points sliding) - a slipped joint's
+  stresses are marked NOT valid (the parts slide until the bolt shank bears; bearing is not modelled).
+  Redesign problems: joint separates / slips / bolt over proof load.
+- Measured: frictionless stack 0.777 vs 0.8 mm (theory 4x one beam); M10 8.8 between two 30 mm blocks: preload
+  25,230 N exact, 5 kN pull adds 9 % (Shigley C 0.156 x a load-introduction factor ~0.6), 60 kN pull opens the
+  joint and the bolt carries 61.4 kN; friction 0.2: 2 kN side load held, 12 kN slips.
+- Still NOT built: bolt shank bearing / shear in the hole, contact on curved faces (pin in a bore), large sliding.
+- Tests: tests/test_v0386_contact.py (7).
+
+## v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390.0 / 0.394.0) (Hoola Game Engine plan, Phase 3) - 1 Nov 2026
+
+Owner: "GO PHASE 3". Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 5 (precision mechanisms 1-4) + phase table.
+
+- `server/app/gamedesk/bible.py`, table `game_bibles` (one per Studio Project: data, version, draft, history, applied).
+- Sections: meta (pillars, genre, audience), style (palette = style lock, tone), terms (glossary, banned words),
+  player (hp, damage, fire_rate, hit_chance, speed), curves ([base, growth] by tier for enemy / item / level), economy.
+- Kinds = TEMPLATES (`KINDS`): character, enemy, item, level (waves {enemy, count, at_s}), quest (requires), screen.
+  `clean_entity` gives every entry the template's exact shape; out-of-range is an ERROR, never silently clamped.
+- `check()` in code: types / ranges / enums, unique ids, references (waves -> enemies, quest requires, no quest loop),
+  palette lock, banned words, real-money fields / words refused, names <= 24 chars (warning), duplicate names (warning),
+  size budgets (400 entities, 200 KB). Errors refuse a change; warnings show.
+- `simulate()` Monte-Carlo per level (dt 0.25 s, up to 300 s, 200 runs default) SEEDED from the Bible hash: same Bible =
+  same numbers. Win rate, health left, score, coins; flags impossible (< 5 %), first level < 80 %, spike (> 35 points),
+  late level > 98 %, items never affordable (economy: cumulative coins vs prices).
+- Generators: `generate(kind, n, words)` - model gives words only, `apply_curves` sets the numbers by tier / order, each
+  entry validated, the batch is a DRAFT (with the base hash; stale if the Bible moved) for her OK (`accept` all / ids,
+  `reject`). `seed` = first Bible from the design doc as a draft (colours forced into the palette, broken refs dropped).
+  Her own edits (`set_entity`, `set_section`, `remove_entity`, `recurve`) apply at once, validated, logged as decisions.
+- In the game: `gd()` writes `hoola_bible.gd` (const VERSION + DATA incl. by_id), loaded as the HoolaBible AUTOLOAD
+  (`template.files` adds it). Every build carries Hoola's own copy (the model's copy is replaced); versions record
+  `bible`; `apply` = `service.data_build` (mode data: same code + new Bible, no model call, full checks + playtest).
+- REAL GODOT FINDINGS (4.7.2 in the sandbox): (1) `class_name HoolaBible` is "not declared" in a headless run (no class
+  cache) -> autoload; (2) the SAME bug hit Phase 1's GUIDE ("helpers: class_name Foo") - every helper-script game failed
+  its first smoke run; GUIDE now says `const Foo = preload("res://foo.gd")`, guard refuses class_name with that hint.
+  The Bible file with quotes / backslashes / nested dicts parsed, exported and played at 60 fps.
+- Studio: board shows the Bible line (version / in game / errors / draft), plan_tasks reads the Bible, GitHub export adds
+  BIBLE.json. Tool `game_bible` (show / template / set / remove / section / seed / generate / accept / reject / check /
+  simulate / apply / recurve). API `/api/gamestudio/{id}/bible*`. Console: board > Game Bible (`gsBible`, `gb-*` CSS).
+  Phone: `lib/ui/game_bible_screen.dart` (read, drafts, simulate, apply, generate, remove; editing in the console).
+- Tests `test_v0395_game_bible.py` (10).
+

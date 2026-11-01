@@ -179,5 +179,5 @@ def test_owner_only_endpoints_and_console(site_env):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.390.0"
-    assert "0.390.0+434" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.395.0"
+    assert "0.395.0+439" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
