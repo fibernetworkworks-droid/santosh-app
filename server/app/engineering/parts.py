@@ -417,8 +417,10 @@ def expect(**kw):
 
 def analyze(kind="static", **kw):
     """FEA after the build. kind static | thermal | modal. See the guide for fixed / loads / temps / heat / convection."""
-    if kind not in ("static", "thermal", "modal"):
-        raise ValueError("analyze kind: static / thermal / modal")
+    if kind not in ("static", "thermal", "modal", "flow"):
+        raise ValueError("analyze kind: static / thermal / modal / flow")
+    if kind == "flow" and kw.get("domain") is None:
+        raise ValueError("flow: domain=<the FLUID body> chahiye (channel / cavity / box minus the part)")
     if len(STUDIES) >= 3:
         raise ValueError("ek part par 3 analysis tak")
     STUDIES.append({"kind": kind, **kw})

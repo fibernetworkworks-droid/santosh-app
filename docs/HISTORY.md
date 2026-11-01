@@ -14267,7 +14267,204 @@ What each gap became (all in `server/app/engineering/`, tests `tests/test_v0365_
   sandbox could not open cbseacademic / ncert / cisce; facts came from searches restricted to those domains); Flutter not compiled
   here (CI analyze); the console has no Shiksha page yet (phone + chat only).
 
-## v0.382.0 GURU SAHAYAK - Shiksha suite Phase 2: the personal tutor (K-PhD)
+
+## v0.382.0 DIMAAG - the app's logic engine (App Sahayak Phases 43-46 = Pillar A of docs/COMPLEX_APPS_PLAN.md)
+Owner (1 Nov 2026): *"Logic engine (biggest step) - Linked lists (customer → orders → items), formulas, workflows with
+approvals, automatic triggers and timed jobs, and custom logic in a locked sandbox ---- WORK ON IT AND DEPLOYE MAKE IT FULL
+AND ROBUSTLY FUCTIONAL"*.
+
+What it is: every native app (Android + iPhone + its own backend) can now carry a BRAIN, stored as `backend["logic"]`:
+- **Linked lists** (`relations`): a ref field points at a row of another list (customer → invoices → lines). The server checks
+  every link (the row exists in THIS app, in the right list, and the person may read it). Deletes follow the relation:
+  `restrict` (refused while children exist), `cascade` (children go too, max 500), `nullify` (links cleared).
+- **Formulas** computed on every write, in dependency order (a loop between formulas is refused by the checker); a child's
+  change re-computes its parents (roll-ups: `subtotal = sum(lines.amount)`, `billed = sum(where(invoices, ...).total)`).
+  Formula fields are the server's: stripped from every incoming write, never in a form. A formula that cannot run leaves
+  its field blank and is audited - an order is never lost to a formula.
+- **Rules** (`check` must be true; `old.<field>` on update) + **unique keys**. A rule that cannot run is audited and lets
+  the write through (her app never bricks); a rule that says no, or `fail("...")`, refuses with its message (422 / 409).
+- **Workflows**: states, steps (`from`, `to`, `who`: row_owner / member / assigned / staff / admin / owner, `require`d fields,
+  a `when` condition), every new row starts at the first state whatever is sent. A step that needs **approval** becomes an
+  approval request (`_approval` rows): steps staff / admin / owner, **maker-checker** (the asker never approves), one person
+  = one step, the row does not move until the last yes; a row that moved meanwhile cancels the request. **SLA**: a row
+  waiting too long in a state -> notify (+ optional move), once per waiting spell.
+  An allowed step is performed BY THE ENGINE (`info["move"]`), so a customer's own allowed step (Cancel) works although
+  customers never write staff fields; a workflow move to Cancelled runs the same give-backs as before (stock, coupon,
+  udhaar, credit note) through the new `backend.status_moved` (also from approvals / triggers / SLA).
+- **Triggers** on create / update / delete / change:<field> / enter:<state> with an optional `when`: notify (owner chat note,
+  staff / admins / row owner / assigned person by push), set fields, move, create a row in another list, assign to the
+  least busy staff, run a function (its returned map sets fields). Loops are cut: 3 levels deep, 100 automatic actions per
+  request; every action is written to the app's audit list (`_audit`, last 3,000 kept).
+- **Timed jobs** (`schedules`): hourly / daily HH:MM / weekly mon HH:MM / monthly D HH:MM (IST), `where` filter,
+  `once_per_row`; the worker runs `engine.tick()` once a minute in a thread; a slot is marked BEFORE it runs (no double
+  run after a crash), a brand-new job waits for its first real slot (no catch-up storm), 200 rows per run.
+- **Custom functions in a locked sandbox**: `logic/lang.py` is our own tokenizer + parser + tree-walking interpreter -
+  never Python eval / exec / import, no file or network access by construction (values are JSON shapes; `.key` is a dict
+  lookup, so `x.__class__` is just a missing key). Budget per run: 50,000 steps, 2,000-item lists, 20,000-char text,
+  call depth 8, 0.5 s wall clock. Body language: let / assignment / if-else if-else / for-in / break / continue / return /
+  fail(). A function reads only its params; its own tests (expect / fails) run before any save. Callable ones are exposed
+  to the app (`POST /api/app-api/<key>/fn/<name>`, rate-limited, 20,000 steps).
+- Expressions: field names, `customer.city` (a ref gives the parent row, loaded lazily), `lines.amount` (children), `me`,
+  `old`; ~60 builtins (round / sum / where / count / days_between / add_days / add_months / age / money(₹ Indian grouping) ...).
+
+Authoring (`logic/service.py`): Opus writes {lists, fields, logic} for THIS app's real lists from her words (empty words =
+the full logic from the app brief) -> `spec.check()` (every list / field / state / function name must exist, formulas
+parse, no formula loops, function tests pass) -> one repair round with the checker's errors -> kept as a DRAFT with plain
+summary lines. **Only her tap applies it** (`POST /api/apps/<ref>/logic/apply {hash}` = the exact draft she saw): new lists
+/ fields first (`_apply_ops` gained `add_list` + `ref` fields, additive only), then the logic, then every existing row gets
+its formulas once (children before parents). The console editor (`PUT /logic`) uses the same checker. One switch turns it
+all off (nothing deleted). Agent: `app_banao action=logic` (draft only) / `logic_switch` / `approval` (her decision, on her
+word) / `logic_run`; `app_dekho what=logic`.
+
+Apps: the server decorates the schema (ref fields get `to`, formula fields `computed`, the workflow field its states +
+`workflow`, parents list their `relations`, `approvals` / callable `functions` flags) and every row (`_labels` = a link's
+row name, `_actions` = the steps THIS person may press now, `_pending` = an approval waiting + `can_decide`). Kits
+`Logic.kt` / `Logic.swift`: RefField (picker, the id travels, the name shows), WorkflowBox (allowed steps / approval waiting
+with Approve / Reject), RelatedBlock (a row's linked children + Add with the link filled), AutoForm (every field of a list as
+a form), kit screens `hoola_approvals` and `hoola_data` (every list as rows + a form, so a list the logic added works before
+any redesign); RowsSection / RowCard use them; screen prompts mark `[ref:<list>]` fields. Console app page: "App logic" box
+(summary, draft from words, Apply, approvals, timed jobs Run now, audit, advanced JSON). Phone: `lib/ui/app_logic.dart`.
+
+Routes: owner `GET /api/apps/<ref>/logic`, `POST .../logic/draft`, `DELETE .../logic/draft`, `POST .../logic/apply`,
+`PUT .../logic`, `POST .../logic/switch`, `POST .../logic/test`, `POST .../logic/run/<name>`, `GET .../logic/audit`,
+`GET|POST .../approvals[/<id>]`; app `GET /api/app-api/<key>/approvals`, `POST .../approvals/<id>`,
+`GET .../c/<coll>/<row>/related/<rel>`, `POST .../fn/<name>`.
+
+Tests `server/tests/test_v0380_dimaag.py`: the locked language (no escape, budgets), the checker (unknown names, formula
+loops, bad states / triggers, failing function tests), a full invoicing app end to end (unique phone, links, formulas +
+roll-ups + her function, rules, Send needs a date, follow-up created by a trigger, 2-step maker-checker chain, enter:Paid
+trigger, conditional approval, restrict / cascade / nullify, callable function, schedule once per row, audit, off switch),
+schedule slots + SLA, Opus draft with the repair round + her tap by hash, the customer's own Cancel giving stock back, kits.
+
+Not verified here: the Kotlin / Swift kit compile (CI appgen-check / ios-check build them), a real Opus draft on her VPS.
+Known limits (said plainly): locks + schedules assume one server process (Pillar B moves to Postgres transactions); child
+lookups use a JSON text match on SQLite (fine to a few thousand rows per list); no realtime push of logic results (Pillar C).
+
+## CHECKPOINT 1 Nov 2026 - CODING (owner: "SAVE THE STATE")
+Branch `stable-2026-11-01-v382` = commit 5e3e06d4 = v0.382.0 (live, healthz 0.382.0), APK `v0.382.0-b1002` (CI run 1002 on
+main, same commit). Verified in that exact commit before the branch was cut: the coding loop (loop.run), CI before the PR
+(service._ci_step, gh.mark_ready), project rules (loop.rule_paths), the vague-ask rule, the exploring PR review
+(loop.review_run), the three coding cards (codecard, code_tasks2 / 3, sdk.setup, vps-ops code_card_mobile), and the long-job
+work (aage.promised, quality/longjobs). Live coding cards at save time:
+- set 1 (Python): 12/12;
+- set 2 (Python + JS): 12/12, after v0.371;
+- set 3 (Dart + Kotlin): 10/10, first run.
+Rollback = the same VPS commands as the other checkpoints, with this branch.
+## v0.383.0 SOCIAL MEDIA MANAGER Phase 5 - GROWTH (built as 0.370 / 0.378, re-versioned past the parallel v0.370-v0.382) (1 Nov 2026, owner: "GO PHASE 5")
+Module `server/app/social/growth.py` (tables `social_watch`, `social_ugc`), Meta calls at the end of `social/meta.py`.
+- Route: Meta's hashtag search ("available for the Instagram API with Facebook Login", IG Hashtag Search reference) and
+  Business Discovery work only through Facebook Login, so growth uses her connected Facebook Page: `fb_page_ig` finds the
+  linked instagram_business_account (cached in desk stamps `ig_link`), the Page token reads tags / discovery / mentions,
+  the USER token runs hashtag search. FB_SCOPES + instagram_basic, instagram_manage_insights, instagram_manage_comments -
+  with META_LOGIN_CONFIG_ID the permissions live in the Login for Business configuration, so the owner adds them there.
+- Daily job `growth` (>= 8 am): `/tags` -> SocialUgc (her own posts skipped, each once, a note "N new posts tag you").
+  Mondays (or the first read of a new watch): hashtags (<= 5; `ig_hashtag_search` once per tag, id kept in ref_id because
+  Meta allows 30 unique searches in 7 days; `top_media`: posts, interactions, formats, 3 idea lines with links) and
+  competitors (<= 5; business_discovery: followers + change vs prev, posts in 7 / 30 days, interactions a post, formats,
+  engagement rate); one comparison line to her own numbers. Errors stay on the row (e.g. not a professional account).
+- UGC: ask (her tap only) = POST /{ig}/mentions comment "...share with credit? reply YES" - never a DM (she may not
+  message first); permission needs proof text (their words / where); refused / ignore; repost only when granted:
+  media_url downloaded -> add_asset -> SocialPost draft (source ugc, "Credit: @user", hook_style story) for her approval.
+- Creator check: business_discovery numbers + `influencer.rules.fake_signals` (signals, never a verdict) + ASCI
+  `disclosure_check` for a paid collab caption.
+- A/B hook styles: nullable `social_posts.hook_style`; Opus told to rotate and lean on the winner; rules plan rotates
+  question / number / story and puts the winner on every other post; `ab_report` matches published result ids to read
+  numbers, winner only at >= 3 posts a style and a 20% lead.
+- Not done (plan wording): an automatic Ads desk hand-off (the Ads desk analyses imported reports; the boost plan stays
+  hers to run), the Influencer desk roster (it is a talent-manager tool) - its rules are reused instead.
+- Console Growth tile, phone Growth card; privacy paragraph. Tests `server/tests/test_v0383_social_growth.py` (8).
+
+
+## v0.384.0 SOCIAL MEDIA MANAGER Phase 6 - MORE PLATFORMS (1 Nov 2026, owner: "GO PHASE 6")
+Built as 0.375 / 0.379, re-versioned past the parallel v0.379-v0.382. Modules `server/app/social/wabiz.py`, `server/app/social/linkedin.py`.
+- WhatsApp Business by Meta's Embedded Signup (v3: FB.login with config_id, response_type code; Meta posts
+  {type: WA_EMBEDDED_SIGNUP, data: {waba_id, phone_number_id}} to the window). Before: the business typed its phone number
+  id + token into the Business inbox (v0.59 `employee_channels`). Now: Social Desk Connect WhatsApp Business ->
+  `wabiz.connect_url` (state soc_wh_, MailLinkState 30 min single use) -> GET /api/social/whatsapp/start (Meta JS SDK,
+  /api/social/whatsapp/es.js listens only to facebook.com origins) -> POST /api/social/whatsapp/finish {state, code,
+  waba_id, phone_number_id}: oauth/access_token (code, no redirect_uri) -> business token; GET /{pnid} display number,
+  verified name, quality; POST /{waba}/subscribed_apps; POST /{pnid}/register {messaging_product, pin} (pin generated,
+  sealed in user_token_enc; a failure = connected + note to turn off an old two-step PIN); `employee.inbox.set_channel`
+  with her sealed token (the inbox and its replies now use her number); SocialAccount platform whatsapp (no posting,
+  can_reply None). Disconnect also removes the inbox channel. Env: WA_ES_CONFIG_ID (the WhatsApp Login for Business
+  configuration in the same Meta app). Live beyond testers: Newtika must be a Meta Tech Provider.
+- LinkedIn: Sign In with LinkedIn using OpenID Connect + Share on LinkedIn (openid profile w_member_social - self-serve,
+  no partner review). Env LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET / LINKEDIN_VERSION (YYYYMM header, default
+  202510); redirect https://<base>/api/social/linkedin/callback. Token 60 days (no refresh for non-partners) -> hourly
+  watch warns 7 days before (same as Facebook). Publishing: `publish._to_linkedin` -> /rest/images?action=initializeUpload
+  (owner urn:li:person:<sub>) -> PUT bytes -> /rest/posts (commentary escaped: \ | { } @ [ ] ( ) < > # * _ ~, 3
+  hashtags, <= 3000), post urn from x-restli-id, link /feed/update/<urn>/; 401 marks the account expired. `problems`:
+  LinkedIn takes text + photo only (Reel / Story / video refused in words).
+- Planner: posts go only to connected platforms (`_posting_platforms`); the rules plan adds LinkedIn to Our work / Tips /
+  Behind the scenes image + carousel posts when LinkedIn is connected; `set_post(platforms=...)` = "Also on LinkedIn"
+  (a change sends an approved post back to draft). LinkedIn / WhatsApp rows are skipped by Meta reading + the inbox.
+- Not built: LinkedIn Company Page posts, LinkedIn comments / numbers (Community Management API needs LinkedIn's
+  review), X (not asked).
+- Console + phone: connect buttons for all four, account tiles, Also on LinkedIn; privacy paragraphs.
+  Tests `server/tests/test_v0384_social_platforms.py` (10).
+## v0.385.0 HOOLA CAD NEXT PHASE (built as 0.383) (1 Nov 2026)
+Owner: "GO NEXT PHASE" (after: bolts / contact, CFD, fatigue were the biggest gaps).
+- CFD (`fea.flow`, H.analyze('flow', domain=<fluid body>, inlet, outlet, flow_lpm | velocity_mm_s, fluid, max_dp_pa)):
+  the CAD script builds the FLUID as its own solid (bore / channel / box minus part); the runner exports it as
+  domain_<i>.step and the analysis box meshes THAT. Taylor-Hood P2-P1, Stokes then Picard Oseen steps (relaxed 0.7),
+  MINRES with an AMG velocity block + pressure mass diagonal (Stokes), GMRES with a nonsymmetric AMG (Oseen), direct
+  fallback, 420 s budget. Inlet: uniform direction = minus the mean inlet normal, scaled so the flux is EXACTLY her
+  flow (the first try lost ~15 % at the no-slip rim). Water / air / oil / diesel / glycerin. Measured: pipe D10 x 60,
+  creeping flow - centre speed 25.77 vs 25.46 mm/s, pressure drop +7 % (entrance), mass balance 99.9 %; Re 127 -
+  0.333 Pa vs ~0.345 Pa from Poiseuille + Shah's entrance K (about 4 %). Re > 2000 = NOT valid + Swamee-Jain estimate.
+- Fatigue: static H.analyze(..., fatigue={load: zero_to_max | reversed | ratio, life, finish, reliability, min_sf})
+  on the hot spot away from supports: Marin ka (surface), kb (size), kc, ke; steels knee at 1e6, aluminium / copper
+  strength at 5e8 (said), polymers rough; Goodman + Basquin -> predicted cycles + fatigue SF; failing = back to the
+  designer ("bigger fillet, no notch at the hot spot"). Calculator kind=fatigue with Kt and notch sensitivity.
+- Bolted joints: calc kind=joint - bolt stiffness (shank + thread), Wileman member stiffness, load factor C, 75 % proof
+  preload + torque, separation / yield / load / fatigue (rolled threads, Goodman) / slip safety factors.
+- Mesh: boundary facets get exactly one face each (corners' common face, else the nearest by the kernel);
+  surfaces sampled on an even (u, v) grid + edge points (a long cylinder had ~30x too many points and a 5.6 GB solve).
+- NOT built (said to her): true contact / bolt-preload FEA between assembly parts (an assembly is still one glued
+  body in FEA; bolts are checked by the joint calculation), turbulent (RANS) CFD, acoustics simulation.
+- Tests: tests/test_v0381_cad_next.py (10).
+
+## v0.386.0 STUDIO PROJECT (built as 0.378.0 / 0.382.0) (Hoola Game Engine plan, Phase 2) - 1 Nov 2026
+
+Owner: "GO PHASE 2" (after "Studio Project ... WHAT THIS TASK DO"). Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 4 + phase table.
+
+What it is: a game that lives for weeks / months / 1,000 days. A Studio Project (`server/app/gamedesk/studio.py`) wraps
+ONE Game Desk game (`gamedesk/service.py` still owns the code, versions and the private play link).
+
+- Tables `game_studios`, `game_tasks`, `game_decisions` (registered in `db.init_db`, self-heal `studio.ensure_tables`).
+- Task board: todo -> working -> review (built + played fine, waits for HER OK) -> done; blocked (build failed, live game
+  untouched, "Try again"); dropped. Each task = ONE small change, built by the Phase 1 pipeline with the task's words
+  (`service.change(..., task=id)` -> `_build` -> `_studio_hook` -> `studio.after_build`).
+- Precision rules in code: one task builds at a time; no task starts while another waits for her OK (so "wapas" undoes
+  exactly one task); "wapas" marks that version `rejected` (`service._good` skips it: play link + next change go back to
+  the version before) and puts the task back in To do with her reason; a done task can be undone only if nothing was built
+  after it. Every version records `task`, `base` and `src` (code fingerprint).
+- Milestones proto / playable / alpha / beta / release (rename + target dates), progress counted in code.
+- `plan` = Opus producer proposes 6-15 small tasks (reads the design, goal, board and her decisions); the Phase 1 refusals
+  (real money, weapon targeting, clones) apply to every task.
+- Decisions log: her notes on OK, sends-back, manual decisions; `why(q)` returns only matching decisions / finished tasks
+  ("found" empty = no record, never a guess).
+- Nightly build (`studio.nightly`, 1-5 am her time, worker `game_studio_jobs` every 4 min): the live code rebuilt and
+  replayed from scratch in a temp dir, no model call; same-code check; fps drop > 25 % vs the last good night; a failure
+  names the tasks since the last good night and adds a priority-1 fix task (source nightly).
+- Morning report (`studio.summary`, at her hour 5-12, once a day, only when the project moved in 14 days): yesterday,
+  waiting for her OK, building, stuck, last night, today, milestone %. Written in code.
+- Auto (default on): after her OK the next task starts; an idle board picks its next task from the worker.
+- Restore: any good old version's code back as a NEW version (`service.restore`, mode restore, no model call, full checks).
+- GitHub (`gamedesk/github.py`): the usual site_github card (her tap only, `site.github.push` routes `game:` exports):
+  Godot project + DESIGN / TASKS / DECISIONS / CHANGELOG / README.
+- `service._fail`: a failed CHANGE on a game that already plays leaves it `done` (live version still works).
+- Tool `game_studio` (gamedesk family: new / list / status / add / plan / start / ok / back / drop / decide / why /
+  summary / nightly / restore / settings / github; owner-only writes; hired-only). Router words: "game project",
+  "game studio", "studio project", "game ka kaam", "game ka task".
+- API `/api/gamestudio*` (see `gamedesk/api.py` docstring). Console: Game Desk > Studio projects > board (`employees.js`
+  gsHome / gsBoard, `gs-*` CSS). Phone: `lib/ui/game_studio_screen.dart` (GameStudioList on the Game Desk + GameStudioScreen).
+- Verified: `test_v0386_game_studio.py` 14 tests (fake Godot) + a REAL Godot 4.7.2 run in the sandbox (game built ->
+  task built -> OK -> nightly rebuilt the same code, 60 fps, 1.3 s load, summary right).
+- Not verified: the phone screen compiles only in CI (no Flutter in the sandbox); the nightly on the VPS needs Godot there
+  (installed v0.370 via `deploy/setup_godot.py`).
+
+## v0.387.0 GURU SAHAYAK - Shiksha suite Phase 2: the personal tutor (K-PhD)
 - Owner: "GO PHASE 2" (plan: step-by-step teaching with a hint ladder, doubts from a photo / typed / the call, adaptive
   practice with mastery + spaced revision from the Phase 1 bank, language practice, weekly parent report, time limits, exam
   mode with no ghostwriting).
@@ -14297,7 +14494,7 @@ What each gap became (all in `server/app/engineering/`, tests `tests/test_v0365_
   line TUTOR (show ONLY the rung returned, never solve on top, exam = hints only).
 - App: `lib/ui/guru_screen.dart` (GuruScreen learner list with "CONSENT BAAKI", GuruLearnerPage Padhai / Practice / Bhasha /
   Pragati, GuruReportCard), Profile tile "Personal tutor", card key gureport, report card in calls.
-- Tests: NEW `server/tests/test_v0382_guru.py` (12): consent + daily time + adults uncapped; ladder one rung at a time + code check;
+- Tests: NEW `server/tests/test_v0387_guru.py` (12): consent + daily time + adults uncapped; ladder one rung at a time + code check;
   code disagreement said plainly; exam mode / graded work never get the answer; incomplete ladder refused; practice from the
   approved bank, easy first, no answer leaked, letter answers, mastery up / down, solution on a wrong answer; AI-checked
   written answer; language corrections; idle close; report only by her tap (stale hash, wa.me to the guardian); code checks;
@@ -14322,7 +14519,7 @@ What each gap became (all in `server/app/engineering/`, tests `tests/test_v0365_
     Gyaan (files, Drive, notes - never chats or calls) go to the ladder prompt as numbered sources with page numbers; the
     model may cite [n]; a cite that points at no source is removed in code (`_keep_cites`); each rung that cites shows
     "Kitaab se: [n] <title>, page p".
-  - Tests: NEW `server/tests/test_v0382_guru21.py` (6): the cap + recency; SM-2 sequence, again / cramming, exam window; capped mastery
+  - Tests: NEW `server/tests/test_v0387_guru21.py` (6): the cap + recency; SM-2 sequence, again / cramming, exam window; capped mastery
     + SM-2 inside answer() + exam date; path order from the NCERT library, current / locked, practice never from a locked
     chapter, gate opens the next chapter, teacher list for an incomplete book; grounded doubt cites page 12 and drops [5];
     grounded off; path tools.

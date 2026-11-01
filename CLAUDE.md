@@ -52,6 +52,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the CODING work, every coding card 100% live): branch
+  `stable-2026-11-01-v382` = commit 5e3e06d4 = v0.382.0, pubspec 0.382.0+426 (live on hoola.ainewtika.com, healthz 0.382.0).
+  Developer Sahayak codes like Claude Code: 8-tool step loop (v0.350), CI on a draft PR + fix rounds (v0.352), project rules
+  first (v0.356), ONE question on a vague ask (v0.371), PR review that explores first (v0.377). Coding cards live: easy 12/12,
+  hard 12/12 (Python + JS), mobile 10/10 (Dart + Kotlin, SDKs in ~/apps/codecard-sdk). Also carries the other sessions'
+  v0.344-v0.382 (social manager, ERP / CRM / TPM desks, CAD, game desk, blog, proof, shiksha...). APK release `v0.382.0-b1002`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.382.0-b1002/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v382` as the branch.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the long-task + tool-choice work, every live test passed): branch
   `stable-2026-11-01-v343` = commit fce446a0 = v0.343.0, pubspec 0.343.0+383 (live on hoola.ainewtika.com at her tests; healthz
   0.343.0). Long jobs finish (v0.314 AAGE BADHO: a promise never ends a job, parallel batch = 1 call, moving turn keeps its
@@ -145,15 +153,17 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.382.0 (pubspec 0.382.0+426). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.387.0 (pubspec 0.387.0+431). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
-- v0.382 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
+- v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
   mode = hints only), practice + capped mastery + SM-2 / exam window, NCERT mastery path with gates, book-grounded cites, guardian card.
 - v0.381 SHIKSHA SUITE 0+1: `app/pylab` locked Python sandbox (tool `pylab`), `app/shiksha` (classes, learners + guardian
   consent, shared question bank, gradebook, `frameworks.json`), `app/pathyakram` curriculum & exam designer (papers, plans, rubrics).
+- v0.382 DIMAAG (App Phases 43-46 = Pillar A, `appmaker/logic/`: lang.py own locked interpreter, spec.py checker, engine.py hooks + approvals + schedules/SLA, service.py Opus draft -> her tap): links / formulas / rules / unique / workflows + maker-checker approvals / triggers / timed jobs / tested functions; kits Logic.kt / Logic.swift (RefField, WorkflowBox, RelatedBlock, AutoForm, hoola_approvals, hoola_data); `/api/apps/<ref>/logic*`, app `/approvals`, `/related/`, `/fn/`.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.386 STUDIO PROJECT (built as 0.378 / 0.382) (Game Engine plan Phase 2, `gamedesk/studio.py`, tool game_studio, /api/gamestudio*): a game as a long project - task board (one small change each, waits for her OK, 'wapas' = version before is live), milestones, decisions log + 'why', nightly rebuild + replay (no model), morning report, restore, GitHub card.
 - v0.378 MOBILE CARD: coding card set 3 = 5 Dart + 5 Kotlin jobs (`quality/code_tasks3.py`), real Dart SDK / kotlinc (`quality/sdk.py`, `python -m app.quality sdk --setup` -> ~/apps/codecard-sdk), vps-ops `code_card_mobile`; missing toolchain = skipped.
 - v0.377 DEKH KE REVIEW: Developer Sahayak PR review explores first (`loop.review_run`: read-only tools at the PR head, callers + tests, comment tool only on added lines), one-shot = fallback; posting still her tap.
 - v0.376 PROOF (built as 0.375; `site/proof.py`): five fixed 100-page businesses built like an owner's site + features, a proof card read from the files (pages, broken links, missing files, judge on page types, features, ₹ / min per page); rival sites crawled in Chromium and compared; console Arena '100-page proof'.
@@ -165,6 +175,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.385 CAD NEXT PHASE (built as 0.383, `fea.flow` laminar CFD on the fluid body via H.analyze('flow', domain=...), fatigue on static studies + redesign, calc `joint` VDI 2230-style + `fatigue`); true contact FEA between assembly parts still not built.
 - v0.380 HOOLA CAD ANALYSIS (built as 0.375) (`engineering/fea.py` / `cam.py` / `calc.py` / `geom.py`): FEA on the B-rep (stress + SF, heat, modes; a weak part goes back to be redesigned), faceted real threads, sheet metal + flat DXF, freeform, H.expect measured, CNC G-code, tool `eng_calc`. VPS: pip install scikit-fem pyamg.
 - v0.364 HOOLA CAD PRO (`engineering/parts.py` H library: ISO fasteners, involute gears, bearings, shafts, extrusions): assemblies + BOM + mass, Opus thinks + plans, vision review of the views, her photo / STEP inputs, STEP/GLB/STL/3MF/DXF + hidden-line drawing page.
 - v0.361 CAD BOX CHAUTHI DEEWAR: her VPS has no `unshare -rn` (no_network false) -> engineering runner locks socket / os.system /
@@ -188,6 +199,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.384 SOCIAL MEDIA MANAGER Phase 6 (`social/wabiz.py` + `social/linkedin.py`): WhatsApp Business on her own number by Meta's Embedded Signup (one tap ->
+  her Business inbox channel), LinkedIn profile posts (text + one photo); plans only for connected platforms; Company Page / X not built.
+- v0.383 SOCIAL MEDIA MANAGER Phase 5 GROWTH (`social/growth.py`, via her Page's linked Instagram = Facebook Login): tags -> UGC ask / recorded yes /
+  credited draft, 5 hashtags + 5 competitors weekly, creator check (signals + #ad), A/B hook styles.
 - v0.369 SOCIAL MEDIA MANAGER Phase 4 (`social/pulse.py`): plan posts alone only for Saathi / Bharosa (6 / 15 a day, quiet hours), Seekh = OK on the day;
   pause + emergency stop, 9 am note, Monday pulse, monthly PDF, best times, boost flags (she runs the boost).
 - v0.368 SOCIAL MEDIA MANAGER Phase 3 INBOX (`social/inbox.py`): IG + FB comments and DMs every 15 min, sorted, drafts from her facts only;

@@ -117,6 +117,15 @@ Rules:
             convection=[{'faces': 'all', 'h': 10, 't_amb': 30}])        h in W/m²K (still air 5-10, fan 25-100)
   H.analyze('modal', fixed='<Z', modes=6, avoid_hz=(0, 150))           natural frequencies; avoid_hz = her motor /
      machine band (rpm / 60 Hz); a mode inside it comes back as a problem.
+  FATIGUE (her load repeats: 'cycles', 'har din', motor / vehicle / pedal / hinge / lever / spring, 'baar baar',
+  'years of use'): add fatigue={'load': 'zero_to_max' (on / off loading) | 'reversed' (+F / -F, rotating shafts),
+  'life': 1e6, 'finish': 'machined' | 'ground' | 'hot-rolled' | 'as-forged' | 'printed', 'min_sf': 1.5} to the static
+  H.analyze; too little fatigue life comes back to you as a problem - lower the stress at the hot spot (bigger
+  fillet, no notch there).
+  H.analyze('flow', domain=fluid, inlet='<X', outlet='>X', flow_lpm=6, fluid='water', max_dp_pa=None)
+     LAMINAR CFD of the FLUID body: build `fluid` as its own solid (the channel / manifold bore / nozzle passage as
+     a solid, or a box minus the part for flow around it); faces are selectors on that fluid body; fluid water | air |
+     oil | diesel | glycerin; flow_lpm or velocity_mm_s. Turbulent flows (Re > 2000) are flagged not valid.
   Up to 3 analyses; an assembly is analysed as one glued body (say so in NOTES).
 - CNC (when she says CNC, milling, router, machining, G-code, toolpath): H.cam(tool_d=6, stepdown=1.5, stepover=0.45,
   feed=800, plunge=250, rpm=12000, tabs=3, ops=['face', 'pocket', 'drill', 'profile']) -> 3-axis 2.5D G-code (flat on

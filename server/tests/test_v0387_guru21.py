@@ -7,7 +7,7 @@ import pytest
 
 import app.guru.models  # noqa: F401
 import app.shiksha.models  # noqa: F401
-from tests.test_v0382_guru import LADDER
+from tests.test_v0387_guru import LADDER
 
 T = "default"
 

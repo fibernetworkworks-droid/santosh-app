@@ -346,6 +346,33 @@ async def tick() -> None:
     await team_jobs()
     eventlog_jobs()
     aboutme_jobs()
+    applogic_jobs()
+    game_studio_jobs()
+
+
+_logic_task: "asyncio.Task | None" = None
+
+
+def applogic_jobs() -> None:
+    """v0.382 DIMAAG: her apps' timed jobs + workflow SLAs (the engine runs at most once a minute) - in a thread, so a big
+    app's schedule never holds up reminders and the rest of this tick."""
+    global _logic_task
+    if _logic_task is not None and not _logic_task.done():
+        return
+    try:
+        from .appmaker.logic import engine as LE
+        _logic_task = asyncio.get_running_loop().create_task(asyncio.to_thread(LE.tick))
+    except Exception:
+        log.exception("app logic jobs failed")
+
+
+def game_studio_jobs() -> None:
+    """v0.386 Studio Project: morning summaries, nightly builds, auto next task (self-throttled to every 4 minutes)."""
+    try:
+        from .gamedesk import studio
+        studio.jobs()
+    except Exception:
+        log.exception("game studio jobs failed")
 
 
 _about_last = 0.0

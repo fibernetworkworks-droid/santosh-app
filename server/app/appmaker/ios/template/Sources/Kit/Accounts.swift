@@ -56,6 +56,10 @@ struct AccountScreen: View {
                 InboxButton()
                 MainButton(text: auth.isStaff ? Words.customerMessages : Words.chat, tonal: true) { Router.shared.go("hoola_chat") }
             }
+            if auth.signedIn && auth.isStaff {                       // v0.382 DIMAAG: approvals + every list
+                if db.approvalsOn { MainButton(text: Words.approvals, tonal: true) { Router.shared.go("hoola_approvals") } }
+                MainButton(text: Words.allLists, tonal: true) { Router.shared.go("hoola_data") }
+            }
             Group {                                                  // (grouped: a SwiftUI builder takes 10 views)
                 KhataBlock()                                         // v0.359 udhaar: hers / who owes (staff)
                 if auth.isStaff { StatsBlock() }                     // v0.340 the staff dashboard
@@ -105,14 +109,14 @@ struct RowsSection: View {
             ForEach(rows.prefix(60), id: \.id) { r in
                 Card {
                     let head = fields.first { ["text", "long_text"].contains($0.s("type")) && r.has($0.s("key")) && $0.s("key") != "utr" }
-                    Text(head.map { r.s($0.s("key")) } ?? db.label(coll)).font(.headline)
+                    Text(!db.labelField(coll).isEmpty ? Logic.title(coll, r) : head.map { r.s($0.s("key")) } ?? db.label(coll)).font(.headline)
                     HStack {
                         if r.b("pending") { StatusPill(text: Words.sending) } else if r.has("status") { StatusPill(text: T(r.s("status"))) }
                         if r.has("paid") && r.s("paid") != "No" { StatusPill(text: r.s("paid")) }
                         if r.n("total") > 0 { Text(rupees(r.n("total"))).font(.headline) }
                     }
                     ForEach(fields.filter { $0.s("key") != head?.s("key") && !["status", "total", "paid"].contains($0.s("key")) && r.has($0.s("key")) && $0.s("type") != "photo" }.prefix(6), id: \.id) { f in
-                        Muted(T(f.s("label")) + ": " + r.s(f.s("key")))
+                        Muted(T(f.s("label")) + ": " + Logic.show(r, f))      // v0.382 a link shows its row's name
                     }
                     if !auth.isStaff && coll == db.orderList && !r.b("pending") && r.s("pay") == "UPI" && r.s("paid", "No") == "No" {
                         HStack {
@@ -131,7 +135,9 @@ struct RowsSection: View {
                         CreditButton(coll: coll, r: r)               // v0.359 staff: this order on credit (udhaar)
                     }
                     AssignBox(coll: coll, r: r)
-                    if auth.isStaff && !r.b("pending") && team.mayWork(r), let st = fields.first(where: { $0.s("key") == "status" }) {
+                    if !db.workflowField(coll).isEmpty {              // v0.382 DIMAAG: the server's workflow steps + approvals
+                        if team.mayWork(r) { WorkflowBox(coll: coll, r: r) }
+                    } else if auth.isStaff && !r.b("pending") && team.mayWork(r), let st = fields.first(where: { $0.s("key") == "status" }) {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 ForEach(st.strings("options"), id: \.self) { o in
@@ -141,6 +147,7 @@ struct RowsSection: View {
                             }
                         }
                     }
+                    RelatedBlock(coll: coll, r: r)                    // v0.382 linked rows (items of an order) + Add
                 }
             }
         }

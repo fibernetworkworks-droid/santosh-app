@@ -708,7 +708,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
   Map<String, dynamic>? _d;
   bool _busy = false;
   Timer? _poll;
-  static const _plat = {'instagram': 'Instagram', 'facebook': 'Facebook Page'};
+  static const _plat = {'instagram': 'Instagram', 'facebook': 'Facebook Page', 'linkedin': 'LinkedIn', 'whatsapp': 'WhatsApp Business'};
 
   @override
   void initState() {
@@ -823,6 +823,114 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
     Timer(const Duration(seconds: 6), _load);
   }
 
+  Future<String?> _ask(String title, String label, [String initial = '']) async {
+    final c = TextEditingController(text: initial);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(title),
+        content: TextField(controller: c, autofocus: true, decoration: InputDecoration(labelText: label)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('OK')),
+        ],
+      ),
+    );
+    final v = c.text.trim();
+    c.dispose();
+    return ok == true ? v : null;
+  }
+
+  Future<void> _editWatch(Map<String, dynamic> w) async {
+    final comp = await _ask('Competitors', 'Instagram usernames, comma separated (up to 5)',
+        _list(w['competitors']).map((c) => _s(c['name'])).join(', '));
+    if (comp == null) return;
+    final tags = await _ask('Hashtags', 'Hashtags of your niche, comma separated (up to 5)',
+        _list(w['hashtags']).map((c) => _s(c['name'])).join(', '));
+    if (tags == null) return;
+    List<String> split(String x) => x.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    await _call(() => widget.app.api!.socialWatch({'competitors': split(comp), 'hashtags': split(tags)}), 'Saved. Read every Monday.');
+  }
+
+  Future<void> _checkCreator() async {
+    final u = await _ask('Check a creator', 'Instagram username');
+    if (u == null || u.isEmpty) return;
+    try {
+      final r = await widget.app.api!.socialCreator(u);
+      if (!mounted) return;
+      final sig = ((r['signals'] as List?) ?? const []).map((e) => '$e').toList();
+      await showDialog<void>(
+        context: context,
+        builder: (d) => AlertDialog(
+          title: Text('@${_s(r['username'])}'),
+          content: Text('${_num(r['followers'])} followers · ${_num(r['avg_likes'])} likes + ${_num(r['avg_comments'])} comments a post\n\n'
+              '${sig.isEmpty ? 'No warning signals in the public numbers.' : sig.join('\n')}\n\n${_s(r['note'])}'),
+          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
+        ),
+      );
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Widget _growth(Map<String, dynamic> g) {
+    final lk = Map<String, dynamic>.from((g['link'] as Map?) ?? const {});
+    final w = Map<String, dynamic>.from((g['watch'] as Map?) ?? const {});
+    final ab = Map<String, dynamic>.from((g['ab'] as Map?) ?? const {});
+    return Glass(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Growth', style: display(14)),
+        const SizedBox(height: 4),
+        Text(lk['ok'] == true ? 'Listening through @${_s(lk['username'])} (your Page\'s Instagram).' : _s(lk['reason']),
+            style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        for (final c in _list(w['competitors']))
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(_s(c['error']).isNotEmpty ? '@${_s(c['name'])}: ${_s(c['error'])}'
+                : '@${_s((c['last'] as Map?)?['username'] ?? c['name'])} · ${_num((c['last'] as Map?)?['followers'])} followers · '
+                  '${_num((c['last'] as Map?)?['posts_7d'])} posts this week · ${_num((c['last'] as Map?)?['avg_eng'])} interactions a post',
+                style: const TextStyle(fontSize: 13)),
+          ),
+        for (final h in _list(w['hashtags']))
+          Padding(padding: const EdgeInsets.only(top: 4),
+              child: Text('#${_s(h['name'])} · ${_num((h['last'] as Map?)?['avg_eng'])} interactions a top post', style: const TextStyle(fontSize: 13))),
+        if (_s(ab['note']).isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text('Hook styles: ${_s(ab['note'])}', style: const TextStyle(color: C.muted, fontSize: 12))),
+        for (final u in _list(g['ugc']).take(8)) ...[
+          const Divider(),
+          Text('@${_s(u['username'])} tagged you · ${switch (_s(u['status'])) { 'asked' => 'asked', 'granted' => 'they said yes', 'refused' => 'they said no',
+              'reposted' => 'draft made', 'ignored' => 'ignored', _ => 'new' }}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          if (_s(u['caption']).isNotEmpty) Text(_s(u['caption']), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
+          if (_s(u['error']).isNotEmpty) Text(_s(u['error']), style: const TextStyle(color: C.bad, fontSize: 12)),
+          Wrap(spacing: 8, children: [
+            if (['new', 'asked', 'refused'].contains(_s(u['status'])))
+              TextButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialUgc(_s(u['id']), 'ask'), 'Asked with a polite comment.'),
+                  child: const Text('Ask to repost')),
+            if (['new', 'asked'].contains(_s(u['status'])))
+              TextButton(
+                  onPressed: _busy ? null : () async {
+                    final p = await _ask('They said yes', 'What did they say, and where?');
+                    if (p == null || p.isEmpty) return;
+                    await _call(() => widget.app.api!.socialUgc(_s(u['id']), 'permission', {'granted': true, 'proof': p}), 'Saved their yes.');
+                  },
+                  child: const Text('They said yes')),
+            if (_s(u['status']) == 'granted')
+              FilledButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialUgc(_s(u['id']), 'repost'), 'Credited draft added to your calendar.'),
+                  child: const Text('Make a credited draft')),
+            if (!['reposted', 'ignored'].contains(_s(u['status'])))
+              TextButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialUgc(_s(u['id']), 'ignore'), 'Ignored.'), child: const Text('Ignore')),
+          ]),
+        ],
+        const SizedBox(height: 6),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          OutlinedButton(onPressed: _busy ? null : () => _editWatch(w), child: const Text('Competitors + hashtags')),
+          OutlinedButton(onPressed: _busy ? null : _checkCreator, child: const Text('Check a creator')),
+          TextButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialRun('growth'), 'Reading now.'), child: const Text('Check now')),
+        ]),
+      ]),
+    );
+  }
+
   Future<void> _stop() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -922,6 +1030,17 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
               child: const Text('Copy caption'),
             ),
             TextButton(onPressed: _busy ? null : () => _addPhoto(_s(p['id'])), child: const Text('Add photo')),
+            if (_list(_d?['accounts']).any((a) => _s(a['platform']) == 'linkedin' && _s(a['status']) == 'ok'))
+              TextButton(
+                onPressed: _busy ? null : () {
+                  final pl = ((p['platforms'] as List?) ?? const []).map((e) => '$e').toList();
+                  final on = pl.contains('linkedin');
+                  final next = on ? pl.where((x) => x != 'linkedin').toList() : [...pl, 'linkedin'];
+                  _call(() => widget.app.api!.socialPost(_s(p['id']), {'platforms': next}),
+                      on ? 'LinkedIn removed. Approve the post again.' : 'Added to LinkedIn. Approve the post again.');
+                },
+                child: Text(((p['platforms'] as List?) ?? const []).contains('linkedin') ? 'Remove LinkedIn' : 'Also on LinkedIn'),
+              ),
             TextButton(
                 onPressed: _busy ? null : () => _call(() => widget.app.api!.socialPoster(_s(p['id'])), 'Poster made from your Brand kit.'),
                 child: const Text('Make poster')),
@@ -981,7 +1100,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.account_circle_rounded),
                 title: Text(_s(a['handle']).isEmpty ? _s(a['name']) : _s(a['handle'])),
-                subtitle: Text('${_plat[_s(a['platform'])] ?? _s(a['platform'])} · ${_num(a['followers'])} followers'
+                subtitle: Text('${_plat[_s(a['platform'])] ?? _s(a['platform'])} · ${_s(a['platform']) == 'whatsapp' ? 'messages reach your Business inbox' : _s(a['platform']) == 'linkedin' ? 'your profile' : '${_num(a['followers'])} followers'}'
                     '${_s(a['status']) == 'ok' ? '' : ' · connection ended, connect again'}'
                     '${_s(a['status']) == 'ok' && (a['can_post'] == false || a['can_reply'] == false) ? ' · Connect again to allow posting and replies' : ''}'),
                 trailing: TextButton(
@@ -989,14 +1108,15 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                     child: const Text('Disconnect')),
               ),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final p in ['instagram', 'facebook'])
+              for (final p in ['instagram', 'facebook', 'linkedin', 'whatsapp'])
                 OutlinedButton(
                   onPressed: conn[p] == true && !_busy ? () => _connect(p) : null,
                   child: Text(conn[p] == true ? 'Connect ${_plat[p]}' : '${_plat[p]}: not set up on the server yet'),
                 ),
             ]),
             const SizedBox(height: 6),
-            const Text('You log in on Instagram / Facebook\'s own page. Instagram must be a Business or Creator account.',
+            const Text('You log in on Instagram / Facebook / LinkedIn\'s own page. Instagram must be a Business or Creator account. '
+                'WhatsApp Business: Meta\'s own window connects your number; customers\' messages reach your Business inbox.',
                 style: TextStyle(color: C.muted, fontSize: 12)),
           ]),
         ),
@@ -1028,6 +1148,8 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
               ]),
             ]),
           ),
+          const SizedBox(height: 10),
+          _growth(Map<String, dynamic>.from((d['growth'] as Map?) ?? const {})),
           if (_list(bt['slots']).isNotEmpty || _list(pl['boosts']).isNotEmpty) ...[
             const SizedBox(height: 10),
             Glass(
