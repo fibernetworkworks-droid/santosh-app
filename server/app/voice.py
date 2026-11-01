@@ -57,7 +57,7 @@ MALE_VOICES = {
 }
 
 VOICE_TOOL_NAMES = {
-    "shiksha", "shiksha_dekho", "pathyakram", "pathyakram_dekho", "pylab",   # v0.381 (via santosh_kaam, never declared)
+    "shiksha", "shiksha_dekho", "pathyakram", "pathyakram_dekho", "pylab", "guru", "guru_dekho",   # v0.381 (via santosh_kaam, never declared)
     "haan_karo",                   # v0.199 BOL-KAR-HAAN: she said yes on the call -> model approves THIS call's pending step card (money NEVER — voice_pending non-money only)
     "create_reminder", "list_reminders", "cancel_reminder", "set_phone_alarm", "set_phone_timer",
     "add_calendar_event", "remember", "forget", "list_add", "list_show", "list_done", "set_profile",
@@ -238,7 +238,7 @@ PERSONA = PERSONA.replace("\n\nWhen to speak\n", "\n\n" + _VOICE_RULES + "\nWhen
 # slow hai". In a call these jobs go to santosh_kaam (the full chat brain has all of them); if Gemini still names one of
 # them, run_tool hands it to santosh_kaam with her request. They stay in VOICE_TOOL_NAMES (allowed + their labels).
 VOICE_VIA_KAAM = {
-    "shiksha", "shiksha_dekho", "pathyakram", "pathyakram_dekho", "pylab",   # v0.381 Shiksha suite
+    "shiksha", "shiksha_dekho", "pathyakram", "pathyakram_dekho", "pylab", "guru", "guru_dekho",   # v0.381 Shiksha suite
     "darzi", "chai", "office", "lekhak", "mobile_shop", "gst", "payroll", "paisa", "audit", "bima", "telecall", "seo",
     "thok", "niryat", "franchise", "theka", "ads", "brand", "seva", "helpdesk", "shikayat", "service_desk", "feedback",
     "wapsi", "samudaay", "call_centre", "dev", "qa", "it_admin", "noc", "cyber", "devops", "docs_writer", "app_review",

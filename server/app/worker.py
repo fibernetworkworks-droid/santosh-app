@@ -347,6 +347,7 @@ async def tick() -> None:
     eventlog_jobs()
     aboutme_jobs()
     applogic_jobs()
+    game_studio_jobs()
 
 
 _logic_task: "asyncio.Task | None" = None
@@ -368,6 +369,15 @@ def applogic_jobs() -> None:
         _logic_task = asyncio.get_running_loop().create_task(asyncio.to_thread(both))
     except Exception:
         log.exception("app logic jobs failed")
+
+
+def game_studio_jobs() -> None:
+    """v0.386 Studio Project: morning summaries, nightly builds, auto next task (self-throttled to every 4 minutes)."""
+    try:
+        from .gamedesk import studio
+        studio.jobs()
+    except Exception:
+        log.exception("game studio jobs failed")
 
 
 _about_last = 0.0
@@ -799,7 +809,7 @@ async def employee_jobs() -> None:
             log.exception("%s tick failed", _mod)
     # v0.150 Kanoon suite: court diary / limitation, compliance calendar, contract renewals, MCA calendar, notary renewals,
     # PI desk reminders, DPDP breach / request clocks (each throttles itself; legalres.tick does nothing)
-    for _mod in ("vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo"):
+    for _mod in ("vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "guru"):   # + Shiksha tutor weekly report cards
         try:
             import importlib
             _svc = importlib.import_module(f".{_mod}.service", __package__)

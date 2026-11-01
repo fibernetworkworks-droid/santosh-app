@@ -985,11 +985,13 @@ _DIET_KEEP_RE = re.compile(r"confirm|approval|consent|otp|password|tier-2|bhejo|
 # v0.381 Shiksha suite Phase 0 + 1: the education foundation (classes, learners + guardian consent, the shared question
 # bank, gradebook), the Pathyakram Sahayak (curriculum & exam designer) and the locked Python sandbox (pylab).
 from .shiksha_tools import SHIKSHA_HANDLERS, SHIKSHA_LABELS, SHIKSHA_TOOLS  # noqa: E402
+from .guru_tools import GURU_HANDLERS, GURU_LABELS, GURU_TOOLS  # noqa: E402  (Phase 2: personal tutor)
 
-_seen = {t["name"] for t in TOOLS}
-TOOLS.extend(t for t in SHIKSHA_TOOLS if t["name"] not in _seen)
-TOOL_LABELS.update(SHIKSHA_LABELS)
-HANDLERS.update(SHIKSHA_HANDLERS)
+for _t, _l, _h in ((SHIKSHA_TOOLS, SHIKSHA_LABELS, SHIKSHA_HANDLERS), (GURU_TOOLS, GURU_LABELS, GURU_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
 
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}

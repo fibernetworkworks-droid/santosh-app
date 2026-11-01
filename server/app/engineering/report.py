@@ -222,6 +222,13 @@ def summary_rows(st: dict[str, Any]) -> list[str]:
                 (f"Mesh check: displacement changed {conv.get('disp_change_pct')} %, stress {conv.get('stress_change_pct')} % "
                  f"from a 3x coarser mesh ({'converged' if conv.get('ok') else 'NOT converged - treat with care'})") if conv else "",
                 mline]
+        fat = st.get("fatigue")
+        if fat:
+            rows.append(f"Fatigue ({fat['load']}): amplitude {fat['sigma_a_MPa']:.4g} MPa, mean {fat['sigma_m_MPa']:.4g} MPa, "
+                        f"Se {fat['Se_MPa']:.4g} MPa ({fat['basis']}), life {fat['predicted_cycles']} cycles, "
+                        f"fatigue SF {fat['fatigue_sf']:.3g} (needed {fat['need_sf']:g}: {'PASS' if fat['passes'] else 'FAIL'})")
+            if not fat["passes"]:
+                rows.append("! Fatigue: will crack under the repeated load before the target life")
         if st.get("glued_assembly"):
             rows.append("! Assembly analysed as ONE glued body (no contact / bolt preload)")
         if st.get("min_sf") and not st.get("passes"):
@@ -231,6 +238,18 @@ def summary_rows(st: dict[str, Any]) -> list[str]:
         return [f"Heat (steady) · {st['material']} (k {st['k_W_mmK'] * 1000:g} W/m·K)",
                 f"Max {st['t_max_C']:.4g} °C at {st['at_max']}, min {st['t_min_C']:.4g} °C, heat in {st['heat_in_W']:g} W",
                 mline]
+    if k == "flow":
+        rows = [f"Flow (laminar CFD) · {st['fluid']} · {st['flow_lpm']:g} L/min",
+                f"Pressure drop {st['pressure_drop_Pa']:.4g} Pa · max speed {st['max_speed_mm_s']:.4g} mm/s · "
+                f"Re {st['reynolds']:.4g} ({st['regime']})",
+                f"Mass balance {st['mass_balance_pct']:g} % out / in · {st['iterations']} solver rounds"
+                + ("" if st.get("converged") else " (NOT converged)"), mline + " (Taylor-Hood P2-P1)"]
+        if not st.get("valid"):
+            rows.append("! Turbulent flow: this laminar result is NOT valid; use the hand estimate "
+                        f"{st.get('turbulent_estimate_Pa_per_m', '-')} Pa/m or a RANS CFD")
+        if st.get("max_dp_pa") is not None:
+            rows.append(("OK: " if st.get("passes") else "! Above ") + f"her pressure-drop limit {st['max_dp_pa']:g} Pa")
+        return rows
     rows = [f"Vibration (modal) · {st['material']} · supports {st['supports']}",
             "Natural frequencies: " + ", ".join(f"{x:g} Hz" for x in st["frequencies_hz"]), mline]
     rz = st.get("resonance")

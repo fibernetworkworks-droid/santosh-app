@@ -998,6 +998,31 @@ class Api {
   Future<Map<String, dynamic>> gameCancel(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/game/$id/cancel', body: {}) as Map);
   Future<void> gameDelete(String id) async => _send('DELETE', '/api/game/$id');
+  // v0.386 Studio Project (long game projects: board, milestones, decisions, nightly, morning report)
+  Future<Map<String, dynamic>> gameStudios() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameStudio(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameStudioNew(String game, String goal) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio', body: {'game': game, 'goal': goal}) as Map);
+  Future<Map<String, dynamic>> gameStudioAdd(String id, String title, String milestone, int priority) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/tasks',
+          body: {'title': title, 'milestone': milestone, 'priority': priority}) as Map);
+  Future<Map<String, dynamic>> gameStudioPlan(String id, {String words = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/plan', body: {'words': words},
+          timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> gameStudioStart(String id, {String task = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/start', body: {'task': task}) as Map);
+  Future<Map<String, dynamic>> gameStudioTask(String id, String task, String action, {String note = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/task/$task', body: {'action': action, 'note': note}) as Map);
+  Future<Map<String, dynamic>> gameStudioDecide(String id, String text) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/decide', body: {'text': text}) as Map);
+  Future<Map<String, dynamic>> gameStudioWhy(String id, String q) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/why?q=${Uri.encodeQueryComponent(q)}') as Map);
+  Future<Map<String, dynamic>> gameStudioSummary(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/summary') as Map);
+  Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk
   Future<Map<String, dynamic>> socialDesk() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/social/desk', timeout: const Duration(seconds: 45)) as Map);
@@ -1018,6 +1043,13 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/poster', body: {}, timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> socialPublish(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/publish', body: {}) as Map);
+  // v0.383 growth: watch list, customers' tagged posts (ask / permission / repost / ignore), creator check
+  Future<Map<String, dynamic>> socialWatch(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/growth/watch', body: body) as Map);
+  Future<Map<String, dynamic>> socialUgc(String id, String action, [Map<String, dynamic>? body]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ugc/$id/$action', body: body ?? {}, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> socialCreator(String username) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/creator/check', body: {'username': username}) as Map);
   // v0.369 posting controls: {paused} | {stop: true} | {quiet: [23, 7]}
   Future<Map<String, dynamic>> socialSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/settings', body: body) as Map);

@@ -245,8 +245,8 @@ Reuse: `brand_kits` (look), `kalam_settings` (voice + facts), `hired_employees` 
 | **2 — Publish with her tap** (SHIPPED v0.355.0) | Approve → publish now / at a slot (IG feed, carousel, Reels, Stories; FB posts / photos / Reels); carousel builder; platform previews; quota guard; publish log; YouTube Shorts + GBP posts from the same calendar | App Review for content_publish / pages_manage_posts (screencasts) |
 | **3 — Inbox** (SHIPPED v0.368.0: Instagram + Facebook; YouTube comments + Google reviews stay on their own desks for now) | Comments + DMs (IG + FB + YouTube + Google reviews) sorted; reply drafts; trust-based replies; spam hide; leads to WhatsApp / chat | Review for manage_comments / manage_messages / pages_messaging |
 | **4 — 24/7 + reports** (SHIPPED v0.369.0) | Scheduler + Saathi auto-publish of the approved plan, weekly pulse, monthly PDF vs baseline, best-time engine, boost-worthy flags, crisis pause | — |
-| **5 — Growth** | Mentions / tags / hashtag search / Business Discovery competitor watch, UGC permission flow, Influencer + Ads desk hand-offs, A/B hooks | Review for any extra permission |
-| **6 — More platforms** | WhatsApp Embedded Signup (her own number), LinkedIn, X if asked | Tech Provider / LinkedIn approvals |
+| **5 — Growth** (SHIPPED v0.383.0; Ads desk hand-off = the written boost plan, the Influencer desk serves talent managers so its checks are reused instead) | Mentions / tags / hashtag search / Business Discovery competitor watch, UGC permission flow, Influencer + Ads desk hand-offs, A/B hooks | Review for any extra permission |
+| **6 — More platforms** (SHIPPED v0.384.0: WhatsApp Embedded Signup + LinkedIn profile; Company Page + X not built) | WhatsApp Embedded Signup (her own number), LinkedIn, X if asked | Tech Provider / LinkedIn approvals |
 
 ---
 

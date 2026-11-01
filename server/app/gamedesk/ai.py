@@ -151,3 +151,31 @@ def change(design_doc: str, files: dict[str, str], words: str, orientation: str,
     p = (f"{_ctx(orientation, size)}\n\nDesign doc:\n{design_doc}\n\nCurrent files:\n{_listing(files)}\n\n"
          f"Her change (do exactly this, keep everything else working; return ALL files, whole, same format): {words}")
     return parse(ask(GUIDE, p))
+
+
+PLAN = """You are the producer of a long game project at Hoola. Break the work into SMALL tasks the Hoola game developer
+can do ONE AT A TIME, each a single change to the current Godot game (5 minutes to 2 hours of work): one mechanic, one
+screen, one enemy type, one level, one tuning pass, one fix. Each task must be checkable by playing the game.
+Rules: build on what exists (never "rewrite the game"); the order matters - earlier milestones first, a task only
+needs tasks above it; no art / sound files (everything is drawn in code for now); original content only; no
+real-money mechanics. Use the milestone keys given. 6 to 15 tasks.
+OUTPUT: only a JSON array, each item {"title": "<= 70 chars, starts with a doing word", "detail": "1-3 sentences, exact
+numbers where they matter", "milestone": "<key>", "kind": "feature|content|polish|fix|test", "priority": 1|2|3}"""
+
+
+def plan_tasks(design_doc: str, goal: str, milestones: list[dict], tasks: list[dict], decisions: list[str],
+               words: str = "") -> list[dict]:
+    import json
+    ms = ", ".join(f"{m['key']} = {m['name']}" for m in milestones)
+    have = "\n".join(f"- {t['number']} [{t['status']}] {t['title']}" for t in tasks[-60:]) or "(none yet)"
+    dec = "\n".join(f"- {d}" for d in decisions[-20:]) or "(none yet)"
+    p = (f"Project goal: {goal}\nMilestones (in order): {ms}\n\nThe game's design doc:\n{design_doc}\n\n"
+         f"Tasks already on the board:\n{have}\n\nDecisions she made (follow them):\n{dec}\n\n"
+         + (f"What she asked for now: {words}\n\n" if words else "") + "Write the next tasks.")
+    raw = ask(PLAN, p, max_tokens=4000)
+    m = re.search(r"\[.*\]", raw or "", re.S)
+    try:
+        items = json.loads(m.group(0)) if m else []
+    except ValueError:
+        items = []
+    return [i for i in items if isinstance(i, dict) and str(i.get("title") or "").strip()][:15]

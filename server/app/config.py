@@ -155,6 +155,10 @@ class Settings(BaseSettings):
     instagram_app_id: str = ""              # Instagram use case > API setup with Instagram login
     instagram_app_secret: str = ""
     meta_social_version: str = "v25.0"      # pinned Graph API version for the social desk (graph.facebook.com / graph.instagram.com)
+    wa_es_config_id: str = ""               # v0.384 WhatsApp Embedded Signup: the Login for Business configuration for WhatsApp
+    linkedin_client_id: str = ""            # v0.384 LinkedIn app (Sign In with LinkedIn + Share on LinkedIn), Newtika's one app
+    linkedin_client_secret: str = ""
+    linkedin_version: str = "202510"        # LinkedIn-Version header (YYYYMM) for /rest/ calls
     social_ai: bool = True                  # the Social Media Manager asks Opus for its strategy + 30-day calendar (off = rules)
     studio_project_usd: float = 5.0        # starting budget of a new project
     studio_usd_inr: float = 85.0           # shown next to dollar prices on her cards

@@ -12,7 +12,8 @@ ENG_TOOLS = [
         "as parametric CadQuery code, builds it in Hoola's locked box (no network), checks it (valid solid, one body, "
         "the size asked) and gives STEP (CAD / CNC), STL (3D printing), 4 views and a dimensioned drawing PDF on the CAD "
         "Desk. v0.365 it also does: assemblies with a BOM, real threads, sheet metal with flat pattern (DXF), smooth "
-        "freeform bodies, FEA (stress + safety factor, heat, vibration / natural frequencies) that sends a weak design "
+        "freeform bodies, FEA (stress + safety factor, fatigue life, heat, vibration / natural frequencies, laminar "
+        "flow / pressure drop through a channel) that sends a weak design "
         "back to be strengthened, and CNC G-code - put her load (kg / N), fixing, temperature / watts, motor rpm, CNC "
         "machine or sheet thickness in the brief and the engineer uses them. "
         "action=new brief=<what the part is, every size she gave in mm, holes, fillets, material> starts a part "
@@ -33,10 +34,14 @@ ENG_TOOLS.append(
         "tension_N} preload, torque, utilisation; kind=weld args={force_N, length_mm, leg_mm} fillet weld; kind=beam "
         "args={support: cantilever|simple|fixed_fixed, length_mm, section:{type: rect|round|tube|rect_tube|i, ...}, "
         "load_N, udl_N_per_mm, material} deflection, stress, first natural frequency; kind=pipe args={flow_lpm, "
-        "diameter_mm, length_m, fluid: water|air|oil|diesel, roughness_mm, fittings_k} pressure drop. Show the numbers "
+        "diameter_mm, length_m, fluid: water|air|oil|diesel, roughness_mm, fittings_k} pressure drop; kind=joint args={m, "
+        "grade, grip_mm, plates: steel|aluminium|cast iron|copper, load_N (total tension), shear_N, bolts, preload_pct} "
+        "VDI 2230-style bolted joint (stiffness, load factor, separation, yield, bolt fatigue, slip); kind=fatigue "
+        "args={sigma_max_MPa, sigma_min_MPa, material, finish, size_mm, reliability, life, kt} stress-life fatigue "
+        "(Goodman + Marin). Show the numbers "
         "with units and say it is a draft for an engineer's check."),
      "input_schema": {"type": "object", "properties": {
-         "kind": {"type": "string", "enum": ["fit", "stack", "bolt", "weld", "beam", "pipe"]},
+         "kind": {"type": "string", "enum": ["fit", "stack", "bolt", "weld", "beam", "pipe", "joint", "fatigue"]},
          "args": {"type": "object"}}, "required": ["kind", "args"]}})
 ENG_LABELS = {"cad_part": "CAD part bana raha hoon", "eng_calc": "Engineering hisaab laga raha hoon"}
 

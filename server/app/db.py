@@ -808,6 +808,7 @@ def init_db(url: str | None = None):
     from .employee import hire as _hire  # noqa: F401  (v0.317 hired employees)
     from .social import publish as _social_publish  # noqa: F401  (v0.355 Social Media Manager posting)
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
+    from .social import growth as _social_growth  # noqa: F401  (v0.383 Social Media Manager growth)
     from .social import inbox as _social_inbox  # noqa: F401  (v0.368 Social Media Manager inbox)
     from .thok import service as _thok  # noqa: F401
     from .niryat import service as _niryat  # noqa: F401
@@ -856,6 +857,7 @@ def init_db(url: str | None = None):
     from .legalres import models as _legalres  # noqa: F401
     from .shiksha import models as _shiksha  # noqa: F401  (v0.381 Shiksha suite)
     from .pathyakram import models as _pathyakram  # noqa: F401
+    from .guru import models as _guru  # noqa: F401  (Shiksha Phase 2 tutor)
     from .compliance import models as _compliance  # noqa: F401
     from .contracts import models as _contracts  # noqa: F401
     from .cosec import models as _cosec  # noqa: F401
@@ -902,6 +904,7 @@ def init_db(url: str | None = None):
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .gamedesk import service as _gamedesk  # noqa: F401  (v0.381 Game Desk)
+    from .gamedesk import studio as _gamestudio  # noqa: F401  (v0.386 Studio Project)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

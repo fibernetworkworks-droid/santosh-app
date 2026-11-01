@@ -150,7 +150,16 @@ def main() -> None:
         if _parts.EXPECT:
             import geom
             res["expect"] = geom.check_expect(shape, _parts.EXPECT)
-        res["studies"] = _parts.STUDIES[:3]
+        studies = []
+        for i, st in enumerate(_parts.STUDIES[:3]):        # v0.381 a flow study carries its FLUID body as a STEP
+            st = dict(st)
+            dom = st.pop("domain", None)
+            if dom is not None:
+                ds = _shape(cq, dom)
+                cq.exporters.export(ds, str(out / f"domain_{i}.step"))
+                st["domain_file"] = f"domain_{i}.step"
+            studies.append(st)
+        res["studies"] = studies
         res["cam"] = _parts.CAM[:1]
         if _parts.FLAT.get("sheet"):
             res["sheet"] = _parts.FLAT["sheet"]
