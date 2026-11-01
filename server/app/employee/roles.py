@@ -109,6 +109,28 @@ DUTIES: dict[str, dict] = {
                   "prefix": (), "tools": {"docs_writer", "docs_writer_dekho", "file_read"}},
     "app_review": {"label": "App reviewer", "say": "apni app / code / website ki suraksha + Play / App Store / DPDP policy jaanch, saral bhasha mein samjhana, fix list (developer ko bhejna aapki haan se)",
                    "prefix": (), "tools": {"app_review", "app_review_dekho", "app_check", "file_read"}},
+    # v0.358 ENTERPRISE SYSTEMS & ERP suite: ten jobs, one duty each so she sets trust per job -
+    # ERP work and banking work are not the same risk. The tools themselves come from enterprise/rules.ROLES.
+    "ent_erp": {"label": "ERP Architect (SAP / Oracle)", "say": "SAP ya NetSuite ka module aur field padhkar integration spec, field mapping aur migration sheet banana",
+                 "prefix": (), "tools": {"erp", "erp_dekho", "file_read"}},
+    "ent_crm_arch": {"label": "CRM Architect (Salesforce)", "say": "Salesforce ke object, flow aur permission padhkar customisation ka plan aur test list banana",
+                 "prefix": (), "tools": {"crm_arch", "crm_arch_dekho", "file_read"}},
+    "ent_tpm": {"label": "Technical Product Manager", "say": "roadmap, milestone, risk aur hafte ka status note; har owner se update maangna",
+                 "prefix": (), "tools": {"tpm", "tpm_dekho", "file_read"}},
+    "ent_bpa": {"label": "Process Automation Architect", "say": "do system ke beech ka kaam jodna - Composio ke apps se step-by-step flow banakar chalana",
+                 "prefix": (), "tools": {"bpa", "bpa_dekho", "file_read"}},
+    "ent_ecom_arch": {"label": "E-Commerce Systems Architect", "say": "catalogue, stock, daam aur checkout ki jaanch - bheed mein kya tootega - aur listing theek karna",
+                 "prefix": (), "tools": {"ecom_arch", "ecom_arch_dekho", "file_read"}},
+    "ent_health_int": {"label": "Healthcare Integration (HL7 / FHIR)", "say": "ABDM ka poora pack - FHIR R4 record ka dhaancha, ABHA ka flow, M1/M2/M3 checklist aur audit ke kaagaz",
+                 "prefix": (), "tools": {"health_int", "health_int_dekho", "file_read"}},
+    "ent_bank_int": {"label": "Core Banking Integrator", "say": "statement milaan, ledger match, reporting format aur Account Aggregator ki taiyari ki checklist",
+                 "prefix": (), "tools": {"bank_int", "bank_int_dekho", "file_read"}},
+    "ent_supply_opt": {"label": "Supply Chain Optimisation", "say": "route, godown aur order se sabse sasta plan, reorder point aur stock level - bachat rupay mein",
+                 "prefix": (), "tools": {"supply_opt", "supply_opt_dekho", "file_read"}},
+    "ent_plm": {"label": "PLM Specialist", "say": "Windchill ke part, BOM aur change order padhkar badlav ka draft aur uska asar",
+                 "prefix": (), "tools": {"plm", "plm_dekho", "file_read"}},
+    "ent_regtech": {"label": "RegTech / Compliance Automation", "say": "compliance calendar, har tareekh par nazar, filing ke kaagaz taiyaar aur niyam toot-ne par chetavni",
+                 "prefix": (), "tools": {"regtech", "regtech_dekho", "file_read"}},
     "product_work": {"label": "Product manager", "say": "feedback / support / sales se roadmap, specs aur release notes (bahar bhejna aapke tap se)",
                      "prefix": (), "tools": {"product", "product_dekho", "file_read"}},
     # v0.139 Safar suite
@@ -319,6 +341,27 @@ ROLES: dict[str, dict] = {
                          "duties": ["docs_work", "records", "research"]},
     "app_reviewer": {"label": "App reviewer", "say": "Apni app / code / website ki suraksha aur Play policy jaanch, fix list; developer ko aapki haan se",
                      "duties": ["app_review", "records", "research"]},
+    # v0.358 Enterprise Systems & ERP role packs
+    "ent_erp": {"label": "ERP Architect (SAP / Oracle)", "say": "SAP ya NetSuite ka module aur field padhkar integration spec, field mapping aur migration sheet banana",
+                 "duties": ["ent_erp", "records", "research"]},
+    "ent_crm_arch": {"label": "CRM Architect (Salesforce)", "say": "Salesforce ke object, flow aur permission padhkar customisation ka plan aur test list banana",
+                 "duties": ["ent_crm_arch", "records", "research"]},
+    "ent_tpm": {"label": "Technical Product Manager", "say": "roadmap, milestone, risk aur hafte ka status note; har owner se update maangna",
+                 "duties": ["ent_tpm", "records", "reminders", "research"]},
+    "ent_bpa": {"label": "Process Automation Architect", "say": "do system ke beech ka kaam jodna - Composio ke apps se step-by-step flow banakar chalana",
+                 "duties": ["ent_bpa", "records", "research"]},
+    "ent_ecom_arch": {"label": "E-Commerce Systems Architect", "say": "catalogue, stock, daam aur checkout ki jaanch - bheed mein kya tootega - aur listing theek karna",
+                 "duties": ["ent_ecom_arch", "records", "research"]},
+    "ent_health_int": {"label": "Healthcare Integration (HL7 / FHIR)", "say": "ABDM ka poora pack - FHIR R4 record ka dhaancha, ABHA ka flow, M1/M2/M3 checklist aur audit ke kaagaz",
+                 "duties": ["ent_health_int", "records", "research"]},
+    "ent_bank_int": {"label": "Core Banking Integrator", "say": "statement milaan, ledger match, reporting format aur Account Aggregator ki taiyari ki checklist",
+                 "duties": ["ent_bank_int", "records", "finance_analysis", "research"]},
+    "ent_supply_opt": {"label": "Supply Chain Optimisation", "say": "route, godown aur order se sabse sasta plan, reorder point aur stock level - bachat rupay mein",
+                 "duties": ["ent_supply_opt", "records", "research"]},
+    "ent_plm": {"label": "PLM Specialist", "say": "Windchill ke part, BOM aur change order padhkar badlav ka draft aur uska asar",
+                 "duties": ["ent_plm", "records", "research"]},
+    "ent_regtech": {"label": "RegTech / Compliance Automation", "say": "compliance calendar, har tareekh par nazar, filing ke kaagaz taiyaar aur niyam toot-ne par chetavni",
+                 "duties": ["ent_regtech", "records", "reminders", "compliance_work", "research"]},
     "product_manager": {"label": "Product manager", "say": "Feedback se roadmap, specs, release notes; bahar bhejna aapke tap se",
                         "duties": ["product_work", "records", "research", "reminders"]},
     # v0.139 Safar suite
@@ -780,6 +823,8 @@ READ = {
     # v0.156 Kala suite
     "edit_desk_dekho", "motion_desk_dekho", "film_desk_dekho", "patrakar_dekho", "photo_assist_dekho", "graphic_dekho", "artist_manager_dekho", "kitab_dekho", "podcast_dekho", "influencer_dekho",
     "theka_dekho", "ads_dekho", "brand_dekho", "website_dekho", "app_dekho",
+    # v0.358 Enterprise Systems: every <job>_dekho only looks
+    "erp_dekho", "crm_arch_dekho", "tpm_dekho", "bpa_dekho", "ecom_arch_dekho", "health_int_dekho", "bank_int_dekho", "supply_opt_dekho", "plm_dekho", "regtech_dekho",
 }
 BIG = {
     "email_bulk", "email_delete", "email_forward", "drive_trash", "drive_share", "sheet_share", "form_share", "slides_share",
@@ -787,6 +832,8 @@ BIG = {
     "submit_template", "bazar_run", "youtube_upload", "youtube_update_video", "hoola_samaj_post", "hoola_group_post",
     "hoola_group_manage", "hoola_chain", "pc_do", "tally_entry", "cancel_routine", "calendar_cancel_event", "photos_send",
     "drive_send_file", "agent_army", "hoola_make",
+    # v0.358 Enterprise Systems: the jobs that can change a production system always ask, whoever asked for it
+    "erp", "crm_arch", "bpa", "ecom_arch", "plm",
 }
 
 

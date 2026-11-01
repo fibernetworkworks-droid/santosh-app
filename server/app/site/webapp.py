@@ -449,3 +449,86 @@ def public_schema(schema: dict[str, Any]) -> dict[str, Any]:
 
 def utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ---------------------------------------------------------------- v0.357 DASHBOARD: rows a day, status mix, sums
+def _iday(t: datetime | None) -> str:
+    from .care import IST
+    if t is None:
+        return ""
+    return (t if t.tzinfo else t.replace(tzinfo=timezone.utc)).astimezone(IST).date().isoformat()
+
+
+def _window_rows(site_id: str, first_day: str, cap: int = 20000) -> list[tuple[str, str, str]]:
+    from datetime import timedelta
+    from .care import IST
+    start = datetime.fromisoformat(first_day).replace(tzinfo=IST).astimezone(timezone.utc) - timedelta(minutes=1)
+    with session() as s:
+        return [(x.coll, x.data, _iday(x.created_at)) for x in s.scalars(
+            select(SiteAppRow).where(SiteAppRow.site_id == site_id, SiteAppRow.created_at >= start)
+            .order_by(SiteAppRow.created_at.desc()).limit(cap)).all()]
+
+
+def daily(site_id: str, schema: dict[str, Any], cur_days: list[str], prev_days: list[str]) -> dict[str, Any]:
+    """Her dashboard: new rows a day for every list, this period and the one before, + member count."""
+    rows_ = _window_rows(site_id, prev_days[0])
+    cur, prev = set(cur_days), set(prev_days)
+    lists = []
+    for c in (schema or {}).get("collections", []):
+        per = {d: 0 for d in cur_days}
+        p = 0
+        for k, _, d in rows_:
+            if k != c["key"]:
+                continue
+            if d in cur:
+                per[d] += 1
+            elif d in prev:
+                p += 1
+        lists.append({"key": c["key"], "label": c["label"], "days": [per[d] for d in cur_days], "total": sum(per.values()),
+                      "total_prev": p})
+    return {"lists": lists, "total": sum(x["total"] for x in lists), "total_prev": sum(x["total_prev"] for x in lists),
+            "members": counts(site_id).get("members", 0)}
+
+
+def stats(site_id: str, schema: dict[str, Any], who: Who, days: int = 30) -> dict[str, Any]:
+    """The staff panel's dashboard (/admin/ on her site): per list the rows a day, the mix of its first choice field
+    (usually a status), yes / no counts and the sums of its number fields - staff and her only (others 403)."""
+    from datetime import timedelta
+    from .care import IST
+    if not who.staff:
+        _deny("Yeh sirf staff ke liye hai.", 401 if who.m is None else 403)
+    days = max(7, min(int(days or 30), 90))
+    last = datetime.now(timezone.utc).astimezone(IST).date()
+    ds = [(last - timedelta(days=days - 1 - i)).isoformat() for i in range(days)]
+    rows_ = _window_rows(site_id, ds[0])
+    out = []
+    for c in (schema or {}).get("collections", []):
+        mine = [(json.loads(data or "{}"), d) for k, data, d in rows_ if k == c["key"] and d in set(ds)]
+        per = {d: 0 for d in ds}
+        for _, d in mine:
+            per[d] += 1
+        item: dict[str, Any] = {"key": c["key"], "label": c["label"], "count": len(mine), "days": [per[d] for d in ds]}
+        ch = next((f for f in c["fields"] if f["type"] == "choice"), None)
+        if ch:
+            mix = {o: 0 for o in ch["options"]}
+            for data, _ in mine:
+                v = data.get(ch["key"]) or ch.get("default") or ""
+                if v in mix:
+                    mix[v] += 1
+            item["mix"] = {"field": ch["label"], "items": [[o, n] for o, n in mix.items()]}
+        sums = []
+        for f in [f for f in c["fields"] if f["type"] == "number"][:3]:
+            tot = 0.0
+            for data, _ in mine:
+                try:
+                    tot += float(data.get(f["key"]) or 0)
+                except (TypeError, ValueError):
+                    pass
+            sums.append([f["label"], round(tot, 2)])
+        if sums:
+            item["sums"] = sums
+        yn = [f for f in c["fields"] if f["type"] == "yes_no"][:2]
+        if yn:
+            item["yes"] = [[f["label"], sum(1 for data, _ in mine if data.get(f["key"]) is True), len(mine)] for f in yn]
+        out.append(item)
+    return {"days": ds, "lists": out, "members": counts(site_id).get("members", 0)}

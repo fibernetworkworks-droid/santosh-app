@@ -52,6 +52,15 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the long-task + tool-choice work, every live test passed): branch
+  `stable-2026-11-01-v343` = commit fce446a0 = v0.343.0, pubspec 0.343.0+383 (live on hoola.ainewtika.com at her tests; healthz
+  0.343.0). Long jobs finish (v0.314 AAGE BADHO: a promise never ends a job, parallel batch = 1 call, moving turn keeps its
+  deadline, server writes the plan), her test run fixes (v0.326: plan card from her words, one PDF, no quiet PC), plan card
+  drawn on the console (v0.330), long jobs on Claude at effort xhigh + tool lanes + clean cuts + FRESH tool card (v0.336),
+  KAAM KARO (v0.338). Live tool card 25/26 (the miss = a fair question the card cannot read). Also carries the other
+  sessions' v0.337-v0.343 (iPhone, App Store, edit, terms, signal mark). APK release `v0.343.0-b843`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.343.0-b843/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v343` as the branch.
 - NEWEST (31 Oct 2026, owner: "EVERY THING IS PERFECT NOW. SAVE THE STATE" after the Create Studio work): branch
   `stable-2026-10-31-v316` = commit 00a9a60a = v0.316.0, live on hoola.ainewtika.com (healthz 0.316.0), pubspec 0.316.0+356.
   Create Studio end to end: premium Create + studio sidebar (v0.304 / v0.306), Engines page (v0.308), clip Create (v0.309),
@@ -136,49 +145,70 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.378.0 (pubspec 0.378.0+418). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.364.0 (pubspec 0.364.0+419). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
-  console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.361 CAD BOX CHAUTHI DEEWAR: her VPS has no `unshare -rn` (no_network false) -> engineering runner locks socket / os.system /
+  exec / subprocess / file delete while her script runs (`runner._lockdown`), guard refuses os / sys / socket... names.
+- v0.360 CODE CARD: `python -m app.quality code` / vps-ops `code_card` = 12 practice coding jobs (`quality/code_tasks.py`) through the real dev loop, marked works / scope / rules / tests that prove the fix (`quality/codecard.py`).
+- v0.359 ENGINEERING DESK Ph.1 + CAD ENGINEER (`engineering/`: guard / runner / sandbox like blender3d, CadQuery, render.py
+  z-buffer views + drawing PDF, `/api/eng/*`, tool cad_part, hire key `cad`); restored console sections + 3 scripts v0.358 dropped.
+- v0.357 DASHBOARD (built as 0.353; `static/console/charts.js` = one SVG chart drawer for console + sites, `site/dash.py`): website charts from a table (`<figure data-hoola-chart>`), her Dashboard tab / phone page / `website_dekho what=dashboard` (visits, enquiries, orders, confirmed sales vs previous period), web-app staff charts on /admin/ (`/api/site-app/<id>/stats`).
+- v0.356 PEHLE NIYAM: Developer Sahayak reads the repo's rules first (`loop.rule_paths`: AGENTS / CLAUDE / CONTRIBUTING / copilot / cursor, build + CI), folder AGENTS.md before an edit there, PR "Project rules" section.
+- v0.353 SOCIAL MEDIA MANAGER Phase 1 (built as 0.347/0.348/0.352, `docs/SOCIAL_EMPLOYEE_PLAN.md`, `social/meta.py` + `social/desk.py`): hire -> connect Instagram (Instagram Login) /
+  Facebook Page (Login for Business) via Hoola's ONE Meta app -> read posts -> baseline -> strategy + 30-day calendar; read + draft only.
+- v0.352 PEHLE CI, PHIR PR: Developer Sahayak opens a DRAFT PR when the repo has CI, fixes a red run with the loop (DEV_CI_ROUNDS 3), marks it ready only when green (`service._ci_step`, `gh.mark_ready`); no CI in 15 min = ready + note.
+- v0.351 DUKAAN (built as 0.344, `site/shop.py`, `hoola-shop.js`): a real shop on her website - cart, checkout, server-side prices + stock, her UPI QR + UTR (she confirms), COD, order tracking, Studio Shop tab, agent `website` action=shop / shop_order.
+- v0.350 KADAM-BA-KADAM CODING: Developer Sahayak explores + edits with 8 tools (`devsahayak/loop.py`, DEV_LOOP*), old one-shot = fallback;
+  revise / fix_ci still one-shot (next: CI loop before the PR).
+- v0.349 MOSPI PAKKA: MoSPI client = Hoola User-Agent, retry once, exact failure reason; `python -m app.mospi check` + vps-ops `mospi_check`.
+- v0.348 MOSPI BUILT IN: agent tool `mospi` (`app/mospi.py`, MoSPI's own MCP, no login) for every user; official Indian numbers
+  (CPI / GDP / IIP / PLFS...) from MoSPI first, never a search summary (her CPI test was answered from search).
+- v0.347 LAMBE KAAM KI REPORT: `python -m app.quality longjobs` / vps-ops `long_jobs` = her real long jobs in 24 h (task runs, plan cards,
+  turns that died), free; tool card counts a question without '?' (`toolchoice._ASKS`).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.355 SOCIAL MEDIA MANAGER Phase 2 (`social/publish.py`): approved posts go out to Instagram (image / carousel / Reel / Story) + Facebook Page,
+  approval hash-bound to the exact post, photo upload or Brand poster, signed media links, IG 24 h cap, missed > 1 day late; Publish now.
+- v0.354 HOOLA STUDIO PAGE (built as 0.351): website /studio (`static/site/studio.html` + `studio.js`, real console screens in `static/site/studio/*.webp`), motion demo + pinned Director + tool tabs + price card; samples wall reads public `/api/site/showcase` (showcase slots only); Studio link in every site menu.
 - v0.342 TERMS OF SERVICE (built as 0.341): public /terms (`static/terms.html`, links /privacy): her tap first, never moves money, price card first,
   AI is not advice, acceptable use, content stays hers, Indian law / Akola courts, IT Act grievance officer (24 h / 15 days).
 - v0.340 EDIT MEIN SAB JODO: website Edit mode "+ Jodo" adds a photo / video (MP4 or YouTube) / audio / download file after any block
   (`site/media.py`: bytes must match the kind, placeholders -> addresses per page depth, hard links); photos in <picture> pickable again.
-- v0.350 NAKSHA (App Phase 14, kits `StopsBlock`): staff see open rows with a location nearest first + Route in Maps (Google Maps URLs / Apple MapKit, no key, no tiles); location asked only on a tap.
-- v0.351 PAKKA SABOOT (App Phase 15, `android/fixture_make2.py`): a second generator-only CI app (Hindi field-service staff app, every field kind, stops + dashboard) compiled + every screen and button walked on emulator and iPhone simulator.
-- v0.352 KAAM BAANTO (App Phase 16, `backend.assign`, kits `AssignBox` / `Team`): a row given to ONE staff member (owner / admin assign, staff take a free one), others on staff cannot change it, My work filter, "Given to you" update, customer sees the first name.
-- v0.353 RAAY (App Phase 17, `backend.rate`, kits `RateBox`): the customer rates her finished row once (1-5 + note), nobody else / never changed, 1-2 stars reach her chat, dashboard average per list + per staff member.
-- v0.354 RASEED (App Phase 18, `appmaker/receipt.py`, kits `ReceiptButton`): receipt PDF of a finished row made by the server (not a GST invoice), only her customer / staff / her, 15-minute signed link opened in the browser.
-- v0.355 GST BILL (App Phase 19, `appmaker/gst.py`): her GSTIN (check digit) -> Rule 46 tax invoice for finished rows, INV/<FY>/0001 given once, GST-inclusive (total = order total), CGST+SGST / IGST by place of supply, HSN per product; no credit notes / IRN.
-- v0.356 WAPSI (App Phase 20, `gst.credit_for`): invoiced row cancelled -> GST credit note CN/<FY>/0001 (own series, once, full value, against the invoice); her own for returns; customer gets the credit note, her invoice stays; refunds are hers.
-- v0.357 STOCK (App Phase 21, `appmaker/stock.py`): stock per product, orders take it under one lock (never oversold), 409 when short, cancel puts back once, low-stock chat note once, apps show Sold out + cap the cart.
-- v0.358 COUPON (App Phase 22, `appmaker/coupon.py`): discount codes (percent / flat, min, last date, uses, once each) checked in the cart, applied by the server at order time, a failing code never loses the order, invoices spread the discount.
-- v0.359 KHATA (App Phase 23, `appmaker/khata.py`): udhaar ledger - staff put an order on credit (server total, once), record payments (money never moves), cancel reverses once, customer sees her own, staff / owner see dues; append-only.
-- v0.360 DELIVERY (App Phase 24, `appmaker/delivery.py`): server-added delivery fee (free above, after coupon), PIN area + shop hours as notes never refusals, Delivery line on receipts / GST invoices (SAC 9968), cart DeliveryLine.
-- v0.361 HISAAB (App Phase 25, `appmaker/hisaab.py`): month ZIP of CSVs for her CA - sales / invoice / credit-note registers, HSN + rate-wise summary, khata - from the invoice numbers; Excel-safe cells; nothing filed.
-- v0.362 VARIANTS (App Phase 26, `appmaker/variants.py`, kits `SizeChips` / `lineItem`): sizes with their own price ("pid::vid" = a product for pricing, stock, coupons, GST); every generated screen shows size chips unchanged.
-- v0.363 BADI SCREEN (App Phase 27, kit `isWide` + `tablet_check.sh`): Android apps on tablets / foldables / landscape - side rail instead of a bottom bar, centred 720dp column, 3-column grids; CI opens every screen at tablet size.
-- v0.364 IPAD (App Phase 28, `ios/gen.py` family 1,2, `asc.IPAD_DISPLAY`): the iPhone app runs on iPad (all orientations), CI opens every screen on a 13" iPad Pro, App Store gets the 13" iPad screenshot set; builds repo needs the new hoola-ios.yml.
-- v0.365 DO PANE (App Phase 29, kit `Nav.split`): Android wide screens show list + opened record side by side (42/58), a new record replaces the right pane, Back closes it; phones unchanged.
-- v0.366 IPAD PANE (App Phase 30, kit `RootView.tabBody` + `Router.split`): wide iPads show each tab list + the opened record side by side; iPhone unchanged.
-- v0.367 TURANT (App Phase 31, `appmaker/turant.py`, kit `PushHook`): instant push for Android apps via FCM + Newtika Firebase (Management API registers each app on her tap), status / new order / assignment events; iPhone keeps the background check.
-- v0.368 TURANT IPHONE (App Phase 32, `turant.send_ios`, kit `PushHub`): iPhone instant push via APNs with HER Apple push key (sealed, console only), push capability in the next iPhone build; VPS needs `pip install h2`.
-- v0.369 KHUD TAZA (App Phase 33, `runners.sync_workflows`): the server keeps the builds repo's hoola-build.yml / hoola-ios.yml equal to server/app_builder/ before every build (token needs Workflows: write) - no more manual copying.
-- v0.370 HAR DEVICE JAANCH (App Phase 34): her real builds also open every screen on a tablet (Android) / 13" iPad (iPhone builds); results in qa.tablet / qa.ipad + the check line, never fail the build.
-- v0.371 SLOT (App Phase 35, `delivery.available/book/confirm`, kit `SlotPicker`): delivery time slots with capacity / days ahead / cut-off; server books under a lock, a full slot = note not refusal, races leave exactly cap.
-- v0.372 DUKAAN BHASHA (App Phase 36, `appmaker/storelang.py`): Play listings in the app's Indian languages (hi-IN, mr-IN, ta-IN...) + App Store "hi", translated once within limits, her edits win, never blocks the English upload.
-- v0.373 GSTR-1 FILE (App Phase 37, `appmaker/gstr1.py`): the month's GSTR-1 JSON (offline tool shape: b2b, b2cl, b2cs netted, cdnr / cdnur, hsn, doc_issue) from her invoice numbers; CA imports + files, Hoola never files.
-- v0.374 TALLY EXPORT (App Phase 38, `appmaker/tally.py`): the month's invoices / credit notes as balanced Tally XML Sales / Credit Note vouchers, her ledger names; Hoola never touches her Tally.
-- v0.375 KHATA YAAD (App Phase 39, `khata.reminders/send_reminder`): udhaar reminders only by her - wa.me link she sends herself, or her approved UTILITY template via her business number on her tap; STOP respected, once per 3 days.
-- v0.376 MAALKIN PHONE (App Phase 40, `lib/ui/app_money.dart`): her phone app screen gets hisaab line, udhaar list (her WhatsApp link + paise mile), low stock, live coupons.
-- v0.377 CHHUTTI (App Phase 41, `delivery.save_holidays/change_slot`, kit `SlotChange`): shop holidays (no slots, orders noted not refused) + customers / staff change an order's delivery time under the slot lock.
-- v0.378 BAAT (App Phase 42, `appmaker/baat.py`, kit screen `hoola_chat`): in-app chat customer <-> shop, staff threads + unread, push / background check, her reply only by her tap, customer words = data.
-- v0.349 BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
-- v0.348 KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
-- v0.347 HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.
+- App Sahayak (v0.364.0, built as 0.350) NAKSHA (App Phase 14, kits `StopsBlock`): staff see open rows with a location nearest first + Route in Maps (Google Maps URLs / Apple MapKit, no key, no tiles); location asked only on a tap.
+- App Sahayak (v0.364.0, built as 0.351) PAKKA SABOOT (App Phase 15, `android/fixture_make2.py`): a second generator-only CI app (Hindi field-service staff app, every field kind, stops + dashboard) compiled + every screen and button walked on emulator and iPhone simulator.
+- App Sahayak (v0.364.0, built as 0.352) KAAM BAANTO (App Phase 16, `backend.assign`, kits `AssignBox` / `Team`): a row given to ONE staff member (owner / admin assign, staff take a free one), others on staff cannot change it, My work filter, "Given to you" update, customer sees the first name.
+- App Sahayak (v0.364.0, built as 0.353) RAAY (App Phase 17, `backend.rate`, kits `RateBox`): the customer rates her finished row once (1-5 + note), nobody else / never changed, 1-2 stars reach her chat, dashboard average per list + per staff member.
+- App Sahayak (v0.364.0, built as 0.354) RASEED (App Phase 18, `appmaker/receipt.py`, kits `ReceiptButton`): receipt PDF of a finished row made by the server (not a GST invoice), only her customer / staff / her, 15-minute signed link opened in the browser.
+- App Sahayak (v0.364.0, built as 0.355) GST BILL (App Phase 19, `appmaker/gst.py`): her GSTIN (check digit) -> Rule 46 tax invoice for finished rows, INV/<FY>/0001 given once, GST-inclusive (total = order total), CGST+SGST / IGST by place of supply, HSN per product; no credit notes / IRN.
+- App Sahayak (v0.364.0, built as 0.356) WAPSI (App Phase 20, `gst.credit_for`): invoiced row cancelled -> GST credit note CN/<FY>/0001 (own series, once, full value, against the invoice); her own for returns; customer gets the credit note, her invoice stays; refunds are hers.
+- App Sahayak (v0.364.0, built as 0.357) STOCK (App Phase 21, `appmaker/stock.py`): stock per product, orders take it under one lock (never oversold), 409 when short, cancel puts back once, low-stock chat note once, apps show Sold out + cap the cart.
+- App Sahayak (v0.364.0, built as 0.358) COUPON (App Phase 22, `appmaker/coupon.py`): discount codes (percent / flat, min, last date, uses, once each) checked in the cart, applied by the server at order time, a failing code never loses the order, invoices spread the discount.
+- App Sahayak (v0.364.0, built as 0.359) KHATA (App Phase 23, `appmaker/khata.py`): udhaar ledger - staff put an order on credit (server total, once), record payments (money never moves), cancel reverses once, customer sees her own, staff / owner see dues; append-only.
+- App Sahayak (v0.364.0, built as 0.360) DELIVERY (App Phase 24, `appmaker/delivery.py`): server-added delivery fee (free above, after coupon), PIN area + shop hours as notes never refusals, Delivery line on receipts / GST invoices (SAC 9968), cart DeliveryLine.
+- App Sahayak (v0.364.0, built as 0.361) HISAAB (App Phase 25, `appmaker/hisaab.py`): month ZIP of CSVs for her CA - sales / invoice / credit-note registers, HSN + rate-wise summary, khata - from the invoice numbers; Excel-safe cells; nothing filed.
+- App Sahayak (v0.364.0, built as 0.362) VARIANTS (App Phase 26, `appmaker/variants.py`, kits `SizeChips` / `lineItem`): sizes with their own price ("pid::vid" = a product for pricing, stock, coupons, GST); every generated screen shows size chips unchanged.
+- App Sahayak (v0.364.0, built as 0.363) BADI SCREEN (App Phase 27, kit `isWide` + `tablet_check.sh`): Android apps on tablets / foldables / landscape - side rail instead of a bottom bar, centred 720dp column, 3-column grids; CI opens every screen at tablet size.
+- App Sahayak (v0.364.0, built as 0.364) IPAD (App Phase 28, `ios/gen.py` family 1,2, `asc.IPAD_DISPLAY`): the iPhone app runs on iPad (all orientations), CI opens every screen on a 13" iPad Pro, App Store gets the 13" iPad screenshot set; builds repo needs the new hoola-ios.yml.
+- App Sahayak (v0.364.0, built as 0.365) DO PANE (App Phase 29, kit `Nav.split`): Android wide screens show list + opened record side by side (42/58), a new record replaces the right pane, Back closes it; phones unchanged.
+- App Sahayak (v0.364.0, built as 0.366) IPAD PANE (App Phase 30, kit `RootView.tabBody` + `Router.split`): wide iPads show each tab list + the opened record side by side; iPhone unchanged.
+- App Sahayak (v0.364.0, built as 0.367) TURANT (App Phase 31, `appmaker/turant.py`, kit `PushHook`): instant push for Android apps via FCM + Newtika Firebase (Management API registers each app on her tap), status / new order / assignment events; iPhone keeps the background check.
+- App Sahayak (v0.364.0, built as 0.368) TURANT IPHONE (App Phase 32, `turant.send_ios`, kit `PushHub`): iPhone instant push via APNs with HER Apple push key (sealed, console only), push capability in the next iPhone build; VPS needs `pip install h2`.
+- App Sahayak (v0.364.0, built as 0.369) KHUD TAZA (App Phase 33, `runners.sync_workflows`): the server keeps the builds repo's hoola-build.yml / hoola-ios.yml equal to server/app_builder/ before every build (token needs Workflows: write) - no more manual copying.
+- App Sahayak (v0.364.0, built as 0.370) HAR DEVICE JAANCH (App Phase 34): her real builds also open every screen on a tablet (Android) / 13" iPad (iPhone builds); results in qa.tablet / qa.ipad + the check line, never fail the build.
+- App Sahayak (v0.364.0, built as 0.371) SLOT (App Phase 35, `delivery.available/book/confirm`, kit `SlotPicker`): delivery time slots with capacity / days ahead / cut-off; server books under a lock, a full slot = note not refusal, races leave exactly cap.
+- App Sahayak (v0.364.0, built as 0.372) DUKAAN BHASHA (App Phase 36, `appmaker/storelang.py`): Play listings in the app's Indian languages (hi-IN, mr-IN, ta-IN...) + App Store "hi", translated once within limits, her edits win, never blocks the English upload.
+- App Sahayak (v0.364.0, built as 0.373) GSTR-1 FILE (App Phase 37, `appmaker/gstr1.py`): the month's GSTR-1 JSON (offline tool shape: b2b, b2cl, b2cs netted, cdnr / cdnur, hsn, doc_issue) from her invoice numbers; CA imports + files, Hoola never files.
+- App Sahayak (v0.364.0, built as 0.374) TALLY EXPORT (App Phase 38, `appmaker/tally.py`): the month's invoices / credit notes as balanced Tally XML Sales / Credit Note vouchers, her ledger names; Hoola never touches her Tally.
+- App Sahayak (v0.364.0, built as 0.375) KHATA YAAD (App Phase 39, `khata.reminders/send_reminder`): udhaar reminders only by her - wa.me link she sends herself, or her approved UTILITY template via her business number on her tap; STOP respected, once per 3 days.
+- App Sahayak (v0.364.0, built as 0.376) MAALKIN PHONE (App Phase 40, `lib/ui/app_money.dart`): her phone app screen gets hisaab line, udhaar list (her WhatsApp link + paise mile), low stock, live coupons.
+- App Sahayak (v0.364.0, built as 0.377) CHHUTTI (App Phase 41, `delivery.save_holidays/change_slot`, kit `SlotChange`): shop holidays (no slots, orders noted not refused) + customers / staff change an order's delivery time under the slot lock.
+- App Sahayak (v0.364.0, built as 0.378) BAAT (App Phase 42, `appmaker/baat.py`, kit screen `hoola_chat`): in-app chat customer <-> shop, staff threads + unread, push / background check, her reply only by her tap, customer words = data.
+- App Sahayak (v0.364.0, built as 0.349) BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
+- App Sahayak (v0.364.0, built as 0.348) KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
+- App Sahayak (v0.364.0, built as 0.347) HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.
 - v0.346 DESIGN SE MILAAN (App Phase 10, `appmaker/match.py`): every real screen (device check) scored 0-100 vs her approved design after each build; Opus lists differences for those under 70; fix rebuilds only them (Android + iPhone).
 - v0.345 APNA CODE (App Phase 9, `appmaker/code.py`): her app's whole code (android/ + ios/ + README + CHANGELOG, never a key) to HER GitHub, one commit per build, the website-export card + her tap only.
 - v0.341 HAR FEATURE 2 (App Phase 8, kits `Pro.kt` / `Pro.swift`): scan field (Google code scanner, no camera permission / VisionKit), staff dashboard `/api/app-api/<key>/stats` (charts), updates inbox `hoola_inbox`, iPhone background updates (BGAppRefresh + local notifications).
@@ -294,6 +324,26 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
+- v0.363 ASLI ERP KAAM: Hoola really READS and WRITES her ERP, not just papers. A read runs at once (capped
+  2,000 rows). A WRITE IS NEVER ONE CALL: plan -> dry run (before->after per row) -> HER TAP -> batches ->
+  verify. Guards in CODE: delete refused at any size, max 500 rows a run, no execute before a dry run,
+  production needs the WORD as well as the tap, approval tied to those rows by plan hash, and an
+  idempotency key per row so a resume NEVER double-posts (proved by a test re-running a half-failed load).
+  rollback_plan names the rows it CANNOT undo. Rails: composio (her account) + odata (her own sealed
+  endpoint, credential typed in the APP - the tool refuses it in chat). `app/enterprise/run.py`.
+- v0.362 ERP KA POORA DESK: an ERP job is a DESK, not one person - the whole lifecycle now sits in the `erp`
+  role as 16 parts (blueprint, functional, technical/ABAP, data, integration, basis, security+SoD, testing,
+  cutover, training, support/AMS, master data, reporting, finance close, licence, upgrade). ONE duty for all
+  16 (it is her one live ERP, so trust is set once; a live write is still BIG). Each part makes only its own
+  papers + 4 new kinds (config, matrix, sop, training). draft() takes `job`, <job>_dekho what=jobs. Generic:
+  any role can grow a JOBS entry; a role without one is unchanged.
+- v0.358 ENTERPRISE SYSTEMS & ERP: her ten Product/Enterprise/ERP jobs as ONE suite. Research finding: each
+  role splits in two - RUNNING the live system is gated by whose credential it is (and for 3, a statutory
+  audit); doing the WORK (specs, mappings, registers, reconciliation) is not. One engine `app/enterprise/`
+  serves all ten (a new job = a row in rules.ROLES), but TEN tool pairs so the Employee gate gives trust per
+  job. erp/crm_arch/bpa/ecom_arch/plm are BIG (a live write always asks); health_int (CERT-In), bank_int
+  (RBI+Sahamati) and regtech (she files) are CAPPED and say so in EVERY result; Teamcenter read-only.
+  Guards in code: keys refused, account/Aadhaar masked, own systems + own paper kinds only.
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
 - v0.288 SIDEBAR FULLY VISIBLE: labels 12/400 faint --dim -> 13/500 --mut, chat titles 13.5/400 -> 14/450 ink, nav 14/400 -> 14/500

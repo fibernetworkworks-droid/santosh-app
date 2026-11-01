@@ -18,6 +18,7 @@ on:
           - logs
           - errors
           - voicecheck
+          - mospi_check
           - ack_refresh
           - deploy
           - rollback_stable
@@ -31,6 +32,8 @@ on:
           - rea_setup
           - studio_apis
           - tool_card
+          - long_jobs
+          - code_card
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -121,6 +124,12 @@ jobs:
                 echo 'echo "== free + swap now"; free -m; swapon --show' ;;
               voicecheck)
                 echo 'cd $CORE && timeout 600 .venv/bin/python -m app.voicecheck' ;;
+              mospi_check)
+                # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
+                echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'
+                echo 'echo "== curl"; curl -sS -m 30 -o /dev/null -w "HTTP %{http_code} connect %{time_connect}s total %{time_total}s ip %{remote_ip}\n" -X POST https://mcp.mospi.gov.in/mcp -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"list_datasets\",\"arguments\":{}}}" || echo "curl failed"'
+                echo 'echo "== Hoola client"; cd $CORE && timeout 120 .venv/bin/python -m app.mospi check'
+                echo 'echo "== recent MoSPI log lines"; pm2 logs santosh --lines 400 --nostream --raw 2>/dev/null | grep -i mospi | tail -20' ;;
               ack_refresh)
                 # v0.201.0 AWAAZ-2: the ack clips are disk-cached by filename with no ask-hash, so a changed
                 # delivery ask never regenerates them on an old server. This job drops the cache; the next
@@ -300,6 +309,15 @@ jobs:
                 # run it on the VPS itself - python -m app.quality tools --live.)
                 echo 'cd $CORE && echo "== router (free)"; timeout 120 .venv/bin/python -m app.quality tools 2>&1 | head -3; timeout 120 .venv/bin/python -m app.quality tools --fresh 2>&1 | head -3'
                 echo 'echo "== live first picks, FRESH set"; cd $CORE && timeout 720 .venv/bin/python -m app.quality tools --live --fresh --label vps-ops 2>&1 | tail -40' ;;
+              long_jobs)
+                # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
+                # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.
+                echo 'cd $CORE && timeout 120 .venv/bin/python -m app.quality longjobs --hours 24 2>&1 | tail -60' ;;
+              code_card)
+                # v0.360 how well does Developer Sahayak code? 12 fixed practice jobs through the real 8-tool loop (no GitHub,
+                # no PR), marked by hidden checks: works / stayed in scope / project rules / tests that prove the fix.
+                # Model calls: ~12 Opus jobs, roughly Rs 150-400, ~6-12 min. The answers run in a child Python with no secrets.
+                echo 'cd $CORE && timeout 780 .venv/bin/python -m app.quality code --label vps-ops 2>&1 | tail -40' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh

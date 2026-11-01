@@ -86,7 +86,7 @@ def claims_done(text: str) -> str:
 READS = {"google_search", "web_sources", "open_website", "parallel_search", "kaam_status", "session_log",
          "file_read", "doc_preview", "gyaan_khojo", "yaad_khojo", "india_info", "ai_kharcha", "phone_health",
          "get_weather", "maps_search", "tool_search", "kaam_plan", "youtube_search", "api_find", "api_docs",
-         "indiamart_khoj", "indiamart_detail"}
+         "indiamart_khoj", "indiamart_detail", "mospi"}
 
 
 def _is_read(name: str) -> bool:

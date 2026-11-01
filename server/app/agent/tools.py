@@ -475,6 +475,13 @@ TOOLS.extend(INDIAMART_TOOLS)
 TOOL_LABELS.update(INDIAMART_LABELS)
 HANDLERS.update(INDIAMART_HANDLERS)
 
+# v0.348 MOSPI BUILT IN: official Government of India statistics (MoSPI eSankhyiki MCP, no login, read-only)
+from .mospi_tools import MOSPI_HANDLERS, MOSPI_LABELS, MOSPI_TOOLS  # noqa: E402
+
+TOOLS.extend(MOSPI_TOOLS)
+TOOL_LABELS.update(MOSPI_LABELS)
+HANDLERS.update(MOSPI_HANDLERS)
+
 # v0.63 seekhe hue kaam (procedures Hoola learned)
 from .procedure_tools import PROCEDURE_HANDLERS, PROCEDURE_LABELS, PROCEDURE_TOOLS  # noqa: E402
 
@@ -784,6 +791,12 @@ from .pgdb_tools import PGDB_HANDLERS, PGDB_LABELS, PGDB_TOOLS  # noqa: E402
 TOOLS.extend(BLENDER_TOOLS)
 TOOL_LABELS.update(BLENDER_LABELS)
 HANDLERS.update(BLENDER_HANDLERS)
+# v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
+from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
+
+TOOLS.extend(ENG_TOOLS)
+TOOL_LABELS.update(ENG_LABELS)
+HANDLERS.update(ENG_HANDLERS)
 TOOLS.extend(PGDB_TOOLS)
 TOOL_LABELS.update(PGDB_LABELS)
 HANDLERS.update(PGDB_HANDLERS)
@@ -807,13 +820,16 @@ from .devops_tools import DEVOPS_HANDLERS, DEVOPS_LABELS, DEVOPS_TOOLS  # noqa: 
 from .docwriter_tools import DOCWRITER_HANDLERS, DOCWRITER_LABELS, DOCWRITER_TOOLS  # noqa: E402
 from .appreview_tools import APPREVIEW_HANDLERS, APPREVIEW_LABELS, APPREVIEW_TOOLS  # noqa: E402
 from .product_tools import PRODUCT_HANDLERS, PRODUCT_LABELS, PRODUCT_TOOLS  # noqa: E402
+from .enterprise_tools import ENTERPRISE_HANDLERS, ENTERPRISE_LABELS, ENTERPRISE_TOOLS  # noqa: E402
 
 for _t, _l, _h in ((DEV_TOOLS, DEV_LABELS, DEV_HANDLERS), (QA_TOOLS, QA_LABELS, QA_HANDLERS),
                    (ITADMIN_TOOLS, ITADMIN_LABELS, ITADMIN_HANDLERS), (NOC_TOOLS, NOC_LABELS, NOC_HANDLERS),
                    (CYBER_TOOLS, CYBER_LABELS, CYBER_HANDLERS), (DEVOPS_TOOLS, DEVOPS_LABELS, DEVOPS_HANDLERS),
                    (DOCWRITER_TOOLS, DOCWRITER_LABELS, DOCWRITER_HANDLERS),
                    (APPREVIEW_TOOLS, APPREVIEW_LABELS, APPREVIEW_HANDLERS),
-                   (PRODUCT_TOOLS, PRODUCT_LABELS, PRODUCT_HANDLERS)):
+                   (PRODUCT_TOOLS, PRODUCT_LABELS, PRODUCT_HANDLERS),
+                   # v0.358 Enterprise Systems & ERP: ten jobs, generated from enterprise/rules.ROLES
+                   (ENTERPRISE_TOOLS, ENTERPRISE_LABELS, ENTERPRISE_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)

@@ -61,14 +61,53 @@ CATALOG: dict[str, dict[str, Any]] = {
         "never": ["Buy links or fake reviews", "Publish anything on your site or Google profile without your OK",
                   "Make mass AI pages or doorway pages", "Promise a ranking"],
     },
-    "social": {"name": "Social Media Manager", "live": False, "icon": "share",
-               "pitch": "Plans, writes and schedules your Instagram, Facebook and WhatsApp status posts."},
+    "social": {"name": "Social Media Manager", "live": True, "icon": "share",
+               "pitch": "Runs your Instagram and Facebook Page like a good agency: plans the month, writes the posts, learns what works.",
+               "does": ["Reads your last 50 posts and their numbers: what works, when your people are online",
+                        "A strategy: content themes, posting rhythm, hashtags, the one number the month is judged on",
+                        "A 30-day calendar of ready posts (hook, caption in your language, hashtags, picture brief) for your OK",
+                        "Indian festivals and local moments planned in",
+                        "Checks your connections every hour and fresh numbers every day"],
+               "needs": ["Instagram Business or Creator account and / or your Facebook Page",
+                         "One login on Instagram / Facebook's own page (Hoola never sees your password)"],
+               "never": ["Buy followers or likes, or use engagement pods", "Post anything without your OK",
+                         "Invent prices, offers or claims", "Read or touch any account you did not connect"]},
     "accounts": {"name": "Accounts Assistant", "live": False, "icon": "receipt",
                  "pitch": "Bills, GST returns, payments due and the monthly books."},
     "telecaller": {"name": "Telecaller", "live": False, "icon": "phone",
                    "pitch": "Calls your leads and customers with a script, notes every answer."},
     "support": {"name": "Customer Support", "live": False, "icon": "chat",
                 "pitch": "Answers customer questions on WhatsApp and email from your own FAQ."},
+    # v0.357 ENGINEERING DESK (docs/ENGINEERING_DESK_PLAN.md): one shared locked runner, a pack per role
+    "cad": {"name": "CAD Engineer", "live": True, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+            "pitch": "Turns your words and sizes into a real 3D part: STEP and STL files plus a dimensioned drawing.",
+            "does": ["Designs the part from your words (and your sizes in mm) as clean, parametric CadQuery code",
+                     "Builds it in a locked box on Hoola's server and checks it: valid solid, one body, the size you asked",
+                     "Gives you STEP (for any CAD / CNC shop), STL (for 3D printing), 4 views and a drawing PDF",
+                     "Changes it on your words: 'holes 10 mm karo', 'wall 3 mm moti'",
+                     "Keeps every version on the CAD Desk"],
+            "needs": ["What the part is and its main sizes in mm (a photo of a sketch with numbers helps)"],
+            "never": ["Call a design certified, approved or safe to use without a qualified engineer",
+                      "Sign or stamp drawings", "Use cracked or unlicensed CAD software",
+                      "Design weapons or export-controlled parts"]},
+    "fea": {"name": "Structural Analysis (FEA)", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+            "pitch": "Will the part break? Stress, deflection and safety factor with plots (CalculiX)."},
+    "cfd": {"name": "CFD Engineer", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+            "pitch": "Air and heat flow around or through your design, with plots (OpenFOAM)."},
+    "acoustic": {"name": "Acoustic Simulation", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+                 "pitch": "How a room or hall sounds: echo time, sound level map, what to treat."},
+    "optics": {"name": "Optical Systems Simulation", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+               "pitch": "Lens and laser paths: ray trace, spot size, focal length, tolerances."},
+    "ecu": {"name": "Automotive ECU (AUTOSAR) Programmer", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+            "pitch": "C code, MISRA checks, unit tests and requirement tracing for vehicle ECUs (draft, not certified)."},
+    "flight_sw": {"name": "Spacecraft Flight Software", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+                  "pitch": "Flight code review, fault handling and tests to NASA / ESA style rules (draft, not certified)."},
+    "med_sw": {"name": "Medical Device Software", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+               "pitch": "Embedded code and IEC 62304 / ISO 14971 files and tests (draft for your engineers)."},
+    "litho": {"name": "Chip Layout (Lithography) Software", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+              "pitch": "Layout scripts and design-rule checks on GDS files (KLayout)."},
+    "iiot": {"name": "Industrial IoT Architect", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+             "pitch": "SCADA and factory network design: device list, protocols, security zones, BOM (paper only)."},
 }
 
 
@@ -132,7 +171,7 @@ def catalog(tenant: str) -> list[dict[str, Any]]:
     out = []
     with session() as s:
         for key, c in CATALOG.items():
-            out.append({"key": key, **c, **_view(_row(s, tenant, key))})
+            out.append({"key": key, "group": "Business", **c, **_view(_row(s, tenant, key))})
     return out
 
 

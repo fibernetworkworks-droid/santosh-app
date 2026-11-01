@@ -759,6 +759,7 @@ def init_db(url: str | None = None):
     from .site import github as _site_github  # noqa: F401  (v0.124 GitHub export of her site)
     from .site import webapp as _site_webapp  # noqa: F401  (v0.305 web apps: members + rows)
     from .site import arena as _site_arena  # noqa: F401  (v0.307 Design Arena runs / items / duels)
+    from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
@@ -801,6 +802,8 @@ def init_db(url: str | None = None):
     from .seo import service as _seo  # noqa: F401
     from .seo import desk as _seo_desk  # noqa: F401  (v0.317 SEO Employee desk)
     from .employee import hire as _hire  # noqa: F401  (v0.317 hired employees)
+    from .social import publish as _social_publish  # noqa: F401  (v0.355 Social Media Manager posting)
+    from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .thok import service as _thok  # noqa: F401
     from .niryat import service as _niryat  # noqa: F401
     from .franchise import service as _franchise  # noqa: F401
@@ -827,6 +830,7 @@ def init_db(url: str | None = None):
     from .docwriter import models as _docwriter  # noqa: F401
     from .appreview import models as _appreview  # noqa: F401
     from .product import models as _product  # noqa: F401
+    from .enterprise import models as _enterprise  # noqa: F401
     # v0.139 Safar suite
     from .customs import models as _customs  # noqa: F401
     from .travel import models as _travel  # noqa: F401
@@ -889,6 +893,7 @@ def init_db(url: str | None = None):
     from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
+    from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

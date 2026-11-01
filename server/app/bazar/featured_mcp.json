@@ -27,7 +27,7 @@
    "url": "https://mcp.mospi.gov.in/mcp",
    "url_hint": "",
    "auth": "none",
-   "does": "Official Government of India statistics: CPI inflation, GDP / national accounts, IIP, PLFS jobs, ASI industry, HCES spending and more datasets, by state and year (read-only)",
+   "does": "Official Government of India statistics: CPI inflation, GDP / national accounts, IIP, PLFS jobs, ASI industry, HCES spending and more datasets, by state and year; built in, no Connect needed (read-only)",
    "source": "https://mcp.mospi.gov.in",
    "confidence": "high",
    "india": true,
@@ -47,7 +47,8 @@
     "census",
     "nso",
     "data"
-   ]
+   ],
+   "native": "mospi tool (built in for everyone: ask Hoola any official statistic, no Connect needed)"
   },
   {
    "id": "upstox",
