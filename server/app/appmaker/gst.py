@@ -263,3 +263,55 @@ def words(n: float) -> str:
             parts.append(three(rs2))
         out = " ".join(parts)
     return "Rupees " + out + (f" and {two(paise)} Paise" if paise else "") + " Only"
+
+
+
+# ---------------------------------------------------------------- v0.356 WAPSI (App Sahayak Phase 20): GST credit notes
+# A row that already carries a tax invoice and is then cancelled (or that she marks as returned) gets a CREDIT NOTE for
+# the full value (Section 34): its own consecutive series per financial year (CN/2026-27/0001), given once, referring to
+# the original invoice number + date, same place of supply and tax split as the invoice, and the reason. Money never moves
+# here - a refund (if any) is hers to make; the credit note only records it. Partial credit notes are not made.
+STATS.update({"credit_notes": 0})
+
+
+def credit_for(r: AppProject, row_id: str, reason: str = "") -> tuple[str, str] | None:
+    """The row's credit note number + date (given ONCE). None when the row has no invoice (nothing to credit)."""
+    from . import backend as BE
+    reason = re.sub(r"[\x00-\x1f]+", " ", str(reason or "")).strip()[:200] or "Order cancelled"
+    with _LOCK, session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        if row is None:
+            return None
+        d = BE._j(row.data, {})
+        if not d.get("_inv_no"):
+            return None
+        if d.get("_cn_no"):
+            return d["_cn_no"], d.get("_cn_date", "")
+        app = s.get(AppProject, r.id)
+        be = BE._j(app.backend, {})
+        g = dict(be.get("gst") or {})
+        year = fy()
+        seq = dict(g.get("cn_seq") or {})
+        n = int(seq.get(year) or 0) + 1
+        seq[year] = n
+        g["cn_seq"], g["credited"] = seq, int(g.get("credited") or 0) + 1
+        be["gst"] = g
+        no = f"CN/{year}/{n:04d}"
+        day = (now() + timedelta(hours=5, minutes=30)).strftime("%d %b %Y")
+        d.update({"_cn_no": no, "_cn_date": day, "_cn_reason": reason})
+        row.data, app.backend = json.dumps(d, ensure_ascii=False), json.dumps(be, ensure_ascii=False)
+    STATS["credit_notes"] += 1
+    return no, day
+
+
+def credit(r: AppProject, coll: str, row_id: str, reason: str = "") -> dict[str, Any]:
+    """Her own credit note for an invoiced row (a return / a wrong bill): full value, with her reason."""
+    from . import backend as BE
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        if row is None or row.site_id != BE.bid(r) or row.coll != coll:
+            raise GstError("Yeh entry nahi mili.", 404)
+    got = credit_for(r, row_id, reason or "Goods returned / bill corrected")
+    if got is None:
+        raise GstError("Is entry ka tax invoice abhi bana hi nahi; credit note sirf invoice ke baad banta hai.", 409)
+    return {"credit_note": got[0], "date": got[1], "row": row_id}

@@ -81,9 +81,10 @@ def by_link(r: AppProject, coll: str, row_id: str, e: str, s: str) -> bytes:
     return pdf(r, c, row, d)
 
 
-def for_owner(r: AppProject, coll: str, row_id: str) -> bytes:
+def for_owner(r: AppProject, coll: str, row_id: str, doc: str = "") -> bytes:
+    """Her copy; doc="invoice" = the original tax invoice of a row that now has a credit note (v0.356)."""
     c, row, d = _check(r, coll, row_id, W.Who(owner=True))
-    return pdf(r, c, row, d)
+    return pdf(r, c, row, d, doc)
 
 
 def number(r: AppProject, row) -> str:
@@ -99,7 +100,7 @@ def _money(v: Any) -> str:
     return f"₹{f:,.0f}" if f == int(f) else f"₹{f:,.2f}"
 
 
-def pdf(r: AppProject, c: dict[str, Any], row, d: dict[str, Any]) -> bytes:
+def pdf(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], doc: str = "") -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A5
     from reportlab.lib.styles import ParagraphStyle
@@ -119,7 +120,9 @@ def pdf(r: AppProject, c: dict[str, Any], row, d: dict[str, Any]) -> bytes:
     facts = AS._j(r.facts, {}) if getattr(r, "facts", None) else {}
     name = str(facts.get("name") or r.name or "Receipt")
     from . import gst as G
-    if G.on(r):                                   # v0.355 GST BILL: a registered business gets a tax invoice instead
+    if d.get("_cn_no") and doc != "invoice":      # v0.356 WAPSI: a cancelled invoiced row's document is its credit note
+        return _tax_invoice(r, c, row, d, facts, name, st, T, credit=True)
+    if G.on(r) or (doc == "invoice" and d.get("_inv_no")):   # v0.355 GST BILL: a registered business gets a tax invoice
         return _tax_invoice(r, c, row, d, facts, name, st, T)
     out: list[Any] = [Paragraph(T(name), st["h"])]
     contact = " · ".join(str(facts[k]) for k in ("address", "phone", "email") if facts.get(k))
@@ -167,15 +170,20 @@ def pdf(r: AppProject, c: dict[str, Any], row, d: dict[str, Any]) -> bytes:
 
 
 def filename(r: AppProject, row) -> str:
-    inv = BE._j(row.data, {}).get("_inv_no") if row is not None else ""
+    d = BE._j(row.data, {}) if row is not None else {}
+    if d.get("_cn_no"):
+        return f"credit-note-{d['_cn_no'].replace('/', '-')}.pdf"
+    inv = d.get("_inv_no") or ""
     return f"invoice-{inv.replace('/', '-')}.pdf" if inv else f"receipt-{number(r, row)}.pdf"
 
 
 __all__ = ["link", "by_link", "for_owner", "pdf", "ready", "number"]
 
 
-def _tax_invoice(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], facts: dict[str, Any], name: str, st, T) -> bytes:
-    """v0.355 the Rule 46 tax invoice (GST-inclusive prices; the total is the server's order total)."""
+def _tax_invoice(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], facts: dict[str, Any], name: str, st, T,
+                 credit: bool = False) -> bytes:
+    """v0.355 the Rule 46 tax invoice (GST-inclusive prices; the total is the server's order total).
+    v0.356 credit=True: the CREDIT NOTE for the same lines, referring to the original invoice."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
@@ -183,10 +191,13 @@ def _tax_invoice(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], facts
 
     from . import gst as G
     no, day = G.number_for(r, row.id)
+    inv_no, inv_day = no, day
+    if credit:
+        no, day = d["_cn_no"], d.get("_cn_date", "")
     x = G.compute(r, c, d)
     P = lambda t, k="p": Paragraph(T(t), st[k])
     seller = x["legal_name"] or name
-    out: list[Any] = [P("TAX INVOICE", "h"), P(seller, "b")]
+    out: list[Any] = [P("CREDIT NOTE" if credit else "TAX INVOICE", "h"), P(seller, "b")]
     if x["legal_name"] and x["legal_name"] != name:
         out.append(P(f"Trade name: {name}"))
     contact = " · ".join(str(facts[k]) for k in ("address", "phone", "email") if facts.get(k))
@@ -195,11 +206,13 @@ def _tax_invoice(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], facts
     out += [P(f"GSTIN: {x['gstin']} · State: {x['home_name']} ({x['gstin'][:2]})"), Spacer(1, 3 * mm)]
     buyer_name = next((str(d.get(k)) for k in ("name", "customer", "student", "company") if d.get(k)), "")
     buyer_addr = next((str(d.get(k)) for k in ("address", "site_address", "city") if d.get(k)), "")
-    head = [[P(f"Invoice No. {no}", "b"), P(f"Date: {day}", "b")],
+    head = [[P(f"{'Credit note' if credit else 'Invoice'} No. {no}", "b"), P(f"Date: {day}", "b")],
             [P("Bill to: " + (buyer_name or "Customer") + (f", {buyer_addr}" if buyer_addr else "")[:300]),
              P(f"Place of supply: {x['pos_name']} ({x['pos']})")]]
     if x["buyer_gstin"]:
         head.append([P(f"Buyer GSTIN: {x['buyer_gstin']}"), P("")])
+    if credit:
+        head.append([P(f"Against tax invoice {inv_no} dated {inv_day}", "b"), P("Reason: " + str(d.get("_cn_reason") or "Order cancelled"))])
     t = Table(head, colWidths=[110 * mm, None])
     t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
     out += [t, Spacer(1, 3 * mm)]
@@ -217,15 +230,20 @@ def _tax_invoice(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], facts
     t = Table(rows, colWidths=widths, repeatRows=1)
     t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#999999")),
                            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eeeeee")), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
-    out += [t, Spacer(1, 3 * mm), P(f"Invoice total: ₹{m(tt['amount'])} (GST included)", "b"), P(G.words(tt["amount"]), "s")]
+    label = "Credit note value" if credit else "Invoice total"
+    out += [t, Spacer(1, 3 * mm), P(f"{label}: ₹{m(tt['amount'])} (GST included)", "b"), P(G.words(tt["amount"]), "s")]
     paid = str(d.get("paid") or "")
-    if paid == "Verified":
+    if credit:
+        out.append(P("The tax on this credit note reduces the supplier's output tax for the original invoice. "
+                     "Any refund is made by the business separately."))
+    elif paid == "Verified":
         out.append(P("Paid by UPI" + (f" (ref {d['utr']})" if d.get("utr") else "") + "."))
     out += [P("Tax payable on reverse charge: No."), Spacer(1, 10 * mm), P(f"For {seller}", "b"), P("Authorised signatory", "s"),
-            Spacer(1, 4 * mm), P("Computer-generated invoice made by the " + name + " app.", "s")]
+            Spacer(1, 4 * mm), P(f"Computer-generated {'credit note' if credit else 'invoice'} made by the " + name + " app.", "s")]
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=14 * mm, bottomMargin=14 * mm,
-                            title=f"Tax invoice {no}", author=seller, subject="Tax invoice")
+                            title=f"{'Credit note' if credit else 'Tax invoice'} {no}", author=seller,
+                            subject="Credit note" if credit else "Tax invoice")
     doc.build(out)
     STATS["receipts"] += 1
     G.STATS["invoices"] += 1

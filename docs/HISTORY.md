@@ -12933,3 +12933,18 @@ v0.354's receipt said "not a GST tax invoice"; a registered business needs the r
   rate + HSN, per-product HSN / rate table). GSTIN "" = plain receipts again; issued numbers are kept.
 - Tests `tests/test_v0355_gst_bill.py`. Not done (said in the product): credit notes for a row cancelled after its invoice,
   e-invoicing / IRN for big turnovers, GST returns, GST-exclusive pricing (would change what the app charges).
+
+## v0.356.0 WAPSI (App Sahayak Phase 20, owner: "START PHASE 20")
+v0.355 left one honest gap: an invoiced order that is cancelled or returned needs a credit note.
+- `gst.credit_for(r, row, reason)`: only for a row that has `_inv_no`; `CN/<FY>/<0001>` from its own counter
+  (`gst.cn_seq`, `credited`) in the same locked transaction as the row (`_cn_no`, `_cn_date`, `_cn_reason`), given once.
+  `gst.credit(r, coll, row, reason)` = her own (409 without an invoice).
+- `backend.update`: a status change to Cancelled on an invoiced row issues it by itself and tells her chat ("credit note
+  ... ban gaya; paise lautane hon to aap khud karein"). `receipt_ready` is true for a credit-noted row; rows carry
+  `receipt_kind = credit_note`.
+- `receipt._tax_invoice(..., credit=True)`: CREDIT NOTE heading, its number + date, "Against tax invoice <no> dated <date>",
+  reason, the same lines / HSN / CGST SGST or IGST as the invoice, "Credit note value", a line that any refund is made by the
+  business separately. File credit-note-CN-<FY>-<n>.pdf. Her original invoice: GET .../receipt?doc=invoice.
+- Her side: POST /api/apps/<ref>/data/<coll>/<id>/credit-note {reason}, tool app_banao action=credit_note, console row
+  buttons (Invoice / Credit note… with a reason prompt). Apps label the button "Credit note".
+- Tests `tests/test_v0356_wapsi.py`. Not done: partial credit notes, debit notes, refunds (never - money moves only by her).

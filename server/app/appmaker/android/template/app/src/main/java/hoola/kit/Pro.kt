@@ -416,7 +416,7 @@ fun ReceiptButton(coll: String, r: Item) {
     val c = ctx()
     val scope = rememberCoroutineScope()
     var busy by remember(r.id) { mutableStateOf(false) }
-    val label = if (r.s("receipt_kind") == "invoice") Strings.invoice else Strings.receipt     // v0.355 GST tax invoice
+    val label = when (r.s("receipt_kind")) { "invoice" -> Strings.invoice; "credit_note" -> Strings.creditNote; else -> Strings.receipt }   // v0.355 / v0.356
     Btn(if (busy) Strings.loading else label, kind = BtnKind.Ghost, small = true) {
         if (busy) return@Btn
         busy = true

@@ -398,6 +398,16 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
     out = W.update(bid(r), sch, coll, row_id, body, w)
     if any(k in body for k in ("status", "paid")):
         _merge(row_id, {"_ev": now().isoformat()})     # v0.319 the moment her row moved: the app's update check reads it
+    if str(out.get("status") or "").strip().lower() == "cancelled" and "status" in body:
+        from . import gst as G                          # v0.356 an invoiced row cancelled -> its credit note (given once)
+        got = G.credit_for(r, row_id, "Order cancelled")
+        if got:
+            try:
+                from .android.service import _note
+                _note(r, f"{r.name or 'Aapki app'} ({r.number}): cancelled order ka credit note {got[0]} ban gaya "
+                         "(invoice ke saamne). Paise lautane hon to woh aap khud karein; credit note sirf likhit record hai.")
+            except Exception:
+                log.debug("credit note note", exc_info=True)
     return with_assign(r, out, w)
 
 
@@ -1074,7 +1084,7 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
                 x["rating"], x["rating_note"] = int(d["_rate"]), str(d.get("_rate_note") or "")
             x["receipt"] = receipt_ready(d)            # v0.354 RASEED: a receipt PDF can be had for this row
             if x["receipt"]:
-                x["receipt_kind"] = kind
+                x["receipt_kind"] = "credit_note" if d.get("_cn_no") else kind      # v0.356
             x["can_rate"] = bool(x.get("mine") and not w.staff and not d.get("_rate") and _rateable(str(d.get("status") or "")))
     return rows_[0] if one else rows_
 
@@ -1164,7 +1174,10 @@ STATS.update({"ratings": 0, "rating_refused": 0, "rating_low": 0})
 
 
 def receipt_ready(d: dict[str, Any]) -> bool:
-    """v0.354 a receipt is made for a finished row or a Verified UPI payment, never for a cancelled one."""
+    """v0.354 a receipt is made for a finished row or a Verified UPI payment, never for a cancelled one
+    (v0.356 except its credit note, when the cancelled row had a tax invoice)."""
+    if d.get("_cn_no"):
+        return True
     st = str(d.get("status") or "")
     return st.strip().lower() != "cancelled" and (_rateable(st) or str(d.get("paid") or "") == "Verified")
 

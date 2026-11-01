@@ -742,17 +742,23 @@ window.HoolaBuild = function (C) {
         if (f.type === 'photo') return `<td>${/^f_[0-9a-f]{16}$/.test(S(v)) ? pic(`${base(o)}/files/${S(v)}`, S(f.label), 'stphoto') : ''}</td>`;   // v0.319
         if (f.type === 'location' && S(v)) return `<td><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(S(v))}" target="_blank" rel="noopener">${esc(S(v))}</a></td>`;
         return `<td>${esc(f.type === 'yes_no' ? (v ? 'Yes' : 'No') : S(v)).replace(/\n/g, '<br>')}</td>`;
-      }).join('')}${withCell(r)}${rows.some(x => x.rating) ? `<td>${r.rating ? esc('★'.repeat(N(r.rating)) + ' ' + N(r.rating) + '/5' + (S(r.rating_note) ? ' · ' + S(r.rating_note) : '')) : ''}</td>` : ''}${rows.some(x => x.receipt) ? `<td>${r.receipt ? '<button class="ib" type="button" data-receipt>PDF</button>' : ''}</td>` : ''}<td>${esc(S(r.created).slice(0, 16).replace('T', ' '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No entries yet.</p>');
+      }).join('')}${withCell(r)}${rows.some(x => x.rating) ? `<td>${r.rating ? esc('★'.repeat(N(r.rating)) + ' ' + N(r.rating) + '/5' + (S(r.rating_note) ? ' · ' + S(r.rating_note) : '')) : ''}</td>` : ''}${rows.some(x => x.receipt) ? `<td>${r.receipt ? `<button class="ib" type="button" data-receipt>${r.receipt_kind === 'credit_note' ? 'Credit note' : r.receipt_kind === 'invoice' ? 'Invoice' : 'PDF'}</button>` : ''}${r.receipt_kind === 'credit_note' ? ' <button class="ib" type="button" data-receipt="invoice">Invoice</button>' : ''}${r.receipt_kind === 'invoice' ? ' <button class="ib" type="button" data-cn>Credit note…</button>' : ''}</td>` : ''}<td>${esc(S(r.created).slice(0, 16).replace('T', ' '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No entries yet.</p>');
       sec.addEventListener('change', async e => {
         const sl = e.target.closest('select[data-f]'), tr = e.target.closest('tr[data-r]'); if (!sl || !tr) return;
         try { await api('PATCH', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}`, {[sl.dataset.f]: sl.value}); toast(sl.dataset.f === 'assign' ? (sl.value ? 'Given to ' + sl.selectedOptions[0].textContent + '.' : 'Taken back.') : 'Saved.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      sec.addEventListener('click', async e => {     // v0.356 WAPSI: her credit note for an invoiced row (a return / wrong bill)
+        const b = e.target.closest('[data-cn]'), tr = e.target.closest('tr[data-r]'); if (!b || !tr) return;
+        const why = prompt('Credit note for the full invoice value. Reason (e.g. goods returned):', 'Goods returned'); if (why === null) return;
+        try { const v = await api('POST', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}/credit-note`, {reason: why}); toast('Credit note ' + S(v.credit_note) + ' made. Any refund is yours to make.'); }
         catch (er) { toast(er.message, true); }
       });
       sec.addEventListener('click', async e => {     // v0.354 RASEED: her copy of a finished row's receipt
         const b = e.target.closest('[data-receipt]'), tr = e.target.closest('tr[data-r]'); if (!b || !tr) return;
         b.disabled = true;
         try {
-          const res = await api('GET', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}/receipt`, undefined, {raw: true});
+          const res = await api('GET', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}/receipt${b.dataset.receipt === 'invoice' ? '?doc=invoice' : ''}`, undefined, {raw: true});
           const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = 'receipt.pdf'; a.click();
           setTimeout(() => URL.revokeObjectURL(a.href), 30000);
         } catch (er) { toast(er.message, true); } finally { b.disabled = false; }

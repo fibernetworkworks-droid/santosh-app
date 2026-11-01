@@ -49,6 +49,7 @@ enum Words {
     static var inboxEmpty: String { t("No updates yet.", "अभी कोई अपडेट नहीं।", "Abhi koi update nahi.") }
     static var receipt: String { t("Receipt", "रसीद", "Raseed") }           // v0.354 RASEED
     static var invoice: String { t("Tax invoice", "टैक्स इनवॉइस", "Tax invoice") }   // v0.355 GST BILL
+    static var creditNote: String { t("Credit note", "क्रेडिट नोट", "Credit note") }   // v0.356 WAPSI
     // v0.353 RAAY
     static var rateIt: String { t("How was it? Rate us", "कैसा रहा? रेटिंग दें", "Kaisa raha? Rating dijiye") }
     static var ratingNote: String { t("A few words (optional)", "कुछ शब्द (ज़रूरी नहीं)", "Kuch shabd (zaroori nahi)") }
