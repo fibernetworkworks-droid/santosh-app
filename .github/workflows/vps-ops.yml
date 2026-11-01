@@ -20,6 +20,7 @@ on:
           - voicecheck
           - mospi_check
           - architect_check
+          - archdesk_check
           - arena_numbers
           - game_setup
           - game_check
@@ -146,6 +147,11 @@ jobs:
               architect_check)
                 # v0.414 HOOLA ARCHITECT live: one REAL Opus spec + the App Sahayak checker on this server; builds nothing, removes the spec
                 echo 'cd $CORE && timeout 900 .venv/bin/python -m app.site.architect check 2>&1 | tail -120' ;;
+              archdesk_check)
+                # v0.417 Architecture Desk (Principal Software Architect) live: Mermaid drawn in this server's Chromium,
+                # the capacity sums, then ONE real Opus design for a fixed sample brief as its own check tenant (her
+                # designs / limit / hire untouched), PDF made, everything it made removed afterwards
+                echo 'cd $CORE && timeout 900 .venv/bin/python -m app.archdesk check 2>&1 | tail -120' ;;
               arena_numbers)
                 # v0.414 the Design Arena runs so far (read-only, free): version, sites, score summary, rupees - before / after numbers
                 echo 'cd $CORE && timeout 120 .venv/bin/python -c "import json; from app.db import init_db; init_db(); from app.site import arena as A; print(json.dumps(A.runs(10), ensure_ascii=False, indent=1, default=str))" 2>&1 | tail -150' ;;

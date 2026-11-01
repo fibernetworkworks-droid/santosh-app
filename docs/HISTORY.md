@@ -15755,3 +15755,14 @@ Verified here with the real Godot 4.7.2: release R-001 of a test game - Linux 28
 images + texts made; rating draft = E / PEGI 3 for a no-violence game. Tests `test_v0416_game_platforms.py` (9).
 NOT VERIFIED: the Android build (no Android SDK in this sandbox; the SDK install was refused here) - the first build
 in her builds repo is what will confirm it; itch.io push not run against a real account; iOS not built.
+
+### v0.416.0 follow-up: ARCHDESK LIVE CHECK (owner: "DEPLOYED — CHECK ARCHITECT ON LIVE")
+- `python -m app.archdesk check [--free]` (`archdesk/check.py`) + vps-ops job `archdesk_check`: (1) two fixed Mermaid
+  diagrams drawn in the server's own Chromium (SVG + PNG sizes), (2) the capacity sums from fixed numbers (users a day
+  marked hers, the rest assumed), (3) ONE real Opus design for a fixed sample brief, run inline exactly like her designs
+  (fix round, Markdown, PDF) as its own check tenant `__archcheck__` - her designs, daily limit and hire untouched; the
+  hire row, design row and files are removed afterwards. Also lists the mounted /api/arch/* routes (newer FastAPI nests
+  included routers as `_IncludedRouter`, so `app.routes` alone does not show them - the walk goes inside). Exit 0 = OK.
+- Live before this check (1 Nov, 16:13 UTC): healthz 0.416.0; console v2.html / v2.js / v2.css / employees.js byte-identical
+  to main (Architecture Desk section + ar-dia styles present); /api/arch/projects answers 401 without a key.
+- Tests: 3 more in test_v0410_architect.py (inline design + full clean-up, model failure reported not raised, vps-ops job).
