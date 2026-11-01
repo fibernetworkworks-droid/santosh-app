@@ -15422,3 +15422,20 @@ Real time for every native app, instead of the 10-second chat poll and pull-to-r
   Added to app-load.yml (runs on Postgres).
 - Not verified: no real phone yet (CI compiles the kits); nginx must not buffer: the route sends `X-Accel-Buffering: no`.
   WebSocket not built (SSE + one POST covers it).
+
+## v0.410.0 ECC ON (owner: "ECC CARDS DONE, CHECK RESULT")
+The two ECC Phase 1 cards ran on the live server (claude-opus-5-5) and decided the switches.
+- review_card (12 PRs x1, 3.2 min):
+  - old: 10/12 right, caught 8/8, quiet on 2/4 clean, 8 false alarms, 3 nits, verdicts 10/12, 4.2 steps;
+  - new: 10/12 right, caught 8/8, quiet on 2/4 clean, 4 false alarms, 0 nits, verdicts 11/12, 9.7 steps;
+  - same bugs caught, half the false alarms, no nitpicks, one more right verdict, about 2.3x the steps.
+- fix_card_spec: set 2 fix jobs 6/6 and set 3 fix jobs 6/6 with the fixer specialist (every fix test proves its bug), the
+  same as without it. No harm.
+- So `dev_spec_review` and `dev_spec_fix` are now True by default (config.py).
+- Still open: both modes leave ONE medium / high comment on clean_search_parameterised and on clean_invoice_checked. The
+  card kept only counts, so it is not yet known whether those comments are wrong or fair minor points (e.g. LIKE wildcard
+  characters, a phone number in the result). The card rows now keep what each false alarm SAID (`alarms`, printed under
+  each MISS), so the next run answers that.
+- One run, k=1: a single-run result; `--k 3` gives pass@k numbers.
+- Tests: the v0.377 review suite pins the old single pass (autouse fixture); test_v0402_ecc_specialists asserts the new
+  defaults and that the card restores whatever the switch was.
