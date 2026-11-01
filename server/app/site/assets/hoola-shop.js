@@ -1,4 +1,4 @@
-/* Hoola shop (v0.350 DUKAAN, MIT, Newtika). Cart + checkout + UPI for a Hoola website. Talks only to Hoola's shop API
+/* Hoola shop (v0.351 DUKAAN, MIT, Newtika). Cart + checkout + UPI for a Hoola website. Talks only to Hoola's shop API
    (the <meta name="hoola-shop"> address). The cart keeps only WHICH product and HOW MANY; every price, total and stock
    figure comes from the server. Customers pay in their own UPI app; "I have paid" + the UTR tells the shop, which checks
    its own account. Every value goes on the page as text. */

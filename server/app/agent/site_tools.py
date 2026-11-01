@@ -24,7 +24,7 @@ SITE_TOOLS = [
         "card comes in a minute or two. action=grow + site (+ page_count, + instruction = what to add) = make or grow the "
         "site map of a site she has (a built site then builds only the new parts). Items of a list are added / removed "
         "with action=change in her words. "
-        "SHOP (v0.350 DUKAAN): action=shop + site + shop {on, cod, pickup, delivery (rupees), free_above, min_order, pincodes, upi} "
+        "SHOP (v0.351 DUKAAN): action=shop + site + shop {on, cod, pickup, delivery (rupees), free_above, min_order, pincodes, upi} "
         "+ products [{title, price (rupees), stock, unit}] (+ from_lists true = her priced list items become products) = her "
         "online shop: cart, checkout, UPI to HER UPI ID or cash on delivery; only HER prices, never invented. Customers pay in "
         "their own UPI app; YOU never mark money received - action=shop_order + site + number (O-1001) + to (confirmed | packed "
@@ -269,7 +269,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         return {"clients": SC.clients(t)}
     if what == "leads":
         return {"leads": S.leads(t, site, 30)}
-    if what == "orders":                          # v0.350 her shop's orders (newest first)
+    if what == "orders":                          # v0.351 her shop's orders (newest first)
         out = S.shop_orders(t, site, str(a.get("status") or ""))
         return {"summary": out["summary"], "orders": out["orders"][:30]}
     if what == "library":

@@ -12807,7 +12807,25 @@ beverages 7.36% combined / 7.71% rural / 6.75% urban). From the sandbox MoSPI an
   `mospi_check` (getent DNS, curl with timings + remote ip, the Hoola client check, recent MoSPI log lines).
 - Tests: test_v0348_mospi_builtin.py +1 (retry once, Hoola UA, reason named, check() false on failure).
 
-## v0.350.0 DUKAAN (built as 0.344, re-versioned past the parallel v0.344-v0.349) (Phase 3a of "any world-complex website": a real shop on her website)
+## v0.350.0 KADAM-BA-KADAM CODING - Hoola codes the Claude Code way, step 1 (owner: "1. The coding tools it gets (8) --- start the work")
+Research + diagrams: artifact "How Claude Code Codes" (explore -> plan -> small edit -> run checks -> fix -> repeat). Before:
+Developer Sahayak `_gather` guessed up to 12 files ONCE (error-text paths, GitHub code search on keywords, file-name words) and
+ONE Opus call wrote every edit as JSON - a file the guess missed was never seen.
+NEW `app/devsahayak/loop.py`: the model gets 8 tools over the GitHub API (no repo code runs on Hoola's server) and works one
+move at a time - list_dir, search_code, read_file (numbered, 400 lines a call, start/end), find_usages (every line using a
+name), edit_file (ONE exact replacement, only in a file it has read; not found exactly once = refused, re-read and retry),
+new_file, show_diff, done (explain, cause, PR title / summary, test plan, risk). The project's own rules (top-level
+README / CONTRIBUTING / AGENTS.md / CLAUDE.md + build files) are read before any work. Secret / binary files are never shown
+or changed; workflow files only with allow_workflows (rules.path_problem). Edits stay in memory until done; then the SAME
+path as before takes over (`_prepare` caps + secrets + OWASP -> one commit on hoola/<task> -> PR; merge / deploy only on her
+tap). One line per step goes into the task log (`_progress`: "padha: app/calc.py", "badla: ..."), and found.loop keeps
+steps / searches / trail. Limits DEV_LOOP_STEPS 40, DEV_LOOP_MINUTES 20; model DEV_LOOP_MODEL ('' = site_model, Opus) at
+DEV_LOOP_EFFORT high, 16k tokens. No API key / the loop failing -> LoopUnavailable -> the old one-shot path (so existing tasks
+never die). revise / fix_ci rounds still use the one-shot path (next: item 2 = CI loop before the PR).
+Tests: test_v0350_kadam_ba_kadam.py (5) with a scripted model on the fake GitHub; test_tech_devsahayak.py (11) unchanged.
+NOT verified here: a live run (needs her GitHub token + the API key) - try one small fix on a test repo.
+
+## v0.351.0 DUKAAN (built as 0.344, re-versioned past the parallel v0.344-v0.350) (Phase 3a of "any world-complex website": a real shop on her website)
 Owner: "START PHASE 3" (3a shop now; 3b dashboards / charts and 3c blog + multi-language come next).
 - `server/app/site/shop.py`: products (`site_shop_products`: price in paise, unit, stock or unlimited, active, photo) and
   orders (`site_shop_orders`: O-1001.., secret tracking token, name / phone / address / pincode / note, items, subtotal +
@@ -12826,5 +12844,5 @@ Owner: "START PHASE 3" (3a shop now; 3b dashboards / charts and 3c blog + multi-
 - Agent: `website` action=shop (turn on, settings, products) and action=shop_order (move an order), `website_dekho what=orders`.
 - Console Studio: a Shop tab (on / UPI ID / COD / pickup / delivery fee, products table, "Add my priced list items", orders with next-step buttons).
 - NOT done yet: phone Flutter screen for orders (push + chat only), emails / SMS to buyers, payment gateway (by design: her UPI only).
-- Tests `server/tests/test_v0350_dukaan.py`: rupees formatting, server-side prices / stock / payment, the last-piece race,
+- Tests `server/tests/test_v0351_dukaan.py`: rupees formatting, server-side prices / stock / payment, the last-piece race,
   public vs owner-only endpoints, and a REAL Chromium purchase (add to cart -> checkout -> UPI QR -> UTR -> tracking).

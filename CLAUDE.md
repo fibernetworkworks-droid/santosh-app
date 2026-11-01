@@ -145,10 +145,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.350.0 (pubspec 0.350.0+390). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.351.0 (pubspec 0.351.0+391). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.350 DUKAAN (built as 0.344, `site/shop.py`, `hoola-shop.js`): a real shop on her website - cart, checkout, server-side prices + stock, her UPI QR + UTR (she confirms), COD, order tracking, Studio Shop tab, agent `website` action=shop / shop_order.
+- v0.351 DUKAAN (built as 0.344, `site/shop.py`, `hoola-shop.js`): a real shop on her website - cart, checkout, server-side prices + stock, her UPI QR + UTR (she confirms), COD, order tracking, Studio Shop tab, agent `website` action=shop / shop_order.
+- v0.350 KADAM-BA-KADAM CODING: Developer Sahayak explores + edits with 8 tools (`devsahayak/loop.py`, DEV_LOOP*), old one-shot = fallback;
+  revise / fix_ci still one-shot (next: CI loop before the PR).
 - v0.349 MOSPI PAKKA: MoSPI client = Hoola User-Agent, retry once, exact failure reason; `python -m app.mospi check` + vps-ops `mospi_check`.
 - v0.348 MOSPI BUILT IN: agent tool `mospi` (`app/mospi.py`, MoSPI's own MCP, no login) for every user; official Indian numbers
   (CPI / GDP / IIP / PLFS...) from MoSPI first, never a search summary (her CPI test was answered from search).

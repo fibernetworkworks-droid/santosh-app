@@ -853,12 +853,12 @@ def _ctx(r: Site) -> dict[str, Any]:
             "alt": _alt(r),
             "app": app_schema(r) or None,                                   # v0.305 the web app (account + staff pages)
             "kit_css": (look.get("kit") or {}).get("css", ""),              # v0.330 the site's design kit
-            "shop": _shop_ctx(r),                                             # v0.350 her shop (None when off)
+            "shop": _shop_ctx(r),                                             # v0.351 her shop (None when off)
             "app_api": app_api(r) if app_schema(r) else ""}
 
 
 def _shop_line(r: Site) -> str:
-    """v0.350 section writers may put real Add-to-cart buttons on her products (prices come live from the shop)."""
+    """v0.351 section writers may put real Add-to-cart buttons on her products (prices come live from the shop)."""
     if not _shop_cfg(r)["on"]:
         return ""
     try:
@@ -1925,7 +1925,7 @@ def public_app(site_id: str):
     return r, schema
 
 
-# ---------------------------------------------------------------- v0.350 DUKAAN: her online shop
+# ---------------------------------------------------------------- v0.351 DUKAAN: her online shop
 def shop_api(r: Site) -> str:
     base = (_settings().public_base_url or "").rstrip("/")
     return f"{base}/api/site-shop/{r.id}"

@@ -2022,7 +2022,7 @@ body.albon{overflow:hidden}
 .sted-for{display:grid;gap:10px;margin-bottom:10px}
 .sted-c.wide select,.sted-c.wide input[type=file]{width:100%;padding:8px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--raise);color:var(--ink);font:inherit}
 
-/* v0.350 DUKAAN: the studio's Shop tab */
+/* v0.351 DUKAAN: the studio's Shop tab */
 .stshop{display:grid;gap:14px}
 .stshop-sw{display:flex;flex-wrap:wrap;gap:8px}
 .stshop .stapp .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
