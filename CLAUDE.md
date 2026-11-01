@@ -161,8 +161,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   slug.split('_')[0] (wrong for 525/1694) + 'version: latest' is rejected + ok no longer defaults True; new
   `ambiguous` row state (a retry can double-post); bank_int / health_int / teamcenter caps named the WRONG rule.
   NOT VERIFIED: no live tenant has answered any of it - the connect screen still does not exist.
-- Current version: v0.388.0 (pubspec 0.388.0+432). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.391.0 (pubspec 0.391.0+435). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
+- v0.391 FAST + NEVER LOST + VISITOR TESTS (web Step 1): parallel browser checks + critique at once (re-check only changed pages) + parallel fixes + fewer preview rebuilds; cut-short code asks / translations / 100-page proofs recovered; `site/journeys.py` walks menu / form / cart->checkout / blog / language on every version (broken checkout blocks going live).
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
   mode = hints only), practice + capped mastery + SM-2 / exam window, NCERT mastery path with gates, book-grounded cites, guardian card.
 - v0.381 SHIKSHA SUITE 0+1: `app/pylab` locked Python sandbox (tool `pylab`), `app/shiksha` (classes, learners + guardian

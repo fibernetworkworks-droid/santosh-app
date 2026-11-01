@@ -326,7 +326,8 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                   "chosen_look": _j(r.look, {}).get("from"),
                   "design": _dna_view(_j(r.look, {}).get("dna")), "estimate": _estimate(r, plan),
                   "checks": {"blocking": checks.get("blocking", [])[:12], "warnings": checks.get("warnings", [])[:12],
-                             "passed": checks.get("passed"), "source": checks.get("source")},
+                             "passed": checks.get("passed"), "source": checks.get("source"),
+                             "journeys": checks.get("journeys") or []},          # v0.391 the visitor tests
                   "shots": _j(r.board, {}).get("shots", {}), "photos": [p.get("name") for p in _j(r.photos, [])],
                   "languages": _j(r.languages, ["en"]),
                   "media": [{k: m.get(k) for k in ("name", "kind", "ext", "bytes", "about")}      # v0.338 her uploads
@@ -768,6 +769,7 @@ def recover_stuck(now_ts: float | None = None) -> int:
             continue
         r = _save(r.id, stage="plan", error="Site map banate waqt server ruk gaya; 'bada site map banao' phir se kahiye.")
         _emit(r, push=True)
+    out += _recover_side_jobs(t)              # v0.391 code asks and translations cut short by a restart
     with session() as s:
         rows = s.scalars(select(Site).where(Site.status.in_(("building", "checking", "looks")))).all()
         for r in rows:
@@ -794,6 +796,45 @@ def recover_stuck(now_ts: float | None = None) -> int:
             _work(r, "error", "Kaam beech mein ruk gaya", r.error)
             _emit(r, push=True)
     return out
+
+
+_RESUMED_LANG: set[str] = set()
+
+
+def _recover_side_jobs(t: float) -> int:
+    """v0.391 NEVER LOST: (1) a code-mode ask whose job died with the process said 'working' forever - it now says so
+    plainly ('ask again'); (2) a translation cut short (her extra languages half written) starts again once per boot
+    for a ready site, instead of waiting for her next edit."""
+    n = 0
+    try:
+        for f in B.root().glob("*/*/code_tasks/*.json"):
+            try:
+                d = json.loads(f.read_text())
+            except ValueError:
+                continue
+            if d.get("status") == "working" and f.stat().st_mtime < _BOOT and t - f.stat().st_mtime > 60:
+                d.update(status="failed", say="Server restart ho gaya tha, yeh code ka kaam beech mein ruk gaya; dobara kahiye.")
+                f.write_text(json.dumps(d, ensure_ascii=False))
+                n += 1
+    except OSError:
+        log.info("code task scan skipped", exc_info=True)
+    with session() as s:
+        rows = s.scalars(select(Site).where(Site.status == "ready", Site.languages.like('%,%'))).all()
+        for r in rows:
+            s.expunge(r)
+    for r in rows:
+        if r.id in _RESUMED_LANG or busy(r.id) or not extra_languages(r):
+            continue
+        _RESUMED_LANG.add(r.id)
+        try:
+            secs = _sections(r)
+            if any(LG.stale(r.tenant_id, r.id, lg, secs) for lg in extra_languages(r)):
+                log.info("site %s: translation was cut short, starting it again", r.id)
+                _start(r.id, "translate")
+                n += 1
+        except Exception:
+            log.info("translation resume check failed for %s", r.id, exc_info=True)
+    return n
 
 
 def mark_clean_stop() -> int:
@@ -1354,6 +1395,9 @@ def form_endpoint(r: Site) -> str:
     return f"{base}/api/site-forms/{r.id}"
 
 
+ASSEMBLE_EVERY_S = 20
+
+
 def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra: dict[str, str]) -> bool:
     """v0.225 sections still to write go out SITE_PARALLEL at a time (Opus calls are slow, the board shows each one live);
     the preview is reassembled after each. False = she stopped it (state saved)."""
@@ -1393,7 +1437,11 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
         _put_sec(r, k, sec)
         with lock:
             states[k] = "done"
-            _assemble_live(_load(r.id))
+            # v0.391 FAST: the preview is rebuilt at most every 20 s while sections arrive (was after EVERY section -
+            # on a 150-page site that rebuilt every page ~200 times); the checks rebuild it once more anyway
+            if time.time() - state.get("assembled", 0) >= ASSEMBLE_EVERY_S:
+                _assemble_live(_load(r.id))
+                state["assembled"] = time.time()
         progress(f"{line} ✓")
 
     with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"site-{r.id[:6]}") as ex:
@@ -1417,6 +1465,7 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
         _work(rr, "stopped", "Rok diya", "Aapke kehne par roka")
         _emit(rr, push=False)
         return False
+    _assemble_live(_load(r.id))              # v0.391 the preview has every section (the 20 s rebuilds may have skipped the last)
     return True
 
 
@@ -1473,11 +1522,16 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
         fixable = _fixable(report, plan)
         if not fixable or rnd == MAX_FIX_ROUNDS:
             break
-        for k, problems in fixable.items():
+        # v0.391 FAST: every failing section is fixed at the same time (was one Opus call after another)
+        for k in fixable:
             states[k] = "fixing"
-            r = _save(r.id, board=_board(r, plan, states, f"Theek kar raha hoon: {k.replace('__', ' → ')}"))
-            _work(r, "start", "Theek kar raha hoon", "; ".join(problems)[:90])
-            _emit(r)
+        names = ", ".join(k.replace("__", " → ") for k in list(fixable)[:4])
+        r = _save(r.id, board=_board(r, plan, states, f"Theek kar raha hoon: {names}"))
+        _work(r, "start", "Theek kar raha hoon", f"{len(fixable)} hisse · " + "; ".join(sum(fixable.values(), []))[:90])
+        _emit(r)
+
+        def fix_one(item, r=r):
+            k, problems = item
             slug, typ = k.split("__", 1)
             old = json.loads(_sec_path(r, k).read_text())
             fixed = AI.ask_json(AI.FIX_SYSTEM, f"SECTION_ID: {sec_id(slug, typ)}\nPROBLEMS:\n- " + "\n- ".join(problems) +
@@ -1485,16 +1539,38 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
                                 + _facts_text(_j(r.facts, {})), 9000, "site_edit")
             if fixed.get("html"):
                 h, css, js, cleaned = B.sanitize_section(sec_id(slug, typ), fixed)
-                _sec_path(r, k).write_text(json.dumps({**old, "html": h, "css": css, "js": js, "cleaned": cleaned,
-                                                       "fixed": problems}))
-            states[k] = "done"
+                _put_sec(r, k, {**old, "html": h, "css": css, "js": js, "cleaned": cleaned, "fixed": problems})
+            return k
+        from concurrent.futures import ThreadPoolExecutor
+        width = max(1, min(8, int(getattr(_settings(), "site_parallel_big" if plan.get("big") else "site_parallel", 3) or 1)))
+        with ThreadPoolExecutor(max_workers=width, thread_name_prefix="site-fix") as ex:
+            for k in ex.map(_in_ctx(fix_one), list(fixable.items())):
+                states[k] = "done"
     report, crit = _critique_round(r, plan, shots, report)
     try:
         C.media(_assemble_live(r), shots)
     except Exception:
         log.info("og / scroll video skipped", exc_info=True)
+    r = _save(r.id, board=_board(r, plan, states, "Visitor ki tarah chala ke dekh raha hoon"))
+    report = _journeys(r, report)             # v0.391 Hoola walks the site like a visitor before she sees it
     _make_version(r, plan, report, shots, states, note or "pehla version", crit)
     _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
+
+
+def _journeys(r: Site, report: dict[str, Any]) -> dict[str, Any]:
+    """v0.391 the visitor journeys on the built copy (menu / form / shop / blog / language) join the version's report."""
+    if not getattr(_settings(), "site_journeys", True) or report.get("source") == "none":
+        return report
+    try:
+        from . import journeys as J
+        res = J.run(B.site_dir(r.tenant_id, r.id) / "live", _ctx(_load(r.id)))
+    except Exception:
+        log.exception("journeys failed to run")
+        return report
+    report = {**report, "journeys": res["journeys"], "blocking": list(report.get("blocking") or []) + res["blocking"],
+              "warnings": list(report.get("warnings") or []) + res["warnings"]}
+    report["passed"] = not report["blocking"]
+    return report
 
 
 def _make_version(r: Site, plan: dict[str, Any], report: dict[str, Any], shots: Path, states: dict[str, str] | None,
@@ -1537,7 +1613,12 @@ def _make_version(r: Site, plan: dict[str, Any], report: dict[str, Any], shots: 
 def _critique_round(r: Site, plan: dict[str, Any], shots: Path, report: dict[str, Any]) -> tuple[dict[str, Any], dict]:
     """v0.225 Opus looks at the REAL screenshots, redraws the weakest sections once with its own notes, then looks again:
     a redraw that scores lower (or breaks a check) is thrown away and the old section comes back. v0.292: every page
-    (site_critique=all, up to site_critique_pages), not only the home page."""
+    (site_critique=all, up to site_critique_pages), not only the home page.
+    v0.391 FAST: every page is looked at AT ONCE, every weak section redrawn AT ONCE, then ONE browser check of only
+    the changed pages and one more look at them at once (was: page by page, and a FULL site check after each page)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from . import checks as C
     if not Q.critique_on() or not report.get("pages"):
         return report, {}
     mode = (getattr(_settings(), "site_critique", "all") or "all").lower()
@@ -1545,15 +1626,110 @@ def _critique_round(r: Site, plan: dict[str, Any], shots: Path, report: dict[str
     pages = [p for p in plan.get("pages", []) if p["slug"] not in B.LEGAL_PAGES and p.get("sections") and not p.get("template_of")]
     pages = sorted(pages, key=lambda p: p["slug"] != "home")
     pages = [p for p in pages if p["slug"] == "home"] if mode == "home" else pages[:limit]
+    width = max(1, min(8, int(getattr(_settings(), "site_parallel_big" if plan.get("big") else "site_parallel", 3) or 1)))
+    dna = _j(_load(r.id).look, {}).get("dna")
+
+    def pics(rep: dict[str, Any] | None, slug: str) -> list[bytes]:
+        out = []
+        for vw in ("390", "1440"):
+            name = ((rep or {}).get("pages", {}).get(slug, {}).get("shots") or {}).get(vw)
+            f = shots / name if name else None
+            if f and f.exists():
+                out.append(f.read_bytes())
+        return out
+
+    def look(args):
+        pg, rep = args
+        imgs = pics(rep, pg["slug"])
+        return Q.critique(imgs, dna, [x["type"] for x in pg.get("sections", [])], r.brief or "") if imgs else None
+
+    # 1. every page looked at, at once
+    with ThreadPoolExecutor(max_workers=width, thread_name_prefix="site-look") as ex:
+        crits = list(ex.map(_in_ctx(look), [(pg, report) for pg in pages]))
     out: dict[str, Any] = {}
-    for pg in pages:
-        report, res = _critique_page(r, plan, pg, shots, report)
-        if not res:
+    res: dict[str, dict] = {}
+    jobs = []
+    for pg, crit in zip(pages, crits):
+        if not crit:
             continue
-        if pg["slug"] == "home":
-            out.update(res)
-        out.setdefault("pages", {})[pg["slug"]] = res
-    return report, out
+        res[pg["slug"]] = {"before": {k: v["score"] for k, v in crit["sections"].items()}}
+        labs = {x["type"]: T.label_of(x) for x in pg.get("sections", [])}
+        others = [labs.get(x["type"]) or T.label_of(x["type"]) for x in pg.get("sections", [])]
+        for typ, notes in Q.weak(crit):
+            k = sec_key(pg["slug"], typ)
+            if _sec_path(r, k).exists():
+                jobs.append((pg, typ, notes, crit, labs, others))
+
+    # 2. every weak section redrawn, at once
+    def redraw(job):
+        pg, typ, notes, crit, labs, others = job
+        sec_def = next(x for x in pg["sections"] if x["type"] == typ)
+        try:
+            return write_section(_load(r.id), pg["slug"], sec_def, [o for o in others if o != T.label_of(sec_def)],
+                                 f"OPUS LOOKED AT THE REAL SCREENSHOT of this section: score {crit['sections'][typ]['score']}/10. "
+                                 f"Redraw it to premium studio quality. Change: {notes}")
+        except Exception as e:
+            log.info("critique redraw of %s failed: %s", sec_key(pg["slug"], typ), e)
+            return None
+    if jobs:
+        names = ", ".join(f"{(j[0].get('title') or j[0]['slug'])} → {j[4].get(j[1]) or T.label_of(j[1])}" for j in jobs[:4])
+        r = _save(r.id, board=_board(r, plan, None, f"Behtar kar raha hoon: {names}"))
+        _work(r, "start", "Apna kaam dekh ke behtar kar raha hoon", f"{len(jobs)} hisse · {names}"[:120])
+        _emit(r)
+        with ThreadPoolExecutor(max_workers=width, thread_name_prefix="site-redraw") as ex:
+            drawn = list(ex.map(_in_ctx(redraw), jobs))
+    else:
+        drawn = []
+    olds: dict[str, str] = {}
+    for job, sec in zip(jobs, drawn):
+        if not sec:
+            continue
+        k = sec_key(job[0]["slug"], job[1])
+        f = _sec_path(r, k)
+        olds[k] = f.read_text()
+        f.write_text(json.dumps({**sec, "critique": job[2]}))
+        Q.STATS["redrawn"] += 1
+    if not olds:
+        for slug, v in res.items():
+            if slug == "home":
+                out.update(v)
+            out.setdefault("pages", {})[slug] = v
+        return report, out
+
+    # 3. ONE browser check of only the changed pages, then one more look at them, at once
+    changed = sorted({k.split("__", 1)[0] for k in olds})
+    try:
+        rep2 = C.run(_assemble_live(r), plan, shots, video=False, only=changed)
+    except C.CheckError:
+        rep2 = None
+    by_slug = {pg["slug"]: pg for pg in pages}
+    with ThreadPoolExecutor(max_workers=width, thread_name_prefix="site-look") as ex:
+        crit2s = dict(zip(changed, ex.map(_in_ctx(look), [(by_slug[sl], rep2) for sl in changed]))) if rep2 else {}
+
+    def issues(rep: dict[str, Any] | None, slug: str) -> int:
+        return len(((rep or {}).get("pages", {}).get(slug) or {}).get("issues") or [])
+    crit_of = {pg["slug"]: c for pg, c in zip(pages, crits) if c}
+    for k, old in olds.items():
+        slug, typ = k.split("__", 1)
+        worse_checks = rep2 is None or issues(rep2, slug) > issues(report, slug)
+        before = crit_of[slug]["sections"][typ]["score"]
+        after = ((crit2s.get(slug) or {}).get("sections", {}).get(typ) or {}).get("score")
+        if worse_checks or after is None or after < before:
+            _sec_path(r, k).write_text(old)
+            Q.STATS["kept_old"] += 1
+            res[slug].setdefault("redrawn", {})[typ] = {"before": before, "after": after, "kept": "old"}
+        else:
+            res[slug].setdefault("redrawn", {})[typ] = {"before": before, "after": after, "kept": "new"}
+    for slug, v in res.items():
+        if slug == "home":
+            out.update(v)
+        out.setdefault("pages", {})[slug] = v
+    # 4. the version's report = one full check of the site as it now stands
+    try:
+        final = C.run(_assemble_live(r), plan, shots, video=False)
+    except C.CheckError:
+        final = report
+    return final, out
 
 
 def _critique_page(r: Site, plan: dict[str, Any], page: dict[str, Any], shots: Path,
@@ -2360,6 +2536,7 @@ def save_version(site_id: str, note: str = "") -> None:
         except C.CheckError as e:
             report = {"blocking": [], "warnings": [{"kind": "checks", "text": str(e), "sections": []}], "scores": {},
                       "passed": None, "source": "none", "pages": {}}
+        report = _journeys(r, report)         # v0.391 her edits too: the shop / form / menu still work
         _make_version(r, plan, report, shots, None, note or "aapke badlav", None, push=False)
 
 

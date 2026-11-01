@@ -142,8 +142,11 @@ window.HoolaBuild = function (C) {
       ${bl.slice(0, 8).map(x => `<div class="badc bln">⛔ ${where(x)}${esc(x.text)}</div>`).join('')}
       ${wa.slice(0, 8).map(x => `<div class="warnc bln">⚠ ${where(x)}${esc(x.text)}</div>`).join('')}
       ${!bl.length && c.passed === true ? '<div class="okc bln" style="font-weight:500">✓ All required checks passed</div>' : ''}
-      ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} spot(s) still need your details (the […] boxes)</div>` : ''}</section>`;
+      ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} spot(s) still need your details (the […] boxes)</div>` : ''}
+      ${L(c.journeys).length ? `<div class="bln faint" style="margin-top:6px">Visitor tests (Hoola used the site like a customer on a phone):</div>${L(c.journeys).map(j => `<div class="${j.ok ? 'okc' : 'badc'} bln">${j.ok ? '✓' : '✗'} ${esc(JOURNEY[S(j.name)] || S(j.name))}${j.ok ? '' : ' - ' + esc(S(j.detail))}</div>`).join('')}` : ''}</section>`;
   }
+  const JOURNEY = {menu: 'Phone menu opens and leads to a page', form: 'Enquiry form sends', shop: 'Add to cart → checkout → order',
+                   blog: 'Blog post opens', lang: 'Language switch works'};   // v0.391
   function scoresBlock(sc) {
     sc = M(sc); if (!Object.keys(sc).length) return '';
     const one = (k, lab) => { const n = sc[k]; const col = n == null ? '' : n >= 90 ? 'okc' : n >= 50 ? 'warnc' : 'badc';

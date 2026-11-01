@@ -209,19 +209,39 @@ def _stopped(pid: str) -> bool:
         return p is None or p.status == "stopped"
 
 
+def _mark(pid: str, **kw: Any) -> dict[str, Any]:
+    with session() as s:
+        p = s.get(ArenaProof, pid)
+        c = json.loads(p.card or "{}")
+        c.update(kw)
+        p.card = json.dumps(c, ensure_ascii=False)
+        return c
+
+
 def build_big(pid: str, b: dict[str, Any], budget: float) -> tuple[str, float, float, list[str]]:
-    """Plan -> looks -> build -> features, like her taps. Returns (site id, rupees, minutes, notes)."""
+    """Plan -> looks -> build -> features, like her taps. Returns (site id, rupees, minutes, notes).
+    v0.391 NEVER LOST: the start time and the rupee meter at the start are kept on the proof, so a run picked up after a
+    server restart continues with the same site and still measures its whole time and cost; done features are skipped."""
     from . import service as S
-    t0, inr0 = time.time(), _spent_inr()
-    notes: list[str] = []
+    with session() as s:
+        p = s.get(ArenaProof, pid)
+        sid = p.site_id
+        c = json.loads(p.card or "{}")
+    if "t0" not in c:
+        c = _mark(pid, t0=time.time(), inr0=_spent_inr())
+    t0, inr0 = float(c["t0"]), float(c["inr0"])
+    notes: list[str] = list(c.get("notes_so_far") or [])
 
     def spent() -> float:
         return _spent_inr() - inr0
-    _stage(pid, "Site map (about 100 pages)")
-    v = S.new(TENANT, b["brief"], "", name=b["name"], field=b["field"], answers=b["facts"], pages=b["pages"])
-    sid = v["id"]
-    with session() as s:
-        s.get(ArenaProof, pid).site_id = sid
+    if not sid:
+        _stage(pid, "Site map (about 100 pages)")
+        v = S.new(TENANT, b["brief"], "", name=b["name"], field=b["field"], answers=b["facts"], pages=b["pages"])
+        sid = v["id"]
+        with session() as s:
+            s.get(ArenaProof, pid).site_id = sid
+    else:
+        _stage(pid, "Picked up again after a server restart")
     st = _wait(sid, ("planned", "looks", "ready", "failed", "stopped"))
     if st == "planned":
         _stage(pid, "Plan approved - three looks")
@@ -250,9 +270,14 @@ def build_big(pid: str, b: dict[str, Any], budget: float) -> tuple[str, float, f
             if key == "shop":
                 S.shop_setup(TENANT, sid, {"on": True, "cod": True, "pickup": True, "upi": "arena@okhdfcbank"}, None, True)
             elif key == "app":
-                S.design_app(TENANT, sid, b["app"], "")
+                if not S.app_schema(S._load(sid)):              # resumed: an app already designed is kept
+                    S.design_app(TENANT, sid, b["app"], "")
             elif key == "blog":
+                from . import blog as BL
+                have = {x["title"] for x in BL.posts(sid)}
                 for title, body in b["posts"]:
+                    if title in have:
+                        continue
                     S.blog_publish(TENANT, sid, {"title": title, "body": body + "\n\n" + body, "meta": {"category": "Tips"}})
                     _wait(sid, ("ready", "failed"))
             elif key == "lang":
@@ -458,6 +483,42 @@ def stop(pid: str) -> dict[str, Any]:
         if p.status == "running":
             p.status = "stopped"
     return {"ok": True, "say": "Proof ruk jayega (chalta kadam poora hone ke baad)."}
+
+
+_BOOT = time.time()
+
+
+def resume_interrupted() -> int:
+    """v0.391 worker: a Hoola proof whose thread died with the process (a deploy / restart) is picked up again - at most
+    twice; a rival crawl cut short is marked failed with a plain line (measure it again)."""
+    ensure_tables()
+    n = 0
+    with session() as s:
+        rows = s.scalars(select(ArenaProof).where(ArenaProof.status == "running")).all()
+        rows = [(p.id, p.kind, p.brief_id, p.card) for p in rows]
+    for pid, kind, brief_id, card_ in rows:
+        th = _RUNNING.get(pid)
+        if th and th.is_alive():
+            continue
+        c = json.loads(card_ or "{}")
+        if kind != "hoola" or int(c.get("resumes") or 0) >= 2:
+            with session() as s:
+                p = s.get(ArenaProof, pid)
+                p.status, p.stage = "failed", ""
+                p.card = json.dumps({**c, "error": "Server restart ho gaya; dobara chalaiye." if kind == "rival" else
+                                     "Do baar server restart mein ruka; dobara chalaiye."}, ensure_ascii=False)
+            continue
+        _mark(pid, resumes=int(c.get("resumes") or 0) + 1)
+        try:
+            b = brief(brief_id)
+        except ValueError:
+            continue
+        th = threading.Thread(target=_go, args=(pid, b, float(c.get("budget_inr") or 3000), None),
+                              name=f"proof-{pid}", daemon=True)
+        _RUNNING[pid] = th
+        th.start()
+        n += 1
+    return n
 
 
 def _view(p: ArenaProof) -> dict[str, Any]:
