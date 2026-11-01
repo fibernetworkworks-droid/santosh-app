@@ -37,6 +37,7 @@ on:
           - long_jobs
           - code_card
           - code_card_hard
+          - code_card_mobile
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -52,7 +53,7 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Prepare SSH
         env:
@@ -336,6 +337,13 @@ jobs:
                 # that must keep behaviour, a vague ask that needs ONE question. ~12 Opus jobs, roughly Rs 300-700, ~5-12 min.
                 echo 'cd $CORE && echo "== node: $(command -v node || echo missing - JavaScript jobs will be skipped)"'
                 echo 'cd $CORE && timeout 840 .venv/bin/python -m app.quality code --set 2 --label vps-ops 2>&1 | tail -40' ;;
+              code_card_mobile)
+                # MOBILE CARD: set 3 - the languages Hoola's own app is written in. 5 Dart jobs (a Flutter app's logic layer)
+                # + 5 Kotlin jobs (an Android app's domain layer), checked with the real Dart SDK / kotlinc. First run
+                # downloads the toolchains once (~330 MB, Google / JetBrains / Adoptium) into ~/apps/codecard-sdk.
+                # ~10 Opus jobs, roughly Rs 250-600, ~5-12 min.
+                echo 'cd $CORE && timeout 420 .venv/bin/python -m app.quality sdk --setup 2>&1 | tail -8'
+                echo 'cd $CORE && timeout 780 .venv/bin/python -m app.quality code --set 3 --label vps-ops 2>&1 | tail -40' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh

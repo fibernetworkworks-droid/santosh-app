@@ -2106,6 +2106,12 @@ body.albon{overflow:hidden}
 .stcode-diff .dl{display:block}.stcode-diff .a{background:var(--ok-soft);color:var(--ok)}.stcode-diff .d{background:var(--warn-soft);color:var(--bad)}
 .stcode-diff .h{color:var(--pri-ink)}.stcode-diff .f{color:var(--mut)}
 
+/* v0.376 PROOF: the Arena's 100-page proof tile */
+.ar-proof .grid2{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));margin:10px 0 14px}
+.ar-proof .ar-form,.ar-proof .ar-live{display:grid;gap:8px;border:1px solid var(--hair);border-radius:12px;padding:12px;background:var(--surface)}
+.ar-proof .ar-form label{display:grid;gap:3px;font-size:13px}
+.ar-proof .sttbl td small{display:inline-block;margin-top:2px}
+
 /* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim

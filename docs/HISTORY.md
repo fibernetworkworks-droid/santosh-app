@@ -13549,12 +13549,149 @@ actions are on `tpm` **alone**, and there is a test that `erp`, `crm_arch` and `
 `server/app/enterprise/tpm.py` (new) · `server/app/agent/enterprise_tools.py` ·
 `server/tests/test_v0373_tpm_sums.py` (15 tests, worked examples computed by hand).
 
+## v0.375.0 SAB DAS DESK — the remaining seven brought to the same standard
+Owner: *"MAKE ALL 7 REMAINING ROLES 100% LIKE ERP CRM TPM"*.
 
-## v0.375.0 APP SAHAYAK PHASES 11-42 + the complex-apps plan (merged after main's v0.347-v0.374)
+"The same standard" turned out to be two things.
+
+### 1. A desk for every role — 90 parts
+| role | parts |
+|---|---|
+| erp | 16 |
+| crm_arch · tpm | 12 each |
+| ecom_arch · plm | 8 each |
+| bpa · supply_opt · health_int · regtech | 7 each |
+| bank_int | 6 |
+
+Each part makes only the papers that part really produces, and every paper kind each role needs is now open to
+it.
+
+### 2. The sums, where the work *is* arithmetic
+`tpm.py` proved the shape in v0.374. Four more jobs are the same kind of job, so `app/enterprise/calc.py` answers
+their questions **in code**:
+
+- **supply_opt** — `reorder` (demand × lead + safety stock, with a real sigma from daily numbers when they exist
+  and a *stated* flat cushion when they don't, plus the stockout date) and `dead_stock`.
+- **plm** — `bom_explode` (flattened tree, quantities multiplied through every level, cost rolled up from the
+  leaves) and `where_used` — what a change order really asks.
+- **bank_int** — `reconcile`: reference first, then amount **and** a date inside the window. Matching on amount
+  alone is how reconciliations go wrong. Each line is used once.
+- **regtech** — `due_calendar`: late, coming up, done, and exposure computed **only** from penalty figures she
+  gave.
+
+### Each one refuses rather than guesses
+Under 14 days of history is not a reorder point. A BOM loop has no right cost. A part with no price is **named**,
+not counted as free. A filing with no penalty figure is listed late with the amount **blank** — a made-up fine is
+worse than none.
+
+### Which job gets which sums is a table
+The other five (erp, crm_arch, bpa, ecom_arch, health_int) have **no** sums: their work is judgement and
+execution, not arithmetic. `SUMS` is a table rather than a growing if-chain, a job cannot call a sum that is not
+its own, and the old `if key == "tpm"` special case was **deleted** rather than left sitting beside it.
+
+### Files
+`server/app/enterprise/rules.py` (seven desks) · `server/app/enterprise/calc.py` (new) ·
+`server/app/agent/enterprise_tools.py` (SUMS table) · `server/tests/test_v0375_all_ten_desks.py` (21 tests).
+
+## v0.376.0 PROOF (Phase 5 of "any world-complex website": a 100-page website as numbers)
+Owner: "START PHASE 5" (the plan's step: "a 100-page test business added to the Arena, so we measure build time, cost,
+quality and broken links against Lovable and others before calling it done").
+- `server/app/site/proof.py`, table `site_arena_proofs` (kind hoola | rival, brief, builder, url, site, version, status,
+  stage, card). BIG_SET v1 = five fixed 100-page businesses with their lists in the facts: Sanjeevani hospital (18
+  departments, 24 doctors, 20 areas; blog, Hindi, appointments app), Vidyapeeth Classes (16 courses, 10 centres, 16
+  faculty; blog, Hindi, marks portal), Annapurna Mithai (60 PRICED products, 8 branches; shop, blog, Hindi), Shubh Griha
+  Developers (12 projects, 20 localities; blog, Marathi, site-visit app), Jaldi Fiber Net (8 plans, 40 areas; blog,
+  Marathi, complaints app). Seeded and stable.
+- `build_big`: exactly an owner's path as the arena tenant (S.new pages=100 -> site map -> approve -> looks -> first
+  look -> build -> checks), then the features through her own functions (shop_setup from her priced lists,
+  design_app, blog_publish x3, set_languages), each stopped by the rupee cap (SITE_ARENA_MAX_INR) or her Stop.
+- `card` reads the FILES and records: pages planned vs built (main + each /<lang>/), `checks.link_scan` over every
+  page, `missing_files` (every local src / srcset), the arena judge on a sample of page TYPES (home, a list item, a blog
+  post, the shop, designed pages) from the checks' own screenshots, check scores, `features` verified in the output
+  (shop + cart script, blog + feed + BlogPosting, hreflang + language folders, sitemap URLs, site search, breadcrumbs,
+  grouped menu, /admin/ + app script), `file_stats` (pages readable without JavaScript, one h1, JSON-LD, HTML size),
+  rupees / minutes in total and per page.
+- RIVAL: `crawl` = one public host, breadth first, up to 150 pages, robots.txt respected, every request through
+  web._check_url (public internet only), each page RENDERED in Chromium (`_render`: links after scripts ran, title,
+  description, h1 count, JSON-LD, hreflang) + the raw HTML for "readable without JavaScript"; broken internal links;
+  sitemap.xml count. `rival_card` = the same measures + the judge on the same number of pages. `compare` = per metric
+  who is better, lower-is-better for broken links / missing files / cost / time / size.
+- API (owner only, `_arena_owner`): GET /api/arena/proofs (+ briefs, max_inr), POST /api/arena/proofs {brief_id,
+  budget_inr}, POST /api/arena/proofs/rival {brief_id, builder, url}, GET /api/arena/proofs/compare?a=&b=, POST
+  /api/arena/proofs/<id>/stop. Console Arena screen: "100-page proof" tile (start, live stage + Stop, rival form,
+  proofs table, side-by-side with the better side in green + the feature lines).
+- Tested for real at 60 pages with the test AI: site map -> build -> shop from the priced list (45+ products) -> blog,
+  0 broken links, 0 missing files. A full 100-page run with Opus is the owner's to start (cost ~₹700-2,000, 1-2 h).
+- Tests `server/tests/test_v0376_proof.py`.
+
+## v0.377.0 DEKH KE REVIEW (owner: "GO 3")
+Gap 3 from "IS ALL HOOLA CODE WORK DONE": PR review was still one-shot (one model call over the diff), while coding jobs had
+explored step by step since v0.350. Built as 0.375 / 0.376, re-versioned past the parallel v0.375 SAB DAS DESK and v0.376.
+- `devsahayak/loop.py` `review_run` + `REVIEW_TOOLS` + `REVIEW_SYSTEM`:
+  - the repo opens at the PR's head commit with read-only tools only (list_dir, search_code, read_file, find_usages);
+    edit / new / any other tool is refused;
+  - the project's rules come first (`_project_rules`, v0.356);
+  - the brief: read the whole changed file, find_usages of anything whose name / arguments / return changed (a caller the
+    PR did not update is a real bug), check a test covers the change, no style nitpicks or praise;
+  - `comment(path, line, body, severity)` accepts only lines the PR ADDED. Otherwise it answers "not a line this PR added.
+    Its added lines: 1, 5" or "not changed by this PR. Changed files: ...". At most 30 comments;
+  - `done(summary, verdict)`. PR text, diff and files are DATA; a PR asking to be approved is flagged, never obeyed.
+  - 25 steps / 10 min (`dev_review_steps`, `dev_review_minutes`).
+- `service.review`:
+  - uses the loop when the dev loop is on;
+  - an added-lines map (not the context lines) bounds the comments;
+  - the summary ends with "Explored before reviewing: N files read, M code / caller searches, K steps";
+  - a missing key, a GitHub read error or any loop failure falls back to the one-shot review, so a review never fails
+    because of the exploring step;
+  - the automatic secret / OWASP findings, the draft card, the hash, the stale-commit check and posting only on her tap
+    (APPROVE never automatic) are unchanged.
+- Tests `test_v0377_dekh_ke_review.py`:
+  - a review finds the caller the PR forgot via find_usages, is refused on a context line, another file and edit_file,
+    leaves one inline comment, ends request_changes as a draft (nothing posted), and sees the PR's "approve this" as data;
+  - the one-shot fallback still works; the step cap stops it with what it has.
+
+## v0.378.0 MOBILE CARD (owner: "GO 4")
+Gap 4 from "IS ALL HOOLA CODE WORK DONE": the coding cards only measured Python and JavaScript. Set 3 measures the two
+languages Hoola's own app is written in: Dart (Flutter) and Kotlin (Android).
+- `quality/code_tasks3.py`: two practice projects (2 at a time, 40 steps / 8 min a job).
+  - KHATA (Dart 3, 15 files): a Flutter app's logic layer (models, money, immutable CartState, JSON parsing, offline
+    Outbox, format, receipt, Hinglish labels). AGENTS.md: no packages / dart:io, relative imports, int paise, immutable
+    state, never trust server JSON. Tests are plain Dart with the project's own harness (check / expectEq / finish), so
+    no pub.dev is needed.
+  - DUKAAN-KT (Kotlin 2 / JVM, 11 files): an Android app's domain layer (Config, data classes, money, CustomerBook,
+    orders, FIFO Outbox, receipt). AGENTS.md: stdlib only, Long paise, no `!!`, immutable data classes, settings in
+    Config, @Deprecated(ReplaceWith) alias on renames. Tests are `fun main()` with the harness.
+  - 10 jobs:
+    - Dart: JSON crash on a missing / text price; mutated cart state (screen does not rebuild, undo changes); duplicate
+      order on retry (cid dedupe); formatInr with Indian grouping; discount across model + total + receipt + labels.
+    - Kotlin: half-up rounding; NullPointerException on a deleted customer (`!!` forbidden); outbox sends newest first;
+      COD fee across Config / Order / placeOrder / receipt; rename formatPaise -> formatRupees with a @Deprecated alias.
+- `codecard.py`:
+  - `_seq` runs compile + run steps in one temp folder (no address-space cap for the Dart VM / JVM, CPU 60 / 120 s, file
+    and time caps, no secrets in the environment);
+  - Dart = `dart <file>`. Kotlin = kotlinc (the check compiles with src/ only, so a broken test never hides the code),
+    then `java -Xmx256m -cp out.jar:kotlin-stdlib <pkg>.<File>Kt`;
+  - test files `test/*_test.dart` / `test/*Test.kt` with check(;
+  - UNSAFE_DART (dart:io / ffi / Process / File...) and UNSAFE_KT (ProcessBuilder / java.net / java.io.File /
+    System.exit / getenv...) are never run;
+  - `tool_ok(lang)`: a job without its toolchain is SKIPPED; `--set 3`.
+- `quality/sdk.py`:
+  - finds dart / kotlinc / java in CODECARD_SDK (default ~/apps/codecard-sdk) or on PATH;
+  - `setup()` downloads only what is missing from official sources (Dart 3.13.7 from Google's archive, Kotlin 2.2.20
+    from JetBrains' GitHub release, Temurin 21 JRE via Adoptium only when there is no java), zip entries kept inside the
+    folder;
+  - `python -m app.quality sdk [--setup]`.
+- vps-ops `code_card_mobile`: sdk --setup (once, ~330 MB) then `code --set 3`; the job limit is now 25 min (was 15).
+- Verified here with the real SDKs: all 10 reference answers right, all 10 untouched projects fail, every fix test proves
+  its bug, a `!!` in a working fix fails the rules mark, a rename without the alias fails.
+- Tests `test_v0378_mobile_card.py`: toolchain tests skip without an SDK (5 pass / 12 skip); with one, all pass.
+
+
+## v0.379.0 APP SAHAYAK PHASES 11-42 + the complex-apps plan (merged after main's v0.347-v0.374)
 The App Sahayak work below was built on its own branch as v0.347-v0.378 while other sessions shipped v0.347-v0.363
-to main; per the REBASE PROTOCOL it ships together as v0.375.0 (first merged as v0.364.0, then past main's v0.364-v0.366) and each section keeps its 'built as' number (the
+to main; per the REBASE PROTOCOL it ships together as v0.379.0 (first merged as v0.364.0, then past main's v0.364-v0.366) and each section keeps its 'built as' number (the
 code comments still say v0.347 ... v0.378 for these pieces).
-## v0.375.0 (built as 0.347.0) HAR RAASTA JAANCHO (App Sahayak Phase 11, owner: "START PHASE 11")
+## v0.379.0 (built as 0.347.0) HAR RAASTA JAANCHO (App Sahayak Phase 11, owner: "START PHASE 11")
 The last open promise of the original Phase 3: "an automated test walks every flow". The device check opened every
 screen; now it TAPS every button / link on every screen, each from a fresh start of that screen.
 - Android (`android/device_check.sh` + `qa.py`): after a screen opens, `qa.py taps <ui.xml>` lists its tappable things
@@ -13574,7 +13711,7 @@ screen; now it TAPS every button / link on every screen, each from a fresh start
   qaBox) and the chat note show "N buttons tapped, X did nothing".
 - Tests: `test_v0345_har_raasta.py` (5).
 
-## v0.375.0 (built as 0.348.0) KAAGAZ (App Sahayak Phase 12, owner: "START PHASE 12")
+## v0.379.0 (built as 0.348.0) KAAGAZ (App Sahayak Phase 12, owner: "START PHASE 12")
 A PDF document field (prescription, ID proof, bill, resume) on both platforms.
 - Server (`backend.py`): EXTRA_TYPES += "file"; `upload` hands `%PDF-` bodies to `_upload_pdf`: 10 MB (MAX_DOC), a byte
   scan (PDF_RISK: /JavaScript /JS /Launch /EmbeddedFile(s) /OpenAction /AA /RichMedia /XFA /SubmitForm /ImportData /GoToR)
@@ -13593,7 +13730,7 @@ A PDF document field (prescription, ID proof, bill, resume) on both platforms.
 - Device e2e (both kits): a tiny valid PDF up (kind pdf) and back byte for byte ("pdf ok").
 - Tests: `test_v0346_kaagaz.py` (3).
 
-## v0.375.0 (built as 0.349.0) BHASHA (App Sahayak Phase 13, owner: "START PHASE 13")
+## v0.379.0 (built as 0.349.0) BHASHA (App Sahayak Phase 13, owner: "START PHASE 13")
 Her app in her customer's language; her business data is never translated.
 - Kits: Android `Lang.kt` (I18n: assets/i18n.json, `lang` state, the customer's choice in Store, `T()`, LanguagePicker
   chips on My account; Strings.t falls back to the table for languages the kit does not carry; MainActivity
@@ -13613,7 +13750,7 @@ Her app in her customer's language; her business data is never translated.
 - Tests: `test_v0347_bhasha.py` (5); older screen-code pins now expect T("...").
 - Not verified: translation quality per language is Opus's; right-to-left layout for Urdu is the system's default only.
 
-## v0.375.0 (built as 0.350.0) NAKSHA (App Sahayak Phase 14, owner: "START PHASE 14")
+## v0.379.0 (built as 0.350.0) NAKSHA (App Sahayak Phase 14, owner: "START PHASE 14")
 Maps for apps whose forms carry a location (deliveries, home visits, field service) - no map key and no map tiles in the
 apps: Android hands off to Google Maps through Google's official Maps URLs, iPhone draws an Apple MapKit map (free).
 - Android kit (Pro.kt): `Maps` (lat,lng parse, haversine km, `route(origin, stops)` = https://www.google.com/maps/dir/?api=1
@@ -13629,7 +13766,7 @@ apps: Android hands off to Google Maps through Google's official Maps URLs, iPho
 - Tests: `test_v0350_naksha.py` (3).
 - Not verified: Google Maps / Apple Maps hand-off on a real phone (the emulator / simulator have no Maps app sign-in).
 
-## v0.375.0 (built as 0.351.0) PAKKA SABOOT (App Sahayak Phase 15, owner: "START PHASE 15")
+## v0.379.0 (built as 0.351.0) PAKKA SABOOT (App Sahayak Phase 15, owner: "START PHASE 15")
 Phases 8-14 were each proven on the first CI app (the shop fixture). Phase 15 proves them TOGETHER on an app nobody
 hand-wrote: `android/fixture_make2.py` writes `android/fixture2/spec.json` = "Kumar Field Service", a field-service STAFF app
 made only by the generator (`screens_kt` empty -> every screen code-made), starting in Hindi with English as the second
@@ -13643,7 +13780,7 @@ language (a fixed 32-word BHASHA table, so CI needs no model).
   StatsBlock and the Hindi table, and both workflows walk it.
 - Not verified: a real phone (CI emulator / simulator only); the Hindi words are a fixed table, not an Opus run.
 
-## v0.375.0 (built as 0.352.0) KAAM BAANTO (App Sahayak Phase 16, owner: "START PHASE 16")
+## v0.379.0 (built as 0.352.0) KAAM BAANTO (App Sahayak Phase 16, owner: "START PHASE 16")
 Phase 15's field-service app had an "Assigned" status but nobody to assign TO. Now a row of her app (job / order / booking /
 request) is given to ONE staff member, on both platforms and from her Hoola.
 - Server (`appmaker/backend.py`, section "v0.352 KAAM BAANTO"): the assignment lives inside the row's own data (`_to` member
@@ -13669,7 +13806,7 @@ request) is given to ONE staff member, on both platforms and from her Hoola.
   staff app (assembleDebug EXIT 0); Swift compiled by CI ios-check.
 - Not verified: on a real phone; the assign chips with many staff (they scroll sideways).
 
-## v0.375.0 (built as 0.353.0) RAAY (App Sahayak Phase 17, owner: "START PHASE 17")
+## v0.379.0 (built as 0.353.0) RAAY (App Sahayak Phase 17, owner: "START PHASE 17")
 With work now handed to one staff member (v0.352), the business needs to hear how it went. The customer rates her own
 finished row once.
 - Server (`appmaker/backend.py`, section "v0.353 RAAY"): `rate(r, coll, row, stars, note, who)` - only the account that made
@@ -13687,7 +13824,7 @@ finished row once.
 - Her views: phone App ka data shows the stars (red at 1-2), console app data a Rating column.
 - Tests `tests/test_v0353_raay.py`. Not verified: a real phone. No public reviews (ratings never go to other customers).
 
-## v0.375.0 (built as 0.354.0) RASEED (App Sahayak Phase 18, owner: "START PHASE 18")
+## v0.379.0 (built as 0.354.0) RASEED (App Sahayak Phase 18, owner: "START PHASE 18")
 A finished order / booking / request now has a receipt the customer can keep.
 - `appmaker/receipt.py`: `pdf(r, coll, row, data)` = an A5 ReportLab receipt from the SERVER's own row - business name +
   address / phone / e-mail from her facts, receipt number `<app number>-<yymmdd>-<row tail>`, date, list + status, her
@@ -13706,7 +13843,7 @@ A finished order / booking / request now has a receipt the customer can keep.
   not-a-tax-invoice line; her copy; cancelled refused). Not verified: a real phone's browser; the phone owner panel has no
   receipt button yet (console + the app itself only); GST invoices are NOT made (needs her GSTIN + tax rules - a later phase).
 
-## v0.375.0 (built as 0.355.0) GST BILL (App Sahayak Phase 19, owner: "START PHASE 19")
+## v0.379.0 (built as 0.355.0) GST BILL (App Sahayak Phase 19, owner: "START PHASE 19")
 v0.354's receipt said "not a GST tax invoice"; a registered business needs the real thing.
 - `appmaker/gst.py`: `valid_gstin` (15 chars, state code, PAN shape, Z, the mod-36 check digit - a real published GSTIN
   validates, one changed character fails), `settings / view / set_settings` kept in `AppProject.backend["gst"]` (survives a
@@ -13726,7 +13863,7 @@ v0.354's receipt said "not a GST tax invoice"; a registered business needs the r
 - Tests `tests/test_v0355_gst_bill.py`. Not done (said in the product): credit notes for a row cancelled after its invoice,
   e-invoicing / IRN for big turnovers, GST returns, GST-exclusive pricing (would change what the app charges).
 
-## v0.375.0 (built as 0.356.0) WAPSI (App Sahayak Phase 20, owner: "START PHASE 20")
+## v0.379.0 (built as 0.356.0) WAPSI (App Sahayak Phase 20, owner: "START PHASE 20")
 v0.355 left one honest gap: an invoiced order that is cancelled or returned needs a credit note.
 - `gst.credit_for(r, row, reason)`: only for a row that has `_inv_no`; `CN/<FY>/<0001>` from its own counter
   (`gst.cn_seq`, `credited`) in the same locked transaction as the row (`_cn_no`, `_cn_date`, `_cn_reason`), given once.
@@ -13741,7 +13878,7 @@ v0.355 left one honest gap: an invoiced order that is cancelled or returned need
   buttons (Invoice / Credit note… with a reason prompt). Apps label the button "Credit note".
 - Tests `tests/test_v0356_wapsi.py`. Not done: partial credit notes, debit notes, refunds (never - money moves only by her).
 
-## v0.375.0 (built as 0.357.0) STOCK (App Sahayak Phase 21, owner: "START PHASE 21")
+## v0.379.0 (built as 0.357.0) STOCK (App Sahayak Phase 21, owner: "START PHASE 21")
 A shop app sold whatever was ordered. Now she can count her stock.
 - `appmaker/stock.py`: `AppProject.backend["stock"] = {product id: {qty, low, warned}}` (no new table). `reserve(r, lines)`
   under one process lock reads + writes the counts in one transaction BEFORE `W.create`, refusing the whole order (409, each
@@ -13758,7 +13895,7 @@ A shop app sold whatever was ordered. Now she can count her stock.
   pieces = exactly 3 sold, unlimited again, tool by name, kit markers). Not done: stock per variant / size, purchase entries,
   multi-process locking (the lock assumes ONE server process; check that the VPS core runs a single uvicorn worker).
 
-## v0.375.0 (built as 0.358.0) COUPON (App Sahayak Phase 22, owner: "START PHASE 22")
+## v0.379.0 (built as 0.358.0) COUPON (App Sahayak Phase 22, owner: "START PHASE 22")
 Discount codes for her shop app, with the server as the only judge of money.
 - `appmaker/coupon.py`: codes in `AppProject.backend["coupons"]` (max 50): kind percent (1-90, optional `cap`) / flat,
   `min`, `until` (YYYY-MM-DD, IST), `uses`, `once` (per account, `who` list), `on`, `used`. `check(r, code, cart, who)` for the
@@ -13777,7 +13914,7 @@ Discount codes for her shop app, with the server as the only judge of money.
 - Her side: GET / PUT /api/apps/<ref>/coupons, tool app_banao action=coupon, console Coupon codes box (add, list, delete).
 - Tests `tests/test_v0358_coupon.py`. Not done: per-product / per-category codes, auto offers without a code, referral codes.
 
-## v0.375.0 (built as 0.359.0) KHATA (App Sahayak Phase 23, owner: "START PHASE 23")
+## v0.379.0 (built as 0.359.0) KHATA (App Sahayak Phase 23, owner: "START PHASE 23")
 The paper udhaar register, inside her app.
 - `appmaker/khata.py`: entries are append-only `SiteAppRow` rows (coll `_khata`, owner "") with `member`, `name`, `kind`
   credit / payment, `amount`, `order`, `mode`, `note`, `by`. `credit(r, coll, row, staff)` = the order's server total, once
@@ -13795,7 +13932,7 @@ The paper udhaar register, inside her app.
 - Tests `tests/test_v0359_khata.py`. Not done: reminders to customers (would need the official WhatsApp API card flow),
   interest, khata for walk-in customers without an account.
 
-## v0.375.0 (built as 0.360.0) DELIVERY (App Sahayak Phase 24, owner: "START PHASE 24")
+## v0.379.0 (built as 0.360.0) DELIVERY (App Sahayak Phase 24, owner: "START PHASE 24")
 - `appmaker/delivery.py`: `AppProject.backend["delivery"] = {fee, free_above, pins, hours {open, close, days}}`;
   `save` (PINs 6 digits, HH:MM, days 0=Mon..6), `public` (what the cart needs, in the app content `backend.delivery`),
   `is_open` (IST, days, past-midnight hours), `pin_of` (pin / pincode fields, else a 6-digit number in an address),
@@ -13810,7 +13947,7 @@ The paper udhaar register, inside her app.
 - Her side: GET / PUT /api/apps/<ref>/delivery ({off: true} removes), tool app_banao action=delivery, console Delivery form.
 - Tests `tests/test_v0360_delivery.py`. Not done: distance-based fees, delivery slots, per-PIN fees, holidays.
 
-## v0.375.0 (built as 0.361.0) HISAAB (App Sahayak Phase 25, owner: "START PHASE 25")
+## v0.379.0 (built as 0.361.0) HISAAB (App Sahayak Phase 25, owner: "START PHASE 25")
 After invoices (v0.355), credit notes (v0.356), coupons, delivery and khata, the month has to reach her CA.
 - `appmaker/hisaab.py`: `build(r, month)` walks the app's rows once: orders placed in the month (IST) -> sales register +
   totals (orders, cancelled, sales, discount, delivery); every row whose `_inv_date` / `_cn_date` is in the month ->
@@ -13822,7 +13959,7 @@ After invoices (v0.355), credit notes (v0.356), coupons, delivery and khata, the
   action=hisaab, console "Accounts" box (month picker, Show, Download for CA).
 - Tests `tests/test_v0361_hisaab.py`. Not done: GSTR-1 JSON for the GST portal, Tally export, B2B vs B2C split tables.
 
-## v0.375.0 (built as 0.362.0) VARIANTS (App Sahayak Phase 26, owner: "CONTINUE" - back to app development itself)
+## v0.379.0 (built as 0.362.0) VARIANTS (App Sahayak Phase 26, owner: "CONTINUE" - back to app development itself)
 - `appmaker/variants.py`: `AppProject.backend["variants"] = {product id: [{id (slug), name, price}]}` (12 a product);
   `save(r, product id or name, [{name, price}])`, `view`, `expand(r, base)` = base products + "pid::vid" entries ("Name
   (size)", own price, `variant_of`), the sized product itself removed (no size = no price); `decorate` gives the app content
@@ -13835,7 +13972,7 @@ After invoices (v0.355), credit notes (v0.356), coupons, delivery and khata, the
 - Her side: GET / PUT /api/apps/<ref>/variants, tool app_banao action=variants, console Sizes table ("1 kg 60, 5 kg 280").
 - Tests `tests/test_v0362_variants.py`. Not done: two-level variants (size x colour), per-size photos.
 
-## v0.375.0 (built as 0.363.0) BADI SCREEN (App Sahayak Phase 27, owner: "START PHASE 27")
+## v0.379.0 (built as 0.363.0) BADI SCREEN (App Sahayak Phase 27, owner: "START PHASE 27")
 Every generated Android screen was one phone column stretched edge to edge on a tablet, with the tabs far down at the bottom.
 - Kit (Android): `isWide()` (screenWidthDp >= 600). `AppShell`: on a wide screen the bar navs (bar, bar_labels,
   bar_minimal, bottom_app_bar, drawer_bar, floating_pill) become the side `Rail` (Material's layout for wide windows), and
@@ -13849,7 +13986,7 @@ Every generated Android screen was one phone column stretched edge to edge on a 
 - Tests `tests/test_v0363_badi_screen.py`. Not done: two-pane list + detail on tablets, iPad, the tablet pass in her builds
   repo workflow (hoola-build.yml runs the phone device check only).
 
-## v0.375.0 (built as 0.364.0) IPAD (App Sahayak Phase 28, owner: "START PHASE 28")
+## v0.379.0 (built as 0.364.0) IPAD (App Sahayak Phase 28, owner: "START PHASE 28")
 v0.363 left iPad off because turning it on makes App Store Connect require 13" iPad screenshots. This phase does both.
 - `ios/gen.py`: `TARGETED_DEVICE_FAMILY: "1,2"`, Info.plist `UISupportedInterfaceOrientations~ipad` = all four (iPad
   multitasking expects them); iPhone stays portrait. Pages already keep a 720pt column (v0.363), TabView shows iPad's own tab bar.
@@ -13863,7 +14000,7 @@ v0.363 left iPad off because turning it on makes App Store Connect require 13" i
   check), artifacts `ipad-shots`.
 - Tests `tests/test_v0364_ipad.py`. Not verified locally (no Mac here): the first CI ios-check run on the branch is the proof.
 
-## v0.375.0 (built as 0.365.0) DO PANE (App Sahayak Phase 29, owner: "START PHASE 29")
+## v0.379.0 (built as 0.365.0) DO PANE (App Sahayak Phase 29, owner: "START PHASE 29")
 - Kit (Android) `Nav.kt`: `Nav.split` (set by the shell every frame); `go(id)` for a non-tab screen while split trims the
   stack to the base tab first, so a record opened from the list replaces the one on the right and Back closes it.
   `AppShell`: `split = isWide() && stack.size >= 2 && stack[0] is a tab` -> the base tab screen in a 42% left pane
@@ -13874,7 +14011,7 @@ v0.363 left iPad off because turning it on makes App Store Connect require 13" i
   drawn in the two-pane view on the 800dp emulator; a crash fails the job.
 - Tests `tests/test_v0365_do_pane.py`. Not done: iPad split view (NavigationSplitView), drag to resize the panes.
 
-## v0.375.0 (built as 0.366.0) IPAD PANE (App Sahayak Phase 30, owner: "START PHASE 30")
+## v0.379.0 (built as 0.366.0) IPAD PANE (App Sahayak Phase 30, owner: "START PHASE 30")
 - SwiftUI kit `Kit.swift`: `RootView` reads `horizontalSizeClass`; `tabBody(i, id)` = compact: the old single
   `NavigationStack(path:)`; regular (wide iPad, iPad split at half or more): `HStack` of the tab screen in its own
   `NavigationStack` (max 420pt), a `Divider`, and a `NavigationStack(path: $router.paths[i])` whose root is `PanePlaceholder`
@@ -13883,7 +14020,7 @@ v0.363 left iPad off because turning it on makes App Store Connect require 13" i
   CI draws every screen in the two-pane view.
 - Tests `tests/test_v0366_ipad_pane.py`. Not verified locally (no Mac): CI ios-check on the branch is the proof.
 
-## v0.375.0 (built as 0.367.0) TURANT (App Sahayak Phase 31, owner: "START PHASE 31")
+## v0.379.0 (built as 0.367.0) TURANT (App Sahayak Phase 31, owner: "START PHASE 31")
 The apps' order updates came through a JobScheduler check every 15+ minutes. Now they can be instant on Android.
 - `appmaker/turant.py`: `configured()` = the VPS has `fcm_service_account_file` (Hoola's own FCM key). `enable(r)` (her tap
   only) lists / creates the app in that Firebase project through the official Firebase Management API
@@ -13906,7 +14043,7 @@ The apps' order updates came through a JobScheduler check every 15+ minutes. Now
 - Tests `tests/test_v0367_turant.py` (Firebase faked). Not verified: a real push to a real phone (needs the VPS key + a
   build); iPhone push (needs an APNs key from her Apple account).
 
-## v0.375.0 (built as 0.368.0) TURANT IPHONE (App Sahayak Phase 32, owner: "START PHASE 32")
+## v0.379.0 (built as 0.368.0) TURANT IPHONE (App Sahayak Phase 32, owner: "START PHASE 32")
 - Server `turant.py`: `set_ios_key(r, key_id, team_id, p8)` (10-character Key ID / Team ID, the .p8 must load as an EC private
   key) sealed into `<app dir>/apns.key.sealed` by the bazar vault, `ios_view` shows only the ids, `clear_ios_key`.
   `_jwt` = ES256 (header alg + kid, payload iss = team + iat), cached 50 minutes. `send_ios` = HTTP/2 (`httpx.Client(http2=True)`,
@@ -13924,7 +14061,7 @@ The apps' order updates came through a JobScheduler check every 15+ minutes. Now
 - Tests `tests/test_v0368_turant_iphone.py` (APNs faked). Not verified: a real push to a real iPhone (needs her key, a
   TestFlight / App Store build and the VPS `pip install h2`); the simulator never receives remote pushes.
 
-## v0.375.0 (built as 0.369.0) KHUD TAZA (App Sahayak Phase 33, owner: "START PHASE 33")
+## v0.379.0 (built as 0.369.0) KHUD TAZA (App Sahayak Phase 33, owner: "START PHASE 33")
 - `android/runners.py`: `WORKFLOWS = (hoola-build.yml, hoola-ios.yml)`, `sync_workflows(repo, force)` - GET
   /repos/<repo>/contents/.github/workflows/<name>?ref=main, compare bytes with `server/app_builder/<name>`, PUT (with the old
   sha, branch main) when different; `SYNC` keeps updated / same / error and the time (10-minute throttle). A 403 / 404 on the
@@ -13935,7 +14072,7 @@ The apps' order updates came through a JobScheduler check every 15+ minutes. Now
 - Tests `tests/test_v0369_khud_taza.py` (GitHub faked). One-time on GitHub: the builds repo's fine-grained token needs
   "Workflows: Read and write" (besides contents + actions).
 
-## v0.375.0 (built as 0.370.0) HAR DEVICE JAANCH (App Sahayak Phase 34, owner: "START PHASE 34")
+## v0.379.0 (built as 0.370.0) HAR DEVICE JAANCH (App Sahayak Phase 34, owner: "START PHASE 34")
 The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. Now every real build of her apps runs them.
 - `server/app_builder/hoola-build.yml`: the emulator script runs `hoola_qa/tablet_check.sh` after the device check (`|| true`),
   artifact adds `qa/tablet.txt` + `qa/tablet/*.png`. `hoola-ios.yml` (kind sim / testflight): "Every screen on a 13-inch iPad"
@@ -13947,7 +14084,7 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   screens (k crash: ...)". A big-screen crash is reported, not auto-fixed (the phone crash path stays the one that rebuilds).
 - Tests `tests/test_v0370_har_device.py`.
 
-## v0.375.0 (built as 0.371.0) SLOT (App Sahayak Phase 35, owner: "START PHASE 35")
+## v0.379.0 (built as 0.371.0) SLOT (App Sahayak Phase 35, owner: "START PHASE 35")
 - `appmaker/delivery.py`: `save_slots(r, slots, days, cutoff)` (HH:MM start < end, cap 1-1000, max 12, days 0-6, cut-off
   0-720 min) inside `backend["delivery"]`; `available(r)` = slots for today + the days ahead on working days (hours.days),
   minus those past `start - cutoff` and those full (`_booked` counts the order list's non-cancelled rows by `slot`), labelled
@@ -13962,7 +14099,7 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
 - Routes: GET /api/app-api/<key>/slots; PUT /api/apps/<ref>/delivery with `slots`.
 - Tests `tests/test_v0371_slot.py`. Not done: slots per PIN / per staff, a slot change after ordering.
 
-## v0.375.0 (built as 0.372.0) DUKAAN BHASHA (App Sahayak Phase 36, owner: "START PHASE 36")
+## v0.379.0 (built as 0.372.0) DUKAAN BHASHA (App Sahayak Phase 36, owner: "START PHASE 36")
 - `appmaker/storelang.py`: `PLAY` (hi-IN, mr-IN, ta-IN, te-IN, kn-IN, ml-IN, bn-BD, gu), `APPLE` ("hi"); `translate()` (Opus,
   JSON with the same keys, cut to each limit, cached in `listing_tr[lang]` with the English source as `_src`; `_edited`
   entries are hers and always win); `play_listings` / `apple_localizations` for the app's `i18n.langs_of`; `edit()`.
@@ -13974,7 +14111,7 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   privacy URL) per locale.
 - Tests `tests/test_v0372_dukaan_bhasha.py`. Not done: per-language screenshots, App Store locales beyond Hindi.
 
-## v0.375.0 (built as 0.373.0) GSTR-1 FILE (App Sahayak Phase 37, owner: "START PHASE 37")
+## v0.379.0 (built as 0.373.0) GSTR-1 FILE (App Sahayak Phase 37, owner: "START PHASE 37")
 - `appmaker/gstr1.py`: `build(r, month)` walks the invoices / credit notes dated in the month and uses `gst.compute` for
   each (the PDF's own function): buyer GSTIN -> `b2b` [{ctin, inv: [{inum, idt, val, pos, rchrg N, inv_typ R, itms per rate}]}];
   unregistered + inter-state + value > Rs 1,00,000 -> `b2cl`; everything else -> `b2cs` rows (sply_ty INTRA/INTER, pos, typ OE,
@@ -13985,7 +14122,7 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
 - Tests `tests/test_v0373_gstr1.py`. Hoola never files: the offline tool / her CA validates and uploads. Not covered: exports,
   nil-rated / exempt, advances, amendments, e-commerce operator tables, the 2025 HSN B2B / B2C split.
 
-## v0.375.0 (built as 0.374.0) TALLY EXPORT (App Sahayak Phase 38, owner: "START PHASE 38")
+## v0.379.0 (built as 0.374.0) TALLY EXPORT (App Sahayak Phase 38, owner: "START PHASE 38")
 - `appmaker/tally.py`: `DEFAULTS` ledger names (party Cash, Sales, Output CGST / SGST / IGST, Round Off), hers in
   `gst.tally` via `set_names` (PUT /api/apps/<ref>/tally; control characters and < > & " stripped). `voucher(kind, ...)` =
   TALLYMESSAGE / VOUCHER VCHTYPE Sales | Credit Note, ACTION Create, DATE YYYYMMDD, VOUCHERNUMBER, PARTYLEDGERNAME,
@@ -13996,7 +14133,7 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
 - Tests `tests/test_v0374_tally.py` (well-formed with & and <, balanced vouchers, mirror credit note, her names). Not done:
   inventory (stock-item) vouchers, ledger creation in Tally.
 
-## v0.375.0 (built as 0.375.0) KHATA YAAD (App Sahayak Phase 39, owner: "START PHASE 39")
+## v0.379.0 (built as 0.375.0) KHATA YAAD (App Sahayak Phase 39, owner: "START PHASE 39")
 - `appmaker/khata.py`: `reminders(r)` = customers with balance > 0, their 10-digit phone from their latest order row
   (`_phone_of`), `reminder_text` (Hinglish: name, Rs due, shop), `link` https://wa.me/91<phone>?text=... (her own WhatsApp,
   she sends it), `recent` (reminded in the last 3 days). `send_reminder(r, member, template, by_tap)` (async): refuses without
@@ -14008,14 +14145,14 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
 - Tests `tests/test_v0375_khata_yaad.py` (WhatsApp faked). Her template example: "Namaste {{1}}, {{3}} mein aapka baaki
   Rs {{2}} hai. Suvidha se chuka dijiye." (UTILITY, approved by Meta in her account).
 
-## v0.375.0 (built as 0.376.0) MAALKIN PHONE (App Sahayak Phase 40, owner: "START PHASE 40")
+## v0.379.0 (built as 0.376.0) MAALKIN PHONE (App Sahayak Phase 40, owner: "START PHASE 40")
 - Flutter `lib/ui/app_money.dart` `AppMoneyPanel(app, id)`, shown under App ka data on the app screen
   (`app_design_screen.dart`): GET /api/apps/<id>/hisaab (the `say` line), /khata-yaad (customers who owe: name, Rs, "WhatsApp
   mein kholo" = the wa.me link opened in her WhatsApp, an amount box + tick = POST /khata/<member>/pay cash), /stock (qty <= low:
   "n bache" / "khatam"), /coupons (live codes with % / Rs and uses). Refresh button; nothing shown when there is nothing.
 - Tests `tests/test_v0376_maalkin_phone.py` (markers). Compiled by CI Build APK (Flutter is not reachable in the sandbox).
 
-## v0.375.0 (built as 0.377.0) CHHUTTI (App Sahayak Phase 41, owner: "START PHASE 41")
+## v0.379.0 (built as 0.377.0) CHHUTTI (App Sahayak Phase 41, owner: "START PHASE 41")
 - `appmaker/delivery.py`: `save_holidays(r, dates)` (YYYY-MM-DD, past dates dropped, max 60) in `backend.delivery.holidays`;
   `is_open` is false on a holiday, `available` skips holiday days, `on_order` notes "Aaj dukaan ki chhutti hai - khulte hi order
   dekha jayega". `change_slot(r, coll, row, key, who)`: the order's customer (before `start - cutoff` of her current slot) or
@@ -14026,7 +14163,7 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   -> refresh; iPhone `SlotChange` view. Console Delivery box: holidays textarea.
 - Tests `tests/test_v0377_chhutti.py`.
 
-## v0.375.0 (built as 0.378.0) BAAT (App Sahayak Phase 42, owner: "START PHASE 42")
+## v0.379.0 (built as 0.378.0) BAAT (App Sahayak Phase 42, owner: "START PHASE 42")
 - `appmaker/baat.py`: messages = SiteAppRow coll `_chat` owned by the customer ({by, staff, name, text, order, read}); `write`
   (customer, rate 20 / 10 min, `_clean` 1000 chars), `mine` (her thread, marks staff replies read), `threads` (staff / her:
   newest first, last line, unread), `thread` (marks the customer's messages read), `reply` (staff any time; the owner only with
@@ -14043,7 +14180,7 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   delivery slot, so a list's OWN field with that name (a scanned coupon code, a booking slot) was removed. The apps now send
   `_coupon` / `_slot`; the server reads plain `coupon` / `slot` only when the list has no such field. Test in
   `tests/test_v0378_baat.py::test_own_coupon_and_slot_fields_are_kept`.
-- v0.375.0 fix (same family): the values the server adds to an order (subtotal, discount, coupon, coupon_note, delivery,
+- v0.379.0 fix (same family): the values the server adds to an order (subtotal, discount, coupon, coupon_note, delivery,
   delivery_note, slot, slot_label) were saved under those plain names and could overwrite a list's own field of the same name.
   They are stored as `_subtotal` ... `_slot_label` (`backend.SYS_KEYS`); views show the plain name only when the list has no
   such field (and always the `_` name); receipts, GST, accounts, slots and coupon give-back read the `_` names.
