@@ -14721,3 +14721,28 @@ Postgres (set `max_locks_per_transaction = 512` or more in postgresql.conf: Hool
 CI hit 'out of shared memory' on the default 64), create a database + user, `python -m app.dbmove --to <url>`, set DATABASE_URL in ~/apps/santosh-core/.env,
 restart; keep santosh.db as the fallback.
 Tests `server/tests/test_v0390_pakki_neev.py`.
+
+
+## v0.391.0 YOUTUBE ON THE SOCIAL DESK (1 Nov 2026, owner: "GO Y1")
+Plan Y1 of the YouTube proposal (Y2 = YouTube ads through the Google Ads API: Demand Gen campaigns created paused, her tap
+to go live - NOT built; needs a Google Ads developer token with Basic access + the adwords scope in OAuth verification).
+Module `server/app/social/ytpost.py`, built on `app/youtube` (accounts / client / service; no new Google sign-in).
+- Account: `sync_channel` (every desk view, DB only) mirrors her default YouTube channel as SocialAccount platform youtube
+  (account_id = YouTubeAccount id or "google" for the sign-in path; no token in the social row). desk `sync_account` ->
+  `sync_youtube`: subscribers, handle, latest 50 videos into SocialMedia (<= 180 s = reel / Short, else video), so the
+  baseline / pulse / monthly PDF / best times include YouTube. Connect = `youtube.accounts.start_link`; Disconnect also
+  removes the YouTubeAccount (the "google" sign-in path stays with her Google sign-in).
+- Posting: POST_PLATFORMS + youtube, FORMATS + video. `problems`: a video file + fmt reel / video, the made-for-kids answer
+  (pulse settings `yt_kids`, YouTube requires it), a title. `publish`: Hoola-wide guard YT_DAILY_UPLOADS (default 90,
+  counted from published results across tenants); resumable upload (title <= 100 with #Shorts for reels, description =
+  caption + 3 hashtags, tags <= 500 chars, category 22, public + selfDeclaredMadeForKids + embeddable); YouTube's answer
+  "private" (unaudited API project) -> a note on the post; thumbnail from the post's picture (thumbnails.set; failure =
+  note); playlist (`yt_playlist`, PL... id validated; failure = note). Links /shorts/<id> or /watch?v=<id>. The rules plan
+  adds youtube to reels when connected; Opus is told about youtube + format video.
+- Inbox: youtube = comments only; commentThreads allThreadsRelatedToChannelId (one call, newest 50, 7 days, her own channel
+  skipped, permalink watch?v=..&lc=..); reply = comments.insert parentId; hide = setModerationStatus heldForReview /
+  published (never rejected / deleted). A YouTube read error is told once and skipped.
+- Console + phone: connect button, subscribers tile, "Also as YouTube Short" / "Also on YouTube", made-for-kids select +
+  playlist id in Posting controls, result notes. Privacy: YouTube paragraph (Google API Services User Data Policy).
+- Not done: Y2 ads; YouTube Analytics watch time in reports (views / likes / comments only); captions upload.
+- Tests `server/tests/test_v0391_social_youtube.py` (7).

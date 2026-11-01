@@ -161,7 +161,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   slug.split('_')[0] (wrong for 525/1694) + 'version: latest' is rejected + ok no longer defaults True; new
   `ambiguous` row state (a retry can double-post); bank_int / health_int / teamcenter caps named the WRONG rule.
   NOT VERIFIED: no live tenant has answered any of it - the connect screen still does not exist.
-- Current version: v0.388.0 (pubspec 0.388.0+432). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.391.0 (pubspec 0.391.0+435). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
   mode = hints only), practice + capped mastery + SM-2 / exam window, NCERT mastery path with gates, book-grounded cites, guardian card.
@@ -209,6 +209,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.391 YOUTUBE ON THE SOCIAL DESK (`social/ytpost.py`, plan Y1): her channel as an account, calendar Shorts / videos uploaded as approved (kids answer,
+  thumbnail, playlist, private-until-audit note, YT_DAILY_UPLOADS guard), YouTube comments in the Social Inbox (hide = held for review). Y2 (YouTube ads) not built.
 - v0.388 WHATSAPP LIVE BINA SERVER NUMBER: WA_DRY_RUN=false without WA_TOKEN/WABA/PNID no longer kills every worker tick; business numbers send via their own token.
 - v0.384 SOCIAL MEDIA MANAGER Phase 6 (`social/wabiz.py` + `social/linkedin.py`): WhatsApp Business on her own number by Meta's Embedded Signup (one tap ->
   her Business inbox channel), LinkedIn profile posts (text + one photo); plans only for connected platforms; Company Page / X not built.
