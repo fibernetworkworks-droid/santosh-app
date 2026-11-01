@@ -137,6 +137,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 
 ## Current state (latest first, one line each)
 - Current version: v0.378.0 (pubspec 0.378.0+418). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
