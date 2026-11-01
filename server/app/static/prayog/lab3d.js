@@ -124,7 +124,7 @@
     this.chip.hidden = false; this.chip.innerHTML = '';
     this.chip.appendChild(el('b', '', b.name));
     if (b.info) this.chip.appendChild(el('span', '', ' — ' + b.info));
-    if (b.illustrative) this.chip.appendChild(el('em', 'ill', ' sirf samjhane ke liye (illustrative)'));
+    if (b.illustrative) this.chip.appendChild(el('em', 'ill', ' Illustrative only (to explain, not measured)'));
   };
   Lab.prototype.fly = function (pos, look) {
     var self = this, p0 = this.camera.position.clone(), l0 = this.target.clone(), t0 = performance.now();
@@ -307,7 +307,7 @@
     function tick(now) {
       var dt = Math.min(0.05, (now - prev) / 1000); prev = now;
       if (self.running && self.K.step) {
-        try { self.K.step(self.s, self.p, dt * self.speed, self.cfg); } catch (e) { self.running = false; self.say('Simulation ruk gayi: ' + e.message); }
+        try { self.K.step(self.s, self.p, dt * self.speed, self.cfg); } catch (e) { self.running = false; self.say('Simulation stopped: ' + e.message); }
       }
       self.view = self.K.view(self.s, self.p, self.cfg);
       self.update(dt); self.instruments(dt * (self.running ? self.speed : 0));
@@ -330,7 +330,7 @@
     this.caption = el('div', 'cap'); this.caption.hidden = true; this.stage.appendChild(this.caption);
     var bar = el('div', 'bar'); this.stage.appendChild(bar);
     function btn(t, fn, cls) { var b = el('button', cls || '', t); b.type = 'button'; b.addEventListener('click', fn); bar.appendChild(b); return b; }
-    this.playBtn = btn(this.running ? 'Pause' : 'Chalao ▶', function () { self.running = !self.running; self.playBtn.textContent = self.running ? 'Pause' : 'Chalao ▶'; }, 'pri');
+    this.playBtn = btn(this.running ? 'Pause' : 'Run ▶', function () { self.running = !self.running; self.playBtn.textContent = self.running ? 'Pause' : 'Run ▶'; }, 'pri');
     btn('Reset', function () { self.reset(); });
     btn('Tour', function () { self.tour(0); });
     if (lab.speeds && lab.speeds.length) {
@@ -340,7 +340,7 @@
     var side = el('div', 'side'); main.appendChild(side);
     var tabs = el('div', 'tabs'), body = el('div', 'tbody'); side.appendChild(tabs); side.appendChild(body);
     var panes = {};
-    [['knobs', 'Knobs'], ['meters', 'Meters'], ['table', 'Table'], ['steps', 'Steps'], ['quiz', 'Andaaza'], ['about', 'About']].forEach(function (t, i) {
+    [['knobs', 'Knobs'], ['meters', 'Meters'], ['table', 'Table'], ['steps', 'Steps'], ['quiz', 'Predict'], ['about', 'About']].forEach(function (t, i) {
       var b = el('button', i === 0 ? 'on' : '', t[1]); b.type = 'button'; tabs.appendChild(b);
       var pane = el('div', 'pane'); pane.hidden = i !== 0; body.appendChild(pane); panes[t[0]] = pane;
       b.addEventListener('click', function () { Array.prototype.forEach.call(tabs.children, function (x) { x.className = ''; }); b.className = 'on'; Object.keys(panes).forEach(function (k) { panes[k].hidden = k !== t[0]; }); });
@@ -368,13 +368,13 @@
       if (k.hint) row.appendChild(el('small', '', k.hint));
       pane.appendChild(row);
     });
-    if (!(this.lab.knobs || []).length) pane.appendChild(el('p', 'mut', 'Is lab mein koi knob nahi.'));
+    if (!(this.lab.knobs || []).length) pane.appendChild(el('p', 'mut', 'This lab has no knobs.'));
     var x = el('div', 'tools');
-    var cut = el('label', 'knob'); cut.appendChild(el('div', 'kh', 'Kaat ke dekho (section)'));
+    var cut = el('label', 'knob'); cut.appendChild(el('div', 'kh', 'Cut open (section)'));
     var ci = el('input'); ci.type = 'range'; ci.min = -1; ci.max = 1; ci.step = 0.01; ci.value = 1;
     ci.addEventListener('input', function () { self.clip.constant = +ci.value >= 0.99 ? 10 : +ci.value; }); cut.appendChild(ci); x.appendChild(cut);
     if ((this.lab.bodies || []).some(function (b) { return b.explode; })) {
-      var ex = el('label', 'knob'); ex.appendChild(el('div', 'kh', 'Khol ke dekho (explode)'));
+      var ex = el('label', 'knob'); ex.appendChild(el('div', 'kh', 'Take apart (explode)'));
       var ei = el('input'); ei.type = 'range'; ei.min = 0; ei.max = 1; ei.step = 0.01; ei.value = 0;
       ei.addEventListener('input', function () { self.explode = +ei.value; }); ex.appendChild(ei); x.appendChild(ex);
     }
@@ -387,7 +387,7 @@
       var out = el('div', 'mv'); box.appendChild(out); self.meterEls[m.id] = { m: m, out: out };
       if (m.kind === 'stopwatch') {
         self.watches[m.id] = { t: 0, on: false };
-        var b1 = el('button', '', 'Start / Stop'), b2 = el('button', '', 'Shoonya');
+        var b1 = el('button', '', 'Start / Stop'), b2 = el('button', '', 'Zero');
         b1.type = b2.type = 'button';
         b1.addEventListener('click', function () { var w = self.watches[m.id]; w.on = !w.on; if (w.on && !self.running) { self.running = true; self.playBtn.textContent = 'Pause'; } });
         b2.addEventListener('click', function () { self.watches[m.id] = { t: 0, on: false }; });
@@ -396,12 +396,12 @@
       if (m.kind === 'graph') { var c = el('canvas'); c.width = 600; c.height = 260; box.appendChild(c); self.meterEls[m.id].c = c; self.graphs[m.id] = []; }
       if (m.kind === 'meter') { var bar = el('div', 'gauge'), fill = el('i'); bar.appendChild(fill); box.appendChild(bar); self.meterEls[m.id].fill = fill; }
       if (m.hint) {
-        out.textContent = 'Dekhne ke liye tap'; out.classList.add('hint'); self.meterEls[m.id].hidden = true;
+        out.textContent = 'Tap to reveal'; out.classList.add('hint'); self.meterEls[m.id].hidden = true;
         out.addEventListener('click', function () { self.meterEls[m.id].hidden = false; out.classList.remove('hint'); });
       }
       pane.appendChild(box);
     });
-    pane.appendChild(el('p', 'mut', 'Har reading Hoola ke "' + this.lab.kernel + '" simulation se aati hai (code), andaaze se nahi.'));
+    pane.appendChild(el('p', 'mut', 'Every reading comes from Hoola\'s "' + this.lab.kernel + '" simulation (code), never a guess.'));
   };
   Lab.prototype.reading = function (m) {
     if (m.kind === 'stopwatch') return this.watches[m.id] ? this.watches[m.id].t : 0;
@@ -445,7 +445,7 @@
   };
   Lab.prototype.drawTable = function () {
     var self = this, pane = this.panes.table, t = this.lab.table;
-    if (!t) { pane.appendChild(el('p', 'mut', 'Is lab mein observation table nahi.')); return; }
+    if (!t) { pane.appendChild(el('p', 'mut', 'This lab has no observation table.')); return; }
     var wrap = el('div', 'tw'), tbl = el('table'), thead = el('tr'); wrap.appendChild(tbl); tbl.appendChild(thead);
     thead.appendChild(el('th', '', '#'));
     t.columns.forEach(function (c) { thead.appendChild(el('th', '', c.label + (c.unit ? ' (' + c.unit + ')' : ''))); });
@@ -464,13 +464,13 @@
       var C = HK.CALCS[t.calc]; res.innerHTML = '';
       if (!C) return;
       var need = t.rows_min || 2;
-      if (self.rows.length < need) { res.appendChild(el('p', 'mut', 'Kam se kam ' + need + ' readings record kijiye, phir result yahan.')); return; }
+      if (self.rows.length < need) { res.appendChild(el('p', 'mut', 'Record at least ' + need + ' readings; the result appears here.')); return; }
       var v = C.fn(rowsSI, self.p) * num(t.result_k, 1);
       res.appendChild(el('p', 'big', C.label + ' = ' + fmt(v, t.result_digits) + ' ' + (t.result_unit || C.unit)));
       if (t.truth) {
         var tv = (t.truth.slice(0, 2) === 'p.' ? self.p[t.truth.slice(2)] : +t.truth) * num(t.result_k, 1);
         var err = tv ? Math.abs(v - tv) / Math.abs(tv) * 100 : 0;
-        res.appendChild(el('p', 'mut', 'Is lab mein asli value ' + fmt(tv, t.result_digits) + ' ' + (t.result_unit || C.unit) + ' hai · aapki galti ' + err.toFixed(1) + '%'));
+        res.appendChild(el('p', 'mut', 'True value in this lab: ' + fmt(tv, t.result_digits) + ' ' + (t.result_unit || C.unit) + ' · your error ' + err.toFixed(1) + '%'));
       }
     }
     function draw() {
@@ -491,7 +491,7 @@
       });
     }
     var actions = el('div', 'row');
-    var rec = el('button', 'pri', '+ Reading record karo'); rec.type = 'button';
+    var rec = el('button', 'pri', '+ Record reading'); rec.type = 'button';
     rec.addEventListener('click', function () { var r = {}; t.columns.forEach(function (c) { r[c.id] = value(c); }); self.rows.push(r); draw(); compute(); });
     var csv = el('button', '', 'CSV'); csv.type = 'button';
     csv.addEventListener('click', function () {
@@ -508,8 +508,8 @@
     var pane = this.panes.steps, ol = el('ol');
     (this.lab.steps || []).forEach(function (s) { ol.appendChild(el('li', '', s)); });
     pane.appendChild(ol);
-    if (this.lab.theory) { pane.appendChild(el('h3', '', 'Siddhant')); pane.appendChild(el('p', '', this.lab.theory)); }
-    if (this.lab.safety) { pane.appendChild(el('h3', '', 'Asli lab mein savdhani')); pane.appendChild(el('p', '', this.lab.safety)); }
+    if (this.lab.theory) { pane.appendChild(el('h3', '', 'Theory')); pane.appendChild(el('p', '', this.lab.theory)); }
+    if (this.lab.safety) { pane.appendChild(el('h3', '', 'Safety in a real lab')); pane.appendChild(el('p', '', this.lab.safety)); }
   };
   Lab.prototype.drawQuiz = function () {
     var pane = this.panes.quiz;
@@ -521,21 +521,21 @@
         b.addEventListener('click', function () {
           Array.prototype.forEach.call(box.querySelectorAll('button'), function (x, j) { x.disabled = true; if (j === q.answer) x.classList.add('ok'); });
           if (i !== q.answer) b.classList.add('no');
-          why.hidden = false; why.textContent = (i === q.answer ? 'Sahi! ' : 'Nahi - ') + (q.why || '') + ' Ab lab chala ke khud dekhiye.';
+          why.hidden = false; why.textContent = (i === q.answer ? 'Correct! ' : 'Not quite - ') + (q.why || '') + ' Now run the lab and see for yourself.';
         });
         box.appendChild(b);
       });
       box.appendChild(why); pane.appendChild(box);
     });
-    if (!(this.lab.questions || []).length) pane.appendChild(el('p', 'mut', 'Is lab mein sawaal nahi.'));
+    if (!(this.lab.questions || []).length) pane.appendChild(el('p', 'mut', 'This lab has no questions.'));
   };
   Lab.prototype.drawAbout = function () {
     var pane = this.panes.about, lab = this.lab;
-    pane.appendChild(el('p', '', 'Yeh lab Hoola ke "' + lab.kernel + '" simulation se chalta hai: har number code se nikalta hai. ' +
-      'Server ke tests isko NCERT ke formula se milate hain (1% ke andar).'));
-    if (lab.check && lab.check.textbook) pane.appendChild(el('p', 'mut', 'Jaanch: ' + lab.check.textbook));
+    pane.appendChild(el('p', '', 'This lab runs on Hoola\'s "' + lab.kernel + '" simulation: every number is computed in code. ' +
+      'The server\'s tests check it against the NCERT formula (within 1%).'));
+    if (lab.check && lab.check.textbook) pane.appendChild(el('p', 'mut', 'Check: ' + lab.check.textbook));
     var ill = (lab.bodies || []).filter(function (b) { return b.illustrative; }).map(function (b) { return b.name || b.id; });
-    if (ill.length) pane.appendChild(el('p', 'mut', 'Sirf samjhane ke liye (illustrative): ' + ill.join(', ')));
+    if (ill.length) pane.appendChild(el('p', 'mut', 'Illustrative only (not measured): ' + ill.join(', ')));
     pane.appendChild(el('h3', '', 'Sources'));
     var ul = el('ul'); (lab.sources || []).forEach(function (s) { ul.appendChild(el('li', '', s.title + (s.note ? ' — ' + s.note : ''))); }); pane.appendChild(ul);
   };
@@ -546,7 +546,7 @@
     try {
       if (!window.speechSynthesis || !text || this.mute) return;
       window.speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text); u.lang = this.lab.lang || 'hi-IN'; u.rate = 0.95;
+      var u = new SpeechSynthesisUtterance(text); u.lang = this.lab.lang || 'en-IN'; u.rate = 0.95;
       window.speechSynthesis.speak(u);
     } catch (e) { /* narration is optional; the caption always shows */ }
   };
@@ -561,13 +561,13 @@
       var inputs = self.panes.knobs.querySelectorAll('input[type=range]'), idx = self.lab.knobs.indexOf(k);
       if (inputs[idx]) { inputs[idx].value = st.set[kid]; inputs[idx].dispatchEvent(new Event('input')); }
     });
-    if (st.run !== undefined) { this.running = !!st.run; this.playBtn.textContent = this.running ? 'Pause' : 'Chalao ▶'; }
+    if (st.run !== undefined) { this.running = !!st.run; this.playBtn.textContent = this.running ? 'Pause' : 'Run ▶'; }
     this.say(st.say);
     if (!this.tourBar) {
       this.tourBar = el('div', 'tour'); this.stage.appendChild(this.tourBar);
     }
     this.tourBar.innerHTML = '';
-    var prev = el('button', '', '‹'), next = el('button', 'pri', i + 1 < steps.length ? 'Aage ›' : 'Khatam'), stop = el('button', '', '×');
+    var prev = el('button', '', '‹'), next = el('button', 'pri', i + 1 < steps.length ? 'Next ›' : 'Done'), stop = el('button', '', '×');
     [prev, next, stop].forEach(function (b) { b.type = 'button'; });
     prev.disabled = i === 0;
     prev.addEventListener('click', function () { self.tour(i - 1); });

@@ -737,7 +737,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.biotech_rounded, color: C.accent),
               title: Text('${app.aName} · Prayogshala (3D labs)', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Asli practical 3D mein: pendulum, lens, Ohm, meter bridge… knob, meter, table'),
+              subtitle: const Text('Real practicals in 3D: pendulum, lens, Ohm, meter bridge… knobs, meters, table'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PrayogScreen(app: app))),
             ),

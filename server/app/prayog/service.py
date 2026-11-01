@@ -8,8 +8,8 @@ from typing import Any
 from . import catalog, lsl
 
 log = logging.getLogger("santosh.prayog")
-NOTE = ("Har reading Hoola ke simulation code se aati hai (andaaza nahi) aur NCERT ke formula se 1% ke andar jaanchi gayi hai. "
-        "Yeh asli lab ka abhyaas hai; asli practical exam ki jagah nahi.")
+NOTE = ("Every reading comes from Hoola's simulation code (never a guess) and is checked against the NCERT formula to within 1%. "
+        "This is practice for a real lab; it does not replace the real practical exam.")
 
 
 @functools.lru_cache(maxsize=1)
