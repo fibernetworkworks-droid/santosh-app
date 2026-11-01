@@ -6963,7 +6963,7 @@ def social_media_file(aid: str, e: str = "", s: str = ""):
 
 @app.post("/api/social/settings", dependencies=[Depends(require_key)])
 def social_settings(body: dict, tenant: str = Depends(current_tenant)):
-    """v0.359 {paused: bool} pause / resume all posting + automatic replies; {stop: true} = emergency stop (pause + every
+    """v0.365 {paused: bool} pause / resume all posting + automatic replies; {stop: true} = emergency stop (pause + every
     queued post back to draft); {quiet: [23, 7]} = hours when no plan post goes out on its own."""
     from .social import pulse
     b = body or {}

@@ -1,4 +1,4 @@
-"""v0.359 SOCIAL MEDIA MANAGER Phase 4 - 24/7 + reports: plan posts go on their own only by trust (Saathi / Bharosa, daily
+"""v0.365 SOCIAL MEDIA MANAGER Phase 4 - 24/7 + reports: plan posts go on their own only by trust (Saathi / Bharosa, daily
 cap, quiet hours; Seekh = her OK on the day), pause + emergency stop (also stops automatic replies), morning note only when
 something needs her, weekly two-line pulse, monthly PDF against the baseline, best-time engine fed to the planner, boost-worthy
 flags with a plan she runs herself. Meta is a mock transport."""
@@ -113,7 +113,7 @@ def test_pause_and_emergency_stop(pub):
 
 def test_pause_also_stops_automatic_replies(pub):
     D, SP, PU = pub
-    from tests import test_v0358_social_inbox as P3
+    from tests import test_v0364_social_inbox as P3
     from app.social import inbox as IB
     from app.social import meta as M
     M.set_http(httpx.Client(transport=httpx.MockTransport(P3.handler)))

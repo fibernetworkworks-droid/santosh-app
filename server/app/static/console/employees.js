@@ -322,7 +322,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const res = p.result || {};
     const dt = new Date(p.slot);
     const day = isNaN(dt) ? p.slot : dt.toLocaleString('en-IN', {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
-    const needOk = p.plan_only && SOCTRUST === 'seekh';   // v0.359 Seekh: a plan post waits for her OK on its day
+    const needOk = p.plan_only && SOCTRUST === 'seekh';   // v0.365 Seekh: a plan post waits for her OK on its day
     return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}${needOk ? tag('warn', 'Needs your OK') : ''}<span class="tag">${esc(p.format)}</span>
         <span class="muted">${(p.platforms || []).map(x => esc(PLAT[x] || x)).join(' + ')}${p.pillar ? ' · ' + esc(p.pillar) : ''}${p.occasion ? ' · ' + esc(p.occasion) : ''}</span></div>
       <b>${esc(p.hook)}</b>

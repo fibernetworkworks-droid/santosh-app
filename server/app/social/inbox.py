@@ -376,7 +376,7 @@ def run_inbox(tenant: str, ask: Any = None) -> dict[str, Any]:
     info = _facts(tenant)
     ai = _ai_drafts(tenant, [r for r in todo if r["cls"] not in HIDE], ask=ask) if todo else {}
     from .pulse import is_paused
-    trust = "seekh" if is_paused(tenant) else _trust(tenant)   # v0.359 pause = drafts only, nothing automatic
+    trust = "seekh" if is_paused(tenant) else _trust(tenant)   # v0.365 pause = drafts only, nothing automatic
     cap = REPLY_CAP.get(trust, 0)
     used = replies_today(tenant)
     stats = {"new": len(fresh), "replied": 0, "hidden": 0, "leads": 0, "complaints": 0, "waiting": 0}

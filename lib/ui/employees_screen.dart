@@ -838,7 +838,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
 
   Widget _post(Map<String, dynamic> p) {
     final st = _s(p['status']);
-    final needOk = p['plan_only'] == true && _s(_d?['trust']) == 'seekh';   // v0.359
+    final needOk = p['plan_only'] == true && _s(_d?['trust']) == 'seekh';   // v0.365
     final done = st == 'published' || st == 'publishing';
     final res = Map<String, dynamic>.from((p['result'] as Map?) ?? const {});
     final probs = ((p['problems'] as List?) ?? const []).map((e) => '$e').toList();

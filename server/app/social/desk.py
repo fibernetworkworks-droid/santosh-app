@@ -90,7 +90,7 @@ class SocialDesk(Base):
     stamps: Mapped[str] = mapped_column(Text, default="{}")
     state: Mapped[str] = mapped_column(String(16), default="new")   # new | first_run | ready | error
     calendar_status: Mapped[str] = mapped_column(String(12), default="none")   # none | draft | approved
-    settings: Mapped[str | None] = mapped_column(Text, nullable=True)            # v0.359 {paused, pause_reason, quiet}
+    settings: Mapped[str | None] = mapped_column(Text, nullable=True)            # v0.365 {paused, pause_reason, quiet}
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -119,7 +119,7 @@ class SocialPost(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    seen: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.359 1 = she OK'd this post itself, 0 = only via the plan
+    seen: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.365 1 = she OK'd this post itself, 0 = only via the plan
 
 
 class SocialEvent(Base):
@@ -698,7 +698,7 @@ def calendar(tenant: str) -> list[dict[str, Any]]:
                  "hook": p.hook, "caption": p.caption, "hashtags": _j(p.hashtags, []), "visual": p.visual, "cta": p.cta,
                  "occasion": p.occasion, "status": p.status, "source": p.source, "media": _media_views(_j(p.media, [])),
                  "result": _j(p.result, {}), "error": p.error or "", "problems": _problems(p) if p.status in ("draft", "approved", "failed") else [],
-                 "plan_only": p.status == "approved" and p.seen == 0}                # v0.359 OK'd via the plan, not one by one
+                 "plan_only": p.status == "approved" and p.seen == 0}                # v0.365 OK'd via the plan, not one by one
                 for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant).order_by(SocialPost.slot)).all()]
 
 
@@ -730,7 +730,7 @@ def approve_calendar(tenant: str) -> dict[str, Any]:
         for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant, SocialPost.status == "draft")).all():
             p.status = "approved"
             _stamp_ok(p)                           # v0.355 exactly this post (caption, pictures, time) is what she said yes to
-            p.seen = 0                             # v0.359 OK'd as part of the plan only: trust decides if it goes alone
+            p.seen = 0                             # v0.365 OK'd as part of the plan only: trust decides if it goes alone
             n += 1
         _desk(s, tenant).calendar_status = "approved"
     from .pulse import trust_of
@@ -768,7 +768,7 @@ def set_post(tenant: str, post_id: str, status: str = "", caption: str | None = 
             p.approved_hash = ""
             if status == "approved":
                 _stamp_ok(p)
-                p.seen = 1                         # v0.359 her own OK for this one post
+                p.seen = 1                         # v0.365 her own OK for this one post
         elif edited and p.status in ("approved", "failed", "missed"):
             p.status, p.approved_hash = "draft", ""   # an edit after approval needs her OK again
         return {"id": p.id, "status": p.status}
@@ -888,7 +888,7 @@ def _daily_and_boosts(tenant: str) -> dict[str, Any]:
     out = daily(tenant)
     try:
         from .pulse import flag_boosts
-        out["boosts"] = flag_boosts(tenant)            # v0.359 boost-worthy posts, told once each
+        out["boosts"] = flag_boosts(tenant)            # v0.365 boost-worthy posts, told once each
     except Exception as e:       # noqa: BLE001
         log.info("boost flags failed: %s", e)
     return out
@@ -984,10 +984,10 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
     if state == "ready" and local.weekday() == 0 and local.hour >= 9 and stamps.get("weekly_key") != wk:
         out.append("weekly")
     if state == "ready" and local.hour >= 9 and stamps.get("morning", "")[:10] != local.date().isoformat():
-        out.append("morning")                          # v0.359
+        out.append("morning")                          # v0.365
     mk = local.strftime("%Y-%m")
     if state == "ready" and local.day == 1 and local.hour >= 9 and stamps.get("monthly_key") != mk and stamps.get("baseline_month") != mk:
-        out.append("monthly")                          # v0.359 (not in the month the baseline was taken)
+        out.append("monthly")                          # v0.365 (not in the month the baseline was taken)
     return out
 
 
