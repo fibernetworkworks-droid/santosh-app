@@ -1247,6 +1247,13 @@ class Api {
       await _send('GET', '/api/sites/$id/care', query: {'days': '$days'}, timeout: const Duration(seconds: 60)) as Map);
   Future<Map<String, dynamic>> siteDashboard(String id, {int days = 30}) async => Map<String, dynamic>.from(   // v0.357
       await _send('GET', '/api/sites/$id/dashboard', query: {'days': '$days'}, timeout: const Duration(seconds: 60)) as Map);
+  // v0.366 BLOG + BHASHAYEN
+  Future<Map<String, dynamic>> siteBlog(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/sites/$id/blog') as Map);
+  Future<Map<String, dynamic>> siteBlogAct(String id, String slug, String action, {String cover = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/sites/$id/blog/$slug', body: {'action': action, 'cover': cover},
+          timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> siteLanguages(String id, List<String> langs) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/sites/$id/languages', body: {'languages': langs}, timeout: const Duration(seconds: 60)) as Map);
   Future<Map<String, dynamic>> siteClients() async => Map<String, dynamic>.from(await _send('GET', '/api/sites-clients') as Map);
   Future<Map<String, dynamic>> siteAssign(String id, {String? client, String? staff}) async => Map<String, dynamic>.from(
       await _send('POST', '/api/sites/$id/assign', body: {if (client != null) 'client': client, if (staff != null) 'staff': staff}) as Map);

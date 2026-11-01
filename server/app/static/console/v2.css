@@ -2068,6 +2068,20 @@ body.albon{overflow:hidden}
 .stdash-card h4{margin:0 0 10px;font-size:14px;font-weight:600}.stdash-card.wide{grid-column:1/-1}
 .stdash-card .stempty{margin:0}
 
+/* v0.366 BLOG + BHASHAYEN: the studio's Blog and Languages tabs */
+.stblog{display:grid;gap:14px}
+.stblog .stapp label{display:grid;gap:3px;font-size:13px}.stblog .stapp label>span{color:var(--mut)}
+.stblog textarea,.stblog .stblog-ed input,.stblog .stblog-when input{padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;width:100%}
+.stblog textarea{resize:vertical;line-height:1.5}
+.stblog-d{border:1px solid var(--hair);border-radius:12px;padding:12px;display:grid;gap:10px;margin-bottom:8px;background:var(--surface)}
+.stblog-row{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}.stblog-row small{color:var(--mut)}
+.stblog-when{display:inline-grid;gap:2px;font-size:12px;color:var(--mut)}.stblog-when input{width:auto}
+.stblog-ed{display:grid;gap:10px}
+.stblog .sttbl select{padding:6px 8px;border:1px solid var(--hair);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;max-width:160px}
+.stblog .sttbl td small{color:var(--mut)}
+.btn.soft.danger{color:var(--bad)}
+.stblog .sted-kind small{color:var(--mut)}
+
 /* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim
