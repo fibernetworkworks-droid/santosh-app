@@ -10197,6 +10197,169 @@ async def apps_track_order(ref: str, coll: str, row_id: str, tenant: str = Depen
     return await asyncio.to_thread(_be_owner_call, lambda: TR.order(_be_owner(tenant, ref), W.Who(owner=True), coll, row_id))
 
 
+def html_escape(s: str) -> str:
+    import html as _h
+    return _h.escape(s)
+
+
+# ---- v0.417 PAISA (App Sahayak Pillar E): online payments through HER gateway. Paid only from the gateway's word.
+@app.get("/api/app-api/{app_key}/pay/c/{coll}/{row_id}")
+async def app_api_pay_row(app_key: str, coll: str, row_id: str, request: Request):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.row_info(*_be_app(app_key, request), coll, row_id))
+
+
+@app.post("/api/app-api/{app_key}/pay/c/{coll}/{row_id}/start")
+async def app_api_pay_start(app_key: str, coll: str, row_id: str, request: Request):
+    """The customer's own unpaid order -> her gateway order for the SERVER's total -> {path} of the pay page."""
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.start(*_be_app(app_key, request), coll, row_id))
+
+
+@app.get("/api/app-api/{app_key}/pay/p/{tok}", response_class=HTMLResponse)
+async def app_api_pay_page(app_key: str, tok: str):
+    """The pay page (signed link, 30 min): the gateway's own checkout. Shows nothing secret."""
+    from .appmaker import backend as BE
+    from .appmaker import pay as PY
+    from .site import webapp as W
+    try:
+        body = await asyncio.to_thread(lambda: PY.page(BE.by_key(app_key), tok))
+    except W.AppError as e:
+        return HTMLResponse(f"<!doctype html><meta charset=utf-8><p style='font:16px system-ui;padding:24px'>{html_escape(str(e))}</p>",
+                            status_code=e.code, headers={"Content-Security-Policy": "default-src 'none'"})
+    return HTMLResponse(body, headers={"Content-Security-Policy": PY.PAGE_CSP, "Cache-Control": "no-store",
+                                       "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/app-api/{app_key}/pay/s/{tok}")
+async def app_api_pay_state(app_key: str, tok: str):
+    from .appmaker import backend as BE
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.page_state(BE.by_key(app_key), tok))
+
+
+@app.post("/api/app-api/{app_key}/pay/webhook")
+async def app_api_pay_webhook(app_key: str, request: Request):
+    """Her gateway calls this. Nothing happens unless the signature verifies with HER secret."""
+    from .appmaker import backend as BE
+    from .appmaker import pay as PY
+    raw = await request.body()
+    if len(raw) > 512_000:
+        return JSONResponse({"ok": False}, status_code=413)
+    hdrs = dict(request.headers)
+    return await asyncio.to_thread(_be_call, lambda: PY.webhook(BE.by_key(app_key), hdrs, raw))
+
+
+@app.get("/api/app-api/{app_key}/pay/plans")
+async def app_api_pay_plans(app_key: str):
+    from .appmaker import backend as BE
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.plans(BE.by_key(app_key)))
+
+
+@app.post("/api/app-api/{app_key}/pay/plans/{key}/subscribe")
+async def app_api_pay_subscribe(app_key: str, key: str, request: Request):
+    """The customer starts AutoPay on a plan; she authorises the mandate on the gateway's own page."""
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.subscribe(*_be_app(app_key, request), key))
+
+
+@app.get("/api/app-api/{app_key}/pay/subs")
+async def app_api_pay_subs(app_key: str, request: Request):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.my_subs(*_be_app(app_key, request)))
+
+
+@app.post("/api/app-api/{app_key}/pay/subs/{sid}/cancel")
+async def app_api_pay_sub_cancel(app_key: str, sid: str, request: Request):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.cancel_sub(*_be_app(app_key, request), sid))
+
+
+@app.get("/api/apps/{ref}/pay", dependencies=[Depends(require_key)])
+async def apps_pay(ref: str, tenant: str = Depends(current_tenant)):
+    """Her payments page: gateway (never the keys), webhook address, payments + refunds, plans, AutoPay, split rule."""
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.status(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/pay/keys", dependencies=[Depends(require_key)])
+async def apps_pay_keys(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{gateway, keys: {...}, test}: typed in the app, checked with the gateway, sealed; returned by no route."""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_keys(_be_owner(tenant, ref), str(b.get("gateway") or ""),
+                                                                       b.get("keys") if isinstance(b.get("keys"), dict) else {},
+                                                                       bool(b.get("test"))))
+
+
+@app.delete("/api/apps/{ref}/pay/keys", dependencies=[Depends(require_key)])
+async def apps_pay_keys_forget(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.forget_keys(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/pay/{pid}/refund", dependencies=[Depends(require_key)])
+async def apps_pay_refund(ref: str, pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap only {amount? (rupees, blank = the rest), why, her_tap: true}."""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund(_be_owner(tenant, ref), pid, b.get("amount"),
+                                                                     str(b.get("why") or ""), bool(b.get("her_tap"))))
+
+
+@app.post("/api/apps/{ref}/pay/refunds/{fid}/check", dependencies=[Depends(require_key)])
+async def apps_pay_refund_check(ref: str, fid: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund_check(_be_owner(tenant, ref), fid))
+
+
+@app.get("/api/apps/{ref}/pay/settlements", dependencies=[Depends(require_key)])
+async def apps_pay_settlements(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.settlements(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/pay/link", dependencies=[Depends(require_key)])
+async def apps_pay_link(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{amount, purpose, name?, phone?, her_tap: true} -> a payment link she sends herself."""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.link(_be_owner(tenant, ref), b.get("amount"), str(b.get("purpose") or ""),
+                                                                   str(b.get("name") or ""), str(b.get("phone") or ""), bool(b.get("her_tap"))))
+
+
+@app.post("/api/apps/{ref}/pay/plans", dependencies=[Depends(require_key)])
+async def apps_pay_plan_add(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{name, amount, period: week|month|year, count, her_tap: true}"""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.add_plan(_be_owner(tenant, ref), str(b.get("name") or ""), b.get("amount"),
+                                                                       str(b.get("period") or ""), b.get("count"), bool(b.get("her_tap"))))
+
+
+@app.delete("/api/apps/{ref}/pay/plans/{key}", dependencies=[Depends(require_key)])
+async def apps_pay_plan_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.drop_plan(_be_owner(tenant, ref), key))
+
+
+@app.post("/api/apps/{ref}/pay/subs/{sid}/cancel", dependencies=[Depends(require_key)])
+async def apps_pay_sub_cancel(ref: str, sid: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.cancel_sub(_be_owner(tenant, ref), W.Who(owner=True), sid))
+
+
+@app.put("/api/apps/{ref}/pay/split", dependencies=[Depends(require_key)])
+async def apps_pay_split(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{vendors: [{key, name, account}], rules: [{vendor, percent}], her_tap: true} - her approved payout rule."""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_split(_be_owner(tenant, ref), b.get("vendors") or [], b.get("rules") or [],
+                                                                        bool(b.get("her_tap"))))
+
+
 def _be_owner(tenant: str, ref: str):
     from .appmaker import service as A
     with A.session() as s:

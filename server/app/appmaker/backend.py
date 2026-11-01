@@ -721,6 +721,12 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
     tr = _track_public(r)                                  # v0.412 NAKSHA LIVE: shift button, maps, Track live
     if tr:
         out["track"] = tr
+    try:                                                   # v0.417 PAISA: the Pay online button + AutoPay plans
+        from . import pay as PY
+        if PY.on(r):
+            out["pay"] = {"on": True, "plans": bool(PY.plans(r)["plans"])}
+    except Exception:                                      # noqa: BLE001
+        log.debug("pay hint", exc_info=True)
     return out
 
 

@@ -877,6 +877,76 @@ window.HoolaBuild = function (C) {
       const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
     };
     try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
+    // v0.417 PAISA: her own gateway (keys typed here, sealed, never shown again), payments + refunds (her tap), links, AutoPay, split
+    const pybox = document.createElement('section'); pybox.className = 'stcol stpay'; box.appendChild(pybox);
+    const rs = p => 'Rs ' + (N(p) / 100).toLocaleString('en-IN', {maximumFractionDigits: 2});
+    const drawPay = py => {
+      if (!py.on) {
+        const f = py.fields || {};
+        pybox.innerHTML = `<h4>Online payments <span>Off</span></h4>
+          <p class="stnote">Join YOUR payment gateway. Customers pay on the gateway's own page and the money goes to your bank account; Hoola never holds it. An order is marked paid only when the gateway itself confirms it. Your keys are checked with the gateway, locked away, and never shown again.</p>
+          <form class="stapp" autocomplete="off"><div class="row"><label>Gateway <select name="gw">${L(py.gateways).map(g => `<option value="${esc(S(g))}">${esc(S(g).replace(/^./, c => c.toUpperCase()))}</option>`).join('')}</select></label>
+          <label class="chk"><input type="checkbox" name="test"> Test mode</label></div><div class="row pyf"></div>
+          <div class="row"><button class="btn go" type="submit">Check and join</button></div></form>`;
+        const fm = pybox.querySelector('form'), ff = fm.querySelector('.pyf');
+        const fields = () => { ff.innerHTML = L(f[fm.gw.value]).map(k => `<input name="${esc(S(k))}" placeholder="${esc(S(k).replace(/_/g, ' '))}" aria-label="${esc(S(k))}" autocomplete="off" spellcheck="false" ${/secret|password/.test(k) ? 'type="password"' : ''}>`).join(''); };
+        fm.gw.addEventListener('change', fields); fields();
+        fm.addEventListener('submit', async e => {
+          e.preventDefault(); const b = fm.querySelector('button.go'); b.disabled = true;
+          const keys = {}; ff.querySelectorAll('input').forEach(i => { keys[i.name] = i.value.trim(); });
+          try { drawPay(await api('PUT', base(o) + '/pay/keys', {gateway: fm.gw.value, keys, test: fm.test.checked})); toast('Gateway joined. Now add the webhook address shown here in your gateway dashboard.'); }
+          catch (er) { toast(er.message, true); b.disabled = false; }
+        });
+        return;
+      }
+      const tot = M(py.totals), can = L(py.can);
+      pybox.innerHTML = `<h4>Online payments <span>${esc(S(py.gateway))}${py.test ? ' · test' : ''}</span></h4>
+        <p class="stnote">Received ${esc(rs(tot.paid))} in ${N(tot.count)} payments · refunded ${esc(rs(tot.refunded))}${N(tot.mismatch) ? ` · <b>${N(tot.mismatch)} amount mismatch to check</b>` : ''}</p>
+        <p class="stnote">Webhook address for your gateway: <code>${esc(S(py.webhook_url))}</code><br>${esc(S(py.webhook_how))}</p>
+        <div class="row"><button class="btn" type="button" data-pyset>Settlements</button><button class="btn" type="button" data-pyoff>Remove gateway</button></div><div class="pyset"></div>
+        ${L(py.payments).length ? `<div class="sttbl"><table><thead><tr><th>When</th><th>What</th><th>Amount</th><th>Status</th><th>Refunded</th><th></th></tr></thead><tbody>${L(py.payments).map(p => `<tr data-p="${esc(S(p.id))}"><td>${esc(S(p.created).slice(0, 16).replace('T', ' '))}</td><td>${esc(S(p.label))}${p.url ? ` <a href="${esc(S(p.url))}" target="_blank" rel="noopener">link</a>` : ''}</td><td>${esc(S(p.amount_rs))}</td><td>${esc(S(p.status))}${p.why ? ' · ' + esc(S(p.why)) : ''}</td><td>${N(p.refunded) ? esc(rs(p.refunded)) : ''}${L(p.refunds).filter(f => ['ambiguous', 'pending', 'sending'].includes(f.status)).map(f => ` <button class="ib" type="button" data-rfchk="${esc(S(f.id))}">Check ${esc(S(f.amount_rs))}</button>`).join('')}</td><td>${p.status === 'paid' && N(p.refunded) < N(p.amount) && can.includes('refund') ? '<button class="ib" type="button" data-rf>Refund…</button>' : ''}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No online payments yet.</p>'}
+        ${can.includes('links') ? `<form class="stapp pylink" autocomplete="off"><div class="row"><input name="amount" inputmode="decimal" placeholder="Amount (Rs)" aria-label="Amount"><input name="purpose" placeholder="For what (e.g. udhaar)" aria-label="Purpose"><input name="phone" inputmode="tel" placeholder="Customer phone (optional)" aria-label="Phone"><button class="btn go" type="submit">Make payment link</button></div></form>` : ''}
+        ${can.includes('subscriptions') ? `<h5>AutoPay plans</h5>${L(py.plans).map(p => `<p class="stnote">${esc(S(p.name))} · ${esc(rs(p.amount))} every ${esc(S(p.period))} × ${N(p.count)} <button class="ib" type="button" data-plx="${esc(S(p.key))}">Stop offering</button></p>`).join('') || '<p class="stempty">No plans.</p>'}
+          <form class="stapp pyplan" autocomplete="off"><div class="row"><input name="name" placeholder="Plan name (e.g. Daily milk)" aria-label="Plan name"><input name="amount" inputmode="decimal" placeholder="Amount (Rs)" aria-label="Amount"><select name="period" aria-label="Every"><option value="month">every month</option><option value="week">every week</option><option value="year">every year</option></select><input name="count" inputmode="numeric" placeholder="How many times" aria-label="How many times" value="12"><button class="btn go" type="submit">Add plan</button></div></form>
+          ${L(py.subs).filter(x => !['created'].includes(x.status)).map(x => `<p class="stnote">Subscription ${esc(S(x.plan))} · ${esc(S(x.status))} · ${N(x.charges)} charged ${['cancelled', 'completed'].includes(x.status) ? '' : `<button class="ib" type="button" data-subx="${esc(S(x.id))}">Cancel</button>`}</p>`).join('')}` : ''}
+        ${can.includes('split') ? `<h5>Vendor payouts${M(py.split).hash ? ' · rule ' + esc(S(M(py.split).hash)) + ' approved' : ''}</h5>
+          <p class="stnote">One line per vendor: name, the vendor's account id from your gateway (Razorpay Route linked account / Cashfree vendor id), percent of each order. The rest stays with you.</p>
+          <form class="stapp pysplit"><textarea name="lines" rows="3" aria-label="Vendor lines" placeholder="Kisan Dairy, acc_ABC123, 20">${esc(L(M(py.split).rules).map(x => { const v = L(M(py.split).vendors).find(v => v.key === x.vendor) || {}; return `${S(v.name)}, ${S(v.account)}, ${x.percent}`; }).join('\n'))}</textarea>
+          <div class="row"><button class="btn go" type="submit">Approve this payout rule</button></div></form>` : ''}`;
+      const reload = async () => drawPay(await api('GET', base(o) + '/pay'));
+      pybox.querySelector('[data-pyoff]').onclick = async () => { if (!confirm('Remove the gateway? Online payment stops in the app; past payments stay.')) return; try { drawPay(await api('DELETE', base(o) + '/pay/keys')); } catch (er) { toast(er.message, true); } };
+      pybox.querySelector('[data-pyset]').onclick = async () => {
+        const bx = pybox.querySelector('.pyset');
+        try { const s = await api('GET', base(o) + '/pay/settlements'); bx.innerHTML = L(s.settlements).length ? `<div class="sttbl"><table><thead><tr><th>Settlement</th><th>Amount</th><th>Fees + tax</th><th>Status</th><th>UTR</th></tr></thead><tbody>${L(s.settlements).map(x => `<tr><td>${esc(S(x.id))}</td><td>${esc(rs(x.amount))}</td><td>${esc(rs(N(x.fees) + N(x.tax)))}</td><td>${esc(S(x.status))}</td><td>${esc(S(x.utr))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No settlements.</p>'; }
+        catch (er) { bx.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; }
+      };
+      pybox.addEventListener('click', async e => {
+        const rf = e.target.closest('[data-rf]'), chk = e.target.closest('[data-rfchk]'), plx = e.target.closest('[data-plx]'), sx = e.target.closest('[data-subx]');
+        try {
+          if (rf) { const tr = rf.closest('tr[data-p]'); const amt = prompt('Refund amount in Rs (blank = everything not yet refunded):', ''); if (amt === null) return;
+            const v = await api('POST', `${base(o)}/pay/${encodeURIComponent(tr.dataset.p)}/refund`, {amount: amt.trim() || null, her_tap: true}); toast(S(v.say)); await reload(); }
+          if (chk) { const v = await api('POST', `${base(o)}/pay/refunds/${encodeURIComponent(chk.dataset.rfchk)}/check`); toast('Refund: ' + S(v.status)); await reload(); }
+          if (plx) { drawPay(await api('DELETE', `${base(o)}/pay/plans/${encodeURIComponent(plx.dataset.plx)}`)); }
+          if (sx) { if (!confirm('Cancel this customer\'s AutoPay?')) return; await api('POST', `${base(o)}/pay/subs/${encodeURIComponent(sx.dataset.subx)}/cancel`); await reload(); }
+        } catch (er) { toast(er.message, true); }
+      });
+      const lf = pybox.querySelector('.pylink');
+      if (lf) lf.addEventListener('submit', async e => { e.preventDefault();
+        try { const v = await api('POST', base(o) + '/pay/link', {amount: lf.amount.value, purpose: lf.purpose.value, phone: lf.phone.value, her_tap: true}); toast(S(v.say)); if (v.url) prompt('Payment link (copy and send it yourself):', S(v.url)); await reload(); }
+        catch (er) { toast(er.message, true); } });
+      const pf = pybox.querySelector('.pyplan');
+      if (pf) pf.addEventListener('submit', async e => { e.preventDefault();
+        try { drawPay(await api('POST', base(o) + '/pay/plans', {name: pf.name.value, amount: pf.amount.value, period: pf.period.value, count: pf.count.value, her_tap: true})); toast('Plan added. Customers see it under AutoPay in the app.'); }
+        catch (er) { toast(er.message, true); } });
+      const sf = pybox.querySelector('.pysplit');
+      if (sf) sf.addEventListener('submit', async e => { e.preventDefault();
+        const vendors = [], rules = [];
+        sf.lines.value.split('\n').map(x => x.split(',').map(y => y.trim())).filter(x => x.length >= 3 && x[1]).forEach((x, i) => { const k = 'v' + (i + 1); vendors.push({key: k, name: x[0], account: x[1]}); rules.push({vendor: k, percent: Number(x[2])}); });
+        if (!confirm(`Approve this payout rule? ${rules.map(r => r.percent + '%').join(' + ')} of every paid order goes to these vendors through ${S(py.gateway)}.`)) return;
+        try { drawPay(await api('PUT', base(o) + '/pay/split', {vendors, rules, her_tap: true})); toast('Payout rule approved.'); }
+        catch (er) { toast(er.message, true); } });
+    };
+    try { drawPay(await api('GET', base(o) + '/pay')); } catch (er) { pybox.remove(); }
     // v0.355 GST BILL: her GST details -> finished rows get a tax invoice (GST-inclusive prices)
     const gbox = document.createElement('section'); gbox.className = 'stcol stgst'; box.appendChild(gbox);
     const drawGst = g => {

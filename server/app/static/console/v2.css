@@ -2553,3 +2553,7 @@ body.albon{overflow:hidden}
 .rel-kit{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:10px}
 .rel-kit h4{margin:0 0 4px;font-size:14px}
 
+/* v0.417 PAISA: her payments box */
+.stpay code { font-size: 12.5px; word-break: break-all; }
+.stpay h5 { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
+.stpay .pysplit textarea { width: 100%; font: inherit; }

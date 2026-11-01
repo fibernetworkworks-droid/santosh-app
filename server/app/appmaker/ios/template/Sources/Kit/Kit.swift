@@ -33,6 +33,17 @@ enum Words {
     static var isOnline: String { t("online", "ऑनलाइन", "online") }
     static var isTyping: String { t("typing…", "लिख रहे हैं…", "likh rahe hain…") }
     static var live: String { t("Live", "लाइव", "Live") }
+    // v0.417 PAISA
+    static var payOnline: String { t("Pay online", "ऑनलाइन भुगतान", "Online pay karein") }
+    static var opening: String { t("Opening…", "खुल रहा है…", "Khul raha hai…") }
+    static var payWaiting: String { t("Waiting for the payment to be confirmed by the gateway…", "गेटवे से भुगतान की पुष्टि का इंतज़ार…", "Gateway se payment confirm hone ka intezaar…") }
+    static var autoPay: String { t("AutoPay plans", "ऑटोपे प्लान", "AutoPay plans") }
+    static var autoPayOn: String { t("AutoPay on", "ऑटोपे चालू", "AutoPay chalu") }
+    static var charged: String { t("payments made", "भुगतान हुए", "payment hue") }
+    static var cancelAutoPay: String { t("Cancel AutoPay", "ऑटोपे बंद करें", "AutoPay band karein") }
+    static var autoPayOff: String { t("AutoPay cancelled. Nothing more will be charged.", "ऑटोपे बंद। आगे कुछ नहीं कटेगा।", "AutoPay band. Aage kuch nahi katega.") }
+    static var autoPayWhy: String { t("Charged automatically {n} times through your bank's mandate. You approve it on the next page and can cancel any time here.", "आपके बैंक मैंडेट से {n} बार अपने आप कटेगा। अगले पेज पर आप मंज़ूर करेंगे, और यहाँ कभी भी बंद कर सकते हैं।", "Aapke bank mandate se {n} baar apne aap katega. Agle page par aap manzoor karenge, aur yahan kabhi bhi band kar sakte hain.") }
+    static var startAutoPay: String { t("Start AutoPay", "ऑटोपे शुरू करें", "AutoPay shuru karein") }
     // v0.412 NAKSHA LIVE
     static var cont: String { t("Continue", "आगे बढ़ें", "Aage badhiye") }
     static var later: String { t("Not now", "अभी नहीं", "Abhi nahi") }

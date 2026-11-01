@@ -148,6 +148,9 @@ FILE CONTRACT
   rider on shift on a live map); an order tracking screen: block { TrackOrderBlock("orders", id) } (the rider moving on a
   map + ETA); any map: LiveMap(listOf(MapPin(lat, lng, "label", "rider"|"dest"))). LiveRowsBlock already adds "Track live".
   Never ask for location yourself, never draw your own map, never add a location loop.
+  ONLINE PAYMENT (v0.417, only when the business joined its gateway; each block shows nothing otherwise): LiveRowsBlock already
+  shows "Pay online" on the customer's unpaid order; a payment screen: PayButton("orders", row); AutoPay plans: block {
+  PlansBlock() }. NEVER build a card / UPI form, never mark an order paid yourself - the server does it from the gateway.
   Fields marked [location]: LocationField(label, key) ("Use my location" with the
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.
 - Actions: val c = ctx(); Act.call(c), Act.whatsapp(c, text), Act.share(c, text), Act.maps(c), Act.payUpi(c, amount, note)
