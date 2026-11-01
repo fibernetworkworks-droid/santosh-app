@@ -12690,3 +12690,25 @@ Owner: "Terms of Service --- HOOLA" (right after her privacy policy went live at
 - Tests `server/tests/test_v0343_signal_par_nishan.py`: real SIGTERM / SIGINT to the test process - marked first, then
   the old handler; a mark that raises still hands over. Also checked by hand: a real uvicorn server started, got SIGINT,
   exited 0 in 3.7 s with no traceback.
+
+## v0.344.0 DUKAAN (Phase 3a of "any world-complex website": a real shop on her website)
+Owner: "START PHASE 3" (3a shop now; 3b dashboards / charts and 3c blog + multi-language come next).
+- `server/app/site/shop.py`: products (`site_shop_products`: price in paise, unit, stock or unlimited, active, photo) and
+  orders (`site_shop_orders`: O-1001.., secret tracking token, name / phone / address / pincode / note, items, subtotal +
+  delivery + total, method upi | cod, status, UTR, history, hashed IP). The SERVER decides everything: prices come from the
+  product table never from the page, stock is taken with a conditional UPDATE (two buyers of the last piece -> one wins),
+  delivery fee + free-above + minimum order + pincodes, rate limits (12 orders / 10 min per IP, 300 a day per site).
+- Money never moves through Hoola: UPI = her UPI ID link + QR (`live.upi_link` / `qr_data_uri`); the buyer taps "Maine pay
+  kar diya" + UTR -> status `payment_told`, SHE checks her bank and confirms. COD optional. Status flow new -> payment_told ->
+  confirmed -> packed -> shipped -> delivered (or cancelled, which returns the stock).
+- Build: a "shop" page (product grid with Add to cart), a buy box on item pages, `hoola-shop.js` (cart in localStorage,
+  floating Cart button, drawer: cart -> checkout -> done with QR / UPI button / UTR form / tracking link, `?order=&t=` tracking,
+  every value set with textContent), styles in `hoola-site.css`, meta `hoola-shop` carries the options.
+- Public API (CORS, no login): GET /api/site-shop/{id}/products, POST .../order, GET .../order/{number}?t=, POST .../order/{number}/paid.
+  Owner API: GET/POST /api/sites/{ref}/shop (settings, products, from_lists = priced list items), GET .../shop/orders,
+  POST .../shop/orders/{number} (move status). New orders publish `site_order` (push).
+- Agent: `website` action=shop (turn on, settings, products) and action=shop_order (move an order), `website_dekho what=orders`.
+- Console Studio: a Shop tab (on / UPI ID / COD / pickup / delivery fee, products table, "Add my priced list items", orders with next-step buttons).
+- NOT done yet: phone Flutter screen for orders (push + chat only), emails / SMS to buyers, payment gateway (by design: her UPI only).
+- Tests `server/tests/test_v0344_dukaan.py`: rupees formatting, server-side prices / stock / payment, the last-piece race,
+  public vs owner-only endpoints, and a REAL Chromium purchase (add to cart -> checkout -> UPI QR -> UTR -> tracking).
