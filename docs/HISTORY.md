@@ -13203,3 +13203,15 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
 - Route GET /api/apps/<ref>/tally?month= (XML download), console Accounts "Tally (XML)", tool hisaab path.
 - Tests `tests/test_v0374_tally.py` (well-formed with & and <, balanced vouchers, mirror credit note, her names). Not done:
   inventory (stock-item) vouchers, ledger creation in Tally.
+
+## v0.375.0 KHATA YAAD (App Sahayak Phase 39, owner: "START PHASE 39")
+- `appmaker/khata.py`: `reminders(r)` = customers with balance > 0, their 10-digit phone from their latest order row
+  (`_phone_of`), `reminder_text` (Hinglish: name, Rs due, shop), `link` https://wa.me/91<phone>?text=... (her own WhatsApp,
+  she sends it), `recent` (reminded in the last 3 days). `send_reminder(r, member, template, by_tap)` (async): refuses without
+  her tap, without a phone, within 3 days, when the customer wrote STOP to her business number (`BizContact.opted_out`), when
+  the template is not APPROVED or not UTILITY; sends `get_whatsapp().send_template("91"+phone, template, lang, [first name,
+  amount, shop])`; remembers the time in `backend.khata_remind`.
+- Routes GET /api/apps/<ref>/khata-yaad, POST /api/apps/<ref>/khata-yaad/<member> {template, her_tap}; console "Khata yaad"
+  (Open in WhatsApp link, Send via business with a confirm and her template name). Tool khata says where to tap.
+- Tests `tests/test_v0375_khata_yaad.py` (WhatsApp faked). Her template example: "Namaste {{1}}, {{3}} mein aapka baaki
+  Rs {{2}} hai. Suvidha se chuka dijiye." (UTILITY, approved by Meta in her account).

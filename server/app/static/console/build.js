@@ -902,6 +902,25 @@ window.HoolaBuild = function (C) {
       if (b) b.addEventListener('click', async () => { b.disabled = true; try { drawT(await api('PUT', base(o) + '/turant', {on: b.dataset.turant === '1'})); toast('Saved. It reaches phones with the next Android build.'); } catch (er) { toast(er.message, true); b.disabled = false; } });
     };
     try { drawT(await api('GET', base(o) + '/turant')); } catch (er) { tbox.remove(); }
+    // v0.375 KHATA YAAD: payment reminders for customers who owe - her own WhatsApp (link) or her approved template (her tap)
+    const ybox = document.createElement('section'); ybox.className = 'stcol stkhata'; box.appendChild(ybox);
+    const drawY = v => {
+      const cs = L(v.customers); if (!cs.length) { ybox.remove(); return; }
+      ybox.innerHTML = `<h4>Khata yaad <span>${cs.length} owe</span></h4><p class="stnote">${esc(S(v.note))}</p>
+        <div class="row"><input data-tpl placeholder="Approved UTILITY template name (for business WhatsApp)" aria-label="Template name"></div>
+        <div class="sttbl"><table><thead><tr><th>Customer</th><th>Owes</th><th>Phone</th><th></th></tr></thead><tbody>${cs.map(c => `<tr data-m="${esc(S(c.member))}"><td>${esc(S(c.name))}</td><td>₹${N(c.balance)}</td><td>${esc(S(c.phone) || '-')}</td>
+          <td>${c.link ? `<a class="ib" href="${esc(S(c.link))}" target="_blank" rel="noopener">Open in WhatsApp</a>` : ''} ${c.phone && !c.recent ? '<button class="ib" type="button" data-ysend>Send via business</button>' : (c.recent ? 'reminded recently' : '')}</td></tr>`).join('')}</tbody></table></div>`;
+    };
+    ybox.addEventListener('click', async e => {
+      const b = e.target.closest('[data-ysend]'), tr = e.target.closest('tr[data-m]'); if (!b || !tr) return;
+      const tpl = (ybox.querySelector('[data-tpl]') || {}).value || '';
+      if (!tpl.trim()) { toast('Type your approved template name first', true); return; }
+      if (!confirm('Send this reminder from your WhatsApp Business number now?')) return;
+      b.disabled = true;
+      try { const r = await api('POST', base(o) + '/khata-yaad/' + encodeURIComponent(tr.dataset.m), {template: tpl.trim(), her_tap: true}); toast(S(r.say) || 'Sent.'); drawY(await api('GET', base(o) + '/khata-yaad')); }
+      catch (er) { toast(er.message, true); b.disabled = false; }
+    });
+    try { drawY(await api('GET', base(o) + '/khata-yaad')); } catch (er) { ybox.remove(); }
     // v0.361 HISAAB: the month's accounts + GST summary for her CA (CSV files in a ZIP)
     const hbox = document.createElement('section'); hbox.className = 'stcol sthisaab'; box.appendChild(hbox);
     const drawH = v => {

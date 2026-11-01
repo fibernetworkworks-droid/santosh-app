@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import re
 import threading
+import urllib.parse as _up
+from datetime import timedelta as _td
 from typing import Any
 
 from sqlalchemy import select
@@ -168,3 +170,111 @@ def dues(r: AppProject, w: W.Who) -> dict[str, Any]:
                "entries": len(es)} for m, es in per.items() if m]
     people.sort(key=lambda p: -p["balance"])
     return {"customers": people, "total_due": round(sum(p["balance"] for p in people if p["balance"] > 0), 2)}
+
+
+# ---------------------------------------------------------------- v0.375 KHATA YAAD (App Sahayak Phase 39): payment reminders
+# For customers who owe, a plain Hinglish reminder ready to go, two official ways, both started ONLY by her:
+#   * "phone": a wa.me link with the text filled in - she opens it and sends it herself from her own WhatsApp (nothing
+#     automated, no personal-WhatsApp automation ever);
+#   * "template": her official WhatsApp Business number (Meta Cloud API) with a UTILITY template SHE got approved, params
+#     [customer name, amount, shop] - only by her tap (by_tap), never to someone who wrote STOP to her business number, at
+#     most once per customer every 3 days. The customer's number = the phone on her latest order in this app.
+REMIND_EVERY_DAYS = 3
+STATS.update({"reminders": 0, "reminder_refused": 0})
+
+
+def _phone_of(r: AppProject, member: str) -> str:
+    from . import backend as BE
+    with session() as s:
+        rows = s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == _site(r), W.SiteAppRow.owner == member)
+                         .order_by(W.SiteAppRow.created_at.desc()).limit(20)).all()
+        for x in rows:
+            ph = re.sub(r"\D", "", str(BE._j(x.data, {}).get("phone") or ""))[-10:]
+            if len(ph) == 10:
+                return ph
+    return ""
+
+
+def _last_reminded(r: AppProject) -> dict[str, str]:
+    from . import backend as BE
+    with session() as s:
+        row = s.get(AppProject, r.id)
+        return dict(BE._j(row.backend if row else r.backend, {}).get("khata_remind") or {})
+
+
+def reminder_text(r: AppProject, name: str, amount: float) -> str:
+    return (f"Namaste {name.split()[0] if name else ''}, {r.name or 'hamari dukaan'} mein aapka udhaar Rs {amount:,.0f} baaki hai. "
+            "Suvidha se chuka dijiye. Dhanyavaad!").replace("  ", " ")
+
+
+def reminders(r: AppProject) -> dict[str, Any]:
+    """Her list: every customer who owes, the ready text, the wa.me link (her own phone), whether the business template may go."""
+    last = _last_reminded(r)
+    now_ = now()
+    out = []
+    for p in dues(r, W.Who(owner=True))["customers"]:
+        if p["balance"] <= 0:
+            continue
+        ph = _phone_of(r, p["member"])
+        text = reminder_text(r, p["name"], p["balance"])
+        when = last.get(p["member"], "")
+        try:
+            recent = bool(when) and (now_ - datetime_from(when)) < _td(days=REMIND_EVERY_DAYS)
+        except ValueError:
+            recent = False
+        out.append({"member": p["member"], "name": p["name"], "balance": p["balance"], "phone": ph, "text": text,
+                    "link": f"https://wa.me/91{ph}?text={_up.quote(text)}" if ph else "", "last": when, "recent": recent})
+    return {"customers": out, "every_days": REMIND_EVERY_DAYS,
+            "note": "Open in WhatsApp = you send it yourself. Business template = your approved UTILITY template, only by your tap."}
+
+
+def datetime_from(s: str):
+    from datetime import datetime as _dt, timezone
+    d = _dt.fromisoformat(s)
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
+async def send_reminder(r: AppProject, member: str, template: str, by_tap: bool) -> dict[str, Any]:
+    """Her tap: the reminder through her WhatsApp Business number with her approved UTILITY template."""
+    import json as _json
+    from sqlalchemy import select as _sel
+    from ..db import Template
+    from ..employee.models import BizContact
+    from ..whatsapp.client import WhatsAppError, get_whatsapp
+    from . import backend as BE
+    if not by_tap:
+        raise KhataError("Graahak ko business WhatsApp sirf aapke tap se jaata hai.", 403)
+    p = next((x for x in reminders(r)["customers"] if x["member"] == member), None)
+    if p is None:
+        raise KhataError("Is graahak par koi udhaar baaki nahi.", 404)
+    if not p["phone"]:
+        raise KhataError("Is graahak ka 10 ank ka mobile kisi order mein nahi mila.", 409)
+    if p["recent"]:
+        STATS["reminder_refused"] += 1
+        raise KhataError(f"{p['name']} ko pichhle {REMIND_EVERY_DAYS} din mein yaad dilaya ja chuka hai.", 409)
+    with session() as s:
+        bc = s.scalars(_sel(BizContact).where(BizContact.tenant_id == r.tenant_id, BizContact.wa_id == "91" + p["phone"])).first()
+        if bc is not None and bc.opted_out:
+            STATS["reminder_refused"] += 1
+            raise KhataError(f"{p['name']} ne aapke business number par STOP likha hai - yaad sirf apne phone se.", 409)
+        row = s.scalars(_sel(Template).where(Template.tenant_id == r.tenant_id, Template.name == template)).first()
+        if row is None or row.status != "APPROVED":
+            raise KhataError(f"Template '{template}' Meta se approved nahi. 'Templates' mein UTILITY template banwaiye "
+                             "(jaise: Namaste {{1}}, {{3}} mein aapka baaki Rs {{2}} hai...), ya 'WhatsApp mein kholo' se khud bhejiye.", 409)
+        if (row.category or "").upper() != "UTILITY":
+            raise KhataError("Udhaar ki yaad ke liye UTILITY template chahiye (marketing nahi).", 409)
+        lang = row.language
+    try:
+        wamid = await get_whatsapp().send_template("91" + p["phone"], template, lang,
+                                                   [p["name"].split()[0] or "ji", f"{p['balance']:,.0f}", r.name or "dukaan"])
+    except WhatsAppError as e:
+        raise KhataError(f"WhatsApp ne nahi liya: {e}", 502)
+    with session() as s:
+        row = s.get(AppProject, r.id)
+        be = BE._j(row.backend, {})
+        last = dict(be.get("khata_remind") or {})
+        last[member] = now().isoformat()
+        be["khata_remind"] = last
+        row.backend = _json.dumps(be, ensure_ascii=False)
+    STATS["reminders"] += 1
+    return {"ok": True, "member": member, "wa_msg_id": str(wamid or "")[:80], "say": f"{p['name']} ko yaad bhej di (aapke tap se)."}

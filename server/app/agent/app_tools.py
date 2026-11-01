@@ -371,7 +371,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             v["say"] = f"{v['name']} par baaki: Rs {v['balance']:g}."
             return v
         v = KH.dues(r, W.Who(owner=True))
-        v["say"] = f"Kul udhaar baaki: Rs {v['total_due']:g} ({sum(1 for p in v['customers'] if p['balance'] > 0)} customers)."
+        v["say"] = (f"Kul udhaar baaki: Rs {v['total_due']:g} ({sum(1 for p in v['customers'] if p['balance'] > 0)} customers). "
+                    "Yaad dilani ho to app ka data > Khata yaad mein har graahak ke liye 'WhatsApp mein kholo' (aap khud bhejein) "
+                    "ya approved template se aapke tap par.")            # v0.375 reminders go only by her own tap
         return v
     if action == "coupon":                    # v0.358 COUPON: her discount codes
         if not _owner(ctx):
