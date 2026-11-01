@@ -16,7 +16,7 @@ def web(env):
         yield c
 
 
-@pytest.mark.parametrize("path,slug", [("/", "home"), ("/employee", "employee"), ("/network", "network")])
+@pytest.mark.parametrize("path,slug", [("/", "home"), ("/employee", "employee"), ("/network", "network"), ("/studio", "studio")])
 def test_pages_have_console_and_strict_csp(web, path, slug):
     r = web.get(path)
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
@@ -70,7 +70,7 @@ def test_old_web_chat_moved_and_console_links_back(web):
 
 
 def test_site_scripts_are_plain_files():
-    for slug in ("home", "employee", "network"):
+    for slug in ("home", "employee", "network", "studio"):
         js = (SITE / f"{slug}.js").read_text()
         assert "eval(" not in js and "new Function" not in js
     assert (SITE / "vendor" / "gsap.min.js").read_text().startswith("/*!\n * GSAP 3.12.5")
