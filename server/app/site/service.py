@@ -2095,7 +2095,7 @@ def design_app(tenant: str, ref: str, words: str, conv: str = "") -> dict[str, A
         raise SiteError("App samajh nahi aayi; thoda aur bataiye (kaun login karega, kya bharega, kaun dekhega).")
     W.ensure_tables()
     _save(r.id, app=_jd(schema))
-    if getattr(_settings(), "site_app_link", True):      # v0.409 a new web app lands on the ONE backend straight away
+    if getattr(_settings(), "site_app_link", True):      # v0.413 a new web app lands on the ONE backend straight away
         AL.link(tenant, r.id)
     say = _tidy(raw.get("say"), 200) or "App bana di."
     if _sections(r) and r.status in ("ready", "failed", "stopped"):

@@ -851,7 +851,7 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_service.recover_stuck)
     except Exception:
         log.exception("site recover failed")
-    try:                                   # v0.409 old v0.305 website apps move onto App Sahayak's backend (same data)
+    try:                                   # v0.413 old v0.305 website apps move onto App Sahayak's backend (same data)
         from .site import applink as site_applink
         await asyncio.to_thread(site_applink.migrate_all)
     except Exception:

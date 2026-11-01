@@ -29,6 +29,31 @@ enum Words {
     static var sending: String { t("Sending…", "भेज रहे हैं…", "Bhej rahe hain…") }
     static var placeOrder: String { t("Place order", "ऑर्डर करें", "Order karein") }
     static var send: String { t("Send", "भेजें", "Bhejiye") }
+    static var shopOnline: String { t("Shop is online", "दुकान ऑनलाइन है", "Dukaan online hai") }    // v0.407 ABHI ABHI
+    static var isOnline: String { t("online", "ऑनलाइन", "online") }
+    static var isTyping: String { t("typing…", "लिख रहे हैं…", "likh rahe hain…") }
+    static var live: String { t("Live", "लाइव", "Live") }
+    // v0.412 NAKSHA LIVE
+    static var cont: String { t("Continue", "आगे बढ़ें", "Aage badhiye") }
+    static var later: String { t("Not now", "अभी नहीं", "Abhi nahi") }
+    static var startShift: String { t("Start shift", "शिफ़्ट शुरू करें", "Shift shuru karein") }
+    static var endShift: String { t("End shift", "शिफ़्ट ख़त्म करें", "Shift khatam karein") }
+    static var shareTitle: String { t("Share your location during the shift?", "शिफ़्ट में अपनी लोकेशन शेयर करें?", "Shift mein apni location share karein?") }
+    static var shareWhy: String { t("While your shift is on, this app sends your location to the shop - also in the background (iPhone shows the blue location pill). A customer sees you on a map only while you are bringing HER order. It stops the moment you tap End shift, and your location is then removed.", "जब तक शिफ़्ट चालू है, यह ऐप आपकी लोकेशन दुकान को भेजता है - पीछे चलते हुए भी (iPhone नीली लोकेशन पट्टी दिखाता है)। ग्राहक आपको नक्शे पर सिर्फ़ तब देखता है जब आप उसका ऑर्डर ला रहे हों। शिफ़्ट ख़त्म करते ही यह रुक जाता है और लोकेशन हटा दी जाती है।", "Jab tak shift chalu hai, yeh app aapki location dukaan ko bhejta hai - peeche chalte hue bhi (iPhone neeli location patti dikhata hai). Graahak aapko map par sirf tab dekhta hai jab aap uska order la rahe hon. End shift karte hi yeh ruk jaata hai aur location hata di jaati hai.") }
+    static var shiftOnNote: String { t("You are on shift. Your location is shared with the shop.", "आप शिफ़्ट पर हैं। आपकी लोकेशन दुकान के साथ शेयर हो रही है।", "Aap shift par hain. Aapki location dukaan ke saath share ho rahi hai.") }
+    static var shiftOffNote: String { t("Start your shift to share your location while you deliver.", "डिलीवरी के दौरान लोकेशन शेयर करने के लिए शिफ़्ट शुरू करें।", "Delivery ke dauraan location share karne ke liye shift shuru karein.") }
+    static var trackLive: String { t("Track live", "लाइव देखें", "Live dekhein") }
+    static var hideMap: String { t("Hide map", "नक्शा छिपाएँ", "Map chhupayein") }
+    static var rider: String { t("Rider", "राइडर", "Rider") }
+    static var yourPlace: String { t("Your place", "आपकी जगह", "Aapki jagah") }
+    static var onTheWay: String { t("on the way", "रास्ते में", "raaste mein") }
+    static var riderNear: String { t("The rider is near you", "राइडर आपके पास है", "Rider aapke paas hai") }
+    static var riderArrived: String { t("The rider has arrived", "राइडर पहुँच गया", "Rider pahunch gaya") }
+    static var notOnTheWay: String { t("Live tracking starts when the order is on its way.", "ऑर्डर रास्ते में होने पर लाइव ट्रैकिंग शुरू होगी।", "Order raaste mein hone par live tracking shuru hogi.") }
+    static var about: String { t("About", "लगभग", "Lagbhag") }
+    static var estimate: String { t("estimate", "अनुमान", "andaaza") }
+    static var ridersOnShift: String { t("Riders on shift", "शिफ़्ट पर राइडर", "Shift par riders") }
+    static var nobodyOnShift: String { t("Nobody is on shift right now.", "अभी कोई शिफ़्ट पर नहीं है।", "Abhi koi shift par nahi hai.") }
     static var add: String { t("Add", "जोड़ें", "Jodiye") }
     static var payUpi: String { t("Pay by UPI", "UPI से भुगतान", "UPI se pay karein") }
     static var iPaid: String { t("I have paid", "मैंने भुगतान कर दिया", "Maine pay kar diya") }

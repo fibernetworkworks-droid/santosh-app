@@ -290,6 +290,7 @@ import hoola.kit.ConsentScreen
 import hoola.kit.HoolaTheme
 import hoola.kit.Nav
 import hoola.kit.NotifyScreen
+import hoola.kit.Live
 import hoola.kit.SplashScreen
 import hoola.kit.Store
 import hoola.kit.Strings
@@ -347,6 +348,10 @@ class MainActivity : ComponentActivity() {{
             }}
         }}
     }}
+
+    // v0.407 ABHI ABHI: the live stream only while the app is on screen (push covers the background)
+    override fun onStart() {{ super.onStart(); Live.start() }}
+    override fun onStop() {{ Live.stop(); super.onStop() }}
 }}
 '''
 
@@ -357,12 +362,26 @@ def uses_location(spec: dict[str, Any]) -> bool:
                for f in c.get("fields") or [])
 
 
+def uses_tracking(spec: dict[str, Any]) -> bool:
+    """v0.412 NAKSHA LIVE: she turned live tracking on -> the rider's location service + its permissions are in the build."""
+    return bool((((spec.get("seed") or {}).get("backend") or {}).get("track") or {}).get("on"))
+
+
 def manifest_xml(spec: dict[str, Any]) -> str:
     push_service = ('        <service\n            android:name="hoola.kit.HoolaPush"\n            android:exported="false">\n'
                     '            <intent-filter>\n                <action android:name="com.google.firebase.MESSAGING_EVENT" />\n'
                     '            </intent-filter>\n        </service>\n') if fcm_config(spec) else ""   # v0.367 TURANT
     loc = ('    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
            '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n') if uses_location(spec) else ""
+    track = uses_tracking(spec)
+    if track:                                  # v0.412 the shift's location service (foreground, while-in-use; never background-location)
+        if not loc:
+            loc = ('    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
+                   '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n')
+        loc += ('    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n'
+                '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />\n')
+    track_service = ('        <service\n            android:name="hoola.kit.TrackService"\n            android:exported="false"\n'
+                     '            android:foregroundServiceType="location" />\n') if track else ""
     return '''<?xml version="1.0" encoding="utf-8"?>
 <!-- Made by Hoola App Sahayak. Only the permissions the design's features need; restricted ones are never added. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -391,7 +410,7 @@ def manifest_xml(spec: dict[str, Any]) -> str:
             android:name="hoola.kit.UpdatesJob"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
-''' + push_service + '''    </application>
+''' + push_service + track_service + '''    </application>
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />

@@ -194,7 +194,7 @@ def test_staff_dashboard_is_staff_only(app_site):
     assert c.get(f"{base}/stats").status_code == 401                             # a visitor
     assert c.get(f"{base}/stats", headers=ha).status_code == 403                  # a customer
     m = next(x for x in c.get(f"/api/sites/{sid}/app/members").json()["members"] if x["email"] == "asha@x.in")
-    c.post(f"/api/sites/{sid}/app/members/{m['id']}/role", json={"role": "staff"})   # v0.409: her owner route (linked site)
+    c.post(f"/api/sites/{sid}/app/members/{m['id']}/role", json={"role": "staff"})   # v0.413: her owner route (linked site)
     staff = {"Authorization": "Bearer " + c.post(f"{base}/login", json={"email": "asha@x.in", "password": "asha-pass-1"}).json()["token"]}
     st = c.get(f"{base}/stats", headers=staff).json()
     orders = next(x for x in st["lists"] if x["key"] == "orders")
@@ -226,5 +226,5 @@ def test_console_and_phone_show_it():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.409.0"
-    assert "0.409.0+453" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.413.0"
+    assert "0.413.0+457" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

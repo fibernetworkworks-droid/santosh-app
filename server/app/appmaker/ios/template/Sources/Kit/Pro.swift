@@ -743,6 +743,7 @@ struct SlotChange: View {
 /// The kit's chat screen ("hoola_chat"): a customer's thread with the shop; staff see every thread and reply.
 struct ChatScreen: View {
     @ObservedObject private var auth = Auth.shared
+    @ObservedObject private var live = Live.shared
     @State private var threads: [Item] = []
     @State private var open: Item? = nil
 
@@ -755,6 +756,7 @@ struct ChatScreen: View {
             ChatThread(member: t.s("member"), title: t.s("name"), onBack: { open = nil })
         } else {
             Page(Words.customerMessages) {
+                LiveDot()
                 if threads.isEmpty { Muted(Words.nothingYet) }
                 ForEach(threads, id: \.id) { t in
                     Button { open = t } label: {
@@ -765,11 +767,11 @@ struct ChatScreen: View {
                     }.buttonStyle(.plain)
                 }
             }
-            .task {
+            .task(id: live.chatTick) {                       // v0.407 ABHI ABHI: a new message reloads at once
                 while !Task.isCancelled {
                     let r = await Cloud.call("GET", "/chat?all=1", nil, token: auth.token)
                     if r.ok { threads = items(r.body["threads"]).map { x in var o = x.o; o["id"] = x.s("member"); return Item(o: o) } }
-                    try? await Task.sleep(nanoseconds: 10_000_000_000)
+                    try? await Task.sleep(nanoseconds: live.connected ? 60_000_000_000 : 10_000_000_000)
                 }
             }
         }
@@ -781,6 +783,7 @@ struct ChatThread: View {
     let title: String
     var onBack: (() -> Void)? = nil
     @ObservedObject private var auth = Auth.shared
+    @ObservedObject private var live = Live.shared
     @State private var msgs: [Item] = []
     @State private var text = ""
     @State private var error = ""
@@ -790,6 +793,7 @@ struct ChatThread: View {
     var body: some View {
         Page(title) {
             if let b = onBack { Button(Words.back) { b() }.buttonStyle(.bordered) }
+            LiveDot()
             if msgs.isEmpty { Muted(member.isEmpty ? Words.chatHint : Words.nothingYet) }
             ForEach(msgs.suffix(100), id: \.id) { m in
                 let mine = m.b("staff") == auth.isStaff
@@ -802,8 +806,9 @@ struct ChatThread: View {
                     if !mine { Spacer(minLength: 40) }
                 }
             }
+            TypingLine(thread: member)
             TextField(Words.typeMessage, text: $text, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
-                .onChange(of: text) { v in if v.count > 1000 { text = String(v.prefix(1000)) } }
+                .onChange(of: text) { v in if v.count > 1000 { text = String(v.prefix(1000)) }; if !v.isEmpty { live.typingNow(member) } }
             if !error.isEmpty { Muted(error) }
             MainButton(text: Words.send) {
                 let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -814,10 +819,10 @@ struct ChatThread: View {
                 }
             }
         }
-        .task(id: member) {
+        .task(id: "\(member)#\(live.chatTick)") {          // v0.407 a new message (live) loads at once
             while !Task.isCancelled {
                 await load()
-                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                try? await Task.sleep(nanoseconds: live.connected ? 60_000_000_000 : 10_000_000_000)
             }
         }
     }

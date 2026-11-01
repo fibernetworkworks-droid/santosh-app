@@ -27,7 +27,7 @@ const callCardKinds = {
   'ads_change', 'ads_report', // v0.111
   'brand_design', 'brand_idea', // v0.119
   'site_board', 'site_lead', // v0.121
-  'site_spec', // v0.409
+  'site_spec', // v0.413
   'app_board', // v0.128
   'app_android', // v0.132
   'site_launch', 'site_dns', 'site_live', 'site_down', 'site_domain', 'site_github', // v0.122 - v0.124

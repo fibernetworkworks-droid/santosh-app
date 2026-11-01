@@ -560,7 +560,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
         s.flush()
         s.expunge(r)
     L.learn(fid, "goal", [g])
-    if not quiet:                       # v0.409 a website's phone app plans quietly, then shows ITS card (site/applink.phone_app)
+    if not quiet:                       # v0.413 a website's phone app plans quietly, then shows ITS card (site/applink.phone_app)
         _emit(r, push=True)
     v = view(r)
     v["say"] = _say(v)

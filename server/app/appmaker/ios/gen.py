@@ -179,6 +179,7 @@ import SwiftUI
 @main
 struct HoolaApp: App {
     @UIApplicationDelegateAdaptor(HoolaAppDelegate.self) private var delegate     // v0.368 Apple hands the push token here
+    @Environment(\\.scenePhase) private var phase                                  // v0.407 ABHI ABHI: live only on screen
 
     init() {
         Cloud.base = AppTokens.baseUrl
@@ -210,6 +211,8 @@ struct HoolaApp: App {
                     if ProcessInfo.processInfo.arguments.contains("-hoola_e2e") { await E2e.run() }
                     #endif
                 }
+                .onChange(of: phase) { p in if p == .active { Live.shared.start() } else if p == .background { Live.shared.stop() } }
+                .onAppear { Live.shared.start() }
         }
     }
 
@@ -538,11 +541,20 @@ def _plist_str(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def uses_tracking(spec: dict[str, Any]) -> bool:
+    """v0.412 NAKSHA LIVE: she turned live tracking on -> location in the background during a shift (blue pill)."""
+    return bool((((spec.get("seed") or {}).get("backend") or {}).get("track") or {}).get("on"))
+
+
 def info_plist(spec: dict[str, Any]) -> str:
     app = spec.get("app") or {}
     name = _plist_str(str(app.get("name") or "App"))[:30]
     extra = ""
-    if uses_location(spec):
+    if uses_tracking(spec):                              # v0.412 the rider's shift (staff) + the customer's own place
+        extra += ("    <key>NSLocationWhenInUseUsageDescription</key>\n"
+                  "    <string>Staff on shift: your location is shared with the shop while your shift is on (customers see it only "
+                  "for their own order). Customers: your location is added only when you tap Use my location.</string>\n")
+    elif uses_location(spec):
         extra += ("    <key>NSLocationWhenInUseUsageDescription</key>\n"
                   "    <string>Your location is added to your order or request only when you tap Use my location.</string>\n")
     if uses_scan(spec):                                  # v0.340 the scanner's camera
@@ -551,6 +563,7 @@ def info_plist(spec: dict[str, Any]) -> str:
     if uses_photos(spec):
         extra += ("    <key>NSPhotoLibraryUsageDescription</key>\n"
                   "    <string>Pick a photo to send with your request. Only the photo you choose is used.</string>\n")
+    bg_extra = "\n        <string>location</string>" if uses_tracking(spec) else ""   # v0.412 the shift, with the blue pill
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -593,7 +606,7 @@ def info_plist(spec: dict[str, Any]) -> str:
     </array>
     <key>UIBackgroundModes</key>
     <array>
-        <string>fetch</string>
+        <string>fetch</string>{bg_extra}
     </array>
     <key>UILaunchScreen</key>
     <dict/>

@@ -198,7 +198,7 @@ def check(raw: Any, sch: dict[str, Any], run_tests: bool = True) -> dict[str, An
         od = r.get("on_delete") if r.get("on_delete") in ON_DELETE else "restrict"
         rel = {"name": name, "from": frm, "field": field, "to": to, "on_delete": od,
                "label": str(r.get("label") or ck.colls[frm].get("label") or frm)[:60]}
-        if r.get("share") is True:          # v0.409 a child row belongs to its parent row's person (a parent sees her child's marks)
+        if r.get("share") is True:          # v0.413 a child row belongs to its parent row's person (a parent sees her child's marks)
             rel["share"] = True
         ck.rel.append(rel)
         out["relations"].append(rel)

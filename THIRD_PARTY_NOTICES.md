@@ -127,3 +127,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## MapLibre GL JS 4.7.1 (v0.412 NAKSHA LIVE)
+
+Vendored unchanged at `server/app/static/vendor/maplibre/` (maplibre-gl.js, maplibre-gl.css). It draws the maps in the
+native apps' tracking screens (Android WebView) and the console's riders map. BSD-3-Clause, full text in
+`server/app/static/vendor/maplibre/LICENSE.txt`. Map tiles come from OpenFreeMap (https://openfreemap.org, free, no key);
+the map shows their attribution: © OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors (ODbL).

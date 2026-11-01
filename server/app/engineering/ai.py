@@ -107,9 +107,16 @@ Rules:
   H.joint('shoulder', parent='base', child='upper_arm', kind='revolute', origin=(x, y, z), axis=(0, 0, 1),
   limits=(-120, 120)) - origin = a point ON the axis in the assembly's own frame (mm), limits in degrees
   (prismatic: mm, kind='prismatic'; endless wheels: 'continuous'; welded-on parts: 'fixed'); effort (N·m / N) and
-  velocity (rad/s / m/s) when she gives them. Joints must make a TREE from one root part. H.robot(name='my_arm',
+  velocity (rad/s / m/s) when she gives them. Joints must make a TREE from one root part; a LINKAGE (four-bar,
+  scissor lift, parallel gripper, crank-slider) closes its loop with ONE extra joint marked closure=True at the
+  shared pin (its origin must be that pin in the model as drawn) and its input joint driver=True - Hoola solves
+  the loop, finds where it locks, classifies a four-bar (Grashof) and its transmission angle. GEARS / BELTS:
+  H.couple('gear2_spin', 'gear1_spin', teeth=(20, 40)) or ratio=... (belts +ratio). LOADS for motor sizing:
+  H.robot(payload={'part': 'gripper', 'kg': 0.5}, accel_deg_s2=180) - Hoola computes each joint's worst-case
+  torque (and checks her motor's effort). H.robot(name='my_arm',
   materials={'base': 'steel'}) when parts differ. Hoola sweeps every joint, finds collisions (they come back to you:
-  add clearance or reshape), and writes the URDF (ROS / MoveIt / Gazebo), a motion GIF and an exploded view.
+  add clearance or reshape), and writes URDF + SRDF (ROS / MoveIt), SDF (Gazebo), MJCF (MuJoCo), a motion GIF and an
+  exploded view.
 - HOW IT IS MADE (always when she names a process - 3D print / FDM / resin / SLS / MJF / metal print, CNC /
   milling / machining, sheet metal / laser + bend, injection moulding / mass production): H.make('fdm' | 'sla' |
   'sls' | 'mjf' | 'metal_pbf' | 'cnc' | 'sheet' | 'molding', material='aluminium', tool_d=6 (CNC: smallest end mill),

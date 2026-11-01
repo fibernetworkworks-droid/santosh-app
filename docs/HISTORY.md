@@ -15388,7 +15388,127 @@ Owner: "GO JOINTS AND URDF" (third item from the text-to-cad comparison; own cod
 - Tests: tests/test_v0406_mechanisms.py (5). Not yet: SDF / MJCF, closed-chain linkages, joint torque from loads,
   self-collision matrix (SRDF), gear / belt couplings between joints.
 
-## v0.409.0 EK DIMAAG 2 - web Step 2 finished (owner: "FINISH THIS ALL", after "IS STEP 2 DONE" listed six gaps)
+## v0.409.0 ABHI ABHI (App Sahayak Pillar C, Phase 49 — owner: "START PILLAR C")
+Real time for every native app, instead of the 10-second chat poll and pull-to-refresh lists.
+- Server `server/app/appmaker/live.py`: ONE Server-Sent-Events stream per open app.
+  - Routes: GET `/api/app-api/<key>/live` (Bearer token, Last-Event-ID), POST `/live/typing`, GET `/live/presence`;
+    her own view: GET `/api/apps/<ref>/live`, `/live/presence`, POST `/live/typing`.
+  - The feed is the v0.390 journal (every write, every path, written in the same transaction). One tailer thread per
+    worker process reads new journal ids every 0.35 s, only while someone is connected, so a write made by another
+    process arrives too, with no broker to install.
+  - A gap in journal ids (Postgres can commit 12 before 11) is asked for again for 5 s, so a late commit is still delivered.
+  - Every event is filtered by the list's own read rule (`W._can_read`, the same rule the list route uses). Only field
+    keys leave, never `_` keys. Internal lists are never sent. Chat goes only to that thread's customer and staff.
+  - Presence + typing: table `app_live_signal` (registered in db.init_db + ensure_table, pruned after 5 min), read by
+    the same tailer so they work across processes. An open stream is presence: refreshed every 20 s, expires after
+    45 s, tracked per connection, so a second phone closing does not mark her offline. Customers see staff only
+    (first name, short key); staff see everyone. Typing is scoped to one thread; a customer can only type in her own.
+  - Reconnect: each row / chat event carries `id: j<journal id>`. Last-Event-ID replays the missed events (up to 300;
+    more = one `reset`, and the phone reloads its lists). A stream that falls 400 events behind gets one `reset`, not a flood.
+  - Limits: sign-in needed; 3 streams per account; 500 per app and 3,000 per process (over = 429, and the app keeps its
+    normal refresh). Every 60 s the token is checked again (signed out elsewhere = `bye`). Each stream lives 10 min,
+    then the phone reconnects.
+- Kits:
+  - Android `Live.kt` (+ `Cloud.stream` in Backend.kt): started in MainActivity onStart, stopped in onStop.
+  - iPhone `Live.swift` (URLSession bytes): started and stopped on scenePhase.
+  - Both: `liveRows` / RowsSection reload a list when it changes (debounced 250 ms, server truth, the outbox unchanged).
+    The chat screens reload on a message and show `TypingLine` + `LiveDot`. Polling drops to 60 s while live.
+    New components: LiveDot, TypingLine, LiveValue (Android).
+  - The screen-writer prompts say never to poll.
+- Console: the app data page shows "Live · Online: …" and redraws itself on a change. If she is typing in a form on
+  that page, a "Show" button appears instead, so her input is never wiped.
+- Tests: tests/test_v0407_live.py (5): the route end to end with 3 listeners (read-rule filtering, chat, typing,
+  presence, owner view), replay + reset + colls filter, a late commit + presence expiry, limits + overflow, kits.
+  Added to app-load.yml (runs on Postgres).
+- Not verified: no real phone yet (CI compiles the kits); nginx must not buffer: the route sends `X-Accel-Buffering: no`.
+  WebSocket not built (SSE + one POST covers it).
+
+## v0.410.0 ECC ON (owner: "ECC CARDS DONE, CHECK RESULT")
+The two ECC Phase 1 cards ran on the live server (claude-opus-5-5) and decided the switches.
+- review_card (12 PRs x1, 3.2 min):
+  - old: 10/12 right, caught 8/8, quiet on 2/4 clean, 8 false alarms, 3 nits, verdicts 10/12, 4.2 steps;
+  - new: 10/12 right, caught 8/8, quiet on 2/4 clean, 4 false alarms, 0 nits, verdicts 11/12, 9.7 steps;
+  - same bugs caught, half the false alarms, no nitpicks, one more right verdict, about 2.3x the steps.
+- fix_card_spec: set 2 fix jobs 6/6 and set 3 fix jobs 6/6 with the fixer specialist (every fix test proves its bug), the
+  same as without it. No harm.
+- So `dev_spec_review` and `dev_spec_fix` are now True by default (config.py).
+- Still open: both modes leave ONE medium / high comment on clean_search_parameterised and on clean_invoice_checked. The
+  card kept only counts, so it is not yet known whether those comments are wrong or fair minor points (e.g. LIKE wildcard
+  characters, a phone number in the result). The card rows now keep what each false alarm SAID (`alarms`, printed under
+  each MISS), so the next run answers that.
+- One run, k=1: a single-run result; `--k 3` gives pass@k numbers.
+- Tests: the v0.377 review suite pins the old single pass (autouse fixture); test_v0402_ecc_specialists asserts the new
+  defaults and that the card restores whatever the switch was.
+
+## v0.411.0 HOOLA MECHANISMS 2 (1 Nov 2026)
+Owner, on the v0.408 "not done yet" list: "SDF/MJCF formats for other simulators, closed-loop linkages (four-bar),
+joint torque calculated from loads, gear/belt coupling between joints, and the MoveIt self-collision file (SRDF)
+--- fix and devlope". `engineering/kinematics.py` rewritten around a Mech class (independent joints -> couplings
+-> loop solve -> part motions).
+- LOOPS: a joint whose child already has a parent (or closure=True) closes a loop. The passive joints of each loop
+  are solved by scipy least squares on the closure joint (its point from both sides + its axis from both sides),
+  walked from the zero pose in steps so the linkage stays on its branch. No solution = it LOCKS there (dead point /
+  out of reach) - reported in the range rows. No driver marked -> the first joint at the ground drives (said).
+  Four-bar: link lengths, Grashof class (crank-rocker / double crank / double rocker / rocker-crank / change point /
+  triple rocker) and the minimum transmission angle over the motion (>= 40° wanted) - test linkage 20/70/50/80:
+  crank-rocker, 57.1° = the analytic cos(mu) formula, link lengths kept to 1e-3 mm; a non-Grashof one locks.
+- COUPLINGS: H.couple(follower, leader, ratio | teeth=(z_leader, z_follower), offset) -> follower = ratio x leader
+  everywhere; URDF <mimic>, SDF 1.11 <mimic> in <axis>, MJCF <equality><joint polycoef>.
+- TORQUE: holding torque / force of each independent joint = |dV/dq| of gravity + payload potential (loops solved
+  inside), worst over a pose grid (<= 3 joints: 7-9 per axis) or 250 random poses; + I_axis x alpha when
+  H.robot(accel_deg_s2=) (open chains). Matches the arm's beam statics to 1 % and MuJoCo's qfrc_bias to 0.1 %.
+  Effort = her number (checked; too weak -> one redesign round) else need x 1.5.
+- PACKAGE robot_urdf.zip: robot.urdf (tree, loops listed in a comment), robot.srdf (arm chain, end_effector group,
+  zero group_state, disable_collisions Adjacent / Default / Always / Never from 40 sampled poses, passive joints),
+  robot.sdf (world-fixed root, joint poses in the child frame, loops as joints), robot.xml (MJCF: nested bodies,
+  inertiafromgeom false, loops as <connect>, couplings as joint equality, a motor per independent joint) + meshes.
+  Checks: all four parse, URDF tree, physical inertias, limits, SRDF + SDF name real links, and MuJoCo compiles the
+  MJCF when installed (`pip install mujoco`, optional, Apache-2.0).
+- Sanity: every moving joint's pin (its axis line) must pass near both of its parts - a pin drawn in the wrong place
+  is named; fixed joints exempt. Prismatic motion fixed to mm (q in m x 1000).
+- Tests: tests/test_v0409_mechanisms2.py (7) + v0406 (5). Not yet: spatial (non-planar) loop analysis beyond
+  closure, cam / slot joints, dynamic simulation inside Hoola.
+
+## v0.412.0 NAKSHA LIVE (App Sahayak Pillar D, Phases 50-51 — owner: "START PILLAR D"; built as 0.410, re-versioned on rebase)
+Maps, a rider's location while on shift, and live tracking of one order.
+- Server `server/app/appmaker/track.py` + table `app_rider` (registered in db.init_db + ensure_table):
+  - Her switch: `backend.track = {on, coll, statuses}` (GET/PUT `/api/apps/<ref>/track`). The default list is the order list
+    with statuses Out for delivery / In progress / Confirmed; only real status options are accepted. `seed_hint` and the
+    public schema carry `track` only while it is on.
+  - Shifts: POST `/api/app-api/<key>/track/shift {on}`, staff only, and only after her switch (409 otherwise).
+    GET `/track/me`. A shift left on counts as ended after 14 h. Ending a shift wipes the position.
+  - Positions: POST `/track/pos {lat, lng, acc?, speed?, heading?}`, only during a shift. Values are checked, 0,0 is refused,
+    accuracy above 1 km is dropped, at most 1 point every 2 s. Only ONE current point is kept; no trail is stored.
+  - Each move: the rider's on-the-way rows (`_to` = rider, status in her list, updated in the last 3 days) get distance +
+    ETA. Geofences write `_near` (500 m) and `_arrived` (100 m) once each through `_merge`, so they are journaled and go
+    live. A LiveSignal kind `pos` (new nullable `data` column) carries the point + {row: {to: customer, km, eta}}.
+  - `live.pos_event`: staff / the owner get every rider (member id + order ids). A customer gets only the rows whose `to`
+    is her, with the rider shown as "rider" and a first name. `Hub.signal` routes `pos` apart from presence.
+  - GET `/track/c/<coll>/<id>`: her own row (or staff / owner). Returns tracking, why (off / not_on_the_way / no_rider /
+    no_position), rider {name, lat, lng, fresh}, km, eta_min, eta_note "estimate", near, arrived, dest.
+    ETA = haversine x 1.35 at the rider's speed (5-90 km/h), else 18 km/h.
+  - GET `/track/riders`: staff only.
+- Maps: MapLibre GL JS 4.7.1 vendored at `static/vendor/maplibre` (BSD-3, THIRD_PARTY_NOTICES) with OpenFreeMap tiles
+  (free, no key). The console CSP allows tiles.openfreemap.org.
+- Android `Track.kt`:
+  - TrackService: a foreground service of type location with an ongoing notification. LocationManager GPS + network,
+    15 m distance filter, every 5 s while moving and 30 s after 2 min standing. It stops on 401/403/409.
+  - Manifest: FOREGROUND_SERVICE(_LOCATION) + fine/coarse location, only when tracking is on. Never background location.
+  - ShiftBlock: the prominent notice, then the system dialog (+ notifications permission on 33+). It says "update the
+    app" when the build does not declare the service.
+  - LiveMap: a WebView loading the map library from her server (loadDataWithBaseURL).
+  - TrackOrderBlock, RidersMap, and a TrackButton on row cards.
+- iPhone `Track.swift`: CLLocationManager (when-in-use only; background updates + the blue pill when the build adds
+  UIBackgroundModes location), with the same blocks on Apple Maps. `info_plist` adds the location mode and the shift
+  wording only when tracking is on.
+- Store answers: Play data safety and App Privacy gain "Location (staff on shift)" when tracking is on.
+- Console: a Live tracking box (list + statuses + on/off) and a riders map that moves with the live stream's `pos`
+  events. Phone: `lib/ui/app_track.dart` (switch + riders list, open in Maps).
+- Tests: tests/test_v0412_track.py (3): the end-to-end flow, builds + store answers, kits + vendored files.
+- Not built / not verified: the Google Maps SDK with her key, road-snapped routes and real road ETA (they need a routing
+  service), a "left" geofence. No real phone or emulator run yet: CI compiles the kits.
+
+## v0.413.0 EK DIMAAG 2 - web Step 2 finished (owner: "FINISH THIS ALL", after "IS STEP 2 DONE" listed six gaps)
 
 The six gaps left after v0.407, each closed:
 1. **Old sites move by themselves.** `site/applink.migrate_all()` runs in the worker loop: every website that still has a
@@ -15397,7 +15517,7 @@ The six gaps left after v0.407, each closed:
    designed. Switch: `SITE_APP_LINK` (default true). The whole v0.305 web-app suite now passes on the linked path.
    Safety found on the way: `backend.ensure()` re-made a backend's lists from the app PLAN when `SCHEMA_V` moved - for a
    website that would have wiped her lists. A `kind: web` backend now only gets its version raised (`_web_upgrade`).
-2. **The full school portal from one line** (tests/test_v0409_ek_dimaag2.py): admission (parent) -> approval (teacher asks,
+2. **The full school portal from one line** (tests/test_v0413_ek_dimaag2.py): admission (parent) -> approval (teacher asks,
    principal approves, maker-checker refuses the asker) -> trigger makes the student (owned by the parent) -> trigger makes
    the fee (from the class's fee) -> fee Paid only by the principal and only with a receipt no. -> class page lists its
    admissions -> attendance once per student per day (unique) by the teacher -> report card total / percent / result worked
