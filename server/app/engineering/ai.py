@@ -126,7 +126,14 @@ Rules:
      LAMINAR CFD of the FLUID body: build `fluid` as its own solid (the channel / manifold bore / nozzle passage as
      a solid, or a box minus the part for flow around it); faces are selectors on that fluid body; fluid water | air |
      oil | diesel | glycerin; flow_lpm or velocity_mm_s. Turbulent flows (Re > 2000) are flagged not valid.
-  Up to 3 analyses; an assembly is analysed as one glued body (say so in NOTES).
+  ASSEMBLIES WITH CONTACT + BOLTS (an assembly whose strength matters, a bolted flange / bracket / joint, 'will
+  it open / slip / will the bolts hold'): add contact='friction' (or 'frictionless' / 'bonded'), friction=0.2 (steel
+  dry 0.15-0.2, painted 0.1, aluminium 0.3) and bolts=[{'m': 8, 'at': (x, y), 'axis': 'Z', 'grade': '8.8',
+  'preload_pct': 75, 'tapped': False}] to the static H.analyze - every part is meshed on its own, touching flat faces
+  become contacts that can open / slide, each bolt is a preloaded connector through its hole stack (the bolt / screw /
+  nut / washer solids are left out). Supports / loads are face selectors on the WHOLE assembly. A joint that
+  separates, a bolt over its proof load or a weak part comes back to you to fix. Up to 12 parts.
+  Up to 3 analyses; WITHOUT contact= an assembly is analysed as one glued body (say so in NOTES).
 - CNC (when she says CNC, milling, router, machining, G-code, toolpath): H.cam(tool_d=6, stepdown=1.5, stepover=0.45,
   feed=800, plunge=250, rpm=12000, tabs=3, ops=['face', 'pocket', 'drill', 'profile']) -> 3-axis 2.5D G-code (flat on
   the table, Z up); aluminium feed ~600-1000, steel ~200-400, wood / plastic ~1200-2000.

@@ -334,7 +334,8 @@ def _weak(ana: dict[str, Any]) -> list[str]:
     for st in ana.get("studies") or []:
         if not st.get("ok"):
             continue
-        if st.get("kind") == "static" and st.get("passes") is False:
+        if (st.get("kind") == "static" and st.get("passes") is False and st.get("min_sf")
+                and float(st.get("safety_factor") or 0) < float(st["min_sf"])):
             out.append(f"too weak under her load: safety factor {st['safety_factor']} but she needs {st['min_sf']} "
                        f"(peak von Mises {st['peak_vm_away_MPa']} MPa at {st['at_peak']} mm, yield {st['yield_MPa']} MPa): "
                        "make it stronger THERE (thicker section, a rib, a bigger fillet at the corner, shorter lever) "
@@ -348,6 +349,18 @@ def _weak(ana: dict[str, Any]) -> list[str]:
         if st.get("kind") == "flow" and st.get("passes") is False:
             out.append(f"flow: pressure drop {st['pressure_drop_Pa']:.4g} Pa is above her limit {st['max_dp_pa']:g} Pa: "
                        "widen / shorten the channel, round sharp bends; keep H.analyze unchanged")
+        if st.get("contacts") is not None:          # v0.386 a contact / bolted assembly
+            if st.get("separated"):
+                out.append("joint separates under her load (" + "; ".join(f"{c['between']} {c['open_pct']}% open"
+                           for c in st["contacts"]) + "): more or bigger bolts, more preload, a stiffer flange or a "
+                           "shorter lever; keep H.analyze unchanged")
+            if st.get("slipped"):
+                out.append("joint slips under her side load (friction x clamp force is too small): more / bigger bolts, "
+                           "more preload, dowel pins or a shoulder to carry the shear; keep H.analyze unchanged")
+            weak_b = [b for b in st.get("bolts") or [] if b["yield_sf"] < 1.0]
+            if weak_b:
+                out.append("bolt overloaded: " + "; ".join(f"{b['bolt']} carries {b['loaded_N']} N vs proof {b['proof_N']} N"
+                                                          for b in weak_b) + ": a bigger size / higher grade / more bolts")
         rz = st.get("resonance")
         if st.get("kind") == "modal" and rz and not rz.get("ok"):
             out.append(f"resonance: natural frequencies {rz['inside']} Hz fall inside the band {rz['band_hz']} Hz she "
@@ -570,7 +583,8 @@ def _ana_card(st: dict[str, Any]) -> dict[str, Any]:
                                    "safety_factor", "min_sf", "passes", "convergence", "equilibrium_error_pct",
                                    "t_max_C", "t_min_C", "frequencies_hz", "resonance", "mesh", "error", "glued_assembly",
                                    "fatigue", "pressure_drop_Pa", "reynolds", "regime", "valid", "max_speed_mm_s",
-                                   "mass_balance_pct", "flow_lpm", "fluid")
+                                   "mass_balance_pct", "flow_lpm", "fluid", "contact", "friction", "parts", "contacts",
+                                   "bolts", "separated", "slipped", "valid")
             if st.get(k) is not None}
     keep["lines"] = summary_rows(st)
     return keep
@@ -581,6 +595,10 @@ def _ana_lines(ana: dict[str, Any]) -> list[str]:
     for st in ana.get("studies") or []:
         if not st.get("ok"):
             out.append(f"{st.get('kind')} analysis nahi chala")
+        elif st["kind"] == "static" and st.get("contacts") is not None:
+            out.append(f"assembly safety factor {st['safety_factor']:g}"
+                       + "".join(f", {b['bolt'].split(' at ')[0]} {b['loaded_N']:,} N" for b in (st.get('bolts') or [])[:3])
+                       + (", joint khulta hai" if st.get("separated") else ""))
         elif st["kind"] == "static":
             out.append(f"safety factor {st['safety_factor']:g} (max jhukav {st['max_disp_mm']:.3g} mm)"
                        + (f", fatigue SF {st['fatigue']['fatigue_sf']:g}" if st.get("fatigue") else ""))
