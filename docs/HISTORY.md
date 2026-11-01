@@ -13003,3 +13003,61 @@ Owner: "Phase 3b (dashboards and charts)" (after Phase 3a DUKAAN, v0.351).
   total / line dots / hbar values, no-number table untouched), tooltip by mouse and keyboard, drawer only on pages that
   draw, her dashboard numbers vs a seeded period (spam, cancelled, unconfirmed sales excluded), owner-only, staff-only
   stats, console + phone wiring.
+
+## v0.358.0 ENTERPRISE SYSTEMS & ERP — her ten jobs as one suite
+Owner, after the deep research on her list of ten Product / Enterprise Systems & ERP jobs:
+*"BUILD ALL 10 AS ONE ENTERPRISE SUITE … GO END TO END"*.
+
+### The research finding that shaped the build
+Every one of these roles splits in two. **Running** the customer's live system is gated by whose credential it is
+and, for three jobs, by a statutory audit. **Doing the work** of the role — specs, field mappings, plans,
+registers, reconciliation, test plans — is not gated at all, and it is most of what these people actually do.
+
+So the suite does the second half for all ten, and the first half only where an **official route** exists and she
+connects her own system: Salesforce hosted MCP (GA 29 Apr 2026), SAP Integration Suite MCP Gateway, Windchill
+OData REST, NetSuite and ~1,600 apps through Composio.
+
+### Ten jobs, one engine
+`app/enterprise/{rules,models,service}.py`. The work has the same shape everywhere —
+
+> she connects her own system → Hoola reads → Hoola drafts the paper → **her tap** → Hoola does it → audit
+
+— so an eleventh job is a row in `rules.ROLES`, not a new file. They are still **ten separate tool pairs**
+(`<job>` + `<job>_dekho`, generated from that table) because the Employee gate maps one tool to one duty, and that
+is what lets her set trust **per job**: ERP work and banking work are not the same risk.
+
+| | |
+|---|---|
+| duties / role packs | `ent_<job>` × 10, added to `employee/roles.py` |
+| BIG (a live write always asks) | `erp`, `crm_arch`, `bpa`, `ecom_arch`, `plm` |
+| READ | all ten `<job>_dekho` |
+| API | `/api/enterprise`, `/api/enterprise/{role}` + settings / connect / paper |
+
+### Three jobs are capped on purpose, and say so in every result
+Not only in settings — on the work itself, so she is never quietly given less than she expected.
+
+- **health_int** — real patient data needs a **CERT-In empanelled audit** the business must pass.
+- **bank_int** — an AA / FIU needs an **RBI licence and a Sahamati-empanelled audit**. Hoola is neither and
+  touches no banking rail.
+- **regtech** — she files on her own portal; Hoola prepares, reminds and catches mistakes.
+
+**Teamcenter is read-only** until verified, because the sources contradict each other on outside-agent access.
+
+### Guards that hold whatever the model writes
+A key or token in any argument is refused before anything runs · account and ID numbers are masked out of every
+artifact and item · a job can only connect its own systems and only make its own kinds of paper · a paper written
+with no model still comes back as an honest skeleton with a `missing` list instead of an invention.
+
+The masking rule is worth recording: Aadhaar and an account number are both often 12 digits, so the **shape**
+decides — a grouped or named Aadhaar goes completely, a bare account number keeps its last four, because a paper
+that cannot say *which* account is useless to her.
+
+### Files
+`server/app/enterprise/` (rules, models, service) · `server/app/agent/enterprise_tools.py` ·
+`server/app/employee/roles.py` · `server/app/agent/tools.py` · `server/app/db.py` · `server/app/main.py` ·
+`server/tests/test_v0358_enterprise.py` (15 tests).
+
+### A merge lesson, recorded
+Resolving a stashed conflict by taking "mine" silently reverted another session's v0.311 test change, and the
+failure looked like my own bug for three rounds of digging. **On a conflicted test file, take main's copy and
+re-apply only the version pin** — and check a suspect failure on a pristine worktree before believing it.

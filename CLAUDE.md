@@ -286,6 +286,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
+- v0.358 ENTERPRISE SYSTEMS & ERP: her ten Product/Enterprise/ERP jobs as ONE suite. Research finding: each
+  role splits in two - RUNNING the live system is gated by whose credential it is (and for 3, a statutory
+  audit); doing the WORK (specs, mappings, registers, reconciliation) is not. One engine `app/enterprise/`
+  serves all ten (a new job = a row in rules.ROLES), but TEN tool pairs so the Employee gate gives trust per
+  job. erp/crm_arch/bpa/ecom_arch/plm are BIG (a live write always asks); health_int (CERT-In), bank_int
+  (RBI+Sahamati) and regtech (she files) are CAPPED and say so in EVERY result; Teamcenter read-only.
+  Guards in code: keys refused, account/Aadhaar masked, own systems + own paper kinds only.
 - CHECKPOINT 30 Oct: FULL CLAUDE MODE (v0.239-v0.250) owner-verified "PERFECT"; memory quiz 16/20 -> 20/20; branch
   `checkpoint-full-claude-mode-2026-10-30` = 87a2046 (grep "CHECKPOINT 30 Oct" docs/HISTORY.md).
 - v0.288 SIDEBAR FULLY VISIBLE: labels 12/400 faint --dim -> 13/500 --mut, chat titles 13.5/400 -> 14/450 ink, nav 14/400 -> 14/500

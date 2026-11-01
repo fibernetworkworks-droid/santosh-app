@@ -814,13 +814,16 @@ from .devops_tools import DEVOPS_HANDLERS, DEVOPS_LABELS, DEVOPS_TOOLS  # noqa: 
 from .docwriter_tools import DOCWRITER_HANDLERS, DOCWRITER_LABELS, DOCWRITER_TOOLS  # noqa: E402
 from .appreview_tools import APPREVIEW_HANDLERS, APPREVIEW_LABELS, APPREVIEW_TOOLS  # noqa: E402
 from .product_tools import PRODUCT_HANDLERS, PRODUCT_LABELS, PRODUCT_TOOLS  # noqa: E402
+from .enterprise_tools import ENTERPRISE_HANDLERS, ENTERPRISE_LABELS, ENTERPRISE_TOOLS  # noqa: E402
 
 for _t, _l, _h in ((DEV_TOOLS, DEV_LABELS, DEV_HANDLERS), (QA_TOOLS, QA_LABELS, QA_HANDLERS),
                    (ITADMIN_TOOLS, ITADMIN_LABELS, ITADMIN_HANDLERS), (NOC_TOOLS, NOC_LABELS, NOC_HANDLERS),
                    (CYBER_TOOLS, CYBER_LABELS, CYBER_HANDLERS), (DEVOPS_TOOLS, DEVOPS_LABELS, DEVOPS_HANDLERS),
                    (DOCWRITER_TOOLS, DOCWRITER_LABELS, DOCWRITER_HANDLERS),
                    (APPREVIEW_TOOLS, APPREVIEW_LABELS, APPREVIEW_HANDLERS),
-                   (PRODUCT_TOOLS, PRODUCT_LABELS, PRODUCT_HANDLERS)):
+                   (PRODUCT_TOOLS, PRODUCT_LABELS, PRODUCT_HANDLERS),
+                   # v0.358 Enterprise Systems & ERP: ten jobs, generated from enterprise/rules.ROLES
+                   (ENTERPRISE_TOOLS, ENTERPRISE_LABELS, ENTERPRISE_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)

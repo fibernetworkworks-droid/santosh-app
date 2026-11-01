@@ -830,6 +830,7 @@ def init_db(url: str | None = None):
     from .docwriter import models as _docwriter  # noqa: F401
     from .appreview import models as _appreview  # noqa: F401
     from .product import models as _product  # noqa: F401
+    from .enterprise import models as _enterprise  # noqa: F401
     # v0.139 Safar suite
     from .customs import models as _customs  # noqa: F401
     from .travel import models as _travel  # noqa: F401
