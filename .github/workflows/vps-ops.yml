@@ -19,6 +19,8 @@ on:
           - errors
           - voicecheck
           - mospi_check
+          - game_setup
+          - game_check
           - ack_refresh
           - deploy
           - rollback_stable
@@ -125,6 +127,15 @@ jobs:
                 echo 'echo "== free + swap now"; free -m; swapon --show' ;;
               voicecheck)
                 echo 'cd $CORE && timeout 600 .venv/bin/python -m app.voicecheck' ;;
+              game_setup)
+                # v0.370 Game Desk: Godot 4 headless + ONLY its Web export templates (HTTP range reads, ~40 MB), then the check
+                echo 'set -e'
+                echo 'cd $REPO && git fetch origin main && git checkout main && git reset --hard origin/main'
+                echo 'python3 $REPO/server/deploy/setup_godot.py --dir $HOME/apps/godot 2>&1 | tail -12'
+                echo 'echo "== HOOLA_CHROMIUM (playtest browser)"; grep -E "^HOOLA_CHROMIUM=" $CORE/.env | sed -E "s/=.*/=<set>/" || echo "not set: the Playwright Chromium is used"'
+                echo 'cd $CORE && timeout 300 .venv/bin/python -m app.gamedesk check 2>&1 | tail -40' ;;
+              game_check)
+                echo 'cd $CORE && timeout 300 .venv/bin/python -m app.gamedesk check 2>&1 | tail -40' ;;
               mospi_check)
                 # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
                 echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'

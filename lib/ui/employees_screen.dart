@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'cad_desk.dart';
+import 'game_desk_screen.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -94,7 +95,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         });
       }
       await _load();
-      if (action == 'hire' && (key == 'seo' || key == 'social' || key == 'cad') && mounted) _openDesk(key);
+      if (action == 'hire' && (key == 'seo' || key == 'social' || key == 'cad' || key == 'game_dev') && mounted) _openDesk(key);
     } catch (e) {
       if (mounted) _snack(context, '$e');
     }
@@ -106,7 +107,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           ? SocialDeskScreen(app: widget.app)
           : key == 'cad'
               ? CadDeskScreen(app: widget.app)
-              : SeoDeskScreen(app: widget.app)))
+              : key == 'game_dev'
+                  ? GameDeskScreen(app: widget.app)     // v0.370 Game Desk
+                  : SeoDeskScreen(app: widget.app)))
       .then((_) => _load());
 
   Widget _card(Map<String, dynamic> e) {

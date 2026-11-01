@@ -13392,3 +13392,38 @@ Built as 0.359 / 0.365 / 0.366, re-versioned past main's v0.364-v0.367. Module `
 - Desk view `pulse` (settings, trust, cap, auto today, waiting_ok, best_times, boosts); console Posting controls / Best
   times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
   social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0369_social_pulse.py` (12).
+
+## v0.370.0 GAME DESK Phase 1 + GAME DEVELOPER (1 Nov 2026)
+Owner: "NOW LETS WORK ON EMPLOYEE SECTION. Game Development, Simulation & Virtual Reality" (her list VII) -> plan
+`docs/GAME_DESK_PLAN.md` -> "GO PHASE 1 WITH GODOT 4". (Built as 0.359 / 0.364 / 0.368; re-versioned on rebase past the Engineering
+Desk / CAD 0.359, Code Card 0.360, ERP 0.361-0.363, CAD PRO 0.364, Blog / Hard Card / CRM 0.365-0.367, Social Media Manager Phase 3-4 0.368-0.369.)
+- Hire: `employee/hire.py` CATALOG `game_dev` (live, group "Game Development, Simulation & VR") + the other 9 roles
+  as Coming soon (xr_dev, netcode_dev, physics_dev, sim_dev, procgen_dev, vfx_td, audio_dev, twin_arch, haptics_dev).
+  The Hub's group headings came with the Engineering Desk (v0.359); the Game Desk joins them.
+- `app/gamedesk/`: template.py (project.godot, root scene = plain Node + main.gd, single-threaded Web export preset,
+  Hoola's autoload probe `hoola_probe.gd` -> window.__hoola {ready, fps, frames}), guard.py (no network classes,
+  OS.execute / shell / environment, JavaScriptBridge, Engine.get_singleton, DirAccess, ClassDB, Expression, files
+  outside user://, main.gd must extend Node), engine.py (Godot in a box like the 3D Studio: unshare -rn, tiny env, own
+  XDG dirs with a link to the templates, RLIMITs, nice, wall-clock kill; `smoke` = 600 frames headless to surface
+  parse + runtime script errors; `export_web` + .gz of wasm / pck / js), playtest.py (Chromium + SwiftShader WebGL:
+  waits for the probe, presses keys, taps, swipes, 3 screenshots, script errors, freeze and blank-screen checks; low
+  fps on the server is a warning, not a failure), ai.py (Opus: design doc <= 350 words, then code-only GDScript in
+  === file === blocks, fix from the REAL errors, change from her words), service.py (GameProject table; design ->
+  design_ready (her OK / her changes) -> writing -> building -> testing -> done; up to 4 fix rounds; a failed change
+  keeps the last good version; private token play link; screenshots; source zip; 1 job per user, GAME_DAY_BUILDS 15,
+  GAME_DAY_NEW 10; refuses clones of named games, real-money / betting, weapon targeting), api.py (/api/game*,
+  /play/<token>/<file>: CSP default-src 'self' + connect-src 'self' + frame-ancestors 'self', 'unsafe-eval' only for
+  the probe bridge, gzip when accepted, CORS for the console's sandboxed iframe, noindex), `python -m app.gamedesk check`.
+- Agent tool `game_desk` (new / approve / change / status / list / cancel), only while hired, owner-only writes;
+  router family `gamedesk` + a "game" intent; guide line scoped to the family.
+- Console: Game Desk page (`employees.js` game(): new game, design doc with Build it / Change the design, the game in a
+  sandboxed iframe, Open full screen, QR, numbers, screenshots, new version, Godot project download, live refresh);
+  phone `lib/ui/game_desk_screen.dart` (same, Play opens the browser).
+- Install: `server/deploy/setup_godot.py` = Godot 4.7.2 into ~/apps/godot + ONLY the Web templates read out of the
+  1.25 GB templates zip by HTTP range requests (~40 MB); vps-ops `game_setup` / `game_check`.
+- Measured in the sandbox: export 5.8-7.3 s, download 9.7 MB (gzip of ~40 MB), load 1.4-3.5 s, 41-61 fps on software
+  WebGL; a game played through /play/ under the CSP to score 27 and its game-over screen; a wrong identifier was caught
+  with its line before export.
+- Also fixed (again): test_v0312_arena_screen's compare versions (a blanket replace had made both the current version) back to
+  0.309.0 / 0.317.0; test_v0240's stamp pin now follows APP_VERSION (a typed number went stale twice). 
+- Tests: tests/test_v0370_game_desk.py (14, one builds + plays a real Godot game when GODOT_BIN is set).

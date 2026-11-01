@@ -142,7 +142,7 @@ chai wala bhaagta hai" starts the same flow.
 
 Each phase ships like every Hoola version: server + tests + console + phone + CI green + HISTORY section.
 
-**Phase 1 detail (first build after her GO):**
+**Phase 1 detail — BUILT in v0.370.0 (1 Nov 2026), Godot 4.7.2:**
 1. `gamedesk/` base: projects, builds, sandbox game pack, price card, caps, desk API (`/api/game/*`), self-check
    `python -m app.gamedesk check` (Godot + templates installed, sandbox has no network, a sample game builds and loads).
 2. Engine Programmer pack: brief → design doc (her OK) → Godot 4 project (GDScript; shaders where asked) → headless

@@ -15,6 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
+  const DESKS = {game_dev: 'gamedesk'};    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
   async function hub(el) {
@@ -47,14 +48,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   async function act(what, key) {
-    if (what === 'open') { location.hash = ''; document.querySelector(`[data-v="${key}desk"]`)?.click(); return; }   // seodesk / socialdesk
+    if (what === 'open') { location.hash = ''; document.querySelector(`[data-v="${DESKS[key] || key + 'desk'}"]`)?.click(); return; }   // seodesk / socialdesk / caddesk / gamedesk
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
       await api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined);
       toast(what === 'hire' ? 'Hired. Open the desk to set it up.' : what === 'leave' ? 'Let go. Its jobs have stopped.' : what === 'pause' ? 'Paused. No jobs run until you resume.' : 'Back at work.');
     } catch (e) { toast(e.message, true); }
     await hub(HUB);
-    if (what === 'hire') document.querySelector(`[data-v="${key}desk"]`)?.click();
+    if (what === 'hire') document.querySelector(`[data-v="${DESKS[key] || key + 'desk'}"]`)?.click();
   }
 
   // ------------------------------------------------------------ the SEO desk
@@ -595,5 +596,92 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       <div class="acts"><button class="btn soft em-leave" type="button" data-caddel="${esc(p.id)}">Delete</button></div></article>`;
   }
 
-  return {hub, desk, social, cad};
+  // ------------------------------------------------------------ v0.370 the Game Desk (Game Developer)
+  let GTIMER = null;
+  const GST = {designing: ['v', 'Writing the design'], design_ready: ['warn', 'Waiting for your OK'], queued: ['v', 'Queued'],
+               writing: ['v', 'Writing code'], building: ['v', 'Building'], testing: ['v', 'Playing it'], done: ['ok', 'Ready to play'],
+               failed: ['bad', 'Did not work'], cancelled: ['', 'Stopped']};
+  const BUSYG = ['designing', 'queued', 'writing', 'building', 'testing'];
+  async function game(el) {
+    clearTimeout(GTIMER);
+    if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
+    let d;
+    try { d = await api('GET', '/api/game'); }
+    catch (e) { el.innerHTML = `<div class="vh"><h2>Game Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const h = d.health || {};
+    el.innerHTML = `<div class="vh"><h2>Game Desk</h2><span class="muted em-sub">Original games from your words, built in Godot 4 and played by Hoola before you see them.</span>
+        ${h.ready ? tag('ok', 'Godot ' + (h.version || '')) : tag('bad', 'Godot not installed on the server')}</div>
+      <div class="tile gl gd-new"><h3>New game</h3>
+        <textarea id="gdBrief" rows="3" maxlength="2000" placeholder="Your idea in 2-3 lines: what the player does, how they win, who it is for" aria-label="Game idea"></textarea>
+        <div class="acts"><select id="gdOr" aria-label="Screen">${(d.orientations || ['portrait']).map(o => `<option value="${esc(o)}">${esc(o[0].toUpperCase() + o.slice(1))}</option>`).join('')}</select>
+          <button class="btn go" type="button" id="gdNew"${h.ready ? '' : ' disabled'}>Write the design</button></div>
+        <p class="muted em-small">A short design doc comes first; nothing is built until you say OK. The play link stays private until you share it.</p></div>
+      ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
+    el.querySelector('#gdNew')?.addEventListener('click', async e => {
+      const brief = el.querySelector('#gdBrief').value.trim();
+      if (brief.length < 8) { toast('Write your idea in 2-3 lines first.', true); return; }
+      e.target.disabled = true;
+      try { await api('POST', '/api/game', {brief, orientation: el.querySelector('#gdOr').value}); toast('Writing the design doc…'); }
+      catch (err) { toast(err.message, true); }
+      game(el);
+    });
+    el.querySelectorAll('[data-gd]').forEach(b => b.addEventListener('click', () => gact(el, b.dataset.gd, b.dataset.id, b)));
+    el.querySelectorAll('img[data-qr]').forEach(img => { try { const q = window.qrcode(0, 'M'); q.addData(img.dataset.qr); q.make(); img.src = q.createDataURL(4, 2); } catch { img.remove(); } });
+    if ((d.games || []).some(g => BUSYG.includes(g.status))) GTIMER = setTimeout(() => { if (visible(el)) game(el); }, 4000);
+  }
+
+  function gcard(g) {
+    const [c, n] = GST[g.status] || ['', g.status];
+    const busy = BUSYG.includes(g.status);
+    const nums = g.numbers || {};
+    const url = typeof g.play_url === 'string' && /^(https:\/\/|http:\/\/127\.0\.0\.1|\/play\/)/.test(g.play_url) ? g.play_url : '';
+    return `<article class="tile gl gd-card"><div class="em-h"><h3>${esc(g.number || '')} · ${esc(g.title || 'Game')}</h3>${tag(c, n)}</div>
+      ${busy ? `<div class="pbar"><i style="width:${Math.max(4, Math.min(100, g.pct || 0))}%"></i></div><p class="muted em-small">${esc(g.stage || '')}</p>` : ''}
+      ${g.error ? `<p class="badc em-small">${esc(g.error)}</p>` : ''}
+      ${g.status === 'design_ready' ? `<details class="gd-design" open><summary>Design doc</summary><div class="gd-doc">${esc(g.design || '')}</div></details>
+        <textarea rows="2" maxlength="1500" data-fb="${esc(g.id)}" placeholder="Want changes? Write them here, or just build it" aria-label="Design changes"></textarea>
+        <div class="acts"><button class="btn go" type="button" data-gd="build" data-id="${esc(g.id)}">Build it</button>
+          <button class="btn soft" type="button" data-gd="redesign" data-id="${esc(g.id)}">Change the design</button></div>` : ''}
+      ${url ? `<div class="gd-play"><iframe title="${esc(g.title || 'Game')}" src="${esc(url)}" sandbox="allow-scripts allow-pointer-lock" loading="lazy" class="gd-frame gd-${esc(g.orientation || 'portrait')}"></iframe>
+        <div class="gd-side"><a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Open full screen</a>
+          <img data-qr="${esc(url)}" alt="QR code to play on your phone" class="gd-qr"><p class="muted em-small">Scan to play on your phone. Private: only people with this link can play.</p>
+          <div class="gd-nums">${nums.fps_server ? `<span><b>${num(nums.fps_server)}</b> fps on the server</span>` : ''}${nums.load_s ? `<span><b>${num(nums.load_s)}</b> s to start</span>` : ''}${nums.download_mb ? `<span><b>${num(nums.download_mb)}</b> MB download</span>` : ''}</div>
+          ${g.notes ? `<p class="em-small">${esc(g.notes)}</p>` : ''}</div></div>
+        ${(g.shots || []).length ? `<div class="gd-shots">${g.shots.map(s => `<img src="${esc(s)}" alt="Screenshot from Hoola's playtest" loading="lazy">`).join('')}</div>` : ''}
+        <textarea rows="2" maxlength="1500" data-ch="${esc(g.id)}" placeholder="What should change? e.g. make it faster, add a shield power-up" aria-label="Change the game"></textarea>
+        <div class="acts"><button class="btn go" type="button" data-gd="change" data-id="${esc(g.id)}">Make a new version</button>
+          <button class="btn soft" type="button" data-gd="source" data-id="${esc(g.id)}">Download Godot project</button>
+          <button class="btn soft em-leave" type="button" data-gd="delete" data-id="${esc(g.id)}">Delete</button></div>` : ''}
+      ${busy ? `<div class="acts"><button class="btn soft" type="button" data-gd="cancel" data-id="${esc(g.id)}">Stop</button></div>` : ''}
+      ${!url && !busy && g.status !== 'design_ready' ? `<div class="acts"><button class="btn soft em-leave" type="button" data-gd="delete" data-id="${esc(g.id)}">Delete</button></div>` : ''}</article>`;
+  }
+
+  async function gact(el, what, id, btn) {
+    const q = encodeURIComponent(id);
+    try {
+      if (what === 'build') { btn.disabled = true; await api('POST', `/api/game/${q}/approve`, {}); toast('Building. Hoola plays it before it reaches you.'); }
+      if (what === 'redesign') {
+        const fb = el.querySelector(`[data-fb="${CSS.escape(id)}"]`)?.value.trim();
+        if (!fb) { toast('Write what should change in the design.', true); return; }
+        await api('POST', `/api/game/${q}/approve`, {feedback: fb}); toast('Rewriting the design…');
+      }
+      if (what === 'change') {
+        const w = el.querySelector(`[data-ch="${CSS.escape(id)}"]`)?.value.trim();
+        if (!w) { toast('Write what should change first.', true); return; }
+        await api('POST', `/api/game/${q}/change`, {words: w}); toast('Making a new version. The current one keeps working.');
+      }
+      if (what === 'cancel') await api('POST', `/api/game/${q}/cancel`, {});
+      if (what === 'delete') { if (!confirm('Delete this game and its play link?')) return; await api('DELETE', `/api/game/${q}`); }
+      if (what === 'source') {
+        const r = await api('GET', `/api/game/${q}/source`, undefined, {raw: true});
+        const blob = await r.blob(); const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = (r.headers.get('content-disposition') || '').split('filename=')[1]?.replace(/"/g, '') || 'game.zip';
+        document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        return;
+      }
+    } catch (e) { toast(e.message, true); }
+    game(el);
+  }
+
+  return {hub, desk, social, cad, game};
 };

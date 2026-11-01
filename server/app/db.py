@@ -896,6 +896,7 @@ def init_db(url: str | None = None):
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
+    from .gamedesk import service as _gamedesk  # noqa: F401  (v0.370 Game Desk)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
