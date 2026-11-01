@@ -1,4 +1,4 @@
-"""v0.401 Architecture Desk routes (Principal Software Architect): designs, approve / change, PR reviews against the
+"""v0.410 Architecture Desk routes (Principal Software Architect): designs, approve / change, PR reviews against the
 approved design (her tap posts), signed file links (diagram SVG / PNG, design PDF / Markdown)."""
 from __future__ import annotations
 

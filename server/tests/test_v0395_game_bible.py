@@ -203,11 +203,14 @@ def test_tool_api_and_routing(bb):
     assert "gameBible(" in (root / "lib/api.dart").read_text()
 
 
-def test_guard_refuses_class_name_helpers(env):
-    """Found in the real Godot run: a headless build has no class cache, so `class_name Helper` + Helper.new() is a
-    parse error every time. The guide now says preload, and the guard says it before a build is wasted."""
+def test_class_name_helpers_work_after_the_import_step(env):
+    """v0.395 banned class_name (a real run showed it 'not declared' headless). v0.406 found the root cause - no
+    class cache without an import - so smoke() imports first and class_name is allowed again; only Hoola's own
+    autoload names stay refused. (Rewritten from the v0.395 ban to the new truth, not deleted.)"""
     from app.gamedesk import ai, guard
-    bad = guard.problems({"main.gd": "extends Node\n", "h.gd": "class_name H\nextends RefCounted\n"})
-    assert bad and "preload" in bad[0]
-    assert not guard.problems({"main.gd": 'extends Node\nconst H = preload("res://h.gd")\n', "h.gd": "extends RefCounted\n"})
-    assert "NO\n  class_name" in ai.GUIDE and 'preload("res://foo.gd")' in ai.GUIDE
+    assert not guard.problems({"main.gd": "extends Node\n", "h.gd": "class_name H\nextends RefCounted\n"})
+    bad = guard.problems({"main.gd": "extends Node\n", "h.gd": "class_name HoolaBible\nextends RefCounted\n"})
+    assert bad and "Hoola's own name" in bad[0]
+    assert "`class_name Foo`" in ai.GUIDE and 'preload("res://foo.gd")' in ai.GUIDE
+    src = (Path(__file__).resolve().parents[1] / "app/gamedesk/engine.py").read_text()
+    assert '"--import"' in src and src.index('"--import"') < src.index('"--quit-after"')

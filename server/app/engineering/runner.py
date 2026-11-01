@@ -200,6 +200,25 @@ def main() -> None:
                 res.setdefault("notes", []).append(f"hlr {view}: {type(e).__name__}")
         (out / "hlr.json").write_text(json.dumps(hlr), encoding="utf-8")
         res["drawing"] = {**_parts.DRAWING, "fits": _parts.FITS[:20]}
+        if _parts.JOINTS:                                 # v0.406 a mechanism: motion check + URDF + motion frames
+            try:
+                import kinematics
+                if not parts:
+                    raise ValueError("joints need result = cq.Assembly with named parts")
+                res["kinematics"] = kinematics.run([(n_, s_) for n_, s_, _c in parts], _parts.JOINTS, _parts.ROBOT,
+                                                   job.get("material") or "aluminium", out)
+            except Exception as e:
+                res["kinematics"] = {"ok": False, "problems": [f"{type(e).__name__}: {str(e)[:300]}"]}
+        if _parts.MAKE:                                   # v0.403 measured design-for-manufacturing checks
+            try:
+                import dfm
+                import views2d
+                hl = [{"dia": h["dia"], "depth": h["depth"], "through": h["through"], "p3": h["entry"]}
+                      for h in views2d.hole_stacks(shape)]
+                res["dfm"] = dfm.check(shape, _parts.MAKE, hl, _parts.FLAT.get("sheet"))
+            except Exception as e:
+                res["dfm"] = {"process": _parts.MAKE.get("process"), "error": f"{type(e).__name__}: {str(e)[:200]}",
+                              "rows": [], "fails": 0, "reviews": 0}
         if not big:                                       # v0.395 real drawing: vector views + measured features
             try:
                 import views2d

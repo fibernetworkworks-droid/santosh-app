@@ -26,6 +26,12 @@ POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
 POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
 
+v0.406 Hoola Game Crew:
+GET    /api/gamestudio/crew            the 49 roles (tiers, builds / writes) + the 9 team flows
+POST   /api/gamestudio/{id}/plan       {words?, team?}  team = combat | narrative | ui | level | polish | audio | live_ops | qa | release
+POST   /api/gamestudio/{id}/task/{t}   {action: review}  the role's lead reviews it (screenshots + the code change)
+POST   /api/gamestudio/{id}/gate       {milestone?}  PASS / CONCERNS / FAIL / NOT ASSESSED (advice only)
+
 v0.395 Game Bible (specs as data):
 GET    /api/gamestudio/{id}/bible                   data + checks + templates + draft + history
 POST   /api/gamestudio/{id}/bible/entity            {kind, entity}   her add / edit (validated, applies at once)
@@ -73,7 +79,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.post("/api/game", dependencies=[Depends(require_key)])
     async def make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
-        from ..employee import hire   # v0.401 a game starts only while the Game Developer is hired (the tool checked, the route did not)
+        from ..employee import hire   # v0.410 a game starts only while the Game Developer is hired (the tool checked, the route did not)
         if not hire.is_working(tenant, "game_dev"):
             raise HTTPException(400, "Game Developer abhi hired nahi hai (ya paused hai). Employees mein 'Hire Game Developer' dabaiye.")
         b = _b(body)
@@ -122,6 +128,11 @@ def make_router(require_key, current_tenant) -> APIRouter:
                           str(b.get("goal") or ""), str(b.get("game") or ""), str(b.get("brief") or ""),
                           str(b.get("orientation") or "portrait"))
 
+    @r.get("/api/gamestudio/crew", dependencies=[Depends(require_key)])
+    async def st_crew():
+        from . import crew as C
+        return C.roster()
+
     @r.get("/api/gamestudio/{sid}", dependencies=[Depends(require_key)])
     async def st_one(sid: str, tenant: str = Depends(current_tenant)):
         return await call(S.get, tenant, sid)
@@ -139,12 +150,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
             pr = int(b.get("priority") or 2)
         except (TypeError, ValueError):
             pr = 2
+        crit = b.get("criteria") if isinstance(b.get("criteria"), list) else None
         return await call(S.add_task, tenant, sid, str(b.get("title") or ""), str(b.get("detail") or ""),
-                          str(b.get("milestone") or ""), str(b.get("kind") or "feature"), pr)
+                          str(b.get("milestone") or ""), str(b.get("kind") or "feature"), pr, "her",
+                          str(b.get("role") or ""), crit)
 
     @r.post("/api/gamestudio/{sid}/plan", dependencies=[Depends(require_key)])
     async def st_plan(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
-        return await call(S.plan, tenant, sid, str(_b(body).get("words") or ""))
+        return await call(S.plan, tenant, sid, str(_b(body).get("words") or ""), str(_b(body).get("team") or ""))
 
     @r.post("/api/gamestudio/{sid}/start", dependencies=[Depends(require_key)])
     async def st_start(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
@@ -160,6 +173,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return (await call(S.approve_task, tenant, sid, tid, note))["studio"]
         if a == "back":
             return await call(S.reject_task, tenant, sid, tid, note)
+        if a == "review":
+            await call(S.review_task, tenant, sid, tid)
+            return await call(S.get, tenant, sid)
         if a in ("drop", "todo"):
             await call(S.edit_task, tenant, sid, tid, status="dropped" if a == "drop" else "todo")
         elif a == "edit":
@@ -168,6 +184,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
         else:
             raise HTTPException(400, "action = ok | back | drop | todo | edit")
         return await call(S.get, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/gate", dependencies=[Depends(require_key)])
+    async def st_gate(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        return await call(S.gate, tenant, sid, str(_b(body).get("milestone") or ""))
 
     @r.post("/api/gamestudio/{sid}/decide", dependencies=[Depends(require_key)])
     async def st_decide(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):

@@ -1,4 +1,4 @@
-"""v0.401 SOFTWARE ARCHITECTURE DESK - the Principal Software Architect (hire key `architect`).
+"""v0.410 SOFTWARE ARCHITECTURE DESK - the Principal Software Architect (hire key `architect`).
 
 What a principal architect really hands over, made the way Hoola makes everything else:
   her brief (+ her GitHub repo read first, through the Developer Sahayak's own token - read only, nothing runs)

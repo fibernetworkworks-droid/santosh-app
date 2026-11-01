@@ -100,6 +100,10 @@ object Strings {
     val typeMessage get() = t("Type a message", "संदेश लिखें", "संदेश लिहा", "Message likhiye")
     val chatHint get() = t("Ask anything about your order or our products.", "अपने ऑर्डर या सामान के बारे में कुछ भी पूछें।", "तुमच्या ऑर्डर किंवा वस्तूंबद्दल काहीही विचारा.", "Apne order ya saamaan ke baare mein kuch bhi poochhiye.")
     val send get() = t("Send", "भेजें", "पाठवा", "Bhejiye")
+    val shopOnline get() = t("Shop is online", "दुकान ऑनलाइन है", "दुकान ऑनलाइन आहे", "Dukaan online hai")       // v0.407 ABHI ABHI
+    val isOnline get() = t("online", "ऑनलाइन", "ऑनलाइन", "online")
+    val isTyping get() = t("typing…", "लिख रहे हैं…", "लिहित आहेत…", "likh rahe hain…")
+    val live get() = t("Live", "लाइव", "लाइव्ह", "Live")
     val changeTime get() = t("Change time", "समय बदलें", "वेळ बदला", "Samay badlein")     // v0.377
     val cancelWord get() = t("Cancel", "रद्द", "रद्द", "Cancel")
     val pickSlot get() = t("Delivery time", "डिलीवरी का समय", "डिलिव्हरीची वेळ", "Delivery ka samay")   // v0.371 SLOT

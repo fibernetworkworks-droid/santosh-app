@@ -1,4 +1,4 @@
-/// v0.401 ARCHITECTURE DESK: the desk of a hired Principal Software Architect (Employees > Open desk).
+/// v0.410 ARCHITECTURE DESK: the desk of a hired Principal Software Architect (Employees > Open desk).
 /// She describes the system (+ her GitHub repo, optional, + users a day); Hoola writes the design on the server:
 /// decisions (ADRs), diagrams, capacity worked out in code, risks, a PDF. She approves or asks for the next version,
 /// and once approved her pull requests are checked against it (posted on the PR only by her tap). /api/arch/*.

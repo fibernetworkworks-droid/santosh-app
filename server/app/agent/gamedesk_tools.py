@@ -30,19 +30,20 @@ GAMEDESK_TOOLS = [
 
 GAMEDESK_TOOLS.append(
     {"name": "game_studio", "description": (
-        "Studio Project: her LONG game project (weeks / months) around one Game Desk game - task board, milestones "
-        "(proto, playable, alpha, beta, release), decisions log, nightly build, morning report. Each task = ONE small "
-        "change that Hoola builds and plays, then it WAITS for her OK. Actions: new (game = G-0001, or brief = a new "
-        "idea; title, goal) / list / status / add (title, detail, milestone, priority 1-3) / plan (words): Hoola proposes "
-        "the next small tasks into To do / start (task optional) / ok (task, note = her reason, saved as a decision) / "
-        "back (task, note): the version before plays again / drop (task) / decide (text, why) / why (q): answer ONLY from "
-        "what it returns, empty 'found' = say there is no record, never guess / summary / nightly: rebuild + replay now / "
-        "restore (n): an old version back as a new one / settings (auto, nightly_on, summary_on, summary_hour, status) / "
-        "github (repo, private): a card, only her tap sends it. id = S-0001 (optional when she has one project). Only "
-        "while the Game Developer is hired."),
+        "Studio Project: her LONG game project around one Game Desk game - task board, milestones, decisions log, "
+        "nightly build, morning report, and a CREW of 49 studio roles (each task has one: builders change the game, "
+        "writers write a result). Every task = ONE small change with acceptance criteria; it WAITS for her OK. Actions: "
+        "new (game = G-0001 or brief; title, goal) / list / status / add (title, detail, milestone, priority, role, "
+        "criteria) / plan (words) / team (team, words): that team's roles plan linked tasks / start (task) / ok (task, "
+        "note) / back (task, note): the version before plays again / drop / review (task): its lead checks screenshots + "
+        "code against the criteria / gate (milestone_key): PASS|CONCERNS|FAIL|NOT ASSESSED counted in code, advice only / "
+        "crew / decide (text, why) / why (q): answer ONLY from what it returns / summary / nightly / restore (n) / "
+        "settings / github (repo, private): a card for her tap. Quote only returned verdicts and numbers. id = S-0001 "
+        "(optional with one project). Only while the Game Developer is hired."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "list", "status", "add", "plan", "start", "ok", "back", "drop",
-                                               "decide", "why", "summary", "nightly", "restore", "settings", "github"]},
+                                               "decide", "why", "summary", "nightly", "restore", "settings", "github",
+                                               "crew", "team", "gate", "review"]},
          "id": {"type": "string", "description": "Studio project id or number (S-0001)"},
          "game": {"type": "string", "description": "action=new: an existing game (G-0001)"},
          "brief": {"type": "string", "description": "action=new without game: the new game's idea in her words"},
@@ -53,7 +54,10 @@ GAMEDESK_TOOLS.append(
          "priority": {"type": "integer"}, "note": {"type": "string"}, "words": {"type": "string"},
          "text": {"type": "string"}, "why": {"type": "string"}, "q": {"type": "string"}, "n": {"type": "integer"},
          "auto": {"type": "boolean"}, "nightly_on": {"type": "boolean"}, "summary_on": {"type": "boolean"},
-         "summary_hour": {"type": "integer"}, "repo": {"type": "string"}, "private": {"type": "boolean"}, "status": {"type": "string", "enum": ["active", "paused", "archived"]}},
+         "summary_hour": {"type": "integer"}, "repo": {"type": "string"}, "private": {"type": "boolean"},
+         "role": {"type": "string", "description": "action=add: a crew role key (optional; picked from the words)"},
+         "criteria": {"type": "array", "items": {"type": "string"}, "description": "action=add: how 'done' is checked"},
+         "team": {"type": "string"}, "milestone_key": {"type": "string"}, "status": {"type": "string", "enum": ["active", "paused", "archived"]}},
          "required": ["action"]}})
 
 GAMEDESK_TOOLS.append(
@@ -132,8 +136,9 @@ def _brief_studio(v: dict) -> dict:
     tasks = v.get("tasks") or (v.get("review", []) + v.get("next", []))
     show = [t for t in tasks if t.get("status") in ("working", "review", "blocked")] + \
            [t for t in tasks if t.get("status") == "todo"][:8]
-    out["tasks"] = [{k: t.get(k) for k in ("number", "title", "status", "milestone", "priority", "error", "notes", "version")
-                     if t.get(k) not in (None, "", 0)} for t in show[:16]]
+    out["tasks"] = [{**{k: t.get(k) for k in ("number", "title", "status", "milestone", "priority", "error", "version",
+                                              "role_name", "verdict") if t.get(k) not in (None, "", 0)},
+                     **({"notes": t["notes"][:600]} if t.get("notes") else {})} for t in show[:16]]
     if v.get("decisions"):
         out["decisions"] = [f"{d['text']} - {d['why']}" if d.get("why") else d["text"] for d in v["decisions"][:6]]
     return out
@@ -141,7 +146,8 @@ def _brief_studio(v: dict) -> dict:
 
 async def game_studio(ctx: Ctx, action="", id="", game="", brief="", orientation="portrait", title="", goal="", task="",
                       detail="", milestone="", priority=2, note="", words="", text="", why="", q="", n=0, auto=None,
-                      nightly_on=None, summary_on=None, summary_hour=None, status="", repo="", private=True, **_):
+                      nightly_on=None, summary_on=None, summary_hour=None, status="", repo="", private=True, role="",
+                      criteria=None, team="", milestone_key="", **_):
     from ..employee import hire
     from ..gamedesk import service as G
     from ..gamedesk import studio as S
@@ -157,6 +163,11 @@ async def game_studio(ctx: Ctx, action="", id="", game="", brief="", orientation
             return _brief_studio(await run(S.create, t, ctx.conversation_id, title, goal, game, brief, orientation, ctx.actor))
         if action == "list":
             return {"projects": [_brief_studio(v) for v in await run(S.studios, t)]}
+        if action == "crew":
+            from ..gamedesk import crew as CR
+            ro = CR.roster()
+            return {"count": ro["count"], "builds": ro["builds"], "note": ro["note"], "teams": [x["key"] for x in ro["teams"]],
+                    "tiers": {x["label"]: [f"{r['key']} ({r['mode']})" for r in x["roles"]] for x in ro["tiers"]}}
         if not id:
             mine = await run(S.studios, t)
             if len(mine) == 1:
@@ -166,12 +177,24 @@ async def game_studio(ctx: Ctx, action="", id="", game="", brief="", orientation
         if action == "status":
             return _brief_studio(await run(S.get, t, id))
         if action == "add":
-            return {"added": await run(S.add_task, t, id, title or words, detail, milestone, "feature", priority or 2),
+            crit = [{"text": c, "by": "screen"} for c in criteria] if isinstance(criteria, list) else None
+            return {"added": await run(S.add_task, t, id, title or words, detail, milestone, "feature", priority or 2, "her",
+                                       role, crit),
                     "note": "Added to To do. It builds when started (action=start) or by itself if the project is on auto."}
         if action == "plan":
             res = await run(S.plan, t, id, words)
             return {"made": [f"{x['number']} [{x['milestone']}] {x['title']}" for x in res["made"]],
                     "note": "Show her these in a short list; she can drop or change any. Nothing is built yet."}
+        if action == "team":
+            res = await run(S.plan, t, id, words, team)
+            return {"made": [f"{x['number']} [{x['role_name']}] {x['title']}" for x in res["made"]],
+                    "note": "Show her the team's tasks in a short list; nothing is built yet."}
+        if action == "review":
+            v = await run(S.review_task, t, id, task)
+            return {"task": v["number"], "verdict": v["verdict"], "review": v["review"],
+                    "criteria": [f"[{c['status']}] {c['text']}" for c in v["criteria"]]}
+        if action == "gate":
+            return await run(S.gate, t, id, milestone_key or milestone)
         if action == "start":
             return {"started": await run(S.start_task, t, id, task),
                     "note": "Building in the background; it will wait for her OK. Do not poll in a loop."}

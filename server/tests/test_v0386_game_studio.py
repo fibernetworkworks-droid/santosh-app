@@ -15,7 +15,7 @@ from tests.test_v0370_game_desk import GAME, gd  # noqa: F401  (the fixture)
 def st(gd, monkeypatch):  # noqa: F811
     from app.gamedesk import ai, studio
     plans = []
-    monkeypatch.setattr(ai, "plan_tasks", lambda design, goal, ms, tasks, decs, words="": (plans.append(
+    monkeypatch.setattr(ai, "plan_tasks", lambda design, goal, ms, tasks, decs, words="", roles=None: (plans.append(
         {"decs": decs, "words": words, "tasks": [t["title"] for t in tasks]}) or [
         {"title": "Add a nitro boost", "detail": "Tap twice = 2 s of 1.5x speed", "milestone": "proto", "kind": "feature", "priority": 1},
         {"title": "Add a night map", "detail": "", "milestone": "alpha", "kind": "content", "priority": "2"},

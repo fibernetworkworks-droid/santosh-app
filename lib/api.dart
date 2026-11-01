@@ -1029,6 +1029,9 @@ class Api {
           timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> gameBibleRemove(String id, String kind, String eid) async =>
       Map<String, dynamic>.from(await _send('DELETE', '/api/gamestudio/$id/bible/entity/$kind/$eid') as Map);
+  Future<Map<String, dynamic>> gameStudioGate(String id, String milestone) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/gate', body: {'milestone': milestone},
+          timeout: const Duration(seconds: 90)) as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk
@@ -1058,6 +1061,17 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/ugc/$id/$action', body: body ?? {}, timeout: const Duration(seconds: 90)) as Map);
   Future<Map<String, dynamic>> socialCreator(String username) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/creator/check', body: {'username': username}) as Map);
+  // v0.401 YouTube ads (Google Ads API): drafts stay in Hoola; create = paused in Google; start = her tap + confirm
+  Future<Map<String, dynamic>> socialYtAds() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/social/ytads', timeout: const Duration(seconds: 30)) as Map);
+  Future<String> socialYtAdsConnect() async => (await _send('GET', '/api/social/ytads/connect'))['url'] as String;
+  Future<Map<String, dynamic>> socialYtAdsAccount(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/account', body: {'customer_id': id}) as Map);
+  Future<Map<String, dynamic>> socialYtAdsNew(String videoId) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts', body: {'video_id': videoId}) as Map);
+  Future<Map<String, dynamic>> socialYtAdsAct(String id, String action, {bool confirm = false}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id/$action', body: {'confirm': confirm},
+          timeout: const Duration(seconds: 90)) as Map);
   // v0.369 posting controls: {paused} | {stop: true} | {quiet: [23, 7]}
   Future<Map<String, dynamic>> socialSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/settings', body: body) as Map);
@@ -1081,7 +1095,7 @@ class Api {
   Future<Map<String, dynamic>> engChange(String id, String words) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/eng/projects/$id/change', body: {'words': words}) as Map);
   Future<void> engDelete(String id) async => _send('DELETE', '/api/eng/projects/$id');
-  // ---- v0.401 Architecture Desk (Principal Software Architect) ----
+  // ---- v0.410 Architecture Desk (Principal Software Architect) ----
   Future<Map<String, dynamic>> archProjects() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/arch/projects', timeout: const Duration(seconds: 30)) as Map);
   Future<Map<String, dynamic>> archStart(String brief, {String repo = '', int? dau}) async =>

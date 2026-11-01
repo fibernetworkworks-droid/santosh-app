@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     dev_loop_minutes: int = 20              # ... and this many minutes
     dev_review_steps: int = 25              # v0.377 a PR review explores at most this many steps (read-only tools)
     dev_review_minutes: int = 10            # ... and this many minutes, then the one-shot review is the fallback
+    dev_spec_review: bool = False           # v0.402 ECC specialists in PR reviews (discipline + language + focused passes)
+    dev_spec_fix: bool = False              # v0.402 ECC fixer specialist in CI fix rounds (by the log's language)
+    dev_spec_focus_lines: int = 150         # a PR this big (added lines) gets every focused pass
+    dev_spec_focus_steps: int = 12          # steps for one focused pass
     dev_loop_model: str = ""                 # ... '' = site_model (Opus)
     dev_loop_effort: str = "high"           # ... Claude effort for coding
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
@@ -159,6 +163,10 @@ class Settings(BaseSettings):
     linkedin_client_id: str = ""            # v0.384 LinkedIn app (Sign In with LinkedIn + Share on LinkedIn), Newtika's one app
     linkedin_client_secret: str = ""
     linkedin_version: str = "202510"
+    google_ads_developer_token: str = ""   # v0.401 YouTube ads (plan Y2): Google Ads API Center token (test / Basic access)
+    google_ads_login_customer_id: str = ""  # optional manager (MCC) id when her ad account sits under Hoola's manager
+    google_ads_api_version: str = "v26"
+    gads_max_daily: int = 2000              # Hoola's ceiling on a YouTube ad's daily budget (her account currency)
     yt_daily_uploads: int = 90              # v0.392 Hoola-wide YouTube uploads a day (the API quota is the whole project's)        # LinkedIn-Version header (YYYYMM) for /rest/ calls
     social_ai: bool = True                  # the Social Media Manager asks Opus for its strategy + 30-day calendar (off = rules)
     studio_project_usd: float = 5.0        # starting budget of a new project
@@ -250,7 +258,7 @@ class Settings(BaseSettings):
     site_parallel_big: int = 8             # v0.315 sections written at the same time on a big site (v0.400: 5 -> 8)
     site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
-    site_journeys: bool = True             # v0.400 visitor journeys (menu / form / shop / blog / language) on every version
+    site_journeys: bool = True             # v0.402 visitor journeys (menu / form / shop / blog / language) on every version
     site_arena_max_inr: float = 3000       # v0.307 Design Arena: rupee ceiling of one run (each site ~Rs 100-300 with Opus)
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead

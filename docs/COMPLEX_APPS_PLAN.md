@@ -65,13 +65,17 @@ code path; per-app schemas are worth it only when an app outgrows the shared dat
 stampede (p50 ~3 s at 1,000 simultaneous orders: every order of one app queues on its lock).
 **v0.396.0 APNA DATABASE**: an app's data can now run in HER OWN database - Supabase, Neon, AWS, Google, Azure,
 DigitalOcean and every other PostgreSQL-wire host (28 listed): her schema, a real table per list, primary (every save
-lands there first, her edits there come back) or mirror (a live copy). MySQL / MongoDB / Firebase: not yet.
+lands there first, her edits there come back) or mirror (a live copy). v0.404.0 APNA DATABASE 2 added the MySQL family (PlanetScale, TiDB, MariaDB...), MongoDB (Atlas...) and Firebase (Firestore): 41 kinds.
 - Each app gets its own Postgres schema (or database for big apps): migrations generated from the data model, row-level
   security per role, real transactions (SELECT … FOR UPDATE) instead of one-process locks, indexes from the queries.
 - Backups (daily + before every migration), point-in-time restore, export, per-app usage meters and quotas.
 - Proof: load test (k6) — 1,000 concurrent customers ordering, no lost or double orders.
 
 ### C. Real time — Phase 49
+**Status: BUILT in v0.409.0 ABHI ABHI** (`server/app/appmaker/live.py`, kits `Live.kt` / `Live.swift`) — one SSE stream per open
+app fed by the journal (works across worker processes and on SQLite / Postgres), every event filtered by the list's read rule,
+instant chat, presence + typing, Last-Event-ID replay, her console app page live. Checkpoint (live dashboard + chat on her
+phone) = after the VPS deploy and the next app build. Not built: WebSocket (SSE + one POST covers it), live maps (Pillar D).
 - WebSocket / SSE channels per app: live lists, live order status, instant chat, presence ("rider online"), typing.
 - Kits: live list / live value components; offline outbox stays the source of truth.
 

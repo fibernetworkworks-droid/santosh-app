@@ -1,4 +1,4 @@
-"""v0.401 ARCHITECTURE DESK tool: `software_architect` = the Principal Software Architect employee (archdesk/service.py).
+"""v0.410 ARCHITECTURE DESK tool: `software_architect` = the Principal Software Architect employee (archdesk/service.py).
 Her system designed like a principal architect would: repo read first (read only), decisions (ADRs), diagrams, capacity
 worked out in code, risks, roadmap, a PDF - then PRs read against the APPROVED design (posting = her tap only).
 Only while the Architect is hired (Employees)."""

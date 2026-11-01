@@ -9,7 +9,7 @@
 'use strict';
 window.HoolaBuild = function (C) {
   const {api, esc, toast} = C;
-  const KINDS = new Set(['site_board', 'app_board', 'app_android']);
+  const KINDS = new Set(['site_board', 'app_board', 'app_android', 'site_spec']);   // v0.407 + the Architect's spec card
   const P = new Map();                 // 'site:<id>' | 'app:<id>' -> project
   let CUR = null;                      // key shown in the studio
   const studio = document.getElementById('studio'), appEl = document.getElementById('app'), sbtn = document.getElementById('studioBtn');
@@ -729,12 +729,62 @@ window.HoolaBuild = function (C) {
   /* ---------------- v0.305 web app: her lists, entries, members (her own login = admin) ---------------- */
   /* v0.314 ASLI APP: the native app's own backend - every list (orders, bookings, a staff app's tables) with its rows,
      the status changed in place, accounts with their role. New entries also reach her chat by themselves. */
+  /* v0.407 ABHI ABHI: her app data page is live - a new order / a status change / a chat shows without a reload, and who is
+     online right now. One stream per open page (closed when she leaves it); while she is typing in a form on the page the
+     update waits behind a "Show" button so nothing she is filling is wiped. */
+  async function liveApp(o, box) {
+    if (box._live) box._live.abort();
+    const ctl = new AbortController(); box._live = ctl;
+    const line = box.querySelector('.stlive');
+    const people = new Map();
+    let fresh = 0, timer = 0, gotEvent = false;
+    const draw = () => {
+      if (!line) return;
+      const names = [...people.values()];
+      line.hidden = false;
+      line.innerHTML = `<span class="stdot" aria-hidden="true"></span>Live${names.length ? ' · Online: ' + names.map(n => esc(n)).join(', ') : ''}${fresh ? ` · ${fresh} new change${fresh > 1 ? 's' : ''} <button class="ib" type="button" data-livego>Show</button>` : ''}`;
+      const b = line.querySelector('[data-livego]'); if (b) b.onclick = () => { ctl.abort(); loadAppData(o, box); };
+    };
+    const changed = () => {
+      fresh++; clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!box.isConnected) return ctl.abort();
+        if (box.contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return draw();
+        ctl.abort(); loadAppData(o, box);
+      }, 600);
+      draw();
+    };
+    try { for (const p of L((await api('GET', base(o) + '/live/presence')).online)) people.set(S(p.member), S(p.name)); } catch (er) { /* older server */ }
+    try {
+      const res = await api('GET', base(o) + '/live', undefined, {raw: true, signal: ctl.signal});
+      const rd = res.body.getReader(), dec = new TextDecoder(); let buf = '';
+      draw();
+      for (;;) {
+        const {value, done} = await rd.read(); if (done) break;
+        if (!box.isConnected) { ctl.abort(); break; }
+        buf += dec.decode(value, {stream: true});
+        let i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          const block = buf.slice(0, i); buf = buf.slice(i + 2);
+          const data = block.split('\n').filter(x => x.startsWith('data: ')).map(x => x.slice(6)).join('\n'); if (!data) continue;
+          let e; try { e = JSON.parse(data); } catch { continue; }
+          if (e.type === 'row' || e.type === 'chat') { gotEvent = true; changed(); }
+          else if (e.type === 'presence') { if (e.online) people.set(S(e.member), S(e.name)); else people.delete(S(e.member)); draw(); }
+          else if (e.type === 'reset') changed();
+        }
+      }
+      if (box.isConnected && !ctl.signal.aborted) setTimeout(() => { if (box.isConnected && box._live === ctl) liveApp(o, box); }, gotEvent ? 1000 : 3000);
+    } catch (er) {
+      if (!ctl.signal.aborted && box.isConnected && line) { line.hidden = true; setTimeout(() => { if (box.isConnected && box._live === ctl) liveApp(o, box); }, 30000); }
+    }
+  }
   async function loadAppData(o, box) {
     let info;
     try { info = await api('GET', base(o) + '/data'); } catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
     const cols = L(info.collections), counts = M(info.counts);
     box.innerHTML = `<p class="stnote">${info.live ? 'People using your app order / book here; every new entry also reaches your chat.' : 'Real orders and bookings appear here once the Android app is built.'}</p>
-      <p class="stnote">${N(counts.members)} accounts · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>`;
+      <p class="stnote">${N(counts.members)} accounts · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><p class="stlive" hidden></p><div class="stcols"></div><div class="stmem"></div>`;
+    if (info.live) liveApp(o, box);
     const cbox = box.querySelector('.stcols');
     let staff = [];                // v0.352 KAAM BAANTO: her staff accounts for "With" on every row
     try { staff = L((await api('GET', base(o) + '/members')).members).filter(m => ['staff', 'admin'].includes(S(m.role))); } catch (er) { /* none */ }
@@ -1014,18 +1064,19 @@ window.HoolaBuild = function (C) {
       const ln = M(v.link), live = v.linked;
       const conns = L(v.connections);
       obox.innerHTML = `<h4>Own database <span>${live ? esc(S(ln.name)) + ' · ' + esc(S(ln.mode)) + ' · ' + esc(S(ln.status)) : 'Hoola database'}</span></h4>
-        <p class="stnote">Run this app's data in your own database (Supabase, Neon, AWS, Google Cloud, Azure, DigitalOcean and ${L(v.providers).length - 6}+ more). Primary: every entry is saved there first, and what you edit there comes back into the app. Copy: a live read copy for reports.</p>
+        <p class="stnote">Run this app's data in your own database: PostgreSQL (Supabase, Neon, AWS, Google, Azure...), MySQL (PlanetScale, TiDB, MariaDB...), MongoDB (Atlas...) or Firebase - ${L(v.providers).length} kinds listed below. Primary: every entry is saved there first, and what you edit there comes back into the app. Copy: a live read copy for reports.</p>
         ${live ? `<ul class="stmems"><li><span>Where: ${esc(S(ln.label))} · schema <b>${esc(S(ln.schema))}</b></span></li>
           <li><span>Waiting to sync: ${N(v.lag)} · last sync ${esc(S(ln.last_sync || ln.live_at).slice(0, 16).replace('T', ' '))} UTC</span></li>
           ${ln.last_error ? `<li><span class="sterr">Last problem: ${esc(S(ln.last_error))}</span></li>` : ''}</ul>
           <div class="acts"><button class="btn soft" type="button" data-osync>Sync now</button><button class="btn soft" type="button" data-over>Compare counts</button><button class="btn soft" type="button" data-ooff>Disconnect</button></div><div data-oout></div>`
-        : `${conns.length ? `<form class="stapp" data-olink><div class="row"><label>Database <select name="conn">${conns.map(c => `<option value="${esc(S(c.id))}">${esc(S(c.name))} (${esc(S(c.label))})${c.can_write === false ? ' - read only' : ''}</option>`).join('')}</select></label>
+        : `${conns.length ? `<form class="stapp" data-olink><div class="row"><label>Database <select name="conn">${conns.map(c => `<option value="${esc(S(c.id))}">${esc(S(c.name))} · ${esc(S(c.kind || 'postgres'))} (${esc(S(c.label))})${c.can_write === false ? ' - read only' : ''}</option>`).join('')}</select></label>
             <label>Mode <select name="mode"><option value="primary">Primary - data lives there</option><option value="mirror">Copy - Hoola stays main</option></select></label></div>
             <div class="acts"><button class="btn go" type="submit">Move this app's data there</button></div></form>` : '<p class="stnote">No database connected yet. Add one below.</p>'}
-          <form class="stapp" data-oadd autocomplete="off"><p class="stnote">Add a database: paste its connection string (it is sealed on the server and never shown again; never paste it in chat).</p>
-            <div class="row"><input name="name" maxlength="60" placeholder="Name, e.g. Shop Supabase" aria-label="Name"></div>
-            <div class="row"><input name="dsn" type="password" autocomplete="off" placeholder="postgresql://user:password@host:5432/postgres" aria-label="Connection string"><button class="btn soft" type="submit">Connect</button></div></form>
-          <details><summary>Where to find the connection string (${L(v.providers).length} databases)</summary><ul class="stlines">${L(v.providers).map(p => `<li><b>${esc(S(p.name))}</b>: ${esc(S(p.how))}${p.note ? ' - ' + esc(S(p.note)) : ''}</li>`).join('')}</ul></details>`}`;
+          <form class="stapp" data-oadd autocomplete="off"><p class="stnote">Add a database: pick its type and paste its connection (sealed on the server, never shown again; never paste it in chat).</p>
+            <div class="row"><select name="kind" aria-label="Type"><option value="postgres">PostgreSQL (Supabase, Neon, RDS...)</option><option value="mysql">MySQL (PlanetScale, TiDB, MariaDB...)</option><option value="mongodb">MongoDB (Atlas...)</option><option value="firestore">Firebase (Firestore)</option></select>
+            <input name="name" maxlength="60" placeholder="Name, e.g. Shop database" aria-label="Name"></div>
+            <div class="row"><textarea name="dsn" rows="2" autocomplete="off" spellcheck="false" placeholder="postgresql://... | mysql://user:password@host:3306/db | mongodb+srv://user:password@cluster/db | the Firebase service-account JSON" aria-label="Connection"></textarea><button class="btn soft" type="submit">Connect</button></div></form>
+          <details><summary>Where to find the connection (${L(v.providers).length} databases)</summary><ul class="stlines">${L(v.providers).map(p => `<li><b>${esc(S(p.name))}</b> <span class="stnote">${esc(S(p.kind))}</span>: ${esc(S(p.how))}${p.note ? ' - ' + esc(S(p.note)) : ''}</li>`).join('')}</ul></details>`}`;
       const out = obox.querySelector('[data-oout]');
       const fl = obox.querySelector('[data-olink]');
       if (fl) fl.addEventListener('submit', async e => {
@@ -1039,7 +1090,7 @@ window.HoolaBuild = function (C) {
       const fa = obox.querySelector('[data-oadd]');
       if (fa) fa.addEventListener('submit', async e => {
         e.preventDefault();
-        try { const r = await api('POST', '/api/pgdb/conns', {name: fa.name.value.trim(), dsn: fa.dsn.value.trim()}); fa.dsn.value = ''; toast(S(r.say)); drawO(); }
+        try { const r = await api('POST', '/api/owndb/conns', {kind: fa.kind.value, name: fa.name.value.trim(), secret: fa.dsn.value.trim()}); fa.dsn.value = ''; toast(S(r.say)); drawO(); }
         catch (er) { fa.dsn.value = ''; toast(er.message, true); }
       });
       const bs = obox.querySelector('[data-osync]');
@@ -1446,7 +1497,7 @@ window.HoolaBuild = function (C) {
         <span>Logins, lists of data with rules, a My account page and a staff panel at /admin/. Say who logs in, what they fill and who sees it.</span></label>
         <div class="row"><input id="stApp" placeholder="e.g. customers log in and track their order; staff update the status"><button class="btn go" type="submit">${cols.length ? 'Update app' : 'Make app'}</button></div></form>
       <div class="acts"><button class="btn soft" type="button" data-x="react">Export as React project</button></div>`;
-    box.innerHTML = design + (cols.length ? `<p class="stnote">${N(counts.members)} members · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>` : '');
+    box.innerHTML = design + (info.linked ? `<section class="stlogic" aria-label="Logic"></section>` : '') + (cols.length ? `<p class="stnote">${N(counts.members)} members · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>` : '');
     box.querySelector('.stapp').addEventListener('submit', async e => {
       e.preventDefault(); const w = box.querySelector('#stApp').value.trim(); if (!w) return;
       const b = e.target.querySelector('button'); b.disabled = true;
@@ -1458,6 +1509,7 @@ window.HoolaBuild = function (C) {
       try { const r = await api('POST', base(o) + '/export', {format: 'react'}); toast(S(r?.say) || 'React project ready.'); if (r?.file_id) C.say && toast('The ZIP is in your files: ' + S(r.name)); }
       catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
     });
+    if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
       let rows = [];
@@ -1494,6 +1546,27 @@ window.HoolaBuild = function (C) {
         });
       } catch (er) { /* no members list */ }
     }
+  }
+
+  /* v0.407 EK DIMAAG: the linked app's logic - what runs now, the draft waiting for her tap, approvals waiting */
+  async function logicBox(o, el, link, reload) {
+    if (!el) return;
+    let v;
+    try { v = await api('GET', base(o) + '/logic'); } catch (er) { el.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const d = v.draft ? M(v.draft) : null;
+    el.innerHTML = `<h4>Logic <span>app ${esc(S(link.number))}${v.rev ? ' · rev ' + esc(S(v.rev)) : ''}</span></h4>`
+      + (L(v.summary).length ? L(v.summary).slice(0, 12).map(x => `<div class="bln faint">• ${esc(S(x))}</div>`).join('') : '<p class="stempty">No rules yet. Say what should happen in "Change the app" above.</p>')
+      + (d ? `<div class="stdraft"><b>Draft waiting for you</b>${L(d.lines).slice(0, 14).map(x => `<div class="bln">• ${esc(S(x))}</div>`).join('')}
+          ${L(d.errors).slice(0, 4).map(x => `<div class="badc bln">${esc(S(x))}</div>`).join('')}
+          ${L(d.errors).length ? '' : `<div class="acts"><button class="btn go" type="button" data-lg="apply">Apply this logic</button></div>`}</div>` : '')
+      + (L(v.approvals).length ? `<div class="bln"><b>${L(v.approvals).length} approval(s) waiting</b> - staff decide them at /admin/.</div>` : '');
+    const ap = el.querySelector('[data-lg=apply]');
+    if (ap) ap.addEventListener('click', async () => {
+      if (!confirm('Apply this logic to the live website and its app? Old entries are recalculated; nothing is deleted.')) return;
+      ap.disabled = true;
+      try { const r = await api('POST', base(o) + '/logic/apply', {hash: S(d.hash)}); toast(S(r?.say) || 'Applied.'); reload(); }
+      catch (er) { toast(er.message, true); ap.disabled = false; }
+    });
   }
 
   /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */
@@ -1598,13 +1671,40 @@ window.HoolaBuild = function (C) {
     if (o.done !== -1 && (done !== o.done || ver !== o.ver)) reloadFrames(o);
     o.done = done; o.ver = ver;
   }
+  /* ---------------- v0.407 HOOLA ARCHITECT: her one line -> the spec card, module by module -> her Haan builds ---------------- */
+  function specCard(p, el) {
+    const c = M(p), mods = L(c.modules), built = S(c.status) === 'built';
+    el.classList.add('bcard', 'stspec');
+    el.innerHTML = `<div class="hd"><span class="bic" aria-hidden="true">${IC_WEB}</span><b>${esc(S(c.name) || 'Website plan')} · ${esc(S(c.number))}</b><span class="tag ${built ? 'ok' : 'warn'}">${built ? 'Building ' + esc(S(c.site)) : 'Spec: needs your Haan'}</span></div>`
+      + (c.summary ? `<p class="bsay">${esc(S(c.summary))}</p>` : '')
+      + mods.map(m => `<fieldset class="stmod"><legend><label><input type="checkbox" data-mod="${esc(S(m.key))}"${m.required || built ? ' disabled' : ''} checked> <b>${esc(S(m.title))}</b>${m.ready === false ? ' <span class="badc">needs a fix</span>' : ''}</label></legend>
+          ${L(m.lines).slice(0, 14).map(x => `<div class="bln faint">• ${esc(S(x))}</div>`).join('')}</fieldset>`).join('')
+      + L(c.questions).map(q => `<div class="warnc bln">? ${esc(S(q))}</div>`).join('')
+      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change data / rules</button><button class="btn go" type="button" data-sp="ok">Haan, build it</button></div>`);
+    el.onclick = async e => {
+      const b = e.target.closest('[data-sp]'); if (!b) return;
+      const url = `/api/site-architect/${encodeURIComponent(S(c.id))}`;
+      if (b.dataset.sp === 'data') {
+        const w = prompt('What should change in the data or rules? (e.g. late fee after the 10th, class teacher approves leave)'); if (!w) return;
+        b.disabled = true;
+        try { const r = await api('POST', url + '/data', {words: w}); specCard(r, el); toast(S(r?.say) || 'Updated.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+        return;
+      }
+      const keep = [...el.querySelectorAll('[data-mod]')].filter(x => x.checked).map(x => x.dataset.mod);
+      if (!confirm(`Build ${S(c.name) || 'this website'} with: ${keep.join(', ')}?`)) return;
+      b.disabled = true;
+      try { const r = await api('POST', url + '/approve', {hash: S(c.hash), modules: keep, conversation_id: C.conv() || ''}); toast(S(r?.say) || 'Building.'); specCard({...c, status: 'built', site: r?.number}, el); }
+      catch (er) { toast(er.message, true); b.disabled = false; }
+    };
+  }
+
   setInterval(() => { const o = P.get(CUR); if (o && isOpen() && studio.dataset.k === o.k) { const age = studio.querySelector('.pvage'); if (age) age.textContent = 'taaza · ' + ago(o.loadedAt || Date.now()); } }, 5000);
   if (sbtn) sbtn.addEventListener('click', () => { if (isOpen()) return close(); const o = P.get(CUR) || [...P.values()].sort((a, b) => b.last - a.last)[0]; if (o) open(o.k); });
   addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen() && !document.querySelector('.blb')) close(); });
 
   return {
     kinds: KINDS,
-    card(kind, p, el, live) { card(kind, p, el, live); after(kind, p); },
+    card(kind, p, el, live) { if (kind === 'site_spec') return specCard(p, el); card(kind, p, el, live); after(kind, p); },
     reset, close, isOpen,
   };
 };

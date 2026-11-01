@@ -1,4 +1,4 @@
-"""v0.401 SOFTWARE ARCHITECTURE DESK - the Principal Software Architect employee: the Hub group (10 roles, 1 live),
+"""v0.410 SOFTWARE ARCHITECTURE DESK - the Principal Software Architect employee: the Hub group (10 roles, 1 live),
 the hire gate, a design from her brief + repo (read only), capacity worked out in CODE, diagrams drawn (one fix round),
 approve / next version, PRs read against the APPROVED design (draft until her tap posts ONE comment), the 24/7 PR
 watch, the agent tool, the routes, the console + phone wiring, and the Game route's hire check."""

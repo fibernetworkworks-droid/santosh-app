@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', architect: 'archdesk'};   // v0.401 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
+  const DESKS = {game_dev: 'gamedesk', architect: 'archdesk'};   // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
   async function hub(el) {
@@ -314,6 +314,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           ${(pl.boosts || []).length ? `<h3 class="sc-h">Worth a boost</h3>${pl.boosts.map(x => `<p class="em-small"><a href="${esc(x.permalink)}" target="_blank" rel="noopener">${esc(x.fmt)} · ${esc(x.date)}</a> <b>${esc(String(x.times))}x</b> your normal. <span class="muted">${esc(x.plan)}</span></p>`).join('')}` : ''}</div>
       </div>` : ''}
       ${accs.length ? growthTile(d.growth || {}) : ''}
+      ${accs.length ? '<div class="tile gl sc-ytads" id="scYtAds"><div class="em-h"><h3>YouTube ads</h3></div><div class="empty">Loading…</div></div>' : ''}
       ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
         <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
       <div class="grid2">
@@ -325,6 +326,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>`;
     wireSocial(el, d);
     wireGrowth(el);
+    if (accs.length) ytAds(el);
     if (accs.length) inbox(el);
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) social(el); }, 8000);
   }
@@ -424,6 +426,83 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <p class="muted em-small">${esc(r.note)}</p></div>`;
       } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
     });
+  }
+
+  // ------------------------------------------------------------ v0.401 YouTube ads (plan Y2): Google Ads API, her taps only
+  const YTS = {draft: ['warn', 'Draft'], checked: ['ok', 'Google checked'], created: ['v', 'In Google, paused'],
+               running: ['ok', 'Running'], paused: ['', 'Paused'], ended: ['', 'Finished'], failed: ['bad', 'Needs a fix']};
+  async function ytAds(el) {
+    const box = el.querySelector('#scYtAds'); if (!box) return;
+    let v;
+    try { v = await api('GET', '/api/social/ytads'); }
+    catch (e) { box.innerHTML = `<div class="em-h"><h3>YouTube ads</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const head = `<div class="em-h"><h3>YouTube ads</h3><span class="muted em-small">Your own Google Ads account. An ad is made paused; money is spent only after you tap Start.</span></div>`;
+    if (!v.configured) { box.innerHTML = head + '<div class="empty">Not set up on the server yet (Google sign-in).</div>'; return; }
+    const a = v.account;
+    if (!a) { box.innerHTML = head + '<button class="btn go" type="button" id="ytConn">Connect Google Ads</button>'; wireYt(el, box, v); return; }
+    const pick = !a.customer_id ? `<p class="em-small">Which ad account runs your YouTube ads?</p><div class="acts">${(a.customers || []).filter(c => !c.manager).map(c =>
+      `<button class="btn soft" type="button" data-ytcust="${esc(c.id)}">${esc(c.name || c.id)} (${esc(c.currency || '')})${c.test ? ' - test' : ''}</button>`).join('') || '<span class="muted">No ad account found in this Google login.</span>'}</div>` : '';
+    const card = d => { const [c, n] = YTS[d.status] || ['', d.status]; const ro = !['draft', 'checked', 'failed'].includes(d.status);
+      return `<div class="em-item sc-ytd" data-did="${esc(d.id)}"><div class="em-meta"><b>${esc(d.video_title || d.video_id || 'New ad')}</b>${tag(c, n)}
+          <span class="muted">${num(d.daily)} ${esc(a.currency || '')} a day x ${num(d.days)} days = ${num(d.total)}${d.stop_on ? ' · until ' + esc(d.stop_on) : ''}</span></div>
+        ${ro ? `<p class="em-small">${d.headlines.map(esc).join(' · ')}</p>` : `<div class="ar-form em-form sc-ytform">
+          <label><span>Video</span><select data-f="video_id">${(v.videos || []).map(x => `<option value="${esc(x.id)}"${x.id === d.video_id ? ' selected' : ''}>${esc(x.title || x.id)} (${num(x.views)} views)</option>`).join('')}<option value="${esc(d.video_id)}"${(v.videos || []).some(x => x.id === d.video_id) ? '' : ' selected'}>${esc(d.video_id || 'Choose')}</option></select></label>
+          <label><span>Headlines (one per line, up to 5, 40 letters each)</span><textarea data-f="headlines" rows="3">${esc(d.headlines.join('\n'))}</textarea></label>
+          <label><span>Long headline (90)</span><input data-f="long_headline" value="${esc(d.long_headline)}"></label>
+          <label><span>Descriptions (one per line, up to 5, 90 each)</span><textarea data-f="descriptions" rows="2">${esc(d.descriptions.join('\n'))}</textarea></label>
+          <label><span>Business name (25)</span><input data-f="business" value="${esc(d.business)}"></label>
+          <label><span>Where the ad leads (https://...)</span><input data-f="final_url" value="${esc(d.final_url)}"></label>
+          <label><span>Daily budget (${esc(a.currency || '')}, up to ${num(v.cap)})</span><input data-f="daily" type="number" min="1" max="${esc(String(v.cap))}" value="${esc(String(d.daily))}"></label>
+          <label><span>Days (1-30)</span><input data-f="days" type="number" min="1" max="30" value="${esc(String(d.days))}"></label>
+          <label class="btn soft sc-up">${d.logo_asset ? 'Change logo' : 'Add logo (square)'}<input type="file" accept="image/*" data-ytlogo="${esc(d.id)}" hidden></label></div>`}
+        ${(d.problems || []).length ? `<p class="em-small warnc">${d.problems.map(esc).join(' ')}</p>` : ''}${d.error ? `<p class="em-small badc">${esc(d.error)}</p>` : ''}
+        <div class="acts">${ro ? '' : `<button class="btn soft" type="button" data-ytsave="${esc(d.id)}">Save</button>
+          <button class="btn soft" type="button" data-ytact="check" data-id="${esc(d.id)}">Check with Google (free)</button>
+          <button class="btn go" type="button" data-ytact="create" data-id="${esc(d.id)}"${(d.problems || []).length ? ' disabled' : ''}>Create in Google (paused)</button>`}
+          ${['created', 'paused'].includes(d.status) ? `<button class="btn go" type="button" data-ytact="start" data-id="${esc(d.id)}" data-total="${esc(String(d.total))}">Start</button>` : ''}
+          ${d.status === 'running' ? `<button class="btn soft" type="button" data-ytact="pause" data-id="${esc(d.id)}">Pause</button>` : ''}</div></div>`; };
+    box.innerHTML = head + `<p class="muted em-small">Google account ${esc(a.email)}${a.customer_id ? ' · ad account ' + esc(a.customer_id) : ''}${a.error ? ' · ' + esc(a.error) : ''}</p>` + pick +
+      (a.customer_id ? `<div class="acts em-run"><button class="btn soft" type="button" id="ytRead">Read my YouTube ads</button>
+        <button class="btn soft" type="button" id="ytNew"${(v.videos || []).length ? '' : ' disabled title="Connect YouTube first"'}>New YouTube ad</button></div>
+        <div id="ytCamps"></div><div class="sc-items">${(v.drafts || []).map(card).join('')}</div>
+        <p class="muted em-small">Runs on YouTube only (in-stream, in-feed, Shorts) as a Demand Gen campaign, India, your languages. Older in-stream "Video" campaigns cannot be made through Google's API - make those in Google Ads.</p>` : '');
+    wireYt(el, box, v);
+  }
+
+  function wireYt(el, box, v) {
+    const go = async (fn, done) => { try { await fn(); if (done) toast(done); ytAds(el); } catch (e) { toast(e.message, true); } };
+    box.querySelector('#ytConn')?.addEventListener('click', async () => {
+      try { const r = await api('GET', '/api/social/ytads/connect'); window.open(r.url, '_blank', 'noopener'); toast('Sign in on Google, then come back here.'); }
+      catch (e) { toast(e.message, true); }
+    });
+    box.querySelectorAll('[data-ytcust]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/account', {customer_id: b.dataset.ytcust}), 'Ad account chosen.')));
+    box.querySelector('#ytNew')?.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/drafts', {video_id: (v.videos[0] || {}).id || ''}), 'Draft made - change anything, then Check with Google.'));
+    box.querySelector('#ytRead')?.addEventListener('click', async () => {
+      const out = box.querySelector('#ytCamps'); out.innerHTML = '<div class="empty">Reading…</div>';
+      try {
+        const r = await api('POST', '/api/social/ytads/read');
+        out.innerHTML = (r.campaigns || []).length ? `<table class="em-tbl"><thead><tr><th>Campaign</th><th>Status</th><th>Spent (${esc(r.currency || '')})</th><th>Views</th><th>Cost a view</th><th>Clicks</th><th>Results</th></tr></thead><tbody>${r.campaigns.map(c =>
+          `<tr><td>${esc(c.name)}</td><td>${esc(c.status)}</td><td>${num(c.spend)}</td><td>${num(c.views)}</td><td>${c.cpv == null ? '–' : num(c.cpv)}</td><td>${num(c.clicks)}</td><td>${num(c.conversions)}</td></tr>`).join('')}</tbody></table>
+          ${r.ads_desk ? `<p class="muted em-small">Ads desk: ${esc(r.ads_desk)}</p>` : ''}` : '<div class="empty">No YouTube campaigns in the last 30 days.</div>';
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    });
+    const body = card => { const o = {}; card.querySelectorAll('[data-f]').forEach(i => { const f = i.dataset.f;
+      o[f] = ['headlines', 'descriptions'].includes(f) ? i.value.split('\n').map(x => x.trim()).filter(Boolean) : (['daily', 'days'].includes(f) ? Number(i.value) : i.value); }); return o; };
+    box.querySelectorAll('[data-ytsave]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/social/ytads/drafts/${encodeURIComponent(b.dataset.ytsave)}`, body(b.closest('.sc-ytd'))), 'Saved.')));
+    box.querySelectorAll('[data-ytlogo]').forEach(inp => inp.addEventListener('change', async () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      const fd = new FormData(); fd.append('file', f);
+      go(async () => { const a = await api('POST', '/api/social/media', undefined, {form: fd});
+        await api('POST', `/api/social/ytads/drafts/${encodeURIComponent(inp.dataset.ytlogo)}`, {...body(inp.closest('.sc-ytd')), logo_asset: a.id}); }, 'Logo added.');
+    }));
+    box.querySelectorAll('[data-ytact]').forEach(b => b.addEventListener('click', async () => {
+      const act = b.dataset.ytact, id = encodeURIComponent(b.dataset.id);
+      if (act === 'create' && !confirm('Create this ad in your Google Ads account? It is made PAUSED - nothing is spent until you tap Start.')) return;
+      if (act === 'start' && !confirm(`Start this YouTube ad? Google can spend up to its daily budget every day, about ${b.dataset.total} in total. You can Pause any time.`)) return;
+      b.disabled = true;
+      go(() => api('POST', `/api/social/ytads/drafts/${id}/${act}`, act === 'start' ? {confirm: true} : {}),
+         {check: 'Google checked it - no problems.', create: 'Made in Google Ads, paused.', start: 'Started.', pause: 'Paused.'}[act]);
+    }));
   }
 
   // ------------------------------------------------------------ v0.368 the inbox (Phase 3)
@@ -630,7 +709,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
                   done: ['ok', 'Ready'], failed: ['bad', 'Failed']};
   const FILEN = [['part.step', 'STEP (CAD / CNC)'], ['part.stl', 'STL (3D print)'], ['part.3mf', '3MF (3D print)'], ['part.glb', 'GLB (3D viewer / AR)'],
                  ['section.dxf', 'DXF section (laser / CNC)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code'],
-                 ['analysis.pdf', 'Analysis report PDF'], ['part.nc', 'CNC G-code'], ['flat.dxf', 'Flat pattern DXF']];
+                 ['analysis.pdf', 'Analysis report PDF'], ['part.nc', 'CNC G-code'], ['flat.dxf', 'Flat pattern DXF'],
+                 ['robot_urdf.zip', 'Robot URDF (ROS)']];
   const b64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = no; r.readAsDataURL(f); });
   async function cad(el) {
     clearTimeout(CTIMER);
@@ -685,12 +765,15 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     // v0.365 analysis (FEA), CNC and sheet metal
     const ana = (v.analysis || []).map(a => `<div class="cad-ana"><b>${esc((a.lines || [])[0] || a.kind)}</b>${
       (a.lines || []).slice(1).map(l => `<div class="${l.startsWith('!') ? 'badc' : 'muted'}">${esc(l.replace(/^! /, ''))}</div>`).join('')}</div>`).join('');
-    const pics = ['fea_0', 'fea_1', 'fea_2', 'cam', 'flat'].filter(k => v.files[k + '.png'])
-      .map(k => `<a href="${esc(v.files[k + '.png'])}" target="_blank" rel="noopener"><img src="${esc(v.files[k + '.png'])}" alt="${esc(k)}" loading="lazy"></a>`).join('');
+    const pics = ['fea_0.png', 'fea_1.png', 'fea_2.png', 'cam.png', 'flat.png', 'motion.gif', 'explode.png'].filter(k => v.files[k])
+      .map(k => `<a href="${esc(v.files[k])}" target="_blank" rel="noopener"><img src="${esc(v.files[k])}" alt="${esc(k)}" loading="lazy"></a>`).join('');
     const cam = v.cam ? `<p class="muted">${v.cam.ok ? `CNC: ${esc((v.cam.ops || []).join(', '))} · tool Ø${num(v.cam.tool_d)} mm · about ${num(v.cam.minutes)} min · simulate before cutting`
       : `CNC G-code did not run: ${esc(v.cam.error || '')}`}</p>` : '';
     const sheet = v.sheet ? `<p class="muted">Sheet ${num(v.sheet.t)} mm · flat ${num(v.sheet.length)} x ${num(v.sheet.width)} mm · R ${num(v.sheet.r)} · K ${num(v.sheet.k)}</p>` : '';
-    return `${bits.length ? `<p class="muted">${bits.join('<br>')}</p>` : ''}${ana}${cam}${sheet}${pics ? `<div class="cad-views">${pics}</div>` : ''}${bom}${plan}`;
+    // v0.403 measured manufacturability (DFM) rows
+    const dfm = v.dfm && (v.dfm.rows || []).length ? `<div class="cad-ana"><b>Manufacturability (${esc(v.dfm.process)}): ${num(v.dfm.fails)} fail, ${num(v.dfm.reviews)} to review</b>${
+      v.dfm.rows.map(r => `<div class="${r.status === 'fail' ? 'badc' : 'muted'}">${esc({pass: '✓', fail: '✗', review: '!', unverified: '?'}[r.status] || '')} ${esc(r.check)}: ${esc(r.measured)} (limit ${esc(r.limit)})${r.fix && r.status !== 'pass' ? ' - ' + esc(r.fix) : ''}</div>`).join('')}</div>` : '';
+    return `${bits.length ? `<p class="muted">${bits.join('<br>')}</p>` : ''}${ana}${dfm}${cam}${sheet}${pics ? `<div class="cad-views">${pics}</div>` : ''}${bom}${plan}`;
   }
   function cadCard(p) {
     const st = CSTATE[p.status] || ['', p.status], v = p.latest;
@@ -761,9 +844,20 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
 
   // ---------------------------------------------------------------- v0.386 Studio Project (long game projects)
   const GS_COLS = [['todo', 'To do'], ['working', 'Hoola working'], ['review', 'Waiting for your OK'], ['blocked', 'Stuck'], ['done', 'Done']];
-  function gsBars(ms) {
+  function gsBars(ms, gates) {
+    const last = {}; (gates || []).forEach(g => { if (!last[g.milestone]) last[g.milestone] = g; });
+    const VC = {PASS: 'ok', CONCERNS: 'warn', FAIL: 'bad', 'NOT ASSESSED': ''};
     return `<div class="gs-ms">${(ms || []).map(m => `<div class="gs-m"><div class="gs-mh"><b>${esc(m.name)}</b><span class="muted">${num(m.done)}/${num(m.total)}${m.target ? ' · ' + esc(m.target) : ''}</span></div>
-      <div class="pbar"><i style="width:${Math.max(0, Math.min(100, m.pct || 0))}%"></i></div></div>`).join('')}</div>`;
+      <div class="pbar"><i style="width:${Math.max(0, Math.min(100, m.pct || 0))}%"></i></div>
+      ${gates ? `<div class="gs-gate">${last[m.key] ? tag(VC[last[m.key].verdict] || '', last[m.key].verdict) : ''}<button class="btn soft gs-mini" type="button" data-gs-gate="${esc(m.key)}">Gate check</button></div>` : ''}</div>`).join('')}</div>`;
+  }
+  let GS_CREW = null;
+  let GS_CREW_OPEN = false;
+  function gsCrew(p) {
+    if (!GS_CREW) return '<p class="muted em-small">Loading the crew…</p>';
+    const busy = new Set((p.crew || {}).busy || []);
+    return `<p class="muted em-small">${esc(GS_CREW.note)}</p>${GS_CREW.tiers.map(t => `<h4>${esc(t.label)}</h4><div class="gs-roster">${t.roles.map(r =>
+      `<div class="gs-rcard${busy.has(r.key) ? ' gs-busy' : ''}"><b>${esc(r.name)}</b><span class="gs-role${r.mode === 'writes' ? ' gs-writes' : ''}">${r.mode === 'writes' ? 'writes' : 'builds'}</span><p>${esc(r.does)}</p></div>`).join('')}</div>`).join('')}`;
   }
   function gsHome(projects, games) {
     const free = games.filter(g => g.version > 0 && !projects.some(p => p.game && p.game.id === g.id));
@@ -780,12 +874,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   function gsTask(t, p) {
     const ms = (p.milestones || []).find(m => m.key === t.milestone);
     const b = (a, label, cls = 'soft') => `<button class="btn ${cls}" type="button" data-gst="${a}" data-id="${esc(t.number)}">${label}</button>`;
+    const VC = {'COMPLETE': 'ok', 'COMPLETE WITH NOTES': 'warn', 'BLOCKED': 'bad', 'NOT ASSESSED': ''};
+    const IC = {covered: '✓', failed: '✕', untested: '○'};
+    const rv = t.review || {};
+    const writes = t.role_mode === 'writes';
     return `<div class="gs-task gs-p${num(t.priority)}"><div class="gs-th"><b>${esc(t.number)}</b> ${esc(t.title)}</div>
-      <div class="gs-meta">${esc(ms ? ms.name : t.milestone)} · ${esc(t.kind)}${t.source !== 'her' ? ' · by Hoola' : ''}${t.version ? ' · v' + num(t.version) : ''}</div>
-      ${t.detail ? `<div class="gs-detail">${esc(t.detail)}</div>` : ''}${t.notes && t.status === 'review' ? `<div class="gs-detail">${esc(t.notes)}</div>` : ''}
+      <div class="gs-meta"><span class="gs-role${writes ? ' gs-writes' : ''}" title="${writes ? 'Writes a result for your OK' : 'Changes the game'}">${esc(t.role_name || '')}</span>
+        ${esc(ms ? ms.name : t.milestone)}${t.source !== 'her' ? ' · by Hoola' : ''}${t.version ? ' · v' + num(t.version) : ''}</div>
+      ${t.detail ? `<div class="gs-detail">${esc(t.detail)}</div>` : ''}
+      ${t.notes && t.status === 'review' ? (writes ? `<details class="gs-writeup" open><summary>${esc(t.role_name)}'s result</summary><pre>${esc(t.notes)}</pre></details>` : `<div class="gs-detail">${esc(t.notes)}</div>`) : ''}
       ${t.error ? `<div class="badc em-small">${esc(t.error)}</div>` : ''}
-      <div class="acts">${t.status === 'todo' ? b('start', 'Build now', 'go') + b('drop', 'Drop') : ''}
-        ${t.status === 'review' ? b('ok', 'OK', 'go') + b('back', 'Send back') : ''}
+      ${(t.criteria || []).length ? `<ul class="gs-crit">${t.criteria.map(c => `<li class="gs-c-${esc(c.status)}" title="${esc(c.by === 'her' ? 'Only you can judge this' : c.by === 'test' ? "Hoola's automatic play run" : 'Seen in a screenshot')}"><span>${IC[c.status] || '○'}</span>${esc(c.text)}${(c.evidence || {}).why ? ` <span class="muted">- ${esc(c.evidence.why)}</span>` : ''}</li>`).join('')}</ul>
+        ${['review', 'done'].includes(t.status) ? `<div class="gs-verdict">${tag(VC[t.verdict] || '', t.verdict)}${t.evidence_old ? ' ' + tag('warn', 'Evidence older than the code') : ''}</div>` : ''}` : ''}
+      ${rv.by ? `<div class="gs-review"><b>${esc(rv.by_name || 'Lead')}</b> (saw ${num(rv.shots_seen)} screenshot${rv.shots_seen === 1 ? '' : 's'}): ${esc(rv.summary || '')}${(rv.findings || []).length ? `<ul>${rv.findings.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}</div>` : ''}
+      <div class="acts">${t.status === 'todo' ? b('start', writes ? 'Write it now' : 'Build now', 'go') + b('drop', 'Drop') : ''}
+        ${t.status === 'review' ? b('ok', 'OK', 'go') + b('back', 'Send back') + (!writes ? b('review', rv.by ? 'Review again' : 'Ask ' + (t.reviewer || 'the lead').replace(/_/g, ' ') + ' to review') : '') : ''}
         ${t.status === 'blocked' ? b('start', 'Try again', 'go') + b('drop', 'Drop') : ''}
         ${t.status === 'done' ? b('back', 'Undo') : ''}</div></div>`;
   }
@@ -915,9 +1018,19 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}
         <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
-      ${gsBars(p.milestones)}
+      ${gsBars(p.milestones, p.gates || [])}
+      ${(p.gates || [])[0] ? (() => { const gt = p.gates[0]; return `<div class="tile gl gs-gatecard"><b>Gate check · ${esc(gt.name)}: ${esc(gt.verdict)}</b>
+        ${[...gt.blockers.map(x => ['bad', x]), ...gt.concerns.map(x => ['warn', x]), ...gt.missing.map(x => ['', x])].map(([c, x]) => `<div class="em-small">${tag(c, c === 'bad' ? 'Blocker' : c === 'warn' ? 'Concern' : 'Missing')} ${esc(x)}</div>`).join('')}
+        ${Object.entries(gt.views || {}).map(([k, v]) => `<p class="em-small"><b>${esc(k.replace(/_/g, ' '))}:</b> ${esc(v)}</p>`).join('')}
+        <p class="muted em-small">${esc(gt.note)}</p></div>`; })() : ''}
+      <details class="tile gl gs-crewbox" id="gsCrewBox"${GS_CREW_OPEN ? ' open' : ''}><summary>Crew: ${num((p.crew || {}).count || 49)} studio roles · ${num(((p.crew || {}).busy || []).length)} on open tasks</summary>
+        <div class="acts gs-team"><select id="gsTeam" aria-label="Team">${((p.crew || {}).teams || []).map(t => `<option value="${esc(t.key)}">${esc(t.name)}</option>`).join('')}</select>
+          <input id="gsTeamW" maxlength="400" placeholder="What the team should make, e.g. a boss fight on the rooftops" aria-label="Team brief">
+          <button class="btn soft" type="button" id="gsTeamGo">Let the team plan it</button></div>
+        <div id="gsCrewList">${gsCrew(p)}</div></details>
       <div class="tile gl gs-add"><input id="gsT" maxlength="200" placeholder="New task, one small change: e.g. add a nitro boost (double tap)" aria-label="New task">
         <select id="gsM" aria-label="Milestone">${(p.milestones || []).map(m => `<option value="${esc(m.key)}"${m.key === p.milestone ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</select>
+        <select id="gsR" aria-label="Role"><option value="">Role: picked from the words</option>${(GS_CREW ? GS_CREW.tiers.flatMap(t => t.roles) : []).map(r => `<option value="${esc(r.key)}">${esc(r.name)}${r.mode === 'writes' ? ' (writes)' : ''}</option>`).join('')}</select>
         <select id="gsP" aria-label="Priority"><option value="2">Normal</option><option value="1">High</option><option value="3">Low</option></select>
         <button class="btn go" type="button" id="gsAdd">Add task</button>
         <button class="btn soft" type="button" id="gsPlan">Let Hoola plan the next tasks</button></div>
@@ -952,13 +1065,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }
-      go(() => api('POST', `/api/gamestudio/${q}/tasks`, {title, milestone: el.querySelector('#gsM').value, priority: el.querySelector('#gsP').value}), 'Added to To do.');
+      go(() => api('POST', `/api/gamestudio/${q}/tasks`, {title, milestone: el.querySelector('#gsM').value, priority: el.querySelector('#gsP').value, role: el.querySelector('#gsR').value}), 'Added to To do.');
     });
+    if (!GS_CREW) api('GET', '/api/gamestudio/crew').then(c => { GS_CREW = c; const box = el.querySelector('#gsCrewList'); if (box) box.innerHTML = gsCrew(p);
+      const sel = el.querySelector('#gsR'); if (sel) sel.insertAdjacentHTML('beforeend', c.tiers.flatMap(t => t.roles).map(r => `<option value="${esc(r.key)}">${esc(r.name)}${r.mode === 'writes' ? ' (writes)' : ''}</option>`).join('')); }).catch(() => {});
+    el.querySelector('#gsCrewBox').addEventListener('toggle', e => { GS_CREW_OPEN = e.target.open; });
+    el.querySelector('#gsTeamGo').addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'The team is planning…';
+      go(() => api('POST', `/api/gamestudio/${q}/plan`, {team: el.querySelector('#gsTeam').value, words: el.querySelector('#gsTeamW').value.trim()}), 'The team added its tasks to To do.'); });
+    el.querySelectorAll('[data-gs-gate]').forEach(b => b.addEventListener('click', () => { b.disabled = true; b.textContent = 'Checking…';
+      go(() => api('POST', `/api/gamestudio/${q}/gate`, {milestone: b.dataset.gsGate})); }));
     el.querySelector('#gsPlan').addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Planning…';
       go(() => api('POST', `/api/gamestudio/${q}/plan`, {words: el.querySelector('#gsT').value.trim()}), 'Hoola added the next tasks to To do. Drop any you do not want.'); });
     el.querySelectorAll('[data-gst]').forEach(b => b.addEventListener('click', () => {
       const a = b.dataset.gst, t = encodeURIComponent(b.dataset.id);
-      if (a === 'start') return go(() => api('POST', `/api/gamestudio/${q}/start`, {task: b.dataset.id}), 'Building. It will wait for your OK.');
+      if (a === 'start') return go(() => api('POST', `/api/gamestudio/${q}/start`, {task: b.dataset.id}), 'Started. It will wait for your OK.');
+      if (a === 'review') { b.disabled = true; b.textContent = 'Reviewing…'; return go(() => api('POST', `/api/gamestudio/${q}/task/${t}`, {action: 'review'}), 'The lead has reviewed it.'); }
       let note = '';
       if (a === 'back') { note = prompt('What was wrong? (Hoola tries again with this)') ?? null; if (note === null) return; }
       if (a === 'ok') { note = prompt('Anything to remember about this? (optional, saved as a decision)') || ''; }
@@ -1042,7 +1163,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     game(el);
   }
 
-  // ------------------------------------------------------------ v0.401 the Architecture Desk (Principal Software Architect)
+  // ------------------------------------------------------------ v0.410 the Architecture Desk (Principal Software Architect)
   let ATIMER = null, AOPEN = '';
   const AST = {reading: ['v', 'Reading the repo'], designing: ['v', 'Writing the design'], drawing: ['v', 'Drawing diagrams'],
                waiting_her: ['warn', 'Waiting for your OK'], approved: ['ok', 'Approved'], failed: ['bad', 'Did not work'],

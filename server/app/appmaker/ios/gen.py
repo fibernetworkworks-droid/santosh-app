@@ -179,6 +179,7 @@ import SwiftUI
 @main
 struct HoolaApp: App {
     @UIApplicationDelegateAdaptor(HoolaAppDelegate.self) private var delegate     // v0.368 Apple hands the push token here
+    @Environment(\\.scenePhase) private var phase                                  // v0.407 ABHI ABHI: live only on screen
 
     init() {
         Cloud.base = AppTokens.baseUrl
@@ -210,6 +211,8 @@ struct HoolaApp: App {
                     if ProcessInfo.processInfo.arguments.contains("-hoola_e2e") { await E2e.run() }
                     #endif
                 }
+                .onChange(of: phase) { p in if p == .active { Live.shared.start() } else if p == .background { Live.shared.stop() } }
+                .onAppear { Live.shared.start() }
         }
     }
 

@@ -18,6 +18,7 @@ her tap on the usual card (gamedesk/github.py)."""
 from __future__ import annotations
 
 import logging
+import os
 import re
 import threading
 import time
@@ -28,6 +29,7 @@ from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now, session
+from . import crew as C
 from . import service as G
 
 log = logging.getLogger("santosh.gamedesk")
@@ -65,6 +67,7 @@ class GameStudio(Base):
     summary_hour: Mapped[int] = mapped_column(Integer, default=9)
     last_summary: Mapped[str] = mapped_column(String(10), default="")      # local date of the last morning summary
     nightly: Mapped[list] = mapped_column(JSON, default=list)              # last 30 nightly results
+    gates: Mapped[list | None] = mapped_column(JSON, nullable=True)        # v0.406 milestone gate checks (advisory)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -90,6 +93,10 @@ class GameTask(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # v0.406 Hoola Game Crew: who does it, how "done" is checked, and the lead's review
+    role: Mapped[str] = mapped_column(String(32), default="")
+    criteria: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    review: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class GameDecision(Base):
@@ -161,9 +168,14 @@ def _game(tenant: str, gid: str) -> G.GameProject | None:
 
 # ---------------------------------------------------------------- views
 def task_view(t: GameTask) -> dict[str, Any]:
+    role = t.role or C.pick_role(t.title, t.detail, t.kind)
+    r = C.ROLES.get(role) or {}
+    crit = list(t.criteria or [])
     return {"id": t.id, "number": t.number, "title": t.title, "detail": t.detail, "kind": t.kind, "milestone": t.milestone,
             "priority": t.priority, "status": t.status, "source": t.source, "version": t.version, "base": t.base,
             "notes": t.notes, "error": t.error, "tries": t.tries,
+            "role": role, "role_name": r.get("name", ""), "role_mode": r.get("mode", "builds"),
+            "reviewer": C.reviewer(role), "criteria": crit, "verdict": C.verdict(crit), "review": t.review or {},
             "created_at": t.created_at.isoformat() if t.created_at else None,
             "done_at": t.done_at.isoformat() if t.done_at else None}
 
@@ -206,8 +218,15 @@ def view(r: GameStudio, full: bool = False) -> dict[str, Any]:
         "night": (r.nightly or [])[-1] if r.nightly else {},
         "bible": _bible_line(r),
         "created_at": r.created_at.isoformat() if r.created_at else None}
+    live_src = ((G._good(g) or [{}])[-1].get("src", "")) if g else ""
     if full:
         d["tasks"] = [task_view(t) for t in tasks]
+        for tv in d["tasks"]:                          # evidence older than the code (a later change / restore)
+            tv["evidence_old"] = bool(tv["status"] == "review" and live_src and any(
+                (c.get("evidence") or {}).get("src") not in (None, "", live_src) for c in tv["criteria"]))
+        d["crew"] = {"count": len(C.ROLES), "busy": sorted({t.role for t in tasks if t.role and t.status in OPEN}),
+                     "teams": [{"key": k, "name": v["name"]} for k, v in C.TEAMS.items()]}
+        d["gates"] = list(reversed((r.gates or [])[-10:]))
         d["decisions"] = [{"id": x.id, "text": x.text, "why": x.why, "task": x.task, "by": x.by,
                            "at": x.at.isoformat() if x.at else None} for x in decs]
         d["nightly"] = list(reversed((r.nightly or [])[-14:]))
@@ -347,7 +366,7 @@ def _number(s, sid: str) -> str:
 
 
 def add_task(tenant: str, ref: str, title: str, detail: str = "", milestone: str = "", kind: str = "feature",
-             priority: int = 2, source: str = "her") -> dict[str, Any]:
+             priority: int = 2, source: str = "her", role: str = "", criteria: list | None = None) -> dict[str, Any]:
     title = _clean(title, 200)
     if len(title) < 3:
         raise StudioError("Task ek line mein likhiye (kya badalna / jodna hai).")
@@ -363,6 +382,8 @@ def add_task(tenant: str, ref: str, title: str, detail: str = "", milestone: str
         t = GameTask(tenant_id=tenant, studio_id=r.id, number=_number(s, r.id), title=title, detail=_clean(detail, 2000),
                      milestone=milestone, kind=kind if kind in KINDS else "feature",
                      priority=max(1, min(3, int(priority or 2))), source=source if source in ("her", "hoola", "nightly") else "her")
+        t.role = role if role in C.ROLES else C.pick_role(title, detail, t.kind)
+        t.criteria = C.criteria_for(t.role, criteria)
         s.add(t)
         r.updated_at = now()
         s.flush()
@@ -370,7 +391,7 @@ def add_task(tenant: str, ref: str, title: str, detail: str = "", milestone: str
     return task_view(t)
 
 
-def plan(tenant: str, ref: str, words: str = "") -> dict[str, Any]:
+def plan(tenant: str, ref: str, words: str = "", team: str = "") -> dict[str, Any]:
     """Hoola (the producer) proposes the next small tasks from the design, the goal, the board and her decisions.
     They land in To do; she can drop or edit any; nothing is built until a task starts."""
     from .. import usage
@@ -392,15 +413,24 @@ def plan(tenant: str, ref: str, words: str = "") -> dict[str, Any]:
     if sum(1 for t in tv if t["status"] == "todo") >= 40:
         raise StudioError("To do mein 40 task pehle se hain; pehle unhe poora / band kijiye.")
     g = _game(tenant, r.game_id)
+    if team and team not in C.TEAMS:
+        raise StudioError("team = " + ", ".join(C.TEAMS))
+    keys = C.TEAMS[team]["roles"] if team else [k for k, v in C.ROLES.items() if v["tier"] != C.E or k.startswith("godot")]
+    roles = [C.ROLES[k] for k in keys]
     with usage.scope(tenant, "game"):
         items = G.ai.plan_tasks((g.design if g else "") or r.goal, r.goal, r.milestones or MILESTONES, tv, dec_lines,
-                                _clean(words, 1500))
+                                _clean(words, 1500), roles=roles)
     made = []
     for i in items:
+        role = str(i.get("role") or "")
+        if team and role not in keys:                  # a team plan only uses the team's roles
+            role = C.pick_role(str(i.get("title") or ""), str(i.get("detail") or ""), str(i.get("kind") or "feature"))
+            role = role if role in keys else keys[0]
         try:
             made.append(add_task(tenant, r.id, i.get("title", ""), i.get("detail", ""), str(i.get("milestone") or ""),
                                  str(i.get("kind") or "feature"), int(i.get("priority") or 2) if str(i.get("priority") or "2").isdigit() else 2,
-                                 source="hoola"))
+                                 source="hoola", role=role,
+                                 criteria=i.get("criteria") if isinstance(i.get("criteria"), list) else None))
         except StudioError:
             continue
     if not made:
@@ -436,8 +466,22 @@ def start_task(tenant: str, ref: str, task: str = "") -> dict[str, Any]:
             raise StudioError("Is project ka game nahi mila.")
         if not G._good(g):
             raise StudioError("Pehle game ka pehla version banne dijiye (design OK karke 'Build it').")
-        words = f"[{t.number}] {t.title}" + (f". {t.detail}" if t.detail else "")
+        role = t.role or C.pick_role(t.title, t.detail, t.kind)
+        crit = "; ".join(c["text"] for c in (t.criteria or []) if c.get("by") != "test")
+        words = (f"[{t.number}] {t.title}" + (f". {t.detail}" if t.detail else "") + f" || {C.lens(role)}"
+                 + (f" || Done when: {crit}" if crit else ""))
         tid, gid = t.id, g.id
+    if not C.builds(role):                              # v0.406 a writing role: a written result, no build
+        with session() as s:
+            t = s.get(GameTask, tid)
+            t.status, t.error, t.tries, t.updated_at = "working", "", (t.tries or 0) + 1, now()
+            s.flush()
+            s.expunge(t)
+        if os.environ.get("GAME_WORKER", "true").lower() in ("0", "false", "off"):
+            pass                                        # tests call write_task themselves
+        else:
+            G._POOL.submit(_write_safe, tenant, tid)
+        return task_view(t)
     G.change(tenant, gid, words[:1500], task=tid)       # raises GameError (busy / day limit) before the task moves
     with session() as s:
         t = s.get(GameTask, tid)
@@ -456,6 +500,10 @@ def after_build(tenant: str, task_id: str, ver: dict | None, err: str = "") -> N
             return
         if ver and ver.get("ok"):
             t.status, t.version, t.notes, t.error = "review", int(ver.get("n") or 0), (ver.get("notes") or "")[:1500], ""
+            ev = {"version": int(ver.get("n") or 0), "src": ver.get("src", ""), "by": "hoola playtest",
+                  "shots": list(ver.get("shots") or [])[:3], "at": now().isoformat()}
+            t.criteria = [({**c, "status": "covered", "evidence": ev} if c.get("by") == "test" else
+                           {**c, "status": "untested", "evidence": {}}) for c in (t.criteria or [])]
         elif err == "cancelled":
             t.status, t.error = "todo", ""
         else:
@@ -468,6 +516,143 @@ def after_build(tenant: str, task_id: str, ver: dict | None, err: str = "") -> N
         r = s.get(GameStudio, sid)
         if r is not None:
             r.updated_at = now()
+    if ver and ver.get("ok") and _auto_review():
+        try:
+            review_task(tenant, sid, task_id)
+        except Exception:                               # noqa: BLE001 - a review never breaks the build result
+            log.exception("crew review %s", task_id)
+
+
+def _auto_review() -> bool:
+    """The lead's review after each build: on with Claude configured (GAME_CREW_REVIEW=off turns it off)."""
+    v = os.environ.get("GAME_CREW_REVIEW", "auto").lower()
+    if v in ("0", "off", "false"):
+        return False
+    from ..config import get_settings
+    return v in ("1", "on", "true") or bool(get_settings().anthropic_api_key)
+
+
+REVIEW = """You are the {lead} of a small game studio, reviewing one finished task by your {role}. Judge ONLY what you
+can see: the screenshots from Hoola's own playtest and the code change. For each acceptance criterion numbered below
+say "covered" (you can see it is true), "failed" (you can see it is false) or "untested" (you cannot tell from this).
+Never mark a criterion covered from the code alone when it is about what the player sees. Then up to 4 short findings a
+lead would raise (bugs, rule breaks, risks), most important first. OUTPUT only JSON:
+{{"criteria": [{{"i": 0, "status": "covered|failed|untested", "why": "short"}}], "findings": ["..."], "summary": "one line"}}"""
+
+
+def _diff(g: G.GameProject, base: int, n: int) -> str:
+    import difflib
+    a = G._vdir(g, base) / "proj" if base else None
+    b = G._vdir(g, n) / "proj"
+    out = []
+    for p in sorted(b.glob("*.gd")):
+        if p.name in ("hoola_probe.gd", "hoola_bible.gd"):
+            continue
+        old = (a / p.name).read_text(encoding="utf-8").splitlines() if a and (a / p.name).is_file() else []
+        out += list(difflib.unified_diff(old, p.read_text(encoding="utf-8").splitlines(), f"v{base}/{p.name}",
+                                         f"v{n}/{p.name}", lineterm="", n=2))
+    return "\n".join(out)[:14000] or "(no code change)"
+
+
+def review_task(tenant: str, ref: str, task: str) -> dict[str, Any]:
+    """The task's lead reviews it: screenshots + the code change against the criteria. Only screen criteria can be
+    set by the review (test = Hoola's playtest, her = only her); the verdict is counted in code."""
+    import json as _json
+    from .. import usage
+    with session() as s:
+        r = _studio(s, tenant, ref)
+        t = _task(s, tenant, task, r.id)
+        if t.status != "review" or not t.version:
+            raise StudioError(f"{t.number} review ke layak nahi ('{t.status}').")
+        s.expunge(t)
+        s.expunge(r)
+    g = _game(tenant, r.game_id)
+    role = t.role or C.pick_role(t.title, t.detail, t.kind)
+    lead = C.reviewer(role)
+    crit = list(t.criteria or [])
+    shots = []
+    if g is not None:
+        for name in ((next((v for v in g.versions or [] if v.get("n") == t.version), {}) or {}).get("shots") or [])[:3]:
+            p = G._vdir(g, t.version) / "shots" / name
+            if p.is_file():
+                shots.append(p.read_bytes())
+    text = (f"Task {t.number}: {t.title}\n{t.detail}\nBuilder's notes: {t.notes}\n\nAcceptance criteria:\n"
+            + "\n".join(f"{i}. [{c.get('by')}] {c.get('text')}" for i, c in enumerate(crit))
+            + f"\n\nCode change:\n{_diff(g, t.base, t.version) if g else '(no game)'}")
+    with usage.scope(tenant, "game"):
+        raw = G.ai.ask_with_images(REVIEW.format(lead=C.ROLES.get(lead, {}).get("name", "lead"),
+                                                 role=C.ROLES.get(role, {}).get("name", "builder")), text, shots)
+    m = re.search(r"\{.*\}", raw or "", re.S)
+    try:
+        res = _json.loads(m.group(0)) if m else {}
+    except ValueError:
+        res = {}
+    ev = {"version": t.version, "src": ((next((v for v in (g.versions if g else []) or [] if v.get("n") == t.version), {}) or {}).get("src", "")),
+          "by": lead, "shots": len(shots), "at": now().isoformat()}
+    for item in res.get("criteria") or []:
+        try:
+            i = int(item.get("i"))
+        except (TypeError, ValueError):
+            continue
+        st = str(item.get("status") or "")
+        if 0 <= i < len(crit) and crit[i].get("by") == "screen" and st in ("covered", "failed", "untested"):
+            if st == "covered" and not shots:
+                st = "untested"                          # nothing seen = not covered
+            crit[i] = {**crit[i], "status": st, "evidence": {**ev, "why": str(item.get("why") or "")[:200]} if st != "untested" else {}}
+    rev = {"by": lead, "by_name": C.ROLES.get(lead, {}).get("name", ""), "at": now().isoformat(), "version": t.version,
+           "shots_seen": len(shots), "summary": str(res.get("summary") or "")[:300],
+           "findings": [str(x)[:300] for x in (res.get("findings") or [])][:4]}
+    with session() as s:
+        row = s.get(GameTask, t.id)
+        row.criteria, row.review, row.updated_at = crit, rev, now()
+        s.flush()
+        s.expunge(row)
+    return task_view(row)
+
+
+def write_task(tenant: str, task_id: str) -> None:
+    """A writing role's task (spec, checklist, store text, sound list, Unity / Unreal plan): one model call with the
+    role's lens, the design and the Game Bible; the result waits for her OK. Nothing in the game changes."""
+    from .. import usage
+    with session() as s:
+        t = s.get(GameTask, task_id)
+        if t is None or t.tenant_id != tenant or t.status != "working":
+            return
+        r = s.get(GameStudio, t.studio_id)
+        s.expunge(t)
+        s.expunge(r)
+    g = _game(tenant, r.game_id)
+    bible_txt = ""
+    try:
+        from . import bible as B
+        with session() as s:
+            bb = B._row(s, tenant, r.id, make=False)
+            bible_txt = B._summary(bb.data) if bb is not None and bb.version else ""
+    except Exception:                                   # noqa: BLE001
+        pass
+    role = t.role or C.pick_role(t.title, t.detail, t.kind)
+    system = (C.lens(role) + " Write the result of this task for the studio owner: clear headings, short lines, real "
+              "numbers only from the material given (never invented), what is still open at the end. Markdown, max 600 words.")
+    prompt = (f"Game: {r.title}\nGoal: {r.goal}\n\nDesign doc:\n{(g.design if g else '')[:6000]}\n\nGame Bible:\n{bible_txt[:8000]}"
+              f"\n\nTask {t.number}: {t.title}\n{t.detail}\n\nIt is done when:\n"
+              + "\n".join(f"- {c['text']}" for c in (t.criteria or [])))
+    try:
+        with usage.scope(tenant, "game"):
+            out = G.ai.ask(system, prompt, max_tokens=3000).strip()
+        status, err = ("review", "") if out else ("blocked", "khaali jawab aaya")
+    except Exception as e:                              # noqa: BLE001
+        out, status, err = "", "blocked", f"likh nahi paya: {type(e).__name__}"
+    with session() as s:
+        row = s.get(GameTask, task_id)
+        if row is not None and row.status == "working":
+            row.status, row.notes, row.error, row.updated_at = status, out[:12000], err, now()
+
+
+def _write_safe(tenant: str, task_id: str) -> None:
+    try:
+        write_task(tenant, task_id)
+    except Exception:                                   # noqa: BLE001
+        log.exception("crew write %s", task_id)
 
 
 def approve_task(tenant: str, ref: str, task: str, note: str = "") -> dict[str, Any]:
@@ -478,6 +663,8 @@ def approve_task(tenant: str, ref: str, task: str, note: str = "") -> dict[str, 
         if t.status != "review":
             raise StudioError(f"{t.number} OK ke liye taiyaar nahi ('{t.status}').")
         t.status, t.done_at, t.updated_at = "done", now(), now()
+        t.criteria = [({**c, "status": "covered", "evidence": {"by": "her", "at": now().isoformat(), "version": t.version}}
+                       if c.get("by") == "her" and c.get("status") != "failed" else c) for c in (t.criteria or [])]
         num, title, auto = t.number, t.title, r.auto
         s.expunge(r)
     if note:
@@ -508,6 +695,8 @@ def reject_task(tenant: str, ref: str, task: str, note: str = "") -> dict[str, A
                                   "likhiye jo ise theek kare, ya 'version N wapas lao' boliye.")
         if t.version:
             G.reject_version(tenant, r.game_id, t.version)
+        t.criteria = [{**c, "status": "untested", "evidence": {}} for c in (t.criteria or [])]
+        t.review = {}
         t.status, t.done_at, t.updated_at = "todo", None, now()
         if note:
             t.detail = _clean(f"{t.detail} | Pichhli baar galat: {note}", 2000)
@@ -661,6 +850,90 @@ def nightly(tenant: str, ref: str) -> dict[str, Any]:
     return res
 
 
+# ---------------------------------------------------------------- milestone gate (advisory, never blocks her)
+GATE = """You are the studio's {who}. A milestone gate check is in front of you with FACTS counted by Hoola (below).
+Write 2-4 short lines from your seat: what is solid, what worries you, what to do next. Use only these facts; never
+invent a number. If the facts say NOT ASSESSED, say what is missing to judge it."""
+
+
+def gate(tenant: str, ref: str, milestone: str = "") -> dict[str, Any]:
+    """Can this milestone be called done? Facts and the verdict are counted in code (PASS / CONCERNS / FAIL / NOT
+    ASSESSED); the creative director, technical director and producer each add a short view when Claude is set up.
+    It advises - nothing moves without her."""
+    from .. import usage
+    with session() as s:
+        r = _studio(s, tenant, ref)
+        tasks = _tasks(s, r.id)
+        for t in tasks:
+            s.expunge(t)
+        s.expunge(r)
+    prog = progress(r.milestones or MILESTONES, tasks)
+    milestone = milestone or current_milestone(prog)
+    m = next((x for x in prog if x["key"] == milestone), None)
+    if m is None:
+        raise StudioError("milestone = " + ", ".join(x["key"] for x in prog))
+    mine = [t for t in tasks if t.milestone == milestone and t.status != "dropped"]
+    crit = [c for t in mine for c in (t.criteria or [])]
+    covered = sum(1 for c in crit if c.get("status") == "covered")
+    night = (r.nightly or [])[-1] if r.nightly else {}
+    facts = {"milestone": m["name"], "tasks": len(mine), "done": sum(1 for t in mine if t.status == "done"),
+             "open": sum(1 for t in mine if t.status in ("todo", "working", "review")),
+             "blocked": [f"{t.number} {t.title[:50]}" for t in mine if t.status == "blocked"],
+             "criteria": len(crit), "criteria_covered": covered,
+             "criteria_failed": sum(1 for c in crit if c.get("status") == "failed"),
+             "nightly": ("not run yet" if not night else "skipped: " + str(night.get("skipped")) if night.get("skipped")
+                         else "passed" if night.get("ok") else "FAILED"),
+             "target": m.get("target") or ""}
+    bib: dict[str, Any] = {}
+    try:
+        from . import bible as B
+        v = B.view(tenant, r.id)
+        sim = B.simulate(v["data"], 100) if v["version"] else {"verdict": "NOT ASSESSED"}
+        bib = {"version": v["version"], "errors": len(v["check"]["errors"]), "sim": sim.get("verdict"),
+               "sim_flags": (sim.get("flags") or [])[:4]}
+    except Exception:                                   # noqa: BLE001
+        bib = {"version": 0}
+    facts["bible"] = bib
+    blockers, concerns, missing = [], [], []
+    if not mine:
+        missing.append("no tasks in this milestone")
+    if facts["blocked"]:
+        blockers.append(f"{len(facts['blocked'])} task(s) stuck: " + ", ".join(facts["blocked"][:3]))
+    if facts["criteria_failed"]:
+        blockers.append(f"{facts['criteria_failed']} acceptance criteria failed")
+    if night and not night.get("skipped") and not night.get("ok"):
+        blockers.append("last nightly build failed")
+    if bib.get("errors"):
+        blockers.append(f"Game Bible has {bib['errors']} error(s)")
+    if facts["open"]:
+        concerns.append(f"{facts['open']} task(s) still open")
+    if crit and covered < len(crit):
+        concerns.append(f"{len(crit) - covered} of {len(crit)} acceptance criteria not yet covered")
+    if not night or night.get("skipped"):
+        concerns.append("no nightly build has checked this game yet" if not night else f"nightly skipped ({night.get('skipped')})")
+    if bib.get("sim_flags"):
+        concerns.append("balance: " + "; ".join(bib["sim_flags"][:2]))
+    verdict = "NOT ASSESSED" if missing else "FAIL" if blockers else "CONCERNS" if concerns else "PASS"
+    views: dict[str, str] = {}
+    if _auto_review() and verdict != "NOT ASSESSED":
+        import json as _json
+        for who in ("creative_director", "technical_director", "producer"):
+            try:
+                with usage.scope(tenant, "game"):
+                    views[who] = G.ai.ask(GATE.format(who=C.ROLES[who]["name"]), _json.dumps(
+                        {"facts": facts, "verdict": verdict, "blockers": blockers, "concerns": concerns}), max_tokens=500).strip()[:800]
+            except Exception:                           # noqa: BLE001
+                continue
+    res = {"at": now().isoformat(), "milestone": milestone, "name": m["name"], "verdict": verdict, "facts": facts,
+           "blockers": blockers, "concerns": concerns, "missing": missing, "views": views,
+           "note": "Advice only: you decide when a milestone is done."}
+    with session() as s:
+        row = s.get(GameStudio, r.id)
+        row.gates = ((row.gates or []) + [res])[-20:]
+    _decide(r, f"Gate {m['name']}: {verdict}", "; ".join(blockers + concerns + missing)[:600], by="hoola")
+    return res
+
+
 # ---------------------------------------------------------------- morning summary
 def summary(tenant: str, ref: str) -> str:
     """The producer's morning note, written in code from the board (no model call, no numbers that are not real)."""
@@ -688,7 +961,12 @@ def summary(tenant: str, ref: str) -> str:
     if blocked:
         lines.append(f"Ruka hua: {', '.join(t.number + ' ' + t.title[:40] for t in blocked[:3])}.")
     n = (r.nightly or [])[-1] if r.nightly else None
-    if n and _utc(datetime.fromisoformat(n["at"])) >= day:
+    fresh = bool(n and _utc(datetime.fromisoformat(n["at"])) >= day)
+    if r.nightly_on and not fresh and _game(tenant, r.game_id) is not None:
+        lines.append("Raat ka build: kal raat jaancha NAHI gaya (isliye 'sab theek' nahi keh sakte).")
+    if fresh and n.get("skipped"):
+        lines.append(f"Raat ka build: NAHI chala - {n['skipped']}.")
+    elif fresh:
         if n.get("ok"):
             lines.append(f"Raat ka build: chala (version {n['version']}"
                          + (f", {n['fps']} fps" if n.get("fps") else "") + (f", {n['load_s']} s mein khula" if n.get("load_s") else "")
@@ -769,5 +1047,15 @@ def _night_safe(tenant: str, sid: str) -> None:
         res = nightly(tenant, sid)
         if not res.get("ok"):
             log.info("studio nightly %s failed: %s", sid, res.get("errors"))
-    except Exception as e:                              # noqa: BLE001
+    except Exception as e:                              # noqa: BLE001 - recorded, never silent (v0.406 NOT ASSESSED)
         log.info("studio nightly %s: %s", sid, e)
+        skipped(sid, str(e)[:200])
+
+
+def skipped(sid: str, why: str) -> None:
+    """A nightly that could not run is a record too: the morning report and the gate say it was NOT checked."""
+    with session() as s:
+        row = s.get(GameStudio, sid)
+        if row is not None:
+            row.nightly = ((row.nightly or []) + [{"at": now().isoformat(), "ok": None, "skipped": why, "errors": [],
+                                                   "suspects": []}])[-30:]

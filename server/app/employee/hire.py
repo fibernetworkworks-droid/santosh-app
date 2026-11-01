@@ -47,7 +47,7 @@ def ensure_table() -> None:
 TRUST = ("seekh", "saathi", "bharosa")
 
 GAME_GROUP = "Game Development, Simulation & VR"   # v0.379 the Game Desk employees' heading in the Hub
-SW_GROUP = "Software Architecture, Engineering & Core Systems"   # v0.401 the Architecture Desk employees' heading
+SW_GROUP = "Software Architecture, Engineering & Core Systems"   # v0.410 the Architecture Desk employees' heading
 
 # The catalogue. `live` employees can be hired today; the others show as "coming".
 CATALOG: dict[str, dict[str, Any]] = {
@@ -142,7 +142,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                   "pitch": "A live 3D twin of your factory or building with what-if simulation; reads data, never controls."},
     "haptics_dev": {"name": "Haptic Feedback Systems Engineer", "live": False, "icon": "game", "group": GAME_GROUP,
                     "pitch": "Vibration patterns and driver code for phones, controllers and your own device."},
-    # v0.401 SOFTWARE ARCHITECTURE, ENGINEERING & CORE SYSTEMS (docs/SOFTWARE_DESK_PLAN.md). Code they write goes to HER
+    # v0.410 SOFTWARE ARCHITECTURE, ENGINEERING & CORE SYSTEMS (docs/SOFTWARE_DESK_PLAN.md). Code they write goes to HER
     # GitHub through the Developer Sahayak's draft PR + CI path; heavy builds run in HER CI, never on her PC.
     "architect": {"name": "Principal Software Architect", "live": True, "icon": "code", "group": SW_GROUP,
                   "pitch": "Designs your system the way a principal architect would: decisions, diagrams, capacity and risks - "

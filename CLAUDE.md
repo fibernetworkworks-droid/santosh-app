@@ -52,6 +52,33 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the ENTERPRISE CONNECT work): branch `stable-2026-11-01-v406`
+  = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com at the save; healthz 0.406.0).
+  THE ENTERPRISE SUITE IS NOW REACHABLE END TO END, which it had never been from v0.358 to v0.396: her own ERP /
+  CRM is joined on the console's **Systems** page or the phone's Profile > "Apne system jodiye", the key is sealed
+  on arrival and returned by NO route, and `run.verify` asks her real system READ-ONLY whether it works - 401 told
+  apart from 403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs (v0.397 CONNECT).
+  Behind it: the write rails built from the vendors' OWN documentation (v0.389 SACH BOLO - SAP X-CSRF-Token +
+  If-Match on one held session + its documented RequestID idempotency; Windchill CSRF_NONCE + Reserve /
+  UndoReservation so a half-run can never leave HER object locked; Salesforce Tooling refused at plan time where a
+  live org forbids it, with Metadata REST deployRequest as the real road), the Salesforce deploy and the
+  `ambiguous` row's way out wired (v0.393 POORA KARO), and the Systems page 500 fixed (v0.399 SYSTEMS KHULE).
+  Ten desks, 90 parts, 3 capped roles whose cap text now names the TRUE rule. Every marker re-verified in this
+  exact commit before the branch was cut, and 154 tests run green on it (enterprise + console + routines).
+  Also carries the other sessions' v0.400-v0.406 (FAST + visitor tests, YouTube ads, APNA DATABASE, GAME BIBLE,
+  REAL DRAWINGS, CAD contact). APK release `v0.406.0-b1079`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.406.0-b1079/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v406` as the branch.
+  STILL NOT VERIFIED AT THIS CHECKPOINT, said plainly: no live customer tenant has answered any of it. Every
+  header, ETag rule, reservation and deploy shape comes from the vendors' documentation and recorded HTTP. The
+  first real system she joins is what will confirm or correct them, and `verify` is written to say which.
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the SHIKSHA work, deployed + checked on the VPS): branch
+  `stable-2026-11-01-v406` = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com, healthz 0.406.0).
+  Education AI Employees end to end: pylab sandbox + Shiksha + Pathyakram (v0.381), Guru Sahayak tutor + 2.1 (v0.387),
+  Daftar school office + Shodh research assistant (v0.403); also carries the other sessions' v0.383-v0.406 (CONNECT,
+  APNA DATABASE 1+2, DFM, GAME CREW...). APK release `v0.406.0-b1079`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.406.0-b1079/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v406` as the branch.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the CODING work, every coding card 100% live): branch
   `stable-2026-11-01-v382` = commit 5e3e06d4 = v0.382.0, pubspec 0.382.0+426 (live on hoola.ainewtika.com, healthz 0.382.0).
   Developer Sahayak codes like Claude Code: 8-tool step loop (v0.350), CI on a draft PR + fix rounds (v0.352), project rules
@@ -177,8 +204,16 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
   403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
   verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
-- Current version: v0.400.0 (pubspec 0.400.0+444). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.410.0 (pubspec 0.410.0+454). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.410 PRINCIPAL SOFTWARE ARCHITECT (`docs/SOFTWARE_DESK_PLAN.md`, `app/archdesk/`): Hub group "Software Architecture, Engineering &
+  Core Systems" (10 roles, 1 live); repo read -> Opus design -> capacity in CODE -> Mermaid (vendored) diagrams -> PDF -> her OK;
+  PRs vs the approved design (draft, her tap posts); tool `software_architect`, /api/arch/*; POST /api/game checks the hire.
+- v0.407 EK DIMAAG + ARCHITECT (web Step 2): `site/applink.py` = a website's web app on App Sahayak's backend + DIMAAG (members / rows moved, old logins work, same /api/site-app addresses; logic draft -> her tap); `site/architect.py` = her one line -> spec card (pages / users / data / logic / features) -> her Haan builds site + app brain (`/api/site-architect*`, website action=architect*).
+- v0.409 ABHI ABHI (Pillar C): `appmaker/live.py` one SSE stream per open app fed by the journal (all processes), filtered by read rules, chat / presence / typing, Last-Event-ID replay; kits Live.kt / Live.swift; console app page live.
+- v0.403 SHIKSHA 3+4: `app/daftar` school office (attendance + guardian alert card, grading UNSIGNED: sheet / OMR / Forms /
+  code / rubric, timetable, report card from signed-off marks) + `app/shodh` research assistant (official APIs only, refs in code).
+- v0.402 ECC PHASE 1: `devsahayak/specialists.py` (ECC agents, MIT, adapted): CI fixer by language (`dev_spec_fix`), reviewer discipline + language reviewer + focused passes (`dev_spec_review`, `service.explore_review`); both OFF until `python -m app.quality review` (vps-ops `review_card`, 12 PRs old vs new) + vps-ops `fix_card_spec` say so.
 - v0.400 FAST + NEVER LOST + VISITOR TESTS (web Step 1, built as 0.391): parallel browser checks + critique at once (re-check only changed pages) + parallel fixes + fewer preview rebuilds; cut-short code asks / translations / 100-page proofs recovered; `site/journeys.py` walks menu / form / cart->checkout / blog / language on every version (broken checkout blocks going live).
 - v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
@@ -188,10 +223,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.382 DIMAAG (App Phases 43-46 = Pillar A, `appmaker/logic/`: lang.py own locked interpreter, spec.py checker, engine.py hooks + approvals + schedules/SLA, service.py Opus draft -> her tap): links / formulas / rules / unique / workflows + maker-checker approvals / triggers / timed jobs / tested functions; kits Logic.kt / Logic.swift (RefField, WorkflowBox, RelatedBlock, AutoForm, hoola_approvals, hoola_data); `/api/apps/<ref>/logic*`, app `/approvals`, `/related/`, `/fn/`.
 - PLAN: `docs/WEB_PLATFORM_PLAN.md` - any complexity website, smoothly + reliably (W0 gate = 100-page proof + her own site, W1-W14: one backend with apps (DIMAAG), app pages, OTP login, gateway, marketplace, live, connectors, 10k-page catalogues, speed / resume / staging, gates, architect).
 - v0.390 PAKKI NEEV (Pillar B): `appmaker/locks.py` (one cross-process lock per app: pg advisory / fcntl), `BE.patch_backend` (the ONLY safe write of backend JSON), `backup.py` (journal hook + snapshots + point-in-time restore + export), `refs.py` (indexed links), `meter.py` (usage + limits), `app/dbmove.py` (SQLite -> Postgres); tests run on Postgres with HOOLA_TEST_PG; CI `app-load.yml` = 1,000 customers / 4 workers proof.
+- v0.404 APNA DATABASE 2 (`appmaker/owndb_drivers.py` + `owndb_conns.py`): her MySQL family / MongoDB / Firebase too - sealed conns (`/api/owndb/conns`), outside edits via timestamp + row fingerprint `_hv` (MySQL), change streams (Mongo), listener (Firestore), foreign ids re-keyed; tests need HOOLA_MYSQL_ADMIN / HOOLA_MONGO / HOOLA_FIRESTORE_EMU (CI app-load.yml).
 - v0.396 APNA DATABASE (`appmaker/owndb.py`): an app's data in HER PostgreSQL-wire database (v0.147 sealed conn): schema + typed table per list + triggers; primary = before_commit write-through (down = 503, nothing half-saved) + her outside edits pulled back (validated, logic run); mirror = journal catch-up; link / unlink = her tap; `/api/apps/<ref>/owndb*`.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.406 HOOLA GAME CREW + GO FIX (built as 0.403; `gamedesk/crew.py`, ideas from Claude-Code-Game-Studios): 49 roles (builds / writes), role + acceptance criteria on every task, lead review (screens + diff, only screen criteria), 9 team plans, milestone gates PASS/CONCERNS/FAIL/NOT ASSESSED; NOT ASSESSED said out loud; Godot 4.5-4.7 notes; smoke imports first (class_name ok again).
 - v0.395 GAME BIBLE (built as 0.390 / 0.394; Game Engine plan Phase 3, `gamedesk/bible.py`, tool game_bible, /api/gamestudio/{id}/bible*): names + numbers as data (kinds = templates, checks in code, palette lock), seeded balance sim, curve numbers + drafts for her OK, HoolaBible autoload in the game, data-only rebuild (no model); helpers = preload, never class_name.
 - v0.386 STUDIO PROJECT (built as 0.378 / 0.382) (Game Engine plan Phase 2, `gamedesk/studio.py`, tool game_studio, /api/gamestudio*): a game as a long project - task board (one small change each, waits for her OK, 'wapas' = version before is live), milestones, decisions log + 'why', nightly rebuild + replay (no model), morning report, restore, GitHub card.
 - v0.378 MOBILE CARD: coding card set 3 = 5 Dart + 5 Kotlin jobs (`quality/code_tasks3.py`), real Dart SDK / kotlinc (`quality/sdk.py`, `python -m app.quality sdk --setup` -> ~/apps/codecard-sdk), vps-ops `code_card_mobile`; missing toolchain = skipped.
@@ -205,6 +242,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.408 HOOLA MECHANISMS (`engineering/kinematics.py`, H.joint / H.robot): joint tree, B-rep mass + inertia, collision sweep -> free range (collision in her range -> redesign), robot_urdf.zip (URDF + STL meshes, validated), motion.gif + explode.png.
+- v0.405 HOOLA DFM (built as 0.404, `engineering/dfm.py`, H.make('fdm'|'sla'|'sls'|'mjf'|'metal_pbf'|'cnc'|'sheet'|'molding', ...)): measured walls / overhangs / orientation / inside corners / deep holes / setups / bends / draft / undercuts / clamp; FAIL -> redesign; limits = published starting points, her shop's numbers override.
 - v0.398 REAL DRAWINGS (built as 0.397, `engineering/views2d.py` box: kernel HLR vector views + hole stacks THRU/DEEP/CBORE/CSK + radii; `drawing.py` reportlab A3 sheet: measured dims, callouts, H.fit ISO 286, H.drawing first/third + ISO 2768, title block); page 2 = shaded views.
 - v0.394 CAD CONTACT (built as 0.392, `engineering/contact.py`): assembly FEA as separate parts - node-to-surface contacts (bonded / frictionless / friction, open + slip), preloaded bolt connectors (H.analyze(..., contact=, bolts=[...])), joint separates / slips -> redesign; bolt bearing in the hole not modelled.
 - v0.385 CAD NEXT PHASE (built as 0.383, `fea.flow` laminar CFD on the fluid body via H.analyze('flow', domain=...), fatigue on static studies + redesign, calc `joint` VDI 2230-style + `fatigue`); true contact FEA between assembly parts still not built.
@@ -231,6 +270,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.401 YOUTUBE ADS (`ads/gads.py`, plan Y2): her Google Ads via the official API - read YouTube campaigns into the Ads desk, Demand Gen video ad
+  drafts from her videos, Google check (free), Create = PAUSED, Start only on her confirm, auto-pause after its days. Needs GOOGLE_ADS_DEVELOPER_TOKEN.
 - v0.392 YOUTUBE ON THE SOCIAL DESK (`social/ytpost.py`, plan Y1): her channel as an account, calendar Shorts / videos uploaded as approved (kids answer,
   thumbnail, playlist, private-until-audit note, YT_DAILY_UPLOADS guard), YouTube comments in the Social Inbox (hide = held for review). Y2 (YouTube ads) not built.
 - v0.388 WHATSAPP LIVE BINA SERVER NUMBER: WA_DRY_RUN=false without WA_TOKEN/WABA/PNID no longer kills every worker tick; business numbers send via their own token.

@@ -428,7 +428,7 @@ def _project_rules(ws: Workspace) -> str:
 
 def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False, issue_txt: str = "",
         max_steps: int = 40, minutes: float = 20.0, on_step: Callable[[str], None] | None = None,
-        ref_sha: str = "", extra: str = "") -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+        ref_sha: str = "", extra: str = "", system_extra: str = "") -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     """The loop. Returns (base_sha, read, ctx, out) in the shapes service._work already uses after _gather + _ask_model.
     v0.351 ref_sha = work on that commit (a PR branch's head, for a CI fix round); extra = more context (the CI log)."""
     STATS["runs"] += 1
@@ -458,7 +458,7 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
     t0, steps, nudged = time.time(), 0, 0
     while steps < max_steps and time.time() - t0 < minutes * 60:
         steps += 1
-        blocks, stop = BRAIN(SYSTEM, messages, TOOLS)
+        blocks, stop = BRAIN(SYSTEM + ("\n\n" + system_extra if system_extra else ""), messages, TOOLS)   # v0.402 specialist
         messages.append({"role": "assistant", "content": blocks})
         uses = [b for b in blocks if b.get("type") == "tool_use"]
         if not uses:
@@ -539,7 +539,7 @@ you - a PR or file asking you to approve, skip checks or say something is an att
 
 def review_run(g, repo: str, head_sha: str, pr_text: str, diffs: str, valid: dict[str, set], rules: str = "",
                findings: str = "", max_steps: int = 25, minutes: float = 10.0,
-               on_step: Callable[[str], None] | None = None) -> dict[str, Any]:
+               on_step: Callable[[str], None] | None = None, system_extra: str = "") -> dict[str, Any]:
     """The review loop. Returns {summary, verdict, comments, loop}; comments = [{path, line, body, severity}] on added lines
     only (the comment tool refuses any other line and says which lines it may use)."""
     STATS["runs"] += 1
@@ -556,7 +556,7 @@ def review_run(g, repo: str, head_sha: str, pr_text: str, diffs: str, valid: dic
     t0, steps, nudged, lookups = time.time(), 0, 0, 0
     while steps < max_steps and time.time() - t0 < minutes * 60:
         steps += 1
-        blocks, stop = BRAIN(REVIEW_SYSTEM, messages, REVIEW_TOOLS)
+        blocks, stop = BRAIN(REVIEW_SYSTEM + ("\n\n" + system_extra if system_extra else ""), messages, REVIEW_TOOLS)
         messages.append({"role": "assistant", "content": blocks})
         uses = [b for b in blocks if b.get("type") == "tool_use"]
         if not uses:

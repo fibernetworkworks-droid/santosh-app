@@ -1,4 +1,4 @@
-"""v0.401 Capacity maths for the Principal Software Architect - in CODE, never in a prompt.
+"""v0.410 Capacity maths for the Principal Software Architect - in CODE, never in a prompt.
 
 The model only FILLS IN the inputs (and says for each whether it came from her or is an assumption); every number on
 the sheet is computed here, with the formula next to it, so a wrong QPS can never look as confident as a right one.

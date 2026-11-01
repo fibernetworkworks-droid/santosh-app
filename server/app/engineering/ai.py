@@ -102,6 +102,22 @@ Rules:
     (roundness 1 = ellipse, 0.3 = soft rounded rectangle); then shell / cut / fillet it like any solid;
   H.spline_sweep([(x, y, z), ...], radius) -> a round tube / handle along a smooth 3-D curve; also cq's
   .spline(...), .loft(ruled=False), .sweep(path, transition='round'), .revolve() of a spline profile.
+- MECHANISMS / ROBOTS (anything that MOVES: hinge, arm, gripper, slide, lid, robot, linkage, rover, 'URDF', 'ROS'):
+  build a cq.Assembly of NAMED parts in their zero pose, then for every moving connection
+  H.joint('shoulder', parent='base', child='upper_arm', kind='revolute', origin=(x, y, z), axis=(0, 0, 1),
+  limits=(-120, 120)) - origin = a point ON the axis in the assembly's own frame (mm), limits in degrees
+  (prismatic: mm, kind='prismatic'; endless wheels: 'continuous'; welded-on parts: 'fixed'); effort (N·m / N) and
+  velocity (rad/s / m/s) when she gives them. Joints must make a TREE from one root part. H.robot(name='my_arm',
+  materials={'base': 'steel'}) when parts differ. Hoola sweeps every joint, finds collisions (they come back to you:
+  add clearance or reshape), and writes the URDF (ROS / MoveIt / Gazebo), a motion GIF and an exploded view.
+- HOW IT IS MADE (always when she names a process - 3D print / FDM / resin / SLS / MJF / metal print, CNC /
+  milling / machining, sheet metal / laser + bend, injection moulding / mass production): H.make('fdm' | 'sla' |
+  'sls' | 'mjf' | 'metal_pbf' | 'cnc' | 'sheet' | 'molding', material='aluminium', tool_d=6 (CNC: smallest end mill),
+  pull='Z' (moulding: the mould opening axis), limits={...her shop's numbers}). The box MEASURES wall thickness,
+  overhangs / supports / best orientation, sharp inside corners vs the tool, deep holes, setups, bend radius / flange
+  / hole-to-bend, draft / undercuts / wall uniformity. A FAIL comes back to you with the number and the fix: design
+  for it from the start (inside corner radius > tool radius for CNC, 1-2° draft + even 1.5-3 mm walls for moulding,
+  45° slopes instead of flat overhangs for FDM, flanges >= 4 t for sheet).
 - DRAWING: drawing.pdf is a real A3 shop drawing measured from the model - views at a standard scale, overall and
   step sizes, hole positions and callouts (THRU / DEEP / CBORE / CSK are recognised from the geometry, so model holes
   with hole / cboreHole / cskHole and real depths). For a fit or tolerance she names: H.fit(20, 'H7') (bore) or

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.400.0"   # v0.400.0 FAST + NEVER LOST + VISITOR TESTS (web Step 1 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 1"). FAST: the browser checks spread a big site's pages over parallel browsers (SITE_CHECK_PARALLEL 3, one Playwright per thread, same results in the plan's order); the critique looks at every page at once, redraws every weak section at once and re-checks ONLY the changed pages (checks.run only=) - it was a full site check after every page; fix rounds repair every failing section at once; the preview is rebuilt at most every 20 s while sections arrive (was after every section - ~200 rebuilds of every page on a 150-page site); big sites write 8 sections at once. NEVER LOST: a code-mode ask cut short by a restart says so (was "working" forever), a half-done translation starts again by itself, a 100-page proof is picked up again after a restart (twice at most) with its start time and rupee meter kept and finished features skipped. VISITOR TESTS (site/journeys.py): after every build and every saved edit Chromium walks the built copy like a customer on a phone - phone menu, enquiry form, add to cart -> checkout -> order, blog post, language switch - against stand-in answers (never her real data); a broken menu / form / checkout is a blocking problem (it cannot go live), blog / language are warnings; the Checks tab lists every visitor test with a tick or the reason. Previous: v0.399.0 SYSTEMS KHULE: v0.397 CONNECT shipped the Systems page with a helper that looped over rules.systems_for() as if it returned NAMES - it returns full dicts - so SYSTEMS.get(<dict>) raised TypeError and the page 500ed the moment it was opened. The test that shipped with it only checked the ROUTE EXISTED, never called it. Fixed, and the test now CALLS it for five roles and checks the shape. Previous: v0.398.0 REAL DRAWINGS (built as 0.397): drawing.pdf page 1 is now an A3 VECTOR shop drawing measured from the model - kernel hidden-line views at one ISO 5455 scale (first angle default, or third), overall + step + hole-position dimensions, THRU / DEEP / CBORE / CSK / FAR SIDE callouts recognised from the B-rep, R / Ø callouts, H.fit ISO 286 limits, ISO 2768 + her notes, title block with the projection symbol; page 2 keeps the shaded views. Previous: v0.397.0 CONNECT - the screen where her own ERP / CRM is really joined, which the enterprise suite has been missing since v0.358: there was nowhere to put a credential, because the chat refuses a key on purpose (a secret typed into a conversation is in the history, in the model's context and in any export of either). Console Systems page + phone "Apne system jodiye" -> POST /api/enterprise/<role>/endpoint, sealed the instant it arrives and returned by NO route. verify() is the first call in the suite that ever reaches a customer tenant: READ-ONLY, reporting what the system ANSWERED - 401 told apart from 403, a CSRF token that cannot be fetched, an ETag a later write will need. Previous: v0.396.0 APNA DATABASE (App Sahayak Pillar B: own database per app, owner: "LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN DATABASE THERE"): an app's data runs in HER OWN PostgreSQL-wire database (Supabase, Neon, RDS / Aurora, Cloud SQL / AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, CockroachDB, YugabyteDB ... 28 listed) through the v0.147 sealed connection: her schema + a real typed table per list + triggers, PRIMARY = every save lands there inside the request (her database down = refused, nothing half-saved) and her edits there come back validated with the app logic run, MIRROR = a live copy that never blocks; link = her tap (backup, copy, counts compared), unlink keeps the data in both places. Previous: v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390 / 0.394; Hoola Game Engine plan Phase 3, owner: "GO PHASE 3"): every Studio Project gets ONE source of truth for its names and numbers, as DATA (gamedesk/bible.py, table game_bibles): meta, a style palette, glossary + banned words, player numbers, growth curves, and entities by kind (character, enemy, item, level, quest, screen) - each kind a TEMPLATE with typed fields, ranges, enums and references, so the 50th enemy has exactly the shape of the 1st. All checks in code: ranges, unique ids, every reference real (waves name real enemies, no quest loops), colours only from the palette (style lock), banned words, names that fit, no real-money fields. A SEEDED Monte-Carlo balance run per level (same Bible = same numbers) flags impossible levels, spikes, a too-hard first level, a too-easy late one and items you can never afford. Generators: the model writes only words, the curves set the numbers, and the result waits as a DRAFT for her OK. The game reads it: hoola_bible.gd is a HoolaBible AUTOLOAD (a real Godot run proved class_name is invisible headless), so a balance change is a DATA-ONLY rebuild with no model call. Found live and fixed: the code guide told the model to use class_name helpers, which never parse in Hoola builds - now preload, and the guard says so before a build is wasted. Tool game_bible, /api/gamestudio/{id}/bible*, console Game Bible page, phone GameBibleScreen.
+APP_VERSION = "0.410.0"   # v0.410.0 PRINCIPAL SOFTWARE ARCHITECT (owner: "Principal Software Architect ---- START THE WORK"; built as 0.401, docs/SOFTWARE_DESK_PLAN.md): new Hub group "Software Architecture, Engineering & Core Systems" (10 roles, the Architect live, 9 coming); `app/archdesk/`: her brief + her GitHub repo read first (read only, her Developer Sahayak token, key files capped) -> Opus writes ONE structured design (context, NFRs, components, data, flows, integrations, security, failure modes, ADRs, risks, roadmap, open questions, Mermaid diagrams) -> capacity worked out in CODE (`capacity.py`, no users-a-day = no sheet; a number is hers only when she typed it or it is in her brief) -> diagrams drawn by vendored Mermaid 11.4.1 (MIT) in the server Chromium, strict mode, network blocked, one fix round per broken diagram -> Markdown + printed PDF -> her approve / next version; PRs read against the APPROVED design (draft findings, ONE COMMENT on the PR only by her tap; 24/7 watch of new PRs when she switches it on); tool `software_architect`, routes /api/arch/*, console + phone Architecture Desk; FIX: POST /api/game now checks the Game Developer hire. Previous: v0.409.0 ABHI ABHI (App Sahayak Pillar C, Phase 49, owner: "START PILLAR C"): real time for every native app - ONE live stream (SSE) per open app fed by the v0.390 journal (every write, every path, every worker process; one journal read per process however many phones), each event filtered by the list's own read rule (a customer never hears about another customer's order), instant chat to that thread only, presence (customers see staff only) + typing scoped to one thread, Last-Event-ID replay after a reconnect (too many missed = reset), out-of-order Postgres commits still delivered, limits (sign-in, 3 streams an account, per app / per process caps = 429 and the normal refresh). Kits Live.kt / Live.swift (open only while on screen, lists reload on a change, LiveDot, TypingLine, LiveValue), her console app page live. Previous: v0.408.0 HOOLA MECHANISMS (owner: "GO JOINTS AND URDF"): H.joint between named assembly parts (revolute / continuous / prismatic / fixed, world frame of the zero pose) -> tree check with named problems, B-rep mass / centre of mass / inertia per part from its material, every movable joint swept through its range with exact solid overlap tests + bisection -> the FREE range and what collides where (inside her range = back to the designer), URDF package (links in joint frames, STL meshes mm x 0.001, inertials kg / m, limits rad / m, effort / velocity said when assumed) checked by our own validator after parsing it back, motion GIF (all joints swinging, one camera) and exploded view. Previous: v0.407.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 2"). EK DIMAAG (W1): a website's web app now runs on the SAME backend as her native apps - App Sahayak's backend + the DIMAAG logic engine (relations, formulas, rules, workflows with maker-checker approvals + SLA, triggers, schedules, functions). Linking moves every member and row over unchanged (same ids, same passwords; a login made before the move keeps working), the site's own /api/site-app addresses stay, new public routes for related records / approvals / functions, and her logic is drafted by App Sahayak's author + checker and goes live only on her tap; the site's pages draw the workflow buttons, approval pills and linked-record pickers. HOOLA ARCHITECT (W13): her ONE line -> a spec card (pages, users, data, rules / workflows / approvals, features) with the data model PROVED by the checker before she sees it; she approves module by module and Hoola creates the website, joins it to its app brain, applies the logic and starts the looks. Proof: a school portal from one line. Previous: v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403; owner: "GO FIX" + "USE THIS FOR HOOLA GAMING DEVELOPMENT", after studying Claude-Code-Game-Studios, MIT, ideas only - THIRD_PARTY_NOTICES.md): a whole studio inside the Game Developer desk - 49 roles as DATA (gamedesk/crew.py: 3 directors, 8 leads, 23 specialists, 15 Godot / Unity / Unreal specialists), each with what it does, how it thinks, what it checks, who reviews it, and whether it BUILDS (changes the Godot game) or WRITES (a result for her OK: sound lists, store text, Unity / Unreal plans - work Hoola cannot build yet). Every task gets a role and acceptance criteria (hers / the planner's, the role's checks, Hoola's two automatic play checks); a build covers the test criteria with evidence stamped with the code fingerprint, the lead reviews screenshots + the code diff (Claude vision) and may set only SCREEN criteria - nothing seen = not covered, her criteria only by her OK; the verdict (COMPLETE / WITH NOTES / BLOCKED / NOT ASSESSED) is counted in code. 9 team flows plan linked tasks with only that team's roles; milestone gate checks PASS / CONCERNS / FAIL / NOT ASSESSED from counted facts + three directors' views, advice only. GO FIX: (1) NOT ASSESSED said out loud - a Bible with no levels is never a clean balance pass, a nightly that could not run is recorded, the morning report says when nothing was checked; (2) Godot 4.5-4.7 changes in the code guide (typed-override returns, device ids, RichTextLabel rename...); (3) smoke() imports first, so class_name helpers work again (a real run proved it) and v0.395's ban is lifted; (4) acceptance criteria + evidence-older-than-code on every task.
 
 
 def _quiet_http_logs() -> None:
@@ -1309,6 +1309,17 @@ async def google_callback(request: Request):
     from .youtube.accounts import is_link_state as is_youtube_state
     if is_youtube_state(request.query_params.get("state", "")):  # "connect my YouTube channel"
         return await _finish_youtube_link(request)
+    from .ads.gads import is_link_state as is_gads_state
+    if is_gads_state(request.query_params.get("state", "")):     # v0.401 "connect my Google Ads" (YouTube ads)
+        from .ads import gads
+        q = request.query_params
+        if q.get("error"):
+            return _linked_page("Google Ads", "social", None, q.get("error") or "")
+        try:
+            v = await asyncio.to_thread(gads.finish_link, q.get("code", ""), q.get("state", ""))
+        except gads.GAdsError as e:
+            return _linked_page("Google Ads", "social", None, str(e))
+        return _linked_page("Google Ads", "social", v["email"] + (" - " + ", ".join(v["accounts"][:3]) if v["accounts"] else ""))
     from .slides.accounts import is_link_state as is_slides_state
     if is_slides_state(request.query_params.get("state", "")):  # "connect my Google Slides"
         return await _finish_slides_link(request)
@@ -5059,7 +5070,11 @@ from .pathyakram.api import make_router as _pathyakram_router  # noqa: E402
 
 from .guru.api import make_router as _guru_router  # noqa: E402  (Shiksha Phase 2: personal tutor)
 
-for _mk in (_shiksha_router, _pathyakram_router, _guru_router):
+from .daftar.api import make_router as _daftar_router  # noqa: E402  (Shiksha Phase 3: school office)
+
+from .shodh.api import make_router as _shodh_router  # noqa: E402  (Shiksha Phase 4: research assistant)
+
+for _mk in (_shiksha_router, _pathyakram_router, _guru_router, _daftar_router, _shodh_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (under /api/<mod>/*, key-protected; homestay's router also holds
@@ -7075,6 +7090,68 @@ async def social_creator_check(body: dict, tenant: str = Depends(current_tenant)
     return await asyncio.to_thread(_social_call, growth.creator_check, tenant, str(b.get("username") or ""), str(b.get("caption") or ""))
 
 
+def _gads_call(fn, *a, **k):
+    from .ads import gads
+    try:
+        return fn(*a, **k)
+    except gads.GAdsError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/social/ytads", dependencies=[Depends(require_key)])
+def social_ytads(tenant: str = Depends(current_tenant)):
+    """v0.401 YouTube ads (plan Y2): her Google Ads link, ad accounts, drafts."""
+    from .ads import gads
+    return gads.view(tenant)
+
+
+@app.get("/api/social/ytads/connect", dependencies=[Depends(require_key)])
+def social_ytads_connect(tenant: str = Depends(current_tenant)):
+    from .ads import gads
+    return {"url": _gads_call(gads.connect_url, tenant)}
+
+
+@app.post("/api/social/ytads/account", dependencies=[Depends(require_key)])
+async def social_ytads_account(body: dict, tenant: str = Depends(current_tenant)):
+    """{customer_id} = which of her ad accounts runs the YouTube ads."""
+    from .ads import gads
+    return await asyncio.to_thread(_gads_call, gads.choose, tenant, str((body or {}).get("customer_id") or ""))
+
+
+@app.post("/api/social/ytads/read", dependencies=[Depends(require_key)])
+async def social_ytads_read(tenant: str = Depends(current_tenant)):
+    """Her YouTube campaigns' last 30 days (also into the Ads desk's report rows)."""
+    from .ads import gads
+    return await asyncio.to_thread(_gads_call, gads.read, tenant)
+
+
+@app.post("/api/social/ytads/drafts", dependencies=[Depends(require_key)])
+def social_ytads_new(body: dict, tenant: str = Depends(current_tenant)):
+    """A new YouTube ad draft from one of her videos {video_id, daily, days, final_url...} - stays in Hoola."""
+    from .ads import gads
+    b = body or {}
+    return _gads_call(gads.new_draft, tenant, str(b.get("video_id") or ""), **{k: v for k, v in b.items() if k != "video_id"})
+
+
+@app.post("/api/social/ytads/drafts/{did}", dependencies=[Depends(require_key)])
+def social_ytads_edit(did: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import gads
+    return _gads_call(gads.set_draft, tenant, did, **(body or {}))
+
+
+@app.post("/api/social/ytads/drafts/{did}/{action}", dependencies=[Depends(require_key)])
+async def social_ytads_action(did: str, action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """check (Google validates, free) | create (in her account, PAUSED) | start (her tap + confirm: spends) | pause."""
+    from .ads import gads
+    b = body or {}
+    fn = {"check": gads.check, "create": gads.create, "pause": gads.pause}.get(action)
+    if action == "start":
+        return await asyncio.to_thread(_gads_call, gads.start, tenant, did, b.get("confirm") is True)
+    if fn is None:
+        raise HTTPException(404, "action: check | create | start | pause")
+    return await asyncio.to_thread(_gads_call, fn, tenant, did)
+
+
 @app.get("/api/social/inbox", dependencies=[Depends(require_key)])
 def social_inbox_view(box: str = "needs", tenant: str = Depends(current_tenant)):
     """v0.368 her comments + DMs: needs (waiting for her) | leads | complaints | done."""
@@ -8296,126 +8373,101 @@ async def site_app_cors(site_id: str, rest: str):
     return Response(status_code=204, headers=_SITE_APP_CORS)
 
 
+def _site_tok(request: Request) -> str:
+    return (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+
+
+async def _site_pub(site_id: str, op: str, request: Request, body: dict | None = None, **kw):
+    """v0.407 EK DIMAAG: every public web-app call of a website - the v0.305 engine for a plain site, the App Sahayak
+    backend + DIMAAG logic for a linked one (site/applink.py). The site's pages keep the same addresses."""
+    from .site import applink as AL
+    tok, ip = _site_tok(request), _ip(request)
+    return await asyncio.to_thread(_app_call, lambda: AL.call(site_id, op, tok, body or {}, ip, **kw))
+
+
 @app.get("/api/site-app/{site_id}/schema")
-async def site_app_schema(site_id: str):
-    from .site import service as S
-    from .site import webapp as W
-    return await asyncio.to_thread(_app_call, lambda: W.public_schema(S.public_app(site_id)[1]))
+async def site_app_schema(site_id: str, request: Request):
+    return await _site_pub(site_id, "schema", request)
 
 
 @app.post("/api/site-app/{site_id}/signup")
 async def site_app_signup(site_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    ip = _ip(request)
-    return await asyncio.to_thread(_app_call, lambda: W.signup(site_id, S.public_app(site_id)[1], str(body.get("email") or ""),
-                                                                 str(body.get("password") or ""), str(body.get("name") or ""), ip))
+    return await _site_pub(site_id, "signup", request, await _json_body(request))
 
 
 @app.post("/api/site-app/{site_id}/login")
 async def site_app_login(site_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    ip = _ip(request)
-
-    def go():
-        S.public_app(site_id)
-        return W.login(site_id, str(body.get("email") or ""), str(body.get("password") or ""), ip)
-    return await asyncio.to_thread(_app_call, go)
+    return await _site_pub(site_id, "login", request, await _json_body(request))
 
 
 @app.get("/api/site-app/{site_id}/me")
 async def site_app_me(site_id: str, request: Request):
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return _app_call(lambda: {"me": W.view_member(who.m) if who.m else None})
+    return await _site_pub(site_id, "me", request)
 
 
 @app.post("/api/site-app/{site_id}/logout")
 async def site_app_logout(site_id: str, request: Request):
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    if who.m:
-        await asyncio.to_thread(W.logout_all, site_id, who.m)
-    return _app_call(lambda: {"ok": True})
+    return await _site_pub(site_id, "logout", request)
 
 
 @app.get("/api/site-app/{site_id}/c/{key}")
 async def site_app_rows(site_id: str, key: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return await asyncio.to_thread(_app_call, lambda: {"rows": W.rows(site_id, S.public_app(site_id)[1], key, who)})
+    return await _site_pub(site_id, "rows", request, key=key)
 
 
 @app.post("/api/site-app/{site_id}/c/{key}")
 async def site_app_create(site_id: str, key: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    ip = _ip(request)
-    return await asyncio.to_thread(_app_call, lambda: W.create(site_id, S.public_app(site_id)[1], key, body, who, ip))
+    return await _site_pub(site_id, "create", request, await _json_body(request), key=key)
 
 
 @app.patch("/api/site-app/{site_id}/c/{key}/{row_id}")
 async def site_app_update(site_id: str, key: str, row_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return await asyncio.to_thread(_app_call, lambda: W.update(site_id, S.public_app(site_id)[1], key, row_id, body, who))
+    return await _site_pub(site_id, "update", request, await _json_body(request), key=key, row_id=row_id)
 
 
 @app.delete("/api/site-app/{site_id}/c/{key}/{row_id}")
 async def site_app_delete(site_id: str, key: str, row_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return await asyncio.to_thread(_app_call, lambda: W.delete(site_id, S.public_app(site_id)[1], key, row_id, who))
+    return await _site_pub(site_id, "delete", request, key=key, row_id=row_id)
+
+
+@app.get("/api/site-app/{site_id}/c/{key}/{row_id}/related/{rel}")
+async def site_app_related(site_id: str, key: str, row_id: str, rel: str, request: Request):
+    """v0.407 a row's linked records (an order's lines, a class's students) - linked sites only."""
+    return await _site_pub(site_id, "related", request, key=key, row_id=row_id, rel=rel)
 
 
 @app.get("/api/site-app/{site_id}/members")
 async def site_app_members(site_id: str, request: Request):
     """Staff page: the site's members (staff / admin members only)."""
-    from .site import service as S
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-
-    def go():
-        S.public_app(site_id)
-        if not who.staff:
-            raise W.AppError("Iski ijaazat nahi.", 403)
-        return {"members": W.members(site_id), "admin": bool(who.m and who.m.role == "admin")}
-    return await asyncio.to_thread(_app_call, go)
+    return await _site_pub(site_id, "members", request)
 
 
 @app.get("/api/site-app/{site_id}/stats")
 async def site_app_stats(site_id: str, request: Request, days: int = 30):
     """v0.357 the staff panel's dashboard: rows a day, status mix, sums (staff / admin members only)."""
-    from .site import service as S
-    from .site import webapp as W
-    who = await asyncio.to_thread(_app_who, site_id, request)
-    return await asyncio.to_thread(_app_call, lambda: W.stats(site_id, S.public_app(site_id)[1], who, days))
+    return await _site_pub(site_id, "stats", request, days=days)
 
 
 @app.post("/api/site-app/{site_id}/members/{member_id}/role")
 async def site_app_role(site_id: str, member_id: str, request: Request):
-    from .site import service as S
-    from .site import webapp as W
-    body = await _json_body(request)
-    who = await asyncio.to_thread(_app_who, site_id, request)
+    return await _site_pub(site_id, "role", request, await _json_body(request), member_id=member_id)
 
-    def go():
-        S.public_app(site_id)
-        if not (who.m and who.m.role == "admin"):
-            raise W.AppError("Role sirf admin badal sakta hai.", 403)
-        if member_id == who.m.id:
-            raise W.AppError("Apna role khud nahi badal sakte.", 400)
-        return W.set_role(site_id, member_id, str(body.get("role") or ""))
-    return await asyncio.to_thread(_app_call, go)
+
+@app.get("/api/site-app/{site_id}/approvals")
+async def site_app_approvals(site_id: str, request: Request):
+    """v0.407 the approvals waiting for this person (maker-checker; linked sites only)."""
+    return await _site_pub(site_id, "approvals", request)
+
+
+@app.post("/api/site-app/{site_id}/approvals/{appr_id}")
+async def site_app_decide(site_id: str, appr_id: str, request: Request):
+    return await _site_pub(site_id, "decide", request, await _json_body(request), appr_id=appr_id)
+
+
+@app.post("/api/site-app/{site_id}/fn/{name}")
+async def site_app_fn(site_id: str, name: str, request: Request):
+    """v0.407 a callable locked function of the site's logic (its own tests passed before it went live)."""
+    return await _site_pub(site_id, "fn", request, await _json_body(request), name=name)
 
 
 async def _json_body(request: Request) -> dict:
@@ -8427,6 +8479,86 @@ async def _json_body(request: Request) -> dict:
 
 
 # owner side (her Hoola login): design the app, see / change the data, members and roles
+def _site_logic(fn, *a):
+    from .site import service as S
+    from .site import webapp as W
+    try:
+        return fn(*a)
+    except W.AppError as e:
+        raise HTTPException(e.code, str(e))
+    except S.SiteError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:                       # v0.407 the Architect's own refusals carry their HTTP code
+        from .site import architect as AR
+        if isinstance(e, AR.ArchError):
+            raise HTTPException(e.code, str(e))
+        raise
+
+
+@app.get("/api/sites/{ref}/logic", dependencies=[Depends(require_key)])
+async def sites_logic(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.407 EK DIMAAG: the website app's logic (App Sahayak's DIMAAG on the linked project), its draft, its log."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.logic_view, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/logic/draft", dependencies=[Depends(require_key)])
+async def sites_logic_draft(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her words -> relations / formulas / rules / workflows / approvals drafted + checked (nothing live yet)."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.logic_draft, tenant, ref, str(body.get("words") or ""))
+
+
+@app.post("/api/sites/{ref}/logic/apply", dependencies=[Depends(require_key)])
+async def sites_logic_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """ONLY her tap: the draft she saw (by its hash) goes live on the site + its app."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.logic_apply, tenant, ref, str(body.get("hash") or ""))
+
+
+@app.post("/api/sites/{ref}/link-app", dependencies=[Depends(require_key)])
+async def sites_link_app(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.link, tenant, ref)
+
+
+@app.get("/api/site-architect", dependencies=[Depends(require_key)])
+async def site_architect_list(tenant: str = Depends(current_tenant)):
+    """v0.407 HOOLA ARCHITECT: her spec cards (waiting / built)."""
+    from .site import architect as AR
+    return {"specs": await asyncio.to_thread(AR.specs, tenant)}
+
+
+@app.post("/api/site-architect", dependencies=[Depends(require_key)])
+async def site_architect_new(body: dict, tenant: str = Depends(current_tenant)):
+    """{words, conversation_id}: her ONE line -> the full spec card (pages, users, data, rules, features). Nothing built."""
+    from .site import architect as AR
+    return await asyncio.to_thread(_site_logic, AR.draft, tenant, str(body.get("words") or ""),
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.get("/api/site-architect/{ref}", dependencies=[Depends(require_key)])
+async def site_architect_card(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import architect as AR
+    return await asyncio.to_thread(_site_logic, AR.card, tenant, ref)
+
+
+@app.post("/api/site-architect/{ref}/data", dependencies=[Depends(require_key)])
+async def site_architect_data(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{words}: redo ONLY the data + rules part of the card with her change."""
+    from .site import architect as AR
+    return await asyncio.to_thread(_site_logic, AR.redraft_data, tenant, ref, str(body.get("words") or ""))
+
+
+@app.post("/api/site-architect/{ref}/approve", dependencies=[Depends(require_key)])
+async def site_architect_approve(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """ONLY her tap: {hash (the card she saw), modules [pages, users, data, logic, features]} -> Hoola builds it."""
+    from .site import architect as AR
+    mods = body.get("modules") if isinstance(body.get("modules"), list) else None
+    return await asyncio.to_thread(_site_logic, AR.approve, tenant, ref, str(body.get("hash") or ""), mods,
+                                   str(body.get("conversation_id") or ""))
+
+
 @app.post("/api/sites/{ref}/app-design", dependencies=[Depends(require_key)])
 async def sites_app_design(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .site import service as S
@@ -9900,6 +10032,89 @@ async def app_api_members(app_key: str, request: Request):
     return await asyncio.to_thread(_be_call, go)
 
 
+# ---- v0.407 ABHI ABHI (App Sahayak Pillar C): real time for the native apps - one SSE stream per open app.
+def _live_stream(r, w, token: str, request: Request, colls: str):
+    from .appmaker import live as LV
+    last = request.headers.get("last-event-id") or request.query_params.get("last") or ""
+    return StreamingResponse(LV.stream(r, w, token, colls, last, gone=request.is_disconnected), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/app-api/{app_key}/live")
+async def app_api_live(app_key: str, request: Request, colls: str = ""):
+    """Live lists / order status / chat / presence / typing for a signed-in account (Bearer token in the header). Events are
+    filtered by each list's read rule; Last-Event-ID replays what a reconnect missed. 429 = too many streams (the app keeps
+    its normal refresh)."""
+    from .appmaker import live as LV
+    from .site import webapp as W
+
+    def go():
+        r, w = _be_app(app_key, request)
+        LV.admit(r, w)
+        return r, w
+    try:
+        r, w = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+    tok = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+    return _live_stream(r, w, tok, request, colls)
+
+
+@app.post("/api/app-api/{app_key}/live/typing")
+async def app_api_live_typing(app_key: str, request: Request):
+    """{thread?}: 'typing...' in a chat thread (a customer: her own; staff: the customer's member id)."""
+    from .appmaker import live as LV
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return LV.typing(r, w, str(body.get("thread") or ""))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/live/presence")
+async def app_api_live_presence(app_key: str, request: Request):
+    """Who is online now (a customer sees whether the shop's staff are online; staff see everyone)."""
+    from .appmaker import live as LV
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return LV.online(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/apps/{ref}/live", dependencies=[Depends(require_key)])
+async def apps_live(ref: str, request: Request, colls: str = "", tenant: str = Depends(current_tenant)):
+    """Her own live view of one app (console / phone): every list, every chat, who is online."""
+    from .appmaker import live as LV
+    from .site import webapp as W
+    try:
+        r = await asyncio.to_thread(_be_owner, tenant, ref)
+        w = W.Who(owner=True)
+        LV.admit(r, w)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+    except Exception:
+        return JSONResponse({"ok": False, "error": "App nahi mila."}, status_code=404)
+    return _live_stream(r, w, "", request, colls)
+
+
+@app.get("/api/apps/{ref}/live/presence", dependencies=[Depends(require_key)])
+async def apps_live_presence(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import live as LV
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.online(_be_owner(tenant, ref), W.Who(owner=True)))
+
+
+@app.post("/api/apps/{ref}/live/typing", dependencies=[Depends(require_key)])
+async def apps_live_typing(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her 'typing...' in a customer's chat thread {thread}."""
+    from .appmaker import live as LV
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.typing(_be_owner(tenant, ref), W.Who(owner=True),
+                                                                     str((body or {}).get("thread") or "")))
+
+
 def _be_owner(tenant: str, ref: str):
     from .appmaker import service as A
     with A.session() as s:
@@ -9974,6 +10189,22 @@ async def apps_owndb(ref: str, tenant: str = Depends(current_tenant)):
     """The link, her connected databases (Profile > Postgres database), the provider list, sync lag."""
     from .appmaker import owndb as OD
     return await asyncio.to_thread(_be_owner_call, lambda: OD.status(_be_owner(tenant, ref)))
+
+
+@app.post("/api/owndb/conns", dependencies=[Depends(require_key)])
+async def owndb_conn_add(body: dict, tenant: str = Depends(current_tenant)):
+    """v0.404 her database typed in the APP {kind: postgres|mysql|mongodb|firestore, name, secret}: checked (public host,
+    encrypted), test-connected, sealed; never returned, logged or shown to the model."""
+    from .appmaker import owndb_conns as OC
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: OC.add(tenant, str(b.get("kind") or ""), str(b.get("name") or ""),
+                                                                  str(b.get("secret") or b.get("dsn") or "")))
+
+
+@app.delete("/api/owndb/conns/{cid}", dependencies=[Depends(require_key)])
+async def owndb_conn_remove(cid: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import owndb_conns as OC
+    return await asyncio.to_thread(_be_owner_call, lambda: OC.remove(tenant, cid))
 
 
 @app.post("/api/apps/{ref}/owndb/link", dependencies=[Depends(require_key)])
@@ -10932,7 +11163,7 @@ app.include_router(_composio_router(require_key, current_tenant))
 from .engineering.api import make_router as _eng_router  # noqa: E402  v0.357 Engineering Desk (CAD Engineer)
 
 app.include_router(_eng_router(require_key, current_tenant))
-from .archdesk.api import make_router as _arch_router  # noqa: E402  v0.401 Architecture Desk (Principal Software Architect)
+from .archdesk.api import make_router as _arch_router  # noqa: E402  v0.410 Architecture Desk (Principal Software Architect)
 
 app.include_router(_arch_router(require_key, current_tenant))
 app.include_router(bz_devices.public)

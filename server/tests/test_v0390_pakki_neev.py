@@ -263,7 +263,7 @@ def test_dbmove_sqlite_to_postgres(droid_env, tmp_path):
     u = make_url(PGA)
     q = dict(u.query)
     name = "hoola_move_" + uuid.uuid4().hex[:8]
-    with psycopg.connect(dbname="postgres", user=u.username or "postgres", host=q.get("host") or u.host,
+    with psycopg.connect(dbname="postgres", user=u.username or "postgres", password=u.password, host=q.get("host") or u.host,
                          port=int(q.get("port") or u.port or 5432), autocommit=True) as cn:
         cn.execute(f'CREATE DATABASE "{name}"')
     dst = u.set(database=name).render_as_string(hide_password=False)

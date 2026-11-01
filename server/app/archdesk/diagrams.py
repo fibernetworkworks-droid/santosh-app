@@ -1,4 +1,4 @@
-"""v0.401 Architecture diagrams: Mermaid text -> SVG + PNG, drawn by the vendored Mermaid (11.4.1, MIT,
+"""v0.410 Architecture diagrams: Mermaid text -> SVG + PNG, drawn by the vendored Mermaid (11.4.1, MIT,
 `archdesk/vendor/mermaid.min.js`) inside the headless Chromium Hoola already has.
 
 The diagram text comes from the model, so it is DATA: Mermaid runs with securityLevel "strict" (no click handlers, no

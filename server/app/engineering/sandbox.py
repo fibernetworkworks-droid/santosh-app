@@ -75,10 +75,11 @@ def _limits():
         pass
 
 
-def run(job_dir: Path, code: str, timeout: int | None = None) -> dict[str, Any]:
+def run(job_dir: Path, code: str, timeout: int | None = None, material: str = "") -> dict[str, Any]:
     """Run one script; returns result.json (+ wall_s / isolated). A script error is in result['errors'];
     SandboxError when the runner itself could not start."""
-    return _start(job_dir, RUNNER, {"code": code, "out_dir": str(job_dir)}, "result.json", timeout)
+    return _start(job_dir, RUNNER, {"code": code, "out_dir": str(job_dir), "material": str(material or "")[:40]},
+                  "result.json", timeout)
 
 
 def analyse(job_dir: Path, studies: list, cam: dict | None, timeout: int | None = None) -> dict[str, Any]:

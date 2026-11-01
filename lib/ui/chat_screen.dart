@@ -60,6 +60,7 @@ import 'vakil_screen.dart';
 import 'legalres_screen.dart';
 import 'shiksha_screen.dart';
 import 'guru_screen.dart';
+import 'daftar_screen.dart';
 import 'compliance_screen.dart';
 import 'contracts_screen.dart';
 import 'cosec_screen.dart';
@@ -1680,6 +1681,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return LegalresMemoCard(key: ValueKey('klm${(it.data['matter'] as Map?)?['id']}:${(it.data['memo'] as Map?)?['v']}'), app: app, data: it.data);
     case 'pathyakram_share':
       return PathyakramShareCard(key: ValueKey('pks${(it.data['share'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'daftar_share':
+      return DaftarShareCard(key: ValueKey('dfs${(it.data['share'] as Map?)?['id']}'), app: app, data: it.data);
     case 'guru_report':
       return GuruReportCard(key: ValueKey('gur${(it.data['share'] as Map?)?['id']}'), app: app, data: it.data);
     case 'pathyakram_paper':
