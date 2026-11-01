@@ -15468,3 +15468,42 @@ joint torque calculated from loads, gear/belt coupling between joints, and the M
   is named; fixed joints exempt. Prismatic motion fixed to mm (q in m x 1000).
 - Tests: tests/test_v0409_mechanisms2.py (7) + v0406 (5). Not yet: spatial (non-planar) loop analysis beyond
   closure, cam / slot joints, dynamic simulation inside Hoola.
+
+## v0.412.0 NAKSHA LIVE (App Sahayak Pillar D, Phases 50-51 — owner: "START PILLAR D"; built as 0.410, re-versioned on rebase)
+Maps, a rider's location while on shift, and live tracking of one order.
+- Server `server/app/appmaker/track.py` + table `app_rider` (registered in db.init_db + ensure_table):
+  - Her switch: `backend.track = {on, coll, statuses}` (GET/PUT `/api/apps/<ref>/track`). The default list is the order list
+    with statuses Out for delivery / In progress / Confirmed; only real status options are accepted. `seed_hint` and the
+    public schema carry `track` only while it is on.
+  - Shifts: POST `/api/app-api/<key>/track/shift {on}`, staff only, and only after her switch (409 otherwise).
+    GET `/track/me`. A shift left on counts as ended after 14 h. Ending a shift wipes the position.
+  - Positions: POST `/track/pos {lat, lng, acc?, speed?, heading?}`, only during a shift. Values are checked, 0,0 is refused,
+    accuracy above 1 km is dropped, at most 1 point every 2 s. Only ONE current point is kept; no trail is stored.
+  - Each move: the rider's on-the-way rows (`_to` = rider, status in her list, updated in the last 3 days) get distance +
+    ETA. Geofences write `_near` (500 m) and `_arrived` (100 m) once each through `_merge`, so they are journaled and go
+    live. A LiveSignal kind `pos` (new nullable `data` column) carries the point + {row: {to: customer, km, eta}}.
+  - `live.pos_event`: staff / the owner get every rider (member id + order ids). A customer gets only the rows whose `to`
+    is her, with the rider shown as "rider" and a first name. `Hub.signal` routes `pos` apart from presence.
+  - GET `/track/c/<coll>/<id>`: her own row (or staff / owner). Returns tracking, why (off / not_on_the_way / no_rider /
+    no_position), rider {name, lat, lng, fresh}, km, eta_min, eta_note "estimate", near, arrived, dest.
+    ETA = haversine x 1.35 at the rider's speed (5-90 km/h), else 18 km/h.
+  - GET `/track/riders`: staff only.
+- Maps: MapLibre GL JS 4.7.1 vendored at `static/vendor/maplibre` (BSD-3, THIRD_PARTY_NOTICES) with OpenFreeMap tiles
+  (free, no key). The console CSP allows tiles.openfreemap.org.
+- Android `Track.kt`:
+  - TrackService: a foreground service of type location with an ongoing notification. LocationManager GPS + network,
+    15 m distance filter, every 5 s while moving and 30 s after 2 min standing. It stops on 401/403/409.
+  - Manifest: FOREGROUND_SERVICE(_LOCATION) + fine/coarse location, only when tracking is on. Never background location.
+  - ShiftBlock: the prominent notice, then the system dialog (+ notifications permission on 33+). It says "update the
+    app" when the build does not declare the service.
+  - LiveMap: a WebView loading the map library from her server (loadDataWithBaseURL).
+  - TrackOrderBlock, RidersMap, and a TrackButton on row cards.
+- iPhone `Track.swift`: CLLocationManager (when-in-use only; background updates + the blue pill when the build adds
+  UIBackgroundModes location), with the same blocks on Apple Maps. `info_plist` adds the location mode and the shift
+  wording only when tracking is on.
+- Store answers: Play data safety and App Privacy gain "Location (staff on shift)" when tracking is on.
+- Console: a Live tracking box (list + statuses + on/off) and a riders map that moves with the live stream's `pos`
+  events. Phone: `lib/ui/app_track.dart` (switch + riders list, open in Maps).
+- Tests: tests/test_v0412_track.py (3): the end-to-end flow, builds + store answers, kits + vendored files.
+- Not built / not verified: the Google Maps SDK with her key, road-snapped routes and real road ETA (they need a routing
+  service), a "left" geofence. No real phone or emulator run yet: CI compiles the kits.
