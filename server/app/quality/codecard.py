@@ -295,14 +295,19 @@ def score(task: dict, changed: dict[str, str], out: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------- one job through the real loop
-def run_task(task: dict, steps: int = STEPS, minutes: float = MINUTES) -> dict[str, Any]:
+def run_task(task: dict, steps: int = STEPS, minutes: float = MINUTES, spec: bool = False) -> dict[str, Any]:
     from ..devsahayak import loop as L
     t0 = time.time()
     t = SimpleNamespace(repo="hoola/codecard", base="main", kind=task["kind"], text=task["request"], issue=0)
     if not tool_ok(task.get("lang", "py")):
         return {**score(task, {}, {}), "seconds": 0, "steps": 0}
     try:
-        _, _, ctx, out = L.run(MemGh(start_files(task)), t, "", [], False, "", max_steps=steps, minutes=minutes)
+        extra = ""
+        if spec and task["kind"] == "fix":           # v0.402 the ECC fixer specialist, picked by language
+            from ..devsahayak import specialists as SP
+            extra = SP.fix_addendum(task["request"], list(start_files(task)))
+        _, _, ctx, out = L.run(MemGh(start_files(task)), t, "", [], False, "", max_steps=steps, minutes=minutes,
+                               system_extra=extra)
     except Exception as e:  # noqa: BLE001 - one broken job never stops the card
         return {"id": task["id"], "kind": task["kind"], "right": False, "works": False, "scope": True, "rules": True,
                 "test": None, "why": [f"loop error: {str(e)[:160]}"], "seconds": round(time.time() - t0), "steps": 0}
@@ -314,16 +319,17 @@ def run_task(task: dict, steps: int = STEPS, minutes: float = MINUTES) -> dict[s
     return row
 
 
-def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL, set_: int = 1) -> dict[str, Any]:
+def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL, set_: int = 1, spec: bool = False,
+         kind: str = "") -> dict[str, Any]:
     mod = _set(set_)
     steps, minutes = getattr(mod, "STEPS", STEPS), getattr(mod, "MINUTES", MINUTES)
     parallel = min(parallel, getattr(mod, "PARALLEL", parallel))   # v0.378 JVM compiles are heavy: the mobile set runs 2 at a time
-    tasks = [x for x in mod.TASKS if not only or x["id"] in only]
+    tasks = [x for x in mod.TASKS if (not only or x["id"] in only) and (not kind or x["kind"] == kind)]
     if limit:
         tasks = tasks[:limit]
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=max(1, parallel)) as ex:
-        rows = list(ex.map(lambda x: run_task(x, steps, minutes), tasks))
+        rows = list(ex.map(lambda x: run_task(x, steps, minutes, spec), tasks))
     from ..config import get_settings
     st = get_settings()
     model = getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or getattr(st, "anthropic_model", "")
@@ -331,7 +337,7 @@ def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL
     rows_all, rows = rows, [r for r in rows if not r.get("skipped")]
     need_test = [r for r in rows if r.get("test") is not None]
     fixes = [r for r in rows if "proves" in r]
-    return {"kind": "code", "set": mod.SET, "model": model, "jobs": len(rows), "skipped": len(skipped),
+    return {"kind": "code", "set": mod.SET, "model": model, "spec": spec, "jobs": len(rows), "skipped": len(skipped),
             "right": sum(1 for r in rows if r.get("right")), "works": sum(1 for r in rows if r.get("works")),
             "scope": sum(1 for r in rows if r.get("scope")), "rules": sum(1 for r in rows if r.get("rules")),
             "tests": sum(1 for r in need_test if r.get("test")), "tests_of": len(need_test),
@@ -351,7 +357,8 @@ def save(cd: dict, label: str = "") -> dict:
 
 def lines(cd: dict) -> list[str]:
     n = cd["jobs"] or 1
-    out = [f"Coding card (set v{cd['set']}, {cd.get('model') or 'model'}): {cd['right']}/{cd['jobs']} jobs fully right "
+    out = [f"Coding card (set v{cd['set']}{', ECC fixer specialist' if cd.get('spec') else ''}, {cd.get('model') or 'model'}): "
+           f"{cd['right']}/{cd['jobs']} jobs fully right "
            f"({round(100 * cd['right'] / n)}%).",
            f"  works {cd['works']}/{cd['jobs']} · stayed in scope {cd['scope']}/{cd['jobs']} · project rules "
            f"{cd['rules']}/{cd['jobs']} · good tests {cd['tests']}/{cd['tests_of']} (fix tests that prove the bug "

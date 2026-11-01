@@ -105,12 +105,14 @@ IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4
 IC.bana = '<path d="M4 5h16v14H4zM4 10h16M10 10v9"/>';
 IC.arena = '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>';   // v0.312 Design Arena (owner only)
 let AR = null;         // v0.312 the Arena screen (arena.js)
+IC.systems = '<path d="M4 7h16M4 12h16M4 17h16M7 4v16"/>';   // v0.396 CONNECT: her own ERP / CRM systems
 IC.hire = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"/>';   // v0.317 Employees
 IC.seodesk = '<path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35M8 11h6M11 8v6"/>';                     // v0.317 SEO Desk
 IC.caddesk = '<path d="M12 2l9 5v10l-9 5-9-5V7l9-5zM3 7l9 5 9-5M12 12v10"/>';   // v0.357 CAD Desk
 IC.gamedesk = '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01M17.3 5H6.7A4.7 4.7 0 0 0 2 9.7v4.1A3.2 3.2 0 0 0 5.2 17c1 0 2-.5 2.6-1.4L9 14h6l1.2 1.6c.6.9 1.6 1.4 2.6 1.4a3.2 3.2 0 0 0 3.2-3.2V9.7A4.7 4.7 0 0 0 17.3 5z"/>';   // v0.370 Game Desk
 IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
-let EMP = null;        // v0.317 the Employee Hub + desks (employees.js)
+let EMP = null;
+let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 function syncEmployees(hired) {                     // v0.317 a desk appears in the sidebar only while its employee is hired
   if (ME) ME.employees = hired || {};
   let moved = false;
@@ -144,6 +146,7 @@ function go(v) {
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
   if (v === 'bana') PN?.library($('#bana'));
   if (v === 'arena') AR?.draw($('#arena'));
+  if (v === 'systems') ENT?.open($('#systems'), 'erp');   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
   if (v === 'socialdesk') EMP?.social($('#socialdesk'));
@@ -237,6 +240,10 @@ async function enter() {
     if (!NAV.some(([k]) => k === 'hire')) NAV.push(['hire', 'Employees']);
   }
   syncEmployees(ME.employees || {});
+  if (window.HoolaEnterprise && !ENT) {        // v0.396 CONNECT: the only door an enterprise credential has
+    ENT = HoolaEnterprise({api, esc, toast});
+    if (!NAV.some(([k]) => k === 'systems')) NAV.push(['systems', 'Systems']);
+  }
   if (ME.arena && window.HoolaArena && !AR) { AR = HoolaArena({api, esc, toast}); if (!NAV.some(([k]) => k === 'arena')) NAV.push(['arena', 'Arena']); }   // v0.312 owner only
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)

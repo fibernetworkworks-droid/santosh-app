@@ -851,6 +851,11 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_service.recover_stuck)
     except Exception:
         log.exception("site recover failed")
+    try:                                   # v0.400 a 100-page proof cut short by a restart is picked up again
+        from .site import proof as site_proof
+        await asyncio.to_thread(site_proof.resume_interrupted)
+    except Exception:
+        log.exception("proof resume failed")
     try:                                   # v0.122 Website: her domain's DNS / SSL coming up, uptime of live sites
         from .site import hosting as site_hosting
         await asyncio.to_thread(site_hosting.watch)

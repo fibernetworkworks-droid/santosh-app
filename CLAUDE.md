@@ -170,8 +170,19 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ONE more attempt. Enterprise routes 6 -> 11. RULE: a module's tests passing says it works, never that anything
   calls it - grep for a caller outside its own file before calling a feature shipped.
 
-- Current version: v0.396.0 (pubspec 0.396.0+440). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
+- v0.397 CONNECT: the door the suite was missing since v0.358 - there was nowhere to put a credential (chat refuses
+  a key on purpose: it would sit in the history, the model's context and any export). Console **Systems** page +
+  phone Profile > 'Apne system jodiye' -> POST /api/enterprise/<role>/endpoint, sealed on arrival, returned by NO
+  route (masked only); DELETE forgets the way in and keeps her runs. `run.verify` = the FIRST call in the suite that
+  ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
+  403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
+  verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
+- Current version: v0.403.0 (pubspec 0.403.0+447). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+  console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.403 SHIKSHA 3+4: `app/daftar` school office (attendance + guardian alert card, grading UNSIGNED: sheet / OMR / Forms /
+  code / rubric, timetable, report card from signed-off marks) + `app/shodh` research assistant (official APIs only, refs in code).
+- v0.402 ECC PHASE 1: `devsahayak/specialists.py` (ECC agents, MIT, adapted): CI fixer by language (`dev_spec_fix`), reviewer discipline + language reviewer + focused passes (`dev_spec_review`, `service.explore_review`); both OFF until `python -m app.quality review` (vps-ops `review_card`, 12 PRs old vs new) + vps-ops `fix_card_spec` say so.
+- v0.400 FAST + NEVER LOST + VISITOR TESTS (web Step 1, built as 0.391): parallel browser checks + critique at once (re-check only changed pages) + parallel fixes + fewer preview rebuilds; cut-short code asks / translations / 100-page proofs recovered; `site/journeys.py` walks menu / form / cart->checkout / blog / language on every version (broken checkout blocks going live).
 - v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
   mode = hints only), practice + capped mastery + SM-2 / exam window, NCERT mastery path with gates, book-grounded cites, guardian card.
@@ -197,6 +208,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.398 REAL DRAWINGS (built as 0.397, `engineering/views2d.py` box: kernel HLR vector views + hole stacks THRU/DEEP/CBORE/CSK + radii; `drawing.py` reportlab A3 sheet: measured dims, callouts, H.fit ISO 286, H.drawing first/third + ISO 2768, title block); page 2 = shaded views.
 - v0.394 CAD CONTACT (built as 0.392, `engineering/contact.py`): assembly FEA as separate parts - node-to-surface contacts (bonded / frictionless / friction, open + slip), preloaded bolt connectors (H.analyze(..., contact=, bolts=[...])), joint separates / slips -> redesign; bolt bearing in the hole not modelled.
 - v0.385 CAD NEXT PHASE (built as 0.383, `fea.flow` laminar CFD on the fluid body via H.analyze('flow', domain=...), fatigue on static studies + redesign, calc `joint` VDI 2230-style + `fatigue`); true contact FEA between assembly parts still not built.
 - v0.380 HOOLA CAD ANALYSIS (built as 0.375) (`engineering/fea.py` / `cam.py` / `calc.py` / `geom.py`): FEA on the B-rep (stress + SF, heat, modes; a weak part goes back to be redesigned), faceted real threads, sheet metal + flat DXF, freeform, H.expect measured, CNC G-code, tool `eng_calc`. VPS: pip install scikit-fem pyamg.
@@ -222,6 +234,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.401 YOUTUBE ADS (`ads/gads.py`, plan Y2): her Google Ads via the official API - read YouTube campaigns into the Ads desk, Demand Gen video ad
+  drafts from her videos, Google check (free), Create = PAUSED, Start only on her confirm, auto-pause after its days. Needs GOOGLE_ADS_DEVELOPER_TOKEN.
 - v0.392 YOUTUBE ON THE SOCIAL DESK (`social/ytpost.py`, plan Y1): her channel as an account, calendar Shorts / videos uploaded as approved (kids answer,
   thumbnail, playlist, private-until-audit note, YT_DAILY_UPLOADS guard), YouTube comments in the Social Inbox (hide = held for review). Y2 (YouTube ads) not built.
 - v0.388 WHATSAPP LIVE BINA SERVER NUMBER: WA_DRY_RUN=false without WA_TOKEN/WABA/PNID no longer kills every worker tick; business numbers send via their own token.
