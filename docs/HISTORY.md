@@ -14339,3 +14339,14 @@ schedule slots + SLA, Opus draft with the repair round + her tap by hash, the cu
 Not verified here: the Kotlin / Swift kit compile (CI appgen-check / ios-check build them), a real Opus draft on her VPS.
 Known limits (said plainly): locks + schedules assume one server process (Pillar B moves to Postgres transactions); child
 lookups use a JSON text match on SQLite (fine to a few thousand rows per list); no realtime push of logic results (Pillar C).
+
+## CHECKPOINT 1 Nov 2026 - CODING (owner: "SAVE THE STATE")
+Branch `stable-2026-11-01-v382` = commit 5e3e06d4 = v0.382.0 (live, healthz 0.382.0), APK `v0.382.0-b1002` (CI run 1002 on
+main, same commit). Verified in that exact commit before the branch was cut: the coding loop (loop.run), CI before the PR
+(service._ci_step, gh.mark_ready), project rules (loop.rule_paths), the vague-ask rule, the exploring PR review
+(loop.review_run), the three coding cards (codecard, code_tasks2 / 3, sdk.setup, vps-ops code_card_mobile), and the long-job
+work (aage.promised, quality/longjobs). Live coding cards at save time:
+- set 1 (Python): 12/12;
+- set 2 (Python + JS): 12/12, after v0.371;
+- set 3 (Dart + Kotlin): 10/10, first run.
+Rollback = the same VPS commands as the other checkpoints, with this branch.
