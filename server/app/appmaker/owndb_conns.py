@@ -1,4 +1,4 @@
-"""v0.397 APNA DATABASE 2: her non-Postgres databases - MySQL family, MongoDB, Firebase (Firestore) - connected safely.
+"""v0.404 APNA DATABASE 2: her non-Postgres databases - MySQL family, MongoDB, Firebase (Firestore) - connected safely.
 
 Same rules as v0.147 Postgres: the secret is typed ONLY in the app (never chat), sealed with the bazar vault, never
 returned, logged or shown to the model; errors mask the password; the host must be on the public internet (checked IP)

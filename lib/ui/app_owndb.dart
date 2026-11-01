@@ -77,7 +77,7 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
     if (ok == true) _do('POST', 'owndb/link', {'conn': _conn, 'mode': _mode});
   }
 
-  /// v0.397 her database of any kind, typed here (sealed on the server, never shown again, never in chat).
+  /// v0.404 her database of any kind, typed here (sealed on the server, never shown again, never in chat).
   Future<void> _addDb() async {
     String kind = 'postgres';
     final name = TextEditingController();

@@ -14,7 +14,7 @@ on:
       - "server/app/dbmove.py"
       - "server/tests/test_v0390_pakki_neev.py"
       - "server/tests/test_v0396_apna_database.py"
-      - "server/tests/test_v0397_apna_database_2.py"
+      - "server/tests/test_v0404_apna_database_2.py"
       - "server/app/pgdb/**"
       - ".github/workflows/app-load.yml"
   workflow_dispatch:
@@ -83,7 +83,7 @@ jobs:
           HOOLA_MYSQL_ADMIN: mysql://root:hoola@127.0.0.1:3306
           HOOLA_MONGO: mongodb://127.0.0.1:27017/?directConnection=true
           HOOLA_FIRESTORE_EMU: 127.0.0.1:8080
-        run: python -m pytest -q -p no:cacheprovider tests/test_v0397_apna_database_2.py
+        run: python -m pytest -q -p no:cacheprovider tests/test_v0404_apna_database_2.py
       - name: The proof - 1,000 customers, 4 worker processes, one Postgres
         working-directory: server
         env:

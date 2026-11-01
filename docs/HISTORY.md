@@ -15215,3 +15215,36 @@ text checked byte for byte against ECC's LICENSE). Built as 0.396 / 0.400, re-ve
   RIS / Harvard built in code; analysis code fixed once and run in the sandbox; drafts with cites + [CHECK] numbers +
   ghost-writing refused; Semantic Scholar key sealed; tools / API / wiring.
 - Not verified: the live APIs; PubMed abstracts (efetch not built); Flutter not compiled locally (CI).
+
+## v0.404.0 APNA DATABASE 2 - her MySQL-family, MongoDB and Firebase databases too
+Owner (1 Nov 2026): *"MySQL-type (PlanetScale, TiDB), MongoDB, Firebase --- COMPLETE THIS"*.
+
+- `server/app/appmaker/owndb_conns.py`: her non-Postgres connections (table `owndb_conns`, sealed with the bazar vault,
+  never returned / logged / shown to the model, errors masked). mysql:// (MySQL, MariaDB, PlanetScale, TiDB, Aurora /
+  Cloud SQL / Azure MySQL, DigitalOcean, Aiven) with TLS against the certifi CA bundle; mongodb:// and mongodb+srv://
+  (Atlas: every SRV target checked public; Cosmos DB, DocumentDB) with TLS; Firebase = her service-account JSON (Hoola
+  writes ONLY under `hoola_apps/<app>/...`). Hosts must resolve to the public internet (checked), as v0.147.
+  `connections(tenant)` lists Postgres (pgdb) + these; `POST /api/owndb/conns {kind, name, secret}`, `DELETE .../{id}`.
+- `server/app/appmaker/owndb_drivers.py`: one interface (ensure / push / accounts / outside / count / close).
+  Every row Hoola writes carries `_hv` = a fingerprint of the field values it wrote (values normalised per field type, so
+  MySQL Decimal / TINYINT, Mongo / Firestore numbers compare equal). "Changed outside" = current values != `_hv`;
+  "added outside" = no `_hv`. MySQL family: table `<schema>__<list>` per list, typed columns (DECIMAL / DATE / TINYINT /
+  VARCHAR refs / TEXT), `_updated TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)` = a COLUMN property, so it works on
+  PlanetScale and TiDB which have no triggers; one indexed query per list per sync; deletes = ids present at the last
+  check and gone now (every 5 min). MongoDB: collection per list, change streams with the resume token kept in the link
+  (started at link time so nothing in between is missed), a standalone server = a capped rotating scan. Firestore:
+  `hoola_apps/<app>/<list>/<id>`, a live `on_snapshot` listener per list (re-reading every document each minute would
+  cost her real Firestore reads), batched writes of <= 450. A document added outside with a Mongo ObjectId / Firestore
+  auto-id is re-keyed once to a Hoola id (only the OLD id's removal is marked Hoola's - found by the test: marking both
+  hid a later outside delete).
+- `owndb.py` picks the driver by the link's `kind`; link / write-through / catch-up / pull / counts / unlink are one path
+  for all four kinds. 41 providers listed (28 Postgres, 8 MySQL, 4 MongoDB, Firebase). Console + phone "add a database"
+  now have a type picker; requirements + pymysql, pymongo, google-cloud-firestore, certifi.
+- Tests `server/tests/test_v0404_apna_database_2.py`, one run per kind against a REAL server (here: MariaDB 11, a MongoDB 7
+  replica set, the official Firestore emulator; CI app-load.yml starts the same three): add (bad secret refused, secret
+  never returned), link + counts, write-through, her outside update / add (re-keyed) / delete, a bad outside value
+  refused + audited, an app edit on another field keeping her outside edit, counts, unreachable = 503 + nothing saved,
+  unlink keeps her data.
+- VPS: `~/apps/santosh-core/.venv/bin/pip install pymysql pymongo google-cloud-firestore certifi`.
+- NOT verified here: TLS to a real PlanetScale / TiDB / Atlas (the test servers run without TLS), a real Firebase project
+  with a service account, the MongoDB standalone scan path.

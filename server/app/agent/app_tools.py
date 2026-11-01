@@ -86,7 +86,7 @@ APP_TOOLS = [
         "approve|reject, note) = HER decision on a waiting approval, only when she says it. action=logic_run (owner only; job = "
         "schedule name) = run a timed job now. "
         "v0.396 APNA DATABASE - an app's data in HER OWN database - PostgreSQL (Supabase, Neon, AWS RDS / Aurora, "
-        "Google Cloud SQL, Azure, DigitalOcean...), v0.397 MySQL family (PlanetScale, TiDB, MariaDB, Aurora MySQL...), MongoDB "
+        "Google Cloud SQL, Azure, DigitalOcean...), v0.404 MySQL family (PlanetScale, TiDB, MariaDB, Aurora MySQL...), MongoDB "
         "(Atlas, Cosmos DB, DocumentDB) and Firebase (Cloud Firestore) - 41 kinds: "
         "action=own_db (owner only) = is it linked, where (label, schema), mode (primary = the data lives there and every entry is "
         "saved there first, her edits there come back; mirror = a live copy), sync lag, last problem, the counts compared, "

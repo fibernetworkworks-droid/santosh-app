@@ -759,7 +759,7 @@ def init_db(url: str | None = None):
     from .site import github as _site_github  # noqa: F401  (v0.124 GitHub export of her site)
     from .site import webapp as _site_webapp  # noqa: F401  (v0.305 web apps: members + rows)
     from .appmaker import backup as _app_backup  # noqa: F401  (v0.390 app journal: every write to an app's rows)
-    from .appmaker import owndb_conns as _app_owndb_conns  # noqa: F401  (v0.397 her MySQL / MongoDB / Firebase connections, sealed)
+    from .appmaker import owndb_conns as _app_owndb_conns  # noqa: F401  (v0.404 her MySQL / MongoDB / Firebase connections, sealed)
     from .appmaker import owndb as _app_owndb  # noqa: F401  (v0.396 her own database per app: the write-through hook)
     from .appmaker import refs as _app_refs  # noqa: F401  (v0.390 indexed links between an app's rows)
     from .site import arena as _site_arena  # noqa: F401  (v0.307 Design Arena runs / items / duels)

@@ -1,4 +1,4 @@
-"""v0.397 APNA DATABASE 2: one interface, four kinds of her database.
+"""v0.404 APNA DATABASE 2: one interface, four kinds of her database.
 
     ensure(r, o, lists)             her tables / collections (+ indexes) - additive, safe to run again
     push(r, o, lists, entries)      Hoola's writes -> hers (field-level), each row stamped with `_hv` = the fingerprint of

@@ -360,7 +360,7 @@ def push(r: AppProject, o: dict, entries: list[tuple], conn=None) -> int:
         return 0
     lists = _lists(r)
     d = _drv(o)
-    if d is not None:                                    # v0.397 MySQL family / MongoDB / Firestore
+    if d is not None:                                    # v0.404 MySQL family / MongoDB / Firestore
         try:
             n = d.push(r, o, lists, [e for e in entries if e[2] not in SKIP])
         except Exception as e:
@@ -510,7 +510,7 @@ def pull(r: AppProject, o: dict) -> dict[str, int]:
     gone: list = []
     dseq = int(o.get("pull_deleted") or 0)
     drv = _drv(o)
-    if drv is not None:                                  # v0.397: fingerprint / change stream / listener per kind
+    if drv is not None:                                  # v0.404: fingerprint / change stream / listener per kind
         got, pairs = drv.outside(r, o, lists, cur_pull)
         gone = [(0, coll, rid) for coll, rid in pairs]
     else:

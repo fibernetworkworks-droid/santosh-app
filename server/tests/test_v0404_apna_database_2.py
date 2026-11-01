@@ -1,4 +1,4 @@
-"""v0.397 APNA DATABASE 2: an app's data in HER MySQL-family (MySQL / MariaDB / PlanetScale / TiDB), MongoDB (Atlas)
+"""v0.404 APNA DATABASE 2: an app's data in HER MySQL-family (MySQL / MariaDB / PlanetScale / TiDB), MongoDB (Atlas)
 or Firebase (Firestore) database - each against a REAL server (MariaDB, a MongoDB replica set, the Firestore emulator).
 
 For every kind: her connection added in the app (sealed), link = her tap (copy + counts), PRIMARY write-through (an app
