@@ -54,6 +54,10 @@ def spot_line(pr: dict) -> int:
     raise ValueError(f"{pr['id']}: spot not found")
 
 
+def _said(c: dict) -> str:
+    return f"{c.get('severity')} {c.get('path')}:{c.get('line')} - {' '.join(str(c.get('body') or '').split())[:220]}"
+
+
 def score(pr: dict, out: dict) -> dict[str, Any]:
     comments = [c for c in out.get("comments") or [] if not str(c.get("body") or "").startswith("[Hoola check]")]
     real = [c for c in comments if c.get("severity") in ("medium", "high")]
@@ -65,10 +69,12 @@ def score(pr: dict, out: dict) -> dict[str, Any]:
         hits = [c for c in real if c.get("path") == pr["bug"]["path"] and abs(int(c.get("line") or 0) - line) <= near]
         row["caught"] = bool(hits)
         row["false_alarms"] = len([c for c in real if c not in hits])
+        row["alarms"] = [_said(c) for c in real if c not in hits][:5]
         row["verdict_ok"] = row["verdict"] == "request_changes"
         row["right"] = row["caught"] and row["verdict_ok"]
     else:
         row["false_alarms"] = len(real)
+        row["alarms"] = [_said(c) for c in real][:5]   # v0.410 what the alarm SAID, so a fair point can be told from a wrong one
         row["quiet"] = not real
         row["verdict_ok"] = row["verdict"] != "request_changes"
         row["right"] = row["quiet"] and row["verdict_ok"]
@@ -148,4 +154,5 @@ def lines(cd: dict) -> list[str]:
                 if not r["bug"] and r.get("quiet") and not r.get("verdict_ok"):
                     why = "quiet, but verdict was request_changes"
                 out.append(f"  MISS [{m['mode']}] {r['id']} - {why}")
+                out += [f"      said: {x}" for x in r.get("alarms") or []]
     return out

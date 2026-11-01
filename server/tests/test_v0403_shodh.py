@@ -191,4 +191,4 @@ def test_tools_api_and_wiring(sh):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.409.0"
+    assert APP_VERSION == "0.411.0"

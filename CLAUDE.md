@@ -204,8 +204,17 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
   403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
   verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
-- Current version: v0.409.0 (pubspec 0.409.0+453). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- RESEARCH: `docs/research/building_industry/` - the whole design / construction / building industry as 276 jobs from
+  primary sources (6 reports, 576 KB; read `00_INDEX.md` first, never the lot). Three findings that shape every desk
+  here: (1) PREPARE / SUBMIT / CERTIFY - the application is the owner's act, the certification is reserved to a named
+  licensee on a specific register, preparation is unreserved = 70-80% of the labour and almost none of the liability;
+  (2) DESIGN is largely UNGATED in India (HVAC has no licence at all) while CERTIFICATES and EXECUTION are gated, and
+  the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
+  exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
+  the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
+- Current version: v0.411.0 (pubspec 0.411.0+455). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.410 ECC ON: review card old vs new = 8/8 caught both, false alarms 8 -> 4, nits 3 -> 0; fix card 6/6 + 6/6 with the fixer -> `dev_spec_review` + `dev_spec_fix` default ON; card rows keep what each false alarm said.
 - v0.407 EK DIMAAG + ARCHITECT (web Step 2): `site/applink.py` = a website's web app on App Sahayak's backend + DIMAAG (members / rows moved, old logins work, same /api/site-app addresses; logic draft -> her tap); `site/architect.py` = her one line -> spec card (pages / users / data / logic / features) -> her Haan builds site + app brain (`/api/site-architect*`, website action=architect*).
 - v0.409 ABHI ABHI (Pillar C): `appmaker/live.py` one SSE stream per open app fed by the journal (all processes), filtered by read rules, chat / presence / typing, Last-Event-ID replay; kits Live.kt / Live.swift; console app page live.
 - v0.403 SHIKSHA 3+4: `app/daftar` school office (attendance + guardian alert card, grading UNSIGNED: sheet / OMR / Forms /
@@ -239,6 +248,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.411 MECHANISMS 2 (`kinematics.py` rewrite): closed loops (closure=True, solved; four-bar Grashof + transmission angle), H.couple gears / belts, joint torque by virtual work (+ payload, I·alpha; == MuJoCo), package URDF + SRDF + SDF + MJCF (MuJoCo compiles it); optional `pip install mujoco`.
 - v0.408 HOOLA MECHANISMS (`engineering/kinematics.py`, H.joint / H.robot): joint tree, B-rep mass + inertia, collision sweep -> free range (collision in her range -> redesign), robot_urdf.zip (URDF + STL meshes, validated), motion.gif + explode.png.
 - v0.405 HOOLA DFM (built as 0.404, `engineering/dfm.py`, H.make('fdm'|'sla'|'sls'|'mjf'|'metal_pbf'|'cnc'|'sheet'|'molding', ...)): measured walls / overhangs / orientation / inside corners / deep holes / setups / bends / draft / undercuts / clamp; FAIL -> redesign; limits = published starting points, her shop's numbers override.
 - v0.398 REAL DRAWINGS (built as 0.397, `engineering/views2d.py` box: kernel HLR vector views + hole stacks THRU/DEEP/CBORE/CSK + radii; `drawing.py` reportlab A3 sheet: measured dims, callouts, H.fit ISO 286, H.drawing first/third + ISO 2768, title block); page 2 = shaded views.

@@ -15422,3 +15422,49 @@ Real time for every native app, instead of the 10-second chat poll and pull-to-r
   Added to app-load.yml (runs on Postgres).
 - Not verified: no real phone yet (CI compiles the kits); nginx must not buffer: the route sends `X-Accel-Buffering: no`.
   WebSocket not built (SSE + one POST covers it).
+
+## v0.410.0 ECC ON (owner: "ECC CARDS DONE, CHECK RESULT")
+The two ECC Phase 1 cards ran on the live server (claude-opus-5-5) and decided the switches.
+- review_card (12 PRs x1, 3.2 min):
+  - old: 10/12 right, caught 8/8, quiet on 2/4 clean, 8 false alarms, 3 nits, verdicts 10/12, 4.2 steps;
+  - new: 10/12 right, caught 8/8, quiet on 2/4 clean, 4 false alarms, 0 nits, verdicts 11/12, 9.7 steps;
+  - same bugs caught, half the false alarms, no nitpicks, one more right verdict, about 2.3x the steps.
+- fix_card_spec: set 2 fix jobs 6/6 and set 3 fix jobs 6/6 with the fixer specialist (every fix test proves its bug), the
+  same as without it. No harm.
+- So `dev_spec_review` and `dev_spec_fix` are now True by default (config.py).
+- Still open: both modes leave ONE medium / high comment on clean_search_parameterised and on clean_invoice_checked. The
+  card kept only counts, so it is not yet known whether those comments are wrong or fair minor points (e.g. LIKE wildcard
+  characters, a phone number in the result). The card rows now keep what each false alarm SAID (`alarms`, printed under
+  each MISS), so the next run answers that.
+- One run, k=1: a single-run result; `--k 3` gives pass@k numbers.
+- Tests: the v0.377 review suite pins the old single pass (autouse fixture); test_v0402_ecc_specialists asserts the new
+  defaults and that the card restores whatever the switch was.
+
+## v0.411.0 HOOLA MECHANISMS 2 (1 Nov 2026)
+Owner, on the v0.408 "not done yet" list: "SDF/MJCF formats for other simulators, closed-loop linkages (four-bar),
+joint torque calculated from loads, gear/belt coupling between joints, and the MoveIt self-collision file (SRDF)
+--- fix and devlope". `engineering/kinematics.py` rewritten around a Mech class (independent joints -> couplings
+-> loop solve -> part motions).
+- LOOPS: a joint whose child already has a parent (or closure=True) closes a loop. The passive joints of each loop
+  are solved by scipy least squares on the closure joint (its point from both sides + its axis from both sides),
+  walked from the zero pose in steps so the linkage stays on its branch. No solution = it LOCKS there (dead point /
+  out of reach) - reported in the range rows. No driver marked -> the first joint at the ground drives (said).
+  Four-bar: link lengths, Grashof class (crank-rocker / double crank / double rocker / rocker-crank / change point /
+  triple rocker) and the minimum transmission angle over the motion (>= 40° wanted) - test linkage 20/70/50/80:
+  crank-rocker, 57.1° = the analytic cos(mu) formula, link lengths kept to 1e-3 mm; a non-Grashof one locks.
+- COUPLINGS: H.couple(follower, leader, ratio | teeth=(z_leader, z_follower), offset) -> follower = ratio x leader
+  everywhere; URDF <mimic>, SDF 1.11 <mimic> in <axis>, MJCF <equality><joint polycoef>.
+- TORQUE: holding torque / force of each independent joint = |dV/dq| of gravity + payload potential (loops solved
+  inside), worst over a pose grid (<= 3 joints: 7-9 per axis) or 250 random poses; + I_axis x alpha when
+  H.robot(accel_deg_s2=) (open chains). Matches the arm's beam statics to 1 % and MuJoCo's qfrc_bias to 0.1 %.
+  Effort = her number (checked; too weak -> one redesign round) else need x 1.5.
+- PACKAGE robot_urdf.zip: robot.urdf (tree, loops listed in a comment), robot.srdf (arm chain, end_effector group,
+  zero group_state, disable_collisions Adjacent / Default / Always / Never from 40 sampled poses, passive joints),
+  robot.sdf (world-fixed root, joint poses in the child frame, loops as joints), robot.xml (MJCF: nested bodies,
+  inertiafromgeom false, loops as <connect>, couplings as joint equality, a motor per independent joint) + meshes.
+  Checks: all four parse, URDF tree, physical inertias, limits, SRDF + SDF name real links, and MuJoCo compiles the
+  MJCF when installed (`pip install mujoco`, optional, Apache-2.0).
+- Sanity: every moving joint's pin (its axis line) must pass near both of its parts - a pin drawn in the wrong place
+  is named; fixed joints exempt. Prismatic motion fixed to mm (q in m x 1000).
+- Tests: tests/test_v0409_mechanisms2.py (7) + v0406 (5). Not yet: spatial (non-planar) loop analysis beyond
+  closure, cam / slot joints, dynamic simulation inside Hoola.
