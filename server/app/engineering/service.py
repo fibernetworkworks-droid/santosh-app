@@ -339,6 +339,15 @@ def _weak(ana: dict[str, Any]) -> list[str]:
                        f"(peak von Mises {st['peak_vm_away_MPa']} MPa at {st['at_peak']} mm, yield {st['yield_MPa']} MPa): "
                        "make it stronger THERE (thicker section, a rib, a bigger fillet at the corner, shorter lever) "
                        "keeping her fixed sizes and holes; keep the H.analyze call unchanged")
+        fat = st.get("fatigue")
+        if st.get("kind") == "static" and fat and fat.get("passes") is False:
+            out.append(f"fatigue: under her repeated load the hot spot ({st['peak_vm_away_MPa']} MPa at {st['at_peak']} mm) "
+                       f"gives a fatigue safety factor {fat['fatigue_sf']} but she needs {fat['need_sf']} for "
+                       f"{fat['target_cycles']:.0e} cycles: lower the stress there (bigger fillet radius, thicker section, "
+                       "no sharp notch / hole at the hot spot); keep H.analyze unchanged")
+        if st.get("kind") == "flow" and st.get("passes") is False:
+            out.append(f"flow: pressure drop {st['pressure_drop_Pa']:.4g} Pa is above her limit {st['max_dp_pa']:g} Pa: "
+                       "widen / shorten the channel, round sharp bends; keep H.analyze unchanged")
         rz = st.get("resonance")
         if st.get("kind") == "modal" and rz and not rz.get("ok"):
             out.append(f"resonance: natural frequencies {rz['inside']} Hz fall inside the band {rz['band_hz']} Hz she "
@@ -559,7 +568,9 @@ def _ana_card(st: dict[str, Any]) -> dict[str, Any]:
     from .report import summary_rows
     keep = {k: st.get(k) for k in ("ok", "kind", "material", "max_disp_mm", "peak_vm_MPa", "peak_vm_away_MPa", "at_peak",
                                    "safety_factor", "min_sf", "passes", "convergence", "equilibrium_error_pct",
-                                   "t_max_C", "t_min_C", "frequencies_hz", "resonance", "mesh", "error", "glued_assembly")
+                                   "t_max_C", "t_min_C", "frequencies_hz", "resonance", "mesh", "error", "glued_assembly",
+                                   "fatigue", "pressure_drop_Pa", "reynolds", "regime", "valid", "max_speed_mm_s",
+                                   "mass_balance_pct", "flow_lpm", "fluid")
             if st.get(k) is not None}
     keep["lines"] = summary_rows(st)
     return keep
@@ -571,9 +582,13 @@ def _ana_lines(ana: dict[str, Any]) -> list[str]:
         if not st.get("ok"):
             out.append(f"{st.get('kind')} analysis nahi chala")
         elif st["kind"] == "static":
-            out.append(f"safety factor {st['safety_factor']:g} (max jhukav {st['max_disp_mm']:.3g} mm)")
+            out.append(f"safety factor {st['safety_factor']:g} (max jhukav {st['max_disp_mm']:.3g} mm)"
+                       + (f", fatigue SF {st['fatigue']['fatigue_sf']:g}" if st.get("fatigue") else ""))
         elif st["kind"] == "thermal":
             out.append(f"max garmi {st['t_max_C']:.3g} °C")
+        elif st["kind"] == "flow":
+            out.append(f"pressure drop {st['pressure_drop_Pa']:.3g} Pa (Re {st['reynolds']:.0f}"
+                       + ("" if st.get("valid") else ", turbulent: laminar result valid nahi") + ")")
         else:
             out.append("pehli frequency " + (f"{st['frequencies_hz'][0]:g} Hz" if st.get("frequencies_hz") else "-"))
     cam = ana.get("cam")

@@ -21,25 +21,78 @@ from typing import Any
 
 import numpy as np
 
-# E MPa, nu, rho t/mm³, yield MPa, k W/(mm·K), alpha 1/K
+# E MPa, nu, rho t/mm³, yield MPa, k W/(mm·K), sut (ultimate) MPa, alpha 1/K
 MATERIALS: dict[str, dict[str, float]] = {
-    "steel":      {"E": 200000, "nu": 0.29, "rho": 7.85e-9, "yield": 250, "k": 0.050, "alpha": 12e-6},
-    "mild steel": {"E": 200000, "nu": 0.29, "rho": 7.85e-9, "yield": 250, "k": 0.050, "alpha": 12e-6},
-    "stainless":  {"E": 193000, "nu": 0.29, "rho": 8.00e-9, "yield": 215, "k": 0.016, "alpha": 17e-6},
-    "aluminium":  {"E": 68900, "nu": 0.33, "rho": 2.70e-9, "yield": 276, "k": 0.167, "alpha": 23.6e-6},
-    "aluminum":   {"E": 68900, "nu": 0.33, "rho": 2.70e-9, "yield": 276, "k": 0.167, "alpha": 23.6e-6},
-    "brass":      {"E": 100000, "nu": 0.34, "rho": 8.50e-9, "yield": 200, "k": 0.109, "alpha": 19e-6},
-    "copper":     {"E": 117000, "nu": 0.34, "rho": 8.96e-9, "yield": 70, "k": 0.385, "alpha": 17e-6},
-    "titanium":   {"E": 113800, "nu": 0.34, "rho": 4.43e-9, "yield": 880, "k": 0.0067, "alpha": 8.6e-6},
-    "cast iron":  {"E": 110000, "nu": 0.26, "rho": 7.20e-9, "yield": 130, "k": 0.052, "alpha": 10.5e-6},
-    "abs":        {"E": 2100, "nu": 0.35, "rho": 1.04e-9, "yield": 40, "k": 0.00017, "alpha": 90e-6},
-    "pla":        {"E": 3500, "nu": 0.36, "rho": 1.24e-9, "yield": 50, "k": 0.00013, "alpha": 68e-6},
-    "petg":       {"E": 2100, "nu": 0.38, "rho": 1.27e-9, "yield": 45, "k": 0.00020, "alpha": 68e-6},
-    "nylon":      {"E": 2700, "nu": 0.39, "rho": 1.14e-9, "yield": 70, "k": 0.00025, "alpha": 80e-6},
-    "pom":        {"E": 2900, "nu": 0.35, "rho": 1.41e-9, "yield": 65, "k": 0.00031, "alpha": 110e-6},
-    "polycarbonate": {"E": 2400, "nu": 0.37, "rho": 1.20e-9, "yield": 62, "k": 0.00020, "alpha": 65e-6},
-    "wood":       {"E": 11000, "nu": 0.30, "rho": 0.60e-9, "yield": 40, "k": 0.00012, "alpha": 5e-6},
+    "steel":      {"E": 200000, "nu": 0.29, "rho": 7.85e-9, "yield": 250, "k": 0.050, "sut": 400, "alpha": 12e-6},
+    "mild steel": {"E": 200000, "nu": 0.29, "rho": 7.85e-9, "yield": 250, "k": 0.050, "sut": 400, "alpha": 12e-6},
+    "stainless":  {"E": 193000, "nu": 0.29, "rho": 8.00e-9, "yield": 215, "k": 0.016, "sut": 505, "alpha": 17e-6},
+    "aluminium":  {"E": 68900, "nu": 0.33, "rho": 2.70e-9, "yield": 276, "k": 0.167, "sut": 310, "alpha": 23.6e-6},
+    "aluminum":   {"E": 68900, "nu": 0.33, "rho": 2.70e-9, "yield": 276, "k": 0.167, "sut": 310, "alpha": 23.6e-6},
+    "brass":      {"E": 100000, "nu": 0.34, "rho": 8.50e-9, "yield": 200, "k": 0.109, "sut": 340, "alpha": 19e-6},
+    "copper":     {"E": 117000, "nu": 0.34, "rho": 8.96e-9, "yield": 70, "k": 0.385, "sut": 210, "alpha": 17e-6},
+    "titanium":   {"E": 113800, "nu": 0.34, "rho": 4.43e-9, "yield": 880, "k": 0.0067, "sut": 950, "alpha": 8.6e-6},
+    "cast iron":  {"E": 110000, "nu": 0.26, "rho": 7.20e-9, "yield": 130, "k": 0.052, "sut": 200, "alpha": 10.5e-6},
+    "abs":        {"E": 2100, "nu": 0.35, "rho": 1.04e-9, "yield": 40, "k": 0.00017, "sut": 40, "alpha": 90e-6},
+    "pla":        {"E": 3500, "nu": 0.36, "rho": 1.24e-9, "yield": 50, "k": 0.00013, "sut": 50, "alpha": 68e-6},
+    "petg":       {"E": 2100, "nu": 0.38, "rho": 1.27e-9, "yield": 45, "k": 0.00020, "sut": 50, "alpha": 68e-6},
+    "nylon":      {"E": 2700, "nu": 0.39, "rho": 1.14e-9, "yield": 70, "k": 0.00025, "sut": 75, "alpha": 80e-6},
+    "pom":        {"E": 2900, "nu": 0.35, "rho": 1.41e-9, "yield": 65, "k": 0.00031, "sut": 70, "alpha": 110e-6},
+    "polycarbonate": {"E": 2400, "nu": 0.37, "rho": 1.20e-9, "yield": 62, "k": 0.00020, "sut": 65, "alpha": 65e-6},
+    "wood":       {"E": 11000, "nu": 0.30, "rho": 0.60e-9, "yield": 40, "k": 0.00012, "sut": 40, "alpha": 5e-6},
 }
+
+
+# ---------------------------------------------------------------- v0.381 fatigue (stress-life, Shigley / Marin)
+FINISH = {"ground": (1.58, -0.085), "machined": (4.51, -0.265), "cold-drawn": (4.51, -0.265),
+          "hot-rolled": (57.7, -0.718), "as-forged": (272.0, -0.995), "printed": (57.7, -0.718), "cast": (57.7, -0.718)}
+RELIAB = {50: 1.0, 90: 0.897, 95: 0.868, 99: 0.814, 99.9: 0.753, 99.99: 0.702}
+
+
+def endurance(mname: str, mat: dict, finish: str = "machined", d: float | None = None, reliability: float = 90,
+              load: str = "bending") -> dict[str, float | str]:
+    """Corrected endurance strength Se (MPa) and how it was built. Steels have a knee at 1e6 cycles; aluminium,
+    copper alloys and plastics have none, so their 'Se' is the strength at 5e8 cycles (said in `basis`)."""
+    sut = float(mat.get("sut") or mat["yield"] * 1.2)
+    if mname in ("steel", "mild steel", "stainless", "titanium", "cast iron"):
+        se0, basis = (0.5 * sut if sut <= 1400 else 700.0), "endurance limit (1e6 cycles)"
+        if mname == "cast iron":
+            se0 = 0.4 * sut
+    elif mname in ("aluminium", "aluminum", "brass", "copper"):
+        se0, basis = min(0.4 * sut, 130.0), "strength at 5e8 cycles (no true endurance limit)"
+    else:
+        se0, basis = 0.25 * sut, "rough polymer fatigue strength at 1e7 cycles (test the real print / moulding)"
+    a, b = FINISH.get(str(finish).lower(), FINISH["machined"])
+    ka = min(1.0, a * sut ** b)
+    if d and d > 2.79:
+        kb = 1.24 * d ** -0.107 if d <= 51 else 1.51 * d ** -0.157
+    else:
+        kb = 1.0
+    kc = {"bending": 1.0, "axial": 0.85, "torsion": 0.59}.get(load, 1.0)
+    ke = RELIAB.get(reliability, 0.897)
+    return {"sut": sut, "se": se0 * ka * kb * kc * ke, "se_raw": se0, "ka": round(ka, 3), "kb": round(kb, 3),
+            "kc": kc, "ke": ke, "basis": basis}
+
+
+def fatigue_eval(sigma_max: float, sigma_min: float, en: dict, life: float = 1e6) -> dict[str, Any]:
+    """Goodman mean-stress + Basquin S-N between 1e3 (f·Sut) and 1e6 (Se). Stresses in MPa."""
+    sut, se = en["sut"], en["se"]
+    sa = abs(sigma_max - sigma_min) / 2
+    sm = (sigma_max + sigma_min) / 2
+    f = 0.9 if sut < 490 else max(0.77, 0.9 - (sut - 490) * 0.00013)
+    a = (f * sut) ** 2 / se
+    b = -math.log10(f * sut / se) / 3
+    sar = sa / max(1e-9, 1 - max(sm, 0) / sut)              # equivalent fully reversed amplitude (Goodman)
+    if sar <= se:
+        n_life = math.inf
+    else:
+        n_life = (sar / a) ** (1 / b) if b else math.inf
+    s_life = se if life >= 1e6 else min(f * sut, a * max(life, 1e3) ** b)
+    nf = 1 / max(1e-12, sa / s_life + max(sm, 0) / sut)
+    return {"sigma_a_MPa": round(sa, 2), "sigma_m_MPa": round(sm, 2), "equivalent_reversed_MPa": round(sar, 2),
+            "Se_MPa": round(se, 1), "strength_at_life_MPa": round(s_life, 1), "target_cycles": life,
+            "predicted_cycles": "infinite (below the endurance strength)" if n_life == math.inf else f"{n_life:.3g}",
+            "fatigue_sf": round(nf, 2), "basis": en.get("basis", ""), "marin": {k: en[k] for k in ("ka", "kb", "kc", "ke")},
+            "method": "Goodman mean stress + Basquin S-N (Shigley); Marin surface / size / load / reliability"}
 
 
 def material(name: str | None) -> tuple[str, dict[str, float]]:
@@ -68,30 +121,44 @@ def _classifier(shape):
 
 
 def _sample_face(face, h: float) -> np.ndarray:
-    """Points ON one face, no two triangle corners further than h apart (B-rep tessellation, then split long edges)."""
-    vv, tt = face.tessellate(max(h * 0.15, 1e-3), 0.2)
-    V = [np.array((p.x, p.y, p.z)) for p in vv]
-    tris = [tuple(t) for t in tt]
-    out = list(V)
-    mids: dict[tuple[int, int], int] = {}
-    guard = 0
-    while tris and guard < 400000:
-        guard += 1
-        a, b, c = tris.pop()
-        L = [np.linalg.norm(V[b] - V[a]), np.linalg.norm(V[c] - V[b]), np.linalg.norm(V[a] - V[c])]
-        if max(L) <= h:
+    """Points ON one face about h apart: its edges divided at h, plus an even (u, v) grid kept where it lies inside
+    the face (2-D classifier) and not too close to an edge point. Even on long cylinders, where splitting the
+    kernel's thin triangles made ~30x too many points (v0.381)."""
+    from OCP.BRepTopAdaptor import BRepTopAdaptor_FClass2d
+    from OCP.gp import gp_Pnt2d
+    from OCP.TopAbs import TopAbs_IN
+    from scipy.spatial import cKDTree
+    pts = []
+    for e in face.Edges():
+        try:
+            n = max(2, int(math.ceil(e.Length() / h)))
+            pts += [tuple(e.positionAt(i / n)) for i in range(n + 1)]
+        except Exception:
             continue
-        k = int(np.argmax(L))
-        tri = [a, b, c]
-        i0, i1, i2 = tri[k], tri[(k + 1) % 3], tri[(k + 2) % 3]
-        key = (min(i0, i1), max(i0, i1))
-        if key not in mids:
-            V.append((V[i0] + V[i1]) / 2)
-            out.append(V[-1])
-            mids[key] = len(V) - 1
-        mi = mids[key]
-        tris += [(i0, mi, i2), (mi, i1, i2)]
-    return np.array(out)
+    B = np.array(pts) if pts else np.zeros((0, 3))
+    u0, u1, v0, v1 = face._uvBounds()
+
+    def at(u, v):
+        p = face._geomAdaptor().Value(u, v)
+        return np.array((p.X(), p.Y(), p.Z()))
+    um, vm = (u0 + u1) / 2, (v0 + v1) / 2
+    lu = sum(np.linalg.norm(at(u0 + (u1 - u0) * (i + 1) / 8, vm) - at(u0 + (u1 - u0) * i / 8, vm)) for i in range(8))
+    lv = sum(np.linalg.norm(at(um, v0 + (v1 - v0) * (i + 1) / 8) - at(um, v0 + (v1 - v0) * i / 8)) for i in range(8))
+    nu = max(1, min(400, int(math.ceil(lu / h))))
+    nv = max(1, min(400, int(math.ceil(lv / h))))
+    cls = BRepTopAdaptor_FClass2d(face.wrapped, 1e-7)
+    G = []
+    for i in range(nu):
+        for j in range(nv):
+            u = u0 + (u1 - u0) * (i + 0.5) / nu
+            v = v0 + (v1 - v0) * (j + 0.5) / nv
+            if cls.Perform(gp_Pnt2d(u, v)) == TopAbs_IN:
+                G.append(at(u, v))
+    G = np.array(G) if G else np.zeros((0, 3))
+    if len(G) and len(B):
+        d, _ = cKDTree(B).query(G)
+        G = G[d > 0.5 * h]
+    return np.vstack([B, G]) if len(G) else B
 
 
 def pick_h(volume: float, area: float, nodes: int) -> float:
@@ -185,6 +252,39 @@ def _facets(m, nodes: set[int]) -> np.ndarray:
     return bf[ok]
 
 
+def _facet_faces(msh: dict, m) -> np.ndarray:
+    """v0.381 every boundary facet -> exactly one B-rep face: the face all three corners share; when they share
+    none (a sliver across an edge), the nearest of their faces measured by the kernel. Cached on the mesh."""
+    if msh.get("_ff") is not None:
+        return msh["_ff"]
+    mem: dict[int, set[int]] = {}
+    for f, ns in msh["face_nodes"].items():
+        for n in ns:
+            mem.setdefault(n, set()).add(f)
+    bf = m.boundary_facets()
+    out = np.full(len(bf), -1, dtype=np.int64)
+    for k, fc in enumerate(bf):
+        a, b, c = (int(x) for x in m.facets[:, fc])
+        common = mem.get(a, set()) & mem.get(b, set()) & mem.get(c, set())
+        if common:
+            out[k] = min(common)
+            continue
+        cand = mem.get(a, set()) | mem.get(b, set()) | mem.get(c, set())
+        if not cand:
+            continue
+        cen = m.p[:, [a, b, c]].mean(1)
+        import cadquery as cq
+        v = cq.Vertex.makeVertex(*cen)
+        out[k] = min(cand, key=lambda f: msh["faces"][f].distance(v))
+    msh["_ff"] = out
+    return out
+
+
+def _facets_for(msh: dict, m, idx: list[int]) -> np.ndarray:
+    ff = _facet_faces(msh, m)
+    return m.boundary_facets()[np.isin(ff, np.array(idx, dtype=np.int64))]
+
+
 def _nodes_for(msh: dict, idx: list[int]) -> set[int]:
     s: set[int] = set()
     for i in idx:
@@ -276,7 +376,7 @@ def _static_once(shape, spec: dict, mat: dict, nodes: int) -> dict[str, Any]:
     faces = msh["faces"]
     fixed_idx = faces_of(shape, faces, spec.get("fixed"))
     fixed_nodes = _nodes_for(msh, fixed_idx)
-    ff = _facets(m, fixed_nodes)
+    ff = _facets_for(msh, m, fixed_idx)
     if not len(ff):
         raise FeaError("support (fixed) faces mesh par nahi mile")
     D = ib.get_dofs(facets=ff).all()
@@ -292,7 +392,7 @@ def _static_once(shape, spec: dict, mat: dict, nodes: int) -> dict[str, Any]:
             applied += g * mat["rho"] * msh["volume"]
             continue
         idx = faces_of(shape, faces, ld.get("faces"))
-        fac = _facets(m, _nodes_for(msh, idx))
+        fac = _facets_for(msh, m, idx)
         if not len(fac):
             raise FeaError(f"load faces {ld.get('faces')!r} mesh par nahi mile")
         fb = skfem.FacetBasis(m, e, facets=fac)
@@ -389,6 +489,17 @@ def static(shape, spec: dict) -> dict[str, Any]:
                                          "element": "quadratic tetra (P2)"},
            "scale": {"label": "von Mises stress (MPa)", "lo": lo, "hi": round(hi, 3)},
            "seconds": round(time.time() - t0, 1)}
+    fat = spec.get("fatigue")
+    if fat:                                              # v0.381 the same load, repeated: life at the hot spot
+        fat = fat if isinstance(fat, dict) else {}
+        kind = str(fat.get("load", "zero_to_max")).lower()
+        smax = fine["peak_away"]
+        smin = -smax if kind in ("reversed", "fully_reversed") else float(fat.get("R", 0.0)) * smax if kind == "ratio" else 0.0
+        en = endurance(mname, mat, fat.get("finish", "machined"), fat.get("size_mm"), float(fat.get("reliability", 90)))
+        fe = fatigue_eval(smax, smin, en, float(fat.get("life", 1e6)))
+        need = float(fat.get("min_sf") or min_sf or 1.5)
+        fe.update({"load": kind, "need_sf": need, "passes": fe["fatigue_sf"] >= need})
+        res["fatigue"] = fe
     res["surface"] = _surface(fine["m"], vm, lo, hi)
     return res
 
@@ -413,14 +524,14 @@ def thermal(shape, spec: dict) -> dict[str, Any]:
     faces = msh["faces"]
     heat_in = 0.0
     for hq in spec.get("heat") or []:
-        fac = _facets(m, _nodes_for(msh, faces_of(shape, faces, hq.get("faces"))))
+        fac = _facets_for(msh, m, faces_of(shape, faces, hq.get("faces")))
         fb = skfem.FacetBasis(m, e, facets=fac)
         area = float(skfem.asm(skfem.Functional(lambda w: 1.0 + 0 * w.x[0]), fb))
         q = float(hq.get("watts", 0)) / max(area, 1e-12)
         b += skfem.asm(skfem.LinearForm(lambda v, w, q=q: q * v), fb)
         heat_in += float(hq.get("watts", 0))
     for cv in spec.get("convection") or []:
-        fac = _facets(m, _nodes_for(msh, faces_of(shape, faces, cv.get("faces"))))
+        fac = _facets_for(msh, m, faces_of(shape, faces, cv.get("faces")))
         fb = skfem.FacetBasis(m, e, facets=fac)
         hc = float(cv.get("h", 10.0)) * 1e-6               # W/(m²K) -> W/(mm²K)
         ta = float(cv.get("t_amb", 25.0))
@@ -428,7 +539,7 @@ def thermal(shape, spec: dict) -> dict[str, Any]:
         b += skfem.asm(skfem.LinearForm(lambda v, w, hc=hc, ta=ta: hc * ta * v), fb)
     D_list, xD = [], np.zeros(A.shape[0])
     for tf in spec.get("temps") or []:
-        fac = _facets(m, _nodes_for(msh, faces_of(shape, faces, tf.get("faces"))))
+        fac = _facets_for(msh, m, faces_of(shape, faces, tf.get("faces")))
         dd = ib.get_dofs(facets=fac).all()
         xD[dd] = float(tf.get("temp", 25.0))
         D_list.append(dd)
@@ -470,7 +581,7 @@ def modal(shape, spec: dict) -> dict[str, Any]:
         Kc, Mc = K, M
         extra = 6
     else:
-        fac = _facets(m, _nodes_for(msh, faces_of(shape, msh["faces"], spec.get("fixed"))))
+        fac = _facets_for(msh, m, faces_of(shape, msh["faces"], spec.get("fixed")))
         D = ib.get_dofs(facets=fac).all()
         I = ib.complement_dofs(D)
         Kc, Mc = K[I][:, I], M[I][:, I]
@@ -495,10 +606,152 @@ def modal(shape, spec: dict) -> dict[str, Any]:
             "surface": _surface(m, mag, 0.0, 1.0), "seconds": round(time.time() - t0, 1)}
 
 
+# ---------------------------------------------------------------- v0.381 flow (laminar CFD)
+FLUIDS = {"water": (1.0e-9, 1.0e-9), "air": (1.204e-12, 1.81e-11), "oil": (8.7e-10, 8.7e-8),
+          "diesel": (8.32e-10, 2.4e-9), "glycerin": (1.26e-9, 1.41e-6)}      # rho t/mm³, mu N·s/mm² (20 °C)
+
+
+def flow(shape, spec: dict) -> dict[str, Any]:
+    """Steady incompressible flow through / around the FLUID body `shape` (Taylor-Hood P2-P1, Stokes then Picard
+    Oseen steps for inertia). Inlet: a flow rate (L/min) or a mean speed (mm/s), spread evenly and scaled so the
+    flux is exact; outlet: free (zero pressure); every other face a no-slip wall. Laminar only - above Re 2000 the
+    result is flagged NOT valid (turbulence needs a RANS model; the pipe hand-calc is given instead)."""
+    import scipy.sparse as sp
+    import scipy.sparse.linalg as sl
+    import skfem
+    from skfem.helpers import ddot, div, dot, grad
+    t0 = time.time()
+    fname = str(spec.get("fluid") or "water").lower()
+    if fname not in FLUIDS:
+        raise FeaError(f"fluid: {', '.join(FLUIDS)}")
+    rho, mu = FLUIDS[fname]
+    msh = build_mesh(shape, int(spec.get("nodes") or 3000))
+    m = skfem.MeshTet(msh["X"].T.copy(), msh["T"].T.copy())
+    eu, ep = skfem.ElementVector(skfem.ElementTetP2()), skfem.ElementTetP1()
+    ub = skfem.Basis(m, eu)
+    pb = skfem.Basis(m, ep, quadrature=ub.quadrature)
+    faces = msh["faces"]
+    in_idx = faces_of(shape, faces, spec.get("inlet"))
+    out_idx = faces_of(shape, faces, spec.get("outlet"))
+    wall_idx = [i for i in range(len(faces)) if i not in in_idx and i not in out_idx]
+    fin = _facets_for(msh, m, in_idx)
+    fout = _facets_for(msh, m, out_idx)
+    ffc = _facet_faces(msh, m)                          # every other boundary facet is a no-slip wall
+    fwall = m.boundary_facets()[~np.isin(ffc, np.array(in_idx + out_idx, dtype=np.int64))]
+    del wall_idx
+    if not len(fin) or not len(fout):
+        raise FeaError("inlet / outlet faces mesh par nahi mile")
+    fbin = skfem.FacetBasis(m, eu, facets=fin)
+    area_in = float(skfem.asm(skfem.Functional(lambda w: 1.0 + 0 * w.x[0]), fbin))
+    if spec.get("flow_lpm"):
+        Q = float(spec["flow_lpm"]) * 1e6 / 60.0                   # mm³/s
+    else:
+        Q = float(spec.get("velocity_mm_s") or 100.0) * area_in
+    nu_ = ub.N
+    d_in = ub.get_dofs(facets=fin).all()
+    d_wall = ub.get_dofs(facets=fwall).all() if len(fwall) else np.zeros(0, np.int64)
+    # inflow direction = minus the inlet's outward normal (mean over the inlet)
+    nvec = -np.array([float(skfem.asm(skfem.Functional(lambda w, k=k: w.n[k]), fbin)) for k in range(3)]) / area_in
+    nvec /= max(np.linalg.norm(nvec), 1e-12)
+    xD = np.zeros(nu_)
+    comp = d_in % 3
+    for k in range(3):
+        xD[d_in[comp == k]] = nvec[k]
+    xD[d_wall] = 0.0
+    flux1 = float(skfem.asm(skfem.Functional(lambda w: -dot(w["u"], w.n)), fbin, u=fbin.interpolate(xD)))
+    if flux1 <= 0:
+        raise FeaError("inlet se flow andar nahi ja raha (inlet face check karo)")
+    xD *= Q / flux1                                                  # exactly Q enters
+    Dd = np.unique(np.concatenate([d_wall, d_in]))
+    I = np.setdiff1d(np.arange(nu_), Dd)
+    A = skfem.asm(skfem.BilinearForm(lambda u, v, w: mu * ddot(grad(u), grad(v))), ub)
+    B = skfem.asm(skfem.BilinearForm(lambda u, q, w: -div(u) * q), ub, pb)
+    Mp = skfem.asm(skfem.BilinearForm(lambda p, q, w: p * q / mu), pb)
+    md = 1.0 / Mp.diagonal()
+    u = xD.copy()
+    p = np.zeros(pb.N)
+    dh = float(spec.get("dh_mm") or 4 * area_in / max(_perimeter(shape, faces, in_idx), 1e-9))
+    umean = Q / area_in
+    re = rho * umean * dh / mu
+    picard = 0 if (re < 1 or spec.get("inertia") is False) else min(25, int(spec.get("iterations") or 15))
+    try:
+        import pyamg
+    except ImportError:
+        pyamg = None
+    hist = []
+    for it in range(picard + 1):
+        if it == 0:
+            K_u = A
+        else:
+            wv = ub.interpolate(u)
+            C = skfem.asm(skfem.BilinearForm(lambda uu, v, w: rho * dot(np.einsum("ij...,j...->i...", grad(uu), w["w"]), v)), ub, w=wv)
+            K_u = A + C
+        Kii = K_u[I][:, I].tocsr()
+        Bi = B[:, I].tocsr()
+        rhs = np.concatenate([-(K_u[I][:, Dd] @ xD[Dd]), -(B[:, Dd] @ xD[Dd])])
+        K = sp.bmat([[Kii, Bi.T], [Bi, None]], "csr")
+        if pyamg is not None:
+            ml = (pyamg.smoothed_aggregation_solver(A[I][:, I].tocsr()) if it == 0 else
+                  pyamg.smoothed_aggregation_solver(Kii, symmetry="nonsymmetric"))
+            MA = ml.aspreconditioner(cycle="V")
+            n_i = len(I)
+            P = sl.LinearOperator(K.shape, matvec=lambda x: np.concatenate([MA @ x[:n_i], md * x[n_i:]]))
+            x0 = np.concatenate([u[I], p])
+            if it == 0:
+                x, info = sl.minres(K, rhs, x0=x0, M=P, rtol=1e-9, maxiter=4000)
+            else:
+                x, info = sl.gmres(K, rhs, x0=x0, M=P, rtol=1e-7, restart=60, maxiter=6)
+            if info != 0:
+                x = sl.spsolve(K.tocsc(), rhs)
+        else:
+            x = sl.spsolve(K.tocsc(), rhs)
+        unew = xD.copy()
+        unew[I] = x[:len(I)]
+        change = float(np.linalg.norm(unew - u) / max(np.linalg.norm(unew), 1e-12))
+        u = unew if it == 0 else 0.7 * unew + 0.3 * u
+        p = x[len(I):]
+        hist.append(round(change, 5))
+        if it > 0 and change < 1e-3:
+            break
+        if time.time() - t0 > float(spec.get("max_seconds") or 420):
+            break
+    converged = picard == 0 or (hist and hist[-1] < 5e-3)
+    vert_in = np.unique(m.facets[:, fin])
+    vert_out = np.unique(m.facets[:, fout])
+    dp = float(p[vert_in].mean() - p[vert_out].mean()) * 1e6       # Pa
+    fbo = skfem.FacetBasis(m, eu, facets=fout)
+    q_out = float(skfem.asm(skfem.Functional(lambda w: dot(w["u"], w.n)), fbo, u=fbo.interpolate(u)))
+    speed = np.sqrt(sum(u[ub.nodal_dofs[k]] ** 2 for k in range(3)))
+    pn = p * 1e6
+    lo, hi = float(pn.min()), float(pn.max())
+    regime = "creeping (Stokes)" if re < 1 else "laminar" if re < 2000 else "transitional / turbulent - laminar result NOT valid"
+    res = {"kind": "flow", "fluid": fname, "flow_mm3_s": round(Q, 3), "flow_lpm": round(Q * 60 / 1e6, 4),
+           "mean_inlet_speed_mm_s": round(umean, 3), "max_speed_mm_s": round(float(speed.max()), 3),
+           "pressure_drop_Pa": round(dp, 4), "reynolds": round(re, 1), "regime": regime, "valid": re < 2000,
+           "hydraulic_diameter_mm": round(dh, 3), "mass_balance_pct": round(100 * q_out / Q, 2),
+           "iterations": len(hist), "converged": bool(converged), "history": hist,
+           "mesh": {"nodes": int(m.p.shape[1]), "elements": int(m.t.shape[1]), "h_mm": round(msh["h"], 3),
+                    "element": "Taylor-Hood P2-P1"},
+           "scale": {"label": "Pressure on the walls (Pa)", "lo": round(lo, 4), "hi": round(hi, 4)},
+           "seconds": round(time.time() - t0, 1)}
+    if spec.get("max_dp_pa") is not None:
+        res["max_dp_pa"] = float(spec["max_dp_pa"])
+        res["passes"] = dp <= float(spec["max_dp_pa"])
+    if re >= 2000 and dh > 0:
+        f = 0.25 / math.log10(5.74 / re ** 0.9) ** 2
+        res["turbulent_estimate_Pa_per_m"] = round(f / (dh / 1000) * (rho * 1e12) * (umean / 1000) ** 2 / 2, 2)
+    res["surface"] = _surface(m, pn, lo, hi)
+    return res
+
+
+def _perimeter(shape, faces, idx) -> float:
+    return sum(sum(e.Length() for e in faces[i].outerWire().Edges()) for i in idx)
+
+
 def run(shape, spec: dict) -> dict[str, Any]:
     kind = str(spec.get("kind") or "static").lower()
     fn = {"static": static, "stress": static, "thermal": thermal, "heat": thermal, "modal": modal,
-          "vibration": modal}.get(kind)
+          "vibration": modal, "flow": flow, "cfd": flow}.get(kind)
     if fn is None:
-        raise FeaError(f"analysis kind '{kind}' nahi hai (static / thermal / modal)")
+        raise FeaError(f"analysis kind '{kind}' nahi hai (static / thermal / modal / flow)")
     return fn(shape, spec)

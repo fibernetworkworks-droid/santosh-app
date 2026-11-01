@@ -255,8 +255,83 @@ def pipe(flow_lpm: float, diameter_mm: float, length_m: float, fluid: str = "wat
             "formula": "ΔP = (f·L/D + ΣK)·ρv²/2, Swamee-Jain f", "note": NOTE}
 
 
+# ---------------------------------------------------------------- v0.381 bolted joint + fatigue
+BOLT_SE = {"4.6": 93.0, "5.8": 93.0, "8.8": 129.0, "9.8": 140.0, "10.9": 162.0, "12.9": 190.0}   # rolled threads, MPa
+WILEMAN = {"steel": (0.78715, 0.62873), "aluminium": (0.79670, 0.63816), "cast iron": (0.77871, 0.61616),
+           "copper": (0.79568, 0.63553)}
+E_PLATE = {"steel": 207000, "aluminium": 71000, "cast iron": 100000, "copper": 119000}
+
+
+def joint(m: float, grade: str = "8.8", grip_mm: float = 20.0, plates: str = "steel", load_N: float = 0.0,
+          shear_N: float = 0.0, bolts: int = 1, preload_pct: float = 75.0, friction: float = 0.2,
+          interfaces: int = 1, bolt_length_mm: float | None = None) -> dict[str, Any]:
+    """A bolted joint the way VDI 2230 / Shigley ch. 8 checks it: bolt + member stiffness, load share, preload,
+    separation, yield, fatigue (Goodman on rolled threads) and slip under a shear load. Loads are for the whole
+    joint and split over `bolts`."""
+    m = int(m) if float(m).is_integer() else m
+    if m not in AS:
+        raise CalcError(f"bolt M{m} table mein nahi")
+    if grade not in GRADES:
+        raise CalcError(f"grade {', '.join(GRADES)}")
+    plates = str(plates).lower().replace("aluminum", "aluminium")
+    if plates not in WILEMAN:
+        raise CalcError(f"plates: {', '.join(WILEMAN)}")
+    fub, _fyb, sp = GRADES[grade]
+    if grade == "8.8" and m <= 16:
+        sp = 580
+    d, l, n = float(m), float(grip_mm), max(1, int(bolts))
+    at, ad = AS[m], math.pi * d * d / 4
+    L = float(bolt_length_mm or (l + 0.9 * d))
+    lt_thread = 2 * d + 6 if L <= 125 else 2 * d + 12
+    ld = max(0.0, L - lt_thread)
+    lt = max(0.0, l - ld)
+    E = 207000.0
+    kb = ad * at * E / (ad * lt + at * ld) if (ad * lt + at * ld) > 0 else ad * E / l
+    A, B = WILEMAN[plates]
+    km = E_PLATE[plates] * d * A * math.exp(B * d / l)
+    C = kb / (kb + km)
+    fi = preload_pct / 100 * sp * at
+    P = float(load_N) / n
+    fb, fm = fi + C * P, fi - (1 - C) * P
+    n_sep = fi / (P * (1 - C)) if P > 0 else math.inf
+    n_yield = sp * at / (C * P + fi)
+    n_load = (sp * at - fi) / (C * P) if P > 0 else math.inf
+    se = BOLT_SE[grade]
+    sa = C * P / (2 * at)
+    si = fi / at
+    sm = sa + si
+    n_fat = se * (fub - si) / (fub * sa + se * (sm - si)) if sa > 0 else math.inf
+    v = float(shear_N)
+    n_slip = (friction * n * max(fm, 0) * max(1, int(interfaces))) / v if v > 0 else math.inf
+    torque = 0.2 * fi * d / 1000
+    fmt = lambda x: "∞" if x == math.inf else round(x, 2)
+    ok = all(x >= lim for x, lim in ((n_sep, 1.2), (n_yield, 1.0), (n_fat, 1.5), (n_slip, 1.25)))
+    return {"joint": f"{n} x M{m} {grade}, grip {l:g} mm, {plates} plates", "bolt_stiffness_N_mm": round(kb),
+            "member_stiffness_N_mm": round(km), "load_factor_C": round(C, 3), "preload_N": round(fi),
+            "tightening_torque_Nm": round(torque, 1), "per_bolt_load_N": round(P, 1), "bolt_force_N": round(fb),
+            "clamp_left_N": round(fm), "safety": {"separation": fmt(n_sep), "yield": fmt(n_yield), "load": fmt(n_load),
+                                                  "fatigue": fmt(n_fat), "slip": fmt(n_slip)},
+            "ok": ok, "limits": "separation >= 1.2, yield >= 1.0, fatigue >= 1.5, slip >= 1.25",
+            "standard": "VDI 2230 approach, Shigley ch. 8 (Wileman member stiffness, rolled-thread endurance)",
+            "note": NOTE}
+
+
+def fatigue(sigma_max_MPa: float, sigma_min_MPa: float = 0.0, material: str = "steel", finish: str = "machined",
+            size_mm: float | None = None, reliability: float = 90, life: float = 1e6, kt: float = 1.0,
+            notch_q: float = 0.8, load: str = "bending") -> dict[str, Any]:
+    """Stress-life fatigue of a nominal stress range with a notch (Kt, notch sensitivity q)."""
+    from .fea import endurance, fatigue_eval, material as _mat
+    mname, mat = _mat(material)
+    kf = 1 + float(notch_q) * (float(kt) - 1)
+    en = endurance(mname, mat, finish, size_mm, float(reliability), load)
+    out = fatigue_eval(kf * float(sigma_max_MPa), kf * float(sigma_min_MPa), en, float(life))
+    out.update({"material": mname, "Kf": round(kf, 3), "note": NOTE})
+    return out
+
+
 def run(kind: str, args: dict[str, Any]) -> dict[str, Any]:
-    fns = {"fit": fit, "stack": stack, "bolt": bolt, "weld": weld, "beam": beam, "pipe": pipe}
+    fns = {"fit": fit, "stack": stack, "bolt": bolt, "weld": weld, "beam": beam, "pipe": pipe, "joint": joint,
+           "fatigue": fatigue}
     if kind not in fns:
         raise CalcError(f"calc: {', '.join(fns)}")
     try:

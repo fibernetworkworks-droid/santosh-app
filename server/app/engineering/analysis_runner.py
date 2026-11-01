@@ -31,7 +31,17 @@ def main() -> None:
             glued = False
         for i, spec in enumerate(job.get("studies") or []):
             try:
-                r = fea.run(shape, spec)
+                target = shape
+                if spec.get("domain_file"):               # v0.381 flow: the fluid body, not the part
+                    import re as _re
+                    if not _re.fullmatch(r"domain_\d\.step", str(spec["domain_file"])):
+                        raise ValueError("domain file")
+                    dsh = cq.importers.importStep(str(out / spec["domain_file"])).val()
+                    ds = dsh.Solids()
+                    target = ds[0] if len(ds) == 1 else dsh
+                elif spec.get("kind") in ("flow", "cfd"):
+                    raise ValueError("flow ke liye H.analyze('flow', domain=<fluid body>, ...) chahiye")
+                r = fea.run(target, spec)
                 (out / f"fea_{i}.json").write_text(json.dumps(r.pop("surface")), encoding="utf-8")
                 r["glued_assembly"] = glued
                 res["studies"].append({"ok": True, **r})
