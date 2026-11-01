@@ -334,5 +334,5 @@ def test_real_nginx_serves_sites_and_survives_hoola_down(tmp_path, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.348.0"
-    assert "0.348.0+388" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.349.0"
+    assert "0.349.0+389" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

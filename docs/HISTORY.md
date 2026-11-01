@@ -12794,3 +12794,15 @@ MoSPI was a featured connector that needed her Connect tap, and the guide sent c
 - Settings MOSPI_ENABLED (true), MOSPI_MCP_URL. Live check: CPI (General) All India Sep 2026 = 5.54% from MoSPI itself.
 - Tests: tests/test_v0348_mospi_builtin.py (6); v0344 test updated (MoSPI is built in, not a Connect tap). Related
   suites: 24 failures, the same 24 on pristine main eedb13e7 (app / site builders, Hoola PC, mcp_avatar - sandbox-only).
+
+## v0.349.0 MOSPI PAKKA (1 Nov 2026)
+Her test on v0.348: Hoola called `mospi`, said "MoSPI's server did not respond", and fell back to a search summary
+(5.54% / rural 6.08% / urban 4.88% are right - checked against MoSPI's own data; "CFPI 7.74%" is not MoSPI's food &
+beverages 7.36% combined / 7.71% rural / 6.75% urban). From the sandbox MoSPI answers in ~1.7 s, so the gap is the VPS
+-> mcp.mospi.gov.in path, and the client did not say WHY.
+- app/mospi.py: real User-Agent `Hoola/1.0 (+https://hoola.ainewtika.com; ...)` (python-httpx's default UA is a common
+  government-WAF block), connect 10 s / read 45 s, follow_redirects, one retry after 1.5 s on a network failure,
+  `_why()` names timeout / DNS / refused / TLS, HTTP refusals carry their code + body (logged), LAST_ERROR kept.
+- `python -m app.mospi check` (one free list_datasets call: ok, datasets, seconds or the exact error) and vps-ops job
+  `mospi_check` (getent DNS, curl with timings + remote ip, the Hoola client check, recent MoSPI log lines).
+- Tests: test_v0348_mospi_builtin.py +1 (retry once, Hoola UA, reason named, check() false on failure).
