@@ -13241,3 +13241,24 @@ v0.356-v0.363 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASL
 - Console (`employees.js` inbox tile with tabs + reply boxes, facts textarea) + phone (`SocialInboxScreen`, desk Inbox card,
   facts field). Privacy page: comments and messages paragraph (7 days, what is kept, trust, no delete, 24 h, no ads / training).
 - Tests: `server/tests/test_v0358_social_inbox.py` (11). Meta App Review needed for the new permissions before non-testers.
+
+
+## v0.365.0 SOCIAL MEDIA MANAGER Phase 4 - 24/7 + REPORTS (1 Nov 2026, owner: "GO PHASE 4")
+Built as 0.359, re-versioned after v0.364 (Phase 3). Module `server/app/social/pulse.py`.
+- Posting by trust (plan section 6). New nullable `social_posts.seen`: approve_calendar sets 0 (plan OK only), set_post
+  approved / Publish now set 1, old rows NULL = treated as her own OK (Phase 2 behaviour kept). `publish.due` asks
+  `pulse.may_go`: seen 0 + Seekh -> waits (`waiting_ok`, "Needs your OK" + "OK to post" on the card); Saathi / Bharosa ->
+  not in quiet hours (default 23-7) and under POST_CAP 6 / 15 a day (counted by the post's day or its send time);
+  Saathi is told the same day (social_day). Missed (> 1 day late) unchanged.
+- `social_desk.settings` (nullable JSON): paused, pause_reason, quiet. Pause = publisher returns nothing and the inbox
+  acts as Seekh (drafts only). Emergency stop = pause + approved / failed posts back to draft. POST /api/social/settings.
+- Jobs: morning (daily >= 9 am, says something only when posts wait / complaints / a festival in exactly 7 days),
+  weekly = `weekly_pulse` (fresh numbers, two lines vs last week, push social_week), monthly (1st >= 9 am, never in the
+  baseline's month; `report_markdown` + Hoola Print -> chatfiles -> pc_file in her chat), daily also flags boosts.
+- Best times: per post interactions / that account's median, weekday x 3-hour band, (sum + 3) / (n + 3), certainty by
+  posts read (15 / 40); `_plan_inputs.best_times` for Opus, the rules plan uses by_day hours when certainty >= medium.
+- Boost flags: last 14 days, >= 8 posts read, >= 20 interactions and >= 2x the median; told once each (stamps.boosted);
+  plan text = Meta Boost / Ads Manager, 15 km of her city, Rs 300 a day x 3 days, compare leads with spend.
+- Desk view `pulse` (settings, trust, cap, auto today, waiting_ok, best_times, boosts); console Posting controls / Best
+  times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
+  social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0365_social_pulse.py` (12).
