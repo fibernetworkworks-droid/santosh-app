@@ -274,6 +274,7 @@ import hoola.kit.UpdateDialog
 import hoola.kit.AppData
 import hoola.kit.Auth
 import hoola.kit.Cloud
+import hoola.kit.PushHook
 import hoola.kit.Inbox
 import hoola.kit.I18n
 import hoola.kit.CrashGuard

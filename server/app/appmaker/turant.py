@@ -65,8 +65,10 @@ def _call(method: str, url: str, body: dict | None = None) -> dict[str, Any]:
 
 
 def state(r: AppProject) -> dict[str, Any]:
+    """Read fresh (the caller's copy of the project may be older than a switch made a moment ago)."""
+    from . import service as AS
     from .android import service as AN
-    return dict(AN.state(r).get("fcm") or {})
+    return dict(AN.state(AS._load(r.id)).get("fcm") or {})
 
 
 def view(r: AppProject) -> dict[str, Any]:

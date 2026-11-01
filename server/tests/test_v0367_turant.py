@@ -68,8 +68,10 @@ def test_enable_register_and_push(droid_env, monkeypatch, tmp_path):
         return {}
     monkeypatch.setattr(TU, "_call", fake_call)
     monkeypatch.setattr(TU, "_mgmt", lambda: (None, "newtika-hoola"))
-    v = c.put(f"/api/apps/{aid}/turant", json={"on": True}).json()
-    assert v["on"] and made == [SP.app_id_for(aid)] and v["packages"] == [SP.app_id_for(aid)]
+    res = c.put(f"/api/apps/{aid}/turant", json={"on": True})
+    v = res.json()
+    assert res.status_code == 200, v
+    assert v["on"] and made == [SP.app_id_for(aid)] and v["packages"] == [SP.app_id_for(aid)], (v, made)
     # phones: tokens only from signed-in accounts
     _acct(c, api, "asha@example.com", "Asha")
     _acct(c, api, "ravi@example.com", "Ravi")
