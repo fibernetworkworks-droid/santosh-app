@@ -14750,3 +14750,34 @@ The front-door safety pass from "WHAT IS NEXT WORK". Built as 0.386, re-versione
   - the voice socket closes 4401 on `?key=`;
   - the warning fires only when empty; the probe reads 401 / 200;
   - vps job present; main.py.orig gone; no `query_params.get("key"` left in main.py.
+
+## v0.392.0 HOOLA CAD CONTACT (1 Nov 2026)
+Owner pointed at the open gap: "Contact between parts in the stress check: an assembly is still checked as one glued
+piece. Bolts are checked by the joint calculation instead."
+- `engineering/contact.py` (`contact.solve(parts, spec)`), used by the analysis box when a static study has
+  contact= or bolts= (`analysis_runner._contact`; the runner now writes each assembly part as apart_<i>.brep +
+  aparts.json; bolt / screw / nut / washer / stud / rivet solids are left out because each bolt is a connector).
+- Each part its own P2 mesh, global system = parts side by side. Contact pairs from the B-rep: planar faces of two
+  parts facing each other in one plane (gap <= max(0.02 mm, 0.2 % of size)) and overlapping.
+- NODE-TO-SURFACE penalty contact (A's face nodes, with their share of the face area, projected onto B's facets,
+  B interpolated with the quadratic facet shape functions). First try = 3 Gauss points per facet: it LOCKED (a bonded
+  stack 40 % too stiff, stiffer as the penalty rose); one point per node fixed it (0.1993 vs 0.200 mm at penalty 1, 5
+  and 50 x E/h). Only facets with all three corners on the face are used (the mesher sometimes cuts a face's edge).
+- Behaviours: bonded, frictionless (open / closed active set), friction mu (stick / slip with 5 % hysteresis, slip =
+  Coulomb force mu*p opposite the slip, relaxed). Converged when < 0.2 % of points change.
+- Bolts: place_bolt finds the hole stack along the axis at (x, y): head ring (hole radius .. washer OD) on the top
+  part's top face, nut ring on the bottom part's bottom face, or the thread wall (1.5 d) of a tapped bottom part.
+  Axial connector = RBE3-style mean of the ring displacements, stiffness kb from calc.joint (shank + thread);
+  pretension calibrated with a unit-shortening solve so the bolt carries EXACTLY the asked preload with no load.
+- Weak springs 1e-10 E*h only on parts with no support of their own (1e-7 on everything carried a real share of
+  the load and broke equilibrium); a part no support / contact / bolt reaches is refused by name.
+- Equilibrium from the final solve itself (K u - rhs on the supports) - the first version left out the preload on a
+  fixed nut ring and printed 643 %.
+- Flags: separated (> 90 % of a contact open), slipped (> 90 % of the touching points sliding) - a slipped joint's
+  stresses are marked NOT valid (the parts slide until the bolt shank bears; bearing is not modelled).
+  Redesign problems: joint separates / slips / bolt over proof load.
+- Measured: frictionless stack 0.777 vs 0.8 mm (theory 4x one beam); M10 8.8 between two 30 mm blocks: preload
+  25,230 N exact, 5 kN pull adds 9 % (Shigley C 0.156 x a load-introduction factor ~0.6), 60 kN pull opens the
+  joint and the bolt carries 61.4 kN; friction 0.2: 2 kN side load held, 12 kN slips.
+- Still NOT built: bolt shank bearing / shear in the hole, contact on curved faces (pin in a bore), large sliding.
+- Tests: tests/test_v0386_contact.py (7).
