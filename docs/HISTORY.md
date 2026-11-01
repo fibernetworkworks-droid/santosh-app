@@ -13392,3 +13392,28 @@ Built as 0.359 / 0.365 / 0.366, re-versioned past main's v0.364-v0.367. Module `
 - Desk view `pulse` (settings, trust, cap, auto today, waiting_ok, best_times, boosts); console Posting controls / Best
   times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
   social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0369_social_pulse.py` (12).
+
+
+## v0.370.0 SOCIAL MEDIA MANAGER Phase 5 - GROWTH (1 Nov 2026, owner: "GO PHASE 5")
+Module `server/app/social/growth.py` (tables `social_watch`, `social_ugc`), Meta calls at the end of `social/meta.py`.
+- Route: Meta's hashtag search ("available for the Instagram API with Facebook Login", IG Hashtag Search reference) and
+  Business Discovery work only through Facebook Login, so growth uses her connected Facebook Page: `fb_page_ig` finds the
+  linked instagram_business_account (cached in desk stamps `ig_link`), the Page token reads tags / discovery / mentions,
+  the USER token runs hashtag search. FB_SCOPES + instagram_basic, instagram_manage_insights, instagram_manage_comments -
+  with META_LOGIN_CONFIG_ID the permissions live in the Login for Business configuration, so the owner adds them there.
+- Daily job `growth` (>= 8 am): `/tags` -> SocialUgc (her own posts skipped, each once, a note "N new posts tag you").
+  Mondays (or the first read of a new watch): hashtags (<= 5; `ig_hashtag_search` once per tag, id kept in ref_id because
+  Meta allows 30 unique searches in 7 days; `top_media`: posts, interactions, formats, 3 idea lines with links) and
+  competitors (<= 5; business_discovery: followers + change vs prev, posts in 7 / 30 days, interactions a post, formats,
+  engagement rate); one comparison line to her own numbers. Errors stay on the row (e.g. not a professional account).
+- UGC: ask (her tap only) = POST /{ig}/mentions comment "...share with credit? reply YES" - never a DM (she may not
+  message first); permission needs proof text (their words / where); refused / ignore; repost only when granted:
+  media_url downloaded -> add_asset -> SocialPost draft (source ugc, "Credit: @user", hook_style story) for her approval.
+- Creator check: business_discovery numbers + `influencer.rules.fake_signals` (signals, never a verdict) + ASCI
+  `disclosure_check` for a paid collab caption.
+- A/B hook styles: nullable `social_posts.hook_style`; Opus told to rotate and lean on the winner; rules plan rotates
+  question / number / story and puts the winner on every other post; `ab_report` matches published result ids to read
+  numbers, winner only at >= 3 posts a style and a 20% lead.
+- Not done (plan wording): an automatic Ads desk hand-off (the Ads desk analyses imported reports; the boost plan stays
+  hers to run), the Influencer desk roster (it is a talent-manager tool) - its rules are reused instead.
+- Console Growth tile, phone Growth card; privacy paragraph. Tests `server/tests/test_v0370_social_growth.py` (8).

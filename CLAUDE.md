@@ -145,7 +145,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.369.0 (pubspec 0.369.0+409). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.370.0 (pubspec 0.370.0+410). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
@@ -172,6 +172,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.370 SOCIAL MEDIA MANAGER Phase 5 GROWTH (`social/growth.py`, via her Page's linked Instagram = Facebook Login): tags -> UGC ask / recorded yes /
+  credited draft, 5 hashtags + 5 competitors weekly, creator check (signals + #ad), A/B hook styles.
 - v0.369 SOCIAL MEDIA MANAGER Phase 4 (`social/pulse.py`): plan posts alone only for Saathi / Bharosa (6 / 15 a day, quiet hours), Seekh = OK on the day;
   pause + emergency stop, 9 am note, Monday pulse, monthly PDF, best times, boost flags (she runs the boost).
 - v0.368 SOCIAL MEDIA MANAGER Phase 3 INBOX (`social/inbox.py`): IG + FB comments and DMs every 15 min, sorted, drafts from her facts only;
