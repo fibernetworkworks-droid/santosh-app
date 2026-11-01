@@ -12794,3 +12794,33 @@ MoSPI was a featured connector that needed her Connect tap, and the guide sent c
 - Settings MOSPI_ENABLED (true), MOSPI_MCP_URL. Live check: CPI (General) All India Sep 2026 = 5.54% from MoSPI itself.
 - Tests: tests/test_v0348_mospi_builtin.py (6); v0344 test updated (MoSPI is built in, not a Connect tap). Related
   suites: 24 failures, the same 24 on pristine main eedb13e7 (app / site builders, Hoola PC, mcp_avatar - sandbox-only).
+
+## v0.349.0 MOSPI PAKKA (1 Nov 2026)
+Her test on v0.348: Hoola called `mospi`, said "MoSPI's server did not respond", and fell back to a search summary
+(5.54% / rural 6.08% / urban 4.88% are right - checked against MoSPI's own data; "CFPI 7.74%" is not MoSPI's food &
+beverages 7.36% combined / 7.71% rural / 6.75% urban). From the sandbox MoSPI answers in ~1.7 s, so the gap is the VPS
+-> mcp.mospi.gov.in path, and the client did not say WHY.
+- app/mospi.py: real User-Agent `Hoola/1.0 (+https://hoola.ainewtika.com; ...)` (python-httpx's default UA is a common
+  government-WAF block), connect 10 s / read 45 s, follow_redirects, one retry after 1.5 s on a network failure,
+  `_why()` names timeout / DNS / refused / TLS, HTTP refusals carry their code + body (logged), LAST_ERROR kept.
+- `python -m app.mospi check` (one free list_datasets call: ok, datasets, seconds or the exact error) and vps-ops job
+  `mospi_check` (getent DNS, curl with timings + remote ip, the Hoola client check, recent MoSPI log lines).
+- Tests: test_v0348_mospi_builtin.py +1 (retry once, Hoola UA, reason named, check() false on failure).
+
+## v0.350.0 KADAM-BA-KADAM CODING - Hoola codes the Claude Code way, step 1 (owner: "1. The coding tools it gets (8) --- start the work")
+Research + diagrams: artifact "How Claude Code Codes" (explore -> plan -> small edit -> run checks -> fix -> repeat). Before:
+Developer Sahayak `_gather` guessed up to 12 files ONCE (error-text paths, GitHub code search on keywords, file-name words) and
+ONE Opus call wrote every edit as JSON - a file the guess missed was never seen.
+NEW `app/devsahayak/loop.py`: the model gets 8 tools over the GitHub API (no repo code runs on Hoola's server) and works one
+move at a time - list_dir, search_code, read_file (numbered, 400 lines a call, start/end), find_usages (every line using a
+name), edit_file (ONE exact replacement, only in a file it has read; not found exactly once = refused, re-read and retry),
+new_file, show_diff, done (explain, cause, PR title / summary, test plan, risk). The project's own rules (top-level
+README / CONTRIBUTING / AGENTS.md / CLAUDE.md + build files) are read before any work. Secret / binary files are never shown
+or changed; workflow files only with allow_workflows (rules.path_problem). Edits stay in memory until done; then the SAME
+path as before takes over (`_prepare` caps + secrets + OWASP -> one commit on hoola/<task> -> PR; merge / deploy only on her
+tap). One line per step goes into the task log (`_progress`: "padha: app/calc.py", "badla: ..."), and found.loop keeps
+steps / searches / trail. Limits DEV_LOOP_STEPS 40, DEV_LOOP_MINUTES 20; model DEV_LOOP_MODEL ('' = site_model, Opus) at
+DEV_LOOP_EFFORT high, 16k tokens. No API key / the loop failing -> LoopUnavailable -> the old one-shot path (so existing tasks
+never die). revise / fix_ci rounds still use the one-shot path (next: item 2 = CI loop before the PR).
+Tests: test_v0350_kadam_ba_kadam.py (5) with a scripted model on the fake GitHub; test_tech_devsahayak.py (11) unchanged.
+NOT verified here: a live run (needs her GitHub token + the API key) - try one small fix on a test repo.

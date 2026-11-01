@@ -7,7 +7,9 @@ Built in for every user (no Connect tap), so "CPI kitni hai" is answered from Mo
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import time
 from typing import Any
 
@@ -20,7 +22,11 @@ PROTOCOL = "2025-06-18"
 TOOLS = {"datasets": "list_datasets", "indicators": "get_indicators", "metadata": "get_metadata", "data": "get_data"}
 TTL = {"list_datasets": 6 * 3600, "get_indicators": 6 * 3600, "get_metadata": 3600, "get_data": 900}
 _CACHE: dict[str, tuple[float, Any]] = {}
-STATS = {"calls": 0, "cached": 0, "errors": 0}
+STATS = {"calls": 0, "cached": 0, "errors": 0, "retries": 0}
+LAST_ERROR: dict[str, Any] = {}     # v0.349 the exact reason of the last failure (vps check / logs), never shown raw to her
+HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream",
+           "MCP-Protocol-Version": PROTOCOL, "User-Agent": "Hoola/1.0 (+https://hoola.ainewtika.com; MoSPI eSankhyiki MCP client)"}
+log = logging.getLogger("santosh.mospi")
 
 
 class MospiError(Exception):
@@ -47,20 +53,48 @@ def _parse(text: str, ctype: str) -> dict[str, Any]:
         raise MospiError("MoSPI ka jawab samajh nahi aaya.")
 
 
-async def _rpc(name: str, args: dict[str, Any], timeout: float = 60.0) -> dict[str, Any]:
+def _why(e: BaseException) -> str:
+    """The network failure in plain words (timeout / DNS / refused / TLS), for the log and the vps check."""
+    n = type(e).__name__
+    t = str(e)[:160]
+    if isinstance(e, httpx.TimeoutException):
+        return f"timeout ({n})"
+    if "Name or service not known" in t or "getaddrinfo" in t or "nodename" in t:
+        return f"DNS failed ({n})"
+    if "refused" in t.lower():
+        return f"connection refused ({n})"
+    if "SSL" in t or "certificate" in t.lower():
+        return f"TLS problem ({n}: {t})"
+    return f"{n}: {t}"
+
+
+async def _rpc(name: str, args: dict[str, Any], timeout: float = 45.0) -> dict[str, Any]:
+    """One tools/call. v0.349: a network failure (timeout, connect, DNS) is tried once more after a short pause; the
+    exact reason is logged and kept in LAST_ERROR; HTTP refusals carry their status code."""
     body = {"jsonrpc": "2.0", "id": int(time.time() * 1000) % 1_000_000_000, "method": "tools/call",
             "params": {"name": name, "arguments": args}}
     STATS["calls"] += 1
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as c:
-            r = await c.post(_url(), json=body, headers={"Content-Type": "application/json",
-                                                          "Accept": "application/json, text/event-stream",
-                                                          "MCP-Protocol-Version": PROTOCOL})
-    except httpx.HTTPError as e:
-        STATS["errors"] += 1
-        raise MospiError("MoSPI abhi jawab nahi de raha (network). Thodi der mein phir dekhte hain.") from e
+    tmo = httpx.Timeout(timeout, connect=10.0)
+    r = None
+    for attempt in (1, 2):
+        try:
+            async with httpx.AsyncClient(timeout=tmo, follow_redirects=True) as c:
+                r = await c.post(_url(), json=body, headers=HEADERS)
+            break
+        except httpx.HTTPError as e:
+            why = _why(e)
+            LAST_ERROR.update(at=time.time(), tool=name, why=why, attempt=attempt)
+            log.warning("MoSPI %s attempt %d failed: %s", name, attempt, why)
+            if attempt == 2:
+                STATS["errors"] += 1
+                raise MospiError(f"MoSPI ka server abhi nahi mila ({why}). Thodi der mein phir dekhte hain.") from e
+            STATS["retries"] += 1
+            await asyncio.sleep(1.5)
+    assert r is not None
     if r.status_code >= 400:
         STATS["errors"] += 1
+        LAST_ERROR.update(at=time.time(), tool=name, why=f"HTTP {r.status_code}", body=r.text[:200])
+        log.warning("MoSPI %s refused: HTTP %s %s", name, r.status_code, r.text[:200].replace("\n", " "))
         raise MospiError(f"MoSPI ne mana kiya (HTTP {r.status_code}).")
     msg = _parse(r.text, r.headers.get("content-type", ""))
     if msg.get("error"):
@@ -114,3 +148,29 @@ async def call(action: str, **args: Any) -> Any:
         _CACHE.clear()
     _CACHE[key] = (time.time(), out)
     return out
+
+
+def check() -> dict[str, Any]:
+    """`python -m app.mospi check` on the VPS: can this server reach MoSPI, and how fast? (one free read call)."""
+    t = time.time()
+    try:
+        out = asyncio.run(_rpc("list_datasets", {}))
+        n = len(((out.get("structuredContent") or {}).get("datasets") or {})) if isinstance(out, dict) else 0
+        if not n:
+            for c in out.get("content") or []:
+                try:
+                    n = len(json.loads(c.get("text", "")).get("datasets") or {})
+                except (ValueError, AttributeError):
+                    pass
+        return {"ok": True, "datasets": n, "seconds": round(time.time() - t, 2), "url": _url()}
+    except MospiError as e:
+        return {"ok": False, "error": str(e), "detail": dict(LAST_ERROR), "seconds": round(time.time() - t, 2),
+                "url": _url()}
+
+
+if __name__ == "__main__":
+    import sys
+    if sys.argv[1:2] == ["check"]:
+        print(json.dumps(check(), indent=1, default=str))
+    else:
+        print("usage: python -m app.mospi check")

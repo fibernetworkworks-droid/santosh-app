@@ -18,6 +18,7 @@ on:
           - logs
           - errors
           - voicecheck
+          - mospi_check
           - ack_refresh
           - deploy
           - rollback_stable
@@ -122,6 +123,12 @@ jobs:
                 echo 'echo "== free + swap now"; free -m; swapon --show' ;;
               voicecheck)
                 echo 'cd $CORE && timeout 600 .venv/bin/python -m app.voicecheck' ;;
+              mospi_check)
+                # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
+                echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'
+                echo 'echo "== curl"; curl -sS -m 30 -o /dev/null -w "HTTP %{http_code} connect %{time_connect}s total %{time_total}s ip %{remote_ip}\n" -X POST https://mcp.mospi.gov.in/mcp -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"list_datasets\",\"arguments\":{}}}" || echo "curl failed"'
+                echo 'echo "== Hoola client"; cd $CORE && timeout 120 .venv/bin/python -m app.mospi check'
+                echo 'echo "== recent MoSPI log lines"; pm2 logs santosh --lines 400 --nostream --raw 2>/dev/null | grep -i mospi | tail -20' ;;
               ack_refresh)
                 # v0.201.0 AWAAZ-2: the ack clips are disk-cached by filename with no ask-hash, so a changed
                 # delivery ask never regenerates them on an old server. This job drops the cache; the next

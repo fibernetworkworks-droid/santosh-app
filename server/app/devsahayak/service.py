@@ -717,13 +717,58 @@ def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], is
     return "\n".join(lines)[:60000]
 
 
+def _setting(name: str, default: Any) -> Any:
+    from ..config import get_settings
+    return getattr(get_settings(), name, default)
+
+
+def _loop_on() -> bool:
+    return bool(_setting("dev_loop", True))
+
+
+def _progress(tid: str, line: str) -> None:
+    """v0.350 one line per tool step into the task log, so the task card shows what Hoola is reading / changing."""
+    try:
+        with session() as s:
+            row = s.get(DevTask, tid)
+            if row is not None:
+                _log(row, line)
+    except Exception:
+        log.debug("dev progress line failed", exc_info=True)
+
+
 def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_pr: bool = False) -> dict[str, Any]:
     cfg = _cfg(tenant)
     with session() as s:
         t = s.get(DevTask, tid)
         s.expunge(t)
-    base_sha, read, ctx = _gather(g, t, extra_files)
-    out = _ask_model(t, ctx["context"], cfg.rules)
+    base_sha = read = ctx = out = None
+    if _loop_on():
+        # v0.350 KADAM-BA-KADAM: the model explores the repo with tools and edits step by step (devsahayak/loop.py);
+        # anything that stops the loop early falls back to the one-shot path below, so the task never dies of it
+        from . import loop as L
+        try:
+            issue_txt = ""
+            if t.issue:
+                iss = g.issue(t.repo, t.issue)
+                issue_txt = f"#{t.issue} {iss.get('title', '')}\n{(iss.get('body') or '')[:8000]}"
+            base_sha, read, ctx, out = L.run(g, t, cfg.rules, extra_files, cfg.allow_workflows, issue_txt,
+                                             max_steps=_setting("dev_loop_steps", 40),
+                                             minutes=float(_setting("dev_loop_minutes", 20)),
+                                             on_step=lambda line: _progress(tid, line))
+        except L.LoopUnavailable as e:
+            L.STATS["fallback"] += 1
+            log.info("dev loop unavailable (%s): one-shot path", e)
+            base_sha = None
+        except GhError:
+            raise
+        except Exception:
+            L.STATS["fallback"] += 1
+            log.exception("dev loop failed: one-shot path")
+            base_sha = None
+    if base_sha is None:
+        base_sha, read, ctx = _gather(g, t, extra_files)
+        out = _ask_model(t, ctx["context"], cfg.rules)
     explain = str(out.get("explain") or "").strip()[:3000]
     if R.secrets_in(explain):
         explain = "(Samjhane mein secret jaisa text tha, hata diya.)"

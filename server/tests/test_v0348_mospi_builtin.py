@@ -89,3 +89,35 @@ def test_switch_off(env, monkeypatch):
     from app.agent import tools
     with pytest.raises(tools.ToolError, match="off"):
         asyncio.run(tools.HANDLERS["mospi"](_ctx(), action="datasets"))
+
+
+def test_network_failure_is_retried_once_and_named(env, monkeypatch):
+    """v0.349: the live server's call failed with 'MoSPI did not respond'; one retry, the exact reason kept + logged."""
+    import httpx
+
+    from app import mospi as ms
+    ms._CACHE.clear()
+    tries = []
+
+    class Boom:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, json=None, headers=None):
+            tries.append(headers.get("User-Agent", ""))
+            raise httpx.ConnectTimeout("timed out")
+
+    async def no_sleep(_):
+        return None
+    monkeypatch.setattr(ms.httpx, "AsyncClient", Boom)
+    monkeypatch.setattr(ms.asyncio, "sleep", no_sleep)
+    with pytest.raises(ms.MospiError, match="timeout"):
+        asyncio.run(ms.call("datasets"))
+    assert len(tries) == 2 and tries[0].startswith("Hoola/")          # retried once; not python-httpx's default UA
+    assert ms.LAST_ERROR["why"].startswith("timeout") and ms.check()["ok"] is False
