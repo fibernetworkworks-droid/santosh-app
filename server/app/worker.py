@@ -777,7 +777,7 @@ async def employee_jobs() -> None:
             log.exception("%s tick failed", _mod)
     # v0.150 Kanoon suite: court diary / limitation, compliance calendar, contract renewals, MCA calendar, notary renewals,
     # PI desk reminders, DPDP breach / request clocks (each throttles itself; legalres.tick does nothing)
-    for _mod in ("vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo"):
+    for _mod in ("vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "guru"):   # + Shiksha tutor weekly report cards
         try:
             import importlib
             _svc = importlib.import_module(f".{_mod}.service", __package__)

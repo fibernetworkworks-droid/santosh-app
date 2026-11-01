@@ -48,6 +48,7 @@ import 'society_screen.dart';
 import 'vakil_screen.dart';
 import 'legalres_screen.dart';
 import 'shiksha_screen.dart';
+import 'guru_screen.dart';
 import 'compliance_screen.dart';
 import 'contracts_screen.dart';
 import 'cosec_screen.dart';
@@ -703,6 +704,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Question bank, board pattern ka paper + answer key, year / lesson plan, rubric'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShikshaScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.psychology_rounded, color: C.accent),
+              title: Text('${app.aName} · Personal tutor', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Doubt ishaaron se, practice + revision, English abhyas, hafte ki report'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GuruScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

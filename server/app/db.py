@@ -854,6 +854,7 @@ def init_db(url: str | None = None):
     from .legalres import models as _legalres  # noqa: F401
     from .shiksha import models as _shiksha  # noqa: F401  (v0.381 Shiksha suite)
     from .pathyakram import models as _pathyakram  # noqa: F401
+    from .guru import models as _guru  # noqa: F401  (Shiksha Phase 2 tutor)
     from .compliance import models as _compliance  # noqa: F401
     from .contracts import models as _contracts  # noqa: F401
     from .cosec import models as _cosec  # noqa: F401

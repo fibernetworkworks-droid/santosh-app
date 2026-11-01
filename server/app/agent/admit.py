@@ -137,6 +137,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "contracts": ("contract", "agreement"),
     "legalres": ("legal research", "kanoon", "case law"),
     # v0.381 Shiksha suite: school / coaching work (papers, question banks, plans) + the Python sandbox
+    # Shiksha Phase 2: the personal tutor (doubts, practice, language practice, progress)
+    "guru": ("tutor", "padhao", "padha do", "samjhao", "samjha do", "doubt", "homework", "practice karao", "revision",
+             "sawaal samajh", "kaise hal", "solve karna sikhao", "hint do", "english bolna", "spoken english", "grammar",
+             "pragati", "progress report", "weak topic", "पढ़ाओ", "समझाओ", "होमवर्क"),
     "shiksha": ("question paper", "sample paper", "test paper", "paper banao", "question bank", "sawaal banao", "mcq",
                 "syllabus", "lesson plan", "year plan", "rubric", "blueprint", "marking scheme", "answer key", "worksheet",
                 "unit test", "periodic test", "cbse", "icse", "ncert", "board exam", "class 10", "class 12", "students",
