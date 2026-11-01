@@ -953,6 +953,12 @@ def _daily_and_boosts(tenant: str) -> dict[str, Any]:
             out["ytads"] = gads.daily_watch(tenant)
     except Exception as e:       # noqa: BLE001
         log.info("youtube ads daily skipped: %s", e)
+    try:                                            # v0.417 Facebook / Instagram ads past their days -> paused, she is told
+        from ..ads import metaads
+        if metaads.linked(tenant):
+            out["metaads"] = metaads.daily_watch(tenant)
+    except Exception as e:       # noqa: BLE001
+        log.info("meta ads daily skipped: %s", e)
     try:
         from .pulse import flag_boosts
         out["boosts"] = flag_boosts(tenant)            # v0.369 boost-worthy posts, told once each
