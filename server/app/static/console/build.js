@@ -911,7 +911,7 @@ window.HoolaBuild = function (C) {
       if (b) b.addEventListener('click', async () => { b.disabled = true; try { drawT(await api('PUT', base(o) + '/turant', {on: b.dataset.turant === '1'})); toast('Saved. It reaches phones with the next Android build.'); } catch (er) { toast(er.message, true); b.disabled = false; } });
     };
     try { drawT(await api('GET', base(o) + '/turant')); } catch (er) { tbox.remove(); }
-    // v0.380 DIMAAG: the app's brain - linked lists, formulas, rules, workflows + approvals, triggers, timed jobs, locked functions.
+    // v0.382 DIMAAG: the app's brain - linked lists, formulas, rules, workflows + approvals, triggers, timed jobs, locked functions.
     // Opus drafts it from her words, the checker proves it, ONLY her "Apply" tap makes it live.
     const lbox = document.createElement('section'); lbox.className = 'stcol stlogic'; box.appendChild(lbox);
     const drawL = v => {

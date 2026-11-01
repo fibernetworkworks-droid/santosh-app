@@ -1,4 +1,4 @@
-// v0.380 DIMAAG (App Sahayak Phases 43-46): her app's BRAIN on her phone - what the logic does in plain lines, a new draft
+// v0.382 DIMAAG (App Sahayak Phases 43-46): her app's BRAIN on her phone - what the logic does in plain lines, a new draft
 // from her words (Opus writes it, the server's checker proves it), HER "Lagu karo" tap that makes it live, the approvals
 // waiting for her, timed jobs (Abhi chalao) and the last automatic actions. Same owner routes as the web console.
 import 'package:flutter/material.dart';

@@ -1,6 +1,6 @@
 package hoola.kit
 
-// Made by Hoola App Sahayak. v0.380 DIMAAG: the app's own logic on the phone - the SERVER decides every rule;
+// Made by Hoola App Sahayak. v0.382 DIMAAG: the app's own logic on the phone - the SERVER decides every rule;
 // these pieces only show what it says: linked rows (a picker + the parent's name), the workflow buttons this account may
 // press, an approval waiting (and Approve / Reject when it is this account's turn), a row's linked children with "Add".
 

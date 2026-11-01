@@ -28,7 +28,7 @@ KIT_FILES = ["Theme.kt", "Data.kt", "Api.kt", "Kit.kt", "Nav.kt", "Strings.kt", 
 CODE_SCREENS = ("splash", "consent", "notify_permission", "seller_info", "privacy", "delete_account")
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 # v0.314 the kit's own account screens (code-made, always present) and the design's sign-in screens they stand in for
-KIT_SCREENS = ("hoola_chat", "hoola_login", "hoola_account", "hoola_inbox", "hoola_approvals", "hoola_data")   # v0.340 inbox, v0.378 chat, v0.380 DIMAAG
+KIT_SCREENS = ("hoola_chat", "hoola_login", "hoola_account", "hoola_inbox", "hoola_approvals", "hoola_data")   # v0.340 inbox, v0.378 chat, v0.382 DIMAAG
 AUTH_IDS = ("login", "signup", "register", "login_staff", "otp_login", "sign_in")
 
 

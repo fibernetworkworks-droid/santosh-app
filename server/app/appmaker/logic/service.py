@@ -1,4 +1,4 @@
-"""v0.380 DIMAAG: her side of the app's brain - Opus drafts it from her words, the checker proves it, her tap applies it.
+"""v0.382 DIMAAG: her side of the app's brain - Opus drafts it from her words, the checker proves it, her tap applies it.
 
   draft(words)  -> Opus writes {lists, fields, logic} for THIS app's real lists -> check() -> one repair round with the
                    checker's errors -> saved as a DRAFT (nothing changes in her live app) + plain summary lines

@@ -39,7 +39,9 @@ MAX_FILES, MAX_FILE_BYTES = 2, 40_000_000
 _POOL = ThreadPoolExecutor(max_workers=1, thread_name_prefix="engineering")
 _LOCK = threading.Lock()
 FILES = ("part.step", "part.stl", "part.3mf", "part.glb", "section.dxf", "drawing.pdf", "iso.png", "front.png", "top.png",
-         "right.png", "part.py")
+         "right.png", "part.py",
+         # v0.365 after-build stage
+         "analysis.pdf", "fea_0.png", "fea_1.png", "fea_2.png", "part.nc", "cam.png", "flat.dxf", "flat.png")
 
 
 class EngError(Exception):
@@ -118,7 +120,7 @@ def view(r: EngProject) -> dict[str, Any]:
         files = {f: file_url(r.id, f"v{v['n']}/{f}") for f in FILES if f in (v.get("files") or [])}
         vs.append({**{k: v.get(k) for k in ("n", "title", "size", "bbox", "volume_mm3", "checks", "assumed", "notes",
                                             "at", "seconds", "words", "plan", "material", "mass_g", "com", "parts",
-                                            "print", "review")}, "files": files})
+                                            "print", "review", "expect", "analysis", "cam", "sheet")}, "files": files})
     return {"id": r.id, "kind": r.kind, "title": r.title or "Part", "brief": r.brief, "status": r.status, "stage": r.stage,
             "error": r.error, "versions": vs, "latest": vs[-1] if vs else None,
             "inputs": [i.get("name") for i in (r.inputs or [])],
@@ -308,7 +310,75 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
         if miss:
             probs.append(f"the bounding box is {bb.get('x')} x {bb.get('y')} x {bb.get('z')} mm but the part should be "
                          f"{size[0]:g} x {size[1]:g} x {size[2]:g} mm")
+    for row in res.get("expect") or []:             # v0.365 her own numbers, measured on the B-rep
+        out.append({"name": f"Asked: {row.get('name')}", "ok": bool(row.get("ok")),
+                    "note": f"{row.get('got')} (wanted {row.get('want')})"})
+        if not row.get("ok"):
+            probs.append(f"her requirement '{row.get('name')}' fails: wanted {row.get('want')}, measured {row.get('got')}")
     return out, probs
+
+
+def _analyse(vdir: Path, res: dict[str, Any], material: str = "") -> dict[str, Any]:
+    """v0.365 FEA + CAM on the built part (the same locked box, Hoola's own code); a study without its own
+    material uses the part's."""
+    studies = [{**st, "material": st.get("material") or material or "steel"} for st in res.get("studies") or []]
+    try:
+        return sandbox.analyse(vdir, studies, (res.get("cam") or [None])[0])
+    except sandbox.SandboxError as e:
+        return {"ok": False, "errors": [str(e)[:300]], "studies": [], "cam": None}
+
+
+def _weak(ana: dict[str, Any]) -> list[str]:
+    """Problems that send the design back for a stronger / stiffer version."""
+    out = []
+    for st in ana.get("studies") or []:
+        if not st.get("ok"):
+            continue
+        if st.get("kind") == "static" and st.get("passes") is False:
+            out.append(f"too weak under her load: safety factor {st['safety_factor']} but she needs {st['min_sf']} "
+                       f"(peak von Mises {st['peak_vm_away_MPa']} MPa at {st['at_peak']} mm, yield {st['yield_MPa']} MPa): "
+                       "make it stronger THERE (thicker section, a rib, a bigger fillet at the corner, shorter lever) "
+                       "keeping her fixed sizes and holes; keep the H.analyze call unchanged")
+        rz = st.get("resonance")
+        if st.get("kind") == "modal" and rz and not rz.get("ok"):
+            out.append(f"resonance: natural frequencies {rz['inside']} Hz fall inside the band {rz['band_hz']} Hz she "
+                       "must avoid: stiffen (ribs / thicker / shorter span) or change mass to move them out; keep H.analyze")
+    return out
+
+
+def _after_files(vdir: Path, res: dict[str, Any], ana: dict[str, Any], title: str, material: str) -> None:
+    """v0.365 pictures + report for the after-build stage."""
+    from . import report
+    pics = []
+    for i, st in enumerate(ana.get("studies") or []):
+        sp = vdir / f"fea_{i}.json"
+        if st.get("ok") and sp.exists():
+            try:
+                img = report.fea_view(json.loads(sp.read_text(encoding="utf-8")), st.get("scale") or {})
+                img.save(vdir / f"fea_{i}.png", "PNG", optimize=True)
+                pics.append(img)
+            except Exception as e:
+                log.info("fea picture: %s", e)
+        sp.unlink(missing_ok=True)
+    cam = ana.get("cam")
+    cp = vdir / "cam_paths.json"
+    if cam and cam.get("ok") and cp.exists():
+        try:
+            img = report.cam_png(json.loads(cp.read_text(encoding="utf-8")), cam.get("size") or [0, 0])
+            img.save(vdir / "cam.png", "PNG", optimize=True)
+            pics.append(img)
+        except Exception as e:
+            log.info("cam picture: %s", e)
+    cp.unlink(missing_ok=True)
+    if res.get("sheet"):
+        try:
+            (vdir / "flat.dxf").write_text(report.flat_dxf(res["sheet"]), encoding="utf-8")
+            report.flat_png(res["sheet"]).save(vdir / "flat.png", "PNG", optimize=True)
+        except Exception as e:
+            log.info("flat pattern: %s", e)
+    if ana.get("studies") or cam:
+        (vdir / "analysis.pdf").write_bytes(report.analysis_pdf(title, {**res, "material": material},
+                                                                ana.get("studies") or [], pics, cam))
 
 
 def printability(mesh: dict[str, Any], bbox: dict[str, Any]) -> dict[str, Any]:
@@ -400,6 +470,8 @@ def _run(pid: str) -> None:
     vdir = _pdir(r.tenant_id, pid) / f"v{n}"
     ask_txt = r.brief + (f"\nCHANGE: {words}" if words else "")
     look_rounds = int(os.environ.get("ENG_LOOK_ROUNDS", "1") or 0)
+    strengthen = int(os.environ.get("ENG_STRENGTHEN_ROUNDS", "2") or 0)
+    ana: dict[str, Any] = {}
     t0 = time.time()
     res: dict[str, Any] = {}
     chk: list[dict[str, Any]] = []
@@ -422,6 +494,15 @@ def _run(pid: str) -> None:
             look_rounds -= 1
             if not review.get("ok"):
                 probs = [f"design review: {p}" for p in review.get("problems") or []]
+        ana = {}
+        if not probs and res.get("ok") and (res.get("studies") or res.get("cam")):
+            _save(pid, status="analysing", stage="Stress / heat / vibration jaanch (FEA)" if res.get("studies")
+                  else "CNC G-code bana raha hoon")
+            ana = _analyse(vdir, res, d.get("material") or "")
+            weak = _weak(ana)
+            if weak and strengthen > 0 and attempt < MAX_FIXES:
+                strengthen -= 1
+                probs = weak
         if not probs:
             break
         if attempt == MAX_FIXES:
@@ -451,13 +532,16 @@ def _run(pid: str) -> None:
             hlr = {}
     (vdir / "drawing.pdf").write_bytes(render.drawing_pdf(mesh, {**res, "title": title, "material": material,
                                                                  "mass_g": mass or 0}, hlr))
+    _after_files(vdir, res, ana, title, material)
     pr = printability(mesh, res.get("bbox") or {})
     (vdir / "mesh.json").unlink(missing_ok=True)
     hp.unlink(missing_ok=True)
     ver = {"n": n, "title": title, "size": d.get("size") or [], "bbox": res.get("bbox"), "volume_mm3": res.get("volume_mm3"),
            "checks": chk, "assumed": d.get("assumed", ""), "notes": d.get("notes", ""), "words": words,
            "plan": d.get("plan", ""), "material": material, "mass_g": mass, "com": res.get("com"), "parts": parts,
-           "print": pr, "review": review,
+           "print": pr, "review": review, "expect": res.get("expect") or [], "sheet": res.get("sheet"),
+           "analysis": [_ana_card(st) for st in ana.get("studies") or []],
+           "cam": {k: v for k, v in (ana.get("cam") or {}).items() if k != "paths"} or None,
            "files": [f for f in FILES if (vdir / f).exists()], "seconds": round(time.time() - t0, 1),
            "at": now().isoformat(), "day": _ist_day(datetime.now(timezone.utc))}
     rr = _save(pid, status="done", stage="Taiyaar", title=title[:120], versions=[*(r.versions or []), ver], pending={})
@@ -466,8 +550,36 @@ def _run(pid: str) -> None:
     _note(rr, f"CAD {'assembly' if parts else 'part'} taiyaar: {title}, {bb.get('x', 0):g} x {bb.get('y', 0):g} x "
               f"{bb.get('z', 0):g} mm" + (f", {len(parts)} parts" if parts else "")
               + (f", about {mass:,.0f} g ({material})" if mass else "")
+              + "".join(f", {line}" for line in _ana_lines(ana))
               + (f" (jaanch mein dikkat: {', '.join(bad)})" if bad else "")
               + ". STEP, STL, 3MF, drawing CAD Desk par hain.")
+
+
+def _ana_card(st: dict[str, Any]) -> dict[str, Any]:
+    from .report import summary_rows
+    keep = {k: st.get(k) for k in ("ok", "kind", "material", "max_disp_mm", "peak_vm_MPa", "peak_vm_away_MPa", "at_peak",
+                                   "safety_factor", "min_sf", "passes", "convergence", "equilibrium_error_pct",
+                                   "t_max_C", "t_min_C", "frequencies_hz", "resonance", "mesh", "error", "glued_assembly")
+            if st.get(k) is not None}
+    keep["lines"] = summary_rows(st)
+    return keep
+
+
+def _ana_lines(ana: dict[str, Any]) -> list[str]:
+    out = []
+    for st in ana.get("studies") or []:
+        if not st.get("ok"):
+            out.append(f"{st.get('kind')} analysis nahi chala")
+        elif st["kind"] == "static":
+            out.append(f"safety factor {st['safety_factor']:g} (max jhukav {st['max_disp_mm']:.3g} mm)")
+        elif st["kind"] == "thermal":
+            out.append(f"max garmi {st['t_max_C']:.3g} °C")
+        else:
+            out.append("pehli frequency " + (f"{st['frequencies_hz'][0]:g} Hz" if st.get("frequencies_hz") else "-"))
+    cam = ana.get("cam")
+    if cam:
+        out.append(f"CNC G-code taiyaar (~{cam['minutes']:g} min)" if cam.get("ok") else "G-code nahi bana")
+    return out
 
 
 def _own_any(pid: str) -> EngProject:
@@ -478,7 +590,8 @@ def _own_any(pid: str) -> EngProject:
 
 
 def health() -> dict[str, Any]:
-    return {"cadquery": sandbox.installed(), "no_network": sandbox.net_isolation(), "python": sandbox.python()}
+    return {"cadquery": sandbox.installed(), "no_network": sandbox.net_isolation(), "python": sandbox.python(),
+            "fea": sandbox.installed("skfem"), "fast_solver": sandbox.installed("pyamg")}
 
 
 if __name__ == "__main__":   # python -m app.engineering.service  -> is the CAD engine ready on this server?

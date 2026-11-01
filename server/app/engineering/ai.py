@@ -86,14 +86,49 @@ Rules:
   H.shaft(d, length, keyway=True) -> shaft with a DIN 6885 keyway
   H.extrusion('2020'|'2040'|'3030'|'4040', length) -> aluminium T-slot profile
   H.pipe(od, wall, length), H.flange(od, id, thickness, bolts=4, bolt_circle=None, bolt_hole=None)
-  H.thread_note(m) -> note text (threads are not modelled; holes get the tap-drill size)
+  H.thread_note(m) -> drawing note for a tapped hole (default: plain tap-drill hole + note, like industry drawings)
+  H.thread(m, length) -> REAL threaded rod along +Z from z=0 (ISO profile); H.thread_tool(m, length) -> the solid to
+    CUT for a REAL internal thread: part = part.cut(H.thread_tool(8, 12).translate((x, y, z0))). ~8 s each: use them
+    only when she asks for real / printed / modelled threads, a screw model, or a 3D-printed threaded part (max 6).
   H.her_file('name.step') -> HER uploaded STEP / STL as a Workplane (only names listed under HER FILES)
+- SHEET METAL (bent sheet, brackets from sheet, enclosures, trays, chassis, 'sheet', 'bend', 'gauge', 'laser cut'):
+  H.sheet([(40, 90), (30, -90), (25, 0)], width, t, r=None, k=0.44) -> the bent part from a press-brake profile
+    (outside flange lengths, bend angle to the next; + bends up), r = inside radius (default t), K-factor k;
+  H.tray(l, w, h, t, r=None) -> 4-flange tray / box with corner reliefs. Both also produce the FLAT PATTERN (flat.dxf
+  with bend lines) automatically. Cut holes / slots into the returned solid with .faces(...).workplane().hole(...) as usual.
+  Gauges: 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0 mm; steel r >= t, aluminium r >= 1.5 t.
+- FREEFORM / ERGONOMIC (grips, handles, bottles, nozzles, ducts, knobs, shells, styled covers):
+  H.smooth_loft([(z, width, depth, roundness 0..1, dx, dy), ...]) -> one smooth B-spline body through the sections
+    (roundness 1 = ellipse, 0.3 = soft rounded rectangle); then shell / cut / fillet it like any solid;
+  H.spline_sweep([(x, y, z), ...], radius) -> a round tube / handle along a smooth 3-D curve; also cq's
+  .spline(...), .loft(ruled=False), .sweep(path, transition='round'), .revolve() of a spline profile.
+- HER NUMBERS ARE CHECKS (always): for every number she gave that the box can measure add an H.expect(...) BEFORE
+  `result`: H.expect(size=(L, W, H)) for her overall size, H.expect(holes={'d': H.hole(5, 'clearance'), 'count': 4})
+  for each hole set (d = the drilled diameter you used), H.expect(max_size=(...)) when it must fit inside something,
+  H.expect(solids=1). The box measures them on the real B-rep; a miss comes back to you as a problem to fix.
+- ANALYSIS (when she mentions a load, weight in kg, force, pressure, 'strong', 'will it break / bend', stress, heat,
+  temperature, watts, cooling, vibration, frequency, rpm, resonance - or asks to analyse / simulate / FEA):
+  H.analyze('static', fixed='<Z', loads=[{'faces': '>Z', 'force': (0, 0, -490.5)}], min_sf=2)
+     faces are CadQuery face selectors on the FINAL solid ('>Z', '<X', '%CYLINDER', '>Z[-2]', '|Z' ...); force in N
+     (kg x 9.81) as the TOTAL on those faces; or {'faces': ..., 'pressure': MPa}; {'gravity': True} adds self weight;
+     fixed = where it is bolted / clamped; min_sf = the safety factor she needs (2 when she just says strong / safe).
+     If the part is too weak Hoola sends it back to you with the peak stress and where: strengthen there.
+  H.analyze('thermal', temps=[{'faces': '<Z', 'temp': 40}], heat=[{'faces': '>Z', 'watts': 15}],
+            convection=[{'faces': 'all', 'h': 10, 't_amb': 30}])        h in W/m²K (still air 5-10, fan 25-100)
+  H.analyze('modal', fixed='<Z', modes=6, avoid_hz=(0, 150))           natural frequencies; avoid_hz = her motor /
+     machine band (rpm / 60 Hz); a mode inside it comes back as a problem.
+  Up to 3 analyses; an assembly is analysed as one glued body (say so in NOTES).
+- CNC (when she says CNC, milling, router, machining, G-code, toolpath): H.cam(tool_d=6, stepdown=1.5, stepover=0.45,
+  feed=800, plunge=250, rpm=12000, tabs=3, ops=['face', 'pocket', 'drill', 'profile']) -> 3-axis 2.5D G-code (flat on
+  the table, Z up); aluminium feed ~600-1000, steel ~200-400, wood / plastic ~1200-2000.
 - ASSEMBLIES (several parts, a machine, a fixture, an enclosure with a lid): build each part as its own Workplane and
   return `result = cq.Assembly(name=...)` with `.add(part, name='base_plate', loc=cq.Location((x, y, z), (ax, ay, az), angle),
   color=cq.Color(r, g, b))` for every part. Give every part a clear name (it becomes the bill of materials). Parts
   must not overlap each other unless they are meant to (a screw in its hole is fine).
 - Single parts: `result = <cq.Workplane>` (one solid).
 - The LAST line sets `result`.
+Hard jobs: list in PLAN every requirement in her words (numbers, counts, fits, loads) and how each is met; design
+so it can be made (wall >= 1.2 mm for printing, >= 1.5 mm for machining, inside corners >= tool radius, draft for moulding).
 Answer exactly in this format:
 TITLE: <short name>
 SIZE: <overall length x width x height in mm of the whole result, the bounding box you expect>
@@ -126,7 +161,9 @@ def _hard(brief: str) -> bool:
     b = brief.lower()
     return len(b) > 220 or any(w in b for w in ("assembly", "assemble", "gear", "mechanism", "gearbox", "machine", "fixture",
                                                 "enclosure with", "lid", "hinge", "robot", "jig", "mould", "mold", "pump",
-                                                "turbine", "impeller", "drone", "chassis", "multi", "parts", "complex"))
+                                                "turbine", "impeller", "drone", "chassis", "multi", "parts", "complex", "load", "stress",
+                                                "strong", "kg", "thread", "sheet", "bend", "cnc", "g-code", "vibration",
+                                                "heat", "thermal", "ergonomic", "grip", "analy", "simulat", "fea"))
 
 
 def _files_line(files: list[str] | None) -> str:

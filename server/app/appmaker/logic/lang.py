@@ -1,4 +1,4 @@
-"""v0.380 DIMAAG (App Phase 43-46): the app's own small language - formulas, checks and locked custom functions.
+"""v0.382 DIMAAG (App Phase 43-46): the app's own small language - formulas, checks and locked custom functions.
 
 Two layers, ONE interpreter written here (never Python eval / exec, never an import, never a file or the network):
 

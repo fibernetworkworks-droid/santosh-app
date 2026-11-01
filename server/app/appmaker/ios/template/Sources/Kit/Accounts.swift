@@ -56,7 +56,7 @@ struct AccountScreen: View {
                 InboxButton()
                 MainButton(text: auth.isStaff ? Words.customerMessages : Words.chat, tonal: true) { Router.shared.go("hoola_chat") }
             }
-            if auth.signedIn && auth.isStaff {                       // v0.380 DIMAAG: approvals + every list
+            if auth.signedIn && auth.isStaff {                       // v0.382 DIMAAG: approvals + every list
                 if db.approvalsOn { MainButton(text: Words.approvals, tonal: true) { Router.shared.go("hoola_approvals") } }
                 MainButton(text: Words.allLists, tonal: true) { Router.shared.go("hoola_data") }
             }
@@ -116,7 +116,7 @@ struct RowsSection: View {
                         if r.n("total") > 0 { Text(rupees(r.n("total"))).font(.headline) }
                     }
                     ForEach(fields.filter { $0.s("key") != head?.s("key") && !["status", "total", "paid"].contains($0.s("key")) && r.has($0.s("key")) && $0.s("type") != "photo" }.prefix(6), id: \.id) { f in
-                        Muted(T(f.s("label")) + ": " + Logic.show(r, f))      // v0.380 a link shows its row's name
+                        Muted(T(f.s("label")) + ": " + Logic.show(r, f))      // v0.382 a link shows its row's name
                     }
                     if !auth.isStaff && coll == db.orderList && !r.b("pending") && r.s("pay") == "UPI" && r.s("paid", "No") == "No" {
                         HStack {
@@ -135,7 +135,7 @@ struct RowsSection: View {
                         CreditButton(coll: coll, r: r)               // v0.359 staff: this order on credit (udhaar)
                     }
                     AssignBox(coll: coll, r: r)
-                    if !db.workflowField(coll).isEmpty {              // v0.380 DIMAAG: the server's workflow steps + approvals
+                    if !db.workflowField(coll).isEmpty {              // v0.382 DIMAAG: the server's workflow steps + approvals
                         if team.mayWork(r) { WorkflowBox(coll: coll, r: r) }
                     } else if auth.isStaff && !r.b("pending") && team.mayWork(r), let st = fields.first(where: { $0.s("key") == "status" }) {
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -147,7 +147,7 @@ struct RowsSection: View {
                             }
                         }
                     }
-                    RelatedBlock(coll: coll, r: r)                    // v0.380 linked rows (items of an order) + Add
+                    RelatedBlock(coll: coll, r: r)                    // v0.382 linked rows (items of an order) + Add
                 }
             }
         }

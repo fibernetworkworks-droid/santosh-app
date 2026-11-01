@@ -353,7 +353,7 @@ _logic_task: "asyncio.Task | None" = None
 
 
 def applogic_jobs() -> None:
-    """v0.380 DIMAAG: her apps' timed jobs + workflow SLAs (the engine runs at most once a minute) - in a thread, so a big
+    """v0.382 DIMAAG: her apps' timed jobs + workflow SLAs (the engine runs at most once a minute) - in a thread, so a big
     app's schedule never holds up reminders and the rest of this tick."""
     global _logic_task
     if _logic_task is not None and not _logic_task.done():

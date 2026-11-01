@@ -27,7 +27,7 @@ HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "template"
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 CODE_SCREENS = ("seller_info", "privacy", "delete_account")
-KIT_SCREENS = ("hoola_chat", "hoola_login", "hoola_account", "hoola_inbox", "hoola_approvals", "hoola_data")   # v0.340 inbox, v0.378 chat, v0.380 DIMAAG
+KIT_SCREENS = ("hoola_chat", "hoola_login", "hoola_account", "hoola_inbox", "hoola_approvals", "hoola_data")   # v0.340 inbox, v0.378 chat, v0.382 DIMAAG
 AUTH_IDS = ("login", "signup", "register", "login_staff", "otp_login", "sign_in")
 MIN_IOS = "16.0"
 

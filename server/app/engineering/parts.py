@@ -13,8 +13,16 @@ Motion:     H.spur_gear(module, teeth, width, bore=0, pressure_angle=20)   true 
             H.shaft(d, length, keyway=False)   shaft with an optional DIN 6885 keyway
 Profiles:   H.extrusion(size, length)  aluminium T-slot profile 2020 / 2040 / 3030 / 4040 (outline, slots, centre bore)
             H.pipe(od, wall, length)   H.flange(od, id, thickness, bolts, bolt_circle, bolt_hole)
-Threads:    real threads are not modelled (industry practice: STEP carries the hole size, the drawing notes the
-            thread); H.thread_note(m) gives the note text for the drawing.
+Threads:    H.thread_note(m) the drawing note. v0.365 REAL threads: H.thread(m, length) threaded rod (ISO 68-1 profile,
+            helical sweep) and H.thread_tool(m, length) the solid to CUT for a modelled internal thread. Slow (~3-10 s each):
+            only when the thread itself matters (3D print, a screw model); else keep the plain hole + note.
+Sheet:      v0.365 H.sheet(segments, width, t, r=None, k=0.44) bent sheet part from a press-brake profile
+            [(length, bend_deg), ..., (length, 0)] -> the folded solid; its flat length / pattern go to flat.dxf.
+            H.tray(l, w, h, t, r=None, k=0.44) a 4-flange tray / box with corner reliefs + its flat pattern.
+Freeform:   v0.365 H.smooth_loft(sections) a smooth B-spline body through [(z, width, depth, roundness 0..1, dx, dy), ...]
+            (grips, handles, bottles, nozzles, ducts); H.spline_sweep(points, radius) a round tube along a 3-D spline.
+Checks:     v0.365 H.expect(...) her numbers as checks the box measures on the result (size, hole count / diameter,
+            volume, wall); H.analyze(...) FEA after the build; H.cam(...) CNC G-code after the build. See the guide.
 """
 from __future__ import annotations
 
@@ -203,6 +211,226 @@ def flange(od, id, thickness, bolts=4, bolt_circle=None, bolt_hole=None):
     return f.faces(">Z").workplane().polarArray(bc / 2, 0, 360, int(bolts)).hole(bh)
 
 
+# ---------------------------------------------------------------- v0.365 real threads
+# A helical sweep + boolean union failed on about 1 size in 5 in OpenCASCADE (empty or broken solids, measured on
+# M3-M24 x 6-30 mm). So a thread is built as an exact FACETED surface instead: radius r(theta, z) from the ISO 68-1
+# profile on a fine grid, sewn into one closed solid - no boolean, valid every time, and cutting it from a part (a
+# tapped hole) is a boolean between flat faces, which OCC does reliably.
+def _iso_r(u, p, ri, ro):
+    u %= p
+    wc, wr = p / 8, p / 4
+    fl = (p - wc - wr) / 2
+    if u < wc / 2:
+        return ro
+    if u < wc / 2 + fl:
+        return ro - (ro - ri) * (u - wc / 2) / fl
+    if u < wc / 2 + fl + wr:
+        return ri
+    if u < wc / 2 + 2 * fl + wr:
+        return ri + (ro - ri) * (u - wc / 2 - fl - wr) / fl
+    return ro
+
+
+def _faceted_thread(ri, ro, p, length, nt=48):
+    from OCP.BRepBuilderAPI import (BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakePolygon, BRepBuilderAPI_MakeSolid,
+                                    BRepBuilderAPI_Sewing)
+    from OCP.gp import gp_Pnt
+    from OCP.TopoDS import TopoDS
+    nz = max(2, min(360, int(math.ceil(length / (p / 8)))))
+    zs = [length * j / nz for j in range(nz + 1)]
+    P = [[gp_Pnt(*(lambda r, th: (r * math.cos(th), r * math.sin(th), z))(
+        _iso_r(z - p * (2 * math.pi * i / nt) / (2 * math.pi), p, ri, ro), 2 * math.pi * i / nt)) for i in range(nt)]
+         for z in zs]
+    sew = BRepBuilderAPI_Sewing(1e-6)
+
+    def face(*pts):
+        mp = BRepBuilderAPI_MakePolygon()
+        for q in pts:
+            mp.Add(q)
+        mp.Close()
+        sew.Add(BRepBuilderAPI_MakeFace(mp.Wire(), True).Face())
+    for j in range(nz):
+        for i in range(nt):
+            a, b, c, d = P[j][i], P[j][(i + 1) % nt], P[j + 1][(i + 1) % nt], P[j + 1][i]
+            face(a, b, c)
+            face(a, c, d)
+    face(*P[0])
+    face(*P[nz])
+    sew.Perform()
+    sol = cq.Solid(BRepBuilderAPI_MakeSolid(TopoDS.Shell_s(sew.SewedShape())).Solid())
+    if sol.Volume() < 0:
+        sol = cq.Solid(sol.wrapped.Reversed())
+    return cq.Workplane("XY").add(sol.fix())
+
+
+def _thread_size(m, length, pitch):
+    if not (0 < length <= 80):
+        raise ValueError("thread length 0-80 mm")
+    p = float(pitch or _m(m)[0])
+    THREADS[0] += 1
+    if THREADS[0] > 6:
+        raise ValueError("ek part mein 6 real threads tak (baaki holes + H.thread_note)")
+    return p, m / 2 - 5 / 8 * 0.866025 * p, m / 2
+
+
+THREADS = [0]
+
+
+def thread(m, length, pitch=None):
+    """ISO metric external thread (rod) along +Z from z=0, major diameter m (faceted, ~2-6 s)."""
+    p, ri, ro = _thread_size(m, length, pitch)
+    return _faceted_thread(ri, ro, p, length)
+
+
+def thread_tool(m, length, pitch=None):
+    """The solid to CUT for an internal (tapped) thread of size m along +Z from z=0: part.cut(tool.translate(...))."""
+    p, ri, ro = _thread_size(m, length, pitch)
+    return _faceted_thread(ri, ro + 0.05, p, length)
+
+
+# ---------------------------------------------------------------- v0.365 sheet metal
+FLAT: dict = {}
+
+
+def _ba(angle_deg, r, t, k):
+    return math.radians(abs(angle_deg)) * (r + k * t)       # bend allowance (DIN 6935 / K-factor method)
+
+
+def sheet(segments, width, t, r=None, k=0.44):
+    """Press-brake part: segments = [(flange length mm, bend angle deg to the next), ..., (last length, 0)].
+    Lengths are OUTSIDE (mould-line) sizes like a drawing; + angle bends up (counter-clockwise seen from -Y).
+    Built as the real bent strip (straight flanges + bend arcs of inside radius r), width along Y."""
+    r = float(r if r is not None else t)
+    if not (0.3 <= t <= 20) or not (1 <= len(segments) <= 12) or width <= 0:
+        raise ValueError("sheet: t 0.3-20 mm, 1-12 segments, width > 0")
+    segs = [(float(sg[0]), float(sg[1]) if len(sg) > 1 else 0.0) for sg in segments]
+    segs[-1] = (segs[-1][0], 0.0)
+    sb = [math.tan(math.radians(abs(a)) / 2) * (r + t) for _L, a in segs]
+    rm = r + t / 2
+    x, z, hd = 0.0, 0.0, 0.0
+    wp = cq.Workplane("XZ").moveTo(0, 0)
+    flat = 0.0
+    pieces = []
+    for i, (L, a) in enumerate(segs):
+        s_len = L - (sb[i - 1] if i else 0.0) - (sb[i] if a else 0.0)
+        pieces.append(["flat", round(s_len, 4)])
+        if s_len <= 0.05:
+            raise ValueError(f"sheet: flange {i + 1} ({L} mm) bend ke liye chhota hai")
+        flat += s_len
+        x, z = x + s_len * math.cos(hd), z + s_len * math.sin(hd)
+        wp = wp.lineTo(x, z)
+        if a:
+            sg = 1 if a > 0 else -1
+            cx, cz = x - sg * rm * math.sin(hd), z + sg * rm * math.cos(hd)
+            h2 = hd + math.radians(a)
+            hm = hd + math.radians(a) / 2
+            mx, mz = cx + sg * rm * math.sin(hm), cz - sg * rm * math.cos(hm)
+            ex, ez = cx + sg * rm * math.sin(h2), cz - sg * rm * math.cos(h2)
+            wp = wp.threePointArc((mx, mz), (ex, ez))
+            x, z, hd = ex, ez, h2
+            flat += _ba(a, r, t, k)
+            pieces.append(["bend", round(_ba(a, r, t, k), 4), a])
+    path = wp.wire().val()
+    prof = cq.Workplane("YZ").center(-width / 2, 0).rect(width, t)
+    solid = prof.sweep(cq.Workplane("XZ").add(path), transition="right")
+    FLAT["sheet"] = {"kind": "strip", "length": round(flat, 3), "width": float(width), "t": t, "r": r, "k": k,
+                     "pieces": pieces,
+                     "bends": [{"at": round(sum(sg[0] for sg in segs[:i + 1]), 3), "angle": sg[1]}
+                               for i, sg in enumerate(segs) if sg[1]]}
+    return solid
+
+
+def tray(l, w, h, t, r=None, k=0.44):
+    """Open box / tray: base l x w (outside), four walls of height h (outside), bends 90 deg, corner reliefs."""
+    r = float(r if r is not None else t)
+    base = cq.Workplane("XY").box(l, w, t, centered=(True, True, False))
+    walls = (cq.Workplane("XY").rect(l, w).rect(l - 2 * t, w - 2 * t).extrude(h))
+    body = base.union(walls)
+    try:
+        body = body.faces("<Z").edges().fillet(min(r + t, h / 2, t * 3) * 0.99)
+    except Exception:
+        pass
+    sb = math.tan(math.radians(45)) * (r + t)
+    ba = _ba(90, r, t, k)
+    flange = h - sb
+    FLAT["sheet"] = {"kind": "tray", "base": [round(l - 2 * sb, 3), round(w - 2 * sb, 3)], "flange": round(flange, 3),
+                     "ba": round(ba, 3), "length": round(l - 2 * sb + 2 * (ba + flange), 3),
+                     "width": round(w - 2 * sb + 2 * (ba + flange), 3), "t": t, "r": r, "k": k,
+                     "relief": round(t + r, 3)}
+    return body
+
+
+# ---------------------------------------------------------------- v0.365 freeform
+def _superellipse(wd, dp, roundness, n=48):
+    e = 2 + 8 * (1 - max(0.0, min(1.0, roundness)))           # 1 -> ellipse, 0 -> almost a rounded box
+    pts = []
+    for i in range(n):
+        th = 2 * math.pi * i / n
+        c, s = math.cos(th), math.sin(th)
+        pts.append((wd / 2 * math.copysign(abs(c) ** (2 / e), c), dp / 2 * math.copysign(abs(s) ** (2 / e), s)))
+    return pts
+
+
+def smooth_loft(sections):
+    """Smooth B-spline solid through sections [(z, width, depth, roundness=1, dx=0, dy=0), ...] (2-30, z rising)."""
+    if not (2 <= len(sections) <= 30):
+        raise ValueError("smooth_loft: 2-30 sections")
+    wires = []
+    for sec in sections:
+        z, wd, dp = float(sec[0]), float(sec[1]), float(sec[2])
+        rnd = float(sec[3]) if len(sec) > 3 else 1.0
+        dx = float(sec[4]) if len(sec) > 4 else 0.0
+        dy = float(sec[5]) if len(sec) > 5 else 0.0
+        pts = [cq.Vector(px + dx, py + dy, z) for px, py in _superellipse(wd, dp, rnd)]
+        wires.append(cq.Wire.makePolygon(pts, close=True) if rnd < 0.05 else
+                     cq.Wire.assembleEdges([cq.Edge.makeSpline(pts + [pts[0]], periodic=False)]))
+    return cq.Workplane("XY").add(cq.Solid.makeLoft(wires, ruled=False))
+
+
+def spline_sweep(points, radius):
+    """Round tube / handle of `radius` along a smooth 3-D spline through points [(x, y, z), ...]."""
+    if len(points) < 2 or len(points) > 40:
+        raise ValueError("spline_sweep: 2-40 points")
+    vs = [cq.Vector(*map(float, p)) for p in points]
+    path = cq.Wire.assembleEdges([cq.Edge.makeSpline(vs)])
+    t0 = path.tangentAt(0)
+    prof = cq.Workplane(cq.Plane(origin=vs[0], xDir=t0.cross(cq.Vector(0, 0, 1)) if abs(t0.z) < 0.99 else cq.Vector(1, 0, 0),
+                                 normal=t0)).circle(radius)
+    return prof.sweep(cq.Workplane().add(path), transition="round")
+
+
+# ---------------------------------------------------------------- v0.365 requests to the box (recorded, run after)
+EXPECT: list = []
+STUDIES: list = []
+CAM: list = []
+
+
+def expect(**kw):
+    """Her numbers as measured checks: size=(x, y, z) [mm, +-tol], holes={'d': 5.5, 'count': 4} (vertical or any axis),
+    volume=(lo, hi), min_wall=t, tol=0.5. Several calls allowed."""
+    allowed = {"size", "holes", "volume", "tol", "name", "max_size", "solids"}
+    bad = set(kw) - allowed
+    if bad:
+        raise ValueError(f"expect: {', '.join(sorted(bad))} nahi ({', '.join(sorted(allowed))})")
+    EXPECT.append(kw)
+
+
+def analyze(kind="static", **kw):
+    """FEA after the build. kind static | thermal | modal. See the guide for fixed / loads / temps / heat / convection."""
+    if kind not in ("static", "thermal", "modal"):
+        raise ValueError("analyze kind: static / thermal / modal")
+    if len(STUDIES) >= 3:
+        raise ValueError("ek part par 3 analysis tak")
+    STUDIES.append({"kind": kind, **kw})
+
+
+def cam(**kw):
+    """2.5D CNC G-code after the build: tool_d, stepdown, stepover, feed, plunge, rpm, ops=['face','pocket','drill','profile']."""
+    if CAM:
+        raise ValueError("ek hi H.cam")
+    CAM.append(kw)
+
+
 class _H:
     """What the script sees as `H` (only these names)."""
     hole = staticmethod(hole)
@@ -219,6 +447,15 @@ class _H:
     extrusion = staticmethod(extrusion)
     pipe = staticmethod(pipe)
     flange = staticmethod(flange)
+    thread = staticmethod(thread)
+    thread_tool = staticmethod(thread_tool)
+    sheet = staticmethod(sheet)
+    tray = staticmethod(tray)
+    smooth_loft = staticmethod(smooth_loft)
+    spline_sweep = staticmethod(spline_sweep)
+    expect = staticmethod(expect)
+    analyze = staticmethod(analyze)
+    cam = staticmethod(cam)
 
 
 H = _H()

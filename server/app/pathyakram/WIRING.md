@@ -1,0 +1,9 @@
+# WIRING for pathyakram (Shiksha suite, Phase 1: curriculum & exam designer)
+summary: question generation (model -> code check -> shared bank as DRAFTS; near-duplicates and fatal problems left out with the reason), papers from a blueprint (the board's official pattern from the frameworks library, else the teacher's sections) using APPROVED questions spread over chapters / least used first, gaps reported (fill_missing writes drafts), swap, approve (only when every question is approved and the marks add up), Word paper + answer key / marking scheme, year plan (deterministic: library or teacher chapters, months, revision, periodic tests as suggestions), 5E lesson plan (minutes made to add up in code), analytic rubric (points made to add up in code), share card (file / Google Forms quiz from the objective questions / WhatsApp / email draft) decided ONLY by her app tap with a content hash.
+db: app.pathyakram.models (pathyakram_plans, pathyakram_papers, pathyakram_shares)
+router: app.pathyakram.api (/api/pathyakram/*; her tap: POST /shares/{id}/decide {yes, hash})
+employee: duty curriculum_work = [pathyakram, pathyakram_dekho, shiksha_dekho, file_read, gyaan_khojo, pylab] ; role curriculum_designer [curriculum_work, school_records, records, research] ; preset school_academics ; READ: pathyakram_dekho, pylab
+push: pathyakram_share (only while waiting), pathyakram_paper, pathyakram_plan
+flutter: lib/ui/shiksha_screen.dart (ShikshaScreen: Aaj / Sawaal / Papers / Plans / Niyam, PathyakramPaperPage, PathyakramPaperCard, PathyakramShareCard); Profile tile "<name> · Curriculum & exam designer"; cards keyed in state.kanoonCardKey (pkshare / pkpaper)
+model: app.site.ai.ask_json kind "edu" (site_edit_model / anthropic_model, cheap brain fallback)
+not_verified: real model output (tests use scripted JSON); real Google Forms quiz creation (forms.service.create faked); Flutter not compiled locally (CI analyze).
