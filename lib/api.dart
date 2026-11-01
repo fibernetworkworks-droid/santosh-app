@@ -1045,8 +1045,6 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets/$key/$what', body: {}) as Map);
   Future<Map<String, dynamic>> gameAssetsApply(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets-apply', body: {}) as Map);
-  String absolute(String path) =>
-      path.startsWith('http') ? path : '${baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}$path';
   // v0.416 QA farm + bugs
   Future<Map<String, dynamic>> gameQa(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/qa', timeout: const Duration(seconds: 40)) as Map);
