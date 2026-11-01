@@ -47,3 +47,37 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## ECC (agent instructions adapted for Developer Sahayak, v0.402)
+
+The specialist instructions in `server/app/devsahayak/specialists.py` (PR reviewer discipline, the per-language reviewer
+and CI-fixer notes, the focused security / silent-failure / test-coverage passes) were adapted from the agent files of the
+open-source project **ECC** by Affaan Mustafa (https://github.com/affaan-m/ECC, v2.2.3, commit b38be6a): `code-reviewer`,
+`security-reviewer`, `silent-failure-hunter`, `pr-test-analyzer`, the `*-reviewer` and `*-build-resolver` agents for
+Python, TypeScript / JavaScript, Flutter / Dart, Kotlin, Go, Java, Swift and Rust, and `database-reviewer`. The text was
+condensed and re-written for Hoola's read-only tools, CI logs and safety rules; no code was copied and nothing from ECC
+runs inside Hoola. ECC is distributed under the MIT License:
+
+```
+MIT License
+
+Copyright (c) 2026 Affaan Mustafa
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

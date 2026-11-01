@@ -314,6 +314,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           ${(pl.boosts || []).length ? `<h3 class="sc-h">Worth a boost</h3>${pl.boosts.map(x => `<p class="em-small"><a href="${esc(x.permalink)}" target="_blank" rel="noopener">${esc(x.fmt)} · ${esc(x.date)}</a> <b>${esc(String(x.times))}x</b> your normal. <span class="muted">${esc(x.plan)}</span></p>`).join('')}` : ''}</div>
       </div>` : ''}
       ${accs.length ? growthTile(d.growth || {}) : ''}
+      ${accs.length ? '<div class="tile gl sc-ytads" id="scYtAds"><div class="em-h"><h3>YouTube ads</h3></div><div class="empty">Loading…</div></div>' : ''}
       ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
         <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
       <div class="grid2">
@@ -325,6 +326,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>`;
     wireSocial(el, d);
     wireGrowth(el);
+    if (accs.length) ytAds(el);
     if (accs.length) inbox(el);
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) social(el); }, 8000);
   }
@@ -424,6 +426,83 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <p class="muted em-small">${esc(r.note)}</p></div>`;
       } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
     });
+  }
+
+  // ------------------------------------------------------------ v0.401 YouTube ads (plan Y2): Google Ads API, her taps only
+  const YTS = {draft: ['warn', 'Draft'], checked: ['ok', 'Google checked'], created: ['v', 'In Google, paused'],
+               running: ['ok', 'Running'], paused: ['', 'Paused'], ended: ['', 'Finished'], failed: ['bad', 'Needs a fix']};
+  async function ytAds(el) {
+    const box = el.querySelector('#scYtAds'); if (!box) return;
+    let v;
+    try { v = await api('GET', '/api/social/ytads'); }
+    catch (e) { box.innerHTML = `<div class="em-h"><h3>YouTube ads</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const head = `<div class="em-h"><h3>YouTube ads</h3><span class="muted em-small">Your own Google Ads account. An ad is made paused; money is spent only after you tap Start.</span></div>`;
+    if (!v.configured) { box.innerHTML = head + '<div class="empty">Not set up on the server yet (Google Ads developer token).</div>'; return; }
+    const a = v.account;
+    if (!a) { box.innerHTML = head + '<button class="btn go" type="button" id="ytConn">Connect Google Ads</button>'; wireYt(el, box, v); return; }
+    const pick = !a.customer_id ? `<p class="em-small">Which ad account runs your YouTube ads?</p><div class="acts">${(a.customers || []).filter(c => !c.manager).map(c =>
+      `<button class="btn soft" type="button" data-ytcust="${esc(c.id)}">${esc(c.name || c.id)} (${esc(c.currency || '')})${c.test ? ' - test' : ''}</button>`).join('') || '<span class="muted">No ad account found in this Google login.</span>'}</div>` : '';
+    const card = d => { const [c, n] = YTS[d.status] || ['', d.status]; const ro = !['draft', 'checked', 'failed'].includes(d.status);
+      return `<div class="em-item sc-ytd" data-did="${esc(d.id)}"><div class="em-meta"><b>${esc(d.video_title || d.video_id || 'New ad')}</b>${tag(c, n)}
+          <span class="muted">${num(d.daily)} ${esc(a.currency || '')} a day x ${num(d.days)} days = ${num(d.total)}${d.stop_on ? ' · until ' + esc(d.stop_on) : ''}</span></div>
+        ${ro ? `<p class="em-small">${d.headlines.map(esc).join(' · ')}</p>` : `<div class="ar-form em-form sc-ytform">
+          <label><span>Video</span><select data-f="video_id">${(v.videos || []).map(x => `<option value="${esc(x.id)}"${x.id === d.video_id ? ' selected' : ''}>${esc(x.title || x.id)} (${num(x.views)} views)</option>`).join('')}<option value="${esc(d.video_id)}"${(v.videos || []).some(x => x.id === d.video_id) ? '' : ' selected'}>${esc(d.video_id || 'Choose')}</option></select></label>
+          <label><span>Headlines (one per line, up to 5, 40 letters each)</span><textarea data-f="headlines" rows="3">${esc(d.headlines.join('\n'))}</textarea></label>
+          <label><span>Long headline (90)</span><input data-f="long_headline" value="${esc(d.long_headline)}"></label>
+          <label><span>Descriptions (one per line, up to 5, 90 each)</span><textarea data-f="descriptions" rows="2">${esc(d.descriptions.join('\n'))}</textarea></label>
+          <label><span>Business name (25)</span><input data-f="business" value="${esc(d.business)}"></label>
+          <label><span>Where the ad leads (https://...)</span><input data-f="final_url" value="${esc(d.final_url)}"></label>
+          <label><span>Daily budget (${esc(a.currency || '')}, up to ${num(v.cap)})</span><input data-f="daily" type="number" min="1" max="${esc(String(v.cap))}" value="${esc(String(d.daily))}"></label>
+          <label><span>Days (1-30)</span><input data-f="days" type="number" min="1" max="30" value="${esc(String(d.days))}"></label>
+          <label class="btn soft sc-up">${d.logo_asset ? 'Change logo' : 'Add logo (square)'}<input type="file" accept="image/*" data-ytlogo="${esc(d.id)}" hidden></label></div>`}
+        ${(d.problems || []).length ? `<p class="em-small warnc">${d.problems.map(esc).join(' ')}</p>` : ''}${d.error ? `<p class="em-small badc">${esc(d.error)}</p>` : ''}
+        <div class="acts">${ro ? '' : `<button class="btn soft" type="button" data-ytsave="${esc(d.id)}">Save</button>
+          <button class="btn soft" type="button" data-ytact="check" data-id="${esc(d.id)}">Check with Google (free)</button>
+          <button class="btn go" type="button" data-ytact="create" data-id="${esc(d.id)}"${(d.problems || []).length ? ' disabled' : ''}>Create in Google (paused)</button>`}
+          ${['created', 'paused'].includes(d.status) ? `<button class="btn go" type="button" data-ytact="start" data-id="${esc(d.id)}" data-total="${esc(String(d.total))}">Start</button>` : ''}
+          ${d.status === 'running' ? `<button class="btn soft" type="button" data-ytact="pause" data-id="${esc(d.id)}">Pause</button>` : ''}</div></div>`; };
+    box.innerHTML = head + `<p class="muted em-small">Google account ${esc(a.email)}${a.customer_id ? ' · ad account ' + esc(a.customer_id) : ''}${a.error ? ' · ' + esc(a.error) : ''}</p>` + pick +
+      (a.customer_id ? `<div class="acts em-run"><button class="btn soft" type="button" id="ytRead">Read my YouTube ads</button>
+        <button class="btn soft" type="button" id="ytNew"${(v.videos || []).length ? '' : ' disabled title="Connect YouTube first"'}>New YouTube ad</button></div>
+        <div id="ytCamps"></div><div class="sc-items">${(v.drafts || []).map(card).join('')}</div>
+        <p class="muted em-small">Runs on YouTube only (in-stream, in-feed, Shorts) as a Demand Gen campaign, India, your languages. Older in-stream "Video" campaigns cannot be made through Google's API - make those in Google Ads.</p>` : '');
+    wireYt(el, box, v);
+  }
+
+  function wireYt(el, box, v) {
+    const go = async (fn, done) => { try { await fn(); if (done) toast(done); ytAds(el); } catch (e) { toast(e.message, true); } };
+    box.querySelector('#ytConn')?.addEventListener('click', async () => {
+      try { const r = await api('GET', '/api/social/ytads/connect'); window.open(r.url, '_blank', 'noopener'); toast('Sign in on Google, then come back here.'); }
+      catch (e) { toast(e.message, true); }
+    });
+    box.querySelectorAll('[data-ytcust]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/account', {customer_id: b.dataset.ytcust}), 'Ad account chosen.')));
+    box.querySelector('#ytNew')?.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/drafts', {video_id: (v.videos[0] || {}).id || ''}), 'Draft made - change anything, then Check with Google.'));
+    box.querySelector('#ytRead')?.addEventListener('click', async () => {
+      const out = box.querySelector('#ytCamps'); out.innerHTML = '<div class="empty">Reading…</div>';
+      try {
+        const r = await api('POST', '/api/social/ytads/read');
+        out.innerHTML = (r.campaigns || []).length ? `<table class="em-tbl"><thead><tr><th>Campaign</th><th>Status</th><th>Spent (${esc(r.currency || '')})</th><th>Views</th><th>Cost a view</th><th>Clicks</th><th>Results</th></tr></thead><tbody>${r.campaigns.map(c =>
+          `<tr><td>${esc(c.name)}</td><td>${esc(c.status)}</td><td>${num(c.spend)}</td><td>${num(c.views)}</td><td>${c.cpv == null ? '–' : num(c.cpv)}</td><td>${num(c.clicks)}</td><td>${num(c.conversions)}</td></tr>`).join('')}</tbody></table>
+          ${r.ads_desk ? `<p class="muted em-small">Ads desk: ${esc(r.ads_desk)}</p>` : ''}` : '<div class="empty">No YouTube campaigns in the last 30 days.</div>';
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    });
+    const body = card => { const o = {}; card.querySelectorAll('[data-f]').forEach(i => { const f = i.dataset.f;
+      o[f] = ['headlines', 'descriptions'].includes(f) ? i.value.split('\n').map(x => x.trim()).filter(Boolean) : (['daily', 'days'].includes(f) ? Number(i.value) : i.value); }); return o; };
+    box.querySelectorAll('[data-ytsave]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/social/ytads/drafts/${encodeURIComponent(b.dataset.ytsave)}`, body(b.closest('.sc-ytd'))), 'Saved.')));
+    box.querySelectorAll('[data-ytlogo]').forEach(inp => inp.addEventListener('change', async () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      const fd = new FormData(); fd.append('file', f);
+      go(async () => { const a = await api('POST', '/api/social/media', undefined, {form: fd});
+        await api('POST', `/api/social/ytads/drafts/${encodeURIComponent(inp.dataset.ytlogo)}`, {...body(inp.closest('.sc-ytd')), logo_asset: a.id}); }, 'Logo added.');
+    }));
+    box.querySelectorAll('[data-ytact]').forEach(b => b.addEventListener('click', async () => {
+      const act = b.dataset.ytact, id = encodeURIComponent(b.dataset.id);
+      if (act === 'create' && !confirm('Create this ad in your Google Ads account? It is made PAUSED - nothing is spent until you tap Start.')) return;
+      if (act === 'start' && !confirm(`Start this YouTube ad? Google can spend up to its daily budget every day, about ${b.dataset.total} in total. You can Pause any time.`)) return;
+      b.disabled = true;
+      go(() => api('POST', `/api/social/ytads/drafts/${id}/${act}`, act === 'start' ? {confirm: true} : {}),
+         {check: 'Google checked it - no problems.', create: 'Made in Google Ads, paused.', start: 'Started.', pause: 'Paused.'}[act]);
+    }));
   }
 
   // ------------------------------------------------------------ v0.368 the inbox (Phase 3)

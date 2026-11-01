@@ -1058,6 +1058,17 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/ugc/$id/$action', body: body ?? {}, timeout: const Duration(seconds: 90)) as Map);
   Future<Map<String, dynamic>> socialCreator(String username) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/creator/check', body: {'username': username}) as Map);
+  // v0.401 YouTube ads (Google Ads API): drafts stay in Hoola; create = paused in Google; start = her tap + confirm
+  Future<Map<String, dynamic>> socialYtAds() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/social/ytads', timeout: const Duration(seconds: 30)) as Map);
+  Future<String> socialYtAdsConnect() async => (await _send('GET', '/api/social/ytads/connect'))['url'] as String;
+  Future<Map<String, dynamic>> socialYtAdsAccount(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/account', body: {'customer_id': id}) as Map);
+  Future<Map<String, dynamic>> socialYtAdsNew(String videoId) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts', body: {'video_id': videoId}) as Map);
+  Future<Map<String, dynamic>> socialYtAdsAct(String id, String action, {bool confirm = false}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id/$action', body: {'confirm': confirm},
+          timeout: const Duration(seconds: 90)) as Map);
   // v0.369 posting controls: {paused} | {stop: true} | {quiet: [23, 7]}
   Future<Map<String, dynamic>> socialSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/settings', body: body) as Map);

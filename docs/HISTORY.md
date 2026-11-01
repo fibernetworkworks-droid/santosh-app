@@ -15025,3 +15025,193 @@ build123d + cadgen; nothing copied).
   text; 40-tooth gear sheet in ~1 s. Tests: tests/test_v0395_drawing.py (5).
 - Not yet: section views, GD&T frames (datums / position), thread callouts from modelled threads, auto-dims of every
   pocket / slot (only steps + holes), multi-sheet assemblies with balloons + parts list.
+
+## v0.400.0 FAST + NEVER LOST + VISITOR TESTS (built as 0.391; web Step 1 of docs/WEB_PLATFORM_PLAN.md)
+Owner: "START STEP 1" (after the plan: "any complexity website, smoothly and reliably").
+- FAST (where a big build's time went, found by reading the pipeline):
+  - `checks.run` checked every page one after another in ONE browser -> `_check_page` (one page, every viewport) +
+    `_run_pages`: pages split over SITE_CHECK_PARALLEL (3) browsers, each its own Playwright in its own thread (the sync API
+    is per thread); small sites (< 8 pages) keep one browser; results in the plan's order; `only=` re-checks some pages.
+  - `_critique_round` looked at pages one by one and ran a FULL site check after each page (6 full checks on a big site) ->
+    every page judged at once, every weak section redrawn at once, ONE check of only the changed pages, one more judge pass
+    at once, per-section keep / revert (unchanged rule: worse score or more issues on that page = old section back), one
+    final full check for the version's report.
+  - Fix rounds called Opus for each failing section in turn -> all at once (`_in_ctx`, so usage stays hers / the Arena's).
+  - `_write_sections` rebuilt the whole preview after EVERY section (a 150-page site = ~200 full rebuilds) -> at most every
+    ASSEMBLE_EVERY_S (20 s) + once at the end. `site_parallel_big` 5 -> 8.
+- NEVER LOST (`service._recover_side_jobs`, called from recover_stuck each worker tick): a code-mode task file still
+  'working' from before the boot -> failed with "dobara kahiye"; a READY site whose extra languages have stale sections ->
+  the translate job starts again (once per boot). `proof.resume_interrupted` (worker): a Hoola proof whose thread died is
+  picked up again (max 2) - `build_big` keeps t0 + the rupee meter on the proof card, reuses the site, skips a designed app
+  and blog posts already there; a rival crawl cut short = failed with a plain line.
+- VISITOR TESTS `server/app/site/journeys.py` (SITE_JOURNEYS, on; conftest off, its own tests on): after every build
+  (`_run_build`, after the critique) and every saved edit (`save_version`) Chromium walks the built live copy at 390 px:
+  menu (open the phone menu, tap a page, it opens with an h1), form (fill the first enquiry form - booking forms skipped -
+  send, the thank-you line), shop (Add to cart -> Cart -> Aage badhein -> fill -> Order bhejiye -> "Order O-CHECK"),
+  blog (first post opens with its title as h1), lang (switch -> other <html lang>). Shop / form API calls are answered by a
+  stand-in in the browser with Hoola's own JSON shapes (relative API addresses resolved to the test origin) - nothing
+  reaches her data; every other outside request refused; each journey tried twice; menu / form / shop failures are
+  BLOCKING (hosting.blockers -> cannot go live), blog / lang warnings. `report.journeys` -> site view `checks.journeys` ->
+  console Checks tab lists each visitor test with a tick or the reason.
+- Tests `server/tests/test_v0400_fast_reliable.py`: parallel checks = serial report, critique re-checks only changed pages
+  (keep / revert per section), fewer preview rebuilds, journeys pass on a real shop site and a broken checkout blocks,
+  cut-short code task + translation recovered once, proof resumed with time / cost kept and failed after the second death.
+## v0.401.0 YOUTUBE ADS (1 Nov 2026, owner: "GO Y2"; built as 0.393 / 0.396 / 0.399 / 0.400, re-versioned past the parallel v0.393-v0.400)
+Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Field names from Google's own
+`AddDemandGenCampaign.java` (google-ads-java, v26) + the Demand Gen overview / channel-controls pages (API v26.1, 28 Oct 2026).
+- Env: GOOGLE_ADS_DEVELOPER_TOKEN (Google Ads API Center; a test-access token works only on test accounts, real ad
+  accounts need Basic access), optional GOOGLE_ADS_LOGIN_CUSTOMER_ID (manager), GOOGLE_ADS_API_VERSION (v26),
+  GADS_MAX_DAILY (2000). The adwords scope must be on Hoola's Google OAuth consent screen (sensitive -> verification).
+- Connect: state gad_ in /auth/google/callback; scopes openid email adwords, offline + consent; refresh token sealed;
+  listAccessibleCustomers + `SELECT customer.* FROM customer` per account; managers can't be chosen; one usable = picked.
+- Read: GAQL on campaign (VIDEO, DEMAND_GEN; LAST_30_DAYS by segments.date; cost_micros, impressions, clicks,
+  conversions, budget, views = video_trueview_views -> video_views -> none on UNRECOGNIZED_FIELD) -> CSV -> Ads desk
+  `import_report(platform google)`; per-campaign totals with cost a view and CTR.
+- Drafts: from her YouTube video (SocialMedia platform youtube), pre-filled from the Social Desk profile; `draft_problems`
+  (video id, 1-5 headlines <= 40, long headline <= 90, 1-5 descriptions <= 90, business <= 25, https landing link,
+  logo, daily 1..GADS_MAX_DAILY, days 1..30, Ads desk `banned` + `financial` rules). Exact Google limits are confirmed
+  by Check (validateOnly) - the local limits are conservative.
+- Create (her tap): one googleAds:mutate with temp ids -1..-5 in Google's order: campaignBudget (STANDARD, amount in
+  micros, explicitlyShared false), campaign (DEMAND_GEN, PAUSED, campaignBudget, containsEuPoliticalAdvertising
+  DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING, targetSpend {} = maximize clicks), adGroup (ENABLED, demandGenAdGroupSettings
+  .channelControls.selectedChannels youtubeInStream / youtubeInFeed / youtubeShorts true, discover / gmail / display /
+  maps false), adGroupCriterion location geoTargetConstants/2356 + language constants (hi 1023, en 1000, ...), assets
+  (IMAGE logo base64, YOUTUBE_VIDEO youtubeVideoId), adGroupAd demandGenVideoResponsiveAd (headlines, longHeadlines,
+  descriptions, videos, logoImages, businessName) + finalUrls. Start = campaignOperation update status ENABLED
+  (updateMask status) only with confirm=true; stop_on = start day + days - 1; Pause = PAUSED; daily Social Desk job ->
+  `daily_watch` pauses ended ads (event) + reads. DEVELOPER_TOKEN_NOT_APPROVED -> plain "Basic access pending".
+- Not verified against Google live (mock transport only): the ad-group criterion field names (location / language) and
+  the exact text limits - Check with Google surfaces any mismatch before anything is created.
+- Not built: legacy VIDEO campaigns (in-stream; not creatable through the API), audiences / remarketing, conversion
+  tracking set-up, Display & Video 360.
+- Console YouTube ads tile (connect, pick account, read, drafts with edit / logo / check / create / start / pause), phone
+  YtAdsScreen (connect, pick, new ad from latest video, check / create / start / pause). Privacy: Google Ads paragraph.
+  Tests `server/tests/test_v0401_youtube_ads.py` (8).
+
+## v0.402.0 ECC PHASE 1 (owner: "GO ECC PHASE 1")
+After reading github.com/affaan-m/ECC (v2.2.3, MIT; 71 agents, ~320 skills for AI coding tools on a developer's machine):
+its agent texts were adapted as SPECIALISTS for Developer Sahayak. Nothing from ECC is installed or run; the texts are
+condensed and rewritten for Hoola's read-only tools, CI logs and safety rules. Credit in THIRD_PARTY_NOTICES.md (license
+text checked byte for byte against ECC's LICENSE). Built as 0.396 / 0.400, re-versioned past the parallel v0.396-v0.400.
+- `devsahayak/specialists.py`:
+  - REVIEW_CORE, from code-reviewer:
+    - four gates before any comment: the exact added line; the concrete failure (input -> state -> outcome); callers /
+      tests read; a defensible severity;
+    - a HIGH comment carries its proof; zero comments is a valid review; never manufacture findings;
+    - ECC's false-alarm list ("add error handling" already handled upstream, magic numbers like 404, "function too
+      long" for a table...).
+  - LANG_REVIEW for python / js-ts-react / dart-flutter / kotlin-android / go / java / swift / rust / sql.
+  - FOCUS passes: security (security-reviewer), silent failures (silent-failure-hunter), tests that cover the change
+    (pr-test-analyzer).
+  - FIX_CORE, from the build-error resolvers: the first real error, root cause, the smallest fix, NEVER weaken CI (no
+    skipped / loosened tests, no ignores / suppressions, no swallowed exceptions), stop when outside the code. LANG_FIX
+    holds each language's common error -> fix table.
+  - Routing:
+    - `lang_of` (files, majority) and `lang_of_log` (log signs: traceback, TS errors, `e:` kotlin, `.dart:`, `error[E..]`,
+      `.go:`, javac...);
+    - `focus_passes`: all three for >= 150 added lines; security on sensitive words (sql / execute / token / payment /
+      otp / customer_id / phone...); silent on try / except / fallback / retry; tests when the PR has no test file;
+      docs-only = none;
+    - `merge_comments`: same file within 2 lines = one comment, highest severity, longer body.
+- Wiring, each behind its own switch, both OFF by default:
+  - `loop.run` / `loop.review_run` take `system_extra`, appended after Hoola's own system prompt (Hoola's rules first).
+  - `service.explore_review` (NEW, used by the real review AND the card): old = one exploring pass (v0.377). With
+    `dev_spec_review` = main pass + REVIEW_CORE + language reviewer, then the focused passes (`dev_spec_focus_steps` 12),
+    merged, and a high request_changes from a focused pass escalates the verdict. The card says which passes ran.
+  - `service._round`: a CI round (`<ci_log>` in the brief) with `dev_spec_fix` gets `fix_addendum(log, paths)`; her own
+    change requests never do.
+- Measuring before switching on:
+  - `quality/review_tasks.py` (SET 1): 12 practice PRs on the 30-file DUKAAN shop.
+    - 8 planted: a changed signature whose callers were not updated, f-string SQL, OTP + phone in logs, a swallowed
+      out-of-stock (oversell), rounding down against a half-up promise, an invoice endpoint without an owner check, an
+      off-by-one day loop, a mutable default list.
+    - 4 clean: the parameterised search, the owner-checked invoice, a behaviour-keeping refactor, a GSTIN check with
+      its test.
+  - `quality/reviewcard.py`:
+    - builds each PR's diff exactly like service.review and calls `explore_review` in mode old and new (the switch is
+      set per mode, modes run one after another, and it is restored);
+    - marks caught (medium / high within 3 lines of the planted line; 4 for the invoice), quiet on clean, false alarms,
+      nits, verdicts, `--k` repeats;
+    - `python -m app.quality review`, vps-ops `review_card`.
+  - `codecard --spec --kind fix` runs the fix jobs with the fixer specialist; vps-ops `fix_card_spec` = sets 2 + 3 fix
+    jobs. They must stay at hard 12/12 / mobile 10/10.
+- Tests:
+  - `test_v0402_ecc_specialists.py`: language detection, texts, focus rules, merge, explore_review old vs new (the SQL PR
+    earns the security + tests passes), card marks (near-miss = false alarm, Hoola's automatic checks not counted), both
+    modes with a scripted reviewer, the fix spec switch, settings OFF, jobs, credit.
+  - `test_v0402_ecc_ci_round.py`: a red CI round gets the fixer only when switched on.
+- Found by the tests while building: the security pass first missed the SQL-injection PR (the sensitive-word list had
+  `sql` but not `execute` / `select` / `sqlite3`); widened, plus personal-data words.
+
+## v0.403.0 DAFTAR SAHAYAK - Shiksha suite Phase 3: school administrative operations
+- Owner: "GO PHASE 3" (plan: OMR / Forms / code grading into the gradebook with teacher sign-off, attendance, timetable,
+  CBSE-format report cards, parent alerts on her tap).
+- `server/app/daftar/` (models / rules / service / api), tools `daftar` / `daftar_dekho`:
+  - ATTENDANCE: `mark_attendance` (class, day; everyone present except absent / late / leave named by roll, name or S-number;
+    marking the same day again replaces it; unknown names reported; children without guardian consent not recorded; no
+    future dates), `attendance` (month: % per child with late = present and leave not counted, school days, below 75%).
+  - ABSENCE ALERTS: `absent_alerts` -> a `daftar_share` CARD; only POST /api/daftar/shares/{id}/decide (by_tap, hash) makes
+    one wa.me draft per absent child's guardian ("... aaj nahi aaye. Sab theek ho to bataiye.") that she sends herself.
+  - GRADING into the shared gradebook as UNSIGNED rows (by "hoola:<source>", the wrong question numbers in the note):
+    `grade_sheet` (answer key list or a Pathyakram paper's objective key; rows [{roll, answers}] or a CSV with roll / name /
+    Q1..Qn), `omr_read` (one answer-sheet photo read by Claude vision: exactly what is marked, blanks / doubles / unclear
+    listed; NOTHING saved - the teacher confirms, then grade_sheet), `grade_forms` (a Pathyakram Google Forms quiz: answers by
+    their 'Qn.' titles, learners by a roll / name question or the guardian email on record), `grade_code` (Python against
+    [{call, expected}] tests run in the pylab sandbox via `rules.code_harness`: numbers within 1e-6, errors named, a program
+    that does not even load = 0, os.system / sockets refused by the sandbox; marks in proportion), `grade_rubric` (a written
+    answer against a Pathyakram rubric RB-xxx: AI picks a level per criterion with evidence, points capped at each
+    criterion's maximum in code; a SUJHAAV). Each run GR-001 keeps the key, results, average and the 5 hardest questions;
+    unmatched rolls and no-consent children are listed, never guessed. `unsigned` = marks waiting for sign-off (ids for
+    shiksha.sign_off).
+  - REPORT CARDS: `report_card` from SIGNED-OFF marks only (per subject: assessments, marks, %, grade on the school's 8-point
+    scale A1 91-100 ... E below 33 - said to be the school scale, not a board result; total, overall grade, attendance %,
+    how many marks still wait for sign-off), `report_card_file` (Word: school, name, class, roll, term, table, signature
+    lines), `report_card_share` -> card -> her tap -> the file + a wa.me draft to that child's guardian.
+  - TIMETABLE: `timetable` needs [{class, subject, teacher, per_week}], periods, days, max_same -> `rules.solve_timetable`
+    (capacity checks first, then backtracking hardest-first: every period placed, no teacher in two rooms in one period,
+    a subject at most max_same times a day; impossible = said plainly) -> TT-001 + per-teacher view.
+- Employee: duty `school_office`, role `school_admin`, preset `school_office`; READ daftar_dekho; admit family "daftar"
+  (hazri / attendance / report card / timetable / OMR / marks ...); voice via santosh_kaam; push daftar_share (waiting only);
+  prompt line SCHOOL OFFICE.
+- App: `lib/ui/daftar_screen.dart` (DaftarScreen: Hazri tap-the-absent + alerts card, Marks sign-off list, Timetable grid,
+  Report card Word / guardian card; DaftarShareCard with one draft button per guardian), Profile tile "School office".
+- Tests: NEW `server/tests/test_v0403_daftar.py` (11): attendance + replace + unknown + no-consent + month %; alerts only by her tap
+  (one wa.me per guardian); sheet grading unsigned + unmatched + no-consent, report card empty until sign-off, then A1 +
+  Word + guardian card; CSV sheet; OMR read saves nothing and lists unclear; Forms quiz by Qn titles; code in the sandbox
+  (3/4 tests, broken code, os.system refused, consent); rubric suggestion capped; timetable with no clashes and the
+  max-per-day rule, impossible load refused; grade scale + sheet reader; tools / API / wiring.
+- Not verified: real OMR photos through Claude vision; real Google Forms responses; Flutter not compiled locally (CI).
+
+## v0.403.0 SHODH SAHAYAK - Shiksha suite Phase 4: research assistant (Master's / PhD)
+- Owner: "GO PHASE 4" (plan: official open literature APIs, cited summaries, review matrix, gaps, citation manager,
+  sandboxed Python analysis with the code shown, first drafts; integrity: no invented citations, AI disclosure, no thesis
+  ghost-writing).
+- `server/app/shodh/` (models / sources / service / api), tools `shodh` / `shodh_dekho`:
+  - SOURCES (`sources.py`, documented public endpoints only, one shape for all): OpenAlex /works (abstract rebuilt from the
+    inverted index, oa_url, cited_by_count, mailto polite pool), Crossref /works (+ /works/{doi} as the truth check),
+    arXiv export API (Atom; DOI + pdf link), PubMed E-utilities (esearch + esummary; DOI from articleids), Semantic Scholar
+    Graph API (optional key sealed with the vault; 429 said plainly), Unpaywall (legal free PDF for a DOI, needs her contact
+    email). One source failing never stops the others; failures are reported.
+  - PROJECTS SP-001 with a log of every search / screen / analysis (feeds the methods draft). `search` de-duplicates by DOI
+    (else normalised title) across sources and merges fields (best citations, all ids, found_via); `add_doi` only after
+    Crossref returns the record (a made-up DOI is refused) + Unpaywall link; `screen` include / exclude with reason;
+    `summarize` = problem / method / data / findings / limitations / relevance from the ABSTRACT only ("not stated" when
+    absent); `matrix` of included papers; `gaps` - each gap must cite project papers, other cites removed in code.
+  - REFERENCES built in CODE from the API metadata (`reference`: APA 7 incl. the 20-author rule, IEEE, Harvard; `bibtex`;
+    `ris`) as a chat file for Zotero / Mendeley import - the model never writes a reference.
+  - ANALYSIS (`analyse`): the model writes one program for her question (or cleaning: types, spaces, categories, missing
+    values, duplicates -> cleaned.csv), the pylab sandbox runs it on her datasets / chat files, one fix from the traceback,
+    numbers + charts + the code returned.
+  - DRAFTS (`draft`: literature_review / methods / results / discussion / introduction): only the matrix + log (+ the analysis
+    output for results); [P-xxx] cites not in the project removed; decimals in a results draft that are not in the analysis
+    output become [CHECK n]; an AI-assistance note; a request to write a thesis / assignment for submission as her own work
+    is refused with an offer of real help.
+- Employee: duty `research_assist`, role `research_assistant`, preset `research_lab`; READ shodh_dekho; admit family "shodh";
+  voice via santosh_kaam; prompt line RESEARCH.
+- App: `lib/ui/shodh_screen.dart` (projects, project page: Papers with source chips + include / exclude + free PDF / DOI
+  links, Matrix with summaries + gaps, References APA / IEEE / Harvard / BibTeX / RIS), Profile tile "Research assistant".
+- Tests: NEW `server/tests/test_v0403_shodh.py` (8, a fake network shaped like each API): cross-source de-dup + a failing source
+  reported + abstract rebuilt; DOI truth check + Unpaywall; summaries, matrix, gaps with a bad cite removed; APA / BibTeX /
+  RIS / Harvard built in code; analysis code fixed once and run in the sandbox; drafts with cites + [CHECK] numbers +
+  ghost-writing refused; Semantic Scholar key sealed; tools / API / wiring.
+- Not verified: the live APIs; PubMed abstracts (efetch not built); Flutter not compiled locally (CI).

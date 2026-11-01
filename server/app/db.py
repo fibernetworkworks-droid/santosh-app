@@ -809,6 +809,7 @@ def init_db(url: str | None = None):
     from .employee import hire as _hire  # noqa: F401  (v0.317 hired employees)
     from .social import publish as _social_publish  # noqa: F401  (v0.355 Social Media Manager posting)
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
+    from .ads import gads as _gads  # noqa: F401  (v0.401 YouTube ads, Google Ads API)
     from .social import growth as _social_growth  # noqa: F401  (v0.383 Social Media Manager growth)
     from .social import inbox as _social_inbox  # noqa: F401  (v0.368 Social Media Manager inbox)
     from .thok import service as _thok  # noqa: F401
@@ -859,6 +860,8 @@ def init_db(url: str | None = None):
     from .shiksha import models as _shiksha  # noqa: F401  (v0.381 Shiksha suite)
     from .pathyakram import models as _pathyakram  # noqa: F401
     from .guru import models as _guru  # noqa: F401  (Shiksha Phase 2 tutor)
+    from .daftar import models as _daftar  # noqa: F401  (Shiksha Phase 3 school office)
+    from .shodh import models as _shodh  # noqa: F401  (Shiksha Phase 4 research assistant)
     from .compliance import models as _compliance  # noqa: F401
     from .contracts import models as _contracts  # noqa: F401
     from .cosec import models as _cosec  # noqa: F401

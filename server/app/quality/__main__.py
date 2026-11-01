@@ -1,7 +1,8 @@
 """python -m app.quality [--live] [--judge] [--label "..."] | compare <before.json> <after.json>
    | tools [--live] [--fresh] [--limit N] [--brain claude|glm] [--label "..."]   (v0.245 tool-choice card)
    | longjobs [--hours 24]   (v0.347 how her real long jobs went)
-   | code [--set 1|2|3] [--only id,id] [--limit N] [--label "..."]
+   | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
+   | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -32,13 +33,25 @@ def _code(argv: list[str]) -> int:
     from . import codecard as K
     val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
     only = [x for x in val("--only").split(",") if x]
-    cd = K.save(K.card(only=only or None, limit=int(val("--limit") or 0), set_=int(val("--set") or 1)), val("--label"))
+    kw = {"spec": True} if "--spec" in argv else {}          # v0.402 fix jobs with the ECC fixer specialist
+    if val("--kind"):
+        kw["kind"] = val("--kind")
+    cd = K.save(K.card(only=only or None, limit=int(val("--limit") or 0), set_=int(val("--set") or 1), **kw), val("--label"))
     print("\n".join(K.lines(cd)))
     print(f"\n  saved: {cd['file']}")
     return 0
 
 
 def main(argv: list[str]) -> int:
+    if argv and argv[0] == "review":        # v0.401 PR review card (old vs ECC specialists)
+        from . import reviewcard as RC
+        rest = argv[1:]
+        val = lambda k: rest[rest.index(k) + 1] if k in rest and len(rest) > rest.index(k) + 1 else ""  # noqa: E731
+        cd = RC.save(RC.card(modes=[x for x in (val("--modes") or "old,new").split(",") if x],
+                             k=int(val("--k") or 1), only=[x for x in val("--only").split(",") if x] or None), val("--label"))
+        print("\n".join(RC.lines(cd)))
+        print(f"\n  saved: {cd['file']}")
+        return 0
     if argv and argv[0] == "sdk":           # v0.378 Dart / Kotlin toolchains for the mobile coding card
         from . import sdk
         if "--setup" in argv:

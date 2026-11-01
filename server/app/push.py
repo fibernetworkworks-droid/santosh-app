@@ -368,7 +368,8 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
     _kanoon_wait = {"vakil_card": ("card", "waiting", "Vakil: aapki haan chahiye"),
                     "legalres_share": ("share", "waiting", "Memo bhejne ki aapki haan chahiye"),
                     "pathyakram_share": ("share", "waiting", "Paper / plan bhejne ki aapki haan chahiye"),
-                    "guru_report": ("share", "waiting", "Padhai ki report: guardian ko bhejne ki aapki haan"),   # v0.381
+                    "guru_report": ("share", "waiting", "Padhai ki report: guardian ko bhejne ki aapki haan"),
+                    "daftar_share": ("share", "waiting", "School: guardian ko bhejne ki aapki haan"),   # v0.381
                     "compliance_filing": ("filing", "waiting", "Compliance: aapki haan chahiye"),
                     "compliance_cert": ("cert", "waiting", "Compliance certificate: sign-off"),
                     "contracts_card": ("card", "waiting", "Contract: aapki haan chahiye"),
@@ -633,7 +634,7 @@ PUSH_KINDS = {"message", "goal", "bazar_approval", "artifact", "pc_file", "photo
               # v0.144 Makaan suite
               "propagent_card", "propagent_alert", "propagent_day", "rentdesk_approval", "rentdesk_message", "rentdesk_alert", "rentdesk_day", "sitesup_indent", "sitesup_stop", "sitesup_report", "sitesup_alert", "sitesup_day", "interior_quote", "interior_order", "interior_change", "interior_payment", "interior_alert", "interior_day", "archassist_transmittal", "archassist_submission", "archassist_invoice", "archassist_alert", "archassist_day", "society_card", "society_complaint", "society_alert", "society_day",
               # v0.150 Kanoon suite
-              "pathyakram_share", "pathyakram_paper", "pathyakram_plan", "guru_report",   # v0.381 Shiksha suite
+              "pathyakram_share", "pathyakram_paper", "pathyakram_plan", "guru_report", "daftar_share",   # v0.381 Shiksha suite
               "vakil_card", "vakil_alert", "vakil_day", "legalres_share", "legalres_memo", "compliance_filing", "compliance_cert", "compliance_alert", "compliance_day", "contracts_card", "contracts_alert", "contracts_day", "cosec_filing", "cosec_notice", "cosec_minutes", "cosec_alert", "cosec_day", "notary_print", "notary_alert", "notary_day", "pidesk_share", "pidesk_alert", "dpo_card", "dpo_breach", "dpo_alert", "dpo_day", "dpo_request",
               # v0.152 Mehmaan suite
               "frontoffice_card", "frontoffice_message", "frontoffice_alert", "frontoffice_day", "eventplan_booking", "eventplan_doc", "eventplan_message", "eventplan_spend", "eventplan_alert", "eventplan_day", "shaadi_card", "shaadi_alert", "shaadi_day", "tourguide_card", "tourguide_alert", "tourguide_day", "homestay_card", "homestay_alert", "homestay_day", "banquet_card", "banquet_alert", "banquet_day",
