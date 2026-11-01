@@ -1,4 +1,4 @@
-"""Prayogshala tool (v0.409, L0 + L1): find and open a 3D practical lab. Read-only: it never changes anything, so every
+"""Prayogshala tool (v0.412, L0 + L1): find and open a 3D practical lab. Read-only: it never changes anything, so every
 user, every employee role and the voice call (via santosh_kaam) may use it. Numbers in a lab come from the lab's
 simulation code, never from the model - so this tool gives LINKS and the lab's own checked numbers, not explanations
 with invented values."""

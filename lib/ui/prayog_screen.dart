@@ -1,4 +1,4 @@
-/// Profile > Prayogshala (v0.409, L0 + L1): real practical labs in 3D. The list comes from /api/prayog/labs; a lab opens
+/// Profile > Prayogshala (v0.412, L0 + L1): real practical labs in 3D. The list comes from /api/prayog/labs; a lab opens
 /// in a WebView (three.js runs on the phone, works offline after the first open). Every reading in a lab comes from
 /// its simulation code, checked against the NCERT formula on the server.
 library;

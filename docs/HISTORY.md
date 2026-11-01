@@ -15468,3 +15468,74 @@ joint torque calculated from loads, gear/belt coupling between joints, and the M
   is named; fixed joints exempt. Prismatic motion fixed to mm (q in m x 1000).
 - Tests: tests/test_v0409_mechanisms2.py (7) + v0406 (5). Not yet: spatial (non-planar) loop analysis beyond
   closure, cam / slot joints, dynamic simulation inside Hoola.
+
+## v0.412.0 PRAYOGSHALA L0 + L1 - a real practical lab in 3D (owner: "GO L0 + L1")
+
+The plan is `docs/PRAYOGSHALA_PLAN.md` (L0-L10). This version builds L0 (the lab runtime) and L1 (the physics kernels
+and the NCERT practicals).
+
+**The one rule.** The model never writes a number or a line of code for a lab. A lab is DATA in the Lab Scene Language,
+and the behaviour comes from a kernel that does the physics in code. Every kernel exists twice:
+- `server/app/prayog/kernels.py`, the Python twin, which the tests and the checks run;
+- `server/app/static/prayog/kernels.js`, the JavaScript twin, which the phone runs.
+
+The two twins must give the same numbers to 1e-9 on every lab's own settings (test_v0412_prayog.py runs both).
+
+- **Kernels (16)**
+  - pendulum (RK4, nonlinear)
+  - spring
+  - incline (one μ; static = kinetic, said in the lab)
+  - stokes
+  - cooling
+  - boyle (ideal gas; its particles are illustrative)
+  - mixtures
+  - resonance (closed tube with 0.3d end correction)
+  - sonometer
+  - circuit (Modified Nodal Analysis: R, V, C with backward Euler, a Newton diode with voltage limiting, switches; measure modes `value`, `ratio`, `null` = bisection for a null point, `time_to`)
+  - mirror and lens (exact 2D ray tracing on the real spherical surfaces; a thick lens matches the thin-lens formula within 1%)
+  - prism
+  - slab
+  - induction (dipole flux through an N-turn coil)
+  - gauge (vernier and screw gauge readings)
+- **Lab Scene Language** (`prayog/lsl.py`): a strict checker.
+  - Any unknown key is refused, so nothing like `script` or `onload` can ride in.
+  - Every bind, instrument and table column must point at a real kernel var, param or knob.
+  - Numbers must be finite and inside the stage, with an 80k-triangle phone budget.
+  - Sources are required, and so is a `check` block.
+  - `run_check` measures the lab from the simulation and compares it with the NCERT formula in `kernels.TEXTBOOK`.
+- **Runtime** (`static/prayog/lab3d.js`, three.js r149 served from `appmaker/assets` at `/api/prayog/three.js`):
+  - 3D you can rotate, pinch and tap (each part's name, with an "illustrative" badge where it applies);
+  - section cut and explode;
+  - knobs, some hidden ("unknown" values for the learner to find);
+  - instruments: readouts with least count, stopwatch, meters, graphs and peak hold;
+  - an observation table (Record, manual cells, CSV) with the result from `CALCS` and "the real value in this lab" + % error;
+  - a guided tour with camera moves and Hinglish narration (speechSynthesis when the phone has it; the caption always shows);
+  - a predict-then-observe quiz, and About with sources;
+  - a service worker for offline use after the first open.
+- **Catalogue (22 NCERT practicals)**
+  - Mechanics: simple pendulum, Hooke's law, spring SHM, inclined plane friction, terminal velocity.
+  - Heat: Newton's cooling, Boyle's law, specific heat by mixtures.
+  - Waves: resonance tube, sonometer.
+  - Electricity: Ohm's law, meter bridge, potentiometer internal resistance, p-n diode, RC charging.
+  - Optics: concave mirror, convex lens, prism minimum deviation, glass slab.
+  - Magnetism: electromagnetic induction.
+  - Measurement: vernier callipers, screw gauge.
+
+  Every lab passes its NCERT check. A lab that fails is left out of the catalogue and logged, so the catalogue never goes down with it.
+- **Routes** (public, read-only teaching material): `GET /api/prayog/labs` (q, field), `/api/prayog/labs/{id}`, `/api/prayog/three.js`, and `/prayog` (redirects to the catalogue).
+- **Tool `prayog`** (read-only): find / open / check / all.
+  - Wiring: admit family `prayog`, `roles.READ`, the tutor duty, voice via `santosh_kaam`, and a prompt line ("send the LINK, never quote a lab number").
+- **Surfaces**
+  - Console: Lab page (`v-lab`, an iframe of the catalogue).
+  - Phone: Profile > Prayogshala (`lib/ui/prayog_screen.dart`: list + full-screen WebView).
+
+**Checked in a real browser (Chromium, swiftshader).**
+- All 22 labs render with no page errors.
+- Meter bridge: the null point at 40 cm, then 57.1 cm, gave S = 6.01 Ω against the lab's 6.00 Ω.
+- Pendulum: the stopwatch ran 4.02 s = 2T.
+- Tour, quiz, the phone layout (420 px) and the catalogue all work.
+
+**NOT VERIFIED.**
+- Frame rate on her real phone.
+- speechSynthesis inside the Android WebView (many have none; the caption carries the words).
+- The offline cache on a real device.
