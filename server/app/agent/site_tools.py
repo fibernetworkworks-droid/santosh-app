@@ -151,9 +151,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.design_app(t, site, str(a.get("instruction") or ""), conv)
     if action == "language":
         return S.set_language(t, site, str(a.get("second") or ""))
-    if action == "languages":                    # v0.364 BHASHAYEN
+    if action == "languages":                    # v0.365 BHASHAYEN
         return S.set_languages(t, site, a.get("languages") if isinstance(a.get("languages"), list) else [])
-    if action == "blog":                         # v0.364 hide / show / cover from chat (never delete: her tap only)
+    if action == "blog":                         # v0.365 hide / show / cover from chat (never delete: her tap only)
         return S.blog_act(t, site, str(a.get("slug") or ""), str(a.get("blog_action") or ""), str(a.get("cover") or ""), False)
     if action == "booking":
         return S.booking_decide(t, str(a.get("lead") or ""), bool(a.get("yes")))
@@ -274,7 +274,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         r = SC.report(t, site, int(a.get("days") or 30))
         r.pop("site", None)
         return r
-    if what == "blog":                            # v0.364 her posts + languages
+    if what == "blog":                            # v0.365 her posts + languages
         return S.blog_info(t, site)
     if what == "dashboard":                       # v0.357 the numbers behind her Dashboard tab
         from ..site import dash as SD

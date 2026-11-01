@@ -825,7 +825,7 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_backup.daily)
     except Exception:
         log.exception("site edge / backup failed")
-    try:                                   # v0.364 BLOG: scheduled posts whose time came
+    try:                                   # v0.365 BLOG: scheduled posts whose time came
         from .site import service as site_service
         await asyncio.to_thread(site_service.blog_tick)
     except Exception:

@@ -13211,7 +13211,26 @@ it newly created — rather than quietly missing them. A rollback that silently 
 `server/app/enterprise/run.py` (new, the engine) · `server/app/enterprise/models.py` (EntEndpoint, EntRun,
 EntRunRow) · `server/app/agent/enterprise_tools.py` · `server/tests/test_v0363_erp_live.py` (13 tests).
 
-## v0.364.0 BLOG + BHASHAYEN (built as 0.359, re-versioned past the parallel v0.359-v0.363) (Phase 3c of "any world-complex website")
+## v0.364.0 HOOLA CAD PRO (1 Nov 2026)
+Owner: "I WANT CAD TO PERFROM ALL COMPLEX, VERY COMPLEX, HARD, VERY HARD, ULTIMATE JOBS --- MAKE A HOOLA CAD POWERFULL".
+- `engineering/parts.py` = the H library inside the box: METRIC M2-M24 (tap / clearance / counterbore / countersink /
+  head / nut / washer sizes), `H.hole / cbore / csk / thread_note`, `socket_screw / hex_bolt / nut / washer`,
+  `spur_gear` (true involute, module / teeth / pressure angle / bore), `bearing` (608, 62x, 60x from the table),
+  `shaft` (DIN 6885 keyway), `extrusion` (2020-4040), `pipe`, `flange`. Loaded by the runner as `H`.
+- Assemblies: a `cq.Assembly` result is walked part by part (name, placement, colour) -> BOM with each part's mass,
+  "Every part valid" check, per-part colours in the views; STEP keeps the assembly tree.
+- Exports: part.step, part.stl, part.3mf, part.glb (viewer), section.dxf (section at mid-height), drawing.pdf page 2 =
+  hidden-line views from OCC (front / top / right with dashed hidden edges, iso).
+- ai.py: Opus with extended thinking (ENG_THINK_TOKENS 8000) for hard briefs and every fix; the model writes a PLAN and a
+  MATERIAL first; `ai.look` reviews the real rendered views (ENG_LOOK_ROUNDS, default 1) and sends problems into a fix.
+- Inputs: up to 3 photos / sketches (PNG/JPG/WEBP, 6 MB) and 2 STEP/STL files (40 MB; STEP must be ISO-10303-21) per job,
+  stored in the project's inputs/ folder, readable in the script only through `H.her_file(name)`.
+- Service: mass + centre of mass from the material density, 3D-print check (overhang %, fits a 220 mm bed), BOM table,
+  review notes; sandbox defaults 6 GB / 600 s. Console CAD Desk + phone CadDeskScreen: photo / STEP upload, BOM, mass,
+  print, review, 3MF / GLB / DXF buttons. Tests: tests/test_v0357_engineering_desk.py (16).
+- Large STEP uploads may need nginx `client_max_body_size 60m;` on the /api/eng location.
+
+## v0.365.0 BLOG + BHASHAYEN (built as 0.359, re-versioned past the parallel v0.359-v0.363) (Phase 3c of "any world-complex website")
 Owner: "START PHASE 3C" (after 3a DUKAAN v0.351 and 3b DASHBOARD v0.357).
 - BLOG, writing stays with Kalam Sahayak (v0.101: her voice, facts checked on the web, [blanks] never guessed). Kalam gets
   a new destination `site` (DESTS): `publish_request(dest="site", where=<website>, when=<time>)` -> `site.service.blog_target`
@@ -13246,4 +13265,4 @@ Owner: "START PHASE 3C" (after 3a DUKAAN v0.351 and 3b DASHBOARD v0.357).
   Phone `lib/ui/site_blog.dart` "Blog aur bhashayen" (posts + menu actions with confirms, language chips).
 - ALSO FIXED: the parallel v0.358 ENTERPRISE merge had dropped arena.js, employees.js and charts.js plus the Arena /
   Employees / SEO Desk / Social Desk views from console v2.html (four console tests were red on main); restored.
-- Tests `server/tests/test_v0364_blog_bhashayen.py`.
+- Tests `server/tests/test_v0365_blog_bhashayen.py`.

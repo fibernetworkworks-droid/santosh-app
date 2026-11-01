@@ -1,4 +1,4 @@
-// v0.364 BLOG + BHASHAYEN: her website's blog posts and languages on the phone. Posts are WRITTEN by the Content writer
+// v0.365 BLOG + BHASHAYEN: her website's blog posts and languages on the phone. Posts are WRITTEN by the Content writer
 // (Kalam) in chat ("blog likho: ...") and go up with her Haan on its card; here she sees them, hides / shows / deletes
 // (each with a confirm) and picks the site's extra languages (up to 4).
 import 'package:flutter/material.dart';

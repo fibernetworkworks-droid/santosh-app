@@ -22,7 +22,7 @@ from . import build as B
 
 log = logging.getLogger("santosh.site")
 LANGS = {"en": "English", "hi": "हिंदी", "mr": "मराठी", "hinglish": "Hinglish",
-         # v0.364 BHASHAYEN: the big Indian languages too (up to MAX_EXTRA extra languages a site)
+         # v0.365 BHASHAYEN: the big Indian languages too (up to MAX_EXTRA extra languages a site)
          "gu": "ગુજરાતી", "bn": "বাংলা", "ta": "தமிழ்", "te": "తెలుగు", "kn": "ಕನ್ನಡ", "ml": "മലയാളം", "pa": "ਪੰਜਾਬੀ",
          "or": "ଓଡ଼ିଆ", "ur": "اردو"}
 NAMES = {"en": "English (India)", "hi": "Hindi in Devanagari script", "mr": "Marathi in Devanagari script",

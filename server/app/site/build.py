@@ -561,7 +561,7 @@ def header(site: dict[str, Any], plan: dict[str, Any], slug: str, rel: str, logo
         cur = ' aria-current="page"' if p["slug"] == slug else ""
         links.append(f'<li><a href="{page_url(p["slug"], rel)}"{cur}>{esc(p.get("nav") or p["title"])}</a></li>')
     cta = cta_button(site, rel, "btn btn-primary hs-cta")
-    cta = lang_switch(site, slug, rel) + cta    # v0.301 / v0.364 the same page in the other language(s)
+    cta = lang_switch(site, slug, rel) + cta    # v0.301 / v0.365 the same page in the other language(s)
     brand = (f'<img src="{rel}assets/img/logo.png" alt="{esc(f.get("name"))} logo" width="120" height="40">' if logo else "")
     if plan.get("big"):                      # v0.315 grouped menu + site search on big sites
         links = [_mega(plan, slug, rel)]
@@ -576,7 +576,7 @@ def header(site: dict[str, Any], plan: dict[str, Any], slug: str, rel: str, logo
 
 
 def lang_links(site: dict[str, Any], slug: str) -> list[dict[str, str]]:
-    """v0.364 every language of the site: {lang, label, path from the site root to THIS page in that language}."""
+    """v0.365 every language of the site: {lang, label, path from the site root to THIS page in that language}."""
     la = site.get("langs_all") or []
     part = "" if slug == "home" else f"{slug}/"
     return [{"lang": x["lang"], "label": x["label"], "path": x["prefix"] + part} for x in la]
@@ -711,12 +711,12 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
         meta.append(f'<link rel="canonical" href="{esc(canon)}">')
     root_base = (site.get("root_base") if site.get("root_base") is not None else base_url) or ""
     if root_base and len(site.get("langs_all") or []) > 1 and page["slug"] not in ("admin", "account"):
-        from .lang import html_lang as _hl   # v0.364 every language of this page, for search engines
+        from .lang import html_lang as _hl   # v0.365 every language of this page, for search engines
         alts = lang_links(site, page["slug"])
         meta += [f'<link rel="alternate" hreflang="{esc(_hl(x["lang"]))}" href="{esc(root_base.rstrip("/") + "/" + x["path"])}">'
                  for x in alts]
         meta.append(f'<link rel="alternate" hreflang="x-default" href="{esc(root_base.rstrip("/") + "/" + alts[0]["path"])}">')
-    if site.get("blog"):                         # v0.364 her blog's feed
+    if site.get("blog"):                         # v0.365 her blog's feed
         meta.append(f'<link rel="alternate" type="application/rss+xml" title="{esc(f.get("name") or "Blog")}" href="{rel}blog/feed.xml">')
     if page.get("og_type"):
         meta = [m.replace('content="website"', f'content="{esc(page["og_type"])}"') for m in meta]
@@ -801,7 +801,7 @@ def legal_page(kind: str, site: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------- whole site
-# ---------------------------------------------------------------- v0.364 her blog (posts come from site/blog.py)
+# ---------------------------------------------------------------- v0.365 her blog (posts come from site/blog.py)
 def with_blog_pages(site: dict[str, Any], plan: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """A site with published posts gets a 'Blog' page in the menu (or its own designed blog page shows the posts) and,
     outside the menu: one page per post, older-post pages and category pages."""
@@ -906,7 +906,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     (out / "assets" / "img").mkdir(parents=True)
     (out / "assets" / "fonts").mkdir(parents=True)
     tk = site["tokens"]
-    # v0.301 / v0.364 the extra languages: [{lang, label, back, sections, plan, blog}] (an edit preview has none)
+    # v0.301 / v0.365 the extra languages: [{lang, label, back, sections, plan, blog}] (an edit preview has none)
     alts = [] if site.get("edit") else list(site.get("alts") if site.get("alts") is not None else
                                             ([site["alt"]] if site.get("alt") else []))
     if alts and not site.get("langs_all"):
@@ -924,7 +924,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
     plan = with_app_pages(site, plan)
     plan = with_shop_pages(site, plan)            # v0.351
-    plan, blog_extra = with_blog_pages(site, plan)   # v0.364
+    plan, blog_extra = with_blog_pages(site, plan)   # v0.365
     if (site.get("shop") or {}).get("api"):
         shutil.copy(ASSETS / "hoola-shop.js", out / "assets" / "hoola-shop.js")
     logo = False
@@ -991,7 +991,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             h, mmiss = MD.expand(h, src_root, out, rel)
             if mmiss:
                 problems.append(f"{key}: file not found: {', '.join(mmiss)}")
-            if "data-hoola-posts" in h:          # v0.364 the latest posts as cards
+            if "data-hoola-posts" in h:          # v0.365 the latest posts as cards
                 from . import blog as BL
                 h = BL.latest_cards(h, site.get("blog") or [], rel, lambda n: pic(n).replace("__REL__", rel),
                                     site.get("language") or "en")
@@ -1011,7 +1011,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             parts.append(h)
         return "\n".join(parts)
 
-    def pic(name: str) -> str:                   # v0.364 a post card's cover (one of her site photos)
+    def pic(name: str) -> str:                   # v0.365 a post card's cover (one of her site photos)
         return picture(photos[name], "", "__REL__") if name in photos else ""
 
     for page in plan.get("pages", []) + (SM.item_pages(plan) if big else []) + blog_extra:
@@ -1024,7 +1024,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             body = app_page(slug, site)
         elif page.get("shop_page"):           # v0.351 the code-made shop
             body = shop_page(site, rel, photos)
-        elif page.get("blog_post") is not None:   # v0.364 one post
+        elif page.get("blog_post") is not None:   # v0.365 one post
             body = blog_post(site, page["blog_post"], rel, lambda n: pic(n).replace("__REL__", rel), base_url, photos)
         elif page.get("blog_cat"):
             body = blog_list(site, rel, lambda n: pic(n).replace("__REL__", rel), cat=page["blog_cat"])
@@ -1056,7 +1056,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                                             f'<p><a class="btn btn-primary" href="./">Home</a></p></div></section>', "", logo, ""),
                                   encoding="utf-8")
     every = (SM.real_pages(plan) if big else plan.get("pages", [])) + [p for p in blog_extra if not str(p["slug"]).startswith("blog/page/")]
-    if site.get("blog"):                     # v0.364 RSS 2.0 for readers / Google News style tools
+    if site.get("blog"):                     # v0.365 RSS 2.0 for readers / Google News style tools
         from . import blog as BL
         (out / "blog").mkdir(parents=True, exist_ok=True)
         (out / "blog" / "feed.xml").write_text(BL.rss(site, site["blog"], base_url), encoding="utf-8")
@@ -1071,7 +1071,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         robots += f"Sitemap: {base_url.rstrip('/')}/sitemap.xml\n"
     (out / "robots.txt").write_text(robots)
     (out / "_headers").write_text("/*\n  " + "\n  ".join(f"{k}: {v}" for k, v in security_headers(form_endpoint).items()) + "\n")
-    for alt in alts:                         # v0.301 / v0.364 each extra language under /<lang>/, one menu to all of them
+    for alt in alts:                         # v0.301 / v0.365 each extra language under /<lang>/, one menu to all of them
         sub = {**site, "language": alt["lang"], "alt": None, "alts": [], "src_root": str(src_root), "root_up": "../",
                "blog": alt.get("blog") if alt.get("blog") is not None else (site.get("blog") or [])}
         res = assemble(sub, alt["plan"], alt["sections"], dict(photos), out / alt["lang"],

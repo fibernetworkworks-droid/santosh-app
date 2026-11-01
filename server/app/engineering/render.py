@@ -84,7 +84,9 @@ def draw_view(mesh: dict[str, Any], view: str, w: int, h: int, scale: float | No
     rgb = np.full((H, W, 3), BG, dtype=np.float64)
     lx, ly, lz = -0.35, 0.45, 0.82
     base = np.array(BASE, dtype=float)
-    for t in tris:
+    tri_part = mesh.get("c") or []
+    part_cols = [np.array([min(255.0, 255 * float(x)) for x in c[:3]]) for c in (mesh.get("colors") or [])]
+    for ti, t in enumerate(tris):
         a, b, c = t
         xa, ya, xb, yb, xc, yc = sx[a], sy[a], sx[b], sy[b], sx[c], sy[c]
         den = (yb - yc) * (xa - xc) + (xc - xb) * (ya - yc)
@@ -110,13 +112,14 @@ def draw_view(mesh: dict[str, Any], view: str, w: int, h: int, scale: float | No
         if n[2] < 0:
             n = (-n[0], -n[1], -n[2])
         k = 0.42 + 0.58 * max(0.0, n[0] * lx + n[1] * ly + n[2] * lz)
-        col = base * k + 30 * (1 - k)
+        pc = part_cols[tri_part[ti]] if part_cols and ti < len(tri_part) and tri_part[ti] < len(part_cols) else base
+        col = pc * k + 30 * (1 - k)
         zb[win] = z[win]
         rgb[lo_y:hi_y + 1, lo_x:hi_x + 1][win] = col
     img = Image.fromarray(np.clip(rgb, 0, 255).astype("uint8"), "RGB")
     d = ImageDraw.Draw(img)
     sharp = sharp if sharp is not None else _sharp_edges(verts, tris)
-    eps = 1e-3 * max(x1 - x0, y1 - y0, 1.0)
+    eps = 4e-3 * max(x1 - x0, y1 - y0, 1.0)          # v0.362 wider: no speckle on gear teeth / curved facets
     lw = max(1, ss)
     for u, v in sharp:                       # an edge is drawn where it is not hidden behind a nearer face
         steps = max(2, int(math.hypot(sx[v] - sx[u], sy[v] - sy[u]) / 3))
@@ -175,7 +178,47 @@ def _dim(d: ImageDraw.ImageDraw, a: tuple[float, float], b: tuple[float, float],
         d.text((mx - tw / 2, my + 12), text, fill=EDGE, font=f)
 
 
-def drawing_pdf(mesh: dict[str, Any], info: dict[str, Any]) -> bytes:
+def svg_png(svg: str, w: int, h: int) -> Image.Image | None:
+    """v0.362 a CadQuery hidden-line SVG -> RGB image (resvg-py; None when it is not installed)."""
+    try:
+        import resvg_py
+        data = bytes(resvg_py.svg_to_bytes(svg_string=svg, width=w, height=h))
+        im = Image.open(io.BytesIO(data)).convert("RGBA")
+        bg = Image.new("RGBA", im.size, BG + (255,))
+        bg.alpha_composite(im)
+        return bg.convert("RGB")
+    except Exception:
+        return None
+
+
+def line_page(hlr: dict[str, str], info: dict[str, Any]) -> Image.Image | None:
+    """Page 2: front / top / right with hidden edges dashed + an isometric line view, each fitted to its box."""
+    if not hlr:
+        return None
+    W, H = 2339, 1654
+    page = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(page)
+    d.rectangle([40, 40, W - 40, H - 40], outline=EDGE, width=3)
+    f, fs = _font(30), _font(24)
+    slots = {"front": (80, 80), "right": (1180, 80), "top": (80, 860), "iso": (1180, 860)}
+    any_ = False
+    for v, (ox, oy) in slots.items():
+        if not hlr.get(v):
+            continue
+        img = svg_png(hlr[v], 1060, 700)
+        if img is None:
+            continue
+        page.paste(img, (ox, oy))
+        d.text((ox + 10, oy + 6), LABEL[v] + ("" if v == "iso" else " (hidden edges dashed)"), fill=EDGE, font=f)
+        any_ = True
+    if not any_:
+        return None
+    d.text((80, H - 100), f"{str(info.get('title') or 'Part')[:60]} · line views, each fitted to its box (not to one scale) "
+                          "· DRAFT - for a qualified engineer's review, not certified", fill=(90, 98, 110), font=fs)
+    return page
+
+
+def drawing_pdf(mesh: dict[str, Any], info: dict[str, Any], hlr: dict[str, str] | None = None) -> bytes:
     """A4 landscape at 200 dpi: front (top left), top (below it), right side (beside front), 3D view, title block."""
     W, H = 2339, 1654
     page = Image.new("RGB", (W, H), BG)
@@ -221,6 +264,10 @@ def drawing_pdf(mesh: dict[str, Any], info: dict[str, Any]) -> bytes:
         d.text((tx + 260, y), val, fill=EDGE, font=fb if k == "Part" else f)
         y += 64
     d.text((90, H - 100), "Third-angle projection · dimensions in mm · overall sizes only (Phase 1)", fill=(90, 98, 110), font=fs)
+    if info.get("material") or info.get("mass_g"):
+        d.text((90, H - 140), f"Material: {info.get('material') or '-'} · mass about {info.get('mass_g', 0):,.0f} g",
+               fill=(90, 98, 110), font=fs)
+    extra = [p for p in [line_page(hlr or {}, info)] if p is not None]
     b = io.BytesIO()
-    page.save(b, "PDF", resolution=200.0)
+    page.save(b, "PDF", resolution=200.0, save_all=bool(extra), append_images=extra)
     return b.getvalue()
