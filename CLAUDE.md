@@ -177,7 +177,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
   403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
   verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
-- Current version: v0.403.0 (pubspec 0.403.0+447). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.404.0 (pubspec 0.404.0+448). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.403 SHIKSHA 3+4: `app/daftar` school office (attendance + guardian alert card, grading UNSIGNED: sheet / OMR / Forms /
   code / rubric, timetable, report card from signed-off marks) + `app/shodh` research assistant (official APIs only, refs in code).
@@ -208,6 +208,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.404 HOOLA DFM (`engineering/dfm.py`, H.make('fdm'|'sla'|'sls'|'mjf'|'metal_pbf'|'cnc'|'sheet'|'molding', ...)): measured walls / overhangs / orientation / inside corners / deep holes / setups / bends / draft / undercuts / clamp; FAIL -> redesign; limits = published starting points, her shop's numbers override.
 - v0.398 REAL DRAWINGS (built as 0.397, `engineering/views2d.py` box: kernel HLR vector views + hole stacks THRU/DEEP/CBORE/CSK + radii; `drawing.py` reportlab A3 sheet: measured dims, callouts, H.fit ISO 286, H.drawing first/third + ISO 2768, title block); page 2 = shaded views.
 - v0.394 CAD CONTACT (built as 0.392, `engineering/contact.py`): assembly FEA as separate parts - node-to-surface contacts (bonded / frictionless / friction, open + slip), preloaded bolt connectors (H.analyze(..., contact=, bolts=[...])), joint separates / slips -> redesign; bolt bearing in the hole not modelled.
 - v0.385 CAD NEXT PHASE (built as 0.383, `fea.flow` laminar CFD on the fluid body via H.analyze('flow', domain=...), fatigue on static studies + redesign, calc `joint` VDI 2230-style + `fatigue`); true contact FEA between assembly parts still not built.

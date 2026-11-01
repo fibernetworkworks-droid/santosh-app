@@ -15215,3 +15215,28 @@ text checked byte for byte against ECC's LICENSE). Built as 0.396 / 0.400, re-ve
   RIS / Harvard built in code; analysis code fixed once and run in the sandbox; drafts with cites + [CHECK] numbers +
   ghost-writing refused; Semantic Scholar key sealed; tools / API / wiring.
 - Not verified: the live APIs; PubMed abstracts (efetch not built); Flutter not compiled locally (CI).
+
+## v0.404.0 HOOLA DFM (1 Nov 2026)
+Owner: "GO DFM CHECKS" (second item from the text-to-cad comparison). Own code; the idea of fact-only measurement +
+cited limits + pass / fail / review / unverified is the same discipline text-to-cad's DFM / DfAM skills use.
+- `engineering/dfm.py` (runs in the CAD box after the build when the script calls H.make(process, material, tool_d,
+  pull, limits)). Probe = OCC IntCurvesFace_ShapeIntersector rays on the exact B-rep + the solid classifier;
+  surface samples spread by area on each face's (u, v) grid.
+- 3D print (fdm / sla / sls / mjf / metal_pbf): wall thickness = ray from each sample along -normal (5th percentile
+  judged, like a careful reviewer), overhang area + prism support volume vs the self-supporting angle (none for
+  powder), the 6 axis orientations ranked by support, smallest hole, desktop build size.
+- CNC: thin walls (0.8 metal / 1.5 plastic), sharp vertical INSIDE corners (concave edge = the point between small
+  steps into both faces is air; the first normal-bisector test could not tell inside from outside corners), inside
+  fillet radius vs the tool radius, hole depth > 4 d review / > 10 d fail, setups = greedy cover of the six approach
+  directions that reach each sample, machine envelope.
+- Sheet metal (needs H.sheet / H.tray): constant thickness, inside radius >= t, flange >= 4 t (flat length),
+  hole >= t, hole edge to bend >= 2.5 t + R.
+- Injection moulding: wall range per resin (ABS 1.2-3.5, PP 0.8-3.8, PC 1-4, nylon / POM 0.8-3), uniformity
+  95th / 5th percentile <= 2, draft vs the pull axis (< 0.5° fail, < 1° review), undercuts = side faces that a ray
+  toward EITHER mould half cannot leave, projected area (raster) -> clamp tons at 35 MPa (estimate).
+- Every row: measured / limit / source (Protolabs Network (Hubs), Protolabs, Formlabs, HP, EOS, ISO/ASTM 52910) /
+  status / fix. FAIL rows go back to the designer (`service._dfm_problems`, ENG_DFM_ROUNDS 2) with the number and
+  the fix; analysis.pdf gets a Manufacturability section; console + phone show the rows.
+- Tests: tests/test_v0403_dfm.py (7) - each process's known good / bad case + the desk loop (sharp pocket corners ->
+  filleted R4 -> passes).
+- Not yet: trapped-powder escape check, rib / boss ratios for moulding, thread engagement, tolerances vs process.
