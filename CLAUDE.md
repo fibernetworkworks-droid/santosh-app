@@ -136,9 +136,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.340.0 (pubspec 0.340.0+380). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.341.0 (pubspec 0.341.0+381). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.341 TERMS OF SERVICE: public /terms (`static/terms.html`, links /privacy): her tap first, never moves money, price card first,
+  AI is not advice, acceptable use, content stays hers, Indian law / Akola courts, IT Act grievance officer (24 h / 15 days).
 - v0.340 EDIT MEIN SAB JODO: website Edit mode "+ Jodo" adds a photo / video (MP4 or YouTube) / audio / download file after any block
   (`site/media.py`: bytes must match the kind, placeholders -> addresses per page depth, hard links); photos in <picture> pickable again.
 - v0.339 APP STORE LAUNCH (App Phase 7, `appmaker/ios/asc.py` + `appstore.py`): App Store Connect API runs IN her builds repo (key never on Hoola): listing within Apple limits, 6.9" Pro Max shots, build onto the version; Submit for Review only her tap; support page + App Privacy answers.

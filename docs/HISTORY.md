@@ -12636,3 +12636,16 @@ nothing could be ADDED, and only photos could be uploaded (in chat).
   edit number in the preview, and the toolbar's "+ Jodo" message in Chromium.
 - Not yet: a video's own poster frame (the browser shows its first frame), reordering added pieces (remove + add again).
 - Built as 0.338.0, re-versioned 0.340.0 on merge past the parallel v0.338 KAAM KARO and v0.339 APP STORE LAUNCH (all kept). Code comments say v0.338.
+
+## v0.341.0 TERMS OF SERVICE (1 Nov 2026)
+Owner: "Terms of Service --- HOOLA" (right after her privacy policy went live at /privacy).
+- `server/app/static/terms.html` served at GET /terms (main.py `terms()`), the same look as the privacy page and linked to it.
+  17 sections: who can use (18+), account, what Hoola does, her approval first (send / delete / publish / file / paid work; never moves
+  money; does not sign or file where the law needs her), AI results are not professional advice, acceptable use (spam, fraud,
+  impersonation, real-person likeness without permission, CSAM reported, security / price-card bypass, scraping), her content and
+  creations (hers; "AI se bana" mark), websites and apps she builds (her publishing, her customers' data, her store accounts), Hoola
+  Network (binding only after her approval), connected services' own terms, fees (rupees + GST, price card first, never more than the card,
+  failed items not charged), availability "as is" + backups, suspension / closing, disclaimers + liability cap (3 months of fees, as far as
+  Indian law allows, consumer rights kept), Indian law + Akola courts, grievance officer under the IT Act (24 h acknowledgement, 15 days).
+- NOT legal advice: the owner should have a lawyer review the liability cap, indemnity, jurisdiction and refund wording before relying on them.
+- Tests: `test_v0341_terms.py`.
