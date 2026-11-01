@@ -1004,6 +1004,55 @@ window.HoolaBuild = function (C) {
       sbox.querySelectorAll('[data-rname]').forEach(btn => btn.addEventListener('click', () => doRestore({name: btn.dataset.rname}, 'that backup')));
     };
     try { await drawS(); } catch (er) { sbox.remove(); }
+    // v0.396 APNA DATABASE: this app's data in HER own database (Supabase, Neon, RDS ... any PostgreSQL-wire database)
+    const obox = document.createElement('section'); obox.className = 'stcol stowndb'; box.appendChild(obox);
+    const drawO = async () => {
+      const v = await api('GET', base(o) + '/owndb');
+      const ln = M(v.link), live = v.linked;
+      const conns = L(v.connections);
+      obox.innerHTML = `<h4>Own database <span>${live ? esc(S(ln.name)) + ' · ' + esc(S(ln.mode)) + ' · ' + esc(S(ln.status)) : 'Hoola database'}</span></h4>
+        <p class="stnote">Run this app's data in your own database (Supabase, Neon, AWS, Google Cloud, Azure, DigitalOcean and ${L(v.providers).length - 6}+ more). Primary: every entry is saved there first, and what you edit there comes back into the app. Copy: a live read copy for reports.</p>
+        ${live ? `<ul class="stmems"><li><span>Where: ${esc(S(ln.label))} · schema <b>${esc(S(ln.schema))}</b></span></li>
+          <li><span>Waiting to sync: ${N(v.lag)} · last sync ${esc(S(ln.last_sync || ln.live_at).slice(0, 16).replace('T', ' '))} UTC</span></li>
+          ${ln.last_error ? `<li><span class="sterr">Last problem: ${esc(S(ln.last_error))}</span></li>` : ''}</ul>
+          <div class="acts"><button class="btn soft" type="button" data-osync>Sync now</button><button class="btn soft" type="button" data-over>Compare counts</button><button class="btn soft" type="button" data-ooff>Disconnect</button></div><div data-oout></div>`
+        : `${conns.length ? `<form class="stapp" data-olink><div class="row"><label>Database <select name="conn">${conns.map(c => `<option value="${esc(S(c.id))}">${esc(S(c.name))} (${esc(S(c.label))})${c.can_write === false ? ' - read only' : ''}</option>`).join('')}</select></label>
+            <label>Mode <select name="mode"><option value="primary">Primary - data lives there</option><option value="mirror">Copy - Hoola stays main</option></select></label></div>
+            <div class="acts"><button class="btn go" type="submit">Move this app's data there</button></div></form>` : '<p class="stnote">No database connected yet. Add one below.</p>'}
+          <form class="stapp" data-oadd autocomplete="off"><p class="stnote">Add a database: paste its connection string (it is sealed on the server and never shown again; never paste it in chat).</p>
+            <div class="row"><input name="name" maxlength="60" placeholder="Name, e.g. Shop Supabase" aria-label="Name"></div>
+            <div class="row"><input name="dsn" type="password" autocomplete="off" placeholder="postgresql://user:password@host:5432/postgres" aria-label="Connection string"><button class="btn soft" type="submit">Connect</button></div></form>
+          <details><summary>Where to find the connection string (${L(v.providers).length} databases)</summary><ul class="stlines">${L(v.providers).map(p => `<li><b>${esc(S(p.name))}</b>: ${esc(S(p.how))}${p.note ? ' - ' + esc(S(p.note)) : ''}</li>`).join('')}</ul></details>`}`;
+      const out = obox.querySelector('[data-oout]');
+      const fl = obox.querySelector('[data-olink]');
+      if (fl) fl.addEventListener('submit', async e => {
+        e.preventDefault();
+        const name = fl.conn.selectedOptions[0].textContent;
+        if (!confirm(`Move this app's data to ${name}? A backup is taken first; every entry is copied and the counts are compared before it goes live.`)) return;
+        const b = fl.querySelector('button.go'); b.disabled = true; b.textContent = 'Copying…';
+        try { const r = await api('POST', base(o) + '/owndb/link', {conn: fl.conn.value, mode: fl.mode.value}); toast(S(r.say)); drawO(); }
+        catch (er) { toast(er.message, true); b.disabled = false; b.textContent = "Move this app's data there"; }
+      });
+      const fa = obox.querySelector('[data-oadd]');
+      if (fa) fa.addEventListener('submit', async e => {
+        e.preventDefault();
+        try { const r = await api('POST', '/api/pgdb/conns', {name: fa.name.value.trim(), dsn: fa.dsn.value.trim()}); fa.dsn.value = ''; toast(S(r.say)); drawO(); }
+        catch (er) { fa.dsn.value = ''; toast(er.message, true); }
+      });
+      const bs = obox.querySelector('[data-osync]');
+      if (bs) bs.addEventListener('click', async () => { try { await api('POST', base(o) + '/owndb/sync'); toast('Synced.'); drawO(); } catch (er) { toast(er.message, true); } });
+      const bv = obox.querySelector('[data-over]');
+      if (bv) bv.addEventListener('click', async () => {
+        try { const r = await api('POST', base(o) + '/owndb/verify'); out.innerHTML = `<p class="stnote">${r.ok ? 'All counts match: ' : 'Different: '}${esc(Object.entries(M(r.counts)).map(([k, x]) => `${k} ${N(x.app)}/${N(x.database)}`).join(', '))}</p>`; }
+        catch (er) { toast(er.message, true); }
+      });
+      const bo = obox.querySelector('[data-ooff]');
+      if (bo) bo.addEventListener('click', async () => {
+        if (!confirm('Disconnect? The app goes back to Hoola\'s database; your data stays in your database too.')) return;
+        try { const r = await api('POST', base(o) + '/owndb/unlink'); toast(S(r.say)); drawO(); } catch (er) { toast(er.message, true); }
+      });
+    };
+    try { await drawO(); } catch (er) { obox.remove(); }
     // v0.378 BAAT: her customers' messages from the app (their words = data); she replies by her own tap
     const cbx = document.createElement('section'); cbx.className = 'stcol stchat'; box.appendChild(cbx);
     const drawC = async (v, open) => {

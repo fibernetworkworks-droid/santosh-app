@@ -717,6 +717,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
                writing: ['v', 'Writing code'], building: ['v', 'Building'], testing: ['v', 'Playing it'], done: ['ok', 'Ready to play'],
                failed: ['bad', 'Did not work'], cancelled: ['', 'Stopped']};
   const BUSYG = ['designing', 'queued', 'writing', 'building', 'testing'];
+  let GS_BIBLE = false;        // v0.395 the Game Bible page of the open project
+  let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   async function game(el) {
     clearTimeout(GTIMER);
@@ -787,8 +789,118 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         ${t.status === 'blocked' ? b('start', 'Try again', 'go') + b('drop', 'Drop') : ''}
         ${t.status === 'done' ? b('back', 'Undo') : ''}</div></div>`;
   }
+  // ---------------------------------------------------------------- v0.395 Game Bible (specs as data)
+  const BIB_COLS = {character: ['role', 'age'], enemy: ['tier', 'hp', 'damage', 'speed', 'behaviour'], item: ['tier', 'effect', 'value', 'price'],
+                    level: ['order', 'duration_s', 'reward_coins'], quest: ['goal', 'target', 'count'], screen: ['purpose']};
+  function bibChip(c) { return `<span class="gb-chip" style="background:${/^#[0-9A-Fa-f]{6}$/.test(c) ? c : 'transparent'}" title="${esc(c)}"></span>`; }
+  async function gsBible(el, id) {
+    clearTimeout(GTIMER);
+    let v;
+    try { v = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}/bible`); }
+    catch (e) { toast(e.message, true); GS_BIBLE = false; return gsBoard(el, id); }
+    const d = v.data || {}, ck = v.check || {}, dr = v.draft || {}, st = d.style || {}, pl = d.player || {};
+    const q = encodeURIComponent(id);
+    const kinds = Object.keys(v.templates || {});
+    const tbl = k => {
+      const rows = (d.entities || {})[k] || [], cols = BIB_COLS[k] || [];
+      return `<section class="tile gl gb-kind"><div class="em-h"><h3>${esc(v.templates[k].label)}s <span class="muted">${num(rows.length)}</span></h3>
+        <div class="acts"><button class="btn soft" type="button" data-gb-add="${esc(k)}">Add</button>
+          <input data-gb-words="${esc(k)}" maxlength="300" placeholder="Generate: e.g. 3 night enemies" aria-label="What to generate">
+          <button class="btn soft" type="button" data-gb-gen="${esc(k)}">Generate</button></div></div>
+        ${rows.length ? `<div class="gb-scroll"><table class="gb-t"><thead><tr><th>id</th><th>Name</th>${cols.map(c => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>
+          ${rows.map(e => `<tr><td><code>${esc(e.id)}</code></td><td>${e.color ? bibChip(e.color) : ''}${esc(e.name || '')}</td>${cols.map(c => `<td>${esc(String(e[c] ?? ''))}</td>`).join('')}
+            <td class="gb-rowacts"><button class="btn soft gs-mini" type="button" data-gb-edit="${esc(k)}" data-id="${esc(e.id)}">Edit</button>
+            <button class="btn soft gs-mini em-leave" type="button" data-gb-del="${esc(k)}" data-id="${esc(e.id)}">Remove</button></td></tr>`).join('')}</tbody></table></div>`
+          : '<p class="muted em-small">None yet.</p>'}
+        <div class="gb-editor" data-gb-ed="${esc(k)}" hidden><textarea rows="10" spellcheck="false" aria-label="Entry as JSON"></textarea>
+          <div class="acts"><button class="btn go" type="button" data-gb-save="${esc(k)}">Save</button><button class="btn soft" type="button" data-gb-cancel="${esc(k)}">Cancel</button></div></div></section>`;
+    };
+    const sim = GS_SIM && GS_SIM.id === id ? GS_SIM.r : null;
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gbBack">← Board</button><h2>Game Bible</h2>
+        <span class="muted em-sub">v${num(v.version)} · in the game: v${num(v.applied)}</span>
+        ${v.version > v.applied ? '<button class="btn go" type="button" id="gbApply">Put it in the game</button>' : ''}
+        <button class="btn soft" type="button" id="gbSim">Simulate balance</button></div>
+      <p class="muted em-sub">The game's names and numbers as data. Every change is checked; the game reads it, so a balance change rebuilds with no new code.</p>
+      ${(ck.errors || []).length ? `<div class="tile gl badc"><b>Fix first</b><ul>${ck.errors.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+      ${(ck.warnings || []).length ? `<div class="tile gl"><b>Worth a look</b><ul class="gs-log">${ck.warnings.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+      ${dr.kind ? `<div class="tile gl gb-draft"><h3>Draft from Hoola, waiting for your OK</h3>
+        ${dr.kind === 'seed' ? '<p class="em-small">A first Bible from the design doc.</p>' : `<ul class="gs-log">${(dr.add || []).map(e => `<li>${e.color ? bibChip(e.color) : ''}<b>${esc(e.name)}</b> <code>${esc(e.id)}</code>
+          ${(BIB_COLS[dr.kind] || []).map(c => `<span class="muted">${esc(c)} ${esc(String(e[c] ?? ''))}</span>`).join(' · ')}</li>`).join('')}</ul>`}
+        ${((dr.check || {}).errors || []).length ? `<p class="badc em-small">${esc(dr.check.errors.slice(0, 3).join('; '))}</p>` : ''}
+        <div class="acts"><button class="btn go" type="button" id="gbOk">OK, add to the Bible</button><button class="btn soft" type="button" id="gbNo">No</button></div></div>` : ''}
+      ${!v.version && !dr.kind ? '<div class="tile gl"><p>The Bible is empty.</p><div class="acts"><button class="btn go" type="button" id="gbSeed">Make the first Bible from the design doc</button></div></div>' : ''}
+      ${sim ? `<section class="tile gl"><h3>Balance (${num(sim.runs)} plays a level, same Bible = same numbers)</h3>
+        ${sim.ok ? `<div class="gb-sim">${sim.levels.map(r => `<div class="gb-lv"><span>${esc(r.name)}</span><div class="pbar"><i style="width:${Math.round(r.win_rate * 100)}%"></i></div><b>${Math.round(r.win_rate * 100)}% win</b>
+          <span class="muted">${num(r.avg_coins)} coins</span></div>`).join('') || '<p class="muted">No levels yet.</p>'}</div>
+          ${sim.flags.length ? `<ul class="gs-log">${sim.flags.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : '<p class="em-small">No balance problems found.</p>'}
+          ${(sim.economy.items || []).length ? `<p class="em-small">${sim.economy.items.map(i => `${esc(i.name)} (${num(i.price)}): ${i.levels_to_afford ? 'after level ' + num(i.levels_to_afford) : 'never affordable'}`).join(' · ')}</p>` : ''}`
+          : `<p class="badc em-small">${esc((sim.errors || []).join('; '))}</p>`}</section>` : ''}
+      <div class="gs-grid">
+        <section class="tile gl"><h3>Style</h3><div class="gb-pal">${(st.palette || []).map(bibChip).join('')}</div>
+          <div class="acts"><input id="gbPal" value="${esc((st.palette || []).join(', '))}" placeholder="#101820, #FFB000, ..." aria-label="Palette"><button class="btn soft" type="button" id="gbPalSave">Save palette</button></div>
+          <p class="muted em-small">Every colour in the Bible must come from this palette.</p></section>
+        <section class="tile gl"><h3>Player</h3><div class="gb-pl">${['hp', 'damage', 'fire_rate', 'hit_chance', 'speed'].map(k => `<label>${esc(k)} <input type="number" step="any" data-gb-pl="${k}" value="${esc(String(pl[k] ?? ''))}"></label>`).join('')}</div>
+          <div class="acts"><button class="btn soft" type="button" id="gbPlSave">Save player</button></div></section>
+        <section class="tile gl"><h3>Curves</h3><p class="muted em-small">How numbers grow by tier: [base, growth]. Enemies, items and levels take their numbers from here.</p>
+          <textarea id="gbCurves" rows="7" spellcheck="false" aria-label="Curves">${esc(JSON.stringify(d.curves || {}, null, 1))}</textarea>
+          <div class="acts"><button class="btn soft" type="button" id="gbCurSave">Save curves</button>${['enemy', 'item', 'level'].map(k => `<button class="btn soft gs-mini" type="button" data-gb-recurve="${k}">Re-make ${k} numbers</button>`).join('')}</div></section>
+      </div>
+      ${kinds.map(tbl).join('')}
+      <section class="tile gl"><h3>Changes</h3><ul class="gs-log">${(v.history || []).map(h => `<li><b>v${num(h.v)}</b> ${esc(h.what)} <span class="muted">${esc((h.at || '').slice(0, 16).replace('T', ' '))} · ${esc(h.by)}</span></li>`).join('')}</ul></section>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBible(el, id); };
+    el.querySelector('#gbBack').addEventListener('click', () => { GS_BIBLE = false; gsBoard(el, id); });
+    el.querySelector('#gbApply')?.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/apply`), 'Rebuilding the game with the Bible (no new code).'));
+    el.querySelector('#gbSim').addEventListener('click', async e => {
+      e.target.disabled = true; e.target.textContent = 'Simulating…';
+      try { GS_SIM = {id, r: await api('POST', `/api/gamestudio/${q}/bible/simulate`, {})}; } catch (err) { toast(err.message, true); }
+      gsBible(el, id);
+    });
+    el.querySelector('#gbOk')?.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/accept`, {}), 'Added to the Bible.'));
+    el.querySelector('#gbNo')?.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/reject`, {})));
+    el.querySelector('#gbSeed')?.addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Reading the design…';
+      go(() => api('POST', `/api/gamestudio/${q}/bible/seed`, {}), 'A draft Bible is ready for your OK.'); });
+    el.querySelector('#gbPalSave').addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/section`,
+      {section: 'style', value: {palette: el.querySelector('#gbPal').value.split(/[\s,]+/).filter(Boolean)}}), 'Saved.'));
+    el.querySelector('#gbPlSave').addEventListener('click', () => {
+      const value = {}; el.querySelectorAll('[data-gb-pl]').forEach(i => { if (i.value !== '') value[i.dataset.gbPl] = Number(i.value); });
+      go(() => api('POST', `/api/gamestudio/${q}/bible/section`, {section: 'player', value}), 'Saved.');
+    });
+    el.querySelector('#gbCurSave').addEventListener('click', () => {
+      let value; try { value = JSON.parse(el.querySelector('#gbCurves').value); } catch { toast('Curves must be JSON.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/bible/section`, {section: 'curves', value}), 'Saved.');
+    });
+    el.querySelectorAll('[data-gb-recurve]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bible/recurve`, {kind: b.dataset.gbRecurve}), 'Numbers re-made from the curves.')));
+    const editor = (k, obj) => {
+      const box = el.querySelector(`[data-gb-ed="${CSS.escape(k)}"]`); box.hidden = false;
+      box.querySelector('textarea').value = JSON.stringify(obj, null, 1); box.querySelector('textarea').focus();
+    };
+    el.querySelectorAll('[data-gb-add]').forEach(b => b.addEventListener('click', () => {
+      const t = v.templates[b.dataset.gbAdd].fields, obj = {id: ''};
+      Object.entries(t).forEach(([f, o]) => { obj[f] = o.default; });
+      editor(b.dataset.gbAdd, obj);
+    }));
+    el.querySelectorAll('[data-gb-edit]').forEach(b => b.addEventListener('click', () => {
+      const e = ((d.entities || {})[b.dataset.gbEdit] || []).find(x => x.id === b.dataset.id); if (e) editor(b.dataset.gbEdit, e);
+    }));
+    el.querySelectorAll('[data-gb-cancel]').forEach(b => b.addEventListener('click', () => { el.querySelector(`[data-gb-ed="${CSS.escape(b.dataset.gbCancel)}"]`).hidden = true; }));
+    el.querySelectorAll('[data-gb-save]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.gbSave; let entity;
+      try { entity = JSON.parse(el.querySelector(`[data-gb-ed="${CSS.escape(k)}"] textarea`).value); } catch { toast('The entry must be JSON.', true); return; }
+      go(() => api('POST', `/api/gamestudio/${q}/bible/entity`, {kind: k, entity}), 'Saved.');
+    }));
+    el.querySelectorAll('[data-gb-del]').forEach(b => b.addEventListener('click', () => {
+      if (confirm(`Remove ${b.dataset.id} from the Bible?`)) go(() => api('DELETE', `/api/gamestudio/${q}/bible/entity/${encodeURIComponent(b.dataset.gbDel)}/${encodeURIComponent(b.dataset.id)}`));
+    }));
+    el.querySelectorAll('[data-gb-gen]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.gbGen, words = el.querySelector(`[data-gb-words="${CSS.escape(k)}"]`).value.trim();
+      const m = words.match(/\b(\d{1,2})\b/); b.disabled = true; b.textContent = 'Writing…';
+      go(() => api('POST', `/api/gamestudio/${q}/bible/generate`, {kind: k, n: m ? Number(m[1]) : 3, words}), 'A draft is ready for your OK.');
+    }));
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
+    if (GS_BIBLE) return gsBible(el, id);
     let p;
     try { p = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}`); }
     catch (e) { GS_OPEN = ''; toast(e.message, true); return game(el); }
@@ -800,7 +912,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       return `<div class="gs-col gs-c-${k}"><h4>${label} <span class="muted">${num(ts.length)}</span></h4>${show.map(t => gsTask(t, p)).join('') || '<p class="muted em-small">Nothing here.</p>'}</div>`;
     }).join('');
     el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="gsBack">← Game Desk</button><h2>${esc(p.number)} · ${esc(p.title)}</h2>
-        ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}</div>
+        ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}
+        <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
       ${gsBars(p.milestones)}
       <div class="tile gl gs-add"><input id="gsT" maxlength="200" placeholder="New task, one small change: e.g. add a nitro boost (double tap)" aria-label="New task">
@@ -834,7 +947,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>`;
     const q = encodeURIComponent(p.id);
     const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
-    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBib').addEventListener('click', () => { GS_BIBLE = true; gsBible(el, id); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

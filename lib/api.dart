@@ -1021,6 +1021,14 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/why?q=${Uri.encodeQueryComponent(q)}') as Map);
   Future<Map<String, dynamic>> gameStudioSummary(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/summary') as Map);
+  // v0.395 Game Bible (the game's names and numbers as data)
+  Future<Map<String, dynamic>> gameBible(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/bible', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameBibleDo(String id, String what, {Map<String, dynamic> body = const {}}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bible/$what', body: body,
+          timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> gameBibleRemove(String id, String kind, String eid) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/gamestudio/$id/bible/entity/$kind/$eid') as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk

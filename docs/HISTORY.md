@@ -14863,3 +14863,84 @@ piece. Bolts are checked by the joint calculation instead."
   joint and the bolt carries 61.4 kN; friction 0.2: 2 kN side load held, 12 kN slips.
 - Still NOT built: bolt shank bearing / shear in the hole, contact on curved faces (pin in a bore), large sliding.
 - Tests: tests/test_v0386_contact.py (7).
+
+## v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390.0 / 0.394.0) (Hoola Game Engine plan, Phase 3) - 1 Nov 2026
+
+Owner: "GO PHASE 3". Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 5 (precision mechanisms 1-4) + phase table.
+
+- `server/app/gamedesk/bible.py`, table `game_bibles` (one per Studio Project: data, version, draft, history, applied).
+- Sections: meta (pillars, genre, audience), style (palette = style lock, tone), terms (glossary, banned words),
+  player (hp, damage, fire_rate, hit_chance, speed), curves ([base, growth] by tier for enemy / item / level), economy.
+- Kinds = TEMPLATES (`KINDS`): character, enemy, item, level (waves {enemy, count, at_s}), quest (requires), screen.
+  `clean_entity` gives every entry the template's exact shape; out-of-range is an ERROR, never silently clamped.
+- `check()` in code: types / ranges / enums, unique ids, references (waves -> enemies, quest requires, no quest loop),
+  palette lock, banned words, real-money fields / words refused, names <= 24 chars (warning), duplicate names (warning),
+  size budgets (400 entities, 200 KB). Errors refuse a change; warnings show.
+- `simulate()` Monte-Carlo per level (dt 0.25 s, up to 300 s, 200 runs default) SEEDED from the Bible hash: same Bible =
+  same numbers. Win rate, health left, score, coins; flags impossible (< 5 %), first level < 80 %, spike (> 35 points),
+  late level > 98 %, items never affordable (economy: cumulative coins vs prices).
+- Generators: `generate(kind, n, words)` - model gives words only, `apply_curves` sets the numbers by tier / order, each
+  entry validated, the batch is a DRAFT (with the base hash; stale if the Bible moved) for her OK (`accept` all / ids,
+  `reject`). `seed` = first Bible from the design doc as a draft (colours forced into the palette, broken refs dropped).
+  Her own edits (`set_entity`, `set_section`, `remove_entity`, `recurve`) apply at once, validated, logged as decisions.
+- In the game: `gd()` writes `hoola_bible.gd` (const VERSION + DATA incl. by_id), loaded as the HoolaBible AUTOLOAD
+  (`template.files` adds it). Every build carries Hoola's own copy (the model's copy is replaced); versions record
+  `bible`; `apply` = `service.data_build` (mode data: same code + new Bible, no model call, full checks + playtest).
+- REAL GODOT FINDINGS (4.7.2 in the sandbox): (1) `class_name HoolaBible` is "not declared" in a headless run (no class
+  cache) -> autoload; (2) the SAME bug hit Phase 1's GUIDE ("helpers: class_name Foo") - every helper-script game failed
+  its first smoke run; GUIDE now says `const Foo = preload("res://foo.gd")`, guard refuses class_name with that hint.
+  The Bible file with quotes / backslashes / nested dicts parsed, exported and played at 60 fps.
+- Studio: board shows the Bible line (version / in game / errors / draft), plan_tasks reads the Bible, GitHub export adds
+  BIBLE.json. Tool `game_bible` (show / template / set / remove / section / seed / generate / accept / reject / check /
+  simulate / apply / recurve). API `/api/gamestudio/{id}/bible*`. Console: board > Game Bible (`gsBible`, `gb-*` CSS).
+  Phone: `lib/ui/game_bible_screen.dart` (read, drafts, simulate, apply, generate, remove; editing in the console).
+- Tests `test_v0395_game_bible.py` (10).
+
+
+## v0.396.0 APNA DATABASE - an app's data runs in HER own database (App Sahayak Pillar B: own database per app)
+Owner (1 Nov 2026): *"Own database per app --- WORK ON IT LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN
+DATABASE THERE"*.
+
+Built on v0.147 Hoola Postgres (her connection string typed only in the app, sealed with the bazar vault, public host only
+with the checked IP pinned by libpq `hostaddr`, SSL required, the password masked in every error), so EVERY PostgreSQL-wire
+database works through one code path: 28 listed with where to copy the connection string - Supabase (session pooler or
+direct; the transaction pooler works too: no prepared statements, `prepare_threshold=None`), Neon, Amazon RDS + Aurora,
+Google Cloud SQL + AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, Crunchy Bridge, Tembo, Xata, Nile,
+Heroku, Fly, Vercel, Koyeb, Scaleway, OVH, Alibaba, Tencent, Huawei, CockroachDB, YugabyteDB, her own server. NOT yet:
+MySQL-family (PlanetScale, TiDB, MariaDB - no MySQL driver on the server), MongoDB / Firebase (not SQL).
+
+`server/app/appmaker/owndb.py`:
+- Her tables: one schema per app (`hoola_a_0001`), one TABLE per list with real types (number numeric, date date, yes / no
+  boolean, the rest text), `owner_id`, `created_at`, `_hoola` jsonb (Hoola's own control values: stock taken, coupon,
+  assignment...), an index on every link field and on `_out`; `_hoola_accounts` (id, e-mail, name, role - never a password
+  hash); `_hoola_<name>` jsonb tables for udhaar / approvals / chat; `_hoola_meta`; `_hoola_deleted`. Additive only: a new
+  list / field in the app = a new table / column there on the next sync. Quoted identifiers ("order" is fine).
+- Her triggers (`_hoola_touch`, `_hoola_gone`): every write records who (`set_config('hoola.by','hoola', true)` in Hoola's
+  transactions, anything else = 'outside'); an OUTSIDE write also stamps `_out`, so a later Hoola write on other fields
+  of the same row never hides it; outside deletes are logged.
+- PRIMARY mode (the data lives there): a global SQLAlchemy `before_commit` hook flushes, takes the app-row writes the
+  journal hook queued, and upserts them into her tables in ONE transaction before Hoola commits - her database down =
+  `OwnDbError` 503 "save nahi hui", Hoola rolls back, nothing half-saved. Field-level upserts (only changed columns). The
+  journal row is marked `pushed`, so the catch-up never re-sends it (found by the test: a re-send undid her outside edit).
+  Her outside edits (table editor / SQL / other tools) come back every 20 s (or "Sync now"): rows with `_out` after the
+  cursor -> changed fields validated exactly like app input (`W._clean`; a bad value is refused + audited), Hoola's own
+  `_` values never taken from outside, outside inserts need a Hoola-shaped id (her table's id default makes one), outside
+  deletes follow; the app's logic (formulas / triggers / cascades) runs on them; every one audited ("own_db_in").
+- MIRROR mode: Hoola stays the main copy; the worker sends the journal after its cursor within ~20 s; her database being
+  down never stops her app; outside edits are not taken back (a read copy for reports / BI).
+- Link = HER tap: a backup first, schema + tables + triggers, every row copied in batches, accounts, catch-up of the writes
+  made meanwhile, counts compared per list - mismatch = not linked, the app untouched. Unlink: sync stops, data stays in
+  BOTH places. A small connection pool per app (4, keepalives, statement / lock timeouts per transaction).
+- Routes: `GET /api/apps/<ref>/owndb` (link, her databases, providers, lag), `POST .../owndb/link {conn, mode}` (her tap),
+  `.../unlink`, `.../verify` (counts), `.../sync`. Console app page: "Own database" box (status, link with mode, add a
+  database = connection string sealed on the server, provider how-to, Sync now / Compare counts / Disconnect). Phone:
+  `lib/ui/app_owndb.dart` (+ the existing Postgres screen to add one). Agent `app_banao action=own_db` = status + counts +
+  where to connect - never a connection string in chat, never the move itself.
+
+Tests `server/tests/test_v0396_apna_database.py` (a local Postgres plays her Supabase; CI app-load.yml runs it on a real
+Postgres): link + real column types + accounts without passwords, write-through inside the request, her outside update /
+insert / delete coming back with an app edit on another field of the same row kept, a bad outside value refused + audited,
+a new app field = a new column there, counts compared, her database unreachable = 503 and nothing saved, back = saving
+again, unlink keeps her data, mirror mode never blocks and catches up.
+Known limits: a write-through costs one round trip to her database per save (Mumbai region ~20-60 ms); if Hoola's own commit
+fails AFTER hers succeeded (very rare) "Compare counts" shows it; MySQL / Mongo / Firebase not yet.

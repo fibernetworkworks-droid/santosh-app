@@ -23,7 +23,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import DateTime, Integer, String, Text, event, inspect, select
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, event, inspect, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from ..db import Base, now, session
@@ -49,6 +49,7 @@ class AppJournal(Base):
     after: Mapped[str] = mapped_column(Text, default="")
     created: Mapped[str] = mapped_column(String(40), default="")   # the row's own created_at (kept on a restore)
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+    pushed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # v0.396 already in her own database (write-through)
 
 
 _OK = False
@@ -96,10 +97,13 @@ def _journal(sess: Session, _ctx, _instances) -> None:
             if not obj.id:                      # a new row gets its id at flush: give it one now so the journal can name it
                 from ..db import new_id
                 obj.id = new_id("row")
-            sess.add(AppJournal(site_id=obj.site_id, row_id=obj.id, coll=obj.coll, op=op, owner=obj.owner or "",
-                                before=before, after=after,
-                                created=(obj.created_at.isoformat() if obj.created_at else now().isoformat())))
+            created = obj.created_at.isoformat() if obj.created_at else now().isoformat()
+            j = AppJournal(site_id=obj.site_id, row_id=obj.id, coll=obj.coll, op=op, owner=obj.owner or "",
+                           before=before, after=after, created=created)
+            sess.add(j)
             STATS["journal"] += 1
+            from . import owndb as OD                   # v0.396 APNA DATABASE: queued for the write-through to her database
+            OD.stash(sess, obj.site_id, (op, obj.id, obj.coll, obj.owner or "", before, after, created), j)
     except Exception:                           # noqa: BLE001 - the journal never blocks her app's write
         log.exception("app journal failed")
 

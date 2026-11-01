@@ -2400,3 +2400,31 @@ body.albon{overflow:hidden}
 .stsafe .stmeter i{display:block;height:100%;background:var(--pri)}
 .stsafe .stmems li{flex-wrap:wrap}
 .stsafe details{margin-top:10px;font-size:13px}
+
+/* v0.395 GAME BIBLE - the game's names and numbers as data */
+.gb-chip{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid var(--line);vertical-align:-2px;margin-right:6px}
+.gb-pal{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.gb-pal .gb-chip{width:28px;height:28px;border-radius:8px;margin:0}
+.gb-kind{margin-top:16px}
+.gb-kind .em-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center}
+.gb-kind .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.gb-kind .acts input,#gbPal{font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:0;flex:1 1 200px}
+.gb-scroll{overflow-x:auto;margin-top:8px}
+.gb-t{border-collapse:collapse;width:100%;font-size:13.5px}
+.gb-t th,.gb-t td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.gb-t th{font-weight:600;color:var(--mut)}
+.gb-rowacts{display:flex;gap:6px}
+.gb-editor textarea,#gbCurves{width:100%;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:12.5px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin-top:8px}
+.gb-draft{border-color:var(--warn,#c98a00)}
+.gb-sim{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.gb-lv{display:grid;grid-template-columns:minmax(90px,160px) 1fr auto auto;gap:10px;align-items:center;font-size:13.5px}
+.gb-pl{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.gb-pl label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)}
+.gb-pl input{font:inherit;font-size:14px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+@media (max-width:720px){.gb-lv{grid-template-columns:1fr auto}.gb-lv .pbar{grid-column:1 / -1}}
+
+/* v0.396 APNA DATABASE: the own-database box */
+.stowndb select{padding:8px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.stowndb .stlines{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:13px}
+.stowndb .sterr{color:var(--bad)}
+.stowndb details{margin-top:10px;font-size:13px}

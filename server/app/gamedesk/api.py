@@ -24,7 +24,19 @@ GET    /api/gamestudio/{id}/why?q=     decisions + finished tasks about q
 GET    /api/gamestudio/{id}/summary    the morning summary now
 POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
-POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)"""
+POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
+
+v0.395 Game Bible (specs as data):
+GET    /api/gamestudio/{id}/bible                   data + checks + templates + draft + history
+POST   /api/gamestudio/{id}/bible/entity            {kind, entity}   her add / edit (validated, applies at once)
+DELETE /api/gamestudio/{id}/bible/entity/{kind}/{eid}
+POST   /api/gamestudio/{id}/bible/section           {section: meta|style|terms|player|curves|economy, value}
+POST   /api/gamestudio/{id}/bible/generate          {kind, n, words}  a DRAFT (model words + curve numbers)
+POST   /api/gamestudio/{id}/bible/seed              first Bible from the design doc (a draft)
+POST   /api/gamestudio/{id}/bible/accept|reject     {ids?}  her OK on the draft
+POST   /api/gamestudio/{id}/bible/simulate          {runs?}  seeded balance simulation
+POST   /api/gamestudio/{id}/bible/apply             the Bible into the live game, no model call
+POST   /api/gamestudio/{id}/bible/recurve           {kind}  numbers re-made from the curves"""
 from __future__ import annotations
 
 import asyncio
@@ -189,6 +201,61 @@ def make_router(require_key, current_tenant) -> APIRouter:
                               str(b.get("conversation_id") or ""))
         except GithubError as e:
             raise HTTPException(400, str(e))
+
+    # ------------------------------------------------------------ v0.395 Game Bible (specs as data)
+    from . import bible as B
+
+    async def bcall(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (B.BibleError, service.GameError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/gamestudio/{sid}/bible", dependencies=[Depends(require_key)])
+    async def bi_get(sid: str, tenant: str = Depends(current_tenant)):
+        return await bcall(B.view, tenant, sid)
+
+    @r.post("/api/gamestudio/{sid}/bible/entity", dependencies=[Depends(require_key)])
+    async def bi_set(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await bcall(B.set_entity, tenant, sid, str(b.get("kind") or ""), b.get("entity") if isinstance(b.get("entity"), dict) else {})
+
+    @r.delete("/api/gamestudio/{sid}/bible/entity/{kind}/{eid}", dependencies=[Depends(require_key)])
+    async def bi_del(sid: str, kind: str, eid: str, tenant: str = Depends(current_tenant)):
+        return await bcall(B.remove_entity, tenant, sid, kind, eid)
+
+    @r.post("/api/gamestudio/{sid}/bible/section", dependencies=[Depends(require_key)])
+    async def bi_sec(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await bcall(B.set_section, tenant, sid, str(b.get("section") or ""), b.get("value"))
+
+    @r.post("/api/gamestudio/{sid}/bible/{what}", dependencies=[Depends(require_key)])
+    async def bi_do(sid: str, what: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        if what == "generate":
+            try:
+                n = int(b.get("n") or 3)
+            except (TypeError, ValueError):
+                n = 3
+            return await bcall(B.generate, tenant, sid, str(b.get("kind") or ""), n, str(b.get("words") or ""))
+        if what == "seed":
+            return await bcall(B.seed, tenant, sid)
+        if what == "accept":
+            ids = [str(x) for x in b.get("ids") or []] if isinstance(b.get("ids"), list) else None
+            return await bcall(B.accept, tenant, sid, ids)
+        if what == "reject":
+            return await bcall(B.reject, tenant, sid)
+        if what == "simulate":
+            try:
+                runs = int(b.get("runs") or B.SIM_RUNS)
+            except (TypeError, ValueError):
+                runs = B.SIM_RUNS
+            return await bcall(B.sim, tenant, sid, runs)
+        if what == "apply":
+            return await bcall(B.apply, tenant, sid)
+        if what == "recurve":
+            return await bcall(B.recurve, tenant, sid, str(b.get("kind") or ""))
+        raise HTTPException(404, "generate | seed | accept | reject | simulate | apply | recurve")
 
     @r.get("/play/{token}")
     def play_root(token: str):
