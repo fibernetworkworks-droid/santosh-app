@@ -747,7 +747,7 @@ window.HoolaBuild = function (C) {
     } catch (er) { /* no accounts list */ }
   }
 
-  /* v0.348 DUKAAN: her shop - settings, products, orders (no AI; prices only hers; money confirmed only by her) */
+  /* v0.350 DUKAAN: her shop - settings, products, orders (no AI; prices only hers; money confirmed only by her) */
   const OSTEP = {confirmed: 'Confirm (money received)', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancel'};
   async function loadShop(o, root) {
     const box = root.querySelector('.stshop'); if (!box) return;

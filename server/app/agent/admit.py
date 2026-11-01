@@ -97,6 +97,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                 "delhivery"),
     "india": ("holiday", "chhutti", "ifsc", "pincode", "bank holiday", "panchang", "tithi", "muhurat", "ekadashi"),
     # v0.277 IndiaMART: B2B buying / sourcing words (the SOURCING intent below carries the sentence shapes)
+    # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
+    "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
+              "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",
+              "statistics", "aankde", "आंकड़े", "per capita", "industrial production", "national accounts", "aishe", "udise"),
     "indiamart": ("indiamart", "india mart", "supplier", "manufacturer", "wholesale", "wholesaler", "exporter",
                   "distributor", "dealer", "moq", "bulk", "thok", "sourcing", "सप्लायर", "थोक", "होलसेल", "भाव",
                   "रेट"),
@@ -373,6 +377,10 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     # REVERSE-ENGINEER ANYTHING (v0.257, owner): a program / app / package / model / firmware file to read -> REA,
     # statically, on the server; the data desk rides along for the endpoint list. Never the cloud PC.
     (APPFILE, ("rea", "data"), "reverse engineer"),
+    # v0.348 an official Indian number (inflation, GDP, jobs, industry, surveys) -> MoSPI first, never a search summary
+    (re.compile(r"\b(?:cpi|wpi|iip|gdp|gva|plfs|nfhs|nss|mospi)\b|inflation|mehngai|mahangai|unemployment|berozgari|"
+                r"growth rate|per capita|industrial (?:output|production)|labour force|sarkari aank|महंगाई|बेरोजगारी", re.I),
+     ("mospi",), "official stats"),
     # v0.277 a product to buy / source / price -> live IndiaMART listings (city wise)
     (re.compile(r"\b(?:rate|bhav|bhaav|daam|dam)\b|kitne ka|kitne ki|kitne mein|price of|cost of|ka price|ki price|"
                 r"ke price|kaha(?:n)? (?:se )?(?:milega|milegi|milte|kharid)|where (?:can i |to )?buy|"

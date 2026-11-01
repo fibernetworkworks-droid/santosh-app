@@ -1,4 +1,4 @@
-"""v0.348 DUKAAN (built as 0.344) (web design Phase 7 step 1, owner: "START PHASE 3"): a real online shop on any Hoola website. Products
+"""v0.350 DUKAAN (built as 0.344) (web design Phase 7 step 1, owner: "START PHASE 3"): a real online shop on any Hoola website. Products
 with her prices and stock, a cart, checkout, UPI to HER UPI ID or cash on delivery, orders she moves along, a private
 tracking link. The server decides every price and total (a cart that says otherwise is ignored), stock can never go
 below zero even when two buyers race for the last piece, money is never marked received by Hoola (the customer tells,
@@ -221,5 +221,5 @@ def test_a_customer_buys_in_a_real_browser(shop_server):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.348.0"
-    assert "0.348.0+388" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.350.0"
+    assert "0.350.0+390" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

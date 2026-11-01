@@ -57,12 +57,10 @@ def test_featured_list_has_mospi_and_the_brokers(env):
     assert featured.search("mehngai cpi gdp statistics")[0]["id"] == "mospi"
 
 
-def test_mospi_one_tap_and_reads_run_straight(brokers):
-    svc, conv = brokers["svc"], brokers["conv"]
-    out = svc.mcp_connect_featured("default", "mospi", probe_client=_probe(200))
-    assert out["status"] == "ready"
-    r = svc.run("default", conv, out["pack_id"], "get_holdings", {})     # FakeRemote's read tool
-    assert r["data"]["tool"] == "get_holdings" and FakeSession.made == []  # MoSPI uses the normal client
+def test_mospi_is_built_in_not_a_connect_tap(brokers):
+    from app.bazar.connectors.base import ToolError
+    with pytest.raises(ToolError, match="built into"):          # v0.348: built in for everyone (agent tool `mospi`)
+        brokers["svc"].mcp_connect_featured("default", "mospi", probe_client=_probe(200))
 
 
 def test_groww_says_partner_pending(brokers):
