@@ -14863,3 +14863,36 @@ piece. Bolts are checked by the joint calculation instead."
   joint and the bolt carries 61.4 kN; friction 0.2: 2 kN side load held, 12 kN slips.
 - Still NOT built: bolt shank bearing / shear in the hole, contact on curved faces (pin in a bore), large sliding.
 - Tests: tests/test_v0386_contact.py (7).
+
+## v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390.0 / 0.394.0) (Hoola Game Engine plan, Phase 3) - 1 Nov 2026
+
+Owner: "GO PHASE 3". Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 5 (precision mechanisms 1-4) + phase table.
+
+- `server/app/gamedesk/bible.py`, table `game_bibles` (one per Studio Project: data, version, draft, history, applied).
+- Sections: meta (pillars, genre, audience), style (palette = style lock, tone), terms (glossary, banned words),
+  player (hp, damage, fire_rate, hit_chance, speed), curves ([base, growth] by tier for enemy / item / level), economy.
+- Kinds = TEMPLATES (`KINDS`): character, enemy, item, level (waves {enemy, count, at_s}), quest (requires), screen.
+  `clean_entity` gives every entry the template's exact shape; out-of-range is an ERROR, never silently clamped.
+- `check()` in code: types / ranges / enums, unique ids, references (waves -> enemies, quest requires, no quest loop),
+  palette lock, banned words, real-money fields / words refused, names <= 24 chars (warning), duplicate names (warning),
+  size budgets (400 entities, 200 KB). Errors refuse a change; warnings show.
+- `simulate()` Monte-Carlo per level (dt 0.25 s, up to 300 s, 200 runs default) SEEDED from the Bible hash: same Bible =
+  same numbers. Win rate, health left, score, coins; flags impossible (< 5 %), first level < 80 %, spike (> 35 points),
+  late level > 98 %, items never affordable (economy: cumulative coins vs prices).
+- Generators: `generate(kind, n, words)` - model gives words only, `apply_curves` sets the numbers by tier / order, each
+  entry validated, the batch is a DRAFT (with the base hash; stale if the Bible moved) for her OK (`accept` all / ids,
+  `reject`). `seed` = first Bible from the design doc as a draft (colours forced into the palette, broken refs dropped).
+  Her own edits (`set_entity`, `set_section`, `remove_entity`, `recurve`) apply at once, validated, logged as decisions.
+- In the game: `gd()` writes `hoola_bible.gd` (const VERSION + DATA incl. by_id), loaded as the HoolaBible AUTOLOAD
+  (`template.files` adds it). Every build carries Hoola's own copy (the model's copy is replaced); versions record
+  `bible`; `apply` = `service.data_build` (mode data: same code + new Bible, no model call, full checks + playtest).
+- REAL GODOT FINDINGS (4.7.2 in the sandbox): (1) `class_name HoolaBible` is "not declared" in a headless run (no class
+  cache) -> autoload; (2) the SAME bug hit Phase 1's GUIDE ("helpers: class_name Foo") - every helper-script game failed
+  its first smoke run; GUIDE now says `const Foo = preload("res://foo.gd")`, guard refuses class_name with that hint.
+  The Bible file with quotes / backslashes / nested dicts parsed, exported and played at 60 fps.
+- Studio: board shows the Bible line (version / in game / errors / draft), plan_tasks reads the Bible, GitHub export adds
+  BIBLE.json. Tool `game_bible` (show / template / set / remove / section / seed / generate / accept / reject / check /
+  simulate / apply / recurve). API `/api/gamestudio/{id}/bible*`. Console: board > Game Bible (`gsBible`, `gb-*` CSS).
+  Phone: `lib/ui/game_bible_screen.dart` (read, drafts, simulate, apply, generate, remove; editing in the console).
+- Tests `test_v0395_game_bible.py` (10).
+

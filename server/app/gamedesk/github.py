@@ -61,6 +61,16 @@ def stage(r: S.GameStudio) -> tuple[Path, int, str, int]:
     (dest / "TASKS.md").write_text("\n".join(board) + "\n")
     (dest / "DECISIONS.md").write_text("\n".join(dec) + "\n")
     (dest / "CHANGELOG.md").write_text("\n".join(log) + "\n")
+    try:                                                # v0.395 the Game Bible as data, next to the code
+        from . import bible as B
+        with session() as s:
+            bb = B._row(s, r.tenant_id, r.id, make=False)
+            if bb is not None and bb.version:
+                import json as _json
+                (dest / "BIBLE.json").write_text(_json.dumps(bb.data, ensure_ascii=False, indent=2, sort_keys=True))
+                n += 1
+    except Exception:                                   # noqa: BLE001
+        pass
     (dest / "README.md").write_text(f"# {r.title}\n\n{r.goal}\n\nMade with Hoola Studio on Godot 4 (godotengine.org, MIT). "
                                     "Open project.godot in the Godot editor 4.7+.\n")
     (dest / ".gitignore").write_text(".godot/\nbuild/\n*.import\n")

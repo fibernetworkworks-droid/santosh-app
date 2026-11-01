@@ -905,6 +905,7 @@ def init_db(url: str | None = None):
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .gamedesk import service as _gamedesk  # noqa: F401  (v0.381 Game Desk)
     from .gamedesk import studio as _gamestudio  # noqa: F401  (v0.386 Studio Project)
+    from .gamedesk import bible as _gamebible  # noqa: F401  (v0.395 Game Bible)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
