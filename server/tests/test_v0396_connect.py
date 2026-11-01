@@ -262,3 +262,23 @@ def test_the_console_screen_never_keeps_the_key_on_the_page():
     # the key is only ever sent, never read back into the form
     assert "value=\"${esc(live ? live.base_url : '')}\"" in js
     assert "live.auth" in js and "live.key" not in js
+
+def test_the_systems_listing_actually_runs(env):
+    """The miss this test exists for: my first cut of `_ent_systems` looped over `rules.systems_for()` as if
+    it returned names, but it returns full dicts - so `SYSTEMS.get(<dict>)` raised TypeError: unhashable type
+    and the Systems page would have 500'd on open. The original test only checked the ROUTE EXISTED.
+
+    A route that exists is not a route that works. Call it."""
+    from app.main import _ent_systems
+    for role in ("erp", "crm_arch", "plm", "supply_opt", "bank_int"):
+        rows = _ent_systems(role)
+        assert rows, role
+        for r in rows:
+            assert set(r) == {"system", "label", "how", "note"}
+            assert isinstance(r["system"], str) and r["system"]
+            assert isinstance(r["label"], str) and r["label"]
+    assert {r["system"] for r in _ent_systems("erp")} >= {"sap", "oracle"}
+    assert {r["system"] for r in _ent_systems("crm_arch")} >= {"salesforce"}
+    # teamcenter is carried for plm and still marked read-only
+    tc = [r for r in _ent_systems("plm") if r["system"] == "teamcenter"]
+    assert tc and tc[0]["how"] == "read_only"
