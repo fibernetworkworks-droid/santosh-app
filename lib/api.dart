@@ -1006,10 +1006,10 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/poster', body: {}, timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> socialPublish(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/publish', body: {}) as Map);
-  // v0.359 posting controls: {paused} | {stop: true} | {quiet: [23, 7]}
+  // v0.365 posting controls: {paused} | {stop: true} | {quiet: [23, 7]}
   Future<Map<String, dynamic>> socialSettings(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/settings', body: body) as Map);
-  // v0.358 social inbox (comments + DMs)
+  // v0.364 social inbox (comments + DMs)
   Future<Map<String, dynamic>> socialInbox(String box) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/social/inbox?box=$box', timeout: const Duration(seconds: 30)) as Map);
   Future<Map<String, dynamic>> socialInboxReply(String id, String text) async =>
@@ -1020,6 +1020,14 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/inbox/$id', body: body) as Map);
   Future<Map<String, dynamic>> socialRun(String job) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/run/$job', body: {}) as Map);
+  // v0.357 ENGINEERING DESK: the CAD Engineer's parts
+  Future<Map<String, dynamic>> engProjects() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/eng/projects', timeout: const Duration(seconds: 30)) as Map);
+  Future<Map<String, dynamic>> engStart(String brief) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/eng/projects', body: {'brief': brief}) as Map);
+  Future<Map<String, dynamic>> engChange(String id, String words) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/eng/projects/$id/change', body: {'words': words}) as Map);
+  Future<void> engDelete(String id) async => _send('DELETE', '/api/eng/projects/$id');
   // v0.317 HIRE AN EMPLOYEE + the SEO Desk
   Future<Map<String, dynamic>> employees() async => Map<String, dynamic>.from(await _send('GET', '/api/employees') as Map);
   Future<Map<String, dynamic>> employeeAct(String key, String action) async =>

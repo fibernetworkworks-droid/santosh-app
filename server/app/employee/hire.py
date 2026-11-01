@@ -78,6 +78,36 @@ CATALOG: dict[str, dict[str, Any]] = {
                    "pitch": "Calls your leads and customers with a script, notes every answer."},
     "support": {"name": "Customer Support", "live": False, "icon": "chat",
                 "pitch": "Answers customer questions on WhatsApp and email from your own FAQ."},
+    # v0.357 ENGINEERING DESK (docs/ENGINEERING_DESK_PLAN.md): one shared locked runner, a pack per role
+    "cad": {"name": "CAD Engineer", "live": True, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+            "pitch": "Turns your words and sizes into a real 3D part: STEP and STL files plus a dimensioned drawing.",
+            "does": ["Designs the part from your words (and your sizes in mm) as clean, parametric CadQuery code",
+                     "Builds it in a locked box on Hoola's server and checks it: valid solid, one body, the size you asked",
+                     "Gives you STEP (for any CAD / CNC shop), STL (for 3D printing), 4 views and a drawing PDF",
+                     "Changes it on your words: 'holes 10 mm karo', 'wall 3 mm moti'",
+                     "Keeps every version on the CAD Desk"],
+            "needs": ["What the part is and its main sizes in mm (a photo of a sketch with numbers helps)"],
+            "never": ["Call a design certified, approved or safe to use without a qualified engineer",
+                      "Sign or stamp drawings", "Use cracked or unlicensed CAD software",
+                      "Design weapons or export-controlled parts"]},
+    "fea": {"name": "Structural Analysis (FEA)", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+            "pitch": "Will the part break? Stress, deflection and safety factor with plots (CalculiX)."},
+    "cfd": {"name": "CFD Engineer", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+            "pitch": "Air and heat flow around or through your design, with plots (OpenFOAM)."},
+    "acoustic": {"name": "Acoustic Simulation", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+                 "pitch": "How a room or hall sounds: echo time, sound level map, what to treat."},
+    "optics": {"name": "Optical Systems Simulation", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+               "pitch": "Lens and laser paths: ray trace, spot size, focal length, tolerances."},
+    "ecu": {"name": "Automotive ECU (AUTOSAR) Programmer", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+            "pitch": "C code, MISRA checks, unit tests and requirement tracing for vehicle ECUs (draft, not certified)."},
+    "flight_sw": {"name": "Spacecraft Flight Software", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+                  "pitch": "Flight code review, fault handling and tests to NASA / ESA style rules (draft, not certified)."},
+    "med_sw": {"name": "Medical Device Software", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+               "pitch": "Embedded code and IEC 62304 / ISO 14971 files and tests (draft for your engineers)."},
+    "litho": {"name": "Chip Layout (Lithography) Software", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+              "pitch": "Layout scripts and design-rule checks on GDS files (KLayout)."},
+    "iiot": {"name": "Industrial IoT Architect", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
+             "pitch": "SCADA and factory network design: device list, protocols, security zones, BOM (paper only)."},
 }
 
 
@@ -141,7 +171,7 @@ def catalog(tenant: str) -> list[dict[str, Any]]:
     out = []
     with session() as s:
         for key, c in CATALOG.items():
-            out.append({"key": key, **c, **_view(_row(s, tenant, key))})
+            out.append({"key": key, "group": "Business", **c, **_view(_row(s, tenant, key))})
     return out
 
 

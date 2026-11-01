@@ -24,8 +24,10 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     try { d = await api('GET', '/api/employees'); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>Employees</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
     changed(d.hired || {});
+    const groups = {};                                    // v0.357 cards grouped (Business / Research, CAD, Hardware & Industrial Tech)
+    for (const e of d.employees || []) (groups[e.group || 'Business'] ||= []).push(e);
     el.innerHTML = `<div class="vh"><h2>Employees</h2><span class="muted em-sub">Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.</span></div>
-      <div class="em-grid">${(d.employees || []).map(card).join('')}</div>`;
+      ${Object.entries(groups).map(([g, xs]) => `<h3 class="em-group">${esc(g)}</h3><div class="em-grid">${xs.map(card).join('')}</div>`).join('')}`;
     el.querySelectorAll('[data-em]').forEach(b => b.addEventListener('click', () => act(b.dataset.em, b.dataset.key)));
   }
 
@@ -340,7 +342,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn ${needOk ? 'soft' : 'go'}" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
   }
 
-  // ------------------------------------------------------------ v0.358 the inbox (Phase 3)
+  // ------------------------------------------------------------ v0.364 the inbox (Phase 3)
   const BOX = {needs: 'Needs you', leads: 'Leads', complaints: 'Complaints', done: 'Done'};
   const CLS = {lead: ['ok', 'Lead'], question: ['v', 'Question'], praise: ['v', 'Praise'], complaint: ['warn', 'Complaint'],
                spam: ['bad', 'Spam'], abuse: ['bad', 'Abuse'], other: ['', 'Other']};
@@ -515,5 +517,61 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
   }
 
-  return {hub, desk, social};
+  // ------------------------------------------------------------ v0.357 the CAD Desk (Engineering Desk, Phase 1)
+  let CTIMER = null;
+  const CSTATE = {queued: ['warn', 'Queued'], designing: ['v', 'Designing'], building: ['v', 'Building'], drawing: ['v', 'Drawing'],
+                  done: ['ok', 'Ready'], failed: ['bad', 'Failed']};
+  const FILEN = [['part.step', 'STEP (CAD / CNC)'], ['part.stl', 'STL (3D print)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code']];
+  async function cad(el) {
+    clearTimeout(CTIMER);
+    let d;
+    try { d = await api('GET', '/api/eng/projects'); }
+    catch (e) { el.innerHTML = `<div class="vh"><h2>CAD Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const ps = d.projects || [];
+    el.innerHTML = `<div class="vh"><h2>CAD Desk</h2><span class="muted em-sub">Describe a part with its sizes in mm. Hoola designs it, checks it and gives you STEP, STL and a drawing. Drafts for your engineer's review, not certified.</span></div>
+      <article class="tile gl cad-new"><textarea id="cadBrief" rows="3" placeholder="e.g. L bracket 80 x 40 mm, 10 mm thick, upright 30 mm, two 8 mm holes 56 mm apart, 1 mm fillets"></textarea>
+      <div class="acts"><button class="btn go" type="button" id="cadGo">Design this part</button><span class="muted">${esc(String(d.today || 0))} today</span></div></article>
+      ${ps.length ? ps.map(cadCard).join('') : '<div class="empty">No parts yet.</div>'}`;
+    el.querySelector('#cadGo').addEventListener('click', async ev => {
+      const brief = el.querySelector('#cadBrief').value.trim();
+      if (!brief) return;
+      ev.target.disabled = true;
+      try { await api('POST', '/api/eng/projects', {brief}); toast('Designing. It takes about a minute.'); }
+      catch (e) { toast(e.message, true); }
+      cad(el);
+    });
+    el.querySelectorAll('[data-cadch]').forEach(b => b.addEventListener('click', async () => {
+      const inp = el.querySelector(`[data-cadin="${b.dataset.cadch}"]`), words = inp.value.trim();
+      if (!words) return;
+      b.disabled = true;
+      try { await api('POST', `/api/eng/projects/${encodeURIComponent(b.dataset.cadch)}/change`, {words}); toast('Making the next version.'); }
+      catch (e) { toast(e.message, true); }
+      cad(el);
+    }));
+    el.querySelectorAll('[data-caddel]').forEach(b => b.addEventListener('click', async () => {
+      if (!confirm('Delete this part and all its versions?')) return;
+      try { await api('DELETE', `/api/eng/projects/${encodeURIComponent(b.dataset.caddel)}`); } catch (e) { toast(e.message, true); }
+      cad(el);
+    }));
+    if (ps.some(p => !['done', 'failed'].includes(p.status))) CTIMER = setTimeout(() => { if (visible(el)) cad(el); }, 4000);
+  }
+  function cadCard(p) {
+    const st = CSTATE[p.status] || ['', p.status], v = p.latest;
+    const views = v ? ['iso', 'front', 'top', 'right'].filter(k => v.files[k + '.png'])
+      .map(k => `<a href="${esc(v.files[k + '.png'])}" target="_blank" rel="noopener"><img src="${esc(v.files[k + '.png'])}" alt="${esc(k)} view" loading="lazy"></a>`).join('') : '';
+    const bb = v && v.bbox ? `${num(v.bbox.x)} x ${num(v.bbox.y)} x ${num(v.bbox.z)} mm` : '';
+    const checks = v ? (v.checks || []).map(c => tag(c.ok ? 'ok' : 'bad', `${c.ok ? '✓' : '✗'} ${c.name}${c.note ? ': ' + c.note : ''}`)).join(' ') : '';
+    const files = v ? FILEN.filter(([f]) => v.files[f]).map(([f, n]) => `<a class="btn soft" href="${esc(v.files[f])}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' ') : '';
+    const busy = !['done', 'failed'].includes(p.status);
+    return `<article class="tile gl cad-card"><div class="em-h"><h3>${esc(p.title)}${v ? ` <small class="muted">v${esc(String(v.n))}</small>` : ''}</h3>${tag(st[0], busy ? p.stage || st[1] : st[1])}</div>
+      ${p.error ? `<p class="badc">${esc(p.error)}</p>` : ''}
+      ${views ? `<div class="cad-views">${views}</div>` : ''}
+      ${bb ? `<p class="muted">${esc(bb)}${v.volume_mm3 ? ' · ' + num(v.volume_mm3) + ' mm³' : ''}${v.assumed && v.assumed.toLowerCase() !== 'none' ? ' · Assumed: ' + esc(v.assumed) : ''}</p>` : ''}
+      ${checks ? `<div class="cad-checks">${checks}</div>` : ''}
+      ${files ? `<div class="acts">${files}</div>` : ''}
+      ${v && !busy ? `<div class="cad-change"><input data-cadin="${esc(p.id)}" placeholder="Change it, e.g. holes 10 mm, wall 3 mm thicker"><button class="btn soft" type="button" data-cadch="${esc(p.id)}">Make next version</button></div>` : ''}
+      <div class="acts"><button class="btn soft em-leave" type="button" data-caddel="${esc(p.id)}">Delete</button></div></article>`;
+  }
+
+  return {hub, desk, social, cad};
 };

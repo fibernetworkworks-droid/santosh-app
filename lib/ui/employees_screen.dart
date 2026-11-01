@@ -15,6 +15,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'cad_desk.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -93,7 +94,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         });
       }
       await _load();
-      if (action == 'hire' && (key == 'seo' || key == 'social') && mounted) _openDesk(key);
+      if (action == 'hire' && (key == 'seo' || key == 'social' || key == 'cad') && mounted) _openDesk(key);
     } catch (e) {
       if (mounted) _snack(context, '$e');
     }
@@ -101,7 +102,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 
   void _openDesk(String key) => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => key == 'social' ? SocialDeskScreen(app: widget.app) : SeoDeskScreen(app: widget.app)))
+      .push(MaterialPageRoute(builder: (_) => key == 'social'
+          ? SocialDeskScreen(app: widget.app)
+          : key == 'cad'
+              ? CadDeskScreen(app: widget.app)
+              : SeoDeskScreen(app: widget.app)))
       .then((_) => _load());
 
   Widget _card(Map<String, dynamic> e) {
@@ -169,7 +174,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                 style: TextStyle(color: C.muted, fontSize: 13.5, height: 1.35)),
             const SizedBox(height: 14),
             if (!_loaded) const Center(child: CircularProgressIndicator()),
-            for (final e in _emps) _card(e),
+            // v0.357 grouped like the console: Business, then Research, CAD, Hardware & Industrial Tech
+            for (final g in {for (final e in _emps) _s(e['group']).isEmpty ? 'Business' : _s(e['group'])}) ...[
+              Padding(padding: const EdgeInsets.only(top: 8, bottom: 8), child: Text(g, style: display(15))),
+              for (final e in _emps.where((e) => (_s(e['group']).isEmpty ? 'Business' : _s(e['group'])) == g)) _card(e),
+            ],
           ]),
         ),
       ),
@@ -1145,7 +1154,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
 }
 
 
-/// v0.358 SOCIAL INBOX: comments on her posts and her DMs, sorted, each with a reply drafted from her facts.
+/// v0.364 SOCIAL INBOX: comments on her posts and her DMs, sorted, each with a reply drafted from her facts.
 /// Send / Hide / Ignore are her taps; Hoola never deletes and never messages anyone first.
 class SocialInboxScreen extends StatefulWidget {
   const SocialInboxScreen({super.key, required this.app});
@@ -1314,7 +1323,7 @@ class _SocialInboxScreenState extends State<SocialInboxScreen> {
   }
 }
 
-/// v0.358 chat card for a new social lead / complaint: opens the Inbox.
+/// v0.364 chat card for a new social lead / complaint: opens the Inbox.
 class SocialCard extends StatelessWidget {
   const SocialCard({super.key, required this.kind, required this.v, required this.app});
   final String kind;
