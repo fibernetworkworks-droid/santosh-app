@@ -12876,3 +12876,21 @@ request) is given to ONE staff member, on both platforms and from her Hoola.
   without e-mails, dashboard, owner by name, tool, kit / phone / console markers). Kotlin compiled locally on the fixture2
   staff app (assembleDebug EXIT 0); Swift compiled by CI ios-check.
 - Not verified: on a real phone; the assign chips with many staff (they scroll sideways).
+
+## v0.353.0 RAAY (App Sahayak Phase 17, owner: "START PHASE 17")
+With work now handed to one staff member (v0.352), the business needs to hear how it went. The customer rates her own
+finished row once.
+- Server (`appmaker/backend.py`, section "v0.353 RAAY"): `rate(r, coll, row, stars, note, who)` - only the account that made
+  the row (`row.owner`), only when its status is finished (`_rateable`: done / delivered / completed / closed / replied /
+  confirmed / active / enrolled; never cancelled), only once (409 after), stars a whole 1-5 (bool / 4.5 / "five" refused),
+  note cut to 300 with control characters stripped. Kept in the row: `_rate`, `_rate_note`, `_rate_at`, `_rate_to` (who had
+  the job then). `with_assign` adds `rating` / `rating_note` for staff, the owner and the row's customer, and `can_rate`
+  for her. A rating <= `RATE_LOW` (2) sends the owner a chat note (customer, stars, note, who had the job). `_ratings` feeds
+  `/stats`: each list `rating {avg, count}`, each team member `rating` + `rated`.
+- Routes: POST /api/app-api/<key>/c/<coll>/<id>/rate {stars, note}; the outbox sends `{"_rate": {stars, note}}` as an
+  update. Tool text: never set a rating yourself.
+- Kits: Android `RateBox(coll, r)` + `starLine` in Pro.kt (5 star chips, note, Send; thanks after), shown in every row
+  card; StatsBlock gains the list average and a Team card (open work, average stars, unassigned). iPhone twins in Pro.swift
+  (`RateBox` view, StatsBlock team card). Words in Strings.kt / Words.
+- Her views: phone App ka data shows the stars (red at 1-2), console app data a Rating column.
+- Tests `tests/test_v0353_raay.py`. Not verified: a real phone. No public reviews (ratings never go to other customers).

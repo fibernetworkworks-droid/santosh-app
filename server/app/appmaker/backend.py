@@ -382,6 +382,10 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
 
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
     body = {k: v for k, v in (body if isinstance(body, dict) else {}).items() if k not in ("cid", "cart")}
+    if RATE_KEY in body:                     # v0.353 the app's outbox sends a rating as an update {"_rate": {stars, note}}
+        v = body.pop(RATE_KEY)
+        v = v if isinstance(v, dict) else {"stars": v}
+        return rate(r, coll, row_id, v.get("stars"), str(v.get("note") or ""), w)
     if ASSIGN_KEY in body:                   # v0.352 the app's outbox sends an assignment as an update {"_assign": id|"me"|""}
         to = body.pop(ASSIGN_KEY)
         out = assign(r, coll, row_id, str(to or ""), w)
@@ -754,7 +758,13 @@ def stats(r: AppProject, w: W.Who, days: int = 14) -> dict[str, Any]:
                         "daily": [daily[x] for x in labels], "total": round(money, 2) if "total" in keys else None})
     STATS["stats"] = STATS.get("stats", 0) + 1
     load = _load(r)                                     # v0.352 open rows per staff member (who has how much work)
-    people = [{"name": _first(m.name, m.email), "open": load.get(m.id, 0)} for m in _staff_of(site).values()]
+    rated = _ratings(r)                                 # v0.353 RAAY: average stars per list and per person
+    for l in out:
+        got = rated["lists"].get(l["key"])
+        l["rating"] = {"avg": round(sum(got) / len(got), 1), "count": len(got)} if got else None
+    people = [{"name": _first(m.name, m.email), "open": load.get(m.id, 0),
+               "rating": round(sum(rated["people"][m.id]) / len(rated["people"][m.id]), 1) if rated["people"].get(m.id) else None,
+               "rated": len(rated["people"].get(m.id, []))} for m in _staff_of(site).values()]
     return {"now": now().isoformat(), "days": labels, "lists": out,
             "team": sorted(people, key=lambda p: -p["open"])[:20], "unassigned": _unassigned(r)}
 
@@ -1054,6 +1064,10 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
             x["assigned_to"], x["assigned_name"] = to, (str(d.get("_to_name") or "") if to else "")
         elif x.get("mine") and to:
             x["assigned_name"] = str(d.get("_to_name") or "")
+        if w.staff or x.get("mine"):                  # v0.353 RAAY: the customer's rating, for her and the business
+            if d.get("_rate"):
+                x["rating"], x["rating_note"] = int(d["_rate"]), str(d.get("_rate_note") or "")
+            x["can_rate"] = bool(x.get("mine") and not w.staff and not d.get("_rate") and _rateable(str(d.get("status") or "")))
     return rows_[0] if one else rows_
 
 
@@ -1128,3 +1142,83 @@ def _unassigned(r: AppProject) -> int:
 
 def owner_assign(r: AppProject, coll: str, row_id: str, to: str) -> dict[str, Any]:
     return assign(r, coll, row_id, to, W.Who(owner=True))
+
+
+# ---------------------------------------------------------------- v0.353 RAAY (App Sahayak Phase 17): the customer's rating
+# Once her row is finished (Done / Delivered / Completed - never a cancelled one) the customer who made it rates it ONCE:
+# 1-5 stars + a short note (300 chars, control characters stripped). Kept inside the row (`_rate`, `_rate_note`, `_rate_at`,
+# and `_rate_to` = who had the job then), so the dashboard can show the average per list and per staff member. Nobody else
+# can rate (not staff, not another customer, not the owner), a rating is never changed, and a low one (1-2 stars) reaches
+# her chat at once so she can call the customer. Never shown to other customers (no public reviews here).
+RATE_KEY = "_rate"
+RATE_LOW = 2
+STATS.update({"ratings": 0, "rating_refused": 0, "rating_low": 0})
+
+
+def _rateable(st: str) -> bool:
+    return st.strip().lower() in ("done", "delivered", "completed", "closed", "replied", "confirmed", "active", "enrolled")
+
+
+def rate(r: AppProject, coll: str, row_id: str, stars: Any, note: str, w: W.Who) -> dict[str, Any]:
+    sch, site = schema(r), bid(r)
+    c = W.coll(sch, coll)
+    if w.m is None:
+        raise W.AppError("Pehle login kijiye.", 401)
+    try:
+        f = float(str(stars).strip())
+    except (TypeError, ValueError):
+        f = 0.0
+    n = int(f)
+    if isinstance(stars, bool) or f != n or not 1 <= n <= 5:
+        raise W.AppError("Stars 1 se 5 tak.")
+    note = re.sub(r"[\x00-\x1f\x7f]+", " ", str(note or "")).strip()[:300]
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        if row is None or row.site_id != site or row.coll != coll:
+            raise W.AppError("Yeh entry nahi mili.", 404)
+        d = _j(row.data, {})
+        if row.owner != w.m.id:
+            STATS["rating_refused"] += 1
+            raise W.AppError("Sirf jisne yeh entry bheji, wahi rating de sakta hai.", 403)
+        if d.get("_rate"):
+            STATS["rating_refused"] += 1
+            raise W.AppError("Rating pehle hi di ja chuki hai.", 409)
+        if not _rateable(str(d.get("status") or "")):
+            STATS["rating_refused"] += 1
+            raise W.AppError("Kaam poora hone ke baad rating dijiye.", 409)
+        d.update({"_rate": n, "_rate_note": note, "_rate_at": now().isoformat(), "_rate_to": d.get("_to", "")})
+        row.data, row.updated_at = json.dumps(d, ensure_ascii=False), now()
+        s.flush()
+        s.expunge(row)
+    STATS["ratings"] += 1
+    if n <= RATE_LOW:
+        STATS["rating_low"] += 1
+        what = NEWS.get(coll, c["label"].lower())
+        who_ = str(d.get("name") or d.get("customer") or w.m.name or "").strip()[:40]
+        text = (f"{r.name or 'Aapki app'} ({r.number}): {who_ or 'ek customer'} ne apni {what} ko {n}/5 diya"
+                + (f" - \"{note[:120]}\"" if note else "") + (f" (kaam {d.get('_to_name')} ke paas tha)" if d.get("_to_name") else "")
+                + ". Unse baat kar lijiye.")
+        try:
+            from .android.service import _note
+            _note(r, text)
+        except Exception:
+            log.debug("low rating note", exc_info=True)
+    return with_assign(r, W.row_view(c, row, w), w)
+
+
+def _ratings(r: AppProject) -> dict[str, dict[str, list[int]]]:
+    lists: dict[str, list[int]] = {}
+    people: dict[str, list[int]] = {}
+    with session() as s:
+        for coll, data in s.query(W.SiteAppRow.coll, W.SiteAppRow.data).filter(
+                W.SiteAppRow.site_id == bid(r), W.SiteAppRow.data.like('%"_rate": %')).all():
+            d = _j(data, {})
+            try:
+                n = int(d.get("_rate") or 0)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= n <= 5:
+                lists.setdefault(coll, []).append(n)
+                if d.get("_rate_to"):
+                    people.setdefault(d["_rate_to"], []).append(n)
+    return {"lists": lists, "people": people}

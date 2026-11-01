@@ -103,6 +103,7 @@ fun StatsBlock() {
                     Title(l.optInt("count").toString())
                 }
                 if (!l.isNull("total")) Small(Strings.total + ": " + rupees(l.optDouble("total", 0.0)))
+                l.optJSONObject("rating")?.let { rt -> Small("★ " + rt.optDouble("avg") + " (" + rt.optInt("count") + ")") }   // v0.353
                 val st = l.optJSONObject("status")
                 if (st != null && st.length() > 0) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
@@ -111,6 +112,17 @@ fun StatsBlock() {
                 }
                 val daily = l.optJSONArray("daily") ?: JSONArray()
                 Bars(List(daily.length()) { daily.optInt(it) }, Strings.last14 + " " + l.optString("label"))
+            }
+        }
+        // v0.352 / v0.353 who has how much open work, and their customers' average stars
+        val team = d.optJSONArray("team") ?: JSONArray()
+        if (team.length() > 0) HCard {
+            Title(Strings.myTeam)
+            if (d.optInt("unassigned") > 0) Pill("${d.optInt("unassigned")} " + Strings.notAssigned, "warn")
+            for (i in 0 until team.length()) {
+                val p = team.optJSONObject(i) ?: continue
+                Small(p.optString("name") + " · " + p.optInt("open") + " " + Strings.openWork +
+                    if (!p.isNull("rating")) " · ★ " + p.optDouble("rating") + " (" + p.optInt("rated") + ")" else "")
             }
         }
     }
@@ -353,6 +365,44 @@ fun AssignBox(coll: String, r: Item) {
             Btn(Strings.takeIt, kind = BtnKind.Ghost, small = true) { Db.update(coll, r.id, mapOf("_assign" to "me")) }
         } else if (to == meId) {
             Btn(Strings.giveBack, kind = BtnKind.Ghost, small = true) { Db.update(coll, r.id, mapOf("_assign" to "")) }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- v0.353 RAAY: the customer's rating of a finished row
+/** The stars of a rated row (customer + staff see it), e.g. "★★★★☆ 4/5 · On time". */
+fun starLine(n: Int, note: String = ""): String =
+    "★".repeat(n.coerceIn(0, 5)) + "☆".repeat(5 - n.coerceIn(0, 5)) + " $n/5" + if (note.isNotBlank()) " · " + note.take(120) else ""
+
+/** On the customer's own finished row (the server says `can_rate`): 1-5 stars + a short note, sent once through the
+ *  outbox (works offline). A rated row shows its stars instead. */
+@Composable
+fun RateBox(coll: String, r: Item) {
+    val n = r.i("rating")
+    if (n > 0) {
+        Small(starLine(n, r.s("rating_note")), maxLines = 3)
+        return
+    }
+    if (!r.b("can_rate") || Auth.isStaff) return
+    var sent by remember(r.id) { mutableStateOf(0) }
+    if (sent > 0) {
+        Small(starLine(sent) + " · " + Strings.thanksRating)
+        return
+    }
+    var stars by remember(r.id) { mutableStateOf(0) }
+    var note by remember(r.id) { mutableStateOf("") }
+    Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Small(Strings.rateIt)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            (1..5).forEach { i -> Chip("$i ★", selected = stars == i) { stars = i } }
+        }
+        if (stars > 0) {
+            OutlinedTextField(value = note, onValueChange = { note = it.take(300) }, modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(Strings.ratingNote) }, maxLines = 3)
+            Btn(Strings.sendRating, small = true) {
+                Db.update(coll, r.id, mapOf("_rate" to JSONObject().put("stars", stars).put("note", note.trim())))
+                sent = stars
+            }
         }
     }
 }

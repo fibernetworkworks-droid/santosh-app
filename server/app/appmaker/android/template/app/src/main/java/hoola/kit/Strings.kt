@@ -91,6 +91,13 @@ object Strings {
     val staffOnly get() = t("Only staff can add this.", "इसे सिर्फ़ स्टाफ़ जोड़ सकता है।", "हे फक्त स्टाफ जोडू शकतो.", "Ise sirf staff jod sakta hai.")
     val required get() = t("please fill this", "यह भरना ज़रूरी है", "हे भरणे आवश्यक आहे", "yeh bharna zaroori hai")
     val cartEmpty get() = t("Your cart is empty.", "आपका कार्ट खाली है।", "तुमची कार्ट रिकामी आहे.", "Aapka cart khaali hai.")
+    val myTeam get() = t("Team", "टीम", "टीम", "Team")
+    val openWork get() = t("open", "बाकी", "बाकी", "baaki")
+    // v0.353 RAAY
+    val rateIt get() = t("How was it? Rate us", "कैसा रहा? रेटिंग दें", "कसे वाटले? रेटिंग द्या", "Kaisa raha? Rating dijiye")
+    val ratingNote get() = t("A few words (optional)", "कुछ शब्द (ज़रूरी नहीं)", "थोडे शब्द (ऐच्छिक)", "Kuch shabd (zaroori nahi)")
+    val sendRating get() = t("Send rating", "रेटिंग भेजें", "रेटिंग पाठवा", "Rating bhejiye")
+    val thanksRating get() = t("Thank you!", "धन्यवाद!", "धन्यवाद!", "Shukriya!")
     // v0.352 KAAM BAANTO
     val myWork get() = t("My work", "मेरा काम", "माझे काम", "Mera kaam")
     val takeIt get() = t("I'll take it", "मैं करूँगा", "मी करतो", "Main karunga")

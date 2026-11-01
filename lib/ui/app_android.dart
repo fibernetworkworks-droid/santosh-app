@@ -519,6 +519,11 @@ class _AppDataPanelState extends State<AppDataPanel> {
                   if (_s(r['paid']) == 'Customer says paid')
                     TextButton(onPressed: _busy ? null : () => _set(r, {'paid': 'Verified'}), child: const Text('Bank mein mila: Verified')),
                 ]),
+              // v0.353 RAAY: the customer's stars + note on her finished row
+              if (r['rating'] is num && (r['rating'] as num) > 0)
+                Text('${'★' * (r['rating'] as num).toInt()}${'☆' * (5 - (r['rating'] as num).toInt())} ${(r['rating'] as num).toInt()}/5'
+                    '${_s(r['rating_note']).isEmpty ? '' : ' · ${_s(r['rating_note'])}'}',
+                    style: TextStyle(color: (r['rating'] as num) <= 2 ? C.bad : C.ok, fontSize: 12.5, fontWeight: FontWeight.w700)),
               if (_staff.isNotEmpty)
                 Row(children: [
                   const Text('Kiske paas: ', style: TextStyle(color: C.muted, fontSize: 12.5)),

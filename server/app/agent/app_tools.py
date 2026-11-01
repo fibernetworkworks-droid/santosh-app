@@ -72,6 +72,8 @@ APP_TOOLS = [
         "v0.352 KAAM BAANTO: set {assign: <staff member id or name>} gives that row to one staff member (\"yeh job Ravi ko do\"), "
         "set {assign: \"\"} takes it back; only staff / admin accounts can be given work; that person's app shows it under My work "
         "and tells them. "
+        "v0.353 RAAY: a finished row carries the customer's own rating (rating 1-5 + rating_note); only that customer gives it, once - "
+        "never set or change a rating yourself; a 1-2 star rating already reached her chat. "
         "action=role (app, member, role staff|admin|member) makes an account staff (a staff app's new account sees nothing until then). "
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {

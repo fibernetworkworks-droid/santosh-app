@@ -80,6 +80,7 @@ struct StatsList: Identifiable {
     let total: Double?
     let status: [(String, Int)]
     let daily: [Int]
+    var rating: String = ""                      // v0.353 "★ 4.3 (12)"
 }
 
 struct StatsBlock: View {
@@ -87,6 +88,8 @@ struct StatsBlock: View {
     @State private var lists: [StatsList] = []
     @State private var failed = false
     @State private var loaded = false
+    @State private var team: [Item] = []
+    @State private var unassigned = 0
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -102,6 +105,7 @@ struct StatsBlock: View {
                             Text("\(l.count)").font(.title3.weight(.semibold))
                         }
                         if let t = l.total { Muted(Words.total + ": " + rupees(t)) }
+                        if !l.rating.isEmpty { Muted(l.rating) }
                         if !l.status.isEmpty {
                             HStack { ForEach(l.status.prefix(4), id: \.0) { s in StatusPill(text: "\(s.0) \(s.1)") } }
                         }
@@ -113,6 +117,14 @@ struct StatsBlock: View {
                         .chartXAxis(.hidden)
                         .frame(height: 72)
                         .accessibilityLabel(Words.last14 + " " + l.label + ": " + l.daily.map(String.init).joined(separator: ", "))
+                    }
+                }
+                if !team.isEmpty {                       // v0.352 / v0.353 open work and average stars per person
+                    Card {
+                        Text(Words.myTeam).font(.headline)
+                        if unassigned > 0 { StatusPill(text: "\(unassigned) " + Words.notAssigned) }
+                        ForEach(team, id: \.id) { p in Muted(p.s("name") + " · \(Int(p.n("open"))) " + Words.openWork
+                            + (p.has("rating") ? " · ★ \(p.s("rating")) (\(Int(p.n("rated"))))" : "")) }
                     }
                 }
             }
@@ -127,9 +139,13 @@ struct StatsBlock: View {
             let st = (x.o["status"] as? [String: Any] ?? [:]).compactMap { k, v in (v as? NSNumber).map { (k, $0.intValue) } }
                 .sorted { $0.1 > $1.1 }
             let daily = (x.o["daily"] as? [Any] ?? []).compactMap { ($0 as? NSNumber)?.intValue }
+            let rt = x.o["rating"] as? [String: Any]
             return StatsList(id: x.s("key"), label: x.s("label"), count: Int(x.n("count")),
-                             total: x.o["total"] is NSNull || x.o["total"] == nil ? nil : x.n("total"), status: st, daily: daily)
+                             total: x.o["total"] is NSNull || x.o["total"] == nil ? nil : x.n("total"), status: st, daily: daily,
+                             rating: rt.map { "★ \(Item(o: $0).s("avg")) (\(Item(o: $0).s("count")))" } ?? "")
         }
+        team = items(r.body["team"]).enumerated().map { i, p in var o = p.o; o["id"] = "p\(i)"; return Item(o: o) }
+        unassigned = (r.body["unassigned"] as? NSNumber)?.intValue ?? 0
         loaded = true
     }
 }
@@ -428,6 +444,51 @@ struct AssignBox: View {
                 }
             }
             .task(id: auth.me?.id) { await team.load() }
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------- v0.353 RAAY: the customer's rating of a finished row
+func starLine(_ n: Int, _ note: String = "") -> String {
+    let k = max(0, min(5, n))
+    return String(repeating: "★", count: k) + String(repeating: "☆", count: 5 - k) + " \(n)/5" + (note.isEmpty ? "" : " · " + String(note.prefix(120)))
+}
+
+/// On the customer's own finished row (the server says `can_rate`): 1-5 stars + a short note, sent once through the outbox
+/// (works offline). A rated row shows its stars instead.
+struct RateBox: View {
+    let coll: String
+    let r: Item
+    @ObservedObject private var auth = Auth.shared
+    @State private var stars = 0
+    @State private var note = ""
+    @State private var sent = 0
+
+    var body: some View {
+        let n = Int(r.n("rating"))
+        if n > 0 {
+            Muted(starLine(n, r.s("rating_note")))
+        } else if sent > 0 {
+            Muted(starLine(sent) + " · " + Words.thanksRating)
+        } else if r.b("can_rate") && !auth.isStaff {
+            VStack(alignment: .leading, spacing: 6) {
+                Muted(Words.rateIt)
+                HStack {
+                    ForEach(1...5, id: \.self) { i in
+                        Button("\(i) ★") { stars = i }.buttonStyle(.bordered).tint(stars == i ? .accentColor : .secondary)
+                            .accessibilityLabel("\(i) / 5")
+                    }
+                }
+                if stars > 0 {
+                    TextField(Words.ratingNote, text: $note, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
+                        .onChange(of: note) { v in if v.count > 300 { note = String(v.prefix(300)) } }
+                    Button(Words.sendRating) {
+                        Db.shared.update(coll, r.id, ["_rate": ["stars": stars, "note": note.trimmingCharacters(in: .whitespacesAndNewlines)]])
+                        sent = stars
+                    }.buttonStyle(.borderedProminent)
+                }
+            }
         }
     }
 }

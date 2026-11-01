@@ -47,6 +47,13 @@ enum Words {
     static var last14: String { t("Last 14 days", "पिछले 14 दिन", "Pichhle 14 din") }
     static var inbox: String { t("Updates", "अपडेट", "Updates") }
     static var inboxEmpty: String { t("No updates yet.", "अभी कोई अपडेट नहीं।", "Abhi koi update nahi.") }
+    // v0.353 RAAY
+    static var rateIt: String { t("How was it? Rate us", "कैसा रहा? रेटिंग दें", "Kaisa raha? Rating dijiye") }
+    static var ratingNote: String { t("A few words (optional)", "कुछ शब्द (ज़रूरी नहीं)", "Kuch shabd (zaroori nahi)") }
+    static var sendRating: String { t("Send rating", "रेटिंग भेजें", "Rating bhejiye") }
+    static var thanksRating: String { t("Thank you!", "धन्यवाद!", "Shukriya!") }
+    static var myTeam: String { t("Team", "टीम", "Team") }
+    static var openWork: String { t("open", "बाकी", "baaki") }
     // v0.352 KAAM BAANTO
     static var myWork: String { t("My work", "मेरा काम", "Mera kaam") }
     static var takeIt: String { t("I'll take it", "मैं करूँगा", "Main karunga") }

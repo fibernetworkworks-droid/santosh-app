@@ -115,6 +115,7 @@ struct RowsSection: View {
                         }
                     }
                     if !auth.isStaff && !r.s("assigned_name").isEmpty { Muted(r.s("assigned_name") + " " + Words.onIt) }   // v0.352
+                    RateBox(coll: coll, r: r)                    // v0.353 the customer rates her finished row once
                     AssignBox(coll: coll, r: r)
                     if auth.isStaff && !r.b("pending") && team.mayWork(r), let st = fields.first(where: { $0.s("key") == "status" }) {
                         ScrollView(.horizontal, showsIndicators: false) {
