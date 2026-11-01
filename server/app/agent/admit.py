@@ -404,6 +404,11 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     (re.compile(r"\b(?:game|games|gaming|khel)\b.{0,40}\b(?:bana\w*|build|make|create|develop|design|chahiye)\b|"
                 r"\b(?:bana\w*|build|make|create|develop)\b.{0,30}\b(?:game|khel)\b|\bgodot\b|गेम", re.I),
      ("gamedesk",), "game"),
+    # v0.401 a system to architect / design (or a PR to check against its design) -> the Principal Software Architect
+    (re.compile(r"\b(?:architect\w*|architecture|system design|design (?:a|the|my|our) (?:system|backend|platform|app)|"
+                r"high[- ]level design|hld|lld|low[- ]level design|scal(?:e|able|ability)|microservices?|monolith|"
+                r"adr|c4 (?:model|diagram)|capacity plan\w*|distributed system)\b", re.I),
+     ("arch",), "software architecture"),
     # v0.348 an official Indian number (inflation, GDP, jobs, industry, surveys) -> MoSPI first, never a search summary
     (re.compile(r"\b(?:cpi|wpi|iip|gdp|gva|plfs|nfhs|nss|mospi)\b|inflation|mehngai|mahangai|unemployment|berozgari|"
                 r"growth rate|per capita|industrial (?:output|production)|labour force|sarkari aank|महंगाई|बेरोजगारी", re.I),

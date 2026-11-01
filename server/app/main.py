@@ -10932,6 +10932,9 @@ app.include_router(_composio_router(require_key, current_tenant))
 from .engineering.api import make_router as _eng_router  # noqa: E402  v0.357 Engineering Desk (CAD Engineer)
 
 app.include_router(_eng_router(require_key, current_tenant))
+from .archdesk.api import make_router as _arch_router  # noqa: E402  v0.401 Architecture Desk (Principal Software Architect)
+
+app.include_router(_arch_router(require_key, current_tenant))
 app.include_router(bz_devices.public)
 
 

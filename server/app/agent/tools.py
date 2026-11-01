@@ -489,6 +489,13 @@ TOOLS.extend(GAMEDESK_TOOLS)
 TOOL_LABELS.update(GAMEDESK_LABELS)
 HANDLERS.update(GAMEDESK_HANDLERS)
 
+# v0.401 ARCHITECTURE DESK: the Principal Software Architect employee (designs, ADRs, diagrams, PRs vs the design)
+from .arch_tools import ARCH_HANDLERS, ARCH_LABELS, ARCH_TOOLS  # noqa: E402
+
+TOOLS.extend(ARCH_TOOLS)
+TOOL_LABELS.update(ARCH_LABELS)
+HANDLERS.update(ARCH_HANDLERS)
+
 # v0.63 seekhe hue kaam (procedures Hoola learned)
 from .procedure_tools import PROCEDURE_HANDLERS, PROCEDURE_LABELS, PROCEDURE_TOOLS  # noqa: E402
 

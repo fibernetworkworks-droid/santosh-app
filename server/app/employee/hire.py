@@ -47,6 +47,7 @@ def ensure_table() -> None:
 TRUST = ("seekh", "saathi", "bharosa")
 
 GAME_GROUP = "Game Development, Simulation & VR"   # v0.379 the Game Desk employees' heading in the Hub
+SW_GROUP = "Software Architecture, Engineering & Core Systems"   # v0.401 the Architecture Desk employees' heading
 
 # The catalogue. `live` employees can be hired today; the others show as "coming".
 CATALOG: dict[str, dict[str, Any]] = {
@@ -141,6 +142,43 @@ CATALOG: dict[str, dict[str, Any]] = {
                   "pitch": "A live 3D twin of your factory or building with what-if simulation; reads data, never controls."},
     "haptics_dev": {"name": "Haptic Feedback Systems Engineer", "live": False, "icon": "game", "group": GAME_GROUP,
                     "pitch": "Vibration patterns and driver code for phones, controllers and your own device."},
+    # v0.401 SOFTWARE ARCHITECTURE, ENGINEERING & CORE SYSTEMS (docs/SOFTWARE_DESK_PLAN.md). Code they write goes to HER
+    # GitHub through the Developer Sahayak's draft PR + CI path; heavy builds run in HER CI, never on her PC.
+    "architect": {"name": "Principal Software Architect", "live": True, "icon": "code", "group": SW_GROUP,
+                  "pitch": "Designs your system the way a principal architect would: decisions, diagrams, capacity and risks - "
+                           "then checks every pull request against it.",
+                  "does": ["Reads your GitHub repo first (read only) or starts from your idea for a new system",
+                           "Writes the architecture: context, quality targets, components, data, main flows, security",
+                           "Draws the diagrams: system context, containers, the main flow, deployment",
+                           "Decision records (ADRs) with the options it did not pick and why",
+                           "Capacity worked out in code from your numbers: requests per second, storage, servers",
+                           "Risks, failure modes, a phased roadmap and the questions it needs answered",
+                           "A PDF you can hand to your team; changes in your words make the next version",
+                           "Reads your pull requests against the approved design (on its own if you switch it on)"],
+                  "needs": ["What the system must do, who uses it and roughly how many people a day",
+                            "Optional: your GitHub repo (connected once in the Developer Sahayak)"],
+                  "never": ["Push, merge or deploy anything - its PR notes go out only on your tap",
+                            "Run your code on its server or touch your PC",
+                            "Make up scale numbers: no users-a-day number, no capacity sheet",
+                            "Call a design approved by a certified authority"]},
+    "compiler_eng": {"name": "Compiler Construction Engineer", "live": False, "icon": "code", "group": SW_GROUP,
+                     "pitch": "Domain-specific languages: grammar, parser, interpreter or compiler with golden tests."},
+    "kernel_dev": {"name": "Kernel / OS Developer", "live": False, "icon": "code", "group": SW_GROUP,
+                   "pitch": "Kernel patches, drivers and crash-log diagnosis; boot-tested in QEMU in your own CI."},
+    "graphics_eng": {"name": "Graphics Engine Programmer", "live": False, "icon": "code", "group": SW_GROUP,
+                     "pitch": "Renderers and shaders (Vulkan, ray tracing): shader validation and CPU-rendered checks."},
+    "dbengine_dev": {"name": "Database Engine Developer", "live": False, "icon": "code", "group": SW_GROUP,
+                     "pitch": "Query plans and indexes from your real database, storage and query-engine code, benchmarks."},
+    "distsys_eng": {"name": "Distributed Systems Engineer", "live": False, "icon": "code", "group": SW_GROUP,
+                    "pitch": "Consensus, retries, idempotency and failover - with failure-injection tests and formal specs."},
+    "hypervisor_eng": {"name": "Virtualization / Hypervisor Engineer", "live": False, "icon": "code", "group": SW_GROUP,
+                       "pitch": "Container runtimes and VMs: configs, security profiles and hardening, tested in your CI."},
+    "lowlatency_eng": {"name": "Backend Systems Engineer (Low Latency)", "live": False, "icon": "code", "group": SW_GROUP,
+                       "pitch": "Lock-free, zero-copy hot paths with microbenchmarks and p99 analysis of your latency data."},
+    "mainframe_arch": {"name": "Mainframe Modernization Architect", "live": False, "icon": "code", "group": SW_GROUP,
+                       "pitch": "COBOL inventory, dependency map and migration plan; translations proved side by side."},
+    "refactor_eng": {"name": "Legacy Code Refactoring Specialist", "live": False, "icon": "code", "group": SW_GROUP,
+                     "pitch": "Maps the worst code, writes tests first, then many small safe refactor PRs, each green on CI."},
 }
 
 

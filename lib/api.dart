@@ -1081,6 +1081,21 @@ class Api {
   Future<Map<String, dynamic>> engChange(String id, String words) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/eng/projects/$id/change', body: {'words': words}) as Map);
   Future<void> engDelete(String id) async => _send('DELETE', '/api/eng/projects/$id');
+  // ---- v0.401 Architecture Desk (Principal Software Architect) ----
+  Future<Map<String, dynamic>> archProjects() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/arch/projects', timeout: const Duration(seconds: 30)) as Map);
+  Future<Map<String, dynamic>> archStart(String brief, {String repo = '', int? dau}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/arch/projects',
+          body: {'brief': brief, 'repo': repo, 'scale': {if (dau != null) 'dau': dau}}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> archGet(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/arch/projects/$id', timeout: const Duration(seconds: 30)) as Map);
+  Future<void> archApprove(String id) async => _send('POST', '/api/arch/projects/$id/approve', body: const {});
+  Future<void> archChange(String id, String words) async => _send('POST', '/api/arch/projects/$id/change', body: {'words': words});
+  Future<void> archWatch(String id, bool on) async => _send('PUT', '/api/arch/projects/$id/watch', body: {'watch_prs': on});
+  Future<void> archReview(String id, int pr) async =>
+      _send('POST', '/api/arch/projects/$id/review', body: {'pr': pr}, timeout: const Duration(seconds: 120));
+  Future<void> archPostReview(String rid) async => _send('POST', '/api/arch/reviews/$rid/post');
+  Future<void> archDiscardReview(String rid) async => _send('POST', '/api/arch/reviews/$rid/discard');
   // v0.317 HIRE AN EMPLOYEE + the SEO Desk
   // ---- v0.396 CONNECT: her own enterprise system (address + key). The key goes UP only; no route returns it ----
   Future<Map<String, dynamic>> entSystems(String role) async =>

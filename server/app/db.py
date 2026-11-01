@@ -904,6 +904,7 @@ def init_db(url: str | None = None):
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
+    from .archdesk import models as _archdesk  # noqa: F401  (v0.401 Architecture Desk: arch_projects, arch_reviews)
     from .gamedesk import service as _gamedesk  # noqa: F401  (v0.381 Game Desk)
     from .gamedesk import studio as _gamestudio  # noqa: F401  (v0.386 Studio Project)
     from .gamedesk import bible as _gamebible  # noqa: F401  (v0.395 Game Bible)
