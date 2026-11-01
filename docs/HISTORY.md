@@ -12984,3 +12984,21 @@ Discount codes for her shop app, with the server as the only judge of money.
   asks to apply again. `Db.submit` sends `coupon`.
 - Her side: GET / PUT /api/apps/<ref>/coupons, tool app_banao action=coupon, console Coupon codes box (add, list, delete).
 - Tests `tests/test_v0358_coupon.py`. Not done: per-product / per-category codes, auto offers without a code, referral codes.
+
+## v0.359.0 KHATA (App Sahayak Phase 23, owner: "START PHASE 23")
+The paper udhaar register, inside her app.
+- `appmaker/khata.py`: entries are append-only `SiteAppRow` rows (coll `_khata`, owner "") with `member`, `name`, `kind`
+  credit / payment, `amount`, `order`, `mode`, `note`, `by`. `credit(r, coll, row, staff)` = the order's server total, once
+  (`_khata` on the order), only for a signed-in customer's non-cancelled order with a total; `payment(r, member, amount, mode,
+  note, staff)` = 1 - 1 crore, modes cash / upi / card / bank / other, recorded only; `reverse_order` on Cancelled adds ONE
+  reversing entry (`_khata_back`), the original stays. `mine` (her own; `by` hidden), `dues` (staff / owner: biggest
+  balance first, total due), `summary(member)`. Owner "" means `delete_me` never erases the shop's ledger.
+- Routes: GET /api/app-api/<key>/khata (?all=1 staff), GET /khata/<member> (staff), POST /khata/<member>/pay (staff); the
+  outbox sends `{"_credit": true}` as an order update. Her side: GET /api/apps/<ref>/khata (?member=), POST
+  /api/apps/<ref>/khata/<member>/pay, tool app_banao action=khata (customer by name; payment only on her word).
+  Rows carry `on_credit`.
+- Kits: `KhataBlock()` on My account (customer: balance / advance / all clear + last 10 entries; staff: who owes + amount box +
+  Received), `CreditButton(coll, r)` on staff order cards ("On credit" / pill once credited). iPhone account items grouped
+  (a SwiftUI builder takes 10 views).
+- Tests `tests/test_v0359_khata.py`. Not done: reminders to customers (would need the official WhatsApp API card flow),
+  interest, khata for walk-in customers without an account.

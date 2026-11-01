@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.OutlinedTextField
@@ -467,4 +468,70 @@ fun CouponBox() {
         }
         if (msg.isNotEmpty()) Small(msg)
     }
+}
+
+
+// ---------------------------------------------------------------- v0.359 KHATA: the customer's udhaar ledger
+/** My account: a customer sees her own balance + entries; staff see who owes how much and record a payment (cash / UPI;
+ *  recorded only - the app never moves money). Shows nothing when there is no khata yet. */
+@Composable
+fun KhataBlock() {
+    if (!Auth.signedIn) return
+    val scope = rememberCoroutineScope()
+    var data by remember { mutableStateOf<JSONObject?>(null) }
+    var tick by remember { mutableStateOf(0) }
+    LaunchedEffect(Auth.me.value, tick) {
+        val r = Cloud.call("GET", if (Auth.isStaff) "/khata?all=1" else "/khata", null, Auth.token())
+        if (r.ok) data = r.body
+    }
+    val d = data ?: return
+    if (!Auth.isStaff) {
+        val es = d.optJSONArray("entries") ?: JSONArray()
+        if (es.length() == 0) return
+        HCard {
+            Title(Strings.myKhata)
+            val bal = d.optDouble("balance", 0.0)
+            Title(if (bal > 0) Strings.due + ": " + rupees(bal) else if (bal < 0) Strings.advance + ": " + rupees(-bal) else Strings.allClear)
+            for (i in 0 until minOf(es.length(), 10)) {
+                val e = es.optJSONObject(i) ?: continue
+                Small((if (e.optString("kind") == "credit") "+ " else "− ") + rupees(e.optDouble("amount")) + " · " + e.optString("note").ifEmpty { e.optString("mode") }
+                    + " · " + e.optString("at").take(10))
+            }
+        }
+        return
+    }
+    val people = d.optJSONArray("customers") ?: JSONArray()
+    if (people.length() == 0) return
+    HCard {
+        Title(Strings.khataDues + " · " + rupees(d.optDouble("total_due", 0.0)))
+        for (i in 0 until minOf(people.length(), 50)) {
+            val p = people.optJSONObject(i) ?: continue
+            var amt by remember(p.optString("member")) { mutableStateOf("") }
+            var busy by remember(p.optString("member")) { mutableStateOf(false) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Small(p.optString("name") + ": " + rupees(p.optDouble("balance")), modifier = Modifier.weight(1f))
+                if (p.optDouble("balance") > 0) {
+                    OutlinedTextField(value = amt, onValueChange = { amt = it.filter { ch -> ch.isDigit() || ch == '.' }.take(10) }, singleLine = true,
+                        modifier = Modifier.width(96.dp), placeholder = { Text("₹") })
+                    Btn(if (busy) Strings.loading else Strings.received, kind = BtnKind.Ghost, small = true) {
+                        if (busy || amt.isEmpty()) return@Btn
+                        busy = true
+                        scope.launch {
+                            val r = Cloud.call("POST", "/khata/${p.optString("member")}/pay", JSONObject().put("amount", amt).put("mode", "cash"), Auth.token())
+                            busy = false
+                            if (r.ok) { amt = ""; tick++ }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Staff on an order card: "On credit" writes the order's server total to the customer's khata (once; through the outbox). */
+@Composable
+fun CreditButton(coll: String, r: Item) {
+    if (!Auth.isStaff || r.b("pending") || coll != Db.orderList || r.n("total") <= 0 || r.s("status") == "Cancelled") return
+    if (r.b("on_credit")) { Pill(Strings.onCredit, "warn"); return }
+    Btn(Strings.giveCredit, kind = BtnKind.Ghost, small = true) { Db.update(coll, r.id, mapOf("_credit" to true)) }
 }

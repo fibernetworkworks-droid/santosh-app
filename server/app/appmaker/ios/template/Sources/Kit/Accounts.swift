@@ -53,8 +53,11 @@ struct AccountScreen: View {
                 MainButton(text: Words.signIn) { Router.shared.go("hoola_login") }
             }
             if auth.signedIn { InboxButton() }                       // v0.340 the updates inbox
-            if auth.isStaff { StatsBlock() }                         // v0.340 the staff dashboard
-            if auth.isStaff { StopsBlock() }                         // v0.350 open stops with a location, nearest first
+            Group {                                                  // (grouped: a SwiftUI builder takes 10 views)
+                KhataBlock()                                         // v0.359 udhaar: hers / who owes (staff)
+                if auth.isStaff { StatsBlock() }                     // v0.340 the staff dashboard
+                if auth.isStaff { StopsBlock() }                     // v0.350 open stops with a location, nearest first
+            }
             LanguagePicker()                                         // v0.347 the app's words in her language
             if db.pending > 0 { Muted("\(db.pending) · \(Words.sending)") }
             if !db.lastError.isEmpty { Text(db.lastError).foregroundStyle(.red).font(.subheadline) }
@@ -117,6 +120,7 @@ struct RowsSection: View {
                     if !auth.isStaff && !r.s("assigned_name").isEmpty { Muted(r.s("assigned_name") + " " + Words.onIt) }   // v0.352
                     RateBox(coll: coll, r: r)                    // v0.353 the customer rates her finished row once
                     ReceiptButton(coll: coll, r: r)              // v0.354 the receipt PDF of a finished row
+                    CreditButton(coll: coll, r: r)               // v0.359 staff: this order on credit (udhaar)
                     AssignBox(coll: coll, r: r)
                     if auth.isStaff && !r.b("pending") && team.mayWork(r), let st = fields.first(where: { $0.s("key") == "status" }) {
                         ScrollView(.horizontal, showsIndicators: false) {

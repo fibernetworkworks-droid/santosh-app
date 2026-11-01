@@ -115,6 +115,7 @@ fun AccountScreen() {
             val n = Inbox.unread.value
             Btn(Strings.inbox + if (n > 0) " ($n)" else "", kind = BtnKind.Tonal, icon = "bell", modifier = Modifier.fillMaxWidth()) { nav.go("hoola_inbox") }
         }
+        if (me != null) block { KhataBlock() }                     // v0.359 udhaar: hers / who owes (staff)
         if (me != null && Auth.isStaff) block { StatsBlock() }     // v0.340 the staff dashboard
         if (me != null && Auth.isStaff) block { StopsBlock() }     // v0.350 the open stops with a location, nearest first
         block { LanguagePicker() }                                 // v0.347 the app's words in her language
@@ -202,6 +203,7 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         if (!Auth.isStaff && r.s("assigned_name").isNotEmpty()) Small(r.s("assigned_name") + " " + Strings.onIt)
         RateBox(coll, r)                                          // v0.353 the customer rates her finished row once
         ReceiptButton(coll, r)                                    // v0.354 the receipt PDF of a finished row
+        CreditButton(coll, r)                                     // v0.359 staff: this order on credit (udhaar)
         AssignBox(coll, r)
         val stf = fields.firstOrNull { it.s("key") == "status" }
         if (Auth.isStaff && stf != null && !r.b("pending") && Team.mayWork(r)) {

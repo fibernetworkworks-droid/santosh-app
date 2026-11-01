@@ -95,6 +95,14 @@ object Strings {
     val openWork get() = t("open", "बाकी", "बाकी", "baaki")
     val receipt get() = t("Receipt", "रसीद", "पावती", "Raseed")       // v0.354 RASEED
     val invoice get() = t("Tax invoice", "टैक्स इनवॉइस", "कर बीजक", "Tax invoice")   // v0.355 GST BILL
+    val myKhata get() = t("My khata", "मेरा खाता", "माझे खाते", "Mera khata")     // v0.359 KHATA
+    val due get() = t("To pay", "बाकी", "बाकी", "Baaki")
+    val advance get() = t("Advance", "एडवांस", "आगाऊ", "Advance")
+    val allClear get() = t("All clear", "सब चुकता", "सगळे चुकते", "Sab chukta")
+    val khataDues get() = t("Udhaar", "उधार", "उधार", "Udhaar")
+    val received get() = t("Received", "मिला", "मिळाले", "Mila")
+    val onCredit get() = t("On credit", "उधार पर", "उधारीवर", "Udhaar par")
+    val giveCredit get() = t("On credit", "उधार दें", "उधार द्या", "Udhaar do")
     val couponCode get() = t("Coupon code", "कूपन कोड", "कूपन कोड", "Coupon code")    // v0.358 COUPON
     val apply get() = t("Apply", "लगाएँ", "लावा", "Lagayein")
     val couponSaved get() = t("You save", "आपकी बचत", "तुमची बचत", "Aapki bachat")

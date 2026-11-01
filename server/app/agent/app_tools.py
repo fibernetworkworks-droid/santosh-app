@@ -75,6 +75,8 @@ APP_TOOLS = [
         "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
         "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
         "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
+        "v0.359 action=khata (owner only): no member = who owes how much; member (id or name) = that customer's entries; with amount "
+        "(+ mode cash|upi|card|bank|other, note) = record a payment SHE says she received (never on a customer's word, money never moves). "
         "v0.358 action=coupon (owner only; coupon = {code, kind percent|flat, value, cap, min, until YYYY-MM-DD, uses, once, on} or {code, "
         "delete: true}; no coupon = list): her discount codes - the server applies them to orders from its own prices; a failing code never "
         "loses an order. "
@@ -88,7 +90,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -100,8 +102,11 @@ APP_TOOLS = [
          "gst": {"type": "object", "description": "action=gst: {gstin, legal_name, rate, hsn, items}"},
          "reason": {"type": "string", "description": "action=credit_note: why (return, wrong bill...)"},
          "items": {"type": "object", "description": "action=stock: {product id or name: {qty, low}}"},
+         "amount": {"type": "string", "description": "action=khata: payment received"},
+         "mode": {"type": "string", "description": "action=khata: cash|upi|card|bank|other"},
          "coupon": {"type": "object", "description": "action=coupon: {code, kind, value, cap, min, until, uses, once, on, delete}"},
-         "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members)"},
+         "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members); action=khata: customer id or name"},
+         "note": {"type": "string", "description": "action=khata: payment note"},
          "crash": {"type": "string", "description": "action=fix_crash: the crash id (app_dekho what=crashes); empty = the newest unfixed one"},
          "build": {"type": "integer", "description": "action=rollback: the build number to bring back (app_dekho what=android history); 0 = the one before"},
          "step": {"type": "string", "enum": ["setup", "listing", "bundle", "internal"], "description": "action=store: Play Store launch step (production = only her tap in the app)"},
@@ -279,6 +284,28 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action == "khata":                     # v0.359 KHATA: her customers' udhaar
+        if not _owner(ctx):
+            raise ToolError("Khata sirf maalkin dekh / likh sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import khata as KH
+        from ..site import webapp as W
+        r = BE.by_key_or_ref(t, ref)
+        mem = str(a.get("member") or "").strip()
+        if mem and not KH._who_name(r, mem):                 # her words name a person
+            hit = [m for m in BE.members(r) if mem.lower() in (str(m.get("name") or "").lower(), str(m.get("email") or "").lower())]
+            mem = hit[0]["id"] if len(hit) == 1 else mem
+        if mem and a.get("amount") not in (None, ""):
+            v = KH.payment(r, mem, a.get("amount"), str(a.get("mode") or "cash"), str(a.get("note") or ""), W.Who(owner=True))
+            v["say"] = f"{v['name']} ka payment likh liya. Ab baaki: Rs {v['balance']:g}."
+            return v
+        if mem:
+            v = KH.summary(r, mem)
+            v["say"] = f"{v['name']} par baaki: Rs {v['balance']:g}."
+            return v
+        v = KH.dues(r, W.Who(owner=True))
+        v["say"] = f"Kul udhaar baaki: Rs {v['total_due']:g} ({sum(1 for p in v['customers'] if p['balance'] > 0)} customers)."
+        return v
     if action == "coupon":                    # v0.358 COUPON: her discount codes
         if not _owner(ctx):
             raise ToolError("Coupon codes sirf maalkin bana sakti hain.")

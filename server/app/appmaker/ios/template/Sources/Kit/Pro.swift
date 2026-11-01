@@ -563,3 +563,78 @@ struct CouponBox: View {
         .onChange(of: state.cartTotal()) { _ in if state.couponOff > 0 { state.couponOff = 0; state.coupon = ""; msg = Words.couponAgain } }
     }
 }
+
+
+// ---------------------------------------------------------------- v0.359 KHATA: the customer's udhaar ledger
+/// My account: a customer sees her own balance + entries; staff see who owes how much and record a payment (cash; recorded
+/// only - the app never moves money). Shows nothing when there is no khata yet.
+struct KhataBlock: View {
+    @ObservedObject private var auth = Auth.shared
+    @State private var data: [String: Any]? = nil
+    @State private var amounts: [String: String] = [:]
+    @State private var tick = 0
+
+    var body: some View {
+        Group {
+            if let d = data {
+                if auth.isStaff {
+                    let people = items(d["customers"])
+                    if !people.isEmpty {
+                        Card {
+                            Text(Words.khataDues + " · " + rupees((d["total_due"] as? NSNumber)?.doubleValue ?? 0)).font(.headline)
+                            ForEach(people.prefix(50), id: \.id) { p in
+                                HStack {
+                                    Muted(p.s("name") + ": " + rupees(p.n("balance")))
+                                    Spacer()
+                                    if p.n("balance") > 0 {
+                                        TextField("₹", text: Binding(get: { amounts[p.s("member")] ?? "" }, set: { amounts[p.s("member")] = String($0.filter { $0.isNumber || $0 == "." }.prefix(10)) }))
+                                            .keyboardType(.decimalPad).textFieldStyle(.roundedBorder).frame(width: 90)
+                                        Button(Words.received) {
+                                            let m = p.s("member"), a = amounts[m] ?? ""
+                                            guard !a.isEmpty else { return }
+                                            Task {
+                                                let r = await Cloud.call("POST", "/khata/\(m)/pay", ["amount": a, "mode": "cash"], token: auth.token)
+                                                if r.ok { amounts[m] = ""; tick += 1 }
+                                            }
+                                        }.buttonStyle(.bordered)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    let es = items(d["entries"])
+                    if !es.isEmpty {
+                        let bal = (d["balance"] as? NSNumber)?.doubleValue ?? 0
+                        Card {
+                            Text(Words.myKhata).font(.headline)
+                            Text(bal > 0 ? Words.due + ": " + rupees(bal) : bal < 0 ? Words.advance + ": " + rupees(-bal) : Words.allClear).font(.title3.weight(.semibold))
+                            ForEach(es.prefix(10), id: \.id) { e in
+                                Muted((e.s("kind") == "credit" ? "+ " : "− ") + rupees(e.n("amount")) + " · " + (e.s("note").isEmpty ? e.s("mode") : e.s("note")) + " · " + String(e.s("at").prefix(10)))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .task(id: "\(auth.me?.id ?? "")-\(tick)") {
+            guard auth.signedIn else { return }
+            let r = await Cloud.call("GET", auth.isStaff ? "/khata?all=1" : "/khata", nil, token: auth.token)
+            if r.ok { data = r.body }
+        }
+    }
+}
+
+/// Staff on an order card: "On credit" writes the order's server total to the customer's khata (once; through the outbox).
+struct CreditButton: View {
+    let coll: String
+    let r: Item
+    @ObservedObject private var auth = Auth.shared
+
+    var body: some View {
+        if auth.isStaff && !r.b("pending") && coll == Db.shared.orderList && r.n("total") > 0 && r.s("status") != "Cancelled" {
+            if r.b("on_credit") { StatusPill(text: Words.onCredit) }
+            else { Button(Words.giveCredit) { Db.shared.update(coll, r.id, ["_credit": true]) }.buttonStyle(.bordered) }
+        }
+    }
+}

@@ -422,6 +422,13 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
 
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
     body = {k: v for k, v in (body if isinstance(body, dict) else {}).items() if k not in ("cid", "cart")}
+    if body.get("_credit"):                  # v0.359 KHATA: staff's "on credit" through the outbox (works offline)
+        from . import khata as KH
+        KH.credit(r, coll, row_id, w)
+        body.pop("_credit", None)
+        if not body:
+            return with_assign(r, W.row_view(W.coll(schema(r), coll), _row(bid(r), row_id), w), w)
+    body.pop("_credit", None)
     if RATE_KEY in body:                     # v0.353 the app's outbox sends a rating as an update {"_rate": {stars, note}}
         v = body.pop(RATE_KEY)
         v = v if isinstance(v, dict) else {"stars": v}
@@ -440,6 +447,8 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
     if str(out.get("status") or "").strip().lower() == "cancelled" and "status" in body:
         _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
         _coupon_back(r, row_id)                         # v0.358 ... and its coupon use (once)
+        from . import khata as KH                       # v0.359 ... and a credited order's udhaar is reversed (once)
+        KH.reverse_order(r, row_id)
         from . import gst as G                          # v0.356 an invoiced row cancelled -> its credit note (given once)
         got = G.credit_for(r, row_id, "Order cancelled")
         if got:
@@ -1124,6 +1133,8 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
             x["assigned_to"], x["assigned_name"] = to, (str(d.get("_to_name") or "") if to else "")
         elif x.get("mine") and to:
             x["assigned_name"] = str(d.get("_to_name") or "")
+        if (w.staff or x.get("mine")) and d.get("_khata"):     # v0.359 KHATA: this order was given on credit
+            x["on_credit"] = not d.get("_khata_back")
         if w.staff or x.get("mine"):                  # v0.358 COUPON: what the server took off (or why a code did not apply)
             for k in ("subtotal", "discount", "coupon", "coupon_note"):
                 if d.get(k) not in (None, ""):
