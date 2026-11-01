@@ -1011,7 +1011,7 @@ def run_due(at: datetime | None = None, force: bool = False) -> list[tuple[str, 
             sids = [d.site_id for d in s.scalars(select(SeoDesk).where(SeoDesk.tenant_id == tenant)).all()]
         for sid in sids:
             for job in due_jobs(tenant, sid, at):
-                key = f"{tenant}:{sid}:{job}"
+                key = f"due:{tenant}:{sid}:{job}"    # v0.347 not first_run's own lock name (a retry found itself busy)
                 if not _claim(key):
                     continue
                 try:

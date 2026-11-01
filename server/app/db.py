@@ -801,6 +801,7 @@ def init_db(url: str | None = None):
     from .seo import service as _seo  # noqa: F401
     from .seo import desk as _seo_desk  # noqa: F401  (v0.317 SEO Employee desk)
     from .employee import hire as _hire  # noqa: F401  (v0.317 hired employees)
+    from .social import desk as _social_desk  # noqa: F401  (v0.347 Social Media Manager desk)
     from .thok import service as _thok  # noqa: F401
     from .niryat import service as _niryat  # noqa: F401
     from .franchise import service as _franchise  # noqa: F401

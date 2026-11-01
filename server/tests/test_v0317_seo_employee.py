@@ -94,10 +94,10 @@ def test_hire_pause_leave_and_desk_only_after_hiring(seo):
     from app.employee import hire
     from app.seo import desk
     cat = {c["key"]: c for c in hire.catalog(T)}
-    assert cat["seo"]["live"] and cat["seo"]["status"] == "none" and not cat["social"]["live"]
+    assert cat["seo"]["live"] and cat["seo"]["status"] == "none" and not cat["accounts"]["live"]   # v0.347 social went live
     assert desk.desk_view(T) == {"hired": False, "status": "none"}
     with pytest.raises(hire.HireError):
-        hire.hire(T, "social")                             # "coming" employees can't be hired yet
+        hire.hire(T, "accounts")                             # "coming" employees can't be hired yet
     with pytest.raises(seo.SeoError):
         desk.onboard(T, "shop.example", background=False)  # no desk work before hiring
     hire.hire(T, "seo")
@@ -281,7 +281,7 @@ def test_api_hire_onboard_desk(seo, monkeypatch):
         assert me["employees"] == {}
         cat = c.get("/api/employees").json()
         assert any(e["key"] == "seo" and e["live"] for e in cat["employees"])
-        assert c.post("/api/employees/social/hire").status_code == 400
+        assert c.post("/api/employees/accounts/hire").status_code == 400
         assert c.post("/api/seo/onboard", json={"url": "shop.example"}).status_code == 400    # not hired yet
         assert c.post("/api/employees/seo/hire", json={"trust": "seekh"}).json()["status"] == "hired"
         assert c.get("/api/console/me").json()["employees"] == {"seo": "hired"}
@@ -327,7 +327,7 @@ def test_console_and_phone_are_wired():
     con = root / "server/app/static/console"
     html, js, emp = (con / "v2.html").read_text(), (con / "v2.js").read_text(), (con / "employees.js").read_text()
     assert 'id="v-hire"' in html and 'id="v-seodesk"' in html and "/static/console/employees.js?v=" in html
-    assert "HoolaEmployees(" in js and "syncEmployees(ME.employees" in js and "['seodesk', 'SEO Desk']" in js
+    assert "HoolaEmployees(" in js and "syncEmployees(ME.employees" in js and "'seodesk', 'SEO Desk'" in js
     assert "esc(" in emp and "innerHTML = `" in emp and "/api/seo/desk" in emp
     dart = (root / "lib/ui/employees_screen.dart").read_text()
     assert "class EmployeesScreen" in dart and "class SeoDeskScreen" in dart and "withValues(" not in dart

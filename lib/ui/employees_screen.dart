@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
@@ -91,15 +92,15 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         });
       }
       await _load();
-      if (action == 'hire' && key == 'seo' && mounted) _openDesk();
+      if (action == 'hire' && (key == 'seo' || key == 'social') && mounted) _openDesk(key);
     } catch (e) {
       if (mounted) _snack(context, '$e');
     }
     if (mounted) setState(() => _busy = false);
   }
 
-  void _openDesk() => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => SeoDeskScreen(app: widget.app)))
+  void _openDesk(String key) => Navigator.of(context)
+      .push(MaterialPageRoute(builder: (_) => key == 'social' ? SocialDeskScreen(app: widget.app) : SeoDeskScreen(app: widget.app)))
       .then((_) => _load());
 
   Widget _card(Map<String, dynamic> e) {
@@ -144,7 +145,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
               onTap: _busy ? null : () => _act(_s(e['key']), 'hire')),
           if (hired)
             Wrap(spacing: 8, runSpacing: 8, children: [
-              FilledButton.icon(onPressed: _busy ? null : _openDesk, icon: const Icon(Icons.dashboard_rounded), label: const Text('Open desk')),
+              FilledButton.icon(onPressed: _busy ? null : () => _openDesk(_s(e['key'])), icon: const Icon(Icons.dashboard_rounded), label: const Text('Open desk')),
               OutlinedButton(onPressed: _busy ? null : () => _act(_s(e['key']), st == 'paused' ? 'resume' : 'pause'),
                   child: Text(st == 'paused' ? 'Resume' : 'Pause')),
               TextButton(onPressed: _busy ? null : () => _act(_s(e['key']), 'leave'),
@@ -677,6 +678,296 @@ class _SpeedCard extends StatelessWidget {
           ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(img, width: 84, fit: BoxFit.cover)),
         ],
       ]),
+    );
+  }
+}
+
+
+// ------------------------------------------------------------------ v0.347 the Social Desk (Social Media Manager, Phase 1)
+class SocialDeskScreen extends StatefulWidget {
+  const SocialDeskScreen({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<SocialDeskScreen> createState() => _SocialDeskScreenState();
+}
+
+class _SocialDeskScreenState extends State<SocialDeskScreen> {
+  Map<String, dynamic>? _d;
+  bool _busy = false;
+  Timer? _poll;
+  static const _plat = {'instagram': 'Instagram', 'facebook': 'Facebook Page'};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    _poll?.cancel();
+    try {
+      final d = await widget.app.api!.socialDesk();
+      if (!mounted) return;
+      setState(() => _d = d);
+      if (_s(d['state']) == 'first_run') _poll = Timer(const Duration(seconds: 8), _load);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _call(Future<dynamic> Function() fn, String done) async {
+    setState(() => _busy = true);
+    try {
+      await fn();
+      if (mounted && done.isNotEmpty) _snack(context, done);
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _connect(String p) async {
+    try {
+      final url = await widget.app.api!.socialConnect(p);
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      if (mounted) _snack(context, 'Log in there, then come back and pull down to refresh.');
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _setup() async {
+    final p = Map<String, dynamic>.from((_d?['profile'] as Map?) ?? const {});
+    final f = {
+      'business': TextEditingController(text: _s(p['business'])),
+      'city': TextEditingController(text: _s(p['city'])),
+      'sells': TextEditingController(text: _s(p['sells'])),
+      'customers': TextEditingController(),
+      'goal': TextEditingController(),
+      'languages': TextEditingController(text: ((p['languages'] as List?) ?? ['Hinglish']).join(', ')),
+    };
+    const labels = {'business': 'Business name', 'city': 'City', 'sells': 'What you sell', 'customers': 'Who are your customers?',
+        'goal': 'What do you want from social media?', 'languages': 'Languages for posts (comma separated)'};
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: C.bgBottom,
+      builder: (c) => Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(c).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text('Set up your Social Desk', style: display(17)),
+            const SizedBox(height: 10),
+            for (final k in labels.keys)
+              Padding(padding: const EdgeInsets.only(bottom: 8), child: TextField(controller: f[k], decoration: InputDecoration(labelText: labels[k]))),
+            const Text('It reads and drafts only in this version. Posting on your OK comes next.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            const SizedBox(height: 12),
+            GradientButton(label: 'Save', icon: Icons.check_rounded, onTap: () => Navigator.pop(c, true)),
+          ]),
+        ),
+      ),
+    );
+    if (ok != true) return;
+    await _call(() => widget.app.api!.socialOnboard({for (final k in f.keys) k: f[k]!.text.trim(), 'trust': 'seekh'}),
+        'Saved. Now connect Instagram or your Facebook Page.');
+  }
+
+  Widget _post(Map<String, dynamic> p) {
+    final st = _s(p['status']);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Glass(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(_s(p['slot']).replaceFirst('T', '  '), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+            _Tag(_s(p['format']), C.violet),
+            const SizedBox(width: 6),
+            _Tag(st == 'approved' ? 'Approved' : st == 'skipped' ? 'Skipped' : 'Draft', st == 'approved' ? C.ok : (st == 'skipped' ? C.muted : C.warn)),
+          ]),
+          const SizedBox(height: 4),
+          Text('${((p['platforms'] as List?) ?? []).map((x) => _plat[x] ?? x).join(' + ')}${_s(p['pillar']).isEmpty ? '' : ' · ${_s(p['pillar'])}'}'
+              '${_s(p['occasion']).isEmpty ? '' : ' · ${_s(p['occasion'])}'}', style: const TextStyle(color: C.muted, fontSize: 12)),
+          const SizedBox(height: 6),
+          Text(_s(p['hook']), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: const Text('Caption, hashtags, picture brief', style: TextStyle(fontSize: 12.5, color: C.muted)),
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SelectableText(_s(p['caption']), style: const TextStyle(fontSize: 13.5, height: 1.4)),
+                const SizedBox(height: 6),
+                Text(((p['hashtags'] as List?) ?? []).join(' '), style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                if (_s(p['visual']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Picture / video: ${_s(p['visual'])}', style: const TextStyle(fontSize: 12.5))),
+              ],
+            ),
+          ),
+          Wrap(spacing: 8, children: [
+            DropdownButton<String>(
+              value: st.isEmpty ? 'draft' : st,
+              isDense: true,
+              underline: const SizedBox.shrink(),
+              items: const [
+                DropdownMenuItem(value: 'draft', child: Text('Draft', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: 'approved', child: Text('Approved', style: TextStyle(fontSize: 13))),
+                DropdownMenuItem(value: 'skipped', child: Text('Skipped', style: TextStyle(fontSize: 13))),
+              ],
+              onChanged: _busy ? null : (v) { if (v != null) _call(() => widget.app.api!.socialPost(_s(p['id']), {'status': v}), ''); },
+            ),
+            TextButton(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: '${_s(p['caption'])}\n\n${((p['hashtags'] as List?) ?? []).join(' ')}'));
+                if (mounted) _snack(context, 'Caption copied.');
+              },
+              child: const Text('Copy caption'),
+            ),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = _d;
+    final children = <Widget>[];
+    if (d == null) {
+      children.add(const Center(child: CircularProgressIndicator()));
+    } else if (d['hired'] != true) {
+      children.add(const Text('The Social Media Manager is not hired. Hire it in Employees first.', style: TextStyle(fontSize: 14)));
+    } else if (d['onboarded'] != true) {
+      children.addAll([
+        const Text('A few questions, then connect Instagram or your Facebook Page. It reads your posts, finds what works and plans the month.',
+            style: TextStyle(fontSize: 14, height: 1.35)),
+        const SizedBox(height: 14),
+        GradientButton(label: 'Set up', icon: Icons.rocket_launch_rounded, onTap: _busy ? null : _setup),
+      ]);
+    } else {
+      final prof = Map<String, dynamic>.from((d['profile'] as Map?) ?? const {});
+      final accs = _list(d['accounts']);
+      final conn = Map<String, dynamic>.from((d['connect'] as Map?) ?? const {});
+      final stg = Map<String, dynamic>.from((d['strategy'] as Map?) ?? const {});
+      final cal = _list(d['calendar']);
+      children.addAll([
+        Row(children: [
+          Expanded(child: Text(_s(prof['business']), style: display(17))),
+          _Tag(accs.isEmpty ? 'Connect an account' : switch (_s(d['state'])) { 'ready' => 'Working', 'first_run' => 'Reading your posts', 'error' => 'Stopped', _ => 'Starting' },
+              accs.isEmpty ? C.warn : (_s(d['state']) == 'ready' ? C.ok : C.warn)),
+        ]),
+        const SizedBox(height: 12),
+        Glass(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Accounts', style: display(14)),
+            const SizedBox(height: 6),
+            for (final a in accs)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.account_circle_rounded),
+                title: Text(_s(a['handle']).isEmpty ? _s(a['name']) : _s(a['handle'])),
+                subtitle: Text('${_plat[_s(a['platform'])] ?? _s(a['platform'])} · ${_num(a['followers'])} followers'
+                    '${_s(a['status']) == 'ok' ? '' : ' · connection ended, connect again'}'),
+                trailing: TextButton(
+                    onPressed: _busy ? null : () => _call(() => widget.app.api!.socialDisconnect(_s(a['id'])), 'Disconnected.'),
+                    child: const Text('Disconnect')),
+              ),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final p in ['instagram', 'facebook'])
+                OutlinedButton(
+                  onPressed: conn[p] == true && !_busy ? () => _connect(p) : null,
+                  child: Text(conn[p] == true ? 'Connect ${_plat[p]}' : '${_plat[p]}: not set up on the server yet'),
+                ),
+            ]),
+            const SizedBox(height: 6),
+            const Text('You log in on Instagram / Facebook\'s own page. Instagram must be a Business or Creator account.',
+                style: TextStyle(color: C.muted, fontSize: 12)),
+          ]),
+        ),
+        if (_s(d['calendar_status']) == 'draft' && cal.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Glass(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Your 30-day calendar is ready', style: display(14)),
+              const SizedBox(height: 4),
+              Text('${cal.length} posts planned from your real numbers. Read them below, then approve.',
+                  style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              const SizedBox(height: 8),
+              FilledButton(onPressed: _busy ? null : () => _call(widget.app.api!.socialApprove, 'Calendar approved.'), child: const Text('Approve calendar')),
+            ]),
+          ),
+        ],
+        if (accs.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Wrap(spacing: 10, runSpacing: 10, children: [
+            for (final k in _list(d['kpis']))
+              SizedBox(
+                width: 150,
+                child: Glass(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(_num(k['now']), style: display(20)),
+                    Text(_s(k['name']), style: const TextStyle(color: C.muted, fontSize: 12)),
+                  ]),
+                ),
+              ),
+          ]),
+        ],
+        if (stg['pillars'] != null) ...[
+          const SizedBox(height: 14),
+          Glass(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Strategy', style: display(14)),
+              if (_s(stg['goal_metric']).isNotEmpty)
+                Padding(padding: const EdgeInsets.only(top: 4), child: Text('Judged on: ${_s(stg['goal_metric'])}', style: const TextStyle(fontSize: 12.5))),
+              const SizedBox(height: 6),
+              Wrap(spacing: 6, runSpacing: 6, children: [for (final p in _list(stg['pillars'])) _Tag(_s(p['name']), C.violet)]),
+              const SizedBox(height: 6),
+              Text(((stg['hashtags'] as List?) ?? []).join(' '), style: const TextStyle(color: C.muted, fontSize: 12)),
+            ]),
+          ),
+        ],
+        if (cal.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('Calendar', style: display(15)),
+          const SizedBox(height: 6),
+          for (final p in cal) _post(p),
+        ],
+        const SizedBox(height: 16),
+        Text('Activity', style: display(15)),
+        for (final e in _list(d['events']).take(10))
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(switch (_s(e['level'])) { 'bad' => Icons.error_rounded, 'warn' => Icons.warning_rounded, 'ok' => Icons.check_circle_rounded, _ => Icons.info_rounded },
+                color: switch (_s(e['level'])) { 'bad' => C.bad, 'warn' => C.warn, 'ok' => C.ok, _ => C.muted }),
+            title: Text(_s(e['text']), style: const TextStyle(fontSize: 13.5)),
+          ),
+        if (accs.isNotEmpty)
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialRun('daily'), 'Reading your latest numbers.'),
+                child: const Text('Refresh numbers')),
+            OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialRun('plan'), 'Rewriting the draft. Approved posts stay.'),
+                child: const Text('Rewrite calendar draft')),
+          ]),
+      ]);
+    }
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Social Desk')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: children),
+        ),
+      ),
     );
   }
 }

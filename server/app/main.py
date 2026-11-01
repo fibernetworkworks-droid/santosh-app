@@ -6764,6 +6764,130 @@ def seo_run(job: str, body: dict | None = None, tenant: str = Depends(current_te
     return {"started": job, "site": sid}
 
 
+# ---------------------------------------------------------------- v0.347 SOCIAL MEDIA MANAGER (employee 2)
+def _social_call(fn, *a, **k):
+    from .employee import hire
+    from .social import desk as social
+    try:
+        return fn(*a, **k)
+    except (hire.HireError, social.SocialError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/social/desk", dependencies=[Depends(require_key)])
+def social_desk_view(tenant: str = Depends(current_tenant)):
+    from .social import desk as social
+    return social.desk_view(tenant)
+
+
+@app.post("/api/social/onboard", dependencies=[Depends(require_key)])
+def social_onboard(body: dict, tenant: str = Depends(current_tenant)):
+    from .social import desk as social
+    b = body or {}
+    langs = b.get("languages")
+    if isinstance(langs, str):
+        langs = [x.strip() for x in langs.split(",") if x.strip()]
+    return _social_call(social.onboard, tenant, business=str(b.get("business") or ""), city=str(b.get("city") or ""),
+                        sells=str(b.get("sells") or ""), customers=str(b.get("customers") or ""), goal=str(b.get("goal") or ""),
+                        languages=langs, trust=str(b.get("trust") or ""), website=str(b.get("website") or ""))
+
+
+@app.get("/api/social/connect/{platform}", dependencies=[Depends(require_key)])
+def social_connect(platform: str, tenant: str = Depends(current_tenant)):
+    from .social import desk as social
+    return {"url": _social_call(social.connect_url, tenant, platform)}
+
+
+async def _social_callback(request: Request, platform: str) -> HTMLResponse:
+    from .social import desk as social
+    what = "Instagram" if platform == "instagram" else "Facebook Page"
+    q = request.query_params
+    if q.get("error") or q.get("error_reason"):
+        return _linked_page(what, "social", None, q.get("error_description") or q.get("error_reason") or q.get("error") or "")
+    try:
+        v = await asyncio.to_thread(social.finish_link, platform, q.get("code", ""), q.get("state", ""))
+    except social.SocialError as e:
+        return _linked_page(what, "social", None, str(e))
+    return _linked_page(what, "social", ", ".join(v["accounts"]))
+
+
+@app.get("/api/social/instagram/callback")
+async def social_instagram_callback(request: Request):
+    """Instagram Login sends her back here (this exact URL is saved in Hoola's Meta app)."""
+    return await _social_callback(request, "instagram")
+
+
+@app.get("/api/social/facebook/callback")
+async def social_facebook_callback(request: Request):
+    """Facebook Login for Business sends her back here (saved in Hoola's Meta app)."""
+    return await _social_callback(request, "facebook")
+
+
+@app.post("/api/social/meta/deletion")
+async def social_meta_deletion(request: Request):
+    """Meta's data-deletion callback (and deauthorize): a person removed Hoola in their Facebook / Instagram settings -
+    every account of theirs and the posts Hoola read are deleted. Meta signs the request with the app secret."""
+    from .social import desk as social
+    from .social import meta as M
+    form = await request.form()
+    try:
+        r = await asyncio.to_thread(social.meta_deletion, str(form.get("signed_request") or ""))
+    except M.MetaError as e:
+        raise HTTPException(400, str(e))
+    base = get_settings().public_base_url.rstrip("/")
+    return {"url": f"{base}/api/social/meta/deletion/{r['confirmation_code']}", "confirmation_code": r["confirmation_code"]}
+
+
+@app.post("/api/social/meta/deauthorize")
+async def social_meta_deauthorize(request: Request):
+    return await social_meta_deletion(request)
+
+
+@app.get("/api/social/meta/deletion/{code}", response_class=HTMLResponse)
+def social_meta_deletion_status(code: str):
+    import html as _h
+    return HTMLResponse(f"<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'><body style='font-family:"
+                        f"system-ui;padding:32px;max-width:640px;margin:auto'><h2>Hoola: data deletion</h2><p>Request "
+                        f"<b>{_h.escape(code[:40])}</b>: the connected Instagram / Facebook accounts and the posts Hoola read "
+                        f"from them have been deleted.</p><p>Questions: build@ainewtika.com</p></body>")
+
+
+@app.post("/api/social/accounts/{aid}/disconnect", dependencies=[Depends(require_key)])
+def social_disconnect(aid: str, tenant: str = Depends(current_tenant)):
+    from .social import desk as social
+    return _social_call(social.disconnect, tenant, aid)
+
+
+@app.post("/api/social/calendar/approve", dependencies=[Depends(require_key)])
+def social_calendar_approve(tenant: str = Depends(current_tenant)):
+    from .social import desk as social
+    return _social_call(social.approve_calendar, tenant)
+
+
+@app.post("/api/social/posts/{pid}", dependencies=[Depends(require_key)])
+def social_post_edit(pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .social import desk as social
+    b = body or {}
+    return _social_call(social.set_post, tenant, pid, status=str(b.get("status") or ""), caption=b.get("caption"),
+                        hook=b.get("hook"), slot=b.get("slot"), hashtags=b.get("hashtags"))
+
+
+@app.post("/api/social/run/{job}", dependencies=[Depends(require_key)])
+def social_run(job: str, tenant: str = Depends(current_tenant)):
+    """'Run now' on the desk: first check / refresh numbers / weekly note / rewrite the calendar draft (background)."""
+    import threading
+    from .employee import hire
+    from .social import desk as social
+    if job not in ("first", "hourly", "daily", "weekly", "plan"):
+        raise HTTPException(404, "job: first | hourly | daily | weekly | plan")
+    if not hire.is_hired(tenant, social.KEY):
+        raise HTTPException(400, "Social Media Manager abhi hired nahi hai.")
+    if not social.accounts(tenant):
+        raise HTTPException(400, "Pehle Instagram ya Facebook Page connect kijiye.")
+    threading.Thread(target=lambda: social.run_now(tenant, job), daemon=True).start()
+    return {"started": job}
+
+
 async def _finish_seo_link(request: Request) -> HTMLResponse:
     from .seo import service as seo
     if request.query_params.get("error"):
