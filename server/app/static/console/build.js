@@ -753,7 +753,7 @@ window.HoolaBuild = function (C) {
 
   /* v0.351 DUKAAN: her shop - settings, products, orders (no AI; prices only hers; money confirmed only by her) */
   const OSTEP = {confirmed: 'Confirm (money received)', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancel'};
-  // ---------------------------------------------------------------- v0.367 CODE MODE: the site's real code, by hand or by asking
+  // ---------------------------------------------------------------- v0.372 CODE MODE: the site's real code, by hand or by asking
   const CODE_OPEN = {};
   function diffHtml(d) {
     return S(d).split('\n').map(l => {

@@ -1,4 +1,4 @@
-"""v0.367 CODE MODE (web design Phase 8, owner: "START PHASE 4"): her website's real code, open, editable by hand or
+"""v0.372 CODE MODE (web design Phase 8, owner: "START PHASE 4"): her website's real code, open, editable by hand or
 by asking, and exportable - like Lovable / Bolt.
 
 The site's code IS its sections (each a <section> of HTML + its scoped CSS + an optional small script) and the site's

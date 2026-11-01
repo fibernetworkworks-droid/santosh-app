@@ -100,6 +100,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                 "delhivery"),
     "india": ("holiday", "chhutti", "ifsc", "pincode", "bank holiday", "panchang", "tithi", "muhurat", "ekadashi"),
     # v0.277 IndiaMART: B2B buying / sourcing words (the SOURCING intent below carries the sentence shapes)
+    # v0.370 Game Desk: a game to make (the GAME intent below carries the sentence shapes)
+    "gamedesk": ("godot", "game banao", "game bana", "game develop", "game design", "video game", "mobile game", "web game",
+                 "browser game", "khel banao", "गेम बनाओ", "गेम"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",
@@ -380,6 +383,10 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     # REVERSE-ENGINEER ANYTHING (v0.257, owner): a program / app / package / model / firmware file to read -> REA,
     # statically, on the server; the data desk rides along for the endpoint list. Never the cloud PC.
     (APPFILE, ("rea", "data"), "reverse engineer"),
+    # v0.370 a game to make / change -> the Game Developer (Game Desk)
+    (re.compile(r"\b(?:game|games|gaming|khel)\b.{0,40}\b(?:bana\w*|build|make|create|develop|design|chahiye)\b|"
+                r"\b(?:bana\w*|build|make|create|develop)\b.{0,30}\b(?:game|khel)\b|\bgodot\b|गेम", re.I),
+     ("gamedesk",), "game"),
     # v0.348 an official Indian number (inflation, GDP, jobs, industry, surveys) -> MoSPI first, never a search summary
     (re.compile(r"\b(?:cpi|wpi|iip|gdp|gva|plfs|nfhs|nss|mospi)\b|inflation|mehngai|mahangai|unemployment|berozgari|"
                 r"growth rate|per capita|industrial (?:output|production)|labour force|sarkari aank|महंगाई|बेरोजगारी", re.I),

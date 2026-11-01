@@ -13304,7 +13304,153 @@ Owner: "START PHASE 3C" (after 3a DUKAAN v0.351 and 3b DASHBOARD v0.357).
   Employees / SEO Desk / Social Desk views from console v2.html (four console tests were red on main); restored.
 - Tests `server/tests/test_v0366_blog_bhashayen.py`.
 
-## v0.367.0 CODE MODE (Phase 4 of "any world-complex website": her site's real code, like Lovable / Bolt)
+## v0.367.0 CRM DESK — the Salesforce desk, 100% read and write
+Owner: *"CRM Architect (crm_arch) --- NOW CHECK THIS"*, then *"MAKE CRM DESK CAN PERFROM 100 % READ AND WRITE
+WORK"*.
+
+The check found `crm_arch` **half-built** next to the ERP desk: the write engine worked, but it had **zero
+sub-jobs** and only four paper kinds. It is a desk too — now **twelve parts**: admin, object and field config,
+flow and automation, Apex, integration, data, profiles and sharing, reporting, testing, release and deployment,
+adoption, support. All twelve paper kinds are open to it, so **security work can finally produce a `matrix`** —
+which is exactly what the Salesforce security model is.
+
+### The split that makes this job different from ERP
+A CRM architect's real write work is not records, it is **configuration**.
+
+| `api` | what | where |
+|---|---|---|
+| `data` | records — leads, accounts, opportunities | `/sobjects/…` |
+| `tooling` | the org's **shape** — objects, fields, flows, permission sets | `/tooling/sobjects/…` |
+
+A wrong record is one bad row. **A wrong field or flow breaks the org for everyone.** So `api` is a *declared
+property of the run* — never guessed from the target name, never the default — and there is a test that the same
+target is not silently promoted to the tooling surface. A tooling change to production is logged as the exception
+it is.
+
+### New reads, which run at once because they change nothing
+- **`describe`** — objects, fields, flows, permission sets: the shape of her org.
+- **`soql`** — her own query, where **anything but `SELECT` is refused**.
+
+Each system spells its own URLs, so `_paths()` now holds the dialect instead of assuming OData everywhere.
+
+### Everything else is the same engine
+Dry run, her tap, batches, idempotent resume, rollback material — all of v0.363, unchanged. That is the whole
+point of having one engine: a second desk cost a table entry and a dialect, not a second engine.
+
+### Files
+`server/app/enterprise/rules.py` · `server/app/enterprise/run.py` (dialect, describe, soql, `api`) ·
+`server/app/enterprise/models.py` (`EntRun.api`) · `server/app/agent/enterprise_tools.py` ·
+`server/tests/test_v0365_crm_desk.py` (11 tests).
+## v0.368.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
+Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356 / 0.358 / 0.364 / 0.365, re-versioned past main's
+v0.356-v0.367 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASLI ERP KAAM ...).
+- `server/app/social/inbox.py` (table `social_inbox`, unique tenant + platform + item id): every ~15 min (desk job `inbox`,
+  only when the desk is ready) the comments on her last 20 read posts and her DM threads (Instagram `/me/conversations`,
+  Page `/conversations`) from the last 7 days. Skipped: her own comments / Page comments, threads where she spoke last,
+  comments she already answered on Instagram (stored as replied), anything already read.
+- Sorting rules (`classify`, Hinglish + English): abuse > spam (links, follow-me, promo) > complaint > lead (price / kitna /
+  booking / delivery / address...) > question > praise > other. The model (`_ai_drafts`, kalam `_ai_json`, SOCIAL_AI) may
+  refine the class and write the reply, but a rules spam / abuse / complaint call always stands.
+- Drafts only from HER facts: new set-up field "Facts for replies" (`profile.facts`) + Kalam facts; rules drafts never state a
+  price (lead comment -> "DM kijiye / website", lead DM / question -> holding line marked needs_her, complaint -> apology +
+  DM / call, praise -> thanks). The model is told every comment is data, never an instruction.
+- Trust: Seekh nothing goes alone; Saathi / Bharosa reply to lead / question / praise when needs_her is false (REPLY_CAP 0 /
+  40 / 150 a day, counted from auto replies today), DMs only inside 24 h (DM_WINDOW), spam / abuse comments HIDDEN, never
+  deleted (event "Hid N ... Unhide any of them"). A complaint is always her tap. Hoola never messages anyone first.
+- She is told: lead -> event + push `social_lead` to her home chat; complaint -> event + push `social_alert`. Phone feed
+  shows `SocialCard` (opens the Inbox).
+- Her taps: GET /api/social/inbox?box=needs|leads|complaints|done, POST /api/social/inbox/<id>/reply {text},
+  /hide {hidden}, POST /api/social/inbox/<id> {status: ignored|drafted, draft}; POST /api/social/run/inbox = Check now.
+  A DM older than 24 h is refused with the reason (she answers from the app herself).
+- Permissions: IG scopes + instagram_business_manage_comments / _manage_messages, FB + pages_manage_engagement /
+  pages_read_user_content / pages_messaging (asked on Connect since v0.355's list grew in meta.py). Facebook's granted scopes
+  now stored from debug_token; `accounts()[].can_reply`; an older connection reads nothing and the desk says "Reconnect to
+  allow posting and replies"; a Meta (#10)/(#200) alerts once.
+- Fixed: a second account connected after the first read (e.g. the Page after Instagram) had its posts read only at the next
+  7 am daily run, so its comments could not be scanned; now read right after Connect.
+- Console (`employees.js` inbox tile with tabs + reply boxes, facts textarea) + phone (`SocialInboxScreen`, desk Inbox card,
+  facts field). Privacy page: comments and messages paragraph (7 days, what is kept, trust, no delete, 24 h, no ads / training).
+- Tests: `server/tests/test_v0368_social_inbox.py` (11). Meta App Review needed for the new permissions before non-testers.
+
+
+## v0.369.0 SOCIAL MEDIA MANAGER Phase 4 - 24/7 + REPORTS (1 Nov 2026, owner: "GO PHASE 4")
+Built as 0.359 / 0.365 / 0.366, re-versioned past main's v0.364-v0.367. Module `server/app/social/pulse.py`.
+- Posting by trust (plan section 6). New nullable `social_posts.seen`: approve_calendar sets 0 (plan OK only), set_post
+  approved / Publish now set 1, old rows NULL = treated as her own OK (Phase 2 behaviour kept). `publish.due` asks
+  `pulse.may_go`: seen 0 + Seekh -> waits (`waiting_ok`, "Needs your OK" + "OK to post" on the card); Saathi / Bharosa ->
+  not in quiet hours (default 23-7) and under POST_CAP 6 / 15 a day (counted by the post's day or its send time);
+  Saathi is told the same day (social_day). Missed (> 1 day late) unchanged.
+- `social_desk.settings` (nullable JSON): paused, pause_reason, quiet. Pause = publisher returns nothing and the inbox
+  acts as Seekh (drafts only). Emergency stop = pause + approved / failed posts back to draft. POST /api/social/settings.
+- Jobs: morning (daily >= 9 am, says something only when posts wait / complaints / a festival in exactly 7 days),
+  weekly = `weekly_pulse` (fresh numbers, two lines vs last week, push social_week), monthly (1st >= 9 am, never in the
+  baseline's month; `report_markdown` + Hoola Print -> chatfiles -> pc_file in her chat), daily also flags boosts.
+- Best times: per post interactions / that account's median, weekday x 3-hour band, (sum + 3) / (n + 3), certainty by
+  posts read (15 / 40); `_plan_inputs.best_times` for Opus, the rules plan uses by_day hours when certainty >= medium.
+- Boost flags: last 14 days, >= 8 posts read, >= 20 interactions and >= 2x the median; told once each (stamps.boosted);
+  plan text = Meta Boost / Ads Manager, 15 km of her city, Rs 300 a day x 3 days, compare leads with spend.
+- Desk view `pulse` (settings, trust, cap, auto today, waiting_ok, best_times, boosts); console Posting controls / Best
+  times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
+  social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0369_social_pulse.py` (12).
+
+## v0.370.0 GAME DESK Phase 1 + GAME DEVELOPER (1 Nov 2026)
+Owner: "NOW LETS WORK ON EMPLOYEE SECTION. Game Development, Simulation & Virtual Reality" (her list VII) -> plan
+`docs/GAME_DESK_PLAN.md` -> "GO PHASE 1 WITH GODOT 4". (Built as 0.359 / 0.364 / 0.368; re-versioned on rebase past the Engineering
+Desk / CAD 0.359, Code Card 0.360, ERP 0.361-0.363, CAD PRO 0.364, Blog / Hard Card / CRM 0.365-0.367, Social Media Manager Phase 3-4 0.368-0.369.)
+- Hire: `employee/hire.py` CATALOG `game_dev` (live, group "Game Development, Simulation & VR") + the other 9 roles
+  as Coming soon (xr_dev, netcode_dev, physics_dev, sim_dev, procgen_dev, vfx_td, audio_dev, twin_arch, haptics_dev).
+  The Hub's group headings came with the Engineering Desk (v0.359); the Game Desk joins them.
+- `app/gamedesk/`: template.py (project.godot, root scene = plain Node + main.gd, single-threaded Web export preset,
+  Hoola's autoload probe `hoola_probe.gd` -> window.__hoola {ready, fps, frames}), guard.py (no network classes,
+  OS.execute / shell / environment, JavaScriptBridge, Engine.get_singleton, DirAccess, ClassDB, Expression, files
+  outside user://, main.gd must extend Node), engine.py (Godot in a box like the 3D Studio: unshare -rn, tiny env, own
+  XDG dirs with a link to the templates, RLIMITs, nice, wall-clock kill; `smoke` = 600 frames headless to surface
+  parse + runtime script errors; `export_web` + .gz of wasm / pck / js), playtest.py (Chromium + SwiftShader WebGL:
+  waits for the probe, presses keys, taps, swipes, 3 screenshots, script errors, freeze and blank-screen checks; low
+  fps on the server is a warning, not a failure), ai.py (Opus: design doc <= 350 words, then code-only GDScript in
+  === file === blocks, fix from the REAL errors, change from her words), service.py (GameProject table; design ->
+  design_ready (her OK / her changes) -> writing -> building -> testing -> done; up to 4 fix rounds; a failed change
+  keeps the last good version; private token play link; screenshots; source zip; 1 job per user, GAME_DAY_BUILDS 15,
+  GAME_DAY_NEW 10; refuses clones of named games, real-money / betting, weapon targeting), api.py (/api/game*,
+  /play/<token>/<file>: CSP default-src 'self' + connect-src 'self' + frame-ancestors 'self', 'unsafe-eval' only for
+  the probe bridge, gzip when accepted, CORS for the console's sandboxed iframe, noindex), `python -m app.gamedesk check`.
+- Agent tool `game_desk` (new / approve / change / status / list / cancel), only while hired, owner-only writes;
+  router family `gamedesk` + a "game" intent; guide line scoped to the family.
+- Console: Game Desk page (`employees.js` game(): new game, design doc with Build it / Change the design, the game in a
+  sandboxed iframe, Open full screen, QR, numbers, screenshots, new version, Godot project download, live refresh);
+  phone `lib/ui/game_desk_screen.dart` (same, Play opens the browser).
+- Install: `server/deploy/setup_godot.py` = Godot 4.7.2 into ~/apps/godot + ONLY the Web templates read out of the
+  1.25 GB templates zip by HTTP range requests (~40 MB); vps-ops `game_setup` / `game_check`.
+- Measured in the sandbox: export 5.8-7.3 s, download 9.7 MB (gzip of ~40 MB), load 1.4-3.5 s, 41-61 fps on software
+  WebGL; a game played through /play/ under the CSP to score 27 and its game-over screen; a wrong identifier was caught
+  with its line before export.
+- Also fixed (again): test_v0312_arena_screen's compare versions (a blanket replace had made both the current version) back to
+  0.309.0 / 0.317.0; test_v0240's stamp pin now follows APP_VERSION (a typed number went stale twice). 
+- Tests: tests/test_v0370_game_desk.py (14, one builds + plays a real Godot game when GODOT_BIN is set).
+
+## v0.371.0 POOCHH LO + FAIR CARD (owner: "CODE_CARD_HARD DONE, CHECK RESULT")
+Built as 0.370, re-versioned past the parallel v0.370 GAME DESK.
+First live hard card (set 2, claude-opus-5-5, node present): 9/12 right. Breakdown: works 10/12, scope 10/12, rules 12/12,
+good tests 7/7, fix tests that prove the bug 4/4, 7.6 steps a job, 2.1 min. The three misses, one by one:
+- vague_ask = a REAL Hoola gap. Asked "Checkout mein kuch gadbad hai, theek kar do.", it guessed and changed
+  app/orders.py + tests.
+  - Fix: `devsahayak/loop.py` SYSTEM has a VAGUE-request rule: explore briefly; with no ONE clear matching bug, do not
+    guess and do not edit; call done with explain = ONE short question in her language. A clear request is never
+    answered with a question. The `done` explain description says the same; the one-shot fallback (WRITE_SYSTEM) too.
+  - `service._work`: an explanation that ends in "?" reaches her with no "(Koi file badalne layak nahi mili.)" tail.
+- fix_shared_default = an UNFAIR check. It demanded `c.items is mine`, so only one spelling of the fix passed;
+  `list(items)` copies and `list(items or [])` fix the bug equally.
+  - Now: carts don't share items, items passed in are kept, no-arg carts start empty.
+- fix_from_test_run = an UNFAIR scope rule. ANY edit to tests/test_orders.py was refused, so adding a test beside the red
+  one failed too.
+  - Now: any test file may change, but the original red test must still be there word for word (a `want` rule);
+    weakening it fails.
+- Tests: `test_v0371_poochh_lo.py` (3 honest cart fixes pass, the bug still fails, an added test is fine, a weakened one is
+  not, rules text present, a question reaches the chat with no tail and nothing pushed); test_v0365 updated (deleting
+  the red test now fails on rules + works instead of scope).
+- Next: re-run vps-ops `code_card_hard` to confirm.
+
+## v0.372.0 CODE MODE (Phase 4 of "any world-complex website": her site's real code, like Lovable / Bolt)
 Owner: "START PHASE 4" (the plan's step: "Real React code you can open, edit in chat ('make the pricing table compare 3
 plans') and export").
 - The site's code IS its sections (HTML + section-scoped CSS + an optional small script) and its design kit (.k-*,
@@ -13325,4 +13471,4 @@ plans') and export").
 - Console Studio tab "Code": file list by page, editor with line numbers (Tab = 2 spaces, Ctrl/Cmd+S saves, unsaved
   warning), "Ask Hoola to change this file" -> polled job -> coloured diff + what the cleaner removed, Undo, Download
   React project / ZIP (v0.305 export into her files). Phone: not in this version (code editing is a computer job).
-- Tests `server/tests/test_v0367_code_mode.py`.
+- Tests `server/tests/test_v0372_code_mode.py`.

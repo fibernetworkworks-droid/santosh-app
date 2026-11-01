@@ -31,8 +31,11 @@ FB_GRAPH = "https://graph.facebook.com"
 # Phase 1 read; v0.355 Phase 2 adds publishing (comments / messages come in Phase 3; App Review per permission).
 IG_SCOPES_READ = ["instagram_business_basic", "instagram_business_manage_insights"]
 FB_SCOPES_READ = ["pages_show_list", "pages_read_engagement", "read_insights", "business_management"]
-IG_SCOPES = IG_SCOPES_READ + ["instagram_business_content_publish"]
-FB_SCOPES = FB_SCOPES_READ + ["pages_manage_posts", "publish_video"]
+IG_SCOPES = IG_SCOPES_READ + ["instagram_business_content_publish", "instagram_business_manage_comments",
+                               "instagram_business_manage_messages"]
+FB_SCOPES = FB_SCOPES_READ + ["pages_manage_posts", "publish_video", "pages_manage_engagement", "pages_read_user_content",
+                              "pages_messaging"]
+IG_INBOX_SCOPES = ("instagram_business_manage_comments", "instagram_business_manage_messages")   # v0.368 Phase 3
 IG_PUBLISH_SCOPE = "instagram_business_content_publish"
 _sleep = __import__("time").sleep               # tests swap this out (container polling)
 
@@ -330,3 +333,59 @@ def fb_permalink(post_id: str, token: str) -> str:
         return str(_req("GET", f"{FB_GRAPH}/{_v()}/{post_id}", params={"fields": "permalink_url", "access_token": token}).get("permalink_url") or "")
     except MetaError:
         return ""
+
+
+# ---------------------------------------------------------------- v0.368 inbox (Phase 3): comments + DMs on her own accounts
+def ig_comments(media_id: str, token: str) -> list[dict[str, Any]]:
+    js = _req("GET", f"{IG_GRAPH}/{_v()}/{media_id}/comments", params={
+        "fields": "id,text,username,from{id,username},timestamp,hidden,replies{id,text,username,timestamp}", "limit": 50,
+        "access_token": token})
+    return [c for c in js.get("data") or [] if isinstance(c, dict)]
+
+
+def ig_reply(comment_id: str, token: str, text: str) -> str:
+    return str(_req("POST", f"{IG_GRAPH}/{_v()}/{comment_id}/replies", data={"message": text, "access_token": token}).get("id") or "")
+
+
+def ig_hide(comment_id: str, token: str, hide: bool = True) -> None:
+    _req("POST", f"{IG_GRAPH}/{_v()}/{comment_id}", data={"hide": "true" if hide else "false", "access_token": token})
+
+
+def ig_conversations(token: str) -> list[dict[str, Any]]:
+    js = _req("GET", f"{IG_GRAPH}/{_v()}/me/conversations", params={
+        "platform": "instagram", "fields": "id,updated_time,participants,messages.limit(5){id,message,from,created_time}",
+        "limit": 25, "access_token": token})
+    return [c for c in js.get("data") or [] if isinstance(c, dict)]
+
+
+def ig_send(ig_user: str, token: str, to: str, text: str) -> str:
+    js = _req("POST", f"{IG_GRAPH}/{_v()}/{ig_user}/messages", json={"recipient": {"id": to}, "message": {"text": text}},
+              params={"access_token": token})
+    return str(js.get("message_id") or js.get("id") or "")
+
+
+def fb_comments(post_id: str, token: str) -> list[dict[str, Any]]:
+    js = _req("GET", f"{FB_GRAPH}/{_v()}/{post_id}/comments", params={
+        "fields": "id,message,from{id,name},created_time,is_hidden", "filter": "stream", "limit": 50, "access_token": token})
+    return [c for c in js.get("data") or [] if isinstance(c, dict)]
+
+
+def fb_reply(comment_id: str, token: str, text: str) -> str:
+    return str(_req("POST", f"{FB_GRAPH}/{_v()}/{comment_id}/comments", data={"message": text, "access_token": token}).get("id") or "")
+
+
+def fb_hide(comment_id: str, token: str, hide: bool = True) -> None:
+    _req("POST", f"{FB_GRAPH}/{_v()}/{comment_id}", data={"is_hidden": "true" if hide else "false", "access_token": token})
+
+
+def fb_conversations(page: str, token: str) -> list[dict[str, Any]]:
+    js = _req("GET", f"{FB_GRAPH}/{_v()}/{page}/conversations", params={
+        "fields": "id,updated_time,participants,messages.limit(5){id,message,from,created_time}", "limit": 25,
+        "access_token": token})
+    return [c for c in js.get("data") or [] if isinstance(c, dict)]
+
+
+def fb_send(page: str, token: str, to: str, text: str) -> str:
+    js = _req("POST", f"{FB_GRAPH}/{_v()}/{page}/messages", json={"recipient": {"id": to}, "messaging_type": "RESPONSE",
+                                                                 "message": {"text": text}}, params={"access_token": token})
+    return str(js.get("message_id") or "")

@@ -1,4 +1,4 @@
-"""v0.367 CODE MODE (web design Phase 8, owner: "START PHASE 4"): her website's real code - every section's HTML / CSS /
+"""v0.372 CODE MODE (web design Phase 8, owner: "START PHASE 4"): her website's real code - every section's HTML / CSS /
 script and the design kit - opened as files, edited by hand (cleaned like every build, one Undo, a checked version) or by
 asking Hoola (Opus changes the code as a site job, a diff she sees, one Undo for the whole change), and exported."""
 import re
@@ -157,5 +157,5 @@ def test_owner_only(site_env):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.367.0"
-    assert "0.367.0+407" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.372.0"
+    assert "0.372.0+412" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

@@ -86,6 +86,7 @@ import 'app_android.dart';
 import 'app_design_screen.dart';
 import 'kalam_screen.dart';
 import 'seo_screen.dart';
+import 'employees_screen.dart' show SocialCard;
 import 'thok_screen.dart';
 import 'niryat_screen.dart';
 import 'franchise_screen.dart';
@@ -1360,6 +1361,11 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
     case 'seo_alert':
     case 'seo_draft':
       return SeoCard(kind: it.kind, v: it.data, app: app);
+    case 'social_lead':
+    case 'social_alert':
+    case 'social_day':
+    case 'social_week':
+      return SocialCard(kind: it.kind, v: it.data, app: app);
     case 'ins_day':
     case 'ins_advice':
       return InsCard(key: ValueKey('ins${it.data['advice_id'] ?? it.data['text']}'), v: it.data, app: app);

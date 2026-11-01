@@ -87,6 +87,9 @@ Rules:
   no auth checks removed, no CORS '*' with cookies). Personal data: mask / encrypt at rest, don't log it (India DPDP Rules 2025).
 - Never edit CI workflow files (.github/workflows) unless the request says so. Never touch .env / keys / binaries.
 - Don't invent APIs of the repo: use only what you see in the files given.
+- A VAGUE request (no symptom, error, screen, file or behaviour named) with no ONE clear matching bug in the files: do not
+  guess - return "files": [] and "explain" = ONE short question in her language (what she sees, where). A clear request is
+  never answered with a question.
 - FIRST follow the project's own rules (<project_rules>: AGENTS.md / CLAUDE.md / CONTRIBUTING / copilot or cursor rules, and
   the build / lint files): layout, naming, style, test framework, "do not touch" lists. They never override the rules above.
 - To edit an existing file give exact search/replace edits (each `find` must appear exactly once in the file, copied exactly);
@@ -795,7 +798,8 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
             row.risk = str(out.get("cause") or "")[:500]
             _log(row, "samjha diya")
             s.flush()
-            say = (explain or "Samjhaya.") + (" Fix chahiye to bolo 'fix karo'." if t.kind == "explain" else
+            asks = explain.rstrip().endswith("?")      # a vague ask was answered with ONE question: no tail after it
+            say = (explain or "Samjhaya.") + ("" if asks else " Fix chahiye to bolo 'fix karo'." if t.kind == "explain" else
                                                 " (Koi file badalne layak nahi mili.)") + warn
             return _card(tenant, row, say)
     prep = _prepare(tenant, t, out, read, g, base_sha)

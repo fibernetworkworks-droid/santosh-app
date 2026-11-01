@@ -7,6 +7,8 @@ hole, a refactor that must not change behaviour, a setting hard-coded in three p
 jobs, and a vague ask that must be answered with ONE question instead of a guess. Same marking as set 1 (codecard.score)."""
 from __future__ import annotations
 
+import re
+
 from . import code_repos as R
 
 SET = 2
@@ -228,7 +230,9 @@ TASKS: list[dict] = [
      "allow": r"^(app/cart\.py|tests/.+\.py)$",
      "check": ("from app.cart import Cart\na = Cart('a')\na.add('TEA-250')\nb = Cart('b')\nassert b.items == [], b.items\n"
                "b.add('MUG')\nassert [i.sku for i in a.items] == ['TEA-250'] and [i.sku for i in b.items] == ['MUG']\n"
-               "mine = []\nc = Cart('c', mine)\nc.add('MUG')\nassert c.items is mine and len(mine) == 1\n"),
+               "from app.models import LineItem\nc = Cart('c', [LineItem('MUG', 1, 24900)])\nc.add('TEA-250')\n"
+               "assert [i.sku for i in c.items] == ['MUG', 'TEA-250'], 'items passed in must be kept'\n"
+               "assert Cart('d').items == [] and Cart('e', None).items == []\n"),
      "solution": {"app/cart.py": R.CART,
                   "tests/test_cart.py": R.TEST_CART + "\n\ndef test_carts_do_not_share_items():\n    Cart('a').add('TEA-250')\n"
                                                       "    assert Cart('b').items == []\n"}},
@@ -248,7 +252,9 @@ TASKS: list[dict] = [
     {"id": "fix_from_test_run", "kind": "fix", "repo": "dukaan",
      "request": "CI laal hai. Yeh run dekho aur asli wajah theek karo (test galat nahi hai):\n" + LEAK_RUN,
      "files": {"app/orders.py": ORDERS_LEAK, "tests/test_orders.py": TEST_ORDERS_LEAK},
-     "allow": r"^(app/(orders|inventory)\.py|tests/(?!test_orders\.py).+\.py)$",
+     "allow": r"^(app/(orders|inventory)\.py|tests/.+\.py)$",
+     # the red test must stay exactly as it is (adding tests next to it is fine)
+     "want": [[r"^tests/test_orders\.py$", re.escape(TEST_ORDERS_LEAK[TEST_ORDERS_LEAK.index("def test_failed_order_keeps_stock"):].rstrip())]],
      "check": ("from app import inventory, orders\nfrom app.cart import Cart\n"
                "c = Cart('c1')\nc.add('TEA-250', 2)\nc.add('MUG', 1)\nc.add('KETTLE', 9)\n"
                "try:\n    orders.place_order(c)\n    raise SystemExit('expected OutOfStock')\nexcept inventory.OutOfStock:\n    pass\n"
