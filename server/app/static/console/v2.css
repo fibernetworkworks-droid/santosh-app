@@ -2290,6 +2290,8 @@ body.albon{overflow:hidden}
 .sc-quiet{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;font-size:13px}
 .sc-quiet input{width:64px;margin-left:6px;padding:4px 8px;border:1px solid var(--hair);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}
 .sc-stop{color:var(--bad)}
+.sc-quiet select,.sc-quiet .sc-pl{margin-left:6px;padding:4px 8px;border:1px solid var(--hair);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}
+.sc-quiet .sc-pl{width:220px;max-width:100%}
 .sc-h{margin-top:14px}
 .sc-growth .grid2{margin-top:6px}
 .sc-watch{margin-top:10px}

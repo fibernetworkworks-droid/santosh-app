@@ -240,8 +240,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   // ------------------------------------------------------------ v0.353 the Social Desk (Social Media Manager, Phase 1)
-  let SOC = null, SOCTRUST = 'seekh', HAS_LI = false;
-  const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page', linkedin: 'LinkedIn', whatsapp: 'WhatsApp Business'};   // v0.384
+  let SOC = null, SOCTRUST = 'seekh', HAS_LI = false, HAS_YT = false;
+  const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page', linkedin: 'LinkedIn', whatsapp: 'WhatsApp Business', youtube: 'YouTube'};   // v0.384
   const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};
   const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
   async function social(el) {
@@ -257,18 +257,19 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const pl = d.pulse || {}, pst = pl.settings || {};
     SOCTRUST = d.trust || 'seekh';
     HAS_LI = (d.accounts || []).some(a => a.platform === 'linkedin' && a.status === 'ok');
+    HAS_YT = (d.accounts || []).some(a => a.platform === 'youtube' && a.status === 'ok');
     el.innerHTML = `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">${esc(d.profile.business || '')}${d.profile.city ? ' · ' + esc(d.profile.city) : ''}</span>
         ${accs.length ? tag(sc, sn) : tag('warn', 'Connect an account')} ${d.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[d.trust] || [d.trust])[0])}</span></div>
       <div class="tile gl"><div class="em-h"><h3>Accounts</h3><span class="muted em-small">You log in on Instagram / Facebook's own page. Hoola never sees your password.</span></div>
         <div class="sc-accs">${accs.map(a => `<div class="sc-acc">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : '<span class="sc-pic"></span>'}
-          <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)}${a.platform === 'whatsapp' ? ' · ' + esc(a.name || '') + ' · messages reach your Business inbox' : a.platform === 'linkedin' ? ' · your profile' : ' · ' + num(a.followers) + ' followers'}</span>
+          <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)}${a.platform === 'whatsapp' ? ' · ' + esc(a.name || '') + ' · messages reach your Business inbox' : a.platform === 'linkedin' ? ' · your profile' : a.platform === 'youtube' ? ' · ' + num(a.followers) + ' subscribers' : ' · ' + num(a.followers) + ' followers'}</span>
           ${a.platform === 'whatsapp' && a.error ? `<span class="warnc em-small">${esc(a.error)}</span>` : ''}
           ${a.status !== 'ok' ? `<span class="badc em-small">${esc(a.status === 'expired' ? 'Connection ended: connect again' : a.error || a.status)}</span>` : ''}
           ${a.status === 'ok' && (a.can_post === false || a.can_reply === false) ? '<span class="warnc em-small">Reconnect to allow posting and replies</span>' : ''}</div>
           <button class="btn soft" type="button" data-scoff="${esc(a.id)}">Disconnect</button></div>`).join('')}
-        <div class="sc-connect">${['instagram', 'facebook', 'linkedin', 'whatsapp'].map(p => d.connect[p]
+        <div class="sc-connect">${['instagram', 'facebook', 'linkedin', 'whatsapp', 'youtube'].map(p => d.connect[p]
           ? `<button class="btn ${accs.some(a => a.platform === p) ? 'soft' : 'go'}" type="button" data-scon="${p}">${accs.some(a => a.platform === p) ? 'Reconnect' : 'Connect'} ${PLAT[p]}</button>`
-          : `<button class="btn soft" type="button" disabled title="The server needs Hoola's ${p === 'linkedin' ? 'LinkedIn' : 'Meta'} app keys">${PLAT[p]}: not set up on the server yet</button>`).join('')}</div>
+          : `<button class="btn soft" type="button" disabled title="The server needs Hoola's ${p === 'linkedin' ? 'LinkedIn' : p === 'youtube' ? 'Google sign-in' : 'Meta'} app keys">${PLAT[p]}: not set up on the server yet</button>`).join('')}</div>
         <p class="muted em-small">WhatsApp Business: Meta's own window connects your number; customers' messages then reach your Business inbox. LinkedIn: posts go to your own profile (a Company Page needs LinkedIn's approval first).</p>
         <p class="muted em-small">Instagram must be a Business or Creator account (free switch in Instagram settings). A post goes out only when you approve it or tap Publish now: exactly what you approved, at its time.</p></div>
       ${d.calendar_status === 'draft' && cal.length ? `<div class="tile gl em-note"><b>Your 30-day calendar is ready</b><span>${cal.length} posts planned from your real numbers. Read them below, edit any, then approve.</span>
@@ -299,7 +300,13 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
             <button class="btn soft" type="button" id="scQSave">Save</button></div>
           <div class="acts em-run">${pst.paused ? '<button class="btn go" type="button" data-scpause="0">Resume posting</button>' : '<button class="btn soft" type="button" data-scpause="1">Pause all posting</button>'}
             <button class="btn soft sc-stop" type="button" id="scStop">Emergency stop</button></div>
-          <p class="muted em-small">Pause also stops automatic replies. Emergency stop sends every queued post back to draft.</p></div>
+          <p class="muted em-small">Pause also stops automatic replies. Emergency stop sends every queued post back to draft.</p>
+          ${HAS_YT ? `<div class="sc-quiet"><label>YouTube: are your videos made for kids? <select id="scKids" aria-label="Made for kids">
+              <option value="" ${pst.yt_kids == null ? 'selected' : ''} disabled>Choose (YouTube requires it)</option>
+              <option value="no" ${pst.yt_kids === false ? 'selected' : ''}>No</option><option value="yes" ${pst.yt_kids === true ? 'selected' : ''}>Yes</option></select></label></div>
+            <div class="sc-quiet"><label>YouTube playlist ID (optional) <input id="scPl" class="sc-pl" value="${esc(pst.yt_playlist || '')}" placeholder="PL..."></label>
+              <button class="btn soft" type="button" id="scPlSave">Save</button></div>
+            <p class="muted em-small">Until Google finishes Hoola's YouTube API audit, uploads may stay private - the post tells you, and you make it public in YouTube Studio.</p>` : ''}</div>
         <div class="tile gl"><h3>Best times for you</h3>${(pl.best_times || {}).slots && pl.best_times.slots.length
           ? `<table class="em-tbl"><tbody>${pl.best_times.slots.map(x => `<tr><td>${esc(x.day)} ${esc(x.band)}</td><td>${esc(String(x.lift))}x your normal</td><td class="muted">${num(x.posts)} posts</td></tr>`).join('')}</tbody></table>
             <p class="muted em-small">Certainty: ${esc(pl.best_times.sure)}. New calendars use these times.</p>`
@@ -337,13 +344,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <textarea class="sc-edit" rows="5" aria-label="Edit caption" hidden>${esc(p.caption)}</textarea></details>
       ${(p.media || []).length ? `<div class="sc-media">${p.media.map(m => m.kind === 'video'
           ? `<span class="sc-vid" title="Video">▶</span>` : `<img src="${esc(m.url)}" alt="Picture for this post" loading="lazy">`).join('')}</div>` : ''}
-      ${Object.entries(res).map(([pl, r]) => r.link ? `<p class="em-small okc">Posted on <a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(PLAT[pl] || pl)}</a></p>`
+      ${Object.entries(res).map(([pl, r]) => r.link ? `<p class="em-small okc">Posted on <a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(PLAT[pl] || pl)}</a></p>${r.note ? `<p class="em-small warnc">${esc(r.note)}</p>` : ''}`
           : r.error ? `<p class="em-small badc">${esc(PLAT[pl] || pl)}: ${esc(r.error)}</p>` : '').join('')}
       ${!done && (p.problems || []).length ? `<p class="em-small warnc">${(p.problems || []).map(esc).join(' ')}</p>` : ''}
       ${done ? '' : `<div class="acts"><select data-scst="${esc(p.id)}" aria-label="Status">${Object.entries(PST).map(([v, [, l]]) => `<option value="${v}"${v === p.status ? ' selected' : ''}>${l}</option>`).join('')}${DONE[p.status] ? `<option selected disabled>${esc(DONE[p.status][1])}</option>` : ''}</select>
         <button class="btn soft" type="button" data-sccopy="${esc(p.id)}">Copy caption</button><button class="btn soft" type="button" data-scedit="${esc(p.id)}">Edit</button>
         <label class="btn soft sc-up">Add photo / video<input type="file" accept="image/*,video/mp4,video/quicktime" data-scup="${esc(p.id)}" hidden></label>
         <button class="btn soft" type="button" data-scposter="${esc(p.id)}">Make poster</button>
+        ${HAS_YT && ['reel', 'video'].includes(p.format) ? `<button class="btn soft" type="button" data-scyt="${esc(p.id)}" aria-pressed="${(p.platforms || []).includes('youtube')}">${(p.platforms || []).includes('youtube') ? 'Remove YouTube' : (p.format === 'reel' ? 'Also as YouTube Short' : 'Also on YouTube')}</button>` : ''}
         ${HAS_LI ? `<button class="btn soft" type="button" data-scli="${esc(p.id)}" aria-pressed="${(p.platforms || []).includes('linkedin')}">${(p.platforms || []).includes('linkedin') ? 'Remove LinkedIn' : 'Also on LinkedIn'}</button>` : ''}
         ${needOk ? `<button class="btn go" type="button" data-scok="${esc(p.id)}">OK to post</button>` : ''}
         <button class="btn ${needOk ? 'soft' : 'go'}" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
@@ -561,6 +569,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}/publish`, {}); toast('Posting… the link appears here in a minute.'); setTimeout(() => social(el), 5000); }
       catch (e) { toast(e.message, true); b.disabled = false; }
     }));
+    el.querySelectorAll('[data-scyt]').forEach(b => b.addEventListener('click', async () => {
+      const p = (d.calendar || []).find(x => x.id === b.dataset.scyt);
+      const on = (p.platforms || []).includes('youtube');
+      const pl = on ? p.platforms.filter(x => x !== 'youtube') : [...(p.platforms || []), 'youtube'];
+      try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}`, {platforms: pl}); toast(on ? 'YouTube removed. Approve the post again.' : 'Added to YouTube. Approve the post again.'); social(el); }
+      catch (e) { toast(e.message, true); }
+    }));
+    el.querySelector('#scKids')?.addEventListener('change', async ev => {
+      try { await api('POST', '/api/social/settings', {yt_kids: ev.target.value === 'yes'}); toast('Saved for YouTube.'); }
+      catch (e) { toast(e.message, true); }
+    });
+    el.querySelector('#scPlSave')?.addEventListener('click', async () => {
+      try { await api('POST', '/api/social/settings', {yt_playlist: el.querySelector('#scPl').value.trim()}); toast('Playlist saved.'); }
+      catch (e) { toast(e.message, true); }
+    });
     el.querySelectorAll('[data-scli]').forEach(b => b.addEventListener('click', async () => {
       const p = (d.calendar || []).find(x => x.id === b.dataset.scli);
       const on = (p.platforms || []).includes('linkedin');

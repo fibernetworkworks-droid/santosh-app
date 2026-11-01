@@ -7032,7 +7032,9 @@ def social_settings(body: dict, tenant: str = Depends(current_tenant)):
     b = body or {}
     return _social_call(pulse.set_settings, tenant, paused=b.get("paused") if isinstance(b.get("paused"), bool) else None,
                         quiet=b.get("quiet") if isinstance(b.get("quiet"), list) else None, stop=b.get("stop") is True,
-                        reason=str(b.get("reason") or ""))
+                        reason=str(b.get("reason") or ""),
+                        yt_kids=b.get("yt_kids") if isinstance(b.get("yt_kids"), bool) else None,
+                        yt_playlist=b.get("yt_playlist") if isinstance(b.get("yt_playlist"), str) else None)
 
 
 @app.post("/api/social/growth/watch", dependencies=[Depends(require_key)])

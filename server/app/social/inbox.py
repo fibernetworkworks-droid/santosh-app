@@ -210,6 +210,8 @@ def _ts(v: Any) -> datetime | None:
 def can_read(a: SocialAccount) -> dict[str, bool]:
     """Which inbox parts this connection was granted (old Phase 1 / 2 connections need a Reconnect)."""
     sc = set((a.scopes or "").split(",")) if a.scopes else None
+    if a.platform == "youtube":                    # v0.391 comments only (YouTube has no DMs)
+        return {"comments": True, "dms": False}
     if a.platform == "instagram":
         ok_c = sc is None or "instagram_business_manage_comments" in sc
         ok_d = sc is None or "instagram_business_manage_messages" in sc
@@ -228,6 +230,24 @@ def _pull_account(tenant: str, aid: str) -> list[dict[str, Any]]:
             return []
         token, plat, uid, handle = acc.decrypt(a.token_enc) or "", a.platform, a.account_id, (a.handle or "").lstrip("@").lower()
         allowed = can_read(a)
+        titles = {m.media_id: (m.permalink, m.caption) for m in s.scalars(select(SocialMedia).where(SocialMedia.account == aid)).all()}
+    if plat == "youtube":                          # v0.391 her channel's comment threads, one call
+        from .ytpost import comments as yt_comments
+        rows_yt = []
+        for c in yt_comments(tenant, uid):
+            at = _ts(c.get("at"))
+            if c["mine"] or (at is not None and at < now() - MAX_AGE):
+                continue
+            link, cap = titles.get(c["video"], (f"https://www.youtube.com/watch?v={c['video']}", ""))
+            rows_yt.append({"platform": "youtube", "kind": "comment", "item_id": c["id"], "thread_id": c["video"],
+                            "permalink": f"https://www.youtube.com/watch?v={c['video']}&lc={c['id']}", "post": (cap or "")[:300],
+                            "author": c["author"][:200], "author_id": c["author_id"], "text": c["text"][:2000], "at": at,
+                            "hidden": False, "answered": False})
+        with session() as s:
+            seen = set(s.scalars(select(SocialInbox.item_id).where(SocialInbox.tenant_id == tenant, SocialInbox.platform == "youtube",
+                                                                   SocialInbox.item_id.in_([r["item_id"] for r in rows_yt] or [""]))).all())
+        return [dict(r, account=aid) for r in rows_yt if r["item_id"] not in seen]
+    with session() as s:
         posts = [(m.media_id, m.permalink, m.caption) for m in s.scalars(
             select(SocialMedia).where(SocialMedia.account == aid).order_by(SocialMedia.posted_at.desc())).all()[:POSTS_SCANNED]]
     cut = now() - MAX_AGE
@@ -307,6 +327,9 @@ def _send(row: SocialInbox, text: str) -> str:
         if a is None or a.status != "ok":
             raise SocialError("Yeh account ab jude nahi hai: Social Desk par dobara Connect kijiye.")
         token, uid, plat = acc.decrypt(a.token_enc) or "", a.account_id, a.platform
+    if plat == "youtube":                          # v0.391
+        from .ytpost import reply as yt_reply
+        return yt_reply(row.tenant_id, uid, row.item_id, text)
     if row.kind == "dm":
         if row.at is not None and now() - as_utc(row.at) > DM_WINDOW:
             raise SocialError("Meta 24 ghante baad DM ka jawab nahi bhejne deta. Unhe apne phone se khud likhiye.")
@@ -320,7 +343,10 @@ def _hide(row: SocialInbox, hide: bool = True) -> None:
         a = s.get(SocialAccount, row.account)
         if a is None:
             raise SocialError("Yeh account ab jude nahi hai.")
-        token, plat = acc.decrypt(a.token_enc) or "", a.platform
+        token, plat, uid = acc.decrypt(a.token_enc) or "", a.platform, a.account_id
+    if plat == "youtube":                          # v0.391 held for review, never deleted
+        from .ytpost import hide as yt_hide
+        return yt_hide(row.tenant_id, uid, row.item_id, hide)
     (M.ig_hide if plat == "instagram" else M.fb_hide)(row.item_id, token, hide)
 
 
@@ -345,11 +371,20 @@ def run_inbox(tenant: str, ask: Any = None) -> dict[str, Any]:
     with session() as s:
         aids = [a.id for a in s.scalars(select(SocialAccount).where(SocialAccount.tenant_id == tenant,
                                                                     SocialAccount.status == "ok",
-                                                                    SocialAccount.platform.in_(("instagram", "facebook")))).all()]
+                                                                    SocialAccount.platform.in_(("instagram", "facebook", "youtube")))).all()]
     fresh: list[dict[str, Any]] = []
     for aid in aids:
         try:
             fresh += _pull_account(tenant, aid)
+        except SocialError as e:                    # v0.391 YouTube read failed: told once, the other accounts still read
+            with session() as s:
+                d = _desk(s, tenant)
+                st = _j(d.stamps, {})
+                if st.get(f"inbox_err_{aid}") != "yt":
+                    st[f"inbox_err_{aid}"] = "yt"
+                    d.stamps = json.dumps(st)
+                    s.add(SocialEvent(tenant_id=tenant, kind="alert", level="warn", text=f"YouTube comments could not be read: {str(e)[:140]}"))
+            continue
         except M.MetaError as e:
             code = getattr(e, "code", None)
             with session() as s:

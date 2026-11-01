@@ -45,11 +45,13 @@ def settings(tenant: str) -> dict[str, Any]:
         st = _j(d.settings, {}) if d is not None and d.settings else {}
     q = st.get("quiet") if isinstance(st.get("quiet"), list) and len(st.get("quiet")) == 2 else QUIET_DEFAULT
     return {"paused": bool(st.get("paused")), "pause_reason": str(st.get("pause_reason") or ""), "paused_at": st.get("paused_at", ""),
-            "quiet": [int(q[0]) % 24, int(q[1]) % 24]}
+            "quiet": [int(q[0]) % 24, int(q[1]) % 24],
+            "yt_kids": st.get("yt_kids") if isinstance(st.get("yt_kids"), bool) else None,      # v0.391 YouTube's made-for-kids answer
+            "yt_playlist": str(st.get("yt_playlist") or "")}
 
 
 def set_settings(tenant: str, paused: bool | None = None, quiet: list[int] | None = None, stop: bool = False,
-                 reason: str = "") -> dict[str, Any]:
+                 reason: str = "", yt_kids: bool | None = None, yt_playlist: str | None = None) -> dict[str, Any]:
     """Pause / resume all posting (+ automatic replies); Stop = pause + every queued post back to draft."""
     _hired(tenant)
     cur = settings(tenant)
@@ -67,6 +69,13 @@ def set_settings(tenant: str, paused: bool | None = None, quiet: list[int] | Non
         if not (0 <= a <= 23 and 0 <= b <= 23):
             raise SocialError("Ghanta 0 se 23 ke beech.")
         cur["quiet"] = [a, b]
+    if yt_kids is not None:
+        cur["yt_kids"] = bool(yt_kids)
+    if yt_playlist is not None:
+        pl = str(yt_playlist).strip()
+        if pl and not (pl.startswith("PL") and 10 <= len(pl) <= 64 and pl.replace("-", "").replace("_", "").isalnum()):
+            raise SocialError("Playlist ka ID 'PL' se shuru hota hai (YouTube Studio > Playlist > link ke 'list=' ke baad).")
+        cur["yt_playlist"] = pl
     back = 0
     with session() as s:
         d = _desk(s, tenant)
