@@ -907,10 +907,18 @@ window.HoolaBuild = function (C) {
     const drawH = v => {
       hbox.innerHTML = `<h4>Accounts <span>${esc(S(v.month))}</span></h4><p class="stnote">${esc(S(v.say))}</p>
         <form class="stapp" autocomplete="off"><div class="row"><input name="month" type="month" value="${esc(S(v.month))}" aria-label="Month">
-        <button class="btn soft" type="submit">Show</button><button class="btn go" type="button" data-hdl>Download for CA (CSV)</button></div></form>
+        <button class="btn soft" type="submit">Show</button><button class="btn go" type="button" data-hdl>Download for CA (CSV)</button><button class="btn soft" type="button" data-gstr1>GSTR-1 file (JSON)</button></div></form>
         <p class="stnote">Sales register, invoice register, credit notes, HSN and rate-wise summary, udhaar. Nothing is filed - give the files to your CA.</p>`;
       const f = hbox.querySelector('form');
       f.addEventListener('submit', async e => { e.preventDefault(); try { drawH(await api('GET', base(o) + '/hisaab?month=' + encodeURIComponent(f.month.value))); } catch (er) { toast(er.message, true); } });
+      hbox.querySelector('[data-gstr1]').addEventListener('click', async e => {     // v0.373 for the GST offline tool
+        e.target.disabled = true;
+        try {
+          const res = await api('GET', base(o) + '/gstr1?month=' + encodeURIComponent(f.month.value), undefined, {raw: true});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = 'GSTR1-' + f.month.value + '.json'; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+        } catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
+      });
       hbox.querySelector('[data-hdl]').addEventListener('click', async e => {
         e.target.disabled = true;
         try {

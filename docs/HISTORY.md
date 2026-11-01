@@ -13181,3 +13181,14 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   promotional text, What's New after the first version, support / marketing URLs) and an app-info localization (name, subtitle,
   privacy URL) per locale.
 - Tests `tests/test_v0372_dukaan_bhasha.py`. Not done: per-language screenshots, App Store locales beyond Hindi.
+
+## v0.373.0 GSTR-1 FILE (App Sahayak Phase 37, owner: "START PHASE 37")
+- `appmaker/gstr1.py`: `build(r, month)` walks the invoices / credit notes dated in the month and uses `gst.compute` for
+  each (the PDF's own function): buyer GSTIN -> `b2b` [{ctin, inv: [{inum, idt, val, pos, rchrg N, inv_typ R, itms per rate}]}];
+  unregistered + inter-state + value > Rs 1,00,000 -> `b2cl`; everything else -> `b2cs` rows (sply_ty INTRA/INTER, pos, typ OE,
+  rt, txval, iamt, camt, samt) with consumer credit notes subtracted; credit notes on b2b invoices -> `cdnr`, on b2cl ->
+  `cdnur` (typ B2CL); `hsn.data` net by code + rate (uqc NOS); `doc_issue.doc_det` doc_num 1 (invoices) and 5 (credit notes)
+  with from / to / count. `file_bytes` -> GSTR1-<gstin>-<month>.json. Refuses without her GSTIN.
+- Route GET /api/apps/<ref>/gstr1?month=, console Accounts box "GSTR-1 file (JSON)", tool hisaab gives the path.
+- Tests `tests/test_v0373_gstr1.py`. Hoola never files: the offline tool / her CA validates and uploads. Not covered: exports,
+  nil-rated / exempt, advances, amendments, e-commerce operator tables, the 2025 HSN B2B / B2C split.
