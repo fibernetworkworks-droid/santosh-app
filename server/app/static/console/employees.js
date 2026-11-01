@@ -237,7 +237,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   // ------------------------------------------------------------ v0.353 the Social Desk (Social Media Manager, Phase 1)
-  let SOC = null;
+  let SOC = null, SOCTRUST = 'seekh';
   const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page'};
   const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};
   const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
@@ -251,6 +251,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if (!d.onboarded) { el.innerHTML = socialForm(d); wireSocialForm(el); return; }
     const [sc, sn] = STATE[d.state] || ['warn', d.state];
     const accs = d.accounts || [], b = d.baseline || {}, stg = d.strategy || {}, cal = d.calendar || [];
+    const pl = d.pulse || {}, pst = pl.settings || {};
+    SOCTRUST = d.trust || 'seekh';
     el.innerHTML = `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">${esc(d.profile.business || '')}${d.profile.city ? ' · ' + esc(d.profile.city) : ''}</span>
         ${accs.length ? tag(sc, sn) : tag('warn', 'Connect an account')} ${d.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[d.trust] || [d.trust])[0])}</span></div>
       <div class="tile gl"><div class="em-h"><h3>Accounts</h3><span class="muted em-small">You log in on Instagram / Facebook's own page. Hoola never sees your password.</span></div>
@@ -265,6 +267,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <p class="muted em-small">Instagram must be a Business or Creator account (free switch in Instagram settings). A post goes out only when you approve it or tap Publish now: exactly what you approved, at its time.</p></div>
       ${d.calendar_status === 'draft' && cal.length ? `<div class="tile gl em-note"><b>Your 30-day calendar is ready</b><span>${cal.length} posts planned from your real numbers. Read them below, edit any, then approve.</span>
         <button class="btn go" type="button" id="scApprove">Approve calendar</button></div>` : ''}
+      ${accs.length && pst.paused ? `<div class="tile gl em-note sc-paused"><b>Posting is paused</b><span>${esc(pst.pause_reason || 'Nothing goes out and no reply is sent on its own until you resume.')}</span>
+        <button class="btn go" type="button" data-scpause="0">Resume</button></div>` : ''}
+      ${accs.length && (pl.waiting_ok || []).length ? `<div class="tile gl em-note"><b>${pl.waiting_ok.length} planned post(s) wait for your OK today</b><span>Read each below and tap OK to post (Seekh). Saathi lets approved plan posts go on their own.</span></div>` : ''}
       ${accs.length ? `<div class="tile gl sc-inbox" id="scInbox"><div class="em-h"><h3>Inbox: comments + DMs</h3>
           <span class="muted em-small">Sorted for you; every reply is drafted from your facts. ${d.trust === 'seekh' ? 'Nothing goes without your tap.' : 'Simple replies go on their own (your trust setting); complaints always wait for you.'}</span></div>
         <div class="sc-tabs" role="tablist">${Object.entries(BOX).map(([k, l]) => `<button class="btn ${k === BOXNOW ? 'go' : 'soft'}" type="button" role="tab" aria-selected="${k === BOXNOW}" data-scbox="${k}">${l}${k === 'done' ? '' : ` <span class="sc-n">${num((d.inbox || {})[k] || 0)}</span>`}</button>`).join('')}
@@ -280,13 +285,29 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="tile gl"><h3>What works for you</h3>${(b.formats || []).length ? `<table class="em-tbl"><tbody>${b.formats.map(f => `<tr><td>${esc(f.fmt)}</td><td class="muted">${num(f.posts)} posts</td><td>${num(f.avg_eng)} interactions</td></tr>`).join('')}</tbody></table>` : '<div class="empty">After the first read.</div>'}
           ${(b.top_posts || []).slice(0, 3).map(t => `<p class="em-small"><a href="${esc(t.permalink)}" target="_blank" rel="noopener">${esc(t.fmt)} · ${num(t.eng)} interactions</a> <span class="muted">${esc((t.caption || '').slice(0, 80))}</span></p>`).join('')}</div>
       </div>` : ''}
+      ${accs.length ? `<div class="grid2">
+        <div class="tile gl"><h3>Posting controls</h3>
+          <p class="em-small">${pst.paused ? tag('warn', 'Paused') : tag('ok', 'Posting on')} ${SOCTRUST === 'seekh' ? 'Every plan post waits for your OK.' : `Plan posts go on their own: ${num(pl.auto_today || 0)} of ${num(pl.post_cap || 0)} today.`}</p>
+          <div class="sc-quiet"><label>No posts on their own from <input type="number" min="0" max="23" id="scQ0" value="${esc(String((pst.quiet || [23, 7])[0]))}"></label>
+            <label>to <input type="number" min="0" max="23" id="scQ1" value="${esc(String((pst.quiet || [23, 7])[1]))}"></label>
+            <button class="btn soft" type="button" id="scQSave">Save</button></div>
+          <div class="acts em-run">${pst.paused ? '<button class="btn go" type="button" data-scpause="0">Resume posting</button>' : '<button class="btn soft" type="button" data-scpause="1">Pause all posting</button>'}
+            <button class="btn soft sc-stop" type="button" id="scStop">Emergency stop</button></div>
+          <p class="muted em-small">Pause also stops automatic replies. Emergency stop sends every queued post back to draft.</p></div>
+        <div class="tile gl"><h3>Best times for you</h3>${(pl.best_times || {}).slots && pl.best_times.slots.length
+          ? `<table class="em-tbl"><tbody>${pl.best_times.slots.map(x => `<tr><td>${esc(x.day)} ${esc(x.band)}</td><td>${esc(String(x.lift))}x your normal</td><td class="muted">${num(x.posts)} posts</td></tr>`).join('')}</tbody></table>
+            <p class="muted em-small">Certainty: ${esc(pl.best_times.sure)}. New calendars use these times.</p>`
+          : `<div class="empty">${esc((pl.best_times || {}).note || 'After a few more posts.')}</div>`}
+          ${(pl.boosts || []).length ? `<h3 class="sc-h">Worth a boost</h3>${pl.boosts.map(x => `<p class="em-small"><a href="${esc(x.permalink)}" target="_blank" rel="noopener">${esc(x.fmt)} · ${esc(x.date)}</a> <b>${esc(String(x.times))}x</b> your normal. <span class="muted">${esc(x.plan)}</span></p>`).join('')}` : ''}</div>
+      </div>` : ''}
       ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
         <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
       <div class="grid2">
         <div class="tile gl"><h3>Activity</h3>${feed(d.events || [])}</div>
         <div class="tile gl"><h3>Runs 24/7</h3>${sched(d.schedule || [])}
           <div class="acts em-run"><button class="btn soft" type="button" data-scrun="daily">Refresh numbers</button>
-            <button class="btn soft" type="button" data-scrun="plan">Rewrite calendar draft</button></div></div>
+            <button class="btn soft" type="button" data-scrun="plan">Rewrite calendar draft</button>
+            <button class="btn soft" type="button" data-scrun="monthly">Make this month's PDF</button></div></div>
       </div>`;
     wireSocial(el, d);
     if (accs.length) inbox(el);
@@ -299,7 +320,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const res = p.result || {};
     const dt = new Date(p.slot);
     const day = isNaN(dt) ? p.slot : dt.toLocaleString('en-IN', {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
-    return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}<span class="tag">${esc(p.format)}</span>
+    const needOk = p.plan_only && SOCTRUST === 'seekh';   // v0.359 Seekh: a plan post waits for her OK on its day
+    return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}${needOk ? tag('warn', 'Needs your OK') : ''}<span class="tag">${esc(p.format)}</span>
         <span class="muted">${(p.platforms || []).map(x => esc(PLAT[x] || x)).join(' + ')}${p.pillar ? ' · ' + esc(p.pillar) : ''}${p.occasion ? ' · ' + esc(p.occasion) : ''}</span></div>
       <b>${esc(p.hook)}</b>
       <details class="em-env"><summary>Caption, hashtags and picture brief</summary><p class="sc-cap">${esc(p.caption)}</p>
@@ -314,7 +336,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" data-sccopy="${esc(p.id)}">Copy caption</button><button class="btn soft" type="button" data-scedit="${esc(p.id)}">Edit</button>
         <label class="btn soft sc-up">Add photo / video<input type="file" accept="image/*,video/mp4,video/quicktime" data-scup="${esc(p.id)}" hidden></label>
         <button class="btn soft" type="button" data-scposter="${esc(p.id)}">Make poster</button>
-        <button class="btn go" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
+        ${needOk ? `<button class="btn go" type="button" data-scok="${esc(p.id)}">OK to post</button>` : ''}
+        <button class="btn ${needOk ? 'soft' : 'go'}" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
   }
 
   // ------------------------------------------------------------ v0.358 the inbox (Phase 3)
@@ -390,7 +413,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         </div>
         <fieldset class="em-trust"><legend>How much may it do on its own?</legend>${['seekh', 'saathi'].map(k => `
           <label><input type="radio" name="scTrust" value="${k}"${k === (d.trust || 'seekh') ? ' checked' : ''}> <b>${TRUST[k][0]}</b> <span class="muted">${TRUST[k][1]}</span></label>`).join('')}
-          <p class="muted em-small">Posts go out only after your OK. Seekh: every reply waits for your tap. Saathi: replies to simple questions, leads and praise from your facts and hides spam (never deletes); complaints always wait for you.</p></fieldset>
+          <p class="muted em-small">Posts go out only after your OK. Seekh: every plan post and every reply waits for your tap. Saathi: approved plan posts go on their own (up to 6 a day, never at night) and you are told the same day. Saathi: replies to simple questions, leads and praise from your facts and hides spam (never deletes); complaints always wait for you.</p></fieldset>
         <div class="acts"><button class="btn go" type="submit">Save and continue</button></div>
       </form>`;
   }
@@ -460,6 +483,25 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}/publish`, {}); toast('Posting… the link appears here in a minute.'); setTimeout(() => social(el), 5000); }
       catch (e) { toast(e.message, true); b.disabled = false; }
     }));
+    el.querySelectorAll('[data-scok]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { await api('POST', `/api/social/posts/${encodeURIComponent(b.dataset.scok)}`, {status: 'approved'}); toast('OK. It goes out at its time.'); social(el); }
+      catch (e) { toast(e.message, true); b.disabled = false; }
+    }));
+    el.querySelectorAll('[data-scpause]').forEach(b => b.addEventListener('click', async () => {
+      const on = b.dataset.scpause === '1';
+      try { await api('POST', '/api/social/settings', {paused: on}); toast(on ? 'Paused. Nothing goes out until you resume.' : 'Resumed.'); social(el); }
+      catch (e) { toast(e.message, true); }
+    }));
+    el.querySelector('#scStop')?.addEventListener('click', async () => {
+      if (!confirm('Emergency stop? All posting and automatic replies stop, and every queued post goes back to draft.')) return;
+      try { const r = await api('POST', '/api/social/settings', {stop: true}); toast(`Stopped. ${r.back_to_draft} post(s) back to draft.`); social(el); }
+      catch (e) { toast(e.message, true); }
+    });
+    el.querySelector('#scQSave')?.addEventListener('click', async () => {
+      try { await api('POST', '/api/social/settings', {quiet: [Number(el.querySelector('#scQ0').value), Number(el.querySelector('#scQ1').value)]}); toast('Quiet hours saved.'); }
+      catch (e) { toast(e.message, true); }
+    });
     el.querySelectorAll('[data-scbox]').forEach(b => b.addEventListener('click', () => {
       BOXNOW = b.dataset.scbox;
       el.querySelectorAll('[data-scbox]').forEach(x => { const on = x === b; x.className = `btn ${on ? 'go' : 'soft'}`; x.setAttribute('aria-selected', on); });
@@ -467,7 +509,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
     el.querySelectorAll('[data-scrun]').forEach(b => b.addEventListener('click', async () => {
       b.disabled = true;
-      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast({plan: 'Rewriting the draft. Approved posts stay.', inbox: 'Checking comments and DMs now.'}[b.dataset.scrun] || 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
+      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast({plan: 'Rewriting the draft. Approved posts stay.', inbox: 'Checking comments and DMs now.', monthly: 'Making the PDF - it arrives in your chat.'}[b.dataset.scrun] || 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
       catch (e) { toast(e.message, true); }
       b.disabled = false;
     }));

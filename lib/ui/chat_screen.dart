@@ -1363,6 +1363,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return SeoCard(kind: it.kind, v: it.data, app: app);
     case 'social_lead':
     case 'social_alert':
+    case 'social_day':
+    case 'social_week':
       return SocialCard(kind: it.kind, v: it.data, app: app);
     case 'ins_day':
     case 'ins_advice':

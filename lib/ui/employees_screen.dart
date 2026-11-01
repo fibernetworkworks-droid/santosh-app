@@ -811,8 +811,25 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
     Timer(const Duration(seconds: 6), _load);
   }
 
+  Future<void> _stop() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Emergency stop?'),
+        content: const Text('All posting and automatic replies stop, and every queued post goes back to draft.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Stop everything')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await _call(() => widget.app.api!.socialSettings({'stop': true}), 'Stopped. Queued posts are drafts again.');
+  }
+
   Widget _post(Map<String, dynamic> p) {
     final st = _s(p['status']);
+    final needOk = p['plan_only'] == true && _s(_d?['trust']) == 'seekh';   // v0.359
     final done = st == 'published' || st == 'publishing';
     final res = Map<String, dynamic>.from((p['result'] as Map?) ?? const {});
     final probs = ((p['problems'] as List?) ?? const []).map((e) => '$e').toList();
@@ -824,6 +841,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
           Row(children: [
             Expanded(child: Text(_s(p['slot']).replaceFirst('T', '  '), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
             _Tag(_s(p['format']), C.violet),
+            if (needOk) ...[const SizedBox(width: 6), _Tag('Needs your OK', C.warn)],
             const SizedBox(width: 6),
             _Tag(switch (st) { 'approved' => 'Approved', 'skipped' => 'Skipped', 'publishing' => 'Posting…', 'published' => 'Posted',
                   'failed' => 'Not posted', 'missed' => 'Missed', _ => 'Draft' },
@@ -895,7 +913,14 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
             TextButton(
                 onPressed: _busy ? null : () => _call(() => widget.app.api!.socialPoster(_s(p['id'])), 'Poster made from your Brand kit.'),
                 child: const Text('Make poster')),
-            FilledButton(onPressed: _busy || probs.isNotEmpty ? null : () => _publish(p), child: const Text('Publish now')),
+            if (needOk)
+              FilledButton(
+                  onPressed: _busy ? null : () => _call(() => widget.app.api!.socialPost(_s(p['id']), {'status': 'approved'}), 'OK. It goes out at its time.'),
+                  child: const Text('OK to post')),
+            if (needOk)
+              OutlinedButton(onPressed: _busy || probs.isNotEmpty ? null : () => _publish(p), child: const Text('Publish now'))
+            else
+              FilledButton(onPressed: _busy || probs.isNotEmpty ? null : () => _publish(p), child: const Text('Publish now')),
           ]),
         ]),
       ),
@@ -923,6 +948,10 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
       final conn = Map<String, dynamic>.from((d['connect'] as Map?) ?? const {});
       final stg = Map<String, dynamic>.from((d['strategy'] as Map?) ?? const {});
       final cal = _list(d['calendar']);
+      final pl = Map<String, dynamic>.from((d['pulse'] as Map?) ?? const {});
+      final pst = Map<String, dynamic>.from((pl['settings'] as Map?) ?? const {});
+      final paused = pst['paused'] == true;
+      final bt = Map<String, dynamic>.from((pl['best_times'] as Map?) ?? const {});
       children.addAll([
         Row(children: [
           Expanded(child: Text(_s(prof['business']), style: display(17))),
@@ -960,6 +989,56 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
           ]),
         ),
         if (accs.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Glass(
+            border: paused ? C.warn : null,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text('Posting', style: display(14))),
+                _Tag(paused ? 'Paused' : 'On', paused ? C.warn : C.ok),
+              ]),
+              const SizedBox(height: 4),
+              Text(paused
+                  ? (_s(pst['pause_reason']).isEmpty ? 'Nothing goes out and no reply is sent on its own until you resume.' : _s(pst['pause_reason']))
+                  : (_s(d['trust']) == 'seekh'
+                      ? 'Every plan post waits for your OK on its day.${_list(pl['waiting_ok']).isEmpty ? '' : ' ${_list(pl['waiting_ok']).length} wait now.'}'
+                      : 'Plan posts go on their own: ${_num(pl['auto_today'] ?? 0)} of ${_num(pl['post_cap'] ?? 0)} today, never between ${_num((pst['quiet'] as List?)?[0] ?? 23)}:00 and ${_num((pst['quiet'] as List?)?[1] ?? 7)}:00.'),
+                  style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                if (paused)
+                  FilledButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialSettings({'paused': false}), 'Resumed.'),
+                      child: const Text('Resume'))
+                else
+                  OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialSettings({'paused': true}), 'Paused.'),
+                      child: const Text('Pause all posting')),
+                TextButton(onPressed: _busy ? null : _stop, child: const Text('Emergency stop', style: TextStyle(color: C.bad))),
+              ]),
+            ]),
+          ),
+          if (_list(bt['slots']).isNotEmpty || _list(pl['boosts']).isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Glass(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (_list(bt['slots']).isNotEmpty) ...[
+                  Text('Best times for you', style: display(14)),
+                  const SizedBox(height: 4),
+                  for (final x in _list(bt['slots']).take(3))
+                    Text('${_s(x['day'])} ${_s(x['band'])} · ${_s(x['lift'])}x your normal (${_num(x['posts'])} posts)', style: const TextStyle(fontSize: 13)),
+                  Text('Certainty: ${_s(bt['sure'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+                ],
+                for (final x in _list(pl['boosts'])) ...[
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () => launchUrl(Uri.parse(_s(x['permalink'])), mode: LaunchMode.externalApplication),
+                    child: Text('Worth a boost: ${_s(x['fmt'])} from ${_s(x['date'])}, ${_s(x['times'])}x your normal',
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  ),
+                  Text(_s(x['plan']), style: const TextStyle(color: C.muted, fontSize: 12)),
+                ],
+              ]),
+            ),
+          ],
           const SizedBox(height: 10),
           Press(
             onTap: () => Navigator.of(context)
@@ -1048,6 +1127,8 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                 child: const Text('Refresh numbers')),
             OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialRun('plan'), 'Rewriting the draft. Approved posts stay.'),
                 child: const Text('Rewrite calendar draft')),
+            OutlinedButton(onPressed: _busy ? null : () => _call(() => widget.app.api!.socialRun('monthly'), 'Making the PDF - it arrives in your chat.'),
+                child: const Text("This month's PDF")),
           ]),
       ]);
     }

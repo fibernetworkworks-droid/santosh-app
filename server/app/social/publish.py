@@ -309,6 +309,7 @@ def publish_post(tenant: str, post_id: str, by_tap: bool = False) -> dict[str, A
             raise SocialError("Yeh post pehle hi ja chuka hai / ja raha hai.")
         if by_tap:
             p.approved_hash = post_hash(p)
+            p.seen = 1                                 # v0.359 her tap = her own OK
         elif p.status != "approved" or not p.approved_hash or p.approved_hash != post_hash(p):
             raise SocialError("Yeh post aapki haan ke baad badla hai (ya haan nahi mili): dobara approve kijiye.")
         bad = problems(p)
@@ -366,19 +367,40 @@ def publish_post(tenant: str, post_id: str, by_tap: bool = False) -> dict[str, A
 
 def due(tenant: str, at: datetime | None = None) -> list[str]:
     """Approved posts whose time has come (her local clock). Older than a day = missed (marked, never posted late)."""
+    from .pulse import auto_posts_today, may_go, settings, trust_of
     local = (at or _local(tenant)).astimezone(_local(tenant).tzinfo)
     stamp = local.strftime("%Y-%m-%dT%H:%M")
     late = (local - LATE).strftime("%Y-%m-%dT%H:%M")
+    st = settings(tenant)
+    if st["paused"]:
+        return []                                   # v0.359 pause / emergency stop: nothing goes out
+    trust, used = trust_of(tenant), auto_posts_today(tenant, local)
     out = []
     with session() as s:
-        for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant, SocialPost.status == "approved")).all():
+        for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant, SocialPost.status == "approved")
+                           .order_by(SocialPost.slot)).all():
             if p.slot and p.slot <= stamp:
                 if p.slot < late:
                     p.status, p.error = "missed", "Iska samay ek din se zyada pehle nikal gaya; purani post der se nahi daali."
                     s.add(SocialEvent(tenant_id=tenant, kind="note", level="warn", text=f"Missed: '{(p.hook or '')[:60]}' ({p.slot}) was not posted late."))
-                else:
+                elif not may_go(tenant, p, local, trust, st["quiet"], used):
                     out.append(p.id)
+                    used += p.seen == 0
     return out
+
+
+def _told_auto(tenant: str, pid: str, r: dict[str, Any]) -> None:
+    """v0.359 Saathi: a plan post that went out on its own is told to her the same day (Bharosa: in the weekly pulse)."""
+    from .pulse import _say, trust_of
+    if r.get("status") != "published" or trust_of(tenant) != "saathi":
+        return
+    with session() as s:
+        p = s.get(SocialPost, pid)
+        if p is None or p.seen != 0:
+            return
+        hook = p.hook or ""
+        link = next((v.get("link") for v in (_j(p.result, {}) or {}).values() if isinstance(v, dict) and v.get("link")), "")
+    _say(tenant, "social_day", f"Posted from your approved plan: '{hook[:70]}'" + (f" - {link}" if link else "") + ".")
 
 
 def run_publisher(tenant: str, at: datetime | None = None) -> dict[str, Any]:
@@ -387,6 +409,7 @@ def run_publisher(tenant: str, at: datetime | None = None) -> dict[str, Any]:
         try:
             r = publish_post(tenant, pid)
             sent += r["status"] == "published"
+            _told_auto(tenant, pid, r)
             failed += r["status"] != "published"
         except SocialError as e:
             failed += 1

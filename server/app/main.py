@@ -6961,6 +6961,17 @@ def social_media_file(aid: str, e: str = "", s: str = ""):
     return FileResponse(path, media_type=mime)
 
 
+@app.post("/api/social/settings", dependencies=[Depends(require_key)])
+def social_settings(body: dict, tenant: str = Depends(current_tenant)):
+    """v0.359 {paused: bool} pause / resume all posting + automatic replies; {stop: true} = emergency stop (pause + every
+    queued post back to draft); {quiet: [23, 7]} = hours when no plan post goes out on its own."""
+    from .social import pulse
+    b = body or {}
+    return _social_call(pulse.set_settings, tenant, paused=b.get("paused") if isinstance(b.get("paused"), bool) else None,
+                        quiet=b.get("quiet") if isinstance(b.get("quiet"), list) else None, stop=b.get("stop") is True,
+                        reason=str(b.get("reason") or ""))
+
+
 @app.get("/api/social/inbox", dependencies=[Depends(require_key)])
 def social_inbox_view(box: str = "needs", tenant: str = Depends(current_tenant)):
     """v0.358 her comments + DMs: needs (waiting for her) | leads | complaints | done."""
@@ -6998,8 +7009,8 @@ def social_run(job: str, tenant: str = Depends(current_tenant)):
     import threading
     from .employee import hire
     from .social import desk as social
-    if job not in ("first", "hourly", "daily", "weekly", "plan", "publish", "inbox"):
-        raise HTTPException(404, "job: first | hourly | daily | weekly | plan | publish | inbox")
+    if job not in ("first", "hourly", "daily", "weekly", "plan", "publish", "inbox", "morning", "monthly"):
+        raise HTTPException(404, "job: first | hourly | daily | weekly | plan | publish | inbox | morning | monthly")
     if not hire.is_hired(tenant, social.KEY):
         raise HTTPException(400, "Social Media Manager abhi hired nahi hai.")
     if not social.accounts(tenant):

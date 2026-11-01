@@ -90,6 +90,7 @@ class SocialDesk(Base):
     stamps: Mapped[str] = mapped_column(Text, default="{}")
     state: Mapped[str] = mapped_column(String(16), default="new")   # new | first_run | ready | error
     calendar_status: Mapped[str] = mapped_column(String(12), default="none")   # none | draft | approved
+    settings: Mapped[str | None] = mapped_column(Text, nullable=True)            # v0.359 {paused, pause_reason, quiet}
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -118,6 +119,7 @@ class SocialPost(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    seen: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.359 1 = she OK'd this post itself, 0 = only via the plan
 
 
 class SocialEvent(Base):
@@ -571,7 +573,16 @@ def _plan_inputs(tenant: str) -> dict[str, Any]:
     return {"business": prof, "baseline": {k: base.get(k) for k in ("followers", "posts_30d", "avg_reach", "eng_rate", "formats",
                                                                      "best_hours", "best_days", "top_posts")},
             "facts": facts[:20] if isinstance(facts, list) else [], "start": start.isoformat(), "days": 30,
-            "occasions": _occasions(tenant, start)}
+            "occasions": _occasions(tenant, start), "best_times": _best_times(tenant)}
+
+
+def _best_times(tenant: str) -> dict[str, Any]:
+    try:
+        from .pulse import best_times
+        bt = best_times(tenant)
+        return {"slots": bt["slots"][:3], "by_day": bt["by_day"], "sure": bt["sure"]}
+    except Exception:            # noqa: BLE001
+        return {}
 
 
 def _rules_plan(inp: dict[str, Any]) -> dict[str, Any]:
@@ -598,7 +609,11 @@ def _rules_plan(inp: dict[str, Any]) -> dict[str, Any]:
         hook = (f"{occ} ki dher saari shubhkaamnayein!" if occ else
                 {"Our work": f"{biz} mein aaj kya bana? 👀", "Tips & how-to": "Yeh 3 baatein zaroor jaan lijiye",
                  "Happy customers": "Hamare graahak kya kehte hain", "Behind the scenes": f"{biz} ke peeche ki kahani"}[name])
-        posts.append({"date": dt.isoformat(), "time": f"{hours[k % len(hours)]:02d}:00", "platforms": ["instagram", "facebook"],
+        bt = inp.get("best_times") or {}
+        h = (bt.get("by_day") or {}).get(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.weekday()]) \
+            if bt.get("sure") in ("medium", "high") else None
+        posts.append({"date": dt.isoformat(), "time": f"{h if h is not None else hours[k % len(hours)]:02d}:00",
+                      "platforms": ["instagram", "facebook"],
                       "format": fmt, "pillar": name, "hook": hook,
                       "caption": f"{hook}\n\n{why}\n\n{biz}{', ' + city if city else ''}. Details ke liye DM ya WhatsApp kijiye.",
                       "hashtags": tags[:5], "visual": f"{name}: {why}", "cta": "DM / WhatsApp kijiye", "occasion": occ, "language": lang})
@@ -682,7 +697,8 @@ def calendar(tenant: str) -> list[dict[str, Any]]:
         return [{"id": p.id, "slot": p.slot, "platforms": p.platforms.split(","), "format": p.fmt, "pillar": p.pillar,
                  "hook": p.hook, "caption": p.caption, "hashtags": _j(p.hashtags, []), "visual": p.visual, "cta": p.cta,
                  "occasion": p.occasion, "status": p.status, "source": p.source, "media": _media_views(_j(p.media, [])),
-                 "result": _j(p.result, {}), "error": p.error or "", "problems": _problems(p) if p.status in ("draft", "approved", "failed") else []}
+                 "result": _j(p.result, {}), "error": p.error or "", "problems": _problems(p) if p.status in ("draft", "approved", "failed") else [],
+                 "plan_only": p.status == "approved" and p.seen == 0}                # v0.359 OK'd via the plan, not one by one
                 for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant).order_by(SocialPost.slot)).all()]
 
 
@@ -714,9 +730,13 @@ def approve_calendar(tenant: str) -> dict[str, Any]:
         for p in s.scalars(select(SocialPost).where(SocialPost.tenant_id == tenant, SocialPost.status == "draft")).all():
             p.status = "approved"
             _stamp_ok(p)                           # v0.355 exactly this post (caption, pictures, time) is what she said yes to
+            p.seen = 0                             # v0.359 OK'd as part of the plan only: trust decides if it goes alone
             n += 1
         _desk(s, tenant).calendar_status = "approved"
-    _event(tenant, "note", "ok", f"You approved the calendar ({n} posts). Each goes out at its time once it has its picture; a post you change needs your OK again.")
+    from .pulse import trust_of
+    how = ("Each one waits for your OK on its day (one tap)." if trust_of(tenant) not in ("saathi", "bharosa") else
+           "Each goes out at its time once it has its picture; I tell you the same day.")
+    _event(tenant, "note", "ok", f"You approved the calendar ({n} posts). {how} A post you change needs your OK again.")
     return {"approved": n}
 
 
@@ -748,6 +768,7 @@ def set_post(tenant: str, post_id: str, status: str = "", caption: str | None = 
             p.approved_hash = ""
             if status == "approved":
                 _stamp_ok(p)
+                p.seen = 1                         # v0.359 her own OK for this one post
         elif edited and p.status in ("approved", "failed", "missed"):
             p.status, p.approved_hash = "draft", ""   # an edit after approval needs her OK again
         return {"id": p.id, "status": p.status}
@@ -791,6 +812,9 @@ def first_run(tenant: str, ask: Any = None) -> dict[str, Any]:
         with session() as s:
             d = _desk(s, tenant)
             d.baseline, d.baseline_at = json.dumps(base, ensure_ascii=False, default=str), now().isoformat(timespec="seconds")
+            st0 = _j(d.stamps, {})
+            st0["baseline_month"] = _local(tenant).strftime("%Y-%m")
+            d.stamps = json.dumps(st0)
             d.latest = d.baseline
         plan = build_plan(tenant, ask=ask)
         with session() as s:
@@ -860,6 +884,16 @@ def daily(tenant: str) -> dict[str, Any]:
     return {"latest": latest, "errors": errs}
 
 
+def _daily_and_boosts(tenant: str) -> dict[str, Any]:
+    out = daily(tenant)
+    try:
+        from .pulse import flag_boosts
+        out["boosts"] = flag_boosts(tenant)            # v0.359 boost-worthy posts, told once each
+    except Exception as e:       # noqa: BLE001
+        log.info("boost flags failed: %s", e)
+    return out
+
+
 def weekly(tenant: str) -> dict[str, Any]:
     m = measure(tenant)
     top = (m.get("top_posts") or [{}])[0]
@@ -888,7 +922,9 @@ def schedule_view(stamps: dict[str, str]) -> list[dict[str, str]]:
             {"job": "Read comments + DMs, draft / send replies", "every": "Every 15 minutes", "last": stamps.get("inbox", "")},
             {"job": "Check connections, renew Instagram tokens", "every": "Every hour", "last": stamps.get("hourly", "")},
             {"job": "Fresh numbers for your recent posts", "every": "Every day, 7 am", "last": stamps.get("daily", "")},
-            {"job": "What worked this week", "every": "Every Monday", "last": stamps.get("weekly", "")}]
+            {"job": "Morning note (only when something needs you)", "every": "Every day, 9 am", "last": stamps.get("morning", "")},
+            {"job": "Weekly pulse in your chat", "every": "Every Monday", "last": stamps.get("weekly", "")},
+            {"job": "Monthly PDF report", "every": "1st of the month", "last": stamps.get("monthly", "")}]
 
 
 def desk_view(tenant: str) -> dict[str, Any]:
@@ -910,7 +946,12 @@ def desk_view(tenant: str) -> dict[str, Any]:
     return {"hired": True, "status": st, "trust": trust, "onboarded": bool(prof), "profile": prof or profile_defaults(tenant),
             "connect": {p: M.configured(p) for p in PLATFORMS}, "accounts": accounts(tenant), **info,
             "kpis": kpis(info["baseline"], info["latest"]), "calendar": calendar(tenant), "events": events,
-            "schedule": schedule_view(info["stamps"]), "inbox": _inbox_counts(tenant)}
+            "schedule": schedule_view(info["stamps"]), "inbox": _inbox_counts(tenant), "pulse": _pulse_view(tenant)}
+
+
+def _pulse_view(tenant: str) -> dict[str, Any]:
+    from .pulse import view
+    return view(tenant)
 
 
 def _inbox_counts(tenant: str) -> dict[str, int]:
@@ -942,6 +983,11 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
     wk = f"{local.isocalendar()[0]}-W{local.isocalendar()[1]}"
     if state == "ready" and local.weekday() == 0 and local.hour >= 9 and stamps.get("weekly_key") != wk:
         out.append("weekly")
+    if state == "ready" and local.hour >= 9 and stamps.get("morning", "")[:10] != local.date().isoformat():
+        out.append("morning")                          # v0.359
+    mk = local.strftime("%Y-%m")
+    if state == "ready" and local.day == 1 and local.hour >= 9 and stamps.get("monthly_key") != mk and stamps.get("baseline_month") != mk:
+        out.append("monthly")                          # v0.359 (not in the month the baseline was taken)
     return out
 
 
@@ -950,10 +996,11 @@ def run_job(tenant: str, job: str, at: datetime | None = None) -> dict[str, Any]
     local = (at or datetime.now(tz_of(tenant))).astimezone(tz_of(tenant))
     from .inbox import run_inbox
     from .publish import run_publisher
-    fn = {"first": first_run, "hourly": watch, "daily": daily, "weekly": weekly, "plan": build_plan,
-          "publish": run_publisher, "inbox": run_inbox}.get(job)
+    from .pulse import monthly_report, morning, weekly_pulse
+    fn = {"first": first_run, "hourly": watch, "daily": _daily_and_boosts, "weekly": weekly_pulse, "plan": build_plan,
+          "publish": run_publisher, "inbox": run_inbox, "morning": morning, "monthly": monthly_report}.get(job)
     if fn is None:
-        raise SocialError("job: first | hourly | daily | weekly | plan | publish | inbox")
+        raise SocialError("job: first | hourly | daily | weekly | plan | publish | inbox | morning | monthly")
     res = fn(tenant)
     with session() as s:
         d = _desk(s, tenant)
@@ -961,6 +1008,8 @@ def run_job(tenant: str, job: str, at: datetime | None = None) -> dict[str, Any]
         st[job] = local.isoformat(timespec="seconds")
         if job == "weekly":
             st["weekly_key"] = f"{local.isocalendar()[0]}-W{local.isocalendar()[1]}"
+        if job == "monthly":
+            st["monthly_key"] = local.strftime("%Y-%m")
         d.stamps = json.dumps(st)
     return res
 
