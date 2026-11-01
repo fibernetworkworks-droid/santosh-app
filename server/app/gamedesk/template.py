@@ -9,7 +9,7 @@ SIZES = {"portrait": (720, 1280), "landscape": (1280, 720), "square": (1024, 102
 
 PROBE = '''extends Node
 # Hoola's playtest probe (not part of the game logic): reports readiness, frames per second and memory to the page,
-# and (v0.415 QA farm) what the game tells it: HoolaProbe.state("score", 12), HoolaProbe.event("game_over").
+# and (v0.416 QA farm) what the game tells it: HoolaProbe.state("score", 12), HoolaProbe.event("game_over").
 var _t := 0.0
 var _frames := 0
 var _state := {}
@@ -122,14 +122,14 @@ def files(title: str, orientation: str, scripts: dict[str, str]) -> dict[str, st
     proj = project_godot(title, orientation)
     if "hoola_bible.gd" in scripts:                     # v0.395 the Game Bible is an autoload: global with no class cache
         proj = proj.replace('HoolaProbe="*res://hoola_probe.gd"', 'HoolaProbe="*res://hoola_probe.gd"\nHoolaBible="*res://hoola_bible.gd"')
-    if "hoola_assets.gd" in scripts:                    # v0.415 the approved assets
+    if "hoola_assets.gd" in scripts:                    # v0.416 the approved assets
         proj = proj.replace('HoolaProbe="*res://hoola_probe.gd"', 'HoolaProbe="*res://hoola_probe.gd"\nHoolaAssets="*res://hoola_assets.gd"')
     out = {"project.godot": proj, "main.tscn": MAIN_TSCN, "export_presets.cfg": EXPORT_PRESETS, "hoola_probe.gd": PROBE}
     out.update(scripts)
     return out
 
 
-# ---------------------------------------------------------------- v0.415 GAME PLATFORMS
+# ---------------------------------------------------------------- v0.416 GAME PLATFORMS
 NATIVE = {"linux": "Linux", "windows": "Windows Desktop", "macos": "macOS", "android": "Android"}
 
 

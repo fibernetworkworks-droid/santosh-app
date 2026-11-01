@@ -1,4 +1,4 @@
-"""v0.415 GAME PLATFORMS (Hoola Game Engine plan, Phase 6): the live game as real downloads for every platform, the store
+"""v0.416 GAME PLATFORMS (Hoola Game Engine plan, Phase 6): the live game as real downloads for every platform, the store
 pages around it, an age-rating draft, and itch.io uploads by her tap.
 
 - RELEASES (`game_releases`): one release = the live version exported for the platforms she picked, each file CHECKED in

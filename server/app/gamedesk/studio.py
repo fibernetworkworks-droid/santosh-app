@@ -68,8 +68,8 @@ class GameStudio(Base):
     last_summary: Mapped[str] = mapped_column(String(10), default="")      # local date of the last morning summary
     nightly: Mapped[list] = mapped_column(JSON, default=list)              # last 30 nightly results
     gates: Mapped[list | None] = mapped_column(JSON, nullable=True)        # v0.406 milestone gate checks (advisory)
-    qa: Mapped[list | None] = mapped_column(JSON, nullable=True)           # v0.415 QA farm reports (last 12)
-    platform: Mapped[dict | None] = mapped_column(JSON, nullable=True)     # v0.415 {package (never changes), version_code}
+    qa: Mapped[list | None] = mapped_column(JSON, nullable=True)           # v0.416 QA farm reports (last 12)
+    platform: Mapped[dict | None] = mapped_column(JSON, nullable=True)     # v0.416 {package (never changes), version_code}
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -268,7 +268,7 @@ def _qa_line(r: GameStudio) -> dict[str, Any]:
 
 
 def _assets_line(r: GameStudio) -> dict[str, Any]:
-    """v0.415 the asset store in one line for the board."""
+    """v0.416 the asset store in one line for the board."""
     try:
         from . import assets as A
         A.ensure_table()
@@ -853,7 +853,7 @@ def nightly(tenant: str, ref: str) -> dict[str, Any]:
                 res["fps"] = pl.get("fps")
                 res["load_s"] = pl.get("load_s")
                 if res["ok"] and os.environ.get("GAME_QA_NIGHTLY", "on").lower() not in ("0", "off", "false"):
-                    try:                                # v0.415 the QA farm plays the same fresh build every night
+                    try:                                # v0.416 the QA farm plays the same fresh build every night
                         from . import qa as Q
                         q = Q.farm(tenant, r.id, proj=job / "proj", version=live["n"])
                         res["qa"] = {"verdict": q.get("verdict"), "filed": len(q.get("filed") or []), "fixed": q.get("fixed")}
@@ -1060,7 +1060,7 @@ def jobs(force: bool = False) -> dict[str, int]:
         try:
             if not hire.is_working(r.tenant_id, "game_dev"):
                 continue
-            try:                                        # v0.415 finished 3D Studio models become asset versions
+            try:                                        # v0.416 finished 3D Studio models become asset versions
                 from . import assets as A
                 A.collect_models(r.tenant_id)
             except Exception:                           # noqa: BLE001

@@ -1,4 +1,4 @@
-"""v0.415 QA FARM (Hoola Game Engine plan, Phase 5): Hoola's bots play every build the way players would, on phone-
+"""v0.416 QA FARM (Hoola Game Engine plan, Phase 5): Hoola's bots play every build the way players would, on phone-
 like speeds, keep the screens that she approved as GOLDEN, measure speed, and file BUGS with the exact way to repeat
 them. No model calls and no money: Chromium + the web build + Hoola's probe.
 

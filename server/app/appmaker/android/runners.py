@@ -196,7 +196,7 @@ class _NoAuthRedirect(urllib.request.HTTPRedirectHandler):
 # the server's own copy (server/app_builder/) and updated when different - one commit on main, before the build branch is
 # made from main (a run uses the workflow file of its own commit). GitHub lets a token change workflow files only with
 # the "Workflows: Read and write" permission; without it the build still runs on the old file and the reason is said once.
-WORKFLOWS = ("hoola-build.yml", "hoola-ios.yml", "hoola-game.yml")   # v0.415 + Hoola game builds
+WORKFLOWS = ("hoola-build.yml", "hoola-ios.yml", "hoola-game.yml")   # v0.416 + Hoola game builds
 SYNC = {"checked_at": 0.0, "updated": [], "error": "", "same": []}
 SYNC_EVERY = 600
 

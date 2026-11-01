@@ -38,7 +38,7 @@ def stage(r: S.GameStudio) -> tuple[Path, int, str, int]:
         if p.is_file() and p.suffix in (".gd", ".godot", ".tscn", ".cfg"):
             shutil.copy2(p, dest / p.name)
             n += 1
-    if (src / "assets").is_dir():                       # v0.415 approved art / sound / models
+    if (src / "assets").is_dir():                       # v0.416 approved art / sound / models
         (dest / "assets").mkdir()
         for p in sorted((src / "assets").iterdir()):
             if p.is_file() and p.suffix in (".png", ".wav", ".ogg", ".glb"):

@@ -52,6 +52,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- WEB STEP 2 (1 Nov 2026, end of web Step 2 = W1 one backend + W13 Architect, docs/WEB_PLATFORM_PLAN.md): branch
+  `stable-2026-11-01-v414` = commit 35caab6c = v0.414.0, pubspec 0.414.0+458, APK release `v0.414.0-b1112`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.414.0-b1112/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v414` as the branch. Not owner-verified yet.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the ENTERPRISE CONNECT work): branch `stable-2026-11-01-v406`
   = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com at the save; healthz 0.406.0).
   THE ENTERPRISE SUITE IS NOW REACHABLE END TO END, which it had never been from v0.358 to v0.396: her own ERP /
@@ -212,8 +216,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.415.0 (pubspec 0.415.0+459). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.416.0 (pubspec 0.416.0+460). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.415 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin
+  (same numbers, tested), 22 NCERT physics practicals within 1 %, lab3d.js runtime, tool prayog, console Lab + phone Prayogshala.
 - v0.414 EK DIMAAG 2 (web Step 2 finished): old v0.305 web apps move by themselves (`applink.migrate_all`, worker) + new ones link at once; `kind: web` backends never re-made; full school portal proof (admission -> approval -> student -> fee -> attendance -> report card, 3 roles; relation `share`); `applink.phone_app` = phone app on the SAME project / data; spec card + stories / payments / notifications / integrations + `architect.revise`; phone `SiteSpecCard`; vps-ops `architect_check` / `arena_numbers`.
 - v0.410 ECC ON: review card old vs new = 8/8 caught both, false alarms 8 -> 4, nits 3 -> 0; fix card 6/6 + 6/6 with the fixer -> `dev_spec_review` + `dev_spec_fix` default ON; card rows keep what each false alarm said.
 - v0.413 PRINCIPAL SOFTWARE ARCHITECT (`docs/SOFTWARE_DESK_PLAN.md`, `app/archdesk/`): Hub group "Software Architecture, Engineering &
@@ -239,9 +245,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
-- v0.415 GAME PLATFORMS (built as 0.413; Game Engine plan Phase 6, `gamedesk/platforms.py`, tool game_release): Linux / Windows / macOS (ad-hoc, not notarised) builds checked + signed downloads on the server (`setup_godot.py --desktop`), Android APK / AAB in her builds repo (`hoola-game.yml`, own sealed upload key, no internet permission), store kit, age-rating DRAFT, itch.io butler push only on her tap; iOS not built.
-- v0.415 QA FARM + BUGS (built as 0.410 / 0.412; Game Engine plan Phase 5, `gamedesk/qa.py`, tool game_qa): seeded bots (idle/monkey/tapper/keys/restarter) on desktop / phone CPU speeds play a DEBUG web build (release builds hide script errors - every build's playtest now plays debug too), probe state/events, golden start screen, numbered bugs with repro, fixed only when the bot can't find it.
-- v0.415 ASSET PIPELINE (built as 0.409 / 0.411; Game Engine plan Phase 4, `gamedesk/assets.py` + `sfx.py`, tool game_assets): style-locked art (magenta key, exact size, palette share / strict snap), code-made sfx (preset + seed), music / voice / 3D; paid = price card + her tap; checks in code; her OK -> HoolaAssets autoload in every build.
+- v0.416 GAME PLATFORMS (built as 0.413; Game Engine plan Phase 6, `gamedesk/platforms.py`, tool game_release): Linux / Windows / macOS (ad-hoc, not notarised) builds checked + signed downloads on the server (`setup_godot.py --desktop`), Android APK / AAB in her builds repo (`hoola-game.yml`, own sealed upload key, no internet permission), store kit, age-rating DRAFT, itch.io butler push only on her tap; iOS not built.
+- v0.416 QA FARM + BUGS (built as 0.410 / 0.412; Game Engine plan Phase 5, `gamedesk/qa.py`, tool game_qa): seeded bots (idle/monkey/tapper/keys/restarter) on desktop / phone CPU speeds play a DEBUG web build (release builds hide script errors - every build's playtest now plays debug too), probe state/events, golden start screen, numbered bugs with repro, fixed only when the bot can't find it.
+- v0.416 ASSET PIPELINE (built as 0.409 / 0.411; Game Engine plan Phase 4, `gamedesk/assets.py` + `sfx.py`, tool game_assets): style-locked art (magenta key, exact size, palette share / strict snap), code-made sfx (preset + seed), music / voice / 3D; paid = price card + her tap; checks in code; her OK -> HoolaAssets autoload in every build.
 - v0.406 HOOLA GAME CREW + GO FIX (built as 0.403; `gamedesk/crew.py`, ideas from Claude-Code-Game-Studios): 49 roles (builds / writes), role + acceptance criteria on every task, lead review (screens + diff, only screen criteria), 9 team plans, milestone gates PASS/CONCERNS/FAIL/NOT ASSESSED; NOT ASSESSED said out loud; Godot 4.5-4.7 notes; smoke imports first (class_name ok again).
 - v0.395 GAME BIBLE (built as 0.390 / 0.394; Game Engine plan Phase 3, `gamedesk/bible.py`, tool game_bible, /api/gamestudio/{id}/bible*): names + numbers as data (kinds = templates, checks in code, palette lock), seeded balance sim, curve numbers + drafts for her OK, HoolaBible autoload in the game, data-only rebuild (no model); helpers = preload, never class_name.
 - v0.386 STUDIO PROJECT (built as 0.378 / 0.382) (Game Engine plan Phase 2, `gamedesk/studio.py`, tool game_studio, /api/gamestudio*): a game as a long project - task board (one small change each, waits for her OK, 'wapas' = version before is live), milestones, decisions log + 'why', nightly rebuild + replay (no model), morning report, restore, GitHub card.

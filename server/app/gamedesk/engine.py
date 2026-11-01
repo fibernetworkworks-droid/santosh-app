@@ -174,7 +174,7 @@ def smoke(job: Path, frames: int = 600, holder: dict | None = None) -> dict[str,
 
 
 def debug_template() -> bool:
-    """v0.415 the debug web template (QA farm: release web builds print no script errors in the browser)."""
+    """v0.416 the debug web template (QA farm: release web builds print no script errors in the browser)."""
     t = templates_dir()
     return bool(t and (t / "web_nothreads_debug.zip").is_file())
 

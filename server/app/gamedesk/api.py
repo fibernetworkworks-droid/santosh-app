@@ -26,7 +26,7 @@ POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
 POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
 
-v0.415 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
+v0.416 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
 GET    /api/gamestudio/{id}/releases            releases + where each platform can be built + package + itch key set?
 POST   /api/gamestudio/{id}/releases            {platforms: [linux, windows, macos, android], android_format: apk|aab}
 GET    /api/gamestudio/release/{rid}/{platform}?exp&sig   a signed download (kit-<sid>/kit = the store kit ZIP)
@@ -36,7 +36,7 @@ POST   /api/gamestudio/itch-key                 {key}  her itch.io API key (app 
 POST   /api/gamestudio/{id}/releases/{rid}/itch {target: user/game}  the upload card
 POST   /api/gamestudio/{id}/releases/{rid}/itch/push {hash}  HER TAP: butler push
 
-v0.415 QA farm (bots play a DEBUG web build; no model, no money):
+v0.416 QA farm (bots play a DEBUG web build; no model, no money):
 GET    /api/gamestudio/{id}/qa                  bugs + the last report (signed screenshot links) + history + running
 POST   /api/gamestudio/{id}/qa/run              run the farm now (background, 2-4 minutes)
 POST   /api/gamestudio/{id}/qa/golden           {rel?}  her OK: this start screen is the golden one
@@ -44,7 +44,7 @@ POST   /api/gamestudio/{id}/bugs                {title, detail?, severity?}  her
 POST   /api/gamestudio/{id}/bugs/{B-0001}/fix|open|wontfix|duplicate   fix = a board task whose criterion is the bot
 GET    /api/gamestudio/qa-shot/{sid}?rel&exp&sig  a signed QA screenshot
 
-v0.415 Asset pipeline (her OK before anything enters the game; paid kinds only after her tap on the price card):
+v0.416 Asset pipeline (her OK before anything enters the game; paid kinds only after her tap on the price card):
 GET    /api/gamestudio/{id}/assets              assets + price card + spent
 GET    /api/gamestudio/{id}/assets/suggest      what the game still needs, from the Bible (nothing priced)
 POST   /api/gamestudio/{id}/assets              {kind, key, words, size?, quality?, palette_lock?, preset?, seed?, text?...}
@@ -308,7 +308,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return await bcall(B.recurve, tenant, sid, str(b.get("kind") or ""))
         raise HTTPException(404, "generate | seed | accept | reject | simulate | apply | recurve")
 
-    # ------------------------------------------------------------ v0.415 asset pipeline
+    # ------------------------------------------------------------ v0.416 asset pipeline
     from . import assets as A
 
     async def acall(fn, *a, **kw):
@@ -376,7 +376,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def as_apply(sid: str, tenant: str = Depends(current_tenant)):
         return await acall(A.apply, tenant, sid)
 
-    # ------------------------------------------------------------ v0.415 QA farm + bug tracker
+    # ------------------------------------------------------------ v0.416 QA farm + bug tracker
     from . import qa as Q
 
     async def qcall(fn, *a, **kw):
@@ -422,7 +422,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return await qcall(Q.set_bug, tenant, sid, number, what)
         raise HTTPException(404, "fix | open | wontfix | duplicate | fixed")
 
-    # ------------------------------------------------------------ v0.415 game platforms
+    # ------------------------------------------------------------ v0.416 game platforms
     from . import platforms as PF
 
     async def pcall(fn, *a, **kw):

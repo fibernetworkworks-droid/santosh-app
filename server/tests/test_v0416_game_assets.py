@@ -1,4 +1,4 @@
-"""v0.415 ASSET PIPELINE (Hoola Game Engine plan, Phase 4): style-locked art, code-made sounds, music, voice, 3D
+"""v0.416 ASSET PIPELINE (Hoola Game Engine plan, Phase 4): style-locked art, code-made sounds, music, voice, 3D
 models; every file checked in code, paid kinds only after her tap on a price card, nothing in the game before her OK;
 approved assets go into the build as files + the HoolaAssets autoload. Model / picture engine / Lyria / 3D Studio
 are faked; the sound synthesiser and the image pipeline (keying, fitting, palette) run for real."""

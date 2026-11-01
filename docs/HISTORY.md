@@ -15577,7 +15577,78 @@ NOT VERIFIED: the real Opus spec until she runs vps-ops architect_check; no APK 
 data (the phone API is proven, the native build path is App Sahayak's existing one); Arena numbers need her Arena run
 (Step 2 does not change how pages are designed, so they should match).
 
-## v0.415.0 ASSET PIPELINE (built as 0.409.0 / 0.411.0 / 0.414.0) (Hoola Game Engine plan, Phase 4) - 1 Nov 2026
+## v0.415.0 PRAYOGSHALA L0 + L1 - a real practical lab in 3D (owner: "GO L0 + L1")
+
+The plan is `docs/PRAYOGSHALA_PLAN.md` (L0-L10). This version builds L0 (the lab runtime) and L1 (the physics kernels
+and the NCERT practicals).
+
+**The one rule.** The model never writes a number or a line of code for a lab. A lab is DATA in the Lab Scene Language,
+and the behaviour comes from a kernel that does the physics in code. Every kernel exists twice:
+- `server/app/prayog/kernels.py`, the Python twin, which the tests and the checks run;
+- `server/app/static/prayog/kernels.js`, the JavaScript twin, which the phone runs.
+
+The two twins must give the same numbers to 1e-9 on every lab's own settings (test_v0415_prayog.py runs both).
+
+- **Kernels (16)**
+  - pendulum (RK4, nonlinear)
+  - spring
+  - incline (one μ; static = kinetic, said in the lab)
+  - stokes
+  - cooling
+  - boyle (ideal gas; its particles are illustrative)
+  - mixtures
+  - resonance (closed tube with 0.3d end correction)
+  - sonometer
+  - circuit (Modified Nodal Analysis: R, V, C with backward Euler, a Newton diode with voltage limiting, switches; measure modes `value`, `ratio`, `null` = bisection for a null point, `time_to`)
+  - mirror and lens (exact 2D ray tracing on the real spherical surfaces; a thick lens matches the thin-lens formula within 1%)
+  - prism
+  - slab
+  - induction (dipole flux through an N-turn coil)
+  - gauge (vernier and screw gauge readings)
+- **Lab Scene Language** (`prayog/lsl.py`): a strict checker.
+  - Any unknown key is refused, so nothing like `script` or `onload` can ride in.
+  - Every bind, instrument and table column must point at a real kernel var, param or knob.
+  - Numbers must be finite and inside the stage, with an 80k-triangle phone budget.
+  - Sources are required, and so is a `check` block.
+  - `run_check` measures the lab from the simulation and compares it with the NCERT formula in `kernels.TEXTBOOK`.
+- **Runtime** (`static/prayog/lab3d.js`, three.js r149 served from `appmaker/assets` at `/api/prayog/three.js`):
+  - 3D you can rotate, pinch and tap (each part's name, with an "illustrative" badge where it applies);
+  - section cut and explode;
+  - knobs, some hidden ("unknown" values for the learner to find);
+  - instruments: readouts with least count, stopwatch, meters, graphs and peak hold;
+  - an observation table (Record, manual cells, CSV) with the result from `CALCS` and "the real value in this lab" + % error;
+  - a guided tour with camera moves and Hinglish narration (speechSynthesis when the phone has it; the caption always shows);
+  - a predict-then-observe quiz, and About with sources;
+  - a service worker for offline use after the first open.
+- **Catalogue (22 NCERT practicals)**
+  - Mechanics: simple pendulum, Hooke's law, spring SHM, inclined plane friction, terminal velocity.
+  - Heat: Newton's cooling, Boyle's law, specific heat by mixtures.
+  - Waves: resonance tube, sonometer.
+  - Electricity: Ohm's law, meter bridge, potentiometer internal resistance, p-n diode, RC charging.
+  - Optics: concave mirror, convex lens, prism minimum deviation, glass slab.
+  - Magnetism: electromagnetic induction.
+  - Measurement: vernier callipers, screw gauge.
+
+  Every lab passes its NCERT check. A lab that fails is left out of the catalogue and logged, so the catalogue never goes down with it.
+- **Routes** (public, read-only teaching material): `GET /api/prayog/labs` (q, field), `/api/prayog/labs/{id}`, `/api/prayog/three.js`, and `/prayog` (redirects to the catalogue).
+- **Tool `prayog`** (read-only): find / open / check / all.
+  - Wiring: admit family `prayog`, `roles.READ`, the tutor duty, voice via `santosh_kaam`, and a prompt line ("send the LINK, never quote a lab number").
+- **Surfaces**
+  - Console: Lab page (`v-lab`, an iframe of the catalogue).
+  - Phone: Profile > Prayogshala (`lib/ui/prayog_screen.dart`: list + full-screen WebView).
+
+**Checked in a real browser (Chromium, swiftshader).**
+- All 22 labs render with no page errors.
+- Meter bridge: the null point at 40 cm, then 57.1 cm, gave S = 6.01 Ω against the lab's 6.00 Ω.
+- Pendulum: the stopwatch ran 4.02 s = 2T.
+- Tour, quiz, the phone layout (420 px) and the catalogue all work.
+
+**NOT VERIFIED.**
+- Frame rate on her real phone.
+- speechSynthesis inside the Android WebView (many have none; the caption carries the words).
+- The offline cache on a real device.
+
+## v0.416.0 ASSET PIPELINE (built as 0.409.0 / 0.411.0 / 0.414.0) (Hoola Game Engine plan, Phase 4) - 1 Nov 2026
 
 Owner: "GO PHASE 4". `server/app/gamedesk/assets.py` (table `game_assets`), `gamedesk/sfx.py`.
 
@@ -15609,7 +15680,7 @@ Owner: "GO PHASE 4". `server/app/gamedesk/assets.py` (table `game_assets`), `gam
 - Tests `test_v0411_game_assets.py` (9).
 - Not verified: GLB loading in a real Godot build (no Blender in the sandbox); real photogen / Lyria / TTS output (faked).
 
-## v0.415.0 QA FARM + BUG TRACKER (Hoola Game Engine plan, Phase 5; built as 0.410.0 / 0.412.0) - 1 Nov 2026
+## v0.416.0 QA FARM + BUG TRACKER (Hoola Game Engine plan, Phase 5; built as 0.410.0 / 0.412.0) - 1 Nov 2026
 
 Owner: "GO PHASE 5". `server/app/gamedesk/qa.py` (table `game_bugs`, `game_studios.qa` reports).
 
@@ -15640,9 +15711,9 @@ Owner: "GO PHASE 5". `server/app/gamedesk/qa.py` (table `game_bugs`, `game_studi
 - Tests `test_v0415_game_qa.py` (11). VPS: run `python deploy/setup_godot.py` again once (the debug template).
 
 
-## v0.415.0 GAME PLATFORMS (Hoola Game Engine plan, Phase 6; built as 0.413.0) - 1 Nov 2026
-Owner: "GO PHASE 6". Shipped together with Phase 4 (assets) and Phase 5 (QA farm) as ONE v0.415.0, because another
-session took v0.414 on main moments before the push (REBASE PROTOCOL: re-versioned, both works kept).
+## v0.416.0 GAME PLATFORMS (Hoola Game Engine plan, Phase 6; built as 0.413.0) - 1 Nov 2026
+Owner: "GO PHASE 6". Shipped together with Phase 4 (assets) and Phase 5 (QA farm) as ONE v0.416.0, because other
+sessions took v0.414 and v0.415 on main moments before the push (REBASE PROTOCOL: re-versioned, both works kept).
 
 What it does (`server/app/gamedesk/platforms.py`, table `game_releases`, `GameStudio.platform` JSON column):
 - RELEASE = the live version of her game exported for the platforms she picks, each file CHECKED in code
@@ -15681,6 +15752,6 @@ API: GET/POST /api/gamestudio/{id}/releases, GET /api/gamestudio/release/{rid}/{
 
 Verified here with the real Godot 4.7.2: release R-001 of a test game - Linux 28 MB, Windows 38 MB, macOS 60 MB
 (universal zip), each passed its check; a second release kept the package and raised the version code; store kit
-images + texts made; rating draft = E / PEGI 3 for a no-violence game. Tests `test_v0415_game_platforms.py` (9).
+images + texts made; rating draft = E / PEGI 3 for a no-violence game. Tests `test_v0416_game_platforms.py` (9).
 NOT VERIFIED: the Android build (no Android SDK in this sandbox; the SDK install was refused here) - the first build
 in her builds repo is what will confirm it; itch.io push not run against a real account; iOS not built.

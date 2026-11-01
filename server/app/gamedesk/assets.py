@@ -1,4 +1,4 @@
-"""v0.415 ASSET PIPELINE (Hoola Game Engine plan, Phase 4): the game's art, sound, music, voice and 3D models as
+"""v0.416 ASSET PIPELINE (Hoola Game Engine plan, Phase 4): the game's art, sound, music, voice and 3D models as
 versioned files of a Studio Project, every one checked in code, none in the game before her OK.
 
 Kinds and where each comes from:

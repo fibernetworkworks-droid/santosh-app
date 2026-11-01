@@ -1,4 +1,4 @@
-# v0.415 Hoola GAME builds on GitHub Actions (same private builds repo as App Builder, APP_BUILD_MODE=github).
+# v0.416 Hoola GAME builds on GitHub Actions (same private builds repo as App Builder, APP_BUILD_MODE=github).
 # Hoola keeps this file current itself (Workflows: Read and write on the token), or copy it to .github/workflows/.
 # Hoola pushes the game's Godot project to the branch build/game-<project> under hoola-game/game/ with its upload key in
 # hoola-game/keys/ (PKCS12, made for this game and kept sealed on Hoola), then starts this workflow. The APK (to install on

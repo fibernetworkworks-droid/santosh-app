@@ -51,6 +51,7 @@ import 'shiksha_screen.dart';
 import 'guru_screen.dart';
 import 'daftar_screen.dart';
 import 'shodh_screen.dart';
+import 'prayog_screen.dart';
 import 'compliance_screen.dart';
 import 'contracts_screen.dart';
 import 'cosec_screen.dart';
@@ -731,6 +732,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Papers (OpenAlex / Crossref / arXiv / PubMed), review matrix, gaps, references'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShodhScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.biotech_rounded, color: C.accent),
+              title: Text('${app.aName} · Prayogshala (3D labs)', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Asli practical 3D mein: pendulum, lens, Ohm, meter bridge… knob, meter, table'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PrayogScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

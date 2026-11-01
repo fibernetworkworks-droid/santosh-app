@@ -436,7 +436,7 @@ def source_zip(tenant: str, pid: str) -> tuple[bytes, str]:
         for p in sorted(proj.iterdir()):
             if p.is_file() and p.suffix in (".gd", ".godot", ".tscn", ".cfg"):
                 z.write(p, f"{r.number}/{p.name}")
-        for p in sorted((proj / "assets").glob("*")) if (proj / "assets").is_dir() else []:   # v0.415 approved assets
+        for p in sorted((proj / "assets").glob("*")) if (proj / "assets").is_dir() else []:   # v0.416 approved assets
             if p.is_file() and p.suffix in (".png", ".wav", ".ogg", ".glb"):
                 z.write(p, f"{r.number}/assets/{p.name}")
         z.writestr(f"{r.number}/DESIGN.md", r.design or "")
@@ -585,7 +585,7 @@ def _build(r: GameProject, holder: dict) -> None:
     bib = _bible(r)                                     # v0.395: the Bible is always Hoola's own file, never the model's
     if bib:
         files["hoola_bible.gd"] = bib[0]
-    ast = _assets(r)                                    # v0.415: approved assets + HoolaAssets, also Hoola's own
+    ast = _assets(r)                                    # v0.416: approved assets + HoolaAssets, also Hoola's own
     files.pop("hoola_assets.gd", None)
     if ast:
         files["hoola_assets.gd"] = ast[0]
@@ -633,7 +633,7 @@ def _build(r: GameProject, holder: dict) -> None:
             files.pop("hoola_assets.gd", None)
             if ast:
                 files["hoola_assets.gd"] = ast[0]
-    shutil.rmtree(vdir / "build_debug", ignore_errors=True)    # v0.415 the played debug build is not kept
+    shutil.rmtree(vdir / "build_debug", ignore_errors=True)    # v0.416 the played debug build is not kept
     ok = bool(checks) and all(c["ok"] for c in checks[-3:]) and checks[-1]["step"] == "playtest" and checks[-1]["ok"]
     if fixed and ok:
         STATS["fixed"] += 1
@@ -667,7 +667,7 @@ def _build(r: GameProject, holder: dict) -> None:
 
 
 def _play_build(vdir: Path, holder: dict) -> Path:
-    """v0.415: Hoola plays a DEBUG web build when the debug template is there - a release web build prints no script
+    """v0.416: Hoola plays a DEBUG web build when the debug template is there - a release web build prints no script
     errors, so a crash that only happens on a key / tap passed the playtest and went live (found by the QA farm on a
     real build). The play link still serves the release build. Without the debug template: the release build, as before."""
     try:
@@ -693,7 +693,7 @@ def _src_hash(proj: Path) -> str:
 
 def _trim_builds(r: GameProject) -> None:
     """Keep the Web builds of the newest few good versions (each ~40 MB); older versions keep code + screenshots.
-    The debug build Hoola played (v0.415) is never kept."""
+    The debug build Hoola played (v0.416) is never kept."""
     for v in r.versions or []:
         shutil.rmtree(_vdir(r, v.get("n", 0)) / "build_debug", ignore_errors=True)
     good = [v["n"] for v in _good(r)]

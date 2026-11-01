@@ -32,7 +32,7 @@ def problems(scripts: dict[str, str]) -> list[str]:
         out.append(f"too many files ({len(scripts)} > {MAX_FILES})")
     total = 0
     for name, code in scripts.items():
-        if name in ("hoola_bible.gd", "hoola_assets.gd"):   # Hoola's own data files (Bible v0.395, assets v0.415), own cap
+        if name in ("hoola_bible.gd", "hoola_assets.gd"):   # Hoola's own data files (Bible v0.395, assets v0.416), own cap
             if len(code or "") > 600_000:
                 out.append("hoola_bible.gd too long")
         else:

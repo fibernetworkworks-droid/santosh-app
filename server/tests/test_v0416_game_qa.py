@@ -1,4 +1,4 @@
-"""v0.415 QA FARM + BUG TRACKER (Hoola Game Engine plan, Phase 5): seeded bots on phone-like speeds play a DEBUG web
+"""v0.416 QA FARM + BUG TRACKER (Hoola Game Engine plan, Phase 5): seeded bots on phone-like speeds play a DEBUG web
 build (release builds hide script errors - found live), golden start screens, speed against the last run, numbered
 bugs with the exact repro, fixes as board tasks that close only when the same bot cannot find the bug again. The bot
 itself is faked here (it runs for real in the sandbox / VPS checks)."""

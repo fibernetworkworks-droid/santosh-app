@@ -1,4 +1,4 @@
-/// v0.415 ASSETS (Studio project > Assets): the game's art, sounds, music, voice and 3D models. Pictures, music and
+/// v0.416 ASSETS (Studio project > Assets): the game's art, sounds, music, voice and 3D models. Pictures, music and
 /// voice cost money: they wait on a price card until she taps "Make" here. Every file is checked by the server and
 /// enters the game only after her OK. Detailed making (presets, palette lock, uploads) also lives in the web console.
 library;

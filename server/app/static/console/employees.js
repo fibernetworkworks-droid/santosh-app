@@ -801,9 +801,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
                failed: ['bad', 'Did not work'], cancelled: ['', 'Stopped']};
   const BUSYG = ['designing', 'queued', 'writing', 'building', 'testing'];
   let GS_BIBLE = false;        // v0.395 the Game Bible page of the open project
-  let GS_ASSETS = false;       // v0.415 the Assets page of the open project
-  let GS_REL = false;          // v0.415 the Release page (platforms + store kit) of the open project
-  let GS_QA = false;           // v0.415 the QA farm + bugs page of the open project
+  let GS_ASSETS = false;       // v0.416 the Assets page of the open project
+  let GS_REL = false;          // v0.416 the Release page (platforms + store kit) of the open project
+  let GS_QA = false;           // v0.416 the QA farm + bugs page of the open project
   let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   async function game(el) {
@@ -1004,7 +1004,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
   }
 
-  // ---------------------------------------------------------------- v0.415 asset pipeline
+  // ---------------------------------------------------------------- v0.416 asset pipeline
   const AST_ST = {priced: ['warn', 'Waiting for your tap'], making: ['v', 'Being made'], draft: ['warn', 'Waiting for your OK'],
                   approved: ['ok', 'In the game'], rejected: ['', 'Not used'], failed: ['bad', 'Failed its checks']};
   function astPreview(a) {
@@ -1094,7 +1094,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if ((v.assets || []).some(a => a.status === 'making')) GTIMER = setTimeout(() => { if (visible(el) && GS_ASSETS) gsAssets(el, id); }, 5000);
   }
 
-  // ---------------------------------------------------------------- v0.415 QA farm + bug tracker
+  // ---------------------------------------------------------------- v0.416 QA farm + bug tracker
   const QV = {PASS: 'ok', CONCERNS: 'warn', FAIL: 'bad', 'NOT ASSESSED': ''};
   const BUG_ST = {open: ['bad', 'Open'], fixing: ['warn', 'Being fixed'], fixed: ['ok', 'Fixed (bot checked)'], wontfix: ['', "Won't fix"], duplicate: ['', 'Duplicate']};
   async function gsQa(el, id) {
@@ -1143,7 +1143,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if (d.running) GTIMER = setTimeout(() => { if (visible(el) && GS_QA) gsQa(el, id); }, 8000);
   }
 
-  // ---------------------------------------------------------------- v0.415 platforms: downloads, store kit, itch.io
+  // ---------------------------------------------------------------- v0.416 platforms: downloads, store kit, itch.io
   const PL = {linux: 'Linux', windows: 'Windows', macos: 'macOS', android: 'Android'};
   const RST = {done: ['ok', 'Ready'], building: ['v', 'Building'], queued: ['v', 'Queued'], failed: ['bad', 'Failed'], 'not assessed': ['', 'Not built here']};
   let GS_KIT = null;

@@ -1032,7 +1032,7 @@ class Api {
   Future<Map<String, dynamic>> gameStudioGate(String id, String milestone) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/gate', body: {'milestone': milestone},
           timeout: const Duration(seconds: 90)) as Map);
-  // v0.415 asset pipeline (paid kinds start only by gameAssetsSpend = her tap on the price card)
+  // v0.416 asset pipeline (paid kinds start only by gameAssetsSpend = her tap on the price card)
   Future<Map<String, dynamic>> gameAssets(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/assets', timeout: const Duration(seconds: 40)) as Map);
   Future<Map<String, dynamic>> gameAssetsSuggest(String id) async =>
@@ -1047,7 +1047,7 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets-apply', body: {}) as Map);
   String absolute(String path) =>
       path.startsWith('http') ? path : '${baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}$path';
-  // v0.415 QA farm + bugs
+  // v0.416 QA farm + bugs
   Future<Map<String, dynamic>> gameQa(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/qa', timeout: const Duration(seconds: 40)) as Map);
   Future<Map<String, dynamic>> gameQaRun(String id) async =>
@@ -1058,7 +1058,7 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bugs', body: {'title': title, 'severity': severity}) as Map);
   Future<Map<String, dynamic>> gameBugDo(String id, String number, String what) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bugs/$number/$what', body: {}) as Map);
-  // v0.415 platforms (uploads only by gameItchPush = her tap)
+  // v0.416 platforms (uploads only by gameItchPush = her tap)
   Future<Map<String, dynamic>> gameReleases(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/releases', timeout: const Duration(seconds: 40)) as Map);
   Future<Map<String, dynamic>> gameReleaseNew(String id, List<String> platforms, String format) async =>

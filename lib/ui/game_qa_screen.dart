@@ -1,4 +1,4 @@
-/// v0.415 QA (Studio project > QA): Hoola's bots play a debug build of the game on phone speeds; the verdict, the
+/// v0.416 QA (Studio project > QA): Hoola's bots play a debug build of the game on phone speeds; the verdict, the
 /// golden start screen, the bot runs and the bugs. A bot-found bug closes only when the same bot cannot find it again.
 library;
 

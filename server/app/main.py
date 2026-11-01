@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.415.0"   # v0.415.0 ASSET PIPELINE + QA FARM + GAME PLATFORMS (Hoola Game Engine plan Phases 4-6, owner: "GO PHASE 4" / "GO PHASE 5" / "GO PHASE 6"; built as 0.409-0.415, shipped as one version because main moved to v0.414). Phase 4 (gamedesk/assets.py + sfx.py, tool game_assets): style-locked art (magenta key, exact size, palette lock), sound effects made in code (seeded presets, free), music / voice / 3D models; paid kinds wait on a price card until her tap, every file checked in code, nothing enters the game before her OK, HoolaAssets autoload in every build. Phase 5 (gamedesk/qa.py, tool game_qa): seeded bots (idle / monkey / tapper / keys / restarter) play a DEBUG web build on desktop and phone CPU speeds - release builds hide script errors, so every build's playtest plays debug too - numbered bugs with repro, fixed only when the bot no longer finds it, golden start screen, speed vs last run, verdict counted in code. Phase 6 (gamedesk/platforms.py, tool game_release): Linux / Windows / macOS downloads exported and checked on the server (setup_godot.py --desktop), Android APK / AAB in her builds repo (hoola-game.yml) signed with the game's own sealed upload key, no internet permission, package fixed + version code only up; store kit (itch / Steam / Play texts in limits, images in exact sizes, AI disclosure, Steam scripts), age-rating DRAFT, itch.io butler push only on her tap. Android and itch not verified here; iOS not built.
+APP_VERSION = "0.416.0"   # v0.416.0 ASSET PIPELINE + QA FARM + GAME PLATFORMS (Hoola Game Engine plan Phases 4-6, owner: "GO PHASE 4" / "GO PHASE 5" / "GO PHASE 6"; built as 0.409-0.415, shipped as one version because main moved to v0.414 and v0.415). Phase 4 (gamedesk/assets.py + sfx.py, tool game_assets): style-locked art (magenta key, exact size, palette lock), sound effects made in code (seeded presets, free), music / voice / 3D models; paid kinds wait on a price card until her tap, every file checked in code, nothing enters the game before her OK, HoolaAssets autoload in every build. Phase 5 (gamedesk/qa.py, tool game_qa): seeded bots (idle / monkey / tapper / keys / restarter) play a DEBUG web build on desktop and phone CPU speeds - release builds hide script errors, so every build's playtest plays debug too - numbered bugs with repro, fixed only when the bot no longer finds it, golden start screen, speed vs last run, verdict counted in code. Phase 6 (gamedesk/platforms.py, tool game_release): Linux / Windows / macOS downloads exported and checked on the server (setup_godot.py --desktop), Android APK / AAB in her builds repo (hoola-game.yml) signed with the game's own sealed upload key, no internet permission, package fixed + version code only up; store kit (itch / Steam / Play texts in limits, images in exact sizes, AI disclosure, Steam scripts), age-rating DRAFT, itch.io butler push only on her tap. Android and itch not verified here; iOS not built.
 
 
 def _quiet_http_logs() -> None:
@@ -5077,6 +5077,11 @@ from .shodh.api import make_router as _shodh_router  # noqa: E402  (Shiksha Phas
 
 for _mk in (_shiksha_router, _pathyakram_router, _guru_router, _daftar_router, _shodh_router):
     app.include_router(_mk(require_key, current_tenant))
+
+# v0.415 Prayogshala (3D practical labs): the catalogue is public teaching material (no user data), read without a key
+from .prayog.api import make_router as _prayog_router  # noqa: E402
+
+app.include_router(_prayog_router())
 
 # v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (under /api/<mod>/*, key-protected; homestay's router also holds
 # the public calendar feed /api/homestay-ical/{tenant}/{token}.ics, which checks its own random token)

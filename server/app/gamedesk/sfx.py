@@ -1,4 +1,4 @@
-"""v0.415 game sound effects made in CODE (Hoola Game Engine plan Phase 4): no model, no money, no network.
+"""v0.416 game sound effects made in CODE (Hoola Game Engine plan Phase 4): no model, no money, no network.
 
 A small synthesiser in the spirit of the classic retro sound generators: one oscillator (square / saw / triangle /
 sine / noise) with a pitch slide, vibrato, an arpeggio jump, an attack / sustain / decay envelope and a low-pass. Each

@@ -914,9 +914,9 @@ def init_db(url: str | None = None):
     from .gamedesk import service as _gamedesk  # noqa: F401  (v0.381 Game Desk)
     from .gamedesk import studio as _gamestudio  # noqa: F401  (v0.386 Studio Project)
     from .gamedesk import bible as _gamebible  # noqa: F401  (v0.395 Game Bible)
-    from .gamedesk import assets as _gameassets  # noqa: F401  (v0.415 asset pipeline)
-    from .gamedesk import qa as _gameqa  # noqa: F401  (v0.415 QA farm + bugs)
-    from .gamedesk import platforms as _gameplatforms  # noqa: F401  (v0.415 game platforms)
+    from .gamedesk import assets as _gameassets  # noqa: F401  (v0.416 asset pipeline)
+    from .gamedesk import qa as _gameqa  # noqa: F401  (v0.416 QA farm + bugs)
+    from .gamedesk import platforms as _gameplatforms  # noqa: F401  (v0.416 game platforms)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

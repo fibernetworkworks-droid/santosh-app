@@ -1,4 +1,4 @@
-"""v0.415 GAME PLATFORMS (Hoola Game Engine plan, Phase 6): Linux / Windows / macOS downloads made on the server, Android
+"""v0.416 GAME PLATFORMS (Hoola Game Engine plan, Phase 6): Linux / Windows / macOS downloads made on the server, Android
 APK / AAB in her builds repo with the game's own upload key, every file checked in code, the package name fixed and the
 version code only going up, the store kit (texts within limits, images in exact sizes, AI disclosure, Steam scripts),
 the age-rating draft, and itch.io uploads only by her tap. Godot's exports, the builds repo and butler are faked here;

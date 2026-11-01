@@ -1,4 +1,4 @@
-/// v0.415 RELEASE (Studio project > Release): the live game as real downloads - Linux, Windows, macOS (built on Hoola's
+/// v0.416 RELEASE (Studio project > Release): the live game as real downloads - Linux, Windows, macOS (built on Hoola's
 /// server) and Android APK / AAB (built in her private builds repo) - each file checked; the store kit; itch.io uploads
 /// only after her tap on the card. Her itch.io key is typed in the web console (Release page), never in chat.
 library;
