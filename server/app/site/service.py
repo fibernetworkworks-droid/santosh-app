@@ -944,6 +944,14 @@ def _app_line(r: Site) -> str:
 
 def app_schema(r: Site) -> dict[str, Any]:
     s = _j(getattr(r, "app", "") or "", {})
+    if isinstance(s, dict) and s.get("link"):        # v0.407 EK DIMAAG: the linked app's lists (with its logic)
+        try:
+            from . import applink as AL
+            got = AL.schema(r)
+            return got if got.get("collections") else {}
+        except Exception:
+            log.exception("linked app schema failed")
+            s = {k: v for k, v in s.items() if k != "link"}
     return s if s.get("collections") else {}
 
 
@@ -2072,6 +2080,10 @@ def design_app(tenant: str, ref: str, words: str, conv: str = "") -> dict[str, A
     with session() as s:
         r = _find(s, tenant, ref)
         s.expunge(r)
+    from . import applink as AL
+    if AL.linked_id(r):                     # v0.407 a linked site changes through the app's own author + her tap
+        out = AL.logic_draft(tenant, ref, words)
+        return {**view(_load(r.id), False), "draft": out, "say": out.get("say", "")}
     old = app_schema(r)
     raw = AI.ask_json(W.DESIGN_SYSTEM, "\n".join([
         f"BUSINESS: {r.name} ({(L.fields().get(r.field) or {}).get('label', r.field)}).",
@@ -2092,12 +2104,15 @@ def design_app(tenant: str, ref: str, words: str, conv: str = "") -> dict[str, A
 
 
 def app_info(tenant: str, ref: str) -> dict[str, Any]:
+    from . import applink as AL
     from . import webapp as W
     with session() as s:
         r = _find(s, tenant, ref)
         s.expunge(r)
     W.ensure_tables()
-    return {"app": app_schema(r), "counts": W.counts(r.id), "api": app_api(r)}
+    p = AL.project(r)                       # v0.407 a linked site counts the app's rows
+    return {"app": app_schema(r), "counts": W.counts(("app:" + p.id) if p else r.id), "api": app_api(r),
+            "linked": {"app": p.id, "number": p.number} if p else None}
 
 
 def _owner_app(tenant: str, ref: str):
@@ -2112,33 +2127,58 @@ def _owner_app(tenant: str, ref: str):
     return r, schema, W.Who(owner=True)
 
 
+def _linked(r: Site):
+    from . import applink as AL
+    return AL.project(r)
+
+
 def app_rows(tenant: str, ref: str, key: str) -> dict[str, Any]:
     from . import webapp as W
     r, schema, who = _owner_app(tenant, ref)
+    p = _linked(r)
+    if p is not None:                       # v0.407 the app backend: her rows with their workflow buttons
+        from ..appmaker import backend as BE
+        return {"rows": BE.owner_rows(p, key, 1000), "collection": W.coll(schema, key)}
     return {"rows": W.rows(r.id, schema, key, who, 1000), "collection": W.coll(schema, key)}
 
 
 def app_row_update(tenant: str, ref: str, key: str, row_id: str, data: dict[str, Any]) -> dict[str, Any]:
     from . import webapp as W
     r, schema, who = _owner_app(tenant, ref)
+    p = _linked(r)
+    if p is not None:
+        from ..appmaker import backend as BE
+        return BE.owner_update(p, key, row_id, data)
     return W.update(r.id, schema, key, row_id, data, who)
 
 
 def app_row_delete(tenant: str, ref: str, key: str, row_id: str) -> dict[str, Any]:
     from . import webapp as W
     r, schema, who = _owner_app(tenant, ref)
+    p = _linked(r)
+    if p is not None:
+        from ..appmaker import backend as BE
+        return BE.delete(p, key, row_id, who)
     return W.delete(r.id, schema, key, row_id, who)
 
 
 def app_members(tenant: str, ref: str) -> dict[str, Any]:
     from . import webapp as W
     r, _schema, _who = _owner_app(tenant, ref)
+    p = _linked(r)
+    if p is not None:
+        from ..appmaker import backend as BE
+        return {"members": BE.members(p)}
     return {"members": W.members(r.id)}
 
 
 def app_role(tenant: str, ref: str, member_id: str, role: str) -> dict[str, Any]:
     from . import webapp as W
     r, _schema, _who = _owner_app(tenant, ref)
+    p = _linked(r)
+    if p is not None:
+        from ..appmaker import backend as BE
+        return BE.set_role(p, member_id, role)
     return W.set_role(r.id, member_id, role)
 
 

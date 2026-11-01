@@ -15272,3 +15272,92 @@ cited limits + pass / fail / review / unverified is the same discipline text-to-
 - Tests: tests/test_v0403_dfm.py (7) - each process's known good / bad case + the desk loop (sharp pocket corners ->
   filleted R4 -> passes).
 - Not yet: trapped-powder escape check, rib / boss ratios for moulding, thread engagement, tolerances vs process.
+
+## v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403.0) - 1 Nov 2026
+
+Owner: read https://github.com/Donchitos/Claude-Code-Game-Studios (release 1.2.0, MIT) -> "GO FIX" + "Agents (49) ...
+USE THIS FOR HOOLA GAMING DEVELOPMENT". Ideas only, own code; credited in THIRD_PARTY_NOTICES.md.
+
+CREW (`server/app/gamedesk/crew.py`):
+- 49 roles as data: 3 directors (creative, technical, producer), 8 leads (game design, programming, art, audio, narrative,
+  QA, release, localization), 23 specialists, 15 engine specialists (Godot 5, Unity 5, Unreal 5). Each: does, lens (added
+  to the model call), checks (become acceptance criteria), lead (reviewer), mode builds (22) / writes (27).
+- "writes" = a written result for her OK, no build: audio (files come with the asset pipeline), network play (the game box
+  has no network), Unity / Unreal (big-studio mode), live ops / community / analytics / release / director work.
+- `pick_role` (longest keyword match, else by task kind), `criteria_for` (hers / planner's first, role checks, Hoola's two
+  automatic play checks), `verdict` counted in code: COMPLETE / COMPLETE WITH NOTES / BLOCKED / NOT ASSESSED.
+- 9 TEAMS (combat, narrative, ui, level, polish, audio, live_ops, qa, release): `plan(team=...)` gives the planner only that
+  team's roles and keeps every task inside them.
+
+STUDIO (`gamedesk/studio.py`): GameTask role / criteria / review (nullable columns, old rows work); a build's words carry
+the role's lens + "Done when"; a build covers the TEST criteria with evidence {version, src fingerprint, shots};
+`review_task` = the role's lead reads the playtest screenshots (Claude vision, `ai.ask_with_images`) + the code diff and may
+set only SCREEN criteria (no screenshot = cannot be covered; her criteria only by her OK); auto after each build when Claude
+is set up (`GAME_CREW_REVIEW` auto|on|off). Writing roles: `write_task` (one model call with the lens, design, Bible).
+"Send back" resets the criteria and review. `evidence_old` when a review task's evidence is older than the live code.
+`gate(milestone)`: facts counted in code (tasks, criteria covered / failed, stuck, nightly, Bible errors, balance verdict)
+-> PASS / CONCERNS / FAIL / NOT ASSESSED + creative / technical / producer views; recorded, advice only.
+
+GO FIX:
+1. NOT ASSESSED out loud: `bible.simulate` verdict PASS / CONCERNS / NOT ASSESSED (no enemies / no level with waves = never
+   a clean pass); a nightly that could not run is recorded (`studio.skipped`); the morning report says when last night was
+   NOT checked or did not run.
+2. `ai.GUIDE`: Godot 4.5-4.7 changes (typed-override returns, mouse / keyboard device ids, thinner lines, RichTextLabel
+   UPDATE_WIDTH_UNIT, audio area_mask, variadic / @abstract, Jolt, deprecated 4.x names).
+3. `engine.smoke` runs `--import` first (class cache) -> class_name helpers work; v0.395's guard ban lifted (only
+   HoolaBible / HoolaProbe names refused). Real Godot 4.7.2: a class_name helper built, exported, played; the nightly
+   rebuilt the same code at 60 fps.
+4. Acceptance criteria + evidence on every task (above).
+
+UI: console board (role chips, criteria with how each is checked, verdict, lead review, "Ask the lead", writer results,
+Crew roster + team planner, Gate check per milestone + result card); phone `game_studio_screen.dart` (role, criteria,
+verdict, review, Ask the lead, Gate check dialog). Tool `game_studio` actions crew / team / review / gate; add takes role +
+criteria. API `/api/gamestudio/crew`, `/{id}/gate`, `/{id}/task/{t}` action=review, `/{id}/plan` team.
+Tests `test_v0406_game_crew.py` (11); v0386 fixture takes roles; v0395's class_name test rewritten to the new truth.
+
+- (follow-up, same day) Google SUNSET developer tokens on 9 Sep 2026: Google Ads API access levels now belong to the Google
+  Cloud project that owns the OAuth client (Cloud Console > Google Ads API Overview page: enable = Test, "Upgrade access
+  level" > Explorer (2,880 ops/day on real accounts) > Basic after OAuth brand verification). `gads.configured()` no longer
+  needs GOOGLE_ADS_DEVELOPER_TOKEN; the header is sent only when set; the not-approved message names the Cloud project's
+  access level. The API Center "Apply for Basic Access" form is only for the App Conversion Tracking API now.
+
+## v0.407.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md = W1 + W13, owner: "START STEP 2")
+
+**W1 - one backend for website + apps (`server/app/site/applink.py`).** A website's web app (v0.305) used its own small
+engine: lists + simple rules only. Now a site can run on the SAME backend as her native apps - App Sahayak's
+`appmaker/backend.py` + the DIMAAG logic engine (relations, formulas, rules, unique keys, workflows with maker-checker
+approvals + SLA, triggers, schedules, locked functions).
+- `link(tenant, site)` (POST /api/sites/{ref}/link-app, idempotent): the site gets ONE App Sahayak project (status `web`,
+  its own app_key so a phone app can be built on the very same data later). Its lists become the project's lists and every
+  member + row MOVES over in one UPDATE (`site_app_rows` / `site_app_members` site_id -> `app:<pid>`): same ids, same
+  passwords. A login signed BEFORE the move keeps working (`_who` re-checks the old HMAC and finds the moved member).
+- `call(site_id, op, ...)`: every public `/api/site-app/<site>/...` address is unchanged for the site's pages. Unlinked =
+  the v0.305 engine byte-for-byte; linked = BE.signup/login/rows/create/update/delete + LE.approvals/decide/related/
+  call_public. New public routes: GET `.../c/{key}/{row}/related/{rel}`, GET `.../approvals`, POST `.../approvals/{id}`,
+  POST `.../fn/{name}` (an unlinked site answers 404 "pehle jodiye").
+- Her side: GET /api/sites/{ref}/logic, POST .../logic/draft {words} (links first, then App Sahayak's own author + checker,
+  `appmaker.logic.service.draft`), POST .../logic/apply {hash} = ONLY her tap on the exact draft; the site is rebuilt so
+  new lists / fields reach the account + staff pages. `design_app` on a linked site = a logic draft (never a silent change).
+  Console App & data tab, owner rows / members / roles, dashboard (`site/dash.py`) all read the linked app.
+- `hoola-app.js`: ref fields = a picker of the linked list (by its label field), computed + workflow fields kept out of
+  forms, list cards show `_labels`, a waiting-approval pill with Approve / Reject for those who may decide, the workflow's
+  own buttons (`_actions`), and an Approvals box on top of /admin/.
+
+**W13 - HOOLA ARCHITECT (`server/app/site/architect.py`).** Her ONE line -> a spec card, module by module:
+pages (public / after login / staff), users (roles), data (lists + fields), logic (rules, workflows, approvals), features
+(shop, blog, booking, languages). Opus (`ARCH_SYSTEM`, kind site_edit) designs it, `clean()` keeps it to a fixed shape
+(duplicate roles / pages dropped, unknown languages dropped, 150 pages max), and the data + logic words go to App
+Sahayak's OWN author + checker on a fresh `web` project in status `spec` - so the data model is PROVED before she sees it.
+Nothing is built. `approve(id, hash, modules)` is only her tap (console card / an explicit haan in chat): the website is
+created with her pages in the brief (big = site map first), joined to that project (`applink.attach`), lists + logic
+applied by the draft hash, languages / shop set, the plan approved so the 3 looks start. A module she switches off is
+skipped (data off = no app link). Spec projects are hidden from her apps list until approved.
+Routes: GET/POST /api/site-architect, GET /api/site-architect/{id}, POST .../{id}/data {words} (redo only data + rules),
+POST .../{id}/approve {hash, modules}. Tool `website` actions architect / architect_data / architect_ok / logic / logic_ok
+(the *_ok ones owner-only, tap-like). Console: `site_spec` chat card with a checkbox per module + "Haan, build it", and a
+Logic box in App & data (rules now live, the draft waiting with "Apply this logic", approvals waiting).
+Proof (tests/test_v0407_ek_dimaag.py): a school portal from one line -> students + leave requests, rule days > 0, a parent
+cannot self-approve, related leaves per student, all through the site's own addresses. Also: link migration + old tokens,
+a linked site's workflow + maker-checker approval end to end, unlinked sites unchanged.
+NOT VERIFIED: no real Opus call made (fakes in tests); the phone app does not draw the `site_spec` card yet (the model
+reads the card's lines in chat; her Haan in chat = architect_ok).

@@ -437,7 +437,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     try { v = await api('GET', '/api/social/ytads'); }
     catch (e) { box.innerHTML = `<div class="em-h"><h3>YouTube ads</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
     const head = `<div class="em-h"><h3>YouTube ads</h3><span class="muted em-small">Your own Google Ads account. An ad is made paused; money is spent only after you tap Start.</span></div>`;
-    if (!v.configured) { box.innerHTML = head + '<div class="empty">Not set up on the server yet (Google Ads developer token).</div>'; return; }
+    if (!v.configured) { box.innerHTML = head + '<div class="empty">Not set up on the server yet (Google sign-in).</div>'; return; }
     const a = v.account;
     if (!a) { box.innerHTML = head + '<button class="btn go" type="button" id="ytConn">Connect Google Ads</button>'; wireYt(el, box, v); return; }
     const pick = !a.customer_id ? `<p class="em-small">Which ad account runs your YouTube ads?</p><div class="acts">${(a.customers || []).filter(c => !c.manager).map(c =>
@@ -844,9 +844,20 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
 
   // ---------------------------------------------------------------- v0.386 Studio Project (long game projects)
   const GS_COLS = [['todo', 'To do'], ['working', 'Hoola working'], ['review', 'Waiting for your OK'], ['blocked', 'Stuck'], ['done', 'Done']];
-  function gsBars(ms) {
+  function gsBars(ms, gates) {
+    const last = {}; (gates || []).forEach(g => { if (!last[g.milestone]) last[g.milestone] = g; });
+    const VC = {PASS: 'ok', CONCERNS: 'warn', FAIL: 'bad', 'NOT ASSESSED': ''};
     return `<div class="gs-ms">${(ms || []).map(m => `<div class="gs-m"><div class="gs-mh"><b>${esc(m.name)}</b><span class="muted">${num(m.done)}/${num(m.total)}${m.target ? ' · ' + esc(m.target) : ''}</span></div>
-      <div class="pbar"><i style="width:${Math.max(0, Math.min(100, m.pct || 0))}%"></i></div></div>`).join('')}</div>`;
+      <div class="pbar"><i style="width:${Math.max(0, Math.min(100, m.pct || 0))}%"></i></div>
+      ${gates ? `<div class="gs-gate">${last[m.key] ? tag(VC[last[m.key].verdict] || '', last[m.key].verdict) : ''}<button class="btn soft gs-mini" type="button" data-gs-gate="${esc(m.key)}">Gate check</button></div>` : ''}</div>`).join('')}</div>`;
+  }
+  let GS_CREW = null;
+  let GS_CREW_OPEN = false;
+  function gsCrew(p) {
+    if (!GS_CREW) return '<p class="muted em-small">Loading the crew…</p>';
+    const busy = new Set((p.crew || {}).busy || []);
+    return `<p class="muted em-small">${esc(GS_CREW.note)}</p>${GS_CREW.tiers.map(t => `<h4>${esc(t.label)}</h4><div class="gs-roster">${t.roles.map(r =>
+      `<div class="gs-rcard${busy.has(r.key) ? ' gs-busy' : ''}"><b>${esc(r.name)}</b><span class="gs-role${r.mode === 'writes' ? ' gs-writes' : ''}">${r.mode === 'writes' ? 'writes' : 'builds'}</span><p>${esc(r.does)}</p></div>`).join('')}</div>`).join('')}`;
   }
   function gsHome(projects, games) {
     const free = games.filter(g => g.version > 0 && !projects.some(p => p.game && p.game.id === g.id));
@@ -863,12 +874,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   function gsTask(t, p) {
     const ms = (p.milestones || []).find(m => m.key === t.milestone);
     const b = (a, label, cls = 'soft') => `<button class="btn ${cls}" type="button" data-gst="${a}" data-id="${esc(t.number)}">${label}</button>`;
+    const VC = {'COMPLETE': 'ok', 'COMPLETE WITH NOTES': 'warn', 'BLOCKED': 'bad', 'NOT ASSESSED': ''};
+    const IC = {covered: '✓', failed: '✕', untested: '○'};
+    const rv = t.review || {};
+    const writes = t.role_mode === 'writes';
     return `<div class="gs-task gs-p${num(t.priority)}"><div class="gs-th"><b>${esc(t.number)}</b> ${esc(t.title)}</div>
-      <div class="gs-meta">${esc(ms ? ms.name : t.milestone)} · ${esc(t.kind)}${t.source !== 'her' ? ' · by Hoola' : ''}${t.version ? ' · v' + num(t.version) : ''}</div>
-      ${t.detail ? `<div class="gs-detail">${esc(t.detail)}</div>` : ''}${t.notes && t.status === 'review' ? `<div class="gs-detail">${esc(t.notes)}</div>` : ''}
+      <div class="gs-meta"><span class="gs-role${writes ? ' gs-writes' : ''}" title="${writes ? 'Writes a result for your OK' : 'Changes the game'}">${esc(t.role_name || '')}</span>
+        ${esc(ms ? ms.name : t.milestone)}${t.source !== 'her' ? ' · by Hoola' : ''}${t.version ? ' · v' + num(t.version) : ''}</div>
+      ${t.detail ? `<div class="gs-detail">${esc(t.detail)}</div>` : ''}
+      ${t.notes && t.status === 'review' ? (writes ? `<details class="gs-writeup" open><summary>${esc(t.role_name)}'s result</summary><pre>${esc(t.notes)}</pre></details>` : `<div class="gs-detail">${esc(t.notes)}</div>`) : ''}
       ${t.error ? `<div class="badc em-small">${esc(t.error)}</div>` : ''}
-      <div class="acts">${t.status === 'todo' ? b('start', 'Build now', 'go') + b('drop', 'Drop') : ''}
-        ${t.status === 'review' ? b('ok', 'OK', 'go') + b('back', 'Send back') : ''}
+      ${(t.criteria || []).length ? `<ul class="gs-crit">${t.criteria.map(c => `<li class="gs-c-${esc(c.status)}" title="${esc(c.by === 'her' ? 'Only you can judge this' : c.by === 'test' ? "Hoola's automatic play run" : 'Seen in a screenshot')}"><span>${IC[c.status] || '○'}</span>${esc(c.text)}${(c.evidence || {}).why ? ` <span class="muted">- ${esc(c.evidence.why)}</span>` : ''}</li>`).join('')}</ul>
+        ${['review', 'done'].includes(t.status) ? `<div class="gs-verdict">${tag(VC[t.verdict] || '', t.verdict)}${t.evidence_old ? ' ' + tag('warn', 'Evidence older than the code') : ''}</div>` : ''}` : ''}
+      ${rv.by ? `<div class="gs-review"><b>${esc(rv.by_name || 'Lead')}</b> (saw ${num(rv.shots_seen)} screenshot${rv.shots_seen === 1 ? '' : 's'}): ${esc(rv.summary || '')}${(rv.findings || []).length ? `<ul>${rv.findings.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}</div>` : ''}
+      <div class="acts">${t.status === 'todo' ? b('start', writes ? 'Write it now' : 'Build now', 'go') + b('drop', 'Drop') : ''}
+        ${t.status === 'review' ? b('ok', 'OK', 'go') + b('back', 'Send back') + (!writes ? b('review', rv.by ? 'Review again' : 'Ask ' + (t.reviewer || 'the lead').replace(/_/g, ' ') + ' to review') : '') : ''}
         ${t.status === 'blocked' ? b('start', 'Try again', 'go') + b('drop', 'Drop') : ''}
         ${t.status === 'done' ? b('back', 'Undo') : ''}</div></div>`;
   }
@@ -998,9 +1018,19 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}
         <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
-      ${gsBars(p.milestones)}
+      ${gsBars(p.milestones, p.gates || [])}
+      ${(p.gates || [])[0] ? (() => { const gt = p.gates[0]; return `<div class="tile gl gs-gatecard"><b>Gate check · ${esc(gt.name)}: ${esc(gt.verdict)}</b>
+        ${[...gt.blockers.map(x => ['bad', x]), ...gt.concerns.map(x => ['warn', x]), ...gt.missing.map(x => ['', x])].map(([c, x]) => `<div class="em-small">${tag(c, c === 'bad' ? 'Blocker' : c === 'warn' ? 'Concern' : 'Missing')} ${esc(x)}</div>`).join('')}
+        ${Object.entries(gt.views || {}).map(([k, v]) => `<p class="em-small"><b>${esc(k.replace(/_/g, ' '))}:</b> ${esc(v)}</p>`).join('')}
+        <p class="muted em-small">${esc(gt.note)}</p></div>`; })() : ''}
+      <details class="tile gl gs-crewbox" id="gsCrewBox"${GS_CREW_OPEN ? ' open' : ''}><summary>Crew: ${num((p.crew || {}).count || 49)} studio roles · ${num(((p.crew || {}).busy || []).length)} on open tasks</summary>
+        <div class="acts gs-team"><select id="gsTeam" aria-label="Team">${((p.crew || {}).teams || []).map(t => `<option value="${esc(t.key)}">${esc(t.name)}</option>`).join('')}</select>
+          <input id="gsTeamW" maxlength="400" placeholder="What the team should make, e.g. a boss fight on the rooftops" aria-label="Team brief">
+          <button class="btn soft" type="button" id="gsTeamGo">Let the team plan it</button></div>
+        <div id="gsCrewList">${gsCrew(p)}</div></details>
       <div class="tile gl gs-add"><input id="gsT" maxlength="200" placeholder="New task, one small change: e.g. add a nitro boost (double tap)" aria-label="New task">
         <select id="gsM" aria-label="Milestone">${(p.milestones || []).map(m => `<option value="${esc(m.key)}"${m.key === p.milestone ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</select>
+        <select id="gsR" aria-label="Role"><option value="">Role: picked from the words</option>${(GS_CREW ? GS_CREW.tiers.flatMap(t => t.roles) : []).map(r => `<option value="${esc(r.key)}">${esc(r.name)}${r.mode === 'writes' ? ' (writes)' : ''}</option>`).join('')}</select>
         <select id="gsP" aria-label="Priority"><option value="2">Normal</option><option value="1">High</option><option value="3">Low</option></select>
         <button class="btn go" type="button" id="gsAdd">Add task</button>
         <button class="btn soft" type="button" id="gsPlan">Let Hoola plan the next tasks</button></div>
@@ -1035,13 +1065,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }
-      go(() => api('POST', `/api/gamestudio/${q}/tasks`, {title, milestone: el.querySelector('#gsM').value, priority: el.querySelector('#gsP').value}), 'Added to To do.');
+      go(() => api('POST', `/api/gamestudio/${q}/tasks`, {title, milestone: el.querySelector('#gsM').value, priority: el.querySelector('#gsP').value, role: el.querySelector('#gsR').value}), 'Added to To do.');
     });
+    if (!GS_CREW) api('GET', '/api/gamestudio/crew').then(c => { GS_CREW = c; const box = el.querySelector('#gsCrewList'); if (box) box.innerHTML = gsCrew(p);
+      const sel = el.querySelector('#gsR'); if (sel) sel.insertAdjacentHTML('beforeend', c.tiers.flatMap(t => t.roles).map(r => `<option value="${esc(r.key)}">${esc(r.name)}${r.mode === 'writes' ? ' (writes)' : ''}</option>`).join('')); }).catch(() => {});
+    el.querySelector('#gsCrewBox').addEventListener('toggle', e => { GS_CREW_OPEN = e.target.open; });
+    el.querySelector('#gsTeamGo').addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'The team is planning…';
+      go(() => api('POST', `/api/gamestudio/${q}/plan`, {team: el.querySelector('#gsTeam').value, words: el.querySelector('#gsTeamW').value.trim()}), 'The team added its tasks to To do.'); });
+    el.querySelectorAll('[data-gs-gate]').forEach(b => b.addEventListener('click', () => { b.disabled = true; b.textContent = 'Checking…';
+      go(() => api('POST', `/api/gamestudio/${q}/gate`, {milestone: b.dataset.gsGate})); }));
     el.querySelector('#gsPlan').addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Planning…';
       go(() => api('POST', `/api/gamestudio/${q}/plan`, {words: el.querySelector('#gsT').value.trim()}), 'Hoola added the next tasks to To do. Drop any you do not want.'); });
     el.querySelectorAll('[data-gst]').forEach(b => b.addEventListener('click', () => {
       const a = b.dataset.gst, t = encodeURIComponent(b.dataset.id);
-      if (a === 'start') return go(() => api('POST', `/api/gamestudio/${q}/start`, {task: b.dataset.id}), 'Building. It will wait for your OK.');
+      if (a === 'start') return go(() => api('POST', `/api/gamestudio/${q}/start`, {task: b.dataset.id}), 'Started. It will wait for your OK.');
+      if (a === 'review') { b.disabled = true; b.textContent = 'Reviewing…'; return go(() => api('POST', `/api/gamestudio/${q}/task/${t}`, {action: 'review'}), 'The lead has reviewed it.'); }
       let note = '';
       if (a === 'back') { note = prompt('What was wrong? (Hoola tries again with this)') ?? null; if (note === null) return; }
       if (a === 'ok') { note = prompt('Anything to remember about this? (optional, saved as a decision)') || ''; }

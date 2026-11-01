@@ -1634,7 +1634,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
     if (v == null) {
       kids.add(const Center(child: CircularProgressIndicator()));
     } else if (v['configured'] != true) {
-      kids.add(const Text('YouTube ads are not set up on the server yet (Google Ads developer token).', style: TextStyle(fontSize: 14)));
+      kids.add(const Text('YouTube ads are not set up on the server yet (Google sign-in).', style: TextStyle(fontSize: 14)));
     } else if (a == null) {
       kids.addAll([
         const Text('Connect your own Google Ads account. Hoola makes ads PAUSED; money is spent only after you tap Start.',
