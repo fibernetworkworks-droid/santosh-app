@@ -23,19 +23,26 @@ import pytest
 
 from app.enterprise import run as RUN
 
+from .entfake import fake_call
+
 
 @pytest.fixture()
 def erp(env, monkeypatch):
     """A fake ERP on the odata rail: every 7th write fails, like a real load."""
     calls = []
 
-    def fake(ep, method, path, body=None, params=None):
-        calls.append((method, path, body))
+    def answer(method, path, body):
         if method == "GET":
             return 200, {"name": "PURANA", "city": "Nagpur"}
         return (400, {"error": "field too long"}) if len(calls) % 7 == 0 else (201, {"ok": True})
 
+    def fake(ep, method, path, body=None, params=None, page=0):
+        calls.append((method, path, body))
+        return answer(method, path, body)
+
+    # v0.382: writes go through dialect.Call now (one session, for the CSRF token), reads still here.
     monkeypatch.setattr(RUN, "_odata_call", fake)
+    monkeypatch.setattr(RUN.dialect, "Call", fake_call(calls, answer))
     RUN.set_endpoint("t1", "erp", "sap", "https://erp.example.com/odata", "SECRET", env="test")
     return calls
 
