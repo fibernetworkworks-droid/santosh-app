@@ -52,6 +52,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- WEB STEP 2 (1 Nov 2026, end of web Step 2 = W1 one backend + W13 Architect, docs/WEB_PLATFORM_PLAN.md): branch
+  `stable-2026-11-01-v414` = commit 35caab6c = v0.414.0, pubspec 0.414.0+458, APK release `v0.414.0-b1112`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.414.0-b1112/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v414` as the branch. Not owner-verified yet.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the ENTERPRISE CONNECT work): branch `stable-2026-11-01-v406`
   = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com at the save; healthz 0.406.0).
   THE ENTERPRISE SUITE IS NOW REACHABLE END TO END, which it had never been from v0.358 to v0.396: her own ERP /
@@ -212,12 +216,17 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.412.0 (pubspec 0.412.0+456). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.415.0 (pubspec 0.415.0+459). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
-- v0.412 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin
+- v0.415 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin
   (same numbers, tested), 22 NCERT physics practicals within 1 %, lab3d.js runtime, tool prayog, console Lab + phone Prayogshala.
+- v0.414 EK DIMAAG 2 (web Step 2 finished): old v0.305 web apps move by themselves (`applink.migrate_all`, worker) + new ones link at once; `kind: web` backends never re-made; full school portal proof (admission -> approval -> student -> fee -> attendance -> report card, 3 roles; relation `share`); `applink.phone_app` = phone app on the SAME project / data; spec card + stories / payments / notifications / integrations + `architect.revise`; phone `SiteSpecCard`; vps-ops `architect_check` / `arena_numbers`.
 - v0.410 ECC ON: review card old vs new = 8/8 caught both, false alarms 8 -> 4, nits 3 -> 0; fix card 6/6 + 6/6 with the fixer -> `dev_spec_review` + `dev_spec_fix` default ON; card rows keep what each false alarm said.
+- v0.413 PRINCIPAL SOFTWARE ARCHITECT (`docs/SOFTWARE_DESK_PLAN.md`, `app/archdesk/`): Hub group "Software Architecture, Engineering &
+  Core Systems" (10 roles, 1 live); repo read -> Opus design -> capacity in CODE -> Mermaid (vendored) diagrams -> PDF -> her OK;
+  PRs vs the approved design (draft, her tap posts); tool `software_architect`, /api/arch/*; POST /api/game checks the hire.
 - v0.407 EK DIMAAG + ARCHITECT (web Step 2): `site/applink.py` = a website's web app on App Sahayak's backend + DIMAAG (members / rows moved, old logins work, same /api/site-app addresses; logic draft -> her tap); `site/architect.py` = her one line -> spec card (pages / users / data / logic / features) -> her Haan builds site + app brain (`/api/site-architect*`, website action=architect*).
+- v0.412 NAKSHA LIVE (Pillar D): `appmaker/track.py` her switch -> staff shifts (FGS location / iPhone blue pill), one current point wiped at shift end, customer sees only HER rider while on the way, ETA estimate, near/arrived; maps MapLibre+OpenFreeMap (vendored `static/vendor/maplibre`) / Apple Maps; kits Track.kt / Track.swift.
 - v0.409 ABHI ABHI (Pillar C): `appmaker/live.py` one SSE stream per open app fed by the journal (all processes), filtered by read rules, chat / presence / typing, Last-Event-ID replay; kits Live.kt / Live.swift; console app page live.
 - v0.403 SHIKSHA 3+4: `app/daftar` school office (attendance + guardian alert card, grading UNSIGNED: sheet / OMR / Forms /
   code / rubric, timetable, report card from signed-off marks) + `app/shodh` research assistant (official APIs only, refs in code).

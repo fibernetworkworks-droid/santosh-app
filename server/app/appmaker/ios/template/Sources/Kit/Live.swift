@@ -125,6 +125,7 @@ final class Live: ObservableObject {
             typing[s("thread")] = nil
         case "typing":
             typing[s("thread")] = (s("name"), Date().addingTimeInterval(6))
+        case "pos": Track.shared.onPos(e)                   // v0.412 NAKSHA LIVE
         case "presence":
             if e["online"] as? Bool == true { online[s("member")] = (s("name"), e["staff"] as? Bool ?? false) } else { online[s("member")] = nil }
         default: break

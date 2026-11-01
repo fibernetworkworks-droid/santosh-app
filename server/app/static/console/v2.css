@@ -2472,6 +2472,12 @@ body.albon{overflow:hidden}
 #systems .tbl code, #systems .kv code { font-size: 12.5px; word-break: break-all; }
 #systems .btn.small { height: 32px; padding: 0 10px; font-size: 13px; }
 @media (max-width: 720px) { #systems .tbl { font-size: 12.5px; } #systems .ent-form input, #systems .ent-form select { height: 44px; } }
+/* v0.410 Architecture Desk: diagrams grid */
+#app .ar-dias{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+#app .ar-dia{margin:0;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+#app .ar-dia figcaption{font-size:13px;font-weight:500;margin-bottom:6px}
+#app .ar-dia img{width:100%;height:auto;display:block;border-radius:8px}
+#app .ar-dia pre{white-space:pre-wrap;font-size:12px;max-height:200px;overflow:auto}
 
 /* v0.406 HOOLA GAME CREW - roles, acceptance criteria, reviews, gates */
 .gs-role{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--pri-soft,rgba(91,69,224,.12));color:var(--pri,#5B45E0);margin-right:6px}
@@ -2503,3 +2509,7 @@ body.albon{overflow:hidden}
 /* v0.407 ABHI ABHI: her app data page is live */
 .stlive { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--mut); margin: 4px 0 8px; }
 .stlive .stdot { width: 8px; height: 8px; border-radius: 50%; background: #1e9e5a; flex: none; }
+/* v0.412 NAKSHA LIVE: the riders map */
+.sttrack .stmap { height: 320px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line, #e5e5ea); margin-top: 8px; }
+.sttrack .chk { display: inline-flex; gap: 6px; align-items: center; margin-right: 10px; font-size: 14px; }
+.strider { width: 16px; height: 16px; border-radius: 50%; background: #1e9e5a; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }

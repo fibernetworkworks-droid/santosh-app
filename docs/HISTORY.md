@@ -15469,7 +15469,115 @@ joint torque calculated from loads, gear/belt coupling between joints, and the M
 - Tests: tests/test_v0409_mechanisms2.py (7) + v0406 (5). Not yet: spatial (non-planar) loop analysis beyond
   closure, cam / slot joints, dynamic simulation inside Hoola.
 
-## v0.412.0 PRAYOGSHALA L0 + L1 - a real practical lab in 3D (owner: "GO L0 + L1")
+## v0.412.0 NAKSHA LIVE (App Sahayak Pillar D, Phases 50-51 — owner: "START PILLAR D"; built as 0.410, re-versioned on rebase)
+Maps, a rider's location while on shift, and live tracking of one order.
+- Server `server/app/appmaker/track.py` + table `app_rider` (registered in db.init_db + ensure_table):
+  - Her switch: `backend.track = {on, coll, statuses}` (GET/PUT `/api/apps/<ref>/track`). The default list is the order list
+    with statuses Out for delivery / In progress / Confirmed; only real status options are accepted. `seed_hint` and the
+    public schema carry `track` only while it is on.
+  - Shifts: POST `/api/app-api/<key>/track/shift {on}`, staff only, and only after her switch (409 otherwise).
+    GET `/track/me`. A shift left on counts as ended after 14 h. Ending a shift wipes the position.
+  - Positions: POST `/track/pos {lat, lng, acc?, speed?, heading?}`, only during a shift. Values are checked, 0,0 is refused,
+    accuracy above 1 km is dropped, at most 1 point every 2 s. Only ONE current point is kept; no trail is stored.
+  - Each move: the rider's on-the-way rows (`_to` = rider, status in her list, updated in the last 3 days) get distance +
+    ETA. Geofences write `_near` (500 m) and `_arrived` (100 m) once each through `_merge`, so they are journaled and go
+    live. A LiveSignal kind `pos` (new nullable `data` column) carries the point + {row: {to: customer, km, eta}}.
+  - `live.pos_event`: staff / the owner get every rider (member id + order ids). A customer gets only the rows whose `to`
+    is her, with the rider shown as "rider" and a first name. `Hub.signal` routes `pos` apart from presence.
+  - GET `/track/c/<coll>/<id>`: her own row (or staff / owner). Returns tracking, why (off / not_on_the_way / no_rider /
+    no_position), rider {name, lat, lng, fresh}, km, eta_min, eta_note "estimate", near, arrived, dest.
+    ETA = haversine x 1.35 at the rider's speed (5-90 km/h), else 18 km/h.
+  - GET `/track/riders`: staff only.
+- Maps: MapLibre GL JS 4.7.1 vendored at `static/vendor/maplibre` (BSD-3, THIRD_PARTY_NOTICES) with OpenFreeMap tiles
+  (free, no key). The console CSP allows tiles.openfreemap.org.
+- Android `Track.kt`:
+  - TrackService: a foreground service of type location with an ongoing notification. LocationManager GPS + network,
+    15 m distance filter, every 5 s while moving and 30 s after 2 min standing. It stops on 401/403/409.
+  - Manifest: FOREGROUND_SERVICE(_LOCATION) + fine/coarse location, only when tracking is on. Never background location.
+  - ShiftBlock: the prominent notice, then the system dialog (+ notifications permission on 33+). It says "update the
+    app" when the build does not declare the service.
+  - LiveMap: a WebView loading the map library from her server (loadDataWithBaseURL).
+  - TrackOrderBlock, RidersMap, and a TrackButton on row cards.
+- iPhone `Track.swift`: CLLocationManager (when-in-use only; background updates + the blue pill when the build adds
+  UIBackgroundModes location), with the same blocks on Apple Maps. `info_plist` adds the location mode and the shift
+  wording only when tracking is on.
+- Store answers: Play data safety and App Privacy gain "Location (staff on shift)" when tracking is on.
+- Console: a Live tracking box (list + statuses + on/off) and a riders map that moves with the live stream's `pos`
+  events. Phone: `lib/ui/app_track.dart` (switch + riders list, open in Maps).
+- Tests: tests/test_v0412_track.py (3): the end-to-end flow, builds + store answers, kits + vendored files.
+- Not built / not verified: the Google Maps SDK with her key, road-snapped routes and real road ETA (they need a routing
+  service), a "left" geofence. No real phone or emulator run yet: CI compiles the kits.
+
+## v0.413.0 PRINCIPAL SOFTWARE ARCHITECT (built as 0.401 / 0.410) - the first of ten Software Architecture, Engineering & Core Systems employees (1 Nov 2026, owner: "Principal Software Architect ---- START THE WORK"; built as 0.401)
+- PLAN `docs/SOFTWARE_DESK_PLAN.md` (10 roles, where each runs, honest limits, phases). Hub group `hire.SW_GROUP` with
+  `architect` live and compiler_eng / kernel_dev / graphics_eng / dbengine_dev / distsys_eng / hypervisor_eng /
+  lowlatency_eng / mainframe_arch / refactor_eng "coming".
+- NEW `app/archdesk/`: `models.py` (arch_projects, arch_reviews; registered in db.init_db, ensure_table), `capacity.py`
+  (all sums in code, formulas shown, no users-a-day = refused, a number is hers only if she typed it or it is in her brief),
+  `diagrams.py` (vendored Mermaid 11.4.1 in `vendor/`, drawn in the server Chromium: strict security level, only file:
+  loads, `clean()` refuses click / href / javascript: / init / HTML / unknown kinds; SVG + PNG; MIT notice in
+  THIRD_PARTY_NOTICES.md), `service.py` (start / change / approve / settings / cancel / delete, `read_repo` through the
+  Developer Sahayak's token - tree minus vendor dirs, key files by priority, capped; Opus `DESIGN_SYSTEM` JSON validated
+  by `_valid`; one `FIX_SYSTEM` round per broken diagram; `markdown()`; `_pdf()` printed by docstudio's Printer with the
+  SVGs inline; `review_pr` against the approved design -> draft ArchReview; `post_review(by_tap=True)` = ONE COMMENT via
+  gh.review; `run_due` = 24/7 watch of open PRs per approved design with watch_prs, each head read once, never posts;
+  caps 6 designs / 10 reviews a day; gate `hire.is_working` for new work, `is_hired` to read), `api.py` (/api/arch/projects
+  [GET, POST], /{id} [GET, DELETE], change, approve, watch, cancel, review, /api/arch/reviews/{id}/post|discard, signed
+  /api/arch/files/{id}/v{n}/{name} with a CSP on SVG).
+- Agent tool `software_architect` (`agent/arch_tools.py`: new / list / status / change / approve / review_pr / watch /
+  cancel; owner-only writes; posting is NOT a tool action), family `arch` admitted by the architecture / system design /
+  HLD / scale / microservices / ADR / capacity router line (`admit.py`), prompt guide line (`prompts.py`). Worker hook
+  `_ARCH_DESK_BUSY` -> `run_due` in an executor.
+- Console: `employees.js` `arch()` / `archOne()` (new design form with repo + users a day + requests, list, design page:
+  summary, diagrams grid, capacity table, components, ADRs, risks, open questions, full Markdown, next version, approve,
+  PR box + watch switch, draft reviews with Post on PR / Discard), `DESKS.architect = 'archdesk'`, v2.js sidebar desk +
+  title + dispatch, v2.html section, v2.css `.ar-dia*`. Phone: NEW `lib/ui/arch_desk.dart` (ArchDeskScreen +
+  ArchDesignScreen), `employees_screen.dart` opens it, `api.dart` arch* methods.
+- FIX: `POST /api/game` started a game for anyone with the key - it now checks the Game Developer hire (the tool did).
+- Tests NEW `test_v0410_architect.py` (16) incl. a REAL Mermaid render in Chromium when present; test_v0370 updated
+  (hire before POST /api/game, employees.js export). Version 0.413.0 (pubspec 0.413.0+457, console ?v=0.413.0, pins).
+
+## v0.414.0 EK DIMAAG 2 - web Step 2 finished (owner: "FINISH THIS ALL", after "IS STEP 2 DONE" listed six gaps)
+
+The six gaps left after v0.407, each closed:
+1. **Old sites move by themselves.** `site/applink.migrate_all()` runs in the worker loop: every website that still has a
+   v0.305 app (lists, no link) is joined to App Sahayak's backend - same members, rows, passwords, addresses; idempotent,
+   one failing site never stops the others (`_MIGRATE` counts). A NEW web app (`design_app`) is linked the moment it is
+   designed. Switch: `SITE_APP_LINK` (default true). The whole v0.305 web-app suite now passes on the linked path.
+   Safety found on the way: `backend.ensure()` re-made a backend's lists from the app PLAN when `SCHEMA_V` moved - for a
+   website that would have wiped her lists. A `kind: web` backend now only gets its version raised (`_web_upgrade`).
+2. **The full school portal from one line** (tests/test_v0414_ek_dimaag2.py): admission (parent) -> approval (teacher asks,
+   principal approves, maker-checker refuses the asker) -> trigger makes the student (owned by the parent) -> trigger makes
+   the fee (from the class's fee) -> fee Paid only by the principal and only with a receipt no. -> class page lists its
+   admissions -> attendance once per student per day (unique) by the teacher -> report card total / percent / result worked
+   out by the server, marks > 100 refused -> another parent sees nothing. Needed ONE engine feature: relation `share`
+   (`logic/spec.py` + `engine._share_owner`): a row made under a parent row (attendance / marks / fees of a student) belongs
+   to that parent row's person, so a parent reads her own child's rows with read: own while staff see all.
+   Bug found by this proof: the word "portal" (SM.BIG_WORDS) turned every Architect site into a 25-page site map and
+   ignored the Architect's own pages; approve now passes the Architect's page count.
+3. **The same data in a phone app.** `applink.phone_app(site)` (POST /api/sites/{ref}/phone-app, console "Make phone app
+   (same data)", tool website action=phone_app): App Sahayak plans the screens (its own plan card -> looks -> design ->
+   build) ON THE SAME project - the planning fields are copied into the web project and the planning shell is deleted
+   (`AS.new(..., quiet=True)` so no stray card). Same id, same app_key: the phone API (`/api/app-api/<key>`, what the
+   Android / iPhone kits call) logs in with the website password, reads the website's rows and writes rows the website shows.
+4. **The full spec card.** Modules now: stories (who / want / so), pages, users, data, logic, payments (none / record /
+   upi / cod - money never moves; record = staff record it), notifications (in_app / push become the logic's own notify
+   actions; WhatsApp / email noted for after connecting), integrations (a fixed list, joined later from Connect with her
+   login), features. `architect.revise(id, words)` (POST /api/site-architect/{id}/revise, console "Change anything", phone
+   "Kuch badlo", tool action=architect_change): Opus rewrites the spec with ONLY her change; before the build the data
+   draft is redone only when its words moved; after the build only what the change touches is rebuilt - added / removed
+   pages go to the website as one change, new data / rules become a logic draft waiting for her tap.
+5. **Live + phone.** Phone card `lib/ui/site_spec.dart` (`SiteSpecCard`: modules with switches, Kuch badlo, Haan banao ->
+   `api.architectAct`), event `site_spec` in state.dart / chat_screen / call cards. Live check: `python -m app.site.architect
+   check ["brief"]` / vps-ops `architect_check` = one REAL Opus spec + the real App Sahayak checker on her server, prints
+   the card, builds nothing, removes the spec.
+6. **Step-end ritual.** Stable branch cut after this version (see CLAUDE.md checkpoint). vps-ops `arena_numbers` prints the
+   Design Arena runs (read-only, free) for the before / after numbers.
+NOT VERIFIED: the real Opus spec until she runs vps-ops architect_check; no APK / iPhone build was run on a website's
+data (the phone API is proven, the native build path is App Sahayak's existing one); Arena numbers need her Arena run
+(Step 2 does not change how pages are designed, so they should match).
+
+## v0.415.0 PRAYOGSHALA L0 + L1 - a real practical lab in 3D (owner: "GO L0 + L1")
 
 The plan is `docs/PRAYOGSHALA_PLAN.md` (L0-L10). This version builds L0 (the lab runtime) and L1 (the physics kernels
 and the NCERT practicals).
@@ -15479,7 +15587,7 @@ and the behaviour comes from a kernel that does the physics in code. Every kerne
 - `server/app/prayog/kernels.py`, the Python twin, which the tests and the checks run;
 - `server/app/static/prayog/kernels.js`, the JavaScript twin, which the phone runs.
 
-The two twins must give the same numbers to 1e-9 on every lab's own settings (test_v0412_prayog.py runs both).
+The two twins must give the same numbers to 1e-9 on every lab's own settings (test_v0415_prayog.py runs both).
 
 - **Kernels (16)**
   - pendulum (RK4, nonlinear)

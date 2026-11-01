@@ -91,8 +91,8 @@ def test_statement_import_only_credits(env):
     from app.galla import service as G
     t = G.today(T)
     rows = ["Date,Time,Description,Type,Amount,UPI Ref",
-            f"{t:%d/%m/%Y},07:15:00,Received from RAVI,CR,10.00,412300001111",
-            f"{t:%d/%m/%Y},07:20:00,Paid to MILK DAIRY,DR,500.00,412300002222",
+            f"{t:%d/%m/%Y},07:15:00,Received from RAVI,CR,10.00.415.00001111",
+            f"{t:%d/%m/%Y},07:20:00,Paid to MILK DAIRY,DR,500.00.415.00002222",
             f"{t:%d/%m/%Y},08:05:00,Received from ASHA,CR,\"1,020.00\",412300003333",
             f"{t:%d/%m/%Y},08:05:00,Received from ASHA,CR,\"1,020.00\",412300003333"]
     r = G.import_statement(T, "phonepe.csv", "\n".join(rows).encode())

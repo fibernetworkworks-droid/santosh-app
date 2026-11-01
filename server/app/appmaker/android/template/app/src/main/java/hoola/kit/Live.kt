@@ -161,6 +161,7 @@ object Live {
                 val k = e.optString("member")
                 if (e.optBoolean("online")) online[k] = e.optString("name") to e.optBoolean("staff") else online.remove(k)
             }
+            "pos" -> withContext(Dispatchers.Main) { Track.onPos(e) }     // v0.412 NAKSHA LIVE
             "bye" -> if (e.optString("why") == "login") delay(30_000)
         }
     }

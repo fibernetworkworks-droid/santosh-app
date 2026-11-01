@@ -19,6 +19,9 @@ struct CartList: View { init() }                                    // the cart 
 struct AccountButton: View { init() }                               // Sign in / the user's name -> account screen
 struct StatsBlock: View { init() }        // v0.340 staff dashboard: counts, status mix, 14-day bars (shows nothing to customers)
 struct LiveDot: View { init() }           // v0.407 live: green dot + "Shop is online" / staff: how many online (RowsSection is already live - never poll)
+struct ShiftBlock: View { init() }        // v0.412 staff: Start / End shift (location shared during the shift; nothing when tracking is off)
+struct RidersMap: View { init() }         // v0.412 staff: every rider on shift on a live map
+struct TrackOrderBlock: View { init(coll: String, id: String) }   // v0.412 the rider moving to this order + ETA (RowsSection already has Track live)
 struct TypingLine: View { init(thread: String = "") }   // v0.407 "Asha typing…" in a chat thread ("hoola_chat" has it built in)
 struct ScanRow: View { init(label: String, key: String) }   // v0.340 a [scan] field: camera barcode / QR scanner or typed
 struct FileRow: View { init(label: String, key: String) }   // v0.346 a [file] field: a PDF from the system file importer

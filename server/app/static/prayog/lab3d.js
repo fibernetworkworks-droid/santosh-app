@@ -1,4 +1,4 @@
-/* Hoola Prayogshala lab runtime (v0.412). Draws ONE lab described in the Lab Scene Language (LSL: data only - bodies,
+/* Hoola Prayogshala lab runtime (v0.415). Draws ONE lab described in the Lab Scene Language (LSL: data only - bodies,
    knobs, instruments, table, tour) with three.js r149, and drives it with a kernel from kernels.js (the true behaviour).
    No network after the page loads, no model-written code: the lab JSON is checked on the server (app/prayog/lsl.py)
    and every string here is set with textContent. */

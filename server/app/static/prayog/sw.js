@@ -1,6 +1,6 @@
-/* Prayogshala offline cache (v0.412): the engine files cache-first, lab data network-first with the cached copy as fallback. */
-var CACHE = 'prayog-0.412.0';
-var CORE = ['index.html', 'lab.html', 'lab.css?v=0.412.0', 'kernels.js?v=0.412.0', 'lab3d.js?v=0.412.0', '/api/prayog/three.js'];
+/* Prayogshala offline cache (v0.415): the engine files cache-first, lab data network-first with the cached copy as fallback. */
+var CACHE = 'prayog-0.415.0';
+var CORE = ['index.html', 'lab.html', 'lab.css?v=0.415.0', 'kernels.js?v=0.415.0', 'lab3d.js?v=0.415.0', '/api/prayog/three.js'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(CORE); }).catch(function () {})); self.skipWaiting(); });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k.indexOf('prayog-') === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); })); }));

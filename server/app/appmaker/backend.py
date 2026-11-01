@@ -224,6 +224,8 @@ def ensure(r: AppProject) -> dict[str, Any]:
     be = _j(r.backend, {})
     if be.get("schema", {}).get("collections") is not None and int(be.get("v") or 1) >= SCHEMA_V:
         return be
+    if (be.get("schema") or {}).get("kind") == "web" and be.get("schema", {}).get("collections") is not None:
+        return _web_upgrade(r, be)     # v0.414 a website's lists are HERS (from the site / Architect), never re-made from a plan
     # v0.319 an older backend is upgraded in place: lists only GAIN fields (photo / location / paid), rows are untouched
     from . import locks as LK
     with LK.app(r.id), session() as s:           # v0.390 under the app's lock, from the row as it is NOW
@@ -245,6 +247,14 @@ def ensure(r: AppProject) -> dict[str, Any]:
     r.backend = txt
     STATS["schemas"] += 1
     return be
+
+
+def _web_upgrade(r: AppProject, be: dict[str, Any]) -> dict[str, Any]:
+    """v0.414 a website app's backend only gets its version number raised: lists, fields and rows stay exactly as they are."""
+    def up(b):
+        b["v"] = SCHEMA_V
+    out = patch_backend(r, fn=up)
+    return out
 
 
 def patch_backend(r: AppProject, set_: dict[str, Any] | None = None, drop: tuple[str, ...] = (), fn=None) -> dict[str, Any]:
@@ -299,9 +309,13 @@ def who(r: AppProject, token: str) -> W.Who:
 def public_schema(r: AppProject) -> dict[str, Any]:
     sch = schema(r)
     from . import coupon as CP
-    return {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", ""),
-            "coupons": bool(sch.get("order")) and CP.active(r),           # v0.358 the cart shows the code box
-            "approvals": bool(sch.get("approvals")), "functions": sch.get("functions") or []}   # v0.382 DIMAAG
+    out = {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", ""),
+           "coupons": bool(sch.get("order")) and CP.active(r),            # v0.358 the cart shows the code box
+           "approvals": bool(sch.get("approvals")), "functions": sch.get("functions") or []}   # v0.382 DIMAAG
+    tr = _track_public(r)                                                 # v0.412 NAKSHA LIVE
+    if tr:
+        out["track"] = tr
+    return out
 
 
 def signup(r: AppProject, email: str, password: str, name: str, ip: str) -> dict[str, Any]:
@@ -704,7 +718,19 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
         dl = DL.public(r)
         if dl:
             out["delivery"] = dl
+    tr = _track_public(r)                                  # v0.412 NAKSHA LIVE: shift button, maps, Track live
+    if tr:
+        out["track"] = tr
     return out
+
+
+def _track_public(r: AppProject) -> dict[str, Any] | None:
+    try:
+        from . import track as TR
+        st = TR.settings(r)
+    except Exception:                                       # noqa: BLE001
+        return None
+    return {"on": True, "coll": st["coll"], "statuses": st["statuses"], "loc": st["loc"]} if st["on"] else None
 
 
 # ---------------------------------------------------------------- v0.319 photos, location, updates, "I paid"

@@ -33,7 +33,7 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any, AsyncIterator
 
-from sqlalchemy import DateTime, Integer, String, select
+from sqlalchemy import DateTime, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, now, session
@@ -71,6 +71,7 @@ class LiveSignal(Base):
     kind: Mapped[str] = mapped_column(String(10))               # here | gone | typing
     scope: Mapped[str] = mapped_column(String(40), default="")   # here/gone: the stream id; typing: the chat thread
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+    data: Mapped[str | None] = mapped_column(Text, nullable=True)   # v0.412 NAKSHA LIVE: a rider's position + who may see it
 
 
 _OK = False
@@ -198,6 +199,8 @@ def event_for(sub: Sub, j: Any, sch: dict[str, Any] | None = None) -> dict[str, 
 def signal_event(sub: Sub, sig: Any, online: bool | None = None) -> dict[str, Any] | None:
     """A presence / typing signal -> the event this person may see. Customers see staff only; nobody sees themselves."""
     w = sub.w
+    if sig.kind == "pos":                                  # v0.412 NAKSHA LIVE: a rider on shift moved
+        return pos_event(sub, sig)
     if sig.member == sub.member and sig.kind != "typing":
         return None
     if sig.kind == "typing":
@@ -217,6 +220,25 @@ def signal_event(sub: Sub, sig: Any, online: bool | None = None) -> dict[str, An
     else:
         ev["member"] = "staff:" + (sig.member if sig.member == OWNER else sig.member[-6:])
     return ev
+
+
+def pos_event(sub: Sub, sig: Any) -> dict[str, Any] | None:
+    """v0.412 a rider's position: staff / the owner see every rider on shift; a customer ONLY the rider bringing HER order,
+    only while it is on its way (the list the server wrote into the signal when the rider sent it), never anyone else."""
+    try:
+        d = json.loads(sig.data or "{}")
+    except ValueError:
+        return None
+    w = sub.w
+    base = {"type": "pos", "name": sig.name, "off": bool(d.get("off"))}
+    if not base["off"]:
+        base.update({"lat": d.get("lat"), "lng": d.get("lng"), "at": d.get("at", ""), "speed": d.get("speed")})
+    if w.staff:
+        return {**base, "member": sig.member, "orders": sorted((d.get("orders") or {}).keys())}
+    mine = {k: v for k, v in (d.get("orders") or {}).items() if w.id and v.get("to") == w.id}
+    if not mine:
+        return None
+    return {**base, "member": "rider", "orders": {k: {"eta_min": v.get("eta_min"), "km": v.get("km")} for k, v in mine.items()}}
 
 
 # ---------------------------------------------------------------- the per-process tailer
@@ -339,6 +361,10 @@ class Hub:
                 sub.put(ev)
 
     def signal(self, sg: Any) -> None:
+        if sg.kind == "pos":                               # v0.412 positions are never presence
+            if time.time() - _aware(sg.at).timestamp() <= 120:
+                self._send(sg.site_id, sg, None)
+            return
         if sg.kind == "typing":
             if time.time() - _aware(sg.at).timestamp() > TYPING_TTL:
                 return
@@ -378,10 +404,11 @@ HUB = Hub()
 
 
 # ---------------------------------------------------------------- signals (any process)
-def _write_signal(site: str, member: str, name: str, staff: bool, kind: str, scope: str = "") -> None:
+def _write_signal(site: str, member: str, name: str, staff: bool, kind: str, scope: str = "", data: Any = None) -> None:
     ensure_table()
     with session() as s:
-        s.add(LiveSignal(site_id=site, member=member[:40], name=_first(name), staff=1 if staff else 0, kind=kind, scope=scope[:40]))
+        s.add(LiveSignal(site_id=site, member=member[:40], name=_first(name), staff=1 if staff else 0, kind=kind, scope=scope[:40],
+                         data=json.dumps(data, ensure_ascii=False) if data is not None else None))
     STATS["signals"] += 1
 
 

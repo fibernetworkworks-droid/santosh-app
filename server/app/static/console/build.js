@@ -768,6 +768,7 @@ window.HoolaBuild = function (C) {
           const block = buf.slice(0, i); buf = buf.slice(i + 2);
           const data = block.split('\n').filter(x => x.startsWith('data: ')).map(x => x.slice(6)).join('\n'); if (!data) continue;
           let e; try { e = JSON.parse(data); } catch { continue; }
+          if (e.type === 'pos') { box.dispatchEvent(new CustomEvent('hoolapos', {detail: e})); continue; }   // v0.412 a rider moved
           if (e.type === 'row' || e.type === 'chat') { gotEvent = true; changed(); }
           else if (e.type === 'presence') { if (e.online) people.set(S(e.member), S(e.name)); else people.delete(S(e.member)); draw(); }
           else if (e.type === 'reset') changed();
@@ -777,6 +778,35 @@ window.HoolaBuild = function (C) {
     } catch (er) {
       if (!ctl.signal.aborted && box.isConnected && line) { line.hidden = true; setTimeout(() => { if (box.isConnected && box._live === ctl) liveApp(o, box); }, 30000); }
     }
+  }
+  /* v0.412 the riders map: MapLibre (vendored on her server) + OpenFreeMap tiles, no key. Moves with the live stream's
+     "pos" events (liveApp re-sends them on the data box). */
+  function mapLib() {
+    if (window.maplibregl) return Promise.resolve();
+    if (mapLib._p) return mapLib._p;
+    mapLib._p = new Promise((ok, bad) => {
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/static/vendor/maplibre/maplibre-gl.css'; document.head.appendChild(css);
+      const s = document.createElement('script'); s.src = '/static/vendor/maplibre/maplibre-gl.js'; s.onload = ok; s.onerror = () => { mapLib._p = null; bad(new Error('map')); };
+      document.head.appendChild(s);
+    });
+    return mapLib._p;
+  }
+  async function ridersMap(el, riders) {
+    try { await mapLib(); } catch { el.innerHTML = '<p class="stempty">The map could not load.</p>'; return; }
+    const map = new maplibregl.Map({container: el, style: 'https://tiles.openfreemap.org/styles/liberty', center: [78.96, 22.6], zoom: 4, attributionControl: {compact: true}});
+    const marks = new Map();
+    const put = (id, name, lat, lng) => {
+      if (typeof lat !== 'number' || typeof lng !== 'number') return;
+      let m = marks.get(id);
+      if (!m) { const d = document.createElement('div'); d.className = 'strider'; d.title = name; m = new maplibregl.Marker({element: d}).setLngLat([lng, lat]).setPopup(new maplibregl.Popup({offset: 12}).setText(name)).addTo(map); marks.set(id, m); }
+      else m.setLngLat([lng, lat]);
+    };
+    riders.forEach(r => put(S(r.member), S(r.name), r.lat, r.lng));
+    const fit = () => { if (!marks.size) return; const b = new maplibregl.LngLatBounds(); marks.forEach(m => b.extend(m.getLngLat())); map.fitBounds(b, {padding: 48, maxZoom: 15, duration: 0}); };
+    map.on('load', fit);
+    const box = el.closest('.stcols') ? el.closest('.stcols').parentNode : el.parentNode.parentNode;
+    const on = e => { const p = e.detail; if (!el.isConnected) return box.removeEventListener('hoolapos', on); if (p.off) { const m = marks.get(S(p.member)); if (m) { m.remove(); marks.delete(S(p.member)); } } else put(S(p.member), S(p.name), p.lat, p.lng); };
+    box.addEventListener('hoolapos', on);
   }
   async function loadAppData(o, box) {
     let info;
@@ -824,6 +854,29 @@ window.HoolaBuild = function (C) {
       cbox.appendChild(sec);
       hydrate(sec);              // v0.319 photos load with her login
     }
+    // v0.412 NAKSHA LIVE: her tracking switch (which list, which statuses mean "on the way") + every rider on shift, live
+    const trbox = document.createElement('section'); trbox.className = 'stcol sttrack'; box.appendChild(trbox);
+    const drawTrack = tr => {
+      const lists = L(tr.lists).filter(x => L(x.statuses).length), cur = lists.find(x => S(x.key) === S(tr.coll)) || lists[0];
+      if (!cur) { trbox.remove(); return; }
+      trbox.innerHTML = `<h4>Live tracking <span>${tr.on ? 'On' : 'Off'}</span></h4>
+        <p class="stnote">Staff tap Start shift in the app; their location is shared only during the shift. A customer sees only the rider bringing her order, only while it is on its way. A new app build adds the shift button and the maps.</p>
+        <form class="stapp" autocomplete="off"><div class="row"><label>List <select name="coll">${lists.map(x => `<option value="${esc(S(x.key))}"${x === cur ? ' selected' : ''}>${esc(S(x.label))}</option>`).join('')}</select></label>
+        <span class="stnote">On the way when the status is:</span>${L(cur.statuses).map(s => `<label class="chk"><input type="checkbox" name="st" value="${esc(S(s))}"${L(tr.statuses).includes(s) ? ' checked' : ''}> ${esc(S(s))}</label>`).join('')}</div>
+        ${cur.location ? '' : '<p class="stnote">This list has no location field, so the map shows the rider but not the customer\'s place.</p>'}
+        <div class="row"><button class="btn go" type="submit" data-on="1">${tr.on ? 'Save' : 'Turn on tracking'}</button>${tr.on ? '<button class="btn" type="submit" data-on="0">Turn off</button>' : ''}</div></form>
+        ${tr.on ? `<p class="stnote">${L(tr.riders).length ? L(tr.riders).length + ' on shift now' : 'Nobody is on shift right now.'}</p><div class="stmap" role="img" aria-label="Riders on shift"></div>` : ''}`;
+      const f = trbox.querySelector('form');
+      f.coll.addEventListener('change', () => drawTrack({...tr, coll: f.coll.value, statuses: []}));
+      f.addEventListener('submit', async e => {
+        e.preventDefault(); const on = e.submitter ? e.submitter.dataset.on === '1' : true;
+        const st = [...f.querySelectorAll('input[name=st]:checked')].map(x => x.value);
+        try { const v = await api('PUT', base(o) + '/track', {on, coll: f.coll.value, statuses: st}); drawTrack({...tr, ...v}); toast(on ? 'Live tracking is on. Build the app again to add it to phones.' : 'Live tracking is off.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
+    };
+    try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
     // v0.355 GST BILL: her GST details -> finished rows get a tax invoice (GST-inclusive prices)
     const gbox = document.createElement('section'); gbox.className = 'stcol stgst'; box.appendChild(gbox);
     const drawGst = g => {
@@ -1496,13 +1549,20 @@ window.HoolaBuild = function (C) {
     const design = `<form class="stapp" autocomplete="off"><label for="stApp"><b>${cols.length ? 'Change the app' : 'Make this website an app'}</b>
         <span>Logins, lists of data with rules, a My account page and a staff panel at /admin/. Say who logs in, what they fill and who sees it.</span></label>
         <div class="row"><input id="stApp" placeholder="e.g. customers log in and track their order; staff update the status"><button class="btn go" type="submit">${cols.length ? 'Update app' : 'Make app'}</button></div></form>
-      <div class="acts"><button class="btn soft" type="button" data-x="react">Export as React project</button></div>`;
+      <div class="acts"><button class="btn soft" type="button" data-x="react">Export as React project</button>${cols.length ? '<button class="btn soft" type="button" data-x="phone">Make phone app (same data)</button>' : ''}</div>`;
     box.innerHTML = design + (info.linked ? `<section class="stlogic" aria-label="Logic"></section>` : '') + (cols.length ? `<p class="stnote">${N(counts.members)} members · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>` : '');
     box.querySelector('.stapp').addEventListener('submit', async e => {
       e.preventDefault(); const w = box.querySelector('#stApp').value.trim(); if (!w) return;
       const b = e.target.querySelector('button'); b.disabled = true;
       try { const r = await api('POST', base(o) + '/app-design', {words: w, conversation_id: C.conv() || ''}); toast(S(r?.say) || 'App updated.'); loadData(o, root); }
       catch (er) { toast(er.message, true); b.disabled = false; }
+    });
+    const ph = box.querySelector('[data-x=phone]');
+    if (ph) ph.addEventListener('click', async e => {
+      if (!confirm('Plan an Android / iPhone app on the same data as this website? Nothing is built until you say Haan on its plan card.')) return;
+      e.target.disabled = true;
+      try { const r = await api('POST', base(o) + '/phone-app', {conversation_id: C.conv() || ''}); toast(S(r?.say) || 'Phone app plan ready.'); }
+      catch (er) { toast(er.message, true); e.target.disabled = false; }
     });
     box.querySelector('[data-x=react]').addEventListener('click', async e => {
       e.target.disabled = true;
@@ -1680,14 +1740,14 @@ window.HoolaBuild = function (C) {
       + mods.map(m => `<fieldset class="stmod"><legend><label><input type="checkbox" data-mod="${esc(S(m.key))}"${m.required || built ? ' disabled' : ''} checked> <b>${esc(S(m.title))}</b>${m.ready === false ? ' <span class="badc">needs a fix</span>' : ''}</label></legend>
           ${L(m.lines).slice(0, 14).map(x => `<div class="bln faint">• ${esc(S(x))}</div>`).join('')}</fieldset>`).join('')
       + L(c.questions).map(q => `<div class="warnc bln">? ${esc(S(q))}</div>`).join('')
-      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change data / rules</button><button class="btn go" type="button" data-sp="ok">Haan, build it</button></div>`);
+      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change anything</button><button class="btn go" type="button" data-sp="ok">Haan, build it</button></div>`);
     el.onclick = async e => {
       const b = e.target.closest('[data-sp]'); if (!b) return;
       const url = `/api/site-architect/${encodeURIComponent(S(c.id))}`;
       if (b.dataset.sp === 'data') {
-        const w = prompt('What should change in the data or rules? (e.g. late fee after the 10th, class teacher approves leave)'); if (!w) return;
+        const w = prompt('What should change? (e.g. add an alumni page, teachers also mark attendance, fees by UPI)'); if (!w) return;
         b.disabled = true;
-        try { const r = await api('POST', url + '/data', {words: w}); specCard(r, el); toast(S(r?.say) || 'Updated.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+        try { const r = await api('POST', url + '/revise', {words: w}); specCard(r, el); toast(S(r?.say) || 'Updated.'); } catch (er) { toast(er.message, true); b.disabled = false; }
         return;
       }
       const keep = [...el.querySelectorAll('[data-mod]')].filter(x => x.checked).map(x => x.dataset.mod);

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.412.0"   # v0.412.0 PRAYOGSHALA L0 + L1 (docs/PRAYOGSHALA_PLAN.md, owner: "GO L0 + L1"): a real practical lab in 3D. A lab is DATA (Lab Scene Language, checked strictly in app/prayog/lsl.py: unknown keys refused, every bind / meter / column points at a real kernel var, sources + an NCERT check required, phone triangle budget); its behaviour comes from a KERNEL in code (16: pendulum, spring, incline, stokes, cooling, boyle, mixtures, resonance, sonometer, MNA circuit with diode + capacitor, exact ray-traced mirror / lens / prism / slab, induction, vernier / screw gauge), each with a JavaScript twin the phone runs (same numbers to 1e-9, tested). Runtime static/prayog/lab3d.js (three.js r149): rotate / pinch / tap-to-name, section cut, explode, knobs (some hidden), meters / stopwatch / graphs, observation table -> result + error vs the lab's real value, guided tour with narration, quiz, offline cache. 22 NCERT XI / XII practicals, each within 1 % of the textbook formula. Public read-only routes /api/prayog/*, tool prayog (find / open / check), console Lab page, phone Profile > Prayogshala. Tests: NEW test_v0412_prayog.py. Previous: v0.411.0 HOOLA MECHANISMS 2 (owner: "SDF/MJCF, closed-loop linkages, joint torque from loads, gear/belt coupling, SRDF - fix and develop"): closed loops (a closure=True joint; passive joints solved by least squares, walked from the zero pose; where it locks = the real range; four-bar Grashof class + transmission angle, matching the analytic 57.1°), H.couple gear / belt couplings (teeth or ratio; mimic in URDF / SDF, joint equality in MJCF), worst-case holding torque per joint by virtual work over sampled poses + payload + I·alpha (matches beam statics and MuJoCo qfrc_bias), effort = her number checked or need x 1.5, too weak -> redesign; one package URDF + SRDF (chain group, end effector, Adjacent / Never / Default / Always pairs) + SDF + MJCF, MuJoCo compiles the MJCF as a check; pins must sit on their parts. Previous: v0.410.0 ECC ON: the cards decided - review card old vs new: both caught 8/8 planted bugs, false alarms 8 -> 4, nitpicks 3 -> 0, verdicts 10 -> 11 of 12; fix card with the CI fixer 6/6 (Python + JS) and 6/6 (Dart + Kotlin), no harm - so dev_spec_review and dev_spec_fix are ON by default; the review card now keeps what each false alarm SAID. | v0.409.0 ABHI ABHI (App Sahayak Pillar C, Phase 49, owner: "START PILLAR C"): real time for every native app - ONE live stream (SSE) per open app fed by the v0.390 journal (every write, every path, every worker process; one journal read per process however many phones), each event filtered by the list's own read rule (a customer never hears about another customer's order), instant chat to that thread only, presence (customers see staff only) + typing scoped to one thread, Last-Event-ID replay after a reconnect (too many missed = reset), out-of-order Postgres commits still delivered, limits (sign-in, 3 streams an account, per app / per process caps = 429 and the normal refresh). Kits Live.kt / Live.swift (open only while on screen, lists reload on a change, LiveDot, TypingLine, LiveValue), her console app page live. Previous: v0.408.0 HOOLA MECHANISMS (owner: "GO JOINTS AND URDF"): H.joint between named assembly parts (revolute / continuous / prismatic / fixed, world frame of the zero pose) -> tree check with named problems, B-rep mass / centre of mass / inertia per part from its material, every movable joint swept through its range with exact solid overlap tests + bisection -> the FREE range and what collides where (inside her range = back to the designer), URDF package (links in joint frames, STL meshes mm x 0.001, inertials kg / m, limits rad / m, effort / velocity said when assumed) checked by our own validator after parsing it back, motion GIF (all joints swinging, one camera) and exploded view. Previous: v0.407.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 2"). EK DIMAAG (W1): a website's web app now runs on the SAME backend as her native apps - App Sahayak's backend + the DIMAAG logic engine (relations, formulas, rules, workflows with maker-checker approvals + SLA, triggers, schedules, functions). Linking moves every member and row over unchanged (same ids, same passwords; a login made before the move keeps working), the site's own /api/site-app addresses stay, new public routes for related records / approvals / functions, and her logic is drafted by App Sahayak's author + checker and goes live only on her tap; the site's pages draw the workflow buttons, approval pills and linked-record pickers. HOOLA ARCHITECT (W13): her ONE line -> a spec card (pages, users, data, rules / workflows / approvals, features) with the data model PROVED by the checker before she sees it; she approves module by module and Hoola creates the website, joins it to its app brain, applies the logic and starts the looks. Proof: a school portal from one line. Previous: v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403; owner: "GO FIX" + "USE THIS FOR HOOLA GAMING DEVELOPMENT", after studying Claude-Code-Game-Studios, MIT, ideas only - THIRD_PARTY_NOTICES.md): a whole studio inside the Game Developer desk - 49 roles as DATA (gamedesk/crew.py: 3 directors, 8 leads, 23 specialists, 15 Godot / Unity / Unreal specialists), each with what it does, how it thinks, what it checks, who reviews it, and whether it BUILDS (changes the Godot game) or WRITES (a result for her OK: sound lists, store text, Unity / Unreal plans - work Hoola cannot build yet). Every task gets a role and acceptance criteria (hers / the planner's, the role's checks, Hoola's two automatic play checks); a build covers the test criteria with evidence stamped with the code fingerprint, the lead reviews screenshots + the code diff (Claude vision) and may set only SCREEN criteria - nothing seen = not covered, her criteria only by her OK; the verdict (COMPLETE / WITH NOTES / BLOCKED / NOT ASSESSED) is counted in code. 9 team flows plan linked tasks with only that team's roles; milestone gate checks PASS / CONCERNS / FAIL / NOT ASSESSED from counted facts + three directors' views, advice only. GO FIX: (1) NOT ASSESSED said out loud - a Bible with no levels is never a clean balance pass, a nightly that could not run is recorded, the morning report says when nothing was checked; (2) Godot 4.5-4.7 changes in the code guide (typed-override returns, device ids, RichTextLabel rename...); (3) smoke() imports first, so class_name helpers work again (a real run proved it) and v0.395's ban is lifted; (4) acceptance criteria + evidence-older-than-code on every task.
+APP_VERSION = "0.415.0"   # v0.415.0 PRAYOGSHALA L0 + L1 (docs/PRAYOGSHALA_PLAN.md, owner: "GO L0 + L1"): a real practical lab in 3D. A lab is DATA (Lab Scene Language, checked strictly in app/prayog/lsl.py: unknown keys refused, every bind / meter / column points at a real kernel var, sources + an NCERT check required, phone triangle budget); its behaviour comes from a KERNEL in code (16: pendulum, spring, incline, stokes, cooling, boyle, mixtures, resonance, sonometer, MNA circuit with diode + capacitor, exact ray-traced mirror / lens / prism / slab, induction, vernier / screw gauge), each with a JavaScript twin the phone runs (same numbers to 1e-9, tested). Runtime static/prayog/lab3d.js (three.js r149): rotate / pinch / tap-to-name, section cut, explode, knobs (some hidden), meters / stopwatch / graphs, observation table -> result + error vs the lab's real value, guided tour with narration, quiz, offline cache. 22 NCERT XI / XII practicals, each within 1 % of the textbook formula. Public read-only routes /api/prayog/*, tool prayog (find / open / check), console Lab page, phone Profile > Prayogshala. Tests: NEW test_v0415_prayog.py. Previous: v0.414.0 EK DIMAAG 2 (web Step 2 finished, owner: "FINISH THIS ALL"). Old v0.305 website apps move onto App Sahayak's backend by themselves (worker sweep; same members, rows, passwords, addresses) and every new web app is linked the moment it is designed; a website's lists are never re-made from an app plan when the backend version moves. THE PROOF: a school portal from one line - admission -> principal approval (maker-checker) -> student -> fee -> class -> attendance -> report card, used by parent, teacher and principal, each seeing only their own (new relation "share": a child row made by staff belongs to the parent row's person). The phone app runs on the SAME project and data (App Sahayak plans its screens on the website's project; the phone API reads and writes the website's rows). The spec card gains user stories, payments, notifications and other apps, and any part changes in her words - after the build only what the change touches is rebuilt. Phone spec card, live check vps-ops architect_check (real Opus, nothing built), arena_numbers. Also fixed: the word "portal" turned every Architect site into a 25-page site map. Previous: v0.413.0 PRINCIPAL SOFTWARE ARCHITECT (owner: "Principal Software Architect ---- START THE WORK"; built as 0.401 / 0.410, docs/SOFTWARE_DESK_PLAN.md): new Hub group "Software Architecture, Engineering & Core Systems" (10 roles, the Architect live, 9 coming); `app/archdesk/`: her brief + her GitHub repo read first (read only, her Developer Sahayak token, key files capped) -> Opus writes ONE structured design (context, NFRs, components, data, flows, integrations, security, failure modes, ADRs, risks, roadmap, open questions, Mermaid diagrams) -> capacity worked out in CODE (`capacity.py`, no users-a-day = no sheet; a number is hers only when she typed it or it is in her brief) -> diagrams drawn by vendored Mermaid 11.4.1 (MIT) in the server Chromium, strict mode, network blocked, one fix round per broken diagram -> Markdown + printed PDF -> her approve / next version; PRs read against the APPROVED design (draft findings, ONE COMMENT on the PR only by her tap; 24/7 watch of new PRs when she switches it on); tool `software_architect`, routes /api/arch/*, console + phone Architecture Desk; FIX: POST /api/game now checks the Game Developer hire. Previous: v0.412.0 NAKSHA LIVE (App Sahayak Pillar D, Phases 50-51, owner: "START PILLAR D"): maps + live tracking in her native apps - her switch (which list, which statuses mean on the way), staff Start / End shift after the Play notice + the phone's own dialog (foreground location service on Android, blue pill on iPhone, never background-location permission), ONE current position kept and wiped at shift end, a customer sees ONLY the rider bringing HER order while it is on its way (decided by the server on every move), ETA as an estimate, near / arrived geofences written once through the journal, positions over the Pillar C live stream; maps = MapLibre + OpenFreeMap (no key) on Android and the console, Apple Maps on iPhone; console riders map + phone switch. Previous: v0.411.0 HOOLA MECHANISMS 2 (owner: "SDF/MJCF, closed-loop linkages, joint torque from loads, gear/belt coupling, SRDF - fix and develop"): closed loops (a closure=True joint; passive joints solved by least squares, walked from the zero pose; where it locks = the real range; four-bar Grashof class + transmission angle, matching the analytic 57.1°), H.couple gear / belt couplings (teeth or ratio; mimic in URDF / SDF, joint equality in MJCF), worst-case holding torque per joint by virtual work over sampled poses + payload + I·alpha (matches beam statics and MuJoCo qfrc_bias), effort = her number checked or need x 1.5, too weak -> redesign; one package URDF + SRDF (chain group, end effector, Adjacent / Never / Default / Always pairs) + SDF + MJCF, MuJoCo compiles the MJCF as a check; pins must sit on their parts. Previous: v0.410.0 ECC ON: the cards decided - review card old vs new: both caught 8/8 planted bugs, false alarms 8 -> 4, nitpicks 3 -> 0, verdicts 10 -> 11 of 12; fix card with the CI fixer 6/6 (Python + JS) and 6/6 (Dart + Kotlin), no harm - so dev_spec_review and dev_spec_fix are ON by default; the review card now keeps what each false alarm SAID. | v0.409.0 ABHI ABHI (App Sahayak Pillar C, Phase 49, owner: "START PILLAR C"): real time for every native app - ONE live stream (SSE) per open app fed by the v0.390 journal (every write, every path, every worker process; one journal read per process however many phones), each event filtered by the list's own read rule (a customer never hears about another customer's order), instant chat to that thread only, presence (customers see staff only) + typing scoped to one thread, Last-Event-ID replay after a reconnect (too many missed = reset), out-of-order Postgres commits still delivered, limits (sign-in, 3 streams an account, per app / per process caps = 429 and the normal refresh). Kits Live.kt / Live.swift (open only while on screen, lists reload on a change, LiveDot, TypingLine, LiveValue), her console app page live. Previous: v0.408.0 HOOLA MECHANISMS (owner: "GO JOINTS AND URDF"): H.joint between named assembly parts (revolute / continuous / prismatic / fixed, world frame of the zero pose) -> tree check with named problems, B-rep mass / centre of mass / inertia per part from its material, every movable joint swept through its range with exact solid overlap tests + bisection -> the FREE range and what collides where (inside her range = back to the designer), URDF package (links in joint frames, STL meshes mm x 0.001, inertials kg / m, limits rad / m, effort / velocity said when assumed) checked by our own validator after parsing it back, motion GIF (all joints swinging, one camera) and exploded view. Previous: v0.407.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 2"). EK DIMAAG (W1): a website's web app now runs on the SAME backend as her native apps - App Sahayak's backend + the DIMAAG logic engine (relations, formulas, rules, workflows with maker-checker approvals + SLA, triggers, schedules, functions). Linking moves every member and row over unchanged (same ids, same passwords; a login made before the move keeps working), the site's own /api/site-app addresses stay, new public routes for related records / approvals / functions, and her logic is drafted by App Sahayak's author + checker and goes live only on her tap; the site's pages draw the workflow buttons, approval pills and linked-record pickers. HOOLA ARCHITECT (W13): her ONE line -> a spec card (pages, users, data, rules / workflows / approvals, features) with the data model PROVED by the checker before she sees it; she approves module by module and Hoola creates the website, joins it to its app brain, applies the logic and starts the looks. Proof: a school portal from one line. Previous: v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403; owner: "GO FIX" + "USE THIS FOR HOOLA GAMING DEVELOPMENT", after studying Claude-Code-Game-Studios, MIT, ideas only - THIRD_PARTY_NOTICES.md): a whole studio inside the Game Developer desk - 49 roles as DATA (gamedesk/crew.py: 3 directors, 8 leads, 23 specialists, 15 Godot / Unity / Unreal specialists), each with what it does, how it thinks, what it checks, who reviews it, and whether it BUILDS (changes the Godot game) or WRITES (a result for her OK: sound lists, store text, Unity / Unreal plans - work Hoola cannot build yet). Every task gets a role and acceptance criteria (hers / the planner's, the role's checks, Hoola's two automatic play checks); a build covers the test criteria with evidence stamped with the code fingerprint, the lead reviews screenshots + the code diff (Claude vision) and may set only SCREEN criteria - nothing seen = not covered, her criteria only by her OK; the verdict (COMPLETE / WITH NOTES / BLOCKED / NOT ASSESSED) is counted in code. 9 team flows plan linked tasks with only that team's roles; milestone gate checks PASS / CONCERNS / FAIL / NOT ASSESSED from counted facts + three directors' views, advice only. GO FIX: (1) NOT ASSESSED said out loud - a Bible with no levels is never a clean balance pass, a nightly that could not run is recorded, the morning report says when nothing was checked; (2) Godot 4.5-4.7 changes in the code guide (typed-override returns, device ids, RichTextLabel rename...); (3) smoke() imports first, so class_name helpers work again (a real run proved it) and v0.395's ban is lifted; (4) acceptance criteria + evidence-older-than-code on every task.
 
 
 def _quiet_http_logs() -> None:
@@ -1419,7 +1419,8 @@ def api_disconnect(provider: str, request: Request):
 # ---------------------------------------------------------------- v0.142 Hoola Console (web app at /console)
 _CONSOLE_NOREF = {"Referrer-Policy": "no-referrer", "Cache-Control": "no-store"}
 _CONSOLE_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-                "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; "
+                "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tiles.openfreemap.org; media-src 'self' blob:; "
+                "connect-src 'self' https://tiles.openfreemap.org; "   # v0.412 the riders map's open map tiles (OpenFreeMap)
                 "worker-src 'self' blob:; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 
 
@@ -5077,7 +5078,7 @@ from .shodh.api import make_router as _shodh_router  # noqa: E402  (Shiksha Phas
 for _mk in (_shiksha_router, _pathyakram_router, _guru_router, _daftar_router, _shodh_router):
     app.include_router(_mk(require_key, current_tenant))
 
-# v0.412 Prayogshala (3D practical labs): the catalogue is public teaching material (no user data), read without a key
+# v0.415 Prayogshala (3D practical labs): the catalogue is public teaching material (no user data), read without a key
 from .prayog.api import make_router as _prayog_router  # noqa: E402
 
 app.include_router(_prayog_router())
@@ -8555,6 +8556,20 @@ async def site_architect_data(ref: str, body: dict, tenant: str = Depends(curren
     return await asyncio.to_thread(_site_logic, AR.redraft_data, tenant, ref, str(body.get("words") or ""))
 
 
+@app.post("/api/site-architect/{ref}/revise", dependencies=[Depends(require_key)])
+async def site_architect_revise(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.414 {words}: her change to ANY part of the card; after the build only what it touches is rebuilt / drafted."""
+    from .site import architect as AR
+    return await asyncio.to_thread(_site_logic, AR.revise, tenant, ref, str(body.get("words") or ""))
+
+
+@app.post("/api/sites/{ref}/phone-app", dependencies=[Depends(require_key)])
+async def sites_phone_app(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """v0.414 the website's app as an Android / iPhone app design on the SAME project + data (App Sahayak's plan card)."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.phone_app, tenant, ref, str((body or {}).get("conversation_id") or ""))
+
+
 @app.post("/api/site-architect/{ref}/approve", dependencies=[Depends(require_key)])
 async def site_architect_approve(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """ONLY her tap: {hash (the card she saw), modules [pages, users, data, logic, features]} -> Hoola builds it."""
@@ -10120,6 +10135,68 @@ async def apps_live_typing(ref: str, body: dict, tenant: str = Depends(current_t
                                                                      str((body or {}).get("thread") or "")))
 
 
+# ---- v0.412 NAKSHA LIVE (App Sahayak Pillar D): rider shifts, positions, live tracking of one order, riders on a map.
+@app.get("/api/app-api/{app_key}/track/me")
+async def app_api_track_me(app_key: str, request: Request):
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_call, lambda: TR.mine(*_be_app(app_key, request)))
+
+
+@app.post("/api/app-api/{app_key}/track/shift")
+async def app_api_track_shift(app_key: str, request: Request):
+    """{on}: a staff account starts / ends its shift (positions are accepted only while it is on)."""
+    from .appmaker import track as TR
+    body = await _json_body(request)
+    return await asyncio.to_thread(_be_call, lambda: TR.shift(*_be_app(app_key, request), bool(body.get("on"))))
+
+
+@app.post("/api/app-api/{app_key}/track/pos")
+async def app_api_track_pos(app_key: str, request: Request):
+    """{lat, lng, acc?, speed?, heading?} from the rider's phone while the shift is on."""
+    from .appmaker import track as TR
+    body = await _json_body(request)
+    return await asyncio.to_thread(_be_call, lambda: TR.position(*_be_app(app_key, request), body))
+
+
+@app.get("/api/app-api/{app_key}/track/c/{coll}/{row_id}")
+async def app_api_track_order(app_key: str, coll: str, row_id: str, request: Request):
+    """The customer's own order (or staff): rider position, distance, ETA (an estimate), near / arrived."""
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_call, lambda: TR.order(*_be_app(app_key, request), coll, row_id))
+
+
+@app.get("/api/app-api/{app_key}/track/riders")
+async def app_api_track_riders(app_key: str, request: Request):
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_call, lambda: TR.riders(*_be_app(app_key, request)))
+
+
+@app.get("/api/apps/{ref}/track", dependencies=[Depends(require_key)])
+async def apps_track(ref: str, tenant: str = Depends(current_tenant)):
+    """Her tracking switch + every rider on shift."""
+    from .appmaker import track as TR
+    from .site import webapp as W
+
+    def go():
+        r = _be_owner(tenant, ref)
+        return {**TR.settings(r), **TR.riders(r, W.Who(owner=True))}
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.put("/api/apps/{ref}/track", dependencies=[Depends(require_key)])
+async def apps_track_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap: {on, coll, statuses} - which list is tracked and which statuses mean 'on the way'."""
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.save_settings(_be_owner(tenant, ref), body or {}))
+
+
+@app.get("/api/apps/{ref}/track/c/{coll}/{row_id}", dependencies=[Depends(require_key)])
+async def apps_track_order(ref: str, coll: str, row_id: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import track as TR
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.order(_be_owner(tenant, ref), W.Who(owner=True), coll, row_id))
+
+
 def _be_owner(tenant: str, ref: str):
     from .appmaker import service as A
     with A.session() as s:
@@ -11168,6 +11245,9 @@ app.include_router(_composio_router(require_key, current_tenant))
 from .engineering.api import make_router as _eng_router  # noqa: E402  v0.357 Engineering Desk (CAD Engineer)
 
 app.include_router(_eng_router(require_key, current_tenant))
+from .archdesk.api import make_router as _arch_router  # noqa: E402  v0.410 Architecture Desk (Principal Software Architect)
+
+app.include_router(_arch_router(require_key, current_tenant))
 app.include_router(bz_devices.public)
 
 
