@@ -1,4 +1,4 @@
-"""v0.388 PAKKI NEEV: how much each app uses, and its limits - counted from the database (right across every worker).
+"""v0.390 PAKKI NEEV: how much each app uses, and its limits - counted from the database (right across every worker).
 
   rows per list, data size, accounts, files on disk, backups, writes per day (from the journal) and the last 14 days.
   Limits (her app's quota): rows (enforced: at 100% a new row is refused with a plain message, her data is never

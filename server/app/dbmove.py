@@ -1,4 +1,4 @@
-"""v0.388 PAKKI NEEV: move Hoola's whole database from SQLite to Postgres - checked, repeatable, nothing lost.
+"""v0.390 PAKKI NEEV: move Hoola's whole database from SQLite to Postgres - checked, repeatable, nothing lost.
 
     python -m app.dbmove --to "postgresql+psycopg://hoola:PASS@127.0.0.1:5432/hoola"            # copy + verify
     python -m app.dbmove --to "..." --check                                                      # verify only

@@ -89,7 +89,7 @@ def _be(r: AppProject) -> dict[str, Any]:
 
 
 def _patch(r: AppProject, **kw) -> dict[str, Any]:
-    """v0.388 every write here changes only its own keys, under the app's cross-process lock (never a stale copy)."""
+    """v0.390 every write here changes only its own keys, under the app's cross-process lock (never a stale copy)."""
     from .. import backend as BE
     return BE.patch_backend(r, **kw)
 
@@ -212,7 +212,7 @@ def apply(r: AppProject, h: str, by: str = "owner") -> dict[str, Any]:
     if ops:
         res = BE.change_schema(r, ops, f"logic: {d.get('words') or 'logic'}")
         changes = res["done"]
-    try:                                                   # v0.388 her app as it was, one tap away
+    try:                                                   # v0.390 her app as it was, one tap away
         from .. import backup as BK
         BK.snapshot(r, f"before logic: {str(d.get('words') or 'logic')[:60]}")
     except Exception:                                      # noqa: BLE001

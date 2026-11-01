@@ -16,7 +16,7 @@ from typing import Any
 from ..db import now, session
 from ..site import webapp as W
 from .models import AppProject
-from . import locks as LK                     # v0.388 one cross-process lock per app
+from . import locks as LK                     # v0.390 one cross-process lock per app
 
 CODE = re.compile(r"^[A-Z0-9]{4,16}$")
 MAX_CODES = 50

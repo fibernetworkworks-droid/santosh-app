@@ -964,7 +964,7 @@ window.HoolaBuild = function (C) {
       });
     };
     try { drawL(await api('GET', base(o) + '/logic')); } catch (er) { lbox.remove(); }
-    // v0.388 PAKKI NEEV: her app's data is safe - how much it uses (and its limits), backups, a restore to any minute
+    // v0.390 PAKKI NEEV: her app's data is safe - how much it uses (and its limits), backups, a restore to any minute
     // (preview first, then HER tap), and the whole data as a ZIP.
     const sbox = document.createElement('section'); sbox.className = 'stcol stsafe'; box.appendChild(sbox);
     const drawS = async () => {

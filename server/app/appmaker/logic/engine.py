@@ -162,7 +162,7 @@ def _raw(r: AppProject, row_id: str) -> W.SiteAppRow | None:
 
 
 def children(r: AppProject, rel: dict[str, Any], parent_id: str, cap: int = MAX_CHILDREN) -> list[dict[str, Any]]:
-    """v0.388 one indexed lookup (app_refs), never a scan of the whole child list."""
+    """v0.390 one indexed lookup (app_refs), never a scan of the whole child list."""
     if not parent_id:
         return []
     from .. import refs as RF
@@ -944,7 +944,7 @@ def decide(r: AppProject, appr_id: str, decision: str, note: str, w: W.Who) -> d
     if decision not in ("approve", "reject"):
         _fail("Faisla: approve ya reject.", 400)
     from .. import locks as LK
-    with LK.hold(f"appr:{appr_id}"):                 # v0.388 two approvers in two worker processes: one decides first
+    with LK.hold(f"appr:{appr_id}"):                 # v0.390 two approvers in two worker processes: one decides first
         x = _raw(r, appr_id)
         if x is None or x.coll != APPROVAL:
             _fail("Yeh manzoori nahi mili.", 404)
@@ -1060,7 +1060,7 @@ def related(r: AppProject, coll: str, row_id: str, rel_name: str, w: W.Who) -> d
     pc, kc = W.coll(sch, coll), W.coll(sch, rel["from"])
     if parent is None or parent.coll != coll or not W._can_read(pc, w, parent):
         _fail("Yeh entry nahi mili.", 404)
-    from .. import refs as RF                         # v0.388 indexed, not a scan
+    from .. import refs as RF                         # v0.390 indexed, not a scan
     got = RF.child_rows(site(r), rel["from"], rel["field"], row_id, MAX_CHILDREN)
     rows = [W.row_view(kc, x, w) for x in got if str(_j(x.data, {}).get(rel["field"]) or "") == row_id and W._can_read(kc, w, x)]
     return {"rel": {"name": rel["name"], "coll": rel["from"], "field": rel["field"], "label": rel["label"]},
@@ -1274,7 +1274,7 @@ def tick(force: bool = False) -> int:
 def _save_ran(r: AppProject, ran: dict[str, str]) -> None:
     from .. import backend as BE
 
-    def put(be):                                     # v0.388 only this key, on the backend as it is NOW
+    def put(be):                                     # v0.390 only this key, on the backend as it is NOW
         if isinstance(be.get("logic"), dict):
             be["logic"]["ran"] = ran
     BE.patch_backend(r, fn=put)

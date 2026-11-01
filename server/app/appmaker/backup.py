@@ -1,4 +1,4 @@
-"""v0.388 PAKKI NEEV (App Sahayak Pillar B): every app's data can be brought back - to a snapshot or to ANY minute.
+"""v0.390 PAKKI NEEV (App Sahayak Pillar B): every app's data can be brought back - to a snapshot or to ANY minute.
 
   * JOURNAL: one SQLAlchemy hook (before_flush) sees EVERY write to an app's rows - from the app, her Hoola, the logic
     engine, stock / coupons / khata, anything - and writes {row, op, before, after} in the SAME transaction. No write

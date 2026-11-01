@@ -49,7 +49,7 @@ def _drop_pg(name):
 def env(tmp_path, monkeypatch):
     """Fresh database, test-mode WhatsApp that approves instantly, no real API keys."""
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
-    pg_db = _pg_database(monkeypatch)                  # v0.388 PAKKI NEEV: HOOLA_TEST_PG=<url> runs the suite on Postgres
+    pg_db = _pg_database(monkeypatch)                  # v0.390 PAKKI NEEV: HOOLA_TEST_PG=<url> runs the suite on Postgres
     monkeypatch.setenv("WA_DRY_RUN", "true")
     monkeypatch.setenv("DRY_RUN_APPROVAL_SECONDS", "0")
     monkeypatch.setenv("SEND_RATE_PER_SEC", "1000")

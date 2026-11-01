@@ -1,4 +1,4 @@
-"""v0.388 PAKKI NEEV proof: many customers at once against an app's real server - nothing oversold, nothing doubled.
+"""v0.390 PAKKI NEEV proof: many customers at once against an app's real server - nothing oversold, nothing doubled.
 
     python -m app.appmaker.loadtest --base http://127.0.0.1:8077 --key ak... --product <id> --customers 1000
 

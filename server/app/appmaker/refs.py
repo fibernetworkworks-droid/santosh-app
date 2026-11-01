@@ -1,9 +1,9 @@
-"""v0.388 PAKKI NEEV: indexed links between an app's rows (an order's items, a class's students) - no full-list scans.
+"""v0.390 PAKKI NEEV: indexed links between an app's rows (an order's items, a class's students) - no full-list scans.
 
 Every row id is `row_<12 hex>`. The same before_flush moment the journal uses sees every write, and every top-level
 value of a row that IS a row id becomes one line here {site, coll, row, field, value} - no schema lookup inside the
 flush, nothing a write path can skip. `children(site, coll, field, parent)` is then one indexed query instead of a JSON
-text scan of the whole list. Rows written before v0.388 are indexed once per app on first use (`ensure_indexed`)."""
+text scan of the whole list. Rows written before v0.390 are indexed once per app on first use (`ensure_indexed`)."""
 from __future__ import annotations
 
 import json
@@ -83,7 +83,7 @@ def _index(sess: Session, _ctx, _instances) -> None:
 
 
 def ensure_indexed(site: str) -> None:
-    """Rows from before v0.388 get their links indexed once (per process, per app; cheap when already done)."""
+    """Rows from before v0.390 get their links indexed once (per process, per app; cheap when already done)."""
     if site in _DONE:
         return
     ensure_table()

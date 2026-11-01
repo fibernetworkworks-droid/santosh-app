@@ -153,6 +153,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
+  (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
+  CSRF_NONCE and a Reserve/UndoReservation check-out (a half-run used to risk leaving HER object LOCKED); Salesforce
+  Tooling cannot write CustomField/CustomObject/Apex in a live org AT ALL -> refused at plan time + Metadata REST
+  `deployRequest` (`sfmeta.py`, checkOnly = the real dry run, 10-day quick deploy); Composio toolkit is not
+  slug.split('_')[0] (wrong for 525/1694) + 'version: latest' is rejected + ok no longer defaults True; new
+  `ambiguous` row state (a retry can double-post); bank_int / health_int / teamcenter caps named the WRONG rule.
+  NOT VERIFIED: no live tenant has answered any of it - the connect screen still does not exist.
 - Current version: v0.388.0 (pubspec 0.388.0+432). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
@@ -160,7 +168,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.381 SHIKSHA SUITE 0+1: `app/pylab` locked Python sandbox (tool `pylab`), `app/shiksha` (classes, learners + guardian
   consent, shared question bank, gradebook, `frameworks.json`), `app/pathyakram` curriculum & exam designer (papers, plans, rubrics).
 - v0.382 DIMAAG (App Phases 43-46 = Pillar A, `appmaker/logic/`: lang.py own locked interpreter, spec.py checker, engine.py hooks + approvals + schedules/SLA, service.py Opus draft -> her tap): links / formulas / rules / unique / workflows + maker-checker approvals / triggers / timed jobs / tested functions; kits Logic.kt / Logic.swift (RefField, WorkflowBox, RelatedBlock, AutoForm, hoola_approvals, hoola_data); `/api/apps/<ref>/logic*`, app `/approvals`, `/related/`, `/fn/`.
-- v0.388 PAKKI NEEV (Pillar B): `appmaker/locks.py` (one cross-process lock per app: pg advisory / fcntl), `BE.patch_backend` (the ONLY safe write of backend JSON), `backup.py` (journal hook + snapshots + point-in-time restore + export), `refs.py` (indexed links), `meter.py` (usage + limits), `app/dbmove.py` (SQLite -> Postgres); tests run on Postgres with HOOLA_TEST_PG; CI `app-load.yml` = 1,000 customers / 4 workers proof.
+- PLAN: `docs/WEB_PLATFORM_PLAN.md` - any complexity website, smoothly + reliably (W0 gate = 100-page proof + her own site, W1-W14: one backend with apps (DIMAAG), app pages, OTP login, gateway, marketplace, live, connectors, 10k-page catalogues, speed / resume / staging, gates, architect).
+- v0.390 PAKKI NEEV (Pillar B): `appmaker/locks.py` (one cross-process lock per app: pg advisory / fcntl), `BE.patch_backend` (the ONLY safe write of backend JSON), `backup.py` (journal hook + snapshots + point-in-time restore + export), `refs.py` (indexed links), `meter.py` (usage + limits), `app/dbmove.py` (SQLite -> Postgres); tests run on Postgres with HOOLA_TEST_PG; CI `app-load.yml` = 1,000 customers / 4 workers proof.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
@@ -200,6 +209,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.388 WHATSAPP LIVE BINA SERVER NUMBER: WA_DRY_RUN=false without WA_TOKEN/WABA/PNID no longer kills every worker tick; business numbers send via their own token.
 - v0.384 SOCIAL MEDIA MANAGER Phase 6 (`social/wabiz.py` + `social/linkedin.py`): WhatsApp Business on her own number by Meta's Embedded Signup (one tap ->
   her Business inbox channel), LinkedIn profile posts (text + one photo); plans only for connected platforms; Company Page / X not built.
 - v0.383 SOCIAL MEDIA MANAGER Phase 5 GROWTH (`social/growth.py`, via her Page's linked Instagram = Facebook Login): tags -> UGC ask / recorded yes /

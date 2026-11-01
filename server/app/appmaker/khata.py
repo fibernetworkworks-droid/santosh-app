@@ -19,7 +19,7 @@ from sqlalchemy import select
 from ..db import now, session
 from ..site import webapp as W
 from .models import AppProject
-from . import locks as LK                     # v0.388 one cross-process lock per app
+from . import locks as LK                     # v0.390 one cross-process lock per app
 
 COLL = "_khata"
 MODES = ("cash", "upi", "card", "bank", "other")

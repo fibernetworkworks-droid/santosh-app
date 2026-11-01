@@ -835,7 +835,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
             const SizedBox(height: 10),
             Glass(child: AppLogicPanel(app: app, id: widget.id)),          // v0.382 DIMAAG: the app's brain
             const SizedBox(height: 10),
-            Glass(child: AppSafetyPanel(app: app, id: widget.id)),         // v0.388 PAKKI NEEV: backups + limits
+            Glass(child: AppSafetyPanel(app: app, id: widget.id)),         // v0.390 PAKKI NEEV: backups + limits
             const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),

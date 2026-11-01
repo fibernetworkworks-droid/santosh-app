@@ -56,7 +56,7 @@ no eval, no I/O, step / size / depth / time budget). Proof app (School ERP from 
 - Proof: a school ERP (classes, students, fees, attendance, exams, report cards) built from a brief.
 
 ### B. Per-app scalable backend — Phases 47–48
-**Status: BUILT in v0.388.0 PAKKI NEEV** — cross-process locks (Postgres advisory / file locks), lost-update fix for the
+**Status: BUILT in v0.390.0 PAKKI NEEV** — cross-process locks (Postgres advisory / file locks), lost-update fix for the
 app settings, journal + daily / before-change snapshots + point-in-time restore + export, indexed links, usage meters +
 limits, the SQLite → Postgres move, all app suites green on Postgres, and the proof (1,000 customers, 300 in stock,
 4 worker processes, one Postgres: exactly 300 orders, retries one row each, no server error). Decision: ONE Postgres
