@@ -137,6 +137,11 @@ jobs:
           if not r["passed"] or r["total"] < 13:
               print("::error::device check failed: " + ", ".join(r["crashed"]) )
               sys.exit(1)
+          fl = r.get("flows") or {}
+          print("flows:", json.dumps(fl)[:1500])
+          if not fl.get("tapped") or fl.get("crashed"):                 # v0.345 every button tapped, none crashed
+              print("::error::flow walk: " + (json.dumps(fl.get("crashed")) if fl.get("crashed") else "no button was tapped"))
+              sys.exit(1)
           if r["perf"]["cold_ms"] is None or r["perf"]["apk_mb"] is None:
               print("::error::device check did not measure cold start / APK size")
               sys.exit(1)

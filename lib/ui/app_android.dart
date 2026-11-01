@@ -308,6 +308,13 @@ class _QaBox extends StatelessWidget {
       ]),
       if (((qa['crashed'] as List?) ?? const []).isNotEmpty)
         Text('Crash: ${(qa['crashed'] as List).join(', ')} (inhe saada version mila)', style: const TextStyle(color: C.bad, fontSize: 12)),
+      if (_i(_map(qa['flows'])['tapped']) > 0)                     // v0.345 every button tapped
+        Text('${_i(_map(qa['flows'])['tapped'])} button dabaye: '
+            '${((_map(qa['flows'])['crashed'] as List?) ?? const []).length} pe crash, '
+            '${((_map(qa['flows'])['dead'] as List?) ?? const []).length} se kuch nahi hua',
+            style: const TextStyle(color: C.muted, fontSize: 12)),
+      for (final d in ((_map(qa['flows'])['dead'] as List?) ?? const []).take(4))
+        Text('• ${_s(_map(d)['screen'])}: "${_s(_map(d)['label'])}" dabane se kuch nahi hua', style: const TextStyle(color: C.muted, fontSize: 11.5)),
       for (final f in a11y.take(4))
         Text('• ${_s(f['screen'])}: ${_s(f['text'])}', style: const TextStyle(color: C.muted, fontSize: 11.5)),
       if (shots.isNotEmpty) ...[

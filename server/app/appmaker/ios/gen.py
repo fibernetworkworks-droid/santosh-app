@@ -428,7 +428,9 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "{MIN_IOS}"
-    scheme: {{}}
+    scheme:
+      testTargets:
+        - AppUITests
     sources:
       - path: Sources
       - path: Resources
@@ -443,6 +445,80 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic{team_line}
         GENERATE_INFOPLIST_FILE: NO
+  AppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "{MIN_IOS}"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: App
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: {bundle_id(spec)}.uitests
+        TEST_TARGET_NAME: App
+        CODE_SIGN_STYLE: Automatic{team_line}
+'''
+
+
+def flow_tests(screens: list[str], taps: int = 5) -> str:
+    """v0.345 HAR RAASTA on the iPhone: an XCUITest that opens every screen, taps each button / link from a fresh start,
+    and prints one HOOLA_TAP line per tap (screen, label, still running?, did the screen change?, n). Debug builds only."""
+    ids = ", ".join(sstr(x) for x in screens)
+    return f'''// Made by Hoola App Sahayak (v0.345 HAR RAASTA). Every button / link on every screen, tapped from a fresh start.
+import XCTest
+
+final class FlowTests: XCTestCase {{
+    let screens: [String] = [{ids}]
+    let taps = {taps}
+
+    override func setUp() {{ continueAfterFailure = true }}
+
+    private func open(_ sid: String) -> XCUIApplication {{
+        let app = XCUIApplication()
+        app.launchArguments = ["-hoola_screen", sid]
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 10)
+        return app
+    }}
+
+    private func targets(_ app: XCUIApplication) -> [XCUIElement] {{
+        let q = app.descendants(matching: .any).matching(NSPredicate(format: "elementType == %d OR elementType == %d",
+                                                                     XCUIElement.ElementType.button.rawValue,
+                                                                     XCUIElement.ElementType.link.rawValue))
+        return q.allElementsBoundByIndex.filter {{ $0.exists && $0.isHittable && !$0.frame.isEmpty }}
+            .filter {{ $0.frame.minY > 40 }}                                  // not the status bar
+    }}
+
+    private func shown(_ app: XCUIApplication) -> String {{
+        guard app.state == .runningForeground else {{ return "" }}
+        return app.staticTexts.allElementsBoundByIndex.prefix(60).map {{ $0.label }}.joined(separator: "|")
+            + "#" + app.buttons.allElementsBoundByIndex.prefix(60).map {{ $0.label }}.joined(separator: "|")
+    }}
+
+    func testEveryButtonOnEveryScreen() {{
+        for sid in screens {{
+            let first = open(sid)
+            guard first.state == .runningForeground else {{ print("HOOLA_TAP\\t\\(sid)\\t(open)\\t0\\t0\\t0"); continue }}
+            let labels = Array(targets(first).prefix(taps)).enumerated().map {{ (i, e) in e.label.isEmpty ? "button \\(i + 1)" : String(e.label.prefix(40)) }}
+            first.terminate()
+            for (i, label) in labels.enumerated() {{
+                let app = open(sid)
+                let before = shown(app)
+                let list = targets(app)
+                guard i < list.count else {{ break }}
+                list[i].tap()
+                sleep(2)
+                let alive = app.state == .runningForeground || app.state == .runningBackground
+                let changed = !alive || shown(app) != before
+                let clean = label.replacingOccurrences(of: "\\t", with: " ").replacingOccurrences(of: "\\n", with: " ")
+                print("HOOLA_TAP\\t\\(sid)\\t\\(clean)\\t\\(alive ? 1 : 0)\\t\\(changed ? 1 : 0)\\t\\(i + 1)")
+                app.terminate()
+            }}
+        }}
+    }}
+}}
 '''
 
 
@@ -608,7 +684,13 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     if isinstance(store, dict):                          # v0.338 the listing + screenshots to send (kind store / review)
         (qa / "store.json").write_text(json.dumps({**store, "bundle_id": bid}, ensure_ascii=False, indent=1))
     (qa / "bundle.txt").write_text(bid + "\n")
-    (qa / "screens.txt").write_text(" ".join([x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS)) + "\n")
+    every = [x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS)
+    (qa / "screens.txt").write_text(" ".join(every) + "\n")
+    (tmp / "UITests").mkdir(exist_ok=True)                 # v0.345 the flow walk (XCUITest), debug only
+    (tmp / "UITests" / "FlowTests.swift").write_text(flow_tests(every))
+    shutil.copy(HERE / "flows.py", qa / "flows.py")
+    shutil.copy(HERE / "flow_check.sh", qa / "flow_check.sh")
+    (qa / "flow_check.sh").chmod(0o755)
     (tmp / ".gitignore").write_text("build/\n*.xcodeproj/\nDerivedData/\nqa/\n")
     if out.exists():
         shutil.rmtree(out)

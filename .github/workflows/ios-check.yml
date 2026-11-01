@@ -48,6 +48,9 @@ jobs:
         run: |
           APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
           bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ios-shots" $(cat hoola_qa/screens.txt)
+      - name: Every button on every screen (flow walk, v0.345)
+        working-directory: ${{ runner.temp }}/ios
+        run: bash hoola_qa/flow_check.sh "$GITHUB_WORKSPACE/ios-shots"
       - name: App Store screenshots are 1320x2868 (iPhone Pro Max simulator, v0.338)
         working-directory: ${{ runner.temp }}/ios
         run: |
@@ -107,6 +110,11 @@ jobs:
           if not r["passed"] or r["total"] < 13:
               print("::error::simulator check failed: " + ", ".join(r["crashed"]))
               sys.exit(1)
+          fl = r.get("flows") or {}
+          print(json.dumps(fl, indent=1)[:2000])
+          if not fl.get("tapped") or fl.get("crashed"):
+              print("::error::flow walk: " + (json.dumps(fl.get("crashed")) if fl.get("crashed") else "no button was tapped"))
+              sys.exit(1)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
@@ -116,5 +124,6 @@ jobs:
             ios-shots
             store-shots
             ${{ runner.temp }}/ios/build.log
+            ios-shots/flows.log
             ${{ runner.temp }}/ios/release.log
           if-no-files-found: ignore

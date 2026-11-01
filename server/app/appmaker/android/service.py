@@ -642,6 +642,10 @@ def _crashed_screens(report: dict[str, Any] | None, ids: list[str]) -> dict[str,
     for sid, x in ((report or {}).get("screens") or {}).items():
         if sid in ids and isinstance(x, dict) and not x.get("opened"):
             out[sid] = x.get("crash") or {"exception": "the app closed on this screen"}
+        elif sid in ids and isinstance(x, dict) and x.get("tap_crash"):          # v0.345 it crashed when a button was tapped
+            tc = x["tap_crash"]
+            out[sid] = {**tc, "excerpt": f"CRASHED WHEN THE USER TAPPED '{tc.get('label')}' ON THIS SCREEN.\n"
+                                         + str(tc.get("excerpt") or tc.get("exception") or "")}
     return out
 
 
@@ -664,6 +668,7 @@ def _keep_qa(r: AppProject, n: int, qa: dict[str, Any] | None) -> None:
     _put(r.id, qa={"ran": True, "build": n, "passed": bool(rep.get("passed")), "opened": rep.get("opened"), "total": rep.get("total"),
                    "crashed": rep.get("crashed") or [], "perf": rep.get("perf") or {}, "budget": rep.get("budget") or {},
                    "limits": rep.get("limits") or {}, "a11y_count": rep.get("a11y_count") or 0, "a11y": find,
+                   "flows": rep.get("flows") or {},
                    "shots": sorted(p.stem for p in d.glob("*.png")), "at": now().isoformat()})
 
 
@@ -677,6 +682,9 @@ def qa_line(qa: dict[str, Any] | None) -> str:
         bits.append(f"app {p['cold_ms']} ms mein khulti hai" + (" (thodi dheemi)" if b.get("cold_ms") == "over" else ""))
     if p.get("apk_mb") is not None:
         bits.append(f"APK {p['apk_mb']} MB")
+    fl = qa.get("flows") or {}
+    if fl.get("tapped"):
+        bits.append(f"{fl['tapped']} button dabaye" + (f", {len(fl.get('dead') or [])} se kuch nahi hua" if fl.get("dead") else ""))
     if qa.get("a11y_count"):
         bits.append(f"{qa['a11y_count']} accessibility baatein")
     return " " + ", ".join(bits) + "."

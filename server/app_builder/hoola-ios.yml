@@ -53,6 +53,11 @@ jobs:
         run: |
           APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
           bash ios/hoola_qa/sim_check.sh "$APP" "$(cat ios/hoola_qa/bundle.txt)" qa $(cat ios/hoola_qa/screens.txt)
+      - name: Every button on every screen (flow walk, v0.345)
+        if: inputs.kind == 'sim' || inputs.kind == 'testflight'
+        continue-on-error: true
+        working-directory: ios
+        run: bash hoola_qa/flow_check.sh ../qa
       - name: Archive + upload to TestFlight
         if: inputs.kind == 'testflight'
         working-directory: ios

@@ -233,8 +233,13 @@ def _mac(src: Path, key: str, kind: str, progress) -> dict[str, Any]:
 
 
 def _crashed(report: dict[str, Any] | None, ids: list[str]) -> dict[str, str]:
-    return {sid: str(x.get("excerpt") or "the app closed on this screen") for sid, x in ((report or {}).get("screens") or {}).items()
-            if sid in ids and isinstance(x, dict) and x.get("crashed")}
+    out = {sid: str(x.get("excerpt") or "the app closed on this screen") for sid, x in ((report or {}).get("screens") or {}).items()
+           if sid in ids and isinstance(x, dict) and x.get("crashed")}
+    for sid, x in ((report or {}).get("screens") or {}).items():           # v0.345 it crashed when a button was tapped
+        if sid in ids and sid not in out and isinstance(x, dict) and x.get("tap_crash"):
+            tc = x["tap_crash"]
+            out[sid] = f"CRASHED WHEN THE USER TAPPED '{tc.get('label')}' ON THIS SCREEN.\n" + str(tc.get("excerpt") or "")
+    return out
 
 
 def run(app_id: str) -> None:
@@ -496,6 +501,7 @@ def _keep_qa(r: AppProject, n: int, res: dict[str, Any]) -> None:
         shutil.rmtree(old, ignore_errors=True)
     _put(r.id, qa={"ran": True, "build": n, "passed": bool(rep.get("passed")), "opened": rep.get("opened"), "total": rep.get("total"),
                    "crashed": rep.get("crashed") or [], "blank": rep.get("blank") or [], "perf": rep.get("perf") or {},
+                   "flows": rep.get("flows") or {},
                    "shots": sorted(p.stem for p in d.glob("*.png")), "at": now().isoformat()})
 
 
@@ -508,6 +514,9 @@ def qa_line(qa: dict[str, Any] | None) -> str:
         bits.append(f"app {p['launch_ms']} ms mein khulti hai")
     if p.get("app_mb") is not None:
         bits.append(f"app {p['app_mb']} MB")
+    fl = qa.get("flows") or {}
+    if fl.get("tapped"):
+        bits.append(f"{fl['tapped']} button dabaye" + (f", {len(fl.get('dead') or [])} se kuch nahi hua" if fl.get("dead") else ""))
     return " " + ", ".join(bits) + "."
 
 
