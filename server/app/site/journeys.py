@@ -1,4 +1,4 @@
-"""v0.391 JOURNEYS (web Step 1, "Hoola tests the site itself before she sees it"): a real Chromium walks the paths a
+"""v0.400 JOURNEYS (web Step 1, "Hoola tests the site itself before she sees it"): a real Chromium walks the paths a
 visitor takes on the built copy, on a phone-size screen, with the site's own scripts running:
 
   menu   - open the phone menu, tap a page, the page opens with its heading

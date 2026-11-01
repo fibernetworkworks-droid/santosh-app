@@ -165,6 +165,12 @@ def main() -> None:
             res["sheet"] = _parts.FLAT["sheet"]
         big = len(parts) > 40 or len(shape.Faces()) > 4000          # v0.365 big assemblies: coarser mesh, no HLR
         exported = []
+        if parts:                                         # v0.386 each part on its own for the contact analysis
+            names = []
+            for i, (n_, s_, _c) in enumerate(parts[:40]):
+                s_.exportBrep(str(out / f"apart_{i}.brep"))
+                names.append(n_)
+            (out / "aparts.json").write_text(json.dumps(names), encoding="utf-8")
         if parts:                                         # an assembly keeps its parts, names and colours in STEP / GLB
             obj.save(str(out / "part.step"))
             obj.export(str(out / "part.glb"))
@@ -193,6 +199,14 @@ def main() -> None:
             except Exception as e:
                 res.setdefault("notes", []).append(f"hlr {view}: {type(e).__name__}")
         (out / "hlr.json").write_text(json.dumps(hlr), encoding="utf-8")
+        res["drawing"] = {**_parts.DRAWING, "fits": _parts.FITS[:20]}
+        if not big:                                       # v0.395 real drawing: vector views + measured features
+            try:
+                import views2d
+                dd = views2d.drawing_data(shape, _parts.DRAWING.get("projection", "first"))
+                (out / "drawing.json").write_text(json.dumps(dd), encoding="utf-8")
+            except Exception as e:
+                res.setdefault("notes", []).append(f"drawing views: {type(e).__name__}")
         res["exported"] = exported
         # v0.362 one mesh, with each triangle's part index and the parts' colours, so views keep the assembly colours
         palette = [(0.48, 0.57, 0.69), (0.85, 0.65, 0.20), (0.36, 0.62, 0.45), (0.70, 0.40, 0.38), (0.55, 0.47, 0.72),

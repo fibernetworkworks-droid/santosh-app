@@ -1021,6 +1021,14 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/why?q=${Uri.encodeQueryComponent(q)}') as Map);
   Future<Map<String, dynamic>> gameStudioSummary(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/summary') as Map);
+  // v0.395 Game Bible (the game's names and numbers as data)
+  Future<Map<String, dynamic>> gameBible(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/bible', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameBibleDo(String id, String what, {Map<String, dynamic> body = const {}}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bible/$what', body: body,
+          timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> gameBibleRemove(String id, String kind, String eid) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/gamestudio/$id/bible/entity/$kind/$eid') as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk
@@ -1074,6 +1082,17 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/eng/projects/$id/change', body: {'words': words}) as Map);
   Future<void> engDelete(String id) async => _send('DELETE', '/api/eng/projects/$id');
   // v0.317 HIRE AN EMPLOYEE + the SEO Desk
+  // ---- v0.396 CONNECT: her own enterprise system (address + key). The key goes UP only; no route returns it ----
+  Future<Map<String, dynamic>> entSystems(String role) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/enterprise/$role/endpoint') as Map);
+  Future<Map<String, dynamic>> entConnect(String role, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/enterprise/$role/endpoint', body: body) as Map);
+  Future<Map<String, dynamic>> entVerify(String role, String system) async => Map<String, dynamic>.from(
+      await _send('POST', '/api/enterprise/$role/endpoint/$system/verify',
+          body: {}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> entForget(String role, String system) async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/enterprise/$role/endpoint/$system') as Map);
+
   Future<Map<String, dynamic>> employees() async => Map<String, dynamic>.from(await _send('GET', '/api/employees') as Map);
   Future<Map<String, dynamic>> employeeAct(String key, String action) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/employees/$key/$action', body: {}) as Map);

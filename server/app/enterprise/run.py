@@ -135,7 +135,7 @@ class Ambiguous(Exception):
 def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, Any]:
     from ..bazar import composio as cmp
     from ..db import session as _s
-    toolkit = cmp.tool_toolkit(slug)                 # v0.388: never slug.split("_")[0] - see composio.toolkit_of
+    toolkit = cmp.tool_toolkit(slug)                 # v0.389: never slug.split("_")[0] - see composio.toolkit_of
     with _s() as s:
         acc, state = cmp.account(s, cmp.composio_user(tenant), toolkit)
         if acc is None or state != "active":
@@ -151,7 +151,7 @@ def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, A
         raise
     if not isinstance(out, dict):
         raise Ambiguous("Composio ka jawab samajh nahi aaya.")
-    # v0.388: this used to default to TRUE when the field was missing, so a changed response shape would
+    # v0.389: this used to default to TRUE when the field was missing, so a changed response shape would
     # report a FAILED write as done - and the idempotency key would then mark the row complete for ever.
     if "successful" in out:
         ok = bool(out.get("successful"))
@@ -266,7 +266,7 @@ def read(tenant: str, role: str, system: str, target: str, query: dict[str, Any]
 
 def _is_read_slug(slug: str) -> bool:
     from ..bazar import composio as cmp
-    return cmp.is_read(slug)        # v0.388: resolves the toolkit properly; was slug.split("_")[0]
+    return cmp.is_read(slug)        # v0.389: resolves the toolkit properly; was slug.split("_")[0]
 
 
 def _rows_of(data: Any) -> list[Any]:
@@ -322,7 +322,7 @@ def plan_write(tenant: str, role: str, system: str, target: str, verb: str, rows
 
 
 # ---------------------------------------------------------------- what the vendor itself refuses
-# v0.388, from Salesforce's own documentation: "CRUD operations on the following Tooling API objects in an
+# v0.389, from Salesforce's own documentation: "CRUD operations on the following Tooling API objects in an
 # active org generate the error `Save or update not supported in active organizations`: ApexClass,
 # ApexComponent, ApexPage, ApexTrigger, CustomField, CustomObject."
 # developer.salesforce.com .../api_tooling/intro_crud_operations.htm
@@ -525,6 +525,54 @@ def execute(tenant: str, run_id: str, batch: int = BATCH) -> dict[str, Any]:
     return out
 
 
+def resolve(tenant: str, run_id: str, n: int, landed: bool, by: str = "owner") -> dict[str, Any]:
+    """Clear an AMBIGUOUS row - the one thing only she can do.
+
+    A row goes `ambiguous` when the answer never arrived: it may or may not have landed in her system, and
+    `execute()` deliberately will not retry it, because a retry is how a record gets posted twice. Nobody but
+    a person looking at the actual system can say which it was, so this is her answer coming back:
+
+      landed=True  -> mark it done. Nothing is sent. The row is CLOSED, not written.
+      landed=False -> put it back in the queue, so the next execute() sends it once.
+
+    Shipped in v0.389 the state existed with no way out, which left such a run stuck at `failed` for ever.
+    """
+    run = _run(tenant, run_id)
+    with session() as s:
+        row = s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id, EntRunRow.n == int(n))).first()
+        if row is None:
+            raise RunError(f"Row {n} is run mein nahi hai.")
+        if row.status != "ambiguous":
+            raise RunError(f"Row {n} ka haal '{row.status}' hai - sirf 'pata nahi' wali rows yahan tay hoti hain.")
+        if landed:
+            row.status = "done"
+            row.result = json.dumps({"aapne_bataya": "yeh row system mein chadh gayi thi", "by": by[:60],
+                                     "bheja_nahi_gaya": True}, ensure_ascii=False)
+            row.error = ""
+        else:
+            row.status = "todo"                  # back in the queue; the idempotency key is unchanged
+            row.error = ""
+        row.at = now()
+    with session() as s:
+        r = s.get(EntRun, run_id)
+        r.ok_count = len(list(s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
+                                                                EntRunRow.status == "done")).all()))
+        r.fail_count = len(list(s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
+                                                                  EntRunRow.status == "failed")).all()))
+        left = len(list(s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
+                                                          EntRunRow.status.in_(("todo", "ambiguous")))).all()))
+        if left:
+            r.status = "running"                 # there is work again, so the run reopens
+            r.done_at = None
+        else:
+            r.status = "done" if r.fail_count == 0 else "failed"
+            r.done_at = now()
+    out = status(tenant, run_id)
+    out["aage"] = ("Row band kar di - kuch bheja nahi gaya." if landed else
+                   "Row dobara qatar mein hai; agle execute mein ek baar jaayegi.")
+    return out
+
+
 def _idem_of(row_id: str) -> str:
     """The row's own idempotency hash - 32 stable hex characters, which is exactly what SAP wants for
     RequestID, and the same on every retry (that is the whole point)."""
@@ -588,3 +636,171 @@ def rollback_plan(tenant: str, run_id: str) -> dict[str, Any]:
             "note": ("Jo rows NAYE bane the unhe wapas nahi kiya ja sakta - unhe aapko system mein hatana hoga."
                      if no_before else "Har row ka purana roop mojood hai."),
             "kaise": "Yeh plan hai. Chalane ke liye ise ek naya update run banakar jhalak + haan se chalaiye."}
+
+
+# ---------------------------------------------------------------- Salesforce config deploy (sfmeta)
+# v0.389 shipped sfmeta.py with NO caller, so the only documented way to change her org's configuration was
+# unreachable. These three wrap it on the SAME discipline as every other write: nothing happens without a
+# validation she has seen, and production rules are the vendor's, enforced in sfmeta.
+def deploy_validate(tenant: str, role: str, components: list[dict[str, Any]],
+                    test_level: str = "") -> dict[str, Any]:
+    """The DRY RUN. Salesforce checks every component and runs the tests, and commits nothing."""
+    from . import sfmeta
+    R.role(role)
+    if not R.may_write(role):
+        raise RunError("Yeh kaam kahin bahar likhta hi nahi.")
+    ep = _endpoint(tenant, role, "salesforce")
+    if ep is None:
+        raise RunError("Salesforce ka address nahi juda. App mein Enterprise > System jodo se jodiye.")
+    if not isinstance(components, list) or not components:
+        raise RunError("Kya deploy karna hai, woh batana zaroori hai.")
+    try:
+        out = sfmeta.validate(ep, components, test_level)
+    except sfmeta.MetaError as ex:
+        raise RunError(str(ex))
+    out["aage"] = ("Yeh sirf jaanch hai - org mein kuch badla nahi. Status dekhiye; saaf nikle to aapki haan "
+                   "par 10 din tak yahi jaanch seedhe deploy ho jaati hai, test dobara chalaye bina.")
+    return out
+
+
+def deploy_status(tenant: str, role: str, deploy_id: str) -> dict[str, Any]:
+    """One look. The caller keeps the id and comes back - it NEVER resubmits, because that deploys twice."""
+    from . import sfmeta
+    R.role(role)
+    ep = _endpoint(tenant, role, "salesforce")
+    if ep is None:
+        raise RunError("Salesforce ka address nahi juda.")
+    try:
+        return sfmeta.poll(ep, deploy_id)
+    except sfmeta.MetaError as ex:
+        raise RunError(str(ex))
+
+
+def deploy_go(tenant: str, role: str, validated_id: str, by: str = "owner",
+              confirm_env: str = "") -> dict[str, Any]:
+    """HER TAP. Quick-deploys the validation she saw; production needs the word as well, exactly like a row
+    write, because a config change breaks the org for everyone, not one record."""
+    from . import sfmeta
+    R.role(role)
+    if not R.may_write(role):
+        raise RunError("Yeh kaam kahin bahar likhta hi nahi.")
+    ep = _endpoint(tenant, role, "salesforce")
+    if ep is None:
+        raise RunError("Salesforce ka address nahi juda.")
+    if ep.env == "production" and (confirm_env or "").lower() != "production":
+        raise RunError("Yeh PRODUCTION org hai. Haan ke saath 'production' likhna zaroori hai.")
+    try:
+        out = sfmeta.quick_deploy(ep, validated_id)
+    except sfmeta.MetaError as ex:
+        raise RunError(str(ex))
+    log.warning("salesforce config deploy tenant=%s role=%s env=%s deploy=%s by=%s",
+                tenant, role, ep.env, out.get("deploy"), by)
+    out["env"] = ep.env
+    return out
+
+# ---------------------------------------------------------------- v0.396 CONNECT: prove the address works
+# Everything the enterprise suite does has, until now, been tested against the vendors' documentation and
+# recorded HTTP - never against a customer system, because there was nowhere for her to put a credential. This
+# is that place, and `verify` is the first call that ever reaches a real tenant.
+#
+# It is deliberately READ-ONLY and it writes NOTHING. What it reports is not "connected" as a feeling: it is
+# what the endpoint actually did when asked -
+#   - did the address answer at all, and with what HTTP code
+#   - did the credential get past authentication (401 / 403 are told apart: wrong key vs no permission)
+#   - could a CSRF token be fetched, where this system needs one for writes (SAP, Windchill)
+#   - does a row carry an ETag, where this system demands If-Match on an update (SAP)
+#   - does it accept the documented idempotent create (recorded, never assumed)
+# so that a write later fails for a real reason, not because we believed a green tick.
+VERIFY_PROBES = {
+    "sap":        "$metadata",
+    "windchill":  "PTC/GetCSRFToken()",
+    "salesforce": "sobjects",
+    "oracle":     "$metadata",
+    "teamcenter": "$metadata",
+}
+
+
+def verify(tenant: str, role: str, system: str) -> dict[str, Any]:
+    """Ask her endpoint, read-only, whether it really works - and say exactly what it answered."""
+    R.role(role)
+    ep = _endpoint(tenant, role, system)
+    if ep is None:
+        raise RunError(f"{system} ka address nahi juda.")
+    d = dialect.of(system)
+    out: dict[str, Any] = {"system": system, "env": ep.env, "address": ep.base_url, "key": ep.auth_masked,
+                           "jaanch": []}
+    def step(name: str, ok: bool | None, detail: str = "") -> None:
+        out["jaanch"].append({"kya": name, "theek": ok, "kaha": detail[:300]})
+
+    probe = VERIFY_PROBES.get(system, "$metadata")
+    try:
+        with dialect.Call(ep, timeout=30) as c:
+            code, data = c.get(probe, page=1)
+            if code == 401:
+                step("credential", False, "401 - key galat ya expire ho gayi.")
+                out["theek"] = False
+                out["aage"] = "Key dobara daaliye. Address theek lag raha hai (jawab aaya)."
+                return out
+            if code == 403:
+                step("credential", True, "Key chali, par 403 - is user ko is cheez ki permission nahi.")
+            elif code >= 400:
+                step("address", False, f"HTTP {code}: " + json.dumps(data, default=str)[:180])
+                out["theek"] = False
+                out["aage"] = "Yeh address is system ka API address nahi lagta. Admin se poora API URL maangiye."
+                return out
+            else:
+                step("address aur credential", True, f"HTTP {code} - jawab aa gaya.")
+
+            # the write prerequisites, each only where that vendor needs it
+            if d["csrf"]:
+                try:
+                    c.token(probe if system == "sap" else "")
+                    step("CSRF token (write ke liye zaroori)", True, "mil gaya.")
+                except dialect.DialectError as ex:
+                    step("CSRF token (write ke liye zaroori)", False, str(ex))
+            if d["etag"] == "required":
+                step("If-Match / ETag", None,
+                     "Yeh row padhe bina pata nahi chalta; update ke waqt row se liya jaayega. Na mile to "
+                     "Hoola woh row chhod dega - galat likhne se behtar.")
+            if d["reserve"]:
+                step("Reserve / UndoReservation", None,
+                     "Object check-out karke hi badla jaata hai; Hoola hamesha wapas chhodta hai.")
+            if d["idem"] == "sap":
+                step("Idempotent create (RequestID)", None,
+                     "Aapke system par yeh job chalu hai ya nahi, yeh pehle create par pata chalega.")
+            out["kya_kya_chahiye"] = c.support()
+    except RunError:
+        raise
+    except Exception as ex:                              # noqa: BLE001 - a network error is an ANSWER here
+        step("address", False, f"{type(ex).__name__}: {str(ex)[:200]}")
+        out["theek"] = False
+        out["aage"] = ("Address se baat hi nahi hui. Server bahar se khulta hai? Firewall / VPN dekhna padega.")
+        return out
+
+    bad = [j for j in out["jaanch"] if j["theek"] is False]
+    out["theek"] = not bad
+    if not bad:
+        with session() as s:
+            r = s.scalars(select(EntEndpoint).where(EntEndpoint.tenant_id == tenant, EntEndpoint.role == role,
+                                                    EntEndpoint.system == system)).first()
+            if r is not None:
+                r.verified_at = now()
+        out["aage"] = ("Padhna chalu hai. Likhna phir bhi ek-ek kadam se hoga: plan -> jhalak -> aapki haan."
+                       + (" PRODUCTION hai, to haan ke saath 'production' bhi likhna padega."
+                          if ep.env == "production" else ""))
+    else:
+        out["aage"] = "Jo nishan laal hai woh pehle theek karna padega; tab tak Hoola isse likhega nahi."
+    return out
+
+
+def forget_endpoint(tenant: str, role: str, system: str) -> dict[str, Any]:
+    """Remove the address and the sealed credential. Her runs and papers stay - only the way in is gone."""
+    R.role(role)
+    with session() as s:
+        r = s.scalars(select(EntEndpoint).where(EntEndpoint.tenant_id == tenant, EntEndpoint.role == role,
+                                                EntEndpoint.system == system)).first()
+        if r is None:
+            raise RunError(f"{system} ka address juda hi nahi hai.")
+        s.delete(r)
+    return {"system": system, "hata_diya": True,
+            "note": "Address aur key dono hat gaye. Purane run aur kaagaz waise hi hain."}

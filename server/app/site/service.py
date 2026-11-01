@@ -327,7 +327,7 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                   "design": _dna_view(_j(r.look, {}).get("dna")), "estimate": _estimate(r, plan),
                   "checks": {"blocking": checks.get("blocking", [])[:12], "warnings": checks.get("warnings", [])[:12],
                              "passed": checks.get("passed"), "source": checks.get("source"),
-                             "journeys": checks.get("journeys") or []},          # v0.391 the visitor tests
+                             "journeys": checks.get("journeys") or []},          # v0.400 the visitor tests
                   "shots": _j(r.board, {}).get("shots", {}), "photos": [p.get("name") for p in _j(r.photos, [])],
                   "languages": _j(r.languages, ["en"]),
                   "media": [{k: m.get(k) for k in ("name", "kind", "ext", "bytes", "about")}      # v0.338 her uploads
@@ -769,7 +769,7 @@ def recover_stuck(now_ts: float | None = None) -> int:
             continue
         r = _save(r.id, stage="plan", error="Site map banate waqt server ruk gaya; 'bada site map banao' phir se kahiye.")
         _emit(r, push=True)
-    out += _recover_side_jobs(t)              # v0.391 code asks and translations cut short by a restart
+    out += _recover_side_jobs(t)              # v0.400 code asks and translations cut short by a restart
     with session() as s:
         rows = s.scalars(select(Site).where(Site.status.in_(("building", "checking", "looks")))).all()
         for r in rows:
@@ -802,7 +802,7 @@ _RESUMED_LANG: set[str] = set()
 
 
 def _recover_side_jobs(t: float) -> int:
-    """v0.391 NEVER LOST: (1) a code-mode ask whose job died with the process said 'working' forever - it now says so
+    """v0.400 NEVER LOST: (1) a code-mode ask whose job died with the process said 'working' forever - it now says so
     plainly ('ask again'); (2) a translation cut short (her extra languages half written) starts again once per boot
     for a ready site, instead of waiting for her next edit."""
     n = 0
@@ -1437,7 +1437,7 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
         _put_sec(r, k, sec)
         with lock:
             states[k] = "done"
-            # v0.391 FAST: the preview is rebuilt at most every 20 s while sections arrive (was after EVERY section -
+            # v0.400 FAST: the preview is rebuilt at most every 20 s while sections arrive (was after EVERY section -
             # on a 150-page site that rebuilt every page ~200 times); the checks rebuild it once more anyway
             if time.time() - state.get("assembled", 0) >= ASSEMBLE_EVERY_S:
                 _assemble_live(_load(r.id))
@@ -1465,7 +1465,7 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
         _work(rr, "stopped", "Rok diya", "Aapke kehne par roka")
         _emit(rr, push=False)
         return False
-    _assemble_live(_load(r.id))              # v0.391 the preview has every section (the 20 s rebuilds may have skipped the last)
+    _assemble_live(_load(r.id))              # v0.400 the preview has every section (the 20 s rebuilds may have skipped the last)
     return True
 
 
@@ -1522,7 +1522,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
         fixable = _fixable(report, plan)
         if not fixable or rnd == MAX_FIX_ROUNDS:
             break
-        # v0.391 FAST: every failing section is fixed at the same time (was one Opus call after another)
+        # v0.400 FAST: every failing section is fixed at the same time (was one Opus call after another)
         for k in fixable:
             states[k] = "fixing"
         names = ", ".join(k.replace("__", " → ") for k in list(fixable)[:4])
@@ -1552,13 +1552,13 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
     except Exception:
         log.info("og / scroll video skipped", exc_info=True)
     r = _save(r.id, board=_board(r, plan, states, "Visitor ki tarah chala ke dekh raha hoon"))
-    report = _journeys(r, report)             # v0.391 Hoola walks the site like a visitor before she sees it
+    report = _journeys(r, report)             # v0.400 Hoola walks the site like a visitor before she sees it
     _make_version(r, plan, report, shots, states, note or "pehla version", crit)
     _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
 
 
 def _journeys(r: Site, report: dict[str, Any]) -> dict[str, Any]:
-    """v0.391 the visitor journeys on the built copy (menu / form / shop / blog / language) join the version's report."""
+    """v0.400 the visitor journeys on the built copy (menu / form / shop / blog / language) join the version's report."""
     if not getattr(_settings(), "site_journeys", True) or report.get("source") == "none":
         return report
     try:
@@ -1614,7 +1614,7 @@ def _critique_round(r: Site, plan: dict[str, Any], shots: Path, report: dict[str
     """v0.225 Opus looks at the REAL screenshots, redraws the weakest sections once with its own notes, then looks again:
     a redraw that scores lower (or breaks a check) is thrown away and the old section comes back. v0.292: every page
     (site_critique=all, up to site_critique_pages), not only the home page.
-    v0.391 FAST: every page is looked at AT ONCE, every weak section redrawn AT ONCE, then ONE browser check of only
+    v0.400 FAST: every page is looked at AT ONCE, every weak section redrawn AT ONCE, then ONE browser check of only
     the changed pages and one more look at them at once (was: page by page, and a FULL site check after each page)."""
     from concurrent.futures import ThreadPoolExecutor
 
@@ -2536,7 +2536,7 @@ def save_version(site_id: str, note: str = "") -> None:
         except C.CheckError as e:
             report = {"blocking": [], "warnings": [{"kind": "checks", "text": str(e), "sections": []}], "scores": {},
                       "passed": None, "source": "none", "pages": {}}
-        report = _journeys(r, report)         # v0.391 her edits too: the shop / form / menu still work
+        report = _journeys(r, report)         # v0.400 her edits too: the shop / form / menu still work
         _make_version(r, plan, report, shots, None, note or "aapke badlav", None, push=False)
 
 

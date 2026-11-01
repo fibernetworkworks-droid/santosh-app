@@ -14717,11 +14717,316 @@ sites that read app rows keep one path. Per-app rate limits are still per proces
 limit and every money counter are database / lock checked).
 
 VPS: nothing new to install for this version. To move her server to Postgres (optional, when she says): install
-Postgres, create a database + user, `python -m app.dbmove --to <url>`, set DATABASE_URL in ~/apps/santosh-core/.env,
+Postgres (set `max_locks_per_transaction = 512` or more in postgresql.conf: Hoola creates hundreds of tables in one go -
+CI hit 'out of shared memory' on the default 64), create a database + user, `python -m app.dbmove --to <url>`, set DATABASE_URL in ~/apps/santosh-core/.env,
 restart; keep santosh.db as the fallback.
 Tests `server/tests/test_v0390_pakki_neev.py`.
 
-## v0.391.0 FAST + NEVER LOST + VISITOR TESTS (web Step 1 of docs/WEB_PLATFORM_PLAN.md)
+## v0.391.0 KHULA DARWAZA (owner: "GO A")
+The front-door safety pass from "WHAT IS NEXT WORK". Built as 0.386, re-versioned past the parallel v0.386-v0.390.
+- A1, an open door?
+  - The danger: `main._resolve_tenant` / `require_key` / the voice WebSocket treat a request with NO login as the owner
+    whenever API_KEY is empty.
+  - The live answer: checked on the live server, a no-login GET https://hoola.ainewtika.com/api/me answered 401, so
+    API_KEY is set and the door is LOCKED.
+  - Kept as a guard, report only (it changes nothing about who gets in):
+    - `app/authcheck.py`: `warn_if_open()` logs one loud line at startup when API_KEY is empty, called from `lifespan`;
+    - `python -m app.authcheck [--url ...]` says set / EMPTY (never the value) and asks the running server for
+      /api/me with no login (401 = locked, 200 = OPEN);
+    - vps-ops `auth_check`: .env name check plus the live and public no-login probes.
+- A2, keys in the address: `_bearer`, `require_key` and the voice WebSocket no longer read `?key=`. A key or login token
+  in a URL lands in nginx logs and browser history.
+  - Checked before removing it: the phone (lib/api.dart, lib/live_voice.dart), every Android service, the console (the
+    WebSocket subprotocol `hoola-key.<token>`) and both desktop apps send the Authorization header; console files use
+    signed links; no test used `?key=`.
+  - The frozen Mera PC WebSocket keeps its own `?token=` (untouched).
+- A3, clean-up: the 589 KB `server/app/main.py.orig` leftover deleted. The stale CLAUDE.md line ("revise / fix_ci still
+  one-shot") corrected; both have used the loop since v0.352.
+- Full suite on this branch:
+  - 213 failed of ~3,500; all but 3 also fail on main at the same base (the known sandbox-only reds);
+  - the 3 (thok / theka tools_api, voice interruption) pass alone, so they are load flakes.
+- Tests: `test_v0391_khula_darwaza.py`:
+  - the right key in the address is refused (401) while the header works; `_bearer` ignores a query token;
+  - the voice socket closes 4401 on `?key=`;
+  - the warning fires only when empty; the probe reads 401 / 200;
+  - vps job present; main.py.orig gone; no `query_params.get("key"` left in main.py.
+
+## v0.392.0 YOUTUBE ON THE SOCIAL DESK (1 Nov 2026, owner: "GO Y1"; built as 0.391, re-versioned past the parallel v0.391 KHULA DARWAZA)
+Plan Y1 of the YouTube proposal (Y2 = YouTube ads through the Google Ads API: Demand Gen campaigns created paused, her tap
+to go live - NOT built; needs a Google Ads developer token with Basic access + the adwords scope in OAuth verification).
+Module `server/app/social/ytpost.py`, built on `app/youtube` (accounts / client / service; no new Google sign-in).
+- Account: `sync_channel` (every desk view, DB only) mirrors her default YouTube channel as SocialAccount platform youtube
+  (account_id = YouTubeAccount id or "google" for the sign-in path; no token in the social row). desk `sync_account` ->
+  `sync_youtube`: subscribers, handle, latest 50 videos into SocialMedia (<= 180 s = reel / Short, else video), so the
+  baseline / pulse / monthly PDF / best times include YouTube. Connect = `youtube.accounts.start_link`; Disconnect also
+  removes the YouTubeAccount (the "google" sign-in path stays with her Google sign-in).
+- Posting: POST_PLATFORMS + youtube, FORMATS + video. `problems`: a video file + fmt reel / video, the made-for-kids answer
+  (pulse settings `yt_kids`, YouTube requires it), a title. `publish`: Hoola-wide guard YT_DAILY_UPLOADS (default 90,
+  counted from published results across tenants); resumable upload (title <= 100 with #Shorts for reels, description =
+  caption + 3 hashtags, tags <= 500 chars, category 22, public + selfDeclaredMadeForKids + embeddable); YouTube's answer
+  "private" (unaudited API project) -> a note on the post; thumbnail from the post's picture (thumbnails.set; failure =
+  note); playlist (`yt_playlist`, PL... id validated; failure = note). Links /shorts/<id> or /watch?v=<id>. The rules plan
+  adds youtube to reels when connected; Opus is told about youtube + format video.
+- Inbox: youtube = comments only; commentThreads allThreadsRelatedToChannelId (one call, newest 50, 7 days, her own channel
+  skipped, permalink watch?v=..&lc=..); reply = comments.insert parentId; hide = setModerationStatus heldForReview /
+  published (never rejected / deleted). A YouTube read error is told once and skipped.
+- Console + phone: connect button, subscribers tile, "Also as YouTube Short" / "Also on YouTube", made-for-kids select +
+  playlist id in Posting controls, result notes. Privacy: YouTube paragraph (Google API Services User Data Policy).
+- Not done: Y2 ads; YouTube Analytics watch time in reports (views / likes / comments only); captions upload.
+- Tests `server/tests/test_v0392_social_youtube.py` (7).
+## v0.393.0 POORA KARO — the two things v0.389 could not reach
+Owner: *"IS ALL ENTERPRISE EMPLOYEE WORK DONE"*, then **"GO"**.
+
+The honest answer was no, and both gaps were in the version I had just called finished. I found them by
+checking whether the new code was *reachable*, not by re-reading what I had written — which is the only way
+this class of miss ever surfaces.
+
+### 1. `sfmeta.py` was dead code
+v0.389 built the Salesforce Metadata deploy — zip builder, `checkOnly` dry run, quick-deploy, polling,
+production guards — with **seven passing tests and no caller anywhere**. No agent action, no API route. The
+tests passed because they called the module directly, which is exactly how dead code hides: every green tick
+was true and the feature did not exist.
+
+> **Rule, recorded:** a module's tests passing says it WORKS, never that it is REACHABLE. Grep for a caller
+> outside its own file and its own tests before calling a feature shipped.
+
+Wired now, on the same discipline as every other write — `run.deploy_validate` → `deploy_status` →
+`deploy_go`:
+
+| step | what happens |
+|---|---|
+| `deploy_validate` | `checkOnly: true` — Salesforce checks every component and runs the tests in her org, commits nothing |
+| `deploy_status` | poll the id; a deploy with tests takes minutes, so it is polled and **never resubmitted** |
+| `deploy_go` | HER TAP — quick-deploys that same validation without re-running its tests (good for 10 days); a production org needs the word `production` too, because a config change breaks the org for everyone, not one record |
+
+The `crm_arch` tool description now also says *why* — that Salesforce itself refuses Tooling writes to
+CustomField / CustomObject / Apex in an active org and gives Profile / PermissionSet / Layout no REST write
+path — because a description that only lists actions leaves the model hitting the same wall. It also states
+that a lone FIELD cannot be deployed (it lives inside its object's file), so the model asks for the whole
+object or sends her to a sandbox instead of trying.
+
+### 2. The `ambiguous` row had no way out
+v0.389 added a state for a row whose answer never arrived, and told her "look in the system and tell me" —
+then gave her nothing to tell it with. `execute()` deliberately skips such a row (a retry is how a record gets
+posted twice), so a run holding one sat at `failed` **for ever**.
+
+`run.resolve(run, n, landed)` is that answer coming back, and it is owner-only because nobody else can know:
+- `landed=true` → the row is **closed without sending anything**. Proved by a test that asserts the write
+  count does not move.
+- `landed=false` → back in the queue, same idempotency key, and the next `execute()` sends it **exactly
+  once** (also asserted, because "one more attempt" is the whole point).
+Either way the run's status is recomputed, so it reopens as `running` when work returns and only reads `done`
+when no row is left in doubt. A `done` or `failed` row is refused — a failed row retries on its own and is not
+hers to re-decide.
+
+### Files
+`server/app/enterprise/run.py` (resolve + 3 deploy wrappers) · `server/app/agent/enterprise_tools.py`
+(4 actions, 5 params, the crm_arch deploy blurb) · `server/app/main.py` (5 routes: run status, resolve,
+deploy validate / status / go — enterprise routes 6 → 11) · `server/tests/test_v0389_real_rails.py`
+(42 tests, 6 new). 140 pass across the enterprise suites plus `test_agents.py`.
+
+Also renamed the suite to `test_v0389_real_rails.py`: it was written as v0.382, renamed to dodge another
+session's DIMAAG, and the number moved twice more while it was being tested.
+
+### Still not done, and still said plainly
+**The connect screen does not exist**, so none of this has touched a real system — the deploy included. **No
+live tenant has answered any of it.** Salesforce field-level edits are refused (no `retrieve` in Metadata REST
+to merge against), Teamcenter stays read-only (SOA is the contract and we do not speak it), SAP `$batch` is
+not implemented, and GST/ERI filing waits on her commercial decisions.
+## v0.394.0 HOOLA CAD CONTACT (built as 0.392) (1 Nov 2026)
+Owner pointed at the open gap: "Contact between parts in the stress check: an assembly is still checked as one glued
+piece. Bolts are checked by the joint calculation instead."
+- `engineering/contact.py` (`contact.solve(parts, spec)`), used by the analysis box when a static study has
+  contact= or bolts= (`analysis_runner._contact`; the runner now writes each assembly part as apart_<i>.brep +
+  aparts.json; bolt / screw / nut / washer / stud / rivet solids are left out because each bolt is a connector).
+- Each part its own P2 mesh, global system = parts side by side. Contact pairs from the B-rep: planar faces of two
+  parts facing each other in one plane (gap <= max(0.02 mm, 0.2 % of size)) and overlapping.
+- NODE-TO-SURFACE penalty contact (A's face nodes, with their share of the face area, projected onto B's facets,
+  B interpolated with the quadratic facet shape functions). First try = 3 Gauss points per facet: it LOCKED (a bonded
+  stack 40 % too stiff, stiffer as the penalty rose); one point per node fixed it (0.1993 vs 0.200 mm at penalty 1, 5
+  and 50 x E/h). Only facets with all three corners on the face are used (the mesher sometimes cuts a face's edge).
+- Behaviours: bonded, frictionless (open / closed active set), friction mu (stick / slip with 5 % hysteresis, slip =
+  Coulomb force mu*p opposite the slip, relaxed). Converged when < 0.2 % of points change.
+- Bolts: place_bolt finds the hole stack along the axis at (x, y): head ring (hole radius .. washer OD) on the top
+  part's top face, nut ring on the bottom part's bottom face, or the thread wall (1.5 d) of a tapped bottom part.
+  Axial connector = RBE3-style mean of the ring displacements, stiffness kb from calc.joint (shank + thread);
+  pretension calibrated with a unit-shortening solve so the bolt carries EXACTLY the asked preload with no load.
+- Weak springs 1e-10 E*h only on parts with no support of their own (1e-7 on everything carried a real share of
+  the load and broke equilibrium); a part no support / contact / bolt reaches is refused by name.
+- Equilibrium from the final solve itself (K u - rhs on the supports) - the first version left out the preload on a
+  fixed nut ring and printed 643 %.
+- Flags: separated (> 90 % of a contact open), slipped (> 90 % of the touching points sliding) - a slipped joint's
+  stresses are marked NOT valid (the parts slide until the bolt shank bears; bearing is not modelled).
+  Redesign problems: joint separates / slips / bolt over proof load.
+- Measured: frictionless stack 0.777 vs 0.8 mm (theory 4x one beam); M10 8.8 between two 30 mm blocks: preload
+  25,230 N exact, 5 kN pull adds 9 % (Shigley C 0.156 x a load-introduction factor ~0.6), 60 kN pull opens the
+  joint and the bolt carries 61.4 kN; friction 0.2: 2 kN side load held, 12 kN slips.
+- Still NOT built: bolt shank bearing / shear in the hole, contact on curved faces (pin in a bore), large sliding.
+- Tests: tests/test_v0386_contact.py (7).
+
+## v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390.0 / 0.394.0) (Hoola Game Engine plan, Phase 3) - 1 Nov 2026
+
+Owner: "GO PHASE 3". Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 5 (precision mechanisms 1-4) + phase table.
+
+- `server/app/gamedesk/bible.py`, table `game_bibles` (one per Studio Project: data, version, draft, history, applied).
+- Sections: meta (pillars, genre, audience), style (palette = style lock, tone), terms (glossary, banned words),
+  player (hp, damage, fire_rate, hit_chance, speed), curves ([base, growth] by tier for enemy / item / level), economy.
+- Kinds = TEMPLATES (`KINDS`): character, enemy, item, level (waves {enemy, count, at_s}), quest (requires), screen.
+  `clean_entity` gives every entry the template's exact shape; out-of-range is an ERROR, never silently clamped.
+- `check()` in code: types / ranges / enums, unique ids, references (waves -> enemies, quest requires, no quest loop),
+  palette lock, banned words, real-money fields / words refused, names <= 24 chars (warning), duplicate names (warning),
+  size budgets (400 entities, 200 KB). Errors refuse a change; warnings show.
+- `simulate()` Monte-Carlo per level (dt 0.25 s, up to 300 s, 200 runs default) SEEDED from the Bible hash: same Bible =
+  same numbers. Win rate, health left, score, coins; flags impossible (< 5 %), first level < 80 %, spike (> 35 points),
+  late level > 98 %, items never affordable (economy: cumulative coins vs prices).
+- Generators: `generate(kind, n, words)` - model gives words only, `apply_curves` sets the numbers by tier / order, each
+  entry validated, the batch is a DRAFT (with the base hash; stale if the Bible moved) for her OK (`accept` all / ids,
+  `reject`). `seed` = first Bible from the design doc as a draft (colours forced into the palette, broken refs dropped).
+  Her own edits (`set_entity`, `set_section`, `remove_entity`, `recurve`) apply at once, validated, logged as decisions.
+- In the game: `gd()` writes `hoola_bible.gd` (const VERSION + DATA incl. by_id), loaded as the HoolaBible AUTOLOAD
+  (`template.files` adds it). Every build carries Hoola's own copy (the model's copy is replaced); versions record
+  `bible`; `apply` = `service.data_build` (mode data: same code + new Bible, no model call, full checks + playtest).
+- REAL GODOT FINDINGS (4.7.2 in the sandbox): (1) `class_name HoolaBible` is "not declared" in a headless run (no class
+  cache) -> autoload; (2) the SAME bug hit Phase 1's GUIDE ("helpers: class_name Foo") - every helper-script game failed
+  its first smoke run; GUIDE now says `const Foo = preload("res://foo.gd")`, guard refuses class_name with that hint.
+  The Bible file with quotes / backslashes / nested dicts parsed, exported and played at 60 fps.
+- Studio: board shows the Bible line (version / in game / errors / draft), plan_tasks reads the Bible, GitHub export adds
+  BIBLE.json. Tool `game_bible` (show / template / set / remove / section / seed / generate / accept / reject / check /
+  simulate / apply / recurve). API `/api/gamestudio/{id}/bible*`. Console: board > Game Bible (`gsBible`, `gb-*` CSS).
+  Phone: `lib/ui/game_bible_screen.dart` (read, drafts, simulate, apply, generate, remove; editing in the console).
+- Tests `test_v0395_game_bible.py` (10).
+
+
+## v0.396.0 APNA DATABASE - an app's data runs in HER own database (App Sahayak Pillar B: own database per app)
+Owner (1 Nov 2026): *"Own database per app --- WORK ON IT LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN
+DATABASE THERE"*.
+
+Built on v0.147 Hoola Postgres (her connection string typed only in the app, sealed with the bazar vault, public host only
+with the checked IP pinned by libpq `hostaddr`, SSL required, the password masked in every error), so EVERY PostgreSQL-wire
+database works through one code path: 28 listed with where to copy the connection string - Supabase (session pooler or
+direct; the transaction pooler works too: no prepared statements, `prepare_threshold=None`), Neon, Amazon RDS + Aurora,
+Google Cloud SQL + AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, Crunchy Bridge, Tembo, Xata, Nile,
+Heroku, Fly, Vercel, Koyeb, Scaleway, OVH, Alibaba, Tencent, Huawei, CockroachDB, YugabyteDB, her own server. NOT yet:
+MySQL-family (PlanetScale, TiDB, MariaDB - no MySQL driver on the server), MongoDB / Firebase (not SQL).
+
+`server/app/appmaker/owndb.py`:
+- Her tables: one schema per app (`hoola_a_0001`), one TABLE per list with real types (number numeric, date date, yes / no
+  boolean, the rest text), `owner_id`, `created_at`, `_hoola` jsonb (Hoola's own control values: stock taken, coupon,
+  assignment...), an index on every link field and on `_out`; `_hoola_accounts` (id, e-mail, name, role - never a password
+  hash); `_hoola_<name>` jsonb tables for udhaar / approvals / chat; `_hoola_meta`; `_hoola_deleted`. Additive only: a new
+  list / field in the app = a new table / column there on the next sync. Quoted identifiers ("order" is fine).
+- Her triggers (`_hoola_touch`, `_hoola_gone`): every write records who (`set_config('hoola.by','hoola', true)` in Hoola's
+  transactions, anything else = 'outside'); an OUTSIDE write also stamps `_out`, so a later Hoola write on other fields
+  of the same row never hides it; outside deletes are logged.
+- PRIMARY mode (the data lives there): a global SQLAlchemy `before_commit` hook flushes, takes the app-row writes the
+  journal hook queued, and upserts them into her tables in ONE transaction before Hoola commits - her database down =
+  `OwnDbError` 503 "save nahi hui", Hoola rolls back, nothing half-saved. Field-level upserts (only changed columns). The
+  journal row is marked `pushed`, so the catch-up never re-sends it (found by the test: a re-send undid her outside edit).
+  Her outside edits (table editor / SQL / other tools) come back every 20 s (or "Sync now"): rows with `_out` after the
+  cursor -> changed fields validated exactly like app input (`W._clean`; a bad value is refused + audited), Hoola's own
+  `_` values never taken from outside, outside inserts need a Hoola-shaped id (her table's id default makes one), outside
+  deletes follow; the app's logic (formulas / triggers / cascades) runs on them; every one audited ("own_db_in").
+- MIRROR mode: Hoola stays the main copy; the worker sends the journal after its cursor within ~20 s; her database being
+  down never stops her app; outside edits are not taken back (a read copy for reports / BI).
+- Link = HER tap: a backup first, schema + tables + triggers, every row copied in batches, accounts, catch-up of the writes
+  made meanwhile, counts compared per list - mismatch = not linked, the app untouched. Unlink: sync stops, data stays in
+  BOTH places. A small connection pool per app (4, keepalives, statement / lock timeouts per transaction).
+- Routes: `GET /api/apps/<ref>/owndb` (link, her databases, providers, lag), `POST .../owndb/link {conn, mode}` (her tap),
+  `.../unlink`, `.../verify` (counts), `.../sync`. Console app page: "Own database" box (status, link with mode, add a
+  database = connection string sealed on the server, provider how-to, Sync now / Compare counts / Disconnect). Phone:
+  `lib/ui/app_owndb.dart` (+ the existing Postgres screen to add one). Agent `app_banao action=own_db` = status + counts +
+  where to connect - never a connection string in chat, never the move itself.
+
+Tests `server/tests/test_v0396_apna_database.py` (a local Postgres plays her Supabase; CI app-load.yml runs it on a real
+Postgres): link + real column types + accounts without passwords, write-through inside the request, her outside update /
+insert / delete coming back with an app edit on another field of the same row kept, a bad outside value refused + audited,
+a new app field = a new column there, counts compared, her database unreachable = 503 and nothing saved, back = saving
+again, unlink keeps her data, mirror mode never blocks and catches up.
+Known limits: a write-through costs one round trip to her database per save (Mumbai region ~20-60 ms); if Hoola's own commit
+fails AFTER hers succeeded (very rare) "Compare counts" shows it; MySQL / Mongo / Firebase not yet.
+## v0.397.0 CONNECT — the door the whole enterprise suite was missing
+Owner: **"GO CONNECT"**.
+
+Since v0.358 the ten enterprise desks could do everything except touch a real system, and every version since
+has had to end with the same sentence: *no live tenant has answered any of it*. The reason was never the
+engine — it was that **there was nowhere to put a credential.** The chat refuses a key on purpose, and should:
+a secret typed into a conversation lives in the history, in the model's context, and in any export of either.
+`run.set_endpoint` existed and sealed its input properly, but nothing could call it — no route, no screen.
+
+### The one door
+`POST /api/enterprise/<role>/endpoint`, reachable from the console's new **Systems** page and the phone's
+**Profile → Apne system jodiye**. The key is sealed the instant it arrives (`bazar.security.vault`) and
+**no route returns it** — the save answer, the listing and the screens all show only the masked form.
+`DELETE` forgets the address and the key and leaves her runs and papers alone.
+
+The form asks only what a join needs: the API address (with a per-system hint, because guessing the API URL is
+the commonest reason a join fails), what kind of key it is, the key itself in a password field cleared the
+moment it is sent, and **test or production declared explicitly** — a URL that looks live is not consent, so
+`env` defaults to test and a production write still needs the word as well as her tap.
+
+### `verify` — the first call in the suite that ever reaches a customer tenant
+Read-only, writes nothing (a test asserts only `GET` is ever sent), and it reports **what the system
+answered** rather than a green tick:
+
+| it checks | because |
+|---|---|
+| the address answered, and with what code | a 404 means the address is wrong, not the key |
+| **401 vs 403** | a wrong key and a missing permission are different problems with different fixes |
+| a CSRF token can be fetched (SAP, Windchill) | without one every write 403s — better said now than at her first write |
+| an ETag will be available (SAP) | `If-Match` is mandatory there; a row we cannot read gets skipped, not written blind |
+| a check-out is needed (Windchill) | and that Hoola always releases it |
+| the documented idempotent create (SAP) | opt-in per customer system, so it is recorded on first use, never assumed |
+
+A clean check stamps `verified_at`; a failing one deliberately does **not**, so "jancha hua" can never be a
+stale badge. A dead host is an answer too, not a crash — it comes back as "address se baat hi nahi hui,
+firewall / VPN dekhna padega".
+
+### Also on the Systems page
+Her write runs, and the rows whose answer never arrived (v0.393's `ambiguous`) with the two buttons only she
+can press: **"System mein hai"** (closes the row, sends nothing) and **"Nahi gayi — dobara bhejiye"** (back in
+the queue for exactly one more attempt).
+
+### Files
+`server/app/enterprise/run.py` (`verify`, `VERIFY_PROBES`, `forget_endpoint`) ·
+`server/app/main.py` (5 routes; enterprise 11 → 16) · `server/app/static/console/enterprise.js` (new) ·
+`v2.html` / `v2.js` / `v2.css` (Systems view, nav, `IC.systems`, the v0.320 design system) ·
+`lib/api.dart` (4 calls) · `lib/ui/enterprise_screen.dart` (new) · `lib/ui/profile_screen.dart` ·
+`server/tests/test_v0396_connect.py` (18). 136 pass across the enterprise + console suites.
+
+### What this does and does not change
+It does **not** make any of the earlier work "verified live" — it makes verifying *possible*. The headers,
+the ETag rules, the reservation and the deploy are still built from the vendors' documentation and tested
+against recorded HTTP. The first real tenant she joins is what will confirm or correct them, and `verify` is
+written to tell her which.
+
+## v0.398.0 REAL DRAWINGS (built as 0.397) (1 Nov 2026)
+Owner, after the text-to-cad (earthtojake, MIT) read: "Real drawings: feature dimensions, hole callouts, tolerances.
+Ours shows only overall sizes plus a hidden-line page --- START WITH THIS". Built as our own code (their skill is
+build123d + cadgen; nothing copied).
+- Box side `engineering/views2d.py` (runner writes drawing.json when the model is not "big"): each view = the shape
+  turned so screen right / up / toward-eye map to X / Y / Z, OCC HLRBRep looking down -Z, visible (sharp +
+  outline) and hidden edges as model-mm polylines - vector, no SVG parsing. Views: front, top and LEFT (first
+  angle, India / IS SP 46 / ISO E default) or RIGHT (third angle).
+- Hole stacks from the B-rep: coaxial inward cylinders + cones grouped per axis line, split faces merged, open ends by
+  the solid classifier -> diameter, THRU or DEEP n (from the entry face), counterbore (bigger cylinder touching the
+  entry), countersink (cone: Ø at the face + included angle); the callout goes on the view looking INTO the entry
+  face, else a parallel view marked FAR SIDE. Outside cylinders -> R (rounds) or Ø (bosses).
+- Server side `engineering/drawing.py` (reportlab, A3 landscape vector PDF): ISO 5455 scale picked so views + their
+  dimension bands + the title block fit (margins and gaps sized to the number of chains), overall sizes once each
+  (width + height on the front, depth on the top view), step heights from long horizontal edges, hole positions as
+  baseline chains from the corner (x on the view's outer side, y on its right), centre marks on every hole, callouts
+  grouped by kind with leaders to the nearest side (only the top / side view use their right side; others use the
+  band between rows; nothing off the sheet), simple collision checks on every text, notes (ISO 2768-<class>, mm, break
+  edges, DRAFT + her notes) above an ISO 7200-style title block with the projection symbol, the iso picture in the
+  largest free square. Page 2 = the old shaded views (the raster hidden-line page is dropped).
+- H.fit(d, 'H7' | 'g6' | ...) -> callout with ISO 286 limits (calc.IT / SHAFT_ES / SHAFT_EI);
+  H.drawing(projection, tolerance f|m|c|v, notes, part_no).
+- Measured: plate with 4 x Ø5.5 THRU, CBORE, CSK, blind Ø5 DEEP 8, 4 x R5 -> every callout read back from the PDF
+  text; 40-tooth gear sheet in ~1 s. Tests: tests/test_v0395_drawing.py (5).
+- Not yet: section views, GD&T frames (datums / position), thread callouts from modelled threads, auto-dims of every
+  pocket / slot (only steps + holes), multi-sheet assemblies with balloons + parts list.
+
+## v0.400.0 FAST + NEVER LOST + VISITOR TESTS (built as 0.391; web Step 1 of docs/WEB_PLATFORM_PLAN.md)
 Owner: "START STEP 1" (after the plan: "any complexity website, smoothly and reliably").
 - FAST (where a big build's time went, found by reading the pipeline):
   - `checks.run` checked every page one after another in ONE browser -> `_check_page` (one page, every viewport) +
@@ -14748,6 +15053,6 @@ Owner: "START STEP 1" (after the plan: "any complexity website, smoothly and rel
   reaches her data; every other outside request refused; each journey tried twice; menu / form / shop failures are
   BLOCKING (hosting.blockers -> cannot go live), blog / lang warnings. `report.journeys` -> site view `checks.journeys` ->
   console Checks tab lists each visitor test with a tick or the reason.
-- Tests `server/tests/test_v0391_fast_reliable.py`: parallel checks = serial report, critique re-checks only changed pages
+- Tests `server/tests/test_v0400_fast_reliable.py`: parallel checks = serial report, critique re-checks only changed pages
   (keep / revert per section), fewer preview rebuilds, journeys pass on a real shop site and a broken checkout blocks,
   cut-short code task + translation recovered once, proof resumed with time / cost kept and failed after the second death.

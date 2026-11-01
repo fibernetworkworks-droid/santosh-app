@@ -1,4 +1,4 @@
-"""v0.391 FAST + NEVER LOST + VISITOR TESTS (web Step 1 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 1").
+"""v0.400 FAST + NEVER LOST + VISITOR TESTS (web Step 1 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 1").
 
 FAST: the browser checks spread a big site's pages over parallel browsers (same checks, same results), the critique
 looks at every page at once, redraws every weak section at once and re-checks ONLY the changed pages (it was a full
@@ -189,5 +189,5 @@ def test_console_shows_the_visitor_tests():
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.391.0"
-    assert "0.391.0+435" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.400.0"
+    assert "0.400.0+444" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

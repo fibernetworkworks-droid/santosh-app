@@ -69,8 +69,8 @@ and an autoload you must ignore (HoolaProbe). YOU WRITE ONLY .gd FILES.
 
 HARD RULES (the build fails otherwise)
 - main.gd starts with `extends Node`. Build EVERYTHING in code in _ready(): no .tscn, no images, no fonts, no sounds,
-  no preload()/load() of files (none exist besides your scripts). Extra helper scripts: `class_name Foo` + `extends ...`
-  in their own file, created with Foo.new().
+  no preload()/load() of files except your own scripts. Extra helper scripts: `extends ...` in their own file (NO
+  class_name - Hoola's build has no class cache), used as `const Foo = preload("res://foo.gd")` then Foo.new().
 - Indent with TABS only. Typed variables (`var speed: float = 300.0`). No `yield` (use `await`). No `onready` keyword
   for nodes you create (assign them in _ready()).
 - Layout from `get_viewport().get_visible_rect().size` (the viewport is W x H given below; stretch mode keeps it).
@@ -90,6 +90,11 @@ HARD RULES (the build fails otherwise)
 - FORBIDDEN (refused by Hoola's guard): any network class (HTTPRequest, WebSocketPeer ...), OS.execute / shell_open /
   get_environment, JavaScriptBridge, Engine.get_singleton, DirAccess, ClassDB, Expression, files outside user://.
 - Original game only; no real-money / betting mechanics.
+- GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
+  NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
+  HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])
+  instead of typing the value into the code, so a Bible change rebuilds the game without new code. Colours are hex
+  strings: Color(HoolaBible.DATA["style"]["palette"][0]). Levels play in "order"; waves are {enemy, count, at_s}.
 
 OUTPUT FORMAT (nothing else):
 === main.gd ===

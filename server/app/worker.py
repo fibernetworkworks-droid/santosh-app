@@ -376,6 +376,8 @@ def applogic_jobs() -> None:
         def both():
             LE.tick()
             BK.daily_tick()                  # v0.390 PAKKI NEEV: a daily snapshot of every app's data + its limits watched
+            from .appmaker import owndb as OD
+            OD.tick()                        # v0.396 APNA DATABASE: apps running in HER database - catch up, her edits back
         _logic_task = asyncio.get_running_loop().create_task(asyncio.to_thread(both))
     except Exception:
         log.exception("app logic jobs failed")
@@ -849,7 +851,7 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_service.recover_stuck)
     except Exception:
         log.exception("site recover failed")
-    try:                                   # v0.391 a 100-page proof cut short by a restart is picked up again
+    try:                                   # v0.400 a 100-page proof cut short by a restart is picked up again
         from .site import proof as site_proof
         await asyncio.to_thread(site_proof.resume_interrupted)
     except Exception:

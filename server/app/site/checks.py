@@ -191,7 +191,7 @@ FPS_JS = r"""async () => {
 
 
 def _check_page(b, out: Path, slug: str, shots_dir: Path | None, axe, report: dict[str, Any]) -> dict[str, Any]:
-    """v0.391 one page in every viewport (its own browser contexts) - run() spreads pages over parallel browsers."""
+    """v0.400 one page in every viewport (its own browser contexts) - run() spreads pages over parallel browsers."""
     pr: dict[str, Any] = {"issues": [], "warnings": [], "shots": {}}
     url = f"{ORIGIN}/" + ("" if slug == "home" else f"{slug}/")
     for vw in VIEWPORTS:
@@ -302,7 +302,7 @@ def _width(n: int) -> int:
 
 
 def _run_pages(b, out: Path, pages: list[str], shots_dir: Path | None, axe, report: dict[str, Any]) -> dict[str, dict]:
-    """v0.391 FAST: the pages in order on this browser, or split over parallel browsers (each its own Playwright in its
+    """v0.400 FAST: the pages in order on this browser, or split over parallel browsers (each its own Playwright in its
     own thread - the sync API is per thread). The same checks either way; only the wall clock changes."""
     w = _width(len(pages))
     if w <= 1:
@@ -340,7 +340,7 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
         pages = SM.check_slugs(plan, max(5, int(getattr(get_settings(), "site_check_pages", 40) or 40)))
     else:
         pages = [p["slug"] for p in plan.get("pages", []) if not p.get("template_of")]
-    if only:                                 # v0.391 re-check just the pages that changed (critique redraws)
+    if only:                                 # v0.400 re-check just the pages that changed (critique redraws)
         pages = [x for x in pages if x in set(only)] or list(only)
     report: dict[str, Any] = {"pages": {}, "blocking": [], "warnings": [], "scores": {}, "source": "hoola"}
     # weight / JS budget (files, not browser): JS gzipped, biggest image

@@ -28,11 +28,15 @@ def problems(scripts: dict[str, str]) -> list[str]:
     out: list[str] = []
     if "main.gd" not in scripts:
         out.append("main.gd is missing (the game starts there)")
-    if len(scripts) > MAX_FILES:
+    if len([n for n in scripts if n != "hoola_bible.gd"]) > MAX_FILES:
         out.append(f"too many files ({len(scripts)} > {MAX_FILES})")
     total = 0
     for name, code in scripts.items():
-        total += len(code or "")
+        if name == "hoola_bible.gd":                     # v0.395 Hoola's own data file (checked by bible.check), own cap
+            if len(code or "") > 600_000:
+                out.append("hoola_bible.gd too long")
+        else:
+            total += len(code or "")
         if not NAME.match(name or "") or name == "hoola_probe.gd":
             out.append(f"bad file name: {name!r} (lowercase .gd names only)")
             continue
@@ -43,6 +47,8 @@ def problems(scripts: dict[str, str]) -> list[str]:
         for m in FILE_ACCESS.finditer(code or ""):
             if not m.group(2).startswith("user://"):
                 out.append(f"{name}: files only in user:// (the game's own save slot), not {m.group(2)!r}")
+        if name != "hoola_bible.gd" and re.search(r"^\s*class_name\s+\w+", code or "", re.M):   # v0.395 found live
+            out.append(f"{name}: no class_name (Hoola's build has no class cache) - use const X = preload(\"res://{name}\")")
         if re.search(r"FileAccess\s*\.\s*open\s*\(\s*[^\"'\s]", code or ""):
             out.append(f"{name}: FileAccess.open needs a fixed 'user://...' path")
     if total > MAX_CHARS:

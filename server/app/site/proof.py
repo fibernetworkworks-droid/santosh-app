@@ -220,7 +220,7 @@ def _mark(pid: str, **kw: Any) -> dict[str, Any]:
 
 def build_big(pid: str, b: dict[str, Any], budget: float) -> tuple[str, float, float, list[str]]:
     """Plan -> looks -> build -> features, like her taps. Returns (site id, rupees, minutes, notes).
-    v0.391 NEVER LOST: the start time and the rupee meter at the start are kept on the proof, so a run picked up after a
+    v0.400 NEVER LOST: the start time and the rupee meter at the start are kept on the proof, so a run picked up after a
     server restart continues with the same site and still measures its whole time and cost; done features are skipped."""
     from . import service as S
     with session() as s:
@@ -489,7 +489,7 @@ _BOOT = time.time()
 
 
 def resume_interrupted() -> int:
-    """v0.391 worker: a Hoola proof whose thread died with the process (a deploy / restart) is picked up again - at most
+    """v0.400 worker: a Hoola proof whose thread died with the process (a deploy / restart) is picked up again - at most
     twice; a rival crawl cut short is marked failed with a plain line (measure it again)."""
     ensure_tables()
     n = 0

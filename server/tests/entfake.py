@@ -1,10 +1,10 @@
 """A fake enterprise endpoint, shared by the ERP / CRM suites.
 
-v0.388 moved WRITES off `run._odata_call` and onto `dialect.Call`, because a SAP CSRF token is bound to the
+v0.389 moved WRITES off `run._odata_call` and onto `dialect.Call`, because a SAP CSRF token is bound to the
 security session and a per-call client can never hold one. These suites test run.py's ORCHESTRATION (plan ->
 dry run -> tap -> batches -> resume), so they drive the new seam while keeping the same
 `(method, path, body)` record they always asserted on. The dialect's own rules - If-Match, CSRF, the
-Windchill reservation - are proved separately in test_v0388_real_rails.py against recorded HTTP.
+Windchill reservation - are proved separately in test_v0389_real_rails.py against recorded HTTP.
 """
 from __future__ import annotations
 

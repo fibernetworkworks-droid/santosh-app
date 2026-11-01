@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.391.0"   # v0.391.0 FAST + NEVER LOST + VISITOR TESTS (web Step 1 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 1"). FAST: the browser checks spread a big site's pages over parallel browsers (SITE_CHECK_PARALLEL 3, one Playwright per thread, same results in the plan's order); the critique looks at every page at once, redraws every weak section at once and re-checks ONLY the changed pages (checks.run only=) - it was a full site check after every page; fix rounds repair every failing section at once; the preview is rebuilt at most every 20 s while sections arrive (was after every section - ~200 rebuilds of every page on a 150-page site); big sites write 8 sections at once. NEVER LOST: a code-mode ask cut short by a restart says so (was "working" forever), a half-done translation starts again by itself, a 100-page proof is picked up again after a restart (twice at most) with its start time and rupee meter kept and finished features skipped. VISITOR TESTS (site/journeys.py): after every build and every saved edit Chromium walks the built copy like a customer on a phone - phone menu, enquiry form, add to cart -> checkout -> order, blog post, language switch - against stand-in answers (never her real data); a broken menu / form / checkout is a blocking problem (it cannot go live), blog / language are warnings; the Checks tab lists every visitor test with a tick or the reason. Previous: v0.390.0 PAKKI NEEV (App Sahayak Pillar B, Phases 47-48, owner: "START NEXT PILLAR"): her apps' backend holds under MANY server processes and can always be brought back - one cross-process lock per app (Postgres advisory locks / an fcntl file lock on SQLite) for stock, coupons, slots, GST numbers, udhaar, approvals and every read-modify-write of the app settings (stock and coupon changes used to be able to overwrite each other), a phone retry racing itself in two processes = ONE row, a write journal from ONE before_flush hook (no write path can skip it), daily + before-change snapshots, point-in-time restore to any minute (preview, then HER tap, safety copy first), a ZIP export (no passwords), indexed links (app_refs) instead of JSON scans, usage meters + limits (80/95/100% notes), the SQLite -> Postgres move (python -m app.dbmove, counts verified), every app suite green on real Postgres, and the proof: 1,000 customers ordering 300 in stock at once against 4 worker processes on one Postgres = exactly 300 orders, retries one row each, no server error (CI app-load.yml). Previous: v0.389.0 SACH BOLO (enterprise write rails). Before: v0.387.0 GURU SAHAYAK - Shiksha suite Phase 2, the personal tutor (owner: "GO PHASE 2"): sessions per learner (doubt / practice / language; a child only after guardian consent, inside a daily minutes cap); a doubt is taught as a HINT LADDER one rung per ask (hint -> nudge -> worked steps -> answer), numeric answers checked by code in the pylab sandbox, photo doubts via Claude vision, exam mode / graded work = hints only; adaptive practice from the APPROVED bank (due revision first, else the weakest topic; difficulty from mastery), objective answers checked in code, written ones by AI (labelled), mastery + spaced revision; language practice with corrections; progress + weekly report card for the guardian only by her tap. PHASE 2.1 (after DeepTutor, Apache-2.0): mastery with a confidence cap, SM-2 revision + exam window / cramming, a mastery path over the NCERT chapters with a gate per chapter, explanations grounded in her own books with page cites. Role personal_tutor, preset tutor_centre, phone Profile > Personal tutor. Tests: NEW test_v0387_guru.py + test_v0387_guru21.py. Previous: v0.386.0 STUDIO PROJECT (built as 0.378 / 0.382) (Hoola Game Engine plan Phase 2, owner: "GO PHASE 2"): a game now lives for weeks, months or 1,000 days instead of one sitting. A Studio Project (gamedesk/studio.py) wraps one Game Desk game and adds what a studio runs on: a TASK BOARD where every task is ONE small change built by the Phase 1 pipeline (code -> guard -> headless play -> Web export -> Hoola plays it) and then WAITS for her OK; "wapas" makes the version before it live again (versions carry a rejected mark, so the play link and the next change both skip it); MILESTONES (Prototype -> First playable -> Alpha -> Beta -> Release) counted in code; a DECISIONS LOG Hoola reads before planning and answers "why is X like this" from (and says there is no record rather than guess); a NIGHTLY BUILD that rebuilds and replays the live code from scratch with no model call, checks the code fingerprint, flags an fps drop over 25 % and names the tasks since the last good night, adding a priority fix task when it fails; a MORNING REPORT in her chat written in code from the board; restore any old version as a new one (no model call); her GitHub on the usual card (code + TASKS / DECISIONS / CHANGELOG). Precision rules in code: one task builds at a time, none starts while another waits for her OK, a failed task never replaces the live game. Tool game_studio, /api/gamestudio*, console Game Desk board, phone GameStudioScreen.
+APP_VERSION = "0.400.0"   # v0.400.0 FAST + NEVER LOST + VISITOR TESTS (web Step 1 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 1"). FAST: the browser checks spread a big site's pages over parallel browsers (SITE_CHECK_PARALLEL 3, one Playwright per thread, same results in the plan's order); the critique looks at every page at once, redraws every weak section at once and re-checks ONLY the changed pages (checks.run only=) - it was a full site check after every page; fix rounds repair every failing section at once; the preview is rebuilt at most every 20 s while sections arrive (was after every section - ~200 rebuilds of every page on a 150-page site); big sites write 8 sections at once. NEVER LOST: a code-mode ask cut short by a restart says so (was "working" forever), a half-done translation starts again by itself, a 100-page proof is picked up again after a restart (twice at most) with its start time and rupee meter kept and finished features skipped. VISITOR TESTS (site/journeys.py): after every build and every saved edit Chromium walks the built copy like a customer on a phone - phone menu, enquiry form, add to cart -> checkout -> order, blog post, language switch - against stand-in answers (never her real data); a broken menu / form / checkout is a blocking problem (it cannot go live), blog / language are warnings; the Checks tab lists every visitor test with a tick or the reason. Previous: v0.399.0 SYSTEMS KHULE: v0.397 CONNECT shipped the Systems page with a helper that looped over rules.systems_for() as if it returned NAMES - it returns full dicts - so SYSTEMS.get(<dict>) raised TypeError and the page 500ed the moment it was opened. The test that shipped with it only checked the ROUTE EXISTED, never called it. Fixed, and the test now CALLS it for five roles and checks the shape. Previous: v0.398.0 REAL DRAWINGS (built as 0.397): drawing.pdf page 1 is now an A3 VECTOR shop drawing measured from the model - kernel hidden-line views at one ISO 5455 scale (first angle default, or third), overall + step + hole-position dimensions, THRU / DEEP / CBORE / CSK / FAR SIDE callouts recognised from the B-rep, R / Ø callouts, H.fit ISO 286 limits, ISO 2768 + her notes, title block with the projection symbol; page 2 keeps the shaded views. Previous: v0.397.0 CONNECT - the screen where her own ERP / CRM is really joined, which the enterprise suite has been missing since v0.358: there was nowhere to put a credential, because the chat refuses a key on purpose (a secret typed into a conversation is in the history, in the model's context and in any export of either). Console Systems page + phone "Apne system jodiye" -> POST /api/enterprise/<role>/endpoint, sealed the instant it arrives and returned by NO route. verify() is the first call in the suite that ever reaches a customer tenant: READ-ONLY, reporting what the system ANSWERED - 401 told apart from 403, a CSRF token that cannot be fetched, an ETag a later write will need. Previous: v0.396.0 APNA DATABASE (App Sahayak Pillar B: own database per app, owner: "LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN DATABASE THERE"): an app's data runs in HER OWN PostgreSQL-wire database (Supabase, Neon, RDS / Aurora, Cloud SQL / AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, CockroachDB, YugabyteDB ... 28 listed) through the v0.147 sealed connection: her schema + a real typed table per list + triggers, PRIMARY = every save lands there inside the request (her database down = refused, nothing half-saved) and her edits there come back validated with the app logic run, MIRROR = a live copy that never blocks; link = her tap (backup, copy, counts compared), unlink keeps the data in both places. Previous: v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390 / 0.394; Hoola Game Engine plan Phase 3, owner: "GO PHASE 3"): every Studio Project gets ONE source of truth for its names and numbers, as DATA (gamedesk/bible.py, table game_bibles): meta, a style palette, glossary + banned words, player numbers, growth curves, and entities by kind (character, enemy, item, level, quest, screen) - each kind a TEMPLATE with typed fields, ranges, enums and references, so the 50th enemy has exactly the shape of the 1st. All checks in code: ranges, unique ids, every reference real (waves name real enemies, no quest loops), colours only from the palette (style lock), banned words, names that fit, no real-money fields. A SEEDED Monte-Carlo balance run per level (same Bible = same numbers) flags impossible levels, spikes, a too-hard first level, a too-easy late one and items you can never afford. Generators: the model writes only words, the curves set the numbers, and the result waits as a DRAFT for her OK. The game reads it: hoola_bible.gd is a HoolaBible AUTOLOAD (a real Godot run proved class_name is invisible headless), so a balance change is a DATA-ONLY rebuild with no model call. Found live and fixed: the code guide told the model to use class_name helpers, which never parse in Hoola builds - now preload, and the guard says so before a build is wasted. Tool game_bible, /api/gamestudio/{id}/bible*, console Game Bible page, phone GameBibleScreen.
 
 
 def _quiet_http_logs() -> None:
@@ -83,6 +83,8 @@ async def lifespan(app: FastAPI):
     init_db()
     _mark_jobs_on_stop_signal()   # v0.343 a deploy marks running website jobs at the signal, not at the (often aborted) end
     _quiet_http_logs()
+    from . import authcheck as _authcheck
+    _authcheck.warn_if_open()  # v0.391 an empty API_KEY = a request with no login acts as the owner: say so loudly in the log
     from . import usage as _usage
     _usage.install()          # v0.98 every Claude / Gemini call is counted (owner, feature, cost)
     stop = asyncio.Event()
@@ -218,7 +220,9 @@ def _qa_ok() -> bool:
 
 
 def _bearer(request: Request) -> str:
-    return request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.query_params.get("key", "")
+    # v0.391 header only: a key or login token in the address (?key=) lands in nginx logs and browser history; no Hoola
+    # client sends one there (phone, Android, console and both desktop apps all use the Authorization header)
+    return request.headers.get("authorization", "").removeprefix("Bearer ").strip()
 
 
 def current_tenant(request: Request) -> str:
@@ -246,7 +250,7 @@ def _resolve_tenant(request: Request) -> str:
 def require_key(request: Request) -> None:
     from . import accounts
     key = get_settings().api_key
-    got = request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.query_params.get("key", "")
+    got = request.headers.get("authorization", "").removeprefix("Bearer ").strip()   # v0.391 never ?key= (see _bearer)
     if key and got and hmac.compare_digest(got, key):
         return
     if got and accounts.tenant_for_session(got):   # a signed-in product user
@@ -1973,7 +1977,7 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
     connection dropped (network change) instead of starting a new one."""
     from . import voice as v
     st = get_settings()
-    got = ws.headers.get("authorization", "").removeprefix("Bearer ").strip() or ws.query_params.get("key", "")
+    got = ws.headers.get("authorization", "").removeprefix("Bearer ").strip()   # v0.391 header / subprotocol only, never ?key=
     # v0.142 browsers can't set headers on a WebSocket: the console sends "hoola, hoola-key.<token>" as subprotocols
     protos = [p.strip() for p in ws.headers.get("sec-websocket-protocol", "").split(",") if p.strip()]
     sub = "hoola" if "hoola" in protos else None
@@ -7032,7 +7036,9 @@ def social_settings(body: dict, tenant: str = Depends(current_tenant)):
     b = body or {}
     return _social_call(pulse.set_settings, tenant, paused=b.get("paused") if isinstance(b.get("paused"), bool) else None,
                         quiet=b.get("quiet") if isinstance(b.get("quiet"), list) else None, stop=b.get("stop") is True,
-                        reason=str(b.get("reason") or ""))
+                        reason=str(b.get("reason") or ""),
+                        yt_kids=b.get("yt_kids") if isinstance(b.get("yt_kids"), bool) else None,
+                        yt_playlist=b.get("yt_playlist") if isinstance(b.get("yt_playlist"), str) else None)
 
 
 @app.post("/api/social/growth/watch", dependencies=[Depends(require_key)])
@@ -9962,6 +9968,50 @@ async def apps_turant_set(ref: str, body: dict, tenant: str = Depends(current_te
                                    else TU.disable(_be_owner(tenant, ref)))
 
 
+# ---- v0.396 APNA DATABASE: an app's data in HER own database (Supabase, Neon, RDS ... any PostgreSQL-wire)
+@app.get("/api/apps/{ref}/owndb", dependencies=[Depends(require_key)])
+async def apps_owndb(ref: str, tenant: str = Depends(current_tenant)):
+    """The link, her connected databases (Profile > Postgres database), the provider list, sync lag."""
+    from .appmaker import owndb as OD
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.status(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/owndb/link", dependencies=[Depends(require_key)])
+async def apps_owndb_link(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP {conn, mode: primary|mirror}: backup, her tables, every row copied, counts compared, then live."""
+    from .appmaker import owndb as OD
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.link(_be_owner(tenant, ref), str(b.get("conn") or ""),
+                                                                   str(b.get("mode") or "primary")))
+
+
+@app.post("/api/apps/{ref}/owndb/unlink", dependencies=[Depends(require_key)])
+async def apps_owndb_unlink(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import owndb as OD
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.unlink(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/owndb/verify", dependencies=[Depends(require_key)])
+async def apps_owndb_verify(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import owndb as OD
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.verify(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/owndb/sync", dependencies=[Depends(require_key)])
+async def apps_owndb_sync(ref: str, tenant: str = Depends(current_tenant)):
+    """Sync now: pending writes there, her outside edits back (instead of waiting up to 20 s)."""
+    from .appmaker import owndb as OD
+
+    def go():
+        r = _be_owner(tenant, ref)
+        o = OD.cfg(r, fresh=True)
+        if not o:
+            raise OD.OwnDbError("Yeh app kisi database se judi nahi hai.", 404)
+        n = OD.tick(force=True)
+        return {"ok": True, "synced": n, **OD.status(_be_owner(tenant, ref))}
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
 # ---- v0.390 PAKKI NEEV: her app's data - backups, point-in-time restore (her tap), export, usage + limits
 @app.get("/api/apps/{ref}/backups", dependencies=[Depends(require_key)])
 async def apps_backups(ref: str, tenant: str = Depends(current_tenant)):
@@ -11290,6 +11340,127 @@ def enterprise_disconnect(role: str, system: str, tenant: str = Depends(current_
 def enterprise_paper(role: str, ref: str, tenant: str = Depends(current_tenant)):
     from .enterprise import service as ent
     return _ent(ent.artifact, tenant, role, ref)
+
+
+def _entrun(fn, *a, **kw):
+    from .enterprise import run as entrun
+    try:
+        return fn(*a, **kw)
+    except entrun.RunError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/enterprise/{role}/endpoint", dependencies=[Depends(require_key)])
+def enterprise_endpoints(role: str, tenant: str = Depends(current_tenant)):
+    """Her own systems for this job: address, which environment, and the key MASKED. The key itself is sealed
+    and is never returned by any route - not here, not anywhere."""
+    from .enterprise import run as entrun
+    return _entrun(lambda: {"systems": entrun.endpoints(tenant, role),
+                            "jod_sakte_hain": _ent_systems(role)})
+
+
+def _ent_systems(role: str):
+    # v0.399 FIX: rules.systems_for already returns the full dict per system ({key, label, how, note}); the
+    # first cut looped over it as if it were a list of NAMES and called SYSTEMS.get(<dict>), which raises
+    # TypeError: unhashable type - so the console Systems page 500'd the moment it was opened. The test that
+    # shipped with it only asserted the ROUTE EXISTED, never called it. A route that exists is not a route
+    # that works; test_v0396_connect now calls this for five roles and checks the shape.
+    from .enterprise import rules as entrules
+    return [{"system": s.get("key", ""), "label": s.get("label") or s.get("key", ""),
+             "how": s.get("how") or "own", "note": s.get("note") or ""}
+            for s in entrules.systems_for(role)]
+
+
+@app.post("/api/enterprise/{role}/endpoint", dependencies=[Depends(require_key)])
+def enterprise_endpoint_set(role: str, body: dict, tenant: str = Depends(current_tenant)):
+    """THE ONE DOOR for an enterprise credential.
+
+    It exists only here, on a route the APP calls, because the chat refuses to take a key and should: a secret
+    pasted into a conversation is in the history, in the model's context and in any export of either. What
+    arrives here is sealed immediately (`bazar.security.vault`), stored encrypted, and read back out only
+    inside the HTTP call that uses it. Nothing returns it - this route answers with the MASKED form.
+    """
+    from .enterprise import run as entrun
+    b = body or {}
+    return _entrun(entrun.set_endpoint, tenant, role, str(b.get("system") or ""),
+                   str(b.get("base_url") or ""), str(b.get("auth") or ""),
+                   str(b.get("auth_kind") or "bearer"), str(b.get("env") or "test"),
+                   str(b.get("header_name") or ""), str(b.get("note") or ""))
+
+
+@app.post("/api/enterprise/{role}/endpoint/{system}/verify", dependencies=[Depends(require_key)])
+def enterprise_endpoint_verify(role: str, system: str, tenant: str = Depends(current_tenant)):
+    """Ask her real system whether it works. READ-ONLY - it writes nothing.
+
+    This is the first call in the whole suite that ever reaches a customer tenant, so it reports what the
+    endpoint actually ANSWERED rather than a green tick: whether the address replied, whether the credential
+    got past authentication (401 and 403 told apart), and whether the things a WRITE will need later - a CSRF
+    token, an ETag, a check-out - can be had at all."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.verify, tenant, role, system)
+
+
+@app.delete("/api/enterprise/{role}/endpoint/{system}", dependencies=[Depends(require_key)])
+def enterprise_endpoint_forget(role: str, system: str, tenant: str = Depends(current_tenant)):
+    """Forget the address and the sealed key. Her runs and papers are untouched."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.forget_endpoint, tenant, role, system)
+
+
+@app.get("/api/enterprise/{role}/runs", dependencies=[Depends(require_key)])
+def enterprise_runs(role: str, tenant: str = Depends(current_tenant)):
+    from .enterprise import run as entrun
+    return _entrun(lambda: {"runs": entrun.runs(tenant, role)})
+
+
+@app.get("/api/enterprise/{role}/run/{run_id}", dependencies=[Depends(require_key)])
+def enterprise_run_status(role: str, run_id: str, tenant: str = Depends(current_tenant)):
+    """One write run: how far it got, what failed, and which rows nobody can be sure about."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.status, tenant, run_id)
+
+
+@app.post("/api/enterprise/{role}/run/{run_id}/resolve", dependencies=[Depends(require_key)])
+def enterprise_run_resolve(role: str, run_id: str, body: dict,
+                           tenant: str = Depends(current_tenant)):
+    """Her answer on a row whose reply never arrived: did it land in the system or not?
+
+    Hoola refuses to decide this itself - a retry can post the same record twice - so the row waits here
+    until a person has looked. landed=true closes the row WITHOUT sending anything; landed=false puts it
+    back in the queue for exactly one more attempt."""
+    from .enterprise import run as entrun
+    if "landed" not in body:
+        raise HTTPException(400, "landed true/false batana zaroori hai.")
+    return _entrun(entrun.resolve, tenant, run_id, int(body.get("n") or 0), bool(body.get("landed")))
+
+
+@app.post("/api/enterprise/{role}/deploy/validate", dependencies=[Depends(require_key)])
+def enterprise_deploy_validate(role: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Salesforce config deploy, step 1 of 3: the dry run. Components are checked and the tests run in her
+    org, and nothing is committed. This is the only documented way to change what Tooling API refuses to
+    touch in a live org (CustomField, CustomObject, Apex) or cannot write at all (Profile, PermissionSet)."""
+    from .enterprise import run as entrun
+    comps = body.get("components")
+    if not isinstance(comps, list) or not comps:
+        raise HTTPException(400, "components chahiye: [{type, name, body}].")
+    return _entrun(entrun.deploy_validate, tenant, role, comps, str(body.get("test_level") or ""))
+
+
+@app.get("/api/enterprise/{role}/deploy/{deploy_id}", dependencies=[Depends(require_key)])
+def enterprise_deploy_status(role: str, deploy_id: str, tenant: str = Depends(current_tenant)):
+    """Step 2: poll. A deploy with tests takes minutes, so the id is kept and polled - never resubmitted."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.deploy_status, tenant, role, deploy_id)
+
+
+@app.post("/api/enterprise/{role}/deploy/{deploy_id}/go", dependencies=[Depends(require_key)])
+def enterprise_deploy_go(role: str, deploy_id: str, body: dict | None = None,
+                         tenant: str = Depends(current_tenant)):
+    """Step 3: HER TAP. Quick-deploys the validation she just saw, without re-running its tests (valid 10
+    days). A production org needs the word 'production' as well, like every other live write."""
+    from .enterprise import run as entrun
+    b = body or {}
+    return _entrun(entrun.deploy_go, tenant, role, deploy_id, "owner", str(b.get("confirm_env") or ""))
 
 
 @app.get("/api/employee", dependencies=[Depends(require_key)])

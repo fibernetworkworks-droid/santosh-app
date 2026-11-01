@@ -13,6 +13,8 @@ on:
       - "server/app/db.py"
       - "server/app/dbmove.py"
       - "server/tests/test_v0390_pakki_neev.py"
+      - "server/tests/test_v0396_apna_database.py"
+      - "server/app/pgdb/**"
       - ".github/workflows/app-load.yml"
   workflow_dispatch:
 
@@ -20,18 +22,15 @@ jobs:
   postgres:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    services:
-      pg:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: hoola
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       HOOLA_TEST_PG: postgresql+psycopg://postgres:hoola@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@v5
+      - name: Postgres 16 (enough lock slots for Hoola's many tables; a service container cannot take -c flags)
+        run: |
+          docker run -d --name pg -p 5432:5432 -e POSTGRES_PASSWORD=hoola postgres:16 \
+            -c max_locks_per_transaction=1024 -c max_connections=400 -c shared_buffers=256MB
+          for i in $(seq 1 60); do docker exec pg pg_isready -U postgres && break; sleep 1; done
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -39,7 +38,9 @@ jobs:
           cache-dependency-path: server/requirements.txt
       - name: Install
         working-directory: server
-        run: pip install -q -r requirements.txt pytest pytest-xdist pytest-asyncio
+        run: |
+          pip install -q -r requirements.txt pytest pytest-xdist pytest-asyncio
+          python -m playwright install --with-deps chromium     # app looks are rendered in a headless browser
       - name: App backend suites on Postgres
         working-directory: server
         run: |
@@ -52,6 +53,12 @@ jobs:
           HOOLA_TEST_PG: ""
           HOOLA_PG_ADMIN: postgresql+psycopg://postgres:hoola@127.0.0.1:5432/postgres
         run: python -m pytest -q -p no:cacheprovider tests/test_v0390_pakki_neev.py -k "dbmove or sqlite"
+      - name: Her own database - an app's data running in "her Supabase" (link, write-through, her edits back, mirror)
+        working-directory: server
+        env:
+          HOOLA_TEST_PG: ""
+          HOOLA_PG_ADMIN: postgresql+psycopg://postgres:hoola@127.0.0.1:5432/postgres
+        run: python -m pytest -q -p no:cacheprovider tests/test_v0396_apna_database.py
       - name: The proof - 1,000 customers, 4 worker processes, one Postgres
         working-directory: server
         env:

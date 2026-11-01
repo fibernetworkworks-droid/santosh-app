@@ -71,7 +71,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SITE_ART", "false")         # v0.225: no art-direction / critique Opus calls in scripted site tests
     monkeypatch.setenv("SITE_CRITIQUE", "off")
     monkeypatch.setenv("SITE_KIT", "false")         # v0.330: no design-kit Opus call in scripted site tests (its own suite turns it on)
-    monkeypatch.setenv("SITE_JOURNEYS", "false")    # v0.391: visitor journeys open a browser per version; their own suite turns them on
+    monkeypatch.setenv("SITE_JOURNEYS", "false")    # v0.400: visitor journeys open a browser per version; their own suite turns them on
     monkeypatch.setenv("DOC_ART", "false")          # v0.313: no Opus art direction for PDFs in tests (router picks)
     monkeypatch.setenv("DOC_REVIEW", "false")       # v0.313: no Opus page review in tests (its own tests fake it)
     monkeypatch.setenv("SOCIAL_AI", "false")        # v0.353: no Opus calendar call in tests (its own tests fake it)

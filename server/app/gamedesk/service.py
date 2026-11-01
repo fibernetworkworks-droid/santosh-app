@@ -320,6 +320,30 @@ def restore(tenant: str, pid: str, n: int, task: str = "") -> dict[str, Any]:
     return view(r)
 
 
+def data_build(tenant: str, pid: str, bible_version: int, task: str = "") -> dict[str, Any]:
+    """v0.395 Game Bible applied to the live game: the SAME code + the new hoola_bible.gd, no model call, full checks."""
+    r = _get(tenant, pid)
+    if r.status in BUSY:
+        raise GameError("Abhi bana raha hoon; khatam hone dijiye.")
+    if not _good(r):
+        raise GameError("Pehle game ka pehla version banne dijiye.")
+    _limits_build(tenant)
+    _save(r, status="queued", stage="line mein", pct=10, error="",
+          pending={"mode": "data", "words": f"Bible v{int(bible_version)} game mein", "task": task or ""})
+    _publish(r)
+    _submit(r.id)
+    return view(r)
+
+
+def _bible(r: GameProject) -> tuple[str, int] | None:
+    try:
+        from . import bible
+        return bible.for_game(r.tenant_id, r.id)
+    except Exception:                                   # noqa: BLE001 - a game without a Studio Bible builds as before
+        log.exception("bible for game %s", r.id)
+        return None
+
+
 def reject_version(tenant: str, pid: str, n: int) -> None:
     """v0.386: she sent a task back - that version stops being the live one (kept in history, marked)."""
     with session() as s:
@@ -531,11 +555,17 @@ def _build(r: GameProject, holder: dict) -> None:
         src = _vdir(r, int((r.pending or {}).get("n") or 0)) / "proj"
         files = {p.name: p.read_text(encoding="utf-8") for p in src.glob("*.gd") if p.name != "hoola_probe.gd"}
         files["__notes__"] = f"Version {(r.pending or {}).get('n')} ka code wapas (koi naya code nahi likha)."
+    elif mode == "data":
+        files = _current_files(r)
+        files["__notes__"] = "Game Bible ke naye naam / numbers (koi naya code nahi likha)."
     elif mode == "change":
         files = ai.change(r.design, _current_files(r), words, r.orientation, size)
     else:
         files = ai.code(r.design, r.orientation, size)
     notes = files.pop("__notes__", "")
+    bib = _bible(r)                                     # v0.395: the Bible is always Hoola's own file, never the model's
+    if bib:
+        files["hoola_bible.gd"] = bib[0]
     checks: list[dict[str, Any]] = []
     fixed = 0
     smoke: dict[str, Any] = {}
@@ -574,18 +604,26 @@ def _build(r: GameProject, holder: dict) -> None:
         notes = new.pop("__notes__", "") or notes
         if new.get("main.gd"):
             files = new
+            if bib:
+                files["hoola_bible.gd"] = bib[0]
     ok = bool(checks) and all(c["ok"] for c in checks[-3:]) and checks[-1]["step"] == "playtest" and checks[-1]["ok"]
     if fixed and ok:
         STATS["fixed"] += 1
     errors = [] if ok else (checks[-1]["errors"] if checks else ["kuch nahi bana"])
     ver = {"n": n, "at": now().isoformat(), "words": words, "ok": ok, "task": task, "base": (_good(r)[-1]["n"] if _good(r) else 0),
-           "src": _src_hash(vdir / "proj"), "notes": notes, "fixed": fixed, "checks": checks[-4:],
+           "src": _src_hash(vdir / "proj"), "bible": bib[1] if bib else 0, "notes": notes, "fixed": fixed, "checks": checks[-4:],
            "errors": errors[:6], "files": sorted(files), "shots": play.get("shots", []) if ok else [],
            "warnings": play.get("warnings", []),
            "numbers": {"fps_server": play.get("fps"), "load_s": play.get("load_s"),
                        "download_mb": round((exp.get("download_bytes") or 0) / 1048576, 1) or None,
                        "build_s": exp.get("seconds")} if ok else {}}
     token = r.token or secrets.token_urlsafe(18)
+    if ok and bib:
+        try:
+            from . import bible as _B
+            _B.mark_applied(r.tenant_id, r.id, bib[1])
+        except Exception:                               # noqa: BLE001
+            log.exception("bible applied mark")
     if ok:
         STATS["ok"] += 1
         _save(r, versions=(r.versions or []) + [ver], token=token, status="done", stage="", pct=100, pending={}, error="")

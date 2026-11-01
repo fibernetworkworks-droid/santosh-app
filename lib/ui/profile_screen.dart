@@ -123,6 +123,7 @@ import 'gyaan_screen.dart';
 import 'postgres_screen.dart';
 import 'voice_learned_screen.dart';
 import 'call_quality_screen.dart';
+import 'enterprise_screen.dart';
 import 'voice_engine_screen.dart';
 import 'screen_link.dart';
 import 'employees_screen.dart';
@@ -1027,6 +1028,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Gemini awaaz ya Real voice (OpenAI) - aur is mahine ka kharcha'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceEngineScreen(app: app))),
+            ),
+            ListTile(                                  // v0.396 CONNECT: the only door an enterprise credential has
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.hub_rounded, color: C.accentSoft),
+              title: const Text('Apne system jodiye', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('ERP / CRM ka address aur key - chat mein key kabhi nahi jaati'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EnterpriseScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
