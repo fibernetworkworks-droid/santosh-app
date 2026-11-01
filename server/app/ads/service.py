@@ -68,6 +68,13 @@ class AdsSettings(Base):
     meta_currency: Mapped[str] = mapped_column(String(8), default="")
     meta_token: Mapped[str] = mapped_column(Text, default="")           # sealed
     meta_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # v0.417 META ADS (A1): joined by Facebook Login instead of a pasted token (ads/metaads.py)
+    meta_via: Mapped[str] = mapped_column(String(8), default="")           # "" / token = pasted, login = Facebook Login
+    meta_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    meta_accounts: Mapped[str] = mapped_column(Text, default="[]")         # [{id, name, currency, active, business}]
+    meta_pages: Mapped[str] = mapped_column(Text, default="[]")            # [{id, name, ig_id, ig}]
+    meta_page: Mapped[str] = mapped_column(String(30), default="")         # the Page her ads run as
+    meta_scopes: Mapped[str] = mapped_column(Text, default="")
     seq: Mapped[int] = mapped_column(Integer, default=0)
 
 
@@ -304,7 +311,8 @@ def _sv(r: AdsSettings) -> dict[str, Any]:
             "report_day": r.report_day, "report_time": r.report_time, "rules": _j(r.rules, []),
             "target": tgt, "target_from": src, "max_cpl": R.max_cpl(r.avg_order, r.margin_pct, r.close_pct),
             "meta": {"account": r.meta_account, "name": r.meta_name, "currency": r.meta_currency,
-                     "ready": bool(r.meta_account and r.meta_token)},
+                     "ready": bool(r.meta_account and r.meta_token), "via": r.meta_via or ("token" if r.meta_token else ""),
+                     "linked": bool(r.meta_token), "accounts": _j(r.meta_accounts, []) if r.meta_via == "login" else []},
             "segments": {k: v["label"] for k, v in R.SEGMENTS.items()}}
 
 
@@ -1269,7 +1277,7 @@ def _graph(method: str, path: str, token: str, params: dict | None = None) -> di
         err = (j.get("error") or {}) if isinstance(j, dict) else {}
         code = err.get("code")
         if code in (190, 102):
-            raise AdsError("Meta token band / galat ho gaya: Niyam mein naya token daaliye.")
+            raise AdsError("Meta login band / purana ho gaya: Ads desk par 'Connect with Facebook' dobara dabaiye.")
         if code in (17, 4, 80004, 613):
             raise AdsError("Meta ne abhi zyada requests ki wajah se roka; thodi der baad.")
         raise AdsError(f"Meta: {err.get('message') or r.text[:200]}")
@@ -1303,6 +1311,7 @@ def set_meta(tenant: str, account: str, token: str) -> dict[str, Any]:
         r = _row(s, tenant)
         r.meta_account, r.meta_name, r.meta_currency = acct, _tidy(info.get("name"), 160), _tidy(info.get("currency"), 8)
         r.meta_token, r.meta_checked = vault().seal(tok), now()
+        r.meta_via, r.meta_expires, r.meta_accounts, r.meta_pages = "token", None, "[]", "[]"
     return {"meta": {"account": acct, "name": info.get("name"), "currency": info.get("currency"), "ready": True},
             "say": f"Meta account '{info.get('name')}' jud gaya. Token band tijori mein; badlav sirf aapki Haan par."}
 
@@ -1310,7 +1319,12 @@ def set_meta(tenant: str, account: str, token: str) -> dict[str, Any]:
 def forget_meta(tenant: str) -> dict[str, Any]:
     with session() as s:
         r = _row(s, tenant)
-        r.meta_account = r.meta_name = r.meta_currency = r.meta_token = ""
+        via = r.meta_via
+        r.meta_account = r.meta_name = r.meta_currency = r.meta_token = r.meta_via = r.meta_page = r.meta_scopes = ""
+        r.meta_accounts = r.meta_pages = "[]"
+        r.meta_expires = None
+    if via == "login":
+        return {"say": "Meta account hata diya. Facebook Settings > Business integrations mein Hoola ko hata bhi sakti hain."}
     return {"say": "Meta account hata diya. Business Settings mein woh token bhi band (revoke) kar dijiye."}
 
 
@@ -1399,12 +1413,12 @@ def due_checks() -> list[tuple[str, str]]:
             if not (0 <= late <= 180):
                 continue
             has = s.scalars(select(AdsRow.id).where(AdsRow.tenant_id == r.tenant_id)).first()
-            if not has and not r.meta_token:
+            if not has and not (r.meta_token and r.meta_account):
                 continue
             if nowl.weekday() == r.report_day and r.last_weekly != d:
                 r.last_weekly = r.last_daily = d
                 out.append((r.tenant_id, "weekly"))
-            elif r.last_daily != d and r.meta_token:
+            elif r.last_daily != d and r.meta_token and r.meta_account:
                 r.last_daily = d
                 out.append((r.tenant_id, "daily"))
     return out

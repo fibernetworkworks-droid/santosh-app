@@ -315,6 +315,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>` : ''}
       ${accs.length ? growthTile(d.growth || {}) : ''}
       ${accs.length ? '<div class="tile gl sc-ytads" id="scYtAds"><div class="em-h"><h3>YouTube ads</h3></div><div class="empty">Loading…</div></div>' : ''}
+      ${accs.length ? '<div class="tile gl sc-ytads" id="scMetaAds"><div class="em-h"><h3>Facebook &amp; Instagram ads</h3></div><div class="empty">Loading…</div></div>' : ''}
       ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
         <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
       <div class="grid2">
@@ -327,6 +328,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     wireSocial(el, d);
     wireGrowth(el);
     if (accs.length) ytAds(el);
+    if (accs.length) metaAds(el);
     if (accs.length) inbox(el);
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) social(el); }, 8000);
   }
@@ -502,6 +504,92 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       b.disabled = true;
       go(() => api('POST', `/api/social/ytads/drafts/${id}/${act}`, act === 'start' ? {confirm: true} : {}),
          {check: 'Google checked it - no problems.', create: 'Made in Google Ads, paused.', start: 'Started.', pause: 'Paused.'}[act]);
+    }));
+  }
+
+  // ------------------------------------------------------------ v0.417 META ADS (A1): her Meta ad account by Facebook Login, her taps only
+  const MAS = {draft: ['warn', 'Draft'], checked: ['ok', 'Meta checked'], created: ['v', 'In Meta, paused'],
+               running: ['ok', 'Running'], paused: ['', 'Paused'], ended: ['', 'Finished'], failed: ['bad', 'Needs a fix']};
+  async function metaAds(el) {
+    const box = el.querySelector('#scMetaAds'); if (!box) return;
+    let v;
+    try { v = await api('GET', '/api/ads/metaads'); }
+    catch (e) { box.innerHTML = `<div class="em-h"><h3>Facebook &amp; Instagram ads</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const head = `<div class="em-h"><h3>Facebook &amp; Instagram ads</h3><span class="muted em-small">Your own Meta ad account. An ad is made paused; money is spent only after you tap Start.</span></div>`;
+    if (!v.configured) { box.innerHTML = head + '<div class="empty">Not set up on the server yet (Meta app keys).</div>'; return; }
+    const a = v.account;
+    if (!a) { box.innerHTML = head + '<button class="btn go" type="button" id="maConn">Connect with Facebook</button>'; wireMa(el, box, v); return; }
+    const login = a.via === 'login';
+    const warn = a.renew ? '<p class="em-small warnc">Your Facebook login ends soon. <button class="btn soft" type="button" id="maConn">Connect again</button></p>'
+      : (!login ? '<p class="em-small warnc">Joined with a pasted token - connect with Facebook to make ads here. <button class="btn soft" type="button" id="maConn">Connect with Facebook</button></p>' : '');
+    const pick = login && !a.account ? `<p class="em-small">Which ad account pays for your ads?</p><div class="acts">${(a.accounts || []).map(c =>
+      `<button class="btn soft" type="button" data-maacct="${esc(c.id)}"${c.active ? '' : ' disabled'}>${esc(c.name || c.id)} (${esc(c.currency || '')})${c.active ? '' : ' - closed'}</button>`).join('') || '<span class="muted">No ad account found in this Facebook login.</span>'}</div>` : '';
+    const pages = login && a.account ? `<div class="acts"><span class="muted em-small">Ads run as</span>${(a.pages || []).map(p =>
+      `<button class="btn ${p.id === a.page ? 'go' : 'soft'}" type="button" data-mapage="${esc(p.id)}">${esc(p.name)}${p.ig ? ' + @' + esc(p.ig) : ''}</button>`).join('') || '<span class="muted">No Page in this login.</span>'}</div>` : '';
+    const cur = a.currency || '';
+    const card = d => { const [c, n] = MAS[d.status] || ['', d.status]; const ro = !['draft', 'checked', 'failed'].includes(d.status); const boost = d.goal === 'boost';
+      return `<div class="em-item sc-ytd" data-mid="${esc(d.id)}"><div class="em-meta"><b>${esc(d.goal_label)}</b>${tag(c, n)}
+          <span class="muted">${num(d.daily)} ${esc(cur)} a day x ${num(d.days)} days = ${num(d.total)} · ${esc((d.cities || []).join(', ') || 'all India')}${d.stop_on ? ' · until ' + esc(d.stop_on) : ''}</span></div>
+        ${ro ? `<p class="em-small">${esc(boost ? 'Post ' + d.post_id : d.text)}</p>` : `<div class="ar-form em-form sc-ytform">
+          ${boost ? `<p class="em-small">Boosting post ${esc(d.post_id)}</p>` : `<label><span>Ad text</span><textarea data-f="text" rows="3">${esc(d.text)}</textarea></label>
+          <label><span>Headline (40)</span><input data-f="headline" value="${esc(d.headline)}"></label>
+          <label><span>Description (30, optional)</span><input data-f="description" value="${esc(d.description)}"></label>`}
+          ${d.goal === 'website' ? `<label><span>Website (https://...)</span><input data-f="link" value="${esc(d.link)}"></label>` : ''}
+          <label><span>Show on</span><select data-f="platforms">${[['both', 'Facebook + Instagram'], ['facebook', 'Facebook only'], ['instagram', 'Instagram only']].map(([k, t]) => `<option value="${k}"${d.platforms === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+          <label><span>Cities (comma separated, empty = all India)</span><input data-f="cities" value="${esc((d.cities || []).join(', '))}"></label>
+          <label><span>Around each city (km)</span><input data-f="radius_km" type="number" min="1" max="80" value="${esc(String(d.radius_km))}"></label>
+          <label><span>Ages</span><span class="acts"><input data-f="age_min" type="number" min="18" max="65" value="${esc(String(d.age_min))}"> to <input data-f="age_max" type="number" min="18" max="65" value="${esc(String(d.age_max))}"></span></label>
+          <label><span>Who</span><select data-f="gender">${[['all', 'Everyone'], ['women', 'Women'], ['men', 'Men']].map(([k, t]) => `<option value="${k}"${d.gender === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+          <label><span>Daily budget (${esc(cur)}, up to ${num(v.cap)})</span><input data-f="daily" type="number" min="1" max="${esc(String(v.cap))}" value="${esc(String(d.daily))}"></label>
+          <label><span>Days (1-30)</span><input data-f="days" type="number" min="1" max="30" value="${esc(String(d.days))}"></label>
+          ${boost ? '' : `<label class="btn soft sc-up">${d.image_asset ? 'Change photo' : 'Add photo (square or 4:5)'}<input type="file" accept="image/*" data-maimg="${esc(d.id)}" hidden></label>`}</div>`}
+        ${(d.problems || []).length ? `<p class="em-small warnc">${d.problems.map(esc).join(' ')}</p>` : ''}${d.error ? `<p class="em-small badc">${esc(d.error)}</p>` : ''}
+        <div class="acts">${ro ? '' : `<button class="btn soft" type="button" data-masave="${esc(d.id)}">Save</button>
+          <button class="btn soft" type="button" data-maact="check" data-id="${esc(d.id)}">Check with Meta (free)</button>
+          <button class="btn go" type="button" data-maact="create" data-id="${esc(d.id)}"${(d.problems || []).length ? ' disabled' : ''}>Create in Meta (paused)</button>`}
+          ${['created', 'paused'].includes(d.status) ? `<button class="btn go" type="button" data-maact="start" data-id="${esc(d.id)}" data-total="${esc(String(d.total))} ${esc(cur)}" data-days="${esc(String(d.days))}">Start</button>` : ''}
+          ${d.status === 'running' ? `<button class="btn soft" type="button" data-maact="pause" data-id="${esc(d.id)}">Pause</button>` : ''}</div></div>`; };
+    box.innerHTML = head + `<p class="muted em-small">${esc(a.name || 'No ad account chosen')}${a.account ? ' · ' + esc(a.account) : ''}</p>` + warn + pick + pages +
+      (login && a.account ? `<div class="acts em-run">${Object.entries(v.goals || {}).map(([k, t]) => `<button class="btn soft" type="button" data-manew="${esc(k)}">${esc(t)}</button>`).join('')}</div>
+        <div id="maPosts"></div><div class="sc-items">${(v.drafts || []).map(card).join('')}</div>
+        <p class="muted em-small">Chat ads open a WhatsApp / Messenger / Instagram chat with you. Meta stops the ad by itself after its days; Hoola also marks it finished and tells you.</p>` : '');
+    wireMa(el, box, v);
+  }
+
+  function wireMa(el, box, v) {
+    const go = async (fn, done) => { try { await fn(); if (done) toast(done); metaAds(el); } catch (e) { toast(e.message, true); } };
+    box.querySelector('#maConn')?.addEventListener('click', async () => {
+      try { const r = await api('GET', '/api/ads/meta/connect'); window.open(r.url, '_blank', 'noopener'); toast('Sign in on Facebook, then come back here.'); }
+      catch (e) { toast(e.message, true); }
+    });
+    box.querySelectorAll('[data-maacct]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/ads/metaads/account', {account: b.dataset.maacct}), 'Ad account chosen.')));
+    box.querySelectorAll('[data-mapage]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/ads/metaads/account', {page: b.dataset.mapage}), 'Page chosen.')));
+    box.querySelectorAll('[data-manew]').forEach(b => b.addEventListener('click', async () => {
+      const goal = b.dataset.manew;
+      if (goal !== 'boost') return go(() => api('POST', '/api/ads/metaads/drafts', {goal}), 'Draft made from your business facts - add a photo, then Check with Meta.');
+      const out = box.querySelector('#maPosts'); out.innerHTML = '<div class="empty">Reading your Page posts…</div>';
+      try {
+        const r = await api('GET', '/api/ads/metaads/posts');
+        out.innerHTML = (r.posts || []).length ? `<p class="em-small">Which post?</p>${r.posts.map(p => `<p class="em-small"><button class="btn soft" type="button" data-mapost="${esc(p.id)}">Boost</button> ${esc(p.date)} · ${esc(p.text || '(photo / video)')} ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">open</a>` : ''}</p>`).join('')}` : '<div class="empty">No posts on your Page.</div>';
+        out.querySelectorAll('[data-mapost]').forEach(x => x.addEventListener('click', () => go(() => api('POST', '/api/ads/metaads/drafts', {goal: 'boost', post_id: x.dataset.mapost}), 'Draft made - check the budget and days.')));
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    }));
+    const body = card => { const o = {}; card.querySelectorAll('[data-f]').forEach(i => { const f = i.dataset.f;
+      o[f] = f === 'cities' ? i.value.split(',').map(x => x.trim()).filter(Boolean) : (['daily', 'days', 'radius_km', 'age_min', 'age_max'].includes(f) ? Number(i.value) : i.value); }); return o; };
+    box.querySelectorAll('[data-masave]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/ads/metaads/drafts/${encodeURIComponent(b.dataset.masave)}`, body(b.closest('.sc-ytd'))), 'Saved.')));
+    box.querySelectorAll('[data-maimg]').forEach(inp => inp.addEventListener('change', async () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      const fd = new FormData(); fd.append('file', f);
+      go(async () => { const a = await api('POST', '/api/social/media', undefined, {form: fd});
+        await api('POST', `/api/ads/metaads/drafts/${encodeURIComponent(inp.dataset.maimg)}`, {...body(inp.closest('.sc-ytd')), image_asset: a.id}); }, 'Photo added.');
+    }));
+    box.querySelectorAll('[data-maact]').forEach(b => b.addEventListener('click', async () => {
+      const act = b.dataset.maact, id = encodeURIComponent(b.dataset.id);
+      if (act === 'create' && !confirm('Create this ad in your Meta ad account? It is made PAUSED - nothing is spent until you tap Start.')) return;
+      if (act === 'start' && !confirm(`Start this ad? Meta can spend up to its daily budget every day, about ${b.dataset.total} in total, and stops it after ${b.dataset.days} days. You can Pause any time.`)) return;
+      b.disabled = true;
+      go(() => api('POST', `/api/ads/metaads/drafts/${id}/${act}`, act === 'start' ? {confirm: true} : {}),
+         {check: 'Meta checked it - no problems.', create: 'Made in Meta, paused.', start: 'Started.', pause: 'Paused.'}[act]);
     }));
   }
 
