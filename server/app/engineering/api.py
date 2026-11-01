@@ -11,9 +11,16 @@ from pydantic import BaseModel
 from . import service
 
 
+class FileIn(BaseModel):
+    name: str
+    data: str            # base64
+
+
 class StartIn(BaseModel):
     brief: str
     conversation_id: str = ""
+    images: list[str] = []           # v0.362 base64 sketch / photo (max 3)
+    files: list[FileIn] = []         # v0.362 her STEP / STL to modify or fit to (max 2)
 
 
 class ChangeIn(BaseModel):
@@ -38,7 +45,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.post("/api/eng/projects", dependencies=[Depends(require_key)])
     async def start(body: StartIn, tenant: str = Depends(current_tenant)):
-        return await asyncio.to_thread(_do, service.start, tenant, body.conversation_id, body.brief)
+        import base64
+        import binascii
+        try:
+            imgs = [base64.b64decode(x.split(",", 1)[-1], validate=False) for x in body.images[:3]]
+            files = [(f.name, base64.b64decode(f.data.split(",", 1)[-1], validate=False)) for f in body.files[:2]]
+        except (binascii.Error, ValueError):
+            raise HTTPException(400, "file sahi nahi padhi gayi")
+        return await asyncio.to_thread(_do, service.start, tenant, body.conversation_id, body.brief, imgs, files)
 
     @r.get("/api/eng/projects/{pid}", dependencies=[Depends(require_key)])
     async def one(pid: str, tenant: str = Depends(current_tenant)):
@@ -58,7 +72,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
         p = await asyncio.to_thread(service.file_path, pid, f"{v}/{name}", exp, sig)
         if p is None:
             raise HTTPException(404, "not found")
-        mt = {"step": "application/step", "stl": "model/stl", "py": "text/plain"}.get(name.rsplit(".", 1)[-1]) \
+        mt = {"step": "application/step", "stl": "model/stl", "py": "text/plain", "3mf": "model/3mf",
+              "glb": "model/gltf-binary", "dxf": "image/vnd.dxf"}.get(name.rsplit(".", 1)[-1]) \
             or mimetypes.guess_type(name)[0] or "application/octet-stream"
         inline = name.endswith((".png", ".pdf", ".py"))
         return FileResponse(p, media_type=mt, filename=name, content_disposition_type="inline" if inline else "attachment")

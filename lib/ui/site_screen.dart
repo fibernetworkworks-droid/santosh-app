@@ -13,6 +13,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'site_blog.dart';
 import 'site_dash.dart';
 import 'site_hosting.dart';
 
@@ -777,6 +778,14 @@ class _SitePageState extends State<SitePage> {
                       builder: (_) => SiteDashPage(app: app, id: widget.id, name: _s(v['name'])))),
                   icon: const Icon(Icons.insights_rounded),
                   label: const Text('Dashboard (charts)')),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(   // v0.366 BLOG + BHASHAYEN
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => SiteBlogPage(app: app, id: widget.id, name: _s(v['name'])))),
+                  icon: const Icon(Icons.article_rounded),
+                  label: const Text('Blog aur bhashayen')),
             ),
             const SizedBox(height: 10),
           ],

@@ -65,7 +65,7 @@ KIND_WORDS = [
     ("page", r"landing|about us|about page|home page|website page|homepage|service page"),
     ("blog", r"blog|article|lekh|लेख"),
 ]
-DESTS = ("wordpress", "email", "page", "copy")
+DESTS = ("wordpress", "email", "page", "copy", "site")      # v0.366 site = the blog of her Hoola website
 COPY_WHERE = ("instagram", "facebook", "linkedin", "x", "whatsapp", "amazon", "flipkart", "meesho", "shopify", "website",
               "google business", "other")
 
@@ -1289,8 +1289,8 @@ def publish_request(tenant: str, piece: str, dest: str = "", where: str = "", to
     if dest in COPY_WHERE or dest in ("insta", "fb"):
         where, dest = where or dest, "copy"
     if dest not in DESTS:
-        raise KalamError("Kahan publish karna hai? wordpress (aapki site) / email / page (Hoola page) / copy (khud daalengi: "
-                         "instagram, amazon ...).")
+        raise KalamError("Kahan publish karna hai? site (aapki Hoola website ka blog) / wordpress (aapki site) / email / "
+                         "page (Hoola page) / copy (khud daalengi: instagram, amazon ...).")
     with session() as s:
         p = _find(s, tenant, piece)
         if p.status == "published":
@@ -1325,6 +1325,20 @@ def publish_request(tenant: str, piece: str, dest: str = "", where: str = "", to
                     raise KalamError("Kab publish karna hai? (jaise '25/10 10:00')")
                 opts["date"] = dt.strftime("%Y-%m-%dT%H:%M:%S")
             opts["type"] = "pages" if kind == "page" else "posts"
+        if dest == "site":                      # v0.366 the blog of one of her Hoola websites
+            if kind != "blog":
+                raise KalamError("Website ke blog par sirf blog lekh jaata hai; pehle 'roop badlo: blog' kahiye.")
+            from ..site import service as _site
+            try:
+                tgt = _site.blog_target(tenant, where)
+            except _site.SiteError as e:
+                raise KalamError(str(e))
+            opts = {"site": tgt["id"], "site_name": tgt["name"]}
+            if status == "future" or when:
+                dt = _when_local(tenant, when)
+                if not dt:
+                    raise KalamError("Kab publish karna hai? (jaise '25/10 10:00')")
+                opts["date"] = dt.isoformat()
         if dest == "email":
             if kind not in ("email", "newsletter"):
                 raise KalamError("Email sirf email / newsletter lekh se; pehle 'roop badlo: email' kahiye.")
@@ -1350,6 +1364,14 @@ def _dest_label(dest: str, opts: dict, st: dict) -> str:
         return f"WordPress: {st['wordpress']['url']} ({ {'publish': 'abhi live', 'draft': 'draft', 'future': 'time par'}.get(opts.get('status'), '') })"
     if dest == "page":
         return "Hoola ka public page (link milega)"
+    if dest == "site":
+        when = ""
+        if opts.get("date"):
+            try:
+                when = datetime.fromisoformat(opts["date"]).strftime("%d %b, %I:%M %p")
+            except ValueError:
+                when = ""
+        return f"Aapki website ka blog: {opts.get('site_name') or ''} ({'time par: ' + when if when else 'abhi'})"
     if dest == "copy":
         return f"Aap khud daalengi: {opts.get('where') or 'website / app'}"
     return dest
@@ -1426,6 +1448,17 @@ def decide_publish(tenant: str, piece: str, yes: bool, note: str = "", url: str 
             "slug": meta.get("slug") or slug(title), "excerpt": meta.get("meta_description", ""),
             **({"date": opts["date"]} if opts.get("date") else {})})
         pub |= {"url": r.get("link", ""), "post_id": r.get("id"), "status": r.get("status", opts.get("status"))}
+    elif dest == "site":                       # v0.366 her Haan: the post goes on her website's blog
+        from ..site import service as _site
+        try:
+            res = _site.blog_publish(tenant, opts.get("site", ""), {"id": pid, "title": title, "body": body, "meta": meta},
+                                     opts.get("date", ""))
+        except _site.SiteError as e:
+            with session() as s:
+                p = _find(s, tenant, pid)
+                p.status = "draft"
+            raise KalamError(str(e))
+        pub |= {"url": res["url"], "site": opts.get("site"), "slug": res["post"]["slug"], "status": res["post"]["status"]}
     elif dest == "page":
         token = secrets.token_urlsafe(12)
         with session() as s:
@@ -1442,7 +1475,8 @@ def decide_publish(tenant: str, piece: str, yes: bool, note: str = "", url: str 
         p.updated_at = now()
         v = _view(p)
     _publish(tenant, "kalam_publish", _card(v) | {"decided": "yes"}, conv)
-    where = {"wordpress": "WordPress par", "page": "Hoola page par", "copy": "aapne khud daal diya"}.get(dest, dest)
+    where = {"wordpress": "WordPress par", "page": "Hoola page par", "copy": "aapne khud daal diya",
+             "site": "website ke blog par" + (" (time par)" if pub.get("status") == "scheduled" else "")}.get(dest, dest)
     return {"piece": v, "published": pub, "say": f"{v['number']} {where}." + (f" Link: {pub['url']}" if pub.get("url") else "")}
 
 
