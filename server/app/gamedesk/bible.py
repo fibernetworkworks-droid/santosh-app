@@ -369,7 +369,8 @@ def simulate(data: dict, runs: int = SIM_RUNS) -> dict[str, Any]:
     """Thousands of simulated plays, seeded from the Bible: the same Bible always gives the same numbers."""
     c = check(data)
     if c["errors"]:
-        return {"ok": False, "errors": c["errors"][:10], "levels": [], "flags": [], "economy": {}}
+        return {"ok": False, "verdict": "NOT ASSESSED", "missing": ["fix the Bible's errors first"], "errors": c["errors"][:10],
+                "levels": [], "flags": [], "economy": {}}
     seed = int(fingerprint(data), 16) % (2 ** 31)
     rnd = random.Random(seed)
     enemies = {e["id"]: e for e in (clean_entity("enemy", x)[0] for x in (data.get("entities") or {}).get("enemy") or [])}
@@ -405,8 +406,16 @@ def simulate(data: dict, runs: int = SIM_RUNS) -> dict[str, Any]:
         econ["items"].append({"id": it["id"], "name": it["name"], "price": it["price"], "levels_to_afford": need})
         if need is None and out:
             flags.append(f"{it['name']} costs {it['price']} coins - not affordable even after the last level")
-    return {"ok": True, "seed": seed, "runs": runs, "levels": out, "flags": flags, "economy": econ,
-            "hash": fingerprint(data)}
+    # v0.406 NOT ASSESSED is a real answer: no level with enemies = nothing was simulated, never a clean pass
+    missing = []
+    if not enemies:
+        missing.append("no enemies in the Bible")
+    if not any(r["enemies"] for r in out):
+        missing.append("no level with waves of enemies")
+    verdict = "NOT ASSESSED" if missing else "CONCERNS" if flags else "PASS"
+    return {"ok": True, "verdict": verdict, "missing": missing, "seed": seed, "runs": runs, "levels": out, "flags": flags,
+            "economy": econ, "hash": fingerprint(data),
+            "note": ("Nothing was simulated: " + "; ".join(missing) + ".") if missing else ""}
 
 
 # ---------------------------------------------------------------- curves + generators

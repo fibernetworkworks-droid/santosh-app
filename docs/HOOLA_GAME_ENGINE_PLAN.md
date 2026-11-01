@@ -221,6 +221,7 @@ All share one project memory; each can be hired alone (a solo developer hires tw
 | **1 (done, v0.370)** | Game Desk: design doc → Godot → test-play → play link | done | T1 |
 | **2 Studio Project (BUILT, v0.386.0)** | Long-lived projects: task board, milestones, decisions log, nightly build + test, morning summary, versions + restore, her GitHub (card) | built | T1-T2 over weeks |
 | **3 Game Bible + specs as data (BUILT, v0.395.0)** | Bible as data, templates per kind, validators, seeded balance + economy simulation, curve-made numbers, drafts for her OK, data-only rebuilds | built | repeatable content at T2 |
+| **3.5 Game Crew + fixes (BUILT, v0.406.0)** | 49 studio roles as data, role + acceptance criteria per task, lead review, team plans, milestone gates, NOT ASSESSED honesty, Godot 4.7 notes, import step | built | precision per discipline |
 | **4 Asset pipeline** | 2D art (style-locked), Blender 3D props / characters, audio (music, SFX, voice), validators, asset store | 8-12 weeks | real-looking T2 / T3 |
 | **5 QA farm** | Bot playthroughs, replay tests, golden screenshots, device performance, bug tracker | 6 weeks | precision at scale |
 | **6 Platforms** | Android / iOS via App Builder, PC (Steam / itch.io) builds, store pages, age rating drafts | 6-8 weeks | shipping T2 / T3 |

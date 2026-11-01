@@ -69,8 +69,8 @@ and an autoload you must ignore (HoolaProbe). YOU WRITE ONLY .gd FILES.
 
 HARD RULES (the build fails otherwise)
 - main.gd starts with `extends Node`. Build EVERYTHING in code in _ready(): no .tscn, no images, no fonts, no sounds,
-  no preload()/load() of files except your own scripts. Extra helper scripts: `extends ...` in their own file (NO
-  class_name - Hoola's build has no class cache), used as `const Foo = preload("res://foo.gd")` then Foo.new().
+  no preload()/load() of files except your own scripts. Extra helper scripts: their own file with `class_name Foo` +
+  `extends ...` (created with Foo.new()), or without class_name used as `const Foo = preload("res://foo.gd")`.
 - Indent with TABS only. Typed variables (`var speed: float = 300.0`). No `yield` (use `await`). No `onready` keyword
   for nodes you create (assign them in _ready()).
 - Layout from `get_viewport().get_visible_rect().size` (the viewport is W x H given below; stretch mode keeps it).
@@ -90,6 +90,17 @@ HARD RULES (the build fails otherwise)
 - FORBIDDEN (refused by Hoola's guard): any network class (HTTPRequest, WebSocketPeer ...), OS.execute / shell_open /
   get_environment, JavaScriptBridge, Engine.get_singleton, DirAccess, ClassDB, Expression, files outside user://.
 - Original game only; no real-money / betting mechanics.
+- GODOT 4.5-4.7 CHANGES (newer than most training data; the build is 4.7):
+  * an override of a method with a typed return now has that return type too - give it an explicit `return` on
+    every path (e.g. `return null`), or the script does not parse;
+  * mouse and keyboard events no longer report device 0 - tell inputs apart by type (`event is InputEventKey`,
+    `InputEventMouseButton`, `InputEventScreenTouch`), never by `event.device == 0`;
+  * CanvasItem lines (draw_line, Line2D) have no extra antialias feather - set the width you want to see;
+  * RichTextLabel: ImageUpdateMask.UPDATE_WIDTH_IN_PERCENT is now UPDATE_WIDTH_UNIT; add_image width/height are float;
+  * AudioStreamPlayer2D/3D area_mask defaults to 0; AudioEffectSpectrumAnalyzer.tap_back_pos is gone;
+  * 4.5 added variadic functions and @abstract; 4.6 made Jolt the 3D physics and Quaternion() starts as identity;
+  * still Godot 4 rules: TileMapLayer (not TileMap), instantiate() (not instance()), await (not yield),
+    signal.connect(callable), Time.get_ticks_msec(), VisibleOnScreenNotifier2D.
 - GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
   NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
   HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])
@@ -164,16 +175,24 @@ screen, one enemy type, one level, one tuning pass, one fix. Each task must be c
 Rules: build on what exists (never "rewrite the game"); the order matters - earlier milestones first, a task only
 needs tasks above it; no art / sound files (everything is drawn in code for now); original content only; no
 real-money mechanics. Use the milestone keys given. 6 to 15 tasks.
+Each task belongs to ONE studio role (the crew list is given) and has 2-4 acceptance criteria: each is one checkable
+sentence and says how it is checked - "screen" (visible in a screenshot), "test" (Hoola's automatic play run) or
+"her" (only she can judge it, e.g. feel or fun).
 OUTPUT: only a JSON array, each item {"title": "<= 70 chars, starts with a doing word", "detail": "1-3 sentences, exact
-numbers where they matter", "milestone": "<key>", "kind": "feature|content|polish|fix|test", "priority": 1|2|3}"""
+numbers where they matter", "milestone": "<key>", "kind": "feature|content|polish|fix|test", "priority": 1|2|3,
+"role": "<crew role key>", "criteria": [{"text": "...", "by": "screen|test|her"}]}"""
 
 
 def plan_tasks(design_doc: str, goal: str, milestones: list[dict], tasks: list[dict], decisions: list[str],
-               words: str = "") -> list[dict]:
+               words: str = "", roles: list[dict] | None = None) -> list[dict]:
     import json
     ms = ", ".join(f"{m['key']} = {m['name']}" for m in milestones)
+    if roles:
+        crew_txt = "\n".join(f"- {r['key']}: {r['name']} - {r['does']}" + ("" if r.get("mode") == "builds" else " (writes, does not change the game)")
+                              for r in roles)
+        decisions = list(decisions) + [f"CREW (give each task one of these role keys, in this order of work):\n{crew_txt}"]
     have = "\n".join(f"- {t['number']} [{t['status']}] {t['title']}" for t in tasks[-60:]) or "(none yet)"
-    dec = "\n".join(f"- {d}" for d in decisions[-20:]) or "(none yet)"
+    dec = "\n".join(f"- {d}" for d in decisions[-22:]) or "(none yet)"
     p = (f"Project goal: {goal}\nMilestones (in order): {ms}\n\nThe game's design doc:\n{design_doc}\n\n"
          f"Tasks already on the board:\n{have}\n\nDecisions she made (follow them):\n{dec}\n\n"
          + (f"What she asked for now: {words}\n\n" if words else "") + "Write the next tasks.")
@@ -184,3 +203,21 @@ def plan_tasks(design_doc: str, goal: str, milestones: list[dict], tasks: list[d
     except ValueError:
         items = []
     return [i for i in items if isinstance(i, dict) and str(i.get("title") or "").strip()][:15]
+
+
+def ask_with_images(system: str, text: str, images: list[bytes], max_tokens: int = 2000) -> str:
+    """v0.406 the crew's review: Claude reads the playtest screenshots too (PNG). Without Claude, text only."""
+    import base64
+    st = get_settings()
+    if st.anthropic_api_key and images:
+        content = [{"type": "image", "source": {"type": "base64", "media_type": "image/png",
+                                                "data": base64.b64encode(b).decode()}} for b in images[:3]]
+        content.append({"type": "text", "text": text})
+        for model in dict.fromkeys([getattr(st, "game_model", "") or "claude-opus-5-5", st.anthropic_model]):
+            try:
+                msg = _client().messages.create(model=model, max_tokens=max_tokens, system=system,
+                                                messages=[{"role": "user", "content": content}])
+                return "".join(getattr(b, "text", "") for b in msg.content)
+            except Exception as e:
+                log.info("game review model %s failed: %s", model, e)
+    return ask(system, text + ("\n\n(No screenshots could be shown.)" if images else ""), max_tokens=max_tokens)

@@ -158,6 +158,13 @@ def errors_in(log: str) -> list[str]:
 def smoke(job: Path, frames: int = 600, holder: dict | None = None) -> dict[str, Any]:
     """Play the game headless for `frames` frames (~10 s at 60 fps): parse + runtime script errors come out here."""
     t0 = time.time()
+    # v0.406: import first - it builds the global class cache, so `class_name Helper` + Helper.new() works headless
+    # (a bare --quit-after run has no cache and every class_name is "not declared"; found by a real run, and named in
+    # Claude-Code-Game-Studios' godot-parse-check notes). Its own errors are left to the play run that follows.
+    _ic, _ilog, ito = _run(job, ["--path", "proj", "--import"], "import.log", _env_int("GAME_IMPORT_TIMEOUT_S", 120), holder)
+    if ito:
+        return {"ok": False, "errors": ["the project import did not finish in time"], "seconds": round(time.time() - t0, 1),
+                "exit": _ic}
     code, log, to = _run(job, ["--path", "proj", "--quit-after", str(frames)], "smoke.log",
                          _env_int("GAME_SMOKE_TIMEOUT_S", 120), holder)
     errs = errors_in(log)

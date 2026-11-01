@@ -15272,3 +15272,46 @@ cited limits + pass / fail / review / unverified is the same discipline text-to-
 - Tests: tests/test_v0403_dfm.py (7) - each process's known good / bad case + the desk loop (sharp pocket corners ->
   filleted R4 -> passes).
 - Not yet: trapped-powder escape check, rib / boss ratios for moulding, thread engagement, tolerances vs process.
+
+## v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403.0) - 1 Nov 2026
+
+Owner: read https://github.com/Donchitos/Claude-Code-Game-Studios (release 1.2.0, MIT) -> "GO FIX" + "Agents (49) ...
+USE THIS FOR HOOLA GAMING DEVELOPMENT". Ideas only, own code; credited in THIRD_PARTY_NOTICES.md.
+
+CREW (`server/app/gamedesk/crew.py`):
+- 49 roles as data: 3 directors (creative, technical, producer), 8 leads (game design, programming, art, audio, narrative,
+  QA, release, localization), 23 specialists, 15 engine specialists (Godot 5, Unity 5, Unreal 5). Each: does, lens (added
+  to the model call), checks (become acceptance criteria), lead (reviewer), mode builds (22) / writes (27).
+- "writes" = a written result for her OK, no build: audio (files come with the asset pipeline), network play (the game box
+  has no network), Unity / Unreal (big-studio mode), live ops / community / analytics / release / director work.
+- `pick_role` (longest keyword match, else by task kind), `criteria_for` (hers / planner's first, role checks, Hoola's two
+  automatic play checks), `verdict` counted in code: COMPLETE / COMPLETE WITH NOTES / BLOCKED / NOT ASSESSED.
+- 9 TEAMS (combat, narrative, ui, level, polish, audio, live_ops, qa, release): `plan(team=...)` gives the planner only that
+  team's roles and keeps every task inside them.
+
+STUDIO (`gamedesk/studio.py`): GameTask role / criteria / review (nullable columns, old rows work); a build's words carry
+the role's lens + "Done when"; a build covers the TEST criteria with evidence {version, src fingerprint, shots};
+`review_task` = the role's lead reads the playtest screenshots (Claude vision, `ai.ask_with_images`) + the code diff and may
+set only SCREEN criteria (no screenshot = cannot be covered; her criteria only by her OK); auto after each build when Claude
+is set up (`GAME_CREW_REVIEW` auto|on|off). Writing roles: `write_task` (one model call with the lens, design, Bible).
+"Send back" resets the criteria and review. `evidence_old` when a review task's evidence is older than the live code.
+`gate(milestone)`: facts counted in code (tasks, criteria covered / failed, stuck, nightly, Bible errors, balance verdict)
+-> PASS / CONCERNS / FAIL / NOT ASSESSED + creative / technical / producer views; recorded, advice only.
+
+GO FIX:
+1. NOT ASSESSED out loud: `bible.simulate` verdict PASS / CONCERNS / NOT ASSESSED (no enemies / no level with waves = never
+   a clean pass); a nightly that could not run is recorded (`studio.skipped`); the morning report says when last night was
+   NOT checked or did not run.
+2. `ai.GUIDE`: Godot 4.5-4.7 changes (typed-override returns, mouse / keyboard device ids, thinner lines, RichTextLabel
+   UPDATE_WIDTH_UNIT, audio area_mask, variadic / @abstract, Jolt, deprecated 4.x names).
+3. `engine.smoke` runs `--import` first (class cache) -> class_name helpers work; v0.395's guard ban lifted (only
+   HoolaBible / HoolaProbe names refused). Real Godot 4.7.2: a class_name helper built, exported, played; the nightly
+   rebuilt the same code at 60 fps.
+4. Acceptance criteria + evidence on every task (above).
+
+UI: console board (role chips, criteria with how each is checked, verdict, lead review, "Ask the lead", writer results,
+Crew roster + team planner, Gate check per milestone + result card); phone `game_studio_screen.dart` (role, criteria,
+verdict, review, Ask the lead, Gate check dialog). Tool `game_studio` actions crew / team / review / gate; add takes role +
+criteria. API `/api/gamestudio/crew`, `/{id}/gate`, `/{id}/task/{t}` action=review, `/{id}/plan` team.
+Tests `test_v0406_game_crew.py` (11); v0386 fixture takes roles; v0395's class_name test rewritten to the new truth.
+
