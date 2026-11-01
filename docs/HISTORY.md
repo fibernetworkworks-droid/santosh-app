@@ -14751,7 +14751,89 @@ The front-door safety pass from "WHAT IS NEXT WORK". Built as 0.386, re-versione
   - the warning fires only when empty; the probe reads 401 / 200;
   - vps job present; main.py.orig gone; no `query_params.get("key"` left in main.py.
 
-## v0.392.0 HOOLA CAD CONTACT (1 Nov 2026)
+## v0.392.0 YOUTUBE ON THE SOCIAL DESK (1 Nov 2026, owner: "GO Y1"; built as 0.391, re-versioned past the parallel v0.391 KHULA DARWAZA)
+Plan Y1 of the YouTube proposal (Y2 = YouTube ads through the Google Ads API: Demand Gen campaigns created paused, her tap
+to go live - NOT built; needs a Google Ads developer token with Basic access + the adwords scope in OAuth verification).
+Module `server/app/social/ytpost.py`, built on `app/youtube` (accounts / client / service; no new Google sign-in).
+- Account: `sync_channel` (every desk view, DB only) mirrors her default YouTube channel as SocialAccount platform youtube
+  (account_id = YouTubeAccount id or "google" for the sign-in path; no token in the social row). desk `sync_account` ->
+  `sync_youtube`: subscribers, handle, latest 50 videos into SocialMedia (<= 180 s = reel / Short, else video), so the
+  baseline / pulse / monthly PDF / best times include YouTube. Connect = `youtube.accounts.start_link`; Disconnect also
+  removes the YouTubeAccount (the "google" sign-in path stays with her Google sign-in).
+- Posting: POST_PLATFORMS + youtube, FORMATS + video. `problems`: a video file + fmt reel / video, the made-for-kids answer
+  (pulse settings `yt_kids`, YouTube requires it), a title. `publish`: Hoola-wide guard YT_DAILY_UPLOADS (default 90,
+  counted from published results across tenants); resumable upload (title <= 100 with #Shorts for reels, description =
+  caption + 3 hashtags, tags <= 500 chars, category 22, public + selfDeclaredMadeForKids + embeddable); YouTube's answer
+  "private" (unaudited API project) -> a note on the post; thumbnail from the post's picture (thumbnails.set; failure =
+  note); playlist (`yt_playlist`, PL... id validated; failure = note). Links /shorts/<id> or /watch?v=<id>. The rules plan
+  adds youtube to reels when connected; Opus is told about youtube + format video.
+- Inbox: youtube = comments only; commentThreads allThreadsRelatedToChannelId (one call, newest 50, 7 days, her own channel
+  skipped, permalink watch?v=..&lc=..); reply = comments.insert parentId; hide = setModerationStatus heldForReview /
+  published (never rejected / deleted). A YouTube read error is told once and skipped.
+- Console + phone: connect button, subscribers tile, "Also as YouTube Short" / "Also on YouTube", made-for-kids select +
+  playlist id in Posting controls, result notes. Privacy: YouTube paragraph (Google API Services User Data Policy).
+- Not done: Y2 ads; YouTube Analytics watch time in reports (views / likes / comments only); captions upload.
+- Tests `server/tests/test_v0392_social_youtube.py` (7).
+## v0.393.0 POORA KARO — the two things v0.389 could not reach
+Owner: *"IS ALL ENTERPRISE EMPLOYEE WORK DONE"*, then **"GO"**.
+
+The honest answer was no, and both gaps were in the version I had just called finished. I found them by
+checking whether the new code was *reachable*, not by re-reading what I had written — which is the only way
+this class of miss ever surfaces.
+
+### 1. `sfmeta.py` was dead code
+v0.389 built the Salesforce Metadata deploy — zip builder, `checkOnly` dry run, quick-deploy, polling,
+production guards — with **seven passing tests and no caller anywhere**. No agent action, no API route. The
+tests passed because they called the module directly, which is exactly how dead code hides: every green tick
+was true and the feature did not exist.
+
+> **Rule, recorded:** a module's tests passing says it WORKS, never that it is REACHABLE. Grep for a caller
+> outside its own file and its own tests before calling a feature shipped.
+
+Wired now, on the same discipline as every other write — `run.deploy_validate` → `deploy_status` →
+`deploy_go`:
+
+| step | what happens |
+|---|---|
+| `deploy_validate` | `checkOnly: true` — Salesforce checks every component and runs the tests in her org, commits nothing |
+| `deploy_status` | poll the id; a deploy with tests takes minutes, so it is polled and **never resubmitted** |
+| `deploy_go` | HER TAP — quick-deploys that same validation without re-running its tests (good for 10 days); a production org needs the word `production` too, because a config change breaks the org for everyone, not one record |
+
+The `crm_arch` tool description now also says *why* — that Salesforce itself refuses Tooling writes to
+CustomField / CustomObject / Apex in an active org and gives Profile / PermissionSet / Layout no REST write
+path — because a description that only lists actions leaves the model hitting the same wall. It also states
+that a lone FIELD cannot be deployed (it lives inside its object's file), so the model asks for the whole
+object or sends her to a sandbox instead of trying.
+
+### 2. The `ambiguous` row had no way out
+v0.389 added a state for a row whose answer never arrived, and told her "look in the system and tell me" —
+then gave her nothing to tell it with. `execute()` deliberately skips such a row (a retry is how a record gets
+posted twice), so a run holding one sat at `failed` **for ever**.
+
+`run.resolve(run, n, landed)` is that answer coming back, and it is owner-only because nobody else can know:
+- `landed=true` → the row is **closed without sending anything**. Proved by a test that asserts the write
+  count does not move.
+- `landed=false` → back in the queue, same idempotency key, and the next `execute()` sends it **exactly
+  once** (also asserted, because "one more attempt" is the whole point).
+Either way the run's status is recomputed, so it reopens as `running` when work returns and only reads `done`
+when no row is left in doubt. A `done` or `failed` row is refused — a failed row retries on its own and is not
+hers to re-decide.
+
+### Files
+`server/app/enterprise/run.py` (resolve + 3 deploy wrappers) · `server/app/agent/enterprise_tools.py`
+(4 actions, 5 params, the crm_arch deploy blurb) · `server/app/main.py` (5 routes: run status, resolve,
+deploy validate / status / go — enterprise routes 6 → 11) · `server/tests/test_v0389_real_rails.py`
+(42 tests, 6 new). 140 pass across the enterprise suites plus `test_agents.py`.
+
+Also renamed the suite to `test_v0389_real_rails.py`: it was written as v0.382, renamed to dodge another
+session's DIMAAG, and the number moved twice more while it was being tested.
+
+### Still not done, and still said plainly
+**The connect screen does not exist**, so none of this has touched a real system — the deploy included. **No
+live tenant has answered any of it.** Salesforce field-level edits are refused (no `retrieve` in Metadata REST
+to merge against), Teamcenter stays read-only (SOA is the contract and we do not speak it), SAP `$batch` is
+not implemented, and GST/ERI filing waits on her commercial decisions.
+## v0.394.0 HOOLA CAD CONTACT (built as 0.392) (1 Nov 2026)
 Owner pointed at the open gap: "Contact between parts in the stress check: an assembly is still checked as one glued
 piece. Bolts are checked by the joint calculation instead."
 - `engineering/contact.py` (`contact.solve(parts, spec)`), used by the analysis box when a static study has

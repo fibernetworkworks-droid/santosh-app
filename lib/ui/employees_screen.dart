@@ -708,7 +708,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
   Map<String, dynamic>? _d;
   bool _busy = false;
   Timer? _poll;
-  static const _plat = {'instagram': 'Instagram', 'facebook': 'Facebook Page', 'linkedin': 'LinkedIn', 'whatsapp': 'WhatsApp Business'};
+  static const _plat = {'instagram': 'Instagram', 'facebook': 'Facebook Page', 'linkedin': 'LinkedIn', 'whatsapp': 'WhatsApp Business', 'youtube': 'YouTube'};
 
   @override
   void initState() {
@@ -1007,6 +1007,11 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                       child: Text('Posted on ${_plat[e.key] ?? e.key} - open', style: const TextStyle(color: C.ok, fontSize: 12.5)))
                   : Text('${_plat[e.key] ?? e.key}: ${_s((e.value as Map?)?['error'])}', style: const TextStyle(color: C.bad, fontSize: 12.5)),
             ),
+          for (final e in res.entries.where((e) => _s((e.value as Map?)?['note']).isNotEmpty))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(_s((e.value as Map)['note']), style: const TextStyle(color: C.warn, fontSize: 12.5)),
+            ),
           if (!done && probs.isNotEmpty)
             Text(probs.join(' '), style: const TextStyle(color: C.warn, fontSize: 12.5)),
           if (!done) Wrap(spacing: 8, children: [
@@ -1030,6 +1035,19 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
               child: const Text('Copy caption'),
             ),
             TextButton(onPressed: _busy ? null : () => _addPhoto(_s(p['id'])), child: const Text('Add photo')),
+            if (['reel', 'video'].contains(_s(p['format'])) &&
+                _list(_d?['accounts']).any((a) => _s(a['platform']) == 'youtube' && _s(a['status']) == 'ok'))
+              TextButton(
+                onPressed: _busy ? null : () {
+                  final pl = ((p['platforms'] as List?) ?? const []).map((e) => '$e').toList();
+                  final on = pl.contains('youtube');
+                  final next = on ? pl.where((x) => x != 'youtube').toList() : [...pl, 'youtube'];
+                  _call(() => widget.app.api!.socialPost(_s(p['id']), {'platforms': next}),
+                      on ? 'YouTube removed. Approve the post again.' : 'Added to YouTube. Approve the post again.');
+                },
+                child: Text(((p['platforms'] as List?) ?? const []).contains('youtube')
+                    ? 'Remove YouTube' : (_s(p['format']) == 'reel' ? 'Also as YouTube Short' : 'Also on YouTube')),
+              ),
             if (_list(_d?['accounts']).any((a) => _s(a['platform']) == 'linkedin' && _s(a['status']) == 'ok'))
               TextButton(
                 onPressed: _busy ? null : () {
@@ -1100,7 +1118,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.account_circle_rounded),
                 title: Text(_s(a['handle']).isEmpty ? _s(a['name']) : _s(a['handle'])),
-                subtitle: Text('${_plat[_s(a['platform'])] ?? _s(a['platform'])} · ${_s(a['platform']) == 'whatsapp' ? 'messages reach your Business inbox' : _s(a['platform']) == 'linkedin' ? 'your profile' : '${_num(a['followers'])} followers'}'
+                subtitle: Text('${_plat[_s(a['platform'])] ?? _s(a['platform'])} · ${_s(a['platform']) == 'whatsapp' ? 'messages reach your Business inbox' : _s(a['platform']) == 'linkedin' ? 'your profile' : _s(a['platform']) == 'youtube' ? '${_num(a['followers'])} subscribers' : '${_num(a['followers'])} followers'}'
                     '${_s(a['status']) == 'ok' ? '' : ' · connection ended, connect again'}'
                     '${_s(a['status']) == 'ok' && (a['can_post'] == false || a['can_reply'] == false) ? ' · Connect again to allow posting and replies' : ''}'),
                 trailing: TextButton(
@@ -1108,7 +1126,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                     child: const Text('Disconnect')),
               ),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final p in ['instagram', 'facebook', 'linkedin', 'whatsapp'])
+              for (final p in ['instagram', 'facebook', 'linkedin', 'whatsapp', 'youtube'])
                 OutlinedButton(
                   onPressed: conn[p] == true && !_busy ? () => _connect(p) : null,
                   child: Text(conn[p] == true ? 'Connect ${_plat[p]}' : '${_plat[p]}: not set up on the server yet'),
@@ -1146,6 +1164,27 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                       child: const Text('Pause all posting')),
                 TextButton(onPressed: _busy ? null : _stop, child: const Text('Emergency stop', style: TextStyle(color: C.bad))),
               ]),
+              if (accs.any((a) => _s(a['platform']) == 'youtube')) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  const Expanded(child: Text('YouTube: videos made for kids?', style: TextStyle(fontSize: 13))),
+                  DropdownButton<String>(
+                    value: pst['yt_kids'] == null ? null : (pst['yt_kids'] == true ? 'yes' : 'no'),
+                    hint: const Text('Choose', style: TextStyle(fontSize: 13)),
+                    isDense: true,
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: 'no', child: Text('No', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'yes', child: Text('Yes', style: TextStyle(fontSize: 13))),
+                    ],
+                    onChanged: _busy ? null : (v) {
+                      if (v != null) _call(() => widget.app.api!.socialSettings({'yt_kids': v == 'yes'}), 'Saved for YouTube.');
+                    },
+                  ),
+                ]),
+                const Text('YouTube requires this answer. Until Google finishes Hoola\'s API audit, uploads may stay private.',
+                    style: TextStyle(color: C.muted, fontSize: 12)),
+              ],
             ]),
           ),
           const SizedBox(height: 10),
