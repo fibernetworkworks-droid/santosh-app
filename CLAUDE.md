@@ -52,6 +52,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the CODING work, every coding card 100% live): branch
+  `stable-2026-11-01-v382` = commit 5e3e06d4 = v0.382.0, pubspec 0.382.0+426 (live on hoola.ainewtika.com, healthz 0.382.0).
+  Developer Sahayak codes like Claude Code: 8-tool step loop (v0.350), CI on a draft PR + fix rounds (v0.352), project rules
+  first (v0.356), ONE question on a vague ask (v0.371), PR review that explores first (v0.377). Coding cards live: easy 12/12,
+  hard 12/12 (Python + JS), mobile 10/10 (Dart + Kotlin, SDKs in ~/apps/codecard-sdk). Also carries the other sessions'
+  v0.344-v0.382 (social manager, ERP / CRM / TPM desks, CAD, game desk, blog, proof, shiksha...). APK release `v0.382.0-b1002`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.382.0-b1002/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v382` as the branch.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the long-task + tool-choice work, every live test passed): branch
   `stable-2026-11-01-v343` = commit fce446a0 = v0.343.0, pubspec 0.343.0+383 (live on hoola.ainewtika.com at her tests; healthz
   0.343.0). Long jobs finish (v0.314 AAGE BADHO: a promise never ends a job, parallel batch = 1 call, moving turn keeps its
