@@ -52,6 +52,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- WEB STEP 2 (1 Nov 2026, end of web Step 2 = W1 one backend + W13 Architect, docs/WEB_PLATFORM_PLAN.md): branch
+  `stable-2026-11-01-v414` = commit 35caab6c = v0.414.0, pubspec 0.414.0+458, APK release `v0.414.0-b1112`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.414.0-b1112/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v414` as the branch. Not owner-verified yet.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the ENTERPRISE CONNECT work): branch `stable-2026-11-01-v406`
   = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com at the save; healthz 0.406.0).
   THE ENTERPRISE SUITE IS NOW REACHABLE END TO END, which it had never been from v0.358 to v0.396: her own ERP /
