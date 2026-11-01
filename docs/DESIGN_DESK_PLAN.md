@@ -55,7 +55,29 @@ shape as `regtech` (prepares every filing, files none).
 | **Fire, environment, height, lifts** | each has its own authority and its own signatory. |
 | **RERA** | withdrawals from the designated account need an engineer, an architect and a CA to certify separately. |
 
-**Exact provisions are being pinned by the research now running.** Every one above is stated in this plan as
+### Pinned so far (approvals/FM research landed 1 Nov 2026)
+The rule across the whole industry, in one line from the research: **the application is the owner's act, the
+technical certification is reserved to a named licensed professional on a specific register, and preparation
+is unreserved.** Software's ceiling is the *prepare* column — which is 70-80% of the labour and almost none
+of the liability. Verbatim conclusion worth keeping: *"An agent that drafts those certificates and lets the
+licensee sign is useful and lawful; an agent that signs or files them is forgery."*
+
+Registers that matter for THIS desk (each one a named signatory Hoola can never be):
+
+| Deliverable | Who may certify it |
+|---|---|
+| Building plan sanction / IOD / CC | **COA-registered architect** (any size), or a **ULB-licensed engineer / building surveyor / supervisor within class limits** — and filing happens only from a registered professional's login |
+| Structural design + **Structural Stability Certificate** | a **structural engineer registered with that specific Corporation** — an unregistered engineer's certificate is worthless |
+| Soil report | a **geotechnical engineer** |
+| Fire scheme, Form A / Form B | a **Licensed Agency** licensed by the Director of Fire Services; the CFO issues the NOC |
+| Electrical installation | **licensed electrical contractor + supervisor** (state Licensing Board); Electrical Inspector energises |
+| Plumbing completion | a **ULB-licensed plumber** |
+| Completion certificate / OC | **registered architect** signs, plus structural engineer, licensed fire agency, plumber, electrical contractor; the ULB Commissioner issues the OC |
+| RERA account withdrawal | **three separate people**: architect (Form 1), engineer (Form 2), practising CA with a valid ICAI COP (Form 3) — the bank may not release without all three |
+| EIA | application must come through a **QCI/NABET-accredited consultant organisation**; legal position partly **unsettled** |
+| Statutory energy audit | an **Accredited** energy auditor — a merely *Certified* one may not sign it |
+
+**The design disciplines' own provisions are still being pinned by the research running now.** Every one above is stated in this plan as
 a design constraint, and the plan's claims get replaced with quoted provisions and URLs before any code is
 written. Nothing in this desk will assert a legal requirement Hoola has not read.
 
@@ -142,7 +164,7 @@ Each ships as its own version, with tests, console and phone, the way every desk
 
 | Phase | What ships | Why this order |
 |---|---|---|
-| **0** | The licence/gate research landed and written into `rules.py` as quoted provisions; the honest-draft title block; the refusal vocabulary | nothing is built on a legal claim we have not read |
+| **0** | The licence/gate research written into `rules.py` as quoted provisions (approvals/FM half **landed**, design half pending); the honest-draft title block; the refusal vocabulary | nothing is built on a legal claim we have not read |
 | **1** | The desk exists: hire it, 11 parts, papers, project file; **brief + feasibility** working, reusing `architect_assistant`'s FSI rather than duplicating it | the smallest thing that is useful on its own |
 | **2** | **`design/calc/` + the rule tables**, on the existing engineering sandbox: structural load take-down and member sizing, with every clause cited and worked-example tests | the heart; if the numbers are not auditable nothing else matters |
 | **3** | **Fire & life safety + plumbing** — the two most codified, so the most checkable: occupant load, exits, travel distance, fixture units, tank and pipe sizing | highest certainty per unit of work, and fire is where a wrong answer is worst |
@@ -185,6 +207,15 @@ existed but 500'd. So:
    calculations and schedules are where the value starts.
 
 ---
+
+## 8b. A sourcing caveat to carry into the job list
+
+Two independent researchers could **not** retrieve the NCO-2015 occupation-code tables — every official
+mirror (labour.gov.in, dge.gov.in, ncs.gov.in) returned 404, a reset, or a redirect. NCO-2015 aligns to
+ISCO-08 at the 4-digit family level, so families are reliable; **8-digit NCO titles are NOT VERIFIED and
+will be marked as such** rather than printed as fact. Also: building permission, fire, lifts, trees,
+structural audit and society law are **state subjects** — nothing is uniform nationally, and the job list
+will use Maharashtra/MahaRERA + MoHUA's Model Building Bye-Laws 2016 as the worked example and say so.
 
 ## 9. What this plan will NOT promise
 
