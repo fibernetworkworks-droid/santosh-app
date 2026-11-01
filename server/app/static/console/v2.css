@@ -2068,6 +2068,20 @@ body.albon{overflow:hidden}
 .stdash-card h4{margin:0 0 10px;font-size:14px;font-weight:600}.stdash-card.wide{grid-column:1/-1}
 .stdash-card .stempty{margin:0}
 
+/* v0.366 BLOG + BHASHAYEN: the studio's Blog and Languages tabs */
+.stblog{display:grid;gap:14px}
+.stblog .stapp label{display:grid;gap:3px;font-size:13px}.stblog .stapp label>span{color:var(--mut)}
+.stblog textarea,.stblog .stblog-ed input,.stblog .stblog-when input{padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;width:100%}
+.stblog textarea{resize:vertical;line-height:1.5}
+.stblog-d{border:1px solid var(--hair);border-radius:12px;padding:12px;display:grid;gap:10px;margin-bottom:8px;background:var(--surface)}
+.stblog-row{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}.stblog-row small{color:var(--mut)}
+.stblog-when{display:inline-grid;gap:2px;font-size:12px;color:var(--mut)}.stblog-when input{width:auto}
+.stblog-ed{display:grid;gap:10px}
+.stblog .sttbl select{padding:6px 8px;border:1px solid var(--hair);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;max-width:160px}
+.stblog .sttbl td small{color:var(--mut)}
+.btn.soft.danger{color:var(--bad)}
+.stblog .sted-kind small{color:var(--mut)}
+
 /* ===== v0.288 SIDEBAR FULLY VISIBLE (owner, with a screenshot: "CHECK THE SIDE BAR FONT AND FONT SIZE AND THE HIDDEN
    LOOK SECTIONS - MAKE THIS SAME AS CLAUDE, FULLY VISIBLE AND WITH SLIGHT SHARP BOLDNESS"). Measured before: the section
    labels (Sessions / Recent chats / Today / Yesterday / Other chats / a session's name) were 12px / 400 in --dim
@@ -2242,6 +2256,18 @@ body.albon{overflow:hidden}
 .sc-acc div span{font-size:13px}
 .sc-connect{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .sc-pills{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.em-form textarea{width:100%;min-width:0;box-sizing:border-box;padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;resize:vertical}
+.sc-quiet{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;font-size:13px}
+.sc-quiet input{width:64px;margin-left:6px;padding:4px 8px;border:1px solid var(--hair);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}
+.sc-stop{color:var(--bad)}
+.sc-h{margin-top:14px}
+.sc-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px}
+.sc-tabs .sc-n{font-variant-numeric:tabular-nums;opacity:.8}
+.sc-items{display:grid;gap:10px}
+.sc-msg .sc-text{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.sc-msg .sc-on{margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-msg .sc-reply{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--hair);border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:14px;resize:vertical}
+.sc-msg .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
 .sc-cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:10px;margin-top:10px}
 .sc-post .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sc-post select{padding:4px 8px;border:1px solid var(--hair);border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:13px}
@@ -2266,3 +2292,8 @@ body.albon{overflow:hidden}
 .cad-change{display:flex;gap:8px}
 .cad-change input{flex:1;font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
 @media (max-width:640px){.cad-views{grid-template-columns:repeat(2,minmax(0,1fr))}.cad-change{flex-direction:column}}
+.cad-in{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:13px;color:var(--mut)}
+.cad-in label{display:flex;flex-direction:column;gap:4px}
+.cad-bom{border-collapse:collapse;font-size:13px;width:100%;max-width:520px}
+.cad-bom th,.cad-bom td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}
+.cad-bom th{color:var(--mut);font-weight:600}

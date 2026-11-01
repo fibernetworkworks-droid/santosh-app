@@ -239,7 +239,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   // ------------------------------------------------------------ v0.353 the Social Desk (Social Media Manager, Phase 1)
-  let SOC = null;
+  let SOC = null, SOCTRUST = 'seekh';
   const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page'};
   const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};
   const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
@@ -253,13 +253,15 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if (!d.onboarded) { el.innerHTML = socialForm(d); wireSocialForm(el); return; }
     const [sc, sn] = STATE[d.state] || ['warn', d.state];
     const accs = d.accounts || [], b = d.baseline || {}, stg = d.strategy || {}, cal = d.calendar || [];
+    const pl = d.pulse || {}, pst = pl.settings || {};
+    SOCTRUST = d.trust || 'seekh';
     el.innerHTML = `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">${esc(d.profile.business || '')}${d.profile.city ? ' · ' + esc(d.profile.city) : ''}</span>
         ${accs.length ? tag(sc, sn) : tag('warn', 'Connect an account')} ${d.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[d.trust] || [d.trust])[0])}</span></div>
       <div class="tile gl"><div class="em-h"><h3>Accounts</h3><span class="muted em-small">You log in on Instagram / Facebook's own page. Hoola never sees your password.</span></div>
         <div class="sc-accs">${accs.map(a => `<div class="sc-acc">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : '<span class="sc-pic"></span>'}
           <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)} · ${num(a.followers)} followers</span>
           ${a.status !== 'ok' ? `<span class="badc em-small">${esc(a.status === 'expired' ? 'Connection ended: connect again' : a.error || a.status)}</span>` : ''}
-          ${a.status === 'ok' && a.can_post === false ? '<span class="warnc em-small">Reconnect to allow posting</span>' : ''}</div>
+          ${a.status === 'ok' && (a.can_post === false || a.can_reply === false) ? '<span class="warnc em-small">Reconnect to allow posting and replies</span>' : ''}</div>
           <button class="btn soft" type="button" data-scoff="${esc(a.id)}">Disconnect</button></div>`).join('')}
         <div class="sc-connect">${['instagram', 'facebook'].map(p => d.connect[p]
           ? `<button class="btn ${accs.some(a => a.platform === p) ? 'soft' : 'go'}" type="button" data-scon="${p}">${accs.some(a => a.platform === p) ? 'Reconnect' : 'Connect'} ${PLAT[p]}</button>`
@@ -267,6 +269,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <p class="muted em-small">Instagram must be a Business or Creator account (free switch in Instagram settings). A post goes out only when you approve it or tap Publish now: exactly what you approved, at its time.</p></div>
       ${d.calendar_status === 'draft' && cal.length ? `<div class="tile gl em-note"><b>Your 30-day calendar is ready</b><span>${cal.length} posts planned from your real numbers. Read them below, edit any, then approve.</span>
         <button class="btn go" type="button" id="scApprove">Approve calendar</button></div>` : ''}
+      ${accs.length && pst.paused ? `<div class="tile gl em-note sc-paused"><b>Posting is paused</b><span>${esc(pst.pause_reason || 'Nothing goes out and no reply is sent on its own until you resume.')}</span>
+        <button class="btn go" type="button" data-scpause="0">Resume</button></div>` : ''}
+      ${accs.length && (pl.waiting_ok || []).length ? `<div class="tile gl em-note"><b>${pl.waiting_ok.length} planned post(s) wait for your OK today</b><span>Read each below and tap OK to post (Seekh). Saathi lets approved plan posts go on their own.</span></div>` : ''}
+      ${accs.length ? `<div class="tile gl sc-inbox" id="scInbox"><div class="em-h"><h3>Inbox: comments + DMs</h3>
+          <span class="muted em-small">Sorted for you; every reply is drafted from your facts. ${d.trust === 'seekh' ? 'Nothing goes without your tap.' : 'Simple replies go on their own (your trust setting); complaints always wait for you.'}</span></div>
+        <div class="sc-tabs" role="tablist">${Object.entries(BOX).map(([k, l]) => `<button class="btn ${k === BOXNOW ? 'go' : 'soft'}" type="button" role="tab" aria-selected="${k === BOXNOW}" data-scbox="${k}">${l}${k === 'done' ? '' : ` <span class="sc-n">${num((d.inbox || {})[k] || 0)}</span>`}</button>`).join('')}
+          <button class="btn soft" type="button" data-scrun="inbox">Check now</button></div>
+        <div class="sc-items" id="scItems"><div class="empty">Loading…</div></div></div>` : ''}
       ${accs.length ? `<div class="kpis em-kpis">${(d.kpis || []).map(kpi).join('') || '<div class="empty">Numbers appear after the first read.</div>'}</div>
       <p class="muted em-small">Baseline from ${esc(b.date || '–')}${b.posts_read ? ` · ${num(b.posts_read)} posts read` : ''}.</p>` : ''}
       ${stg.pillars ? `<div class="grid2">
@@ -277,15 +287,32 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="tile gl"><h3>What works for you</h3>${(b.formats || []).length ? `<table class="em-tbl"><tbody>${b.formats.map(f => `<tr><td>${esc(f.fmt)}</td><td class="muted">${num(f.posts)} posts</td><td>${num(f.avg_eng)} interactions</td></tr>`).join('')}</tbody></table>` : '<div class="empty">After the first read.</div>'}
           ${(b.top_posts || []).slice(0, 3).map(t => `<p class="em-small"><a href="${esc(t.permalink)}" target="_blank" rel="noopener">${esc(t.fmt)} · ${num(t.eng)} interactions</a> <span class="muted">${esc((t.caption || '').slice(0, 80))}</span></p>`).join('')}</div>
       </div>` : ''}
+      ${accs.length ? `<div class="grid2">
+        <div class="tile gl"><h3>Posting controls</h3>
+          <p class="em-small">${pst.paused ? tag('warn', 'Paused') : tag('ok', 'Posting on')} ${SOCTRUST === 'seekh' ? 'Every plan post waits for your OK.' : `Plan posts go on their own: ${num(pl.auto_today || 0)} of ${num(pl.post_cap || 0)} today.`}</p>
+          <div class="sc-quiet"><label>No posts on their own from <input type="number" min="0" max="23" id="scQ0" value="${esc(String((pst.quiet || [23, 7])[0]))}"></label>
+            <label>to <input type="number" min="0" max="23" id="scQ1" value="${esc(String((pst.quiet || [23, 7])[1]))}"></label>
+            <button class="btn soft" type="button" id="scQSave">Save</button></div>
+          <div class="acts em-run">${pst.paused ? '<button class="btn go" type="button" data-scpause="0">Resume posting</button>' : '<button class="btn soft" type="button" data-scpause="1">Pause all posting</button>'}
+            <button class="btn soft sc-stop" type="button" id="scStop">Emergency stop</button></div>
+          <p class="muted em-small">Pause also stops automatic replies. Emergency stop sends every queued post back to draft.</p></div>
+        <div class="tile gl"><h3>Best times for you</h3>${(pl.best_times || {}).slots && pl.best_times.slots.length
+          ? `<table class="em-tbl"><tbody>${pl.best_times.slots.map(x => `<tr><td>${esc(x.day)} ${esc(x.band)}</td><td>${esc(String(x.lift))}x your normal</td><td class="muted">${num(x.posts)} posts</td></tr>`).join('')}</tbody></table>
+            <p class="muted em-small">Certainty: ${esc(pl.best_times.sure)}. New calendars use these times.</p>`
+          : `<div class="empty">${esc((pl.best_times || {}).note || 'After a few more posts.')}</div>`}
+          ${(pl.boosts || []).length ? `<h3 class="sc-h">Worth a boost</h3>${pl.boosts.map(x => `<p class="em-small"><a href="${esc(x.permalink)}" target="_blank" rel="noopener">${esc(x.fmt)} · ${esc(x.date)}</a> <b>${esc(String(x.times))}x</b> your normal. <span class="muted">${esc(x.plan)}</span></p>`).join('')}` : ''}</div>
+      </div>` : ''}
       ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
         <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
       <div class="grid2">
         <div class="tile gl"><h3>Activity</h3>${feed(d.events || [])}</div>
         <div class="tile gl"><h3>Runs 24/7</h3>${sched(d.schedule || [])}
           <div class="acts em-run"><button class="btn soft" type="button" data-scrun="daily">Refresh numbers</button>
-            <button class="btn soft" type="button" data-scrun="plan">Rewrite calendar draft</button></div></div>
+            <button class="btn soft" type="button" data-scrun="plan">Rewrite calendar draft</button>
+            <button class="btn soft" type="button" data-scrun="monthly">Make this month's PDF</button></div></div>
       </div>`;
     wireSocial(el, d);
+    if (accs.length) inbox(el);
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) social(el); }, 8000);
   }
 
@@ -295,7 +322,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const res = p.result || {};
     const dt = new Date(p.slot);
     const day = isNaN(dt) ? p.slot : dt.toLocaleString('en-IN', {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
-    return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}<span class="tag">${esc(p.format)}</span>
+    const needOk = p.plan_only && SOCTRUST === 'seekh';   // v0.369 Seekh: a plan post waits for her OK on its day
+    return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}${needOk ? tag('warn', 'Needs your OK') : ''}<span class="tag">${esc(p.format)}</span>
         <span class="muted">${(p.platforms || []).map(x => esc(PLAT[x] || x)).join(' + ')}${p.pillar ? ' · ' + esc(p.pillar) : ''}${p.occasion ? ' · ' + esc(p.occasion) : ''}</span></div>
       <b>${esc(p.hook)}</b>
       <details class="em-env"><summary>Caption, hashtags and picture brief</summary><p class="sc-cap">${esc(p.caption)}</p>
@@ -310,7 +338,66 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" data-sccopy="${esc(p.id)}">Copy caption</button><button class="btn soft" type="button" data-scedit="${esc(p.id)}">Edit</button>
         <label class="btn soft sc-up">Add photo / video<input type="file" accept="image/*,video/mp4,video/quicktime" data-scup="${esc(p.id)}" hidden></label>
         <button class="btn soft" type="button" data-scposter="${esc(p.id)}">Make poster</button>
-        <button class="btn go" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
+        ${needOk ? `<button class="btn go" type="button" data-scok="${esc(p.id)}">OK to post</button>` : ''}
+        <button class="btn ${needOk ? 'soft' : 'go'}" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
+  }
+
+  // ------------------------------------------------------------ v0.368 the inbox (Phase 3)
+  const BOX = {needs: 'Needs you', leads: 'Leads', complaints: 'Complaints', done: 'Done'};
+  const CLS = {lead: ['ok', 'Lead'], question: ['v', 'Question'], praise: ['v', 'Praise'], complaint: ['warn', 'Complaint'],
+               spam: ['bad', 'Spam'], abuse: ['bad', 'Abuse'], other: ['', 'Other']};
+  let BOXNOW = 'needs';
+  async function inbox(el) {
+    const box = el.querySelector('#scItems'); if (!box) return;
+    let r;
+    try { r = await api('GET', `/api/social/inbox?box=${BOXNOW}`); }
+    catch (e) { box.innerHTML = `<p class="badc">${esc(e.message)}</p>`; return; }
+    box.innerHTML = (r.items || []).map(msg).join('') || `<div class="empty">${BOXNOW === 'needs' ? 'Nothing waiting for you.' : 'Nothing here yet.'}</div>`;
+    wireInbox(el, box);
+  }
+
+  function msg(m) {
+    const [c, n] = CLS[m.cls] || ['', m.cls];
+    const open = ['new', 'drafted', 'failed'].includes(m.status);
+    const where = `${m.platform === 'instagram' ? 'Instagram' : 'Facebook'} ${m.kind === 'dm' ? 'DM' : 'comment'}`;
+    const at = m.at ? new Date(m.at).toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : '';
+    const doneLine = m.status === 'replied' ? `<p class="em-small okc">${m.auto ? 'Hoola replied' : 'You replied'}: ${esc(m.reply)}</p>`
+      : m.status === 'hidden' ? `<p class="em-small muted">${m.auto ? 'Hidden by Hoola' : 'Hidden'} (not deleted) <button class="btn soft" type="button" data-scunhide="${esc(m.id)}">Unhide</button></p>`
+      : `<p class="em-small muted">No reply needed <button class="btn soft" type="button" data-scback="${esc(m.id)}">Bring back</button></p>`;
+    return `<div class="em-item sc-msg" data-mid="${esc(m.id)}"><div class="em-meta"><b>${esc(m.author || 'Someone')}</b>${tag(c, n)}
+        <span class="muted">${esc(where)}${at ? ' · ' + esc(at) : ''}${m.permalink ? ` · <a href="${esc(m.permalink)}" target="_blank" rel="noopener">post</a>` : ''}</span></div>
+      ${m.post ? `<p class="muted em-small sc-on">On: ${esc(m.post)}</p>` : ''}
+      <p class="sc-text">${esc(m.text)}</p>
+      ${m.note ? `<p class="muted em-small">${esc(m.note)}</p>` : ''}
+      ${m.error ? `<p class="badc em-small">${esc(m.error)}</p>` : ''}
+      ${open ? (m.dm_closed ? '<p class="warnc em-small">Meta lets a business answer a DM only within 24 hours. Reply from the Instagram / Facebook app yourself.</p>'
+          : `<textarea class="sc-reply" rows="2" aria-label="Reply to ${esc(m.author || 'them')}">${esc(m.draft)}</textarea>
+        ${m.needs_her ? '<p class="warnc em-small">Check this one: it may need a fact only you know.</p>' : ''}`) +
+        `<div class="acts">${m.dm_closed ? '' : `<button class="btn go" type="button" data-scsend="${esc(m.id)}">Send reply</button>`}
+          ${m.kind === 'comment' ? `<button class="btn soft" type="button" data-schide="${esc(m.id)}">Hide</button>` : ''}
+          <button class="btn soft" type="button" data-scignore="${esc(m.id)}">No reply needed</button></div>` : doneLine}</div>`;
+  }
+
+  function wireInbox(el, box) {
+    const call = async (b, method, path, body, done) => {
+      b.disabled = true;
+      try { await api(method, path, body); toast(done); social(el); }
+      catch (e) { toast(e.message, true); b.disabled = false; }
+    };
+    const id = v => encodeURIComponent(v);
+    box.querySelectorAll('[data-scsend]').forEach(b => b.addEventListener('click', () => {
+      const text = b.closest('.sc-msg').querySelector('.sc-reply').value.trim();
+      if (!text) { toast('Write a reply first.', true); return; }
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scsend)}/reply`, {text}, 'Reply sent.');
+    }));
+    box.querySelectorAll('[data-schide]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.schide)}/hide`, {hidden: true}, 'Hidden. Nothing deleted.')));
+    box.querySelectorAll('[data-scunhide]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scunhide)}/hide`, {hidden: false}, 'Shown again.')));
+    box.querySelectorAll('[data-scignore]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scignore)}`, {status: 'ignored'}, 'Moved to Done.')));
+    box.querySelectorAll('[data-scback]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scback)}`, {status: 'drafted'}, 'Back in Needs you.')));
   }
 
   function socialForm(d) {
@@ -324,10 +411,11 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <label class="em-wide"><span>Who are your customers?</span><input id="scCust" placeholder="Families and office workers in Dharampeth"></label>
           <label class="em-wide"><span>What do you want from social media?</span><input id="scGoal" placeholder="More WhatsApp enquiries for implants"></label>
           <label class="em-wide"><span>Languages for posts (comma separated)</span><input id="scLang" value="${esc((p.languages || ['Hinglish']).join(', '))}"></label>
+          <label class="em-wide"><span>Facts for replies: prices, timings, address, WhatsApp (only these are ever quoted)</span><textarea id="scFacts" rows="3" placeholder="Cleaning Rs 800. Open 10 am - 8 pm, Sunday closed. WhatsApp 98xxxxxx10">${esc(p.facts || '')}</textarea></label>
         </div>
         <fieldset class="em-trust"><legend>How much may it do on its own?</legend>${['seekh', 'saathi'].map(k => `
           <label><input type="radio" name="scTrust" value="${k}"${k === (d.trust || 'seekh') ? ' checked' : ''}> <b>${TRUST[k][0]}</b> <span class="muted">${TRUST[k][1]}</span></label>`).join('')}
-          <p class="muted em-small">In this version it reads and drafts only. Posting on your OK comes in the next phase, always within this setting.</p></fieldset>
+          <p class="muted em-small">Posts go out only after your OK. Seekh: every plan post and every reply waits for your tap. Saathi: approved plan posts go on their own (up to 6 a day, never at night) and you are told the same day. Saathi: replies to simple questions, leads and praise from your facts and hides spam (never deletes); complaints always wait for you.</p></fieldset>
         <div class="acts"><button class="btn go" type="submit">Save and continue</button></div>
       </form>`;
   }
@@ -339,7 +427,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       const btn = el.querySelector('#scOn button[type=submit]'); btn.disabled = true;
       try {
         await api('POST', '/api/social/onboard', {business: v('#scBiz'), city: v('#scCity'), sells: v('#scSells'), customers: v('#scCust'),
-          goal: v('#scGoal'), languages: v('#scLang'), trust: el.querySelector('input[name=scTrust]:checked')?.value || 'seekh'});
+          goal: v('#scGoal'), languages: v('#scLang'), facts: v('#scFacts'), trust: el.querySelector('input[name=scTrust]:checked')?.value || 'seekh'});
         toast('Saved. Now connect Instagram or your Facebook Page.');
         el.innerHTML = ''; social(el);
       } catch (e) { toast(e.message, true); btn.disabled = false; }
@@ -397,9 +485,33 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}/publish`, {}); toast('Posting… the link appears here in a minute.'); setTimeout(() => social(el), 5000); }
       catch (e) { toast(e.message, true); b.disabled = false; }
     }));
+    el.querySelectorAll('[data-scok]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { await api('POST', `/api/social/posts/${encodeURIComponent(b.dataset.scok)}`, {status: 'approved'}); toast('OK. It goes out at its time.'); social(el); }
+      catch (e) { toast(e.message, true); b.disabled = false; }
+    }));
+    el.querySelectorAll('[data-scpause]').forEach(b => b.addEventListener('click', async () => {
+      const on = b.dataset.scpause === '1';
+      try { await api('POST', '/api/social/settings', {paused: on}); toast(on ? 'Paused. Nothing goes out until you resume.' : 'Resumed.'); social(el); }
+      catch (e) { toast(e.message, true); }
+    }));
+    el.querySelector('#scStop')?.addEventListener('click', async () => {
+      if (!confirm('Emergency stop? All posting and automatic replies stop, and every queued post goes back to draft.')) return;
+      try { const r = await api('POST', '/api/social/settings', {stop: true}); toast(`Stopped. ${r.back_to_draft} post(s) back to draft.`); social(el); }
+      catch (e) { toast(e.message, true); }
+    });
+    el.querySelector('#scQSave')?.addEventListener('click', async () => {
+      try { await api('POST', '/api/social/settings', {quiet: [Number(el.querySelector('#scQ0').value), Number(el.querySelector('#scQ1').value)]}); toast('Quiet hours saved.'); }
+      catch (e) { toast(e.message, true); }
+    });
+    el.querySelectorAll('[data-scbox]').forEach(b => b.addEventListener('click', () => {
+      BOXNOW = b.dataset.scbox;
+      el.querySelectorAll('[data-scbox]').forEach(x => { const on = x === b; x.className = `btn ${on ? 'go' : 'soft'}`; x.setAttribute('aria-selected', on); });
+      inbox(el);
+    }));
     el.querySelectorAll('[data-scrun]').forEach(b => b.addEventListener('click', async () => {
       b.disabled = true;
-      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast(b.dataset.scrun === 'plan' ? 'Rewriting the draft. Approved posts stay.' : 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
+      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast({plan: 'Rewriting the draft. Approved posts stay.', inbox: 'Checking comments and DMs now.', monthly: 'Making the PDF - it arrives in your chat.'}[b.dataset.scrun] || 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
       catch (e) { toast(e.message, true); }
       b.disabled = false;
     }));
@@ -409,7 +521,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let CTIMER = null;
   const CSTATE = {queued: ['warn', 'Queued'], designing: ['v', 'Designing'], building: ['v', 'Building'], drawing: ['v', 'Drawing'],
                   done: ['ok', 'Ready'], failed: ['bad', 'Failed']};
-  const FILEN = [['part.step', 'STEP (CAD / CNC)'], ['part.stl', 'STL (3D print)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code']];
+  const FILEN = [['part.step', 'STEP (CAD / CNC)'], ['part.stl', 'STL (3D print)'], ['part.3mf', '3MF (3D print)'], ['part.glb', 'GLB (3D viewer / AR)'],
+                 ['section.dxf', 'DXF section (laser / CNC)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code']];
+  const b64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = no; r.readAsDataURL(f); });
   async function cad(el) {
     clearTimeout(CTIMER);
     let d;
@@ -417,14 +531,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     catch (e) { el.innerHTML = `<div class="vh"><h2>CAD Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
     const ps = d.projects || [];
     el.innerHTML = `<div class="vh"><h2>CAD Desk</h2><span class="muted em-sub">Describe a part with its sizes in mm. Hoola designs it, checks it and gives you STEP, STL and a drawing. Drafts for your engineer's review, not certified.</span></div>
-      <article class="tile gl cad-new"><textarea id="cadBrief" rows="3" placeholder="e.g. L bracket 80 x 40 mm, 10 mm thick, upright 30 mm, two 8 mm holes 56 mm apart, 1 mm fillets"></textarea>
-      <div class="acts"><button class="btn go" type="button" id="cadGo">Design this part</button><span class="muted">${esc(String(d.today || 0))} today</span></div></article>
+      <article class="tile gl cad-new"><textarea id="cadBrief" rows="4" placeholder="A single part or a whole assembly. e.g. gearbox: 2 spur gears module 2 (20 and 40 teeth) on 15 mm shafts with 6202 bearings in an aluminium housing 4 mm walls, M5 lid screws"></textarea>
+      <div class="cad-in"><label>Sketch / photo (up to 3) <input type="file" id="cadImg" accept="image/png,image/jpeg,image/webp" multiple></label>
+      <label>Your STEP / STL to modify or fit (up to 2) <input type="file" id="cadFile" accept=".step,.stp,.stl" multiple></label></div>
+      <div class="acts"><button class="btn go" type="button" id="cadGo">Design it</button><span class="muted">${esc(String(d.today || 0))} today</span></div></article>
       ${ps.length ? ps.map(cadCard).join('') : '<div class="empty">No parts yet.</div>'}`;
     el.querySelector('#cadGo').addEventListener('click', async ev => {
       const brief = el.querySelector('#cadBrief').value.trim();
       if (!brief) return;
       ev.target.disabled = true;
-      try { await api('POST', '/api/eng/projects', {brief}); toast('Designing. It takes about a minute.'); }
+      try {
+        const images = await Promise.all([...el.querySelector('#cadImg').files].slice(0, 3).map(b64));
+        const files = await Promise.all([...el.querySelector('#cadFile').files].slice(0, 2).map(async f => ({name: f.name, data: await b64(f)})));
+        await api('POST', '/api/eng/projects', {brief, images, files});
+        toast('Designing. A simple part takes about a minute, a big assembly a few.');
+      }
       catch (e) { toast(e.message, true); }
       cad(el);
     });
@@ -443,6 +564,18 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
     if (ps.some(p => !['done', 'failed'].includes(p.status))) CTIMER = setTimeout(() => { if (visible(el)) cad(el); }, 4000);
   }
+  function cadMore(v) {                                   // v0.362 material, mass, parts list, printing, review, plan
+    const bits = [];
+    if (v.material) bits.push(`Material: ${esc(v.material)}${v.mass_g ? ` · about ${num(v.mass_g)} g` : ''}`);
+    if (v.print && v.print.overhang_pct !== undefined)
+      bits.push(`3D print: ${num(v.print.overhang_pct)}% overhang${v.print.fits_220_bed ? ' · fits a 220 mm bed' : ' · bigger than a 220 mm bed'}`);
+    if (v.review && v.review.problems && v.review.problems.length) bits.push(`Review notes: ${v.review.problems.map(esc).join('; ')}`);
+    else if (v.review && v.review.ok) bits.push('Opus review: matches the ask');
+    const bom = (v.parts || []).length ? `<table class="cad-bom"><thead><tr><th>Part</th><th>Volume (mm³)</th><th>Mass (g)</th></tr></thead><tbody>${
+      v.parts.map(x => `<tr><td>${esc(x.name)}</td><td>${num(x.volume_mm3)}</td><td>${x.mass_g == null ? '–' : num(x.mass_g)}</td></tr>`).join('')}</tbody></table>` : '';
+    const plan = v.plan ? `<details><summary>Design plan</summary><p class="muted">${esc(v.plan)}</p></details>` : '';
+    return `${bits.length ? `<p class="muted">${bits.join('<br>')}</p>` : ''}${bom}${plan}`;
+  }
   function cadCard(p) {
     const st = CSTATE[p.status] || ['', p.status], v = p.latest;
     const views = v ? ['iso', 'front', 'top', 'right'].filter(k => v.files[k + '.png'])
@@ -456,6 +589,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       ${views ? `<div class="cad-views">${views}</div>` : ''}
       ${bb ? `<p class="muted">${esc(bb)}${v.volume_mm3 ? ' · ' + num(v.volume_mm3) + ' mm³' : ''}${v.assumed && v.assumed.toLowerCase() !== 'none' ? ' · Assumed: ' + esc(v.assumed) : ''}</p>` : ''}
       ${checks ? `<div class="cad-checks">${checks}</div>` : ''}
+      ${v ? cadMore(v) : ''}
       ${files ? `<div class="acts">${files}</div>` : ''}
       ${v && !busy ? `<div class="cad-change"><input data-cadin="${esc(p.id)}" placeholder="Change it, e.g. holes 10 mm, wall 3 mm thicker"><button class="btn soft" type="button" data-cadch="${esc(p.id)}">Make next version</button></div>` : ''}
       <div class="acts"><button class="btn soft em-leave" type="button" data-caddel="${esc(p.id)}">Delete</button></div></article>`;

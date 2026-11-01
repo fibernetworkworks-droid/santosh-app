@@ -148,6 +148,68 @@ def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, A
     return (200 if ok else 400), out.get("data", out)
 
 
+# Each system spells its own URLs. Salesforce records live under /sobjects, its CONFIGURATION lives behind the
+# Tooling API under /tooling/sobjects - a different surface with different risk, which is why `api` is on the run
+# and not guessed from the target.
+def _paths(system: str, api: str, target: str, key: str = "") -> tuple[str, str]:
+    if system == "salesforce":
+        base = "tooling/sobjects" if api == "tooling" else "sobjects"
+        return f"{base}/{target}", f"{base}/{target}/{key}"
+    return target, f"{target}('{key}')"
+
+
+def _describe_path(system: str, api: str, what: str) -> str:
+    if system == "salesforce":
+        root = "tooling" if api == "tooling" else ""
+        if what in ("", "objects"):
+            return f"{root}/sobjects".lstrip("/")
+        return f"{root}/sobjects/{what}/describe".lstrip("/")
+    return f"{what}" if what else "$metadata"
+
+
+def describe(tenant: str, role: str, system: str, what: str = "", api: str = "data") -> dict[str, Any]:
+    """Read the SHAPE of her system - objects, fields, flows, permission sets. Changes nothing, so it runs now."""
+    R.role(role)
+    api = "tooling" if api == "tooling" else "data"
+    ep = _endpoint(tenant, role, system)
+    if ep is None:
+        raise RunError(f"{system} ka address nahi juda. App mein Enterprise > System jodo se jodiye.")
+    code, data = _odata_call(ep, "GET", _describe_path(system, api, what))
+    if code >= 300:
+        raise RunError(f"{system} ne {code} kaha: " + json.dumps(data, default=str)[:300])
+    out: dict[str, Any] = {"system": system, "env": ep.env, "api": api, "what": what or "objects"}
+    if isinstance(data, dict) and isinstance(data.get("fields"), list):
+        out["fields"] = [{"name": f.get("name"), "label": f.get("label"), "type": f.get("type"),
+                          "zaroori": not f.get("nillable", True), "badal_sakte": bool(f.get("updateable"))}
+                         for f in data["fields"]][:400]
+        out["count"] = len(out["fields"])
+    elif isinstance(data, dict) and isinstance(data.get("sobjects"), list):
+        out["objects"] = [{"name": o.get("name"), "label": o.get("label"),
+                           "custom": bool(o.get("custom"))} for o in data["sobjects"]][:600]
+        out["count"] = len(out["objects"])
+    else:
+        out["raw"] = data if not isinstance(data, list) else data[:200]
+    return out
+
+
+def soql(tenant: str, role: str, system: str, query: str, api: str = "data", limit: int = 200) -> dict[str, Any]:
+    """Her own SOQL, read-only. A query that writes is not a query - anything but SELECT is refused."""
+    R.role(role)
+    q = (query or "").strip()
+    if not q.upper().startswith("SELECT"):
+        raise RunError("Sirf SELECT chalta hai yahan.")
+    ep = _endpoint(tenant, role, system)
+    if ep is None:
+        raise RunError(f"{system} ka address nahi juda.")
+    root = "tooling/query" if api == "tooling" else "query"
+    code, data = _odata_call(ep, "GET", root, params={"q": q})
+    if code >= 300:
+        raise RunError(f"{system} ne {code} kaha: " + json.dumps(data, default=str)[:300])
+    rows = _rows_of(data)[:max(1, min(int(limit or 200), READ_LIMIT))]
+    return {"system": system, "env": ep.env, "api": api, "rows": rows, "count": len(rows),
+            "aur_hai": bool(isinstance(data, dict) and data.get("nextRecordsUrl"))}
+
+
 def _rail_for(tenant: str, role: str, system: str) -> str:
     if _endpoint(tenant, role, system) is not None:
         return "odata"
@@ -199,7 +261,8 @@ def _rows_of(data: Any) -> list[Any]:
 
 # ---------------------------------------------------------------- WRITE: plan -> dry run -> tap -> batches
 def plan_write(tenant: str, role: str, system: str, target: str, verb: str, rows: list[dict[str, Any]],
-               key_field: str = "", job: str = "", project: str = "", title: str = "") -> dict[str, Any]:
+               key_field: str = "", job: str = "", project: str = "", title: str = "",
+               api: str = "data") -> dict[str, Any]:
     """Build the run and freeze it. Nothing touches her ERP here."""
     R.role(role)
     verb = (verb or "").lower()
@@ -217,6 +280,7 @@ def plan_write(tenant: str, role: str, system: str, target: str, verb: str, rows
     with session() as s:
         run = EntRun(tenant_id=tenant, role=role, job=job[:24], project_id=project[:40], system=system, env=env,
                      rail=rail, op="write", verb=verb, target=target[:120],
+                     api=("tooling" if api == "tooling" else "data"),
                      title=(title or f"{verb} {len(rows)} rows in {target}")[:200],
                      total=len(rows), status="planned")
         run.plan = json.dumps({"key_field": key_field, "rows": len(rows)}, ensure_ascii=False)
@@ -246,7 +310,7 @@ def dry_run(tenant: str, run_id: str) -> dict[str, Any]:
         before = None
         if run.verb in ("update", "upsert") and r.key and ep is not None:
             try:
-                code, data = _odata_call(ep, "GET", f"{run.target}('{r.key}')")
+                code, data = _odata_call(ep, "GET", _paths(run.system, run.api, run.target, r.key)[1])
                 before = data if code < 300 else None
             except Exception:
                 read_fail += 1
@@ -296,6 +360,10 @@ def approve(tenant: str, run_id: str, by: str = "owner", confirm_env: str = "") 
         raise RunError("Pehle dry run (jhalak) dekhna zaroori hai.")
     if run.env == "production" and (confirm_env or "").lower() != "production":
         raise RunError("Yeh PRODUCTION hai. Haan ke saath 'production' likhna zaroori hai.")
+    if run.api == "tooling" and run.env == "production":
+        # A config change is not a record change: it can break the org for everyone, and Salesforce itself wants
+        # tests behind it. Hoola does not pretend that is routine.
+        log.warning("tooling deploy to production tenant=%s run=%s", tenant, run_id)
     plan = _j(run.plan, {})
     if plan.get("hash") != _plan_hash(run_id):
         raise RunError("Jhalak ke baad rows badal gayi hain - dobara jhalak dekhiye.")
@@ -325,10 +393,11 @@ def execute(tenant: str, run_id: str, batch: int = BATCH) -> dict[str, Any]:
             if run.rail == "odata":
                 if ep is None:
                     raise RunError("Endpoint hata diya gaya hai.")
+                coll, item = _paths(run.system, run.api, run.target, key)
                 if run.verb == "create":
-                    code, data = _odata_call(ep, "POST", run.target, body=body)
+                    code, data = _odata_call(ep, "POST", coll, body=body)
                 else:
-                    code, data = _odata_call(ep, "PATCH", f"{run.target}('{key}')", body=body)
+                    code, data = _odata_call(ep, "PATCH", item, body=body)
             else:
                 code, data = _composio_call(tenant, run.target, body)
             ok = code < 300
@@ -375,7 +444,7 @@ def status(tenant: str, run_id: str) -> dict[str, Any]:
                  for r in s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
                                                             EntRunRow.status == "failed").limit(20)).all()]
     out = {"run": run.id, "title": run.title, "system": run.system, "env": run.env, "rail": run.rail,
-           "verb": run.verb, "target": run.target, "status": run.status, "total": run.total,
+           "verb": run.verb, "target": run.target, "api": run.api, "status": run.status, "total": run.total,
            "hue": run.ok_count, "fail": run.fail_count, "baaki": run.total - run.ok_count - run.fail_count}
     if fails:
         out["jo_fail_hue"] = fails

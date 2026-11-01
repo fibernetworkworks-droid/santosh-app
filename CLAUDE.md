@@ -145,9 +145,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.361.0 (pubspec 0.361.0+401). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.369.0 (pubspec 0.369.0+409). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
+- v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.364 HOOLA CAD PRO (`engineering/parts.py` H library: ISO fasteners, involute gears, bearings, shafts, extrusions): assemblies + BOM + mass, Opus thinks + plans, vision review of the views, her photo / STEP inputs, STEP/GLB/STL/3MF/DXF + hidden-line drawing page.
 - v0.361 CAD BOX CHAUTHI DEEWAR: her VPS has no `unshare -rn` (no_network false) -> engineering runner locks socket / os.system /
   exec / subprocess / file delete while her script runs (`runner._lockdown`), guard refuses os / sys / socket... names.
 - v0.360 CODE CARD: `python -m app.quality code` / vps-ops `code_card` = 12 practice coding jobs (`quality/code_tasks.py`) through the real dev loop, marked works / scope / rules / tests that prove the fix (`quality/codecard.py`).
@@ -169,6 +172,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.369 SOCIAL MEDIA MANAGER Phase 4 (`social/pulse.py`): plan posts alone only for Saathi / Bharosa (6 / 15 a day, quiet hours), Seekh = OK on the day;
+  pause + emergency stop, 9 am note, Monday pulse, monthly PDF, best times, boost flags (she runs the boost).
+- v0.368 SOCIAL MEDIA MANAGER Phase 3 INBOX (`social/inbox.py`): IG + FB comments and DMs every 15 min, sorted, drafts from her facts only;
+  Seekh = her tap, Saathi / Bharosa = simple replies (cap 40 / 150, DM 24 h window) + spam hidden never deleted; complaints always wait; leads to chat.
 - v0.355 SOCIAL MEDIA MANAGER Phase 2 (`social/publish.py`): approved posts go out to Instagram (image / carousel / Reel / Story) + Facebook Page,
   approval hash-bound to the exact post, photo upload or Brand poster, signed media links, IG 24 h cap, missed > 1 day late; Publish now.
 - v0.354 HOOLA STUDIO PAGE (built as 0.351): website /studio (`static/site/studio.html` + `studio.js`, real console screens in `static/site/studio/*.webp`), motion demo + pinned Director + tool tabs + price card; samples wall reads public `/api/site/showcase` (showcase slots only); Studio link in every site menu.
@@ -291,6 +298,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
+- v0.367 CRM DESK: crm_arch was half-built (write engine yes, but 0 sub-jobs, 4 paper kinds). Now 12 parts
+  (admin, config, automation, apex, integration, data, security, reporting, testing, release, adoption,
+  support) + all 12 paper kinds, so security work makes a MATRIX. THE SPLIT: a CRM architect writes
+  CONFIGURATION, not records - data (/sobjects) vs tooling (/tooling/sobjects: objects, fields, flows).
+  A wrong record is one row; a wrong flow breaks the org, so `api` is DECLARED on the run, never guessed,
+  never default (tested). New reads: describe (the org's shape) + soql (SELECT only). _paths() holds each
+  system's URL dialect. Same engine as v0.363 otherwise - a second desk cost a table entry, not an engine.
 - v0.363 ASLI ERP KAAM: Hoola really READS and WRITES her ERP, not just papers. A read runs at once (capped
   2,000 rows). A WRITE IS NEVER ONE CALL: plan -> dry run (before->after per row) -> HER TAP -> batches ->
   verify. Guards in CODE: delete refused at any size, max 500 rows a run, no execute before a dry run,

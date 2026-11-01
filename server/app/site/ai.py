@@ -293,6 +293,8 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   (up to 6); values may be written 1,20,000 / 50 lakh / 2.5 Cr / 12k. bar / line / area for a trend, hbar for a ranking,
   donut for parts of a whole (one series). ONLY numbers from FACTS or her words - never a made-up chart; no numbers =
   no chart. Style the figure (card, padding, width) inside your #SECTION_ID; do not restyle the SVG parts.
+- HER BLOG (v0.366): a blog / updates section never writes posts of its own - put <div data-hoola-posts="3"></div>
+  where the cards go and Hoola fills it with her latest real posts (a link to the blog page when she has none yet).
 - Type weights available for both fonts: 400, 500, 600, 700 (use 500 / 600 for UI labels, eyebrows, buttons, sub-heads;
   700 for big display headings).
 - Contact actions: tel:+91..., https://wa.me/91XXXXXXXXXX?text=..., mailto:, https://maps.google.com/?q=... ONLY with values
