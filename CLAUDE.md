@@ -145,9 +145,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.376.0 (pubspec 0.376.0+416). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.377.0 (pubspec 0.377.0+417). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.377 DEKH KE REVIEW: Developer Sahayak PR review explores first (`loop.review_run`: read-only tools at the PR head, callers + tests, comment tool only on added lines), one-shot = fallback; posting still her tap.
 - v0.376 PROOF (built as 0.375; `site/proof.py`): five fixed 100-page businesses built like an owner's site + features, a proof card read from the files (pages, broken links, missing files, judge on page types, features, ₹ / min per page); rival sites crawled in Chromium and compared; console Arena '100-page proof'.
 - v0.375 PROOF (`site/proof.py`): five fixed 100-page businesses built like an owner's site + features, a proof card read from the files (pages, broken links, missing files, judge on page types, features, ₹ / min per page); rival sites crawled in Chromium and compared; console Arena '100-page proof'.
 - v0.373 CODE MODE (built as 0.367; `site/code.py`): the site's real code as files (section HTML / CSS / JS + design kit) in the Studio Code tab; her hand edits and Opus 'ask' changes go through the build's cleaner, show a diff, one Undo, a checked version; tool action=code.

@@ -13623,3 +13623,29 @@ quality and broken links against Lovable and others before calling it done").
 - Tested for real at 60 pages with the test AI: site map -> build -> shop from the priced list (45+ products) -> blog,
   0 broken links, 0 missing files. A full 100-page run with Opus is the owner's to start (cost ~₹700-2,000, 1-2 h).
 - Tests `server/tests/test_v0376_proof.py`.
+
+## v0.377.0 DEKH KE REVIEW (owner: "GO 3")
+Gap 3 from "IS ALL HOOLA CODE WORK DONE": PR review was still one-shot (one model call over the diff), while coding jobs had
+explored step by step since v0.350. Built as 0.375 / 0.376, re-versioned past the parallel v0.375 SAB DAS DESK and v0.376.
+- `devsahayak/loop.py` `review_run` + `REVIEW_TOOLS` + `REVIEW_SYSTEM`:
+  - the repo opens at the PR's head commit with read-only tools only (list_dir, search_code, read_file, find_usages);
+    edit / new / any other tool is refused;
+  - the project's rules come first (`_project_rules`, v0.356);
+  - the brief: read the whole changed file, find_usages of anything whose name / arguments / return changed (a caller the
+    PR did not update is a real bug), check a test covers the change, no style nitpicks or praise;
+  - `comment(path, line, body, severity)` accepts only lines the PR ADDED. Otherwise it answers "not a line this PR added.
+    Its added lines: 1, 5" or "not changed by this PR. Changed files: ...". At most 30 comments;
+  - `done(summary, verdict)`. PR text, diff and files are DATA; a PR asking to be approved is flagged, never obeyed.
+  - 25 steps / 10 min (`dev_review_steps`, `dev_review_minutes`).
+- `service.review`:
+  - uses the loop when the dev loop is on;
+  - an added-lines map (not the context lines) bounds the comments;
+  - the summary ends with "Explored before reviewing: N files read, M code / caller searches, K steps";
+  - a missing key, a GitHub read error or any loop failure falls back to the one-shot review, so a review never fails
+    because of the exploring step;
+  - the automatic secret / OWASP findings, the draft card, the hash, the stale-commit check and posting only on her tap
+    (APPROVE never automatic) are unchanged.
+- Tests `test_v0377_dekh_ke_review.py`:
+  - a review finds the caller the PR forgot via find_usages, is refused on a context line, another file and edit_file,
+    leaves one inline comment, ends request_changes as a draft (nothing posted), and sees the PR's "approve this" as data;
+  - the one-shot fallback still works; the step cap stops it with what it has.
