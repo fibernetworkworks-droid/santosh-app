@@ -14717,6 +14717,7 @@ sites that read app rows keep one path. Per-app rate limits are still per proces
 limit and every money counter are database / lock checked).
 
 VPS: nothing new to install for this version. To move her server to Postgres (optional, when she says): install
-Postgres, create a database + user, `python -m app.dbmove --to <url>`, set DATABASE_URL in ~/apps/santosh-core/.env,
+Postgres (set `max_locks_per_transaction = 512` or more in postgresql.conf: Hoola creates hundreds of tables in one go -
+CI hit 'out of shared memory' on the default 64), create a database + user, `python -m app.dbmove --to <url>`, set DATABASE_URL in ~/apps/santosh-core/.env,
 restart; keep santosh.db as the fallback.
 Tests `server/tests/test_v0390_pakki_neev.py`.

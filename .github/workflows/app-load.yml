@@ -20,18 +20,15 @@ jobs:
   postgres:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    services:
-      pg:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: hoola
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       HOOLA_TEST_PG: postgresql+psycopg://postgres:hoola@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@v5
+      - name: Postgres 16 (enough lock slots for Hoola's many tables; a service container cannot take -c flags)
+        run: |
+          docker run -d --name pg -p 5432:5432 -e POSTGRES_PASSWORD=hoola postgres:16 \
+            -c max_locks_per_transaction=1024 -c max_connections=400 -c shared_buffers=256MB
+          for i in $(seq 1 60); do docker exec pg pg_isready -U postgres && break; sleep 1; done
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
