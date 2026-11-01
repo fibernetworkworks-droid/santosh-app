@@ -22,7 +22,7 @@ from typing import Any
 from ..db import now, session
 from ..site import webapp as W
 from .models import AppProject
-from . import locks as LK                     # v0.383 one cross-process lock per app
+from . import locks as LK                     # v0.388 one cross-process lock per app
 
 STATES = {"01": "Jammu and Kashmir", "02": "Himachal Pradesh", "03": "Punjab", "04": "Chandigarh", "05": "Uttarakhand",
           "06": "Haryana", "07": "Delhi", "08": "Rajasthan", "09": "Uttar Pradesh", "10": "Bihar", "11": "Sikkim",

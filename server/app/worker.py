@@ -365,7 +365,7 @@ def applogic_jobs() -> None:
 
         def both():
             LE.tick()
-            BK.daily_tick()                  # v0.383 PAKKI NEEV: a daily snapshot of every app's data + its limits watched
+            BK.daily_tick()                  # v0.388 PAKKI NEEV: a daily snapshot of every app's data + its limits watched
         _logic_task = asyncio.get_running_loop().create_task(asyncio.to_thread(both))
     except Exception:
         log.exception("app logic jobs failed")

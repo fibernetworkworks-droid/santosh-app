@@ -1,4 +1,4 @@
-"""v0.383 PAKKI NEEV (App Sahayak Pillar B): locks that hold across server PROCESSES, not just threads.
+"""v0.388 PAKKI NEEV (App Sahayak Pillar B): locks that hold across server PROCESSES, not just threads.
 
 Before this, stock / coupons / slots / GST numbers / udhaar / approvals each had a `threading.Lock()` - safe inside ONE
 process only, and each feature had its OWN lock while they all rewrite the same `AppProject.backend` JSON, so a stock

@@ -16,7 +16,7 @@ from sqlalchemy import select
 from ..db import session
 from ..site import webapp as W
 from .models import AppProject
-from . import locks as LK                     # v0.383 one cross-process lock per app
+from . import locks as LK                     # v0.388 one cross-process lock per app
 
 DEFAULTS = {"party": "Cash", "sales": "Sales", "cgst": "Output CGST", "sgst": "Output SGST", "igst": "Output IGST",
             "round": "Round Off"}

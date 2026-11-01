@@ -85,7 +85,7 @@ APP_TOOLS = [
         "whole logic on / off (nothing deleted). action=approval (owner only; approval = id from app_dekho what=logic, decision "
         "approve|reject, note) = HER decision on a waiting approval, only when she says it. action=logic_run (owner only; job = "
         "schedule name) = run a timed job now. "
-        "v0.383 PAKKI NEEV - her app's data safety: action=data_safety (owner only; at = \"YYYY-MM-DDTHH:MM\" IST optional): "
+        "v0.388 PAKKI NEEV - her app's data safety: action=data_safety (owner only; at = \"YYYY-MM-DDTHH:MM\" IST optional): "
         "usage (entries / files / writes today vs limits), the backups, and with `at` a PREVIEW of bringing the data back "
         "to that minute (what comes back / goes / changes) - the RESTORE itself is only HER tap on the app's Data safety "
         "card (console app page / phone), never you. action=backup_now (owner only) = a backup this moment. action=limits "
@@ -321,7 +321,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
-    if action in ("data_safety", "backup_now", "limits"):               # v0.383 PAKKI NEEV
+    if action in ("data_safety", "backup_now", "limits"):               # v0.388 PAKKI NEEV
         if not _owner(ctx):
             raise ToolError("App ka data sirf maalkin dekh / badal sakti hain.")
         from ..appmaker import backend as BE

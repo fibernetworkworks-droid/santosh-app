@@ -226,7 +226,7 @@ def ensure(r: AppProject) -> dict[str, Any]:
         return be
     # v0.319 an older backend is upgraded in place: lists only GAIN fields (photo / location / paid), rows are untouched
     from . import locks as LK
-    with LK.app(r.id), session() as s:           # v0.383 under the app's lock, from the row as it is NOW
+    with LK.app(r.id), session() as s:           # v0.388 under the app's lock, from the row as it is NOW
         row = s.get(AppProject, r.id)
         be = _j(row.backend if row is not None else r.backend, {})
         if be.get("schema", {}).get("collections") is not None and int(be.get("v") or 1) >= SCHEMA_V:
@@ -235,7 +235,7 @@ def ensure(r: AppProject) -> dict[str, Any]:
         old_changes = be.get("changes") or []
         keep = {k: v for k, v in be.items() if k not in ("schema", "v", "made", "rev", "changes", "upgraded")}
         be = {**keep, "schema": schema_for(r), "made": be.get("made") or now().isoformat(), "v": SCHEMA_V,
-              "rev": int(be.get("rev") or 0), "changes": old_changes,   # v0.383 EVERY other setting survives (stock, coupons...)
+              "rev": int(be.get("rev") or 0), "changes": old_changes,   # v0.388 EVERY other setting survives (stock, coupons...)
               **({"upgraded": now().isoformat()} if be.get("made") else {})}
         for ch in old_changes:                 # v0.325 her own data changes survive an upgrade: replayed on the new lists
             _apply_ops(be["schema"], ch.get("ops") or {})
@@ -248,7 +248,7 @@ def ensure(r: AppProject) -> dict[str, Any]:
 
 
 def patch_backend(r: AppProject, set_: dict[str, Any] | None = None, drop: tuple[str, ...] = (), fn=None) -> dict[str, Any]:
-    """v0.383 the ONLY safe way to change an app's backend JSON from slow code (logic apply, timed-job state, owner
+    """v0.388 the ONLY safe way to change an app's backend JSON from slow code (logic apply, timed-job state, owner
     settings): under the app's cross-process lock, re-read the row as it is NOW, change only these keys, write it back -
     so a stock / coupon / slot change made in between is never overwritten by a stale copy."""
     from . import locks as LK
@@ -392,7 +392,7 @@ def _row(site: str, row_id: str) -> W.SiteAppRow:
 
 def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "") -> dict[str, Any]:
     """One write from the app. `cid` = the phone's own id for this write: the same cid again returns the first row.
-    v0.383 the cid check and the insert hold one cross-process lock, so a phone's retry racing its first try in another
+    v0.388 the cid check and the insert hold one cross-process lock, so a phone's retry racing its first try in another
     worker process still makes exactly ONE row."""
     cid = str((body or {}).get("cid") or "") if isinstance(body, dict) else ""
     if cid and CID.match(cid):
@@ -457,7 +457,7 @@ def _create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = 
                     _note(r, f"{r.name or 'Aapki app'} ({r.number}) naya order: {df['delivery_note']}")
                 except Exception:
                     log.debug("delivery note", exc_info=True)
-    from . import meter as MT                        # v0.383 her app's row limit (warns her at 80 / 95%, refuses at 100%)
+    from . import meter as MT                        # v0.388 her app's row limit (warns her at 80 / 95%, refuses at 100%)
     MT.check_write(r)
     try:
         out = W.create(site, sch, coll, data, w, ip, cap=10**9)
@@ -1041,7 +1041,7 @@ def crash(r: AppProject, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
     ver = re.sub(r"[^0-9A-Za-z.\-]", "", str(body.get("ver") or ""))[:20]
     f = _crash_file(r)
     from . import locks as LK
-    with LK.hold(f"crash:{r.id}"):                  # v0.383 the crash file is shared by every worker process
+    with LK.hold(f"crash:{r.id}"):                  # v0.388 the crash file is shared by every worker process
         data = _j(f.read_text(), {}) if f.exists() else {}
         x = data.get(sig)
         first = x is None
@@ -1103,7 +1103,7 @@ def crash_screens(r: AppProject, sig: str) -> tuple[dict[str, Any], list[str]]:
 def crash_mark(r: AppProject, sig: str, status: str, build: int = 0, version: str = "") -> None:
     f = _crash_file(r)
     from . import locks as LK
-    with LK.hold(f"crash:{r.id}"):                  # v0.383 the crash file is shared by every worker process
+    with LK.hold(f"crash:{r.id}"):                  # v0.388 the crash file is shared by every worker process
         data = _j(f.read_text(), {}) if f.exists() else {}
         if sig in data:
             data[sig]["status"] = status
@@ -1214,7 +1214,7 @@ def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[s
     ensure(r)
     out: dict[str, Any] = {}
 
-    def change(be):                                  # v0.383 applied to the backend as it is NOW, under the app's lock
+    def change(be):                                  # v0.388 applied to the backend as it is NOW, under the app's lock
         sch = copy.deepcopy(be["schema"])
         done = _apply_ops(sch, ops if isinstance(ops, dict) else {})
         if not done:
@@ -1222,7 +1222,7 @@ def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[s
         be["schema"], be["rev"] = sch, int(be.get("rev") or 0) + 1
         be["changes"] = (be.get("changes") or []) + [{"at": now().isoformat(), "ops": ops, "words": str(words)[:300], "done": done}]
         out["done"] = done
-    try:                                                  # v0.383 a schema change is a moment worth a backup
+    try:                                                  # v0.388 a schema change is a moment worth a backup
         from . import backup as BK
         BK.snapshot(r, "before a data change" + (f": {str(words)[:60]}" if words else ""))
     except Exception:                                    # noqa: BLE001

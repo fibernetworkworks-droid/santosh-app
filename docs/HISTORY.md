@@ -14523,3 +14523,61 @@ ONE Game Desk game (`gamedesk/service.py` still owns the code, versions and the 
     + SM-2 inside answer() + exam date; path order from the NCERT library, current / locked, practice never from a locked
     chapter, gate opens the next chapter, teacher list for an incomplete book; grounded doubt cites page 12 and drops [5];
     grounded off; path tools.
+
+## v0.388.0 PAKKI NEEV - the app backend under many processes, and always recoverable (App Sahayak Pillar B, Phases 47-48)
+Owner (1 Nov 2026): *"START NEXT PILLAR"* (after v0.382 DIMAAG = Pillar A).
+
+What the audit found first (all real, all fixed):
+- Stock, coupons, slots, GST numbers and udhaar each used a `threading.Lock()` - safe inside ONE process only - and each
+  feature had its OWN lock while all of them rewrite the same `AppProject.backend` JSON, so a stock change and a coupon
+  change at the same moment could overwrite each other even inside one process.
+- A phone's retry (same `cid`) racing its first try in another worker process could make TWO orders.
+- `ensure()`'s schema upgrade kept only gst + logic (every other setting would have been dropped).
+- Child lookups (an order's items) were a JSON text scan of the whole list.
+- A SQL gotcha caught by the new quota test: `coll.startswith("_")` is `LIKE '_%'` and `_` is a wildcard -> every list.
+
+What it is now:
+- `appmaker/locks.py`: `hold(key)` = one lock across threads AND processes, re-entrant per thread - Postgres
+  `pg_advisory_lock` on a dedicated pooled connection (lock_timeout bounded), SQLite an fcntl file lock beside the database
+  file. `app(app_id)` guards every money / stock / slot / number counter and every read-modify-write of the backend JSON
+  (stock, coupon, gst, khata, delivery, tally, variants, backend, logic). Keys only nest appr -> app (no deadlock).
+- `backend.patch_backend(r, set_, drop, fn)`: under the app lock, re-read the row as it is NOW, change only those keys -
+  the logic apply / switch / draft, timed-job state, data changes and limits all use it.
+- `backend.create`: the cid check + insert hold `cid:<app>:<member>:<cid>`.
+- `appmaker/backup.py`: ONE SQLAlchemy `before_flush` hook journals every insert / update / delete of an app's rows
+  (`app_journal`: row, op, before, after) in the same transaction - no write path can skip it (`_audit` excluded).
+  Snapshots (rows + accounts + backend settings, gzip JSON, atomic write): daily (worker, hourly check) and before every
+  risky change (logic apply, data change, restore); newest 14 daily + 20 before / manual kept. Point-in-time restore = the
+  newest snapshot before that minute + the journal replayed up to it (journal position read BEFORE the rows, so a write in
+  between is applied idempotently). Preview first; restore = HER tap, a "before restore" snapshot first, so a restore can
+  be undone; accounts only on request. Export ZIP: a CSV per list (Excel-safe cells), data.json, accounts.csv (never a
+  password hash). Journal kept 35 days.
+- `appmaker/refs.py`: the same flush moment indexes every top-level value that IS a row id (`row_<12 hex>`) into
+  `app_refs` (site, coll, row, field, value; one composite index); the engine's children / related / roll-ups / cascades
+  use it; rows from before are indexed once per app on first use.
+- `appmaker/meter.py`: entries per list, data size, accounts, files MB, backups MB, writes today + 14 days (from the
+  journal, so right across processes); limits rows (enforced, 507 at 100%), files MB and writes a day (watched daily);
+  80 / 95 / 100% = one chat note per level per month; she sets limits (never above the ceiling, never below the use).
+- `app/dbmove.py`: `python -m app.dbmove --to postgresql+psycopg://...` makes every table in an EMPTY target, copies in
+  dependency order in batches of 2,000 reading through the server's own column types, verifies every table's count,
+  moves Postgres id sequences past the copied ids; refuses a busy target; `--check` = counts only.
+- Tests can run on Postgres: `HOOLA_TEST_PG=<url>` gives each test its own fresh database (conftest).
+- Routes: `GET /api/apps/<ref>/backups`, `POST .../backups/now`, `POST .../backups/preview`, `POST .../backups/restore`,
+  `GET .../export`, `GET|PUT .../usage`. Agent `app_banao action=data_safety` (usage, backups, restore PREVIEW - the
+  restore is her tap), `backup_now`, `limits`. Console "Data safety" box; phone `lib/ui/app_safety.dart`.
+
+Proof (run here on Postgres 16, 4 uvicorn worker processes; CI `.github/workflows/app-load.yml` repeats it on every app
+backend change): 1,000 customers signed up and logged in (1,000 / 1,000), then all ordered 1 piece of a product with 300 in
+stock at the same moment, every 4th phone sending its order twice -> exactly 300 orders, 874 "out of stock" (409), 76
+retries got their first row back, stock 0, no 5xx, no lost request. Order latency in that stampede: p50 2.9 s, p95 7.7 s,
+p99 9.3 s (every order of one app queues on its lock - correct, not yet fast; next step in B). All 31 existing app
+backend tests + DIMAAG pass on Postgres unchanged.
+
+Decision recorded: ONE Postgres database, every query scoped by the app (tested) - not a schema per app; the 117 code
+sites that read app rows keep one path. Per-app rate limits are still per process (a note, not a hole: the per-app row
+limit and every money counter are database / lock checked).
+
+VPS: nothing new to install for this version. To move her server to Postgres (optional, when she says): install
+Postgres, create a database + user, `python -m app.dbmove --to <url>`, set DATABASE_URL in ~/apps/santosh-core/.env,
+restart; keep santosh.db as the fallback.
+Tests `server/tests/test_v0388_pakki_neev.py`.

@@ -15,7 +15,7 @@ from typing import Any
 from ..db import session
 from ..site import webapp as W
 from .models import AppProject
-from . import locks as LK                     # v0.383 one cross-process lock per app
+from . import locks as LK                     # v0.388 one cross-process lock per app
 
 _LOCK = threading.Lock()
 LOW_DEFAULT = 3

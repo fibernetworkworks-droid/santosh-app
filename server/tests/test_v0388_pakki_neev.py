@@ -1,4 +1,4 @@
-"""v0.383 PAKKI NEEV (App Sahayak Pillar B, Phases 47-48): the app backend holds under many server processes and can
+"""v0.388 PAKKI NEEV (App Sahayak Pillar B, Phases 47-48): the app backend holds under many server processes and can
 always be brought back - cross-process locks (file lock on SQLite, advisory locks on Postgres), no lost update of an
 app's settings, a phone retry racing itself in two processes = one row, the write journal + snapshots + point-in-time
 restore + export, indexed links, usage meters + quotas, the SQLite -> Postgres move, and (HOOLA_LOAD=1) 1,000

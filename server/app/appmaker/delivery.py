@@ -15,7 +15,7 @@ from typing import Any
 from ..db import now, session
 from ..site import webapp as W
 from .models import AppProject
-from . import locks as LK                     # v0.383 one cross-process lock per app
+from . import locks as LK                     # v0.388 one cross-process lock per app
 
 PIN = re.compile(r"(?<!\d)([1-9]\d{5})(?!\d)")
 HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
