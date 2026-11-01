@@ -1,4 +1,4 @@
-"""v0.418 PAISA (App Sahayak Pillar E, Phases 52-53): online payments in her native apps through HER own gateway.
+"""v0.419 PAISA (App Sahayak Pillar E, Phases 52-53): online payments in her native apps through HER own gateway.
 
   * HER KEYS, HER MONEY: she joins Razorpay / Cashfree / PhonePe PG in the console or her phone (typed in the app, never in
     chat), they are sealed on arrival (vault) and returned by NO route. The money goes from the customer to the gateway to

@@ -91,7 +91,7 @@ routing service), "left" geofence. Proof (food delivery rider demo) = after the 
 - Proof: food delivery — the customer watches the rider live.
 
 ### E. Payments — Phases 52–53
-**Status: BUILT in v0.418.0 PAISA** (`server/app/paygate/gw.py`, `server/app/appmaker/pay.py`, kits `Pay.kt` / `Pay.swift`) —
+**Status: BUILT in v0.419.0 PAISA** (`server/app/paygate/gw.py`, `server/app/appmaker/pay.py`, kits `Pay.kt` / `Pay.swift`) —
 her Razorpay / Cashfree / PhonePe PG keys (sealed), the gateway's own checkout on a signed pay page, paid only from the gateway
 (verified webhook / server status read, amount checked), refunds by her tap (idempotent number, ambiguous re-checked), links,
 settlements, AutoPay plans with the customer's consent, split payouts by her approved rule (Razorpay Route / Cashfree Easy

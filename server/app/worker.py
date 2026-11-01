@@ -380,7 +380,7 @@ def applogic_jobs() -> None:
             from .appmaker import owndb as OD
             OD.tick()                        # v0.396 APNA DATABASE: apps running in HER database - catch up, her edits back
             from .appmaker import pay as PY
-            PY.tick()                        # v0.418 PAISA: a late / missing webhook -> ask her gateway (never the phone)
+            PY.tick()                        # v0.419 PAISA: a late / missing webhook -> ask her gateway (never the phone)
         _logic_task = asyncio.get_running_loop().create_task(asyncio.to_thread(both))
     except Exception:
         log.exception("app logic jobs failed")

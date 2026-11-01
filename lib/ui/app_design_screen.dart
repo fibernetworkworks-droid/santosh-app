@@ -844,7 +844,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
             const SizedBox(height: 10),
             Glass(child: AppTrackPanel(app: app, id: widget.id)),          // v0.412 NAKSHA LIVE: tracking switch + riders
             const SizedBox(height: 10),
-            Glass(child: AppPayPanel(app: app, id: widget.id)),            // v0.418 PAISA: her gateway, payments, refunds
+            Glass(child: AppPayPanel(app: app, id: widget.id)),            // v0.419 PAISA: her gateway, payments, refunds
             const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),

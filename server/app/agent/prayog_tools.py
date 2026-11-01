@@ -21,7 +21,7 @@ PRAYOG_TOOLS = [
          "q": {"type": "string"}, "field": {"type": "string"}, "id": {"type": "string"}},
          "required": ["action"]}},
 ]
-PRAYOG_LABELS = {"prayog": "Prayogshala mein lab dhoondh raha hoon"}
+PRAYOG_LABELS = {"prayog": "Finding a lab in Prayogshala"}
 
 
 async def prayog(ctx: Ctx, action, q: str = "", field: str = "", id: str = "", **_: Any):
@@ -40,10 +40,10 @@ async def prayog(ctx: Ctx, action, q: str = "", field: str = "", id: str = "", *
                     seen[r["id"]] = r
             rows = list(seen.values())[:8]
         return {"labs": [{**r, "url": S.link(r["id"])} for r in rows], "count": len(rows), "all": S.catalogue_link(),
-                "note": "Koi lab nahi mila: abhi Prayogshala mein physics practicals hain (aur fields aage aa rahe hain)." if not rows else S.NOTE}
+                "note": "No lab found: Prayogshala has physics practicals now (more fields are coming)." if not rows else S.NOTE}
     lab = S.get(id)
     if not lab:
-        raise ToolError(f"Lab '{id}' nahi mila. Pehle action=find se id lijiye.")
+        raise ToolError(f"Lab '{id}' not found. Get the id with action=find first.")
     if action == "open":
         return S.card(lab)
     if action == "check":

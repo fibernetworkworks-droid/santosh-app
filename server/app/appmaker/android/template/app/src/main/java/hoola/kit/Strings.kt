@@ -104,7 +104,7 @@ object Strings {
     val isOnline get() = t("online", "ऑनलाइन", "ऑनलाइन", "online")
     val isTyping get() = t("typing…", "लिख रहे हैं…", "लिहित आहेत…", "likh rahe hain…")
     val live get() = t("Live", "लाइव", "लाइव्ह", "Live")
-    // v0.418 PAISA
+    // v0.419 PAISA
     val payOnline get() = t("Pay online", "ऑनलाइन भुगतान", "ऑनलाइन पैसे भरा", "Online pay karein")
     val opening get() = t("Opening…", "खुल रहा है…", "उघडत आहे…", "Khul raha hai…")
     val payWaiting get() = t("Waiting for the payment to be confirmed by the gateway…", "गेटवे से भुगतान की पुष्टि का इंतज़ार…", "गेटवेकडून पेमेंटची खात्री होत आहे…", "Gateway se payment confirm hone ka intezaar…")

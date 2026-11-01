@@ -15803,7 +15803,22 @@ Owner, after the India ad-market check (artifact "Hoola Ad Platforms India"): "G
   to main (Architecture Desk section + ar-dia styles present); /api/arch/projects answers 401 without a key.
 - Tests: 3 more in test_v0410_architect.py (inline design + full clean-up, model failure reported not raised, vps-ops job).
 
-## v0.418.0 PAISA (App Sahayak Pillar E, Phases 52-53 — owner: "START PILLAR E"; built as 0.417, re-versioned on rebase)
+## v0.418.0 PRAYOGSHALA IN ENGLISH (owner: "FIRST MAKE ENTIER THING IN ENGLISH")
+
+Everything a learner sees in Prayogshala is English.
+- **The 22 labs**: titles, aims, part names and info, knob and meter labels, table columns and hints, steps, theory, safety notes, tour narration and quiz.
+- **Narration**: `lang` is now `en-IN`, so the browser speaks it in English.
+- **The runtime** (`static/prayog/lab3d.js`): the buttons are Run / Reset / Tour / Record reading / Zero, the tabs are Knobs / Meters / Table / Steps / Predict / About, plus the result line "True value in this lab ... your error" and every empty-state text.
+- **The pages and surfaces**: the catalogue and lab pages, the phone Prayogshala screen and its Profile tile, the tool's notes and errors, the catalogue NOTE, and the LSL checker's messages.
+
+Nothing else changed. The old and new catalogues were compared with all text stripped and are structurally identical: every number, the 3D layout, the kernels and the NCERT checks.
+
+The meter bridge was re-run in Chromium: S = 6.01 Ω against the lab's true 6.00 Ω.
+
+A new test, `test_everything_the_learner_sees_is_english`, fails if Hinglish words return to the labs, the runtime, the pages or the phone screen.
+
+The static `?v=` stamps and the service-worker cache name moved to 0.418.0, so phones fetch the new runtime.
+## v0.419.0 PAISA (App Sahayak Pillar E, Phases 52-53 — owner: "START PILLAR E"; built as 0.417 / 0.418, re-versioned on rebase)
 Online payments in her native apps through HER own gateway. Hoola never holds money.
 - `server/app/paygate/gw.py`: Razorpay / Cashfree PG / PhonePe PG (Standard Checkout v2) through their official server APIs
   (httpx, injectable transport for tests). It covers create order, order state, webhook verification, event parsing, refund,
@@ -15839,7 +15854,7 @@ Online payments in her native apps through HER own gateway. Hoola never holds mo
     then waits for the gateway's word) and PlansBlock (plans + her own subscriptions with Cancel).
   - Console: Payments box (join, webhook address + how, payments, refund / check, settlements, link, plans,
     subscriptions, payout rule). Phone: `lib/ui/app_pay.dart` (join, payments, refund after a confirm, link).
-- Tests: tests/test_v0418_paisa.py (5) against a fake gateway in the documented shapes.
+- Tests: tests/test_v0419_paisa.py (5) against a fake gateway in the documented shapes.
 - NOT VERIFIED: no live merchant account has answered. Cashfree subscription field names and the PhonePe v2 shapes follow
   the docs from memory and need checking against her first real test payment. Native gateway SDKs are not used; the
   hosted checkout is official.

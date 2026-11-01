@@ -877,7 +877,7 @@ window.HoolaBuild = function (C) {
       const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
     };
     try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
-    // v0.418 PAISA: her own gateway (keys typed here, sealed, never shown again), payments + refunds (her tap), links, AutoPay, split
+    // v0.419 PAISA: her own gateway (keys typed here, sealed, never shown again), payments + refunds (her tap), links, AutoPay, split
     const pybox = document.createElement('section'); pybox.className = 'stcol stpay'; box.appendChild(pybox);
     const rs = p => 'Rs ' + (N(p) / 100).toLocaleString('en-IN', {maximumFractionDigits: 2});
     const drawPay = py => {

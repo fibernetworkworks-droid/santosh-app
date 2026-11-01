@@ -51,15 +51,15 @@ class LabError(ValueError):
 
 def _num(v: Any, where: str, lo: float = -STAGE, hi: float = STAGE) -> float:
     if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
-        raise LabError(f"{where}: number chahiye")
+        raise LabError(f"{where}: needs a number")
     if not lo <= v <= hi:
-        raise LabError(f"{where}: {v} seema ({lo}..{hi}) se bahar")
+        raise LabError(f"{where}: {v} is out of range ({lo}..{hi})")
     return float(v)
 
 
 def _vec(v: Any, where: str, n: int = 3) -> None:
     if not isinstance(v, list) or len(v) != n:
-        raise LabError(f"{where}: {n} numbers ki list chahiye")
+        raise LabError(f"{where}: needs a list of {n} numbers")
     for i, x in enumerate(v):
         _num(x, f"{where}[{i}]")
 
@@ -68,15 +68,15 @@ def _text(v: Any, where: str, mx: int = 400, need: bool = False) -> None:
     if v is None and not need:
         return
     if not isinstance(v, str) or (need and not v.strip()) or len(v) > mx:
-        raise LabError(f"{where}: text chahiye (<= {mx} akshar)")
+        raise LabError(f"{where}: needs text (<= {mx} characters)")
 
 
 def _keys(d: Any, allowed: set[str], where: str) -> dict:
     if not isinstance(d, dict):
-        raise LabError(f"{where}: object chahiye")
+        raise LabError(f"{where}: needs an object")
     extra = set(d) - allowed
     if extra:
-        raise LabError(f"{where}: anjaan key {sorted(extra)} - lab sirf data hai")
+        raise LabError(f"{where}: unknown key {sorted(extra)} - a lab is data only")
     return d
 
 
@@ -98,14 +98,14 @@ def _bind_spec(spec: Any, where: str, kvars, params, knobs) -> None:
             if k in spec:
                 _num(spec[k], f"{where}.{k}", -1e9, 1e9)
     if not isinstance(name, str) or not _ref_ok(name, kvars, params, knobs):
-        raise LabError(f"{where}: '{name}' kernel / param / knob mein nahi hai")
+        raise LabError(f"{where}: '{name}' is not a kernel var / param / knob")
 
 
 def _color(v: Any, where: str) -> None:
     if v is None:
         return
     if not isinstance(v, str) or not (COLOR.match(v) or v in NAMED):
-        raise LabError(f"{where}: rang #rrggbb ya {sorted(NAMED)}")
+        raise LabError(f"{where}: colour must be #rrggbb or one of {sorted(NAMED)}")
 
 
 def _net(cfg: dict) -> None:
@@ -113,13 +113,13 @@ def _net(cfg: dict) -> None:
     nn = int(_num(net.get("nodes"), "cfg.net.nodes", 1, 40))
     els = net.get("els")
     if not isinstance(els, list) or not 1 <= len(els) <= 80:
-        raise LabError("cfg.net.els: 1-80 parts chahiye")
+        raise LabError("cfg.net.els: needs 1-80 parts")
     ids = set()
     for i, e in enumerate(els):
         w = f"cfg.net.els[{i}]"
         _keys(e, {"id", "kind", "a", "b", "value", "param", "Is", "n"}, w)
         if not isinstance(e.get("id"), str) or not IDENT.match(e["id"]) or e["id"] in ids:
-            raise LabError(f"{w}.id: naam (unique) chahiye")
+            raise LabError(f"{w}.id: needs a unique name")
         ids.add(e["id"])
         if e.get("kind") not in {"R", "V", "C", "D", "S"}:
             raise LabError(f"{w}.kind: R / V / C / D / S")
@@ -128,12 +128,12 @@ def _net(cfg: dict) -> None:
             if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= nn:
                 raise LabError(f"{w}.{t}: node 0..{nn}")
         if e["a"] == e["b"]:
-            raise LabError(f"{w}: dono sire ek hi node par")
+            raise LabError(f"{w}: both ends on the same node")
         if e["kind"] == "S":
             if not isinstance(e.get("param"), str):
-                raise LabError(f"{w}: switch ko param chahiye")
+                raise LabError(f"{w}: a switch needs a param")
         elif e["kind"] != "D" and "value" not in e:
-            raise LabError(f"{w}: value chahiye")
+            raise LabError(f"{w}: needs a value")
 
 
 def check(lab: dict) -> dict:
@@ -142,28 +142,28 @@ def check(lab: dict) -> dict:
     if lab.get("lsl") != 1:
         raise LabError("lab.lsl: 1")
     if not isinstance(lab.get("id"), str) or not SLUG.match(lab["id"]):
-        raise LabError("lab.id: chhota slug (a-z, 0-9, -)")
+        raise LabError("lab.id: a short slug (a-z, 0-9, -)")
     for k, mx in (("title", 80), ("field", 40), ("group", 60), ("level", 60), ("topic", 120), ("aim", 300),
                   ("theory", 1500), ("safety", 600), ("lang", 10)):
         _text(lab.get(k), f"lab.{k}", mx, need=k in ("title", "field", "aim"))
     name = lab.get("kernel")
     if name not in KN.KERNELS:
-        raise LabError(f"lab.kernel: anjaan kernel '{name}'")
+        raise LabError(f"lab.kernel: unknown kernel '{name}'")
     cfg = lab.get("cfg") or {}
     _keys(cfg, {"net", "measure"}, "lab.cfg")
     if name == "circuit":
         _net(cfg)
     elif "net" in cfg:
-        raise LabError("lab.cfg.net sirf circuit kernel ke liye")
+        raise LabError("lab.cfg.net is only for the circuit kernel")
     params = set(KN.params_for(name, {}).keys())
     over = _keys(lab.get("params") or {}, set(lab.get("params") or {}), "lab.params")
     for k, v in over.items():
         if not IDENT.match(k):
-            raise LabError(f"lab.params.{k}: naam galat")
+            raise LabError(f"lab.params.{k}: bad name")
         _num(v, f"lab.params.{k}", -1e12, 1e12)
     params |= set(over)
     if name != "circuit" and set(over) - set(KN.KERNELS[name].PARAMS):
-        raise LabError(f"lab.params: {sorted(set(over) - set(KN.KERNELS[name].PARAMS))} kernel '{name}' mein nahi")
+        raise LabError(f"lab.params: {sorted(set(over) - set(KN.KERNELS[name].PARAMS))} not in kernel '{name}'")
     kvars = set(KN.kernel_vars(name, cfg))
     for k in ("speed",):
         if k in lab:
@@ -188,16 +188,16 @@ def check(lab: dict) -> dict:
         w = f"knobs[{i}]"
         _keys(k, KNOB_KEYS, w)
         if not isinstance(k.get("id"), str) or not IDENT.match(k["id"]) or k["id"] in kids:
-            raise LabError(f"{w}.id: naam (unique)")
+            raise LabError(f"{w}.id: needs a unique name")
         kids.add(k["id"])
         _text(k.get("label"), f"{w}.label", 80, need=True)
         if k.get("param") not in params:
-            raise LabError(f"{w}.param: '{k.get('param')}' kernel ka param nahi")
+            raise LabError(f"{w}.param: '{k.get('param')}' is not a kernel param")
         lo, hi = _num(k.get("min"), f"{w}.min", -1e9, 1e9), _num(k.get("max"), f"{w}.max", -1e9, 1e9)
         st = _num(k.get("step"), f"{w}.step", 1e-12, 1e9)
         val = _num(k.get("value"), f"{w}.value", -1e9, 1e9)
         if not lo < hi or not lo <= val <= hi or st > hi - lo:
-            raise LabError(f"{w}: min < max, value beech mein, step chhota")
+            raise LabError(f"{w}: needs min < max, value between them, a small step")
         if "k" in k:
             _num(k["k"], f"{w}.k", -1e9, 1e9)
         for t in ("unit", "hint"):
@@ -213,15 +213,15 @@ def check(lab: dict) -> dict:
         if m.get("kind") not in INST_KINDS:
             raise LabError(f"{w}.kind: {sorted(INST_KINDS)}")
         if not isinstance(m.get("id"), str) or not IDENT.match(m["id"]) or m["id"] in iids:
-            raise LabError(f"{w}.id: naam (unique)")
+            raise LabError(f"{w}.id: needs a unique name")
         iids.add(m["id"])
         _text(m.get("label"), f"{w}.label", 80, need=True)
         if m["kind"] != "stopwatch":
             v = m.get("var")
             if not isinstance(v, str) or not _ref_ok(v, kvars, params, kids):
-                raise LabError(f"{w}.var: '{v}' kernel mein nahi")
+                raise LabError(f"{w}.var: '{v}' is not in the kernel")
         if "x" in m and not (isinstance(m["x"], str) and _ref_ok(m["x"], kvars, params, kids)):
-            raise LabError(f"{w}.x: '{m.get('x')}' kernel mein nahi")
+            raise LabError(f"{w}.x: '{m.get('x')}' is not in the kernel")
         for t in ("k", "lc", "xk"):
             if t in m:
                 _num(m[t], f"{w}.{t}", -1e12, 1e12)
@@ -243,15 +243,15 @@ def check(lab: dict) -> dict:
             raise LabError(f"{w}.kind: {sorted(KINDS)}")
         _keys(b, BODY_COMMON | KINDS[kind], w)
         if not isinstance(b.get("id"), str) or not IDENT.match(b["id"]) or b["id"] in bids:
-            raise LabError(f"{w}.id: naam (unique)")
+            raise LabError(f"{w}.id: needs a unique name")
         _text(b.get("name"), f"{w}.name", 80)
         _text(b.get("info"), f"{w}.info", 300)
         _text(b.get("text"), f"{w}.text", 60)
         _color(b.get("color"), f"{w}.color")
         if "parent" in b and b["parent"] not in bids:
-            raise LabError(f"{w}.parent: pehle aaya hua body chahiye")
+            raise LabError(f"{w}.parent: must be a body listed earlier")
         if kind in ("spring", "rope") and "parent" in b:
-            raise LabError(f"{w}: spring / rope ko parent nahi (sire duniya mein hain)")
+            raise LabError(f"{w}: a spring / rope has no parent (its ends are in world space)")
         for k in ("pos", "rot", "explode", "dir"):
             if k in b:
                 _vec(b[k], f"{w}.{k}")
@@ -275,13 +275,13 @@ def check(lab: dict) -> dict:
         if "major" in b:
             _num(b["major"], f"{w}.major", 1, 1000)
         if kind == "scale" and b.get("length", 1) / b.get("spacing", 0.01) > 2000:
-            raise LabError(f"{w}: scale par 2000 se zyada tick")
+            raise LabError(f"{w}: more than 2000 ticks on a scale")
         if kind == "prism" and isinstance(b.get("angle"), str) and b["angle"] not in params:
-            raise LabError(f"{w}.angle: param '{b['angle']}' nahi")
+            raise LabError(f"{w}.angle: no param '{b['angle']}'")
         if kind == "prism" and "angle" in b and not isinstance(b["angle"], str):
             _num(b["angle"], f"{w}.angle", 0.01, 3.1)
         if kind == "rays" and b.get("var") not in kvars:
-            raise LabError(f"{w}.var: rays ke liye kernel ka var chahiye")
+            raise LabError(f"{w}.var: rays need a kernel var")
         if kind == "rope" and "bow" in b:
             _bind_spec(b["bow"], f"{w}.bow", kvars, params, kids)
         if kind in ("spring", "rope"):
@@ -289,11 +289,11 @@ def check(lab: dict) -> dict:
                 v = b.get(t)
                 if isinstance(v, str):
                     if v not in bids:
-                        raise LabError(f"{w}.{t}: body '{v}' pehle chahiye")
+                        raise LabError(f"{w}.{t}: body '{v}' must be listed earlier")
                 elif isinstance(v, dict):
                     _keys(v, {"body", "off"}, f"{w}.{t}")
                     if v.get("body") not in bids:
-                        raise LabError(f"{w}.{t}.body: body pehle chahiye")
+                        raise LabError(f"{w}.{t}.body: must be a body listed earlier")
                     if "off" in v:
                         _vec(v["off"], f"{w}.{t}.off")
                 else:
@@ -313,12 +313,12 @@ def check(lab: dict) -> dict:
         for k, spec in bind.items():
             _bind_spec(spec, f"{w}.bind.{k}", kvars, params, kids)
         if "len" in bind and kind != "arrow":
-            raise LabError(f"{w}.bind.len: sirf arrow")
+            raise LabError(f"{w}.bind.len: arrows only")
         if "mark" in bind and kind != "scale":
-            raise LabError(f"{w}.bind.mark: sirf scale")
+            raise LabError(f"{w}.bind.mark: scales only")
         bids.add(b["id"])
     if tris > MAX_TRIS:
-        raise LabError(f"lab: {tris} triangles - phone ke liye {MAX_TRIS} tak")
+        raise LabError(f"lab: {tris} triangles - a phone allows up to {MAX_TRIS}")
 
     table = lab.get("table")
     if table is not None:
@@ -331,24 +331,24 @@ def check(lab: dict) -> dict:
             w = f"table.columns[{i}]"
             _keys(c, COL_KEYS, w)
             if not isinstance(c.get("id"), str) or not IDENT.match(c["id"]) or c["id"] in cids:
-                raise LabError(f"{w}.id: naam (unique)")
+                raise LabError(f"{w}.id: needs a unique name")
             cids.add(c["id"])
             _text(c.get("label"), f"{w}.label", 80, need=True)
             src = c.get("from", "manual")
             ok = src == "manual" or (src.startswith("knob:") and src[5:] in kids) or (src.startswith("inst:") and src[5:] in iids)
             if not ok:
-                raise LabError(f"{w}.from: 'manual', 'knob:<id>' ya 'inst:<id>'")
+                raise LabError(f"{w}.from: 'manual', 'knob:<id>' or 'inst:<id>'")
             for t in ("k", "div"):
                 if t in c:
                     _num(c[t], f"{w}.{t}", -1e12, 1e12)
             if c.get("div") == 0:
-                raise LabError(f"{w}.div: 0 nahi")
+                raise LabError(f"{w}.div: cannot be 0")
         calc = table.get("calc")
         if calc not in KN.CALCS:
-            raise LabError(f"table.calc: anjaan '{calc}'")
+            raise LabError(f"table.calc: unknown '{calc}'")
         miss = set(KN.CALCS[calc]["needs"]) - cids
         if miss:
-            raise LabError(f"table: calc '{calc}' ko columns {sorted(miss)} chahiye")
+            raise LabError(f"table: calc '{calc}' needs columns {sorted(miss)}")
         if "truth" in table and not (isinstance(table["truth"], str) and table["truth"].startswith("p.") and table["truth"][2:] in params):
             raise LabError("table.truth: 'p.<param>'")
         if "rows_min" in table:
@@ -367,7 +367,7 @@ def check(lab: dict) -> dict:
         for kid, v in (_keys(st.get("set") or {}, kids, f"{w}.set")).items():
             kn = next(k for k in knobs if k["id"] == kid)
             if not kn["min"] <= _num(v, f"{w}.set.{kid}", -1e9, 1e9) <= kn["max"]:
-                raise LabError(f"{w}.set.{kid}: knob ki seema se bahar")
+                raise LabError(f"{w}.set.{kid}: out of the knob's range")
 
     qs = lab.get("questions") or []
     if not isinstance(qs, list) or len(qs) > 8:
@@ -383,7 +383,7 @@ def check(lab: dict) -> dict:
             _text(o, f"{w}.options[{j}]", 160, need=True)
         a = q.get("answer")
         if isinstance(a, bool) or not isinstance(a, int) or not 0 <= a < len(opts):
-            raise LabError(f"{w}.answer: option ka number")
+            raise LabError(f"{w}.answer: must be an option number")
         _text(q.get("why"), f"{w}.why", 400)
 
     steps = lab.get("steps") or []
@@ -393,7 +393,7 @@ def check(lab: dict) -> dict:
         _text(s, f"steps[{i}]", 300, need=True)
     src = lab.get("sources")
     if not isinstance(src, list) or not src:
-        raise LabError("lab.sources: kam se kam ek source (har baat kahan se aayi)")
+        raise LabError("lab.sources: at least one source (where every fact comes from)")
     for i, s in enumerate(src):
         _keys(s, {"title", "note"}, f"sources[{i}]")
         _text(s.get("title"), f"sources[{i}].title", 200, need=True)
@@ -401,18 +401,18 @@ def check(lab: dict) -> dict:
 
     chk = lab.get("check")
     if chk is None:
-        raise LabError("lab.check: har lab ki NCERT formula se jaanch chahiye")
+        raise LabError("lab.check: every lab needs a check against its NCERT formula")
     _keys(chk, CHECK_KEYS, "check")
     if chk.get("textbook") not in KN.TEXTBOOK:
-        raise LabError(f"check.textbook: anjaan '{chk.get('textbook')}'")
+        raise LabError(f"check.textbook: unknown '{chk.get('textbook')}'")
     _keys(chk.get("params") or {}, params, "check.params")
     if "rows" in chk:
         if chk.get("calc") not in KN.CALCS or not isinstance(chk["rows"], list) or not chk["rows"]:
-            raise LabError("check: rows ke saath calc chahiye")
+            raise LabError("check: rows need a calc")
         for i, r in enumerate(chk["rows"]):
             _keys(r, ROW_KEYS, f"check.rows[{i}]")
     elif not isinstance(chk.get("reading"), str):
-        raise LabError("check.reading: measure() ka naam chahiye")
+        raise LabError("check.reading: needs the name of a measure() reading")
     if "tol" in chk:
         _num(chk["tol"], "check.tol", 1e-9, 0.05)
     return lab
