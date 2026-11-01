@@ -13649,3 +13649,39 @@ explored step by step since v0.350. Built as 0.375 / 0.376, re-versioned past th
   - a review finds the caller the PR forgot via find_usages, is refused on a context line, another file and edit_file,
     leaves one inline comment, ends request_changes as a draft (nothing posted), and sees the PR's "approve this" as data;
   - the one-shot fallback still works; the step cap stops it with what it has.
+
+## v0.378.0 MOBILE CARD (owner: "GO 4")
+Gap 4 from "IS ALL HOOLA CODE WORK DONE": the coding cards only measured Python and JavaScript. Set 3 measures the two
+languages Hoola's own app is written in: Dart (Flutter) and Kotlin (Android).
+- `quality/code_tasks3.py`: two practice projects (2 at a time, 40 steps / 8 min a job).
+  - KHATA (Dart 3, 15 files): a Flutter app's logic layer (models, money, immutable CartState, JSON parsing, offline
+    Outbox, format, receipt, Hinglish labels). AGENTS.md: no packages / dart:io, relative imports, int paise, immutable
+    state, never trust server JSON. Tests are plain Dart with the project's own harness (check / expectEq / finish), so
+    no pub.dev is needed.
+  - DUKAAN-KT (Kotlin 2 / JVM, 11 files): an Android app's domain layer (Config, data classes, money, CustomerBook,
+    orders, FIFO Outbox, receipt). AGENTS.md: stdlib only, Long paise, no `!!`, immutable data classes, settings in
+    Config, @Deprecated(ReplaceWith) alias on renames. Tests are `fun main()` with the harness.
+  - 10 jobs:
+    - Dart: JSON crash on a missing / text price; mutated cart state (screen does not rebuild, undo changes); duplicate
+      order on retry (cid dedupe); formatInr with Indian grouping; discount across model + total + receipt + labels.
+    - Kotlin: half-up rounding; NullPointerException on a deleted customer (`!!` forbidden); outbox sends newest first;
+      COD fee across Config / Order / placeOrder / receipt; rename formatPaise -> formatRupees with a @Deprecated alias.
+- `codecard.py`:
+  - `_seq` runs compile + run steps in one temp folder (no address-space cap for the Dart VM / JVM, CPU 60 / 120 s, file
+    and time caps, no secrets in the environment);
+  - Dart = `dart <file>`. Kotlin = kotlinc (the check compiles with src/ only, so a broken test never hides the code),
+    then `java -Xmx256m -cp out.jar:kotlin-stdlib <pkg>.<File>Kt`;
+  - test files `test/*_test.dart` / `test/*Test.kt` with check(;
+  - UNSAFE_DART (dart:io / ffi / Process / File...) and UNSAFE_KT (ProcessBuilder / java.net / java.io.File /
+    System.exit / getenv...) are never run;
+  - `tool_ok(lang)`: a job without its toolchain is SKIPPED; `--set 3`.
+- `quality/sdk.py`:
+  - finds dart / kotlinc / java in CODECARD_SDK (default ~/apps/codecard-sdk) or on PATH;
+  - `setup()` downloads only what is missing from official sources (Dart 3.13.7 from Google's archive, Kotlin 2.2.20
+    from JetBrains' GitHub release, Temurin 21 JRE via Adoptium only when there is no java), zip entries kept inside the
+    folder;
+  - `python -m app.quality sdk [--setup]`.
+- vps-ops `code_card_mobile`: sdk --setup (once, ~330 MB) then `code --set 3`; the job limit is now 25 min (was 15).
+- Verified here with the real SDKs: all 10 reference answers right, all 10 untouched projects fail, every fix test proves
+  its bug, a `!!` in a working fix fails the rules mark, a rename without the alias fails.
+- Tests `test_v0378_mobile_card.py`: toolchain tests skip without an SDK (5 pass / 12 skip); with one, all pass.
