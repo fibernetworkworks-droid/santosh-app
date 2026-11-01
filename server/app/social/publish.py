@@ -309,7 +309,7 @@ def publish_post(tenant: str, post_id: str, by_tap: bool = False) -> dict[str, A
             raise SocialError("Yeh post pehle hi ja chuka hai / ja raha hai.")
         if by_tap:
             p.approved_hash = post_hash(p)
-            p.seen = 1                                 # v0.365 her tap = her own OK
+            p.seen = 1                                 # v0.366 her tap = her own OK
         elif p.status != "approved" or not p.approved_hash or p.approved_hash != post_hash(p):
             raise SocialError("Yeh post aapki haan ke baad badla hai (ya haan nahi mili): dobara approve kijiye.")
         bad = problems(p)
@@ -373,7 +373,7 @@ def due(tenant: str, at: datetime | None = None) -> list[str]:
     late = (local - LATE).strftime("%Y-%m-%dT%H:%M")
     st = settings(tenant)
     if st["paused"]:
-        return []                                   # v0.365 pause / emergency stop: nothing goes out
+        return []                                   # v0.366 pause / emergency stop: nothing goes out
     trust, used = trust_of(tenant), auto_posts_today(tenant, local)
     out = []
     with session() as s:
@@ -390,7 +390,7 @@ def due(tenant: str, at: datetime | None = None) -> list[str]:
 
 
 def _told_auto(tenant: str, pid: str, r: dict[str, Any]) -> None:
-    """v0.365 Saathi: a plan post that went out on its own is told to her the same day (Bharosa: in the weekly pulse)."""
+    """v0.366 Saathi: a plan post that went out on its own is told to her the same day (Bharosa: in the weekly pulse)."""
     from .pulse import _say, trust_of
     if r.get("status") != "published" or trust_of(tenant) != "saathi":
         return

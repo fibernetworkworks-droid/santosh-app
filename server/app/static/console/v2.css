@@ -2278,3 +2278,8 @@ body.albon{overflow:hidden}
 .cad-change{display:flex;gap:8px}
 .cad-change input{flex:1;font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
 @media (max-width:640px){.cad-views{grid-template-columns:repeat(2,minmax(0,1fr))}.cad-change{flex-direction:column}}
+.cad-in{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:13px;color:var(--mut)}
+.cad-in label{display:flex;flex-direction:column;gap:4px}
+.cad-bom{border-collapse:collapse;font-size:13px;width:100%;max-width:520px}
+.cad-bom th,.cad-bom td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}
+.cad-bom th{color:var(--mut);font-weight:600}

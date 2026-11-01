@@ -35,7 +35,7 @@ IG_SCOPES = IG_SCOPES_READ + ["instagram_business_content_publish", "instagram_b
                                "instagram_business_manage_messages"]
 FB_SCOPES = FB_SCOPES_READ + ["pages_manage_posts", "publish_video", "pages_manage_engagement", "pages_read_user_content",
                               "pages_messaging"]
-IG_INBOX_SCOPES = ("instagram_business_manage_comments", "instagram_business_manage_messages")   # v0.364 Phase 3
+IG_INBOX_SCOPES = ("instagram_business_manage_comments", "instagram_business_manage_messages")   # v0.365 Phase 3
 IG_PUBLISH_SCOPE = "instagram_business_content_publish"
 _sleep = __import__("time").sleep               # tests swap this out (container polling)
 
@@ -335,7 +335,7 @@ def fb_permalink(post_id: str, token: str) -> str:
         return ""
 
 
-# ---------------------------------------------------------------- v0.364 inbox (Phase 3): comments + DMs on her own accounts
+# ---------------------------------------------------------------- v0.365 inbox (Phase 3): comments + DMs on her own accounts
 def ig_comments(media_id: str, token: str) -> list[dict[str, Any]]:
     js = _req("GET", f"{IG_GRAPH}/{_v()}/{media_id}/comments", params={
         "fields": "id,text,username,from{id,username},timestamp,hidden,replies{id,text,username,timestamp}", "limit": 50,

@@ -13211,9 +13211,27 @@ it newly created — rather than quietly missing them. A rollback that silently 
 `server/app/enterprise/run.py` (new, the engine) · `server/app/enterprise/models.py` (EntEndpoint, EntRun,
 EntRunRow) · `server/app/agent/enterprise_tools.py` · `server/tests/test_v0363_erp_live.py` (13 tests).
 
-## v0.364.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
-Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356 / 0.358, re-versioned past main's
-v0.356-v0.363 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASLI ERP KAAM ...).
+## v0.364.0 HOOLA CAD PRO (1 Nov 2026)
+Owner: "I WANT CAD TO PERFROM ALL COMPLEX, VERY COMPLEX, HARD, VERY HARD, ULTIMATE JOBS --- MAKE A HOOLA CAD POWERFULL".
+- `engineering/parts.py` = the H library inside the box: METRIC M2-M24 (tap / clearance / counterbore / countersink /
+  head / nut / washer sizes), `H.hole / cbore / csk / thread_note`, `socket_screw / hex_bolt / nut / washer`,
+  `spur_gear` (true involute, module / teeth / pressure angle / bore), `bearing` (608, 62x, 60x from the table),
+  `shaft` (DIN 6885 keyway), `extrusion` (2020-4040), `pipe`, `flange`. Loaded by the runner as `H`.
+- Assemblies: a `cq.Assembly` result is walked part by part (name, placement, colour) -> BOM with each part's mass,
+  "Every part valid" check, per-part colours in the views; STEP keeps the assembly tree.
+- Exports: part.step, part.stl, part.3mf, part.glb (viewer), section.dxf (section at mid-height), drawing.pdf page 2 =
+  hidden-line views from OCC (front / top / right with dashed hidden edges, iso).
+- ai.py: Opus with extended thinking (ENG_THINK_TOKENS 8000) for hard briefs and every fix; the model writes a PLAN and a
+  MATERIAL first; `ai.look` reviews the real rendered views (ENG_LOOK_ROUNDS, default 1) and sends problems into a fix.
+- Inputs: up to 3 photos / sketches (PNG/JPG/WEBP, 6 MB) and 2 STEP/STL files (40 MB; STEP must be ISO-10303-21) per job,
+  stored in the project's inputs/ folder, readable in the script only through `H.her_file(name)`.
+- Service: mass + centre of mass from the material density, 3D-print check (overhang %, fits a 220 mm bed), BOM table,
+  review notes; sandbox defaults 6 GB / 600 s. Console CAD Desk + phone CadDeskScreen: photo / STEP upload, BOM, mass,
+  print, review, 3MF / GLB / DXF buttons. Tests: tests/test_v0357_engineering_desk.py (16).
+- Large STEP uploads may need nginx `client_max_body_size 60m;` on the /api/eng location.
+## v0.365.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
+Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356 / 0.358 / 0.364, re-versioned past main's
+v0.356-v0.364 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASLI ERP KAAM ...).
 - `server/app/social/inbox.py` (table `social_inbox`, unique tenant + platform + item id): every ~15 min (desk job `inbox`,
   only when the desk is ready) the comments on her last 20 read posts and her DM threads (Instagram `/me/conversations`,
   Page `/conversations`) from the last 7 days. Skipped: her own comments / Page comments, threads where she spoke last,
@@ -13240,11 +13258,11 @@ v0.356-v0.363 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASL
   7 am daily run, so its comments could not be scanned; now read right after Connect.
 - Console (`employees.js` inbox tile with tabs + reply boxes, facts textarea) + phone (`SocialInboxScreen`, desk Inbox card,
   facts field). Privacy page: comments and messages paragraph (7 days, what is kept, trust, no delete, 24 h, no ads / training).
-- Tests: `server/tests/test_v0358_social_inbox.py` (11). Meta App Review needed for the new permissions before non-testers.
+- Tests: `server/tests/test_v0365_social_inbox.py` (11). Meta App Review needed for the new permissions before non-testers.
 
 
-## v0.365.0 SOCIAL MEDIA MANAGER Phase 4 - 24/7 + REPORTS (1 Nov 2026, owner: "GO PHASE 4")
-Built as 0.359, re-versioned after v0.364 (Phase 3). Module `server/app/social/pulse.py`.
+## v0.366.0 SOCIAL MEDIA MANAGER Phase 4 - 24/7 + REPORTS (1 Nov 2026, owner: "GO PHASE 4")
+Built as 0.359 / 0.365, re-versioned past main's v0.364 HOOLA CAD PRO. Module `server/app/social/pulse.py`.
 - Posting by trust (plan section 6). New nullable `social_posts.seen`: approve_calendar sets 0 (plan OK only), set_post
   approved / Publish now set 1, old rows NULL = treated as her own OK (Phase 2 behaviour kept). `publish.due` asks
   `pulse.may_go`: seen 0 + Seekh -> waits (`waiting_ok`, "Needs your OK" + "OK to post" on the card); Saathi / Bharosa ->
@@ -13261,4 +13279,4 @@ Built as 0.359, re-versioned after v0.364 (Phase 3). Module `server/app/social/p
   plan text = Meta Boost / Ads Manager, 15 km of her city, Rs 300 a day x 3 days, compare leads with spend.
 - Desk view `pulse` (settings, trust, cap, auto today, waiting_ok, best_times, boosts); console Posting controls / Best
   times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
-  social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0365_social_pulse.py` (12).
+  social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0366_social_pulse.py` (12).

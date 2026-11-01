@@ -61,7 +61,7 @@ def net_isolation() -> bool:
 
 def _limits():
     import resource
-    mem = _env_int("ENG_MEM_MB", 4096) * 1024 * 1024
+    mem = _env_int("ENG_MEM_MB", 6144) * 1024 * 1024
     for res, val in ((resource.RLIMIT_AS, mem), (resource.RLIMIT_FSIZE, 512 * 1024 * 1024), (resource.RLIMIT_CORE, 0)):
         try:
             resource.setrlimit(res, (val, val))
@@ -83,12 +83,12 @@ def run(job_dir: Path, code: str, timeout: int | None = None) -> dict[str, Any]:
     jp.write_text(json.dumps({"code": code, "out_dir": str(job_dir)}), encoding="utf-8")
     res_p = job_dir / "result.json"
     res_p.unlink(missing_ok=True)
-    cmd = [python(), "-I", str(RUNNER), str(jp)]
+    cmd = [python(), "-I", str(RUNNER), str(jp)]            # -I: the runner adds its own folder for parts.py
     if net_isolation():
         cmd = [shutil.which("unshare") or "unshare", "-rn"] + cmd
     env = {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(job_dir), "TMPDIR": str(job_dir / "tmp"),
            "LANG": "C.UTF-8", "OMP_NUM_THREADS": str(_env_int("ENG_THREADS", 2)), "PYTHONNOUSERSITE": "1"}
-    timeout = timeout or _env_int("ENG_TIMEOUT_S", 180)
+    timeout = timeout or _env_int("ENG_TIMEOUT_S", 600)
     t0 = time.time()
     with open(job_dir / "run.log", "wb") as logf:
         p = subprocess.Popen(cmd, cwd=str(job_dir), env=env, stdout=logf, stderr=subprocess.STDOUT,
