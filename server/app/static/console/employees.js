@@ -409,7 +409,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let CTIMER = null;
   const CSTATE = {queued: ['warn', 'Queued'], designing: ['v', 'Designing'], building: ['v', 'Building'], drawing: ['v', 'Drawing'],
                   done: ['ok', 'Ready'], failed: ['bad', 'Failed']};
-  const FILEN = [['part.step', 'STEP (CAD / CNC)'], ['part.stl', 'STL (3D print)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code']];
+  const FILEN = [['part.step', 'STEP (CAD / CNC)'], ['part.stl', 'STL (3D print)'], ['part.3mf', '3MF (3D print)'], ['part.glb', 'GLB (3D viewer / AR)'],
+                 ['section.dxf', 'DXF section (laser / CNC)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code']];
+  const b64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = no; r.readAsDataURL(f); });
   async function cad(el) {
     clearTimeout(CTIMER);
     let d;
@@ -417,14 +419,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     catch (e) { el.innerHTML = `<div class="vh"><h2>CAD Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
     const ps = d.projects || [];
     el.innerHTML = `<div class="vh"><h2>CAD Desk</h2><span class="muted em-sub">Describe a part with its sizes in mm. Hoola designs it, checks it and gives you STEP, STL and a drawing. Drafts for your engineer's review, not certified.</span></div>
-      <article class="tile gl cad-new"><textarea id="cadBrief" rows="3" placeholder="e.g. L bracket 80 x 40 mm, 10 mm thick, upright 30 mm, two 8 mm holes 56 mm apart, 1 mm fillets"></textarea>
-      <div class="acts"><button class="btn go" type="button" id="cadGo">Design this part</button><span class="muted">${esc(String(d.today || 0))} today</span></div></article>
+      <article class="tile gl cad-new"><textarea id="cadBrief" rows="4" placeholder="A single part or a whole assembly. e.g. gearbox: 2 spur gears module 2 (20 and 40 teeth) on 15 mm shafts with 6202 bearings in an aluminium housing 4 mm walls, M5 lid screws"></textarea>
+      <div class="cad-in"><label>Sketch / photo (up to 3) <input type="file" id="cadImg" accept="image/png,image/jpeg,image/webp" multiple></label>
+      <label>Your STEP / STL to modify or fit (up to 2) <input type="file" id="cadFile" accept=".step,.stp,.stl" multiple></label></div>
+      <div class="acts"><button class="btn go" type="button" id="cadGo">Design it</button><span class="muted">${esc(String(d.today || 0))} today</span></div></article>
       ${ps.length ? ps.map(cadCard).join('') : '<div class="empty">No parts yet.</div>'}`;
     el.querySelector('#cadGo').addEventListener('click', async ev => {
       const brief = el.querySelector('#cadBrief').value.trim();
       if (!brief) return;
       ev.target.disabled = true;
-      try { await api('POST', '/api/eng/projects', {brief}); toast('Designing. It takes about a minute.'); }
+      try {
+        const images = await Promise.all([...el.querySelector('#cadImg').files].slice(0, 3).map(b64));
+        const files = await Promise.all([...el.querySelector('#cadFile').files].slice(0, 2).map(async f => ({name: f.name, data: await b64(f)})));
+        await api('POST', '/api/eng/projects', {brief, images, files});
+        toast('Designing. A simple part takes about a minute, a big assembly a few.');
+      }
       catch (e) { toast(e.message, true); }
       cad(el);
     });
@@ -443,6 +452,18 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
     if (ps.some(p => !['done', 'failed'].includes(p.status))) CTIMER = setTimeout(() => { if (visible(el)) cad(el); }, 4000);
   }
+  function cadMore(v) {                                   // v0.362 material, mass, parts list, printing, review, plan
+    const bits = [];
+    if (v.material) bits.push(`Material: ${esc(v.material)}${v.mass_g ? ` · about ${num(v.mass_g)} g` : ''}`);
+    if (v.print && v.print.overhang_pct !== undefined)
+      bits.push(`3D print: ${num(v.print.overhang_pct)}% overhang${v.print.fits_220_bed ? ' · fits a 220 mm bed' : ' · bigger than a 220 mm bed'}`);
+    if (v.review && v.review.problems && v.review.problems.length) bits.push(`Review notes: ${v.review.problems.map(esc).join('; ')}`);
+    else if (v.review && v.review.ok) bits.push('Opus review: matches the ask');
+    const bom = (v.parts || []).length ? `<table class="cad-bom"><thead><tr><th>Part</th><th>Volume (mm³)</th><th>Mass (g)</th></tr></thead><tbody>${
+      v.parts.map(x => `<tr><td>${esc(x.name)}</td><td>${num(x.volume_mm3)}</td><td>${x.mass_g == null ? '–' : num(x.mass_g)}</td></tr>`).join('')}</tbody></table>` : '';
+    const plan = v.plan ? `<details><summary>Design plan</summary><p class="muted">${esc(v.plan)}</p></details>` : '';
+    return `${bits.length ? `<p class="muted">${bits.join('<br>')}</p>` : ''}${bom}${plan}`;
+  }
   function cadCard(p) {
     const st = CSTATE[p.status] || ['', p.status], v = p.latest;
     const views = v ? ['iso', 'front', 'top', 'right'].filter(k => v.files[k + '.png'])
@@ -456,6 +477,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       ${views ? `<div class="cad-views">${views}</div>` : ''}
       ${bb ? `<p class="muted">${esc(bb)}${v.volume_mm3 ? ' · ' + num(v.volume_mm3) + ' mm³' : ''}${v.assumed && v.assumed.toLowerCase() !== 'none' ? ' · Assumed: ' + esc(v.assumed) : ''}</p>` : ''}
       ${checks ? `<div class="cad-checks">${checks}</div>` : ''}
+      ${v ? cadMore(v) : ''}
       ${files ? `<div class="acts">${files}</div>` : ''}
       ${v && !busy ? `<div class="cad-change"><input data-cadin="${esc(p.id)}" placeholder="Change it, e.g. holes 10 mm, wall 3 mm thicker"><button class="btn soft" type="button" data-cadch="${esc(p.id)}">Make next version</button></div>` : ''}
       <div class="acts"><button class="btn soft em-leave" type="button" data-caddel="${esc(p.id)}">Delete</button></div></article>`;

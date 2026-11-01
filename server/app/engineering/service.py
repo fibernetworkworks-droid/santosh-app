@@ -29,10 +29,17 @@ from . import ai, guard, render, sandbox
 
 log = logging.getLogger("santosh.engineering")
 HIRE_KEY = "cad"
-MAX_FIXES = 2
+MAX_FIXES = 3
+# v0.362 g / cm3 (common handbook values) for mass; the model names one of these keys
+DENSITY = {"steel": 7.85, "stainless": 8.0, "aluminium": 2.70, "aluminum": 2.70, "brass": 8.5, "copper": 8.96,
+           "cast iron": 7.2, "titanium": 4.43, "abs": 1.04, "pla": 1.24, "petg": 1.27, "nylon": 1.14, "pom": 1.41,
+           "acrylic": 1.18, "polycarbonate": 1.20, "wood": 0.6, "rubber": 1.2}
+MAX_IMAGES, MAX_IMAGE_BYTES = 3, 6_000_000
+MAX_FILES, MAX_FILE_BYTES = 2, 40_000_000
 _POOL = ThreadPoolExecutor(max_workers=1, thread_name_prefix="engineering")
 _LOCK = threading.Lock()
-FILES = ("part.step", "part.stl", "drawing.pdf", "iso.png", "front.png", "top.png", "right.png", "part.py")
+FILES = ("part.step", "part.stl", "part.3mf", "part.glb", "section.dxf", "drawing.pdf", "iso.png", "front.png", "top.png",
+         "right.png", "part.py")
 
 
 class EngError(Exception):
@@ -47,11 +54,12 @@ class EngProject(Base):
     kind: Mapped[str] = mapped_column(String(16), default="cad")
     title: Mapped[str] = mapped_column(String(120), default="")
     brief: Mapped[str] = mapped_column(Text, default="")
-    status: Mapped[str] = mapped_column(String(16), default="queued")   # queued|designing|building|drawing|done|failed
+    status: Mapped[str] = mapped_column(String(16), default="queued")   # queued|designing|building|checking|drawing|done|failed
     stage: Mapped[str] = mapped_column(String(160), default="")
     error: Mapped[str] = mapped_column(Text, default="")
     pending: Mapped[dict] = mapped_column(JSON, default=dict)            # {mode: new|change, words}
     versions: Mapped[list] = mapped_column(JSON, default=list)
+    inputs: Mapped[list | None] = mapped_column(JSON, nullable=True)     # v0.362 [{name, kind: image|cad}]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -109,9 +117,11 @@ def view(r: EngProject) -> dict[str, Any]:
     for v in r.versions or []:
         files = {f: file_url(r.id, f"v{v['n']}/{f}") for f in FILES if f in (v.get("files") or [])}
         vs.append({**{k: v.get(k) for k in ("n", "title", "size", "bbox", "volume_mm3", "checks", "assumed", "notes",
-                                            "at", "seconds", "words")}, "files": files})
+                                            "at", "seconds", "words", "plan", "material", "mass_g", "com", "parts",
+                                            "print", "review")}, "files": files})
     return {"id": r.id, "kind": r.kind, "title": r.title or "Part", "brief": r.brief, "status": r.status, "stage": r.stage,
             "error": r.error, "versions": vs, "latest": vs[-1] if vs else None,
+            "inputs": [i.get("name") for i in (r.inputs or [])],
             "created_at": r.created_at.isoformat() if r.created_at else "",
             "updated_at": r.updated_at.isoformat() if r.updated_at else ""}
 
@@ -161,24 +171,54 @@ def _gate(tenant: str) -> None:
         raise EngError(f"Aaj ke {cap} CAD parts ho gaye; kal phir banenge.")
     with session() as s:
         busy = s.scalars(select(EngProject.id).where(EngProject.tenant_id == tenant,
-                                                     EngProject.status.in_(("queued", "designing", "building", "drawing")))).first()
+                                                     EngProject.status.in_(("queued", "designing", "building", "checking", "drawing")))).first()
     if busy:
         raise EngError("Ek part abhi ban raha hai; uske poora hote hi agla shuru karenge.")
 
 
 # ---------------------------------------------------------------- public actions
-def start(tenant: str, conv: str, brief: str) -> dict[str, Any]:
+def _clean_inputs(images: list[bytes] | None, files: list[tuple[str, bytes]] | None) -> list[tuple[str, str, bytes]]:
+    """[(name, kind, bytes)] after the size / type checks; raises EngError with a plain reason."""
+    out: list[tuple[str, str, bytes]] = []
+    for i, b in enumerate((images or [])[:MAX_IMAGES]):
+        if not b or len(b) > MAX_IMAGE_BYTES:
+            raise EngError("Photo 6 MB se chhoti honi chahiye.")
+        ext = "png" if b[:4] == b"\x89PNG" else "jpg" if b[:2] == b"\xff\xd8" else "webp" if b[8:12] == b"WEBP" else ""
+        if not ext:
+            raise EngError("Sketch / photo PNG, JPG ya WEBP ho.")
+        out.append((f"sketch_{i + 1}.{ext}", "image", b))
+    for name, b in (files or [])[:MAX_FILES]:
+        base = re.sub(r"[^\w\-. ]", "_", str(name or "")).strip()[:70] or "file"
+        if not re.search(r"\.(step|stp|stl)$", base, re.I):
+            raise EngError("CAD file .step / .stp / .stl honi chahiye.")
+        if not b or len(b) > MAX_FILE_BYTES:
+            raise EngError("CAD file 40 MB se chhoti honi chahiye.")
+        head = b[:400].upper()
+        if base.lower().endswith((".step", ".stp")) and b"ISO-10303-21" not in head:
+            raise EngError(f"{base} asli STEP file nahi lagti.")
+        out.append((base, "cad", b))
+    return out
+
+
+def start(tenant: str, conv: str, brief: str, images: list[bytes] | None = None,
+          files: list[tuple[str, bytes]] | None = None) -> dict[str, Any]:
     brief = (brief or "").strip()
     if len(brief) < 4:
         raise EngError("Part ke baare mein likhiye: kya hai, size (mm), holes, material.")
+    ins = _clean_inputs(images, files)
     ensure_table()
     _gate(tenant)
     with session() as s:
-        r = EngProject(tenant_id=tenant, conversation_id=conv or "", brief=brief[:4000], status="queued",
-                       stage="Shuru ho raha hai", pending={"mode": "new"})
+        r = EngProject(tenant_id=tenant, conversation_id=conv or "", brief=brief[:6000], status="queued",
+                       stage="Shuru ho raha hai", pending={"mode": "new"},
+                       inputs=[{"name": n, "kind": k} for n, k, _ in ins])
         s.add(r)
         s.flush()
         pid = r.id
+    idir = _pdir(tenant, pid) / "inputs"
+    for n, _k, b in ins:
+        idir.mkdir(parents=True, exist_ok=True)
+        (idir / n).write_bytes(b)
     _submit(pid)
     return get(tenant, pid)
 
@@ -247,9 +287,17 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
     if vol <= 0:
         probs.append("the result has no volume")
     n = int(res.get("solids") or 0)
-    out.append({"name": "One body", "ok": n == 1, "note": f"{n} bodies"})
-    if n != 1:
-        probs.append(f"the result has {n} separate bodies: union them into one solid (unless she asked for parts)")
+    parts = res.get("parts") or []
+    if parts:                                       # v0.362 an assembly: every part must be a valid solid of its own
+        bad = [p["name"] for p in parts if not p.get("valid") or not p.get("volume_mm3")]
+        out.append({"name": "Every part valid", "ok": not bad, "note": f"{len(parts)} parts" + (f", broken: {', '.join(bad)}" if bad else "")})
+        if bad:
+            probs.append(f"these assembly parts are broken or empty: {', '.join(bad)}")
+    else:
+        out.append({"name": "One body", "ok": n == 1, "note": f"{n} bodies"})
+        if n != 1:
+            probs.append(f"the result has {n} separate bodies: union them into one solid, or return a cq.Assembly "
+                         "if she asked for several parts")
     bb = res.get("bbox") or {}
     real = sorted([float(bb.get("x", 0)), float(bb.get("y", 0)), float(bb.get("z", 0))])
     if len(size) == 3:
@@ -261,6 +309,47 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
             probs.append(f"the bounding box is {bb.get('x')} x {bb.get('y')} x {bb.get('z')} mm but the part should be "
                          f"{size[0]:g} x {size[1]:g} x {size[2]:g} mm")
     return out, probs
+
+
+def printability(mesh: dict[str, Any], bbox: dict[str, Any]) -> dict[str, Any]:
+    """v0.362 3D printing hints from the mesh: how much surface hangs down steeper than 45 deg (needs supports) and
+    whether it fits a common 220 x 220 x 250 mm bed."""
+    v, tris = mesh.get("v") or [], mesh.get("t") or []
+    if not v or not tris:
+        return {}
+    zmin = min(p[2] for p in v)
+    total = over = 0.0
+    for a, b, c in tris:
+        pa, pb, pc = v[a], v[b], v[c]
+        ux, uy, uz = pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]
+        wx, wy, wz = pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2]
+        nx, ny, nz = uy * wz - uz * wy, uz * wx - ux * wz, ux * wy - uy * wx
+        area = (nx * nx + ny * ny + nz * nz) ** 0.5 / 2
+        total += area
+        if area and nz / (2 * area) < -0.7071 and min(pa[2], pb[2], pc[2]) > zmin + 0.2:
+            over += area
+    dims = sorted([float(bbox.get("x", 0)), float(bbox.get("y", 0)), float(bbox.get("z", 0))])
+    return {"overhang_pct": round(100 * over / total, 1) if total else 0.0,
+            "fits_220_bed": dims[0] <= 220 and dims[1] <= 220 and dims[2] <= 250}
+
+
+def _mass(volume_mm3: float, material: str) -> float | None:
+    k = next((m for m in DENSITY if m in (material or "").lower()), None)
+    return round(volume_mm3 * DENSITY[k] / 1000.0, 1) if k else None
+
+
+def _inputs(r: EngProject) -> tuple[list[bytes], list[str]]:
+    idir = _pdir(r.tenant_id, r.id) / "inputs"
+    imgs, files = [], []
+    for i in r.inputs or []:
+        p = idir / str(i.get("name"))
+        if not p.is_file():
+            continue
+        if i.get("kind") == "image":
+            imgs.append(p.read_bytes())
+        else:
+            files.append(p.name)
+    return imgs, files
 
 
 def run_job(pid: str) -> None:
@@ -299,53 +388,86 @@ def _run(pid: str) -> None:
     r = _own_any(pid)
     mode = (r.pending or {}).get("mode", "new")
     words = (r.pending or {}).get("words", "")
-    _save(pid, status="designing", stage="Design likh raha hoon", error="")
+    imgs, files = _inputs(r)
+    _save(pid, status="designing", stage="Design soch raha hoon", error="")
     last = (r.versions or [])[-1] if r.versions else None
     if mode == "change" and last:
         code_prev = (_pdir(r.tenant_id, pid) / f"v{last['n']}" / "part.py").read_text(encoding="utf-8")
-        d = ai.change(r.brief, code_prev, words)
+        d = ai.change(r.brief, code_prev, words, files)
     else:
-        d = ai.write(r.brief)
+        d = ai.write(r.brief, imgs, files)
     n = (last["n"] + 1) if last else 1
     vdir = _pdir(r.tenant_id, pid) / f"v{n}"
+    ask_txt = r.brief + (f"\nCHANGE: {words}" if words else "")
+    look_rounds = int(os.environ.get("ENG_LOOK_ROUNDS", "1") or 0)
     t0 = time.time()
     res: dict[str, Any] = {}
     chk: list[dict[str, Any]] = []
+    review: dict[str, Any] = {}
+    views: dict[str, bytes] = {}
     for attempt in range(MAX_FIXES + 1):
         probs = guard.problems(d.get("code", ""))
+        views = {}
         if not probs:
             _save(pid, status="building", stage="Part bana raha hoon" + (f" (sudhaar {attempt})" if attempt else ""))
             res = sandbox.run(vdir, d["code"])
             probs = list(res.get("errors") or [])
             if res.get("ok"):
                 chk, probs = checks(res, d.get("size") or [])
+        if not probs and look_rounds > 0 and attempt < MAX_FIXES:
+            _save(pid, status="checking", stage="Opus model ko dekh kar jaanch raha hai")
+            mesh = json.loads((vdir / "mesh.json").read_text(encoding="utf-8"))
+            views = render.views(mesh, 600)
+            review = ai.look(ask_txt, [views[k] for k in ("iso", "front", "top", "right")])
+            look_rounds -= 1
+            if not review.get("ok"):
+                probs = [f"design review: {p}" for p in review.get("problems") or []]
         if not probs:
             break
         if attempt == MAX_FIXES:
             if res.get("ok"):
-                break                               # keep it, the failed checks show on the desk
-            raise EngError("Part teen koshish mein nahi bana: " + "; ".join(probs)[:300])
+                break                               # keep it; failed checks / review show on the desk
+            raise EngError("Part chaar koshish mein nahi bana: " + "; ".join(probs)[:300])
         _save(pid, status="designing", stage=f"Galti theek kar raha hoon ({attempt + 1}/{MAX_FIXES})")
-        fixed = ai.fix(r.brief + (f"\nCHANGE: {words}" if words else ""), d.get("code", ""), probs)
-        d = {**fixed, "title": fixed.get("title") or d.get("title", ""), "size": fixed.get("size") or d.get("size") or []}
+        fixed = ai.fix(ask_txt, d.get("code", ""), probs, files,
+                       [views[k] for k in ("iso", "front", "top", "right")] if views else None)
+        d = {**fixed, "title": fixed.get("title") or d.get("title", ""), "size": fixed.get("size") or d.get("size") or [],
+             "material": fixed.get("material") or d.get("material", ""), "plan": fixed.get("plan") or d.get("plan", "")}
     (vdir / "part.py").write_text(d["code"], encoding="utf-8")
     _save(pid, status="drawing", stage="Views aur drawing bana raha hoon")
     mesh = json.loads((vdir / "mesh.json").read_text(encoding="utf-8"))
     for name, data in render.views(mesh).items():
         (vdir / f"{name}.png").write_bytes(data)
     title = d.get("title") or r.title or "Part"
-    (vdir / "drawing.pdf").write_bytes(render.drawing_pdf(mesh, {**res, "title": title}))
+    material = d.get("material") or ""
+    mass = _mass(float(res.get("volume_mm3") or 0), material)
+    parts = [{**p, "mass_g": _mass(float(p.get("volume_mm3") or 0), material)} for p in res.get("parts") or []]
+    hlr = {}
+    hp = vdir / "hlr.json"
+    if hp.exists():
+        try:
+            hlr = json.loads(hp.read_text(encoding="utf-8"))
+        except ValueError:
+            hlr = {}
+    (vdir / "drawing.pdf").write_bytes(render.drawing_pdf(mesh, {**res, "title": title, "material": material,
+                                                                 "mass_g": mass or 0}, hlr))
+    pr = printability(mesh, res.get("bbox") or {})
     (vdir / "mesh.json").unlink(missing_ok=True)
+    hp.unlink(missing_ok=True)
     ver = {"n": n, "title": title, "size": d.get("size") or [], "bbox": res.get("bbox"), "volume_mm3": res.get("volume_mm3"),
            "checks": chk, "assumed": d.get("assumed", ""), "notes": d.get("notes", ""), "words": words,
+           "plan": d.get("plan", ""), "material": material, "mass_g": mass, "com": res.get("com"), "parts": parts,
+           "print": pr, "review": review,
            "files": [f for f in FILES if (vdir / f).exists()], "seconds": round(time.time() - t0, 1),
            "at": now().isoformat(), "day": _ist_day(datetime.now(timezone.utc))}
     rr = _save(pid, status="done", stage="Taiyaar", title=title[:120], versions=[*(r.versions or []), ver], pending={})
     bb = res.get("bbox") or {}
-    bad = [c["name"] for c in chk if not c["ok"]]
-    _note(rr, f"CAD part taiyaar: {title}, {bb.get('x', 0):g} x {bb.get('y', 0):g} x {bb.get('z', 0):g} mm"
+    bad = [c["name"] for c in chk if not c["ok"]] + (["design review"] if review and not review.get("ok") else [])
+    _note(rr, f"CAD {'assembly' if parts else 'part'} taiyaar: {title}, {bb.get('x', 0):g} x {bb.get('y', 0):g} x "
+              f"{bb.get('z', 0):g} mm" + (f", {len(parts)} parts" if parts else "")
+              + (f", about {mass:,.0f} g ({material})" if mass else "")
               + (f" (jaanch mein dikkat: {', '.join(bad)})" if bad else "")
-              + ". STEP, STL aur drawing CAD Desk par hain.")
+              + ". STEP, STL, 3MF, drawing CAD Desk par hain.")
 
 
 def _own_any(pid: str) -> EngProject:
