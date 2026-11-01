@@ -50,6 +50,7 @@ import 'legalres_screen.dart';
 import 'shiksha_screen.dart';
 import 'guru_screen.dart';
 import 'daftar_screen.dart';
+import 'shodh_screen.dart';
 import 'compliance_screen.dart';
 import 'contracts_screen.dart';
 import 'cosec_screen.dart';
@@ -721,6 +722,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Hazri, copy / OMR / Forms grading, timetable, report card'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DaftarScreen(app: app))),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.science_rounded, color: C.accent),
+              title: Text('${app.aName} · Research assistant', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Papers (OpenAlex / Crossref / arXiv / PubMed), review matrix, gaps, references'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShodhScreen(app: app))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

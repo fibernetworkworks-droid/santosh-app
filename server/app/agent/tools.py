@@ -987,9 +987,10 @@ _DIET_KEEP_RE = re.compile(r"confirm|approval|consent|otp|password|tier-2|bhejo|
 from .shiksha_tools import SHIKSHA_HANDLERS, SHIKSHA_LABELS, SHIKSHA_TOOLS  # noqa: E402
 from .guru_tools import GURU_HANDLERS, GURU_LABELS, GURU_TOOLS  # noqa: E402  (Phase 2: personal tutor)
 from .daftar_tools import DAFTAR_HANDLERS, DAFTAR_LABELS, DAFTAR_TOOLS  # noqa: E402  (Phase 3: school office)
+from .shodh_tools import SHODH_HANDLERS, SHODH_LABELS, SHODH_TOOLS  # noqa: E402  (Phase 4: research assistant)
 
 for _t, _l, _h in ((SHIKSHA_TOOLS, SHIKSHA_LABELS, SHIKSHA_HANDLERS), (GURU_TOOLS, GURU_LABELS, GURU_HANDLERS),
-                   (DAFTAR_TOOLS, DAFTAR_LABELS, DAFTAR_HANDLERS)):
+                   (DAFTAR_TOOLS, DAFTAR_LABELS, DAFTAR_HANDLERS), (SHODH_TOOLS, SHODH_LABELS, SHODH_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)

@@ -857,6 +857,7 @@ def init_db(url: str | None = None):
     from .pathyakram import models as _pathyakram  # noqa: F401
     from .guru import models as _guru  # noqa: F401  (Shiksha Phase 2 tutor)
     from .daftar import models as _daftar  # noqa: F401  (Shiksha Phase 3 school office)
+    from .shodh import models as _shodh  # noqa: F401  (Shiksha Phase 4 research assistant)
     from .compliance import models as _compliance  # noqa: F401
     from .contracts import models as _contracts  # noqa: F401
     from .cosec import models as _cosec  # noqa: F401
