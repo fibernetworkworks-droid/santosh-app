@@ -14,6 +14,7 @@ on:
       - "server/app/dbmove.py"
       - "server/tests/test_v0390_pakki_neev.py"
       - "server/tests/test_v0396_apna_database.py"
+      - "server/tests/test_v0404_apna_database_2.py"
       - "server/app/pgdb/**"
       - ".github/workflows/app-load.yml"
   workflow_dispatch:
@@ -31,6 +32,22 @@ jobs:
           docker run -d --name pg -p 5432:5432 -e POSTGRES_PASSWORD=hoola postgres:16 \
             -c max_locks_per_transaction=1024 -c max_connections=400 -c shared_buffers=256MB
           for i in $(seq 1 60); do docker exec pg pg_isready -U postgres && break; sleep 1; done
+      - name: Her other databases - MariaDB (MySQL family) + MongoDB replica set (Atlas-like)
+        run: |
+          docker run -d --name my -p 3306:3306 -e MARIADB_ROOT_PASSWORD=hoola mariadb:11
+          docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all
+          for i in $(seq 1 60); do docker exec my mariadb -uroot -phoola -e 'select 1' >/dev/null 2>&1 && break; sleep 2; done
+          for i in $(seq 1 30); do docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]}).ok' && break; sleep 2; done
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Firebase - the official Firestore emulator
+        run: |
+          mkdir -p "$RUNNER_TEMP/fb" && cd "$RUNNER_TEMP/fb"
+          echo '{"emulators":{"firestore":{"port":8080,"host":"127.0.0.1"}}}' > firebase.json
+          nohup npx -y firebase-tools@15 emulators:start --only firestore --project demo-hoola > emu.log 2>&1 &
+          for i in $(seq 1 90); do curl -s -o /dev/null http://127.0.0.1:8080 && break; sleep 2; done
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -59,6 +76,14 @@ jobs:
           HOOLA_TEST_PG: ""
           HOOLA_PG_ADMIN: postgresql+psycopg://postgres:hoola@127.0.0.1:5432/postgres
         run: python -m pytest -q -p no:cacheprovider tests/test_v0396_apna_database.py
+      - name: Her MySQL / MongoDB / Firebase - every kind against a real server
+        working-directory: server
+        env:
+          HOOLA_TEST_PG: ""
+          HOOLA_MYSQL_ADMIN: mysql://root:hoola@127.0.0.1:3306
+          HOOLA_MONGO: mongodb://127.0.0.1:27017/?directConnection=true
+          HOOLA_FIRESTORE_EMU: 127.0.0.1:8080
+        run: python -m pytest -q -p no:cacheprovider tests/test_v0404_apna_database_2.py
       - name: The proof - 1,000 customers, 4 worker processes, one Postgres
         working-directory: server
         env:
