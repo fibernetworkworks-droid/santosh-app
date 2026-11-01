@@ -164,6 +164,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.358 SOCIAL MEDIA MANAGER Phase 3 INBOX (`social/inbox.py`): IG + FB comments and DMs every 15 min, sorted, drafts from her facts only;
+  Seekh = her tap, Saathi / Bharosa = simple replies (cap 40 / 150, DM 24 h window) + spam hidden never deleted; complaints always wait; leads to chat.
 - v0.355 SOCIAL MEDIA MANAGER Phase 2 (`social/publish.py`): approved posts go out to Instagram (image / carousel / Reel / Story) + Facebook Page,
   approval hash-bound to the exact post, photo upload or Brand poster, signed media links, IG 24 h cap, missed > 1 day late; Publish now.
 - v0.354 HOOLA STUDIO PAGE (built as 0.351): website /studio (`static/site/studio.html` + `studio.js`, real console screens in `static/site/studio/*.webp`), motion demo + pinned Director + tool tabs + price card; samples wall reads public `/api/site/showcase` (showcase slots only); Studio link in every site menu.

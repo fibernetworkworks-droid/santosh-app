@@ -1,4 +1,4 @@
-"""v0.356 THE SOCIAL INBOX, Phase 3 of docs/SOCIAL_EMPLOYEE_PLAN.md: comments on her recent Instagram / Facebook Page posts
+"""v0.358 THE SOCIAL INBOX, Phase 3 of docs/SOCIAL_EMPLOYEE_PLAN.md: comments on her recent Instagram / Facebook Page posts
 and her Instagram / Messenger DMs are read every ~15 minutes, sorted (lead / question / praise / complaint / spam / abuse /
 other), and every one that needs an answer gets a reply DRAFT written only from her facts.
 

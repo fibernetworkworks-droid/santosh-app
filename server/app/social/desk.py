@@ -209,7 +209,7 @@ def onboard(tenant: str, business: str = "", city: str = "", sells: str = "", cu
     langs = [str(x).strip()[:20] for x in (languages or ["Hinglish"]) if str(x).strip()][:4] or ["Hinglish"]
     prof = {"business": str(business).strip()[:120], "city": str(city).strip()[:80], "sells": str(sells).strip()[:300],
             "customers": str(customers).strip()[:300], "goal": str(goal).strip()[:200], "languages": langs,
-            "website": str(website).strip()[:200], "facts": str(facts or "").strip()[:2000]}   # v0.356 reply facts
+            "website": str(website).strip()[:200], "facts": str(facts or "").strip()[:2000]}   # v0.358 reply facts
     with session() as s:
         d = _desk(s, tenant)
         d.profile = json.dumps(prof, ensure_ascii=False)
@@ -279,7 +279,7 @@ def finish_link(platform: str, code: str, state: str, background: bool = True) -
         else:
             tok = M.fb_exchange(code)
             pages = M.fb_pages(tok["access_token"])
-            try:                                   # v0.356 which permissions she granted (inbox needs engagement + messaging)
+            try:                                   # v0.358 which permissions she granted (inbox needs engagement + messaging)
                 granted = ",".join(str(x) for x in (M.fb_debug_token(tok["access_token"]).get("scopes") or []))
             except M.MetaError:
                 granted = ""
@@ -311,7 +311,7 @@ def finish_link(platform: str, code: str, state: str, background: bool = True) -
             threading.Thread(target=run_now, args=(tenant, "first"), daemon=True).start()
         else:
             first_run(tenant)
-    else:                                      # v0.356 a second account: read its posts now (not at tomorrow's 7 am)
+    else:                                      # v0.358 a second account: read its posts now (not at tomorrow's 7 am)
         with session() as s:
             ids = [a.id for a in s.scalars(select(SocialAccount).where(SocialAccount.tenant_id == tenant,
                                                                        SocialAccount.platform == platform)).all()]
@@ -931,7 +931,7 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
     out = ["publish"] if state == "ready" else []      # v0.355 every sweep (~4 min): approved posts whose time has come
     last_i = stamps.get("inbox", "")
     if state == "ready" and (not last_i or local - datetime.fromisoformat(last_i) >= timedelta(minutes=14)):
-        out.append("inbox")                            # v0.356 comments + DMs every ~15 min
+        out.append("inbox")                            # v0.358 comments + DMs every ~15 min
     if state in ("new", "error"):
         out.append("first")
     last_h = stamps.get("hourly", "")

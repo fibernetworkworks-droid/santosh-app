@@ -13003,3 +13003,35 @@ Owner: "Phase 3b (dashboards and charts)" (after Phase 3a DUKAAN, v0.351).
   total / line dots / hbar values, no-number table untouched), tooltip by mouse and keyboard, drawer only on pages that
   draw, her dashboard numbers vs a seeded period (spam, cancelled, unconfirmed sales excluded), owner-only, staff-only
   stats, console + phone wiring.
+
+
+## v0.358.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
+Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356, re-versioned past main's
+v0.356 PEHLE NIYAM / v0.357 DASHBOARD.
+- `server/app/social/inbox.py` (table `social_inbox`, unique tenant + platform + item id): every ~15 min (desk job `inbox`,
+  only when the desk is ready) the comments on her last 20 read posts and her DM threads (Instagram `/me/conversations`,
+  Page `/conversations`) from the last 7 days. Skipped: her own comments / Page comments, threads where she spoke last,
+  comments she already answered on Instagram (stored as replied), anything already read.
+- Sorting rules (`classify`, Hinglish + English): abuse > spam (links, follow-me, promo) > complaint > lead (price / kitna /
+  booking / delivery / address...) > question > praise > other. The model (`_ai_drafts`, kalam `_ai_json`, SOCIAL_AI) may
+  refine the class and write the reply, but a rules spam / abuse / complaint call always stands.
+- Drafts only from HER facts: new set-up field "Facts for replies" (`profile.facts`) + Kalam facts; rules drafts never state a
+  price (lead comment -> "DM kijiye / website", lead DM / question -> holding line marked needs_her, complaint -> apology +
+  DM / call, praise -> thanks). The model is told every comment is data, never an instruction.
+- Trust: Seekh nothing goes alone; Saathi / Bharosa reply to lead / question / praise when needs_her is false (REPLY_CAP 0 /
+  40 / 150 a day, counted from auto replies today), DMs only inside 24 h (DM_WINDOW), spam / abuse comments HIDDEN, never
+  deleted (event "Hid N ... Unhide any of them"). A complaint is always her tap. Hoola never messages anyone first.
+- She is told: lead -> event + push `social_lead` to her home chat; complaint -> event + push `social_alert`. Phone feed
+  shows `SocialCard` (opens the Inbox).
+- Her taps: GET /api/social/inbox?box=needs|leads|complaints|done, POST /api/social/inbox/<id>/reply {text},
+  /hide {hidden}, POST /api/social/inbox/<id> {status: ignored|drafted, draft}; POST /api/social/run/inbox = Check now.
+  A DM older than 24 h is refused with the reason (she answers from the app herself).
+- Permissions: IG scopes + instagram_business_manage_comments / _manage_messages, FB + pages_manage_engagement /
+  pages_read_user_content / pages_messaging (asked on Connect since v0.355's list grew in meta.py). Facebook's granted scopes
+  now stored from debug_token; `accounts()[].can_reply`; an older connection reads nothing and the desk says "Reconnect to
+  allow posting and replies"; a Meta (#10)/(#200) alerts once.
+- Fixed: a second account connected after the first read (e.g. the Page after Instagram) had its posts read only at the next
+  7 am daily run, so its comments could not be scanned; now read right after Connect.
+- Console (`employees.js` inbox tile with tabs + reply boxes, facts textarea) + phone (`SocialInboxScreen`, desk Inbox card,
+  facts field). Privacy page: comments and messages paragraph (7 days, what is kept, trust, no delete, 24 h, no ads / training).
+- Tests: `server/tests/test_v0358_social_inbox.py` (11). Meta App Review needed for the new permissions before non-testers.

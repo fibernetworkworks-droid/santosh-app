@@ -1064,7 +1064,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
 }
 
 
-/// v0.356 SOCIAL INBOX: comments on her posts and her DMs, sorted, each with a reply drafted from her facts.
+/// v0.358 SOCIAL INBOX: comments on her posts and her DMs, sorted, each with a reply drafted from her facts.
 /// Send / Hide / Ignore are her taps; Hoola never deletes and never messages anyone first.
 class SocialInboxScreen extends StatefulWidget {
   const SocialInboxScreen({super.key, required this.app});
@@ -1233,7 +1233,7 @@ class _SocialInboxScreenState extends State<SocialInboxScreen> {
   }
 }
 
-/// v0.356 chat card for a new social lead / complaint: opens the Inbox.
+/// v0.358 chat card for a new social lead / complaint: opens the Inbox.
 class SocialCard extends StatelessWidget {
   const SocialCard({super.key, required this.kind, required this.v, required this.app});
   final String kind;
