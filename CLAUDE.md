@@ -145,9 +145,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.357.0 (pubspec 0.357.0+397). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.359.0 (pubspec 0.359.0+399). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.359 BLOG + BHASHAYEN (`site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang); restored console scripts lost in the v0.358 merge.
 - v0.357 DASHBOARD (built as 0.353; `static/console/charts.js` = one SVG chart drawer for console + sites, `site/dash.py`): website charts from a table (`<figure data-hoola-chart>`), her Dashboard tab / phone page / `website_dekho what=dashboard` (visits, enquiries, orders, confirmed sales vs previous period), web-app staff charts on /admin/ (`/api/site-app/<id>/stats`).
 - v0.356 PEHLE NIYAM: Developer Sahayak reads the repo's rules first (`loop.rule_paths`: AGENTS / CLAUDE / CONTRIBUTING / copilot / cursor, build + CI), folder AGENTS.md before an edit there, PR "Project rules" section.
 - v0.353 SOCIAL MEDIA MANAGER Phase 1 (built as 0.347/0.348/0.352, `docs/SOCIAL_EMPLOYEE_PLAN.md`, `social/meta.py` + `social/desk.py`): hire -> connect Instagram (Instagram Login) /

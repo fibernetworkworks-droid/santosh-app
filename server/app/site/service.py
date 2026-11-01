@@ -41,6 +41,7 @@ from . import sitemap as SM
 from . import kit as K
 from . import media as M
 from . import shop as SH
+from . import blog as BL
 from . import taxonomy as T
 from .models import Site, SiteLead, SiteVersion
 
@@ -688,6 +689,7 @@ def _after_job(site_id: str) -> None:
         r = _load(site_id)
     except SiteError:
         return
+    _blog_go_live(r)                             # v0.359 a post she said Haan to reaches her live address
     if site_id in _BUILD_AFTER:                  # v0.315 a grown site map builds its new pages
         _BUILD_AFTER.discard(site_id)
         _start(site_id, "build", note="site map")
@@ -850,7 +852,8 @@ def _ctx(r: Site) -> dict[str, Any]:
             "logo_path": logo, "noindex": True,
             "ai_photos": any(p.get("ai") for p in _j(r.photos, [])),       # v0.292 the footer says so
             "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.301 photos always from here (launch too)
-            "alt": _alt(r),
+            "alts": _alts(r),                                                # v0.359 every extra language (was one)
+            "blog": _blog_ctx(r),                                            # v0.359 her published posts (newest first)
             "app": app_schema(r) or None,                                   # v0.305 the web app (account + staff pages)
             "kit_css": (look.get("kit") or {}).get("css", ""),              # v0.330 the site's design kit
             "shop": _shop_ctx(r),                                             # v0.351 her shop (None when off)
@@ -907,53 +910,105 @@ def app_api(r: Site) -> str:
     return f"{base}/api/site-app/{r.id}"
 
 
-def second_language(r: Site) -> str:
+def extra_languages(r: Site) -> list[str]:
+    """v0.359 the site's extra languages (after the first), each one we support, max LG.MAX_EXTRA."""
     langs = _j(r.languages, ["en"])
-    return langs[1] if len(langs) > 1 and langs[1] in LG.LANGS and langs[1] != langs[0] else ""
+    out: list[str] = []
+    for x in langs[1:]:
+        if x in LG.LANGS and x != langs[0] and x not in out:
+            out.append(x)
+    return out[:LG.MAX_EXTRA]
+
+
+def second_language(r: Site) -> str:
+    ex = extra_languages(r)
+    return ex[0] if ex else ""
+
+
+def _alts(r: Site) -> list[dict[str, Any]]:
+    """v0.301 / v0.359 each extra language for build.assemble (translated sections where they exist, else the source)."""
+    first = _j(r.languages, ["en"])[0]
+    out = []
+    for lang in extra_languages(r):
+        secs, plan2 = LG.alt_site(r.tenant_id, r.id, lang, _sections(r), _j(r.plan, {}))
+        out.append({"lang": lang, "label": LG.LANGS[lang], "back": LG.LANGS.get(first, "English"), "sections": secs,
+                    "plan": plan2, "blog": _blog_ctx(r, lang)})
+    return out
 
 
 def _alt(r: Site) -> dict[str, Any] | None:
-    """v0.301 the second language for build.assemble (translated sections where they exist, else the source)."""
-    lang = second_language(r)
-    if not lang:
-        return None
-    secs, plan2 = LG.alt_site(r.tenant_id, r.id, lang, _sections(r), _j(r.plan, {}))
-    first = _j(r.languages, ["en"])[0]
-    return {"lang": lang, "label": LG.LANGS[lang], "back": LG.LANGS.get(first, "English"), "sections": secs, "plan": plan2}
+    a = _alts(r)
+    return a[0] if a else None
+
+
+def _blog_ctx(r: Site, lang: str = "") -> list[dict[str, Any]]:
+    try:
+        return BL.live_posts(r.id, lang)
+    except Exception:
+        log.exception("blog posts for the build failed")
+        return []
 
 
 def _translate(r: Site) -> int:
-    """Sections whose second-language copy is missing or out of date (Opus, kind site_edit)."""
-    lang = second_language(r)
-    if not lang:
+    """Sections (and blog posts) whose extra-language copy is missing or out of date (Opus, kind site_edit)."""
+    langs = extra_languages(r)
+    if not langs:
         return 0
     secs = _sections(r)
-    if not LG.stale(r.tenant_id, r.id, lang, secs):
-        return 0
-    _work(r, "start", f"{LG.LANGS[lang]} mein likh raha hoon", f"{len(LG.stale(r.tenant_id, r.id, lang, secs))} hisse")
     width = max(1, min(6, int(getattr(_settings(), "site_parallel", 3) or 1)))
-    return LG.translate(r.tenant_id, r.id, lang, secs, _j(r.plan, {}), _facts_text(_j(r.facts, {})),
-                        lambda k: sec_id(*k.split("__", 1)), width)
+    made = 0
+    for lang in langs:
+        if LG.stale(r.tenant_id, r.id, lang, secs):
+            _work(r, "start", f"{LG.LANGS[lang]} mein likh raha hoon", f"{len(LG.stale(r.tenant_id, r.id, lang, secs))} hisse")
+        made += LG.translate(r.tenant_id, r.id, lang, secs, _j(r.plan, {}), _facts_text(_j(r.facts, {})),
+                             lambda k: sec_id(*k.split("__", 1)), width)
+    try:                                       # v0.359 her blog posts follow every language too
+        made += BL.translate(r.id, langs, LG.NAMES, AI.ask_json)
+    except Exception:
+        log.exception("blog translation failed")
+    return made
 
 
-def set_language(tenant: str, ref: str, second: str) -> dict[str, Any]:
-    """Her choice: a second language for the whole site (or none). Translation runs as a job, then a new version."""
-    second = (second or "").strip().lower()
+def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
+    """v0.359 Her choice: up to LG.MAX_EXTRA extra languages for the whole site ([] = only the first). Translation runs as
+    a job, then a new version."""
     with session() as s:
         r = _find(s, tenant, ref)
         first = _j(r.languages, ["en"])[0]
-        if second and (second not in LG.LANGS or second == first):
-            raise SiteError("Doosri bhasha: en / hi / mr / hinglish (pehli se alag).")
-        r.languages = _jd([first, second] if second else [first])
+        want = [x for x in LG.pick(extra) if x != first]
+        bad = [w for w in (extra if isinstance(extra, list) else []) if str(w).strip() and not LG.pick([w])]
+        if bad:
+            raise SiteError("Yeh bhasha abhi nahi: " + ", ".join(map(str, bad[:3])) + ". Ho sakti hain: "
+                            + ", ".join(f"{LG.ENGLISH[k]} ({k})" for k in LG.LANGS))
+        if len(want) > LG.MAX_EXTRA:
+            raise SiteError(f"Ek website par pehli bhasha ke alawa {LG.MAX_EXTRA} bhashayen tak.")
+        old = extra_languages(r)
+        r.languages = _jd([first] + want)
         s.flush()
         s.expunge(r)
+    names = ", ".join(LG.LANGS[x] for x in want)
     if r.status in ("planned", "looks", "draft") or not _sections(r):
-        return {**view(r, False), "say": f"Theek hai: website {LG.LANGS.get(second, '')} mein bhi banegi." if second else "Ek hi bhasha rahegi."}
+        return {**view(r, False), "languages": [first] + want,
+                "say": f"Theek hai: website {names} mein bhi banegi." if want else "Ek hi bhasha rahegi."}
+    if want == old:
+        return {**view(r, False), "languages": [first] + want, "say": "Bhashayen pehle jaisi hi hain."}
     if not _start(r.id, "translate"):
         _SAVE_PENDING.add(r.id)
-    return {**view(_load(r.id), False),
-            "say": (f"{LG.LANGS[second]} version bana raha hoon; har hissa Opus likhega, phir nayi version." if second
-                    else "Doosri bhasha hata raha hoon; nayi version banegi.")}
+    return {**view(_load(r.id), False), "languages": [first] + want,
+            "say": (f"{names} version bana raha hoon; har hissa Opus likhega, phir nayi version." if want
+                    else "Doosri bhashayen hata raha hoon; nayi version banegi.")}
+
+
+def set_language(tenant: str, ref: str, second: str) -> dict[str, Any]:
+    """v0.301 (kept): ONE second language, or '' = none. v0.359 set_languages takes several."""
+    second = (second or "").strip().lower()
+    if second and second not in LG.LANGS:
+        raise SiteError("Doosri bhasha: " + " / ".join(LG.LANGS) + " (pehli se alag).")
+    with session() as s:
+        first = _j(_find(s, tenant, ref).languages, ["en"])[0]
+    if second and second == first:
+        raise SiteError("Doosri bhasha pehli se alag honi chahiye.")
+    return set_languages(tenant, ref, [second] if second else [])
 
 
 def translate_job(site_id: str) -> None:
@@ -1200,7 +1255,7 @@ def _make_looks(r: Site) -> None:
         mini_plan = {"pages": [{"slug": "home", "title": "Home", "sections": [{"type": "hero"}] + [
             {"type": s["type"]} for s in more if sec_key("home", s["type"]) in secs[i]]}], "cta": _j(r.plan, {}).get("cta")}
         ctx = _ctx(r)
-        ctx["tokens"], ctx["plan"], ctx["alt"] = toks[i], mini_plan, None
+        ctx["tokens"], ctx["plan"], ctx["alts"], ctx["blog"] = toks[i], mini_plan, [], []
         out = dirs[i] / "site"
         B.assemble(ctx, mini_plan, secs[i], {p["name"]: p for p in _j(r.photos, [])}, out)
         shots = {}
@@ -2519,3 +2574,139 @@ def shot_file(tenant: str, ref: str, name: str) -> Path:
     if not f.is_file():
         raise SiteError("not found")
     return f
+
+
+# ---------------------------------------------------------------- v0.359 BLOG: her posts on her website (site/blog.py)
+_BLOG_LIVE: dict[str, int] = {}        # site -> the version that was live when her Haan came (the next one goes live)
+
+
+def _blog_go_live(r: Site) -> None:
+    before = _BLOG_LIVE.get(r.id)
+    if before is None or busy(r.id) or r.status in ("building", "checking"):
+        return
+    _BLOG_LIVE.pop(r.id, None)
+    if r.status != "ready" or r.version <= before:
+        return
+    from . import hosting as H
+    try:
+        out = H.update_live(r.tenant_id, r.id)
+    except Exception:
+        log.exception("blog live update failed")
+        out = None
+    if out:
+        _emit(_load(r.id), push=False)
+        return
+    try:                                   # blockers (or no address yet): the normal launch card, her tap
+        H.launch_request(r.tenant_id, r.id, conv=r.conv)
+    except Exception:
+        log.info("launch card after a post failed", exc_info=True)
+
+
+def _blog_rebuild(r: Site, note: str, live: bool) -> None:
+    """A post went on / off the site: a new checked version; `live` = her tap said so, so when her address shows the
+    version before, the new one goes there too (else the normal launch card)."""
+    from . import hosting as H
+    if live:
+        lv = H.live_version(r)
+        if lv and lv == r.version:
+            _BLOG_LIVE[r.id] = r.version
+    _after_edit(r, note)
+
+
+def _built(tenant: str, ref: str) -> Site:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    if not r.version:
+        raise SiteError("Website abhi bani nahi; pehle website banne dijiye, phir blog.")
+    return r
+
+
+def blog_target(tenant: str, ref: str = "") -> dict[str, Any]:
+    """Which of her websites a Kalam post goes to: the one she named, or her only built site."""
+    if ref:
+        r = _built(tenant, ref)
+        return {"id": r.id, "name": r.name}
+    built = [x for x in sites(tenant, 40) if x.get("version")]
+    if len(built) == 1:
+        return {"id": built[0]["id"], "name": built[0]["name"]}
+    if not built:
+        raise SiteError("Abhi koi bani hui website nahi hai; pehle website banwaiye.")
+    raise SiteError("Kis website par? " + ", ".join(f"{x['name']} ({x['number']})" for x in built[:6]))
+
+
+def blog_publish(tenant: str, site_id: str, piece: dict[str, Any], when: str = "") -> dict[str, Any]:
+    """ONLY after her Haan (Kalam's card / the studio's Blog tab): the post on her site, now or at its time."""
+    r = _built(tenant, site_id)
+    at = None
+    if when:
+        try:
+            at = datetime.fromisoformat(when)
+        except ValueError:
+            raise SiteError("Post ka samay samajh nahi aaya.")
+    try:
+        post = BL.put(tenant, r.id, piece, at)
+    except BL.BlogError as e:
+        raise SiteError(str(e))
+    url = preview_url(r).rstrip("/") + f"/blog/{post['slug']}/"
+    from . import hosting as H
+    lv = H.live_version(r)
+    if post["status"] == "scheduled":
+        return {"post": post, "url": url, "say": f"'{post['title']}' {post['date']} ko website par aayega" +
+                (" (live site par bhi)." if lv else ".")}
+    _blog_rebuild(r, f"blog: {post['title'][:60]}", live=True)
+    return {"post": post, "url": url, "say": f"'{post['title']}' website ke blog par lag raha hai; nayi version jaanch ke baad "
+            + ("live address par bhi chali jayegi." if lv == r.version else "bani rahegi (live karne ke liye 'live karo').")}
+
+
+def blog_info(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    items = BL.posts(r.id)
+    for x in items:
+        x.pop("_tr", None)
+        x.pop("body", None)
+    first = _j(r.languages, ["en"])[0]
+    return {"posts": items, "preview": preview_url(r), "language": first, "extra": extra_languages(r),
+            "choices": [{"code": k, "label": LG.LANGS[k], "english": LG.ENGLISH[k]} for k in LG.LANGS if k != first],
+            "max_extra": LG.MAX_EXTRA, "photos": [p["name"] for p in _j(r.photos, [])],
+            "say": f"{sum(1 for x in items if x['status'] == 'published')} post live, "
+                   f"{sum(1 for x in items if x['status'] == 'scheduled')} time par."}
+
+
+def blog_act(tenant: str, ref: str, slug: str, action: str, cover: str = "", tapped: bool = False) -> dict[str, Any]:
+    """hide / show / delete / cover. `tapped` = her own tap in the app (then the change also reaches her live address);
+    from chat it makes the version and the normal launch card stays hers."""
+    r = _built(tenant, ref)
+    try:
+        if action in ("hide", "show"):
+            post = BL.set_status(r.id, slug, "hidden" if action == "hide" else "published")
+            say = f"'{post['title']}' " + ("hata diya (wapas laa sakte hain)." if action == "hide" else "wapas laga diya.")
+        elif action == "delete":
+            if not tapped:
+                raise SiteError("Post mitana sirf aapke tap se: Website > Blog mein 'Delete' dabaiye.")
+            post = BL.delete(r.id, slug)
+            say = f"'{post['title']}' mita diya."
+        elif action == "cover":
+            post = BL.set_cover(r.id, slug, cover, [p["name"] for p in _j(r.photos, [])])
+            say = "Cover photo badal di."
+        else:
+            raise SiteError("Action: hide / show / delete / cover.")
+    except BL.BlogError as e:
+        raise SiteError(str(e))
+    _blog_rebuild(r, f"blog: {action} {slug}", live=tapped)
+    return {"post": post, "say": say + ("" if tapped else " Nayi version banegi; live karne ke liye 'live karo' kahiye.")}
+
+
+def blog_tick() -> int:
+    """Worker: scheduled posts whose time came are published and their site rebuilt (live too: her Haan said so)."""
+    n = 0
+    for site_id, _slug in BL.due():
+        try:
+            r = _load(site_id)
+            _blog_rebuild(r, "blog: time par post", live=True)
+            n += 1
+        except Exception:
+            log.exception("scheduled post rebuild failed")
+    return n

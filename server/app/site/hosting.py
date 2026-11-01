@@ -386,6 +386,35 @@ def launch(tenant: str, ref: str, hash_: str, free: bool = True) -> dict[str, An
     return out
 
 
+def live_version(r: Site) -> int:
+    """v0.359 the version her live address shows now (0 = not live)."""
+    return max((h.live_version or 0 for h in _hosts_of(r) if h.status == "active"), default=0)
+
+
+def update_live(tenant: str, site_id: str) -> dict[str, Any] | None:
+    """v0.359 BLOG: a post she said Haan to (or her scheduled post's time) puts the NEW version on the addresses that
+    already showed the version before it - no new address, no DNS, nothing else. None when it cannot (not live, or the
+    version has blockers: then the normal launch card is hers to tap)."""
+    from . import service as S
+    with session() as s:
+        r = S._find(s, tenant, site_id)
+        s.expunge(r)
+    hosts = [h for h in _hosts_of(r) if h.status == "active"]
+    if not hosts or blockers(r):
+        return None
+    names = [h.hostname for h in hosts]
+    main = _main_host(r, names)
+    _publish_files(r, main, r.version)
+    with session() as s:
+        for h in s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.status == "active")).all():
+            h.live_version = r.version
+    host_map(force=True)
+    for h in names:
+        if h != main:
+            _link(main, h)
+    return {"url": f"https://{main}/", "version": r.version}
+
+
 def _is_pending(hostname: str) -> bool:
     with session() as s:
         h = s.scalars(select(SiteHost).where(SiteHost.hostname == hostname, SiteHost.status != "removed")).first()

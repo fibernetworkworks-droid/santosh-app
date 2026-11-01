@@ -72,5 +72,5 @@ def test_the_phone_needs_no_cap():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.358.0"
-    assert "0.358.0+398" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.359.0"
+    assert "0.359.0+399" in (ROOT / "pubspec.yaml").read_text()

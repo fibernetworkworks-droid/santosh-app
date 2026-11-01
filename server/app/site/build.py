@@ -561,11 +561,7 @@ def header(site: dict[str, Any], plan: dict[str, Any], slug: str, rel: str, logo
         cur = ' aria-current="page"' if p["slug"] == slug else ""
         links.append(f'<li><a href="{page_url(p["slug"], rel)}"{cur}>{esc(p.get("nav") or p["title"])}</a></li>')
     cta = cta_button(site, rel, "btn btn-primary hs-cta")
-    sw = site.get("switch")
-    if sw:                                   # v0.301 the same page in the other language
-        tgt = rel + sw["to"] + ("" if slug == "home" else f"{slug}/")
-        hl = {"hinglish": "hi-Latn"}.get(sw["lang"], sw["lang"])
-        cta = f'<a class="hs-lang" href="{tgt}" hreflang="{esc(hl)}" lang="{esc(hl)}">{esc(sw["label"])}</a>' + cta
+    cta = lang_switch(site, slug, rel) + cta    # v0.301 / v0.359 the same page in the other language(s)
     brand = (f'<img src="{rel}assets/img/logo.png" alt="{esc(f.get("name"))} logo" width="120" height="40">' if logo else "")
     if plan.get("big"):                      # v0.315 grouped menu + site search on big sites
         links = [_mega(plan, slug, rel)]
@@ -577,6 +573,37 @@ def header(site: dict[str, Any], plan: dict[str, Any], slug: str, rel: str, logo
             f'<nav aria-label="Main"><ul class="hs-links">{"".join(links)}</ul></nav>{cta}'
             f'<button class="hs-menu" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>'
             f'</div></header>')
+
+
+def lang_links(site: dict[str, Any], slug: str) -> list[dict[str, str]]:
+    """v0.359 every language of the site: {lang, label, path from the site root to THIS page in that language}."""
+    la = site.get("langs_all") or []
+    part = "" if slug == "home" else f"{slug}/"
+    return [{"lang": x["lang"], "label": x["label"], "path": x["prefix"] + part} for x in la]
+
+
+def lang_switch(site: dict[str, Any], slug: str, rel: str) -> str:
+    from .lang import LANGS, html_lang
+    here = site.get("language") or "en"
+    links = lang_links(site, slug)
+    if len(links) < 2:
+        sw = site.get("switch")              # v0.301 (a caller that still passes one switch)
+        if not sw:
+            return ""
+        tgt = rel + sw["to"] + ("" if slug == "home" else f"{slug}/")
+        hl = html_lang(sw["lang"])
+        return f'<a class="hs-lang" href="{tgt}" hreflang="{esc(hl)}" lang="{esc(hl)}">{esc(sw["label"])}</a>'
+    up = rel + site.get("root_up", "")
+    others = [x for x in links if x["lang"] != here]
+    if len(others) == 1:                     # two languages: one plain link, as in v0.301
+        o, hl = others[0], html_lang(others[0]["lang"])
+        return f'<a class="hs-lang" href="{up}{o["path"]}" hreflang="{esc(hl)}" lang="{esc(hl)}">{esc(o["label"])}</a>'
+    items = "".join(
+        f'<li><a href="{up}{x["path"]}" hreflang="{esc(html_lang(x["lang"]))}" lang="{esc(html_lang(x["lang"]))}"'
+        + (' aria-current="true"' if x["lang"] == here else "") + f'>{esc(x["label"])}</a></li>' for x in links)
+    globe = expand_icons('<i data-icon="languages"></i>')[0]
+    return (f'<details class="hs-langs"><summary aria-label="Language: {esc(LANGS.get(here, here))}">{globe}'
+            f'<span>{esc(LANGS.get(here, here))}</span></summary><ul>{items}</ul></details>')
 
 
 def cta_button(site: dict[str, Any], rel: str, cls: str) -> str:
@@ -666,7 +693,9 @@ def json_ld(site: dict[str, Any], base_url: str) -> str:
 def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], body: str, rel: str, logo: bool,
               base_url: str) -> str:
     f = site["facts"]
-    lang = {"hi": "hi", "mr": "mr", "en": "en-IN", "hinglish": "hi-Latn"}.get(site.get("language") or "en", "en-IN")
+    from .lang import RTL, html_lang
+    lang = html_lang(site.get("language") or "en")
+    dir_ = ' dir="rtl"' if (site.get("language") or "") in RTL else ""
     title = f'{page["title"]} | {f.get("name") or ""}' if page["slug"] != "home" else (
         f'{f.get("name") or ""}' + (f' - {f["tagline"]}' if f.get("tagline") else ""))
     desc = page.get("description") or f.get("tagline") or ""
@@ -680,6 +709,17 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             '<meta name="generator" content="Hoola">']
     if canon:
         meta.append(f'<link rel="canonical" href="{esc(canon)}">')
+    root_base = (site.get("root_base") if site.get("root_base") is not None else base_url) or ""
+    if root_base and len(site.get("langs_all") or []) > 1 and page["slug"] not in ("admin", "account"):
+        from .lang import html_lang as _hl   # v0.359 every language of this page, for search engines
+        alts = lang_links(site, page["slug"])
+        meta += [f'<link rel="alternate" hreflang="{esc(_hl(x["lang"]))}" href="{esc(root_base.rstrip("/") + "/" + x["path"])}">'
+                 for x in alts]
+        meta.append(f'<link rel="alternate" hreflang="x-default" href="{esc(root_base.rstrip("/") + "/" + alts[0]["path"])}">')
+    if site.get("blog"):                         # v0.359 her blog's feed
+        meta.append(f'<link rel="alternate" type="application/rss+xml" title="{esc(f.get("name") or "Blog")}" href="{rel}blog/feed.xml">')
+    if page.get("og_type"):
+        meta = [m.replace('content="website"', f'content="{esc(page["og_type"])}"') for m in meta]
     if site.get("noindex") or page["slug"] in ("admin", "account"):
         meta.append('<meta name="robots" content="noindex">')
     if site.get("app_api"):                      # v0.305 where the app script talks to (Hoola's API, never the site host)
@@ -711,7 +751,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
                       "item": base_url.rstrip("/") + "/" + ("" if sg == "home" else sg + "/")} for i, (t, sg) in enumerate(trail)]
             ld += ('<script type="application/ld+json">' + json.dumps({"@context": "https://schema.org", "@type": "BreadcrumbList",
                                                                        "itemListElement": items}, ensure_ascii=False).replace("</", "<\\/") + '</script>')
-    return (f'<!doctype html><html lang="{lang}"><head>{"".join(meta)}{links}{ld}</head>'
+    return (f'<!doctype html><html lang="{lang}"{dir_}><head>{"".join(meta)}{links}{ld}</head>'
             f'<body class="look-{esc(site["tokens"]["style"])}">{header(site, plan, page["slug"], rel, logo)}{notice}'
             f'<main id="main">{crumb}{body}</main>{footer(site, plan, rel)}{floats(site)}'
             f'<script src="{rel}assets/hoola-site.js" defer></script><script src="{rel}assets/site.js" defer></script>'
@@ -761,6 +801,103 @@ def legal_page(kind: str, site: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------- whole site
+# ---------------------------------------------------------------- v0.359 her blog (posts come from site/blog.py)
+def with_blog_pages(site: dict[str, Any], plan: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """A site with published posts gets a 'Blog' page in the menu (or its own designed blog page shows the posts) and,
+    outside the menu: one page per post, older-post pages and category pages."""
+    from . import blog as BL
+    items = site.get("blog") or []
+    if not items:
+        return plan, []
+    w = BL.words(site.get("language") or "en")
+    pages = list(plan.get("pages", []))
+    if any(p["slug"] == "blog" for p in pages):
+        pages = [{**p, "blog_index": 1} if p["slug"] == "blog" else p for p in pages]
+    else:
+        at = next((i for i, p in enumerate(pages) if p["slug"] in ("contact",) + LEGAL_PAGES), len(pages))
+        pages[at:at] = [{"slug": "blog", "title": w["blog"], "nav": w["blog"], "sections": [], "blog_index": 1}]
+    extra: list[dict[str, Any]] = []
+    n = -(-len(items) // BL.PER_PAGE)
+    for i in range(2, n + 1):
+        extra.append({"slug": f"blog/page/{i}", "title": f'{w["blog"]} - {w["page"]} {i}', "blog_index": i})
+    seen: dict[str, str] = {}
+    for x in items:
+        cs = BL.cat_slug(x.get("category") or "")
+        if cs and cs not in seen:
+            seen[cs] = x["category"]
+    for cs, name in seen.items():
+        extra.append({"slug": f"blog/category/{cs}", "title": name, "blog_cat": cs})
+    for i, x in enumerate(items):
+        extra.append({"slug": f"blog/{x['slug']}", "title": x["title"], "description": x.get("excerpt") or "",
+                      "blog_post": i, "og_type": "article"})
+    return {**plan, "pages": pages}, extra
+
+
+def blog_list(site: dict[str, Any], rel: str, pic, page_no: int = 1, cat: str = "") -> str:
+    from . import blog as BL
+    w = BL.words(site.get("language") or "en")
+    items = site.get("blog") or []
+    if cat:
+        items = [x for x in items if BL.cat_slug(x.get("category") or "") == cat]
+    cats: dict[str, str] = {}
+    for x in site.get("blog") or []:
+        cs = BL.cat_slug(x.get("category") or "")
+        if cs:
+            cats.setdefault(cs, x["category"])
+    chips = ""
+    if cats:
+        chips = (f'<nav class="hs-cats" aria-label="Categories"><a class="pill" href="{rel}blog/"'
+                 + ("" if cat else ' aria-current="page"') + f'>{esc(w["all"])}</a>' + "".join(
+                     f'<a class="pill" href="{rel}blog/category/{esc(cs)}/"' + (' aria-current="page"' if cs == cat else "")
+                     + f'>{esc(name)}</a>' for cs, name in cats.items()) + '</nav>')
+    per = BL.PER_PAGE
+    show = items if cat else items[(page_no - 1) * per: page_no * per]
+    pages = 1 if cat else max(1, -(-len(items) // per))
+    nav = ""
+    if pages > 1:
+        newer = (f'<a class="btn btn-ghost" rel="prev" href="{rel}blog/{"" if page_no == 2 else f"page/{page_no - 1}/"}">'
+                 f'{esc(w["newer"])}</a>' if page_no > 1 else "")
+        older = (f'<a class="btn btn-ghost" rel="next" href="{rel}blog/page/{page_no + 1}/">{esc(w["older"])}</a>'
+                 if page_no < pages else "")
+        nav = f'<nav class="hs-pager" aria-label="{esc(w["page"])}">{newer}<span>{esc(w["page"])} {page_no} / {pages}</span>{older}</nav>'
+    grid = (f'<div class="hs-posts">{"".join(BL.card(x, rel, pic) for x in show)}</div>' if show
+            else f'<p class="muted">{esc(w["none"])}</p>')
+    head = (f'<h1>{esc(cats.get(cat, w["blog"]))}</h1>' if cat or page_no > 1 else f'<h2 class="hs-sr">{esc(w["all"])}</h2>')
+    return f'<section class="hs hs-blog"><div class="wrap">{head}{chips}{grid}{nav}</div></section>'
+
+
+def blog_post(site: dict[str, Any], idx: int, rel: str, pic, base_url: str, photos: dict[str, dict[str, Any]]) -> str:
+    from . import blog as BL
+    w = BL.words(site.get("language") or "en")
+    items = site.get("blog") or []
+    p = items[idx]
+    cover = picture(photos[p["cover"]], p["title"], rel, eager=True, cls="hs-cover") if p.get("cover") in photos else ""
+    cat = (f'<a class="eyebrow" href="{rel}blog/category/{esc(BL.cat_slug(p["category"]))}/">{esc(p["category"])}</a>'
+           if p.get("category") else "")
+    by = f' · {esc(w["by"])} {esc(p["author"])}' if p.get("author") else ""
+    tags = "".join(f'<span class="pill">{esc(t)}</span>' for t in p.get("tags") or [])
+    newer = items[idx - 1] if idx > 0 else None
+    older = items[idx + 1] if idx + 1 < len(items) else None
+    pn = ""
+    if newer or older:
+        pn = '<nav class="hs-prevnext" aria-label="Posts">' + (
+            f'<a rel="prev" href="{rel}blog/{esc(older["slug"])}/"><small>{esc(w["prev"])}</small>{esc(older["title"])}</a>'
+            if older else "<span></span>") + (
+            f'<a rel="next" href="{rel}blog/{esc(newer["slug"])}/"><small>{esc(w["next"])}</small>{esc(newer["title"])}</a>'
+            if newer else "") + '</nav>'
+    same = [x for i, x in enumerate(items) if i != idx and p.get("category") and x.get("category") == p["category"]]
+    rest = [x for i, x in enumerate(items) if i != idx and x not in same]
+    rel3 = (same + rest)[:3]
+    more = (f'<section class="hs hs-alt"><div class="wrap"><h2>{esc(w["more"])}</h2><div class="hs-posts">'
+            f'{"".join(BL.card(x, rel, pic) for x in rel3)}</div></div></section>') if rel3 else ""
+    ld = f'<script type="application/ld+json">{BL.posting_ld(site, p, base_url)}</script>'
+    return (f'<article class="hs hs-article"><div class="wrap hs-narrow"><header class="hs-art-h">{cat}<h1>{esc(p["title"])}</h1>'
+            f'<p class="hs-post-m"><time datetime="{esc((p.get("published_at") or "")[:10])}">{esc(p.get("date") or "")}</time>'
+            f' · {int(p.get("minutes") or 1)} {esc(w["min"])}{by}</p></header>{cover}'
+            f'<div class="hs-prose">{BL.md_html(p.get("body") or "", p["title"])}</div>'
+            + (f'<p class="hs-tags">{tags}</p>' if tags else "") + f'{pn}</div></article>{more}{ld}')
+
+
 def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dict[str, Any]], photos: dict[str, dict],
              out: Path, base_url: str = "", form_endpoint: str = "") -> dict[str, Any]:
     """sections: key 'page__type' -> {html, css, js} (already sanitised). Writes the site; returns {files, bytes, problems}."""
@@ -769,9 +906,15 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     (out / "assets" / "img").mkdir(parents=True)
     (out / "assets" / "fonts").mkdir(parents=True)
     tk = site["tokens"]
-    alt = site.get("alt") if not site.get("edit") else None   # v0.301 {lang, label, back, sections, plan} of the 2nd language
-    if alt:
-        site = {**site, "switch": {"label": alt["label"], "to": f'{alt["lang"]}/', "lang": alt["lang"]}}
+    # v0.301 / v0.359 the extra languages: [{lang, label, back, sections, plan, blog}] (an edit preview has none)
+    alts = [] if site.get("edit") else list(site.get("alts") if site.get("alts") is not None else
+                                            ([site["alt"]] if site.get("alt") else []))
+    if alts and not site.get("langs_all"):
+        from .lang import LANGS
+        first = site.get("language") or "en"
+        site = {**site, "root_up": "", "root_base": base_url,
+                "langs_all": [{"lang": first, "label": LANGS.get(first, first), "prefix": ""}] + [
+                    {"lang": a["lang"], "label": a["label"], "prefix": a["lang"] + "/"} for a in alts]}
     problems: list[str] = []
     for fam, sub, w, fn in font_files(tk):
         shutil.copy(ASSETS / "fonts" / fn, out / "assets" / "fonts" / fn)
@@ -781,6 +924,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
     plan = with_app_pages(site, plan)
     plan = with_shop_pages(site, plan)            # v0.351
+    plan, blog_extra = with_blog_pages(site, plan)   # v0.359
     if (site.get("shop") or {}).get("api"):
         shutil.copy(ASSETS / "hoola-shop.js", out / "assets" / "hoola-shop.js")
     logo = False
@@ -847,6 +991,10 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             h, mmiss = MD.expand(h, src_root, out, rel)
             if mmiss:
                 problems.append(f"{key}: file not found: {', '.join(mmiss)}")
+            if "data-hoola-posts" in h:          # v0.359 the latest posts as cards
+                from . import blog as BL
+                h = BL.latest_cards(h, site.get("blog") or [], rel, lambda n: pic(n).replace("__REL__", rel),
+                                    site.get("language") or "en")
             from . import live as LV            # v0.301 booking / map / video / UPI placeholders -> the real things
             h, lprob = LV.expand(h, site, form_endpoint, lambda n: expand_icons(f'<i data-icon="{n}"></i>')[0])
             problems.extend(f"{key}: {x}" for x in lprob)
@@ -863,7 +1011,10 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             parts.append(h)
         return "\n".join(parts)
 
-    for page in plan.get("pages", []) + (SM.item_pages(plan) if big else []):
+    def pic(name: str) -> str:                   # v0.359 a post card's cover (one of her site photos)
+        return picture(photos[name], "", "__REL__") if name in photos else ""
+
+    for page in plan.get("pages", []) + (SM.item_pages(plan) if big else []) + blog_extra:
         if page.get("template_of"):          # v0.315 a collection's template is not a page of its own
             continue
         slug, rel = page["slug"], rel_of(page["slug"])
@@ -873,6 +1024,19 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             body = app_page(slug, site)
         elif page.get("shop_page"):           # v0.351 the code-made shop
             body = shop_page(site, rel, photos)
+        elif page.get("blog_post") is not None:   # v0.359 one post
+            body = blog_post(site, page["blog_post"], rel, lambda n: pic(n).replace("__REL__", rel), base_url, photos)
+        elif page.get("blog_cat"):
+            body = blog_list(site, rel, lambda n: pic(n).replace("__REL__", rel), cat=page["blog_cat"])
+        elif page.get("blog_index"):         # /blog/ (its designed sections first, never a made-up post list) + pages 2..n
+            own = [x for x in page.get("sections", []) if x.get("type") != "blog_list"] if slug == "blog" else []
+            from . import blog as BL
+            w = BL.words(site.get("language") or "en")
+            top = (render(slug, own, rel) + "\n") if own else (
+                f'<section class="hs hs-blog-h"><div class="wrap"><h1>{esc(w["blog"])}</h1><p class="lead">{esc(w["lead"])}</p>'
+                f'<p><a class="hs-feed" href="{rel}blog/feed.xml">{esc(w["feed"])}</a></p></div></section>\n') if int(page["blog_index"]) == 1 else ""
+            body = top + blog_list(
+                site, rel, lambda n: pic(n).replace("__REL__", rel), int(page["blog_index"]))
         elif page.get("template") in tpls:   # v0.315 one collection item
             c = cols.get(page["collection"]) or {"fields": []}
             body = render(slug, tpls[page["template"]].get("sections", []), rel, page["template"], page["item"], c["fields"])
@@ -891,7 +1055,11 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                                             '<section class="hs"><div class="wrap"><h1>Page not found</h1>'
                                             f'<p><a class="btn btn-primary" href="./">Home</a></p></div></section>', "", logo, ""),
                                   encoding="utf-8")
-    every = SM.real_pages(plan) if big else plan.get("pages", [])
+    every = (SM.real_pages(plan) if big else plan.get("pages", [])) + [p for p in blog_extra if not str(p["slug"]).startswith("blog/page/")]
+    if site.get("blog"):                     # v0.359 RSS 2.0 for readers / Google News style tools
+        from . import blog as BL
+        (out / "blog").mkdir(parents=True, exist_ok=True)
+        (out / "blog" / "feed.xml").write_text(BL.rss(site, site["blog"], base_url), encoding="utf-8")
     urls = [(base_url.rstrip("/") + "/" + ("" if p["slug"] == "home" else p["slug"] + "/")) for p in every]
     if big:                                  # v0.315 the site search reads this (titles, addresses, one line each)
         (out / "assets" / "search.json").write_text(json.dumps(SM.search_entries(plan), ensure_ascii=False), encoding="utf-8")
@@ -903,9 +1071,9 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         robots += f"Sitemap: {base_url.rstrip('/')}/sitemap.xml\n"
     (out / "robots.txt").write_text(robots)
     (out / "_headers").write_text("/*\n  " + "\n  ".join(f"{k}: {v}" for k, v in security_headers(form_endpoint).items()) + "\n")
-    if alt:                                  # v0.301 the second language under /<lang>/, its switch leads back
-        sub = {**site, "language": alt["lang"], "alt": None, "src_root": str(src_root),
-               "switch": {"label": alt["back"], "to": "../", "lang": site.get("language") or "en"}}
+    for alt in alts:                         # v0.301 / v0.359 each extra language under /<lang>/, one menu to all of them
+        sub = {**site, "language": alt["lang"], "alt": None, "alts": [], "src_root": str(src_root), "root_up": "../",
+               "blog": alt.get("blog") if alt.get("blog") is not None else (site.get("blog") or [])}
         res = assemble(sub, alt["plan"], alt["sections"], dict(photos), out / alt["lang"],
                        (base_url.rstrip("/") + "/" + alt["lang"]) if base_url else "", form_endpoint)
         problems += [f'{alt["lang"]}: {x}' for x in res["problems"]]

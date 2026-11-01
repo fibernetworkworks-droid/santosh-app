@@ -241,7 +241,7 @@ window.HoolaBuild = function (C) {
     if (s === 'planned') pre.push(['plan', 'Plan']);
     if (s === 'looks') pre.push(['looks', 'Looks']);
     return o.type === 'site'
-      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['dash', 'Dashboard'], ['data', 'App & data'], ['shop', 'Shop']] : [])]
+      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['dash', 'Dashboard'], ['blog', 'Blog'], ['langs', 'Languages'], ['data', 'App & data'], ['shop', 'Shop']] : [])]
       : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Structure'], ['android', 'Android'],
          ...(S(o.an?.status) ? [['data', 'App data']] : []), ['kadam', 'Steps']];   // v0.314 the built app's own backend
   }
@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'shop') loadShop(o, ot); if (o.tab === 'dash') loadDash(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); } }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'shop') loadShop(o, ot); if (o.tab === 'dash') loadDash(o, ot); if (o.tab === 'blog') loadBlog(o, ot); if (o.tab === 'langs') loadLangs(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); } }
     showBtn();
   }
 
@@ -366,6 +366,8 @@ window.HoolaBuild = function (C) {
       case 'data': return `<div class="stdata"><div class="stempty">${spin()} Loading the app…</div></div>`;
       case 'shop': return `<div class="stshop"><div class="stempty">${spin()} Loading the shop…</div></div>`;
       case 'dash': return `<div class="stdash"><div class="stempty">${spin()} Loading the dashboard…</div></div>`;
+      case 'blog': return `<div class="stblog"><div class="stempty">${spin()} Loading the blog…</div></div>`;
+      case 'langs': return `<div class="stblog"><div class="stempty">${spin()} Loading the languages…</div></div>`;
       case 'screens': return screensPane(o);
       case 'dhaancha': return dnaPane(o);
       case 'android': return androidPane(o);
@@ -750,6 +752,109 @@ window.HoolaBuild = function (C) {
 
   /* v0.351 DUKAAN: her shop - settings, products, orders (no AI; prices only hers; money confirmed only by her) */
   const OSTEP = {confirmed: 'Confirm (money received)', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancel'};
+  // ---------------------------------------------------------------- v0.359 BLOG: Kalam writes, her Haan publishes on this site
+  const BSTAT = {published: 'Live', scheduled: 'Scheduled', hidden: 'Hidden'};
+  async function loadBlog(o, root) {
+    const box = root.querySelector('.stblog'); if (!box) return;
+    let b, drafts;
+    try { [b, drafts] = await Promise.all([api('GET', base(o) + '/blog'), api('GET', '/api/kalam/pieces?kind=blog').catch(() => ({pieces: []}))]); }
+    catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const posts = L(b.posts), photos = L(b.photos);
+    const waiting = L(drafts.pieces || drafts.items || drafts).filter(x => x && S(x.kind) === 'blog' && !['published', 'rejected'].includes(S(x.status)));
+    const prev = S(b.preview).replace(/\/$/, '');
+    box.innerHTML = `<form class="stapp" data-f="write" autocomplete="off"><b>Write a new post</b>
+        <label><span>What should it be about? Your own facts, offers and experience (Hoola never makes them up)</span>
+        <textarea name="brief" rows="3" placeholder="Diwali par mithai kaise chunein - hamari kaju katli roz subah banti hai, 1985 se Akot mein"></textarea></label>
+        <div class="acts"><button class="btn go" type="submit">Write draft</button><span class="stnote">Written in your voice by the Content writer; facts are checked before it goes up.</span></div></form>
+      ${waiting.length ? `<section class="stcol"><h4>Drafts <span>${waiting.length}</span></h4>${waiting.map(d => `<div class="stblog-d" data-id="${esc(S(d.id))}">
+        <div class="stblog-row"><b>${esc(S(d.title) || 'Untitled')}</b><small>${esc(S(d.number))} · ${N(d.words)} words · ${esc(S(d.status))}</small></div>
+        <div class="acts"><button class="btn soft" type="button" data-x="open">Read / edit</button>
+        <label class="stblog-when"><span>Publish at (empty = now)</span><input type="datetime-local" name="when"></label>
+        <button class="btn go" type="button" data-x="publish">Publish on this website…</button></div><div class="stblog-ed" hidden></div></div>`).join('')}</section>` : ''}
+      <section class="stcol"><h4>Posts <span>${posts.length}</span></h4>${posts.length ? `<div class="sttbl"><table><thead><tr><th>Post</th><th>Status</th><th>Cover</th><th></th></tr></thead><tbody>${posts.map(p => `<tr data-s="${esc(S(p.slug))}">
+        <td><b>${esc(S(p.title))}</b><br><small>${esc(S(p.date))} · ${N(p.minutes)} min${p.category ? ' · ' + esc(S(p.category)) : ''}${L(p.languages).length ? ' · ' + esc(L(p.languages).join(', ')) : ''}</small></td>
+        <td>${esc(BSTAT[S(p.status)] || S(p.status))}</td>
+        <td><select data-x="cover" aria-label="Cover photo"><option value="">No cover</option>${photos.map(n => `<option${n === S(p.cover) ? ' selected' : ''}>${esc(S(n))}</option>`).join('')}</select></td>
+        <td>${p.status === 'published' ? `<a class="btn soft" target="_blank" rel="noopener" href="${esc(prev)}/blog/${esc(S(p.slug))}/">View</a> <button class="btn soft" type="button" data-x="hide">Hide</button>` : `<button class="btn soft" type="button" data-x="show">Show</button>`}
+          <button class="btn soft danger" type="button" data-x="delete">Delete</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No posts yet. Write one above, or ask in chat: "blog likho: …".</p>'}</section>
+      <p class="stnote">${esc(S(b.say))} Every post has its own page, a category page, an RSS feed and Google's article data; your site's other languages get it translated.</p>`;
+    const reload = () => loadBlog(o, root);
+    box.querySelector('[data-f=write]').addEventListener('submit', async e => {
+      e.preventDefault(); const f = e.target, btn = f.querySelector('button'), brief = S(f.brief.value).trim();
+      if (!brief) { toast('Write a line about the post first.', true); return; }
+      btn.disabled = true; btn.textContent = 'Writing… (about a minute)';
+      try { const r = await api('POST', '/api/kalam/write', {brief, kind: 'blog'}); toast(S(r?.say) || 'Draft ready.'); reload(); }
+      catch (er) { toast(er.message, true); btn.disabled = false; btn.textContent = 'Write draft'; }
+    });
+    box.querySelectorAll('.stblog-d').forEach(row => {
+      const id = row.dataset.id, ed = row.querySelector('.stblog-ed');
+      row.querySelector('[data-x=open]').addEventListener('click', async () => {
+        if (!ed.hidden) { ed.hidden = true; return; }
+        try {
+          const r = await api('GET', `/api/kalam/pieces/${encodeURIComponent(id)}`), p = M(r.piece || r);
+          ed.innerHTML = `<label><span>Title</span><input name="title" value="${esc(S(p.title))}"></label>
+            <label><span>Post (Markdown: ## heading, - list, **bold**)</span><textarea name="body" rows="14">${esc(S(p.body))}</textarea></label>
+            <div class="acts"><button class="btn go" type="button" data-x="save">Save</button></div>`;
+          ed.hidden = false;
+          ed.querySelector('[data-x=save]').addEventListener('click', async () => {
+            try { await api('PUT', `/api/kalam/pieces/${encodeURIComponent(id)}`, {title: ed.querySelector('[name=title]').value, body: ed.querySelector('[name=body]').value}); toast('Saved.'); }
+            catch (er) { toast(er.message, true); }
+          });
+        } catch (er) { toast(er.message, true); }
+      });
+      row.querySelector('[data-x=publish]').addEventListener('click', async ev => {
+        const btn = ev.currentTarget, w = S(row.querySelector('[name=when]').value).replace('T', ' ');
+        btn.disabled = true; btn.textContent = 'Checking the facts…';
+        try {
+          const r = await api('POST', `/api/kalam/pieces/${encodeURIComponent(id)}/publish`, {dest: 'site', where: o.id, status: w ? 'future' : 'publish', when: w});
+          if (r.status === 'blocked') { toast(S(r.say), true); btn.disabled = false; btn.textContent = 'Publish on this website…'; return; }
+          const card = M(r.card);
+          // her tap IS the Haan: the same card the chat shows, confirmed here
+          if (!window.confirm(`${S(card.where_label)}\n\n"${S(card.title)}"\n\nPublish this post?`)) { btn.disabled = false; btn.textContent = 'Publish on this website…'; return; }
+          const d = await api('POST', `/api/kalam/pieces/${encodeURIComponent(id)}/decide`, {yes: true, hash: S(card.hash)});
+          toast(S(d?.say) || 'Published.'); reload();
+        } catch (er) { toast(er.message, true); btn.disabled = false; btn.textContent = 'Publish on this website…'; }
+      });
+    });
+    box.querySelectorAll('tr[data-s]').forEach(tr => {
+      const slug = tr.dataset.s, act = async (body, ask) => {
+        if (ask && !window.confirm(ask)) return;
+        try { const r = await api('POST', `${base(o)}/blog/${encodeURIComponent(slug)}`, body); toast(S(r?.say) || 'Done.'); reload(); }
+        catch (er) { toast(er.message, true); }
+      };
+      tr.querySelector('[data-x=hide]')?.addEventListener('click', () => act({action: 'hide'}, 'Take this post off the website? You can show it again later.'));
+      tr.querySelector('[data-x=show]')?.addEventListener('click', () => act({action: 'show'}, 'Put this post back on the website?'));
+      tr.querySelector('[data-x=delete]').addEventListener('click', () => act({action: 'delete'}, 'Delete this post for good? This cannot be undone.'));
+      tr.querySelector('[data-x=cover]').addEventListener('change', e => act({action: 'cover', cover: e.target.value}));
+    });
+  }
+
+  // ---------------------------------------------------------------- v0.359 BHASHAYEN: the site's languages
+  async function loadLangs(o, root) {
+    const box = root.querySelector('.stblog'); if (!box) return;
+    let b;
+    try { b = await api('GET', base(o) + '/blog'); } catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const have = new Set(L(b.extra)), max = N(b.max_extra) || 4;
+    box.innerHTML = `<form class="stapp" data-f="langs"><b>Languages of this website</b>
+        <p class="stnote">First language: <b>${esc(S(b.language))}</b>. Pick up to ${max} more - every page (and every blog post) is translated by Hoola, with a language menu on the site and the right signals for Google.</p>
+        <div class="stshop-sw">${L(b.choices).map(c => `<label class="sted-kind"><input type="checkbox" name="lang" value="${esc(S(c.code))}"${have.has(c.code) ? ' checked' : ''}> ${esc(S(c.label))} <small>${esc(S(c.english))}</small></label>`).join('')}</div>
+        <div class="acts"><button class="btn go" type="submit">Save languages</button></div></form>`;
+    const f = box.querySelector('form');
+    f.addEventListener('change', () => {
+      const n = f.querySelectorAll('[name=lang]:checked').length;
+      f.querySelectorAll('[name=lang]:not(:checked)').forEach(x => { x.disabled = n >= max; });
+    });
+    f.dispatchEvent(new Event('change'));
+    f.addEventListener('submit', async e => {
+      e.preventDefault(); const btn = f.querySelector('button[type=submit]');
+      const langs = [...f.querySelectorAll('[name=lang]:checked')].map(x => x.value);
+      btn.disabled = true;
+      try { const r = await api('POST', base(o) + '/languages', {languages: langs}); toast(S(r?.say) || 'Saved.'); }
+      catch (er) { toast(er.message, true); }
+      btn.disabled = false;
+    });
+  }
+
   // ---------------------------------------------------------------- v0.357 DASHBOARD: her website's numbers as charts
   const DASH_DAYS = {};
   async function loadDash(o, root) {

@@ -33,8 +33,12 @@ SITE_TOOLS = [
         "version') -> only those parts are rebuilt, new version. action=photo: site + file_id (+ about: 'shop front', "
         "'owner'). action=undo: her last own-hand edit (words / link / photo / colours she changed in the preview's Edit "
         "mode, free, no AI) goes back. Small word / price / link fixes: tell her to tap Edit on the preview and type it there "
-        "(instant, free). action=language + second (en | hi | mr | hinglish, '' = remove) = the whole site in a second "
-        "language with a switch (Opus translates, new version). action=booking + lead + yes = HER answer to a website booking "
+        "(instant, free). action=languages + languages (up to 4 extra: en, hi, mr, hinglish, gu, bn, ta, te, kn, ml, pa, or, ur; "
+        "[] = only the first) = the whole site (blog posts too) in those languages with a language menu + hreflang (Opus "
+        "translates, new version); action=language + second = the old one-language form. BLOG: posts are WRITTEN by the "
+        "kalam tool (kind blog) and published with kalam action=publish dest=site where=<website> (+ when) -> her Haan "
+        "card; never write a post here. action=blog + slug + blog_action hide|show|cover (+ cover = one of her site photo "
+        "names) changes a post (a new version; she makes it live). Deleting a post is ONLY her tap in the app's Blog tab. action=booking + lead + yes = HER answer to a website booking "
         "request (only when she said pakka / mana). action=app + instruction (her words: 'customers login karke apna "
         "order track karein', 'students marks dekhein', 'staff complaints ka status badle') = a WEB APP on the site: logins, "
         "lists of data with rules, a My account page and a staff panel at /admin/ (her data; she sees it in the studio's "
@@ -56,7 +60,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "booking", "app", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "booking", "app", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -70,6 +74,8 @@ SITE_TOOLS = [
          "products": {"type": "array", "items": {"type": "object"}, "description": "[{title, price, stock, unit, active}]"},
          "from_lists": {"type": "boolean"}, "number": {"type": "string"}, "to": {"type": "string"},
          "free": {"type": "boolean"}, "second": {"type": "string", "enum": ["", "en", "hi", "mr", "hinglish"]},
+         "languages": {"type": "array", "items": {"type": "string"}, "description": "extra language codes, max 4"},
+         "slug": {"type": "string"}, "blog_action": {"type": "string", "enum": ["hide", "show", "cover"]}, "cover": {"type": "string"},
          "lead": {"type": "string"}, "yes": {"type": "boolean"}, "format": {"type": "string", "enum": ["zip", "react"]}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
          "city": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}},
@@ -79,11 +85,11 @@ SITE_TOOLS = [
          "required": ["action"]}},
     {"name": "website_dekho", "description": (
         "Read her websites (nothing changes). what=sites | site (site: board, pages, sections, scores, preview link, "
-        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
+        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | blog (site: her posts - published / scheduled / hidden - and the site's languages) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
         "find a business type, or industry) | brief (field, goal, style: the full ready brief) | understand (q: what a "
         "short ask means: business type, goal, 3 looks)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
+         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "blog", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
          "site": {"type": "string"}, "q": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
@@ -145,6 +151,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.design_app(t, site, str(a.get("instruction") or ""), conv)
     if action == "language":
         return S.set_language(t, site, str(a.get("second") or ""))
+    if action == "languages":                    # v0.359 BHASHAYEN
+        return S.set_languages(t, site, a.get("languages") if isinstance(a.get("languages"), list) else [])
+    if action == "blog":                         # v0.359 hide / show / cover from chat (never delete: her tap only)
+        return S.blog_act(t, site, str(a.get("slug") or ""), str(a.get("blog_action") or ""), str(a.get("cover") or ""), False)
     if action == "booking":
         return S.booking_decide(t, str(a.get("lead") or ""), bool(a.get("yes")))
     if action == "stop":
@@ -264,6 +274,8 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         r = SC.report(t, site, int(a.get("days") or 30))
         r.pop("site", None)
         return r
+    if what == "blog":                            # v0.359 her posts + languages
+        return S.blog_info(t, site)
     if what == "dashboard":                       # v0.357 the numbers behind her Dashboard tab
         from ..site import dash as SD
         r = SD.dashboard(t, site, int(a.get("days") or 30))

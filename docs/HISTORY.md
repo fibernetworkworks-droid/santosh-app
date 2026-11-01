@@ -13061,3 +13061,40 @@ that cannot say *which* account is useless to her.
 Resolving a stashed conflict by taking "mine" silently reverted another session's v0.311 test change, and the
 failure looked like my own bug for three rounds of digging. **On a conflicted test file, take main's copy and
 re-apply only the version pin** — and check a suspect failure on a pristine worktree before believing it.
+
+## v0.359.0 BLOG + BHASHAYEN (Phase 3c of "any world-complex website")
+Owner: "START PHASE 3C" (after 3a DUKAAN v0.351 and 3b DASHBOARD v0.357).
+- BLOG, writing stays with Kalam Sahayak (v0.101: her voice, facts checked on the web, [blanks] never guessed). Kalam gets
+  a new destination `site` (DESTS): `publish_request(dest="site", where=<website>, when=<time>)` -> `site.service.blog_target`
+  (the named site, or her only built one) -> the normal Kalam card "Aapki website ka blog: <name> (abhi | time par: ...)";
+  `decide_publish` (her Haan, card hash) -> `site.service.blog_publish`. Only blog pieces go to a site.
+- `server/app/site/blog.py`: table `site_blog_posts` (slug unique per site, title, excerpt, markdown body, category, tags,
+  cover = one of HER site photos, author, status published | scheduled | hidden, publish_at, published_at, words, tr =
+  translations per language with the source hash), `put` (same Kalam piece = same post), `set_status`, `set_cover`, `delete`,
+  `due` (scheduled -> published), `translate` (TRANSLATE_POST, kind site_edit, kept only while the source is unchanged),
+  `md_html` (Kalam's safe markdown: raw HTML escaped, only http / https / mailto / tel links; the title line and any h1
+  become the page's single h1), `card`, `rss`, `posting_ld` (BlogPosting), `latest_cards`, words in en / hi / hinglish.
+- `build.py`: `with_blog_pages` (a Blog page in the menu, or her designed blog page shows the posts below its own sections
+  minus any made-up blog_list), `/blog/page/N/` (10 a page, rel prev / next), `/blog/<post>/` (eyebrow category, h1, date,
+  reading time, author, cover eager, prose, tags, previous / next, 3 related - same category first, BlogPosting JSON-LD,
+  og:type article), `/blog/category/<cat>/`, `/blog/feed.xml`, RSS link in every head, posts + categories in sitemap.xml,
+  `<div data-hoola-posts="3">` in any section = her latest posts (RUNTIME_GUIDE: a blog section never writes posts).
+- Going live: her Haan says "publish on my website". `service._blog_rebuild` makes the checked version; when her live
+  address showed the version before, `_after_job -> _blog_go_live -> hosting.update_live` puts the new version on the same
+  addresses (no new address / DNS); else (blockers, never launched) the normal launch card. Scheduled posts:
+  `worker.tick -> service.blog_tick`. From chat, hide / show / cover make a version she launches herself; delete is ONLY her
+  tap (Blog tab / phone menu, with a confirm).
+- BHASHAYEN (`lang.py`): + gu, bn, ta, te, kn, ml, pa, or, ur (RTL: `<html dir="rtl">`, mirrored quote + menu), `pick` (her
+  words / codes), `html_lang`, MAX_EXTRA 4. `service.extra_languages / set_languages / _alts` (set_language kept for one);
+  `_translate` loops every language and the blog posts. `build.assemble` takes `site["alts"]` (a list): each language under
+  /<lang>/, `langs_all` + `root_up` + `root_base`; `lang_switch` = the v0.301 single link for two languages, a
+  `<details class="hs-langs">` menu for three or more; `<link rel="alternate" hreflang>` for every language + x-default on
+  every page when the real address is known.
+- API: GET /api/sites/<id>/blog, POST /api/sites/<id>/blog/<slug> {action hide|show|delete|cover} (her tap), POST
+  /api/sites/<id>/languages {languages}. Tools: `website` action=languages / blog (hide|show|cover), `website_dekho
+  what=blog`, `kalam` publish dest=site. Console Studio tabs Blog (write a draft with Kalam, read / edit it, publish now or
+  at a time -> the Kalam card confirmed in place, posts table with cover / hide / show / delete) and Languages (pick up to 4).
+  Phone `lib/ui/site_blog.dart` "Blog aur bhashayen" (posts + menu actions with confirms, language chips).
+- ALSO FIXED: the parallel v0.358 ENTERPRISE merge had dropped arena.js, employees.js and charts.js plus the Arena /
+  Employees / SEO Desk / Social Desk views from console v2.html (four console tests were red on main); restored.
+- Tests `server/tests/test_v0359_blog_bhashayen.py`.
