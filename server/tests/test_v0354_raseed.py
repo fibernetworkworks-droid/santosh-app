@@ -76,4 +76,4 @@ def test_kits_and_console():
     assert "struct ReceiptButton: View" in (sw / "Pro.swift").read_text() and "openURL(u)" in (sw / "Pro.swift").read_text()
     assert "ReceiptButton(coll: coll, r: r)" in (sw / "Accounts.swift").read_text()
     js = (root / "app/static/console/build.js").read_text()
-    assert "data-receipt" in js and "/receipt`" in js
+    assert "data-receipt" in js and "/receipt${" in js
