@@ -506,7 +506,7 @@ struct ReceiptButton: View {
     var body: some View {
         if r.b("receipt") && !r.b("pending") {
             VStack(alignment: .leading, spacing: 4) {
-                Button(busy ? Words.loading : Words.receipt) {
+                Button(busy ? Words.loading : (r.s("receipt_kind") == "invoice" ? Words.invoice : Words.receipt)) {   // v0.355
                     guard !busy else { return }
                     busy = true
                     Task {

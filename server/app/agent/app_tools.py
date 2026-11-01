@@ -72,13 +72,16 @@ APP_TOOLS = [
         "v0.352 KAAM BAANTO: set {assign: <staff member id or name>} gives that row to one staff member (\"yeh job Ravi ko do\"), "
         "set {assign: \"\"} takes it back; only staff / admin accounts can be given work; that person's app shows it under My work "
         "and tells them. "
+        "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
+        "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
+        "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
         "v0.353 RAAY: a finished row carries the customer's own rating (rating 1-5 + rating_note); only that customer gives it, once - "
         "never set or change a rating yourself; a 1-2 star rating already reached her chat. "
         "action=role (app, member, role staff|admin|member) makes an account staff (a staff app's new account sees nothing until then). "
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -87,6 +90,7 @@ APP_TOOLS = [
          "coll": {"type": "string", "description": "action=data: the app's list (orders, bookings, requests, ... or a staff list)"},
          "row": {"type": "string", "description": "action=data: the row id (from app_dekho what=data)"},
          "set": {"type": "object", "description": "action=data: fields to change, e.g. {\"status\": \"Accepted\"}"},
+         "gst": {"type": "object", "description": "action=gst: {gstin, legal_name, rate, hsn, items}"},
          "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members)"},
          "crash": {"type": "string", "description": "action=fix_crash: the crash id (app_dekho what=crashes); empty = the newest unfixed one"},
          "build": {"type": "integer", "description": "action=rollback: the build number to bring back (app_dekho what=android history); 0 = the one before"},
@@ -265,6 +269,17 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action == "gst":                       # v0.355 GST BILL: her GST details for this app's invoices
+        if not _owner(ctx):
+            raise ToolError("GST details sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import gst as G
+        r = BE.by_key_or_ref(t, ref)
+        g = a.get("gst") if isinstance(a.get("gst"), dict) else {}
+        v = G.set_settings(r, g) if g else G.view(r)
+        v["say"] = (f"GST invoice chalu: {v['gstin']} ({v['state']}), default {v['rate']}%." if v["on"]
+                    else "GST invoice band hai; poore kaam par saadi raseed banti hai.")
+        return v
     if action in ("data", "role"):            # v0.314 her own app's backend: she runs it from Hoola
         if not _owner(ctx):
             raise ToolError("App ka data sirf maalkin badal sakti hain.")

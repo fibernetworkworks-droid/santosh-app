@@ -12913,3 +12913,23 @@ A finished order / booking / request now has a receipt the customer can keep.
 - Tests `tests/test_v0354_raseed.py` (rules, link, signature / expiry / other row refused, PDF text: items, total, handled by,
   not-a-tax-invoice line; her copy; cancelled refused). Not verified: a real phone's browser; the phone owner panel has no
   receipt button yet (console + the app itself only); GST invoices are NOT made (needs her GSTIN + tax rules - a later phase).
+
+## v0.355.0 GST BILL (App Sahayak Phase 19, owner: "START PHASE 19")
+v0.354's receipt said "not a GST tax invoice"; a registered business needs the real thing.
+- `appmaker/gst.py`: `valid_gstin` (15 chars, state code, PAN shape, Z, the mod-36 check digit - a real published GSTIN
+  validates, one changed character fails), `settings / view / set_settings` kept in `AppProject.backend["gst"]` (survives a
+  backend upgrade: `backend.ensure` carries `gst` over), `fy()` (April-March in IST), `number_for(r, row)` = INV/<FY>/<0001>
+  under a lock in ONE transaction with the counter, stored on the row (`_inv_no`, `_inv_date`) so the same row always shows
+  the same number and no number is skipped or reused; `compute(r, coll, row)` = lines from the order's own items text
+  ("2 x Name @ Rs 120", the price at order time), per-product HSN + rate, GST-INCLUSIVE split (taxable = gross / (1 + rate)),
+  the server total is the truth (the last line absorbs any rounding gap), place of supply from a buyer GSTIN field, else a
+  state / big city in her customer's own address words (never item names), else her state; CGST + SGST vs IGST; `words()`
+  in the Indian system.
+- `receipt._tax_invoice`: A4 TAX INVOICE with the Rule 46 particulars (supplier legal + trade name, address, GSTIN + state;
+  number + date; bill-to + buyer GSTIN; place of supply; # / item / HSN / qty / taxable / rate / CGST SGST or IGST / amount;
+  totals; amount in words; reverse charge No; For <seller> Authorised signatory). File name invoice-INV-<FY>-<n>.pdf. Rows
+  carry `receipt_kind` (invoice / receipt); the apps' button says "Tax invoice".
+- Her side: GET / PUT /api/apps/<ref>/gst, tool app_banao action=gst, console "GST invoices" box (GSTIN, legal name, default
+  rate + HSN, per-product HSN / rate table). GSTIN "" = plain receipts again; issued numbers are kept.
+- Tests `tests/test_v0355_gst_bill.py`. Not done (said in the product): credit notes for a row cancelled after its invoice,
+  e-invoicing / IRN for big turnovers, GST returns, GST-exclusive pricing (would change what the app charges).

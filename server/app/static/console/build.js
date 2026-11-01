@@ -760,6 +760,27 @@ window.HoolaBuild = function (C) {
       cbox.appendChild(sec);
       hydrate(sec);              // v0.319 photos load with her login
     }
+    // v0.355 GST BILL: her GST details -> finished rows get a tax invoice (GST-inclusive prices)
+    const gbox = document.createElement('section'); gbox.className = 'stcol stgst'; box.appendChild(gbox);
+    const drawGst = g => {
+      gbox.innerHTML = `<h4>GST invoices <span>${g.on ? 'On' : 'Off'}</span></h4><p class="stnote">${esc(S(g.note))}</p>
+        <form class="stapp" autocomplete="off"><div class="row"><input name="gstin" maxlength="15" placeholder="GSTIN (blank = plain receipts)" value="${esc(S(g.gstin))}" aria-label="GSTIN">
+        <input name="legal_name" maxlength="120" placeholder="Legal name (as on GST certificate)" value="${esc(S(g.legal_name))}" aria-label="Legal name"></div>
+        <div class="row"><label>Default rate <select name="rate">${L(g.rates).map(x => `<option value="${x}"${N(x) === N(g.rate) ? ' selected' : ''}>${x}%</option>`).join('')}</select></label>
+        <input name="hsn" maxlength="8" placeholder="Default HSN / SAC" value="${esc(S(g.hsn))}" aria-label="Default HSN or SAC">
+        <button class="btn go" type="submit">Save GST</button></div>
+        ${L(g.products).length ? `<div class="sttbl"><table><thead><tr><th>Product</th><th>Price</th><th>HSN / SAC</th><th>Rate</th></tr></thead><tbody>${L(g.products).map(p => `<tr data-p="${esc(S(p.id))}"><td>${esc(S(p.name))}</td><td>${esc(S(p.price))}</td>
+          <td><input data-k="hsn" maxlength="8" value="${esc(S(p.hsn))}" aria-label="HSN for ${esc(S(p.name))}"></td>
+          <td><select data-k="rate" aria-label="Rate for ${esc(S(p.name))}"><option value="">Default</option>${L(g.rates).map(x => `<option value="${x}"${p.rate !== undefined && p.rate !== null && N(x) === N(p.rate) ? ' selected' : ''}>${x}%</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>` : ''}
+        </form>${g.on ? `<p class="stnote">Invoices issued: ${N(g.issued)} · ${esc(S(g.state))}</p>` : ''}`;
+      gbox.querySelector('form').addEventListener('submit', async e => {
+        e.preventDefault(); const f = e.target, b = f.querySelector('button.go'); b.disabled = true;
+        const items = {}; f.querySelectorAll('tr[data-p]').forEach(tr => { items[tr.dataset.p] = {hsn: tr.querySelector('[data-k=hsn]').value.trim(), rate: tr.querySelector('[data-k=rate]').value}; });
+        try { drawGst(await api('PUT', base(o) + '/gst', {gstin: f.gstin.value.trim(), legal_name: f.legal_name.value.trim(), rate: f.rate.value, hsn: f.hsn.value.trim(), items})); toast('GST details saved.'); }
+        catch (er) { toast(er.message, true); b.disabled = false; }
+      });
+    };
+    try { drawGst(await api('GET', base(o) + '/gst')); } catch (er) { gbox.remove(); }
     const mbox = box.querySelector('.stmem');
     try {
       const ms = L((await api('GET', base(o) + '/members')).members);

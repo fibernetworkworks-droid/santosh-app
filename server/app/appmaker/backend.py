@@ -225,7 +225,8 @@ def ensure(r: AppProject) -> dict[str, Any]:
     # v0.319 an older backend is upgraded in place: lists only GAIN fields (photo / location / paid), rows are untouched
     old_changes = be.get("changes") or []
     be = {"schema": schema_for(r), "made": be.get("made") or now().isoformat(), "v": SCHEMA_V, "rev": int(be.get("rev") or 0),
-          "changes": old_changes, **({"upgraded": now().isoformat()} if be.get("made") else {})}
+          "changes": old_changes, **({"upgraded": now().isoformat()} if be.get("made") else {}),
+          **({"gst": be["gst"]} if be.get("gst") else {})}         # v0.355 her GST details + invoice numbers survive an upgrade
     for ch in old_changes:                     # v0.325 her own data changes survive an upgrade: replayed on the new lists
         _apply_ops(be["schema"], ch.get("ops") or {})
     with session() as s:
@@ -1057,6 +1058,10 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
     one = isinstance(out, dict)
     rows_ = [out] if one else list(out)
     info = _assign_info(bid(r), [x.get("id") for x in rows_ if x.get("id")])
+    kind = ""
+    if any(receipt_ready(info.get(x.get("id"), {})) for x in rows_):
+        from . import gst as G
+        kind = "invoice" if G.on(r) else "receipt"          # v0.355 the app's button says Invoice for a GST business
     for x in rows_:
         d = info.get(x.get("id"), {})
         to = str(d.get("_to") or "")
@@ -1068,6 +1073,8 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
             if d.get("_rate"):
                 x["rating"], x["rating_note"] = int(d["_rate"]), str(d.get("_rate_note") or "")
             x["receipt"] = receipt_ready(d)            # v0.354 RASEED: a receipt PDF can be had for this row
+            if x["receipt"]:
+                x["receipt_kind"] = kind
             x["can_rate"] = bool(x.get("mine") and not w.staff and not d.get("_rate") and _rateable(str(d.get("status") or "")))
     return rows_[0] if one else rows_
 

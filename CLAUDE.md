@@ -136,7 +136,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.354.0 (pubspec 0.354.0+394). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.355.0 (pubspec 0.355.0+395). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
@@ -151,6 +151,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.352 KAAM BAANTO (App Phase 16, `backend.assign`, kits `AssignBox` / `Team`): a row given to ONE staff member (owner / admin assign, staff take a free one), others on staff cannot change it, My work filter, "Given to you" update, customer sees the first name.
 - v0.353 RAAY (App Phase 17, `backend.rate`, kits `RateBox`): the customer rates her finished row once (1-5 + note), nobody else / never changed, 1-2 stars reach her chat, dashboard average per list + per staff member.
 - v0.354 RASEED (App Phase 18, `appmaker/receipt.py`, kits `ReceiptButton`): receipt PDF of a finished row made by the server (not a GST invoice), only her customer / staff / her, 15-minute signed link opened in the browser.
+- v0.355 GST BILL (App Phase 19, `appmaker/gst.py`): her GSTIN (check digit) -> Rule 46 tax invoice for finished rows, INV/<FY>/0001 given once, GST-inclusive (total = order total), CGST+SGST / IGST by place of supply, HSN per product; no credit notes / IRN.
 - v0.349 BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
 - v0.348 KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
 - v0.347 HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.

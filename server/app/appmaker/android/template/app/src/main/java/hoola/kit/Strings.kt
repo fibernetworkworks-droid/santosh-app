@@ -94,6 +94,7 @@ object Strings {
     val myTeam get() = t("Team", "टीम", "टीम", "Team")
     val openWork get() = t("open", "बाकी", "बाकी", "baaki")
     val receipt get() = t("Receipt", "रसीद", "पावती", "Raseed")       // v0.354 RASEED
+    val invoice get() = t("Tax invoice", "टैक्स इनवॉइस", "कर बीजक", "Tax invoice")   // v0.355 GST BILL
     // v0.353 RAAY
     val rateIt get() = t("How was it? Rate us", "कैसा रहा? रेटिंग दें", "कसे वाटले? रेटिंग द्या", "Kaisa raha? Rating dijiye")
     val ratingNote get() = t("A few words (optional)", "कुछ शब्द (ज़रूरी नहीं)", "थोडे शब्द (ऐच्छिक)", "Kuch shabd (zaroori nahi)")

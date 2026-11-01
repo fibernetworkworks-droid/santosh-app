@@ -118,6 +118,9 @@ def pdf(r: AppProject, c: dict[str, Any], row, d: dict[str, Any]) -> bytes:
           "s": ParagraphStyle("s", fontName=font, fontSize=7.5, leading=10, textColor=colors.HexColor("#666666"))}
     facts = AS._j(r.facts, {}) if getattr(r, "facts", None) else {}
     name = str(facts.get("name") or r.name or "Receipt")
+    from . import gst as G
+    if G.on(r):                                   # v0.355 GST BILL: a registered business gets a tax invoice instead
+        return _tax_invoice(r, c, row, d, facts, name, st, T)
     out: list[Any] = [Paragraph(T(name), st["h"])]
     contact = " · ".join(str(facts[k]) for k in ("address", "phone", "email") if facts.get(k))
     if contact:
@@ -164,7 +167,66 @@ def pdf(r: AppProject, c: dict[str, Any], row, d: dict[str, Any]) -> bytes:
 
 
 def filename(r: AppProject, row) -> str:
-    return f"receipt-{number(r, row)}.pdf"
+    inv = BE._j(row.data, {}).get("_inv_no") if row is not None else ""
+    return f"invoice-{inv.replace('/', '-')}.pdf" if inv else f"receipt-{number(r, row)}.pdf"
 
 
 __all__ = ["link", "by_link", "for_owner", "pdf", "ready", "number"]
+
+
+def _tax_invoice(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], facts: dict[str, Any], name: str, st, T) -> bytes:
+    """v0.355 the Rule 46 tax invoice (GST-inclusive prices; the total is the server's order total)."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    from . import gst as G
+    no, day = G.number_for(r, row.id)
+    x = G.compute(r, c, d)
+    P = lambda t, k="p": Paragraph(T(t), st[k])
+    seller = x["legal_name"] or name
+    out: list[Any] = [P("TAX INVOICE", "h"), P(seller, "b")]
+    if x["legal_name"] and x["legal_name"] != name:
+        out.append(P(f"Trade name: {name}"))
+    contact = " · ".join(str(facts[k]) for k in ("address", "phone", "email") if facts.get(k))
+    if contact:
+        out.append(P(contact, "s"))
+    out += [P(f"GSTIN: {x['gstin']} · State: {x['home_name']} ({x['gstin'][:2]})"), Spacer(1, 3 * mm)]
+    buyer_name = next((str(d.get(k)) for k in ("name", "customer", "student", "company") if d.get(k)), "")
+    buyer_addr = next((str(d.get(k)) for k in ("address", "site_address", "city") if d.get(k)), "")
+    head = [[P(f"Invoice No. {no}", "b"), P(f"Date: {day}", "b")],
+            [P("Bill to: " + (buyer_name or "Customer") + (f", {buyer_addr}" if buyer_addr else "")[:300]),
+             P(f"Place of supply: {x['pos_name']} ({x['pos']})")]]
+    if x["buyer_gstin"]:
+        head.append([P(f"Buyer GSTIN: {x['buyer_gstin']}"), P("")])
+    t = Table(head, colWidths=[110 * mm, None])
+    t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
+    out += [t, Spacer(1, 3 * mm)]
+    m = lambda v: f"{v:,.2f}"
+    tax_cols = ["IGST"] if x["inter"] else ["CGST", "SGST"]
+    rows = [[P(h, "b") for h in ["#", "Item", "HSN/SAC", "Qty", "Taxable", "Rate"] + tax_cols + ["Amount"]]]
+    for i, ln in enumerate(x["lines"], 1):
+        tax = [m(ln["igst"])] if x["inter"] else [m(ln["cgst"]), m(ln["sgst"])]
+        rows.append([P(str(i)), P(ln["name"][:120]), P(ln["hsn"] or "-"), P(str(ln["qty"])), P(m(ln["taxable"])),
+                     P(f"{ln['rate']:g}%")] + [P(v) for v in tax] + [P(m(ln["amount"]))])
+    tt = x["totals"]
+    rows.append([P(""), P("Total", "b"), P(""), P(""), P(m(tt["taxable"]), "b"), P("")]
+                + ([P(m(tt["igst"]), "b")] if x["inter"] else [P(m(tt["cgst"]), "b"), P(m(tt["sgst"]), "b")]) + [P(m(tt["amount"]), "b")])
+    widths = [8 * mm, None, 18 * mm, 10 * mm, 22 * mm, 13 * mm] + ([20 * mm] if x["inter"] else [18 * mm, 18 * mm]) + [22 * mm]
+    t = Table(rows, colWidths=widths, repeatRows=1)
+    t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#999999")),
+                           ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eeeeee")), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
+    out += [t, Spacer(1, 3 * mm), P(f"Invoice total: ₹{m(tt['amount'])} (GST included)", "b"), P(G.words(tt["amount"]), "s")]
+    paid = str(d.get("paid") or "")
+    if paid == "Verified":
+        out.append(P("Paid by UPI" + (f" (ref {d['utr']})" if d.get("utr") else "") + "."))
+    out += [P("Tax payable on reverse charge: No."), Spacer(1, 10 * mm), P(f"For {seller}", "b"), P("Authorised signatory", "s"),
+            Spacer(1, 4 * mm), P("Computer-generated invoice made by the " + name + " app.", "s")]
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=14 * mm, bottomMargin=14 * mm,
+                            title=f"Tax invoice {no}", author=seller, subject="Tax invoice")
+    doc.build(out)
+    STATS["receipts"] += 1
+    G.STATS["invoices"] += 1
+    return buf.getvalue()
