@@ -1,4 +1,4 @@
-"""v0.380 DIMAAG (App Phases 43-46): the app's logic engine end to end on a real built app - linked lists
+"""v0.382 DIMAAG (App Phases 43-46): the app's logic engine end to end on a real built app - linked lists
 (customer -> invoices -> lines), formulas + roll-ups, rules + unique keys, a workflow with a maker-checker approval
 chain, triggers (notify / set / create / run), cascade + restrict deletes, scheduled jobs, SLA, a callable function,
 Opus drafting (faked) with the checker's repair round, and her tap applying it."""

@@ -1,4 +1,4 @@
-"""v0.380 DIMAAG: the app's logic spec - read, cleaned and CHECKED against the app's real lists before it can go live.
+"""v0.382 DIMAAG: the app's logic spec - read, cleaned and CHECKED against the app's real lists before it can go live.
 
 be["logic"] = {
   "relations":  [{name, from, field, to, label, on_delete: restrict|cascade|nullify}]   customer -> orders -> lines

@@ -14184,8 +14184,91 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   delivery_note, slot, slot_label) were saved under those plain names and could overwrite a list's own field of the same name.
   They are stored as `_subtotal` ... `_slot_label` (`backend.SYS_KEYS`); views show the plain name only when the list has no
   such field (and always the `_` name); receipts, GST, accounts, slots and coupon give-back read the `_` names.
+## v0.380.0 HOOLA CAD ANALYSIS (built as 0.375) (1 Nov 2026)
+Owner, on the 8 gaps listed after v0.364: "MAKE IT VERY FUCTIONAL FOR HOOLA AI - DO DEEP RESEARCH AND INNOVATION".
+What each gap became (all in `server/app/engineering/`, tests `tests/test_v0365_cad_analysis.py`, 14 + the 16 desk tests):
+- FEA (`fea.py`, run by `analysis_runner.py` in the same locked box via `sandbox.analyse`): mesh from the part's OWN
+  B-rep (every face sampled at h, points remember their face, jittered interior grid, Delaunay, tets kept by the OCC
+  inside test), quadratic tetrahedra (scikit-fem BSD-3), PyAMG-preconditioned CG with rigid-body modes else a direct
+  solve. Loads / supports by CadQuery face selectors. static = von Mises at element vertices averaged per node with
+  sliver tets down-weighted (quadrature spikes were +100 %), peak AWAY from supports (clamp singularity), safety
+  factor vs yield, equilibrium check (reactions = loads), two-mesh convergence check. thermal = steady conduction
+  with temps / watts / convection. modal = shift-invert eigsh, free-free or supported, avoid_hz band. Measured vs
+  theory: cantilever deflection 0.2015 vs 0.200 mm, bending stress within ~5 %, first mode 810 vs 815 Hz, 1-D heat
+  exact. Materials table (E, nu, rho, yield, k) for 16 materials.
+- THE INNOVATION: design -> simulate -> redesign. `H.analyze(..., min_sf=2)` in the CAD script; if the FEA says too
+  weak (or a mode sits in her motor band) the designer gets the peak stress, where, and the yield, and makes a
+  stronger version (ENG_STRENGTHEN_ROUNDS 2). Same for her numbers: `H.expect(size / holes / max_size / volume /
+  solids)` are measured on the B-rep (`geom.py` finds holes by cylinder axis + diameter) and a miss is sent back.
+- Threads: helical sweep + union failed on ~1 size in 5 in OCC (measured M3-M24 x 6-30 mm, even with retries), so
+  H.thread / H.thread_tool build an exact FACETED ISO 68-1 surface r(theta, z) sewn into one solid: valid every time,
+  tapped holes cut reliably (~3-10 s each, max 6 a part).
+- Sheet metal: H.sheet(press-brake profile, width, t, r, k) = real bent strip (sweep of lines + bend arcs), flat
+  length by K-factor bend allowance (DIN 6935); H.tray (4 flanges, corner reliefs); flat.dxf (CUT + dashed BEND
+  layers) + flat.png.
+- Freeform: H.smooth_loft (super-ellipse sections, B-spline loft), H.spline_sweep (tube along a 3-D spline).
+- CNC (`cam.py`): 2.5D face / pocket (inward offset rings) / peck drill (explicit moves, any controller) / profile with
+  tabs; part.nc + cam.png + time estimate. DRAFT: simulate + dry-run.
+- Calculator (`calc.py`, tool `eng_calc`, POST /api/eng/calc): ISO 286 fits, tolerance stack (worst / RSS / Monte
+  Carlo + Cpk), ISO 898 bolts (preload, torque, EN 1993 utilisation), fillet welds, beams, pipe flow.
+- Big assemblies: > 40 parts or > 4,000 faces -> coarser view mesh, no hidden-line page.
+- Certification: still never claimed. analysis.pdf = an engineer's calculation report (method, mesh, equilibrium,
+  convergence, assumptions) for HER engineer to sign.
+- Desk: console + phone show the analysis lines, stress / heat / mode maps, toolpath, flat pattern, and the new files.
+- VPS: `~/apps/santosh-core/.venv/bin/pip install scikit-fem pyamg` (scikit-fem needed for FEA; pyamg optional = faster).
 
-## v0.380.0 DIMAAG - the app's logic engine (App Sahayak Phases 43-46 = Pillar A of docs/COMPLEX_APPS_PLAN.md)
+## v0.381.0 SHIKSHA SUITE Phase 0 + 1 (built as v0.364 / v0.381 / v0.379, re-versioned past main v0.380.0): the education foundation + Pathyakram Sahayak (curriculum & exam designer)
+- Owner: "NOW LETS WORK ON AI EMPLOYEE SECTION :::: FOR EDUCATION SECTION ... MAKE A PLAN" (4 roles: tutor, curriculum &
+  exam designer, admin operations, research assistant) -> plan (Phase 0 foundation, 1 exam designer, 2 tutor, 3 admin, 4
+  research) -> "GO PHASE 0 + 1".
+- PHASE 0 `server/app/pylab/` (runner + service, tool `pylab`): model-written Python runs ONLY in a child process with its own
+  temp work folder, a clean env (no keys / tokens, `-I`), RLIMIT CPU / AS (1 GB) / FSIZE / NOFILE / CORE, a wall-clock kill of the
+  process group, `unshare -rn` (own empty network namespace) when the kernel allows it, and an audit hook installed before the
+  user code that refuses socket / subprocess / os.system / exec / spawn / fork / ctypes events, any write outside the work folder
+  and any READ outside the work folder and the Python install (so the server's code, .env, database and other users' data are
+  out of reach). Inputs: DATA DESK datasets (as <id>.csv) and her chat files; outputs (png / csv / xlsx / txt / json / md / html)
+  come back as chat files; matplotlib figures are saved automatically. `pylab.service.status()` = libraries + isolation.
+  requirements.txt + pandas, scipy, statsmodels, matplotlib (VPS: pip install them into the venv).
+- PHASE 0 `server/app/shiksha/` (models / rules / service / api, tools `shiksha` / `shiksha_dekho`): settings (institution,
+  kind, board, medium, session), classes C-01, learners S-0001 (birth YEAR only; a learner is a child unless marked adult or 18+
+  by year; a child needs guardian name + phone / email; `record_consent` = the owner / school team records the GUARDIAN's
+  consent with a method signed_form | in_person | digilocker | school_record | email_confirmed, logged; withdrawal stops the
+  work; `need_usable` guards every one-child action; `forget_learner` erases details + marks, number kept), the shared question
+  bank Q-00001 (`rules.check_question`: 11 types, MCQ = 4 distinct options + answer among them (letters mapped), Assertion-Reason
+  = the 4 standard CBSE options, True / False, numeric needs a number, subjective needs a model answer or marking points,
+  marks in halves, scheme sum checked, Bloom / difficulty normalised; fatal problems not saved; near-duplicates (fingerprint +
+  85% word overlap) skipped; open problems block approval; an edited question goes back to draft), gradebook with teacher
+  sign-off (never by Hoola / a routine). `frameworks.json`: CBSE 2026-27 paper patterns (Class 10 Maths 80 = A 20x1, B 5x2,
+  C 6x3, D 4x5, E 3x4 with C / D worked out from the totals -> andaaza; Class 12 Maths 80 and Physics 70; Science / SST /
+  English / Chemistry / Biology have no section counts on record -> the teacher gives sections), current NCERT chapter lists
+  (Ganita Prakash 7 / 8, Ganita Manjari 9, Class 10 Maths + Science, Curiosity 6 / 8; Maths 6, Science 7 / 9 incomplete ->
+  left out), CISCE 2027 marks schemes, IB / Cambridge copyright notes, DPDP Rules 2025 (G.S.R. 846(E), rule 10 verifiable
+  parental consent, in force ~May 2027; Fourth Schedule school exemption only for tracking / safety).
+- PHASE 1 `server/app/pathyakram/` (models / service / api; tools `pathyakram` / `pathyakram_dekho`): `generate` (<= 30 a call,
+  site.ai kind "edu", warns when a chapter is not in the NCERT book), `blueprint` (official pattern or her sections; totals
+  checked), `make_paper` (approved questions of the section's type + marks, chapter round-robin, least-used first, internal
+  choice slots, gaps listed; fill_missing writes drafts), `swap`, `approve_paper` (every question approved + marks = max),
+  `paper_file` (Word paper / answer key + marking scheme), `year_plan` (deterministic, chapters in order once each, revision
+  months, periodic tests / half-yearly as suggestions), `lesson_plan` (5E, all five phases required, minutes scaled to the class
+  time), `rubric` (same level count per criterion, points scaled to the total), `plan_file`, `share_request` / `decide_share`
+  (an approved paper / plan; card hash over the exact content; only POST /api/pathyakram/shares/{id}/decide with by_tap; file /
+  Google Forms quiz of the objective questions with the rest listed as left out / WhatsApp or email draft she sends herself).
+- Employee: duties `curriculum_work`, `school_records`; role `curriculum_designer`; preset `school_academics`; READ +
+  shiksha_dekho, pathyakram_dekho, pylab. Admit family "shiksha" (paper / syllabus / CBSE / NCERT / Python words). Voice: via
+  santosh_kaam only. Push: pathyakram_share (waiting only), pathyakram_paper, pathyakram_plan. Prompt line SCHOOL / COACHING.
+- App: `lib/ui/shiksha_screen.dart` (ShikshaScreen Aaj / Sawaal / Papers / Plans / Niyam, PathyakramPaperPage, PathyakramPaperCard,
+  PathyakramShareCard), Profile tile, chat cards keyed in kanoonCardKey (pkshare / pkpaper), share card in calls.
+- Tests: NEW `server/tests/test_v0381_shiksha.py` (22): sandbox analysis + files, 7 escapes blocked (socket, os.system,
+  subprocess, write outside, read /etc/passwd, list /home, ctypes), no secrets in the child, timeout, memory, her dataset;
+  question checks; frameworks honest (incomplete book empty, derived pattern unverified); guardian consent rules + sign-off +
+  forget; bank dedupe / review; generate drafts; paper from her blueprint + approve + files + swap; official pattern + gaps;
+  year plan from the library; lesson / rubric numbers; share only on her tap + Forms quiz; tools / API / employee wiring.
+- Not verified: real model output (scripted JSON in tests); a real Google Forms quiz; the official PDFs themselves (the build
+  sandbox could not open cbseacademic / ncert / cisce; facts came from searches restricted to those domains); Flutter not compiled
+  here (CI analyze); the console has no Shiksha page yet (phone + chat only).
+
+
+## v0.382.0 DIMAAG - the app's logic engine (App Sahayak Phases 43-46 = Pillar A of docs/COMPLEX_APPS_PLAN.md)
 Owner (1 Nov 2026): *"Logic engine (biggest step) - Linked lists (customer → orders → items), formulas, workflows with
 approvals, automatic triggers and timed jobs, and custom logic in a locked sandbox ---- WORK ON IT AND DEPLOYE MAKE IT FULL
 AND ROBUSTLY FUCTIONAL"*.

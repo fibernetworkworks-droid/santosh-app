@@ -75,7 +75,7 @@ APP_TOOLS = [
         "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
         "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
         "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
-        "v0.380 DIMAAG - the app's BRAIN (any complex business logic): action=logic (owner only; instruction = her words, e.g. "
+        "v0.382 DIMAAG - the app's BRAIN (any complex business logic): action=logic (owner only; instruction = her words, e.g. "
         "\"har order ke items alag list mein, total apne aap\", \"50,000 se upar ka quote manager phir director manzoor kare\", "
         "\"har din 9 baje unpaid invoices par reminder\"; empty instruction + no logic yet = the full logic from the app brief; "
         "empty instruction with logic = show it): Opus writes linked lists (customer -> orders -> items), formulas + totals, "
@@ -165,7 +165,7 @@ APP_TOOLS = [
         "(q = her words -> the best precise app idea + 2 near ones + how many ideas exist for that business; field / goal / "
         "aud filter; offset pages through them; idea = one idea's full detail). Show ideas to her as 2-3 short lines (name + "
         "the special thing) and ask which one; then app_banao action=new idea=<id>." " data (app; coll = one list: its rows, newest first - the real orders / bookings / requests her app's users made, with status) | "
-        "members (app: the app's accounts with their role). logic (app: v0.380 its business logic in plain lines, the draft waiting for her tap, approvals waiting, the last automatic actions). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps)."),
+        "members (app: the app's accounts with their role). logic (app: v0.382 its business logic in plain lines, the draft waiting for her tap, approvals waiting, the last automatic actions). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
@@ -313,7 +313,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
-    if action in ("logic", "logic_switch", "approval", "logic_run"):     # v0.380 DIMAAG
+    if action in ("logic", "logic_switch", "approval", "logic_run"):     # v0.382 DIMAAG
         if not _owner(ctx):
             raise ToolError("App ki logic sirf maalkin badal sakti hain.")
         from ..appmaker import backend as BE
@@ -557,7 +557,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         v = ST.view(BE.by_key_or_ref(t, ref))
         return {k: v.get(k) for k in ("package", "proposed", "account", "status", "now", "error", "steps", "listing", "bundle",
                                       "releases", "privacy_url", "delete_url", "console_steps")}
-    if what == "logic":                                   # v0.380 DIMAAG: the app's brain, its draft, approvals, what it did
+    if what == "logic":                                   # v0.382 DIMAAG: the app's brain, its draft, approvals, what it did
         from ..appmaker import backend as BE
         from ..appmaker.logic import service as LS
         v = LS.view(BE.by_key_or_ref(t, ref))

@@ -164,6 +164,11 @@ DUTIES: dict[str, dict] = {
     # v0.150 Kanoon suite
     "legal_junior": {"label": "Lawyer's junior", "say": "court diary, tareekhein, cause list, limitation (andaaza), drafts vakil sahab ke liye, client update drafts, fee hisaab (filing / message / fee maangna aapke tap se)",
                      "prefix": (), "tools": {"vakil", "vakil_dekho", "file_read", "lekhak", "lekhak_dekho"}},
+    # v0.381 Shiksha suite
+    "curriculum_work": {"label": "Paper aur pathyakram", "say": "question bank (draft -> teacher approve), board pattern se paper + answer key, year / lesson plan, rubric; bahar bhejna aapke tap se",
+                        "prefix": (), "tools": {"pathyakram", "pathyakram_dekho", "shiksha_dekho", "file_read", "gyaan_khojo", "pylab"}},
+    "school_records": {"label": "School register", "say": "class, students, guardian consent, marks register (final marks teacher ke)",
+                       "prefix": (), "tools": {"shiksha", "shiksha_dekho"}},
     "legal_research": {"label": "Legal research", "say": "kanoon ke sawaal par official sources / judgments padhkar memo (har baat ka source), purana -> naya kanoon table; memo bahar bhejna aapki haan se",
                        "prefix": (), "tools": {"legalres", "legalres_dekho", "file_read", "gyaan_khojo"}},
     "compliance_work": {"label": "Compliance", "say": "statutory calendar, saboot, reminders, certificate draft (portal filing aur sign-off aapki haan se)",
@@ -395,6 +400,8 @@ ROLES: dict[str, dict] = {
     # v0.150 Kanoon suite
     "lawyer_junior": {"label": "Lawyer's junior", "say": "Court diary, tareekhein, cause list, limitation (andaaza), drafts, fee hisaab; filing / message / fee aapki haan se",
                       "duties": ["legal_junior", "reminders", "records"]},
+    "curriculum_designer": {"label": "Curriculum & exam designer", "say": "Syllabus / year plan, lesson plan, question bank, board pattern ka paper + answer key, rubric; sab teacher ke approve se, bahar aapke tap se",
+                            "duties": ["curriculum_work", "school_records", "records", "research"]},
     "legal_researcher": {"label": "Legal researcher", "say": "Act aur judgments official source se, har baat ka source; memo bahar aapki haan se",
                          "duties": ["legal_research", "records", "research"]},
     "compliance_officer": {"label": "Compliance officer", "say": "Statutory calendar, saboot, reminders, monthly certificate; filing / sign-off aapki haan se",
@@ -691,6 +698,11 @@ PRESETS: dict[str, dict] = {
                    "about_hint": "Kaun si courts, kaise matters (civil / criminal / family / NI 138), vakil ka naam + enrolment no., fee kaise",
                    "rules": ["Hoola salah nahi deta: har draft / tareekh vakil se pakka", "Filing, client / doosre paksh ko message, fee maangna sirf owner ki haan se",
                              "Ek client ki baat doosre client ko kabhi nahi"]},
+    "school_academics": {"label": "School / coaching academics (paper, syllabus, lesson plan)", "role": "curriculum_designer", "kind": "coaching",
+                         "slot_minutes": 30, "after_hours": "quiet",
+                         "about_hint": "Board (CBSE / ICSE / state), kaun si classes aur subjects, medium (English / Hindi), session",
+                         "rules": ["AI ka har sawaal draft: teacher padh kar approve kare tabhi paper mein", "Board ka pattern / chapter sirf official source se; warna 'andaaza'",
+                                   "Bachche (18 se kam) ki jaankari guardian ki consent ke bina nahi; marks sirf guardian ko", "Paper / quiz bahar sirf owner / teacher ke tap se"]},
     "legal_research": {"label": "Vakil / legal research desk", "role": "legal_researcher", "kind": "office", "slot_minutes": 30, "after_hours": "quiet",
                        "about_hint": "Kaun se kanoon / courts par research, Indian Kanoon API key hai?",
                        "rules": ["Har citation sirf us source se jo padha gaya (link + quote); warna '[citation chahiye]'", "Memo bahar sirf owner ki haan ke card se",
@@ -817,6 +829,7 @@ READ = {
     # v0.144 Makaan suite
     "propagent_dekho", "rentdesk_dekho", "biz_rent_status", "sitesup_dekho", "interior_dekho", "archassist_dekho", "society_dekho",
     # v0.150 Kanoon suite
+    "shiksha_dekho", "pathyakram_dekho", "pylab",   # v0.381 Shiksha suite (pylab: sandboxed, nothing outside changes)
     "vakil_dekho", "legalres_dekho", "compliance_dekho", "contracts_dekho", "cosec_dekho", "notary_dekho", "pidesk_dekho", "dpo_dekho",
     # v0.152 Mehmaan suite
     "front_office_dekho", "event_plan_dekho", "shaadi_dekho", "tour_guide_dekho", "homestay_dekho", "banquet_dekho",
@@ -836,7 +849,7 @@ BIG = {
 }
 
 
-# v0.370: the Enterprise jobs that can change a live system are BIG, DERIVED from enterprise/rules so the two
+# v0.381: the Enterprise jobs that can change a live system are BIG, DERIVED from enterprise/rules so the two
 # can never drift. Hand-syncing this list already went wrong once: `tpm` started writing and stayed "action"
 # until it was caught by hand.
 def _enterprise_writers() -> set[str]:

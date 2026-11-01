@@ -305,7 +305,7 @@ object Db {
     fun fields(coll: String): List<Item> = arrList(collection(coll)?.optJSONArray("fields")).filter { !it.b("hidden") }
     fun label(coll: String): String = collection(coll)?.optString("label", coll) ?: coll
     fun rule(coll: String, op: String): String = collection(coll)?.optJSONObject("rules")?.optString(op, "") ?: ""
-    // v0.380 DIMAAG: what the app's logic says about a list (from the server's schema; the server checks every write)
+    // v0.382 DIMAAG: what the app's logic says about a list (from the server's schema; the server checks every write)
     fun relations(coll: String): List<Item> = arrList(collection(coll)?.optJSONArray("relations"))
     fun workflowField(coll: String): String = collection(coll)?.optString("workflow", "") ?: ""
     fun labelField(coll: String): String = collection(coll)?.optString("label_field", "") ?: ""

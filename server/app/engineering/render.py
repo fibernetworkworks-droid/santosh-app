@@ -85,6 +85,7 @@ def draw_view(mesh: dict[str, Any], view: str, w: int, h: int, scale: float | No
     lx, ly, lz = -0.35, 0.45, 0.82
     base = np.array(BASE, dtype=float)
     tri_part = mesh.get("c") or []
+    tri_col = mesh.get("tc") or []                    # v0.365 per-triangle colours (FEA maps)
     part_cols = [np.array([min(255.0, 255 * float(x)) for x in c[:3]]) for c in (mesh.get("colors") or [])]
     for ti, t in enumerate(tris):
         a, b, c = t
@@ -112,8 +113,11 @@ def draw_view(mesh: dict[str, Any], view: str, w: int, h: int, scale: float | No
         if n[2] < 0:
             n = (-n[0], -n[1], -n[2])
         k = 0.42 + 0.58 * max(0.0, n[0] * lx + n[1] * ly + n[2] * lz)
-        pc = part_cols[tri_part[ti]] if part_cols and ti < len(tri_part) and tri_part[ti] < len(part_cols) else base
-        col = pc * k + 30 * (1 - k)
+        if tri_col:
+            pc = np.array([255.0 * float(x) for x in tri_col[ti][:3]])
+        else:
+            pc = part_cols[tri_part[ti]] if part_cols and ti < len(tri_part) and tri_part[ti] < len(part_cols) else base
+        col = pc * (0.62 + 0.38 * k) if tri_col else pc * k + 30 * (1 - k)
         zb[win] = z[win]
         rgb[lo_y:hi_y + 1, lo_x:hi_x + 1][win] = col
     img = Image.fromarray(np.clip(rgb, 0, 255).astype("uint8"), "RGB")

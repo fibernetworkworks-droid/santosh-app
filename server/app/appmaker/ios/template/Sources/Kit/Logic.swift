@@ -1,4 +1,4 @@
-// Made by Hoola App Sahayak. v0.380 DIMAAG: the app's own logic on the iPhone - the SERVER decides every rule; these
+// Made by Hoola App Sahayak. v0.382 DIMAAG: the app's own logic on the iPhone - the SERVER decides every rule; these
 // pieces only show what it says: linked rows (a picker + the parent's name), the workflow buttons this account may
 // press, an approval waiting (+ Approve / Reject when it is this account's turn), a row's linked children with "Add".
 import SwiftUI

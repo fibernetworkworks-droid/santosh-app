@@ -1,4 +1,4 @@
-"""v0.380 DIMAAG: the app's brain at run time - every write from her app passes through here.
+"""v0.382 DIMAAG: the app's brain at run time - every write from her app passes through here.
 
   create:  refs checked (the parent exists in THIS app and the person may see it) -> workflow starts at its first state ->
            formulas -> rules + unique keys -> saved -> triggers (create, enter:<state>) -> parents' totals recomputed

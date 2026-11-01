@@ -229,7 +229,7 @@ def ensure(r: AppProject) -> dict[str, Any]:
     be = {"schema": schema_for(r), "made": be.get("made") or now().isoformat(), "v": SCHEMA_V, "rev": int(be.get("rev") or 0),
           "changes": old_changes, **({"upgraded": now().isoformat()} if be.get("made") else {}),
           **({"gst": be["gst"]} if be.get("gst") else {}),         # v0.355 her GST details + invoice numbers survive an upgrade
-          **({"logic": be["logic"]} if be.get("logic") else {})}   # v0.380 ... and her app's logic
+          **({"logic": be["logic"]} if be.get("logic") else {})}   # v0.382 ... and her app's logic
     for ch in old_changes:                     # v0.325 her own data changes survive an upgrade: replayed on the new lists
         _apply_ops(be["schema"], ch.get("ops") or {})
     with session() as s:
@@ -241,7 +241,7 @@ def ensure(r: AppProject) -> dict[str, Any]:
 
 
 def schema(r: AppProject) -> dict[str, Any]:
-    from .logic import engine as LE                  # v0.380 DIMAAG: refs / formulas / workflow states on the lists
+    from .logic import engine as LE                  # v0.382 DIMAAG: refs / formulas / workflow states on the lists
     return LE.decorated(r, ensure(r))
 
 
@@ -275,7 +275,7 @@ def public_schema(r: AppProject) -> dict[str, Any]:
     from . import coupon as CP
     return {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", ""),
             "coupons": bool(sch.get("order")) and CP.active(r),           # v0.358 the cart shows the code box
-            "approvals": bool(sch.get("approvals")), "functions": sch.get("functions") or []}   # v0.380 DIMAAG
+            "approvals": bool(sch.get("approvals")), "functions": sch.get("functions") or []}   # v0.382 DIMAAG
 
 
 def signup(r: AppProject, email: str, password: str, name: str, ip: str) -> dict[str, Any]:
@@ -390,7 +390,7 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     reserved = {"cid", "cart", "_coupon", "_slot"} | ({"coupon"} if "coupon" not in keys else set()) | ({"slot"} if "slot" not in keys else set())
     data = {k: v for k, v in body.items() if k not in reserved}
     _check_extra(r, c, data, w)
-    from .logic import engine as LE                  # v0.380 DIMAAG: refs, first workflow state, formulas, rules (or refused)
+    from .logic import engine as LE                  # v0.382 DIMAAG: refs, first workflow state, formulas, rules (or refused)
     data = LE.before_create(r, coll, data, w)
     if extra:                                  # v0.357 STOCK: taken under one lock before the row exists (or refused)
         from . import stock as SK
@@ -436,7 +436,7 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
         if extra.get("slot"):                          # v0.371 two orders raced for the last place: the later one gets the note
             from . import delivery as DL
             DL.confirm(r, out["id"])
-    LE.after_create(r, coll, out["id"], w)          # v0.380 formulas stored, triggers, parents' totals
+    LE.after_create(r, coll, out["id"], w)          # v0.382 formulas stored, triggers, parents' totals
     out = W.row_view(c, _row(site, out["id"]), w)
     LE.decorate(r, coll, [out], w)
     if extra:
@@ -465,7 +465,7 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
         t = q.strip().lower()[:80]
         got = [x for x in got if t in json.dumps(x, ensure_ascii=False).lower()]
     offset = max(0, int(offset or 0))
-    from .logic import engine as LE                  # v0.380 ref names, workflow buttons, approvals waiting
+    from .logic import engine as LE                  # v0.382 ref names, workflow buttons, approvals waiting
     return LE.decorate(r, coll, got[offset:offset + max(1, min(int(limit or 200), 1000))], w)
 
 
@@ -490,7 +490,7 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
     sch = schema(r)
     _guard_assigned(r, coll, row_id, w)
     _check_extra(r, W.coll(sch, coll), body, w)
-    from .logic import engine as LE                  # v0.380 workflow steps / approvals, formulas, rules
+    from .logic import engine as LE                  # v0.382 workflow steps / approvals, formulas, rules
     old = LE.load(r, row_id, coll)
     body, info = LE.before_update(r, coll, row_id, body, w)
     appr, move = (info or {}).get("approval"), (info or {}).get("move")
@@ -543,7 +543,7 @@ def status_moved(r: AppProject, row_id: str, status: str) -> None:
 
 def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
     _guard_assigned(r, coll, row_id, w)
-    from .logic import engine as LE                  # v0.380 children first: restrict / cascade / nullify
+    from .logic import engine as LE                  # v0.382 children first: restrict / cascade / nullify
     sch = schema(r)
     W.coll(sch, coll)
     with session() as s:                             # her permission is checked BEFORE any child is touched
@@ -656,7 +656,7 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
     sch = schema(r)
     out = {"kind": sch.get("kind"), "order": sch.get("order"), "signup": sch.get("signup", True),
            "collections": sch["collections"]}
-    if sch.get("approvals"):                               # v0.380 DIMAAG: the Approvals button for staff
+    if sch.get("approvals"):                               # v0.382 DIMAAG: the Approvals button for staff
         out["approvals"] = True
     if sch.get("order"):                                   # v0.358 COUPON: the cart shows the code box while a code is live
         from . import coupon as CP
@@ -1081,7 +1081,7 @@ def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
     only left out of the forms; nothing is ever deleted or renamed underneath existing rows."""
     done: list[str] = []
     colls = {c["key"]: c for c in sch.get("collections") or []}
-    for nl in (ops.get("add_list") or [])[:8]:   # v0.380 DIMAAG: a new list (customers, order lines, classes...)
+    for nl in (ops.get("add_list") or [])[:8]:   # v0.382 DIMAAG: a new list (customers, order lines, classes...)
         k = W._slug(nl.get("key") or nl.get("label"))
         if not k or k.startswith("_") or k in colls:
             if k in colls:
@@ -1144,7 +1144,7 @@ def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
 
 def _new_field(a: dict[str, Any], colls: dict[str, Any], fresh: bool) -> dict[str, Any] | None:
     """One field from an add / add_list op. On an EXISTING list a new field is never required (old apps cannot send it);
-    on a brand-new list it may be. v0.380 type "ref" + "to" = a link to a row of another list."""
+    on a brand-new list it may be. v0.382 type "ref" + "to" = a link to a row of another list."""
     k = W._slug(a.get("key") or a.get("label"))
     if not k or k in ("id", "owner", "created", "updated", "cid", "cart") or k.startswith("_"):
         if fresh:

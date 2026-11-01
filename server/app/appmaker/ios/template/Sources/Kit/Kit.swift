@@ -95,7 +95,7 @@ enum Words {
     static var assignedToYou: String { t("Given to you", "आपको सौंपा गया", "Aapko diya gaya") }
     static var chooseOne: String { t("Choose an item on the left", "बाईं ओर से कुछ चुनें", "Baayein taraf se kuch chuniye") }   // v0.366
     static var newEntry: String { t("New — open the app to see it", "नया — देखने के लिए ऐप खोलें", "Naya — dekhne ke liye app kholiye") }
-    // v0.380 DIMAAG: the app's logic (links, workflow, approvals)
+    // v0.382 DIMAAG: the app's logic (links, workflow, approvals)
     static var approvals: String { t("Approvals", "मंज़ूरी", "Manzoori") }
     static var approve: String { t("Approve", "मंज़ूर करें", "Manzoor") }
     static var reject: String { t("Reject", "मना करें", "Mana") }

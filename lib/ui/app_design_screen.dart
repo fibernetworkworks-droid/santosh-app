@@ -832,7 +832,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
             const SizedBox(height: 10),
             Glass(child: AppMoneyPanel(app: app, id: widget.id)),          // v0.376 MAALKIN PHONE
             const SizedBox(height: 10),
-            Glass(child: AppLogicPanel(app: app, id: widget.id)),          // v0.380 DIMAAG: the app's brain
+            Glass(child: AppLogicPanel(app: app, id: widget.id)),          // v0.382 DIMAAG: the app's brain
             const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),

@@ -119,10 +119,10 @@ fun AccountScreen() {
             Btn(if (Auth.isStaff) Strings.customerMessages else Strings.chat, kind = BtnKind.Tonal, icon = "chat",
                 modifier = Modifier.fillMaxWidth()) { nav.go("hoola_chat") }
         }
-        if (me != null && Auth.isStaff && Db.approvalsOn) block {   // v0.380 DIMAAG: approvals waiting for this account
+        if (me != null && Auth.isStaff && Db.approvalsOn) block {   // v0.382 DIMAAG: approvals waiting for this account
             Btn(Strings.approvals, kind = BtnKind.Tonal, icon = "check", modifier = Modifier.fillMaxWidth()) { nav.go("hoola_approvals") }
         }
-        if (me != null && Auth.isStaff) block {                   // v0.380 every list of the app (new lists work before a redesign)
+        if (me != null && Auth.isStaff) block {                   // v0.382 every list of the app (new lists work before a redesign)
             Btn(Strings.allLists, kind = BtnKind.Tonal, icon = "list", modifier = Modifier.fillMaxWidth()) { nav.go("hoola_data") }
         }
         if (me != null) block { KhataBlock() }                     // v0.359 udhaar: hers / who owes (staff)
@@ -202,7 +202,7 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
                         Small(T(f.s("label")) + ": " + r.s(f.s("key")))
                         Btn(Strings.openMap, kind = BtnKind.Ghost, small = true) { Act.maps(c, r.s(f.s("key"))) }
                     }
-                } else Small(T(f.s("label")) + ": " + Logic.show(r, f), maxLines = 4)     // v0.380 a link shows its row's name
+                } else Small(T(f.s("label")) + ": " + Logic.show(r, f), maxLines = 4)     // v0.382 a link shows its row's name
             }
         // v0.319 the customer's own UPI order: pay to the business's UPI ID, then "I have paid" + the UPI reference
         if (!Auth.isStaff && coll == Db.orderList && !r.b("pending") && r.s("pay") == "UPI" && r.s("paid", "No") == "No"
@@ -218,7 +218,7 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         ReceiptButton(coll, r)                                    // v0.354 the receipt PDF of a finished row
         CreditButton(coll, r)                                     // v0.359 staff: this order on credit (udhaar)
         AssignBox(coll, r)
-        if (Db.workflowField(coll).isNotEmpty()) {                // v0.380 DIMAAG: the server's workflow steps + approvals
+        if (Db.workflowField(coll).isNotEmpty()) {                // v0.382 DIMAAG: the server's workflow steps + approvals
             if (Team.mayWork(r)) WorkflowBox(coll, r)
         } else {
         val stf = fields.firstOrNull { it.s("key") == "status" }
@@ -230,6 +230,6 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
             }
         }
         }
-        RelatedBlock(coll, r)                                     // v0.380 linked rows (items of an order...) + Add
+        RelatedBlock(coll, r)                                     // v0.382 linked rows (items of an order...) + Add
     }
 }

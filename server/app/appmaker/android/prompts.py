@@ -132,7 +132,7 @@ FILE CONTRACT
   Fields marked [file]: FileField(label, key) (v0.346 a PDF from the system file picker, no permission).
   A staff route / deliveries / visits screen with [location] lists: block { StopsBlock() } (v0.350 open stops nearest first + Route in Maps).
   Work given to one staff member (v0.352): LiveRowsBlock(list) already shows who has each row, the assign / take buttons and a My work filter; never build your own.
-  Fields marked [ref:<list>] (v0.380 a link to a row of another list): RefField(label, key, "<list>") - a picker that stores
+  Fields marked [ref:<list>] (v0.382 a link to a row of another list): RefField(label, key, "<list>") - a picker that stores
   the row id (never a typed id); show a saved link with Logic.show(row, field) / Logic.refLabel(row, key). A list with a
   workflow / linked children / approvals: LiveRowsBlock(list) already shows the allowed step buttons (WorkflowBox), the
   approval waiting and the linked rows with Add (RelatedBlock) - never build status chips yourself. Staff screens may add
@@ -196,7 +196,7 @@ def backend_line(backend: dict | None) -> str:
     for c in (backend or {}).get("collections") or []:
         fs = [f["key"] + ("*" if f.get("required") else "") + (f" [{'|'.join(f['options'][:6])}]" if f.get("options") else "")
               + (f"[{f['type']}]" if f.get("type") in ("photo", "location", "scan", "file") else "")
-              + (f"[ref:{f['to']}]" if f.get("type") == "ref" and f.get("to") else "")         # v0.380 a link to another list
+              + (f"[ref:{f['to']}]" if f.get("type") == "ref" and f.get("to") else "")         # v0.382 a link to another list
               for f in c.get("fields") or [] if not f.get("admin_only") and not f.get("hidden")]
         out.append(f"{c['key']} (create {c.get('rules', {}).get('create', 'member')}): {', '.join(fs)}")
     if (backend or {}).get("order"):

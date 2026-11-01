@@ -187,7 +187,7 @@ object Strings {
     val addFile get() = t("Attach PDF", "PDF जोड़ें", "PDF जोडा", "PDF jodiye")
     val changeFile get() = t("Change PDF", "PDF बदलें", "PDF बदला", "PDF badliye")
     val fileFailed get() = t("Please pick a PDF under 10 MB.", "10 MB से छोटी PDF चुनें।", "10 MB पेक्षा लहान PDF निवडा.", "10 MB se chhoti PDF chuniye.")
-    // v0.380 DIMAAG: the app's logic (links, workflow, approvals)
+    // v0.382 DIMAAG: the app's logic (links, workflow, approvals)
     val approvals get() = t("Approvals", "मंज़ूरी", "मंजुरी", "Manzoori")
     val approve get() = t("Approve", "मंज़ूर करें", "मंजूर करा", "Manzoor")
     val reject get() = t("Reject", "मना करें", "नाकारा", "Mana")

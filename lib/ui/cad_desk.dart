@@ -16,6 +16,7 @@ import 'glass.dart';
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+List<String> _strs(dynamic l) => l is List ? l.map((e) => '$e').toList() : const <String>[];
 
 class CadDeskScreen extends StatefulWidget {
   const CadDeskScreen({super.key, required this.app});
@@ -114,7 +115,7 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
               crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 8, crossAxisSpacing: 8,
               children: [
-                for (final k in const ['iso', 'front', 'top', 'right'])
+                for (final k in const ['iso', 'front', 'top', 'right', 'fea_0', 'fea_1', 'fea_2', 'cam', 'flat'])
                   if (files['$k.png'] != null)
                     GestureDetector(
                       onTap: () => _open(_s(files['$k.png'])),
@@ -143,6 +144,28 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
                   '3D print: ${_s((v['print'] as Map)['overhang_pct'])}% overhang',
               ].join('\n'), style: const TextStyle(color: C.muted, fontSize: 13, height: 1.35)),
             ),
+          // v0.365 analysis (FEA) lines, CNC and sheet metal
+          if (v != null)
+            for (final a in _list(v['analysis']))
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_strs(a['lines']).map((l) => l.replaceFirst('! ', '⚠ ')).join('\n'),
+                    style: const TextStyle(fontSize: 13, height: 1.35)),
+              ),
+          if (v != null && v['cam'] is Map)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text((v['cam'] as Map)['ok'] == true
+                  ? 'CNC: ${_strs((v['cam'] as Map)['ops']).join(', ')} · about ${_s((v['cam'] as Map)['minutes'])} min · simulate before cutting'
+                  : 'CNC G-code nahi bana: ${_s((v['cam'] as Map)['error'])}',
+                  style: const TextStyle(color: C.muted, fontSize: 13)),
+            ),
+          if (v != null && v['sheet'] is Map)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text('Sheet ${_s((v['sheet'] as Map)['t'])} mm · flat ${_s((v['sheet'] as Map)['length'])} x ${_s((v['sheet'] as Map)['width'])} mm',
+                  style: const TextStyle(color: C.muted, fontSize: 13)),
+            ),
           if (v != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -157,7 +180,7 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
               padding: const EdgeInsets.only(top: 10),
               child: Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final f in const [['part.step', 'STEP'], ['part.stl', 'STL'], ['part.3mf', '3MF'], ['section.dxf', 'DXF'],
-                    ['drawing.pdf', 'Drawing PDF']])
+                    ['drawing.pdf', 'Drawing PDF'], ['analysis.pdf', 'Analysis PDF'], ['part.nc', 'G-code'], ['flat.dxf', 'Flat DXF']])
                   if (files[f[0]] != null)
                     OutlinedButton(onPressed: () => _open(_s(files[f[0]])), child: Text(f[1])),
               ]),
