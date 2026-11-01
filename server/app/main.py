@@ -1309,6 +1309,17 @@ async def google_callback(request: Request):
     from .youtube.accounts import is_link_state as is_youtube_state
     if is_youtube_state(request.query_params.get("state", "")):  # "connect my YouTube channel"
         return await _finish_youtube_link(request)
+    from .ads.gads import is_link_state as is_gads_state
+    if is_gads_state(request.query_params.get("state", "")):     # v0.393 "connect my Google Ads" (YouTube ads)
+        from .ads import gads
+        q = request.query_params
+        if q.get("error"):
+            return _linked_page("Google Ads", "social", None, q.get("error") or "")
+        try:
+            v = await asyncio.to_thread(gads.finish_link, q.get("code", ""), q.get("state", ""))
+        except gads.GAdsError as e:
+            return _linked_page("Google Ads", "social", None, str(e))
+        return _linked_page("Google Ads", "social", v["email"] + (" - " + ", ".join(v["accounts"][:3]) if v["accounts"] else ""))
     from .slides.accounts import is_link_state as is_slides_state
     if is_slides_state(request.query_params.get("state", "")):  # "connect my Google Slides"
         return await _finish_slides_link(request)
@@ -7073,6 +7084,68 @@ async def social_creator_check(body: dict, tenant: str = Depends(current_tenant)
     from .social import growth
     b = body or {}
     return await asyncio.to_thread(_social_call, growth.creator_check, tenant, str(b.get("username") or ""), str(b.get("caption") or ""))
+
+
+def _gads_call(fn, *a, **k):
+    from .ads import gads
+    try:
+        return fn(*a, **k)
+    except gads.GAdsError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/social/ytads", dependencies=[Depends(require_key)])
+def social_ytads(tenant: str = Depends(current_tenant)):
+    """v0.393 YouTube ads (plan Y2): her Google Ads link, ad accounts, drafts."""
+    from .ads import gads
+    return gads.view(tenant)
+
+
+@app.get("/api/social/ytads/connect", dependencies=[Depends(require_key)])
+def social_ytads_connect(tenant: str = Depends(current_tenant)):
+    from .ads import gads
+    return {"url": _gads_call(gads.connect_url, tenant)}
+
+
+@app.post("/api/social/ytads/account", dependencies=[Depends(require_key)])
+async def social_ytads_account(body: dict, tenant: str = Depends(current_tenant)):
+    """{customer_id} = which of her ad accounts runs the YouTube ads."""
+    from .ads import gads
+    return await asyncio.to_thread(_gads_call, gads.choose, tenant, str((body or {}).get("customer_id") or ""))
+
+
+@app.post("/api/social/ytads/read", dependencies=[Depends(require_key)])
+async def social_ytads_read(tenant: str = Depends(current_tenant)):
+    """Her YouTube campaigns' last 30 days (also into the Ads desk's report rows)."""
+    from .ads import gads
+    return await asyncio.to_thread(_gads_call, gads.read, tenant)
+
+
+@app.post("/api/social/ytads/drafts", dependencies=[Depends(require_key)])
+def social_ytads_new(body: dict, tenant: str = Depends(current_tenant)):
+    """A new YouTube ad draft from one of her videos {video_id, daily, days, final_url...} - stays in Hoola."""
+    from .ads import gads
+    b = body or {}
+    return _gads_call(gads.new_draft, tenant, str(b.get("video_id") or ""), **{k: v for k, v in b.items() if k != "video_id"})
+
+
+@app.post("/api/social/ytads/drafts/{did}", dependencies=[Depends(require_key)])
+def social_ytads_edit(did: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import gads
+    return _gads_call(gads.set_draft, tenant, did, **(body or {}))
+
+
+@app.post("/api/social/ytads/drafts/{did}/{action}", dependencies=[Depends(require_key)])
+async def social_ytads_action(did: str, action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """check (Google validates, free) | create (in her account, PAUSED) | start (her tap + confirm: spends) | pause."""
+    from .ads import gads
+    b = body or {}
+    fn = {"check": gads.check, "create": gads.create, "pause": gads.pause}.get(action)
+    if action == "start":
+        return await asyncio.to_thread(_gads_call, gads.start, tenant, did, b.get("confirm") is True)
+    if fn is None:
+        raise HTTPException(404, "action: check | create | start | pause")
+    return await asyncio.to_thread(_gads_call, fn, tenant, did)
 
 
 @app.get("/api/social/inbox", dependencies=[Depends(require_key)])

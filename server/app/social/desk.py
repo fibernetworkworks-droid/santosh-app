@@ -944,6 +944,15 @@ def daily(tenant: str) -> dict[str, Any]:
 
 def _daily_and_boosts(tenant: str) -> dict[str, Any]:
     out = daily(tenant)
+    try:                                            # v0.393 YouTube ads: pause ads past their days, fresh numbers
+        from ..ads import gads
+        gads.ensure_tables()
+        with session() as s:
+            linked = s.scalars(select(gads.GAdsAccount.id).where(gads.GAdsAccount.tenant_id == tenant)).first() is not None
+        if linked:
+            out["ytads"] = gads.daily_watch(tenant)
+    except Exception as e:       # noqa: BLE001
+        log.info("youtube ads daily skipped: %s", e)
     try:
         from .pulse import flag_boosts
         out["boosts"] = flag_boosts(tenant)            # v0.369 boost-worthy posts, told once each

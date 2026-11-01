@@ -2294,6 +2294,8 @@ body.albon{overflow:hidden}
 .sc-quiet .sc-pl{width:220px;max-width:100%}
 .sc-h{margin-top:14px}
 .sc-growth .grid2{margin-top:6px}
+.sc-ytform{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:8px;margin:8px 0}
+.sc-ytform textarea,.sc-ytform select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
 .sc-watch{margin-top:10px}
 .sc-ugc .em-meta a{margin-left:auto;font-size:13px}
 .sc-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px}
