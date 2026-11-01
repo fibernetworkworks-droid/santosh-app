@@ -13002,3 +13002,18 @@ The paper udhaar register, inside her app.
   (a SwiftUI builder takes 10 views).
 - Tests `tests/test_v0359_khata.py`. Not done: reminders to customers (would need the official WhatsApp API card flow),
   interest, khata for walk-in customers without an account.
+
+## v0.360.0 DELIVERY (App Sahayak Phase 24, owner: "START PHASE 24")
+- `appmaker/delivery.py`: `AppProject.backend["delivery"] = {fee, free_above, pins, hours {open, close, days}}`;
+  `save` (PINs 6 digits, HH:MM, days 0=Mon..6), `public` (what the cart needs, in the app content `backend.delivery`),
+  `is_open` (IST, days, past-midnight hours), `pin_of` (pin / pincode fields, else a 6-digit number in an address),
+  `fee_for(goods)`, `on_order(r, goods, data)` -> (fee, `delivery` / `delivery_note`). Outside the PIN list, no PIN found,
+  or closed = a note on the order + a chat note to her, never a refusal (the phone's outbox would lose a refused order).
+- `backend.create`: the fee is added AFTER the coupon (judged on goods after discount); rows show `delivery`,
+  `delivery_note`. `gst.compute`: the delivery fee is taken out before the goods are spread, then added back as its own
+  line "Delivery charges" (HSN/SAC 9968, her default rate). Receipt: a Delivery line.
+- Kits: `deliveryFee(goods)` + `DeliveryLine()` (Android Pro.kt, shown by `OrderBtn`; iPhone Pro.swift, shown in `FormBlock`)
+  - "Delivery ₹30 · free above ₹500" / "Free delivery", a closed notice with the hours, a PIN reminder when she delivers to
+  some PINs only; the shown order total adds the same fee.
+- Her side: GET / PUT /api/apps/<ref>/delivery ({off: true} removes), tool app_banao action=delivery, console Delivery form.
+- Tests `tests/test_v0360_delivery.py`. Not done: distance-based fees, delivery slots, per-PIN fees, holidays.

@@ -535,3 +535,27 @@ fun CreditButton(coll: String, r: Item) {
     if (r.b("on_credit")) { Pill(Strings.onCredit, "warn"); return }
     Btn(Strings.giveCredit, kind = BtnKind.Ghost, small = true) { Db.update(coll, r.id, mapOf("_credit" to true)) }
 }
+
+
+// ---------------------------------------------------------------- v0.360 DELIVERY: the fee rule + open / closed in the cart
+/** The delivery fee the server will add for goods worth `goods` (the same rule, from the app content). */
+fun deliveryFee(goods: Double): Double {
+    val d = AppData.backend().optJSONObject("delivery") ?: return 0.0
+    if (!d.isNull("free_above") && d.has("free_above") && goods >= d.optDouble("free_above")) return 0.0
+    return d.optDouble("fee", 0.0)
+}
+
+/** "Delivery ₹30 · free above ₹500" (or "Free delivery"), and a plain notice when the shop is closed or delivers only to
+ *  some PIN codes - the order is still taken (the server adds a note, never refuses). */
+@Composable
+fun DeliveryLine() {
+    val d = AppData.backend().optJSONObject("delivery") ?: return
+    val goods = AppState.cartTotal("products") - AppState.couponOff.value
+    val fee = deliveryFee(goods)
+    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        val free = if (d.has("free_above") && !d.isNull("free_above")) " · " + Strings.freeAbove + " " + rupees(d.optDouble("free_above")) else ""
+        Small(if (fee > 0) Strings.delivery + ": " + rupees(fee) + free else Strings.freeDelivery)
+        if (!d.optBoolean("open", true)) Pill(Strings.shopClosed + if (d.optString("hours").isNotEmpty()) " (" + d.optString("hours") + ")" else "", "warn")
+        if (d.optBoolean("area")) Small(Strings.areaOnly)
+    }
+}

@@ -832,6 +832,28 @@ window.HoolaBuild = function (C) {
       }
     };
     try { if (S(info.order)) drawCp(await api('GET', base(o) + '/coupons')); else cpbox.remove(); } catch (er) { cpbox.remove(); }
+    // v0.360 DELIVERY: fee, free above, PIN codes, opening hours (orders outside them are still taken, with a note)
+    const dbox = document.createElement('section'); dbox.className = 'stcol stdelivery'; box.appendChild(dbox);
+    const drawDl = v => {
+      const h = M(v.hours), days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      dbox.innerHTML = `<h4>Delivery <span>${v.on ? (v.open_now ? 'open now' : 'closed now') : 'no rules'}</span></h4><p class="stnote">${esc(S(v.note))}</p>
+        <form class="stapp" autocomplete="off"><div class="row"><label>Charge ₹ <input name="fee" inputmode="decimal" value="${v.on ? N(v.fee) : ''}" aria-label="Delivery charge"></label>
+        <label>Free above ₹ <input name="free_above" inputmode="decimal" value="${v.free_above === null || v.free_above === undefined ? '' : N(v.free_above)}" aria-label="Free delivery above"></label></div>
+        <div class="row"><textarea name="pins" rows="2" placeholder="PIN codes you deliver to (blank = everywhere)" aria-label="PIN codes">${esc(L(v.pins).join(', '))}</textarea></div>
+        <div class="row"><label>Opens <input name="open" type="time" value="${esc(S(h.open))}"></label><label>Closes <input name="close" type="time" value="${esc(S(h.close))}"></label>
+        ${days.map((d, i) => `<label><input type="checkbox" name="d${i}"${L(h.days).includes(i) ? ' checked' : ''}> ${d}</label>`).join('')}</div>
+        <div class="acts"><button class="btn go" type="submit">Save delivery</button>${v.on ? '<button class="btn soft" type="button" data-dloff>Remove rules</button>' : ''}</div></form>`;
+      const f = dbox.querySelector('form');
+      f.addEventListener('submit', async e => {
+        e.preventDefault(); const b = f.querySelector('button.go'); b.disabled = true;
+        const body = {fee: f.fee.value.trim() || 0, free_above: f.free_above.value.trim(), pins: f.pins.value,
+                      hours: {open: f.open.value, close: f.close.value, days: days.map((_, i) => f['d' + i].checked ? i : -1).filter(i => i >= 0)}};
+        try { drawDl(await api('PUT', base(o) + '/delivery', body)); toast('Delivery saved.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+      });
+      const off = dbox.querySelector('[data-dloff]');
+      if (off) off.addEventListener('click', async () => { try { drawDl(await api('PUT', base(o) + '/delivery', {off: true})); toast('Delivery rules removed.'); } catch (er) { toast(er.message, true); } });
+    };
+    try { if (S(info.order)) drawDl(await api('GET', base(o) + '/delivery')); else dbox.remove(); } catch (er) { dbox.remove(); }
     const mbox = box.querySelector('.stmem');
     try {
       const ms = L((await api('GET', base(o) + '/members')).members);

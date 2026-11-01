@@ -505,7 +505,8 @@ object Db {
             items.forEach { (it, q) -> cart.put(JSONObject().put("id", it.id).put("qty", q)) }
             data["cart"] = cart
             show["items"] = items.joinToString("\n") { (it, q) -> "$q x ${it.name}" }
-            show["total"] = AppState.cartTotal("products") - AppState.couponOff.value
+            show["total"] = AppState.cartTotal("products") - AppState.couponOff.value +
+                deliveryFee(AppState.cartTotal("products") - AppState.couponOff.value)   // v0.360 the server adds the same
             if (AppState.coupon.value.isNotEmpty()) data["coupon"] = AppState.coupon.value      // v0.358 checked again by the server
             show.remove("cart")
         }
@@ -547,6 +548,7 @@ fun SubmitBtn(text: String, coll: String, modifier: Modifier = Modifier, then: S
 /** Places the cart as a real order (name / phone / address from the form). Same as SubmitBtn(text, Db.orderList). */
 @Composable
 fun OrderBtn(text: String, modifier: Modifier = Modifier, then: String = SCREEN_ACCOUNT) {
+    if (AppState.cartCount > 0) DeliveryLine()                      // v0.360 DELIVERY: the fee rule + open / closed
     if (Db.couponsOn && AppState.cartCount > 0) CouponBox()          // v0.358 COUPON
     SubmitBtn(text, Db.orderList.ifEmpty { "orders" }, modifier, then, "check")
 }

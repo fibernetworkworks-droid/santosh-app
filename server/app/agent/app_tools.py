@@ -75,6 +75,8 @@ APP_TOOLS = [
         "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
         "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
         "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
+        "v0.360 action=delivery (owner only; delivery = {fee, free_above, pins \"411001, 411002\", hours {open HH:MM, close HH:MM, days [0=Mon..6]}, "
+        "off}; none = show): her shop app's delivery charge (added by the server), area and hours - an order outside them is still taken with a note. "
         "v0.359 action=khata (owner only): no member = who owes how much; member (id or name) = that customer's entries; with amount "
         "(+ mode cash|upi|card|bank|other, note) = record a payment SHE says she received (never on a customer's word, money never moves). "
         "v0.358 action=coupon (owner only; coupon = {code, kind percent|flat, value, cap, min, until YYYY-MM-DD, uses, once, on} or {code, "
@@ -90,7 +92,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -104,6 +106,7 @@ APP_TOOLS = [
          "items": {"type": "object", "description": "action=stock: {product id or name: {qty, low}}"},
          "amount": {"type": "string", "description": "action=khata: payment received"},
          "mode": {"type": "string", "description": "action=khata: cash|upi|card|bank|other"},
+         "delivery": {"type": "object", "description": "action=delivery: {fee, free_above, pins, hours, off}"},
          "coupon": {"type": "object", "description": "action=coupon: {code, kind, value, cap, min, until, uses, once, on, delete}"},
          "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members); action=khata: customer id or name"},
          "note": {"type": "string", "description": "action=khata: payment note"},
@@ -284,6 +287,18 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action == "delivery":                  # v0.360 DELIVERY
+        if not _owner(ctx):
+            raise ToolError("Delivery niyam sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import delivery as DL
+        r = BE.by_key_or_ref(t, ref)
+        dv = a.get("delivery") if isinstance(a.get("delivery"), dict) else {}
+        v = DL.save(r, dv) if dv else DL.view(r)
+        v["say"] = (f"Delivery Rs {v['fee']:g}" + (f", Rs {v['free_above']:g} se upar free" if v.get("free_above") is not None else "")
+                    + (f", {len(v['pins'])} PIN codes" if v["pins"] else "") + (", abhi khula" if v["open_now"] else ", abhi band") + ".") if v["on"] \
+            else "Delivery ke koi niyam nahi (charge nahi, har jagah, har samay)."
+        return v
     if action == "khata":                     # v0.359 KHATA: her customers' udhaar
         if not _owner(ctx):
             raise ToolError("Khata sirf maalkin dekh / likh sakti hain.")

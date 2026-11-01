@@ -213,15 +213,21 @@ def compute(r: AppProject, c: dict[str, Any], d: dict[str, Any]) -> dict[str, An
     if not lines and d.get("total") not in (None, ""):            # a booking / request with a price: one line
         lines.append({"pid": "", "name": c["label"], "qty": 1, "gross": round(float(d.get("total") or 0), 2)})
     total = float(d.get("total") or 0) if d.get("total") not in (None, "") else sum(x["gross"] for x in lines)
+    fee = float(d.get("delivery") or 0)                         # v0.360 DELIVERY: its own line; the goods share the rest
+    if fee and lines and lines[-1]["pid"] == "" and lines[-1]["name"] == c["label"]:
+        lines[-1]["gross"] = round(lines[-1]["gross"] - fee, 2)
+    total = round(total - fee, 2)
     gsum = sum(x["gross"] for x in lines)
     if lines and gsum > 0 and abs(gsum - total) > 0.01:         # the server total is the truth (v0.358 a coupon: spread over
         f = total / gsum                                        # every line, so each line's tax is right); rounding -> last line
         for x in lines:
             x["gross"] = round(x["gross"] * f, 2)
         lines[-1]["gross"] = round(lines[-1]["gross"] + (total - sum(x["gross"] for x in lines)), 2)
+    if fee > 0:
+        lines.append({"pid": "_delivery", "name": "Delivery charges", "qty": 1, "gross": round(fee, 2)})
     out, t = [], {"taxable": 0.0, "cgst": 0.0, "sgst": 0.0, "igst": 0.0, "amount": 0.0}
     for x in lines:
-        it = (g.get("items") or {}).get(x["pid"], {}) if x["pid"] else {}
+        it = {"hsn": "9968"} if x["pid"] == "_delivery" else ((g.get("items") or {}).get(x["pid"], {}) if x["pid"] else {})
         rate = float(it.get("rate") if it.get("rate") is not None else g.get("rate", 18))
         taxable = round(x["gross"] / (1 + rate / 100), 2)
         tax = round(x["gross"] - taxable, 2)

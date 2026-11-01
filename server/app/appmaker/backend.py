@@ -384,6 +384,18 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
         d, cf = CP.apply(r, code, extra["total"], w)
         extra.update(cf)
         extra["total"] = round(extra["total"] - d, 2)
+    if extra:                                  # v0.360 DELIVERY: added after the coupon (a coupon discounts the goods only)
+        from . import delivery as DL
+        fee, df = DL.on_order(r, extra["total"], data)
+        if df:
+            extra.update(df)
+            extra["total"] = round(extra["total"] + fee, 2)
+            if df.get("delivery_note"):
+                try:
+                    from .android.service import _note
+                    _note(r, f"{r.name or 'Aapki app'} ({r.number}) naya order: {df['delivery_note']}")
+                except Exception:
+                    log.debug("delivery note", exc_info=True)
     try:
         out = W.create(site, sch, coll, data, w, ip)
     except Exception:
@@ -569,6 +581,10 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
     if sch.get("order"):                                   # v0.358 COUPON: the cart shows the code box while a code is live
         from . import coupon as CP
         out["coupons"] = CP.active(r)
+        from . import delivery as DL                       # v0.360 the cart shows the delivery rule + open / closed
+        dl = DL.public(r)
+        if dl:
+            out["delivery"] = dl
     return out
 
 
@@ -1136,7 +1152,7 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
         if (w.staff or x.get("mine")) and d.get("_khata"):     # v0.359 KHATA: this order was given on credit
             x["on_credit"] = not d.get("_khata_back")
         if w.staff or x.get("mine"):                  # v0.358 COUPON: what the server took off (or why a code did not apply)
-            for k in ("subtotal", "discount", "coupon", "coupon_note"):
+            for k in ("subtotal", "discount", "coupon", "coupon_note", "delivery", "delivery_note"):
                 if d.get(k) not in (None, ""):
                     x[k] = d[k]
         if w.staff or x.get("mine"):                  # v0.353 RAAY: the customer's rating, for her and the business

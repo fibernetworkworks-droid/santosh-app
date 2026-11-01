@@ -341,7 +341,7 @@ final class Db: ObservableObject {
             if lines.isEmpty { return Words.cartEmpty }
             data["cart"] = lines.map { ["id": $0.0.id, "qty": $0.1] }
             show["items"] = lines.map { "\($0.1) x \($0.0.name)" }.joined(separator: "\n")
-            show["total"] = st.cartTotal() - st.couponOff
+            show["total"] = st.cartTotal() - st.couponOff + deliveryFee(st.cartTotal() - st.couponOff)   // v0.360
             if !st.coupon.isEmpty { data["coupon"] = st.coupon }      // v0.358 checked again by the server
         }
         create(c, data, show: show)

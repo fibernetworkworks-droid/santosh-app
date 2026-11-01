@@ -638,3 +638,29 @@ struct CreditButton: View {
         }
     }
 }
+
+
+// ---------------------------------------------------------------- v0.360 DELIVERY: the fee rule + open / closed in the cart
+func deliveryFee(_ goods: Double) -> Double {
+    guard let d = AppData.shared.backend["delivery"] as? [String: Any] else { return 0 }
+    if let f = d["free_above"] as? NSNumber, goods >= f.doubleValue { return 0 }
+    return (d["fee"] as? NSNumber)?.doubleValue ?? 0
+}
+
+/// "Delivery ₹30 · free above ₹500" (or "Free delivery"), and a plain notice when the shop is closed or delivers only to some
+/// PIN codes - the order is still taken (the server adds a note, never refuses).
+struct DeliveryLine: View {
+    @ObservedObject private var state = AppState.shared
+
+    var body: some View {
+        if let d = AppData.shared.backend["delivery"] as? [String: Any] {
+            let fee = deliveryFee(state.cartTotal() - state.couponOff)
+            VStack(alignment: .leading, spacing: 4) {
+                let free = (d["free_above"] as? NSNumber).map { " · " + Words.freeAbove + " " + rupees($0.doubleValue) } ?? ""
+                Muted(fee > 0 ? Words.delivery + ": " + rupees(fee) + free : Words.freeDelivery)
+                if (d["open"] as? Bool) == false { StatusPill(text: Words.shopClosed + ((d["hours"] as? String).map { $0.isEmpty ? "" : " (\($0))" } ?? "")) }
+                if (d["area"] as? Bool) == true { Muted(Words.areaOnly) }
+            }
+        }
+    }
+}

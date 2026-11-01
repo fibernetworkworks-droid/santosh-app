@@ -49,6 +49,11 @@ enum Words {
     static var inboxEmpty: String { t("No updates yet.", "अभी कोई अपडेट नहीं।", "Abhi koi update nahi.") }
     static var receipt: String { t("Receipt", "रसीद", "Raseed") }           // v0.354 RASEED
     static var invoice: String { t("Tax invoice", "टैक्स इनवॉइस", "Tax invoice") }   // v0.355 GST BILL
+    static var delivery: String { t("Delivery", "डिलीवरी", "Delivery") }   // v0.360 DELIVERY
+    static var freeAbove: String { t("free above", "इससे ऊपर मुफ़्त", "is se upar free") }
+    static var freeDelivery: String { t("Free delivery", "मुफ़्त डिलीवरी", "Free delivery") }
+    static var shopClosed: String { t("Shop is closed now - your order will be seen when it opens", "दुकान अभी बंद है - खुलते ही ऑर्डर देखा जाएगा", "Dukaan abhi band hai - khulte hi order dekha jayega") }
+    static var areaOnly: String { t("Delivery only to some PIN codes - please put your PIN code in the address.", "डिलीवरी कुछ पिन कोड पर ही - पते में पिन कोड लिखें।", "Delivery kuch PIN codes par hi - address mein PIN code likhein.") }
     static var myKhata: String { t("My khata", "मेरा खाता", "Mera khata") }   // v0.359 KHATA
     static var due: String { t("To pay", "बाकी", "Baaki") }
     static var advance: String { t("Advance", "एडवांस", "Advance") }

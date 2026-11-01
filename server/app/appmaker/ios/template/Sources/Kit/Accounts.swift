@@ -174,6 +174,7 @@ struct FormBlock: View {
                 }
             }
             if !lines.isEmpty { Text(rupees(state.cartTotal())).font(.title3.weight(.semibold)) }
+            if !lines.isEmpty { DeliveryLine() }                             // v0.360 DELIVERY
             if !lines.isEmpty && db.couponsOn { CouponBox() }               // v0.358 COUPON
         }
         ForEach(db.fields(coll).filter { !$0.b("admin_only") && $0.s("type") != "yes_no" }, id: \.id) { f in

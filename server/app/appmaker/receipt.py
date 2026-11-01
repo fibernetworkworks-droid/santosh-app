@@ -152,6 +152,8 @@ def pdf(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], doc: str = "")
     if d.get("discount"):                          # v0.358 COUPON
         out += [Spacer(1, 2 * mm), Paragraph(T(f"Subtotal: {_money(d.get('subtotal'))}"), st["p"]),
                 Paragraph(T(f"Coupon {d.get('coupon')}: -{_money(d.get('discount'))}"), st["p"])]
+    if d.get("delivery"):                          # v0.360 DELIVERY
+        out.append(Paragraph(T(f"Delivery: {_money(d.get('delivery'))}"), st["p"]))
     if d.get("total") not in (None, ""):
         out += [Spacer(1, 2 * mm), Paragraph(T(f"Total: {_money(d.get('total'))}"), st["h"])]
     paid = str(d.get("paid") or "")
