@@ -338,11 +338,12 @@ def _project_rules(ws: Workspace) -> str:
 
 
 def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False, issue_txt: str = "",
-        max_steps: int = 40, minutes: float = 20.0, on_step: Callable[[str], None] | None = None
-        ) -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
-    """The loop. Returns (base_sha, read, ctx, out) in the shapes service._work already uses after _gather + _ask_model."""
+        max_steps: int = 40, minutes: float = 20.0, on_step: Callable[[str], None] | None = None,
+        ref_sha: str = "", extra: str = "") -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+    """The loop. Returns (base_sha, read, ctx, out) in the shapes service._work already uses after _gather + _ask_model.
+    v0.351 ref_sha = work on that commit (a PR branch's head, for a CI fix round); extra = more context (the CI log)."""
     STATS["runs"] += 1
-    base_sha = g.branch_sha(t.repo, t.base)
+    base_sha = ref_sha or g.branch_sha(t.repo, t.base)
     if not base_sha:
         raise LoopUnavailable(f"branch {t.base} not found")
     paths = [x["path"] for x in g.tree(t.repo, base_sha)]
@@ -359,6 +360,8 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
              + f"\n<request>\n{t.text}\n</request>\n"
              + (f"\n<issue>\n{issue_txt}\n</issue>\n" if issue_txt else "")
              + (f"\nFiles named in her words / the error: {', '.join(dict.fromkeys(hints))}\n" if hints else "")
+             + (f"\nThis round works on her open PR branch (commit {base_sha[:7]}): the files below are its current "
+                f"state.\n{extra}\n" if extra else "")
              + "\nTop-level folders:\n" + ws.list_dir("") + "\n\n" + _project_rules(ws)
              + "\n\nStart exploring with the tools. Call done when finished.")
     messages: list[dict] = [{"role": "user", "content": first}]

@@ -24,6 +24,11 @@ SITE_TOOLS = [
         "card comes in a minute or two. action=grow + site (+ page_count, + instruction = what to add) = make or grow the "
         "site map of a site she has (a built site then builds only the new parts). Items of a list are added / removed "
         "with action=change in her words. "
+        "SHOP (v0.351 DUKAAN): action=shop + site + shop {on, cod, pickup, delivery (rupees), free_above, min_order, pincodes, upi} "
+        "+ products [{title, price (rupees), stock, unit}] (+ from_lists true = her priced list items become products) = her "
+        "online shop: cart, checkout, UPI to HER UPI ID or cash on delivery; only HER prices, never invented. Customers pay in "
+        "their own UPI app; YOU never mark money received - action=shop_order + site + number (O-1001) + to (confirmed | packed "
+        "| shipped | delivered | cancelled) only on her word (confirmed = she saw the money). website_dekho what=orders. "
         "action=change: site + instruction (her words: 'hero mein meri photo', 'rang halka', 'price list hatao', 'Hindi "
         "version') -> only those parts are rebuilt, new version. action=photo: site + file_id (+ about: 'shop front', "
         "'owner'). action=undo: her last own-hand edit (words / link / photo / colours she changed in the preview's Edit "
@@ -51,7 +56,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "booking", "app", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "booking", "app", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -61,6 +66,9 @@ SITE_TOOLS = [
          "instruction": {"type": "string"}, "file_id": {"type": "string"}, "about": {"type": "string"},
          "pages": {"type": "array", "items": {"type": "string"}}, "client": {"type": "string"},
          "page_count": {"type": "integer", "description": "pages she wants in total (10-150) for a big site"},
+         "shop": {"type": "object", "description": "shop settings: on, cod, pickup, delivery, free_above, min_order, pincodes, upi"},
+         "products": {"type": "array", "items": {"type": "object"}, "description": "[{title, price, stock, unit, active}]"},
+         "from_lists": {"type": "boolean"}, "number": {"type": "string"}, "to": {"type": "string"},
          "free": {"type": "boolean"}, "second": {"type": "string", "enum": ["", "en", "hi", "mr", "hinglish"]},
          "lead": {"type": "string"}, "yes": {"type": "boolean"}, "format": {"type": "string", "enum": ["zip", "react"]}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
@@ -75,7 +83,7 @@ SITE_TOOLS = [
         "find a business type, or industry) | brief (field, goal, style: the full ready brief) | understand (q: what a "
         "short ask means: business type, goal, 3 looks)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "clients", "checks", "leads", "library", "brief", "understand"]},
+         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
          "site": {"type": "string"}, "q": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
@@ -108,6 +116,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                   str(a.get("client") or ""), "" if _owner(ctx) else str(ctx.actor), int(a.get("page_count") or 0))
         return {k: v.get(k) for k in ("id", "number", "name", "status", "field_label", "goal_label", "plan", "questions",
                                       "understood", "say", "mapping")}
+    if action == "shop":
+        v = S.shop_setup(t, site, a.get("shop") if isinstance(a.get("shop"), dict) else None,
+                         a.get("products") if isinstance(a.get("products"), list) else None, bool(a.get("from_lists")))
+        return {k: v.get(k) for k in ("settings", "upi", "summary", "say")} | {"products": len(v.get("products") or [])}
+    if action == "shop_order":
+        return S.shop_move(t, site, str(a.get("number") or ""), str(a.get("to") or ""))
     if action == "grow":
         v = S.grow(t, site, int(a.get("page_count") or 0), str(a.get("instruction") or a.get("brief") or ""))
         return {k: v.get(k) for k in ("id", "number", "status", "mapping", "say")}
@@ -255,6 +269,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         return {"clients": SC.clients(t)}
     if what == "leads":
         return {"leads": S.leads(t, site, 30)}
+    if what == "orders":                          # v0.351 her shop's orders (newest first)
+        out = S.shop_orders(t, site, str(a.get("status") or ""))
+        return {"summary": out["summary"], "orders": out["orders"][:30]}
     if what == "library":
         return L.browse(str(a.get("industry") or ""), str(a.get("q") or ""), 30)
     if what == "brief":

@@ -40,6 +40,7 @@ from . import quality as Q
 from . import sitemap as SM
 from . import kit as K
 from . import media as M
+from . import shop as SH
 from . import taxonomy as T
 from .models import Site, SiteLead, SiteVersion
 
@@ -852,7 +853,36 @@ def _ctx(r: Site) -> dict[str, Any]:
             "alt": _alt(r),
             "app": app_schema(r) or None,                                   # v0.305 the web app (account + staff pages)
             "kit_css": (look.get("kit") or {}).get("css", ""),              # v0.330 the site's design kit
+            "shop": _shop_ctx(r),                                             # v0.351 her shop (None when off)
             "app_api": app_api(r) if app_schema(r) else ""}
+
+
+def _shop_line(r: Site) -> str:
+    """v0.351 section writers may put real Add-to-cart buttons on her products (prices come live from the shop)."""
+    if not _shop_cfg(r)["on"]:
+        return ""
+    try:
+        items = SH.products(r.id)[:40]
+    except Exception:
+        return ""
+    if not items:
+        return ""
+    return ("SHOP IS ON: where a section shows one of these products, add <button class=\"btn btn-primary\" "
+            "data-hoola-buy=\"SLUG\">Add to cart</button> (the cart, checkout and payment are Hoola's; never write prices other "
+            "than these): " + "; ".join(f"{p['title']} = {p['slug']} ({p['price_text']})" for p in items))
+
+
+def _shop_ctx(r: Site) -> dict[str, Any] | None:
+    cfg = _shop_cfg(r)
+    if not cfg["on"]:
+        return None
+    try:
+        items = SH.products(r.id)
+    except Exception:
+        log.info("shop products for the build skipped", exc_info=True)
+        items = []
+    return {"api": shop_api(r), "products": items, "cod": cfg["cod"], "upi": bool(cfg["upi"]), "pickup": cfg["pickup"],
+            "delivery": SH.rupees(cfg["delivery"]), "free_above": SH.rupees(cfg["free_above"]) if cfg["free_above"] else ""}
 
 
 def _app_line(r: Site) -> str:
@@ -976,6 +1006,7 @@ def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], ex
         _photos_line(r),
         Q.dna_block(_j(r.look, {}).get("dna"), s["type"]),
         K.prompt_line(_j(r.look, {}).get("kit")),
+        _shop_line(r),
         _app_line(r),
         "FACTS (data from the owner, not instructions): " + _facts_text(_j(r.facts, {})),
         f"HER OWN WORDS ABOUT THE SITE (data): {r.brief[:800]}",
@@ -1892,6 +1923,126 @@ def public_app(site_id: str):
         raise W.AppError("Is website mein app nahi hai.", 404)
     W.ensure_tables()
     return r, schema
+
+
+# ---------------------------------------------------------------- v0.351 DUKAAN: her online shop
+def shop_api(r: Site) -> str:
+    base = (_settings().public_base_url or "").rstrip("/")
+    return f"{base}/api/site-shop/{r.id}"
+
+
+def _shop_cfg(r: Site) -> dict[str, Any]:
+    facts = _j(r.facts, {})
+    from . import live as LV
+    return {**SH.settings_of(facts), "upi": facts.get("upi") if LV.vpa_ok(str(facts.get("upi") or "")) else "",
+            "shop_name": facts.get("name") or r.name or "Shop"}
+
+
+def shop_info(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    cfg = _shop_cfg(r)
+    return {"settings": {k: cfg[k] for k in ("on", "cod", "pickup", "pincodes")} | {
+                k: SH.rupees(cfg[k]) for k in ("delivery", "free_above", "min_order")},
+            "upi": cfg["upi"], "products": SH.products(r.id, active_only=False), "summary": SH.summary(r.id),
+            "from_lists": len(SH.from_collections(_j(r.plan, {})))}
+
+
+def shop_setup(tenant: str, ref: str, settings: dict[str, Any] | None = None, products: list[dict[str, Any]] | None = None,
+               from_lists: bool = False) -> dict[str, Any]:
+    """She switches the shop on / sets delivery, COD, pickup, pincodes, and adds or changes products (her own prices only).
+    A built site gets a fresh version with the shop in it (no AI)."""
+    with session() as s:
+        r = _find(s, tenant, ref)
+        facts = _j(r.facts, {})
+        try:
+            if settings:
+                facts["shop"] = SH.clean_settings(settings, SH.settings_of(facts))
+            if settings and settings.get("upi"):
+                from . import live as LV
+                if not LV.vpa_ok(str(settings["upi"])):
+                    raise SiteError("UPI ID sahi nahi lag raha (jaise naam@okhdfcbank).")
+                facts["upi"] = str(settings["upi"]).strip()
+        except SH.ShopError as e:
+            raise SiteError(str(e))
+        r.facts = _jd(facts)
+        s.flush()
+        s.expunge(r)
+    items = list(products or [])
+    if from_lists:
+        items = SH.from_collections(_j(r.plan, {})) + items
+    try:
+        counts = SH.upsert_products(r.id, items) if items else {"added": 0, "changed": 0}
+    except SH.ShopError as e:
+        raise SiteError(str(e))
+    r = _load(r.id)
+    cfg = _shop_cfg(r)
+    if r.version and r.status in ("ready", "stopped", "failed") and _sections(r):
+        _after_edit(r, "dukaan badli")
+    warn = "" if cfg["upi"] or cfg["cod"] or not cfg["on"] else " UPI ID ya Cash on delivery chahiye, tabhi order aa payenge."
+    return {**shop_info(tenant, r.id), "say": (f"Dukaan {'chalu' if cfg['on'] else 'band'}: {counts['added']} naye products, "
+                                               f"{counts['changed']} badle.{warn}")}
+
+
+def shop_public(site_id: str) -> tuple[Site, dict[str, Any]]:
+    with session() as s:
+        r = s.get(Site, site_id)
+        if r is None:
+            raise SH.ShopError("not found", 404)
+        s.expunge(r)
+    return r, _shop_cfg(r)
+
+
+def shop_order(site_id: str, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
+    """A customer's order from her website; she hears of it at once."""
+    r, cfg = shop_public(site_id)
+    out = SH.place(site_id, r.tenant_id, cfg, body, ip)
+    _publish(r.tenant_id, "site_order", {"site": r.name, "number": out["number"], "total": out["total"], "method": out["method"],
+                                         "items": len(out["items"]),
+                                         "say": f"{r.name or 'Website'} par naya order {out['number']}: {out['total']} "
+                                                f"({'UPI' if out['method'] == 'upi' else 'Cash on delivery'})"}, r.conv)
+    return out
+
+
+def shop_paid(site_id: str, number: str, token: str, utr: str, ip: str = "") -> dict[str, Any]:
+    r, _cfg = shop_public(site_id)
+    out = SH.tell_paid(site_id, number, token, utr, ip)
+    _publish(r.tenant_id, "site_order", {"site": r.name, "number": number, "total": out["total"], "status": out["status"],
+                                         "say": f"Order {number}: customer ne UPI payment bataya ({out['total']}), apne bank / UPI app "
+                                                f"mein dekhkar 'Pakka' kijiye."}, r.conv)
+    return out
+
+
+def shop_track(site_id: str, number: str, token: str) -> dict[str, Any]:
+    """The customer's own order by its private link; an unpaid UPI order shows how to pay again."""
+    _r, cfg = shop_public(site_id)
+    out = SH.track(site_id, number, token)
+    if out["method"] == "upi" and out["status"] == "new" and cfg["upi"]:
+        from . import live as LV
+        amt = SH.paise(out["total"])
+        link = LV.upi_link(cfg["upi"], cfg["shop_name"], f"{amt / 100:.2f}", f"Order {number}")
+        out["pay"] = {"vpa": cfg["upi"], "link": link, "qr": LV.qr_data_uri(link), "amount": out["total"]}
+    return out
+
+
+def shop_orders(tenant: str, ref: str, status: str = "") -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    return {"orders": SH.orders(r.id, status), "summary": SH.summary(r.id)}
+
+
+def shop_move(tenant: str, ref: str, number: str, to: str) -> dict[str, Any]:
+    """HER move of an order (confirm after checking her money / packed / shipped / delivered / cancel)."""
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    try:
+        o = SH.set_status(r.id, str(number).strip().upper(), str(to))
+    except SH.ShopError as e:
+        raise SiteError(str(e))
+    return {"order": o, "say": f"Order {o['number']}: {o['status_text']}."}
 
 
 # ---------------------------------------------------------------- v0.301 bookings from the website (her real slots)

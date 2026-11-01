@@ -12825,8 +12825,82 @@ never die). revise / fix_ci rounds still use the one-shot path (next: item 2 = C
 Tests: test_v0350_kadam_ba_kadam.py (5) with a scripted model on the fake GitHub; test_tech_devsahayak.py (11) unchanged.
 NOT verified here: a live run (needs her GitHub token + the API key) - try one small fix on a test repo.
 
+## v0.351.0 DUKAAN (built as 0.344, re-versioned past the parallel v0.344-v0.350) (Phase 3a of "any world-complex website": a real shop on her website)
+Owner: "START PHASE 3" (3a shop now; 3b dashboards / charts and 3c blog + multi-language come next).
+- `server/app/site/shop.py`: products (`site_shop_products`: price in paise, unit, stock or unlimited, active, photo) and
+  orders (`site_shop_orders`: O-1001.., secret tracking token, name / phone / address / pincode / note, items, subtotal +
+  delivery + total, method upi | cod, status, UTR, history, hashed IP). The SERVER decides everything: prices come from the
+  product table never from the page, stock is taken with a conditional UPDATE (two buyers of the last piece -> one wins),
+  delivery fee + free-above + minimum order + pincodes, rate limits (12 orders / 10 min per IP, 300 a day per site).
+- Money never moves through Hoola: UPI = her UPI ID link + QR (`live.upi_link` / `qr_data_uri`); the buyer taps "Maine pay
+  kar diya" + UTR -> status `payment_told`, SHE checks her bank and confirms. COD optional. Status flow new -> payment_told ->
+  confirmed -> packed -> shipped -> delivered (or cancelled, which returns the stock).
+- Build: a "shop" page (product grid with Add to cart), a buy box on item pages, `hoola-shop.js` (cart in localStorage,
+  floating Cart button, drawer: cart -> checkout -> done with QR / UPI button / UTR form / tracking link, `?order=&t=` tracking,
+  every value set with textContent), styles in `hoola-site.css`, meta `hoola-shop` carries the options.
+- Public API (CORS, no login): GET /api/site-shop/{id}/products, POST .../order, GET .../order/{number}?t=, POST .../order/{number}/paid.
+  Owner API: GET/POST /api/sites/{ref}/shop (settings, products, from_lists = priced list items), GET .../shop/orders,
+  POST .../shop/orders/{number} (move status). New orders publish `site_order` (push).
+- Agent: `website` action=shop (turn on, settings, products) and action=shop_order (move an order), `website_dekho what=orders`.
+- Console Studio: a Shop tab (on / UPI ID / COD / pickup / delivery fee, products table, "Add my priced list items", orders with next-step buttons).
+- NOT done yet: phone Flutter screen for orders (push + chat only), emails / SMS to buyers, payment gateway (by design: her UPI only).
+- Tests `server/tests/test_v0351_dukaan.py`: rupees formatting, server-side prices / stock / payment, the last-piece race,
+  public vs owner-only endpoints, and a REAL Chromium purchase (add to cart -> checkout -> UPI QR -> UTR -> tracking).
 
-## v0.351.0 HOOLA STUDIO PAGE (1 Nov 2026)
+## v0.352.0 PEHLE CI, PHIR PR (owner: "Run your CI on a draft branch, and fix until it passes, before opening the PR. --- go")
+Item 2 of the coding plan, on top of v0.350's 8-tool loop. Built as 0.351, re-versioned past the parallel v0.351 DUKAAN.
+- `devsahayak/service.py` `push()`: when `DEV_CI_LOOP` is on and the repo has a workflow that runs on pull_request / push
+  (`_has_ci`, `_CI_TRIGGER`), the PR is opened as a DRAFT and the task goes to status `ci_running` (ci_round 0, ci_since now).
+  A repo with no CI keeps the old path (normal PR, status open).
+- `tick()` walks `ci_running` tasks through `_ci_step` every minute: checks green -> `_ci_ready` (GraphQL
+  markPullRequestReadyForReview via `gh.mark_ready`, then status open + chat note); checks red -> one more round of the
+  step-by-step loop with the failing job's log as the brief (`_round`, `loop.run(ref_sha=..., extra=...)` continues on the
+  same branch) up to `DEV_CI_ROUNDS` (3), then `checks_failed` with the log for her; no check ever started in
+  `DEV_CI_WAIT_MIN` (15) -> ready with a "no tests ran" note; still pending after `DEV_CI_MAX_MIN` (45) -> ready with a note.
+- `refresh()` leaves `ci_running` alone; `models.DevTask` gains nullable `ci_round` / `ci_since` (old rows fine).
+- Merge / deploy stay her tap, as before. A GitHub error on mark_ready leaves a note to press "Ready for review" herself.
+- Tests: `test_v0352_pehle_ci.py` (draft PR, green -> ready, red -> fix round -> green, rounds cap, no CI -> plain PR, timeout).
+
+## v0.353.0 SOCIAL MEDIA MANAGER Phase 1 (1 Nov 2026, built as 0.347.0 / 0.348.0 / 0.352.0, re-versioned past the parallel v0.347-v0.352)
+Owner: "Social Media Manager — first do deep research what we have" -> "How user will put their social media details"
+-> "GO PLAN" (docs/SOCIAL_EMPLOYEE_PLAN.md) -> Meta app set up by her (HOOLA app, use cases Instagram + Pages, redirect URIs,
+keys in the VPS .env) -> "GO PHASE 1".
+- Employee 2 on the SEO employee's frame: `employee/hire.py` CATALOG `social` is live (does / needs / never).
+- `social/meta.py`: Hoola's ONE Meta app (users never make an app or type a key). Instagram API with Instagram Login
+  (instagram.com/oauth/authorize -> api.instagram.com/oauth/access_token -> graph.instagram.com ig_exchange_token, 60
+  days; refresh_access_token), read scopes `instagram_business_basic`, `instagram_business_manage_insights`; Facebook
+  Login for Business (facebook.com/<v>/dialog/oauth with `config_id` = META_LOGIN_CONFIG_ID, else read scopes) -> 60-day
+  user token -> /me/accounts Page tokens; reads: IG /me, /me/media, per-media insights (reach, saved, shares, views,
+  total_interactions; asked together, then one by one when Meta refuses a name), FB /{page}/posts + reach
+  (post_impressions_unique, then post_total_media_view_unique); Graph version pinned `META_SOCIAL_VERSION` (v25.0);
+  `parse_signed_request` (HMAC-SHA256 with the Facebook or Instagram app secret). Config: META_APP_ID / META_APP_SECRET /
+  META_LOGIN_CONFIG_ID / INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET / META_SOCIAL_VERSION / SOCIAL_AI.
+- `social/desk.py`: tables social_accounts (tokens sealed with accounts.encrypt), social_media (her posts + numbers,
+  upserted by media id), social_desk, social_posts (the calendar), social_events. onboard (pre-filled from the SEO site /
+  Brand kit), connect_url (state `soc_ig_` / `soc_fa_` in mail_link_states, once, 30 min), finish_link (personal IG
+  refused with the switch guide; up to 10 Pages), disconnect (token + read posts deleted), sync_account (dead token =
+  status expired + one alert, recovery noted; a removed account is never written back), measure (followers, posts in
+  30 days, interactions + reach per post, engagement rate, best formats / hours / days in her time zone, top 5),
+  build_plan (Opus kind `social_plan`, 12k tokens, cleaned: dates in range, platforms instagram / facebook only, tags
+  normalised, < 6 good slots = rules plan; rules plan = 4 posts a week at her best hours, pillars rotated, Indian
+  holidays on their day), approve_calendar, set_post (an edit after approval goes back to draft), first_run (sync ->
+  frozen baseline -> plan), watch (IG token renewed under 20 days left; FB expiry warned once), daily (fresh numbers),
+  weekly (Monday note), run_due from the worker (`_SOCIAL_DESK_BUSY`, only hired + not paused tenants), meta_deletion.
+- Routes: GET /api/social/desk, POST /api/social/onboard, GET /api/social/connect/{instagram|facebook},
+  GET /api/social/{instagram|facebook}/callback (public, `_linked_page`), POST /api/social/meta/deletion (+ /deauthorize,
+  public, signed_request) -> {url, confirmation_code}, GET /api/social/meta/deletion/{code}, POST
+  /api/social/accounts/{id}/disconnect, POST /api/social/calendar/approve, POST /api/social/posts/{id}, POST
+  /api/social/run/{first|hourly|daily|weekly|plan}.
+- Console: `employees.js` `social(el)` (set-up form, account tiles + Connect / Reconnect / Disconnect, approve banner,
+  KPIs vs baseline, strategy, what works, calendar cards with status / Copy caption / Edit, activity, run-now), v2.js
+  sidebar Social Desk only while hired (`syncEmployees` loops seo + social), v2.html `v-socialdesk`, v2.css `sc-*`.
+  Phone: `SocialDeskScreen` (lib/ui/employees_screen.dart) + api.dart social* calls; hub "Open desk" per employee.
+- Also fixed: SEO desk run_due used the same lock name as first_run, so a scheduled retry of a failed first run found
+  itself "busy" (keys now `due:...`).
+- Not verified live: Meta's real responses (mocked from Meta's docs in `test_v0348_social_manager.py`, 11 tests).
+  Next: Phase 2 = publishing on her tap (needs App Review of instagram_business_content_publish / pages_manage_posts).
+
+## v0.354.0 HOOLA STUDIO PAGE (1 Nov 2026; built as 0.351.0, re-versioned past the parallel v0.351-v0.353)
 Owner: "NOW LETS WORK ON HOOLA WEBSITE ::: IN WEBSITE THERE IS NO INFORMATION ABOUT THE HOOLA STUDIO --- DO DEEP RESEARCH AND ADD
 HOOLA STUDIO PAGE IN WITH REAL SCREEN AND WITH REAL SAMPLE ... MAKE IT STUNNING WITH MOTION GRAPHICS ... SAME AS EXISTING BRAND
 UI / UX --- SHOW ME THE PROTOTYPE OF THIS PAGE HERE".

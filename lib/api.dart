@@ -986,6 +986,20 @@ class Api {
   Future<Map<String, dynamic>> seoDraftOk(String id, String text) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/seo/drafts/$id', body: {'text': text}) as Map);
   Future<String> seoGscLink() async => (await _send('GET', '/api/seo/gsc/link'))['url'] as String;
+  // v0.353 the Social Media Manager's desk
+  Future<Map<String, dynamic>> socialDesk() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/social/desk', timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> socialOnboard(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/onboard', body: body) as Map);
+  Future<String> socialConnect(String platform) async => (await _send('GET', '/api/social/connect/$platform'))['url'] as String;
+  Future<Map<String, dynamic>> socialDisconnect(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/accounts/$id/disconnect', body: {}) as Map);
+  Future<Map<String, dynamic>> socialApprove() async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/calendar/approve', body: {}) as Map);
+  Future<Map<String, dynamic>> socialPost(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id', body: body) as Map);
+  Future<Map<String, dynamic>> socialRun(String job) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/run/$job', body: {}) as Map);
   // v0.317 HIRE AN EMPLOYEE + the SEO Desk
   Future<Map<String, dynamic>> employees() async => Map<String, dynamic>.from(await _send('GET', '/api/employees') as Map);
   Future<Map<String, dynamic>> employeeAct(String key, String action) async =>

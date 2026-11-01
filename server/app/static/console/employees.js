@@ -45,7 +45,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   async function act(what, key) {
-    if (what === 'open') { location.hash = ''; document.querySelector(`[data-v="${key}desk"]`)?.click(); return; }
+    if (what === 'open') { location.hash = ''; document.querySelector(`[data-v="${key}desk"]`)?.click(); return; }   // seodesk / socialdesk
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
       await api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined);
@@ -236,5 +236,138 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     }));
   }
 
-  return {hub, desk};
+  // ------------------------------------------------------------ v0.353 the Social Desk (Social Media Manager, Phase 1)
+  let SOC = null;
+  const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page'};
+  const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};
+  async function social(el) {
+    SOC = el; clearTimeout(TIMER);
+    if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Social Desk</h2></div><div class="empty">Loading…</div>';
+    let d;
+    try { d = await api('GET', '/api/social/desk'); }
+    catch (e) { el.innerHTML = `<div class="vh"><h2>Social Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    if (!d.hired) { el.innerHTML = `<div class="vh"><h2>Social Desk</h2></div><div class="empty">The Social Media Manager is not hired. <button class="btn go" type="button" data-v="hire">Go to Employees</button></div>`; return; }
+    if (!d.onboarded) { el.innerHTML = socialForm(d); wireSocialForm(el); return; }
+    const [sc, sn] = STATE[d.state] || ['warn', d.state];
+    const accs = d.accounts || [], b = d.baseline || {}, stg = d.strategy || {}, cal = d.calendar || [];
+    el.innerHTML = `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">${esc(d.profile.business || '')}${d.profile.city ? ' · ' + esc(d.profile.city) : ''}</span>
+        ${accs.length ? tag(sc, sn) : tag('warn', 'Connect an account')} ${d.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[d.trust] || [d.trust])[0])}</span></div>
+      <div class="tile gl"><div class="em-h"><h3>Accounts</h3><span class="muted em-small">You log in on Instagram / Facebook's own page. Hoola never sees your password.</span></div>
+        <div class="sc-accs">${accs.map(a => `<div class="sc-acc">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : '<span class="sc-pic"></span>'}
+          <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)} · ${num(a.followers)} followers</span>
+          ${a.status !== 'ok' ? `<span class="badc em-small">${esc(a.status === 'expired' ? 'Connection ended: connect again' : a.error || a.status)}</span>` : ''}</div>
+          <button class="btn soft" type="button" data-scoff="${esc(a.id)}">Disconnect</button></div>`).join('')}
+        <div class="sc-connect">${['instagram', 'facebook'].map(p => d.connect[p]
+          ? `<button class="btn ${accs.some(a => a.platform === p) ? 'soft' : 'go'}" type="button" data-scon="${p}">${accs.some(a => a.platform === p) ? 'Reconnect' : 'Connect'} ${PLAT[p]}</button>`
+          : `<button class="btn soft" type="button" disabled title="The server needs Hoola's Meta app keys">${PLAT[p]}: not set up on the server yet</button>`).join('')}</div>
+        <p class="muted em-small">Instagram must be a Business or Creator account (free switch in Instagram settings). Phase 1 only reads your posts and numbers and drafts the calendar: nothing is posted.</p></div>
+      ${d.calendar_status === 'draft' && cal.length ? `<div class="tile gl em-note"><b>Your 30-day calendar is ready</b><span>${cal.length} posts planned from your real numbers. Read them below, edit any, then approve.</span>
+        <button class="btn go" type="button" id="scApprove">Approve calendar</button></div>` : ''}
+      ${accs.length ? `<div class="kpis em-kpis">${(d.kpis || []).map(kpi).join('') || '<div class="empty">Numbers appear after the first read.</div>'}</div>
+      <p class="muted em-small">Baseline from ${esc(b.date || '–')}${b.posts_read ? ` · ${num(b.posts_read)} posts read` : ''}.</p>` : ''}
+      ${stg.pillars ? `<div class="grid2">
+        <div class="tile gl"><h3>Strategy</h3>${stg.goal_metric ? `<p class="em-small"><b>Judged on:</b> ${esc(stg.goal_metric)}</p>` : ''}
+          <div class="sc-pills">${(stg.pillars || []).map(p => `<span class="tag" title="${esc(p.why || '')}">${esc(p.name)}</span>`).join('')}</div>
+          <p class="em-small">${num((stg.rhythm || {}).feed_per_week)} feed posts + ${num((stg.rhythm || {}).stories_per_week)} Stories a week · best hours ${(stg.best_hours || b.best_hours || []).map(h => esc(String(h).padStart(2, '0') + ':00')).join(', ')}</p>
+          <p class="muted em-small">${(stg.hashtags || []).map(esc).join(' ')}</p></div>
+        <div class="tile gl"><h3>What works for you</h3>${(b.formats || []).length ? `<table class="em-tbl"><tbody>${b.formats.map(f => `<tr><td>${esc(f.fmt)}</td><td class="muted">${num(f.posts)} posts</td><td>${num(f.avg_eng)} interactions</td></tr>`).join('')}</tbody></table>` : '<div class="empty">After the first read.</div>'}
+          ${(b.top_posts || []).slice(0, 3).map(t => `<p class="em-small"><a href="${esc(t.permalink)}" target="_blank" rel="noopener">${esc(t.fmt)} · ${num(t.eng)} interactions</a> <span class="muted">${esc((t.caption || '').slice(0, 80))}</span></p>`).join('')}</div>
+      </div>` : ''}
+      ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
+        <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
+      <div class="grid2">
+        <div class="tile gl"><h3>Activity</h3>${feed(d.events || [])}</div>
+        <div class="tile gl"><h3>Runs 24/7</h3>${sched(d.schedule || [])}
+          <div class="acts em-run"><button class="btn soft" type="button" data-scrun="daily">Refresh numbers</button>
+            <button class="btn soft" type="button" data-scrun="plan">Rewrite calendar draft</button></div></div>
+      </div>`;
+    wireSocial(el, d);
+    if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) social(el); }, 8000);
+  }
+
+  function post(p) {
+    const [c, n] = PST[p.status] || ['', p.status];
+    const dt = new Date(p.slot);
+    const day = isNaN(dt) ? p.slot : dt.toLocaleString('en-IN', {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
+    return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}<span class="tag">${esc(p.format)}</span>
+        <span class="muted">${(p.platforms || []).map(x => esc(PLAT[x] || x)).join(' + ')}${p.pillar ? ' · ' + esc(p.pillar) : ''}${p.occasion ? ' · ' + esc(p.occasion) : ''}</span></div>
+      <b>${esc(p.hook)}</b>
+      <details class="em-env"><summary>Caption, hashtags and picture brief</summary><p class="sc-cap">${esc(p.caption)}</p>
+        <p class="muted">${(p.hashtags || []).map(esc).join(' ')}</p>${p.visual ? `<p><b>Picture / video:</b> ${esc(p.visual)}</p>` : ''}${p.cta ? `<p><b>Ask:</b> ${esc(p.cta)}</p>` : ''}
+        <textarea class="sc-edit" rows="5" aria-label="Edit caption" hidden>${esc(p.caption)}</textarea></details>
+      <div class="acts"><select data-scst="${esc(p.id)}" aria-label="Status">${Object.entries(PST).map(([v, [, l]]) => `<option value="${v}"${v === p.status ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <button class="btn soft" type="button" data-sccopy="${esc(p.id)}">Copy caption</button><button class="btn soft" type="button" data-scedit="${esc(p.id)}">Edit</button></div></div>`;
+  }
+
+  function socialForm(d) {
+    const p = d.profile || {};
+    return `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">A few questions, then connect Instagram or your Facebook Page. Your Social Media Manager reads your posts, finds what works and plans the month.</span></div>
+      <form class="tile gl ar-form em-form" id="scOn" autocomplete="off">
+        <div class="ar-fields em-fields">
+          <label><span>Business name</span><input id="scBiz" required value="${esc(p.business || '')}" placeholder="Sharma Dental Clinic"></label>
+          <label><span>City</span><input id="scCity" value="${esc(p.city || '')}" placeholder="Nagpur"></label>
+          <label class="em-wide"><span>What you sell</span><input id="scSells" value="${esc(p.sells || '')}" placeholder="Root canal, implants, braces"></label>
+          <label class="em-wide"><span>Who are your customers?</span><input id="scCust" placeholder="Families and office workers in Dharampeth"></label>
+          <label class="em-wide"><span>What do you want from social media?</span><input id="scGoal" placeholder="More WhatsApp enquiries for implants"></label>
+          <label class="em-wide"><span>Languages for posts (comma separated)</span><input id="scLang" value="${esc((p.languages || ['Hinglish']).join(', '))}"></label>
+        </div>
+        <fieldset class="em-trust"><legend>How much may it do on its own?</legend>${['seekh', 'saathi'].map(k => `
+          <label><input type="radio" name="scTrust" value="${k}"${k === (d.trust || 'seekh') ? ' checked' : ''}> <b>${TRUST[k][0]}</b> <span class="muted">${TRUST[k][1]}</span></label>`).join('')}
+          <p class="muted em-small">In this version it reads and drafts only. Posting on your OK comes in the next phase, always within this setting.</p></fieldset>
+        <div class="acts"><button class="btn go" type="submit">Save and continue</button></div>
+      </form>`;
+  }
+
+  function wireSocialForm(el) {
+    el.querySelector('#scOn').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const v = id => el.querySelector(id).value.trim();
+      const btn = el.querySelector('#scOn button[type=submit]'); btn.disabled = true;
+      try {
+        await api('POST', '/api/social/onboard', {business: v('#scBiz'), city: v('#scCity'), sells: v('#scSells'), customers: v('#scCust'),
+          goal: v('#scGoal'), languages: v('#scLang'), trust: el.querySelector('input[name=scTrust]:checked')?.value || 'seekh'});
+        toast('Saved. Now connect Instagram or your Facebook Page.');
+        el.innerHTML = ''; social(el);
+      } catch (e) { toast(e.message, true); btn.disabled = false; }
+    });
+  }
+
+  function wireSocial(el, d) {
+    el.querySelectorAll('[data-scon]').forEach(b => b.addEventListener('click', async () => {
+      try { const r = await api('GET', `/api/social/connect/${b.dataset.scon}`); window.open(r.url, '_blank', 'noopener'); toast('Log in on the page that opened, then come back here.'); }
+      catch (e) { toast(e.message, true); }
+    }));
+    el.querySelectorAll('[data-scoff]').forEach(b => b.addEventListener('click', async () => {
+      if (!confirm('Disconnect this account? Hoola deletes its token and the posts it read.')) return;
+      try { await api('POST', `/api/social/accounts/${encodeURIComponent(b.dataset.scoff)}/disconnect`, {}); social(el); }
+      catch (e) { toast(e.message, true); }
+    }));
+    el.querySelector('#scApprove')?.addEventListener('click', async () => {
+      try { const r = await api('POST', '/api/social/calendar/approve', {}); toast(`Approved ${r.approved} posts.`); social(el); }
+      catch (e) { toast(e.message, true); }
+    });
+    el.querySelectorAll('[data-scst]').forEach(s => s.addEventListener('change', async () => {
+      try { await api('POST', `/api/social/posts/${encodeURIComponent(s.dataset.scst)}`, {status: s.value}); social(el); }
+      catch (e) { toast(e.message, true); }
+    }));
+    el.querySelectorAll('[data-sccopy]').forEach(b => b.addEventListener('click', async () => {
+      const p = (d.calendar || []).find(x => x.id === b.dataset.sccopy);
+      try { await navigator.clipboard.writeText(`${p.caption}\n\n${(p.hashtags || []).join(' ')}`); toast('Caption copied.'); }
+      catch (e) { toast('Could not copy: select the text instead.', true); }
+    }));
+    el.querySelectorAll('[data-scedit]').forEach(b => b.addEventListener('click', async () => {
+      const card = b.closest('.sc-post'), det = card.querySelector('details'), ta = card.querySelector('.sc-edit');
+      if (ta.hidden) { det.open = true; ta.hidden = false; ta.focus(); b.textContent = 'Save'; return; }
+      try { await api('POST', `/api/social/posts/${encodeURIComponent(b.dataset.scedit)}`, {caption: ta.value}); toast('Saved. An edited post needs your OK again.'); social(el); }
+      catch (e) { toast(e.message, true); }
+    }));
+    el.querySelectorAll('[data-scrun]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast(b.dataset.scrun === 'plan' ? 'Rewriting the draft. Approved posts stay.' : 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
+      catch (e) { toast(e.message, true); }
+      b.disabled = false;
+    }));
+  }
+
+  return {hub, desk, social};
 };

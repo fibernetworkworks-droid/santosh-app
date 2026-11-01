@@ -759,6 +759,7 @@ def init_db(url: str | None = None):
     from .site import github as _site_github  # noqa: F401  (v0.124 GitHub export of her site)
     from .site import webapp as _site_webapp  # noqa: F401  (v0.305 web apps: members + rows)
     from .site import arena as _site_arena  # noqa: F401  (v0.307 Design Arena runs / items / duels)
+    from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
@@ -801,6 +802,7 @@ def init_db(url: str | None = None):
     from .seo import service as _seo  # noqa: F401
     from .seo import desk as _seo_desk  # noqa: F401  (v0.317 SEO Employee desk)
     from .employee import hire as _hire  # noqa: F401  (v0.317 hired employees)
+    from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .thok import service as _thok  # noqa: F401
     from .niryat import service as _niryat  # noqa: F401
     from .franchise import service as _franchise  # noqa: F401

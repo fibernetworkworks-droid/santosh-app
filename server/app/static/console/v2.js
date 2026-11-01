@@ -107,13 +107,18 @@ IC.arena = '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 
 let AR = null;         // v0.312 the Arena screen (arena.js)
 IC.hire = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"/>';   // v0.317 Employees
 IC.seodesk = '<path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35M8 11h6M11 8v6"/>';                     // v0.317 SEO Desk
+IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
 let EMP = null;        // v0.317 the Employee Hub + desks (employees.js)
 function syncEmployees(hired) {                     // v0.317 a desk appears in the sidebar only while its employee is hired
   if (ME) ME.employees = hired || {};
-  const want = !!(hired && hired.seo), has = NAV.some(([k]) => k === 'seodesk');
-  if (want && !has) NAV.splice(NAV.findIndex(([k]) => k === 'hire') + 1, 0, ['seodesk', 'SEO Desk']);
-  if (!want && has) NAV.splice(NAV.findIndex(([k]) => k === 'seodesk'), 1);
-  if (want !== has) { drawNav(); if (!want && VIEW === 'seodesk') go('hire'); }
+  let moved = false;
+  for (const [key, view, label] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk']]) {   // v0.353 + Social Desk
+    const want = !!(hired && hired[key]), has = NAV.some(([k]) => k === view);
+    if (want && !has) NAV.splice(NAV.findIndex(([k]) => k === 'hire') + 1, 0, [view, label]);
+    if (!want && has) NAV.splice(NAV.findIndex(([k]) => k === view), 1);
+    if (want !== has) { moved = true; if (!want && VIEW === view) go('hire'); }
+  }
+  if (moved) drawNav();   // hired.social / hired.seo
 }
 IC.call = '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>';
 let JOBS = [];          // v0.222 her live jobs (working / waiting) for the home row and the Today badge
@@ -131,7 +136,7 @@ function drawNav() {
 function go(v) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', hire:'· Employees', seodesk:'· SEO Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', hire:'· Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -139,6 +144,7 @@ function go(v) {
   if (v === 'arena') AR?.draw($('#arena'));
   if (v === 'hire') EMP?.hub($('#hire'));
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
+  if (v === 'socialdesk') EMP?.social($('#socialdesk'));
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
 }

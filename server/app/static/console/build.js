@@ -241,7 +241,7 @@ window.HoolaBuild = function (C) {
     if (s === 'planned') pre.push(['plan', 'Plan']);
     if (s === 'looks') pre.push(['looks', 'Looks']);
     return o.type === 'site'
-      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['data', 'App & data']] : [])]
+      ? [...pre, ['preview', 'Preview'], ['board', 'Board'], ['kadam', 'Steps'], ['jaanch', 'Checks'], ...(o.v?.version ? [['data', 'App & data'], ['shop', 'Shop']] : [])]
       : [...pre, ['screens', 'Screens'], ['prototype', 'Prototype'], ['dhaancha', 'Structure'], ['android', 'Android'],
          ...(S(o.an?.status) ? [['data', 'App data']] : []), ['kadam', 'Steps']];   // v0.314 the built app's own backend
   }
@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); } }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'shop') loadShop(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); } }
     showBtn();
   }
 
@@ -364,6 +364,7 @@ window.HoolaBuild = function (C) {
       case 'kadam': return kadamPane(o);
       case 'jaanch': return sitePane(o);
       case 'data': return `<div class="stdata"><div class="stempty">${spin()} Loading the app…</div></div>`;
+      case 'shop': return `<div class="stshop"><div class="stempty">${spin()} Loading the shop…</div></div>`;
       case 'screens': return screensPane(o);
       case 'dhaancha': return dnaPane(o);
       case 'android': return androidPane(o);
@@ -746,6 +747,67 @@ window.HoolaBuild = function (C) {
     } catch (er) { /* no accounts list */ }
   }
 
+  /* v0.351 DUKAAN: her shop - settings, products, orders (no AI; prices only hers; money confirmed only by her) */
+  const OSTEP = {confirmed: 'Confirm (money received)', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancel'};
+  async function loadShop(o, root) {
+    const box = root.querySelector('.stshop'); if (!box) return;
+    let info, ord;
+    try { [info, ord] = await Promise.all([api('GET', base(o) + '/shop'), api('GET', base(o) + '/shop/orders')]); }
+    catch (er) { box.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const st = M(info.settings), sm = M(ord.summary), prods = L(info.products), orders = L(ord.orders);
+    const num = v => S(v).replace(/[₹,]/g, '');
+    box.innerHTML = `<form class="stapp" data-f="settings" autocomplete="off"><b>Shop settings</b>
+        <div class="stshop-sw">${[['on', 'Shop on'], ['cod', 'Cash on delivery'], ['pickup', 'Store pickup']].map(([k, n]) => `<label class="sted-kind"><input type="checkbox" name="${k}"${st[k] ? ' checked' : ''}> ${n}</label>`).join('')}</div>
+        <div class="row"><label><span>Delivery charge ₹</span><input name="delivery" value="${esc(num(st.delivery))}" inputmode="decimal"></label>
+        <label><span>Free delivery above ₹</span><input name="free_above" value="${esc(num(st.free_above))}" inputmode="decimal"></label>
+        <label><span>Minimum order ₹</span><input name="min_order" value="${esc(num(st.min_order))}" inputmode="decimal"></label></div>
+        <label><span>Her UPI ID (customers pay here)</span><input name="upi" value="${esc(S(info.upi))}" placeholder="name@okhdfcbank"></label>
+        <label><span>Delivery pincodes (empty = all)</span><input name="pincodes" value="${esc(L(st.pincodes).join(', '))}" placeholder="444101, 444102"></label>
+        <div class="acts"><button class="btn go" type="submit">Save settings</button></div></form>
+      <p class="stnote">${N(sm.orders)} orders · ${N(sm.open)} open · ${N(sm.to_check)} payments to check · sales ${esc(S(sm.sales) || '₹0')}</p>
+      <section class="stcol"><h4>Orders <span>${orders.length}</span></h4>${orders.length ? `<div class="sttbl"><table><thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${orders.map(x => `<tr data-n="${esc(S(x.number))}">
+        <td><b>${esc(S(x.number))}</b><br><small>${esc(S(x.created).slice(0, 16).replace('T', ' '))}</small></td>
+        <td>${esc(S(x.name))}<br><small>${esc(S(x.phone))} · ${esc(S(x.address).slice(0, 60))} ${esc(S(x.pincode))}</small></td>
+        <td>${L(x.items).map(i => `${esc(S(i.title))} × ${N(i.qty)}`).join('<br>')}</td>
+        <td>${esc(S(x.total))}<br><small>${x.method === 'cod' ? 'COD' : 'UPI'}${x.utr ? ' · UTR ' + esc(S(x.utr)) : ''}</small></td>
+        <td>${esc(S(x.status_text))}</td>
+        <td>${L(x.next).map(t => `<button class="btn soft" type="button" data-to="${esc(S(t))}">${esc(OSTEP[t] || t)}</button>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No orders yet.</p>'}</section>
+      <section class="stcol"><h4>Products <span>${prods.length}</span></h4>
+        <div class="sttbl"><table><thead><tr><th>Name</th><th>Price ₹</th><th>Unit</th><th>Stock (empty = not counted)</th><th>On sale</th></tr></thead><tbody>
+        ${prods.map(p => `<tr data-s="${esc(S(p.slug))}"><td><input name="title" value="${esc(S(p.title))}" aria-label="Name"></td><td><input name="price" value="${esc(num(p.price_text))}" inputmode="decimal" aria-label="Price"></td>
+          <td><input name="unit" value="${esc(S(p.unit))}" aria-label="Unit"></td><td><input name="stock" value="${p.stock == null ? '' : N(p.stock)}" inputmode="numeric" aria-label="Stock"></td>
+          <td><input type="checkbox" name="active"${p.active ? ' checked' : ''} aria-label="On sale"></td></tr>`).join('')}
+        <tr data-s=""><td><input name="title" placeholder="New product" aria-label="New product name"></td><td><input name="price" inputmode="decimal" aria-label="Price"></td><td><input name="unit" placeholder="1 kg" aria-label="Unit"></td><td><input name="stock" inputmode="numeric" aria-label="Stock"></td><td><input type="checkbox" name="active" checked aria-label="On sale"></td></tr>
+        </tbody></table></div>
+        <div class="acts"><button class="btn go" type="button" data-x="save-products">Save products</button>${N(info.from_lists) ? `<button class="btn soft" type="button" data-x="from-lists">Add my priced list items (${N(info.from_lists)})</button>` : ''}</div></section>`;
+    const send = async (body, b) => { if (b) b.disabled = true; try { const r = await api('POST', base(o) + '/shop', body); toast(S(r?.say) || 'Saved.'); loadShop(o, root); } catch (er) { toast(er.message, true); if (b) b.disabled = false; } };
+    box.querySelector('[data-f=settings]').addEventListener('submit', e => {
+      e.preventDefault(); const f = new FormData(e.target), settings = {};
+      ['on', 'cod', 'pickup'].forEach(k => { settings[k] = !!f.get(k); });
+      ['delivery', 'free_above', 'min_order', 'pincodes'].forEach(k => { settings[k] = S(f.get(k)).trim(); });
+      if (S(f.get('upi')).trim()) settings.upi = S(f.get('upi')).trim();
+      send({settings}, e.target.querySelector('button'));
+    });
+    box.querySelector('[data-x=save-products]').addEventListener('click', e => {
+      const products = [...box.querySelectorAll('tr[data-s]')].map(tr => {
+        const g = n => tr.querySelector(`[name=${n}]`);
+        const row = {title: g('title').value.trim(), price: g('price').value.trim(), unit: g('unit').value.trim(), active: g('active').checked,
+                     stock: g('stock').value.trim() === '' ? null : g('stock').value.trim()};
+        if (tr.dataset.s) row.slug = tr.dataset.s;
+        return row;
+      }).filter(r => r.slug || (r.title && r.price));
+      send({products}, e.target);
+    });
+    const fl = box.querySelector('[data-x=from-lists]'); if (fl) fl.addEventListener('click', e => send({from_lists: true}, e.target));
+    box.addEventListener('click', async e => {
+      const b = e.target.closest('[data-to]'), tr = e.target.closest('tr[data-n]'); if (!b || !tr) return;
+      if (b.dataset.to === 'cancelled' && !confirm(`Cancel order ${tr.dataset.n}? Its stock goes back.`)) return;
+      if (b.dataset.to === 'confirmed' && !confirm(`Did you see the money for ${tr.dataset.n} in your bank / UPI app?`)) return;
+      b.disabled = true;
+      try { const r = await api('POST', `${base(o)}/shop/orders/${encodeURIComponent(tr.dataset.n)}`, {to: b.dataset.to}); toast(S(r?.say) || 'Updated.'); loadShop(o, root); }
+      catch (er) { toast(er.message, true); b.disabled = false; }
+    });
+  }
   async function loadData(o, root) {
     const box = root.querySelector('.stdata'); if (!box) return;
     if (o.type === 'app') return loadAppData(o, box);

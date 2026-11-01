@@ -478,6 +478,53 @@ def with_app_pages(site: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]
     return {**plan, "pages": pages}
 
 
+# ---------------------------------------------------------------- v0.351 her shop (code only: prices come live from the API)
+def with_shop_pages(site: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
+    """A site with the shop on gets a 'Shop' page in the menu (unless the plan already has one)."""
+    if not (site.get("shop") or {}).get("api") or any(p["slug"] == "shop" for p in plan.get("pages", [])):
+        return plan
+    pages = list(plan.get("pages", []))
+    at = next((i for i, p in enumerate(pages) if p["slug"] in ("contact",) + LEGAL_PAGES), len(pages))
+    pages[at:at] = [{"slug": "shop", "title": "Shop", "nav": "Shop", "sections": [], "shop_page": True}]
+    return {**plan, "pages": pages}
+
+
+def buy_button(slug: str, title: str) -> str:
+    return (f'<button type="button" class="btn btn-primary hs-buy-b" data-hoola-buy="{esc(slug)}" '
+            f'aria-label="Add {esc(title)} to cart">Add to cart</button>')
+
+
+def shop_grid(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]]) -> str:
+    items = (site.get("shop") or {}).get("products") or []
+    if not items:
+        return '<p class="muted">Products jald aa rahe hain.</p>'
+    cards = []
+    for p in items:
+        img = picture(photos[p["photo"]], p["title"], rel) if p.get("photo") in photos else ""
+        unit = f' <small>/ {esc(p["unit"])}</small>' if p.get("unit") else ""
+        cards.append(f'<li class="hs-prod" data-hoola-product="{esc(p["slug"])}">{img}<h3>{esc(p["title"])}</h3>'
+                     f'<p class="hs-price"><span data-hoola-price>{esc(p["price_text"])}</span>{unit}</p>'
+                     + (buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Abhi stock mein nahi</p>')
+                     + '</li>')
+    return f'<ul class="hs-prods">{"".join(cards)}</ul>'
+
+
+def shop_page(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]]) -> str:
+    return (f'<section class="hs"><div class="wrap"><h1>Shop</h1><p class="lead">Cart mein daaliye, ghar baithe mangwaiye.</p>'
+            f'{shop_grid(site, rel, photos)}</div></section>')
+
+
+def buy_box(site: dict[str, Any], slug: str) -> str:
+    """On a product's own page (a list item that is also a product): its price + Add to cart."""
+    p = next((x for x in (site.get("shop") or {}).get("products") or [] if x["slug"] == slug), None)
+    if not p:
+        return ""
+    unit = f' <small>/ {esc(p["unit"])}</small>' if p.get("unit") else ""
+    act = buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Abhi stock mein nahi</p>'
+    return (f'<section class="hs hs-buybox" aria-label="Buy {esc(p["title"])}"><div class="wrap">'
+            f'<p class="hs-price"><span data-hoola-price>{esc(p["price_text"])}</span>{unit}</p>{act}</div></section>')
+
+
 def app_page(kind: str, site: dict[str, Any]) -> str:
     """The account / staff pages: containers the app script fills from the live schema (no data in the HTML)."""
     w = app_words(site)
@@ -627,6 +674,11 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
         meta.append('<meta name="robots" content="noindex">')
     if site.get("app_api"):                      # v0.305 where the app script talks to (Hoola's API, never the site host)
         meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}">')
+    shop = site.get("shop") or {}
+    if shop.get("api"):                          # v0.351 her shop: the cart script talks to Hoola's shop API
+        meta.append(f'<meta name="hoola-shop" content="{esc(shop["api"])}" data-cod="{1 if shop.get("cod") else 0}" '
+                    f'data-upi="{1 if shop.get("upi") else 0}" data-pickup="{1 if shop.get("pickup") else 0}" '
+                    f'data-delivery="{esc(shop.get("delivery") or "")}" data-free="{esc(shop.get("free_above") or "")}">')
     pre = [fn for fam, sub, w, fn in font_files(site["tokens"]) if sub == "latin" and fam == site["tokens"]["head"] and w == 700][:1]
     links = "".join(f'<link rel="preload" href="{rel}assets/fonts/{fn}" as="font" type="font/woff2" crossorigin>' for fn in pre)
     links += f'<link rel="icon" href="{rel}assets/img/{"logo.png" if logo else "icon.svg"}">'
@@ -654,6 +706,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             f'<main id="main">{crumb}{body}</main>{footer(site, plan, rel)}{floats(site)}'
             f'<script src="{rel}assets/hoola-site.js" defer></script><script src="{rel}assets/site.js" defer></script>'
             + (f'<script src="{rel}assets/hoola-app.js" defer></script>' if site.get("app_api") else "")
+            + (f'<script src="{rel}assets/hoola-shop.js" defer></script>' if shop.get("api") else "")
             + '</body></html>')
 
 
@@ -715,6 +768,9 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     if site.get("app_api"):
         shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
     plan = with_app_pages(site, plan)
+    plan = with_shop_pages(site, plan)            # v0.351
+    if (site.get("shop") or {}).get("api"):
+        shutil.copy(ASSETS / "hoola-shop.js", out / "assets" / "hoola-shop.js")
     logo = False
     if site.get("logo_path") and Path(site["logo_path"]).exists():
         try:
@@ -803,9 +859,12 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             body = legal_page(slug, site)
         elif slug in ("account", "admin") and (site.get("app") or {}).get("collections") and not page.get("sections"):
             body = app_page(slug, site)
+        elif page.get("shop_page"):           # v0.351 the code-made shop
+            body = shop_page(site, rel, photos)
         elif page.get("template") in tpls:   # v0.315 one collection item
             c = cols.get(page["collection"]) or {"fields": []}
             body = render(slug, tpls[page["template"]].get("sections", []), rel, page["template"], page["item"], c["fields"])
+            body += buy_box(site, slug)      # v0.351 a list item that is a product: price + Add to cart
         else:
             body = render(slug, page.get("sections", []), rel)
             if big and page.get("collection") in cols:     # the listing of its items, made by code
