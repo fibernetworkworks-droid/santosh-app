@@ -131,6 +131,7 @@ FILE CONTRACT
   with RemotePhoto(row.s(key)). Fields marked [scan]: ScanField(label, key) (v0.340 Google's code scanner, typed too).
   Fields marked [file]: FileField(label, key) (v0.346 a PDF from the system file picker, no permission).
   A staff route / deliveries / visits screen with [location] lists: block { StopsBlock() } (v0.350 open stops nearest first + Route in Maps).
+  Work given to one staff member (v0.352): LiveRowsBlock(list) already shows who has each row, the assign / take buttons and a My work filter; never build your own.
   A staff dashboard / report screen: block { StatsBlock() } (live counts, status mix, 14-day bars; shows nothing to customers).
   Fields marked [location]: LocationField(label, key) ("Use my location" with the
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.

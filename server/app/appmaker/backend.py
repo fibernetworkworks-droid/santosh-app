@@ -364,9 +364,13 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     return out
 
 
-def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", status: str = "", offset: int = 0) -> list[dict[str, Any]]:
-    """v0.319 + search (q, any field) and a status filter, newest first; offset pages through them."""
-    got = W.rows(bid(r), schema(r), coll, w, 1000 if (q or status or offset) else limit)
+def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", status: str = "", offset: int = 0,
+         mine: bool = False) -> list[dict[str, Any]]:
+    """v0.319 + search (q, any field) and a status filter, newest first; offset pages through them.
+    v0.352 every row says who it is with (staff) / the first name on it (her own row); mine = only the rows given to me."""
+    got = with_assign(r, W.rows(bid(r), schema(r), coll, w, 1000 if (q or status or offset or mine) else limit), w)
+    if mine:
+        got = [x for x in got if w.id and x.get("assigned_to") == w.id]
     if status:
         got = [x for x in got if str(x.get("status") or "") == status]
     if q:
@@ -378,15 +382,22 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
 
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
     body = {k: v for k, v in (body if isinstance(body, dict) else {}).items() if k not in ("cid", "cart")}
+    if ASSIGN_KEY in body:                   # v0.352 the app's outbox sends an assignment as an update {"_assign": id|"me"|""}
+        to = body.pop(ASSIGN_KEY)
+        out = assign(r, coll, row_id, str(to or ""), w)
+        if not body:
+            return out
     sch = schema(r)
+    _guard_assigned(r, coll, row_id, w)
     _check_extra(r, W.coll(sch, coll), body, w)
     out = W.update(bid(r), sch, coll, row_id, body, w)
     if any(k in body for k in ("status", "paid")):
         _merge(row_id, {"_ev": now().isoformat()})     # v0.319 the moment her row moved: the app's update check reads it
-    return out
+    return with_assign(r, out, w)
 
 
 def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
+    _guard_assigned(r, coll, row_id, w)
     return W.delete(bid(r), schema(r), coll, row_id, w)
 
 
@@ -468,6 +479,10 @@ def owner_rows(r: AppProject, coll: str, limit: int = 300) -> list[dict[str, Any
 
 
 def owner_update(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    """Her change from Hoola; {"assign": member id | ""} gives the row to a staff member (v0.352)."""
+    body = dict(body or {})
+    if "assign" in body:
+        body[ASSIGN_KEY] = body.pop("assign")
     return update(r, coll, row_id, body, W.Who(owner=True))
 
 
@@ -683,7 +698,14 @@ def updates(r: AppProject, w: W.Who, since: str = "") -> dict[str, Any]:
             moved = ev is not None and ev > t0 and changed is not None
             head = next((str(d.get(f["key"]) or "") for f in c["fields"] if f.get("type") in ("text", "long_text")
                          and d.get(f["key"]) and f["key"] not in ("items", "utr")), c["label"])
-            if w.staff and fresh and row.coll in NEWS and row.owner != w.m.id:
+            try:
+                at = datetime.fromisoformat(str(d.get("_to_at") or "")) if d.get("_to_at") else None
+            except ValueError:
+                at = None
+            if w.staff and d.get("_to") == w.m.id and at is not None and at > t0:      # v0.352 a row given to me
+                items.append({"kind": "assigned", "coll": row.coll, "id": row.id, "title": f"Assigned to you: {head[:60]}",
+                              "status": d.get("status", "")})
+            elif w.staff and fresh and row.coll in NEWS and row.owner != w.m.id:
                 items.append({"kind": "new", "coll": row.coll, "id": row.id, "title": f"New {NEWS[row.coll]}: {head[:60]}",
                               "status": d.get("status", "")})
             elif row.owner == w.m.id and moved:
@@ -731,7 +753,10 @@ def stats(r: AppProject, w: W.Who, days: int = 14) -> dict[str, Any]:
                         "status": dict(sorted(st.items(), key=lambda kv: -kv[1])[:8]),
                         "daily": [daily[x] for x in labels], "total": round(money, 2) if "total" in keys else None})
     STATS["stats"] = STATS.get("stats", 0) + 1
-    return {"now": now().isoformat(), "days": labels, "lists": out}
+    load = _load(r)                                     # v0.352 open rows per staff member (who has how much work)
+    people = [{"name": _first(m.name, m.email), "open": load.get(m.id, 0)} for m in _staff_of(site).values()]
+    return {"now": now().isoformat(), "days": labels, "lists": out,
+            "team": sorted(people, key=lambda p: -p["open"])[:20], "unassigned": _unassigned(r)}
 
 
 def mark_paid(r: AppProject, coll: str, row_id: str, utr: str, w: W.Who) -> dict[str, Any]:
@@ -946,3 +971,160 @@ def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[s
     except Exception:                                    # noqa: BLE001
         pass
     return {"rev": be["rev"], "done": done, "say": "; ".join(done) + ". Rows mein abhi dikhega; form mein agli build se."}
+
+
+# ---------------------------------------------------------------- v0.352 KAAM BAANTO (App Sahayak Phase 16)
+# A row (job / order / booking / request) is given to ONE staff member. The assignment lives inside the row's own data
+# (`_to` member id, `_to_name`, `_to_at` when) - never a schema field, so a customer can never set it and old rows just
+# read "not assigned". Who may do what (checked here on every call, the phone only shows the buttons):
+#   * the owner (her Hoola) and an admin account: give any row to any staff / admin account, take it back, move it;
+#   * a staff account: TAKE an unassigned row for itself ("I'll take it") or give back its own - never someone else's;
+#   * a staff account cannot change a row that is with someone else (status, fields) - an admin / the owner still can;
+#   * the customer who made the row sees only the first name of the person on it ("Ravi is on it"), never ids / e-mails.
+ASSIGN_KEY = "_assign"
+STATS.update({"assigned": 0, "assign_refused": 0})
+
+
+def _staff_of(site: str) -> dict[str, W.SiteAppMember]:
+    with session() as s:
+        got = s.scalars(select(W.SiteAppMember).where(W.SiteAppMember.site_id == site,
+                                                      W.SiteAppMember.role.in_(("staff", "admin")))).all()
+        for m in got:
+            s.expunge(m)
+    return {m.id: m for m in got}
+
+
+def _first(name: str, email: str = "") -> str:
+    n = (name or "").strip() or (email or "").split("@")[0]
+    return (n.split() or ["Staff"])[0][:30]
+
+
+def _is_admin(w: W.Who) -> bool:
+    return w.owner or bool(w.m and w.m.role == "admin")
+
+
+def team(r: AppProject, w: W.Who) -> dict[str, Any]:
+    """The staff list the app shows on its assign buttons: names only (no e-mails), staff accounts only, + each one's open
+    rows count. `admin` = this account may give rows to others."""
+    if w.m is None and not w.owner:
+        raise W.AppError("Pehle login kijiye.", 401)
+    if not w.staff:
+        raise W.AppError("Yeh sirf staff ke liye hai.", 403)
+    site = bid(r)
+    load = _load(r)
+    people = [{"id": m.id, "name": _first(m.name, m.email), "role": m.role, "open": load.get(m.id, 0)}
+              for m in _staff_of(site).values()]
+    people.sort(key=lambda p: (p["name"].lower(), p["id"]))
+    return {"team": people, "admin": _is_admin(w), "me": w.id}
+
+
+def _closed(st: str) -> bool:
+    return st.strip().lower() in ("done", "delivered", "cancelled", "closed", "completed", "expired", "replied")
+
+
+def _load(r: AppProject) -> dict[str, int]:
+    """Open (not done / cancelled) rows per staff member."""
+    out: dict[str, int] = {}
+    with session() as s:
+        for (data,) in s.query(W.SiteAppRow.data).filter(W.SiteAppRow.site_id == bid(r),
+                                                          W.SiteAppRow.data.like('%"_to": "%')).all():
+            d = _j(data, {})
+            if d.get("_to") and not _closed(str(d.get("status") or "")):
+                out[d["_to"]] = out.get(d["_to"], 0) + 1
+    return out
+
+
+def _assign_info(site: str, ids: list[str]) -> dict[str, dict[str, Any]]:
+    if not ids:
+        return {}
+    with session() as s:
+        got = s.query(W.SiteAppRow.id, W.SiteAppRow.data).filter(W.SiteAppRow.site_id == site, W.SiteAppRow.id.in_(ids)).all()
+    return {i: _j(d, {}) for i, d in got}
+
+
+def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.Who):
+    """Adds who a row is with: staff see `assigned_to` (id) + `assigned_name`; the row's own customer only the first name."""
+    one = isinstance(out, dict)
+    rows_ = [out] if one else list(out)
+    info = _assign_info(bid(r), [x.get("id") for x in rows_ if x.get("id")])
+    for x in rows_:
+        d = info.get(x.get("id"), {})
+        to = str(d.get("_to") or "")
+        if w.staff:
+            x["assigned_to"], x["assigned_name"] = to, (str(d.get("_to_name") or "") if to else "")
+        elif x.get("mine") and to:
+            x["assigned_name"] = str(d.get("_to_name") or "")
+    return rows_[0] if one else rows_
+
+
+def _guard_assigned(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
+    """A staff account may not change a row that is with someone else (admin / owner may)."""
+    d = _assign_info(bid(r), [row_id]).get(row_id, {})
+    to = str(d.get("_to") or "")
+    if to and w.staff and not _is_admin(w) and to != w.id:
+        STATS["assign_refused"] += 1
+        raise W.AppError(f"Yeh kaam {d.get('_to_name') or 'kisi aur'} ke paas hai.", 403)
+    return d
+
+
+def assign(r: AppProject, coll: str, row_id: str, to: str, w: W.Who) -> dict[str, Any]:
+    """Give a row to a staff member (`to` = member id), take it ("me"), or give it back (""). Rules above."""
+    sch, site = schema(r), bid(r)
+    c = W.coll(sch, coll)
+    if w.m is None and not w.owner:
+        raise W.AppError("Pehle login kijiye.", 401)
+    if not w.staff:
+        raise W.AppError("Iski ijaazat nahi.", 403)
+    to = str(to or "").strip()
+    if to == "me":
+        if w.m is None:
+            raise W.AppError("Aap staff account nahi hain; kisi staff ko chuniye.")
+        to = w.m.id
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        if row is None or row.site_id != site or row.coll != coll:
+            raise W.AppError("Yeh entry nahi mili.", 404)
+        d = _j(row.data, {})
+        cur = str(d.get("_to") or "")
+        if not _is_admin(w):
+            ok = (to == w.id and cur in ("", w.id)) or (to == "" and cur == w.id)
+            if not ok:
+                STATS["assign_refused"] += 1
+                raise W.AppError(f"Yeh kaam {d.get('_to_name') or 'kisi aur'} ke paas hai; admin hi badal sakta hai." if cur
+                                 else "Staff sirf khud ke liye kaam le sakta hai.", 403)
+        if to:
+            team_ = _staff_of(site)
+            m = team_.get(to)
+            if m is None and _is_admin(w):           # her words name a person ("Ravi ko do"): one staff member by name
+                hit = [x for x in team_.values() if to.lower() in ((x.name or "").lower(), _first(x.name, x.email).lower(),
+                                                                   (x.email or "").lower())]
+                m = hit[0] if len(hit) == 1 else None
+            if m is None:
+                raise W.AppError("Yeh staff account nahi mila (pehle use staff banaiye).", 404)
+            d.update({"_to": m.id, "_to_name": _first(m.name, m.email), "_to_at": now().isoformat(), "_ev": now().isoformat()})
+        else:
+            for k in ("_to", "_to_name", "_to_at"):
+                d.pop(k, None)
+        row.data, row.updated_at = json.dumps(d, ensure_ascii=False), now()
+        s.flush()
+        s.expunge(row)
+    STATS["assigned"] += 1
+    return with_assign(r, W.row_view(c, row, w), w)
+
+
+def _unassigned(r: AppProject) -> int:
+    """Open rows nobody has yet, in the lists that have a status (the work still to hand out)."""
+    sch = schema(r)
+    keys = [c["key"] for c in sch["collections"] if any(f["key"] == "status" for f in c["fields"])]
+    if not keys:
+        return 0
+    n = 0
+    with session() as s:
+        for (data,) in s.query(W.SiteAppRow.data).filter(W.SiteAppRow.site_id == bid(r), W.SiteAppRow.coll.in_(keys)).all():
+            d = _j(data, {})
+            n += int(not d.get("_to") and not _closed(str(d.get("status") or "")))
+    return n
+
+
+def owner_assign(r: AppProject, coll: str, row_id: str, to: str) -> dict[str, Any]:
+    return assign(r, coll, row_id, to, W.Who(owner=True))

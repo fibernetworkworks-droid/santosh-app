@@ -21,6 +21,7 @@ struct StatsBlock: View { init() }        // v0.340 staff dashboard: counts, sta
 struct ScanRow: View { init(label: String, key: String) }   // v0.340 a [scan] field: camera barcode / QR scanner or typed
 struct FileRow: View { init(label: String, key: String) }   // v0.346 a [file] field: a PDF from the system file importer
 struct StopsBlock: View { init() }        // v0.350 staff: open rows with a [location] on a map, nearest first, Route in Maps
+struct AssignBox: View { init(coll: String, r: Item) }   // v0.352 staff row: who has it + assign / take / give back (RowsSection already shows it)
 struct InboxButton: View { init() }       // v0.340 the updates inbox ("hoola_inbox")
 enum H { static func c(_ scheme: ColorScheme) -> Palette; static var radius: CGFloat }
 struct Palette { bg, surface, ink, muted, line, primary, onPrimary, accent, tint: Color }

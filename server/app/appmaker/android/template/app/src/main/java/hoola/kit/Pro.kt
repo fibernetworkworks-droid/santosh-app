@@ -31,6 +31,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -298,6 +301,58 @@ fun StopsBlock() {
             if (rows.isNotEmpty()) Btn(T("Route in Maps"), kind = BtnKind.Tonal, icon = "pin", modifier = Modifier.fillMaxWidth()) {
                 Act.open(c, Maps.route(h, rows.take(10).map { it.s(key) }))
             }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- v0.352 KAAM BAANTO: work given to one staff member
+/** The app's staff (first names only, never e-mails) for the assign buttons. `admin` = this account gives work to others. */
+object Team {
+    val people = mutableStateOf<List<Item>>(emptyList())
+    val admin = mutableStateOf(false)
+    private var loadedFor = ""
+
+    suspend fun load(force: Boolean = false) {
+        if (!Auth.isStaff) return
+        val who = Auth.me.value?.id ?: ""
+        if (!force && loadedFor == who && people.value.isNotEmpty()) return
+        val r = Cloud.call("GET", "/team", null, Auth.token())
+        if (!r.ok) return
+        val a = r.body.optJSONArray("team") ?: JSONArray()
+        withContext(Dispatchers.Main) {
+            people.value = (0 until a.length()).mapNotNull { a.optJSONObject(it) }.map { Item(it) }
+            admin.value = r.body.optBoolean("admin")
+        }
+        loadedFor = who
+    }
+
+    /** Whether this account may work on (change) the row: free, mine, or I am an admin. The server checks it again. */
+    fun mayWork(r: Item): Boolean {
+        val to = r.s("assigned_to")
+        return to.isEmpty() || to == (Auth.me.value?.id ?: "") || admin.value
+    }
+}
+
+/** On a staff row card: who has it, and - admin: one chip per staff member (tap again = take back); staff: "I'll take it"
+ *  on a free row, "Give back" on their own. Sent through the outbox like any change (works offline). */
+@Composable
+fun AssignBox(coll: String, r: Item) {
+    if (!Auth.isStaff || r.b("pending")) return
+    LaunchedEffect(Auth.me.value) { Team.load() }
+    val meId = Auth.me.value?.id ?: ""
+    val to = r.s("assigned_to")
+    Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        if (to.isNotEmpty()) Pill(Strings.withPerson + ": " + (if (to == meId) Strings.you else r.s("assigned_name")), if (to == meId) "ok" else "info")
+        else Pill(Strings.notAssigned, "warn")
+        if (Team.admin.value) {
+            Team.people.value.forEach { p ->
+                Chip(p.s("name"), selected = to == p.id) { Db.update(coll, r.id, mapOf("_assign" to if (to == p.id) "" else p.id)) }
+            }
+        } else if (to.isEmpty()) {
+            Btn(Strings.takeIt, kind = BtnKind.Ghost, small = true) { Db.update(coll, r.id, mapOf("_assign" to "me")) }
+        } else if (to == meId) {
+            Btn(Strings.giveBack, kind = BtnKind.Ghost, small = true) { Db.update(coll, r.id, mapOf("_assign" to "")) }
         }
     }
 }

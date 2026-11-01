@@ -81,12 +81,20 @@ struct RowsSection: View {
     @ObservedObject private var auth = Auth.shared
     @State private var paying: Item? = nil
     @State private var utr = ""
+    @State private var mineOnly = false                 // v0.352 My work: only the rows given to this staff account
+    @ObservedObject private var team = Team.shared
 
     var body: some View {
-        let rows = db.rows(coll)
+        let meId = auth.me?.id ?? ""
+        let all = db.rows(coll)
+        let anyMine = auth.isStaff && !meId.isEmpty && all.contains { $0.s("assigned_to") == meId }
+        let rows = mineOnly ? all.filter { $0.s("assigned_to") == meId } : all
         let fields = db.fields(coll)
         VStack(alignment: .leading, spacing: 10) {
             Text(T(db.label(coll)) + (rows.isEmpty ? "" : " (\(rows.count))")).font(.headline)
+            if anyMine || mineOnly {
+                Button(Words.myWork) { mineOnly.toggle() }.buttonStyle(.bordered).tint(mineOnly ? .accentColor : .secondary)
+            }
             if rows.isEmpty { Muted(Words.nothingYet) }
             ForEach(rows.prefix(60), id: \.id) { r in
                 Card {
@@ -106,7 +114,9 @@ struct RowsSection: View {
                             Button(Words.iPaid) { paying = r }.buttonStyle(.bordered)
                         }
                     }
-                    if auth.isStaff && !r.b("pending"), let st = fields.first(where: { $0.s("key") == "status" }) {
+                    if !auth.isStaff && !r.s("assigned_name").isEmpty { Muted(r.s("assigned_name") + " " + Words.onIt) }   // v0.352
+                    AssignBox(coll: coll, r: r)
+                    if auth.isStaff && !r.b("pending") && team.mayWork(r), let st = fields.first(where: { $0.s("key") == "status" }) {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 ForEach(st.strings("options"), id: \.self) { o in

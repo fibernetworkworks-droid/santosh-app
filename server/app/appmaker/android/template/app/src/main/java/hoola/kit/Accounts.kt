@@ -143,10 +143,18 @@ private fun RowsSection(coll: String) {
     var q by remember(coll) { mutableStateOf("") }
     var st by remember(coll) { mutableStateOf("") }
     val opts = fields.firstOrNull { it.s("key") == "status" }?.strings("options").orEmpty()
-    val rows = all.filter { r -> (st.isEmpty() || r.s("status") == st) && (q.isBlank() || r.o.toString().lowercase().contains(q.trim().lowercase())) }
+    // v0.352 My work: only the rows given to this staff account
+    var mineOnly by remember(coll) { mutableStateOf(false) }
+    val meId = Auth.me.value?.id ?: ""
+    val anyMine = Auth.isStaff && all.any { it.s("assigned_to") == meId && meId.isNotEmpty() }
+    val rows = all.filter { r -> (st.isEmpty() || r.s("status") == st) && (q.isBlank() || r.o.toString().lowercase().contains(q.trim().lowercase()))
+        && (!mineOnly || r.s("assigned_to") == meId) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionHeader(T(Db.label(coll)) + if (all.isNotEmpty()) " (${all.size})" else "")
         if (Auth.isStaff && Db.rule(coll, "read") == "own") Small(Strings.staffView)
+        if (anyMine || mineOnly) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip(Strings.myWork, selected = mineOnly) { mineOnly = !mineOnly }
+        }
         if (all.size > 4) {
             OutlinedTextField(value = q, onValueChange = { q = it.take(60) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(Strings.search) }, shape = RoundedCornerShape(H.look.radius * 0.7f))
@@ -190,8 +198,11 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
             && r.s("status") != "Cancelled") {
             PaidBox(coll, r)
         }
+        // v0.352 the customer sees the first name of the person on her row
+        if (!Auth.isStaff && r.s("assigned_name").isNotEmpty()) Small(r.s("assigned_name") + " " + Strings.onIt)
+        AssignBox(coll, r)
         val stf = fields.firstOrNull { it.s("key") == "status" }
-        if (Auth.isStaff && stf != null && !r.b("pending")) {
+        if (Auth.isStaff && stf != null && !r.b("pending") && Team.mayWork(r)) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 stf.strings("options").forEach { opt ->
                     Chip(T(opt), selected = r.s("status") == opt) { if (r.s("status") != opt) Db.update(coll, r.id, mapOf("status" to opt)) }

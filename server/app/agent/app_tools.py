@@ -69,6 +69,9 @@ APP_TOOLS = [
         "v0.319: a customer's UPI \"I have paid\" claim reads paid=\"Customer says paid\" + utr; ONLY when she says she saw the money in "
         "her own bank set {paid: Verified} (never on the customer's word, never by yourself). Photos / locations her app's users sent are "
         "fields of the rows (a photo = a file id she sees in the app data view); "
+        "v0.352 KAAM BAANTO: set {assign: <staff member id or name>} gives that row to one staff member (\"yeh job Ravi ko do\"), "
+        "set {assign: \"\"} takes it back; only staff / admin accounts can be given work; that person's app shows it under My work "
+        "and tells them. "
         "action=role (app, member, role staff|admin|member) makes an account staff (a staff app's new account sees nothing until then). "
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {

@@ -226,6 +226,7 @@ enum Updates {
         for it in items(r.body["items"]) {
             let title = it.s("title", AppData.shared.appName)
             let text = it.s("kind") == "new" ? Words.newEntry
+                : it.s("kind") == "assigned" ? Words.assignedToYou          // v0.352 work given to this staff member
                 : [it.s("status"), it.s("paid") == "No" ? "" : it.s("paid")].filter { !$0.isEmpty }.joined(separator: " · ")
             Inbox.shared.add(title, text, now)
             let c = UNMutableNotificationContent()
@@ -368,6 +369,65 @@ struct StopsBlock: View {
                 let st = CLLocationManager().authorizationStatus
                 if st == .authorizedWhenInUse || st == .authorizedAlways { here.ask() }
             }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- v0.352 KAAM BAANTO: work given to one staff member
+/// The app's staff (first names only, never e-mails) for the assign buttons. `admin` = this account gives work to others.
+@MainActor
+final class Team: ObservableObject {
+    static let shared = Team()
+    @Published var people: [Item] = []
+    @Published var admin = false
+    private var loadedFor = ""
+
+    func load(force: Bool = false) async {
+        guard Auth.shared.isStaff else { return }
+        let who = Auth.shared.me?.id ?? ""
+        if !force && loadedFor == who && !people.isEmpty { return }
+        let r = await Cloud.call("GET", "/team", nil, token: Auth.shared.token)
+        guard r.ok else { return }
+        people = items(r.body["team"])
+        admin = (r.body["admin"] as? Bool) ?? false
+        loadedFor = who
+    }
+
+    /// Whether this account may work on (change) the row: free, mine, or I am an admin. The server checks it again.
+    func mayWork(_ r: Item) -> Bool {
+        let to = r.s("assigned_to")
+        return to.isEmpty || to == (Auth.shared.me?.id ?? "") || admin
+    }
+}
+
+/// On a staff row card: who has it, and - admin: one button per staff member (tap again = take back); staff: "I'll take
+/// it" on a free row, "Give back" on their own. Sent through the outbox like any change (works offline).
+struct AssignBox: View {
+    let coll: String
+    let r: Item
+    @ObservedObject private var auth = Auth.shared
+    @ObservedObject private var team = Team.shared
+
+    var body: some View {
+        if auth.isStaff && !r.b("pending") {
+            let meId = auth.me?.id ?? ""
+            let to = r.s("assigned_to")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    StatusPill(text: to.isEmpty ? Words.notAssigned : Words.withPerson + ": " + (to == meId ? Words.you : r.s("assigned_name")))
+                    if team.admin {
+                        ForEach(team.people, id: \.id) { p in
+                            Button(p.s("name")) { Db.shared.update(coll, r.id, ["_assign": to == p.id ? "" : p.id]) }
+                                .buttonStyle(.bordered).tint(to == p.id ? .accentColor : .secondary)
+                        }
+                    } else if to.isEmpty {
+                        Button(Words.takeIt) { Db.shared.update(coll, r.id, ["_assign": "me"]) }.buttonStyle(.bordered)
+                    } else if to == meId {
+                        Button(Words.giveBack) { Db.shared.update(coll, r.id, ["_assign": ""]) }.buttonStyle(.bordered)
+                    }
+                }
+            }
+            .task(id: auth.me?.id) { await team.load() }
         }
     }
 }

@@ -47,6 +47,15 @@ enum Words {
     static var last14: String { t("Last 14 days", "पिछले 14 दिन", "Pichhle 14 din") }
     static var inbox: String { t("Updates", "अपडेट", "Updates") }
     static var inboxEmpty: String { t("No updates yet.", "अभी कोई अपडेट नहीं।", "Abhi koi update nahi.") }
+    // v0.352 KAAM BAANTO
+    static var myWork: String { t("My work", "मेरा काम", "Mera kaam") }
+    static var takeIt: String { t("I'll take it", "मैं करूँगा", "Main karunga") }
+    static var giveBack: String { t("Give back", "वापस दें", "Wapas dein") }
+    static var withPerson: String { t("With", "किसके पास", "Kiske paas") }
+    static var you: String { t("You", "आप", "Aap") }
+    static var notAssigned: String { t("Not assigned", "किसी को नहीं दिया", "Kisi ko nahi diya") }
+    static var onIt: String { t("is on it", "इस पर काम कर रहे हैं", "is par kaam kar rahe hain") }
+    static var assignedToYou: String { t("Given to you", "आपको सौंपा गया", "Aapko diya gaya") }
     static var newEntry: String { t("New — open the app to see it", "नया — देखने के लिए ऐप खोलें", "Naya — dekhne ke liye app kholiye") }
 }
 

@@ -136,7 +136,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.346.0 (pubspec 0.346.0+386). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.352.0 (pubspec 0.352.0+392). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
@@ -148,6 +148,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   (`site/media.py`: bytes must match the kind, placeholders -> addresses per page depth, hard links); photos in <picture> pickable again.
 - v0.350 NAKSHA (App Phase 14, kits `StopsBlock`): staff see open rows with a location nearest first + Route in Maps (Google Maps URLs / Apple MapKit, no key, no tiles); location asked only on a tap.
 - v0.351 PAKKA SABOOT (App Phase 15, `android/fixture_make2.py`): a second generator-only CI app (Hindi field-service staff app, every field kind, stops + dashboard) compiled + every screen and button walked on emulator and iPhone simulator.
+- v0.352 KAAM BAANTO (App Phase 16, `backend.assign`, kits `AssignBox` / `Team`): a row given to ONE staff member (owner / admin assign, staff take a free one), others on staff cannot change it, My work filter, "Given to you" update, customer sees the first name.
 - v0.349 BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
 - v0.348 KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
 - v0.347 HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.

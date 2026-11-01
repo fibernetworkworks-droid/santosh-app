@@ -378,6 +378,7 @@ class _AppDataPanelState extends State<AppDataPanel> {
   String _coll = '';
   List<Map<String, dynamic>> _rows = const [];
   List<Map<String, dynamic>>? _members;
+  List<Map<String, dynamic>> _staff = const [];
   bool _busy = false;
   String _err = '';
   Santosh get app => widget.app;
@@ -394,7 +395,12 @@ class _AppDataPanelState extends State<AppDataPanel> {
       final colls = _list(v['collections']);
       final coll = _coll.isNotEmpty ? _coll : (_s(v['order']).isNotEmpty ? _s(v['order']) : (colls.isEmpty ? '' : _s(colls.first['key'])));
       final rows = coll.isEmpty ? <Map<String, dynamic>>[] : await app.api!.appRows(widget.id, coll);
-      if (mounted) setState(() { _v = v; _coll = coll; _rows = rows; _err = ''; });
+      // v0.352 KAAM BAANTO: her staff accounts, for "Kiske paas" on every row
+      var staff = <Map<String, dynamic>>[];
+      try {
+        staff = (await app.api!.appMembers(widget.id)).where((m) => ['staff', 'admin'].contains(_s(m['role']))).toList();
+      } catch (_) {}
+      if (mounted) setState(() { _v = v; _coll = coll; _rows = rows; _staff = staff; _err = ''; });
     } catch (e) {
       if (mounted) setState(() => _err = '$e');
     }
@@ -512,6 +518,21 @@ class _AppDataPanelState extends State<AppDataPanel> {
                       style: TextStyle(color: _s(r['paid']) == 'Verified' ? C.ok : C.warn, fontSize: 12.5, fontWeight: FontWeight.w700))),
                   if (_s(r['paid']) == 'Customer says paid')
                     TextButton(onPressed: _busy ? null : () => _set(r, {'paid': 'Verified'}), child: const Text('Bank mein mila: Verified')),
+                ]),
+              if (_staff.isNotEmpty)
+                Row(children: [
+                  const Text('Kiske paas: ', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                  DropdownButton<String>(
+                    value: _staff.any((m) => _s(m['id']) == _s(r['assigned_to'])) ? _s(r['assigned_to']) : '',
+                    dropdownColor: C.bgBottom,
+                    style: const TextStyle(color: C.ink, fontSize: 12.5),
+                    items: [
+                      const DropdownMenuItem(value: '', child: Text('Kisi ko nahi')),
+                      for (final m in _staff)
+                        DropdownMenuItem(value: _s(m['id']), child: Text(_s(m['name']).isEmpty ? _s(m['email']) : _s(m['name']))),
+                    ],
+                    onChanged: _busy ? null : (x) { if (x != null && x != _s(r['assigned_to'])) _set(r, {'assign': x}); },
+                  ),
                 ]),
               if (opts.isNotEmpty) ...[
                 const SizedBox(height: 6),

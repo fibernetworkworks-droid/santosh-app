@@ -12850,3 +12850,29 @@ language (a fixed 32-word BHASHA table, so CI needs no model).
   same gate). `tests/test_v0351_pakka_saboot.py`: the spec is current, generates on both platforms with StopsBlock /
   StatsBlock and the Hindi table, and both workflows walk it.
 - Not verified: a real phone (CI emulator / simulator only); the Hindi words are a fixed table, not an Opus run.
+
+## v0.352.0 KAAM BAANTO (App Sahayak Phase 16, owner: "START PHASE 16")
+Phase 15's field-service app had an "Assigned" status but nobody to assign TO. Now a row of her app (job / order / booking /
+request) is given to ONE staff member, on both platforms and from her Hoola.
+- Server (`appmaker/backend.py`, section "v0.352 KAAM BAANTO"): the assignment lives inside the row's own data (`_to` member
+  id, `_to_name` first name, `_to_at`), never a schema field, so no customer can set it and old rows read "not assigned".
+  `assign(r, coll, row, to, who)`: owner + admin accounts give any row to any staff / admin account (by id, or by a unique
+  name / first name / e-mail: "yeh job Ravi ko do"), move it, take it back (""); a staff account may only TAKE a free row for
+  itself (`to="me"`) or give back its own. `_guard_assigned`: a staff account cannot update or delete a row that is with
+  someone else (admin / owner still can). `with_assign`: rows carry `assigned_to` + `assigned_name` for staff; the row's own
+  customer sees only `assigned_name` (first name, never an id or e-mail).
+- Routes: GET /api/app-api/<key>/team (staff only; first names, role, open work each; `admin` flag), POST
+  /api/app-api/<key>/c/<coll>/<id>/assign {to}; the app's outbox sends `{"_assign": id|"me"|""}` as a normal update (so it
+  works offline and reuses the update path); GET .../c/<coll>?mine=1 = My work. Her side: PATCH /api/apps/<ref>/data/<coll>/<id>
+  {"assign": id|name|""}; tool app_banao action=data set {assign}.
+- Update check: a staff member hears "Assigned to you: ..." (kind `assigned`, app text "Given to you"). Dashboard
+  (`/stats`): `team` = open (not done / delivered / cancelled) rows per person + `unassigned`.
+- Kits: Android `Pro.kt` `Team` (loads /team once per account) + `AssignBox(coll, r)` (who has it; admin: a chip per staff
+  member, tap again = take back; staff: "I'll take it" / "Give back"), status chips hidden on rows the account may not work
+  on (`Team.mayWork`), "My work" chip, customer line "<name> is on it"; iPhone `Pro.swift` twin (`Team` ObservableObject,
+  `AssignBox` view), same in `RowsSection`. Words in Strings.kt / Words (hi / mr / hinglish, other languages via BHASHA).
+- Her views: phone App ka data "Kiske paas" dropdown per row, console app data "With" column.
+- Tests `tests/test_v0352_kaam_baanto.py` (rules end to end through the real API, My work, updates, customer view, team list
+  without e-mails, dashboard, owner by name, tool, kit / phone / console markers). Kotlin compiled locally on the fixture2
+  staff app (assembleDebug EXIT 0); Swift compiled by CI ios-check.
+- Not verified: on a real phone; the assign chips with many staff (they scroll sideways).
