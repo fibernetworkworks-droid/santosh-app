@@ -492,3 +492,32 @@ struct RateBox: View {
         }
     }
 }
+
+// ---------------------------------------------------------------- v0.354 RASEED: the receipt of a finished row
+/// "Receipt" on a finished row (the server says `receipt`): a 15-minute signed link from the app's server, opened in the
+/// browser - no file storage, no sharing sheet. Needs a network (said plainly when there is none).
+struct ReceiptButton: View {
+    let coll: String
+    let r: Item
+    @Environment(\.openURL) private var openURL
+    @State private var busy = false
+    @State private var error = ""
+
+    var body: some View {
+        if r.b("receipt") && !r.b("pending") {
+            VStack(alignment: .leading, spacing: 4) {
+                Button(busy ? Words.loading : Words.receipt) {
+                    guard !busy else { return }
+                    busy = true
+                    Task {
+                        let res = await Cloud.call("POST", "/c/\(coll)/\(r.id)/receipt-link", [:], token: Auth.shared.token)
+                        busy = false
+                        if res.ok, let s = res.body["url"] as? String, s.hasPrefix("http"), let u = URL(string: s) { openURL(u); error = "" }
+                        else { error = res.error.isEmpty ? (res.offline ? Words.offline : Words.tryAgain) : res.error }
+                    }
+                }.buttonStyle(.bordered)
+                if !error.isEmpty { Muted(error) }
+            }
+        }
+    }
+}

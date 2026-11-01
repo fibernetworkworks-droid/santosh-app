@@ -201,6 +201,7 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         // v0.352 the customer sees the first name of the person on her row
         if (!Auth.isStaff && r.s("assigned_name").isNotEmpty()) Small(r.s("assigned_name") + " " + Strings.onIt)
         RateBox(coll, r)                                          // v0.353 the customer rates her finished row once
+        ReceiptButton(coll, r)                                    // v0.354 the receipt PDF of a finished row
         AssignBox(coll, r)
         val stf = fields.firstOrNull { it.s("key") == "status" }
         if (Auth.isStaff && stf != null && !r.b("pending") && Team.mayWork(r)) {

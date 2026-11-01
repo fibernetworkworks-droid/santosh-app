@@ -406,3 +406,25 @@ fun RateBox(coll: String, r: Item) {
         }
     }
 }
+
+// ---------------------------------------------------------------- v0.354 RASEED: the receipt of a finished row
+/** "Receipt" on a finished row (the server says `receipt`): asks the app's server for a 15-minute signed link and opens the
+ *  PDF in the phone's browser - no storage permission, no file sharing. Needs a network (said plainly when there is none). */
+@Composable
+fun ReceiptButton(coll: String, r: Item) {
+    if (!r.b("receipt") || r.b("pending")) return
+    val c = ctx()
+    val scope = rememberCoroutineScope()
+    var busy by remember(r.id) { mutableStateOf(false) }
+    Btn(if (busy) Strings.loading else Strings.receipt, kind = BtnKind.Ghost, small = true) {
+        if (busy) return@Btn
+        busy = true
+        scope.launch {
+            val res = Cloud.call("POST", "/c/$coll/${r.id}/receipt-link", JSONObject(), Auth.token())
+            busy = false
+            val url = res.body.optString("url")
+            if (res.ok && url.startsWith("http")) Act.open(c, url)
+            else Act.toast(c, res.error.ifEmpty { if (res.offline) Strings.offline else Strings.tryAgain })
+        }
+    }
+}

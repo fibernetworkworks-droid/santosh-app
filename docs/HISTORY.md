@@ -12894,3 +12894,22 @@ finished row once.
   (`RateBox` view, StatsBlock team card). Words in Strings.kt / Words.
 - Her views: phone App ka data shows the stars (red at 1-2), console app data a Rating column.
 - Tests `tests/test_v0353_raay.py`. Not verified: a real phone. No public reviews (ratings never go to other customers).
+
+## v0.354.0 RASEED (App Sahayak Phase 18, owner: "START PHASE 18")
+A finished order / booking / request now has a receipt the customer can keep.
+- `appmaker/receipt.py`: `pdf(r, coll, row, data)` = an A5 ReportLab receipt from the SERVER's own row - business name +
+  address / phone / e-mail from her facts, receipt number `<app number>-<yymmdd>-<row tail>`, date, list + status, her
+  customer's own fields (photos / files / admin-only / hidden left out), items, the server-priced total, the payment line
+  (Verified UPI with the reference / "customer says paid, not yet verified" / pay method), "Handled by <first name>" (v0.352),
+  and "This is a receipt, not a GST tax invoice". Text through `docstudio.pdfgen._t`, so Devanagari names are shaped.
+- Rules: `backend.receipt_ready(d)` = finished status (same set as RAAY) or paid Verified, never Cancelled; only the row's
+  customer, staff or her (`_check`). Rows carry `receipt` true / false.
+- Delivery without file permissions: POST /api/app-api/<key>/c/<coll>/<id>/receipt-link -> `{url, expires}` = a 15-minute HMAC
+  (`W._secret`, "receipt|app|coll|row|exp") link; GET /api/app-api/<key>/receipt/<coll>/<id>?e=&s= serves it inline, CSP
+  sandbox, no-store; a changed / expired signature or another row = 403. Her copy: GET /api/apps/<ref>/data/<coll>/<id>/receipt
+  (attachment).
+- Kits: Android `ReceiptButton(coll, r)` (Pro.kt; Cloud.call -> Act.open in the browser, plain error offline), iPhone
+  `ReceiptButton` (openURL); both in the row card. Console app data: Receipt column (PDF button, blob download with her login).
+- Tests `tests/test_v0354_raseed.py` (rules, link, signature / expiry / other row refused, PDF text: items, total, handled by,
+  not-a-tax-invoice line; her copy; cancelled refused). Not verified: a real phone's browser; the phone owner panel has no
+  receipt button yet (console + the app itself only); GST invoices are NOT made (needs her GSTIN + tax rules - a later phase).

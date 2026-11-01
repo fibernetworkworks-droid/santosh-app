@@ -1067,6 +1067,7 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
         if w.staff or x.get("mine"):                  # v0.353 RAAY: the customer's rating, for her and the business
             if d.get("_rate"):
                 x["rating"], x["rating_note"] = int(d["_rate"]), str(d.get("_rate_note") or "")
+            x["receipt"] = receipt_ready(d)            # v0.354 RASEED: a receipt PDF can be had for this row
             x["can_rate"] = bool(x.get("mine") and not w.staff and not d.get("_rate") and _rateable(str(d.get("status") or "")))
     return rows_[0] if one else rows_
 
@@ -1153,6 +1154,12 @@ def owner_assign(r: AppProject, coll: str, row_id: str, to: str) -> dict[str, An
 RATE_KEY = "_rate"
 RATE_LOW = 2
 STATS.update({"ratings": 0, "rating_refused": 0, "rating_low": 0})
+
+
+def receipt_ready(d: dict[str, Any]) -> bool:
+    """v0.354 a receipt is made for a finished row or a Verified UPI payment, never for a cancelled one."""
+    st = str(d.get("status") or "")
+    return st.strip().lower() != "cancelled" and (_rateable(st) or str(d.get("paid") or "") == "Verified")
 
 
 def _rateable(st: str) -> bool:
