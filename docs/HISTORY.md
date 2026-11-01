@@ -15026,7 +15026,37 @@ build123d + cadgen; nothing copied).
 - Not yet: section views, GD&T frames (datums / position), thread callouts from modelled threads, auto-dims of every
   pocket / slot (only steps + holes), multi-sheet assemblies with balloons + parts list.
 
-## v0.400.0 YOUTUBE ADS (1 Nov 2026, owner: "GO Y2"; built as 0.393 / 0.396 / 0.399, re-versioned past the parallel v0.393-v0.399)
+## v0.400.0 FAST + NEVER LOST + VISITOR TESTS (built as 0.391; web Step 1 of docs/WEB_PLATFORM_PLAN.md)
+Owner: "START STEP 1" (after the plan: "any complexity website, smoothly and reliably").
+- FAST (where a big build's time went, found by reading the pipeline):
+  - `checks.run` checked every page one after another in ONE browser -> `_check_page` (one page, every viewport) +
+    `_run_pages`: pages split over SITE_CHECK_PARALLEL (3) browsers, each its own Playwright in its own thread (the sync API
+    is per thread); small sites (< 8 pages) keep one browser; results in the plan's order; `only=` re-checks some pages.
+  - `_critique_round` looked at pages one by one and ran a FULL site check after each page (6 full checks on a big site) ->
+    every page judged at once, every weak section redrawn at once, ONE check of only the changed pages, one more judge pass
+    at once, per-section keep / revert (unchanged rule: worse score or more issues on that page = old section back), one
+    final full check for the version's report.
+  - Fix rounds called Opus for each failing section in turn -> all at once (`_in_ctx`, so usage stays hers / the Arena's).
+  - `_write_sections` rebuilt the whole preview after EVERY section (a 150-page site = ~200 full rebuilds) -> at most every
+    ASSEMBLE_EVERY_S (20 s) + once at the end. `site_parallel_big` 5 -> 8.
+- NEVER LOST (`service._recover_side_jobs`, called from recover_stuck each worker tick): a code-mode task file still
+  'working' from before the boot -> failed with "dobara kahiye"; a READY site whose extra languages have stale sections ->
+  the translate job starts again (once per boot). `proof.resume_interrupted` (worker): a Hoola proof whose thread died is
+  picked up again (max 2) - `build_big` keeps t0 + the rupee meter on the proof card, reuses the site, skips a designed app
+  and blog posts already there; a rival crawl cut short = failed with a plain line.
+- VISITOR TESTS `server/app/site/journeys.py` (SITE_JOURNEYS, on; conftest off, its own tests on): after every build
+  (`_run_build`, after the critique) and every saved edit (`save_version`) Chromium walks the built live copy at 390 px:
+  menu (open the phone menu, tap a page, it opens with an h1), form (fill the first enquiry form - booking forms skipped -
+  send, the thank-you line), shop (Add to cart -> Cart -> Aage badhein -> fill -> Order bhejiye -> "Order O-CHECK"),
+  blog (first post opens with its title as h1), lang (switch -> other <html lang>). Shop / form API calls are answered by a
+  stand-in in the browser with Hoola's own JSON shapes (relative API addresses resolved to the test origin) - nothing
+  reaches her data; every other outside request refused; each journey tried twice; menu / form / shop failures are
+  BLOCKING (hosting.blockers -> cannot go live), blog / lang warnings. `report.journeys` -> site view `checks.journeys` ->
+  console Checks tab lists each visitor test with a tick or the reason.
+- Tests `server/tests/test_v0400_fast_reliable.py`: parallel checks = serial report, critique re-checks only changed pages
+  (keep / revert per section), fewer preview rebuilds, journeys pass on a real shop site and a broken checkout blocks,
+  cut-short code task + translation recovered once, proof resumed with time / cost kept and failed after the second death.
+## v0.401.0 YOUTUBE ADS (1 Nov 2026, owner: "GO Y2"; built as 0.393 / 0.396 / 0.399 / 0.400, re-versioned past the parallel v0.393-v0.400)
 Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Field names from Google's own
 `AddDemandGenCampaign.java` (google-ads-java, v26) + the Demand Gen overview / channel-controls pages (API v26.1, 28 Oct 2026).
 - Env: GOOGLE_ADS_DEVELOPER_TOKEN (Google Ads API Center; a test-access token works only on test accounts, real ad
@@ -15056,4 +15086,4 @@ Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Fi
   tracking set-up, Display & Video 360.
 - Console YouTube ads tile (connect, pick account, read, drafts with edit / logo / check / create / start / pause), phone
   YtAdsScreen (connect, pick, new ad from latest video, check / create / start / pause). Privacy: Google Ads paragraph.
-  Tests `server/tests/test_v0400_youtube_ads.py` (8).
+  Tests `server/tests/test_v0401_youtube_ads.py` (8).

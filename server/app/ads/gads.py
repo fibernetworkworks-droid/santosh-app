@@ -1,4 +1,4 @@
-"""v0.400 YOUTUBE ADS (plan Y2): her own Google Ads account through the official Google Ads API (REST, v26 - field names from
+"""v0.401 YOUTUBE ADS (plan Y2): her own Google Ads account through the official Google Ads API (REST, v26 - field names from
 Google's own AddDemandGenCampaign example). Hoola never moves money on its own:
   1. Connect: Google sign-in with the adwords permission (her account, refresh token sealed); she picks which ad account.
   2. Read: her YouTube campaigns (VIDEO + DEMAND_GEN) day by day -> the Ads desk's own report rows (platform google), so

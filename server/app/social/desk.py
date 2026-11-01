@@ -944,7 +944,7 @@ def daily(tenant: str) -> dict[str, Any]:
 
 def _daily_and_boosts(tenant: str) -> dict[str, Any]:
     out = daily(tenant)
-    try:                                            # v0.400 YouTube ads: pause ads past their days, fresh numbers
+    try:                                            # v0.401 YouTube ads: pause ads past their days, fresh numbers
         from ..ads import gads
         gads.ensure_tables()
         with session() as s:

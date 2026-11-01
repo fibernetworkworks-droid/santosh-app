@@ -159,7 +159,7 @@ class Settings(BaseSettings):
     linkedin_client_id: str = ""            # v0.384 LinkedIn app (Sign In with LinkedIn + Share on LinkedIn), Newtika's one app
     linkedin_client_secret: str = ""
     linkedin_version: str = "202510"
-    google_ads_developer_token: str = ""   # v0.400 YouTube ads (plan Y2): Google Ads API Center token (test / Basic access)
+    google_ads_developer_token: str = ""   # v0.401 YouTube ads (plan Y2): Google Ads API Center token (test / Basic access)
     google_ads_login_customer_id: str = ""  # optional manager (MCC) id when her ad account sits under Hoola's manager
     google_ads_api_version: str = "v26"
     gads_max_daily: int = 2000              # Hoola's ceiling on a YouTube ad's daily budget (her account currency)
@@ -251,8 +251,10 @@ class Settings(BaseSettings):
     site_critique_pages: int = 6           # v0.292 pages Opus reviews from their real screenshots (site_critique=all)
     site_max_pages: int = 150              # v0.315 BADI WEBSITE: most pages one site may have (designed + list items + legal)
     site_max_ai_pages: int = 40            # v0.315 most pages with their OWN designed sections (each section = one Opus call)
-    site_parallel_big: int = 5             # v0.315 sections written at the same time on a big site
+    site_parallel_big: int = 8             # v0.315 sections written at the same time on a big site (v0.400: 5 -> 8)
     site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
+    site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
+    site_journeys: bool = True             # v0.400 visitor journeys (menu / form / shop / blog / language) on every version
     site_arena_max_inr: float = 3000       # v0.307 Design Arena: rupee ceiling of one run (each site ~Rs 100-300 with Opus)
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead

@@ -1058,7 +1058,7 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/ugc/$id/$action', body: body ?? {}, timeout: const Duration(seconds: 90)) as Map);
   Future<Map<String, dynamic>> socialCreator(String username) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/creator/check', body: {'username': username}) as Map);
-  // v0.400 YouTube ads (Google Ads API): drafts stay in Hoola; create = paused in Google; start = her tap + confirm
+  // v0.401 YouTube ads (Google Ads API): drafts stay in Hoola; create = paused in Google; start = her tap + confirm
   Future<Map<String, dynamic>> socialYtAds() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/social/ytads', timeout: const Duration(seconds: 30)) as Map);
   Future<String> socialYtAdsConnect() async => (await _send('GET', '/api/social/ytads/connect'))['url'] as String;
