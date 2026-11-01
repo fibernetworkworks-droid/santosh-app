@@ -298,6 +298,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
+- v0.370 TPM DESK: the check found tpm thin (3 papers, 0 parts, no writes) and - the real point - about to
+  DUPLICATE the 1,789-line `product` tool (discovery, RICE/ICE, PRDs, releases). So TPM is the ENGINEERING
+  counterpart: 12 parts (roadmap, dependencies, architecture/ADR, NFR, debt, capacity, release train, RAID,
+  build-vs-buy, incident follow-through, delivery metrics, status) and its OWN RULES send product work to
+  `product`. It writes now (tracker updates) -> that exposed a drift: employee/roles.BIG was a HAND-WRITTEN
+  list so tpm stayed 'action' and a write would not have carded. BIG now DERIVES from rules.WRITERS (with a
+  test the gate survives the suite being unimportable). Desks: ERP 16, CRM 12, TPM 12.
 - v0.367 CRM DESK: crm_arch was half-built (write engine yes, but 0 sub-jobs, 4 paper kinds). Now 12 parts
   (admin, config, automation, apex, integration, data, security, reporting, testing, release, adoption,
   support) + all 12 paper kinds, so security work makes a MATRIX. THE SPLIT: a CRM architect writes

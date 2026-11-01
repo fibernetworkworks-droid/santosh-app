@@ -13392,3 +13392,43 @@ Built as 0.359 / 0.365 / 0.366, re-versioned past main's v0.364-v0.367. Module `
 - Desk view `pulse` (settings, trust, cap, auto today, waiting_ok, best_times, boosts); console Posting controls / Best
   times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
   social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0369_social_pulse.py` (12).
+
+## v0.370.0 TPM DESK — the engineering counterpart, and the BIG list stops drifting
+Owner: *"Technical PM (tpm) --- CHECK AND MAKE THIS 100 %"*.
+
+### The check found two things
+The thin one: `tpm` had three paper kinds, no sub-jobs, and could not write anywhere.
+
+The important one: **as written it would have duplicated the existing `product` tool** — 1,789 lines that already
+own the product side end to end: discovery, RICE/ICE scoring, Kano, PRDs, roadmap, releases, KPIs.
+
+### So the TPM desk is the engineering counterpart, not a second product manager
+Twelve parts: technical roadmap · cross-team dependencies and the critical path · architecture decisions (ADRs) ·
+NFRs · technical debt · capacity · release train · RAID · build vs buy · incident follow-through to closure ·
+delivery metrics · status and escalation.
+
+The role's **own rules** say the product side belongs to `product`. That is what stops the model reaching for the
+wrong tool — a comment in a file would not have.
+
+### It writes now, and that exposed a real drift
+A technical PM updates the tracker, so `tpm` became a writer. `employee/roles.BIG` was a **hand-written list**, so
+it kept its old `action` class — meaning a tracker write would **not** have raised an approval card.
+
+`BIG` is now **derived** from `enterprise.rules.WRITERS`: add a writer to the role table and the gate follows by
+itself. There is a test that the Employee gate still works if the enterprise suite is not importable at all, so
+the derivation can never take the gate down with it.
+
+A v0.358 test that pinned the writer *membership* was rewritten to pin the **invariant** instead — capped and
+writer are mutually exclusive, and every writer is BIG — which is what actually matters and does not need editing
+each time a desk grows.
+
+### All three desks now stand together
+| desk | parts |
+|---|---|
+| ERP | 16 |
+| CRM | 12 |
+| TPM | 12 |
+
+### Files
+`server/app/enterprise/rules.py` · `server/app/employee/roles.py` (derived BIG) ·
+`server/tests/test_v0370_tpm_desk.py` (9 tests) · `server/tests/test_v0358_enterprise.py` (invariant).
