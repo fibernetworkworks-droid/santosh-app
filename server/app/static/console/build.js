@@ -750,7 +750,7 @@ window.HoolaBuild = function (C) {
 
   /* v0.351 DUKAAN: her shop - settings, products, orders (no AI; prices only hers; money confirmed only by her) */
   const OSTEP = {confirmed: 'Confirm (money received)', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancel'};
-  // ---------------------------------------------------------------- v0.353 DASHBOARD: her website's numbers as charts
+  // ---------------------------------------------------------------- v0.357 DASHBOARD: her website's numbers as charts
   const DASH_DAYS = {};
   async function loadDash(o, root) {
     const box = root.querySelector('.stdash'); if (!box) return;

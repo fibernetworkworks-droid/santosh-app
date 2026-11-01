@@ -183,7 +183,7 @@
     }).catch(function () {});
   }
 
-  // v0.353 DASHBOARD: the staff panel's charts (assets/hoola-chart.js draws them; numbers come from /stats, staff only)
+  // v0.357 DASHBOARD: the staff panel's charts (assets/hoola-chart.js draws them; numbers come from /stats, staff only)
   function board(box, j) {
     var HC = window.HoolaChart, days = (j.days || []).map(function (x) { return x.slice(5); });
     var grid = el('div', {'class': 'hs-dash-grid'});

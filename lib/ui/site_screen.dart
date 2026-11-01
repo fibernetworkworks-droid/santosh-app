@@ -772,7 +772,7 @@ class _SitePageState extends State<SitePage> {
             SiteCarePanel(app: app, siteId: widget.id),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(   // v0.353 DASHBOARD: her numbers as charts
+              child: TextButton.icon(   // v0.357 DASHBOARD: her numbers as charts
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => SiteDashPage(app: app, id: widget.id, name: _s(v['name'])))),
                   icon: const Icon(Icons.insights_rounded),

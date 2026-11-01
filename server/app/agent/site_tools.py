@@ -264,7 +264,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         r = SC.report(t, site, int(a.get("days") or 30))
         r.pop("site", None)
         return r
-    if what == "dashboard":                       # v0.353 the numbers behind her Dashboard tab
+    if what == "dashboard":                       # v0.357 the numbers behind her Dashboard tab
         from ..site import dash as SD
         r = SD.dashboard(t, site, int(a.get("days") or 30))
         sr = r.pop("series")

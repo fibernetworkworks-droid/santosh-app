@@ -12861,7 +12861,119 @@ Item 2 of the coding plan, on top of v0.350's 8-tool loop. Built as 0.351, re-ve
 - Merge / deploy stay her tap, as before. A GitHub error on mark_ready leaves a note to press "Ready for review" herself.
 - Tests: `test_v0352_pehle_ci.py` (draft PR, green -> ready, red -> fix round -> green, rounds cap, no CI -> plain PR, timeout).
 
-## v0.353.0 DASHBOARD (Phase 3b of "any world-complex website": charts + dashboards)
+## v0.353.0 SOCIAL MEDIA MANAGER Phase 1 (1 Nov 2026, built as 0.347.0 / 0.348.0 / 0.352.0, re-versioned past the parallel v0.347-v0.352)
+Owner: "Social Media Manager — first do deep research what we have" -> "How user will put their social media details"
+-> "GO PLAN" (docs/SOCIAL_EMPLOYEE_PLAN.md) -> Meta app set up by her (HOOLA app, use cases Instagram + Pages, redirect URIs,
+keys in the VPS .env) -> "GO PHASE 1".
+- Employee 2 on the SEO employee's frame: `employee/hire.py` CATALOG `social` is live (does / needs / never).
+- `social/meta.py`: Hoola's ONE Meta app (users never make an app or type a key). Instagram API with Instagram Login
+  (instagram.com/oauth/authorize -> api.instagram.com/oauth/access_token -> graph.instagram.com ig_exchange_token, 60
+  days; refresh_access_token), read scopes `instagram_business_basic`, `instagram_business_manage_insights`; Facebook
+  Login for Business (facebook.com/<v>/dialog/oauth with `config_id` = META_LOGIN_CONFIG_ID, else read scopes) -> 60-day
+  user token -> /me/accounts Page tokens; reads: IG /me, /me/media, per-media insights (reach, saved, shares, views,
+  total_interactions; asked together, then one by one when Meta refuses a name), FB /{page}/posts + reach
+  (post_impressions_unique, then post_total_media_view_unique); Graph version pinned `META_SOCIAL_VERSION` (v25.0);
+  `parse_signed_request` (HMAC-SHA256 with the Facebook or Instagram app secret). Config: META_APP_ID / META_APP_SECRET /
+  META_LOGIN_CONFIG_ID / INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET / META_SOCIAL_VERSION / SOCIAL_AI.
+- `social/desk.py`: tables social_accounts (tokens sealed with accounts.encrypt), social_media (her posts + numbers,
+  upserted by media id), social_desk, social_posts (the calendar), social_events. onboard (pre-filled from the SEO site /
+  Brand kit), connect_url (state `soc_ig_` / `soc_fa_` in mail_link_states, once, 30 min), finish_link (personal IG
+  refused with the switch guide; up to 10 Pages), disconnect (token + read posts deleted), sync_account (dead token =
+  status expired + one alert, recovery noted; a removed account is never written back), measure (followers, posts in
+  30 days, interactions + reach per post, engagement rate, best formats / hours / days in her time zone, top 5),
+  build_plan (Opus kind `social_plan`, 12k tokens, cleaned: dates in range, platforms instagram / facebook only, tags
+  normalised, < 6 good slots = rules plan; rules plan = 4 posts a week at her best hours, pillars rotated, Indian
+  holidays on their day), approve_calendar, set_post (an edit after approval goes back to draft), first_run (sync ->
+  frozen baseline -> plan), watch (IG token renewed under 20 days left; FB expiry warned once), daily (fresh numbers),
+  weekly (Monday note), run_due from the worker (`_SOCIAL_DESK_BUSY`, only hired + not paused tenants), meta_deletion.
+- Routes: GET /api/social/desk, POST /api/social/onboard, GET /api/social/connect/{instagram|facebook},
+  GET /api/social/{instagram|facebook}/callback (public, `_linked_page`), POST /api/social/meta/deletion (+ /deauthorize,
+  public, signed_request) -> {url, confirmation_code}, GET /api/social/meta/deletion/{code}, POST
+  /api/social/accounts/{id}/disconnect, POST /api/social/calendar/approve, POST /api/social/posts/{id}, POST
+  /api/social/run/{first|hourly|daily|weekly|plan}.
+- Console: `employees.js` `social(el)` (set-up form, account tiles + Connect / Reconnect / Disconnect, approve banner,
+  KPIs vs baseline, strategy, what works, calendar cards with status / Copy caption / Edit, activity, run-now), v2.js
+  sidebar Social Desk only while hired (`syncEmployees` loops seo + social), v2.html `v-socialdesk`, v2.css `sc-*`.
+  Phone: `SocialDeskScreen` (lib/ui/employees_screen.dart) + api.dart social* calls; hub "Open desk" per employee.
+- Also fixed: SEO desk run_due used the same lock name as first_run, so a scheduled retry of a failed first run found
+  itself "busy" (keys now `due:...`).
+- Not verified live: Meta's real responses (mocked from Meta's docs in `test_v0348_social_manager.py`, 11 tests).
+  Next: Phase 2 = publishing on her tap (needs App Review of instagram_business_content_publish / pages_manage_posts).
+
+## v0.354.0 HOOLA STUDIO PAGE (1 Nov 2026; built as 0.351.0, re-versioned past the parallel v0.351-v0.353)
+Owner: "NOW LETS WORK ON HOOLA WEBSITE ::: IN WEBSITE THERE IS NO INFORMATION ABOUT THE HOOLA STUDIO --- DO DEEP RESEARCH AND ADD
+HOOLA STUDIO PAGE IN WITH REAL SCREEN AND WITH REAL SAMPLE ... MAKE IT STUNNING WITH MOTION GRAPHICS ... SAME AS EXISTING BRAND
+UI / UX --- SHOW ME THE PROTOTYPE OF THIS PAGE HERE".
+- PAGE `/studio` = `static/site/studio.html` + `studio.js` (same rules as home / employee / network: `_site_page`, strict CSP, no
+  inline script, GSAP 3.12.5 + ScrollTrigger from vendor/, Sora + Manrope, the night / saffron / violet brand, the same header,
+  Console button, footer). Every fact on it comes from the code (9 tools, 30+ video models from the live OpenRouter list, 22
+  voices, 15 languages, storyboard / preview free, price card -> Haan -> fingerprint, failed = not charged, dubbing honest limits).
+- REAL SCREENS: `static/site/studio/{home,director,video,image,music,voice,dubbing,editor,brand}.webp` (1440x900, ~40-50 KB each)
+  taken from the real console in dark theme on a clean demo studio (films "Chai Diwali ad", "Monsoon road trip", "Saree lookbook",
+  "Founder story" with real storyboards; no paid call). Retake = run the console locally, Create, screenshot at 1440x900 @1.5x.
+- MOTION: hero window + floating layers (languages, jingle waveform, storyboard strip, price card) that follow the pointer; the
+  headline word rotates film / poster / song / reel / voice-over / dub; "one line in" demo (brief types itself, the 8 Director
+  steps light, 5 shots paint, the timeline runs, loops while visible); Director section pinned on scroll (desktop) - the step
+  list follows the scroll and a glow walks the real screen's step chips (chip x/width measured from the real screen); six tool
+  tabs auto-advance with a progress bar on the real screens; samples wall = two marquee lanes; price card plays Haan ->
+  fingerprint -> filming; languages marquee in their own scripts; reveals. Every loop pauses off screen; reduced motion = end states.
+- REAL SAMPLES: the samples wall uses the showcase slot ids (v0.329). Public GET `/api/site/showcase` (manifest only) and
+  `/api/site/showcase/<slot>/<pic|clip>` (showcase slots only, 404 until made, cached a day). Until the owner makes the showcase
+  (Create > Engines > Showcase, ~Rs 428 pictures + ~Rs 340 clips through the normal price cards), the tiles are drawn scenes.
+- Menus: home / Employee / Network gain "Studio". Tests: `test_v0351_studio_page.py`, `/studio` added to `test_website.py`.
+
+## v0.355.0 SOCIAL MEDIA MANAGER Phase 2 (1 Nov 2026, built as 0.354.0, re-versioned past the parallel v0.354)
+Owner: "GO PHASE 2" (docs/SOCIAL_EMPLOYEE_PLAN.md: publish with her tap).
+- `social/publish.py` (new): table social_assets (her upload or a poster; pictures re-encoded as JPEG <= 1440 px, bytes
+  checked: Pillow opens it or it starts with an MP4 `ftyp` box; video <= 100 MB), `signed_url` / `open_signed` (HMAC with
+  SECRET_KEY, 2-3 h; public GET /api/social/media/<id>?e&s for Meta's servers), `make_poster` (Brand Sahayak `make` +
+  `_page_for(proof=False)` + render, insta_post or story size, attached and replaces the media), `attach` / `detach`,
+  `post_hash` (caption + hashtags + media + platforms + format + slot), `caption_of` (hashtags appended once),
+  `problems` (IG needs media; reel = video; carousel = 2-10 photos; caption <= 2200; <= 30 hashtags; no [ ] blanks; FB
+  not empty), `publish_post(by_tap)` (her tap stamps the hash; otherwise status approved + hash match), IG: limit read
+  first (`content_publishing_limit`, stop at total-1), permission `instagram_business_content_publish` checked (Phase 1
+  connections asked to Reconnect), image / CAROUSEL (children + parent) / REELS (wait FINISHED) / STORIES -> media_publish
+  -> permalink; FB: photo / unpublished photos + feed attached_media / videos file_url / feed text -> permalink_url;
+  per-platform results, 190 marks the account expired; `due` (approved + slot <= now; > 24 h late = missed) and
+  `run_publisher` (desk job `publish`, every sweep while the desk is ready).
+- `social/meta.py`: IG_SCOPES / FB_SCOPES now ask to post; ig_publish_limit, ig_container, ig_wait (status_code
+  polling, `_sleep` swappable), ig_publish, ig_permalink, fb_photo, fb_photos_post, fb_text, fb_video, fb_permalink.
+- `social/desk.py`: social_posts gain media / approved_hash / result / error / published_at / attempts (nullable);
+  approve and approve_calendar stamp the hash; any edit (or media change) after approval = draft; published posts are
+  frozen; calendar view carries media (signed thumbnails), result, error, problems; accounts carry can_post.
+- Routes: POST /api/social/media (upload), POST /api/social/posts/{id}/media {assets, replace}, DELETE
+  /api/social/posts/{id}/media/{asset}, POST /api/social/posts/{id}/poster, POST /api/social/posts/{id}/publish (checks
+  at once, sends in the background), GET /api/social/media/{id} (signed, public), run job `publish`.
+- Console post cards: thumbnails, Add photo / video, Make poster, Publish now (confirm), Posted links / reasons,
+  "Reconnect to allow posting"; phone: Add photo (gallery), Make poster, Publish now (dialog), links.
+- Privacy policy: "Instagram and Facebook (Social Media Manager)" section (Meta App Review reads it).
+- Tests: `test_v0355_social_publish.py` (10); Phase 1 tests updated (publish scope requested now, publish job each sweep).
+- Not verified live: Meta's real publishing (mocked from Meta's docs). Next: App Review screencasts for
+  instagram_business_content_publish + pages_manage_posts, then Phase 3 (comments / DMs inbox).
+
+## v0.356.0 PEHLE NIYAM (owner: "Always read the project's rules first.")
+Item 3 of the coding plan. Built as 0.353 / 0.354, re-versioned past the parallel v0.353 / v0.355 SOCIAL MEDIA MANAGER.
+- `devsahayak/loop.py` `rule_paths(paths)`: sorts the repo's own rules files.
+  - rules: AGENTS.md / CLAUDE.md / GEMINI.md / CONTRIBUTING / CONVENTIONS / style guide at the root,
+    .github/copilot-instructions.md, .github/instructions/*.instructions.md, docs/CONTRIBUTING, .cursorrules,
+    .cursor/rules/*, .windsurfrules, .clinerules;
+  - build: package.json / pyproject / pubspec / lint configs, plus the CI workflow that tests;
+  - readme;
+  - folder rules: pkg/AGENTS.md / CLAUDE.md / CONTRIBUTING.md (node_modules / vendor skipped).
+- `_project_rules`: the first message opens with "PROJECT RULES (read first ...)".
+  - Rules go in `<project_rules>` blocks (400 lines each), then build / CI files (200 lines), then a 120-line README,
+    60 KB in all (rules are never dropped).
+  - It lists the folders that have their own rules. A repo with no rules file is told so and follows the code's own style.
+- Folder rules: `read_file` / `list_dir` in a folder attach that folder's rules once. `edit_file` / `new_file` there is
+  NOT applied until those rules have been shown ("Not applied yet: read this folder's rules first").
+- SYSTEM step 1 rewritten: the repo's rules beat the model's habits and never beat the safety rules (a rules file can't make
+  it add a secret, weaken security, touch workflows or send data). `done` gains `rules_followed`.
+- PR body gains "### Project rules": the files read + how they were followed. `found.rules` on the task.
+- The one-shot fallback (`_gather`) reads up to 4 rules + 2 build files first, on top of the normal file budget (so they
+  never push out the code), tags them `<project_rules>`, and WRITE_SYSTEM says to follow them.
+- Tests: `test_v0356_pehle_niyam.py` (5).
+
+## v0.357.0 DASHBOARD (built as 0.353, re-versioned past the parallel v0.353-v0.356) (Phase 3b of "any world-complex website": charts + dashboards)
 Owner: "Phase 3b (dashboards and charts)" (after Phase 3a DUKAAN, v0.351).
 - ONE chart drawer, `server/app/static/console/charts.js` (`window.HoolaChart`: draw / live / fromTable / fmt / num / auto):
   inline SVG, no library, no network, nothing evaluated. Types bar (grouped series), line, area, donut, hbar. Indian
@@ -12887,7 +12999,7 @@ Owner: "Phase 3b (dashboards and charts)" (after Phase 3a DUKAAN, v0.351).
   choice field = usually status, sums of number fields, yes / no counts) from GET /api/site-app/<id>/stats (`webapp.stats`,
   staff / admin members and her only: visitor 401, customer 403).
 - Console stamps 18 -> 19 (charts.js loads before build.js). Free, no AI anywhere.
-- Tests `server/tests/test_v0353_dashboard.py`: Indian numbers, tables -> charts in a real browser (bars / legend / donut
+- Tests `server/tests/test_v0357_dashboard.py`: Indian numbers, tables -> charts in a real browser (bars / legend / donut
   total / line dots / hbar values, no-number table untouched), tooltip by mouse and keyboard, drawer only on pages that
   draw, her dashboard numbers vs a seeded period (spam, cancelled, unconfirmed sales excluded), owner-only, staff-only
   stats, console + phone wiring.

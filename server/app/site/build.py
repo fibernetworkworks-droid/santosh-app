@@ -478,7 +478,7 @@ def with_app_pages(site: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]
     return {**plan, "pages": pages}
 
 
-# ---------------------------------------------------------------- v0.353 charts (one drawer for the console and the sites)
+# ---------------------------------------------------------------- v0.357 charts (one drawer for the console and the sites)
 CHART_JS = Path(__file__).resolve().parents[1] / "static" / "console" / "charts.js"
 
 
@@ -715,7 +715,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             f'<body class="look-{esc(site["tokens"]["style"])}">{header(site, plan, page["slug"], rel, logo)}{notice}'
             f'<main id="main">{crumb}{body}</main>{footer(site, plan, rel)}{floats(site)}'
             f'<script src="{rel}assets/hoola-site.js" defer></script><script src="{rel}assets/site.js" defer></script>'
-            + (f'<script src="{rel}assets/hoola-chart.js" defer></script>' if uses_charts(body) else "")   # v0.353
+            + (f'<script src="{rel}assets/hoola-chart.js" defer></script>' if uses_charts(body) else "")   # v0.357
             + (f'<script src="{rel}assets/hoola-app.js" defer></script>' if site.get("app_api") else "")
             + (f'<script src="{rel}assets/hoola-shop.js" defer></script>' if shop.get("api") else "")
             + '</body></html>')
@@ -776,7 +776,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     for fam, sub, w, fn in font_files(tk):
         shutil.copy(ASSETS / "fonts" / fn, out / "assets" / "fonts" / fn)
     shutil.copy(ASSETS / "hoola-site.js", out / "assets" / "hoola-site.js")
-    shutil.copy(CHART_JS, out / "assets" / "hoola-chart.js")          # v0.353 tiny; pages load it only when they draw a chart
+    shutil.copy(CHART_JS, out / "assets" / "hoola-chart.js")          # v0.357 tiny; pages load it only when they draw a chart
     if site.get("app_api"):
         shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
     plan = with_app_pages(site, plan)

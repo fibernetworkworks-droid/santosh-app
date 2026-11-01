@@ -146,6 +146,14 @@ class Settings(BaseSettings):
     doc_review: bool = True                 # Opus looks at the printed pages and may ask for one change
     doc_model: str = ""                     # model for doc_art / doc_critique ("" = app_model, Claude Opus 5.5)
     seo_ai: bool = True                     # v0.317 the SEO Employee asks Opus for its 90-day plan (off = the rules plan)
+    # v0.353 SOCIAL MEDIA MANAGER (employee 2): Hoola's ONE Meta app - users connect their own Instagram / Facebook Page to it
+    meta_app_id: str = ""                   # App settings > Basic (Facebook Login for Business + Pages)
+    meta_app_secret: str = ""
+    meta_login_config_id: str = ""          # Facebook Login for Business > Configurations (pages + permissions)
+    instagram_app_id: str = ""              # Instagram use case > API setup with Instagram login
+    instagram_app_secret: str = ""
+    meta_social_version: str = "v25.0"      # pinned Graph API version for the social desk (graph.facebook.com / graph.instagram.com)
+    social_ai: bool = True                  # the Social Media Manager asks Opus for its strategy + 30-day calendar (off = rules)
     studio_project_usd: float = 5.0        # starting budget of a new project
     studio_usd_inr: float = 85.0           # shown next to dollar prices on her cards
     studio_image_mode: str = "data"        # data = character photos inline; public = short-lived signed links from this server

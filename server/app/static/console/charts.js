@@ -1,4 +1,4 @@
-/* HoolaChart (v0.353 DASHBOARD, MIT, Newtika). One small chart drawer for the Hoola console (her dashboard) AND for the
+/* HoolaChart (v0.357 DASHBOARD, MIT, Newtika). One small chart drawer for the Hoola console (her dashboard) AND for the
    websites Hoola builds (copied into a site as assets/hoola-chart.js). Inline SVG, no library, no network, nothing
    evaluated: bar, line, area, donut and hbar (sideways bars). Colours come from CSS (.hc + data-s="0..5"), so a site
    uses its own brand tokens and the console its own.

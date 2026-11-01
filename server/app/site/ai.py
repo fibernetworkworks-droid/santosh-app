@@ -48,8 +48,8 @@ EFFORT = {"app_art": "xhigh", "app_critique": "high", "app": "high", "app_code":
           "build": "high", "site_art": "xhigh", "site_critique": "high", "site_edit": "medium"}
 APP_KINDS = APP_KINDS + ("app_art", "app_critique")
 SITE_KINDS = ("build", "site_art", "site_critique", "site_edit")   # v0.225 Website Sahayak on the same Opus path
-DOC_KINDS = ("doc_art", "doc_critique", "seo_plan")   # v0.317 + the SEO Employee's 90-day plan       # v0.313 HOOLA PRINT: the PDF look + the page review, same Opus path
-EFFORT.update({"doc_art": "medium", "doc_critique": "medium", "seo_plan": "high"})
+DOC_KINDS = ("doc_art", "doc_critique", "seo_plan", "social_plan")   # v0.353 + the Social Media Manager's month   # v0.317 + the SEO Employee's 90-day plan       # v0.313 HOOLA PRINT: the PDF look + the page review, same Opus path
+EFFORT.update({"doc_art": "medium", "doc_critique": "medium", "seo_plan": "high", "social_plan": "high"})
 
 
 def _opus_kind(kind: str) -> bool:
@@ -286,7 +286,7 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
     checkboxes / radios / <option> with data-add="AMOUNT", and <output data-calc-out>; or data-hoola-calc="emi" with
     inputs name="amount", name="rate" (yearly %), name="months" and outputs data-calc-out (EMI), data-calc-total,
     data-calc-interest. Rates and amounts ONLY from FACTS / her words (a loan EMI calculator needs no prices of hers).
-- CHARTS (v0.353): write a plain table and Hoola draws it (inline SVG in the site's colours, tooltip, keyboard, the
+- CHARTS (v0.357): write a plain table and Hoola draws it (inline SVG in the site's colours, tooltip, keyboard, the
   table kept for screen readers): <figure data-hoola-chart="bar|line|area|donut|hbar" data-unit="₹" data-suffix="%">
   <figcaption>What it shows</figcaption><table><thead><tr><th>Year</th><th>Students</th></tr></thead><tbody>
   <tr><th>2023</th><td>120</td></tr>...</tbody></table></figure>. First column = labels, each other column = one series

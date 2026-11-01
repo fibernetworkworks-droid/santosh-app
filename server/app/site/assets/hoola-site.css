@@ -232,7 +232,7 @@ form[data-hoola-calc] output{font-family:var(--font-head),sans-serif;font-weight
 .hs-shop-pay img{background:#fff;border-radius:8px}
 .hs-status{display:inline-block;margin:0;padding:6px 12px;border-radius:999px;background:color-mix(in srgb,var(--c-primary) 12%,transparent);font-weight:600}
 .hs-shop-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:110;background:var(--c-ink);color:var(--c-bg);padding:10px 16px;border-radius:999px;font-size:.92rem}
-/* v0.353 DASHBOARD: charts drawn from a table (<figure data-hoola-chart>, assets/hoola-chart.js); colours = the site's tokens */
+/* v0.357 DASHBOARD: charts drawn from a table (<figure data-hoola-chart>, assets/hoola-chart.js); colours = the site's tokens */
 [data-hoola-chart]{margin:0}
 [data-hoola-chart] figcaption{font-family:var(--font-head);font-weight:600;margin:0 0 .6rem}
 .hc{position:relative;--hc0:var(--c-primary);--hc1:var(--c-accent);--hc2:color-mix(in srgb,var(--c-ink) 55%,var(--c-bg));
@@ -265,7 +265,7 @@ form[data-hoola-calc] output{font-family:var(--font-head),sans-serif;font-weight
 }
 @keyframes hc-up{from{transform:scaleY(0)}}@keyframes hc-right{from{transform:scaleX(0)}}
 @keyframes hc-draw{from{stroke-dashoffset:1}}@keyframes hc-fade{from{opacity:0}}
-/* v0.353 the web app's staff dashboard (/admin/) */
+/* v0.357 the web app's staff dashboard (/admin/) */
 .hs-app-admin{margin:0 0 2rem}
 .hs-dash-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
 .hs-dash-card{padding:1.1rem;min-width:0}.hs-dash-card h3{margin:0;font-size:1rem}

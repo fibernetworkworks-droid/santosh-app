@@ -451,7 +451,7 @@ def utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-# ---------------------------------------------------------------- v0.353 DASHBOARD: rows a day, status mix, sums
+# ---------------------------------------------------------------- v0.357 DASHBOARD: rows a day, status mix, sums
 def _iday(t: datetime | None) -> str:
     from .care import IST
     if t is None:

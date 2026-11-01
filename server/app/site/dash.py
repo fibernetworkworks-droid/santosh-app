@@ -1,4 +1,4 @@
-"""v0.353 DASHBOARD (web design Phase 7 step 2, owner: "Phase 3b (dashboards and charts)"): her website's dashboard.
+"""v0.357 DASHBOARD (web design Phase 7 step 2, owner: "Phase 3b (dashboards and charts)"): her website's dashboard.
 
 ONE read of everything her website already records, per IST day, for the last N days and the N days before (for the
 "vs previous" arrows): visits (care.py, counted by the server that hosts the site: no cookies, no tracker), enquiries and

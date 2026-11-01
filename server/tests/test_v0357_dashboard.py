@@ -1,4 +1,4 @@
-"""v0.353 DASHBOARD (web design Phase 7 step 2, owner: "Phase 3b (dashboards and charts)"). Three parts:
+"""v0.357 DASHBOARD (built as 0.353) (web design Phase 7 step 2, owner: "Phase 3b (dashboards and charts)"). Three parts:
 (1) charts on her websites: a section writes a plain table inside <figure data-hoola-chart> and ONE drawer
     (static/console/charts.js, copied into the site as assets/hoola-chart.js) turns it into inline SVG - checked in a real
     browser: bars / line / donut / hbar, Indian numbers (lakh / crore), tooltip on hover AND arrow keys, the table kept for
@@ -226,5 +226,5 @@ def test_console_and_phone_show_it():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.353.0"
-    assert "0.353.0+393" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.357.0"
+    assert "0.357.0+397" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

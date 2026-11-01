@@ -35,6 +35,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SITE_KIT", "false")         # v0.330: no design-kit Opus call in scripted site tests (its own suite turns it on)
     monkeypatch.setenv("DOC_ART", "false")          # v0.313: no Opus art direction for PDFs in tests (router picks)
     monkeypatch.setenv("DOC_REVIEW", "false")       # v0.313: no Opus page review in tests (its own tests fake it)
+    monkeypatch.setenv("SOCIAL_AI", "false")        # v0.353: no Opus calendar call in tests (its own tests fake it)
     monkeypatch.setenv("SEO_AI", "false")           # v0.317: no Opus roadmap call in tests (its own tests fake it)
     monkeypatch.setenv("SITE_AI_PHOTOS", "0")       # v0.292: no image-model calls in scripted site tests
     monkeypatch.setenv("SITE_LOOK_SECTIONS", "1")   # v0.292: looks stay hero-only unless a test asks for more
