@@ -13142,3 +13142,15 @@ The apps' order updates came through a JobScheduler check every 15+ minutes. Now
 - `ios/service.ready` no longer tells her to copy hoola-ios.yml.
 - Tests `tests/test_v0369_khud_taza.py` (GitHub faked). One-time on GitHub: the builds repo's fine-grained token needs
   "Workflows: Read and write" (besides contents + actions).
+
+## v0.370.0 HAR DEVICE JAANCH (App Sahayak Phase 34, owner: "START PHASE 34")
+The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. Now every real build of her apps runs them.
+- `server/app_builder/hoola-build.yml`: the emulator script runs `hoola_qa/tablet_check.sh` after the device check (`|| true`),
+  artifact adds `qa/tablet.txt` + `qa/tablet/*.png`. `hoola-ios.yml` (kind sim / testflight): "Every screen on a 13-inch iPad"
+  (`SIM_KIND=ipad sim_check.sh ... qa-ipad`, continue-on-error), artifact adds `qa-ipad/report.json` + pictures. Both reach the
+  builds repo by themselves (v0.369).
+- `runners.qa_from_zip`: the phone report = the shortest report.json path outside qa-ipad / store; pictures only from its own
+  `screens/` folder; `report["tablet"]` from tablet.txt, `report["ipad"]` from qa-ipad/report.json.
+- `android/service._keep_qa` keeps `tablet`, `ios/service._keep_qa` keeps `ipad`; both `qa_line`s add "Tablet / iPad par n/m
+  screens (k crash: ...)". A big-screen crash is reported, not auto-fixed (the phone crash path stays the one that rebuilds).
+- Tests `tests/test_v0370_har_device.py`.

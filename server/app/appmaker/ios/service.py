@@ -511,7 +511,7 @@ def _keep_qa(r: AppProject, n: int, res: dict[str, Any]) -> None:
         shutil.rmtree(old, ignore_errors=True)
     _put(r.id, qa={"ran": True, "build": n, "passed": bool(rep.get("passed")), "opened": rep.get("opened"), "total": rep.get("total"),
                    "crashed": rep.get("crashed") or [], "blank": rep.get("blank") or [], "perf": rep.get("perf") or {},
-                   "flows": rep.get("flows") or {},
+                   "flows": rep.get("flows") or {}, "ipad": rep.get("ipad") or {},      # v0.370 HAR DEVICE JAANCH
                    "shots": sorted(p.stem for p in d.glob("*.png")), "at": now().isoformat()})
 
 
@@ -527,6 +527,10 @@ def qa_line(qa: dict[str, Any] | None) -> str:
     fl = qa.get("flows") or {}
     if fl.get("tapped"):
         bits.append(f"{fl['tapped']} button dabaye" + (f", {len(fl.get('dead') or [])} se kuch nahi hua" if fl.get("dead") else ""))
+    big = qa.get("ipad") or {}                                  # v0.370 the same screens on a ipad
+    if big.get("total"):
+        bits.append(f"iPad par {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
+                    + ", ".join((big.get('crashed') or [])[:4]) + ")" if big.get("crashed") else ""))
     return " " + ", ".join(bits) + "."
 
 

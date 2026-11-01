@@ -4,6 +4,7 @@
 # Token for APP_BUILD_GH_TOKEN: fine-grained, only this repo: Contents read/write, Actions read/write.
 # v0.325 HOOLA QA: after compiling, every screen is opened on an Android emulator (crash check, screenshots, accessibility),
 # cold start / scrolling / APK size measured; the report + pictures come back in the same artifact (folder qa/).
+# v0.370 HAR DEVICE JAANCH: then every screen again at tablet size (qa/tablet.txt + qa/tablet/*.png; never fails the build).
 # Replace your copy of this file with this version to get the device check (older copies still build).
 name: hoola-build
 on:
@@ -62,7 +63,7 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash app/hoola_qa/device_check.sh "$(ls app/app/build/outputs/apk/debug/*.apk | head -1)" "$(ls app/app/build/outputs/apk/release/*.apk | head -1)" qa "$(cat app/hoola_qa/package.txt)" $(cat app/hoola_qa/screens.txt)
+          script: bash app/hoola_qa/device_check.sh "$(ls app/app/build/outputs/apk/debug/*.apk | head -1)" "$(ls app/app/build/outputs/apk/release/*.apk | head -1)" qa "$(cat app/hoola_qa/package.txt)" $(cat app/hoola_qa/screens.txt); [ -f app/hoola_qa/tablet_check.sh ] && bash app/hoola_qa/tablet_check.sh "$(ls app/app/build/outputs/apk/debug/*.apk | head -1)" qa "$(cat app/hoola_qa/package.txt)" $(cat app/hoola_qa/screens.txt) || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -72,6 +73,8 @@ jobs:
             app/app/build/outputs/apk/release/*.apk
             app/app/build/outputs/bundle/release/*.aab
             qa/report.json
+            qa/tablet.txt
+            qa/tablet/*.png
             qa/screens/*.png
           retention-days: 2
           if-no-files-found: ignore

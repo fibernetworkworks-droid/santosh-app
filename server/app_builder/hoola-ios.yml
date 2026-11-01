@@ -58,6 +58,12 @@ jobs:
         continue-on-error: true
         working-directory: ios
         run: bash hoola_qa/flow_check.sh ../qa
+      - name: Every screen on a 13-inch iPad (v0.370 HAR DEVICE JAANCH)
+        if: inputs.kind == 'sim' || inputs.kind == 'testflight'
+        continue-on-error: true
+        run: |
+          APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          SIM_KIND=ipad bash ios/hoola_qa/sim_check.sh "$APP" "$(cat ios/hoola_qa/bundle.txt)" qa-ipad $(cat ios/hoola_qa/screens.txt)
       - name: Archive + upload to TestFlight
         if: inputs.kind == 'testflight'
         working-directory: ios
@@ -124,6 +130,8 @@ jobs:
             ios/upload.log
             qa/report.json
             qa/screens/*.png
+            qa-ipad/report.json
+            qa-ipad/screens/*.png
             qa/store/screens/*.png
             qa/store-ipad/screens/*.png
             ios/asc_result.json

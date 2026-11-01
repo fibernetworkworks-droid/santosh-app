@@ -137,15 +137,28 @@ def qa_from_zip(zb: bytes) -> dict[str, Any] | None:
     try:
         with zipfile.ZipFile(io.BytesIO(zb)) as z:
             names = z.namelist()
-            rep = next((n for n in names if n.endswith("report.json")), None)
+            # v0.370 the phone check's report (not the iPad / store ones); its pictures only from its own folder
+            reps = [n for n in names if n.endswith("report.json") and "qa-ipad/" not in n and "/store" not in n]
+            rep = min(reps, key=len) if reps else None
             if not rep:
                 return None
             report = json.loads(z.read(rep))
+            base = rep[: -len("report.json")]
             shots = {}
             for n in names:
                 m = re.search(r"screens/([a-z][a-z0-9_]{0,48})\.png$", n)
-                if m and z.getinfo(n).file_size < 6_000_000:
+                if m and n.startswith(base + "screens/") and z.getinfo(n).file_size < 6_000_000:
                     shots[m.group(1)] = z.read(n)
+            # v0.370 HAR DEVICE JAANCH: the tablet pass (Android) and the iPad pass (iPhone builds)
+            tab = next((n for n in names if n.endswith("tablet.txt")), None)
+            if tab:
+                rows = [ln.split() for ln in z.read(tab).decode(errors="replace").splitlines() if len(ln.split()) == 2]
+                report["tablet"] = {"opened": sum(1 for _i, a in rows if a == "1"), "total": len(rows),
+                                    "crashed": [i for i, a in rows if a != "1"][:40]}
+            ip = next((n for n in names if n.endswith("qa-ipad/report.json")), None)
+            if ip:
+                ir = json.loads(z.read(ip))
+                report["ipad"] = {"opened": ir.get("opened", 0), "total": ir.get("total", 0), "crashed": list(ir.get("crashed") or [])[:40]}
             return {"report": report, "shots": shots}
     except (zipfile.BadZipFile, ValueError, KeyError):
         return None
