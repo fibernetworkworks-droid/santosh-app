@@ -12824,3 +12824,26 @@ DEV_LOOP_EFFORT high, 16k tokens. No API key / the loop failing -> LoopUnavailab
 never die). revise / fix_ci rounds still use the one-shot path (next: item 2 = CI loop before the PR).
 Tests: test_v0350_kadam_ba_kadam.py (5) with a scripted model on the fake GitHub; test_tech_devsahayak.py (11) unchanged.
 NOT verified here: a live run (needs her GitHub token + the API key) - try one small fix on a test repo.
+
+
+## v0.351.0 HOOLA STUDIO PAGE (1 Nov 2026)
+Owner: "NOW LETS WORK ON HOOLA WEBSITE ::: IN WEBSITE THERE IS NO INFORMATION ABOUT THE HOOLA STUDIO --- DO DEEP RESEARCH AND ADD
+HOOLA STUDIO PAGE IN WITH REAL SCREEN AND WITH REAL SAMPLE ... MAKE IT STUNNING WITH MOTION GRAPHICS ... SAME AS EXISTING BRAND
+UI / UX --- SHOW ME THE PROTOTYPE OF THIS PAGE HERE".
+- PAGE `/studio` = `static/site/studio.html` + `studio.js` (same rules as home / employee / network: `_site_page`, strict CSP, no
+  inline script, GSAP 3.12.5 + ScrollTrigger from vendor/, Sora + Manrope, the night / saffron / violet brand, the same header,
+  Console button, footer). Every fact on it comes from the code (9 tools, 30+ video models from the live OpenRouter list, 22
+  voices, 15 languages, storyboard / preview free, price card -> Haan -> fingerprint, failed = not charged, dubbing honest limits).
+- REAL SCREENS: `static/site/studio/{home,director,video,image,music,voice,dubbing,editor,brand}.webp` (1440x900, ~40-50 KB each)
+  taken from the real console in dark theme on a clean demo studio (films "Chai Diwali ad", "Monsoon road trip", "Saree lookbook",
+  "Founder story" with real storyboards; no paid call). Retake = run the console locally, Create, screenshot at 1440x900 @1.5x.
+- MOTION: hero window + floating layers (languages, jingle waveform, storyboard strip, price card) that follow the pointer; the
+  headline word rotates film / poster / song / reel / voice-over / dub; "one line in" demo (brief types itself, the 8 Director
+  steps light, 5 shots paint, the timeline runs, loops while visible); Director section pinned on scroll (desktop) - the step
+  list follows the scroll and a glow walks the real screen's step chips (chip x/width measured from the real screen); six tool
+  tabs auto-advance with a progress bar on the real screens; samples wall = two marquee lanes; price card plays Haan ->
+  fingerprint -> filming; languages marquee in their own scripts; reveals. Every loop pauses off screen; reduced motion = end states.
+- REAL SAMPLES: the samples wall uses the showcase slot ids (v0.329). Public GET `/api/site/showcase` (manifest only) and
+  `/api/site/showcase/<slot>/<pic|clip>` (showcase slots only, 404 until made, cached a day). Until the owner makes the showcase
+  (Create > Engines > Showcase, ~Rs 428 pictures + ~Rs 340 clips through the normal price cards), the tiles are drawn scenes.
+- Menus: home / Employee / Network gain "Studio". Tests: `test_v0351_studio_page.py`, `/studio` added to `test_website.py`.
