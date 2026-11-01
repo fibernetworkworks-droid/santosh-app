@@ -1,4 +1,4 @@
-"""v0.399 YOUTUBE ADS (plan Y2): her own Google Ads account through the official Google Ads API (v26 REST). Connect (adwords
+"""v0.400 YOUTUBE ADS (plan Y2): her own Google Ads account through the official Google Ads API (v26 REST). Connect (adwords
 sign-in, sealed), pick the ad account, read YouTube campaigns into the Ads desk, shape a Demand Gen video ad from her own
 video in Hoola, Google checks it for free (validateOnly), Create = PAUSED in her account, Start only with her confirm,
 Pause any time, an ad past its days paused by Hoola. Google is a mock transport."""

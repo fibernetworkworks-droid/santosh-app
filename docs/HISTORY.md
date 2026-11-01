@@ -15026,7 +15026,7 @@ build123d + cadgen; nothing copied).
 - Not yet: section views, GD&T frames (datums / position), thread callouts from modelled threads, auto-dims of every
   pocket / slot (only steps + holes), multi-sheet assemblies with balloons + parts list.
 
-## v0.399.0 YOUTUBE ADS (1 Nov 2026, owner: "GO Y2"; built as 0.393 / 0.396, re-versioned past the parallel v0.393-v0.398)
+## v0.400.0 YOUTUBE ADS (1 Nov 2026, owner: "GO Y2"; built as 0.393 / 0.396 / 0.399, re-versioned past the parallel v0.393-v0.399)
 Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Field names from Google's own
 `AddDemandGenCampaign.java` (google-ads-java, v26) + the Demand Gen overview / channel-controls pages (API v26.1, 28 Oct 2026).
 - Env: GOOGLE_ADS_DEVELOPER_TOKEN (Google Ads API Center; a test-access token works only on test accounts, real ad
@@ -15056,4 +15056,4 @@ Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Fi
   tracking set-up, Display & Video 360.
 - Console YouTube ads tile (connect, pick account, read, drafts with edit / logo / check / create / start / pause), phone
   YtAdsScreen (connect, pick, new ad from latest video, check / create / start / pause). Privacy: Google Ads paragraph.
-  Tests `server/tests/test_v0399_youtube_ads.py` (8).
+  Tests `server/tests/test_v0400_youtube_ads.py` (8).

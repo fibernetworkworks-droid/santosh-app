@@ -428,7 +428,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     });
   }
 
-  // ------------------------------------------------------------ v0.399 YouTube ads (plan Y2): Google Ads API, her taps only
+  // ------------------------------------------------------------ v0.400 YouTube ads (plan Y2): Google Ads API, her taps only
   const YTS = {draft: ['warn', 'Draft'], checked: ['ok', 'Google checked'], created: ['v', 'In Google, paused'],
                running: ['ok', 'Running'], paused: ['', 'Paused'], ended: ['', 'Finished'], failed: ['bad', 'Needs a fix']};
   async function ytAds(el) {
