@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'game_bible_screen.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -393,6 +394,16 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
                     icon: Icons.play_arrow_rounded,
                     height: 48,
                     onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.menu_book_rounded),
+                label: Text('Game Bible${_i((_p['bible'] as Map?)?['version']) > 0 ? ' v${_i((_p['bible'] as Map?)?['version'])}' : ''}'
+                    '${(_p['bible'] as Map?)?['draft'] == true ? ' · draft waiting' : ''}'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameBibleScreen(app: widget.app, id: _s(_p['id']))));
+                  await _load();
+                },
+              ),
               const SizedBox(height: 12),
               _milestones(),
               const SizedBox(height: 12),

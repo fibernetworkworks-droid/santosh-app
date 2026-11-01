@@ -161,7 +161,16 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   slug.split('_')[0] (wrong for 525/1694) + 'version: latest' is rejected + ok no longer defaults True; new
   `ambiguous` row state (a retry can double-post); bank_int / health_int / teamcenter caps named the WRONG rule.
   NOT VERIFIED: no live tenant has answered any of it - the connect screen still does not exist.
-- Current version: v0.392.0 (pubspec 0.392.0+436). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- v0.393 POORA KARO: v0.389 shipped two things that could not be REACHED - `sfmeta.py` (the Salesforce Metadata
+  deploy) had NO caller at all (7 green tests, zero callers: that is how dead code hides), and the new `ambiguous`
+  row state had no way out, so a run holding one sat at `failed` for ever. Both wired: crm_arch gains
+  deploy_validate -> deploy_status -> deploy_go (checkOnly = the real dry run, her tap quick-deploys it for 10
+  days, production needs the word) + the description now says WHY Tooling is not the road; every writing desk
+  gains resolve (run, n, landed) - owner only, closes a row WITHOUT sending anything or returns it for exactly
+  ONE more attempt. Enterprise routes 6 -> 11. RULE: a module's tests passing says it works, never that anything
+  calls it - grep for a caller outside its own file before calling a feature shipped.
+
+- Current version: v0.395.0 (pubspec 0.395.0+439). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
@@ -174,6 +183,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.395 GAME BIBLE (built as 0.390 / 0.394; Game Engine plan Phase 3, `gamedesk/bible.py`, tool game_bible, /api/gamestudio/{id}/bible*): names + numbers as data (kinds = templates, checks in code, palette lock), seeded balance sim, curve numbers + drafts for her OK, HoolaBible autoload in the game, data-only rebuild (no model); helpers = preload, never class_name.
 - v0.386 STUDIO PROJECT (built as 0.378 / 0.382) (Game Engine plan Phase 2, `gamedesk/studio.py`, tool game_studio, /api/gamestudio*): a game as a long project - task board (one small change each, waits for her OK, 'wapas' = version before is live), milestones, decisions log + 'why', nightly rebuild + replay (no model), morning report, restore, GitHub card.
 - v0.378 MOBILE CARD: coding card set 3 = 5 Dart + 5 Kotlin jobs (`quality/code_tasks3.py`), real Dart SDK / kotlinc (`quality/sdk.py`, `python -m app.quality sdk --setup` -> ~/apps/codecard-sdk), vps-ops `code_card_mobile`; missing toolchain = skipped.
 - v0.377 DEKH KE REVIEW: Developer Sahayak PR review explores first (`loop.review_run`: read-only tools at the PR head, callers + tests, comment tool only on added lines), one-shot = fallback; posting still her tap.
@@ -186,6 +196,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.394 CAD CONTACT (built as 0.392, `engineering/contact.py`): assembly FEA as separate parts - node-to-surface contacts (bonded / frictionless / friction, open + slip), preloaded bolt connectors (H.analyze(..., contact=, bolts=[...])), joint separates / slips -> redesign; bolt bearing in the hole not modelled.
 - v0.385 CAD NEXT PHASE (built as 0.383, `fea.flow` laminar CFD on the fluid body via H.analyze('flow', domain=...), fatigue on static studies + redesign, calc `joint` VDI 2230-style + `fatigue`); true contact FEA between assembly parts still not built.
 - v0.380 HOOLA CAD ANALYSIS (built as 0.375) (`engineering/fea.py` / `cam.py` / `calc.py` / `geom.py`): FEA on the B-rep (stress + SF, heat, modes; a weak part goes back to be redesigned), faceted real threads, sheet metal + flat DXF, freeform, H.expect measured, CNC G-code, tool `eng_calc`. VPS: pip install scikit-fem pyamg.
 - v0.364 HOOLA CAD PRO (`engineering/parts.py` H library: ISO fasteners, involute gears, bearings, shafts, extrusions): assemblies + BOM + mass, Opus thinks + plans, vision review of the views, her photo / STEP inputs, STEP/GLB/STL/3MF/DXF + hidden-line drawing page.

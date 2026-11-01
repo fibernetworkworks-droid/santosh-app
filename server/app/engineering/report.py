@@ -210,6 +210,24 @@ def summary_rows(st: dict[str, Any]) -> list[str]:
     k = st["kind"]
     mesh = st.get("mesh") or {}
     mline = f"Mesh: {mesh.get('nodes', 0):,} nodes, {mesh.get('elements', 0):,} quadratic tetra, h {mesh.get('h_mm', 0):g} mm"
+    if k == "static" and st.get("contacts") is not None:          # v0.386 contact / bolted assembly
+        rows = [f"Assembly stress with contact ({st['contact']}" + (f", friction {st['friction']:g}" if st.get('friction') else "")
+                + ")", f"Weakest part {st['at_peak']}: peak away from supports {st['peak_vm_away_MPa']:.4g} MPa, "
+                f"safety factor {st['safety_factor']:.3g}" + (f" (needed {st['min_sf']:g})" if st.get('min_sf') else "")]
+        rows += [f"  {p['part']} ({p['material']}): {p['peak_vm_away_MPa']:.4g} MPa, SF {p['safety_factor']:.3g}"
+                 + (f", moves {p['max_disp_mm']:.3g} mm" if p.get("max_disp_mm") is not None else "") for p in st["parts"]]
+        rows += [f"  Bolt {b['bolt']}: preload {b['preload_N']:,} N -> {b['loaded_N']:,} N under load (proof {b['proof_N']:,} N, "
+                 f"SF {b['yield_sf']:.3g})" for b in st.get("bolts") or []]
+        rows += [f"  Contact {c['between']}: max pressure {c['max_pressure_MPa']:.3g} MPa, {c['open_pct']:g}% open, "
+                 f"{c['slipping_pct']:g}% slipping" for c in st["contacts"]]
+        if st.get("separated"):
+            rows.append("! The joint SEPARATES under this load")
+        if st.get("slipped"):
+            rows.append("! The joint SLIPS (friction not enough): the parts slide until the bolts bear in their holes "
+                        "(bolt bearing is not modelled) - stresses here are NOT valid; more preload / bolts or dowels")
+        rows.append(f"Equilibrium error {st['equilibrium_error_pct']:.3g} %, {st['active_set_rounds']} contact rounds, "
+                    f"{st['mesh']['nodes']:,} nodes (each part meshed on its own)")
+        return rows
     if k == "static":
         conv = st.get("convergence") or {}
         rows = [f"Stress (static) · {st['material']} (E {st['E_MPa']:,} MPa, yield {st['yield_MPa']} MPa)",

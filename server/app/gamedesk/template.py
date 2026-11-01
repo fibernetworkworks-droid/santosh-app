@@ -101,7 +101,9 @@ progressive_web_app/enabled=false
 
 def files(title: str, orientation: str, scripts: dict[str, str]) -> dict[str, str]:
     """Every file of the Godot project: Hoola's fixed ones + her game's scripts."""
-    out = {"project.godot": project_godot(title, orientation), "main.tscn": MAIN_TSCN,
-           "export_presets.cfg": EXPORT_PRESETS, "hoola_probe.gd": PROBE}
+    proj = project_godot(title, orientation)
+    if "hoola_bible.gd" in scripts:                     # v0.395 the Game Bible is an autoload: global with no class cache
+        proj = proj.replace('HoolaProbe="*res://hoola_probe.gd"', 'HoolaProbe="*res://hoola_probe.gd"\nHoolaBible="*res://hoola_bible.gd"')
+    out = {"project.godot": proj, "main.tscn": MAIN_TSCN, "export_presets.cfg": EXPORT_PRESETS, "hoola_probe.gd": PROBE}
     out.update(scripts)
     return out

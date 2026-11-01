@@ -135,7 +135,7 @@ class Ambiguous(Exception):
 def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, Any]:
     from ..bazar import composio as cmp
     from ..db import session as _s
-    toolkit = cmp.tool_toolkit(slug)                 # v0.388: never slug.split("_")[0] - see composio.toolkit_of
+    toolkit = cmp.tool_toolkit(slug)                 # v0.389: never slug.split("_")[0] - see composio.toolkit_of
     with _s() as s:
         acc, state = cmp.account(s, cmp.composio_user(tenant), toolkit)
         if acc is None or state != "active":
@@ -151,7 +151,7 @@ def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, A
         raise
     if not isinstance(out, dict):
         raise Ambiguous("Composio ka jawab samajh nahi aaya.")
-    # v0.388: this used to default to TRUE when the field was missing, so a changed response shape would
+    # v0.389: this used to default to TRUE when the field was missing, so a changed response shape would
     # report a FAILED write as done - and the idempotency key would then mark the row complete for ever.
     if "successful" in out:
         ok = bool(out.get("successful"))
@@ -266,7 +266,7 @@ def read(tenant: str, role: str, system: str, target: str, query: dict[str, Any]
 
 def _is_read_slug(slug: str) -> bool:
     from ..bazar import composio as cmp
-    return cmp.is_read(slug)        # v0.388: resolves the toolkit properly; was slug.split("_")[0]
+    return cmp.is_read(slug)        # v0.389: resolves the toolkit properly; was slug.split("_")[0]
 
 
 def _rows_of(data: Any) -> list[Any]:
@@ -322,7 +322,7 @@ def plan_write(tenant: str, role: str, system: str, target: str, verb: str, rows
 
 
 # ---------------------------------------------------------------- what the vendor itself refuses
-# v0.388, from Salesforce's own documentation: "CRUD operations on the following Tooling API objects in an
+# v0.389, from Salesforce's own documentation: "CRUD operations on the following Tooling API objects in an
 # active org generate the error `Save or update not supported in active organizations`: ApexClass,
 # ApexComponent, ApexPage, ApexTrigger, CustomField, CustomObject."
 # developer.salesforce.com .../api_tooling/intro_crud_operations.htm
@@ -525,6 +525,54 @@ def execute(tenant: str, run_id: str, batch: int = BATCH) -> dict[str, Any]:
     return out
 
 
+def resolve(tenant: str, run_id: str, n: int, landed: bool, by: str = "owner") -> dict[str, Any]:
+    """Clear an AMBIGUOUS row - the one thing only she can do.
+
+    A row goes `ambiguous` when the answer never arrived: it may or may not have landed in her system, and
+    `execute()` deliberately will not retry it, because a retry is how a record gets posted twice. Nobody but
+    a person looking at the actual system can say which it was, so this is her answer coming back:
+
+      landed=True  -> mark it done. Nothing is sent. The row is CLOSED, not written.
+      landed=False -> put it back in the queue, so the next execute() sends it once.
+
+    Shipped in v0.389 the state existed with no way out, which left such a run stuck at `failed` for ever.
+    """
+    run = _run(tenant, run_id)
+    with session() as s:
+        row = s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id, EntRunRow.n == int(n))).first()
+        if row is None:
+            raise RunError(f"Row {n} is run mein nahi hai.")
+        if row.status != "ambiguous":
+            raise RunError(f"Row {n} ka haal '{row.status}' hai - sirf 'pata nahi' wali rows yahan tay hoti hain.")
+        if landed:
+            row.status = "done"
+            row.result = json.dumps({"aapne_bataya": "yeh row system mein chadh gayi thi", "by": by[:60],
+                                     "bheja_nahi_gaya": True}, ensure_ascii=False)
+            row.error = ""
+        else:
+            row.status = "todo"                  # back in the queue; the idempotency key is unchanged
+            row.error = ""
+        row.at = now()
+    with session() as s:
+        r = s.get(EntRun, run_id)
+        r.ok_count = len(list(s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
+                                                                EntRunRow.status == "done")).all()))
+        r.fail_count = len(list(s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
+                                                                  EntRunRow.status == "failed")).all()))
+        left = len(list(s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id,
+                                                          EntRunRow.status.in_(("todo", "ambiguous")))).all()))
+        if left:
+            r.status = "running"                 # there is work again, so the run reopens
+            r.done_at = None
+        else:
+            r.status = "done" if r.fail_count == 0 else "failed"
+            r.done_at = now()
+    out = status(tenant, run_id)
+    out["aage"] = ("Row band kar di - kuch bheja nahi gaya." if landed else
+                   "Row dobara qatar mein hai; agle execute mein ek baar jaayegi.")
+    return out
+
+
 def _idem_of(row_id: str) -> str:
     """The row's own idempotency hash - 32 stable hex characters, which is exactly what SAP wants for
     RequestID, and the same on every retry (that is the whole point)."""
@@ -588,3 +636,64 @@ def rollback_plan(tenant: str, run_id: str) -> dict[str, Any]:
             "note": ("Jo rows NAYE bane the unhe wapas nahi kiya ja sakta - unhe aapko system mein hatana hoga."
                      if no_before else "Har row ka purana roop mojood hai."),
             "kaise": "Yeh plan hai. Chalane ke liye ise ek naya update run banakar jhalak + haan se chalaiye."}
+
+
+# ---------------------------------------------------------------- Salesforce config deploy (sfmeta)
+# v0.389 shipped sfmeta.py with NO caller, so the only documented way to change her org's configuration was
+# unreachable. These three wrap it on the SAME discipline as every other write: nothing happens without a
+# validation she has seen, and production rules are the vendor's, enforced in sfmeta.
+def deploy_validate(tenant: str, role: str, components: list[dict[str, Any]],
+                    test_level: str = "") -> dict[str, Any]:
+    """The DRY RUN. Salesforce checks every component and runs the tests, and commits nothing."""
+    from . import sfmeta
+    R.role(role)
+    if not R.may_write(role):
+        raise RunError("Yeh kaam kahin bahar likhta hi nahi.")
+    ep = _endpoint(tenant, role, "salesforce")
+    if ep is None:
+        raise RunError("Salesforce ka address nahi juda. App mein Enterprise > System jodo se jodiye.")
+    if not isinstance(components, list) or not components:
+        raise RunError("Kya deploy karna hai, woh batana zaroori hai.")
+    try:
+        out = sfmeta.validate(ep, components, test_level)
+    except sfmeta.MetaError as ex:
+        raise RunError(str(ex))
+    out["aage"] = ("Yeh sirf jaanch hai - org mein kuch badla nahi. Status dekhiye; saaf nikle to aapki haan "
+                   "par 10 din tak yahi jaanch seedhe deploy ho jaati hai, test dobara chalaye bina.")
+    return out
+
+
+def deploy_status(tenant: str, role: str, deploy_id: str) -> dict[str, Any]:
+    """One look. The caller keeps the id and comes back - it NEVER resubmits, because that deploys twice."""
+    from . import sfmeta
+    R.role(role)
+    ep = _endpoint(tenant, role, "salesforce")
+    if ep is None:
+        raise RunError("Salesforce ka address nahi juda.")
+    try:
+        return sfmeta.poll(ep, deploy_id)
+    except sfmeta.MetaError as ex:
+        raise RunError(str(ex))
+
+
+def deploy_go(tenant: str, role: str, validated_id: str, by: str = "owner",
+              confirm_env: str = "") -> dict[str, Any]:
+    """HER TAP. Quick-deploys the validation she saw; production needs the word as well, exactly like a row
+    write, because a config change breaks the org for everyone, not one record."""
+    from . import sfmeta
+    R.role(role)
+    if not R.may_write(role):
+        raise RunError("Yeh kaam kahin bahar likhta hi nahi.")
+    ep = _endpoint(tenant, role, "salesforce")
+    if ep is None:
+        raise RunError("Salesforce ka address nahi juda.")
+    if ep.env == "production" and (confirm_env or "").lower() != "production":
+        raise RunError("Yeh PRODUCTION org hai. Haan ke saath 'production' likhna zaroori hai.")
+    try:
+        out = sfmeta.quick_deploy(ep, validated_id)
+    except sfmeta.MetaError as ex:
+        raise RunError(str(ex))
+    log.warning("salesforce config deploy tenant=%s role=%s env=%s deploy=%s by=%s",
+                tenant, role, ep.env, out.get("deploy"), by)
+    out["env"] = ep.env
+    return out
