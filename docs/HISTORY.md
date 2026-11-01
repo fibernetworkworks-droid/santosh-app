@@ -13450,7 +13450,47 @@ good tests 7/7, fix tests that prove the bug 4/4, 7.6 steps a job, 2.1 min. The 
   the red test now fails on rules + works instead of scope).
 - Next: re-run vps-ops `code_card_hard` to confirm.
 
-## v0.372.0 CODE MODE (Phase 4 of "any world-complex website": her site's real code, like Lovable / Bolt)
+## v0.372.0 TPM DESK — the engineering counterpart, and the BIG list stops drifting
+Owner: *"Technical PM (tpm) --- CHECK AND MAKE THIS 100 %"*.
+
+### The check found two things
+The thin one: `tpm` had three paper kinds, no sub-jobs, and could not write anywhere.
+
+The important one: **as written it would have duplicated the existing `product` tool** — 1,789 lines that already
+own the product side end to end: discovery, RICE/ICE scoring, Kano, PRDs, roadmap, releases, KPIs.
+
+### So the TPM desk is the engineering counterpart, not a second product manager
+Twelve parts: technical roadmap · cross-team dependencies and the critical path · architecture decisions (ADRs) ·
+NFRs · technical debt · capacity · release train · RAID · build vs buy · incident follow-through to closure ·
+delivery metrics · status and escalation.
+
+The role's **own rules** say the product side belongs to `product`. That is what stops the model reaching for the
+wrong tool — a comment in a file would not have.
+
+### It writes now, and that exposed a real drift
+A technical PM updates the tracker, so `tpm` became a writer. `employee/roles.BIG` was a **hand-written list**, so
+it kept its old `action` class — meaning a tracker write would **not** have raised an approval card.
+
+`BIG` is now **derived** from `enterprise.rules.WRITERS`: add a writer to the role table and the gate follows by
+itself. There is a test that the Employee gate still works if the enterprise suite is not importable at all, so
+the derivation can never take the gate down with it.
+
+A v0.358 test that pinned the writer *membership* was rewritten to pin the **invariant** instead — capped and
+writer are mutually exclusive, and every writer is BIG — which is what actually matters and does not need editing
+each time a desk grows.
+
+### All three desks now stand together
+| desk | parts |
+|---|---|
+| ERP | 16 |
+| CRM | 12 |
+| TPM | 12 |
+
+### Files
+`server/app/enterprise/rules.py` · `server/app/employee/roles.py` (derived BIG) ·
+`server/tests/test_v0370_tpm_desk.py` (9 tests) · `server/tests/test_v0358_enterprise.py` (invariant).
+
+## v0.373.0 CODE MODE (Phase 4 of "any world-complex website": her site's real code, like Lovable / Bolt)
 Owner: "START PHASE 4" (the plan's step: "Real React code you can open, edit in chat ('make the pricing table compare 3
 plans') and export").
 - The site's code IS its sections (HTML + section-scoped CSS + an optional small script) and its design kit (.k-*,
@@ -13471,4 +13511,4 @@ plans') and export").
 - Console Studio tab "Code": file list by page, editor with line numbers (Tab = 2 spaces, Ctrl/Cmd+S saves, unsaved
   warning), "Ask Hoola to change this file" -> polled job -> coloured diff + what the cleaner removed, Undo, Download
   React project / ZIP (v0.305 export into her files). Phone: not in this version (code editing is a computer job).
-- Tests `server/tests/test_v0372_code_mode.py`.
+- Tests `server/tests/test_v0373_code_mode.py`.

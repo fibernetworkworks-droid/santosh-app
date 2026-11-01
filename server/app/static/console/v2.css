@@ -2082,7 +2082,7 @@ body.albon{overflow:hidden}
 .btn.soft.danger{color:var(--bad)}
 .stblog .sted-kind small{color:var(--mut)}
 
-/* v0.372 CODE MODE: the studio's Code tab (files, editor with line numbers, ask box, diff) */
+/* v0.373 CODE MODE: the studio's Code tab (files, editor with line numbers, ask box, diff) */
 .stcode{display:grid;gap:12px}
 .stcode-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
 .stcode-bar p{margin:0;color:var(--mut);font-size:13.5px;max-width:72ch}

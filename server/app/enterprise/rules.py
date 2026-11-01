@@ -57,12 +57,20 @@ ROLES: dict[str, dict[str, Any]] = {
     },
     "tpm": {
         "label": "Technical Product Manager",
-        "say": "roadmap, milestone, risk aur hafte ka status note; har owner se update maangna",
-        "systems": ["sheet", "composio"],
-        "artifacts": ["plan", "report", "register"],
-        "writes": False,
+        "say": ("engineering ki taraf ka kaam: team-to-team dependency, architecture ka faisla, NFR, technical "
+                "debt, capacity, release train, RAID aur incident ka peechha - har owner se update lekar"),
+        "systems": ["composio", "sheet"],
+        "artifacts": ["plan", "report", "register", "spec", "matrix", "checklist", "runbook", "mapping", "sop"],
+        "writes": True,
         "cap": "",
-        "rules": ["Aapki taraf se kisi ko tareekh ka vaada nahi kiya jaata: Hoola sirf report karta hai."],
+        "rules": [
+            "Aapki taraf se kisi ko tareekh ka vaada nahi kiya jaata: Hoola poochta hai aur report karta hai.",
+            # The product side already has a far richer home. Saying so here is what stops two tools doing one job.
+            "Discovery, RICE / ICE scoring, PRD aur release notes `product` tool ka kaam hai - yahan sirf "
+            "engineering ki taraf: dependency, architecture, NFR, debt, capacity, release train, risk.",
+            "Tracker (Jira / Linear / Asana) mein har badlav aapki haan se - padhna khula hai.",
+            "Jo team ne khud nahi kaha, woh status Hoola nahi likhta: 'update nahi aaya' likha jaata hai.",
+        ],
     },
     "bpa": {
         "label": "Process Automation Architect",
@@ -238,6 +246,35 @@ JOBS: dict[str, dict[str, dict[str, Any]]] = {
                         "papers": ["training", "sop", "report"]},
         "support":     {"label": "User support", "say": "user ke sawaal, bug, 'yeh kaise hota hai', SLA",
                         "papers": ["register", "report", "sop"]},
+    },
+    # The TPM desk. It deliberately does NOT repeat the product side (discovery, scoring, PRDs, releases) - that
+    # lives in the far richer `product` tool. What is here is the engineering layer a technical PM actually holds:
+    # what blocks what, what was decided and why, what must be true to ship, and what is owed.
+    "tpm": {
+        "roadmap":      {"label": "Technical roadmap", "say": "ab / aage / baad mein - team ke paar, engineering ki nazar se",
+                         "papers": ["plan", "report"]},
+        "dependencies": {"label": "Dependency aur critical path", "say": "kaun kis par ruka hai, aur sabse lamba raasta",
+                         "papers": ["matrix", "report", "register"]},
+        "architecture": {"label": "Architecture ke faisle", "say": "kya tay hua, kyun, aur kya chhoda gaya (ADR)",
+                         "papers": ["spec", "register", "report"]},
+        "nfr":          {"label": "NFR", "say": "speed, scale, uptime, security - shipping se pehle kya sach hona chahiye",
+                         "papers": ["spec", "checklist", "report"]},
+        "debt":         {"label": "Technical debt", "say": "kya udhaar pada hai, uska byaaj, aur chukane ka plan",
+                         "papers": ["register", "plan", "report"]},
+        "capacity":     {"label": "Capacity", "say": "team ke paas kitna waqt hai aur kitna vaada ho chuka hai",
+                         "papers": ["report", "plan", "matrix"]},
+        "release":      {"label": "Release train", "say": "kis release mein kya, go / no-go, kaun sign karega",
+                         "papers": ["checklist", "runbook", "plan"]},
+        "risk":         {"label": "RAID", "say": "risk, assumption, issue, dependency - ek jagah, har ek ka maalik",
+                         "papers": ["register", "report"]},
+        "vendor":       {"label": "Banayein ya khareedein", "say": "build vs buy, vendor ki tulna, kya chhoot raha hai",
+                         "papers": ["report", "matrix", "spec"]},
+        "incident":     {"label": "Incident ka peechha", "say": "post-mortem ke baad jo kaam bacha - band hone tak",
+                         "papers": ["register", "report", "sop"]},
+        "metrics":      {"label": "Delivery ke number", "say": "lead time, escaped defect, kitna vaada vs kitna hua",
+                         "papers": ["report", "mapping"]},
+        "status":       {"label": "Status aur escalation", "say": "hafte ka note, kya ruka hai, kise batana hai",
+                         "papers": ["report", "sop"]},
     },
 }
 

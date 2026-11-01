@@ -2319,10 +2319,10 @@ def undo_edit(tenant: str, ref: str) -> dict[str, Any]:
     if last["kind"] == "theme":
         look = _j(r.look, {})
         _save(r.id, look={**look, "tokens": last["before"]})
-    elif last["kind"] == "kit":               # v0.372 her own design-kit code
+    elif last["kind"] == "kit":               # v0.373 her own design-kit code
         look = _j(r.look, {})
         _save(r.id, look={**look, "kit": {**(look.get("kit") or {}), "css": last["before"]}})
-    elif last["kind"] == "multi":             # v0.372 one code change that touched several sections
+    elif last["kind"] == "multi":             # v0.373 one code change that touched several sections
         for k, before in last["befores"].items():
             _put_sec(r, k, before)
     else:
@@ -2719,7 +2719,7 @@ def blog_tick() -> int:
     return n
 
 
-# ---------------------------------------------------------------- v0.372 CODE MODE (site/code.py)
+# ---------------------------------------------------------------- v0.373 CODE MODE (site/code.py)
 def _code_dir(r: Site) -> Path:
     return B.site_dir(r.tenant_id, r.id) / "code_tasks"
 

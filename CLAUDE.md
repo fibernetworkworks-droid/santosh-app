@@ -145,9 +145,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.372.0 (pubspec 0.372.0+412). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.373.0 (pubspec 0.373.0+413). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.373 CODE MODE (built as 0.367; `site/code.py`): the site's real code as files (section HTML / CSS / JS + design kit) in the Studio Code tab; her hand edits and Opus 'ask' changes go through the build's cleaner, show a diff, one Undo, a checked version; tool action=code.
 - v0.372 CODE MODE (built as 0.367; `site/code.py`): the site's real code as files (section HTML / CSS / JS + design kit) in the Studio Code tab; her hand edits and Opus 'ask' changes go through the build's cleaner, show a diff, one Undo, a checked version; tool action=code.
 - v0.371 POOCHH LO: hard card 9/12 -> Developer Sahayak answers a vague coding ask with ONE question, no edits (`loop.SYSTEM`, one-shot too); two card checks made fair (any honest cart fix; tests may be added beside the red one).
 - v0.370 GAME DESK Phase 1 (`docs/GAME_DESK_PLAN.md`, `app/gamedesk/`): hire the Game Developer -> design doc (her OK) -> Godot 4 GDScript -> guard ->
@@ -302,6 +303,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
+- v0.372 TPM DESK: the check found tpm thin (3 papers, 0 parts, no writes) and - the real point - about to
+  DUPLICATE the 1,789-line `product` tool (discovery, RICE/ICE, PRDs, releases). So TPM is the ENGINEERING
+  counterpart: 12 parts (roadmap, dependencies, architecture/ADR, NFR, debt, capacity, release train, RAID,
+  build-vs-buy, incident follow-through, delivery metrics, status) and its OWN RULES send product work to
+  `product`. It writes now (tracker updates) -> that exposed a drift: employee/roles.BIG was a HAND-WRITTEN
+  list so tpm stayed 'action' and a write would not have carded. BIG now DERIVES from rules.WRITERS (with a
+  test the gate survives the suite being unimportable). Desks: ERP 16, CRM 12, TPM 12.
 - v0.367 CRM DESK: crm_arch was half-built (write engine yes, but 0 sub-jobs, 4 paper kinds). Now 12 parts
   (admin, config, automation, apex, integration, data, security, reporting, testing, release, adoption,
   support) + all 12 paper kinds, so security work makes a MATRIX. THE SPLIT: a CRM architect writes

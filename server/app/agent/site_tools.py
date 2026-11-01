@@ -156,7 +156,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.design_app(t, site, str(a.get("instruction") or ""), conv)
     if action == "language":
         return S.set_language(t, site, str(a.get("second") or ""))
-    if action == "code":                         # v0.372 CODE MODE (a site job; the diff shows in the Code tab)
+    if action == "code":                         # v0.373 CODE MODE (a site job; the diff shows in the Code tab)
         return S.code_ask(t, site, str(a.get("instruction") or ""), str(a.get("file") or ""), conv)
     if action == "languages":                    # v0.366 BHASHAYEN
         return S.set_languages(t, site, a.get("languages") if isinstance(a.get("languages"), list) else [])
@@ -281,7 +281,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         r = SC.report(t, site, int(a.get("days") or 30))
         r.pop("site", None)
         return r
-    if what == "code":                            # v0.372 CODE MODE
+    if what == "code":                            # v0.373 CODE MODE
         if a.get("file"):
             return S.code_read(t, site, str(a.get("file")))
         return S.code_tree(t, site)
