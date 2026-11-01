@@ -80,6 +80,11 @@ phone) = after the VPS deploy and the next app build. Not built: WebSocket (SSE 
 - Kits: live list / live value components; offline outbox stays the source of truth.
 
 ### D. Maps, location, live tracking — Phases 50–51
+**Status: BUILT in v0.412.0 NAKSHA LIVE** (`server/app/appmaker/track.py`, kits `Track.kt` / `Track.swift`) — her switch, staff
+shifts with the required notice, one current position (wiped at shift end), the customer sees only her own rider while the order
+is on its way, ETA estimate, near / arrived geofences, riders map in the console. Maps: MapLibre + OpenFreeMap (no key) on
+Android + console, Apple Maps on iPhone. Not built: Google Maps SDK with her key, road-snapped routes / real road ETA (needs a
+routing service), "left" geofence. Proof (food delivery rider demo) = after the next app build on real phones.
 - Live map component (Google Maps SDK with HER key, or MapLibre with an approved tile provider), markers, routes, ETA.
 - Partner location sharing: user-started foreground service with the Play-required disclosure, battery-aware, stops on
   shift end; geofences (arrived / left); customer sees the rider moving.

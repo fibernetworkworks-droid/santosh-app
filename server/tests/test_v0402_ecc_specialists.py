@@ -122,14 +122,15 @@ def test_the_review_card_runs_both_modes(monkeypatch):
                 self.spot = None
             return super().__call__(system, messages, tools)
     monkeypatch.setattr(L, "BRAIN", Smart())
+    from app.config import get_settings
+    before = get_settings().dev_spec_review
     cd = RC.card(only=["delivery_off_by_one", "clean_refactor"], parallel=1)
     old, new = cd["modes"]
     assert (old["mode"], new["mode"]) == ("old", "new")
     assert old["caught"] == 0 and new["caught"] == 1 and old["quiet"] == new["quiet"] == 1
     text = "\n".join(RC.lines(cd))
     assert "new vs old: +1 right" in text and "MISS [old] delivery_off_by_one - missed the bug" in text
-    from app.config import get_settings
-    assert get_settings().dev_spec_review is False                                             # the switch is put back
+    assert get_settings().dev_spec_review is before                                            # the switch is put back
 
 
 
@@ -154,7 +155,7 @@ def test_the_fix_card_spec_switch(monkeypatch):
 def test_jobs_settings_and_credit():
     from app.config import Settings
     s = Settings()
-    assert s.dev_spec_review is False and s.dev_spec_fix is False                               # off until the cards say so
+    assert s.dev_spec_review is True and s.dev_spec_fix is True                                 # on since the cards (v0.410)
     yml = (ROOT / ".github/workflows/vps-ops.yml").read_text()
     assert "- review_card" in yml and "- fix_card_spec" in yml and "app.quality review --label vps-ops" in yml
     notes = (ROOT / "THIRD_PARTY_NOTICES.md").read_text()

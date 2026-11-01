@@ -362,6 +362,10 @@ def data_safety(r: AppProject) -> list[dict[str, Any]]:
         out.append({"type": "Personal info > Address", "why": "Delivery / visit", "optional": True})
     if "location" in types:
         out.append({"type": "Location > Approximate + Precise location", "why": "Only when you tap 'Use my location'", "optional": True})
+    if BE.ensure(r).get("track", {}).get("on"):           # v0.412 NAKSHA LIVE: staff share location during a shift
+        out.append({"type": "Location > Approximate + Precise location (staff on shift)",
+                    "why": "Live delivery tracking: only while a staff member's shift is on, shown to the customer whose order it is",
+                    "optional": True})
     if "photo" in types:
         out.append({"type": "Photos and videos > Photos", "why": "Only photos you choose to attach", "optional": True})
     if BE.schema(r).get("order"):

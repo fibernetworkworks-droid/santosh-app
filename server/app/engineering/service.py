@@ -325,6 +325,17 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
             out.append({"name": "Robot description (URDF)", "ok": not bad,
                         "note": f"{kin['urdf']['links']} links, {kin['urdf']['joints']} joints"
                                 + (f", failing: {', '.join(r['check'] for r in bad)}" if bad else "")})
+            for r in kin.get("torque") or []:          # v0.409 the motor each joint needs
+                out.append({"name": f"Joint {r['joint']} {'torque' if r['unit'] == 'N·m' else 'force'}",
+                            "ok": bool(r["ok"]),
+                            "note": f"needs {r['need']:.3g} {r['unit']} (gravity {r['static']:.3g}"
+                                    + (f" + acceleration {r['dynamic']:.3g}" if r["dynamic"] else "") + ")"
+                                    + (f", limit given {r['given']:.3g}" if r.get("given") is not None else
+                                       f", limit set to {r['need'] * 1.5:.3g} (x 1.5)")})
+            for fb in kin.get("fourbar") or []:
+                out.append({"name": f"Four-bar {fb['loop']}", "ok": bool(fb["ok"]),
+                            "note": f"{fb['grashof']}; links {fb['links_mm']}; min transmission angle "
+                                    f"{fb['min_transmission_deg']}° (>= 40° wanted)"})
             for r in kin.get("range") or []:
                 hits = r.get("collides") or []
                 out.append({"name": f"Joint {r['joint']} range", "ok": not hits,
@@ -550,6 +561,12 @@ def _run(pid: str) -> None:
                 chk, probs = checks(res, d.get("size") or [])
                 kin = res.get("kinematics") or {}
                 hits = [r for r in kin.get("range") or [] if r.get("collides")]
+                weak_m = [r for r in kin.get("torque") or [] if not r.get("ok")]
+                if not probs and weak_m and kin_rounds > 0 and attempt < MAX_FIXES:
+                    kin_rounds -= 1
+                    probs = [f"mechanism: joint {r['joint']} needs {r['need']:.3g} {r['unit']} but her motor gives "
+                             f"{r['given']:.3g}: make the links lighter / shorter or move mass toward the joint "
+                             "(keep her effort numbers)" for r in weak_m]
                 if not probs and hits and kin_rounds > 0 and attempt < MAX_FIXES:
                     kin_rounds -= 1
                     probs = [f"mechanism: joint {r['joint']} can only move {r['free'][0]:g} .. {r['free'][1]:g} {r['unit']} "

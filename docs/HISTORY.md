@@ -15423,7 +15423,92 @@ Real time for every native app, instead of the 10-second chat poll and pull-to-r
 - Not verified: no real phone yet (CI compiles the kits); nginx must not buffer: the route sends `X-Accel-Buffering: no`.
   WebSocket not built (SSE + one POST covers it).
 
-## v0.410.0 PRINCIPAL SOFTWARE ARCHITECT - the first of ten Software Architecture, Engineering & Core Systems employees (1 Nov 2026, owner: "Principal Software Architect ---- START THE WORK"; built as 0.401)
+## v0.410.0 ECC ON (owner: "ECC CARDS DONE, CHECK RESULT")
+The two ECC Phase 1 cards ran on the live server (claude-opus-5-5) and decided the switches.
+- review_card (12 PRs x1, 3.2 min):
+  - old: 10/12 right, caught 8/8, quiet on 2/4 clean, 8 false alarms, 3 nits, verdicts 10/12, 4.2 steps;
+  - new: 10/12 right, caught 8/8, quiet on 2/4 clean, 4 false alarms, 0 nits, verdicts 11/12, 9.7 steps;
+  - same bugs caught, half the false alarms, no nitpicks, one more right verdict, about 2.3x the steps.
+- fix_card_spec: set 2 fix jobs 6/6 and set 3 fix jobs 6/6 with the fixer specialist (every fix test proves its bug), the
+  same as without it. No harm.
+- So `dev_spec_review` and `dev_spec_fix` are now True by default (config.py).
+- Still open: both modes leave ONE medium / high comment on clean_search_parameterised and on clean_invoice_checked. The
+  card kept only counts, so it is not yet known whether those comments are wrong or fair minor points (e.g. LIKE wildcard
+  characters, a phone number in the result). The card rows now keep what each false alarm SAID (`alarms`, printed under
+  each MISS), so the next run answers that.
+- One run, k=1: a single-run result; `--k 3` gives pass@k numbers.
+- Tests: the v0.377 review suite pins the old single pass (autouse fixture); test_v0402_ecc_specialists asserts the new
+  defaults and that the card restores whatever the switch was.
+
+## v0.411.0 HOOLA MECHANISMS 2 (1 Nov 2026)
+Owner, on the v0.408 "not done yet" list: "SDF/MJCF formats for other simulators, closed-loop linkages (four-bar),
+joint torque calculated from loads, gear/belt coupling between joints, and the MoveIt self-collision file (SRDF)
+--- fix and devlope". `engineering/kinematics.py` rewritten around a Mech class (independent joints -> couplings
+-> loop solve -> part motions).
+- LOOPS: a joint whose child already has a parent (or closure=True) closes a loop. The passive joints of each loop
+  are solved by scipy least squares on the closure joint (its point from both sides + its axis from both sides),
+  walked from the zero pose in steps so the linkage stays on its branch. No solution = it LOCKS there (dead point /
+  out of reach) - reported in the range rows. No driver marked -> the first joint at the ground drives (said).
+  Four-bar: link lengths, Grashof class (crank-rocker / double crank / double rocker / rocker-crank / change point /
+  triple rocker) and the minimum transmission angle over the motion (>= 40° wanted) - test linkage 20/70/50/80:
+  crank-rocker, 57.1° = the analytic cos(mu) formula, link lengths kept to 1e-3 mm; a non-Grashof one locks.
+- COUPLINGS: H.couple(follower, leader, ratio | teeth=(z_leader, z_follower), offset) -> follower = ratio x leader
+  everywhere; URDF <mimic>, SDF 1.11 <mimic> in <axis>, MJCF <equality><joint polycoef>.
+- TORQUE: holding torque / force of each independent joint = |dV/dq| of gravity + payload potential (loops solved
+  inside), worst over a pose grid (<= 3 joints: 7-9 per axis) or 250 random poses; + I_axis x alpha when
+  H.robot(accel_deg_s2=) (open chains). Matches the arm's beam statics to 1 % and MuJoCo's qfrc_bias to 0.1 %.
+  Effort = her number (checked; too weak -> one redesign round) else need x 1.5.
+- PACKAGE robot_urdf.zip: robot.urdf (tree, loops listed in a comment), robot.srdf (arm chain, end_effector group,
+  zero group_state, disable_collisions Adjacent / Default / Always / Never from 40 sampled poses, passive joints),
+  robot.sdf (world-fixed root, joint poses in the child frame, loops as joints), robot.xml (MJCF: nested bodies,
+  inertiafromgeom false, loops as <connect>, couplings as joint equality, a motor per independent joint) + meshes.
+  Checks: all four parse, URDF tree, physical inertias, limits, SRDF + SDF name real links, and MuJoCo compiles the
+  MJCF when installed (`pip install mujoco`, optional, Apache-2.0).
+- Sanity: every moving joint's pin (its axis line) must pass near both of its parts - a pin drawn in the wrong place
+  is named; fixed joints exempt. Prismatic motion fixed to mm (q in m x 1000).
+- Tests: tests/test_v0409_mechanisms2.py (7) + v0406 (5). Not yet: spatial (non-planar) loop analysis beyond
+  closure, cam / slot joints, dynamic simulation inside Hoola.
+
+## v0.412.0 NAKSHA LIVE (App Sahayak Pillar D, Phases 50-51 — owner: "START PILLAR D"; built as 0.410, re-versioned on rebase)
+Maps, a rider's location while on shift, and live tracking of one order.
+- Server `server/app/appmaker/track.py` + table `app_rider` (registered in db.init_db + ensure_table):
+  - Her switch: `backend.track = {on, coll, statuses}` (GET/PUT `/api/apps/<ref>/track`). The default list is the order list
+    with statuses Out for delivery / In progress / Confirmed; only real status options are accepted. `seed_hint` and the
+    public schema carry `track` only while it is on.
+  - Shifts: POST `/api/app-api/<key>/track/shift {on}`, staff only, and only after her switch (409 otherwise).
+    GET `/track/me`. A shift left on counts as ended after 14 h. Ending a shift wipes the position.
+  - Positions: POST `/track/pos {lat, lng, acc?, speed?, heading?}`, only during a shift. Values are checked, 0,0 is refused,
+    accuracy above 1 km is dropped, at most 1 point every 2 s. Only ONE current point is kept; no trail is stored.
+  - Each move: the rider's on-the-way rows (`_to` = rider, status in her list, updated in the last 3 days) get distance +
+    ETA. Geofences write `_near` (500 m) and `_arrived` (100 m) once each through `_merge`, so they are journaled and go
+    live. A LiveSignal kind `pos` (new nullable `data` column) carries the point + {row: {to: customer, km, eta}}.
+  - `live.pos_event`: staff / the owner get every rider (member id + order ids). A customer gets only the rows whose `to`
+    is her, with the rider shown as "rider" and a first name. `Hub.signal` routes `pos` apart from presence.
+  - GET `/track/c/<coll>/<id>`: her own row (or staff / owner). Returns tracking, why (off / not_on_the_way / no_rider /
+    no_position), rider {name, lat, lng, fresh}, km, eta_min, eta_note "estimate", near, arrived, dest.
+    ETA = haversine x 1.35 at the rider's speed (5-90 km/h), else 18 km/h.
+  - GET `/track/riders`: staff only.
+- Maps: MapLibre GL JS 4.7.1 vendored at `static/vendor/maplibre` (BSD-3, THIRD_PARTY_NOTICES) with OpenFreeMap tiles
+  (free, no key). The console CSP allows tiles.openfreemap.org.
+- Android `Track.kt`:
+  - TrackService: a foreground service of type location with an ongoing notification. LocationManager GPS + network,
+    15 m distance filter, every 5 s while moving and 30 s after 2 min standing. It stops on 401/403/409.
+  - Manifest: FOREGROUND_SERVICE(_LOCATION) + fine/coarse location, only when tracking is on. Never background location.
+  - ShiftBlock: the prominent notice, then the system dialog (+ notifications permission on 33+). It says "update the
+    app" when the build does not declare the service.
+  - LiveMap: a WebView loading the map library from her server (loadDataWithBaseURL).
+  - TrackOrderBlock, RidersMap, and a TrackButton on row cards.
+- iPhone `Track.swift`: CLLocationManager (when-in-use only; background updates + the blue pill when the build adds
+  UIBackgroundModes location), with the same blocks on Apple Maps. `info_plist` adds the location mode and the shift
+  wording only when tracking is on.
+- Store answers: Play data safety and App Privacy gain "Location (staff on shift)" when tracking is on.
+- Console: a Live tracking box (list + statuses + on/off) and a riders map that moves with the live stream's `pos`
+  events. Phone: `lib/ui/app_track.dart` (switch + riders list, open in Maps).
+- Tests: tests/test_v0412_track.py (3): the end-to-end flow, builds + store answers, kits + vendored files.
+- Not built / not verified: the Google Maps SDK with her key, road-snapped routes and real road ETA (they need a routing
+  service), a "left" geofence. No real phone or emulator run yet: CI compiles the kits.
+
+## v0.413.0 PRINCIPAL SOFTWARE ARCHITECT (built as 0.401 / 0.410) - the first of ten Software Architecture, Engineering & Core Systems employees (1 Nov 2026, owner: "Principal Software Architect ---- START THE WORK"; built as 0.401)
 - PLAN `docs/SOFTWARE_DESK_PLAN.md` (10 roles, where each runs, honest limits, phases). Hub group `hire.SW_GROUP` with
   `architect` live and compiler_eng / kernel_dev / graphics_eng / dbengine_dev / distsys_eng / hypervisor_eng /
   lowlatency_eng / mainframe_arch / refactor_eng "coming".
@@ -15450,4 +15535,4 @@ Real time for every native app, instead of the 10-second chat poll and pull-to-r
   ArchDesignScreen), `employees_screen.dart` opens it, `api.dart` arch* methods.
 - FIX: `POST /api/game` started a game for anyone with the key - it now checks the Game Developer hire (the tool did).
 - Tests NEW `test_v0410_architect.py` (16) incl. a REAL Mermaid render in Chromium when present; test_v0370 updated
-  (hire before POST /api/game, employees.js export). Version 0.410.0 (pubspec 0.410.0+454, console ?v=0.410.0, pins).
+  (hire before POST /api/game, employees.js export). Version 0.413.0 (pubspec 0.413.0+457, console ?v=0.413.0, pins).

@@ -710,7 +710,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const FILEN = [['part.step', 'STEP (CAD / CNC)'], ['part.stl', 'STL (3D print)'], ['part.3mf', '3MF (3D print)'], ['part.glb', 'GLB (3D viewer / AR)'],
                  ['section.dxf', 'DXF section (laser / CNC)'], ['drawing.pdf', 'Drawing PDF'], ['part.py', 'CadQuery code'],
                  ['analysis.pdf', 'Analysis report PDF'], ['part.nc', 'CNC G-code'], ['flat.dxf', 'Flat pattern DXF'],
-                 ['robot_urdf.zip', 'Robot URDF (ROS)']];
+                 ['robot_urdf.zip', 'Robot package (URDF / SRDF / SDF / MJCF)']];
   const b64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = no; r.readAsDataURL(f); });
   async function cad(el) {
     clearTimeout(CTIMER);
