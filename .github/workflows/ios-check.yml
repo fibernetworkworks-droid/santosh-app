@@ -127,3 +127,53 @@ jobs:
             ios-shots/flows.log
             ${{ runner.temp }}/ios/release.log
           if-no-files-found: ignore
+
+  fixture2:
+    # v0.351 PAKKA SABOOT: the field-service STAFF app (Hindi + English, every newer field kind), generator only:
+    # compiled, every screen opened and every button tapped on an iPhone simulator
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate + XcodeGen
+        run: |
+          brew install xcodegen > /dev/null 2>&1 || true
+          python3 server/app/appmaker/ios/gen.py server/app/appmaker/android/fixture2/spec.json "$RUNNER_TEMP/ios2"
+          cd "$RUNNER_TEMP/ios2" && xcodegen generate --quiet
+      - name: Build (simulator)
+        working-directory: ${{ runner.temp }}/ios2
+        run: |
+          set -o pipefail
+          P=$(ls -d *.xcodeproj | head -1)
+          xcodebuild -project "$P" -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | grep -E "error:|BUILD" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Swift errors as annotations
+        if: failure()
+        run: grep -E "error:" "$RUNNER_TEMP/ios2/build.log" | sort -u | head -60 | while IFS= read -r l; do echo "::error::${l}"; done
+      - name: Every screen + every button on an iPhone simulator
+        working-directory: ${{ runner.temp }}/ios2
+        run: |
+          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ios2-shots" $(cat hoola_qa/screens.txt)
+          bash hoola_qa/flow_check.sh "$GITHUB_WORKSPACE/ios2-shots"
+      - name: HOOLA QA report (field-service app)
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          r = json.load(open("ios2-shots/report.json"))
+          fl = r.get("flows") or {}
+          print(json.dumps({k: r.get(k) for k in ("opened", "total", "crashed", "perf")}, indent=1), json.dumps(fl)[:1500])
+          if not r["passed"] or r["total"] < 12 or not fl.get("tapped") or fl.get("crashed"):
+              print("::error::field-service app check failed")
+              sys.exit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-fixture2
+          path: |
+            ios2-shots
+            ${{ runner.temp }}/ios2/build.log
+          if-no-files-found: ignore

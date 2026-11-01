@@ -12836,3 +12836,17 @@ apps: Android hands off to Google Maps through Google's official Maps URLs, iPho
 - Both model guides list StopsBlock; generators add it as above.
 - Tests: `test_v0350_naksha.py` (3).
 - Not verified: Google Maps / Apple Maps hand-off on a real phone (the emulator / simulator have no Maps app sign-in).
+
+## v0.351.0 PAKKA SABOOT (App Sahayak Phase 15, owner: "START PHASE 15")
+Phases 8-14 were each proven on the first CI app (the shop fixture). Phase 15 proves them TOGETHER on an app nobody
+hand-wrote: `android/fixture_make2.py` writes `android/fixture2/spec.json` = "Kumar Field Service", a field-service STAFF app
+made only by the generator (`screens_kt` empty -> every screen code-made), starting in Hindi with English as the second
+language (a fixed 32-word BHASHA table, so CI needs no model).
+- One list `jobs` carries every field kind added after Phase 8: text, phone, long text, location (NAKSHA), scan (Phase 8),
+  photo, PDF file (KAAGAZ), work choice, admin-only status choice.
+- Screens home / jobs / new_job (the form with all kinds) / route (-> StopsBlock) / dashboard (-> StatsBlock) / profile.
+- CI: new `fixture2` job in `appgen-check.yml` (debug + release build, emulator device check with the flow walk; gate
+  >= 12 screens, taps > 0, no crash) and in `ios-check.yml` (generate, XcodeGen, simulator build, sim_check + flow_check,
+  same gate). `tests/test_v0351_pakka_saboot.py`: the spec is current, generates on both platforms with StopsBlock /
+  StatsBlock and the Hindi table, and both workflows walk it.
+- Not verified: a real phone (CI emulator / simulator only); the Hindi words are a fixed table, not an Opus run.
