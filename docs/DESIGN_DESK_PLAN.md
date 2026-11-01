@@ -249,10 +249,14 @@ existed but 500'd. So:
 
 ## 8b. A sourcing caveat to carry into the job list
 
-Two independent researchers could **not** retrieve the NCO-2015 occupation-code tables — every official
+**Partly solved.** Two researchers could **not** retrieve the NCO-2015 occupation-code tables — every official
 mirror (labour.gov.in, dge.gov.in, ncs.gov.in) returned 404, a reset, or a redirect. NCO-2015 aligns to
 ISCO-08 at the 4-digit family level, so families are reliable; **8-digit NCO titles are NOT VERIFIED and
-will be marked as such** rather than printed as fact. Also: building permission, fire, lifts, trees,
+will be marked as such** rather than printed as fact — EXCEPT for the trades, where a third
+researcher found the codes a different way: every CSDCI/IESC **Qualification Pack PDF prints its own
+NCO-2015 alignment code**, so trade codes are sourced from the QP itself and are reliable. The lesson is
+worth keeping: when the official index is unreachable, the code may still be printed on a document that
+cites it. Also: building permission, fire, lifts, trees,
 structural audit and society law are **state subjects** — nothing is uniform nationally, and the job list
 will use Maharashtra/MahaRERA + MoHUA's Model Building Bye-Laws 2016 as the worked example and say so.
 
