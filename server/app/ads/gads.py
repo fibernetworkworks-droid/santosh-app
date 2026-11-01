@@ -117,9 +117,10 @@ def _j(s: str | None, default):
 
 
 def configured() -> bool:
+    """Google sunset developer tokens on 9 Sep 2026: access levels now belong to the Google Cloud project that owns the
+    OAuth client (Google Ads API Overview page). The token is optional (sent when set, ignored by Google)."""
     st = get_settings()
-    return bool(st.google_ads_developer_token and st.google_oauth_client_id and st.google_oauth_client_secret
-                and st.public_base_url)
+    return bool(st.google_oauth_client_id and st.google_oauth_client_secret and st.public_base_url)
 
 
 # ---------------------------------------------------------------- connecting (Google sign-in with adwords)
@@ -131,7 +132,7 @@ def connect_url(tenant: str) -> str:
     from .. import accounts as acc
     from ..mailbox import accounts as mail_acc
     if not configured():
-        raise GAdsError("Server par Google Ads abhi set nahi hai (.env: GOOGLE_ADS_DEVELOPER_TOKEN + Google sign-in).")
+        raise GAdsError("Server par Google sign-in abhi set nahi hai (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL).")
     st = get_settings()
     state = "gad_" + secrets.token_urlsafe(24)
     ensure_tables()
@@ -212,8 +213,9 @@ def _call(tenant: str, method: str, path: str, body: dict | None = None) -> dict
     st = get_settings()
     for attempt in (0, 1):
         token, a = _token(tenant, force=attempt == 1)
-        headers = {"Authorization": f"Bearer {token}", "developer-token": st.google_ads_developer_token,
-                   "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        if st.google_ads_developer_token:                 # optional since Google's 9 Sep 2026 change
+            headers["developer-token"] = st.google_ads_developer_token
         if st.google_ads_login_customer_id:
             headers["login-customer-id"] = re.sub(r"\D", "", st.google_ads_login_customer_id)
         c = _http or httpx.Client(timeout=60)
@@ -243,9 +245,10 @@ def _error_text(r: httpx.Response) -> str:
             for e in d.get("errors") or []:
                 m = e.get("message") or ""
                 code = ",".join(f"{k}={v}" for k, v in (e.get("errorCode") or {}).items())
-                if "DEVELOPER_TOKEN_NOT_APPROVED" in code or "not approved" in m.lower():
-                    return ("Google Ads: Hoola ka developer token abhi sirf test accounts ke liye hai (Basic access approval "
-                            "baaki). Asli account par yeh tab chalega jab Google approve karega.")
+                if ("DEVELOPER_TOKEN_NOT_APPROVED" in code or "not approved" in m.lower() or "test account" in m.lower()
+                        or "access level" in m.lower()):
+                    return ("Google Ads: Hoola ke Google Cloud project ka API access abhi sirf test accounts ke liye hai "
+                            "(Explorer / Basic access approval baaki). Asli account par yeh tab chalega jab Google approve karega.")
                 msgs.append(m + (f" ({code})" if code else ""))
         return "Google Ads: " + ("; ".join(msgs)[:400] if msgs else str(err.get("message") or r.text[:300]))
     except ValueError:

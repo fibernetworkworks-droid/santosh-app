@@ -36,7 +36,7 @@ def google_handler(req: httpx.Request) -> httpx.Response:
 def ads_handler(req: httpx.Request) -> httpx.Response:
     u = str(req.url)
     path = urlparse(u).path
-    assert req.headers.get("developer-token") == "DEVTOKEN" and req.headers.get("authorization", "").startswith("Bearer GA_ACCESS")
+    assert req.headers.get("developer-token") == STATE.get("devtoken", "DEVTOKEN") and req.headers.get("authorization", "").startswith("Bearer GA_ACCESS")
     if path == "/v26/customers:listAccessibleCustomers":
         return httpx.Response(200, json={"resourceNames": ["customers/1112223333", "customers/9998887777"]})
     if path.endswith("/googleAds:search"):
@@ -122,12 +122,24 @@ def _video_row(D, vid="AbCdEfGhIjK"):
 
 def test_not_configured_says_so(social, monkeypatch):
     from app.ads import gads as G
-    monkeypatch.setenv("GOOGLE_ADS_DEVELOPER_TOKEN", "")
+    monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", "")
     from app.config import get_settings
     get_settings.cache_clear()
     assert G.view(T)["configured"] is False
     with pytest.raises(G.GAdsError):
         G.connect_url(T)
+
+
+def test_no_developer_token_needed_since_sep_2026(ga, monkeypatch):
+    """Google sunset developer tokens (9 Sep 2026): access belongs to the Cloud project; the header goes only when set."""
+    D, G = ga
+    monkeypatch.setenv("GOOGLE_ADS_DEVELOPER_TOKEN", "")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    STATE["devtoken"] = None
+    assert G.configured() is True
+    _connect(D, G)
+    assert G.view(T)["account"]["customer_id"] == "1112223333"
 
 
 def test_connect_lists_accounts_and_skips_the_manager(ga):
@@ -227,7 +239,7 @@ def test_not_approved_token_is_said_plainly(ga):
     STATE["not_approved"] = True
     with pytest.raises(G.GAdsError) as e:
         G.read(T)
-    assert "test accounts" in str(e.value) and "Basic access" in str(e.value)
+    assert "test accounts" in str(e.value) and "Basic access" in str(e.value) and "Google Cloud project" in str(e.value)
 
 
 def test_routes(ga):

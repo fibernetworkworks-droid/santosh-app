@@ -15142,3 +15142,9 @@ text checked byte for byte against ECC's LICENSE). Built as 0.396 / 0.400, re-ve
   - `test_v0402_ecc_ci_round.py`: a red CI round gets the fixer only when switched on.
 - Found by the tests while building: the security pass first missed the SQL-injection PR (the sensitive-word list had
   `sql` but not `execute` / `select` / `sqlite3`); widened, plus personal-data words.
+
+- (follow-up, same day) Google SUNSET developer tokens on 9 Sep 2026: Google Ads API access levels now belong to the Google
+  Cloud project that owns the OAuth client (Cloud Console > Google Ads API Overview page: enable = Test, "Upgrade access
+  level" > Explorer (2,880 ops/day on real accounts) > Basic after OAuth brand verification). `gads.configured()` no longer
+  needs GOOGLE_ADS_DEVELOPER_TOKEN; the header is sent only when set; the not-approved message names the Cloud project's
+  access level. The API Center "Apply for Basic Access" form is only for the App Conversion Tracking API now.

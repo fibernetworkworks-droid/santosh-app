@@ -437,7 +437,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     try { v = await api('GET', '/api/social/ytads'); }
     catch (e) { box.innerHTML = `<div class="em-h"><h3>YouTube ads</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
     const head = `<div class="em-h"><h3>YouTube ads</h3><span class="muted em-small">Your own Google Ads account. An ad is made paused; money is spent only after you tap Start.</span></div>`;
-    if (!v.configured) { box.innerHTML = head + '<div class="empty">Not set up on the server yet (Google Ads developer token).</div>'; return; }
+    if (!v.configured) { box.innerHTML = head + '<div class="empty">Not set up on the server yet (Google sign-in).</div>'; return; }
     const a = v.account;
     if (!a) { box.innerHTML = head + '<button class="btn go" type="button" id="ytConn">Connect Google Ads</button>'; wireYt(el, box, v); return; }
     const pick = !a.customer_id ? `<p class="em-small">Which ad account runs your YouTube ads?</p><div class="acts">${(a.customers || []).filter(c => !c.manager).map(c =>
