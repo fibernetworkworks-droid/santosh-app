@@ -302,8 +302,10 @@ fun Btn(
 @Composable
 fun AddButton(itemId: String) {
     val q = AppState.qty(itemId)
+    val p = AppData.byId("products", itemId)
+    if (p != null && p.b("sold_out")) { Pill(Strings.soldOut, "bad"); return }       // v0.357 STOCK
     if (q == 0) Btn(Strings.add, small = true, kind = BtnKind.Tonal) { AppState.add(itemId) }
-    else Stepper(q) { AppState.setQty(itemId, it) }
+    else Stepper(q, max = AppState.maxQty(itemId)) { AppState.setQty(itemId, it) }
 }
 
 @Composable

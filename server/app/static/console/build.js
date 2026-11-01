@@ -787,6 +787,23 @@ window.HoolaBuild = function (C) {
       });
     };
     try { drawGst(await api('GET', base(o) + '/gst')); } catch (er) { gbox.remove(); }
+    // v0.357 STOCK: how many of each product she has (blank = unlimited) and when to warn her
+    const kbox = document.createElement('section'); kbox.className = 'stcol ststock'; box.appendChild(kbox);
+    const drawStock = v => {
+      const ps = L(v.products);
+      if (!ps.length) { kbox.remove(); return; }
+      kbox.innerHTML = `<h4>Stock <span>${N(v.tracked)} counted · ${N(v.sold_out)} sold out</span></h4><p class="stnote">${esc(S(v.note))}</p>
+        <form autocomplete="off"><div class="sttbl"><table><thead><tr><th>Product</th><th>Price</th><th>In stock</th><th>Warn at</th></tr></thead><tbody>${ps.map(p => `<tr data-p="${esc(S(p.id))}"${p.sold_out ? ' class="soldout"' : ''}><td>${esc(S(p.name))}${p.sold_out ? ' · Sold out' : ''}</td><td>${esc(S(p.price))}</td>
+          <td><input data-k="qty" inputmode="numeric" placeholder="unlimited" value="${p.qty === null || p.qty === undefined ? '' : N(p.qty)}" aria-label="Stock of ${esc(S(p.name))}"></td>
+          <td><input data-k="low" inputmode="numeric" value="${N(p.low)}" aria-label="Warning level for ${esc(S(p.name))}"></td></tr>`).join('')}</tbody></table></div>
+        <div class="acts"><button class="btn go" type="submit">Save stock</button></div></form>`;
+      kbox.querySelector('form').addEventListener('submit', async e => {
+        e.preventDefault(); const b = e.target.querySelector('button.go'); b.disabled = true;
+        const items = {}; kbox.querySelectorAll('tr[data-p]').forEach(tr => { const q = tr.querySelector('[data-k=qty]').value.trim(); items[tr.dataset.p] = {qty: q === '' ? null : q, low: tr.querySelector('[data-k=low]').value.trim()}; });
+        try { drawStock(await api('PUT', base(o) + '/stock', {items})); toast('Stock saved.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+      });
+    };
+    try { drawStock(await api('GET', base(o) + '/stock')); } catch (er) { kbox.remove(); }
     const mbox = box.querySelector('.stmem');
     try {
       const ms = L((await api('GET', base(o) + '/members')).members);

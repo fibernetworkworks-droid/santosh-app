@@ -49,6 +49,7 @@ enum Words {
     static var inboxEmpty: String { t("No updates yet.", "अभी कोई अपडेट नहीं।", "Abhi koi update nahi.") }
     static var receipt: String { t("Receipt", "रसीद", "Raseed") }           // v0.354 RASEED
     static var invoice: String { t("Tax invoice", "टैक्स इनवॉइस", "Tax invoice") }   // v0.355 GST BILL
+    static var soldOut: String { t("Sold out", "स्टॉक खत्म", "Stock khatam") }   // v0.357 STOCK
     static var creditNote: String { t("Credit note", "क्रेडिट नोट", "Credit note") }   // v0.356 WAPSI
     // v0.353 RAAY
     static var rateIt: String { t("How was it? Rate us", "कैसा रहा? रेटिंग दें", "Kaisa raha? Rating dijiye") }
@@ -220,7 +221,9 @@ struct ListBlock: View {
                         if r.price > 0 { Text(rupees(r.price)).font(.subheadline.weight(.semibold)) }
                     }
                     Spacer()
-                    if list == "products" {
+                    if list == "products" && r.b("sold_out") {
+                        StatusPill(text: Words.soldOut)                                   // v0.357 STOCK
+                    } else if list == "products" {
                         Button(state.cart[r.id] == nil ? Words.add : "✓ \(state.cart[r.id] ?? 0)") { state.add(r.id) }
                             .buttonStyle(.bordered)
                     }

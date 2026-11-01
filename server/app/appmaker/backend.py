@@ -290,6 +290,22 @@ def _products(r: AppProject) -> dict[str, dict[str, Any]]:
     return {str(p.get("id")): p for p in (lists.get("products") or []) if isinstance(p, dict) and p.get("id")}
 
 
+def _cart_lines(r: AppProject, cart: Any) -> list[tuple[str, int, str]]:
+    """v0.357 the cart as [(product id, qty, name)] - the same products / quantities _priced counts."""
+    prods, out = _products(r), []
+    for it in (cart if isinstance(cart, list) else [])[:80]:
+        if not isinstance(it, dict):
+            continue
+        p = prods.get(str(it.get("id") or ""))
+        try:
+            q = max(0, min(999, int(it.get("qty") or 0)))
+        except (TypeError, ValueError):
+            q = 0
+        if p is not None and q > 0:
+            out.append((str(p.get("id")), q, str(p.get("name") or "")))
+    return out
+
+
 def _priced(r: AppProject, cart: Any) -> tuple[str, float]:
     """The cart the phone sent ([{id, qty}]) -> the items line and the total, both from HER product list."""
     prods = _products(r)
@@ -349,12 +365,24 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
             STATS["dedup"] += 1
             return {**W.row_view(c, _row(site, old), w), "dedup": True}
     extra: dict[str, Any] = {}
+    taken: list = []
     if coll == sch.get("order") and "cart" in body:
         items, total = _priced(r, body.get("cart"))
         extra = {"items": items, "total": total}
     data = {k: v for k, v in body.items() if k not in ("cid", "cart")}
     _check_extra(r, c, data, w)
-    out = W.create(site, sch, coll, data, w, ip)
+    if extra:                                  # v0.357 STOCK: taken under one lock before the row exists (or refused)
+        from . import stock as SK
+        taken = SK.reserve(r, _cart_lines(r, body.get("cart")))
+        if taken:
+            extra["_stock"] = [[p, q] for p, q in taken]
+    try:
+        out = W.create(site, sch, coll, data, w, ip)
+    except Exception:
+        if taken:
+            from . import stock as SK
+            SK.put_back(r, taken)
+        raise
     if extra or cid:
         _merge(out["id"], {**extra, **({"_cid": cid} if cid else {})})
         out = W.row_view(c, _row(site, out["id"]), w)
@@ -399,6 +427,7 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
     if any(k in body for k in ("status", "paid")):
         _merge(row_id, {"_ev": now().isoformat()})     # v0.319 the moment her row moved: the app's update check reads it
     if str(out.get("status") or "").strip().lower() == "cancelled" and "status" in body:
+        _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
         from . import gst as G                          # v0.356 an invoiced row cancelled -> its credit note (given once)
         got = G.credit_for(r, row_id, "Order cancelled")
         if got:
@@ -1249,3 +1278,18 @@ def _ratings(r: AppProject) -> dict[str, dict[str, list[int]]]:
                 if d.get("_rate_to"):
                     people.setdefault(d["_rate_to"], []).append(n)
     return {"lists": lists, "people": people}
+
+
+
+def _stock_back(r: AppProject, row_id: str) -> None:
+    """v0.357 the quantities a cancelled order took go back to stock, once (`_stock_back` marks it)."""
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        d = _j(row.data, {}) if row is not None else {}
+        if not d.get("_stock") or d.get("_stock_back"):
+            return
+        taken = d["_stock"]
+        d["_stock_back"] = True
+        row.data = json.dumps(d, ensure_ascii=False)
+    from . import stock as SK
+    SK.put_back(r, [(str(p), int(q)) for p, q in taken])

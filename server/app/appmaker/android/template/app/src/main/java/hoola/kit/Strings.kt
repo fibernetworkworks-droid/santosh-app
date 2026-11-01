@@ -95,6 +95,7 @@ object Strings {
     val openWork get() = t("open", "बाकी", "बाकी", "baaki")
     val receipt get() = t("Receipt", "रसीद", "पावती", "Raseed")       // v0.354 RASEED
     val invoice get() = t("Tax invoice", "टैक्स इनवॉइस", "कर बीजक", "Tax invoice")   // v0.355 GST BILL
+    val soldOut get() = t("Sold out", "स्टॉक खत्म", "स्टॉक संपला", "Stock khatam")    // v0.357 STOCK
     val creditNote get() = t("Credit note", "क्रेडिट नोट", "क्रेडिट नोट", "Credit note")   // v0.356 WAPSI
     // v0.353 RAAY
     val rateIt get() = t("How was it? Rate us", "कैसा रहा? रेटिंग दें", "कसे वाटले? रेटिंग द्या", "Kaisa raha? Rating dijiye")

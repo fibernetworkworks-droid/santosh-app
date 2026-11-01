@@ -75,6 +75,8 @@ APP_TOOLS = [
         "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
         "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
         "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
+        "v0.357 action=stock (owner only; items = {product id or name: {qty: n or null = unlimited, low: warn level}}; no items = show): "
+        "her shop app's stock - orders take it at once, more than is left is refused, a cancelled order puts it back, the app shows Sold out. "
         "v0.356 action=credit_note (app, coll, row, reason; owner only, ONLY when she asks - a return / wrong bill): a GST credit note "
         "(CN/<FY>/0001) for an invoiced row's full value; a cancelled invoiced row already gets one by itself. Money never moves: a refund is hers. "
         "v0.353 RAAY: a finished row carries the customer's own rating (rating 1-5 + rating_note); only that customer gives it, once - "
@@ -83,7 +85,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -94,6 +96,7 @@ APP_TOOLS = [
          "set": {"type": "object", "description": "action=data: fields to change, e.g. {\"status\": \"Accepted\"}"},
          "gst": {"type": "object", "description": "action=gst: {gstin, legal_name, rate, hsn, items}"},
          "reason": {"type": "string", "description": "action=credit_note: why (return, wrong bill...)"},
+         "items": {"type": "object", "description": "action=stock: {product id or name: {qty, low}}"},
          "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members)"},
          "crash": {"type": "string", "description": "action=fix_crash: the crash id (app_dekho what=crashes); empty = the newest unfixed one"},
          "build": {"type": "integer", "description": "action=rollback: the build number to bring back (app_dekho what=android history); 0 = the one before"},
@@ -272,6 +275,20 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action == "stock":                     # v0.357 STOCK: her products' stock
+        if not _owner(ctx):
+            raise ToolError("Stock sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import stock as SK
+        r = BE.by_key_or_ref(t, ref)
+        items = a.get("items") if isinstance(a.get("items"), dict) else {}
+        if items:                                   # her words name products: by id or by name
+            prods = BE._products(r)
+            by_name = {str(p.get("name") or "").strip().lower(): k for k, p in prods.items()}
+            items = {(k if k in prods else by_name.get(str(k).strip().lower(), k)): v for k, v in items.items()}
+        v = SK.set_items(r, items) if items else SK.view(r)
+        v["say"] = f"Stock: {v['tracked']} products gine ja rahe hain, {v['sold_out']} khatam."
+        return v
     if action == "credit_note":               # v0.356 WAPSI: her credit note for an invoiced row
         if not _owner(ctx):
             raise ToolError("Credit note sirf maalkin bana sakti hain.")

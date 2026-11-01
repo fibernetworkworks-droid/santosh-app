@@ -91,8 +91,11 @@ object AppState {
     val query = mutableStateOf("")
     val consent = mutableStateOf(false)
 
-    fun add(id: String, qty: Int = 1) { cart[id] = (cart[id] ?: 0) + qty }
-    fun setQty(id: String, qty: Int) { if (qty <= 0) cart.remove(id) else cart[id] = qty }
+    /** v0.357 STOCK: never more than the business has (the server checks again when the order is sent). */
+    fun maxQty(id: String): Int = AppData.byId("products", id)?.let { if (it.o.has("stock") && !it.o.isNull("stock")) it.i("stock") else null }
+        ?.coerceIn(0, 99) ?: 99
+    fun add(id: String, qty: Int = 1) { val n = ((cart[id] ?: 0) + qty).coerceAtMost(maxQty(id)); if (n <= 0) cart.remove(id) else cart[id] = n }
+    fun setQty(id: String, qty: Int) { val n = qty.coerceAtMost(maxQty(id)); if (n <= 0) cart.remove(id) else cart[id] = n }
     fun qty(id: String): Int = cart[id] ?: 0
     val cartCount: Int get() = cart.values.sum()
     fun cartItems(list: String = "products"): List<Pair<Item, Int>> =

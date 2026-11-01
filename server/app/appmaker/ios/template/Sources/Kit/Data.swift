@@ -77,8 +77,13 @@ final class AppState: ObservableObject {
     @Published var cart: [String: Int] = [:]
     @Published var form: [String: String] = [:]
 
-    func add(_ id: String, _ q: Int = 1) { cart[id] = (cart[id] ?? 0) + q }
-    func setQty(_ id: String, _ q: Int) { if q <= 0 { cart.removeValue(forKey: id) } else { cart[id] = q } }
+    /// v0.357 STOCK: never more than the business has (the server checks again when the order is sent).
+    func maxQty(_ id: String) -> Int {
+        guard let p = AppData.shared.byId("products", id), let n = p.o["stock"] as? NSNumber else { return 99 }
+        return max(0, min(99, n.intValue))
+    }
+    func add(_ id: String, _ q: Int = 1) { setQty(id, (cart[id] ?? 0) + q) }
+    func setQty(_ id: String, _ q: Int) { let n = min(q, maxQty(id)); if n <= 0 { cart.removeValue(forKey: id) } else { cart[id] = n } }
     var cartCount: Int { cart.values.reduce(0, +) }
     func cartItems(_ list: String = "products") -> [(Item, Int)] {
         cart.compactMap { id, q in AppData.shared.byId(list, id).map { ($0, q) } }.sorted { $0.0.name < $1.0.name }

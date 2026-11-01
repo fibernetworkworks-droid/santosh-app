@@ -12948,3 +12948,20 @@ v0.355 left one honest gap: an invoiced order that is cancelled or returned need
 - Her side: POST /api/apps/<ref>/data/<coll>/<id>/credit-note {reason}, tool app_banao action=credit_note, console row
   buttons (Invoice / Credit note… with a reason prompt). Apps label the button "Credit note".
 - Tests `tests/test_v0356_wapsi.py`. Not done: partial credit notes, debit notes, refunds (never - money moves only by her).
+
+## v0.357.0 STOCK (App Sahayak Phase 21, owner: "START PHASE 21")
+A shop app sold whatever was ordered. Now she can count her stock.
+- `appmaker/stock.py`: `AppProject.backend["stock"] = {product id: {qty, low, warned}}` (no new table). `reserve(r, lines)`
+  under one process lock reads + writes the counts in one transaction BEFORE `W.create`, refusing the whole order (409, each
+  short product named with what is left) when any line is short; `backend.create` puts the quantities back if the row then
+  fails to write, stores `_stock` on the row; dedup (`cid`) happens before, so a retry takes nothing. `backend._stock_back`
+  on a status change to Cancelled returns them once (`_stock_back`). Falling to `low` (default 3) or to 0 notes her chat
+  once (`warned`, cleared when stock goes back up). `decorate` adds `stock` / `sold_out` to the app content's products fresh
+  (`android.service._with_stock`, outside the 60 s cache); saving stock drops that cache too.
+- Her side: GET / PUT /api/apps/<ref>/stock {items: {id: {qty | null, low}}}, tool app_banao action=stock (products by id or
+  name), console Stock table (blank = unlimited).
+- Kits: Android `AddButton` shows a "Sold out" pill, `AppState.maxQty` caps add / setQty and the stepper; iPhone list rows
+  show Sold out, `AppState.maxQty` caps the cart. The server is still the only judge.
+- Tests `tests/test_v0357_stock.py` (settings, take, retry, refuse, warn once, cancel back once, 6 parallel buyers for 3
+  pieces = exactly 3 sold, unlimited again, tool by name, kit markers). Not done: stock per variant / size, purchase entries,
+  multi-process locking (the lock assumes ONE server process; check that the VPS core runs a single uvicorn worker).

@@ -820,7 +820,7 @@ def content(app_key: str) -> dict[str, Any]:
         raise AndroidError("not found")
     hit = _CACHE.get(app_key)
     if hit and time.time() - hit[0] < 60:
-        return hit[1]
+        return _with_stock(hit[1])
     with session() as s:
         r = s.query(AppProject).filter(AppProject.android.like(f'%"app_key": "{app_key}"%')).first()
         if r is None or _j(r.android, {}).get("app_key") != app_key:
@@ -835,5 +835,21 @@ def content(app_key: str) -> dict[str, Any]:
         out["backend"] = BE.seed_hint(r)
     except Exception:                                     # noqa: BLE001
         log.debug("backend hint", exc_info=True)
+    out["_app"] = r.id
     _CACHE[app_key] = (time.time(), out)
-    return out
+    return _with_stock(out)
+
+
+def _with_stock(out: dict[str, Any]) -> dict[str, Any]:
+    """v0.357 STOCK: products carry `stock` / `sold_out`, read fresh (never from the 60-second cache)."""
+    rid = out.get("_app")
+    shown = {k: v for k, v in out.items() if k != "_app"}
+    if not rid or not isinstance((out.get("lists") or {}).get("products"), list):
+        return shown
+    try:
+        from .. import stock as SK
+        r = AS._load(rid)
+        shown["lists"] = {**out["lists"], "products": SK.decorate(r, out["lists"]["products"])}
+    except Exception:                                     # noqa: BLE001
+        log.debug("stock decorate", exc_info=True)
+    return shown
