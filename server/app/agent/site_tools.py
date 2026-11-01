@@ -46,7 +46,14 @@ SITE_TOOLS = [
         "request (only when she said pakka / mana). action=app + instruction (her words: 'customers login karke apna "
         "order track karein', 'students marks dekhein', 'staff complaints ka status badle') = a WEB APP on the site: logins, "
         "lists of data with rules, a My account page and a staff panel at /admin/ (her data; she sees it in the studio's "
-        "Data tab). action=export + format react = a React (Vite) project ZIP for a developer. Her UPI ID for Pay buttons: action=answer with answers {upi: 'name@bank'} "
+        "Data tab). ARCHITECT (v0.401, for a portal / web app / anything with logins + data + rules, e.g. 'school ka portal', "
+        "'society ka maintenance system', 'clinic with appointments'): action=architect + brief (her one line) = a spec CARD "
+        "(pages, users, data lists, rules / workflows / approvals, features) - nothing is built; show its lines and ask. "
+        "action=architect_data + spec (A-00xx) + instruction = redo only the data / rules part. action=architect_ok + spec + "
+        "hash (+ modules to keep: pages, users, data, logic, features) ONLY after she clearly said haan to THAT card -> the "
+        "website + its app backend are built. LOGIC on an existing site (relations, formulas, workflows, maker-checker "
+        "approvals, SLA reminders): action=logic + instruction = a checked DRAFT; action=logic_ok + hash ONLY after her "
+        "clear haan to that draft. action=export + format react = a React (Vite) project ZIP for a developer. Her UPI ID for Pay buttons: action=answer with answers {upi: 'name@bank'} "
         "(only the ID she typed; never a PIN). action=stop / resume. action=export: ZIP of the built site (file_id). "
         "GOING LIVE (each a card SHE taps, never live by itself): action=launch (free: true = also on the free Hoola "
         "address <name>.<hoola sites domain>) sends the 'live karo' card; action=domain + domain ('sharmasweets.in') joins "
@@ -64,7 +71,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_ok", "logic", "logic_ok", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -86,7 +93,10 @@ SITE_TOOLS = [
          "city": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}},
          "auto_renew": {"type": "boolean"}, "days": {"type": "integer"},
          "registrant": {"type": "object", "description": "domain owner on the registry record: owner (person), business, email, phone, address, city, pin, state"}, "repo": {"type": "string"},
-         "private": {"type": "boolean"}, "staff": {"type": "string"}},
+         "private": {"type": "boolean"}, "staff": {"type": "string"},
+         "spec": {"type": "string", "description": "architect spec card number (A-0007) or id"},
+         "hash": {"type": "string", "description": "the card / draft hash she said haan to"},
+         "modules": {"type": "array", "items": {"type": "string", "enum": ["pages", "users", "data", "logic", "features"]}}},
          "required": ["action"]}},
     {"name": "website_dekho", "description": (
         "Read her websites (nothing changes). what=sites | site (site: board, pages, sections, scores, preview link, "
@@ -101,8 +111,8 @@ SITE_TOOLS = [
 ]
 SITE_LABELS = {"website": "Website bana raha hoon", "website_dekho": "Website dekh raha hoon"}
 _OWNER_ONLY = {"delete", "takedown", "domain_buy", "domain_kyc", "assign", "github"}
-_NO_SITE = {"new", "domain_check", "client_report"}
-_TAP_LIKE = {"plan_ok", "look"}
+_NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_ok"}
+_TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok"}
 
 
 def _owner(ctx: Ctx) -> bool:
@@ -154,6 +164,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.undo_edit(t, site)
     if action == "app":
         return S.design_app(t, site, str(a.get("instruction") or ""), conv)
+    if action in ("architect", "architect_data", "architect_ok", "logic", "logic_ok"):
+        return _architect(ctx, action, a)
     if action == "language":
         return S.set_language(t, site, str(a.get("second") or ""))
     if action == "code":                         # v0.373 CODE MODE (a site job; the diff shows in the Code tab)
@@ -193,6 +205,29 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     if action == "delete":
         return S.delete(t, site)
     raise ToolError(f"Unknown action {action}")
+
+
+def _architect(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
+    """v0.401 HOOLA ARCHITECT + the site's DIMAAG logic. Drafts are free to make; only her clear haan builds / applies."""
+    from ..site import applink as AL
+    from ..site import architect as AR
+    from ..site import webapp as W
+    t, site, conv = ctx.tenant_id, str(a.get("site") or ""), ctx.conversation_id or ""
+    try:
+        if action == "architect":
+            c = AR.draft(t, str(a.get("brief") or a.get("instruction") or ""), conv)
+        elif action == "architect_data":
+            c = AR.redraft_data(t, str(a.get("spec") or ""), str(a.get("instruction") or ""))
+        elif action == "architect_ok":
+            mods = a.get("modules") if isinstance(a.get("modules"), list) and a.get("modules") else None
+            return AR.approve(t, str(a.get("spec") or ""), str(a.get("hash") or ""), mods, conv)
+        elif action == "logic":
+            return AL.logic_draft(t, site, str(a.get("instruction") or ""))
+        else:
+            return AL.logic_apply(t, site, str(a.get("hash") or ""))
+    except (AR.ArchError, W.AppError) as e:
+        raise ToolError(str(e)) from e
+    return {k: c.get(k) for k in ("id", "number", "name", "summary", "modules", "hash", "questions", "data_ready", "warnings", "say")}
 
 
 def _domains(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:

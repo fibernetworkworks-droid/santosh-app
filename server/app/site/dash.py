@@ -121,7 +121,9 @@ def dashboard(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
     app = None
     schema = S.app_schema(r)
     if schema:
-        app = W.daily(r.id, schema, cur_days, prev_days)
+        from . import applink as AL                          # v0.401 a linked site's records live with its app
+        p = AL.project(r)
+        app = W.daily(("app:" + p.id) if p else r.id, schema, cur_days, prev_days)
 
     def tot(m: dict[str, int], ds: list[str]) -> int:
         return sum(m.get(d, 0) for d in ds)

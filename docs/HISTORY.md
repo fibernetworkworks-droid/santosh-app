@@ -15056,3 +15056,44 @@ Owner: "START STEP 1" (after the plan: "any complexity website, smoothly and rel
 - Tests `server/tests/test_v0400_fast_reliable.py`: parallel checks = serial report, critique re-checks only changed pages
   (keep / revert per section), fewer preview rebuilds, journeys pass on a real shop site and a broken checkout blocks,
   cut-short code task + translation recovered once, proof resumed with time / cost kept and failed after the second death.
+
+## v0.401.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md = W1 + W13, owner: "START STEP 2")
+
+**W1 - one backend for website + apps (`server/app/site/applink.py`).** A website's web app (v0.305) used its own small
+engine: lists + simple rules only. Now a site can run on the SAME backend as her native apps - App Sahayak's
+`appmaker/backend.py` + the DIMAAG logic engine (relations, formulas, rules, unique keys, workflows with maker-checker
+approvals + SLA, triggers, schedules, locked functions).
+- `link(tenant, site)` (POST /api/sites/{ref}/link-app, idempotent): the site gets ONE App Sahayak project (status `web`,
+  its own app_key so a phone app can be built on the very same data later). Its lists become the project's lists and every
+  member + row MOVES over in one UPDATE (`site_app_rows` / `site_app_members` site_id -> `app:<pid>`): same ids, same
+  passwords. A login signed BEFORE the move keeps working (`_who` re-checks the old HMAC and finds the moved member).
+- `call(site_id, op, ...)`: every public `/api/site-app/<site>/...` address is unchanged for the site's pages. Unlinked =
+  the v0.305 engine byte-for-byte; linked = BE.signup/login/rows/create/update/delete + LE.approvals/decide/related/
+  call_public. New public routes: GET `.../c/{key}/{row}/related/{rel}`, GET `.../approvals`, POST `.../approvals/{id}`,
+  POST `.../fn/{name}` (an unlinked site answers 404 "pehle jodiye").
+- Her side: GET /api/sites/{ref}/logic, POST .../logic/draft {words} (links first, then App Sahayak's own author + checker,
+  `appmaker.logic.service.draft`), POST .../logic/apply {hash} = ONLY her tap on the exact draft; the site is rebuilt so
+  new lists / fields reach the account + staff pages. `design_app` on a linked site = a logic draft (never a silent change).
+  Console App & data tab, owner rows / members / roles, dashboard (`site/dash.py`) all read the linked app.
+- `hoola-app.js`: ref fields = a picker of the linked list (by its label field), computed + workflow fields kept out of
+  forms, list cards show `_labels`, a waiting-approval pill with Approve / Reject for those who may decide, the workflow's
+  own buttons (`_actions`), and an Approvals box on top of /admin/.
+
+**W13 - HOOLA ARCHITECT (`server/app/site/architect.py`).** Her ONE line -> a spec card, module by module:
+pages (public / after login / staff), users (roles), data (lists + fields), logic (rules, workflows, approvals), features
+(shop, blog, booking, languages). Opus (`ARCH_SYSTEM`, kind site_edit) designs it, `clean()` keeps it to a fixed shape
+(duplicate roles / pages dropped, unknown languages dropped, 150 pages max), and the data + logic words go to App
+Sahayak's OWN author + checker on a fresh `web` project in status `spec` - so the data model is PROVED before she sees it.
+Nothing is built. `approve(id, hash, modules)` is only her tap (console card / an explicit haan in chat): the website is
+created with her pages in the brief (big = site map first), joined to that project (`applink.attach`), lists + logic
+applied by the draft hash, languages / shop set, the plan approved so the 3 looks start. A module she switches off is
+skipped (data off = no app link). Spec projects are hidden from her apps list until approved.
+Routes: GET/POST /api/site-architect, GET /api/site-architect/{id}, POST .../{id}/data {words} (redo only data + rules),
+POST .../{id}/approve {hash, modules}. Tool `website` actions architect / architect_data / architect_ok / logic / logic_ok
+(the *_ok ones owner-only, tap-like). Console: `site_spec` chat card with a checkbox per module + "Haan, build it", and a
+Logic box in App & data (rules now live, the draft waiting with "Apply this logic", approvals waiting).
+Proof (tests/test_v0401_ek_dimaag.py): a school portal from one line -> students + leave requests, rule days > 0, a parent
+cannot self-approve, related leaves per student, all through the site's own addresses. Also: link migration + old tokens,
+a linked site's workflow + maker-checker approval end to end, unlinked sites unchanged.
+NOT VERIFIED: no real Opus call made (fakes in tests); the phone app does not draw the `site_spec` card yet (the model
+reads the card's lines in chat; her Haan in chat = architect_ok).

@@ -42,5 +42,5 @@ def test_the_three_instant_paths_are_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.400.0"
-    assert "0.400.0+444" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.401.0"
+    assert "0.401.0+445" in (ROOT / "pubspec.yaml").read_text()
