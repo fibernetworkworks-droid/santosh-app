@@ -64,7 +64,7 @@ def test_the_hard_marks_catch_the_usual_mistakes():
     leak = _task("fix_from_test_run")
     weakened = {"tests/test_orders.py": R.TEST_ORDERS}                                       # deleting the red test
     row = K.score(leak, weakened)
-    assert not row["scope"] and not row["works"]
+    assert not row["right"] and not row["rules"] and not row["works"]      # the red test must stay
     ref = _task("refactor_same_behaviour")
     assert "still" in " ".join(K.score(ref, {})["why"])                                       # the long version fails
 
