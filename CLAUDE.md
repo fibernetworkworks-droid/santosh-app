@@ -145,9 +145,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.351.0 (pubspec 0.351.0+391). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.352.0 (pubspec 0.352.0+392). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.352 PEHLE CI, PHIR PR: Developer Sahayak opens a DRAFT PR when the repo has CI, fixes a red run with the loop (DEV_CI_ROUNDS 3), marks it ready only when green (`service._ci_step`, `gh.mark_ready`); no CI in 15 min = ready + note.
 - v0.351 DUKAAN (built as 0.344, `site/shop.py`, `hoola-shop.js`): a real shop on her website - cart, checkout, server-side prices + stock, her UPI QR + UTR (she confirms), COD, order tracking, Studio Shop tab, agent `website` action=shop / shop_order.
 - v0.350 KADAM-BA-KADAM CODING: Developer Sahayak explores + edits with 8 tools (`devsahayak/loop.py`, DEV_LOOP*), old one-shot = fallback;
   revise / fix_ci still one-shot (next: CI loop before the PR).

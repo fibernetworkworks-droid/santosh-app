@@ -162,6 +162,17 @@ class Gh:
         return self.req("POST", f"/repos/{full}/pulls", {"title": title, "head": head, "base": base, "body": body, "draft": draft,
                                                           "maintainer_can_modify": True})
 
+    def mark_ready(self, full: str, n: int) -> bool:
+        """v0.351 a draft PR -> ready for review. REST has no call for this; GitHub's GraphQL mutation does it."""
+        node = str(self.pr(full, n).get("node_id") or "")
+        if not node:
+            return False
+        r = self.req("POST", "/graphql", {"query": "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id})"
+                                                   "{pullRequest{isDraft}}}", "variables": {"id": node}})
+        if r.get("errors"):
+            raise GhError(str((r["errors"][0] or {}).get("message") or "GraphQL error")[:200])
+        return True
+
     def pr(self, full: str, n: int) -> dict[str, Any]:
         return self.req("GET", f"/repos/{full}/pulls/{int(n)}")
 

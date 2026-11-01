@@ -72,6 +72,8 @@ class DevTask(Base):
     ci_told: Mapped[str] = mapped_column(String(60), default="")         # head_sha:state already told
     error: Mapped[str] = mapped_column(Text, default="")
     rounds: Mapped[int] = mapped_column(Integer, default=0)
+    ci_round: Mapped[int | None] = mapped_column(Integer, nullable=True)     # v0.351 CI fix rounds done before the PR is ready
+    ci_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # v0.351 when this CI wait began
     conv: Mapped[str] = mapped_column(String(40), default="")
     log: Mapped[str] = mapped_column(Text, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
