@@ -1006,7 +1006,7 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/poster', body: {}, timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> socialPublish(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/publish', body: {}) as Map);
-  // v0.358 social inbox (comments + DMs)
+  // v0.364 social inbox (comments + DMs)
   Future<Map<String, dynamic>> socialInbox(String box) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/social/inbox?box=$box', timeout: const Duration(seconds: 30)) as Map);
   Future<Map<String, dynamic>> socialInboxReply(String id, String text) async =>

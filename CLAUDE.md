@@ -145,7 +145,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.361.0 (pubspec 0.361.0+401). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.364.0 (pubspec 0.364.0+404). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.361 CAD BOX CHAUTHI DEEWAR: her VPS has no `unshare -rn` (no_network false) -> engineering runner locks socket / os.system /
@@ -169,7 +169,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
-- v0.358 SOCIAL MEDIA MANAGER Phase 3 INBOX (`social/inbox.py`): IG + FB comments and DMs every 15 min, sorted, drafts from her facts only;
+- v0.364 SOCIAL MEDIA MANAGER Phase 3 INBOX (`social/inbox.py`): IG + FB comments and DMs every 15 min, sorted, drafts from her facts only;
   Seekh = her tap, Saathi / Bharosa = simple replies (cap 40 / 150, DM 24 h window) + spam hidden never deleted; complaints always wait; leads to chat.
 - v0.355 SOCIAL MEDIA MANAGER Phase 2 (`social/publish.py`): approved posts go out to Instagram (image / carousel / Reel / Story) + Facebook Page,
   approval hash-bound to the exact post, photo upload or Brand poster, signed media links, IG 24 h cap, missed > 1 day late; Publish now.

@@ -319,7 +319,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn go" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
   }
 
-  // ------------------------------------------------------------ v0.358 the inbox (Phase 3)
+  // ------------------------------------------------------------ v0.364 the inbox (Phase 3)
   const BOX = {needs: 'Needs you', leads: 'Leads', complaints: 'Complaints', done: 'Done'};
   const CLS = {lead: ['ok', 'Lead'], question: ['v', 'Question'], praise: ['v', 'Praise'], complaint: ['warn', 'Complaint'],
                spam: ['bad', 'Spam'], abuse: ['bad', 'Abuse'], other: ['', 'Other']};

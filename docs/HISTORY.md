@@ -13211,9 +13211,9 @@ it newly created — rather than quietly missing them. A rollback that silently 
 `server/app/enterprise/run.py` (new, the engine) · `server/app/enterprise/models.py` (EntEndpoint, EntRun,
 EntRunRow) · `server/app/agent/enterprise_tools.py` · `server/tests/test_v0363_erp_live.py` (13 tests).
 
-## v0.358.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
-Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356, re-versioned past main's
-v0.356 PEHLE NIYAM / v0.357 DASHBOARD.
+## v0.364.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
+Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356 / 0.358, re-versioned past main's
+v0.356-v0.363 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASLI ERP KAAM ...).
 - `server/app/social/inbox.py` (table `social_inbox`, unique tenant + platform + item id): every ~15 min (desk job `inbox`,
   only when the desk is ready) the comments on her last 20 read posts and her DM threads (Instagram `/me/conversations`,
   Page `/conversations`) from the last 7 days. Skipped: her own comments / Page comments, threads where she spoke last,
