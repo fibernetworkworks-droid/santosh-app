@@ -51,7 +51,7 @@ def test_project_from_the_android_spec(tmp_path):
     png = (out / "Resources/Assets.xcassets/AppIcon.appiconset/icon.png").read_bytes()
     assert png[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", png[16:24]) == (1024, 1024)
     assert png[25] == 2                                               # RGB, no alpha (App Store refuses transparent icons)
-    assert (out / "hoola_qa/screens.txt").read_text().split()[-3:] == ["hoola_login", "hoola_account", "hoola_inbox"]
+    assert (out / "hoola_qa/screens.txt").read_text().split()[-5:] == ["hoola_login", "hoola_account", "hoola_inbox", "hoola_approvals", "hoola_data"]
     # debug-only test hooks; a release build has neither
     app = (out / "Sources/App/HoolaApp.swift").read_text()
     assert app.count("#if DEBUG") == 3 and "-hoola_screen" in app and "-hoola_base" in app and "-hoola_e2e" in app
