@@ -96,7 +96,8 @@ def ready() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- start
-def build(tenant: str, ref: str, conv: str = "", kind: str = "sim", only: list[str] | None = None) -> dict[str, Any]:
+def build(tenant: str, ref: str, conv: str = "", kind: str = "sim", only: list[str] | None = None,
+          notes: dict[str, str] | None = None) -> dict[str, Any]:
     """Her tap / words 'iPhone app banao' (kind sim) or 'TestFlight par bhejo' (kind testflight) on an approved design."""
     if kind not in KINDS:
         raise IosError("kind: sim ya testflight")
@@ -118,7 +119,7 @@ def build(tenant: str, ref: str, conv: str = "", kind: str = "sim", only: list[s
     n = int(st.get("build") or 0) + 1
     _put(r.id, status="writing", kind=kind, build=n, design_version=r.version, error="", note="", rounds=0,
          started=now().isoformat(), ended="", now="Screens SwiftUI mein likh raha hoon", states={}, conv=conv or r.conv,
-         redo=list(only or []))
+         redo=list(only or []), notes={k: str(v)[:4000] for k, v in (notes or {}).items()})
     _start(r.id)
     return view(AS._load(r.id))
 
@@ -165,7 +166,8 @@ def _all_ids(sp: dict[str, Any]) -> list[str]:
     return [s["id"] for s in sp["screens"]] + list(G.CODE_SCREENS) + list(G.KIT_SCREENS)
 
 
-def write_screen(r: AppProject, sid: str, ctx: dict[str, Any], sp: dict[str, Any], scr: dict[str, Any]) -> tuple[str, list[str]]:
+def write_screen(r: AppProject, sid: str, ctx: dict[str, Any], sp: dict[str, Any], scr: dict[str, Any],
+                 extra: str = "") -> tuple[str, list[str]]:
     ids = _all_ids(sp)
     me = next(s for s in sp["screens"] if s["id"] == sid)
     system = PR.screen_system(sid, ids=ids, lists=SP.list_fields(sp["seed"]),
@@ -176,7 +178,7 @@ def write_screen(r: AppProject, sid: str, ctx: dict[str, Any], sp: dict[str, Any
               f"DATA SHOWN: {', '.join(me['data'])}\n"
               f"ACTIONS (label -> screen): {'; '.join(a['label'] + ' -> ' + a['go'] for a in me['actions'])}\n"
               f"COMPONENTS IN THE DESIGN: {', '.join(me['components'])}\n{AN._dna_lines(ctx, sid, {'scenes': {}})}\n"
-              f"APPROVED WEB DESIGN OF THIS SCREEN (HTML; match it):\n{AN._design_html(scr)}")
+              f"{extra}\nAPPROVED WEB DESIGN OF THIS SCREEN (HTML; match it):\n{AN._design_html(scr)}")
     src = _ask(system, prompt)
     probs = G.scan_screen(src, sid, ids)
     if probs:
@@ -289,7 +291,7 @@ def _run(r: AppProject) -> None:
         _states(r.id, {sid: "writing"}, f"SwiftUI: {next(s['label'] for s in sp['screens'] if s['id'] == sid)} ({i + 1}/{len(ids)})")
         _emit(r.id)
         try:
-            src, probs = write_screen(r, sid, ctx, sp, screens.get(sid) or {})
+            src, probs = write_screen(r, sid, ctx, sp, screens.get(sid) or {}, (st.get("notes") or {}).get(sid, ""))
         except Exception as e:                       # noqa: BLE001
             from ...site import ai as SA
             if isinstance(e, SA.AiError):
@@ -385,6 +387,8 @@ def _run(r: AppProject) -> None:
         if again.get("ok"):
             res = again
     _keep_qa(r, n, res)
+    from .. import match as MT
+    MT.after_build(r, "ios")                        # v0.343 how close each real screen is to her approved design
     _zip(r, n, src_dir)
     tf: dict[str, Any] = dict(st.get("testflight") or {})
     if kind == "testflight":

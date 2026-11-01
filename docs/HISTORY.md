@@ -12686,3 +12686,23 @@ full history and can be exported to her GitHub").
 - Tests: `test_v0342_apna_code.py` (2): no build -> 400; card sends nothing; wrong hash refused; files present, no key,
   password blanked, gradlew executable; build 2 = a second commit with the first as parent; a pre-build card refused;
   the tool only makes a card.
+
+## v0.343.0 DESIGN SE MILAAN (App Sahayak Phase 10, owner: "START PHASE 10")
+No Phase 10 had been named; this is the open promise of the original plan's Phase 3 ("screenshots are compared against
+the approved design") - until now the device check only proved a screen OPENS, not that it LOOKS like her design.
+- `appmaker/match.py`: `score(design, native)` = 0.4 colour (4x4x4 palette histograms, intersection) + 0.45 layout (edge
+  map on a 60x130 grid, 10x10 blocks, correlation) + 0.15 light (mean brightness gap); the native shot loses its top 4.5%
+  (status bar). Measured on real iPhone simulator shots: same screen 93, a different screen in the same colours 62-66, a
+  blank page 33, a dark page 12 -> MATCH_MIN 70. Design shots = the prototype renders `shots/<sid>-<platform>.jpg` (Android
+  as the fallback for iPhone); native = `android|ios/qa/b<n>/<sid>.png` from the device check.
+- `after_build` runs at the end of every Android and iPhone build (never fails a build, no model); `check(platform, fix)`
+  sends each screen under 70 (max 8) to Opus with BOTH pictures (DIFF_SYSTEM: visible differences as instructions, ignore
+  status bar / sample data / font rendering) and keeps the differences; fix=True -> `AN.build(only=low, notes)` /
+  `IO.build(kind sim, only, notes)` (iOS build + write_screen now take notes like Android). Notes stay with a screen until
+  a new build changes the numbers.
+- Routes: GET /api/apps/{ref}/match, POST /api/apps/{ref}/match (apps_act) {platform, fix}. Tool app_banao action=match
+  (platform, fix only when she asks). Phone `MatchPanel` (Android / iPhone chips, design + app pictures side by side, %,
+  differences, Opus se farak dekho, Theek karo with a confirm); console `loadMatch` (same, confirm()).
+- Tests: `test_v0343_design_match.py` (4): score separates a close layout from a wrong one; check lists differences only
+  for the low screen (Opus gets both images); fix rebuilds only that screen with the notes; after_build scores without a
+  model; the tool.

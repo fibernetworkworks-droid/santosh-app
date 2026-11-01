@@ -12,9 +12,9 @@ def _read(name):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.342.0"
-    assert "0.342.0+382" in (ROOT / "pubspec.yaml").read_text()
-    assert _read("v2.html").count("?v=0.342.0") == 18   # v0.312 + arena.js, v0.317 + employees.js
+    assert APP_VERSION == "0.343.0"
+    assert "0.343.0+383" in (ROOT / "pubspec.yaml").read_text()
+    assert _read("v2.html").count("?v=0.343.0") == 18   # v0.312 + arena.js, v0.317 + employees.js
 
 
 def test_theme_loads_before_first_paint_without_inline_script():
