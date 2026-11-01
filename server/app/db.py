@@ -852,7 +852,7 @@ def init_db(url: str | None = None):
     # v0.150 Kanoon suite
     from .vakil import models as _vakil  # noqa: F401
     from .legalres import models as _legalres  # noqa: F401
-    from .shiksha import models as _shiksha  # noqa: F401  (v0.379 Shiksha suite)
+    from .shiksha import models as _shiksha  # noqa: F401  (v0.381 Shiksha suite)
     from .pathyakram import models as _pathyakram  # noqa: F401
     from .compliance import models as _compliance  # noqa: F401
     from .contracts import models as _contracts  # noqa: F401
@@ -899,7 +899,7 @@ def init_db(url: str | None = None):
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
-    from .gamedesk import service as _gamedesk  # noqa: F401  (v0.379 Game Desk)
+    from .gamedesk import service as _gamedesk  # noqa: F401  (v0.381 Game Desk)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

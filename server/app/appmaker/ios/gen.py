@@ -27,7 +27,7 @@ HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "template"
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 CODE_SCREENS = ("seller_info", "privacy", "delete_account")
-KIT_SCREENS = ("hoola_login", "hoola_account", "hoola_inbox")   # v0.340 + the updates inbox
+KIT_SCREENS = ("hoola_chat", "hoola_login", "hoola_account", "hoola_inbox")   # v0.340 + the updates inbox, v0.378 + chat
 AUTH_IDS = ("login", "signup", "register", "login_staff", "otp_login", "sign_in")
 MIN_IOS = "16.0"
 
@@ -59,6 +59,7 @@ TAB_WORDS = [("home", "house"), ("cart", "cart"), ("order", "doc.text"), ("book"
 FORM_WORDS = ("book", "form", "enquir", "request", "enrol", "register", "apply", "contact", "feedback", "new_", "add_")
 CART_WORDS = ("cart", "checkout", "basket", "order_review")
 DASH_WORDS = ("dashboard", "report", "stats", "analytics", "admin", "overview")
+MAP_WORDS = ("route", "stops", "delivery", "deliveries", "visits", "map", "dispatch")
 
 
 def swift_name(sid: str) -> str:
@@ -139,6 +140,7 @@ enum AppTokens {{
     static let start = {sstr(start)}
     static let baseUrl = {sstr(app.get("base_url") or "")}
     static let appKey = {sstr(app.get("app_key") or "")}
+    static let pushOn = {"true" if spec.get("ios_push") else "false"}          // v0.368 instant notifications (APNs) switched on
 }}
 '''
 
@@ -152,7 +154,8 @@ def screens_swift(spec: dict[str, Any]) -> str:
         cases.append(f"    case {sstr(sid)}: return AnyView({view})")
     cases += ['    case "seller_info": return AnyView(SellerScreen())', '    case "privacy": return AnyView(PrivacyScreen())',
               '    case "delete_account": return AnyView(DeleteAccountScreen())', '    case "hoola_login": return AnyView(AuthScreen())',
-              '    case "hoola_account": return AnyView(AccountScreen())', '    case "hoola_inbox": return AnyView(InboxScreen())']
+              '    case "hoola_account": return AnyView(AccountScreen())', '    case "hoola_inbox": return AnyView(InboxScreen())',
+              '    case "hoola_chat": return AnyView(ChatScreen())']
     body = "\n".join(cases)
     return f'''// Made by Hoola App Sahayak from the approved design: which screens exist and which view each id opens.
 import SwiftUI
@@ -174,6 +177,8 @@ import SwiftUI
 
 @main
 struct HoolaApp: App {
+    @UIApplicationDelegateAdaptor(HoolaAppDelegate.self) private var delegate     // v0.368 Apple hands the push token here
+
     init() {
         Cloud.base = AppTokens.baseUrl
         Cloud.key = AppTokens.appKey
@@ -183,6 +188,7 @@ struct HoolaApp: App {
         if let i = a.firstIndex(of: "-hoola_base"), i + 1 < a.count { Cloud.base = a[i + 1] }
         #endif
         CrashGuard.install()
+        I18n.shared.load(AppTokens.language)                  // v0.347 the customer's language (her choice on the phone)
         Updates.register()                                   // v0.340 order updates in the background (iOS decides when)
         AppData.shared.load()
         Auth.shared.load()
@@ -198,6 +204,7 @@ struct HoolaApp: App {
                     await Db.shared.sync()
                     _ = await Updates.check()
                     Updates.schedule()
+                    PushHub.start()                              // v0.368 instant notifications (when switched on)
                     #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("-hoola_e2e") { await E2e.run() }
                     #endif
@@ -231,7 +238,7 @@ def code_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dic
     order = str((backend or {}).get("order") or "")
     rows: list[str] = []
     if s.get("purpose"):
-        rows.append(f"            Muted({sstr(s['purpose'])})")
+        rows.append(f"            Muted(T({sstr(s['purpose'])}))")
     form = ""
     if order in colls and any(w in sid for w in CART_WORDS):
         form = order
@@ -251,17 +258,19 @@ def code_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dic
         rows.append("            Muted(AppData.shared.facts.s(\"tagline\"))")
     if any(w in sid for w in DASH_WORDS) and colls:          # v0.340 staff dashboards show the live numbers
         rows.append("            StatsBlock()")
+    if any(w in sid for w in DASH_WORDS + MAP_WORDS) and any(f.get("type") == "location" for c in colls.values() for f in c.get("fields") or []):
+        rows.append("            StopsBlock()")              # v0.350 the open stops, nearest first + route
     if sid in ("profile", "account", "me", "my_account", "settings") and colls:
         rows.append("            AccountButton()")
     for a in acts:
-        rows.append(f"            MainButton(text: {sstr(a.get('label') or a['go'])}, tonal: true) {{ Router.shared.go({sstr(a['go'])}) }}")
+        rows.append(f"            MainButton(text: T({sstr(a.get('label') or a['go'])}), tonal: true) {{ Router.shared.go({sstr(a['go'])}) }}")
     body = "\n".join(rows)
     return f'''// Made by Hoola App Sahayak (simple version made by code).
 import SwiftUI
 
 struct {swift_name(sid)}: View {{
     var body: some View {{
-        Page({sstr(s.get("label") or sid)}) {{
+        Page(T({sstr(s.get("label") or sid)})) {{
 {body}
         }}
     }}
@@ -409,6 +418,8 @@ def project_yml(spec: dict[str, Any]) -> str:
     build = str(int(ios.get("build") or app.get("version_code") or 1))
     team = re.sub(r"[^A-Z0-9]", "", str(ios.get("team_id") or ""))[:10]
     team_line = f"\n        DEVELOPMENT_TEAM: {team}" if team else ""
+    push_ent = ("\n    entitlements:\n      path: App.entitlements\n      properties:\n        aps-environment: production"
+                if spec.get("ios_push") else "")       # v0.368 the push capability (Automatic signing adds it to the App ID)
     return f'''# Made by Hoola App Sahayak. XcodeGen turns this into the Xcode project on the Mac (xcodegen generate).
 name: {name}
 options:
@@ -421,14 +432,16 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "{version}"
     CURRENT_PROJECT_VERSION: "{build}"
-    TARGETED_DEVICE_FAMILY: "1"
+    TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 targets:
   App:
     type: application
     platform: iOS
     deploymentTarget: "{MIN_IOS}"
-    scheme: {{}}
+    scheme:
+      testTargets:
+        - AppUITests
     sources:
       - path: Sources
       - path: Resources
@@ -442,7 +455,81 @@ targets:
         INFOPLIST_FILE: Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic{team_line}
-        GENERATE_INFOPLIST_FILE: NO
+        GENERATE_INFOPLIST_FILE: NO{push_ent}
+  AppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "{MIN_IOS}"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: App
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: {bundle_id(spec)}.uitests
+        TEST_TARGET_NAME: App
+        CODE_SIGN_STYLE: Automatic{team_line}
+'''
+
+
+def flow_tests(screens: list[str], taps: int = 5) -> str:
+    """v0.345 HAR RAASTA on the iPhone: an XCUITest that opens every screen, taps each button / link from a fresh start,
+    and prints one HOOLA_TAP line per tap (screen, label, still running?, did the screen change?, n). Debug builds only."""
+    ids = ", ".join(sstr(x) for x in screens)
+    return f'''// Made by Hoola App Sahayak (v0.345 HAR RAASTA). Every button / link on every screen, tapped from a fresh start.
+import XCTest
+
+final class FlowTests: XCTestCase {{
+    let screens: [String] = [{ids}]
+    let taps = {taps}
+
+    override func setUp() {{ continueAfterFailure = true }}
+
+    private func open(_ sid: String) -> XCUIApplication {{
+        let app = XCUIApplication()
+        app.launchArguments = ["-hoola_screen", sid]
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 10)
+        return app
+    }}
+
+    private func targets(_ app: XCUIApplication) -> [XCUIElement] {{
+        let q = app.descendants(matching: .any).matching(NSPredicate(format: "elementType == %d OR elementType == %d",
+                                                                     XCUIElement.ElementType.button.rawValue,
+                                                                     XCUIElement.ElementType.link.rawValue))
+        return q.allElementsBoundByIndex.filter {{ $0.exists && $0.isHittable && !$0.frame.isEmpty }}
+            .filter {{ $0.frame.minY > 40 }}                                  // not the status bar
+    }}
+
+    private func shown(_ app: XCUIApplication) -> String {{
+        guard app.state == .runningForeground else {{ return "" }}
+        return app.staticTexts.allElementsBoundByIndex.prefix(60).map {{ $0.label }}.joined(separator: "|")
+            + "#" + app.buttons.allElementsBoundByIndex.prefix(60).map {{ $0.label }}.joined(separator: "|")
+    }}
+
+    func testEveryButtonOnEveryScreen() {{
+        for sid in screens {{
+            let first = open(sid)
+            guard first.state == .runningForeground else {{ print("HOOLA_TAP\\t\\(sid)\\t(open)\\t0\\t0\\t0"); continue }}
+            let labels = Array(targets(first).prefix(taps)).enumerated().map {{ (i, e) in e.label.isEmpty ? "button \\(i + 1)" : String(e.label.prefix(40)) }}
+            first.terminate()
+            for (i, label) in labels.enumerated() {{
+                let app = open(sid)
+                let before = shown(app)
+                let list = targets(app)
+                guard i < list.count else {{ break }}
+                list[i].tap()
+                sleep(2)
+                let alive = app.state == .runningForeground || app.state == .runningBackground
+                let changed = !alive || shown(app) != before
+                let clean = label.replacingOccurrences(of: "\\t", with: " ").replacingOccurrences(of: "\\n", with: " ")
+                print("HOOLA_TAP\\t\\(sid)\\t\\(clean)\\t\\(alive ? 1 : 0)\\t\\(changed ? 1 : 0)\\t\\(i + 1)")
+                app.terminate()
+            }}
+        }}
+    }}
+}}
 '''
 
 
@@ -518,6 +605,13 @@ def info_plist(spec: dict[str, Any]) -> str:
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
 {extra}</dict>
 </plist>
 '''
@@ -583,6 +677,8 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     res = tmp / "Resources"
     res.mkdir(exist_ok=True)
     (res / "seed.json").write_text(json.dumps(spec.get("seed") or {}, ensure_ascii=False))
+    if spec.get("i18n"):                                     # v0.347 the app's words in the chosen languages
+        (res / "i18n.json").write_text(json.dumps(spec["i18n"], ensure_ascii=False))
     (res / "PrivacyInfo.xcprivacy").write_text(privacy_manifest())
     tk = spec.get("tokens") or {}
     icon_dir = res / "Assets.xcassets/AppIcon.appiconset"
@@ -608,7 +704,13 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     if isinstance(store, dict):                          # v0.338 the listing + screenshots to send (kind store / review)
         (qa / "store.json").write_text(json.dumps({**store, "bundle_id": bid}, ensure_ascii=False, indent=1))
     (qa / "bundle.txt").write_text(bid + "\n")
-    (qa / "screens.txt").write_text(" ".join([x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS)) + "\n")
+    every = [x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS)
+    (qa / "screens.txt").write_text(" ".join(every) + "\n")
+    (tmp / "UITests").mkdir(exist_ok=True)                 # v0.345 the flow walk (XCUITest), debug only
+    (tmp / "UITests" / "FlowTests.swift").write_text(flow_tests(every))
+    shutil.copy(HERE / "flows.py", qa / "flows.py")
+    shutil.copy(HERE / "flow_check.sh", qa / "flow_check.sh")
+    (qa / "flow_check.sh").chmod(0o755)
     (tmp / ".gitignore").write_text("build/\n*.xcodeproj/\nDerivedData/\nqa/\n")
     if out.exists():
         shutil.rmtree(out)

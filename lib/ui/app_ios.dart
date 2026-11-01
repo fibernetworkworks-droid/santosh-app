@@ -476,3 +476,71 @@ class _MatchPanelState extends State<MatchPanel> {
     ]);
   }
 }
+
+/// v0.347 BHASHA: the languages her app carries (customers pick on My account); from the next build.
+class BhashaPanel extends StatefulWidget {
+  const BhashaPanel({super.key, required this.app, required this.id});
+  final Santosh app;
+  final String id;
+  @override
+  State<BhashaPanel> createState() => _BhashaPanelState();
+}
+
+class _BhashaPanelState extends State<BhashaPanel> {
+  Map<String, dynamic>? _v;
+  List<String> _pick = [];
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = Map<String, dynamic>.from(await widget.app.api!.call('GET', '/api/apps/${widget.id}/bhasha') as Map);
+      if (mounted) setState(() { _v = v; _pick = ((v['langs'] as List?) ?? const []).map((e) => '$e').toList(); });
+    } catch (_) {}
+  }
+
+  Future<void> _save() async {
+    setState(() => _busy = true);
+    try {
+      await widget.app.api!.call('POST', '/api/apps/${widget.id}/bhasha', body: {'langs': _pick});
+      if (mounted) _snack(context, 'Agle build se app in bhashaon mein hogi.');
+      _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final all = _map(_v?['all']);
+    final cov = _map(_v?['coverage']);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Icon(Icons.translate_rounded, color: C.accent, size: 20),
+        const SizedBox(width: 6),
+        Expanded(child: Text('App ki bhasha', style: display(15))),
+        if (_i(_v?['words']) > 0) Pill('${_i(_v?['words'])} shabd', fg: C.ok),
+      ]),
+      const Text('Customer apne account mein bhasha chunega. Pehli bhasha se app khulti hai. Product ke naam, daam jaise aapka data waise hi rehta hai.',
+          style: TextStyle(color: C.muted, fontSize: 12)),
+      const SizedBox(height: 6),
+      Wrap(spacing: 6, runSpacing: 6, children: [
+        for (final e in all.entries)
+          FilterChip(label: Text('${e.value}${cov[e.key] != null ? ' · ${cov[e.key]}%' : ''}'), selected: _pick.contains(e.key),
+              onSelected: (on) => setState(() {
+                    if (on && !_pick.contains(e.key) && _pick.length < 6) _pick.add(e.key);
+                    if (!on) _pick.remove(e.key);
+                  })),
+      ]),
+      const SizedBox(height: 6),
+      GlassButton(label: 'Bhasha pakki karo', height: 36, onTap: _busy || _pick.isEmpty ? null : _save),
+    ]);
+  }
+}

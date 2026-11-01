@@ -280,6 +280,9 @@ def _run(r: AppProject) -> None:
     sp["app"]["version_name"] = f"{r.version}.{n}"
     sp["preview_key"] = key
     sp["scenes"] = _scenes(r, ctx, work)
+    from .. import turant as TU                    # v0.367 TURANT: Firebase Messaging in this build when she switched it on
+    if TU.config_for(r, sp["app"]["app_id"]):
+        sp["fcm"] = TU.config_for(r, sp["app"]["app_id"])
     # v0.314 ASLI APP: the app's own backend (accounts + saved data) exists before a single screen is written, and the
     # build carries its lists so screens save for real and the kit knows the rules
     from .. import backend as BE
@@ -326,6 +329,14 @@ def _run(r: AppProject) -> None:
     src_dir = work / "project"
     sp["screens_kt"] = kt
     res = G.write_project(sp, src_dir)
+    try:                                                     # v0.347 BHASHA: the words in her customers' languages
+        from .. import i18n as I18
+        tab = I18.for_build(r, src_dir)
+        if tab:
+            sp["i18n"] = tab
+            res = G.write_project(sp, src_dir)
+    except Exception:                                        # noqa: BLE001  (the app still ships, in its own language)
+        log.info("i18n skipped", exc_info=True)
     zip_bytes = RN.zip_project(src_dir, export=True)
     (work / f"project-b{n}.zip").write_bytes(zip_bytes)
     _prune(work, "project-b", KEEP_BUILDS)
@@ -642,6 +653,10 @@ def _crashed_screens(report: dict[str, Any] | None, ids: list[str]) -> dict[str,
     for sid, x in ((report or {}).get("screens") or {}).items():
         if sid in ids and isinstance(x, dict) and not x.get("opened"):
             out[sid] = x.get("crash") or {"exception": "the app closed on this screen"}
+        elif sid in ids and isinstance(x, dict) and x.get("tap_crash"):          # v0.345 it crashed when a button was tapped
+            tc = x["tap_crash"]
+            out[sid] = {**tc, "excerpt": f"CRASHED WHEN THE USER TAPPED '{tc.get('label')}' ON THIS SCREEN.\n"
+                                         + str(tc.get("excerpt") or tc.get("exception") or "")}
     return out
 
 
@@ -664,6 +679,7 @@ def _keep_qa(r: AppProject, n: int, qa: dict[str, Any] | None) -> None:
     _put(r.id, qa={"ran": True, "build": n, "passed": bool(rep.get("passed")), "opened": rep.get("opened"), "total": rep.get("total"),
                    "crashed": rep.get("crashed") or [], "perf": rep.get("perf") or {}, "budget": rep.get("budget") or {},
                    "limits": rep.get("limits") or {}, "a11y_count": rep.get("a11y_count") or 0, "a11y": find,
+                   "flows": rep.get("flows") or {}, "tablet": rep.get("tablet") or {},      # v0.370 HAR DEVICE JAANCH
                    "shots": sorted(p.stem for p in d.glob("*.png")), "at": now().isoformat()})
 
 
@@ -677,6 +693,13 @@ def qa_line(qa: dict[str, Any] | None) -> str:
         bits.append(f"app {p['cold_ms']} ms mein khulti hai" + (" (thodi dheemi)" if b.get("cold_ms") == "over" else ""))
     if p.get("apk_mb") is not None:
         bits.append(f"APK {p['apk_mb']} MB")
+    fl = qa.get("flows") or {}
+    if fl.get("tapped"):
+        bits.append(f"{fl['tapped']} button dabaye" + (f", {len(fl.get('dead') or [])} se kuch nahi hua" if fl.get("dead") else ""))
+    big = qa.get("tablet") or {}                                  # v0.370 the same screens on a tablet
+    if big.get("total"):
+        bits.append(f"Tablet par {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
+                    + ", ".join((big.get('crashed') or [])[:4]) + ")" if big.get("crashed") else ""))
     if qa.get("a11y_count"):
         bits.append(f"{qa['a11y_count']} accessibility baatein")
     return " " + ", ".join(bits) + "."
@@ -804,7 +827,7 @@ def content(app_key: str) -> dict[str, Any]:
         raise AndroidError("not found")
     hit = _CACHE.get(app_key)
     if hit and time.time() - hit[0] < 60:
-        return hit[1]
+        return _with_stock(hit[1])
     with session() as s:
         r = s.query(AppProject).filter(AppProject.android.like(f'%"app_key": "{app_key}"%')).first()
         if r is None or _j(r.android, {}).get("app_key") != app_key:
@@ -819,5 +842,21 @@ def content(app_key: str) -> dict[str, Any]:
         out["backend"] = BE.seed_hint(r)
     except Exception:                                     # noqa: BLE001
         log.debug("backend hint", exc_info=True)
+    out["_app"] = r.id
     _CACHE[app_key] = (time.time(), out)
-    return out
+    return _with_stock(out)
+
+
+def _with_stock(out: dict[str, Any]) -> dict[str, Any]:
+    """v0.357 STOCK: products carry `stock` / `sold_out`, read fresh (never from the 60-second cache)."""
+    rid = out.get("_app")
+    shown = {k: v for k, v in out.items() if k != "_app"}
+    if not rid or not isinstance((out.get("lists") or {}).get("products"), list):
+        return shown
+    try:
+        from .. import stock as SK
+        r = AS._load(rid)
+        shown["lists"] = {**out["lists"], "products": SK.decorate(r, out["lists"]["products"])}
+    except Exception:                                     # noqa: BLE001
+        log.debug("stock decorate", exc_info=True)
+    return shown

@@ -4,7 +4,7 @@ import SwiftUI
 
 enum Words {
     private static func t(_ en: String, _ hi: String, _ hing: String) -> String {
-        switch AppTokens.language { case "hi": return hi; case "hinglish": return hing; default: return en }
+        switch I18n.current { case "hi": return hi; case "hinglish": return hing; case "en": return en; default: return T(en) }   // v0.347
     }
     static var offline: String { t("No internet. Please try again.", "इंटरनेट नहीं है। फिर कोशिश करें।", "Internet nahi hai. Phir koshish karein.") }
     static var tryAgain: String { t("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। फिर कोशिश करें।", "Kuch gadbad hui. Phir koshish karein.") }
@@ -35,6 +35,10 @@ enum Words {
     static var utr: String { t("UPI reference / UTR", "UPI रेफ़रेंस / UTR", "UPI reference / UTR") }
     static var privacy: String { t("Privacy policy", "गोपनीयता नीति", "Privacy policy") }
     static var call: String { t("Call", "कॉल करें", "Call karein") }
+    // v0.346
+    static var addFile: String { t("Attach PDF", "PDF जोड़ें", "PDF jodiye") }
+    static var fileFailed: String { t("Please pick a PDF under 10 MB.", "10 MB से छोटी PDF चुनें।", "10 MB se chhoti PDF chuniye.") }
+    static var remove: String { t("Remove", "हटाएँ", "Hataiye") }
     // v0.340
     static var scan: String { t("Scan", "स्कैन करें", "Scan karein") }
     static var dashboard: String { t("Dashboard", "डैशबोर्ड", "Dashboard") }
@@ -43,6 +47,53 @@ enum Words {
     static var last14: String { t("Last 14 days", "पिछले 14 दिन", "Pichhle 14 din") }
     static var inbox: String { t("Updates", "अपडेट", "Updates") }
     static var inboxEmpty: String { t("No updates yet.", "अभी कोई अपडेट नहीं।", "Abhi koi update nahi.") }
+    static var receipt: String { t("Receipt", "रसीद", "Raseed") }           // v0.354 RASEED
+    static var invoice: String { t("Tax invoice", "टैक्स इनवॉइस", "Tax invoice") }   // v0.355 GST BILL
+    static var back: String { t("Back", "वापस", "Wapas") }
+    static var chat: String { t("Message the shop", "दुकान को संदेश", "Dukaan ko message") }   // v0.378 BAAT
+    static var customerMessages: String { t("Customer messages", "ग्राहकों के संदेश", "Graahakon ke message") }
+    static var typeMessage: String { t("Type a message", "संदेश लिखें", "Message likhiye") }
+    static var chatHint: String { t("Ask anything about your order or our products.", "अपने ऑर्डर या सामान के बारे में कुछ भी पूछें।", "Apne order ya saamaan ke baare mein kuch bhi poochhiye.") }
+    static var changeTime: String { t("Change time", "समय बदलें", "Samay badlein") }   // v0.377
+    static var cancelWord: String { t("Cancel", "रद्द", "Cancel") }
+    static var pickSlot: String { t("Delivery time", "डिलीवरी का समय", "Delivery ka samay") }   // v0.371 SLOT
+    static var noSlots: String { t("No slot free right now - the shop will call to fix a time.", "अभी कोई स्लॉट खाली नहीं - दुकान समय तय करने के लिए कॉल करेगी।", "Abhi koi slot khaali nahi - dukaan call karke samay tay karegi.") }
+    static var delivery: String { t("Delivery", "डिलीवरी", "Delivery") }   // v0.360 DELIVERY
+    static var freeAbove: String { t("free above", "इससे ऊपर मुफ़्त", "is se upar free") }
+    static var freeDelivery: String { t("Free delivery", "मुफ़्त डिलीवरी", "Free delivery") }
+    static var shopClosed: String { t("Shop is closed now - your order will be seen when it opens", "दुकान अभी बंद है - खुलते ही ऑर्डर देखा जाएगा", "Dukaan abhi band hai - khulte hi order dekha jayega") }
+    static var areaOnly: String { t("Delivery only to some PIN codes - please put your PIN code in the address.", "डिलीवरी कुछ पिन कोड पर ही - पते में पिन कोड लिखें।", "Delivery kuch PIN codes par hi - address mein PIN code likhein.") }
+    static var myKhata: String { t("My khata", "मेरा खाता", "Mera khata") }   // v0.359 KHATA
+    static var due: String { t("To pay", "बाकी", "Baaki") }
+    static var advance: String { t("Advance", "एडवांस", "Advance") }
+    static var allClear: String { t("All clear", "सब चुकता", "Sab chukta") }
+    static var khataDues: String { t("Udhaar", "उधार", "Udhaar") }
+    static var received: String { t("Received", "मिला", "Mila") }
+    static var onCredit: String { t("On credit", "उधार पर", "Udhaar par") }
+    static var giveCredit: String { t("On credit", "उधार दें", "Udhaar do") }
+    static var couponCode: String { t("Coupon code", "कूपन कोड", "Coupon code") }   // v0.358 COUPON
+    static var apply: String { t("Apply", "लगाएँ", "Lagayein") }
+    static var couponSaved: String { t("You save", "आपकी बचत", "Aapki bachat") }
+    static var couponAgain: String { t("Cart changed: apply the code again.", "कार्ट बदला: कोड फिर से लगाएँ।", "Cart badla: code phir lagayein.") }
+    static var soldOut: String { t("Sold out", "स्टॉक खत्म", "Stock khatam") }   // v0.357 STOCK
+    static var creditNote: String { t("Credit note", "क्रेडिट नोट", "Credit note") }   // v0.356 WAPSI
+    // v0.353 RAAY
+    static var rateIt: String { t("How was it? Rate us", "कैसा रहा? रेटिंग दें", "Kaisa raha? Rating dijiye") }
+    static var ratingNote: String { t("A few words (optional)", "कुछ शब्द (ज़रूरी नहीं)", "Kuch shabd (zaroori nahi)") }
+    static var sendRating: String { t("Send rating", "रेटिंग भेजें", "Rating bhejiye") }
+    static var thanksRating: String { t("Thank you!", "धन्यवाद!", "Shukriya!") }
+    static var myTeam: String { t("Team", "टीम", "Team") }
+    static var openWork: String { t("open", "बाकी", "baaki") }
+    // v0.352 KAAM BAANTO
+    static var myWork: String { t("My work", "मेरा काम", "Mera kaam") }
+    static var takeIt: String { t("I'll take it", "मैं करूँगा", "Main karunga") }
+    static var giveBack: String { t("Give back", "वापस दें", "Wapas dein") }
+    static var withPerson: String { t("With", "किसके पास", "Kiske paas") }
+    static var you: String { t("You", "आप", "Aap") }
+    static var notAssigned: String { t("Not assigned", "किसी को नहीं दिया", "Kisi ko nahi diya") }
+    static var onIt: String { t("is on it", "इस पर काम कर रहे हैं", "is par kaam kar rahe hain") }
+    static var assignedToYou: String { t("Given to you", "आपको सौंपा गया", "Aapko diya gaya") }
+    static var chooseOne: String { t("Choose an item on the left", "बाईं ओर से कुछ चुनें", "Baayein taraf se kuch chuniye") }   // v0.366
     static var newEntry: String { t("New — open the app to see it", "नया — देखने के लिए ऐप खोलें", "Naya — dekhne ke liye app kholiye") }
 }
 
@@ -52,12 +103,15 @@ final class Router: ObservableObject {
     static let shared = Router()
     @Published var tab = 0
     @Published var paths: [[String]] = Array(repeating: [], count: max(1, AppTokens.tabs.count))
+    /// v0.366 IPAD PANE: true while a wide iPad shows each tab's list beside the opened record.
+    var split = false
 
     /// Open a screen: a tab switches tabs; anything else goes on top of the current tab. Unknown ids are ignored.
+    /// v0.366 in the two-pane view a record replaces the one on the right (Back closes it) instead of stacking.
     func go(_ id: String) {
         if let i = AppTokens.tabs.firstIndex(where: { $0.id == id }) { tab = i; paths[i] = []; return }
         guard AppTokens.screenIds.contains(id) else { return }
-        paths[tab].append(id)
+        if split { paths[tab] = [id] } else { paths[tab].append(id) }
     }
 
     func back() { if !paths[tab].isEmpty { paths[tab].removeLast() } }
@@ -65,31 +119,66 @@ final class Router: ObservableObject {
 
 struct RootView: View {
     @StateObject private var router = Router.shared
+    @ObservedObject private var i18n = I18n.shared            // v0.347 a language change redraws every word
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.horizontalSizeClass) private var hsc      // v0.366 regular = a wide iPad (or iPad split at half+)
     var start: String? = nil
 
     var body: some View {
         let c = H.c(scheme)
         Group {
-            if let s = start {                       // debug builds: Hoola's simulator check opens one screen directly
-                NavigationStack { screenView(s) }
-            } else if AppTokens.tabs.count > 1 {
+            if AppTokens.tabs.count > 1 {
                 TabView(selection: $router.tab) {
                     ForEach(Array(AppTokens.tabs.enumerated()), id: \.offset) { i, t in
-                        NavigationStack(path: $router.paths[i]) {
-                            screenView(t.id).navigationDestination(for: String.self) { screenView($0) }
-                        }
-                        .tabItem { Label(t.label, systemImage: t.symbol) }
-                        .tag(i)
+                        tabBody(i, t.id)
+                            .tabItem { Label(T(t.label), systemImage: t.symbol) }
+                            .tag(i)
                     }
                 }
             } else {
-                NavigationStack(path: $router.paths[0]) {
-                    screenView(AppTokens.start).navigationDestination(for: String.self) { screenView($0) }
-                }
+                tabBody(0, AppTokens.start)
             }
         }
         .tint(c.primary)
+        .id(i18n.lang)
+        .onAppear { router.split = hsc == .regular }
+        .onChange(of: hsc) { v in router.split = v == .regular; if let n = router.paths.indices.last { for k in 0...n where router.paths[k].count > 1 { router.paths[k] = [router.paths[k].last!] } } }
+        // debug builds: Hoola's simulator check opens one screen INSIDE the real app (its tab, or pushed on the first tab),
+        // so its buttons really navigate and its picture is what a user sees
+        .onAppear { if let s = start { router.go(s) } }
+    }
+
+    /// One tab: a phone (compact) = one navigation stack; a wide iPad = the tab's list on the left and the opened record on
+    /// the right (v0.366 IPAD PANE), the right side's own stack starting from a quiet "choose one" note.
+    @ViewBuilder
+    private func tabBody(_ i: Int, _ id: String) -> some View {
+        if hsc == .regular {
+            HStack(spacing: 0) {
+                NavigationStack { screenView(id) }
+                    .frame(maxWidth: 420)
+                Divider()
+                NavigationStack(path: $router.paths[i]) {
+                    PanePlaceholder().navigationDestination(for: String.self) { screenView($0) }
+                }
+            }
+        } else {
+            NavigationStack(path: $router.paths[i]) {
+                screenView(id).navigationDestination(for: String.self) { screenView($0) }
+            }
+        }
+    }
+}
+
+/// v0.366 the right side of the iPad two-pane view before anything is opened.
+struct PanePlaceholder: View {
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "rectangle.split.2x1").font(.largeTitle).foregroundStyle(.secondary)
+            Muted(Words.chooseOne)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(H.c(scheme).bg.ignoresSafeArea())
     }
 }
 
@@ -111,7 +200,8 @@ struct Page<Content: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) { content() }
                 .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: 720, alignment: .leading)          // v0.363 BADI SCREEN: a readable column in landscape
+                .frame(maxWidth: .infinity)
         }
         .background(c.bg.ignoresSafeArea())
         .navigationTitle(title)
@@ -194,7 +284,11 @@ struct ListBlock: View {
                         if r.price > 0 { Text(rupees(r.price)).font(.subheadline.weight(.semibold)) }
                     }
                     Spacer()
-                    if list == "products" {
+                    if list == "products" && r.b("sold_out") {
+                        StatusPill(text: Words.soldOut)                                   // v0.357 STOCK
+                    } else if list == "products" && !items(r.o["variants"]).isEmpty {
+                        SizeChips(p: r)                                                   // v0.362 VARIANTS
+                    } else if list == "products" {
                         Button(state.cart[r.id] == nil ? Words.add : "✓ \(state.cart[r.id] ?? 0)") { state.add(r.id) }
                             .buttonStyle(.bordered)
                     }
@@ -265,5 +359,29 @@ struct AccountButton: View {
         MainButton(text: auth.signedIn ? auth.name : Words.signIn) {
             Router.shared.go(auth.signedIn ? "hoola_account" : "hoola_login")
         }
+    }
+}
+
+
+/// v0.362 VARIANTS: the sizes of a product as buttons ("1 kg ₹60"); a tap adds that size, its count shows on it.
+struct SizeChips: View {
+    let p: Item
+    @ObservedObject private var state = AppState.shared
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+                ForEach(items(p.o["variants"]), id: \.id) { v in
+                    let key = p.id + "::" + v.id
+                    let n = state.cart[key] ?? 0
+                    if v.b("sold_out") { StatusPill(text: v.s("name") + " · " + Words.soldOut) }
+                    else {
+                        Button(v.s("name") + " " + rupees(v.price) + (n > 0 ? " ·\(n)" : "")) { state.add(key) }
+                            .buttonStyle(.bordered).tint(n > 0 ? .accentColor : .secondary)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: 220)
     }
 }

@@ -48,6 +48,9 @@ jobs:
         run: |
           APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
           bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ios-shots" $(cat hoola_qa/screens.txt)
+      - name: Every button on every screen (flow walk, v0.345)
+        working-directory: ${{ runner.temp }}/ios
+        run: bash hoola_qa/flow_check.sh "$GITHUB_WORKSPACE/ios-shots"
       - name: App Store screenshots are 1320x2868 (iPhone Pro Max simulator, v0.338)
         working-directory: ${{ runner.temp }}/ios
         run: |
@@ -64,6 +67,26 @@ jobs:
           bad = {k: v for k, v in sizes.items() if v not in asc.SIZES}
           if len(shots) < 4 or bad:
               print("::error::App Store screenshot sizes: " + str(bad or "missing"))
+              sys.exit(1)
+          PY
+      - name: iPad - every screen on a 13-inch iPad Pro + the 13-inch App Store screenshots (v0.364)
+        working-directory: ${{ runner.temp }}/ios
+        run: |
+          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          SIM_KIND=ipad bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ipad-shots" $(cat hoola_qa/screens.txt)
+          python3 - "$GITHUB_WORKSPACE/ipad-shots" <<'PY'
+          import json, sys
+          sys.path.insert(0, "hoola_qa")
+          import asc
+          from pathlib import Path
+          out = Path(sys.argv[1])
+          r = json.loads((out / "report.json").read_text())
+          crashed = list(r.get("crashed") or [])
+          shots = sorted((out / "screens").glob("*.png"))
+          bad = {p.name: asc.png_size(p.read_bytes()) for p in shots if asc.png_size(p.read_bytes()) not in asc.IPAD_SIZES}
+          print(len(shots), "iPad screens,", len(crashed), "crashed; wrong sizes:", bad)
+          if crashed or len(shots) < 4 or bad:
+              print("::error::iPad check: crashed " + str(crashed) + " sizes " + str(bad))
               sys.exit(1)
           PY
       - uses: actions/setup-python@v5
@@ -87,7 +110,7 @@ jobs:
           for i in $(seq 1 120); do curl -sf -o /dev/null http://127.0.0.1:8077/api/app-api/akf1c7a2e0000000000000001/schema && break; sleep 1; done
           curl -sf http://127.0.0.1:8077/api/app-api/akf1c7a2e0000000000000001/schema | head -c 200
       - name: The iPhone app against the real server (sign up, order, paid claim, crash report)
-        run: bash server/app/appmaker/ios/ci_e2e.sh in.hoola.preview.fixture ios-shots
+        run: bash server/app/appmaker/ios/ci_e2e.sh in.hoola.preview.fixture ios-shots "$(find "$RUNNER_TEMP/ios/dd/Build/Products/Debug-iphonesimulator" -maxdepth 1 -name '*.app' | head -1)"
       - name: The order the iPhone app placed is on the server (priced by the server, sent once)
         if: always()
         working-directory: server
@@ -107,6 +130,11 @@ jobs:
           if not r["passed"] or r["total"] < 13:
               print("::error::simulator check failed: " + ", ".join(r["crashed"]))
               sys.exit(1)
+          fl = r.get("flows") or {}
+          print(json.dumps(fl, indent=1)[:2000])
+          if not fl.get("tapped") or fl.get("crashed"):
+              print("::error::flow walk: " + (json.dumps(fl.get("crashed")) if fl.get("crashed") else "no button was tapped"))
+              sys.exit(1)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
@@ -115,6 +143,58 @@ jobs:
           path: |
             ios-shots
             store-shots
+            ipad-shots
             ${{ runner.temp }}/ios/build.log
+            ios-shots/flows.log
             ${{ runner.temp }}/ios/release.log
+          if-no-files-found: ignore
+
+  fixture2:
+    # v0.351 PAKKA SABOOT: the field-service STAFF app (Hindi + English, every newer field kind), generator only:
+    # compiled, every screen opened and every button tapped on an iPhone simulator
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate + XcodeGen
+        run: |
+          brew install xcodegen > /dev/null 2>&1 || true
+          python3 server/app/appmaker/ios/gen.py server/app/appmaker/android/fixture2/spec.json "$RUNNER_TEMP/ios2"
+          cd "$RUNNER_TEMP/ios2" && xcodegen generate --quiet
+      - name: Build (simulator)
+        working-directory: ${{ runner.temp }}/ios2
+        run: |
+          set -o pipefail
+          P=$(ls -d *.xcodeproj | head -1)
+          xcodebuild -project "$P" -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | grep -E "error:|BUILD" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Swift errors as annotations
+        if: failure()
+        run: grep -E "error:" "$RUNNER_TEMP/ios2/build.log" | sort -u | head -60 | while IFS= read -r l; do echo "::error::${l}"; done
+      - name: Every screen + every button on an iPhone simulator
+        working-directory: ${{ runner.temp }}/ios2
+        run: |
+          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ios2-shots" $(cat hoola_qa/screens.txt)
+          bash hoola_qa/flow_check.sh "$GITHUB_WORKSPACE/ios2-shots"
+      - name: HOOLA QA report (field-service app)
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          r = json.load(open("ios2-shots/report.json"))
+          fl = r.get("flows") or {}
+          print(json.dumps({k: r.get(k) for k in ("opened", "total", "crashed", "perf")}, indent=1), json.dumps(fl)[:1500])
+          if not r["passed"] or r["total"] < 12 or not fl.get("tapped") or fl.get("crashed"):
+              print("::error::field-service app check failed")
+              sys.exit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-fixture2
+          path: |
+            ios2-shots
+            ${{ runner.temp }}/ios2/build.log
           if-no-files-found: ignore

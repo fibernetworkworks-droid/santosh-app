@@ -9,6 +9,9 @@ import Charts
 import VisionKit
 import BackgroundTasks
 import UserNotifications
+import UniformTypeIdentifiers
+import MapKit
+import CoreLocation
 
 // ---------------------------------------------------------------- scan
 struct ScanRow: View {
@@ -77,6 +80,7 @@ struct StatsList: Identifiable {
     let total: Double?
     let status: [(String, Int)]
     let daily: [Int]
+    var rating: String = ""                      // v0.353 "★ 4.3 (12)"
 }
 
 struct StatsBlock: View {
@@ -84,6 +88,8 @@ struct StatsBlock: View {
     @State private var lists: [StatsList] = []
     @State private var failed = false
     @State private var loaded = false
+    @State private var team: [Item] = []
+    @State private var unassigned = 0
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -99,6 +105,7 @@ struct StatsBlock: View {
                             Text("\(l.count)").font(.title3.weight(.semibold))
                         }
                         if let t = l.total { Muted(Words.total + ": " + rupees(t)) }
+                        if !l.rating.isEmpty { Muted(l.rating) }
                         if !l.status.isEmpty {
                             HStack { ForEach(l.status.prefix(4), id: \.0) { s in StatusPill(text: "\(s.0) \(s.1)") } }
                         }
@@ -110,6 +117,14 @@ struct StatsBlock: View {
                         .chartXAxis(.hidden)
                         .frame(height: 72)
                         .accessibilityLabel(Words.last14 + " " + l.label + ": " + l.daily.map(String.init).joined(separator: ", "))
+                    }
+                }
+                if !team.isEmpty {                       // v0.352 / v0.353 open work and average stars per person
+                    Card {
+                        Text(Words.myTeam).font(.headline)
+                        if unassigned > 0 { StatusPill(text: "\(unassigned) " + Words.notAssigned) }
+                        ForEach(team, id: \.id) { p in Muted(p.s("name") + " · \(Int(p.n("open"))) " + Words.openWork
+                            + (p.has("rating") ? " · ★ \(p.s("rating")) (\(Int(p.n("rated"))))" : "")) }
                     }
                 }
             }
@@ -124,9 +139,13 @@ struct StatsBlock: View {
             let st = (x.o["status"] as? [String: Any] ?? [:]).compactMap { k, v in (v as? NSNumber).map { (k, $0.intValue) } }
                 .sorted { $0.1 > $1.1 }
             let daily = (x.o["daily"] as? [Any] ?? []).compactMap { ($0 as? NSNumber)?.intValue }
+            let rt = x.o["rating"] as? [String: Any]
             return StatsList(id: x.s("key"), label: x.s("label"), count: Int(x.n("count")),
-                             total: x.o["total"] is NSNull || x.o["total"] == nil ? nil : x.n("total"), status: st, daily: daily)
+                             total: x.o["total"] is NSNull || x.o["total"] == nil ? nil : x.n("total"), status: st, daily: daily,
+                             rating: rt.map { "★ \(Item(o: $0).s("avg")) (\(Item(o: $0).s("count")))" } ?? "")
         }
+        team = items(r.body["team"]).enumerated().map { i, p in var o = p.o; o["id"] = "p\(i)"; return Item(o: o) }
+        unassigned = (r.body["unassigned"] as? NSNumber)?.intValue ?? 0
         loaded = true
     }
 }
@@ -223,6 +242,7 @@ enum Updates {
         for it in items(r.body["items"]) {
             let title = it.s("title", AppData.shared.appName)
             let text = it.s("kind") == "new" ? Words.newEntry
+                : it.s("kind") == "assigned" ? Words.assignedToYou          // v0.352 work given to this staff member
                 : [it.s("status"), it.s("paid") == "No" ? "" : it.s("paid")].filter { !$0.isEmpty }.joined(separator: " · ")
             Inbox.shared.add(title, text, now)
             let c = UNMutableNotificationContent()
@@ -240,6 +260,570 @@ enum Updates {
     static func askOnce() {
         guard !UserDefaults.standard.bool(forKey: "hoola_notify_asked") else { return }
         UserDefaults.standard.set(true, forKey: "hoola_notify_asked")
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { ok, _ in
+            if ok { Task { @MainActor in PushHub.start() } }      // v0.368 allowed -> ask Apple for the push token
+        }
+    }
+}
+
+// ---------------------------------------------------------------- v0.346 a PDF document for a form
+/// The system file importer (no permission), at most 10 MB, copied into the app's own temp folder, sent by the outbox.
+struct FileRow: View {
+    let label: String
+    let key: String
+    @ObservedObject private var state = AppState.shared
+    @State private var open = false
+    @State private var note = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Button { open = true } label: { Label(label, systemImage: "doc.richtext") }
+                Spacer()
+                if !(state.form[key] ?? "").isEmpty {
+                    Text(state.form[key + "__name"] ?? "PDF").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Button(Words.remove) { state.form[key] = nil; state.form[key + "__name"] = nil }.font(.caption)
+                }
+            }
+            if !note.isEmpty { Text(note).font(.caption).foregroundStyle(.red) }
+        }
+        .fileImporter(isPresented: $open, allowedContentTypes: [.pdf]) { result in
+            guard case .success(let url) = result else { return }
+            let ok = url.startAccessingSecurityScopedResource()
+            defer { if ok { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url), data.count <= 10 * 1024 * 1024, data.prefix(5) == Data("%PDF-".utf8) else {
+                note = Words.fileFailed
+                return
+            }
+            let dest = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+            guard (try? data.write(to: dest)) != nil else { note = Words.fileFailed; return }
+            note = ""
+            state.form[key] = "local:" + dest.path
+            state.form[key + "__name"] = String(url.lastPathComponent.prefix(80))
+        }
+    }
+}
+
+// ---------------------------------------------------------------- v0.350 NAKSHA: stops on a map (Apple MapKit, free)
+enum Maps {
+    static let done: Set<String> = ["Delivered", "Done", "Completed", "Cancelled", "Closed", "Rejected"]
+
+    static func point(_ s: String) -> CLLocationCoordinate2D? {
+        let p = s.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        guard p.count == 2, let la = Double(p[0]), let lo = Double(p[1]), abs(la) <= 90, abs(lo) <= 180 else { return nil }
+        return CLLocationCoordinate2D(latitude: la, longitude: lo)
+    }
+
+    static func km(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
+        CLLocation(latitude: a.latitude, longitude: a.longitude).distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude)) / 1000
+    }
+
+    /// Apple Maps with every stop (it plans the route); one stop = directions to it.
+    static func open(_ stops: [(String, CLLocationCoordinate2D)]) {
+        let items = stops.prefix(10).map { s -> MKMapItem in
+            let m = MKMapItem(placemark: MKPlacemark(coordinate: s.1))
+            m.name = s.0
+            return m
+        }
+        MKMapItem.openMaps(with: items, launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+    }
+}
+
+struct Stop: Identifiable {
+    let id: String
+    let name: String
+    let note: String
+    let at: CLLocationCoordinate2D
+}
+
+/// Staff: the open rows that carry a location on a map + nearest first; "Route in Maps" opens Apple Maps with all of them.
+struct StopsBlock: View {
+    @ObservedObject private var auth = Auth.shared
+    @ObservedObject private var db = Db.shared
+    @StateObject private var here = Here()
+    @State private var region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 20.59, longitude: 78.96),
+                                                   span: MKCoordinateSpan(latitudeDelta: 20, longitudeDelta: 20))
+
+    private func stops() -> [Stop] {
+        var out: [Stop] = []
+        for c in db.collections() {
+            guard let key = db.fields(c).first(where: { $0.s("type") == "location" })?.s("key") else { continue }
+            for r in db.rows(c) where !Maps.done.contains(r.s("status")) {
+                guard let p = Maps.point(r.s(key)) else { continue }
+                let name = [r.s("name"), r.s("title"), r.s("address")].first { !$0.isEmpty } ?? T(db.label(c))
+                out.append(Stop(id: c + r.id, name: name, note: [T(r.s("status")), r.s("address")].filter { !$0.isEmpty }.joined(separator: " · "), at: p))
+            }
+        }
+        if let h = Maps.point(here.value) { out.sort { Maps.km(h, $0.at) < Maps.km(h, $1.at) } }
+        return out
+    }
+
+    var body: some View {
+        if auth.isStaff && db.collections().contains(where: { c in db.fields(c).contains { $0.s("type") == "location" } }) {
+            let list = stops()
+            VStack(alignment: .leading, spacing: 10) {
+                Text(T("Today's stops") + " (\(list.count))").font(.headline)
+                if list.isEmpty { Muted(T("No open stops with a location.")) }
+                if !list.isEmpty {
+                    Map(coordinateRegion: $region, annotationItems: list) { s in MapMarker(coordinate: s.at) }
+                        .frame(height: 220)
+                        .clipShape(RoundedRectangle(cornerRadius: H.radius))
+                        .onAppear { if let f = list.first { region.center = f.at; region.span = MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2) } }
+                }
+                ForEach(list.prefix(20)) { s in
+                    Card {
+                        Text(s.name).font(.headline)
+                        let d = Maps.point(here.value).map { String(format: "%.1f km", Maps.km($0, s.at)) } ?? ""
+                        Muted([d, s.note].filter { !$0.isEmpty }.joined(separator: " · "))
+                    }
+                    .onTapGesture { Maps.open([(s.name, s.at)]) }
+                }
+                if !list.isEmpty && here.value.isEmpty {
+                    Button { here.ask() } label: { Label(T("Nearest first (use my location)"), systemImage: "location") }.font(.subheadline)
+                }
+                if !list.isEmpty { MainButton(text: T("Route in Maps"), tonal: true) { Maps.open(list.map { ($0.name, $0.at) }) } }
+            }
+            .onAppear {                                       // the location question only on her tap (App Review), never by itself
+                let st = CLLocationManager().authorizationStatus
+                if st == .authorizedWhenInUse || st == .authorizedAlways { here.ask() }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- v0.352 KAAM BAANTO: work given to one staff member
+/// The app's staff (first names only, never e-mails) for the assign buttons. `admin` = this account gives work to others.
+@MainActor
+final class Team: ObservableObject {
+    static let shared = Team()
+    @Published var people: [Item] = []
+    @Published var admin = false
+    private var loadedFor = ""
+
+    func load(force: Bool = false) async {
+        guard Auth.shared.isStaff else { return }
+        let who = Auth.shared.me?.id ?? ""
+        if !force && loadedFor == who && !people.isEmpty { return }
+        let r = await Cloud.call("GET", "/team", nil, token: Auth.shared.token)
+        guard r.ok else { return }
+        people = items(r.body["team"])
+        admin = (r.body["admin"] as? Bool) ?? false
+        loadedFor = who
+    }
+
+    /// Whether this account may work on (change) the row: free, mine, or I am an admin. The server checks it again.
+    func mayWork(_ r: Item) -> Bool {
+        let to = r.s("assigned_to")
+        return to.isEmpty || to == (Auth.shared.me?.id ?? "") || admin
+    }
+}
+
+/// On a staff row card: who has it, and - admin: one button per staff member (tap again = take back); staff: "I'll take
+/// it" on a free row, "Give back" on their own. Sent through the outbox like any change (works offline).
+struct AssignBox: View {
+    let coll: String
+    let r: Item
+    @ObservedObject private var auth = Auth.shared
+    @ObservedObject private var team = Team.shared
+
+    var body: some View {
+        if auth.isStaff && !r.b("pending") {
+            let meId = auth.me?.id ?? ""
+            let to = r.s("assigned_to")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    StatusPill(text: to.isEmpty ? Words.notAssigned : Words.withPerson + ": " + (to == meId ? Words.you : r.s("assigned_name")))
+                    if team.admin {
+                        ForEach(team.people, id: \.id) { p in
+                            Button(p.s("name")) { Db.shared.update(coll, r.id, ["_assign": to == p.id ? "" : p.id]) }
+                                .buttonStyle(.bordered).tint(to == p.id ? .accentColor : .secondary)
+                        }
+                    } else if to.isEmpty {
+                        Button(Words.takeIt) { Db.shared.update(coll, r.id, ["_assign": "me"]) }.buttonStyle(.bordered)
+                    } else if to == meId {
+                        Button(Words.giveBack) { Db.shared.update(coll, r.id, ["_assign": ""]) }.buttonStyle(.bordered)
+                    }
+                }
+            }
+            .task(id: auth.me?.id) { await team.load() }
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------- v0.353 RAAY: the customer's rating of a finished row
+func starLine(_ n: Int, _ note: String = "") -> String {
+    let k = max(0, min(5, n))
+    return String(repeating: "★", count: k) + String(repeating: "☆", count: 5 - k) + " \(n)/5" + (note.isEmpty ? "" : " · " + String(note.prefix(120)))
+}
+
+/// On the customer's own finished row (the server says `can_rate`): 1-5 stars + a short note, sent once through the outbox
+/// (works offline). A rated row shows its stars instead.
+struct RateBox: View {
+    let coll: String
+    let r: Item
+    @ObservedObject private var auth = Auth.shared
+    @State private var stars = 0
+    @State private var note = ""
+    @State private var sent = 0
+
+    var body: some View {
+        let n = Int(r.n("rating"))
+        if n > 0 {
+            Muted(starLine(n, r.s("rating_note")))
+        } else if sent > 0 {
+            Muted(starLine(sent) + " · " + Words.thanksRating)
+        } else if r.b("can_rate") && !auth.isStaff {
+            VStack(alignment: .leading, spacing: 6) {
+                Muted(Words.rateIt)
+                HStack {
+                    ForEach(1...5, id: \.self) { i in
+                        Button("\(i) ★") { stars = i }.buttonStyle(.bordered).tint(stars == i ? .accentColor : .secondary)
+                            .accessibilityLabel("\(i) / 5")
+                    }
+                }
+                if stars > 0 {
+                    TextField(Words.ratingNote, text: $note, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
+                        .onChange(of: note) { v in if v.count > 300 { note = String(v.prefix(300)) } }
+                    Button(Words.sendRating) {
+                        Db.shared.update(coll, r.id, ["_rate": ["stars": stars, "note": note.trimmingCharacters(in: .whitespacesAndNewlines)]])
+                        sent = stars
+                    }.buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- v0.354 RASEED: the receipt of a finished row
+/// "Receipt" on a finished row (the server says `receipt`): a 15-minute signed link from the app's server, opened in the
+/// browser - no file storage, no sharing sheet. Needs a network (said plainly when there is none).
+struct ReceiptButton: View {
+    let coll: String
+    let r: Item
+    @Environment(\.openURL) private var openURL
+    @State private var busy = false
+    @State private var error = ""
+
+    var body: some View {
+        if r.b("receipt") && !r.b("pending") {
+            VStack(alignment: .leading, spacing: 4) {
+                Button(busy ? Words.loading : (r.s("receipt_kind") == "invoice" ? Words.invoice : r.s("receipt_kind") == "credit_note" ? Words.creditNote : Words.receipt)) {   // v0.355
+                    guard !busy else { return }
+                    busy = true
+                    Task {
+                        let res = await Cloud.call("POST", "/c/\(coll)/\(r.id)/receipt-link", [:], token: Auth.shared.token)
+                        busy = false
+                        if res.ok, let s = res.body["url"] as? String, s.hasPrefix("http"), let u = URL(string: s) { openURL(u); error = "" }
+                        else { error = res.error.isEmpty ? (res.offline ? Words.offline : Words.tryAgain) : res.error }
+                    }
+                }.buttonStyle(.bordered)
+                if !error.isEmpty { Muted(error) }
+            }
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------- v0.358 COUPON: the discount code box in the cart
+/// Code + Apply: the app's server says the discount for THIS cart (nothing counted yet); the order carries the code and the
+/// server applies it again from its own prices. Changing the cart asks to apply again.
+struct CouponBox: View {
+    @ObservedObject private var state = AppState.shared
+    @State private var code = ""
+    @State private var msg = ""
+    @State private var busy = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                TextField(Words.couponCode, text: $code).textFieldStyle(.roundedBorder).textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .onChange(of: code) { v in let c = String(v.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(16)); if c != v { code = c } }
+                Button(busy ? Words.loading : Words.apply) {
+                    guard !busy, code.count >= 4 else { return }
+                    busy = true
+                    Task {
+                        let cart = state.cartItems().map { ["id": $0.0.id, "qty": $0.1] as [String: Any] }
+                        let r = await Cloud.call("POST", "/coupon", ["code": code, "cart": cart], token: Auth.shared.token)
+                        busy = false
+                        if r.ok, (r.body["ok"] as? Bool) == true {
+                            state.coupon = code
+                            state.couponOff = (r.body["discount"] as? NSNumber)?.doubleValue ?? 0
+                            msg = Words.couponSaved + " " + rupees(state.couponOff) + " · " + Words.total + " "
+                                + rupees((r.body["total"] as? NSNumber)?.doubleValue ?? state.cartTotal())
+                        } else {
+                            state.coupon = ""; state.couponOff = 0
+                            msg = (r.body["why"] as? String) ?? (r.error.isEmpty ? (r.offline ? Words.offline : Words.tryAgain) : r.error)
+                        }
+                    }
+                }.buttonStyle(.bordered)
+            }
+            if !msg.isEmpty { Muted(msg) }
+        }
+        .onAppear { code = state.coupon }
+        .onChange(of: state.cartTotal()) { _ in if state.couponOff > 0 { state.couponOff = 0; state.coupon = ""; msg = Words.couponAgain } }
+    }
+}
+
+
+// ---------------------------------------------------------------- v0.359 KHATA: the customer's udhaar ledger
+/// My account: a customer sees her own balance + entries; staff see who owes how much and record a payment (cash; recorded
+/// only - the app never moves money). Shows nothing when there is no khata yet.
+struct KhataBlock: View {
+    @ObservedObject private var auth = Auth.shared
+    @State private var data: [String: Any]? = nil
+    @State private var amounts: [String: String] = [:]
+    @State private var tick = 0
+
+    var body: some View {
+        Group {
+            if let d = data {
+                if auth.isStaff {
+                    let people = items(d["customers"])
+                    if !people.isEmpty {
+                        Card {
+                            Text(Words.khataDues + " · " + rupees((d["total_due"] as? NSNumber)?.doubleValue ?? 0)).font(.headline)
+                            ForEach(people.prefix(50), id: \.id) { p in
+                                HStack {
+                                    Muted(p.s("name") + ": " + rupees(p.n("balance")))
+                                    Spacer()
+                                    if p.n("balance") > 0 {
+                                        TextField("₹", text: Binding(get: { amounts[p.s("member")] ?? "" }, set: { amounts[p.s("member")] = String($0.filter { $0.isNumber || $0 == "." }.prefix(10)) }))
+                                            .keyboardType(.decimalPad).textFieldStyle(.roundedBorder).frame(width: 90)
+                                        Button(Words.received) {
+                                            let m = p.s("member"), a = amounts[m] ?? ""
+                                            guard !a.isEmpty else { return }
+                                            Task {
+                                                let r = await Cloud.call("POST", "/khata/\(m)/pay", ["amount": a, "mode": "cash"], token: auth.token)
+                                                if r.ok { amounts[m] = ""; tick += 1 }
+                                            }
+                                        }.buttonStyle(.bordered)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    let es = items(d["entries"])
+                    if !es.isEmpty {
+                        let bal = (d["balance"] as? NSNumber)?.doubleValue ?? 0
+                        Card {
+                            Text(Words.myKhata).font(.headline)
+                            Text(bal > 0 ? Words.due + ": " + rupees(bal) : bal < 0 ? Words.advance + ": " + rupees(-bal) : Words.allClear).font(.title3.weight(.semibold))
+                            ForEach(es.prefix(10), id: \.id) { e in
+                                Muted((e.s("kind") == "credit" ? "+ " : "− ") + rupees(e.n("amount")) + " · " + (e.s("note").isEmpty ? e.s("mode") : e.s("note")) + " · " + String(e.s("at").prefix(10)))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .task(id: "\(auth.me?.id ?? "")-\(tick)") {
+            guard auth.signedIn else { return }
+            let r = await Cloud.call("GET", auth.isStaff ? "/khata?all=1" : "/khata", nil, token: auth.token)
+            if r.ok { data = r.body }
+        }
+    }
+}
+
+/// Staff on an order card: "On credit" writes the order's server total to the customer's khata (once; through the outbox).
+struct CreditButton: View {
+    let coll: String
+    let r: Item
+    @ObservedObject private var auth = Auth.shared
+
+    var body: some View {
+        if auth.isStaff && !r.b("pending") && coll == Db.shared.orderList && r.n("total") > 0 && r.s("status") != "Cancelled" {
+            if r.b("on_credit") { StatusPill(text: Words.onCredit) }
+            else { Button(Words.giveCredit) { Db.shared.update(coll, r.id, ["_credit": true]) }.buttonStyle(.bordered) }
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------- v0.360 DELIVERY: the fee rule + open / closed in the cart
+func deliveryFee(_ goods: Double) -> Double {
+    guard let d = AppData.shared.backend["delivery"] as? [String: Any] else { return 0 }
+    if let f = d["free_above"] as? NSNumber, goods >= f.doubleValue { return 0 }
+    return (d["fee"] as? NSNumber)?.doubleValue ?? 0
+}
+
+/// "Delivery ₹30 · free above ₹500" (or "Free delivery"), and a plain notice when the shop is closed or delivers only to some
+/// PIN codes - the order is still taken (the server adds a note, never refuses).
+struct DeliveryLine: View {
+    @ObservedObject private var state = AppState.shared
+
+    var body: some View {
+        if let d = AppData.shared.backend["delivery"] as? [String: Any] {
+            let fee = deliveryFee(state.cartTotal() - state.couponOff)
+            VStack(alignment: .leading, spacing: 4) {
+                let free = (d["free_above"] as? NSNumber).map { " · " + Words.freeAbove + " " + rupees($0.doubleValue) } ?? ""
+                Muted(fee > 0 ? Words.delivery + ": " + rupees(fee) + free : Words.freeDelivery)
+                if (d["open"] as? Bool) == false { StatusPill(text: Words.shopClosed + ((d["hours"] as? String).map { $0.isEmpty ? "" : " (\($0))" } ?? "")) }
+                if (d["area"] as? Bool) == true { Muted(Words.areaOnly) }
+            }
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------- v0.371 SLOT: the delivery time slot in the cart
+struct SlotPicker: View {
+    @ObservedObject private var state = AppState.shared
+    @State private var list: [Item] = []
+    @State private var loaded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Muted(Words.pickSlot)
+            if loaded && list.isEmpty { Muted(Words.noSlots) }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    ForEach(list, id: \.id) { sl in
+                        Button(sl.s("day") + " · " + sl.s("label")) { state.slot = state.slot == sl.s("key") ? "" : sl.s("key") }
+                            .buttonStyle(.bordered).tint(state.slot == sl.s("key") ? .accentColor : .secondary)
+                    }
+                }
+            }
+        }
+        .task {
+            let r = await Cloud.call("GET", "/slots", nil, token: Auth.shared.token)
+            if r.ok { list = items(r.body["slots"]).map { x in var o = x.o; o["id"] = x.s("key"); return Item(o: o) } }
+            loaded = true
+            if !list.contains(where: { $0.s("key") == state.slot }) { state.slot = "" }
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------- v0.377 CHHUTTI: move an order to another free slot
+struct SlotChange: View {
+    let coll: String
+    let r: Item
+    @State private var open = false
+    @State private var list: [Item] = []
+    @State private var error = ""
+
+    var body: some View {
+        if !r.s("slot").isEmpty && !r.b("pending") && !["Cancelled", "Delivered", "Done"].contains(r.s("status")) {
+            VStack(alignment: .leading, spacing: 4) {
+                if open {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(list, id: \.id) { sl in
+                                Button(sl.s("day") + " · " + sl.s("label")) {
+                                    Task {
+                                        let res = await Cloud.call("POST", "/c/\(coll)/\(r.id)/slot", ["slot": sl.s("key")], token: Auth.shared.token)
+                                        if res.ok { open = false; await Db.shared.refresh(coll) }
+                                        else { error = res.error.isEmpty ? (res.offline ? Words.offline : Words.tryAgain) : res.error }
+                                    }
+                                }.buttonStyle(.bordered)
+                            }
+                            Button(Words.cancelWord) { open = false }.buttonStyle(.bordered)
+                        }
+                    }
+                } else {
+                    Button(Words.changeTime) {
+                        open = true
+                        Task {
+                            let res = await Cloud.call("GET", "/slots", nil, token: Auth.shared.token)
+                            if res.ok { list = items(res.body["slots"]).map { x in var o = x.o; o["id"] = x.s("key"); return Item(o: o) } }
+                        }
+                    }.buttonStyle(.bordered)
+                }
+                if !error.isEmpty { Muted(error) }
+            }
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------- v0.378 BAAT: chat between a customer and the shop
+/// The kit's chat screen ("hoola_chat"): a customer's thread with the shop; staff see every thread and reply.
+struct ChatScreen: View {
+    @ObservedObject private var auth = Auth.shared
+    @State private var threads: [Item] = []
+    @State private var open: Item? = nil
+
+    var body: some View {
+        if !auth.signedIn {
+            Page(Words.chat) { Muted(Words.signIn) }
+        } else if !auth.isStaff {
+            ChatThread(member: "", title: Words.chat)
+        } else if let t = open {
+            ChatThread(member: t.s("member"), title: t.s("name"), onBack: { open = nil })
+        } else {
+            Page(Words.customerMessages) {
+                if threads.isEmpty { Muted(Words.nothingYet) }
+                ForEach(threads, id: \.id) { t in
+                    Button { open = t } label: {
+                        Card {
+                            Text(t.s("name") + (t.n("unread") > 0 ? " (\(Int(t.n("unread"))))" : "")).font(.headline)
+                            Muted(t.s("last"))
+                        }
+                    }.buttonStyle(.plain)
+                }
+            }
+            .task {
+                while !Task.isCancelled {
+                    let r = await Cloud.call("GET", "/chat?all=1", nil, token: auth.token)
+                    if r.ok { threads = items(r.body["threads"]).map { x in var o = x.o; o["id"] = x.s("member"); return Item(o: o) } }
+                    try? await Task.sleep(nanoseconds: 10_000_000_000)
+                }
+            }
+        }
+    }
+}
+
+struct ChatThread: View {
+    let member: String
+    let title: String
+    var onBack: (() -> Void)? = nil
+    @ObservedObject private var auth = Auth.shared
+    @State private var msgs: [Item] = []
+    @State private var text = ""
+    @State private var error = ""
+
+    private var path: String { member.isEmpty ? "/chat" : "/chat/\(member)" }
+
+    var body: some View {
+        Page(title) {
+            if let b = onBack { Button(Words.back) { b() }.buttonStyle(.bordered) }
+            if msgs.isEmpty { Muted(member.isEmpty ? Words.chatHint : Words.nothingYet) }
+            ForEach(msgs.suffix(100), id: \.id) { m in
+                let mine = m.b("staff") == auth.isStaff
+                HStack {
+                    if mine { Spacer(minLength: 40) }
+                    Card {
+                        Muted(m.s("name") + " · " + String(m.s("at").prefix(16)).replacingOccurrences(of: "T", with: " "))
+                        Text(m.s("text"))
+                    }
+                    if !mine { Spacer(minLength: 40) }
+                }
+            }
+            TextField(Words.typeMessage, text: $text, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
+                .onChange(of: text) { v in if v.count > 1000 { text = String(v.prefix(1000)) } }
+            if !error.isEmpty { Muted(error) }
+            MainButton(text: Words.send) {
+                let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !t.isEmpty else { return }
+                Task {
+                    let r = await Cloud.call("POST", path, ["text": t], token: auth.token)
+                    if r.ok { text = ""; error = ""; await load() } else { error = r.error.isEmpty ? (r.offline ? Words.offline : Words.tryAgain) : r.error }
+                }
+            }
+        }
+        .task(id: member) {
+            while !Task.isCancelled {
+                await load()
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+            }
+        }
+    }
+
+    private func load() async {
+        let r = await Cloud.call("GET", path, nil, token: auth.token)
+        if r.ok { msgs = items(r.body["messages"]) }
     }
 }

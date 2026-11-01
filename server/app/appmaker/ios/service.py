@@ -92,7 +92,7 @@ def ready() -> dict[str, Any]:
     ok = RN.mode() == "github" and bool((s.app_build_gh_repo or "").strip()) and bool(s.app_build_gh_token)
     return {"ready": ok, "where": "github" if ok else "",
             "why": "" if ok else "iPhone apps compile only on a Mac: set up the private GitHub builds repo (APP_BUILD_MODE=github) "
-                                 "and copy server/app_builder/hoola-ios.yml into it."}
+                                 "(Hoola keeps its hoola-ios.yml / hoola-build.yml current itself when the token has 'Workflows: write')."}
 
 
 # ---------------------------------------------------------------- start
@@ -233,8 +233,13 @@ def _mac(src: Path, key: str, kind: str, progress) -> dict[str, Any]:
 
 
 def _crashed(report: dict[str, Any] | None, ids: list[str]) -> dict[str, str]:
-    return {sid: str(x.get("excerpt") or "the app closed on this screen") for sid, x in ((report or {}).get("screens") or {}).items()
-            if sid in ids and isinstance(x, dict) and x.get("crashed")}
+    out = {sid: str(x.get("excerpt") or "the app closed on this screen") for sid, x in ((report or {}).get("screens") or {}).items()
+           if sid in ids and isinstance(x, dict) and x.get("crashed")}
+    for sid, x in ((report or {}).get("screens") or {}).items():           # v0.345 it crashed when a button was tapped
+        if sid in ids and sid not in out and isinstance(x, dict) and x.get("tap_crash"):
+            tc = x["tap_crash"]
+            out[sid] = f"CRASHED WHEN THE USER TAPPED '{tc.get('label')}' ON THIS SCREEN.\n" + str(tc.get("excerpt") or "")
+    return out
 
 
 def run(app_id: str) -> None:
@@ -264,6 +269,8 @@ def _run(r: AppProject) -> None:
     sp["seed"]["backend"] = BE.seed_hint(r)          # the SAME backend as the Android app: one set of accounts and orders
     bid = bundle_id(r)
     sp["ios"] = {"bundle_id": bid, "version": f"{r.version}.{int(ast.get('build') or 0) or n}", "build": bn}
+    from .. import turant as TU                        # v0.368 TURANT IPHONE: the push capability + PushHub on
+    sp["ios_push"] = TU.ios_on(r)
     try:
         sp["ios"]["icon_png_b64"] = _icon_b64(sp)
     except Exception:                                # noqa: BLE001  no resvg: the code-drawn icon
@@ -309,6 +316,14 @@ def _run(r: AppProject) -> None:
     src_dir = work / "project"
     sp["screens_swift"] = swift
     G.write_project(sp, src_dir)
+    try:                                                     # v0.347 BHASHA: the words in her customers' languages
+        from .. import i18n as I18
+        tab = I18.for_build(r, src_dir, swift=True)
+        if tab:
+            sp["i18n"] = tab
+            G.write_project(sp, src_dir)
+    except Exception:                                        # noqa: BLE001  (the app still ships, in its own language)
+        log.info("i18n skipped", exc_info=True)
     _zip(r, n, src_dir)
     rd = ready()
     if not rd["ready"]:
@@ -496,6 +511,7 @@ def _keep_qa(r: AppProject, n: int, res: dict[str, Any]) -> None:
         shutil.rmtree(old, ignore_errors=True)
     _put(r.id, qa={"ran": True, "build": n, "passed": bool(rep.get("passed")), "opened": rep.get("opened"), "total": rep.get("total"),
                    "crashed": rep.get("crashed") or [], "blank": rep.get("blank") or [], "perf": rep.get("perf") or {},
+                   "flows": rep.get("flows") or {}, "ipad": rep.get("ipad") or {},      # v0.370 HAR DEVICE JAANCH
                    "shots": sorted(p.stem for p in d.glob("*.png")), "at": now().isoformat()})
 
 
@@ -508,6 +524,13 @@ def qa_line(qa: dict[str, Any] | None) -> str:
         bits.append(f"app {p['launch_ms']} ms mein khulti hai")
     if p.get("app_mb") is not None:
         bits.append(f"app {p['app_mb']} MB")
+    fl = qa.get("flows") or {}
+    if fl.get("tapped"):
+        bits.append(f"{fl['tapped']} button dabaye" + (f", {len(fl.get('dead') or [])} se kuch nahi hua" if fl.get("dead") else ""))
+    big = qa.get("ipad") or {}                                  # v0.370 the same screens on a ipad
+    if big.get("total"):
+        bits.append(f"iPad par {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
+                    + ", ".join((big.get('crashed') or [])[:4]) + ")" if big.get("crashed") else ""))
     return " " + ", ".join(bits) + "."
 
 

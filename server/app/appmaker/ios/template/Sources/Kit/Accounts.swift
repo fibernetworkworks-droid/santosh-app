@@ -52,8 +52,16 @@ struct AccountScreen: View {
             } else {
                 MainButton(text: Words.signIn) { Router.shared.go("hoola_login") }
             }
-            if auth.signedIn { InboxButton() }                       // v0.340 the updates inbox
-            if auth.isStaff { StatsBlock() }                         // v0.340 the staff dashboard
+            if auth.signedIn {                                       // v0.340 the updates inbox, v0.378 the chat
+                InboxButton()
+                MainButton(text: auth.isStaff ? Words.customerMessages : Words.chat, tonal: true) { Router.shared.go("hoola_chat") }
+            }
+            Group {                                                  // (grouped: a SwiftUI builder takes 10 views)
+                KhataBlock()                                         // v0.359 udhaar: hers / who owes (staff)
+                if auth.isStaff { StatsBlock() }                     // v0.340 the staff dashboard
+                if auth.isStaff { StopsBlock() }                     // v0.350 open stops with a location, nearest first
+            }
+            LanguagePicker()                                         // v0.347 the app's words in her language
             if db.pending > 0 { Muted("\(db.pending) · \(Words.sending)") }
             if !db.lastError.isEmpty { Text(db.lastError).foregroundStyle(.red).font(.subheadline) }
             ForEach(db.collections(), id: \.self) { c in
@@ -79,24 +87,32 @@ struct RowsSection: View {
     @ObservedObject private var auth = Auth.shared
     @State private var paying: Item? = nil
     @State private var utr = ""
+    @State private var mineOnly = false                 // v0.352 My work: only the rows given to this staff account
+    @ObservedObject private var team = Team.shared
 
     var body: some View {
-        let rows = db.rows(coll)
+        let meId = auth.me?.id ?? ""
+        let all = db.rows(coll)
+        let anyMine = auth.isStaff && !meId.isEmpty && all.contains { $0.s("assigned_to") == meId }
+        let rows = mineOnly ? all.filter { $0.s("assigned_to") == meId } : all
         let fields = db.fields(coll)
         VStack(alignment: .leading, spacing: 10) {
-            Text(db.label(coll) + (rows.isEmpty ? "" : " (\(rows.count))")).font(.headline)
+            Text(T(db.label(coll)) + (rows.isEmpty ? "" : " (\(rows.count))")).font(.headline)
+            if anyMine || mineOnly {
+                Button(Words.myWork) { mineOnly.toggle() }.buttonStyle(.bordered).tint(mineOnly ? .accentColor : .secondary)
+            }
             if rows.isEmpty { Muted(Words.nothingYet) }
             ForEach(rows.prefix(60), id: \.id) { r in
                 Card {
                     let head = fields.first { ["text", "long_text"].contains($0.s("type")) && r.has($0.s("key")) && $0.s("key") != "utr" }
                     Text(head.map { r.s($0.s("key")) } ?? db.label(coll)).font(.headline)
                     HStack {
-                        if r.b("pending") { StatusPill(text: Words.sending) } else if r.has("status") { StatusPill(text: r.s("status")) }
+                        if r.b("pending") { StatusPill(text: Words.sending) } else if r.has("status") { StatusPill(text: T(r.s("status"))) }
                         if r.has("paid") && r.s("paid") != "No" { StatusPill(text: r.s("paid")) }
                         if r.n("total") > 0 { Text(rupees(r.n("total"))).font(.headline) }
                     }
                     ForEach(fields.filter { $0.s("key") != head?.s("key") && !["status", "total", "paid"].contains($0.s("key")) && r.has($0.s("key")) && $0.s("type") != "photo" }.prefix(6), id: \.id) { f in
-                        Muted(f.s("label") + ": " + r.s(f.s("key")))
+                        Muted(T(f.s("label")) + ": " + r.s(f.s("key")))
                     }
                     if !auth.isStaff && coll == db.orderList && !r.b("pending") && r.s("pay") == "UPI" && r.s("paid", "No") == "No" {
                         HStack {
@@ -104,7 +120,18 @@ struct RowsSection: View {
                             Button(Words.iPaid) { paying = r }.buttonStyle(.bordered)
                         }
                     }
-                    if auth.isStaff && !r.b("pending"), let st = fields.first(where: { $0.s("key") == "status" }) {
+                    if !auth.isStaff && !r.s("assigned_name").isEmpty { Muted(r.s("assigned_name") + " " + Words.onIt) }   // v0.352
+                    if !r.s("slot_label").isEmpty || !r.s("delivery_note").isEmpty {          // v0.371 SLOT
+                        Muted([r.s("slot_label").isEmpty ? "" : Words.pickSlot + ": " + r.s("slot_label"), r.s("delivery_note")].filter { !$0.isEmpty }.joined(separator: " · "))
+                    }
+                    Group {                                       // (grouped: a SwiftUI builder takes 10 views)
+                        SlotChange(coll: coll, r: r)                 // v0.377 move the order to another free slot
+                        RateBox(coll: coll, r: r)                    // v0.353 the customer rates her finished row once
+                        ReceiptButton(coll: coll, r: r)              // v0.354 the receipt PDF of a finished row
+                        CreditButton(coll: coll, r: r)               // v0.359 staff: this order on credit (udhaar)
+                    }
+                    AssignBox(coll: coll, r: r)
+                    if auth.isStaff && !r.b("pending") && team.mayWork(r), let st = fields.first(where: { $0.s("key") == "status" }) {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 ForEach(st.strings("options"), id: \.self) { o in
@@ -156,14 +183,17 @@ struct FormBlock: View {
                 }
             }
             if !lines.isEmpty { Text(rupees(state.cartTotal())).font(.title3.weight(.semibold)) }
+            if !lines.isEmpty { DeliveryLine() }                             // v0.360 DELIVERY
+            if !lines.isEmpty && ((AppData.shared.backend["delivery"] as? [String: Any])?["slots"] as? Bool) == true { SlotPicker() }   // v0.371
+            if !lines.isEmpty && db.couponsOn { CouponBox() }               // v0.358 COUPON
         }
         ForEach(db.fields(coll).filter { !$0.b("admin_only") && $0.s("type") != "yes_no" }, id: \.id) { f in
             let k = f.s("key")
-            let label = f.s("label", k) + (f.b("required") ? " *" : "")
+            let label = T(f.s("label", k)) + (f.b("required") ? " *" : "")
             switch f.s("type") {
             case "choice":
                 Picker(label, selection: state.binding(k)) {
-                    ForEach(f.strings("options"), id: \.self) { Text($0).tag($0) }
+                    ForEach(f.strings("options"), id: \.self) { Text(T($0)).tag($0) }
                 }
                 .onAppear { if (state.form[k] ?? "").isEmpty { state.form[k] = f.s("default") } }
             case "long_text":
@@ -174,6 +204,8 @@ struct FormBlock: View {
                 LocationRow(label: label, key: k)
             case "scan":
                 ScanRow(label: label, key: k)
+            case "file":
+                FileRow(label: label, key: k)
             default:
                 TextField(label, text: state.binding(k)).textFieldStyle(.roundedBorder)
                     .keyboardType(f.s("type") == "phone" ? .phonePad : f.s("type") == "email" ? .emailAddress : f.s("type") == "number" ? .decimalPad : .default)

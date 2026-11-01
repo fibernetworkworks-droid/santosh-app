@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 object Act {
     fun toast(ctx: Context, text: String) = Toast.makeText(ctx, text, Toast.LENGTH_SHORT).show()
 
-    private fun open(ctx: Context, uri: String): Boolean = try {
+    internal fun open(ctx: Context, uri: String): Boolean = try {
         ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true
     } catch (_: Exception) { false }
 

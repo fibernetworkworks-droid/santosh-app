@@ -27,6 +27,11 @@ class ChangeIn(BaseModel):
     words: str
 
 
+class CalcIn(BaseModel):                     # v0.365 engineering calculator
+    kind: str
+    args: dict = {}
+
+
 def make_router(require_key, current_tenant) -> APIRouter:
     r = APIRouter()
 
@@ -67,13 +72,21 @@ def make_router(require_key, current_tenant) -> APIRouter:
         await asyncio.to_thread(_do, service.delete, tenant, pid)
         return {"deleted": True}
 
+    @r.post("/api/eng/calc", dependencies=[Depends(require_key)])
+    async def calc_(body: CalcIn):
+        from . import calc
+        try:
+            return await asyncio.to_thread(calc.run, body.kind, body.args)
+        except calc.CalcError as e:
+            raise HTTPException(400, str(e))
+
     @r.get("/api/eng/files/{pid}/{v}/{name}")
     async def files(pid: str, v: str, name: str, exp: int = 0, sig: str = ""):
         p = await asyncio.to_thread(service.file_path, pid, f"{v}/{name}", exp, sig)
         if p is None:
             raise HTTPException(404, "not found")
         mt = {"step": "application/step", "stl": "model/stl", "py": "text/plain", "3mf": "model/3mf",
-              "glb": "model/gltf-binary", "dxf": "image/vnd.dxf"}.get(name.rsplit(".", 1)[-1]) \
+              "glb": "model/gltf-binary", "dxf": "image/vnd.dxf", "nc": "text/plain"}.get(name.rsplit(".", 1)[-1]) \
             or mimetypes.guess_type(name)[0] or "application/octet-stream"
         inline = name.endswith((".png", ".pdf", ".py"))
         return FileResponse(p, media_type=mt, filename=name, content_disposition_type="inline" if inline else "attachment")

@@ -71,6 +71,16 @@ object AppData {
 
     fun list(name: String): List<Item> = arrList(root.optJSONObject("lists")?.optJSONArray(name))
     fun byId(name: String, id: String): Item? = list(name).firstOrNull { it.id == id }
+    /** v0.362 VARIANTS: a cart line - a product, or one of its sizes ("pid::vid" -> "Atta (5 kg)" at that size's price). */
+    fun lineItem(name: String, id: String): Item? {
+        if (!id.contains("::")) return byId(name, id)?.takeIf { it.list("variants").isEmpty() }
+        val (pid, vid) = id.split("::", limit = 2)
+        val p = byId(name, pid) ?: return null
+        val v = p.list("variants").firstOrNull { it.id == vid } ?: return null
+        return Item(JSONObject(p.o.toString()).put("id", id).put("name", p.name + " (" + v.s("name") + ")").put("price", v.price)
+            .apply { remove("variants"); remove("stock"); remove("sold_out")
+                     if (v.o.has("stock") && !v.o.isNull("stock")) put("stock", v.i("stock")); if (v.b("sold_out")) put("sold_out", true) })
+    }
     fun search(name: String, q: String): List<Item> {
         val t = q.trim().lowercase()
         if (t.isEmpty()) return list(name)
@@ -90,13 +100,19 @@ object AppState {
     val liked = mutableStateListOf<String>()
     val query = mutableStateOf("")
     val consent = mutableStateOf(false)
+    val coupon = mutableStateOf("")                         // v0.358 the code the cart checked (the server applies it again)
+    val couponOff = mutableStateOf(0.0)                     // ... and the discount the server said, for the shown total
+    val slot = mutableStateOf("")                           // v0.371 the delivery slot she picked ("YYYY-MM-DD|HH:MM")
 
-    fun add(id: String, qty: Int = 1) { cart[id] = (cart[id] ?: 0) + qty }
-    fun setQty(id: String, qty: Int) { if (qty <= 0) cart.remove(id) else cart[id] = qty }
+    /** v0.357 STOCK: never more than the business has (the server checks again when the order is sent). */
+    fun maxQty(id: String): Int = AppData.lineItem("products", id)?.let { if (it.o.has("stock") && !it.o.isNull("stock")) it.i("stock") else null }
+        ?.coerceIn(0, 99) ?: 99
+    fun add(id: String, qty: Int = 1) { val n = ((cart[id] ?: 0) + qty).coerceAtMost(maxQty(id)); if (n <= 0) cart.remove(id) else cart[id] = n }
+    fun setQty(id: String, qty: Int) { val n = qty.coerceAtMost(maxQty(id)); if (n <= 0) cart.remove(id) else cart[id] = n }
     fun qty(id: String): Int = cart[id] ?: 0
     val cartCount: Int get() = cart.values.sum()
     fun cartItems(list: String = "products"): List<Pair<Item, Int>> =
-        cart.mapNotNull { (id, q) -> AppData.byId(list, id)?.let { it to q } }
+        cart.mapNotNull { (id, q) -> AppData.lineItem(list, id)?.let { it to q } }      // v0.362 sizes are their own lines
     fun cartTotal(list: String = "products"): Double = cartItems(list).sumOf { (it, q) -> it.price * q }
     fun select(list: String, id: String) { selected[list] = id }
     fun current(list: String): Item? = selected[list]?.let { AppData.byId(list, it) } ?: AppData.list(list).firstOrNull()

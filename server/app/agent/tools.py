@@ -482,7 +482,7 @@ TOOLS.extend(MOSPI_TOOLS)
 TOOL_LABELS.update(MOSPI_LABELS)
 HANDLERS.update(MOSPI_HANDLERS)
 
-# v0.379 GAME DESK: the Game Developer employee (Godot 4 games, built + test-played in a locked box)
+# v0.381 GAME DESK: the Game Developer employee (Godot 4 games, built + test-played in a locked box)
 from .gamedesk_tools import GAMEDESK_HANDLERS, GAMEDESK_LABELS, GAMEDESK_TOOLS  # noqa: E402
 
 TOOLS.extend(GAMEDESK_TOOLS)
@@ -982,7 +982,7 @@ DIET_SAFETY_MAX = 1200   # tool description cap for safety-word tools (v0.311: t
 DIET_PROP_MAX = 240      # property / nested description cap (v0.311: 72 -> 240, the format hints stay)
 _DIET_KEEP_RE = re.compile(r"confirm|approval|consent|otp|password|tier-2|bhejo|manzoori|payment|money", re.I)
 
-# v0.379 Shiksha suite Phase 0 + 1: the education foundation (classes, learners + guardian consent, the shared question
+# v0.381 Shiksha suite Phase 0 + 1: the education foundation (classes, learners + guardian consent, the shared question
 # bank, gradebook), the Pathyakram Sahayak (curriculum & exam designer) and the locked Python sandbox (pylab).
 from .shiksha_tools import SHIKSHA_HANDLERS, SHIKSHA_LABELS, SHIKSHA_TOOLS  # noqa: E402
 

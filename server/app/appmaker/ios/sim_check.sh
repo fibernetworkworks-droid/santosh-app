@@ -18,12 +18,16 @@ for rt, devs in d.items():
     for x in devs:
         n = x["name"]
         big = os.environ.get("SIM_KIND") == "max"         # v0.338 App Store shots: a Pro Max (1320x2868)
+        if os.environ.get("SIM_KIND") == "ipad":          # v0.364 IPAD: the 13-inch iPad Pro (2064x2752, the App Store 13" slot)
+            if x.get("isAvailable") and n.startswith("iPad Pro") and ("13-inch" in n or "12.9-inch" in n):
+                best.append((ver, int((re.findall(r"\((M\d+)\)", n) or ["M0"])[0][1:] or 0), True, x["udid"]))
+            continue
         if x.get("isAvailable") and n.startswith("iPhone") and "SE" not in n and "Plus" not in n and (("Pro Max" in n) if big else ("Max" not in n)):
             num = int((re.findall(r"\d+", n) or ["0"])[0])
             best.append((ver, num, big or "Pro" not in n, x["udid"]))     # newest iOS, newest plain iPhone (6.3") / Pro Max
 best.sort()
 print(best[-1][3] if best else "")')
-[ -n "$DEV" ] || { echo "::error::no iPhone simulator on this Mac"; exit 1; }
+[ -n "$DEV" ] || { echo "::error::no ${SIM_KIND:-iPhone} simulator on this Mac"; exit 1; }
 echo "simulator $DEV"
 xcrun simctl boot "$DEV" 2>/dev/null || true
 xcrun simctl bootstatus "$DEV" -b > /dev/null

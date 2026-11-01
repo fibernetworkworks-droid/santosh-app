@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -92,12 +93,16 @@ fun Page(
     Column(Modifier.fillMaxSize().background(c.bg)) {
         AppBar(title, back, large, subtitle, actions)
         if (AppData.demo) DemoNote()
-        LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = body,
-        )
+        // v0.363 BADI SCREEN: on a tablet / unfolded phone / landscape the content stays a readable column (max 720dp), centred
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val side = if (maxWidth > 752.dp) (maxWidth - 720.dp) / 2 else 16.dp
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = side, end = side, top = 8.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                content = body,
+            )
+        }
         if (bottomBar != null) {
             Row(
                 Modifier.fillMaxWidth().background(c.surface).border(BorderStroke(1.dp, c.line))
@@ -302,8 +307,11 @@ fun Btn(
 @Composable
 fun AddButton(itemId: String) {
     val q = AppState.qty(itemId)
+    val p = AppData.byId("products", itemId)
+    if (p != null && p.b("sold_out")) { Pill(Strings.soldOut, "bad"); return }       // v0.357 STOCK
+    if (p != null && p.list("variants").isNotEmpty()) { SizeChips(p); return }       // v0.362 VARIANTS: one chip per size
     if (q == 0) Btn(Strings.add, small = true, kind = BtnKind.Tonal) { AppState.add(itemId) }
-    else Stepper(q) { AppState.setQty(itemId, it) }
+    else Stepper(q, max = AppState.maxQty(itemId)) { AppState.setQty(itemId, it) }
 }
 
 @Composable
@@ -373,7 +381,7 @@ fun Chip(text: String, selected: Boolean = false, icon: String? = null, onClick:
 fun Chips(options: List<String>, group: String, onPick: (String) -> Unit = {}) {
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { o ->
-            Chip(o, selected = AppState.picks[group] == o) {
+            Chip(T(o), selected = AppState.picks[group] == o) {
                 if (AppState.picks[group] == o) AppState.picks.remove(group) else AppState.picks[group] = o
                 onPick(o)
             }
@@ -485,15 +493,23 @@ fun Kpi(value: String, label: String, modifier: Modifier = Modifier) {
 /** Two equal columns (or more) without lazy nesting: good for KPI tiles and product grids. */
 @Composable
 fun <T> Grid(items: List<T>, columns: Int = 2, gap: Dp = 12.dp, cell: @Composable (T) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-        items.chunked(columns).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                row.forEach { Box(Modifier.weight(1f)) { cell(it) } }
-                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+    // v0.363 BADI SCREEN: a 2-column grid becomes 3 when there is room (tablet / landscape), never fewer than asked
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val cols = if (columns == 2 && maxWidth >= 560.dp) 3 else columns
+        Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+            items.chunked(cols).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    row.forEach { Box(Modifier.weight(1f)) { cell(it) } }
+                    repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
+                }
             }
         }
     }
 }
+
+/** v0.363 BADI SCREEN: a tablet, an unfolded phone or a phone on its side (600dp or wider). */
+@Composable
+fun isWide(): Boolean = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
 
 /** Horizontal swipe row of cards of a fixed width. */
 @Composable
@@ -681,3 +697,17 @@ fun rememberToggle(initial: Boolean = false) = remember { mutableStateOf(initial
 
 @Composable
 fun ToggleText(on: Boolean, yes: String, no: String) { var x by remember { mutableStateOf(on) }; Text(if (x) yes else no, style = H.t.small, modifier = Modifier.clickable { x = !x }) }
+
+
+/** v0.362 VARIANTS: the sizes of a product as chips ("1 kg ₹60"); a tap adds that size, its count shows on the chip. */
+@Composable
+fun SizeChips(p: Item) {
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        p.list("variants").forEach { v ->
+            val key = p.id + "::" + v.id
+            val n = AppState.qty(key)
+            if (v.b("sold_out")) Pill(v.s("name") + " · " + Strings.soldOut, "bad")
+            else Chip(v.s("name") + " " + rupees(v.price) + if (n > 0) " ·$n" else "", selected = n > 0) { AppState.add(key) }
+        }
+    }
+}
