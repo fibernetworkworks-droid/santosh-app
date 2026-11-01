@@ -1419,7 +1419,8 @@ def api_disconnect(provider: str, request: Request):
 # ---------------------------------------------------------------- v0.142 Hoola Console (web app at /console)
 _CONSOLE_NOREF = {"Referrer-Policy": "no-referrer", "Cache-Control": "no-store"}
 _CONSOLE_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-                "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; "
+                "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tiles.openfreemap.org; media-src 'self' blob:; "
+                "connect-src 'self' https://tiles.openfreemap.org; "   # v0.412 the riders map's open map tiles (OpenFreeMap)
                 "worker-src 'self' blob:; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 
 
@@ -10113,6 +10114,68 @@ async def apps_live_typing(ref: str, body: dict, tenant: str = Depends(current_t
     from .site import webapp as W
     return await asyncio.to_thread(_be_owner_call, lambda: LV.typing(_be_owner(tenant, ref), W.Who(owner=True),
                                                                      str((body or {}).get("thread") or "")))
+
+
+# ---- v0.412 NAKSHA LIVE (App Sahayak Pillar D): rider shifts, positions, live tracking of one order, riders on a map.
+@app.get("/api/app-api/{app_key}/track/me")
+async def app_api_track_me(app_key: str, request: Request):
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_call, lambda: TR.mine(*_be_app(app_key, request)))
+
+
+@app.post("/api/app-api/{app_key}/track/shift")
+async def app_api_track_shift(app_key: str, request: Request):
+    """{on}: a staff account starts / ends its shift (positions are accepted only while it is on)."""
+    from .appmaker import track as TR
+    body = await _json_body(request)
+    return await asyncio.to_thread(_be_call, lambda: TR.shift(*_be_app(app_key, request), bool(body.get("on"))))
+
+
+@app.post("/api/app-api/{app_key}/track/pos")
+async def app_api_track_pos(app_key: str, request: Request):
+    """{lat, lng, acc?, speed?, heading?} from the rider's phone while the shift is on."""
+    from .appmaker import track as TR
+    body = await _json_body(request)
+    return await asyncio.to_thread(_be_call, lambda: TR.position(*_be_app(app_key, request), body))
+
+
+@app.get("/api/app-api/{app_key}/track/c/{coll}/{row_id}")
+async def app_api_track_order(app_key: str, coll: str, row_id: str, request: Request):
+    """The customer's own order (or staff): rider position, distance, ETA (an estimate), near / arrived."""
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_call, lambda: TR.order(*_be_app(app_key, request), coll, row_id))
+
+
+@app.get("/api/app-api/{app_key}/track/riders")
+async def app_api_track_riders(app_key: str, request: Request):
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_call, lambda: TR.riders(*_be_app(app_key, request)))
+
+
+@app.get("/api/apps/{ref}/track", dependencies=[Depends(require_key)])
+async def apps_track(ref: str, tenant: str = Depends(current_tenant)):
+    """Her tracking switch + every rider on shift."""
+    from .appmaker import track as TR
+    from .site import webapp as W
+
+    def go():
+        r = _be_owner(tenant, ref)
+        return {**TR.settings(r), **TR.riders(r, W.Who(owner=True))}
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.put("/api/apps/{ref}/track", dependencies=[Depends(require_key)])
+async def apps_track_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap: {on, coll, statuses} - which list is tracked and which statuses mean 'on the way'."""
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.save_settings(_be_owner(tenant, ref), body or {}))
+
+
+@app.get("/api/apps/{ref}/track/c/{coll}/{row_id}", dependencies=[Depends(require_key)])
+async def apps_track_order(ref: str, coll: str, row_id: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import track as TR
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.order(_be_owner(tenant, ref), W.Who(owner=True), coll, row_id))
 
 
 def _be_owner(tenant: str, ref: str):

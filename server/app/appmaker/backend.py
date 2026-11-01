@@ -299,9 +299,13 @@ def who(r: AppProject, token: str) -> W.Who:
 def public_schema(r: AppProject) -> dict[str, Any]:
     sch = schema(r)
     from . import coupon as CP
-    return {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", ""),
-            "coupons": bool(sch.get("order")) and CP.active(r),           # v0.358 the cart shows the code box
-            "approvals": bool(sch.get("approvals")), "functions": sch.get("functions") or []}   # v0.382 DIMAAG
+    out = {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", ""),
+           "coupons": bool(sch.get("order")) and CP.active(r),            # v0.358 the cart shows the code box
+           "approvals": bool(sch.get("approvals")), "functions": sch.get("functions") or []}   # v0.382 DIMAAG
+    tr = _track_public(r)                                                 # v0.412 NAKSHA LIVE
+    if tr:
+        out["track"] = tr
+    return out
 
 
 def signup(r: AppProject, email: str, password: str, name: str, ip: str) -> dict[str, Any]:
@@ -704,7 +708,19 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
         dl = DL.public(r)
         if dl:
             out["delivery"] = dl
+    tr = _track_public(r)                                  # v0.412 NAKSHA LIVE: shift button, maps, Track live
+    if tr:
+        out["track"] = tr
     return out
+
+
+def _track_public(r: AppProject) -> dict[str, Any] | None:
+    try:
+        from . import track as TR
+        st = TR.settings(r)
+    except Exception:                                       # noqa: BLE001
+        return None
+    return {"on": True, "coll": st["coll"], "statuses": st["statuses"], "loc": st["loc"]} if st["on"] else None
 
 
 # ---------------------------------------------------------------- v0.319 photos, location, updates, "I paid"

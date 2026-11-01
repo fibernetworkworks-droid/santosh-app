@@ -61,6 +61,8 @@ object Cloud {
     fun testServer(baseUrl: String) { base = baseUrl.trimEnd('/') }
 
     val ready: Boolean get() = key.isNotEmpty() && (base.startsWith("https://") || base.startsWith("http://10.0.2.2"))
+    /** v0.412 her Hoola server's address (the map page loads its map library from there). */
+    internal val baseUrl: String get() = base
 
     /** v0.319 a photo (JPEG bytes) -> {id}. */
     internal suspend fun upload(bytes: ByteArray, token: String): Reply = withContext(Dispatchers.IO) {

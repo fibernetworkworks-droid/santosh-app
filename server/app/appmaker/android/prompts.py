@@ -143,6 +143,11 @@ FILE CONTRACT
   the server changes a row (never add your own polling loop or delay); block { LiveDot() } = a green dot + "Shop is online"
   (customers) / how many online (staff); an order tracking screen: LiveValue("orders", id, "status") keeps one field live;
   a chat screen = nav.go("hoola_chat") (instant messages + "typing…" built in).
+  MAPS + LIVE TRACKING (v0.412, only when the business turned tracking on; each block shows nothing otherwise): a rider /
+  staff screen: block { ShiftBlock() } (Start / End shift with the required notice) and block { RidersMap() } (every
+  rider on shift on a live map); an order tracking screen: block { TrackOrderBlock("orders", id) } (the rider moving on a
+  map + ETA); any map: LiveMap(listOf(MapPin(lat, lng, "label", "rider"|"dest"))). LiveRowsBlock already adds "Track live".
+  Never ask for location yourself, never draw your own map, never add a location loop.
   Fields marked [location]: LocationField(label, key) ("Use my location" with the
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.
 - Actions: val c = ctx(); Act.call(c), Act.whatsapp(c, text), Act.share(c, text), Act.maps(c), Act.payUpi(c, amount, note)

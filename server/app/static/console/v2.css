@@ -2503,3 +2503,7 @@ body.albon{overflow:hidden}
 /* v0.407 ABHI ABHI: her app data page is live */
 .stlive { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--mut); margin: 4px 0 8px; }
 .stlive .stdot { width: 8px; height: 8px; border-radius: 50%; background: #1e9e5a; flex: none; }
+/* v0.412 NAKSHA LIVE: the riders map */
+.sttrack .stmap { height: 320px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line, #e5e5ea); margin-top: 8px; }
+.sttrack .chk { display: inline-flex; gap: 6px; align-items: center; margin-right: 10px; font-size: 14px; }
+.strider { width: 16px; height: 16px; border-radius: 50%; background: #1e9e5a; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
