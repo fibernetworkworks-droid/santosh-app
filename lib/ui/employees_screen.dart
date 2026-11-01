@@ -1524,7 +1524,7 @@ class SocialCard extends StatelessWidget {
 }
 
 
-/// v0.393 YOUTUBE ADS (plan Y2): her own Google Ads account. A draft lives in Hoola; Create makes it PAUSED in Google;
+/// v0.396 YOUTUBE ADS (plan Y2): her own Google Ads account. A draft lives in Hoola; Create makes it PAUSED in Google;
 /// Start is her tap after a confirm (only then can money be spent); Pause any time. Full text editing is on the console.
 class YtAdsScreen extends StatefulWidget {
   const YtAdsScreen({super.key, required this.app});

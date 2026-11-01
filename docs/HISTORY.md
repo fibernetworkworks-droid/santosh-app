@@ -14896,3 +14896,36 @@ Owner: "GO PHASE 3". Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 5 (precision
   Phone: `lib/ui/game_bible_screen.dart` (read, drafts, simulate, apply, generate, remove; editing in the console).
 - Tests `test_v0395_game_bible.py` (10).
 
+
+
+## v0.396.0 YOUTUBE ADS (1 Nov 2026, owner: "GO Y2"; built as 0.393, re-versioned past the parallel v0.393-v0.395)
+Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Field names from Google's own
+`AddDemandGenCampaign.java` (google-ads-java, v26) + the Demand Gen overview / channel-controls pages (API v26.1, 28 Oct 2026).
+- Env: GOOGLE_ADS_DEVELOPER_TOKEN (Google Ads API Center; a test-access token works only on test accounts, real ad
+  accounts need Basic access), optional GOOGLE_ADS_LOGIN_CUSTOMER_ID (manager), GOOGLE_ADS_API_VERSION (v26),
+  GADS_MAX_DAILY (2000). The adwords scope must be on Hoola's Google OAuth consent screen (sensitive -> verification).
+- Connect: state gad_ in /auth/google/callback; scopes openid email adwords, offline + consent; refresh token sealed;
+  listAccessibleCustomers + `SELECT customer.* FROM customer` per account; managers can't be chosen; one usable = picked.
+- Read: GAQL on campaign (VIDEO, DEMAND_GEN; LAST_30_DAYS by segments.date; cost_micros, impressions, clicks,
+  conversions, budget, views = video_trueview_views -> video_views -> none on UNRECOGNIZED_FIELD) -> CSV -> Ads desk
+  `import_report(platform google)`; per-campaign totals with cost a view and CTR.
+- Drafts: from her YouTube video (SocialMedia platform youtube), pre-filled from the Social Desk profile; `draft_problems`
+  (video id, 1-5 headlines <= 40, long headline <= 90, 1-5 descriptions <= 90, business <= 25, https landing link,
+  logo, daily 1..GADS_MAX_DAILY, days 1..30, Ads desk `banned` + `financial` rules). Exact Google limits are confirmed
+  by Check (validateOnly) - the local limits are conservative.
+- Create (her tap): one googleAds:mutate with temp ids -1..-5 in Google's order: campaignBudget (STANDARD, amount in
+  micros, explicitlyShared false), campaign (DEMAND_GEN, PAUSED, campaignBudget, containsEuPoliticalAdvertising
+  DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING, targetSpend {} = maximize clicks), adGroup (ENABLED, demandGenAdGroupSettings
+  .channelControls.selectedChannels youtubeInStream / youtubeInFeed / youtubeShorts true, discover / gmail / display /
+  maps false), adGroupCriterion location geoTargetConstants/2356 + language constants (hi 1023, en 1000, ...), assets
+  (IMAGE logo base64, YOUTUBE_VIDEO youtubeVideoId), adGroupAd demandGenVideoResponsiveAd (headlines, longHeadlines,
+  descriptions, videos, logoImages, businessName) + finalUrls. Start = campaignOperation update status ENABLED
+  (updateMask status) only with confirm=true; stop_on = start day + days - 1; Pause = PAUSED; daily Social Desk job ->
+  `daily_watch` pauses ended ads (event) + reads. DEVELOPER_TOKEN_NOT_APPROVED -> plain "Basic access pending".
+- Not verified against Google live (mock transport only): the ad-group criterion field names (location / language) and
+  the exact text limits - Check with Google surfaces any mismatch before anything is created.
+- Not built: legacy VIDEO campaigns (in-stream; not creatable through the API), audiences / remarketing, conversion
+  tracking set-up, Display & Video 360.
+- Console YouTube ads tile (connect, pick account, read, drafts with edit / logo / check / create / start / pause), phone
+  YtAdsScreen (connect, pick, new ad from latest video, check / create / start / pause). Privacy: Google Ads paragraph.
+  Tests `server/tests/test_v0396_youtube_ads.py` (8).

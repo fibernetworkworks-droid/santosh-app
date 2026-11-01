@@ -170,7 +170,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ONE more attempt. Enterprise routes 6 -> 11. RULE: a module's tests passing says it works, never that anything
   calls it - grep for a caller outside its own file before calling a feature shipped.
 
-- Current version: v0.395.0 (pubspec 0.395.0+439). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.396.0 (pubspec 0.396.0+440). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
@@ -221,6 +221,8 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.396 YOUTUBE ADS (`ads/gads.py`, plan Y2): her Google Ads via the official API - read YouTube campaigns into the Ads desk, Demand Gen video ad
+  drafts from her videos, Google check (free), Create = PAUSED, Start only on her confirm, auto-pause after its days. Needs GOOGLE_ADS_DEVELOPER_TOKEN.
 - v0.392 YOUTUBE ON THE SOCIAL DESK (`social/ytpost.py`, plan Y1): her channel as an account, calendar Shorts / videos uploaded as approved (kids answer,
   thumbnail, playlist, private-until-audit note, YT_DAILY_UPLOADS guard), YouTube comments in the Social Inbox (hide = held for review). Y2 (YouTube ads) not built.
 - v0.388 WHATSAPP LIVE BINA SERVER NUMBER: WA_DRY_RUN=false without WA_TOKEN/WABA/PNID no longer kills every worker tick; business numbers send via their own token.
