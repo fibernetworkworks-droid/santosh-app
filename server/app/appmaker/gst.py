@@ -214,8 +214,11 @@ def compute(r: AppProject, c: dict[str, Any], d: dict[str, Any]) -> dict[str, An
         lines.append({"pid": "", "name": c["label"], "qty": 1, "gross": round(float(d.get("total") or 0), 2)})
     total = float(d.get("total") or 0) if d.get("total") not in (None, "") else sum(x["gross"] for x in lines)
     gsum = sum(x["gross"] for x in lines)
-    if lines and abs(gsum - total) > 0.01:                       # the server total is the truth: the last line absorbs the gap
-        lines[-1]["gross"] = round(lines[-1]["gross"] + (total - gsum), 2)
+    if lines and gsum > 0 and abs(gsum - total) > 0.01:         # the server total is the truth (v0.358 a coupon: spread over
+        f = total / gsum                                        # every line, so each line's tax is right); rounding -> last line
+        for x in lines:
+            x["gross"] = round(x["gross"] * f, 2)
+        lines[-1]["gross"] = round(lines[-1]["gross"] + (total - sum(x["gross"] for x in lines)), 2)
     out, t = [], {"taxable": 0.0, "cgst": 0.0, "sgst": 0.0, "igst": 0.0, "amount": 0.0}
     for x in lines:
         it = (g.get("items") or {}).get(x["pid"], {}) if x["pid"] else {}

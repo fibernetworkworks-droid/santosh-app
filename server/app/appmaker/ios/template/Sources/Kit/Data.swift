@@ -76,6 +76,8 @@ final class AppState: ObservableObject {
     static let shared = AppState()
     @Published var cart: [String: Int] = [:]
     @Published var form: [String: String] = [:]
+    @Published var coupon = ""                        // v0.358 the code the cart checked (the server applies it again)
+    @Published var couponOff = 0.0                    // ... and the discount it said, for the shown total
 
     /// v0.357 STOCK: never more than the business has (the server checks again when the order is sent).
     func maxQty(_ id: String) -> Int {

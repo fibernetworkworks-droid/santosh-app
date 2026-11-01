@@ -149,6 +149,9 @@ def pdf(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], doc: str = "")
         t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, 0), 0.6, colors.HexColor("#999999")),
                                ("LINEBELOW", (0, -1), (-1, -1), 0.6, colors.HexColor("#999999"))]))
         out.append(t)
+    if d.get("discount"):                          # v0.358 COUPON
+        out += [Spacer(1, 2 * mm), Paragraph(T(f"Subtotal: {_money(d.get('subtotal'))}"), st["p"]),
+                Paragraph(T(f"Coupon {d.get('coupon')}: -{_money(d.get('discount'))}"), st["p"])]
     if d.get("total") not in (None, ""):
         out += [Spacer(1, 2 * mm), Paragraph(T(f"Total: {_money(d.get('total'))}"), st["h"])]
     paid = str(d.get("paid") or "")
@@ -230,6 +233,8 @@ def _tax_invoice(r: AppProject, c: dict[str, Any], row, d: dict[str, Any], facts
     t = Table(rows, colWidths=widths, repeatRows=1)
     t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#999999")),
                            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eeeeee")), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
+    if d.get("discount"):                          # v0.358 the coupon is already spread over the lines above
+        out.append(P(f"Includes coupon {d.get('coupon')} discount of ₹{m(float(d['discount']))} on ₹{m(float(d.get('subtotal') or 0))}.", "s"))
     label = "Credit note value" if credit else "Invoice total"
     out += [t, Spacer(1, 3 * mm), P(f"{label}: ₹{m(tt['amount'])} (GST included)", "b"), P(G.words(tt["amount"]), "s")]
     paid = str(d.get("paid") or "")

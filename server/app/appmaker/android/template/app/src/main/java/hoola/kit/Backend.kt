@@ -306,6 +306,8 @@ object Db {
     fun rule(coll: String, op: String): String = collection(coll)?.optJSONObject("rules")?.optString(op, "") ?: ""
     val orderList: String get() = schema.optString("order", "")
     val signupOpen: Boolean get() = schema.optBoolean("signup", true)
+    /** v0.358 a discount code is live: the order screen shows the code box (read fresh from the app content). */
+    val couponsOn: Boolean get() = AppData.backend().optBoolean("coupons", false)
 
     /** Rows of a list: writes still on their way first (marked pending), then what the server last sent. */
     fun rows(coll: String): List<Item> {
@@ -503,12 +505,13 @@ object Db {
             items.forEach { (it, q) -> cart.put(JSONObject().put("id", it.id).put("qty", q)) }
             data["cart"] = cart
             show["items"] = items.joinToString("\n") { (it, q) -> "$q x ${it.name}" }
-            show["total"] = AppState.cartTotal("products")
+            show["total"] = AppState.cartTotal("products") - AppState.couponOff.value
+            if (AppState.coupon.value.isNotEmpty()) data["coupon"] = AppState.coupon.value      // v0.358 checked again by the server
             show.remove("cart")
         }
         create(coll, data, show)
         fields(coll).forEach { AppState.form.remove(it.s("key")); AppState.picks.remove(it.s("key")) }
-        if (coll == orderList) AppState.cart.clear()
+        if (coll == orderList) { AppState.cart.clear(); AppState.coupon.value = ""; AppState.couponOff.value = 0.0 }
         return null
     }
 }
@@ -544,5 +547,6 @@ fun SubmitBtn(text: String, coll: String, modifier: Modifier = Modifier, then: S
 /** Places the cart as a real order (name / phone / address from the form). Same as SubmitBtn(text, Db.orderList). */
 @Composable
 fun OrderBtn(text: String, modifier: Modifier = Modifier, then: String = SCREEN_ACCOUNT) {
+    if (Db.couponsOn && AppState.cartCount > 0) CouponBox()          // v0.358 COUPON
     SubmitBtn(text, Db.orderList.ifEmpty { "orders" }, modifier, then, "check")
 }

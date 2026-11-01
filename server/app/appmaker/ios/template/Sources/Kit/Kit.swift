@@ -49,6 +49,10 @@ enum Words {
     static var inboxEmpty: String { t("No updates yet.", "अभी कोई अपडेट नहीं।", "Abhi koi update nahi.") }
     static var receipt: String { t("Receipt", "रसीद", "Raseed") }           // v0.354 RASEED
     static var invoice: String { t("Tax invoice", "टैक्स इनवॉइस", "Tax invoice") }   // v0.355 GST BILL
+    static var couponCode: String { t("Coupon code", "कूपन कोड", "Coupon code") }   // v0.358 COUPON
+    static var apply: String { t("Apply", "लगाएँ", "Lagayein") }
+    static var couponSaved: String { t("You save", "आपकी बचत", "Aapki bachat") }
+    static var couponAgain: String { t("Cart changed: apply the code again.", "कार्ट बदला: कोड फिर से लगाएँ।", "Cart badla: code phir lagayein.") }
     static var soldOut: String { t("Sold out", "स्टॉक खत्म", "Stock khatam") }   // v0.357 STOCK
     static var creditNote: String { t("Credit note", "क्रेडिट नोट", "Credit note") }   // v0.356 WAPSI
     // v0.353 RAAY

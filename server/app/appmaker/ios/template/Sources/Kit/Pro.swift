@@ -521,3 +521,45 @@ struct ReceiptButton: View {
         }
     }
 }
+
+
+// ---------------------------------------------------------------- v0.358 COUPON: the discount code box in the cart
+/// Code + Apply: the app's server says the discount for THIS cart (nothing counted yet); the order carries the code and the
+/// server applies it again from its own prices. Changing the cart asks to apply again.
+struct CouponBox: View {
+    @ObservedObject private var state = AppState.shared
+    @State private var code = ""
+    @State private var msg = ""
+    @State private var busy = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                TextField(Words.couponCode, text: $code).textFieldStyle(.roundedBorder).textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .onChange(of: code) { v in let c = String(v.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(16)); if c != v { code = c } }
+                Button(busy ? Words.loading : Words.apply) {
+                    guard !busy, code.count >= 4 else { return }
+                    busy = true
+                    Task {
+                        let cart = state.cartItems().map { ["id": $0.0.id, "qty": $0.1] as [String: Any] }
+                        let r = await Cloud.call("POST", "/coupon", ["code": code, "cart": cart], token: Auth.shared.token)
+                        busy = false
+                        if r.ok, (r.body["ok"] as? Bool) == true {
+                            state.coupon = code
+                            state.couponOff = (r.body["discount"] as? NSNumber)?.doubleValue ?? 0
+                            msg = Words.couponSaved + " " + rupees(state.couponOff) + " · " + Words.total + " "
+                                + rupees((r.body["total"] as? NSNumber)?.doubleValue ?? state.cartTotal())
+                        } else {
+                            state.coupon = ""; state.couponOff = 0
+                            msg = (r.body["why"] as? String) ?? (r.error.isEmpty ? (r.offline ? Words.offline : Words.tryAgain) : r.error)
+                        }
+                    }
+                }.buttonStyle(.bordered)
+            }
+            if !msg.isEmpty { Muted(msg) }
+        }
+        .onAppear { code = state.coupon }
+        .onChange(of: state.cartTotal()) { _ in if state.couponOff > 0 { state.couponOff = 0; state.coupon = ""; msg = Words.couponAgain } }
+    }
+}

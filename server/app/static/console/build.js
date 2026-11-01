@@ -804,6 +804,34 @@ window.HoolaBuild = function (C) {
       });
     };
     try { drawStock(await api('GET', base(o) + '/stock')); } catch (er) { kbox.remove(); }
+    // v0.358 COUPON: her discount codes
+    const cpbox = document.createElement('section'); cpbox.className = 'stcol stcoupon'; box.appendChild(cpbox);
+    const drawCp = v => {
+      const cs = L(v.coupons);
+      cpbox.innerHTML = `<h4>Coupon codes <span>${cs.filter(c => c.live).length} live</span></h4><p class="stnote">${esc(S(v.note))}</p>
+        ${cs.length ? `<div class="sttbl"><table><thead><tr><th>Code</th><th>Discount</th><th>Min order</th><th>Last date</th><th>Used</th><th></th></tr></thead><tbody>${cs.map(c => `<tr data-c="${esc(S(c.code))}"><td>${esc(S(c.code))}${c.live ? '' : ' · off'}</td>
+          <td>${c.kind === 'percent' ? N(c.value) + '%' + (c.cap ? ' (max ₹' + N(c.cap) + ')' : '') : '₹' + N(c.value)}</td><td>${c.min ? '₹' + N(c.min) : '-'}</td><td>${esc(S(c.until) || '-')}</td>
+          <td>${N(c.used)}${c.uses ? ' / ' + N(c.uses) : ''}${c.once ? ' · once each' : ''}</td><td><button class="ib" type="button" data-cpdel aria-label="Delete ${esc(S(c.code))}">✕</button></td></tr>`).join('')}</tbody></table></div>` : ''}
+        <form class="stapp" autocomplete="off"><div class="row"><input name="code" maxlength="16" placeholder="CODE (e.g. DIWALI10)" aria-label="Code">
+        <select name="kind" aria-label="Kind"><option value="percent">% off</option><option value="flat">₹ off</option></select>
+        <input name="value" inputmode="decimal" placeholder="10" aria-label="Discount"><input name="cap" inputmode="decimal" placeholder="max ₹ (optional)" aria-label="Maximum discount">
+        <input name="min" inputmode="decimal" placeholder="min order ₹" aria-label="Minimum order"><input name="until" type="date" aria-label="Last date">
+        <input name="uses" inputmode="numeric" placeholder="total uses" aria-label="Total uses"><label><input name="once" type="checkbox"> once per customer</label>
+        <button class="btn go" type="submit">Add code</button></div></form>`;
+      cpbox.querySelector('form').addEventListener('submit', async e => {
+        e.preventDefault(); const f = e.target, b = f.querySelector('button.go'); b.disabled = true;
+        const body = {code: f.code.value.trim(), kind: f.kind.value, value: f.value.value.trim(), cap: f.cap.value.trim(), min: f.min.value.trim(), until: f.until.value, uses: f.uses.value.trim(), once: f.once.checked};
+        try { drawCp(await api('PUT', base(o) + '/coupons', body)); toast('Code saved.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+      });
+      if (!cpbox.dataset.wired) {          // one click listener for the box (the table is redrawn)
+        cpbox.dataset.wired = '1';
+        cpbox.addEventListener('click', async e => {
+          const b = e.target.closest('[data-cpdel]'), tr = e.target.closest('tr[data-c]'); if (!b || !tr || !confirm('Delete code ' + tr.dataset.c + '?')) return;
+          try { drawCp(await api('PUT', base(o) + '/coupons', {code: tr.dataset.c, delete: true})); toast('Deleted.'); } catch (er) { toast(er.message, true); }
+        });
+      }
+    };
+    try { if (S(info.order)) drawCp(await api('GET', base(o) + '/coupons')); else cpbox.remove(); } catch (er) { cpbox.remove(); }
     const mbox = box.querySelector('.stmem');
     try {
       const ms = L((await api('GET', base(o) + '/members')).members);

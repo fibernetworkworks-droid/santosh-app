@@ -429,3 +429,42 @@ fun ReceiptButton(coll: String, r: Item) {
         }
     }
 }
+
+
+// ---------------------------------------------------------------- v0.358 COUPON: the discount code box in the cart
+/** Code + Apply: the app's server says the discount for THIS cart (nothing counted yet); the order carries the code and the
+ *  server applies it again from its own prices. Changing the cart asks to apply again. */
+@Composable
+fun CouponBox() {
+    val scope = rememberCoroutineScope()
+    var code by remember { mutableStateOf(AppState.coupon.value) }
+    var msg by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val total = AppState.cartTotal("products")
+    LaunchedEffect(total) { if (AppState.couponOff.value > 0) { AppState.couponOff.value = 0.0; AppState.coupon.value = ""; msg = Strings.couponAgain } }
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(value = code, onValueChange = { code = it.uppercase().filter { ch -> ch.isLetterOrDigit() }.take(16) },
+                singleLine = true, modifier = Modifier.weight(1f), placeholder = { Text(Strings.couponCode) })
+            Btn(if (busy) Strings.loading else Strings.apply, kind = BtnKind.Tonal, small = true) {
+                if (busy || code.length < 4) return@Btn
+                busy = true
+                scope.launch {
+                    val cart = JSONArray()
+                    AppState.cartItems("products").forEach { (it, q) -> cart.put(JSONObject().put("id", it.id).put("qty", q)) }
+                    val r = Cloud.call("POST", "/coupon", JSONObject().put("code", code).put("cart", cart), Auth.token())
+                    busy = false
+                    if (r.ok && r.body.optBoolean("ok")) {
+                        AppState.coupon.value = code
+                        AppState.couponOff.value = r.body.optDouble("discount", 0.0)
+                        msg = Strings.couponSaved + " " + rupees(AppState.couponOff.value) + " · " + Strings.total + " " + rupees(r.body.optDouble("total", total))
+                    } else {
+                        AppState.coupon.value = ""; AppState.couponOff.value = 0.0
+                        msg = r.body.optString("why").ifEmpty { r.error.ifEmpty { if (r.offline) Strings.offline else Strings.tryAgain } }
+                    }
+                }
+            }
+        }
+        if (msg.isNotEmpty()) Small(msg)
+    }
+}

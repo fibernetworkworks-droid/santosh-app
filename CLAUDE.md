@@ -136,7 +136,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.357.0 (pubspec 0.357.0+397). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.358.0 (pubspec 0.358.0+398). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
@@ -154,6 +154,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.355 GST BILL (App Phase 19, `appmaker/gst.py`): her GSTIN (check digit) -> Rule 46 tax invoice for finished rows, INV/<FY>/0001 given once, GST-inclusive (total = order total), CGST+SGST / IGST by place of supply, HSN per product; no credit notes / IRN.
 - v0.356 WAPSI (App Phase 20, `gst.credit_for`): invoiced row cancelled -> GST credit note CN/<FY>/0001 (own series, once, full value, against the invoice); her own for returns; customer gets the credit note, her invoice stays; refunds are hers.
 - v0.357 STOCK (App Phase 21, `appmaker/stock.py`): stock per product, orders take it under one lock (never oversold), 409 when short, cancel puts back once, low-stock chat note once, apps show Sold out + cap the cart.
+- v0.358 COUPON (App Phase 22, `appmaker/coupon.py`): discount codes (percent / flat, min, last date, uses, once each) checked in the cart, applied by the server at order time, a failing code never loses the order, invoices spread the discount.
 - v0.349 BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
 - v0.348 KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
 - v0.347 HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.

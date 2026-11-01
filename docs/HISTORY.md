@@ -12965,3 +12965,22 @@ A shop app sold whatever was ordered. Now she can count her stock.
 - Tests `tests/test_v0357_stock.py` (settings, take, retry, refuse, warn once, cancel back once, 6 parallel buyers for 3
   pieces = exactly 3 sold, unlimited again, tool by name, kit markers). Not done: stock per variant / size, purchase entries,
   multi-process locking (the lock assumes ONE server process; check that the VPS core runs a single uvicorn worker).
+
+## v0.358.0 COUPON (App Sahayak Phase 22, owner: "START PHASE 22")
+Discount codes for her shop app, with the server as the only judge of money.
+- `appmaker/coupon.py`: codes in `AppProject.backend["coupons"]` (max 50): kind percent (1-90, optional `cap`) / flat,
+  `min`, `until` (YYYY-MM-DD, IST), `uses`, `once` (per account, `who` list), `on`, `used`. `check(r, code, cart, who)` for the
+  cart (POST /api/app-api/<key>/coupon, 30 per 10 min, nothing counted); `apply(r, code, subtotal, who)` at order time under
+  a lock from the server's own `_priced` subtotal; `_why` = not found / off / expired / used up / already used by her / order
+  too small. A failing code at order time = the order is placed at full price with `coupon_note` ("X nahi laga: <why>") -
+  never refused, so no outbox order is ever lost. `give_back` on a row that failed to write and on Cancelled (once,
+  `_coupon_back`). Saving codes drops the app content cache.
+- `backend.create` strips `coupon` from the row fields and stores `coupon`, `discount`, `subtotal` / `coupon_note`;
+  `with_assign` shows them to her customer, staff and her. Receipt: Subtotal + Coupon lines. GST: `compute` now spreads any
+  gap between the items and the server total proportionally over every line (rounding on the last), and the invoice says it
+  includes the coupon.
+- App content `backend.coupons` (true while a code is live) -> Android `OrderBtn` shows `CouponBox()` above the button,
+  iPhone `FormBlock` shows `CouponBox` under the cart total; the shown total subtracts the checked discount; changing the cart
+  asks to apply again. `Db.submit` sends `coupon`.
+- Her side: GET / PUT /api/apps/<ref>/coupons, tool app_banao action=coupon, console Coupon codes box (add, list, delete).
+- Tests `tests/test_v0358_coupon.py`. Not done: per-product / per-category codes, auto offers without a code, referral codes.

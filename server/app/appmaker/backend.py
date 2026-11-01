@@ -268,7 +268,9 @@ def who(r: AppProject, token: str) -> W.Who:
 
 def public_schema(r: AppProject) -> dict[str, Any]:
     sch = schema(r)
-    return {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", "")}
+    from . import coupon as CP
+    return {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", ""),
+            "coupons": bool(sch.get("order")) and CP.active(r)}           # v0.358 the cart shows the code box
 
 
 def signup(r: AppProject, email: str, password: str, name: str, ip: str) -> dict[str, Any]:
@@ -369,19 +371,28 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     if coll == sch.get("order") and "cart" in body:
         items, total = _priced(r, body.get("cart"))
         extra = {"items": items, "total": total}
-    data = {k: v for k, v in body.items() if k not in ("cid", "cart")}
+    code = str(body.get("coupon") or "").strip()
+    data = {k: v for k, v in body.items() if k not in ("cid", "cart", "coupon")}
     _check_extra(r, c, data, w)
     if extra:                                  # v0.357 STOCK: taken under one lock before the row exists (or refused)
         from . import stock as SK
         taken = SK.reserve(r, _cart_lines(r, body.get("cart")))
         if taken:
             extra["_stock"] = [[p, q] for p, q in taken]
+    if extra and code:                         # v0.358 COUPON: applied by the server from its own subtotal (or noted, never lost)
+        from . import coupon as CP
+        d, cf = CP.apply(r, code, extra["total"], w)
+        extra.update(cf)
+        extra["total"] = round(extra["total"] - d, 2)
     try:
         out = W.create(site, sch, coll, data, w, ip)
     except Exception:
         if taken:
             from . import stock as SK
             SK.put_back(r, taken)
+        if extra.get("discount"):
+            from . import coupon as CP
+            CP.give_back(r, extra["coupon"], w.id)
         raise
     if extra or cid:
         _merge(out["id"], {**extra, **({"_cid": cid} if cid else {})})
@@ -428,6 +439,7 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
         _merge(row_id, {"_ev": now().isoformat()})     # v0.319 the moment her row moved: the app's update check reads it
     if str(out.get("status") or "").strip().lower() == "cancelled" and "status" in body:
         _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
+        _coupon_back(r, row_id)                         # v0.358 ... and its coupon use (once)
         from . import gst as G                          # v0.356 an invoiced row cancelled -> its credit note (given once)
         got = G.credit_for(r, row_id, "Order cancelled")
         if got:
@@ -543,8 +555,12 @@ def set_role(r: AppProject, member_id: str, role: str) -> dict[str, Any]:
 def seed_hint(r: AppProject) -> dict[str, Any]:
     """What the build puts into the app (assets/seed.json 'backend'): the lists, their fields and rules - no data."""
     sch = schema(r)
-    return {"kind": sch.get("kind"), "order": sch.get("order"), "signup": sch.get("signup", True),
-            "collections": sch["collections"]}
+    out = {"kind": sch.get("kind"), "order": sch.get("order"), "signup": sch.get("signup", True),
+           "collections": sch["collections"]}
+    if sch.get("order"):                                   # v0.358 COUPON: the cart shows the code box while a code is live
+        from . import coupon as CP
+        out["coupons"] = CP.active(r)
+    return out
 
 
 # ---------------------------------------------------------------- v0.319 photos, location, updates, "I paid"
@@ -1108,6 +1124,10 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
             x["assigned_to"], x["assigned_name"] = to, (str(d.get("_to_name") or "") if to else "")
         elif x.get("mine") and to:
             x["assigned_name"] = str(d.get("_to_name") or "")
+        if w.staff or x.get("mine"):                  # v0.358 COUPON: what the server took off (or why a code did not apply)
+            for k in ("subtotal", "discount", "coupon", "coupon_note"):
+                if d.get(k) not in (None, ""):
+                    x[k] = d[k]
         if w.staff or x.get("mine"):                  # v0.353 RAAY: the customer's rating, for her and the business
             if d.get("_rate"):
                 x["rating"], x["rating_note"] = int(d["_rate"]), str(d.get("_rate_note") or "")
@@ -1293,3 +1313,17 @@ def _stock_back(r: AppProject, row_id: str) -> None:
         row.data = json.dumps(d, ensure_ascii=False)
     from . import stock as SK
     SK.put_back(r, [(str(p), int(q)) for p, q in taken])
+
+
+
+def _coupon_back(r: AppProject, row_id: str) -> None:
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        d = _j(row.data, {}) if row is not None else {}
+        if not d.get("discount") or not d.get("coupon") or d.get("_coupon_back"):
+            return
+        d["_coupon_back"] = True
+        row.data = json.dumps(d, ensure_ascii=False)
+        code, who = d["coupon"], row.owner
+    from . import coupon as CP
+    CP.give_back(r, code, who)

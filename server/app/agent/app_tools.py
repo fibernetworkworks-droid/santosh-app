@@ -75,6 +75,9 @@ APP_TOOLS = [
         "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
         "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
         "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
+        "v0.358 action=coupon (owner only; coupon = {code, kind percent|flat, value, cap, min, until YYYY-MM-DD, uses, once, on} or {code, "
+        "delete: true}; no coupon = list): her discount codes - the server applies them to orders from its own prices; a failing code never "
+        "loses an order. "
         "v0.357 action=stock (owner only; items = {product id or name: {qty: n or null = unlimited, low: warn level}}; no items = show): "
         "her shop app's stock - orders take it at once, more than is left is refused, a cancelled order puts it back, the app shows Sold out. "
         "v0.356 action=credit_note (app, coll, row, reason; owner only, ONLY when she asks - a return / wrong bill): a GST credit note "
@@ -85,7 +88,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -97,6 +100,7 @@ APP_TOOLS = [
          "gst": {"type": "object", "description": "action=gst: {gstin, legal_name, rate, hsn, items}"},
          "reason": {"type": "string", "description": "action=credit_note: why (return, wrong bill...)"},
          "items": {"type": "object", "description": "action=stock: {product id or name: {qty, low}}"},
+         "coupon": {"type": "object", "description": "action=coupon: {code, kind, value, cap, min, until, uses, once, on, delete}"},
          "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members)"},
          "crash": {"type": "string", "description": "action=fix_crash: the crash id (app_dekho what=crashes); empty = the newest unfixed one"},
          "build": {"type": "integer", "description": "action=rollback: the build number to bring back (app_dekho what=android history); 0 = the one before"},
@@ -275,6 +279,17 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action == "coupon":                    # v0.358 COUPON: her discount codes
+        if not _owner(ctx):
+            raise ToolError("Coupon codes sirf maalkin bana sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import coupon as CP
+        r = BE.by_key_or_ref(t, ref)
+        cp = a.get("coupon") if isinstance(a.get("coupon"), dict) else {}
+        v = CP.save(r, cp) if cp else CP.view(r)
+        live = [c["code"] for c in v["coupons"] if c["live"]]
+        v["say"] = ("Chalu codes: " + ", ".join(live) + ".") if live else "Abhi koi code chalu nahi."
+        return v
     if action == "stock":                     # v0.357 STOCK: her products' stock
         if not _owner(ctx):
             raise ToolError("Stock sirf maalkin badal sakti hain.")

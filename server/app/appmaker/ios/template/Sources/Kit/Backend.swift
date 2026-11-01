@@ -195,6 +195,7 @@ final class Db: ObservableObject {
     func label(_ c: String) -> String { collection(c)?["label"] as? String ?? c }
     func rule(_ c: String, _ op: String) -> String { (collection(c)?["rules"] as? [String: Any])?[op] as? String ?? "" }
     var orderList: String { schema["order"] as? String ?? "" }
+    var couponsOn: Bool { schema["coupons"] as? Bool ?? false }     // v0.358 a discount code is live
 
     /// Writes still on their way first (marked pending), then what the server last sent.
     func rows(_ c: String) -> [Item] {
@@ -340,11 +341,12 @@ final class Db: ObservableObject {
             if lines.isEmpty { return Words.cartEmpty }
             data["cart"] = lines.map { ["id": $0.0.id, "qty": $0.1] }
             show["items"] = lines.map { "\($0.1) x \($0.0.name)" }.joined(separator: "\n")
-            show["total"] = st.cartTotal()
+            show["total"] = st.cartTotal() - st.couponOff
+            if !st.coupon.isEmpty { data["coupon"] = st.coupon }      // v0.358 checked again by the server
         }
         create(c, data, show: show)
         for f in fields(c) { st.form.removeValue(forKey: f.s("key")) }
-        if c == orderList { st.cart = [:] }
+        if c == orderList { st.cart = [:]; st.coupon = ""; st.couponOff = 0 }
         return nil
     }
 }
