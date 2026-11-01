@@ -15,6 +15,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'arch_desk.dart';
 import 'cad_desk.dart';
 import 'game_desk_screen.dart';
 import 'glass.dart';
@@ -95,7 +96,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         });
       }
       await _load();
-      if (action == 'hire' && (key == 'seo' || key == 'social' || key == 'cad' || key == 'game_dev') && mounted) _openDesk(key);
+      if (action == 'hire' && (key == 'seo' || key == 'social' || key == 'cad' || key == 'game_dev' || key == 'architect') && mounted) {
+        _openDesk(key);
+      }
     } catch (e) {
       if (mounted) _snack(context, '$e');
     }
@@ -109,7 +112,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
               ? CadDeskScreen(app: widget.app)
               : key == 'game_dev'
                   ? GameDeskScreen(app: widget.app)     // v0.370 Game Desk
-                  : SeoDeskScreen(app: widget.app)))
+                  : key == 'architect'
+                      ? ArchDeskScreen(app: widget.app)     // v0.410 Architecture Desk
+                      : SeoDeskScreen(app: widget.app)))
       .then((_) => _load());
 
   Widget _card(Map<String, dynamic> e) {
@@ -1703,7 +1708,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
   }
 }
 
-// ---------------------------------------------------------------- v0.409 META ADS (A1): her Meta ad account, her taps only
+// ---------------------------------------------------------------- v0.417 META ADS (A1): her Meta ad account, her taps only
 class MetaAdsScreen extends StatefulWidget {
   const MetaAdsScreen({super.key, required this.app});
   final Santosh app;

@@ -72,10 +72,19 @@ lands there first, her edits there come back) or mirror (a live copy). v0.404.0 
 - Proof: load test (k6) — 1,000 concurrent customers ordering, no lost or double orders.
 
 ### C. Real time — Phase 49
+**Status: BUILT in v0.409.0 ABHI ABHI** (`server/app/appmaker/live.py`, kits `Live.kt` / `Live.swift`) — one SSE stream per open
+app fed by the journal (works across worker processes and on SQLite / Postgres), every event filtered by the list's read rule,
+instant chat, presence + typing, Last-Event-ID replay, her console app page live. Checkpoint (live dashboard + chat on her
+phone) = after the VPS deploy and the next app build. Not built: WebSocket (SSE + one POST covers it), live maps (Pillar D).
 - WebSocket / SSE channels per app: live lists, live order status, instant chat, presence ("rider online"), typing.
 - Kits: live list / live value components; offline outbox stays the source of truth.
 
 ### D. Maps, location, live tracking — Phases 50–51
+**Status: BUILT in v0.412.0 NAKSHA LIVE** (`server/app/appmaker/track.py`, kits `Track.kt` / `Track.swift`) — her switch, staff
+shifts with the required notice, one current position (wiped at shift end), the customer sees only her own rider while the order
+is on its way, ETA estimate, near / arrived geofences, riders map in the console. Maps: MapLibre + OpenFreeMap (no key) on
+Android + console, Apple Maps on iPhone. Not built: Google Maps SDK with her key, road-snapped routes / real road ETA (needs a
+routing service), "left" geofence. Proof (food delivery rider demo) = after the next app build on real phones.
 - Live map component (Google Maps SDK with HER key, or MapLibre with an approved tile provider), markers, routes, ETA.
 - Partner location sharing: user-started foreground service with the Play-required disclosure, battery-aware, stops on
   shift end; geofences (arrived / left); customer sees the rider moving.

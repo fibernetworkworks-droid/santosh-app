@@ -15388,7 +15388,374 @@ Owner: "GO JOINTS AND URDF" (third item from the text-to-cad comparison; own cod
 - Tests: tests/test_v0406_mechanisms.py (5). Not yet: SDF / MJCF, closed-chain linkages, joint torque from loads,
   self-collision matrix (SRDF), gear / belt couplings between joints.
 
-## v0.409.0 META ADS (ad plan A1) - 1 Nov 2026
+## v0.409.0 ABHI ABHI (App Sahayak Pillar C, Phase 49 — owner: "START PILLAR C")
+Real time for every native app, instead of the 10-second chat poll and pull-to-refresh lists.
+- Server `server/app/appmaker/live.py`: ONE Server-Sent-Events stream per open app.
+  - Routes: GET `/api/app-api/<key>/live` (Bearer token, Last-Event-ID), POST `/live/typing`, GET `/live/presence`;
+    her own view: GET `/api/apps/<ref>/live`, `/live/presence`, POST `/live/typing`.
+  - The feed is the v0.390 journal (every write, every path, written in the same transaction). One tailer thread per
+    worker process reads new journal ids every 0.35 s, only while someone is connected, so a write made by another
+    process arrives too, with no broker to install.
+  - A gap in journal ids (Postgres can commit 12 before 11) is asked for again for 5 s, so a late commit is still delivered.
+  - Every event is filtered by the list's own read rule (`W._can_read`, the same rule the list route uses). Only field
+    keys leave, never `_` keys. Internal lists are never sent. Chat goes only to that thread's customer and staff.
+  - Presence + typing: table `app_live_signal` (registered in db.init_db + ensure_table, pruned after 5 min), read by
+    the same tailer so they work across processes. An open stream is presence: refreshed every 20 s, expires after
+    45 s, tracked per connection, so a second phone closing does not mark her offline. Customers see staff only
+    (first name, short key); staff see everyone. Typing is scoped to one thread; a customer can only type in her own.
+  - Reconnect: each row / chat event carries `id: j<journal id>`. Last-Event-ID replays the missed events (up to 300;
+    more = one `reset`, and the phone reloads its lists). A stream that falls 400 events behind gets one `reset`, not a flood.
+  - Limits: sign-in needed; 3 streams per account; 500 per app and 3,000 per process (over = 429, and the app keeps its
+    normal refresh). Every 60 s the token is checked again (signed out elsewhere = `bye`). Each stream lives 10 min,
+    then the phone reconnects.
+- Kits:
+  - Android `Live.kt` (+ `Cloud.stream` in Backend.kt): started in MainActivity onStart, stopped in onStop.
+  - iPhone `Live.swift` (URLSession bytes): started and stopped on scenePhase.
+  - Both: `liveRows` / RowsSection reload a list when it changes (debounced 250 ms, server truth, the outbox unchanged).
+    The chat screens reload on a message and show `TypingLine` + `LiveDot`. Polling drops to 60 s while live.
+    New components: LiveDot, TypingLine, LiveValue (Android).
+  - The screen-writer prompts say never to poll.
+- Console: the app data page shows "Live · Online: …" and redraws itself on a change. If she is typing in a form on
+  that page, a "Show" button appears instead, so her input is never wiped.
+- Tests: tests/test_v0407_live.py (5): the route end to end with 3 listeners (read-rule filtering, chat, typing,
+  presence, owner view), replay + reset + colls filter, a late commit + presence expiry, limits + overflow, kits.
+  Added to app-load.yml (runs on Postgres).
+- Not verified: no real phone yet (CI compiles the kits); nginx must not buffer: the route sends `X-Accel-Buffering: no`.
+  WebSocket not built (SSE + one POST covers it).
+
+## v0.410.0 ECC ON (owner: "ECC CARDS DONE, CHECK RESULT")
+The two ECC Phase 1 cards ran on the live server (claude-opus-5-5) and decided the switches.
+- review_card (12 PRs x1, 3.2 min):
+  - old: 10/12 right, caught 8/8, quiet on 2/4 clean, 8 false alarms, 3 nits, verdicts 10/12, 4.2 steps;
+  - new: 10/12 right, caught 8/8, quiet on 2/4 clean, 4 false alarms, 0 nits, verdicts 11/12, 9.7 steps;
+  - same bugs caught, half the false alarms, no nitpicks, one more right verdict, about 2.3x the steps.
+- fix_card_spec: set 2 fix jobs 6/6 and set 3 fix jobs 6/6 with the fixer specialist (every fix test proves its bug), the
+  same as without it. No harm.
+- So `dev_spec_review` and `dev_spec_fix` are now True by default (config.py).
+- Still open: both modes leave ONE medium / high comment on clean_search_parameterised and on clean_invoice_checked. The
+  card kept only counts, so it is not yet known whether those comments are wrong or fair minor points (e.g. LIKE wildcard
+  characters, a phone number in the result). The card rows now keep what each false alarm SAID (`alarms`, printed under
+  each MISS), so the next run answers that.
+- One run, k=1: a single-run result; `--k 3` gives pass@k numbers.
+- Tests: the v0.377 review suite pins the old single pass (autouse fixture); test_v0402_ecc_specialists asserts the new
+  defaults and that the card restores whatever the switch was.
+
+## v0.411.0 HOOLA MECHANISMS 2 (1 Nov 2026)
+Owner, on the v0.408 "not done yet" list: "SDF/MJCF formats for other simulators, closed-loop linkages (four-bar),
+joint torque calculated from loads, gear/belt coupling between joints, and the MoveIt self-collision file (SRDF)
+--- fix and devlope". `engineering/kinematics.py` rewritten around a Mech class (independent joints -> couplings
+-> loop solve -> part motions).
+- LOOPS: a joint whose child already has a parent (or closure=True) closes a loop. The passive joints of each loop
+  are solved by scipy least squares on the closure joint (its point from both sides + its axis from both sides),
+  walked from the zero pose in steps so the linkage stays on its branch. No solution = it LOCKS there (dead point /
+  out of reach) - reported in the range rows. No driver marked -> the first joint at the ground drives (said).
+  Four-bar: link lengths, Grashof class (crank-rocker / double crank / double rocker / rocker-crank / change point /
+  triple rocker) and the minimum transmission angle over the motion (>= 40° wanted) - test linkage 20/70/50/80:
+  crank-rocker, 57.1° = the analytic cos(mu) formula, link lengths kept to 1e-3 mm; a non-Grashof one locks.
+- COUPLINGS: H.couple(follower, leader, ratio | teeth=(z_leader, z_follower), offset) -> follower = ratio x leader
+  everywhere; URDF <mimic>, SDF 1.11 <mimic> in <axis>, MJCF <equality><joint polycoef>.
+- TORQUE: holding torque / force of each independent joint = |dV/dq| of gravity + payload potential (loops solved
+  inside), worst over a pose grid (<= 3 joints: 7-9 per axis) or 250 random poses; + I_axis x alpha when
+  H.robot(accel_deg_s2=) (open chains). Matches the arm's beam statics to 1 % and MuJoCo's qfrc_bias to 0.1 %.
+  Effort = her number (checked; too weak -> one redesign round) else need x 1.5.
+- PACKAGE robot_urdf.zip: robot.urdf (tree, loops listed in a comment), robot.srdf (arm chain, end_effector group,
+  zero group_state, disable_collisions Adjacent / Default / Always / Never from 40 sampled poses, passive joints),
+  robot.sdf (world-fixed root, joint poses in the child frame, loops as joints), robot.xml (MJCF: nested bodies,
+  inertiafromgeom false, loops as <connect>, couplings as joint equality, a motor per independent joint) + meshes.
+  Checks: all four parse, URDF tree, physical inertias, limits, SRDF + SDF name real links, and MuJoCo compiles the
+  MJCF when installed (`pip install mujoco`, optional, Apache-2.0).
+- Sanity: every moving joint's pin (its axis line) must pass near both of its parts - a pin drawn in the wrong place
+  is named; fixed joints exempt. Prismatic motion fixed to mm (q in m x 1000).
+- Tests: tests/test_v0409_mechanisms2.py (7) + v0406 (5). Not yet: spatial (non-planar) loop analysis beyond
+  closure, cam / slot joints, dynamic simulation inside Hoola.
+
+## v0.412.0 NAKSHA LIVE (App Sahayak Pillar D, Phases 50-51 — owner: "START PILLAR D"; built as 0.410, re-versioned on rebase)
+Maps, a rider's location while on shift, and live tracking of one order.
+- Server `server/app/appmaker/track.py` + table `app_rider` (registered in db.init_db + ensure_table):
+  - Her switch: `backend.track = {on, coll, statuses}` (GET/PUT `/api/apps/<ref>/track`). The default list is the order list
+    with statuses Out for delivery / In progress / Confirmed; only real status options are accepted. `seed_hint` and the
+    public schema carry `track` only while it is on.
+  - Shifts: POST `/api/app-api/<key>/track/shift {on}`, staff only, and only after her switch (409 otherwise).
+    GET `/track/me`. A shift left on counts as ended after 14 h. Ending a shift wipes the position.
+  - Positions: POST `/track/pos {lat, lng, acc?, speed?, heading?}`, only during a shift. Values are checked, 0,0 is refused,
+    accuracy above 1 km is dropped, at most 1 point every 2 s. Only ONE current point is kept; no trail is stored.
+  - Each move: the rider's on-the-way rows (`_to` = rider, status in her list, updated in the last 3 days) get distance +
+    ETA. Geofences write `_near` (500 m) and `_arrived` (100 m) once each through `_merge`, so they are journaled and go
+    live. A LiveSignal kind `pos` (new nullable `data` column) carries the point + {row: {to: customer, km, eta}}.
+  - `live.pos_event`: staff / the owner get every rider (member id + order ids). A customer gets only the rows whose `to`
+    is her, with the rider shown as "rider" and a first name. `Hub.signal` routes `pos` apart from presence.
+  - GET `/track/c/<coll>/<id>`: her own row (or staff / owner). Returns tracking, why (off / not_on_the_way / no_rider /
+    no_position), rider {name, lat, lng, fresh}, km, eta_min, eta_note "estimate", near, arrived, dest.
+    ETA = haversine x 1.35 at the rider's speed (5-90 km/h), else 18 km/h.
+  - GET `/track/riders`: staff only.
+- Maps: MapLibre GL JS 4.7.1 vendored at `static/vendor/maplibre` (BSD-3, THIRD_PARTY_NOTICES) with OpenFreeMap tiles
+  (free, no key). The console CSP allows tiles.openfreemap.org.
+- Android `Track.kt`:
+  - TrackService: a foreground service of type location with an ongoing notification. LocationManager GPS + network,
+    15 m distance filter, every 5 s while moving and 30 s after 2 min standing. It stops on 401/403/409.
+  - Manifest: FOREGROUND_SERVICE(_LOCATION) + fine/coarse location, only when tracking is on. Never background location.
+  - ShiftBlock: the prominent notice, then the system dialog (+ notifications permission on 33+). It says "update the
+    app" when the build does not declare the service.
+  - LiveMap: a WebView loading the map library from her server (loadDataWithBaseURL).
+  - TrackOrderBlock, RidersMap, and a TrackButton on row cards.
+- iPhone `Track.swift`: CLLocationManager (when-in-use only; background updates + the blue pill when the build adds
+  UIBackgroundModes location), with the same blocks on Apple Maps. `info_plist` adds the location mode and the shift
+  wording only when tracking is on.
+- Store answers: Play data safety and App Privacy gain "Location (staff on shift)" when tracking is on.
+- Console: a Live tracking box (list + statuses + on/off) and a riders map that moves with the live stream's `pos`
+  events. Phone: `lib/ui/app_track.dart` (switch + riders list, open in Maps).
+- Tests: tests/test_v0412_track.py (3): the end-to-end flow, builds + store answers, kits + vendored files.
+- Not built / not verified: the Google Maps SDK with her key, road-snapped routes and real road ETA (they need a routing
+  service), a "left" geofence. No real phone or emulator run yet: CI compiles the kits.
+
+## v0.413.0 PRINCIPAL SOFTWARE ARCHITECT (built as 0.401 / 0.410) - the first of ten Software Architecture, Engineering & Core Systems employees (1 Nov 2026, owner: "Principal Software Architect ---- START THE WORK"; built as 0.401)
+- PLAN `docs/SOFTWARE_DESK_PLAN.md` (10 roles, where each runs, honest limits, phases). Hub group `hire.SW_GROUP` with
+  `architect` live and compiler_eng / kernel_dev / graphics_eng / dbengine_dev / distsys_eng / hypervisor_eng /
+  lowlatency_eng / mainframe_arch / refactor_eng "coming".
+- NEW `app/archdesk/`: `models.py` (arch_projects, arch_reviews; registered in db.init_db, ensure_table), `capacity.py`
+  (all sums in code, formulas shown, no users-a-day = refused, a number is hers only if she typed it or it is in her brief),
+  `diagrams.py` (vendored Mermaid 11.4.1 in `vendor/`, drawn in the server Chromium: strict security level, only file:
+  loads, `clean()` refuses click / href / javascript: / init / HTML / unknown kinds; SVG + PNG; MIT notice in
+  THIRD_PARTY_NOTICES.md), `service.py` (start / change / approve / settings / cancel / delete, `read_repo` through the
+  Developer Sahayak's token - tree minus vendor dirs, key files by priority, capped; Opus `DESIGN_SYSTEM` JSON validated
+  by `_valid`; one `FIX_SYSTEM` round per broken diagram; `markdown()`; `_pdf()` printed by docstudio's Printer with the
+  SVGs inline; `review_pr` against the approved design -> draft ArchReview; `post_review(by_tap=True)` = ONE COMMENT via
+  gh.review; `run_due` = 24/7 watch of open PRs per approved design with watch_prs, each head read once, never posts;
+  caps 6 designs / 10 reviews a day; gate `hire.is_working` for new work, `is_hired` to read), `api.py` (/api/arch/projects
+  [GET, POST], /{id} [GET, DELETE], change, approve, watch, cancel, review, /api/arch/reviews/{id}/post|discard, signed
+  /api/arch/files/{id}/v{n}/{name} with a CSP on SVG).
+- Agent tool `software_architect` (`agent/arch_tools.py`: new / list / status / change / approve / review_pr / watch /
+  cancel; owner-only writes; posting is NOT a tool action), family `arch` admitted by the architecture / system design /
+  HLD / scale / microservices / ADR / capacity router line (`admit.py`), prompt guide line (`prompts.py`). Worker hook
+  `_ARCH_DESK_BUSY` -> `run_due` in an executor.
+- Console: `employees.js` `arch()` / `archOne()` (new design form with repo + users a day + requests, list, design page:
+  summary, diagrams grid, capacity table, components, ADRs, risks, open questions, full Markdown, next version, approve,
+  PR box + watch switch, draft reviews with Post on PR / Discard), `DESKS.architect = 'archdesk'`, v2.js sidebar desk +
+  title + dispatch, v2.html section, v2.css `.ar-dia*`. Phone: NEW `lib/ui/arch_desk.dart` (ArchDeskScreen +
+  ArchDesignScreen), `employees_screen.dart` opens it, `api.dart` arch* methods.
+- FIX: `POST /api/game` started a game for anyone with the key - it now checks the Game Developer hire (the tool did).
+- Tests NEW `test_v0410_architect.py` (16) incl. a REAL Mermaid render in Chromium when present; test_v0370 updated
+  (hire before POST /api/game, employees.js export). Version 0.413.0 (pubspec 0.413.0+457, console ?v=0.413.0, pins).
+
+## v0.414.0 EK DIMAAG 2 - web Step 2 finished (owner: "FINISH THIS ALL", after "IS STEP 2 DONE" listed six gaps)
+
+The six gaps left after v0.407, each closed:
+1. **Old sites move by themselves.** `site/applink.migrate_all()` runs in the worker loop: every website that still has a
+   v0.305 app (lists, no link) is joined to App Sahayak's backend - same members, rows, passwords, addresses; idempotent,
+   one failing site never stops the others (`_MIGRATE` counts). A NEW web app (`design_app`) is linked the moment it is
+   designed. Switch: `SITE_APP_LINK` (default true). The whole v0.305 web-app suite now passes on the linked path.
+   Safety found on the way: `backend.ensure()` re-made a backend's lists from the app PLAN when `SCHEMA_V` moved - for a
+   website that would have wiped her lists. A `kind: web` backend now only gets its version raised (`_web_upgrade`).
+2. **The full school portal from one line** (tests/test_v0414_ek_dimaag2.py): admission (parent) -> approval (teacher asks,
+   principal approves, maker-checker refuses the asker) -> trigger makes the student (owned by the parent) -> trigger makes
+   the fee (from the class's fee) -> fee Paid only by the principal and only with a receipt no. -> class page lists its
+   admissions -> attendance once per student per day (unique) by the teacher -> report card total / percent / result worked
+   out by the server, marks > 100 refused -> another parent sees nothing. Needed ONE engine feature: relation `share`
+   (`logic/spec.py` + `engine._share_owner`): a row made under a parent row (attendance / marks / fees of a student) belongs
+   to that parent row's person, so a parent reads her own child's rows with read: own while staff see all.
+   Bug found by this proof: the word "portal" (SM.BIG_WORDS) turned every Architect site into a 25-page site map and
+   ignored the Architect's own pages; approve now passes the Architect's page count.
+3. **The same data in a phone app.** `applink.phone_app(site)` (POST /api/sites/{ref}/phone-app, console "Make phone app
+   (same data)", tool website action=phone_app): App Sahayak plans the screens (its own plan card -> looks -> design ->
+   build) ON THE SAME project - the planning fields are copied into the web project and the planning shell is deleted
+   (`AS.new(..., quiet=True)` so no stray card). Same id, same app_key: the phone API (`/api/app-api/<key>`, what the
+   Android / iPhone kits call) logs in with the website password, reads the website's rows and writes rows the website shows.
+4. **The full spec card.** Modules now: stories (who / want / so), pages, users, data, logic, payments (none / record /
+   upi / cod - money never moves; record = staff record it), notifications (in_app / push become the logic's own notify
+   actions; WhatsApp / email noted for after connecting), integrations (a fixed list, joined later from Connect with her
+   login), features. `architect.revise(id, words)` (POST /api/site-architect/{id}/revise, console "Change anything", phone
+   "Kuch badlo", tool action=architect_change): Opus rewrites the spec with ONLY her change; before the build the data
+   draft is redone only when its words moved; after the build only what the change touches is rebuilt - added / removed
+   pages go to the website as one change, new data / rules become a logic draft waiting for her tap.
+5. **Live + phone.** Phone card `lib/ui/site_spec.dart` (`SiteSpecCard`: modules with switches, Kuch badlo, Haan banao ->
+   `api.architectAct`), event `site_spec` in state.dart / chat_screen / call cards. Live check: `python -m app.site.architect
+   check ["brief"]` / vps-ops `architect_check` = one REAL Opus spec + the real App Sahayak checker on her server, prints
+   the card, builds nothing, removes the spec.
+6. **Step-end ritual.** Stable branch cut after this version (see CLAUDE.md checkpoint). vps-ops `arena_numbers` prints the
+   Design Arena runs (read-only, free) for the before / after numbers.
+NOT VERIFIED: the real Opus spec until she runs vps-ops architect_check; no APK / iPhone build was run on a website's
+data (the phone API is proven, the native build path is App Sahayak's existing one); Arena numbers need her Arena run
+(Step 2 does not change how pages are designed, so they should match).
+
+## v0.415.0 PRAYOGSHALA L0 + L1 - a real practical lab in 3D (owner: "GO L0 + L1")
+
+The plan is `docs/PRAYOGSHALA_PLAN.md` (L0-L10). This version builds L0 (the lab runtime) and L1 (the physics kernels
+and the NCERT practicals).
+
+**The one rule.** The model never writes a number or a line of code for a lab. A lab is DATA in the Lab Scene Language,
+and the behaviour comes from a kernel that does the physics in code. Every kernel exists twice:
+- `server/app/prayog/kernels.py`, the Python twin, which the tests and the checks run;
+- `server/app/static/prayog/kernels.js`, the JavaScript twin, which the phone runs.
+
+The two twins must give the same numbers to 1e-9 on every lab's own settings (test_v0415_prayog.py runs both).
+
+- **Kernels (16)**
+  - pendulum (RK4, nonlinear)
+  - spring
+  - incline (one μ; static = kinetic, said in the lab)
+  - stokes
+  - cooling
+  - boyle (ideal gas; its particles are illustrative)
+  - mixtures
+  - resonance (closed tube with 0.3d end correction)
+  - sonometer
+  - circuit (Modified Nodal Analysis: R, V, C with backward Euler, a Newton diode with voltage limiting, switches; measure modes `value`, `ratio`, `null` = bisection for a null point, `time_to`)
+  - mirror and lens (exact 2D ray tracing on the real spherical surfaces; a thick lens matches the thin-lens formula within 1%)
+  - prism
+  - slab
+  - induction (dipole flux through an N-turn coil)
+  - gauge (vernier and screw gauge readings)
+- **Lab Scene Language** (`prayog/lsl.py`): a strict checker.
+  - Any unknown key is refused, so nothing like `script` or `onload` can ride in.
+  - Every bind, instrument and table column must point at a real kernel var, param or knob.
+  - Numbers must be finite and inside the stage, with an 80k-triangle phone budget.
+  - Sources are required, and so is a `check` block.
+  - `run_check` measures the lab from the simulation and compares it with the NCERT formula in `kernels.TEXTBOOK`.
+- **Runtime** (`static/prayog/lab3d.js`, three.js r149 served from `appmaker/assets` at `/api/prayog/three.js`):
+  - 3D you can rotate, pinch and tap (each part's name, with an "illustrative" badge where it applies);
+  - section cut and explode;
+  - knobs, some hidden ("unknown" values for the learner to find);
+  - instruments: readouts with least count, stopwatch, meters, graphs and peak hold;
+  - an observation table (Record, manual cells, CSV) with the result from `CALCS` and "the real value in this lab" + % error;
+  - a guided tour with camera moves and Hinglish narration (speechSynthesis when the phone has it; the caption always shows);
+  - a predict-then-observe quiz, and About with sources;
+  - a service worker for offline use after the first open.
+- **Catalogue (22 NCERT practicals)**
+  - Mechanics: simple pendulum, Hooke's law, spring SHM, inclined plane friction, terminal velocity.
+  - Heat: Newton's cooling, Boyle's law, specific heat by mixtures.
+  - Waves: resonance tube, sonometer.
+  - Electricity: Ohm's law, meter bridge, potentiometer internal resistance, p-n diode, RC charging.
+  - Optics: concave mirror, convex lens, prism minimum deviation, glass slab.
+  - Magnetism: electromagnetic induction.
+  - Measurement: vernier callipers, screw gauge.
+
+  Every lab passes its NCERT check. A lab that fails is left out of the catalogue and logged, so the catalogue never goes down with it.
+- **Routes** (public, read-only teaching material): `GET /api/prayog/labs` (q, field), `/api/prayog/labs/{id}`, `/api/prayog/three.js`, and `/prayog` (redirects to the catalogue).
+- **Tool `prayog`** (read-only): find / open / check / all.
+  - Wiring: admit family `prayog`, `roles.READ`, the tutor duty, voice via `santosh_kaam`, and a prompt line ("send the LINK, never quote a lab number").
+- **Surfaces**
+  - Console: Lab page (`v-lab`, an iframe of the catalogue).
+  - Phone: Profile > Prayogshala (`lib/ui/prayog_screen.dart`: list + full-screen WebView).
+
+**Checked in a real browser (Chromium, swiftshader).**
+- All 22 labs render with no page errors.
+- Meter bridge: the null point at 40 cm, then 57.1 cm, gave S = 6.01 Ω against the lab's 6.00 Ω.
+- Pendulum: the stopwatch ran 4.02 s = 2T.
+- Tour, quiz, the phone layout (420 px) and the catalogue all work.
+
+**NOT VERIFIED.**
+- Frame rate on her real phone.
+- speechSynthesis inside the Android WebView (many have none; the caption carries the words).
+- The offline cache on a real device.
+
+## v0.416.0 ASSET PIPELINE (built as 0.409.0 / 0.411.0 / 0.414.0) (Hoola Game Engine plan, Phase 4) - 1 Nov 2026
+
+Owner: "GO PHASE 4". `server/app/gamedesk/assets.py` (table `game_assets`), `gamedesk/sfx.py`.
+
+- Kinds: sprite 128 / icon 96 / ui 256x96 / background = the game's screen size (photogen, ~Rs 3 fast, Rs 12 best);
+  sfx (code, free); music (Lyria, ~Rs 7, instrumental + loop fades -> OGG via ffmpeg); voice (TTS, ~Rs 1); model (3D
+  Studio GLB, model calls only). Keys follow the Bible ids (enemy red_bat -> sprite red_bat, level l1 -> bg_l1).
+- STYLE LOCK in code: `art_prompt` = palette + tone + genre + "original"; sprites / icons / ui drawn on flat magenta,
+  `key_out` (soft edge), `fit` (crop to subject, 94 % fit, exact size; backgrounds cover-crop), `palette_share` (visible
+  pixels near the palette or its shades), palette_lock check | strict (`snap` every pixel) | off. PNG metadata says
+  AI-generated; HoolaAssets.CREDITS ("made with AI (Hoola)") only when an AI-made asset is in the game (not her
+  uploads or code-made sounds) and the code guide shows it on the title screen.
+- SFX: 10 presets (jump, coin, hit, explosion, powerup, laser, blip, click, hurt, select), one oscillator + slide +
+  vibrato + arpeggio + envelope + low-pass, seeded noise; the same (preset, seed) = the same bytes; -1 dBFS peak.
+- Money: paid kinds stop at status `priced` (the price card); `spend(ids)` is ONLY her tap (API POST .../assets/spend,
+  console / phone buttons); the tool returns the card and can never spend. `spent_inr` per asset.
+- `check_file` in code: opens, exact size, transparent edges for alpha kinds, the backdrop really removed (`keyed`
+  share, found by a test: an opaque picture used to pass because fitting adds clear margins), not blank / not flat,
+  budget (error over 2x), palette, audio length per kind, silence / clipping, OGG / WAV web format, GLB magic.
+  A failed version is never approvable. Her uploads: PNG / JPEG / WAV / OGG / MP3 (-> OGG) / GLB by their bytes.
+- Versions: every remake = v+1 (history, 20 kept), `approve(key, v)` picks the one in the game; 3D models collected
+  by `collect_models` (worker + list view) when the 3D Studio job is done.
+- In the game: `service._build` adds `hoola_assets.gd` (Hoola's own, the model's copy replaced) + copies approved files
+  to `res://assets/<key>.<ext>` after each write; `template.files` adds the HoolaAssets autoload; versions record
+  `assets`; `apply` = data build (no model call); source ZIP + GitHub export carry assets/ (GitHub tree now nested).
+- REAL GODOT 4.7.2: keyed sprite 128x128 + code-made coin WAV + OGG music loaded via HoolaAssets headless and in the
+  Web export (60 fps); full pipeline e2e (sprite + sfx approved -> task build v2 -> smoke log "P4 OK" -> ZIP has assets).
+- Tool `game_assets` (list / suggest / make / approve / reject / apply), API `/api/gamestudio/{id}/assets*` + signed
+  `/api/gamestudio/asset/{aid}/{v}`; console board > Assets (`gsAssets`, `ga-*` CSS); phone `game_assets_screen.dart`.
+- Tests `test_v0411_game_assets.py` (9).
+- Not verified: GLB loading in a real Godot build (no Blender in the sandbox); real photogen / Lyria / TTS output (faked).
+
+## v0.416.0 QA FARM + BUG TRACKER (Hoola Game Engine plan, Phase 5; built as 0.410.0 / 0.412.0) - 1 Nov 2026
+
+Owner: "GO PHASE 5". `server/app/gamedesk/qa.py` (table `game_bugs`, `game_studios.qa` reports).
+
+- PROBE (`template.PROBE`): HoolaProbe.state(key, value) / event(name) -> window.__hoola.state / events (the code
+  guide asks every game to report state title|playing|game_over, score, level, game_over / level_up / win).
+- BOTS (`_actions`, seeded: the plan is the replay): idle, monkey, tapper, keys, restarter (restarts after each
+  game_over event). PROFILES desktop 1x / mid_phone 4x CPU + touch / low_phone 6x (CDP Emulation.setCPUThrottlingRate).
+  `run_bot`: fps per second, frames, state / events, game overs, restarts, stuck time, memory, start / end shots.
+- FOUND LIVE: (1) a release web build prints NO script errors in the browser, so a Space-key crash passed the
+  playtest and went live -> the farm plays a DEBUG export (`engine.export_web(debug=True)`, `setup_godot.py` now
+  fetches templates/web_nothreads_debug.zip; no template = NOT ASSESSED, never a pass) and EVERY build's playtest plays
+  a debug build (`service._play_build`; play link keeps the release build; debug build never kept); a real run then
+  caught the crash in the build's fix round and shipped the fixed version. (2) keys only reach a focused canvas.
+- BUGS: errors / freezes / blank screens / broken restart / stuck screens -> `file_bug` (signature = normalised
+  text; repeats counted; a FIXED bug seen again = REGRESSION, reopened); her own reports (`report_bug`); `fix_bug` =
+  board task (role from the words, priority 1 for crash / blocker) with the criterion "QA bot X (seed, profile) no
+  longer finds B-000N"; she cannot mark a bot bug fixed by hand - every farm run replays every open bug's exact steps
+  and closes it only when it is gone.
+- GOLDEN: idle bot's start screen vs her approved one (`diff_share` on a small picture, > 3 % = looks different);
+  none = NOT ASSESSED. SPEED: fps average vs the last run (> 25 % drop = concern + perf bug).
+- Verdict PASS / CONCERNS / FAIL / NOT ASSESSED in code; kept on the project (12 runs; shots pruned); decisions log;
+  runs after every good nightly (`GAME_QA_NIGHTLY`); gate check (crash bugs / FAIL = blockers, not run = concern) and
+  the morning report read it.
+- REAL GODOT 4.7.2: the probe + restarter (4 game overs, 4 restarts), mid phone throttle (~26 vs 60 fps), the hidden
+  Space crash filed as B-0001 by the keys bot, "Fix it" -> T-0002, fixed build -> farm marked B-0001 fixed.
+- Tool `game_qa` (run / report / bugs / report_bug / fix / status / golden), API `/api/gamestudio/{id}/qa*` /
+  `/bugs*` + signed `/api/gamestudio/qa-shot/{sid}`; console board > QA (`gsQa`, `qa-*` CSS); phone `game_qa_screen.dart`.
+- Tests `test_v0415_game_qa.py` (11). VPS: run `python deploy/setup_godot.py` again once (the debug template).
+
+
+## v0.416.0 GAME PLATFORMS (Hoola Game Engine plan, Phase 6; built as 0.413.0) - 1 Nov 2026
+Owner: "GO PHASE 6". Shipped together with Phase 4 (assets) and Phase 5 (QA farm) as ONE v0.416.0, because other
+sessions took v0.414 and v0.415 on main moments before the push (REBASE PROTOCOL: re-versioned, both works kept).
+
+What it does (`server/app/gamedesk/platforms.py`, table `game_releases`, `GameStudio.platform` JSON column):
+- RELEASE = the live version of her game exported for the platforms she picks, each file CHECKED in code
+  (`check_artifact`: exists, right kind inside - ELF / PE / .app in a zip / APK-AAB zip with a manifest - size
+  budget, sha256) and given a 7-day signed download link (`download_url`, HMAC, expiry).
+  * linux / windows / macos: exported ON the server with Godot's release templates (`--export-release`, one-file
+    builds with the data embedded), zipped with a README. macOS = universal, ad-hoc signed, NOT notarised (the README
+    and the store kit say "right-click > Open the first time"). Mac bundle ids may not contain `_` (Godot refuses).
+  * android: APK or AAB built in HER private builds repo (App Builder's GitHub runner: `runners.push_tree` +
+    `dispatch_wait` + `artifacts`, new workflow `server/app_builder/hoola-game.yml`, kept equal on the repo by
+    `runners.sync_workflows`, WORKFLOWS += hoola-game.yml) because it needs the Android SDK. Signed with the game's
+    OWN upload key (PKCS12 made with `cryptography`, sealed in the vault, never shown; the runner gets it only inside
+    the pushed tree, passed by GODOT_ANDROID_KEYSTORE_RELEASE_*). No builds repo = NOT ASSESSED, never a fake file.
+  * every game asks for NO internet permission; the package `com.hoola.<slug><hash6>` is made once per project and
+    never changes; the version code only goes up (`_next_code`).
+  * the app icon = her approved `app_icon` asset when there is one (`_app_icon`).
+- STORE KIT (`store_kit`): itch.io / Steam / Google Play texts clipped to each store's limits in code (LIMITS), store
+  images drawn in code in the exact sizes (itch cover 630x500, Steam header 920x430 / small 462x174 / main 1232x706 /
+  library 600x900, Play feature 1024x500 / icon 512x512) from the game's own screens + title + Bible palette (a bad
+  screenshot falls back to a plain background), the AI-content disclosure from the asset list, Steam upload scripts
+  (app_build / depot VDF - Hoola never logs into her Steam), one ZIP with a signed link.
+- AGE RATING DRAFT (`rating_draft`): IARC-style answers from the Game Bible entities and words (violence only from real
+  enemies / weapons, never from field names), the assets and Hoola's own rules (no real money, no chat, no location,
+  no ads) -> a DRAFT; the real rating comes from IARC / the store.
+- ITCH.IO: her own itch.io API key (typed in the app, sealed in SiteHostingKey provider "itch"); an upload is a CARD
+  (hash of release + target + files) and only her tap runs itch's official `butler push` (butler from broth.itch.zone;
+  the key is redacted from logs). Nothing is published by Hoola alone.
+- Setup: `python deploy/setup_godot.py --desktop` (or `--desktop --templates-only`) fetches the Linux / Windows / macOS
+  release templates (~310 MB).
+
+API: GET/POST /api/gamestudio/{id}/releases, GET /api/gamestudio/release/{rid}/{platform}?exp&sig, GET
+/api/gamestudio/{id}/store-kit, GET /api/gamestudio/{id}/rating, POST /api/gamestudio/itch-key, POST
+/api/gamestudio/{id}/releases/{rid}/itch (card), POST .../itch/push {hash} (her tap). Agent tool `game_release`
+(targets / build / list / store_kit / rating / itch). Console Game Desk board > Release (`gsRelease`), phone
+`lib/ui/game_release_screen.dart` + a Release button on the project screen.
+
+Verified here with the real Godot 4.7.2: release R-001 of a test game - Linux 28 MB, Windows 38 MB, macOS 60 MB
+(universal zip), each passed its check; a second release kept the package and raised the version code; store kit
+images + texts made; rating draft = E / PEGI 3 for a no-violence game. Tests `test_v0416_game_platforms.py` (9).
+NOT VERIFIED: the Android build (no Android SDK in this sandbox; the SDK install was refused here) - the first build
+in her builds repo is what will confirm it; itch.io push not run against a real account; iOS not built.
+## v0.417.0 META ADS (ad plan A1, built as 0.409) - 1 Nov 2026
 Owner, after the India ad-market check (artifact "Hoola Ad Platforms India"): "GO A1".
 - **Why:** the Ads desk (v0.111) already read her Meta insights and applied budget changes on her tap, but only after she
   pasted a system-user token from Business Settings - almost no shop owner can make one. Meta is the biggest ad market for
@@ -15419,7 +15786,7 @@ Owner, after the India ad-market check (artifact "Hoola Ad Platforms India"): "G
 - UI: phone Social Desk "Facebook & Instagram ads" -> `MetaAdsScreen` (connect, account / Page, goal buttons, edit dialog,
   photo, Check / Create (paused) / Start with confirm / Pause); Ads desk Niyam card = "Facebook se jodo" (token paste kept as
   "Token se jodo"); console Social Desk tile `#scMetaAds` (employees.js metaAds / wireMa).
-- Tests: `server/tests/test_v0409_meta_ads.py` (6).
+- Tests: `server/tests/test_v0417_meta_ads.py` (6).
 - **Needs before real use:** add `https://hoola.ainewtika.com/api/ads/meta/callback` to the HOOLA app's Valid OAuth
   Redirect URIs; App Review for ads_management + ads_read (until then only the app's own roles / testers can connect);
   Marketing API Full Access for volume. **NOT VERIFIED** against a live ad account - field names follow Meta's Marketing API

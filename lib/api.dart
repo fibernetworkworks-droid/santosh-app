@@ -1032,6 +1032,43 @@ class Api {
   Future<Map<String, dynamic>> gameStudioGate(String id, String milestone) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/gate', body: {'milestone': milestone},
           timeout: const Duration(seconds: 90)) as Map);
+  // v0.416 asset pipeline (paid kinds start only by gameAssetsSpend = her tap on the price card)
+  Future<Map<String, dynamic>> gameAssets(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/assets', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameAssetsSuggest(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/assets/suggest') as Map);
+  Future<Map<String, dynamic>> gameAssetsNew(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets', body: body) as Map);
+  Future<Map<String, dynamic>> gameAssetsSpend(String id, List<String> ids) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets/spend', body: {'ids': ids}) as Map);
+  Future<Map<String, dynamic>> gameAssetsDo(String id, String key, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets/$key/$what', body: {}) as Map);
+  Future<Map<String, dynamic>> gameAssetsApply(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/assets-apply', body: {}) as Map);
+  // v0.416 QA farm + bugs
+  Future<Map<String, dynamic>> gameQa(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/qa', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameQaRun(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/qa/run', body: {}) as Map);
+  Future<Map<String, dynamic>> gameQaGolden(String id) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/qa/golden', body: {}) as Map);
+  Future<Map<String, dynamic>> gameBugNew(String id, String title, String severity) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bugs', body: {'title': title, 'severity': severity}) as Map);
+  Future<Map<String, dynamic>> gameBugDo(String id, String number, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/bugs/$number/$what', body: {}) as Map);
+  // v0.416 platforms (uploads only by gameItchPush = her tap)
+  Future<Map<String, dynamic>> gameReleases(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/releases', timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameReleaseNew(String id, List<String> platforms, String format) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/releases',
+          body: {'platforms': platforms, 'android_format': format}) as Map);
+  Future<Map<String, dynamic>> gameStoreKit(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamestudio/$id/store-kit', timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> gameItchCard(String id, String rid, String target) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/releases/$rid/itch', body: {'target': target}) as Map);
+  Future<Map<String, dynamic>> gameItchPush(String id, String rid, String hash) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/releases/$rid/itch/push', body: {'hash': hash},
+          timeout: const Duration(seconds: 900)) as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk
@@ -1072,7 +1109,7 @@ class Api {
   Future<Map<String, dynamic>> socialYtAdsAct(String id, String action, {bool confirm = false}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id/$action', body: {'confirm': confirm},
           timeout: const Duration(seconds: 90)) as Map);
-  // v0.409 META ADS (A1): Facebook Login for her ad account; drafts stay in Hoola; create = paused in Meta; start = her tap + confirm
+  // v0.417 META ADS (A1): Facebook Login for her ad account; drafts stay in Hoola; create = paused in Meta; start = her tap + confirm
   Future<String> adsMetaConnect() async => (await _send('GET', '/api/ads/meta/connect'))['url'] as String;
   Future<Map<String, dynamic>> metaAds() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/ads/metaads', timeout: const Duration(seconds: 30)) as Map);
@@ -1111,6 +1148,21 @@ class Api {
   Future<Map<String, dynamic>> engChange(String id, String words) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/eng/projects/$id/change', body: {'words': words}) as Map);
   Future<void> engDelete(String id) async => _send('DELETE', '/api/eng/projects/$id');
+  // ---- v0.410 Architecture Desk (Principal Software Architect) ----
+  Future<Map<String, dynamic>> archProjects() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/arch/projects', timeout: const Duration(seconds: 30)) as Map);
+  Future<Map<String, dynamic>> archStart(String brief, {String repo = '', int? dau}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/arch/projects',
+          body: {'brief': brief, 'repo': repo, 'scale': {if (dau != null) 'dau': dau}}, timeout: const Duration(seconds: 60)) as Map);
+  Future<Map<String, dynamic>> archGet(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/arch/projects/$id', timeout: const Duration(seconds: 30)) as Map);
+  Future<void> archApprove(String id) async => _send('POST', '/api/arch/projects/$id/approve', body: const {});
+  Future<void> archChange(String id, String words) async => _send('POST', '/api/arch/projects/$id/change', body: {'words': words});
+  Future<void> archWatch(String id, bool on) async => _send('PUT', '/api/arch/projects/$id/watch', body: {'watch_prs': on});
+  Future<void> archReview(String id, int pr) async =>
+      _send('POST', '/api/arch/projects/$id/review', body: {'pr': pr}, timeout: const Duration(seconds: 120));
+  Future<void> archPostReview(String rid) async => _send('POST', '/api/arch/reviews/$rid/post');
+  Future<void> archDiscardReview(String rid) async => _send('POST', '/api/arch/reviews/$rid/discard');
   // v0.317 HIRE AN EMPLOYEE + the SEO Desk
   // ---- v0.396 CONNECT: her own enterprise system (address + key). The key goes UP only; no route returns it ----
   Future<Map<String, dynamic>> entSystems(String role) async =>
@@ -1270,6 +1322,9 @@ class Api {
   Future<Map<String, dynamic>> siteGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/sites/$id') as Map);
   Future<Map<String, dynamic>> siteAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/sites/$id/$action', body: body, timeout: const Duration(seconds: 120)) as Map);
+  /// v0.414 HOOLA ARCHITECT: revise / approve a spec card (approve = her tap, with the hash of the card she saw).
+  Future<Map<String, dynamic>> architectAct(String id, String action, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/site-architect/$id/$action', body: body, timeout: const Duration(seconds: 180)) as Map);
   Future<Map<String, dynamic>> siteDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/sites/$id') as Map);
   Future<Map<String, dynamic>> sitePhoto(String id, String filename, List<int> bytes, String about) async =>
       uploadFile('/api/sites/$id/photo', filename, bytes, fields: {'about': about}, tries: 1, timeout: const Duration(seconds: 180));

@@ -61,6 +61,8 @@ object Cloud {
     fun testServer(baseUrl: String) { base = baseUrl.trimEnd('/') }
 
     val ready: Boolean get() = key.isNotEmpty() && (base.startsWith("https://") || base.startsWith("http://10.0.2.2"))
+    /** v0.412 her Hoola server's address (the map page loads its map library from there). */
+    internal val baseUrl: String get() = base
 
     /** v0.319 a photo (JPEG bytes) -> {id}. */
     internal suspend fun upload(bytes: ByteArray, token: String): Reply = withContext(Dispatchers.IO) {
@@ -106,6 +108,25 @@ object Cloud {
             null
         } finally {
             c?.disconnect()
+        }
+    }
+
+    /** v0.407 ABHI ABHI: opens the app's live stream (Server-Sent Events). Blocking: call it on Dispatchers.IO.
+     *  null = no network / not ready; the caller reads lines until the server closes it. */
+    internal fun stream(path: String, token: String, lastId: String): HttpURLConnection? {
+        if (!ready || token.isEmpty()) return null
+        return try {
+            (URL("$base/api/app-api/$key$path").openConnection() as HttpURLConnection).apply {
+                connectTimeout = 10000
+                readTimeout = 40000                 // the server sends a ping every 15 s; silence for 40 s = a dead socket
+                instanceFollowRedirects = false
+                useCaches = false
+                setRequestProperty("Accept", "text/event-stream")
+                setRequestProperty("Authorization", "Bearer $token")
+                if (lastId.isNotEmpty()) setRequestProperty("Last-Event-ID", lastId)
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -528,7 +549,8 @@ object Db {
 /** Rows of one of the app's lists for a screen: cached rows at once (offline too), fresh ones when the server answers. */
 @Composable
 fun liveRows(coll: String): List<Item> {
-    LaunchedEffect(coll, Auth.me.value) { Db.refresh(coll) }
+    Live.watch(coll)
+    LaunchedEffect(coll, Auth.me.value, Live.rev(coll)) { Db.refresh(coll) }   // v0.407 a live change reloads it
     return Db.rows(coll)
 }
 

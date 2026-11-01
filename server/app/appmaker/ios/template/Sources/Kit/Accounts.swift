@@ -64,6 +64,8 @@ struct AccountScreen: View {
                 KhataBlock()                                         // v0.359 udhaar: hers / who owes (staff)
                 if auth.isStaff { StatsBlock() }                     // v0.340 the staff dashboard
                 if auth.isStaff { StopsBlock() }                     // v0.350 open stops with a location, nearest first
+                ShiftBlock()                                         // v0.412 NAKSHA LIVE: Start / End shift (staff, tracking on)
+                RidersMap()                                          // v0.412 every rider on shift, live
             }
             LanguagePicker()                                         // v0.347 the app's words in her language
             if db.pending > 0 { Muted("\(db.pending) · \(Words.sending)") }
@@ -93,6 +95,7 @@ struct RowsSection: View {
     @State private var utr = ""
     @State private var mineOnly = false                 // v0.352 My work: only the rows given to this staff account
     @ObservedObject private var team = Team.shared
+    @ObservedObject private var live = Live.shared          // v0.407 ABHI ABHI
 
     var body: some View {
         let meId = auth.me?.id ?? ""
@@ -133,6 +136,7 @@ struct RowsSection: View {
                         RateBox(coll: coll, r: r)                    // v0.353 the customer rates her finished row once
                         ReceiptButton(coll: coll, r: r)              // v0.354 the receipt PDF of a finished row
                         CreditButton(coll: coll, r: r)               // v0.359 staff: this order on credit (udhaar)
+                        TrackButton(coll: coll, r: r)                // v0.412 the rider on a map while it is on its way
                     }
                     AssignBox(coll: coll, r: r)
                     if !db.workflowField(coll).isEmpty {              // v0.382 DIMAAG: the server's workflow steps + approvals
@@ -151,7 +155,7 @@ struct RowsSection: View {
                 }
             }
         }
-        .task(id: auth.me?.id) { await db.refresh(coll) }
+        .task(id: "\(auth.me?.id ?? "")#\(live.revOf(coll))") { await db.refresh(coll) }   // v0.407 a live change reloads it
         .alert(Words.iPaid, isPresented: Binding(get: { paying != nil }, set: { if !$0 { paying = nil } })) {
             TextField(Words.utr, text: $utr).keyboardType(.asciiCapable)
             Button("OK") {

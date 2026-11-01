@@ -82,8 +82,64 @@ GAMEDESK_TOOLS.append(
          "ids": {"type": "array", "items": {"type": "string"}}, "runs": {"type": "integer"}},
          "required": ["action"]}})
 
+GAMEDESK_TOOLS.append(
+    {"name": "game_assets", "description": (
+        "Asset pipeline of a Studio Project: the game's art (sprite, icon, ui, background - style-locked to the Game "
+        "Bible palette), sounds (sfx made in code: free, preset + seed), music, voice lines and 3D models (Hoola's 3D "
+        "Studio). Every file is checked in code and enters the game only after her OK. Actions: list / suggest (what the "
+        "Bible still needs) / make (kind, key, words; sprite size, quality fast|best, palette_lock check|strict; sfx preset, "
+        "seed; voice text) - PAID kinds (pictures, music, voice) only get a PRICE CARD: tell her the rupees and that her "
+        "tap on the card starts it, you can never start a paid one / approve (key, v optional) / reject (key) / apply: "
+        "approved assets into the live game with no new code. Keys follow the Bible ids (enemy red_bat -> sprite red_bat, "
+        "level l1 -> bg_l1, sounds sfx_jump). id = S-0001 (optional with one project). Only while the Game Developer is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "suggest", "make", "approve", "reject", "apply"]},
+         "id": {"type": "string"}, "kind": {"type": "string", "enum": ["sprite", "icon", "ui", "background", "sfx", "music",
+                                                                        "voice", "model"]},
+         "key": {"type": "string"}, "words": {"type": "string"}, "size": {"type": "integer"},
+         "quality": {"type": "string", "enum": ["fast", "best"]}, "palette_lock": {"type": "string", "enum": ["off", "check", "strict"]},
+         "preset": {"type": "string"}, "seed": {"type": "integer"}, "text": {"type": "string"}, "v": {"type": "integer"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_qa", "description": (
+        "QA farm + bug tracker of a Studio Project: Hoola's bots (idle, monkey, tapper, keys, restarter; seeded = "
+        "repeatable) play a DEBUG web build on desktop / mid phone / low phone speeds, compare the start screen with the "
+        "golden one she approved, measure fps / load / memory against the last run, and file numbered bugs with the "
+        "exact bot + seed that finds them. Actions: run (background, 2-4 min; also every night after the nightly build) "
+        "/ report (the last verdict PASS|CONCERNS|FAIL|NOT ASSESSED, quote only its facts) / bugs / report_bug (title, "
+        "detail, severity crash|blocker|major|minor|visual|perf) / fix (bug = B-0001): a board task whose criterion is "
+        "that the same bot no longer finds it - a bot bug is FIXED only when its bot cannot find it again / status (bug, "
+        "status open|wontfix|duplicate) / golden: her OK that the last start screen is how the game should look. "
+        "id = S-0001 (optional with one project). Only while the Game Developer is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["run", "report", "bugs", "report_bug", "fix", "status", "golden"]},
+         "id": {"type": "string"}, "bug": {"type": "string"}, "title": {"type": "string"}, "detail": {"type": "string"},
+         "severity": {"type": "string", "enum": ["crash", "blocker", "major", "minor", "visual", "perf"]},
+         "status": {"type": "string", "enum": ["open", "wontfix", "duplicate"]}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_release", "description": (
+        "Platforms of a Studio Project: the live game as real downloads - linux / windows / macos (built on Hoola's "
+        "server) and android (APK to install, AAB for Google Play; built in her private builds repo, signed with the "
+        "game's own upload key). Each file is checked in code; macOS is not notarised and Windows not code-signed (the "
+        "README says what players see). Actions: targets (where each platform can be built now) / build (platforms, "
+        "android_format apk|aab; background) / list / store_kit (store texts for itch.io / Steam / Google Play within "
+        "their limits, store images in exact sizes, AI disclosure, Steam upload scripts - a ZIP, nothing published) / "
+        "rating (an IARC-style DRAFT; the real rating comes from IARC) / itch (release, target user/game): a CARD - only "
+        "her tap uploads; her itch.io key is typed in the app, never in chat. Hoola never logs into her Steam or "
+        "publishes alone. id = S-0001 (optional with one project). Only while the Game Developer is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["targets", "build", "list", "store_kit", "rating", "itch"]},
+         "id": {"type": "string"}, "platforms": {"type": "array", "items": {"type": "string", "enum": ["linux", "windows", "macos", "android"]}},
+         "android_format": {"type": "string", "enum": ["apk", "aab"]}, "release": {"type": "string", "description": "R-001 or the id"},
+         "target": {"type": "string", "description": "itch.io page: user/game"}},
+         "required": ["action"]}})
+
 GAMEDESK_LABELS = {"game_desk": "Game bana raha hoon", "game_studio": "Game project dekh raha hoon",
-                   "game_bible": "Game Bible dekh raha hoon"}
+                   "game_bible": "Game Bible dekh raha hoon", "game_assets": "Game ke assets dekh raha hoon",
+                   "game_qa": "Game ki QA dekh raha hoon", "game_release": "Game ki release dekh raha hoon"}
 
 
 def _short(v: dict) -> dict:
@@ -308,4 +364,149 @@ async def game_bible(ctx: Ctx, action="", id="", kind="", entity=None, eid="", s
                     "simulate | apply | recurve")
 
 
-GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible}
+def _asset_short(v: dict) -> dict:
+    return {"assets": [{k: a.get(k) for k in ("key", "kind", "status", "version", "approved", "cost_inr", "error")
+                        if a.get(k) not in (None, "", 0)} | ({"problems": a["checks"].get("errors")} if (a.get("checks") or {}).get("errors") else {})
+                       for a in v.get("assets", [])][:40],
+            "price_card": v.get("card"), "in_game": v.get("in_game"), "spent_inr": v.get("spent_inr")}
+
+
+async def game_assets(ctx: Ctx, action="", id="", kind="", key="", words="", size=0, quality="fast", palette_lock="check",
+                      preset="", seed=0, text="", v=0, **_):
+    from ..employee import hire
+    from ..gamedesk import assets as A
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "suggest") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
+        raise ToolError("Game assets badalna sirf owner ka kaam hai.")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "list":
+            await run(A.collect_models, t, id)
+            return _asset_short(await run(A.assets, t, id))
+        if action == "suggest":
+            sug = await run(A.suggest, t, id)
+            return {"suggest": sug, "total_inr_if_all": sum(x["cost_inr"] for x in sug),
+                    "note": "Nothing is made or priced yet; ask her which ones to make."}
+        if action == "make":
+            spec = {"size": size or None, "quality": quality, "palette_lock": palette_lock, "preset": preset or None,
+                    "seed": seed or None, "text": text or None}
+            a = await run(A.request, t, id, kind, key, words, **{k: x for k, x in spec.items() if x is not None})
+            if a["status"] == "priced":
+                return {"asset": a["key"], "status": "priced", "cost_inr": a["cost_inr"],
+                        "note": f"A price card for about Rs {a['cost_inr']} is on her Assets page; ONLY her tap starts it. Never say it is made."}
+            return {"asset": a["key"], "status": a["status"], "note": "Free kind: being made now; it waits for her OK."}
+        if action == "approve":
+            return {"asset": (await run(A.approve, t, id, key, int(v or 0)))["key"], "status": "approved",
+                    "note": "Approved. action=apply puts the approved assets into the game."}
+        if action == "reject":
+            return {"asset": (await run(A.reject, t, id, key))["key"], "status": "rejected"}
+        if action == "apply":
+            await run(A.apply, t, id)
+            return {"ok": True, "note": "Rebuilding the live game with the approved assets (no new code)."}
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = list | suggest | make | approve | reject | apply")
+
+
+async def game_qa(ctx: Ctx, action="", id="", bug="", title="", detail="", severity="major", status="", **_):
+    from ..employee import hire
+    from ..gamedesk import qa as Q
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("report", "bugs") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
+        raise ToolError("Game QA badalna sirf owner ka kaam hai.")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "run":
+            res = await run(Q.start, t, id)
+            return {**res, "note": "The bots play in the background (2-4 minutes); the report lands on the QA page. Do not poll."}
+        if action in ("report", "bugs"):
+            d = await run(Q.bugs, t, id)
+            last = d.get("last") or {}
+            out = {"open": d["open"], "crash_open": d["crash_open"],
+                   "last": {k: last.get(k) for k in ("at", "version", "verdict", "blockers", "concerns", "missing", "filed", "fixed", "perf")}}
+            if action == "bugs":
+                out["bugs"] = [{k: b.get(k) for k in ("number", "title", "severity", "status", "seen", "regression", "task")}
+                               for b in d["bugs"][:30]]
+            return out
+        if action == "report_bug":
+            return {"bug": await run(Q.report_bug, t, id, title, detail, severity)}
+        if action == "fix":
+            res = await run(Q.fix_bug, t, id, bug)
+            return {"bug": res["bug"]["number"], "task": res["task"]["number"],
+                    "note": "A board task now carries the fix; the bug closes only when the same bot cannot find it again."}
+        if action == "status":
+            return {"bug": await run(Q.set_bug, t, id, bug, status)}
+        if action == "golden":
+            return await run(Q.approve_golden, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = run | report | bugs | report_bug | fix | status | golden")
+
+
+async def game_release(ctx: Ctx, action="", id="", platforms=None, android_format="apk", release="", target="", **_):
+    from ..employee import hire
+    from ..gamedesk import platforms as PF
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("targets", "list", "rating") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
+        raise ToolError("Game release sirf owner ka kaam hai.")
+    run = asyncio.to_thread
+    try:
+        if action == "targets":
+            return {"targets": PF.targets()}
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "build":
+            v = await run(PF.release, t, id, list(platforms or []), android_format)
+            return {"release": v["number"], "version": v["version_name"], "platforms": list(v["platforms"]),
+                    "note": "Building in the background; downloads appear on the Release page. A platform that cannot be built here says why."}
+        if action == "list":
+            d = await run(PF.releases, t, id)
+            return {"releases": [{"number": x["number"], "status": x["status"], "version": x["version_name"],
+                                  "platforms": {k: {kk: v.get(kk) for kk in ("status", "mb", "note") if v.get(kk)} for k, v in x["platforms"].items()}}
+                                 for x in d["releases"][:8]], "targets": {k: v["ready"] for k, v in d["targets"].items()}}
+        if action == "store_kit":
+            k = await run(PF.store_kit, t, id)
+            return {k2: k[k2] for k2 in ("itch", "steam", "play", "ai_disclosure", "notes", "images")} | {
+                "note": "Show her the texts briefly; the ZIP (images, Steam scripts) is on the Release page. Nothing was published."}
+        if action == "rating":
+            st = await run(S.get, t, id)
+            return await run(PF.rating_draft, t, st["id"])
+        if action == "itch":
+            d = await run(PF.releases, t, id)
+            rel = next((x for x in d["releases"] if x["number"] == str(release).upper() or x["id"] == release), None)
+            if rel is None:
+                raise ToolError("Kaunsi release? R-001 dijiye.")
+            card = await run(PF.itch_card, t, id, rel["id"], target)
+            return {"card": card["say"], "note": "The card waits for her tap on the Release page; you cannot upload."}
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = targets | build | list | store_kit | rating | itch")
+
+
+GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets,
+                     "game_qa": game_qa, "game_release": game_release}

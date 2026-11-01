@@ -27,7 +27,11 @@ from . import ai as AI
 
 log = logging.getLogger("santosh.site")
 
-MODULES = ("pages", "users", "data", "logic", "features")
+MODULES = ("stories", "pages", "users", "data", "logic", "payments", "notifications", "integrations", "features")
+INTEGRATIONS = {"whatsapp_business": "WhatsApp Business (her own number)", "gmail": "Gmail", "google_sheets": "Google Sheets",
+                "google_calendar": "Google Calendar", "google_drive": "Google Drive", "tally": "Tally (export)",
+                "razorpay": "Razorpay (her account)", "zoho": "Zoho", "slack": "Slack", "hubspot": "HubSpot"}
+PAY_MODES = ("none", "record", "upi", "cod")
 MAX_PAGES = 150
 
 ARCH_SYSTEM = """You are Hoola's solution architect. An Indian business owner wrote ONE line about the website / web app she
@@ -44,11 +48,18 @@ Return JSON only:
  "roles": [{"key": "student", "label": "Student / Parent", "can": "what this person does on the site, one line"}],
  "pages": [{"title": "Admissions", "purpose": "one line", "for": "public" | "member" | "staff"}],
  "features": {"shop": false, "blog": false, "booking": false, "languages": ["hi"]},
+ "stories": [{"who": "Parent", "want": "apply for admission online", "so": "no school visit needed"}],
+ "payments": {"mode": "none" | "record" | "upi" | "cod", "what": "what is paid (fees / orders / bookings), one line"},
+ "notifications": [{"when": "admission approved", "who": "row_owner" | "staff" | "admins" | "owner", "how": "in_app" | "push" | "whatsapp" | "email"}],
+ "integrations": [{"name": "google_sheets", "why": "one line"}],
  "app_words": "the data + business logic in plain words for the app engine: every list with its fields, who may
                create / read / change it, the links between lists, formulas, rules, workflow states with who moves them,
                approvals (maker-checker) and reminders. 6-20 short lines.",
  "page_count": 8,
  "questions": ["only a question whose answer changes the build, else []"]}
+stories 4-20 (each who / want / so, short). payments.mode: none = nothing is paid; record = staff record payments (fees
+paid at the office); upi = her own UPI ID QR, she confirms each payment; cod = cash on delivery. integrations only from:
+whatsapp_business gmail google_sheets google_calendar google_drive tally razorpay zoho slack hubspot.
 Rules: roles 1-6 (staff / admin are always there; list the outside users). Public pages 4-40, member + staff pages for
 what each role does. page_count = number of public pages (10-150 only for a really big site). languages only from
 en hi mr hinglish gu bn ta te kn ml pa or ur and only when she asked or the audience clearly needs it. Money never moves
@@ -108,9 +119,28 @@ def clean(raw: Any, words: str) -> dict[str, Any]:
     except (TypeError, ValueError):
         pc = 0
     pc = max(0, min(MAX_PAGES, pc or public))
+    stories = []
+    for x in (raw.get("stories") or [])[:24]:
+        if isinstance(x, dict) and _t(x.get("want"), 160):
+            stories.append({"who": _t(x.get("who") or "User", 40), "want": _t(x.get("want"), 160), "so": _t(x.get("so"), 160)})
+    pay = raw.get("payments") if isinstance(raw.get("payments"), dict) else {}
+    mode = pay.get("mode") if pay.get("mode") in PAY_MODES else "none"
+    notes = []
+    for x in (raw.get("notifications") or [])[:16]:
+        if isinstance(x, dict) and _t(x.get("when"), 120):
+            notes.append({"when": _t(x.get("when"), 120),
+                          "who": x.get("who") if x.get("who") in ("row_owner", "staff", "admins", "owner") else "owner",
+                          "how": x.get("how") if x.get("how") in ("in_app", "push", "whatsapp", "email") else "in_app"})
+    ints, seen_i = [], set()
+    for x in (raw.get("integrations") or [])[:10]:
+        n = str((x or {}).get("name") or "").strip().lower() if isinstance(x, dict) else ""
+        if n in INTEGRATIONS and n not in seen_i:
+            seen_i.add(n)
+            ints.append({"name": n, "why": _t(x.get("why"), 160)})
     goal = raw.get("goal") if raw.get("goal") in ("enquiry", "booking", "order", "catalogue", "portfolio") else ""
     return {"name": _t(raw.get("name"), 120), "summary": _t(raw.get("summary"), 600), "field_hint": _t(raw.get("field_hint"), 60),
-            "goal": goal, "roles": roles, "pages": pages,
+            "goal": goal, "roles": roles, "pages": pages, "stories": stories,
+            "payments": {"mode": mode, "what": _t(pay.get("what"), 160)}, "notifications": notes, "integrations": ints,
             "features": {"shop": bool(f.get("shop")), "blog": bool(f.get("blog")), "booking": bool(f.get("booking")),
                          "languages": langs},
             "app_words": str(raw.get("app_words") or "").strip()[:3000], "page_count": pc,
@@ -119,7 +149,7 @@ def clean(raw: Any, words: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- 1. draft (nothing is built)
-def draft(tenant: str, words: str, conv: str = "", logic_ask=None) -> dict[str, Any]:
+def draft(tenant: str, words: str, conv: str = "", logic_ask=None, quiet: bool = False) -> dict[str, Any]:
     from . import guard
     words = _t(words, 2000)
     if len(words) < 6:
@@ -133,7 +163,7 @@ def draft(tenant: str, words: str, conv: str = "", logic_ask=None) -> dict[str, 
         raise ArchError("Plan samajh nahi aaya; thoda aur bataiye (kaun use karega, kya karega).", 502)
     p = _new_project(tenant, spec, conv)
     data = _data_draft(p, spec, logic_ask)
-    return _save_card(p.id, spec, data)
+    return _save_card(p.id, spec, data, publish=not quiet)
 
 
 def _new_project(tenant: str, spec: dict[str, Any], conv: str):
@@ -160,6 +190,13 @@ def _data_draft(p, spec: dict[str, Any], ask=None) -> dict[str, Any]:
     from ..appmaker.logic import service as LS
     words = spec["app_words"] or spec["summary"] or spec["words"]
     roles = "; ".join(f"{r['label']}: {r['can']}" for r in spec["roles"])
+    notes = [n for n in spec.get("notifications") or [] if n["how"] in ("in_app", "push")]
+    if notes:                                    # in-app / push notes are the logic's own notify actions
+        words += "\nNotify: " + "; ".join(f"when {n['when']} -> {n['who']}" for n in notes)
+    pay = spec.get("payments") or {}
+    if pay.get("mode") in ("record", "upi", "cod"):
+        words += (f"\nPayments ({pay['mode']}): {pay.get('what') or 'payments'} are RECORDED by staff / confirmed by the owner "
+                  "(amount, date, mode, reference); money never moves through the app.")
     try:
         return LS.draft(p, f"{words}\nUsers: {roles}" if roles else words, ask=ask)
     except Exception as e:                       # noqa: BLE001 - the card still shows pages / users; data can be redrafted
@@ -179,7 +216,7 @@ def _project(tenant: str, ref: str):
     return p
 
 
-def _save_card(pid: str, spec: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+def _save_card(pid: str, spec: dict[str, Any], data: dict[str, Any], publish: bool = True) -> dict[str, Any]:
     from ..appmaker.models import AppProject
     with session() as s:
         p = s.get(AppProject, pid)
@@ -193,7 +230,8 @@ def _save_card(pid: str, spec: dict[str, Any], data: dict[str, Any]) -> dict[str
         s.flush()
         s.expunge(p)
     c = card(p.tenant_id, pid)
-    _publish(p, c)
+    if publish:
+        _publish(p, c)
     return c
 
 
@@ -227,7 +265,16 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
         from . import lang as LG
         feats.append("Bhashayen: " + ", ".join(LG.LANGS.get(c, c) for c in f["languages"]))
     data_ok = bool(data.get("hash")) and not data.get("errors")
+    pay = spec.get("payments") or {}
+    PAYL = {"none": "Koi payment nahi", "record": "Staff payment record karega (office mein diya paisa)",
+            "upi": "Aapke UPI ID ka QR - har payment aap confirm karengi", "cod": "Cash on delivery"}
+    HOW = {"in_app": "app mein", "push": "phone par push", "whatsapp": "WhatsApp (connect karne ke baad)",
+           "email": "email (connect karne ke baad)"}
+    WHO = {"row_owner": "jiski entry hai", "staff": "staff", "admins": "admin", "owner": "aap"}
     modules = [
+        {"key": "stories", "title": f"Kaun kya karega ({len(spec.get('stories') or [])} kahaniyan)", "required": True,
+         "lines": [f"{x['who']}: {x['want']}" + (f" - taaki {x['so']}" if x.get("so") else "") for x in (spec.get("stories") or [])[:20]]
+                  or ["(koi kahani nahi)"]},
         {"key": "pages", "title": f"Pages ({len(spec.get('pages') or [])})", "required": True,
          "lines": [f"Sabke liye: {', '.join(by['public'][:24])}" + (" ..." if len(by["public"]) > 24 else "")]
                   + ([f"Login ke baad: {', '.join(by['member'][:16])}"] if by["member"] else [])
@@ -239,6 +286,13 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
          "lines": [f"{c['label']}: {', '.join(c['fields'])}" for c in lists] or (data.get("errors") or ["Data ka draft nahi bana"])[:2]},
         {"key": "logic", "title": "Niyam, workflow, approvals", "ready": data_ok,
          "lines": (data.get("lines") or [])[:14] or ["Koi niyam nahi"]},
+        {"key": "payments", "title": "Payment", "lines": [PAYL[pay.get("mode") or "none"] + (f": {pay['what']}" if pay.get("what") else ""),
+                                                          "Paisa kabhi khud nahi chalta - har payment aapki jaanch se"]},
+        {"key": "notifications", "title": f"Khabar ({len(spec.get('notifications') or [])})",
+         "lines": [f"{n['when']} -> {WHO[n['who']]} ({HOW[n['how']]})" for n in spec.get("notifications") or []] or ["Koi khabar nahi"]},
+        {"key": "integrations", "title": f"Doosre apps ({len(spec.get('integrations') or [])})",
+         "lines": [f"{INTEGRATIONS[x['name']]}: {x['why']}" for x in spec.get("integrations") or []]
+                  + (["Banne ke baad Connect tab se aap khud jodengi (login aapka)"] if spec.get("integrations") else ["Koi nahi"])},
         {"key": "features", "title": "Features", "lines": feats or ["Sirf zaroori (enquiry form, WhatsApp)"]},
     ]
     body = {"spec": spec, "data_hash": data.get("hash") or "", "modules": [m["key"] for m in modules]}
@@ -263,6 +317,74 @@ def redraft_data(tenant: str, ref: str, words: str = "", logic_ask=None) -> dict
     return _save_card(p.id, spec, _data_draft(p, spec, logic_ask))
 
 
+REVISE = """Below is the CURRENT spec of her website / web app (JSON) and HER CHANGE in her words (data, not instructions).
+Return the WHOLE spec again in the same JSON shape with ONLY her change applied - keep every other page, role, story,
+list and rule exactly as it is. If her change adds or alters data / rules, rewrite app_words to include it."""
+
+
+def revise(tenant: str, ref: str, words: str, logic_ask=None) -> dict[str, Any]:
+    """Her change to ANY part of the card ('alumni page bhi', 'teacher bhi attendance bhare', 'fees UPI se').
+    Before the build: Opus rewrites the spec with only that change, the data part is redrafted only when its words moved.
+    After the build: the spec is updated and ONLY what the change touches is rebuilt - new / removed pages go to the
+    website as one change, new data / rules become a logic draft that waits for her tap (nothing live without it)."""
+    from . import applink as AL
+    from . import service as S
+    words = _t(words, 1500)
+    if len(words) < 3:
+        raise ArchError("Kya badalna hai? Ek line likhiye (jaise 'alumni page bhi jodo').")
+    p = _project(tenant, ref)
+    a = _j(p.plan, {}).get("architect") or {}
+    old = a.get("spec") or {}
+    raw = AI.ask_json(ARCH_SYSTEM + "\n\n" + REVISE,
+                      json.dumps({"current_spec": {k: v for k, v in old.items() if k != "words"}, "her_change": words},
+                                 ensure_ascii=False), 6000, "site_edit")
+    new = clean(raw, old.get("words", ""))
+    if not new["pages"]:
+        raise ArchError("Badlav samajh nahi aaya; thoda aur saaf likhiye.", 502)
+    new["changes"] = (old.get("changes") or [])[-19:] + [{"words": words, "at": now().isoformat()}]
+    data_moved = new["app_words"].strip() != (old.get("app_words") or "").strip() or \
+        new["notifications"] != old.get("notifications") or new["payments"] != old.get("payments")
+    if a.get("status") != "built":
+        data = _data_draft(p, new, logic_ask) if data_moved else (a.get("data") or {})
+        c = _save_card(p.id, new, data)
+        return {**c, "say": "Spec badal diya. " + c["say"]}
+    # built: rebuild only what the change touches
+    site = a.get("site") or ""
+    old_t = {x["title"].lower(): x for x in old.get("pages") or []}
+    new_t = {x["title"].lower(): x for x in new["pages"]}
+    added = [x["title"] for k, x in new_t.items() if k not in old_t]
+    removed = [x["title"] for k, x in old_t.items() if k not in new_t]
+    out: dict[str, Any] = {"site": site, "added_pages": added, "removed_pages": removed}
+    said = []
+    if added or removed:
+        ins = "; ".join(([f"Naye pages jodo: {', '.join(added)}"] if added else [])
+                        + ([f"Ye pages hatao: {', '.join(removed)}"] if removed else []))
+        try:
+            out["pages"] = S.change(tenant, site, ins)
+            said.append("pages ka badlav website par ban raha hai")
+        except S.SiteError as e:
+            said.append(f"pages abhi nahi badle ({e})")
+    if data_moved:
+        d = AL.logic_draft(tenant, site, f"{words}\n{new['app_words'][:1500]}")
+        out["logic_draft"] = {k: d.get(k) for k in ("hash", "lines", "errors", "ready")}
+        said.append("data / niyam ka draft taiyaar - App & data tab mein 'Apply' dabaiye")
+    plan_spec = dict(new)
+    _set_spec(p.id, plan_spec)
+    out["say"] = ("Spec badal diya: " + "; ".join(said) + ".") if said else "Spec badal diya; kuch dobara banane ki zaroorat nahi."
+    return out
+
+
+def _set_spec(pid: str, spec: dict[str, Any]) -> None:
+    from ..appmaker.models import AppProject
+    with session() as s:
+        p = s.get(AppProject, pid)
+        plan = _j(p.plan, {})
+        a = plan.get("architect") or {}
+        a["spec"] = spec
+        plan["architect"] = a
+        p.plan = json.dumps(plan, ensure_ascii=False)
+
+
 # ---------------------------------------------------------------- 3. her tap -> build
 def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, conv: str = "") -> dict[str, Any]:
     from ..appmaker import backend as BE
@@ -275,7 +397,7 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
         raise ArchError(f"Is spec se website {c['site']} pehle hi ban rahi hai.", 409)
     if not h or h != c["hash"]:
         raise ArchError("Spec card badal gaya; naya card dekh kar dobara haan kahiye.", 409)
-    on = set(MODULES) if modules is None else ({str(m) for m in modules} & set(MODULES)) | {"pages", "users"}
+    on = set(MODULES) if modules is None else ({str(m) for m in modules} & set(MODULES)) | {"stories", "pages", "users"}
     p = _project(tenant, ref)
     a = _j(p.plan, {}).get("architect") or {}
     spec = a.get("spec") or {}
@@ -292,8 +414,9 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
     u = L.understand(hint) if hint else {}
     field = u.get("field") if u.get("field") in L.fields() else ""
     try:
+        # the Architect's own page count always wins ('portal' in her words must not turn into a 25-page site map)
         v = S.new(tenant, brief, conv, spec.get("name") or "", field, spec.get("goal") or "", "", None, "", "",
-                  int(spec.get("page_count") or 0) if int(spec.get("page_count") or 0) >= 10 else 0)
+                  max(1, int(spec.get("page_count") or 0) or len(pub)))
     except S.SiteError as e:
         raise ArchError(str(e)) from e
     sid = v["id"]
@@ -324,12 +447,23 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
                 done.append("dukaan chalu (products aap denge)")
             except Exception as e:               # noqa: BLE001
                 log.info("architect shop skipped: %s", e)
-    _mark(p.id, built=True, site=v["number"], modules=sorted(on))
+    pay = spec.get("payments") or {}
+    if "payments" in on and pay.get("mode") in ("upi", "cod") and f.get("shop"):
+        try:                                     # her shop takes COD / her UPI QR; the UPI ID itself only she types
+            S.shop_setup(tenant, sid, {"on": True, "cod": pay["mode"] == "cod"})
+        except Exception as e:                   # noqa: BLE001
+            log.info("architect payments skipped: %s", e)
+    if "payments" in on and pay.get("mode") == "upi":
+        done.append("UPI QR (apna UPI ID website ke Shop / Answer mein dijiye)")
+    todo = [INTEGRATIONS[x["name"]] for x in spec.get("integrations") or []] if "integrations" in on else []
+    _mark(p.id, built=True, site=v["number"], modules=sorted(on), connect_later=todo)
     try:
         _publish(_project(tenant, p.id), card(tenant, p.id))
     except Exception:                            # noqa: BLE001
         log.debug("spec publish", exc_info=True)
     say = f"Haan mil gaya. Ban raha hai: {', '.join(done)}."
+    if todo:
+        say += f" Baad mein Connect tab se jodiye: {', '.join(todo)}."
     try:
         r = S._load(sid)
         if r.stage != "sitemap":
@@ -374,3 +508,36 @@ def specs(tenant: str, limit: int = 20) -> list[dict[str, Any]]:
             out.append({"id": p.id, "number": p.number, "name": sp.get("name") or p.name, "status": a.get("status") or "",
                         "site": a.get("site") or "", "words": sp.get("words", "")[:200]})
         return out
+
+
+# ---------------------------------------------------------------- v0.414 the live check (real Opus, nothing built)
+def live_check(brief: str = "", tenant: str = "default") -> dict[str, Any]:
+    """`python -m app.site.architect check ["brief"]` / vps-ops architect_check: one REAL Opus spec + the real App Sahayak
+    author + checker on her server. Prints the card, builds nothing, then removes the spec (her apps list never sees it)."""
+    import time as _time
+    from ..appmaker.models import AppProject
+    brief = brief or "hamare school ka portal - admission form, principal approval, fees, classes, attendance, report card; parent, teacher aur principal"
+    t0 = _time.time()
+    c = draft(tenant, brief, quiet=True)
+    out = {"seconds": round(_time.time() - t0, 1), "data_ready": c["data_ready"], "name": c["name"],
+           "modules": {m["key"]: {"title": m["title"], "lines": m["lines"][:8], "ready": m.get("ready", True)} for m in c["modules"]},
+           "questions": c["questions"], "warnings": c["warnings"]}
+    with session() as s:
+        p = s.get(AppProject, c["id"])
+        if p is not None and p.status == "spec":
+            s.delete(p)
+    return out
+
+
+if __name__ == "__main__":
+    import sys
+    from ..db import init_db
+    init_db()
+    if len(sys.argv) > 1 and sys.argv[1] == "check":
+        res = live_check(" ".join(sys.argv[2:]))
+        print(json.dumps(res, ensure_ascii=False, indent=1))
+        mods = res["modules"]
+        print("\nARCHITECT CHECK:", "OK" if res["data_ready"] and all(m["ready"] for m in mods.values()) else "PROBLEM",
+              f"- {len(mods)} modules, {res['seconds']} s")
+    else:
+        print("usage: python -m app.site.architect check [\"one line brief\"]")

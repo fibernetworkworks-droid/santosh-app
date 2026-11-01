@@ -154,6 +154,9 @@ def privacy_answers(r: AppProject) -> list[dict[str, Any]]:
         out.append({"type": "Contact Info > Physical Address", "why": "App Functionality (delivery / visit)"})
     if "location" in types:
         out.append({"type": "Location > Precise Location", "why": "App Functionality (only when you tap Use my location)"})
+    if BE.ensure(r).get("track", {}).get("on"):           # v0.412 NAKSHA LIVE
+        out.append({"type": "Location > Precise Location (staff on shift)",
+                    "why": "App Functionality (live delivery tracking only while a staff shift is on)"})
     if "photo" in types:
         out.append({"type": "User Content > Photos or Videos", "why": "App Functionality (only photos you attach)"})
     if sc.get("order"):

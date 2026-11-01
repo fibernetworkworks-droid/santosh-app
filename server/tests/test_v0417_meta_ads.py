@@ -1,4 +1,4 @@
-"""v0.409 META ADS (ad plan A1): Facebook Login instead of a pasted token, Facebook / Instagram ad drafts -> Meta check
+"""v0.417 META ADS (ad plan A1): Facebook Login instead of a pasted token, Facebook / Instagram ad drafts -> Meta check
 -> created PAUSED on her tap -> Start only with a confirm, end time set so Meta itself stops it, auto-pause after the days."""
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""v0.409 META ADS (ad plan A1): her own Facebook / Instagram ad account through Meta's official Marketing API, one tap.
+"""v0.417 META ADS (built as 0.409) (ad plan A1): her own Facebook / Instagram ad account through Meta's official Marketing API, one tap.
 
 Before this the Ads desk could read her Meta ads and apply the budget changes she tapped - but only after she pasted a
 system-user token from Business Settings, which almost no shop owner can do. Now:

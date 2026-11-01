@@ -7,6 +7,13 @@ import pytest
 from tests.test_tech_devsahayak import REPO, T, _join, dev  # noqa: F401
 from tests.test_v0350_kadam_ba_kadam import Script, _results, tu
 
+@pytest.fixture(autouse=True)
+def _plain_reviewer(monkeypatch):
+    """These tests pin the v0.377 single exploring pass; the ECC specialists (on since v0.410) have their own suite."""
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "dev_spec_review", False, raising=False)
+
+
 PATCH = ("@@ -1,5 +1,5 @@\n-def total(items):\n+def total(items, tax):\n     s = 0\n     for i in items:\n"
          "         s += i[\"price\"] * i[\"qty\"]\n-    return s / len(items)\n+    return s + tax\n")
 

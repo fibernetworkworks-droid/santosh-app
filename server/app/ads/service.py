@@ -68,7 +68,7 @@ class AdsSettings(Base):
     meta_currency: Mapped[str] = mapped_column(String(8), default="")
     meta_token: Mapped[str] = mapped_column(Text, default="")           # sealed
     meta_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # v0.409 META ADS (A1): joined by Facebook Login instead of a pasted token (ads/metaads.py)
+    # v0.417 META ADS (A1): joined by Facebook Login instead of a pasted token (ads/metaads.py)
     meta_via: Mapped[str] = mapped_column(String(8), default="")           # "" / token = pasted, login = Facebook Login
     meta_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     meta_accounts: Mapped[str] = mapped_column(Text, default="[]")         # [{id, name, currency, active, business}]

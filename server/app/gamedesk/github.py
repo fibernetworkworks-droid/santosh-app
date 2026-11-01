@@ -38,6 +38,12 @@ def stage(r: S.GameStudio) -> tuple[Path, int, str, int]:
         if p.is_file() and p.suffix in (".gd", ".godot", ".tscn", ".cfg"):
             shutil.copy2(p, dest / p.name)
             n += 1
+    if (src / "assets").is_dir():                       # v0.416 approved art / sound / models
+        (dest / "assets").mkdir()
+        for p in sorted((src / "assets").iterdir()):
+            if p.is_file() and p.suffix in (".png", ".wav", ".ogg", ".glb"):
+                shutil.copy2(p, dest / "assets" / p.name)
+                n += 1
     with session() as s:
         tasks = S._tasks(s, r.id)
         decs = s.scalars(select(S.GameDecision).where(S.GameDecision.studio_id == r.id).order_by(S.GameDecision.at)).all()
@@ -76,8 +82,8 @@ def stage(r: S.GameStudio) -> tuple[Path, int, str, int]:
     (dest / ".gitignore").write_text(".godot/\nbuild/\n*.import\n")
     n += 6
     h = hashlib.sha256()
-    for p in sorted(dest.iterdir()):
-        h.update(p.name.encode())
+    for p in sorted(x for x in dest.rglob("*") if x.is_file()):
+        h.update(p.relative_to(dest).as_posix().encode())
         h.update(hashlib.sha256(p.read_bytes()).digest())
     return dest, n, h.hexdigest()[:24], int(live["n"])
 
@@ -127,10 +133,10 @@ def push(tenant: str, o: Any, hash_: str) -> dict[str, Any]:
         ref = gh.req("GET", f"/repos/{o.owner}/{o.repo}/git/ref/heads/{branch}", ok404=True)
         parent = ((ref or {}).get("object") or {}).get("sha")
         tree = []
-        for p in sorted(folder.iterdir()):
+        for p in sorted(x for x in folder.rglob("*") if x.is_file()):
             blob = gh.req("POST", f"/repos/{o.owner}/{o.repo}/git/blobs",
                           {"content": base64.b64encode(p.read_bytes()).decode(), "encoding": "base64"})
-            tree.append({"path": p.name, "mode": "100644", "type": "blob", "sha": blob["sha"]})
+            tree.append({"path": p.relative_to(folder).as_posix(), "mode": "100644", "type": "blob", "sha": blob["sha"]})
         t = gh.req("POST", f"/repos/{o.owner}/{o.repo}/git/trees", {"tree": tree})
         c = gh.req("POST", f"/repos/{o.owner}/{o.repo}/git/commits",
                    {"message": f"{r.title}: version {o.version} (Hoola Studio)", "tree": t["sha"], "parents": [parent] if parent else []})

@@ -9,7 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'game_assets_screen.dart';
 import 'game_bible_screen.dart';
+import 'game_qa_screen.dart';
+import 'game_release_screen.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -468,6 +471,32 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
                     '${(_p['bible'] as Map?)?['draft'] == true ? ' · draft waiting' : ''}'),
                 onPressed: () async {
                   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameBibleScreen(app: widget.app, id: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.rocket_launch_outlined),
+                label: const Text('Release'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameReleaseScreen(app: widget.app, id: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.bug_report_outlined),
+                label: Text('QA${_s((_p['qa'] as Map?)?['verdict']).isNotEmpty ? ' · ${_s((_p['qa'] as Map?)?['verdict'])}' : ''}'
+                    '${_i((_p['qa'] as Map?)?['open']) > 0 ? ' · ${_i((_p['qa'] as Map?)?['open'])} bugs' : ''}'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameQaScreen(app: widget.app, id: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.palette_outlined),
+                label: Text('Assets${_i((_p['assets'] as Map?)?['count']) > 0 ? ' · ${_i((_p['assets'] as Map?)?['in_game'])} in game' : ''}'
+                    '${_i((_p['assets'] as Map?)?['waiting_ok']) > 0 ? ' · ${_i((_p['assets'] as Map?)?['waiting_ok'])} for your OK' : ''}'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameAssetsScreen(app: widget.app, id: _s(_p['id']))));
                   await _load();
                 },
               ),

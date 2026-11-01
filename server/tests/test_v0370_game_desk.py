@@ -53,7 +53,7 @@ def gd(env, tmp_path, monkeypatch):
         errs = script["smoke"].pop(0) if script["smoke"] else []
         return {"ok": not errs, "errors": errs, "seconds": 0.1, "exit": 0}
 
-    def export_web(job, holder=None):
+    def export_web(job, holder=None, debug=False):
         b = job / "build"
         b.mkdir(parents=True, exist_ok=True)
         for n in ("index.html", "index.js", "index.wasm", "index.pck"):
@@ -202,6 +202,10 @@ def test_api_and_play_link_headers(gd):
     with TestClient(app) as c:
         h = c.get("/api/game").json()
         assert "health" in h and h["orientations"] == ["portrait", "landscape", "square"]
+        # v0.410 the route now checks the hire too (it used to start a game for anyone with the key)
+        assert c.post("/api/game", json={"brief": "ek tap wala game chai ka cup"}).status_code == 400
+        from app.employee import hire
+        hire.hire("default", "game_dev")
         v = c.post("/api/game", json={"brief": "ek tap wala game chai ka cup", "orientation": "portrait"}).json()
         assert v["status"] == "designing"
         assert c.post("/api/game", json={"brief": "doosra game"}).status_code == 400
@@ -262,7 +266,7 @@ def test_console_and_phone_wiring():
     js = (root / "server/app/static/console/v2.js").read_text()
     emp = (root / "server/app/static/console/employees.js").read_text()
     assert 'id="v-gamedesk"' in html and "['game_dev', 'gamedesk', 'Game Desk']" in js and "EMP?.game(" in js
-    assert "return {hub, desk, social, cad, game};" in emp and 'sandbox="allow-scripts allow-pointer-lock"' in emp
+    assert "return {hub, desk, social, cad, game, arch};" in emp   # v0.410 + the Architecture Desk and 'sandbox="allow-scripts allow-pointer-lock"' in emp
     # the v0.358 merge had dropped these: the Hub, both desks, the Arena and three scripts
     for v in ("v-hire", "v-seodesk", "v-socialdesk", "v-arena"):
         assert f'id="{v}"' in html, v

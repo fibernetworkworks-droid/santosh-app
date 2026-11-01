@@ -2472,6 +2472,12 @@ body.albon{overflow:hidden}
 #systems .tbl code, #systems .kv code { font-size: 12.5px; word-break: break-all; }
 #systems .btn.small { height: 32px; padding: 0 10px; font-size: 13px; }
 @media (max-width: 720px) { #systems .tbl { font-size: 12.5px; } #systems .ent-form input, #systems .ent-form select { height: 44px; } }
+/* v0.410 Architecture Desk: diagrams grid */
+#app .ar-dias{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+#app .ar-dia{margin:0;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+#app .ar-dia figcaption{font-size:13px;font-weight:500;margin-bottom:6px}
+#app .ar-dia img{width:100%;height:auto;display:block;border-radius:8px}
+#app .ar-dia pre{white-space:pre-wrap;font-size:12px;max-height:200px;overflow:auto}
 
 /* v0.406 HOOLA GAME CREW - roles, acceptance criteria, reviews, gates */
 .gs-role{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--pri-soft,rgba(91,69,224,.12));color:var(--pri,#5B45E0);margin-right:6px}
@@ -2498,4 +2504,52 @@ body.albon{overflow:hidden}
 .gs-rcard{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
 .gs-rcard p{margin:4px 0 0;color:var(--mut);font-size:12.5px}
 .gs-rcard.gs-busy{border-color:var(--pri,#5B45E0)}
+
+
+/* v0.407 ABHI ABHI: her app data page is live */
+.stlive { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--mut); margin: 4px 0 8px; }
+.stlive .stdot { width: 8px; height: 8px; border-radius: 50%; background: #1e9e5a; flex: none; }
+/* v0.412 NAKSHA LIVE: the riders map */
+.sttrack .stmap { height: 320px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line, #e5e5ea); margin-top: 8px; }
+.sttrack .chk { display: inline-flex; gap: 6px; align-items: center; margin-right: 10px; font-size: 14px; }
+.strider { width: 16px; height: 16px; border-radius: 50%; background: #1e9e5a; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+/* v0.416 ASSET PIPELINE - art, sound, music, voice, 3D */
+.ga-card{border-color:var(--warn,#c98a00);margin:12px 0}
+.ga-new{margin:12px 0}
+.ga-new .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center}
+.ga-new input,.ga-new select{font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
+.ga-new #gaWords,.ga-new #gaText{flex:1 1 240px}
+.ga-new #gaSeed{width:80px}
+.ga-up{cursor:pointer}
+.ga-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:8px}
+.ga-item{border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.ga-prev{display:flex;align-items:center;justify-content:center;min-height:96px;border-radius:8px;background:repeating-conic-gradient(var(--line) 0 25%,transparent 0 50%) 50%/16px 16px}
+.ga-img{max-width:100%;max-height:160px;image-rendering:auto}
+.ga-img.ga-sprite,.ga-img.ga-icon{image-rendering:pixelated}
+.ga-prev audio{width:100%}
+.ga-empty{color:var(--mut)}
+.ga-h{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ga-item .acts{display:flex;flex-wrap:wrap;gap:6px}
+
+/* v0.416 QA FARM + BUGS */
+.qa-sum{display:flex;flex-direction:column;gap:4px;margin:10px 0}
+.qa-gold{display:flex;flex-wrap:wrap;gap:12px}
+.qa-gold figure{margin:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--mut)}
+.qa-gold img{width:180px;border-radius:8px;border:1px solid var(--line)}
+.qa-shots{display:flex;gap:4px}
+.qa-shots img{height:64px;border-radius:4px;border:1px solid var(--line)}
+.qa-bug{border-top:1px solid var(--line);padding:8px 0;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+.qa-bug .acts{display:flex;flex-wrap:wrap;gap:6px}
+#qaBugT{flex:1 1 260px;min-width:0;font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+#qaBugS{font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+
+/* v0.416 GAME PLATFORMS - releases, store kit, itch.io */
+.rel-new .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;align-items:center}
+.rel-new select{font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.rel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:8px}
+.rel-item{border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:13.5px;align-items:flex-start}
+.rel-itch{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:13.5px}
+.rel-itch input,#relKey{flex:1 1 220px;min-width:0;font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.rel-kit{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:10px}
+.rel-kit h4{margin:0 0 4px;font-size:14px}
 

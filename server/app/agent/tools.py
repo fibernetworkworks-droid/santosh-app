@@ -489,6 +489,13 @@ TOOLS.extend(GAMEDESK_TOOLS)
 TOOL_LABELS.update(GAMEDESK_LABELS)
 HANDLERS.update(GAMEDESK_HANDLERS)
 
+# v0.410 ARCHITECTURE DESK: the Principal Software Architect employee (designs, ADRs, diagrams, PRs vs the design)
+from .arch_tools import ARCH_HANDLERS, ARCH_LABELS, ARCH_TOOLS  # noqa: E402
+
+TOOLS.extend(ARCH_TOOLS)
+TOOL_LABELS.update(ARCH_LABELS)
+HANDLERS.update(ARCH_HANDLERS)
+
 # v0.63 seekhe hue kaam (procedures Hoola learned)
 from .procedure_tools import PROCEDURE_HANDLERS, PROCEDURE_LABELS, PROCEDURE_TOOLS  # noqa: E402
 
@@ -988,9 +995,11 @@ from .shiksha_tools import SHIKSHA_HANDLERS, SHIKSHA_LABELS, SHIKSHA_TOOLS  # no
 from .guru_tools import GURU_HANDLERS, GURU_LABELS, GURU_TOOLS  # noqa: E402  (Phase 2: personal tutor)
 from .daftar_tools import DAFTAR_HANDLERS, DAFTAR_LABELS, DAFTAR_TOOLS  # noqa: E402  (Phase 3: school office)
 from .shodh_tools import SHODH_HANDLERS, SHODH_LABELS, SHODH_TOOLS  # noqa: E402  (Phase 4: research assistant)
+from .prayog_tools import PRAYOG_HANDLERS, PRAYOG_LABELS, PRAYOG_TOOLS  # noqa: E402  (v0.409 Prayogshala 3D labs)
 
 for _t, _l, _h in ((SHIKSHA_TOOLS, SHIKSHA_LABELS, SHIKSHA_HANDLERS), (GURU_TOOLS, GURU_LABELS, GURU_HANDLERS),
-                   (DAFTAR_TOOLS, DAFTAR_LABELS, DAFTAR_HANDLERS), (SHODH_TOOLS, SHODH_LABELS, SHODH_HANDLERS)):
+                   (DAFTAR_TOOLS, DAFTAR_LABELS, DAFTAR_HANDLERS), (SHODH_TOOLS, SHODH_LABELS, SHODH_HANDLERS),
+                   (PRAYOG_TOOLS, PRAYOG_LABELS, PRAYOG_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)

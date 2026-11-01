@@ -27,11 +27,13 @@ def _login(c, base, email, pw):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.409.0"
+    assert APP_VERSION == "0.417.0"
 
 
-def test_link_moves_everything_and_old_logins_keep_working(app_site):
+def test_link_moves_everything_and_old_logins_keep_working(app_site, monkeypatch):
+    from app.config import get_settings
     from app.main import app
+    monkeypatch.setattr(get_settings(), "site_app_link", False)       # v0.414: an OLD v0.305 site (new ones link at once)
     from app.site import applink as AL
     from app.site import service as S
     from app.site import webapp as W
@@ -170,7 +172,7 @@ def test_architect_builds_a_school_portal_from_one_line(arch_env):
     assert c.post("/api/site-architect", json={"words": "x"}).status_code == 400
     card = c.post("/api/site-architect", json={"words": "hamare school ka portal - admission, fees, chhutti ki arzi, notices"}).json()
     mods = {m["key"]: m for m in card["modules"]}
-    assert list(mods) == ["pages", "users", "data", "logic", "features"]
+    assert list(mods) == ["stories", "pages", "users", "data", "logic", "payments", "notifications", "integrations", "features"]   # v0.414
     assert card["data_ready"] and card["name"] == "Gyan Vidya Mandir"
     assert "Admissions" in mods["pages"]["lines"][0] and any("Leave requests" in x for x in mods["pages"]["lines"])
     assert len([x for x in mods["users"]["lines"] if x.startswith("Parent")]) == 1               # duplicate role dropped
@@ -212,7 +214,7 @@ def test_architect_modules_she_switches_off_are_skipped(arch_env):
     c = TestClient(app)
     card = c.post("/api/site-architect", json={"words": "school ka portal chahiye, admission aur notices"}).json()
     got = c.post(f"/api/site-architect/{card['id']}/approve", json={"hash": card["hash"], "modules": ["pages", "features"]}).json()
-    assert got["modules"] == ["features", "pages", "users"]
+    assert got["modules"] == ["features", "pages", "stories", "users"]          # v0.414 stories always kept
     r = S._load(got["site"])
     assert AL.linked_id(r) == ""                                                                  # no data module -> no app link
 

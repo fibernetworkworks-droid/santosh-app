@@ -49,7 +49,9 @@ SITE_TOOLS = [
         "Data tab). ARCHITECT (v0.407, for a portal / web app / anything with logins + data + rules, e.g. 'school ka portal', "
         "'society ka maintenance system', 'clinic with appointments'): action=architect + brief (her one line) = a spec CARD "
         "(pages, users, data lists, rules / workflows / approvals, features) - nothing is built; show its lines and ask. "
-        "action=architect_data + spec (A-00xx) + instruction = redo only the data / rules part. action=architect_ok + spec + "
+        "action=architect_change + spec + instruction = her change to ANY part of the card (pages, users, data, payments, "
+        "notifications...; after the build only what it touches is rebuilt / drafted). action=architect_data + spec (A-00xx) + instruction = redo only the data / rules part. "
+        "action=phone_app + site = the website's app as an Android / iPhone app on the SAME data (App Sahayak's plan card). action=architect_ok + spec + "
         "hash (+ modules to keep: pages, users, data, logic, features) ONLY after she clearly said haan to THAT card -> the "
         "website + its app backend are built. LOGIC on an existing site (relations, formulas, workflows, maker-checker "
         "approvals, SLA reminders): action=logic + instruction = a checked DRAFT; action=logic_ok + hash ONLY after her "
@@ -71,7 +73,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_ok", "logic", "logic_ok", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -111,7 +113,7 @@ SITE_TOOLS = [
 ]
 SITE_LABELS = {"website": "Website bana raha hoon", "website_dekho": "Website dekh raha hoon"}
 _OWNER_ONLY = {"delete", "takedown", "domain_buy", "domain_kyc", "assign", "github"}
-_NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_ok"}
+_NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_change", "architect_ok"}
 _TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok"}
 
 
@@ -164,7 +166,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.undo_edit(t, site)
     if action == "app":
         return S.design_app(t, site, str(a.get("instruction") or ""), conv)
-    if action in ("architect", "architect_data", "architect_ok", "logic", "logic_ok"):
+    if action in ("architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app"):
         return _architect(ctx, action, a)
     if action == "language":
         return S.set_language(t, site, str(a.get("second") or ""))
@@ -218,6 +220,13 @@ def _architect(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             c = AR.draft(t, str(a.get("brief") or a.get("instruction") or ""), conv)
         elif action == "architect_data":
             c = AR.redraft_data(t, str(a.get("spec") or ""), str(a.get("instruction") or ""))
+        elif action == "architect_change":
+            out = AR.revise(t, str(a.get("spec") or ""), str(a.get("instruction") or ""))
+            return {k: out.get(k) for k in ("id", "number", "modules", "hash", "say", "added_pages", "removed_pages", "logic_draft")
+                    if k in out}
+        elif action == "phone_app":
+            out = AL.phone_app(t, site, conv)
+            return {k: out.get(k) for k in ("app", "number", "status", "say")}
         elif action == "architect_ok":
             mods = a.get("modules") if isinstance(a.get("modules"), list) and a.get("modules") else None
             return AR.approve(t, str(a.get("spec") or ""), str(a.get("hash") or ""), mods, conv)

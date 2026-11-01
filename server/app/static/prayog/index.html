@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hoola Prayogshala</title>
+<link rel="stylesheet" href="lab.css?v=0.415.0">
+</head>
+<body>
+<main class="cat">
+  <h1>Prayogshala</h1>
+  <p class="mut">Asli practical, 3D mein: knob ghumaiye, meter padhiye, table bhariye. Har number Hoola ke simulation code se aata hai.</p>
+  <input class="search" id="q" type="search" placeholder="Lab dhoondhiye: pendulum, lens, Ohm…" aria-label="Search labs">
+  <div id="list"><p class="mut">Labs aa rahe hain…</p></div>
+</main>
+<script>
+(function () {
+  var list = document.getElementById('list'), q = document.getElementById('q'), labs = [];
+  function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; }
+  function draw() {
+    var s = q.value.trim().toLowerCase(), groups = {};
+    labs.filter(function (l) { return !s || (l.title + ' ' + l.topic + ' ' + l.field + ' ' + l.level).toLowerCase().indexOf(s) >= 0; })
+      .forEach(function (l) { (groups[l.group] = groups[l.group] || []).push(l); });
+    list.innerHTML = '';
+    var keys = Object.keys(groups);
+    if (!keys.length) { list.appendChild(el('p', 'mut', 'Koi lab nahi mila.')); return; }
+    keys.forEach(function (g) {
+      list.appendChild(el('h2', '', g)); var cards = el('div', 'cards');
+      groups[g].forEach(function (l) { var a = el('a', 'card'); a.href = 'lab.html?id=' + encodeURIComponent(l.id); a.appendChild(el('b', '', l.title)); a.appendChild(el('span', '', l.level + ' · ' + l.aim)); cards.appendChild(a); });
+      list.appendChild(cards);
+    });
+  }
+  fetch('/api/prayog/labs').then(function (r) { return r.json(); }).then(function (d) { labs = d.labs || []; draw(); })
+    .catch(function () { list.innerHTML = ''; list.appendChild(el('p', 'err', 'Labs load nahi hue. Internet check kijiye.')); });
+  q.addEventListener('input', draw);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+})();
+</script>
+</body>
+</html>

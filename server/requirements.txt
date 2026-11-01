@@ -20,6 +20,7 @@ resvg-py>=0.2,<1             # v0.298 SVG app logos (Composio) -> PNG; optional,
 cadquery>=2.4,<3              # v0.357 Engineering Desk: CAD parts (OpenCASCADE, Apache-2.0); big wheel ~100 MB
 scikit-fem>=10,<13           # v0.365 Hoola Analysis: FEA stress / heat / vibration (BSD-3)
 pyamg>=5,<6                   # v0.365 fast FEA solver (MIT); optional, direct solve without it
+mujoco>=3,<4                  # v0.409 optional: MuJoCo compiles the robot MJCF as a check (Apache-2.0)
 pypdf>=4.0           # reading PDF attachments in email
 segno>=1.6
 pillow>=10.0          # v0.43 Hoola Network: photo / video / PDF previews

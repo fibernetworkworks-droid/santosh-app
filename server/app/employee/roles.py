@@ -172,7 +172,7 @@ DUTIES: dict[str, dict] = {
     "school_office": {"label": "School office", "say": "hazri, gair-hazir alerts (aapke tap se), answer sheet / OMR / Forms / code grading (marks teacher ke sign-off se), timetable, report card",
                       "prefix": (), "tools": {"daftar", "daftar_dekho", "shiksha", "shiksha_dekho", "pylab", "file_read", "form_responses"}},
     "tutoring": {"label": "Padhana (tutor)", "say": "doubt ishaaron se samjhana (seedha jawab nahi), practice + revision, bhasha abhyas, hafte ki report (guardian ko aapke tap se)",
-                 "prefix": (), "tools": {"guru", "guru_dekho", "shiksha_dekho", "pylab", "file_read"}},
+                 "prefix": (), "tools": {"guru", "guru_dekho", "shiksha_dekho", "pylab", "file_read", "prayog"}},
     "school_records": {"label": "School register", "say": "class, students, guardian consent, marks register (final marks teacher ke)",
                        "prefix": (), "tools": {"shiksha", "shiksha_dekho"}},
     "legal_research": {"label": "Legal research", "say": "kanoon ke sawaal par official sources / judgments padhkar memo (har baat ka source), purana -> naya kanoon table; memo bahar bhejna aapki haan se",
@@ -856,7 +856,7 @@ READ = {
     # v0.144 Makaan suite
     "propagent_dekho", "rentdesk_dekho", "biz_rent_status", "sitesup_dekho", "interior_dekho", "archassist_dekho", "society_dekho",
     # v0.150 Kanoon suite
-    "shiksha_dekho", "pathyakram_dekho", "pylab", "guru_dekho", "daftar_dekho", "shodh_dekho",   # v0.381 Shiksha suite (pylab: sandboxed, nothing outside changes)
+    "shiksha_dekho", "pathyakram_dekho", "pylab", "guru_dekho", "daftar_dekho", "shodh_dekho", "prayog",   # v0.381 (+ v0.409 prayog: read-only labs) Shiksha suite (pylab: sandboxed, nothing outside changes)
     "vakil_dekho", "legalres_dekho", "compliance_dekho", "contracts_dekho", "cosec_dekho", "notary_dekho", "pidesk_dekho", "dpo_dekho",
     # v0.152 Mehmaan suite
     "front_office_dekho", "event_plan_dekho", "shaadi_dekho", "tour_guide_dekho", "homestay_dekho", "banquet_dekho",

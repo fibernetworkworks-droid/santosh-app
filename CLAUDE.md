@@ -52,6 +52,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- WEB STEP 2 (1 Nov 2026, end of web Step 2 = W1 one backend + W13 Architect, docs/WEB_PLATFORM_PLAN.md): branch
+  `stable-2026-11-01-v414` = commit 35caab6c = v0.414.0, pubspec 0.414.0+458, APK release `v0.414.0-b1112`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.414.0-b1112/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v414` as the branch. Not owner-verified yet.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the ENTERPRISE CONNECT work): branch `stable-2026-11-01-v406`
   = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com at the save; healthz 0.406.0).
   THE ENTERPRISE SUITE IS NOW REACHABLE END TO END, which it had never been from v0.358 to v0.396: her own ERP /
@@ -180,7 +184,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- v0.409 META ADS (A1, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
+- v0.417 META ADS (A1, built as 0.409, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
 - v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
   (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
   CSRF_NONCE and a Reserve/UndoReservation check-out (a half-run used to risk leaving HER object LOCKED); Salesforce
@@ -205,9 +209,26 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
   403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
   verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
-- Current version: v0.409.0 (pubspec 0.409.0+453). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- RESEARCH: `docs/research/building_industry/` - the whole design / construction / building industry as 276 jobs from
+  primary sources (6 reports, 576 KB; read `00_INDEX.md` first, never the lot). Three findings that shape every desk
+  here: (1) PREPARE / SUBMIT / CERTIFY - the application is the owner's act, the certification is reserved to a named
+  licensee on a specific register, preparation is unreserved = 70-80% of the labour and almost none of the liability;
+  (2) DESIGN is largely UNGATED in India (HVAC has no licence at all) while CERTIFICATES and EXECUTION are gated, and
+  the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
+  exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
+  the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
+- Current version: v0.417.0 (pubspec 0.417.0+461). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.415 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin
+  (same numbers, tested), 22 NCERT physics practicals within 1 %, lab3d.js runtime, tool prayog, console Lab + phone Prayogshala.
+- v0.414 EK DIMAAG 2 (web Step 2 finished): old v0.305 web apps move by themselves (`applink.migrate_all`, worker) + new ones link at once; `kind: web` backends never re-made; full school portal proof (admission -> approval -> student -> fee -> attendance -> report card, 3 roles; relation `share`); `applink.phone_app` = phone app on the SAME project / data; spec card + stories / payments / notifications / integrations + `architect.revise`; phone `SiteSpecCard`; vps-ops `architect_check` / `arena_numbers`.
+- v0.410 ECC ON: review card old vs new = 8/8 caught both, false alarms 8 -> 4, nits 3 -> 0; fix card 6/6 + 6/6 with the fixer -> `dev_spec_review` + `dev_spec_fix` default ON; card rows keep what each false alarm said.
+- v0.413 PRINCIPAL SOFTWARE ARCHITECT (`docs/SOFTWARE_DESK_PLAN.md`, `app/archdesk/`): Hub group "Software Architecture, Engineering &
+  Core Systems" (10 roles, 1 live); repo read -> Opus design -> capacity in CODE -> Mermaid (vendored) diagrams -> PDF -> her OK;
+  PRs vs the approved design (draft, her tap posts); tool `software_architect`, /api/arch/*; POST /api/game checks the hire.
 - v0.407 EK DIMAAG + ARCHITECT (web Step 2): `site/applink.py` = a website's web app on App Sahayak's backend + DIMAAG (members / rows moved, old logins work, same /api/site-app addresses; logic draft -> her tap); `site/architect.py` = her one line -> spec card (pages / users / data / logic / features) -> her Haan builds site + app brain (`/api/site-architect*`, website action=architect*).
+- v0.412 NAKSHA LIVE (Pillar D): `appmaker/track.py` her switch -> staff shifts (FGS location / iPhone blue pill), one current point wiped at shift end, customer sees only HER rider while on the way, ETA estimate, near/arrived; maps MapLibre+OpenFreeMap (vendored `static/vendor/maplibre`) / Apple Maps; kits Track.kt / Track.swift.
+- v0.409 ABHI ABHI (Pillar C): `appmaker/live.py` one SSE stream per open app fed by the journal (all processes), filtered by read rules, chat / presence / typing, Last-Event-ID replay; kits Live.kt / Live.swift; console app page live.
 - v0.403 SHIKSHA 3+4: `app/daftar` school office (attendance + guardian alert card, grading UNSIGNED: sheet / OMR / Forms /
   code / rubric, timetable, report card from signed-off marks) + `app/shodh` research assistant (official APIs only, refs in code).
 - v0.402 ECC PHASE 1: `devsahayak/specialists.py` (ECC agents, MIT, adapted): CI fixer by language (`dev_spec_fix`), reviewer discipline + language reviewer + focused passes (`dev_spec_review`, `service.explore_review`); both OFF until `python -m app.quality review` (vps-ops `review_card`, 12 PRs old vs new) + vps-ops `fix_card_spec` say so.
@@ -225,6 +246,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.416 GAME PLATFORMS (built as 0.413; Game Engine plan Phase 6, `gamedesk/platforms.py`, tool game_release): Linux / Windows / macOS (ad-hoc, not notarised) builds checked + signed downloads on the server (`setup_godot.py --desktop`), Android APK / AAB in her builds repo (`hoola-game.yml`, own sealed upload key, no internet permission), store kit, age-rating DRAFT, itch.io butler push only on her tap; iOS not built.
+- v0.416 QA FARM + BUGS (built as 0.410 / 0.412; Game Engine plan Phase 5, `gamedesk/qa.py`, tool game_qa): seeded bots (idle/monkey/tapper/keys/restarter) on desktop / phone CPU speeds play a DEBUG web build (release builds hide script errors - every build's playtest now plays debug too), probe state/events, golden start screen, numbered bugs with repro, fixed only when the bot can't find it.
+- v0.416 ASSET PIPELINE (built as 0.409 / 0.411; Game Engine plan Phase 4, `gamedesk/assets.py` + `sfx.py`, tool game_assets): style-locked art (magenta key, exact size, palette share / strict snap), code-made sfx (preset + seed), music / voice / 3D; paid = price card + her tap; checks in code; her OK -> HoolaAssets autoload in every build.
 - v0.406 HOOLA GAME CREW + GO FIX (built as 0.403; `gamedesk/crew.py`, ideas from Claude-Code-Game-Studios): 49 roles (builds / writes), role + acceptance criteria on every task, lead review (screens + diff, only screen criteria), 9 team plans, milestone gates PASS/CONCERNS/FAIL/NOT ASSESSED; NOT ASSESSED said out loud; Godot 4.5-4.7 notes; smoke imports first (class_name ok again).
 - v0.395 GAME BIBLE (built as 0.390 / 0.394; Game Engine plan Phase 3, `gamedesk/bible.py`, tool game_bible, /api/gamestudio/{id}/bible*): names + numbers as data (kinds = templates, checks in code, palette lock), seeded balance sim, curve numbers + drafts for her OK, HoolaBible autoload in the game, data-only rebuild (no model); helpers = preload, never class_name.
 - v0.386 STUDIO PROJECT (built as 0.378 / 0.382) (Game Engine plan Phase 2, `gamedesk/studio.py`, tool game_studio, /api/gamestudio*): a game as a long project - task board (one small change each, waits for her OK, 'wapas' = version before is live), milestones, decisions log + 'why', nightly rebuild + replay (no model), morning report, restore, GitHub card.
@@ -239,6 +263,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.411 MECHANISMS 2 (`kinematics.py` rewrite): closed loops (closure=True, solved; four-bar Grashof + transmission angle), H.couple gears / belts, joint torque by virtual work (+ payload, I·alpha; == MuJoCo), package URDF + SRDF + SDF + MJCF (MuJoCo compiles it); optional `pip install mujoco`.
 - v0.408 HOOLA MECHANISMS (`engineering/kinematics.py`, H.joint / H.robot): joint tree, B-rep mass + inertia, collision sweep -> free range (collision in her range -> redesign), robot_urdf.zip (URDF + STL meshes, validated), motion.gif + explode.png.
 - v0.405 HOOLA DFM (built as 0.404, `engineering/dfm.py`, H.make('fdm'|'sla'|'sls'|'mjf'|'metal_pbf'|'cnc'|'sheet'|'molding', ...)): measured walls / overhangs / orientation / inside corners / deep holes / setups / bends / draft / undercuts / clamp; FAIL -> redesign; limits = published starting points, her shop's numbers override.
 - v0.398 REAL DRAWINGS (built as 0.397, `engineering/views2d.py` box: kernel HLR vector views + hole stacks THRU/DEEP/CBORE/CSK + radii; `drawing.py` reportlab A3 sheet: measured dims, callouts, H.fit ISO 286, H.drawing first/third + ISO 2768, title block); page 2 = shaded views.

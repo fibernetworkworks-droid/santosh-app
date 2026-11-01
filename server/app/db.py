@@ -760,6 +760,8 @@ def init_db(url: str | None = None):
     from .site import webapp as _site_webapp  # noqa: F401  (v0.305 web apps: members + rows)
     from .appmaker import backup as _app_backup  # noqa: F401  (v0.390 app journal: every write to an app's rows)
     from .appmaker import owndb_conns as _app_owndb_conns  # noqa: F401  (v0.404 her MySQL / MongoDB / Firebase connections, sealed)
+    from .appmaker import live as _app_live  # noqa: F401  (v0.407 ABHI ABHI: presence / typing signals for live apps)
+    from .appmaker import track as _app_track  # noqa: F401  (v0.412 NAKSHA LIVE: rider shifts + one current position)
     from .appmaker import owndb as _app_owndb  # noqa: F401  (v0.396 her own database per app: the write-through hook)
     from .appmaker import refs as _app_refs  # noqa: F401  (v0.390 indexed links between an app's rows)
     from .site import arena as _site_arena  # noqa: F401  (v0.307 Design Arena runs / items / duels)
@@ -811,7 +813,7 @@ def init_db(url: str | None = None):
     from .social import publish as _social_publish  # noqa: F401  (v0.355 Social Media Manager posting)
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .ads import gads as _gads  # noqa: F401  (v0.401 YouTube ads, Google Ads API)
-    from .ads import metaads as _metaads  # noqa: F401  (v0.409 Facebook / Instagram ads, Meta Marketing API)
+    from .ads import metaads as _metaads  # noqa: F401  (v0.417 Facebook / Instagram ads, Meta Marketing API)
     from .social import growth as _social_growth  # noqa: F401  (v0.383 Social Media Manager growth)
     from .social import inbox as _social_inbox  # noqa: F401  (v0.368 Social Media Manager inbox)
     from .thok import service as _thok  # noqa: F401
@@ -909,9 +911,13 @@ def init_db(url: str | None = None):
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
+    from .archdesk import models as _archdesk  # noqa: F401  (v0.410 Architecture Desk: arch_projects, arch_reviews)
     from .gamedesk import service as _gamedesk  # noqa: F401  (v0.381 Game Desk)
     from .gamedesk import studio as _gamestudio  # noqa: F401  (v0.386 Studio Project)
     from .gamedesk import bible as _gamebible  # noqa: F401  (v0.395 Game Bible)
+    from .gamedesk import assets as _gameassets  # noqa: F401  (v0.416 asset pipeline)
+    from .gamedesk import qa as _gameqa  # noqa: F401  (v0.416 QA farm + bugs)
+    from .gamedesk import platforms as _gameplatforms  # noqa: F401  (v0.416 game platforms)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

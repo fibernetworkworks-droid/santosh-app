@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.409.0"   # v0.409.0 META ADS (ad plan A1; owner: "GO A1" after the India ad-market check): her Facebook / Instagram ad account by ONE Facebook Login on the HOOLA app (ads_management + ads_read, ads/metaads.py) instead of a pasted system-user token; ad accounts + Pages listed, one account chosen at once, the Ads desk (reads, leaks, budget changes on her tap) works on the login unchanged. Drafts with one goal (WhatsApp / Messenger / Instagram chats, website visits, boost a Page post), her photo, cities + km, ages, daily x days; money ads refused, META_ADS_MAX_DAILY cap; Check with Meta (validate_only, free) -> Create = campaign, ad set and ad all PAUSED -> Start only with a confirm (end time set so Meta itself stops it, campaign goes live last) -> auto-marked finished after the days. Routes /api/ads/meta/* + /api/ads/metaads*, tool ads action=meta_draft, Social Desk tile + phone MetaAdsScreen. NOT VERIFIED against a live ad account. Previous: v0.408.0 HOOLA MECHANISMS (owner: "GO JOINTS AND URDF"): H.joint between named assembly parts (revolute / continuous / prismatic / fixed, world frame of the zero pose) -> tree check with named problems, B-rep mass / centre of mass / inertia per part from its material, every movable joint swept through its range with exact solid overlap tests + bisection -> the FREE range and what collides where (inside her range = back to the designer), URDF package (links in joint frames, STL meshes mm x 0.001, inertials kg / m, limits rad / m, effort / velocity said when assumed) checked by our own validator after parsing it back, motion GIF (all joints swinging, one camera) and exploded view. Previous: v0.407.0 EK DIMAAG + HOOLA ARCHITECT (web Step 2 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 2"). EK DIMAAG (W1): a website's web app now runs on the SAME backend as her native apps - App Sahayak's backend + the DIMAAG logic engine (relations, formulas, rules, workflows with maker-checker approvals + SLA, triggers, schedules, functions). Linking moves every member and row over unchanged (same ids, same passwords; a login made before the move keeps working), the site's own /api/site-app addresses stay, new public routes for related records / approvals / functions, and her logic is drafted by App Sahayak's author + checker and goes live only on her tap; the site's pages draw the workflow buttons, approval pills and linked-record pickers. HOOLA ARCHITECT (W13): her ONE line -> a spec card (pages, users, data, rules / workflows / approvals, features) with the data model PROVED by the checker before she sees it; she approves module by module and Hoola creates the website, joins it to its app brain, applies the logic and starts the looks. Proof: a school portal from one line. Previous: v0.406.0 HOOLA GAME CREW + GO FIX (built as 0.403; owner: "GO FIX" + "USE THIS FOR HOOLA GAMING DEVELOPMENT", after studying Claude-Code-Game-Studios, MIT, ideas only - THIRD_PARTY_NOTICES.md): a whole studio inside the Game Developer desk - 49 roles as DATA (gamedesk/crew.py: 3 directors, 8 leads, 23 specialists, 15 Godot / Unity / Unreal specialists), each with what it does, how it thinks, what it checks, who reviews it, and whether it BUILDS (changes the Godot game) or WRITES (a result for her OK: sound lists, store text, Unity / Unreal plans - work Hoola cannot build yet). Every task gets a role and acceptance criteria (hers / the planner's, the role's checks, Hoola's two automatic play checks); a build covers the test criteria with evidence stamped with the code fingerprint, the lead reviews screenshots + the code diff (Claude vision) and may set only SCREEN criteria - nothing seen = not covered, her criteria only by her OK; the verdict (COMPLETE / WITH NOTES / BLOCKED / NOT ASSESSED) is counted in code. 9 team flows plan linked tasks with only that team's roles; milestone gate checks PASS / CONCERNS / FAIL / NOT ASSESSED from counted facts + three directors' views, advice only. GO FIX: (1) NOT ASSESSED said out loud - a Bible with no levels is never a clean balance pass, a nightly that could not run is recorded, the morning report says when nothing was checked; (2) Godot 4.5-4.7 changes in the code guide (typed-override returns, device ids, RichTextLabel rename...); (3) smoke() imports first, so class_name helpers work again (a real run proved it) and v0.395's ban is lifted; (4) acceptance criteria + evidence-older-than-code on every task.
+APP_VERSION = "0.417.0"   # v0.417.0 META ADS (built as 0.409) (ad plan A1; owner: "GO A1" after the India ad-market check): her Facebook / Instagram ad account by ONE Facebook Login on the HOOLA app (ads_management + ads_read, ads/metaads.py) instead of a pasted system-user token; ad accounts + Pages listed, one account chosen at once, the Ads desk (reads, leaks, budget changes on her tap) works on the login unchanged. Drafts with one goal (WhatsApp / Messenger / Instagram chats, website visits, boost a Page post), her photo, cities + km, ages, daily x days; money ads refused, META_ADS_MAX_DAILY cap; Check with Meta (validate_only, free) -> Create = campaign, ad set and ad all PAUSED -> Start only with a confirm (end time set so Meta itself stops it, campaign goes live last) -> auto-marked finished after the days. Routes /api/ads/meta/* + /api/ads/metaads*, tool ads action=meta_draft, Social Desk tile + phone MetaAdsScreen. NOT VERIFIED against a live ad account. Previous: v0.416.0 ASSET PIPELINE + QA FARM + GAME PLATFORMS (Hoola Game Engine plan Phases 4-6, owner: "GO PHASE 4" / "GO PHASE 5" / "GO PHASE 6"; built as 0.409-0.415, shipped as one version because main moved to v0.414 and v0.415). Phase 4 (gamedesk/assets.py + sfx.py, tool game_assets): style-locked art (magenta key, exact size, palette lock), sound effects made in code (seeded presets, free), music / voice / 3D models; paid kinds wait on a price card until her tap, every file checked in code, nothing enters the game before her OK, HoolaAssets autoload in every build. Phase 5 (gamedesk/qa.py, tool game_qa): seeded bots (idle / monkey / tapper / keys / restarter) play a DEBUG web build on desktop and phone CPU speeds - release builds hide script errors, so every build's playtest plays debug too - numbered bugs with repro, fixed only when the bot no longer finds it, golden start screen, speed vs last run, verdict counted in code. Phase 6 (gamedesk/platforms.py, tool game_release): Linux / Windows / macOS downloads exported and checked on the server (setup_godot.py --desktop), Android APK / AAB in her builds repo (hoola-game.yml) signed with the game's own sealed upload key, no internet permission, package fixed + version code only up; store kit (itch / Steam / Play texts in limits, images in exact sizes, AI disclosure, Steam scripts), age-rating DRAFT, itch.io butler push only on her tap. Android and itch not verified here; iOS not built.
 
 
 def _quiet_http_logs() -> None:
@@ -1419,7 +1419,8 @@ def api_disconnect(provider: str, request: Request):
 # ---------------------------------------------------------------- v0.142 Hoola Console (web app at /console)
 _CONSOLE_NOREF = {"Referrer-Policy": "no-referrer", "Cache-Control": "no-store"}
 _CONSOLE_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-                "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; "
+                "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tiles.openfreemap.org; media-src 'self' blob:; "
+                "connect-src 'self' https://tiles.openfreemap.org; "   # v0.412 the riders map's open map tiles (OpenFreeMap)
                 "worker-src 'self' blob:; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 
 
@@ -5077,6 +5078,11 @@ from .shodh.api import make_router as _shodh_router  # noqa: E402  (Shiksha Phas
 for _mk in (_shiksha_router, _pathyakram_router, _guru_router, _daftar_router, _shodh_router):
     app.include_router(_mk(require_key, current_tenant))
 
+# v0.415 Prayogshala (3D practical labs): the catalogue is public teaching material (no user data), read without a key
+from .prayog.api import make_router as _prayog_router  # noqa: E402
+
+app.include_router(_prayog_router())
+
 # v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (under /api/<mod>/*, key-protected; homestay's router also holds
 # the public calendar feed /api/homestay-ical/{tenant}/{token}.ics, which checks its own random token)
 from .frontoffice.api import make_router as _frontoffice_router  # noqa: E402
@@ -7162,7 +7168,7 @@ def _mads_call(fn, *a, **k):
 
 @app.get("/api/ads/meta/connect", dependencies=[Depends(require_key)])
 def ads_meta_connect(tenant: str = Depends(current_tenant)):
-    """v0.409 META ADS (A1): Facebook Login with ads_management + ads_read on Hoola's Meta app (replaces the pasted token)."""
+    """v0.417 META ADS (A1): Facebook Login with ads_management + ads_read on Hoola's Meta app (replaces the pasted token)."""
     from .ads import metaads
     return {"url": _mads_call(metaads.connect_url, tenant)}
 
@@ -8626,6 +8632,20 @@ async def site_architect_data(ref: str, body: dict, tenant: str = Depends(curren
     """{words}: redo ONLY the data + rules part of the card with her change."""
     from .site import architect as AR
     return await asyncio.to_thread(_site_logic, AR.redraft_data, tenant, ref, str(body.get("words") or ""))
+
+
+@app.post("/api/site-architect/{ref}/revise", dependencies=[Depends(require_key)])
+async def site_architect_revise(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.414 {words}: her change to ANY part of the card; after the build only what it touches is rebuilt / drafted."""
+    from .site import architect as AR
+    return await asyncio.to_thread(_site_logic, AR.revise, tenant, ref, str(body.get("words") or ""))
+
+
+@app.post("/api/sites/{ref}/phone-app", dependencies=[Depends(require_key)])
+async def sites_phone_app(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """v0.414 the website's app as an Android / iPhone app design on the SAME project + data (App Sahayak's plan card)."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.phone_app, tenant, ref, str((body or {}).get("conversation_id") or ""))
 
 
 @app.post("/api/site-architect/{ref}/approve", dependencies=[Depends(require_key)])
@@ -10110,6 +10130,151 @@ async def app_api_members(app_key: str, request: Request):
     return await asyncio.to_thread(_be_call, go)
 
 
+# ---- v0.407 ABHI ABHI (App Sahayak Pillar C): real time for the native apps - one SSE stream per open app.
+def _live_stream(r, w, token: str, request: Request, colls: str):
+    from .appmaker import live as LV
+    last = request.headers.get("last-event-id") or request.query_params.get("last") or ""
+    return StreamingResponse(LV.stream(r, w, token, colls, last, gone=request.is_disconnected), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/app-api/{app_key}/live")
+async def app_api_live(app_key: str, request: Request, colls: str = ""):
+    """Live lists / order status / chat / presence / typing for a signed-in account (Bearer token in the header). Events are
+    filtered by each list's read rule; Last-Event-ID replays what a reconnect missed. 429 = too many streams (the app keeps
+    its normal refresh)."""
+    from .appmaker import live as LV
+    from .site import webapp as W
+
+    def go():
+        r, w = _be_app(app_key, request)
+        LV.admit(r, w)
+        return r, w
+    try:
+        r, w = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+    tok = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+    return _live_stream(r, w, tok, request, colls)
+
+
+@app.post("/api/app-api/{app_key}/live/typing")
+async def app_api_live_typing(app_key: str, request: Request):
+    """{thread?}: 'typing...' in a chat thread (a customer: her own; staff: the customer's member id)."""
+    from .appmaker import live as LV
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return LV.typing(r, w, str(body.get("thread") or ""))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/live/presence")
+async def app_api_live_presence(app_key: str, request: Request):
+    """Who is online now (a customer sees whether the shop's staff are online; staff see everyone)."""
+    from .appmaker import live as LV
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return LV.online(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/apps/{ref}/live", dependencies=[Depends(require_key)])
+async def apps_live(ref: str, request: Request, colls: str = "", tenant: str = Depends(current_tenant)):
+    """Her own live view of one app (console / phone): every list, every chat, who is online."""
+    from .appmaker import live as LV
+    from .site import webapp as W
+    try:
+        r = await asyncio.to_thread(_be_owner, tenant, ref)
+        w = W.Who(owner=True)
+        LV.admit(r, w)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+    except Exception:
+        return JSONResponse({"ok": False, "error": "App nahi mila."}, status_code=404)
+    return _live_stream(r, w, "", request, colls)
+
+
+@app.get("/api/apps/{ref}/live/presence", dependencies=[Depends(require_key)])
+async def apps_live_presence(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import live as LV
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.online(_be_owner(tenant, ref), W.Who(owner=True)))
+
+
+@app.post("/api/apps/{ref}/live/typing", dependencies=[Depends(require_key)])
+async def apps_live_typing(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her 'typing...' in a customer's chat thread {thread}."""
+    from .appmaker import live as LV
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.typing(_be_owner(tenant, ref), W.Who(owner=True),
+                                                                     str((body or {}).get("thread") or "")))
+
+
+# ---- v0.412 NAKSHA LIVE (App Sahayak Pillar D): rider shifts, positions, live tracking of one order, riders on a map.
+@app.get("/api/app-api/{app_key}/track/me")
+async def app_api_track_me(app_key: str, request: Request):
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_call, lambda: TR.mine(*_be_app(app_key, request)))
+
+
+@app.post("/api/app-api/{app_key}/track/shift")
+async def app_api_track_shift(app_key: str, request: Request):
+    """{on}: a staff account starts / ends its shift (positions are accepted only while it is on)."""
+    from .appmaker import track as TR
+    body = await _json_body(request)
+    return await asyncio.to_thread(_be_call, lambda: TR.shift(*_be_app(app_key, request), bool(body.get("on"))))
+
+
+@app.post("/api/app-api/{app_key}/track/pos")
+async def app_api_track_pos(app_key: str, request: Request):
+    """{lat, lng, acc?, speed?, heading?} from the rider's phone while the shift is on."""
+    from .appmaker import track as TR
+    body = await _json_body(request)
+    return await asyncio.to_thread(_be_call, lambda: TR.position(*_be_app(app_key, request), body))
+
+
+@app.get("/api/app-api/{app_key}/track/c/{coll}/{row_id}")
+async def app_api_track_order(app_key: str, coll: str, row_id: str, request: Request):
+    """The customer's own order (or staff): rider position, distance, ETA (an estimate), near / arrived."""
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_call, lambda: TR.order(*_be_app(app_key, request), coll, row_id))
+
+
+@app.get("/api/app-api/{app_key}/track/riders")
+async def app_api_track_riders(app_key: str, request: Request):
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_call, lambda: TR.riders(*_be_app(app_key, request)))
+
+
+@app.get("/api/apps/{ref}/track", dependencies=[Depends(require_key)])
+async def apps_track(ref: str, tenant: str = Depends(current_tenant)):
+    """Her tracking switch + every rider on shift."""
+    from .appmaker import track as TR
+    from .site import webapp as W
+
+    def go():
+        r = _be_owner(tenant, ref)
+        return {**TR.settings(r), **TR.riders(r, W.Who(owner=True))}
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.put("/api/apps/{ref}/track", dependencies=[Depends(require_key)])
+async def apps_track_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap: {on, coll, statuses} - which list is tracked and which statuses mean 'on the way'."""
+    from .appmaker import track as TR
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.save_settings(_be_owner(tenant, ref), body or {}))
+
+
+@app.get("/api/apps/{ref}/track/c/{coll}/{row_id}", dependencies=[Depends(require_key)])
+async def apps_track_order(ref: str, coll: str, row_id: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import track as TR
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.order(_be_owner(tenant, ref), W.Who(owner=True), coll, row_id))
+
+
 def _be_owner(tenant: str, ref: str):
     from .appmaker import service as A
     with A.session() as s:
@@ -11158,6 +11323,9 @@ app.include_router(_composio_router(require_key, current_tenant))
 from .engineering.api import make_router as _eng_router  # noqa: E402  v0.357 Engineering Desk (CAD Engineer)
 
 app.include_router(_eng_router(require_key, current_tenant))
+from .archdesk.api import make_router as _arch_router  # noqa: E402  v0.410 Architecture Desk (Principal Software Architect)
+
+app.include_router(_arch_router(require_key, current_tenant))
 app.include_router(bz_devices.public)
 
 

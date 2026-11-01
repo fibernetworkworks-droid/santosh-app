@@ -39,8 +39,9 @@ New fields on EXISTING lists are never required. Staff-only lists use rules admi
 
 THE SPEC ("logic"):
 - relations: [{"name": children name on the parent (e.g. "lines"), "from": child list, "field": its ref field,
-   "to": parent list, "label": "Items", "on_delete": "restrict"|"cascade"|"nullify"}]   (lines of an order: cascade;
-   customers of orders: restrict)
+   "to": parent list, "label": "Items", "on_delete": "restrict"|"cascade"|"nullify", "share": false}]   (lines of an order:
+   cascade; customers of orders: restrict). share: true = a child row made by staff belongs to the parent row's person
+   (attendance / marks / fees of a student -> that student's parent reads them with read: own)
 - formulas: [{"coll","field","expr"}]  e.g. amount = qty * rate ; total = sum(lines.amount) ; due = add_days(date, 15)
 - rules: [{"coll","check","message","on":"always"|"create"|"update"}]  check must be TRUE for a valid row
    e.g. {"check": "qty > 0", "message": "Quantity 1 ya zyada"}; on update `old.<field>` is the previous value

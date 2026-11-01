@@ -128,6 +128,8 @@ fun AccountScreen() {
         if (me != null) block { KhataBlock() }                     // v0.359 udhaar: hers / who owes (staff)
         if (me != null && Auth.isStaff) block { StatsBlock() }     // v0.340 the staff dashboard
         if (me != null && Auth.isStaff) block { StopsBlock() }     // v0.350 the open stops with a location, nearest first
+        if (me != null && Auth.isStaff && Track.on) block { ShiftBlock() }   // v0.412 NAKSHA LIVE: Start / End shift
+        if (me != null && Auth.isStaff && Track.on) block { RidersMap() }    // v0.412 every rider on shift, live
         block { LanguagePicker() }                                 // v0.347 the app's words in her language
         if (Db.pending.value > 0) block { Pill("${Db.pending.value} ${Strings.pending}", "warn") }
         if (Db.lastError.value.isNotEmpty()) block { Pill(Db.lastError.value, "bad") }
@@ -214,6 +216,7 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         if (r.s("slot_label").isNotEmpty()) Small(Strings.pickSlot + ": " + r.s("slot_label"))      // v0.371 SLOT
         SlotChange(coll, r)                                                                       // v0.377 change the time
         if (r.s("delivery_note").isNotEmpty()) Small(r.s("delivery_note"), maxLines = 4)
+        TrackButton(coll, r)                                      // v0.412 NAKSHA LIVE: the rider on a map while it is on its way
         RateBox(coll, r)                                          // v0.353 the customer rates her finished row once
         ReceiptButton(coll, r)                                    // v0.354 the receipt PDF of a finished row
         CreditButton(coll, r)                                     // v0.359 staff: this order on credit (udhaar)

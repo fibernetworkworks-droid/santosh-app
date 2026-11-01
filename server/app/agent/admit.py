@@ -111,7 +111,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "browser game", "khel banao", "गेम बनाओ", "गेम",
                  # v0.386 Studio Project: the long game project's words
                  "game project", "game studio", "studio project", "game ka kaam", "game ka task",
-                 "game bible", "game ki bible", "balance pass", "difficulty curve", "enemy stats", "level design"),
+                 "game bible", "game ki bible", "balance pass", "difficulty curve", "enemy stats", "level design",
+                 "game art", "sprite", "game sound", "sound effect", "game music", "game assets", "3d model for my game",
+                 "game qa", "game test", "game bug", "game ke bug", "playtest", "golden screen",
+                 "itch.io", "steam page", "game release", "game ki release", "windows build", "mac build", "linux build", "age rating"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",
@@ -146,6 +149,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # Shiksha Phase 2: the personal tutor (doubts, practice, language practice, progress)
     # Shiksha Phase 3: the school office (attendance, grading, timetable, report cards)
     # Shiksha Phase 4: the research assistant (literature, gaps, references, analysis, drafts)
+    "prayog": ("practical", "prayog", "prayogshala", "experiment", "lab mein", "3d mein", "kaise kaam karta", "kaise kaam karti",
+               "how it works", "how does", "simulation", "pendulum", "lens", "prism", "ohm", "meter bridge", "potentiometer",
+               "resonance", "sonometer", "vernier", "screw gauge", "प्रयोग", "प्रयोगशाला"),
     "shodh": ("research paper", "literature review", "literature survey", "thesis", "dissertation", "phd", "synopsis",
               "doi", "citation", "references banao", "bibliography", "bibtex", "zotero", "openalex", "pubmed", "arxiv",
               "research gap", "research question", "methodology", "regression", "anova", "t-test", "chi square",
@@ -415,6 +421,11 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     (re.compile(r"\b(?:game|games|gaming|khel)\b.{0,40}\b(?:bana\w*|build|make|create|develop|design|chahiye)\b|"
                 r"\b(?:bana\w*|build|make|create|develop)\b.{0,30}\b(?:game|khel)\b|\bgodot\b|गेम", re.I),
      ("gamedesk",), "game"),
+    # v0.410 a system to architect / design (or a PR to check against its design) -> the Principal Software Architect
+    (re.compile(r"\b(?:architect\w*|architecture|system design|design (?:a|the|my|our) (?:system|backend|platform|app)|"
+                r"high[- ]level design|hld|lld|low[- ]level design|scal(?:e|able|ability)|microservices?|monolith|"
+                r"adr|c4 (?:model|diagram)|capacity plan\w*|distributed system)\b", re.I),
+     ("arch",), "software architecture"),
     # v0.348 an official Indian number (inflation, GDP, jobs, industry, surveys) -> MoSPI first, never a search summary
     (re.compile(r"\b(?:cpi|wpi|iip|gdp|gva|plfs|nfhs|nss|mospi)\b|inflation|mehngai|mahangai|unemployment|berozgari|"
                 r"growth rate|per capita|industrial (?:output|production)|labour force|sarkari aank|महंगाई|बेरोजगारी", re.I),
