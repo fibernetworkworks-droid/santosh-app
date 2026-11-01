@@ -141,6 +141,49 @@ GAMEDESK_LABELS = {"game_desk": "Game bana raha hoon", "game_studio": "Game proj
                    "game_bible": "Game Bible dekh raha hoon", "game_assets": "Game ke assets dekh raha hoon",
                    "game_qa": "Game ki QA dekh raha hoon", "game_release": "Game ki release dekh raha hoon"}
 
+# v0.417 Phase 7 batch 1: the Game Desk ROLE PACKS - each its own employee, each gated on ITS hire
+GAMEDESK_TOOLS.append(
+    {"name": "game_world", "description": (
+        "Procedural World Generation Engineer employee: makes a world from RULES and a SEED in code (no model, free) - "
+        "kind terrain (island / map: biomes, rivers, villages), dungeon (rooms + corridors, exit), city (roads, blocks, "
+        "buildings) or level (side-view platformer: gaps, steps, platforms, spikes, goal; jump_h / jump_w = her player's "
+        "jump in tiles). Every world is CHECKED in code: made twice (same seed = same world), every village / room / exit "
+        "/ goal reachable from the spawn, a level walked with her jump. Actions: make (words; or kind + params, seed, key, "
+        "id = S-0001 to attach it to her game project) -> a DRAFT with preview + checks / list / status (world W-001) / "
+        "approve / reject / demo (world): Hoola builds a walk-it link in Godot and plays it (background) / apply (id): "
+        "the approved worlds go into her game as HoolaWorld, no new code. Quote only the checks and numbers it returns. "
+        "Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["make", "list", "status", "approve", "reject", "demo", "apply"]},
+         "words": {"type": "string", "description": "action=make: her world in her words"},
+         "kind": {"type": "string", "enum": ["terrain", "dungeon", "city", "level"]},
+         "params": {"type": "object", "description": "exact numbers, e.g. {w, h, sea, rivers, rooms, jump_h, jump_w}"},
+         "seed": {"type": "integer"}, "key": {"type": "string", "description": "the name the game uses (default = kind)"},
+         "id": {"type": "string", "description": "Studio project (S-0001) - attach / apply"},
+         "world": {"type": "string", "description": "W-001 or the id"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_physics", "description": (
+        "Physics Engine Developer employee: sets up her game's physics and PROVES it in the real engine (Godot run "
+        "headless, free). Her numbers - fastest body speed (px/s), thinnest wall (px), physics ticks, gravity (px/s^2) - "
+        "come from her words, the inputs, or her Game Bible's biggest 'speed'. Settings are worked out in code (ticks or "
+        "cast-ray continuous collision so nothing tunnels: safe without CCD only when one step <= half the wall), then "
+        "Hoola's lab checks free fall, projectile range, an elastic collision, tunnelling at HER speed (6 start points, "
+        "with and without CCD), a box stack, a 3D drop, and the whole lab run twice - each against its formula. Actions: "
+        "setup (words / inputs, id = S-0001) -> the lab runs in the background / list / status (setup P-001) / approve "
+        "(only a PASS) / reject / apply (id): HoolaPhysics goes into her game. Quote only measured numbers. Fluids are "
+        "not part of this yet - say so if asked. Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"},
+         "inputs": {"type": "object", "description": "{speed, wall, ticks, gravity, g3d}"},
+         "id": {"type": "string", "description": "Studio project (S-0001)"},
+         "setup": {"type": "string", "description": "P-001 or the id"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_world": "World bana raha hoon", "game_physics": "Game ki physics jaanch raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -508,5 +551,94 @@ async def game_release(ctx: Ctx, action="", id="", platforms=None, android_forma
     raise ToolError("action = targets | build | list | store_kit | rating | itch")
 
 
+def _owner_only(ctx: Ctx, what: str) -> None:
+    if str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
+        raise ToolError(f"{what} sirf owner ka kaam hai.")
+
+
+def _world_short(v: dict) -> dict:
+    out = {k: v.get(k) for k in ("number", "key", "kind", "seed", "status", "version") if v.get(k) not in (None, "")}
+    ch = v.get("checks") or {}
+    out["checks"] = {"errors": ch.get("errors", []), "warnings": ch.get("warnings", []), "passed": ch.get("passed", [])[:6]}
+    st = v.get("stats") or {}
+    out["numbers"] = {k: st.get(k) for k in ("w", "h", "ms", "rivers", "rivers_to_sea", "rooms", "buildings", "reachable_share") if st.get(k) is not None}
+    if (v.get("demo") or {}).get("status"):
+        out["demo"] = {k: v["demo"].get(k) for k in ("status", "play_url", "errors", "numbers") if v["demo"].get(k)}
+    return out
+
+
+async def game_world(ctx: Ctx, action="", words="", kind="", params=None, seed=None, key="", id="", world="", **_):
+    from ..employee import hire
+    from ..gamedesk import service as G
+    from ..gamedesk import world as W
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, W.KEY):
+        raise ToolError("Procedural World Engineer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, "World banana / badalna")
+    run = asyncio.to_thread
+    try:
+        if action == "make":
+            v = await run(W.make, t, words, kind, seed, params if isinstance(params, dict) else None, id, key)
+            return _world_short(v) | {"note": ("Show her the checks in one or two lines and ask OK / another seed. The preview "
+                                               "is on the World page; a walk-it link: action=demo.")}
+        if action == "list":
+            return {"worlds": [_world_short(v) for v in (await run(W.worlds, t, id))[:12]]}
+        if action in ("status", "approve", "reject", "demo"):
+            fn = {"status": W.get, "approve": W.approve, "reject": W.reject, "demo": W.demo}[action]
+            v = await run(fn, t, world)
+            out = _world_short(v)
+            if action == "demo":
+                out["note"] = "Building in the background; the walk-it link appears on the World page. Do not poll."
+            return out
+        if action == "apply":
+            return await run(W.apply, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = make | list | status | approve | reject | demo | apply")
+
+
+def _phys_short(v: dict) -> dict:
+    lab = v.get("lab") or {}
+    out = {"number": v.get("number"), "status": v.get("status"), "inputs": v.get("inputs"),
+           "settings": {k: (v.get("settings") or {}).get(k) for k in ("ticks", "gravity", "ccd", "ccd_min_speed", "why")},
+           "risk": v.get("risk"), "fluids": "not built yet"}
+    if lab:
+        out["lab"] = {"verdict": lab.get("verdict"), "passed": f"{lab.get('passed')}/{lab.get('total')}",
+                      "cases": [{"case": c["case"], "ok": c["ok"], "note": c["note"]} for c in lab.get("cases", [])],
+                      "before": (lab.get("before") or {}).get("say")}
+    if v.get("error"):
+        out["error"] = v["error"]
+    if v.get("status") == "testing":
+        out["note"] = "The lab runs in the background (well under a minute); its result shows on the Physics page. Do not poll."
+    return out
+
+
+async def game_physics(ctx: Ctx, action="", words="", inputs=None, id="", setup="", **_):
+    from ..employee import hire
+    from ..gamedesk import physics as P
+    from ..gamedesk import service as G
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, P.KEY):
+        raise ToolError("Physics Engine Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, "Physics setup")
+    run = asyncio.to_thread
+    try:
+        if action == "setup":
+            return _phys_short(await run(P.setup, t, words, inputs if isinstance(inputs, dict) else None, id))
+        if action == "list":
+            return {"setups": [_phys_short(v) for v in (await run(P.setups, t, id))[:10]]}
+        if action in ("status", "approve", "reject"):
+            fn = {"status": P.get, "approve": P.approve, "reject": P.reject}[action]
+            return _phys_short(await run(fn, t, setup))
+        if action == "apply":
+            return await run(P.apply, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = setup | list | status | approve | reject | apply")
+
+
 GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets,
-                     "game_qa": game_qa, "game_release": game_release}
+                     "game_qa": game_qa, "game_release": game_release, "game_world": game_world,
+                     "game_physics": game_physics}

@@ -117,13 +117,18 @@ progressive_web_app/enabled=false
 '''
 
 
+# Hoola's OWN autoloads (written by Hoola from approved data, never by the model): file -> autoload name. v0.395 Bible,
+# v0.416 assets, v0.417 the role packs (World = Procedural World Engineer, Physics = Physics Engine Developer).
+HOOLA_OWN = {"hoola_bible.gd": "HoolaBible", "hoola_assets.gd": "HoolaAssets", "hoola_world.gd": "HoolaWorld",
+             "hoola_physics.gd": "HoolaPhysics"}
+
+
 def files(title: str, orientation: str, scripts: dict[str, str]) -> dict[str, str]:
     """Every file of the Godot project: Hoola's fixed ones + her game's scripts."""
     proj = project_godot(title, orientation)
-    if "hoola_bible.gd" in scripts:                     # v0.395 the Game Bible is an autoload: global with no class cache
-        proj = proj.replace('HoolaProbe="*res://hoola_probe.gd"', 'HoolaProbe="*res://hoola_probe.gd"\nHoolaBible="*res://hoola_bible.gd"')
-    if "hoola_assets.gd" in scripts:                    # v0.416 the approved assets
-        proj = proj.replace('HoolaProbe="*res://hoola_probe.gd"', 'HoolaProbe="*res://hoola_probe.gd"\nHoolaAssets="*res://hoola_assets.gd"')
+    for fname, node in HOOLA_OWN.items():               # an autoload is global with no class cache (works headless)
+        if fname in scripts:
+            proj = proj.replace('HoolaProbe="*res://hoola_probe.gd"', f'HoolaProbe="*res://hoola_probe.gd"\n{node}="*res://{fname}"')
     out = {"project.godot": proj, "main.tscn": MAIN_TSCN, "export_presets.cfg": EXPORT_PRESETS, "hoola_probe.gd": PROBE}
     out.update(scripts)
     return out

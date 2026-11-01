@@ -2553,3 +2553,15 @@ body.albon{overflow:hidden}
 .rel-kit{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:10px}
 .rel-kit h4{margin:0 0 4px;font-size:14px}
 
+
+/* v0.417 GAME DESK ROLES - Worlds + Physics */
+#app .wd-body { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+#app .wd-prev { width: 260px; max-width: 100%; height: auto; border-radius: 8px; image-rendering: pixelated; border: 1px solid var(--line); }
+#app .wd-info { flex: 1; min-width: 240px; }
+#app .wd-new textarea, #app .gd-team .acts { width: 100%; }
+#app .wd-new input[type=number] { width: 160px; }
+#app .ph-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px 12px; }
+#app .ph-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--mut); }
+#app .ph-tbl { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+#app .ph-tbl th, #app .ph-tbl td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+#app .ph-tbl th { font-weight: 600; color: var(--mut); }

@@ -1069,6 +1069,25 @@ class Api {
   Future<Map<String, dynamic>> gameItchPush(String id, String rid, String hash) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/releases/$rid/itch/push', body: {'hash': hash},
           timeout: const Duration(seconds: 900)) as Map);
+  // v0.417 Game Desk roles: Procedural World Engineer + Physics Engine Developer
+  Future<Map<String, dynamic>> gameWorlds(String studio) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/worlds${studio.isEmpty ? '' : '?studio=${Uri.encodeQueryComponent(studio)}'}',
+          timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameWorldNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/worlds', body: body, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> gameWorldDo(String id, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/world/${Uri.encodeComponent(id)}/$what', body: {}) as Map);
+  Future<Map<String, dynamic>> gameWorldsApply(String studio) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/worlds/apply', body: {'studio': studio}) as Map);
+  Future<Map<String, dynamic>> gamePhysics(String studio) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/physics${studio.isEmpty ? '' : '?studio=${Uri.encodeQueryComponent(studio)}'}',
+          timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gamePhysicsNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/physics', body: body) as Map);
+  Future<Map<String, dynamic>> gamePhysicsDo(String id, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/physics/${Uri.encodeComponent(id)}/$what', body: {}) as Map);
+  Future<Map<String, dynamic>> gamePhysicsApply(String studio) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/physics/apply', body: {'studio': studio}) as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk

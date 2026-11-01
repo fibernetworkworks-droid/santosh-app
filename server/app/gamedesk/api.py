@@ -26,6 +26,19 @@ POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
 POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
 
+v0.417 Role packs (Phase 7: the Game Desk roles; each needs ITS employee hired for changes; reading is free):
+GET    /api/gamedesk/worlds?studio=             Procedural World Engineer: worlds + kinds + defaults
+POST   /api/gamedesk/worlds                     {words?, kind?, seed?, params?, studio?, key?}  generate + check (a draft)
+GET    /api/gamedesk/world/{wid}                one world (checks, stats, files, demo)
+POST   /api/gamedesk/world/{wid}/approve|reject|demo   her OK / no / build the walk-it demo (background)
+POST   /api/gamedesk/worlds/apply               {studio}  approved worlds into the live game (HoolaWorld, no model)
+GET    /api/gamedesk/world/{wid}/file/{name}?sig   preview.png | world.json | heightmap.png | world.glb (signed)
+GET    /api/gamedesk/physics?studio=            Physics Engine Developer: setups (inputs, chosen settings, lab)
+POST   /api/gamedesk/physics                    {words?, inputs?: {speed, wall, ticks, gravity, g3d}, studio?}  lab runs
+GET    /api/gamedesk/physics/{pid}
+POST   /api/gamedesk/physics/{pid}/approve|reject
+POST   /api/gamedesk/physics/apply              {studio}  approved settings into the live game (HoolaPhysics)
+
 v0.416 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
 GET    /api/gamestudio/{id}/releases            releases + where each platform can be built + package + itch key set?
 POST   /api/gamestudio/{id}/releases            {platforms: [linux, windows, macos, android], android_format: apk|aab}
@@ -471,6 +484,88 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def rel_itch_push(sid: str, rid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
         """HER TAP on the itch.io card - the only way anything is uploaded."""
         return await pcall(PF.itch_push, tenant, sid, rid, str(_b(body).get("hash") or ""))
+
+    # ------------------------------------------------------------ v0.417 role packs: Procedural World + Physics
+    from . import physics as PH
+    from . import world as WD
+
+    def _working(tenant: str, key: str, name: str) -> None:
+        from ..employee import hire
+        if not hire.is_working(tenant, key):
+            raise HTTPException(400, f"{name} abhi hired nahi hai (ya paused hai). Employees mein hire kijiye.")
+
+    @r.get("/api/gamedesk/worlds", dependencies=[Depends(require_key)])
+    async def worlds_list(studio: str = "", tenant: str = Depends(current_tenant)):
+        from ..employee import hire
+        return {"worlds": await call(WD.worlds, tenant, studio), "kinds": list(WD.KINDS), "defaults": WD.DEFAULTS,
+                "legend": {k: [n for n, _c, _w in v] for k, v in WD.LEGEND.items()},
+                "hired": await asyncio.to_thread(hire.is_working, tenant, WD.KEY)}
+
+    @r.post("/api/gamedesk/worlds", dependencies=[Depends(require_key)])
+    async def worlds_make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        _working(tenant, WD.KEY, "Procedural World Engineer")
+        seed = b.get("seed")
+        return await call(WD.make, tenant, str(b.get("words") or ""), str(b.get("kind") or ""),
+                          int(seed) if str(seed or "").lstrip("-").isdigit() else None,
+                          b.get("params") if isinstance(b.get("params"), dict) else None,
+                          str(b.get("studio") or ""), str(b.get("key") or ""))
+
+    @r.post("/api/gamedesk/worlds/apply", dependencies=[Depends(require_key)])
+    async def worlds_apply(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _working(tenant, WD.KEY, "Procedural World Engineer")
+        return await call(WD.apply, tenant, str(_b(body).get("studio") or ""))
+
+    @r.get("/api/gamedesk/world/{wid}", dependencies=[Depends(require_key)])
+    async def world_get(wid: str, tenant: str = Depends(current_tenant)):
+        return await call(WD.get, tenant, wid)
+
+    @r.post("/api/gamedesk/world/{wid}/{what}", dependencies=[Depends(require_key)])
+    async def world_do(wid: str, what: str, tenant: str = Depends(current_tenant)):
+        _working(tenant, WD.KEY, "Procedural World Engineer")
+        fn = {"approve": WD.approve, "reject": WD.reject, "demo": WD.demo}.get(what)
+        if fn is None:
+            raise HTTPException(404, "approve | reject | demo")
+        return await call(fn, tenant, wid)
+
+    @r.get("/api/gamedesk/world/{wid}/file/{name}")
+    def world_file(wid: str, name: str, sig: str = ""):
+        p = WD.world_file(wid, name, sig)
+        if p is None:
+            raise HTTPException(404, "link purana / galat hai")
+        media = {".png": "image/png", ".json": "application/json", ".glb": "model/gltf-binary"}.get(p.suffix, "application/octet-stream")
+        return FileResponse(p, media_type=media, headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=600"},
+                            filename=None if p.suffix == ".png" else p.name)
+
+    @r.get("/api/gamedesk/physics", dependencies=[Depends(require_key)])
+    async def physics_list(studio: str = "", tenant: str = Depends(current_tenant)):
+        from ..employee import hire
+        return {"setups": await call(PH.setups, tenant, studio), "defaults": PH.DEFAULTS, "limits": PH.LIMITS,
+                "hired": await asyncio.to_thread(hire.is_working, tenant, PH.KEY)}
+
+    @r.post("/api/gamedesk/physics", dependencies=[Depends(require_key)])
+    async def physics_make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        _working(tenant, PH.KEY, "Physics Engine Developer")
+        return await call(PH.setup, tenant, str(b.get("words") or ""),
+                          b.get("inputs") if isinstance(b.get("inputs"), dict) else None, str(b.get("studio") or ""))
+
+    @r.post("/api/gamedesk/physics/apply", dependencies=[Depends(require_key)])
+    async def physics_apply(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _working(tenant, PH.KEY, "Physics Engine Developer")
+        return await call(PH.apply, tenant, str(_b(body).get("studio") or ""))
+
+    @r.get("/api/gamedesk/physics/{pid}", dependencies=[Depends(require_key)])
+    async def physics_get(pid: str, tenant: str = Depends(current_tenant)):
+        return await call(PH.get, tenant, pid)
+
+    @r.post("/api/gamedesk/physics/{pid}/{what}", dependencies=[Depends(require_key)])
+    async def physics_do(pid: str, what: str, tenant: str = Depends(current_tenant)):
+        _working(tenant, PH.KEY, "Physics Engine Developer")
+        fn = {"approve": PH.approve, "reject": PH.reject}.get(what)
+        if fn is None:
+            raise HTTPException(404, "approve | reject")
+        return await call(fn, tenant, pid)
 
     @r.get("/play/{token}")
     def play_root(token: str):

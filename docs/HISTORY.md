@@ -15755,3 +15755,64 @@ Verified here with the real Godot 4.7.2: release R-001 of a test game - Linux 28
 images + texts made; rating draft = E / PEGI 3 for a no-violence game. Tests `test_v0416_game_platforms.py` (9).
 NOT VERIFIED: the Android build (no Android SDK in this sandbox; the SDK install was refused here) - the first build
 in her builds repo is what will confirm it; itch.io push not run against a real account; iOS not built.
+
+## v0.419.0 GAME DESK ROLES 1: PROCEDURAL WORLDS + PHYSICS LAB (Hoola Game Engine plan Phase 7 batch 1 = Game Desk plan phase 2) - 1 Nov 2026
+Owner: "GO PHASE 7". Phase 7 = the nine other Game Desk roles in batches (docs/GAME_DESK_PLAN.md section 5). This is
+batch 1: the Procedural World Generation Engineer and the Physics Engine Developer, both LIVE hire cards now. Batches 2-4
+(spatial audio + haptics; multiplayer + AR/VR; VFX TD + simulation + digital twin) are not built yet.
+
+ROLE PACKS (`gamedesk/packs.py`): each role writes its OWN autoload into every build of her game, the same rule as the
+Bible and the assets - Hoola writes it from data she approved, the model only reads it (ai.GUIDE) and never edits or
+re-outputs it. `template.HOOLA_OWN` lists Hoola's autoloads (bible, assets, world, physics) for the project file and the
+guard; `service._own_packs` drops anything the model wrote under those names and leaves no stale file behind; a pack
+that fails never breaks a build. A pack can also serve a Hoola-made demo at /play/<token>/ (`packs.demo_build`).
+
+PROCEDURAL WORLDS (`gamedesk/world.py`, table `game_worlds`, tool `game_world`, /api/gamedesk/world*):
+- kinds terrain (fbm value noise + island mask, biomes from height + moisture, rivers by steepest descent that carve on
+  through pits to the sea, passes cut so the land joins, villages), dungeon (rooms, Prim MST corridors + loops, exit =
+  farthest room, treasure), city (road grid with gaps that never split the network, blocks, buildings only where a
+  real road is beside them, taller near the centre, parks / squares), level (side view: ground, gaps, steps, floating
+  platforms, spikes, coins, goal). numpy only, no model, no money; her words -> params via a small model call that
+  only PICKS numbers (clamped in code), rules when there is no model.
+- CHECKED in code: generated twice (fingerprints must match = same seed same world); flood-fill reachability from the
+  spawn for every village / room / exit / treasure, a stuck spawn named, a cut-off landmass named with its share; a
+  level is walked by a jump graph that follows the real ARC (`can_jump`: full height only up to half the jump width,
+  level at full width) with head room - the first generator failed 18 of 60 levels against this check (two gaps in a
+  row, spikes on jump edges, back-to-back spikes, steps right after a gap) and was fixed until 0 of 560 fail across 7
+  jump settings; cities first left buildings with no road beside them (fixed: frontage is checked on real road cells).
+- files: preview.png, world.json, 16-bit heightmap.png, world.glb (glTF 2.0 binary written from numpy, parsed back by
+  `read_glb` before it is kept), each behind a signed link.
+- walk-it demo: Hoola's own explorer (top view: walk by keys / taps) or runner (side view: the jump is worked out from
+  the level's own jump height / width) built in Godot, exported to Web and played by the usual playtest; served at
+  /play/<token>/.
+- her OK -> HoolaWorld in her game (tile / walkable / solid / height / spawn / points / sprite / image...), rebuilt
+  through G.data_build with no model call; one approved world per key.
+
+PHYSICS LAB (`gamedesk/physics.py`, table `game_physics`, tool `game_physics`, /api/gamedesk/physics*):
+- her numbers (fastest body px/s, thinnest wall px, ticks, gravity) from the inputs, her words or the biggest 'speed'
+  in her Game Bible; settings chosen in CODE (`choose`): keep her ticks when safe, raise them when <= 120 is enough,
+  else continuous collision on fast bodies.
+- the lab = Hoola's own GDScript run headless with --fixed-fps: free fall (vs 1/2 g t^2 AND vs the integrator's own
+  step answer y_n = g dt^2 n(n+1)/2 - measured 498.17 px = 0.0% from the step answer, 1.67% from the textbook, so the
+  error is explained), projectile range (2.04%), elastic collision masses 1 / 2 (v -100 / 200 exactly, momentum and
+  energy 0.0%), tunnelling at HER speed into HER wall (six bullets per mode from six start points, without CCD /
+  cast-ray / cast-shape), six-box stack (drift 0.23 px, sink 1.7 px), 3D drop (1.67%), and the whole lab twice
+  (fingerprints must match). When Hoola changes her settings, her old settings run once more as the evidence.
+- FOUND IN THE REAL ENGINE (Godot 4.7.2), and the rules were changed to match: (1) without CCD a body is pushed out on
+  whichever side its centre is nearer, so once a step can carry the centre past the MIDDLE of the wall it stops or
+  goes through depending on where the steps land (the first lab showed 900 px/s "through" a 16 px wall but 3000 px/s
+  "stopped" by an 8 px one - luck, not physics; with six start points 3000 / 8 goes through 5 of 6) -> safe without
+  CCD only when one step <= half the wall; (2) of the two CCD modes only CAST_RAY stopped every case; CAST_SHAPE
+  behaved like no CCD -> HoolaPhysics.fast() uses cast-ray, and the lab keeps measuring both.
+- only a PASS can be approved; her OK -> HoolaPhysics in her game (ticks, gravity, fast(), needs_ccd(), step_ok(),
+  jump_velocity / jump_height / air_time / range_of with the formulas the lab checked).
+- Fluids are NOT part of this pack yet (said on the card, in the tool and in the hire card).
+
+Console: Game Desk home "Game Desk team" + board buttons Worlds / Physics (gsWorld / gsPhysics), the Game Desk shows in
+the sidebar when any Game Desk role is hired. Phone: lib/ui/game_roles_screen.dart (GameWorldsScreen /
+GamePhysicsScreen) from the desk and the project screen. Tests: test_v0419_game_roles.py (20, two run the real Godot
+when it is installed).
+Verified here with Godot 4.7.2: terrain and level walk-it demos built, exported and played (46 / 45 fps on the server,
+2.8 / 1.4 s load); the physics lab PASS 7/7 for 400/16, 900/16 (113 ticks), 3000/8 and 20000/4 (cast-ray), each in
+about half a second. NOT VERIFIED: on her VPS, and a model-written game actually reading HoolaWorld / HoolaPhysics
+(the guide tells it how; the next real game build will show it).

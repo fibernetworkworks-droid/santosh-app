@@ -15,7 +15,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', architect: 'archdesk'};   // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
+  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', architect: 'archdesk'};   // v0.417 the Game Desk roles share it
+    // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
   async function hub(el) {
@@ -806,8 +807,11 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_QA = false;           // v0.416 the QA farm + bugs page of the open project
   let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
+  let GS_ROLE = '';            // v0.417 a role page open: 'world' | 'physics' ('' = none)
+  let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
+    if (GS_ROLE) return GS_ROLE === 'world' ? gsWorld(el) : gsPhysics(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -821,8 +825,12 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="acts"><select id="gdOr" aria-label="Screen">${(d.orientations || ['portrait']).map(o => `<option value="${esc(o)}">${esc(o[0].toUpperCase() + o.slice(1))}</option>`).join('')}</select>
           <button class="btn go" type="button" id="gdNew"${h.ready ? '' : ' disabled'}>Write the design</button></div>
         <p class="muted em-small">A short design doc comes first; nothing is built until you say OK. The play link stays private until you share it.</p></div>
+      <div class="tile gl gd-team"><h3>Game Desk team</h3><p class="muted em-small">Each role is its own employee (hire it in Employees). Open a project's board to work on that game, or try them here on their own.</p>
+        <div class="acts"><button class="btn soft" type="button" data-gs-role="world">Worlds (Procedural World Engineer)</button>
+          <button class="btn soft" type="button" data-gs-role="physics">Physics (Physics Engine Developer)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
+    el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
     el.querySelectorAll('[data-gs-open]').forEach(b => b.addEventListener('click', () => { GS_OPEN = b.dataset.gsOpen; game(el); }));
     el.querySelector('#gsNew')?.addEventListener('click', async e => {
       const game_ = el.querySelector('#gsGame').value, goal = el.querySelector('#gsGoal').value.trim();
@@ -1202,6 +1210,101 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if ((d.releases || []).some(r => r.status === 'building')) GTIMER = setTimeout(() => { if (visible(el) && GS_REL) gsRelease(el, id); }, 6000);
   }
 
+  // ---------------------------------------------------------------- v0.417 Game Desk roles: Worlds + Physics
+  const WST = {draft: ['warn', 'Waiting for your OK'], approved: ['ok', 'In the game'], rejected: ['', 'Not used'], failed: ['bad', 'Failed its checks'],
+               testing: ['v', 'Lab running']};
+  function roleBack(el) { GS_ROLE = ''; if (GS_ROLE_SID) { GS_OPEN = GS_ROLE_SID; gsBoard(el, GS_ROLE_SID); } else game(el); }
+  function checkList(ch) {
+    return `${(ch.errors || []).map(e => `<div class="badc em-small">✕ ${esc(e)}</div>`).join('')}${(ch.warnings || []).map(w => `<div class="muted em-small">! ${esc(w)}</div>`).join('')}
+      ${(ch.passed || []).map(x => `<div class="em-small">✓ ${esc(x)}</div>`).join('')}`;
+  }
+  async function gsWorld(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/worlds' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="wdBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Worlds</h2>
+        ${d.hired ? tag('ok', 'Procedural World Engineer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">Worlds made from rules and a seed by code (no AI picture, free). Each one is made twice to prove the same seed gives the same world, and every village, room, exit and goal is checked reachable. Nothing goes into your game before your OK.</p>
+      <div class="tile gl wd-new"><h3>New world</h3>
+        <textarea id="wdWords" rows="2" maxlength="600" placeholder="e.g. a big island with two rivers and a snowy mountain · a dungeon with 15 rooms · a short platformer level, my player jumps 3 tiles up" aria-label="Your world"></textarea>
+        <div class="acts"><select id="wdKind" aria-label="Kind"><option value="">Kind: from my words</option>${(d.kinds || []).map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('')}</select>
+          <input id="wdSeed" type="number" min="0" placeholder="Seed (optional)" aria-label="Seed">
+          <button class="btn go" type="button" id="wdGo"${d.hired ? '' : ' disabled'}>Make the world</button>
+          ${sid ? '<button class="btn soft" type="button" id="wdApply">Put approved worlds in the game</button>' : ''}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Procedural World Generation Engineer in Employees to make worlds.</p>'}</div>
+      ${(d.worlds || []).map(w => { const [c, n] = WST[w.status] || ['', w.status]; const f = w.files || {}, st = w.stats || {}, dm = w.demo || {};
+        return `<section class="tile gl wd-card"><div class="em-h"><h3>${esc(w.number)} · ${esc(w.key)} <span class="muted">${esc(w.kind)} · seed ${num(w.seed)} · v${num(w.version)}</span></h3>${tag(c, n)}</div>
+          <div class="wd-body">${f['preview.png'] ? `<img class="wd-prev" src="${esc(f['preview.png'])}" alt="Preview of world ${esc(w.number)}" loading="lazy">` : ''}
+          <div class="wd-info"><p class="muted em-small">${num(st.w)} × ${num(st.h)} cells · made in ${num(st.ms)} ms${st.reachable_share != null ? ' · ' + Math.round(st.reachable_share * 100) + '% reachable' : ''}${st.glb ? ' · 3D mesh ' + num(st.glb.triangles) + ' triangles' : ''}</p>
+            ${checkList(w.checks || {})}
+            <div class="acts">${['world.json', 'heightmap.png', 'world.glb'].filter(k => f[k]).map(k => `<a class="btn soft gs-mini" href="${esc(f[k])}">${esc(k)}</a>`).join('')}</div>
+            <div class="acts">${w.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-wd="approve" data-id="${esc(w.id)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-wd="reject" data-id="${esc(w.id)}">No</button>` : ''}
+              ${w.status !== 'failed' ? `<button class="btn soft gs-mini" type="button" data-wd="demo" data-id="${esc(w.id)}"${dm.status === 'building' ? ' disabled' : ''}>${dm.status === 'building' ? 'Building the walk-it link…' : dm.play_url ? 'Build the walk-it link again' : 'Walk it in the browser'}</button>` : ''}
+              <button class="btn soft gs-mini" type="button" data-wd-again="${esc(w.id)}">Same settings, new seed</button>
+              ${dm.play_url ? `<a class="btn go gs-mini" href="${esc(dm.play_url)}" target="_blank" rel="noopener">Walk it</a>` : ''}</div>
+            ${dm.status === 'failed' ? `<div class="badc em-small">Walk-it link did not build: ${esc((dm.errors || []).join('; '))}</div>` : ''}
+            ${dm.numbers && dm.numbers.fps_server ? `<p class="muted em-small">Played by Hoola: ${num(dm.numbers.fps_server)} fps on the server, loads in ${num(dm.numbers.load_s)} s, ${num(dm.numbers.download_mb)} MB</p>` : ''}</div></div></section>`; }).join('') || '<div class="empty">No worlds yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsWorld(el); };
+    el.querySelector('#wdBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#wdGo').addEventListener('click', e => {
+      const words = el.querySelector('#wdWords').value.trim(), kind = el.querySelector('#wdKind').value, seed = el.querySelector('#wdSeed').value;
+      if (!words && !kind) { toast('Write your world in a line, or pick a kind.', true); return; }
+      e.target.disabled = true; e.target.textContent = 'Making…';
+      go(() => api('POST', '/api/gamedesk/worlds', {words, kind, seed: seed === '' ? null : Number(seed), studio: sid}), 'Made and checked.');
+    });
+    el.querySelector('#wdApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/worlds/apply', {studio: sid}), 'Rebuilding the game with the approved worlds.'));
+    el.querySelectorAll('[data-wd]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/world/${encodeURIComponent(b.dataset.id)}/${b.dataset.wd}`),
+      {approve: 'Approved. Put it in the game when you are ready.', reject: '', demo: 'Building the walk-it link (under a minute).'}[b.dataset.wd])));
+    el.querySelectorAll('[data-wd-again]').forEach(b => b.addEventListener('click', () => { const w = (d.worlds || []).find(x => x.id === b.dataset.wdAgain); if (!w) return;
+      go(() => api('POST', '/api/gamedesk/worlds', {kind: w.kind, params: w.params, key: w.key, studio: sid}), 'A new seed, same rules.'); }));
+    if ((d.worlds || []).some(w => (w.demo || {}).status === 'building')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'world') gsWorld(el); }, 5000);
+  }
+
+  async function gsPhysics(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/physics' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const df = d.defaults || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="phBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Physics</h2>
+        ${d.hired ? tag('ok', 'Physics Engine Developer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">Hoola works out the settings from your numbers, then proves them in Godot itself: free fall, a jump's range, a bounce, your fastest body against your thinnest wall (with and without continuous collision), a box stack, a 3D drop, and the whole lab twice. Every case is compared with its formula. Fluids are not part of this yet.</p>
+      <div class="tile gl ph-new"><h3>New physics setup</h3>
+        <div class="ph-grid"><label>Fastest body (px/s)<input id="phSpeed" type="number" min="1" value="${num(df.speed)}"></label>
+          <label>Thinnest wall (px)<input id="phWall" type="number" min="1" value="${num(df.wall)}"></label>
+          <label>Physics ticks / s<input id="phTicks" type="number" min="30" max="240" value="${num(df.ticks)}"></label>
+          <label>Gravity (px/s²)<input id="phG" type="number" min="0" value="${num(df.gravity)}"></label></div>
+        <div class="acts"><button class="btn go" type="button" id="phGo"${d.hired ? '' : ' disabled'}>Run the physics lab</button>
+          ${sid ? '<button class="btn soft" type="button" id="phApply">Put approved physics in the game</button>' : ''}</div>
+        ${sid ? '<p class="muted em-small">With a project, the fastest speed in your Game Bible is used when you leave the speed as it is.</p>' : ''}
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Physics Engine Developer in Employees to run the lab.</p>'}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const lab = x.lab || {}, st = x.settings || {}, i = x.inputs || {};
+        return `<section class="tile gl ph-card"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${num(i.speed)} px/s · ${num(i.wall)} px wall · ${num(i.ticks)} ticks · g ${num(i.gravity)}</span></h3>${tag(c, n)}${lab.verdict ? tag(lab.verdict === 'PASS' ? 'ok' : 'bad', lab.verdict + ' ' + num(lab.passed) + '/' + num(lab.total)) : ''}</div>
+          <p class="em-small"><b>Settings:</b> ${num(st.ticks)} ticks · gravity ${num(st.gravity)}${st.ccd ? ' · continuous collision (cast-ray) above ' + num(st.ccd_min_speed) + ' px/s' : ''} - ${esc(st.why || '')}</p>
+          ${(lab.before || {}).say ? `<p class="em-small"><b>Why:</b> ${esc(lab.before.say)}</p>` : ''}
+          ${(lab.cases || []).length ? `<table class="ph-tbl"><thead><tr><th>Case</th><th>Measured</th><th>Formula</th><th></th></tr></thead><tbody>${lab.cases.map(k => `<tr><td>${esc(k.case)}<div class="muted em-small">${esc(k.note)}</div></td>
+            <td>${esc(typeof k.measured === 'object' ? Object.entries(k.measured).map(([a, b]) => a + ': ' + b).join(' · ') : String(k.measured))}</td><td>${esc(String(typeof k.expected === 'object' ? Object.entries(k.expected).map(([a, b]) => a + ': ' + b).join(' · ') : k.expected))}</td>
+            <td>${tag(k.ok ? 'ok' : 'bad', k.ok ? 'pass' : 'fail')}</td></tr>`).join('')}</tbody></table>` : (x.status === 'testing' ? '<p class="muted em-small">The lab is running in Godot…</p>' : '')}
+          ${x.error ? `<div class="badc em-small">${esc(x.error)}</div>` : ''}
+          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-ph="approve" data-id="${esc(x.id)}">OK, use these settings</button><button class="btn soft gs-mini" type="button" data-ph="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">No physics setups yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsPhysics(el); };
+    el.querySelector('#phBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#phGo').addEventListener('click', e => {
+      const v = id => Number(el.querySelector(id).value);
+      const inputs = {wall: v('#phWall'), ticks: v('#phTicks'), gravity: v('#phG')};
+      if (!(sid && v('#phSpeed') === Number(df.speed))) inputs.speed = v('#phSpeed');
+      e.target.disabled = true; e.target.textContent = 'Starting…';
+      go(() => api('POST', '/api/gamedesk/physics', {inputs, studio: sid}), 'The lab is running in Godot.');
+    });
+    el.querySelector('#phApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/physics/apply', {studio: sid}), 'Rebuilding the game with the approved physics.'));
+    el.querySelectorAll('[data-ph]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/physics/${encodeURIComponent(b.dataset.id)}/${b.dataset.ph}`),
+      b.dataset.ph === 'approve' ? 'Approved. Put it in the game when you are ready.' : '')));
+    if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'physics') gsPhysics(el); }, 4000);
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
     if (GS_BIBLE) return gsBible(el, id);
@@ -1222,6 +1325,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}
         <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button>
         <button class="btn soft" type="button" id="gsRelBtn">Release</button>
+        <button class="btn soft" type="button" id="gsWorldBtn">Worlds</button>
+        <button class="btn soft" type="button" id="gsPhysBtn">Physics</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
@@ -1267,11 +1372,13 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>`;
     const q = encodeURIComponent(p.id);
     const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
-    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; GS_REL = false; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; GS_REL = false; GS_ROLE = ''; el.innerHTML = ''; game(el); });
     el.querySelector('#gsBib').addEventListener('click', () => { GS_BIBLE = true; gsBible(el, id); });
     el.querySelector('#gsAst').addEventListener('click', () => { GS_ASSETS = true; gsAssets(el, id); });
     el.querySelector('#gsQaBtn').addEventListener('click', () => { GS_QA = true; gsQa(el, id); });
     el.querySelector('#gsRelBtn').addEventListener('click', () => { GS_REL = true; gsRelease(el, id); });
+    el.querySelector('#gsWorldBtn').addEventListener('click', () => { GS_ROLE = 'world'; GS_ROLE_SID = id; gsWorld(el); });
+    el.querySelector('#gsPhysBtn').addEventListener('click', () => { GS_ROLE = 'physics'; GS_ROLE_SID = id; gsPhysics(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

@@ -112,6 +112,16 @@ HARD RULES (the build fails otherwise)
   "red_bat" -> sprite "red_bat", level "l1" -> background "bg_l1"; sounds "sfx_jump" ...). ALWAYS keep the drawn
   fallback when has(key) is false. If HoolaAssets.CREDITS is not empty, show it in small text on the title screen.
   Load no other files.
+- WORLD: if the files include hoola_world.gd (the HoolaWorld autoload, written by Hoola from an approved generated world -
+  NEVER edit or re-output it), build the map from it instead of inventing one: HoolaWorld.keys(), HoolaWorld.size(key)
+  -> Vector2i, tile(x, y, key) -> int, tile_name(id, key), walkable(x, y, key), solid(x, y, key), height(x, y, key)
+  0..1, spawn(key) -> Vector2i, points("villages" / "rooms" / "exit" / "treasure" / "goal" / "coins", key) -> Array of
+  Vector2i, sprite(key, cell_px) -> Sprite2D of the whole map (fast; add it under a Node2D), color(id, key).
+  key "" = the first world. A "side" view world is a platformer level (y = 0 is the top row).
+- PHYSICS: if the files include hoola_physics.gd (the HoolaPhysics autoload, settings PROVED in Hoola's physics lab -
+  NEVER edit or re-output it), never set physics ticks or gravity yourself: it already did. Use
+  HoolaPhysics.jump_velocity(height_px) for jumps, jump_height(v), air_time(v), range_of(vx, vy), gravity(), and call
+  HoolaPhysics.fast(body) on every fast RigidBody2D when HoolaPhysics.needs_ccd(speed) is true.
 - GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
   NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
   HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])
