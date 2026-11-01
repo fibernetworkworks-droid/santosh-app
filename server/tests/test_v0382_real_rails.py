@@ -453,3 +453,15 @@ def test_records_are_untouched_by_the_config_guard():
     from app.enterprise import run as RUN
     RUN._guard_target("salesforce", "data", "production", "Account", "odata")
     RUN._guard_target("sap", "data", "production", "A_SalesOrder", "odata")
+
+
+def test_cannot_check_a_slug_is_not_the_same_as_the_slug_being_wrong():
+    """A bug found in self-review before shipping: with Composio unconfigured, `tool_exists` returned False,
+    so the plan guard would have refused EVERY composio-rail run with "no such tool" - blaming her slug for
+    our own missing key. Unknown must stay unknown."""
+    from app.bazar import composio as cmp
+    from app.enterprise import run as RUN
+    assert cmp.configured() is False
+    assert cmp.tool_exists("NETSUITE_CREATE_INVOICE") is None      # cannot ask
+    assert cmp.tool_exists("no spaces allowed!") is False          # definitely not a slug
+    RUN._guard_target("netsuite", "data", "test", "NETSUITE_CREATE_INVOICE", "composio")   # must not raise

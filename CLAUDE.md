@@ -153,6 +153,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.388 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
+  (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
+  CSRF_NONCE and a Reserve/UndoReservation check-out (a half-run used to risk leaving HER object LOCKED); Salesforce
+  Tooling cannot write CustomField/CustomObject/Apex in a live org AT ALL -> refused at plan time + Metadata REST
+  `deployRequest` (`sfmeta.py`, checkOnly = the real dry run, 10-day quick deploy); Composio toolkit is not
+  slug.split('_')[0] (wrong for 525/1694) + 'version: latest' is rejected + ok no longer defaults True; new
+  `ambiguous` row state (a retry can double-post); bank_int / health_int / teamcenter caps named the WRONG rule.
+  NOT VERIFIED: no live tenant has answered any of it - the connect screen still does not exist.
 - Current version: v0.387.0 (pubspec 0.387.0+431). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam

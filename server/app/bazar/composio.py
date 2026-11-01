@@ -302,10 +302,14 @@ def tool_exists(slug: str) -> bool | None:
     stake, instead of after her tap with half the rows already written."""
     if not re.fullmatch(r"[A-Za-z0-9_]{3,120}", slug or ""):
         return False
+    if not configured():
+        return None              # not "this tool does not exist" - we simply cannot ask. Never refuse on it.
     try:
         return bool(_cached("tk:" + slug.lower(), lambda: client().tool(slug)))
-    except ComposioError:
-        return False
+    except ComposioError as ex:
+        # a 404 means the slug is wrong; anything else (key, network, outage) means we could not check, and
+        # refusing her run because OUR lookup failed would be the wrong way round.
+        return False if "404" in str(ex) or "not found" in str(ex).lower() else None
     except Exception:                                    # noqa: BLE001
         return None
 
