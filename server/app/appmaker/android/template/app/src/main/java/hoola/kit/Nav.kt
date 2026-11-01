@@ -231,7 +231,8 @@ private fun Rail(nav: Nav) {
     val c = H.c
     NavigationRail(containerColor = c.surface) {
         nav.tabs.forEach { t ->
-            NavigationRailItem(selected = nav.stack.firstOrNull() == t.id, onClick = { nav.go(t.id) },   // v0.365 the list's tab stays lit icon = { HIcon(t.icon) }, label = { Text(T(t.label), maxLines = 1) })
+            // v0.365 the list's tab stays lit while a record is open beside it
+            NavigationRailItem(selected = nav.stack.firstOrNull() == t.id, onClick = { nav.go(t.id) }, icon = { HIcon(t.icon) }, label = { Text(T(t.label), maxLines = 1) })
         }
     }
 }
