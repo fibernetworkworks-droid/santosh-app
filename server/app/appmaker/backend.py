@@ -28,10 +28,15 @@ from ..site import webapp as W
 from .models import AppProject
 
 log = logging.getLogger("santosh.appmaker.backend")
+# v0.364 the values the server adds to an order (stored as "_<key>" so a list's own field of that name is never overwritten)
+SYS_KEYS = ("subtotal", "discount", "coupon", "coupon_note", "delivery", "delivery_note", "slot", "slot_label")
 STATS = {"schemas": 0, "orders": 0, "dedup": 0, "notes": 0, "notes_capped": 0, "deleted_accounts": 0}
 CID = re.compile(r"^[A-Za-z0-9_-]{8,48}$")
 NOTE_CAP_PER_HOUR = 30
 SCHEMA_V = 2                     # v0.319 photo / location / paid fields
+MAX_DOC = 10 * 1024 * 1024        # v0.346 a PDF (prescription, ID proof, bill, resume) - kept as sent, checked, 10 MB
+# a PDF that could run something when opened is refused (scripts, launch / open actions, embedded files, forms engine, media)
+PDF_RISK = re.compile(rb"/(JavaScript|JS|Launch|EmbeddedFiles?|OpenAction|AA|RichMedia|XFA|SubmitForm|ImportData|GoToR)\b")
 MAX_UPLOAD = 6 * 1024 * 1024     # what the phone may send (it shrinks to ~1600 px first); stored re-encoded, smaller
 STATS.update({"uploads": 0, "upload_refused": 0, "paid_claims": 0, "updates": 0})
 _KEYS: dict[str, tuple[float, str]] = {}           # app_key -> (when, project id)
@@ -130,7 +135,8 @@ DM_TYPE = {"text": "text", "long": "long_text", "int": "number", "decimal": "num
            "date": "date", "datetime": "text", "time": "text", "phone": "phone", "email": "email", "url": "text",
            "enum": "choice", "ref": "text", "uuid": "text", "file": "photo", "point": "location"}
 # v0.319 kinds the app backend adds on top of the web-app engine's vocabulary (kept through clean_schema, checked here)
-EXTRA_TYPES = ("photo", "location", "scan")        # v0.340 scan = a barcode / QR read by the camera (or typed)
+EXTRA_TYPES = ("photo", "location", "scan", "file")    # v0.346 file = a PDF document        # v0.340 scan = a barcode / QR read by the camera (or typed)
+DOC_NAME = re.compile(r"(?i)(document|doc_|attachment|report|prescription|invoice|bill|resume|cv|proof|certificate|receipt|agreement|kyc)")
 SCAN_NAME = re.compile(r"(?i)(barcode|^sku$|^tag$|serial|qr_?code|^imei$)")
 LOC = re.compile(r"^\s*(-?\d{1,2}(?:\.\d{1,7})?)\s*,\s*(-?\d{1,3}(?:\.\d{1,7})?)\s*$")
 FILE_ID = re.compile(r"^f_[0-9a-f]{16}$")
@@ -151,14 +157,16 @@ def _complex_lists(plan: dict[str, Any], goal: str = "") -> list[dict[str, Any]]
     ents.sort(key=lambda e: order.get(D.ENTITIES[e][0], 99))
     out = []
     for e in ents:
-        fields, extra = [], {"photo": 0, "location": 0, "scan": 0}
+        fields, extra = [], {"photo": 0, "location": 0, "scan": 0, "file": 0}
         for f in D.parse_fields(D.ENTITIES[e][2]):
             t = DM_TYPE.get(f["type"])
             if t == "text" and SCAN_NAME.search(f["name"]):      # v0.340 codes on labels are scanned, not typed
                 t = "scan"
+            if t == "photo" and DOC_NAME.search(f["name"]):      # v0.346 papers are PDFs (a photo still works there)
+                t = "file"
             if t in extra:                      # at most 2 photos and 1 location per staff list
                 extra[t] += 1
-                if extra[t] > (2 if t in ("photo", "scan") else 1):
+                if extra[t] > (2 if t in ("photo", "scan", "file") else 1):
                     continue
             if not t or W._slug(f["name"]) in ("id", "owner", "created", "updated") or \
                     re.search(r"(?i)(password|pin|otp|cvv|card|aadhaar|pan_no|account_no|ifsc|token|secret)", f["name"]):
@@ -219,7 +227,8 @@ def ensure(r: AppProject) -> dict[str, Any]:
     # v0.319 an older backend is upgraded in place: lists only GAIN fields (photo / location / paid), rows are untouched
     old_changes = be.get("changes") or []
     be = {"schema": schema_for(r), "made": be.get("made") or now().isoformat(), "v": SCHEMA_V, "rev": int(be.get("rev") or 0),
-          "changes": old_changes, **({"upgraded": now().isoformat()} if be.get("made") else {})}
+          "changes": old_changes, **({"upgraded": now().isoformat()} if be.get("made") else {}),
+          **({"gst": be["gst"]} if be.get("gst") else {})}         # v0.355 her GST details + invoice numbers survive an upgrade
     for ch in old_changes:                     # v0.325 her own data changes survive an upgrade: replayed on the new lists
         _apply_ops(be["schema"], ch.get("ops") or {})
     with session() as s:
@@ -261,7 +270,9 @@ def who(r: AppProject, token: str) -> W.Who:
 
 def public_schema(r: AppProject) -> dict[str, Any]:
     sch = schema(r)
-    return {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", "")}
+    from . import coupon as CP
+    return {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", ""),
+            "coupons": bool(sch.get("order")) and CP.active(r)}           # v0.358 the cart shows the code box
 
 
 def signup(r: AppProject, email: str, password: str, name: str, ip: str) -> dict[str, Any]:
@@ -274,6 +285,12 @@ def login(r: AppProject, email: str, password: str, ip: str) -> dict[str, Any]:
 
 
 def _products(r: AppProject) -> dict[str, dict[str, Any]]:
+    """Her products + one entry per size (v0.362 VARIANTS: "pid::vid", "Name (size)", its own price)."""
+    from . import variants as VR
+    return VR.expand(r, _base_products(r))
+
+
+def _base_products(r: AppProject) -> dict[str, dict[str, Any]]:
     from .android import service as AN
     key = _j(r.android, {}).get("app_key") or ""
     try:
@@ -281,6 +298,22 @@ def _products(r: AppProject) -> dict[str, dict[str, Any]]:
     except Exception:                                     # noqa: BLE001
         lists = {}
     return {str(p.get("id")): p for p in (lists.get("products") or []) if isinstance(p, dict) and p.get("id")}
+
+
+def _cart_lines(r: AppProject, cart: Any) -> list[tuple[str, int, str]]:
+    """v0.357 the cart as [(product id, qty, name)] - the same products / quantities _priced counts."""
+    prods, out = _products(r), []
+    for it in (cart if isinstance(cart, list) else [])[:80]:
+        if not isinstance(it, dict):
+            continue
+        p = prods.get(str(it.get("id") or ""))
+        try:
+            q = max(0, min(999, int(it.get("qty") or 0)))
+        except (TypeError, ValueError):
+            q = 0
+        if p is not None and q > 0:
+            out.append((str(p.get("id")), q, str(p.get("name") or "")))
+    return out
 
 
 def _priced(r: AppProject, cart: Any) -> tuple[str, float]:
@@ -342,25 +375,83 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
             STATS["dedup"] += 1
             return {**W.row_view(c, _row(site, old), w), "dedup": True}
     extra: dict[str, Any] = {}
+    taken: list = []
     if coll == sch.get("order") and "cart" in body:
         items, total = _priced(r, body.get("cart"))
         extra = {"items": items, "total": total}
-    data = {k: v for k, v in body.items() if k not in ("cid", "cart")}
+    # v0.378 the discount code / delivery slot travel as "_coupon" / "_slot" (a list may have its OWN field named
+    # coupon or slot - e.g. a scanned coupon code, a booking slot - and that field is never taken away)
+    keys = {f["key"] for f in c["fields"]}
+    code = str(body.get("_coupon") or (body.get("coupon") if "coupon" not in keys else "") or "").strip()
+    slot_in = str(body.get("_slot") or (body.get("slot") if "slot" not in keys else "") or "")
+    reserved = {"cid", "cart", "_coupon", "_slot"} | ({"coupon"} if "coupon" not in keys else set()) | ({"slot"} if "slot" not in keys else set())
+    data = {k: v for k, v in body.items() if k not in reserved}
     _check_extra(r, c, data, w)
-    out = W.create(site, sch, coll, data, w, ip)
+    if extra:                                  # v0.357 STOCK: taken under one lock before the row exists (or refused)
+        from . import stock as SK
+        taken = SK.reserve(r, _cart_lines(r, body.get("cart")))
+        if taken:
+            extra["_stock"] = [[p, q] for p, q in taken]
+    if extra and code:                         # v0.358 COUPON: applied by the server from its own subtotal (or noted, never lost)
+        from . import coupon as CP
+        d, cf = CP.apply(r, code, extra["total"], w)
+        extra.update(cf)
+        extra["total"] = round(extra["total"] - d, 2)
+    slot_key = slot_in
+    if extra:                                  # v0.360 DELIVERY: added after the coupon (a coupon discounts the goods only)
+        from . import delivery as DL
+        fee, df = DL.on_order(r, extra["total"], data)
+        if slot_key:                           # v0.371 SLOT: booked under a lock, or a note (never a refusal)
+            sf, why = DL.book(r, slot_key)
+            df = {**df, **sf}
+            if why:
+                df["delivery_note"] = (df.get("delivery_note", "").rstrip(".") + "; " if df.get("delivery_note") else "") + why + "."
+        if df:
+            extra.update(df)
+            extra["total"] = round(extra["total"] + fee, 2)
+            if df.get("delivery_note"):
+                try:
+                    from .android.service import _note
+                    _note(r, f"{r.name or 'Aapki app'} ({r.number}) naya order: {df['delivery_note']}")
+                except Exception:
+                    log.debug("delivery note", exc_info=True)
+    try:
+        out = W.create(site, sch, coll, data, w, ip)
+    except Exception:
+        if taken:
+            from . import stock as SK
+            SK.put_back(r, taken)
+        if extra.get("discount"):
+            from . import coupon as CP
+            CP.give_back(r, extra["coupon"], w.id)
+        raise
     if extra or cid:
-        _merge(out["id"], {**extra, **({"_cid": cid} if cid else {})})
+        stored = {("_" + k if k in SYS_KEYS else k): v for k, v in extra.items()}   # v0.364 system values never overwrite her fields
+        _merge(out["id"], {**stored, **({"_cid": cid} if cid else {})})
+        if extra.get("slot"):                          # v0.371 two orders raced for the last place: the later one gets the note
+            from . import delivery as DL
+            DL.confirm(r, out["id"])
         out = W.row_view(c, _row(site, out["id"]), w)
     if extra:
         STATS["orders"] += 1
     if coll in NEWS:
         _news(r, coll, out)
+        try:                                            # v0.367 TURANT: staff phones hear about a new order / booking at once
+            from . import turant as TU
+            who_ = str(out.get("name") or out.get("customer") or "").strip()[:40]
+            TU.later(r, [m for m in TU.staff_ids(r) if m != w.id], f"New {NEWS[coll]}", who_ or r.name or "", out.get("id", ""))
+        except Exception:
+            log.debug("turant new", exc_info=True)
     return out
 
 
-def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", status: str = "", offset: int = 0) -> list[dict[str, Any]]:
-    """v0.319 + search (q, any field) and a status filter, newest first; offset pages through them."""
-    got = W.rows(bid(r), schema(r), coll, w, 1000 if (q or status or offset) else limit)
+def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", status: str = "", offset: int = 0,
+         mine: bool = False) -> list[dict[str, Any]]:
+    """v0.319 + search (q, any field) and a status filter, newest first; offset pages through them.
+    v0.352 every row says who it is with (staff) / the first name on it (her own row); mine = only the rows given to me."""
+    got = with_assign(r, W.rows(bid(r), schema(r), coll, w, 1000 if (q or status or offset or mine) else limit), w)
+    if mine:
+        got = [x for x in got if w.id and x.get("assigned_to") == w.id]
     if status:
         got = [x for x in got if str(x.get("status") or "") == status]
     if q:
@@ -372,15 +463,57 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
 
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
     body = {k: v for k, v in (body if isinstance(body, dict) else {}).items() if k not in ("cid", "cart")}
+    if body.get("_credit"):                  # v0.359 KHATA: staff's "on credit" through the outbox (works offline)
+        from . import khata as KH
+        KH.credit(r, coll, row_id, w)
+        body.pop("_credit", None)
+        if not body:
+            return with_assign(r, W.row_view(W.coll(schema(r), coll), _row(bid(r), row_id), w), w)
+    body.pop("_credit", None)
+    if RATE_KEY in body:                     # v0.353 the app's outbox sends a rating as an update {"_rate": {stars, note}}
+        v = body.pop(RATE_KEY)
+        v = v if isinstance(v, dict) else {"stars": v}
+        return rate(r, coll, row_id, v.get("stars"), str(v.get("note") or ""), w)
+    if ASSIGN_KEY in body:                   # v0.352 the app's outbox sends an assignment as an update {"_assign": id|"me"|""}
+        to = body.pop(ASSIGN_KEY)
+        out = assign(r, coll, row_id, str(to or ""), w)
+        if not body:
+            return out
     sch = schema(r)
+    _guard_assigned(r, coll, row_id, w)
     _check_extra(r, W.coll(sch, coll), body, w)
     out = W.update(bid(r), sch, coll, row_id, body, w)
     if any(k in body for k in ("status", "paid")):
         _merge(row_id, {"_ev": now().isoformat()})     # v0.319 the moment her row moved: the app's update check reads it
-    return out
+        try:                                            # v0.367 TURANT: ... and her phone hears it at once (when on)
+            from . import turant as TU
+            owner = _row(bid(r), row_id).owner
+            if owner and owner != w.id:
+                c_ = W.coll(sch, coll)
+                head = next((str(out.get(f["key"]) or "") for f in c_["fields"] if f.get("type") in ("text", "long_text")
+                             and out.get(f["key"]) and f["key"] not in ("items", "utr")), c_["label"])
+                TU.later(r, [owner], f"{c_['label']}: {out.get('status') or out.get('paid') or ''}".strip(": "), head[:80], row_id)
+        except Exception:
+            log.debug("turant status", exc_info=True)
+    if str(out.get("status") or "").strip().lower() == "cancelled" and "status" in body:
+        _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
+        _coupon_back(r, row_id)                         # v0.358 ... and its coupon use (once)
+        from . import khata as KH                       # v0.359 ... and a credited order's udhaar is reversed (once)
+        KH.reverse_order(r, row_id)
+        from . import gst as G                          # v0.356 an invoiced row cancelled -> its credit note (given once)
+        got = G.credit_for(r, row_id, "Order cancelled")
+        if got:
+            try:
+                from .android.service import _note
+                _note(r, f"{r.name or 'Aapki app'} ({r.number}): cancelled order ka credit note {got[0]} ban gaya "
+                         "(invoice ke saamne). Paise lautane hon to woh aap khud karein; credit note sirf likhit record hai.")
+            except Exception:
+                log.debug("credit note note", exc_info=True)
+    return with_assign(r, out, w)
 
 
 def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
+    _guard_assigned(r, coll, row_id, w)
     return W.delete(bid(r), schema(r), coll, row_id, w)
 
 
@@ -462,6 +595,10 @@ def owner_rows(r: AppProject, coll: str, limit: int = 300) -> list[dict[str, Any
 
 
 def owner_update(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    """Her change from Hoola; {"assign": member id | ""} gives the row to a staff member (v0.352)."""
+    body = dict(body or {})
+    if "assign" in body:
+        body[ASSIGN_KEY] = body.pop("assign")
     return update(r, coll, row_id, body, W.Who(owner=True))
 
 
@@ -478,8 +615,16 @@ def set_role(r: AppProject, member_id: str, role: str) -> dict[str, Any]:
 def seed_hint(r: AppProject) -> dict[str, Any]:
     """What the build puts into the app (assets/seed.json 'backend'): the lists, their fields and rules - no data."""
     sch = schema(r)
-    return {"kind": sch.get("kind"), "order": sch.get("order"), "signup": sch.get("signup", True),
-            "collections": sch["collections"]}
+    out = {"kind": sch.get("kind"), "order": sch.get("order"), "signup": sch.get("signup", True),
+           "collections": sch["collections"]}
+    if sch.get("order"):                                   # v0.358 COUPON: the cart shows the code box while a code is live
+        from . import coupon as CP
+        out["coupons"] = CP.active(r)
+        from . import delivery as DL                       # v0.360 the cart shows the delivery rule + open / closed
+        dl = DL.public(r)
+        if dl:
+            out["delivery"] = dl
+    return out
 
 
 # ---------------------------------------------------------------- v0.319 photos, location, updates, "I paid"
@@ -505,6 +650,8 @@ def _check_extra(r: AppProject, c: dict[str, Any], data: dict[str, Any], w: W.Wh
             meta = _file_meta(r, v)
             if meta is None or not (w.staff or (w.id and meta.get("owner") == w.id) or (not meta.get("owner") and not w.id)):
                 raise W.AppError(f"{f['label']}: yeh photo is account ki nahi.", 403)
+            if t == "photo" and meta.get("kind") == "pdf":         # v0.346
+                raise W.AppError(f"{f['label']}: yahan photo chahiye, PDF nahi.")
             if (c.get("rules") or {}).get("read") == "public" and not meta.get("public"):
                 meta["public"] = True
                 _files(r).joinpath(v + ".json").write_text(json.dumps(meta))
@@ -536,6 +683,8 @@ def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "") -> dict[str, Any]:
         raise W.AppError("Pehle login kijiye.", 401)
     if not w.owner:
         W.rate(f"up|{bid(r)}|{w.id or ip}", 30, 600)
+    if raw[:5] == b"%PDF-":                    # v0.346 a document
+        return _upload_pdf(r, w, raw)
     if not raw or len(raw) > MAX_UPLOAD:
         STATS["upload_refused"] += 1
         raise W.AppError("Photo bahut badi hai (6 MB tak).", 413)
@@ -561,10 +710,76 @@ def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "") -> dict[str, Any]:
     return {"id": fid, "w": im.width, "h": im.height, "size": out.tell()}
 
 
+def _upload_pdf(r: AppProject, w: W.Who, raw: bytes) -> dict[str, Any]:
+    """v0.346 a PDF: at most 10 MB, really a PDF (pypdf opens it, not encrypted, 1-200 pages), nothing in it that could run
+    (scripts, launch / open actions, embedded files, XFA forms, media). Kept byte for byte (re-writing would break signed
+    PDFs); only ever served as a download."""
+    import io
+    import secrets as _sec
+    if len(raw) > MAX_DOC:
+        STATS["upload_refused"] += 1
+        raise W.AppError("PDF bahut bada hai (10 MB tak).", 413)
+    if PDF_RISK.search(raw):
+        STATS["upload_refused"] += 1
+        raise W.AppError("Is PDF mein script ya attachment hai; saada PDF bhejiye (print -> Save as PDF).", 415)
+    try:
+        from pypdf import PdfReader
+        rd = PdfReader(io.BytesIO(raw))
+        if rd.is_encrypted:
+            raise ValueError("encrypted")
+        pages = len(rd.pages)
+        if not 1 <= pages <= 200:
+            raise ValueError(pages)
+        risky = _pdf_risky(rd)
+    except Exception:                                   # noqa: BLE001
+        STATS["upload_refused"] += 1
+        raise W.AppError("Yeh PDF nahi khula (password wala ya toota hua?).", 415)
+    if risky:                                           # inside compressed parts too (the byte scan above can miss them)
+        STATS["upload_refused"] += 1
+        raise W.AppError("Is PDF mein script ya attachment hai; saada PDF bhejiye (print -> Save as PDF).", 415)
+    fid = "f_" + _sec.token_hex(8)
+    d = _files(r)
+    (d / (fid + ".pdf")).write_bytes(raw)
+    (d / (fid + ".json")).write_text(json.dumps({"owner": w.id, "at": now().isoformat(), "size": len(raw), "kind": "pdf",
+                                                 "pages": pages, "public": False}))
+    STATS["uploads"] += 1
+    return {"id": fid, "kind": "pdf", "pages": pages, "size": len(raw)}
+
+
+def _pdf_risky(rd) -> bool:
+    """The PDF's own structure: open / page actions, named scripts, attached files, XFA forms, link actions that run or
+    fetch something, file-attachment notes."""
+    bad_actions = {"/JavaScript", "/Launch", "/ImportData", "/SubmitForm", "/GoToR", "/GoToE", "/RichMediaExecute"}
+    root = rd.trailer["/Root"].get_object()
+    if "/OpenAction" in root or "/AA" in root:
+        return True
+    names = root.get("/Names")
+    names = names.get_object() if names is not None else {}
+    if "/JavaScript" in names or "/EmbeddedFiles" in names:
+        return True
+    acro = root.get("/AcroForm")
+    if acro is not None and "/XFA" in acro.get_object():
+        return True
+    for page in rd.pages:
+        if "/AA" in page:
+            return True
+        for a in (page.get("/Annots") or []):
+            a = a.get_object()
+            if a.get("/Subtype") in ("/FileAttachment", "/RichMedia", "/Movie", "/Sound", "/Screen"):
+                return True
+            act = a.get("/A")
+            if act is not None and act.get_object().get("/S") in bad_actions:
+                return True
+            if "/AA" in a:
+                return True
+    return False
+
+
 def file_for(r: AppProject, fid: str, w: W.Who):
-    """The stored photo, for the person who sent it, staff, her, or anyone when it sits in a public list."""
+    """The stored photo / PDF, for the person who sent it, staff, her, or anyone when it sits in a public list.
+    Returns the path; its suffix (.jpg / .pdf) says what it is."""
     meta = _file_meta(r, fid)
-    f = _files(r) / (fid + ".jpg") if meta is not None else None
+    f = (_files(r) / (fid + (".pdf" if meta.get("kind") == "pdf" else ".jpg"))) if meta is not None else None
     if f is None or not f.exists():
         raise W.AppError("not found", 404)
     if not (meta.get("public") or w.staff or (w.id and meta.get("owner") == w.id)):
@@ -607,12 +822,24 @@ def updates(r: AppProject, w: W.Who, since: str = "") -> dict[str, Any]:
             moved = ev is not None and ev > t0 and changed is not None
             head = next((str(d.get(f["key"]) or "") for f in c["fields"] if f.get("type") in ("text", "long_text")
                          and d.get(f["key"]) and f["key"] not in ("items", "utr")), c["label"])
-            if w.staff and fresh and row.coll in NEWS and row.owner != w.m.id:
+            try:
+                at = datetime.fromisoformat(str(d.get("_to_at") or "")) if d.get("_to_at") else None
+            except ValueError:
+                at = None
+            if w.staff and d.get("_to") == w.m.id and at is not None and at > t0:      # v0.352 a row given to me
+                items.append({"kind": "assigned", "coll": row.coll, "id": row.id, "title": f"Assigned to you: {head[:60]}",
+                              "status": d.get("status", "")})
+            elif w.staff and fresh and row.coll in NEWS and row.owner != w.m.id:
                 items.append({"kind": "new", "coll": row.coll, "id": row.id, "title": f"New {NEWS[row.coll]}: {head[:60]}",
                               "status": d.get("status", "")})
             elif row.owner == w.m.id and moved:
                 items.append({"kind": "status", "coll": row.coll, "id": row.id, "title": head[:60],
                               "status": d.get("status", ""), "paid": d.get("paid", "")})
+    try:                                               # v0.378 BAAT: new chat messages for this account
+        from . import baat as BT
+        items += BT.new_for(r, w, t0n)
+    except Exception:
+        log.debug("chat updates", exc_info=True)
     STATS["updates"] += 1
     return {"now": now().isoformat(), "items": items}
 
@@ -655,7 +882,16 @@ def stats(r: AppProject, w: W.Who, days: int = 14) -> dict[str, Any]:
                         "status": dict(sorted(st.items(), key=lambda kv: -kv[1])[:8]),
                         "daily": [daily[x] for x in labels], "total": round(money, 2) if "total" in keys else None})
     STATS["stats"] = STATS.get("stats", 0) + 1
-    return {"now": now().isoformat(), "days": labels, "lists": out}
+    load = _load(r)                                     # v0.352 open rows per staff member (who has how much work)
+    rated = _ratings(r)                                 # v0.353 RAAY: average stars per list and per person
+    for l in out:
+        got = rated["lists"].get(l["key"])
+        l["rating"] = {"avg": round(sum(got) / len(got), 1), "count": len(got)} if got else None
+    people = [{"name": _first(m.name, m.email), "open": load.get(m.id, 0),
+               "rating": round(sum(rated["people"][m.id]) / len(rated["people"][m.id]), 1) if rated["people"].get(m.id) else None,
+               "rated": len(rated["people"].get(m.id, []))} for m in _staff_of(site).values()]
+    return {"now": now().isoformat(), "days": labels, "lists": out,
+            "team": sorted(people, key=lambda p: -p["open"])[:20], "unassigned": _unassigned(r)}
 
 
 def mark_paid(r: AppProject, coll: str, row_id: str, utr: str, w: W.Who) -> dict[str, Any]:
@@ -870,3 +1106,306 @@ def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[s
     except Exception:                                    # noqa: BLE001
         pass
     return {"rev": be["rev"], "done": done, "say": "; ".join(done) + ". Rows mein abhi dikhega; form mein agli build se."}
+
+
+# ---------------------------------------------------------------- v0.352 KAAM BAANTO (App Sahayak Phase 16)
+# A row (job / order / booking / request) is given to ONE staff member. The assignment lives inside the row's own data
+# (`_to` member id, `_to_name`, `_to_at` when) - never a schema field, so a customer can never set it and old rows just
+# read "not assigned". Who may do what (checked here on every call, the phone only shows the buttons):
+#   * the owner (her Hoola) and an admin account: give any row to any staff / admin account, take it back, move it;
+#   * a staff account: TAKE an unassigned row for itself ("I'll take it") or give back its own - never someone else's;
+#   * a staff account cannot change a row that is with someone else (status, fields) - an admin / the owner still can;
+#   * the customer who made the row sees only the first name of the person on it ("Ravi is on it"), never ids / e-mails.
+ASSIGN_KEY = "_assign"
+STATS.update({"assigned": 0, "assign_refused": 0})
+
+
+def _staff_of(site: str) -> dict[str, W.SiteAppMember]:
+    with session() as s:
+        got = s.scalars(select(W.SiteAppMember).where(W.SiteAppMember.site_id == site,
+                                                      W.SiteAppMember.role.in_(("staff", "admin")))).all()
+        for m in got:
+            s.expunge(m)
+    return {m.id: m for m in got}
+
+
+def _first(name: str, email: str = "") -> str:
+    n = (name or "").strip() or (email or "").split("@")[0]
+    return (n.split() or ["Staff"])[0][:30]
+
+
+def _is_admin(w: W.Who) -> bool:
+    return w.owner or bool(w.m and w.m.role == "admin")
+
+
+def team(r: AppProject, w: W.Who) -> dict[str, Any]:
+    """The staff list the app shows on its assign buttons: names only (no e-mails), staff accounts only, + each one's open
+    rows count. `admin` = this account may give rows to others."""
+    if w.m is None and not w.owner:
+        raise W.AppError("Pehle login kijiye.", 401)
+    if not w.staff:
+        raise W.AppError("Yeh sirf staff ke liye hai.", 403)
+    site = bid(r)
+    load = _load(r)
+    people = [{"id": m.id, "name": _first(m.name, m.email), "role": m.role, "open": load.get(m.id, 0)}
+              for m in _staff_of(site).values()]
+    people.sort(key=lambda p: (p["name"].lower(), p["id"]))
+    return {"team": people, "admin": _is_admin(w), "me": w.id}
+
+
+def _closed(st: str) -> bool:
+    return st.strip().lower() in ("done", "delivered", "cancelled", "closed", "completed", "expired", "replied")
+
+
+def _load(r: AppProject) -> dict[str, int]:
+    """Open (not done / cancelled) rows per staff member."""
+    out: dict[str, int] = {}
+    with session() as s:
+        for (data,) in s.query(W.SiteAppRow.data).filter(W.SiteAppRow.site_id == bid(r),
+                                                          W.SiteAppRow.data.like('%"_to": "%')).all():
+            d = _j(data, {})
+            if d.get("_to") and not _closed(str(d.get("status") or "")):
+                out[d["_to"]] = out.get(d["_to"], 0) + 1
+    return out
+
+
+def _assign_info(site: str, ids: list[str]) -> dict[str, dict[str, Any]]:
+    if not ids:
+        return {}
+    with session() as s:
+        got = s.query(W.SiteAppRow.id, W.SiteAppRow.data).filter(W.SiteAppRow.site_id == site, W.SiteAppRow.id.in_(ids)).all()
+    return {i: _j(d, {}) for i, d in got}
+
+
+def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.Who):
+    """Adds who a row is with: staff see `assigned_to` (id) + `assigned_name`; the row's own customer only the first name."""
+    one = isinstance(out, dict)
+    rows_ = [out] if one else list(out)
+    info = _assign_info(bid(r), [x.get("id") for x in rows_ if x.get("id")])
+    own_keys = {f["key"] for c in schema(r)["collections"] for f in c["fields"]}
+    kind = ""
+    if any(receipt_ready(info.get(x.get("id"), {})) for x in rows_):
+        from . import gst as G
+        kind = "invoice" if G.on(r) else "receipt"          # v0.355 the app's button says Invoice for a GST business
+    for x in rows_:
+        d = info.get(x.get("id"), {})
+        to = str(d.get("_to") or "")
+        if w.staff:
+            x["assigned_to"], x["assigned_name"] = to, (str(d.get("_to_name") or "") if to else "")
+        elif x.get("mine") and to:
+            x["assigned_name"] = str(d.get("_to_name") or "")
+        if (w.staff or x.get("mine")) and d.get("_khata"):     # v0.359 KHATA: this order was given on credit
+            x["on_credit"] = not d.get("_khata_back")
+        if w.staff or x.get("mine"):                  # v0.358 COUPON: what the server took off (or why a code did not apply)
+            own = own_keys
+            for k in SYS_KEYS:                          # stored as "_k"; shown as "k" unless her list has its own field "k"
+                v = d.get("_" + k)
+                if v not in (None, ""):
+                    x["_" + k] = v
+                    if k not in own:
+                        x[k] = v
+        if w.staff or x.get("mine"):                  # v0.353 RAAY: the customer's rating, for her and the business
+            if d.get("_rate"):
+                x["rating"], x["rating_note"] = int(d["_rate"]), str(d.get("_rate_note") or "")
+            x["receipt"] = receipt_ready(d)            # v0.354 RASEED: a receipt PDF can be had for this row
+            if x["receipt"]:
+                x["receipt_kind"] = "credit_note" if d.get("_cn_no") else kind      # v0.356
+            x["can_rate"] = bool(x.get("mine") and not w.staff and not d.get("_rate") and _rateable(str(d.get("status") or "")))
+    return rows_[0] if one else rows_
+
+
+def _guard_assigned(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
+    """A staff account may not change a row that is with someone else (admin / owner may)."""
+    d = _assign_info(bid(r), [row_id]).get(row_id, {})
+    to = str(d.get("_to") or "")
+    if to and w.staff and not _is_admin(w) and to != w.id:
+        STATS["assign_refused"] += 1
+        raise W.AppError(f"Yeh kaam {d.get('_to_name') or 'kisi aur'} ke paas hai.", 403)
+    return d
+
+
+def assign(r: AppProject, coll: str, row_id: str, to: str, w: W.Who) -> dict[str, Any]:
+    """Give a row to a staff member (`to` = member id), take it ("me"), or give it back (""). Rules above."""
+    sch, site = schema(r), bid(r)
+    c = W.coll(sch, coll)
+    if w.m is None and not w.owner:
+        raise W.AppError("Pehle login kijiye.", 401)
+    if not w.staff:
+        raise W.AppError("Iski ijaazat nahi.", 403)
+    to = str(to or "").strip()
+    if to == "me":
+        if w.m is None:
+            raise W.AppError("Aap staff account nahi hain; kisi staff ko chuniye.")
+        to = w.m.id
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        if row is None or row.site_id != site or row.coll != coll:
+            raise W.AppError("Yeh entry nahi mili.", 404)
+        d = _j(row.data, {})
+        cur = str(d.get("_to") or "")
+        if not _is_admin(w):
+            ok = (to == w.id and cur in ("", w.id)) or (to == "" and cur == w.id)
+            if not ok:
+                STATS["assign_refused"] += 1
+                raise W.AppError(f"Yeh kaam {d.get('_to_name') or 'kisi aur'} ke paas hai; admin hi badal sakta hai." if cur
+                                 else "Staff sirf khud ke liye kaam le sakta hai.", 403)
+        if to:
+            team_ = _staff_of(site)
+            m = team_.get(to)
+            if m is None and _is_admin(w):           # her words name a person ("Ravi ko do"): one staff member by name
+                hit = [x for x in team_.values() if to.lower() in ((x.name or "").lower(), _first(x.name, x.email).lower(),
+                                                                   (x.email or "").lower())]
+                m = hit[0] if len(hit) == 1 else None
+            if m is None:
+                raise W.AppError("Yeh staff account nahi mila (pehle use staff banaiye).", 404)
+            d.update({"_to": m.id, "_to_name": _first(m.name, m.email), "_to_at": now().isoformat(), "_ev": now().isoformat()})
+        else:
+            for k in ("_to", "_to_name", "_to_at"):
+                d.pop(k, None)
+        row.data, row.updated_at = json.dumps(d, ensure_ascii=False), now()
+        s.flush()
+        s.expunge(row)
+    STATS["assigned"] += 1
+    if to and to != w.id:                              # v0.367 TURANT: the person it was given to hears it at once
+        try:
+            from . import turant as TU
+            TU.later(r, [to], "Given to you", c["label"] + " " + row_id[-6:].upper(), row_id)
+        except Exception:
+            log.debug("turant assign", exc_info=True)
+    return with_assign(r, W.row_view(c, row, w), w)
+
+
+def _unassigned(r: AppProject) -> int:
+    """Open rows nobody has yet, in the lists that have a status (the work still to hand out)."""
+    sch = schema(r)
+    keys = [c["key"] for c in sch["collections"] if any(f["key"] == "status" for f in c["fields"])]
+    if not keys:
+        return 0
+    n = 0
+    with session() as s:
+        for (data,) in s.query(W.SiteAppRow.data).filter(W.SiteAppRow.site_id == bid(r), W.SiteAppRow.coll.in_(keys)).all():
+            d = _j(data, {})
+            n += int(not d.get("_to") and not _closed(str(d.get("status") or "")))
+    return n
+
+
+def owner_assign(r: AppProject, coll: str, row_id: str, to: str) -> dict[str, Any]:
+    return assign(r, coll, row_id, to, W.Who(owner=True))
+
+
+# ---------------------------------------------------------------- v0.353 RAAY (App Sahayak Phase 17): the customer's rating
+# Once her row is finished (Done / Delivered / Completed - never a cancelled one) the customer who made it rates it ONCE:
+# 1-5 stars + a short note (300 chars, control characters stripped). Kept inside the row (`_rate`, `_rate_note`, `_rate_at`,
+# and `_rate_to` = who had the job then), so the dashboard can show the average per list and per staff member. Nobody else
+# can rate (not staff, not another customer, not the owner), a rating is never changed, and a low one (1-2 stars) reaches
+# her chat at once so she can call the customer. Never shown to other customers (no public reviews here).
+RATE_KEY = "_rate"
+RATE_LOW = 2
+STATS.update({"ratings": 0, "rating_refused": 0, "rating_low": 0})
+
+
+def receipt_ready(d: dict[str, Any]) -> bool:
+    """v0.354 a receipt is made for a finished row or a Verified UPI payment, never for a cancelled one
+    (v0.356 except its credit note, when the cancelled row had a tax invoice)."""
+    if d.get("_cn_no"):
+        return True
+    st = str(d.get("status") or "")
+    return st.strip().lower() != "cancelled" and (_rateable(st) or str(d.get("paid") or "") == "Verified")
+
+
+def _rateable(st: str) -> bool:
+    return st.strip().lower() in ("done", "delivered", "completed", "closed", "replied", "confirmed", "active", "enrolled")
+
+
+def rate(r: AppProject, coll: str, row_id: str, stars: Any, note: str, w: W.Who) -> dict[str, Any]:
+    sch, site = schema(r), bid(r)
+    c = W.coll(sch, coll)
+    if w.m is None:
+        raise W.AppError("Pehle login kijiye.", 401)
+    try:
+        f = float(str(stars).strip())
+    except (TypeError, ValueError):
+        f = 0.0
+    n = int(f)
+    if isinstance(stars, bool) or f != n or not 1 <= n <= 5:
+        raise W.AppError("Stars 1 se 5 tak.")
+    note = re.sub(r"[\x00-\x1f\x7f]+", " ", str(note or "")).strip()[:300]
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        if row is None or row.site_id != site or row.coll != coll:
+            raise W.AppError("Yeh entry nahi mili.", 404)
+        d = _j(row.data, {})
+        if row.owner != w.m.id:
+            STATS["rating_refused"] += 1
+            raise W.AppError("Sirf jisne yeh entry bheji, wahi rating de sakta hai.", 403)
+        if d.get("_rate"):
+            STATS["rating_refused"] += 1
+            raise W.AppError("Rating pehle hi di ja chuki hai.", 409)
+        if not _rateable(str(d.get("status") or "")):
+            STATS["rating_refused"] += 1
+            raise W.AppError("Kaam poora hone ke baad rating dijiye.", 409)
+        d.update({"_rate": n, "_rate_note": note, "_rate_at": now().isoformat(), "_rate_to": d.get("_to", "")})
+        row.data, row.updated_at = json.dumps(d, ensure_ascii=False), now()
+        s.flush()
+        s.expunge(row)
+    STATS["ratings"] += 1
+    if n <= RATE_LOW:
+        STATS["rating_low"] += 1
+        what = NEWS.get(coll, c["label"].lower())
+        who_ = str(d.get("name") or d.get("customer") or w.m.name or "").strip()[:40]
+        text = (f"{r.name or 'Aapki app'} ({r.number}): {who_ or 'ek customer'} ne apni {what} ko {n}/5 diya"
+                + (f" - \"{note[:120]}\"" if note else "") + (f" (kaam {d.get('_to_name')} ke paas tha)" if d.get("_to_name") else "")
+                + ". Unse baat kar lijiye.")
+        try:
+            from .android.service import _note
+            _note(r, text)
+        except Exception:
+            log.debug("low rating note", exc_info=True)
+    return with_assign(r, W.row_view(c, row, w), w)
+
+
+def _ratings(r: AppProject) -> dict[str, dict[str, list[int]]]:
+    lists: dict[str, list[int]] = {}
+    people: dict[str, list[int]] = {}
+    with session() as s:
+        for coll, data in s.query(W.SiteAppRow.coll, W.SiteAppRow.data).filter(
+                W.SiteAppRow.site_id == bid(r), W.SiteAppRow.data.like('%"_rate": %')).all():
+            d = _j(data, {})
+            try:
+                n = int(d.get("_rate") or 0)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= n <= 5:
+                lists.setdefault(coll, []).append(n)
+                if d.get("_rate_to"):
+                    people.setdefault(d["_rate_to"], []).append(n)
+    return {"lists": lists, "people": people}
+
+
+
+def _stock_back(r: AppProject, row_id: str) -> None:
+    """v0.357 the quantities a cancelled order took go back to stock, once (`_stock_back` marks it)."""
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        d = _j(row.data, {}) if row is not None else {}
+        if not d.get("_stock") or d.get("_stock_back"):
+            return
+        taken = d["_stock"]
+        d["_stock_back"] = True
+        row.data = json.dumps(d, ensure_ascii=False)
+    from . import stock as SK
+    SK.put_back(r, [(str(p), int(q)) for p, q in taken])
+
+
+
+def _coupon_back(r: AppProject, row_id: str) -> None:
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        d = _j(row.data, {}) if row is not None else {}
+        if not d.get("_discount") or not d.get("_coupon") or d.get("_coupon_back"):
+            return
+        d["_coupon_back"] = True
+        row.data = json.dumps(d, ensure_ascii=False)
+        code, who = d["_coupon"], row.owner
+    from . import coupon as CP
+    CP.give_back(r, code, who)

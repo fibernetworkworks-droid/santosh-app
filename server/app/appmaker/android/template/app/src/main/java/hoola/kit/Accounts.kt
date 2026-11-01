@@ -115,7 +115,14 @@ fun AccountScreen() {
             val n = Inbox.unread.value
             Btn(Strings.inbox + if (n > 0) " ($n)" else "", kind = BtnKind.Tonal, icon = "bell", modifier = Modifier.fillMaxWidth()) { nav.go("hoola_inbox") }
         }
+        if (me != null) block {                                   // v0.378 BAAT: chat with the shop / customers' messages
+            Btn(if (Auth.isStaff) Strings.customerMessages else Strings.chat, kind = BtnKind.Tonal, icon = "chat",
+                modifier = Modifier.fillMaxWidth()) { nav.go("hoola_chat") }
+        }
+        if (me != null) block { KhataBlock() }                     // v0.359 udhaar: hers / who owes (staff)
         if (me != null && Auth.isStaff) block { StatsBlock() }     // v0.340 the staff dashboard
+        if (me != null && Auth.isStaff) block { StopsBlock() }     // v0.350 the open stops with a location, nearest first
+        block { LanguagePicker() }                                 // v0.347 the app's words in her language
         if (Db.pending.value > 0) block { Pill("${Db.pending.value} ${Strings.pending}", "warn") }
         if (Db.lastError.value.isNotEmpty()) block { Pill(Db.lastError.value, "bad") }
         Db.collections().forEach { coll ->
@@ -141,16 +148,24 @@ private fun RowsSection(coll: String) {
     var q by remember(coll) { mutableStateOf("") }
     var st by remember(coll) { mutableStateOf("") }
     val opts = fields.firstOrNull { it.s("key") == "status" }?.strings("options").orEmpty()
-    val rows = all.filter { r -> (st.isEmpty() || r.s("status") == st) && (q.isBlank() || r.o.toString().lowercase().contains(q.trim().lowercase())) }
+    // v0.352 My work: only the rows given to this staff account
+    var mineOnly by remember(coll) { mutableStateOf(false) }
+    val meId = Auth.me.value?.id ?: ""
+    val anyMine = Auth.isStaff && all.any { it.s("assigned_to") == meId && meId.isNotEmpty() }
+    val rows = all.filter { r -> (st.isEmpty() || r.s("status") == st) && (q.isBlank() || r.o.toString().lowercase().contains(q.trim().lowercase()))
+        && (!mineOnly || r.s("assigned_to") == meId) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SectionHeader(Db.label(coll) + if (all.isNotEmpty()) " (${all.size})" else "")
+        SectionHeader(T(Db.label(coll)) + if (all.isNotEmpty()) " (${all.size})" else "")
         if (Auth.isStaff && Db.rule(coll, "read") == "own") Small(Strings.staffView)
+        if (anyMine || mineOnly) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip(Strings.myWork, selected = mineOnly) { mineOnly = !mineOnly }
+        }
         if (all.size > 4) {
             OutlinedTextField(value = q, onValueChange = { q = it.take(60) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(Strings.search) }, shape = RoundedCornerShape(H.look.radius * 0.7f))
             if (opts.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(Strings.all, selected = st.isEmpty()) { st = "" }
-                opts.forEach { o -> Chip(o, selected = st == o) { st = if (st == o) "" else o } }
+                opts.forEach { o -> Chip(T(o), selected = st == o) { st = if (st == o) "" else o } }
             }
         }
         if (rows.isEmpty()) Small(Strings.nothingYet)
@@ -166,9 +181,9 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         Title(head?.let { r.s(it.s("key")) } ?: Db.label(coll), maxLines = 3)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             val status = r.s("status")
-            if (r.b("pending")) Pill(Strings.sending, "warn") else if (status.isNotEmpty()) Pill(status, statusKind(status))
+            if (r.b("pending")) Pill(Strings.sending, "warn") else if (status.isNotEmpty()) Pill(T(status), statusKind(status))
             val paid = r.s("paid")
-            if (paid.isNotEmpty() && paid != "No") Pill(paid, if (paid == "Verified") "ok" else "warn")
+            if (paid.isNotEmpty() && paid != "No") Pill(T(paid), if (paid == "Verified") "ok" else "warn")
             if (r.has("total") && r.n("total") > 0) Title(rupees(r.n("total")))
         }
         fields.filter { it.s("type") == "photo" && r.has(it.s("key")) }.take(2).forEach { f ->
@@ -178,21 +193,30 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
             .take(6).forEach { f ->
                 if (f.s("type") == "location") {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Small(f.s("label") + ": " + r.s(f.s("key")))
+                        Small(T(f.s("label")) + ": " + r.s(f.s("key")))
                         Btn(Strings.openMap, kind = BtnKind.Ghost, small = true) { Act.maps(c, r.s(f.s("key"))) }
                     }
-                } else Small(f.s("label") + ": " + r.s(f.s("key")), maxLines = 4)
+                } else Small(T(f.s("label")) + ": " + r.s(f.s("key")), maxLines = 4)
             }
         // v0.319 the customer's own UPI order: pay to the business's UPI ID, then "I have paid" + the UPI reference
         if (!Auth.isStaff && coll == Db.orderList && !r.b("pending") && r.s("pay") == "UPI" && r.s("paid", "No") == "No"
             && r.s("status") != "Cancelled") {
             PaidBox(coll, r)
         }
+        // v0.352 the customer sees the first name of the person on her row
+        if (!Auth.isStaff && r.s("assigned_name").isNotEmpty()) Small(r.s("assigned_name") + " " + Strings.onIt)
+        if (r.s("slot_label").isNotEmpty()) Small(Strings.pickSlot + ": " + r.s("slot_label"))      // v0.371 SLOT
+        SlotChange(coll, r)                                                                       // v0.377 change the time
+        if (r.s("delivery_note").isNotEmpty()) Small(r.s("delivery_note"), maxLines = 4)
+        RateBox(coll, r)                                          // v0.353 the customer rates her finished row once
+        ReceiptButton(coll, r)                                    // v0.354 the receipt PDF of a finished row
+        CreditButton(coll, r)                                     // v0.359 staff: this order on credit (udhaar)
+        AssignBox(coll, r)
         val stf = fields.firstOrNull { it.s("key") == "status" }
-        if (Auth.isStaff && stf != null && !r.b("pending")) {
+        if (Auth.isStaff && stf != null && !r.b("pending") && Team.mayWork(r)) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 stf.strings("options").forEach { opt ->
-                    Chip(opt, selected = r.s("status") == opt) { if (r.s("status") != opt) Db.update(coll, r.id, mapOf("status" to opt)) }
+                    Chip(T(opt), selected = r.s("status") == opt) { if (r.s("status") != opt) Db.update(coll, r.id, mapOf("status" to opt)) }
                 }
             }
         }

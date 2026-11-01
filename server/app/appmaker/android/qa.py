@@ -1,6 +1,8 @@
 """v0.325 HOOLA QA: the device check's report (standard library only: it runs on the build machine and in CI too).
 
     python3 qa.py report <out_dir>     # reads what device_check.sh collected, writes <out_dir>/report.json
+    python3 qa.py taps <ui.xml>        # v0.345 the buttons / links to tap on a screen: "x y label" lines (max TAPS)
+    python3 qa.py sig <ui.xml>         # v0.345 what is on the screen (texts + positions) as one hash
 
 Per screen: opened (no crash), the crash (exception line + the app's own frames), the accessibility findings from the
 UI tree (a tappable thing with no words for TalkBack, a tap target under 48 x 48 dp), the screenshot. For the app: cold
@@ -54,6 +56,52 @@ def a11y(xml_text: str, density: int = 420) -> list[dict[str, Any]]:
     return out[:20]
 
 
+TAPS = 5                       # v0.345 buttons / links tapped per screen (each from a fresh start of that screen)
+SKIP_CLASS = ("EditText",)      # typing boxes are not "flows"
+
+
+def targets(xml_text: str, limit: int = TAPS) -> list[tuple[int, int, str]]:
+    """The tappable things on a screen with their centre and words, top to bottom (no typing boxes, no duplicates)."""
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return []
+
+    def words(n: ET.Element) -> str:
+        own = (n.get("text") or "") + " " + (n.get("content-desc") or "")
+        return (own + " " + " ".join(words(c) for c in n)).strip()
+
+    out, seen = [], set()
+    for n in root.iter("node"):
+        if n.get("clickable") != "true" or n.get("enabled") == "false" or any(k in (n.get("class") or "") for k in SKIP_CLASS):
+            continue
+        m = BOUNDS.match(n.get("bounds") or "")
+        if not m:
+            continue
+        x1, y1, x2, y2 = map(int, m.groups())
+        if x2 - x1 < 8 or y2 - y1 < 8:
+            continue
+        label = re.sub(r"\s+", " ", words(n))[:40] or f"item at {(x1 + x2) // 2},{(y1 + y2) // 2}"
+        if label in seen:
+            continue
+        seen.add(label)
+        out.append(((x1 + x2) // 2, (y1 + y2) // 2, label))
+    out.sort(key=lambda t: (t[1], t[0]))
+    return out[:limit]
+
+
+def sig(xml_text: str) -> str:
+    """One hash of what the screen shows (every text / description with where it is): equal = the tap changed nothing."""
+    import hashlib
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return ""
+    parts = sorted(f"{n.get('text') or ''}|{n.get('content-desc') or ''}|{n.get('bounds') or ''}" for n in root.iter("node")
+                   if (n.get("text") or n.get("content-desc")))
+    return hashlib.sha1("\n".join(parts).encode()).hexdigest()[:16]
+
+
 def crash_of(text: str) -> dict[str, Any] | None:
     """The first FATAL EXCEPTION in a logcat: its exception line and the app's own frames (hoola.*)."""
     i = text.find("FATAL EXCEPTION")
@@ -102,11 +150,30 @@ def report(out: Path) -> dict[str, Any]:
             "jank_pct": jank[1] if jank else None, "frames": jank[0] if jank else None,
             "apk_mb": round(apk / 1048576, 2) if apk else None}
     budget = {k: (None if perf.get(k) is None else ("ok" if perf[k] <= v else "over")) for k, v in BUDGET.items()}
+    # v0.345 HAR RAASTA: every button / link tapped (fresh start each time): alive? did anything change?
+    tap_crashed, dead, tapped, moved = [], [], 0, 0
+    for i, ln in enumerate((out / "taps.txt").read_text(errors="replace").splitlines() if (out / "taps.txt").exists() else []):
+        parts = ln.split("\t")
+        if len(parts) < 5 or parts[0] not in screens:
+            continue
+        sid, label, alive, changed, n = parts[0], parts[1], parts[2] == "1", parts[3] == "1", parts[4]
+        cf = out / "screens" / f"{sid}.tap{n}.crash.txt"
+        crash = crash_of(cf.read_text(errors="replace")) if cf.exists() else None
+        ok = alive and crash is None
+        tapped += 1
+        moved += 1 if changed and ok else 0
+        screens[sid].setdefault("taps", []).append({"label": label, "ok": ok, "changed": changed})
+        if not ok:
+            tap_crashed.append({"screen": sid, "label": label, "crash": crash or {"exception": "the app closed after this tap"}})
+            screens[sid]["tap_crash"] = {"label": label, **(crash or {"exception": "the app closed after this tap"})}
+        elif not changed:
+            dead.append({"screen": sid, "label": label})
     crashed = [s for s, x in screens.items() if not x["opened"]]
     rep = {"v": 1, "screens": screens, "perf": perf, "budget": budget, "limits": BUDGET,
            "opened": len(screens) - len(crashed), "total": len(screens), "crashed": crashed,
            "a11y_count": sum(len(x["a11y"]) for x in screens.values()),
-           "passed": bool(screens) and not crashed}
+           "flows": {"tapped": tapped, "moved": moved, "dead": dead[:30], "crashed": [{k: c[k] for k in ("screen", "label")} for c in tap_crashed]},
+           "passed": bool(screens) and not crashed and not tap_crashed}
     (out / "report.json").write_text(json.dumps(rep, indent=1))
     return rep
 
@@ -122,11 +189,25 @@ def summary(rep: dict[str, Any]) -> str:
         bits.append(f"janky frames {p['jank_pct']}% ({b.get('jank_pct')})")
     if p.get("apk_mb") is not None:
         bits.append(f"APK {p['apk_mb']} MB ({b.get('apk_mb')})")
+    fl = rep.get("flows") or {}
+    if fl.get("tapped"):
+        bits.append(f"{fl['tapped']} buttons tapped ({len(fl.get('crashed') or [])} crashed, {len(fl.get('dead') or [])} did nothing)")
     bits.append(f"{rep.get('a11y_count', 0)} accessibility findings")
     return "HOOLA QA " + ("PASS" if rep.get("passed") else "FAIL") + ": " + " · ".join(bits)
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[1] in ("taps", "sig"):
+        try:
+            text = Path(sys.argv[2]).read_text(errors="replace")
+        except OSError:
+            text = ""
+        if sys.argv[1] == "sig":
+            print(sig(text))
+        else:
+            for x, y, label in targets(text):
+                print(f"{x} {y} {label}")
+        sys.exit(0)
     if len(sys.argv) == 3 and sys.argv[1] == "report":
         r = report(Path(sys.argv[2]))
         print(summary(r))

@@ -435,6 +435,16 @@ def _build_bundle(r: AppProject) -> None:
     vname = str(hist[-1].get("version_name") or "1.0")
     t = re.sub(r'versionName = "[^"]*"', f'versionName = "{vname}"', t)
     g.write_text(t)
+    gs = src / "app/src/main/res/values/google_services.xml"          # v0.367 TURANT: the Play package's own Firebase values
+    if gs.exists():
+        from .. import turant as TU
+        from . import gen as GN
+        vals = GN.fcm_config({"fcm": TU.config_for(r, st["package"]), "app": {"app_id": st["package"]}})
+        if vals:
+            gs.write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n' + "".join(
+                f'    <string name="{k}" translatable="false">{v}</string>\n' for k, v in vals.items()) + '</resources>\n')
+        else:
+            raise StoreError("Turant notifications chalu hain par Play package Firebase mein register nahi: 'Turant notifications' dobara chalu kijiye.")
     (src / "gradlew").chmod(0o755)
     key = _upload_key(r)
     (src / "keys").mkdir(exist_ok=True)
@@ -540,6 +550,19 @@ def _publish(r: AppProject) -> None:
         draft = True
     _call("PUT", f"{API}/{pkg}/edits/{eid}/listings/en-IN", tok,
           {"language": "en-IN", "title": lst.get("title"), "shortDescription": lst.get("short"), "fullDescription": lst.get("full")})
+    from .. import storelang as SL                 # v0.372 DUKAAN BHASHA: the listing in the app's own languages too
+    st2 = dict(st)
+    try:
+        tr = SL.play_listings(r, st2, LIMITS)
+    except Exception:                              # noqa: BLE001  - a failed translation never blocks the English upload
+        log.info("store listing translation failed", exc_info=True)
+        tr = {}
+    for code, t in tr.items():
+        _call("PUT", f"{API}/{pkg}/edits/{eid}/listings/{code}", tok,
+              {"language": code, "title": t.get("title"), "shortDescription": t.get("short") or lst.get("short"),
+               "fullDescription": t.get("full") or lst.get("full")})
+    if st2.get("listing_tr") != st.get("listing_tr"):
+        _put(r, listing_tr=st2.get("listing_tr"))
     g = graphics(r)
     for kind in ("icon", "featureGraphic"):
         _call("DELETE", f"{API}/{pkg}/edits/{eid}/listings/en-IN/{kind}", tok)
@@ -563,6 +586,23 @@ def _publish(r: AppProject) -> None:
 
 
 # ---------------------------------------------------------------- view
+def listing_lang(tenant: str, ref: str, lang: str, values: dict[str, Any] | None = None) -> dict[str, Any]:
+    """v0.372 her own words for one language's Play listing ({} = back to the automatic translation)."""
+    from .. import storelang as SL
+    with AS.session() as s:
+        r = AS._find(s, tenant, ref)
+        s.expunge(r)
+    if lang not in SL.PLAY:
+        raise StoreError("Play listing in: " + ", ".join(SL.PLAY))
+    st = dict(state(r))
+    try:
+        SL.edit(st, lang, values or {}, LIMITS)
+    except ValueError as e:
+        raise StoreError(f"Bahut lamba: {e}")
+    _put(r, listing_tr=st["listing_tr"])
+    return view(AS._load(r.id))
+
+
 def view(r: AppProject) -> dict[str, Any]:
     st = state(r)
     ast = AN.state(r)
@@ -583,6 +623,8 @@ def view(r: AppProject) -> dict[str, Any]:
     return {"app": r.id, "name": r.name, "package": st.get("package") or "", "proposed": propose_package(r), "locked": bool(st.get("locked")),
             "account": st.get("account") or "", "status": st.get("status") or "", "now": st.get("now") or "", "error": st.get("error") or "",
             "listing": {k: lst.get(k, "") for k in ("title", "short", "full", "by")}, "limits": LIMITS,
+            "languages": {k: {x: y for x, y in v.items() if not x.startswith("_")} | {"edited": bool(v.get("_edited"))}
+                          for k, v in (st.get("listing_tr") or {}).items()},          # v0.372 the listing in her app's languages
             "bundle": st.get("bundle") or {}, "releases": list(reversed(st.get("releases") or []))[:10], "steps": steps,
             "privacy_url": f"{base}/api/app-api/{key}/privacy" if key else "",
             "delete_url": f"{base}/api/app-api/{key}/delete-account" if key else "",

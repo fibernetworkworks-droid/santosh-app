@@ -47,7 +47,7 @@ def test_project_from_the_android_spec(tmp_path):
     assert "<string>upi</string>" in plist and "ITSAppUsesNonExemptEncryption" in plist and "NSAllowsLocalNetworking" in plist
     assert "NSAllowsArbitraryLoads" not in plist
     yml = (out / "project.yml").read_text()
-    assert 'iOS: "16.0"' in yml and "PRODUCT_BUNDLE_IDENTIFIER: in.hoola.preview.fixture" in yml and "scheme: {}" in yml
+    assert 'iOS: "16.0"' in yml and "PRODUCT_BUNDLE_IDENTIFIER: in.hoola.preview.fixture" in yml and "testTargets:" in yml and "AppUITests" in yml
     png = (out / "Resources/Assets.xcassets/AppIcon.appiconset/icon.png").read_bytes()
     assert png[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", png[16:24]) == (1024, 1024)
     assert png[25] == 2                                               # RGB, no alpha (App Store refuses transparent icons)

@@ -135,7 +135,7 @@ def test_push_sequence_on_a_faked_apple(tmp_path, monkeypatch):
         f.write_bytes(_png())
         shots.append(f)
     out = asc.push(STORE, shots, asc.Client("t"))
-    assert out == {"ok": True, "app": "app1", "version": "ver1", "version_string": "1.2", "screenshots": 2, "build": "b9",
+    assert out == {"ok": True, "app": "app1", "version": "ver1", "version_string": "1.2", "screenshots": 2, "ipad_screenshots": 0, "build": "b9",
                    "state": "PREPARE_FOR_SUBMISSION"}
     assert fake.calls[:3] == ["GET /v1/apps", "GET /v1/apps/app1/appStoreVersions", "POST /v1/appStoreVersions"]
     assert fake.calls[-1] == "PATCH /v1/appStoreVersions/ver1"           # the build goes on last

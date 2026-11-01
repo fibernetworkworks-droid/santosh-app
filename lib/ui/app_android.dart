@@ -308,6 +308,13 @@ class _QaBox extends StatelessWidget {
       ]),
       if (((qa['crashed'] as List?) ?? const []).isNotEmpty)
         Text('Crash: ${(qa['crashed'] as List).join(', ')} (inhe saada version mila)', style: const TextStyle(color: C.bad, fontSize: 12)),
+      if (_i(_map(qa['flows'])['tapped']) > 0)                     // v0.345 every button tapped
+        Text('${_i(_map(qa['flows'])['tapped'])} button dabaye: '
+            '${((_map(qa['flows'])['crashed'] as List?) ?? const []).length} pe crash, '
+            '${((_map(qa['flows'])['dead'] as List?) ?? const []).length} se kuch nahi hua',
+            style: const TextStyle(color: C.muted, fontSize: 12)),
+      for (final d in ((_map(qa['flows'])['dead'] as List?) ?? const []).take(4))
+        Text('• ${_s(_map(d)['screen'])}: "${_s(_map(d)['label'])}" dabane se kuch nahi hua', style: const TextStyle(color: C.muted, fontSize: 11.5)),
       for (final f in a11y.take(4))
         Text('• ${_s(f['screen'])}: ${_s(f['text'])}', style: const TextStyle(color: C.muted, fontSize: 11.5)),
       if (shots.isNotEmpty) ...[
@@ -371,6 +378,7 @@ class _AppDataPanelState extends State<AppDataPanel> {
   String _coll = '';
   List<Map<String, dynamic>> _rows = const [];
   List<Map<String, dynamic>>? _members;
+  List<Map<String, dynamic>> _staff = const [];
   bool _busy = false;
   String _err = '';
   Santosh get app => widget.app;
@@ -387,7 +395,12 @@ class _AppDataPanelState extends State<AppDataPanel> {
       final colls = _list(v['collections']);
       final coll = _coll.isNotEmpty ? _coll : (_s(v['order']).isNotEmpty ? _s(v['order']) : (colls.isEmpty ? '' : _s(colls.first['key'])));
       final rows = coll.isEmpty ? <Map<String, dynamic>>[] : await app.api!.appRows(widget.id, coll);
-      if (mounted) setState(() { _v = v; _coll = coll; _rows = rows; _err = ''; });
+      // v0.352 KAAM BAANTO: her staff accounts, for "Kiske paas" on every row
+      var staff = <Map<String, dynamic>>[];
+      try {
+        staff = (await app.api!.appMembers(widget.id)).where((m) => ['staff', 'admin'].contains(_s(m['role']))).toList();
+      } catch (_) {}
+      if (mounted) setState(() { _v = v; _coll = coll; _rows = rows; _staff = staff; _err = ''; });
     } catch (e) {
       if (mounted) setState(() => _err = '$e');
     }
@@ -505,6 +518,26 @@ class _AppDataPanelState extends State<AppDataPanel> {
                       style: TextStyle(color: _s(r['paid']) == 'Verified' ? C.ok : C.warn, fontSize: 12.5, fontWeight: FontWeight.w700))),
                   if (_s(r['paid']) == 'Customer says paid')
                     TextButton(onPressed: _busy ? null : () => _set(r, {'paid': 'Verified'}), child: const Text('Bank mein mila: Verified')),
+                ]),
+              // v0.353 RAAY: the customer's stars + note on her finished row
+              if (r['rating'] is num && (r['rating'] as num) > 0)
+                Text('${'★' * (r['rating'] as num).toInt()}${'☆' * (5 - (r['rating'] as num).toInt())} ${(r['rating'] as num).toInt()}/5'
+                    '${_s(r['rating_note']).isEmpty ? '' : ' · ${_s(r['rating_note'])}'}',
+                    style: TextStyle(color: (r['rating'] as num) <= 2 ? C.bad : C.ok, fontSize: 12.5, fontWeight: FontWeight.w700)),
+              if (_staff.isNotEmpty)
+                Row(children: [
+                  const Text('Kiske paas: ', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                  DropdownButton<String>(
+                    value: _staff.any((m) => _s(m['id']) == _s(r['assigned_to'])) ? _s(r['assigned_to']) : '',
+                    dropdownColor: C.bgBottom,
+                    style: const TextStyle(color: C.ink, fontSize: 12.5),
+                    items: [
+                      const DropdownMenuItem(value: '', child: Text('Kisi ko nahi')),
+                      for (final m in _staff)
+                        DropdownMenuItem(value: _s(m['id']), child: Text(_s(m['name']).isEmpty ? _s(m['email']) : _s(m['name']))),
+                    ],
+                    onChanged: _busy ? null : (x) { if (x != null && x != _s(r['assigned_to'])) _set(r, {'assign': x}); },
+                  ),
                 ]),
               if (opts.isNotEmpty) ...[
                 const SizedBox(height: 6),

@@ -70,6 +70,7 @@ object Updates {
             val it = items.optJSONObject(i) ?: continue
             val title = it.optString("title")
             val text = if (it.optString("kind") == "new") Strings.newEntry
+            else if (it.optString("kind") == "assigned") Strings.assignedToYou      // v0.352 work given to this staff member
             else listOf(it.optString("status"), it.optString("paid").takeIf { p -> p.isNotEmpty() && p != "No" } ?: "")
                 .filter { s -> s.isNotEmpty() }.joinToString(" · ")
             Inbox.add(ctx, title.ifEmpty { AppData.appName }, text, now)      // v0.340 kept in the app's inbox too
@@ -77,6 +78,9 @@ object Updates {
         }
         return shown
     }
+
+    /** v0.367 TURANT: an instant push shows exactly like a background-check notification. */
+    fun notifyNow(ctx: Context, id: Int, title: String, text: String): Boolean = show(ctx, id, title, text)
 
     private fun show(ctx: Context, id: Int, title: String, text: String): Boolean {
         if (!canNotify(ctx)) return false

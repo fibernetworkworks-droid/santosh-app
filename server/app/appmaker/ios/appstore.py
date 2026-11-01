@@ -6,7 +6,8 @@ Apple account, the iPhone twin of v0.331 PLAY STORE LAUNCH.
   2. Pages Apple asks for: privacy policy (/api/app-api/<key>/privacy) and a SUPPORT page (/api/app-api/<key>/support).
   3. App Privacy answers (Apple's "nutrition label" has no API) from what this app's lists really hold + the age rating
      answer + the one-time steps in App Store Connect.
-  4. Push (kind store, her builds repo on a Mac): the TestFlight build + the listing + 6.9" screenshots from an iPhone Pro
+  4. Push (kind store, her builds repo on a Mac): the TestFlight build + the listing + 6.9" screenshots (v0.364 + 13" iPad
+     screenshots from an iPad Pro simulator, since the app runs on iPad too) from an iPhone Pro
      Max simulator go onto the editable App Store version (`asc.py push`).
   5. Submit for Review (kind review): ONLY from her tap after a confirm, never from chat; Apple's review + release stay hers.
 
@@ -186,7 +187,16 @@ def _store_json(r: AppProject, ist: dict[str, Any], st: dict[str, Any]) -> dict[
             lst["whatsNew"] = "Improvements to " + ", ".join(str(x).replace("_", " ") for x in last["written"][:4]) + "."
     shots = [s for s in (ist.get("qa") or {}).get("shots") or [] if s not in ("hoola_login", "hoola_account", "privacy", "delete_account")]
     order = ["app_start"] + [s for s in shots if s != "app_start"]
+    from .. import storelang as SL                 # v0.372 DUKAAN BHASHA: Hindi (when the app speaks it) as its own localization
+    st2 = dict(st)
+    try:
+        locs = SL.apple_localizations(r, st2, lst, LIMITS)
+    except Exception:                              # noqa: BLE001  - a failed translation never blocks the English push
+        locs = {}
+    if st2.get("listing_tr") != st.get("listing_tr"):
+        _put(r, listing_tr=st2.get("listing_tr"))
     return {"version": str(tf.get("version") or ""), "build": str(tf.get("build") or ""), "locale": "en-US", "listing": lst,
+            "localizations": locs,
             "privacyPolicyUrl": f"{base}/api/app-api/{key}/privacy", "supportUrl": f"{base}/api/app-api/{key}/support",
             "shots": order[:STORE_SHOTS], "not_first": bool(st.get("pushed"))}
 
@@ -310,6 +320,8 @@ def why_line(err: str) -> str:
         return "Yeh build App Store Connect mein nahi mila: pehle 'TestFlight par bhejo' kijiye."
     if "BUILD_PROCESSING" in e:
         return "Apple abhi build process kar raha hai (10-30 minute). Thodi der baad dobara bhejiye."
+    if "2064x2752" in e:                                             # v0.364 the iPad set
+        return "iPad screenshot ka size App Store ke 13-inch iPad slot se match nahi hua; builds repo ka naya hoola-ios.yml lagaiye."
     if "1320x2868" in e:
         return "Screenshot ka size App Store ke 6.9-inch slot se match nahi hua; builds repo ka naya hoola-ios.yml lagaiye."
     if re.search(r"401|NOT_AUTHORIZED|authentication", e, re.I):

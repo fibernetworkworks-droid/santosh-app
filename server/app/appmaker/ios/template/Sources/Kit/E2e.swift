@@ -74,6 +74,13 @@ enum E2e {
         guard let back = await Cloud.bytes("/files/\(fid)", token: Auth.shared.token), back.count > 100, back.prefix(2) == Data([0xFF, 0xD8])
         else { return "photo not served back as a JPEG" }
         say("photo ok \(fid) \(back.count) bytes")
+        // v0.346 a PDF document up (the server checks it is a plain PDF) and back as a download
+        guard let pdf = Data(base64Encoded: "JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyMDAgMjAwXSA+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDQgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjE4NgolJUVPRgo=") else { return "pdf constant" }
+        let pup = await Cloud.upload(pdf, token: Auth.shared.token)
+        let pid = pup.body["id"] as? String ?? ""
+        guard pup.ok, pid.hasPrefix("f_"), (pup.body["kind"] as? String) == "pdf" else { return "pdf upload \(pup.code) \(pup.error)" }
+        guard let pback = await Cloud.bytes("/files/\(pid)", token: Auth.shared.token), pback == pdf else { return "pdf not served back" }
+        say("pdf ok \(pid) \(pback.count) bytes")
         db.paid(order, mine.id, utr: "412345678901")
         await drain()
         await db.refresh(order)

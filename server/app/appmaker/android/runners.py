@@ -70,8 +70,11 @@ def mode() -> str:
 
 def describe() -> dict[str, Any]:
     m = mode()
-    return {"mode": m, "ready": bool(m), "where": {"worker": "Hoola build machine", "github": "GitHub Actions (private repo)",
-                                                   "local": "this machine", "": "not set up"}[m]}
+    out = {"mode": m, "ready": bool(m), "where": {"worker": "Hoola build machine", "github": "GitHub Actions (private repo)",
+                                                  "local": "this machine", "": "not set up"}[m]}
+    if m == "github" and SYNC["checked_at"]:      # v0.369 KHUD TAZA: did the builds repo's workflows match the server's?
+        out["workflows"] = {"updated": SYNC["updated"], "same": SYNC["same"], "error": SYNC["error"]}
+    return out
 
 
 # ---------------------------------------------------------------- worker (server/app_builder)
@@ -134,15 +137,28 @@ def qa_from_zip(zb: bytes) -> dict[str, Any] | None:
     try:
         with zipfile.ZipFile(io.BytesIO(zb)) as z:
             names = z.namelist()
-            rep = next((n for n in names if n.endswith("report.json")), None)
+            # v0.370 the phone check's report (not the iPad / store ones); its pictures only from its own folder
+            reps = [n for n in names if n.endswith("report.json") and "qa-ipad/" not in n and "/store" not in n]
+            rep = min(reps, key=len) if reps else None
             if not rep:
                 return None
             report = json.loads(z.read(rep))
+            base = rep[: -len("report.json")]
             shots = {}
             for n in names:
                 m = re.search(r"screens/([a-z][a-z0-9_]{0,48})\.png$", n)
-                if m and z.getinfo(n).file_size < 6_000_000:
+                if m and n.startswith(base + "screens/") and z.getinfo(n).file_size < 6_000_000:
                     shots[m.group(1)] = z.read(n)
+            # v0.370 HAR DEVICE JAANCH: the tablet pass (Android) and the iPad pass (iPhone builds)
+            tab = next((n for n in names if n.endswith("tablet.txt")), None)
+            if tab:
+                rows = [ln.split() for ln in z.read(tab).decode(errors="replace").splitlines() if len(ln.split()) == 2]
+                report["tablet"] = {"opened": sum(1 for _i, a in rows if a == "1"), "total": len(rows),
+                                    "crashed": [i for i, a in rows if a != "1"][:40]}
+            ip = next((n for n in names if n.endswith("qa-ipad/report.json")), None)
+            if ip:
+                ir = json.loads(z.read(ip))
+                report["ipad"] = {"opened": ir.get("opened", 0), "total": ir.get("total", 0), "crashed": list(ir.get("crashed") or [])[:40]}
             return {"report": report, "shots": shots}
     except (zipfile.BadZipFile, ValueError, KeyError):
         return None
@@ -174,10 +190,57 @@ class _NoAuthRedirect(urllib.request.HTTPRedirectHandler):
         return urllib.request.Request(newurl, headers={"User-Agent": "Hoola-AppBuild"})
 
 
+# ---------------------------------------------------------------- v0.369 KHUD TAZA: the builds repo's workflows kept current
+# Every new phase changed hoola-build.yml / hoola-ios.yml and the notes said "copy the new file into the builds repo".
+# Now the server keeps them current itself: before a build is pushed, each workflow in the builds repo is compared with
+# the server's own copy (server/app_builder/) and updated when different - one commit on main, before the build branch is
+# made from main (a run uses the workflow file of its own commit). GitHub lets a token change workflow files only with
+# the "Workflows: Read and write" permission; without it the build still runs on the old file and the reason is said once.
+WORKFLOWS = ("hoola-build.yml", "hoola-ios.yml")
+SYNC = {"checked_at": 0.0, "updated": [], "error": "", "same": []}
+SYNC_EVERY = 600
+
+
+def _builder_dir() -> Path:
+    return Path(__file__).resolve().parents[3] / "app_builder"
+
+
+def sync_workflows(repo: str, force: bool = False) -> dict[str, Any]:
+    """Make the builds repo's workflow files match the server's (at most every 10 minutes). Never raises."""
+    if not force and time.time() - SYNC["checked_at"] < SYNC_EVERY:
+        return SYNC
+    SYNC.update({"checked_at": time.time(), "updated": [], "same": [], "error": ""})
+    for name in WORKFLOWS:
+        mine = _builder_dir() / name
+        if not mine.exists():
+            continue
+        want = mine.read_bytes()
+        path = f".github/workflows/{name}"
+        try:
+            cur = _gh("GET", f"/repos/{repo}/contents/{path}?ref=main")
+            have = base64.b64decode((cur or {}).get("content") or "") if cur else None
+            if have == want:
+                SYNC["same"].append(name)
+                continue
+            body = {"message": f"Hoola: keep {name} current (server copy)", "content": base64.b64encode(want).decode(), "branch": "main"}
+            if cur and cur.get("sha"):
+                body["sha"] = cur["sha"]
+            _gh("PUT", f"/repos/{repo}/contents/{path}", body)
+            SYNC["updated"].append(name)
+        except BuildUnavailable as e:
+            msg = str(e)
+            SYNC["error"] = ("GitHub token workflow files nahi likh sakta (fine-grained token mein 'Workflows: Read and write' "
+                             "dijiye, ya " + name + " khud copy kijiye)") if (" 403 " in msg or " 404 " in msg) else msg[:200]
+            log.info("workflow sync %s: %s", name, msg)
+            break
+    return SYNC
+
+
 def push_tree(src: Path, key: str, progress: Progress, prefix: str = "app") -> tuple[str, str, str]:
     """The project as one commit on branch build/<key> of her private builds repo -> (repo, branch, commit sha)."""
     s = _settings()
     repo = s.app_build_gh_repo.strip()
+    sync_workflows(repo)                           # v0.369 the workflows first: the build branch is made from main below
     branch = f"build/{key}"
     head = _gh("GET", f"/repos/{repo}/git/ref/heads/main") or _gh("GET", f"/repos/{repo}/git/ref/heads/master")
     if not head:

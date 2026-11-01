@@ -28,7 +28,7 @@ KIT_FILES = ["Theme.kt", "Data.kt", "Api.kt", "Kit.kt", "Nav.kt", "Strings.kt", 
 CODE_SCREENS = ("splash", "consent", "notify_permission", "seller_info", "privacy", "delete_account")
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 # v0.314 the kit's own account screens (code-made, always present) and the design's sign-in screens they stand in for
-KIT_SCREENS = ("hoola_login", "hoola_account", "hoola_inbox")   # v0.340 + the updates inbox
+KIT_SCREENS = ("hoola_chat", "hoola_login", "hoola_account", "hoola_inbox")   # v0.340 + the updates inbox, v0.378 + chat
 AUTH_IDS = ("login", "signup", "register", "login_staff", "otp_login", "sign_in")
 
 
@@ -201,7 +201,7 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
                       for s in ids if s in have or s in AUTH_IDS)
     code_when = {"seller_info": "SellerScreen()", "privacy": "PrivacyScreen()", "delete_account": "DeleteAccountScreen()"}
     cwhens = "\n".join(f"            {kstr(c)} -> {code_when[c]}" for c in code if c in code_when)
-    cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()\n            "hoola_inbox" -> InboxScreen()'
+    cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()\n            "hoola_inbox" -> InboxScreen()\n            "hoola_chat" -> ChatScreen()'
     all_ids = ", ".join(kstr(x) for x in ids + [c for c in code if c in code_when] + list(KIT_SCREENS))
     fab = spec.get("fab") or {}
     fab_main = (f"FabAction({kstr(fab['label'])}, {kstr(fab.get('icon') or 'plus')}, {kstr(fab['go'])})"
@@ -216,6 +216,7 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
 import androidx.compose.runtime.Composable
 import hoola.kit.AccountScreen
 import hoola.kit.AuthScreen
+import hoola.kit.ChatScreen
 import hoola.kit.DeleteAccountScreen
 import hoola.kit.Empty
 import hoola.kit.FabAction
@@ -267,13 +268,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import hoola.kit.Api
 import hoola.kit.AppUpdate
 import hoola.kit.UpdateDialog
 import hoola.kit.AppData
 import hoola.kit.Auth
 import hoola.kit.Cloud
+import hoola.kit.PushHook
 import hoola.kit.Inbox
+import hoola.kit.I18n
 import hoola.kit.CrashGuard
 import hoola.kit.Db
 import hoola.kit.E2e
@@ -299,6 +303,7 @@ class MainActivity : ComponentActivity() {{
         CrashGuard.install(this, BuildConfig.VERSION_NAME)          // v0.325 a crash on a user's phone reaches Hoola
         enableEdgeToEdge()
         Strings.init(AppTokens.look.language)
+        I18n.load(this, AppTokens.look.language)                   // v0.347 the customer's language (her choice on the phone)
         AppData.load(this)
         Api.init(AppConfig.BASE_URL, AppConfig.APP_ID)
         // v0.314 the app's own backend: accounts, saved data, the offline outbox (sent when the network is back)
@@ -308,6 +313,7 @@ class MainActivity : ComponentActivity() {{
         Db.load(this)
         Db.watch(this)
         Updates.schedule(this, AppConfig.BASE_URL, AppConfig.APP_ID)   // v0.319 order updates as notifications
+        PushHook.start(this)                                       // v0.367 instant notifications (when switched on)
         Inbox.unread.value = Inbox.count(this)          // v0.340 the unread count on the inbox button
         CrashGuard.sendPending(this)
         val seen = Store.get(this, "onboarded") == "1"
@@ -327,11 +333,13 @@ class MainActivity : ComponentActivity() {{
                 LaunchedEffect(Unit) {{
                     if (BuildConfig.DEBUG && intent?.getBooleanExtra("hoola_e2e", false) == true) E2e.run(this@MainActivity)
                 }}
+                key(I18n.lang.value) {{                     // v0.347 a language change redraws every word
                 when (stage) {{
                     "splash" -> SplashScreen {{ stage = if (AppScreens.HAS_CONSENT) "consent" else if (AppScreens.HAS_NOTIFY) "notify" else "app" }}
                     "consent" -> ConsentScreen {{ stage = if (AppScreens.HAS_NOTIFY) "notify" else "app"; if (!AppScreens.HAS_NOTIFY) Store.put(this@MainActivity, "onboarded", "1") }}
                     "notify" -> NotifyScreen {{ stage = "app"; Store.put(this@MainActivity, "onboarded", "1") }}
                     else -> AppShell(nav, AppScreens.fabMain, AppScreens.fabActions, AppData.appName) {{ id -> CrashGuard.screen = id; AppScreens.Show(id) }}
+                }}
                 }}
                 if (stage == "app") UpdateDialog()
             }}
@@ -348,6 +356,9 @@ def uses_location(spec: dict[str, Any]) -> bool:
 
 
 def manifest_xml(spec: dict[str, Any]) -> str:
+    push_service = ('        <service\n            android:name="hoola.kit.HoolaPush"\n            android:exported="false">\n'
+                    '            <intent-filter>\n                <action android:name="com.google.firebase.MESSAGING_EVENT" />\n'
+                    '            </intent-filter>\n        </service>\n') if fcm_config(spec) else ""   # v0.367 TURANT
     loc = ('    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
            '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n') if uses_location(spec) else ""
     return '''<?xml version="1.0" encoding="utf-8"?>
@@ -378,7 +389,7 @@ def manifest_xml(spec: dict[str, Any]) -> str:
             android:name="hoola.kit.UpdatesJob"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
-    </application>
+''' + push_service + '''    </application>
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -387,6 +398,27 @@ def manifest_xml(spec: dict[str, Any]) -> str:
     </queries>
 </manifest>
 '''
+
+
+def fcm_config(spec: dict[str, Any]) -> dict[str, str]:
+    """v0.367 TURANT: the Firebase values this app needs (from the google-services.json Firebase gave for its package), or {}.
+    They go in as plain string resources (what the google-services Gradle plugin would write), so no extra plugin."""
+    raw = spec.get("fcm")
+    if not raw:
+        return {}
+    try:
+        j = json.loads(raw) if isinstance(raw, str) else raw
+        pkg = str((spec.get("app") or {}).get("app_id") or "")
+        cl = next((c for c in j.get("client") or [] if (c.get("client_info") or {}).get("android_client_info", {}).get("package_name") == pkg),
+                  None) or (j.get("client") or [{}])[0]
+        out = {"google_app_id": cl["client_info"]["mobilesdk_app_id"], "gcm_defaultSenderId": str(j["project_info"]["project_number"]),
+               "project_id": j["project_info"]["project_id"], "google_api_key": cl["api_key"][0]["current_key"],
+               "google_crash_reporting_api_key": cl["api_key"][0]["current_key"]}
+    except (KeyError, IndexError, TypeError, ValueError):
+        return {}
+    if not all(re.fullmatch(r"[A-Za-z0-9:_.\-]{4,200}", v) for v in out.values()):
+        return {}
+    return out
 
 
 def _xml(s: str) -> str:
@@ -413,6 +445,11 @@ def resources(spec: dict[str, Any], out: Path) -> None:
     (res / "values-night").mkdir(exist_ok=True)
     (res / "values-night/colors.xml").write_text(
         f'<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="window_bg">{dark_bg if tk.get("mode") != "light" else bg}</color>\n</resources>\n')
+    fcm = fcm_config(spec)
+    if fcm:                                    # v0.367 the Firebase values as resources (FirebaseInitProvider reads them)
+        (res / "values/google_services.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n' + "".join(
+                f'    <string name="{k}" translatable="false">{v}</string>\n' for k, v in fcm.items()) + '</resources>\n')
     (res / "xml").mkdir(exist_ok=True)
     (res / "xml/network_security_config.xml").write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n<network-security-config>\n'
@@ -440,6 +477,7 @@ def resources(spec: dict[str, Any], out: Path) -> None:
 FORM_WORDS = ("book", "form", "enquir", "request", "enrol", "register", "apply", "contact", "feedback", "new_", "add_")
 CART_WORDS = ("cart", "checkout", "basket", "order_review")
 DASH_WORDS = ("dashboard", "report", "stats", "analytics", "admin", "overview")
+MAP_WORDS = ("route", "stops", "delivery", "deliveries", "visits", "map", "dispatch")
 CART_BLOCK = """        val cart = AppState.cartItems("products")
         if (cart.isEmpty()) block { Empty("cart", "Cart") }
         cart.forEach { (rec, q) -> block { HCard { Title(rec.name); Small("$q x " + rupees(rec.price)) } } }
@@ -454,17 +492,20 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
         if f.get("admin_only") or f.get("hidden") or f.get("type") == "yes_no" or not ID_RE.match(k):
             continue
         if f.get("type") == "photo":              # v0.319
-            out.append(f"        block {{ PhotoField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
+            out.append(f"        block {{ PhotoField(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
             continue
         if f.get("type") == "location":
-            out.append(f"        block {{ LocationField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
+            out.append(f"        block {{ LocationField(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
+            continue
+        if f.get("type") == "file":                # v0.346 a PDF document
+            out.append(f"        block {{ FileField(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
             continue
         if f.get("type") == "scan":                # v0.340
-            out.append(f"        block {{ ScanField({kstr(f.get('label') or k)}, {kstr(k)}) }}")
+            out.append(f"        block {{ ScanField(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
             continue
         if f.get("type") == "choice" and f.get("options"):
             opts = ", ".join(kstr(o) for o in f["options"][:8])
-            out.append(f"        block {{ Label({kstr(f.get('label') or k)}) }}")
+            out.append(f"        block {{ Label(T({kstr(f.get('label') or k)})) }}")
             out.append(f"        block {{ Chips(listOf({opts}), {kstr(k)}) }}")
             continue
         kb = {"phone": "KeyboardType.Phone", "email": "KeyboardType.Email", "number": "KeyboardType.Number"}.get(
@@ -472,9 +513,9 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
         lines = 3 if f.get("type") == "long_text" else 1
         hint = "YYYY-MM-DD" if f.get("type") == "date" else ""
         label = str(f.get("label") or k) + (" *" if f.get("required") else "")
-        out.append(f"        block {{ Field({kstr(label)}, {kstr(k)}, keyboard = {kb}, lines = {lines}, hint = {kstr(hint)}) }}")
-    btn = ("OrderBtn(\"Place order\", modifier = Modifier.fillMaxWidth())" if order else
-           f"SubmitBtn(\"Send\", {kstr(coll)}, modifier = Modifier.fillMaxWidth(), then = \"hoola_account\")")
+        out.append(f"        block {{ Field(T({kstr(label)}), {kstr(k)}, keyboard = {kb}, lines = {lines}, hint = {kstr(hint)}) }}")
+    btn = ("OrderBtn(T(\"Place order\"), modifier = Modifier.fillMaxWidth())" if order else
+           f"SubmitBtn(T(\"Send\"), {kstr(coll)}, modifier = Modifier.fillMaxWidth(), then = \"hoola_account\")")
     out.append(f"        block {{ {btn} }}")
     return out
 
@@ -490,7 +531,7 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend:
     tab = sid in tabs
     rows = []
     if s.get("purpose"):
-        rows.append(f"        block {{ Small({kstr(s['purpose'])}) }}")
+        rows.append(f"        block {{ Small(T({kstr(s['purpose'])})) }}")
     colls = {str(c.get("key")): c for c in (backend or {}).get("collections") or []
              if isinstance(c, dict) and ID_RE.match(str(c.get("key") or ""))}
     order = str((backend or {}).get("order") or "")
@@ -510,7 +551,7 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend:
         nxt = next((a["go"] for a in acts), "")
         click = f"{{ nav.open({kstr(nxt)}, {kstr(lst)}, rec.id) }}" if nxt else "null"
         rows.append(f'''        val items = AppData.list({kstr(lst)})
-        if (items.isEmpty()) block {{ Empty({kstr(icon_for(sid))}, {kstr(s.get("label") or sid)}) }}
+        if (items.isEmpty()) block {{ Empty({kstr(icon_for(sid))}, T({kstr(s.get("label") or sid)})) }}
         items.take(40).forEach {{ rec ->
             block {{
                 HCard(onClick = {click}) {{
@@ -522,15 +563,17 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend:
             }}
         }}''')
     else:
-        rows.append(f"        block {{ Empty({kstr(icon_for(sid))}, {kstr(s.get('label') or sid)}) }}")
+        rows.append(f"        block {{ Empty({kstr(icon_for(sid))}, T({kstr(s.get('label') or sid)})) }}")
     if any(w in sid for w in DASH_WORDS) and colls:          # v0.340 staff dashboards show the live numbers
         rows.append("        block { StatsBlock() }")
+    if any(w in sid for w in DASH_WORDS + MAP_WORDS) and any(f.get("type") == "location" for c in colls.values() for f in c.get("fields") or []):
+        rows.append("        block { StopsBlock() }")              # v0.350 the open stops, nearest first + route
     if sid in ("profile", "account", "me", "my_account", "settings") and colls:
         # v0.314 the user's own account (sign in, their orders / bookings, sign out) lives on the kit's account screen
-        rows.append('        block { Btn(if (Auth.signedIn) Auth.name else "Sign in", modifier = Modifier.fillMaxWidth(), icon = "user") '
+        rows.append('        block { Btn(if (Auth.signedIn) Auth.name else T("Sign in"), modifier = Modifier.fillMaxWidth(), icon = "user") '
                     '{ nav.go(if (Auth.signedIn) "hoola_account" else "hoola_login") } }')
     for a in acts:
-        rows.append(f"        block {{ Btn({kstr(a.get('label') or a['go'])}, modifier = Modifier.fillMaxWidth(), kind = BtnKind.Tonal) "
+        rows.append(f"        block {{ Btn(T({kstr(a.get('label') or a['go'])}), modifier = Modifier.fillMaxWidth(), kind = BtnKind.Tonal) "
                     f"{{ nav.go({kstr(a['go'])}) }} }}")
     body = "\n".join(rows)
     return f'''package hoola.app.screens
@@ -546,7 +589,7 @@ import hoola.kit.*
 @Composable
 fun {kotlin_name(sid)}() {{
     val nav = LocalNav.current
-    Page({kstr(s.get("label") or sid)}, back = {"false" if tab else "true"}) {{
+    Page(T({kstr(s.get("label") or sid)}), back = {"false" if tab else "true"}) {{
 {body}
     }}
 }}
@@ -617,6 +660,12 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     (tmp / "gradlew").chmod(0o755)
     main = tmp / "app/src/main"
     (main / "AndroidManifest.xml").write_text(manifest_xml(spec))
+    fcm = fcm_config(spec)
+    if fcm:                                    # v0.367 TURANT: Firebase Cloud Messaging in, the stub hook out
+        shutil.copy(HERE / "fcm/PushHook.kt", main / "java/hoola/kit/PushHook.kt")
+        g = tmp / "app/build.gradle.kts"
+        g.write_text(g.read_text().replace("    implementation(libs.gms.code.scanner)\n",
+                                           "    implementation(libs.gms.code.scanner)\n    implementation(libs.firebase.messaging)\n", 1))
     resources(spec, tmp)
     fonts_have: dict[str, bool] = {}
     for which, files in (spec.get("fonts") or {}).items():
@@ -663,6 +712,8 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
         '</network-security-config>\n')
     (main / "assets").mkdir(exist_ok=True)
     (main / "assets/seed.json").write_text(json.dumps(spec.get("seed") or {}, ensure_ascii=False))
+    if spec.get("i18n"):                                     # v0.347 the app's words in the chosen languages
+        (main / "assets/i18n.json").write_text(json.dumps(spec["i18n"], ensure_ascii=False))
     for name, path in (spec.get("scenes") or {}).items():      # v0.140 stills of the app's 3D scenes for Scene3D(name)
         p = Path(str(path))
         if re.fullmatch(r"[a-z]{1,12}", str(name)) and p.is_file() and p.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n":
@@ -675,9 +726,10 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     # v0.325 HOOLA QA travels with the project: the build machine / builds repo runs the device check after compiling
     qa = tmp / "hoola_qa"
     qa.mkdir(exist_ok=True)
-    for f in ("device_check.sh", "qa.py"):
+    for f in ("device_check.sh", "qa.py", "tablet_check.sh"):      # v0.363 + the tablet pass
         shutil.copy(HERE / f, qa / f)
     (qa / "device_check.sh").chmod(0o755)
+    (qa / "tablet_check.sh").chmod(0o755)
     (qa / "package.txt").write_text(app_id + "\n")
     shots = ids + [c for c in ("seller_info", "privacy", "delete_account") if c in (spec.get("code_screens") or [])] + list(KIT_SCREENS)
     (qa / "screens.txt").write_text(" ".join(x for x in shots if x not in AUTH_IDS) + "\n")

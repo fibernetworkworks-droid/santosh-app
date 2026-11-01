@@ -19,11 +19,16 @@ struct CartList: View { init() }                                    // the cart 
 struct AccountButton: View { init() }                               // Sign in / the user's name -> account screen
 struct StatsBlock: View { init() }        // v0.340 staff dashboard: counts, status mix, 14-day bars (shows nothing to customers)
 struct ScanRow: View { init(label: String, key: String) }   // v0.340 a [scan] field: camera barcode / QR scanner or typed
+struct FileRow: View { init(label: String, key: String) }   // v0.346 a [file] field: a PDF from the system file importer
+struct StopsBlock: View { init() }        // v0.350 staff: open rows with a [location] on a map, nearest first, Route in Maps
+struct RateBox: View { init(coll: String, r: Item) }   // v0.353 the customer rates her finished row once (RowsSection already shows it)
+struct AssignBox: View { init(coll: String, r: Item) }   // v0.352 staff row: who has it + assign / take / give back (RowsSection already shows it)
 struct InboxButton: View { init() }       // v0.340 the updates inbox ("hoola_inbox")
 enum H { static func c(_ scheme: ColorScheme) -> Palette; static var radius: CGFloat }
 struct Palette { bg, surface, ink, muted, line, primary, onPrimary, accent, tint: Color }
     // read colours with: @Environment(\\.colorScheme) private var scheme; let c = H.c(scheme)
 func rupees(_ v: Double) -> String
+func T(_ s: String) -> String      // v0.347 the user-visible literal in the customer's language
 func openLink(_ s: String)          // "tel:...", "https://wa.me/91...", "https://maps.apple.com/?q=..."
 func payUpi(_ amount: Double, _ note: String)   // the customer's own UPI app, to the business's UPI ID
 enum Words { static var add, send, placeOrder, signIn, account, nothingYet, cartEmpty, call, privacy: String }
@@ -77,6 +82,9 @@ FILE CONTRACT
   star, plus, minus, magnifyingglass, phone, envelope, mappin.and.ellipse, clock, calendar, gift, tag, truck.box,
   shippingbox, doc.text, creditcard, square.grid.2x2, list.bullet, chevron.right, checkmark, xmark, sparkles, storefront,
   fork.knife, cross.case, graduationcap, book, wrench.and.screwdriver, car, leaf, flame, photo, camera, star.fill, heart.fill).
+- v0.347 EVERY word the user reads that you write as a literal goes through T("..."): Text(T("Our menu")),
+  MainButton(text: T("Book now")) { ... }, Page(T("Home")) { }. Write the literal in the app's language ({LANG}); the build
+  translates it for customers who pick another language. Never wrap data (item.name, prices, facts) or interpolated strings.
 - Words: in {LANG}. Real facts only (from facts / lists); a missing fact is left out, never invented.
 - Accessibility: every icon-only button gets .accessibilityLabel(...); tap targets at least 44 pt.
 

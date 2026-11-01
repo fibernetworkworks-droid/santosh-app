@@ -76,7 +76,7 @@ def test_android_project_has_scan_dashboard_inbox(tmp_path):
     G.write_project(sp, out)
     scr = out / "app/src/main/java/hoola/app/screens"
     be = sp["seed"]["backend"]
-    assert 'ScanField("Coupon", "coupon")' in G.fallback_screen({"id": "cart", "label": "Cart"}, ["cart"], [], be)
+    assert 'ScanField(T("Coupon"), "coupon")' in G.fallback_screen({"id": "cart", "label": "Cart"}, ["cart"], [], be)
     assert "StatsBlock()" in G.fallback_screen({"id": "dashboard", "label": "Dashboard"}, ["dashboard"], [], be)
     assert scr.exists()
     reg = (out / "app/src/main/java/hoola/app/AppScreens.kt").read_text()
