@@ -52,6 +52,15 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the long-task + tool-choice work, every live test passed): branch
+  `stable-2026-11-01-v343` = commit fce446a0 = v0.343.0, pubspec 0.343.0+383 (live on hoola.ainewtika.com at her tests; healthz
+  0.343.0). Long jobs finish (v0.314 AAGE BADHO: a promise never ends a job, parallel batch = 1 call, moving turn keeps its
+  deadline, server writes the plan), her test run fixes (v0.326: plan card from her words, one PDF, no quiet PC), plan card
+  drawn on the console (v0.330), long jobs on Claude at effort xhigh + tool lanes + clean cuts + FRESH tool card (v0.336),
+  KAAM KARO (v0.338). Live tool card 25/26 (the miss = a fair question the card cannot read). Also carries the other
+  sessions' v0.337-v0.343 (iPhone, App Store, edit, terms, signal mark). APK release `v0.343.0-b843`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.343.0-b843/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v343` as the branch.
 - NEWEST (31 Oct 2026, owner: "EVERY THING IS PERFECT NOW. SAVE THE STATE" after the Create Studio work): branch
   `stable-2026-10-31-v316` = commit 00a9a60a = v0.316.0, live on hoola.ainewtika.com (healthz 0.316.0), pubspec 0.316.0+356.
   Create Studio end to end: premium Create + studio sidebar (v0.304 / v0.306), Engines page (v0.308), clip Create (v0.309),
@@ -136,9 +145,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.346.0 (pubspec 0.346.0+386). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.347.0 (pubspec 0.347.0+387). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.347 LAMBE KAAM KI REPORT: `python -m app.quality longjobs` / vps-ops `long_jobs` = her real long jobs in 24 h (task runs, plan cards,
+  turns that died), free; tool card counts a question without '?' (`toolchoice._ASKS`).
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).

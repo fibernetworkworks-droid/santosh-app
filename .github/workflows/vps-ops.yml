@@ -31,6 +31,7 @@ on:
           - rea_setup
           - studio_apis
           - tool_card
+          - long_jobs
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -300,6 +301,10 @@ jobs:
                 # run it on the VPS itself - python -m app.quality tools --live.)
                 echo 'cd $CORE && echo "== router (free)"; timeout 120 .venv/bin/python -m app.quality tools 2>&1 | head -3; timeout 120 .venv/bin/python -m app.quality tools --fresh 2>&1 | head -3'
                 echo 'echo "== live first picks, FRESH set"; cd $CORE && timeout 720 .venv/bin/python -m app.quality tools --live --fresh --label vps-ops 2>&1 | tail -40' ;;
+              long_jobs)
+                # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
+                # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.
+                echo 'cd $CORE && timeout 120 .venv/bin/python -m app.quality longjobs --hours 24 2>&1 | tail -60' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
