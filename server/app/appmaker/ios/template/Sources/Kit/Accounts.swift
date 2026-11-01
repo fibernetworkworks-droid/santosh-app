@@ -93,6 +93,7 @@ struct RowsSection: View {
     @State private var utr = ""
     @State private var mineOnly = false                 // v0.352 My work: only the rows given to this staff account
     @ObservedObject private var team = Team.shared
+    @ObservedObject private var live = Live.shared          // v0.407 ABHI ABHI
 
     var body: some View {
         let meId = auth.me?.id ?? ""
@@ -151,7 +152,7 @@ struct RowsSection: View {
                 }
             }
         }
-        .task(id: auth.me?.id) { await db.refresh(coll) }
+        .task(id: "\(auth.me?.id ?? "")#\(live.revOf(coll))") { await db.refresh(coll) }   // v0.407 a live change reloads it
         .alert(Words.iPaid, isPresented: Binding(get: { paying != nil }, set: { if !$0 { paying = nil } })) {
             TextField(Words.utr, text: $utr).keyboardType(.asciiCapable)
             Button("OK") {

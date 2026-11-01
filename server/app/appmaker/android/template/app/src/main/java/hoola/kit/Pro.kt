@@ -645,10 +645,15 @@ private fun StaffChat() {
         while (true) {
             val r = Cloud.call("GET", "/chat?all=1", null, Auth.token())
             if (r.ok) list = arrList(r.body.optJSONArray("threads"))
-            kotlinx.coroutines.delay(10_000)
+            kotlinx.coroutines.delay(if (Live.connected.value) 60_000 else 10_000)   // v0.407 live: a message reloads at once
         }
     }
+    LaunchedEffect(Live.chatTick.intValue) {
+        val r = Cloud.call("GET", "/chat?all=1", null, Auth.token())
+        if (r.ok) list = arrList(r.body.optJSONArray("threads"))
+    }
     Page(Strings.customerMessages) {
+        block { LiveDot() }
         if (list.isEmpty()) block { Small(Strings.nothingYet) }
         list.forEach { t ->
             block {
@@ -669,9 +674,11 @@ private fun ThreadView(member: String, title: String, onBack: (() -> Unit)? = nu
         val r = Cloud.call("GET", path, null, Auth.token())
         if (r.ok) msgs = arrList(r.body.optJSONArray("messages"))
     }
-    LaunchedEffect(member) { while (true) { load(); kotlinx.coroutines.delay(10_000) } }
+    LaunchedEffect(member) { while (true) { load(); kotlinx.coroutines.delay(if (Live.connected.value) 60_000 else 10_000) } }
+    LaunchedEffect(member, Live.chatTick.intValue) { load() }        // v0.407 ABHI ABHI: a new message shows at once
     Page(title) {
         if (onBack != null) block { Btn(Strings.back, kind = BtnKind.Ghost, small = true) { onBack() } }
+        block { LiveDot() }
         if (msgs.isEmpty()) block { Small(if (member.isEmpty()) Strings.chatHint else Strings.nothingYet) }
         msgs.takeLast(100).forEach { m ->
             block {
@@ -685,7 +692,8 @@ private fun ThreadView(member: String, title: String, onBack: (() -> Unit)? = nu
             }
         }
         block {
-            OutlinedTextField(value = text, onValueChange = { text = it.take(1000) }, modifier = Modifier.fillMaxWidth(),
+            TypingLine(member)
+            OutlinedTextField(value = text, onValueChange = { text = it.take(1000); Live.typingNow(member) }, modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(Strings.typeMessage) }, maxLines = 4)
             if (err.isNotEmpty()) Small(err)
             Btn(Strings.send, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {

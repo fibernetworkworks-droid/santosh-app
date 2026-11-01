@@ -290,6 +290,7 @@ import hoola.kit.ConsentScreen
 import hoola.kit.HoolaTheme
 import hoola.kit.Nav
 import hoola.kit.NotifyScreen
+import hoola.kit.Live
 import hoola.kit.SplashScreen
 import hoola.kit.Store
 import hoola.kit.Strings
@@ -347,6 +348,10 @@ class MainActivity : ComponentActivity() {{
             }}
         }}
     }}
+
+    // v0.407 ABHI ABHI: the live stream only while the app is on screen (push covers the background)
+    override fun onStart() {{ super.onStart(); Live.start() }}
+    override fun onStop() {{ Live.stop(); super.onStop() }}
 }}
 '''
 

@@ -193,7 +193,7 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
               child: Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final f in const [['part.step', 'STEP'], ['part.stl', 'STL'], ['part.3mf', '3MF'], ['section.dxf', 'DXF'],
                     ['drawing.pdf', 'Drawing PDF'], ['analysis.pdf', 'Analysis PDF'], ['part.nc', 'G-code'], ['flat.dxf', 'Flat DXF'],
-                    ['robot_urdf.zip', 'URDF']])
+                    ['robot_urdf.zip', 'Robot (URDF/SDF/MJCF)']])
                   if (files[f[0]] != null)
                     OutlinedButton(onPressed: () => _open(_s(files[f[0]])), child: Text(f[1])),
               ]),

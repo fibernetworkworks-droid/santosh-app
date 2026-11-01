@@ -52,6 +52,26 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the ENTERPRISE CONNECT work): branch `stable-2026-11-01-v406`
+  = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com at the save; healthz 0.406.0).
+  THE ENTERPRISE SUITE IS NOW REACHABLE END TO END, which it had never been from v0.358 to v0.396: her own ERP /
+  CRM is joined on the console's **Systems** page or the phone's Profile > "Apne system jodiye", the key is sealed
+  on arrival and returned by NO route, and `run.verify` asks her real system READ-ONLY whether it works - 401 told
+  apart from 403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs (v0.397 CONNECT).
+  Behind it: the write rails built from the vendors' OWN documentation (v0.389 SACH BOLO - SAP X-CSRF-Token +
+  If-Match on one held session + its documented RequestID idempotency; Windchill CSRF_NONCE + Reserve /
+  UndoReservation so a half-run can never leave HER object locked; Salesforce Tooling refused at plan time where a
+  live org forbids it, with Metadata REST deployRequest as the real road), the Salesforce deploy and the
+  `ambiguous` row's way out wired (v0.393 POORA KARO), and the Systems page 500 fixed (v0.399 SYSTEMS KHULE).
+  Ten desks, 90 parts, 3 capped roles whose cap text now names the TRUE rule. Every marker re-verified in this
+  exact commit before the branch was cut, and 154 tests run green on it (enterprise + console + routines).
+  Also carries the other sessions' v0.400-v0.406 (FAST + visitor tests, YouTube ads, APNA DATABASE, GAME BIBLE,
+  REAL DRAWINGS, CAD contact). APK release `v0.406.0-b1079`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.406.0-b1079/app-release.apk
+  Roll back to it exactly like the ones below, with `stable-2026-11-01-v406` as the branch.
+  STILL NOT VERIFIED AT THIS CHECKPOINT, said plainly: no live customer tenant has answered any of it. Every
+  header, ETag rule, reservation and deploy shape comes from the vendors' documentation and recorded HTTP. The
+  first real system she joins is what will confirm or correct them, and `verify` is written to say which.
 - NEWEST (1 Nov 2026, owner: "SAVE THE STATE" after the SHIKSHA work, deployed + checked on the VPS): branch
   `stable-2026-11-01-v406` = commit 3a68fb59 = v0.406.0, pubspec 0.406.0+450 (live on hoola.ainewtika.com, healthz 0.406.0).
   Education AI Employees end to end: pylab sandbox + Shiksha + Pathyakram (v0.381), Guru Sahayak tutor + 2.1 (v0.387),
@@ -184,9 +204,19 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
   403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
   verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
-- Current version: v0.408.0 (pubspec 0.408.0+452). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- RESEARCH: `docs/research/building_industry/` - the whole design / construction / building industry as 276 jobs from
+  primary sources (6 reports, 576 KB; read `00_INDEX.md` first, never the lot). Three findings that shape every desk
+  here: (1) PREPARE / SUBMIT / CERTIFY - the application is the owner's act, the certification is reserved to a named
+  licensee on a specific register, preparation is unreserved = 70-80% of the labour and almost none of the liability;
+  (2) DESIGN is largely UNGATED in India (HVAC has no licence at all) while CERTIFICATES and EXECUTION are gated, and
+  the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
+  exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
+  the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
+- Current version: v0.411.0 (pubspec 0.411.0+455). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.410 ECC ON: review card old vs new = 8/8 caught both, false alarms 8 -> 4, nits 3 -> 0; fix card 6/6 + 6/6 with the fixer -> `dev_spec_review` + `dev_spec_fix` default ON; card rows keep what each false alarm said.
 - v0.407 EK DIMAAG + ARCHITECT (web Step 2): `site/applink.py` = a website's web app on App Sahayak's backend + DIMAAG (members / rows moved, old logins work, same /api/site-app addresses; logic draft -> her tap); `site/architect.py` = her one line -> spec card (pages / users / data / logic / features) -> her Haan builds site + app brain (`/api/site-architect*`, website action=architect*).
+- v0.409 ABHI ABHI (Pillar C): `appmaker/live.py` one SSE stream per open app fed by the journal (all processes), filtered by read rules, chat / presence / typing, Last-Event-ID replay; kits Live.kt / Live.swift; console app page live.
 - v0.403 SHIKSHA 3+4: `app/daftar` school office (attendance + guardian alert card, grading UNSIGNED: sheet / OMR / Forms /
   code / rubric, timetable, report card from signed-off marks) + `app/shodh` research assistant (official APIs only, refs in code).
 - v0.402 ECC PHASE 1: `devsahayak/specialists.py` (ECC agents, MIT, adapted): CI fixer by language (`dev_spec_fix`), reviewer discipline + language reviewer + focused passes (`dev_spec_review`, `service.explore_review`); both OFF until `python -m app.quality review` (vps-ops `review_card`, 12 PRs old vs new) + vps-ops `fix_card_spec` say so.
@@ -218,6 +248,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
+- v0.411 MECHANISMS 2 (`kinematics.py` rewrite): closed loops (closure=True, solved; four-bar Grashof + transmission angle), H.couple gears / belts, joint torque by virtual work (+ payload, I·alpha; == MuJoCo), package URDF + SRDF + SDF + MJCF (MuJoCo compiles it); optional `pip install mujoco`.
 - v0.408 HOOLA MECHANISMS (`engineering/kinematics.py`, H.joint / H.robot): joint tree, B-rep mass + inertia, collision sweep -> free range (collision in her range -> redesign), robot_urdf.zip (URDF + STL meshes, validated), motion.gif + explode.png.
 - v0.405 HOOLA DFM (built as 0.404, `engineering/dfm.py`, H.make('fdm'|'sla'|'sls'|'mjf'|'metal_pbf'|'cnc'|'sheet'|'molding', ...)): measured walls / overhangs / orientation / inside corners / deep holes / setups / bends / draft / undercuts / clamp; FAIL -> redesign; limits = published starting points, her shop's numbers override.
 - v0.398 REAL DRAWINGS (built as 0.397, `engineering/views2d.py` box: kernel HLR vector views + hole stacks THRU/DEEP/CBORE/CSK + radii; `drawing.py` reportlab A3 sheet: measured dims, callouts, H.fit ISO 286, H.drawing first/third + ISO 2768, title block); page 2 = shaded views.
