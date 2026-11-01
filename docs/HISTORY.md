@@ -12664,3 +12664,25 @@ the Android and the iPhone app. Built as 0.340, re-versioned past main's v0.340.
   scanner; CI appgen-check (emulator, 14 screens) and ios-check (macOS: compile, 14 simulator screens, e2e).
 - Not verified: the camera scanners on real phones (emulator / simulator have no camera); iOS runs background refresh on
   its own schedule (a phone that rarely opens the app gets fewer checks - real push would need her Apple push key).
+
+## v0.342.0 APNA CODE (App Sahayak Phase 9, owner: "START PHASE 9")
+No Phase 9 had been named; this is the last open item of the original plan's Phase 4 ("each app's code is kept with its
+full history and can be exported to her GitHub").
+- `appmaker/code.py`: `stage(r)` builds the repo content in the app's folder `github/`: android/ (copy of
+  android/project without keys/, build/, .gradle/, qa/, local.properties, *.p12/*.jks/*.p8; the Gradle file's `?: "pw"`
+  preview password blanked like the ZIP export), ios/ (copy of ios/project without dd/, ddr/, DerivedData, logs) when an
+  iPhone build exists, README.md (layout, Android Studio / `./gradlew assembleRelease`, `xcodegen generate` + Xcode, own
+  signing, the backend API on her Hoola server, the rules the code keeps), CHANGELOG.md (Android history notes + iPhone
+  history, newest first), .gitignore; fingerprint over every path + content. `request` = the card (published as the
+  existing `site_github` event, so the phone's GitHub card shows it and its button pushes) with repo `<slug>-app`,
+  private by default, build, files, size, hash; `push` (ONLY via POST /api/sites-github/<id>/push, her tap; `site/github.push`
+  hands app exports to it) re-stages, refuses a stale hash ("naya build aa gaya"), creates the repo if missing (private),
+  then blobs -> a FULL tree (no base_tree: removed files leave) -> a commit on top of the branch head (message = "Hoola app
+  build N (version) + iPhone ..." + what's new) -> ref; records {build, repo, commit, at} in the app state.
+- Routes: POST /api/apps/{ref}/github (through apps_act; the generic POST /api/apps/{ref}/{action} route comes first),
+  GET /api/apps/{ref}/github (linked, repo, exports, commits, ready). Tool app_banao action=github (owner, card only).
+- Phone `AppCodePanel` (app_ios.dart: private switch, button = card in chat, last commits); console `loadCode`
+  (confirm() with the card's repo / files / private, then the push).
+- Tests: `test_v0342_apna_code.py` (2): no build -> 400; card sends nothing; wrong hash refused; files present, no key,
+  password blanked, gradlew executable; build 2 = a second commit with the first as parent; a pre-build card refused;
+  the tool only makes a card.

@@ -136,11 +136,12 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.341.0 (pubspec 0.341.0+381). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.342.0 (pubspec 0.342.0+382). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
 - v0.340 EDIT MEIN SAB JODO: website Edit mode "+ Jodo" adds a photo / video (MP4 or YouTube) / audio / download file after any block
   (`site/media.py`: bytes must match the kind, placeholders -> addresses per page depth, hard links); photos in <picture> pickable again.
+- v0.342 APNA CODE (App Phase 9, `appmaker/code.py`): her app's whole code (android/ + ios/ + README + CHANGELOG, never a key) to HER GitHub, one commit per build, the website-export card + her tap only.
 - v0.341 HAR FEATURE 2 (App Phase 8, kits `Pro.kt` / `Pro.swift`): scan field (Google code scanner, no camera permission / VisionKit), staff dashboard `/api/app-api/<key>/stats` (charts), updates inbox `hoola_inbox`, iPhone background updates (BGAppRefresh + local notifications).
 - v0.339 APP STORE LAUNCH (App Phase 7, `appmaker/ios/asc.py` + `appstore.py`): App Store Connect API runs IN her builds repo (key never on Hoola): listing within Apple limits, 6.9" Pro Max shots, build onto the version; Submit for Review only her tap; support page + App Privacy answers.
 - v0.338 KAAM KARO: first live tool card 23/26 -> a file whose content she gave is made NOW (gaps blank, never ask first);

@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); } }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); } }
     showBtn();
   }
 
@@ -565,6 +565,25 @@ window.HoolaBuild = function (C) {
     if (busy) setTimeout(() => { if (document.body.contains(box)) loadAppStore(o, root); }, 10000);
   }
 
+  /* v0.342 her app's code in HER GitHub: the button makes the card in the chat; her tap on that card pushes */
+  async function loadCode(o, root) {
+    const box = root.querySelector('.stcode'); if (!box) return;
+    let v; try { v = await api('GET', base(o) + '/github'); } catch (er) { return; }
+    box.innerHTML = `<section class="bbox"><h4>Code in your GitHub${L(v.commits).length ? ' · ' + L(v.commits).length + ' commits' : ''}</h4>
+      <div class="bln faint">The whole Android + iPhone code, one new commit per build, with a README and a changelog. Signing keys never go. You confirm before anything is sent.</div>
+      ${v.linked ? '' : '<div class="bln badc">Link your GitHub token first (Website > Hosting, typed in the app only).</div>'}
+      <label class="bln"><input type="checkbox" data-cd="private" checked> Private repo</label>
+      <div class="acts"><button class="btn soft" type="button" data-cd="go" ${v.linked && v.ready ? '' : 'disabled'}>Send code to GitHub</button></div>
+      ${L(v.commits).slice(0, 3).map(x => `<div class="bln faint">✓ build ${esc(S(x.build))} · ${esc(S(x.repo))} · ${esc(S(x.at).slice(0, 10))}</div>`).join('')}</section>`;
+    box.onclick = async e => { const b = e.target.closest('button[data-cd="go"]'); if (!b) return;
+      try {
+        const card = await api('POST', base(o) + '/github', {private: box.querySelector('[data-cd="private"]').checked});
+        if (!confirm(`Send ${card.files} files (build ${card.version}) to ${card.private ? 'PRIVATE' : 'PUBLIC'} repo ${card.repo} on your GitHub? Signing keys never go.`)) { toast('Not sent.'); return; }
+        const done = await api('POST', '/api/sites-github/' + encodeURIComponent(card.id) + '/push', {hash: card.hash});
+        toast('Sent: ' + S(done.url)); loadCode(o, root);
+      } catch (er) { toast(er.message, true); } };
+  }
+
   /* v0.325 every build of the app: what changed, and Bring back for a kept one */
   function historyBox(o) {
     const h = L(o.an?.history), kept = L(o.an?.kept_builds); if (!h.length) return '';
@@ -586,7 +605,7 @@ window.HoolaBuild = function (C) {
     const apk = M(a.apk), dl = publicLink(a.apk_url), zip = publicLink(a.zip_url), redo = L(a.screens).filter(x => x.state === 'code').map(x => x.id);
     return `<ol class="bpipe">${pipe}</ol>
       ${s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : ''}${a.note ? `<div class="muted bln">${esc(a.note)}</div>` : ''}
-      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div><div class="stios"></div><div class="stappstore"></div>
+      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div><div class="stios"></div><div class="stappstore"></div><div class="stcode"></div>
       <div class="bcols"><section class="bbox"><h4>Screens in Kotlin</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
           ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>

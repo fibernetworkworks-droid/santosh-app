@@ -295,3 +295,73 @@ class _AppStorePanelState extends State<AppStorePanel> {
     ]);
   }
 }
+
+/// v0.342 her app's code in HER GitHub: one commit per build (Android + iPhone + README + CHANGELOG, never a key).
+/// The button only makes the card in the chat; her tap on that card pushes.
+class AppCodePanel extends StatefulWidget {
+  const AppCodePanel({super.key, required this.app, required this.id});
+  final Santosh app;
+  final String id;
+  @override
+  State<AppCodePanel> createState() => _AppCodePanelState();
+}
+
+class _AppCodePanelState extends State<AppCodePanel> {
+  Map<String, dynamic>? _v;
+  bool _busy = false;
+  bool _private = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = Map<String, dynamic>.from(await widget.app.api!.call('GET', '/api/apps/${widget.id}/github') as Map);
+      if (mounted) setState(() => _v = v);
+    } catch (_) {}
+  }
+
+  Future<void> _card() async {
+    setState(() => _busy = true);
+    try {
+      await widget.app.api!.call('POST', '/api/apps/${widget.id}/github', body: {'private': _private});
+      if (mounted) _snack(context, 'Card chat mein aa gaya: wahan haan dabaiye.');
+      _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _v;
+    final commits = _list(v?['commits']);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Icon(Icons.code_rounded, color: C.accent, size: 20),
+        const SizedBox(width: 6),
+        Expanded(child: Text('Code aapke GitHub mein', style: display(15))),
+        if (commits.isNotEmpty) Pill('${commits.length} commits', fg: C.ok),
+      ]),
+      const SizedBox(height: 4),
+      const Text('Android + iPhone ka poora code, har build ek naya commit. Signing keys kabhi nahi jaati.',
+          style: TextStyle(color: C.muted, fontSize: 12)),
+      if (v != null && v['linked'] != true)
+        const Text('Pehle Website > Hosting mein apna GitHub token jodiye (sirf app mein).', style: TextStyle(color: C.warn, fontSize: 12)),
+      Row(children: [
+        Switch(value: _private, onChanged: (x) => setState(() => _private = x)),
+        Text(_private ? 'Private repo' : 'Public repo (sab dekh sakte hain)', style: const TextStyle(color: C.ink, fontSize: 12.5)),
+      ]),
+      GlassButton(label: 'Code GitHub mein daalo', height: 36,
+          onTap: _busy || v == null || v['linked'] != true || v['ready'] != true ? null : _card),
+      for (final x in commits.take(3))
+        Text('✓ build ${_s(x['build'])} · ${_s(x['repo'])} · ${_s(x['at']).substring(0, _s(x['at']).length >= 10 ? 10 : _s(x['at']).length)}',
+            style: const TextStyle(color: C.ok, fontSize: 12)),
+    ]);
+  }
+}
