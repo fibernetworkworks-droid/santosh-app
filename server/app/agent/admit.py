@@ -146,6 +146,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # Shiksha Phase 2: the personal tutor (doubts, practice, language practice, progress)
     # Shiksha Phase 3: the school office (attendance, grading, timetable, report cards)
     # Shiksha Phase 4: the research assistant (literature, gaps, references, analysis, drafts)
+    "prayog": ("practical", "prayog", "prayogshala", "experiment", "lab mein", "3d mein", "kaise kaam karta", "kaise kaam karti",
+               "how it works", "how does", "simulation", "pendulum", "lens", "prism", "ohm", "meter bridge", "potentiometer",
+               "resonance", "sonometer", "vernier", "screw gauge", "प्रयोग", "प्रयोगशाला"),
     "shodh": ("research paper", "literature review", "literature survey", "thesis", "dissertation", "phd", "synopsis",
               "doi", "citation", "references banao", "bibliography", "bibtex", "zotero", "openalex", "pubmed", "arxiv",
               "research gap", "research question", "methodology", "regression", "anova", "t-test", "chi square",

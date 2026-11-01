@@ -1,7 +1,14 @@
 # HOOLA PRAYOGSHALA — a real practical lab in 3D, for every field
 
 Owner's ask (1 Nov 2026): "NOW A REAL PRACTICAL LAB --- FOR EVERY FIELD IN WORLD HOOLA WILL SHOW IN 3D HOW THINGS
-ARE WORKS. --- MAKE A PLAN". This file is the plan. Nothing in it is built yet.
+ARE WORKS. --- MAKE A PLAN". This file is the plan.
+
+**Status (1 Nov 2026):**
+- **L0 + L1 BUILT** (owner: "GO L0 + L1"). Search "PRAYOGSHALA L0 + L1" in docs/HISTORY.md for the details.
+- Decision 2 changed while building: L1 uses Hoola's OWN deterministic kernels, each with a Python and a JS twin, instead of
+  a physics engine. Every NCERT practical needs exact numbers, not a game engine, and own code is what lets the server
+  prove the phone's numbers. Rapier vs cannon-es moves to L4 (machines), where real multi-body contact is needed.
+- Decision 3 (sharing) is still open. Today's catalogue is public teaching material with no user data.
 
 ## 1. What "a real practical lab" has to mean
 

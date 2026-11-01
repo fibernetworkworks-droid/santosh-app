@@ -100,7 +100,7 @@ let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create butt
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
-const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];
+const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['lab','Lab'],['baat','Voice call']];   // v0.409 Lab = Prayogshala 3D practicals
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
 IC.bana = '<path d="M4 5h16v14H4zM4 10h16M10 10v9"/>';
 IC.arena = '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>';   // v0.312 Design Arena (owner only)
@@ -124,6 +124,7 @@ function syncEmployees(hired) {                     // v0.317 a desk appears in 
   }
   if (moved) drawNav();   // hired.social / hired.seo
 }
+IC.lab = '<path d="M9 3h6M10 3v6L4.5 18.5A2 2 0 0 0 6.2 21.5h11.6a2 2 0 0 0 1.7-3L14 9V3M7 15h10"/>';   // v0.409 Prayogshala
 IC.call = '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>';
 let JOBS = [];          // v0.222 her live jobs (working / waiting) for the home row and the Today badge
 function navBadge(k) {
@@ -140,12 +141,13 @@ function drawNav() {
 function go(v) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', hire:'· Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
   if (v === 'bana') PN?.library($('#bana'));
   if (v === 'arena') AR?.draw($('#arena'));
+  if (v === 'lab' && !$('#labframe').src) $('#labframe').src = '/static/prayog/index.html';   // v0.409 Prayogshala (public labs)
   if (v === 'systems') ENT?.open($('#systems'), 'erp');   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
