@@ -871,6 +871,15 @@ window.HoolaBuild = function (C) {
       if (off) off.addEventListener('click', async () => { try { drawDl(await api('PUT', base(o) + '/delivery', {off: true})); toast('Delivery rules removed.'); } catch (er) { toast(er.message, true); } });
     };
     try { if (S(info.order)) drawDl(await api('GET', base(o) + '/delivery')); else dbox.remove(); } catch (er) { dbox.remove(); }
+    // v0.367 TURANT: instant notifications for her Android app's phones (her tap)
+    const tbox = document.createElement('section'); tbox.className = 'stcol stturant'; box.appendChild(tbox);
+    const drawT = v => {
+      tbox.innerHTML = `<h4>Instant notifications <span>${v.on ? 'On' : 'Off'}</span></h4><p class="stnote">${esc(S(v.note))}${v.on ? ' Phones registered: ' + N(v.tokens) + '.' : ''}</p>
+        <div class="acts">${v.configured ? `<button class="btn ${v.on ? 'soft' : 'go'}" type="button" data-turant="${v.on ? '0' : '1'}">${v.on ? 'Switch off' : 'Switch on (next Android build)'}</button>` : ''}</div>`;
+      const b = tbox.querySelector('[data-turant]');
+      if (b) b.addEventListener('click', async () => { b.disabled = true; try { drawT(await api('PUT', base(o) + '/turant', {on: b.dataset.turant === '1'})); toast('Saved. It reaches phones with the next Android build.'); } catch (er) { toast(er.message, true); b.disabled = false; } });
+    };
+    try { drawT(await api('GET', base(o) + '/turant')); } catch (er) { tbox.remove(); }
     // v0.361 HISAAB: the month's accounts + GST summary for her CA (CSV files in a ZIP)
     const hbox = document.createElement('section'); hbox.className = 'stcol sthisaab'; box.appendChild(hbox);
     const drawH = v => {

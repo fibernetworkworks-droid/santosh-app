@@ -280,6 +280,9 @@ def _run(r: AppProject) -> None:
     sp["app"]["version_name"] = f"{r.version}.{n}"
     sp["preview_key"] = key
     sp["scenes"] = _scenes(r, ctx, work)
+    from .. import turant as TU                    # v0.367 TURANT: Firebase Messaging in this build when she switched it on
+    if TU.config_for(r, sp["app"]["app_id"]):
+        sp["fcm"] = TU.config_for(r, sp["app"]["app_id"])
     # v0.314 ASLI APP: the app's own backend (accounts + saved data) exists before a single screen is written, and the
     # build carries its lists so screens save for real and the kit knows the rules
     from .. import backend as BE

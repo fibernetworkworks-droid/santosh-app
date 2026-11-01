@@ -211,6 +211,7 @@ object Auth {
         Store.put(ctx, "auth_me", m.toString())
         withContext(Dispatchers.Main) { me.value = Item(m) }
         Db.sync()
+        PushHook.signedIn(ctx)                     // v0.367 TURANT: this phone's push token now belongs to this account
         return null
     }
 

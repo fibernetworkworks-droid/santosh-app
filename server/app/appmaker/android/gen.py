@@ -311,6 +311,7 @@ class MainActivity : ComponentActivity() {{
         Db.load(this)
         Db.watch(this)
         Updates.schedule(this, AppConfig.BASE_URL, AppConfig.APP_ID)   // v0.319 order updates as notifications
+        PushHook.start(this)                                       // v0.367 instant notifications (when switched on)
         Inbox.unread.value = Inbox.count(this)          // v0.340 the unread count on the inbox button
         CrashGuard.sendPending(this)
         val seen = Store.get(this, "onboarded") == "1"
@@ -353,6 +354,9 @@ def uses_location(spec: dict[str, Any]) -> bool:
 
 
 def manifest_xml(spec: dict[str, Any]) -> str:
+    push_service = ('        <service\n            android:name="hoola.kit.HoolaPush"\n            android:exported="false">\n'
+                    '            <intent-filter>\n                <action android:name="com.google.firebase.MESSAGING_EVENT" />\n'
+                    '            </intent-filter>\n        </service>\n') if fcm_config(spec) else ""   # v0.367 TURANT
     loc = ('    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
            '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n') if uses_location(spec) else ""
     return '''<?xml version="1.0" encoding="utf-8"?>
@@ -383,7 +387,7 @@ def manifest_xml(spec: dict[str, Any]) -> str:
             android:name="hoola.kit.UpdatesJob"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
-    </application>
+''' + push_service + '''    </application>
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -392,6 +396,27 @@ def manifest_xml(spec: dict[str, Any]) -> str:
     </queries>
 </manifest>
 '''
+
+
+def fcm_config(spec: dict[str, Any]) -> dict[str, str]:
+    """v0.367 TURANT: the Firebase values this app needs (from the google-services.json Firebase gave for its package), or {}.
+    They go in as plain string resources (what the google-services Gradle plugin would write), so no extra plugin."""
+    raw = spec.get("fcm")
+    if not raw:
+        return {}
+    try:
+        j = json.loads(raw) if isinstance(raw, str) else raw
+        pkg = str((spec.get("app") or {}).get("app_id") or "")
+        cl = next((c for c in j.get("client") or [] if (c.get("client_info") or {}).get("android_client_info", {}).get("package_name") == pkg),
+                  None) or (j.get("client") or [{}])[0]
+        out = {"google_app_id": cl["client_info"]["mobilesdk_app_id"], "gcm_defaultSenderId": str(j["project_info"]["project_number"]),
+               "project_id": j["project_info"]["project_id"], "google_api_key": cl["api_key"][0]["current_key"],
+               "google_crash_reporting_api_key": cl["api_key"][0]["current_key"]}
+    except (KeyError, IndexError, TypeError, ValueError):
+        return {}
+    if not all(re.fullmatch(r"[A-Za-z0-9:_.\-]{4,200}", v) for v in out.values()):
+        return {}
+    return out
 
 
 def _xml(s: str) -> str:
@@ -418,6 +443,11 @@ def resources(spec: dict[str, Any], out: Path) -> None:
     (res / "values-night").mkdir(exist_ok=True)
     (res / "values-night/colors.xml").write_text(
         f'<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="window_bg">{dark_bg if tk.get("mode") != "light" else bg}</color>\n</resources>\n')
+    fcm = fcm_config(spec)
+    if fcm:                                    # v0.367 the Firebase values as resources (FirebaseInitProvider reads them)
+        (res / "values/google_services.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n' + "".join(
+                f'    <string name="{k}" translatable="false">{v}</string>\n' for k, v in fcm.items()) + '</resources>\n')
     (res / "xml").mkdir(exist_ok=True)
     (res / "xml/network_security_config.xml").write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n<network-security-config>\n'
@@ -628,6 +658,12 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     (tmp / "gradlew").chmod(0o755)
     main = tmp / "app/src/main"
     (main / "AndroidManifest.xml").write_text(manifest_xml(spec))
+    fcm = fcm_config(spec)
+    if fcm:                                    # v0.367 TURANT: Firebase Cloud Messaging in, the stub hook out
+        shutil.copy(HERE / "fcm/PushHook.kt", main / "java/hoola/kit/PushHook.kt")
+        g = tmp / "app/build.gradle.kts"
+        g.write_text(g.read_text().replace("    implementation(libs.gms.code.scanner)\n",
+                                           "    implementation(libs.gms.code.scanner)\n    implementation(libs.firebase.messaging)\n", 1))
     resources(spec, tmp)
     fonts_have: dict[str, bool] = {}
     for which, files in (spec.get("fonts") or {}).items():

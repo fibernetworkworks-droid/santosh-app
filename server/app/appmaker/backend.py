@@ -419,6 +419,12 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
         STATS["orders"] += 1
     if coll in NEWS:
         _news(r, coll, out)
+        try:                                            # v0.367 TURANT: staff phones hear about a new order / booking at once
+            from . import turant as TU
+            who_ = str(out.get("name") or out.get("customer") or "").strip()[:40]
+            TU.later(r, [m for m in TU.staff_ids(r) if m != w.id], f"New {NEWS[coll]}", who_ or r.name or "", out.get("id", ""))
+        except Exception:
+            log.debug("turant new", exc_info=True)
     return out
 
 
@@ -462,6 +468,16 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
     out = W.update(bid(r), sch, coll, row_id, body, w)
     if any(k in body for k in ("status", "paid")):
         _merge(row_id, {"_ev": now().isoformat()})     # v0.319 the moment her row moved: the app's update check reads it
+        try:                                            # v0.367 TURANT: ... and her phone hears it at once (when on)
+            from . import turant as TU
+            owner = _row(bid(r), row_id).owner
+            if owner and owner != w.id:
+                c_ = W.coll(sch, coll)
+                head = next((str(out.get(f["key"]) or "") for f in c_["fields"] if f.get("type") in ("text", "long_text")
+                             and out.get(f["key"]) and f["key"] not in ("items", "utr")), c_["label"])
+                TU.later(r, [owner], f"{c_['label']}: {out.get('status') or out.get('paid') or ''}".strip(": "), head[:80], row_id)
+        except Exception:
+            log.debug("turant status", exc_info=True)
     if str(out.get("status") or "").strip().lower() == "cancelled" and "status" in body:
         _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
         _coupon_back(r, row_id)                         # v0.358 ... and its coupon use (once)
@@ -1223,6 +1239,12 @@ def assign(r: AppProject, coll: str, row_id: str, to: str, w: W.Who) -> dict[str
         s.flush()
         s.expunge(row)
     STATS["assigned"] += 1
+    if to and to != w.id:                              # v0.367 TURANT: the person it was given to hears it at once
+        try:
+            from . import turant as TU
+            TU.later(r, [to], "Given to you", c["label"] + " " + row_id[-6:].upper(), row_id)
+        except Exception:
+            log.debug("turant assign", exc_info=True)
     return with_assign(r, W.row_view(c, row, w), w)
 
 

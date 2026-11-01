@@ -75,6 +75,8 @@ APP_TOOLS = [
         "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
         "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
         "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
+        "v0.367 action=turant (owner only; show, or on=true / false ONLY when she asks): instant notifications for her Android app's phones "
+        "(order moved, new order for staff, job given) through Hoola's Firebase - from the next build; iPhones keep the background check. "
         "v0.362 action=variants (owner only; product = id or name, variants = [{name, price}], [] removes; no product = list): sizes / "
         "weights of a product, each with its own price and stock - every app screen shows them as chips. "
         "v0.361 action=hisaab (owner only; month YYYY-MM, default this / last month): her month's orders, sales, GST, credit notes and "
@@ -96,7 +98,7 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -112,6 +114,7 @@ APP_TOOLS = [
          "mode": {"type": "string", "description": "action=khata: cash|upi|card|bank|other"},
          "month": {"type": "string", "description": "action=hisaab: YYYY-MM"},
          "product": {"type": "string", "description": "action=variants: product id or name"},
+         "on": {"type": "boolean", "description": "action=turant: switch instant notifications on / off"},
          "variants": {"type": "array", "items": {"type": "object"}, "description": "action=variants: [{name, price}]"},
          "delivery": {"type": "object", "description": "action=delivery: {fee, free_above, pins, hours, off}"},
          "coupon": {"type": "object", "description": "action=coupon: {code, kind, value, cap, min, until, uses, once, on, delete}"},
@@ -294,6 +297,21 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action == "turant":                    # v0.367 TURANT
+        if not _owner(ctx):
+            raise ToolError("Notifications ka switch sirf maalkin ke paas hai.")
+        from ..appmaker import backend as BE
+        from ..appmaker import turant as TU
+        r = BE.by_key_or_ref(t, ref)
+        if a.get("on") is True:
+            v = TU.enable(r)
+        elif a.get("on") is False:
+            v = TU.disable(r)
+        else:
+            v = TU.view(r)
+        v["say"] = ("Turant notifications chalu: agli Android build se phone par usi waqt aayengi." if v["on"]
+                    else "Turant notifications band; app 15 minute wali jaanch se batati hai.")
+        return v
     if action == "variants":                  # v0.362 VARIANTS
         if not _owner(ctx):
             raise ToolError("Sizes sirf maalkin badal sakti hain.")

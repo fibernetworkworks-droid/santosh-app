@@ -435,6 +435,16 @@ def _build_bundle(r: AppProject) -> None:
     vname = str(hist[-1].get("version_name") or "1.0")
     t = re.sub(r'versionName = "[^"]*"', f'versionName = "{vname}"', t)
     g.write_text(t)
+    gs = src / "app/src/main/res/values/google_services.xml"          # v0.367 TURANT: the Play package's own Firebase values
+    if gs.exists():
+        from .. import turant as TU
+        from . import gen as GN
+        vals = GN.fcm_config({"fcm": TU.config_for(r, st["package"]), "app": {"app_id": st["package"]}})
+        if vals:
+            gs.write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n' + "".join(
+                f'    <string name="{k}" translatable="false">{v}</string>\n' for k, v in vals.items()) + '</resources>\n')
+        else:
+            raise StoreError("Turant notifications chalu hain par Play package Firebase mein register nahi: 'Turant notifications' dobara chalu kijiye.")
     (src / "gradlew").chmod(0o755)
     key = _upload_key(r)
     (src / "keys").mkdir(exist_ok=True)

@@ -79,6 +79,9 @@ object Updates {
         return shown
     }
 
+    /** v0.367 TURANT: an instant push shows exactly like a background-check notification. */
+    fun notifyNow(ctx: Context, id: Int, title: String, text: String): Boolean = show(ctx, id, title, text)
+
     private fun show(ctx: Context, id: Int, title: String, text: String): Boolean {
         if (!canNotify(ctx)) return false
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return false

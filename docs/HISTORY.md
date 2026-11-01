@@ -13090,3 +13090,26 @@ v0.363 left iPad off because turning it on makes App Store Connect require 13" i
   makes `go()` replace the right side instead of pushing. Debug start screens open on the right, so the v0.364 iPad pass in
   CI draws every screen in the two-pane view.
 - Tests `tests/test_v0366_ipad_pane.py`. Not verified locally (no Mac): CI ios-check on the branch is the proof.
+
+## v0.367.0 TURANT (App Sahayak Phase 31, owner: "START PHASE 31")
+The apps' order updates came through a JobScheduler check every 15+ minutes. Now they can be instant on Android.
+- `appmaker/turant.py`: `configured()` = the VPS has `fcm_service_account_file` (Hoola's own FCM key). `enable(r)` (her tap
+  only) lists / creates the app in that Firebase project through the official Firebase Management API
+  (`projects/{p}/androidApps`, long-running create, `.../config` = google-services.json) for every package the app is built
+  under (`packages`: the preview id `spec.app_id_for`, plus her permanent Play package), kept in the Android state `fcm.configs`.
+  `register(r, who, token)` = rows coll `_push` owned by the account (one phone = one account). `send` = FCM HTTP v1 data
+  messages (title, body, id; android priority HIGH) with Hoola's messaging credentials; UNREGISTERED tokens deleted. `later` =
+  Hoola's push thread pool, so an order write never waits for Google.
+- Events (`backend`): status / paid change -> the row's customer (not the person who made the change); a new NEWS row ->
+  every staff account but the writer; an assignment -> the assignee.
+- Generator: `gen.fcm_config(spec)` reads the client for the build's own package; when present: the real `fcm/PushHook.kt`
+  (token -> /push-token after sign-in, `HoolaPush` FirebaseMessagingService -> Inbox + `Updates.notifyNow`), the manifest
+  service, `implementation(libs.firebase.messaging)` (24.1.0 pinned in libs.versions.toml), and
+  `res/values/google_services.xml` (google_app_id, gcm_defaultSenderId, project_id, google_api_key) - the values the
+  google-services plugin would write, without the plugin (AGP 9 safety). Otherwise the template's stub `PushHook` (ON = false).
+  `android/service.py` sets `sp["fcm"]` for the build's package; `store.py` rewrites the values for the Play package (or
+  refuses with a plain line when that package was never registered).
+- Her side: GET / PUT /api/apps/<ref>/turant, tool app_banao action=turant, console "Instant notifications".
+- CI: appgen-check job `fcm` compiles the shop app with a made-up Firebase test config (debug + release R8).
+- Tests `tests/test_v0367_turant.py` (Firebase faked). Not verified: a real push to a real phone (needs the VPS key + a
+  build); iPhone push (needs an APNs key from her Apple account).
