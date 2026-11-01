@@ -13118,3 +13118,18 @@ the parallel v0.357 DASHBOARD , v0.358 ENTERPRISE SYSTEMS and v0.359 ENGINEERING
     escaped-but-f-string SQL, weak tests that miss the mutant, and an explain job that edits;
   - unsafe code is never run; the child sees no keys;
   - a scripted model drives the real loop end to end; CLI + vps-ops job.
+
+## v0.361.0 CAD BOX CHAUTHI DEEWAR (1 Nov 2026, her VPS: `python -m app.engineering.service` -> cadquery true, no_network false)
+Ubuntu 24.04 restricts unprivileged user namespaces (AppArmor), so `unshare -rn` fails and the CAD box had no network
+namespace on her server. The guard and the runner's import gate already stopped every path a deep search could find (no
+non-underscore chain from cadquery / math reaches os / sys / subprocess / socket within 3 levels; `cq.exporters.os` was
+already refused), but a namespace-less box needs its own wall:
+- `engineering/runner.py _lockdown()`: while HER script runs, socket.socket / create_connection / getaddrinfo..., os.system /
+  popen / fork / kill / exec* / spawn* / remove / rename / chmod / putenv / setuid..., subprocess.Popen / run / call...,
+  shutil.rmtree / move / copy... raise `_Locked`; `_unlock()` puts them back before the runner's own STEP / STL export.
+- `guard.py`: os, sys, subprocess, socket, shutil, importlib, ctypes, builtins, tempfile, pathlib, io, system, popen,
+  Popen, environ, getenv, putenv, spawn, fork, modules, urllib, http, requests refused as attribute names anywhere.
+- Test test_v0361_lockdown_holds_without_a_network_namespace (ENG_NO_NET=false, a guard-bypassing os.system call is
+  stopped, normal export still works).
+- Optional on the VPS to get the namespace back (also helps the Blender 3D box): an AppArmor profile that allows userns
+  for /usr/bin/unshare (see the chat), then `python -m app.engineering.service` shows no_network true.

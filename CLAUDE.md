@@ -145,9 +145,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.360.0 (pubspec 0.360.0+400). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.361.0 (pubspec 0.361.0+401). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.361 CAD BOX CHAUTHI DEEWAR: her VPS has no `unshare -rn` (no_network false) -> engineering runner locks socket / os.system /
+  exec / subprocess / file delete while her script runs (`runner._lockdown`), guard refuses os / sys / socket... names.
 - v0.360 CODE CARD: `python -m app.quality code` / vps-ops `code_card` = 12 practice coding jobs (`quality/code_tasks.py`) through the real dev loop, marked works / scope / rules / tests that prove the fix (`quality/codecard.py`).
 - v0.359 ENGINEERING DESK Ph.1 + CAD ENGINEER (`engineering/`: guard / runner / sandbox like blender3d, CadQuery, render.py
   z-buffer views + drawing PDF, `/api/eng/*`, tool cad_part, hire key `cad`); restored console sections + 3 scripts v0.358 dropped.
