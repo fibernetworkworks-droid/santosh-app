@@ -13004,6 +13004,212 @@ Owner: "Phase 3b (dashboards and charts)" (after Phase 3a DUKAAN, v0.351).
   draw, her dashboard numbers vs a seeded period (spam, cancelled, unconfirmed sales excluded), owner-only, staff-only
   stats, console + phone wiring.
 
+## v0.358.0 ENTERPRISE SYSTEMS & ERP — her ten jobs as one suite
+Owner, after the deep research on her list of ten Product / Enterprise Systems & ERP jobs:
+*"BUILD ALL 10 AS ONE ENTERPRISE SUITE … GO END TO END"*.
+
+### The research finding that shaped the build
+Every one of these roles splits in two. **Running** the customer's live system is gated by whose credential it is
+and, for three jobs, by a statutory audit. **Doing the work** of the role — specs, field mappings, plans,
+registers, reconciliation, test plans — is not gated at all, and it is most of what these people actually do.
+
+So the suite does the second half for all ten, and the first half only where an **official route** exists and she
+connects her own system: Salesforce hosted MCP (GA 29 Apr 2026), SAP Integration Suite MCP Gateway, Windchill
+OData REST, NetSuite and ~1,600 apps through Composio.
+
+### Ten jobs, one engine
+`app/enterprise/{rules,models,service}.py`. The work has the same shape everywhere —
+
+> she connects her own system → Hoola reads → Hoola drafts the paper → **her tap** → Hoola does it → audit
+
+— so an eleventh job is a row in `rules.ROLES`, not a new file. They are still **ten separate tool pairs**
+(`<job>` + `<job>_dekho`, generated from that table) because the Employee gate maps one tool to one duty, and that
+is what lets her set trust **per job**: ERP work and banking work are not the same risk.
+
+| | |
+|---|---|
+| duties / role packs | `ent_<job>` × 10, added to `employee/roles.py` |
+| BIG (a live write always asks) | `erp`, `crm_arch`, `bpa`, `ecom_arch`, `plm` |
+| READ | all ten `<job>_dekho` |
+| API | `/api/enterprise`, `/api/enterprise/{role}` + settings / connect / paper |
+
+### Three jobs are capped on purpose, and say so in every result
+Not only in settings — on the work itself, so she is never quietly given less than she expected.
+
+- **health_int** — real patient data needs a **CERT-In empanelled audit** the business must pass.
+- **bank_int** — an AA / FIU needs an **RBI licence and a Sahamati-empanelled audit**. Hoola is neither and
+  touches no banking rail.
+- **regtech** — she files on her own portal; Hoola prepares, reminds and catches mistakes.
+
+**Teamcenter is read-only** until verified, because the sources contradict each other on outside-agent access.
+
+### Guards that hold whatever the model writes
+A key or token in any argument is refused before anything runs · account and ID numbers are masked out of every
+artifact and item · a job can only connect its own systems and only make its own kinds of paper · a paper written
+with no model still comes back as an honest skeleton with a `missing` list instead of an invention.
+
+The masking rule is worth recording: Aadhaar and an account number are both often 12 digits, so the **shape**
+decides — a grouped or named Aadhaar goes completely, a bare account number keeps its last four, because a paper
+that cannot say *which* account is useless to her.
+
+### Files
+`server/app/enterprise/` (rules, models, service) · `server/app/agent/enterprise_tools.py` ·
+`server/app/employee/roles.py` · `server/app/agent/tools.py` · `server/app/db.py` · `server/app/main.py` ·
+`server/tests/test_v0358_enterprise.py` (15 tests).
+
+### A merge lesson, recorded
+Resolving a stashed conflict by taking "mine" silently reverted another session's v0.311 test change, and the
+failure looked like my own bug for three rounds of digging. **On a conflicted test file, take main's copy and
+re-apply only the version pin** — and check a suspect failure on a pristine worktree before believing it.
+
+## v0.359.0 ENGINEERING DESK Phase 1 + CAD ENGINEER (1 Nov 2026, owner: "GO PHASE 1" on docs/ENGINEERING_DESK_PLAN.md)
+Her list IX (Research, CAD, Hardware & Industrial Tech): one shared Engineering Desk base, the CAD Engineer live, the other
+nine roles listed as "Coming soon" in the new Employees group.
+- `server/app/engineering/`: `guard.py` (AST check: only `cadquery` + `math`, no files / export / import / dunder / exec,
+  must set `result`), `runner.py` (child: cut-down builtins + import gate, builds `result`, checks valid / volume / area /
+  bodies / bbox, exports part.step + part.stl, tessellates mesh.json), `sandbox.py` (`unshare -rn` no network, tiny env
+  with no secrets, own folder, RLIMIT 4 GB / 512 MB files, nice 10, 180 s wall-clock kill; ENG_PY / ENG_MEM_MB /
+  ENG_TIMEOUT_S), `render.py` (PIL + numpy z-buffer: iso / front / top / right views with sharp edges, A4 drawing PDF:
+  three views at one scale, overall dimensions, title block "DRAFT - for a qualified engineer's review, not certified"),
+  `ai.py` (Opus writes / fixes / changes CadQuery from her words; TITLE / SIZE / ASSUMED / NOTES), `service.py`
+  (EngProject table `eng_projects`, registered in db.init_db + ensure_table; background job; checks incl. "size as
+  asked" vs the model's promised SIZE; up to 2 fixes from the real error; versions v1, v2...; signed file links;
+  hire gate `cad`; ENG_DAILY_PARTS 20; one part at a time; chat line when ready), `api.py` (`/api/eng/projects` list /
+  start / get / change / delete, public signed `/api/eng/files/<pid>/v<n>/<file>`).
+- Chat tool `cad_part` (family `eng`, admit keys cad / stl / step / cnc / bracket / flange / enclosure / drawing ...).
+- `employee/hire.py`: `group` per card; CAD Engineer live; FEA, CFD, Acoustic, Optical, ECU, Flight SW, Medical SW,
+  Lithography, Industrial IoT coming. Console hub groups cards; new CAD Desk (`employees.js cad()`, `#caddesk`): ask box,
+  parts with 4 views, size / volume / assumed, checks, STEP / STL / drawing / code links, change -> next version, delete.
+  Phone: `lib/ui/cad_desk.dart` + Employees grouped + "Open desk" for cad.
+- Measured here: a bracket builds in ~2 s in the box (network isolated), 4 views at 900 px ~6 s, drawing PDF ~0.3 s.
+- FIX (not mine, found while merging): v0.358 ENTERPRISE dropped the console's Arena / Employees / SEO Desk / Social Desk
+  sections and the charts.js / arena.js / employees.js script tags (stale base); restored, test_v0240 count back to 19.
+- VPS: `~/apps/santosh-core/.venv/bin/pip install cadquery` (~100 MB wheel); check with
+  `.venv/bin/python -m app.engineering.service` (cadquery true, no_network true).
+- NOT VERIFIED live: CadQuery wheel on the VPS Python; `unshare -rn` allowed on the VPS kernel (falls back to the import
+  gate + guard if not); Opus's CadQuery quality on real asks. Tests: test_v0357_engineering_desk.py (10, real CadQuery).
+
+## v0.360.0 CODE CARD (owner: "GO 6")
+Item 6 of the coding plan: a card that measures how well Developer Sahayak really codes. Built as 0.357 / 0.358 / 0.359, re-versioned past
+the parallel v0.357 DASHBOARD , v0.358 ENTERPRISE SYSTEMS and v0.359 ENGINEERING DESK.
+- `quality/code_tasks.py` (SET 1): 12 fixed practice jobs, each a tiny Python repo with the same root AGENTS.md (tests in tests/,
+  money in paise, no print(), small changes). The jobs:
+  - fix: empty average, page offset, root cause in another file than the trace, a fix next to a do-not-touch twin, SQL quote
+    bug (must be parameterised);
+  - write: GST in paise, a PIN check under a folder AGENTS.md (docstring + type hints), an optional param that keeps old calls,
+    summarize with logging (no print);
+  - tests for a discount function (must catch a mutant);
+  - a README usage section;
+  - an explain-only job (must change nothing).
+- Each job has a hidden check script, allowed files, rule checks and a reference answer (offline test only).
+- `quality/codecard.py`:
+  - every job runs through the SAME `devsahayak/loop.run` (same model / effort / rules) against an in-memory repo (`MemGh`),
+    4 in parallel, 30 steps / 6 min each;
+  - marks: works (hidden check), scope, rules, test (passes; a fix's test must FAIL on the old code; a tests job must catch the
+    mutant). RIGHT = all needed marks green.
+- Running answers: a child Python in a temp folder with only PATH / HOME / PYTHONPATH (no keys), CPU 20 s / 1.5 GB / 10 MB file
+  limits, 60 s timeout. Code importing socket / subprocess / requests / httpx / urllib / shutil, or using eval / exec /
+  os.system / file writes, is NOT run (unsafe). Only these fixed jobs' answers run, never a user's repo.
+- `python -m app.quality code [--only id,id] [--limit N] [--label x]`, saved as code-*.json next to the tool cards; vps-ops job
+  `code_card` (~12 Opus jobs, roughly Rs 150-400, ~6-12 min).
+- Tests `test_v0360_code_card.py` (18):
+  - every reference answer scores RIGHT and every untouched repo fails its check;
+  - the marks catch a caller patched instead of the root cause, a missing test, a test that doesn't prove the bug,
+    escaped-but-f-string SQL, weak tests that miss the mutant, and an explain job that edits;
+  - unsafe code is never run; the child sees no keys;
+  - a scripted model drives the real loop end to end; CLI + vps-ops job.
+
+## v0.361.0 CAD BOX CHAUTHI DEEWAR (1 Nov 2026, her VPS: `python -m app.engineering.service` -> cadquery true, no_network false)
+Ubuntu 24.04 restricts unprivileged user namespaces (AppArmor), so `unshare -rn` fails and the CAD box had no network
+namespace on her server. The guard and the runner's import gate already stopped every path a deep search could find (no
+non-underscore chain from cadquery / math reaches os / sys / subprocess / socket within 3 levels; `cq.exporters.os` was
+already refused), but a namespace-less box needs its own wall:
+- `engineering/runner.py _lockdown()`: while HER script runs, socket.socket / create_connection / getaddrinfo..., os.system /
+  popen / fork / kill / exec* / spawn* / remove / rename / chmod / putenv / setuid..., subprocess.Popen / run / call...,
+  shutil.rmtree / move / copy... raise `_Locked`; `_unlock()` puts them back before the runner's own STEP / STL export.
+- `guard.py`: os, sys, subprocess, socket, shutil, importlib, ctypes, builtins, tempfile, pathlib, io, system, popen,
+  Popen, environ, getenv, putenv, spawn, fork, modules, urllib, http, requests refused as attribute names anywhere.
+- Test test_v0361_lockdown_holds_without_a_network_namespace (ENG_NO_NET=false, a guard-bypassing os.system call is
+  stopped, normal export still works).
+- Optional on the VPS to get the namespace back (also helps the Blender 3D box): an AppArmor profile that allows userns
+  for /usr/bin/unshare (see the chat), then `python -m app.engineering.service` shows no_network true.
+
+## v0.362.0 ERP KA POORA DESK — every ERP job, not just the architect
+Owner: *"ERP --- INCLUDE ALL JOBS IN ERP FOR HOOLA AI"*.
+
+An ERP job is not one person, it is a **desk**. v0.358 shipped the architect's half; this puts the whole
+lifecycle inside the `erp` role — **sixteen parts**:
+
+| | | |
+|---|---|---|
+| blueprint | functional config | technical / ABAP |
+| data migration | integration | basis / system admin |
+| security + SoD | testing / UAT | cutover + go-live |
+| training + change | support / AMS | master data |
+| reporting | finance close | licence + cost |
+| upgrade / patch | | |
+
+### One duty, on purpose
+All sixteen sit inside the **same duty** (`ent_erp`). It is still her one live ERP, so she sets trust **once for
+the desk** rather than sixteen times, and a live write is still BIG — a card every time.
+
+### Each part makes only its own papers
+A data migration does not write an access matrix; security does. Four new paper kinds were added for the desk:
+**config** (every setting, its value and why), **matrix** (role → permissions plus SoD clashes), **sop** (steps a
+clerk can follow without help) and **training**.
+
+`draft()` takes `job`, `erp_dekho` takes `what=jobs`, and the tool description names every part so the model picks
+the right one rather than guessing.
+
+### Generic, not an ERP special case
+Any role in `enterprise/rules.ROLES` can grow a `JOBS` entry the same way, and a role without one (`tpm`) behaves
+exactly as before — there is a test for both.
+
+### Files
+`server/app/enterprise/rules.py` · `server/app/enterprise/service.py` · `server/app/agent/enterprise_tools.py` ·
+`server/tests/test_v0358_enterprise.py` (21 tests now).
+
+## v0.363.0 ASLI ERP KAAM — Hoola really reads and really writes her ERP
+Owner: *"I WANT ALL ERP WORK TO BE DONE BY HOOLA BOTH READ AND WRITE … COMPLEX AND VERY HARD"*.
+
+Up to v0.362 the ERP desk produced **papers**. This makes it do the work on her live system.
+
+### A read is one call. A write is never one call.
+
+> plan → **dry run** (before → after, row by row) → **her tap** → batches → verify → report
+
+Every guard below is in **code, not in a prompt**, because a wrong write into a live ERP is not undoable by an
+apology:
+
+| guard | why |
+|---|---|
+| **delete refused at any size** | no business reason, and no safe way to offer it |
+| **max 500 rows per run** | a mistake stays small; a bigger load is split |
+| **no execute before a dry run** | she must see it first |
+| **production needs the word** | `confirm_env="production"` as well as her tap; production is never inferred |
+| **approval tied to those rows** | a plan hash — change the rows after she taps and the run refuses and re-asks |
+| **idempotency key per row, written before the call** | a run that dies half way resumes **without ever posting the same record twice** |
+
+That last one is the property that makes a real migration safe, and it is proved by a test that re-runs a
+half-failed load of 14 rows and asserts **only the failures** were retried.
+
+A failed run reaches a terminal state instead of hanging on "running", and stays resumable — `execute()` picks the
+failures back up.
+
+### Rollback, honestly
+The dry run reads the current record first, so she sees before → after. That before-image is the **only** honest
+rollback material there will ever be, so `rollback_plan` says plainly which rows it **cannot** put back — the ones
+it newly created — rather than quietly missing them. A rollback that silently skips rows is worse than none.
+
+### Two rails, both official, both with her credential
+- **composio** — her connected account (~1,600 apps; NetSuite and friends), which already classifies read vs write.
+- **odata** — her own endpoint for what Composio does not carry (SAP OData, Windchill REST). The credential is
+  **sealed** with the same vault as v0.290's custom MCP, typed in the **app** and never in chat: the tool refuses
+  the `endpoint` action outright and says so.
+
+### Files
+`server/app/enterprise/run.py` (new, the engine) · `server/app/enterprise/models.py` (EntEndpoint, EntRun,
+EntRunRow) · `server/app/agent/enterprise_tools.py` · `server/tests/test_v0363_erp_live.py` (13 tests).
 
 ## v0.358.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
 Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356, re-versioned past main's

@@ -33,6 +33,7 @@ on:
           - studio_apis
           - tool_card
           - long_jobs
+          - code_card
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -312,6 +313,11 @@ jobs:
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.
                 echo 'cd $CORE && timeout 120 .venv/bin/python -m app.quality longjobs --hours 24 2>&1 | tail -60' ;;
+              code_card)
+                # v0.360 how well does Developer Sahayak code? 12 fixed practice jobs through the real 8-tool loop (no GitHub,
+                # no PR), marked by hidden checks: works / stayed in scope / project rules / tests that prove the fix.
+                # Model calls: ~12 Opus jobs, roughly Rs 150-400, ~6-12 min. The answers run in a child Python with no secrets.
+                echo 'cd $CORE && timeout 780 .venv/bin/python -m app.quality code --label vps-ops 2>&1 | tail -40' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh

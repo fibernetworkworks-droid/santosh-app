@@ -831,6 +831,7 @@ def init_db(url: str | None = None):
     from .docwriter import models as _docwriter  # noqa: F401
     from .appreview import models as _appreview  # noqa: F401
     from .product import models as _product  # noqa: F401
+    from .enterprise import models as _enterprise  # noqa: F401
     # v0.139 Safar suite
     from .customs import models as _customs  # noqa: F401
     from .travel import models as _travel  # noqa: F401
@@ -893,6 +894,7 @@ def init_db(url: str | None = None):
     from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
+    from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
