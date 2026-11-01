@@ -128,6 +128,7 @@ class EntRun(Base):
     rail: Mapped[str] = mapped_column(String(12), default="")         # composio | odata
     op: Mapped[str] = mapped_column(String(10), default="read")       # read | write
     verb: Mapped[str] = mapped_column(String(16), default="")         # create | update | upsert | get | query
+    api: Mapped[str] = mapped_column(String(10), default="data")      # data = records | tooling = configuration
     target: Mapped[str] = mapped_column(String(120), default="")      # the entity / tool slug
     title: Mapped[str] = mapped_column(String(200), default="")
     plan: Mapped[str] = mapped_column(Text, default="{}")
