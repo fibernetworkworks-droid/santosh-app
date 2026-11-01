@@ -6,7 +6,7 @@ object Strings {
     private var lang = "en"
     fun init(language: String) { lang = language }
     private fun t(en: String, hi: String, mr: String = hi, hing: String = en): String = when (lang) {
-        "hi" -> hi; "mr" -> mr; "hinglish" -> hing; else -> en
+        "hi" -> hi; "mr" -> mr; "hinglish" -> hing; "en" -> en; else -> I18n.tr(en)    // v0.347 other languages: the build's table
     }
 
     val back get() = t("Back", "वापस", "मागे", "Wapas")
@@ -91,6 +91,52 @@ object Strings {
     val staffOnly get() = t("Only staff can add this.", "इसे सिर्फ़ स्टाफ़ जोड़ सकता है।", "हे फक्त स्टाफ जोडू शकतो.", "Ise sirf staff jod sakta hai.")
     val required get() = t("please fill this", "यह भरना ज़रूरी है", "हे भरणे आवश्यक आहे", "yeh bharna zaroori hai")
     val cartEmpty get() = t("Your cart is empty.", "आपका कार्ट खाली है।", "तुमची कार्ट रिकामी आहे.", "Aapka cart khaali hai.")
+    val myTeam get() = t("Team", "टीम", "टीम", "Team")
+    val openWork get() = t("open", "बाकी", "बाकी", "baaki")
+    val receipt get() = t("Receipt", "रसीद", "पावती", "Raseed")       // v0.354 RASEED
+    val invoice get() = t("Tax invoice", "टैक्स इनवॉइस", "कर बीजक", "Tax invoice")   // v0.355 GST BILL
+    val chat get() = t("Message the shop", "दुकान को संदेश", "दुकानाला संदेश", "Dukaan ko message")     // v0.378 BAAT
+    val customerMessages get() = t("Customer messages", "ग्राहकों के संदेश", "ग्राहकांचे संदेश", "Graahakon ke message")
+    val typeMessage get() = t("Type a message", "संदेश लिखें", "संदेश लिहा", "Message likhiye")
+    val chatHint get() = t("Ask anything about your order or our products.", "अपने ऑर्डर या सामान के बारे में कुछ भी पूछें।", "तुमच्या ऑर्डर किंवा वस्तूंबद्दल काहीही विचारा.", "Apne order ya saamaan ke baare mein kuch bhi poochhiye.")
+    val send get() = t("Send", "भेजें", "पाठवा", "Bhejiye")
+    val changeTime get() = t("Change time", "समय बदलें", "वेळ बदला", "Samay badlein")     // v0.377
+    val cancelWord get() = t("Cancel", "रद्द", "रद्द", "Cancel")
+    val pickSlot get() = t("Delivery time", "डिलीवरी का समय", "डिलिव्हरीची वेळ", "Delivery ka samay")   // v0.371 SLOT
+    val noSlots get() = t("No slot free right now - the shop will call to fix a time.", "अभी कोई स्लॉट खाली नहीं - दुकान समय तय करने के लिए कॉल करेगी।", "आता कोणताही स्लॉट मोकळा नाही - दुकान वेळ ठरवण्यासाठी कॉल करेल.", "Abhi koi slot khaali nahi - dukaan call karke samay tay karegi.")
+    val delivery get() = t("Delivery", "डिलीवरी", "डिलिव्हरी", "Delivery")    // v0.360 DELIVERY
+    val freeAbove get() = t("free above", "इससे ऊपर मुफ़्त", "यापुढे मोफत", "is se upar free")
+    val freeDelivery get() = t("Free delivery", "मुफ़्त डिलीवरी", "मोफत डिलिव्हरी", "Free delivery")
+    val shopClosed get() = t("Shop is closed now - your order will be seen when it opens", "दुकान अभी बंद है - खुलते ही ऑर्डर देखा जाएगा", "दुकान आता बंद आहे - उघडताच ऑर्डर पाहिली जाईल", "Dukaan abhi band hai - khulte hi order dekha jayega")
+    val areaOnly get() = t("Delivery only to some PIN codes - please put your PIN code in the address.", "डिलीवरी कुछ पिन कोड पर ही - पते में पिन कोड लिखें।", "डिलिव्हरी काही पिन कोडवरच - पत्त्यात पिन कोड लिहा.", "Delivery kuch PIN codes par hi - address mein PIN code likhein.")
+    val myKhata get() = t("My khata", "मेरा खाता", "माझे खाते", "Mera khata")     // v0.359 KHATA
+    val due get() = t("To pay", "बाकी", "बाकी", "Baaki")
+    val advance get() = t("Advance", "एडवांस", "आगाऊ", "Advance")
+    val allClear get() = t("All clear", "सब चुकता", "सगळे चुकते", "Sab chukta")
+    val khataDues get() = t("Udhaar", "उधार", "उधार", "Udhaar")
+    val received get() = t("Received", "मिला", "मिळाले", "Mila")
+    val onCredit get() = t("On credit", "उधार पर", "उधारीवर", "Udhaar par")
+    val giveCredit get() = t("On credit", "उधार दें", "उधार द्या", "Udhaar do")
+    val couponCode get() = t("Coupon code", "कूपन कोड", "कूपन कोड", "Coupon code")    // v0.358 COUPON
+    val apply get() = t("Apply", "लगाएँ", "लावा", "Lagayein")
+    val couponSaved get() = t("You save", "आपकी बचत", "तुमची बचत", "Aapki bachat")
+    val couponAgain get() = t("Cart changed: apply the code again.", "कार्ट बदला: कोड फिर से लगाएँ।", "कार्ट बदलला: कोड पुन्हा लावा.", "Cart badla: code phir lagayein.")
+    val soldOut get() = t("Sold out", "स्टॉक खत्म", "स्टॉक संपला", "Stock khatam")    // v0.357 STOCK
+    val creditNote get() = t("Credit note", "क्रेडिट नोट", "क्रेडिट नोट", "Credit note")   // v0.356 WAPSI
+    // v0.353 RAAY
+    val rateIt get() = t("How was it? Rate us", "कैसा रहा? रेटिंग दें", "कसे वाटले? रेटिंग द्या", "Kaisa raha? Rating dijiye")
+    val ratingNote get() = t("A few words (optional)", "कुछ शब्द (ज़रूरी नहीं)", "थोडे शब्द (ऐच्छिक)", "Kuch shabd (zaroori nahi)")
+    val sendRating get() = t("Send rating", "रेटिंग भेजें", "रेटिंग पाठवा", "Rating bhejiye")
+    val thanksRating get() = t("Thank you!", "धन्यवाद!", "धन्यवाद!", "Shukriya!")
+    // v0.352 KAAM BAANTO
+    val myWork get() = t("My work", "मेरा काम", "माझे काम", "Mera kaam")
+    val takeIt get() = t("I'll take it", "मैं करूँगा", "मी करतो", "Main karunga")
+    val giveBack get() = t("Give back", "वापस दें", "परत द्या", "Wapas dein")
+    val withPerson get() = t("With", "किसके पास", "कोणाकडे", "Kiske paas")
+    val you get() = t("You", "आप", "तुम्ही", "Aap")
+    val notAssigned get() = t("Not assigned", "किसी को नहीं दिया", "कोणालाही दिले नाही", "Kisi ko nahi diya")
+    val onIt get() = t("is on it", "इस पर काम कर रहे हैं", "यावर काम करत आहेत", "is par kaam kar rahe hain")
+    val assignedToYou get() = t("Given to you", "आपको सौंपा गया", "तुम्हाला दिले", "Aapko diya gaya")
     val staffView get() = t("Everyone's entries (staff view)", "सबकी एंट्री (स्टाफ़)", "सर्वांच्या नोंदी (स्टाफ)", "Sabki entries (staff)")
     val deleting get() = t("Deleting…", "हटा रहे हैं…", "हटवत आहे…", "Hata rahe hain…")
 
@@ -137,4 +183,22 @@ object Strings {
     val last14 get() = t("Last 14 days", "पिछले 14 दिन", "मागील 14 दिवस", "Pichhle 14 din")
     val inbox get() = t("Updates", "अपडेट", "अपडेट", "Updates")
     val inboxEmpty get() = t("No updates yet.", "अभी कोई अपडेट नहीं।", "अजून अपडेट नाहीत.", "Abhi koi update nahi.")
+    // v0.346 documents
+    val addFile get() = t("Attach PDF", "PDF जोड़ें", "PDF जोडा", "PDF jodiye")
+    val changeFile get() = t("Change PDF", "PDF बदलें", "PDF बदला", "PDF badliye")
+    val fileFailed get() = t("Please pick a PDF under 10 MB.", "10 MB से छोटी PDF चुनें।", "10 MB पेक्षा लहान PDF निवडा.", "10 MB se chhoti PDF chuniye.")
+    // v0.382 DIMAAG: the app's logic (links, workflow, approvals)
+    val approvals get() = t("Approvals", "मंज़ूरी", "मंजुरी", "Manzoori")
+    val approve get() = t("Approve", "मंज़ूर करें", "मंजूर करा", "Manzoor")
+    val reject get() = t("Reject", "मना करें", "नाकारा", "Mana")
+    val waitingFor get() = t("Waiting for", "इंतज़ार", "प्रतीक्षा", "Intezaar")
+    val needsApproval get() = t("needs approval", "मंज़ूरी चाहिए", "मंजुरी हवी", "manzoori chahiye")
+    val noApprovals get() = t("Nothing waiting for you.", "आपके लिए कुछ नहीं रुका।", "तुमच्यासाठी काही थांबलेले नाही.", "Aapke liye kuch nahi ruka.")
+    val note get() = t("Note", "टिप्पणी", "टीप", "Note")
+    val choose get() = t("Choose", "चुनें", "निवडा", "Chuniye")
+    val save get() = t("Save", "सहेजें", "जतन करा", "Save")
+    val cancel get() = t("Cancel", "रद्द", "रद्द", "Cancel")
+    val step get() = t("Step", "चरण", "पायरी", "Step")
+    val askedBy get() = t("Asked by", "माँगा", "मागितले", "Maanga")
+    val allLists get() = t("All lists", "सारी सूचियाँ", "सर्व याद्या", "Saari lists")
 }

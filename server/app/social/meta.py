@@ -69,7 +69,7 @@ def configured(platform: str) -> bool:
         return base and bool(st.instagram_app_id and st.instagram_app_secret)
     if platform == "facebook":
         return base and bool(st.meta_app_id and st.meta_app_secret)
-    if platform == "whatsapp":                       # v0.379 Embedded Signup = the same Meta app + its WhatsApp configuration
+    if platform == "whatsapp":                       # v0.384 Embedded Signup = the same Meta app + its WhatsApp configuration
         return base and bool(st.meta_app_id and st.meta_app_secret and st.wa_es_config_id)
     if platform == "linkedin":
         return base and bool(st.linkedin_client_id and st.linkedin_client_secret)
@@ -395,7 +395,7 @@ def fb_send(page: str, token: str, to: str, text: str) -> str:
     return str(js.get("message_id") or "")
 
 
-# ---------------------------------------------------------------- v0.378 growth (Phase 5): listening through Facebook Login
+# ---------------------------------------------------------------- v0.383 growth (Phase 5): listening through Facebook Login
 # Hashtag search and Business Discovery exist ONLY in the Instagram API with Facebook Login (her Page linked to her
 # Instagram professional account) - not in Instagram Login. Public business / creator data only; no scraping.
 FB_IG_SCOPES = ("instagram_basic", "instagram_manage_insights", "instagram_manage_comments")

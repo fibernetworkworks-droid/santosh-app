@@ -74,7 +74,8 @@ object Cloud {
                 instanceFollowRedirects = false
                 doOutput = true
                 setFixedLengthStreamingMode(bytes.size)
-                setRequestProperty("Content-Type", "image/jpeg")
+                // v0.346 a document (PDF) goes up as itself; photos as JPEG
+                setRequestProperty("Content-Type", if (bytes.size > 5 && String(bytes, 0, 5, Charsets.US_ASCII) == "%PDF-") "application/pdf" else "image/jpeg")
                 setRequestProperty("Accept", "application/json")
                 if (token.isNotEmpty()) setRequestProperty("Authorization", "Bearer $token")
             }
@@ -210,6 +211,7 @@ object Auth {
         Store.put(ctx, "auth_me", m.toString())
         withContext(Dispatchers.Main) { me.value = Item(m) }
         Db.sync()
+        PushHook.signedIn(ctx)                     // v0.367 TURANT: this phone's push token now belongs to this account
         return null
     }
 
@@ -303,8 +305,16 @@ object Db {
     fun fields(coll: String): List<Item> = arrList(collection(coll)?.optJSONArray("fields")).filter { !it.b("hidden") }
     fun label(coll: String): String = collection(coll)?.optString("label", coll) ?: coll
     fun rule(coll: String, op: String): String = collection(coll)?.optJSONObject("rules")?.optString(op, "") ?: ""
+    // v0.382 DIMAAG: what the app's logic says about a list (from the server's schema; the server checks every write)
+    fun relations(coll: String): List<Item> = arrList(collection(coll)?.optJSONArray("relations"))
+    fun workflowField(coll: String): String = collection(coll)?.optString("workflow", "") ?: ""
+    fun labelField(coll: String): String = collection(coll)?.optString("label_field", "") ?: ""
+    fun mayCreate(coll: String): Boolean = when (rule(coll, "create")) { "public" -> true; "member" -> Auth.signedIn; else -> Auth.isStaff }
+    val approvalsOn: Boolean get() = schema.optBoolean("approvals", false) || AppData.backend().optBoolean("approvals", false)
     val orderList: String get() = schema.optString("order", "")
     val signupOpen: Boolean get() = schema.optBoolean("signup", true)
+    /** v0.358 a discount code is live: the order screen shows the code box (read fresh from the app content). */
+    val couponsOn: Boolean get() = AppData.backend().optBoolean("coupons", false)
 
     /** Rows of a list: writes still on their way first (marked pending), then what the server last sent. */
     fun rows(coll: String): List<Item> {
@@ -502,12 +512,15 @@ object Db {
             items.forEach { (it, q) -> cart.put(JSONObject().put("id", it.id).put("qty", q)) }
             data["cart"] = cart
             show["items"] = items.joinToString("\n") { (it, q) -> "$q x ${it.name}" }
-            show["total"] = AppState.cartTotal("products")
+            show["total"] = AppState.cartTotal("products") - AppState.couponOff.value +
+                deliveryFee(AppState.cartTotal("products") - AppState.couponOff.value)   // v0.360 the server adds the same
+            if (AppState.coupon.value.isNotEmpty()) data["_coupon"] = AppState.coupon.value      // v0.358 checked again by the server
+            if (AppState.slot.value.isNotEmpty()) data["_slot"] = AppState.slot.value            // v0.371 booked by the server
             show.remove("cart")
         }
         create(coll, data, show)
         fields(coll).forEach { AppState.form.remove(it.s("key")); AppState.picks.remove(it.s("key")) }
-        if (coll == orderList) AppState.cart.clear()
+        if (coll == orderList) { AppState.cart.clear(); AppState.coupon.value = ""; AppState.couponOff.value = 0.0; AppState.slot.value = "" }
         return null
     }
 }
@@ -543,5 +556,8 @@ fun SubmitBtn(text: String, coll: String, modifier: Modifier = Modifier, then: S
 /** Places the cart as a real order (name / phone / address from the form). Same as SubmitBtn(text, Db.orderList). */
 @Composable
 fun OrderBtn(text: String, modifier: Modifier = Modifier, then: String = SCREEN_ACCOUNT) {
+    if (AppState.cartCount > 0) DeliveryLine()                      // v0.360 DELIVERY: the fee rule + open / closed
+    if (AppState.cartCount > 0 && AppData.backend().optJSONObject("delivery")?.optBoolean("slots") == true) SlotPicker()   // v0.371
+    if (Db.couponsOn && AppState.cartCount > 0) CouponBox()          // v0.358 COUPON
     SubmitBtn(text, Db.orderList.ifEmpty { "orders" }, modifier, then, "check")
 }

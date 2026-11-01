@@ -1018,7 +1018,7 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/poster', body: {}, timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> socialPublish(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/publish', body: {}) as Map);
-  // v0.378 growth: watch list, customers' tagged posts (ask / permission / repost / ignore), creator check
+  // v0.383 growth: watch list, customers' tagged posts (ask / permission / repost / ignore), creator check
   Future<Map<String, dynamic>> socialWatch(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/growth/watch', body: body) as Map);
   Future<Map<String, dynamic>> socialUgc(String id, String action, [Map<String, dynamic>? body]) async =>

@@ -119,6 +119,7 @@ def main() -> None:
     try:
         import cadquery as cq
         sys.path.insert(0, str(Path(__file__).resolve().parent))   # -I leaves the runner's folder off the path
+        import parts as _parts
         from parts import H
         H.her_file = _her_file(out)
         g = {"__builtins__": {**SAFE_BUILTINS, "__import__": _gate}, "cq": cq, "math": math, "H": H, "__name__": "hoola_part"}
@@ -145,6 +146,15 @@ def main() -> None:
         res["parts"] = [{"name": n, "volume_mm3": round(float(s.Volume()), 3), "valid": bool(s.isValid()),
                          "color": [round(c, 3) for c in col] if col else None} for n, s, col in parts]
         size = max(bb.xlen, bb.ylen, bb.zlen, 1.0)
+        # v0.365 her numbers measured, analysis / CAM / sheet requests handed to the next stage
+        if _parts.EXPECT:
+            import geom
+            res["expect"] = geom.check_expect(shape, _parts.EXPECT)
+        res["studies"] = _parts.STUDIES[:3]
+        res["cam"] = _parts.CAM[:1]
+        if _parts.FLAT.get("sheet"):
+            res["sheet"] = _parts.FLAT["sheet"]
+        big = len(parts) > 40 or len(shape.Faces()) > 4000          # v0.365 big assemblies: coarser mesh, no HLR
         exported = []
         if parts:                                         # an assembly keeps its parts, names and colours in STEP / GLB
             obj.save(str(out / "part.step"))
@@ -166,7 +176,7 @@ def main() -> None:
                 res.setdefault("notes", []).append(f"{name}: {type(e).__name__}")
         from cadquery.occ_impl.exporters.svg import getSVG
         hlr = {}
-        for view, d in HLR_VIEWS.items():
+        for view, d in ({} if big else HLR_VIEWS).items():
             try:
                 hlr[view] = getSVG(shape, {"projectionDir": d, "showHidden": view != "iso", "showAxes": False,
                                            "width": 900, "height": 700, "marginLeft": 40, "marginTop": 40,
@@ -181,7 +191,7 @@ def main() -> None:
         pieces = [(s, col) for _n, s, col in parts] if parts else [(shape, None)]
         V, T, C, colors = [], [], [], []
         for i, (s, col) in enumerate(pieces):
-            vv, tt = s.tessellate(size / 500, 0.2)
+            vv, tt = s.tessellate(size / (150 if big else 500), 0.35 if big else 0.2)
             base = len(V)
             V += [[round(p.x, 4), round(p.y, 4), round(p.z, 4)] for p in vv]
             T += [[a + base, b + base, c + base] for a, b, c in tt]

@@ -11,6 +11,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'app_money.dart';
+import 'app_logic.dart';
 import 'app_android.dart';
 import 'app_ios.dart';
 import 'site_screen.dart' show SiteStages;
@@ -828,11 +830,17 @@ class _AppDesignPageState extends State<AppDesignPage> {
             const SizedBox(height: 10),
             Glass(child: AppDataPanel(app: app, id: widget.id)),
             const SizedBox(height: 10),
+            Glass(child: AppMoneyPanel(app: app, id: widget.id)),          // v0.376 MAALKIN PHONE
+            const SizedBox(height: 10),
+            Glass(child: AppLogicPanel(app: app, id: widget.id)),          // v0.382 DIMAAG: the app's brain
+            const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),
             Glass(child: IosBuildPanel(app: app, id: widget.id, approved: st == 'approved')),
             const SizedBox(height: 10),
             Glass(child: AppStorePanel(app: app, id: widget.id)),
+            const SizedBox(height: 10),
+            Glass(child: BhashaPanel(app: app, id: widget.id)),
             const SizedBox(height: 10),
             Glass(child: MatchPanel(app: app, id: widget.id)),
             const SizedBox(height: 10),

@@ -1,4 +1,4 @@
-"""v0.378 SOCIAL MEDIA MANAGER Phase 5 - growth through the Facebook-Login link to her Instagram (hashtag search and
+"""v0.383 SOCIAL MEDIA MANAGER Phase 5 - growth through the Facebook-Login link to her Instagram (hashtag search and
 Business Discovery exist only there): posts that tag her -> UGC permission flow (ask = a comment from her account on her
 tap, a recorded yes, then a credited DRAFT), up to 5 hashtags + 5 competitors read weekly against her numbers, a creator
 check (public numbers + fake-follower signals + ASCI #ad), and A/B hook styles. Meta is a mock transport."""

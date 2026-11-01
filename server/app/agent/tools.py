@@ -482,7 +482,7 @@ TOOLS.extend(MOSPI_TOOLS)
 TOOL_LABELS.update(MOSPI_LABELS)
 HANDLERS.update(MOSPI_HANDLERS)
 
-# v0.370 GAME DESK: the Game Developer employee (Godot 4 games, built + test-played in a locked box)
+# v0.381 GAME DESK: the Game Developer employee (Godot 4 games, built + test-played in a locked box)
 from .gamedesk_tools import GAMEDESK_HANDLERS, GAMEDESK_LABELS, GAMEDESK_TOOLS  # noqa: E402
 
 TOOLS.extend(GAMEDESK_TOOLS)
@@ -981,6 +981,15 @@ DIET_DESC_MAX = 1200     # tool description cap (chars) - v0.311: 140 -> 1200 (w
 DIET_SAFETY_MAX = 1200   # tool description cap for safety-word tools (v0.311: the same - every rule survives)
 DIET_PROP_MAX = 240      # property / nested description cap (v0.311: 72 -> 240, the format hints stay)
 _DIET_KEEP_RE = re.compile(r"confirm|approval|consent|otp|password|tier-2|bhejo|manzoori|payment|money", re.I)
+
+# v0.381 Shiksha suite Phase 0 + 1: the education foundation (classes, learners + guardian consent, the shared question
+# bank, gradebook), the Pathyakram Sahayak (curriculum & exam designer) and the locked Python sandbox (pylab).
+from .shiksha_tools import SHIKSHA_HANDLERS, SHIKSHA_LABELS, SHIKSHA_TOOLS  # noqa: E402
+
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in SHIKSHA_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(SHIKSHA_LABELS)
+HANDLERS.update(SHIKSHA_HANDLERS)
 
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}

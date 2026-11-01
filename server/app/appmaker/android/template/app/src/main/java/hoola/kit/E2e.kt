@@ -65,6 +65,14 @@ object E2e {
         val back = Cloud.bytes("/files/$fid", Auth.token()) ?: return "photo not served back"
         if (back.size < 100 || back[0] != 0xFF.toByte() || back[1] != 0xD8.toByte()) return "served photo is not a JPEG"
         say("photo ok $fid ${back.size} bytes")
+        // v0.346 a PDF document up (the server checks it is a plain PDF) and back as a download
+        val pdf = android.util.Base64.decode("JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyMDAgMjAwXSA+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDQgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjE4NgolJUVPRgo=", android.util.Base64.DEFAULT)
+        val pup = Cloud.upload(pdf, Auth.token())
+        val pid = pup.body.optString("id")
+        if (!pup.ok || !pid.startsWith("f_") || pup.body.optString("kind") != "pdf") return "pdf upload ${pup.code} ${pup.error}"
+        val pback = Cloud.bytes("/files/$pid", Auth.token()) ?: return "pdf not served back"
+        if (!pback.contentEquals(pdf)) return "served pdf differs"
+        say("pdf ok $pid ${pback.size} bytes")
         Db.paid(order, mine.id, "412345678901")
         tries = 0
         while (Db.pending.value > 0 && tries < 20) { Db.sync(); delay(500); tries++ }

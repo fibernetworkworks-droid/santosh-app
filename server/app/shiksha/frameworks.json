@@ -1,0 +1,520 @@
+{
+ "checked": "2026-11-01",
+ "method_note": "Official CBSE / NCERT / CISCE pages could not be opened from the build sandbox; facts were confirmed through web search restricted to the official domains (each entry names its official URL). Gaps are left empty, never guessed. Re-check against the PDFs once from a normal browser.",
+ "cbse": {
+  "session": "2026-27",
+  "curriculum_url": "https://cbseacademic.nic.in/curriculum_2027.html",
+  "paper_patterns": {
+   "10": {
+    "Mathematics Standard": {
+     "max_marks": 80,
+     "internal": 20,
+     "duration_min": 180,
+     "sections": [
+      {
+       "name": "A",
+       "type": "MCQ (18) + assertion-reason (2)",
+       "qtype": "mcq",
+       "count": 20,
+       "marks_each": 1,
+       "status": "verified"
+      },
+      {
+       "name": "B",
+       "type": "very short answer",
+       "qtype": "very_short",
+       "count": 5,
+       "marks_each": 2,
+       "status": "verified (Q21-25, '5 x 2 = 10')"
+      },
+      {
+       "name": "C",
+       "type": "short answer",
+       "qtype": "short",
+       "count": 6,
+       "marks_each": 3,
+       "status": "derived arithmetically from 38 questions / 80 marks; not read directly"
+      },
+      {
+       "name": "D",
+       "type": "long answer",
+       "qtype": "long",
+       "count": 4,
+       "marks_each": 5,
+       "status": "derived arithmetically; not read directly"
+      },
+      {
+       "name": "E",
+       "type": "case study, sub-parts 1+1+2",
+       "qtype": "case_based",
+       "count": 3,
+       "marks_each": 4,
+       "status": "verified"
+      }
+     ],
+     "source": [
+      "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/MathsStandard-SQP.pdf",
+      "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/MathsStandard-MS.pdf"
+     ],
+     "unverified": true,
+     "note": " Kuch sections ka hisaab total se nikala gaya (andaaza)."
+    },
+    "Science": {
+     "max_marks": 80,
+     "internal": 20,
+     "duration_min": 180,
+     "sections": [],
+     "source": [
+      "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/Science-SQP.pdf",
+      "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/Science-MS.pdf"
+     ],
+     "unverified": true,
+     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+    },
+    "Social Science": {
+     "max_marks": 80,
+     "internal": 20,
+     "duration_min": 180,
+     "sections": [],
+     "source": [
+      "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/SocialScience-SQP.pdf",
+      "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/SocialScience-MS.pdf",
+      "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/SocialScience_SecP1X_2026-27.pdf"
+     ],
+     "unverified": true,
+     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+    },
+    "English Language and Literature": {
+     "max_marks": 80,
+     "internal": 20,
+     "duration_min": 180,
+     "sections": [],
+     "source": [
+      "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/EnglishL-SQP.pdf",
+      "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/EnglishL-MS.pdf",
+      "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/English_LL_SecP1_2026-27.pdf"
+     ],
+     "unverified": true,
+     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+    }
+   },
+   "12": {
+    "Mathematics": {
+     "max_marks": 80,
+     "internal": 20,
+     "duration_min": 180,
+     "sections": [
+      {
+       "name": "A",
+       "type": "MCQ (18) + assertion-reason (2)",
+       "qtype": "mcq",
+       "count": 20,
+       "marks_each": 1,
+       "status": "unverified for XII (stated for X); consistent with B starting at Q21"
+      },
+      {
+       "name": "B",
+       "type": "very short answer",
+       "qtype": "very_short",
+       "count": 5,
+       "marks_each": 2,
+       "status": "verified (Q21-25)"
+      },
+      {
+       "name": "C",
+       "type": "short answer",
+       "qtype": "short",
+       "count": 6,
+       "marks_each": 3,
+       "status": "derived"
+      },
+      {
+       "name": "D",
+       "type": "long answer",
+       "qtype": "long",
+       "count": 4,
+       "marks_each": 5,
+       "status": "derived"
+      },
+      {
+       "name": "E",
+       "type": "case study",
+       "qtype": "case_based",
+       "count": 3,
+       "marks_each": 4,
+       "status": "verified (Q36-38, 4 marks each)"
+      }
+     ],
+     "source": [
+      "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Maths-SQP.pdf"
+     ],
+     "unverified": true,
+     "note": " Kuch sections ka hisaab total se nikala gaya (andaaza)."
+    },
+    "Physics": {
+     "max_marks": 70,
+     "internal": 30,
+     "duration_min": 180,
+     "sections": [
+      {
+       "name": "A",
+       "type": "MCQ (12) + assertion-reason (4)",
+       "qtype": "mcq",
+       "count": 16,
+       "marks_each": 1,
+       "status": "from 2024-25 SQP + 'no change' note; A-R at Q13-16 seen in 2026-27 MS"
+      },
+      {
+       "name": "B",
+       "type": "very short answer",
+       "qtype": "very_short",
+       "count": 5,
+       "marks_each": 2,
+       "status": "unverified"
+      },
+      {
+       "name": "C",
+       "type": "short answer",
+       "qtype": "short",
+       "count": 7,
+       "marks_each": 3,
+       "status": "unverified"
+      },
+      {
+       "name": "D",
+       "type": "case study",
+       "qtype": "case_based",
+       "count": 2,
+       "marks_each": 4,
+       "status": "unverified"
+      },
+      {
+       "name": "E",
+       "type": "long answer",
+       "qtype": "long",
+       "count": 3,
+       "marks_each": 5,
+       "status": "unverified"
+      }
+     ],
+     "source": [
+      "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Physics-SQP.pdf",
+      "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Physics-MS.pdf",
+      "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2024_25/Physics-SQP.pdf"
+     ],
+     "unverified": true,
+     "note": " Kuch sections ka hisaab total se nikala gaya (andaaza)."
+    },
+    "Chemistry": {
+     "max_marks": 70,
+     "internal": 30,
+     "duration_min": 180,
+     "sections": [],
+     "source": [
+      "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Chemistry-SQP.pdf",
+      "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Chemistry-MS.pdf"
+     ],
+     "unverified": true,
+     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+    },
+    "Biology": {
+     "max_marks": 70,
+     "internal": 30,
+     "duration_min": 180,
+     "sections": [],
+     "source": [
+      "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Biology-SQP.pdf",
+      "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Biology-MS.pdf",
+      "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart2/Biology_SecP2_2026-27.pdf"
+     ],
+     "unverified": true,
+     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+    }
+   }
+  },
+  "question_type_mix": {
+   "10": {
+    "competency_based_pct": 50,
+    "objective_pct": 20,
+    "constructed_response_pct": 30
+   },
+   "12": {
+    "competency_based_pct": 50,
+    "objective_pct": 20,
+    "constructed_response_pct": 30
+   },
+   "note": "Competency-focused = MCQ / case-based / source-based etc. applying concepts in real life; objective = select-response MCQ; constructed = SA/LA. XI-XII moved 40/20/40 -> 50/20/30 from 2024-25. No newer circular found; 2026-27 SQPs say the design is unchanged (so carried forward - treat as 'verified to 2024-25, inferred for 2026-27').",
+   "source": "https://cbseacademic.nic.in/web_material/Circulars/2024/30_Circular_2024.pdf"
+  }
+ },
+ "ncert": {
+  "textbooks": {
+   "Mathematics": {
+    "7": {
+     "book": "Ganita Prakash (Grade 7), Part I + Part II",
+     "chapters": [
+      "Large Numbers Around Us",
+      "Arithmetic Expressions",
+      "A Peek Beyond the Point",
+      "Expressions using Letter-Numbers",
+      "Parallel and Intersecting Lines",
+      "Number Play",
+      "A Tale of Three Intersecting Lines",
+      "Working with Fractions",
+      "Geometric Twins",
+      "Operations with Integers",
+      "Finding Common Ground",
+      "Another Peek Beyond the Point",
+      "Connecting the Dots",
+      "Constructions and Tilings",
+      "Finding the Unknown"
+     ],
+     "source": [
+      "https://ncert.nic.in/textbook/pdf/gegp1ps.pdf",
+      "https://ncert.nic.in/textbook/pdf/gegp2ps.pdf"
+     ]
+    },
+    "8": {
+     "book": "Ganita Prakash (Grade 8), Part I + Part II",
+     "chapters": [
+      "A Square and A Cube",
+      "Power Play",
+      "A Story of Numbers",
+      "Quadrilaterals",
+      "Number Play",
+      "We Distribute, Yet Things Multiply",
+      "Proportional Reasoning-1",
+      "Fractions in Disguise",
+      "The Baudhayana-Pythagoras Theorem",
+      "Proportional Reasoning-2",
+      "Exploring Some Geometric Themes",
+      "Tales by Dots and Lines",
+      "Algebra Play",
+      "Area"
+     ],
+     "source": [
+      "https://ncert.nic.in/textbook/pdf/hegp1ps.pdf",
+      "https://ncert.nic.in/textbook/pdf/hegp2ps.pdf"
+     ]
+    },
+    "9": {
+     "book": "Ganita Manjari (Grade 9), Part I (1st ed. Apr 2026) + Part II (1st ed. Aug 2026)",
+     "chapters": [
+      "Orienting Yourself: The Use of Coordinates",
+      "Introduction to Linear Polynomials",
+      "The World of Numbers",
+      "Exploring Algebraic Identities",
+      "I'm Up and Down, and Round and Round",
+      "Measuring Space: Perimeter and Area",
+      "The Mathematics of Maybe: Introduction to Probability",
+      "Predicting What Comes Next: Exploring Sequences and Progressions",
+      "Propositions and their Converses",
+      "How Quantities Combine: Understanding Data",
+      "The World of Algorithms",
+      "Quadrilaterals",
+      "Two Variables, One Line",
+      "Math of Space: Surface Area and Volume"
+     ],
+     "source": [
+      "https://ncert.nic.in/textbook/pdf/iemh1ps.pdf",
+      "https://ncert.nic.in/textbook/pdf/iemh2ps.pdf"
+     ]
+    },
+    "10": {
+     "book": "Mathematics - Textbook for Class X (rationalised, Reprint 2026-27)",
+     "chapters": [
+      "Real Numbers",
+      "Polynomials",
+      "Pair of Linear Equations in Two Variables",
+      "Quadratic Equations",
+      "Arithmetic Progressions",
+      "Triangles",
+      "Coordinate Geometry",
+      "Introduction to Trigonometry",
+      "Some Applications of Trigonometry",
+      "Circles",
+      "Areas Related to Circles",
+      "Surface Areas and Volumes",
+      "Statistics",
+      "Probability"
+     ],
+     "source": "https://ncert.nic.in/textbook/pdf/jemh1ps.pdf"
+    }
+   },
+   "Science": {
+    "6": {
+     "book": "Curiosity - Textbook of Science for Grade 6 (Reprint 2026-27)",
+     "chapters": [
+      "The Wonderful World of Science",
+      "Diversity in the Living World",
+      "Mindful Eating: A Path to a Healthy Body",
+      "Exploring Magnets",
+      "Measurement of Length and Motion",
+      "Materials Around Us",
+      "Temperature and its Measurement",
+      "A Journey through States of Water",
+      "Methods of Separation in Everyday Life",
+      "Living Creatures: Exploring their Characteristics",
+      "Nature's Treasures",
+      "Beyond Earth"
+     ],
+     "source": "https://ncert.nic.in/textbook/pdf/fecu1ps.pdf"
+    },
+    "8": {
+     "book": "Curiosity - Textbook of Science for Grade 8 (Reprint 2026-27)",
+     "chapters": [
+      "Exploring the Investigative World of Science",
+      "The Invisible Living World: Beyond Our Naked Eye",
+      "Health: The Ultimate Treasure",
+      "Electricity: Magnetic and Heating Effects",
+      "Exploring Forces",
+      "Pressure, Winds, Storms, and Cyclones",
+      "Particulate Nature of Matter",
+      "Nature of Matter: Elements, Compounds, and Mixtures",
+      "The Amazing World of Solutes, Solvents, and Solutions",
+      "Light: Mirrors and Lenses",
+      "Keeping Time with the Skies",
+      "How Nature Works in Harmony",
+      "Our Home: Earth, a Unique Life Sustaining Planet"
+     ],
+     "source": [
+      "https://ncert.nic.in/textbook/pdf/hecu1ps.pdf",
+      "https://ncert.nic.in/textbook/pdf/hecu101.pdf"
+     ]
+    },
+    "10": {
+     "book": "Science - Textbook for Class X (rationalised, Reprint 2026-27)",
+     "chapters": [
+      "Chemical Reactions and Equations",
+      "Acids, Bases and Salts",
+      "Metals and Non-metals",
+      "Carbon and its Compounds",
+      "Life Processes",
+      "Control and Coordination",
+      "How do Organisms Reproduce?",
+      "Heredity",
+      "Light – Reflection and Refraction",
+      "The Human Eye and the Colourful World",
+      "Electricity",
+      "Magnetic Effects of Electric Current",
+      "Our Environment"
+     ],
+     "source": "https://ncert.nic.in/textbook/pdf/jesc1ps.pdf"
+    }
+   }
+  },
+  "incomplete": {
+   "Mathematics": {
+    "6": {
+     "book": "Ganita Prakash (Grade 6)",
+     "known": [
+      "Patterns in Mathematics",
+      "Lines and Angles",
+      "Number Play",
+      "Prime Time",
+      "Perimeter and Area",
+      "Fractions",
+      "Playing with Constructions",
+      "Symmetry",
+      "The Other Side of Zero"
+     ],
+     "source": "https://ncert.nic.in/textbook/pdf/fegp1ps.pdf"
+    }
+   },
+   "Science": {
+    "7": {
+     "book": "Curiosity - Textbook of Science for Grade 7",
+     "known": [
+      "The Ever-Evolving World of Science",
+      "The World of Metals and Non-metals",
+      "Changes Around Us: Physical and Chemical",
+      "Adolescence: A Stage of Growth and Change",
+      "Heat Transfer in Nature",
+      "Life Processes in Plants",
+      "Earth, Moon, and the Sun"
+     ],
+     "source": "https://ncert.nic.in/textbook/pdf/gecu1ps.pdf"
+    },
+    "9": {
+     "book": "new NCF-SE 2023 Grade 9 Science textbook - exact title unverified",
+     "known": [
+      "Exploration: Entering the World of Secondary Science",
+      "Describing Motion Around Us",
+      "Exploring Mixtures and their Separation",
+      "How Forces Affect Motion",
+      "Work, Energy, and Simple Machines"
+     ],
+     "source": [
+      "https://ncert.nic.in/textbook/pdf/iesc101.pdf",
+      "https://ncert.nic.in/textbook/pdf/iesc104.pdf",
+      "https://ncert.nic.in/textbook/pdf/iesc105.pdf",
+      "https://ncert.nic.in/textbook/pdf/iesc106.pdf",
+      "https://ncert.nic.in/textbook/pdf/iesc107.pdf",
+      "https://ncert.nic.in/pdf/announcement/Syllabus_Secondary_Stage_Phase_I_Grade_9_Part_2.pdf"
+     ]
+    }
+   }
+  }
+ },
+ "cisce": {
+  "icse_10_scheme": {
+   "exam_year": "2027 (2028 regulations also published)",
+   "subjects_and_marks": "Group I compulsory: English, a Second Language, History Civics & Geography - each 80% external / 20% internal. Group II (any two/three per regulations): Mathematics, Science (Physics, Chemistry, Biology), Economics, Commercial Studies, Modern Foreign Language, Classical Language, Environmental Science - 80/20. Group III (one subject from Section A or B, or two): 50% external / 50% internal. Internal assessment by school from assignments, projects, practicals, coursework (e.g. 100-mark subject = 80-mark paper + 20 internal, 10 teacher + 10 external examiner). Exact number of Group II subjects required: unverified.",
+   "source": [
+    "https://cisce.org/wp-content/uploads/2025/02/1.-Regulations.pdf",
+    "https://cisce.org/wp-content/uploads/2026/01/1.-Regulations.pdf"
+   ],
+   "verified_via": "official_search_index"
+  },
+  "isc_12_scheme": {
+   "exam_year": "2027",
+   "subjects_and_marks": "English (801) or Modern English (891) compulsory: Paper I theory 3 h 80 marks + Project 20 marks. Plus four or five elective subjects; max six subjects including English. Elective theory/practical splits (commonly 70/30 for sciences) unverified - check each subject PDF.",
+   "source": [
+    "https://cisce.org/wp-content/uploads/2025/02/1.-ISC-Regulations.pdf",
+    "https://cisce.org/wp-content/uploads/2025/04/2.-ISC-English.pdf",
+    "https://cisce.org/wp-content/uploads/2025/04/40.-ISC-Appendix-I-List-of-Prescribed-Textbooks.pdf"
+   ],
+   "verified_via": "official_search_index"
+  }
+ },
+ "maharashtra": {
+  "ssc_10_pattern": {
+   "status": "unverified",
+   "known": "MSBSHSE Pune enters practical, oral, grading and internal evaluation marks separately from the written SSC exam; the Board Act (1965) lets its committee fix max/min marks, time and duration for written, oral and practical tests. An 80 written + 20 internal split per subject could NOT be confirmed on an official page.",
+   "source": [
+    "https://www.mahahsscboard.in/rules.pdf",
+    "https://www.mahahsscboard.in/en/Evaluation",
+    "https://ebalbharati.in/main/Evaluation.html"
+   ]
+  }
+ },
+ "frameworks_other": {
+  "us_common_core_math_code_format": "CCSS.MATH.CONTENT.<grade>.<domain>.<cluster>.<standard>, e.g. CCSS.MATH.CONTENT.6.RP.A.1 = grade 6, domain RP (Ratios and Proportional Relationships), cluster A, standard 1. Official document confirms the Domain > Cluster > Standard hierarchy; the dotted 'CCSS.Math.Content' identifier prefix itself was not confirmed on a page fetched here (widely used; mark unverified). Source: https://corestandards.org/wp-content/uploads/2023/09/Math_Standards1.pdf",
+  "uk_national_curriculum_keystages": {
+   "KS1": "Years 1-2 (ages 5-7)",
+   "KS2": "Years 3-6 (ages 7-11)",
+   "KS3": "Years 7-9 (ages 11-14)",
+   "KS4": "Years 10-11 (ages 14-16)",
+   "note": "4 key stages, 12 subjects (core + other foundation). KS1 and KS4 confirmed in search text; KS2/KS3 rows from the same framework table (not individually quoted).",
+   "source": "https://www.gov.uk/government/publications/national-curriculum-in-england-framework-for-key-stages-1-to-4/the-national-curriculum-in-england-framework-for-key-stages-1-to-4"
+  },
+  "ib_note": "Programmes: PYP (Primary Years), MYP (Middle Years), DP (Diploma), CP (Career-related). IB claims copyright over curriculum materials incl. guides, syllabi and learning objectives; any use not expressly permitted needs written permission; authorised schools may copy only for non-commercial use inside the school community; tutoring services/publishers/third parties need a written licence (copyright@ibo.org). => Do NOT reproduce IB guide text in the app; refer to topics in your own words. Source: https://www.ibo.org/terms-and-conditions/intellectual-property/",
+  "cambridge_note": "Cambridge University Press & Assessment (UCLES) retains copyright on all its publications; registered centres may copy syllabus material for their own internal use only; no permission for third-party-acknowledged material. => an app is not a 'registered centre': do not reproduce syllabus text without a licence. Source: https://www.cambridgeinternational.org/Images/662466-2025-2027-syllabus.pdf"
+ },
+ "dpdp_children": {
+  "act_section": "DPDP Act 2023 s.9: (1) before processing any personal data of a child (under 18, s.2(f)) obtain verifiable consent of the parent/lawful guardian in the prescribed manner; (2) no processing likely to cause detrimental effect on a child's well-being; (3) no tracking or behavioural monitoring of children or targeted advertising directed at children; (4) govt may exempt classes of fiduciaries/purposes from (1) and (3); (5) govt may notify a lower age for a fiduciary whose processing is 'verifiably safe'. Penalty for child obligations up to Rs 200 crore (PIB).",
+  "rules": {
+   "notification": "Digital Personal Data Protection Rules, 2025 - G.S.R. 846(E), dated New Delhi 13 November 2025 (PIB says notified 14 November 2025, i.e. Gazette publication)",
+   "commencement": "Rules 1, 2, 17-21 on publication; Rule 4 (Consent Managers) one year after publication; Rules 3, 5-16, 22, 23 eighteen months after publication (rule 1(2)-(4)) => child-consent Rule 10 and exemptions Rule 12 in force ~13/14 May 2027",
+   "verifiable_parental_consent_rule": "Rule 10: fiduciary must adopt technical and organisational measures so verifiable consent of the parent is obtained BEFORE processing a child's data, and do due diligence that the person claiming to be the parent is an identifiable adult (18+), by reference to (a) reliable identity/age details already held by the fiduciary, or (b) identity/age details voluntarily given by the individual or via a virtual token mapped to such details issued by an authorised entity (incl. one verified by a Digital Locker service provider, e.g. DigiLocker). Rule 11 covers lawful guardians of persons with disability.",
+   "education_exemptions": "Rule 12 + Fourth Schedule. Part A (class exemptions from s.9(1) and 9(3)): item 3 'educational institution' - processing restricted to tracking and behavioural monitoring (a) for the educational activities of such institution or (b) in the interests of safety of enrolled children; item 4 creche/day-care; item 5 transport provider engaged by an educational institution - location tracking during travel. 'Educational institution' = an institution of learning that imparts education, incl. vocational. Part B (purpose exemptions) includes: functions under law in a child's interest, subsidies/benefits/certificates under s.7(b), creating an email-only user account, real-time location for safety, blocking harmful content/ads, and confirming a user is NOT a child. NOTE: the exemption is narrow - it does not cover a general ed-tech app (not itself an educational institution) collecting children's data; such an app needs Rule 10 parental consent. PIB's summary ('unless ... essential services such as healthcare, education') is broader than the rule text."
+  },
+  "sources": [
+   "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+   "https://www.meity.gov.in/static/uploads/2024/06/2bf1f0e9f04e6fb4f8fef35e82c42aa5.pdf",
+   "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2025/nov/doc20251117695301.pdf",
+   "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2190014"
+  ],
+  "verified_via": "direct_read (Gazette PDF and Act PDF text extracted)"
+ }
+}

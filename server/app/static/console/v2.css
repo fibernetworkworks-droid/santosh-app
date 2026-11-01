@@ -2094,7 +2094,7 @@ body.albon{overflow:hidden}
 .stcode-files button:hover{background:var(--sunk)}.stcode-files button.on{background:var(--pri-soft);color:var(--pri-ink);font-weight:500}
 .stcode-files button:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
 .stcode-ed{display:grid;gap:8px;min-width:0}
-.stcode-path{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--mut)}.stcode-path code{font-family:var(--fm,ui-monospace,monospace);color:var(--ink)}
+.stcode-path{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--mut)}.stcode-path code{font-family:ui-monospace,monospace;color:var(--ink)}
 .stcode-state{color:var(--warn)}
 .stcode-area{display:grid;grid-template-columns:auto minmax(0,1fr);border:1px solid var(--hair);border-radius:12px;overflow:hidden;background:var(--code-bg,var(--surface));height:460px}
 .stcode-ln{margin:0;padding:12px 8px 12px 12px;text-align:right;color:var(--dim);font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:hidden;user-select:none;border-right:1px solid var(--hair);background:var(--sunk)}
@@ -2331,6 +2331,10 @@ body.albon{overflow:hidden}
 .cad-bom th,.cad-bom td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}
 .cad-bom th{color:var(--mut);font-weight:600}
 
+/* v0.365 CAD analysis rows */
+.cad-ana{margin:8px 0;padding:8px 12px;border:1px solid var(--line, #e5e7eb);border-radius:8px;font-size:13.5px}
+.cad-ana b{display:block;font-weight:600;margin-bottom:2px}
+
 /* v0.370 Game Desk */
 .gd-new textarea,.gd-card textarea{width:100%;box-sizing:border-box;margin-top:8px;font:inherit;font-size:14px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
 .gd-new .acts,.gd-card .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
@@ -2349,3 +2353,12 @@ body.albon{overflow:hidden}
 .gd-nums b{color:var(--ink);font-weight:600}
 .gd-shots{display:flex;gap:8px;overflow-x:auto;margin-top:6px}
 .gd-shots img{height:160px;border-radius:8px;border:1px solid var(--line)}
+/* v0.382 DIMAAG: the app logic box (summary lines, draft, approvals, timed jobs, audit) */
+.stlogic h5{margin:12px 0 6px;font-size:13px;font-weight:600}
+.stlogic .stlines{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:13px;color:var(--ink)}
+.stlogic .sterr{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--bad)}
+.stlogic .stwarn{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--mut)}
+.stlogic .stdraft{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.stlogic .stmems li{flex-wrap:wrap}
+.stlogic details{margin-top:10px;font-size:13px}
+.stlogic textarea[name=j]{font-family:ui-monospace,monospace;font-size:12.5px}

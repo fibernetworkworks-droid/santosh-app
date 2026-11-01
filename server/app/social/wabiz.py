@@ -1,4 +1,4 @@
-"""v0.379 SOCIAL MEDIA MANAGER Phase 6 - WhatsApp Business on HER OWN number, by Meta's Embedded Signup.
+"""v0.384 SOCIAL MEDIA MANAGER Phase 6 - WhatsApp Business on HER OWN number, by Meta's Embedded Signup.
 
 Before this, a business typed its phone number id + a token from WhatsApp Manager into the Business inbox (v0.59). Now one
 tap: Hoola's page opens Meta's own Embedded Signup popup (Facebook Login for Business with the WhatsApp configuration,

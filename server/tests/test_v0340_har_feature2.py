@@ -76,14 +76,14 @@ def test_android_project_has_scan_dashboard_inbox(tmp_path):
     G.write_project(sp, out)
     scr = out / "app/src/main/java/hoola/app/screens"
     be = sp["seed"]["backend"]
-    assert 'ScanField("Coupon", "coupon")' in G.fallback_screen({"id": "cart", "label": "Cart"}, ["cart"], [], be)
+    assert 'ScanField(T("Coupon"), "coupon")' in G.fallback_screen({"id": "cart", "label": "Cart"}, ["cart"], [], be)
     assert "StatsBlock()" in G.fallback_screen({"id": "dashboard", "label": "Dashboard"}, ["dashboard"], [], be)
     assert scr.exists()
     reg = (out / "app/src/main/java/hoola/app/AppScreens.kt").read_text()
     assert '"hoola_inbox" -> InboxScreen()' in reg and '"hoola_inbox"' in reg.split("val ids")[1].split("\n")[0]
     main = (out / "app/src/main/java/hoola/app/MainActivity.kt").read_text()
     assert "Inbox.unread.value = Inbox.count(this)" in main
-    assert (out / "hoola_qa/screens.txt").read_text().split()[-1] == "hoola_inbox"
+    assert "hoola_inbox" in (out / "hoola_qa/screens.txt").read_text().split()   # v0.382 + hoola_approvals / hoola_data after it
     kit = out / "app/src/main/java/hoola/kit"
     assert "Inbox.add(" in (kit / "Updates.kt").read_text() and "StatsBlock()" in (kit / "Accounts.kt").read_text()
     pro = (kit / "Pro.kt").read_text()
@@ -119,5 +119,5 @@ def test_iphone_project_has_scan_dashboard_inbox_background(tmp_path):
         assert s in kit, s
     acc = (out / "Sources/Kit/Accounts.swift").read_text()
     assert 'case "scan":' in acc and "InboxButton()" in acc and "StatsBlock()" in acc
-    assert (out / "hoola_qa/screens.txt").read_text().split()[-1] == "hoola_inbox"
+    assert "hoola_inbox" in (out / "hoola_qa/screens.txt").read_text().split()   # v0.382 + hoola_approvals / hoola_data after it
     assert "ScanRow" in PR.KIT_SHEET and "StatsBlock" in PR.KIT_SHEET

@@ -190,12 +190,12 @@ def test_generated_project_uses_the_backend(droid_env, tmp_path):
                      {"key": "slot", "label": "Slot", "type": "choice", "options": ["Morning", "Evening"]},
                      {"key": "status", "label": "Status", "type": "choice", "options": ["New"], "admin_only": True}]}]}
     cart = G.fallback_screen({"id": "cart", "label": "Cart"}, ["cart", "home"], ["home"], bk)
-    assert 'OrderBtn("Place order"' in cart and 'Field("Mobile number *", "phone", keyboard = KeyboardType.Phone' in cart
+    assert 'OrderBtn(T("Place order")' in cart and 'Field(T("Mobile number *"), "phone", keyboard = KeyboardType.Phone' in cart
     assert '"total"' not in cart and '"status"' not in cart                       # staff-only fields never on the phone form
     orders = G.fallback_screen({"id": "orders", "label": "Orders", "lists": ["orders"]}, ["orders"], [], bk)
     assert 'LiveRowsBlock("orders")' in orders and "AppData.list" not in orders
     book = G.fallback_screen({"id": "book_slot", "label": "Book"}, ["book_slot"], [], bk)
-    assert 'SubmitBtn("Send", "bookings"' in book and 'Chips(listOf("Morning", "Evening"), "slot")' in book
+    assert 'SubmitBtn(T("Send"), "bookings"' in book and 'Chips(listOf("Morning", "Evening"), "slot")' in book
     plain = G.fallback_screen({"id": "about", "label": "About"}, ["about"], [], bk)
     assert "SubmitBtn" not in plain and "OrderBtn" not in plain
     # the model is told the real lists and the kit's data API (from the Kotlin source)

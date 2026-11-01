@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.379.0"   # v0.379.0 SOCIAL MEDIA MANAGER Phase 6 MORE PLATFORMS (owner: "GO PHASE 6"; built as 0.375): WhatsApp Business on HER OWN number by Meta's Embedded Signup (social/wabiz.py): her tap opens Hoola's page /api/social/whatsapp/start with Meta's JS SDK + the WhatsApp configuration (WA_ES_CONFIG_ID), FB.login returns a code and Meta posts her WABA + phone number ids to the page, /api/social/whatsapp/finish (one-time state) exchanges the code for her business token (sealed), subscribes Hoola's app to her WABA webhooks, registers the number (6-digit PIN made + sealed; a two-step PIN she set earlier = connected with a note) and adds it as her Business inbox channel (employee_channels, the v0.59 inbox answers there); disconnect removes the channel. LinkedIn (social/linkedin.py): Sign In with LinkedIn + Share on LinkedIn (openid profile w_member_social, self-serve, no partner review), callback /api/social/linkedin/callback, token sealed (60 days, warned 7 days before), a calendar post with LinkedIn ticked goes to her profile as text (reserved characters escaped, 3 hashtags) + one photo (initializeUpload -> PUT -> /rest/posts with LinkedIn-Version); Reel / Story / video refused for LinkedIn in plain words. Plans now go only to connected platforms; "Also on LinkedIn" on each post (console + phone). Not built: Company Page posting / LinkedIn comments (Community Management API review), X (not asked). Privacy: LinkedIn + WhatsApp Business. Previous: v0.378.0 SOCIAL MEDIA MANAGER Phase 5 GROWTH (owner: "GO PHASE 5"; built as 0.370, re-versioned past the parallel v0.370-v0.377; social/growth.py): listening through her Facebook Page's linked Instagram professional account (Meta gives hashtag search + Business Discovery ONLY in the Instagram API with Facebook Login; FB scopes + instagram_basic / instagram_manage_insights / instagram_manage_comments): posts that tag her daily (8 am) -> UGC list; up to 5 hashtags (top posts: best format, interactions, idea lines; hashtag ids cached, Meta counts unique searches a week) + up to 5 competitors (followers + weekly change, posts this week, interactions a post, best format) read on Mondays with a one-line comparison to her. UGC permission flow: Ask = a polite comment from her account on the post (official mentions edge, only on her tap, never a DM), "They said yes" needs their words (kept as proof), then a credited calendar DRAFT with their picture (still her OK to post); never reposted without a recorded yes. Creator check: public numbers + the Influencer desk's fake-follower SIGNALS + the ASCI #ad check of a collab caption. A/B hook styles: every planned post has question / number / story / offer, published posts matched to their numbers, a winner only at >= 3 posts per style and a 20% lead, the next calendar leans on it. Routes /api/social/growth/watch, /api/social/ugc/<id>/ask|permission|repost|ignore, /api/social/creator/check, job growth; console + phone Growth; privacy paragraph. Previous: v0.377.0 DEKH KE REVIEW: a PR review explores the repo first like Claude Code (read-only list_dir / search_code / read_file / find_usages at the PR head, project rules up front), comments only on lines the PR added (the comment tool refuses others and names the allowed lines), says what it explored; posting stays her tap; one-shot review = fallback. | v0.376.0 PROOF (web design Phase 9, owner: "START PHASE 5"): a 100-page website as NUMBERS, read the same way for Hoola and any rival. site/proof.py: five fixed 100-page businesses (hospital, coaching, mithai brand with 60 priced products, real-estate developer, fibre ISP) built exactly like an owner would (site map -> plan -> look -> every page -> checks, then shop from her priced lists, web app, 3 blog posts, a second language) under the arena rupee cap; the proof card is read from the finished files: pages planned vs built in every language, broken links and missing files over EVERY page, the judge on a sample of page types, check scores, every feature verified in the output, pages readable without JavaScript, rupees and minutes per page. A rival builder's public site for the same brief is crawled in Chromium (150 pages, one host, robots.txt, public internet only, JS apps rendered) and measured the same way; compare shows who is better on each line. Owner-only /api/arena/proofs*; console Arena "100-page proof" tile. Previous: v0.375.0 SAB DAS DESK (owner: "MAKE ALL 7 REMAINING ROLES 100% LIKE ERP CRM TPM"): the remaining seven brought to the same standard, which turned out to be two things. (1) A DESK - the job's real parts, each making only the papers that part produces: bpa 7 (discover, design, build, exceptions, test, handover, monitor), ecom_arch 8 (catalogue, pricing, stock, checkout, payments, shipping, peak, integration), plm 8 (parts, BOM, change, revision, supplier, cost, docs, release), supply_opt 7 (demand, reorder, stock, supplier, routes, warehouse, service), health_int 7 (ABHA, FHIR, HIP/M2, HIU/M3, consent, security audit, mapping), bank_int 6 (recon, formats, AA readiness, reporting, controls, exceptions), regtech 7 (calendar, filings, rules, evidence, breaches, audit, policy). All ten roles now have one: 90 parts. (2) THE SUMS, where the work IS arithmetic - tpm.py proved the shape in v0.374 and four more jobs are the same kind of job, so app/enterprise/calc.py answers their questions in CODE: supply_opt reorder (demand x lead + safety stock, real sigma from daily numbers when they exist and a stated flat cushion when they do not, stockout date) and dead_stock; plm bom_explode (flattened tree, quantities multiplied through every level, cost rolled up from the leaves) and where_used (what a change order really asks); bank_int reconcile (reference first, then amount AND a date inside the window - matching on amount ALONE is how reconciliations go wrong - each line used once); regtech due_calendar (late, coming, done, and exposure computed ONLY from penalty figures she gave, never a guessed fine). Each refuses rather than guesses when the data cannot answer: under 14 days of history is not a reorder point, a BOM loop has no right cost, a part with no price is NAMED instead of counted as free. The other five roles have no sums because their work is judgement and execution, not arithmetic, and WHICH JOB GETS WHICH IS A TABLE (SUMS) rather than a growing if-chain - a job cannot call a sum that is not its own, and the old `if key == "tpm"` special case was deleted rather than left beside it. Previous: v0.374.0 TPM KE HISAAB (owner: "WORK ON TPM -- THAT AI CAN PERFROM ALL TASKS IN IT"): v0.372 gave the TPM desk its twelve parts and its papers; this makes it DO the job. A technical PM's day is not prose - it is six questions that each have exactly one right answer, so all six are arithmetic in app/enterprise/tpm.py and NOT in a prompt: critical_path (the longest chain through the dependency graph - and a REFUSAL, never a number, when the dependencies form a loop, because a loop is a real planning bug and a confident wrong date is worse than none), capacity (who is over-committed and by how many days, counting open work only), metrics (MEDIAN lead and cycle time so one 90-day ticket cannot move the number, plus escaped bugs and say-do %), raid (overdue, gone quiet, unowned, high-and-open), readiness (go / no-go with the failing gates NAMED, and non-blocking gates kept as warnings rather than stops) and chase (who has said nothing on open work - Hoola never writes a status nobody gave it). The model picks the question and reads the answer out; it never does the sum, and the tool description says so in those words, because a wrong critical path looks exactly as confident as a right one. Rows come from a tracker read, a sheet or her paste, so the sums work before anything is connected. The six actions are on tpm ALONE - there is a test that erp, crm_arch and plm were not given them. Worked examples in the tests, answers computed by hand: A3/B5 -> C2 -> E4 is 11 days through B, and 9 once B is done. Previous: v0.373.0 CODE MODE (web design Phase 8, owner: "START PHASE 4"): her website's REAL code, open and editable like Lovable / Bolt. site/code.py shows every section as files (pages/<page>/<section>.html | .css | .js) plus design/kit.css, made readable (whitespace-safe, CSS split outside strings so data: URLs survive). Her own hand: PUT /api/sites/<id>/code - the same cleaner as every build (no script tags, iframes, on*= handlers, javascript: or outside files; CSS scoped to the section; scripts without network / cookies / storage / eval), what it removed said back, one Undo, a checked version. Asking: POST /code/ask -> a site job where Opus changes only the asked sections (or the ones her words are about), each part cleaned, a unified diff she sees, one Undo for the whole change; GET /code/task/<id> for the result. Console Studio Code tab (files, editor with line numbers, Ctrl+S, ask box, coloured diff, Undo, React / ZIP download); tools website action=code, website_dekho what=code. Previous: v0.372.0 TPM DESK (owner: "Technical PM (tpm) --- CHECK AND MAKE THIS 100 %"): the check found two things. The thin one: tpm had three paper kinds, no sub-jobs and could not write anywhere. The important one: as written it would have DUPLICATED the existing `product` tool, which is 1,789 lines and already owns the product side end to end - discovery, RICE / ICE scoring, Kano, PRDs, roadmap, releases, KPIs. So the TPM desk is deliberately the ENGINEERING counterpart, not a second product manager: twelve parts - technical roadmap, cross-team dependencies and the critical path, architecture decisions (ADRs), NFRs, technical debt, capacity, release train, RAID, build vs buy, incident follow-through to closure, delivery metrics, status and escalation - and the role's OWN RULES say the product side belongs to `product`, which is what stops the model reaching for the wrong tool. It also now WRITES, because a technical PM updates the tracker, and that exposed a real drift: employee/roles.BIG was a hand-written list, so tpm kept its old "action" class after becoming a writer and a tracker write would not have raised a card. BIG is now DERIVED from enterprise.rules.WRITERS - add a writer to the role table and the gate follows by itself - with a test that the Employee gate still works if the enterprise suite is not importable at all. All three desks now stand together: ERP 16 parts, CRM 12, TPM 12. Previous: v0.371.0 POOCHH LO + FAIR CARD (hard card 9/12): a vague coding ask is answered with ONE question and no edits (Developer Sahayak had guessed and changed orders.py), no tail after the question; two hard-card checks were stricter than their jobs (shared-cart fix accepted only one spelling; any edit to the red test file refused - adding a test beside it is fine, weakening it is not). | v0.370.0 GAME DESK Phase 1 + GAME DEVELOPER (owner: "GO PHASE 1 WITH GODOT 4" for her list VII Game Development, Simulation & VR, docs/GAME_DESK_PLAN.md): hire the Game Developer in Employees -> her idea -> a short design doc first (her OK or her changes) -> Opus writes code-only GDScript (Godot 4: root Node + main.gd) -> guard (no network / programs / page / files outside user://) -> a 10-second headless play run catches script errors -> single-threaded Web export -> Hoola plays it in Chromium (probe autoload window.__hoola: fps / frames; taps, keys, swipes, screenshots, blank / freeze / error checks) -> fixes from the REAL errors (up to 4 rounds) -> a private play link /play/<token>/ (strict CSP, gzip, sandboxed console iframe, QR) + the Godot project zip; a failed change keeps the last good version. Godot 4.7.2 in a box like the 3D Studio; deploy/setup_godot.py installs Godot + ONLY the Web templates by HTTP range reads (~40 MB, not 1.25 GB). Other 9 roles = Coming soon. Built as 0.359 / 0.364 / 0.368, re-versioned past the parallel sessions. Previous: v0.369.0 v0.369.0 SOCIAL MEDIA MANAGER Phase 4 24/7 + REPORTS (owner: "GO PHASE 4"; built as 0.359 / 0.365 / 0.366; social/pulse.py): posting by trust - a post approved only as part of the monthly plan goes out on its own only for Saathi (told the same day in her chat) / Bharosa (weekly summary), within 6 / 15 a day and outside quiet hours (23:00-07:00, hers to set); Seekh = a one-tap "OK to post" on the day (a post she OK'd herself or Publish now goes at its time as before; old rows unchanged). Pause all posting (also stops automatic replies) + Emergency stop (pause + every queued post back to draft), POST /api/social/settings. Morning note 9 am only when something needs her (posts waiting, complaints, a festival in 7 days), Monday two-line pulse vs last week (social_week), monthly PDF on the 1st (KPIs vs baseline, best / least posts, work done, next month with how we'll know; Hoola Print), best-time engine (her weekday x 3-hour bands vs each account's median, shrunk, certainty) fed to the planner, boost-worthy flags (2x her normal, a plan SHE runs in Meta - Hoola never creates or pays for ads). Console + phone controls; privacy line. Previous: v0.368.0 SOCIAL MEDIA MANAGER Phase 3 INBOX (owner: "GO PHASE 3"; built as 0.356 / 0.358 / 0.364 / 0.365, re-versioned past the parallel v0.356-v0.367): Instagram / Facebook Page comments and Instagram / Messenger DMs (last 7 days) read every ~15 min (social/inbox.py), sorted lead / question / praise / complaint / spam / abuse / other (a rules spam / abuse / complaint call always stands), each with a reply drafted ONLY from her facts ("Facts for replies" + Kalam facts). Seekh = her tap; Saathi / Bharosa = replies to lead / question / praise that need no new fact (cap 40 / 150 a day), DMs only inside 24 h, spam / abuse HIDDEN never deleted; complaints always wait, she is told at once; leads to her chat + phone (social_lead / social_alert). Routes GET /api/social/inbox, POST /api/social/inbox/<id>/reply|hide, POST /api/social/inbox/<id>, job inbox; console + phone Inbox. Facebook granted scopes stored; old connections told to Reconnect. Fixed: a second account was read only at the next 7 am. Privacy: comments and messages. Previous: v0.367.0 CRM DESK (owner: "CRM Architect (crm_arch) --- NOW CHECK THIS", then "MAKE CRM DESK CAN PERFROM 100 % READ AND WRITE WORK"): the check found crm_arch half-built next to the ERP desk - the write engine worked but it had ZERO sub-jobs and only four paper kinds. It is a desk too, so it now has twelve parts (admin, object and field config, flow and automation, Apex, integration, data, profiles and sharing, reporting, testing, release and deployment, adoption, support) and all twelve paper kinds - security work can finally produce a MATRIX, which is what the Salesforce security model actually is. THE SPLIT THAT MATTERS and the reason this is not just another ERP: a CRM architect's real write work is not records, it is CONFIGURATION. Records (leads, accounts) live on the data surface at /sobjects; the org's shape (objects, fields, flows, permission sets) lives behind the Tooling API at /tooling/sobjects. A wrong record is one bad row; a wrong field or flow breaks the org for everyone. So `api` (data | tooling) is a declared property of the run, NEVER guessed from the target name and never the default - there is a test that the same target does not get silently promoted to the tooling surface - and a tooling change to production is logged as the exception it is. New reads that change nothing and so run at once: describe (objects, fields, flows, permission sets - the SHAPE) and soql (her own query, where anything but SELECT is refused). Each system spells its own URLs, so _paths() now holds the dialect instead of assuming OData everywhere. Everything else is the same engine as v0.363 - dry run, her tap, batches, idempotent resume, rollback material - which is the whole point of having one engine. Previous: v0.364.0 HOOLA CAD PRO (owner: "MAKE A HOOLA CAD POWERFULL"): assemblies with a BOM + colours + mass + centre of mass, H library (ISO fasteners / holes, involute gears, bearings, keyed shafts, extrusions, pipe / flange), Opus thinks + plans first, a vision review of the real views, her photo / sketch / STEP as inputs, STEP + GLB + STL + 3MF + DXF section + 2-page drawing (shaded views + hidden-line page). Previous: v0.365.0 HARD CARD: coding card set 2 (python -m app.quality code --set 2 / vps-ops code_card_hard) - a 30-file Python shop and a 13-file JavaScript billing project, 12 harder jobs (feature across 4-5 files, rename with every caller + alias, bugs far from the symptom, reservation leak from a red test run, access-control hole, refactor that keeps behaviour, a setting hard-coded in 3 places, folder rules, 2 JavaScript jobs, a vague ask that needs ONE question). | v0.364.0 HOOLA CAD PRO (owner: "MAKE A HOOLA CAD POWERFULL"): assemblies with a BOM + colours + mass + centre of mass, H library (ISO fasteners / holes, involute gears, bearings, keyed shafts, extrusions, pipe / flange), Opus thinks + plans first, a vision review of the real views, her photo / sketch / STEP as inputs, STEP + GLB + STL + 3MF + DXF section + 2-page drawing (shaded views + hidden-line page). Previous: v0.366.0 BLOG + BHASHAYEN (web design Phase 7 step 3, owner: "START PHASE 3C"): (1) A REAL BLOG on her Hoola website - Kalam Sahayak still writes (her voice, facts checked, blanks never guessed) and gets one more place to publish: dest site = the blog of one of her Hoola websites (where = the site; when = a time). Nothing goes up without her Haan on the Kalam card (or her tap in the studio Blog tab, which confirms the same card). site/blog.py keeps the posts (site_blog_posts: slug, title, excerpt, markdown body, category, tags, cover = one of her site photos, status published / scheduled / hidden, translations per language); build.py makes /blog/ (newest first, 10 a page, /blog/page/N/), /blog/<post>/ (one h1, date, reading time, cover, safe markdown - raw HTML escaped, only http / mailto / tel links - BlogPosting JSON-LD, og:type article, previous / next, 3 related), /blog/category/<cat>/, /blog/feed.xml (RSS 2.0) and <div data-hoola-posts="3"> in any section = her latest real posts (sections never invent posts). A post on the site = a new checked version; when her live address showed the version before, the new one goes live too (hosting.update_live), else the normal launch card. Scheduled posts go up by themselves (worker blog_tick). Hide / show / cover from chat make a version she launches; delete only by her tap. (2) BHASHAYEN - Gujarati, Bengali, Tamil, Telugu, Kannada, Malayalam, Punjabi, Odia and Urdu (right-to-left) join English / Hindi / Marathi / Hinglish; up to 4 extra languages a site (set_languages, POST /api/sites/<id>/languages, tool action=languages), each under /<lang>/ with every page and blog post translated, a language menu (two languages keep the v0.301 single link), hreflang alternates + x-default on every page, sitemap + feed per language. Console Blog + Languages tabs, phone "Blog aur bhashayen" page. (built as 0.359, re-versioned past the parallel v0.359-v0.363) Previous: v0.365.0 HARD CARD: coding card set 2 (python -m app.quality code --set 2 / vps-ops code_card_hard) - a 30-file Python shop and a 13-file JavaScript billing project, 12 harder jobs (feature across 4-5 files, rename with every caller + alias, bugs far from the symptom, reservation leak from a red test run, access-control hole, refactor that keeps behaviour, a setting hard-coded in 3 places, folder rules, 2 JavaScript jobs, a vague ask that needs ONE question). | v0.364.0 HOOLA CAD PRO (owner: "MAKE A HOOLA CAD POWERFULL"): assemblies with a BOM + colours + mass + centre of mass, H library (ISO fasteners / holes, involute gears, bearings, keyed shafts, extrusions, pipe / flange), Opus thinks + plans first, a vision review of the real views, her photo / sketch / STEP as inputs, STEP + GLB + STL + 3MF + DXF section + 2-page drawing (shaded views + hidden-line page). Previous: v0.363.0 ASLI ERP KAAM (owner: "I WANT ALL ERP WORK TO BE DONE BY HOOLA BOTH READ AND WRITE ... COMPLEX AND VERY HARD"): up to v0.362 the ERP desk produced PAPERS; this makes it do the work on her live system. A read is one call and runs at once because it changes nothing (capped at 2,000 rows so a careless query cannot pull the whole ledger). A WRITE IS NEVER ONE CALL - plan, dry run, HER TAP, batches, verify, report - and every guard is in CODE, not in a prompt, because a wrong write into a live ERP is not undoable by apology: delete is refused at ANY size (no business reason, no safe way to offer it); more than 500 rows in one go is refused so a mistake stays small; execute before a dry run is refused; a production write needs the word "production" from her as well as her tap; her approval is tied to THOSE rows via a plan hash, so changing them afterwards makes the run refuse and ask again; and every row carries an idempotency key written BEFORE the call, so a run that dies half way resumes WITHOUT ever posting the same record twice - the property that makes a real migration safe, proved in a test that re-runs a half-failed load and asserts only the failures were retried. A failed run reaches a terminal state instead of hanging on "running", and stays resumable. The dry run reads the current record first, so she sees before -> after row by row, and that before-image is the only honest rollback material there will ever be - rollback_plan says plainly which rows it CANNOT put back (the newly created ones) rather than quietly missing them. Two rails reach her system, both official and both with HER credential: composio (her connected account) and odata (her own endpoint for what Composio does not carry - SAP OData, Windchill REST), whose credential is SEALED with the same vault as v0.290 custom MCP, typed in the APP and never in chat - the tool refuses the endpoint action outright. Previous: v0.362.0 ERP KA POORA DESK (owner: "ERP --- INCLUDE ALL JOBS IN ERP FOR HOOLA AI"): an ERP job is not one person, it is a desk, so the whole lifecycle is now inside the erp role - blueprint, functional config, technical / ABAP, data migration, integration, basis, security and SoD, testing / UAT, cutover and go-live, training and change, support / AMS, master data, reporting, finance close, licence and cost, upgrade and patch: sixteen parts. They sit inside the SAME duty (ent_erp) on purpose - it is still her one live ERP, so she sets trust once for the desk instead of sixteen times, and a live write is still BIG. Each part only produces the papers that part really produces (a data migration does not write an access matrix; security does), and four new paper kinds were added for them: config (every setting, its value and why), matrix (role -> permissions + SoD clashes), sop (steps a clerk can follow without help) and training. draft() takes `job`, <job>_dekho takes what=jobs, and the tool description names every part so the model picks the right one. The structure is generic, not an ERP special case: any role in enterprise/rules.ROLES can grow a JOBS entry the same way, and a role without one (tpm) behaves exactly as before. Previous: v0.359.0 ENGINEERING DESK Phase 1 + CAD ENGINEER (owner: "GO PHASE 1" on docs/ENGINEERING_DESK_PLAN.md, her list IX Research, CAD, Hardware & Industrial Tech): a hireable CAD Engineer designs a part from her words and mm sizes as parametric CadQuery code (Opus), runs it in a locked box (engineering/: guard -> runner with cut-down builtins + import gate -> sandbox with no network / no secrets / limits), checks it (valid solid, one body, the size asked; up to 2 fixes from the real error), and puts STEP + STL + 4 views + a dimensioned drawing PDF on a CAD Desk (console + phone), versions on her words; chat tool cad_part; the 9 other engineering roles listed as coming. Also RESTORED the console sections + scripts v0.358 dropped by accident (Employees, Arena, SEO / Social desks, charts.js / arena.js / employees.js). Previous: v0.361.0 CAD BOX CHAUTHI DEEWAR (her VPS check: cadquery true, no_network FALSE - Ubuntu 24.04 refuses `unshare -rn` for normal users): the engineering runner now locks its own process while her script runs - socket / os.system / exec / spawn / fork / kill / subprocess / file delete-move raise - and unlocks only for its own export; the guard also refuses os / sys / subprocess / socket / environ / system ... by name on any object. A deep search found no other chain from cadquery / math to a system module. Previous: v0.360.0 CODE CARD: python -m app.quality code / vps-ops code_card = 12 fixed practice coding jobs through Developer Sahayak's real 8-tool loop (in memory, no GitHub / PR), marked by hidden checks: the code works, only the needed files changed, project rules hold, tests pass and a fix's test fails on the old code; answers run in a child Python with no secrets, unsafe code never run. | v0.359.0 ENGINEERING DESK Phase 1 + CAD ENGINEER (owner: "GO PHASE 1" on docs/ENGINEERING_DESK_PLAN.md, her list IX Research, CAD, Hardware & Industrial Tech): a hireable CAD Engineer designs a part from her words and mm sizes as parametric CadQuery code (Opus), runs it in a locked box (engineering/: guard -> runner with cut-down builtins + import gate -> sandbox with no network / no secrets / limits), checks it (valid solid, one body, the size asked; up to 2 fixes from the real error), and puts STEP + STL + 4 views + a dimensioned drawing PDF on a CAD Desk (console + phone), versions on her words; chat tool cad_part; the 9 other engineering roles listed as coming. Also RESTORED the console sections + scripts v0.358 dropped by accident (Employees, Arena, SEO / Social desks, charts.js / arena.js / employees.js). Previous: v0.358.0 ENTERPRISE SYSTEMS & ERP (owner: "BUILD ALL 10 AS ONE ENTERPRISE SUITE ... GO END TO END", after the deep research on her list of ten Product / Enterprise Systems / ERP jobs): the research found the one thing that shaped the build - every one of these roles splits in two. RUNNING the customer's live system is gated by whose credential it is and, for three jobs, by a statutory audit; doing the WORK of the role - specs, field mappings, plans, registers, reconciliation, test plans - is not gated at all and is most of what these people actually do. So the suite does the second half for all ten and the first half only where an OFFICIAL route exists and she connects her own system (Salesforce hosted MCP GA 29 Apr 2026, SAP Integration Suite MCP Gateway, Windchill OData REST, NetSuite / ~1,600 apps through Composio). Ten jobs, ONE engine: app/enterprise/{rules,models,service}.py, because the work has the same shape everywhere - she connects her own system, Hoola reads, Hoola drafts the paper, HER TAP, Hoola does it, audit - so an eleventh job is a row in rules.ROLES, not a new file. They are still TEN separate tool pairs (<job> + <job>_dekho, generated from that table) because the Employee gate maps one tool to one duty, and that is what lets her set trust PER JOB: ERP work and banking work are not the same risk. The five that can change a production system (erp, crm_arch, bpa, ecom_arch, plm) are classed BIG, so a live write always becomes a card whoever asked for it; the ten _dekho tools are READ. THREE JOBS ARE CAPPED ON PURPOSE and say so in EVERY result, not just in settings: health_int (real patient data needs a CERT-In empanelled audit the business must pass), bank_int (an AA / FIU needs an RBI licence and a Sahamati-empanelled audit - Hoola is neither, and touches no banking rail), regtech (she files on her own portal; Hoola prepares, reminds and catches mistakes). Teamcenter is read-only until verified, because the sources contradict each other on outside-agent access. Guards that hold whatever the model writes: a key or token in any argument is refused before anything runs, account and ID numbers are masked out of every artifact and item, a job can only connect its own systems and only make its own kinds of paper, and a paper written with no model still comes back as an honest skeleton with a `missing` list instead of an invention. Previous: v0.357.0 DASHBOARD (web design Phase 7 step 2, owner: "Phase 3b (dashboards and charts)"): (1) CHARTS ON HER WEBSITE - a section writes a plain <figure data-hoola-chart="bar|line|area|donut|hbar"> table of HER numbers (1,20,000 / 50 lakh / 2.5 Cr understood) and static/console/charts.js (copied into the site as assets/hoola-chart.js, loaded only on pages that draw) turns it into inline SVG in the site's own colours: tooltip, arrow keys, the table kept for screen readers, grow-in motion off under reduced motion, no library, no network; the site map planner may add a growth chart only from numbers she gave. (2) HER DASHBOARD - site/dash.py reads what the site already records per IST day for 7 / 30 / 90 / 365 days and the period before: visits (counted by Hoola's own server), enquiries + bookings, shop orders and CONFIRMED sales, average order, top pages, top products, order status mix, web-app records a day; GET /api/sites/<id>/dashboard; console Studio Dashboard tab (tiles with change vs previous, area / bar / line / donut / hbar charts), phone Dashboard page (lib/ui/site_dash.dart), chat website_dekho what=dashboard. (3) STAFF DASHBOARD in her web apps - /admin/ on her site opens with charts per list (rows a day, the mix of its status field, sums of number fields, yes / no counts) from GET /api/site-app/<id>/stats (staff and her only). Free, no AI. (built as 0.353, re-versioned past the parallel v0.353-v0.356) Previous: v0.356.0 PEHLE NIYAM: Developer Sahayak always reads the project's own rules first - AGENTS.md / CLAUDE.md / CONTRIBUTING / copilot + cursor rules, then build / lint / CI files, then a short README; a folder's own AGENTS.md / CLAUDE.md is shown before anything there is changed (the edit waits until it is read); the PR lists the rules read and how they were followed; the one-shot fallback reads them first too. | v0.355.0 SOCIAL MEDIA MANAGER Phase 2 (owner: "GO PHASE 2"): approved posts go out to Instagram and her Facebook Page (social/publish.py). A post gets her photo / video (POST /api/social/media: bytes must be a picture or MP4, pictures kept as JPEG <= 1440 px) or a Brand poster from her kit (final, no PROOF mark, 4:5 / 9:16 for Stories); Meta fetches it from a 2-3 hour HMAC-signed link (/api/social/media/<id>?e&s). Approval is bound to the exact post (hash of caption + hashtags + pictures + platforms + format + time): any change sends it back to draft; Publish now = her tap after a confirm. Instagram: image, carousel (children + parent), Reel (container processed, polled to FINISHED), Story; the 24-hour API post cap read first (stop at total-1), the publish permission checked (Phase 1 connections are told to Reconnect). Facebook: photo, several photos (unpublished + one feed post), video, text. Plain checks before any send (Instagram needs a picture, Reel = video, carousel = 2-10 photos, caption <= 2200, <= 30 hashtags, no [ ] blanks). Publisher job every sweep: approved posts at their time; more than a day late = missed, never posted late. Results (links / reasons) on each post + the desk; console + phone: Add photo, Make poster, Publish now, Posted links. Connect asks for posting permissions now (instagram_business_content_publish, pages_manage_posts, publish_video). Privacy policy: Instagram and Facebook section. Built as 0.354.0, re-versioned past the parallel v0.354. Previous: v0.354.0 HOOLA STUDIO PAGE (owner: "IN WEBSITE THERE IS NO INFORMATION ABOUT THE HOOLA STUDIO ... ADD HOOLA STUDIO PAGE WITH REAL SCREEN AND REAL SAMPLE ... STUNNING WITH MOTION GRAPHICS ... SAME AS EXISTING BRAND"): a new website page /studio (static/site/studio.html + studio.js, GSAP like the other pages, strict CSP, no inline script) with the REAL Create Studio screens (static/site/studio/*.webp, taken from the real console in dark theme): hero with the studio home in a window + floating language / jingle / storyboard / price-card layers on the pointer, "one line in" demo (the brief types itself, 8 steps light, 5 shots paint, the timeline runs), the Director pinned on scroll with a glow walking the real screen's step chips, six tools on their real screens (auto tabs), a samples wall that shows the owner's showcase pictures / clips (public GET /api/site/showcase + /api/site/showcase/<slot>/<pic|clip>, showcase slots only) over drawn scenes until they are made, the price card (Haan -> fingerprint -> filming), 15 languages, film types, questions; Studio link in the home / Employee / Network menus. (built as 0.351.0, re-versioned past the parallel v0.351-v0.353) Previous: v0.353.0 SOCIAL MEDIA MANAGER Phase 1 (owner: "GO PHASE 1" of docs/SOCIAL_EMPLOYEE_PLAN.md): the second hireable employee. Hire from Employees (console + phone) -> Social Desk set-up (business, city, what she sells, customers, goal, languages, trust) -> Connect Instagram (Instagram API with Instagram Login, read scopes instagram_business_basic + _manage_insights) and / or her Facebook Page (Facebook Login for Business with the configuration id) through Hoola's ONE Meta app (social/meta.py): she logs in on Instagram / Facebook's own page, tokens 60-day + sealed, personal Instagram refused with the switch guide, a link state works once (30 min). First read (background): her last 50 posts with likes / comments / reach / saves / shares / views -> frozen BASELINE (followers, posts in 30 days, interactions + reach per post, engagement rate, best formats / hours / days, top 5 posts) -> STRATEGY (3-5 pillars, rhythm, hashtags, goal metric, best hours) + a 30-day CALENDAR of post drafts (hook, caption in her language, hashtags, picture brief, CTA, Indian festivals on their day) by Opus (kind social_plan) with a rules fallback; a re-plan replaces drafts only, an edit after approval asks again, approve all. 24/7 (social/desk.run_due): hourly Instagram token renewal (< 20 days left) + Facebook expiry warned once, daily fresh numbers, Monday "what worked" note; a dead token alerts once and recovers. Meta data-deletion / deauthorize callback (/api/social/meta/deletion, signed_request HMAC verified) deletes the accounts + read posts. Nothing is published in Phase 1 (posting on her tap = Phase 2, after Meta App Review). Also fixed: the SEO desk's scheduler retry of a failed first run found its own lock busy (due:<key>). Built as 0.347.0 / 0.348.0 / 0.352.0, re-versioned past the parallel v0.347-v0.352. Previous: v0.352.0 PEHLE CI, PHIR PR: Developer Sahayak opens a DRAFT PR on a repo with CI, watches the checks, fixes a red run with the step-by-step loop (up to 3 rounds) and marks the PR ready for review only when CI is green; no CI result in 15 min = ready with a note; merge stays her tap. | v0.351.0 DUKAAN (web design Phase 7 step 1, owner: "START PHASE 3"): a real online shop on any Hoola website (site/shop.py): products with HER prices, units and stock (added in chat / the studio Shop tab, or her priced list items), a cart + checkout + order tracking (assets/hoola-shop.js), UPI to HER UPI ID (QR + pay-in-app link) or cash on delivery, store pickup, delivery charge / free above / minimum order / pincodes. The server decides every price and total (a cart only names products and counts), stock is taken with ONE conditional update so two buyers never both get the last piece, a cancel gives it back; the customer TELLS "I have paid" with the UTR and SHE confirms receipt (Hoola never marks money received); orders O-1001.. with a private tracking token; she hears of each order (site_order push); public /api/site-shop/<id>/products|order|order/<n>[/paid] (CORS, rate limited), owner /api/sites/<id>/shop[/orders[/<n>]]; website action=shop / shop_order, website_dekho what=orders; a code-made Shop page + buy box on product pages; section writers may place Add-to-cart buttons for her products. (built as 0.344, re-versioned past the parallel v0.344-v0.350) Previous: v0.350.0 KADAM-BA-KADAM CODING: Developer Sahayak explores and edits step by step with 8 tools (devsahayak/loop.py: list_dir, search_code, read_file, find_usages, edit_file, new_file, show_diff, done) instead of guessing 12 files + one model call; the old path is the fallback. | v0.349.0 MOSPI PAKKA (her test on v0.348: "MoSPI's server did not respond", then a search summary): the live server's MoSPI call failed with no reason given. app/mospi.py now sends a real User-Agent (Hoola/1.0, not python-httpx's default that government firewalls often block), splits connect (10 s) and read (45 s) timeouts, follows redirects, tries a network failure once more after 1.5 s, names the reason (timeout / DNS / refused / TLS / HTTP code) in the log + LAST_ERROR, and `python -m app.mospi check` + vps-ops job mospi_check (DNS, curl, Hoola client, recent log lines) show why the VPS cannot reach MoSPI. Previous: v0.348.0 v0.348.0 MOSPI BUILT IN (her live test: "India ki latest CPI inflation kitni hai?" was answered from a web search summary, not MoSPI): MoSPI eSankhyiki is now built in for EVERY user - agent tool `mospi` (app/mospi.py, MoSPI's own MCP, no login, read-only, cached) with the four steps datasets -> indicators -> metadata -> data, routed by statistics words (CPI / WPI / IIP / GDP / PLFS / inflation / mehngai / berozgari ...), and the guide says official Indian numbers come from MoSPI first, never a search summary, quoted with month / state / sector / base year and "Source: MoSPI"; big answers drop whole rows; the featured MoSPI card says built in. Checked live: CPI (General) All India September 2026 = 5.54% from MoSPI itself. Previous: v0.347.0 v0.347.0 LAMBE KAAM KI REPORT: python -m app.quality longjobs / vps-ops long_jobs = how her real long jobs went in 24 h (task runs, plan cards, turns that died), free; the tool card reads a question without a "?". | v0.346.0 DESIGN SE MILAAN (App Sahayak Phase 10, owner: "START PHASE 10"): the real app screens are compared with HER APPROVED DESIGN - the open promise of the original Phase 3 ("screenshots are compared against the approved design"). appmaker/match.py: after every Android / iPhone build each device-check screenshot is scored against the approved design's screenshot of the same screen and platform, free and numbers only (colour histograms + where the ink sits on a block grid + light / dark, 0-100; status bar trimmed); on her ask Opus LOOKS at both pictures of every screen under 70 and lists the concrete visible differences; fix (her confirm) rebuilds ONLY those screens with the differences as their notes (Android build(only, notes); the iPhone build now takes notes too) - the rest of the app is kept. GET /api/apps/<ref>/match, POST /api/apps/<ref>/match {platform, fix}; tool app_banao action=match; phone Design se milaan panel (design and app side by side, %, differences, Theek karo with a confirm); console Design match box. (built as 0.343 / 0.344, re-versioned past the parallel v0.343 / v0.344) Previous: v0.345.0 APNA CODE (App Sahayak Phase 9, owner: "START PHASE 9"): her app's whole code in HER OWN GitHub - the last open promise of the original plan ("each app's code is kept with its full history and can be exported to her GitHub"). appmaker/code.py stages android/ (the Android Studio project) + ios/ (the XcodeGen SwiftUI project, when an iPhone build exists) + README.md (open / build / sign, where the backend lives) + CHANGELOG.md (every Android and iPhone build) + .gitignore; never in it: the preview key and its password (blanked in build.gradle.kts), upload / App Store keys, build output. Same card and her-tap-only push as the website export (her GitHub token linked once in the app): POST /api/apps/<ref>/github makes the card, POST /api/sites-github/<id>/push with the card's hash sends it (a card made before a newer build refuses); each export is a NEW commit on top of her branch with the build's what's-new as the message, a full tree so removed files leave too. Tool app_banao action=github (card only); phone Code panel; console Send code to GitHub with a confirm before anything goes. (built as 0.342, re-versioned past the parallel v0.342-v0.344) Previous: v0.344.0 MOSPI + BROKERS (owner: "GO CONNECT MOSPI, BROKERS, RAZORPAY"): the featured connectors gain MoSPI eSankhyiki (Govt statistics, no login, one tap), Upstox and Dhan (one-tap OAuth; their DCR accepts Hoola's callback - probed live), Zerodha Kite and FYERS (no OAuth: login lives inside ONE MCP session, so bazar/connectors/mcp_session.py keeps a sticky session per account, id sealed in bz_kv) and Groww (its sign-in accepts only pre-approved apps -> shown as partner pending); Razorpay stays (merchant key). Every broker is a caution server: reads run straight, orders / GTTs / alerts / login always wait for her tap; guide line: never trade on its own. Previous: v0.343.0 v0.343.0 SIGNAL PAR NISHAN: the 1 Nov deploy log ended shutdown with "Aborted!" - the server waits for long-lived connections (live chat streams, PC links) and is force-stopped, so v0.332's mark at the END of shutdown (mark_clean_stop) never ran and a deploy could still fail a running website build. main._mark_jobs_on_stop_signal wraps SIGINT / SIGTERM at startup: running website jobs are marked the moment the stop signal arrives, then uvicorn's own handler runs as before (a failing mark never blocks the shutdown). Previous: v0.342.0 TERMS OF SERVICE (built as 0.341) (owner: "Terms of Service --- HOOLA"): a public /terms page (static/terms.html, same look as /privacy, linked both ways from it) for the Play / App Store listings, the Google OAuth consent screen and sign-up. It says only what Hoola really does: her tap before sending / deleting / publishing / filing / paid work, Hoola never moves money or keeps PIN / card / OTP, the price card first and failed creations not charged, AI results are not professional advice; plus acceptable use, her content and creations stay hers, websites / apps she builds are hers to publish, Hoola Network agreements bind only after her approval, connected services' own terms, liability limits as far as Indian law allows, Indian law with Akola courts, and the IT Act grievance officer (24 h acknowledgement, 15 days). Previous: v0.341.0 HAR FEATURE 2 (App Sahayak Phase 8, owner: "START PHASE 8"): the open items of the Phase 2 feature list, on BOTH the Android and the iPhone app. SCAN field (type scan): a barcode / QR read by Google's code scanner on Android (Play services shows its own camera screen, the app needs NO camera permission) and by Apple's VisionKit scanner on iPhone (camera reason in Info.plist only when a list has a scan field), typed when the phone has no scanner; the server strips control characters (200 max); complex staff apps scan their codes (barcode / SKU / tag / serial / QR / IMEI, two a list); her data change can add one. STAFF DASHBOARD: /api/app-api/<key>/stats (staff only, customers 403): per list the count, status mix, rows per day (14 days, 7-60) and the server-priced money total; StatsBlock on the account screen of staff and on any dashboard / report / admin screen (Android Canvas bars, iPhone Swift Charts). UPDATES INBOX: every update the app was told about is kept on the phone (50, newest first, unread count) in a kit screen hoola_inbox reached from My account. iPhone BACKGROUND UPDATES: BGAppRefreshTask + local notifications from the same /updates the Android job polls (no push server, no Apple push key), the notification question asked once after sign-in. Kotlin compiled locally (debug + release R8); CI compiles both and runs every screen. Previous: v0.340.0 v0.340.0 EDIT MEIN SAB JODO (owner: "IN EDIT MODE ADD ALL ATTACHMENT FUNCTIONS IMAGE, VIDEO, FILES ETC"): in website Edit mode every element gets "+ Jodo" - she adds a photo (pick or upload), a video (her MP4 / WebM up to 60 MB, or a YouTube link), an audio clip or a file visitors download (PDF / Word / Excel / PowerPoint / TXT / CSV up to 20 MB) right after the block she tapped, with a caption; "Photo badlo" can upload a new photo too. No AI. site/media.py keeps her files in the site source (a file is accepted only when its bytes match its kind), pages carry data-hoola-media / data-hoola-file placeholders the builder turns into addresses for each page depth and copies only the files used (hard links, so versions do not copy 60 MB videos); an added piece goes as one with Hatao; POST /api/sites/<id>/media; console + phone. Also fixed: photos inside <picture> lost their edit number, so tapping a photo in Edit mode never reached "change photo" (since v0.295). Built as 0.338.0, re-versioned past the parallel v0.338 KAAM KARO / v0.339 APP STORE LAUNCH. Previous: v0.339.0 APP STORE LAUNCH (App Sahayak Phase 7, owner: "START PHASE 7"): her iPhone app on the App Store from HER OWN Apple account, the iPhone twin of the Play launch. appmaker/ios/asc.py = the official App Store Connect API client that runs INSIDE her private builds repo (hoola-ios.yml kinds store / review) with her repo secrets, so her key never reaches Hoola: ES256 JWT (aud appstoreconnect-v1, 19 minutes), app by bundle id, the editable iOS version found or made, version + app-info localizations (description, keywords, promotional text, support / privacy URLs, name, subtitle; What's New only after the first version), the 6.9-inch screenshot set (APP_IPHONE_67, 1320x2868 from an iPhone Pro Max simulator: reserve, PUT each part to Apple's pre-signed URL without the token, commit with the MD5), the TestFlight build attached; Submit for Review = review submission + the version as its item + submitted. appmaker/ios/appstore.py: listing by Opus within Apple's limits (30 / 30 / 100 / 4000 / 170, guideline 2.3) or a template, her edits checked, keywords cleaned; a public support page per app (/api/app-api/<key>/support); App Privacy answers from the real lists (no tracking); age rating answer and the one-time App Store Connect steps; push (her tap or the tool) and Submit for Review ONLY from her tap after a confirm (the tool refuses); Apple refusals become her next step. Phone + console App Store panels. CI checks the Pro Max screenshots really come out 1320x2868. (built as 0.338, re-versioned past the parallel v0.338) Previous: v0.338.0 KAAM KARO (first live tool card 23/26): a file whose content she gave is made now (small gaps blank + one line after, never a question before the first draft); the tool card counts her ID details before a form and ONE real question on a subject-less ask as right. | v0.337.0 IPHONE (App Sahayak Phase 6, owner: "START PHASE 6"): the REAL iPhone app from the same approved design and the same backend as the Android app (appmaker/ios): a SwiftUI kit (theme from the design tokens light + dark, tabs + a navigation stack per tab, page / card / button components, the app's own backend with the iPhone Keychain token and the offline outbox with cid dedup, accounts, the list forms with photo picker + location, staff status buttons, UPI pay + "I have paid" claim, privacy page + in-app account deletion, crash reports from users' iPhones to the same /crash endpoint), an Xcode project generator from the Android spec (XcodeGen project, Info.plist with only the permissions the lists need, privacy manifest, app icon from the design's own line icon via resvg), screens written in SwiftUI by Opus with house rules (no password fields, no network / storage / UIApplication in screens) and a code-made screen for any that will not compile, compiled on a Mac (her private GitHub builds repo, server/app_builder/hoola-ios.yml), compile errors back to Opus per screen, every screen opened in an iPhone simulator (crash = one fix with the real crash report), and TestFlight with HER App Store Connect key kept as a secret in her builds repo (never on Hoola's server, never in chat); App Store review stays her tap in App Store Connect. CI ios-check.yml (macOS): the fixture app compiles (simulator debug + device release), 13/13 screens open without a crash, and the iPhone app runs the full e2e against a real Hoola server. (built as 0.332 / 0.335, re-versioned past the parallel v0.335 / v0.336) Previous: v0.336.0 SOCH GEHRI + EK KAAM EK AUZAAR (built as 0.331, re-versioned past the parallel v0.331-v0.335): long jobs on Claude at effort xhigh with 16k-token room, overlapping tools open with their LANE, too-long tool results shrink their lists (valid JSON + how to get the rest), held-out FRESH tool-pick set + vps-ops tool_card. | v0.335.0 UPI SEEDHA (owner: "IT OPENS THE PAYMENT APP BUT CAN'T PAY - SERVER NOT RESPONDING OR LIMIT EXCEEDED"): Google Pay / Paytm / BHIM / Amazon Pay / CRED refuse a payment LINK to a person that another app starts (since 2023-24 only signed merchant links pass) and show that vague error; v0.120's copy-UPI-ID way was on for PhonePe only. Now every app goes copy-and-pay for a person by default (opens the app, UPI ID copied, she pastes + PIN, taps Ho gaya); an app she saw accept the link gets it again; "not responding / exceed" now read as a refusal. Server only. Previous: v0.334.0 SEO PRO (owner: "ADD ALL USEFUL FEATURES FROM CLAUDE-SEO TO HOOLA"): the useful, official-route checks of the open-source claude-seo (MIT) re-written in Hoola's own code (seo/pro.py, THIRD_PARTY_NOTICES.md): health score in 7 parts (technical 22 / content 23 / on-page 20 / schema 10 / speed 10 / AI search 10 / images 5) + critical/high/medium/low on every fix, 17 page-drift rules (weekly + an hourly home-page alert once per change), AI crawler map (search bots vs training bots), schema validation + retired types + 6 JSON-LD templates, content quality (page-type word floors, stuffing, filler, unsourced claims, byline, JS-only pages), images (weight bands via HEAD, size, lazy, format), hreflang (codes, self, return links), near duplicates, templated titles, scaled pages, NAP, dead business.site links, parasite / hacked pages, security headers + redirect hops, llms.txt, E-E-A-T and local scorecards, Search Console URL Inspection + Sitemaps API (gsc_* fix items), CrUX 25-week speed history, LCP parts + phone / computer screenshots, IndexNow (her key file = her OK), clicks-drop alert naming Google's confirmed updates, "how we'll know" on every plan item, scaled-content gate on Hoola-built big websites (place lists stop at 50). Not taken: Google scraping, paid data, bot impersonation, humanisers, Indexing API for normal pages. Built as 0.319.0 / 0.320.0, re-versioned past the parallel v0.319-v0.333. (owner: "Khana aur kirana NOT FUNCTIONING, NEED THEIR APPROVAL, NOT ACCEPTING THE REQUEST"): Swiggy Food / Instamart / Dineout and Zomato refuse sign-in from apps they have not approved, so the clean view hides them everywhere (Connect tab, Roz ke kaam, Apne accounts, bazar_find) until FOOD_PARTNER_APPROVED=true; a user who already linked one keeps it. Previous: v0.333.0 NO BLINK + DRAG TO RESIZE (built as 0.331; re-versioned past main's 0.331 / 0.332) (owner, screenshot of Create > Video: "YOUR VIDEO SECTION VIDEO BOX IS CONTINUOUSLY GOING AND COMING BACK AFTER FEW INTERVAL" + "SLIDER FROM BOTH SIDE ... PROMPT WORKING SECTION WILL GET BIGGER AREA"). Measured in the browser: the 4-15 s Video Studio poll rebuilt EVERY tile of Your videos with innerHTML (0 of 7 tiles survived one poll), so every video reloaded and the grid blinked. studio.js patch(el, html) keeps each tile whose markup did not change (7 of 7 kept; signed file links are the same all day) and the Director film page skips its 5 s re-draw when the film JSON is unchanged. Two draggable dividers: the sidebar edge (200-360px) and the prompt panel / results edge (320px up to results keeping 360px) - arrow keys 16px, double-click / Home resets, remembered on the device, hidden on phones. Previous: v0.332.0 ANY DESIGN + DEPLOY SE NAHI RUKEGA. ANY DESIGN (web design Phase 6 step 2, owner: "START PHASE 2"): (1) FREE-FORM sections - beyond the 30 library types, a page may carry up to 3 sections Opus designs from a name + brief (type custom_<name>, taxonomy.custom_type / is_section / label_of): the site map planner adds them when no type fits (calculators, plan comparisons, processes, size guides) and her words add them through change() (add type custom + name); (2) INTERACTIVE PIECES in the site runtime that sections use by attribute, no section JS: tabs (ARIA tablist, arrow keys), slider (scroll-snap + arrows), filter, monthly/yearly switch, calculator (sum of qty x rate + add-ons, or a loan EMI with total and interest), taught in RUNTIME_GUIDE; (3) ONE DESIGN KIT per site (site/kit.py): once a look is chosen Opus writes .k-* components (button, card, section head, badge, quote, stat, media frame, list...) from the look's art direction and the site variables; the cleaner keeps only kit rules (no element / id / global selectors, no url / import / fonts); every section is told to use it; it sits in site.css after the base styles (SITE_KIT, made once a site). DEPLOY SE NAHI RUKEGA (owner's screenshot: S-0003 "Server ruk gaya tha, kaam beech mein ruk gaya"): the log showed clean shutdowns, not a crash - 5 deploys in under 2 hours, and a dead job gets ONE automatic restart, so a long build that lived through two deploys was marked failed. The app's shutdown now marks every running website job (site.service.mark_clean_stop), so after a deploy it continues from its saved sections however many deploys land; a real crash still uses up the one restart; a site map being made starts again (board map_want / map_words). Built as 0.325 / 0.326, re-versioned past the parallel v0.325-v0.331 work (Studio, plan cards, Play Store). Previous: v0.331.0 PLAY STORE LAUNCH (App Sahayak Phase 5, owner: "START PHASE 5"): her app on Google Play from HER OWN developer account through the official Play Developer API (appmaker/android/store.py). Permanent package name proposed (com.<business>.app) and confirmed by her, locked after the first upload; a separate UPLOAD key per app (sealed; Play App Signing keeps the real key); her Play service-account JSON typed into the app (phone panel / console file input), checked, sealed, never returned (masked e-mail only), never in chat; listing by Opus within Play's limits (30 / 80 / 4000, metadata policy) or a template, her edits checked; 512 px icon + 1024x500 feature graphic from the app's colours; phone screenshots from the device check; public privacy policy + account-deletion pages per app (/api/app-api/<key>/privacy | delete-account); data-safety answers from the real lists; the store bundle (.aab) = the latest build's project under the store package, version code above every build, signed with the upload key (runners kind=aab: worker ?kind=aab, builds-repo workflow input kind, local bundleRelease); upload = edit -> bundle -> track -> listing -> icon / feature graphic / screenshots -> commit, internal testing by the tool or her tap, PRODUCTION only by her tap after a confirm (tool refuses), a never-reviewed app falls back to a draft release with a plain note, Google refusals said plainly; the console steps she does once (create app, content rating...) listed. Also fixed: rollback restored the key but not its password (the exported project blanks it) - a real build machine would have failed to sign. CI builds the real AAB. Built as 0.330.0, re-versioned past the parallel v0.330.0. Previous: v0.330.0 PLAN CARD DIKHE (her test A): the console folded every long-job plan (goal event) into the progress line, so the plan card the server made was never drawn - now it is a card, one per job, updated in place; "X banao: a, b, c, d" asks count as big (looks_big parts after a colon), plan steps strip "uske baad". | v0.329.0 SHOWCASE (built as 0.328; owner: "GO PHASE 5" of the Create Studio design audit - "USE REAL HOOLA CREATED VIDEOS AND IMAGES HERE FOR PRESENTATION"). The drawn placeholders
+APP_VERSION = "0.384.0"   # v0.384.0 SOCIAL MEDIA MANAGER Phase 6 MORE PLATFORMS (owner: "GO PHASE 6"; built as 0.375 / 0.379, re-versioned past the parallel v0.379-v0.382): WhatsApp Business on HER OWN number by Meta's Embedded Signup (social/wabiz.py): her tap opens Hoola's page /api/social/whatsapp/start with Meta's JS SDK + the WhatsApp configuration (WA_ES_CONFIG_ID), FB.login returns a code and Meta posts her WABA + phone number ids to the page, /api/social/whatsapp/finish (one-time state) exchanges the code for her business token (sealed), subscribes Hoola's app to her WABA webhooks, registers the number (6-digit PIN made + sealed; a two-step PIN she set earlier = connected with a note) and adds it as her Business inbox channel (employee_channels, the v0.59 inbox answers there); disconnect removes the channel. LinkedIn (social/linkedin.py): Sign In with LinkedIn + Share on LinkedIn (openid profile w_member_social, self-serve, no partner review), callback /api/social/linkedin/callback, token sealed (60 days, warned 7 days before), a calendar post with LinkedIn ticked goes to her profile as text (reserved characters escaped, 3 hashtags) + one photo (initializeUpload -> PUT -> /rest/posts with LinkedIn-Version); Reel / Story / video refused for LinkedIn in plain words. Plans now go only to connected platforms; "Also on LinkedIn" on each post (console + phone). Not built: Company Page posting / LinkedIn comments (Community Management API review), X (not asked). Privacy: LinkedIn + WhatsApp Business. Previous: v0.383.0 SOCIAL MEDIA MANAGER Phase 5 GROWTH (owner: "GO PHASE 5"; built as 0.370 / 0.378, re-versioned past the parallel v0.370-v0.382; social/growth.py): listening through her Facebook Page's linked Instagram professional account (Meta gives hashtag search + Business Discovery ONLY in the Instagram API with Facebook Login; FB scopes + instagram_basic / instagram_manage_insights / instagram_manage_comments): posts that tag her daily (8 am) -> UGC list; up to 5 hashtags (top posts: best format, interactions, idea lines; hashtag ids cached, Meta counts unique searches a week) + up to 5 competitors (followers + weekly change, posts this week, interactions a post, best format) read on Mondays with a one-line comparison to her. UGC permission flow: Ask = a polite comment from her account on the post (official mentions edge, only on her tap, never a DM), "They said yes" needs their words (kept as proof), then a credited calendar DRAFT with their picture (still her OK to post); never reposted without a recorded yes. Creator check: public numbers + the Influencer desk's fake-follower SIGNALS + the ASCI #ad check of a collab caption. A/B hook styles: every planned post has question / number / story / offer, published posts matched to their numbers, a winner only at >= 3 posts per style and a 20% lead, the next calendar leans on it. Routes /api/social/growth/watch, /api/social/ugc/<id>/ask|permission|repost|ignore, /api/social/creator/check, job growth; console + phone Growth; privacy paragraph. Previous: v0.382.0 DIMAAG (App Sahayak Phases 43-46, Pillar A of the complex-apps plan, owner: "Logic engine (biggest step) ... WORK ON IT AND DEPLOYE MAKE IT FULL AND ROBUSTLY FUCTIONAL"): every app gets its own BRAIN - linked lists (customer -> orders -> items, restrict / cascade / nullify deletes), formulas + roll-ups computed on every write, rules + unique keys, workflows with maker-checker approval chains + SLA escalations, automatic triggers (notify / set / move / create / assign / run), timed jobs (hourly / daily / weekly / monthly IST) and custom functions in a locked interpreter of our own (no eval, step / size / depth / time budget, tests run before save); Opus drafts it from her words, the checker proves it (one repair round), ONLY her tap applies it; Android + iPhone kits show links, workflow buttons, approvals, linked rows and an all-lists screen; console + phone Logic panels. Previous: v0.381.0 SHIKSHA SUITE Phase 0 + 1 (+ v0.380 HOOLA CAD ANALYSIS). Before: v0.379.0 APP SAHAYAK PHASES 11-42 (built on a branch as v0.347-v0.378, merged after main's v0.347-v0.366 per the REBASE PROTOCOL): flow walk (every button tapped on emulator + iPhone), PDF field, app languages, staff stops + Maps, a second generator-only CI app, job assignment, ratings, receipts, GST tax invoices, credit notes, stock, coupons, udhaar khata, delivery fee / area / hours, month accounts for the CA, product sizes, tablets + foldables (side rail, two panes), iPad (App Store iPad shots, two panes), instant notifications (FCM via Newtika Firebase, APNs with her own Apple key - VPS needs pip install h2), builds-repo workflows kept current by the server, tablet / iPad checks in her real builds, delivery slots, store listings in Indian languages, GSTR-1 JSON, Tally XML, udhaar reminders (her tap), the money panel on her phone, holidays + change delivery time, in-app chat; plus docs/COMPLEX_APPS_PLAN.md. Details per phase in docs/HISTORY.md ("## v0.367.0 (built as ...)"). Previous: v0.366.0 v0.366.0 BLOG + BHASHAYEN (web design Phase 7 step 3, owner: "START PHASE 3C"): (1) A REAL BLOG on her Hoola website - Kalam Sahayak still writes (her voice, facts checked, blanks never guessed) and gets one more place to publish: dest site = the blog of one of her Hoola websites (where = the site; when = a time). Nothing goes up without her Haan on the Kalam card (or her tap in the studio Blog tab, which confirms the same card). site/blog.py keeps the posts (site_blog_posts: slug, title, excerpt, markdown body, category, tags, cover = one of her site photos, status published / scheduled / hidden, translations per language); build.py makes /blog/ (newest first, 10 a page, /blog/page/N/), /blog/<post>/ (one h1, date, reading time, cover, safe markdown - raw HTML escaped, only http / mailto / tel links - BlogPosting JSON-LD, og:type article, previous / next, 3 related), /blog/category/<cat>/, /blog/feed.xml (RSS 2.0) and <div data-hoola-posts="3"> in any section = her latest real posts (sections never invent posts). A post on the site = a new checked version; when her live address showed the version before, the new one goes live too (hosting.update_live), else the normal launch card. Scheduled posts go up by themselves (worker blog_tick). Hide / show / cover from chat make a version she launches; delete only by her tap. (2) BHASHAYEN - Gujarati, Bengali, Tamil, Telugu, Kannada, Malayalam, Punjabi, Odia and Urdu (right-to-left) join English / Hindi / Marathi / Hinglish; up to 4 extra languages a site (set_languages, POST /api/sites/<id>/languages, tool action=languages), each under /<lang>/ with every page and blog post translated, a language menu (two languages keep the v0.301 single link), hreflang alternates + x-default on every page, sitemap + feed per language. Console Blog + Languages tabs, phone "Blog aur bhashayen" page. (built as 0.359, re-versioned past the parallel v0.359-v0.363) Previous: v0.365.0 HARD CARD: coding card set 2 (python -m app.quality code --set 2 / vps-ops code_card_hard) - a 30-file Python shop and a 13-file JavaScript billing project, 12 harder jobs (feature across 4-5 files, rename with every caller + alias, bugs far from the symptom, reservation leak from a red test run, access-control hole, refactor that keeps behaviour, a setting hard-coded in 3 places, folder rules, 2 JavaScript jobs, a vague ask that needs ONE question). | v0.364.0 HOOLA CAD PRO (owner: "MAKE A HOOLA CAD POWERFULL"): assemblies with a BOM + colours + mass + centre of mass, H library (ISO fasteners / holes, involute gears, bearings, keyed shafts, extrusions, pipe / flange), Opus thinks + plans first, a vision review of the real views, her photo / sketch / STEP as inputs, STEP + GLB + STL + 3MF + DXF section + 2-page drawing (shaded views + hidden-line page). Previous: v0.363.0 ASLI ERP KAAM (owner: "I WANT ALL ERP WORK TO BE DONE BY HOOLA BOTH READ AND WRITE ... COMPLEX AND VERY HARD"): up to v0.362 the ERP desk produced PAPERS; this makes it do the work on her live system. A read is one call and runs at once because it changes nothing (capped at 2,000 rows so a careless query cannot pull the whole ledger). A WRITE IS NEVER ONE CALL - plan, dry run, HER TAP, batches, verify, report - and every guard is in CODE, not in a prompt, because a wrong write into a live ERP is not undoable by apology: delete is refused at ANY size (no business reason, no safe way to offer it); more than 500 rows in one go is refused so a mistake stays small; execute before a dry run is refused; a production write needs the word "production" from her as well as her tap; her approval is tied to THOSE rows via a plan hash, so changing them afterwards makes the run refuse and ask again; and every row carries an idempotency key written BEFORE the call, so a run that dies half way resumes WITHOUT ever posting the same record twice - the property that makes a real migration safe, proved in a test that re-runs a half-failed load and asserts only the failures were retried. A failed run reaches a terminal state instead of hanging on "running", and stays resumable. The dry run reads the current record first, so she sees before -> after row by row, and that before-image is the only honest rollback material there will ever be - rollback_plan says plainly which rows it CANNOT put back (the newly created ones) rather than quietly missing them. Two rails reach her system, both official and both with HER credential: composio (her connected account) and odata (her own endpoint for what Composio does not carry - SAP OData, Windchill REST), whose credential is SEALED with the same vault as v0.290 custom MCP, typed in the APP and never in chat - the tool refuses the endpoint action outright. Previous: v0.362.0 ERP KA POORA DESK (owner: "ERP --- INCLUDE ALL JOBS IN ERP FOR HOOLA AI"): an ERP job is not one person, it is a desk, so the whole lifecycle is now inside the erp role - blueprint, functional config, technical / ABAP, data migration, integration, basis, security and SoD, testing / UAT, cutover and go-live, training and change, support / AMS, master data, reporting, finance close, licence and cost, upgrade and patch: sixteen parts. They sit inside the SAME duty (ent_erp) on purpose - it is still her one live ERP, so she sets trust once for the desk instead of sixteen times, and a live write is still BIG. Each part only produces the papers that part really produces (a data migration does not write an access matrix; security does), and four new paper kinds were added for them: config (every setting, its value and why), matrix (role -> permissions + SoD clashes), sop (steps a clerk can follow without help) and training. draft() takes `job`, <job>_dekho takes what=jobs, and the tool description names every part so the model picks the right one. The structure is generic, not an ERP special case: any role in enterprise/rules.ROLES can grow a JOBS entry the same way, and a role without one (tpm) behaves exactly as before. Previous: v0.359.0 ENGINEERING DESK Phase 1 + CAD ENGINEER (owner: "GO PHASE 1" on docs/ENGINEERING_DESK_PLAN.md, her list IX Research, CAD, Hardware & Industrial Tech): a hireable CAD Engineer designs a part from her words and mm sizes as parametric CadQuery code (Opus), runs it in a locked box (engineering/: guard -> runner with cut-down builtins + import gate -> sandbox with no network / no secrets / limits), checks it (valid solid, one body, the size asked; up to 2 fixes from the real error), and puts STEP + STL + 4 views + a dimensioned drawing PDF on a CAD Desk (console + phone), versions on her words; chat tool cad_part; the 9 other engineering roles listed as coming. Also RESTORED the console sections + scripts v0.358 dropped by accident (Employees, Arena, SEO / Social desks, charts.js / arena.js / employees.js). Previous: v0.361.0 CAD BOX CHAUTHI DEEWAR (her VPS check: cadquery true, no_network FALSE - Ubuntu 24.04 refuses `unshare -rn` for normal users): the engineering runner now locks its own process while her script runs - socket / os.system / exec / spawn / fork / kill / subprocess / file delete-move raise - and unlocks only for its own export; the guard also refuses os / sys / subprocess / socket / environ / system ... by name on any object. A deep search found no other chain from cadquery / math to a system module. Previous: v0.360.0 CODE CARD: python -m app.quality code / vps-ops code_card = 12 fixed practice coding jobs through Developer Sahayak's real 8-tool loop (in memory, no GitHub / PR), marked by hidden checks: the code works, only the needed files changed, project rules hold, tests pass and a fix's test fails on the old code; answers run in a child Python with no secrets, unsafe code never run. | v0.359.0 ENGINEERING DESK Phase 1 + CAD ENGINEER (owner: "GO PHASE 1" on docs/ENGINEERING_DESK_PLAN.md, her list IX Research, CAD, Hardware & Industrial Tech): a hireable CAD Engineer designs a part from her words and mm sizes as parametric CadQuery code (Opus), runs it in a locked box (engineering/: guard -> runner with cut-down builtins + import gate -> sandbox with no network / no secrets / limits), checks it (valid solid, one body, the size asked; up to 2 fixes from the real error), and puts STEP + STL + 4 views + a dimensioned drawing PDF on a CAD Desk (console + phone), versions on her words; chat tool cad_part; the 9 other engineering roles listed as coming. Also RESTORED the console sections + scripts v0.358 dropped by accident (Employees, Arena, SEO / Social desks, charts.js / arena.js / employees.js). Previous: v0.358.0 ENTERPRISE SYSTEMS & ERP (owner: "BUILD ALL 10 AS ONE ENTERPRISE SUITE ... GO END TO END", after the deep research on her list of ten Product / Enterprise Systems / ERP jobs): the research found the one thing that shaped the build - every one of these roles splits in two. RUNNING the customer's live system is gated by whose credential it is and, for three jobs, by a statutory audit; doing the WORK of the role - specs, field mappings, plans, registers, reconciliation, test plans - is not gated at all and is most of what these people actually do. So the suite does the second half for all ten and the first half only where an OFFICIAL route exists and she connects her own system (Salesforce hosted MCP GA 29 Apr 2026, SAP Integration Suite MCP Gateway, Windchill OData REST, NetSuite / ~1,600 apps through Composio). Ten jobs, ONE engine: app/enterprise/{rules,models,service}.py, because the work has the same shape everywhere - she connects her own system, Hoola reads, Hoola drafts the paper, HER TAP, Hoola does it, audit - so an eleventh job is a row in rules.ROLES, not a new file. They are still TEN separate tool pairs (<job> + <job>_dekho, generated from that table) because the Employee gate maps one tool to one duty, and that is what lets her set trust PER JOB: ERP work and banking work are not the same risk. The five that can change a production system (erp, crm_arch, bpa, ecom_arch, plm) are classed BIG, so a live write always becomes a card whoever asked for it; the ten _dekho tools are READ. THREE JOBS ARE CAPPED ON PURPOSE and say so in EVERY result, not just in settings: health_int (real patient data needs a CERT-In empanelled audit the business must pass), bank_int (an AA / FIU needs an RBI licence and a Sahamati-empanelled audit - Hoola is neither, and touches no banking rail), regtech (she files on her own portal; Hoola prepares, reminds and catches mistakes). Teamcenter is read-only until verified, because the sources contradict each other on outside-agent access. Guards that hold whatever the model writes: a key or token in any argument is refused before anything runs, account and ID numbers are masked out of every artifact and item, a job can only connect its own systems and only make its own kinds of paper, and a paper written with no model still comes back as an honest skeleton with a `missing` list instead of an invention. Previous: v0.357.0 DASHBOARD (web design Phase 7 step 2, owner: "Phase 3b (dashboards and charts)"): (1) CHARTS ON HER WEBSITE - a section writes a plain <figure data-hoola-chart="bar|line|area|donut|hbar"> table of HER numbers (1,20,000 / 50 lakh / 2.5 Cr understood) and static/console/charts.js (copied into the site as assets/hoola-chart.js, loaded only on pages that draw) turns it into inline SVG in the site's own colours: tooltip, arrow keys, the table kept for screen readers, grow-in motion off under reduced motion, no library, no network; the site map planner may add a growth chart only from numbers she gave. (2) HER DASHBOARD - site/dash.py reads what the site already records per IST day for 7 / 30 / 90 / 365 days and the period before: visits (counted by Hoola's own server), enquiries + bookings, shop orders and CONFIRMED sales, average order, top pages, top products, order status mix, web-app records a day; GET /api/sites/<id>/dashboard; console Studio Dashboard tab (tiles with change vs previous, area / bar / line / donut / hbar charts), phone Dashboard page (lib/ui/site_dash.dart), chat website_dekho what=dashboard. (3) STAFF DASHBOARD in her web apps - /admin/ on her site opens with charts per list (rows a day, the mix of its status field, sums of number fields, yes / no counts) from GET /api/site-app/<id>/stats (staff and her only). Free, no AI. (built as 0.353, re-versioned past the parallel v0.353-v0.356) Previous: v0.356.0 PEHLE NIYAM: Developer Sahayak always reads the project's own rules first - AGENTS.md / CLAUDE.md / CONTRIBUTING / copilot + cursor rules, then build / lint / CI files, then a short README; a folder's own AGENTS.md / CLAUDE.md is shown before anything there is changed (the edit waits until it is read); the PR lists the rules read and how they were followed; the one-shot fallback reads them first too. | v0.355.0 SOCIAL MEDIA MANAGER Phase 2 (owner: "GO PHASE 2"): approved posts go out to Instagram and her Facebook Page (social/publish.py). A post gets her photo / video (POST /api/social/media: bytes must be a picture or MP4, pictures kept as JPEG <= 1440 px) or a Brand poster from her kit (final, no PROOF mark, 4:5 / 9:16 for Stories); Meta fetches it from a 2-3 hour HMAC-signed link (/api/social/media/<id>?e&s). Approval is bound to the exact post (hash of caption + hashtags + pictures + platforms + format + time): any change sends it back to draft; Publish now = her tap after a confirm. Instagram: image, carousel (children + parent), Reel (container processed, polled to FINISHED), Story; the 24-hour API post cap read first (stop at total-1), the publish permission checked (Phase 1 connections are told to Reconnect). Facebook: photo, several photos (unpublished + one feed post), video, text. Plain checks before any send (Instagram needs a picture, Reel = video, carousel = 2-10 photos, caption <= 2200, <= 30 hashtags, no [ ] blanks). Publisher job every sweep: approved posts at their time; more than a day late = missed, never posted late. Results (links / reasons) on each post + the desk; console + phone: Add photo, Make poster, Publish now, Posted links. Connect asks for posting permissions now (instagram_business_content_publish, pages_manage_posts, publish_video). Privacy policy: Instagram and Facebook section. Built as 0.354.0, re-versioned past the parallel v0.354. Previous: v0.354.0 HOOLA STUDIO PAGE (owner: "IN WEBSITE THERE IS NO INFORMATION ABOUT THE HOOLA STUDIO ... ADD HOOLA STUDIO PAGE WITH REAL SCREEN AND REAL SAMPLE ... STUNNING WITH MOTION GRAPHICS ... SAME AS EXISTING BRAND"): a new website page /studio (static/site/studio.html + studio.js, GSAP like the other pages, strict CSP, no inline script) with the REAL Create Studio screens (static/site/studio/*.webp, taken from the real console in dark theme): hero with the studio home in a window + floating language / jingle / storyboard / price-card layers on the pointer, "one line in" demo (the brief types itself, 8 steps light, 5 shots paint, the timeline runs), the Director pinned on scroll with a glow walking the real screen's step chips, six tools on their real screens (auto tabs), a samples wall that shows the owner's showcase pictures / clips (public GET /api/site/showcase + /api/site/showcase/<slot>/<pic|clip>, showcase slots only) over drawn scenes until they are made, the price card (Haan -> fingerprint -> filming), 15 languages, film types, questions; Studio link in the home / Employee / Network menus. (built as 0.351.0, re-versioned past the parallel v0.351-v0.353) Previous: v0.353.0 SOCIAL MEDIA MANAGER Phase 1 (owner: "GO PHASE 1" of docs/SOCIAL_EMPLOYEE_PLAN.md): the second hireable employee. Hire from Employees (console + phone) -> Social Desk set-up (business, city, what she sells, customers, goal, languages, trust) -> Connect Instagram (Instagram API with Instagram Login, read scopes instagram_business_basic + _manage_insights) and / or her Facebook Page (Facebook Login for Business with the configuration id) through Hoola's ONE Meta app (social/meta.py): she logs in on Instagram / Facebook's own page, tokens 60-day + sealed, personal Instagram refused with the switch guide, a link state works once (30 min). First read (background): her last 50 posts with likes / comments / reach / saves / shares / views -> frozen BASELINE (followers, posts in 30 days, interactions + reach per post, engagement rate, best formats / hours / days, top 5 posts) -> STRATEGY (3-5 pillars, rhythm, hashtags, goal metric, best hours) + a 30-day CALENDAR of post drafts (hook, caption in her language, hashtags, picture brief, CTA, Indian festivals on their day) by Opus (kind social_plan) with a rules fallback; a re-plan replaces drafts only, an edit after approval asks again, approve all. 24/7 (social/desk.run_due): hourly Instagram token renewal (< 20 days left) + Facebook expiry warned once, daily fresh numbers, Monday "what worked" note; a dead token alerts once and recovers. Meta data-deletion / deauthorize callback (/api/social/meta/deletion, signed_request HMAC verified) deletes the accounts + read posts. Nothing is published in Phase 1 (posting on her tap = Phase 2, after Meta App Review). Also fixed: the SEO desk's scheduler retry of a failed first run found its own lock busy (due:<key>). Built as 0.347.0 / 0.348.0 / 0.352.0, re-versioned past the parallel v0.347-v0.352. Previous: v0.352.0 PEHLE CI, PHIR PR: Developer Sahayak opens a DRAFT PR on a repo with CI, watches the checks, fixes a red run with the step-by-step loop (up to 3 rounds) and marks the PR ready for review only when CI is green; no CI result in 15 min = ready with a note; merge stays her tap. | v0.351.0 DUKAAN (web design Phase 7 step 1, owner: "START PHASE 3"): a real online shop on any Hoola website (site/shop.py): products with HER prices, units and stock (added in chat / the studio Shop tab, or her priced list items), a cart + checkout + order tracking (assets/hoola-shop.js), UPI to HER UPI ID (QR + pay-in-app link) or cash on delivery, store pickup, delivery charge / free above / minimum order / pincodes. The server decides every price and total (a cart only names products and counts), stock is taken with ONE conditional update so two buyers never both get the last piece, a cancel gives it back; the customer TELLS "I have paid" with the UTR and SHE confirms receipt (Hoola never marks money received); orders O-1001.. with a private tracking token; she hears of each order (site_order push); public /api/site-shop/<id>/products|order|order/<n>[/paid] (CORS, rate limited), owner /api/sites/<id>/shop[/orders[/<n>]]; website action=shop / shop_order, website_dekho what=orders; a code-made Shop page + buy box on product pages; section writers may place Add-to-cart buttons for her products. (built as 0.344, re-versioned past the parallel v0.344-v0.350) Previous: v0.350.0 KADAM-BA-KADAM CODING: Developer Sahayak explores and edits step by step with 8 tools (devsahayak/loop.py: list_dir, search_code, read_file, find_usages, edit_file, new_file, show_diff, done) instead of guessing 12 files + one model call; the old path is the fallback. | v0.349.0 MOSPI PAKKA (her test on v0.348: "MoSPI's server did not respond", then a search summary): the live server's MoSPI call failed with no reason given. app/mospi.py now sends a real User-Agent (Hoola/1.0, not python-httpx's default that government firewalls often block), splits connect (10 s) and read (45 s) timeouts, follows redirects, tries a network failure once more after 1.5 s, names the reason (timeout / DNS / refused / TLS / HTTP code) in the log + LAST_ERROR, and `python -m app.mospi check` + vps-ops job mospi_check (DNS, curl, Hoola client, recent log lines) show why the VPS cannot reach MoSPI. Previous: v0.348.0 v0.348.0 MOSPI BUILT IN (her live test: "India ki latest CPI inflation kitni hai?" was answered from a web search summary, not MoSPI): MoSPI eSankhyiki is now built in for EVERY user - agent tool `mospi` (app/mospi.py, MoSPI's own MCP, no login, read-only, cached) with the four steps datasets -> indicators -> metadata -> data, routed by statistics words (CPI / WPI / IIP / GDP / PLFS / inflation / mehngai / berozgari ...), and the guide says official Indian numbers come from MoSPI first, never a search summary, quoted with month / state / sector / base year and "Source: MoSPI"; big answers drop whole rows; the featured MoSPI card says built in. Checked live: CPI (General) All India September 2026 = 5.54% from MoSPI itself. Previous: v0.347.0 v0.347.0 LAMBE KAAM KI REPORT: python -m app.quality longjobs / vps-ops long_jobs = how her real long jobs went in 24 h (task runs, plan cards, turns that died), free; the tool card reads a question without a "?". | v0.346.0 DESIGN SE MILAAN (App Sahayak Phase 10, owner: "START PHASE 10"): the real app screens are compared with HER APPROVED DESIGN - the open promise of the original Phase 3 ("screenshots are compared against the approved design"). appmaker/match.py: after every Android / iPhone build each device-check screenshot is scored against the approved design's screenshot of the same screen and platform, free and numbers only (colour histograms + where the ink sits on a block grid + light / dark, 0-100; status bar trimmed); on her ask Opus LOOKS at both pictures of every screen under 70 and lists the concrete visible differences; fix (her confirm) rebuilds ONLY those screens with the differences as their notes (Android build(only, notes); the iPhone build now takes notes too) - the rest of the app is kept. GET /api/apps/<ref>/match, POST /api/apps/<ref>/match {platform, fix}; tool app_banao action=match; phone Design se milaan panel (design and app side by side, %, differences, Theek karo with a confirm); console Design match box. (built as 0.343 / 0.344, re-versioned past the parallel v0.343 / v0.344) Previous: v0.345.0 APNA CODE (App Sahayak Phase 9, owner: "START PHASE 9"): her app's whole code in HER OWN GitHub - the last open promise of the original plan ("each app's code is kept with its full history and can be exported to her GitHub"). appmaker/code.py stages android/ (the Android Studio project) + ios/ (the XcodeGen SwiftUI project, when an iPhone build exists) + README.md (open / build / sign, where the backend lives) + CHANGELOG.md (every Android and iPhone build) + .gitignore; never in it: the preview key and its password (blanked in build.gradle.kts), upload / App Store keys, build output. Same card and her-tap-only push as the website export (her GitHub token linked once in the app): POST /api/apps/<ref>/github makes the card, POST /api/sites-github/<id>/push with the card's hash sends it (a card made before a newer build refuses); each export is a NEW commit on top of her branch with the build's what's-new as the message, a full tree so removed files leave too. Tool app_banao action=github (card only); phone Code panel; console Send code to GitHub with a confirm before anything goes. (built as 0.342, re-versioned past the parallel v0.342-v0.344) Previous: v0.344.0 MOSPI + BROKERS (owner: "GO CONNECT MOSPI, BROKERS, RAZORPAY"): the featured connectors gain MoSPI eSankhyiki (Govt statistics, no login, one tap), Upstox and Dhan (one-tap OAuth; their DCR accepts Hoola's callback - probed live), Zerodha Kite and FYERS (no OAuth: login lives inside ONE MCP session, so bazar/connectors/mcp_session.py keeps a sticky session per account, id sealed in bz_kv) and Groww (its sign-in accepts only pre-approved apps -> shown as partner pending); Razorpay stays (merchant key). Every broker is a caution server: reads run straight, orders / GTTs / alerts / login always wait for her tap; guide line: never trade on its own. Previous: v0.343.0 v0.343.0 SIGNAL PAR NISHAN: the 1 Nov deploy log ended shutdown with "Aborted!" - the server waits for long-lived connections (live chat streams, PC links) and is force-stopped, so v0.332's mark at the END of shutdown (mark_clean_stop) never ran and a deploy could still fail a running website build. main._mark_jobs_on_stop_signal wraps SIGINT / SIGTERM at startup: running website jobs are marked the moment the stop signal arrives, then uvicorn's own handler runs as before (a failing mark never blocks the shutdown). Previous: v0.342.0 TERMS OF SERVICE (built as 0.341) (owner: "Terms of Service --- HOOLA"): a public /terms page (static/terms.html, same look as /privacy, linked both ways from it) for the Play / App Store listings, the Google OAuth consent screen and sign-up. It says only what Hoola really does: her tap before sending / deleting / publishing / filing / paid work, Hoola never moves money or keeps PIN / card / OTP, the price card first and failed creations not charged, AI results are not professional advice; plus acceptable use, her content and creations stay hers, websites / apps she builds are hers to publish, Hoola Network agreements bind only after her approval, connected services' own terms, liability limits as far as Indian law allows, Indian law with Akola courts, and the IT Act grievance officer (24 h acknowledgement, 15 days). Previous: v0.341.0 HAR FEATURE 2 (App Sahayak Phase 8, owner: "START PHASE 8"): the open items of the Phase 2 feature list, on BOTH the Android and the iPhone app. SCAN field (type scan): a barcode / QR read by Google's code scanner on Android (Play services shows its own camera screen, the app needs NO camera permission) and by Apple's VisionKit scanner on iPhone (camera reason in Info.plist only when a list has a scan field), typed when the phone has no scanner; the server strips control characters (200 max); complex staff apps scan their codes (barcode / SKU / tag / serial / QR / IMEI, two a list); her data change can add one. STAFF DASHBOARD: /api/app-api/<key>/stats (staff only, customers 403): per list the count, status mix, rows per day (14 days, 7-60) and the server-priced money total; StatsBlock on the account screen of staff and on any dashboard / report / admin screen (Android Canvas bars, iPhone Swift Charts). UPDATES INBOX: every update the app was told about is kept on the phone (50, newest first, unread count) in a kit screen hoola_inbox reached from My account. iPhone BACKGROUND UPDATES: BGAppRefreshTask + local notifications from the same /updates the Android job polls (no push server, no Apple push key), the notification question asked once after sign-in. Kotlin compiled locally (debug + release R8); CI compiles both and runs every screen. Previous: v0.340.0 v0.340.0 EDIT MEIN SAB JODO (owner: "IN EDIT MODE ADD ALL ATTACHMENT FUNCTIONS IMAGE, VIDEO, FILES ETC"): in website Edit mode every element gets "+ Jodo" - she adds a photo (pick or upload), a video (her MP4 / WebM up to 60 MB, or a YouTube link), an audio clip or a file visitors download (PDF / Word / Excel / PowerPoint / TXT / CSV up to 20 MB) right after the block she tapped, with a caption; "Photo badlo" can upload a new photo too. No AI. site/media.py keeps her files in the site source (a file is accepted only when its bytes match its kind), pages carry data-hoola-media / data-hoola-file placeholders the builder turns into addresses for each page depth and copies only the files used (hard links, so versions do not copy 60 MB videos); an added piece goes as one with Hatao; POST /api/sites/<id>/media; console + phone. Also fixed: photos inside <picture> lost their edit number, so tapping a photo in Edit mode never reached "change photo" (since v0.295). Built as 0.338.0, re-versioned past the parallel v0.338 KAAM KARO / v0.339 APP STORE LAUNCH. Previous: v0.339.0 APP STORE LAUNCH (App Sahayak Phase 7, owner: "START PHASE 7"): her iPhone app on the App Store from HER OWN Apple account, the iPhone twin of the Play launch. appmaker/ios/asc.py = the official App Store Connect API client that runs INSIDE her private builds repo (hoola-ios.yml kinds store / review) with her repo secrets, so her key never reaches Hoola: ES256 JWT (aud appstoreconnect-v1, 19 minutes), app by bundle id, the editable iOS version found or made, version + app-info localizations (description, keywords, promotional text, support / privacy URLs, name, subtitle; What's New only after the first version), the 6.9-inch screenshot set (APP_IPHONE_67, 1320x2868 from an iPhone Pro Max simulator: reserve, PUT each part to Apple's pre-signed URL without the token, commit with the MD5), the TestFlight build attached; Submit for Review = review submission + the version as its item + submitted. appmaker/ios/appstore.py: listing by Opus within Apple's limits (30 / 30 / 100 / 4000 / 170, guideline 2.3) or a template, her edits checked, keywords cleaned; a public support page per app (/api/app-api/<key>/support); App Privacy answers from the real lists (no tracking); age rating answer and the one-time App Store Connect steps; push (her tap or the tool) and Submit for Review ONLY from her tap after a confirm (the tool refuses); Apple refusals become her next step. Phone + console App Store panels. CI checks the Pro Max screenshots really come out 1320x2868. (built as 0.338, re-versioned past the parallel v0.338) Previous: v0.338.0 KAAM KARO (first live tool card 23/26): a file whose content she gave is made now (small gaps blank + one line after, never a question before the first draft); the tool card counts her ID details before a form and ONE real question on a subject-less ask as right. | v0.337.0 IPHONE (App Sahayak Phase 6, owner: "START PHASE 6"): the REAL iPhone app from the same approved design and the same backend as the Android app (appmaker/ios): a SwiftUI kit (theme from the design tokens light + dark, tabs + a navigation stack per tab, page / card / button components, the app's own backend with the iPhone Keychain token and the offline outbox with cid dedup, accounts, the list forms with photo picker + location, staff status buttons, UPI pay + "I have paid" claim, privacy page + in-app account deletion, crash reports from users' iPhones to the same /crash endpoint), an Xcode project generator from the Android spec (XcodeGen project, Info.plist with only the permissions the lists need, privacy manifest, app icon from the design's own line icon via resvg), screens written in SwiftUI by Opus with house rules (no password fields, no network / storage / UIApplication in screens) and a code-made screen for any that will not compile, compiled on a Mac (her private GitHub builds repo, server/app_builder/hoola-ios.yml), compile errors back to Opus per screen, every screen opened in an iPhone simulator (crash = one fix with the real crash report), and TestFlight with HER App Store Connect key kept as a secret in her builds repo (never on Hoola's server, never in chat); App Store review stays her tap in App Store Connect. CI ios-check.yml (macOS): the fixture app compiles (simulator debug + device release), 13/13 screens open without a crash, and the iPhone app runs the full e2e against a real Hoola server. (built as 0.332 / 0.335, re-versioned past the parallel v0.335 / v0.336) Previous: v0.336.0 SOCH GEHRI + EK KAAM EK AUZAAR (built as 0.331, re-versioned past the parallel v0.331-v0.335): long jobs on Claude at effort xhigh with 16k-token room, overlapping tools open with their LANE, too-long tool results shrink their lists (valid JSON + how to get the rest), held-out FRESH tool-pick set + vps-ops tool_card. | v0.335.0 UPI SEEDHA (owner: "IT OPENS THE PAYMENT APP BUT CAN'T PAY - SERVER NOT RESPONDING OR LIMIT EXCEEDED"): Google Pay / Paytm / BHIM / Amazon Pay / CRED refuse a payment LINK to a person that another app starts (since 2023-24 only signed merchant links pass) and show that vague error; v0.120's copy-UPI-ID way was on for PhonePe only. Now every app goes copy-and-pay for a person by default (opens the app, UPI ID copied, she pastes + PIN, taps Ho gaya); an app she saw accept the link gets it again; "not responding / exceed" now read as a refusal. Server only. Previous: v0.334.0 SEO PRO (owner: "ADD ALL USEFUL FEATURES FROM CLAUDE-SEO TO HOOLA"): the useful, official-route checks of the open-source claude-seo (MIT) re-written in Hoola's own code (seo/pro.py, THIRD_PARTY_NOTICES.md): health score in 7 parts (technical 22 / content 23 / on-page 20 / schema 10 / speed 10 / AI search 10 / images 5) + critical/high/medium/low on every fix, 17 page-drift rules (weekly + an hourly home-page alert once per change), AI crawler map (search bots vs training bots), schema validation + retired types + 6 JSON-LD templates, content quality (page-type word floors, stuffing, filler, unsourced claims, byline, JS-only pages), images (weight bands via HEAD, size, lazy, format), hreflang (codes, self, return links), near duplicates, templated titles, scaled pages, NAP, dead business.site links, parasite / hacked pages, security headers + redirect hops, llms.txt, E-E-A-T and local scorecards, Search Console URL Inspection + Sitemaps API (gsc_* fix items), CrUX 25-week speed history, LCP parts + phone / computer screenshots, IndexNow (her key file = her OK), clicks-drop alert naming Google's confirmed updates, "how we'll know" on every plan item, scaled-content gate on Hoola-built big websites (place lists stop at 50). Not taken: Google scraping, paid data, bot impersonation, humanisers, Indexing API for normal pages. Built as 0.319.0 / 0.320.0, re-versioned past the parallel v0.319-v0.333. (owner: "Khana aur kirana NOT FUNCTIONING, NEED THEIR APPROVAL, NOT ACCEPTING THE REQUEST"): Swiggy Food / Instamart / Dineout and Zomato refuse sign-in from apps they have not approved, so the clean view hides them everywhere (Connect tab, Roz ke kaam, Apne accounts, bazar_find) until FOOD_PARTNER_APPROVED=true; a user who already linked one keeps it. Previous: v0.333.0 NO BLINK + DRAG TO RESIZE (built as 0.331; re-versioned past main's 0.331 / 0.332) (owner, screenshot of Create > Video: "YOUR VIDEO SECTION VIDEO BOX IS CONTINUOUSLY GOING AND COMING BACK AFTER FEW INTERVAL" + "SLIDER FROM BOTH SIDE ... PROMPT WORKING SECTION WILL GET BIGGER AREA"). Measured in the browser: the 4-15 s Video Studio poll rebuilt EVERY tile of Your videos with innerHTML (0 of 7 tiles survived one poll), so every video reloaded and the grid blinked. studio.js patch(el, html) keeps each tile whose markup did not change (7 of 7 kept; signed file links are the same all day) and the Director film page skips its 5 s re-draw when the film JSON is unchanged. Two draggable dividers: the sidebar edge (200-360px) and the prompt panel / results edge (320px up to results keeping 360px) - arrow keys 16px, double-click / Home resets, remembered on the device, hidden on phones. Previous: v0.332.0 ANY DESIGN + DEPLOY SE NAHI RUKEGA. ANY DESIGN (web design Phase 6 step 2, owner: "START PHASE 2"): (1) FREE-FORM sections - beyond the 30 library types, a page may carry up to 3 sections Opus designs from a name + brief (type custom_<name>, taxonomy.custom_type / is_section / label_of): the site map planner adds them when no type fits (calculators, plan comparisons, processes, size guides) and her words add them through change() (add type custom + name); (2) INTERACTIVE PIECES in the site runtime that sections use by attribute, no section JS: tabs (ARIA tablist, arrow keys), slider (scroll-snap + arrows), filter, monthly/yearly switch, calculator (sum of qty x rate + add-ons, or a loan EMI with total and interest), taught in RUNTIME_GUIDE; (3) ONE DESIGN KIT per site (site/kit.py): once a look is chosen Opus writes .k-* components (button, card, section head, badge, quote, stat, media frame, list...) from the look's art direction and the site variables; the cleaner keeps only kit rules (no element / id / global selectors, no url / import / fonts); every section is told to use it; it sits in site.css after the base styles (SITE_KIT, made once a site). DEPLOY SE NAHI RUKEGA (owner's screenshot: S-0003 "Server ruk gaya tha, kaam beech mein ruk gaya"): the log showed clean shutdowns, not a crash - 5 deploys in under 2 hours, and a dead job gets ONE automatic restart, so a long build that lived through two deploys was marked failed. The app's shutdown now marks every running website job (site.service.mark_clean_stop), so after a deploy it continues from its saved sections however many deploys land; a real crash still uses up the one restart; a site map being made starts again (board map_want / map_words). Built as 0.325 / 0.326, re-versioned past the parallel v0.325-v0.331 work (Studio, plan cards, Play Store). Previous: v0.331.0 PLAY STORE LAUNCH (App Sahayak Phase 5, owner: "START PHASE 5"): her app on Google Play from HER OWN developer account through the official Play Developer API (appmaker/android/store.py). Permanent package name proposed (com.<business>.app) and confirmed by her, locked after the first upload; a separate UPLOAD key per app (sealed; Play App Signing keeps the real key); her Play service-account JSON typed into the app (phone panel / console file input), checked, sealed, never returned (masked e-mail only), never in chat; listing by Opus within Play's limits (30 / 80 / 4000, metadata policy) or a template, her edits checked; 512 px icon + 1024x500 feature graphic from the app's colours; phone screenshots from the device check; public privacy policy + account-deletion pages per app (/api/app-api/<key>/privacy | delete-account); data-safety answers from the real lists; the store bundle (.aab) = the latest build's project under the store package, version code above every build, signed with the upload key (runners kind=aab: worker ?kind=aab, builds-repo workflow input kind, local bundleRelease); upload = edit -> bundle -> track -> listing -> icon / feature graphic / screenshots -> commit, internal testing by the tool or her tap, PRODUCTION only by her tap after a confirm (tool refuses), a never-reviewed app falls back to a draft release with a plain note, Google refusals said plainly; the console steps she does once (create app, content rating...) listed. Also fixed: rollback restored the key but not its password (the exported project blanks it) - a real build machine would have failed to sign. CI builds the real AAB. Built as 0.330.0, re-versioned past the parallel v0.330.0. Previous: v0.330.0 PLAN CARD DIKHE (her test A): the console folded every long-job plan (goal event) into the progress line, so the plan card the server made was never drawn - now it is a card, one per job, updated in place; "X banao: a, b, c, d" asks count as big (looks_big parts after a colon), plan steps strip "uske baad". | v0.329.0 SHOWCASE (built as 0.328; owner: "GO PHASE 5" of the Create Studio design audit - "USE REAL HOOLA CREATED VIDEOS AND IMAGES HERE FOR PRESENTATION"). The drawn placeholders  # Previous: v0.378.0 MOBILE CARD (+ v0.375-v0.377 SAB DAS DESK, PROOF, DEKH KE REVIEW). Before: v0.374.0 TPM KE HISAAB (+ v0.369-v0.373 GAME DESK, TPM DESK, POOCHH LO, CODE MODE). Before: v0.367.0 CRM DESK (crm_arch desk, 12 parts, 100% Salesforce read and write).
 
 
 def _quiet_http_logs() -> None:
@@ -5049,6 +5049,13 @@ from .dpo.api import make_router as _dpo_router  # noqa: E402
 for _mk in (_vakil_router, _legalres_router, _compliance_router, _contracts_router, _cosec_router, _notary_router, _pidesk_router, _dpo_router):
     app.include_router(_mk(require_key, current_tenant))
 
+# v0.381 Shiksha suite Phase 0 + 1: education foundation + Pathyakram (curriculum & exam designer), key-protected
+from .shiksha.api import make_router as _shiksha_router  # noqa: E402
+from .pathyakram.api import make_router as _pathyakram_router  # noqa: E402
+
+for _mk in (_shiksha_router, _pathyakram_router):
+    app.include_router(_mk(require_key, current_tenant))
+
 # v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (under /api/<mod>/*, key-protected; homestay's router also holds
 # the public calendar feed /api/homestay-ical/{tenant}/{token}.ics, which checks its own random token)
 from .frontoffice.api import make_router as _frontoffice_router  # noqa: E402
@@ -6854,7 +6861,7 @@ async def social_facebook_callback(request: Request):
 
 @app.get("/api/social/linkedin/callback")
 async def social_linkedin_callback(request: Request):
-    """v0.379 LinkedIn sends her back here (this exact URL is saved in Hoola's LinkedIn app as an authorized redirect)."""
+    """v0.384 LinkedIn sends her back here (this exact URL is saved in Hoola's LinkedIn app as an authorized redirect)."""
     from .social import desk as social
     from .social import linkedin
     q = request.query_params
@@ -6869,7 +6876,7 @@ async def social_linkedin_callback(request: Request):
 
 @app.get("/api/social/whatsapp/start", response_class=HTMLResponse)
 def social_whatsapp_start(s: str = ""):
-    """v0.379 Hoola's page that opens Meta's WhatsApp Embedded Signup (Meta's JS SDK must run on Hoola's own domain)."""
+    """v0.384 Hoola's page that opens Meta's WhatsApp Embedded Signup (Meta's JS SDK must run on Hoola's own domain)."""
     from .db import MailLinkState, session as _sess
     from .social import wabiz
     with _sess() as ss:
@@ -6888,7 +6895,7 @@ def social_whatsapp_js():
 
 @app.post("/api/social/whatsapp/finish")
 async def social_whatsapp_finish(body: dict):
-    """v0.379 the Embedded Signup page hands over Meta's one-time code + her WABA / number ids. The one-time state is the
+    """v0.384 the Embedded Signup page hands over Meta's one-time code + her WABA / number ids. The one-time state is the
     proof it is her (it was made by her Connect tap, 30 minutes, single use)."""
     from .social import desk as social
     from .social import wabiz
@@ -7028,7 +7035,7 @@ def social_settings(body: dict, tenant: str = Depends(current_tenant)):
 
 @app.post("/api/social/growth/watch", dependencies=[Depends(require_key)])
 def social_growth_watch(body: dict, tenant: str = Depends(current_tenant)):
-    """v0.378 the hashtags (<= 5) and competitor usernames (<= 5) she watches."""
+    """v0.383 the hashtags (<= 5) and competitor usernames (<= 5) she watches."""
     from .social import growth
     b = body or {}
     return _social_call(growth.set_watch, tenant, hashtags=b.get("hashtags") if isinstance(b.get("hashtags"), list) else None,
@@ -7037,7 +7044,7 @@ def social_growth_watch(body: dict, tenant: str = Depends(current_tenant)):
 
 @app.post("/api/social/ugc/{uid}/{action}", dependencies=[Depends(require_key)])
 async def social_ugc_action(uid: str, action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
-    """v0.378 a customer's post that tags her: ask (a polite comment from her account) | permission {granted, proof} |
+    """v0.383 a customer's post that tags her: ask (a polite comment from her account) | permission {granted, proof} |
     repost (credited calendar draft, only after a recorded yes) | ignore."""
     from .social import growth
     b = body or {}
@@ -7054,7 +7061,7 @@ async def social_ugc_action(uid: str, action: str, body: dict | None = None, ten
 
 @app.post("/api/social/creator/check", dependencies=[Depends(require_key)])
 async def social_creator_check(body: dict, tenant: str = Depends(current_tenant)):
-    """v0.378 a creator / business handle's public numbers + fake-follower signals (+ the ASCI #ad check of a caption)."""
+    """v0.383 a creator / business handle's public numbers + fake-follower signals (+ the ASCI #ad check of a caption)."""
     from .social import growth
     b = body or {}
     return await asyncio.to_thread(_social_call, growth.creator_check, tenant, str(b.get("username") or ""), str(b.get("caption") or ""))
@@ -9225,6 +9232,10 @@ async def apps_act(ref: str, action: str, body: dict | None = None, tenant: str 
         from .appmaker.android import service as AN
         only = [str(x) for x in body.get("redo") or [] if isinstance(x, str)][:60] if isinstance(body.get("redo"), list) else None
         return await asyncio.to_thread(_appd, AN.build, tenant, ref, conv, only)
+    if action == "bhasha":                    # v0.347 the languages her app carries (from the next build)
+        from .appmaker import i18n as I18
+        langs = body.get("langs") if isinstance(body.get("langs"), list) else []
+        return await asyncio.to_thread(_appd, I18.set_langs, tenant, ref, [str(x) for x in langs])
     if action == "match":                     # v0.343 design se milao: scores, Opus differences, fix = rebuild those screens
         from .appmaker import match as MT
         return await asyncio.to_thread(_appd, MT.check, tenant, ref, str(body.get("platform") or "android"), bool(body.get("fix")), conv)
@@ -9436,13 +9447,212 @@ async def app_api_delete_me(app_key: str, request: Request):
 
 @app.get("/api/app-api/{app_key}/c/{coll}")
 async def app_api_rows(app_key: str, coll: str, request: Request, q: str = "", status: str = "", limit: int = 200,
-                       offset: int = 0):
-    """v0.319 + q (search any field), status filter, limit / offset paging."""
+                       offset: int = 0, mine: int = 0):
+    """v0.319 + q (search any field), status filter, limit / offset paging; v0.352 mine=1 = only the rows given to me."""
     from .appmaker import backend as BE
 
     def go():
         r, w = _be_app(app_key, request)
-        return {"rows": BE.rows(r, coll, w, limit, q, status, offset)}
+        return {"rows": BE.rows(r, coll, w, limit, q, status, offset, bool(mine))}
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/team")
+async def app_api_team(app_key: str, request: Request):
+    """v0.352 KAAM BAANTO: the staff names for the assign buttons (staff only, no e-mails) + each one's open work."""
+    from .appmaker import backend as BE
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.team(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/c/{coll}/{row_id}/rate")
+async def app_api_rate(app_key: str, coll: str, row_id: str, request: Request):
+    """v0.353 RAAY: the customer rates her own finished row once {"stars": 1-5, "note": "..."}."""
+    from .appmaker import backend as BE
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.rate(r, coll, row_id, body.get("stars"), str(body.get("note") or ""), w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/push-token")
+async def app_api_push_token(app_key: str, request: Request):
+    """v0.367 TURANT: this phone's Firebase push token for the signed-in account (instant notifications)."""
+    from .appmaker import turant as TU
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return TU.register(r, w, str(body.get("token") or ""), str(body.get("platform") or "android"))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/chat")
+async def app_api_chat(app_key: str, request: Request, all: int = 0):
+    """v0.378 BAAT: her own thread with the shop; all=1 (staff) = every customer thread with unread counts."""
+    from .appmaker import baat as BT
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BT.threads(r, w) if all else BT.mine(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/chat")
+async def app_api_chat_write(app_key: str, request: Request):
+    """v0.378 a customer's message to the shop {text, order?}."""
+    from .appmaker import baat as BT
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BT.write(r, w, str(body.get("text") or ""), str(body.get("order") or ""))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/chat/{member}")
+async def app_api_chat_thread(app_key: str, member: str, request: Request):
+    """v0.378 staff: one customer's thread (marks her messages read)."""
+    from .appmaker import baat as BT
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BT.thread(r, w, member)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/chat/{member}")
+async def app_api_chat_reply(app_key: str, member: str, request: Request):
+    """v0.378 staff reply {text}."""
+    from .appmaker import baat as BT
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BT.reply(r, w, member, str(body.get("text") or ""))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/khata")
+async def app_api_khata(app_key: str, request: Request, all: int = 0):
+    """v0.359 KHATA: her own udhaar balance + entries; all=1 (staff) = every customer who owes."""
+    from .appmaker import khata as KH
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return KH.dues(r, w) if all else KH.mine(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/khata/{member}")
+async def app_api_khata_one(app_key: str, member: str, request: Request):
+    """v0.359 staff: one customer's khata."""
+    from .appmaker import khata as KH
+    from .site import webapp as W
+
+    def go():
+        r, w = _be_app(app_key, request)
+        if not w.staff:
+            raise W.AppError("Yeh sirf staff ke liye hai.", 403)
+        return KH.summary(r, member)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/khata/{member}/pay")
+async def app_api_khata_pay(app_key: str, member: str, request: Request):
+    """v0.359 staff: the customer paid {amount, mode cash|upi|card|bank|other, note} (recorded only)."""
+    from .appmaker import khata as KH
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return KH.payment(r, member, body.get("amount"), str(body.get("mode") or "cash"), str(body.get("note") or ""), w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/c/{coll}/{row_id}/slot")
+async def app_api_change_slot(app_key: str, coll: str, row_id: str, request: Request):
+    """v0.377 CHHUTTI: move an order to another free slot {slot} (her customer before the cut-off, staff any time)."""
+    from .appmaker import delivery as DL
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return DL.change_slot(r, coll, row_id, str(body.get("slot") or ""), w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/slots")
+async def app_api_slots(app_key: str, request: Request):
+    """v0.371 SLOT: the delivery slots with room (today + the days ahead), for the cart."""
+    from .appmaker import delivery as DL
+
+    def go():
+        r, _w = _be_app(app_key, request)
+        return DL.available(r)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/coupon")
+async def app_api_coupon(app_key: str, request: Request):
+    """v0.358 COUPON: the cart's check {code, cart} -> {ok, discount, total, why} (nothing counted; the order applies it again)."""
+    from .appmaker import backend as BE
+    from .appmaker import coupon as CP
+    from .site import webapp as W
+    body, ip = await _json_body(request), _ip(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        W.rate(f"cp|{BE.bid(r)}|{w.id or ip}", 30, 600)
+        return CP.check(r, str(body.get("code") or ""), body.get("cart"), w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/c/{coll}/{row_id}/receipt-link")
+async def app_api_receipt_link(app_key: str, coll: str, row_id: str, request: Request):
+    """v0.354 RASEED: a 15-minute signed address of the receipt PDF (the app opens it in the phone's browser)."""
+    from .appmaker import receipt as RC
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return RC.link(r, coll, row_id, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/receipt/{coll}/{row_id}")
+async def app_api_receipt(app_key: str, coll: str, row_id: str, e: str = "", s: str = ""):
+    """v0.354 the receipt PDF behind a signed link (no login in the browser; the signature is bound to app + list + row)."""
+    from .appmaker import backend as BE
+    from .appmaker import receipt as RC
+    from .site import webapp as W
+
+    def go():
+        r = BE.by_key(app_key)
+        data = RC.by_link(r, coll, row_id, e, s)
+        return data, RC.filename(r, RC._load(r, coll, row_id)[1])
+    try:
+        data, name = await asyncio.to_thread(go)
+    except W.AppError as er:
+        return JSONResponse({"ok": False, "error": str(er)}, status_code=er.code)
+    return Response(data, media_type="application/pdf", headers={
+        "Content-Disposition": f'inline; filename="{name}"', "Cache-Control": "private, no-store",
+        "Content-Security-Policy": "sandbox", "X-Content-Type-Options": "nosniff"})
+
+
+@app.post("/api/app-api/{app_key}/c/{coll}/{row_id}/assign")
+async def app_api_assign(app_key: str, coll: str, row_id: str, request: Request):
+    """v0.352 give a row to a staff member {"to": member id}, take it {"to": "me"}, give it back {"to": ""}."""
+    from .appmaker import backend as BE
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.assign(r, coll, row_id, str(body.get("to") or ""), w)
     return await asyncio.to_thread(_be_call, go)
 
 
@@ -9468,6 +9678,10 @@ async def app_api_file(app_key: str, fid: str, request: Request):
         f = await asyncio.to_thread(BE.file_for, r, fid, w)
     except W.AppError:
         raise HTTPException(404, "not found")
+    if str(f).endswith(".pdf"):                  # v0.346 a PDF is only ever a download, never opened in a page
+        return FileResponse(f, media_type="application/pdf", filename=f"{fid}.pdf",
+                            headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff",
+                                     "Content-Security-Policy": "sandbox", "Content-Disposition": f'attachment; filename="{fid}.pdf"'})
     return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400",
                                                              "X-Content-Type-Options": "nosniff"})
 
@@ -9572,6 +9786,60 @@ async def app_api_paid(app_key: str, coll: str, row_id: str, request: Request):
     return await asyncio.to_thread(_be_call, go)
 
 
+# ---- v0.382 DIMAAG (App Phases 43-46): the app's logic engine - approvals inbox, a row's linked children, callable functions
+@app.get("/api/app-api/{app_key}/approvals")
+async def app_api_approvals(app_key: str, request: Request, all: int = 0):
+    """Approvals this person can decide (+ the ones they asked for); staff with all=1 see the history too."""
+    from .appmaker.logic import engine as LE
+
+    def go():
+        r, w = _be_app(app_key, request)
+        if w.m is None:
+            from .site import webapp as W
+            raise W.AppError("Pehle login kijiye.", 401)
+        return {"approvals": LE.approvals(r, w, bool(all))}
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/approvals/{appr_id}")
+async def app_api_decide(app_key: str, appr_id: str, request: Request):
+    """{decision: approve|reject, note}: one step of the chain; the maker can never approve their own ask."""
+    from .appmaker.logic import engine as LE
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        if w.m is None:
+            from .site import webapp as W
+            raise W.AppError("Pehle login kijiye.", 401)
+        return LE.decide(r, appr_id, str(body.get("decision") or ""), str(body.get("note") or ""), w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/c/{coll}/{row_id}/related/{rel}")
+async def app_api_related(app_key: str, coll: str, row_id: str, rel: str, request: Request):
+    """A row's linked children (an order's lines, a class's students) that this person may read."""
+    from .appmaker.logic import engine as LE
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return LE.related(r, coll, row_id, rel, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/fn/{name}")
+async def app_api_fn(app_key: str, name: str, request: Request):
+    """A custom function she marked callable (price / EMI calculator): runs in the locked interpreter, reads no data."""
+    from .appmaker.logic import engine as LE
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        args = body.get("args") if isinstance(body.get("args"), list) else []
+        return LE.call_public(r, name, args, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
 @app.post("/api/app-api/{app_key}/c/{coll}")
 async def app_api_create(app_key: str, coll: str, request: Request):
     from .appmaker import backend as BE
@@ -9659,6 +9927,318 @@ async def apps_data_update(ref: str, coll: str, row_id: str, body: dict, tenant:
     return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_update(_be_owner(tenant, ref), coll, row_id, body))
 
 
+@app.post("/api/apps/{ref}/data/{coll}/{row_id}/credit-note", dependencies=[Depends(require_key)])
+async def apps_credit_note(ref: str, coll: str, row_id: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """v0.356 WAPSI: her credit note for an invoiced row (a return / a wrong bill), full value, with her reason."""
+    from .appmaker import gst as G
+    return await asyncio.to_thread(_be_owner_call, lambda: G.credit(_be_owner(tenant, ref), coll, row_id,
+                                                                    str((body or {}).get("reason") or "")))
+
+
+@app.get("/api/apps/{ref}/turant", dependencies=[Depends(require_key)])
+async def apps_turant(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.367 TURANT: instant notifications for this app's Android phones (on / off, phones registered)."""
+    from .appmaker import turant as TU
+    return await asyncio.to_thread(_be_owner_call, lambda: TU.view(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/turant/ios", dependencies=[Depends(require_key)])
+async def apps_turant_ios(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.368 her Apple push key {key_id, team_id, p8} (sealed, never returned) or {clear: true}."""
+    from .appmaker import turant as TU
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: TU.clear_ios_key(_be_owner(tenant, ref)) if b.get("clear")
+                                   else TU.set_ios_key(_be_owner(tenant, ref), str(b.get("key_id") or ""), str(b.get("team_id") or ""),
+                                                       str(b.get("p8") or "")))
+
+
+@app.put("/api/apps/{ref}/turant", dependencies=[Depends(require_key)])
+async def apps_turant_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.367 her tap: {on: true} registers the app in Hoola's Firebase project (next build carries it); {on: false} = off."""
+    from .appmaker import turant as TU
+    return await asyncio.to_thread(_be_owner_call, lambda: TU.enable(_be_owner(tenant, ref)) if (body or {}).get("on")
+                                   else TU.disable(_be_owner(tenant, ref)))
+
+
+# ---- v0.382 DIMAAG: her side of the app's logic (Opus drafts, the checker proves, HER tap applies)
+@app.get("/api/apps/{ref}/logic", dependencies=[Depends(require_key)])
+async def apps_logic(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker.logic import service as LS
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.view(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/logic/draft", dependencies=[Depends(require_key)])
+async def apps_logic_draft(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """{words}: Opus writes the logic for this app's real lists; checked; kept as a DRAFT (her live app unchanged)."""
+    from .appmaker.logic import service as LS
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.draft(_be_owner(tenant, ref), str((body or {}).get("words") or "")))
+
+
+@app.delete("/api/apps/{ref}/logic/draft", dependencies=[Depends(require_key)])
+async def apps_logic_discard(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker.logic import service as LS
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.discard(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/logic/apply", dependencies=[Depends(require_key)])
+async def apps_logic_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: {hash} = the exact draft she saw goes live (new lists / fields first, then the logic, then a recompute)."""
+    from .appmaker.logic import service as LS
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.apply(_be_owner(tenant, ref), str((body or {}).get("hash") or "")))
+
+
+@app.put("/api/apps/{ref}/logic", dependencies=[Depends(require_key)])
+async def apps_logic_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """The console editor {logic, lists, fields}: the same checker; saved + applied only when it has zero errors."""
+    from .appmaker.logic import service as LS
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.save(_be_owner(tenant, ref), b.get("logic") or {}, b.get("lists"), b.get("fields")))
+
+
+@app.post("/api/apps/{ref}/logic/switch", dependencies=[Depends(require_key)])
+async def apps_logic_switch(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker.logic import service as LS
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.switch(_be_owner(tenant, ref), bool((body or {}).get("on"))))
+
+
+@app.post("/api/apps/{ref}/logic/test", dependencies=[Depends(require_key)])
+async def apps_logic_test(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Try a formula {coll, expr, row} on a real row - nothing saved."""
+    from .appmaker.logic import service as LS
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.test(_be_owner(tenant, ref), str(b.get("coll") or ""),
+                                                                   str(b.get("expr") or ""), str(b.get("row") or "")))
+
+
+@app.post("/api/apps/{ref}/logic/run/{name}", dependencies=[Depends(require_key)])
+async def apps_logic_run(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    """Run one scheduled job now (her button)."""
+    from .appmaker.logic import engine as LE
+    return await asyncio.to_thread(_be_owner_call, lambda: LE.run_schedule(_be_owner(tenant, ref), name, force=True))
+
+
+@app.get("/api/apps/{ref}/logic/audit", dependencies=[Depends(require_key)])
+async def apps_logic_audit(ref: str, row: str = "", limit: int = 100, tenant: str = Depends(current_tenant)):
+    from .appmaker.logic import engine as LE
+    return await asyncio.to_thread(_be_owner_call, lambda: {"audit": LE.audit_list(_be_owner(tenant, ref), limit, row)})
+
+
+@app.get("/api/apps/{ref}/approvals", dependencies=[Depends(require_key)])
+async def apps_approvals(ref: str, all: int = 0, tenant: str = Depends(current_tenant)):
+    from .appmaker.logic import engine as LE
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: {"approvals": LE.approvals(_be_owner(tenant, ref), W.Who(owner=True), bool(all))})
+
+
+@app.post("/api/apps/{ref}/approvals/{appr_id}", dependencies=[Depends(require_key)])
+async def apps_decide(ref: str, appr_id: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her decision on an approval step {decision: approve|reject, note} (the owner may decide any step)."""
+    from .appmaker.logic import engine as LE
+    from .site import webapp as W
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: LE.decide(_be_owner(tenant, ref), appr_id, str(b.get("decision") or ""),
+                                                                     str(b.get("note") or ""), W.Who(owner=True)))
+
+
+@app.get("/api/apps/{ref}/variants", dependencies=[Depends(require_key)])
+async def apps_variants(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.362 VARIANTS: each product's sizes (name + own price)."""
+    from .appmaker import variants as VR
+    return await asyncio.to_thread(_be_owner_call, lambda: VR.view(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/variants", dependencies=[Depends(require_key)])
+async def apps_variants_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.362 one product's sizes {product: id or name, variants: [{name, price}]} ([] removes them)."""
+    from .appmaker import variants as VR
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: VR.save(_be_owner(tenant, ref), str(b.get("product") or ""), b.get("variants")))
+
+
+@app.get("/api/apps/{ref}/hisaab", dependencies=[Depends(require_key)])
+async def apps_hisaab(ref: str, month: str = "", download: int = 0, tenant: str = Depends(current_tenant)):
+    """v0.361 HISAAB: the month's summary (download=1: ZIP of CSVs - sales, invoices, credit notes, HSN, rates, khata)."""
+    from .appmaker import hisaab as HS
+
+    def go():
+        r = _be_owner(tenant, ref)
+        if download:
+            return HS.zip_bytes(r, month)
+        rep = HS.build(r, month)
+        return {k: rep[k] for k in ("month", "summary", "say", "counts")}
+    out = await asyncio.to_thread(_be_owner_call, go)
+    if not download:
+        return out
+    data, name, _rep = out
+    return Response(data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{name}"',
+                                                                 "Cache-Control": "private, no-store"})
+
+
+@app.get("/api/apps/{ref}/tally", dependencies=[Depends(require_key)])
+async def apps_tally(ref: str, month: str = "", tenant: str = Depends(current_tenant)):
+    """v0.374 TALLY EXPORT: the month's invoices + credit notes as Tally XML vouchers (Import > Vouchers in her Tally)."""
+    from .appmaker import tally as TL
+    data, name, _n = await asyncio.to_thread(_be_owner_call, lambda: TL.file_bytes(_be_owner(tenant, ref), month))
+    return Response(data, media_type="application/xml", headers={"Content-Disposition": f'attachment; filename="{name}"',
+                                                                 "Cache-Control": "private, no-store"})
+
+
+@app.put("/api/apps/{ref}/tally", dependencies=[Depends(require_key)])
+async def apps_tally_names(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.374 her Tally ledger names {party, sales, cgst, sgst, igst, round}."""
+    from .appmaker import tally as TL
+    return await asyncio.to_thread(_be_owner_call, lambda: TL.set_names(_be_owner(tenant, ref), body))
+
+
+@app.get("/api/apps/{ref}/gstr1", dependencies=[Depends(require_key)])
+async def apps_gstr1(ref: str, month: str = "", tenant: str = Depends(current_tenant)):
+    """v0.373 GSTR-1 FILE: the month's GSTR-1 JSON (GST offline tool shape) from her invoices + credit notes. Nothing is filed."""
+    from .appmaker import gstr1 as GR
+    data, name = await asyncio.to_thread(_be_owner_call, lambda: GR.file_bytes(_be_owner(tenant, ref), month))
+    return Response(data, media_type="application/json", headers={"Content-Disposition": f'attachment; filename="{name}"',
+                                                                  "Cache-Control": "private, no-store"})
+
+
+@app.get("/api/apps/{ref}/delivery", dependencies=[Depends(require_key)])
+async def apps_delivery(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.360 DELIVERY: fee, free above, PIN codes, opening hours."""
+    from .appmaker import delivery as DL
+    return await asyncio.to_thread(_be_owner_call, lambda: DL.view(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/delivery", dependencies=[Depends(require_key)])
+async def apps_delivery_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.360 set them ({off: true} = no delivery rules); v0.371 {slots: [{label, start, end, cap}], days, cutoff} = time slots."""
+    from .appmaker import delivery as DL
+    b = body or {}
+    if "holidays" in b:                                  # v0.377 her holidays
+        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_holidays(_be_owner(tenant, ref), b.get("holidays")))
+    if "slots" in b:
+        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_slots(_be_owner(tenant, ref), b.get("slots"), b.get("days"), b.get("cutoff")))
+    return await asyncio.to_thread(_be_owner_call, lambda: DL.save(_be_owner(tenant, ref), body))
+
+
+@app.get("/api/apps/{ref}/chat", dependencies=[Depends(require_key)])
+async def apps_chat(ref: str, member: str = "", tenant: str = Depends(current_tenant)):
+    """v0.378 BAAT: her customers' threads (member= one thread)."""
+    from .appmaker import baat as BT
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: BT.thread(_be_owner(tenant, ref), W.Who(owner=True), member) if member
+                                   else BT.threads(_be_owner(tenant, ref), W.Who(owner=True)))
+
+
+@app.post("/api/apps/{ref}/chat/{member}", dependencies=[Depends(require_key)])
+async def apps_chat_reply(ref: str, member: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.378 her reply to a customer - only from her own tap {text, her_tap: true}."""
+    from .appmaker import baat as BT
+    from .site import webapp as W
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: BT.reply(_be_owner(tenant, ref), W.Who(owner=True), member,
+                                                                    str(b.get("text") or ""), bool(b.get("her_tap"))))
+
+
+@app.get("/api/apps/{ref}/khata", dependencies=[Depends(require_key)])
+async def apps_khata(ref: str, member: str = "", tenant: str = Depends(current_tenant)):
+    """v0.359 KHATA: who owes how much (member= one customer's entries)."""
+    from .appmaker import khata as KH
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: KH.summary(_be_owner(tenant, ref), member) if member
+                                   else KH.dues(_be_owner(tenant, ref), W.Who(owner=True)))
+
+
+@app.get("/api/apps/{ref}/khata-yaad", dependencies=[Depends(require_key)])
+async def apps_khata_yaad(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.375 KHATA YAAD: customers who owe + the ready reminder (wa.me link for her own phone, template allowed or not)."""
+    from .appmaker import khata as KH
+    return await asyncio.to_thread(_be_owner_call, lambda: KH.reminders(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/khata-yaad/{member}", dependencies=[Depends(require_key)])
+async def apps_khata_yaad_send(ref: str, member: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.375 her tap: the reminder through her WhatsApp Business number with her approved UTILITY template {template, her_tap}."""
+    from .appmaker import khata as KH
+    from .site import webapp as W
+    b = body or {}
+    r = await asyncio.to_thread(_be_owner_call, lambda: _be_owner(tenant, ref))
+    try:
+        return await KH.send_reminder(r, member, str(b.get("template") or ""), bool(b.get("her_tap")))
+    except W.AppError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.post("/api/apps/{ref}/khata/{member}/pay", dependencies=[Depends(require_key)])
+async def apps_khata_pay(ref: str, member: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.359 she records a customer's payment (cash / UPI ...; money never moves here)."""
+    from .appmaker import khata as KH
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: KH.payment(_be_owner(tenant, ref), member, (body or {}).get("amount"),
+                                                                      str((body or {}).get("mode") or "cash"),
+                                                                      str((body or {}).get("note") or ""), W.Who(owner=True)))
+
+
+@app.get("/api/apps/{ref}/coupons", dependencies=[Depends(require_key)])
+async def apps_coupons(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.358 COUPON: her discount codes (uses, customers, live or not)."""
+    from .appmaker import coupon as CP
+    return await asyncio.to_thread(_be_owner_call, lambda: CP.view(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/coupons", dependencies=[Depends(require_key)])
+async def apps_coupons_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.358 make / change / delete one code."""
+    from .appmaker import coupon as CP
+    return await asyncio.to_thread(_be_owner_call, lambda: CP.save(_be_owner(tenant, ref), body))
+
+
+@app.get("/api/apps/{ref}/stock", dependencies=[Depends(require_key)])
+async def apps_stock(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.357 STOCK: each product's stock + warning level (blank = unlimited)."""
+    from .appmaker import stock as SK
+    return await asyncio.to_thread(_be_owner_call, lambda: SK.view(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/stock", dependencies=[Depends(require_key)])
+async def apps_stock_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.357 set stock {items: {product id: {qty: n | null, low: n}}}."""
+    from .appmaker import stock as SK
+    return await asyncio.to_thread(_be_owner_call, lambda: SK.set_items(_be_owner(tenant, ref), (body or {}).get("items") or {}))
+
+
+@app.get("/api/apps/{ref}/gst", dependencies=[Depends(require_key)])
+async def apps_gst(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.355 GST BILL: her GST details for this app (GSTIN, legal name, default rate / HSN, per-product HSN + rate)."""
+    from .appmaker import gst as G
+    return await asyncio.to_thread(_be_owner_call, lambda: G.view(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/gst", dependencies=[Depends(require_key)])
+async def apps_gst_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.355 set them; gstin "" = plain receipts again (issued invoice numbers are kept)."""
+    from .appmaker import gst as G
+    return await asyncio.to_thread(_be_owner_call, lambda: G.set_settings(_be_owner(tenant, ref), body))
+
+
+@app.get("/api/apps/{ref}/data/{coll}/{row_id}/receipt", dependencies=[Depends(require_key)])
+async def apps_data_receipt(ref: str, coll: str, row_id: str, doc: str = "", tenant: str = Depends(current_tenant)):
+    """v0.354 RASEED: her copy of a finished row's receipt PDF (v0.356 doc=invoice: the original invoice behind a credit note)."""
+    from .appmaker import receipt as RC
+
+    def go():
+        r = _be_owner(tenant, ref)
+        doc_ = "invoice" if doc == "invoice" else ""
+        data = RC.for_owner(r, coll, row_id, doc_)
+        row = RC._load(r, coll, row_id)[1]
+        name = RC.filename(r, row)
+        if doc_ and name.startswith("credit-note-"):
+            inv = RC.BE._j(row.data, {}).get("_inv_no", "")
+            name = f"invoice-{inv.replace('/', '-')}.pdf"
+        return data, name
+    data, name = await asyncio.to_thread(_be_owner_call, go)
+    return Response(data, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "private, no-store",
+        "Content-Security-Policy": "sandbox", "X-Content-Type-Options": "nosniff"})
+
+
 @app.get("/api/apps/{ref}/files/{fid}", dependencies=[Depends(require_key)])
 async def apps_data_file(ref: str, fid: str, tenant: str = Depends(current_tenant)):
     """v0.319 a photo her app's users sent (for her data view)."""
@@ -9671,6 +10251,10 @@ async def apps_data_file(ref: str, fid: str, tenant: str = Depends(current_tenan
         raise HTTPException(404, "not found")
     except Exception:
         raise HTTPException(404, "not found")
+    if str(f).endswith(".pdf"):                  # v0.346
+        return FileResponse(f, media_type="application/pdf", filename=f"{fid}.pdf",
+                            headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff",
+                                     "Content-Security-Policy": "sandbox", "Content-Disposition": f'attachment; filename="{fid}.pdf"'})
     return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 
@@ -9697,6 +10281,9 @@ async def apps_store_act(ref: str, what: str, body: dict | None = None, tenant: 
     if what == "listing":
         return await asyncio.to_thread(_appd, ST.listing, tenant, ref, bool(body.get("regen")),
                                        body.get("edit") if isinstance(body.get("edit"), dict) else None)
+    if what == "listing_lang":                   # v0.372 her own words for one language's listing
+        return await asyncio.to_thread(_appd, ST.listing_lang, tenant, ref, str(body.get("lang") or ""),
+                                       body.get("values") if isinstance(body.get("values"), dict) else {})
     if what == "build":
         return await asyncio.to_thread(_appd, ST.build_bundle, tenant, ref)
     if what == "publish":
@@ -9713,6 +10300,13 @@ def _code(fn, *a, **k):
         raise HTTPException(400, str(e))
     except KeyError as e:
         raise HTTPException(404, f"not found: {e}")
+
+
+@app.get("/api/apps/{ref}/bhasha", dependencies=[Depends(require_key)])
+async def apps_bhasha(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.347 the app's languages, the ones it can carry, how many words, translated share per language."""
+    from .appmaker import i18n as I18
+    return await asyncio.to_thread(_appd, I18.get, tenant, ref)
 
 
 @app.get("/api/apps/{ref}/match", dependencies=[Depends(require_key)])

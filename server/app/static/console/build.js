@@ -291,7 +291,7 @@ window.HoolaBuild = function (C) {
     const fr = studio.querySelector('[data-pane=frames]'), ot = studio.querySelector('[data-pane=other]');
     const framed = (o.type === 'site' && o.tab === 'preview') || (o.type === 'app' && o.tab === 'prototype');
     fr.hidden = !framed; ot.hidden = framed;
-    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'shop') loadShop(o, ot); if (o.tab === 'dash') loadDash(o, ot); if (o.tab === 'blog') loadBlog(o, ot); if (o.tab === 'code') loadCodeMode(o, ot); if (o.tab === 'langs') loadLangs(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); } }
+    if (framed) frames(o, fr); else { ot.innerHTML = pane(o); hydrate(ot); qr(ot); if (o.tab === 'data') loadData(o, ot); if (o.tab === 'shop') loadShop(o, ot); if (o.tab === 'dash') loadDash(o, ot); if (o.tab === 'blog') loadBlog(o, ot); if (o.tab === 'code') loadCodeMode(o, ot); if (o.tab === 'langs') loadLangs(o, ot); if (o.tab === 'android' && o.type === 'app') { loadStore(o, ot); loadIos(o, ot); loadAppStore(o, ot); loadCode(o, ot); loadMatch(o, ot); loadBhasha(o, ot); } }
     showBtn();
   }
 
@@ -478,6 +478,7 @@ window.HoolaBuild = function (C) {
       <div class="bln">${p.cold_ms != null ? `<span class="tag ${tag('cold_ms')}">Cold start ${N(p.cold_ms)} ms</span> ` : ''}${p.jank_pct != null ? `<span class="tag ${tag('jank_pct')}">Janky frames ${esc(S(p.jank_pct))}%</span> ` : ''}${p.apk_mb != null ? `<span class="tag ${tag('apk_mb')}">APK ${esc(S(p.apk_mb))} MB</span> ` : ''}<span class="tag ${N(q.a11y_count) ? 'warn' : 'ok'}">${N(q.a11y_count)} accessibility findings</span></div>
       ${L(q.crashed).length ? `<div class="badc bln">Crashed: ${esc(L(q.crashed).join(', '))} (shipped as the simple version)</div>` : ''}
       ${L(q.a11y).slice(0, 6).map(f => `<div class="bln faint">${esc(S(f.screen))}: ${esc(S(f.text))}</div>`).join('')}
+      ${M(q.flows).tapped ? `<div class="bln">${esc(S(M(q.flows).tapped))} buttons tapped: ${L(M(q.flows).crashed).length} crashed, ${L(M(q.flows).dead).length} did nothing${L(M(q.flows).dead).slice(0, 4).map(d => `<div class="faint">• ${esc(S(d.screen))}: "${esc(S(d.label))}" did nothing</div>`).join('')}</div>` : ''}
       ${L(q.shots).length ? `<div class="blooks">${L(q.shots).slice(0, 12).map(sh => `<figure>${pic(`${base(o)}/android/qa/${encodeURIComponent(sh)}`, sh)}<figcaption>${esc(sh)}</figcaption></figure>`).join('')}</div>` : ''}</section>`;
   }
 
@@ -570,6 +571,20 @@ window.HoolaBuild = function (C) {
     if (busy) setTimeout(() => { if (document.body.contains(box)) loadAppStore(o, root); }, 10000);
   }
 
+  /* v0.347 BHASHA: the languages her app carries (customers pick on My account), from the next build */
+  async function loadBhasha(o, root) {
+    const box = root.querySelector('.stbhasha'); if (!box) return;
+    let v; try { v = await api('GET', base(o) + '/bhasha'); } catch (er) { return; }
+    const on = new Set(L(v.langs)), cov = M(v.coverage);
+    box.innerHTML = `<section class="bbox"><h4>App languages${v.words ? ' · ' + esc(S(v.words)) + ' words' : ''}</h4>
+      <div class="bln faint">Customers pick the language on My account; the app starts in the first one. Her data (product names, prices) is never translated. Up to 6.</div>
+      <div class="bln">${Object.entries(M(v.all)).map(([k, n]) => `<label style="margin-right:12px"><input type="checkbox" data-bh="${esc(k)}" ${on.has(k) ? 'checked' : ''}> ${esc(S(n))}${cov[k] != null ? ' (' + esc(S(cov[k])) + '%)' : ''}</label>`).join('')}</div>
+      <div class="acts"><button class="btn soft" type="button" data-bhs="1">Save languages</button></div></section>`;
+    box.onclick = async e => { if (!e.target.closest('button[data-bhs]')) return;
+      const langs = [...box.querySelectorAll('[data-bh]')].filter(x => x.checked).map(x => x.dataset.bh);
+      try { await api('POST', base(o) + '/bhasha', {langs}); toast('Saved: from the next build.'); loadBhasha(o, root); } catch (er) { toast(er.message, true); } };
+  }
+
   /* v0.343 DESIGN SE MILAAN: each real screen beside her approved design, 0-100, Opus's differences, rebuild on her confirm */
   async function loadMatch(o, root, plat) {
     const box = root.querySelector('.stmatch'); if (!box) return;
@@ -632,7 +647,7 @@ window.HoolaBuild = function (C) {
     const apk = M(a.apk), dl = publicLink(a.apk_url), zip = publicLink(a.zip_url), redo = L(a.screens).filter(x => x.state === 'code').map(x => x.id);
     return `<ol class="bpipe">${pipe}</ol>
       ${s === 'failed' && a.error ? `<div class="badc bln">${esc(a.error)}</div>` : ''}${a.note ? `<div class="muted bln">${esc(a.note)}</div>` : ''}
-      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div><div class="stios"></div><div class="stappstore"></div><div class="stmatch"></div><div class="stcode"></div>
+      ${qaBox(o)}${historyBox(o)}<div class="ststore"></div><div class="stios"></div><div class="stappstore"></div><div class="stbhasha"></div><div class="stmatch"></div><div class="stcode"></div>
       <div class="bcols"><section class="bbox"><h4>Screens in Kotlin</h4>${L(a.screens).map(x => { const [t, c] = TILE[x.state] || TILE.todo;
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
           ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>
@@ -718,26 +733,315 @@ window.HoolaBuild = function (C) {
     box.innerHTML = `<p class="stnote">${info.live ? 'People using your app order / book here; every new entry also reaches your chat.' : 'Real orders and bookings appear here once the Android app is built.'}</p>
       <p class="stnote">${N(counts.members)} accounts · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>`;
     const cbox = box.querySelector('.stcols');
+    let staff = [];                // v0.352 KAAM BAANTO: her staff accounts for "With" on every row
+    try { staff = L((await api('GET', base(o) + '/members')).members).filter(m => ['staff', 'admin'].includes(S(m.role))); } catch (er) { /* none */ }
+    const withCell = r => staff.length ? `<td><select data-f="assign" aria-label="With"><option value="">Nobody</option>${staff.map(m => `<option value="${esc(S(m.id))}"${S(m.id) === S(r.assigned_to) ? ' selected' : ''}>${esc(S(m.name) || S(m.email))}</option>`).join('')}</select></td>` : '';
     for (const c of cols) {
       let rows = [];
       try { rows = L((await api('GET', `${base(o)}/data/${encodeURIComponent(c.key)}`)).rows); } catch (er) { toast(er.message, true); }
       const fields = L(c.fields);
       const sec = document.createElement('section'); sec.className = 'stcol';
-      sec.innerHTML = `<h4>${esc(S(c.label))} <span>${rows.length}</span></h4>` + (rows.length ? `<div class="sttbl"><table><thead><tr>${fields.map(f => `<th>${esc(S(f.label))}</th>`).join('')}<th>When</th></tr></thead><tbody>${rows.map(r => `<tr data-r="${esc(S(r.id))}">${fields.map(f => {
+      sec.innerHTML = `<h4>${esc(S(c.label))} <span>${rows.length}</span></h4>` + (rows.length ? `<div class="sttbl"><table><thead><tr>${fields.map(f => `<th>${esc(S(f.label))}</th>`).join('')}${staff.length ? '<th>With</th>' : ''}${rows.some(r => r.rating) ? '<th>Rating</th>' : ''}${rows.some(r => r.receipt) ? '<th>Receipt</th>' : ''}<th>When</th></tr></thead><tbody>${rows.map(r => `<tr data-r="${esc(S(r.id))}">${fields.map(f => {
         const v = r[f.key];
         if ((f.key === 'status' || f.key === 'paid') && f.type === 'choice') return `<td><select data-f="${f.key}" aria-label="${esc(S(f.label))}">${L(f.options).map(op => `<option${S(op) === S(v) ? ' selected' : ''}>${esc(S(op))}</option>`).join('')}</select></td>`;
         if (f.type === 'photo') return `<td>${/^f_[0-9a-f]{16}$/.test(S(v)) ? pic(`${base(o)}/files/${S(v)}`, S(f.label), 'stphoto') : ''}</td>`;   // v0.319
         if (f.type === 'location' && S(v)) return `<td><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(S(v))}" target="_blank" rel="noopener">${esc(S(v))}</a></td>`;
         return `<td>${esc(f.type === 'yes_no' ? (v ? 'Yes' : 'No') : S(v)).replace(/\n/g, '<br>')}</td>`;
-      }).join('')}<td>${esc(S(r.created).slice(0, 16).replace('T', ' '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No entries yet.</p>');
+      }).join('')}${withCell(r)}${rows.some(x => x.rating) ? `<td>${r.rating ? esc('★'.repeat(N(r.rating)) + ' ' + N(r.rating) + '/5' + (S(r.rating_note) ? ' · ' + S(r.rating_note) : '')) : ''}</td>` : ''}${rows.some(x => x.receipt) ? `<td>${r.receipt ? `<button class="ib" type="button" data-receipt>${r.receipt_kind === 'credit_note' ? 'Credit note' : r.receipt_kind === 'invoice' ? 'Invoice' : 'PDF'}</button>` : ''}${r.receipt_kind === 'credit_note' ? ' <button class="ib" type="button" data-receipt="invoice">Invoice</button>' : ''}${r.receipt_kind === 'invoice' ? ' <button class="ib" type="button" data-cn>Credit note…</button>' : ''}</td>` : ''}<td>${esc(S(r.created).slice(0, 16).replace('T', ' '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No entries yet.</p>');
       sec.addEventListener('change', async e => {
         const sl = e.target.closest('select[data-f]'), tr = e.target.closest('tr[data-r]'); if (!sl || !tr) return;
-        try { await api('PATCH', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}`, {[sl.dataset.f]: sl.value}); toast('Saved.'); }
+        try { await api('PATCH', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}`, {[sl.dataset.f]: sl.value}); toast(sl.dataset.f === 'assign' ? (sl.value ? 'Given to ' + sl.selectedOptions[0].textContent + '.' : 'Taken back.') : 'Saved.'); }
         catch (er) { toast(er.message, true); }
+      });
+      sec.addEventListener('click', async e => {     // v0.356 WAPSI: her credit note for an invoiced row (a return / wrong bill)
+        const b = e.target.closest('[data-cn]'), tr = e.target.closest('tr[data-r]'); if (!b || !tr) return;
+        const why = prompt('Credit note for the full invoice value. Reason (e.g. goods returned):', 'Goods returned'); if (why === null) return;
+        try { const v = await api('POST', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}/credit-note`, {reason: why}); toast('Credit note ' + S(v.credit_note) + ' made. Any refund is yours to make.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      sec.addEventListener('click', async e => {     // v0.354 RASEED: her copy of a finished row's receipt
+        const b = e.target.closest('[data-receipt]'), tr = e.target.closest('tr[data-r]'); if (!b || !tr) return;
+        b.disabled = true;
+        try {
+          const res = await api('GET', `${base(o)}/data/${encodeURIComponent(c.key)}/${encodeURIComponent(tr.dataset.r)}/receipt${b.dataset.receipt === 'invoice' ? '?doc=invoice' : ''}`, undefined, {raw: true});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = 'receipt.pdf'; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+        } catch (er) { toast(er.message, true); } finally { b.disabled = false; }
       });
       cbox.appendChild(sec);
       hydrate(sec);              // v0.319 photos load with her login
     }
+    // v0.355 GST BILL: her GST details -> finished rows get a tax invoice (GST-inclusive prices)
+    const gbox = document.createElement('section'); gbox.className = 'stcol stgst'; box.appendChild(gbox);
+    const drawGst = g => {
+      gbox.innerHTML = `<h4>GST invoices <span>${g.on ? 'On' : 'Off'}</span></h4><p class="stnote">${esc(S(g.note))}</p>
+        <form class="stapp" autocomplete="off"><div class="row"><input name="gstin" maxlength="15" placeholder="GSTIN (blank = plain receipts)" value="${esc(S(g.gstin))}" aria-label="GSTIN">
+        <input name="legal_name" maxlength="120" placeholder="Legal name (as on GST certificate)" value="${esc(S(g.legal_name))}" aria-label="Legal name"></div>
+        <div class="row"><label>Default rate <select name="rate">${L(g.rates).map(x => `<option value="${x}"${N(x) === N(g.rate) ? ' selected' : ''}>${x}%</option>`).join('')}</select></label>
+        <input name="hsn" maxlength="8" placeholder="Default HSN / SAC" value="${esc(S(g.hsn))}" aria-label="Default HSN or SAC">
+        <button class="btn go" type="submit">Save GST</button></div>
+        ${L(g.products).length ? `<div class="sttbl"><table><thead><tr><th>Product</th><th>Price</th><th>HSN / SAC</th><th>Rate</th></tr></thead><tbody>${L(g.products).map(p => `<tr data-p="${esc(S(p.id))}"><td>${esc(S(p.name))}</td><td>${esc(S(p.price))}</td>
+          <td><input data-k="hsn" maxlength="8" value="${esc(S(p.hsn))}" aria-label="HSN for ${esc(S(p.name))}"></td>
+          <td><select data-k="rate" aria-label="Rate for ${esc(S(p.name))}"><option value="">Default</option>${L(g.rates).map(x => `<option value="${x}"${p.rate !== undefined && p.rate !== null && N(x) === N(p.rate) ? ' selected' : ''}>${x}%</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>` : ''}
+        </form>${g.on ? `<p class="stnote">Invoices issued: ${N(g.issued)} · ${esc(S(g.state))}</p>` : ''}`;
+      gbox.querySelector('form').addEventListener('submit', async e => {
+        e.preventDefault(); const f = e.target, b = f.querySelector('button.go'); b.disabled = true;
+        const items = {}; f.querySelectorAll('tr[data-p]').forEach(tr => { items[tr.dataset.p] = {hsn: tr.querySelector('[data-k=hsn]').value.trim(), rate: tr.querySelector('[data-k=rate]').value}; });
+        try { drawGst(await api('PUT', base(o) + '/gst', {gstin: f.gstin.value.trim(), legal_name: f.legal_name.value.trim(), rate: f.rate.value, hsn: f.hsn.value.trim(), items})); toast('GST details saved.'); }
+        catch (er) { toast(er.message, true); b.disabled = false; }
+      });
+    };
+    try { drawGst(await api('GET', base(o) + '/gst')); } catch (er) { gbox.remove(); }
+    // v0.362 VARIANTS: sizes / weights with their own price (one line per product: "1 kg 60, 5 kg 280")
+    const vbox = document.createElement('section'); vbox.className = 'stcol stvariants'; box.appendChild(vbox);
+    const drawV = v => {
+      const ps = L(v.products); if (!ps.length) { vbox.remove(); return; }
+      vbox.innerHTML = `<h4>Sizes <span>${ps.filter(p => L(p.variants).length).length} products</span></h4><p class="stnote">${esc(S(v.note))} Write sizes as "1 kg 60, 5 kg 280".</p>
+        <div class="sttbl"><table><thead><tr><th>Product</th><th>Sizes (name price, ...)</th><th></th></tr></thead><tbody>${ps.map(p => `<tr data-p="${esc(S(p.id))}"><td>${esc(S(p.name))}</td>
+        <td><input data-k="v" value="${esc(L(p.variants).map(x => S(x.name) + ' ' + N(x.price)).join(', '))}" placeholder="e.g. 1 kg 60, 5 kg 280" aria-label="Sizes of ${esc(S(p.name))}"></td>
+        <td><button class="ib" type="button" data-vsave>Save</button></td></tr>`).join('')}</tbody></table></div>`;
+    };
+    vbox.addEventListener('click', async e => {
+      const b = e.target.closest('[data-vsave]'), tr = e.target.closest('tr[data-p]'); if (!b || !tr) return;
+      const raw = tr.querySelector('[data-k=v]').value.split(',').map(x => x.trim()).filter(Boolean);
+      const variants = raw.map(x => { const m = x.match(/^(.*?)\s+(?:₹|rs\.?\s*)?([\d.,]+)$/i); return m ? {name: m[1].trim(), price: m[2].replace(/,/g, '')} : {name: x, price: ''}; });
+      b.disabled = true;
+      try { drawV(await api('PUT', base(o) + '/variants', {product: tr.dataset.p, variants})); toast('Sizes saved.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+    });
+    try { if (S(info.order)) drawV(await api('GET', base(o) + '/variants')); else vbox.remove(); } catch (er) { vbox.remove(); }
+    // v0.357 STOCK: how many of each product she has (blank = unlimited) and when to warn her
+    const kbox = document.createElement('section'); kbox.className = 'stcol ststock'; box.appendChild(kbox);
+    const drawStock = v => {
+      const ps = L(v.products);
+      if (!ps.length) { kbox.remove(); return; }
+      kbox.innerHTML = `<h4>Stock <span>${N(v.tracked)} counted · ${N(v.sold_out)} sold out</span></h4><p class="stnote">${esc(S(v.note))}</p>
+        <form autocomplete="off"><div class="sttbl"><table><thead><tr><th>Product</th><th>Price</th><th>In stock</th><th>Warn at</th></tr></thead><tbody>${ps.map(p => `<tr data-p="${esc(S(p.id))}"${p.sold_out ? ' class="soldout"' : ''}><td>${esc(S(p.name))}${p.sold_out ? ' · Sold out' : ''}</td><td>${esc(S(p.price))}</td>
+          <td><input data-k="qty" inputmode="numeric" placeholder="unlimited" value="${p.qty === null || p.qty === undefined ? '' : N(p.qty)}" aria-label="Stock of ${esc(S(p.name))}"></td>
+          <td><input data-k="low" inputmode="numeric" value="${N(p.low)}" aria-label="Warning level for ${esc(S(p.name))}"></td></tr>`).join('')}</tbody></table></div>
+        <div class="acts"><button class="btn go" type="submit">Save stock</button></div></form>`;
+      kbox.querySelector('form').addEventListener('submit', async e => {
+        e.preventDefault(); const b = e.target.querySelector('button.go'); b.disabled = true;
+        const items = {}; kbox.querySelectorAll('tr[data-p]').forEach(tr => { const q = tr.querySelector('[data-k=qty]').value.trim(); items[tr.dataset.p] = {qty: q === '' ? null : q, low: tr.querySelector('[data-k=low]').value.trim()}; });
+        try { drawStock(await api('PUT', base(o) + '/stock', {items})); toast('Stock saved.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+      });
+    };
+    try { drawStock(await api('GET', base(o) + '/stock')); } catch (er) { kbox.remove(); }
+    // v0.358 COUPON: her discount codes
+    const cpbox = document.createElement('section'); cpbox.className = 'stcol stcoupon'; box.appendChild(cpbox);
+    const drawCp = v => {
+      const cs = L(v.coupons);
+      cpbox.innerHTML = `<h4>Coupon codes <span>${cs.filter(c => c.live).length} live</span></h4><p class="stnote">${esc(S(v.note))}</p>
+        ${cs.length ? `<div class="sttbl"><table><thead><tr><th>Code</th><th>Discount</th><th>Min order</th><th>Last date</th><th>Used</th><th></th></tr></thead><tbody>${cs.map(c => `<tr data-c="${esc(S(c.code))}"><td>${esc(S(c.code))}${c.live ? '' : ' · off'}</td>
+          <td>${c.kind === 'percent' ? N(c.value) + '%' + (c.cap ? ' (max ₹' + N(c.cap) + ')' : '') : '₹' + N(c.value)}</td><td>${c.min ? '₹' + N(c.min) : '-'}</td><td>${esc(S(c.until) || '-')}</td>
+          <td>${N(c.used)}${c.uses ? ' / ' + N(c.uses) : ''}${c.once ? ' · once each' : ''}</td><td><button class="ib" type="button" data-cpdel aria-label="Delete ${esc(S(c.code))}">✕</button></td></tr>`).join('')}</tbody></table></div>` : ''}
+        <form class="stapp" autocomplete="off"><div class="row"><input name="code" maxlength="16" placeholder="CODE (e.g. DIWALI10)" aria-label="Code">
+        <select name="kind" aria-label="Kind"><option value="percent">% off</option><option value="flat">₹ off</option></select>
+        <input name="value" inputmode="decimal" placeholder="10" aria-label="Discount"><input name="cap" inputmode="decimal" placeholder="max ₹ (optional)" aria-label="Maximum discount">
+        <input name="min" inputmode="decimal" placeholder="min order ₹" aria-label="Minimum order"><input name="until" type="date" aria-label="Last date">
+        <input name="uses" inputmode="numeric" placeholder="total uses" aria-label="Total uses"><label><input name="once" type="checkbox"> once per customer</label>
+        <button class="btn go" type="submit">Add code</button></div></form>`;
+      cpbox.querySelector('form').addEventListener('submit', async e => {
+        e.preventDefault(); const f = e.target, b = f.querySelector('button.go'); b.disabled = true;
+        const body = {code: f.code.value.trim(), kind: f.kind.value, value: f.value.value.trim(), cap: f.cap.value.trim(), min: f.min.value.trim(), until: f.until.value, uses: f.uses.value.trim(), once: f.once.checked};
+        try { drawCp(await api('PUT', base(o) + '/coupons', body)); toast('Code saved.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+      });
+      if (!cpbox.dataset.wired) {          // one click listener for the box (the table is redrawn)
+        cpbox.dataset.wired = '1';
+        cpbox.addEventListener('click', async e => {
+          const b = e.target.closest('[data-cpdel]'), tr = e.target.closest('tr[data-c]'); if (!b || !tr || !confirm('Delete code ' + tr.dataset.c + '?')) return;
+          try { drawCp(await api('PUT', base(o) + '/coupons', {code: tr.dataset.c, delete: true})); toast('Deleted.'); } catch (er) { toast(er.message, true); }
+        });
+      }
+    };
+    try { if (S(info.order)) drawCp(await api('GET', base(o) + '/coupons')); else cpbox.remove(); } catch (er) { cpbox.remove(); }
+    // v0.360 DELIVERY: fee, free above, PIN codes, opening hours (orders outside them are still taken, with a note)
+    const dbox = document.createElement('section'); dbox.className = 'stcol stdelivery'; box.appendChild(dbox);
+    const drawDl = v => {
+      const h = M(v.hours), days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      dbox.innerHTML = `<h4>Delivery <span>${v.on ? (v.open_now ? 'open now' : 'closed now') : 'no rules'}</span></h4><p class="stnote">${esc(S(v.note))}</p>
+        <form class="stapp" autocomplete="off"><div class="row"><label>Charge ₹ <input name="fee" inputmode="decimal" value="${v.on ? N(v.fee) : ''}" aria-label="Delivery charge"></label>
+        <label>Free above ₹ <input name="free_above" inputmode="decimal" value="${v.free_above === null || v.free_above === undefined ? '' : N(v.free_above)}" aria-label="Free delivery above"></label></div>
+        <div class="row"><textarea name="pins" rows="2" placeholder="PIN codes you deliver to (blank = everywhere)" aria-label="PIN codes">${esc(L(v.pins).join(', '))}</textarea></div>
+        <div class="row"><label>Opens <input name="open" type="time" value="${esc(S(h.open))}"></label><label>Closes <input name="close" type="time" value="${esc(S(h.close))}"></label>
+        ${days.map((d, i) => `<label><input type="checkbox" name="d${i}"${L(h.days).includes(i) ? ' checked' : ''}> ${d}</label>`).join('')}</div>
+        <div class="acts"><button class="btn go" type="submit">Save delivery</button>${v.on ? '<button class="btn soft" type="button" data-dloff>Remove rules</button>' : ''}</div></form>
+        <form class="stapp" autocomplete="off" data-slots><p class="stnote">Delivery time slots (one per line: label, start, end, orders) - e.g. "Morning, 09:00, 11:00, 10". Blank = no slots.</p>
+        <div class="row"><textarea name="slots" rows="3" aria-label="Slots">${esc(L(v.slots).map(x => [S(x.label), S(x.start), S(x.end), N(x.cap)].join(', ')).join('\n'))}</textarea></div>
+        <div class="row"><label>Days ahead <input name="days" inputmode="numeric" value="${N(v.days)}"></label><label>Cut-off minutes <input name="cutoff" inputmode="numeric" value="${N(v.cutoff)}"></label>
+        <button class="btn go" type="submit">Save slots</button></div></form>
+        <form class="stapp" autocomplete="off" data-hol><p class="stnote">Holidays (shop closed): one date per line or comma, YYYY-MM-DD. Orders on those days are still taken, with a note; no slots are offered.</p>
+        <div class="row"><textarea name="h" rows="2" aria-label="Holidays">${esc(L(v.holidays).join(', '))}</textarea><button class="btn go" type="submit">Save holidays</button></div></form>`;
+      const fh = dbox.querySelector('[data-hol]');
+      fh.addEventListener('submit', async e => { e.preventDefault(); try { drawDl(await api('PUT', base(o) + '/delivery', {holidays: fh.h.value})); toast('Holidays saved.'); } catch (er) { toast(er.message, true); } });
+      const fs = dbox.querySelector('[data-slots]');
+      fs.addEventListener('submit', async e => {
+        e.preventDefault();
+        const slots = fs.slots.value.split('\n').map(l => l.split(',').map(x => x.trim())).filter(a => a[0]).map(a => ({label: a[0], start: a[1], end: a[2], cap: a[3]}));
+        try { drawDl(await api('PUT', base(o) + '/delivery', {slots, days: fs.days.value.trim() || 0, cutoff: fs.cutoff.value.trim() || 0})); toast('Slots saved.'); } catch (er) { toast(er.message, true); }
+      });
+      const f = dbox.querySelector('form');
+      f.addEventListener('submit', async e => {
+        e.preventDefault(); const b = f.querySelector('button.go'); b.disabled = true;
+        const body = {fee: f.fee.value.trim() || 0, free_above: f.free_above.value.trim(), pins: f.pins.value,
+                      hours: {open: f.open.value, close: f.close.value, days: days.map((_, i) => f['d' + i].checked ? i : -1).filter(i => i >= 0)}};
+        try { drawDl(await api('PUT', base(o) + '/delivery', body)); toast('Delivery saved.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+      });
+      const off = dbox.querySelector('[data-dloff]');
+      if (off) off.addEventListener('click', async () => { try { drawDl(await api('PUT', base(o) + '/delivery', {off: true})); toast('Delivery rules removed.'); } catch (er) { toast(er.message, true); } });
+    };
+    try { if (S(info.order)) drawDl(await api('GET', base(o) + '/delivery')); else dbox.remove(); } catch (er) { dbox.remove(); }
+    // v0.367 TURANT: instant notifications for her Android app's phones (her tap)
+    const tbox = document.createElement('section'); tbox.className = 'stcol stturant'; box.appendChild(tbox);
+    const drawT = v => {
+      const ik = M(v.ios_key);
+      tbox.innerHTML = `<h4>Instant notifications <span>${v.on ? 'Android on' : 'Android off'} · ${v.ios ? 'iPhone on' : 'iPhone off'}</span></h4><p class="stnote">${esc(S(v.note))}${v.on || v.ios ? ' Phones registered: ' + N(v.tokens) + '.' : ''}</p>
+        <div class="acts">${v.configured ? `<button class="btn ${v.on ? 'soft' : 'go'}" type="button" data-turant="${v.on ? '0' : '1'}">${v.on ? 'Switch off' : 'Switch on (next Android build)'}</button>` : ''}</div>
+        <form class="stapp" autocomplete="off" data-ios><p class="stnote">iPhone: your Apple push key (Apple Developer > Keys > Apple Push Notifications service). Sealed on the server, never shown again. ${ik.key_id ? 'Set: key ' + esc(S(ik.key_id)) + ', team ' + esc(S(ik.team_id)) + '.' : ''}</p>
+        <div class="row"><input name="key_id" maxlength="10" placeholder="Key ID" aria-label="Apple Key ID"><input name="team_id" maxlength="10" placeholder="Team ID" aria-label="Apple Team ID">
+        <input name="p8" type="file" accept=".p8" aria-label="AuthKey .p8 file"><button class="btn go" type="submit">Save iPhone key</button>${v.ios ? '<button class="btn soft" type="button" data-iosclear>Remove</button>' : ''}</div></form>`;
+      const fi = tbox.querySelector('[data-ios]');
+      fi.addEventListener('submit', async e => {
+        e.preventDefault(); const f = fi.p8.files[0]; if (!f) { toast('Choose the .p8 file', true); return; }
+        try { drawT(await api('PUT', base(o) + '/turant/ios', {key_id: fi.key_id.value.trim(), team_id: fi.team_id.value.trim(), p8: await f.text()})); toast('iPhone key saved (sealed). It reaches iPhones with the next iPhone build.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      const ic = tbox.querySelector('[data-iosclear]');
+      if (ic) ic.addEventListener('click', async () => { try { drawT(await api('PUT', base(o) + '/turant/ios', {clear: true})); } catch (er) { toast(er.message, true); } });
+      const b = tbox.querySelector('[data-turant]');
+      if (b) b.addEventListener('click', async () => { b.disabled = true; try { drawT(await api('PUT', base(o) + '/turant', {on: b.dataset.turant === '1'})); toast('Saved. It reaches phones with the next Android build.'); } catch (er) { toast(er.message, true); b.disabled = false; } });
+    };
+    try { drawT(await api('GET', base(o) + '/turant')); } catch (er) { tbox.remove(); }
+    // v0.382 DIMAAG: the app's brain - linked lists, formulas, rules, workflows + approvals, triggers, timed jobs, locked functions.
+    // Opus drafts it from her words, the checker proves it, ONLY her "Apply" tap makes it live.
+    const lbox = document.createElement('section'); lbox.className = 'stcol stlogic'; box.appendChild(lbox);
+    const drawL = v => {
+      const d = v.draft ? M(v.draft) : null;
+      const li = a => L(a).map(x => `<li>${esc(S(x))}</li>`).join('');
+      const apps = L(v.approvals).filter(a => a.status === 'pending');
+      const jobs = L(M(v.spec).schedules);
+      lbox.innerHTML = `<h4>App logic <span>${v.has_logic ? (v.on ? 'on' : 'off') + ' · rev ' + N(v.rev) : 'none yet'}</span></h4>
+        <p class="stnote">Linked lists (customer → orders → items), totals and formulas, rules, workflows with approvals, automatic actions, timed jobs and locked custom functions. Hoola drafts; nothing changes in the app until you press Apply.</p>
+        ${v.has_logic ? `<ul class="stlines">${li(v.summary)}</ul>` : ''}
+        <form class="stapp" autocomplete="off" data-ldraft><div class="row"><textarea name="w" rows="2" maxlength="2000" placeholder="${v.has_logic ? 'What should change? e.g. quotes above 50,000 need manager then director approval' : 'Leave blank for the full logic from the app brief, or describe it'}" aria-label="Logic in your words"></textarea></div>
+        <div class="acts"><button class="btn go" type="submit">Draft logic</button>${v.has_logic ? `<button class="btn soft" type="button" data-lsw="${v.on ? '0' : '1'}">${v.on ? 'Switch logic off' : 'Switch logic on'}</button>` : ''}</div></form>
+        ${d ? `<div class="stdraft"><h5>Draft ${d.errors && d.errors.length ? '· ' + N(d.errors.length) + ' problem(s)' : '· ready'}</h5>
+          ${d.summary ? `<p>${esc(S(d.summary))}</p>` : ''}<ul class="stlines">${li(d.lines)}</ul>
+          ${L(d.schema_changes).length ? `<p class="stnote">New lists / fields: ${esc(L(d.schema_changes).join('; '))}</p>` : ''}
+          ${L(d.questions).length ? `<p class="stnote">Questions: ${esc(L(d.questions).join(' '))}</p>` : ''}
+          ${L(d.errors).length ? `<ul class="sterr">${li(d.errors)}</ul>` : ''}${L(d.warnings).length ? `<ul class="stwarn">${li(d.warnings)}</ul>` : ''}
+          <div class="acts">${L(d.errors).length ? '' : `<button class="btn go" type="button" data-lapply="${esc(S(d.hash))}">Apply to my app</button>`}<button class="btn soft" type="button" data-ldiscard>Discard draft</button></div></div>` : ''}
+        ${apps.length ? `<h5>Approvals waiting (${apps.length})</h5><ul class="stmems">${apps.map(a => `<li><b>${esc(S(a.title))}</b> · ${esc(S(a.label))}: ${esc(S(a.from))} → ${esc(S(a.to))} · step ${N(a.step)}/${N(a.of)} (${esc(S(a.waiting_for))})${a.maker ? ' · asked by ' + esc(S(a.maker)) : ''}
+          <button class="btn go" type="button" data-ldec="approve" data-aid="${esc(S(a.id))}">Approve</button> <button class="btn soft" type="button" data-ldec="reject" data-aid="${esc(S(a.id))}">Reject</button></li>`).join('')}</ul>` : ''}
+        ${jobs.length ? `<h5>Timed jobs</h5><ul class="stmems">${jobs.map(j => `<li>${esc(S(j.label || j.name))} · ${esc(S(j.every))} IST${M(v.ran)[j.name] ? ' · last ' + esc(S(M(v.ran)[j.name]).slice(0, 16).replace('T', ' ')) : ''} <button class="ib" type="button" data-lrun="${esc(S(j.name))}">Run now</button></li>`).join('')}</ul>` : ''}
+        ${L(v.audit).length ? `<details><summary>What the logic did (last ${Math.min(12, L(v.audit).length)})</summary><ul class="stlines">${L(v.audit).slice(0, 12).map(x => `<li>${esc(S(x.at).slice(5, 16).replace('T', ' '))} · ${esc(S(x.kind))}${x.coll ? ' · ' + esc(S(x.coll)) : ''} · ${esc(S(x.what))}${x.by ? ' · ' + esc(S(x.by)) : ''}</li>`).join('')}</ul></details>` : ''}
+        ${v.has_logic ? `<details><summary>Edit the logic directly (advanced)</summary><form class="stapp" data-ljson><div class="row"><textarea name="j" rows="10" spellcheck="false" aria-label="Logic JSON">${esc(JSON.stringify(M(v.spec), null, 1))}</textarea></div><div class="acts"><button class="btn go" type="submit">Check and apply</button></div></form></details>` : ''}`;
+      const fd = lbox.querySelector('[data-ldraft]');
+      fd.addEventListener('submit', async e => {
+        e.preventDefault(); const b = fd.querySelector('button.go'); b.disabled = true; b.textContent = 'Drafting…';
+        try { const r = await api('POST', base(o) + '/logic/draft', {words: fd.w.value.trim()}); toast(S(r.say).slice(0, 200)); drawL(await api('GET', base(o) + '/logic')); }
+        catch (er) { toast(er.message, true); b.disabled = false; b.textContent = 'Draft logic'; }
+      });
+      const ap = lbox.querySelector('[data-lapply]');
+      if (ap) ap.addEventListener('click', async () => { ap.disabled = true; try { const r = await api('POST', base(o) + '/logic/apply', {hash: ap.dataset.lapply}); toast(S(r.say)); drawL(await api('GET', base(o) + '/logic')); } catch (er) { toast(er.message, true); ap.disabled = false; } });
+      const dc = lbox.querySelector('[data-ldiscard]');
+      if (dc) dc.addEventListener('click', async () => { try { await api('DELETE', base(o) + '/logic/draft'); drawL(await api('GET', base(o) + '/logic')); } catch (er) { toast(er.message, true); } });
+      const sw = lbox.querySelector('[data-lsw]');
+      if (sw) sw.addEventListener('click', async () => { try { const r = await api('POST', base(o) + '/logic/switch', {on: sw.dataset.lsw === '1'}); toast(S(r.say)); drawL(await api('GET', base(o) + '/logic')); } catch (er) { toast(er.message, true); } });
+      lbox.querySelectorAll('[data-ldec]').forEach(b => b.addEventListener('click', async () => {
+        b.disabled = true;
+        try { const r = await api('POST', base(o) + '/approvals/' + encodeURIComponent(b.dataset.aid), {decision: b.dataset.ldec}); toast(S(r.say)); drawL(await api('GET', base(o) + '/logic')); }
+        catch (er) { toast(er.message, true); b.disabled = false; }
+      }));
+      lbox.querySelectorAll('[data-lrun]').forEach(b => b.addEventListener('click', async () => {
+        try { const r = await api('POST', base(o) + '/logic/run/' + encodeURIComponent(b.dataset.lrun)); toast(`${N(r.acted)} entries done.`); drawL(await api('GET', base(o) + '/logic')); } catch (er) { toast(er.message, true); }
+      }));
+      const fj = lbox.querySelector('[data-ljson]');
+      if (fj) fj.addEventListener('submit', async e => {
+        e.preventDefault(); let spec;
+        try { spec = JSON.parse(fj.j.value); } catch (er) { toast('That is not valid JSON.', true); return; }
+        try { const r = await api('PUT', base(o) + '/logic', {logic: spec}); if (r.ok === false) toast(L(r.errors).slice(0, 3).join(' · '), true); else { toast(S(r.say)); drawL(await api('GET', base(o) + '/logic')); } }
+        catch (er) { toast(er.message, true); }
+      });
+    };
+    try { drawL(await api('GET', base(o) + '/logic')); } catch (er) { lbox.remove(); }
+    // v0.378 BAAT: her customers' messages from the app (their words = data); she replies by her own tap
+    const cbx = document.createElement('section'); cbx.className = 'stcol stchat'; box.appendChild(cbx);
+    const drawC = async (v, open) => {
+      const ts = L(v.threads); if (!ts.length) { cbx.remove(); return; }
+      let thread = '';
+      if (open) {
+        const t = await api('GET', base(o) + '/chat?member=' + encodeURIComponent(open));
+        thread = `<div class="stthread">${L(t.messages).map(m => `<p class="${m.staff ? 'me' : 'them'}"><b>${esc(S(m.name))}</b>: ${esc(S(m.text))}</p>`).join('')}</div>
+          <form class="stapp" data-reply="${esc(open)}"><div class="row"><input name="t" maxlength="1000" placeholder="Reply" aria-label="Reply"><button class="btn go" type="submit">Send</button></div></form>`;
+      }
+      cbx.innerHTML = `<h4>Customer messages <span>${N(v.unread)} unread</span></h4>
+        <ul class="stmems">${ts.map(t => `<li><button class="ib" type="button" data-thr="${esc(S(t.member))}">${esc(S(t.name))}${t.unread ? ' (' + N(t.unread) + ')' : ''}</button> <span>${esc(S(t.last))}</span></li>`).join('')}</ul>${thread}`;
+    };
+    cbx.addEventListener('click', async e => {
+      const b = e.target.closest('[data-thr]'); if (!b) return;
+      try { await drawC(await api('GET', base(o) + '/chat'), b.dataset.thr); } catch (er) { toast(er.message, true); }
+    });
+    cbx.addEventListener('submit', async e => {
+      const f = e.target.closest('[data-reply]'); if (!f) return; e.preventDefault();
+      const t = f.t.value.trim(); if (!t) return;
+      try { await api('POST', base(o) + '/chat/' + encodeURIComponent(f.dataset.reply), {text: t, her_tap: true}); await drawC(await api('GET', base(o) + '/chat'), f.dataset.reply); }
+      catch (er) { toast(er.message, true); }
+    });
+    try { await drawC(await api('GET', base(o) + '/chat')); } catch (er) { cbx.remove(); }
+    // v0.375 KHATA YAAD: payment reminders for customers who owe - her own WhatsApp (link) or her approved template (her tap)
+    const ybox = document.createElement('section'); ybox.className = 'stcol stkhata'; box.appendChild(ybox);
+    const drawY = v => {
+      const cs = L(v.customers); if (!cs.length) { ybox.remove(); return; }
+      ybox.innerHTML = `<h4>Khata yaad <span>${cs.length} owe</span></h4><p class="stnote">${esc(S(v.note))}</p>
+        <div class="row"><input data-tpl placeholder="Approved UTILITY template name (for business WhatsApp)" aria-label="Template name"></div>
+        <div class="sttbl"><table><thead><tr><th>Customer</th><th>Owes</th><th>Phone</th><th></th></tr></thead><tbody>${cs.map(c => `<tr data-m="${esc(S(c.member))}"><td>${esc(S(c.name))}</td><td>₹${N(c.balance)}</td><td>${esc(S(c.phone) || '-')}</td>
+          <td>${c.link ? `<a class="ib" href="${esc(S(c.link))}" target="_blank" rel="noopener">Open in WhatsApp</a>` : ''} ${c.phone && !c.recent ? '<button class="ib" type="button" data-ysend>Send via business</button>' : (c.recent ? 'reminded recently' : '')}</td></tr>`).join('')}</tbody></table></div>`;
+    };
+    ybox.addEventListener('click', async e => {
+      const b = e.target.closest('[data-ysend]'), tr = e.target.closest('tr[data-m]'); if (!b || !tr) return;
+      const tpl = (ybox.querySelector('[data-tpl]') || {}).value || '';
+      if (!tpl.trim()) { toast('Type your approved template name first', true); return; }
+      if (!confirm('Send this reminder from your WhatsApp Business number now?')) return;
+      b.disabled = true;
+      try { const r = await api('POST', base(o) + '/khata-yaad/' + encodeURIComponent(tr.dataset.m), {template: tpl.trim(), her_tap: true}); toast(S(r.say) || 'Sent.'); drawY(await api('GET', base(o) + '/khata-yaad')); }
+      catch (er) { toast(er.message, true); b.disabled = false; }
+    });
+    try { drawY(await api('GET', base(o) + '/khata-yaad')); } catch (er) { ybox.remove(); }
+    // v0.361 HISAAB: the month's accounts + GST summary for her CA (CSV files in a ZIP)
+    const hbox = document.createElement('section'); hbox.className = 'stcol sthisaab'; box.appendChild(hbox);
+    const drawH = v => {
+      hbox.innerHTML = `<h4>Accounts <span>${esc(S(v.month))}</span></h4><p class="stnote">${esc(S(v.say))}</p>
+        <form class="stapp" autocomplete="off"><div class="row"><input name="month" type="month" value="${esc(S(v.month))}" aria-label="Month">
+        <button class="btn soft" type="submit">Show</button><button class="btn go" type="button" data-hdl>Download for CA (CSV)</button><button class="btn soft" type="button" data-gstr1>GSTR-1 file (JSON)</button><button class="btn soft" type="button" data-tally>Tally (XML)</button></div></form>
+        <p class="stnote">Sales register, invoice register, credit notes, HSN and rate-wise summary, udhaar. Nothing is filed - give the files to your CA.</p>`;
+      const f = hbox.querySelector('form');
+      f.addEventListener('submit', async e => { e.preventDefault(); try { drawH(await api('GET', base(o) + '/hisaab?month=' + encodeURIComponent(f.month.value))); } catch (er) { toast(er.message, true); } });
+      hbox.querySelector('[data-tally]').addEventListener('click', async e => {     // v0.374 Gateway of Tally > Import > Vouchers
+        e.target.disabled = true;
+        try {
+          const res = await api('GET', base(o) + '/tally?month=' + encodeURIComponent(f.month.value), undefined, {raw: true});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = 'tally-' + f.month.value + '.xml'; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+        } catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
+      });
+      hbox.querySelector('[data-gstr1]').addEventListener('click', async e => {     // v0.373 for the GST offline tool
+        e.target.disabled = true;
+        try {
+          const res = await api('GET', base(o) + '/gstr1?month=' + encodeURIComponent(f.month.value), undefined, {raw: true});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = 'GSTR1-' + f.month.value + '.json'; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+        } catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
+      });
+      hbox.querySelector('[data-hdl]').addEventListener('click', async e => {
+        e.target.disabled = true;
+        try {
+          const res = await api('GET', base(o) + '/hisaab?download=1&month=' + encodeURIComponent(f.month.value), undefined, {raw: true});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = 'hisaab-' + f.month.value + '.zip'; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+        } catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
+      });
+    };
+    try { drawH(await api('GET', base(o) + '/hisaab')); } catch (er) { hbox.remove(); }
     const mbox = box.querySelector('.stmem');
     try {
       const ms = L((await api('GET', base(o) + '/members')).members);

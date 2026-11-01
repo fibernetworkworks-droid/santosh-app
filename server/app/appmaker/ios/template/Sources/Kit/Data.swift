@@ -60,6 +60,23 @@ final class AppData: ObservableObject {
 
     func list(_ name: String) -> [Item] { items((root["lists"] as? [String: Any])?[name]) }
     func byId(_ list: String, _ id: String) -> Item? { self.list(list).first { $0.id == id } }
+    /// v0.362 VARIANTS: a cart line - a product, or one of its sizes ("pid::vid" -> "Atta (5 kg)" at that size's price).
+    func lineItem(_ list: String, _ id: String) -> Item? {
+        let parts = id.components(separatedBy: "::")
+        guard parts.count == 2 else {
+            guard let p = byId(list, id), items(p.o["variants"]).isEmpty else { return nil }
+            return p
+        }
+        guard let p = byId(list, parts[0]), let v = items(p.o["variants"]).first(where: { $0.id == parts[1] }) else { return nil }
+        var o = p.o
+        o["id"] = id
+        o["name"] = p.name + " (" + v.s("name") + ")"
+        o["price"] = v.price
+        o.removeValue(forKey: "variants"); o.removeValue(forKey: "stock"); o.removeValue(forKey: "sold_out")
+        if let n = v.o["stock"] as? NSNumber { o["stock"] = n }
+        if v.b("sold_out") { o["sold_out"] = true }
+        return Item(o: o)
+    }
 
     /// Fresh public content from her Hoola (her facts, products, the app's lists). Never throws.
     func refresh() async {
@@ -76,12 +93,20 @@ final class AppState: ObservableObject {
     static let shared = AppState()
     @Published var cart: [String: Int] = [:]
     @Published var form: [String: String] = [:]
+    @Published var coupon = ""                        // v0.358 the code the cart checked (the server applies it again)
+    @Published var couponOff = 0.0                    // ... and the discount it said, for the shown total
+    @Published var slot = ""                          // v0.371 the delivery slot she picked
 
-    func add(_ id: String, _ q: Int = 1) { cart[id] = (cart[id] ?? 0) + q }
-    func setQty(_ id: String, _ q: Int) { if q <= 0 { cart.removeValue(forKey: id) } else { cart[id] = q } }
+    /// v0.357 STOCK: never more than the business has (the server checks again when the order is sent).
+    func maxQty(_ id: String) -> Int {
+        guard let p = AppData.shared.lineItem("products", id), let n = p.o["stock"] as? NSNumber else { return 99 }
+        return max(0, min(99, n.intValue))
+    }
+    func add(_ id: String, _ q: Int = 1) { setQty(id, (cart[id] ?? 0) + q) }
+    func setQty(_ id: String, _ q: Int) { let n = min(q, maxQty(id)); if n <= 0 { cart.removeValue(forKey: id) } else { cart[id] = n } }
     var cartCount: Int { cart.values.reduce(0, +) }
     func cartItems(_ list: String = "products") -> [(Item, Int)] {
-        cart.compactMap { id, q in AppData.shared.byId(list, id).map { ($0, q) } }.sorted { $0.0.name < $1.0.name }
+        cart.compactMap { id, q in AppData.shared.lineItem(list, id).map { ($0, q) } }.sorted { $0.0.name < $1.0.name }   // v0.362
     }
     func cartTotal(_ list: String = "products") -> Double { cartItems(list).reduce(0) { $0 + $1.0.price * Double($1.1) } }
     func binding(_ key: String) -> Binding<String> {

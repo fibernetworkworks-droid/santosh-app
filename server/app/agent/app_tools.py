@@ -62,16 +62,56 @@ APP_TOOLS = [
         "on it pushes (her GitHub token is linked once in the app: Website > Hosting). "
         "v0.343 action=match (platform android|ios, fix): every real app screen vs her approved design (0-100); Opus looks at "
         "the ones under 70 and lists the visible differences; fix=true (only when she asks to fix) rebuilds those screens with "
-        "the differences as notes." "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
+        "the differences as notes. v0.347 action=bhasha langs [en, hi, mr, gu, bn, ta, te, kn, ml, pa, or, ur, hinglish] (max 6, "
+        "the first = what the app starts in): the app's own words in those languages from the next build (customers pick on "
+        "My account); her business data is never translated." "v0.314 ASLI APP: a built Android app has its OWN backend (accounts, real orders / bookings / requests, staff lists). "
         "action=data (app, coll, row, set) changes a row for her, e.g. an order's status (\"order accept karo\" -> set {status: Accepted}); "
         "v0.319: a customer's UPI \"I have paid\" claim reads paid=\"Customer says paid\" + utr; ONLY when she says she saw the money in "
         "her own bank set {paid: Verified} (never on the customer's word, never by yourself). Photos / locations her app's users sent are "
         "fields of the rows (a photo = a file id she sees in the app data view); "
+        "v0.352 KAAM BAANTO: set {assign: <staff member id or name>} gives that row to one staff member (\"yeh job Ravi ko do\"), "
+        "set {assign: \"\"} takes it back; only staff / admin accounts can be given work; that person's app shows it under My work "
+        "and tells them. "
+        "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
+        "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
+        "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
+        "v0.382 DIMAAG - the app's BRAIN (any complex business logic): action=logic (owner only; instruction = her words, e.g. "
+        "\"har order ke items alag list mein, total apne aap\", \"50,000 se upar ka quote manager phir director manzoor kare\", "
+        "\"har din 9 baje unpaid invoices par reminder\"; empty instruction + no logic yet = the full logic from the app brief; "
+        "empty instruction with logic = show it): Opus writes linked lists (customer -> orders -> items), formulas + totals, "
+        "rules / unique keys, workflows with approval chains (maker-checker) + SLA, automatic triggers, timed jobs and locked "
+        "custom functions; the checker proves it; it is only a DRAFT - she applies it with her tap on the app's Logic card "
+        "(console app page / phone app screen), never you. action=logic_switch (owner only, on true|false ONLY on her ask): the "
+        "whole logic on / off (nothing deleted). action=approval (owner only; approval = id from app_dekho what=logic, decision "
+        "approve|reject, note) = HER decision on a waiting approval, only when she says it. action=logic_run (owner only; job = "
+        "schedule name) = run a timed job now. "
+        "v0.367 action=turant (owner only; show, or on=true / false ONLY when she asks): instant notifications for her Android app's phones "
+        "(order moved, new order for staff, job given) through Hoola's Firebase - from the next build. v0.368 iPhones too once SHE puts her "
+        "Apple push key into the app / console (Key ID, Team ID, .p8 - NEVER in chat; if she pastes one, do not use it and tell her to "
+        "revoke it in Apple Developer). "
+        "v0.362 action=variants (owner only; product = id or name, variants = [{name, price}], [] removes; no product = list): sizes / "
+        "weights of a product, each with its own price and stock - every app screen shows them as chips. "
+        "v0.361 action=hisaab (owner only; month YYYY-MM, default this / last month): her month's orders, sales, GST, credit notes and "
+        "udhaar in one line; the CSV files for her CA download from the app data page (Accounts). Nothing is filed. "
+        "v0.360 action=delivery (owner only; delivery = {fee, free_above, pins \"411001, 411002\", hours {open HH:MM, close HH:MM, days [0=Mon..6]}, "
+        "off}; none = show): her shop app's delivery charge (added by the server), area and hours - an order outside them is still taken with a note. "
+        "v0.359 action=khata (owner only): no member = who owes how much; member (id or name) = that customer's entries; with amount "
+        "(+ mode cash|upi|card|bank|other, note) = record a payment SHE says she received (never on a customer's word, money never moves). "
+        "v0.358 action=coupon (owner only; coupon = {code, kind percent|flat, value, cap, min, until YYYY-MM-DD, uses, once, on} or {code, "
+        "delete: true}; no coupon = list): her discount codes - the server applies them to orders from its own prices; a failing code never "
+        "loses an order. "
+        "v0.357 action=stock (owner only; items = {product id or name: {qty: n or null = unlimited, low: warn level}}; no items = show): "
+        "her shop app's stock - orders take it at once, more than is left is refused, a cancelled order puts it back, the app shows Sold out. "
+        "v0.356 action=credit_note (app, coll, row, reason; owner only, ONLY when she asks - a return / wrong bill): a GST credit note "
+        "(CN/<FY>/0001) for an invoiced row's full value; a cancelled invoiced row already gets one by itself. Money never moves: a refund is hers. "
+        "v0.353 RAAY: a finished row carries the customer's own rating (rating 1-5 + rating_note); only that customer gives it, once - "
+        "never set or change a rating yourself; a 1-2 star rating already reached her chat. "
         "action=role (app, member, role staff|admin|member) makes an account staff (a staff app's new account sees nothing until then). "
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant",
+                                                 "logic", "logic_switch", "approval", "logic_run"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -80,7 +120,22 @@ APP_TOOLS = [
          "coll": {"type": "string", "description": "action=data: the app's list (orders, bookings, requests, ... or a staff list)"},
          "row": {"type": "string", "description": "action=data: the row id (from app_dekho what=data)"},
          "set": {"type": "object", "description": "action=data: fields to change, e.g. {\"status\": \"Accepted\"}"},
-         "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members)"},
+         "gst": {"type": "object", "description": "action=gst: {gstin, legal_name, rate, hsn, items}"},
+         "reason": {"type": "string", "description": "action=credit_note: why (return, wrong bill...)"},
+         "items": {"type": "object", "description": "action=stock: {product id or name: {qty, low}}"},
+         "amount": {"type": "string", "description": "action=khata: payment received"},
+         "mode": {"type": "string", "description": "action=khata: cash|upi|card|bank|other"},
+         "month": {"type": "string", "description": "action=hisaab: YYYY-MM"},
+         "product": {"type": "string", "description": "action=variants: product id or name"},
+         "on": {"type": "boolean", "description": "action=turant: switch instant notifications on / off; action=logic_switch: logic on / off"},
+         "approval": {"type": "string", "description": "action=approval: the approval id"},
+         "decision": {"type": "string", "enum": ["approve", "reject"], "description": "action=approval: her decision"},
+         "job": {"type": "string", "description": "action=logic_run: the timed job (schedule) name"},
+         "variants": {"type": "array", "items": {"type": "object"}, "description": "action=variants: [{name, price}]"},
+         "delivery": {"type": "object", "description": "action=delivery: {fee, free_above, pins, hours, off}"},
+         "coupon": {"type": "object", "description": "action=coupon: {code, kind, value, cap, min, until, uses, once, on, delete}"},
+         "member": {"type": "string", "description": "action=role: the account id (app_dekho what=members); action=khata: customer id or name"},
+         "note": {"type": "string", "description": "action=khata: payment note"},
          "crash": {"type": "string", "description": "action=fix_crash: the crash id (app_dekho what=crashes); empty = the newest unfixed one"},
          "build": {"type": "integer", "description": "action=rollback: the build number to bring back (app_dekho what=android history); 0 = the one before"},
          "step": {"type": "string", "enum": ["setup", "listing", "bundle", "internal"], "description": "action=store: Play Store launch step (production = only her tap in the app)"},
@@ -89,6 +144,7 @@ APP_TOOLS = [
          "role": {"type": "string", "enum": ["member", "staff", "admin"]},
          "repo": {"type": "string", "description": "action=github: repo name in her GitHub (default <app>-app)"},
          "private": {"type": "boolean", "description": "action=github: private repo (default true); public only if she says so"},
+         "langs": {"type": "array", "items": {"type": "string"}, "description": "action=bhasha: language codes, e.g. [\"hi\", \"en\", \"mr\"]"},
          "platform": {"type": "string", "enum": ["android", "ios"], "description": "action=match: which app's screens"},
          "fix": {"type": "boolean", "description": "action=match: rebuild the screens that do not match (only when she asks)"},
          "astep": {"type": "string", "enum": ["listing", "push"], "description": "action=appstore: the App Store step (submit for review = only her tap in the app)"},
@@ -109,11 +165,11 @@ APP_TOOLS = [
         "(q = her words -> the best precise app idea + 2 near ones + how many ideas exist for that business; field / goal / "
         "aud filter; offset pages through them; idea = one idea's full detail). Show ideas to her as 2-3 short lines (name + "
         "the special thing) and ask which one; then app_banao action=new idea=<id>." " data (app; coll = one list: its rows, newest first - the real orders / bookings / requests her app's users made, with status) | "
-        "members (app: the app's accounts with their role). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps)."),
+        "members (app: the app's accounts with their role). logic (app: v0.382 its business logic in plain lines, the draft waiting for her tap, approvals waiting, the last automatic actions). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
-                                             "data", "members", "crashes", "store", "ios", "appstore"]},
+                                             "data", "members", "crashes", "store", "ios", "appstore", "logic"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
          "idea": {"type": "string"}, "coll": {"type": "string"}},
@@ -171,6 +227,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = IO.build(t, ref, conv, kind, redo)
         return {"status": v["status"], "runner": v["runner"], "bundle_id": v["bundle_id"],
                 "say": v["say"] + " Card apne aap badlega (poll mat kariye)."}
+    if action == "bhasha":                    # v0.347
+        from ..appmaker import i18n as I18
+        v = I18.set_langs(t, ref, [str(x) for x in a.get("langs") or []])
+        return {"langs": v["langs"], "say": "Agle build se app in bhashaon mein: " + ", ".join(I18.LANGS[x] for x in v["langs"])}
     if action == "match":                     # v0.343 design se milao
         from ..appmaker import match as MT
         v = MT.check(t, ref, str(a.get("platform") or "android"), bool(a.get("fix")), conv)
@@ -253,6 +313,149 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action in ("logic", "logic_switch", "approval", "logic_run"):     # v0.382 DIMAAG
+        if not _owner(ctx):
+            raise ToolError("App ki logic sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker.logic import engine as LE
+        from ..appmaker.logic import service as LS
+        from ..site import webapp as W
+        r = BE.by_key_or_ref(t, ref)
+        try:
+            if action == "logic_switch":
+                return LS.switch(r, bool(a.get("on")))
+            if action == "approval":
+                return LE.decide(r, str(a.get("approval") or ""), str(a.get("decision") or ""), str(a.get("note") or ""), W.Who(owner=True))
+            if action == "logic_run":
+                return LE.run_schedule(r, str(a.get("job") or ""), force=True)
+            words = str(a.get("instruction") or "").strip()
+            v = LS.view(r)
+            if not words and v["has_logic"]:
+                return {k: v[k] for k in ("on", "rev", "summary", "approvals")} | {"draft": bool(v["draft"]), "say": "; ".join(v["summary"][:6])}
+            return LS.draft(r, words)
+        except W.AppError as e:
+            raise ToolError(str(e))
+    if action == "turant":                    # v0.367 TURANT
+        if not _owner(ctx):
+            raise ToolError("Notifications ka switch sirf maalkin ke paas hai.")
+        from ..appmaker import backend as BE
+        from ..appmaker import turant as TU
+        r = BE.by_key_or_ref(t, ref)
+        if a.get("on") is True:
+            v = TU.enable(r)
+        elif a.get("on") is False:
+            v = TU.disable(r)
+        else:
+            v = TU.view(r)
+        v["say"] = ("Turant notifications chalu: agli Android build se phone par usi waqt aayengi." if v["on"]
+                    else "Turant notifications band; app 15 minute wali jaanch se batati hai.")
+        return v
+    if action == "variants":                  # v0.362 VARIANTS
+        if not _owner(ctx):
+            raise ToolError("Sizes sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import variants as VR
+        r = BE.by_key_or_ref(t, ref)
+        if a.get("product"):
+            v = VR.save(r, str(a.get("product")), a.get("variants") if isinstance(a.get("variants"), list) else [])
+        else:
+            v = VR.view(r)
+        withs = [p for p in v["products"] if p["variants"]]
+        v["say"] = ("Sizes: " + "; ".join(p["name"] + " - " + ", ".join(f"{x['name']} Rs {x['price']:g}" for x in p["variants"]) for p in withs[:8])
+                    + ".") if withs else "Kisi product ke sizes nahi."
+        return v
+    if action == "hisaab":                    # v0.361 HISAAB: the month's accounts
+        if not _owner(ctx):
+            raise ToolError("Hisaab sirf maalkin dekh sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import hisaab as HS
+        r = BE.by_key_or_ref(t, ref)
+        rep = HS.build(r, str(a.get("month") or ""))
+        return {k: rep[k] for k in ("month", "summary", "say", "counts")} | {
+            "download": f"/api/apps/{r.id}/hisaab?month={rep['month']}&download=1",
+            "gstr1": f"/api/apps/{r.id}/gstr1?month={rep['month']}",           # v0.373 the GST offline tool file
+            "tally": f"/api/apps/{r.id}/tally?month={rep['month']}"}           # v0.374 Tally XML vouchers
+    if action == "delivery":                  # v0.360 DELIVERY
+        if not _owner(ctx):
+            raise ToolError("Delivery niyam sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import delivery as DL
+        r = BE.by_key_or_ref(t, ref)
+        dv = a.get("delivery") if isinstance(a.get("delivery"), dict) else {}
+        v = DL.save(r, dv) if dv else DL.view(r)
+        v["say"] = (f"Delivery Rs {v['fee']:g}" + (f", Rs {v['free_above']:g} se upar free" if v.get("free_above") is not None else "")
+                    + (f", {len(v['pins'])} PIN codes" if v["pins"] else "") + (", abhi khula" if v["open_now"] else ", abhi band") + ".") if v["on"] \
+            else "Delivery ke koi niyam nahi (charge nahi, har jagah, har samay)."
+        return v
+    if action == "khata":                     # v0.359 KHATA: her customers' udhaar
+        if not _owner(ctx):
+            raise ToolError("Khata sirf maalkin dekh / likh sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import khata as KH
+        from ..site import webapp as W
+        r = BE.by_key_or_ref(t, ref)
+        mem = str(a.get("member") or "").strip()
+        if mem and not KH._who_name(r, mem):                 # her words name a person
+            hit = [m for m in BE.members(r) if mem.lower() in (str(m.get("name") or "").lower(), str(m.get("email") or "").lower())]
+            mem = hit[0]["id"] if len(hit) == 1 else mem
+        if mem and a.get("amount") not in (None, ""):
+            v = KH.payment(r, mem, a.get("amount"), str(a.get("mode") or "cash"), str(a.get("note") or ""), W.Who(owner=True))
+            v["say"] = f"{v['name']} ka payment likh liya. Ab baaki: Rs {v['balance']:g}."
+            return v
+        if mem:
+            v = KH.summary(r, mem)
+            v["say"] = f"{v['name']} par baaki: Rs {v['balance']:g}."
+            return v
+        v = KH.dues(r, W.Who(owner=True))
+        v["say"] = (f"Kul udhaar baaki: Rs {v['total_due']:g} ({sum(1 for p in v['customers'] if p['balance'] > 0)} customers). "
+                    "Yaad dilani ho to app ka data > Khata yaad mein har graahak ke liye 'WhatsApp mein kholo' (aap khud bhejein) "
+                    "ya approved template se aapke tap par.")            # v0.375 reminders go only by her own tap
+        return v
+    if action == "coupon":                    # v0.358 COUPON: her discount codes
+        if not _owner(ctx):
+            raise ToolError("Coupon codes sirf maalkin bana sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import coupon as CP
+        r = BE.by_key_or_ref(t, ref)
+        cp = a.get("coupon") if isinstance(a.get("coupon"), dict) else {}
+        v = CP.save(r, cp) if cp else CP.view(r)
+        live = [c["code"] for c in v["coupons"] if c["live"]]
+        v["say"] = ("Chalu codes: " + ", ".join(live) + ".") if live else "Abhi koi code chalu nahi."
+        return v
+    if action == "stock":                     # v0.357 STOCK: her products' stock
+        if not _owner(ctx):
+            raise ToolError("Stock sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import stock as SK
+        r = BE.by_key_or_ref(t, ref)
+        items = a.get("items") if isinstance(a.get("items"), dict) else {}
+        if items:                                   # her words name products: by id or by name
+            prods = BE._products(r)
+            by_name = {str(p.get("name") or "").strip().lower(): k for k, p in prods.items()}
+            items = {(k if k in prods else by_name.get(str(k).strip().lower(), k)): v for k, v in items.items()}
+        v = SK.set_items(r, items) if items else SK.view(r)
+        v["say"] = f"Stock: {v['tracked']} products gine ja rahe hain, {v['sold_out']} khatam."
+        return v
+    if action == "credit_note":               # v0.356 WAPSI: her credit note for an invoiced row
+        if not _owner(ctx):
+            raise ToolError("Credit note sirf maalkin bana sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import gst as G
+        r = BE.by_key_or_ref(t, ref)
+        v = G.credit(r, str(a.get("coll") or ""), str(a.get("row") or ""), str(a.get("reason") or ""))
+        v["say"] = f"Credit note {v['credit_note']} ban gaya. Paise lautane hon to woh aap khud karein."
+        return v
+    if action == "gst":                       # v0.355 GST BILL: her GST details for this app's invoices
+        if not _owner(ctx):
+            raise ToolError("GST details sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import gst as G
+        r = BE.by_key_or_ref(t, ref)
+        g = a.get("gst") if isinstance(a.get("gst"), dict) else {}
+        v = G.set_settings(r, g) if g else G.view(r)
+        v["say"] = (f"GST invoice chalu: {v['gstin']} ({v['state']}), default {v['rate']}%." if v["on"]
+                    else "GST invoice band hai; poore kaam par saadi raseed banti hai.")
+        return v
     if action in ("data", "role"):            # v0.314 her own app's backend: she runs it from Hoola
         if not _owner(ctx):
             raise ToolError("App ka data sirf maalkin badal sakti hain.")
@@ -354,6 +557,13 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         v = ST.view(BE.by_key_or_ref(t, ref))
         return {k: v.get(k) for k in ("package", "proposed", "account", "status", "now", "error", "steps", "listing", "bundle",
                                       "releases", "privacy_url", "delete_url", "console_steps")}
+    if what == "logic":                                   # v0.382 DIMAAG: the app's brain, its draft, approvals, what it did
+        from ..appmaker import backend as BE
+        from ..appmaker.logic import service as LS
+        v = LS.view(BE.by_key_or_ref(t, ref))
+        d = v.get("draft") or {}
+        return {"on": v["on"], "rev": v["rev"], "summary": v["summary"], "approvals": v["approvals"][:20],
+                "audit": v["audit"][:15], "draft": {k: d.get(k) for k in ("summary", "lines", "errors", "questions")} if d else None}
     if what in ("data", "members", "crashes"):            # v0.314 the app's own backend
         from ..appmaker import backend as BE
         r = BE.by_key_or_ref(t, ref)

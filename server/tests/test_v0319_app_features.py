@@ -166,7 +166,7 @@ def test_generated_project_has_the_features(droid_env):
         {"key": "problem", "label": "Problem", "type": "long_text", "required": True},
         {"key": "photo", "label": "Photo", "type": "photo"}, {"key": "pin", "label": "Location", "type": "location"}]}]}
     form = G.fallback_screen({"id": "new_request", "label": "New request"}, ["new_request"], [], bk)
-    assert 'PhotoField("Photo", "photo")' in form and 'LocationField("Location", "pin")' in form
+    assert 'PhotoField(T("Photo"), "photo")' in form and 'LocationField(T("Location"), "pin")' in form
     sheet = PR.kit_sheet()
     for k in ("PhotoField(", "LocationField(", "RemotePhoto("):
         assert k in sheet, k

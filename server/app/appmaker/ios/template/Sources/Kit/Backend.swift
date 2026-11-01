@@ -48,7 +48,8 @@ enum Cloud {
         guard ready, let url = URL(string: "\(base)/api/app-api/\(key)/files") else { return Reply(code: 0, body: [:]) }
         var req = URLRequest(url: url, timeoutInterval: 60)
         req.httpMethod = "POST"
-        req.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        // v0.346 a document (PDF) goes up as itself; photos as JPEG
+        req.setValue(jpeg.prefix(5) == Data("%PDF-".utf8) ? "application/pdf" : "image/jpeg", forHTTPHeaderField: "Content-Type")
         if !token.isEmpty { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         do {
             let (d, r) = try await URLSession.shared.upload(for: req, from: jpeg)
@@ -122,6 +123,7 @@ final class Auth: ObservableObject {
         if let d = try? JSONSerialization.data(withJSONObject: m) { UserDefaults.standard.set(d, forKey: "hoola_me") }
         me = Item(o: m)
         await Db.shared.sync()
+        PushHub.signedIn()                                    // v0.368 this device's push token now belongs to this account
         return nil
     }
 
@@ -193,7 +195,16 @@ final class Db: ObservableObject {
     func fields(_ c: String) -> [Item] { items(collection(c)?["fields"]).filter { !$0.b("hidden") } }
     func label(_ c: String) -> String { collection(c)?["label"] as? String ?? c }
     func rule(_ c: String, _ op: String) -> String { (collection(c)?["rules"] as? [String: Any])?[op] as? String ?? "" }
+    // v0.382 DIMAAG: what the app's logic says about a list (the server checks every write)
+    func relations(_ c: String) -> [Item] { items(collection(c)?["relations"]) }
+    func workflowField(_ c: String) -> String { collection(c)?["workflow"] as? String ?? "" }
+    func labelField(_ c: String) -> String { collection(c)?["label_field"] as? String ?? "" }
+    func mayCreate(_ c: String) -> Bool {
+        switch rule(c, "create") { case "public": return true; case "member": return Auth.shared.signedIn; default: return Auth.shared.isStaff }
+    }
+    var approvalsOn: Bool { schema["approvals"] as? Bool ?? false }
     var orderList: String { schema["order"] as? String ?? "" }
+    var couponsOn: Bool { schema["coupons"] as? Bool ?? false }     // v0.358 a discount code is live
 
     /// Writes still on their way first (marked pending), then what the server last sent.
     func rows(_ c: String) -> [Item] {
@@ -339,11 +350,13 @@ final class Db: ObservableObject {
             if lines.isEmpty { return Words.cartEmpty }
             data["cart"] = lines.map { ["id": $0.0.id, "qty": $0.1] }
             show["items"] = lines.map { "\($0.1) x \($0.0.name)" }.joined(separator: "\n")
-            show["total"] = st.cartTotal()
+            show["total"] = st.cartTotal() - st.couponOff + deliveryFee(st.cartTotal() - st.couponOff)   // v0.360
+            if !st.coupon.isEmpty { data["_coupon"] = st.coupon }      // v0.358 checked again by the server
+            if !st.slot.isEmpty { data["_slot"] = st.slot }            // v0.371 booked by the server
         }
         create(c, data, show: show)
         for f in fields(c) { st.form.removeValue(forKey: f.s("key")) }
-        if c == orderList { st.cart = [:] }
+        if c == orderList { st.cart = [:]; st.coupon = ""; st.couponOff = 0; st.slot = "" }
         return nil
     }
 }

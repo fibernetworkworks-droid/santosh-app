@@ -241,7 +241,7 @@ def problems(p: SocialPost) -> list[str]:
             out.append(f"Instagram {HASHTAG_MAX} se zyada hashtag nahi leta.")
     if "facebook" in plats and not cap and not media:
         out.append("Facebook post khaali hai.")
-    if "linkedin" in plats:                            # v0.379 her LinkedIn profile: text + one photo
+    if "linkedin" in plats:                            # v0.384 her LinkedIn profile: text + one photo
         if "video" in kinds or p.fmt in ("reel", "story"):
             out.append("LinkedIn par abhi sirf text + photo jaata hai: Reel / Story / video ke liye LinkedIn hataiye.")
         if not cap.strip():
@@ -260,7 +260,7 @@ def _account(s, tenant: str, platform: str) -> SocialAccount | None:
 
 
 def _to_linkedin(acc: SocialAccount, token: str, p: SocialPost) -> tuple[str, str]:
-    """v0.379 her LinkedIn profile: the caption (LinkedIn-escaped, 3 hashtags) + the first photo, from the stored file."""
+    """v0.384 her LinkedIn profile: the caption (LinkedIn-escaped, 3 hashtags) + the first photo, from the stored file."""
     from . import linkedin as LI
     with session() as s:
         paths = [a.path for a in (s.get(SocialAsset, m) for m in _j(p.media, [])) if a is not None and a.kind == "image"]

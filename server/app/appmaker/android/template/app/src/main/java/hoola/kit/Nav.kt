@@ -61,6 +61,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.key
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -80,11 +82,19 @@ class Nav(val start: String, val tabs: List<TabSpec>, val screens: Set<String>) 
     var fabHidden by mutableStateOf(false)
     internal var drawerOpener: (() -> Unit)? = null
 
-    /** Open a screen (a tab switches tabs). Unknown ids are ignored so a stray link can't crash the app. */
+    /** v0.365 DO PANE: set by the shell while a wide screen shows the tab's list beside the opened record. */
+    var split by mutableStateOf(false)
+
+    /** Open a screen (a tab switches tabs). Unknown ids are ignored so a stray link can't crash the app.
+     *  v0.365 in the two-pane view a record replaces the one on the right (Back closes it) instead of stacking. */
     fun go(id: String) {
         if (id !in screens || id == current) return
         forward = true
-        if (tabs.any { it.id == id }) { stack.clear(); stack.add(id) } else stack.add(id)
+        if (tabs.any { it.id == id }) { stack.clear(); stack.add(id) }
+        else {
+            if (split) while (stack.size > 1) stack.removeAt(stack.lastIndex)
+            stack.add(id)
+        }
     }
 
     /** Open a record's screen: remembers which record (AppState.selected[list]). */
@@ -119,18 +129,30 @@ fun AppShell(nav: Nav, fabMain: FabAction?, fabActions: List<FabAction>, title: 
     val body: @Composable () -> Unit = {
         CompositionLocalProvider(LocalNav provides nav) {
             Box(Modifier.fillMaxSize().background(c.bg).safeDrawingPadding()) {
+                // v0.363 BADI SCREEN: on a wide screen a bottom bar / floating pill becomes a side rail (thumbs reach the side)
+                val wide = isWide()
+                val barNav = look.nav in setOf("bar", "bar_labels", "bar_minimal", "bottom_app_bar", "drawer_bar", "floating_pill")
+                val railNow = look.nav == "rail" || (wide && barNav)
+                // v0.365 DO PANE: on a wide screen a record opened from a tab shows beside that tab's list
+                val base = nav.stack.firstOrNull() ?: ""
+                val split = wide && nav.stack.size >= 2 && nav.tabs.any { it.id == base }
+                SideEffect { nav.split = split }
                 Row(Modifier.fillMaxSize()) {
-                    if (look.nav == "rail" && nav.onTab) Rail(nav)
-                    Column(Modifier.weight(1f).fillMaxSize()) {
+                    if (railNow && (nav.onTab || split)) Rail(nav)
+                    if (split) {
+                        Box(Modifier.weight(0.42f).fillMaxSize()) { key(base, AppData.version.value) { screen(base) } }
+                        Box(Modifier.width(1.dp).fillMaxSize().background(c.line))
+                    }
+                    Column(Modifier.weight(if (split) 0.58f else 1f).fillMaxSize()) {
                         if (look.nav in setOf("top_tabs", "segmented_top") && nav.onTab) TopTabs(nav)
                         Box(Modifier.weight(1f).fillMaxWidth()) { Screens(nav, screen) }
-                        if (look.nav in setOf("bar", "bar_labels", "bar_minimal", "bottom_app_bar", "drawer_bar") && nav.onTab) BottomBar(nav)
+                        if (!railNow && look.nav in setOf("bar", "bar_labels", "bar_minimal", "bottom_app_bar", "drawer_bar") && nav.onTab) BottomBar(nav)
                     }
                 }
-                if (look.nav == "floating_pill" && nav.onTab) FloatingPill(nav, Modifier.align(Alignment.BottomCenter))
+                if (!railNow && look.nav == "floating_pill" && nav.onTab) FloatingPill(nav, Modifier.align(Alignment.BottomCenter))
                 if (look.fab != "none" && fabMain != null && nav.onTab && !nav.fabHidden) Fab(look.fab, fabMain, fabActions, nav,
                     Modifier.align(if (look.fab == "docked") Alignment.BottomCenter else Alignment.BottomEnd)
-                        .padding(end = if (look.fab == "docked") 0.dp else 16.dp, bottom = if (look.nav == "none" || look.nav == "rail") 20.dp else 92.dp))
+                        .padding(end = if (look.fab == "docked") 0.dp else 16.dp, bottom = if (look.nav == "none" || railNow) 20.dp else 92.dp))
             }
         }
     }
@@ -140,7 +162,7 @@ fun AppShell(nav: Nav, fabMain: FabAction?, fabActions: List<FabAction>, title: 
                 Text(title, style = H.t.h2, modifier = Modifier.padding(20.dp))
                 nav.tabs.forEach { t ->
                     NavigationDrawerItem(
-                        label = { Text(t.label, style = H.t.title) }, selected = nav.current == t.id,
+                        label = { Text(T(t.label), style = H.t.title) }, selected = nav.current == t.id,
                         icon = { HIcon(t.icon) },
                         onClick = { nav.go(t.id); scope.launch { drawerState.close() } },
                         modifier = Modifier.padding(horizontal = 12.dp),
@@ -178,7 +200,7 @@ private fun BottomBar(nav: Nav) {
             NavigationBarItem(
                 selected = nav.current == t.id, onClick = { nav.go(t.id) },
                 icon = { HIcon(t.icon, tint = if (nav.current == t.id) c.primaryText else c.muted) },
-                label = { Text(t.label, maxLines = 1) },
+                label = { Text(T(t.label), maxLines = 1) },
                 alwaysShowLabel = labels,
                 colors = NavigationBarItemDefaults.colors(indicatorColor = c.tint, selectedTextColor = c.primaryText, unselectedTextColor = c.muted),
             )
@@ -199,7 +221,7 @@ private fun FloatingPill(nav: Nav, modifier: Modifier) {
             Box(
                 Modifier.size(52.dp).background(if (on) c.primary else c.surface, CircleShape).clickable { nav.go(t.id) },
                 contentAlignment = Alignment.Center,
-            ) { HIcon(t.icon, tint = if (on) c.onPrimary else c.muted, description = t.label) }
+            ) { HIcon(t.icon, tint = if (on) c.onPrimary else c.muted, description = T(t.label)) }
         }
     }
 }
@@ -209,7 +231,8 @@ private fun Rail(nav: Nav) {
     val c = H.c
     NavigationRail(containerColor = c.surface) {
         nav.tabs.forEach { t ->
-            NavigationRailItem(selected = nav.current == t.id, onClick = { nav.go(t.id) }, icon = { HIcon(t.icon) }, label = { Text(t.label, maxLines = 1) })
+            // v0.365 the list's tab stays lit while a record is open beside it
+            NavigationRailItem(selected = nav.stack.firstOrNull() == t.id, onClick = { nav.go(t.id) }, icon = { HIcon(t.icon) }, label = { Text(T(t.label), maxLines = 1) })
         }
     }
 }
@@ -217,7 +240,7 @@ private fun Rail(nav: Nav) {
 @Composable
 private fun TopTabs(nav: Nav) {
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        nav.tabs.forEach { t -> Chip(t.label, selected = nav.current == t.id, icon = t.icon) { nav.go(t.id) } }
+        nav.tabs.forEach { t -> Chip(T(t.label), selected = nav.current == t.id, icon = t.icon) { nav.go(t.id) } }
     }
 }
 
@@ -229,7 +252,7 @@ private fun Fab(kind: String, main: FabAction, actions: List<FabAction>, nav: Na
         if (open && kind in setOf("speed_dial", "menu")) {
             actions.forEach { a ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(a.label, style = H.t.title, modifier = Modifier.background(c.surface, RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 6.dp))
+                    Text(T(a.label), style = H.t.title, modifier = Modifier.background(c.surface, RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 6.dp))
                     SmallFloatingActionButton(onClick = { open = false; nav.go(a.go) }, containerColor = c.tint) { HIcon(a.icon, tint = c.primaryText, description = a.label) }
                 }
             }
@@ -239,7 +262,7 @@ private fun Fab(kind: String, main: FabAction, actions: List<FabAction>, nav: Na
             Unit
         }
         when (kind) {
-            "extended" -> ExtendedFloatingActionButton(text = { Text(main.label) }, icon = { HIcon(main.icon, tint = c.onPrimary) }, onClick = click,
+            "extended" -> ExtendedFloatingActionButton(text = { Text(T(main.label)) }, icon = { HIcon(main.icon, tint = c.onPrimary) }, onClick = click,
                 containerColor = c.primary, contentColor = c.onPrimary)
             "small" -> SmallFloatingActionButton(onClick = click, containerColor = c.primary) { HIcon(main.icon, tint = c.onPrimary, description = main.label) }
             "large" -> LargeFloatingActionButton(onClick = click, containerColor = c.primary) { HIcon(main.icon, size = 30.dp, tint = c.onPrimary, description = main.label) }
