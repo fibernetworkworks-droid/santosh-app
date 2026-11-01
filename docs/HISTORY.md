@@ -13061,3 +13061,30 @@ that cannot say *which* account is useless to her.
 Resolving a stashed conflict by taking "mine" silently reverted another session's v0.311 test change, and the
 failure looked like my own bug for three rounds of digging. **On a conflicted test file, take main's copy and
 re-apply only the version pin** — and check a suspect failure on a pristine worktree before believing it.
+
+## v0.359.0 ENGINEERING DESK Phase 1 + CAD ENGINEER (1 Nov 2026, owner: "GO PHASE 1" on docs/ENGINEERING_DESK_PLAN.md)
+Her list IX (Research, CAD, Hardware & Industrial Tech): one shared Engineering Desk base, the CAD Engineer live, the other
+nine roles listed as "Coming soon" in the new Employees group.
+- `server/app/engineering/`: `guard.py` (AST check: only `cadquery` + `math`, no files / export / import / dunder / exec,
+  must set `result`), `runner.py` (child: cut-down builtins + import gate, builds `result`, checks valid / volume / area /
+  bodies / bbox, exports part.step + part.stl, tessellates mesh.json), `sandbox.py` (`unshare -rn` no network, tiny env
+  with no secrets, own folder, RLIMIT 4 GB / 512 MB files, nice 10, 180 s wall-clock kill; ENG_PY / ENG_MEM_MB /
+  ENG_TIMEOUT_S), `render.py` (PIL + numpy z-buffer: iso / front / top / right views with sharp edges, A4 drawing PDF:
+  three views at one scale, overall dimensions, title block "DRAFT - for a qualified engineer's review, not certified"),
+  `ai.py` (Opus writes / fixes / changes CadQuery from her words; TITLE / SIZE / ASSUMED / NOTES), `service.py`
+  (EngProject table `eng_projects`, registered in db.init_db + ensure_table; background job; checks incl. "size as
+  asked" vs the model's promised SIZE; up to 2 fixes from the real error; versions v1, v2...; signed file links;
+  hire gate `cad`; ENG_DAILY_PARTS 20; one part at a time; chat line when ready), `api.py` (`/api/eng/projects` list /
+  start / get / change / delete, public signed `/api/eng/files/<pid>/v<n>/<file>`).
+- Chat tool `cad_part` (family `eng`, admit keys cad / stl / step / cnc / bracket / flange / enclosure / drawing ...).
+- `employee/hire.py`: `group` per card; CAD Engineer live; FEA, CFD, Acoustic, Optical, ECU, Flight SW, Medical SW,
+  Lithography, Industrial IoT coming. Console hub groups cards; new CAD Desk (`employees.js cad()`, `#caddesk`): ask box,
+  parts with 4 views, size / volume / assumed, checks, STEP / STL / drawing / code links, change -> next version, delete.
+  Phone: `lib/ui/cad_desk.dart` + Employees grouped + "Open desk" for cad.
+- Measured here: a bracket builds in ~2 s in the box (network isolated), 4 views at 900 px ~6 s, drawing PDF ~0.3 s.
+- FIX (not mine, found while merging): v0.358 ENTERPRISE dropped the console's Arena / Employees / SEO Desk / Social Desk
+  sections and the charts.js / arena.js / employees.js script tags (stale base); restored, test_v0240 count back to 19.
+- VPS: `~/apps/santosh-core/.venv/bin/pip install cadquery` (~100 MB wheel); check with
+  `.venv/bin/python -m app.engineering.service` (cadquery true, no_network true).
+- NOT VERIFIED live: CadQuery wheel on the VPS Python; `unshare -rn` allowed on the VPS kernel (falls back to the import
+  gate + guard if not); Opus's CadQuery quality on real asks. Tests: test_v0357_engineering_desk.py (10, real CadQuery).
