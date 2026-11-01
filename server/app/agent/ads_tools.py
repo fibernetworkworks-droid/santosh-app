@@ -21,11 +21,16 @@ ADS_TOOLS = [
         "only when the difference is real. action=sale: campaign, count, value, day (her real sales -> true cost per sale). "
         "action=settings (owner only): business, segment (real_estate | education | clinic | finance | ecommerce | "
         "home_services | isp | local | general), offer, target_cpl, target_roas, avg_order, margin_pct, close_pct, "
-        "month_budget, max_step_pct, report_day (0 = Monday), report_time, rules. Meta is joined only in the app (Niyam > "
-        "Meta: account id + token); never ask for a token in chat. action=meta_forget (owner only)."),
+        "month_budget, max_step_pct, report_day (0 = Monday), report_time, rules. Meta is joined only in the app (Ads desk > "
+        "'Connect with Facebook', one tap); never ask for a token in chat. action=meta_forget (owner only). "
+        "action=meta_draft (owner only): a NEW Facebook / Instagram ad as a draft in Hoola - goal whatsapp (chats on her "
+        "WhatsApp) | messenger | instagram (DMs) | website (link) | boost (post_id of her Page post), text, headline, "
+        "description, cities (names, else all India), radius_km, age_min, age_max, gender all|men|women, platforms "
+        "both|facebook|instagram, daily (her currency a day), days. Nothing reaches Meta: she adds the photo, checks, "
+        "creates it PAUSED and taps Start herself in the app (Social Desk > Facebook & Instagram ads); say that."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["import", "fetch", "plan", "done", "copies", "live", "result", "sale", "settings",
-                                               "meta_forget"]},
+                                               "meta_forget", "meta_draft"]},
          "file_id": {"type": "string"}, "platform": {"type": "string"}, "start": {"type": "string"}, "end": {"type": "string"},
          "days": {"type": "integer"}, "extra": {"type": "number"}, "change": {"type": "string"}, "brief": {"type": "string"},
          "campaign": {"type": "string"}, "n": {"type": "integer"}, "lang": {"type": "string"}, "landing": {"type": "string"},
@@ -35,19 +40,25 @@ ADS_TOOLS = [
          "target_cpl": {"type": "number"}, "target_roas": {"type": "number"}, "avg_order": {"type": "number"},
          "margin_pct": {"type": "number"}, "close_pct": {"type": "number"}, "month_budget": {"type": "number"},
          "max_step_pct": {"type": "integer"}, "report_day": {"type": "integer"}, "report_time": {"type": "string"},
-         "rules": {"type": "array", "items": {"type": "string"}}},
+         "rules": {"type": "array", "items": {"type": "string"}},
+         "goal": {"type": "string", "enum": ["whatsapp", "messenger", "instagram", "website", "boost"]},
+         "text": {"type": "string"}, "headline": {"type": "string"}, "description": {"type": "string"},
+         "link": {"type": "string"}, "post_id": {"type": "string"}, "cities": {"type": "array", "items": {"type": "string"}},
+         "radius_km": {"type": "integer"}, "age_min": {"type": "integer"}, "age_max": {"type": "integer"},
+         "gender": {"type": "string"}, "platforms": {"type": "string"}, "daily": {"type": "integer"}},
          "required": ["action"]}},
     {"name": "ads_dekho", "description": (
         "Read her ads work (nothing changes). what=report (days, platform: spend, results, cost per result vs her target, "
         "leaks with rupees, winners, notes, true cost per sale) | leaks | changes (status waiting|applied|manual|done|rejected) "
-        "| tests | settings | benchmarks (India 2025 guide numbers, an estimate only)."),
+        "| tests | settings | benchmarks (India 2025 guide numbers, an estimate only) | meta_ads (her Facebook / Instagram ad "
+        "drafts and their status: draft, checked, created = in Meta paused, running, paused, ended)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["report", "leaks", "changes", "tests", "settings", "benchmarks"]},
+         "what": {"type": "string", "enum": ["report", "leaks", "changes", "tests", "settings", "benchmarks", "meta_ads"]},
          "days": {"type": "integer"}, "platform": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
 ADS_LABELS = {"ads": "Ads ka hisaab dekh raha hoon", "ads_dekho": "Ads report dekh raha hoon"}
-_OWNER_ONLY = {"settings", "meta_forget"}
+_OWNER_ONLY = {"settings", "meta_forget", "meta_draft"}
 
 
 def _s(v: Any) -> str:
@@ -91,9 +102,19 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"settings": A.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Save."}
         if action == "meta_forget":
             return A.forget_meta(t)
+        if action == "meta_draft":
+            from ..ads import metaads as M
+            keys = ("text", "headline", "description", "link", "post_id", "cities", "radius_km", "age_min", "age_max",
+                    "gender", "platforms", "daily", "days")
+            try:
+                d = M.new_draft(t, _s(a.get("goal")) or "whatsapp", **{k: a[k] for k in keys if a.get(k) is not None})
+            except M.MetaAdsError as e:
+                raise ToolError(str(e))
+            return {"draft": d, "say": "Draft Hoola mein bana - Meta mein abhi kuch nahi gaya. App mein Social Desk > Facebook & "
+                    "Instagram ads par photo jodiye, 'Check with Meta', phir 'Create (paused)' aur Start - sab aapke tap par."}
     except A.AdsError as e:
         raise ToolError(str(e))
-    raise ToolError("action = import | fetch | plan | done | copies | live | result | sale | settings | meta_forget")
+    raise ToolError("action = import | fetch | plan | done | copies | live | result | sale | settings | meta_forget | meta_draft")
 
 
 def _change_id(tenant: str, ref: str) -> str:
@@ -128,12 +149,16 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"tests": A.tests(t)}
         if what == "settings":
             return A.settings(t)
+        if what == "meta_ads":
+            from ..ads import metaads as M
+            v = M.view(t)
+            return {"linked": bool(v["account"]), "drafts": v["drafts"], "cap": v["cap"]}
         if what == "benchmarks":
             return {"segments": R.SEGMENTS, "note": R.BENCH_NOTE, "learning_events": R.LEARNING_EVENTS,
                     "budget_step_pct": R.MAX_STEP_PCT, "limits": R.LIMITS}
     except A.AdsError as e:
         raise ToolError(str(e))
-    raise ToolError("what = report | leaks | changes | tests | settings | benchmarks")
+    raise ToolError("what = report | leaks | changes | tests | settings | benchmarks | meta_ads")
 
 
 async def ads(ctx: Ctx, action, **a: Any):

@@ -335,3 +335,44 @@ def test_console_and_phone_wiring():
     assert "ArchDeskScreen(app: widget.app)" in scr and "key == 'architect'" in scr
     api = (ROOT / "lib" / "api.dart").read_text()
     assert "'/api/arch/projects'" in api and "archPostReview" in api
+
+
+def test_live_check_runs_one_design_inline_and_leaves_nothing(A, monkeypatch):
+    """v0.417 `python -m app.archdesk check`: the design step runs like her designs run, as its OWN check tenant, and
+    removes the hire row, the design row and the files afterwards; her tenant is never touched."""
+    from sqlalchemy import select
+
+    from app.archdesk import check as C
+    from app.archdesk.models import ArchProject
+    from app.db import session
+    from app.employee import hire
+    monkeypatch.setattr(A.s, "_pdf", lambda design, cap, drawn, vdir, facts: (vdir / "design.pdf").write_bytes(b"%PDF" + b"x" * 2000))
+    spawn_before = A.s._spawn
+    r = C._step_design()
+    assert r["ok"], r
+    assert r["status"] == "waiting_her" and r["adrs"] == 1 and r["capacity_rows"] > 0 and r["pdf_bytes"] > 1000
+    assert r["diagrams"] == "2/2 drawn"                   # the broken one went through the fix round
+    assert A.s._spawn is spawn_before                     # put back
+    with session() as s:
+        assert not s.scalars(select(ArchProject).where(ArchProject.tenant_id == C.TENANT)).all()
+    assert not (A.s.root() / C.TENANT).exists() or not any((A.s.root() / C.TENANT).iterdir())
+    assert hire.status(C.TENANT, "architect") == "left"
+    assert hire.status("default", "architect") == "none"   # her tenant never hired by the check
+    assert C._step_sums()["ok"]
+
+
+def test_live_check_reports_a_model_failure_instead_of_crashing(A, monkeypatch):
+    from app.archdesk import check as C
+
+    def boom(*a, **k):
+        raise A.s.ArchError("Model nahi mila: no key")
+    monkeypatch.setattr(A.s, "model_json", boom)
+    r = C._step_design()
+    assert r["ok"] is False and ("failed" == r.get("status") or "Model" in (r.get("error") or ""))
+    from app.employee import hire
+    assert hire.status(C.TENANT, "architect") == "left"
+
+
+def test_live_check_is_a_vps_ops_job():
+    wf = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text(encoding="utf-8")
+    assert "- archdesk_check" in wf and "python -m app.archdesk check" in wf

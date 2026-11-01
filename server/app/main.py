@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.416.0"   # v0.416.0 ASSET PIPELINE + QA FARM + GAME PLATFORMS (Hoola Game Engine plan Phases 4-6, owner: "GO PHASE 4" / "GO PHASE 5" / "GO PHASE 6"; built as 0.409-0.415, shipped as one version because main moved to v0.414 and v0.415). Phase 4 (gamedesk/assets.py + sfx.py, tool game_assets): style-locked art (magenta key, exact size, palette lock), sound effects made in code (seeded presets, free), music / voice / 3D models; paid kinds wait on a price card until her tap, every file checked in code, nothing enters the game before her OK, HoolaAssets autoload in every build. Phase 5 (gamedesk/qa.py, tool game_qa): seeded bots (idle / monkey / tapper / keys / restarter) play a DEBUG web build on desktop and phone CPU speeds - release builds hide script errors, so every build's playtest plays debug too - numbered bugs with repro, fixed only when the bot no longer finds it, golden start screen, speed vs last run, verdict counted in code. Phase 6 (gamedesk/platforms.py, tool game_release): Linux / Windows / macOS downloads exported and checked on the server (setup_godot.py --desktop), Android APK / AAB in her builds repo (hoola-game.yml) signed with the game's own sealed upload key, no internet permission, package fixed + version code only up; store kit (itch / Steam / Play texts in limits, images in exact sizes, AI disclosure, Steam scripts), age-rating DRAFT, itch.io butler push only on her tap. Android and itch not verified here; iOS not built.
+APP_VERSION = "0.417.0"   # v0.417.0 META ADS (built as 0.409) (ad plan A1; owner: "GO A1" after the India ad-market check): her Facebook / Instagram ad account by ONE Facebook Login on the HOOLA app (ads_management + ads_read, ads/metaads.py) instead of a pasted system-user token; ad accounts + Pages listed, one account chosen at once, the Ads desk (reads, leaks, budget changes on her tap) works on the login unchanged. Drafts with one goal (WhatsApp / Messenger / Instagram chats, website visits, boost a Page post), her photo, cities + km, ages, daily x days; money ads refused, META_ADS_MAX_DAILY cap; Check with Meta (validate_only, free) -> Create = campaign, ad set and ad all PAUSED -> Start only with a confirm (end time set so Meta itself stops it, campaign goes live last) -> auto-marked finished after the days. Routes /api/ads/meta/* + /api/ads/metaads*, tool ads action=meta_draft, Social Desk tile + phone MetaAdsScreen. NOT VERIFIED against a live ad account. Previous: v0.416.0 ASSET PIPELINE + QA FARM + GAME PLATFORMS (Hoola Game Engine plan Phases 4-6, owner: "GO PHASE 4" / "GO PHASE 5" / "GO PHASE 6"; built as 0.409-0.415, shipped as one version because main moved to v0.414 and v0.415). Phase 4 (gamedesk/assets.py + sfx.py, tool game_assets): style-locked art (magenta key, exact size, palette lock), sound effects made in code (seeded presets, free), music / voice / 3D models; paid kinds wait on a price card until her tap, every file checked in code, nothing enters the game before her OK, HoolaAssets autoload in every build. Phase 5 (gamedesk/qa.py, tool game_qa): seeded bots (idle / monkey / tapper / keys / restarter) play a DEBUG web build on desktop and phone CPU speeds - release builds hide script errors, so every build's playtest plays debug too - numbered bugs with repro, fixed only when the bot no longer finds it, golden start screen, speed vs last run, verdict counted in code. Phase 6 (gamedesk/platforms.py, tool game_release): Linux / Windows / macOS downloads exported and checked on the server (setup_godot.py --desktop), Android APK / AAB in her builds repo (hoola-game.yml) signed with the game's own sealed upload key, no internet permission, package fixed + version code only up; store kit (itch / Steam / Play texts in limits, images in exact sizes, AI disclosure, Steam scripts), age-rating DRAFT, itch.io butler push only on her tap. Android and itch not verified here; iOS not built.
 
 
 def _quiet_http_logs() -> None:
@@ -7156,6 +7156,84 @@ async def social_ytads_action(did: str, action: str, body: dict | None = None, t
     if fn is None:
         raise HTTPException(404, "action: check | create | start | pause")
     return await asyncio.to_thread(_gads_call, fn, tenant, did)
+
+
+def _mads_call(fn, *a, **k):
+    from .ads import metaads
+    try:
+        return fn(*a, **k)
+    except metaads.MetaAdsError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/ads/meta/connect", dependencies=[Depends(require_key)])
+def ads_meta_connect(tenant: str = Depends(current_tenant)):
+    """v0.417 META ADS (A1): Facebook Login with ads_management + ads_read on Hoola's Meta app (replaces the pasted token)."""
+    from .ads import metaads
+    return {"url": _mads_call(metaads.connect_url, tenant)}
+
+
+@app.get("/api/ads/meta/callback")
+async def ads_meta_callback(request: Request):
+    """Facebook Login sends her back here (this exact URL is saved in the HOOLA Meta app's Valid OAuth Redirect URIs)."""
+    from .ads import metaads
+    q = request.query_params
+    if q.get("error") or q.get("error_reason"):
+        return _linked_page("Facebook ads", "ads", None, q.get("error_description") or q.get("error_reason") or q.get("error") or "")
+    try:
+        v = await asyncio.to_thread(metaads.finish_link, q.get("code", ""), q.get("state", ""))
+    except metaads.MetaAdsError as e:
+        return _linked_page("Facebook ads", "ads", None, str(e))
+    return _linked_page("Facebook ads", "ads", ", ".join(v["accounts"][:3]) or "No ad account found in this login")
+
+
+@app.get("/api/ads/metaads", dependencies=[Depends(require_key)])
+def ads_metaads(tenant: str = Depends(current_tenant)):
+    """Her Facebook login, ad accounts, Pages and Facebook / Instagram ad drafts."""
+    from .ads import metaads
+    return metaads.view(tenant)
+
+
+@app.post("/api/ads/metaads/account", dependencies=[Depends(require_key)])
+def ads_metaads_account(body: dict, tenant: str = Depends(current_tenant)):
+    """{account: act_..., page: <page id>} = which ad account pays and which Page the ads run as."""
+    from .ads import metaads
+    b = body or {}
+    return _mads_call(metaads.choose, tenant, str(b.get("account") or ""), str(b.get("page") or ""))
+
+
+@app.get("/api/ads/metaads/posts", dependencies=[Depends(require_key)])
+async def ads_metaads_posts(tenant: str = Depends(current_tenant)):
+    """Her Page's recent posts (to Boost one)."""
+    from .ads import metaads
+    return {"posts": await asyncio.to_thread(_mads_call, metaads.page_posts, tenant)}
+
+
+@app.post("/api/ads/metaads/drafts", dependencies=[Depends(require_key)])
+def ads_metaads_new(body: dict, tenant: str = Depends(current_tenant)):
+    """A new Facebook / Instagram ad draft {goal: whatsapp|messenger|instagram|website|boost, ...} - stays in Hoola."""
+    from .ads import metaads
+    b = dict(body or {})
+    return _mads_call(metaads.new_draft, tenant, str(b.pop("goal", "") or "whatsapp"), **b)
+
+
+@app.post("/api/ads/metaads/drafts/{did}", dependencies=[Depends(require_key)])
+def ads_metaads_edit(did: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .ads import metaads
+    return _mads_call(metaads.set_draft, tenant, did, **(body or {}))
+
+
+@app.post("/api/ads/metaads/drafts/{did}/{action}", dependencies=[Depends(require_key)])
+async def ads_metaads_action(did: str, action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """check (Meta validates, free) | create (in her account, all PAUSED) | start (her tap + confirm: spends) | pause."""
+    from .ads import metaads
+    b = body or {}
+    fn = {"check": metaads.check, "create": metaads.create, "pause": metaads.pause}.get(action)
+    if action == "start":
+        return await asyncio.to_thread(_mads_call, metaads.start, tenant, did, b.get("confirm") is True)
+    if fn is None:
+        raise HTTPException(404, "action: check | create | start | pause")
+    return await asyncio.to_thread(_mads_call, fn, tenant, did)
 
 
 @app.get("/api/social/inbox", dependencies=[Depends(require_key)])
