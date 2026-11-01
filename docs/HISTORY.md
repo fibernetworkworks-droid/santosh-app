@@ -15361,3 +15361,29 @@ cannot self-approve, related leaves per student, all through the site's own addr
 a linked site's workflow + maker-checker approval end to end, unlinked sites unchanged.
 NOT VERIFIED: no real Opus call made (fakes in tests); the phone app does not draw the `site_spec` card yet (the model
 reads the card's lines in chat; her Haan in chat = architect_ok).
+
+## v0.408.0 HOOLA MECHANISMS (1 Nov 2026)
+Owner: "GO JOINTS AND URDF" (third item from the text-to-cad comparison; own code).
+- `engineering/kinematics.py` (CAD box, after the build, when the script calls H.joint): joints written in the
+  assembly's own frame at the zero pose - name, parent, child (assembly part NAMES), kind revolute / continuous /
+  prismatic / fixed, origin (a point on the axis, mm), axis, limits (deg / mm), effort, velocity. H.robot(name,
+  materials={part: material}); the part material comes from the design's MATERIAL line (sandbox.run(material=)).
+- tree(): duplicate names, unknown parts, two parents, zero axis, low >= high limits, loops - each NAMED; a part no
+  joint reaches is fixed to the root and said so. world_tf composes child motion = parent motion x joint motion.
+- Mass properties: OCC GProp per part (mass kg, COM mm, inertia about the COM in kg m2) - arm 120 x 20 x 20 Al =
+  0.1296 kg, Ixx 8.64e-6, Iyy 1.5984e-4, exactly m (b2 + c2) / 12.
+- Range of motion: each movable joint swept to each limit in 12 steps, the moving subtree's solids tested against
+  every other part with OCC common (> 0.5 % of the smaller volume; the joint's own parent / child pair skipped),
+  first hit bisected 6 times -> free range + what collides at what value. A collision inside her asked range goes
+  back to the designer once (ENG_KIN_ROUNDS 1).
+- URDF: link frame = its joint origin (world-aligned at zero pose), visual + collision STL in the link frame (mm,
+  scale 0.001), inertial origin = COM in the link frame, joint origin relative to the parent link, axis, limits in
+  rad / m + effort / velocity (defaults 10 N m / 1 rad s, 100 N / 0.1 m s, listed as assumed). Validated after
+  writing by parsing it back: XML, unique names, one root + a tree, limits, positive masses, inertia positive +
+  triangle rule. robot_urdf.zip = <robot>/robot.urdf + meshes/*.stl + README.
+- Motion GIF (16 frames, all joints swinging together, one camera centre + scale) and an exploded view (parts pushed
+  out from the assembly centre, deeper links further) drawn by the server from mesh.json + kin.json transforms.
+- Checks rows: Robot description (URDF), Joint <name> range (free vs asked, what collides). Console + phone show the
+  GIF / exploded view and the URDF download.
+- Tests: tests/test_v0406_mechanisms.py (5). Not yet: SDF / MJCF, closed-chain linkages, joint torque from loads,
+  self-collision matrix (SRDF), gear / belt couplings between joints.
