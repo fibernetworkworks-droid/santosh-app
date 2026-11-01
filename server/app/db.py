@@ -761,6 +761,7 @@ def init_db(url: str | None = None):
     from .site import arena as _site_arena  # noqa: F401  (v0.307 Design Arena runs / items / duels)
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
+    from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
@@ -851,7 +852,7 @@ def init_db(url: str | None = None):
     # v0.150 Kanoon suite
     from .vakil import models as _vakil  # noqa: F401
     from .legalres import models as _legalres  # noqa: F401
-    from .shiksha import models as _shiksha  # noqa: F401  (v0.370 Shiksha suite)
+    from .shiksha import models as _shiksha  # noqa: F401  (v0.379 Shiksha suite)
     from .pathyakram import models as _pathyakram  # noqa: F401
     from .compliance import models as _compliance  # noqa: F401
     from .contracts import models as _contracts  # noqa: F401
@@ -898,6 +899,7 @@ def init_db(url: str | None = None):
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
+    from .gamedesk import service as _gamedesk  # noqa: F401  (v0.379 Game Desk)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

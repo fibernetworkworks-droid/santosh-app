@@ -1,7 +1,8 @@
 """python -m app.quality [--live] [--judge] [--label "..."] | compare <before.json> <after.json>
    | tools [--live] [--fresh] [--limit N] [--brain claude|glm] [--label "..."]   (v0.245 tool-choice card)
    | longjobs [--hours 24]   (v0.347 how her real long jobs went)
-   | code [--set 1|2] [--only id,id] [--limit N] [--label "..."]   (v0.360 coding card: 12 practice jobs through the real loop)"""
+   | code [--set 1|2|3] [--only id,id] [--limit N] [--label "..."]
+   | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
 import asyncio
@@ -38,6 +39,12 @@ def _code(argv: list[str]) -> int:
 
 
 def main(argv: list[str]) -> int:
+    if argv and argv[0] == "sdk":           # v0.378 Dart / Kotlin toolchains for the mobile coding card
+        from . import sdk
+        if "--setup" in argv:
+            print("\n".join(sdk.setup()))
+        print("\n".join(sdk.status()))
+        return 0
     if argv and argv[0] == "code":          # v0.360 coding card (model calls: ~12 Opus jobs)
         return _code(argv[1:])
     if argv and argv[0] == "tools":

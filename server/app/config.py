@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     dev_loop: bool = True                   # v0.350 Developer Sahayak explores + edits step by step with 8 tools (devsahayak/loop.py)
     dev_loop_steps: int = 40                # ... at most this many model steps a task
     dev_loop_minutes: int = 20              # ... and this many minutes
+    dev_review_steps: int = 25              # v0.377 a PR review explores at most this many steps (read-only tools)
+    dev_review_minutes: int = 10            # ... and this many minutes, then the one-shot review is the fallback
     dev_loop_model: str = ""                 # ... '' = site_model (Opus)
     dev_loop_effort: str = "high"           # ... Claude effort for coding
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
@@ -388,6 +390,7 @@ class Settings(BaseSettings):
     pagespeed_api_key: str = ""             # optional: PageSpeed Insights API key (higher quota for SEO checks)
     indiamart_enabled: bool = True           # v0.280 IndiaMART's own MCP (buyer search: products, prices, suppliers)
     indiamart_mcp_url: str = "https://imgpt.indiamart.com/mcp"   # no key / sign-in; read-only tools only
+    game_model: str = "claude-opus-5-5"     # v0.370 Game Desk: writes the design doc + GDScript ('' = anthropic_model)
     mospi_enabled: bool = True               # v0.348 MoSPI eSankhyiki: official Govt of India statistics, built in
     mospi_mcp_url: str = "https://mcp.mospi.gov.in/mcp"   # no login, read-only
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)

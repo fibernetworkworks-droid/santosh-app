@@ -46,6 +46,8 @@ def ensure_table() -> None:
 
 TRUST = ("seekh", "saathi", "bharosa")
 
+GAME_GROUP = "Game Development, Simulation & VR"   # v0.379 the Game Desk employees' heading in the Hub
+
 # The catalogue. `live` employees can be hired today; the others show as "coming".
 CATALOG: dict[str, dict[str, Any]] = {
     "seo": {
@@ -108,6 +110,37 @@ CATALOG: dict[str, dict[str, Any]] = {
               "pitch": "Layout scripts and design-rule checks on GDS files (KLayout)."},
     "iiot": {"name": "Industrial IoT Architect", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
              "pitch": "SCADA and factory network design: device list, protocols, security zones, BOM (paper only)."},
+    # v0.379 GAME DESK (docs/GAME_DESK_PLAN.md): one shared desk, a pack per role; Phase 1 = the Game Developer
+    "game_dev": {"name": "Game Developer", "live": True, "icon": "game", "group": GAME_GROUP,
+                 "pitch": "Makes original games from your words with Godot 4, tests them itself and gives you a link to play on any phone.",
+                 "does": ["Writes a short design doc first: you OK it or change it",
+                          "Builds the game in Godot 4 (free, open source) for the phone browser",
+                          "Plays it itself before you see it: frame rate, taps and keys, screenshots, script errors",
+                          "Fixes its own mistakes from the real errors (up to four rounds)",
+                          "A private play link and QR, plus the whole Godot project as a zip",
+                          "Changes in your words make a new version; the last good one keeps working"],
+                 "needs": ["Your idea in two or three lines (what you do, how you win, who it is for)"],
+                 "never": ["Copy a specific existing game, its characters, levels or art",
+                           "Real-money, betting or gambling games", "Cheats, bots for other people's games, weapon targeting",
+                           "Share your game anywhere: the link is private until you share it"]},
+    "xr_dev": {"name": "AR / VR Interaction Engineer", "live": False, "icon": "game", "group": GAME_GROUP,
+               "pitch": "WebXR scenes with hand tracking and gestures that open in a phone or headset browser."},
+    "netcode_dev": {"name": "Multiplayer Network Programmer", "live": False, "icon": "game", "group": GAME_GROUP,
+                    "pitch": "Netcode for your game: server, prediction, lag compensation, tested with bots on bad networks."},
+    "physics_dev": {"name": "Physics Engine Developer", "live": False, "icon": "game", "group": GAME_GROUP,
+                    "pitch": "Collisions, rigid bodies and fluid simulation, checked against real physics cases."},
+    "sim_dev": {"name": "Simulation Software Engineer", "live": False, "icon": "game", "group": GAME_GROUP,
+                "pitch": "Flight, space and driving training simulators with cited data and repeatable scenarios."},
+    "procgen_dev": {"name": "Procedural World Generation Engineer", "live": False, "icon": "game", "group": GAME_GROUP,
+                    "pitch": "Terrain, cities and levels from rules and seeds, playable and previewed."},
+    "vfx_td": {"name": "VFX Pipeline Technical Director", "live": False, "icon": "game", "group": GAME_GROUP,
+               "pitch": "CG pipeline for film and TV: shot tracking, ACES colour, EXR, render queue (Blender / OpenUSD)."},
+    "audio_dev": {"name": "Spatial Audio Systems Programmer", "live": False, "icon": "game", "group": GAME_GROUP,
+                  "pitch": "3D positional sound: HRTF, distance, occlusion and reverb zones for games and VR."},
+    "twin_arch": {"name": "Digital Twin Architect", "live": False, "icon": "game", "group": GAME_GROUP,
+                  "pitch": "A live 3D twin of your factory or building with what-if simulation; reads data, never controls."},
+    "haptics_dev": {"name": "Haptic Feedback Systems Engineer", "live": False, "icon": "game", "group": GAME_GROUP,
+                    "pitch": "Vibration patterns and driver code for phones, controllers and your own device."},
 }
 
 

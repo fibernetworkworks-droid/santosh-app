@@ -1,4 +1,4 @@
-"""v0.370 Shiksha suite Phase 0 + 1: the locked Python sandbox, the education foundation (classes, learners + guardian
+"""v0.379 Shiksha suite Phase 0 + 1: the locked Python sandbox, the education foundation (classes, learners + guardian
 consent under DPDP s.9, shared question bank with code checks, gradebook) and the Pathyakram Sahayak (questions ->
 drafts -> teacher approval, papers from the official blueprint, year / lesson plans, rubrics, Word files, a share only
 on her app tap, Google Forms quiz from the objective questions), tools, API, employee wiring."""
@@ -336,4 +336,4 @@ def test_tools_api_and_employee_wiring(sk, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.370.0"
+    assert APP_VERSION == "0.379.0"
