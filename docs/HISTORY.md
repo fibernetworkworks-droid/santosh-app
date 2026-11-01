@@ -12677,3 +12677,16 @@ Owner: "Terms of Service --- HOOLA" (right after her privacy policy went live at
   Indian law allows, consumer rights kept), Indian law + Akola courts, grievance officer under the IT Act (24 h acknowledgement, 15 days).
 - NOT legal advice: the owner should have a lawyer review the liability cap, indemnity, jurisdiction and refund wording before relying on them.
 - Tests: `test_v0342_terms.py`.
+
+## v0.343.0 SIGNAL PAR NISHAN (from the 1 Nov deploy log)
+- The deploy of v0.340 ended its shutdown with "Shutting down ... Waiting for connections to close ... Aborted!": the
+  server waits for long-lived connections (live chat streams, PC websocket links) and is force-stopped. So v0.332's
+  `mark_clean_stop()`, called at the END of the app's shutdown (after `yield` in `main.lifespan`), never ran, and a
+  deploy could still turn a running website build into "Server ruk gaya tha".
+- `main._mark_jobs_on_stop_signal()` runs at startup (main thread only; uvicorn has already installed its handlers):
+  it wraps SIGINT / SIGTERM so running website jobs are marked the moment the stop signal arrives, then calls the
+  previous (uvicorn) handler exactly as before; never wrapped twice; a failing mark never blocks the shutdown. The
+  lifespan call stays as a second chance.
+- Tests `server/tests/test_v0343_signal_par_nishan.py`: real SIGTERM / SIGINT to the test process - marked first, then
+  the old handler; a mark that raises still hands over. Also checked by hand: a real uvicorn server started, got SIGINT,
+  exited 0 in 3.7 s with no traceback.
