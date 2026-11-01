@@ -292,3 +292,83 @@ def logic_apply(tenant: str, ref: str, h: str) -> dict[str, Any]:
     except Exception:
         log.info("site rebuild after logic skipped", exc_info=True)
     return out
+
+
+# ---------------------------------------------------------------- v0.409 every old v0.305 site moves by itself
+_MIGRATE = {"done": 0, "failed": 0, "last": ""}
+
+
+def migrate_all(limit: int = 25) -> dict[str, Any]:
+    """The worker's sweep: every website that still has a v0.305 app (lists, no link) is joined to App Sahayak's backend -
+    same members, same rows, same passwords, same addresses. Idempotent; a site that fails is retried next sweep."""
+    from ..config import get_settings
+    from .models import Site
+    if not getattr(get_settings(), "site_app_link", True):
+        return {"moved": 0, "off": True}
+    W.ensure_tables()
+    with session() as s:
+        rows = s.query(Site.id, Site.tenant_id, Site.app).filter(Site.app.like('%"collections"%')).limit(400).all()
+    todo = []
+    for sid, tenant, app in rows:
+        a = _j(app, {})
+        if isinstance(a, dict) and not a.get("link") and a.get("collections"):
+            todo.append((sid, tenant))
+    moved = []
+    for sid, tenant in todo[:limit]:
+        try:
+            out = link(tenant, sid)
+            moved.append({"site": sid, "app": out["app"]})
+            _MIGRATE["done"] += 1
+        except Exception as e:                   # noqa: BLE001 - one bad site never stops the others
+            _MIGRATE["failed"] += 1
+            _MIGRATE["last"] = f"{sid}: {e}"[:300]
+            log.warning("site app migrate failed for %s: %s", sid, e)
+    return {"moved": len(moved), "left": max(0, len(todo) - len(moved)), "sites": moved}
+
+
+# ---------------------------------------------------------------- v0.409 the phone app on the SAME data
+def phone_app(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
+    """Her website's app becomes an Android / iPhone app design WITHOUT a second copy of anything: App Sahayak plans the
+    screens for the site's business (its normal plan card -> 3 looks -> design -> build), on the SAME project - same id,
+    same app_key, same lists, logic, members and rows. A row added on the website shows in the phone app and back."""
+    from ..appmaker import service as AS
+    from ..appmaker.models import AppProject
+    from . import service as S
+    with session() as s:
+        r = S._find(s, tenant, ref)
+        s.expunge(r)
+    link(tenant, ref)
+    p = project(S._load(r.id))
+    if p.status not in ("web",):
+        return {"app": p.id, "number": p.number, "status": p.status,
+                "say": f"Is website ki phone app pehle se app {p.number} mein ban rahi hai ({p.status})."}
+    facts = _j(r.facts, {})
+    try:
+        tmp = AS.new(tenant, (r.brief or r.name or "")[:1800], conv, name=r.name or facts.get("name") or "",
+                     field=r.field or "", quiet=True, answers={"sure": True, **{k: facts[k] for k in ("phone", "address", "city") if facts.get(k)}})
+    except AS.AppError as e:
+        raise W.AppError(str(e), 400) from e
+    keep = ("name", "brief", "field", "goal", "style", "styles", "language", "facts", "answers", "plan", "status", "stage",
+            "board", "preview_token")
+    with session() as s:
+        t = s.get(AppProject, tmp["id"])
+        row = s.get(AppProject, p.id)
+        old_plan = _j(row.plan, {})
+        for k in keep:
+            setattr(row, k, getattr(t, k))
+        plan = _j(row.plan, {})
+        for k in ("architect",):                 # the Architect's card stays with the project
+            if k in old_plan:
+                plan[k] = old_plan[k]
+        plan["web_site"] = r.id
+        row.plan = json.dumps(plan, ensure_ascii=False)
+        row.conv = conv or row.conv
+        row.updated_at = now()
+        s.delete(t)                              # the planning shell only; nothing else ever pointed at it
+        s.flush()
+        s.expunge(row)
+    AS._emit(row, push=True)
+    v = AS.view(row)
+    return {"app": row.id, "number": row.number, "status": row.status, "app_key": (_j(row.android, {}) or {}).get("app_key", ""),
+            "say": f"Phone app ka plan taiyaar (app {row.number}) - wahi data jo website par hai. Plan card par haan kahiye, "
+                   "phir 3 looks; build ke baad Android / iPhone app aur website ek hi data dekhenge.", "view": v}

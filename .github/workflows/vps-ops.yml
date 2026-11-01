@@ -19,6 +19,8 @@ on:
           - errors
           - voicecheck
           - mospi_check
+          - architect_check
+          - arena_numbers
           - game_setup
           - game_check
           - ack_refresh
@@ -141,6 +143,12 @@ jobs:
                 echo 'cd $CORE && timeout 300 .venv/bin/python -m app.gamedesk check 2>&1 | tail -40' ;;
               game_check)
                 echo 'cd $CORE && timeout 300 .venv/bin/python -m app.gamedesk check 2>&1 | tail -40' ;;
+              architect_check)
+                # v0.409 HOOLA ARCHITECT live: one REAL Opus spec + the App Sahayak checker on this server; builds nothing, removes the spec
+                echo 'cd $CORE && timeout 900 .venv/bin/python -m app.site.architect check 2>&1 | tail -120' ;;
+              arena_numbers)
+                # v0.409 the Design Arena runs so far (read-only, free): version, sites, score summary, rupees - before / after numbers
+                echo 'cd $CORE && timeout 120 .venv/bin/python -c "import json; from app.db import init_db; init_db(); from app.site import arena as A; print(json.dumps(A.runs(10), ensure_ascii=False, indent=1, default=str))" 2>&1 | tail -150' ;;
               mospi_check)
                 # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
                 echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'

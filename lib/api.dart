@@ -1254,6 +1254,9 @@ class Api {
   Future<Map<String, dynamic>> siteGet(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/sites/$id') as Map);
   Future<Map<String, dynamic>> siteAct(String id, String action, [Map<String, dynamic> body = const {}]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/sites/$id/$action', body: body, timeout: const Duration(seconds: 120)) as Map);
+  /// v0.409 HOOLA ARCHITECT: revise / approve a spec card (approve = her tap, with the hash of the card she saw).
+  Future<Map<String, dynamic>> architectAct(String id, String action, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/site-architect/$id/$action', body: body, timeout: const Duration(seconds: 180)) as Map);
   Future<Map<String, dynamic>> siteDelete(String id) async => Map<String, dynamic>.from(await _send('DELETE', '/api/sites/$id') as Map);
   Future<Map<String, dynamic>> sitePhoto(String id, String filename, List<int> bytes, String about) async =>
       uploadFile('/api/sites/$id/photo', filename, bytes, fields: {'about': about}, tries: 1, timeout: const Duration(seconds: 180));

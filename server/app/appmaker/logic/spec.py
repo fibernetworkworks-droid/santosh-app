@@ -1,7 +1,7 @@
 """v0.382 DIMAAG: the app's logic spec - read, cleaned and CHECKED against the app's real lists before it can go live.
 
 be["logic"] = {
-  "relations":  [{name, from, field, to, label, on_delete: restrict|cascade|nullify}]   customer -> orders -> lines
+  "relations":  [{name, from, field, to, label, on_delete: restrict|cascade|nullify, share: bool}]   customer -> orders -> lines
   "formulas":   [{coll, field, expr}]                                                    computed on every write
   "rules":      [{coll, check, message, on: always|create|update}]                       cross-field checks
   "unique":     [{coll, fields: [...], message}]                                         unique keys
@@ -198,6 +198,8 @@ def check(raw: Any, sch: dict[str, Any], run_tests: bool = True) -> dict[str, An
         od = r.get("on_delete") if r.get("on_delete") in ON_DELETE else "restrict"
         rel = {"name": name, "from": frm, "field": field, "to": to, "on_delete": od,
                "label": str(r.get("label") or ck.colls[frm].get("label") or frm)[:60]}
+        if r.get("share") is True:          # v0.409 a child row belongs to its parent row's person (a parent sees her child's marks)
+            rel["share"] = True
         ck.rel.append(rel)
         out["relations"].append(rel)
     for c in ck.colls:                          # a ref field nobody linked is still a parent link for formulas
@@ -559,7 +561,8 @@ def summary(spec: dict[str, Any]) -> list[str]:
     for r in spec.get("relations", []):
         out.append(f"Link: har {r['from']} ek {r['to']} se juda ({r['field']}); {r['to']} ke andar '{r['label']}' dikhega"
                    + {"cascade": ", hatane par saath mein hatenge", "nullify": ", hatane par link khaali",
-                      "restrict": ", jab tak juda hai hata nahi sakte"}[r["on_delete"]])
+                      "restrict": ", jab tak juda hai hata nahi sakte"}[r["on_delete"]]
+                   + (f"; jiski {r['to']} entry hai woh bhi ise dekhega" if r.get("share") else ""))
     for f in spec.get("formulas", []):
         out.append(f"Hisaab: {f['coll']}.{f['field']} = {f['expr']}")
     for r in spec.get("rules", []):

@@ -1446,13 +1446,20 @@ window.HoolaBuild = function (C) {
     const design = `<form class="stapp" autocomplete="off"><label for="stApp"><b>${cols.length ? 'Change the app' : 'Make this website an app'}</b>
         <span>Logins, lists of data with rules, a My account page and a staff panel at /admin/. Say who logs in, what they fill and who sees it.</span></label>
         <div class="row"><input id="stApp" placeholder="e.g. customers log in and track their order; staff update the status"><button class="btn go" type="submit">${cols.length ? 'Update app' : 'Make app'}</button></div></form>
-      <div class="acts"><button class="btn soft" type="button" data-x="react">Export as React project</button></div>`;
+      <div class="acts"><button class="btn soft" type="button" data-x="react">Export as React project</button>${cols.length ? '<button class="btn soft" type="button" data-x="phone">Make phone app (same data)</button>' : ''}</div>`;
     box.innerHTML = design + (info.linked ? `<section class="stlogic" aria-label="Logic"></section>` : '') + (cols.length ? `<p class="stnote">${N(counts.members)} members · ${cols.map(c => `${esc(S(c.label))}: ${N(counts[c.key])}`).join(' · ')}</p><div class="stcols"></div><div class="stmem"></div>` : '');
     box.querySelector('.stapp').addEventListener('submit', async e => {
       e.preventDefault(); const w = box.querySelector('#stApp').value.trim(); if (!w) return;
       const b = e.target.querySelector('button'); b.disabled = true;
       try { const r = await api('POST', base(o) + '/app-design', {words: w, conversation_id: C.conv() || ''}); toast(S(r?.say) || 'App updated.'); loadData(o, root); }
       catch (er) { toast(er.message, true); b.disabled = false; }
+    });
+    const ph = box.querySelector('[data-x=phone]');
+    if (ph) ph.addEventListener('click', async e => {
+      if (!confirm('Plan an Android / iPhone app on the same data as this website? Nothing is built until you say Haan on its plan card.')) return;
+      e.target.disabled = true;
+      try { const r = await api('POST', base(o) + '/phone-app', {conversation_id: C.conv() || ''}); toast(S(r?.say) || 'Phone app plan ready.'); }
+      catch (er) { toast(er.message, true); e.target.disabled = false; }
     });
     box.querySelector('[data-x=react]').addEventListener('click', async e => {
       e.target.disabled = true;
@@ -1630,14 +1637,14 @@ window.HoolaBuild = function (C) {
       + mods.map(m => `<fieldset class="stmod"><legend><label><input type="checkbox" data-mod="${esc(S(m.key))}"${m.required || built ? ' disabled' : ''} checked> <b>${esc(S(m.title))}</b>${m.ready === false ? ' <span class="badc">needs a fix</span>' : ''}</label></legend>
           ${L(m.lines).slice(0, 14).map(x => `<div class="bln faint">• ${esc(S(x))}</div>`).join('')}</fieldset>`).join('')
       + L(c.questions).map(q => `<div class="warnc bln">? ${esc(S(q))}</div>`).join('')
-      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change data / rules</button><button class="btn go" type="button" data-sp="ok">Haan, build it</button></div>`);
+      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change anything</button><button class="btn go" type="button" data-sp="ok">Haan, build it</button></div>`);
     el.onclick = async e => {
       const b = e.target.closest('[data-sp]'); if (!b) return;
       const url = `/api/site-architect/${encodeURIComponent(S(c.id))}`;
       if (b.dataset.sp === 'data') {
-        const w = prompt('What should change in the data or rules? (e.g. late fee after the 10th, class teacher approves leave)'); if (!w) return;
+        const w = prompt('What should change? (e.g. add an alumni page, teachers also mark attendance, fees by UPI)'); if (!w) return;
         b.disabled = true;
-        try { const r = await api('POST', url + '/data', {words: w}); specCard(r, el); toast(S(r?.say) || 'Updated.'); } catch (er) { toast(er.message, true); b.disabled = false; }
+        try { const r = await api('POST', url + '/revise', {words: w}); specCard(r, el); toast(S(r?.say) || 'Updated.'); } catch (er) { toast(er.message, true); b.disabled = false; }
         return;
       }
       const keep = [...el.querySelectorAll('[data-mod]')].filter(x => x.checked).map(x => x.dataset.mod);

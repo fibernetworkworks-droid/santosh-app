@@ -443,11 +443,31 @@ def before_create(r: AppProject, coll: str, data: dict[str, Any], w: W.Who) -> d
     return data
 
 
+def _share_owner(r: AppProject, c: dict[str, Any], coll: str, row_id: str) -> None:
+    """v0.409 relation `share`: a row made under a parent row (attendance / marks under a student) belongs to that parent
+    row's person, so a parent reads her own child's rows ('own') while staff still see all. Set once, at create."""
+    rels = [x for x in (c.get("spec") or {}).get("relations", []) if x.get("share") and x["from"] == coll]
+    if not rels:
+        return
+    with session() as s:
+        row = s.get(W.SiteAppRow, row_id)
+        if row is None or row.site_id != site(r):
+            return
+        d = _j(row.data, {})
+        for rel in rels:
+            pid = str(d.get(rel["field"]) or "")
+            par = s.get(W.SiteAppRow, pid) if pid else None
+            if par is not None and par.site_id == row.site_id and par.coll == rel["to"] and par.owner:
+                row.owner = par.owner
+                break
+
+
 def after_create(r: AppProject, coll: str, row_id: str, w: W.Who) -> None:
     c = compiled(r)
     if not c:
         return
     STATS["writes"] += 1
+    _share_owner(r, c, coll, row_id)
     with _guard() as ok:
         d = load(r, row_id, coll) or {}
         ch = compute(r, c, coll, d, w)

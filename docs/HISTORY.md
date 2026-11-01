@@ -15387,3 +15387,43 @@ Owner: "GO JOINTS AND URDF" (third item from the text-to-cad comparison; own cod
   GIF / exploded view and the URDF download.
 - Tests: tests/test_v0406_mechanisms.py (5). Not yet: SDF / MJCF, closed-chain linkages, joint torque from loads,
   self-collision matrix (SRDF), gear / belt couplings between joints.
+
+## v0.409.0 EK DIMAAG 2 - web Step 2 finished (owner: "FINISH THIS ALL", after "IS STEP 2 DONE" listed six gaps)
+
+The six gaps left after v0.407, each closed:
+1. **Old sites move by themselves.** `site/applink.migrate_all()` runs in the worker loop: every website that still has a
+   v0.305 app (lists, no link) is joined to App Sahayak's backend - same members, rows, passwords, addresses; idempotent,
+   one failing site never stops the others (`_MIGRATE` counts). A NEW web app (`design_app`) is linked the moment it is
+   designed. Switch: `SITE_APP_LINK` (default true). The whole v0.305 web-app suite now passes on the linked path.
+   Safety found on the way: `backend.ensure()` re-made a backend's lists from the app PLAN when `SCHEMA_V` moved - for a
+   website that would have wiped her lists. A `kind: web` backend now only gets its version raised (`_web_upgrade`).
+2. **The full school portal from one line** (tests/test_v0409_ek_dimaag2.py): admission (parent) -> approval (teacher asks,
+   principal approves, maker-checker refuses the asker) -> trigger makes the student (owned by the parent) -> trigger makes
+   the fee (from the class's fee) -> fee Paid only by the principal and only with a receipt no. -> class page lists its
+   admissions -> attendance once per student per day (unique) by the teacher -> report card total / percent / result worked
+   out by the server, marks > 100 refused -> another parent sees nothing. Needed ONE engine feature: relation `share`
+   (`logic/spec.py` + `engine._share_owner`): a row made under a parent row (attendance / marks / fees of a student) belongs
+   to that parent row's person, so a parent reads her own child's rows with read: own while staff see all.
+   Bug found by this proof: the word "portal" (SM.BIG_WORDS) turned every Architect site into a 25-page site map and
+   ignored the Architect's own pages; approve now passes the Architect's page count.
+3. **The same data in a phone app.** `applink.phone_app(site)` (POST /api/sites/{ref}/phone-app, console "Make phone app
+   (same data)", tool website action=phone_app): App Sahayak plans the screens (its own plan card -> looks -> design ->
+   build) ON THE SAME project - the planning fields are copied into the web project and the planning shell is deleted
+   (`AS.new(..., quiet=True)` so no stray card). Same id, same app_key: the phone API (`/api/app-api/<key>`, what the
+   Android / iPhone kits call) logs in with the website password, reads the website's rows and writes rows the website shows.
+4. **The full spec card.** Modules now: stories (who / want / so), pages, users, data, logic, payments (none / record /
+   upi / cod - money never moves; record = staff record it), notifications (in_app / push become the logic's own notify
+   actions; WhatsApp / email noted for after connecting), integrations (a fixed list, joined later from Connect with her
+   login), features. `architect.revise(id, words)` (POST /api/site-architect/{id}/revise, console "Change anything", phone
+   "Kuch badlo", tool action=architect_change): Opus rewrites the spec with ONLY her change; before the build the data
+   draft is redone only when its words moved; after the build only what the change touches is rebuilt - added / removed
+   pages go to the website as one change, new data / rules become a logic draft waiting for her tap.
+5. **Live + phone.** Phone card `lib/ui/site_spec.dart` (`SiteSpecCard`: modules with switches, Kuch badlo, Haan banao ->
+   `api.architectAct`), event `site_spec` in state.dart / chat_screen / call cards. Live check: `python -m app.site.architect
+   check ["brief"]` / vps-ops `architect_check` = one REAL Opus spec + the real App Sahayak checker on her server, prints
+   the card, builds nothing, removes the spec.
+6. **Step-end ritual.** Stable branch cut after this version (see CLAUDE.md checkpoint). vps-ops `arena_numbers` prints the
+   Design Arena runs (read-only, free) for the before / after numbers.
+NOT VERIFIED: the real Opus spec until she runs vps-ops architect_check; no APK / iPhone build was run on a website's
+data (the phone API is proven, the native build path is App Sahayak's existing one); Arena numbers need her Arena run
+(Step 2 does not change how pages are designed, so they should match).

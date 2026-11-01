@@ -353,6 +353,7 @@ class Santosh extends ChangeNotifier {
   int brandTick = 0;                           // v0.118 bumps on brand events (Brand screen refreshes)
   int siteTick = 0;                            // v0.121 bumps on website events (Website screens refresh)
   final Map<String, FeedItem> _siteCards = {}; // v0.121 one card per website, updated in place
+  final Map<String, FeedItem> _specCards = {}; // v0.409 one Architect spec card per spec, updated in place
   int appTick = 0;                             // v0.128 bumps on app design events (App designer screens refresh)
   final Map<String, FeedItem> _appCards = {};  // v0.128 one card per app design, updated in place
   final Map<String, FeedItem> _androidCards = {};  // v0.132 one native build card per app
@@ -1041,6 +1042,7 @@ class Santosh extends ChangeNotifier {
     _lekhakCards.clear();
     _askForms.clear();
     _siteCards.clear();
+    _specCards.clear();
     _appCards.clear();
     _androidCards.clear();
     _brandCards.clear();
@@ -2155,6 +2157,19 @@ class Santosh extends ChangeNotifier {
         }
         if (p['push'] == true && inBackground && !_replaying && !pushOn) {
           Device.instance.showNow('$aName: website ${p['number'] ?? ''}', '${p['say'] ?? ''}');
+        }
+        siteTick++;
+        break;
+      case 'site_spec':                       // v0.409 HOOLA ARCHITECT spec card
+        final spid = '${p['id'] ?? ''}';
+        final spdata = Map<String, dynamic>.from(p);
+        final spc = _specCards[spid];
+        if (spc != null) {
+          spc.data = spdata;
+        } else if (spid.isNotEmpty) {
+          final it = FeedItem('site_spec', spdata);
+          _specCards[spid] = it;
+          feed.add(it);
         }
         siteTick++;
         break;

@@ -461,7 +461,7 @@ def _emit(r: AppProject, push: bool = False) -> None:
 
 # ---------------------------------------------------------------- 1. new: brief -> plan card
 def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = "", goal: str = "", style: str = "",
-        answers: dict[str, Any] | None = None, idea: str = "") -> dict[str, Any]:
+        answers: dict[str, Any] | None = None, idea: str = "", quiet: bool = False) -> dict[str, Any]:
     brief = _tidy(brief, 2000)
     if not brief and not field and not idea:
         raise AppError("Kis kaam ki app? Do-teen shabd kaafi hain, jaise 'kirana dukaan ki app, ghar pe delivery'.")
@@ -560,7 +560,8 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
         s.flush()
         s.expunge(r)
     L.learn(fid, "goal", [g])
-    _emit(r, push=True)
+    if not quiet:                       # v0.409 a website's phone app plans quietly, then shows ITS card (site/applink.phone_app)
+        _emit(r, push=True)
     v = view(r)
     v["say"] = _say(v)
     v["brief_id"] = br["id"]
