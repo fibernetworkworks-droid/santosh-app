@@ -13428,7 +13428,29 @@ Desk / CAD 0.359, Code Card 0.360, ERP 0.361-0.363, CAD PRO 0.364, Blog / Hard C
   0.309.0 / 0.317.0; test_v0240's stamp pin now follows APP_VERSION (a typed number went stale twice). 
 - Tests: tests/test_v0370_game_desk.py (14, one builds + plays a real Godot game when GODOT_BIN is set).
 
-## v0.371.0 TPM DESK — the engineering counterpart, and the BIG list stops drifting
+## v0.371.0 POOCHH LO + FAIR CARD (owner: "CODE_CARD_HARD DONE, CHECK RESULT")
+Built as 0.370, re-versioned past the parallel v0.370 GAME DESK.
+First live hard card (set 2, claude-opus-5-5, node present): 9/12 right. Breakdown: works 10/12, scope 10/12, rules 12/12,
+good tests 7/7, fix tests that prove the bug 4/4, 7.6 steps a job, 2.1 min. The three misses, one by one:
+- vague_ask = a REAL Hoola gap. Asked "Checkout mein kuch gadbad hai, theek kar do.", it guessed and changed
+  app/orders.py + tests.
+  - Fix: `devsahayak/loop.py` SYSTEM has a VAGUE-request rule: explore briefly; with no ONE clear matching bug, do not
+    guess and do not edit; call done with explain = ONE short question in her language. A clear request is never
+    answered with a question. The `done` explain description says the same; the one-shot fallback (WRITE_SYSTEM) too.
+  - `service._work`: an explanation that ends in "?" reaches her with no "(Koi file badalne layak nahi mili.)" tail.
+- fix_shared_default = an UNFAIR check. It demanded `c.items is mine`, so only one spelling of the fix passed;
+  `list(items)` copies and `list(items or [])` fix the bug equally.
+  - Now: carts don't share items, items passed in are kept, no-arg carts start empty.
+- fix_from_test_run = an UNFAIR scope rule. ANY edit to tests/test_orders.py was refused, so adding a test beside the red
+  one failed too.
+  - Now: any test file may change, but the original red test must still be there word for word (a `want` rule);
+    weakening it fails.
+- Tests: `test_v0371_poochh_lo.py` (3 honest cart fixes pass, the bug still fails, an added test is fine, a weakened one is
+  not, rules text present, a question reaches the chat with no tail and nothing pushed); test_v0365 updated (deleting
+  the red test now fails on rules + works instead of scope).
+- Next: re-run vps-ops `code_card_hard` to confirm.
+
+## v0.372.0 TPM DESK — the engineering counterpart, and the BIG list stops drifting
 Owner: *"Technical PM (tpm) --- CHECK AND MAKE THIS 100 %"*.
 
 ### The check found two things

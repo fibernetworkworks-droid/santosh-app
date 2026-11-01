@@ -145,9 +145,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.370.0 (pubspec 0.370.0+410). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.371.0 (pubspec 0.371.0+411). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.371 POOCHH LO: hard card 9/12 -> Developer Sahayak answers a vague coding ask with ONE question, no edits (`loop.SYSTEM`, one-shot too); two card checks made fair (any honest cart fix; tests may be added beside the red one).
 - v0.370 GAME DESK Phase 1 (`docs/GAME_DESK_PLAN.md`, `app/gamedesk/`): hire the Game Developer -> design doc (her OK) -> Godot 4 GDScript -> guard ->
   headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
@@ -300,7 +301,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
-- v0.371 TPM DESK: the check found tpm thin (3 papers, 0 parts, no writes) and - the real point - about to
+- v0.372 TPM DESK: the check found tpm thin (3 papers, 0 parts, no writes) and - the real point - about to
   DUPLICATE the 1,789-line `product` tool (discovery, RICE/ICE, PRDs, releases). So TPM is the ENGINEERING
   counterpart: 12 parts (roadmap, dependencies, architecture/ADR, NFR, debt, capacity, release train, RAID,
   build-vs-buy, incident follow-through, delivery metrics, status) and its OWN RULES send product work to
