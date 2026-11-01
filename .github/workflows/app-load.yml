@@ -38,7 +38,9 @@ jobs:
           cache-dependency-path: server/requirements.txt
       - name: Install
         working-directory: server
-        run: pip install -q -r requirements.txt pytest pytest-xdist pytest-asyncio
+        run: |
+          pip install -q -r requirements.txt pytest pytest-xdist pytest-asyncio
+          python -m playwright install --with-deps chromium     # app looks are rendered in a headless browser
       - name: App backend suites on Postgres
         working-directory: server
         run: |
