@@ -2205,6 +2205,14 @@ body.albon{overflow:hidden}
 .sc-acc div span{font-size:13px}
 .sc-connect{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .sc-pills{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.em-form textarea{width:100%;min-width:0;box-sizing:border-box;padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;resize:vertical}
+.sc-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px}
+.sc-tabs .sc-n{font-variant-numeric:tabular-nums;opacity:.8}
+.sc-items{display:grid;gap:10px}
+.sc-msg .sc-text{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.sc-msg .sc-on{margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-msg .sc-reply{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--hair);border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:14px;resize:vertical}
+.sc-msg .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
 .sc-cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:10px;margin-top:10px}
 .sc-post .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sc-post select{padding:4px 8px;border:1px solid var(--hair);border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:13px}

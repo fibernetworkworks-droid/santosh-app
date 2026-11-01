@@ -753,9 +753,11 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
       'customers': TextEditingController(),
       'goal': TextEditingController(),
       'languages': TextEditingController(text: ((p['languages'] as List?) ?? ['Hinglish']).join(', ')),
+      'facts': TextEditingController(text: _s(p['facts'])),
     };
     const labels = {'business': 'Business name', 'city': 'City', 'sells': 'What you sell', 'customers': 'Who are your customers?',
-        'goal': 'What do you want from social media?', 'languages': 'Languages for posts (comma separated)'};
+        'goal': 'What do you want from social media?', 'languages': 'Languages for posts (comma separated)',
+        'facts': 'Facts for replies: prices, timings, address, WhatsApp (only these are ever quoted)'};
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -768,7 +770,8 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
             const SizedBox(height: 10),
             for (final k in labels.keys)
               Padding(padding: const EdgeInsets.only(bottom: 8), child: TextField(controller: f[k], decoration: InputDecoration(labelText: labels[k]))),
-            const Text('It reads and drafts only in this version. Posting on your OK comes next.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            const Text('Posts go out only after your OK. Replies to comments / DMs quote only the facts you give here.',
+                style: TextStyle(color: C.muted, fontSize: 12.5)),
             const SizedBox(height: 12),
             GradientButton(label: 'Save', icon: Icons.check_rounded, onTap: () => Navigator.pop(c, true)),
           ]),
@@ -938,7 +941,8 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                 leading: const Icon(Icons.account_circle_rounded),
                 title: Text(_s(a['handle']).isEmpty ? _s(a['name']) : _s(a['handle'])),
                 subtitle: Text('${_plat[_s(a['platform'])] ?? _s(a['platform'])} · ${_num(a['followers'])} followers'
-                    '${_s(a['status']) == 'ok' ? '' : ' · connection ended, connect again'}'),
+                    '${_s(a['status']) == 'ok' ? '' : ' · connection ended, connect again'}'
+                    '${_s(a['status']) == 'ok' && (a['can_post'] == false || a['can_reply'] == false) ? ' · Connect again to allow posting and replies' : ''}'),
                 trailing: TextButton(
                     onPressed: _busy ? null : () => _call(() => widget.app.api!.socialDisconnect(_s(a['id'])), 'Disconnected.'),
                     child: const Text('Disconnect')),
@@ -955,6 +959,30 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                 style: TextStyle(color: C.muted, fontSize: 12)),
           ]),
         ),
+        if (accs.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Press(
+            onTap: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => SocialInboxScreen(app: widget.app)))
+                .then((_) => _load()),
+            child: Glass(
+              child: Row(children: [
+                const Icon(Icons.forum_rounded, color: C.accent),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Inbox: comments + DMs', style: display(14)),
+                    const SizedBox(height: 2),
+                    Text('${_num((d['inbox'] as Map?)?['needs'] ?? 0)} need you · ${_num((d['inbox'] as Map?)?['leads'] ?? 0)} leads'
+                        ' · ${_num((d['inbox'] as Map?)?['complaints'] ?? 0)} complaints',
+                        style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                  ]),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: C.muted),
+              ]),
+            ),
+          ),
+        ],
         if (_s(d['calendar_status']) == 'draft' && cal.isNotEmpty) ...[
           const SizedBox(height: 10),
           Glass(
@@ -1030,6 +1058,199 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: children),
         ),
+      ),
+    );
+  }
+}
+
+
+/// v0.356 SOCIAL INBOX: comments on her posts and her DMs, sorted, each with a reply drafted from her facts.
+/// Send / Hide / Ignore are her taps; Hoola never deletes and never messages anyone first.
+class SocialInboxScreen extends StatefulWidget {
+  const SocialInboxScreen({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<SocialInboxScreen> createState() => _SocialInboxScreenState();
+}
+
+class _SocialInboxScreenState extends State<SocialInboxScreen> {
+  String _box = 'needs';
+  Map<String, dynamic>? _d;
+  bool _busy = false;
+  final Map<String, TextEditingController> _ed = {};
+  static const _boxes = {'needs': 'Needs you', 'leads': 'Leads', 'complaints': 'Complaints', 'done': 'Done'};
+  static const _cls = {'lead': 'Lead', 'question': 'Question', 'praise': 'Praise', 'complaint': 'Complaint', 'spam': 'Spam',
+      'abuse': 'Abuse', 'other': 'Other'};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    for (final c in _ed.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final d = await widget.app.api!.socialInbox(_box);
+      if (mounted) setState(() => _d = d);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _do(Future<dynamic> Function() fn, String done) async {
+    setState(() => _busy = true);
+    try {
+      await fn();
+      if (mounted) _snack(context, done);
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Color _clsColor(String c) => switch (c) {
+        'lead' => C.ok,
+        'complaint' => C.warn,
+        'spam' || 'abuse' => C.bad,
+        'praise' => C.violet,
+        _ => C.muted,
+      };
+
+  Widget _item(Map<String, dynamic> it) {
+    final id = _s(it['id']);
+    final st = _s(it['status']);
+    final open = st == 'new' || st == 'drafted' || st == 'failed';
+    final ed = _ed.putIfAbsent(id, () => TextEditingController(text: _s(it['draft'])));
+    final where = '${_s(it['platform']) == 'instagram' ? 'Instagram' : 'Facebook'} ${_s(it['kind']) == 'dm' ? 'DM' : 'comment'}';
+    final hideable = _s(it['kind']) == 'comment';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Glass(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text('${_s(it['author']).isEmpty ? 'Someone' : _s(it['author'])} · $where',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+            _Tag(_cls[_s(it['cls'])] ?? _s(it['cls']), _clsColor(_s(it['cls']))),
+          ]),
+          if (_s(it['post']).isNotEmpty)
+            Padding(padding: const EdgeInsets.only(top: 2), child: Text('On: ${_s(it['post'])}', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: C.muted, fontSize: 12))),
+          const SizedBox(height: 6),
+          SelectableText(_s(it['text']), style: const TextStyle(fontSize: 14, height: 1.35)),
+          if (_s(it['note']).isNotEmpty)
+            Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(it['note']), style: const TextStyle(color: C.muted, fontSize: 12))),
+          if (_s(it['error']).isNotEmpty)
+            Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(it['error']), style: const TextStyle(color: C.bad, fontSize: 12.5))),
+          if (!open) ...[
+            const SizedBox(height: 6),
+            Text(switch (st) { 'replied' => '${it['auto'] == true ? 'Hoola replied' : 'You replied'}: ${_s(it['reply'])}',
+                'hidden' => it['auto'] == true ? 'Hidden by Hoola (not deleted)' : 'Hidden (not deleted)', _ => 'No reply needed' },
+                style: TextStyle(color: st == 'replied' ? C.ok : C.muted, fontSize: 12.5)),
+            if (st == 'hidden')
+              TextButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.socialInboxHide(id, false), 'Shown again.'),
+                  child: const Text('Unhide')),
+            if (st == 'ignored')
+              TextButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.socialInboxSet(id, {'status': 'drafted'}), 'Back in Needs you.'),
+                  child: const Text('Bring back')),
+          ] else ...[
+            const SizedBox(height: 8),
+            if (it['dm_closed'] == true)
+              const Text('Meta lets a business answer a DM only within 24 hours. Reply from the Instagram / Facebook app yourself.',
+                  style: TextStyle(color: C.warn, fontSize: 12.5))
+            else
+              TextField(controller: ed, minLines: 1, maxLines: 5, decoration: const InputDecoration(labelText: 'Reply (edit before sending)')),
+            if (it['needs_her'] == true && it['dm_closed'] != true)
+              const Padding(padding: EdgeInsets.only(top: 4), child: Text('Check this one: it may need a fact only you know.',
+                  style: TextStyle(color: C.warn, fontSize: 12))),
+            const SizedBox(height: 6),
+            Wrap(spacing: 8, children: [
+              if (it['dm_closed'] != true)
+                FilledButton(
+                    onPressed: _busy ? null : () => _do(() => widget.app.api!.socialInboxReply(id, ed.text.trim()), 'Reply sent.'),
+                    child: const Text('Send reply')),
+              if (hideable)
+                OutlinedButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.socialInboxHide(id, true), 'Hidden. Nothing deleted.'),
+                    child: const Text('Hide')),
+              TextButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.socialInboxSet(id, {'status': 'ignored'}), 'Moved to Done.'),
+                  child: const Text('No reply needed')),
+            ]),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = _d;
+    final counts = Map<String, dynamic>.from((d?['counts'] as Map?) ?? const {});
+    final items = _list(d?['items']);
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Inbox')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            try {
+              await widget.app.api!.socialRun('inbox');
+            } catch (_) {}
+            await Future<void>.delayed(const Duration(seconds: 3));
+            await _load();
+          },
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final b in _boxes.entries)
+                ChoiceChip(
+                  label: Text('${b.value}${b.key == 'done' ? '' : ' ${_num(counts[b.key] ?? 0)}'}'),
+                  selected: _box == b.key,
+                  onSelected: (_) {
+                    setState(() => _box = b.key);
+                    _load();
+                  },
+                ),
+            ]),
+            const SizedBox(height: 10),
+            if (d == null)
+              const Center(child: CircularProgressIndicator())
+            else if (items.isEmpty)
+              const Padding(padding: EdgeInsets.only(top: 24), child: Text('Nothing here. Pull down to check Instagram / Facebook now.',
+                  style: TextStyle(color: C.muted, fontSize: 13.5)))
+            else
+              for (final it in items) _item(it),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// v0.356 chat card for a new social lead / complaint: opens the Inbox.
+class SocialCard extends StatelessWidget {
+  const SocialCard({super.key, required this.kind, required this.v, required this.app});
+  final String kind;
+  final Map<String, dynamic> v;
+  final Santosh app;
+  @override
+  Widget build(BuildContext context) {
+    return Press(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocialInboxScreen(app: app))),
+      child: Glass(
+        border: kind == 'social_alert' ? C.warn : null,
+        child: Row(children: [
+          Icon(kind == 'social_lead' ? Icons.person_add_alt_1_rounded : Icons.forum_rounded, color: C.accent),
+          const SizedBox(width: 10),
+          Expanded(child: Text(_s(v['text']), style: const TextStyle(fontWeight: FontWeight.w700))),
+          const Icon(Icons.chevron_right_rounded, color: C.muted),
+        ]),
       ),
     );
   }

@@ -257,7 +257,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="sc-accs">${accs.map(a => `<div class="sc-acc">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : '<span class="sc-pic"></span>'}
           <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)} · ${num(a.followers)} followers</span>
           ${a.status !== 'ok' ? `<span class="badc em-small">${esc(a.status === 'expired' ? 'Connection ended: connect again' : a.error || a.status)}</span>` : ''}
-          ${a.status === 'ok' && a.can_post === false ? '<span class="warnc em-small">Reconnect to allow posting</span>' : ''}</div>
+          ${a.status === 'ok' && (a.can_post === false || a.can_reply === false) ? '<span class="warnc em-small">Reconnect to allow posting and replies</span>' : ''}</div>
           <button class="btn soft" type="button" data-scoff="${esc(a.id)}">Disconnect</button></div>`).join('')}
         <div class="sc-connect">${['instagram', 'facebook'].map(p => d.connect[p]
           ? `<button class="btn ${accs.some(a => a.platform === p) ? 'soft' : 'go'}" type="button" data-scon="${p}">${accs.some(a => a.platform === p) ? 'Reconnect' : 'Connect'} ${PLAT[p]}</button>`
@@ -265,6 +265,11 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <p class="muted em-small">Instagram must be a Business or Creator account (free switch in Instagram settings). A post goes out only when you approve it or tap Publish now: exactly what you approved, at its time.</p></div>
       ${d.calendar_status === 'draft' && cal.length ? `<div class="tile gl em-note"><b>Your 30-day calendar is ready</b><span>${cal.length} posts planned from your real numbers. Read them below, edit any, then approve.</span>
         <button class="btn go" type="button" id="scApprove">Approve calendar</button></div>` : ''}
+      ${accs.length ? `<div class="tile gl sc-inbox" id="scInbox"><div class="em-h"><h3>Inbox: comments + DMs</h3>
+          <span class="muted em-small">Sorted for you; every reply is drafted from your facts. ${d.trust === 'seekh' ? 'Nothing goes without your tap.' : 'Simple replies go on their own (your trust setting); complaints always wait for you.'}</span></div>
+        <div class="sc-tabs" role="tablist">${Object.entries(BOX).map(([k, l]) => `<button class="btn ${k === BOXNOW ? 'go' : 'soft'}" type="button" role="tab" aria-selected="${k === BOXNOW}" data-scbox="${k}">${l}${k === 'done' ? '' : ` <span class="sc-n">${num((d.inbox || {})[k] || 0)}</span>`}</button>`).join('')}
+          <button class="btn soft" type="button" data-scrun="inbox">Check now</button></div>
+        <div class="sc-items" id="scItems"><div class="empty">Loading…</div></div></div>` : ''}
       ${accs.length ? `<div class="kpis em-kpis">${(d.kpis || []).map(kpi).join('') || '<div class="empty">Numbers appear after the first read.</div>'}</div>
       <p class="muted em-small">Baseline from ${esc(b.date || '–')}${b.posts_read ? ` · ${num(b.posts_read)} posts read` : ''}.</p>` : ''}
       ${stg.pillars ? `<div class="grid2">
@@ -284,6 +289,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
             <button class="btn soft" type="button" data-scrun="plan">Rewrite calendar draft</button></div></div>
       </div>`;
     wireSocial(el, d);
+    if (accs.length) inbox(el);
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) social(el); }, 8000);
   }
 
@@ -311,6 +317,64 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn go" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
   }
 
+  // ------------------------------------------------------------ v0.356 the inbox (Phase 3)
+  const BOX = {needs: 'Needs you', leads: 'Leads', complaints: 'Complaints', done: 'Done'};
+  const CLS = {lead: ['ok', 'Lead'], question: ['v', 'Question'], praise: ['v', 'Praise'], complaint: ['warn', 'Complaint'],
+               spam: ['bad', 'Spam'], abuse: ['bad', 'Abuse'], other: ['', 'Other']};
+  let BOXNOW = 'needs';
+  async function inbox(el) {
+    const box = el.querySelector('#scItems'); if (!box) return;
+    let r;
+    try { r = await api('GET', `/api/social/inbox?box=${BOXNOW}`); }
+    catch (e) { box.innerHTML = `<p class="badc">${esc(e.message)}</p>`; return; }
+    box.innerHTML = (r.items || []).map(msg).join('') || `<div class="empty">${BOXNOW === 'needs' ? 'Nothing waiting for you.' : 'Nothing here yet.'}</div>`;
+    wireInbox(el, box);
+  }
+
+  function msg(m) {
+    const [c, n] = CLS[m.cls] || ['', m.cls];
+    const open = ['new', 'drafted', 'failed'].includes(m.status);
+    const where = `${m.platform === 'instagram' ? 'Instagram' : 'Facebook'} ${m.kind === 'dm' ? 'DM' : 'comment'}`;
+    const at = m.at ? new Date(m.at).toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : '';
+    const doneLine = m.status === 'replied' ? `<p class="em-small okc">${m.auto ? 'Hoola replied' : 'You replied'}: ${esc(m.reply)}</p>`
+      : m.status === 'hidden' ? `<p class="em-small muted">${m.auto ? 'Hidden by Hoola' : 'Hidden'} (not deleted) <button class="btn soft" type="button" data-scunhide="${esc(m.id)}">Unhide</button></p>`
+      : `<p class="em-small muted">No reply needed <button class="btn soft" type="button" data-scback="${esc(m.id)}">Bring back</button></p>`;
+    return `<div class="em-item sc-msg" data-mid="${esc(m.id)}"><div class="em-meta"><b>${esc(m.author || 'Someone')}</b>${tag(c, n)}
+        <span class="muted">${esc(where)}${at ? ' · ' + esc(at) : ''}${m.permalink ? ` · <a href="${esc(m.permalink)}" target="_blank" rel="noopener">post</a>` : ''}</span></div>
+      ${m.post ? `<p class="muted em-small sc-on">On: ${esc(m.post)}</p>` : ''}
+      <p class="sc-text">${esc(m.text)}</p>
+      ${m.note ? `<p class="muted em-small">${esc(m.note)}</p>` : ''}
+      ${m.error ? `<p class="badc em-small">${esc(m.error)}</p>` : ''}
+      ${open ? (m.dm_closed ? '<p class="warnc em-small">Meta lets a business answer a DM only within 24 hours. Reply from the Instagram / Facebook app yourself.</p>'
+          : `<textarea class="sc-reply" rows="2" aria-label="Reply to ${esc(m.author || 'them')}">${esc(m.draft)}</textarea>
+        ${m.needs_her ? '<p class="warnc em-small">Check this one: it may need a fact only you know.</p>' : ''}`) +
+        `<div class="acts">${m.dm_closed ? '' : `<button class="btn go" type="button" data-scsend="${esc(m.id)}">Send reply</button>`}
+          ${m.kind === 'comment' ? `<button class="btn soft" type="button" data-schide="${esc(m.id)}">Hide</button>` : ''}
+          <button class="btn soft" type="button" data-scignore="${esc(m.id)}">No reply needed</button></div>` : doneLine}</div>`;
+  }
+
+  function wireInbox(el, box) {
+    const call = async (b, method, path, body, done) => {
+      b.disabled = true;
+      try { await api(method, path, body); toast(done); social(el); }
+      catch (e) { toast(e.message, true); b.disabled = false; }
+    };
+    const id = v => encodeURIComponent(v);
+    box.querySelectorAll('[data-scsend]').forEach(b => b.addEventListener('click', () => {
+      const text = b.closest('.sc-msg').querySelector('.sc-reply').value.trim();
+      if (!text) { toast('Write a reply first.', true); return; }
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scsend)}/reply`, {text}, 'Reply sent.');
+    }));
+    box.querySelectorAll('[data-schide]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.schide)}/hide`, {hidden: true}, 'Hidden. Nothing deleted.')));
+    box.querySelectorAll('[data-scunhide]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scunhide)}/hide`, {hidden: false}, 'Shown again.')));
+    box.querySelectorAll('[data-scignore]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scignore)}`, {status: 'ignored'}, 'Moved to Done.')));
+    box.querySelectorAll('[data-scback]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scback)}`, {status: 'drafted'}, 'Back in Needs you.')));
+  }
+
   function socialForm(d) {
     const p = d.profile || {};
     return `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">A few questions, then connect Instagram or your Facebook Page. Your Social Media Manager reads your posts, finds what works and plans the month.</span></div>
@@ -322,10 +386,11 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <label class="em-wide"><span>Who are your customers?</span><input id="scCust" placeholder="Families and office workers in Dharampeth"></label>
           <label class="em-wide"><span>What do you want from social media?</span><input id="scGoal" placeholder="More WhatsApp enquiries for implants"></label>
           <label class="em-wide"><span>Languages for posts (comma separated)</span><input id="scLang" value="${esc((p.languages || ['Hinglish']).join(', '))}"></label>
+          <label class="em-wide"><span>Facts for replies: prices, timings, address, WhatsApp (only these are ever quoted)</span><textarea id="scFacts" rows="3" placeholder="Cleaning Rs 800. Open 10 am - 8 pm, Sunday closed. WhatsApp 98xxxxxx10">${esc(p.facts || '')}</textarea></label>
         </div>
         <fieldset class="em-trust"><legend>How much may it do on its own?</legend>${['seekh', 'saathi'].map(k => `
           <label><input type="radio" name="scTrust" value="${k}"${k === (d.trust || 'seekh') ? ' checked' : ''}> <b>${TRUST[k][0]}</b> <span class="muted">${TRUST[k][1]}</span></label>`).join('')}
-          <p class="muted em-small">In this version it reads and drafts only. Posting on your OK comes in the next phase, always within this setting.</p></fieldset>
+          <p class="muted em-small">Posts go out only after your OK. Seekh: every reply waits for your tap. Saathi: replies to simple questions, leads and praise from your facts and hides spam (never deletes); complaints always wait for you.</p></fieldset>
         <div class="acts"><button class="btn go" type="submit">Save and continue</button></div>
       </form>`;
   }
@@ -337,7 +402,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       const btn = el.querySelector('#scOn button[type=submit]'); btn.disabled = true;
       try {
         await api('POST', '/api/social/onboard', {business: v('#scBiz'), city: v('#scCity'), sells: v('#scSells'), customers: v('#scCust'),
-          goal: v('#scGoal'), languages: v('#scLang'), trust: el.querySelector('input[name=scTrust]:checked')?.value || 'seekh'});
+          goal: v('#scGoal'), languages: v('#scLang'), facts: v('#scFacts'), trust: el.querySelector('input[name=scTrust]:checked')?.value || 'seekh'});
         toast('Saved. Now connect Instagram or your Facebook Page.');
         el.innerHTML = ''; social(el);
       } catch (e) { toast(e.message, true); btn.disabled = false; }
@@ -395,9 +460,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}/publish`, {}); toast('Posting… the link appears here in a minute.'); setTimeout(() => social(el), 5000); }
       catch (e) { toast(e.message, true); b.disabled = false; }
     }));
+    el.querySelectorAll('[data-scbox]').forEach(b => b.addEventListener('click', () => {
+      BOXNOW = b.dataset.scbox;
+      el.querySelectorAll('[data-scbox]').forEach(x => { const on = x === b; x.className = `btn ${on ? 'go' : 'soft'}`; x.setAttribute('aria-selected', on); });
+      inbox(el);
+    }));
     el.querySelectorAll('[data-scrun]').forEach(b => b.addEventListener('click', async () => {
       b.disabled = true;
-      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast(b.dataset.scrun === 'plan' ? 'Rewriting the draft. Approved posts stay.' : 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
+      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast({plan: 'Rewriting the draft. Approved posts stay.', inbox: 'Checking comments and DMs now.'}[b.dataset.scrun] || 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
       catch (e) { toast(e.message, true); }
       b.disabled = false;
     }));

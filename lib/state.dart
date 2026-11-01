@@ -2244,6 +2244,8 @@ class Santosh extends ChangeNotifier {
       case 'seo_week':
       case 'seo_alert':
       case 'seo_draft':
+      case 'social_lead':
+      case 'social_alert':
       case 'thok_order':
       case 'thok_alert':
       case 'thok_day':

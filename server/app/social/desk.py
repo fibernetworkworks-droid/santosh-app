@@ -200,7 +200,7 @@ def profile_defaults(tenant: str) -> dict[str, Any]:
 
 
 def onboard(tenant: str, business: str = "", city: str = "", sells: str = "", customers: str = "", goal: str = "",
-            languages: list[str] | None = None, trust: str = "", website: str = "") -> dict[str, Any]:
+            languages: list[str] | None = None, trust: str = "", website: str = "", facts: str = "") -> dict[str, Any]:
     from ..employee import hire
     _hired(tenant)
     ensure_tables()
@@ -209,7 +209,7 @@ def onboard(tenant: str, business: str = "", city: str = "", sells: str = "", cu
     langs = [str(x).strip()[:20] for x in (languages or ["Hinglish"]) if str(x).strip()][:4] or ["Hinglish"]
     prof = {"business": str(business).strip()[:120], "city": str(city).strip()[:80], "sells": str(sells).strip()[:300],
             "customers": str(customers).strip()[:300], "goal": str(goal).strip()[:200], "languages": langs,
-            "website": str(website).strip()[:200]}
+            "website": str(website).strip()[:200], "facts": str(facts or "").strip()[:2000]}   # v0.356 reply facts
     with session() as s:
         d = _desk(s, tenant)
         d.profile = json.dumps(prof, ensure_ascii=False)
@@ -279,6 +279,10 @@ def finish_link(platform: str, code: str, state: str, background: bool = True) -
         else:
             tok = M.fb_exchange(code)
             pages = M.fb_pages(tok["access_token"])
+            try:                                   # v0.356 which permissions she granted (inbox needs engagement + messaging)
+                granted = ",".join(str(x) for x in (M.fb_debug_token(tok["access_token"]).get("scopes") or []))
+            except M.MetaError:
+                granted = ""
             if not pages:
                 raise SocialError("Koi Facebook Page nahi mila. Login mein Page chuniye (aap us Page ki admin hon).")
             with session() as s:
@@ -293,6 +297,7 @@ def finish_link(platform: str, code: str, state: str, background: bool = True) -
                     row.token_enc = acc.encrypt(p["access_token"])
                     row.user_token_enc = acc.encrypt(tok["access_token"])
                     row.expires_at = now() + timedelta(seconds=tok["expires_in"])
+                    row.scopes = granted
                     row.status, row.last_error = "ok", ""
                     added.append(row.name)
     except M.MetaError as e:
@@ -306,6 +311,21 @@ def finish_link(platform: str, code: str, state: str, background: bool = True) -
             threading.Thread(target=run_now, args=(tenant, "first"), daemon=True).start()
         else:
             first_run(tenant)
+    else:                                      # v0.356 a second account: read its posts now (not at tomorrow's 7 am)
+        with session() as s:
+            ids = [a.id for a in s.scalars(select(SocialAccount).where(SocialAccount.tenant_id == tenant,
+                                                                       SocialAccount.platform == platform)).all()]
+
+        def _read_new() -> None:
+            for aid in ids:
+                try:
+                    sync_account(aid)
+                except Exception as e:   # noqa: BLE001 - the daily read tries again
+                    log.info("social sync after connect failed: %s", e)
+        if background:
+            threading.Thread(target=_read_new, daemon=True).start()
+        else:
+            _read_new()
     return {"platform": platform, "accounts": added}
 
 
@@ -351,12 +371,18 @@ def meta_deletion(signed_request: str) -> dict[str, Any]:
     return {"confirmation_code": code, "removed": removed}
 
 
+def _inbox_ok(a) -> dict[str, bool]:
+    from .inbox import can_read
+    return can_read(a)
+
+
 def accounts(tenant: str) -> list[dict[str, Any]]:
     ensure_tables()
     with session() as s:
         return [{"id": a.id, "platform": a.platform, "handle": a.handle, "name": a.name, "picture": a.picture, "kind": a.kind,
                  "followers": a.followers, "status": a.status, "error": a.last_error,
                  "can_post": a.platform != "instagram" or not a.scopes or M.IG_PUBLISH_SCOPE in (a.scopes or "").split(","),
+                 "can_reply": all(_inbox_ok(a).values()),
                  "expires_at": as_utc(a.expires_at).isoformat() if a.expires_at else "",
                  "last_sync": as_utc(a.last_sync).isoformat() if a.last_sync else ""}
                 for a in s.scalars(select(SocialAccount).where(SocialAccount.tenant_id == tenant).order_by(SocialAccount.connected_at)).all()]
@@ -859,6 +885,7 @@ def kpis(base: dict[str, Any], latest: dict[str, Any]) -> list[dict[str, Any]]:
 
 def schedule_view(stamps: dict[str, str]) -> list[dict[str, str]]:
     return [{"job": "Post approved posts at their time", "every": "Every few minutes", "last": stamps.get("publish", "")},
+            {"job": "Read comments + DMs, draft / send replies", "every": "Every 15 minutes", "last": stamps.get("inbox", "")},
             {"job": "Check connections, renew Instagram tokens", "every": "Every hour", "last": stamps.get("hourly", "")},
             {"job": "Fresh numbers for your recent posts", "every": "Every day, 7 am", "last": stamps.get("daily", "")},
             {"job": "What worked this week", "every": "Every Monday", "last": stamps.get("weekly", "")}]
@@ -883,7 +910,12 @@ def desk_view(tenant: str) -> dict[str, Any]:
     return {"hired": True, "status": st, "trust": trust, "onboarded": bool(prof), "profile": prof or profile_defaults(tenant),
             "connect": {p: M.configured(p) for p in PLATFORMS}, "accounts": accounts(tenant), **info,
             "kpis": kpis(info["baseline"], info["latest"]), "calendar": calendar(tenant), "events": events,
-            "schedule": schedule_view(info["stamps"])}
+            "schedule": schedule_view(info["stamps"]), "inbox": _inbox_counts(tenant)}
+
+
+def _inbox_counts(tenant: str) -> dict[str, int]:
+    from .inbox import counts
+    return counts(tenant)
 
 
 def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
@@ -897,6 +929,9 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
     if not has_acc:
         return []
     out = ["publish"] if state == "ready" else []      # v0.355 every sweep (~4 min): approved posts whose time has come
+    last_i = stamps.get("inbox", "")
+    if state == "ready" and (not last_i or local - datetime.fromisoformat(last_i) >= timedelta(minutes=14)):
+        out.append("inbox")                            # v0.356 comments + DMs every ~15 min
     if state in ("new", "error"):
         out.append("first")
     last_h = stamps.get("hourly", "")
@@ -913,11 +948,12 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
 def run_job(tenant: str, job: str, at: datetime | None = None) -> dict[str, Any]:
     from ..life import tz_of
     local = (at or datetime.now(tz_of(tenant))).astimezone(tz_of(tenant))
+    from .inbox import run_inbox
     from .publish import run_publisher
     fn = {"first": first_run, "hourly": watch, "daily": daily, "weekly": weekly, "plan": build_plan,
-          "publish": run_publisher}.get(job)
+          "publish": run_publisher, "inbox": run_inbox}.get(job)
     if fn is None:
-        raise SocialError("job: first | hourly | daily | weekly | plan | publish")
+        raise SocialError("job: first | hourly | daily | weekly | plan | publish | inbox")
     res = fn(tenant)
     with session() as s:
         d = _desk(s, tenant)

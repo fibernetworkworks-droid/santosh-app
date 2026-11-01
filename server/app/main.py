@@ -6813,7 +6813,8 @@ def social_onboard(body: dict, tenant: str = Depends(current_tenant)):
         langs = [x.strip() for x in langs.split(",") if x.strip()]
     return _social_call(social.onboard, tenant, business=str(b.get("business") or ""), city=str(b.get("city") or ""),
                         sells=str(b.get("sells") or ""), customers=str(b.get("customers") or ""), goal=str(b.get("goal") or ""),
-                        languages=langs, trust=str(b.get("trust") or ""), website=str(b.get("website") or ""))
+                        languages=langs, trust=str(b.get("trust") or ""), website=str(b.get("website") or ""),
+                        facts=str(b.get("facts") or ""))
 
 
 @app.get("/api/social/connect/{platform}", dependencies=[Depends(require_key)])
@@ -6960,14 +6961,45 @@ def social_media_file(aid: str, e: str = "", s: str = ""):
     return FileResponse(path, media_type=mime)
 
 
+@app.get("/api/social/inbox", dependencies=[Depends(require_key)])
+def social_inbox_view(box: str = "needs", tenant: str = Depends(current_tenant)):
+    """v0.356 her comments + DMs: needs (waiting for her) | leads | complaints | done."""
+    from .social import inbox
+    return inbox.view(tenant, box if box in ("needs", "leads", "complaints", "done") else "needs")
+
+
+@app.post("/api/social/inbox/{item}/reply", dependencies=[Depends(require_key)])
+async def social_inbox_reply(item: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap: the reply goes out now (her text, or the draft as it stands). DMs only inside Meta's 24-hour window."""
+    from .social import inbox
+    return await asyncio.to_thread(_social_call, inbox.reply, tenant, item, str((body or {}).get("text") or ""))
+
+
+@app.post("/api/social/inbox/{item}/hide", dependencies=[Depends(require_key)])
+async def social_inbox_hide(item: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """Hide (or {hidden: false} = show again) a comment. Hoola never deletes."""
+    from .social import inbox
+    hidden = (body or {}).get("hidden", True) is not False
+    return await asyncio.to_thread(_social_call, inbox.hide, tenant, item, hidden)
+
+
+@app.post("/api/social/inbox/{item}", dependencies=[Depends(require_key)])
+def social_inbox_set(item: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Ignore / bring back ({status: ignored|drafted}) or edit the draft ({draft})."""
+    from .social import inbox
+    b = body or {}
+    return _social_call(inbox.set_item, tenant, item, status=str(b.get("status") or ""),
+                        draft=b.get("draft") if isinstance(b.get("draft"), str) else None)
+
+
 @app.post("/api/social/run/{job}", dependencies=[Depends(require_key)])
 def social_run(job: str, tenant: str = Depends(current_tenant)):
     """'Run now' on the desk: first check / refresh numbers / weekly note / rewrite the calendar draft (background)."""
     import threading
     from .employee import hire
     from .social import desk as social
-    if job not in ("first", "hourly", "daily", "weekly", "plan", "publish"):
-        raise HTTPException(404, "job: first | hourly | daily | weekly | plan | publish")
+    if job not in ("first", "hourly", "daily", "weekly", "plan", "publish", "inbox"):
+        raise HTTPException(404, "job: first | hourly | daily | weekly | plan | publish | inbox")
     if not hire.is_hired(tenant, social.KEY):
         raise HTTPException(400, "Social Media Manager abhi hired nahi hai.")
     if not social.accounts(tenant):

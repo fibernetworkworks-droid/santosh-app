@@ -1006,6 +1006,15 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/poster', body: {}, timeout: const Duration(seconds: 120)) as Map);
   Future<Map<String, dynamic>> socialPublish(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/posts/$id/publish', body: {}) as Map);
+  // v0.356 social inbox (comments + DMs)
+  Future<Map<String, dynamic>> socialInbox(String box) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/social/inbox?box=$box', timeout: const Duration(seconds: 30)) as Map);
+  Future<Map<String, dynamic>> socialInboxReply(String id, String text) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/inbox/$id/reply', body: {'text': text}) as Map);
+  Future<Map<String, dynamic>> socialInboxHide(String id, bool hidden) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/inbox/$id/hide', body: {'hidden': hidden}) as Map);
+  Future<Map<String, dynamic>> socialInboxSet(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/inbox/$id', body: body) as Map);
   Future<Map<String, dynamic>> socialRun(String job) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/run/$job', body: {}) as Map);
   // v0.317 HIRE AN EMPLOYEE + the SEO Desk
