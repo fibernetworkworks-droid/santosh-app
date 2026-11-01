@@ -84,6 +84,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "create": ("song", "gaana", "gaane", "jingle", "lyrics", "music studio", "voice-over", "voiceover", "voice over",
                "dub", "dubbing", "create studio", "गाना", "डब"),
     "blender": ("blender", "3d", "three d"),
+    # v0.357 Engineering Desk (CAD Engineer): her words for a part / drawing / CAD files
+    "eng": ("cad", "step file", ".step", "stl", "3d print", "cnc", "machin", "bracket", "flange", "enclosure", "mounting",
+            "part bana", "drawing", "dimension", "fillet", "chamfer", "solidworks", "fusion 360", "autocad", "freecad"),
     "youtube": ("youtube", "channel", "vlog", "subscriber"),
     "tv": ("tv", "channel", "dth"),
     "bt": ("bluetooth", "speaker", "music", "song", "gaana", "gaane", "volume", "ac ", "air condition", "remote",
