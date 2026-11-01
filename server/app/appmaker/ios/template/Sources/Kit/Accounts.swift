@@ -54,6 +54,7 @@ struct AccountScreen: View {
             }
             if auth.signedIn { InboxButton() }                       // v0.340 the updates inbox
             if auth.isStaff { StatsBlock() }                         // v0.340 the staff dashboard
+            if auth.isStaff { StopsBlock() }                         // v0.350 open stops with a location, nearest first
             LanguagePicker()                                         // v0.347 the app's words in her language
             if db.pending > 0 { Muted("\(db.pending) · \(Words.sending)") }
             if !db.lastError.isEmpty { Text(db.lastError).foregroundStyle(.red).font(.subheadline) }

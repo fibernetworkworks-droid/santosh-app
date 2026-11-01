@@ -59,6 +59,7 @@ TAB_WORDS = [("home", "house"), ("cart", "cart"), ("order", "doc.text"), ("book"
 FORM_WORDS = ("book", "form", "enquir", "request", "enrol", "register", "apply", "contact", "feedback", "new_", "add_")
 CART_WORDS = ("cart", "checkout", "basket", "order_review")
 DASH_WORDS = ("dashboard", "report", "stats", "analytics", "admin", "overview")
+MAP_WORDS = ("route", "stops", "delivery", "deliveries", "visits", "map", "dispatch")
 
 
 def swift_name(sid: str) -> str:
@@ -252,6 +253,8 @@ def code_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dic
         rows.append("            Muted(AppData.shared.facts.s(\"tagline\"))")
     if any(w in sid for w in DASH_WORDS) and colls:          # v0.340 staff dashboards show the live numbers
         rows.append("            StatsBlock()")
+    if any(w in sid for w in DASH_WORDS + MAP_WORDS) and any(f.get("type") == "location" for c in colls.values() for f in c.get("fields") or []):
+        rows.append("            StopsBlock()")              # v0.350 the open stops, nearest first + route
     if sid in ("profile", "account", "me", "my_account", "settings") and colls:
         rows.append("            AccountButton()")
     for a in acts:

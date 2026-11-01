@@ -12820,3 +12820,19 @@ Her app in her customer's language; her business data is never translated.
   Phone BhashaPanel (language chips with % translated), console App languages box.
 - Tests: `test_v0347_bhasha.py` (5); older screen-code pins now expect T("...").
 - Not verified: translation quality per language is Opus's; right-to-left layout for Urdu is the system's default only.
+
+## v0.350.0 NAKSHA (App Sahayak Phase 14, owner: "START PHASE 14")
+Maps for apps whose forms carry a location (deliveries, home visits, field service) - no map key and no map tiles in the
+apps: Android hands off to Google Maps through Google's official Maps URLs, iPhone draws an Apple MapKit map (free).
+- Android kit (Pro.kt): `Maps` (lat,lng parse, haversine km, `route(origin, stops)` = https://www.google.com/maps/dir/?api=1
+  &origin&destination&waypoints, 10 stops at most, driving), `StopsBlock` (staff only: every list with a location field,
+  its open rows - not Delivered / Done / Completed / Cancelled / Closed / Rejected - nearest first from the phone's position
+  when location is ALREADY allowed (Places.allowed, never asks by itself), each card opens Act.maps, "Route in Maps" opens
+  the whole route); `Act.open` internal. On staff's My account and on code-made route / stops / delivery / visits / map /
+  dispatch / dashboard screens when a list has a location field.
+- iPhone kit (Pro.swift): `Maps` (CLLocation distance, `MKMapItem.openMaps` with every stop, driving), `StopsBlock` (Map
+  with a marker per stop, the list nearest first, tap = Apple Maps to that stop, Route in Maps = all stops); the location
+  question only on her tap ("Nearest first (use my location)") unless already allowed (App Review rule).
+- Both model guides list StopsBlock; generators add it as above.
+- Tests: `test_v0350_naksha.py` (3).
+- Not verified: Google Maps / Apple Maps hand-off on a real phone (the emulator / simulator have no Maps app sign-in).

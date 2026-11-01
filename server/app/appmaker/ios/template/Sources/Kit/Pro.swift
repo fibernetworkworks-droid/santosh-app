@@ -10,6 +10,8 @@ import VisionKit
 import BackgroundTasks
 import UserNotifications
 import UniformTypeIdentifiers
+import MapKit
+import CoreLocation
 
 // ---------------------------------------------------------------- scan
 struct ScanRow: View {
@@ -279,6 +281,93 @@ struct FileRow: View {
             note = ""
             state.form[key] = "local:" + dest.path
             state.form[key + "__name"] = String(url.lastPathComponent.prefix(80))
+        }
+    }
+}
+
+// ---------------------------------------------------------------- v0.350 NAKSHA: stops on a map (Apple MapKit, free)
+enum Maps {
+    static let done: Set<String> = ["Delivered", "Done", "Completed", "Cancelled", "Closed", "Rejected"]
+
+    static func point(_ s: String) -> CLLocationCoordinate2D? {
+        let p = s.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        guard p.count == 2, let la = Double(p[0]), let lo = Double(p[1]), abs(la) <= 90, abs(lo) <= 180 else { return nil }
+        return CLLocationCoordinate2D(latitude: la, longitude: lo)
+    }
+
+    static func km(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
+        CLLocation(latitude: a.latitude, longitude: a.longitude).distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude)) / 1000
+    }
+
+    /// Apple Maps with every stop (it plans the route); one stop = directions to it.
+    static func open(_ stops: [(String, CLLocationCoordinate2D)]) {
+        let items = stops.prefix(10).map { s -> MKMapItem in
+            let m = MKMapItem(placemark: MKPlacemark(coordinate: s.1))
+            m.name = s.0
+            return m
+        }
+        MKMapItem.openMaps(with: items, launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+    }
+}
+
+struct Stop: Identifiable {
+    let id: String
+    let name: String
+    let note: String
+    let at: CLLocationCoordinate2D
+}
+
+/// Staff: the open rows that carry a location on a map + nearest first; "Route in Maps" opens Apple Maps with all of them.
+struct StopsBlock: View {
+    @ObservedObject private var auth = Auth.shared
+    @ObservedObject private var db = Db.shared
+    @StateObject private var here = Here()
+    @State private var region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 20.59, longitude: 78.96),
+                                                   span: MKCoordinateSpan(latitudeDelta: 20, longitudeDelta: 20))
+
+    private func stops() -> [Stop] {
+        var out: [Stop] = []
+        for c in db.collections() {
+            guard let key = db.fields(c).first(where: { $0.s("type") == "location" })?.s("key") else { continue }
+            for r in db.rows(c) where !Maps.done.contains(r.s("status")) {
+                guard let p = Maps.point(r.s(key)) else { continue }
+                let name = [r.s("name"), r.s("title"), r.s("address")].first { !$0.isEmpty } ?? T(db.label(c))
+                out.append(Stop(id: c + r.id, name: name, note: [T(r.s("status")), r.s("address")].filter { !$0.isEmpty }.joined(separator: " · "), at: p))
+            }
+        }
+        if let h = Maps.point(here.value) { out.sort { Maps.km(h, $0.at) < Maps.km(h, $1.at) } }
+        return out
+    }
+
+    var body: some View {
+        if auth.isStaff && db.collections().contains(where: { c in db.fields(c).contains { $0.s("type") == "location" } }) {
+            let list = stops()
+            VStack(alignment: .leading, spacing: 10) {
+                Text(T("Today's stops") + " (\(list.count))").font(.headline)
+                if list.isEmpty { Muted(T("No open stops with a location.")) }
+                if !list.isEmpty {
+                    Map(coordinateRegion: $region, annotationItems: list) { s in MapMarker(coordinate: s.at) }
+                        .frame(height: 220)
+                        .clipShape(RoundedRectangle(cornerRadius: H.radius))
+                        .onAppear { if let f = list.first { region.center = f.at; region.span = MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2) } }
+                }
+                ForEach(list.prefix(20)) { s in
+                    Card {
+                        Text(s.name).font(.headline)
+                        let d = Maps.point(here.value).map { String(format: "%.1f km", Maps.km($0, s.at)) } ?? ""
+                        Muted([d, s.note].filter { !$0.isEmpty }.joined(separator: " · "))
+                    }
+                    .onTapGesture { Maps.open([(s.name, s.at)]) }
+                }
+                if !list.isEmpty && here.value.isEmpty {
+                    Button { here.ask() } label: { Label(T("Nearest first (use my location)"), systemImage: "location") }.font(.subheadline)
+                }
+                if !list.isEmpty { MainButton(text: T("Route in Maps"), tonal: true) { Maps.open(list.map { ($0.name, $0.at) }) } }
+            }
+            .onAppear {                                       // the location question only on her tap (App Review), never by itself
+                let st = CLLocationManager().authorizationStatus
+                if st == .authorizedWhenInUse || st == .authorizedAlways { here.ask() }
+            }
         }
     }
 }

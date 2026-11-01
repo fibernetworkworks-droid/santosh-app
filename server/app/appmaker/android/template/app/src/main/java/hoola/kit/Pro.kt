@@ -7,6 +7,8 @@ package hoola.kit
 //   money total, from the app's own server (staff only; customers never see the business's numbers).
 // - FileField (v0.346): a PDF document (prescription, ID proof, bill, resume) from the system file picker - no storage
 //   permission; copied into the app's own cache and sent by the outbox (the server checks it is a plain PDF, 10 MB max).
+// - StopsBlock (v0.350 NAKSHA): staff see every row with a location, nearest first from where they are, and open the whole
+//   route in Google Maps through Google's official Maps URLs (no map key, no map tiles in the app).
 // - Inbox: every update the app was told about (order moved, new order for staff), kept on the phone, newest first.
 
 import android.content.Context
@@ -234,5 +236,68 @@ object Docs {
         }
     } catch (_: Exception) {
         null
+    }
+}
+
+
+// ---------------------------------------------------------------- v0.350 NAKSHA: stops on a map
+object Maps {
+    private val LOC = Regex("""^\s*(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$""")
+    val DONE = setOf("Delivered", "Done", "Completed", "Cancelled", "Closed", "Rejected")
+
+    fun point(s: String): Pair<Double, Double>? = LOC.matchEntire(s)?.let { Pair(it.groupValues[1].toDouble(), it.groupValues[2].toDouble()) }
+
+    /** Straight-line km between two "lat,lng" points (haversine). */
+    fun km(a: String, b: String): Double? {
+        val p = point(a) ?: return null
+        val q = point(b) ?: return null
+        val r = 6371.0
+        val dLat = Math.toRadians(q.first - p.first)
+        val dLng = Math.toRadians(q.second - p.second)
+        val h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(p.first)) * Math.cos(Math.toRadians(q.first)) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
+        return 2 * r * Math.asin(Math.sqrt(h))
+    }
+
+    /** Google's official directions URL: from here (or the phone's own position) through up to 9 stops. */
+    fun route(origin: String?, stops: List<String>): String {
+        val s = stops.take(10)
+        val u = StringBuilder("https://www.google.com/maps/dir/?api=1&travelmode=driving")
+        if (!origin.isNullOrEmpty()) u.append("&origin=").append(Uri.encode(origin))
+        u.append("&destination=").append(Uri.encode(s.last()))
+        if (s.size > 1) u.append("&waypoints=").append(Uri.encode(s.dropLast(1).joinToString("|")))
+        return u.toString()
+    }
+}
+
+/** Staff: the open rows that carry a location, nearest first, each opens in Maps; "Route in Maps" for all of them. */
+@Composable
+fun StopsBlock() {
+    if (!Auth.isStaff) return
+    val c = ctx()
+    val colls = Db.collections().filter { coll -> Db.fields(coll).any { it.s("type") == "location" } }
+    if (colls.isEmpty()) return
+    var here by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { if (Places.allowed(c)) here = Places.here(c) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        colls.forEach { coll ->
+            val key = Db.fields(coll).first { it.s("type") == "location" }.s("key")
+            val open = liveRows(coll).filter { Maps.point(it.s(key)) != null && it.s("status") !in Maps.DONE }
+            val h = here
+            val rows = if (h != null) open.sortedBy { Maps.km(h, it.s(key)) ?: 1e9 } else open
+            Title(T("Today's stops") + " · " + T(Db.label(coll)) + " (${rows.size})")
+            if (rows.isEmpty()) Small(T("No open stops with a location."))
+            rows.take(20).forEach { r ->
+                HCard(onClick = { Act.maps(c, r.s(key)) }) {
+                    Title(listOf(r.s("name"), r.s("title"), r.s("address")).firstOrNull { it.isNotEmpty() } ?: T(Db.label(coll)))
+                    val d = h?.let { Maps.km(it, r.s(key)) }
+                    Small(listOfNotNull(d?.let { String.format(java.util.Locale.US, "%.1f km", it) }, r.s("status").takeIf { it.isNotEmpty() }?.let { T(it) },
+                        r.s("address").takeIf { it.isNotEmpty() }).joinToString(" · "))
+                }
+            }
+            if (rows.isNotEmpty()) Btn(T("Route in Maps"), kind = BtnKind.Tonal, icon = "pin", modifier = Modifier.fillMaxWidth()) {
+                Act.open(c, Maps.route(h, rows.take(10).map { it.s(key) }))
+            }
+        }
     }
 }

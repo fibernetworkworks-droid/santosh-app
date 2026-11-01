@@ -130,6 +130,7 @@ FILE CONTRACT
   Fields marked [photo]: PhotoField(label, key) (system photo picker, no permission; sent by the outbox); show a saved one
   with RemotePhoto(row.s(key)). Fields marked [scan]: ScanField(label, key) (v0.340 Google's code scanner, typed too).
   Fields marked [file]: FileField(label, key) (v0.346 a PDF from the system file picker, no permission).
+  A staff route / deliveries / visits screen with [location] lists: block { StopsBlock() } (v0.350 open stops nearest first + Route in Maps).
   A staff dashboard / report screen: block { StatsBlock() } (live counts, status mix, 14-day bars; shows nothing to customers).
   Fields marked [location]: LocationField(label, key) ("Use my location" with the
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.

@@ -116,6 +116,7 @@ fun AccountScreen() {
             Btn(Strings.inbox + if (n > 0) " ($n)" else "", kind = BtnKind.Tonal, icon = "bell", modifier = Modifier.fillMaxWidth()) { nav.go("hoola_inbox") }
         }
         if (me != null && Auth.isStaff) block { StatsBlock() }     // v0.340 the staff dashboard
+        if (me != null && Auth.isStaff) block { StopsBlock() }     // v0.350 the open stops with a location, nearest first
         block { LanguagePicker() }                                 // v0.347 the app's words in her language
         if (Db.pending.value > 0) block { Pill("${Db.pending.value} ${Strings.pending}", "warn") }
         if (Db.lastError.value.isNotEmpty()) block { Pill(Db.lastError.value, "bad") }

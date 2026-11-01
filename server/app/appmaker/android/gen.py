@@ -445,6 +445,7 @@ def resources(spec: dict[str, Any], out: Path) -> None:
 FORM_WORDS = ("book", "form", "enquir", "request", "enrol", "register", "apply", "contact", "feedback", "new_", "add_")
 CART_WORDS = ("cart", "checkout", "basket", "order_review")
 DASH_WORDS = ("dashboard", "report", "stats", "analytics", "admin", "overview")
+MAP_WORDS = ("route", "stops", "delivery", "deliveries", "visits", "map", "dispatch")
 CART_BLOCK = """        val cart = AppState.cartItems("products")
         if (cart.isEmpty()) block { Empty("cart", "Cart") }
         cart.forEach { (rec, q) -> block { HCard { Title(rec.name); Small("$q x " + rupees(rec.price)) } } }
@@ -533,6 +534,8 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend:
         rows.append(f"        block {{ Empty({kstr(icon_for(sid))}, T({kstr(s.get('label') or sid)})) }}")
     if any(w in sid for w in DASH_WORDS) and colls:          # v0.340 staff dashboards show the live numbers
         rows.append("        block { StatsBlock() }")
+    if any(w in sid for w in DASH_WORDS + MAP_WORDS) and any(f.get("type") == "location" for c in colls.values() for f in c.get("fields") or []):
+        rows.append("        block { StopsBlock() }")              # v0.350 the open stops, nearest first + route
     if sid in ("profile", "account", "me", "my_account", "settings") and colls:
         # v0.314 the user's own account (sign in, their orders / bookings, sign out) lives on the kit's account screen
         rows.append('        block { Btn(if (Auth.signedIn) Auth.name else T("Sign in"), modifier = Modifier.fillMaxWidth(), icon = "user") '
