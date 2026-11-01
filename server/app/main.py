@@ -5055,7 +5055,9 @@ from .pathyakram.api import make_router as _pathyakram_router  # noqa: E402
 
 from .guru.api import make_router as _guru_router  # noqa: E402  (Shiksha Phase 2: personal tutor)
 
-for _mk in (_shiksha_router, _pathyakram_router, _guru_router):
+from .daftar.api import make_router as _daftar_router  # noqa: E402  (Shiksha Phase 3: school office)
+
+for _mk in (_shiksha_router, _pathyakram_router, _guru_router, _daftar_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (under /api/<mod>/*, key-protected; homestay's router also holds

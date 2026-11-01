@@ -167,6 +167,8 @@ DUTIES: dict[str, dict] = {
     # v0.381 Shiksha suite
     "curriculum_work": {"label": "Paper aur pathyakram", "say": "question bank (draft -> teacher approve), board pattern se paper + answer key, year / lesson plan, rubric; bahar bhejna aapke tap se",
                         "prefix": (), "tools": {"pathyakram", "pathyakram_dekho", "shiksha_dekho", "file_read", "gyaan_khojo", "pylab"}},
+    "school_office": {"label": "School office", "say": "hazri, gair-hazir alerts (aapke tap se), answer sheet / OMR / Forms / code grading (marks teacher ke sign-off se), timetable, report card",
+                      "prefix": (), "tools": {"daftar", "daftar_dekho", "shiksha", "shiksha_dekho", "pylab", "file_read", "form_responses"}},
     "tutoring": {"label": "Padhana (tutor)", "say": "doubt ishaaron se samjhana (seedha jawab nahi), practice + revision, bhasha abhyas, hafte ki report (guardian ko aapke tap se)",
                  "prefix": (), "tools": {"guru", "guru_dekho", "shiksha_dekho", "pylab", "file_read"}},
     "school_records": {"label": "School register", "say": "class, students, guardian consent, marks register (final marks teacher ke)",
@@ -402,6 +404,8 @@ ROLES: dict[str, dict] = {
     # v0.150 Kanoon suite
     "lawyer_junior": {"label": "Lawyer's junior", "say": "Court diary, tareekhein, cause list, limitation (andaaza), drafts, fee hisaab; filing / message / fee aapki haan se",
                       "duties": ["legal_junior", "reminders", "records"]},
+    "school_admin": {"label": "School admin operations", "say": "Hazri, grading (OMR / sheet / Forms / code / rubric), timetable, report card; marks teacher ke sign-off se, guardian ko aapke tap se",
+                     "duties": ["school_office", "school_records", "records", "reminders"]},
     "personal_tutor": {"label": "Personal tutor", "say": "Doubt ishaaron se, adaptive practice, revision, bhasha abhyas, hafte ki report; bachchon ke liye guardian ki consent aur roz ka samay",
                        "duties": ["tutoring", "school_records", "records"]},
     "curriculum_designer": {"label": "Curriculum & exam designer", "say": "Syllabus / year plan, lesson plan, question bank, board pattern ka paper + answer key, rubric; sab teacher ke approve se, bahar aapke tap se",
@@ -702,6 +706,11 @@ PRESETS: dict[str, dict] = {
                    "about_hint": "Kaun si courts, kaise matters (civil / criminal / family / NI 138), vakil ka naam + enrolment no., fee kaise",
                    "rules": ["Hoola salah nahi deta: har draft / tareekh vakil se pakka", "Filing, client / doosre paksh ko message, fee maangna sirf owner ki haan se",
                              "Ek client ki baat doosre client ko kabhi nahi"]},
+    "school_office": {"label": "School office (hazri, grading, timetable, report card)", "role": "school_admin", "kind": "coaching",
+                      "slot_minutes": 30, "after_hours": "quiet",
+                      "about_hint": "Classes aur sections, periods / din, teachers aur unke subjects, term ke naam, grade scale",
+                      "rules": ["Hoola ke marks suggestion: teacher sign-off ke baad hi pakke", "Report card mein sirf sign-off hue marks",
+                                "Guardian ko message / report sirf owner ke tap se, har guardian ko alag draft", "Bachche ka data consent ke baad hi"]},
     "tutor_centre": {"label": "Tuition / tutor (padhana, doubt, practice)", "role": "personal_tutor", "kind": "coaching",
                      "slot_minutes": 30, "after_hours": "quiet",
                      "about_hint": "Kaun si classes / subjects, bachchon ki umar, roz kitna samay, kis bhasha mein",
@@ -838,7 +847,7 @@ READ = {
     # v0.144 Makaan suite
     "propagent_dekho", "rentdesk_dekho", "biz_rent_status", "sitesup_dekho", "interior_dekho", "archassist_dekho", "society_dekho",
     # v0.150 Kanoon suite
-    "shiksha_dekho", "pathyakram_dekho", "pylab", "guru_dekho",   # v0.381 Shiksha suite (pylab: sandboxed, nothing outside changes)
+    "shiksha_dekho", "pathyakram_dekho", "pylab", "guru_dekho", "daftar_dekho",   # v0.381 Shiksha suite (pylab: sandboxed, nothing outside changes)
     "vakil_dekho", "legalres_dekho", "compliance_dekho", "contracts_dekho", "cosec_dekho", "notary_dekho", "pidesk_dekho", "dpo_dekho",
     # v0.152 Mehmaan suite
     "front_office_dekho", "event_plan_dekho", "shaadi_dekho", "tour_guide_dekho", "homestay_dekho", "banquet_dekho",

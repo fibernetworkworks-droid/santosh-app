@@ -1,0 +1,9 @@
+# WIRING for daftar (Shiksha suite Phase 3: school office)
+summary: attendance per class/day (everyone present except those named; re-marking replaces; children without consent not recorded; monthly % with late = present, leave not counted, below-75 list), absence alerts = a CARD (her tap -> one wa.me draft per guardian, she sends each), grading into the shared gradebook as UNSIGNED rows (key list or a Pathyakram paper; rows or a CSV roll/Q1..; an OMR / answer-sheet photo read by vision ONLY for the teacher to confirm; a Pathyakram Google Forms quiz by 'Qn.' titles + roll / name / guardian email; Python code against [{call, expected}] tests in the pylab sandbox; written answers against a Pathyakram rubric = AI suggestion capped per criterion), per-question stats (hardest), report cards from SIGNED-OFF marks only (school 8-point scale, attendance %, Word file; to the guardian only by her tap), a clash-free timetable (backtracking: periods per week, no teacher in two rooms, a subject at most max_same a day).
+db: app.daftar.models (daftar_attendance, daftar_gradings, daftar_timetables, daftar_shares)
+router: app.daftar.api (/api/daftar/*; her tap: POST /shares/{id}/decide {yes, hash})
+tools: app.agent.daftar_tools (daftar, daftar_dekho; family "daftar" in admit.EXTRA_KEYS) ; voice via santosh_kaam
+employee: duty school_office ; role school_admin ; preset school_office ; READ daftar_dekho
+push: daftar_share (waiting only)
+flutter: lib/ui/daftar_screen.dart (DaftarScreen Hazri / Marks / Timetable / Report card, DaftarShareCard), Profile tile "<name> · School office", card key dfshare
+not_verified: real OMR photos through Claude vision (scripted in tests); real Google Forms responses (faked); the school grade scale is the common A1..E one, not a board rule; Flutter not compiled locally.
