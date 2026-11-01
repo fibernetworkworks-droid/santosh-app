@@ -559,3 +559,30 @@ fun DeliveryLine() {
         if (d.optBoolean("area")) Small(Strings.areaOnly)
     }
 }
+
+
+// ---------------------------------------------------------------- v0.371 SLOT: the delivery time slot in the cart
+/** The slots with room (fresh from the app's server: today + the days ahead), as chips; the order carries the pick and the
+ *  server books it again (a slot that filled up in between = the order still goes, with a note). */
+@Composable
+fun SlotPicker() {
+    var list by remember { mutableStateOf<List<Item>>(emptyList()) }
+    var loaded by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val r = Cloud.call("GET", "/slots", null, Auth.token())
+        if (r.ok) list = arrList(r.body.optJSONArray("slots"))
+        loaded = true
+        if (list.none { it.s("key") == AppState.slot.value }) AppState.slot.value = ""
+    }
+    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Small(Strings.pickSlot)
+        if (loaded && list.isEmpty()) Small(Strings.noSlots)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            list.forEach { sl ->
+                Chip(sl.s("day") + " · " + sl.s("label"), selected = AppState.slot.value == sl.s("key")) {
+                    AppState.slot.value = if (AppState.slot.value == sl.s("key")) "" else sl.s("key")
+                }
+            }
+        }
+    }
+}

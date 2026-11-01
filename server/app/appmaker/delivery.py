@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from ..db import now, session
@@ -55,6 +55,7 @@ def public(r: AppProject) -> dict[str, Any] | None:
         return None
     h = g.get("hours") or {}
     return {"fee": g.get("fee", 0), "free_above": g.get("free_above"), "area": bool(g.get("pins")), "open": is_open(g),
+            "slots": bool(g.get("slots")),                                          # v0.371 the cart shows the slot picker
             "hours": (f"{h['open']}-{h['close']}" + (" " + ",".join(DAYS[d] for d in h.get("days") or []) if h.get("days") else ""))
             if h.get("open") else ""}
 
@@ -62,7 +63,7 @@ def public(r: AppProject) -> dict[str, Any] | None:
 def view(r: AppProject) -> dict[str, Any]:
     g = settings(r)
     return {"fee": g.get("fee", 0), "free_above": g.get("free_above"), "pins": g.get("pins") or [], "hours": g.get("hours") or {},
-            "open_now": is_open(g), "on": bool(g),
+            "open_now": is_open(g), "on": bool(g), "slots": g.get("slots") or [], "days": g.get("days", 0), "cutoff": g.get("cutoff", 0),
             "note": "Orders outside the area or while closed are still taken, with a note - nobody's order is lost."}
 
 
@@ -162,3 +163,146 @@ def on_order(r: AppProject, goods: float, data: dict[str, Any]) -> tuple[float, 
     if fee:
         STATS["fees"] += 1
     return fee, out
+
+
+# ---------------------------------------------------------------- v0.371 SLOT (App Sahayak Phase 35): delivery time slots
+# She sets slots ({label "9-11 am", start "09:00", end "11:00", cap orders}), how many days ahead customers may book (0-6) and
+# a cut-off (minutes before a slot starts). The cart asks GET /slots (fresh: the slots with room, for today + the days ahead);
+# the order carries "slot": "YYYY-MM-DD|HH:MM" and the SERVER checks it again under a lock (exists, not past its cut-off, a
+# working day, room left counting the slot's non-cancelled orders). A slot that filled up in between never loses the order:
+# it is placed without a slot + delivery_note, and her chat is told. Rows carry `slot` (the key) and `slot_label`.
+import threading as _th
+
+_SLOT_LOCK = _th.Lock()
+STATS.update({"slots_booked": 0, "slots_full": 0})
+
+
+def _slots_cfg(g: dict[str, Any]) -> tuple[list[dict[str, Any]], int, int]:
+    return list(g.get("slots") or []), int(g.get("days") or 0), int(g.get("cutoff") or 0)
+
+
+def save_slots(r: AppProject, slots: Any, days: Any = 0, cutoff: Any = 0) -> dict[str, Any]:
+    """[{label, start HH:MM, end HH:MM, cap}] (max 12), days ahead 0-6, cut-off 0-720 minutes. [] removes slots."""
+    from . import backend as BE
+    from . import stock as SK
+    out = []
+    for x in (slots if isinstance(slots, list) else [])[:12]:
+        if not isinstance(x, dict):
+            continue
+        st, en = str(x.get("start") or ""), str(x.get("end") or "")
+        if not (HHMM.match(st) and HHMM.match(en) and st < en):
+            raise DeliveryError("Slot ka samay HH:MM, shuru < khatam (jaise 09:00 - 11:00).")
+        try:
+            cap = int(float(str(x.get("cap") or 0)))
+        except ValueError:
+            cap = 0
+        if not 1 <= cap <= 1000:
+            raise DeliveryError("Har slot mein 1 se 1000 orders.")
+        label = re.sub(r"[\x00-\x1f]+", " ", str(x.get("label") or f"{st}-{en}")).strip()[:30]
+        out.append({"label": label, "start": st, "end": en, "cap": cap})
+    try:
+        d, c = int(float(str(days or 0))), int(float(str(cutoff or 0)))
+    except ValueError:
+        raise DeliveryError("Din aur cut-off number mein.")
+    if not 0 <= d <= 6 or not 0 <= c <= 720:
+        raise DeliveryError("Aage ke din 0-6, cut-off 0-720 minute.")
+    with session() as s:
+        row = s.get(AppProject, r.id)
+        be = BE._j(row.backend, {})
+        g = dict(be.get("delivery") or {})
+        if out:
+            g.update({"slots": out, "days": d, "cutoff": c})
+        else:
+            for k in ("slots", "days", "cutoff"):
+                g.pop(k, None)
+        be["delivery"] = g
+        row.backend = json.dumps(be, ensure_ascii=False)
+        r.backend = row.backend
+    SK._flush(r)
+    return view(r) | {"slots": out, "days": d, "cutoff": c}
+
+
+def _booked(r: AppProject) -> dict[str, int]:
+    """Non-cancelled orders per slot key (only the ones still to come)."""
+    from sqlalchemy import select
+    from . import backend as BE
+    sch = BE.schema(r)
+    order = sch.get("order") or ""
+    today = _ist().strftime("%Y-%m-%d")
+    n: dict[str, int] = {}
+    with session() as s:
+        for (data,) in s.execute(select(W.SiteAppRow.data).where(W.SiteAppRow.site_id == BE.bid(r), W.SiteAppRow.coll == order,
+                                                                 W.SiteAppRow.data.like('%"slot": "%'))).all():
+            d = BE._j(data, {})
+            k = str(d.get("slot") or "")
+            if k[:10] >= today and str(d.get("status") or "").strip().lower() != "cancelled":
+                n[k] = n.get(k, 0) + 1
+    return n
+
+
+def available(r: AppProject) -> dict[str, Any]:
+    """The cart's list: [{key, day, label, left}] for today + the days ahead, past their cut-off / full ones left out."""
+    g = settings(r)
+    slots, days, cutoff = _slots_cfg(g)
+    if not slots:
+        return {"slots": [], "on": False}
+    booked = _booked(r)
+    now_ = _ist()
+    out = []
+    h = g.get("hours") or {}
+    for i in range(days + 1):
+        day = now_ + timedelta(days=i)
+        if h.get("days") and day.weekday() not in h["days"]:
+            continue
+        ds = day.strftime("%Y-%m-%d")
+        for sl in slots:
+            start = datetime.strptime(f"{ds} {sl['start']}", "%Y-%m-%d %H:%M")
+            if start - timedelta(minutes=cutoff) <= now_.replace(tzinfo=None):
+                continue
+            key = f"{ds}|{sl['start']}"
+            left = sl["cap"] - booked.get(key, 0)
+            if left > 0:
+                out.append({"key": key, "day": "Today" if i == 0 else ("Tomorrow" if i == 1 else day.strftime("%a %d %b")),
+                            "label": sl["label"], "left": left})
+    return {"slots": out, "on": True}
+
+
+def book(r: AppProject, key: str) -> tuple[dict[str, Any], str]:
+    """At order time, under a lock: ({slot, slot_label}, "") or ({}, why) - never a refusal."""
+    key = str(key or "").strip()
+    if not key:
+        return {}, ""
+    with _SLOT_LOCK:
+        hit = next((x for x in available(r)["slots"] if x["key"] == key), None)
+        if hit is None:
+            STATS["slots_full"] += 1
+            return {}, "Chuna hua delivery slot ab khaali nahi (bhar gaya / samay nikal gaya) - dukaan call karke samay tay karegi"
+        STATS["slots_booked"] += 1
+        return {"slot": key, "slot_label": f"{hit['day']} {hit['label']}"}, ""
+
+
+def confirm(r: AppProject, row_id: str) -> None:
+    """After the row is written (two orders may pass `book` at the same moment): the slot's orders by time - a row beyond the
+    slot's cap loses the slot and gets the note instead (never a lost order)."""
+    from sqlalchemy import select
+    from . import backend as BE
+    with _SLOT_LOCK:
+        with session() as s:
+            row = s.get(W.SiteAppRow, row_id)
+            d = BE._j(row.data, {}) if row is not None else {}
+            key = str(d.get("slot") or "")
+            if not key:
+                return
+            cap = next((x["cap"] for x in _slots_cfg(settings(r))[0] if x["start"] == key[11:]), 0)
+            same = [x for x in s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == row.site_id, W.SiteAppRow.coll == row.coll,
+                                                                    W.SiteAppRow.data.like(f'%"slot": "{key}"%'))).all()
+                    if str(BE._j(x.data, {}).get("status") or "").strip().lower() != "cancelled"]
+            same.sort(key=lambda x: (x.created_at, x.id))
+            if [x.id for x in same].index(row_id) < cap:
+                return
+            for k in ("slot", "slot_label"):
+                d.pop(k, None)
+            why = "Chuna hua delivery slot usi waqt bhar gaya - dukaan call karke samay tay karegi."
+            d["delivery_note"] = (d.get("delivery_note", "").rstrip(".") + "; " if d.get("delivery_note") else "") + why
+            row.data = json.dumps(d, ensure_ascii=False)
+            STATS["slots_full"] += 1

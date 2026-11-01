@@ -102,6 +102,7 @@ object AppState {
     val consent = mutableStateOf(false)
     val coupon = mutableStateOf("")                         // v0.358 the code the cart checked (the server applies it again)
     val couponOff = mutableStateOf(0.0)                     // ... and the discount the server said, for the shown total
+    val slot = mutableStateOf("")                           // v0.371 the delivery slot she picked ("YYYY-MM-DD|HH:MM")
 
     /** v0.357 STOCK: never more than the business has (the server checks again when the order is sent). */
     fun maxQty(id: String): Int = AppData.lineItem("products", id)?.let { if (it.o.has("stock") && !it.o.isNull("stock")) it.i("stock") else null }

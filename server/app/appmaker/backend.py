@@ -390,9 +390,16 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
         d, cf = CP.apply(r, code, extra["total"], w)
         extra.update(cf)
         extra["total"] = round(extra["total"] - d, 2)
+    slot_key = str(body.get("slot") or "")
+    data.pop("slot", None)
     if extra:                                  # v0.360 DELIVERY: added after the coupon (a coupon discounts the goods only)
         from . import delivery as DL
         fee, df = DL.on_order(r, extra["total"], data)
+        if slot_key:                           # v0.371 SLOT: booked under a lock, or a note (never a refusal)
+            sf, why = DL.book(r, slot_key)
+            df = {**df, **sf}
+            if why:
+                df["delivery_note"] = (df.get("delivery_note", "").rstrip(".") + "; " if df.get("delivery_note") else "") + why + "."
         if df:
             extra.update(df)
             extra["total"] = round(extra["total"] + fee, 2)
@@ -414,6 +421,9 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
         raise
     if extra or cid:
         _merge(out["id"], {**extra, **({"_cid": cid} if cid else {})})
+        if extra.get("slot"):                          # v0.371 two orders raced for the last place: the later one gets the note
+            from . import delivery as DL
+            DL.confirm(r, out["id"])
         out = W.row_view(c, _row(site, out["id"]), w)
     if extra:
         STATS["orders"] += 1
@@ -1174,7 +1184,7 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
         if (w.staff or x.get("mine")) and d.get("_khata"):     # v0.359 KHATA: this order was given on credit
             x["on_credit"] = not d.get("_khata_back")
         if w.staff or x.get("mine"):                  # v0.358 COUPON: what the server took off (or why a code did not apply)
-            for k in ("subtotal", "discount", "coupon", "coupon_note", "delivery", "delivery_note"):
+            for k in ("subtotal", "discount", "coupon", "coupon_note", "delivery", "delivery_note", "slot", "slot_label"):
                 if d.get(k) not in (None, ""):
                     x[k] = d[k]
         if w.staff or x.get("mine"):                  # v0.353 RAAY: the customer's rating, for her and the business

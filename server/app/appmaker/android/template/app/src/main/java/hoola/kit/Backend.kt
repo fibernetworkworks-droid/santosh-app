@@ -509,11 +509,12 @@ object Db {
             show["total"] = AppState.cartTotal("products") - AppState.couponOff.value +
                 deliveryFee(AppState.cartTotal("products") - AppState.couponOff.value)   // v0.360 the server adds the same
             if (AppState.coupon.value.isNotEmpty()) data["coupon"] = AppState.coupon.value      // v0.358 checked again by the server
+            if (AppState.slot.value.isNotEmpty()) data["slot"] = AppState.slot.value            // v0.371 booked by the server
             show.remove("cart")
         }
         create(coll, data, show)
         fields(coll).forEach { AppState.form.remove(it.s("key")); AppState.picks.remove(it.s("key")) }
-        if (coll == orderList) { AppState.cart.clear(); AppState.coupon.value = ""; AppState.couponOff.value = 0.0 }
+        if (coll == orderList) { AppState.cart.clear(); AppState.coupon.value = ""; AppState.couponOff.value = 0.0; AppState.slot.value = "" }
         return null
     }
 }
@@ -550,6 +551,7 @@ fun SubmitBtn(text: String, coll: String, modifier: Modifier = Modifier, then: S
 @Composable
 fun OrderBtn(text: String, modifier: Modifier = Modifier, then: String = SCREEN_ACCOUNT) {
     if (AppState.cartCount > 0) DeliveryLine()                      // v0.360 DELIVERY: the fee rule + open / closed
+    if (AppState.cartCount > 0 && AppData.backend().optJSONObject("delivery")?.optBoolean("slots") == true) SlotPicker()   // v0.371
     if (Db.couponsOn && AppState.cartCount > 0) CouponBox()          // v0.358 COUPON
     SubmitBtn(text, Db.orderList.ifEmpty { "orders" }, modifier, then, "check")
 }

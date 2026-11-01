@@ -13154,3 +13154,18 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
 - `android/service._keep_qa` keeps `tablet`, `ios/service._keep_qa` keeps `ipad`; both `qa_line`s add "Tablet / iPad par n/m
   screens (k crash: ...)". A big-screen crash is reported, not auto-fixed (the phone crash path stays the one that rebuilds).
 - Tests `tests/test_v0370_har_device.py`.
+
+## v0.371.0 SLOT (App Sahayak Phase 35, owner: "START PHASE 35")
+- `appmaker/delivery.py`: `save_slots(r, slots, days, cutoff)` (HH:MM start < end, cap 1-1000, max 12, days 0-6, cut-off
+  0-720 min) inside `backend["delivery"]`; `available(r)` = slots for today + the days ahead on working days (hours.days),
+  minus those past `start - cutoff` and those full (`_booked` counts the order list's non-cancelled rows by `slot`), labelled
+  Today / Tomorrow / "Wed 04 Nov"; `book(r, key)` under `_SLOT_LOCK` -> {slot, slot_label} or a reason; `confirm(r, row)` after
+  the write: the slot's rows by time, one beyond `cap` loses the slot and gets the note (two orders that passed `book`
+  together). `public()` adds `slots: true` for the cart.
+- `backend.create`: strips `slot` from the fields, books it with the delivery fee step; the reason joins `delivery_note`
+  (chat note as v0.360). Rows show `slot`, `slot_label`.
+- Kits: Android `SlotPicker()` (GET /slots, chips; `AppState.slot`; `Db.submit` sends it) shown by `OrderBtn` when the content
+  says slots; the order card shows "Delivery time: …" + any delivery note. iPhone `SlotPicker` in `FormBlock`, the card line.
+  Receipt: "Delivery time: …". Console Delivery box: slot lines + days ahead + cut-off.
+- Routes: GET /api/app-api/<key>/slots; PUT /api/apps/<ref>/delivery with `slots`.
+- Tests `tests/test_v0371_slot.py`. Not done: slots per PIN / per staff, a slot change after ordering.

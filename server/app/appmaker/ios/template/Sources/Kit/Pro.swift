@@ -666,3 +666,32 @@ struct DeliveryLine: View {
         }
     }
 }
+
+
+// ---------------------------------------------------------------- v0.371 SLOT: the delivery time slot in the cart
+struct SlotPicker: View {
+    @ObservedObject private var state = AppState.shared
+    @State private var list: [Item] = []
+    @State private var loaded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Muted(Words.pickSlot)
+            if loaded && list.isEmpty { Muted(Words.noSlots) }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    ForEach(list, id: \.id) { sl in
+                        Button(sl.s("day") + " · " + sl.s("label")) { state.slot = state.slot == sl.s("key") ? "" : sl.s("key") }
+                            .buttonStyle(.bordered).tint(state.slot == sl.s("key") ? .accentColor : .secondary)
+                    }
+                }
+            }
+        }
+        .task {
+            let r = await Cloud.call("GET", "/slots", nil, token: Auth.shared.token)
+            if r.ok { list = items(r.body["slots"]).map { x in var o = x.o; o["id"] = x.s("key"); return Item(o: o) } }
+            loaded = true
+            if !list.contains(where: { $0.s("key") == state.slot }) { state.slot = "" }
+        }
+    }
+}

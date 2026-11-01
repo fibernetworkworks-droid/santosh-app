@@ -118,9 +118,14 @@ struct RowsSection: View {
                         }
                     }
                     if !auth.isStaff && !r.s("assigned_name").isEmpty { Muted(r.s("assigned_name") + " " + Words.onIt) }   // v0.352
-                    RateBox(coll: coll, r: r)                    // v0.353 the customer rates her finished row once
-                    ReceiptButton(coll: coll, r: r)              // v0.354 the receipt PDF of a finished row
-                    CreditButton(coll: coll, r: r)               // v0.359 staff: this order on credit (udhaar)
+                    if !r.s("slot_label").isEmpty || !r.s("delivery_note").isEmpty {          // v0.371 SLOT
+                        Muted([r.s("slot_label").isEmpty ? "" : Words.pickSlot + ": " + r.s("slot_label"), r.s("delivery_note")].filter { !$0.isEmpty }.joined(separator: " · "))
+                    }
+                    Group {                                       // (grouped: a SwiftUI builder takes 10 views)
+                        RateBox(coll: coll, r: r)                    // v0.353 the customer rates her finished row once
+                        ReceiptButton(coll: coll, r: r)              // v0.354 the receipt PDF of a finished row
+                        CreditButton(coll: coll, r: r)               // v0.359 staff: this order on credit (udhaar)
+                    }
                     AssignBox(coll: coll, r: r)
                     if auth.isStaff && !r.b("pending") && team.mayWork(r), let st = fields.first(where: { $0.s("key") == "status" }) {
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -175,6 +180,7 @@ struct FormBlock: View {
             }
             if !lines.isEmpty { Text(rupees(state.cartTotal())).font(.title3.weight(.semibold)) }
             if !lines.isEmpty { DeliveryLine() }                             // v0.360 DELIVERY
+            if !lines.isEmpty && ((AppData.shared.backend["delivery"] as? [String: Any])?["slots"] as? Bool) == true { SlotPicker() }   // v0.371
             if !lines.isEmpty && db.couponsOn { CouponBox() }               // v0.358 COUPON
         }
         ForEach(db.fields(coll).filter { !$0.b("admin_only") && $0.s("type") != "yes_no" }, id: \.id) { f in

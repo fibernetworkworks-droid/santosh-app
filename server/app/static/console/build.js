@@ -859,7 +859,17 @@ window.HoolaBuild = function (C) {
         <div class="row"><textarea name="pins" rows="2" placeholder="PIN codes you deliver to (blank = everywhere)" aria-label="PIN codes">${esc(L(v.pins).join(', '))}</textarea></div>
         <div class="row"><label>Opens <input name="open" type="time" value="${esc(S(h.open))}"></label><label>Closes <input name="close" type="time" value="${esc(S(h.close))}"></label>
         ${days.map((d, i) => `<label><input type="checkbox" name="d${i}"${L(h.days).includes(i) ? ' checked' : ''}> ${d}</label>`).join('')}</div>
-        <div class="acts"><button class="btn go" type="submit">Save delivery</button>${v.on ? '<button class="btn soft" type="button" data-dloff>Remove rules</button>' : ''}</div></form>`;
+        <div class="acts"><button class="btn go" type="submit">Save delivery</button>${v.on ? '<button class="btn soft" type="button" data-dloff>Remove rules</button>' : ''}</div></form>
+        <form class="stapp" autocomplete="off" data-slots><p class="stnote">Delivery time slots (one per line: label, start, end, orders) - e.g. "Morning, 09:00, 11:00, 10". Blank = no slots.</p>
+        <div class="row"><textarea name="slots" rows="3" aria-label="Slots">${esc(L(v.slots).map(x => [S(x.label), S(x.start), S(x.end), N(x.cap)].join(', ')).join('\n'))}</textarea></div>
+        <div class="row"><label>Days ahead <input name="days" inputmode="numeric" value="${N(v.days)}"></label><label>Cut-off minutes <input name="cutoff" inputmode="numeric" value="${N(v.cutoff)}"></label>
+        <button class="btn go" type="submit">Save slots</button></div></form>`;
+      const fs = dbox.querySelector('[data-slots]');
+      fs.addEventListener('submit', async e => {
+        e.preventDefault();
+        const slots = fs.slots.value.split('\n').map(l => l.split(',').map(x => x.trim())).filter(a => a[0]).map(a => ({label: a[0], start: a[1], end: a[2], cap: a[3]}));
+        try { drawDl(await api('PUT', base(o) + '/delivery', {slots, days: fs.days.value.trim() || 0, cutoff: fs.cutoff.value.trim() || 0})); toast('Slots saved.'); } catch (er) { toast(er.message, true); }
+      });
       const f = dbox.querySelector('form');
       f.addEventListener('submit', async e => {
         e.preventDefault(); const b = f.querySelector('button.go'); b.disabled = true;

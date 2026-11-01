@@ -344,10 +344,11 @@ final class Db: ObservableObject {
             show["items"] = lines.map { "\($0.1) x \($0.0.name)" }.joined(separator: "\n")
             show["total"] = st.cartTotal() - st.couponOff + deliveryFee(st.cartTotal() - st.couponOff)   // v0.360
             if !st.coupon.isEmpty { data["coupon"] = st.coupon }      // v0.358 checked again by the server
+            if !st.slot.isEmpty { data["slot"] = st.slot }            // v0.371 booked by the server
         }
         create(c, data, show: show)
         for f in fields(c) { st.form.removeValue(forKey: f.s("key")) }
-        if c == orderList { st.cart = [:]; st.coupon = ""; st.couponOff = 0 }
+        if c == orderList { st.cart = [:]; st.coupon = ""; st.couponOff = 0; st.slot = "" }
         return nil
     }
 }
