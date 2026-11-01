@@ -1,4 +1,4 @@
-"""v0.375 SOCIAL MEDIA MANAGER Phase 6 - LinkedIn (her own profile) through Newtika's ONE LinkedIn app:
+"""v0.379 SOCIAL MEDIA MANAGER Phase 6 - LinkedIn (her own profile) through Newtika's ONE LinkedIn app:
 Sign In with LinkedIn (openid profile) + Share on LinkedIn (w_member_social), the self-serve products that need no partner
 review. She logs in on LinkedIn's own page; the token (60 days, LinkedIn gives no refresh token to non-partner apps) is
 sealed and she is warned 7 days before it ends. A calendar post with LinkedIn ticked goes to her profile (text + one

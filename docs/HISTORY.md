@@ -13393,8 +13393,264 @@ Built as 0.359 / 0.365 / 0.366, re-versioned past main's v0.364-v0.367. Module `
   times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
   social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0369_social_pulse.py` (12).
 
+## v0.370.0 GAME DESK Phase 1 + GAME DEVELOPER (1 Nov 2026)
+Owner: "NOW LETS WORK ON EMPLOYEE SECTION. Game Development, Simulation & Virtual Reality" (her list VII) -> plan
+`docs/GAME_DESK_PLAN.md` -> "GO PHASE 1 WITH GODOT 4". (Built as 0.359 / 0.364 / 0.368; re-versioned on rebase past the Engineering
+Desk / CAD 0.359, Code Card 0.360, ERP 0.361-0.363, CAD PRO 0.364, Blog / Hard Card / CRM 0.365-0.367, Social Media Manager Phase 3-4 0.368-0.369.)
+- Hire: `employee/hire.py` CATALOG `game_dev` (live, group "Game Development, Simulation & VR") + the other 9 roles
+  as Coming soon (xr_dev, netcode_dev, physics_dev, sim_dev, procgen_dev, vfx_td, audio_dev, twin_arch, haptics_dev).
+  The Hub's group headings came with the Engineering Desk (v0.359); the Game Desk joins them.
+- `app/gamedesk/`: template.py (project.godot, root scene = plain Node + main.gd, single-threaded Web export preset,
+  Hoola's autoload probe `hoola_probe.gd` -> window.__hoola {ready, fps, frames}), guard.py (no network classes,
+  OS.execute / shell / environment, JavaScriptBridge, Engine.get_singleton, DirAccess, ClassDB, Expression, files
+  outside user://, main.gd must extend Node), engine.py (Godot in a box like the 3D Studio: unshare -rn, tiny env, own
+  XDG dirs with a link to the templates, RLIMITs, nice, wall-clock kill; `smoke` = 600 frames headless to surface
+  parse + runtime script errors; `export_web` + .gz of wasm / pck / js), playtest.py (Chromium + SwiftShader WebGL:
+  waits for the probe, presses keys, taps, swipes, 3 screenshots, script errors, freeze and blank-screen checks; low
+  fps on the server is a warning, not a failure), ai.py (Opus: design doc <= 350 words, then code-only GDScript in
+  === file === blocks, fix from the REAL errors, change from her words), service.py (GameProject table; design ->
+  design_ready (her OK / her changes) -> writing -> building -> testing -> done; up to 4 fix rounds; a failed change
+  keeps the last good version; private token play link; screenshots; source zip; 1 job per user, GAME_DAY_BUILDS 15,
+  GAME_DAY_NEW 10; refuses clones of named games, real-money / betting, weapon targeting), api.py (/api/game*,
+  /play/<token>/<file>: CSP default-src 'self' + connect-src 'self' + frame-ancestors 'self', 'unsafe-eval' only for
+  the probe bridge, gzip when accepted, CORS for the console's sandboxed iframe, noindex), `python -m app.gamedesk check`.
+- Agent tool `game_desk` (new / approve / change / status / list / cancel), only while hired, owner-only writes;
+  router family `gamedesk` + a "game" intent; guide line scoped to the family.
+- Console: Game Desk page (`employees.js` game(): new game, design doc with Build it / Change the design, the game in a
+  sandboxed iframe, Open full screen, QR, numbers, screenshots, new version, Godot project download, live refresh);
+  phone `lib/ui/game_desk_screen.dart` (same, Play opens the browser).
+- Install: `server/deploy/setup_godot.py` = Godot 4.7.2 into ~/apps/godot + ONLY the Web templates read out of the
+  1.25 GB templates zip by HTTP range requests (~40 MB); vps-ops `game_setup` / `game_check`.
+- Measured in the sandbox: export 5.8-7.3 s, download 9.7 MB (gzip of ~40 MB), load 1.4-3.5 s, 41-61 fps on software
+  WebGL; a game played through /play/ under the CSP to score 27 and its game-over screen; a wrong identifier was caught
+  with its line before export.
+- Also fixed (again): test_v0312_arena_screen's compare versions (a blanket replace had made both the current version) back to
+  0.309.0 / 0.317.0; test_v0240's stamp pin now follows APP_VERSION (a typed number went stale twice). 
+- Tests: tests/test_v0370_game_desk.py (14, one builds + plays a real Godot game when GODOT_BIN is set).
 
-## v0.370.0 SOCIAL MEDIA MANAGER Phase 5 - GROWTH (1 Nov 2026, owner: "GO PHASE 5")
+## v0.371.0 POOCHH LO + FAIR CARD (owner: "CODE_CARD_HARD DONE, CHECK RESULT")
+Built as 0.370, re-versioned past the parallel v0.370 GAME DESK.
+First live hard card (set 2, claude-opus-5-5, node present): 9/12 right. Breakdown: works 10/12, scope 10/12, rules 12/12,
+good tests 7/7, fix tests that prove the bug 4/4, 7.6 steps a job, 2.1 min. The three misses, one by one:
+- vague_ask = a REAL Hoola gap. Asked "Checkout mein kuch gadbad hai, theek kar do.", it guessed and changed
+  app/orders.py + tests.
+  - Fix: `devsahayak/loop.py` SYSTEM has a VAGUE-request rule: explore briefly; with no ONE clear matching bug, do not
+    guess and do not edit; call done with explain = ONE short question in her language. A clear request is never
+    answered with a question. The `done` explain description says the same; the one-shot fallback (WRITE_SYSTEM) too.
+  - `service._work`: an explanation that ends in "?" reaches her with no "(Koi file badalne layak nahi mili.)" tail.
+- fix_shared_default = an UNFAIR check. It demanded `c.items is mine`, so only one spelling of the fix passed;
+  `list(items)` copies and `list(items or [])` fix the bug equally.
+  - Now: carts don't share items, items passed in are kept, no-arg carts start empty.
+- fix_from_test_run = an UNFAIR scope rule. ANY edit to tests/test_orders.py was refused, so adding a test beside the red
+  one failed too.
+  - Now: any test file may change, but the original red test must still be there word for word (a `want` rule);
+    weakening it fails.
+- Tests: `test_v0371_poochh_lo.py` (3 honest cart fixes pass, the bug still fails, an added test is fine, a weakened one is
+  not, rules text present, a question reaches the chat with no tail and nothing pushed); test_v0365 updated (deleting
+  the red test now fails on rules + works instead of scope).
+- Next: re-run vps-ops `code_card_hard` to confirm.
+
+## v0.372.0 TPM DESK — the engineering counterpart, and the BIG list stops drifting
+Owner: *"Technical PM (tpm) --- CHECK AND MAKE THIS 100 %"*.
+
+### The check found two things
+The thin one: `tpm` had three paper kinds, no sub-jobs, and could not write anywhere.
+
+The important one: **as written it would have duplicated the existing `product` tool** — 1,789 lines that already
+own the product side end to end: discovery, RICE/ICE scoring, Kano, PRDs, roadmap, releases, KPIs.
+
+### So the TPM desk is the engineering counterpart, not a second product manager
+Twelve parts: technical roadmap · cross-team dependencies and the critical path · architecture decisions (ADRs) ·
+NFRs · technical debt · capacity · release train · RAID · build vs buy · incident follow-through to closure ·
+delivery metrics · status and escalation.
+
+The role's **own rules** say the product side belongs to `product`. That is what stops the model reaching for the
+wrong tool — a comment in a file would not have.
+
+### It writes now, and that exposed a real drift
+A technical PM updates the tracker, so `tpm` became a writer. `employee/roles.BIG` was a **hand-written list**, so
+it kept its old `action` class — meaning a tracker write would **not** have raised an approval card.
+
+`BIG` is now **derived** from `enterprise.rules.WRITERS`: add a writer to the role table and the gate follows by
+itself. There is a test that the Employee gate still works if the enterprise suite is not importable at all, so
+the derivation can never take the gate down with it.
+
+A v0.358 test that pinned the writer *membership* was rewritten to pin the **invariant** instead — capped and
+writer are mutually exclusive, and every writer is BIG — which is what actually matters and does not need editing
+each time a desk grows.
+
+### All three desks now stand together
+| desk | parts |
+|---|---|
+| ERP | 16 |
+| CRM | 12 |
+| TPM | 12 |
+
+### Files
+`server/app/enterprise/rules.py` · `server/app/employee/roles.py` (derived BIG) ·
+`server/tests/test_v0370_tpm_desk.py` (9 tests) · `server/tests/test_v0358_enterprise.py` (invariant).
+
+## v0.373.0 CODE MODE (Phase 4 of "any world-complex website": her site's real code, like Lovable / Bolt)
+Owner: "START PHASE 4" (the plan's step: "Real React code you can open, edit in chat ('make the pricing table compare 3
+plans') and export").
+- The site's code IS its sections (HTML + section-scoped CSS + an optional small script) and its design kit (.k-*,
+  v0.330). `server/app/site/code.py` shows them as files `pages/<page>/<section>.html|css|js` + `design/kit.css`:
+  `tree`, `read` (made readable: edit numbers stripped, block tags on their own lines - whitespace-safe tags only - CSS
+  one declaration a line with `;` split only outside quotes / brackets so `url("data:...;...")` survives, the script
+  without Hoola's try-wrapper), `clean` (her or Opus's code through the SAME `build.sanitize_section` as every build:
+  no <script> / iframe / on*= / javascript: / outside src; CSS scoped to the section; scripts with network / cookies /
+  storage / eval refused; edit numbers re-tagged), `diff` (unified), `pick` (which sections her words are about).
+- `service.code_tree / code_read / code_write` (her own hand: one Undo step via the v0.295 stack, then a checked
+  version; the design kit through `kit.clean`), `code_ask` -> site job `code` (`code_job` / `_code_change`: Opus kind
+  site_edit with CODE_SYSTEM + facts + the kit line, only the asked sections may change, each part cleaned, a diff per
+  file, ONE Undo for the whole change (`kind: multi`), then the checked version via _SAVE_PENDING), `code_task` (the
+  result the console polls). `undo_edit` handles `kit` and `multi`.
+- API: GET /api/sites/<id>/code (+ ?path=), PUT /api/sites/<id>/code {path, code}, POST /api/sites/<id>/code/ask
+  {instruction, path}, GET /api/sites/<id>/code/task/<task>. Tools: `website` action=code (+ instruction, file),
+  `website_dekho what=code` (+ file).
+- Console Studio tab "Code": file list by page, editor with line numbers (Tab = 2 spaces, Ctrl/Cmd+S saves, unsaved
+  warning), "Ask Hoola to change this file" -> polled job -> coloured diff + what the cleaner removed, Undo, Download
+  React project / ZIP (v0.305 export into her files). Phone: not in this version (code editing is a computer job).
+- Tests `server/tests/test_v0373_code_mode.py`.
+
+## v0.374.0 TPM KE HISAAB — the technical PM's work, done in code
+Owner: *"WORK ON TPM -- THAT AI CAN PERFROM ALL TASKS IN IT"*.
+
+v0.372 gave the TPM desk its twelve parts and its papers. This makes it **do** the job — and the job is not
+prose. It is six questions that each have exactly one right answer:
+
+| question | answer |
+|---|---|
+| what is really blocking the release | the longest chain through the dependency graph |
+| who is over-committed, by how much | capacity against real estimates, open work only |
+| are we getting faster or slower | **median** lead / cycle time, escaped bugs, say-do % |
+| what is rotting in the RAID log | overdue, gone quiet, unowned, high-and-open |
+| can we ship | every gate, with the failures **named** |
+| who owes me an update | owners silent on open work |
+
+All six are arithmetic, so they live in `app/enterprise/tpm.py` and **not in a prompt**. The model picks the
+question and reads the answer out; it never does the sum. The tool description says so in those words, because
+**a wrong critical path looks exactly as confident as a right one**.
+
+### Three decisions worth recording
+**A dependency loop is refused, never answered.** A cycle is a real planning bug; returning a number would be
+worse than refusing, so `critical_path` names the loop and stops.
+
+**The median, not the mean.** Three tickets where one took 90 days: the mean reads ~34, the median reads 9. One
+outlier must not decide whether the team is getting faster.
+
+**Non-blocking gates are warnings, not stops.** `readiness` separates the two, and names the blocking failures —
+"not ready" without a reason helps nobody.
+
+Rows come from a tracker read, a sheet, or her paste, so the sums work before anything is connected. The six
+actions are on `tpm` **alone**, and there is a test that `erp`, `crm_arch` and `plm` were not given them.
+
+### Files
+`server/app/enterprise/tpm.py` (new) · `server/app/agent/enterprise_tools.py` ·
+`server/tests/test_v0373_tpm_sums.py` (15 tests, worked examples computed by hand).
+
+## v0.375.0 SAB DAS DESK — the remaining seven brought to the same standard
+Owner: *"MAKE ALL 7 REMAINING ROLES 100% LIKE ERP CRM TPM"*.
+
+"The same standard" turned out to be two things.
+
+### 1. A desk for every role — 90 parts
+| role | parts |
+|---|---|
+| erp | 16 |
+| crm_arch · tpm | 12 each |
+| ecom_arch · plm | 8 each |
+| bpa · supply_opt · health_int · regtech | 7 each |
+| bank_int | 6 |
+
+Each part makes only the papers that part really produces, and every paper kind each role needs is now open to
+it.
+
+### 2. The sums, where the work *is* arithmetic
+`tpm.py` proved the shape in v0.374. Four more jobs are the same kind of job, so `app/enterprise/calc.py` answers
+their questions **in code**:
+
+- **supply_opt** — `reorder` (demand × lead + safety stock, with a real sigma from daily numbers when they exist
+  and a *stated* flat cushion when they don't, plus the stockout date) and `dead_stock`.
+- **plm** — `bom_explode` (flattened tree, quantities multiplied through every level, cost rolled up from the
+  leaves) and `where_used` — what a change order really asks.
+- **bank_int** — `reconcile`: reference first, then amount **and** a date inside the window. Matching on amount
+  alone is how reconciliations go wrong. Each line is used once.
+- **regtech** — `due_calendar`: late, coming up, done, and exposure computed **only** from penalty figures she
+  gave.
+
+### Each one refuses rather than guesses
+Under 14 days of history is not a reorder point. A BOM loop has no right cost. A part with no price is **named**,
+not counted as free. A filing with no penalty figure is listed late with the amount **blank** — a made-up fine is
+worse than none.
+
+### Which job gets which sums is a table
+The other five (erp, crm_arch, bpa, ecom_arch, health_int) have **no** sums: their work is judgement and
+execution, not arithmetic. `SUMS` is a table rather than a growing if-chain, a job cannot call a sum that is not
+its own, and the old `if key == "tpm"` special case was **deleted** rather than left sitting beside it.
+
+### Files
+`server/app/enterprise/rules.py` (seven desks) · `server/app/enterprise/calc.py` (new) ·
+`server/app/agent/enterprise_tools.py` (SUMS table) · `server/tests/test_v0375_all_ten_desks.py` (21 tests).
+
+## v0.376.0 PROOF (Phase 5 of "any world-complex website": a 100-page website as numbers)
+Owner: "START PHASE 5" (the plan's step: "a 100-page test business added to the Arena, so we measure build time, cost,
+quality and broken links against Lovable and others before calling it done").
+- `server/app/site/proof.py`, table `site_arena_proofs` (kind hoola | rival, brief, builder, url, site, version, status,
+  stage, card). BIG_SET v1 = five fixed 100-page businesses with their lists in the facts: Sanjeevani hospital (18
+  departments, 24 doctors, 20 areas; blog, Hindi, appointments app), Vidyapeeth Classes (16 courses, 10 centres, 16
+  faculty; blog, Hindi, marks portal), Annapurna Mithai (60 PRICED products, 8 branches; shop, blog, Hindi), Shubh Griha
+  Developers (12 projects, 20 localities; blog, Marathi, site-visit app), Jaldi Fiber Net (8 plans, 40 areas; blog,
+  Marathi, complaints app). Seeded and stable.
+- `build_big`: exactly an owner's path as the arena tenant (S.new pages=100 -> site map -> approve -> looks -> first
+  look -> build -> checks), then the features through her own functions (shop_setup from her priced lists,
+  design_app, blog_publish x3, set_languages), each stopped by the rupee cap (SITE_ARENA_MAX_INR) or her Stop.
+- `card` reads the FILES and records: pages planned vs built (main + each /<lang>/), `checks.link_scan` over every
+  page, `missing_files` (every local src / srcset), the arena judge on a sample of page TYPES (home, a list item, a blog
+  post, the shop, designed pages) from the checks' own screenshots, check scores, `features` verified in the output
+  (shop + cart script, blog + feed + BlogPosting, hreflang + language folders, sitemap URLs, site search, breadcrumbs,
+  grouped menu, /admin/ + app script), `file_stats` (pages readable without JavaScript, one h1, JSON-LD, HTML size),
+  rupees / minutes in total and per page.
+- RIVAL: `crawl` = one public host, breadth first, up to 150 pages, robots.txt respected, every request through
+  web._check_url (public internet only), each page RENDERED in Chromium (`_render`: links after scripts ran, title,
+  description, h1 count, JSON-LD, hreflang) + the raw HTML for "readable without JavaScript"; broken internal links;
+  sitemap.xml count. `rival_card` = the same measures + the judge on the same number of pages. `compare` = per metric
+  who is better, lower-is-better for broken links / missing files / cost / time / size.
+- API (owner only, `_arena_owner`): GET /api/arena/proofs (+ briefs, max_inr), POST /api/arena/proofs {brief_id,
+  budget_inr}, POST /api/arena/proofs/rival {brief_id, builder, url}, GET /api/arena/proofs/compare?a=&b=, POST
+  /api/arena/proofs/<id>/stop. Console Arena screen: "100-page proof" tile (start, live stage + Stop, rival form,
+  proofs table, side-by-side with the better side in green + the feature lines).
+- Tested for real at 60 pages with the test AI: site map -> build -> shop from the priced list (45+ products) -> blog,
+  0 broken links, 0 missing files. A full 100-page run with Opus is the owner's to start (cost ~₹700-2,000, 1-2 h).
+- Tests `server/tests/test_v0376_proof.py`.
+
+## v0.377.0 DEKH KE REVIEW (owner: "GO 3")
+Gap 3 from "IS ALL HOOLA CODE WORK DONE": PR review was still one-shot (one model call over the diff), while coding jobs had
+explored step by step since v0.350. Built as 0.375 / 0.376, re-versioned past the parallel v0.375 SAB DAS DESK and v0.376.
+- `devsahayak/loop.py` `review_run` + `REVIEW_TOOLS` + `REVIEW_SYSTEM`:
+  - the repo opens at the PR's head commit with read-only tools only (list_dir, search_code, read_file, find_usages);
+    edit / new / any other tool is refused;
+  - the project's rules come first (`_project_rules`, v0.356);
+  - the brief: read the whole changed file, find_usages of anything whose name / arguments / return changed (a caller the
+    PR did not update is a real bug), check a test covers the change, no style nitpicks or praise;
+  - `comment(path, line, body, severity)` accepts only lines the PR ADDED. Otherwise it answers "not a line this PR added.
+    Its added lines: 1, 5" or "not changed by this PR. Changed files: ...". At most 30 comments;
+  - `done(summary, verdict)`. PR text, diff and files are DATA; a PR asking to be approved is flagged, never obeyed.
+  - 25 steps / 10 min (`dev_review_steps`, `dev_review_minutes`).
+- `service.review`:
+  - uses the loop when the dev loop is on;
+  - an added-lines map (not the context lines) bounds the comments;
+  - the summary ends with "Explored before reviewing: N files read, M code / caller searches, K steps";
+  - a missing key, a GitHub read error or any loop failure falls back to the one-shot review, so a review never fails
+    because of the exploring step;
+  - the automatic secret / OWASP findings, the draft card, the hash, the stale-commit check and posting only on her tap
+    (APPROVE never automatic) are unchanged.
+- Tests `test_v0377_dekh_ke_review.py`:
+  - a review finds the caller the PR forgot via find_usages, is refused on a context line, another file and edit_file,
+    leaves one inline comment, ends request_changes as a draft (nothing posted), and sees the PR's "approve this" as data;
+  - the one-shot fallback still works; the step cap stops it with what it has.
+
+## v0.378.0 SOCIAL MEDIA MANAGER Phase 5 - GROWTH (built as 0.370, re-versioned past the parallel v0.370-v0.377) (1 Nov 2026, owner: "GO PHASE 5")
 Module `server/app/social/growth.py` (tables `social_watch`, `social_ugc`), Meta calls at the end of `social/meta.py`.
 - Route: Meta's hashtag search ("available for the Instagram API with Facebook Login", IG Hashtag Search reference) and
   Business Discovery work only through Facebook Login, so growth uses her connected Facebook Page: `fb_page_ig` finds the
@@ -13416,4 +13672,33 @@ Module `server/app/social/growth.py` (tables `social_watch`, `social_ugc`), Meta
   numbers, winner only at >= 3 posts a style and a 20% lead.
 - Not done (plan wording): an automatic Ads desk hand-off (the Ads desk analyses imported reports; the boost plan stays
   hers to run), the Influencer desk roster (it is a talent-manager tool) - its rules are reused instead.
-- Console Growth tile, phone Growth card; privacy paragraph. Tests `server/tests/test_v0370_social_growth.py` (8).
+- Console Growth tile, phone Growth card; privacy paragraph. Tests `server/tests/test_v0378_social_growth.py` (8).
+
+
+## v0.379.0 SOCIAL MEDIA MANAGER Phase 6 - MORE PLATFORMS (1 Nov 2026, owner: "GO PHASE 6")
+Built as 0.375, re-versioned after v0.378 (Phase 5). Modules `server/app/social/wabiz.py`, `server/app/social/linkedin.py`.
+- WhatsApp Business by Meta's Embedded Signup (v3: FB.login with config_id, response_type code; Meta posts
+  {type: WA_EMBEDDED_SIGNUP, data: {waba_id, phone_number_id}} to the window). Before: the business typed its phone number
+  id + token into the Business inbox (v0.59 `employee_channels`). Now: Social Desk Connect WhatsApp Business ->
+  `wabiz.connect_url` (state soc_wh_, MailLinkState 30 min single use) -> GET /api/social/whatsapp/start (Meta JS SDK,
+  /api/social/whatsapp/es.js listens only to facebook.com origins) -> POST /api/social/whatsapp/finish {state, code,
+  waba_id, phone_number_id}: oauth/access_token (code, no redirect_uri) -> business token; GET /{pnid} display number,
+  verified name, quality; POST /{waba}/subscribed_apps; POST /{pnid}/register {messaging_product, pin} (pin generated,
+  sealed in user_token_enc; a failure = connected + note to turn off an old two-step PIN); `employee.inbox.set_channel`
+  with her sealed token (the inbox and its replies now use her number); SocialAccount platform whatsapp (no posting,
+  can_reply None). Disconnect also removes the inbox channel. Env: WA_ES_CONFIG_ID (the WhatsApp Login for Business
+  configuration in the same Meta app). Live beyond testers: Newtika must be a Meta Tech Provider.
+- LinkedIn: Sign In with LinkedIn using OpenID Connect + Share on LinkedIn (openid profile w_member_social - self-serve,
+  no partner review). Env LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET / LINKEDIN_VERSION (YYYYMM header, default
+  202510); redirect https://<base>/api/social/linkedin/callback. Token 60 days (no refresh for non-partners) -> hourly
+  watch warns 7 days before (same as Facebook). Publishing: `publish._to_linkedin` -> /rest/images?action=initializeUpload
+  (owner urn:li:person:<sub>) -> PUT bytes -> /rest/posts (commentary escaped: \ | { } @ [ ] ( ) < > # * _ ~, 3
+  hashtags, <= 3000), post urn from x-restli-id, link /feed/update/<urn>/; 401 marks the account expired. `problems`:
+  LinkedIn takes text + photo only (Reel / Story / video refused in words).
+- Planner: posts go only to connected platforms (`_posting_platforms`); the rules plan adds LinkedIn to Our work / Tips /
+  Behind the scenes image + carousel posts when LinkedIn is connected; `set_post(platforms=...)` = "Also on LinkedIn"
+  (a change sends an approved post back to draft). LinkedIn / WhatsApp rows are skipped by Meta reading + the inbox.
+- Not built: LinkedIn Company Page posts, LinkedIn comments / numbers (Community Management API needs LinkedIn's
+  review), X (not asked).
+- Console + phone: connect buttons for all four, account tiles, Also on LinkedIn; privacy paragraphs.
+  Tests `server/tests/test_v0379_social_platforms.py` (10).

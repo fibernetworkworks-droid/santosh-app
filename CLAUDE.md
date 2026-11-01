@@ -145,9 +145,17 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.370.0 (pubspec 0.370.0+410). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.379.0 (pubspec 0.379.0+419). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.377 DEKH KE REVIEW: Developer Sahayak PR review explores first (`loop.review_run`: read-only tools at the PR head, callers + tests, comment tool only on added lines), one-shot = fallback; posting still her tap.
+- v0.376 PROOF (built as 0.375; `site/proof.py`): five fixed 100-page businesses built like an owner's site + features, a proof card read from the files (pages, broken links, missing files, judge on page types, features, ₹ / min per page); rival sites crawled in Chromium and compared; console Arena '100-page proof'.
+- v0.375 PROOF (`site/proof.py`): five fixed 100-page businesses built like an owner's site + features, a proof card read from the files (pages, broken links, missing files, judge on page types, features, ₹ / min per page); rival sites crawled in Chromium and compared; console Arena '100-page proof'.
+- v0.373 CODE MODE (built as 0.367; `site/code.py`): the site's real code as files (section HTML / CSS / JS + design kit) in the Studio Code tab; her hand edits and Opus 'ask' changes go through the build's cleaner, show a diff, one Undo, a checked version; tool action=code.
+- v0.372 CODE MODE (built as 0.367; `site/code.py`): the site's real code as files (section HTML / CSS / JS + design kit) in the Studio Code tab; her hand edits and Opus 'ask' changes go through the build's cleaner, show a diff, one Undo, a checked version; tool action=code.
+- v0.371 POOCHH LO: hard card 9/12 -> Developer Sahayak answers a vague coding ask with ONE question, no edits (`loop.SYSTEM`, one-shot too); two card checks made fair (any honest cart fix; tests may be added beside the red one).
+- v0.370 GAME DESK Phase 1 (`docs/GAME_DESK_PLAN.md`, `app/gamedesk/`): hire the Game Developer -> design doc (her OK) -> Godot 4 GDScript -> guard ->
+  headless play + Web export in a box -> Hoola playtests -> private /play/<token>/ link + source zip; `deploy/setup_godot.py`, vps-ops game_setup.
 - v0.366 BLOG + BHASHAYEN (built as 0.359; `site/blog.py`, Kalam dest `site`): her website's blog (Kalam writes, her Haan publishes, /blog/ + pages + categories + RSS + BlogPosting, scheduled posts, live update when her address showed the last version) + up to 4 extra languages incl. gu/bn/ta/te/kn/ml/pa/or/ur (menu, hreflang).
 - v0.365 HARD CARD: coding card set 2 (`quality/code_repos.py` Python shop 30 files + JS billing 13, `code_tasks2.py` 12 harder jobs incl. a vague ask) - `python -m app.quality code --set 2` / vps-ops `code_card_hard`; JS jobs need node (skipped otherwise).
 - v0.364 HOOLA CAD PRO (`engineering/parts.py` H library: ISO fasteners, involute gears, bearings, shafts, extrusions): assemblies + BOM + mass, Opus thinks + plans, vision review of the views, her photo / STEP inputs, STEP/GLB/STL/3MF/DXF + hidden-line drawing page.
@@ -172,7 +180,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
-- v0.370 SOCIAL MEDIA MANAGER Phase 5 GROWTH (`social/growth.py`, via her Page's linked Instagram = Facebook Login): tags -> UGC ask / recorded yes /
+- v0.379 SOCIAL MEDIA MANAGER Phase 6 (`social/wabiz.py` + `social/linkedin.py`): WhatsApp Business on her own number by Meta's Embedded Signup (one tap ->
+  her Business inbox channel), LinkedIn profile posts (text + one photo); plans only for connected platforms; Company Page / X not built.
+- v0.378 SOCIAL MEDIA MANAGER Phase 5 GROWTH (`social/growth.py`, via her Page's linked Instagram = Facebook Login): tags -> UGC ask / recorded yes /
   credited draft, 5 hashtags + 5 competitors weekly, creator check (signals + #ad), A/B hook styles.
 - v0.369 SOCIAL MEDIA MANAGER Phase 4 (`social/pulse.py`): plan posts alone only for Saathi / Bharosa (6 / 15 a day, quiet hours), Seekh = OK on the day;
   pause + emergency stop, 9 am note, Monday pulse, monthly PDF, best times, boost flags (she runs the boost).
@@ -300,6 +310,29 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
+- v0.375 SAB DAS DESK: all ten enterprise roles now meet the ERP/CRM/TPM standard - (1) a DESK each (90
+  parts total: bpa 7, ecom_arch 8, plm 8, supply_opt 7, health_int 7, bank_int 6, regtech 7) and (2) THE
+  SUMS where the work IS arithmetic, in `app/enterprise/calc.py`: supply_opt reorder (demand x lead +
+  safety, real sigma when daily numbers exist, stockout date) + dead_stock; plm bom_explode (cost rolled
+  up from leaves, qty multiplied through levels) + where_used; bank_int reconcile (ref first, then amount
+  AND date in window - amount alone is how recons go wrong; each line used once); regtech due_calendar
+  (exposure ONLY from penalty figures she gave). Each REFUSES rather than guesses: <14 days history, a BOM
+  loop, a part with no price is NAMED not free. The other 5 have no sums (judgement, not arithmetic);
+  SUMS is a TABLE, not an if-chain, and the old `if key == "tpm"` special case was deleted.
+- v0.374 TPM KE HISAAB: the TPM desk now DOES the job - six questions that each have one right answer, all
+  arithmetic in `app/enterprise/tpm.py`, NEVER in a prompt: critical_path (longest chain; REFUSES on a
+  dependency loop instead of returning a number), capacity (over-committed by how many days, open work
+  only), metrics (MEDIAN lead/cycle so one 90-day ticket cannot lie, escaped, say-do %), raid (overdue /
+  quiet / unowned / high), readiness (go-no-go, failing gates NAMED, non-blocking = warning), chase (who
+  went quiet; never invents a status). The model picks the question, never does the sum - a wrong critical
+  path looks as confident as a right one. Rows from tracker / sheet / paste. On tpm alone (tested).
+- v0.372 TPM DESK: the check found tpm thin (3 papers, 0 parts, no writes) and - the real point - about to
+  DUPLICATE the 1,789-line `product` tool (discovery, RICE/ICE, PRDs, releases). So TPM is the ENGINEERING
+  counterpart: 12 parts (roadmap, dependencies, architecture/ADR, NFR, debt, capacity, release train, RAID,
+  build-vs-buy, incident follow-through, delivery metrics, status) and its OWN RULES send product work to
+  `product`. It writes now (tracker updates) -> that exposed a drift: employee/roles.BIG was a HAND-WRITTEN
+  list so tpm stayed 'action' and a write would not have carded. BIG now DERIVES from rules.WRITERS (with a
+  test the gate survives the suite being unimportable). Desks: ERP 16, CRM 12, TPM 12.
 - v0.367 CRM DESK: crm_arch was half-built (write engine yes, but 0 sub-jobs, 4 paper kinds). Now 12 parts
   (admin, config, automation, apex, integration, data, security, reporting, testing, release, adoption,
   support) + all 12 paper kinds, so security work makes a MATRIX. THE SPLIT: a CRM architect writes

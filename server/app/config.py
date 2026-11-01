@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     dev_loop: bool = True                   # v0.350 Developer Sahayak explores + edits step by step with 8 tools (devsahayak/loop.py)
     dev_loop_steps: int = 40                # ... at most this many model steps a task
     dev_loop_minutes: int = 20              # ... and this many minutes
+    dev_review_steps: int = 25              # v0.377 a PR review explores at most this many steps (read-only tools)
+    dev_review_minutes: int = 10            # ... and this many minutes, then the one-shot review is the fallback
     dev_loop_model: str = ""                 # ... '' = site_model (Opus)
     dev_loop_effort: str = "high"           # ... Claude effort for coding
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
@@ -153,8 +155,8 @@ class Settings(BaseSettings):
     instagram_app_id: str = ""              # Instagram use case > API setup with Instagram login
     instagram_app_secret: str = ""
     meta_social_version: str = "v25.0"      # pinned Graph API version for the social desk (graph.facebook.com / graph.instagram.com)
-    wa_es_config_id: str = ""               # v0.375 WhatsApp Embedded Signup: the Login for Business configuration for WhatsApp
-    linkedin_client_id: str = ""            # v0.375 LinkedIn app (Sign In with LinkedIn + Share on LinkedIn), Newtika's one app
+    wa_es_config_id: str = ""               # v0.379 WhatsApp Embedded Signup: the Login for Business configuration for WhatsApp
+    linkedin_client_id: str = ""            # v0.379 LinkedIn app (Sign In with LinkedIn + Share on LinkedIn), Newtika's one app
     linkedin_client_secret: str = ""
     linkedin_version: str = "202510"        # LinkedIn-Version header (YYYYMM) for /rest/ calls
     social_ai: bool = True                  # the Social Media Manager asks Opus for its strategy + 30-day calendar (off = rules)
@@ -392,6 +394,7 @@ class Settings(BaseSettings):
     pagespeed_api_key: str = ""             # optional: PageSpeed Insights API key (higher quota for SEO checks)
     indiamart_enabled: bool = True           # v0.280 IndiaMART's own MCP (buyer search: products, prices, suppliers)
     indiamart_mcp_url: str = "https://imgpt.indiamart.com/mcp"   # no key / sign-in; read-only tools only
+    game_model: str = "claude-opus-5-5"     # v0.370 Game Desk: writes the design doc + GDScript ('' = anthropic_model)
     mospi_enabled: bool = True               # v0.348 MoSPI eSankhyiki: official Govt of India statistics, built in
     mospi_mcp_url: str = "https://mcp.mospi.gov.in/mcp"   # no login, read-only
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)

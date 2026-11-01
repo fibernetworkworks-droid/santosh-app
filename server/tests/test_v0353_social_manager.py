@@ -219,7 +219,7 @@ def test_opus_plan_cleaned_and_draft_replaced_but_approved_kept(social):
     cal = D.calendar(T)
     assert any(c["id"] == first and c["status"] == "approved" for c in cal)   # her approval survives a re-plan
     opus_posts = [c for c in cal if c["source"] == "opus"]
-    assert len(opus_posts) == 10 and all(c["platforms"] == ["instagram"] for c in opus_posts)   # tiktok dropped; v0.376 only connected platforms (Facebook not connected here)
+    assert len(opus_posts) == 10 and all(c["platforms"] == ["instagram"] for c in opus_posts)   # tiktok dropped; v0.379 only connected platforms (Facebook not connected here)
     assert opus_posts[0]["hashtags"] == ["#akola", "#smile"]
     stg = D.desk_view(T)["strategy"]
     assert stg["source"] == "opus" and stg["hashtags"][1] == "#dentistakola" and stg["pillars"][0]["name"] == "Smile stories"

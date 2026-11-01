@@ -1,4 +1,4 @@
-"""v0.375 SOCIAL MEDIA MANAGER Phase 6 - more platforms: WhatsApp Business on her own number by Meta's Embedded Signup
+"""v0.379 SOCIAL MEDIA MANAGER Phase 6 - more platforms: WhatsApp Business on her own number by Meta's Embedded Signup
 (code -> her business token sealed, webhooks subscribed, number registered, her Business inbox channel made) and LinkedIn
 (her profile: Sign In with LinkedIn + Share on LinkedIn; text + one photo; escaped text; 60-day token warned). Mock
 transport for Meta and LinkedIn."""

@@ -24,8 +24,8 @@ from . import meta as M
 log = logging.getLogger("santosh.social")
 KEY = "social"
 PLATFORMS = ("instagram", "facebook")                       # Meta reading / inbox / growth
-POST_PLATFORMS = ("instagram", "facebook", "linkedin")      # v0.375 where a calendar post can go
-CONNECT = ("instagram", "facebook", "linkedin", "whatsapp")  # v0.375 what the desk can connect
+POST_PLATFORMS = ("instagram", "facebook", "linkedin")      # v0.379 where a calendar post can go
+CONNECT = ("instagram", "facebook", "linkedin", "whatsapp")  # v0.379 what the desk can connect
 FORMATS = ("reel", "carousel", "image", "story")
 POST_STATUS = ("draft", "approved", "skipped")
 _RUNNING: set[str] = set()
@@ -121,7 +121,7 @@ class SocialPost(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    hook_style: Mapped[str | None] = mapped_column(String(12), nullable=True)   # v0.370 question | number | story | offer
+    hook_style: Mapped[str | None] = mapped_column(String(12), nullable=True)   # v0.378 question | number | story | offer
     seen: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.369 1 = she OK'd this post itself, 0 = only via the plan
 
 
@@ -232,7 +232,7 @@ def is_link_state(state: str) -> bool:
 def connect_url(tenant: str, platform: str) -> str:
     from ..db import MailLinkState
     _hired(tenant)
-    if platform == "linkedin":                                  # v0.375
+    if platform == "linkedin":                                  # v0.379
         from .linkedin import connect_url as li
         return li(tenant)
     if platform == "whatsapp":
@@ -351,7 +351,7 @@ def _upsert_account(s, tenant: str, platform: str, account_id: str) -> SocialAcc
 
 def disconnect(tenant: str, account: str) -> dict[str, Any]:
     from .wabiz import disconnect as wa_off
-    wa_off(tenant, account)                    # v0.375 a WhatsApp number also leaves her Business inbox
+    wa_off(tenant, account)                    # v0.379 a WhatsApp number also leaves her Business inbox
     with session() as s:
         row = s.get(SocialAccount, account)
         if row is None or row.tenant_id != tenant:
@@ -414,7 +414,7 @@ def sync_account(account: str, limit: int = 50, insights: bool = True) -> dict[s
             raise SocialError("Account nahi mila.")
         tenant, platform, pid, tok = a.tenant_id, a.platform, a.account_id, acc.decrypt(a.token_enc) or ""
     if platform not in PLATFORMS:
-        return {"skipped": platform}                            # v0.375 LinkedIn / WhatsApp: nothing Meta-readable here
+        return {"skipped": platform}                            # v0.379 LinkedIn / WhatsApp: nothing Meta-readable here
     got: list[dict[str, Any]] = []
     try:
         if platform == "instagram":
@@ -790,7 +790,7 @@ def set_post(tenant: str, post_id: str, status: str = "", caption: str | None = 
             p.caption, edited = str(caption)[:2200], True
         if hook is not None:
             p.hook, edited = str(hook)[:200], True
-        if platforms is not None:                           # v0.375 tick / untick LinkedIn etc.
+        if platforms is not None:                           # v0.379 tick / untick LinkedIn etc.
             pl = [x for x in POST_PLATFORMS if x in platforms]
             if not pl:
                 raise SocialError("Kam se kam ek jagah chuniye: instagram | facebook | linkedin")
@@ -1035,7 +1035,7 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
     if state == "ready" and local.weekday() == 0 and local.hour >= 9 and stamps.get("weekly_key") != wk:
         out.append("weekly")
     if state == "ready" and local.hour >= 8 and stamps.get("growth", "")[:10] != local.date().isoformat():
-        out.append("growth")                           # v0.370 tags daily, hashtags + competitors on Mondays
+        out.append("growth")                           # v0.378 tags daily, hashtags + competitors on Mondays
     if state == "ready" and local.hour >= 9 and stamps.get("morning", "")[:10] != local.date().isoformat():
         out.append("morning")                          # v0.369
     mk = local.strftime("%Y-%m")

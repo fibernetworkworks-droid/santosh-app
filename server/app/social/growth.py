@@ -1,4 +1,4 @@
-"""v0.370 SOCIAL MEDIA MANAGER Phase 5 of docs/SOCIAL_EMPLOYEE_PLAN.md - GROWTH (official routes only):
+"""v0.378 SOCIAL MEDIA MANAGER Phase 5 of docs/SOCIAL_EMPLOYEE_PLAN.md - GROWTH (official routes only):
 - Listening through her Facebook Page's linked Instagram professional account (hashtag search and Business Discovery exist
   only in the Instagram API with Facebook Login): posts that TAG her (daily), up to 5 hashtags of her niche and up to 5
   competitors (weekly: followers, posting rhythm, engagement, best format - against her own numbers). No scraping, no
