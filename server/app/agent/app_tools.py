@@ -75,6 +75,16 @@ APP_TOOLS = [
         "v0.355 action=gst (owner only; gst = {gstin, legal_name, rate 0|0.25|3|5|12|18|28, hsn, items {product id: {hsn, rate}}}): her GST "
         "details - finished rows then get a TAX INVOICE (GST-inclusive prices, consecutive INV/<FY>/0001 numbers) instead of a receipt; "
         "no gst = show them; gstin \"\" = plain receipts again. Returns / credit notes / e-invoicing stay with her CA. "
+        "v0.380 DIMAAG - the app's BRAIN (any complex business logic): action=logic (owner only; instruction = her words, e.g. "
+        "\"har order ke items alag list mein, total apne aap\", \"50,000 se upar ka quote manager phir director manzoor kare\", "
+        "\"har din 9 baje unpaid invoices par reminder\"; empty instruction + no logic yet = the full logic from the app brief; "
+        "empty instruction with logic = show it): Opus writes linked lists (customer -> orders -> items), formulas + totals, "
+        "rules / unique keys, workflows with approval chains (maker-checker) + SLA, automatic triggers, timed jobs and locked "
+        "custom functions; the checker proves it; it is only a DRAFT - she applies it with her tap on the app's Logic card "
+        "(console app page / phone app screen), never you. action=logic_switch (owner only, on true|false ONLY on her ask): the "
+        "whole logic on / off (nothing deleted). action=approval (owner only; approval = id from app_dekho what=logic, decision "
+        "approve|reject, note) = HER decision on a waiting approval, only when she says it. action=logic_run (owner only; job = "
+        "schedule name) = run a timed job now. "
         "v0.367 action=turant (owner only; show, or on=true / false ONLY when she asks): instant notifications for her Android app's phones "
         "(order moved, new order for staff, job given) through Hoola's Firebase - from the next build. v0.368 iPhones too once SHE puts her "
         "Apple push key into the app / console (Key ID, Team ID, .p8 - NEVER in chat; if she pastes one, do not use it and tell her to "
@@ -100,7 +110,8 @@ APP_TOOLS = [
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
-                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant"]},
+                                                 "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant",
+                                                 "logic", "logic_switch", "approval", "logic_run"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -116,7 +127,10 @@ APP_TOOLS = [
          "mode": {"type": "string", "description": "action=khata: cash|upi|card|bank|other"},
          "month": {"type": "string", "description": "action=hisaab: YYYY-MM"},
          "product": {"type": "string", "description": "action=variants: product id or name"},
-         "on": {"type": "boolean", "description": "action=turant: switch instant notifications on / off"},
+         "on": {"type": "boolean", "description": "action=turant: switch instant notifications on / off; action=logic_switch: logic on / off"},
+         "approval": {"type": "string", "description": "action=approval: the approval id"},
+         "decision": {"type": "string", "enum": ["approve", "reject"], "description": "action=approval: her decision"},
+         "job": {"type": "string", "description": "action=logic_run: the timed job (schedule) name"},
          "variants": {"type": "array", "items": {"type": "object"}, "description": "action=variants: [{name, price}]"},
          "delivery": {"type": "object", "description": "action=delivery: {fee, free_above, pins, hours, off}"},
          "coupon": {"type": "object", "description": "action=coupon: {code, kind, value, cap, min, until, uses, once, on, delete}"},
@@ -151,11 +165,11 @@ APP_TOOLS = [
         "(q = her words -> the best precise app idea + 2 near ones + how many ideas exist for that business; field / goal / "
         "aud filter; offset pages through them; idea = one idea's full detail). Show ideas to her as 2-3 short lines (name + "
         "the special thing) and ask which one; then app_banao action=new idea=<id>." " data (app; coll = one list: its rows, newest first - the real orders / bookings / requests her app's users made, with status) | "
-        "members (app: the app's accounts with their role). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps)."),
+        "members (app: the app's accounts with their role). logic (app: v0.380 its business logic in plain lines, the draft waiting for her tap, approvals waiting, the last automatic actions). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
-                                             "data", "members", "crashes", "store", "ios", "appstore"]},
+                                             "data", "members", "crashes", "store", "ios", "appstore", "logic"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
          "idea": {"type": "string"}, "coll": {"type": "string"}},
@@ -299,6 +313,28 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action in ("logic", "logic_switch", "approval", "logic_run"):     # v0.380 DIMAAG
+        if not _owner(ctx):
+            raise ToolError("App ki logic sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker.logic import engine as LE
+        from ..appmaker.logic import service as LS
+        from ..site import webapp as W
+        r = BE.by_key_or_ref(t, ref)
+        try:
+            if action == "logic_switch":
+                return LS.switch(r, bool(a.get("on")))
+            if action == "approval":
+                return LE.decide(r, str(a.get("approval") or ""), str(a.get("decision") or ""), str(a.get("note") or ""), W.Who(owner=True))
+            if action == "logic_run":
+                return LE.run_schedule(r, str(a.get("job") or ""), force=True)
+            words = str(a.get("instruction") or "").strip()
+            v = LS.view(r)
+            if not words and v["has_logic"]:
+                return {k: v[k] for k in ("on", "rev", "summary", "approvals")} | {"draft": bool(v["draft"]), "say": "; ".join(v["summary"][:6])}
+            return LS.draft(r, words)
+        except W.AppError as e:
+            raise ToolError(str(e))
     if action == "turant":                    # v0.367 TURANT
         if not _owner(ctx):
             raise ToolError("Notifications ka switch sirf maalkin ke paas hai.")
@@ -521,6 +557,13 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         v = ST.view(BE.by_key_or_ref(t, ref))
         return {k: v.get(k) for k in ("package", "proposed", "account", "status", "now", "error", "steps", "listing", "bundle",
                                       "releases", "privacy_url", "delete_url", "console_steps")}
+    if what == "logic":                                   # v0.380 DIMAAG: the app's brain, its draft, approvals, what it did
+        from ..appmaker import backend as BE
+        from ..appmaker.logic import service as LS
+        v = LS.view(BE.by_key_or_ref(t, ref))
+        d = v.get("draft") or {}
+        return {"on": v["on"], "rev": v["rev"], "summary": v["summary"], "approvals": v["approvals"][:20],
+                "audit": v["audit"][:15], "draft": {k: d.get(k) for k in ("summary", "lines", "errors", "questions")} if d else None}
     if what in ("data", "members", "crashes"):            # v0.314 the app's own backend
         from ..appmaker import backend as BE
         r = BE.by_key_or_ref(t, ref)

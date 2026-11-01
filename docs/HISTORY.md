@@ -14184,3 +14184,75 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   delivery_note, slot, slot_label) were saved under those plain names and could overwrite a list's own field of the same name.
   They are stored as `_subtotal` ... `_slot_label` (`backend.SYS_KEYS`); views show the plain name only when the list has no
   such field (and always the `_` name); receipts, GST, accounts, slots and coupon give-back read the `_` names.
+
+## v0.380.0 DIMAAG - the app's logic engine (App Sahayak Phases 43-46 = Pillar A of docs/COMPLEX_APPS_PLAN.md)
+Owner (1 Nov 2026): *"Logic engine (biggest step) - Linked lists (customer → orders → items), formulas, workflows with
+approvals, automatic triggers and timed jobs, and custom logic in a locked sandbox ---- WORK ON IT AND DEPLOYE MAKE IT FULL
+AND ROBUSTLY FUCTIONAL"*.
+
+What it is: every native app (Android + iPhone + its own backend) can now carry a BRAIN, stored as `backend["logic"]`:
+- **Linked lists** (`relations`): a ref field points at a row of another list (customer → invoices → lines). The server checks
+  every link (the row exists in THIS app, in the right list, and the person may read it). Deletes follow the relation:
+  `restrict` (refused while children exist), `cascade` (children go too, max 500), `nullify` (links cleared).
+- **Formulas** computed on every write, in dependency order (a loop between formulas is refused by the checker); a child's
+  change re-computes its parents (roll-ups: `subtotal = sum(lines.amount)`, `billed = sum(where(invoices, ...).total)`).
+  Formula fields are the server's: stripped from every incoming write, never in a form. A formula that cannot run leaves
+  its field blank and is audited - an order is never lost to a formula.
+- **Rules** (`check` must be true; `old.<field>` on update) + **unique keys**. A rule that cannot run is audited and lets
+  the write through (her app never bricks); a rule that says no, or `fail("...")`, refuses with its message (422 / 409).
+- **Workflows**: states, steps (`from`, `to`, `who`: row_owner / member / assigned / staff / admin / owner, `require`d fields,
+  a `when` condition), every new row starts at the first state whatever is sent. A step that needs **approval** becomes an
+  approval request (`_approval` rows): steps staff / admin / owner, **maker-checker** (the asker never approves), one person
+  = one step, the row does not move until the last yes; a row that moved meanwhile cancels the request. **SLA**: a row
+  waiting too long in a state -> notify (+ optional move), once per waiting spell.
+  An allowed step is performed BY THE ENGINE (`info["move"]`), so a customer's own allowed step (Cancel) works although
+  customers never write staff fields; a workflow move to Cancelled runs the same give-backs as before (stock, coupon,
+  udhaar, credit note) through the new `backend.status_moved` (also from approvals / triggers / SLA).
+- **Triggers** on create / update / delete / change:<field> / enter:<state> with an optional `when`: notify (owner chat note,
+  staff / admins / row owner / assigned person by push), set fields, move, create a row in another list, assign to the
+  least busy staff, run a function (its returned map sets fields). Loops are cut: 3 levels deep, 100 automatic actions per
+  request; every action is written to the app's audit list (`_audit`, last 3,000 kept).
+- **Timed jobs** (`schedules`): hourly / daily HH:MM / weekly mon HH:MM / monthly D HH:MM (IST), `where` filter,
+  `once_per_row`; the worker runs `engine.tick()` once a minute in a thread; a slot is marked BEFORE it runs (no double
+  run after a crash), a brand-new job waits for its first real slot (no catch-up storm), 200 rows per run.
+- **Custom functions in a locked sandbox**: `logic/lang.py` is our own tokenizer + parser + tree-walking interpreter -
+  never Python eval / exec / import, no file or network access by construction (values are JSON shapes; `.key` is a dict
+  lookup, so `x.__class__` is just a missing key). Budget per run: 50,000 steps, 2,000-item lists, 20,000-char text,
+  call depth 8, 0.5 s wall clock. Body language: let / assignment / if-else if-else / for-in / break / continue / return /
+  fail(). A function reads only its params; its own tests (expect / fails) run before any save. Callable ones are exposed
+  to the app (`POST /api/app-api/<key>/fn/<name>`, rate-limited, 20,000 steps).
+- Expressions: field names, `customer.city` (a ref gives the parent row, loaded lazily), `lines.amount` (children), `me`,
+  `old`; ~60 builtins (round / sum / where / count / days_between / add_days / add_months / age / money(₹ Indian grouping) ...).
+
+Authoring (`logic/service.py`): Opus writes {lists, fields, logic} for THIS app's real lists from her words (empty words =
+the full logic from the app brief) -> `spec.check()` (every list / field / state / function name must exist, formulas
+parse, no formula loops, function tests pass) -> one repair round with the checker's errors -> kept as a DRAFT with plain
+summary lines. **Only her tap applies it** (`POST /api/apps/<ref>/logic/apply {hash}` = the exact draft she saw): new lists
+/ fields first (`_apply_ops` gained `add_list` + `ref` fields, additive only), then the logic, then every existing row gets
+its formulas once (children before parents). The console editor (`PUT /logic`) uses the same checker. One switch turns it
+all off (nothing deleted). Agent: `app_banao action=logic` (draft only) / `logic_switch` / `approval` (her decision, on her
+word) / `logic_run`; `app_dekho what=logic`.
+
+Apps: the server decorates the schema (ref fields get `to`, formula fields `computed`, the workflow field its states +
+`workflow`, parents list their `relations`, `approvals` / callable `functions` flags) and every row (`_labels` = a link's
+row name, `_actions` = the steps THIS person may press now, `_pending` = an approval waiting + `can_decide`). Kits
+`Logic.kt` / `Logic.swift`: RefField (picker, the id travels, the name shows), WorkflowBox (allowed steps / approval waiting
+with Approve / Reject), RelatedBlock (a row's linked children + Add with the link filled), AutoForm (every field of a list as
+a form), kit screens `hoola_approvals` and `hoola_data` (every list as rows + a form, so a list the logic added works before
+any redesign); RowsSection / RowCard use them; screen prompts mark `[ref:<list>]` fields. Console app page: "App logic" box
+(summary, draft from words, Apply, approvals, timed jobs Run now, audit, advanced JSON). Phone: `lib/ui/app_logic.dart`.
+
+Routes: owner `GET /api/apps/<ref>/logic`, `POST .../logic/draft`, `DELETE .../logic/draft`, `POST .../logic/apply`,
+`PUT .../logic`, `POST .../logic/switch`, `POST .../logic/test`, `POST .../logic/run/<name>`, `GET .../logic/audit`,
+`GET|POST .../approvals[/<id>]`; app `GET /api/app-api/<key>/approvals`, `POST .../approvals/<id>`,
+`GET .../c/<coll>/<row>/related/<rel>`, `POST .../fn/<name>`.
+
+Tests `server/tests/test_v0380_dimaag.py`: the locked language (no escape, budgets), the checker (unknown names, formula
+loops, bad states / triggers, failing function tests), a full invoicing app end to end (unique phone, links, formulas +
+roll-ups + her function, rules, Send needs a date, follow-up created by a trigger, 2-step maker-checker chain, enter:Paid
+trigger, conditional approval, restrict / cascade / nullify, callable function, schedule once per row, audit, off switch),
+schedule slots + SLA, Opus draft with the repair round + her tap by hash, the customer's own Cancel giving stock back, kits.
+
+Not verified here: the Kotlin / Swift kit compile (CI appgen-check / ios-check build them), a real Opus draft on her VPS.
+Known limits (said plainly): locks + schedules assume one server process (Pillar B moves to Postgres transactions); child
+lookups use a JSON text match on SQLite (fine to a few thousand rows per list); no realtime push of logic results (Pillar C).

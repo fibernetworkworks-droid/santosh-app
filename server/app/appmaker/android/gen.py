@@ -28,7 +28,7 @@ KIT_FILES = ["Theme.kt", "Data.kt", "Api.kt", "Kit.kt", "Nav.kt", "Strings.kt", 
 CODE_SCREENS = ("splash", "consent", "notify_permission", "seller_info", "privacy", "delete_account")
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 # v0.314 the kit's own account screens (code-made, always present) and the design's sign-in screens they stand in for
-KIT_SCREENS = ("hoola_chat", "hoola_login", "hoola_account", "hoola_inbox")   # v0.340 + the updates inbox, v0.378 + chat
+KIT_SCREENS = ("hoola_chat", "hoola_login", "hoola_account", "hoola_inbox", "hoola_approvals", "hoola_data")   # v0.340 inbox, v0.378 chat, v0.380 DIMAAG
 AUTH_IDS = ("login", "signup", "register", "login_staff", "otp_login", "sign_in")
 
 
@@ -201,7 +201,7 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
                       for s in ids if s in have or s in AUTH_IDS)
     code_when = {"seller_info": "SellerScreen()", "privacy": "PrivacyScreen()", "delete_account": "DeleteAccountScreen()"}
     cwhens = "\n".join(f"            {kstr(c)} -> {code_when[c]}" for c in code if c in code_when)
-    cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()\n            "hoola_inbox" -> InboxScreen()\n            "hoola_chat" -> ChatScreen()'
+    cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()\n            "hoola_inbox" -> InboxScreen()\n            "hoola_chat" -> ChatScreen()\n            "hoola_approvals" -> ApprovalsScreen()\n            "hoola_data" -> DataScreen()'
     all_ids = ", ".join(kstr(x) for x in ids + [c for c in code if c in code_when] + list(KIT_SCREENS))
     fab = spec.get("fab") or {}
     fab_main = (f"FabAction({kstr(fab['label'])}, {kstr(fab.get('icon') or 'plus')}, {kstr(fab['go'])})"

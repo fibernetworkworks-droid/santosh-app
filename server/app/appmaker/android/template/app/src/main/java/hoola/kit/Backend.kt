@@ -305,6 +305,12 @@ object Db {
     fun fields(coll: String): List<Item> = arrList(collection(coll)?.optJSONArray("fields")).filter { !it.b("hidden") }
     fun label(coll: String): String = collection(coll)?.optString("label", coll) ?: coll
     fun rule(coll: String, op: String): String = collection(coll)?.optJSONObject("rules")?.optString(op, "") ?: ""
+    // v0.380 DIMAAG: what the app's logic says about a list (from the server's schema; the server checks every write)
+    fun relations(coll: String): List<Item> = arrList(collection(coll)?.optJSONArray("relations"))
+    fun workflowField(coll: String): String = collection(coll)?.optString("workflow", "") ?: ""
+    fun labelField(coll: String): String = collection(coll)?.optString("label_field", "") ?: ""
+    fun mayCreate(coll: String): Boolean = when (rule(coll, "create")) { "public" -> true; "member" -> Auth.signedIn; else -> Auth.isStaff }
+    val approvalsOn: Boolean get() = schema.optBoolean("approvals", false) || AppData.backend().optBoolean("approvals", false)
     val orderList: String get() = schema.optString("order", "")
     val signupOpen: Boolean get() = schema.optBoolean("signup", true)
     /** v0.358 a discount code is live: the order screen shows the code box (read fresh from the app content). */

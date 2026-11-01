@@ -24,6 +24,12 @@ struct StopsBlock: View { init() }        // v0.350 staff: open rows with a [loc
 struct RateBox: View { init(coll: String, r: Item) }   // v0.353 the customer rates her finished row once (RowsSection already shows it)
 struct AssignBox: View { init(coll: String, r: Item) }   // v0.352 staff row: who has it + assign / take / give back (RowsSection already shows it)
 struct InboxButton: View { init() }       // v0.340 the updates inbox ("hoola_inbox")
+struct RefField: View { init(label: String, to: String, value: Binding<String>) }   // v0.380 a [ref:<list>] field: pick a row of that list (stores its id)
+struct WorkflowBox: View { init(coll: String, r: Item) }   // v0.380 the allowed workflow steps / approval waiting (RowsSection already shows it)
+struct RelatedBlock: View { init(coll: String, r: Item) }  // v0.380 a row's linked children + Add (RowsSection already shows it)
+struct AutoForm: View { init(coll: String, preset: [String: String] = [:], done: @escaping () -> Void = {}) }   // v0.380 every field of a list as a form
+enum Logic { static func show(_ r: Item, _ f: Item) -> String; static func refLabel(_ r: Item, _ key: String) -> String }   // v0.380 a link shows its row's name
+// staff screens may go to "hoola_approvals" (approvals waiting) and "hoola_data" (every list); formula fields are the server's - never in a form
 enum H { static func c(_ scheme: ColorScheme) -> Palette; static var radius: CGFloat }
 struct Palette { bg, surface, ink, muted, line, primary, onPrimary, accent, tint: Color }
     // read colours with: @Environment(\\.colorScheme) private var scheme; let c = H.c(scheme)

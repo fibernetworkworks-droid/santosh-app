@@ -228,7 +228,8 @@ def ensure(r: AppProject) -> dict[str, Any]:
     old_changes = be.get("changes") or []
     be = {"schema": schema_for(r), "made": be.get("made") or now().isoformat(), "v": SCHEMA_V, "rev": int(be.get("rev") or 0),
           "changes": old_changes, **({"upgraded": now().isoformat()} if be.get("made") else {}),
-          **({"gst": be["gst"]} if be.get("gst") else {})}         # v0.355 her GST details + invoice numbers survive an upgrade
+          **({"gst": be["gst"]} if be.get("gst") else {}),         # v0.355 her GST details + invoice numbers survive an upgrade
+          **({"logic": be["logic"]} if be.get("logic") else {})}   # v0.380 ... and her app's logic
     for ch in old_changes:                     # v0.325 her own data changes survive an upgrade: replayed on the new lists
         _apply_ops(be["schema"], ch.get("ops") or {})
     with session() as s:
@@ -240,7 +241,8 @@ def ensure(r: AppProject) -> dict[str, Any]:
 
 
 def schema(r: AppProject) -> dict[str, Any]:
-    return ensure(r)["schema"]
+    from .logic import engine as LE                  # v0.380 DIMAAG: refs / formulas / workflow states on the lists
+    return LE.decorated(r, ensure(r))
 
 
 # ---------------------------------------------------------------- the installed app's side (public, by app_key)
@@ -272,7 +274,8 @@ def public_schema(r: AppProject) -> dict[str, Any]:
     sch = schema(r)
     from . import coupon as CP
     return {**W.public_schema(sch), "kind": sch.get("kind", ""), "order": sch.get("order", ""),
-            "coupons": bool(sch.get("order")) and CP.active(r)}           # v0.358 the cart shows the code box
+            "coupons": bool(sch.get("order")) and CP.active(r),           # v0.358 the cart shows the code box
+            "approvals": bool(sch.get("approvals")), "functions": sch.get("functions") or []}   # v0.380 DIMAAG
 
 
 def signup(r: AppProject, email: str, password: str, name: str, ip: str) -> dict[str, Any]:
@@ -387,6 +390,8 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     reserved = {"cid", "cart", "_coupon", "_slot"} | ({"coupon"} if "coupon" not in keys else set()) | ({"slot"} if "slot" not in keys else set())
     data = {k: v for k, v in body.items() if k not in reserved}
     _check_extra(r, c, data, w)
+    from .logic import engine as LE                  # v0.380 DIMAAG: refs, first workflow state, formulas, rules (or refused)
+    data = LE.before_create(r, coll, data, w)
     if extra:                                  # v0.357 STOCK: taken under one lock before the row exists (or refused)
         from . import stock as SK
         taken = SK.reserve(r, _cart_lines(r, body.get("cart")))
@@ -431,7 +436,9 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
         if extra.get("slot"):                          # v0.371 two orders raced for the last place: the later one gets the note
             from . import delivery as DL
             DL.confirm(r, out["id"])
-        out = W.row_view(c, _row(site, out["id"]), w)
+    LE.after_create(r, coll, out["id"], w)          # v0.380 formulas stored, triggers, parents' totals
+    out = W.row_view(c, _row(site, out["id"]), w)
+    LE.decorate(r, coll, [out], w)
     if extra:
         STATS["orders"] += 1
     if coll in NEWS:
@@ -458,7 +465,8 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
         t = q.strip().lower()[:80]
         got = [x for x in got if t in json.dumps(x, ensure_ascii=False).lower()]
     offset = max(0, int(offset or 0))
-    return got[offset:offset + max(1, min(int(limit or 200), 1000))]
+    from .logic import engine as LE                  # v0.380 ref names, workflow buttons, approvals waiting
+    return LE.decorate(r, coll, got[offset:offset + max(1, min(int(limit or 200), 1000))], w)
 
 
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
@@ -482,8 +490,22 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
     sch = schema(r)
     _guard_assigned(r, coll, row_id, w)
     _check_extra(r, W.coll(sch, coll), body, w)
-    out = W.update(bid(r), sch, coll, row_id, body, w)
-    if any(k in body for k in ("status", "paid")):
+    from .logic import engine as LE                  # v0.380 workflow steps / approvals, formulas, rules
+    old = LE.load(r, row_id, coll)
+    body, info = LE.before_update(r, coll, row_id, body, w)
+    appr, move = (info or {}).get("approval"), (info or {}).get("move")
+    if body or not (appr or move):
+        out = W.update(bid(r), sch, coll, row_id, body, w)
+    if move:                                         # an allowed workflow step (a customer's own Cancel too): the engine moves it
+        LE.store(r, row_id, {move[0]: move[1]})
+    LE.after_update(r, coll, row_id, old, w)
+    if LE.compiled(r):
+        out = W.row_view(W.coll(sch, coll), _row(bid(r), row_id), w)
+        LE.decorate(r, coll, [out], w)
+        if appr is not None:
+            out["approval"] = appr
+    moved = bool(move) or any(k in body for k in ("status", "paid"))
+    if moved:
         _merge(row_id, {"_ev": now().isoformat()})     # v0.319 the moment her row moved: the app's update check reads it
         try:                                            # v0.367 TURANT: ... and her phone hears it at once (when on)
             from . import turant as TU
@@ -495,26 +517,43 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
                 TU.later(r, [owner], f"{c_['label']}: {out.get('status') or out.get('paid') or ''}".strip(": "), head[:80], row_id)
         except Exception:
             log.debug("turant status", exc_info=True)
-    if str(out.get("status") or "").strip().lower() == "cancelled" and "status" in body:
-        _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
-        _coupon_back(r, row_id)                         # v0.358 ... and its coupon use (once)
-        from . import khata as KH                       # v0.359 ... and a credited order's udhaar is reversed (once)
-        KH.reverse_order(r, row_id)
-        from . import gst as G                          # v0.356 an invoiced row cancelled -> its credit note (given once)
-        got = G.credit_for(r, row_id, "Order cancelled")
-        if got:
-            try:
-                from .android.service import _note
-                _note(r, f"{r.name or 'Aapki app'} ({r.number}): cancelled order ka credit note {got[0]} ban gaya "
-                         "(invoice ke saamne). Paise lautane hon to woh aap khud karein; credit note sirf likhit record hai.")
-            except Exception:
-                log.debug("credit note note", exc_info=True)
+    if "status" in body or (move and move[0] == "status"):
+        status_moved(r, row_id, str(out.get("status") or ""))
     return with_assign(r, out, w)
+
+
+def status_moved(r: AppProject, row_id: str, status: str) -> None:
+    """A row reached a new status (her app, Hoola, an approval, a trigger, an SLA): a cancelled order gives back what it took."""
+    if status.strip().lower() != "cancelled":
+        return
+    _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
+    _coupon_back(r, row_id)                         # v0.358 ... and its coupon use (once)
+    from . import khata as KH                       # v0.359 ... and a credited order's udhaar is reversed (once)
+    KH.reverse_order(r, row_id)
+    from . import gst as G                          # v0.356 an invoiced row cancelled -> its credit note (given once)
+    got = G.credit_for(r, row_id, "Order cancelled")
+    if got:
+        try:
+            from .android.service import _note
+            _note(r, f"{r.name or 'Aapki app'} ({r.number}): cancelled order ka credit note {got[0]} ban gaya "
+                     "(invoice ke saamne). Paise lautane hon to woh aap khud karein; credit note sirf likhit record hai.")
+        except Exception:
+            log.debug("credit note note", exc_info=True)
 
 
 def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
     _guard_assigned(r, coll, row_id, w)
-    return W.delete(bid(r), schema(r), coll, row_id, w)
+    from .logic import engine as LE                  # v0.380 children first: restrict / cascade / nullify
+    sch = schema(r)
+    W.coll(sch, coll)
+    with session() as s:                             # her permission is checked BEFORE any child is touched
+        row = s.get(W.SiteAppRow, row_id)
+        if row is not None and row.site_id == bid(r) and row.coll == coll and not W._can_write(W.coll(sch, coll), w, row, "delete"):
+            W._deny()
+    d = LE.before_delete(r, coll, row_id, w)
+    out = W.delete(bid(r), sch, coll, row_id, w)
+    LE.after_delete(r, coll, row_id, d, w)
+    return out
 
 
 def delete_me(r: AppProject, w: W.Who) -> dict[str, Any]:
@@ -617,6 +656,8 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
     sch = schema(r)
     out = {"kind": sch.get("kind"), "order": sch.get("order"), "signup": sch.get("signup", True),
            "collections": sch["collections"]}
+    if sch.get("approvals"):                               # v0.380 DIMAAG: the Approvals button for staff
+        out["approvals"] = True
     if sch.get("order"):                                   # v0.358 COUPON: the cart shows the code box while a code is live
         from . import coupon as CP
         out["coupons"] = CP.active(r)
@@ -1040,6 +1081,29 @@ def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
     only left out of the forms; nothing is ever deleted or renamed underneath existing rows."""
     done: list[str] = []
     colls = {c["key"]: c for c in sch.get("collections") or []}
+    for nl in (ops.get("add_list") or [])[:8]:   # v0.380 DIMAAG: a new list (customers, order lines, classes...)
+        k = W._slug(nl.get("key") or nl.get("label"))
+        if not k or k.startswith("_") or k in colls:
+            if k in colls:
+                continue                         # replayed on an upgrade / already there: nothing to do
+            raise W.AppError("Nayi list ka naam chahiye.")
+        if len(colls) >= W.MAX_COLLECTIONS + 8:
+            raise W.AppError("Is app mein aur list nahi aa sakti.")
+        ru = nl.get("rules") if isinstance(nl.get("rules"), dict) else {}
+        c = {"key": k, "label": str(nl.get("label") or k.replace("_", " ").title())[:60], "fields": [],
+             "rules": {"create": ru.get("create") if ru.get("create") in W.CREATE else "admin",
+                       "read": ru.get("read") if ru.get("read") in W.READ else "admin",
+                       "update": ru.get("update") if ru.get("update") in W.WRITE else "admin",
+                       "delete": ru.get("delete") if ru.get("delete") in W.WRITE else "admin"}}
+        for f in (nl.get("fields") or [])[:W.MAX_FIELDS]:
+            fd = _new_field(f, colls | {k: c}, fresh=True)
+            if fd and not any(x["key"] == fd["key"] for x in c["fields"]):
+                c["fields"].append(fd)
+        if not c["fields"]:
+            raise W.AppError(f"List '{k}' mein koi field nahi.")
+        sch.setdefault("collections", []).append(c)
+        colls[k] = c
+        done.append(f"nayi list {k} ({len(c['fields'])} field)")
     for a in (ops.get("add") or [])[:12]:
         c = colls.get(str(a.get("coll") or ""))
         if c is None:
@@ -1056,14 +1120,7 @@ def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
             raise W.AppError(f"'{k}' pehle se hai.")
         if len(c["fields"]) >= W.MAX_FIELDS:
             raise W.AppError("Is list mein aur field nahi aa sakte.")
-        typ = a.get("type") if a.get("type") in (*W.TYPES, *EXTRA_TYPES) else "text"
-        fd: dict[str, Any] = {"key": k, "label": str(a.get("label") or k.replace("_", " ").title())[:60], "type": typ,
-                              "required": False, "admin_only": bool(a.get("admin_only"))}
-        if typ == "choice":
-            opts = [str(o)[:40] for o in (a.get("options") or []) if str(o).strip()][:20]
-            if not opts:
-                raise W.AppError("Choice field ke options chahiye.")
-            fd["options"], fd["default"] = opts, opts[0]          # an old app's row (it never sends it) gets the default
+        fd = _new_field({**a, "key": k}, colls, fresh=False)
         c["fields"].append(fd)
         done.append(f"{c['key']}.{k} joda")
     for h in (ops.get("hide") or [])[:12]:
@@ -1085,6 +1142,30 @@ def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
     return done
 
 
+def _new_field(a: dict[str, Any], colls: dict[str, Any], fresh: bool) -> dict[str, Any] | None:
+    """One field from an add / add_list op. On an EXISTING list a new field is never required (old apps cannot send it);
+    on a brand-new list it may be. v0.380 type "ref" + "to" = a link to a row of another list."""
+    k = W._slug(a.get("key") or a.get("label"))
+    if not k or k in ("id", "owner", "created", "updated", "cid", "cart") or k.startswith("_"):
+        if fresh:
+            return None
+        raise W.AppError("Naye field ka naam chahiye.")
+    typ = a.get("type") if a.get("type") in (*W.TYPES, *EXTRA_TYPES, "ref") else "text"
+    fd: dict[str, Any] = {"key": k, "label": str(a.get("label") or k.replace("_", " ").title())[:60], "type": typ,
+                          "required": bool(a.get("required")) and fresh and typ != "choice", "admin_only": bool(a.get("admin_only"))}
+    if typ == "choice":
+        opts = [str(o)[:40] for o in (a.get("options") or []) if str(o).strip()][:20]
+        if not opts:
+            raise W.AppError("Choice field ke options chahiye.")
+        fd["options"], fd["default"] = opts, opts[0]          # an old app's row (it never sends it) gets the default
+    if typ == "ref":
+        to = W._slug(a.get("to"))
+        if to not in colls:
+            raise W.AppError(f"'{k}' kis list se juda hai? ('{a.get('to')}' nahi mili)")
+        fd["to"] = to
+    return fd
+
+
 def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[str, Any]:
     """Her data change (tool / app data view): applied to a copy, checked, then saved with a new revision. The installed
     app reads the new lists from /api/app-content at once (rows show the new field); forms collect it from the next build."""
@@ -1093,7 +1174,7 @@ def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[s
     sch = copy.deepcopy(be["schema"])
     done = _apply_ops(sch, ops if isinstance(ops, dict) else {})
     if not done:
-        raise W.AppError("Kya badalna hai? (add / hide / label)")
+        raise W.AppError("Kya badalna hai? (add / hide / label / add_list)")
     be = {**be, "schema": sch, "rev": int(be.get("rev") or 0) + 1,
           "changes": (be.get("changes") or []) + [{"at": now().isoformat(), "ops": ops, "words": str(words)[:300], "done": done}]}
     with session() as s:

@@ -195,6 +195,14 @@ final class Db: ObservableObject {
     func fields(_ c: String) -> [Item] { items(collection(c)?["fields"]).filter { !$0.b("hidden") } }
     func label(_ c: String) -> String { collection(c)?["label"] as? String ?? c }
     func rule(_ c: String, _ op: String) -> String { (collection(c)?["rules"] as? [String: Any])?[op] as? String ?? "" }
+    // v0.380 DIMAAG: what the app's logic says about a list (the server checks every write)
+    func relations(_ c: String) -> [Item] { items(collection(c)?["relations"]) }
+    func workflowField(_ c: String) -> String { collection(c)?["workflow"] as? String ?? "" }
+    func labelField(_ c: String) -> String { collection(c)?["label_field"] as? String ?? "" }
+    func mayCreate(_ c: String) -> Bool {
+        switch rule(c, "create") { case "public": return true; case "member": return Auth.shared.signedIn; default: return Auth.shared.isStaff }
+    }
+    var approvalsOn: Bool { schema["approvals"] as? Bool ?? false }
     var orderList: String { schema["order"] as? String ?? "" }
     var couponsOn: Bool { schema["coupons"] as? Bool ?? false }     // v0.358 a discount code is live
 
