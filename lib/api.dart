@@ -1247,7 +1247,7 @@ class Api {
       await _send('GET', '/api/sites/$id/care', query: {'days': '$days'}, timeout: const Duration(seconds: 60)) as Map);
   Future<Map<String, dynamic>> siteDashboard(String id, {int days = 30}) async => Map<String, dynamic>.from(   // v0.357
       await _send('GET', '/api/sites/$id/dashboard', query: {'days': '$days'}, timeout: const Duration(seconds: 60)) as Map);
-  // v0.365 BLOG + BHASHAYEN
+  // v0.366 BLOG + BHASHAYEN
   Future<Map<String, dynamic>> siteBlog(String id) async => Map<String, dynamic>.from(await _send('GET', '/api/sites/$id/blog') as Map);
   Future<Map<String, dynamic>> siteBlogAct(String id, String slug, String action, {String cover = ''}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/sites/$id/blog/$slug', body: {'action': action, 'cover': cover},

@@ -13230,7 +13230,44 @@ Owner: "I WANT CAD TO PERFROM ALL COMPLEX, VERY COMPLEX, HARD, VERY HARD, ULTIMA
   print, review, 3MF / GLB / DXF buttons. Tests: tests/test_v0357_engineering_desk.py (16).
 - Large STEP uploads may need nginx `client_max_body_size 60m;` on the /api/eng location.
 
-## v0.365.0 BLOG + BHASHAYEN (built as 0.359, re-versioned past the parallel v0.359-v0.363) (Phase 3c of "any world-complex website")
+## v0.365.0 HARD CARD (owner: "GO HARD CARD")
+Set 1 of the coding card scored 12/12 (claude-opus-5-5, 4.7 steps a job). That was too easy to show more progress, so set 2
+is harder. Built as 0.363 / 0.364, re-versioned past the parallel v0.363 ASLI ERP KAAM and v0.364 HOOLA CAD PRO.
+- `quality/code_repos.py`: two bigger practice projects; each base is correct and its own tests pass.
+  - DUKAAN (Python, 30 files): config, models, catalog, inventory, cart, coupons, GST, shipping, orders, notify, reports,
+    validators, utils, API handlers. Root AGENTS.md (settings only in config, aliases on rename, logging) and
+    app/api/AGENTS.md (handlers never raise, 400 / 404, require()). Plus docs/ARCHITECTURE.md and tests with conftest.
+  - HISAAB (JavaScript, 13 files): ES modules, paise, GST split, formats, invoices; node:test.
+- `quality/code_tasks2.py` (SET 2, 40 steps / 8 min a job), 12 jobs, each with a reference answer:
+  1. COD fee across config / models / orders / API (quote + create_order)
+  2. rename apply_coupon -> redeem_coupon with every caller + alias
+  3. carts sharing items (mutable default)
+  4. Sundays counted in delivery dates
+  5. reservation leak seen only in a red pytest run (test must not be touched)
+  6. get_order showing anyone's order (404 identical to unknown)
+  7. JS CGST + SGST off by a paisa
+  8. JS formatINR with Indian grouping + export from index
+  9. vague ask -> ONE question, no change
+  10. refactor place_order to <= 32 lines using the helpers, same numbers / errors / stock
+  11. free-shipping limit 499 -> 999 in config + quote + SMS text (no 49900 left)
+  12. cancel_order handler under the folder rules (require(), 400 / 404, never raises, idempotent)
+- `codecard.py`:
+  - `--set 2`; JavaScript checks / tests run with node (`node --test`); node gets no address-space cap because V8 reserves
+    a big one, but keeps the CPU / file / time caps;
+  - UNSAFE_JS refuses child_process / fs / net / http / fetch / eval / process.env;
+  - without node the JS jobs are SKIPPED, not failed;
+  - an `ask` job is right when nothing changed and the reply asks a question;
+  - saved as code2-*.json.
+- vps-ops `code_card_hard` (prints whether node is there; ~12 Opus jobs, roughly Rs 300-700).
+- Tests `test_v0365_hard_card.py`:
+  - both bases pass their own tests; every reference answer is right and every untouched repo fails;
+  - fix tests prove the bug;
+  - the marks catch a guess on the vague ask, no alias, a missed caller, a config-only limit change, deleting the red
+    test, and an unrefactored function;
+  - unsafe JS is never run; JS jobs are skipped without node;
+  - the real loop runs set-2 jobs; CLI + vps job.
+
+## v0.366.0 BLOG + BHASHAYEN (built as 0.359, re-versioned past the parallel v0.359-v0.363) (Phase 3c of "any world-complex website")
 Owner: "START PHASE 3C" (after 3a DUKAAN v0.351 and 3b DASHBOARD v0.357).
 - BLOG, writing stays with Kalam Sahayak (v0.101: her voice, facts checked on the web, [blanks] never guessed). Kalam gets
   a new destination `site` (DESTS): `publish_request(dest="site", where=<website>, when=<time>)` -> `site.service.blog_target`
@@ -13265,4 +13302,4 @@ Owner: "START PHASE 3C" (after 3a DUKAAN v0.351 and 3b DASHBOARD v0.357).
   Phone `lib/ui/site_blog.dart` "Blog aur bhashayen" (posts + menu actions with confirms, language chips).
 - ALSO FIXED: the parallel v0.358 ENTERPRISE merge had dropped arena.js, employees.js and charts.js plus the Arena /
   Employees / SEO Desk / Social Desk views from console v2.html (four console tests were red on main); restored.
-- Tests `server/tests/test_v0365_blog_bhashayen.py`.
+- Tests `server/tests/test_v0366_blog_bhashayen.py`.

@@ -752,7 +752,7 @@ window.HoolaBuild = function (C) {
 
   /* v0.351 DUKAAN: her shop - settings, products, orders (no AI; prices only hers; money confirmed only by her) */
   const OSTEP = {confirmed: 'Confirm (money received)', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancel'};
-  // ---------------------------------------------------------------- v0.365 BLOG: Kalam writes, her Haan publishes on this site
+  // ---------------------------------------------------------------- v0.366 BLOG: Kalam writes, her Haan publishes on this site
   const BSTAT = {published: 'Live', scheduled: 'Scheduled', hidden: 'Hidden'};
   async function loadBlog(o, root) {
     const box = root.querySelector('.stblog'); if (!box) return;
@@ -829,7 +829,7 @@ window.HoolaBuild = function (C) {
     });
   }
 
-  // ---------------------------------------------------------------- v0.365 BHASHAYEN: the site's languages
+  // ---------------------------------------------------------------- v0.366 BHASHAYEN: the site's languages
   async function loadLangs(o, root) {
     const box = root.querySelector('.stblog'); if (!box) return;
     let b;

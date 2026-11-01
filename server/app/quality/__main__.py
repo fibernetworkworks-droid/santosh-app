@@ -1,7 +1,7 @@
 """python -m app.quality [--live] [--judge] [--label "..."] | compare <before.json> <after.json>
    | tools [--live] [--fresh] [--limit N] [--brain claude|glm] [--label "..."]   (v0.245 tool-choice card)
    | longjobs [--hours 24]   (v0.347 how her real long jobs went)
-   | code [--only id,id] [--limit N] [--label "..."]   (v0.360 coding card: 12 practice jobs through the real loop)"""
+   | code [--set 1|2] [--only id,id] [--limit N] [--label "..."]   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
 import asyncio
@@ -31,7 +31,7 @@ def _code(argv: list[str]) -> int:
     from . import codecard as K
     val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
     only = [x for x in val("--only").split(",") if x]
-    cd = K.save(K.card(only=only or None, limit=int(val("--limit") or 0)), val("--label"))
+    cd = K.save(K.card(only=only or None, limit=int(val("--limit") or 0), set_=int(val("--set") or 1)), val("--label"))
     print("\n".join(K.lines(cd)))
     print(f"\n  saved: {cd['file']}")
     return 0

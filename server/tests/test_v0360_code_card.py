@@ -101,7 +101,7 @@ def test_cli_and_vps_job(monkeypatch, capsys, tmp_path):
     from app.quality import __main__ as M
     from app.quality import toolchoice
     monkeypatch.setattr(toolchoice, "_dir", lambda: tmp_path)
-    monkeypatch.setattr(K, "card", lambda only=None, limit=0: {
+    monkeypatch.setattr(K, "card", lambda only=None, limit=0, set_=1: {
         "kind": "code", "set": 1, "model": "m", "jobs": 1, "right": 1, "works": 1, "scope": 1, "rules": 1, "tests": 1,
         "tests_of": 1, "proves": 1, "proves_of": 1, "steps_avg": 3, "minutes": 0.1,
         "rows": [{"id": (only or ["x"])[0], "kind": "fix", "right": True, "steps": 3, "seconds": 5}]})

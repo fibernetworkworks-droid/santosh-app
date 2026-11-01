@@ -2068,7 +2068,7 @@ body.albon{overflow:hidden}
 .stdash-card h4{margin:0 0 10px;font-size:14px;font-weight:600}.stdash-card.wide{grid-column:1/-1}
 .stdash-card .stempty{margin:0}
 
-/* v0.365 BLOG + BHASHAYEN: the studio's Blog and Languages tabs */
+/* v0.366 BLOG + BHASHAYEN: the studio's Blog and Languages tabs */
 .stblog{display:grid;gap:14px}
 .stblog .stapp label{display:grid;gap:3px;font-size:13px}.stblog .stapp label>span{color:var(--mut)}
 .stblog textarea,.stblog .stblog-ed input,.stblog .stblog-when input{padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;width:100%}

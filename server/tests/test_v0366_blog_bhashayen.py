@@ -1,4 +1,4 @@
-"""v0.365 BLOG (built as 0.359) + BHASHAYEN (web design Phase 7 step 3, owner: "START PHASE 3C"): a real blog on her Hoola website and the
+"""v0.366 BLOG (built as 0.359) + BHASHAYEN (web design Phase 7 step 3, owner: "START PHASE 3C"): a real blog on her Hoola website and the
 site in up to 4 extra languages.
 
 BLOG: Kalam writes the post (her voice, facts checked) and gets one more place to publish, dest "site" = the blog of her
@@ -218,5 +218,5 @@ def test_api_and_tools(site_env, kalam):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.365.0"
-    assert "0.365.0+405" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.366.0"
+    assert "0.366.0+406" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
