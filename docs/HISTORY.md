@@ -15802,3 +15802,19 @@ Owner, after the India ad-market check (artifact "Hoola Ad Platforms India"): "G
 - Live before this check (1 Nov, 16:13 UTC): healthz 0.416.0; console v2.html / v2.js / v2.css / employees.js byte-identical
   to main (Architecture Desk section + ar-dia styles present); /api/arch/projects answers 401 without a key.
 - Tests: 3 more in test_v0410_architect.py (inline design + full clean-up, model failure reported not raised, vps-ops job).
+
+## v0.418.0 PRAYOGSHALA IN ENGLISH (owner: "FIRST MAKE ENTIER THING IN ENGLISH")
+
+Everything a learner sees in Prayogshala is English.
+- **The 22 labs**: titles, aims, part names and info, knob and meter labels, table columns and hints, steps, theory, safety notes, tour narration and quiz.
+- **Narration**: `lang` is now `en-IN`, so the browser speaks it in English.
+- **The runtime** (`static/prayog/lab3d.js`): the buttons are Run / Reset / Tour / Record reading / Zero, the tabs are Knobs / Meters / Table / Steps / Predict / About, plus the result line "True value in this lab ... your error" and every empty-state text.
+- **The pages and surfaces**: the catalogue and lab pages, the phone Prayogshala screen and its Profile tile, the tool's notes and errors, the catalogue NOTE, and the LSL checker's messages.
+
+Nothing else changed. The old and new catalogues were compared with all text stripped and are structurally identical: every number, the 3D layout, the kernels and the NCERT checks.
+
+The meter bridge was re-run in Chromium: S = 6.01 Ω against the lab's true 6.00 Ω.
+
+A new test, `test_everything_the_learner_sees_is_english`, fails if Hinglish words return to the labs, the runtime, the pages or the phone screen.
+
+The static `?v=` stamps and the service-worker cache name moved to 0.418.0, so phones fetch the new runtime.
