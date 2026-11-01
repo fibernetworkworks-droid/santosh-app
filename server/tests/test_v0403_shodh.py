@@ -187,3 +187,8 @@ def test_tools_api_and_wiring(sh):
     assert c.post(f"/api/shodh/projects/{p}/doi", json={"doi": "10.9999/fake.1"}).status_code == 400
     from app import main
     assert TestClient(main.app).get("/api/shodh").status_code in (200, 401, 403)
+
+
+def test_version():
+    from app.main import APP_VERSION
+    assert APP_VERSION == "0.403.0"

@@ -15142,3 +15142,76 @@ text checked byte for byte against ECC's LICENSE). Built as 0.396 / 0.400, re-ve
   - `test_v0402_ecc_ci_round.py`: a red CI round gets the fixer only when switched on.
 - Found by the tests while building: the security pass first missed the SQL-injection PR (the sensitive-word list had
   `sql` but not `execute` / `select` / `sqlite3`); widened, plus personal-data words.
+
+## v0.403.0 DAFTAR SAHAYAK - Shiksha suite Phase 3: school administrative operations
+- Owner: "GO PHASE 3" (plan: OMR / Forms / code grading into the gradebook with teacher sign-off, attendance, timetable,
+  CBSE-format report cards, parent alerts on her tap).
+- `server/app/daftar/` (models / rules / service / api), tools `daftar` / `daftar_dekho`:
+  - ATTENDANCE: `mark_attendance` (class, day; everyone present except absent / late / leave named by roll, name or S-number;
+    marking the same day again replaces it; unknown names reported; children without guardian consent not recorded; no
+    future dates), `attendance` (month: % per child with late = present and leave not counted, school days, below 75%).
+  - ABSENCE ALERTS: `absent_alerts` -> a `daftar_share` CARD; only POST /api/daftar/shares/{id}/decide (by_tap, hash) makes
+    one wa.me draft per absent child's guardian ("... aaj nahi aaye. Sab theek ho to bataiye.") that she sends herself.
+  - GRADING into the shared gradebook as UNSIGNED rows (by "hoola:<source>", the wrong question numbers in the note):
+    `grade_sheet` (answer key list or a Pathyakram paper's objective key; rows [{roll, answers}] or a CSV with roll / name /
+    Q1..Qn), `omr_read` (one answer-sheet photo read by Claude vision: exactly what is marked, blanks / doubles / unclear
+    listed; NOTHING saved - the teacher confirms, then grade_sheet), `grade_forms` (a Pathyakram Google Forms quiz: answers by
+    their 'Qn.' titles, learners by a roll / name question or the guardian email on record), `grade_code` (Python against
+    [{call, expected}] tests run in the pylab sandbox via `rules.code_harness`: numbers within 1e-6, errors named, a program
+    that does not even load = 0, os.system / sockets refused by the sandbox; marks in proportion), `grade_rubric` (a written
+    answer against a Pathyakram rubric RB-xxx: AI picks a level per criterion with evidence, points capped at each
+    criterion's maximum in code; a SUJHAAV). Each run GR-001 keeps the key, results, average and the 5 hardest questions;
+    unmatched rolls and no-consent children are listed, never guessed. `unsigned` = marks waiting for sign-off (ids for
+    shiksha.sign_off).
+  - REPORT CARDS: `report_card` from SIGNED-OFF marks only (per subject: assessments, marks, %, grade on the school's 8-point
+    scale A1 91-100 ... E below 33 - said to be the school scale, not a board result; total, overall grade, attendance %,
+    how many marks still wait for sign-off), `report_card_file` (Word: school, name, class, roll, term, table, signature
+    lines), `report_card_share` -> card -> her tap -> the file + a wa.me draft to that child's guardian.
+  - TIMETABLE: `timetable` needs [{class, subject, teacher, per_week}], periods, days, max_same -> `rules.solve_timetable`
+    (capacity checks first, then backtracking hardest-first: every period placed, no teacher in two rooms in one period,
+    a subject at most max_same times a day; impossible = said plainly) -> TT-001 + per-teacher view.
+- Employee: duty `school_office`, role `school_admin`, preset `school_office`; READ daftar_dekho; admit family "daftar"
+  (hazri / attendance / report card / timetable / OMR / marks ...); voice via santosh_kaam; push daftar_share (waiting only);
+  prompt line SCHOOL OFFICE.
+- App: `lib/ui/daftar_screen.dart` (DaftarScreen: Hazri tap-the-absent + alerts card, Marks sign-off list, Timetable grid,
+  Report card Word / guardian card; DaftarShareCard with one draft button per guardian), Profile tile "School office".
+- Tests: NEW `server/tests/test_v0403_daftar.py` (11): attendance + replace + unknown + no-consent + month %; alerts only by her tap
+  (one wa.me per guardian); sheet grading unsigned + unmatched + no-consent, report card empty until sign-off, then A1 +
+  Word + guardian card; CSV sheet; OMR read saves nothing and lists unclear; Forms quiz by Qn titles; code in the sandbox
+  (3/4 tests, broken code, os.system refused, consent); rubric suggestion capped; timetable with no clashes and the
+  max-per-day rule, impossible load refused; grade scale + sheet reader; tools / API / wiring.
+- Not verified: real OMR photos through Claude vision; real Google Forms responses; Flutter not compiled locally (CI).
+
+## v0.403.0 SHODH SAHAYAK - Shiksha suite Phase 4: research assistant (Master's / PhD)
+- Owner: "GO PHASE 4" (plan: official open literature APIs, cited summaries, review matrix, gaps, citation manager,
+  sandboxed Python analysis with the code shown, first drafts; integrity: no invented citations, AI disclosure, no thesis
+  ghost-writing).
+- `server/app/shodh/` (models / sources / service / api), tools `shodh` / `shodh_dekho`:
+  - SOURCES (`sources.py`, documented public endpoints only, one shape for all): OpenAlex /works (abstract rebuilt from the
+    inverted index, oa_url, cited_by_count, mailto polite pool), Crossref /works (+ /works/{doi} as the truth check),
+    arXiv export API (Atom; DOI + pdf link), PubMed E-utilities (esearch + esummary; DOI from articleids), Semantic Scholar
+    Graph API (optional key sealed with the vault; 429 said plainly), Unpaywall (legal free PDF for a DOI, needs her contact
+    email). One source failing never stops the others; failures are reported.
+  - PROJECTS SP-001 with a log of every search / screen / analysis (feeds the methods draft). `search` de-duplicates by DOI
+    (else normalised title) across sources and merges fields (best citations, all ids, found_via); `add_doi` only after
+    Crossref returns the record (a made-up DOI is refused) + Unpaywall link; `screen` include / exclude with reason;
+    `summarize` = problem / method / data / findings / limitations / relevance from the ABSTRACT only ("not stated" when
+    absent); `matrix` of included papers; `gaps` - each gap must cite project papers, other cites removed in code.
+  - REFERENCES built in CODE from the API metadata (`reference`: APA 7 incl. the 20-author rule, IEEE, Harvard; `bibtex`;
+    `ris`) as a chat file for Zotero / Mendeley import - the model never writes a reference.
+  - ANALYSIS (`analyse`): the model writes one program for her question (or cleaning: types, spaces, categories, missing
+    values, duplicates -> cleaned.csv), the pylab sandbox runs it on her datasets / chat files, one fix from the traceback,
+    numbers + charts + the code returned.
+  - DRAFTS (`draft`: literature_review / methods / results / discussion / introduction): only the matrix + log (+ the analysis
+    output for results); [P-xxx] cites not in the project removed; decimals in a results draft that are not in the analysis
+    output become [CHECK n]; an AI-assistance note; a request to write a thesis / assignment for submission as her own work
+    is refused with an offer of real help.
+- Employee: duty `research_assist`, role `research_assistant`, preset `research_lab`; READ shodh_dekho; admit family "shodh";
+  voice via santosh_kaam; prompt line RESEARCH.
+- App: `lib/ui/shodh_screen.dart` (projects, project page: Papers with source chips + include / exclude + free PDF / DOI
+  links, Matrix with summaries + gaps, References APA / IEEE / Harvard / BibTeX / RIS), Profile tile "Research assistant".
+- Tests: NEW `server/tests/test_v0403_shodh.py` (8, a fake network shaped like each API): cross-source de-dup + a failing source
+  reported + abstract rebuilt; DOI truth check + Unpaywall; summaries, matrix, gaps with a bad cite removed; APA / BibTeX /
+  RIS / Harvard built in code; analysis code fixed once and run in the sandbox; drafts with cites + [CHECK] numbers +
+  ghost-writing refused; Semantic Scholar key sealed; tools / API / wiring.
+- Not verified: the live APIs; PubMed abstracts (efetch not built); Flutter not compiled locally (CI).

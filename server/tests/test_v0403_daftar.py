@@ -203,3 +203,8 @@ def test_tools_api_and_wiring(office):
     assert c.get("/api/daftar/attendance", params={"class_ref": "10-A"}).json()["school_days"] == 1
     from app import main
     assert TestClient(main.app).get("/api/daftar").status_code in (200, 401, 403)
+
+
+def test_version():
+    from app.main import APP_VERSION
+    assert APP_VERSION == "0.403.0"
