@@ -12860,3 +12860,34 @@ Item 2 of the coding plan, on top of v0.350's 8-tool loop. Built as 0.351, re-ve
 - `refresh()` leaves `ci_running` alone; `models.DevTask` gains nullable `ci_round` / `ci_since` (old rows fine).
 - Merge / deploy stay her tap, as before. A GitHub error on mark_ready leaves a note to press "Ready for review" herself.
 - Tests: `test_v0352_pehle_ci.py` (draft PR, green -> ready, red -> fix round -> green, rounds cap, no CI -> plain PR, timeout).
+
+## v0.353.0 DASHBOARD (Phase 3b of "any world-complex website": charts + dashboards)
+Owner: "Phase 3b (dashboards and charts)" (after Phase 3a DUKAAN, v0.351).
+- ONE chart drawer, `server/app/static/console/charts.js` (`window.HoolaChart`: draw / live / fromTable / fmt / num / auto):
+  inline SVG, no library, no network, nothing evaluated. Types bar (grouped series), line, area, donut, hbar. Indian
+  numbers (1,20,000; compact K / L / Cr; reads "50 lakh", "₹2.5 Cr", "12k"), nice axis ticks, legend when more than
+  one series, tooltip on hover AND with arrow keys (svg tabindex 0, Esc hides), aria-label summary, redraw on width change
+  (ResizeObserver). Colours only from CSS: `.hc` + `data-s="0..5"` -> the site's brand tokens (hoola-site.css) or the
+  console tokens (v2.css). Grow-in motion only on websites and only without reduced motion (console: no held motion).
+- WEBSITES: a section writes `<figure data-hoola-chart="bar|line|area|donut|hbar" data-unit data-suffix>` + a plain table
+  (first column labels, other columns series); the drawer turns it into a chart and keeps the table visually hidden for
+  screen readers (no numbers -> the table stays). Taught in `ai.RUNTIME_GUIDE` (only numbers from FACTS / her words, never a
+  made-up chart); the site map planner may add a growth-chart free-form section from numbers she gave. The build copies the
+  drawer as `assets/hoola-chart.js`; a page loads it only when it draws (`build.uses_charts`: a chart figure or the web
+  app's staff panel).
+- HER DASHBOARD `server/app/site/dash.py` `dashboard(tenant, ref, days 7-365)`: per IST day, this period + the one before:
+  visits (care.py, Hoola's own server count, no cookies / tracker / bots), enquiries + bookings (spam never), shop orders
+  (cancelled not counted) and SALES = only orders SHE confirmed or later, average order, conversion, top pages, top
+  products (confirmed), order status mix, web-app records a day per list (`webapp.daily`). KPI tiles carry change % vs
+  the previous period. GET /api/sites/<id>/dashboard (owner only). Console Studio tab "Dashboard" (7 / 30 / 90 / 1 year,
+  tiles, area / bar / line / donut / hbar cards, `build.js loadDash`, `.stdash` CSS); phone `lib/ui/site_dash.dart`
+  SiteDashPage (tiles + CustomPainter bars + ranked rows) from the site page's "Dashboard (charts)" button; chat
+  `website_dekho what=dashboard` (numbers + busiest days, no long series).
+- STAFF DASHBOARD in her web apps: `/admin/` on her site opens with a card per list (count, rows a day, the mix of its first
+  choice field = usually status, sums of number fields, yes / no counts) from GET /api/site-app/<id>/stats (`webapp.stats`,
+  staff / admin members and her only: visitor 401, customer 403).
+- Console stamps 18 -> 19 (charts.js loads before build.js). Free, no AI anywhere.
+- Tests `server/tests/test_v0353_dashboard.py`: Indian numbers, tables -> charts in a real browser (bars / legend / donut
+  total / line dots / hbar values, no-number table untouched), tooltip by mouse and keyboard, drawer only on pages that
+  draw, her dashboard numbers vs a seeded period (spam, cancelled, unconfirmed sales excluded), owner-only, staff-only
+  stats, console + phone wiring.

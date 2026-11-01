@@ -79,11 +79,11 @@ SITE_TOOLS = [
          "required": ["action"]}},
     {"name": "website_dekho", "description": (
         "Read her websites (nothing changes). what=sites | site (site: board, pages, sections, scores, preview link, "
-        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
+        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
         "find a business type, or industry) | brief (field, goal, style: the full ready brief) | understand (q: what a "
         "short ask means: business type, goal, 3 looks)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
+         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
          "site": {"type": "string"}, "q": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
@@ -263,6 +263,12 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         from ..site import care as SC
         r = SC.report(t, site, int(a.get("days") or 30))
         r.pop("site", None)
+        return r
+    if what == "dashboard":                       # v0.353 the numbers behind her Dashboard tab
+        from ..site import dash as SD
+        r = SD.dashboard(t, site, int(a.get("days") or 30))
+        sr = r.pop("series")
+        r["busiest_days"] = sorted(zip(sr["days"], sr["visits"]), key=lambda x: -x[1])[:5]
         return r
     if what == "clients":
         from ..site import care as SC

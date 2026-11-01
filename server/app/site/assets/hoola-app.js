@@ -10,15 +10,17 @@
     en: {login: 'Log in', signup: 'Create account', email: 'Email', pw: 'Password (8+ characters)', name: 'Your name',
       hi: 'Hello', out: 'Log out', send: 'Submit', saved: 'Saved!', fail: 'Could not save', need: 'Please log in first.',
       empty: 'Nothing here yet.', edit: 'Edit', del: 'Delete', sure: 'Delete this entry?', role: 'Role', members: 'Members',
-      staffonly: 'Log in with a staff account to see this.', save: 'Save', cancel: 'Cancel', yes: 'Yes', no: 'No'},
+      staffonly: 'Log in with a staff account to see this.', save: 'Save', cancel: 'Cancel', yes: 'Yes', no: 'No',
+      dash: 'Last 30 days', perday: 'New a day', total: 'Total'},
     hinglish: {login: 'Login', signup: 'Naya account', email: 'Email', pw: 'Password (8+ akshar)', name: 'Aapka naam',
       hi: 'Namaste', out: 'Logout', send: 'Bhejiye', saved: 'Save ho gaya!', fail: 'Save nahi hua', need: 'Pehle login kijiye.',
       empty: 'Abhi kuch nahi.', edit: 'Badlo', del: 'Hatao', sure: 'Yeh entry hata dein?', role: 'Role', members: 'Members',
-      staffonly: 'Yeh dekhne ke liye staff account se login kijiye.', save: 'Save', cancel: 'Rehne do', yes: 'Haan', no: 'Nahi'},
+      staffonly: 'Yeh dekhne ke liye staff account se login kijiye.', save: 'Save', cancel: 'Rehne do', yes: 'Haan', no: 'Nahi',
+      dash: 'Pichhle 30 din', perday: 'Roz naye', total: 'Kul'},
     hi: {login: 'लॉगिन', signup: 'नया अकाउंट', email: 'ईमेल', pw: 'पासवर्ड (8+ अक्षर)', name: 'आपका नाम', hi: 'नमस्ते',
       out: 'लॉगआउट', send: 'भेजिए', saved: 'सेव हो गया!', fail: 'सेव नहीं हुआ', need: 'पहले लॉगिन कीजिए।', empty: 'अभी कुछ नहीं।',
       edit: 'बदलें', del: 'हटाएँ', sure: 'यह एंट्री हटा दें?', role: 'रोल', members: 'मेंबर', staffonly: 'स्टाफ अकाउंट से लॉगिन कीजिए।',
-      save: 'सेव', cancel: 'रहने दें', yes: 'हाँ', no: 'नहीं'}
+      save: 'सेव', cancel: 'रहने दें', yes: 'हाँ', no: 'नहीं', dash: 'पिछले 30 दिन', perday: 'रोज़ नए', total: 'कुल'}
   };
   var t = T[LANG] || (LANG === 'mr' ? T.hi : T.en);
   var tok = '';
@@ -158,6 +160,9 @@
   function admin(box) {
     box.textContent = '';
     if (!staff()) { if (me) box.appendChild(el('p', {'class': 'muted', text: t.staffonly})); return; }
+    var dash = el('section', {'class': 'hs-app-admin hs-app-dash'}, [el('h2', {text: t.dash})]);
+    box.appendChild(dash);
+    call('GET', '/stats?days=30').then(function (j) { board(dash, j); }).catch(function () { dash.remove(); });
     (schema.collections || []).forEach(function (c) {
       var sec = el('section', {'class': 'hs-app-admin'}, [el('h2', {text: c.label})]), inner = el('div');
       sec.appendChild(inner); box.appendChild(sec);
@@ -176,6 +181,27 @@
       });
       sec.appendChild(ul); box.appendChild(sec);
     }).catch(function () {});
+  }
+
+  // v0.353 DASHBOARD: the staff panel's charts (assets/hoola-chart.js draws them; numbers come from /stats, staff only)
+  function board(box, j) {
+    var HC = window.HoolaChart, days = (j.days || []).map(function (x) { return x.slice(5); });
+    var grid = el('div', {'class': 'hs-dash-grid'});
+    box.appendChild(grid);
+    (j.lists || []).forEach(function (c) {
+      var card = el('div', {'class': 'card hs-dash-card'}, [el('h3', {text: c.label}), el('p', {'class': 'hs-dash-big', text: String(c.count)}),
+        el('p', {'class': 'muted', text: t.perday})]);
+      grid.appendChild(card);
+      var ch = el('div'); card.appendChild(ch);
+      if (HC) HC.live(ch, {type: 'bar', labels: days, series: [{name: c.label, values: c.days}], height: 150});
+      if (c.mix && c.mix.items.some(function (x) { return x[1] > 0; })) {
+        var m = el('div'); card.appendChild(el('p', {'class': 'muted', text: c.mix.field})); card.appendChild(m);
+        if (HC) HC.live(m, {type: 'donut', labels: c.mix.items.map(function (x) { return x[0]; }),
+          series: [{name: c.mix.field, values: c.mix.items.map(function (x) { return x[1]; })}], height: 180, totalLabel: t.total});
+      }
+      (c.sums || []).forEach(function (x) { card.appendChild(el('p', {}, [el('span', {'class': 'muted', text: x[0] + ': '}), el('strong', {text: HC ? HC.fmt(x[1]) : String(x[1])})])); });
+      (c.yes || []).forEach(function (x) { card.appendChild(el('p', {}, [el('span', {'class': 'muted', text: x[0] + ': '}), el('strong', {text: x[1] + ' / ' + x[2]})])); });
+    });
   }
 
   function all() {
