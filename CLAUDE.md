@@ -177,8 +177,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
   403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
   verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
-- Current version: v0.401.0 (pubspec 0.401.0+445). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.402.0 (pubspec 0.402.0+446). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.402 ECC PHASE 1: `devsahayak/specialists.py` (ECC agents, MIT, adapted): CI fixer by language (`dev_spec_fix`), reviewer discipline + language reviewer + focused passes (`dev_spec_review`, `service.explore_review`); both OFF until `python -m app.quality review` (vps-ops `review_card`, 12 PRs old vs new) + vps-ops `fix_card_spec` say so.
 - v0.400 FAST + NEVER LOST + VISITOR TESTS (web Step 1, built as 0.391): parallel browser checks + critique at once (re-check only changed pages) + parallel fixes + fewer preview rebuilds; cut-short code asks / translations / 100-page proofs recovered; `site/journeys.py` walks menu / form / cart->checkout / blog / language on every version (broken checkout blocks going live).
 - v0.391 KHULA DARWAZA: keys only from the Authorization header (no ?key=), empty API_KEY = loud startup warning + `python -m app.authcheck` + vps-ops `auth_check` (live = locked, 401); main.py.orig removed.
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam

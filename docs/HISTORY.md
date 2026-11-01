@@ -15087,3 +15087,58 @@ Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Fi
 - Console YouTube ads tile (connect, pick account, read, drafts with edit / logo / check / create / start / pause), phone
   YtAdsScreen (connect, pick, new ad from latest video, check / create / start / pause). Privacy: Google Ads paragraph.
   Tests `server/tests/test_v0401_youtube_ads.py` (8).
+
+## v0.402.0 ECC PHASE 1 (owner: "GO ECC PHASE 1")
+After reading github.com/affaan-m/ECC (v2.2.3, MIT; 71 agents, ~320 skills for AI coding tools on a developer's machine):
+its agent texts were adapted as SPECIALISTS for Developer Sahayak. Nothing from ECC is installed or run; the texts are
+condensed and rewritten for Hoola's read-only tools, CI logs and safety rules. Credit in THIRD_PARTY_NOTICES.md (license
+text checked byte for byte against ECC's LICENSE). Built as 0.396 / 0.400, re-versioned past the parallel v0.396-v0.400.
+- `devsahayak/specialists.py`:
+  - REVIEW_CORE, from code-reviewer:
+    - four gates before any comment: the exact added line; the concrete failure (input -> state -> outcome); callers /
+      tests read; a defensible severity;
+    - a HIGH comment carries its proof; zero comments is a valid review; never manufacture findings;
+    - ECC's false-alarm list ("add error handling" already handled upstream, magic numbers like 404, "function too
+      long" for a table...).
+  - LANG_REVIEW for python / js-ts-react / dart-flutter / kotlin-android / go / java / swift / rust / sql.
+  - FOCUS passes: security (security-reviewer), silent failures (silent-failure-hunter), tests that cover the change
+    (pr-test-analyzer).
+  - FIX_CORE, from the build-error resolvers: the first real error, root cause, the smallest fix, NEVER weaken CI (no
+    skipped / loosened tests, no ignores / suppressions, no swallowed exceptions), stop when outside the code. LANG_FIX
+    holds each language's common error -> fix table.
+  - Routing:
+    - `lang_of` (files, majority) and `lang_of_log` (log signs: traceback, TS errors, `e:` kotlin, `.dart:`, `error[E..]`,
+      `.go:`, javac...);
+    - `focus_passes`: all three for >= 150 added lines; security on sensitive words (sql / execute / token / payment /
+      otp / customer_id / phone...); silent on try / except / fallback / retry; tests when the PR has no test file;
+      docs-only = none;
+    - `merge_comments`: same file within 2 lines = one comment, highest severity, longer body.
+- Wiring, each behind its own switch, both OFF by default:
+  - `loop.run` / `loop.review_run` take `system_extra`, appended after Hoola's own system prompt (Hoola's rules first).
+  - `service.explore_review` (NEW, used by the real review AND the card): old = one exploring pass (v0.377). With
+    `dev_spec_review` = main pass + REVIEW_CORE + language reviewer, then the focused passes (`dev_spec_focus_steps` 12),
+    merged, and a high request_changes from a focused pass escalates the verdict. The card says which passes ran.
+  - `service._round`: a CI round (`<ci_log>` in the brief) with `dev_spec_fix` gets `fix_addendum(log, paths)`; her own
+    change requests never do.
+- Measuring before switching on:
+  - `quality/review_tasks.py` (SET 1): 12 practice PRs on the 30-file DUKAAN shop.
+    - 8 planted: a changed signature whose callers were not updated, f-string SQL, OTP + phone in logs, a swallowed
+      out-of-stock (oversell), rounding down against a half-up promise, an invoice endpoint without an owner check, an
+      off-by-one day loop, a mutable default list.
+    - 4 clean: the parameterised search, the owner-checked invoice, a behaviour-keeping refactor, a GSTIN check with
+      its test.
+  - `quality/reviewcard.py`:
+    - builds each PR's diff exactly like service.review and calls `explore_review` in mode old and new (the switch is
+      set per mode, modes run one after another, and it is restored);
+    - marks caught (medium / high within 3 lines of the planted line; 4 for the invoice), quiet on clean, false alarms,
+      nits, verdicts, `--k` repeats;
+    - `python -m app.quality review`, vps-ops `review_card`.
+  - `codecard --spec --kind fix` runs the fix jobs with the fixer specialist; vps-ops `fix_card_spec` = sets 2 + 3 fix
+    jobs. They must stay at hard 12/12 / mobile 10/10.
+- Tests:
+  - `test_v0402_ecc_specialists.py`: language detection, texts, focus rules, merge, explore_review old vs new (the SQL PR
+    earns the security + tests passes), card marks (near-miss = false alarm, Hoola's automatic checks not counted), both
+    modes with a scripted reviewer, the fix spec switch, settings OFF, jobs, credit.
+  - `test_v0402_ecc_ci_round.py`: a red CI round gets the fixer only when switched on.
+- Found by the tests while building: the security pass first missed the SQL-injection PR (the sensitive-word list had
+  `sql` but not `execute` / `select` / `sqlite3`); widened, plus personal-data words.
