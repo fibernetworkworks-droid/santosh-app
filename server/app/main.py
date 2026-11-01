@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.396.0"   # v0.396.0 YOUTUBE ADS (owner: "GO Y2", plan Y2; built as 0.393): her own Google Ads account through the official Google Ads API (REST v26; budget / campaign / ad group / assets / video ad field names from Google's own AddDemandGenCampaign example). app/ads/gads.py: Connect = Google sign-in with the adwords scope (refresh token sealed, table gads_accounts), her ad accounts listed (customers:listAccessibleCustomers + customer query), a manager account refused, a single one auto-picked. Read = her VIDEO + DEMAND_GEN campaigns by day (cost, impressions, clicks, conversions, views - video_trueview_views with a video_views fallback) -> the Ads desk's own report rows (platform google), so its money-leak checks / budget suggestions work on YouTube ads too. Draft (table gads_drafts, in Hoola only) from one of HER YouTube videos, pre-filled from her Social Desk facts: headlines (<= 5 x 40), long headline (90), descriptions (<= 5 x 90), business name (25), landing link, her square logo, daily budget (<= GADS_MAX_DAILY 2000) x days (<= 30), languages; the Ads desk's banned-category + financial-ad rules. Check with Google = validateOnly mutate (free). Create = ONE atomic googleAds:mutate in Google's order (budget not shared, campaign DEMAND_GEN + PAUSED + EU political answer + maximize clicks (targetSpend), ad group with YouTube-only channel controls (in-stream / in-feed / Shorts), India + language criteria, logo + YouTube video assets, demandGenVideoResponsiveAd) - PAUSED, nothing spends. Start = her tap + confirm (update status ENABLED); Pause any time; the daily Social Desk job pauses an ad past its last day (she is told) and refreshes the numbers. A test-only developer token = a plain "Basic access approval pending" message. Console YouTube ads tile, phone YouTube ads screen; privacy: Google Ads paragraph. Not built: legacy in-stream VIDEO campaigns (not creatable through the API), audiences / remarketing, conversion tracking set-up, the Display & Video 360 route. Previous: v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390 / 0.394; Hoola Game Engine plan Phase 3, owner: "GO PHASE 3"): every Studio Project gets ONE source of truth for its names and numbers, as DATA (gamedesk/bible.py, table game_bibles): meta, a style palette, glossary + banned words, player numbers, growth curves, and entities by kind (character, enemy, item, level, quest, screen) - each kind a TEMPLATE with typed fields, ranges, enums and references, so the 50th enemy has exactly the shape of the 1st. All checks in code: ranges, unique ids, every reference real (waves name real enemies, no quest loops), colours only from the palette (style lock), banned words, names that fit, no real-money fields. A SEEDED Monte-Carlo balance run per level (same Bible = same numbers) flags impossible levels, spikes, a too-hard first level, a too-easy late one and items you can never afford. Generators: the model writes only words, the curves set the numbers, and the result waits as a DRAFT for her OK. The game reads it: hoola_bible.gd is a HoolaBible AUTOLOAD (a real Godot run proved class_name is invisible headless), so a balance change is a DATA-ONLY rebuild with no model call. Found live and fixed: the code guide told the model to use class_name helpers, which never parse in Hoola builds - now preload, and the guard says so before a build is wasted. Tool game_bible, /api/gamestudio/{id}/bible*, console Game Bible page, phone GameBibleScreen.
+APP_VERSION = "0.399.0"   # v0.399.0 YOUTUBE ADS (owner: "GO Y2", plan Y2; built as 0.393 / 0.396, re-versioned past the parallel v0.393-v0.398): her own Google Ads account through the official Google Ads API (REST v26; budget / campaign / ad group / assets / video ad field names from Google's own AddDemandGenCampaign example). app/ads/gads.py: Connect = Google sign-in with the adwords scope (refresh token sealed, table gads_accounts), her ad accounts listed (customers:listAccessibleCustomers + customer query), a manager account refused, a single one auto-picked. Read = her VIDEO + DEMAND_GEN campaigns by day (cost, impressions, clicks, conversions, views - video_trueview_views with a video_views fallback) -> the Ads desk's own report rows (platform google), so its money-leak checks / budget suggestions work on YouTube ads too. Draft (table gads_drafts, in Hoola only) from one of HER YouTube videos, pre-filled from her Social Desk facts: headlines (<= 5 x 40), long headline (90), descriptions (<= 5 x 90), business name (25), landing link, her square logo, daily budget (<= GADS_MAX_DAILY 2000) x days (<= 30), languages; the Ads desk's banned-category + financial-ad rules. Check with Google = validateOnly mutate (free). Create = ONE atomic googleAds:mutate in Google's order (budget not shared, campaign DEMAND_GEN + PAUSED + EU political answer + maximize clicks (targetSpend), ad group with YouTube-only channel controls (in-stream / in-feed / Shorts), India + language criteria, logo + YouTube video assets, demandGenVideoResponsiveAd) - PAUSED, nothing spends. Start = her tap + confirm (update status ENABLED); Pause any time; the daily Social Desk job pauses an ad past its last day (she is told) and refreshes the numbers. A test-only developer token = a plain "Basic access approval pending" message. Console YouTube ads tile, phone YouTube ads screen; privacy: Google Ads paragraph. Not built: legacy in-stream VIDEO campaigns (not creatable through the API), audiences / remarketing, conversion tracking set-up, the Display & Video 360 route. Previous: v0.398.0 REAL DRAWINGS (built as 0.397): drawing.pdf page 1 is now an A3 VECTOR shop drawing measured from the model - kernel hidden-line views at one ISO 5455 scale (first angle default, or third), overall + step + hole-position dimensions, THRU / DEEP / CBORE / CSK / FAR SIDE callouts recognised from the B-rep, R / Ø callouts, H.fit ISO 286 limits, ISO 2768 + her notes, title block with the projection symbol; page 2 keeps the shaded views. Previous: v0.397.0 CONNECT - the screen where her own ERP / CRM is really joined, which the enterprise suite has been missing since v0.358: there was nowhere to put a credential, because the chat refuses a key on purpose (a secret typed into a conversation is in the history, in the model's context and in any export of either). Console Systems page + phone "Apne system jodiye" -> POST /api/enterprise/<role>/endpoint, sealed the instant it arrives and returned by NO route. verify() is the first call in the suite that ever reaches a customer tenant: READ-ONLY, reporting what the system ANSWERED - 401 told apart from 403, a CSRF token that cannot be fetched, an ETag a later write will need. Previous: v0.396.0 APNA DATABASE (App Sahayak Pillar B: own database per app, owner: "LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN DATABASE THERE"): an app's data runs in HER OWN PostgreSQL-wire database (Supabase, Neon, RDS / Aurora, Cloud SQL / AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, CockroachDB, YugabyteDB ... 28 listed) through the v0.147 sealed connection: her schema + a real typed table per list + triggers, PRIMARY = every save lands there inside the request (her database down = refused, nothing half-saved) and her edits there come back validated with the app logic run, MIRROR = a live copy that never blocks; link = her tap (backup, copy, counts compared), unlink keeps the data in both places. Previous: v0.395.0 GAME BIBLE + SPECS AS DATA (built as 0.390 / 0.394; Hoola Game Engine plan Phase 3, owner: "GO PHASE 3"): every Studio Project gets ONE source of truth for its names and numbers, as DATA (gamedesk/bible.py, table game_bibles): meta, a style palette, glossary + banned words, player numbers, growth curves, and entities by kind (character, enemy, item, level, quest, screen) - each kind a TEMPLATE with typed fields, ranges, enums and references, so the 50th enemy has exactly the shape of the 1st. All checks in code: ranges, unique ids, every reference real (waves name real enemies, no quest loops), colours only from the palette (style lock), banned words, names that fit, no real-money fields. A SEEDED Monte-Carlo balance run per level (same Bible = same numbers) flags impossible levels, spikes, a too-hard first level, a too-easy late one and items you can never afford. Generators: the model writes only words, the curves set the numbers, and the result waits as a DRAFT for her OK. The game reads it: hoola_bible.gd is a HoolaBible AUTOLOAD (a real Godot run proved class_name is invisible headless), so a balance change is a DATA-ONLY rebuild with no model call. Found live and fixed: the code guide told the model to use class_name helpers, which never parse in Hoola builds - now preload, and the guard says so before a build is wasted. Tool game_bible, /api/gamestudio/{id}/bible*, console Game Bible page, phone GameBibleScreen.
 
 
 def _quiet_http_logs() -> None:
@@ -1310,7 +1310,7 @@ async def google_callback(request: Request):
     if is_youtube_state(request.query_params.get("state", "")):  # "connect my YouTube channel"
         return await _finish_youtube_link(request)
     from .ads.gads import is_link_state as is_gads_state
-    if is_gads_state(request.query_params.get("state", "")):     # v0.396 "connect my Google Ads" (YouTube ads)
+    if is_gads_state(request.query_params.get("state", "")):     # v0.399 "connect my Google Ads" (YouTube ads)
         from .ads import gads
         q = request.query_params
         if q.get("error"):
@@ -7096,7 +7096,7 @@ def _gads_call(fn, *a, **k):
 
 @app.get("/api/social/ytads", dependencies=[Depends(require_key)])
 def social_ytads(tenant: str = Depends(current_tenant)):
-    """v0.396 YouTube ads (plan Y2): her Google Ads link, ad accounts, drafts."""
+    """v0.399 YouTube ads (plan Y2): her Google Ads link, ad accounts, drafts."""
     from .ads import gads
     return gads.view(tenant)
 
@@ -10041,6 +10041,50 @@ async def apps_turant_set(ref: str, body: dict, tenant: str = Depends(current_te
                                    else TU.disable(_be_owner(tenant, ref)))
 
 
+# ---- v0.396 APNA DATABASE: an app's data in HER own database (Supabase, Neon, RDS ... any PostgreSQL-wire)
+@app.get("/api/apps/{ref}/owndb", dependencies=[Depends(require_key)])
+async def apps_owndb(ref: str, tenant: str = Depends(current_tenant)):
+    """The link, her connected databases (Profile > Postgres database), the provider list, sync lag."""
+    from .appmaker import owndb as OD
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.status(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/owndb/link", dependencies=[Depends(require_key)])
+async def apps_owndb_link(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP {conn, mode: primary|mirror}: backup, her tables, every row copied, counts compared, then live."""
+    from .appmaker import owndb as OD
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.link(_be_owner(tenant, ref), str(b.get("conn") or ""),
+                                                                   str(b.get("mode") or "primary")))
+
+
+@app.post("/api/apps/{ref}/owndb/unlink", dependencies=[Depends(require_key)])
+async def apps_owndb_unlink(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import owndb as OD
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.unlink(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/owndb/verify", dependencies=[Depends(require_key)])
+async def apps_owndb_verify(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import owndb as OD
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.verify(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/owndb/sync", dependencies=[Depends(require_key)])
+async def apps_owndb_sync(ref: str, tenant: str = Depends(current_tenant)):
+    """Sync now: pending writes there, her outside edits back (instead of waiting up to 20 s)."""
+    from .appmaker import owndb as OD
+
+    def go():
+        r = _be_owner(tenant, ref)
+        o = OD.cfg(r, fresh=True)
+        if not o:
+            raise OD.OwnDbError("Yeh app kisi database se judi nahi hai.", 404)
+        n = OD.tick(force=True)
+        return {"ok": True, "synced": n, **OD.status(_be_owner(tenant, ref))}
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
 # ---- v0.390 PAKKI NEEV: her app's data - backups, point-in-time restore (her tap), export, usage + limits
 @app.get("/api/apps/{ref}/backups", dependencies=[Depends(require_key)])
 async def apps_backups(ref: str, tenant: str = Depends(current_tenant)):
@@ -11377,6 +11421,67 @@ def _entrun(fn, *a, **kw):
         return fn(*a, **kw)
     except entrun.RunError as e:
         raise HTTPException(400, str(e))
+
+
+@app.get("/api/enterprise/{role}/endpoint", dependencies=[Depends(require_key)])
+def enterprise_endpoints(role: str, tenant: str = Depends(current_tenant)):
+    """Her own systems for this job: address, which environment, and the key MASKED. The key itself is sealed
+    and is never returned by any route - not here, not anywhere."""
+    from .enterprise import run as entrun
+    return _entrun(lambda: {"systems": entrun.endpoints(tenant, role),
+                            "jod_sakte_hain": _ent_systems(role)})
+
+
+def _ent_systems(role: str):
+    from .enterprise import rules as entrules
+    out = []
+    for key in entrules.systems_for(role):
+        spec = entrules.SYSTEMS.get(key) or {}
+        out.append({"system": key, "label": spec.get("label") or key, "how": spec.get("how") or "own",
+                    "note": spec.get("note") or ""})
+    return out
+
+
+@app.post("/api/enterprise/{role}/endpoint", dependencies=[Depends(require_key)])
+def enterprise_endpoint_set(role: str, body: dict, tenant: str = Depends(current_tenant)):
+    """THE ONE DOOR for an enterprise credential.
+
+    It exists only here, on a route the APP calls, because the chat refuses to take a key and should: a secret
+    pasted into a conversation is in the history, in the model's context and in any export of either. What
+    arrives here is sealed immediately (`bazar.security.vault`), stored encrypted, and read back out only
+    inside the HTTP call that uses it. Nothing returns it - this route answers with the MASKED form.
+    """
+    from .enterprise import run as entrun
+    b = body or {}
+    return _entrun(entrun.set_endpoint, tenant, role, str(b.get("system") or ""),
+                   str(b.get("base_url") or ""), str(b.get("auth") or ""),
+                   str(b.get("auth_kind") or "bearer"), str(b.get("env") or "test"),
+                   str(b.get("header_name") or ""), str(b.get("note") or ""))
+
+
+@app.post("/api/enterprise/{role}/endpoint/{system}/verify", dependencies=[Depends(require_key)])
+def enterprise_endpoint_verify(role: str, system: str, tenant: str = Depends(current_tenant)):
+    """Ask her real system whether it works. READ-ONLY - it writes nothing.
+
+    This is the first call in the whole suite that ever reaches a customer tenant, so it reports what the
+    endpoint actually ANSWERED rather than a green tick: whether the address replied, whether the credential
+    got past authentication (401 and 403 told apart), and whether the things a WRITE will need later - a CSRF
+    token, an ETag, a check-out - can be had at all."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.verify, tenant, role, system)
+
+
+@app.delete("/api/enterprise/{role}/endpoint/{system}", dependencies=[Depends(require_key)])
+def enterprise_endpoint_forget(role: str, system: str, tenant: str = Depends(current_tenant)):
+    """Forget the address and the sealed key. Her runs and papers are untouched."""
+    from .enterprise import run as entrun
+    return _entrun(entrun.forget_endpoint, tenant, role, system)
+
+
+@app.get("/api/enterprise/{role}/runs", dependencies=[Depends(require_key)])
+def enterprise_runs(role: str, tenant: str = Depends(current_tenant)):
+    from .enterprise import run as entrun
+    return _entrun(lambda: {"runs": entrun.runs(tenant, role)})
 
 
 @app.get("/api/enterprise/{role}/run/{run_id}", dependencies=[Depends(require_key)])

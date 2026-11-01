@@ -2425,3 +2425,42 @@ body.albon{overflow:hidden}
 .gb-pl input{font:inherit;font-size:14px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 @media (max-width:720px){.gb-lv{grid-template-columns:1fr auto}.gb-lv .pbar{grid-column:1 / -1}}
 
+/* v0.396 APNA DATABASE: the own-database box */
+.stowndb select{padding:8px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.stowndb .stlines{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:13px}
+.stowndb .sterr{color:var(--bad)}
+.stowndb details{margin-top:10px;font-size:13px}
+/* ===== v0.396 CONNECT — the Systems screen (enterprise.js) =====
+   Design system of v0.320: text 12.5/14/15/18, weights <= 600, corners 8/12/16, controls 32/40/48.
+   Nothing here animates and nothing sits on a translucent layer, per the CRISP TEXT rule (v0.256). */
+#systems .ent-note { background: var(--card2, var(--card)); }
+#systems .ent-note p { margin: 4px 0 0; }
+#systems .ent-sys { margin-bottom: 12px; }
+#systems .ent-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#systems .ent-head b { font-size: 15px; font-weight: 600; }
+#systems .ent-sys > p.muted { margin: 4px 0 8px; font-size: 13px; }
+#systems .small { font-size: 12.5px; }
+#systems .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+#systems .ent-form { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+#systems .ent-form label { display: grid; gap: 4px; font-size: 13px; color: var(--mut); }
+#systems .ent-form input, #systems .ent-form select {
+  height: 40px; padding: 0 10px; font-size: 14px; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+#systems .ent-form input:focus, #systems .ent-form select:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+#systems .ent-form p.muted { margin: -4px 0 0; }
+#systems .ent-res { margin-top: 8px; }
+#systems .ent-ver { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); }
+#systems .ent-ver.good { border-color: var(--okb, var(--line)); }
+#systems .ent-ver.bad { border-color: var(--badb, var(--line)); }
+#systems .ent-ver b { font-size: 14px; font-weight: 600; }
+#systems .ent-ver .kv td { padding: 3px 8px 3px 0; font-size: 13px; vertical-align: top; }
+#systems .ent-unsure { margin-top: 10px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--warnb, var(--line)); background: var(--bg); }
+#systems .ent-unsure b { font-size: 14px; font-weight: 600; }
+#systems .tbl { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+#systems .tbl th { text-align: left; font-weight: 500; color: var(--mut); font-size: 12.5px;
+  padding: 0 8px 6px 0; border-bottom: 1px solid var(--line); }
+#systems .tbl td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+#systems .tbl code, #systems .kv code { font-size: 12.5px; word-break: break-all; }
+#systems .btn.small { height: 32px; padding: 0 10px; font-size: 13px; }
+@media (max-width: 720px) { #systems .tbl { font-size: 12.5px; } #systems .ent-form input, #systems .ent-form select { height: 44px; } }

@@ -63,6 +63,9 @@ limits, the SQLite → Postgres move, all app suites green on Postgres, and the 
 database with every query scoped by app (tested), not a schema per app — the 117 places that read app rows stay one
 code path; per-app schemas are worth it only when an app outgrows the shared database. Next in B: order speed under a
 stampede (p50 ~3 s at 1,000 simultaneous orders: every order of one app queues on its lock).
+**v0.396.0 APNA DATABASE**: an app's data can now run in HER OWN database - Supabase, Neon, AWS, Google, Azure,
+DigitalOcean and every other PostgreSQL-wire host (28 listed): her schema, a real table per list, primary (every save
+lands there first, her edits there come back) or mirror (a live copy). MySQL / MongoDB / Firebase: not yet.
 - Each app gets its own Postgres schema (or database for big apps): migrations generated from the data model, row-level
   security per role, real transactions (SELECT … FOR UPDATE) instead of one-process locks, indexes from the queries.
 - Backups (daily + before every migration), point-in-time restore, export, per-app usage meters and quotas.

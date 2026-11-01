@@ -759,6 +759,7 @@ def init_db(url: str | None = None):
     from .site import github as _site_github  # noqa: F401  (v0.124 GitHub export of her site)
     from .site import webapp as _site_webapp  # noqa: F401  (v0.305 web apps: members + rows)
     from .appmaker import backup as _app_backup  # noqa: F401  (v0.390 app journal: every write to an app's rows)
+    from .appmaker import owndb as _app_owndb  # noqa: F401  (v0.396 her own database per app: the write-through hook)
     from .appmaker import refs as _app_refs  # noqa: F401  (v0.390 indexed links between an app's rows)
     from .site import arena as _site_arena  # noqa: F401  (v0.307 Design Arena runs / items / duels)
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
@@ -808,7 +809,7 @@ def init_db(url: str | None = None):
     from .employee import hire as _hire  # noqa: F401  (v0.317 hired employees)
     from .social import publish as _social_publish  # noqa: F401  (v0.355 Social Media Manager posting)
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
-    from .ads import gads as _gads  # noqa: F401  (v0.396 YouTube ads, Google Ads API)
+    from .ads import gads as _gads  # noqa: F401  (v0.399 YouTube ads, Google Ads API)
     from .social import growth as _social_growth  # noqa: F401  (v0.383 Social Media Manager growth)
     from .social import inbox as _social_inbox  # noqa: F401  (v0.368 Social Media Manager inbox)
     from .thok import service as _thok  # noqa: F401

@@ -14897,8 +14897,136 @@ Owner: "GO PHASE 3". Plan: `docs/HOOLA_GAME_ENGINE_PLAN.md` section 5 (precision
 - Tests `test_v0395_game_bible.py` (10).
 
 
+## v0.396.0 APNA DATABASE - an app's data runs in HER own database (App Sahayak Pillar B: own database per app)
+Owner (1 Nov 2026): *"Own database per app --- WORK ON IT LETS USER CONNECT SUPABASE LIKE 1000 DATA BASE APP TO HOOLA AND RUN
+DATABASE THERE"*.
 
-## v0.396.0 YOUTUBE ADS (1 Nov 2026, owner: "GO Y2"; built as 0.393, re-versioned past the parallel v0.393-v0.395)
+Built on v0.147 Hoola Postgres (her connection string typed only in the app, sealed with the bazar vault, public host only
+with the checked IP pinned by libpq `hostaddr`, SSL required, the password masked in every error), so EVERY PostgreSQL-wire
+database works through one code path: 28 listed with where to copy the connection string - Supabase (session pooler or
+direct; the transaction pooler works too: no prepared statements, `prepare_threshold=None`), Neon, Amazon RDS + Aurora,
+Google Cloud SQL + AlloyDB, Azure, DigitalOcean, Aiven, Render, Railway, Timescale, Crunchy Bridge, Tembo, Xata, Nile,
+Heroku, Fly, Vercel, Koyeb, Scaleway, OVH, Alibaba, Tencent, Huawei, CockroachDB, YugabyteDB, her own server. NOT yet:
+MySQL-family (PlanetScale, TiDB, MariaDB - no MySQL driver on the server), MongoDB / Firebase (not SQL).
+
+`server/app/appmaker/owndb.py`:
+- Her tables: one schema per app (`hoola_a_0001`), one TABLE per list with real types (number numeric, date date, yes / no
+  boolean, the rest text), `owner_id`, `created_at`, `_hoola` jsonb (Hoola's own control values: stock taken, coupon,
+  assignment...), an index on every link field and on `_out`; `_hoola_accounts` (id, e-mail, name, role - never a password
+  hash); `_hoola_<name>` jsonb tables for udhaar / approvals / chat; `_hoola_meta`; `_hoola_deleted`. Additive only: a new
+  list / field in the app = a new table / column there on the next sync. Quoted identifiers ("order" is fine).
+- Her triggers (`_hoola_touch`, `_hoola_gone`): every write records who (`set_config('hoola.by','hoola', true)` in Hoola's
+  transactions, anything else = 'outside'); an OUTSIDE write also stamps `_out`, so a later Hoola write on other fields
+  of the same row never hides it; outside deletes are logged.
+- PRIMARY mode (the data lives there): a global SQLAlchemy `before_commit` hook flushes, takes the app-row writes the
+  journal hook queued, and upserts them into her tables in ONE transaction before Hoola commits - her database down =
+  `OwnDbError` 503 "save nahi hui", Hoola rolls back, nothing half-saved. Field-level upserts (only changed columns). The
+  journal row is marked `pushed`, so the catch-up never re-sends it (found by the test: a re-send undid her outside edit).
+  Her outside edits (table editor / SQL / other tools) come back every 20 s (or "Sync now"): rows with `_out` after the
+  cursor -> changed fields validated exactly like app input (`W._clean`; a bad value is refused + audited), Hoola's own
+  `_` values never taken from outside, outside inserts need a Hoola-shaped id (her table's id default makes one), outside
+  deletes follow; the app's logic (formulas / triggers / cascades) runs on them; every one audited ("own_db_in").
+- MIRROR mode: Hoola stays the main copy; the worker sends the journal after its cursor within ~20 s; her database being
+  down never stops her app; outside edits are not taken back (a read copy for reports / BI).
+- Link = HER tap: a backup first, schema + tables + triggers, every row copied in batches, accounts, catch-up of the writes
+  made meanwhile, counts compared per list - mismatch = not linked, the app untouched. Unlink: sync stops, data stays in
+  BOTH places. A small connection pool per app (4, keepalives, statement / lock timeouts per transaction).
+- Routes: `GET /api/apps/<ref>/owndb` (link, her databases, providers, lag), `POST .../owndb/link {conn, mode}` (her tap),
+  `.../unlink`, `.../verify` (counts), `.../sync`. Console app page: "Own database" box (status, link with mode, add a
+  database = connection string sealed on the server, provider how-to, Sync now / Compare counts / Disconnect). Phone:
+  `lib/ui/app_owndb.dart` (+ the existing Postgres screen to add one). Agent `app_banao action=own_db` = status + counts +
+  where to connect - never a connection string in chat, never the move itself.
+
+Tests `server/tests/test_v0396_apna_database.py` (a local Postgres plays her Supabase; CI app-load.yml runs it on a real
+Postgres): link + real column types + accounts without passwords, write-through inside the request, her outside update /
+insert / delete coming back with an app edit on another field of the same row kept, a bad outside value refused + audited,
+a new app field = a new column there, counts compared, her database unreachable = 503 and nothing saved, back = saving
+again, unlink keeps her data, mirror mode never blocks and catches up.
+Known limits: a write-through costs one round trip to her database per save (Mumbai region ~20-60 ms); if Hoola's own commit
+fails AFTER hers succeeded (very rare) "Compare counts" shows it; MySQL / Mongo / Firebase not yet.
+## v0.397.0 CONNECT — the door the whole enterprise suite was missing
+Owner: **"GO CONNECT"**.
+
+Since v0.358 the ten enterprise desks could do everything except touch a real system, and every version since
+has had to end with the same sentence: *no live tenant has answered any of it*. The reason was never the
+engine — it was that **there was nowhere to put a credential.** The chat refuses a key on purpose, and should:
+a secret typed into a conversation lives in the history, in the model's context, and in any export of either.
+`run.set_endpoint` existed and sealed its input properly, but nothing could call it — no route, no screen.
+
+### The one door
+`POST /api/enterprise/<role>/endpoint`, reachable from the console's new **Systems** page and the phone's
+**Profile → Apne system jodiye**. The key is sealed the instant it arrives (`bazar.security.vault`) and
+**no route returns it** — the save answer, the listing and the screens all show only the masked form.
+`DELETE` forgets the address and the key and leaves her runs and papers alone.
+
+The form asks only what a join needs: the API address (with a per-system hint, because guessing the API URL is
+the commonest reason a join fails), what kind of key it is, the key itself in a password field cleared the
+moment it is sent, and **test or production declared explicitly** — a URL that looks live is not consent, so
+`env` defaults to test and a production write still needs the word as well as her tap.
+
+### `verify` — the first call in the suite that ever reaches a customer tenant
+Read-only, writes nothing (a test asserts only `GET` is ever sent), and it reports **what the system
+answered** rather than a green tick:
+
+| it checks | because |
+|---|---|
+| the address answered, and with what code | a 404 means the address is wrong, not the key |
+| **401 vs 403** | a wrong key and a missing permission are different problems with different fixes |
+| a CSRF token can be fetched (SAP, Windchill) | without one every write 403s — better said now than at her first write |
+| an ETag will be available (SAP) | `If-Match` is mandatory there; a row we cannot read gets skipped, not written blind |
+| a check-out is needed (Windchill) | and that Hoola always releases it |
+| the documented idempotent create (SAP) | opt-in per customer system, so it is recorded on first use, never assumed |
+
+A clean check stamps `verified_at`; a failing one deliberately does **not**, so "jancha hua" can never be a
+stale badge. A dead host is an answer too, not a crash — it comes back as "address se baat hi nahi hui,
+firewall / VPN dekhna padega".
+
+### Also on the Systems page
+Her write runs, and the rows whose answer never arrived (v0.393's `ambiguous`) with the two buttons only she
+can press: **"System mein hai"** (closes the row, sends nothing) and **"Nahi gayi — dobara bhejiye"** (back in
+the queue for exactly one more attempt).
+
+### Files
+`server/app/enterprise/run.py` (`verify`, `VERIFY_PROBES`, `forget_endpoint`) ·
+`server/app/main.py` (5 routes; enterprise 11 → 16) · `server/app/static/console/enterprise.js` (new) ·
+`v2.html` / `v2.js` / `v2.css` (Systems view, nav, `IC.systems`, the v0.320 design system) ·
+`lib/api.dart` (4 calls) · `lib/ui/enterprise_screen.dart` (new) · `lib/ui/profile_screen.dart` ·
+`server/tests/test_v0396_connect.py` (18). 136 pass across the enterprise + console suites.
+
+### What this does and does not change
+It does **not** make any of the earlier work "verified live" — it makes verifying *possible*. The headers,
+the ETag rules, the reservation and the deploy are still built from the vendors' documentation and tested
+against recorded HTTP. The first real tenant she joins is what will confirm or correct them, and `verify` is
+written to tell her which.
+
+## v0.398.0 REAL DRAWINGS (built as 0.397) (1 Nov 2026)
+Owner, after the text-to-cad (earthtojake, MIT) read: "Real drawings: feature dimensions, hole callouts, tolerances.
+Ours shows only overall sizes plus a hidden-line page --- START WITH THIS". Built as our own code (their skill is
+build123d + cadgen; nothing copied).
+- Box side `engineering/views2d.py` (runner writes drawing.json when the model is not "big"): each view = the shape
+  turned so screen right / up / toward-eye map to X / Y / Z, OCC HLRBRep looking down -Z, visible (sharp +
+  outline) and hidden edges as model-mm polylines - vector, no SVG parsing. Views: front, top and LEFT (first
+  angle, India / IS SP 46 / ISO E default) or RIGHT (third angle).
+- Hole stacks from the B-rep: coaxial inward cylinders + cones grouped per axis line, split faces merged, open ends by
+  the solid classifier -> diameter, THRU or DEEP n (from the entry face), counterbore (bigger cylinder touching the
+  entry), countersink (cone: Ø at the face + included angle); the callout goes on the view looking INTO the entry
+  face, else a parallel view marked FAR SIDE. Outside cylinders -> R (rounds) or Ø (bosses).
+- Server side `engineering/drawing.py` (reportlab, A3 landscape vector PDF): ISO 5455 scale picked so views + their
+  dimension bands + the title block fit (margins and gaps sized to the number of chains), overall sizes once each
+  (width + height on the front, depth on the top view), step heights from long horizontal edges, hole positions as
+  baseline chains from the corner (x on the view's outer side, y on its right), centre marks on every hole, callouts
+  grouped by kind with leaders to the nearest side (only the top / side view use their right side; others use the
+  band between rows; nothing off the sheet), simple collision checks on every text, notes (ISO 2768-<class>, mm, break
+  edges, DRAFT + her notes) above an ISO 7200-style title block with the projection symbol, the iso picture in the
+  largest free square. Page 2 = the old shaded views (the raster hidden-line page is dropped).
+- H.fit(d, 'H7' | 'g6' | ...) -> callout with ISO 286 limits (calc.IT / SHAFT_ES / SHAFT_EI);
+  H.drawing(projection, tolerance f|m|c|v, notes, part_no).
+- Measured: plate with 4 x Ø5.5 THRU, CBORE, CSK, blind Ø5 DEEP 8, 4 x R5 -> every callout read back from the PDF
+  text; 40-tooth gear sheet in ~1 s. Tests: tests/test_v0395_drawing.py (5).
+- Not yet: section views, GD&T frames (datums / position), thread callouts from modelled threads, auto-dims of every
+  pocket / slot (only steps + holes), multi-sheet assemblies with balloons + parts list.
+
+## v0.399.0 YOUTUBE ADS (1 Nov 2026, owner: "GO Y2"; built as 0.393 / 0.396, re-versioned past the parallel v0.393-v0.398)
 Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Field names from Google's own
 `AddDemandGenCampaign.java` (google-ads-java, v26) + the Demand Gen overview / channel-controls pages (API v26.1, 28 Oct 2026).
 - Env: GOOGLE_ADS_DEVELOPER_TOKEN (Google Ads API Center; a test-access token works only on test accounts, real ad
@@ -14928,4 +15056,4 @@ Plan Y2. Module `server/app/ads/gads.py` (tables gads_accounts, gads_drafts). Fi
   tracking set-up, Display & Video 360.
 - Console YouTube ads tile (connect, pick account, read, drafts with edit / logo / check / create / start / pause), phone
   YtAdsScreen (connect, pick, new ad from latest video, check / create / start / pause). Privacy: Google Ads paragraph.
-  Tests `server/tests/test_v0396_youtube_ads.py` (8).
+  Tests `server/tests/test_v0399_youtube_ads.py` (8).

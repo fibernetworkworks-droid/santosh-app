@@ -159,7 +159,7 @@ class Settings(BaseSettings):
     linkedin_client_id: str = ""            # v0.384 LinkedIn app (Sign In with LinkedIn + Share on LinkedIn), Newtika's one app
     linkedin_client_secret: str = ""
     linkedin_version: str = "202510"
-    google_ads_developer_token: str = ""   # v0.396 YouTube ads (plan Y2): Google Ads API Center token (test / Basic access)
+    google_ads_developer_token: str = ""   # v0.399 YouTube ads (plan Y2): Google Ads API Center token (test / Basic access)
     google_ads_login_customer_id: str = ""  # optional manager (MCC) id when her ad account sits under Hoola's manager
     google_ads_api_version: str = "v26"
     gads_max_daily: int = 2000              # Hoola's ceiling on a YouTube ad's daily budget (her account currency)
