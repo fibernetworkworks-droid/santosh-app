@@ -14,11 +14,15 @@ import asyncio
 from typing import Any
 
 from ..enterprise import rules as R
+from ..enterprise.run import MAX_ROWS
 from .tools import Ctx, ToolError
 
-_DO_ACTIONS = ["connect", "disconnect", "project", "project_update", "draft", "revise", "file", "item",
-               "item_update", "settings"]
-_SEE_WHAT = ["day", "jobs", "systems", "projects", "papers", "paper", "items", "settings", "rules"]
+_DO_ACTIONS = ["connect", "disconnect", "endpoint", "project", "project_update", "draft", "revise", "file", "item",
+               "item_update", "settings",
+               # v0.363 the real thing: read and write against her live system
+               "read", "plan_write", "dry_run", "approve", "execute", "run_status", "runs", "rollback_plan"]
+_SEE_WHAT = ["day", "jobs", "systems", "endpoints", "runs", "run", "projects", "papers", "paper",
+             "items", "settings", "rules"]
 
 
 def _do_description(key: str, spec: dict[str, Any]) -> str:
@@ -34,7 +38,16 @@ def _do_description(key: str, spec: dict[str, Any]) -> str:
          f"action=revise: ref, instruction. action=file: ref -> Word file. "
          f"action=item: title, kind task|gap|risk|due|finding, detail, owner, due YYYY-MM-DD, severity high|medium|low, "
          f"rupaye, project, source. action=item_update: ref, status open|doing|done|dropped, + any field. "
-         f"action=settings (owner only): company, env_default, rules.")
+         f"action=settings (owner only): company, env_default, rules. "
+         f"--- REAL WORK ON HER LIVE SYSTEM --- action=read: system, target (entity / tool slug), query, limit -> "
+         f"runs at once, changes nothing. A WRITE IS NEVER ONE CALL: action=plan_write (system, target, verb "
+         f"create|update|upsert, rows [objects], key_field, job, title) freezes the rows; action=dry_run (run) "
+         f"shows before -> after row by row and touches nothing; action=approve (run, confirm_env) is HER tap and "
+         f"is tied to those exact rows; action=execute (run, batch) posts them, safe to call again after a crash "
+         f"because a done row is never posted twice; action=run_status / runs / rollback_plan. "
+         f"Delete is refused at any size. Over {MAX_ROWS} rows in one go is refused - split it. A production write "
+         f"needs confirm_env='production' as well as her tap. action=endpoint (owner only): her own system's "
+         f"address when Composio does not carry it - the credential is typed in the APP, never here.")
     js = R.jobs_of(key)
     if js:
         d += (" Is desk ke hisse (action=draft mein `job`): "
@@ -70,7 +83,12 @@ for _key, _spec in R.ROLES.items():
             "detail": {"type": "string"}, "owner": {"type": "string"}, "due": {"type": "string"},
             "severity": {"type": "string"}, "rupaye": {"type": ["number", "string"]},
             "source": {"type": "string"}, "company": {"type": "string"}, "env_default": {"type": "string"},
-            "rules": {"type": "string"}},
+            "rules": {"type": "string"},
+            "target": {"type": "string"}, "query": {"type": "object"}, "limit": {"type": "integer"},
+            "verb": {"type": "string"}, "rows": {"type": "array", "items": {"type": "object"}},
+            "key_field": {"type": "string"}, "run": {"type": "string"}, "batch": {"type": "integer"},
+            "confirm_env": {"type": "string"}, "base_url": {"type": "string"}, "auth_kind": {"type": "string"},
+            "header_name": {"type": "string"}},
             "required": ["action"]}})
     ENTERPRISE_TOOLS.append({
         "name": _key + "_dekho",
@@ -100,7 +118,8 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..enterprise import service as S
     if (getattr(ctx, "actor", "owner") or "owner").startswith("customer:"):
         raise ToolError("Yeh kaam graahak ke liye nahi hai.")
-    t, conv = ctx.tenant_id, ctx.conversation_id
+    t_id, conv = ctx.tenant_id, ctx.conversation_id
+    t = t_id
     try:
         S.guard_secret(" ".join(_s(v) for v in a.values()))
         if action == "settings":
@@ -132,6 +151,45 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.add_item(t, role, _s(a.get("title")), _s(a.get("kind")) or "task", _s(a.get("detail")),
                               _s(a.get("owner")), _s(a.get("due")), _s(a.get("severity")), a.get("rupaye"),
                               _s(a.get("project")), _s(a.get("source")))
+        # ---- real work on her live system (enterprise/run.py holds the safety, not this layer)
+        if action in ("read", "plan_write", "dry_run", "approve", "execute", "run_status", "runs",
+                      "rollback_plan", "endpoint"):
+            from ..enterprise import run as RUN
+            try:
+                if action == "endpoint":
+                    if not _owner(ctx):
+                        raise ToolError("Endpoint sirf owner jodti hain - aur credential app mein, chat mein nahi.")
+                    raise ToolError("System ka address aur key app se jodiye (Enterprise > System jodo). "
+                                    "Chat mein credential nahi li jaati.")
+                if action == "read":
+                    return RUN.read(t_id, role, _s(a.get("system")), _s(a.get("target")),
+                                    a.get("query") if isinstance(a.get("query"), dict) else {},
+                                    int(a.get("limit") or 200))
+                if action == "plan_write":
+                    if not R.may_write(role):
+                        raise ToolError("Yeh kaam kahin bahar likhta hi nahi.")
+                    rows = a.get("rows")
+                    if not isinstance(rows, list):
+                        raise ToolError("rows ek list honi chahiye.")
+                    return RUN.plan_write(t_id, role, _s(a.get("system")), _s(a.get("target")), _s(a.get("verb")),
+                                          rows, _s(a.get("key_field")), _s(a.get("job")), _s(a.get("project")),
+                                          _s(a.get("title")))
+                if action == "dry_run":
+                    return RUN.dry_run(t_id, _s(a.get("run")))
+                if action == "approve":
+                    if not _owner(ctx):
+                        raise ToolError("Haan sirf owner deti hain.")
+                    return RUN.approve(t_id, _s(a.get("run")), "owner", _s(a.get("confirm_env")))
+                if action == "execute":
+                    return RUN.execute(t_id, _s(a.get("run")), int(a.get("batch") or 25))
+                if action == "run_status":
+                    return RUN.status(t_id, _s(a.get("run")))
+                if action == "runs":
+                    return {"runs": RUN.runs(t_id, role)}
+                if action == "rollback_plan":
+                    return RUN.rollback_plan(t_id, _s(a.get("run")))
+            except RUN.RunError as ex:
+                raise ToolError(str(ex))
         if action == "item_update":
             return S.set_item(t, role, _s(a.get("ref")),
                               **{k: a[k] for k in ("title", "detail", "owner", "due", "severity", "status", "source")
@@ -149,6 +207,18 @@ def _read(ctx: Ctx, role: str, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.day(t, role)
         if what == "jobs":
             return S.jobs(role)
+        if what == "endpoints":
+            from ..enterprise import run as RUN
+            return {"endpoints": RUN.endpoints(t, role)}
+        if what == "runs":
+            from ..enterprise import run as RUN
+            return {"runs": RUN.runs(t, role)}
+        if what == "run":
+            from ..enterprise import run as RUN
+            try:
+                return RUN.status(t, _s(a.get("ref")))
+            except RUN.RunError as ex:
+                raise ToolError(str(ex))
         if what == "systems":
             return S.systems(t, role)
         if what == "projects":

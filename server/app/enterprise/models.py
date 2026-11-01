@@ -88,3 +88,75 @@ class EntSettings(Base):
     env_default: Mapped[str] = mapped_column(String(10), default="test")
     rules: Mapped[str] = mapped_column(Text, default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+# ---------------------------------------------------------------- v0.363 real read / write against her ERP
+class EntEndpoint(Base):
+    """Her own ERP endpoint when Composio does not carry it (SAP OData, Windchill, any REST the vendor publishes).
+
+    The credential is SEALED (bazar.security vault) exactly like v0.290's custom MCP: the clear value never sits in
+    the database, in a listing, or in anything the model can read. `auth_masked` is all anyone else ever sees."""
+    __tablename__ = "ent_endpoints"
+    __table_args__ = (UniqueConstraint("tenant_id", "role", "system", name="uq_ent_endpoint"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ee"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    role: Mapped[str] = mapped_column(String(24), index=True)
+    system: Mapped[str] = mapped_column(String(24))
+    base_url: Mapped[str] = mapped_column(String(400), default="")
+    env: Mapped[str] = mapped_column(String(10), default="test")      # test | production
+    auth_kind: Mapped[str] = mapped_column(String(12), default="bearer")   # bearer | basic | header
+    auth_enc: Mapped[str] = mapped_column(Text, default="")           # sealed; never read back out to the model
+    auth_masked: Mapped[str] = mapped_column(String(60), default="")
+    header_name: Mapped[str] = mapped_column(String(60), default="")
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class EntRun(Base):
+    """One real operation against her ERP: a read, or a write job of many rows.
+
+    A write run is never one call. It is plan -> dry run -> HER TAP -> batches -> verify, and it must survive
+    dying half way: `rows` carry their own idempotency key, so a resume can never post the same record twice."""
+    __tablename__ = "ent_runs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("er"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    role: Mapped[str] = mapped_column(String(24), index=True)
+    job: Mapped[str] = mapped_column(String(24), default="")
+    project_id: Mapped[str] = mapped_column(String(40), default="")
+    system: Mapped[str] = mapped_column(String(24), default="")
+    env: Mapped[str] = mapped_column(String(10), default="test")
+    rail: Mapped[str] = mapped_column(String(12), default="")         # composio | odata
+    op: Mapped[str] = mapped_column(String(10), default="read")       # read | write
+    verb: Mapped[str] = mapped_column(String(16), default="")         # create | update | upsert | get | query
+    target: Mapped[str] = mapped_column(String(120), default="")      # the entity / tool slug
+    title: Mapped[str] = mapped_column(String(200), default="")
+    plan: Mapped[str] = mapped_column(Text, default="{}")
+    status: Mapped[str] = mapped_column(String(14), default="planned")
+    # planned | dry_run | waiting_owner | running | done | failed | stopped
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    ok_count: Mapped[int] = mapped_column(Integer, default=0)
+    fail_count: Mapped[int] = mapped_column(Integer, default=0)
+    approved_by: Mapped[str] = mapped_column(String(80), default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class EntRunRow(Base):
+    """One record inside a write run. `key` is hers (the natural key); `idem` is what makes a resume safe."""
+    __tablename__ = "ent_run_rows"
+    __table_args__ = (UniqueConstraint("run_id", "idem", name="uq_ent_run_row"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("rr"))
+    run_id: Mapped[str] = mapped_column(String(40), index=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    n: Mapped[int] = mapped_column(Integer, default=0)
+    key: Mapped[str] = mapped_column(String(160), default="")
+    idem: Mapped[str] = mapped_column(String(64), default="")
+    payload: Mapped[str] = mapped_column(Text, default="{}")
+    before: Mapped[str] = mapped_column(Text, default="")             # what it looked like first: the rollback material
+    status: Mapped[str] = mapped_column(String(10), default="todo")   # todo | done | failed | skipped
+    result: Mapped[str] = mapped_column(Text, default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+

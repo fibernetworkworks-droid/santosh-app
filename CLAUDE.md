@@ -291,6 +291,13 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   total AFTER the work and a Soch card only exists when the model reasoned, so an ordinary wait had no number
   at all - a slow turn and a stuck one looked the same. The clock starts with the TURN (total elapsed, not
   time-in-step), is blank for the first second, reads 7s / 1m 05s, tabular figures, aria-hidden.
+- v0.363 ASLI ERP KAAM: Hoola really READS and WRITES her ERP, not just papers. A read runs at once (capped
+  2,000 rows). A WRITE IS NEVER ONE CALL: plan -> dry run (before->after per row) -> HER TAP -> batches ->
+  verify. Guards in CODE: delete refused at any size, max 500 rows a run, no execute before a dry run,
+  production needs the WORD as well as the tap, approval tied to those rows by plan hash, and an
+  idempotency key per row so a resume NEVER double-posts (proved by a test re-running a half-failed load).
+  rollback_plan names the rows it CANNOT undo. Rails: composio (her account) + odata (her own sealed
+  endpoint, credential typed in the APP - the tool refuses it in chat). `app/enterprise/run.py`.
 - v0.362 ERP KA POORA DESK: an ERP job is a DESK, not one person - the whole lifecycle now sits in the `erp`
   role as 16 parts (blueprint, functional, technical/ABAP, data, integration, basis, security+SoD, testing,
   cutover, training, support/AMS, master data, reporting, finance close, licence, upgrade). ONE duty for all

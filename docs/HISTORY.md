@@ -13168,3 +13168,45 @@ exactly as before — there is a test for both.
 ### Files
 `server/app/enterprise/rules.py` · `server/app/enterprise/service.py` · `server/app/agent/enterprise_tools.py` ·
 `server/tests/test_v0358_enterprise.py` (21 tests now).
+
+## v0.363.0 ASLI ERP KAAM — Hoola really reads and really writes her ERP
+Owner: *"I WANT ALL ERP WORK TO BE DONE BY HOOLA BOTH READ AND WRITE … COMPLEX AND VERY HARD"*.
+
+Up to v0.362 the ERP desk produced **papers**. This makes it do the work on her live system.
+
+### A read is one call. A write is never one call.
+
+> plan → **dry run** (before → after, row by row) → **her tap** → batches → verify → report
+
+Every guard below is in **code, not in a prompt**, because a wrong write into a live ERP is not undoable by an
+apology:
+
+| guard | why |
+|---|---|
+| **delete refused at any size** | no business reason, and no safe way to offer it |
+| **max 500 rows per run** | a mistake stays small; a bigger load is split |
+| **no execute before a dry run** | she must see it first |
+| **production needs the word** | `confirm_env="production"` as well as her tap; production is never inferred |
+| **approval tied to those rows** | a plan hash — change the rows after she taps and the run refuses and re-asks |
+| **idempotency key per row, written before the call** | a run that dies half way resumes **without ever posting the same record twice** |
+
+That last one is the property that makes a real migration safe, and it is proved by a test that re-runs a
+half-failed load of 14 rows and asserts **only the failures** were retried.
+
+A failed run reaches a terminal state instead of hanging on "running", and stays resumable — `execute()` picks the
+failures back up.
+
+### Rollback, honestly
+The dry run reads the current record first, so she sees before → after. That before-image is the **only** honest
+rollback material there will ever be, so `rollback_plan` says plainly which rows it **cannot** put back — the ones
+it newly created — rather than quietly missing them. A rollback that silently skips rows is worse than none.
+
+### Two rails, both official, both with her credential
+- **composio** — her connected account (~1,600 apps; NetSuite and friends), which already classifies read vs write.
+- **odata** — her own endpoint for what Composio does not carry (SAP OData, Windchill REST). The credential is
+  **sealed** with the same vault as v0.290's custom MCP, typed in the **app** and never in chat: the tool refuses
+  the `endpoint` action outright and says so.
+
+### Files
+`server/app/enterprise/run.py` (new, the engine) · `server/app/enterprise/models.py` (EntEndpoint, EntRun,
+EntRunRow) · `server/app/agent/enterprise_tools.py` · `server/tests/test_v0363_erp_live.py` (13 tests).
