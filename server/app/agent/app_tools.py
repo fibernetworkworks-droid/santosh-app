@@ -337,7 +337,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         rep = HS.build(r, str(a.get("month") or ""))
         return {k: rep[k] for k in ("month", "summary", "say", "counts")} | {
             "download": f"/api/apps/{r.id}/hisaab?month={rep['month']}&download=1",
-            "gstr1": f"/api/apps/{r.id}/gstr1?month={rep['month']}"}           # v0.373 the GST offline tool file
+            "gstr1": f"/api/apps/{r.id}/gstr1?month={rep['month']}",           # v0.373 the GST offline tool file
+            "tally": f"/api/apps/{r.id}/tally?month={rep['month']}"}           # v0.374 Tally XML vouchers
     if action == "delivery":                  # v0.360 DELIVERY
         if not _owner(ctx):
             raise ToolError("Delivery niyam sirf maalkin badal sakti hain.")

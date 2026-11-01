@@ -13192,3 +13192,14 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
 - Route GET /api/apps/<ref>/gstr1?month=, console Accounts box "GSTR-1 file (JSON)", tool hisaab gives the path.
 - Tests `tests/test_v0373_gstr1.py`. Hoola never files: the offline tool / her CA validates and uploads. Not covered: exports,
   nil-rated / exempt, advances, amendments, e-commerce operator tables, the 2025 HSN B2B / B2C split.
+
+## v0.374.0 TALLY EXPORT (App Sahayak Phase 38, owner: "START PHASE 38")
+- `appmaker/tally.py`: `DEFAULTS` ledger names (party Cash, Sales, Output CGST / SGST / IGST, Round Off), hers in
+  `gst.tally` via `set_names` (PUT /api/apps/<ref>/tally; control characters and < > & " stripped). `voucher(kind, ...)` =
+  TALLYMESSAGE / VOUCHER VCHTYPE Sales | Credit Note, ACTION Create, DATE YYYYMMDD, VOUCHERNUMBER, PARTYLEDGERNAME,
+  BASICBUYERNAME, PARTYGSTIN (b2b), PLACEOFSUPPLY, NARRATION, ALLLEDGERENTRIES.LIST (debit = ISDEEMEDPOSITIVE Yes + negative
+  amount; Sales: party Dr total, sales Cr taxable, taxes Cr; Credit Note mirrored; paise gap -> Round Off). `build(r, month)` =
+  invoices / credit notes dated in the month via `gst.compute`, in an ENVELOPE / IMPORTDATA / Vouchers request.
+- Route GET /api/apps/<ref>/tally?month= (XML download), console Accounts "Tally (XML)", tool hisaab path.
+- Tests `tests/test_v0374_tally.py` (well-formed with & and <, balanced vouchers, mirror credit note, her names). Not done:
+  inventory (stock-item) vouchers, ledger creation in Tally.
