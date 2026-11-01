@@ -3,12 +3,18 @@
 # runner (http://localhost:8077, debug builds only): E2e.swift signs up, orders through the outbox (server-priced), sends the
 # same write twice (one row), a photo up and back, the UPI paid claim, the updates check, a crash report, sign out / in.
 # Pass = "HOOLA_E2E OK" in the app's Documents/hoola_e2e.txt. Server side is checked by `python -m app.appmaker.android.ci_e2e check`.
-# usage: ci_e2e.sh <bundle id> <out dir>
+# usage: ci_e2e.sh <bundle id> <out dir> [App.app to install first]
 set -u
-BID="$1"; OUT="$2"
+BID="$1"; OUT="$2"; APP="${3:-}"
 mkdir -p "$OUT"
-DEV=$(xcrun simctl list devices booted -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next((x["udid"] for v in d.values() for x in v), ""))')
+# the plain iPhone (a Pro Max may also be booted for the App Store pictures); the app is (re)installed on it
+DEV=$(xcrun simctl list devices booted -j | python3 -c '
+import json, sys
+d = [x for v in json.load(sys.stdin)["devices"].values() for x in v]
+d.sort(key=lambda x: "Max" in x["name"])
+print(d[0]["udid"] if d else "")')
 [ -n "$DEV" ] || { echo "::error::no booted simulator"; exit 1; }
+[ -n "$APP" ] && xcrun simctl install "$DEV" "$APP"
 xcrun simctl terminate "$DEV" "$BID" > /dev/null 2>&1 || true
 DATA=$(xcrun simctl get_app_container "$DEV" "$BID" data)
 rm -f "$DATA/Documents/hoola_e2e.txt"

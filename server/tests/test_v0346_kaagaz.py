@@ -84,7 +84,7 @@ def test_kits_and_generators():
     from app.appmaker.ios import prompts as IP
     be = {"collections": [{"key": "requests", "label": "Requests", "rules": {"create": "member"},
                            "fields": [{"key": "rx", "label": "Prescription", "type": "file"}]}]}
-    assert 'FileField("Prescription", "rx")' in AG.fallback_screen({"id": "book", "label": "Book"}, ["book"], [], be)
+    assert 'FileField(T("Prescription"), "rx")' in AG.fallback_screen({"id": "book", "label": "Book"}, ["book"], [], be)
     assert "@Composable FileField(label: String, key: String)" in AP.kit_sheet() and "[file]" in AP.backend_line(be)
     assert "FileRow" in IP.KIT_SHEET
     root = Path(__file__).resolve().parents[1] / "app/appmaker"

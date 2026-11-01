@@ -146,6 +146,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   AI is not advice, acceptable use, content stays hers, Indian law / Akola courts, IT Act grievance officer (24 h / 15 days).
 - v0.340 EDIT MEIN SAB JODO: website Edit mode "+ Jodo" adds a photo / video (MP4 or YouTube) / audio / download file after any block
   (`site/media.py`: bytes must match the kind, placeholders -> addresses per page depth, hard links); photos in <picture> pickable again.
+- v0.349 BHASHA (App Phase 13, `appmaker/i18n.py`, kits `Lang.kt` / `Lang.swift`): app words through T(), translated once per language at build (cached), customers pick on My account; her data never translated.
+- v0.348 KAAGAZ (App Phase 12): PDF document field both platforms (system picker, no permission); server keeps only plain PDFs (byte + pypdf structure check), download-only.
+- v0.347 HAR RAASTA JAANCHO (App Phase 11): the device check taps every button on every screen (Android adb + `qa.py taps/sig`, iPhone XCUITest `FlowTests` + `flows.py`); tap crash -> Opus, dead taps reported.
 - v0.346 DESIGN SE MILAAN (App Phase 10, `appmaker/match.py`): every real screen (device check) scored 0-100 vs her approved design after each build; Opus lists differences for those under 70; fix rebuilds only them (Android + iPhone).
 - v0.345 APNA CODE (App Phase 9, `appmaker/code.py`): her app's whole code (android/ + ios/ + README + CHANGELOG, never a key) to HER GitHub, one commit per build, the website-export card + her tap only.
 - v0.341 HAR FEATURE 2 (App Phase 8, kits `Pro.kt` / `Pro.swift`): scan field (Google code scanner, no camera permission / VisionKit), staff dashboard `/api/app-api/<key>/stats` (charts), updates inbox `hoola_inbox`, iPhone background updates (BGAppRefresh + local notifications).

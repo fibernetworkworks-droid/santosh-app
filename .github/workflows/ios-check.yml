@@ -90,7 +90,7 @@ jobs:
           for i in $(seq 1 120); do curl -sf -o /dev/null http://127.0.0.1:8077/api/app-api/akf1c7a2e0000000000000001/schema && break; sleep 1; done
           curl -sf http://127.0.0.1:8077/api/app-api/akf1c7a2e0000000000000001/schema | head -c 200
       - name: The iPhone app against the real server (sign up, order, paid claim, crash report)
-        run: bash server/app/appmaker/ios/ci_e2e.sh in.hoola.preview.fixture ios-shots
+        run: bash server/app/appmaker/ios/ci_e2e.sh in.hoola.preview.fixture ios-shots "$(find "$RUNNER_TEMP/ios/dd/Build/Products/Debug-iphonesimulator" -maxdepth 1 -name '*.app' | head -1)"
       - name: The order the iPhone app placed is on the server (priced by the server, sent once)
         if: always()
         working-directory: server

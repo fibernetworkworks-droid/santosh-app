@@ -12761,3 +12761,62 @@ the approved design") - until now the device check only proved a screen OPENS, n
 - Tests: `test_v0343_design_match.py` (4): score separates a close layout from a wrong one; check lists differences only
   for the low screen (Opus gets both images); fix rebuilds only that screen with the notes; after_build scores without a
   model; the tool.
+
+## v0.347.0 HAR RAASTA JAANCHO (App Sahayak Phase 11, owner: "START PHASE 11")
+The last open promise of the original Phase 3: "an automated test walks every flow". The device check opened every
+screen; now it TAPS every button / link on every screen, each from a fresh start of that screen.
+- Android (`android/device_check.sh` + `qa.py`): after a screen opens, `qa.py taps <ui.xml>` lists its tappable things
+  (clickable + enabled, no typing boxes, no 8 px dots, unique labels, top to bottom, TAPS = 5); for each: force-stop,
+  start the screen again, `input tap`, alive? (pidof + the crash buffer's FATAL EXCEPTION), UI dump again -> `qa.py sig`
+  (texts + bounds hash) differs = the tap did something. adb reads stdin, so the list comes in on fd 3 and every adb call
+  inside gets `< /dev/null`. `report` adds screens[sid].taps, tap_crash, flows {tapped, moved, dead, crashed}; a tap crash
+  fails `passed` like a screen crash. `service._crashed_screens` sends a tap crash to Opus as "CRASHED WHEN THE USER TAPPED
+  '<label>' ON THIS SCREEN" + the real crash.
+- iPhone (`ios/gen.py` flow_tests -> UITests/FlowTests.swift, an XcodeGen `bundle.ui-testing` target AppUITests in the App
+  scheme's testTargets): opens every screen with `-hoola_screen`, taps each hittable button / link (max 5) from a fresh
+  launch, prints `HOOLA_TAP\t<screen>\t<label>\t<alive>\t<changed>\t<n>`; `flow_check.sh` runs `xcodebuild test
+  -only-testing:AppUITests` on the booted plain iPhone, keeps the newest crash report, `flows.py` folds the lines into
+  report.json (same shape as Android). `ios.service._crashed` handles tap crashes too.
+- CI: appgen-check (emulator: the flow walk inside device_check, the QA step fails on a tap crash or zero taps), ios-check
+  (flow walk step + the same gate), builds-repo hoola-ios.yml (sim / testflight runs it). QA boxes (phone `_QaBox`, console
+  qaBox) and the chat note show "N buttons tapped, X did nothing".
+- Tests: `test_v0345_har_raasta.py` (5).
+
+## v0.348.0 KAAGAZ (App Sahayak Phase 12, owner: "START PHASE 12")
+A PDF document field (prescription, ID proof, bill, resume) on both platforms.
+- Server (`backend.py`): EXTRA_TYPES += "file"; `upload` hands `%PDF-` bodies to `_upload_pdf`: 10 MB (MAX_DOC), a byte
+  scan (PDF_RISK: /JavaScript /JS /Launch /EmbeddedFile(s) /OpenAction /AA /RichMedia /XFA /SubmitForm /ImportData /GoToR)
+  AND a structure check `_pdf_risky` with pypdf (catalog OpenAction / AA, Names JavaScript / EmbeddedFiles, AcroForm XFA,
+  page AA, annotations: file attachment / media, actions JavaScript / Launch / ImportData / SubmitForm / GoToR / GoToE,
+  annotation AA) - catches what hides in compressed object streams; must open in pypdf, not encrypted, 1-200 pages; kept
+  byte for byte (re-writing breaks signed PDFs) as f_<id>.pdf with kind pdf. Served (app API + her data view) ONLY as a
+  download: application/pdf, Content-Disposition attachment, CSP sandbox, nosniff. A photo field refuses a PDF; a file field
+  takes a PDF or a photo. Complex staff lists: file-type fields named document / report / prescription / invoice / bill /
+  resume / proof / certificate / receipt / agreement / kyc become "file" (DOC_NAME, two a list).
+- Android kit: FileField (Pro.kt, ActivityResultContracts.OpenDocument with application/pdf - no storage permission;
+  `Docs.copy` reads at most 10 MB, checks %PDF-, copies into the app cache, keeps the file name), Cloud.upload sends
+  application/pdf for PDFs; strings addFile / changeFile / fileFailed. iPhone kit: FileRow (Pro.swift, `.fileImporter`
+  [.pdf], security-scoped access, 10 MB, %PDF- check, temp copy), Cloud.upload content type, FormBlock case "file".
+  Generators + both model guides know [file].
+- Device e2e (both kits): a tiny valid PDF up (kind pdf) and back byte for byte ("pdf ok").
+- Tests: `test_v0346_kaagaz.py` (3).
+
+## v0.349.0 BHASHA (App Sahayak Phase 13, owner: "START PHASE 13")
+Her app in her customer's language; her business data is never translated.
+- Kits: Android `Lang.kt` (I18n: assets/i18n.json, `lang` state, the customer's choice in Store, `T()`, LanguagePicker
+  chips on My account; Strings.t falls back to the table for languages the kit does not carry; MainActivity
+  `I18n.load` + `key(I18n.lang.value)` redraws every word on a change; tab / FAB labels and list words - section names,
+  status chips, field labels - through T()); iPhone `Lang.swift` (I18n ObservableObject, `T()`, LanguagePicker, Words
+  fallback, RootView `.id(i18n.lang)`, tab labels, FormBlock / RowsSection words through T()).
+- Generators: code-made screens wrap their words in T() (titles, purpose, buttons, field labels, Place order / Send);
+  both model guides: every user-visible literal through T("..."), never data or strings with code inside.
+- `appmaker/i18n.py`: LANGS (en + 11 Indian languages + Hinglish), `langs_of` (the business's language first, max 6),
+  `set_langs` (her choice, from the next build), `collect` (every T("...") + the kit's own English words, comments
+  skipped, strings with $ / \( skipped), `backend_words` (list names, field labels, choice options such as order
+  statuses), `table` (only words not yet in the app's i18n_cache.json go to Opus, 120 a call, runaway answers dropped),
+  `for_build` (Android + iPhone builds call it after the first project write and write the project again with the
+  table: assets/i18n.json | Resources/i18n.json); words / coverage per language kept in the app state.
+- Routes: GET /api/apps/{ref}/bhasha, POST /api/apps/{ref}/bhasha {langs} (apps_act). Tool app_banao action=bhasha.
+  Phone BhashaPanel (language chips with % translated), console App languages box.
+- Tests: `test_v0347_bhasha.py` (5); older screen-code pins now expect T("...").
+- Not verified: translation quality per language is Opus's; right-to-left layout for Urdu is the system's default only.

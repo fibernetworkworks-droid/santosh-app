@@ -76,9 +76,7 @@ struct RootView: View {
     var body: some View {
         let c = H.c(scheme)
         Group {
-            if let s = start {                       // debug builds: Hoola's simulator check opens one screen directly
-                NavigationStack { screenView(s) }
-            } else if AppTokens.tabs.count > 1 {
+            if AppTokens.tabs.count > 1 {
                 TabView(selection: $router.tab) {
                     ForEach(Array(AppTokens.tabs.enumerated()), id: \.offset) { i, t in
                         NavigationStack(path: $router.paths[i]) {
@@ -96,6 +94,9 @@ struct RootView: View {
         }
         .tint(c.primary)
         .id(i18n.lang)
+        // debug builds: Hoola's simulator check opens one screen INSIDE the real app (its tab, or pushed on the first tab),
+        // so its buttons really navigate and its picture is what a user sees
+        .onAppear { if let s = start { router.go(s) } }
     }
 }
 
