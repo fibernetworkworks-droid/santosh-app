@@ -204,6 +204,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   ever reaches a customer tenant: READ-ONLY (tested: only GETs), and it reports what the system ANSWERED - 401 vs
   403, a CSRF token that cannot be fetched, the ETag / check-out a later write needs; a clean check stamps
   verified_at, a failing one does NOT. Systems page also settles `ambiguous` rows. Enterprise routes 11 -> 16.
+- RESEARCH: `docs/research/building_industry/` - the whole design / construction / building industry as 276 jobs from
+  primary sources (6 reports, 576 KB; read `00_INDEX.md` first, never the lot). Three findings that shape every desk
+  here: (1) PREPARE / SUBMIT / CERTIFY - the application is the owner's act, the certification is reserved to a named
+  licensee on a specific register, preparation is unreserved = 70-80% of the labour and almost none of the liability;
+  (2) DESIGN is largely UNGATED in India (HVAC has no licence at all) while CERTIFICATES and EXECUTION are gated, and
+  the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
+  exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
+  the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
 - Current version: v0.411.0 (pubspec 0.411.0+455). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.410 ECC ON: review card old vs new = 8/8 caught both, false alarms 8 -> 4, nits 3 -> 0; fix card 6/6 + 6/6 with the fixer -> `dev_spec_review` + `dev_spec_fix` default ON; card rows keep what each false alarm said.
