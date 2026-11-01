@@ -215,8 +215,10 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
 
 import androidx.compose.runtime.Composable
 import hoola.kit.AccountScreen
+import hoola.kit.ApprovalsScreen
 import hoola.kit.AuthScreen
 import hoola.kit.ChatScreen
+import hoola.kit.DataScreen
 import hoola.kit.DeleteAccountScreen
 import hoola.kit.Empty
 import hoola.kit.FabAction
