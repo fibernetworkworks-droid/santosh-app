@@ -53,7 +53,7 @@ def gd(env, tmp_path, monkeypatch):
         errs = script["smoke"].pop(0) if script["smoke"] else []
         return {"ok": not errs, "errors": errs, "seconds": 0.1, "exit": 0}
 
-    def export_web(job, holder=None):
+    def export_web(job, holder=None, debug=False):
         b = job / "build"
         b.mkdir(parents=True, exist_ok=True)
         for n in ("index.html", "index.js", "index.wasm", "index.pck"):
