@@ -9962,6 +9962,50 @@ async def apps_turant_set(ref: str, body: dict, tenant: str = Depends(current_te
                                    else TU.disable(_be_owner(tenant, ref)))
 
 
+# ---- v0.391 APNA DATABASE: an app's data in HER own database (Supabase, Neon, RDS ... any PostgreSQL-wire)
+@app.get("/api/apps/{ref}/owndb", dependencies=[Depends(require_key)])
+async def apps_owndb(ref: str, tenant: str = Depends(current_tenant)):
+    """The link, her connected databases (Profile > Postgres database), the provider list, sync lag."""
+    from .appmaker import owndb as OD
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.status(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/owndb/link", dependencies=[Depends(require_key)])
+async def apps_owndb_link(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP {conn, mode: primary|mirror}: backup, her tables, every row copied, counts compared, then live."""
+    from .appmaker import owndb as OD
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.link(_be_owner(tenant, ref), str(b.get("conn") or ""),
+                                                                   str(b.get("mode") or "primary")))
+
+
+@app.post("/api/apps/{ref}/owndb/unlink", dependencies=[Depends(require_key)])
+async def apps_owndb_unlink(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import owndb as OD
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.unlink(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/owndb/verify", dependencies=[Depends(require_key)])
+async def apps_owndb_verify(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import owndb as OD
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.verify(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/owndb/sync", dependencies=[Depends(require_key)])
+async def apps_owndb_sync(ref: str, tenant: str = Depends(current_tenant)):
+    """Sync now: pending writes there, her outside edits back (instead of waiting up to 20 s)."""
+    from .appmaker import owndb as OD
+
+    def go():
+        r = _be_owner(tenant, ref)
+        o = OD.cfg(r, fresh=True)
+        if not o:
+            raise OD.OwnDbError("Yeh app kisi database se judi nahi hai.", 404)
+        n = OD.tick(force=True)
+        return {"ok": True, "synced": n, **OD.status(_be_owner(tenant, ref))}
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
 # ---- v0.390 PAKKI NEEV: her app's data - backups, point-in-time restore (her tap), export, usage + limits
 @app.get("/api/apps/{ref}/backups", dependencies=[Depends(require_key)])
 async def apps_backups(ref: str, tenant: str = Depends(current_tenant)):

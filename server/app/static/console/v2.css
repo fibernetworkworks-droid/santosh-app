@@ -2398,3 +2398,8 @@ body.albon{overflow:hidden}
 .stsafe .stmeter i{display:block;height:100%;background:var(--pri)}
 .stsafe .stmems li{flex-wrap:wrap}
 .stsafe details{margin-top:10px;font-size:13px}
+/* v0.391 APNA DATABASE: the own-database box */
+.stowndb select{padding:8px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.stowndb .stlines{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:13px}
+.stowndb .sterr{color:var(--bad)}
+.stowndb details{margin-top:10px;font-size:13px}

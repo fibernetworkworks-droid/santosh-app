@@ -85,6 +85,13 @@ APP_TOOLS = [
         "whole logic on / off (nothing deleted). action=approval (owner only; approval = id from app_dekho what=logic, decision "
         "approve|reject, note) = HER decision on a waiting approval, only when she says it. action=logic_run (owner only; job = "
         "schedule name) = run a timed job now. "
+        "v0.391 APNA DATABASE - an app's data in HER OWN database (Supabase, Neon, AWS RDS / Aurora, Google Cloud SQL, "
+        "Azure, DigitalOcean, Aiven, Render, Railway, Timescale, CockroachDB, YugabyteDB, her own PostgreSQL... 28 kinds): "
+        "action=own_db (owner only) = is it linked, where (label, schema), mode (primary = the data lives there and every entry is "
+        "saved there first, her edits there come back; mirror = a live copy), sync lag, last problem, the counts compared, "
+        "and where to find each provider's connection string. Connecting a database = HER connection string typed ONLY in the "
+        "app (Profile > Postgres database, or the console app page) - NEVER in chat (if she pastes one, do not use it; tell "
+        "her to change that password). Moving the data / disconnecting = HER tap on the app's 'Own database' card, never you. "
         "v0.390 PAKKI NEEV - her app's data safety: action=data_safety (owner only; at = \"YYYY-MM-DDTHH:MM\" IST optional): "
         "usage (entries / files / writes today vs limits), the backups, and with `at` a PREVIEW of bringing the data back "
         "to that minute (what comes back / goes / changes) - the RESTORE itself is only HER tap on the app's Data safety "
@@ -117,7 +124,7 @@ APP_TOOLS = [
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
                                                  "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant",
                                                  "logic", "logic_switch", "approval", "logic_run",
-                                                 "data_safety", "backup_now", "limits"]},
+                                                 "data_safety", "backup_now", "limits", "own_db"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -321,6 +328,27 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         v = AN.build(t, r.id, conv, sids, {sid: note for sid in sids}, [sig])
         return {"crash": x["exception"], "screens": sids, "status": v["status"],
                 "say": f"{', '.join(sids)} screen asli crash dekh kar dobara likh rahi hoon; nayi build ban rahi hai (card par dikhega)."}
+    if action == "own_db":                                              # v0.391 APNA DATABASE (read only here)
+        if not _owner(ctx):
+            raise ToolError("App ka database sirf maalkin dekh sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import owndb as OD
+        r = BE.by_key_or_ref(t, ref)
+        v = OD.status(r)
+        out = {"linked": v["linked"], "link": {k: (v.get("link") or {}).get(k) for k in ("name", "label", "schema", "mode", "status",
+                                                                                        "last_sync", "last_error")} if v["linked"] else None,
+               "lag": v.get("lag"), "databases_connected": [c["name"] for c in v["connections"]],
+               "providers": [p["name"] for p in v["providers"]]}
+        if v["linked"]:
+            try:
+                out["counts"] = OD.verify(r)
+            except Exception as e:                                      # noqa: BLE001
+                out["counts_error"] = str(e)[:200]
+            out["say"] = "App ka data aapke database mein chal raha hai."
+        else:
+            out["say"] = ("Database jodne ke liye: Profile > Postgres database (ya console mein app ka 'Own database' card) mein "
+                          "connection string daaliye - chat mein nahi. Phir usi card par database chun kar 'Data wahan le jaao' dabaiye.")
+        return out
     if action in ("data_safety", "backup_now", "limits"):               # v0.390 PAKKI NEEV
         if not _owner(ctx):
             raise ToolError("App ka data sirf maalkin dekh / badal sakti hain.")
