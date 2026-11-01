@@ -12761,3 +12761,9 @@ the approved design") - until now the device check only proved a screen OPENS, n
 - Tests: `test_v0343_design_match.py` (4): score separates a close layout from a wrong one; check lists differences only
   for the low screen (Opus gets both images); fix rebuilds only that screen with the notes; after_build scores without a
   model; the tool.
+
+## CHECKPOINT 1 Nov 2026 - stable-2026-11-01-v343 (owner: "SAVE THE STATE")
+Branch `stable-2026-11-01-v343` = fce446a0 = v0.343.0 (pubspec 0.343.0+383), the version live while she ran every test of the
+long-task / tool-choice work: tests 1-6 + A-D passed (v0.330), live tool card 23/26 (v0.336) -> 25/26 (v0.338; the one miss
+is "customer ki complaint register karo" answered with a question the card only spots by a '?'). APK v0.343.0-b843. Note: at the
+moment the branch was cut, another session's v0.346.0 was deployed on top - the checkpoint is the TESTED v0.343.0, not 0.346.
