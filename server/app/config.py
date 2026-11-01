@@ -388,6 +388,7 @@ class Settings(BaseSettings):
     pagespeed_api_key: str = ""             # optional: PageSpeed Insights API key (higher quota for SEO checks)
     indiamart_enabled: bool = True           # v0.280 IndiaMART's own MCP (buyer search: products, prices, suppliers)
     indiamart_mcp_url: str = "https://imgpt.indiamart.com/mcp"   # no key / sign-in; read-only tools only
+    game_model: str = "claude-opus-5-5"     # v0.370 Game Desk: writes the design doc + GDScript ('' = anthropic_model)
     mospi_enabled: bool = True               # v0.348 MoSPI eSankhyiki: official Govt of India statistics, built in
     mospi_mcp_url: str = "https://mcp.mospi.gov.in/mcp"   # no login, read-only
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)

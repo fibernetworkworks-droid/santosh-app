@@ -482,6 +482,13 @@ TOOLS.extend(MOSPI_TOOLS)
 TOOL_LABELS.update(MOSPI_LABELS)
 HANDLERS.update(MOSPI_HANDLERS)
 
+# v0.370 GAME DESK: the Game Developer employee (Godot 4 games, built + test-played in a locked box)
+from .gamedesk_tools import GAMEDESK_HANDLERS, GAMEDESK_LABELS, GAMEDESK_TOOLS  # noqa: E402
+
+TOOLS.extend(GAMEDESK_TOOLS)
+TOOL_LABELS.update(GAMEDESK_LABELS)
+HANDLERS.update(GAMEDESK_HANDLERS)
+
 # v0.63 seekhe hue kaam (procedures Hoola learned)
 from .procedure_tools import PROCEDURE_HANDLERS, PROCEDURE_LABELS, PROCEDURE_TOOLS  # noqa: E402
 

@@ -2297,3 +2297,22 @@ body.albon{overflow:hidden}
 .cad-bom{border-collapse:collapse;font-size:13px;width:100%;max-width:520px}
 .cad-bom th,.cad-bom td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}
 .cad-bom th{color:var(--mut);font-weight:600}
+
+/* v0.370 Game Desk */
+.gd-new textarea,.gd-card textarea{width:100%;box-sizing:border-box;margin-top:8px;font:inherit;font-size:14px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.gd-new .acts,.gd-card .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.gd-new select{font:inherit;font-size:14px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.gd-card{margin-top:16px;display:flex;flex-direction:column;gap:6px}
+.gd-design summary{cursor:pointer;font-weight:600;font-size:14px}
+.gd-doc{white-space:pre-wrap;font-size:14px;line-height:1.55;margin-top:8px;max-height:420px;overflow:auto}
+.gd-play{display:flex;flex-wrap:wrap;gap:16px;margin-top:8px;align-items:flex-start}
+.gd-frame{border:0;border-radius:12px;background:#000;max-width:100%}
+.gd-frame.gd-portrait{width:300px;height:533px}
+.gd-frame.gd-landscape{width:560px;height:315px}
+.gd-frame.gd-square{width:400px;height:400px}
+.gd-side{flex:1 1 220px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.gd-qr{width:132px;height:132px;image-rendering:pixelated;border-radius:8px;background:#fff}
+.gd-nums{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--mut)}
+.gd-nums b{color:var(--ink);font-weight:600}
+.gd-shots{display:flex;gap:8px;overflow-x:auto;margin-top:6px}
+.gd-shots img{height:160px;border-radius:8px;border:1px solid var(--line)}
