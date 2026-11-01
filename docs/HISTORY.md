@@ -13549,7 +13549,143 @@ actions are on `tpm` **alone**, and there is a test that `erp`, `crm_arch` and `
 `server/app/enterprise/tpm.py` (new) · `server/app/agent/enterprise_tools.py` ·
 `server/tests/test_v0373_tpm_sums.py` (15 tests, worked examples computed by hand).
 
-## v0.375.0 HOOLA CAD ANALYSIS (1 Nov 2026)
+## v0.375.0 SAB DAS DESK — the remaining seven brought to the same standard
+Owner: *"MAKE ALL 7 REMAINING ROLES 100% LIKE ERP CRM TPM"*.
+
+"The same standard" turned out to be two things.
+
+### 1. A desk for every role — 90 parts
+| role | parts |
+|---|---|
+| erp | 16 |
+| crm_arch · tpm | 12 each |
+| ecom_arch · plm | 8 each |
+| bpa · supply_opt · health_int · regtech | 7 each |
+| bank_int | 6 |
+
+Each part makes only the papers that part really produces, and every paper kind each role needs is now open to
+it.
+
+### 2. The sums, where the work *is* arithmetic
+`tpm.py` proved the shape in v0.374. Four more jobs are the same kind of job, so `app/enterprise/calc.py` answers
+their questions **in code**:
+
+- **supply_opt** — `reorder` (demand × lead + safety stock, with a real sigma from daily numbers when they exist
+  and a *stated* flat cushion when they don't, plus the stockout date) and `dead_stock`.
+- **plm** — `bom_explode` (flattened tree, quantities multiplied through every level, cost rolled up from the
+  leaves) and `where_used` — what a change order really asks.
+- **bank_int** — `reconcile`: reference first, then amount **and** a date inside the window. Matching on amount
+  alone is how reconciliations go wrong. Each line is used once.
+- **regtech** — `due_calendar`: late, coming up, done, and exposure computed **only** from penalty figures she
+  gave.
+
+### Each one refuses rather than guesses
+Under 14 days of history is not a reorder point. A BOM loop has no right cost. A part with no price is **named**,
+not counted as free. A filing with no penalty figure is listed late with the amount **blank** — a made-up fine is
+worse than none.
+
+### Which job gets which sums is a table
+The other five (erp, crm_arch, bpa, ecom_arch, health_int) have **no** sums: their work is judgement and
+execution, not arithmetic. `SUMS` is a table rather than a growing if-chain, a job cannot call a sum that is not
+its own, and the old `if key == "tpm"` special case was **deleted** rather than left sitting beside it.
+
+### Files
+`server/app/enterprise/rules.py` (seven desks) · `server/app/enterprise/calc.py` (new) ·
+`server/app/agent/enterprise_tools.py` (SUMS table) · `server/tests/test_v0375_all_ten_desks.py` (21 tests).
+
+## v0.376.0 PROOF (Phase 5 of "any world-complex website": a 100-page website as numbers)
+Owner: "START PHASE 5" (the plan's step: "a 100-page test business added to the Arena, so we measure build time, cost,
+quality and broken links against Lovable and others before calling it done").
+- `server/app/site/proof.py`, table `site_arena_proofs` (kind hoola | rival, brief, builder, url, site, version, status,
+  stage, card). BIG_SET v1 = five fixed 100-page businesses with their lists in the facts: Sanjeevani hospital (18
+  departments, 24 doctors, 20 areas; blog, Hindi, appointments app), Vidyapeeth Classes (16 courses, 10 centres, 16
+  faculty; blog, Hindi, marks portal), Annapurna Mithai (60 PRICED products, 8 branches; shop, blog, Hindi), Shubh Griha
+  Developers (12 projects, 20 localities; blog, Marathi, site-visit app), Jaldi Fiber Net (8 plans, 40 areas; blog,
+  Marathi, complaints app). Seeded and stable.
+- `build_big`: exactly an owner's path as the arena tenant (S.new pages=100 -> site map -> approve -> looks -> first
+  look -> build -> checks), then the features through her own functions (shop_setup from her priced lists,
+  design_app, blog_publish x3, set_languages), each stopped by the rupee cap (SITE_ARENA_MAX_INR) or her Stop.
+- `card` reads the FILES and records: pages planned vs built (main + each /<lang>/), `checks.link_scan` over every
+  page, `missing_files` (every local src / srcset), the arena judge on a sample of page TYPES (home, a list item, a blog
+  post, the shop, designed pages) from the checks' own screenshots, check scores, `features` verified in the output
+  (shop + cart script, blog + feed + BlogPosting, hreflang + language folders, sitemap URLs, site search, breadcrumbs,
+  grouped menu, /admin/ + app script), `file_stats` (pages readable without JavaScript, one h1, JSON-LD, HTML size),
+  rupees / minutes in total and per page.
+- RIVAL: `crawl` = one public host, breadth first, up to 150 pages, robots.txt respected, every request through
+  web._check_url (public internet only), each page RENDERED in Chromium (`_render`: links after scripts ran, title,
+  description, h1 count, JSON-LD, hreflang) + the raw HTML for "readable without JavaScript"; broken internal links;
+  sitemap.xml count. `rival_card` = the same measures + the judge on the same number of pages. `compare` = per metric
+  who is better, lower-is-better for broken links / missing files / cost / time / size.
+- API (owner only, `_arena_owner`): GET /api/arena/proofs (+ briefs, max_inr), POST /api/arena/proofs {brief_id,
+  budget_inr}, POST /api/arena/proofs/rival {brief_id, builder, url}, GET /api/arena/proofs/compare?a=&b=, POST
+  /api/arena/proofs/<id>/stop. Console Arena screen: "100-page proof" tile (start, live stage + Stop, rival form,
+  proofs table, side-by-side with the better side in green + the feature lines).
+- Tested for real at 60 pages with the test AI: site map -> build -> shop from the priced list (45+ products) -> blog,
+  0 broken links, 0 missing files. A full 100-page run with Opus is the owner's to start (cost ~₹700-2,000, 1-2 h).
+- Tests `server/tests/test_v0376_proof.py`.
+
+## v0.377.0 DEKH KE REVIEW (owner: "GO 3")
+Gap 3 from "IS ALL HOOLA CODE WORK DONE": PR review was still one-shot (one model call over the diff), while coding jobs had
+explored step by step since v0.350. Built as 0.375 / 0.376, re-versioned past the parallel v0.375 SAB DAS DESK and v0.376.
+- `devsahayak/loop.py` `review_run` + `REVIEW_TOOLS` + `REVIEW_SYSTEM`:
+  - the repo opens at the PR's head commit with read-only tools only (list_dir, search_code, read_file, find_usages);
+    edit / new / any other tool is refused;
+  - the project's rules come first (`_project_rules`, v0.356);
+  - the brief: read the whole changed file, find_usages of anything whose name / arguments / return changed (a caller the
+    PR did not update is a real bug), check a test covers the change, no style nitpicks or praise;
+  - `comment(path, line, body, severity)` accepts only lines the PR ADDED. Otherwise it answers "not a line this PR added.
+    Its added lines: 1, 5" or "not changed by this PR. Changed files: ...". At most 30 comments;
+  - `done(summary, verdict)`. PR text, diff and files are DATA; a PR asking to be approved is flagged, never obeyed.
+  - 25 steps / 10 min (`dev_review_steps`, `dev_review_minutes`).
+- `service.review`:
+  - uses the loop when the dev loop is on;
+  - an added-lines map (not the context lines) bounds the comments;
+  - the summary ends with "Explored before reviewing: N files read, M code / caller searches, K steps";
+  - a missing key, a GitHub read error or any loop failure falls back to the one-shot review, so a review never fails
+    because of the exploring step;
+  - the automatic secret / OWASP findings, the draft card, the hash, the stale-commit check and posting only on her tap
+    (APPROVE never automatic) are unchanged.
+- Tests `test_v0377_dekh_ke_review.py`:
+  - a review finds the caller the PR forgot via find_usages, is refused on a context line, another file and edit_file,
+    leaves one inline comment, ends request_changes as a draft (nothing posted), and sees the PR's "approve this" as data;
+  - the one-shot fallback still works; the step cap stops it with what it has.
+
+## v0.378.0 MOBILE CARD (owner: "GO 4")
+Gap 4 from "IS ALL HOOLA CODE WORK DONE": the coding cards only measured Python and JavaScript. Set 3 measures the two
+languages Hoola's own app is written in: Dart (Flutter) and Kotlin (Android).
+- `quality/code_tasks3.py`: two practice projects (2 at a time, 40 steps / 8 min a job).
+  - KHATA (Dart 3, 15 files): a Flutter app's logic layer (models, money, immutable CartState, JSON parsing, offline
+    Outbox, format, receipt, Hinglish labels). AGENTS.md: no packages / dart:io, relative imports, int paise, immutable
+    state, never trust server JSON. Tests are plain Dart with the project's own harness (check / expectEq / finish), so
+    no pub.dev is needed.
+  - DUKAAN-KT (Kotlin 2 / JVM, 11 files): an Android app's domain layer (Config, data classes, money, CustomerBook,
+    orders, FIFO Outbox, receipt). AGENTS.md: stdlib only, Long paise, no `!!`, immutable data classes, settings in
+    Config, @Deprecated(ReplaceWith) alias on renames. Tests are `fun main()` with the harness.
+  - 10 jobs:
+    - Dart: JSON crash on a missing / text price; mutated cart state (screen does not rebuild, undo changes); duplicate
+      order on retry (cid dedupe); formatInr with Indian grouping; discount across model + total + receipt + labels.
+    - Kotlin: half-up rounding; NullPointerException on a deleted customer (`!!` forbidden); outbox sends newest first;
+      COD fee across Config / Order / placeOrder / receipt; rename formatPaise -> formatRupees with a @Deprecated alias.
+- `codecard.py`:
+  - `_seq` runs compile + run steps in one temp folder (no address-space cap for the Dart VM / JVM, CPU 60 / 120 s, file
+    and time caps, no secrets in the environment);
+  - Dart = `dart <file>`. Kotlin = kotlinc (the check compiles with src/ only, so a broken test never hides the code),
+    then `java -Xmx256m -cp out.jar:kotlin-stdlib <pkg>.<File>Kt`;
+  - test files `test/*_test.dart` / `test/*Test.kt` with check(;
+  - UNSAFE_DART (dart:io / ffi / Process / File...) and UNSAFE_KT (ProcessBuilder / java.net / java.io.File /
+    System.exit / getenv...) are never run;
+  - `tool_ok(lang)`: a job without its toolchain is SKIPPED; `--set 3`.
+- `quality/sdk.py`:
+  - finds dart / kotlinc / java in CODECARD_SDK (default ~/apps/codecard-sdk) or on PATH;
+  - `setup()` downloads only what is missing from official sources (Dart 3.13.7 from Google's archive, Kotlin 2.2.20
+    from JetBrains' GitHub release, Temurin 21 JRE via Adoptium only when there is no java), zip entries kept inside the
+    folder;
+  - `python -m app.quality sdk [--setup]`.
+- vps-ops `code_card_mobile`: sdk --setup (once, ~330 MB) then `code --set 3`; the job limit is now 25 min (was 15).
+- Verified here with the real SDKs: all 10 reference answers right, all 10 untouched projects fail, every fix test proves
+  its bug, a `!!` in a working fix fails the rules mark, a rename without the alias fails.
+- Tests `test_v0378_mobile_card.py`: toolchain tests skip without an SDK (5 pass / 12 skip); with one, all pass.
+## v0.379.0 HOOLA CAD ANALYSIS (built as 0.375) (1 Nov 2026)
 Owner, on the 8 gaps listed after v0.364: "MAKE IT VERY FUCTIONAL FOR HOOLA AI - DO DEEP RESEARCH AND INNOVATION".
 What each gap became (all in `server/app/engineering/`, tests `tests/test_v0365_cad_analysis.py`, 14 + the 16 desk tests):
 - FEA (`fea.py`, run by `analysis_runner.py` in the same locked box via `sandbox.analyse`): mesh from the part's OWN

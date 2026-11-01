@@ -22,10 +22,48 @@ _DO_ACTIONS = ["connect", "disconnect", "endpoint", "project", "project_update",
                # v0.363 the real thing: read and write against her live system
                "read", "describe", "soql", "plan_write", "dry_run", "approve", "execute", "run_status",
                "runs", "rollback_plan",
-               # v0.373 the TPM's own sums - arithmetic on rows, never guessed by the model
-               "critical_path", "capacity", "metrics", "raid", "readiness", "chase"]
+               # the sums: arithmetic on rows, never guessed by the model. Which ones a job gets is in SUMS.
+               "critical_path", "capacity", "metrics", "raid", "readiness", "chase",
+               "reorder", "dead_stock", "bom", "where_used", "reconcile", "due_calendar"]
 _SEE_WHAT = ["day", "jobs", "systems", "endpoints", "runs", "run", "projects", "papers", "paper",
              "items", "settings", "rules"]
+
+
+# Which job gets which sums, and the one-line help each adds to its own tool description. A job that is not here
+# has no sums - the enterprise jobs whose work is judgement, not arithmetic.
+SUMS: dict[str, tuple[str, ...]] = {
+    "tpm": ("critical_path", "capacity", "metrics", "raid", "readiness", "chase"),
+    "supply_opt": ("reorder", "dead_stock"),
+    "plm": ("bom", "where_used"),
+    "bank_int": ("reconcile",),
+    "regtech": ("due_calendar",),
+}
+
+SUMS_HELP: dict[str, str] = {
+    "tpm": ("action=critical_path: rows [{id, title, days, depends_on[], status, owner}] -> the longest chain, "
+            "and a REFUSAL if the dependencies form a loop. action=capacity: rows [{owner, days, status}], "
+            "days_available, per_owner -> who is over-committed and by how many days. action=metrics: rows "
+            "[{created, started, done, escaped}], committed -> MEDIAN lead / cycle time, escaped, say-do %. "
+            "action=raid: rows [{id, owner, due, severity, status, updated}], today, stale_days. "
+            "action=readiness: gates [{name, ok, note, blocking}] -> go / no-go with failures NAMED. "
+            "action=chase: rows [{id, owner, updated, status}], today, quiet_days."),
+    "supply_opt": ("action=reorder: rows [{sku, sold, days, on_hand, lead_days, unit_cost, sold_daily[]}], "
+                   "service_level 80|85|90|95|97|99, days_of_history -> reorder point, safety stock, what to "
+                   "order NOW and the stockout date. Under 14 days of history it REFUSES rather than give a "
+                   "number nobody should trust. action=dead_stock: rows [{sku, on_hand, unit_cost, last_sold, "
+                   "sold}], days -> where the money is sitting still."),
+    "plm": ("action=bom: rows [{parent, child, qty, unit_cost}], top, qty -> the flattened BOM, every part's "
+            "total quantity, and the cost rolled up from the leaves; a BOM loop is REFUSED, and parts with no "
+            "price are listed rather than silently counted as free. action=where_used: rows [{parent, child}], "
+            "part -> every assembly a part ends up in, which is what a change order really asks."),
+    "bank_int": ("action=reconcile: statement [{amount, date, ref, desc}], ledger [...], days, paise -> what "
+                 "matched (by reference first, then amount AND a date inside the window - amount alone is how "
+                 "reconciliations go wrong), what is only in the bank, what is only in the books, and the "
+                 "difference. Each line is used once."),
+    "regtech": ("action=due_calendar: rows [{name, due, owner, status, penalty_per_day, penalty_flat, rule}], "
+                "today, ahead -> late, coming up, done, and the exposure - computed ONLY from penalty figures "
+                "she gave. A filing with no figure is listed late with the amount blank, never a guessed fine."),
+}
 
 
 def _do_description(key: str, spec: dict[str, Any]) -> str:
@@ -54,18 +92,9 @@ def _do_description(key: str, spec: dict[str, Any]) -> str:
          f"Delete is refused at any size. Over {MAX_ROWS} rows in one go is refused - split it. A production write "
          f"needs confirm_env='production' as well as her tap. action=endpoint (owner only): her own system's "
          f"address when Composio does not carry it - the credential is typed in the APP, never here.")
-    if key == "tpm":
-        d += (" --- THE SUMS, DONE IN CODE (never work these out yourself: a wrong critical path looks exactly "
-              "as confident as a right one) --- action=critical_path: rows [{id, title, days, depends_on[], "
-              "status, owner}] -> the longest chain, what is on it, and a REFUSAL if the dependencies form a "
-              "loop. action=capacity: rows [{owner, days, status}], days_available, per_owner {name: days} -> "
-              "who is over-committed and by how many days. action=metrics: rows [{created, started, done, "
-              "escaped}], committed -> MEDIAN lead and cycle time, escaped bugs, say-do %. action=raid: rows "
-              "[{id, title, owner, due, severity, status, updated}], today, stale_days -> overdue, gone quiet, "
-              "unowned, high-and-open. action=readiness: gates [{name, ok, note, blocking}] -> go / no-go with "
-              "the failing gates NAMED. action=chase: rows [{id, owner, updated, status}], today, quiet_days -> "
-              "who owes an update. Rows come from a tracker read, a sheet, or her paste - the sums work either "
-              "way.")
+    if SUMS.get(key):
+        d += (" --- THE SUMS, DONE IN CODE (never work these out yourself: a wrong number looks exactly as "
+              "confident as a right one) --- " + SUMS_HELP[key])
     js = R.jobs_of(key)
     if js:
         d += (" Is desk ke hisse (action=draft mein `job`): "
@@ -111,6 +140,11 @@ for _key, _spec in R.ROLES.items():
             "committed": {"type": "integer"}, "today": {"type": "string"},
             "stale_days": {"type": "integer"}, "quiet_days": {"type": "integer"},
             "gates": {"type": "array", "items": {"type": "object"}},
+            "service_level": {"type": "integer"}, "days_of_history": {"type": "integer"},
+            "top": {"type": "string"}, "part": {"type": "string"}, "qty": {"type": "number"},
+            "statement": {"type": "array", "items": {"type": "object"}},
+            "ledger": {"type": "array", "items": {"type": "object"}},
+            "paise": {"type": "boolean"}, "ahead": {"type": "integer"},
             "header_name": {"type": "string"}},
             "required": ["action"]}})
     ENTERPRISE_TOOLS.append({
@@ -130,6 +164,10 @@ ENTERPRISE_READ_TOOLS = tuple(k + "_dekho" for k in R.ROLES)
 
 def _s(v: Any) -> str:
     return "" if v is None else str(v)
+
+
+def rows_in(a: dict[str, Any]) -> list[Any]:
+    return a.get("rows") if isinstance(a.get("rows"), list) else []
 
 
 def _owner(ctx: Ctx) -> bool:
@@ -175,9 +213,31 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
                               _s(a.get("owner")), _s(a.get("due")), _s(a.get("severity")), a.get("rupaye"),
                               _s(a.get("project")), _s(a.get("source")))
         # ---- the TPM's sums: arithmetic on rows, in code (enterprise/tpm.py)
-        if action in ("critical_path", "capacity", "metrics", "raid", "readiness", "chase"):
+        if action in ("critical_path", "capacity", "metrics", "raid", "readiness", "chase",
+                      "reorder", "dead_stock", "bom", "where_used", "reconcile", "due_calendar"):
+            if action not in SUMS.get(role, ()):
+                raise ToolError(f"'{action}' is kaam ka hisaab nahi hai.")
+            from ..enterprise import calc as CALC
             from ..enterprise import tpm as TPM
-            rows = a.get("rows") if isinstance(a.get("rows"), list) else []
+            try:
+                if action == "reorder":
+                    return CALC.reorder(rows_in(a), int(a.get("service_level") or 95),
+                                        int(a.get("days_of_history") or 0))
+                if action == "dead_stock":
+                    return CALC.dead_stock(rows_in(a), int(a.get("days") or 90))
+                if action == "bom":
+                    return CALC.bom_explode(rows_in(a), _s(a.get("top")), float(a.get("qty") or 1))
+                if action == "where_used":
+                    return CALC.where_used(rows_in(a), _s(a.get("part")))
+                if action == "reconcile":
+                    stt = a.get("statement") if isinstance(a.get("statement"), list) else []
+                    lgr = a.get("ledger") if isinstance(a.get("ledger"), list) else []
+                    return CALC.reconcile(stt, lgr, int(a.get("days") or 3), bool(a.get("paise")))
+                if action == "due_calendar":
+                    return CALC.due_calendar(rows_in(a), _s(a.get("today")), int(a.get("ahead") or 30))
+            except CALC.CalcError as ex:
+                raise ToolError(str(ex))
+            rows = rows_in(a)
             try:
                 if action == "critical_path":
                     return TPM.critical_path(rows)

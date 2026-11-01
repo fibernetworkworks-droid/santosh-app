@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     dev_loop: bool = True                   # v0.350 Developer Sahayak explores + edits step by step with 8 tools (devsahayak/loop.py)
     dev_loop_steps: int = 40                # ... at most this many model steps a task
     dev_loop_minutes: int = 20              # ... and this many minutes
+    dev_review_steps: int = 25              # v0.377 a PR review explores at most this many steps (read-only tools)
+    dev_review_minutes: int = 10            # ... and this many minutes, then the one-shot review is the fallback
     dev_loop_model: str = ""                 # ... '' = site_model (Opus)
     dev_loop_effort: str = "high"           # ... Claude effort for coding
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge

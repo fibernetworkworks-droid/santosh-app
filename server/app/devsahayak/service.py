@@ -1099,10 +1099,12 @@ def review(tenant: str, repo: str, pr_number: int, conv: str = "") -> dict[str, 
         raise DevError(f"PR #{pr_number} khula nahi hai.")
     head = str((pr.get("head") or {}).get("sha") or "")
     findings, diff_parts, valid = [], [], {}
+    added_lines: dict[str, set[int]] = {}           # v0.377 the review loop comments on ADDED lines only
     for f in files[:60]:
         path, patch = str(f.get("filename") or ""), str(f.get("patch") or "")
         valid[path] = R.patch_lines(patch)
         added = R.patch_added(patch)
+        added_lines[path] = {ln for ln, _ in added}
         for ln, txt in added:
             for sec in R.secrets_in(txt):
                 findings.append({"path": path, "line": ln, "severity": "high", "id": "secret",
@@ -1119,10 +1121,36 @@ def review(tenant: str, repo: str, pr_number: int, conv: str = "") -> dict[str, 
               + (f"Team coding rules: {cfg.rules}\n\n" if cfg.rules else "")
               + "Automatic findings already found (don't repeat them): " + json.dumps(findings[:20], ensure_ascii=False) + "\n\n"
               + "\n\n".join(diff_parts))
-    try:
-        out = model_json(REVIEW_SYSTEM, prompt[:150000], 6000)
-    except DevError:
-        out = {}
+    out: dict[str, Any] = {}
+    explored = ""
+    if _loop_on() and head:
+        # v0.377 DEKH KE REVIEW: explore the repo at the PR head first (callers, tests, whole files) with read-only tools,
+        # then comment only on added lines; anything that stops the loop falls back to the one-shot review below
+        from . import loop as L
+        pr_text = (f"<pr>\nRepo {r.full_name} PR #{pr_number}: {pr.get('title')}\nBy: {(pr.get('user') or {}).get('login')}\n"
+                   f"{body_txt}\n</pr>")
+        try:
+            out = L.review_run(g, r.full_name, head, pr_text, "\n\n".join(diff_parts), added_lines, cfg.rules,
+                               json.dumps(findings[:20], ensure_ascii=False) if findings else "",
+                               max_steps=_setting("dev_review_steps", 25),
+                               minutes=float(_setting("dev_review_minutes", 10)))
+            lp = out.get("loop") or {}
+            n_read, n_look = len(lp.get("read") or []), int(lp.get("lookups") or 0)
+            explored = (f"\n\n_Explored before reviewing: {n_read} file{'' if n_read == 1 else 's'} read, "
+                        f"{n_look} code / caller search{'' if n_look == 1 else 'es'}, {lp.get('steps', 0)} steps._")
+        except (L.LoopUnavailable, GhError) as e:   # exploring is extra: a review never fails because of it
+            L.STATS["fallback"] += 1
+            log.info("review loop unavailable (%s): one-shot review", e)
+            out = {}
+        except Exception:
+            L.STATS["fallback"] += 1
+            log.exception("review loop failed: one-shot review")
+            out = {}
+    if not out:
+        try:
+            out = model_json(REVIEW_SYSTEM, prompt[:150000], 6000)
+        except DevError:
+            out = {}
     comments = []
     for c in (out.get("comments") or [])[:30]:
         if not isinstance(c, dict):
@@ -1136,7 +1164,7 @@ def review(tenant: str, repo: str, pr_number: int, conv: str = "") -> dict[str, 
     for f in findings[:20]:
         comments.append({"path": f["path"], "line": f["line"], "body": f"[Hoola check] {f['say']}", "severity": f["severity"],
                          "inline": bool(f["path"] in valid and f["line"] in valid[f["path"]])})
-    summary = str(out.get("summary") or "").strip()[:6000] or (
+    summary = (str(out.get("summary") or "").strip()[:6000] + explored if out.get("summary") else "") or (
         f"Automatic checks: {len(findings)} note(s). (Model ka review nahi mil paya; sirf code ke niyam se jaancha.)")
     suggest = "REQUEST_CHANGES" if (out.get("verdict") == "request_changes" or any(f["severity"] == "high" for f in findings)) else "COMMENT"
     with session() as s:
