@@ -2261,6 +2261,9 @@ body.albon{overflow:hidden}
 .sc-quiet input{width:64px;margin-left:6px;padding:4px 8px;border:1px solid var(--hair);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}
 .sc-stop{color:var(--bad)}
 .sc-h{margin-top:14px}
+.sc-growth .grid2{margin-top:6px}
+.sc-watch{margin-top:10px}
+.sc-ugc .em-meta a{margin-left:auto;font-size:13px}
 .sc-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px}
 .sc-tabs .sc-n{font-variant-numeric:tabular-nums;opacity:.8}
 .sc-items{display:grid;gap:10px}

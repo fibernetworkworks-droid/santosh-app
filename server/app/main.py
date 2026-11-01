@@ -6972,6 +6972,40 @@ def social_settings(body: dict, tenant: str = Depends(current_tenant)):
                         reason=str(b.get("reason") or ""))
 
 
+@app.post("/api/social/growth/watch", dependencies=[Depends(require_key)])
+def social_growth_watch(body: dict, tenant: str = Depends(current_tenant)):
+    """v0.370 the hashtags (<= 5) and competitor usernames (<= 5) she watches."""
+    from .social import growth
+    b = body or {}
+    return _social_call(growth.set_watch, tenant, hashtags=b.get("hashtags") if isinstance(b.get("hashtags"), list) else None,
+                        competitors=b.get("competitors") if isinstance(b.get("competitors"), list) else None)
+
+
+@app.post("/api/social/ugc/{uid}/{action}", dependencies=[Depends(require_key)])
+async def social_ugc_action(uid: str, action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """v0.370 a customer's post that tags her: ask (a polite comment from her account) | permission {granted, proof} |
+    repost (credited calendar draft, only after a recorded yes) | ignore."""
+    from .social import growth
+    b = body or {}
+    if action == "ask":
+        return await asyncio.to_thread(_social_call, growth.ugc_ask, tenant, uid, str(b.get("text") or ""))
+    if action == "permission":
+        return _social_call(growth.ugc_permission, tenant, uid, b.get("granted") is True, str(b.get("proof") or ""))
+    if action == "repost":
+        return await asyncio.to_thread(_social_call, growth.ugc_repost, tenant, uid)
+    if action == "ignore":
+        return _social_call(growth.ugc_ignore, tenant, uid)
+    raise HTTPException(404, "action: ask | permission | repost | ignore")
+
+
+@app.post("/api/social/creator/check", dependencies=[Depends(require_key)])
+async def social_creator_check(body: dict, tenant: str = Depends(current_tenant)):
+    """v0.370 a creator / business handle's public numbers + fake-follower signals (+ the ASCI #ad check of a caption)."""
+    from .social import growth
+    b = body or {}
+    return await asyncio.to_thread(_social_call, growth.creator_check, tenant, str(b.get("username") or ""), str(b.get("caption") or ""))
+
+
 @app.get("/api/social/inbox", dependencies=[Depends(require_key)])
 def social_inbox_view(box: str = "needs", tenant: str = Depends(current_tenant)):
     """v0.368 her comments + DMs: needs (waiting for her) | leads | complaints | done."""
@@ -7009,8 +7043,8 @@ def social_run(job: str, tenant: str = Depends(current_tenant)):
     import threading
     from .employee import hire
     from .social import desk as social
-    if job not in ("first", "hourly", "daily", "weekly", "plan", "publish", "inbox", "morning", "monthly"):
-        raise HTTPException(404, "job: first | hourly | daily | weekly | plan | publish | inbox | morning | monthly")
+    if job not in ("first", "hourly", "daily", "weekly", "plan", "publish", "inbox", "morning", "monthly", "growth"):
+        raise HTTPException(404, "job: first | hourly | daily | weekly | plan | publish | inbox | morning | monthly | growth")
     if not hire.is_hired(tenant, social.KEY):
         raise HTTPException(400, "Social Media Manager abhi hired nahi hai.")
     if not social.accounts(tenant):

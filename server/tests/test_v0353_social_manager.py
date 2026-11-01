@@ -276,7 +276,7 @@ def test_scheduler_runs_jobs_on_her_clock(social):
     D.finish_link("instagram", "IGCODE", _state_from(D.connect_url(T, "instagram")), background=False)
     ist = timezone(timedelta(hours=5, minutes=30))
     monday9 = datetime(2026, 11, 2, 9, 30, tzinfo=ist)
-    jobs = {"publish", "inbox", "hourly", "daily", "weekly", "morning"}    # v0.355 publish, v0.358 inbox, v0.359 morning
+    jobs = {"publish", "inbox", "hourly", "daily", "weekly", "morning", "growth"}   # + v0.369 morning, v0.370 growth
     assert set(D.due_jobs(T, monday9)) == jobs
     done = D.run_due(at=monday9, force=True)
     assert {j for _, j in done} == jobs

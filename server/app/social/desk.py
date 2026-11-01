@@ -119,6 +119,7 @@ class SocialPost(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hook_style: Mapped[str | None] = mapped_column(String(12), nullable=True)   # v0.370 question | number | story | offer
     seen: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.369 1 = she OK'd this post itself, 0 = only via the plan
 
 
@@ -537,7 +538,8 @@ PLAN_FIELDS = ('Reply JSON: {"pillars": [{"name": "...", "why": "one line"}], "r
                '"hashtags": ["#..."], "best_hours": [hour 0-23], "posts": [{"date": "YYYY-MM-DD", "time": "HH:MM", '
                '"platforms": ["instagram","facebook"], "format": "reel|carousel|image|story", "pillar": "...", '
                '"hook": "...", "caption": "...", "hashtags": ["#..."], "visual": "brief", "cta": "...", '
-               '"occasion": "festival or empty"}]}')
+               '"occasion": "festival or empty", "hook_style": "question|number|story|offer"}]}. Rotate hook_style '
+               'across the month (A/B test); lean on the winning style in "ab" when one is named.')
 
 PILLARS_DEFAULT = [("Our work", "Show the product / service in action - what customers actually get."),
                    ("Tips & how-to", "Useful, saveable advice from her expertise."),
@@ -573,7 +575,16 @@ def _plan_inputs(tenant: str) -> dict[str, Any]:
     return {"business": prof, "baseline": {k: base.get(k) for k in ("followers", "posts_30d", "avg_reach", "eng_rate", "formats",
                                                                      "best_hours", "best_days", "top_posts")},
             "facts": facts[:20] if isinstance(facts, list) else [], "start": start.isoformat(), "days": 30,
-            "occasions": _occasions(tenant, start), "best_times": _best_times(tenant)}
+            "occasions": _occasions(tenant, start), "best_times": _best_times(tenant), "ab": _ab(tenant)}
+
+
+def _ab(tenant: str) -> dict[str, Any]:
+    try:
+        from .growth import ab_report
+        r = ab_report(tenant)
+        return {"winner": r["winner"], "styles": r["styles"][:4]}
+    except Exception:            # noqa: BLE001
+        return {}
 
 
 def _best_times(tenant: str) -> dict[str, Any]:
@@ -612,7 +623,11 @@ def _rules_plan(inp: dict[str, Any]) -> dict[str, Any]:
         bt = inp.get("best_times") or {}
         h = (bt.get("by_day") or {}).get(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.weekday()]) \
             if bt.get("sure") in ("medium", "high") else None
-        posts.append({"date": dt.isoformat(), "time": f"{h if h is not None else hours[k % len(hours)]:02d}:00",
+        styles = ["question", "number", "story"]
+        win = (inp.get("ab") or {}).get("winner")
+        style = win if win and k % 2 == 0 else styles[k % 3]
+        posts.append({"hook_style": "" if occ else style,
+                      "date": dt.isoformat(), "time": f"{h if h is not None else hours[k % len(hours)]:02d}:00",
                       "platforms": ["instagram", "facebook"],
                       "format": fmt, "pillar": name, "hook": hook,
                       "caption": f"{hook}\n\n{why}\n\n{biz}{', ' + city if city else ''}. Details ke liye DM ya WhatsApp kijiye.",
@@ -641,6 +656,7 @@ def _clean_plan(raw: Any, inp: dict[str, Any]) -> dict[str, Any] | None:
         tags = [("#" + str(h).lstrip("#")).replace(" ", "")[:40] for h in (p.get("hashtags") or [])][:10]
         posts.append({"date": d, "time": t, "platforms": plats, "format": p.get("format") if p.get("format") in FORMATS else "image",
                       "pillar": str(p.get("pillar") or "")[:60], "hook": str(p.get("hook") or "")[:200],
+                      "hook_style": p.get("hook_style") if p.get("hook_style") in ("question", "number", "story", "offer") else "",
                       "caption": str(p.get("caption") or "")[:2200], "hashtags": tags, "visual": str(p.get("visual") or "")[:400],
                       "cta": str(p.get("cta") or "")[:160], "occasion": str(p.get("occasion") or "")[:80], "language": lang})
     if len(posts) < 6:
@@ -683,7 +699,8 @@ def build_plan(tenant: str, ask: Any = None) -> dict[str, Any]:
             s.add(SocialPost(tenant_id=tenant, slot=f"{p['date']}T{p['time']}", platforms=",".join(p["platforms"]), fmt=p["format"],
                              pillar=p["pillar"], hook=p["hook"], caption=p["caption"],
                              hashtags=json.dumps(p["hashtags"], ensure_ascii=False), visual=p["visual"], cta=p["cta"],
-                             language=p.get("language", ""), occasion=p.get("occasion", ""), status="draft", source=source))
+                             language=p.get("language", ""), occasion=p.get("occasion", ""), status="draft", source=source,
+                             hook_style=p.get("hook_style") or None))
         d = _desk(s, tenant)
         d.strategy = json.dumps({k: v for k, v in plan.items() if k != "posts"} | {"source": source}, ensure_ascii=False)
         if d.calendar_status != "approved":
@@ -922,6 +939,7 @@ def schedule_view(stamps: dict[str, str]) -> list[dict[str, str]]:
             {"job": "Read comments + DMs, draft / send replies", "every": "Every 15 minutes", "last": stamps.get("inbox", "")},
             {"job": "Check connections, renew Instagram tokens", "every": "Every hour", "last": stamps.get("hourly", "")},
             {"job": "Fresh numbers for your recent posts", "every": "Every day, 7 am", "last": stamps.get("daily", "")},
+            {"job": "Posts that tag you; hashtags + competitors on Mondays", "every": "Every day, 8 am", "last": stamps.get("growth", "")},
             {"job": "Morning note (only when something needs you)", "every": "Every day, 9 am", "last": stamps.get("morning", "")},
             {"job": "Weekly pulse in your chat", "every": "Every Monday", "last": stamps.get("weekly", "")},
             {"job": "Monthly PDF report", "every": "1st of the month", "last": stamps.get("monthly", "")}]
@@ -946,7 +964,13 @@ def desk_view(tenant: str) -> dict[str, Any]:
     return {"hired": True, "status": st, "trust": trust, "onboarded": bool(prof), "profile": prof or profile_defaults(tenant),
             "connect": {p: M.configured(p) for p in PLATFORMS}, "accounts": accounts(tenant), **info,
             "kpis": kpis(info["baseline"], info["latest"]), "calendar": calendar(tenant), "events": events,
-            "schedule": schedule_view(info["stamps"]), "inbox": _inbox_counts(tenant), "pulse": _pulse_view(tenant)}
+            "schedule": schedule_view(info["stamps"]), "inbox": _inbox_counts(tenant), "pulse": _pulse_view(tenant),
+            "growth": _growth_view(tenant)}
+
+
+def _growth_view(tenant: str) -> dict[str, Any]:
+    from .growth import view
+    return view(tenant)
 
 
 def _pulse_view(tenant: str) -> dict[str, Any]:
@@ -983,6 +1007,8 @@ def due_jobs(tenant: str, at: datetime | None = None) -> list[str]:
     wk = f"{local.isocalendar()[0]}-W{local.isocalendar()[1]}"
     if state == "ready" and local.weekday() == 0 and local.hour >= 9 and stamps.get("weekly_key") != wk:
         out.append("weekly")
+    if state == "ready" and local.hour >= 8 and stamps.get("growth", "")[:10] != local.date().isoformat():
+        out.append("growth")                           # v0.370 tags daily, hashtags + competitors on Mondays
     if state == "ready" and local.hour >= 9 and stamps.get("morning", "")[:10] != local.date().isoformat():
         out.append("morning")                          # v0.369
     mk = local.strftime("%Y-%m")
@@ -996,11 +1022,13 @@ def run_job(tenant: str, job: str, at: datetime | None = None) -> dict[str, Any]
     local = (at or datetime.now(tz_of(tenant))).astimezone(tz_of(tenant))
     from .inbox import run_inbox
     from .publish import run_publisher
+    from .growth import listen
     from .pulse import monthly_report, morning, weekly_pulse
     fn = {"first": first_run, "hourly": watch, "daily": _daily_and_boosts, "weekly": weekly_pulse, "plan": build_plan,
-          "publish": run_publisher, "inbox": run_inbox, "morning": morning, "monthly": monthly_report}.get(job)
+          "publish": run_publisher, "inbox": run_inbox, "morning": morning, "monthly": monthly_report,
+          "growth": listen}.get(job)
     if fn is None:
-        raise SocialError("job: first | hourly | daily | weekly | plan | publish | inbox | morning | monthly")
+        raise SocialError("job: first | hourly | daily | weekly | plan | publish | inbox | morning | monthly | growth")
     res = fn(tenant)
     with session() as s:
         d = _desk(s, tenant)
