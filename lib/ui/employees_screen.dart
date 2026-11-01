@@ -705,7 +705,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
   Map<String, dynamic>? _d;
   bool _busy = false;
   Timer? _poll;
-  static const _plat = {'instagram': 'Instagram', 'facebook': 'Facebook Page'};
+  static const _plat = {'instagram': 'Instagram', 'facebook': 'Facebook Page', 'linkedin': 'LinkedIn', 'whatsapp': 'WhatsApp Business'};
 
   @override
   void initState() {
@@ -1027,6 +1027,17 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
               child: const Text('Copy caption'),
             ),
             TextButton(onPressed: _busy ? null : () => _addPhoto(_s(p['id'])), child: const Text('Add photo')),
+            if (_list(_d?['accounts']).any((a) => _s(a['platform']) == 'linkedin' && _s(a['status']) == 'ok'))
+              TextButton(
+                onPressed: _busy ? null : () {
+                  final pl = ((p['platforms'] as List?) ?? const []).map((e) => '$e').toList();
+                  final on = pl.contains('linkedin');
+                  final next = on ? pl.where((x) => x != 'linkedin').toList() : [...pl, 'linkedin'];
+                  _call(() => widget.app.api!.socialPost(_s(p['id']), {'platforms': next}),
+                      on ? 'LinkedIn removed. Approve the post again.' : 'Added to LinkedIn. Approve the post again.');
+                },
+                child: Text(((p['platforms'] as List?) ?? const []).contains('linkedin') ? 'Remove LinkedIn' : 'Also on LinkedIn'),
+              ),
             TextButton(
                 onPressed: _busy ? null : () => _call(() => widget.app.api!.socialPoster(_s(p['id'])), 'Poster made from your Brand kit.'),
                 child: const Text('Make poster')),
@@ -1086,7 +1097,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.account_circle_rounded),
                 title: Text(_s(a['handle']).isEmpty ? _s(a['name']) : _s(a['handle'])),
-                subtitle: Text('${_plat[_s(a['platform'])] ?? _s(a['platform'])} · ${_num(a['followers'])} followers'
+                subtitle: Text('${_plat[_s(a['platform'])] ?? _s(a['platform'])} · ${_s(a['platform']) == 'whatsapp' ? 'messages reach your Business inbox' : _s(a['platform']) == 'linkedin' ? 'your profile' : '${_num(a['followers'])} followers'}'
                     '${_s(a['status']) == 'ok' ? '' : ' · connection ended, connect again'}'
                     '${_s(a['status']) == 'ok' && (a['can_post'] == false || a['can_reply'] == false) ? ' · Connect again to allow posting and replies' : ''}'),
                 trailing: TextButton(
@@ -1094,14 +1105,15 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
                     child: const Text('Disconnect')),
               ),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final p in ['instagram', 'facebook'])
+              for (final p in ['instagram', 'facebook', 'linkedin', 'whatsapp'])
                 OutlinedButton(
                   onPressed: conn[p] == true && !_busy ? () => _connect(p) : null,
                   child: Text(conn[p] == true ? 'Connect ${_plat[p]}' : '${_plat[p]}: not set up on the server yet'),
                 ),
             ]),
             const SizedBox(height: 6),
-            const Text('You log in on Instagram / Facebook\'s own page. Instagram must be a Business or Creator account.',
+            const Text('You log in on Instagram / Facebook / LinkedIn\'s own page. Instagram must be a Business or Creator account. '
+                'WhatsApp Business: Meta\'s own window connects your number; customers\' messages reach your Business inbox.',
                 style: TextStyle(color: C.muted, fontSize: 12)),
           ]),
         ),

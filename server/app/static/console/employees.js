@@ -239,8 +239,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   // ------------------------------------------------------------ v0.353 the Social Desk (Social Media Manager, Phase 1)
-  let SOC = null, SOCTRUST = 'seekh';
-  const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page'};
+  let SOC = null, SOCTRUST = 'seekh', HAS_LI = false;
+  const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page', linkedin: 'LinkedIn', whatsapp: 'WhatsApp Business'};   // v0.375
   const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};
   const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
   async function social(el) {
@@ -255,17 +255,20 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const accs = d.accounts || [], b = d.baseline || {}, stg = d.strategy || {}, cal = d.calendar || [];
     const pl = d.pulse || {}, pst = pl.settings || {};
     SOCTRUST = d.trust || 'seekh';
+    HAS_LI = (d.accounts || []).some(a => a.platform === 'linkedin' && a.status === 'ok');
     el.innerHTML = `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">${esc(d.profile.business || '')}${d.profile.city ? ' · ' + esc(d.profile.city) : ''}</span>
         ${accs.length ? tag(sc, sn) : tag('warn', 'Connect an account')} ${d.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[d.trust] || [d.trust])[0])}</span></div>
       <div class="tile gl"><div class="em-h"><h3>Accounts</h3><span class="muted em-small">You log in on Instagram / Facebook's own page. Hoola never sees your password.</span></div>
         <div class="sc-accs">${accs.map(a => `<div class="sc-acc">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : '<span class="sc-pic"></span>'}
-          <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)} · ${num(a.followers)} followers</span>
+          <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)}${a.platform === 'whatsapp' ? ' · ' + esc(a.name || '') + ' · messages reach your Business inbox' : a.platform === 'linkedin' ? ' · your profile' : ' · ' + num(a.followers) + ' followers'}</span>
+          ${a.platform === 'whatsapp' && a.error ? `<span class="warnc em-small">${esc(a.error)}</span>` : ''}
           ${a.status !== 'ok' ? `<span class="badc em-small">${esc(a.status === 'expired' ? 'Connection ended: connect again' : a.error || a.status)}</span>` : ''}
           ${a.status === 'ok' && (a.can_post === false || a.can_reply === false) ? '<span class="warnc em-small">Reconnect to allow posting and replies</span>' : ''}</div>
           <button class="btn soft" type="button" data-scoff="${esc(a.id)}">Disconnect</button></div>`).join('')}
-        <div class="sc-connect">${['instagram', 'facebook'].map(p => d.connect[p]
+        <div class="sc-connect">${['instagram', 'facebook', 'linkedin', 'whatsapp'].map(p => d.connect[p]
           ? `<button class="btn ${accs.some(a => a.platform === p) ? 'soft' : 'go'}" type="button" data-scon="${p}">${accs.some(a => a.platform === p) ? 'Reconnect' : 'Connect'} ${PLAT[p]}</button>`
-          : `<button class="btn soft" type="button" disabled title="The server needs Hoola's Meta app keys">${PLAT[p]}: not set up on the server yet</button>`).join('')}</div>
+          : `<button class="btn soft" type="button" disabled title="The server needs Hoola's ${p === 'linkedin' ? 'LinkedIn' : 'Meta'} app keys">${PLAT[p]}: not set up on the server yet</button>`).join('')}</div>
+        <p class="muted em-small">WhatsApp Business: Meta's own window connects your number; customers' messages then reach your Business inbox. LinkedIn: posts go to your own profile (a Company Page needs LinkedIn's approval first).</p>
         <p class="muted em-small">Instagram must be a Business or Creator account (free switch in Instagram settings). A post goes out only when you approve it or tap Publish now: exactly what you approved, at its time.</p></div>
       ${d.calendar_status === 'draft' && cal.length ? `<div class="tile gl em-note"><b>Your 30-day calendar is ready</b><span>${cal.length} posts planned from your real numbers. Read them below, edit any, then approve.</span>
         <button class="btn go" type="button" id="scApprove">Approve calendar</button></div>` : ''}
@@ -340,6 +343,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" data-sccopy="${esc(p.id)}">Copy caption</button><button class="btn soft" type="button" data-scedit="${esc(p.id)}">Edit</button>
         <label class="btn soft sc-up">Add photo / video<input type="file" accept="image/*,video/mp4,video/quicktime" data-scup="${esc(p.id)}" hidden></label>
         <button class="btn soft" type="button" data-scposter="${esc(p.id)}">Make poster</button>
+        ${HAS_LI ? `<button class="btn soft" type="button" data-scli="${esc(p.id)}" aria-pressed="${(p.platforms || []).includes('linkedin')}">${(p.platforms || []).includes('linkedin') ? 'Remove LinkedIn' : 'Also on LinkedIn'}</button>` : ''}
         ${needOk ? `<button class="btn go" type="button" data-scok="${esc(p.id)}">OK to post</button>` : ''}
         <button class="btn ${needOk ? 'soft' : 'go'}" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
   }
@@ -555,6 +559,13 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       b.disabled = true;
       try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}/publish`, {}); toast('Posting… the link appears here in a minute.'); setTimeout(() => social(el), 5000); }
       catch (e) { toast(e.message, true); b.disabled = false; }
+    }));
+    el.querySelectorAll('[data-scli]').forEach(b => b.addEventListener('click', async () => {
+      const p = (d.calendar || []).find(x => x.id === b.dataset.scli);
+      const on = (p.platforms || []).includes('linkedin');
+      const pl = on ? p.platforms.filter(x => x !== 'linkedin') : [...(p.platforms || []), 'linkedin'];
+      try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}`, {platforms: pl}); toast(on ? 'LinkedIn removed. Approve the post again.' : 'Added to LinkedIn. Approve the post again.'); social(el); }
+      catch (e) { toast(e.message, true); }
     }));
     el.querySelectorAll('[data-scok]').forEach(b => b.addEventListener('click', async () => {
       b.disabled = true;

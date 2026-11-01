@@ -6848,6 +6848,55 @@ async def social_facebook_callback(request: Request):
     return await _social_callback(request, "facebook")
 
 
+@app.get("/api/social/linkedin/callback")
+async def social_linkedin_callback(request: Request):
+    """v0.375 LinkedIn sends her back here (this exact URL is saved in Hoola's LinkedIn app as an authorized redirect)."""
+    from .social import desk as social
+    from .social import linkedin
+    q = request.query_params
+    if q.get("error"):
+        return _linked_page("LinkedIn", "social", None, q.get("error_description") or q.get("error") or "")
+    try:
+        v = await asyncio.to_thread(linkedin.finish, q.get("code", ""), q.get("state", ""))
+    except social.SocialError as e:
+        return _linked_page("LinkedIn", "social", None, str(e))
+    return _linked_page("LinkedIn", "social", ", ".join(v["accounts"]))
+
+
+@app.get("/api/social/whatsapp/start", response_class=HTMLResponse)
+def social_whatsapp_start(s: str = ""):
+    """v0.375 Hoola's page that opens Meta's WhatsApp Embedded Signup (Meta's JS SDK must run on Hoola's own domain)."""
+    from .db import MailLinkState, session as _sess
+    from .social import wabiz
+    with _sess() as ss:
+        row = ss.get(MailLinkState, s) if s else None
+        ok = row is not None and row.provider == "social_wh"
+    if not ok:
+        return _linked_page("WhatsApp Business", "social", None, "Yeh link purana ho gaya. Social Desk se dobara Connect dabaiye.")
+    return HTMLResponse(wabiz.start_page(s))
+
+
+@app.get("/api/social/whatsapp/es.js")
+def social_whatsapp_js():
+    from .social import wabiz
+    return Response(wabiz.ES_JS, media_type="application/javascript", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/social/whatsapp/finish")
+async def social_whatsapp_finish(body: dict):
+    """v0.375 the Embedded Signup page hands over Meta's one-time code + her WABA / number ids. The one-time state is the
+    proof it is her (it was made by her Connect tap, 30 minutes, single use)."""
+    from .social import desk as social
+    from .social import wabiz
+    from .social.meta import MetaError
+    b = body or {}
+    try:
+        return await asyncio.to_thread(wabiz.finish, str(b.get("state") or ""), str(b.get("code") or ""),
+                                       str(b.get("waba_id") or ""), str(b.get("phone_number_id") or ""))
+    except (social.SocialError, MetaError) as e:
+        raise HTTPException(400, str(e))
+
+
 @app.post("/api/social/meta/deletion")
 async def social_meta_deletion(request: Request):
     """Meta's data-deletion callback (and deauthorize): a person removed Hoola in their Facebook / Instagram settings -
@@ -6894,7 +6943,8 @@ def social_post_edit(pid: str, body: dict, tenant: str = Depends(current_tenant)
     from .social import desk as social
     b = body or {}
     return _social_call(social.set_post, tenant, pid, status=str(b.get("status") or ""), caption=b.get("caption"),
-                        hook=b.get("hook"), slot=b.get("slot"), hashtags=b.get("hashtags"))
+                        hook=b.get("hook"), slot=b.get("slot"), hashtags=b.get("hashtags"),
+                        platforms=b.get("platforms") if isinstance(b.get("platforms"), list) else None)
 
 
 @app.post("/api/social/media", dependencies=[Depends(require_key)])

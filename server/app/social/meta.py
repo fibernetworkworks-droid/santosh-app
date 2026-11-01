@@ -69,6 +69,10 @@ def configured(platform: str) -> bool:
         return base and bool(st.instagram_app_id and st.instagram_app_secret)
     if platform == "facebook":
         return base and bool(st.meta_app_id and st.meta_app_secret)
+    if platform == "whatsapp":                       # v0.375 Embedded Signup = the same Meta app + its WhatsApp configuration
+        return base and bool(st.meta_app_id and st.meta_app_secret and st.wa_es_config_id)
+    if platform == "linkedin":
+        return base and bool(st.linkedin_client_id and st.linkedin_client_secret)
     return False
 
 

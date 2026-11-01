@@ -241,6 +241,13 @@ def problems(p: SocialPost) -> list[str]:
             out.append(f"Instagram {HASHTAG_MAX} se zyada hashtag nahi leta.")
     if "facebook" in plats and not cap and not media:
         out.append("Facebook post khaali hai.")
+    if "linkedin" in plats:                            # v0.375 her LinkedIn profile: text + one photo
+        if "video" in kinds or p.fmt in ("reel", "story"):
+            out.append("LinkedIn par abhi sirf text + photo jaata hai: Reel / Story / video ke liye LinkedIn hataiye.")
+        if not cap.strip():
+            out.append("LinkedIn post ke liye likha hua text chahiye.")
+        if len(cap) > 3000:
+            out.append(f"Caption {len(cap)} akshar ka hai; LinkedIn 3000 tak leta hai.")
     if "[price]" in cap or "[" in cap and "]" in cap:
         out.append("Caption mein khaali jagah [ ] bachi hai: asli jaankari bhariye ya hata dijiye.")
     return out
@@ -250,6 +257,14 @@ def problems(p: SocialPost) -> list[str]:
 def _account(s, tenant: str, platform: str) -> SocialAccount | None:
     return s.scalars(select(SocialAccount).where(SocialAccount.tenant_id == tenant, SocialAccount.platform == platform,
                                                  SocialAccount.status == "ok").order_by(SocialAccount.connected_at)).first()
+
+
+def _to_linkedin(acc: SocialAccount, token: str, p: SocialPost) -> tuple[str, str]:
+    """v0.375 her LinkedIn profile: the caption (LinkedIn-escaped, 3 hashtags) + the first photo, from the stored file."""
+    from . import linkedin as LI
+    with session() as s:
+        paths = [a.path for a in (s.get(SocialAsset, m) for m in _j(p.media, [])) if a is not None and a.kind == "image"]
+    return LI.publish(acc, token, LI.text_of(p.caption or "", _j(p.hashtags, [])), paths[:1])
 
 
 def _to_instagram(acc: SocialAccount, token: str, p: SocialPost, urls: list[tuple[str, str]], cap: str) -> tuple[str, str]:
@@ -338,7 +353,10 @@ def publish_post(tenant: str, post_id: str, by_tap: bool = False) -> dict[str, A
             p = s.get(SocialPost, post_id)
             s.expunge(p)
         try:
-            pid, link = (_to_instagram if plat == "instagram" else _to_facebook)(acc, token, p, urls, caption_of(p))
+            if plat == "linkedin":
+                pid, link = _to_linkedin(acc, token, p)
+            else:
+                pid, link = (_to_instagram if plat == "instagram" else _to_facebook)(acc, token, p, urls, caption_of(p))
             results[plat] = {"id": pid, "link": link}
         except (M.MetaError, SocialError) as e:
             results[plat] = {"error": str(e)[:300]}
