@@ -41,6 +41,8 @@ from . import sitemap as SM
 from . import kit as K
 from . import media as M
 from . import shop as SH
+from . import blog as BL
+from . import code as CD
 from . import taxonomy as T
 from .models import Site, SiteLead, SiteVersion
 
@@ -688,6 +690,7 @@ def _after_job(site_id: str) -> None:
         r = _load(site_id)
     except SiteError:
         return
+    _blog_go_live(r)                             # v0.366 a post she said Haan to reaches her live address
     if site_id in _BUILD_AFTER:                  # v0.315 a grown site map builds its new pages
         _BUILD_AFTER.discard(site_id)
         _start(site_id, "build", note="site map")
@@ -711,7 +714,7 @@ def _after_job(site_id: str) -> None:
 def _start(site_id: str, job: str, **kw) -> bool:
     """Start a looks / build job. False = this site already has a job running (the caller queues or says so)."""
     fn = {"looks": make_looks, "build": run_build, "save": save_version, "translate": translate_job,
-          "sitemap": sitemap_job}[job]
+          "sitemap": sitemap_job, "code": code_job}[job]
     if _inline():
         fn(site_id, **kw)
         _after_job(site_id)
@@ -850,7 +853,8 @@ def _ctx(r: Site) -> dict[str, Any]:
             "logo_path": logo, "noindex": True,
             "ai_photos": any(p.get("ai") for p in _j(r.photos, [])),       # v0.292 the footer says so
             "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.301 photos always from here (launch too)
-            "alt": _alt(r),
+            "alts": _alts(r),                                                # v0.366 every extra language (was one)
+            "blog": _blog_ctx(r),                                            # v0.366 her published posts (newest first)
             "app": app_schema(r) or None,                                   # v0.305 the web app (account + staff pages)
             "kit_css": (look.get("kit") or {}).get("css", ""),              # v0.330 the site's design kit
             "shop": _shop_ctx(r),                                             # v0.351 her shop (None when off)
@@ -907,53 +911,105 @@ def app_api(r: Site) -> str:
     return f"{base}/api/site-app/{r.id}"
 
 
-def second_language(r: Site) -> str:
+def extra_languages(r: Site) -> list[str]:
+    """v0.366 the site's extra languages (after the first), each one we support, max LG.MAX_EXTRA."""
     langs = _j(r.languages, ["en"])
-    return langs[1] if len(langs) > 1 and langs[1] in LG.LANGS and langs[1] != langs[0] else ""
+    out: list[str] = []
+    for x in langs[1:]:
+        if x in LG.LANGS and x != langs[0] and x not in out:
+            out.append(x)
+    return out[:LG.MAX_EXTRA]
+
+
+def second_language(r: Site) -> str:
+    ex = extra_languages(r)
+    return ex[0] if ex else ""
+
+
+def _alts(r: Site) -> list[dict[str, Any]]:
+    """v0.301 / v0.366 each extra language for build.assemble (translated sections where they exist, else the source)."""
+    first = _j(r.languages, ["en"])[0]
+    out = []
+    for lang in extra_languages(r):
+        secs, plan2 = LG.alt_site(r.tenant_id, r.id, lang, _sections(r), _j(r.plan, {}))
+        out.append({"lang": lang, "label": LG.LANGS[lang], "back": LG.LANGS.get(first, "English"), "sections": secs,
+                    "plan": plan2, "blog": _blog_ctx(r, lang)})
+    return out
 
 
 def _alt(r: Site) -> dict[str, Any] | None:
-    """v0.301 the second language for build.assemble (translated sections where they exist, else the source)."""
-    lang = second_language(r)
-    if not lang:
-        return None
-    secs, plan2 = LG.alt_site(r.tenant_id, r.id, lang, _sections(r), _j(r.plan, {}))
-    first = _j(r.languages, ["en"])[0]
-    return {"lang": lang, "label": LG.LANGS[lang], "back": LG.LANGS.get(first, "English"), "sections": secs, "plan": plan2}
+    a = _alts(r)
+    return a[0] if a else None
+
+
+def _blog_ctx(r: Site, lang: str = "") -> list[dict[str, Any]]:
+    try:
+        return BL.live_posts(r.id, lang)
+    except Exception:
+        log.exception("blog posts for the build failed")
+        return []
 
 
 def _translate(r: Site) -> int:
-    """Sections whose second-language copy is missing or out of date (Opus, kind site_edit)."""
-    lang = second_language(r)
-    if not lang:
+    """Sections (and blog posts) whose extra-language copy is missing or out of date (Opus, kind site_edit)."""
+    langs = extra_languages(r)
+    if not langs:
         return 0
     secs = _sections(r)
-    if not LG.stale(r.tenant_id, r.id, lang, secs):
-        return 0
-    _work(r, "start", f"{LG.LANGS[lang]} mein likh raha hoon", f"{len(LG.stale(r.tenant_id, r.id, lang, secs))} hisse")
     width = max(1, min(6, int(getattr(_settings(), "site_parallel", 3) or 1)))
-    return LG.translate(r.tenant_id, r.id, lang, secs, _j(r.plan, {}), _facts_text(_j(r.facts, {})),
-                        lambda k: sec_id(*k.split("__", 1)), width)
+    made = 0
+    for lang in langs:
+        if LG.stale(r.tenant_id, r.id, lang, secs):
+            _work(r, "start", f"{LG.LANGS[lang]} mein likh raha hoon", f"{len(LG.stale(r.tenant_id, r.id, lang, secs))} hisse")
+        made += LG.translate(r.tenant_id, r.id, lang, secs, _j(r.plan, {}), _facts_text(_j(r.facts, {})),
+                             lambda k: sec_id(*k.split("__", 1)), width)
+    try:                                       # v0.366 her blog posts follow every language too
+        made += BL.translate(r.id, langs, LG.NAMES, AI.ask_json)
+    except Exception:
+        log.exception("blog translation failed")
+    return made
 
 
-def set_language(tenant: str, ref: str, second: str) -> dict[str, Any]:
-    """Her choice: a second language for the whole site (or none). Translation runs as a job, then a new version."""
-    second = (second or "").strip().lower()
+def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
+    """v0.366 Her choice: up to LG.MAX_EXTRA extra languages for the whole site ([] = only the first). Translation runs as
+    a job, then a new version."""
     with session() as s:
         r = _find(s, tenant, ref)
         first = _j(r.languages, ["en"])[0]
-        if second and (second not in LG.LANGS or second == first):
-            raise SiteError("Doosri bhasha: en / hi / mr / hinglish (pehli se alag).")
-        r.languages = _jd([first, second] if second else [first])
+        want = [x for x in LG.pick(extra) if x != first]
+        bad = [w for w in (extra if isinstance(extra, list) else []) if str(w).strip() and not LG.pick([w])]
+        if bad:
+            raise SiteError("Yeh bhasha abhi nahi: " + ", ".join(map(str, bad[:3])) + ". Ho sakti hain: "
+                            + ", ".join(f"{LG.ENGLISH[k]} ({k})" for k in LG.LANGS))
+        if len(want) > LG.MAX_EXTRA:
+            raise SiteError(f"Ek website par pehli bhasha ke alawa {LG.MAX_EXTRA} bhashayen tak.")
+        old = extra_languages(r)
+        r.languages = _jd([first] + want)
         s.flush()
         s.expunge(r)
+    names = ", ".join(LG.LANGS[x] for x in want)
     if r.status in ("planned", "looks", "draft") or not _sections(r):
-        return {**view(r, False), "say": f"Theek hai: website {LG.LANGS.get(second, '')} mein bhi banegi." if second else "Ek hi bhasha rahegi."}
+        return {**view(r, False), "languages": [first] + want,
+                "say": f"Theek hai: website {names} mein bhi banegi." if want else "Ek hi bhasha rahegi."}
+    if want == old:
+        return {**view(r, False), "languages": [first] + want, "say": "Bhashayen pehle jaisi hi hain."}
     if not _start(r.id, "translate"):
         _SAVE_PENDING.add(r.id)
-    return {**view(_load(r.id), False),
-            "say": (f"{LG.LANGS[second]} version bana raha hoon; har hissa Opus likhega, phir nayi version." if second
-                    else "Doosri bhasha hata raha hoon; nayi version banegi.")}
+    return {**view(_load(r.id), False), "languages": [first] + want,
+            "say": (f"{names} version bana raha hoon; har hissa Opus likhega, phir nayi version." if want
+                    else "Doosri bhashayen hata raha hoon; nayi version banegi.")}
+
+
+def set_language(tenant: str, ref: str, second: str) -> dict[str, Any]:
+    """v0.301 (kept): ONE second language, or '' = none. v0.366 set_languages takes several."""
+    second = (second or "").strip().lower()
+    if second and second not in LG.LANGS:
+        raise SiteError("Doosri bhasha: " + " / ".join(LG.LANGS) + " (pehli se alag).")
+    with session() as s:
+        first = _j(_find(s, tenant, ref).languages, ["en"])[0]
+    if second and second == first:
+        raise SiteError("Doosri bhasha pehli se alag honi chahiye.")
+    return set_languages(tenant, ref, [second] if second else [])
 
 
 def translate_job(site_id: str) -> None:
@@ -1200,7 +1256,7 @@ def _make_looks(r: Site) -> None:
         mini_plan = {"pages": [{"slug": "home", "title": "Home", "sections": [{"type": "hero"}] + [
             {"type": s["type"]} for s in more if sec_key("home", s["type"]) in secs[i]]}], "cta": _j(r.plan, {}).get("cta")}
         ctx = _ctx(r)
-        ctx["tokens"], ctx["plan"], ctx["alt"] = toks[i], mini_plan, None
+        ctx["tokens"], ctx["plan"], ctx["alts"], ctx["blog"] = toks[i], mini_plan, [], []
         out = dirs[i] / "site"
         B.assemble(ctx, mini_plan, secs[i], {p["name"]: p for p in _j(r.photos, [])}, out)
         shots = {}
@@ -2263,6 +2319,12 @@ def undo_edit(tenant: str, ref: str) -> dict[str, Any]:
     if last["kind"] == "theme":
         look = _j(r.look, {})
         _save(r.id, look={**look, "tokens": last["before"]})
+    elif last["kind"] == "kit":               # v0.373 her own design-kit code
+        look = _j(r.look, {})
+        _save(r.id, look={**look, "kit": {**(look.get("kit") or {}), "css": last["before"]}})
+    elif last["kind"] == "multi":             # v0.373 one code change that touched several sections
+        for k, before in last["befores"].items():
+            _put_sec(r, k, before)
     else:
         _put_sec(r, last["key"], last["before"])
     _edits_path(r).write_text(json.dumps(h))
@@ -2519,3 +2581,300 @@ def shot_file(tenant: str, ref: str, name: str) -> Path:
     if not f.is_file():
         raise SiteError("not found")
     return f
+
+
+# ---------------------------------------------------------------- v0.366 BLOG: her posts on her website (site/blog.py)
+_BLOG_LIVE: dict[str, int] = {}        # site -> the version that was live when her Haan came (the next one goes live)
+
+
+def _blog_go_live(r: Site) -> None:
+    before = _BLOG_LIVE.get(r.id)
+    if before is None or busy(r.id) or r.status in ("building", "checking"):
+        return
+    _BLOG_LIVE.pop(r.id, None)
+    if r.status != "ready" or r.version <= before:
+        return
+    from . import hosting as H
+    try:
+        out = H.update_live(r.tenant_id, r.id)
+    except Exception:
+        log.exception("blog live update failed")
+        out = None
+    if out:
+        _emit(_load(r.id), push=False)
+        return
+    try:                                   # blockers (or no address yet): the normal launch card, her tap
+        H.launch_request(r.tenant_id, r.id, conv=r.conv)
+    except Exception:
+        log.info("launch card after a post failed", exc_info=True)
+
+
+def _blog_rebuild(r: Site, note: str, live: bool) -> None:
+    """A post went on / off the site: a new checked version; `live` = her tap said so, so when her address shows the
+    version before, the new one goes there too (else the normal launch card)."""
+    from . import hosting as H
+    if live:
+        lv = H.live_version(r)
+        if lv and lv == r.version:
+            _BLOG_LIVE[r.id] = r.version
+    _after_edit(r, note)
+
+
+def _built(tenant: str, ref: str) -> Site:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    if not r.version:
+        raise SiteError("Website abhi bani nahi; pehle website banne dijiye, phir blog.")
+    return r
+
+
+def blog_target(tenant: str, ref: str = "") -> dict[str, Any]:
+    """Which of her websites a Kalam post goes to: the one she named, or her only built site."""
+    if ref:
+        r = _built(tenant, ref)
+        return {"id": r.id, "name": r.name}
+    built = [x for x in sites(tenant, 40) if x.get("version")]
+    if len(built) == 1:
+        return {"id": built[0]["id"], "name": built[0]["name"]}
+    if not built:
+        raise SiteError("Abhi koi bani hui website nahi hai; pehle website banwaiye.")
+    raise SiteError("Kis website par? " + ", ".join(f"{x['name']} ({x['number']})" for x in built[:6]))
+
+
+def blog_publish(tenant: str, site_id: str, piece: dict[str, Any], when: str = "") -> dict[str, Any]:
+    """ONLY after her Haan (Kalam's card / the studio's Blog tab): the post on her site, now or at its time."""
+    r = _built(tenant, site_id)
+    at = None
+    if when:
+        try:
+            at = datetime.fromisoformat(when)
+        except ValueError:
+            raise SiteError("Post ka samay samajh nahi aaya.")
+    try:
+        post = BL.put(tenant, r.id, piece, at)
+    except BL.BlogError as e:
+        raise SiteError(str(e))
+    url = preview_url(r).rstrip("/") + f"/blog/{post['slug']}/"
+    from . import hosting as H
+    lv = H.live_version(r)
+    if post["status"] == "scheduled":
+        return {"post": post, "url": url, "say": f"'{post['title']}' {post['date']} ko website par aayega" +
+                (" (live site par bhi)." if lv else ".")}
+    _blog_rebuild(r, f"blog: {post['title'][:60]}", live=True)
+    return {"post": post, "url": url, "say": f"'{post['title']}' website ke blog par lag raha hai; nayi version jaanch ke baad "
+            + ("live address par bhi chali jayegi." if lv == r.version else "bani rahegi (live karne ke liye 'live karo').")}
+
+
+def blog_info(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    items = BL.posts(r.id)
+    for x in items:
+        x.pop("_tr", None)
+        x.pop("body", None)
+    first = _j(r.languages, ["en"])[0]
+    return {"posts": items, "preview": preview_url(r), "language": first, "extra": extra_languages(r),
+            "choices": [{"code": k, "label": LG.LANGS[k], "english": LG.ENGLISH[k]} for k in LG.LANGS if k != first],
+            "max_extra": LG.MAX_EXTRA, "photos": [p["name"] for p in _j(r.photos, [])],
+            "say": f"{sum(1 for x in items if x['status'] == 'published')} post live, "
+                   f"{sum(1 for x in items if x['status'] == 'scheduled')} time par."}
+
+
+def blog_act(tenant: str, ref: str, slug: str, action: str, cover: str = "", tapped: bool = False) -> dict[str, Any]:
+    """hide / show / delete / cover. `tapped` = her own tap in the app (then the change also reaches her live address);
+    from chat it makes the version and the normal launch card stays hers."""
+    r = _built(tenant, ref)
+    try:
+        if action in ("hide", "show"):
+            post = BL.set_status(r.id, slug, "hidden" if action == "hide" else "published")
+            say = f"'{post['title']}' " + ("hata diya (wapas laa sakte hain)." if action == "hide" else "wapas laga diya.")
+        elif action == "delete":
+            if not tapped:
+                raise SiteError("Post mitana sirf aapke tap se: Website > Blog mein 'Delete' dabaiye.")
+            post = BL.delete(r.id, slug)
+            say = f"'{post['title']}' mita diya."
+        elif action == "cover":
+            post = BL.set_cover(r.id, slug, cover, [p["name"] for p in _j(r.photos, [])])
+            say = "Cover photo badal di."
+        else:
+            raise SiteError("Action: hide / show / delete / cover.")
+    except BL.BlogError as e:
+        raise SiteError(str(e))
+    _blog_rebuild(r, f"blog: {action} {slug}", live=tapped)
+    return {"post": post, "say": say + ("" if tapped else " Nayi version banegi; live karne ke liye 'live karo' kahiye.")}
+
+
+def blog_tick() -> int:
+    """Worker: scheduled posts whose time came are published and their site rebuilt (live too: her Haan said so)."""
+    n = 0
+    for site_id, _slug in BL.due():
+        try:
+            r = _load(site_id)
+            _blog_rebuild(r, "blog: time par post", live=True)
+            n += 1
+        except Exception:
+            log.exception("scheduled post rebuild failed")
+    return n
+
+
+# ---------------------------------------------------------------- v0.373 CODE MODE (site/code.py)
+def _code_dir(r: Site) -> Path:
+    return B.site_dir(r.tenant_id, r.id) / "code_tasks"
+
+
+def _kit_css(r: Site) -> str:
+    return (_j(r.look, {}).get("kit") or {}).get("css", "")
+
+
+def code_tree(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    secs = _sections(r)
+    return {"files": CD.tree(_j(r.plan, {}), secs, _kit_css(r), T.label_of), "version": r.version,
+            "edits": len(_edits(r)), "busy": busy(r.id),
+            "say": f"{sum(len(p['files']) for p in CD.tree(_j(r.plan, {}), secs, _kit_css(r), T.label_of))} files."}
+
+
+def code_read(tenant: str, ref: str, path: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    try:
+        return CD.read(path, _sections(r), _kit_css(r))
+    except CD.CodeError as e:
+        raise SiteError(str(e))
+
+
+def code_write(tenant: str, ref: str, path: str, code: str) -> dict[str, Any]:
+    """Her own hand on the code (no AI): the same cleaner as every build, one Undo step, then a checked version."""
+    r = _editable(tenant, ref)
+    try:
+        if path == "design/kit.css":
+            look = _j(r.look, {})
+            before = _kit_css(r)
+            new = K.clean(code or "")
+            if new == before:
+                return {**code_read(tenant, ref, path), "say": "Kuch badla nahi.", "removed": []}
+            dropped = [] if len(new) >= 0.8 * len(re.sub(r"\s+", "", code or "")) else [
+                "only .k-* rules are kept in the design kit (no element / id / global selectors, no url(), no fonts)"]
+            _save(r.id, look={**look, "kit": {**(look.get("kit") or {}), "css": new}})
+            _push_edit(r, {"kind": "kit", "what": "design kit code", "before": before})
+            _after_edit(_load(r.id), "Code: design kit")
+            return {**code_read(tenant, ref, path), "removed": dropped, "say": "Design kit save ho gaya." +
+                    (" Kuch hissa hata diya: " + dropped[0] if dropped else "")}
+        key, part = CD.key_of(path)
+        secs = _sections(r)
+        if key not in secs:
+            raise SiteError("Yeh section ab nahi hai.")
+        before = secs[key]
+        new, problems = CD.clean(key, before, part, code)
+    except CD.CodeError as e:
+        raise SiteError(str(e))
+    if all(new.get(x) == before.get(x) for x in ("html", "css", "js")):
+        return {**code_read(tenant, ref, path), "say": "Kuch badla nahi.", "removed": problems}
+    _put_sec(r, key, new)
+    _push_edit(r, {"kind": "section", "key": key, "op": "code", "what": f"code: {path}", "before": before})
+    _after_edit(r, f"Code: {path}")
+    return {**code_read(tenant, ref, path), "removed": problems,
+            "say": "Save ho gaya; jaanch ke baad nayi version." + (" Safety ke liye hataya: " + "; ".join(problems[:4]) if problems else "")}
+
+
+def code_ask(tenant: str, ref: str, instruction: str, path: str = "", conv: str = "") -> dict[str, Any]:
+    """Her words -> Opus changes the code (the open file's section, or the sections her words are about). A site job;
+    the console reads the result with code_task."""
+    instruction = _tidy(instruction, 1500)
+    if not instruction:
+        raise SiteError("Kya badalna hai? Ek line likhiye.")
+    r = _editable(tenant, ref)
+    keys: list[str] = []
+    if path and path != "design/kit.css":
+        try:
+            keys = [CD.key_of(path)[0]]
+        except CD.CodeError as e:
+            raise SiteError(str(e))
+    task = secrets.token_hex(8)
+    CD.save_task(_code_dir(r), task, {"status": "working", "instruction": instruction, "keys": keys, "conv": conv,
+                                      "path": path, "say": "Code badal raha hoon..."})
+    if not _start(r.id, "code", task=task):
+        CD.save_task(_code_dir(r), task, {"status": "failed", "say": "Website abhi kisi aur kaam mein hai; thodi der baad."})
+        raise SiteError("Website abhi kisi aur kaam mein hai; thodi der baad kahiye.")
+    t = CD.load_task(_code_dir(r), task) or {}
+    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Code badal raha hoon (Opus)...",
+            **({k: t[k] for k in ("diff", "files", "summary", "removed") if k in t})}
+
+
+def code_task(tenant: str, ref: str, task: str) -> dict[str, Any]:
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    t = CD.load_task(_code_dir(r), task)
+    if t is None:
+        raise SiteError("Yeh kaam nahi mila.")
+    return {"task": task, **t}
+
+
+def code_job(site_id: str, task: str = "") -> None:
+    from ..usage import scope
+    r = _load(site_id)
+    folder = _code_dir(r)
+    t = CD.load_task(folder, task) or {}
+    with scope(r.tenant_id, "site"):
+        try:
+            out = _code_change(r, t.get("instruction") or "", t.get("keys") or [])
+        except Exception as e:
+            log.exception("code change failed")
+            out = {"status": "failed", "say": f"Code nahi badal paya: {_tidy(str(e), 200)}"}
+    CD.save_task(folder, task, {**t, **out})
+    if t.get("conv"):
+        try:
+            from ..events import bus
+            bus.publish(t["conv"], "site_board", {**view(_load(site_id), False), "say": out.get("say", "")})
+        except Exception:
+            log.info("code result event failed", exc_info=True)
+
+
+def _code_change(r: Site, instruction: str, keys: list[str]) -> dict[str, Any]:
+    secs = _sections(r)
+    keys = [k for k in keys if k in secs] or CD.pick(instruction, secs, T.label_of)
+    if not keys:
+        return {"status": "failed", "say": "Website mein abhi koi section nahi."}
+    files = [{"key": k, "html": E.strip(secs[k].get("html") or ""), "css": secs[k].get("css") or "",
+              "js": CD.bare_js(secs[k].get("js") or "")} for k in keys]
+    raw = AI.ask_json(CD.CODE_SYSTEM, f"HER WORDS: {instruction}\n\nSITE FACTS (data): {_facts_text(_j(r.facts, {}))[:2500]}\n"
+                      f"{K.prompt_line(_j(r.look, {}).get('kit'))}\n\nSECTIONS JSON:\n" + json.dumps(files, ensure_ascii=False),
+                      12000, "site_edit")
+    got = (raw or {}).get("files") if isinstance(raw, dict) else None
+    if not isinstance(got, list) or not got:
+        return {"status": "failed", "say": "Opus se badla hua code nahi aaya; dobara kahiye ya zyada saaf likhiye."}
+    befores, diffs, changed, problems = {}, [], [], []
+    for f in got[:6]:
+        if not isinstance(f, dict) or f.get("key") not in keys:
+            continue
+        k = f["key"]
+        before = secs[k]
+        new, probs = CD.clean(k, before, "html", str(f.get("html") or before.get("html") or ""))
+        new, probs2 = CD.clean(k, new, "css", str(f["css"]) if f.get("css") is not None else (before.get("css") or ""))
+        new, probs3 = CD.clean(k, new, "js", str(f["js"]) if f.get("js") is not None else CD.bare_js(before.get("js") or ""))
+        if all(new.get(x) == before.get(x) for x in ("html", "css", "js")):
+            continue
+        for part in CD.PARTS:
+            a = CD.read(CD.path_of(k, part), {k: before}, "")["code"]
+            b = CD.read(CD.path_of(k, part), {k: new}, "")["code"]
+            if a != b:
+                diffs.append(CD.diff(CD.path_of(k, part), a, b))
+        befores[k] = before
+        _put_sec(r, k, new)
+        changed.append(k)
+        problems += [p for p in probs + probs2 + probs3 if p not in problems]
+    if not changed:
+        return {"status": "done", "say": "Code waisa hi raha (kuch badalne ko nahi mila).", "diff": "", "files": []}
+    _push_edit(r, {"kind": "multi", "what": f"code: {instruction[:60]}", "befores": befores})
+    _assemble_edit(_load(r.id))
+    _SAVE_PENDING.add(r.id)                  # the checked version is made right after this job (_after_job)
+    summary = _tidy(str((raw or {}).get("summary") or ""), 200)
+    return {"status": "done", "files": [CD.path_of(k, "html") for k in changed], "diff": "\n".join(diffs)[:60000],
+            "summary": summary, "removed": problems[:8],
+            "say": (summary or f"{len(changed)} section ka code badal diya") + ". Jaanch ke baad nayi version; galat lage to Undo."}

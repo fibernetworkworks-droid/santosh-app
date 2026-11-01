@@ -833,8 +833,21 @@ BIG = {
     "hoola_group_manage", "hoola_chain", "pc_do", "tally_entry", "cancel_routine", "calendar_cancel_event", "photos_send",
     "drive_send_file", "agent_army", "hoola_make",
     # v0.358 Enterprise Systems: the jobs that can change a production system always ask, whoever asked for it
-    "erp", "crm_arch", "bpa", "ecom_arch", "plm",
 }
+
+
+# v0.370: the Enterprise jobs that can change a live system are BIG, DERIVED from enterprise/rules so the two
+# can never drift. Hand-syncing this list already went wrong once: `tpm` started writing and stayed "action"
+# until it was caught by hand.
+def _enterprise_writers() -> set[str]:
+    try:
+        from ..enterprise.rules import WRITERS
+        return set(WRITERS)
+    except Exception:       # the suite is optional; the gate must still work without it
+        return set()
+
+
+BIG |= _enterprise_writers()
 
 
 def duty_of(tool: str) -> str:

@@ -17,7 +17,9 @@ MUTE = (90, 98, 110)
 
 
 def fea_view(surface: dict[str, Any], scale: dict[str, Any], view: str = "iso", size: int = 900) -> Image.Image:
-    img, _ = render.draw_view(surface, view, size, size)
+    part, _ = render.draw_view(surface, view, size - 130, size - 60, sharp=_feature_edges(surface))
+    img = Image.new("RGB", (size, size), BG)
+    img.paste(part, (0, 60))                          # the scale bar keeps its own strip on the right
     d = ImageDraw.Draw(img)
     from .fea import colormap
     x0, y0, bw, bh = size - 70, 120, 26, size - 260
@@ -28,11 +30,30 @@ def fea_view(surface: dict[str, Any], scale: dict[str, Any], view: str = "iso", 
     f = _font(18)
     lo, hi = float(scale.get("lo", 0)), float(scale.get("hi", 1))
     for k in range(6):
-        v = hi - (hi - lo) * k / 5
+        v = lo + (hi - lo) * (5 - k) / 5
+        v = 0.0 if abs(v) < 1e-9 * max(abs(hi), abs(lo), 1e-12) else v
         y = y0 + bh * k / 5
-        d.text((x0 - 76, y - 9), f"{v:.3g}", fill=INK, font=f)
+        txt = f"{v:.3g}"
+        d.text((x0 - 10 - d.textlength(txt, font=f), y - 9), txt, fill=INK, font=f)
     d.text((24, 20), str(scale.get("label", "")), fill=INK, font=_font(24))
     return img
+
+
+def _feature_edges(mesh: dict[str, Any], deg: float = 30.0) -> set:
+    """Outline edges of an FEA surface: triangle orientation is not consistent there, so the fold test uses |cos|."""
+    import numpy as np
+    V = np.asarray(mesh["v"], dtype=float)
+    T = np.asarray(mesh["t"], dtype=np.int64)
+    if not len(T):
+        return set()
+    n = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+    edges: dict[tuple[int, int], list[int]] = {}
+    for ti, (a, b, c) in enumerate(T.tolist()):
+        for u, v in ((a, b), (b, c), (c, a)):
+            edges.setdefault((min(u, v), max(u, v)), []).append(ti)
+    lim = math.cos(math.radians(deg))
+    return {e for e, ts in edges.items() if len(ts) == 2 and abs(float(n[ts[0]] @ n[ts[1]])) < lim}
 
 
 def flat_dxf(sheet: dict[str, Any]) -> str:

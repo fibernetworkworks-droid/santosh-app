@@ -19,6 +19,8 @@ on:
           - errors
           - voicecheck
           - mospi_check
+          - game_setup
+          - game_check
           - ack_refresh
           - deploy
           - rollback_stable
@@ -34,6 +36,7 @@ on:
           - tool_card
           - long_jobs
           - code_card
+          - code_card_hard
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -124,6 +127,15 @@ jobs:
                 echo 'echo "== free + swap now"; free -m; swapon --show' ;;
               voicecheck)
                 echo 'cd $CORE && timeout 600 .venv/bin/python -m app.voicecheck' ;;
+              game_setup)
+                # v0.370 Game Desk: Godot 4 headless + ONLY its Web export templates (HTTP range reads, ~40 MB), then the check
+                echo 'set -e'
+                echo 'cd $REPO && git fetch origin main && git checkout main && git reset --hard origin/main'
+                echo 'python3 $REPO/server/deploy/setup_godot.py --dir $HOME/apps/godot 2>&1 | tail -12'
+                echo 'echo "== HOOLA_CHROMIUM (playtest browser)"; grep -E "^HOOLA_CHROMIUM=" $CORE/.env | sed -E "s/=.*/=<set>/" || echo "not set: the Playwright Chromium is used"'
+                echo 'cd $CORE && timeout 300 .venv/bin/python -m app.gamedesk check 2>&1 | tail -40' ;;
+              game_check)
+                echo 'cd $CORE && timeout 300 .venv/bin/python -m app.gamedesk check 2>&1 | tail -40' ;;
               mospi_check)
                 # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
                 echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'
@@ -318,6 +330,12 @@ jobs:
                 # no PR), marked by hidden checks: works / stayed in scope / project rules / tests that prove the fix.
                 # Model calls: ~12 Opus jobs, roughly Rs 150-400, ~6-12 min. The answers run in a child Python with no secrets.
                 echo 'cd $CORE && timeout 780 .venv/bin/python -m app.quality code --label vps-ops 2>&1 | tail -40' ;;
+              code_card_hard)
+                # HARD CARD: set 2 - bigger practice projects (Python shop 30 files, JavaScript billing 13 files), features
+                # across 4-5 files, a rename with every caller, bugs far from their symptom, an access-control hole, a refactor
+                # that must keep behaviour, a vague ask that needs ONE question. ~12 Opus jobs, roughly Rs 300-700, ~5-12 min.
+                echo 'cd $CORE && echo "== node: $(command -v node || echo missing - JavaScript jobs will be skipped)"'
+                echo 'cd $CORE && timeout 840 .venv/bin/python -m app.quality code --set 2 --label vps-ops 2>&1 | tail -40' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh

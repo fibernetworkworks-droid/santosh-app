@@ -15,6 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
+  const DESKS = {game_dev: 'gamedesk'};    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
   async function hub(el) {
@@ -47,14 +48,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   async function act(what, key) {
-    if (what === 'open') { location.hash = ''; document.querySelector(`[data-v="${key}desk"]`)?.click(); return; }   // seodesk / socialdesk
+    if (what === 'open') { location.hash = ''; document.querySelector(`[data-v="${DESKS[key] || key + 'desk'}"]`)?.click(); return; }   // seodesk / socialdesk / caddesk / gamedesk
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
       await api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined);
       toast(what === 'hire' ? 'Hired. Open the desk to set it up.' : what === 'leave' ? 'Let go. Its jobs have stopped.' : what === 'pause' ? 'Paused. No jobs run until you resume.' : 'Back at work.');
     } catch (e) { toast(e.message, true); }
     await hub(HUB);
-    if (what === 'hire') document.querySelector(`[data-v="${key}desk"]`)?.click();
+    if (what === 'hire') document.querySelector(`[data-v="${DESKS[key] || key + 'desk'}"]`)?.click();
   }
 
   // ------------------------------------------------------------ the SEO desk
@@ -239,7 +240,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   // ------------------------------------------------------------ v0.353 the Social Desk (Social Media Manager, Phase 1)
-  let SOC = null;
+  let SOC = null, SOCTRUST = 'seekh';
   const PLAT = {instagram: 'Instagram', facebook: 'Facebook Page'};
   const PST = {draft: ['warn', 'Draft'], approved: ['ok', 'Approved'], skipped: ['', 'Skipped']};
   const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
@@ -253,13 +254,15 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if (!d.onboarded) { el.innerHTML = socialForm(d); wireSocialForm(el); return; }
     const [sc, sn] = STATE[d.state] || ['warn', d.state];
     const accs = d.accounts || [], b = d.baseline || {}, stg = d.strategy || {}, cal = d.calendar || [];
+    const pl = d.pulse || {}, pst = pl.settings || {};
+    SOCTRUST = d.trust || 'seekh';
     el.innerHTML = `<div class="vh"><h2>Social Desk</h2><span class="muted em-sub">${esc(d.profile.business || '')}${d.profile.city ? ' · ' + esc(d.profile.city) : ''}</span>
         ${accs.length ? tag(sc, sn) : tag('warn', 'Connect an account')} ${d.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[d.trust] || [d.trust])[0])}</span></div>
       <div class="tile gl"><div class="em-h"><h3>Accounts</h3><span class="muted em-small">You log in on Instagram / Facebook's own page. Hoola never sees your password.</span></div>
         <div class="sc-accs">${accs.map(a => `<div class="sc-acc">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : '<span class="sc-pic"></span>'}
           <div><b>${esc(a.handle || a.name)}</b><span class="muted">${esc(PLAT[a.platform] || a.platform)} · ${num(a.followers)} followers</span>
           ${a.status !== 'ok' ? `<span class="badc em-small">${esc(a.status === 'expired' ? 'Connection ended: connect again' : a.error || a.status)}</span>` : ''}
-          ${a.status === 'ok' && a.can_post === false ? '<span class="warnc em-small">Reconnect to allow posting</span>' : ''}</div>
+          ${a.status === 'ok' && (a.can_post === false || a.can_reply === false) ? '<span class="warnc em-small">Reconnect to allow posting and replies</span>' : ''}</div>
           <button class="btn soft" type="button" data-scoff="${esc(a.id)}">Disconnect</button></div>`).join('')}
         <div class="sc-connect">${['instagram', 'facebook'].map(p => d.connect[p]
           ? `<button class="btn ${accs.some(a => a.platform === p) ? 'soft' : 'go'}" type="button" data-scon="${p}">${accs.some(a => a.platform === p) ? 'Reconnect' : 'Connect'} ${PLAT[p]}</button>`
@@ -267,6 +270,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <p class="muted em-small">Instagram must be a Business or Creator account (free switch in Instagram settings). A post goes out only when you approve it or tap Publish now: exactly what you approved, at its time.</p></div>
       ${d.calendar_status === 'draft' && cal.length ? `<div class="tile gl em-note"><b>Your 30-day calendar is ready</b><span>${cal.length} posts planned from your real numbers. Read them below, edit any, then approve.</span>
         <button class="btn go" type="button" id="scApprove">Approve calendar</button></div>` : ''}
+      ${accs.length && pst.paused ? `<div class="tile gl em-note sc-paused"><b>Posting is paused</b><span>${esc(pst.pause_reason || 'Nothing goes out and no reply is sent on its own until you resume.')}</span>
+        <button class="btn go" type="button" data-scpause="0">Resume</button></div>` : ''}
+      ${accs.length && (pl.waiting_ok || []).length ? `<div class="tile gl em-note"><b>${pl.waiting_ok.length} planned post(s) wait for your OK today</b><span>Read each below and tap OK to post (Seekh). Saathi lets approved plan posts go on their own.</span></div>` : ''}
+      ${accs.length ? `<div class="tile gl sc-inbox" id="scInbox"><div class="em-h"><h3>Inbox: comments + DMs</h3>
+          <span class="muted em-small">Sorted for you; every reply is drafted from your facts. ${d.trust === 'seekh' ? 'Nothing goes without your tap.' : 'Simple replies go on their own (your trust setting); complaints always wait for you.'}</span></div>
+        <div class="sc-tabs" role="tablist">${Object.entries(BOX).map(([k, l]) => `<button class="btn ${k === BOXNOW ? 'go' : 'soft'}" type="button" role="tab" aria-selected="${k === BOXNOW}" data-scbox="${k}">${l}${k === 'done' ? '' : ` <span class="sc-n">${num((d.inbox || {})[k] || 0)}</span>`}</button>`).join('')}
+          <button class="btn soft" type="button" data-scrun="inbox">Check now</button></div>
+        <div class="sc-items" id="scItems"><div class="empty">Loading…</div></div></div>` : ''}
       ${accs.length ? `<div class="kpis em-kpis">${(d.kpis || []).map(kpi).join('') || '<div class="empty">Numbers appear after the first read.</div>'}</div>
       <p class="muted em-small">Baseline from ${esc(b.date || '–')}${b.posts_read ? ` · ${num(b.posts_read)} posts read` : ''}.</p>` : ''}
       ${stg.pillars ? `<div class="grid2">
@@ -277,15 +288,32 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="tile gl"><h3>What works for you</h3>${(b.formats || []).length ? `<table class="em-tbl"><tbody>${b.formats.map(f => `<tr><td>${esc(f.fmt)}</td><td class="muted">${num(f.posts)} posts</td><td>${num(f.avg_eng)} interactions</td></tr>`).join('')}</tbody></table>` : '<div class="empty">After the first read.</div>'}
           ${(b.top_posts || []).slice(0, 3).map(t => `<p class="em-small"><a href="${esc(t.permalink)}" target="_blank" rel="noopener">${esc(t.fmt)} · ${num(t.eng)} interactions</a> <span class="muted">${esc((t.caption || '').slice(0, 80))}</span></p>`).join('')}</div>
       </div>` : ''}
+      ${accs.length ? `<div class="grid2">
+        <div class="tile gl"><h3>Posting controls</h3>
+          <p class="em-small">${pst.paused ? tag('warn', 'Paused') : tag('ok', 'Posting on')} ${SOCTRUST === 'seekh' ? 'Every plan post waits for your OK.' : `Plan posts go on their own: ${num(pl.auto_today || 0)} of ${num(pl.post_cap || 0)} today.`}</p>
+          <div class="sc-quiet"><label>No posts on their own from <input type="number" min="0" max="23" id="scQ0" value="${esc(String((pst.quiet || [23, 7])[0]))}"></label>
+            <label>to <input type="number" min="0" max="23" id="scQ1" value="${esc(String((pst.quiet || [23, 7])[1]))}"></label>
+            <button class="btn soft" type="button" id="scQSave">Save</button></div>
+          <div class="acts em-run">${pst.paused ? '<button class="btn go" type="button" data-scpause="0">Resume posting</button>' : '<button class="btn soft" type="button" data-scpause="1">Pause all posting</button>'}
+            <button class="btn soft sc-stop" type="button" id="scStop">Emergency stop</button></div>
+          <p class="muted em-small">Pause also stops automatic replies. Emergency stop sends every queued post back to draft.</p></div>
+        <div class="tile gl"><h3>Best times for you</h3>${(pl.best_times || {}).slots && pl.best_times.slots.length
+          ? `<table class="em-tbl"><tbody>${pl.best_times.slots.map(x => `<tr><td>${esc(x.day)} ${esc(x.band)}</td><td>${esc(String(x.lift))}x your normal</td><td class="muted">${num(x.posts)} posts</td></tr>`).join('')}</tbody></table>
+            <p class="muted em-small">Certainty: ${esc(pl.best_times.sure)}. New calendars use these times.</p>`
+          : `<div class="empty">${esc((pl.best_times || {}).note || 'After a few more posts.')}</div>`}
+          ${(pl.boosts || []).length ? `<h3 class="sc-h">Worth a boost</h3>${pl.boosts.map(x => `<p class="em-small"><a href="${esc(x.permalink)}" target="_blank" rel="noopener">${esc(x.fmt)} · ${esc(x.date)}</a> <b>${esc(String(x.times))}x</b> your normal. <span class="muted">${esc(x.plan)}</span></p>`).join('')}` : ''}</div>
+      </div>` : ''}
       ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
         <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
       <div class="grid2">
         <div class="tile gl"><h3>Activity</h3>${feed(d.events || [])}</div>
         <div class="tile gl"><h3>Runs 24/7</h3>${sched(d.schedule || [])}
           <div class="acts em-run"><button class="btn soft" type="button" data-scrun="daily">Refresh numbers</button>
-            <button class="btn soft" type="button" data-scrun="plan">Rewrite calendar draft</button></div></div>
+            <button class="btn soft" type="button" data-scrun="plan">Rewrite calendar draft</button>
+            <button class="btn soft" type="button" data-scrun="monthly">Make this month's PDF</button></div></div>
       </div>`;
     wireSocial(el, d);
+    if (accs.length) inbox(el);
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) social(el); }, 8000);
   }
 
@@ -295,7 +323,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const res = p.result || {};
     const dt = new Date(p.slot);
     const day = isNaN(dt) ? p.slot : dt.toLocaleString('en-IN', {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
-    return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}<span class="tag">${esc(p.format)}</span>
+    const needOk = p.plan_only && SOCTRUST === 'seekh';   // v0.369 Seekh: a plan post waits for her OK on its day
+    return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}${needOk ? tag('warn', 'Needs your OK') : ''}<span class="tag">${esc(p.format)}</span>
         <span class="muted">${(p.platforms || []).map(x => esc(PLAT[x] || x)).join(' + ')}${p.pillar ? ' · ' + esc(p.pillar) : ''}${p.occasion ? ' · ' + esc(p.occasion) : ''}</span></div>
       <b>${esc(p.hook)}</b>
       <details class="em-env"><summary>Caption, hashtags and picture brief</summary><p class="sc-cap">${esc(p.caption)}</p>
@@ -310,7 +339,66 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" data-sccopy="${esc(p.id)}">Copy caption</button><button class="btn soft" type="button" data-scedit="${esc(p.id)}">Edit</button>
         <label class="btn soft sc-up">Add photo / video<input type="file" accept="image/*,video/mp4,video/quicktime" data-scup="${esc(p.id)}" hidden></label>
         <button class="btn soft" type="button" data-scposter="${esc(p.id)}">Make poster</button>
-        <button class="btn go" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
+        ${needOk ? `<button class="btn go" type="button" data-scok="${esc(p.id)}">OK to post</button>` : ''}
+        <button class="btn ${needOk ? 'soft' : 'go'}" type="button" data-scpub="${esc(p.id)}"${(p.problems || []).length ? ' disabled' : ''}>Publish now</button></div>`}</div>`;
+  }
+
+  // ------------------------------------------------------------ v0.368 the inbox (Phase 3)
+  const BOX = {needs: 'Needs you', leads: 'Leads', complaints: 'Complaints', done: 'Done'};
+  const CLS = {lead: ['ok', 'Lead'], question: ['v', 'Question'], praise: ['v', 'Praise'], complaint: ['warn', 'Complaint'],
+               spam: ['bad', 'Spam'], abuse: ['bad', 'Abuse'], other: ['', 'Other']};
+  let BOXNOW = 'needs';
+  async function inbox(el) {
+    const box = el.querySelector('#scItems'); if (!box) return;
+    let r;
+    try { r = await api('GET', `/api/social/inbox?box=${BOXNOW}`); }
+    catch (e) { box.innerHTML = `<p class="badc">${esc(e.message)}</p>`; return; }
+    box.innerHTML = (r.items || []).map(msg).join('') || `<div class="empty">${BOXNOW === 'needs' ? 'Nothing waiting for you.' : 'Nothing here yet.'}</div>`;
+    wireInbox(el, box);
+  }
+
+  function msg(m) {
+    const [c, n] = CLS[m.cls] || ['', m.cls];
+    const open = ['new', 'drafted', 'failed'].includes(m.status);
+    const where = `${m.platform === 'instagram' ? 'Instagram' : 'Facebook'} ${m.kind === 'dm' ? 'DM' : 'comment'}`;
+    const at = m.at ? new Date(m.at).toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : '';
+    const doneLine = m.status === 'replied' ? `<p class="em-small okc">${m.auto ? 'Hoola replied' : 'You replied'}: ${esc(m.reply)}</p>`
+      : m.status === 'hidden' ? `<p class="em-small muted">${m.auto ? 'Hidden by Hoola' : 'Hidden'} (not deleted) <button class="btn soft" type="button" data-scunhide="${esc(m.id)}">Unhide</button></p>`
+      : `<p class="em-small muted">No reply needed <button class="btn soft" type="button" data-scback="${esc(m.id)}">Bring back</button></p>`;
+    return `<div class="em-item sc-msg" data-mid="${esc(m.id)}"><div class="em-meta"><b>${esc(m.author || 'Someone')}</b>${tag(c, n)}
+        <span class="muted">${esc(where)}${at ? ' · ' + esc(at) : ''}${m.permalink ? ` · <a href="${esc(m.permalink)}" target="_blank" rel="noopener">post</a>` : ''}</span></div>
+      ${m.post ? `<p class="muted em-small sc-on">On: ${esc(m.post)}</p>` : ''}
+      <p class="sc-text">${esc(m.text)}</p>
+      ${m.note ? `<p class="muted em-small">${esc(m.note)}</p>` : ''}
+      ${m.error ? `<p class="badc em-small">${esc(m.error)}</p>` : ''}
+      ${open ? (m.dm_closed ? '<p class="warnc em-small">Meta lets a business answer a DM only within 24 hours. Reply from the Instagram / Facebook app yourself.</p>'
+          : `<textarea class="sc-reply" rows="2" aria-label="Reply to ${esc(m.author || 'them')}">${esc(m.draft)}</textarea>
+        ${m.needs_her ? '<p class="warnc em-small">Check this one: it may need a fact only you know.</p>' : ''}`) +
+        `<div class="acts">${m.dm_closed ? '' : `<button class="btn go" type="button" data-scsend="${esc(m.id)}">Send reply</button>`}
+          ${m.kind === 'comment' ? `<button class="btn soft" type="button" data-schide="${esc(m.id)}">Hide</button>` : ''}
+          <button class="btn soft" type="button" data-scignore="${esc(m.id)}">No reply needed</button></div>` : doneLine}</div>`;
+  }
+
+  function wireInbox(el, box) {
+    const call = async (b, method, path, body, done) => {
+      b.disabled = true;
+      try { await api(method, path, body); toast(done); social(el); }
+      catch (e) { toast(e.message, true); b.disabled = false; }
+    };
+    const id = v => encodeURIComponent(v);
+    box.querySelectorAll('[data-scsend]').forEach(b => b.addEventListener('click', () => {
+      const text = b.closest('.sc-msg').querySelector('.sc-reply').value.trim();
+      if (!text) { toast('Write a reply first.', true); return; }
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scsend)}/reply`, {text}, 'Reply sent.');
+    }));
+    box.querySelectorAll('[data-schide]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.schide)}/hide`, {hidden: true}, 'Hidden. Nothing deleted.')));
+    box.querySelectorAll('[data-scunhide]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scunhide)}/hide`, {hidden: false}, 'Shown again.')));
+    box.querySelectorAll('[data-scignore]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scignore)}`, {status: 'ignored'}, 'Moved to Done.')));
+    box.querySelectorAll('[data-scback]').forEach(b => b.addEventListener('click', () =>
+      call(b, 'POST', `/api/social/inbox/${id(b.dataset.scback)}`, {status: 'drafted'}, 'Back in Needs you.')));
   }
 
   function socialForm(d) {
@@ -324,10 +412,11 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <label class="em-wide"><span>Who are your customers?</span><input id="scCust" placeholder="Families and office workers in Dharampeth"></label>
           <label class="em-wide"><span>What do you want from social media?</span><input id="scGoal" placeholder="More WhatsApp enquiries for implants"></label>
           <label class="em-wide"><span>Languages for posts (comma separated)</span><input id="scLang" value="${esc((p.languages || ['Hinglish']).join(', '))}"></label>
+          <label class="em-wide"><span>Facts for replies: prices, timings, address, WhatsApp (only these are ever quoted)</span><textarea id="scFacts" rows="3" placeholder="Cleaning Rs 800. Open 10 am - 8 pm, Sunday closed. WhatsApp 98xxxxxx10">${esc(p.facts || '')}</textarea></label>
         </div>
         <fieldset class="em-trust"><legend>How much may it do on its own?</legend>${['seekh', 'saathi'].map(k => `
           <label><input type="radio" name="scTrust" value="${k}"${k === (d.trust || 'seekh') ? ' checked' : ''}> <b>${TRUST[k][0]}</b> <span class="muted">${TRUST[k][1]}</span></label>`).join('')}
-          <p class="muted em-small">In this version it reads and drafts only. Posting on your OK comes in the next phase, always within this setting.</p></fieldset>
+          <p class="muted em-small">Posts go out only after your OK. Seekh: every plan post and every reply waits for your tap. Saathi: approved plan posts go on their own (up to 6 a day, never at night) and you are told the same day. Saathi: replies to simple questions, leads and praise from your facts and hides spam (never deletes); complaints always wait for you.</p></fieldset>
         <div class="acts"><button class="btn go" type="submit">Save and continue</button></div>
       </form>`;
   }
@@ -339,7 +428,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       const btn = el.querySelector('#scOn button[type=submit]'); btn.disabled = true;
       try {
         await api('POST', '/api/social/onboard', {business: v('#scBiz'), city: v('#scCity'), sells: v('#scSells'), customers: v('#scCust'),
-          goal: v('#scGoal'), languages: v('#scLang'), trust: el.querySelector('input[name=scTrust]:checked')?.value || 'seekh'});
+          goal: v('#scGoal'), languages: v('#scLang'), facts: v('#scFacts'), trust: el.querySelector('input[name=scTrust]:checked')?.value || 'seekh'});
         toast('Saved. Now connect Instagram or your Facebook Page.');
         el.innerHTML = ''; social(el);
       } catch (e) { toast(e.message, true); btn.disabled = false; }
@@ -397,9 +486,33 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       try { await api('POST', `/api/social/posts/${encodeURIComponent(p.id)}/publish`, {}); toast('Posting… the link appears here in a minute.'); setTimeout(() => social(el), 5000); }
       catch (e) { toast(e.message, true); b.disabled = false; }
     }));
+    el.querySelectorAll('[data-scok]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { await api('POST', `/api/social/posts/${encodeURIComponent(b.dataset.scok)}`, {status: 'approved'}); toast('OK. It goes out at its time.'); social(el); }
+      catch (e) { toast(e.message, true); b.disabled = false; }
+    }));
+    el.querySelectorAll('[data-scpause]').forEach(b => b.addEventListener('click', async () => {
+      const on = b.dataset.scpause === '1';
+      try { await api('POST', '/api/social/settings', {paused: on}); toast(on ? 'Paused. Nothing goes out until you resume.' : 'Resumed.'); social(el); }
+      catch (e) { toast(e.message, true); }
+    }));
+    el.querySelector('#scStop')?.addEventListener('click', async () => {
+      if (!confirm('Emergency stop? All posting and automatic replies stop, and every queued post goes back to draft.')) return;
+      try { const r = await api('POST', '/api/social/settings', {stop: true}); toast(`Stopped. ${r.back_to_draft} post(s) back to draft.`); social(el); }
+      catch (e) { toast(e.message, true); }
+    });
+    el.querySelector('#scQSave')?.addEventListener('click', async () => {
+      try { await api('POST', '/api/social/settings', {quiet: [Number(el.querySelector('#scQ0').value), Number(el.querySelector('#scQ1').value)]}); toast('Quiet hours saved.'); }
+      catch (e) { toast(e.message, true); }
+    });
+    el.querySelectorAll('[data-scbox]').forEach(b => b.addEventListener('click', () => {
+      BOXNOW = b.dataset.scbox;
+      el.querySelectorAll('[data-scbox]').forEach(x => { const on = x === b; x.className = `btn ${on ? 'go' : 'soft'}`; x.setAttribute('aria-selected', on); });
+      inbox(el);
+    }));
     el.querySelectorAll('[data-scrun]').forEach(b => b.addEventListener('click', async () => {
       b.disabled = true;
-      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast(b.dataset.scrun === 'plan' ? 'Rewriting the draft. Approved posts stay.' : 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
+      try { await api('POST', `/api/social/run/${b.dataset.scrun}`, {}); toast({plan: 'Rewriting the draft. Approved posts stay.', inbox: 'Checking comments and DMs now.', monthly: 'Making the PDF - it arrives in your chat.'}[b.dataset.scrun] || 'Reading your latest numbers.'); setTimeout(() => social(el), 4000); }
       catch (e) { toast(e.message, true); }
       b.disabled = false;
     }));
@@ -493,5 +606,92 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       <div class="acts"><button class="btn soft em-leave" type="button" data-caddel="${esc(p.id)}">Delete</button></div></article>`;
   }
 
-  return {hub, desk, social, cad};
+  // ------------------------------------------------------------ v0.370 the Game Desk (Game Developer)
+  let GTIMER = null;
+  const GST = {designing: ['v', 'Writing the design'], design_ready: ['warn', 'Waiting for your OK'], queued: ['v', 'Queued'],
+               writing: ['v', 'Writing code'], building: ['v', 'Building'], testing: ['v', 'Playing it'], done: ['ok', 'Ready to play'],
+               failed: ['bad', 'Did not work'], cancelled: ['', 'Stopped']};
+  const BUSYG = ['designing', 'queued', 'writing', 'building', 'testing'];
+  async function game(el) {
+    clearTimeout(GTIMER);
+    if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
+    let d;
+    try { d = await api('GET', '/api/game'); }
+    catch (e) { el.innerHTML = `<div class="vh"><h2>Game Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const h = d.health || {};
+    el.innerHTML = `<div class="vh"><h2>Game Desk</h2><span class="muted em-sub">Original games from your words, built in Godot 4 and played by Hoola before you see them.</span>
+        ${h.ready ? tag('ok', 'Godot ' + (h.version || '')) : tag('bad', 'Godot not installed on the server')}</div>
+      <div class="tile gl gd-new"><h3>New game</h3>
+        <textarea id="gdBrief" rows="3" maxlength="2000" placeholder="Your idea in 2-3 lines: what the player does, how they win, who it is for" aria-label="Game idea"></textarea>
+        <div class="acts"><select id="gdOr" aria-label="Screen">${(d.orientations || ['portrait']).map(o => `<option value="${esc(o)}">${esc(o[0].toUpperCase() + o.slice(1))}</option>`).join('')}</select>
+          <button class="btn go" type="button" id="gdNew"${h.ready ? '' : ' disabled'}>Write the design</button></div>
+        <p class="muted em-small">A short design doc comes first; nothing is built until you say OK. The play link stays private until you share it.</p></div>
+      ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
+    el.querySelector('#gdNew')?.addEventListener('click', async e => {
+      const brief = el.querySelector('#gdBrief').value.trim();
+      if (brief.length < 8) { toast('Write your idea in 2-3 lines first.', true); return; }
+      e.target.disabled = true;
+      try { await api('POST', '/api/game', {brief, orientation: el.querySelector('#gdOr').value}); toast('Writing the design doc…'); }
+      catch (err) { toast(err.message, true); }
+      game(el);
+    });
+    el.querySelectorAll('[data-gd]').forEach(b => b.addEventListener('click', () => gact(el, b.dataset.gd, b.dataset.id, b)));
+    el.querySelectorAll('img[data-qr]').forEach(img => { try { const q = window.qrcode(0, 'M'); q.addData(img.dataset.qr); q.make(); img.src = q.createDataURL(4, 2); } catch { img.remove(); } });
+    if ((d.games || []).some(g => BUSYG.includes(g.status))) GTIMER = setTimeout(() => { if (visible(el)) game(el); }, 4000);
+  }
+
+  function gcard(g) {
+    const [c, n] = GST[g.status] || ['', g.status];
+    const busy = BUSYG.includes(g.status);
+    const nums = g.numbers || {};
+    const url = typeof g.play_url === 'string' && /^(https:\/\/|http:\/\/127\.0\.0\.1|\/play\/)/.test(g.play_url) ? g.play_url : '';
+    return `<article class="tile gl gd-card"><div class="em-h"><h3>${esc(g.number || '')} · ${esc(g.title || 'Game')}</h3>${tag(c, n)}</div>
+      ${busy ? `<div class="pbar"><i style="width:${Math.max(4, Math.min(100, g.pct || 0))}%"></i></div><p class="muted em-small">${esc(g.stage || '')}</p>` : ''}
+      ${g.error ? `<p class="badc em-small">${esc(g.error)}</p>` : ''}
+      ${g.status === 'design_ready' ? `<details class="gd-design" open><summary>Design doc</summary><div class="gd-doc">${esc(g.design || '')}</div></details>
+        <textarea rows="2" maxlength="1500" data-fb="${esc(g.id)}" placeholder="Want changes? Write them here, or just build it" aria-label="Design changes"></textarea>
+        <div class="acts"><button class="btn go" type="button" data-gd="build" data-id="${esc(g.id)}">Build it</button>
+          <button class="btn soft" type="button" data-gd="redesign" data-id="${esc(g.id)}">Change the design</button></div>` : ''}
+      ${url ? `<div class="gd-play"><iframe title="${esc(g.title || 'Game')}" src="${esc(url)}" sandbox="allow-scripts allow-pointer-lock" loading="lazy" class="gd-frame gd-${esc(g.orientation || 'portrait')}"></iframe>
+        <div class="gd-side"><a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Open full screen</a>
+          <img data-qr="${esc(url)}" alt="QR code to play on your phone" class="gd-qr"><p class="muted em-small">Scan to play on your phone. Private: only people with this link can play.</p>
+          <div class="gd-nums">${nums.fps_server ? `<span><b>${num(nums.fps_server)}</b> fps on the server</span>` : ''}${nums.load_s ? `<span><b>${num(nums.load_s)}</b> s to start</span>` : ''}${nums.download_mb ? `<span><b>${num(nums.download_mb)}</b> MB download</span>` : ''}</div>
+          ${g.notes ? `<p class="em-small">${esc(g.notes)}</p>` : ''}</div></div>
+        ${(g.shots || []).length ? `<div class="gd-shots">${g.shots.map(s => `<img src="${esc(s)}" alt="Screenshot from Hoola's playtest" loading="lazy">`).join('')}</div>` : ''}
+        <textarea rows="2" maxlength="1500" data-ch="${esc(g.id)}" placeholder="What should change? e.g. make it faster, add a shield power-up" aria-label="Change the game"></textarea>
+        <div class="acts"><button class="btn go" type="button" data-gd="change" data-id="${esc(g.id)}">Make a new version</button>
+          <button class="btn soft" type="button" data-gd="source" data-id="${esc(g.id)}">Download Godot project</button>
+          <button class="btn soft em-leave" type="button" data-gd="delete" data-id="${esc(g.id)}">Delete</button></div>` : ''}
+      ${busy ? `<div class="acts"><button class="btn soft" type="button" data-gd="cancel" data-id="${esc(g.id)}">Stop</button></div>` : ''}
+      ${!url && !busy && g.status !== 'design_ready' ? `<div class="acts"><button class="btn soft em-leave" type="button" data-gd="delete" data-id="${esc(g.id)}">Delete</button></div>` : ''}</article>`;
+  }
+
+  async function gact(el, what, id, btn) {
+    const q = encodeURIComponent(id);
+    try {
+      if (what === 'build') { btn.disabled = true; await api('POST', `/api/game/${q}/approve`, {}); toast('Building. Hoola plays it before it reaches you.'); }
+      if (what === 'redesign') {
+        const fb = el.querySelector(`[data-fb="${CSS.escape(id)}"]`)?.value.trim();
+        if (!fb) { toast('Write what should change in the design.', true); return; }
+        await api('POST', `/api/game/${q}/approve`, {feedback: fb}); toast('Rewriting the design…');
+      }
+      if (what === 'change') {
+        const w = el.querySelector(`[data-ch="${CSS.escape(id)}"]`)?.value.trim();
+        if (!w) { toast('Write what should change first.', true); return; }
+        await api('POST', `/api/game/${q}/change`, {words: w}); toast('Making a new version. The current one keeps working.');
+      }
+      if (what === 'cancel') await api('POST', `/api/game/${q}/cancel`, {});
+      if (what === 'delete') { if (!confirm('Delete this game and its play link?')) return; await api('DELETE', `/api/game/${q}`); }
+      if (what === 'source') {
+        const r = await api('GET', `/api/game/${q}/source`, undefined, {raw: true});
+        const blob = await r.blob(); const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = (r.headers.get('content-disposition') || '').split('filename=')[1]?.replace(/"/g, '') || 'game.zip';
+        document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        return;
+      }
+    } catch (e) { toast(e.message, true); }
+    game(el);
+  }
+
+  return {hub, desk, social, cad, game};
 };

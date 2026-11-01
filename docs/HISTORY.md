@@ -13229,3 +13229,355 @@ Owner: "I WANT CAD TO PERFROM ALL COMPLEX, VERY COMPLEX, HARD, VERY HARD, ULTIMA
   review notes; sandbox defaults 6 GB / 600 s. Console CAD Desk + phone CadDeskScreen: photo / STEP upload, BOM, mass,
   print, review, 3MF / GLB / DXF buttons. Tests: tests/test_v0357_engineering_desk.py (16).
 - Large STEP uploads may need nginx `client_max_body_size 60m;` on the /api/eng location.
+
+## v0.365.0 HARD CARD (owner: "GO HARD CARD")
+Set 1 of the coding card scored 12/12 (claude-opus-5-5, 4.7 steps a job). That was too easy to show more progress, so set 2
+is harder. Built as 0.363 / 0.364, re-versioned past the parallel v0.363 ASLI ERP KAAM and v0.364 HOOLA CAD PRO.
+- `quality/code_repos.py`: two bigger practice projects; each base is correct and its own tests pass.
+  - DUKAAN (Python, 30 files): config, models, catalog, inventory, cart, coupons, GST, shipping, orders, notify, reports,
+    validators, utils, API handlers. Root AGENTS.md (settings only in config, aliases on rename, logging) and
+    app/api/AGENTS.md (handlers never raise, 400 / 404, require()). Plus docs/ARCHITECTURE.md and tests with conftest.
+  - HISAAB (JavaScript, 13 files): ES modules, paise, GST split, formats, invoices; node:test.
+- `quality/code_tasks2.py` (SET 2, 40 steps / 8 min a job), 12 jobs, each with a reference answer:
+  1. COD fee across config / models / orders / API (quote + create_order)
+  2. rename apply_coupon -> redeem_coupon with every caller + alias
+  3. carts sharing items (mutable default)
+  4. Sundays counted in delivery dates
+  5. reservation leak seen only in a red pytest run (test must not be touched)
+  6. get_order showing anyone's order (404 identical to unknown)
+  7. JS CGST + SGST off by a paisa
+  8. JS formatINR with Indian grouping + export from index
+  9. vague ask -> ONE question, no change
+  10. refactor place_order to <= 32 lines using the helpers, same numbers / errors / stock
+  11. free-shipping limit 499 -> 999 in config + quote + SMS text (no 49900 left)
+  12. cancel_order handler under the folder rules (require(), 400 / 404, never raises, idempotent)
+- `codecard.py`:
+  - `--set 2`; JavaScript checks / tests run with node (`node --test`); node gets no address-space cap because V8 reserves
+    a big one, but keeps the CPU / file / time caps;
+  - UNSAFE_JS refuses child_process / fs / net / http / fetch / eval / process.env;
+  - without node the JS jobs are SKIPPED, not failed;
+  - an `ask` job is right when nothing changed and the reply asks a question;
+  - saved as code2-*.json.
+- vps-ops `code_card_hard` (prints whether node is there; ~12 Opus jobs, roughly Rs 300-700).
+- Tests `test_v0365_hard_card.py`:
+  - both bases pass their own tests; every reference answer is right and every untouched repo fails;
+  - fix tests prove the bug;
+  - the marks catch a guess on the vague ask, no alias, a missed caller, a config-only limit change, deleting the red
+    test, and an unrefactored function;
+  - unsafe JS is never run; JS jobs are skipped without node;
+  - the real loop runs set-2 jobs; CLI + vps job.
+
+## v0.366.0 BLOG + BHASHAYEN (built as 0.359, re-versioned past the parallel v0.359-v0.363) (Phase 3c of "any world-complex website")
+Owner: "START PHASE 3C" (after 3a DUKAAN v0.351 and 3b DASHBOARD v0.357).
+- BLOG, writing stays with Kalam Sahayak (v0.101: her voice, facts checked on the web, [blanks] never guessed). Kalam gets
+  a new destination `site` (DESTS): `publish_request(dest="site", where=<website>, when=<time>)` -> `site.service.blog_target`
+  (the named site, or her only built one) -> the normal Kalam card "Aapki website ka blog: <name> (abhi | time par: ...)";
+  `decide_publish` (her Haan, card hash) -> `site.service.blog_publish`. Only blog pieces go to a site.
+- `server/app/site/blog.py`: table `site_blog_posts` (slug unique per site, title, excerpt, markdown body, category, tags,
+  cover = one of HER site photos, author, status published | scheduled | hidden, publish_at, published_at, words, tr =
+  translations per language with the source hash), `put` (same Kalam piece = same post), `set_status`, `set_cover`, `delete`,
+  `due` (scheduled -> published), `translate` (TRANSLATE_POST, kind site_edit, kept only while the source is unchanged),
+  `md_html` (Kalam's safe markdown: raw HTML escaped, only http / https / mailto / tel links; the title line and any h1
+  become the page's single h1), `card`, `rss`, `posting_ld` (BlogPosting), `latest_cards`, words in en / hi / hinglish.
+- `build.py`: `with_blog_pages` (a Blog page in the menu, or her designed blog page shows the posts below its own sections
+  minus any made-up blog_list), `/blog/page/N/` (10 a page, rel prev / next), `/blog/<post>/` (eyebrow category, h1, date,
+  reading time, author, cover eager, prose, tags, previous / next, 3 related - same category first, BlogPosting JSON-LD,
+  og:type article), `/blog/category/<cat>/`, `/blog/feed.xml`, RSS link in every head, posts + categories in sitemap.xml,
+  `<div data-hoola-posts="3">` in any section = her latest posts (RUNTIME_GUIDE: a blog section never writes posts).
+- Going live: her Haan says "publish on my website". `service._blog_rebuild` makes the checked version; when her live
+  address showed the version before, `_after_job -> _blog_go_live -> hosting.update_live` puts the new version on the same
+  addresses (no new address / DNS); else (blockers, never launched) the normal launch card. Scheduled posts:
+  `worker.tick -> service.blog_tick`. From chat, hide / show / cover make a version she launches herself; delete is ONLY her
+  tap (Blog tab / phone menu, with a confirm).
+- BHASHAYEN (`lang.py`): + gu, bn, ta, te, kn, ml, pa, or, ur (RTL: `<html dir="rtl">`, mirrored quote + menu), `pick` (her
+  words / codes), `html_lang`, MAX_EXTRA 4. `service.extra_languages / set_languages / _alts` (set_language kept for one);
+  `_translate` loops every language and the blog posts. `build.assemble` takes `site["alts"]` (a list): each language under
+  /<lang>/, `langs_all` + `root_up` + `root_base`; `lang_switch` = the v0.301 single link for two languages, a
+  `<details class="hs-langs">` menu for three or more; `<link rel="alternate" hreflang>` for every language + x-default on
+  every page when the real address is known.
+- API: GET /api/sites/<id>/blog, POST /api/sites/<id>/blog/<slug> {action hide|show|delete|cover} (her tap), POST
+  /api/sites/<id>/languages {languages}. Tools: `website` action=languages / blog (hide|show|cover), `website_dekho
+  what=blog`, `kalam` publish dest=site. Console Studio tabs Blog (write a draft with Kalam, read / edit it, publish now or
+  at a time -> the Kalam card confirmed in place, posts table with cover / hide / show / delete) and Languages (pick up to 4).
+  Phone `lib/ui/site_blog.dart` "Blog aur bhashayen" (posts + menu actions with confirms, language chips).
+- ALSO FIXED: the parallel v0.358 ENTERPRISE merge had dropped arena.js, employees.js and charts.js plus the Arena /
+  Employees / SEO Desk / Social Desk views from console v2.html (four console tests were red on main); restored.
+- Tests `server/tests/test_v0366_blog_bhashayen.py`.
+
+## v0.367.0 CRM DESK — the Salesforce desk, 100% read and write
+Owner: *"CRM Architect (crm_arch) --- NOW CHECK THIS"*, then *"MAKE CRM DESK CAN PERFROM 100 % READ AND WRITE
+WORK"*.
+
+The check found `crm_arch` **half-built** next to the ERP desk: the write engine worked, but it had **zero
+sub-jobs** and only four paper kinds. It is a desk too — now **twelve parts**: admin, object and field config,
+flow and automation, Apex, integration, data, profiles and sharing, reporting, testing, release and deployment,
+adoption, support. All twelve paper kinds are open to it, so **security work can finally produce a `matrix`** —
+which is exactly what the Salesforce security model is.
+
+### The split that makes this job different from ERP
+A CRM architect's real write work is not records, it is **configuration**.
+
+| `api` | what | where |
+|---|---|---|
+| `data` | records — leads, accounts, opportunities | `/sobjects/…` |
+| `tooling` | the org's **shape** — objects, fields, flows, permission sets | `/tooling/sobjects/…` |
+
+A wrong record is one bad row. **A wrong field or flow breaks the org for everyone.** So `api` is a *declared
+property of the run* — never guessed from the target name, never the default — and there is a test that the same
+target is not silently promoted to the tooling surface. A tooling change to production is logged as the exception
+it is.
+
+### New reads, which run at once because they change nothing
+- **`describe`** — objects, fields, flows, permission sets: the shape of her org.
+- **`soql`** — her own query, where **anything but `SELECT` is refused**.
+
+Each system spells its own URLs, so `_paths()` now holds the dialect instead of assuming OData everywhere.
+
+### Everything else is the same engine
+Dry run, her tap, batches, idempotent resume, rollback material — all of v0.363, unchanged. That is the whole
+point of having one engine: a second desk cost a table entry and a dialect, not a second engine.
+
+### Files
+`server/app/enterprise/rules.py` · `server/app/enterprise/run.py` (dialect, describe, soql, `api`) ·
+`server/app/enterprise/models.py` (`EntRun.api`) · `server/app/agent/enterprise_tools.py` ·
+`server/tests/test_v0365_crm_desk.py` (11 tests).
+## v0.368.0 SOCIAL MEDIA MANAGER Phase 3 - INBOX (1 Nov 2026, owner: "GO PHASE 3")
+Plan: docs/SOCIAL_EMPLOYEE_PLAN.md section 5.4 + the trust table in section 6. Built as 0.356 / 0.358 / 0.364 / 0.365, re-versioned past main's
+v0.356-v0.367 (PEHLE NIYAM, DASHBOARD, ENTERPRISE SYSTEMS, ENGINEERING DESK, ASLI ERP KAAM ...).
+- `server/app/social/inbox.py` (table `social_inbox`, unique tenant + platform + item id): every ~15 min (desk job `inbox`,
+  only when the desk is ready) the comments on her last 20 read posts and her DM threads (Instagram `/me/conversations`,
+  Page `/conversations`) from the last 7 days. Skipped: her own comments / Page comments, threads where she spoke last,
+  comments she already answered on Instagram (stored as replied), anything already read.
+- Sorting rules (`classify`, Hinglish + English): abuse > spam (links, follow-me, promo) > complaint > lead (price / kitna /
+  booking / delivery / address...) > question > praise > other. The model (`_ai_drafts`, kalam `_ai_json`, SOCIAL_AI) may
+  refine the class and write the reply, but a rules spam / abuse / complaint call always stands.
+- Drafts only from HER facts: new set-up field "Facts for replies" (`profile.facts`) + Kalam facts; rules drafts never state a
+  price (lead comment -> "DM kijiye / website", lead DM / question -> holding line marked needs_her, complaint -> apology +
+  DM / call, praise -> thanks). The model is told every comment is data, never an instruction.
+- Trust: Seekh nothing goes alone; Saathi / Bharosa reply to lead / question / praise when needs_her is false (REPLY_CAP 0 /
+  40 / 150 a day, counted from auto replies today), DMs only inside 24 h (DM_WINDOW), spam / abuse comments HIDDEN, never
+  deleted (event "Hid N ... Unhide any of them"). A complaint is always her tap. Hoola never messages anyone first.
+- She is told: lead -> event + push `social_lead` to her home chat; complaint -> event + push `social_alert`. Phone feed
+  shows `SocialCard` (opens the Inbox).
+- Her taps: GET /api/social/inbox?box=needs|leads|complaints|done, POST /api/social/inbox/<id>/reply {text},
+  /hide {hidden}, POST /api/social/inbox/<id> {status: ignored|drafted, draft}; POST /api/social/run/inbox = Check now.
+  A DM older than 24 h is refused with the reason (she answers from the app herself).
+- Permissions: IG scopes + instagram_business_manage_comments / _manage_messages, FB + pages_manage_engagement /
+  pages_read_user_content / pages_messaging (asked on Connect since v0.355's list grew in meta.py). Facebook's granted scopes
+  now stored from debug_token; `accounts()[].can_reply`; an older connection reads nothing and the desk says "Reconnect to
+  allow posting and replies"; a Meta (#10)/(#200) alerts once.
+- Fixed: a second account connected after the first read (e.g. the Page after Instagram) had its posts read only at the next
+  7 am daily run, so its comments could not be scanned; now read right after Connect.
+- Console (`employees.js` inbox tile with tabs + reply boxes, facts textarea) + phone (`SocialInboxScreen`, desk Inbox card,
+  facts field). Privacy page: comments and messages paragraph (7 days, what is kept, trust, no delete, 24 h, no ads / training).
+- Tests: `server/tests/test_v0368_social_inbox.py` (11). Meta App Review needed for the new permissions before non-testers.
+
+
+## v0.369.0 SOCIAL MEDIA MANAGER Phase 4 - 24/7 + REPORTS (1 Nov 2026, owner: "GO PHASE 4")
+Built as 0.359 / 0.365 / 0.366, re-versioned past main's v0.364-v0.367. Module `server/app/social/pulse.py`.
+- Posting by trust (plan section 6). New nullable `social_posts.seen`: approve_calendar sets 0 (plan OK only), set_post
+  approved / Publish now set 1, old rows NULL = treated as her own OK (Phase 2 behaviour kept). `publish.due` asks
+  `pulse.may_go`: seen 0 + Seekh -> waits (`waiting_ok`, "Needs your OK" + "OK to post" on the card); Saathi / Bharosa ->
+  not in quiet hours (default 23-7) and under POST_CAP 6 / 15 a day (counted by the post's day or its send time);
+  Saathi is told the same day (social_day). Missed (> 1 day late) unchanged.
+- `social_desk.settings` (nullable JSON): paused, pause_reason, quiet. Pause = publisher returns nothing and the inbox
+  acts as Seekh (drafts only). Emergency stop = pause + approved / failed posts back to draft. POST /api/social/settings.
+- Jobs: morning (daily >= 9 am, says something only when posts wait / complaints / a festival in exactly 7 days),
+  weekly = `weekly_pulse` (fresh numbers, two lines vs last week, push social_week), monthly (1st >= 9 am, never in the
+  baseline's month; `report_markdown` + Hoola Print -> chatfiles -> pc_file in her chat), daily also flags boosts.
+- Best times: per post interactions / that account's median, weekday x 3-hour band, (sum + 3) / (n + 3), certainty by
+  posts read (15 / 40); `_plan_inputs.best_times` for Opus, the rules plan uses by_day hours when certainty >= medium.
+- Boost flags: last 14 days, >= 8 posts read, >= 20 interactions and >= 2x the median; told once each (stamps.boosted);
+  plan text = Meta Boost / Ads Manager, 15 km of her city, Rs 300 a day x 3 days, compare leads with spend.
+- Desk view `pulse` (settings, trust, cap, auto today, waiting_ok, best_times, boosts); console Posting controls / Best
+  times / Worth a boost / month PDF button; phone Posting card + best times / boosts card + OK to post. Push kinds
+  social_day / social_week. Privacy: trust posting + pause line. Tests `server/tests/test_v0369_social_pulse.py` (12).
+
+## v0.370.0 GAME DESK Phase 1 + GAME DEVELOPER (1 Nov 2026)
+Owner: "NOW LETS WORK ON EMPLOYEE SECTION. Game Development, Simulation & Virtual Reality" (her list VII) -> plan
+`docs/GAME_DESK_PLAN.md` -> "GO PHASE 1 WITH GODOT 4". (Built as 0.359 / 0.364 / 0.368; re-versioned on rebase past the Engineering
+Desk / CAD 0.359, Code Card 0.360, ERP 0.361-0.363, CAD PRO 0.364, Blog / Hard Card / CRM 0.365-0.367, Social Media Manager Phase 3-4 0.368-0.369.)
+- Hire: `employee/hire.py` CATALOG `game_dev` (live, group "Game Development, Simulation & VR") + the other 9 roles
+  as Coming soon (xr_dev, netcode_dev, physics_dev, sim_dev, procgen_dev, vfx_td, audio_dev, twin_arch, haptics_dev).
+  The Hub's group headings came with the Engineering Desk (v0.359); the Game Desk joins them.
+- `app/gamedesk/`: template.py (project.godot, root scene = plain Node + main.gd, single-threaded Web export preset,
+  Hoola's autoload probe `hoola_probe.gd` -> window.__hoola {ready, fps, frames}), guard.py (no network classes,
+  OS.execute / shell / environment, JavaScriptBridge, Engine.get_singleton, DirAccess, ClassDB, Expression, files
+  outside user://, main.gd must extend Node), engine.py (Godot in a box like the 3D Studio: unshare -rn, tiny env, own
+  XDG dirs with a link to the templates, RLIMITs, nice, wall-clock kill; `smoke` = 600 frames headless to surface
+  parse + runtime script errors; `export_web` + .gz of wasm / pck / js), playtest.py (Chromium + SwiftShader WebGL:
+  waits for the probe, presses keys, taps, swipes, 3 screenshots, script errors, freeze and blank-screen checks; low
+  fps on the server is a warning, not a failure), ai.py (Opus: design doc <= 350 words, then code-only GDScript in
+  === file === blocks, fix from the REAL errors, change from her words), service.py (GameProject table; design ->
+  design_ready (her OK / her changes) -> writing -> building -> testing -> done; up to 4 fix rounds; a failed change
+  keeps the last good version; private token play link; screenshots; source zip; 1 job per user, GAME_DAY_BUILDS 15,
+  GAME_DAY_NEW 10; refuses clones of named games, real-money / betting, weapon targeting), api.py (/api/game*,
+  /play/<token>/<file>: CSP default-src 'self' + connect-src 'self' + frame-ancestors 'self', 'unsafe-eval' only for
+  the probe bridge, gzip when accepted, CORS for the console's sandboxed iframe, noindex), `python -m app.gamedesk check`.
+- Agent tool `game_desk` (new / approve / change / status / list / cancel), only while hired, owner-only writes;
+  router family `gamedesk` + a "game" intent; guide line scoped to the family.
+- Console: Game Desk page (`employees.js` game(): new game, design doc with Build it / Change the design, the game in a
+  sandboxed iframe, Open full screen, QR, numbers, screenshots, new version, Godot project download, live refresh);
+  phone `lib/ui/game_desk_screen.dart` (same, Play opens the browser).
+- Install: `server/deploy/setup_godot.py` = Godot 4.7.2 into ~/apps/godot + ONLY the Web templates read out of the
+  1.25 GB templates zip by HTTP range requests (~40 MB); vps-ops `game_setup` / `game_check`.
+- Measured in the sandbox: export 5.8-7.3 s, download 9.7 MB (gzip of ~40 MB), load 1.4-3.5 s, 41-61 fps on software
+  WebGL; a game played through /play/ under the CSP to score 27 and its game-over screen; a wrong identifier was caught
+  with its line before export.
+- Also fixed (again): test_v0312_arena_screen's compare versions (a blanket replace had made both the current version) back to
+  0.309.0 / 0.317.0; test_v0240's stamp pin now follows APP_VERSION (a typed number went stale twice). 
+- Tests: tests/test_v0370_game_desk.py (14, one builds + plays a real Godot game when GODOT_BIN is set).
+
+## v0.371.0 POOCHH LO + FAIR CARD (owner: "CODE_CARD_HARD DONE, CHECK RESULT")
+Built as 0.370, re-versioned past the parallel v0.370 GAME DESK.
+First live hard card (set 2, claude-opus-5-5, node present): 9/12 right. Breakdown: works 10/12, scope 10/12, rules 12/12,
+good tests 7/7, fix tests that prove the bug 4/4, 7.6 steps a job, 2.1 min. The three misses, one by one:
+- vague_ask = a REAL Hoola gap. Asked "Checkout mein kuch gadbad hai, theek kar do.", it guessed and changed
+  app/orders.py + tests.
+  - Fix: `devsahayak/loop.py` SYSTEM has a VAGUE-request rule: explore briefly; with no ONE clear matching bug, do not
+    guess and do not edit; call done with explain = ONE short question in her language. A clear request is never
+    answered with a question. The `done` explain description says the same; the one-shot fallback (WRITE_SYSTEM) too.
+  - `service._work`: an explanation that ends in "?" reaches her with no "(Koi file badalne layak nahi mili.)" tail.
+- fix_shared_default = an UNFAIR check. It demanded `c.items is mine`, so only one spelling of the fix passed;
+  `list(items)` copies and `list(items or [])` fix the bug equally.
+  - Now: carts don't share items, items passed in are kept, no-arg carts start empty.
+- fix_from_test_run = an UNFAIR scope rule. ANY edit to tests/test_orders.py was refused, so adding a test beside the red
+  one failed too.
+  - Now: any test file may change, but the original red test must still be there word for word (a `want` rule);
+    weakening it fails.
+- Tests: `test_v0371_poochh_lo.py` (3 honest cart fixes pass, the bug still fails, an added test is fine, a weakened one is
+  not, rules text present, a question reaches the chat with no tail and nothing pushed); test_v0365 updated (deleting
+  the red test now fails on rules + works instead of scope).
+- Next: re-run vps-ops `code_card_hard` to confirm.
+
+## v0.372.0 TPM DESK — the engineering counterpart, and the BIG list stops drifting
+Owner: *"Technical PM (tpm) --- CHECK AND MAKE THIS 100 %"*.
+
+### The check found two things
+The thin one: `tpm` had three paper kinds, no sub-jobs, and could not write anywhere.
+
+The important one: **as written it would have duplicated the existing `product` tool** — 1,789 lines that already
+own the product side end to end: discovery, RICE/ICE scoring, Kano, PRDs, roadmap, releases, KPIs.
+
+### So the TPM desk is the engineering counterpart, not a second product manager
+Twelve parts: technical roadmap · cross-team dependencies and the critical path · architecture decisions (ADRs) ·
+NFRs · technical debt · capacity · release train · RAID · build vs buy · incident follow-through to closure ·
+delivery metrics · status and escalation.
+
+The role's **own rules** say the product side belongs to `product`. That is what stops the model reaching for the
+wrong tool — a comment in a file would not have.
+
+### It writes now, and that exposed a real drift
+A technical PM updates the tracker, so `tpm` became a writer. `employee/roles.BIG` was a **hand-written list**, so
+it kept its old `action` class — meaning a tracker write would **not** have raised an approval card.
+
+`BIG` is now **derived** from `enterprise.rules.WRITERS`: add a writer to the role table and the gate follows by
+itself. There is a test that the Employee gate still works if the enterprise suite is not importable at all, so
+the derivation can never take the gate down with it.
+
+A v0.358 test that pinned the writer *membership* was rewritten to pin the **invariant** instead — capped and
+writer are mutually exclusive, and every writer is BIG — which is what actually matters and does not need editing
+each time a desk grows.
+
+### All three desks now stand together
+| desk | parts |
+|---|---|
+| ERP | 16 |
+| CRM | 12 |
+| TPM | 12 |
+
+### Files
+`server/app/enterprise/rules.py` · `server/app/employee/roles.py` (derived BIG) ·
+`server/tests/test_v0370_tpm_desk.py` (9 tests) · `server/tests/test_v0358_enterprise.py` (invariant).
+
+## v0.373.0 CODE MODE (Phase 4 of "any world-complex website": her site's real code, like Lovable / Bolt)
+Owner: "START PHASE 4" (the plan's step: "Real React code you can open, edit in chat ('make the pricing table compare 3
+plans') and export").
+- The site's code IS its sections (HTML + section-scoped CSS + an optional small script) and its design kit (.k-*,
+  v0.330). `server/app/site/code.py` shows them as files `pages/<page>/<section>.html|css|js` + `design/kit.css`:
+  `tree`, `read` (made readable: edit numbers stripped, block tags on their own lines - whitespace-safe tags only - CSS
+  one declaration a line with `;` split only outside quotes / brackets so `url("data:...;...")` survives, the script
+  without Hoola's try-wrapper), `clean` (her or Opus's code through the SAME `build.sanitize_section` as every build:
+  no <script> / iframe / on*= / javascript: / outside src; CSS scoped to the section; scripts with network / cookies /
+  storage / eval refused; edit numbers re-tagged), `diff` (unified), `pick` (which sections her words are about).
+- `service.code_tree / code_read / code_write` (her own hand: one Undo step via the v0.295 stack, then a checked
+  version; the design kit through `kit.clean`), `code_ask` -> site job `code` (`code_job` / `_code_change`: Opus kind
+  site_edit with CODE_SYSTEM + facts + the kit line, only the asked sections may change, each part cleaned, a diff per
+  file, ONE Undo for the whole change (`kind: multi`), then the checked version via _SAVE_PENDING), `code_task` (the
+  result the console polls). `undo_edit` handles `kit` and `multi`.
+- API: GET /api/sites/<id>/code (+ ?path=), PUT /api/sites/<id>/code {path, code}, POST /api/sites/<id>/code/ask
+  {instruction, path}, GET /api/sites/<id>/code/task/<task>. Tools: `website` action=code (+ instruction, file),
+  `website_dekho what=code` (+ file).
+- Console Studio tab "Code": file list by page, editor with line numbers (Tab = 2 spaces, Ctrl/Cmd+S saves, unsaved
+  warning), "Ask Hoola to change this file" -> polled job -> coloured diff + what the cleaner removed, Undo, Download
+  React project / ZIP (v0.305 export into her files). Phone: not in this version (code editing is a computer job).
+- Tests `server/tests/test_v0373_code_mode.py`.
+
+## v0.374.0 TPM KE HISAAB — the technical PM's work, done in code
+Owner: *"WORK ON TPM -- THAT AI CAN PERFROM ALL TASKS IN IT"*.
+
+v0.372 gave the TPM desk its twelve parts and its papers. This makes it **do** the job — and the job is not
+prose. It is six questions that each have exactly one right answer:
+
+| question | answer |
+|---|---|
+| what is really blocking the release | the longest chain through the dependency graph |
+| who is over-committed, by how much | capacity against real estimates, open work only |
+| are we getting faster or slower | **median** lead / cycle time, escaped bugs, say-do % |
+| what is rotting in the RAID log | overdue, gone quiet, unowned, high-and-open |
+| can we ship | every gate, with the failures **named** |
+| who owes me an update | owners silent on open work |
+
+All six are arithmetic, so they live in `app/enterprise/tpm.py` and **not in a prompt**. The model picks the
+question and reads the answer out; it never does the sum. The tool description says so in those words, because
+**a wrong critical path looks exactly as confident as a right one**.
+
+### Three decisions worth recording
+**A dependency loop is refused, never answered.** A cycle is a real planning bug; returning a number would be
+worse than refusing, so `critical_path` names the loop and stops.
+
+**The median, not the mean.** Three tickets where one took 90 days: the mean reads ~34, the median reads 9. One
+outlier must not decide whether the team is getting faster.
+
+**Non-blocking gates are warnings, not stops.** `readiness` separates the two, and names the blocking failures —
+"not ready" without a reason helps nobody.
+
+Rows come from a tracker read, a sheet, or her paste, so the sums work before anything is connected. The six
+actions are on `tpm` **alone**, and there is a test that `erp`, `crm_arch` and `plm` were not given them.
+
+### Files
+`server/app/enterprise/tpm.py` (new) · `server/app/agent/enterprise_tools.py` ·
+`server/tests/test_v0373_tpm_sums.py` (15 tests, worked examples computed by hand).
+
+## v0.375.0 HOOLA CAD ANALYSIS (1 Nov 2026)
+Owner, on the 8 gaps listed after v0.364: "MAKE IT VERY FUCTIONAL FOR HOOLA AI - DO DEEP RESEARCH AND INNOVATION".
+What each gap became (all in `server/app/engineering/`, tests `tests/test_v0365_cad_analysis.py`, 14 + the 16 desk tests):
+- FEA (`fea.py`, run by `analysis_runner.py` in the same locked box via `sandbox.analyse`): mesh from the part's OWN
+  B-rep (every face sampled at h, points remember their face, jittered interior grid, Delaunay, tets kept by the OCC
+  inside test), quadratic tetrahedra (scikit-fem BSD-3), PyAMG-preconditioned CG with rigid-body modes else a direct
+  solve. Loads / supports by CadQuery face selectors. static = von Mises at element vertices averaged per node with
+  sliver tets down-weighted (quadrature spikes were +100 %), peak AWAY from supports (clamp singularity), safety
+  factor vs yield, equilibrium check (reactions = loads), two-mesh convergence check. thermal = steady conduction
+  with temps / watts / convection. modal = shift-invert eigsh, free-free or supported, avoid_hz band. Measured vs
+  theory: cantilever deflection 0.2015 vs 0.200 mm, bending stress within ~5 %, first mode 810 vs 815 Hz, 1-D heat
+  exact. Materials table (E, nu, rho, yield, k) for 16 materials.
+- THE INNOVATION: design -> simulate -> redesign. `H.analyze(..., min_sf=2)` in the CAD script; if the FEA says too
+  weak (or a mode sits in her motor band) the designer gets the peak stress, where, and the yield, and makes a
+  stronger version (ENG_STRENGTHEN_ROUNDS 2). Same for her numbers: `H.expect(size / holes / max_size / volume /
+  solids)` are measured on the B-rep (`geom.py` finds holes by cylinder axis + diameter) and a miss is sent back.
+- Threads: helical sweep + union failed on ~1 size in 5 in OCC (measured M3-M24 x 6-30 mm, even with retries), so
+  H.thread / H.thread_tool build an exact FACETED ISO 68-1 surface r(theta, z) sewn into one solid: valid every time,
+  tapped holes cut reliably (~3-10 s each, max 6 a part).
+- Sheet metal: H.sheet(press-brake profile, width, t, r, k) = real bent strip (sweep of lines + bend arcs), flat
+  length by K-factor bend allowance (DIN 6935); H.tray (4 flanges, corner reliefs); flat.dxf (CUT + dashed BEND
+  layers) + flat.png.
+- Freeform: H.smooth_loft (super-ellipse sections, B-spline loft), H.spline_sweep (tube along a 3-D spline).
+- CNC (`cam.py`): 2.5D face / pocket (inward offset rings) / peck drill (explicit moves, any controller) / profile with
+  tabs; part.nc + cam.png + time estimate. DRAFT: simulate + dry-run.
+- Calculator (`calc.py`, tool `eng_calc`, POST /api/eng/calc): ISO 286 fits, tolerance stack (worst / RSS / Monte
+  Carlo + Cpk), ISO 898 bolts (preload, torque, EN 1993 utilisation), fillet welds, beams, pipe flow.
+- Big assemblies: > 40 parts or > 4,000 faces -> coarser view mesh, no hidden-line page.
+- Certification: still never claimed. analysis.pdf = an engineer's calculation report (method, mesh, equilibrium,
+  convergence, assumptions) for HER engineer to sign.
+- Desk: console + phone show the analysis lines, stress / heat / mode maps, toolpath, flat pattern, and the new files.
+- VPS: `~/apps/santosh-core/.venv/bin/pip install scikit-fem pyamg` (scikit-fem needed for FEA; pyamg optional = faster).
