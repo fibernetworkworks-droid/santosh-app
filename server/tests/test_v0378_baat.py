@@ -89,4 +89,5 @@ def test_own_coupon_and_slot_fields_are_kept(droid_env):
                                         "_coupon": "TEN10", "cart": [{"id": p1["id"], "qty": 1}]}, headers=ha).json()
     row = {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[o["id"]]
     assert row["coupon"] == "HOOLA-42" and row["slot"] == "evening"            # her own fields, cleaned and kept
+    assert row["_coupon"] == "TEN10" and row["_discount"] > 0                  # the discount code, stored apart
     assert o["total"] < float(p1["price"])                                     # _coupon applied the discount

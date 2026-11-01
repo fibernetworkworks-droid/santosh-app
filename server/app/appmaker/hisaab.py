@@ -81,15 +81,15 @@ def build(r: AppProject, month: str = "") -> dict[str, Any]:
             st = str(d.get("status") or "")
             cancelled = st.strip().lower() == "cancelled"
             sales.append([made.strftime("%Y-%m-%d %H:%M"), x.id[-6:].upper(), d.get("name") or d.get("customer") or "", d.get("phone", ""),
-                          st, d.get("subtotal") or "", d.get("coupon", ""), d.get("discount") or "", d.get("delivery") or "",
+                          st, d.get("_subtotal") or "", d.get("_coupon", ""), d.get("_discount") or "", d.get("_delivery") or "",
                           d.get("total", ""), d.get("paid", ""), d.get("_inv_no", "")])
             if cancelled:
                 tot["cancelled"] += 1
             else:
                 tot["orders"] += 1
                 tot["sales"] += float(d.get("total") or 0)
-                tot["discount"] += float(d.get("discount") or 0)
-                tot["delivery"] += float(d.get("delivery") or 0)
+                tot["discount"] += float(d.get("_discount") or 0)
+                tot["delivery"] += float(d.get("_delivery") or 0)
         for kind, no_key, day_key in (("inv", "_inv_no", "_inv_date"), ("cn", "_cn_no", "_cn_date")):
             if not d.get(no_key) or _month_of_day(d.get(day_key, "")) != month:
                 continue

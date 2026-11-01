@@ -213,7 +213,7 @@ def compute(r: AppProject, c: dict[str, Any], d: dict[str, Any]) -> dict[str, An
     if not lines and d.get("total") not in (None, ""):            # a booking / request with a price: one line
         lines.append({"pid": "", "name": c["label"], "qty": 1, "gross": round(float(d.get("total") or 0), 2)})
     total = float(d.get("total") or 0) if d.get("total") not in (None, "") else sum(x["gross"] for x in lines)
-    fee = float(d.get("delivery") or 0)                         # v0.360 DELIVERY: its own line; the goods share the rest
+    fee = float(d.get("_delivery") or 0)                         # v0.360 DELIVERY: its own line; the goods share the rest
     if fee and lines and lines[-1]["pid"] == "" and lines[-1]["name"] == c["label"]:
         lines[-1]["gross"] = round(lines[-1]["gross"] - fee, 2)
     total = round(total - fee, 2)

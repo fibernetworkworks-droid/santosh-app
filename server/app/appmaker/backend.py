@@ -28,6 +28,8 @@ from ..site import webapp as W
 from .models import AppProject
 
 log = logging.getLogger("santosh.appmaker.backend")
+# v0.364 the values the server adds to an order (stored as "_<key>" so a list's own field of that name is never overwritten)
+SYS_KEYS = ("subtotal", "discount", "coupon", "coupon_note", "delivery", "delivery_note", "slot", "slot_label")
 STATS = {"schemas": 0, "orders": 0, "dedup": 0, "notes": 0, "notes_capped": 0, "deleted_accounts": 0}
 CID = re.compile(r"^[A-Za-z0-9_-]{8,48}$")
 NOTE_CAP_PER_HOUR = 30
@@ -424,7 +426,8 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
             CP.give_back(r, extra["coupon"], w.id)
         raise
     if extra or cid:
-        _merge(out["id"], {**extra, **({"_cid": cid} if cid else {})})
+        stored = {("_" + k if k in SYS_KEYS else k): v for k, v in extra.items()}   # v0.364 system values never overwrite her fields
+        _merge(out["id"], {**stored, **({"_cid": cid} if cid else {})})
         if extra.get("slot"):                          # v0.371 two orders raced for the last place: the later one gets the note
             from . import delivery as DL
             DL.confirm(r, out["id"])
@@ -1179,6 +1182,7 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
     one = isinstance(out, dict)
     rows_ = [out] if one else list(out)
     info = _assign_info(bid(r), [x.get("id") for x in rows_ if x.get("id")])
+    own_keys = {f["key"] for c in schema(r)["collections"] for f in c["fields"]}
     kind = ""
     if any(receipt_ready(info.get(x.get("id"), {})) for x in rows_):
         from . import gst as G
@@ -1193,9 +1197,13 @@ def with_assign(r: AppProject, out: list[dict[str, Any]] | dict[str, Any], w: W.
         if (w.staff or x.get("mine")) and d.get("_khata"):     # v0.359 KHATA: this order was given on credit
             x["on_credit"] = not d.get("_khata_back")
         if w.staff or x.get("mine"):                  # v0.358 COUPON: what the server took off (or why a code did not apply)
-            for k in ("subtotal", "discount", "coupon", "coupon_note", "delivery", "delivery_note", "slot", "slot_label"):
-                if d.get(k) not in (None, ""):
-                    x[k] = d[k]
+            own = own_keys
+            for k in SYS_KEYS:                          # stored as "_k"; shown as "k" unless her list has its own field "k"
+                v = d.get("_" + k)
+                if v not in (None, ""):
+                    x["_" + k] = v
+                    if k not in own:
+                        x[k] = v
         if w.staff or x.get("mine"):                  # v0.353 RAAY: the customer's rating, for her and the business
             if d.get("_rate"):
                 x["rating"], x["rating_note"] = int(d["_rate"]), str(d.get("_rate_note") or "")
@@ -1394,10 +1402,10 @@ def _coupon_back(r: AppProject, row_id: str) -> None:
     with session() as s:
         row = s.get(W.SiteAppRow, row_id)
         d = _j(row.data, {}) if row is not None else {}
-        if not d.get("discount") or not d.get("coupon") or d.get("_coupon_back"):
+        if not d.get("_discount") or not d.get("_coupon") or d.get("_coupon_back"):
             return
         d["_coupon_back"] = True
         row.data = json.dumps(d, ensure_ascii=False)
-        code, who = d["coupon"], row.owner
+        code, who = d["_coupon"], row.owner
     from . import coupon as CP
     CP.give_back(r, code, who)

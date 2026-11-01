@@ -13704,3 +13704,7 @@ The tablet pass (v0.363) and the iPad pass (v0.364) ran only in Hoola's own CI. 
   delivery slot, so a list's OWN field with that name (a scanned coupon code, a booking slot) was removed. The apps now send
   `_coupon` / `_slot`; the server reads plain `coupon` / `slot` only when the list has no such field. Test in
   `tests/test_v0378_baat.py::test_own_coupon_and_slot_fields_are_kept`.
+- v0.364.0 fix (same family): the values the server adds to an order (subtotal, discount, coupon, coupon_note, delivery,
+  delivery_note, slot, slot_label) were saved under those plain names and could overwrite a list's own field of the same name.
+  They are stored as `_subtotal` ... `_slot_label` (`backend.SYS_KEYS`); views show the plain name only when the list has no
+  such field (and always the `_` name); receipts, GST, accounts, slots and coupon give-back read the `_` names.

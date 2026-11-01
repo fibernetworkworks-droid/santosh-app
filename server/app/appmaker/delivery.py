@@ -238,9 +238,9 @@ def _booked(r: AppProject) -> dict[str, int]:
     n: dict[str, int] = {}
     with session() as s:
         for (data,) in s.execute(select(W.SiteAppRow.data).where(W.SiteAppRow.site_id == BE.bid(r), W.SiteAppRow.coll == order,
-                                                                 W.SiteAppRow.data.like('%"slot": "%'))).all():
+                                                                 W.SiteAppRow.data.like('%"_slot": "%'))).all():
             d = BE._j(data, {})
-            k = str(d.get("slot") or "")
+            k = str(d.get("_slot") or "")
             if k[:10] >= today and str(d.get("status") or "").strip().lower() != "cancelled":
                 n[k] = n.get(k, 0) + 1
     return n
@@ -298,20 +298,20 @@ def confirm(r: AppProject, row_id: str) -> None:
         with session() as s:
             row = s.get(W.SiteAppRow, row_id)
             d = BE._j(row.data, {}) if row is not None else {}
-            key = str(d.get("slot") or "")
+            key = str(d.get("_slot") or "")
             if not key:
                 return
             cap = next((x["cap"] for x in _slots_cfg(settings(r))[0] if x["start"] == key[11:]), 0)
             same = [x for x in s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == row.site_id, W.SiteAppRow.coll == row.coll,
-                                                                    W.SiteAppRow.data.like(f'%"slot": "{key}"%'))).all()
+                                                                    W.SiteAppRow.data.like(f'%"_slot": "{key}"%'))).all()
                     if str(BE._j(x.data, {}).get("status") or "").strip().lower() != "cancelled"]
             same.sort(key=lambda x: (x.created_at, x.id))
             if [x.id for x in same].index(row_id) < cap:
                 return
-            for k in ("slot", "slot_label"):
+            for k in ("_slot", "_slot_label"):
                 d.pop(k, None)
             why = "Chuna hua delivery slot usi waqt bhar gaya - dukaan call karke samay tay karegi."
-            d["delivery_note"] = (d.get("delivery_note", "").rstrip(".") + "; " if d.get("delivery_note") else "") + why
+            d["_delivery_note"] = (d.get("_delivery_note", "").rstrip(".") + "; " if d.get("_delivery_note") else "") + why
             row.data = json.dumps(d, ensure_ascii=False)
             STATS["slots_full"] += 1
 
@@ -368,21 +368,21 @@ def change_slot(r: AppProject, coll: str, row_id: str, key: str, w: W.Who) -> di
         raise DeliveryError("Yeh order nahi mila.", 404)
     if str(d.get("status") or "").strip().lower() in ("cancelled", "delivered", "done", "completed"):
         raise DeliveryError("Yeh order poora / cancel ho chuka - samay nahi badalta.", 409)
-    cur = str(d.get("slot") or "")
+    cur = str(d.get("_slot") or "")
     if cur and not w.staff:
         start = datetime.strptime(cur.replace("|", " "), "%Y-%m-%d %H:%M")
         if start - timedelta(minutes=cutoff) <= _ist().replace(tzinfo=None):
             raise DeliveryError("Ab samay badalne ka waqt nikal gaya - dukaan se baat kijiye.", 409)
     if key == cur:
-        return {"slot": cur, "slot_label": d.get("slot_label", "")}
+        return {"slot": cur, "slot_label": d.get("_slot_label", "")}
     sf, why = book(r, key)
     if why:
         raise DeliveryError(why + ".", 409)
-    old = {k: d.get(k) for k in ("slot", "slot_label", "delivery_note")}
-    BE._merge(row_id, {**sf, "_ev": now_iso()})
+    old = {k: d.get(k) for k in ("_slot", "_slot_label", "_delivery_note")}
+    BE._merge(row_id, {"_" + k: v for k, v in sf.items()} | {"_ev": now_iso()})
     confirm(r, row_id)
     d2 = BE._j(BE._row(BE.bid(r), row_id).data, {})
-    if d2.get("slot") != key:                          # lost the race: the order keeps exactly what it had
+    if d2.get("_slot") != key:                         # lost the race: the order keeps exactly what it had
         with session() as s:
             row = s.get(W.SiteAppRow, row_id)
             dd = BE._j(row.data, {})
@@ -393,9 +393,9 @@ def change_slot(r: AppProject, coll: str, row_id: str, key: str, w: W.Who) -> di
                     dd[k] = v
             row.data = json.dumps(dd, ensure_ascii=False)
         raise DeliveryError("Yeh slot usi waqt bhar gaya - doosra chuniye.", 409)
-    if d2.get("delivery_note") and "slot" in str(d2.get("delivery_note")).lower() and not old.get("delivery_note"):
-        BE._merge(row_id, {"delivery_note": ""})       # an earlier "slot full" note no longer applies
-    return {"slot": key, "slot_label": d2.get("slot_label", "")}
+    if d2.get("_delivery_note") and "slot" in str(d2.get("_delivery_note")).lower() and not old.get("_delivery_note"):
+        BE._merge(row_id, {"_delivery_note": ""})      # an earlier "slot full" note no longer applies
+    return {"slot": key, "slot_label": d2.get("_slot_label", "")}
 
 
 def now_iso() -> str:
