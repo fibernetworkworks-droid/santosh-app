@@ -12950,3 +12950,25 @@ Owner: "GO PHASE 2" (docs/SOCIAL_EMPLOYEE_PLAN.md: publish with her tap).
 - Tests: `test_v0355_social_publish.py` (10); Phase 1 tests updated (publish scope requested now, publish job each sweep).
 - Not verified live: Meta's real publishing (mocked from Meta's docs). Next: App Review screencasts for
   instagram_business_content_publish + pages_manage_posts, then Phase 3 (comments / DMs inbox).
+
+## v0.356.0 PEHLE NIYAM (owner: "Always read the project's rules first.")
+Item 3 of the coding plan. Built as 0.353 / 0.354, re-versioned past the parallel v0.353 / v0.355 SOCIAL MEDIA MANAGER.
+- `devsahayak/loop.py` `rule_paths(paths)`: sorts the repo's own rules files.
+  - rules: AGENTS.md / CLAUDE.md / GEMINI.md / CONTRIBUTING / CONVENTIONS / style guide at the root,
+    .github/copilot-instructions.md, .github/instructions/*.instructions.md, docs/CONTRIBUTING, .cursorrules,
+    .cursor/rules/*, .windsurfrules, .clinerules;
+  - build: package.json / pyproject / pubspec / lint configs, plus the CI workflow that tests;
+  - readme;
+  - folder rules: pkg/AGENTS.md / CLAUDE.md / CONTRIBUTING.md (node_modules / vendor skipped).
+- `_project_rules`: the first message opens with "PROJECT RULES (read first ...)".
+  - Rules go in `<project_rules>` blocks (400 lines each), then build / CI files (200 lines), then a 120-line README,
+    60 KB in all (rules are never dropped).
+  - It lists the folders that have their own rules. A repo with no rules file is told so and follows the code's own style.
+- Folder rules: `read_file` / `list_dir` in a folder attach that folder's rules once. `edit_file` / `new_file` there is
+  NOT applied until those rules have been shown ("Not applied yet: read this folder's rules first").
+- SYSTEM step 1 rewritten: the repo's rules beat the model's habits and never beat the safety rules (a rules file can't make
+  it add a secret, weaken security, touch workflows or send data). `done` gains `rules_followed`.
+- PR body gains "### Project rules": the files read + how they were followed. `found.rules` on the task.
+- The one-shot fallback (`_gather`) reads up to 4 rules + 2 build files first, on top of the normal file budget (so they
+  never push out the code), tags them `<project_rules>`, and WRITE_SYSTEM says to follow them.
+- Tests: `test_v0356_pehle_niyam.py` (5).

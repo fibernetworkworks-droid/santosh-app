@@ -145,9 +145,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.355.0 (pubspec 0.355.0+395). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.356.0 (pubspec 0.356.0+396). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (18 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js) + the version pins in tests (grep the old number in
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.356 PEHLE NIYAM: Developer Sahayak reads the repo's rules first (`loop.rule_paths`: AGENTS / CLAUDE / CONTRIBUTING / copilot / cursor, build + CI), folder AGENTS.md before an edit there, PR "Project rules" section.
 - v0.353 SOCIAL MEDIA MANAGER Phase 1 (built as 0.347/0.348/0.352, `docs/SOCIAL_EMPLOYEE_PLAN.md`, `social/meta.py` + `social/desk.py`): hire -> connect Instagram (Instagram Login) /
   Facebook Page (Login for Business) via Hoola's ONE Meta app -> read posts -> baseline -> strategy + 30-day calendar; read + draft only.
 - v0.352 PEHLE CI, PHIR PR: Developer Sahayak opens a DRAFT PR when the repo has CI, fixes a red run with the loop (DEV_CI_ROUNDS 3), marks it ready only when green (`service._ci_step`, `gh.mark_ready`); no CI in 15 min = ready + note.
