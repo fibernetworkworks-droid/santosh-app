@@ -32,9 +32,17 @@ def _sent_last_24h(s, tenant_id: str) -> int:
                            OutboundMessage.sent_at >= since)) or 0
 
 
+def _server_wa_off(wa) -> bool:
+    """v0.388 live mode without a server-wide WhatsApp number: the campaign jobs have nothing to do (each business's own
+    number is used by its inbox); never let them fail the whole worker tick."""
+    return not getattr(wa, "dry_run", False) and not getattr(wa, "server_ready", True)
+
+
 async def check_approvals(force: bool = False) -> None:
     st = get_settings()
     wa = get_whatsapp()
+    if _server_wa_off(wa):
+        return
     with session() as s:
         waiting = s.scalars(select(Campaign).where(Campaign.status == "awaiting_approval")).all()
         jobs = []
@@ -79,6 +87,8 @@ async def check_approvals(force: bool = False) -> None:
 async def send_batches(max_seconds: float = 5.0) -> None:
     st = get_settings()
     wa = get_whatsapp()
+    if _server_wa_off(wa):
+        return
     with session() as s:
         active = s.scalars(select(Campaign).where(Campaign.status.in_(("sending", "waiting_limit")))).all()
         active = [(c.id, c.tenant_id, c.status, c.template_id) for c in active]

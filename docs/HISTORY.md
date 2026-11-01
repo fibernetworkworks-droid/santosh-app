@@ -14523,3 +14523,16 @@ ONE Game Desk game (`gamedesk/service.py` still owns the code, versions and the 
     + SM-2 inside answer() + exam date; path order from the NCERT library, current / locked, practice never from a locked
     chapter, gate opens the next chapter, teacher list for an incomplete book; grounded doubt cites page 12 and drops [5];
     grounded off; path tools.
+
+
+## v0.388.0 WHATSAPP LIVE BINA SERVER NUMBER (1 Nov 2026, found live after the v0.384 WhatsApp set-up)
+- Seen in her VPS log right after `WA_DRY_RUN=false` (asked by the v0.384 Embedded Signup set-up steps): "worker tick
+  failed ... Live WhatsApp needs WA_TOKEN, WA_WABA_ID, WA_PHONE_NUMBER_ID" every 2 seconds. `MetaWhatsApp.__init__` raised
+  when the server-wide number was missing; `get_whatsapp()` is the first call of the worker tick (`check_approvals`), so the
+  WHOLE tick failed - reminders, the social desk, approvals, everything behind it stopped.
+- Fix (`whatsapp/client.py`): the client starts without the three keys (`server_ready` false, `missing` kept); `_call` (the
+  server-number path: templates, template status, template sends) refuses with a plain error naming the missing keys;
+  `send_text` with a business's own number + token goes straight to Meta (her Embedded Signup channel); no number at all =
+  a plain refusal. `worker._server_wa_off` makes check_approvals / send_batches skip quietly in that state.
+- Tests: `server/tests/test_v0388_wa_live_no_server_number.py`; `test_meta_client.test_live_mode_requires_credentials`
+  rewritten to the new truth (the client starts, a server-number feature names the missing keys).

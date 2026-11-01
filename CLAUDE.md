@@ -153,7 +153,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- Current version: v0.387.0 (pubspec 0.387.0+431). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.388.0 (pubspec 0.388.0+432). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (19 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js) + the version pins in tests (grep the old number in
 - v0.387 GURU SAHAYAK (Shiksha 2): `app/guru` personal tutor - hint ladder one rung per ask (code-checked answers, exam
   mode = hints only), practice + capped mastery + SM-2 / exam window, NCERT mastery path with gates, book-grounded cites, guardian card.
@@ -199,6 +199,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.344 MOSPI + BROKERS: featured MoSPI (no login), Upstox / Dhan (one-tap OAuth), Zerodha Kite / FYERS (sticky MCP session,
   `bazar/connectors/mcp_session.py`), Groww partner-pending; brokers = caution (every order / login = her tap).
 - v0.343 SIGNAL PAR NISHAN: deploys end in "Aborted!" (open streams), so website jobs are now marked AT the stop signal (`main._mark_jobs_on_stop_signal`).
+- v0.388 WHATSAPP LIVE BINA SERVER NUMBER: WA_DRY_RUN=false without WA_TOKEN/WABA/PNID no longer kills every worker tick; business numbers send via their own token.
 - v0.384 SOCIAL MEDIA MANAGER Phase 6 (`social/wabiz.py` + `social/linkedin.py`): WhatsApp Business on her own number by Meta's Embedded Signup (one tap ->
   her Business inbox channel), LinkedIn profile posts (text + one photo); plans only for connected platforms; Company Page / X not built.
 - v0.383 SOCIAL MEDIA MANAGER Phase 5 GROWTH (`social/growth.py`, via her Page's linked Instagram = Facebook Login): tags -> UGC ask / recorded yes /
