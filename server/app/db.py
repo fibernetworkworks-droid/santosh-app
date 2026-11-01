@@ -760,7 +760,7 @@ def init_db(url: str | None = None):
     from .site import webapp as _site_webapp  # noqa: F401  (v0.305 web apps: members + rows)
     from .site import arena as _site_arena  # noqa: F401  (v0.307 Design Arena runs / items / duels)
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
-    from .site import blog as _site_blog  # noqa: F401  (v0.359 BLOG posts on her websites)
+    from .site import blog as _site_blog  # noqa: F401  (v0.364 BLOG posts on her websites)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
@@ -894,6 +894,7 @@ def init_db(url: str | None = None):
     from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
+    from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

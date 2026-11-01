@@ -1,4 +1,4 @@
-"""v0.359 BLOG + BHASHAYEN (web design Phase 7 step 3, owner: "START PHASE 3C"): a real blog on her Hoola website.
+"""v0.364 BLOG + BHASHAYEN (web design Phase 7 step 3, owner: "START PHASE 3C"): a real blog on her Hoola website.
 
 Writing stays with Kalam Sahayak (v0.101: her brand voice, facts checked, blanks instead of guesses, nothing published
 without her Haan). Kalam gets one more place to publish: dest "site" = the blog of one of her Hoola websites. Her Haan on

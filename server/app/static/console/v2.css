@@ -2068,7 +2068,7 @@ body.albon{overflow:hidden}
 .stdash-card h4{margin:0 0 10px;font-size:14px;font-weight:600}.stdash-card.wide{grid-column:1/-1}
 .stdash-card .stempty{margin:0}
 
-/* v0.359 BLOG + BHASHAYEN: the studio's Blog and Languages tabs */
+/* v0.364 BLOG + BHASHAYEN: the studio's Blog and Languages tabs */
 .stblog{display:grid;gap:14px}
 .stblog .stapp label{display:grid;gap:3px;font-size:13px}.stblog .stapp label>span{color:var(--mut)}
 .stblog textarea,.stblog .stblog-ed input,.stblog .stblog-when input{padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;width:100%}
@@ -2267,3 +2267,16 @@ body.albon{overflow:hidden}
 .sc-media img,.sc-vid{width:64px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--hair);display:grid;place-items:center;font-size:20px;color:var(--mut)}
 .sc-up{cursor:pointer}
 .warnc{color:var(--warn,#b26b00)}
+
+/* v0.357 Employee Hub groups + CAD Desk */
+.em-group{margin:28px 0 0;font-size:16px;font-weight:600}
+.cad-new{margin-top:16px}
+.cad-new textarea{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);resize:vertical}
+.cad-new .acts{display:flex;align-items:center;gap:12px;margin-top:10px}
+.cad-card{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.cad-views{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.cad-views img{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px}
+.cad-checks{display:flex;flex-wrap:wrap;gap:6px}
+.cad-change{display:flex;gap:8px}
+.cad-change input{flex:1;font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+@media (max-width:640px){.cad-views{grid-template-columns:repeat(2,minmax(0,1fr))}.cad-change{flex-direction:column}}

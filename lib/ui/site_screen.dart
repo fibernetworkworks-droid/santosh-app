@@ -781,7 +781,7 @@ class _SitePageState extends State<SitePage> {
             ),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(   // v0.359 BLOG + BHASHAYEN
+              child: TextButton.icon(   // v0.364 BLOG + BHASHAYEN
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => SiteBlogPage(app: app, id: widget.id, name: _s(v['name'])))),
                   icon: const Icon(Icons.article_rounded),

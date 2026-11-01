@@ -65,7 +65,7 @@ KIND_WORDS = [
     ("page", r"landing|about us|about page|home page|website page|homepage|service page"),
     ("blog", r"blog|article|lekh|लेख"),
 ]
-DESTS = ("wordpress", "email", "page", "copy", "site")      # v0.359 site = the blog of her Hoola website
+DESTS = ("wordpress", "email", "page", "copy", "site")      # v0.364 site = the blog of her Hoola website
 COPY_WHERE = ("instagram", "facebook", "linkedin", "x", "whatsapp", "amazon", "flipkart", "meesho", "shopify", "website",
               "google business", "other")
 
@@ -1325,7 +1325,7 @@ def publish_request(tenant: str, piece: str, dest: str = "", where: str = "", to
                     raise KalamError("Kab publish karna hai? (jaise '25/10 10:00')")
                 opts["date"] = dt.strftime("%Y-%m-%dT%H:%M:%S")
             opts["type"] = "pages" if kind == "page" else "posts"
-        if dest == "site":                      # v0.359 the blog of one of her Hoola websites
+        if dest == "site":                      # v0.364 the blog of one of her Hoola websites
             if kind != "blog":
                 raise KalamError("Website ke blog par sirf blog lekh jaata hai; pehle 'roop badlo: blog' kahiye.")
             from ..site import service as _site
@@ -1448,7 +1448,7 @@ def decide_publish(tenant: str, piece: str, yes: bool, note: str = "", url: str 
             "slug": meta.get("slug") or slug(title), "excerpt": meta.get("meta_description", ""),
             **({"date": opts["date"]} if opts.get("date") else {})})
         pub |= {"url": r.get("link", ""), "post_id": r.get("id"), "status": r.get("status", opts.get("status"))}
-    elif dest == "site":                       # v0.359 her Haan: the post goes on her website's blog
+    elif dest == "site":                       # v0.364 her Haan: the post goes on her website's blog
         from ..site import service as _site
         try:
             res = _site.blog_publish(tenant, opts.get("site", ""), {"id": pid, "title": title, "body": body, "meta": meta},

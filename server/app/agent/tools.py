@@ -791,6 +791,12 @@ from .pgdb_tools import PGDB_HANDLERS, PGDB_LABELS, PGDB_TOOLS  # noqa: E402
 TOOLS.extend(BLENDER_TOOLS)
 TOOL_LABELS.update(BLENDER_LABELS)
 HANDLERS.update(BLENDER_HANDLERS)
+# v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
+from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
+
+TOOLS.extend(ENG_TOOLS)
+TOOL_LABELS.update(ENG_LABELS)
+HANDLERS.update(ENG_HANDLERS)
 TOOLS.extend(PGDB_TOOLS)
 TOOL_LABELS.update(PGDB_LABELS)
 HANDLERS.update(PGDB_HANDLERS)

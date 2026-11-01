@@ -71,5 +71,5 @@ def test_console_chrome_speaks_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.359.0"    # conscious-bump guard: moves with every release (bump with pubspec)
-    assert "0.359.0+399" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.364.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert "0.364.0+404" in (ROOT / "pubspec.yaml").read_text()

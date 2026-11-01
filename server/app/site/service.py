@@ -689,7 +689,7 @@ def _after_job(site_id: str) -> None:
         r = _load(site_id)
     except SiteError:
         return
-    _blog_go_live(r)                             # v0.359 a post she said Haan to reaches her live address
+    _blog_go_live(r)                             # v0.364 a post she said Haan to reaches her live address
     if site_id in _BUILD_AFTER:                  # v0.315 a grown site map builds its new pages
         _BUILD_AFTER.discard(site_id)
         _start(site_id, "build", note="site map")
@@ -852,8 +852,8 @@ def _ctx(r: Site) -> dict[str, Any]:
             "logo_path": logo, "noindex": True,
             "ai_photos": any(p.get("ai") for p in _j(r.photos, [])),       # v0.292 the footer says so
             "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.301 photos always from here (launch too)
-            "alts": _alts(r),                                                # v0.359 every extra language (was one)
-            "blog": _blog_ctx(r),                                            # v0.359 her published posts (newest first)
+            "alts": _alts(r),                                                # v0.364 every extra language (was one)
+            "blog": _blog_ctx(r),                                            # v0.364 her published posts (newest first)
             "app": app_schema(r) or None,                                   # v0.305 the web app (account + staff pages)
             "kit_css": (look.get("kit") or {}).get("css", ""),              # v0.330 the site's design kit
             "shop": _shop_ctx(r),                                             # v0.351 her shop (None when off)
@@ -911,7 +911,7 @@ def app_api(r: Site) -> str:
 
 
 def extra_languages(r: Site) -> list[str]:
-    """v0.359 the site's extra languages (after the first), each one we support, max LG.MAX_EXTRA."""
+    """v0.364 the site's extra languages (after the first), each one we support, max LG.MAX_EXTRA."""
     langs = _j(r.languages, ["en"])
     out: list[str] = []
     for x in langs[1:]:
@@ -926,7 +926,7 @@ def second_language(r: Site) -> str:
 
 
 def _alts(r: Site) -> list[dict[str, Any]]:
-    """v0.301 / v0.359 each extra language for build.assemble (translated sections where they exist, else the source)."""
+    """v0.301 / v0.364 each extra language for build.assemble (translated sections where they exist, else the source)."""
     first = _j(r.languages, ["en"])[0]
     out = []
     for lang in extra_languages(r):
@@ -962,7 +962,7 @@ def _translate(r: Site) -> int:
             _work(r, "start", f"{LG.LANGS[lang]} mein likh raha hoon", f"{len(LG.stale(r.tenant_id, r.id, lang, secs))} hisse")
         made += LG.translate(r.tenant_id, r.id, lang, secs, _j(r.plan, {}), _facts_text(_j(r.facts, {})),
                              lambda k: sec_id(*k.split("__", 1)), width)
-    try:                                       # v0.359 her blog posts follow every language too
+    try:                                       # v0.364 her blog posts follow every language too
         made += BL.translate(r.id, langs, LG.NAMES, AI.ask_json)
     except Exception:
         log.exception("blog translation failed")
@@ -970,7 +970,7 @@ def _translate(r: Site) -> int:
 
 
 def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
-    """v0.359 Her choice: up to LG.MAX_EXTRA extra languages for the whole site ([] = only the first). Translation runs as
+    """v0.364 Her choice: up to LG.MAX_EXTRA extra languages for the whole site ([] = only the first). Translation runs as
     a job, then a new version."""
     with session() as s:
         r = _find(s, tenant, ref)
@@ -1000,7 +1000,7 @@ def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
 
 
 def set_language(tenant: str, ref: str, second: str) -> dict[str, Any]:
-    """v0.301 (kept): ONE second language, or '' = none. v0.359 set_languages takes several."""
+    """v0.301 (kept): ONE second language, or '' = none. v0.364 set_languages takes several."""
     second = (second or "").strip().lower()
     if second and second not in LG.LANGS:
         raise SiteError("Doosri bhasha: " + " / ".join(LG.LANGS) + " (pehli se alag).")
@@ -2576,7 +2576,7 @@ def shot_file(tenant: str, ref: str, name: str) -> Path:
     return f
 
 
-# ---------------------------------------------------------------- v0.359 BLOG: her posts on her website (site/blog.py)
+# ---------------------------------------------------------------- v0.364 BLOG: her posts on her website (site/blog.py)
 _BLOG_LIVE: dict[str, int] = {}        # site -> the version that was live when her Haan came (the next one goes live)
 
 
