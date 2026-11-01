@@ -41,7 +41,9 @@ _LOCK = threading.Lock()
 FILES = ("part.step", "part.stl", "part.3mf", "part.glb", "section.dxf", "drawing.pdf", "iso.png", "front.png", "top.png",
          "right.png", "part.py",
          # v0.365 after-build stage
-         "analysis.pdf", "fea_0.png", "fea_1.png", "fea_2.png", "part.nc", "cam.png", "flat.dxf", "flat.png")
+         "analysis.pdf", "fea_0.png", "fea_1.png", "fea_2.png", "part.nc", "cam.png", "flat.dxf", "flat.png",
+         # v0.406 mechanisms
+         "robot_urdf.zip", "motion.gif", "explode.png")
 
 
 class EngError(Exception):
@@ -120,7 +122,8 @@ def view(r: EngProject) -> dict[str, Any]:
         files = {f: file_url(r.id, f"v{v['n']}/{f}") for f in FILES if f in (v.get("files") or [])}
         vs.append({**{k: v.get(k) for k in ("n", "title", "size", "bbox", "volume_mm3", "checks", "assumed", "notes",
                                             "at", "seconds", "words", "plan", "material", "mass_g", "com", "parts",
-                                            "print", "review", "expect", "analysis", "cam", "sheet", "dfm")},
+                                            "print", "review", "expect", "analysis", "cam", "sheet", "dfm",
+                                            "kinematics")},
                    "files": files})
     return {"id": r.id, "kind": r.kind, "title": r.title or "Part", "brief": r.brief, "status": r.status, "stage": r.stage,
             "error": r.error, "versions": vs, "latest": vs[-1] if vs else None,
@@ -311,6 +314,23 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
         if miss:
             probs.append(f"the bounding box is {bb.get('x')} x {bb.get('y')} x {bb.get('z')} mm but the part should be "
                          f"{size[0]:g} x {size[1]:g} x {size[2]:g} mm")
+    kin = res.get("kinematics")
+    if kin:                                         # v0.406 the mechanism: joints valid, URDF checks
+        if not kin.get("ok"):
+            out.append({"name": "Joints", "ok": False, "note": "; ".join(kin.get("problems") or [])[:200]})
+            probs.append("joints: " + "; ".join(kin.get("problems") or []) + " (fix H.joint names / parents / limits)")
+        else:
+            rows = (kin.get("urdf") or {}).get("rows") or []
+            bad = [r for r in rows if not r["ok"]]
+            out.append({"name": "Robot description (URDF)", "ok": not bad,
+                        "note": f"{kin['urdf']['links']} links, {kin['urdf']['joints']} joints"
+                                + (f", failing: {', '.join(r['check'] for r in bad)}" if bad else "")})
+            for r in kin.get("range") or []:
+                hits = r.get("collides") or []
+                out.append({"name": f"Joint {r['joint']} range", "ok": not hits,
+                            "note": f"free {r['free'][0]:g} .. {r['free'][1]:g} {r['unit']} (asked {r['asked'][0]:g} .. "
+                                    f"{r['asked'][1]:g})" + "".join(f"; hits {' / '.join(h['parts'])} at {h['at']:g}"
+                                                                    for h in hits)})
     for row in res.get("expect") or []:             # v0.365 her own numbers, measured on the B-rep
         out.append({"name": f"Asked: {row.get('name')}", "ok": bool(row.get("ok")),
                     "note": f"{row.get('got')} (wanted {row.get('want')})"})
@@ -400,6 +420,16 @@ def _after_files(vdir: Path, res: dict[str, Any], ana: dict[str, Any], title: st
         except Exception as e:
             log.info("cam picture: %s", e)
     cp.unlink(missing_ok=True)
+    kp = vdir / "kin.json"
+    if kp.exists():                                  # v0.406 motion GIF + exploded view from the part transforms
+        try:
+            kin = json.loads(kp.read_text(encoding="utf-8"))
+            mesh_ = json.loads((vdir / "mesh.json").read_text(encoding="utf-8"))
+            (vdir / "motion.gif").write_bytes(report.motion_gif(mesh_, kin))
+            (vdir / "explode.png").write_bytes(report.explode_png(mesh_, kin))
+        except Exception as e:
+            log.info("motion pictures: %s", e)
+        kp.unlink(missing_ok=True)
     if res.get("sheet"):
         try:
             (vdir / "flat.dxf").write_text(report.flat_dxf(res["sheet"]), encoding="utf-8")
@@ -502,6 +532,7 @@ def _run(pid: str) -> None:
     look_rounds = int(os.environ.get("ENG_LOOK_ROUNDS", "1") or 0)
     strengthen = int(os.environ.get("ENG_STRENGTHEN_ROUNDS", "2") or 0)
     dfm_rounds = int(os.environ.get("ENG_DFM_ROUNDS", "2") or 0)
+    kin_rounds = int(os.environ.get("ENG_KIN_ROUNDS", "1") or 0)
     ana: dict[str, Any] = {}
     t0 = time.time()
     res: dict[str, Any] = {}
@@ -513,10 +544,19 @@ def _run(pid: str) -> None:
         views = {}
         if not probs:
             _save(pid, status="building", stage="Part bana raha hoon" + (f" (sudhaar {attempt})" if attempt else ""))
-            res = sandbox.run(vdir, d["code"])
+            res = sandbox.run(vdir, d["code"], material=d.get("material") or "")
             probs = list(res.get("errors") or [])
             if res.get("ok"):
                 chk, probs = checks(res, d.get("size") or [])
+                kin = res.get("kinematics") or {}
+                hits = [r for r in kin.get("range") or [] if r.get("collides")]
+                if not probs and hits and kin_rounds > 0 and attempt < MAX_FIXES:
+                    kin_rounds -= 1
+                    probs = [f"mechanism: joint {r['joint']} can only move {r['free'][0]:g} .. {r['free'][1]:g} {r['unit']} "
+                             f"of the asked {r['asked'][0]:g} .. {r['asked'][1]:g}: "
+                             + "; ".join(f"{' and '.join(h['parts'])} collide at {h['at']:g} {r['unit']}" for h in r["collides"])
+                             + " - add clearance / reshape or move those parts (or narrow the limits only if she allowed); "
+                             "keep the joints" for r in hits]
                 if not probs and dfm_rounds > 0 and attempt < MAX_FIXES:
                     probs = _dfm_problems(res)
                     if probs:
@@ -592,6 +632,7 @@ def _run(pid: str) -> None:
            "plan": d.get("plan", ""), "material": material, "mass_g": mass, "com": res.get("com"), "parts": parts,
            "print": pr, "review": review, "expect": res.get("expect") or [], "sheet": res.get("sheet"),
            "dfm": res.get("dfm"),
+           "kinematics": {k: v for k, v in (res.get("kinematics") or {}).items() if k != "urdf"} or None,
            "analysis": [_ana_card(st) for st in ana.get("studies") or []],
            "cam": {k: v for k, v in (ana.get("cam") or {}).items() if k != "paths"} or None,
            "files": [f for f in FILES if (vdir / f).exists()], "seconds": round(time.time() - t0, 1),

@@ -102,6 +102,14 @@ Rules:
     (roundness 1 = ellipse, 0.3 = soft rounded rectangle); then shell / cut / fillet it like any solid;
   H.spline_sweep([(x, y, z), ...], radius) -> a round tube / handle along a smooth 3-D curve; also cq's
   .spline(...), .loft(ruled=False), .sweep(path, transition='round'), .revolve() of a spline profile.
+- MECHANISMS / ROBOTS (anything that MOVES: hinge, arm, gripper, slide, lid, robot, linkage, rover, 'URDF', 'ROS'):
+  build a cq.Assembly of NAMED parts in their zero pose, then for every moving connection
+  H.joint('shoulder', parent='base', child='upper_arm', kind='revolute', origin=(x, y, z), axis=(0, 0, 1),
+  limits=(-120, 120)) - origin = a point ON the axis in the assembly's own frame (mm), limits in degrees
+  (prismatic: mm, kind='prismatic'; endless wheels: 'continuous'; welded-on parts: 'fixed'); effort (N·m / N) and
+  velocity (rad/s / m/s) when she gives them. Joints must make a TREE from one root part. H.robot(name='my_arm',
+  materials={'base': 'steel'}) when parts differ. Hoola sweeps every joint, finds collisions (they come back to you:
+  add clearance or reshape), and writes the URDF (ROS / MoveIt / Gazebo), a motion GIF and an exploded view.
 - HOW IT IS MADE (always when she names a process - 3D print / FDM / resin / SLS / MJF / metal print, CNC /
   milling / machining, sheet metal / laser + bend, injection moulding / mass production): H.make('fdm' | 'sla' |
   'sls' | 'mjf' | 'metal_pbf' | 'cnc' | 'sheet' | 'molding', material='aluminium', tool_d=6 (CNC: smallest end mill),

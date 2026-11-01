@@ -115,13 +115,14 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
               crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 8, crossAxisSpacing: 8,
               children: [
-                for (final k in const ['iso', 'front', 'top', 'right', 'fea_0', 'fea_1', 'fea_2', 'cam', 'flat'])
-                  if (files['$k.png'] != null)
+                for (final k in const ['iso.png', 'front.png', 'top.png', 'right.png', 'fea_0.png', 'fea_1.png', 'fea_2.png',
+                    'cam.png', 'flat.png', 'motion.gif', 'explode.png'])
+                  if (files[k] != null)
                     GestureDetector(
-                      onTap: () => _open(_s(files['$k.png'])),
+                      onTap: () => _open(_s(files[k])),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Container(color: Colors.white, child: Image.network(_url(_s(files['$k.png'])), fit: BoxFit.contain)),
+                        child: Container(color: Colors.white, child: Image.network(_url(_s(files[k])), fit: BoxFit.contain)),
                       ),
                     ),
               ],
@@ -191,7 +192,8 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
               padding: const EdgeInsets.only(top: 10),
               child: Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final f in const [['part.step', 'STEP'], ['part.stl', 'STL'], ['part.3mf', '3MF'], ['section.dxf', 'DXF'],
-                    ['drawing.pdf', 'Drawing PDF'], ['analysis.pdf', 'Analysis PDF'], ['part.nc', 'G-code'], ['flat.dxf', 'Flat DXF']])
+                    ['drawing.pdf', 'Drawing PDF'], ['analysis.pdf', 'Analysis PDF'], ['part.nc', 'G-code'], ['flat.dxf', 'Flat DXF'],
+                    ['robot_urdf.zip', 'URDF']])
                   if (files[f[0]] != null)
                     OutlinedButton(onPressed: () => _open(_s(files[f[0]])), child: Text(f[1])),
               ]),

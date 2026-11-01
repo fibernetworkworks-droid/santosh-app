@@ -302,3 +302,60 @@ def cam_rows(cam: dict[str, Any]) -> list[str]:
             f"Feed {cam['feed']:g} mm/min, {cam['rpm']} rpm · cutting {cam['cut_m']:g} m · about {cam['minutes']:g} min",
             f"Stock about {cam['stock_mm'][0]:g} x {cam['stock_mm'][1]:g} x {cam['stock_mm'][2]:g} mm · zero = part corner, Z0 = part top",
             "Simulate in your CAM viewer and dry-run above the stock before the first cut."]
+
+
+# ---------------------------------------------------------------- v0.406 mechanisms: motion GIF + exploded view
+def _part_of_vertex(mesh: dict[str, Any]):
+    import numpy as np
+    V = np.asarray(mesh["v"], float)
+    pv = np.zeros(len(V), dtype=np.int64)
+    T = np.asarray(mesh["t"], dtype=np.int64)
+    C = np.asarray(mesh.get("c") or [0] * len(T), dtype=np.int64)
+    for k in range(3):
+        pv[T[:, k]] = C
+    return V, pv
+
+
+def _posed(mesh: dict[str, Any], V, pv, names: list[str], tfs: dict[str, Any]) -> dict[str, Any]:
+    import numpy as np
+    out = V.copy()
+    for i, n in enumerate(names):
+        M = np.asarray(tfs.get(n, np.eye(4)), float)
+        sel = pv == i
+        out[sel] = (V[sel] @ M[:3, :3].T) + M[:3, 3]
+    return {**mesh, "v": out.tolist()}
+
+
+def motion_gif(mesh: dict[str, Any], kin: dict[str, Any], size: int = 420) -> bytes:
+    """The mechanism swinging through its joint ranges (all joints together), one fixed camera scale."""
+    from PIL import Image
+    V, pv = _part_of_vertex(mesh)
+    names = kin["names"]
+    poses = [_posed(mesh, V, pv, names, fr) for fr in kin["frames"]]
+    ext = [render.extent(p_, "iso") for p_ in poses]
+    x0, x1 = min(e[0] for e in ext), max(e[1] for e in ext)
+    y0, y1 = min(e[2] for e in ext), max(e[3] for e in ext)
+    scale = 0.84 * min(size / max(x1 - x0, 1e-6), size / max(y1 - y0, 1e-6))
+    frames = []
+    centre = ((x0 + x1) / 2, (y0 + y1) / 2)                     # one camera for every frame: no jitter
+    for p_ in poses:
+        img, _ = render.draw_view(p_, "iso", size, size, scale=scale, ss=1, center=centre)
+        frames.append(img.convert("P", palette=Image.ADAPTIVE, colors=96))
+    b = io.BytesIO()
+    frames[0].save(b, "GIF", save_all=True, append_images=frames[1:], duration=120, loop=0, optimize=True)
+    return b.getvalue()
+
+
+def explode_png(mesh: dict[str, Any], kin: dict[str, Any], size: int = 900) -> bytes:
+    import numpy as np
+    V, pv = _part_of_vertex(mesh)
+    names = kin["names"]
+    tfs = {}
+    for n in names:
+        M = np.eye(4)
+        M[:3, 3] = kin["explode"].get(n, [0, 0, 0])
+        tfs[n] = M
+    img, _ = render.draw_view(_posed(mesh, V, pv, names, tfs), "iso", size, size)
+    d = ImageDraw.Draw(img)
+    d.text((20, 16), "Exploded view", fill=INK, font=_font(24))
+    return render.png(img)
