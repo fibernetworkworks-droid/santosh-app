@@ -5,8 +5,18 @@ the red-test job refused ANY edit to test_orders.py (adding a test beside the re
 from app.quality import code_repos as R
 from app.quality import code_tasks2 as C2
 from app.quality import codecard as K
+import pytest
+
 from tests.test_tech_devsahayak import T, _join, dev  # noqa: F401
 from tests.test_v0350_kadam_ba_kadam import Script, tu
+
+
+@pytest.fixture(autouse=True)
+def _no_plan_pass(dev, monkeypatch):  # noqa: F811 - after `dev`, so the settings object is the live one
+    """v0.451 ECC PHASE 4 added a read-only PLAN pass before the edit loop for standard / large asks. These tests script
+    the EDIT loop turn by turn, so the plan pass is off here; it has its own file (test_v0451_plan_pehle.py)."""
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "dev_plan_first", False, raising=False)
 
 
 def _task(tid):

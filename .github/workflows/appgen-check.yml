@@ -247,6 +247,55 @@ jobs:
             ${{ runner.temp }}/proj2/build.log
           if-no-files-found: ignore
 
+  glogin:
+    # v0.455 SURAKSHIT LOGIN: the shop app with Google sign-in switched on must compile and shrink (debug + release R8).
+    # It pulls in androidx.credentials + googleid, so this job is the proof those libraries and SignInGoogle.kt build.
+    # The client id here is a made-up test value - nothing signs in, only the build is checked.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Android SDK
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "build-tools;36.0.0" > /dev/null
+          "$SDKM" --install "platforms;android-37" > /dev/null 2>&1 || "$SDKM" --install "platforms;android-37.0" > /dev/null 2>&1 || true
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: appgen-glogin-${{ hashFiles('server/app/appmaker/android/template/gradle/**', 'server/app/appmaker/android/template/**/*.kts') }}
+      - name: Generate the shop app with Google sign-in on (test client id)
+        run: |
+          python3 - <<'PY'
+          import json, os
+          sp = json.load(open("server/app/appmaker/android/fixture/spec.json"))
+          sp["seed"].setdefault("backend", {})["sign"] = {
+              "ways": ["phone_otp", "google", "apple", "email_password"],
+              "google_server_client_id": "123456789012-citest.apps.googleusercontent.com",
+              "consent": True, "signup": True}
+          json.dump(sp, open(os.environ["RUNNER_TEMP"] + "/spec-glogin.json", "w"))
+          PY
+          python3 server/app/appmaker/android/gen.py "$RUNNER_TEMP/spec-glogin.json" "$RUNNER_TEMP/projg"
+          grep -q "libs.googleid" "$RUNNER_TEMP/projg/app/build.gradle.kts"
+          grep -q "CredentialManager" "$RUNNER_TEMP/projg/app/src/main/java/hoola/kit/SignInGoogle.kt"
+          grep -q 'SignInScreen()' "$RUNNER_TEMP/projg/app/src/main/java/hoola/app/AppScreens.kt"
+      - name: Build with Google sign-in (debug + release, R8)
+        working-directory: ${{ runner.temp }}/projg
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --console=plain assembleRelease assembleDebug 2>&1 | tee build.log
+      - name: Kotlin errors as annotations
+        if: failure()
+        run: |
+          grep -E '^e: |FAILURE|What went wrong' -A3 "$RUNNER_TEMP/projg/build.log" | head -60 | while IFS= read -r l; do echo "::error::${l}"; done
+
   fcm:
     # v0.367 TURANT: the shop app with instant notifications switched on (Firebase Cloud Messaging) must compile and shrink
     # (debug + release R8). The Firebase values here are a made-up test config - only the build is checked, no push is sent.

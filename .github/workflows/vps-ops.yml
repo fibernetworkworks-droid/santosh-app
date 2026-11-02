@@ -49,6 +49,10 @@ on:
           - auth_check
           - review_card
           - fix_card_spec
+          - lab_check
+          - lab_setup
+          - lab_images
+          - lab_prune
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -422,6 +426,21 @@ jobs:
                 echo 'if grep -qE "^API_KEY=.+" $CORE/.env 2>/dev/null; then echo "API_KEY in .env: set"; else echo "API_KEY in .env: MISSING or empty"; fi'
                 echo 'for u in http://172.18.0.1:8077 http://127.0.0.1:8077; do c=$(curl -s -o /dev/null -w "%{http_code}" -m 10 $u/api/me); [ "$c" != "000" ] && { echo "Live: $u/api/me with no login -> $c (401 = locked, 200 = OPEN)"; break; }; done'
                 echo 'c=$(curl -s -o /dev/null -w "%{http_code}" -m 10 https://hoola.ainewtika.com/api/me); echo "Public: https://hoola.ainewtika.com/api/me with no login -> $c"' ;;
+              lab_check)
+                # v0.456 PRAYOGSHALA: is the coding lab's Docker box real and SEALED on this VPS? Builds the base image
+                # if missing, then runs a passing test, a failing test, and three wall checks (no network, read-only
+                # root, non-root user). "GADBAD" / "KHATRA" anywhere in the output = do NOT turn dev_lab on.
+                echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab check 2>&1 | tail -40' ;;
+              lab_setup)
+                # ... build (or rebuild) the base image on its own: python + node + jdk + git + ripgrep, ~2-4 minutes.
+                echo 'docker --version || echo "DOCKER NAHI HAI"'
+                echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab setup 2>&1 | tail -25' ;;
+              lab_images)
+                echo 'cd $CORE && .venv/bin/python -m app.devlab images 2>&1 | tail -30'
+                echo 'docker system df 2>&1 | tail -6' ;;
+              lab_prune)
+                # ... drop the oldest per-repo dependency snapshots (the base image is never dropped).
+                echo 'cd $CORE && .venv/bin/python -m app.devlab prune --keep 8 2>&1 | tail -10' ;;
               review_card)
                 # v0.402 ECC PHASE 1: 12 practice PRs (8 planted problems + 4 clean) reviewed by the real exploring review,
                 # OLD (v0.377) vs NEW (+ ECC specialists): caught / quiet on clean / false alarms / verdicts. Nothing is

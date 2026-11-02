@@ -37,6 +37,8 @@ import javax.crypto.spec.GCMParameterSpec
 
 /** The code-made sign-in screen and the account screen (my orders / bookings; staff see and handle everyone's). */
 const val SCREEN_LOGIN = "hoola_login"
+/** v0.455 login said "right, now the authenticator code" (staff 2FA). */
+const val NEED_2FA = "\u0000need_2fa"
 const val SCREEN_ACCOUNT = "hoola_account"
 
 /** One answer from the server: code 0 = no network. */
@@ -247,7 +249,56 @@ object Auth {
 
     suspend fun login(ctx: Context, email: String, password: String): String? {
         bye?.join()
-        return keep(ctx, Cloud.call("POST", "/login", JSONObject().put("email", email.trim()).put("password", password)))
+        val r = Cloud.call("POST", "/login", JSONObject().put("email", email.trim()).put("password", password))
+        if (r.ok && r.body.optBoolean("need_2fa")) {              // v0.455 staff 2FA: the authenticator code is step two
+            ticket = r.body.optString("ticket", "")
+            return NEED_2FA
+        }
+        return keep(ctx, r)
+    }
+
+    // v0.455 SURAKSHIT LOGIN: mobile OTP, Google / Apple and the second step. The code / token is sent straight to the
+    // app's own server and is never stored, shown again or logged here.
+    private var ticket = ""
+
+    suspend fun otpStart(phone: String): String? {
+        val r = Cloud.call("POST", "/login/otp", JSONObject().put("phone", phone.trim()))
+        return if (r.ok) null else r.error.ifEmpty { if (r.offline) Strings.offline else Strings.tryAgain }
+    }
+
+    suspend fun otpCheck(ctx: Context, phone: String, code: String, name: String, consent: Boolean): String? {
+        bye?.join()
+        val r = Cloud.call("POST", "/login/otp/check", JSONObject().put("phone", phone.trim()).put("code", code.trim())
+            .put("name", name.trim()).put("consent", consent))
+        if (r.ok && r.body.optBoolean("need_2fa")) {
+            ticket = r.body.optString("ticket", "")
+            return NEED_2FA
+        }
+        return keep(ctx, r)
+    }
+
+    /** The provider's own ID token; the SERVER checks its signature, audience and nonce before any account is made. */
+    suspend fun social(ctx: Context, provider: String, idToken: String, nonce: String, name: String, consent: Boolean): String? {
+        bye?.join()
+        val r = Cloud.call("POST", "/login/$provider", JSONObject().put("id_token", idToken).put("nonce", nonce)
+            .put("name", name).put("consent", consent))
+        if (r.ok && r.body.optBoolean("need_2fa")) {
+            ticket = r.body.optString("ticket", "")
+            return NEED_2FA
+        }
+        return keep(ctx, r)
+    }
+
+    suspend fun nonce(): String {
+        val r = Cloud.call("GET", "/login/nonce", null)
+        return if (r.ok) r.body.optString("nonce", "") else ""
+    }
+
+    suspend fun twoFa(ctx: Context, code: String): String? {
+        if (ticket.isEmpty()) return Strings.tryAgain
+        val r = Cloud.call("POST", "/login/2fa", JSONObject().put("ticket", ticket).put("code", code.trim()))
+        if (r.ok) ticket = ""
+        return keep(ctx, r)
     }
 
     fun logout(ctx: Context) {
