@@ -16170,8 +16170,28 @@ Rich native UI in her apps + the custom component escape hatch.
 - Tests: tests/test_v0425_rang.py (3).
 - NOT built: camera capture / document scan, Lottie, offline map tiles, a barcode inventory flow, and iOS compile-failure
   marking for components (iOS builds run in her builds repo). Kits compile only in CI (no local Kotlin / Swift).
+## v0.426.0 CAMS + SLOTS + DYNAMICS (2 Nov 2026, built as 0.425)
+Owner: "cam and slot joints, dynamic simulation — fix and develop".
+- `engineering/cams.py` + `H.disc_cam(name, segments, base_radius, follower='roller'|'flat', roller_radius, offset, thickness,
+  bore, rpm, cam_joint, follower_joint, max_pressure_deg=30)`: the cam is made FROM the follower program (segments must add
+  to 360° and end where they started; laws cycloidal / harmonic / 3-4-5, closed forms checked at textbook points: half lift
+  at half angle, v max, a max). Roller: pitch curve, profile = pitch curve offset by the roller (measured = r), pressure
+  angle row, undercut row (pitch-curve min radius > roller). Flat: rho = Rb + s + s'' cusp row + face width. Follower
+  v / a / jerk at her rpm. Fails go back to the model (service.checks "Cam <name>: ..."). `H.cam` stays the CNC G-code call.
+- Slots: joint kind `slot` (direction + travel) is always a loop closure; residual = pin off the slot line; travel limits
+  lock the solve. URDF / SDF skip it (commented), MJCF = slide + hinge body + connect. Scotch yoke x = R cos θ − R exact.
+- `engineering/dynamics.py`: MuJoCo, meshes stripped, stiff equalities, payload body; independent joints follow quintic
+  0 → top → bottom → 0 in move_time_s (default 2 s), continuous / cam joints turn at rpm, followers follow the cam table;
+  computed torque (bias + Mjj PD 15 Hz) clipped at her effort -> peak / RMS / speed / error / saturation / energy / loop gap,
+  cam_peak + follower_peak (F x ds/dθ; the disc's own unbalance under gravity is real and kept in cam_peak). Motors with no
+  effort are sized peak x 1.25 (`sized_to`) and the package rewritten. Files dynamics.png + camcurve.png (console + phone).
+- Tests `test_v0425_cam_slot_dynamics.py`: laws, roller geometry + steep cam fails, yoke, slow move = m g L/2 (3 %), fast
+  > 1.5x, weak motor saturates, cam torque = follower force x ds/dθ (12 %), desk redesigns a steep cam.
+- NOT VERIFIED: no friction, backlash, link flex or contact force at the cam (the follower is a driven coordinate);
+  VPS needs `pip install mujoco` for the simulation (it says so when missing).
 
-## v0.426.0 (built as 0.425.0) HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8) - 2 Nov 2026
+
+## v0.427.0 (built as 0.425.0) HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8) - 2 Nov 2026
 Owner: "GO PHASE 8" (plan row: "Replay / bot / telemetry modules, Godot editor 'ask Hoola' panel via MCP").
 
 HOOLA RUNTIME (`gamedesk/runtime.py`, a role pack: HoolaRuntime autoload in every Studio build, default on; GDScript, not

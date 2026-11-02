@@ -458,12 +458,14 @@ COUPLES: list = []
 
 
 def joint(name, parent, child, kind="revolute", origin=(0, 0, 0), axis=(0, 0, 1), limits=None, effort=None,
-          velocity=None, driver=False, closure=False):
+          velocity=None, driver=False, closure=False, direction=None, travel=None):
     """A joint between two NAMED parts of the assembly, in the assembly's own (world) frame as modelled:
     kind revolute (limits in degrees) | continuous | prismatic (limits in mm) | fixed; origin = a point on the axis
     (mm); axis = direction. Joints make a tree (each part the child of one joint). -> motion check, URDF, motion GIF."""
-    if kind not in ("revolute", "continuous", "prismatic", "fixed"):
-        raise ValueError("joint kind: revolute / continuous / prismatic / fixed")
+    if kind not in ("revolute", "continuous", "prismatic", "fixed", "slot"):
+        raise ValueError("joint kind: revolute / continuous / prismatic / fixed / slot")
+    if kind == "slot" and not direction:
+        raise ValueError(f"slot {name}: direction=(dx, dy, dz) of the slot's length is needed (pin on child, slot in parent)")
     if len(JOINTS) >= 40:
         raise ValueError("40 joints tak")
     if limits is not None and (len(limits) != 2 or not float(limits[0]) < float(limits[1])):
@@ -471,7 +473,39 @@ def joint(name, parent, child, kind="revolute", origin=(0, 0, 0), axis=(0, 0, 1)
     JOINTS.append({"name": str(name), "parent": str(parent), "child": str(child), "kind": kind,
                    "origin": [float(x) for x in origin], "axis": [float(x) for x in axis],
                    "limits": [float(x) for x in limits] if limits is not None else None,
-                   "effort": effort, "velocity": velocity, "driver": bool(driver), "closure": bool(closure)})
+                   "effort": effort, "velocity": velocity, "driver": bool(driver), "closure": bool(closure),
+                   "direction": [float(x) for x in direction] if direction else None,
+                   "travel": [float(x) for x in travel] if travel else None})
+
+
+CAMS: dict = {}
+
+
+def disc_cam(name, segments, base_radius, follower="roller", roller_radius=5.0, offset=0.0, thickness=10.0, bore=10.0,
+        rpm=60.0, cam_joint=None, follower_joint=None, max_pressure_deg=30.0):
+    """A disc cam DESIGNED from the follower motion: segments = [{'type': 'rise', 'lift': 10, 'deg': 120,
+    'law': 'cycloidal' | 'harmonic' | '345'}, {'type': 'dwell', 'deg': 60}, {'type': 'return', 'lift': 10, 'deg': 120},
+    {'type': 'dwell', 'deg': 60}] (360° in all); follower 'roller' (roller_radius, offset) or 'flat'. Returns the cam
+    disc (profile extruded along +Z from z=0, centre bore, cam centre at the origin - place it with .translate).
+    cam_joint / follower_joint (joint names) tie the follower's prismatic joint to the cam's turn."""
+    try:
+        import cams as _cams
+    except ImportError:
+        from . import cams as _cams
+    spec = {"segments": list(segments), "base_radius": float(base_radius), "follower": follower,
+            "roller_radius": float(roller_radius), "offset": float(offset), "thickness": float(thickness),
+            "bore": float(bore), "rpm": float(rpm), "max_pressure_deg": float(max_pressure_deg)}
+    des = _cams.design(spec)
+    CAMS[str(name)] = {"rows": des["rows"], "rpm": float(rpm), "cam_joint": cam_joint, "follower_joint": follower_joint,
+                       "lift": des["lift"], "kind": follower,
+                       "curve": {"deg": [round(math.degrees(x), 2) for x in des["program"]["theta"][::6]],
+                                 "s": [round(float(x), 4) for x in des["program"]["s"][::6]],
+                                 "v": [round(float(x), 3) for x in des["vel"][::6]],
+                                 "a": [round(float(x), 4) for x in des["acc"][::6]]}}
+    if cam_joint and follower_joint:
+        COUPLES.append({"follower": str(follower_joint), "leader": str(cam_joint), "table": _cams.table(des),
+                        "offset": 0.0, "cam": str(name)})
+    return _cams.solid(spec, des)
 
 
 def couple(follower, leader, ratio=None, offset=0.0, teeth=None):
@@ -536,11 +570,12 @@ class _H:
     spline_sweep = staticmethod(spline_sweep)
     expect = staticmethod(expect)
     analyze = staticmethod(analyze)
-    cam = staticmethod(cam)
+    disc_cam = staticmethod(disc_cam)
     fit = staticmethod(fit)
     make = staticmethod(make)
     joint = staticmethod(joint)
     couple = staticmethod(couple)
+    cam = staticmethod(cam)
     robot = staticmethod(robot)
     drawing = staticmethod(drawing)
 
