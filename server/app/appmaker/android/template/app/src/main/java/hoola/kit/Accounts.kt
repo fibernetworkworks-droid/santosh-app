@@ -195,10 +195,18 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
             if (paid.isNotEmpty() && paid != "No") Pill(T(paid), if (paid == "Verified") "ok" else "warn")
             if (r.has("total") && r.n("total") > 0) Title(rupees(r.n("total")))
         }
-        fields.filter { it.s("type") == "photo" && r.has(it.s("key")) }.take(2).forEach { f ->
+        fields.filter { it.s("type") in listOf("photo", "signature") && r.has(it.s("key")) }.take(2).forEach { f ->
             RemotePhoto(r.s(f.s("key")), Modifier.fillMaxWidth().padding(top = 6.dp), f.s("label"))
         }
-        fields.filter { it !== head && it.s("key") !in listOf("status", "total", "paid") && it.s("type") != "photo" && r.has(it.s("key")) }
+        fields.filter { it.s("type") in listOf("photos", "video", "audio", "richtext") && r.has(it.s("key")) && !r.b("pending") }.take(3).forEach { f ->
+            when (f.s("type")) {                                  // v0.425 RANG
+                "photos" -> PhotosStrip(r.s(f.s("key")))
+                "video" -> VideoPlayer(r.s(f.s("key")))
+                "audio" -> AudioPlayer(r.s(f.s("key")))
+                else -> RichText(r.s(f.s("key")))
+            }
+        }
+        fields.filter { it !== head && it.s("key") !in listOf("status", "total", "paid") && it.s("type") !in listOf("photo", "signature", "photos", "video", "audio", "richtext") && r.has(it.s("key")) }
             .take(6).forEach { f ->
                 if (f.s("type") == "location") {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

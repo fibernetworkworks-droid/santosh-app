@@ -1,4 +1,4 @@
-"""v0.425 HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8): HoolaRuntime (replay recorder,
+"""v0.426 (built as 0.425) HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8): HoolaRuntime (replay recorder,
 in-engine bot, opt-in telemetry) inside every Studio build; replay tests in the real Godot (a deterministic game passes,
 a randomize() game is caught with its cause); telemetry only with her switch + the player's yes, never for children,
 no personal data; a real MCP server (/mcp/gamedesk, JSON-RPC 2.0) behind hashed editor tokens; the Godot editor plugin

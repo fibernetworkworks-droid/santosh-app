@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.425.0"   # v0.425.0 HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8, owner: "GO PHASE 8"). HoolaRuntime (gamedesk/runtime.py) goes into every Studio build: a seeded test bot + input recorder + replay that run ONLY when Hoola tests the game (the RNG is seeded only then, never for players), a state fingerprint compared bot run vs bot run vs replay in the real Godot (randomize() named as the cause when it fails), and opt-in telemetry = her switch + each player's yes on the title screen, anonymous install ids, never for a children's game, POST /play/<token>/t (rate-limited, quiet), D1 / D7 retention + funnel, delete on her tap. Ask Hoola in the editor (gamedesk/editor.py): a real MCP server at /mcp/gamedesk (JSON-RPC, Streamable HTTP, hashed editor tokens shown once, revocable) with projects / tasks / bible / bugs / ask / add-task tools, and a Godot 'Ask Hoola' dock plugin checked loading in the real headless editor; tool game_runtime, console Runtime & editor page, phone Runtime screen.
+APP_VERSION = "0.426.0"   # v0.426.0 (built as 0.425.0) HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8, owner: "GO PHASE 8"). HoolaRuntime (gamedesk/runtime.py) goes into every Studio build: a seeded test bot + input recorder + replay that run ONLY when Hoola tests the game (the RNG is seeded only then, never for players), a state fingerprint compared bot run vs bot run vs replay in the real Godot (randomize() named as the cause when it fails), and opt-in telemetry = her switch + each player's yes on the title screen, anonymous install ids, never for a children's game, POST /play/<token>/t (rate-limited, quiet), D1 / D7 retention + funnel, delete on her tap. Ask Hoola in the editor (gamedesk/editor.py): a real MCP server at /mcp/gamedesk (JSON-RPC, Streamable HTTP, hashed editor tokens shown once, revocable) with projects / tasks / bible / bugs / ask / add-task tools, and a Godot 'Ask Hoola' dock plugin checked loading in the real headless editor; tool game_runtime, console Runtime & editor page, phone Runtime screen.
 
 
 def _quiet_http_logs() -> None:
@@ -9900,11 +9900,35 @@ async def app_api_upload(app_key: str, request: Request):
     from .appmaker import backend as BE
     raw = await request.body()
     ip = _ip(request)
+    ctype = request.headers.get("content-type") or ""
 
     def go():
         r, w = _be_app(app_key, request)
-        return BE.upload(r, w, raw, ip)
+        return BE.upload(r, w, raw, ip, ctype)
     return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/files/{fid}/link")
+async def app_api_file_link(app_key: str, fid: str, request: Request):
+    """v0.425 RANG: a 15-minute signed address for the phone's own video / audio / PDF player (no token in it)."""
+    from .appmaker import backend as BE
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.media_link(r, fid, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/media/{tok}")
+async def app_api_media(app_key: str, tok: str):
+    from .appmaker import backend as BE
+    from .site import webapp as W
+    try:
+        f = await asyncio.to_thread(lambda: BE.media_file(BE.by_key(app_key), tok))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type=BE.MEDIA_MIME.get(f.suffix, "application/octet-stream"),
+                        headers={"Cache-Control": "private, max-age=900", "X-Content-Type-Options": "nosniff",
+                                 "Content-Security-Policy": "sandbox", "Referrer-Policy": "no-referrer"})
 
 
 @app.get("/api/app-api/{app_key}/files/{fid}")
@@ -9916,6 +9940,10 @@ async def app_api_file(app_key: str, fid: str, request: Request):
         f = await asyncio.to_thread(BE.file_for, r, fid, w)
     except W.AppError:
         raise HTTPException(404, "not found")
+    if f.suffix in (".mp4", ".mov", ".m4a"):     # v0.425 RANG: video / voice note for the phone's own player (range requests)
+        return FileResponse(f, media_type=BE.MEDIA_MIME[f.suffix], headers={"Cache-Control": "private, max-age=3600",
+                                                                            "X-Content-Type-Options": "nosniff",
+                                                                            "Content-Security-Policy": "sandbox"})
     if str(f).endswith(".pdf"):                  # v0.346 a PDF is only ever a download, never opened in a page
         return FileResponse(f, media_type="application/pdf", filename=f"{fid}.pdf",
                             headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff",
@@ -10530,6 +10558,32 @@ async def apps_connect_hook_save(ref: str, body: dict, tenant: str = Depends(cur
 async def apps_connect_hook_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
     return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_hook(_be_owner(tenant, ref), key))
+
+
+# ---- v0.425 RANG (App Sahayak Pillar G): custom native components (Kotlin + Swift) - house rules in code, her tap, build-proved.
+@app.get("/api/apps/{ref}/components", dependencies=[Depends(require_key)])
+async def apps_components(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.listing(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/components/draft", dependencies=[Depends(require_key)])
+async def apps_component_draft(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{words}: Opus drafts one component (Kotlin + Swift); refused when a house rule fails. Waits for her approval."""
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.draft(_be_owner(tenant, ref), str((body or {}).get("words") or "")))
+
+
+@app.post("/api/apps/{ref}/components/{name}/approve", dependencies=[Depends(require_key)])
+async def apps_component_approve(ref: str, name: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.approve(_be_owner(tenant, ref), name, bool((body or {}).get("her_tap"))))
+
+
+@app.delete("/api/apps/{ref}/components/{name}", dependencies=[Depends(require_key)])
+async def apps_component_drop(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.remove(_be_owner(tenant, ref), name))
 
 
 def _be_owner(tenant: str, ref: str):

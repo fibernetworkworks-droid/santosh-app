@@ -877,6 +877,29 @@ window.HoolaBuild = function (C) {
       const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
     };
     try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
+    // v0.425 RANG: custom native components (Kotlin + Swift) - house rules checked in code, her approval, proved by the next build
+    const ccbox = document.createElement('section'); ccbox.className = 'stcol stcomp'; box.appendChild(ccbox);
+    const drawComp = cc => {
+      ccbox.innerHTML = `<h4>Custom components <span>${L(cc.components).filter(x => x.approved).length} approved</span></h4>
+        <p class="stnote">When no ready piece fits, describe it and Hoola writes one native component for Android and iPhone. It is UI only (no internet, files or web views - checked by code). It goes into the app only after you approve it; the next build compiles it and opens it on the device check, and one that fails is left out of that build.</p>
+        <form class="stapp ccnew" autocomplete="off"><div class="row"><input name="words" maxlength="800" placeholder="e.g. a horizontal bar per star level showing how many ratings" aria-label="Describe the component"><button class="btn go" type="submit">Write it</button></div></form>
+        ${L(cc.components).map(x => `<div class="cnact" data-n="${esc(S(x.name))}"><b>${esc(S(x.name))}</b> <span class="stnote">${esc(S(x.status))}${x.approved ? ' · approved' : ''}</span>
+          <p class="stnote">${esc(S(x.purpose))} · ${esc(S(x.params))}${x.error ? '<br>Build said: ' + esc(S(x.error).slice(0, 300)) : ''}</p>
+          <details><summary>Code</summary><pre class="ccode">${esc(S(x.kotlin))}</pre><pre class="ccode">${esc(S(x.swift))}</pre></details>
+          <div class="row">${x.approved ? '' : '<button class="btn go" type="button" data-ccok>Approve</button>'}<button class="btn" type="button" data-ccx>Remove</button></div></div>`).join('') || '<p class="stempty">None yet.</p>'}`;
+      const f = ccbox.querySelector('.ccnew');
+      f.addEventListener('submit', async e => { e.preventDefault(); const b = f.querySelector('button'); b.disabled = true; b.textContent = 'Writing…';
+        try { await api('POST', base(o) + '/components/draft', {words: f.words.value}); drawComp(await api('GET', base(o) + '/components')); toast('Drafted - read it and approve.'); }
+        catch (er) { toast(er.message, true); b.disabled = false; b.textContent = 'Write it'; } });
+      ccbox.addEventListener('click', async e => {
+        const it = e.target.closest('.cnact'), n = it && it.dataset.n;
+        try {
+          if (e.target.closest('[data-ccok]')) { if (!confirm('Approve ' + n + '? It goes into the next build of the app.')) return; await api('POST', `${base(o)}/components/${encodeURIComponent(n)}/approve`, {her_tap: true}); drawComp(await api('GET', base(o) + '/components')); }
+          if (e.target.closest('[data-ccx]')) { if (!confirm('Remove ' + n + '?')) return; drawComp(await api('DELETE', `${base(o)}/components/${encodeURIComponent(n)}`)); }
+        } catch (er) { toast(er.message, true); }
+      });
+    };
+    try { drawComp(await api('GET', base(o) + '/components')); } catch (er) { ccbox.remove(); }
     // v0.424 JODO: connectors - ready packs or her own declared action; each needs HER approval; secrets never shown again
     const cnbox = document.createElement('section'); cnbox.className = 'stcol stconn'; box.appendChild(cnbox);
     const drawConn = cn => {
