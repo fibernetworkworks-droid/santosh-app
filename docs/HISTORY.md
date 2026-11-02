@@ -17378,3 +17378,32 @@ token behind. The sealed-box test runs only where Docker exists (skipped in the 
 through its argument list and its monkeypatched callers. `lab_check` on the VPS is the first real proof, and
 **`dev_lab` stays False until it passes.** Step 2 (H3b) wires `run_check` / `grep_log` into the dev loop, makes the
 v0.447 bug proof local, and executes the v0.451 plan's `done_when` lines instead of asserting them.
+
+## v0.457.0 PAST YIELD (plastic stress) (2 Nov 2026)
+The third of the three holes named when the owner asked whether every CAD job was covered (v0.450 closed buckling
+and gear teeth). `fea.plastic`, kind 'plastic' / 'yield' / 'collapse'.
+
+- The linear check only ever says "it has yielded somewhere". This says what happens next: the load is put on in
+  steps with the metal really yielding (J2 / von Mises radial return at every integration point, `_return_map`,
+  vectorised), equilibrium is re-solved, the load is taken off ELASTICALLY, and what is left is the PERMANENT SET.
+- WHY IT DID NOT WORK AT FIRST, and the fix: modified Newton keeps the elastic stiffness, so once a region goes
+  soft every correction is too small - the residual crept down by ~0.96 per round and 90 rounds got nowhere, which
+  looked like collapse at 1.5x on a bar that was 99 % elastic. The ratio is measurable, so the whole remaining
+  geometric series is added in one go (Aitken), kept only when it really lowers the residual. With that, the bar
+  reaches its true collapse (61 % of the section plastic). `_factorise` also replaced the per-iteration solve: one
+  condense + AMG/LU setup reused for every round.
+- Reports: first-yield factor, the set at her load vs what a linear check would say, % of the part yielded, worst
+  plastic strain, the load factor where it RUNS AWAY (4x the elastic displacement rate = a plastic hinge forming),
+  `carries_up_to` (the last load it clearly still held, for when something must be safe), and the step history.
+- TEAR check: linear hardening alone will carry any load by stretching for ever - the first version "held" a 3x
+  overload at 262 % strain. A spot past the material's elongation (`TEAR`: steel 15 %, mild steel 20 %, aluminium
+  8 %, cast iron 1 %, PLA 3 %; her `max_strain_pct` overrides) is now reported as SPLITTING, not bending.
+- Default hardening E/200 (a modest, realistic slope; `hardening_MPa=0` gives the textbook limit load).
+- HOW CLOSE, measured and said in the module: against both textbook limit loads it lands within about 20 % either
+  way - a bar in tension 1.75 vs 2.0, a stubby rectangular cantilever 1.75 vs 1.5 (the plastic shape factor), with
+  one load step being 0.15. So the collapse factor is a band, not a number, and `carries_up_to` is the safe one.
+- `H.analyze('plastic', fixed=..., loads=[...], max_set_mm=0.05)`: too much permanent bend, or collapse under her
+  own load, comes back to the model with the real fix. Rows on the card, in analysis.pdf and in her chat note.
+- Not covered: large displacements (small-strain kinematics), one monotonic load path only, no creep, no ratchetting
+  under cycling, and no interaction with buckling - a slender part can fold first, so run the buckling check too.
+- Tests `test_v0451_plastic.py` (6).
