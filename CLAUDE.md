@@ -184,6 +184,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.453 EDUCATION + ENTERPRISE IN THE HUB: AI Employees gains "Education, Research & Lab" (tutor / school office / curriculum / research / register / Prayogshala) + "Enterprise Systems & ERP" (the 10 enterprise roles); hiring adds the desk and gates NOTHING (tools stay open, tested); console Education Desk (tabs + Send / Not send share cards + labs); Enterprise Open desk = Systems on that role; phone opens each employee on its own screen.
 - v0.451 AI EMPLOYEES PREMIUM (built as 0.447): console AI Employees = department hub (4 dept cards, line art drawn once) -> equal-size role cards (filter / search) + detail panel with trust ladder and the real Hire / Pause / Resume / Leave; grid-auto-rows:1fr, motion once, reduced motion / calm off; Library above Create. Console only.
 - v0.443 AI EMPLOYEES PEHLE: console sidebar "Employees" -> "AI Employees", moved FIRST (above Create), person+spark icon; hub heading / title / desk links renamed. Console only.
 - v0.443 DONE = VERIFIED (long-task report items 1 + 2, RCA fix 7): `kaam_plan finish done` passes `agent/verify.py` gate first - files on disk / pages ready / links alive (404 = fail, unreachable = unknown) / datasets / per-step `check` (file_pages>=N, file_rows>=N, link_ok, artifact, reminder>=N, list:<name>>=N, tool:<name>); a failure REOPENS the step and the goal stays working; the free fake-done check now runs in goal mode too (it was off for every long job).
@@ -230,7 +231,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.452.0 (pubspec 0.452.0+497). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.453.0 (pubspec 0.453.0+498). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.452 DUKAAN PLUS (web Step 4B): `site/shopplus.py` = website GST invoice / credit note on HER ONE series (hidden `_web_orders` app rows), AutoPay plans for website members, marketplace (seller apply -> her approval, commission, Route account, product moderation, transfer once), Shiprocket (her tap: AWB + label, tracking), wishlist + opted-in cart reminders she sends herself.
 - v0.446 DUKAAN PAISA (web Step 4 part 1): `site/shoppay.py` = website shop online payments through HER gateway on the app engine (paid only from signed webhook / status read, amount must match, unpaid released after 3 h, late money kept, refunds her tap), coupons applied by the server (once per mobile), verified-buyer reviews (delivered orders only, her hide). Not yet: website GST invoices, marketplace, courier, wishlists.

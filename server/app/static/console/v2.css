@@ -2624,8 +2624,8 @@ body.albon{overflow:hidden}
 #hire .ae-d-biz{--ae-acc:#A24E14;--ae-soft:#FCEFE4;--ae-soft2:#FEF8F2}
 #hire .ae-d-eng{--ae-acc:#0B6F64;--ae-soft:#E2F3F0;--ae-soft2:#F2FAF8}
 #hire .ae-d-soft{--ae-acc:#2850B8;--ae-soft:#E8EEFC;--ae-soft2:#F5F8FE}
-#hire .ae-d-edu{--ae-acc:#9A3D6A;--ae-soft:#FAE8F1;--ae-soft2:#FDF5F9}   /* v0.450 Education, Research & Lab */
-#hire .ae-d-ent{--ae-acc:#3D5566;--ae-soft:#E7EDF1;--ae-soft2:#F4F7F9}   /* v0.450 Enterprise Systems & ERP */
+#hire .ae-d-edu{--ae-acc:#9A3D6A;--ae-soft:#FAE8F1;--ae-soft2:#FDF5F9}   /* v0.453 Education, Research & Lab */
+#hire .ae-d-ent{--ae-acc:#3D5566;--ae-soft:#E7EDF1;--ae-soft2:#F4F7F9}   /* v0.453 Enterprise Systems & ERP */
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) #hire .ae-d-game{--ae-acc:#B3A6FF;--ae-soft:#241E44;--ae-soft2:#1C1834}
   :root:not([data-theme="light"]) #hire .ae-d-biz{--ae-acc:#F2B07A;--ae-soft:#352418;--ae-soft2:#221A16}
   :root:not([data-theme="light"]) #hire .ae-d-eng{--ae-acc:#6FD8C6;--ae-soft:#14302C;--ae-soft2:#141F22}
@@ -2819,7 +2819,7 @@ body.albon{overflow:hidden}
 @media (prefers-reduced-motion:reduce){#hire .ae-draw,#hire .ae-check{stroke-dashoffset:0}#hire .ae-burst{display:none}}
 :root.calm #hire .ae-draw,:root.calm #hire .ae-check{stroke-dashoffset:0}
 
-/* v0.450 EDUCATION DESK: one desk for the six Education, Research & Lab employees. Tabs, equal tiles, rows; no motion
+/* v0.453 EDUCATION DESK: one desk for the six Education, Research & Lab employees. Tabs, equal tiles, rows; no motion
    beyond the hover colour, weights <= 600, nothing under 12px (CRISP TEXT). */
 #edudesk .vh h2{white-space:nowrap;flex-shrink:0}
 #edudesk .ed-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 18px}

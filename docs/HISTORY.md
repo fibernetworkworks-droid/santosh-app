@@ -17156,3 +17156,35 @@ Tests: tests/test_v0452_dukaan_plus.py (7): one series across website orders (00
 moderation, Route transfer once (320 of 400 at 20%), seller page hides the buyer; Shiprocket fake (wrong login never saved,
 AWB, label, never twice, tracking); reminders opted-in / ordered closes / once / STOP; AutoPay plan subscribe for members.
 NOT VERIFIED live: Shiprocket API (from its documented external API), Razorpay Route transfers (fake gateway, as v0.419).
+
+## v0.453.0 EDUCATION, RESEARCH & LAB + ENTERPRISE IN THE HUB (2 Nov 2026)
+Owner: "NOW AGAIN ENTIER EDUCATION SYSTEM AI EMPLOYEE ALSO THERE CHECK" -> the check found the Shiksha suite and
+Prayogshala live on the server and the phone (own screens, own /api routes, chat tools for every user) but absent from
+the AI Employees hub, and the ten Enterprise Systems & ERP jobs absent too -> "YES INCLUDE ALL -- EVEN LAB PUT IT UNDER
+EDUCATION & RESEARCH & LAB".
+- `employee/hire.py`: `EDU_GROUP` "Education, Research & Lab" with six live employees - `tutor` (Guru Sahayak), `school_office`
+  (Daftar), `curriculum` (Pathyakram), `research` (Shodh), `school_register` (Shiksha), `lab` (Prayogshala); `ENT_GROUP`
+  "Enterprise Systems & ERP" with exactly the keys of `enterprise/rules.ROLES` (erp, crm_arch, tpm, bpa, ecom_arch, health_int,
+  bank_int, supply_opt, plm, regtech). Each has pitch / does / needs / never in English, written from the module's own NEVER
+  lists and rules; the capped roles (bank_int, health_int, regtech) name their cap. Hub = 51 employees in 6 departments.
+- HIRING GATES NOTHING HERE (`EDU_OPEN`): these tools were open to every user before; hiring only adds the desk. A test fails
+  if any of guru / daftar / shiksha / shodh / prayog / enterprise tools ever calls `is_hired`, and the six /api routes answer
+  200 with nobody hired.
+- Console hub (`employees.js`): two departments with their own line art (open book + cap + flask; stacked systems) and accents
+  (light + dark); all six department cards measure the same (481 x 375), role cards the same height. Open desk: education keys
+  -> the Education Desk, enterprise keys -> the Systems page ON THAT ROLE (`go(v, arg)` -> `ENT.open(el, role)`).
+- Console Education Desk (`edudesk`, sidebar entry while any education employee is hired): tabs Overview / Tutor / School office
+  / Papers / Research / Register / Lab built from /api/guru, /api/daftar, /api/pathyakram, /api/shodh, /api/shiksha and
+  /api/prayog/labs. Her only writes are Send / Don't send on a waiting guardian or share card (POST .../shares/<id>/decide with
+  the card's hash, the same call the phone makes; a changed card answers 'stale'); a WhatsApp link the server hands back is
+  shown for her to open. Lab rows open that practical in the Lab view (`/static/prayog/lab.html?id=`); everything else is a
+  ready ask sent into the chat. Every server value is escaped. FOUND while checking it in the browser: `--fs` is a font SIZE
+  token, so `font:600 26px var(--fs)` was an invalid shorthand the browser dropped whole - the block uses `--fb`, and the test
+  refuses `var(--fs)` inside a font shorthand.
+- Phone (`lib/ui/employees_screen.dart`): `_deskFor(key)` opens each hired employee on its own screen - Guru / Daftar / Shiksha
+  / Shodh / Prayog / EnterpriseScreen(role: key). Before this, any key that was not seo / social / cad / game_dev / architect
+  fell through to the SEO Desk - which is where the nine non-lead Game Desk roles (procgen_dev, physics_dev...) had been
+  landing since v0.420; they now open the Game Desk.
+- Tests: `test_v0453_edu_ent_hub.py` (departments complete and live, English text, caps named, hire / pause / leave through the
+  API, tools stay open, console hub + desk wiring, CSS rules, escaping, the phone mapping matches the catalogue); v0.447's
+  export assertion updated. NOT VERIFIED: the Flutter change is checked by CI's analyzer, not run on a phone here.

@@ -48,9 +48,9 @@ TRUST = ("seekh", "saathi", "bharosa")
 
 GAME_GROUP = "Game Development, Simulation & VR"   # v0.379 the Game Desk employees' heading in the Hub
 SW_GROUP = "Software Architecture, Engineering & Core Systems"   # v0.410 the Architecture Desk employees' heading
-EDU_GROUP = "Education, Research & Lab"   # v0.450 the Shiksha suite + Prayogshala in the Hub (one Education Desk)
-ENT_GROUP = "Enterprise Systems & ERP"   # v0.450 the ten enterprise jobs (v0.358) in the Hub; their desk is Systems
-# v0.450 these employees' tools were open to every user before they joined the Hub, so hiring one only adds its desk;
+EDU_GROUP = "Education, Research & Lab"   # v0.453 the Shiksha suite + Prayogshala in the Hub (one Education Desk)
+ENT_GROUP = "Enterprise Systems & ERP"   # v0.453 the ten enterprise jobs (v0.358) in the Hub; their desk is Systems
+# v0.453 these employees' tools were open to every user before they joined the Hub, so hiring one only adds its desk;
 # a tool must never start checking is_hired() for them (tested), or users would silently lose what they had.
 EDU_OPEN = True
 
@@ -262,7 +262,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                        "pitch": "COBOL inventory, dependency map and migration plan; translations proved side by side."},
     "refactor_eng": {"name": "Legacy Code Refactoring Specialist", "live": False, "icon": "code", "group": SW_GROUP,
                      "pitch": "Maps the worst code, writes tests first, then many small safe refactor PRs, each green on CI."},
-    # v0.450 EDUCATION, RESEARCH & LAB: the Shiksha suite (v0.381 / v0.387 / v0.403) and Prayogshala (v0.415 / v0.441) were
+    # v0.453 EDUCATION, RESEARCH & LAB: the Shiksha suite (v0.381 / v0.387 / v0.403) and Prayogshala (v0.415 / v0.441) were
     # live on the server and the phone but never in the Hub. Hiring one adds the Education Desk to the console sidebar; it
     # does NOT gate the tools - every user had them before this version and keeps them (see EDU_OPEN).
     "tutor": {"name": "Personal Tutor (Guru Sahayak)", "live": True, "icon": "book", "group": EDU_GROUP,

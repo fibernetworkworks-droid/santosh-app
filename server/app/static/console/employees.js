@@ -32,9 +32,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
      desc: '3D parts, simulation and code drafts for engineering teams. Every number measured, never certified on its own.'},
     {g: 'Software Architecture, Engineering & Core Systems', id: 'soft', name: 'Software & Systems', art: 'soft',
      desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'},
-    {g: 'Education, Research & Lab', id: 'edu', name: 'Education, Research & Lab', art: 'edu',   // v0.450
+    {g: 'Education, Research & Lab', id: 'edu', name: 'Education, Research & Lab', art: 'edu',   // v0.453
      desc: 'A tutor, a school office, a paper setter, a research assistant, the register and a 3D science lab. Children only with guardian consent.'},
-    {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.450
+    {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.453
      desc: 'ERP, CRM, PLM, supply chain and compliance work on your own systems. Every write is planned, dry-run and waits for your tap.'}];
   const ART = {   // line drawings; every path is drawn on once (pathLength 1 + .ae-draw)
     game: '<path d="M140 80h120a40 40 0 0 1 40 40v12a26 26 0 0 1-26 26c-10 0-17-5-22-12l-10-14h-84l-10 14c-5 7-12 12-22 12a26 26 0 0 1-26-26v-12a40 40 0 0 1 40-40z" stroke-width="2.6"/><path d="M152 116h26M165 103v26" stroke-width="2.6" style="animation-delay:.45s"/><path d="M60 56l16 9v18l-16 9-16-9V65zM340 140l16 9v18l-16 9-16-9v-18z" stroke-width="1.6" opacity=".5" style="animation-delay:.2s"/><path d="M70 186c26-18 52-18 78 0" stroke-width="1.5" opacity=".45" style="animation-delay:.55s"/><circle class="ae-fadein" cx="236" cy="110" r="5" fill="currentColor"/><circle class="ae-fadein" cx="252" cy="124" r="5" fill="currentColor"/>',
@@ -225,7 +225,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
 
   async function act(what, key) {
     if (what === 'open') { location.hash = ''; const v = DESKS[key] || key + 'desk';
-      if (openView) openView(v, v === 'systems' ? key : ''); else document.querySelector(`[data-v="${v}"]`)?.click(); return; }   // v0.450 Systems opens on that role   // seodesk / socialdesk / caddesk / gamedesk
+      if (openView) openView(v, v === 'systems' ? key : ''); else document.querySelector(`[data-v="${v}"]`)?.click(); return; }   // v0.453 Systems opens on that role   // seodesk / socialdesk / caddesk / gamedesk
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
       await api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined);
@@ -2376,7 +2376,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     return out.join('');
   }
 
-  // ------------------------------------------------------------ v0.450 the Education Desk (Education, Research & Lab)
+  // ------------------------------------------------------------ v0.453 the Education Desk (Education, Research & Lab)
   // One desk for the six education employees. It READS the same routes the phone screens use (/api/guru, /api/daftar,
   // /api/pathyakram, /api/shodh, /api/shiksha, /api/prayog/labs); the only writes are her own taps on the guardian /
   // share cards (POST .../shares/<id>/decide with the card's hash, exactly what the phone sends). Everything else is

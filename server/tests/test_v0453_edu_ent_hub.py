@@ -1,4 +1,4 @@
-"""v0.450 EDUCATION, RESEARCH & LAB + ENTERPRISE in the AI Employees hub (owner: "YES INCLUDE ALL -- EVEN LAB PUT IT
+"""v0.453 EDUCATION, RESEARCH & LAB + ENTERPRISE in the AI Employees hub (owner: "YES INCLUDE ALL -- EVEN LAB PUT IT
 UNDER EDUCATION & RESEARCH & LAB").
 
 The Shiksha suite (tutor, school office, curriculum, research, register) and Prayogshala were live on the server and the
@@ -70,7 +70,7 @@ def test_hire_pause_leave_through_the_api(env):
 
 
 def test_tools_stay_open_without_a_hire(env):
-    """Every user had these before v0.450; hiring adds the desk only."""
+    """Every user had these before v0.453; hiring adds the desk only."""
     hire = _cat()
     assert hire.EDU_OPEN is True
     agent = ROOT / "server" / "app" / "agent"
@@ -105,7 +105,7 @@ def test_console_education_desk():
     assert "['edu', 'edudesk', 'Education Desk']" in V2 and "if (v === 'edudesk') EMP?.edu($('#edudesk'));" in V2
     assert "ENT?.open($('#systems'), arg || 'erp')" in V2 and "'/static/prayog/lab.html?id=' + encodeURIComponent(arg)" in V2
     assert 'id="v-edudesk"' in HTML and 'id="edudesk"' in HTML
-    blk = CSS[CSS.index("v0.450 EDUCATION DESK"):]
+    blk = CSS[CSS.index("v0.453 EDUCATION DESK"):]
     assert "grid-auto-rows:1fr" in blk                                   # equal tiles, like the hub
     assert not re.search(r"font-weight:\s*(700|800|900)|font:\s*(700|800|900)\s", blk)
     assert not re.search(r"font(-size)?:[^;}]*\b(9|10|11)(\.\d+)?px", blk)
