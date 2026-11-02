@@ -340,14 +340,17 @@ def web():
 
 # ---------------------------------------------------------------- lab jobs (run from the workflow)
 @app.function(image=chatterbox_image, volumes={MODELS_DIR: volume}, secrets=[secret], timeout=3600)
-def _prefetch_hf(repos: list[str]) -> list[str]:
+def _prefetch_hf(repos: list[str]) -> dict:
     from huggingface_hub import snapshot_download
-    done = []
+    done, failed = [], {}
     for repo in repos:
-        snapshot_download(repo, token=os.environ.get("HF_TOKEN") or None)
-        done.append(repo)
+        try:   # a gated or missing model must not stop the others
+            snapshot_download(repo, token=os.environ.get("HF_TOKEN") or None)
+            done.append(repo)
+        except Exception as e:
+            failed[repo] = f"{type(e).__name__}: {str(e)[:160]}"
     volume.commit()
-    return done
+    return {"done": done, "failed": failed}
 
 
 @app.local_entrypoint()
@@ -356,7 +359,14 @@ def prefetch():
     face container's first start, through MuseTalk's own script."""
     repos = [registry.MODELS[k]["repo"] for k in registry.voices("lab")]
     print("downloading:", repos)
-    print("done:", _prefetch_hf.remote(repos))
+    r = _prefetch_hf.remote(repos)
+    print("downloaded:", r["done"])
+    for repo, why in r["failed"].items():
+        print(f"FAILED {repo}: {why}")
+        if "gated" in why.lower() or "403" in why or "401" in why:
+            print(f"  -> open https://huggingface.co/{repo} while logged in, accept the terms, then run prefetch again")
+    if not r["done"]:
+        raise SystemExit("No model could be downloaded.")
 
 
 @app.local_entrypoint()
