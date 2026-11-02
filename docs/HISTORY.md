@@ -16841,3 +16841,21 @@ website orders need their own adapter on the same series), AutoPay plans / payme
 apps and in her console's app page), multi-vendor marketplace (vendor sign-up / approval / dashboards / commissions /
 split rules per vendor), courier connector (Shiprocket / Delhivery), abandoned-cart reminders (needs opted-in messaging),
 wishlists. NOT VERIFIED: a real gateway account (fake gateway in tests, same as v0.419).
+
+## v0.447.0 AI EMPLOYEES PREMIUM (2 Nov 2026)
+Owner: "MAKE AI ENGINEER SECTION MORE PREMIUM AND ADVANCE ... USER WILL CLICK ON SECTION EXAMPLE GAMMING" -> design canvas
+prototype -> "MAKE IT MORE PREMIUM ... STUNNING, ADVANCE ANIMATION" -> "GO . MAKE ALL CARD OF SAME SIZE".
+- `static/console/employees.js` hub rewritten: home = 4 department cards built from the server's role groups (`DEPT` map:
+  Games, Simulation & VR / Business / Engineering & Hardware / Software & Systems; an unknown group still shows, with its own
+  name), each with line-art SVG that draws itself once (`pathLength=1`), live / coming / on-team counts (count-up once).
+  Department page = role cards (filter All / Live / On team / Coming + search `#aeQ`, focus kept on redraw) beside a
+  detail panel: pitch, what it does, what it needs, what it never does, trust ladder (Seekh / Saathi / Bharosa) and the
+  SAME API as before (`POST /api/employees/{key}/hire|pause|resume|leave`, hire with trust seekh, leave behind confirm).
+  Hiring no longer jumps to the desk; the card plays a one-time "joined" burst and the desk appears in the sidebar.
+- `v2.css` block "v0.447 AI EMPLOYEES PREMIUM": department accent tokens (light + dark), `.ae-depts` / `.ae-roles` grids with
+  `grid-auto-rows:1fr` = every card in a grid the same size (measured: dept cards all 481x348, role cards all 211px tall).
+  Entrances play once per page (`#hire.ae-settled`), the only loop is the small live dot (not under text, CRISP TEXT),
+  reduced motion and calm mode switch the motion off. Search label class `ae-sr` (`.sr` was taken).
+- `v2.js`: Library is spliced in just above Create, so it can never land between AI Employees and the hired desks.
+- Tests: `test_v0447_ai_employees_premium.py` (structure, equal-size CSS, real actions, motion once, escaping, Library
+  position); `test_v0443` heading assert updated. Console only - no server route changed.

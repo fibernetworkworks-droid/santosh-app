@@ -19,33 +19,202 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
+  // v0.447 AI EMPLOYEES PREMIUM (owner approved the prototype: "GO. MAKE ALL CARD OF SAME SIZE"): departments first,
+  // then the employees inside one, then the chosen employee's details beside them. Every card in a grid has the same
+  // size (grid-auto-rows:1fr). Entrances play once, numbers count up once, drawings trace themselves once; nothing
+  // loops under text (CRISP TEXT), and reduced motion / calm switch all of it off. Every server value goes through esc().
+  const DEPT = [   // the server's group name -> how the hub shows it; an unknown group still shows, plainly
+    {g: 'Game Development, Simulation & VR', id: 'game', name: 'Games, Simulation & VR', art: 'game',
+     desc: 'Games, worlds, physics, 3D sound and VR rooms. Each one is built, tested by Hoola itself, and playable from a link.'},
+    {g: 'Business', id: 'biz', name: 'Business', art: 'biz',
+     desc: 'Marketing, customers and back office for your shop or company. Plans and drafts first; nothing goes out without your OK.'},
+    {g: 'Research, CAD, Hardware & Industrial Tech', id: 'eng', name: 'Engineering & Hardware', art: 'eng',
+     desc: '3D parts, simulation and code drafts for engineering teams. Every number measured, never certified on its own.'},
+    {g: 'Software Architecture, Engineering & Core Systems', id: 'soft', name: 'Software & Systems', art: 'soft',
+     desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'}];
+  const ART = {   // line drawings; every path is drawn on once (pathLength 1 + .ae-draw)
+    game: '<path d="M140 80h120a40 40 0 0 1 40 40v12a26 26 0 0 1-26 26c-10 0-17-5-22-12l-10-14h-84l-10 14c-5 7-12 12-22 12a26 26 0 0 1-26-26v-12a40 40 0 0 1 40-40z" stroke-width="2.6"/><path d="M152 116h26M165 103v26" stroke-width="2.6" style="animation-delay:.45s"/><path d="M60 56l16 9v18l-16 9-16-9V65zM340 140l16 9v18l-16 9-16-9v-18z" stroke-width="1.6" opacity=".5" style="animation-delay:.2s"/><path d="M70 186c26-18 52-18 78 0" stroke-width="1.5" opacity=".45" style="animation-delay:.55s"/><circle class="ae-fadein" cx="236" cy="110" r="5" fill="currentColor"/><circle class="ae-fadein" cx="252" cy="124" r="5" fill="currentColor"/>',
+    biz: '<path d="M50 176h300" stroke-width="1.5" opacity=".35"/><rect x="84" y="128" width="38" height="48" rx="7" stroke-width="2" opacity=".55" style="animation-delay:.1s"/><rect x="142" y="100" width="38" height="76" rx="7" stroke-width="2" opacity=".75" style="animation-delay:.22s"/><rect x="200" y="70" width="38" height="106" rx="7" stroke-width="2.2" style="animation-delay:.34s"/><path d="M262 140l32-30 28 18 44-50" stroke-width="2.6" style="animation-delay:.55s"/><path d="M350 78h16v16" stroke-width="2.6" style="animation-delay:.9s"/>',
+    eng: '<path d="M200 46l62 34v70l-62 34-62-34V80z" stroke-width="2.4"/><path d="M138 80l62 34 62-34M200 114v70" stroke-width="2.2" style="animation-delay:.45s"/><path d="M62 60h44M62 60v28M338 160h-44M338 160v-28" stroke-width="1.6" opacity=".55" style="animation-delay:.2s"/><circle cx="84" cy="160" r="16" stroke-width="1.6" opacity=".55" style="animation-delay:.3s"/>',
+    soft: '<rect x="164" y="50" width="72" height="38" rx="9" stroke-width="2.3"/><rect x="80" y="136" width="72" height="38" rx="9" stroke-width="2" opacity=".8" style="animation-delay:.35s"/><rect x="248" y="136" width="72" height="38" rx="9" stroke-width="2" opacity=".8" style="animation-delay:.45s"/><path d="M200 88v18h-84v30M200 106h84v30" stroke-width="1.9" style="animation-delay:.2s"/><path d="M40 98l-14 14 14 14M360 98l14 14-14 14" stroke-width="1.6" opacity=".5" style="animation-delay:.6s"/>',
+    other: '<circle cx="200" cy="110" r="46" stroke-width="2.2"/><path d="M200 64v92M154 110h92" stroke-width="1.6" opacity=".5" style="animation-delay:.3s"/>'};
+  const SPARK = '<path class="ae-spark" d="M318 48l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" stroke-width="1.6"/><path class="ae-spark" d="M96 128l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z" stroke-width="1.4"/>';
+  const HS = {view: 'home', dept: '', sel: '', filter: 'all', q: '', burst: '', counted: false};   // survives the re-fetch after every action
+  let DATA = null;
+  const arrow = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  const tick = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>';
+  const ini = n => String(n || '').replace(/\(.*?\)/g, '').split(/[\s/-]+/).filter(w => /^[A-Za-z]/.test(w)).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '•';
+  const isHired = e => e.status === 'hired' || e.status === 'paused';
+  const deptOf = g => DEPT.find(d => d.g === g) || {g, id: 'x' + String(g).toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: g, art: 'other', desc: ''};
+  const art = (k, cls = '') => `<svg class="ae-art-svg ${cls}" aria-hidden="true" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${(ART[k] || ART.other).replace(/<(path|rect|circle)(?![^>]*ae-fadein)/g, '<$1 class="ae-draw" pathLength="1"')}${cls ? '' : SPARK}</svg>`;
+  function status(e) {
+    if (e.status === 'hired') return ['ok', 'On your team'];
+    if (e.status === 'paused') return ['warn', 'Paused'];
+    return e.live ? ['ready', 'Ready to hire'] : ['soon', 'Coming soon'];
+  }
+  function depts() {
+    const out = new Map();
+    for (const d of DEPT) out.set(d.g, {...d, xs: []});
+    for (const e of DATA.employees || []) { const g = e.group || 'Business'; if (!out.has(g)) out.set(g, {...deptOf(g), xs: []}); out.get(g).xs.push(e); }
+    return [...out.values()].filter(d => d.xs.length);
+  }
+
   async function hub(el) {
     HUB = el;
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>AI Employees</h2></div><div class="empty">Loading…</div>';
-    let d;
-    try { d = await api('GET', '/api/employees'); }
+    try { DATA = await api('GET', '/api/employees'); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>AI Employees</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
-    changed(d.hired || {});
-    const groups = {};                                    // v0.357 cards grouped (Business / Research, CAD, Hardware & Industrial Tech)
-    for (const e of d.employees || []) (groups[e.group || 'Business'] ||= []).push(e);
-    el.innerHTML = `<div class="vh"><h2>AI Employees</h2><span class="muted em-sub">Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.</span></div>
-      ${Object.entries(groups).map(([g, xs]) => `<h3 class="em-group">${esc(g)}</h3><div class="em-grid">${xs.map(card).join('')}</div>`).join('')}`;
-    el.querySelectorAll('[data-em]').forEach(b => b.addEventListener('click', () => act(b.dataset.em, b.dataset.key)));
+    changed(DATA.hired || {});
+    if (!el._aeWired) { el._aeWired = true; wireHub(el); }
+    draw();
   }
 
-  function card(e) {
-    const hired = e.status === 'hired' || e.status === 'paused';
-    const st = e.status === 'hired' ? tag('ok', 'Working') : e.status === 'paused' ? tag('warn', 'Paused') : !e.live ? tag('', 'Coming soon') : '';
-    const list = (t, xs) => xs && xs.length ? `<h4>${esc(t)}</h4><ul>${xs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
-    let btns = '';
-    if (!e.live) btns = '<button class="btn soft" type="button" disabled>Coming soon</button>';
-    else if (!hired) btns = `<button class="btn go" type="button" data-em="hire" data-key="${esc(e.key)}">Hire ${esc(e.name)}</button>`;
-    else btns = `<button class="btn go" type="button" data-em="open" data-key="${esc(e.key)}">Open desk</button>
-      <button class="btn soft" type="button" data-em="${e.status === 'paused' ? 'resume' : 'pause'}" data-key="${esc(e.key)}">${e.status === 'paused' ? 'Resume' : 'Pause'}</button>
-      <button class="btn soft em-leave" type="button" data-em="leave" data-key="${esc(e.key)}">Let go</button>`;
-    return `<article class="tile gl em-card${e.live ? '' : ' em-soon'}"><div class="em-h"><h3>${esc(e.name)}</h3>${st}</div>
-      <p class="em-pitch">${esc(e.pitch || '')}</p>${list('What it does', e.does)}${list('What it needs', e.needs)}${list('What it will never do', e.never)}
-      <div class="acts">${btns}</div></article>`;
+  function draw() {
+    const el = HUB; if (!el || !DATA) return;
+    const ds = depts(), all = DATA.employees || [];
+    if (HS.view === 'dept' && !ds.some(d => d.id === HS.dept)) HS.view = 'home';
+    const at = HS.view + ':' + HS.dept;                      // a redraw of the SAME page (filter, pick, search, after an action)
+    el.classList.toggle('ae-settled', at === HS.drawn);      // keeps still: entrances play once per page, never on each click
+    HS.drawn = at;
+    el.innerHTML = HS.view === 'dept' ? deptPage(ds.find(d => d.id === HS.dept)) : homePage(ds, all);
+    if (HS.view === 'home' && !HS.counted) { HS.counted = true; countUp(el); }
+  }
+
+  function homePage(ds, all) {
+    const ready = all.filter(e => e.live).length, team = all.filter(isHired);
+    const stat = (n, label, cls, pct, d) => `<div class="ae-stat ae-up" style="animation-delay:${d}s"><b class="${cls}" data-count="${n}">${HS.counted ? n : 0}</b><span>${label}</span><i class="ae-meter"><i class="ae-bar ${cls}" style="width:${pct}%"></i></i></div>`;
+    const q = HS.q.trim().toLowerCase();
+    const results = q ? all.filter(e => `${e.name} ${e.pitch || ''} ${e.group || ''}`.toLowerCase().includes(q)) : [];
+    return `<header class="ae-hero ae-up">
+        <div class="ae-hero-row">
+          <div class="ae-hero-tx"><span class="ae-badge"><i aria-hidden="true"></i>Your AI workforce</span>
+            <h2 class="ae-h1">AI Employees</h2>
+            <p>Hire an AI employee for one job. Each one gets its own desk, works around the clock, and asks you before anything big. You stay in charge.</p></div>
+          <label class="ae-search"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <span class="ae-sr">Search all employees</span><input id="aeQ" type="search" autocomplete="off" placeholder="Search ${all.length} roles: SEO, games, CAD…" value="${esc(HS.q)}"></label>
+        </div>
+        <div class="ae-stats">${stat(all.length, `roles in ${ds.length} departments`, '', 100, .08)}${stat(ready, 'ready to hire today', 'ok', all.length ? Math.round(ready / all.length * 100) : 0, .14)}${stat(all.length - ready, 'coming soon', 'warn', all.length ? Math.round((all.length - ready) / all.length * 100) : 0, .2)}${stat(team.length, 'on your team', 'pri', ready ? Math.round(team.length / ready * 100) : 0, .26)}</div>
+      </header>
+      <section class="ae-team ae-up" style="animation-delay:.16s" aria-labelledby="aeTeamH">
+        <div class="ae-row"><h3 id="aeTeamH">Your team</h3><span class="ae-mut">Each hired employee gets its own desk in the sidebar</span></div>
+        ${team.length ? `<div class="ae-members">${team.map(e => { const d = deptOf(e.group); return `<button class="ae-member ae-pop ae-d-${d.id}" type="button" data-ae="role" data-key="${esc(e.key)}"><span class="ae-mono">${esc(ini(e.name))}<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i></span><span><b>${esc(e.name)}</b><small>${e.status === 'paused' ? 'Paused' : 'Working'} · ${esc((TRUST[e.trust] || TRUST.seekh)[0])}</small></span></button>`; }).join('')}</div>`
+          : `<div class="ae-empty-team"><span class="ae-seats" aria-hidden="true"><i></i><i></i><i></i></span><p>No one hired yet. Open a department, pick a role and press Hire.</p>${ds[0] ? `<button class="btn soft ae-btn" type="button" data-ae="dept" data-id="${esc(ds[0].id)}">Start with ${esc(ds[0].name)}${arrow}</button>` : ''}</div>`}
+      </section>
+      ${q ? `<section class="ae-sec" aria-labelledby="aeResH"><h3 id="aeResH" class="ae-sech">${results.length} ${results.length === 1 ? 'role matches' : 'roles match'} “${esc(HS.q.trim())}”</h3>
+          ${results.length ? `<div class="ae-roles">${results.map((e, i) => roleCard(e, i, true)).join('')}</div>` : '<p class="ae-mut">No role matches that yet. Try a job title or a word like “Instagram”, “3D” or “server”.</p>'}</section>`
+        : `<section class="ae-sec" aria-labelledby="aeDeptH"><div class="ae-row ae-up" style="animation-delay:.22s"><h3 id="aeDeptH" class="ae-sech">Departments</h3><span class="ae-mut">Open one to meet its employees</span></div>
+          <div class="ae-depts">${ds.map(deptCard).join('')}</div></section>`}`;
+  }
+
+  function deptCard(d, i) {
+    const ready = d.xs.filter(e => e.live).length, onTeam = d.xs.filter(isHired).length;
+    const line = ready === d.xs.length ? `All ${d.xs.length} ready to hire` : ready ? `${ready} ready · ${d.xs.length - ready} coming soon` : `${d.xs.length} coming soon`;
+    return `<button class="ae-dept ae-up ae-d-${esc(d.id)}" type="button" data-ae="dept" data-id="${esc(d.id)}" style="animation-delay:${(.28 + i * .08).toFixed(2)}s" aria-label="Open ${esc(d.name)}: ${d.xs.length} roles, ${esc(line)}">
+        <span class="ae-topline" aria-hidden="true"></span>
+        <span class="ae-art">${art(d.art)}<span class="ae-ready"><i aria-hidden="true"></i>${esc(line)}</span></span>
+        <span class="ae-dept-bd"><span class="ae-dept-n">${esc(d.name)}</span><span class="ae-dept-d">${esc(d.desc || '')}</span>
+          <span class="ae-dept-ft"><span class="ae-faces" aria-hidden="true">${d.xs.slice(0, 5).map(e => `<i>${esc(ini(e.name))}</i>`).join('')}${d.xs.length > 5 ? `<em>+${d.xs.length - 5} more</em>` : ''}</span>
+            <span class="ae-meet">Meet ${d.xs.length}${arrow}</span></span>
+          ${onTeam ? `<span class="ae-onteam"><i aria-hidden="true"></i>${onTeam} on your team</span>` : ''}</span>
+      </button>`;
+  }
+
+  function roleCard(e, i, withDept) {
+    const d = deptOf(e.group), [sc, st] = status(e), on = HS.view === 'dept' && HS.sel === e.key;
+    return `<button class="ae-role ae-up ae-d-${esc(d.id)}${on ? ' on' : ''}" type="button" data-ae="role" data-key="${esc(e.key)}" aria-pressed="${on}" style="animation-delay:${(.12 + i * .04).toFixed(2)}s">
+        <span class="ae-role-h"><span class="ae-mono">${esc(ini(e.name))}${isHired(e) ? `<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i>` : ''}</span><span><b>${esc(e.name)}</b>${withDept ? `<small>${esc(d.name)}</small>` : ''}</span></span>
+        <span class="ae-role-p">${esc(e.pitch || '')}</span>
+        <span class="ae-role-ft"><span class="ae-chip ${sc}">${st}</span><span class="ae-more">Details${arrow}</span></span>
+      </button>`;
+  }
+
+  function deptPage(d) {
+    const xs = d.xs, ready = xs.filter(e => e.live).length, team = xs.filter(isHired).length;
+    if (!xs.some(e => e.key === HS.sel)) HS.sel = (xs.find(e => e.live) || xs[0] || {}).key || '';
+    const F = [['all', 'All', xs.length], ['ready', 'Ready to hire', xs.filter(e => e.live && !isHired(e)).length], ['soon', 'Coming soon', xs.length - ready], ['team', 'On your team', team]]
+      .filter(f => f[0] === 'all' || f[2] > 0);
+    if (!F.some(f => f[0] === HS.filter)) HS.filter = 'all';
+    const shown = xs.filter(e => HS.filter === 'all' || (HS.filter === 'ready' && e.live && !isHired(e)) || (HS.filter === 'soon' && !e.live) || (HS.filter === 'team' && isHired(e)));
+    return `<nav class="ae-crumb ae-fadein" aria-label="Breadcrumb"><button type="button" data-ae="home"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>AI Employees</button><span aria-hidden="true">/</span><b>${esc(d.name)}</b></nav>
+      <section class="ae-dhero ae-scale ae-d-${esc(d.id)}">
+        <div class="ae-dhero-tx"><span class="ae-ready ae-static"><i aria-hidden="true"></i>Department</span>
+          <h2 class="ae-h1">${esc(d.name)}</h2>${d.desc ? `<p>${esc(d.desc)}</p>` : ''}
+          <div class="ae-dstats"><span><b>${xs.length}</b>roles</span><span><b class="ok">${ready}</b>ready to hire</span><span><b class="pri">${team}</b>on your team</span></div></div>
+        <div class="ae-dhero-art">${art(d.art, 'big')}</div>
+      </section>
+      <div class="ae-filters ae-up" role="group" aria-label="Show" style="animation-delay:.12s">${F.map(f => `<button class="ae-pill${HS.filter === f[0] ? ' on' : ''}" type="button" data-ae="filter" data-f="${f[0]}" aria-pressed="${HS.filter === f[0]}">${f[1]} <span>${f[2]}</span></button>`).join('')}</div>
+      <div class="ae-split">
+        <div class="ae-roles">${shown.map((e, i) => roleCard(e, i, false)).join('') || '<p class="ae-mut">Nothing here for this filter.</p>'}</div>
+        <aside class="ae-panel" aria-label="Employee details" aria-live="polite">${panel(xs.find(e => e.key === HS.sel), d)}</aside>
+      </div>`;
+  }
+
+  function panel(e, d) {
+    if (!e) return '<p class="ae-mut ae-pad">Pick an employee to see what they do, what they need and what they will never do.</p>';
+    const [sc, st] = status(e), hired = isHired(e), short = String(e.name).split(' (')[0];
+    const list = (t, xs, cls, i) => xs && xs.length ? `<div class="ae-blk ae-up ${cls}" style="animation-delay:${(.08 + i * .08).toFixed(2)}s"><h4>${t}</h4><ul>${xs.map(x => `<li>${cls === 'ae-does' ? `<i aria-hidden="true">${tick}</i>` : ''}<span>${esc(x)}</span></li>`).join('')}</ul></div>` : '';
+    const lvl = TRUST[e.trust] ? e.trust : 'seekh';
+    const burst = HS.burst === e.key ? `<span class="ae-burst" aria-hidden="true">${['#5B45E0', '#EE8F35', '#B347E6', '#13875F', '#F27A52', '#6E55F0', '#EE8F35', '#B347E6'].map((c, i) => `<i style="--dx:${[34, -30, 40, -38, 10, -12, 26, -26][i]}px;--dy:${[-26, -24, 10, 14, -40, 36, 30, -38][i]}px;background:${c};animation-delay:${(i % 4) * .02}s"></i>`).join('')}</span>` : '';
+    let acts;
+    if (!e.live) acts = '<button class="btn soft ae-wide-btn" type="button" disabled>Coming soon</button>';
+    else if (!hired) acts = `<button class="ae-hire" type="button" data-ae="hire" data-key="${esc(e.key)}">Hire ${esc(short)}${arrow}</button>`;
+    else acts = `<div class="ae-joined ${HS.burst === e.key ? 'ae-pop' : ''}"><span class="ae-tick">${tick.replace('<path', '<path class="ae-check" pathLength="1"')}${burst}</span>
+        <span><b>${esc(short)} ${e.status === 'paused' ? 'is paused' : HS.burst === e.key ? 'joined your team' : 'is on your team'}</b><small>${e.status === 'paused' ? 'No jobs run until you resume it.' : `Its desk is in the sidebar. Trust: ${esc(TRUST[lvl][0])}.`}</small></span></div>
+      <button class="ae-open" type="button" data-ae="open" data-key="${esc(e.key)}">Open desk${arrow}</button>
+      <div class="ae-row2"><button class="btn soft" type="button" data-ae="${e.status === 'paused' ? 'resume' : 'pause'}" data-key="${esc(e.key)}">${e.status === 'paused' ? 'Resume' : 'Pause'}</button>
+        <button class="btn soft em-leave" type="button" data-ae="leave" data-key="${esc(e.key)}">Let go</button></div>`;
+    if (HS.lastSel !== e.key) { HS.flip = !HS.flip; HS.lastSel = e.key; }   // the panel slides in only when the person changes
+    return `<div class="${HS.flip ? 'ae-panel-a' : 'ae-panel-b'} ae-d-${esc(d.id)}">
+        <div class="ae-ph"><div class="ae-ph-row"><span class="ae-mono big">${esc(ini(e.name))}</span><div><h3>${esc(e.name)}</h3><span class="ae-chip ${sc}">${st}</span></div></div>
+          <p>${esc(e.pitch || '')}</p></div>
+        <div class="ae-pb">
+          ${list('What it does', e.does, 'ae-does', 0)}${list('What it needs from you', e.needs, 'ae-needs', 1)}${list('It will never', e.never, 'ae-never', 2)}
+          ${e.live ? `<div class="ae-blk ae-up" style="animation-delay:.32s"><h4>How its trust grows</h4><ol class="ae-ladder">
+            <li class="${lvl === 'seekh' ? 'on' : ''}"><i>1</i><span><b>${TRUST.seekh[0]}</b> · starts here: ${TRUST.seekh[1]}.</span></li>
+            <li class="${lvl === 'saathi' ? 'on' : ''}"><i>2</i><span><b>${TRUST.saathi[0]}</b> · ${TRUST.saathi[1]}.</span></li>
+            <li class="${lvl === 'bharosa' ? 'on' : ''}"><i>3</i><span><b>${TRUST.bharosa[0]}</b> · ${TRUST.bharosa[1]}.</span></li></ol>
+            <p class="ae-mut ae-small">Hoola suggests the next level after a run of your Haan; one correction drops it a level.</p></div>`
+          : '<p class="ae-soonnote ae-up">This employee is being built. Its full job list, what it needs and its limits appear here the day it is ready to hire.</p>'}
+          <div class="ae-acts">${acts}</div>
+        </div></div>`;
+  }
+
+  function countUp(el) {
+    const nums = [...el.querySelectorAll('[data-count]')];
+    const calm = document.documentElement.classList.contains('calm') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (calm || typeof requestAnimationFrame !== 'function') { nums.forEach(n => n.textContent = n.dataset.count); return; }
+    const t0 = performance.now();
+    const step = now => {
+      const k = Math.min(1, (now - t0) / 1100), e = 1 - Math.pow(1 - k, 3);
+      nums.forEach(n => { if (n.isConnected) n.textContent = Math.round(+n.dataset.count * e); });
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  function wireHub(el) {
+    el.addEventListener('click', ev => {
+      const b = ev.target.closest('[data-ae]'); if (!b || !el.contains(b)) return;
+      const what = b.dataset.ae, key = b.dataset.key;
+      if (what === 'home') { HS.view = 'home'; HS.burst = ''; draw(); el.scrollIntoView?.({block: 'start'}); return; }
+      if (what === 'dept') { HS.view = 'dept'; HS.dept = b.dataset.id; HS.sel = ''; HS.filter = 'all'; HS.q = ''; HS.burst = ''; draw(); el.scrollIntoView?.({block: 'start'}); return; }
+      if (what === 'filter') { HS.filter = b.dataset.f; draw(); return; }
+      if (what === 'role') {
+        const e = (DATA.employees || []).find(x => x.key === key); if (!e) return;
+        if (HS.view === 'dept' && HS.sel === key) return;
+        HS.view = 'dept'; HS.dept = deptOf(e.group || 'Business').id; HS.sel = key; HS.burst = ''; HS.q = '';
+        draw();
+        el.querySelector('.ae-panel')?.scrollIntoView?.({block: 'nearest', behavior: 'smooth'});
+        return;
+      }
+      act(what, key);
+    });
+    el.addEventListener('input', ev => {
+      if (ev.target.id !== 'aeQ') return;
+      HS.q = ev.target.value; const pos = ev.target.selectionStart;
+      draw();
+      const q = el.querySelector('#aeQ'); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (_) {} }
+    });
   }
 
   async function act(what, key) {
@@ -53,10 +222,10 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
       await api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined);
-      toast(what === 'hire' ? 'Hired. Open the desk to set it up.' : what === 'leave' ? 'Let go. Its jobs have stopped.' : what === 'pause' ? 'Paused. No jobs run until you resume.' : 'Back at work.');
+      toast(what === 'hire' ? 'Hired. Its desk is in the sidebar.' : what === 'leave' ? 'Let go. Its jobs have stopped.' : what === 'pause' ? 'Paused. No jobs run until you resume.' : 'Back at work.');
+      HS.burst = what === 'hire' ? key : '';
     } catch (e) { toast(e.message, true); }
     await hub(HUB);
-    if (what === 'hire') document.querySelector(`[data-v="${DESKS[key] || key + 'desk'}"]`)?.click();
   }
 
   // ------------------------------------------------------------ the SEO desk

@@ -18,7 +18,7 @@ def test_the_section_is_named_ai_employees_and_goes_first():
 
 def test_the_page_and_its_links_say_ai_employees():
     assert V2.count("'Employees'") == 0
-    assert EMP.count("<h2>AI Employees</h2>") == 3 and "<h2>Employees</h2>" not in EMP
+    assert EMP.count("<h2>AI Employees</h2>") == 2 and '<h2 class="ae-h1">AI Employees</h2>' in EMP and "<h2>Employees</h2>" not in EMP   # v0.447 hero heading
     assert ">Go to AI Employees<" in EMP and ">Go to Employees<" not in EMP
     assert " in Employees first." not in EMP and " in Employees to " not in EMP
 
