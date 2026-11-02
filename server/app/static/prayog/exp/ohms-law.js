@@ -101,7 +101,7 @@ HoolaStudio.define('ohms-law', function (S) {
   [[hpts[0], cT1x], [hpts[hpts.length - 1], cT2x]].forEach(function (e) { var s0 = e[0];
     var c = new T.CatmullRomCurve3([s0.clone(), new T.Vector3(s0.x + Math.sign(e[1]) * 0.008, 0.03, s0.z + 0.004), new T.Vector3(e[1], 0.026, 0.002)]);
     coil.add(S.mesh(new T.TubeGeometry(c, 16, 0.0009, 6, false), wireM)); });
-  var ctag = SAMPLE ? S.label(SAMPLE + '  ·  R unknown', { w: 0.17, ratio: 0.09, color: '#f3ead2' }) : S.label('R  (unknown)', { w: 0.07, ratio: 0.2, color: '#f3ead2' });
+  var ctag = SAMPLE ? S.label(SAMPLE + '  ·  R unknown', { w: 0.17, ratio: Math.min(0.09, 2.4 / (SAMPLE.length + 13)), px: 1024, color: '#f3ead2' }) : S.label('R  (unknown)', { w: 0.07, ratio: 0.2, color: '#f3ead2' });
   ctag.rotation.x = -Math.PI / 2; ctag.position.set(0, 0.0165, 0.028); coil.add(ctag);
   coil.position.set(CB[0], 0, CB[1]); S.contact(CL + 0.16, 0.14, CB[0], CB[1], 0.5);
   var cT1 = post(CB[0] + cT1x, 0.016, CB[1] + 0.002), cT2 = post(CB[0] + cT2x, 0.016, CB[1] + 0.002);

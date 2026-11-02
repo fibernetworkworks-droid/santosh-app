@@ -6,7 +6,7 @@
    "key": "caps-large",
    "title": "Charging a capacitor: 1000, 2200 and 4700 µF with a 100 Ω-step box",
    "sample": "Electrolytics 1000 / 2200 / 4700 µF, box in 100 Ω steps",
-   "method": "Large capacitors with small resistances: the same time constants from a thousand times less resistance",
+   "method": "Large capacitors with a box in 100 Ω steps: ten times the capacitance, a tenth of the resistance",
    "params": {
     "C1": 1000,
     "C2": 2200,

@@ -130,9 +130,9 @@ def apply(base_lab: dict, fam: dict, v: dict) -> dict:
     lab["params"] = {**(lab.get("params") or {}), **over}
     for kn in lab.get("knobs") or []:                         # a hidden unknown's knob starts at the variant's value
         if kn.get("param") in over:
-            val = over[kn["param"]] / float(kn.get("k", 1.0))
-            kn["value"] = round(val, 9)
-            kn["min"] = min(kn.get("min", val), val)
+            val = round(over[kn["param"]] / float(kn.get("k", 1.0)), 9)
+            kn["value"] = val
+            kn["min"] = min(kn.get("min", val), val)       # the ROUNDED value, or a knob at its own edge fails
             kn["max"] = max(kn.get("max", val), val)
     chk = lab.get("check") or {}
     cp = dict(chk.get("params") or {})

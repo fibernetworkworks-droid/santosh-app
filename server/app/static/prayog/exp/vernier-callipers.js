@@ -354,7 +354,7 @@ HoolaStudio.define('vernier-callipers', function (S) {
           var t1 = u.task('1. Least count', st.lcOk, st.lcOk ? 'LC = ' + LC.toFixed(1) + ' mm' : 'Look at the vernier: 10 of its divisions cover 9 mm of the main scale.');
           if (!st.lcOk) { t1.add(field('Least count', 'lc', 'mm', submitLC)); t1.add(u.button('Check', submitLC, true)); }
           var js = jawState(), closed = js === 'closed';
-          var t2 = u.task('2. Close the jaws on nothing', closed, closed ? 'Closed and locked. Now read the vernier.' : (st.sphere === 'jaws' ? 'The sphere is between the jaws: take it out first.' : 'The thumb pushes the wheel until the jaws touch.'));
+          var t2 = u.task('2. Close the jaws on nothing', closed, closed ? 'Closed and locked. Now read the vernier.' : (st.sphere === 'jaws' ? 'The ' + NOUN + ' is between the jaws: take it out first.' : 'The thumb pushes the wheel until the jaws touch.'));
           if (st.sphere === 'jaws') t2.add(u.button('Take the ' + NOUN + ' out', takeOut, false, st.acting));
           t2.add(u.button(closed ? 'Closed' : 'Close the jaws', closeEmpty, !closed, closed || st.acting || st.sphere === 'jaws'));
           var t3 = u.task('3. Read the zero error', st.zeroOk, st.zeroOk ? 'Zero error = ' + sgn(ZR) + ' mm' : 'Which vernier line meets a main-scale line? Zero error = that division × LC, positive if the vernier zero is to the right.');
