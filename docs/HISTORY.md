@@ -16532,3 +16532,35 @@ Owner: "GO STEP 5" (step 5 of the 7-step hard-reasoning plan).
   EMI fixed before she sees it (draft hidden, only the fixed answer shown), a right answer passes the reviewer, a
   reviewer-found wrong rate fixed in exactly one round, chat never held. Turn suites (25 files): 288 pass, same as main.
   Not measured here: live reviewer quality (no key) - step 7 scores whole answers. Version 0.436.0 (pubspec 0.436.0+480).
+
+## v0.437.0 SOCH KE JAWAB step 6 — deep research (2 Nov 2026)
+Owner: "GO STEP 6" (step 6 of the 7-step hard-reasoning plan).
+- Found: 5 of 5 deep-research asks ("Do deep research on ... and give a PDF", "Deep research karo ...", "market study",
+  "detailed report with sources") scored 0 in agent/hard.py -> no Opus, no thinking, no recipe, no self-check. The
+  crew (agent/team.py) gave each agent 8 steps and 1,500 tokens, asked for ~8 lines and no sources, and an inline crew
+  past its 260 s clock dropped EVERY agent's work.
+- `agent/hard.py`: a "research" signal (3 points = hard on its own): deep research; research karo / kar do / kijiye /
+  report / on / about / into / paper; market | industry | sector | competitor(s) | feasibility | landscape + study |
+  research | analysis | report | overview | size | sizing | map; detailed report / study / analysis; with sources /
+  sources ke saath; literature review; white paper; state of the; trends in; "pe detailed report"; shodh / research
+  in Devanagari. `research_wanted()`. RECIPE_KIND["research"] leads the recipe: 4-6 sub-questions; deploy_agents (one
+  agent per independent sub-question, inline) + web_sources / google_search / open_website; primary sources
+  (government, regulator, company filings, MoSPI); every fact and number with [n] + date, key numbers from two
+  sources, disagreements said; derived figures from pylab; a 5-7 line summary first, findings by sub-question, what
+  is uncertain, "Sources: [n] title - link - date"; doc_studio PDF when asked / long; never a link no tool returned.
+  `research_check(draft, evidence)` (free, inside code_check for a research ask): no link at all -> "cites no
+  sources"; a link that appears in no tool result of this work -> named as not from a tool. CHECK_SYSTEM gains the
+  research line. `evidence(limit, per)`; the code check reads the FULL evidence (400k / 200k per result) so a long
+  result's real links are never mistaken for invented ones; the reviewer keeps 9 KB.
+- `santosh`: ctx.research = hard + research. `agent/team.py`: deploy_agents passes shared["research"] (inline) and the
+  background spec carries "research" (shared soft_s = max(170, 75% of team_bg_timeout_s)); a research agent gets
+  team_research_max_steps 14 / team_research_max_tokens 4000 / RESEARCH_RULE (open real pages, primary sources, link +
+  date per fact, ~15 lines, never a link not from a tool) and, when the soft deadline (team_research_soft_s 170)
+  passes or its steps run out mid-search, ONE WRAP_UP call ("no more tools, write your report now with sources",
+  tools still declared because the API needs them with tool_use in history, 60 s) whose text becomes the
+  deliverable. Ordinary crews unchanged (8 / 1,500 / no rule).
+- Measured: 15/15 research asks spotted (10 in the test file), 0 of 50 everyday asks, tool-choice asks: web_research +
+  web_claim ("source ke saath") count as research.
+- Tests `server/tests/test_v0437_research.py` (22). Team / turn / reply / scorecard / draft-check / soch / tool-choice /
+  shodh suites (25 files): 317 pass, same as main. Not measured here: a live research run (no key) - step 7.
+  Version 0.437.0 (pubspec 0.437.0+481, console ?v=0.437.0, pins). Server-only deploy.

@@ -19,6 +19,13 @@ STATS = {"checked": 0, "hard": 0}
 
 # (pattern, points, label) - each label counts once
 _SIGNALS: list[tuple[re.Pattern, int, str]] = [
+    # v0.437 SOCH KE JAWAB step 6: DEEP RESEARCH is hard work on its own (5 of 5 research asks scored 0 before)
+    (re.compile(r"\bdeep\s*research|\bresearch\s+(?:karo|kar\s*do|kijiye|kariye|karke|kar\s*ke|report|on|about|into|"
+                r"paper)|\b(?:market|industry|sector|competitor\w*|feasibility|landscape)\s+(?:study|research|analysis|"
+                r"report|overview|size|sizing|map)|\bdetailed\s+(?:report|study|analysis)|\b(?:with|ke\s+saath)\s+"
+                r"sources?|\bsources?\s+ke\s+saath|\bliterature\s+review|\bwhite\s*paper|\bstate\s+of\s+the\b|"
+                r"\btrends?\s+in\b|\b(?:pe|par|on)\s+(?:ek\s+)?(?:poori|detailed|in.?depth)?\s*report\b|शोध|रिसर्च",
+                re.I), 3, "research"),
     (re.compile(r"\banaly[sz]\w*|\bvishleshan|विश्लेषण|\bevaluat\w*|\bassess\w*|\bcritique|\binterpret\w*|"
                 r"\bjaanch\s*ke\s*batao|\bdeep\s*dive", re.I), 2, "analysis"),
     (re.compile(r"\broot\s*cause|\bdiagnos\w*|\btroubleshoot\w*|figure\s+out\s+why|\bkya\s+galat|\bgalti\s+kahan|"
@@ -129,6 +136,11 @@ def is_hard(text: str) -> bool:
     return assess(text)["hard"]
 
 
+def research_wanted(text: str) -> bool:
+    """v0.437 does this ask want DEEP RESEARCH (many sources, a report)?"""
+    return "research" in assess(text)["why"]
+
+
 # ---------------------------------------------------------------- the fast judge for the "not sure" zone
 JUDGE = ("Does answering this message well need careful multi-step reasoning - analysis, a calculation, a comparison "
          "and a decision, a plan or strategy, finding a root cause, a proof or puzzle, or a deep explanation? A plain "
@@ -201,6 +213,16 @@ RECIPE_CORE = """SOCH KA TAREEKA (this is a hard question - think it through lik
    for her. Say plainly what is uncertain. Your private thinking is not the reply - show the clean result."""
 
 RECIPE_KIND = {
+    "research": "DEEP RESEARCH: (a) split the topic into 4-6 sub-questions that together answer her real question; "
+                "(b) gather - deploy_agents with one agent per independent sub-question (mode inline), plus "
+                "web_sources / google_search / open_website yourself; prefer primary sources (government, regulator, "
+                "company filings and reports, MoSPI for Indian official numbers) over blogs; (c) every fact and number "
+                "carries its source as [n] with the date; the key numbers from two sources when you can, and say when "
+                "they disagree; (d) derived figures (growth, share, CAGR, totals) from pylab; (e) write: a 5-7 line "
+                "summary with the key numbers first, then findings by sub-question, what is still uncertain, and "
+                "'Sources: [n] title - link - date'; a PDF with doc_studio when she asked for a file or the report is "
+                "long, the chat then carries the summary + the file. Never cite a link you did not get from a tool in "
+                "this work.",
     "calculation": "Calculation: write the formula in words, compute it in pylab, show the 2-4 inputs and the result; "
                    "for money over time give the monthly AND total figure.",
     "word problem": "Word problem: list the givens, solve step by step (pylab for the arithmetic), then check the "
@@ -225,7 +247,7 @@ RECIPE_KIND = {
 def recipe(why: list[str] | None) -> str:
     """The reasoning recipe for one hard turn: the core + the lines for the kinds of reasoning found (max 3)."""
     kinds = []
-    for w in why or []:
+    for w in sorted(why or [], key=lambda x: x != "research"):     # research leads when present
         k = {"how-long": "calculation", "numbers": "calculation", "judgement": "decision", "difference": "decision",
              "how-to-improve": "plan", "reasons": "diagnosis", "why": "diagnosis", "design": "plan", "fix": "diagnosis",
              "what-if": "impact", "explain": "deep"}.get(w, w)
@@ -247,7 +269,8 @@ Find only REAL problems that would make the answer wrong or misleading for her:
 - a figure stated as computed but not present in the tool evidence,
 - a logical gap, a wrong formula, a wrong unit, a total that does not add up,
 - a wrong rule / law / rate stated as fact, or an assumption hidden instead of stated,
-- the draft does not actually answer the question she asked (or skips a part of it).
+- the draft does not actually answer the question she asked (or skips a part of it),
+- for research: a fact or number with no source, or a source that the tool evidence does not back.
 Style, tone, length and formatting are NOT problems. If the answer is right, say so.
 Reply with ONLY a JSON object: {"ok": true} or {"ok": false, "problems": ["short, specific problem with the correct value if you know it", ...]} (max 4 problems)."""
 
@@ -255,8 +278,35 @@ _CALC_KINDS = {"calculation", "word problem", "maths", "numbers", "how-long", "i
 _DIGITS = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 
-def code_check(question: str, draft: str, why: list[str] | None, tools_run: list[str]) -> list[str]:
-    """Free check: a calculation ask whose draft carries worked-out numbers while pylab never ran."""
+_URL = re.compile(r"https?://[^\s)\]>\"']+")
+
+
+def _norm_url(u: str) -> str:
+    return re.sub(r"^https?://(www\.)?", "", u.rstrip(".,;:")).rstrip("/").lower()
+
+
+def research_check(draft: str, evidence_text: str) -> list[str]:
+    """v0.437 free check for a research answer: sources must exist, and every link must come from this work's tools."""
+    links = [_norm_url(u) for u in _URL.findall(draft or "")]
+    if not links:
+        return ["The research answer cites no sources. Every fact and number needs its source link from the tool "
+                "results (as [n], with a Sources list)."]
+    ev = (evidence_text or "").lower()
+    made_up = [u for u in dict.fromkeys(links) if u.split("?")[0] not in ev]
+    if made_up:
+        return [f"These links are not in any tool result of this work (do not cite a page you did not get from a "
+                f"tool): {', '.join(made_up[:5])}. Remove them or open the real source and cite that."]
+    return []
+
+
+def code_check(question: str, draft: str, why: list[str] | None, tools_run: list[str],
+               evidence_text: str = "") -> list[str]:
+    """Free check: a calculation ask whose draft carries worked-out numbers while pylab never ran; a research answer
+    with no sources or with links no tool returned."""
+    if "research" in (why or []):
+        found = research_check(draft, evidence_text)
+        if found:
+            return found
     if "pylab" in (tools_run or []):
         return []
     if not (set(why or []) & _CALC_KINDS):
@@ -269,7 +319,7 @@ def code_check(question: str, draft: str, why: list[str] | None, tools_run: list
     return []
 
 
-def evidence(history: list[dict], limit: int = 9000) -> tuple[str, list[str]]:
+def evidence(history: list[dict], limit: int = 9000, per: int = 2000) -> tuple[str, list[str]]:
     """This turn's tool calls and their results (pylab code + output first-class), newest last, capped."""
     start = 0
     for i in range(len(history) - 1, -1, -1):
@@ -296,7 +346,7 @@ def evidence(history: list[dict], limit: int = 9000) -> tuple[str, list[str]]:
                 cont = b.get("content")
                 cont = cont if isinstance(cont, str) else " ".join(str(x.get("text") or "") for x in (cont or [])
                                                                   if isinstance(x, dict))
-                parts.append(f"RESULT: {cont[:2000]}")
+                parts.append(f"RESULT: {cont[:per]}")
     text = "\n".join(parts)
     return (text[-limit:] if len(text) > limit else text), names
 

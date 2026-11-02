@@ -118,6 +118,9 @@ class Settings(BaseSettings):
     team_agent_max_steps: int = 8           # model steps per sub-agent
     team_agent_timeout_s: int = 240         # per-agent wall clock (inline clamps to 260: the main tool clock is 300 s)
     team_max_tokens: int = 1500             # per sub-agent model call
+    team_research_max_steps: int = 14       # v0.437 a deep-research crew's agents: more steps (pages to open, sources to check)
+    team_research_max_tokens: int = 4000    # v0.437 ... and room for a sourced report (~15 lines with links)
+    team_research_soft_s: float = 170.0     # v0.437 a research agent writes its sourced report at this mark (the inline crew clock is 260 s)
     team_background: bool = True            # mode="background" crews (persisted, worker-run, self-reporting)
     team_bg_max_running: int = 2            # running background crews per tenant
     team_bg_timeout_s: int = 1200           # a whole background crew's wall clock

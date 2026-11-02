@@ -407,8 +407,9 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
                                           "id": "hard-check"})
     try:
         ev, names = _hardc.evidence(history)
+        full, _ = _hardc.evidence(history, limit=400_000, per=200_000)   # v0.437 every link a tool returned
         why = ((state.get("hard_why") or {}).get("why")) or []
-        problems = _hardc.code_check(state.get("request", ""), draft, why, names)
+        problems = _hardc.code_check(state.get("request", ""), draft, why, names, full)
         if not problems:
             problems = await _hardc.review(state.get("request", ""), draft, ev, settings)
         state["hard_check"] = {"problems": problems, "tools": names[:12]}
@@ -779,6 +780,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
             from . import hard as _hard
             _hv = await _hard.decide(user_text or "", settings)
             state["hard"], state["hard_why"] = bool(_hv["hard"]), _hv
+            # v0.437 a deep-research ask: the agent crew gets research room + must return sources
+            ctx.research = bool(_hv["hard"] and "research" in (_hv.get("why") or []))
             if state["hard"]:   # v0.429 thinking tokens count against max_tokens: a hard answer gets real room
                 state["max_tokens"] = max(state.get("max_tokens") or 0,
                                           int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
