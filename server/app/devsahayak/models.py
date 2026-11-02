@@ -75,6 +75,7 @@ class DevTask(Base):
     ci_round: Mapped[int | None] = mapped_column(Integer, nullable=True)     # v0.351 CI fix rounds done before the PR is ready
     ci_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # v0.351 when this CI wait began
     self_round: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.445 own-review fix rounds done before the PR is ready
+    proof: Mapped[str | None] = mapped_column(Text, nullable=True)          # v0.447 proof of the bug: the test-first commit + what her CI said
     self_review: Mapped[str | None] = mapped_column(Text, nullable=True)     # v0.445 the last own review (JSON) + has_ci
     conv: Mapped[str] = mapped_column(String(40), default="")
     log: Mapped[str] = mapped_column(Text, default="[]")

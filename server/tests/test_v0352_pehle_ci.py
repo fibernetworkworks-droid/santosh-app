@@ -37,6 +37,7 @@ def cidev(dev, monkeypatch):  # noqa: F811
     G.set_transport(httpx.MockTransport(handler))
     from app.config import get_settings
     monkeypatch.setattr(get_settings(), "dev_loop", False, raising=False)       # these tests drive the one-shot answers
+    monkeypatch.setattr(get_settings(), "dev_fix_proof", False, raising=False)  # v0.447 proof run off here: tested in its own file
     monkeypatch.setattr(S, "model_json", lambda *a, **k: FIX_ANSWER)
     _join(S)
     return S
