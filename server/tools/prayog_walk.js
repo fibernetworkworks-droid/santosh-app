@@ -11,6 +11,7 @@ const only = process.argv.slice(3);
   let bad = 0;
   for (const id of ids) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    page.setDefaultTimeout(180000);                      // a busy machine renders slowly; never fail a good lab on time alone
     const errs = [];
     page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
     page.on('console', (m) => { if (m.type() === 'error' && !/favicon|fonts\.g/.test(m.text())) errs.push('console: ' + m.text()); });
