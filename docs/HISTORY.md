@@ -17158,7 +17158,7 @@ AWB, label, never twice, tracking); reminders opted-in / ordered closes / once /
 NOT VERIFIED live: Shiprocket API (from its documented external API), Razorpay Route transfers (fake gateway, as v0.419).
 
 
-## vNEXT (built as 0.447.0) TWO DEFECTS + THE GAME ARENA - 2 Nov 2026
+## v0.453.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA - 2 Nov 2026
 Owner: "START BOTH", after `docs/GAME_MOAT_PLAN.md`. The two live defects that research found in shipped code, and the
 moat piece that was missing: a way to tell whether a Hoola game is any good.
 
