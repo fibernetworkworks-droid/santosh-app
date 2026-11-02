@@ -31,7 +31,7 @@ from sqlalchemy import select
 
 from ..config import get_settings
 from ..db import now, session
-from . import capacity, diagrams
+from . import capacity, diagrams, master, repomap, sections
 from .models import ArchProject, ArchReview
 
 log = logging.getLogger("santosh.archdesk")
@@ -44,9 +44,12 @@ REPO_FILE_CHARS = 6000
 REPO_TOTAL_CHARS = 60000
 REPO_MAX_FILES = 24
 PR_PATCH_CHARS = 40000
+MAP_MAX_FILES = 160                 # MASTER: source files read for the module map (one GitHub read each)
+MAP_FILE_CHARS = 40000
 DAILY_DESIGNS = 6               # new designs + versions a day (Opus is the expensive part)
 DAILY_REVIEWS = 10
-STATS: dict[str, int] = {"designs": 0, "versions": 0, "diagram_fixes": 0, "reviews": 0, "posted": 0, "watched": 0}
+STATS: dict[str, int] = {"designs": 0, "versions": 0, "diagram_fixes": 0, "reviews": 0, "posted": 0, "watched": 0,
+                         "peer_issues": 0, "revisions": 0}
 
 
 class ArchError(Exception):
@@ -151,7 +154,9 @@ def view(p: ArchProject, full: bool = True) -> dict[str, Any]:
                          "error": p.error, "repo": p.repo, "version": p.version, "brief": p.brief[:400],
                          "watch_prs": bool(p.watch_prs), "approved_at": p.approved_at.isoformat() if p.approved_at else "",
                          "created_at": p.created_at.isoformat() if p.created_at else "",
-                         "pdf": files.get("design.pdf", ""), "changes": list(p.changes or [])}
+                         "pdf": files.get("design.pdf", ""), "api_yaml": files.get("api.yaml", ""),
+                         "changes": list(p.changes or []), "kind": p.kind or "design",
+                         "kind_title": master.KINDS.get(p.kind or "design", "")}
     if full:
         v["design"] = p.design or {}
         v["capacity"] = p.capacity or {}
@@ -160,6 +165,7 @@ def view(p: ArchProject, full: bool = True) -> dict[str, Any]:
                          for d in (p.diagrams or [])]
         v["markdown"] = markdown(p) if p.design else ""
         v["repo_facts"] = p.repo_facts or {}
+        v["extra"] = {k: x for k, x in (p.extra or {}).items() if k != "api"}
     return v
 
 
@@ -196,8 +202,15 @@ def _clean_scale(scale: dict[str, Any] | None) -> dict[str, Any]:
     return out
 
 
-def start(tenant: str, conversation_id: str, brief: str, repo: str = "", scale: dict[str, Any] | None = None) -> dict[str, Any]:
+def start(tenant: str, conversation_id: str, brief: str, repo: str = "", scale: dict[str, Any] | None = None,
+          kind: str = "design") -> dict[str, Any]:
     _gate(tenant)
+    kind = (kind or "design").strip().lower()
+    if kind not in master.KINDS:
+        raise ArchError("Kaam ka prakaar: " + ", ".join(master.KINDS) + ".")
+    if kind in master.NEEDS_REPO and not (repo or "").strip():
+        raise ArchError(f"'{master.KINDS[kind]}' aapke maujooda system par hota hai - uska GitHub repo (owner/name) "
+                        "dijiye; Developer Sahayak mein judna chahiye.")
     ensure_table()
     brief = (brief or "").strip()
     if len(brief) < 15:
@@ -218,7 +231,7 @@ def start(tenant: str, conversation_id: str, brief: str, repo: str = "", scale: 
         busy = s.scalars(select(ArchProject.id).where(ArchProject.tenant_id == tenant, ArchProject.status.in_(BUSY))).first()
         if busy:
             raise ArchError("Ek design abhi ban raha hai; uske poora hote hi agla shuru karenge.")
-        p = ArchProject(tenant_id=tenant, conversation_id=conversation_id or "", brief=brief, repo=full, scale=sc,
+        p = ArchProject(tenant_id=tenant, conversation_id=conversation_id or "", brief=brief, repo=full, scale=sc, kind=kind,
                         title=brief.splitlines()[0][:120], status="reading" if full else "designing",
                         stage="Repo padh raha hoon" if full else "Design likh raha hoon")
         s.add(p)
@@ -361,6 +374,19 @@ def read_repo(tenant: str, full: str) -> tuple[str, dict[str, Any]]:
     lang_line = ", ".join(f"{k} ({v} files)" for k, v in sorted(langs.items(), key=lambda kv: -kv[1])[:8])
     facts = {"repo": full, "branch": branch, "files_total": len(blobs), "languages": langs, "read": read,
              "description": str(info.get("description") or "")[:300]}
+    try:                                   # MASTER: the real module map, from the import lines (code, not the model)
+        all_paths = [b["path"] for b in blobs]
+        src = sorted([p for p in all_paths if p.lower().endswith(repomap.SOURCE_EXT) and not re.search(
+            r"(?i)(^|/)(tests?|__tests__|spec|e2e|migrations|fixtures?)(/|$)|\.(test|spec)\.", p)],
+            key=lambda p: (p.count("/"), p))[:MAP_MAX_FILES]
+        texts = {p: (g.file(full, p, branch)[0] or "")[:MAP_FILE_CHARS] for p in src}
+        gm = next((p for p in all_paths if p == "go.mod"), "")
+        if gm:
+            texts["go.mod"] = g.file(full, gm, branch)[0] or ""
+        facts["module_map"] = repomap.build(texts, all_paths)
+        facts["module_map"]["sampled"] = len(src) < sum(1 for p in all_paths if p.lower().endswith(repomap.SOURCE_EXT))
+    except Exception as e:      # noqa: BLE001 - the design still works without the map
+        log.info("archdesk module map failed: %s", e)
     head = (f"REPO {full} (branch {branch}, {len(blobs)} files). Languages: {lang_line or 'unknown'}.\n"
             f"Top-level: {', '.join(tops)}\nDescription: {facts['description'] or '-'}\n")
     return head + "\n".join(parts), facts
@@ -474,12 +500,40 @@ def run(pid: str) -> None:
         _set(pid, status="failed", stage="", error=str(e)[:500] or "Design nahi ban saka.")
 
 
+def _peer_review(kind: str, design: dict[str, Any], extra: dict[str, Any], scale: dict[str, Any]) -> dict[str, Any]:
+    """A second principal architect reads the draft before she does (one model call; a failure never stops the job)."""
+    facts: dict[str, Any] = {"her_numbers": scale}
+    try:
+        ci = {**design.get("capacity_inputs", {}), **scale}
+        cap = capacity.compute(ci, {k: "her" for k in scale})
+        facts["capacity"] = {r["what"]: r["value"] for r in cap["rows"]}
+    except capacity.CapacityError as e:
+        facts["capacity"] = str(e)
+    body = {k: v for k, v in design.items() if k != "diagrams"}
+    body["diagram_names"] = [g.get("name") for g in design.get("diagrams") or []]
+    body.update({k: v for k, v in extra.items() if k not in ("api",)})
+    try:
+        out = model_json(master.PEER_REVIEW_SYSTEM, f"<kind>{kind}</kind>\n<draft>\n{json.dumps(body, ensure_ascii=False)[:60000]}"
+                         f"\n</draft>\n<facts>\n{json.dumps(facts, ensure_ascii=False)}\n</facts>", 6000)
+    except ArchError as e:
+        return {"verdict": "not_run", "issues": [], "error": str(e)[:200], "revised": False}
+    issues = []
+    for i in (out.get("issues") or [])[:25] if isinstance(out, dict) else []:
+        if isinstance(i, dict) and i.get("issue"):
+            issues.append({"severity": i.get("severity") if i.get("severity") in ("high", "medium", "low") else "medium",
+                           "area": _clip(i.get("area"), 60), "issue": _clip(i.get("issue"), 500), "fix": _clip(i.get("fix"), 500)})
+    STATS["peer_issues"] += len(issues)
+    verdict = out.get("verdict") if isinstance(out, dict) and out.get("verdict") in ("ready", "needs_changes") else \
+        ("needs_changes" if issues else "ready")
+    return {"verdict": verdict, "issues": issues, "revised": False}
+
+
 def _run(pid: str) -> None:
     with session() as s:
         p = s.get(ArchProject, pid)
         if p is None or p.status == "cancelled":
             return
-        tenant, brief, repo, scale = p.tenant_id, p.brief, p.repo, dict(p.scale or {})
+        tenant, brief, repo, scale, kind = p.tenant_id, p.brief, p.repo, dict(p.scale or {}), p.kind or "design"
         changes, old, facts, conv = list(p.changes or []), dict(p.design or {}), dict(p.repo_facts or {}), p.conversation_id
         version = int(p.version or 0) + 1
     repo_ctx = ""
@@ -496,12 +550,32 @@ def _run(pid: str) -> None:
         prompt += "<her_numbers>\n" + json.dumps(scale) + "\n</her_numbers>\n(These are HER numbers: use them, source 'her'.)\n"
     if repo_ctx:
         prompt += f"<repo>\n{repo_ctx}\n</repo>\n"
+    mm = facts.get("module_map") or {}
+    if mm.get("modules"):
+        prompt += ("<module_map>\n(computed by code from the import lines of " + str(mm.get("files_scanned")) + " files)\n"
+                   + json.dumps({k: mm.get(k) for k in ("edges", "cycles", "hotspots", "biggest")}, ensure_ascii=False)[:12000]
+                   + "\n</module_map>\n")
     if changes and old:
         prompt += ("<previous_design>\n" + json.dumps({k: old.get(k) for k in ("title", "summary", "components", "adrs")},
                                                       ensure_ascii=False)[:12000] + "\n</previous_design>\n")
         prompt += "<her_changes>\n" + "\n".join(f"- {c['words']}" for c in changes) + "\n</her_changes>\n" \
                   "Make the NEXT version: apply her changes, keep everything she did not ask to change.\n"
-    design = _valid(model_json(DESIGN_SYSTEM, prompt))
+    system = DESIGN_SYSTEM + master.KIND_RULES.get(kind, "") + master.COMMON_EXTRA
+    raw = model_json(system, prompt)
+    design, extra = _valid(raw), master.shape(kind, raw)
+    review = _peer_review(kind, design, extra, scale)
+    if any(i["severity"] in ("high", "medium") for i in review["issues"]):
+        if not _set(pid, stage=f"Peer review: {len(review['issues'])} baatein - sudhaar raha hoon"):
+            return
+        try:
+            raw2 = model_json(system + master.REVISE_SYSTEM_TAIL, prompt + "<draft>\n" + json.dumps(raw, ensure_ascii=False)[:60000]
+                              + "\n</draft>\n<review>\n" + json.dumps(review["issues"], ensure_ascii=False) + "\n</review>\n")
+            design, extra = _valid(raw2), master.shape(kind, raw2)
+            review["revised"] = True
+            STATS["revisions"] += 1
+        except ArchError as e:
+            review["revise_error"] = str(e)[:200]
+    extra["review"] = review
     sc_in = {**design["capacity_inputs"], **scale}
     sources = {k: "her" for k in scale}
     digits = re.sub(r"(?<=\d)[,_](?=\d)", "", brief)
@@ -514,8 +588,23 @@ def _run(pid: str) -> None:
         cap = capacity.compute(sc_in, sources)
     except capacity.CapacityError as e:
         cap = {"error": str(e)}
+    extra["scenarios"] = master.scenarios(sc_in, sources, extra.get("limits")) if not cap.get("error") else {}
+    if extra.get("decision"):
+        extra["decision_result"] = master.decide(extra["decision"])
+    if extra.get("threats"):
+        extra["threat_result"] = master.threat_model(extra["threats"], [c.get("name") for c in design.get("components") or []])
+    if (extra.get("assessment") or {}).get("scorecard"):
+        extra["scorecard_result"] = master.scorecard(extra["assessment"]["scorecard"])
+    extra["api_check"] = {k: v for k, v in master.check_api(extra.get("api") or "").items() if k != "text"}
+    if mm.get("edges") is not None and extra.get("fitness_rules"):
+        extra["fitness_now"] = repomap.check_rules(extra["fitness_rules"], mm.get("edges") or [])
+    if mm.get("edges"):                       # the as-is map drawn from the code itself (true by construction)
+        mer = repomap.mermaid(mm)
+        if mer:
+            design["diagrams"] = design["diagrams"][:7] + [{"name": "As-is module dependencies (from the code)",
+                                                            "kind": "as-is", "mermaid": mer}]
     if not _set(pid, status="drawing", stage="Diagrams bana raha hoon", design=design, capacity=cap,
-                title=design["title"]):
+                title=design["title"], extra=extra):
         return
     vdir = _pdir(tenant, pid) / f"v{version}"
     drawn = diagrams.render(design["diagrams"], vdir)
@@ -538,15 +627,19 @@ def _run(pid: str) -> None:
             drawn[i] = {**again[0], "name": d["name"]}
     for i, d in enumerate(drawn):
         d["kind"] = design["diagrams"][i].get("kind", "") if i < len(design["diagrams"]) else ""
+    chk = master.check_api(extra.get("api") or "")
+    if chk.get("text"):
+        (vdir / "api.yaml").write_text(chk["text"], encoding="utf-8")
+    extra["checks"] = master.design_checks(design, extra, drawn)
     with session() as s:
         p = s.get(ArchProject, pid)
         if p is None or p.status == "cancelled":
             return
-        p.diagrams, p.version = drawn, version
+        p.diagrams, p.version, p.extra = drawn, version, extra
         md = markdown(p)
     (vdir / "design.md").write_text(md, encoding="utf-8")
     try:
-        _pdf(design, cap, drawn, vdir, facts)
+        _pdf(design, cap, drawn, vdir, facts, extra)
     except Exception as e:      # noqa: BLE001 - the design is still good without its PDF
         log.info("archdesk pdf failed: %s", e)
     ok = sum(1 for d in drawn if d["ok"])
@@ -567,8 +660,10 @@ def _li(xs: list[str]) -> str:
 
 def markdown(p: ArchProject) -> str:
     d, cap = p.design or {}, p.capacity or {}
-    out = [f"# {d.get('title') or p.title}", f"_Version {p.version or 1}"
+    x = p.extra or {}
+    out = [f"# {d.get('title') or p.title}", f"_{master.KINDS.get(p.kind or 'design', '')} · version {p.version or 1}"
            + (f" · repo {p.repo}" if p.repo else " · new system") + f" · status: {p.status}_", "", d.get("summary", "")]
+    out += sections.kind_md(x)
     c = d.get("context") or {}
     out += ["", "## Context", f"**Users:** {c.get('users') or '-'}"]
     if c.get("goals"):
@@ -620,77 +715,193 @@ def markdown(p: ArchProject) -> str:
     if d.get("roadmap"):
         out += ["", "## Roadmap", _li([f"**{_clip(r.get('phase'), 40)}** - {_clip(r.get('what'), 300)} "
                                       f"(done when: {_clip(r.get('exit'), 160)})" for r in d["roadmap"]])]
+    out += sections.tail_md(x)
     if d.get("open_questions"):
         out += ["", "## Open questions", _li(d["open_questions"])]
     return "\n".join(out).strip() + "\n"
 
 
+def _inline(text: Any) -> str:
+    """Escaped text with the model's light markdown kept: **bold**, `code`, *italic* (nothing else becomes HTML)."""
+    import html as H
+    t = H.escape(str(text if text is not None else ""))
+    t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
+    t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
+    return re.sub(r"(?<![\w*])\*(?!\s)([^*]+?)\*(?![\w*])", r"<i>\1</i>", t)
+
+
+def _prose(text: Any) -> str:
+    """Summary markdown -> paragraphs and bullet lists (lines starting '- ' / '* ' / '1. ')."""
+    out, items = [], []
+    for line in str(text or "").split("\n"):
+        ln = line.strip()
+        m = re.match(r"^(?:[-*•]|\d+[.)])\s+(.*)$", ln)
+        if m:
+            items.append(f"<li>{_inline(m.group(1))}</li>")
+            continue
+        if items:
+            out.append("<ul>" + "".join(items) + "</ul>")
+            items = []
+        if ln:
+            out.append(f"<p>{_inline(ln)}</p>")
+    if items:
+        out.append("<ul>" + "".join(items) + "</ul>")
+    return "".join(out)
+
+
 def _pdf(design: dict[str, Any], cap: dict[str, Any], drawn: list[dict[str, Any]], vdir: Path,
-         facts: dict[str, Any]) -> None:
-    """The design printed: a plain, readable A4 document with the drawings inline (Chromium, no script)."""
+         facts: dict[str, Any], extra: dict[str, Any] | None = None) -> None:
+    """The design printed as an architecture document: cover + at-a-glance strip, numbered sections, drawings inline,
+    decisions as cards, risks coloured by level (Chromium, no script, nothing loaded from outside)."""
     import html as H
     from ..docstudio.htmlpdf import Printer
 
     def esc(x: Any) -> str:
         return H.escape(str(x if x is not None else ""))
 
-    def table(head: list[str], rows: list[list[Any]]) -> str:
-        return ("<table><thead><tr>" + "".join(f"<th>{esc(h)}</th>" for h in head) + "</tr></thead><tbody>"
-                + "".join("<tr>" + "".join(f"<td>{esc(c)}</td>" for c in r) + "</tr>" for r in rows) + "</tbody></table>")
+    def table(head: list[str], rows: list[list[Any]], cls: str = "") -> str:
+        return (f"<table class='{cls}'><thead><tr>" + "".join(f"<th>{esc(h)}</th>" for h in head) + "</tr></thead><tbody>"
+                + "".join("<tr>" + "".join(f"<td>{c if isinstance(c, Raw) else _inline(c)}</td>" for c in r) + "</tr>"
+                          for r in rows) + "</tbody></table>")
 
     def ul(xs: list[Any]) -> str:
-        return "<ul>" + "".join(f"<li>{esc(x)}</li>" for x in xs if x) + "</ul>" if xs else ""
+        xs = [x for x in xs if x]
+        return "<ul>" + "".join(f"<li>{_inline(x)}</li>" for x in xs) + "</ul>" if xs else ""
+
+    def chip(level: Any) -> "Raw":
+        lv = str(level or "medium")
+        return Raw(f"<span class='chip {esc(lv)}'>{esc(lv)}</span>")
+
+    class Raw(str):
+        pass
 
     d = design
+    x = extra or {}
     c = d.get("context") or {}
-    body = [f"<h1>{esc(d['title'])}</h1>",
-            f"<p class='meta'>Architecture design by Hoola · {esc(facts.get('repo') or 'new system')} · "
-            f"{datetime.now().strftime('%d %b %Y')}</p>",
-            "<p>" + "</p><p>".join(esc(x) for x in str(d.get("summary") or "").split("\n") if x.strip()) + "</p>",
-            "<h2>Context</h2>", f"<p><b>Users:</b> {esc(c.get('users') or '-')}</p>",
-            ul(c.get("goals") or []), ul(c.get("constraints") or [])]
+    n = [0]
+
+    def h2(title: str) -> str:
+        n[0] += 1
+        return f"<h2><span class='num'>{n[0]}</span>{esc(title)}</h2>"
+
+    peak = (cap.get("numbers") or {}).get("peak_rps")
+    glance = [("Components", len(d.get("components") or [])), ("Decisions", len(d.get("adrs") or [])),
+              ("Risks", len(d.get("risks") or [])), ("Diagrams", f"{sum(1 for g in drawn if g.get('ok'))}/{len(drawn)}")]
+    if peak is not None:
+        glance.append(("Peak req/s", f"{peak:,.0f}" if peak >= 10 else f"{peak:,.1f}"))
+    rv = x.get("review") or {}
+    if x.get("checks"):
+        glance.append(("Checks", f"{sum(1 for k in x['checks'] if k['ok'])}/{len(x['checks'])}"))
+    body = [f"<header class='cover'><div class='kicker'>{esc(master.KINDS.get(x.get('kind') or 'design', 'Architecture design'))}</div>",
+            f"<h1>{esc(d['title'])}</h1>",
+            f"<p class='meta'>Principal Software Architect · Hoola · {esc(facts.get('repo') or 'new system')} · "
+            f"{datetime.now().strftime('%d %b %Y')} · status: proposed, waiting for your approval"
+            + (f" · peer-reviewed ({len(rv.get('issues') or [])} issue(s){', fixed' if rv.get('revised') else ''})" if rv else "")
+            + "</p>",
+            "<div class='glance'>" + "".join(f"<div><b>{esc(v)}</b><span>{esc(k)}</span></div>" for k, v in glance) + "</div>",
+            "</header>",
+            h2("Summary"), f"<div class='summary'>{_prose(d.get('summary'))}</div>", sections.kind_html(x, h2),
+            h2("Context"), f"<p><b>Who uses it.</b> {_inline(c.get('users') or '-')}</p>"]
+    for label, key in (("Goals", "goals"), ("Constraints", "constraints"), ("Assumptions", "assumptions")):
+        if c.get(key):
+            body += [f"<h4>{label}</h4>", ul(c[key])]
     if d.get("nfrs"):
-        body += ["<h2>Quality targets</h2>", table(["Quality", "Target", "Why"],
-                                                   [[n.get("name"), n.get("target"), n.get("why")] for n in d["nfrs"]])]
-    body += ["<h2>Capacity</h2>"]
+        body += [h2("Quality targets"), table(["Quality", "Target", "Why"],
+                                              [[x.get("name"), x.get("target"), x.get("why")] for x in d["nfrs"]])]
+    body += [h2("Capacity"), "<p class='note'>Worked out in code from the numbers below, not guessed by the model. "
+             "<b>given</b> = from your brief; <b>assumed</b> = please confirm or correct.</p>"]
     if cap.get("rows"):
-        body += [table(["Input", "Value", "Source"], [[i["label"], f"{i['value']:,g} {i['unit']}",
-                                                       "given" if i["source"] == "her" else "assumed"] for i in cap["inputs"]]),
-                 table(["Result", "Value", "How"], [[r["what"], r["value"], r["formula"]] for r in cap["rows"]])]
+        body += ["<div class='two'>",
+                 table(["Input", "Value", "Source"], [[i["label"], f"{i['value']:,g} {i['unit']}",
+                                                       Raw(f"<span class='src {esc(i['source'])}'>"
+                                                           f"{'given' if i['source'] == 'her' else 'assumed'}</span>")]
+                                                      for i in cap["inputs"]]),
+                 table(["Result", "Value", "How it is worked out"], [[r["what"], Raw(f"<b>{esc(r['value'])}</b>"), r["formula"]]
+                                                                     for r in cap["rows"]]),
+                 "</div>"]
     else:
         body += [f"<p>{esc(cap.get('error') or '-')}</p>"]
-    for g in drawn:
-        body += [f"<h2>{esc(g['name'])}</h2>"]
-        svg = diagrams.svg_inline(vdir / g["svg"]) if g.get("ok") and g.get("svg") else ""
-        body += [f"<div class='dia'>{svg}</div>" if svg else diagrams.placeholder(g["name"], g["mermaid"], g["error"])]
+    if drawn:
+        body += [h2("Diagrams")]
+        for g in drawn:
+            svg = diagrams.svg_inline(vdir / g["svg"]) if g.get("ok") and g.get("svg") else ""
+            body += [f"<figure class='dia'>{svg}<figcaption>{esc(g['name'])}</figcaption></figure>" if svg
+                     else diagrams.placeholder(g["name"], g["mermaid"], g["error"])]
     if d.get("components"):
-        body += ["<h2>Components</h2>", table(["Component", "Kind", "Does", "Tech"],
-                                              [[x.get("name"), x.get("kind"), x.get("responsibility"), x.get("tech")] for x in d["components"]])]
+        body += [h2("Components"), table(["Component", "Kind", "Does", "Tech", "Grows by"],
+                                         [[Raw(f"<b>{esc(x.get('name'))}</b>"), x.get("kind"), x.get("responsibility"),
+                                           x.get("tech"), x.get("scales_by")] for x in d["components"]], "small")]
     if d.get("data_stores"):
-        body += ["<h2>Data</h2>", table(["Store", "Kind", "Holds", "Consistency"],
-                                        [[x.get("name"), x.get("kind"), x.get("holds"), x.get("consistency")] for x in d["data_stores"]])]
+        body += [h2("Data"), table(["Store", "Kind", "Holds", "Consistency", "Backup"],
+                                   [[Raw(f"<b>{esc(x.get('name'))}</b>"), x.get("kind"), x.get("holds"), x.get("consistency"),
+                                     x.get("backup")] for x in d["data_stores"]], "small")]
+    if d.get("flows"):
+        body += [h2("Key flows")]
+        for f in d["flows"]:
+            steps = [re.sub(r"^\s*\d+[.)]?\s*", "", str(s)) for s in f.get("steps") or []]
+            body += [f"<h4>{esc(f.get('name'))}</h4>", "<ol>" + "".join(f"<li>{_inline(s)}</li>" for s in steps if s) + "</ol>"]
+    if d.get("integrations"):
+        body += [h2("Integrations"), table(["System", "How", "When it is down"],
+                                           [[Raw(f"<b>{esc(x.get('system'))}</b>"), x.get("how"), x.get("failure")]
+                                            for x in d["integrations"]])]
+    if d.get("security"):
+        body += [h2("Security and privacy"), ul(d["security"])]
     if d.get("failure_modes"):
-        body += ["<h2>Failure modes</h2>", table(["What fails", "Effect", "Handling"],
-                                                 [[x.get("what"), x.get("effect"), x.get("handling")] for x in d["failure_modes"]])]
-    for a in d.get("adrs") or []:
-        body += [f"<h3>{esc(a['id'])}: {esc(a.get('title'))}</h3>", f"<p><b>Context.</b> {esc(a.get('context'))}</p>",
-                 f"<p><b>Decision.</b> {esc(a.get('decision'))}</p>", ul(a.get("alternatives") or []),
-                 f"<p><b>Consequences.</b> {esc(a.get('consequences'))}</p>"]
+        body += [h2("Failure modes"), table(["What fails", "What the user sees", "Handling"],
+                                            [[x.get("what"), x.get("effect"), x.get("handling")] for x in d["failure_modes"]])]
+    if d.get("adrs"):
+        body += [h2("Decisions (ADRs)")]
+        for a in d["adrs"]:
+            alts = a.get("alternatives") or []
+            body += ["<section class='adr'>",
+                     f"<h3><span class='aid'>{esc(a['id'])}</span>{esc(a.get('title'))}"
+                     f"<span class='chip st'>{esc(a.get('status'))}</span></h3>",
+                     f"<p><b>Context.</b> {_inline(a.get('context'))}</p>",
+                     f"<p><b>Decision.</b> {_inline(a.get('decision'))}</p>",
+                     ("<p class='lbl'><b>Alternatives considered</b></p>" + ul(alts)) if alts else "",
+                     f"<p><b>Consequences.</b> {_inline(a.get('consequences'))}</p></section>"]
     if d.get("risks"):
-        body += ["<h2>Risks</h2>", table(["Risk", "Likelihood", "Impact", "Mitigation"],
-                                         [[r.get("risk"), r["likelihood"], r["impact"], r.get("mitigation")] for r in d["risks"]])]
+        body += [h2("Risks"), table(["Risk", "Likelihood", "Impact", "Mitigation"],
+                                    [[r.get("risk"), chip(r["likelihood"]), chip(r["impact"]), r.get("mitigation")]
+                                     for r in d["risks"]])]
     if d.get("roadmap"):
-        body += ["<h2>Roadmap</h2>", table(["Phase", "What", "Done when"],
-                                           [[r.get("phase"), r.get("what"), r.get("exit")] for r in d["roadmap"]])]
+        body += [h2("Roadmap"), table(["Phase", "What", "Done when"],
+                                      [[Raw(f"<b>{esc(r.get('phase'))}</b>"), r.get("what"), r.get("exit")] for r in d["roadmap"]])]
+    body += [sections.tail_html(x, h2)]
     if d.get("open_questions"):
-        body += ["<h2>Open questions</h2>", ul(d["open_questions"])]
-    css = ("@page{size:A4;margin:16mm 15mm}body{font-family:Inter,'Noto Sans',Arial,sans-serif;font-size:10pt;color:#1a1a1a;"
-           "line-height:1.45}h1{font-size:20pt;margin:0 0 4pt}h2{font-size:13pt;margin:16pt 0 6pt;border-bottom:.6pt solid #ccc;"
-           "padding-bottom:2pt;break-after:avoid}h3{font-size:11pt;margin:12pt 0 4pt;break-after:avoid}.meta{color:#666}"
-           "table{border-collapse:collapse;width:100%;margin:6pt 0;break-inside:auto}th,td{border:.5pt solid #ccc;"
-           "padding:3pt 5pt;text-align:left;vertical-align:top;font-size:9pt}th{background:#f2f2f2}tr{break-inside:avoid}"
-           ".dia{text-align:center;margin:6pt 0;break-inside:avoid}.dia svg{max-width:100%;height:auto;max-height:200mm}"
-           ".dfail{border:.6pt dashed #c44;padding:6pt;font-size:9pt}.dfail pre{white-space:pre-wrap;font-size:8pt}")
+        body += [h2("Open questions for you"), "<ol>" + "".join(f"<li>{_inline(q)}</li>" for q in d["open_questions"]) + "</ol>"]
+    body += ["<p class='end'>Proposed by Hoola's Principal Software Architect. Nothing here has been built or changed; "
+             "approve it on the Architecture Desk, or tell the desk what to change for the next version.</p>"]
+    css = ("@page{size:A4;margin:16mm 15mm 18mm;@bottom-right{content:counter(page) ' / ' counter(pages);font-size:8pt;color:#888}}"
+           "body{font-family:Inter,'Noto Sans',Arial,sans-serif;font-size:9.6pt;color:#1d1b26;line-height:1.5}"
+           ".cover{border-bottom:2pt solid #5b3fd6;padding-bottom:10pt;margin-bottom:6pt}"
+           ".kicker{color:#5b3fd6;font-weight:600;font-size:9pt;letter-spacing:.04em}"
+           "h1{font-size:21pt;line-height:1.2;margin:3pt 0 4pt}.meta{color:#666;margin:0 0 10pt;font-size:8.6pt}"
+           ".glance{display:flex;gap:8pt}.glance div{flex:1;border:.6pt solid #ddd8f5;background:#f7f5fe;border-radius:5pt;"
+           "padding:6pt 8pt}.glance b{display:block;font-size:14pt;color:#3a2a8f}.glance span{font-size:8pt;color:#666}"
+           "h2{font-size:12.5pt;margin:16pt 0 6pt;padding-bottom:3pt;border-bottom:.6pt solid #ddd;break-after:avoid}"
+           "h2 .num{display:inline-block;min-width:16pt;color:#5b3fd6}"
+           "h3{font-size:10.5pt;margin:0 0 4pt;break-after:avoid}h4{font-size:9.6pt;margin:9pt 0 2pt;break-after:avoid}"
+           "p{margin:0 0 5pt}ul,ol{margin:2pt 0 6pt;padding-left:15pt}li{margin:1.5pt 0}"
+           "code{font-family:'DejaVu Sans Mono',monospace;font-size:8.6pt;background:#f2f0f7;padding:0 2pt;border-radius:2pt}"
+           ".summary{background:#faf9fe;border-left:2.5pt solid #5b3fd6;padding:6pt 10pt}.note{color:#555;font-size:8.8pt}"
+           ".two{display:flex;gap:10pt;align-items:flex-start}.two table{flex:1}"
+           "table{border-collapse:collapse;width:100%;margin:4pt 0 8pt}th,td{border-bottom:.5pt solid #e2e0e8;"
+           "padding:3.5pt 5pt;text-align:left;vertical-align:top;font-size:8.6pt}th{background:#f4f3f8;font-weight:600;"
+           "border-bottom:.8pt solid #cfcbe0}tr{break-inside:avoid}table.small td{font-size:8.2pt}"
+           ".src{font-size:7.8pt;padding:.5pt 4pt;border-radius:6pt}.src.her{background:#e3f4ea;color:#17663a}"
+           ".src.assumed{background:#fff3dc;color:#8a5a00}"
+           ".chip{font-size:7.8pt;padding:.5pt 5pt;border-radius:6pt;background:#eee;color:#444}"
+           ".chip.high{background:#fde4e4;color:#a61b1b}.chip.medium{background:#fff1d6;color:#8a5a00}"
+           ".chip.low{background:#e3f4ea;color:#17663a}.chip.st{margin-left:6pt;background:#ece8fb;color:#4a35b8;"
+           "font-weight:500;vertical-align:1pt}"
+           ".dia{margin:6pt 0 12pt;text-align:center;break-inside:avoid;border:.6pt solid #e6e3ef;border-radius:5pt;"
+           "padding:8pt}.dia svg{max-width:100%;height:auto;max-height:150mm}"
+           "figcaption{font-size:8.4pt;color:#555;margin-top:4pt}"
+           ".adr{border:.6pt solid #e2def2;border-radius:5pt;padding:7pt 10pt;margin:0 0 8pt;break-inside:avoid}"
+           ".aid{color:#5b3fd6;margin-right:6pt}.lbl{margin-bottom:0}"
+           ".dfail{border:.6pt dashed #c44;padding:6pt;font-size:9pt}.dfail pre{white-space:pre-wrap;font-size:8pt}"
+           ".end{margin-top:16pt;color:#666;font-size:8.6pt;border-top:.6pt solid #ddd;padding-top:6pt}" + sections.CSS)
     html_text = (f"<!doctype html><html lang='en'><head><meta charset='utf-8'><title>{esc(d['title'])}</title>"
                  f"<style>{css}</style></head><body>{''.join(body)}</body></html>")
     with Printer() as pr:
@@ -737,7 +948,7 @@ def review_pr(tenant: str, pid: str, pr_number: int, _auto: bool = False) -> dic
         raise ArchError(f"Aaj ke {DAILY_REVIEWS} PR reviews ho gaye; kal phir.")
     with session() as s:
         p = _approved(s, tenant, pid)
-        repo, design = p.repo, dict(p.design or {})
+        repo, design, rules = p.repo, dict(p.design or {}), list((p.extra or {}).get("fitness_rules") or [])
     from ..devsahayak import service as dev
     g = dev.gh(tenant)
     pr = g.pr(repo, int(pr_number))
@@ -755,10 +966,25 @@ def review_pr(tenant: str, pid: str, pr_number: int, _auto: bool = False) -> dic
     prompt = (f"<design>\n{json.dumps(slim, ensure_ascii=False)[:24000]}\n</design>\n"
               f"<pr>\n#{pr_number} {pr.get('title') or ''}\n{str(pr.get('body') or '')[:3000]}\n</pr>\n"
               f"<diff>\n" + "\n".join(diff) + "\n</diff>")
+    broken: list[dict[str, Any]] = []
+    if rules:                     # MASTER: the design's boundary rules checked in CODE on the imports this PR adds
+        try:
+            head = str((pr.get("head") or {}).get("sha") or "")
+            paths = [b.get("path", "") for b in g.tree(repo, head)] if head else []
+            broken = repomap.check_rules(rules, repomap.pr_edges(files, paths))
+        except Exception as e:      # noqa: BLE001 - the model review still runs
+            log.info("archdesk pr fitness failed: %s", e)
+    if broken:
+        prompt += "\n<boundary_breaks>\n(found by code)\n" + json.dumps(broken, ensure_ascii=False) + "\n</boundary_breaks>"
     out = model_json(REVIEW_SYSTEM, prompt, 6000)
     verdict = out.get("verdict") if out.get("verdict") in ("fits", "drifts", "breaks") else "drifts"
-    findings = []
-    for f in (out.get("findings") or [])[:20]:
+    findings = [{"severity": "high", "area": "boundary (checked by code)", "adr": "",
+                 "finding": f"{b['from']} now imports {b['to']} ({b['imports']} new import line(s)) - rule: {b['rule']}",
+                 "fix": "go through the owning module's public interface, or change the design rule if the boundary moved"}
+                for b in broken[:10]]
+    if broken and verdict == "fits":
+        verdict = "drifts"
+    for f in (out.get("findings") or [])[:20 - len(findings)]:
         if isinstance(f, dict):
             findings.append({"severity": f.get("severity") if f.get("severity") in ("high", "medium", "low") else "medium",
                              "area": _clip(f.get("area"), 40), "adr": _clip(f.get("adr"), 20),

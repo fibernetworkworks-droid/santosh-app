@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     agent_long_effort: str = "xhigh"       # v0.331 Claude effort for long jobs (Anthropic: xhigh = agentic work over ~30 min); '' = model default
     agent_hard_effort: str = "high"        # v0.331 Claude effort for a hard reasoning ask (agent/hard.py); '' = model default
     agent_long_on_claude: bool = True       # v0.331 a long job's calls go to Claude even when CHAT_LLM picks a cheaper brain
+    agent_hard_model: str = "claude-opus-5-5"   # v0.429 SOCH KE JAWAB 2: a hard reasoning ask runs on the strongest model ('' = anthropic_model)
+    agent_hard_max_tokens: int = 16000      # v0.429 per call for a hard ask (thinking counts; 2000 cut the answer)
+    agent_hard_on_claude: bool = True       # v0.429 a hard ask goes to Claude even when CHAT_LLM picks a cheaper brain
     agent_goal_rounds: int = 6              # background continuation turns per goal (v0.221: 3 -> 6; resumes after her tap are free)
     agent_goal_minutes: int = 180           # WORKING minutes of one goal (v0.221: 60 -> 180; time waiting on her never counts)
     agent_goal_resume: bool = True          # v0.221 a goal paused on her tap / OTP / answer restarts by itself once she answers
@@ -260,9 +263,9 @@ class Settings(BaseSettings):
     site_parallel_big: int = 8             # v0.315 sections written at the same time on a big site (v0.400: 5 -> 8)
     site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
-    site_sms_provider: str = ""            # v0.425 website phone-OTP login: "" off | msg91 (DLT registered, her account)
-    msg91_authkey: str = ""                # v0.425 MSG91 auth key (VPS .env only)
-    msg91_otp_template: str = ""           # v0.425 MSG91 OTP template id (DLT approved)
+    site_sms_provider: str = ""            # v0.433 website phone-OTP login: "" off | msg91 (DLT registered, her account)
+    msg91_authkey: str = ""                # v0.433 MSG91 auth key (VPS .env only)
+    msg91_otp_template: str = ""           # v0.433 MSG91 OTP template id (DLT approved)
     site_app_link: bool = True             # v0.414 every website web app runs on App Sahayak's backend + DIMAAG (old v0.305 sites moved by the worker)
     site_journeys: bool = True             # v0.402 visitor journeys (menu / form / shop / blog / language) on every version
     site_arena_max_inr: float = 3000       # v0.307 Design Arena: rupee ceiling of one run (each site ~Rs 100-300 with Opus)

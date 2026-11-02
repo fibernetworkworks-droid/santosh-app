@@ -121,7 +121,8 @@ progressive_web_app/enabled=false
 # v0.416 assets, v0.420 the role packs (World = Procedural World Engineer, Physics = Physics Engine Developer).
 HOOLA_OWN = {"hoola_bible.gd": "HoolaBible", "hoola_assets.gd": "HoolaAssets", "hoola_world.gd": "HoolaWorld",
              "hoola_physics.gd": "HoolaPhysics", "hoola_audio.gd": "HoolaAudio", "hoola_haptics.gd": "HoolaHaptics",
-             "hoola_xr.gd": "HoolaXR", "hoola_net.gd": "HoolaNet", "hoola_sim.gd": "HoolaSim"}   # v0.421-v0.423 batches 2-4
+             "hoola_xr.gd": "HoolaXR", "hoola_net.gd": "HoolaNet", "hoola_sim.gd": "HoolaSim",
+             "hoola_runtime.gd": "HoolaRuntime"}   # v0.421-v0.423 batches 2-4, v0.425 Hoola Runtime
 
 
 def files(title: str, orientation: str, scripts: dict[str, str]) -> dict[str, str]:

@@ -518,6 +518,16 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameXrScreen(app: widget.app, studio: _s(_p['id'])))),
               ),
               OutlinedButton.icon(
+                icon: const Icon(Icons.replay_circle_filled_outlined),
+                label: const Text('Runtime'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameRuntimeScreen(app: widget.app, studio: _s(_p['id'])))),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.insights_outlined),
+                label: const Text('Live ops'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameLiveopsScreen(app: widget.app, studio: _s(_p['id'])))),
+              ),
+              OutlinedButton.icon(
                 icon: const Icon(Icons.rocket_launch_outlined),
                 label: const Text('Release'),
                 onPressed: () async {

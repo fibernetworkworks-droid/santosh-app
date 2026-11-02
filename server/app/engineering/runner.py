@@ -200,12 +200,15 @@ def main() -> None:
                 res.setdefault("notes", []).append(f"hlr {view}: {type(e).__name__}")
         (out / "hlr.json").write_text(json.dumps(hlr), encoding="utf-8")
         res["drawing"] = {**_parts.DRAWING, "fits": _parts.FITS[:20]}
+        if _parts.CAMS:                                   # v0.425 cam designer checks (pressure angle, undercut ...)
+            res["cams"] = {k: {kk: vv for kk, vv in v.items()} for k, v in _parts.CAMS.items()}
         if _parts.JOINTS:                                 # v0.406 a mechanism: motion check + URDF + motion frames
             try:
                 import kinematics
                 if not parts:
                     raise ValueError("joints need result = cq.Assembly with named parts")
-                res["kinematics"] = kinematics.run([(n_, s_) for n_, s_, _c in parts], _parts.JOINTS, _parts.ROBOT,
+                res["kinematics"] = kinematics.run([(n_, s_) for n_, s_, _c in parts], _parts.JOINTS,
+                                                   {**_parts.ROBOT, "cams": _parts.CAMS},
                                                    job.get("material") or "aluminium", out, _parts.COUPLES)
             except Exception as e:
                 res["kinematics"] = {"ok": False, "problems": [f"{type(e).__name__}: {str(e)[:300]}"]}

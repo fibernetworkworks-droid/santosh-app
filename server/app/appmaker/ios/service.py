@@ -267,6 +267,8 @@ def _run(r: AppProject) -> None:
                   app_key=AN._app_key(r))
     from .. import backend as BE
     sp["seed"]["backend"] = BE.seed_hint(r)          # the SAME backend as the Android app: one set of accounts and orders
+    from .. import custom as CU                      # v0.425 RANG: her approved custom components (Swift) ride along
+    sp["custom"] = CU.for_build(r)
     bid = bundle_id(r)
     sp["ios"] = {"bundle_id": bid, "version": f"{r.version}.{int(ast.get('build') or 0) or n}", "build": bn}
     from .. import turant as TU                        # v0.368 TURANT IPHONE: the push capability + PushHub on

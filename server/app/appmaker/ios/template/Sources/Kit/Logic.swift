@@ -167,7 +167,8 @@ struct AutoForm: View {
     var body: some View {
         let fields = Db.shared.fields(coll).filter { f in
             !f.b("computed") && !f.b("workflow") && preset[f.s("key")] == nil && (!f.b("admin_only") || auth.isStaff) &&
-                ["text", "long_text", "number", "phone", "email", "date", "choice", "yes_no", "ref"].contains(f.s("type"))
+                ["text", "long_text", "number", "phone", "email", "date", "choice", "yes_no", "ref",
+                 "signature", "photos", "video", "audio", "richtext"].contains(f.s("type"))       // v0.425 RANG
         }
         VStack(alignment: .leading, spacing: 8) {
             ForEach(fields, id: \.id) { f in
@@ -182,6 +183,11 @@ struct AutoForm: View {
                     }
                 case "yes_no":
                     Toggle(label, isOn: Binding(get: { vals[k] == "true" }, set: { vals[k] = $0 ? "true" : "false" }))
+                case "signature": SignatureRow(label: label, key: k)       // v0.425 RANG: these keep their value in AppState.form
+                case "photos": PhotosRow(label: label, key: k)
+                case "video": VideoRow(label: label, key: k)
+                case "audio": AudioRow(label: label, key: k)
+                case "richtext": RichTextRow(label: label, key: k)
                 default:
                     TextField(label + (f.s("type") == "date" ? " (YYYY-MM-DD)" : ""), text: Binding(get: { vals[k] ?? "" }, set: { vals[k] = String($0.prefix(4000)) }))
                         .textFieldStyle(.roundedBorder)
@@ -191,6 +197,8 @@ struct AutoForm: View {
             if !miss.isEmpty { Text(miss).foregroundStyle(.red).font(.footnote) }
             HStack {
                 Button(Words.save) {
+                    let richKeys = fields.filter { ["signature", "photos", "video", "audio", "richtext"].contains($0.s("type")) }.map { $0.s("key") }
+                    for rk in richKeys { if let v = AppState.shared.form[rk] { vals[rk] = v } }
                     if let m = fields.first(where: { $0.b("required") && (vals[$0.s("key")] ?? "").trimmingCharacters(in: .whitespaces).isEmpty }) {
                         miss = T(m.s("label")) + ": " + Words.fillThis
                         return
@@ -199,6 +207,7 @@ struct AutoForm: View {
                     for (k, v) in preset { data[k] = v }
                     for (k, v) in vals where !v.trimmingCharacters(in: .whitespaces).isEmpty { data[k] = v.trimmingCharacters(in: .whitespaces) }
                     _ = Db.shared.create(coll, data, show: data)
+                    for rk in richKeys { AppState.shared.form[rk] = nil }
                     done()
                 }.buttonStyle(.borderedProminent)
                 Button(Words.cancel) { done() }.buttonStyle(.bordered)

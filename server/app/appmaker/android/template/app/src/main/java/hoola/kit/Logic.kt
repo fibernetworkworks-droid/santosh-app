@@ -162,7 +162,8 @@ fun AutoForm(coll: String, preset: Map<String, String> = emptyMap(), onDone: () 
     val vals = remember(coll, preset.toString()) { mutableStateMapOf<String, String>().also { it.putAll(preset) } }
     val fields = Db.fields(coll).filter { f ->
         !f.b("computed") && !f.b("workflow") && f.s("key") !in preset && (!f.b("admin_only") || Auth.isStaff) &&
-            f.s("type") in listOf("text", "long_text", "number", "phone", "email", "date", "choice", "yes_no", "ref")
+            f.s("type") in listOf("text", "long_text", "number", "phone", "email", "date", "choice", "yes_no", "ref",
+                "signature", "photos", "video", "audio", "richtext")             // v0.425 RANG
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         fields.forEach { f ->
@@ -170,6 +171,11 @@ fun AutoForm(coll: String, preset: Map<String, String> = emptyMap(), onDone: () 
             val label = T(f.s("label")) + if (f.b("required")) " *" else ""
             when (f.s("type")) {
                 "ref" -> RefField(label, k, f.s("to"), vals)
+                "signature" -> SignatureField(label, k)                    // v0.425 RANG: these keep their value in AppState.form
+                "photos" -> PhotosField(label, k)
+                "video" -> VideoField(label, k)
+                "audio" -> AudioField(label, k)
+                "richtext" -> RichTextField(label, k)
                 "choice" -> {
                     Small(label)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -188,12 +194,15 @@ fun AutoForm(coll: String, preset: Map<String, String> = emptyMap(), onDone: () 
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn(Strings.save, small = true) {
+                val richKeys = fields.filter { it.s("type") in listOf("signature", "photos", "video", "audio", "richtext") }.map { it.s("key") }
+                richKeys.forEach { rk -> AppState.form[rk]?.let { vals[rk] = it } }
                 val miss = fields.firstOrNull { it.b("required") && (vals[it.s("key")] ?: "").isBlank() }
                 if (miss != null) { Act.toast(c, T(miss.s("label")) + ": " + Strings.required); return@Btn }
                 val data = vals.filterValues { it.isNotBlank() }.mapValues { it.value.trim() as Any? }
                 val show = data.toMutableMap()
                 fields.filter { it.s("type") == "ref" }.forEach { f -> show[f.s("key")] = data[f.s("key")] }
                 Db.create(coll, data, show)
+                richKeys.forEach { AppState.form.remove(it) }
                 onDone()
             }
             Btn(Strings.cancel, kind = BtnKind.Ghost, small = true) { onDone() }

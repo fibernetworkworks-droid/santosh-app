@@ -1,4 +1,4 @@
-"""v0.425 LOGIN AUR SURAKSHA (web Step 3 = W3 of docs/WEB_PLATFORM_PLAN.md): how the PEOPLE of her website log in and stay
+"""v0.433 LOGIN AUR SURAKSHA (web Step 3 = W3 of docs/WEB_PLATFORM_PLAN.md): how the PEOPLE of her website log in and stay
 safe. Every function works on the app backend id (`app:<project>`), so a website and its phone app share it all.
 
 - Phone OTP: 6 digits, only the HASH is kept, 5 minutes, 5 tries, 3 codes per number per 10 minutes, typed only into the

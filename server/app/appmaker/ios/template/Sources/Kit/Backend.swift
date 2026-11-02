@@ -44,12 +44,12 @@ enum Cloud {
     }
 
     /// A photo (JPEG bytes) -> {id}.
-    static func upload(_ jpeg: Data, token: String) async -> Reply {
+    static func upload(_ jpeg: Data, token: String, ctype: String? = nil) async -> Reply {
         guard ready, let url = URL(string: "\(base)/api/app-api/\(key)/files") else { return Reply(code: 0, body: [:]) }
         var req = URLRequest(url: url, timeoutInterval: 60)
         req.httpMethod = "POST"
         // v0.346 a document (PDF) goes up as itself; photos as JPEG
-        req.setValue(jpeg.prefix(5) == Data("%PDF-".utf8) ? "application/pdf" : "image/jpeg", forHTTPHeaderField: "Content-Type")
+        req.setValue(ctype ?? (jpeg.prefix(5) == Data("%PDF-".utf8) ? "application/pdf" : "image/jpeg"), forHTTPHeaderField: "Content-Type")
         if !token.isEmpty { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         do {
             let (d, r) = try await URLSession.shared.upload(for: req, from: jpeg)
@@ -261,10 +261,25 @@ final class Db: ObservableObject {
             let c = job["coll"] as? String ?? ""
             if var data = job["data"] as? [String: Any] {          // photos picked on this phone go up first
                 for (k, v) in data {
-                    guard let s = v as? String, s.hasPrefix("local:") else { continue }
+                    guard let s = v as? String, s.contains("local:") else { continue }
+                    if s.contains(",") {                                   // v0.425 several photos in one field
+                        var parts = s.split(separator: ",").map { String($0) }
+                        for i in parts.indices where parts[i].hasPrefix("local:") {
+                            let pp = String(parts[i].dropFirst(6))
+                            guard let pd = FileManager.default.contents(atPath: pp) else { parts[i] = ""; continue }
+                            let pu = await Cloud.upload(pd, token: Auth.shared.token)
+                            if pu.retry { data[k] = parts.filter { !$0.isEmpty }.joined(separator: ","); job["data"] = data; outbox[0] = job; persist(); return }
+                            if pu.ok, let fid = pu.body["id"] as? String { parts[i] = fid; try? FileManager.default.removeItem(atPath: pp) } else { parts[i] = "" }
+                        }
+                        data[k] = parts.filter { !$0.isEmpty }.joined(separator: ",")
+                        continue
+                    }
+                    guard s.hasPrefix("local:") else { continue }
                     let path = String(s.dropFirst(6))
                     guard let jpeg = FileManager.default.contents(atPath: path) else { data.removeValue(forKey: k); continue }
-                    let up = await Cloud.upload(jpeg, token: Auth.shared.token)
+                    let ext = (path as NSString).pathExtension.lowercased()
+                    let ctype: String? = ext == "m4a" ? "audio/mp4" : (["mp4", "mov"].contains(ext) ? "video/mp4" : nil)   // v0.425
+                    let up = await Cloud.upload(jpeg, token: Auth.shared.token, ctype: ctype)
                     if up.retry { return }
                     if up.code == 401 { Auth.shared.clear(); lastError = Words.loginAgain; return }
                     if up.ok, let fid = up.body["id"] as? String {

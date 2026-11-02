@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.425.0"   # v0.425.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3, owner: "START STEP 3"). The website's account and staff pages are now a real in-page app per role: a menu by role, tables you sort / search / filter / page / bulk-select, detail pages with linked lists, multi-step forms that check before sending and upload photos / files, kanban, month calendar, approvals, members, who-can-do-what and the audit log, dressed in the site's own design. People log in safely: phone OTP through a DLT SMS provider (only a hash kept, 5 minutes, 5 tries, rate limits), 2-step login (authenticator code) for staff, every logged-in device listed with "log out" and "sign out everywhere", DPDP consent on sign-up, download-my-data and delete-my-account, every change journaled with WHO made it, staff-only fields. Fixed on the way: a wrong OTP rolled back its own try counter (unlimited guesses), two logins in one second shared a token, the staff page lost its charts. Previous: v0.424.0 JODO (App Sahayak Pillar F, Phase 54, owner: "START PILLAR F"): connectors inside her apps as DECLARED HTTP actions, never code (appmaker/connect.py) - nothing runs before her approval tap, bound to a hash of the exact action (any change = approve again); https + the approved host only, the address resolved and refused when private / loopback / link-local / metadata, no redirects, 1 MB answers; her secrets sealed, returned by no route, scrubbed from every run log; auth bearer / basic / header / query / login token / refresh token (QuickBooks rotation kept) / Google service account; answers are DATA written only into real fields through their type checks; safe retries only, a POST that timed out = ambiguous and never resent; new-row / status triggers queued in the background (the order never waits), staff buttons only where she allowed; signed inbound webhooks mapped into a matched row; Aadhaar refused. 13 ready packs from the providers' own docs (connect_packs.py: Shiprocket, Delhivery, MSG91, Fast2SMS, WhatsApp Cloud, Brevo, Resend, Google Sheets, Google Calendar, Zoho Books, QuickBooks, Tally = export, licensed KYC). Kits Connect.kt / Connect.swift, console Connectors box, phone panel. NOT VERIFIED against live accounts. Previous: v0.423.0 GAME DESK ROLES 4: SIMULATORS + DIGITAL TWIN + VFX PIPELINE (Hoola Game Engine plan Phase 7 batch 4 = Game Desk plan phase 5, owner: "GO PHASE 7" - Phase 7 done: all ten Game Desk employees live). Simulation Software Engineer (gamedesk/sim.py, tool game_sim): orbit (two-body + J2, WGS 84 constants), light-aircraft glide and car-handling models in RK4, each validated against its textbook case (orbit period, energy drift, J2 node regression - sun-synchronous at 98 degrees, GEO = a sidereal day; glide angle, Lanchester phugoid; steady yaw rate), sources cited, scenarios run twice, HoolaSim's GDScript step matching the Python one in the real Godot; weapon / targeting / combat simulators refused. Digital Twin Architect (gamedesk/twin.py, tool game_twin): her line as data with every number traced to a data tag or a stated assumption, read-only by construction, Hoola's event engine checked against exact answers and Erlang C, throughput / utilisation / WIP / lead time / bottleneck + what-ifs on common random numbers, validated only against her real week (else NOT ASSESSED). VFX Pipeline TD (gamedesk/vfx.py, tool game_vfx): naming + versions, ACES colour converted and measured (LogC3 / S-Log3 18 % grey), a real ACEScg EXR written and read back, a render queue with re-queue and cost per shot, every frame traced to its scene sha256; Blender / OCIO not run on the server (said).
+APP_VERSION = "0.433.0"   # v0.433.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3, owner: "START STEP 3"). The website's account and staff pages are now a real in-page app per role: a menu by role, tables you sort / search / filter / page / bulk-select, detail pages with linked lists, multi-step forms that check before sending and upload photos / files, kanban, month calendar, approvals, members, who-can-do-what and the audit log, dressed in the site's own design. People log in safely: phone OTP through a DLT SMS provider (only a hash kept, 5 minutes, 5 tries, rate limits), 2-step login (authenticator code) for staff, every logged-in device listed with "log out" and "sign out everywhere", DPDP consent on sign-up, download-my-data and delete-my-account, every change journaled with WHO made it, staff-only fields. Fixed on the way: a wrong OTP rolled back its own try counter (unlimited guesses), two logins in one second shared a token, the staff page lost its charts. Previous: v0.432.0 (built as 0.430.0) LIVE OPS (Hoola Game Engine plan Phase 9, owner: "GO PHASE 9"; gamedesk/liveops.py, tool game_liveops). The game reads GET /play/<token>/live from its own host (cached on the device): running A/B tests + approved live events, values via HoolaRuntime.num / flag - only Game Bible numbers within 1/4x - 4x, or flag.<name>. A/B tests: sha256(install:key) groups (same sum in GDScript, checked in the real Godot), sample-size target, sample-ratio check, z-test + Bonferroni, NOT ENOUGH PLAYERS before the target, start / stop = her tap, ship = a board task. Live events calendar (India time, her tap, no clashes with each other or a running test). Crashes caught by Godot's Logger (4.5+) from consenting players, grouped + scrubbed, crash-free per version, one-tap hotfix task. Patch check: saved replays + a bot run on the newest version in the real engine. Dashboard + D30 / DAU / balance outliers / difficulty spikes; money only from her imported store CSV (ARPDAU an upper bound). Console Live ops page, phone Live ops screen.
 
 
 def _quiet_http_logs() -> None:
@@ -8466,7 +8466,7 @@ async def _site_pub(site_id: str, op: str, request: Request, body: dict | None =
     backend + DIMAAG logic for a linked one (site/applink.py). The site's pages keep the same addresses."""
     from .site import applink as AL
     tok, ip = _site_tok(request), _ip(request)
-    kw.setdefault("ua", (request.headers.get("user-agent") or "")[:160])     # v0.425 the sessions list names the device
+    kw.setdefault("ua", (request.headers.get("user-agent") or "")[:160])     # v0.433 the sessions list names the device
     return await asyncio.to_thread(_app_call, lambda: AL.call(site_id, op, tok, body or {}, ip, **kw))
 
 
@@ -8549,7 +8549,7 @@ async def site_app_decide(site_id: str, appr_id: str, request: Request):
     return await _site_pub(site_id, "decide", request, await _json_body(request), appr_id=appr_id)
 
 
-# v0.425 LOGIN AUR SURAKSHA: phone OTP, staff 2FA, sessions, her data (export / delete), audit log, permissions, uploads
+# v0.433 LOGIN AUR SURAKSHA: phone OTP, staff 2FA, sessions, her data (export / delete), audit log, permissions, uploads
 @app.post("/api/site-app/{site_id}/otp/start")
 async def site_app_otp_start(site_id: str, request: Request):
     return await _site_pub(site_id, "otp_start", request, await _json_body(request))
@@ -8617,7 +8617,7 @@ async def site_app_upload(site_id: str, request: Request):
 
 @app.get("/api/site-app/{site_id}/file/{fid}")
 async def site_app_file(site_id: str, fid: str, request: Request):
-    """v0.425 a photo / PDF from a form, for whoever may see it (the page fetches it with the login header)."""
+    """v0.433 a photo / PDF from a form, for whoever may see it (the page fetches it with the login header)."""
     from .appmaker import backend as BE
     from .site import applink as AL
     from .site import service as S
@@ -8692,7 +8692,7 @@ async def sites_logic_apply(ref: str, body: dict, tenant: str = Depends(current_
 
 @app.get("/api/sites/{ref}/audit", dependencies=[Depends(require_key)])
 async def sites_audit(ref: str, limit: int = 100, tenant: str = Depends(current_tenant)):
-    """v0.425 her website app's audit log (every change, who made it) + the permissions matrix."""
+    """v0.433 her website app's audit log (every change, who made it) + the permissions matrix."""
     from .site import applink as AL
     return await asyncio.to_thread(_site_logic, AL.owner_audit, tenant, ref, max(1, min(limit, 500)))
 
@@ -9997,11 +9997,35 @@ async def app_api_upload(app_key: str, request: Request):
     from .appmaker import backend as BE
     raw = await request.body()
     ip = _ip(request)
+    ctype = request.headers.get("content-type") or ""
 
     def go():
         r, w = _be_app(app_key, request)
-        return BE.upload(r, w, raw, ip)
+        return BE.upload(r, w, raw, ip, ctype)
     return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/files/{fid}/link")
+async def app_api_file_link(app_key: str, fid: str, request: Request):
+    """v0.425 RANG: a 15-minute signed address for the phone's own video / audio / PDF player (no token in it)."""
+    from .appmaker import backend as BE
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.media_link(r, fid, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/media/{tok}")
+async def app_api_media(app_key: str, tok: str):
+    from .appmaker import backend as BE
+    from .site import webapp as W
+    try:
+        f = await asyncio.to_thread(lambda: BE.media_file(BE.by_key(app_key), tok))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type=BE.MEDIA_MIME.get(f.suffix, "application/octet-stream"),
+                        headers={"Cache-Control": "private, max-age=900", "X-Content-Type-Options": "nosniff",
+                                 "Content-Security-Policy": "sandbox", "Referrer-Policy": "no-referrer"})
 
 
 @app.get("/api/app-api/{app_key}/files/{fid}")
@@ -10013,6 +10037,10 @@ async def app_api_file(app_key: str, fid: str, request: Request):
         f = await asyncio.to_thread(BE.file_for, r, fid, w)
     except W.AppError:
         raise HTTPException(404, "not found")
+    if f.suffix in (".mp4", ".mov", ".m4a"):     # v0.425 RANG: video / voice note for the phone's own player (range requests)
+        return FileResponse(f, media_type=BE.MEDIA_MIME[f.suffix], headers={"Cache-Control": "private, max-age=3600",
+                                                                            "X-Content-Type-Options": "nosniff",
+                                                                            "Content-Security-Policy": "sandbox"})
     if str(f).endswith(".pdf"):                  # v0.346 a PDF is only ever a download, never opened in a page
         return FileResponse(f, media_type="application/pdf", filename=f"{fid}.pdf",
                             headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff",
@@ -10627,6 +10655,32 @@ async def apps_connect_hook_save(ref: str, body: dict, tenant: str = Depends(cur
 async def apps_connect_hook_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
     return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_hook(_be_owner(tenant, ref), key))
+
+
+# ---- v0.425 RANG (App Sahayak Pillar G): custom native components (Kotlin + Swift) - house rules in code, her tap, build-proved.
+@app.get("/api/apps/{ref}/components", dependencies=[Depends(require_key)])
+async def apps_components(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.listing(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/components/draft", dependencies=[Depends(require_key)])
+async def apps_component_draft(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{words}: Opus drafts one component (Kotlin + Swift); refused when a house rule fails. Waits for her approval."""
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.draft(_be_owner(tenant, ref), str((body or {}).get("words") or "")))
+
+
+@app.post("/api/apps/{ref}/components/{name}/approve", dependencies=[Depends(require_key)])
+async def apps_component_approve(ref: str, name: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.approve(_be_owner(tenant, ref), name, bool((body or {}).get("her_tap"))))
+
+
+@app.delete("/api/apps/{ref}/components/{name}", dependencies=[Depends(require_key)])
+async def apps_component_drop(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.remove(_be_owner(tenant, ref), name))
 
 
 def _be_owner(tenant: str, ref: str):

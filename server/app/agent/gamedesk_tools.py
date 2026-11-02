@@ -301,6 +301,49 @@ GAMEDESK_TOOLS.append(
 GAMEDESK_LABELS.update({"game_sim": "Simulator jaanch raha hoon", "game_twin": "Digital twin chala raha hoon",
                         "game_vfx": "VFX pipeline jaanch raha hoon"})
 
+# v0.425 Phase 8: Hoola Runtime (replay / bot / telemetry) + Ask Hoola in the editor
+GAMEDESK_TOOLS.append(
+    {"name": "game_runtime", "description": (
+        "Hoola Runtime of a Studio project (part of the Game Developer desk): HoolaRuntime goes into every build - a replay "
+        "recorder, an in-engine test bot and OPT-IN telemetry. Actions: status (settings + last replay tests) / replay_test: "
+        "the bot plays the live version headless, the same seed again, then its recording is played back - the end states "
+        "must match (deterministic, and every bug comes with a replay); a mismatch names its cause (randomize(), the clock) "
+        "/ telemetry: the dashboard (installs, sessions, D1 / D7, funnel) / set (on, telemetry): telemetry needs her switch "
+        "AND each player's yes, is refused for a children's game, keeps no personal data. Editor tokens and the Godot plugin "
+        "are made in the console (Game Desk > Editor) - never in chat. id = S-0001 (optional with one project)."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["status", "replay_test", "telemetry", "set"]},
+         "id": {"type": "string"}, "on": {"type": "boolean"}, "telemetry": {"type": "boolean"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_runtime": "Game runtime jaanch raha hoon"})
+
+# v0.428 Phase 9: live ops
+GAMEDESK_TOOLS.append(
+    {"name": "game_liveops", "description": (
+        "Live ops of a shipped Studio game (part of the Game Developer desk), for games that run for years. Actions: "
+        "status (tests, events, patch checks) / dashboard (installs, DAU, D1 / D7 / D30, funnel, balance outliers, "
+        "difficulty-spike levels) / experiment_add (key, title, goal = event or d1, variants = [{name, weight %, set: "
+        "{\"player.hp\": 120}}], first = control, mde = smallest difference worth knowing, 0.05 = 5 points) -> a DRAFT / "
+        "experiment_start + experiment_stop (ship = a group name -> a board task for her OK) = her tap / experiment_result: "
+        "MEASURED - players per group, sample-size target, split check, z-test; quote its verdict word for word, never call "
+        "a winner before it does / event_add (key, title, starts, ends in India time '2026-11-15 18:00', set) -> a DRAFT, "
+        "event_approve / event_cancel = her tap / crashes (grouped script errors from players who said yes, crash-free "
+        "share per version) / hotfix (sig) -> a priority board task / patch_check: saved replays + a bot run on the newest "
+        "version in the real engine (background, about a minute) / money: revenue ONLY from the CSV she imports in the "
+        "console (Hoola sees no store). Live values only change Bible numbers within 1/4x - 4x, or flag.<name>. "
+        "id = S-0001 (optional with one project)."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["status", "dashboard", "experiment_add", "experiment_start", "experiment_stop",
+                                               "experiment_result", "event_add", "event_approve", "event_cancel", "crashes",
+                                               "hotfix", "patch_check", "money"]},
+         "id": {"type": "string"}, "key": {"type": "string"}, "title": {"type": "string"}, "goal": {"type": "string"},
+         "variants": {"type": "array", "items": {"type": "object"}}, "mde": {"type": "number"}, "ship": {"type": "string"},
+         "starts": {"type": "string"}, "ends": {"type": "string"}, "set": {"type": "object"}, "sig": {"type": "string"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_liveops": "Game ke live ops dekh raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -899,8 +942,93 @@ async def game_vfx(ctx: Ctx, action="", words="", plan=None, setup="", **_):
                             {"not_here": "Blender / OpenColorIO / OpenUSD are not installed on the server"})
 
 
+async def game_liveops(ctx: Ctx, action="", id="", key="", title="", goal="win", variants=None, mde=0.05, ship="",
+                       starts="", ends="", set=None, sig="", **_):
+    from ..employee import hire
+    from ..gamedesk import liveops as L
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action in ("experiment_add", "experiment_start", "experiment_stop", "event_add", "event_approve", "event_cancel",
+                  "hotfix", "patch_check"):
+        _owner_only(ctx, "Live ops")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "status":
+            v = await run(L.view, t, id)
+            return {"telemetry": v["telemetry"], "experiments": [{k: x.get(k) for k in ("key", "title", "goal", "status")} for x in v["experiments"]],
+                    "events": [{k: e.get(k) for k in ("key", "title", "state", "starts_ist", "ends_ist", "set")} for e in v["events"]],
+                    "patches": [{k: p.get(k) for k in ("at", "version", "verdict")} for p in v["patches"]], "how": v["how"]}
+        if action == "dashboard":
+            return await run(L.dashboard, t, id)
+        if action == "experiment_add":
+            return await run(L.add_experiment, t, id, key, title, goal, variants if isinstance(variants, list) else None, mde)
+        if action == "experiment_start":
+            return await run(L.start_experiment, t, id, key)
+        if action == "experiment_stop":
+            return await run(L.stop_experiment, t, id, key, ship)
+        if action == "experiment_result":
+            return await run(L.results, t, id, key)
+        if action == "event_add":
+            return await run(L.add_event, t, id, key, title, starts, ends, set)
+        if action == "event_approve":
+            return await run(L.approve_event, t, id, key)
+        if action == "event_cancel":
+            return await run(L.cancel_event, t, id, key)
+        if action == "crashes":
+            return await run(L.crashes, t, id)
+        if action == "hotfix":
+            return await run(L.hotfix, t, id, sig)
+        if action == "patch_check":
+            return await run(L.start_patch_check, t, id) | {"note": "Runs in the background; the result shows on the Live ops page. Do not poll."}
+        if action == "money":
+            return await run(L.money, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = status | dashboard | experiment_* | event_* | crashes | hotfix | patch_check | money")
+
+
+async def game_runtime(ctx: Ctx, action="", id="", on=None, telemetry=None, **_):
+    from ..employee import hire
+    from ..gamedesk import runtime as R
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action in ("replay_test", "set"):
+        _owner_only(ctx, "Runtime")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "status":
+            st = await run(R.settings, t, id)
+            return {k: st[k] for k in ("on", "telemetry", "kids")} | {"tests": [{k: x.get(k) for k in ("at", "version", "verdict", "deterministic", "frames", "inputs", "errors")} for x in st["tests"][-3:]]}
+        if action == "replay_test":
+            return await run(R.start_replay_test, t, id) | {"note": "Runs in the background (about half a minute); the result shows on the Runtime page. Do not poll."}
+        if action == "telemetry":
+            return await run(R.dashboard, t, id)
+        if action == "set":
+            return await run(R.set_runtime, t, id, on, telemetry)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = status | replay_test | telemetry | set")
+
+
 GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets,
                      "game_qa": game_qa, "game_release": game_release, "game_world": game_world,
                      "game_physics": game_physics, "game_audio": game_audio, "game_haptics": game_haptics,
                      "game_net": game_net, "game_xr": game_xr, "game_sim": game_sim, "game_twin": game_twin,
-                     "game_vfx": game_vfx}
+                     "game_vfx": game_vfx, "game_runtime": game_runtime,
+                     "game_liveops": game_liveops}

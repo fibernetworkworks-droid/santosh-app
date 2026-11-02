@@ -143,7 +143,7 @@ def _who(site_id: str, p, token: str) -> W.Who:
     if p is None:
         return W.Who(W.member_of(site_id, token) if token else None)
     from . import security as SEC
-    if token and not SEC.token_ok(BE.bid(p), token):     # v0.425 a login she / the member ended
+    if token and not SEC.token_ok(BE.bid(p), token):     # v0.433 a login she / the member ended
         return W.Who(None)
     w = BE.who(p, token)
     if w.m is not None or not token:
@@ -211,10 +211,10 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
     site, ua = BE.bid(p), str(kw.get("ua") or "")
     if op == "schema":
         out = BE.public_schema(p)
-        out["security"] = {"otp": bool(SEC.provider()), "consent": True}       # v0.425 what the login box may offer
+        out["security"] = {"otp": bool(SEC.provider()), "consent": True}       # v0.433 what the login box may offer
         return out
-    if op == "signup":                                   # v0.425 DPDP: the website's sign-up needs her tick
-        # the new page script always sends the tick (true / false); a page built before v0.425 sends nothing - it still
+    if op == "signup":                                   # v0.433 DPDP: the website's sign-up needs her tick
+        # the new page script always sends the tick (true / false); a page built before v0.433 sends nothing - it still
         # works (until its next rebuild ships the new script) but no consent is recorded for it
         if "consent" in body and body.get("consent") is not True:
             raise W.AppError("Account banane ke liye privacy notice par haan (tick) zaroori hai.", 400)
@@ -433,7 +433,7 @@ def phone_app(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
                    "phir 3 looks; build ke baad Android / iPhone app aur website ek hi data dekhenge.", "view": v}
 
 
-# ---------------------------------------------------------------- v0.425 her view: who changed what, who may do what
+# ---------------------------------------------------------------- v0.433 her view: who changed what, who may do what
 def owner_audit(tenant: str, ref: str, limit: int = 100) -> dict[str, Any]:
     from ..appmaker import backend as BE
     from . import security as SEC

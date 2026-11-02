@@ -52,7 +52,7 @@ class AppJournal(Base):
     created: Mapped[str] = mapped_column(String(40), default="")   # the row's own created_at (kept on a restore)
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     pushed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # v0.396 already in her own database (write-through)
-    by: Mapped[str | None] = mapped_column(String(80), nullable=True)      # v0.425 who made the change (audit log)
+    by: Mapped[str | None] = mapped_column(String(80), nullable=True)      # v0.433 who made the change (audit log)
 
 
 _OK = False
@@ -61,7 +61,7 @@ ACTOR: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_app_actor", d
 
 @contextlib.contextmanager
 def acting(w):
-    """v0.425 every write inside is journaled with WHO made it (member id + role, 'owner', or the engine)."""
+    """v0.433 every write inside is journaled with WHO made it (member id + role, 'owner', or the engine)."""
     if w is None:
         who = "system"
     elif getattr(w, "owner", False):
@@ -85,7 +85,7 @@ def ensure_table() -> None:
     from .. import db as _db
     if _db._engine is not None:
         AppJournal.__table__.create(_db._engine, checkfirst=True)
-        try:                                    # v0.425 an older journal table gains `by` (else every journal write fails)
+        try:                                    # v0.433 an older journal table gains `by` (else every journal write fails)
             _db._add_missing_columns(_db._engine)
         except Exception:                       # noqa: BLE001
             log.exception("journal column check failed")
