@@ -25,7 +25,7 @@ object E2e {
     private suspend fun steps(ctx: Context): String? {
         if (!Cloud.ready) return "cloud not ready"
         val email = "e2e${System.currentTimeMillis()}@example.com"
-        Auth.signup(ctx, email, "hoola-e2e-pass", "E2E Tester")?.let { return "signup: $it" }
+        Auth.signup(ctx, email, "hoola-e2e-pass", "E2E Tester", true)?.let { return "signup: $it" }   // v0.462 ticks the box
         if (!Auth.signedIn) return "not signed in after signup"
         say("signed up $email")
         val order = Db.orderList

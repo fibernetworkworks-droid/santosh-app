@@ -120,7 +120,8 @@ fun SignInScreen() {
                 Btn(Strings.newHere, kind = BtnKind.Ghost, small = true) {
                     busy = true; err = ""
                     scope.launch {
-                        done(Auth.signup(c, AppState.form["auth_email"] ?: "", pw, AppState.form["auth_name"] ?: ""))
+                        done(Auth.signup(c, AppState.form["auth_email"] ?: "", pw, AppState.form["auth_name"] ?: "",
+                            if (Ways.consentNeeded) AppState.form["sg_consent"] == "1" else null))
                     }
                 }
             }

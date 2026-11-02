@@ -33,7 +33,8 @@ enum E2e {
     private static func steps() async -> String? {
         guard Cloud.ready else { return "cloud not ready (\(Cloud.base))" }
         let email = "ios\(Int(Date().timeIntervalSince1970 * 1000))@example.com"
-        if let e = await Auth.shared.signup(email: email, password: "hoola-e2e-pass", name: "E2E iPhone") { return "signup: \(e)" }
+        if let e = await Auth.shared.signup(email: email, password: "hoola-e2e-pass", name: "E2E iPhone",
+                                           consent: true) { return "signup: \(e)" }      // v0.462 the user ticks the box
         guard Auth.shared.signedIn else { return "not signed in after signup" }
         say("signed up \(email)")
         let db = Db.shared

@@ -17830,3 +17830,35 @@ were found by image content (size, squareness, dominant colour, alpha) rather th
 also composed the way a launcher draws it - foreground over `#090F32`, cropped to the circle - and looked at.
 
 Still only the emulator's answer: the icon on HER phone is the APK install.
+
+## v0.462.0 fix — the privacy tick on a password sign-up (2 Nov 2026)
+
+Fixing the iPad check (above) let a failure out from under it. The iPhone e2e — which walks the password
+sign-up against a real server — had been SKIPPED for as long as step 10 was failing, and the moment it ran it
+said: `HOOLA_E2E FAIL signup: Account banane ke liye privacy notice par haan (tick) zaroori hai.`
+
+That is v0.455 Pillar I's own consent rule, and the bug is mine. The server's rule (`sign.password_signup`) is
+**"if the app ASKED the question, the answer must be yes"** — the gate fires only when `consent` is in the body
+and is not `True`, so an app that never asks keeps working. Both kits got that wrong, in opposite directions,
+and neither account screen asked at all:
+
+- **iPhone could not create an account at all where the owner had turned the tick OFF.** `Backend.swift.signup`
+  took `consent: Bool = false` and always sent it; the server refuses an explicit no. `SignInScreen` only shows
+  the toggle when `Ways.consentNeeded`, so with consent off the value stayed `false` and every sign-up was
+  refused — citing a box that was not on the screen. This is the path CI walks, which is how it surfaced.
+- **Android collected the tick and threw it away.** `SignIn.kt` shows `CheckRow(Strings.sgConsent, "sg_consent")`
+  and then called `Auth.signup(c, email, pw, name)`, which never sent consent, so `save_consent` never ran. For a
+  DPDP feature, recording nothing is worse than refusing: the user ticked a box and the app agreed with itself.
+- **Neither `Accounts.kt` nor `Accounts.swift` asked**, and both create accounts. After the two fixes above they
+  would have gone on quietly making consent-free accounts in an app that requires consent.
+
+Fixed: `consent` is `Bool?` / `Boolean?` and rides only when the app asks (`nil` omits the key, matching the
+server's rule); every screen that creates an account shows the tick where the app asks for one and sends exactly
+what it asked; and both device walks tick the box, the way a real user does.
+
+Tests: one more in `server/tests/test_v0455_suraksha.py` — server side, consent omitted is allowed, an explicit
+no is refused and a yes is RECORDED (`/security` reports `via: signup`); kit side, neither kit may send a bare
+false, every account-creating screen must both ask and send, and both e2e walks must tick it.
+
+**The lesson, again:** a failing check hides every check behind it. Fifteen runs of "the iPad crashed" were also
+fifteen runs in which the sign-up, the order, the paid claim and the crash report were never exercised at all.
