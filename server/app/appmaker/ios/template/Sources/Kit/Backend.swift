@@ -94,10 +94,10 @@ enum Keychain {
     }
 }
 
-@MainActor
 /// v0.455 login said "right, now the authenticator code" (staff 2FA).
 let needTwoFa = "\u{0}need_2fa"
 
+@MainActor
 final class Auth: ObservableObject {
     static let shared = Auth()
     @Published var me: Item?

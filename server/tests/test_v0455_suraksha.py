@@ -292,6 +292,39 @@ def test_security_gates_block_the_store(droid_env, monkeypatch):
         GT.set_osv(None)
 
 
+def test_every_registered_screen_is_imported(tmp_path):
+    """v0.455: AppScreens.kt names kit screens in a `when`, and Kotlin needs an IMPORT for each one. A missing import
+    is a compile error only CI can see - this check finds it here. It caught three: SecurityScreen (this version),
+    and ComponentsGallery / PartnerScreen, which v0.425 and v0.435 never compiled because those builds are optional."""
+    import re
+    import subprocess
+    import sys
+    base = json.loads((ROOT / "android/fixture/spec.json").read_text())
+    cases = {"plain": base}
+    sp = json.loads(json.dumps(base))
+    sp["seed"].setdefault("backend", {})["sign"] = {"ways": ["phone_otp", "google", "apple"],
+                                                    "google_server_client_id": GOOGLE_AUD}
+    cases["login"] = sp
+    sp = json.loads(json.dumps(base))
+    sp["custom"] = [{"name": "StarBadge", "kotlin": "package hoola.kit\n", "swift": "import SwiftUI\n",
+                     "sample_kt": "StarBadge()", "sample_swift": "StarBadge()"}]
+    cases["custom"] = sp
+    sp = json.loads(json.dumps(base))
+    sp["seed"].setdefault("backend", {})["partner"] = "rider"
+    cases["partner"] = sp
+    for name, spec in cases.items():
+        f = tmp_path / f"{name}.json"
+        f.write_text(json.dumps(spec))
+        out = tmp_path / name
+        r = subprocess.run([sys.executable, str(ROOT / "android/gen.py"), str(f), str(out)], capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr[-500:]
+        reg = (out / "app/src/main/java/hoola/app/AppScreens.kt").read_text()
+        called = set(re.findall(r"->\s*([A-Z]\w*)\(\)", reg))
+        imported = set(re.findall(r"import hoola\.(?:kit|app\.screens)\.(\w+)", reg))
+        assert not called - imported, f"{name}: no import for {sorted(called - imported)}"
+        assert len(called) >= 18
+
+
 def test_both_kits_and_both_generators(tmp_path):
     import subprocess
     import sys

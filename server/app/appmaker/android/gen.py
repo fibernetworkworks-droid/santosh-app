@@ -217,6 +217,11 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
     fab_actions = ", ".join(f"FabAction({kstr(a['label'])}, {kstr(a.get('icon') or 'dot')}, {kstr(a['go'])})"
                             for a in (fab.get("actions") or []) if a.get("go") in ids)
     imports = "\n".join(f"import hoola.app.screens.{kotlin_name(s)}" for s in ids if s in have and s not in AUTH_IDS)
+    # v0.455 the kit screens this build really uses must be IMPORTED too (a missing one is only found by the compiler):
+    # SecurityScreen is always registered; the others ride only when their feature is on.
+    kit_more = ["SecurityScreen"] + (["SignInScreen"] if own_signin(spec) else []) \
+        + (["ComponentsGallery"] if spec.get("custom") else []) + (["PartnerScreen"] if partner_kind(spec) else [])
+    imports = "\n".join([f"import hoola.kit.{x}" for x in kit_more] + ([imports] if imports else []))
     return f'''package hoola.app
 
 // Made by Hoola App Sahayak from the approved design: which screens exist, the tabs, the FAB and the start.
