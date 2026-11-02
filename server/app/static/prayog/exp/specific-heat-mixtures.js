@@ -10,7 +10,7 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
   // the solid: from the variant's sample line (colour, name, density for its size); the base lab keeps its plain metal
   var VAR = S.lab.variant || {}, SAMPLE = String(VAR.sample || '');
   var METALS = [[/stainless/i, 'Stainless steel', 8000, 0xc8ccd0, 0.3, 0.9], [/alumin/i, 'Aluminium', 2700, 0xd5d8dc, 0.38, 0.85],
-    [/brass/i, 'Brass', 8500, 0xd4ad55, 0.3, 0.9], [/copper/i, 'Copper', 8960, 0xd9865a, 0.3, 0.9], [/lead/i, 'Lead', 11340, 0x70757d, 0.62, 0.45],
+    [/brass/i, 'Brass', 8500, 0xd4ad55, 0.3, 0.9], [/copper/i, 'Copper', 8960, 0xd9865a, 0.3, 0.9], [/lead/i, 'Lead', 11340, 0x4f545b, 0.7, 0.4],
     [/zinc/i, 'Zinc', 7140, 0xb4bcc4, 0.45, 0.75], [/\btin\b/i, 'Tin', 7265, 0xd3d5d1, 0.3, 0.85], [/iron/i, 'Iron', 7870, 0x6e7276, 0.55, 0.7]];
   var MET = null; METALS.forEach(function (m) { if (!MET && m[0].test(SAMPLE)) MET = { name: m[1], rho: m[2], col: m[3], rough: m[4], metal: m[5] }; });
   var SOLID = MET ? MET.name + ' cylinder' : 'Metal cylinder', solidName = MET ? 'the ' + MET.name.toLowerCase() : 'the metal';

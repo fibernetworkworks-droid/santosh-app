@@ -83,7 +83,7 @@ HoolaStudio.define('newtons-cooling', function (S) {
   var wisps = []; for (var i = 0; i < 6; i++) { var w = new T.Mesh(new T.PlaneGeometry(0.045, 0.045), new T.MeshBasicMaterial({ map: steamTex, transparent: true, opacity: 0, depthWrite: false }));
     w.userData.ph = i / 6; S.scene.add(w); wisps.push(w); }
 
-  S.addApparatus('cal', cal, 'Copper calorimeter', 'Thin copper vessel: it takes up the liquid\'s temperature quickly. Holds the hot ' + LIQ.name + ' that cools.');
+  S.addApparatus('cal', cal, 'Copper calorimeter', 'Thin copper vessel: it takes up the ' + LIQ.name + ' temperature quickly. Holds the hot ' + LIQ.name + ' that cools.');
   S.addApparatus('block', block, 'Wooden insulating stand', 'Wood conducts heat poorly, so the ' + LIQ.name + ' loses heat mainly to the air around it.');
   S.addApparatus('thermo', thermo, 'Mercury thermometer', 'Range −10 to 110 °C, least count 0.5 °C. The bulb sits in the ' + LIQ.name + ', clear of the bottom.');
   S.addApparatus('stand', stand, 'Clamp stand', 'Holds the thermometer upright so the bulb never touches the copper.');

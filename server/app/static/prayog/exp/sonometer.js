@@ -6,6 +6,11 @@ HoolaStudio.define('sonometer', function (S) {
   function labParams(name) { var o = {}; (S.lab.knobs || []).forEach(function (k) { if (k.param) o[k.param] = k.value * (k.k || 1); });
     var lp = S.lab.params || {}; Object.keys(lp).forEach(function (key) { o[key] = lp[key]; }); return HK.paramsFor(name, o); }
   var p = labParams('sonometer');
+  // the wire: material from the variant's sample line (steel when there is no variant); its drawn thickness follows d = √(4μ / πρ)
+  var VAR = S.lab.variant || {}, SAMPLE = String(VAR.sample || '');
+  var WMAT = /brass/i.test(SAMPLE) ? { name: 'Brass', rho: 8500, col: 0xd8b25e, em: 0x2a2208 } : /copper/i.test(SAMPLE) ? { name: 'Copper', rho: 8960, col: 0xd98a5e, em: 0x2a1408 }
+    : { name: 'Steel', rho: 7850, col: 0xeef1f3, em: 0x2a2c2e };
+  var WIRE_R = VAR.sample ? Math.max(0.0006, Math.min(0.0022, 0.0009 * Math.sqrt(4 * p.mu / (Math.PI * WMAT.rho)) / 0.000403)) : 0.0009;
   var G = 9.8, DISC = 0.5, HANGER = 0.5, NDISC = 11, LMIN = 0.1, LMAX = 0.85, FORKS = [256, 320, 384, 512];
   var st = { l: Math.round(p.l * 1000) / 1000, target: 30, n: 5, fork: 256, amp: 0, touching: false, rider: 'on', riderT: 0, lastLoud: null, heardAt: null, sound: true, clock: 0 };
   function mass() { return HANGER + DISC * st.n; }
@@ -43,8 +48,8 @@ HoolaStudio.define('sonometer', function (S) {
   var bracket = S.mesh(new T.BoxGeometry(0.03, 0.05, 0.012), M.iron); bracket.position.set(BX1 + 0.012, WY - PR, BZ - 0.014); sono.add(bracket);
   var pulley = S.mesh(new T.CylinderGeometry(PR, PR, 0.008, 40), M.brass); pulley.rotation.x = Math.PI / 2; pulley.position.set(PX, WY - PR, BZ); sono.add(pulley);
   var axle = S.mesh(new T.CylinderGeometry(0.003, 0.003, 0.03, 12), M.steel); axle.rotation.x = Math.PI / 2; axle.position.set(PX, WY - PR, BZ - 0.008); sono.add(axle);
-  var wireM = new T.MeshStandardMaterial({ color: 0xeef1f3, roughness: 0.2, metalness: 0.9, emissive: 0x2a2c2e });
-  function wire() { var m = S.mesh(new T.CylinderGeometry(0.0009, 0.0009, 1, 8), wireM, true, false); S.scene.add(m); return m; }
+  var wireM = new T.MeshStandardMaterial({ color: WMAT.col, roughness: 0.2, metalness: 0.9, emissive: WMAT.em });
+  function wire() { var m = S.mesh(new T.CylinderGeometry(WIRE_R, WIRE_R, 1, 8), wireM, true, false); S.scene.add(m); return m; }
   var w0 = wire(), w1 = wire(), w2 = wire(), w3 = wire();
   var blurTex = S.canvasTex(256, 64, function (x, w, h) { x.clearRect(0, 0, w, h); var g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(220,224,228,0)'); g.addColorStop(0.5, 'rgba(220,224,228,.9)'); g.addColorStop(1, 'rgba(220,224,228,0)');
     x.fillStyle = g; x.beginPath(); x.moveTo(0, h / 2); for (var i = 0; i <= 64; i++) { var u = i / 64; x.lineTo(u * w, h / 2 - Math.sin(Math.PI * u) * h / 2); } for (i = 64; i >= 0; i--) { u = i / 64; x.lineTo(u * w, h / 2 + Math.sin(Math.PI * u) * h / 2); } x.fill(); });
@@ -90,7 +95,7 @@ HoolaStudio.define('sonometer', function (S) {
   S.addApparatus('box', box, 'Hollow sonometer box', 'A hollow wooden box: it makes the wire\'s vibration loud enough to hear and feel.');
   S.addApparatus('brA', brA, 'Fixed knife-edge bridge', 'One end of the vibrating length l. The scale reads zero here.');
   S.addApparatus('brB', brB, 'Movable bridge', 'Slide it to change the vibrating length l between the bridges.');
-  S.addApparatus('wire', w1, 'Steel wire', 'Its mass per unit length μ is what you find. It runs over the pulley to the hanger.');
+  S.addApparatus('wire', w1, WMAT.name + ' wire', (VAR.sample ? VAR.sample + '. ' : '') + 'Its mass per unit length μ is what you find. It runs over the pulley to the hanger.');
   S.addApparatus('hanger', hanger, 'Hanger with slotted masses', 'Hanger 0.5 kg + 0.5 kg slotted masses. Tension T = Mg.');
   S.addApparatus('rider', rider, 'Paper rider', 'A small folded paper V on the middle of the wire. At resonance it flutters and falls off.');
   S.addApparatus('forks', forks[256], 'Set of tuning forks', '256, 320, 384 and 512 Hz. Strike on the rubber pad only.');
@@ -197,7 +202,7 @@ HoolaStudio.define('sonometer', function (S) {
       formula: 'f = (1 / 2l) √(T / μ)', formulaNote: 'so μ = T / (4 l² f²) · T = Mg, the weight on the hanger',
       more: ['At a fixed tension, f × l is constant: a fork of twice the frequency resonates at half the length. A graph of l against √T / f is a straight line through the origin with slope 1 / (2√μ).'],
       precautions: 'Strike the fork only on the rubber pad. Press its stem gently on the box, not on the wire. Put the rider at the middle of the vibrating length. Move the bridge in small steps near resonance. Do not overload the wire.' },
-    book: { title: 'Expt. — Sonometer', lines: ['Aim: to find μ of the wire and verify f·l = constant.', 'Hanger 0.5 kg + 0.5 kg slotted masses, g = 9.8', 'f = (1/2l)√(T/μ)  →  μ = T / (4 l² f²)', 'Rider falls at resonance'],
+    book: { title: 'Expt. — Sonometer', lines: ['Aim: to find μ of the wire and verify f·l = constant.'].concat(VAR.sample ? [VAR.sample] : []).concat(['Hanger 0.5 kg + 0.5 kg slotted masses, g = 9.8', 'f = (1/2l)√(T/μ)  →  μ = T / (4 l² f²)', 'Rider falls at resonance']),
       columns: [{ label: 'f (Hz)', get: function (r) { return String(r.f); } }, { label: 'M (kg)', get: function (r) { return r.M.toFixed(1); } },
         { label: 'l (cm)', get: function (r) { return (r.l * 100).toFixed(1); } }, { label: 'f·l (m/s)', get: function (r) { return (r.f * r.l).toFixed(1); } },
         { label: 'μ (g/m)', get: function (r) { return (muOf(r) * 1000).toFixed(3); } }] },
@@ -210,7 +215,7 @@ HoolaStudio.define('sonometer', function (S) {
     viva: [['If the length between the bridges is halved, the frequency of the wire', ['doubles', 'halves', 'stays the same'], 0, 'f = (1/2l)√(T/μ): f ∝ 1/l.'],
       ['Why does the paper rider fall at resonance?', ['The wire\'s amplitude becomes very large at its middle', 'The fork pushes it', 'The box tilts'], 0, 'At resonance the fork drives the wire at its natural frequency, so the amplitude builds up.']],
     askState: function () { return { length_cm: +(st.l * 100).toFixed(1), load_kg: mass(), tension_N: +(mass() * G).toFixed(1), fork_Hz: st.fork, fork_on_box: st.touching,
-      rider: st.rider === 'on' ? 'on the wire' : 'fallen off', last_response: st.lastLoud === null ? null : +st.lastLoud.toFixed(2), readings_taken: S.rows.length }; },
+      wire: WMAT.name.toLowerCase(), rider: st.rider === 'on' ? 'on the wire' : 'fallen off', last_response: st.lastLoud === null ? null : +st.lastLoud.toFixed(2), readings_taken: S.rows.length }; },
 
     steps: [
       { id: 'load', title: 'Tension', view: 'load', render: function (u) {
@@ -244,10 +249,11 @@ HoolaStudio.define('sonometer', function (S) {
         },
         ok: function () { var d = {}; S.rows.forEach(function (r) { d[r.f] = 1; }); return Object.keys(d).length >= 3; },
         auto: function () {
-          var guess = 0.38;
+          // first fork: listen along the whole wire in 1 cm steps (μ is unknown); the next forks from f × l = constant
           return [256, 320, 384].reduce(function (pr, f) { return pr.then(function () {
-            st.fork = f; var g = S.rows.length ? S.rows[0].l * S.rows[0].f / f : guess;
-            return findRes(g).then(function () { S.advance(1); record(); }); }); }, Promise.resolve()); } },
+            st.fork = f;
+            var g = S.rows.length ? Promise.resolve(S.rows[0].l * S.rows[0].f / f) : scan(LMIN, LMAX, 0.01);
+            return g.then(findRes).then(function () { S.advance(1); record(); }); }); }, Promise.resolve()); } },
     ],
 
     tick: function (dt) {
