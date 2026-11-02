@@ -17658,39 +17658,62 @@ the Data layer + the My Maps / Takeout imports. Phases 10–11 the rest, and the
 tests drive a `MockTransport`. The rupee figures are an estimate from Google's published USD list; her first
 real bill is what will confirm or correct the price table, and `assumed_tier` names where we guessed.
 
-## v0.455.0 fix (2 Nov 2026) — the iPhone check told the truth about iPad for the first time in weeks
+## v0.455.0 fix (2 Nov 2026) — the iPhone check was photographing the simulator's home screen
 
-The `App Sahayak iPhone build check` workflow had failed on **15 runs in a row**, across six parallel sessions,
-and the two lines it printed had sent the diagnosis the wrong way:
+The `App Sahayak iPhone build check` had failed on **15 runs in a row** across six parallel sessions. It took two
+attempts to find out why, and the first one was wrong; both are recorded here because the wrong one is the kind of
+mistake that repeats.
 
-- step 10 (13-inch iPad Pro) reported `"opened": 0` with all **17 screens crashed**;
-- step 14 then died on `ModuleNotFoundError: No module named 'sqlalchemy'`.
+**What the log said.** Step 10 (13-inch iPad Pro) reported `"opened": 0`, all 17 screens crashed. Step 14 then died
+on `ModuleNotFoundError: No module named 'sqlalchemy'`.
 
-**Neither reading was right.** The thing that settles it is in the step BEFORE the iPad one: the iPhone Pro Max
-step prints `home crashed=1 / cart crashed=1 / orders crashed=1` and, in the next line of the same step, saves
-four screenshots of those very screens at the correct 1320x2868, none of them blank. A crashed app cannot be
-photographed. The plain iPhone simulator in step 7 opens 17/17 of the same binary with zero crashes. So the app
-was fine and the CHECKER was wrong — on the **second and third simulator of the job**, never the first.
+**The first attempt (wrong).** The step before the iPad one — the Pro Max App Store screenshots — printed
+`home crashed=1 / cart crashed=1 / orders crashed=1` and, in the same step, saved four screenshots of those screens
+at the correct 1320x2868, none blank. That was read as "a crashed app cannot be photographed, so the CHECKER is
+wrong", and the liveness probe was rewritten. **`simctl io screenshot` photographs the device screen, not the app**,
+so a screenshot proves nothing at all about whether the app is running; the next run came back with exactly the same
+17 crashed. A screenshot is evidence about the SCREEN. To learn what is on it, look at it.
 
-`sim_check.sh` decided a screen had crashed when its liveness probe failed, and that probe compared the pid
-`simctl launch` printed with the pid column of `simctl spawn <dev> launchctl list`. Two things break it once a
-second device is in play: the printed pid is parsed out of simctl's own text (`awk -F': ' | tr -dc '0-9'`, which
-welds every line's digits together if simctl says anything extra), and with more than one simulator booted the
-`spawn` can answer for the wrong device. Now the probe reads the pid column for our bundle id straight out of
-`launchctl list` and asks only whether it is numeric — a service that has exited writes `-` there, so a REAL
-crash still reads as a crash and a relaunch no longer does — and `simctl shutdown all` runs before the boot, so
-only our own device is up. The crash-report count check is untouched, so a genuine crash is still caught twice.
+**The real cause.** Looking at the saved iPad PNG settles it in one glance: it is the iPad **home screen** —
+wallpaper, Contacts, Shortcuts, the dock — with an `AppUITests-Run…` icon on it and no app of ours anywhere. Two
+more facts fit: step 7 reports `app_mb: 11.44` while steps 9 and 10 report `16.12` (a different bundle), and no crash
+report was written anywhere in the run, because nothing crashed.
 
-The `sqlalchemy` error was never a missing dependency: the workflow does install `server/requirements.txt`. Step
-10 failing SKIPPED steps 11-13 (setup-python, the server, the e2e run), and step 14 carried a bare
-`if: always()`, so it ran anyway with no Python set up — and its import error then sat at the bottom of the log
-looking like the cause. It now waits for `steps.e2e_server.outcome == 'success'`, so the next red run names its
-real failure.
+Every step picks its app with `find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1`.
+Between step 7 and step 9 sits the flow walk, which runs `xcodebuild test ... -derivedDataPath dd` and drops
+**`AppUITests-Runner.app`** into that same folder. From then on `head -1` picks the TEST RUNNER: the check installed
+the runner, launched a bundle id that was not on that device, and photographed the springboard.
 
-Tests: `server/tests/test_v0455_sim_probe.py` (5) drives the shipped awk + `case` out of the script itself, so the
-shape of a live and of an exited service is pinned in a test and not in a comment: a running app among other
-services reads alive, an exited one and an absent one read crashed, the probe may not go back to comparing
-simctl's pid, our simulator is the only booted one, and the e2e step is gated. Added to `app-load.yml`.
+**This was not only CI.** The same selection is in `server/app_builder/hoola-ios.yml`, which builds HER customers'
+apps — including the TestFlight step that takes the `SIM_KIND=max` and `SIM_KIND=ipad` screenshots *after* the flow
+walk and hands them to `asc.py push`. Those steps carry `continue-on-error: true`, so nobody ever saw it. Her App
+Store screenshot sets have been pictures of a simulator home screen at the right pixel size.
+
+**Fixed:**
+
+- `sim_check.sh` now reads `CFBundleIdentifier` out of the bundle it was handed and REFUSES to go on unless it is
+  the app under test, naming what it got. The guard runs before a simulator is even looked up, so it catches every
+  caller, now and later, on any machine.
+- All eight `find ... *.app` selections (five in `ios-check.yml`, three in `hoola-ios.yml`) exclude `*-Runner.app`.
+- The liveness probe from the first attempt is kept: reading the pid column for our bundle id is simpler and more
+  robust than matching the pid simctl printed, and `simctl shutdown all` before the boot removes the ambiguity of
+  two booted devices. It was not the bug, but it is not wrong.
+- `ios-check.yml`: the e2e check step carried a bare `if: always()`, so when step 10 failed it ran after its own
+  prerequisites had been SKIPPED and died on an import error that then sat at the bottom of the log looking like the
+  cause. It now waits for `steps.e2e_server.outcome == 'success'`. The workflow does install requirements; the
+  missing-dependency reading of that error was wrong too.
+
+Tests: `server/tests/test_v0455_sim_probe.py` (9) runs the shipped awk, `case` and bundle-id guard out of the script
+itself — a running app reads alive among other services, an exited and an absent one read crashed, the probe may not
+go back to comparing simctl's pid, a UI-test runner is refused by id (and the message names it), the real app gets
+through, and neither workflow may select a `*-Runner.app`. In `app-load.yml`.
+
+**Still not verified:** this sandbox has no Mac, so whether all 18 screens open on a 13-inch iPad is for the macOS
+runner to answer. The lesson worth keeping: a check that cannot tell "the app is on screen" from "something is on
+screen" will pass for weeks, and the only reason this was ever caught was opening the picture it saved.
+
+**Rule learned:** a screenshot of a simulator is evidence about the device, not about the app. Before reasoning from
+one, LOOK at it.
 
 **Not verified here:** this sandbox has no Mac, so whether all 17 screens now open on a 13-inch iPad is for the
 macOS runner to answer. The run this push triggers is the proof — and if the iPad genuinely does fail, the same

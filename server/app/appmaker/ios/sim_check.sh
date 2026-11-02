@@ -5,6 +5,24 @@
 # usage: sim_check.sh <App.app> <bundle id> <out dir> <screen ids...>
 set -u
 APP="$1"; BID="$2"; OUT="$3"; shift 3
+# v0.455 fix: the bundle we were handed must BE the app under test. `find ... -name "*.app" | head -1` picked
+# AppUITests-Runner.app once the flow walk had built it, so the Pro Max and iPad steps installed the TEST RUNNER,
+# launched a bundle id that was not on that device, and photographed the simulator's HOME SCREEN. Nothing crashed;
+# the report said every screen crashed. Reading the id here catches that for every caller, now and later, and does
+# it before a simulator is even looked up.
+[ -d "$APP" ] || { echo "::error::no app bundle at '$APP' - nothing to check"; exit 1; }
+GOT=$(python3 - "$APP/Info.plist" <<'PY'
+import plistlib, sys
+try:
+    print(plistlib.load(open(sys.argv[1], "rb")).get("CFBundleIdentifier") or "")
+except Exception:
+    print("")
+PY
+)
+if [ "$GOT" != "$BID" ]; then
+  echo "::error::wrong app bundle: $APP holds '$GOT' but the app under test is '$BID' (a UI-test runner picked by find?)"
+  exit 1
+fi
 mkdir -p "$OUT/screens"
 DEV=$(xcrun simctl list devices available -j | python3 -c '
 import json, os, sys
