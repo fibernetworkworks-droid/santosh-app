@@ -1313,6 +1313,7 @@ const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
   'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
+  'maps_places',
   'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
 let ACC = null, ACC_LAST = 0;
 function accountStream() {
