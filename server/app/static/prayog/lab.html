@@ -22,10 +22,11 @@
   if (!window.THREE || !window.HoolaStudio) { fail('The 3D engine did not load. Check the internet and open again.'); return; }
   function load(src) { return new Promise(function (ok, no) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.body.appendChild(s); }); }
   var labP = fetch('/api/prayog/labs/' + id).then(function (r) { if (!r.ok) throw new Error(r.status === 404 ? 'This lab was not found.' : 'The lab did not load (' + r.status + ').'); return r.json(); });
-  var modP = load('exp/' + id + '.js?v=0.441.0').then(function () { return true; }, function () { return false; });
-  Promise.all([labP, modP]).then(function (res) {
-    var lab = res[0].lab; document.title = lab.title + ' · Prayogshala';
-    if (res[1] && window.HoolaStudio.defs[id]) { window.HoolaStudio.start(app, lab); return; }
+  labP.then(function (d) { var rig = (d.lab.rig || d.lab.id).replace(/[^a-z0-9-]/g, ''); return load('exp/' + rig + '.js?v=0.441.0').then(function () { return rig; }, function () { return ''; }); }).then(function (rig) {
+    return labP.then(function (d) { return [d, rig]; });
+  }).then(function (res) {
+    var lab = res[0].lab, rig = res[1]; document.title = lab.title + ' · Prayogshala';
+    if (rig && window.HoolaStudio.defs[rig]) { window.HoolaStudio.start(app, lab); return; }
     // no studio module yet: the earlier runtime still opens the lab
     document.getElementById('oldcss').media = 'all';
     return load('lab3d.js?v=0.441.0').then(function () { app.style.height = ''; window.HoolaLab.open(app, lab); });

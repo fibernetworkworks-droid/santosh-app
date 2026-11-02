@@ -1,0 +1,14 @@
+{
+  "base": "hookes-law",
+  "chapter": "Mechanical Properties of Solids",
+  "grid": {
+    "title": "Hooke's law: {spring}",
+    "unknown": "the spring constant k of {spring}",
+    "axes": {
+      "spring": [
+        {"key": "soft", "label": "a soft spring", "sample": "Soft steel spring", "params": {"k": 12}},
+        {"key": "stiff", "label": "a stiff spring", "sample": "Stiff steel spring", "params": {"k": 35}}
+      ]
+    }
+  }
+}

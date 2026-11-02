@@ -18,8 +18,8 @@
   var TEST = /[?&]test=1/.test(location.search);
 
   function start(root, lab) {
-    var make = DEFS[lab.id];
-    if (!make) throw new Error('No studio module for ' + lab.id);
+    var make = DEFS[lab.rig || lab.id];             // a variant runs on its family's rig with its own numbers
+    if (!make) throw new Error('No studio module for ' + (lab.rig || lab.id));
     root.innerHTML = '';
     var S = toolkit(root, lab);
     var exp = make(S);
@@ -667,6 +667,12 @@
     function theory(u) {
       var th = exp.theory || {};
       u.h2(lab.title); u.h3('Aim'); u.p(lab.aim);
+      var v = lab.variant || {};
+      if (v.sample || v.method || v.unknown || v.note) {
+        u.h3('This experiment');
+        [['Sample', v.sample], ['Method', v.method], ['You will find', v.unknown]].forEach(function (x) { if (x[1]) u.p(x[0] + ': ' + x[1]); });
+        if (v.note) u.note(v.note);
+      }
       u.h3('Principle'); u.p(th.principle || lab.theory || '');
       if (th.formula) u.formula(th.formula, th.formulaNote);
       (th.more || []).forEach(function (t) { u.p(t); });
