@@ -17091,12 +17091,31 @@ All three are declared on a voice call, are in `TOOL_LANES` (so the model stops 
 when she names a category), and are named in `prompts.py`. `search_places` gained an explicit `tier` and kept
 its Enterprise default, so **nothing she has today got worse** — it is now merely priced and capped.
 
-### Found in my own code on the way
+### Found in my own code on the way — four of them, all from re-reading the diff adversarially
 
-`charge()` raised `MapsCapped` **inside** the session that recorded the refusal, so the increment was rolled
-back with the exception and `refused` always read 0 — a cap that worked but could not be seen working. The
-refusal is now counted in its own transaction, and `test_a_refusal_survives_the_exception_and_is_visible`
-exists for it.
+1. **The cap refusal was rolled back by its own exception.** `charge()` raised `MapsCapped` *inside* the
+   session that recorded the refusal, so the increment went with it and `refused` always read 0 — a cap that
+   worked but could not be seen working. The refusal is now counted in its own transaction.
+   → `test_a_refusal_survives_the_exception_and_is_visible`
+
+2. **A failed call still charged her.** `charge()` runs *before* the HTTP request so the cap can refuse
+   pre-flight, but Google's billable event is a **successful** request. Without a refund, a key missing an API
+   would answer 403 on every attempt and still burn the whole daily cap and the month's free allowance. And
+   the first refund **guessed**: it undid the free side first, so a failed call that had really been billed
+   got ₹0 back. `charge()` now returns a `Receipt` and `refund()` reverses **exactly** it.
+   → `test_a_failed_call_is_refunded`, `test_a_refund_reverses_exactly_what_was_charged`,
+     `test_a_refund_of_a_free_call_returns_the_allowance_not_money`
+
+3. **`usage()` read a detached ORM row** after its session had closed — it happened to work on SQLite and is
+   the kind of thing that surfaces first on Postgres. Every value is now read inside the session.
+   → `test_usage_reads_its_values_inside_the_session`
+
+4. **`charge()` read and wrote in two transactions**, so two callers could each see room and together cross
+   the cap. Read and write are now one session; only the refusal still needs its own, for reason 1.
+
+And one from the v0.399 lesson rather than from the diff: the usage route has a test that **calls** it, not
+one that asserts the path is registered. That is exactly how the Systems page shipped able to 500 on open.
+→ `test_the_usage_route_answers_and_names_what_we_guessed`
 
 ### Files
 
