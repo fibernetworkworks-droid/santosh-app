@@ -1,4 +1,4 @@
-"""v0.440 PAKKA KAAM: a big job handed over on a voice call (santosh_kaam) is saved in the durable turn inbox before it
+"""v0.441 PAKKA KAAM: a big job handed over on a voice call (santosh_kaam) is saved in the durable turn inbox before it
 starts, like a typed chat message - so a server restart / deploy mid-job re-runs it once (with the same place)
 instead of silently losing it, and the call's drop note says a job was still running."""
 import asyncio

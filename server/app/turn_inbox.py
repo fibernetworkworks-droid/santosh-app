@@ -59,7 +59,7 @@ class TurnInbox(Base):
     text: Mapped[str] = mapped_column(Text, default="")
     voice: Mapped[int] = mapped_column(Integer, default=0)
     context: Mapped[str] = mapped_column(Text, default="")
-    place: Mapped[str | None] = mapped_column(String(16), nullable=True)   # v0.440 a voice job's place (her PC / own browser)
+    place: Mapped[str | None] = mapped_column(String(16), nullable=True)   # v0.441 a voice job's place (her PC / own browser)
     status: Mapped[str] = mapped_column(String(12), default="accepted", index=True)
     tries: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

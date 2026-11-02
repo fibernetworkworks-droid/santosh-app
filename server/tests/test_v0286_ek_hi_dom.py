@@ -89,5 +89,5 @@ def test_v0284_and_v0283_are_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.440.0"
-    assert "0.439.0+483" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.441.0"
+    assert "0.441.0+485" in (ROOT / "pubspec.yaml").read_text()

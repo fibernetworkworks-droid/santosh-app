@@ -16632,3 +16632,22 @@ the model never answered.
   self-check (code check flagged no pylab -> one fix round), right number, scored RIGHT.
 - NOT VERIFIED: the VPS's real exception is still unknown. The fixed card / `--ping` will print it on the next run.
 - Tests: `tests/test_v0440_hard_live.py`.
+
+
+## v0.441.0 PAKKA KAAM (2 Nov 2026; built as 0.440.0, re-versioned past the parallel v0.440 HARD CARD SACH)
+Owner: "NOW FOR VOICE TO VOICE --- CHECK DOES IT PERFORM LONG TASK", then "GO" on the fix.
+- CHECK RESULT: yes - a call hands a big job to santosh_kaam = the FULL run_turn (all tools, plan card, goal rounds up to
+  ~3 h, AAGE BADHO, ask-on-limit, goal.recover_tick, steering of a running job by a later ask on the same call since the
+  delegate passes voice=False, kaamwatch notes into the live call, `_late_result` truth from LAST_OUTCOME, closed call =
+  call followup for the next call). 68/68 existing long-job + voice tests green.
+- THE GAP: `Call._delegate` ran `asyncio.create_task(run_turn(...))` - memory only. Every typed chat message goes through
+  `turn_inbox` (v0.191: accepted before the 202, swept + re-run once after a restart); the call path skipped it. A deploy /
+  crash / OOM before the job had a goal record (or a plain multi-step job that never makes one) lost the job silently and
+  the next call only had her last words.
+- FIX: `_delegate` -> `turn_inbox.accept(..., place=)` BEFORE the job starts, then `turn_inbox.run_owned(..., place=)`;
+  `turn_inbox.sweep` re-runs a dead one once (tries cap, answered check, save_user=False when her row exists) with the
+  same place. New nullable `turn_inbox.place` (String 16; `_add_missing_columns` adds it to the live DB at start).
+  `Call._kaam_running` tracks the call's running jobs; `_save_drop_note` adds "ek bada kaam chal raha tha (rukta nahi,
+  natija chat mein aayega): ..." for up to 3 of them, OTPs she said masked.
+- Tests `test_v0441_pakka_kaam.py`: the job lands in the inbox done with its place; a 'running' row 10 min old with no turn
+  holding the chat is re-run exactly once with place 'pc' and never twice; the drop note names the running job, OTP masked.

@@ -1707,7 +1707,7 @@ class Call:
             bits.append(f"aakhri poori baat: {user[-600:]}")
         if partial:
             bits.append(f"beech mein ye keh rahi thi (aadha hi suna): {partial[:400]}")
-        for r in kaam[:3]:   # v0.440 a job still running when the call ended: the next call knows it is still on
+        for r in kaam[:3]:   # v0.441 a job still running when the call ended: the next call knows it is still on
             if self._otp_said:
                 from .operator.otpwords import mask
                 for v in self._otp_said:
@@ -2392,7 +2392,7 @@ class Call:
         carries on by itself and its result is spoken into the call when it is done."""
         from . import turn_inbox
         place = self._place(request)     # v0.93 her PC vs Hoola's own browser travels with the job
-        # v0.440 PAKKA KAAM: the job is saved in the durable turn inbox BEFORE it starts (like a chat message), so a
+        # v0.441 PAKKA KAAM: the job is saved in the durable turn inbox BEFORE it starts (like a chat message), so a
         # server restart / deploy / crash mid-job re-runs it once by itself (turn_inbox.sweep) instead of losing it.
         inbox_id = await asyncio.to_thread(turn_inbox.accept, self.ctx.tenant_id, self.conv, request, False, "", "",
                                            place)
