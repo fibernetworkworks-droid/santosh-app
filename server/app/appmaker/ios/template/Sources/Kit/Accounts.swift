@@ -139,6 +139,7 @@ struct RowsSection: View {
                         CreditButton(coll: coll, r: r)               // v0.359 staff: this order on credit (udhaar)
                         TrackButton(coll: coll, r: r)                // v0.412 the rider on a map while it is on its way
                         PayButton(coll: coll, r: r)                  // v0.419 PAISA: pay online through the shop's own gateway
+                        ConnectButtons(coll: coll, r: r)             // v0.424 JODO: staff buttons for her approved connectors
                     }
                     AssignBox(coll: coll, r: r)
                     if !db.workflowField(coll).isEmpty {              // v0.382 DIMAAG: the server's workflow steps + approvals

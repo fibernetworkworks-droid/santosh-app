@@ -219,6 +219,7 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         if (r.s("delivery_note").isNotEmpty()) Small(r.s("delivery_note"), maxLines = 4)
         TrackButton(coll, r)                                      // v0.412 NAKSHA LIVE: the rider on a map while it is on its way
         PayButton(coll, r)                                        // v0.419 PAISA: pay online through the shop's own gateway
+        ConnectButtons(coll, r)                                   // v0.424 JODO: staff buttons for her approved connectors
         RateBox(coll, r)                                          // v0.353 the customer rates her finished row once
         ReceiptButton(coll, r)                                    // v0.354 the receipt PDF of a finished row
         CreditButton(coll, r)                                     // v0.359 staff: this order on credit (udhaar)

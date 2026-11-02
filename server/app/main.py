@@ -10438,6 +10438,100 @@ async def apps_pay_split(ref: str, body: dict, tenant: str = Depends(current_ten
                                                                         bool(b.get("her_tap"))))
 
 
+# ---- v0.424 JODO (App Sahayak Pillar F): declared connectors (couriers, SMS, WhatsApp, e-mail, Google, accounts, KYC).
+@app.post("/api/app-api/{app_key}/connect/{key}/run")
+async def app_api_connect_run(app_key: str, key: str, request: Request):
+    """A staff button in the app {row}: only an approved action she allowed staff to run."""
+    from .appmaker import connect as CN
+    body = await _json_body(request)
+    return await asyncio.to_thread(_be_call, lambda: CN.staff_run(*_be_app(app_key, request), key, str(body.get("row") or "")))
+
+
+@app.post("/api/app-api/{app_key}/hook/{key}")
+async def app_api_connect_hook(app_key: str, key: str, request: Request):
+    """Her outside service calls the app. Nothing happens unless the signature verifies with the hook's secret."""
+    from .appmaker import backend as BE
+    from .appmaker import connect as CN
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"ok": False}, status_code=413)
+    hdrs = dict(request.headers)
+    return await asyncio.to_thread(_be_call, lambda: CN.hook(BE.by_key(app_key), key, hdrs, raw))
+
+
+@app.get("/api/apps/{ref}/connect", dependencies=[Depends(require_key)])
+async def apps_connect(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.status(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/connect/pack", dependencies=[Depends(require_key)])
+async def apps_connect_pack(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{pack, settings, secrets}: secrets sealed at once; the drafted actions wait for her approval tap."""
+    from .appmaker import connect as CN
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.apply_pack(_be_owner(tenant, ref), str(b.get("pack") or ""),
+                                                                         b.get("settings") if isinstance(b.get("settings"), dict) else {},
+                                                                         b.get("secrets") if isinstance(b.get("secrets"), dict) else {}))
+
+
+@app.put("/api/apps/{ref}/connect/actions", dependencies=[Depends(require_key)])
+async def apps_connect_action(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_action(_be_owner(tenant, ref), (body or {}).get("action") or {}))
+
+
+@app.post("/api/apps/{ref}/connect/actions/{key}/approve", dependencies=[Depends(require_key)])
+async def apps_connect_approve(ref: str, key: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.approve(_be_owner(tenant, ref), key, bool((body or {}).get("her_tap"))))
+
+
+@app.delete("/api/apps/{ref}/connect/actions/{key}", dependencies=[Depends(require_key)])
+async def apps_connect_action_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_action(_be_owner(tenant, ref), key))
+
+
+@app.post("/api/apps/{ref}/connect/actions/{key}/run", dependencies=[Depends(require_key)])
+async def apps_connect_run(ref: str, key: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap {row?, her_tap: true}: run an approved action now (a test on one entry)."""
+    from .appmaker import connect as CN
+    from .site import webapp as W
+    b = body or {}
+
+    def go():
+        if not b.get("her_tap"):
+            raise W.AppError("Sirf aapke tap se.", 403)
+        return CN.run(_be_owner(tenant, ref), key, str(b.get("row") or ""), "her_tap", wait=True)
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.put("/api/apps/{ref}/connect/secrets/{name}", dependencies=[Depends(require_key)])
+async def apps_connect_secret(ref: str, name: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{value}: typed in the app, sealed at once, returned by no route."""
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.set_secret(_be_owner(tenant, ref), name, str((body or {}).get("value") or "")))
+
+
+@app.delete("/api/apps/{ref}/connect/secrets/{name}", dependencies=[Depends(require_key)])
+async def apps_connect_secret_drop(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.forget_secret(_be_owner(tenant, ref), name))
+
+
+@app.put("/api/apps/{ref}/connect/hooks", dependencies=[Depends(require_key)])
+async def apps_connect_hook_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_hook(_be_owner(tenant, ref), (body or {}).get("hook") or {}))
+
+
+@app.delete("/api/apps/{ref}/connect/hooks/{key}", dependencies=[Depends(require_key)])
+async def apps_connect_hook_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_hook(_be_owner(tenant, ref), key))
+
+
 def _be_owner(tenant: str, ref: str):
     from .appmaker import service as A
     with A.session() as s:

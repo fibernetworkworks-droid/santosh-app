@@ -104,6 +104,7 @@ object Strings {
     val isOnline get() = t("online", "ऑनलाइन", "ऑनलाइन", "online")
     val isTyping get() = t("typing…", "लिख रहे हैं…", "लिहित आहेत…", "likh rahe hain…")
     val live get() = t("Live", "लाइव", "लाइव्ह", "Live")
+    val connDone get() = t("Done.", "हो गया।", "झाले.", "Ho gaya.")     // v0.424 JODO
     // v0.419 PAISA
     val payOnline get() = t("Pay online", "ऑनलाइन भुगतान", "ऑनलाइन पैसे भरा", "Online pay karein")
     val opening get() = t("Opening…", "खुल रहा है…", "उघडत आहे…", "Khul raha hai…")

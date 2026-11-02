@@ -877,6 +877,52 @@ window.HoolaBuild = function (C) {
       const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
     };
     try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
+    // v0.424 JODO: connectors - ready packs or her own declared action; each needs HER approval; secrets never shown again
+    const cnbox = document.createElement('section'); cnbox.className = 'stcol stconn'; box.appendChild(cnbox);
+    const drawConn = cn => {
+      const packs = L(cn.packs);
+      cnbox.innerHTML = `<h4>Connectors <span>${L(cn.actions).filter(a => a.approved).length} on</span></h4>
+        <p class="stnote">Your app talks to your courier, SMS, WhatsApp, e-mail, Google Sheets / Calendar, Zoho / QuickBooks or KYC provider with YOUR keys. Nothing runs until you approve it, and any change needs approving again. Keys are locked away and never shown again.</p>
+        <form class="stapp cnpack" autocomplete="off"><div class="row"><label>Add <select name="pack">${packs.map(p => `<option value="${esc(S(p.key))}">${esc(S(p.group))}: ${esc(S(p.label))}</option>`).join('')}</select></label></div><div class="cnf"></div>
+          <div class="row"><button class="btn go" type="submit">Add pack</button></div></form>
+        ${L(cn.actions).map(a => { const lv = M(a.leaves); return `<div class="cnact" data-k="${esc(S(a.key))}"><b>${esc(S(a.label))}</b> <span class="stnote">${a.approved ? 'Approved' : 'Waiting for your approval'}</span>
+          <p class="stnote">${esc(S(lv.method))} to <b>${esc(S(lv.host))}</b> · when: ${esc(S(lv.when))} · sends: ${esc(L(lv.fields).join(', ') || 'no customer data')} · keys used: ${esc(L(lv.secrets).join(', ') || 'none')}${L(lv.writes_back).length ? ' · writes back: ' + esc(L(lv.writes_back).join(', ')) : ''}${a.staff ? ' · staff button in the app' : ''}</p>
+          <div class="row">${a.approved ? '' : '<button class="btn go" type="button" data-cnok>Approve</button>'}<button class="btn" type="button" data-cnrun>Run on an entry…</button><button class="btn" type="button" data-cnx>Remove</button></div></div>`; }).join('') || '<p class="stempty">No connectors yet.</p>'}
+        <h5>Keys</h5><p class="stnote">${L(cn.secrets).map(s => esc(S(s))).join(', ') || 'none'} (values never shown)</p>
+        <form class="stapp cnsec" autocomplete="off"><div class="row"><input name="name" placeholder="key name (e.g. hub_token)" aria-label="Key name" spellcheck="false"><input name="value" type="password" placeholder="value" aria-label="Key value" autocomplete="off"><button class="btn" type="submit">Save key</button></div></form>
+        <h5>Incoming (webhooks)</h5>${L(cn.hooks).map(h => `<p class="stnote">${esc(S(h.key))} → ${esc(S(h.coll))} · <code>${esc(S(h.url))}</code> · signed ${esc(S(M(h.sig).type))} in ${esc(S(M(h.sig).header))} <button class="ib" type="button" data-hkx="${esc(S(h.key))}">Remove</button></p>`).join('') || '<p class="stempty">None.</p>'}
+        <form class="stapp cnhook" autocomplete="off"><div class="row"><input name="key" placeholder="name (e.g. courier)" aria-label="Hook name"><input name="coll" placeholder="list (e.g. orders)" aria-label="List"><input name="match" placeholder="match: field=$.path" aria-label="Match"><input name="set" placeholder="set: status=$.state, note=$.msg" aria-label="Set"><button class="btn" type="submit">Add webhook</button></div></form>
+        ${L(cn.runs).length ? `<h5>Last runs</h5><div class="sttbl"><table><thead><tr><th>When</th><th>Action</th><th>Why</th><th>Result</th><th>Note</th></tr></thead><tbody>${L(cn.runs).map(x => `<tr><td>${esc(S(x.at).slice(0, 16).replace('T', ' '))}</td><td>${esc(S(x.action))}</td><td>${esc(S(x.trigger))}</td><td>${esc(S(x.status))}${x.code ? ' ' + N(x.code) : ''}</td><td>${esc(S(x.note))}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+      const pf = cnbox.querySelector('.cnpack'), ff = pf.querySelector('.cnf');
+      const fields = () => { const p = packs.find(x => x.key === pf.pack.value) || {};
+        ff.innerHTML = `<p class="stnote">${esc(S(p.note))}${L(p.needs_fields).length ? ' Needs these fields on the list: ' + esc(L(p.needs_fields).join(', ')) + '.' : ''} ${esc(S(p.not_verified))}</p>` +
+          (p.no_actions ? '' : `<div class="row">${Object.entries(M(p.settings)).map(([k, v]) => `<input name="s_${esc(k)}" value="${esc(S(v))}" placeholder="${esc(k.replace(/_/g, ' '))}" aria-label="${esc(k)}">`).join('')}</div>
+          <div class="row">${L(p.secrets).map(k => `<input name="k_${esc(S(k))}" type="password" placeholder="${esc(S(k).replace(/_/g, ' '))}" aria-label="${esc(S(k))}" autocomplete="off">`).join('')}</div>`); };
+      pf.pack.addEventListener('change', fields); fields();
+      pf.addEventListener('submit', async e => { e.preventDefault(); const settings = {}, secrets = {};
+        pf.querySelectorAll('input').forEach(i => { if (i.name.startsWith('s_')) settings[i.name.slice(2)] = i.value.trim(); if (i.name.startsWith('k_') && i.value) secrets[i.name.slice(2)] = i.value; });
+        try { const v = await api('POST', base(o) + '/connect/pack', {pack: pf.pack.value, settings, secrets}); drawConn(v); toast(L(v.made).length ? `Added ${L(v.made).length} action(s) - approve each one.` + (L(v.problems).length ? ' Some need list fields first: ' + L(v.problems).join('; ') : '') : (L(v.problems).join('; ') || S(v.note))); }
+        catch (er) { toast(er.message, true); } });
+      cnbox.addEventListener('click', async e => {
+        const act = e.target.closest('.cnact'), k = act && act.dataset.k;
+        try {
+          if (e.target.closest('[data-cnok]')) { if (!confirm('Approve this connector? It will send exactly what is listed to that address with your key.')) return; drawConn(await api('POST', `${base(o)}/connect/actions/${encodeURIComponent(k)}/approve`, {her_tap: true})); }
+          if (e.target.closest('[data-cnrun]')) { const row = prompt('Entry id to run it on (blank = none):', ''); if (row === null) return; const v = await api('POST', `${base(o)}/connect/actions/${encodeURIComponent(k)}/run`, {row: row.trim(), her_tap: true}); toast('Result: ' + S(v.status) + (v.why ? ' - ' + S(v.why) : '')); drawConn(await api('GET', base(o) + '/connect')); }
+          if (e.target.closest('[data-cnx]')) { if (!confirm('Remove this connector?')) return; drawConn(await api('DELETE', `${base(o)}/connect/actions/${encodeURIComponent(k)}`)); }
+          const hx = e.target.closest('[data-hkx]'); if (hx) { drawConn(await api('DELETE', `${base(o)}/connect/hooks/${encodeURIComponent(hx.dataset.hkx)}`)); }
+        } catch (er) { toast(er.message, true); }
+      });
+      const sf = cnbox.querySelector('.cnsec');
+      sf.addEventListener('submit', async e => { e.preventDefault(); try { await api('PUT', `${base(o)}/connect/secrets/${encodeURIComponent(sf.name.value.trim())}`, {value: sf.value.value}); sf.value.value = ''; drawConn(await api('GET', base(o) + '/connect')); toast('Key saved and locked.'); } catch (er) { toast(er.message, true); } });
+      const hf = cnbox.querySelector('.cnhook');
+      hf.addEventListener('submit', async e => { e.preventDefault();
+        const pair = s => { const [k, ...v] = s.split('='); return [k.trim(), v.join('=').trim()]; };
+        const set = {}; hf.set.value.split(',').filter(x => x.includes('=')).forEach(x => { const [k, v] = pair(x); set[k] = v; });
+        const [mk, mv] = pair(hf.match.value);
+        try { const v = await api('PUT', base(o) + '/connect/hooks', {hook: {key: hf.key.value.trim(), coll: hf.coll.value.trim(), match: {[mk]: mv}, set}}); drawConn(v); if (v.new_secret) prompt('Webhook secret - shown only now. Put it in your service (HMAC-SHA256 hex of the body in x-signature):', S(v.new_secret)); }
+        catch (er) { toast(er.message, true); } });
+    };
+    try { drawConn(await api('GET', base(o) + '/connect')); } catch (er) { cnbox.remove(); }
     // v0.419 PAISA: her own gateway (keys typed here, sealed, never shown again), payments + refunds (her tap), links, AutoPay, split
     const pybox = document.createElement('section'); pybox.className = 'stcol stpay'; box.appendChild(pybox);
     const rs = p => 'Rs ' + (N(p) / 100).toLocaleString('en-IN', {maximumFractionDigits: 2});

@@ -490,6 +490,11 @@ def _create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = 
             from . import delivery as DL
             DL.confirm(r, out["id"])
     LE.after_create(r, coll, out["id"], w)          # v0.382 formulas stored, triggers, parents' totals
+    try:                                            # v0.424 JODO: her approved connectors listening for a new row (queued)
+        from . import connect as CN
+        CN.fire(r, coll, out["id"], "create")
+    except Exception:
+        log.debug("connect create", exc_info=True)
     out = W.row_view(c, _row(site, out["id"]), w)
     LE.decorate(r, coll, [out], w)
     if extra:
@@ -577,6 +582,15 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
 
 def status_moved(r: AppProject, row_id: str, status: str) -> None:
     """A row reached a new status (her app, Hoola, an approval, a trigger, an SLA): a cancelled order gives back what it took."""
+    try:                                            # v0.424 JODO: connectors waiting for this status (queued, never blocks)
+        from . import connect as CN
+        with session() as s_:
+            x_ = s_.get(W.SiteAppRow, row_id)
+            coll_ = x_.coll if x_ is not None else ""
+        if coll_:
+            CN.fire(r, coll_, row_id, "status", status)
+    except Exception:
+        log.debug("connect status", exc_info=True)
     if status.strip().lower() != "cancelled":
         return
     _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
@@ -721,6 +735,13 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
     tr = _track_public(r)                                  # v0.412 NAKSHA LIVE: shift button, maps, Track live
     if tr:
         out["track"] = tr
+    try:                                                   # v0.424 JODO: the staff buttons for her approved connectors
+        from . import connect as CN
+        btn = CN.staff_buttons(r)
+        if btn:
+            out["connect"] = btn
+    except Exception:                                      # noqa: BLE001
+        log.debug("connect hint", exc_info=True)
     try:                                                   # v0.419 PAISA: the Pay online button + AutoPay plans
         from . import pay as PY
         if PY.on(r):

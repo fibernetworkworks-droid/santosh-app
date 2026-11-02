@@ -23,6 +23,7 @@ struct ShiftBlock: View { init() }        // v0.412 staff: Start / End shift (lo
 struct RidersMap: View { init() }         // v0.412 staff: every rider on shift on a live map
 struct TrackOrderBlock: View { init(coll: String, id: String) }   // v0.412 the rider moving to this order + ETA (RowsSection already has Track live)
 struct PayButton: View { init(coll: String, r: Item) }   // v0.419 "Pay online" on the customer's unpaid order (RowsSection already has it); never a card form
+struct ConnectButtons: View { init(coll: String, r: Item) }   // v0.424 staff buttons for her approved connectors (RowsSection has them); never call an outside API or hold a key
 struct PlansBlock: View { init() }        // v0.419 AutoPay plans + her own subscriptions with Cancel
 struct TypingLine: View { init(thread: String = "") }   // v0.407 "Asha typing…" in a chat thread ("hoola_chat" has it built in)
 struct ScanRow: View { init(label: String, key: String) }   // v0.340 a [scan] field: camera barcode / QR scanner or typed

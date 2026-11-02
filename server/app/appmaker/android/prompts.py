@@ -151,6 +151,8 @@ FILE CONTRACT
   ONLINE PAYMENT (v0.419, only when the business joined its gateway; each block shows nothing otherwise): LiveRowsBlock already
   shows "Pay online" on the customer's unpaid order; a payment screen: PayButton("orders", row); AutoPay plans: block {
   PlansBlock() }. NEVER build a card / UPI form, never mark an order paid yourself - the server does it from the gateway.
+  CONNECTORS (v0.424): LiveRowsBlock already shows the staff buttons for her approved connectors (courier, SMS...); a staff
+  screen may add ConnectButtons("orders", row). NEVER call an outside API from the app, never put a key in the app.
   Fields marked [location]: LocationField(label, key) ("Use my location" with the
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.
 - Actions: val c = ctx(); Act.call(c), Act.whatsapp(c, text), Act.share(c, text), Act.maps(c), Act.payUpi(c, amount, note)

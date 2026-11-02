@@ -2574,3 +2574,7 @@ body.albon{overflow:hidden}
 #app .au-demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 8px 0; }
 #app .au-demos audio { width: 100%; }
 #app .hp-img { width: 100%; max-width: 640px; image-rendering: auto; }
+/* v0.424 JODO: connectors box */
+.stconn .cnact { border: 1px solid var(--line, #e5e5ea); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.stconn h5 { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
+.stconn code { font-size: 12.5px; word-break: break-all; }
