@@ -120,7 +120,14 @@ Rules:
   follower_joint='lift') -> the cam disc DESIGNED from her motion (centre at the origin, +Z, place it with
   .translate); add H.joint('cam_spin', kind='continuous', ...) and the follower's prismatic joint 'lift' along the
   follower axis (its zero = the follower touching the base circle). Pressure angle / undercut fails come back to you
-  (bigger base circle, smaller roller, longer rise angle).
+  (bigger base circle, smaller roller, longer rise angle). CAM CONTACT: Hoola works out the force at the cam (follower
+  inertia + gravity + its load), DESIGNS the return spring unless she gave spring_k=N/mm, preload=N, and checks the
+  push never goes below 0 (follower jumps), the Hertz contact stress vs the material (contact_allow_mpa= her number,
+  roller_material=...), and with guide_mu= (+ guide_len=, overhang= mm) that the follower guide does not jam.
+  FRICTION: H.joint(..., bearing='ball'|'roller'|'needle'|'bush'|'dry'|'rail'|'slide', pin_d=12, friction=<constant
+  N·m or N>, damping=...) whenever she names bearings / bushes / slides - the move then pays for it. BACKLASH:
+  H.couple(..., backlash=0.3) (degrees at the follower; mm for a prismatic one) when she gives gear / belt play;
+  H.robot(accuracy_mm=0.1) = the tip play allowed - more comes back to you.
   SLOTS (pin in a slot: Scotch yoke, quick return, shaper, slotted link): H.joint('pin', parent=<the part WITH the
   slot>, child=<the part with the pin>, kind='slot', origin=<the pin centre as drawn>, axis=<pin axis>,
   direction=<along the slot>, travel=(-40, 40) mm from the drawn spot) - always a loop-closing joint.

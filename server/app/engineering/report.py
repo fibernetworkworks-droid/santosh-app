@@ -386,12 +386,18 @@ def _chart(series: list[tuple[str, list[float], list[float]]], title: str, xlabe
     return b.getvalue()
 
 
-def cam_curve_png(cams: dict[str, Any]) -> bytes:
+def cam_curve_png(cams: dict[str, Any], contact: dict[str, Any] | None = None) -> bytes:
     name, c = next(iter(cams.items()))
     cv = c["curve"]
-    return _chart([("lift", cv["deg"], cv["s"]), ("velocity", cv["deg"], cv["v"]), ("acceleration", cv["deg"], cv["a"])],
-                  f"Cam {name}: follower motion at {c['rpm']:g} rpm", "cam angle (deg)",
-                  ["lift (mm)", "velocity (mm/s)", "acceleration (m/s²)"], 3)
+    series = [("lift", cv["deg"], cv["s"]), ("velocity", cv["deg"], cv["v"]), ("acceleration", cv["deg"], cv["a"])]
+    labels = ["lift (mm)", "velocity (mm/s)", "acceleration (m/s²)"]
+    ct = (contact or {}).get(name)
+    if ct:                                         # v0.427 the push the cam gives + the normal contact force
+        k = ct["curve"]
+        series += [("push along the follower", k["deg"], k["push"]),
+                   ("normal contact force", k["deg"], [x if x is not None else float("nan") for x in k["normal"]])]
+        labels.append("force (N)")
+    return _chart(series, f"Cam {name}: follower motion at {c['rpm']:g} rpm", "cam angle (deg)", labels, len(labels))
 
 
 def dynamics_png(trace: dict[str, Any]) -> bytes:
