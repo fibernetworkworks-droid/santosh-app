@@ -298,9 +298,9 @@ def _client():
 
 def test_routes_are_public_read_only():
     c = _client()
-    d = c.get("/api/prayog/labs").json()
-    assert len(d["labs"]) == 22 and "simulation" in d["note"]
-    assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens"}).json()["labs"]} == {"convex-lens"}
+    d = c.get("/api/prayog/labs", params={"variants": False}).json()
+    assert len(d["labs"]) == 22 and "simulation" in d["note"]     # the 22 set-ups; their variants page separately
+    assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]} == {"convex-lens"}
     lab = c.get("/api/prayog/labs/simple-pendulum").json()["lab"]
     assert lab["kernel"] == "pendulum" and lab["check"]["textbook"] == "pendulum_T"
     assert c.get("/api/prayog/labs/nahi-hai").status_code == 404
@@ -333,7 +333,7 @@ def test_prayog_tool(env):
     assert chk["ok"] and chk["error_percent"] < 1
     with pytest.raises(T.ToolError):
         asyncio.run(prayog(ctx, "open", id="nope"))
-    assert asyncio.run(prayog(ctx, "all"))["count"] == 22
+    assert asyncio.run(prayog(ctx, "all"))["count"] >= 22        # set-ups + every variant
 
 
 def test_wiring():
@@ -380,7 +380,7 @@ def test_studio_files_parse():
 
 def test_lab_page_loads_the_studio_and_falls_back():
     html = (STATIC / "lab.html").read_text()
-    assert "studio/studio.js" in html and "exp/' + id + '.js" in html and "lab3d.js" in html
+    assert "studio/studio.js" in html and "'exp/' + rig + '.js" in html and "lab3d.js" in html
 
 
 def _ask_client(monkeypatch, answer="Because sin θ ≈ θ only for small angles."):
