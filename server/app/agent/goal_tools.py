@@ -18,8 +18,12 @@ KAAM_PLAN_DEF = {
     "description": (
         "Plan and track a long job (3+ steps) so it finishes end to end: set the plan first, then work through it "
         "step by step, marking each step done / failed as you go. Never stop with just text while steps are open. "
-        "Actions: set (goal, steps), step (n, state done|failed|skipped|current, reason), add (text), show, "
-        "finish (outcome done|blocked_on_her|failed|stopped, reason, made, left, your_turn). After every big step write "
+        "Actions: set (goal, steps), step (n, state done|failed|skipped|current, reason, check), add (text), show, "
+        "finish (outcome done|blocked_on_her|failed|stopped, reason, made, left, your_turn). "
+        "`done` is CHECKED IN CODE before the card closes: every file / page / link you list in `made` must really "
+        "exist, and every step `check` must hold - so put the real file id / link in the step's reason and in `made`. "
+        "Where a step produces something checkable, give it a `check`: file_pages>=3, file_rows>=20, file_slides>=6, "
+        "file:<name>, link_ok, artifact, reminder>=3, list:<name>>=5, tool:<name>. After every big step write "
         "ONE short line to her (what you found / made, what is next), then the next tool. blocked_on_her is only when you truly need "
         "HER: her tap on a card, an OTP, or a fact only she knows."),
     "input_schema": {
@@ -30,6 +34,11 @@ KAAM_PLAN_DEF = {
             "steps": {"type": "array", "items": {"type": "string"}, "description": "(set) the concrete steps, in order"},
             "n": {"type": "integer", "description": "(step) the step number, 1-based"},
             "state": {"type": "string", "enum": ["done", "failed", "skipped", "current"], "description": "(step)"},
+            "check": {"type": "string",
+                      "description": "(set step / step / add) how this step's doneness is PROVED in code: "
+                                     "file_pages>=N | file_rows>=N | file_slides>=N | file:<name> | link_ok | "
+                                     "artifact | reminder>=N | list:<name>>=N | tool:<name>. Leave empty when the "
+                                     "step makes nothing checkable."},
             "text": {"type": "string", "description": "(add) the new step"},
             "outcome": {"type": "string", "enum": ["done", "blocked_on_her", "failed", "stopped"], "description": "(finish)"},
             "reason": {"type": "string", "description": "(step/finish) one short line: what happened / what she must do"},
@@ -46,7 +55,8 @@ KAAM_PLAN_DEF = {
 
 async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[str] | None = None, n: int = 0,
                     state: str = "", text: str = "", outcome: str = "", reason: str = "", goal_id: str = "",
-                    made: list[str] | None = None, left: str = "", your_turn: str = "", note: str = "") -> dict:
+                    made: list[str] | None = None, left: str = "", your_turn: str = "", note: str = "",
+                    check: str = "") -> dict:
     # v0.260: `note` is an alias for `reason`. The schema used to document "step (n, state, note)" while the code
     # took `reason`, so a model that followed the description died with a TypeError mid-job (it cost the owner a
     # whole step on 29 Oct). The description is fixed above; this keeps any future guess from crashing her work.
@@ -63,14 +73,14 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
                 goal_id = a["id"]
             if not state:
                 raise ToolError("state chahiye: done | failed | skipped | current")
-            v = goal_mod.mark_step(tenant, goal_id, int(n), state, reason or "", conv)
+            v = goal_mod.mark_step(tenant, goal_id, int(n), state, reason or "", conv, check=check)
         elif action == "add":
             if not goal_id:
                 a = goal_mod.active_for(conv)
                 if a is None:
                     raise ToolError("Is chat ka koi goal chal nahi raha; pehle kaam_plan set karo.")
                 goal_id = a["id"]
-            v = goal_mod.add_step(tenant, goal_id, text, conv)
+            v = goal_mod.add_step(tenant, goal_id, text, conv, check=check)
         elif action == "show":
             v = goal_mod.show(tenant, goal_id) if goal_id else (goal_mod.active_for(conv) or {})
             if not v:
@@ -84,13 +94,22 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
             if not outcome:
                 raise ToolError("outcome chahiye: done | blocked_on_her | failed | stopped")
             v = goal_mod.finish(tenant, goal_id, outcome, reason, conv, made=made or [], left=left,
-                                your_turn=your_turn)
+                                your_turn=your_turn, calls=getattr(ctx, "calls", None))
         else:
             raise ToolError("action set | step | add | show | finish")
     except ToolError:
         raise
     except ValueError as e:
         raise ToolError(str(e)) from None
+    if action == "finish" and v.get("verified") is False:
+        # v0.440 DONE = VERIFIED: the job stays open; the model must really do the failing part
+        from . import verify as _verify
+        g = v.get("verify") or {}
+        return {"result": "goal band NAHI hua - jaanch fail", "goal_id": v["id"], "status": v["status"],
+                "done": f"{v['done']}/{v['total']}", "verified": False,
+                "failures": [{"item": f["item"], "why": f["why"]} for f in (g.get("failures") or [])][:6],
+                "unknown": [{"item": u["item"], "why": u["why"]} for u in (g.get("unknown") or [])][:3],
+                "note": _verify.NUDGE.format(line=g.get("line") or "jaanch fail")}
     left = goal_mod.steps_left(v)
     say = (f"plan ban gaya: {v['total']} steps" if action == "set" else
            f"step {n} = {state}" if action == "step" else

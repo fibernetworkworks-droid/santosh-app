@@ -1011,6 +1011,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     if adm is not None and state.get("hard"):
         adm.extra.add("pylab")      # v0.430 a hard ask the judge (not the rules) found also gets the sandbox
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
+    ctx.calls = state["calls"]      # v0.440 kaam_plan's `tool:<name>` check reads what really ran this job
     _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 
     def _system(fams) -> str:
@@ -1484,17 +1485,6 @@ def _key(name: str, args) -> str:
     return k(name, args)
 
 
-def _goal_open(state: dict, conversation_id: str, settings) -> bool:
-    """A kaam_plan goal is open for this chat (v0.186): its steps and its honest "X/Y steps ho gaye" line are the
-    truth machinery there, so v0.223's free claim check stays out of its way."""
-    if state.get("goal"):
-        return True
-    if not settings.agent_goal:
-        return False
-    from . import goal as _g
-    return _g.active_for(conversation_id) is not None
-
-
 async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, conversation_id: str) -> str:
     """v0.78 self-check before the turn ends: real results vs. her request. Returns a nudge to keep working, or ''.
     Sets state['correct'] when the answer claims more than was done, state['left'] when something stays open.
@@ -1503,9 +1493,12 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     cap = pakka.SELF_CHECKS_GOAL if state.get("goal") else pakka.SELF_CHECKS_PER_TURN
     if conversation_id in _stopped or state["breaker"].stopped or state.get("halted"):
         return ""
-    if settings.draft_check and not _goal_open(state, conversation_id, settings):
-        # v0.223 free, in code: the reply claims work that never ran. pakka below owns the case where tools DID run,
-        # and goal mode (v0.186) owns its own truth - its steps and its honest "X/Y steps ho gaye" line.
+    if settings.draft_check:
+        # v0.223 free, in code: the reply claims work that never ran. pakka below owns the case where tools DID run.
+        # v0.440 (long-task report item 2) this used to be switched OFF for the whole of goal mode, on the idea that
+        # the plan's own "X/Y steps ho gaye" line was truth enough - but a step is ticked by the MODEL, so a goal
+        # could tick steps and claim sent / booked / saved with only reads behind it. Goal mode now gets the same
+        # free check; its own honest lines never trip it (_ALREADY_HONEST + the goal line carries no claim verb).
         fake = draftcheck.fake_done(state, final_text)
         if fake:
             return fake

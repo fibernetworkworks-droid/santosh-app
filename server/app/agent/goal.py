@@ -36,7 +36,8 @@ log = logging.getLogger("santosh.goal")
 MAX_STEPS = 15               # kaam_plan set cap
 STATS = {"waited_job": 0, "set": 0, "finished": 0, "blocked": 0, "continued": 0, "refused": 0, "stopped_by_her": 0, "paused": 0,
          "resumed": 0, "recovered": 0, "limit_asked": 0, "limit_reopened": 0,
-         "milestones": 0, "reports": 0, "plan_early": 0}
+         "milestones": 0, "reports": 0, "plan_early": 0,
+         "verify_blocked": 0, "verify_unknown": 0}
 
 # v0.223 goals whose background round is scheduled / running in THIS process (the recovery sweep never doubles them)
 _PENDING: dict[str, int] = {}
@@ -153,7 +154,17 @@ def round_actor(origin: str | None) -> str:
 def set_goal(tenant: str, conv: str, goal: str, steps: list[str], origin: str = "") -> dict[str, Any]:
     """A new goal for this conversation: any previous working goal is marked stopped (one plan at a time).
     v0.222 `origin` = whose job it is (the actor of the turn that wrote the plan)."""
-    steps = [str(x).strip()[:200] for x in (steps or []) if str(x).strip()][:MAX_STEPS]
+    # v0.440 a step may be given as "text" or as {"text":..., "check":...} (the check is proved in code at finish)
+    pairs: list[tuple[str, str]] = []
+    for x in (steps or []):
+        if isinstance(x, dict):
+            t, chk = str(x.get("text") or "").strip(), str(x.get("check") or "").strip()
+        else:
+            t, chk = str(x or "").strip(), ""
+        if t:
+            pairs.append((t[:200], chk[:60]))
+    pairs = pairs[:MAX_STEPS]
+    steps = [t for t, _ in pairs]
     if not goal.strip() or not steps:
         raise ValueError("goal aur kam se kam ek step chahiye")
     _STOPPED.discard(conv)
@@ -161,8 +172,8 @@ def set_goal(tenant: str, conv: str, goal: str, steps: list[str], origin: str = 
         for r in s.scalars(select(GoalRun).where(GoalRun.conversation_id == conv, GoalRun.status == "working")).all():
             r.status, r.reason, r.updated_at = "stopped", "naya plan ban gaya", now()
         r = GoalRun(tenant_id=tenant, conversation_id=conv, goal=goal.strip()[:500],
-                    steps=json.dumps([{"n": i + 1, "text": t, "state": "pending", "note": ""} for i, t in enumerate(steps)],
-                                     ensure_ascii=False),
+                    steps=json.dumps([{"n": i + 1, "text": t, "state": "pending", "note": "", "check": c}
+                                      for i, (t, c) in enumerate(pairs)], ensure_ascii=False),
                     origin=("owner" if hers(origin) else "routine") if origin else None)
         s.add(r)
         s.flush()                       # the id default lands before the card is published
@@ -172,7 +183,8 @@ def set_goal(tenant: str, conv: str, goal: str, steps: list[str], origin: str = 
     return view
 
 
-def mark_step(tenant: str, goal_id: str, n: int, state: str, note: str = "", conv: str = "") -> dict[str, Any]:
+def mark_step(tenant: str, goal_id: str, n: int, state: str, note: str = "", conv: str = "",
+              check: str = "") -> dict[str, Any]:
     """step n done|failed|skipped|current — recorded on the card, published live."""
     del conv  # the row knows its conversation
     if state not in ("done", "failed", "skipped", "current", "pending"):
@@ -187,6 +199,8 @@ def mark_step(tenant: str, goal_id: str, n: int, state: str, note: str = "", con
         if hit is None:
             raise ValueError(f"step {n} plan mein nahi hai (1..{len(steps)})")
         hit["state"], hit["note"] = state, str(note or "")[:200]
+        if check:
+            hit["check"] = str(check)[:60]      # v0.440 the step says HOW its own doneness is proved
         r.steps = json.dumps(steps, ensure_ascii=False)
         if state == "done" and (r.status or "working") == "working":
             mark = _milestone(sum(1 for x in steps if x.get("state") == "done"), len(steps), r.milestones or 0)
@@ -213,7 +227,7 @@ def _milestone(done: int, total: int, sent: int) -> str:
     return f"{done}/{total}"
 
 
-def add_step(tenant: str, goal_id: str, text: str, conv: str = "") -> dict[str, Any]:
+def add_step(tenant: str, goal_id: str, text: str, conv: str = "", check: str = "") -> dict[str, Any]:
     del conv
     def fn(r: GoalRun):
         try:
@@ -222,7 +236,8 @@ def add_step(tenant: str, goal_id: str, text: str, conv: str = "") -> dict[str, 
             steps = []
         if len(steps) >= MAX_STEPS:
             raise ValueError(f"plan mein pehle hi {MAX_STEPS} steps hain")
-        steps.append({"n": len(steps) + 1, "text": str(text).strip()[:200], "state": "pending", "note": ""})
+        steps.append({"n": len(steps) + 1, "text": str(text).strip()[:200], "state": "pending", "note": "",
+                      "check": str(check or "")[:60]})
         r.steps = json.dumps(steps, ensure_ascii=False)
 
     return _mutate(tenant, goal_id, fn)
@@ -286,13 +301,20 @@ def report_text(rep: dict[str, Any]) -> str:
 
 
 def finish(tenant: str, goal_id: str, outcome: str, reason: str = "", conv: str = "", made: list[str] | None = None,
-           left: str = "", your_turn: str = "") -> dict[str, Any]:
+           left: str = "", your_turn: str = "", calls: list[dict] | None = None) -> dict[str, Any]:
     """done | blocked_on_her | failed | stopped. blocked_on_her = only a real dependency on her (tap / OTP / fact).
-    v0.228 every finish carries the four-part report (kya hua / kya bana / kya baaki / aapko kya karna hai)."""
-    del conv
+    v0.228 every finish carries the four-part report (kya hua / kya bana / kya baaki / aapko kya karna hai).
+    v0.440 DONE = VERIFIED: `done` passes through verify.gate first - the files / pages / links / step checks it
+    claims must really be there. A failure does NOT close the goal: the failing step reopens and the tool result
+    tells the model to go and really do it (`verified: False` + `nudge`)."""
     why = {"done": "done", "blocked_on_her": "blocked", "failed": "failed", "stopped": "stopped"}.get(outcome)
     if why is None:
         raise ValueError("outcome done|blocked_on_her|failed|stopped")
+    if why == "done" and getattr(get_settings(), "goal_verify", True):
+        held = _verify_done(tenant, goal_id, conv, made, calls)
+        if held is not None:
+            return held
+    del conv
 
     def fn(r: GoalRun):
         r.status, r.reason = why, str(reason or "")[:400]
@@ -306,6 +328,47 @@ def finish(tenant: str, goal_id: str, outcome: str, reason: str = "", conv: str 
         STATS["finished" if why == "done" else "blocked" if why == "blocked" else "refused"] += 1
 
     return _mutate(tenant, goal_id, fn)
+
+
+def _verify_done(tenant: str, goal_id: str, conv: str, made: list[str] | None,
+                 calls: list[dict] | None) -> dict[str, Any] | None:
+    """v0.440 the gate. None = the job may close. A view with `verified: False` = it may not: the failing step is
+    open again (`current`), the goal stays `working`, and the card shows what was not there."""
+    from . import verify
+    r = _load(tenant, goal_id)
+    if r is None:
+        return None
+    try:
+        steps = json.loads(r.steps or "[]")
+    except ValueError:
+        steps = []
+    out = verify.gate(tenant, conv or r.conversation_id, made, steps, calls)
+    if out["ok"]:
+        if out["unknown"]:
+            STATS["verify_unknown"] += 1
+        return None
+    STATS["verify_blocked"] += 1
+    verify.STATS["reopened"] += 1
+    bad_n = next((f.get("n") for f in out["failures"] if f.get("n")), None)
+
+    def fn(row: GoalRun):
+        try:
+            sts = json.loads(row.steps or "[]")
+        except ValueError:
+            sts = []
+        hit = next((x for x in sts if x.get("n") == bad_n), None) if bad_n else None
+        if hit is None:        # no step named the failure (a `made` item did): the LAST finished step is the one
+            done = [x for x in sts if x.get("state") == "done"]
+            hit = (done[-1] if done else None) or (sts[0] if sts else None)
+        if hit is not None:
+            hit["state"] = "current"
+            hit["note"] = ("jaanch mein nahi mila: " + out["line"])[:200]
+        row.steps = json.dumps(sts, ensure_ascii=False)
+        row.status, row.hold = "working", None
+        row.reason = ("Jaanch baaki: " + out["line"])[:400]
+
+    view = _mutate(tenant, goal_id, fn)
+    return {**view, "verified": False, "verify": out}
 
 
 def active_for(conv: str) -> dict[str, Any] | None:
