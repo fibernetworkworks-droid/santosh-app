@@ -625,72 +625,180 @@ def markdown(p: ArchProject) -> str:
     return "\n".join(out).strip() + "\n"
 
 
+def _inline(text: Any) -> str:
+    """Escaped text with the model's light markdown kept: **bold**, `code`, *italic* (nothing else becomes HTML)."""
+    import html as H
+    t = H.escape(str(text if text is not None else ""))
+    t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
+    t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
+    return re.sub(r"(?<![\w*])\*(?!\s)([^*]+?)\*(?![\w*])", r"<i>\1</i>", t)
+
+
+def _prose(text: Any) -> str:
+    """Summary markdown -> paragraphs and bullet lists (lines starting '- ' / '* ' / '1. ')."""
+    out, items = [], []
+    for line in str(text or "").split("\n"):
+        ln = line.strip()
+        m = re.match(r"^(?:[-*•]|\d+[.)])\s+(.*)$", ln)
+        if m:
+            items.append(f"<li>{_inline(m.group(1))}</li>")
+            continue
+        if items:
+            out.append("<ul>" + "".join(items) + "</ul>")
+            items = []
+        if ln:
+            out.append(f"<p>{_inline(ln)}</p>")
+    if items:
+        out.append("<ul>" + "".join(items) + "</ul>")
+    return "".join(out)
+
+
 def _pdf(design: dict[str, Any], cap: dict[str, Any], drawn: list[dict[str, Any]], vdir: Path,
          facts: dict[str, Any]) -> None:
-    """The design printed: a plain, readable A4 document with the drawings inline (Chromium, no script)."""
+    """The design printed as an architecture document: cover + at-a-glance strip, numbered sections, drawings inline,
+    decisions as cards, risks coloured by level (Chromium, no script, nothing loaded from outside)."""
     import html as H
     from ..docstudio.htmlpdf import Printer
 
     def esc(x: Any) -> str:
         return H.escape(str(x if x is not None else ""))
 
-    def table(head: list[str], rows: list[list[Any]]) -> str:
-        return ("<table><thead><tr>" + "".join(f"<th>{esc(h)}</th>" for h in head) + "</tr></thead><tbody>"
-                + "".join("<tr>" + "".join(f"<td>{esc(c)}</td>" for c in r) + "</tr>" for r in rows) + "</tbody></table>")
+    def table(head: list[str], rows: list[list[Any]], cls: str = "") -> str:
+        return (f"<table class='{cls}'><thead><tr>" + "".join(f"<th>{esc(h)}</th>" for h in head) + "</tr></thead><tbody>"
+                + "".join("<tr>" + "".join(f"<td>{c if isinstance(c, Raw) else _inline(c)}</td>" for c in r) + "</tr>"
+                          for r in rows) + "</tbody></table>")
 
     def ul(xs: list[Any]) -> str:
-        return "<ul>" + "".join(f"<li>{esc(x)}</li>" for x in xs if x) + "</ul>" if xs else ""
+        xs = [x for x in xs if x]
+        return "<ul>" + "".join(f"<li>{_inline(x)}</li>" for x in xs) + "</ul>" if xs else ""
+
+    def chip(level: Any) -> "Raw":
+        lv = str(level or "medium")
+        return Raw(f"<span class='chip {esc(lv)}'>{esc(lv)}</span>")
+
+    class Raw(str):
+        pass
 
     d = design
     c = d.get("context") or {}
-    body = [f"<h1>{esc(d['title'])}</h1>",
-            f"<p class='meta'>Architecture design by Hoola · {esc(facts.get('repo') or 'new system')} · "
-            f"{datetime.now().strftime('%d %b %Y')}</p>",
-            "<p>" + "</p><p>".join(esc(x) for x in str(d.get("summary") or "").split("\n") if x.strip()) + "</p>",
-            "<h2>Context</h2>", f"<p><b>Users:</b> {esc(c.get('users') or '-')}</p>",
-            ul(c.get("goals") or []), ul(c.get("constraints") or [])]
+    n = [0]
+
+    def h2(title: str) -> str:
+        n[0] += 1
+        return f"<h2><span class='num'>{n[0]}</span>{esc(title)}</h2>"
+
+    peak = (cap.get("numbers") or {}).get("peak_rps")
+    glance = [("Components", len(d.get("components") or [])), ("Decisions", len(d.get("adrs") or [])),
+              ("Risks", len(d.get("risks") or [])), ("Diagrams", f"{sum(1 for g in drawn if g.get('ok'))}/{len(drawn)}")]
+    if peak is not None:
+        glance.append(("Peak req/s", f"{peak:,.0f}" if peak >= 10 else f"{peak:,.1f}"))
+    body = ["<header class='cover'><div class='kicker'>Architecture design</div>",
+            f"<h1>{esc(d['title'])}</h1>",
+            f"<p class='meta'>Principal Software Architect · Hoola · {esc(facts.get('repo') or 'new system')} · "
+            f"{datetime.now().strftime('%d %b %Y')} · status: proposed, waiting for your approval</p>",
+            "<div class='glance'>" + "".join(f"<div><b>{esc(v)}</b><span>{esc(k)}</span></div>" for k, v in glance) + "</div>",
+            "</header>",
+            h2("Summary"), f"<div class='summary'>{_prose(d.get('summary'))}</div>",
+            h2("Context"), f"<p><b>Who uses it.</b> {_inline(c.get('users') or '-')}</p>"]
+    for label, key in (("Goals", "goals"), ("Constraints", "constraints"), ("Assumptions", "assumptions")):
+        if c.get(key):
+            body += [f"<h4>{label}</h4>", ul(c[key])]
     if d.get("nfrs"):
-        body += ["<h2>Quality targets</h2>", table(["Quality", "Target", "Why"],
-                                                   [[n.get("name"), n.get("target"), n.get("why")] for n in d["nfrs"]])]
-    body += ["<h2>Capacity</h2>"]
+        body += [h2("Quality targets"), table(["Quality", "Target", "Why"],
+                                              [[x.get("name"), x.get("target"), x.get("why")] for x in d["nfrs"]])]
+    body += [h2("Capacity"), "<p class='note'>Worked out in code from the numbers below, not guessed by the model. "
+             "<b>given</b> = from your brief; <b>assumed</b> = please confirm or correct.</p>"]
     if cap.get("rows"):
-        body += [table(["Input", "Value", "Source"], [[i["label"], f"{i['value']:,g} {i['unit']}",
-                                                       "given" if i["source"] == "her" else "assumed"] for i in cap["inputs"]]),
-                 table(["Result", "Value", "How"], [[r["what"], r["value"], r["formula"]] for r in cap["rows"]])]
+        body += ["<div class='two'>",
+                 table(["Input", "Value", "Source"], [[i["label"], f"{i['value']:,g} {i['unit']}",
+                                                       Raw(f"<span class='src {esc(i['source'])}'>"
+                                                           f"{'given' if i['source'] == 'her' else 'assumed'}</span>")]
+                                                      for i in cap["inputs"]]),
+                 table(["Result", "Value", "How it is worked out"], [[r["what"], Raw(f"<b>{esc(r['value'])}</b>"), r["formula"]]
+                                                                     for r in cap["rows"]]),
+                 "</div>"]
     else:
         body += [f"<p>{esc(cap.get('error') or '-')}</p>"]
-    for g in drawn:
-        body += [f"<h2>{esc(g['name'])}</h2>"]
-        svg = diagrams.svg_inline(vdir / g["svg"]) if g.get("ok") and g.get("svg") else ""
-        body += [f"<div class='dia'>{svg}</div>" if svg else diagrams.placeholder(g["name"], g["mermaid"], g["error"])]
+    if drawn:
+        body += [h2("Diagrams")]
+        for g in drawn:
+            svg = diagrams.svg_inline(vdir / g["svg"]) if g.get("ok") and g.get("svg") else ""
+            body += [f"<figure class='dia'>{svg}<figcaption>{esc(g['name'])}</figcaption></figure>" if svg
+                     else diagrams.placeholder(g["name"], g["mermaid"], g["error"])]
     if d.get("components"):
-        body += ["<h2>Components</h2>", table(["Component", "Kind", "Does", "Tech"],
-                                              [[x.get("name"), x.get("kind"), x.get("responsibility"), x.get("tech")] for x in d["components"]])]
+        body += [h2("Components"), table(["Component", "Kind", "Does", "Tech", "Grows by"],
+                                         [[Raw(f"<b>{esc(x.get('name'))}</b>"), x.get("kind"), x.get("responsibility"),
+                                           x.get("tech"), x.get("scales_by")] for x in d["components"]], "small")]
     if d.get("data_stores"):
-        body += ["<h2>Data</h2>", table(["Store", "Kind", "Holds", "Consistency"],
-                                        [[x.get("name"), x.get("kind"), x.get("holds"), x.get("consistency")] for x in d["data_stores"]])]
+        body += [h2("Data"), table(["Store", "Kind", "Holds", "Consistency", "Backup"],
+                                   [[Raw(f"<b>{esc(x.get('name'))}</b>"), x.get("kind"), x.get("holds"), x.get("consistency"),
+                                     x.get("backup")] for x in d["data_stores"]], "small")]
+    if d.get("flows"):
+        body += [h2("Key flows")]
+        for f in d["flows"]:
+            steps = [re.sub(r"^\s*\d+[.)]?\s*", "", str(s)) for s in f.get("steps") or []]
+            body += [f"<h4>{esc(f.get('name'))}</h4>", "<ol>" + "".join(f"<li>{_inline(s)}</li>" for s in steps if s) + "</ol>"]
+    if d.get("integrations"):
+        body += [h2("Integrations"), table(["System", "How", "When it is down"],
+                                           [[Raw(f"<b>{esc(x.get('system'))}</b>"), x.get("how"), x.get("failure")]
+                                            for x in d["integrations"]])]
+    if d.get("security"):
+        body += [h2("Security and privacy"), ul(d["security"])]
     if d.get("failure_modes"):
-        body += ["<h2>Failure modes</h2>", table(["What fails", "Effect", "Handling"],
-                                                 [[x.get("what"), x.get("effect"), x.get("handling")] for x in d["failure_modes"]])]
-    for a in d.get("adrs") or []:
-        body += [f"<h3>{esc(a['id'])}: {esc(a.get('title'))}</h3>", f"<p><b>Context.</b> {esc(a.get('context'))}</p>",
-                 f"<p><b>Decision.</b> {esc(a.get('decision'))}</p>", ul(a.get("alternatives") or []),
-                 f"<p><b>Consequences.</b> {esc(a.get('consequences'))}</p>"]
+        body += [h2("Failure modes"), table(["What fails", "What the user sees", "Handling"],
+                                            [[x.get("what"), x.get("effect"), x.get("handling")] for x in d["failure_modes"]])]
+    if d.get("adrs"):
+        body += [h2("Decisions (ADRs)")]
+        for a in d["adrs"]:
+            alts = a.get("alternatives") or []
+            body += ["<section class='adr'>",
+                     f"<h3><span class='aid'>{esc(a['id'])}</span>{esc(a.get('title'))}"
+                     f"<span class='chip st'>{esc(a.get('status'))}</span></h3>",
+                     f"<p><b>Context.</b> {_inline(a.get('context'))}</p>",
+                     f"<p><b>Decision.</b> {_inline(a.get('decision'))}</p>",
+                     ("<p class='lbl'><b>Alternatives considered</b></p>" + ul(alts)) if alts else "",
+                     f"<p><b>Consequences.</b> {_inline(a.get('consequences'))}</p></section>"]
     if d.get("risks"):
-        body += ["<h2>Risks</h2>", table(["Risk", "Likelihood", "Impact", "Mitigation"],
-                                         [[r.get("risk"), r["likelihood"], r["impact"], r.get("mitigation")] for r in d["risks"]])]
+        body += [h2("Risks"), table(["Risk", "Likelihood", "Impact", "Mitigation"],
+                                    [[r.get("risk"), chip(r["likelihood"]), chip(r["impact"]), r.get("mitigation")]
+                                     for r in d["risks"]])]
     if d.get("roadmap"):
-        body += ["<h2>Roadmap</h2>", table(["Phase", "What", "Done when"],
-                                           [[r.get("phase"), r.get("what"), r.get("exit")] for r in d["roadmap"]])]
+        body += [h2("Roadmap"), table(["Phase", "What", "Done when"],
+                                      [[Raw(f"<b>{esc(r.get('phase'))}</b>"), r.get("what"), r.get("exit")] for r in d["roadmap"]])]
     if d.get("open_questions"):
-        body += ["<h2>Open questions</h2>", ul(d["open_questions"])]
-    css = ("@page{size:A4;margin:16mm 15mm}body{font-family:Inter,'Noto Sans',Arial,sans-serif;font-size:10pt;color:#1a1a1a;"
-           "line-height:1.45}h1{font-size:20pt;margin:0 0 4pt}h2{font-size:13pt;margin:16pt 0 6pt;border-bottom:.6pt solid #ccc;"
-           "padding-bottom:2pt;break-after:avoid}h3{font-size:11pt;margin:12pt 0 4pt;break-after:avoid}.meta{color:#666}"
-           "table{border-collapse:collapse;width:100%;margin:6pt 0;break-inside:auto}th,td{border:.5pt solid #ccc;"
-           "padding:3pt 5pt;text-align:left;vertical-align:top;font-size:9pt}th{background:#f2f2f2}tr{break-inside:avoid}"
-           ".dia{text-align:center;margin:6pt 0;break-inside:avoid}.dia svg{max-width:100%;height:auto;max-height:200mm}"
-           ".dfail{border:.6pt dashed #c44;padding:6pt;font-size:9pt}.dfail pre{white-space:pre-wrap;font-size:8pt}")
+        body += [h2("Open questions for you"), "<ol>" + "".join(f"<li>{_inline(q)}</li>" for q in d["open_questions"]) + "</ol>"]
+    body += ["<p class='end'>Proposed by Hoola's Principal Software Architect. Nothing here has been built or changed; "
+             "approve it on the Architecture Desk, or tell the desk what to change for the next version.</p>"]
+    css = ("@page{size:A4;margin:16mm 15mm 18mm;@bottom-right{content:counter(page) ' / ' counter(pages);font-size:8pt;color:#888}}"
+           "body{font-family:Inter,'Noto Sans',Arial,sans-serif;font-size:9.6pt;color:#1d1b26;line-height:1.5}"
+           ".cover{border-bottom:2pt solid #5b3fd6;padding-bottom:10pt;margin-bottom:6pt}"
+           ".kicker{color:#5b3fd6;font-weight:600;font-size:9pt;letter-spacing:.04em}"
+           "h1{font-size:21pt;line-height:1.2;margin:3pt 0 4pt}.meta{color:#666;margin:0 0 10pt;font-size:8.6pt}"
+           ".glance{display:flex;gap:8pt}.glance div{flex:1;border:.6pt solid #ddd8f5;background:#f7f5fe;border-radius:5pt;"
+           "padding:6pt 8pt}.glance b{display:block;font-size:14pt;color:#3a2a8f}.glance span{font-size:8pt;color:#666}"
+           "h2{font-size:12.5pt;margin:16pt 0 6pt;padding-bottom:3pt;border-bottom:.6pt solid #ddd;break-after:avoid}"
+           "h2 .num{display:inline-block;min-width:16pt;color:#5b3fd6}"
+           "h3{font-size:10.5pt;margin:0 0 4pt;break-after:avoid}h4{font-size:9.6pt;margin:9pt 0 2pt;break-after:avoid}"
+           "p{margin:0 0 5pt}ul,ol{margin:2pt 0 6pt;padding-left:15pt}li{margin:1.5pt 0}"
+           "code{font-family:'DejaVu Sans Mono',monospace;font-size:8.6pt;background:#f2f0f7;padding:0 2pt;border-radius:2pt}"
+           ".summary{background:#faf9fe;border-left:2.5pt solid #5b3fd6;padding:6pt 10pt}.note{color:#555;font-size:8.8pt}"
+           ".two{display:flex;gap:10pt;align-items:flex-start}.two table{flex:1}"
+           "table{border-collapse:collapse;width:100%;margin:4pt 0 8pt}th,td{border-bottom:.5pt solid #e2e0e8;"
+           "padding:3.5pt 5pt;text-align:left;vertical-align:top;font-size:8.6pt}th{background:#f4f3f8;font-weight:600;"
+           "border-bottom:.8pt solid #cfcbe0}tr{break-inside:avoid}table.small td{font-size:8.2pt}"
+           ".src{font-size:7.8pt;padding:.5pt 4pt;border-radius:6pt}.src.her{background:#e3f4ea;color:#17663a}"
+           ".src.assumed{background:#fff3dc;color:#8a5a00}"
+           ".chip{font-size:7.8pt;padding:.5pt 5pt;border-radius:6pt;background:#eee;color:#444}"
+           ".chip.high{background:#fde4e4;color:#a61b1b}.chip.medium{background:#fff1d6;color:#8a5a00}"
+           ".chip.low{background:#e3f4ea;color:#17663a}.chip.st{margin-left:6pt;background:#ece8fb;color:#4a35b8;"
+           "font-weight:500;vertical-align:1pt}"
+           ".dia{margin:6pt 0 12pt;text-align:center;break-inside:avoid;border:.6pt solid #e6e3ef;border-radius:5pt;"
+           "padding:8pt}.dia svg{max-width:100%;height:auto;max-height:150mm}"
+           "figcaption{font-size:8.4pt;color:#555;margin-top:4pt}"
+           ".adr{border:.6pt solid #e2def2;border-radius:5pt;padding:7pt 10pt;margin:0 0 8pt;break-inside:avoid}"
+           ".aid{color:#5b3fd6;margin-right:6pt}.lbl{margin-bottom:0}"
+           ".dfail{border:.6pt dashed #c44;padding:6pt;font-size:9pt}.dfail pre{white-space:pre-wrap;font-size:8pt}"
+           ".end{margin-top:16pt;color:#666;font-size:8.6pt;border-top:.6pt solid #ddd;padding-top:6pt}")
     html_text = (f"<!doctype html><html lang='en'><head><meta charset='utf-8'><title>{esc(d['title'])}</title>"
                  f"<style>{css}</style></head><body>{''.join(body)}</body></html>")
     with Printer() as pr:

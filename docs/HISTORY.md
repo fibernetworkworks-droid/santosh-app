@@ -16118,3 +16118,15 @@ Her apps talk to outside services through DECLARED HTTP actions (data, never cod
 - Tests: tests/test_v0424_jodo.py (4), against a fake service and a fake resolver.
 - NOT VERIFIED: no live provider account has answered. The pack shapes follow each provider's docs, and the first real
   run on a test entry will confirm or correct them. The Google service account and the KYC provider's URL are hers to set up.
+
+### follow-up: ARCHITECTURE PDF LIKE A REAL DOCUMENT (owner: "SHOW ME A PERFECT PROTOTYPE OF IT HOW OUTPUT LOOK LIKE")
+- Live check passed on the VPS (v0.424.0): 2/2 diagrams in 2.7 s, capacity sums, one real Opus design in 326 s
+  (14 components, 6 ADRs, 7 risks, 4/4 diagrams, PDF 254 KB). Rendering a sample through the real pipeline then showed
+  four PDF faults every real design had: summary printed raw `**stars**`, goals / constraints unlabeled, ADR
+  alternatives unlabeled, and Key flows / Integrations / Security MISSING from the PDF (the Markdown had them).
+- `archdesk/service._pdf` rewritten: cover with an at-a-glance strip (components, decisions, risks, diagrams, peak
+  req/s from the capacity code), 15 numbered sections, `_inline` / `_prose` keep **bold**, `code`, *italic* and summary
+  bullets (everything else escaped), labelled Goals / Constraints / Assumptions, capacity inputs marked given / assumed,
+  diagrams as captioned figures, ADRs as cards with status chip + "Alternatives considered", risks coloured by level,
+  numbered open questions, page numbers, a closing "nothing has been built" line. Test: every section present, no raw
+  markdown, model text still escaped.
