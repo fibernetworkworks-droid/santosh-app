@@ -214,6 +214,8 @@ def test_app_pages_work_in_a_real_browser(linked):
     def handle(route):
         u = route.request.url
         path = u[len(ORIGIN):]
+        if path.startswith("/api/") and "/live" in path.split("?")[0]:
+            return route.fulfill(status=429, body="{}")       # v0.456: this proxy answers whole bodies, so no open stream
         if path.startswith("/api/"):
             h = {k: v for k, v in route.request.headers.items() if k.lower() in ("authorization", "content-type")}
             r = c.request(route.request.method, path, content=route.request.post_data_buffer, headers=h)
