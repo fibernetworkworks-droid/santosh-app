@@ -335,3 +335,32 @@ def test_console_and_phone_show_the_master_sections():
     api = (root / "lib" / "api.dart").read_text(encoding="utf-8")
     start = api[api.index("archStart("):api.index("archGet(")]
     assert "String kind = 'design'" in start and "'kind': kind" in start
+
+
+def test_live_check_runs_master_kinds_and_reports_them(M):
+    """`python -m app.archdesk check --kind decide,threat`: each kind runs like hers, as the check tenant, and the
+    report shows the master parts (peer review, checks n/m, API, decision winner / threat counts)."""
+    from app.archdesk import check as C
+    M.state["peer"] = {"verdict": "ready", "issues": []}
+    real = M.s._pdf
+
+    def big_pdf(design, cap, drawn, vdir, facts, extra=None):
+        real(design, cap, drawn, vdir, facts, extra)
+        (vdir / "design.pdf").write_bytes(b"%PDF" + b"x" * 2000)
+    import pytest as _p
+    mp = _p.MonkeyPatch()
+    mp.setattr(M.s, "_pdf", big_pdf)
+    for kind in ("decide", "threat", "scale"):
+        r = C._step_design(kind)
+        assert r["ok"], r
+        m = r["master"]
+        assert m["kind"] == kind and m["checks"].endswith("pass") and m["api"].startswith("valid")
+        assert m["peer_review"].startswith("0 issue(s)")
+    assert C._step_design("decide")["master"]["decision"]["winner"] == "PostgreSQL"
+    assert C._step_design("threat")["master"]["threats"]["open_high"] == 1
+    from app.archdesk.models import ArchProject
+    from app.db import session
+    from sqlalchemy import select
+    with session() as s:
+        assert not s.scalars(select(ArchProject).where(ArchProject.tenant_id == C.TENANT)).all()
+    mp.undo()
