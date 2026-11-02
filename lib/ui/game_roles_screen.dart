@@ -888,3 +888,216 @@ class _GameRuntimeScreenState extends State<GameRuntimeScreen> {
     );
   }
 }
+
+// ---------------------------------------------------------------- v0.428 Live ops
+class GameLiveopsScreen extends StatefulWidget {
+  const GameLiveopsScreen({super.key, required this.app, required this.studio});
+  final Santosh app;
+  final String studio;
+  @override
+  State<GameLiveopsScreen> createState() => _GameLiveopsScreenState();
+}
+
+class _GameLiveopsScreenState extends State<GameLiveopsScreen> {
+  Map<String, dynamic> _v = {};
+  Map<String, dynamic> _dash = {};
+  Map<String, dynamic> _cr = {};
+  Map<String, dynamic> _money = {};
+  final Map<String, Map<String, dynamic>> _res = {};
+  bool _loaded = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final api = widget.app.api!;
+    try {
+      final v = await api.gameLiveops(widget.studio);
+      final dash = await api.gameLiveops(widget.studio, '/dashboard');
+      final cr = await api.gameLiveops(widget.studio, '/crashes');
+      final money = await api.gameLiveops(widget.studio, '/money');
+      final res = <String, Map<String, dynamic>>{};
+      for (final x in _list(v['experiments'])) {
+        if (_s(x['status']) == 'draft') continue;
+        try {
+          res[_s(x['key'])] = await api.gameLiveops(widget.studio, '/experiments/${Uri.encodeComponent(_s(x['key']))}');
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      setState(() {
+        _v = v;
+        _dash = dash;
+        _cr = cr;
+        _money = money;
+        _res
+          ..clear()
+          ..addAll(res);
+        _loaded = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loaded = true);
+        _snack(context, '$e');
+      }
+    }
+  }
+
+  Future<void> _do(String part, String ok, [Map<String, dynamic>? body]) async {
+    setState(() => _busy = true);
+    try {
+      await widget.app.api!.gameLiveopsDo(widget.studio, part, body);
+      if (mounted) _snack(context, ok);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+    await _load();
+  }
+
+  Future<void> _sure(String q, String part, String ok, [Map<String, dynamic>? body]) async {
+    final yes = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(content: Text(q), actions: [
+              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+              TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes')),
+            ]));
+    if (yes == true) await _do(part, ok, body);
+  }
+
+  String _pct(dynamic v) => v is num ? '${(v * 1000).round() / 10}%' : '-';
+
+  Widget _box(List<Widget> kids) => Container(
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: kids),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final patches = _list(_v['patches']);
+    final last = patches.isEmpty ? <String, dynamic>{} : patches.last;
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Live ops')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+            const Text('A/B tests, live events, crashes and patches for the shipped game. New tests and events: web console or chat; '
+                'nothing reaches players before your tap.',
+                style: TextStyle(color: C.muted, fontSize: 13.5, height: 1.35)),
+            if (!_loaded)
+              const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+            else ...[
+              if (_v['telemetry'] != true)
+                _box([const Text('Telemetry is off, so results and crashes stay empty. Switch it on in Runtime (players are asked first).',
+                    style: TextStyle(color: C.bad, fontSize: 12.5))]),
+              _box([
+                Text('Players', style: display(15)),
+                Text('${_s(_dash['installs'])} players · D1 ${_pct(_map(_dash['d1'])['share'])} · D7 ${_pct(_map(_dash['d7'])['share'])} · '
+                    'D30 ${_pct(_map(_dash['d30'])['share'])}'),
+                for (final b in _list(_dash['balance']))
+                  Text('${_s(b['event'])}: median ${_s(b['median'])}, outliers ${_pct(b['outlier_share'])}${b['flag'] == true ? ' - check balance' : ''}',
+                      style: TextStyle(fontSize: 12, color: b['flag'] == true ? C.bad : null)),
+                for (final x in _list(_dash['stuck_levels']))
+                  Text('Difficulty spike: level ${_s(x['level'])} (${_s(x['x_median'])}x the median game-overs)',
+                      style: const TextStyle(fontSize: 12, color: C.bad)),
+              ]),
+              _box([
+                Text('A/B tests', style: display(15)),
+                if (_list(_v['experiments']).isEmpty) const Text('No A/B test yet.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                for (final x in _list(_v['experiments'])) ...[
+                  const SizedBox(height: 6),
+                  Text('${_s(x['title'])} · ${_s(x['status'])}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  if (_res[_s(x['key'])] != null) ...[
+                    Text(_s(_res[_s(x['key'])]!['verdict']), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(_s(_res[_s(x['key'])]!['note']), style: const TextStyle(fontSize: 12, color: C.muted)),
+                    for (final g in _list(_res[_s(x['key'])]!['groups']))
+                      Text('${_s(g['name'])}: ${_s(g['players'])} / ${_s(_res[_s(x['key'])]!['need_per_group'])} players, goal ${_pct(g['rate'])}',
+                          style: const TextStyle(fontSize: 12)),
+                  ],
+                  Wrap(spacing: 8, children: [
+                    if (_s(x['status']) == 'draft')
+                      TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => _sure('Start this A/B test?', '/experiments/${Uri.encodeComponent(_s(x['key']))}/start', 'Test started.'),
+                          child: const Text('Start')),
+                    if (_s(x['status']) == 'running')
+                      for (final g in _list(x['variants']))
+                        TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _sure('Stop the test and keep ${_s(g['name'])}?', '/experiments/${Uri.encodeComponent(_s(x['key']))}/stop',
+                                    'Stopped.', {'ship': _s(g['name'])}),
+                            child: Text('Keep ${_s(g['name'])}')),
+                  ]),
+                ],
+              ]),
+              _box([
+                Text('Live events', style: display(15)),
+                if (_list(_v['events']).isEmpty) const Text('No event yet.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                for (final e in _list(_v['events']))
+                  Row(children: [
+                    Expanded(
+                        child: Text('${_s(e['title'])} · ${_s(e['state'])}\n${_s(e['starts_ist'])} → ${_s(e['ends_ist'])}',
+                            style: const TextStyle(fontSize: 12.5))),
+                    if (_s(e['status']) == 'draft')
+                      TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => _sure('Approve "${_s(e['title'])}"? Players get it at its start time.',
+                                  '/events/${Uri.encodeComponent(_s(e['key']))}/approve', 'Approved.'),
+                          child: const Text('Approve')),
+                    if (_s(e['status']) == 'scheduled' && _s(e['state']) != 'ended')
+                      TextButton(
+                          onPressed: _busy ? null : () => _do('/events/${Uri.encodeComponent(_s(e['key']))}/cancel', 'Cancelled.'),
+                          child: const Text('Cancel')),
+                  ]),
+              ]),
+              _box([
+                Text('Crashes', style: display(15)),
+                for (final c in _list(_cr['crash_free']))
+                  Text('v${_s(c['version'])}: ${_pct(c['crash_free'])} crash-free (${_s(c['players'])} players)', style: const TextStyle(fontSize: 12)),
+                if (_list(_cr['groups']).isEmpty) const Text('No crash reported.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                for (final c in _list(_cr['groups']))
+                  Row(children: [
+                    Expanded(
+                        child: Text('${_s(c['msg'])}\n${_s(c['where'])} · ${_s(c['players'])} players · ${_s(c['state'])}',
+                            style: const TextStyle(fontSize: 12))),
+                    if (_s(c['task']).isEmpty)
+                      TextButton(
+                          onPressed: _busy ? null : () => _do('/crashes/${Uri.encodeComponent(_s(c['sig']))}/hotfix', 'Hotfix task is on the board.'),
+                          child: const Text('Hotfix'))
+                    else
+                      Text(_s(c['task']), style: const TextStyle(color: C.muted)),
+                  ]),
+              ]),
+              _box([
+                Text('Patch check', style: display(15)),
+                const Text('Saved replays + a bot run on the newest version, in the real Godot.', style: TextStyle(color: C.muted, fontSize: 12)),
+                if (last.isNotEmpty) ...[
+                  Text('v${_s(last['version'])} · ${_s(last['verdict'])}',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: _s(last['verdict']) == 'PASS' ? C.ok : C.bad)),
+                  for (final c in _list(last['checks']))
+                    Text('${c['ok'] == true ? '✓' : '✕'} ${_s(c['check'])}: ${_s(c['note'])}', style: const TextStyle(fontSize: 12)),
+                ],
+                TextButton(onPressed: _busy ? null : () => _do('/patch_check', 'Running; pull down in a minute.'), child: const Text('Check the newest version')),
+              ]),
+              _box([
+                Text('Money', style: display(15)),
+                Text('Last 30 days ₹${_s(_money['revenue_30d_inr'])} · ARPDAU ${_money['arpdau_inr'] == null ? '-' : '₹${_s(_money['arpdau_inr'])}'} (upper bound)'),
+                for (final n in _strs(_money['notes']))
+                  Text(n, style: const TextStyle(color: C.muted, fontSize: 11.5)),
+              ]),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}

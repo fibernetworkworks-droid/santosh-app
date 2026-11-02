@@ -58,6 +58,7 @@ class GameTelemetry(Base):
     install: Mapped[str] = mapped_column(String(32), index=True)
     event: Mapped[str] = mapped_column(String(40), default="")
     value: Mapped[str] = mapped_column(String(40), default="")
+    ab: Mapped[str | None] = mapped_column(String(200), nullable=True)     # v0.428 "exp=variant;..." (A/B groups)
     frame: Mapped[int] = mapped_column(Integer, default=0)
     version: Mapped[int] = mapped_column(Integer, default=0)
     day: Mapped[str] = mapped_column(String(10), index=True)
@@ -81,6 +82,7 @@ GD = '''extends Node
 # do not edit. Replay / bot run only when Hoola's test runner starts the game with --hoola-bot / --hoola-replay.
 const CFG := __CFG__
 const CONSENT_FILE := "user://hoola_consent.cfg"
+const LIVE_FILE := "user://hoola_live.cfg"
 const KEYS := [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_SPACE, KEY_ENTER, KEY_A, KEY_D, KEY_W, KEY_S]
 var frame := 0
 var mode := ""
@@ -97,9 +99,44 @@ var _tq: Array = []
 var _last_f := -1
 var _tt := 0.0
 var _tsent := 0.0
+var live: Dictionary = {}
+var _lg: HoolaLog
+var _errs: Array = []
+var _err_out: Array = []
+var _err_seen := {}
+
+# v0.428 live ops: script errors are caught by Godot's own Logger (4.5+) - for crash groups in Hoola (only with the
+# player's yes) and for Hoola's own test runs. It never prints (that would call itself again).
+class HoolaLog extends Logger:
+	var m := Mutex.new()
+	var q: Array = []
+	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, script_backtraces: Array) -> void:
+		if error_type == 1:
+			return
+		var f := file
+		var l := line
+		for bt in script_backtraces:
+			if bt != null and bt.get_frame_count() > 0:
+				f = bt.get_frame_file(0)
+				l = bt.get_frame_line(0)
+				break
+		m.lock()
+		if q.size() < 50:
+			q.append({"file": f.left(120), "line": l, "msg": (rationale if rationale != "" else code).left(200), "fn": function.left(60)})
+		m.unlock()
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
+	func take() -> Array:
+		m.lock()
+		var out := q.duplicate()
+		q.clear()
+		m.unlock()
+		return out
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_lg = HoolaLog.new()
+	OS.add_logger(_lg)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--hoola-bot="):
 			var p: PackedStringArray = a.substr(12).split(",")
@@ -111,12 +148,19 @@ func _ready() -> void:
 			var parsed = JSON.parse_string(Marshalls.base64_to_utf8(a.substr(15)))
 			replay = parsed["events"] if parsed is Dictionary else []
 			end_frame = int(parsed["frames"]) if parsed is Dictionary else 0
+		elif a.begins_with("--hoola-live="):
+			var lv = JSON.parse_string(Marshalls.base64_to_utf8(a.substr(13)))
+			live = lv if lv is Dictionary else {}
+		elif a.begins_with("--hoola-install="):
+			install = a.substr(16).left(32)
 	if mode != "":
 		# ONLY in Hoola's test runs: a fixed seed so a recorded play replays exactly. Normal players keep the engine's own
 		# random start - their games must not repeat the same "random" pattern every session.
 		seed(int(CFG["seed"]))
-	if bool(CFG["telemetry"]) and mode == "":
+	if mode == "" and (bool(CFG["telemetry"]) or String(CFG["live"]) != ""):
 		_tel_load()
+	if mode == "" and String(CFG["live"]) != "":
+		_live_load()
 
 # ---------------------------------------------------------------- replay + bot
 func _key(code: int, pressed: bool) -> void:
@@ -161,8 +205,20 @@ func _bot_step() -> void:
 		_emit([frame, "m", x, y, true])
 		_emit([frame, "m", x, y, false])
 
+func _take_errors() -> void:
+	for e in _lg.take():
+		var sig := "%s:%d:%s" % [e["file"], int(e["line"]), e["msg"]]
+		if _err_seen.has(sig):
+			continue
+		_err_seen[sig] = true
+		_errs.append(e)
+		if _err_out.size() < 20 and consent:
+			_err_out.append(e)
+
 func _physics_process(_d: float) -> void:
 	frame += 1
+	if frame % 30 == 0:
+		_take_errors()
 	if mode == "bot":
 		_bot_step()
 	elif mode == "replay":
@@ -194,8 +250,9 @@ func fingerprint() -> String:
 
 func _finish() -> void:
 	var probe = get_node_or_null("/root/HoolaProbe")
+	_take_errors()
 	var res := {"mode": mode, "frames": frame, "fp": fingerprint(), "events": rec.size() if mode == "bot" else replay.size(),
-		"state": probe._state if probe != null else {}}
+		"state": probe._state if probe != null else {}, "ab": ab(), "logged": _errs.size(), "log": _errs.slice(0, 5)}
 	if mode == "bot":
 		res["replay"] = Marshalls.utf8_to_base64(JSON.stringify({"frames": end_frame, "events": rec}))
 	print("HOOLA_RT " + JSON.stringify(res))
@@ -213,6 +270,93 @@ func _tel_load() -> void:
 		var r := RandomNumberGenerator.new()
 		r.randomize()
 		install = "%08x%08x" % [r.randi(), r.randi()]
+		# kept on this device only (it decides A/B groups); it leaves the device only with the player's yes
+		cf.set_value("t", "install", install)
+		cf.save(CONSENT_FILE)
+
+# ---------------------------------------------------------------- live ops: events + A/B from the game's own host
+func _live_load() -> void:
+	var cf := ConfigFile.new()
+	if cf.load(LIVE_FILE) == OK:
+		var d = JSON.parse_string(String(cf.get_value("l", "json", "")))
+		if d is Dictionary:
+			live = d
+	var http := HTTPRequest.new()
+	add_child(http)
+	http.request_completed.connect(_live_got.bind(http))
+	http.request(String(CFG["live"]))
+
+func _live_got(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, http: HTTPRequest) -> void:
+	http.queue_free()
+	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
+		return
+	var d = JSON.parse_string(body.get_string_from_utf8())
+	if d is Dictionary:
+		live = d
+		var cf := ConfigFile.new()
+		cf.set_value("l", "json", JSON.stringify(d))
+		cf.save(LIVE_FILE)
+
+func _now() -> float:
+	if mode != "" and live.has("now"):
+		return float(live["now"])
+	return Time.get_unix_time_from_system()
+
+func variant(key: String) -> String:
+	# the same sum as Hoola's server: sha256(install:key), first 8 hex digits, mod 10000, against the split
+	for x in live.get("experiments", []):
+		if String(x.get("key", "")) != key:
+			continue
+		var vs: Array = x.get("variants", [])
+		if vs.is_empty():
+			return ""
+		if install == "":
+			return String(vs[0]["name"])
+		var b: int = (install + ":" + key).sha256_text().substr(0, 8).hex_to_int() % 10000
+		var acc := 0
+		for v in vs:
+			acc += int(v["bp"])
+			if b < acc:
+				return String(v["name"])
+		return String(vs[0]["name"])
+	return ""
+
+func ab() -> Dictionary:
+	var out := {}
+	for x in live.get("experiments", []):
+		out[String(x.get("key", ""))] = variant(String(x.get("key", "")))
+	return out
+
+func value(path: String, fallback = null):
+	var t := _now()
+	for e in live.get("events", []):
+		if float(e.get("starts", 0)) <= t and t < float(e.get("ends", 0)) and e.get("set", {}).has(path):
+			return e["set"][path]
+	for x in live.get("experiments", []):
+		var vn := variant(String(x.get("key", "")))
+		for v in x.get("variants", []):
+			if String(v["name"]) == vn and v.get("set", {}).has(path):
+				return v["set"][path]
+	return fallback
+
+func num(path: String, fallback: float) -> float:
+	return float(value(path, fallback))
+
+func flag(name: String) -> bool:
+	return bool(value("flag." + name, false))
+
+func active_events() -> Array:
+	var t := _now()
+	var out: Array = []
+	for e in live.get("events", []):
+		if float(e.get("starts", 0)) <= t and t < float(e.get("ends", 0)):
+			out.append(String(e.get("title", "")))
+	return out
+
+func track(event: String, v = "") -> void:
+	# her game's own events (a level number, a score): sent only with her switch AND the player's yes
+	if bool(CFG["telemetry"]) and consent and mode == "":
+		_tq.append({"e": event.to_lower().left(40), "f": frame, "v": str(v).left(40)})
 
 func needs_consent() -> bool:
 	return bool(CFG["telemetry"]) and not decided
@@ -266,7 +410,7 @@ func _process(delta: float) -> void:
 					_last_f = int(ev["f"])
 					_tq.append({"e": String(ev["e"]).to_lower().left(40), "f": int(ev["f"])})
 	_tsent += delta
-	if _tq.size() >= 20 or (_tsent >= 15.0 and _tq.size() > 0):
+	if _tq.size() >= 20 or (_tsent >= 15.0 and (_tq.size() > 0 or _err_out.size() > 0)):
 		_flush()
 
 func _flush() -> void:
@@ -277,14 +421,17 @@ func _flush() -> void:
 	add_child(http)
 	http.request_completed.connect(func(_r, _c, _h, _b): http.queue_free())
 	http.request(String(CFG["url"]), ["Content-Type: application/json"], HTTPClient.METHOD_POST,
-		JSON.stringify({"install": install, "consent": true, "version": int(CFG["version"]), "events": batch}))
+		JSON.stringify({"install": install, "consent": true, "version": int(CFG["version"]), "events": batch, "ab": ab(),
+			"errors": _err_out.slice(0, 5)}))
+	_err_out = _err_out.slice(5)
 '''
 
 
 def gd(cfg: dict) -> str:
     from .bible import _gd
     return GD.replace("__CFG__", _gd({"seed": int(cfg.get("seed", 20251101)), "telemetry": bool(cfg.get("telemetry")),
-                                       "url": str(cfg.get("url") or ""), "version": int(cfg.get("version", 0))}))
+                                       "url": str(cfg.get("url") or ""), "version": int(cfg.get("version", 0)),
+                                       "live": str(cfg.get("live") or "")}))
 
 
 # ================================================================ settings per Studio project
@@ -349,16 +496,18 @@ def for_game(tenant: str, game_id: str) -> tuple[str, dict[str, Path]] | None:
             return None
         tel = bool(rt.get("telemetry")) and not kid_game(g.design) and bool(g.token)
         ver = max([v.get("n", 0) for v in (g.versions or [])] or [0]) + 1
-        return gd({"telemetry": tel, "url": (G.play_url(g.token) + "t") if tel else "", "version": ver}), {}
+        return gd({"telemetry": tel, "url": (G.play_url(g.token) + "t") if tel else "", "version": ver,
+                   "live": (G.play_url(g.token) + "live") if g.token else ""}), {}
 
 
 # ================================================================ the replay test (real engine)
 RANDOM_CAUSES = re.compile(r"\brandomize\s*\(|\bTime\s*\.\s*get_(?:ticks|unix|datetime|time)|\bOS\s*\.\s*get_(?:ticks|unix)")
 
 
-def _run_mode(job: Path, arg: str, frames: int) -> dict:
+def _run_mode(job: Path, arg: str, frames: int, extra: list[str] | None = None) -> dict:
     from . import engine
-    code, logtxt, to = engine._run(job, ["--path", "proj", "--fixed-fps", "60", "--quit-after", str(frames + 300), "--", arg],
+    code, logtxt, to = engine._run(job, ["--path", "proj", "--fixed-fps", "60", "--quit-after", str(frames + 300), "--", arg,
+                                         *(extra or [])],
                                    f"rt_{arg[8:12]}.log", 180)
     m = re.search(r"HOOLA_RT (\{.*\})", logtxt or "")
     errs = engine.errors_in(logtxt or "")
@@ -370,9 +519,8 @@ def _run_mode(job: Path, arg: str, frames: int) -> dict:
     return out
 
 
-def replay_lab(proj_src: Path, job: Path, title: str, orientation: str, seed: int = 7, frames: int = 900) -> dict:
-    """Copy the game's project, make sure HoolaRuntime is in it, run the bot (record), run the bot again (same seed),
-    play the recording back, and compare the three end states."""
+def prepare(proj_src: Path, job: Path, title: str, orientation: str) -> dict[str, str]:
+    """A test copy of the game's project with HoolaRuntime (telemetry off, no live URL) in it."""
     from . import template
     shutil.rmtree(job, ignore_errors=True)
     (job / "proj").mkdir(parents=True)
@@ -383,6 +531,13 @@ def replay_lab(proj_src: Path, job: Path, title: str, orientation: str, seed: in
     for extra in ("assets",):
         if (proj_src / extra).is_dir():
             shutil.copytree(proj_src / extra, job / "proj" / extra)
+    return scripts
+
+
+def replay_lab(proj_src: Path, job: Path, title: str, orientation: str, seed: int = 7, frames: int = 900) -> dict:
+    """Copy the game's project, make sure HoolaRuntime is in it, run the bot (record), run the bot again (same seed),
+    play the recording back, and compare the three end states."""
+    scripts = prepare(proj_src, job, title, orientation)
     a = _run_mode(job, f"--hoola-bot={seed},{frames}", frames)
     if not a["ok"]:
         return {"verdict": "FAIL", "deterministic": None, "errors": a["errors"], "note": "the bot run did not finish"}
@@ -490,6 +645,12 @@ def ingest(token: str, raw: bytes) -> int:
         if st is None or not (st.runtime or {}).get("telemetry") or kid_game(g.design):
             return 0
         today = datetime.now(timezone.utc).date().isoformat()
+        ab = ";".join(f"{k}={v}" for k, v in list((body.get("ab") or {}).items())[:5]
+                      if isinstance(body.get("ab"), dict) and EVENT_RE.match(str(k)) and re.fullmatch(r"[a-z0-9_]{1,20}", str(v)))
+        ver = int(body.get("version") or 0) if str(body.get("version") or "0").isdigit() else 0
+        if isinstance(body.get("errors"), list) and body["errors"]:
+            from . import liveops as L
+            L.record_errors(s, g, install, ver, body["errors"][:5])
         n = 0
         for ev in (body.get("events") or [])[:MAX_EVENTS]:
             name = str((ev or {}).get("e") or "")
@@ -497,7 +658,7 @@ def ingest(token: str, raw: bytes) -> int:
                 continue
             s.add(GameTelemetry(tenant_id=g.tenant_id, game_id=g.id, install=install, event=name,
                                 value=str((ev or {}).get("v") or "")[:40], frame=int((ev or {}).get("f") or 0) if str((ev or {}).get("f") or "0").lstrip("-").isdigit() else 0,
-                                version=int(body.get("version") or 0) if str(body.get("version") or "0").isdigit() else 0, day=today))
+                                version=ver, day=today, ab=ab or None))
             n += 1
     return n
 

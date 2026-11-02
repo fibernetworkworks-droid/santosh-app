@@ -16236,3 +16236,49 @@ NOT VERIFIED: telemetry from a real browser to the live server (the endpoint and
 the plugin talking to the live server from her Godot (the build box has no network), and other MCP clients live.
 Not built from the plan's runtime list: save-game cloud sync, in-game feedback, Indian-language text-shaping checks,
 store billing hooks.
+
+
+## v0.430.0 LIVE OPS (Hoola Game Engine plan Phase 9) - 2 Nov 2026
+Owner: "GO PHASE 9". Plan row 9 = telemetry dashboards, A/B, events, patches - for games that run for years.
+New `server/app/gamedesk/liveops.py`; HoolaRuntime (`runtime.py`) extended; tool `game_liveops`; console Live ops page
+(board button); phone `GameLiveopsScreen` (Studio > Live ops).
+- LIVE CONFIG: GET /play/<token>/live (the game's own host - the play page CSP is connect-src 'self') = running A/B tests
+  + approved, not-ended events. HoolaRuntime fetches it at start (normal play only, never in Hoola's test runs), keeps
+  the last answer on the device (user://hoola_live.cfg, works offline). The game reads values with
+  `HoolaRuntime.num("player.hp", fallback)`, `flag("double_coins")`, `active_events()`, and reports moments with
+  `track(event, value)` (only with her switch + the player's yes). An event beats a test for the same value.
+- VALUES: only a number that is in her Game Bible (player.<f>, economy.<f>, <kind>.<id>.<f>) within 1/4x - 4x of the
+  Bible's own number, or flag.<name> = true / false. A Bible number of 0 cannot be changed live. A bigger change = Bible.
+- A/B TESTS: draft -> start (her tap; refused while telemetry is off - unmeasurable) -> stop (her tap; ship = a Studio
+  board task "Make group X the game's own: player.hp = 150", never a silent change). Groups: sha256(install:key)[:8]
+  mod 10000 against the split in basis points - the SAME sum in Python and GDScript (real-Godot test, 4 installs).
+  Results: players per group, goal rate (an event, or d1), sample-size target per group (normal approximation,
+  alpha 0.05, power 0.8, her smallest difference worth knowing), sample-ratio check (chi-square, p < 0.001 = SPLIT
+  BROKEN, result not trusted), two-proportion z-test, Bonferroni for >2 groups. Below the target the verdict is
+  NOT ENOUGH PLAYERS even when the gap looks big (tested: a 15-point gap at 100 per group). Max 3 running; two tests,
+  or a test and an approved event, may not change the same value at the same time.
+- LIVE EVENTS: key, title, start / end (India time when no zone is written), values; draft -> approve (her tap) ->
+  scheduled / live / ended; cancel. Max 31 days, within a year, two approved events overlapping on one value refused.
+- CRASHES: HoolaRuntime registers a Godot `Logger` (4.5+, `OS.add_logger`; checked in 4.7.2: it gets push_error AND
+  script errors, with the GDScript backtrace -> res:// file + line), dedups per session, sends up to 20 per session
+  only with the player's yes. Server groups by file + line + message (digits / e-mails scrubbed), hashed install ids,
+  versions, crash-free players per version. One tap = a priority-1 "fix" board task. "Not seen on the newest version"
+  only when >= 20 players are on a newer version and none sent it; otherwise fixing / open.
+- PATCH CHECK (real engine, background): the newest good version gets every saved replay (max 3) played back - must
+  reach the end with no script errors - plus a fresh bot run (seed 11); no saved replay = NOT ASSESSED (said, not
+  passed). Open player crashes = NOT ASSESSED until players run the new version. Release notes drafted from done tasks.
+- DASHBOARD: + D30, DAU 14 days, balance (numeric values per event: median, IQR, Tukey outliers, flagged > 5 %),
+  difficulty spikes (a level with > 2x the median game-overs).
+- MONEY: Hoola sees no store. Revenue only from the CSV she imports (date, rupees, source; ₹ / commas ok; same day +
+  source replaced). ARPDAU = revenue / DAU of consenting players = an UPPER bound, said. Payer share from
+  track("purchase"). Children's game: the note that no paid random items / pressure to buy are built.
+- Runtime refactor: `runtime.prepare()` (a test copy of the project) shared by replay test + patch check;
+  `_run_mode(..., extra)` takes more args (--hoola-live=<b64>, --hoola-install=<hex> for tests).
+- Tables: game_crashes (new), game_telemetry.ab (new nullable column), game_studios.liveops (new nullable JSON).
+- Routes: /api/gamedesk/liveops/{sid} [GET, /dashboard, /crashes, /money GET+POST, /experiments POST,
+  /experiments/{key} GET, /start, /stop, /events POST, /events/{key}/approve|cancel, /crashes/{sig}/hotfix,
+  /patch_check], GET /play/{token}/live.
+- Tests: `server/tests/test_v0428_game_liveops.py` (13, two in the real Godot 4.7.2: groups + live values + events +
+  caught errors; patch check with a saved replay).
+- NOT VERIFIED: no real player has sent telemetry, crashes or A/B data yet; the Web export's HTTPRequest fetch of
+  /live was not run in a browser here (the same host as telemetry, which uses the same path).

@@ -899,7 +899,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({runtime: gsRuntime, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -1604,6 +1604,85 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
   }
 
+  // ---------------------------------------------------------------- v0.428 Live ops (A/B, live events, crashes, patches, money)
+  async function gsLiveops(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, base = `/api/gamedesk/liveops/${encodeURIComponent(sid)}`;
+    let v, dash, cr, money;
+    try {
+      [v, dash, cr, money] = await Promise.all([api('GET', base), api('GET', base + '/dashboard'), api('GET', base + '/crashes'), api('GET', base + '/money')]);
+    } catch (e) { toast(e.message, true); GS_ROLE = ''; return roleBack(el); }
+    const res = {};
+    await Promise.all(v.experiments.filter(x => x.status !== 'draft').map(async x => { try { res[x.key] = await api('GET', `${base}/experiments/${encodeURIComponent(x.key)}`); } catch (e) { /* shown as missing */ } }));
+    const pct = x => x == null ? '-' : (Math.round(x * 1000) / 10) + '%';
+    const vtag = s => tag(/WINS/.test(s) ? 'ok' : /BROKEN|WORSE/.test(s) ? 'bad' : '', s);
+    const lastPatch = v.patches.length ? v.patches[v.patches.length - 1] : null;
+    const dauMax = Math.max(1, ...Object.values(dash.dau || {}));
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="loBack">← Board</button><h2>Live ops</h2></div>
+      ${v.telemetry ? '' : '<p class="tile badc em-small">Telemetry is off for this game, so A/B results, crashes and the dashboard stay empty. Switch it on in Runtime & editor (each player is asked first).</p>'}
+      <section class="tile gl"><h3>Players</h3>
+        <div class="ph-grid"><div><b>${num(dash.installs)}</b><div class="muted em-small">players</div></div>
+          <div><b>${pct(dash.d1.share)}</b><div class="muted em-small">D1</div></div><div><b>${pct(dash.d7.share)}</b><div class="muted em-small">D7</div></div>
+          <div><b>${pct(dash.d30.share)}</b><div class="muted em-small">D30${dash.d30.cohort ? ' (of ' + num(dash.d30.cohort) + ')' : ''}</div></div></div>
+        <div class="lo-dau" aria-label="Daily players, last 14 days">${Object.entries(dash.dau || {}).map(([d, n]) => `<span title="${esc(d)}: ${num(n)}" style="height:${Math.max(2, Math.round(40 * n / dauMax))}px"></span>`).join('')}</div>
+        <p class="muted em-small">Daily players, last 14 days.</p>
+        ${dash.balance.length ? `<table class="ph-tbl"><thead><tr><th>Number sent by the game</th><th>Median</th><th>Middle half</th><th>Outliers</th></tr></thead><tbody>${dash.balance.map(b => `<tr><td>${esc(b.event)} <span class="muted">(${num(b.samples)})</span></td><td>${num(b.median)}</td><td>${num(b.p25)} - ${num(b.p75)}</td><td>${pct(b.outlier_share)} ${b.flag ? tag('bad', 'check balance') : ''}</td></tr>`).join('')}</tbody></table>` : ''}
+        ${dash.stuck_levels.length ? `<p class="em-small"><b>Difficulty spikes:</b> ${dash.stuck_levels.map(s => `level ${esc(s.level)} (${num(s.game_overs)} game-overs, ${num(s.x_median)}x the median)`).join(' · ')}</p>` : ''}
+        <p class="muted em-small">${esc(dash.note_values)}</p></section>
+      <section class="tile gl"><h3>A/B tests</h3>
+        ${v.experiments.map(x => { const r = res[x.key]; return `<div class="tile lo-row"><b>${esc(x.title)}</b> <span class="muted">${esc(x.key)} · goal ${esc(x.goal)}</span> ${tag(x.status === 'running' ? 'ok' : '', x.status)}
+          ${r ? `<div>${vtag(r.verdict)} <span class="em-small">${esc(r.note)}</span></div>
+            <table class="ph-tbl"><thead><tr><th>Group</th><th>Players</th><th>Goal reached</th><th>vs control</th></tr></thead><tbody>${r.groups.map(g => `<tr><td>${esc(g.name)}</td><td>${num(g.players)} <span class="muted">/ ${num(r.need_per_group)}</span></td><td>${pct(g.rate)}</td><td>${g.vs_control_pts == null ? '-' : (g.vs_control_pts > 0 ? '+' : '') + g.vs_control_pts + ' pts'}</td></tr>`).join('')}</tbody></table>` : `<div class="em-small muted">${x.variants.map(g => esc(g.name) + ' ' + g.weight + '%' + (Object.keys(g.set).length ? ': ' + esc(JSON.stringify(g.set)) : '')).join(' · ')}</div>`}
+          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-lo-start="${esc(x.key)}">Start test</button>` : ''}
+            ${x.status === 'running' ? `${x.variants.map(g => `<button class="btn soft gs-mini" type="button" data-lo-stop="${esc(x.key)}" data-ship="${esc(g.name)}">Stop, keep ${esc(g.name)}</button>`).join('')}` : ''}</div></div>`; }).join('') || '<p class="muted em-small">No A/B test yet.</p>'}
+        <details><summary>New A/B test</summary>
+          <div class="lo-form"><input id="loXKey" placeholder="name (jump_height)" aria-label="Test name"><input id="loXTitle" placeholder="What it tests" aria-label="Title">
+            <input id="loXGoal" value="win" aria-label="Goal event" title="the event that counts as success, or d1"><input id="loXMde" type="number" step="0.01" value="0.05" aria-label="Smallest difference" title="smallest difference worth knowing (0.05 = 5 points)">
+            <textarea id="loXVar" rows="4" aria-label="Groups">[{"name": "control", "weight": 50, "set": {}},
+ {"name": "b", "weight": 50, "set": {"player.hp": 120}}]</textarea>
+            <button class="btn go" type="button" id="loXAdd">Save as draft</button></div>
+          <p class="muted em-small">Values you can change: ${esc((v.paths || []).slice(0, 24).join(', ') || 'none yet - the Game Bible has no numbers')}${(v.paths || []).length > 24 ? ' …' : ''}, or flag.&lt;name&gt; = true / false. Each within 1/4x - 4x of the Bible.</p></details></section>
+      <section class="tile gl"><h3>Live events</h3>
+        <table class="ph-tbl"><thead><tr><th>Event</th><th>India time</th><th>Changes</th><th></th></tr></thead><tbody>${v.events.map(e => `<tr><td>${esc(e.title)} ${tag(e.state === 'live' ? 'ok' : '', e.state)}</td><td>${esc(e.starts_ist)} → ${esc(e.ends_ist)}</td><td class="em-small">${esc(JSON.stringify(e.set))}</td>
+          <td>${e.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-lo-ok="${esc(e.key)}">Approve</button>` : ''}${['draft', 'scheduled'].includes(e.status) && e.state !== 'ended' ? ` <button class="btn soft gs-mini" type="button" data-lo-cancel="${esc(e.key)}">Cancel</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No event yet.</td></tr>'}</tbody></table>
+        <details><summary>New live event</summary>
+          <div class="lo-form"><input id="loEKey" placeholder="name (diwali_2026)" aria-label="Event name"><input id="loETitle" placeholder="Title players see" aria-label="Title">
+            <label class="em-small">Starts <input id="loEStart" type="datetime-local"></label><label class="em-small">Ends <input id="loEEnd" type="datetime-local"></label>
+            <textarea id="loESet" rows="2" aria-label="Values">{"flag.double_coins": true}</textarea>
+            <button class="btn go" type="button" id="loEAdd">Save as draft</button></div></details></section>
+      <section class="tile gl"><h3>Crashes</h3><p class="muted em-small">${esc(cr.privacy)}</p>
+        ${cr.crash_free.length ? `<p class="em-small">${cr.crash_free.map(c => `v${num(c.version)}: ${pct(c.crash_free)} crash-free (${num(c.players)} players)`).join(' · ')}</p>` : ''}
+        <table class="ph-tbl"><thead><tr><th>Error</th><th>Players</th><th>Versions</th><th></th></tr></thead><tbody>${cr.groups.map(c => `<tr><td>${esc(c.msg)}<div class="muted em-small">${esc(c.where)} · ${esc(c.state)}</div></td><td>${num(c.players)} <span class="muted">(${num(c.count)}x)</span></td><td>${c.versions.map(x => 'v' + x).join(', ')}</td>
+          <td>${c.task ? tag('', c.task) : `<button class="btn soft gs-mini" type="button" data-lo-fix="${esc(c.sig)}">Make hotfix task</button>`}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No crash reported.</td></tr>'}</tbody></table></section>
+      <section class="tile gl"><h3>Patch check</h3>
+        <p class="muted em-small">Before a new version goes out: every saved replay is played on it in the real Godot, plus a fresh bot run. Release notes are drafted from the tasks done.</p>
+        <div class="acts"><button class="btn go" type="button" id="loPatch">Check the newest version</button></div>
+        ${lastPatch ? `<p class="em-small"><b>v${num(lastPatch.version)}</b> · ${esc((lastPatch.at || '').slice(0, 16).replace('T', ' '))} ${tag(lastPatch.verdict === 'PASS' ? 'ok' : 'bad', lastPatch.verdict)}</p>${checksTable(lastPatch.checks)}
+          ${lastPatch.release_notes.length ? `<p class="em-small"><b>Release notes (draft)</b></p><ul class="em-small">${lastPatch.release_notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}` : ''}</section>
+      <section class="tile gl"><h3>Money</h3>
+        <div class="ph-grid"><div><b>₹${num(money.revenue_30d_inr)}</b><div class="muted em-small">last 30 days</div></div><div><b>${money.arpdau_inr == null ? '-' : '₹' + num(money.arpdau_inr)}</b><div class="muted em-small">ARPDAU (upper bound)</div></div>
+          <div><b>${pct(money.payer_share)}</b><div class="muted em-small">players who bought</div></div></div>
+        ${Object.keys(money.by_source).length ? `<p class="em-small">${Object.entries(money.by_source).map(([k, x]) => esc(k) + ' ₹' + num(x)).join(' · ')}</p>` : ''}
+        <ul class="muted em-small">${money.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>
+        <details><summary>Import revenue (CSV)</summary><div class="lo-form"><textarea id="loCsv" rows="4" aria-label="Revenue CSV" placeholder="date, rupees, source&#10;2026-11-01, 1250, play"></textarea>
+          <button class="btn go" type="button" id="loCsvIn">Import</button></div></details></section>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsLiveops(el); };
+    const json = (id, what) => { try { return JSON.parse(el.querySelector(id).value || 'null'); } catch (e) { throw new Error(what + ' is not valid JSON'); } };
+    const when = id => (el.querySelector(id).value || '').replace('T', ' ');
+    el.querySelector('#loBack').addEventListener('click', () => roleBack(el));
+    el.querySelectorAll('[data-lo-start]').forEach(b => b.addEventListener('click', () => { if (confirm('Start this A/B test? Players will get the groups from their next start.')) go(() => api('POST', `${base}/experiments/${encodeURIComponent(b.dataset.loStart)}/start`), 'Test started.'); }));
+    el.querySelectorAll('[data-lo-stop]').forEach(b => b.addEventListener('click', () => { if (confirm(`Stop the test and keep ${b.dataset.ship}?`)) go(() => api('POST', `${base}/experiments/${encodeURIComponent(b.dataset.loStop)}/stop`, {ship: b.dataset.ship}), 'Stopped. A board task carries the numbers if they change the game.'); }));
+    el.querySelectorAll('[data-lo-ok]').forEach(b => b.addEventListener('click', () => { if (confirm('Approve this live event? Players get it at its start time.')) go(() => api('POST', `${base}/events/${encodeURIComponent(b.dataset.loOk)}/approve`), 'Approved.'); }));
+    el.querySelectorAll('[data-lo-cancel]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `${base}/events/${encodeURIComponent(b.dataset.loCancel)}/cancel`), 'Cancelled.')));
+    el.querySelectorAll('[data-lo-fix]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `${base}/crashes/${encodeURIComponent(b.dataset.loFix)}/hotfix`), 'Hotfix task is on the board.')));
+    el.querySelector('#loXAdd').addEventListener('click', () => go(() => api('POST', `${base}/experiments`, {key: el.querySelector('#loXKey').value.trim(), title: el.querySelector('#loXTitle').value.trim(),
+      goal: el.querySelector('#loXGoal').value.trim(), mde: Number(el.querySelector('#loXMde').value), variants: json('#loXVar', 'Groups')}), 'Saved as a draft.'));
+    el.querySelector('#loEAdd').addEventListener('click', () => go(() => api('POST', `${base}/events`, {key: el.querySelector('#loEKey').value.trim(), title: el.querySelector('#loETitle').value.trim(),
+      starts: when('#loEStart'), ends: when('#loEEnd'), set: json('#loESet', 'Values')}), 'Saved as a draft.'));
+    el.querySelector('#loPatch').addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Checking…'; go(() => api('POST', `${base}/patch_check`), 'Running; the result shows here in about a minute.'); });
+    el.querySelector('#loCsvIn').addEventListener('click', () => go(() => api('POST', `${base}/money`, {csv: el.querySelector('#loCsv').value}), 'Imported.'));
+  }
+
   // ---------------------------------------------------------------- v0.425 Hoola Runtime + Ask Hoola in the editor
   let GS_NEWTOK = null;        // a just-made editor token, shown once
   async function gsRuntime(el) {
@@ -1684,6 +1763,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" id="gsXrBtn">VR / AR</button>
         <button class="btn soft" type="button" id="gsSimBtn">Simulator</button>
         <button class="btn soft" type="button" id="gsRtBtn">Runtime & editor</button>
+        <button class="btn soft" type="button" id="gsLoBtn">Live ops</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
@@ -1742,6 +1822,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     el.querySelector('#gsXrBtn').addEventListener('click', () => { GS_ROLE = 'xr'; GS_ROLE_SID = id; gsXr(el); });
     el.querySelector('#gsSimBtn').addEventListener('click', () => { GS_ROLE = 'sim'; GS_ROLE_SID = id; gsSim(el); });
     el.querySelector('#gsRtBtn').addEventListener('click', () => { GS_ROLE = 'runtime'; GS_ROLE_SID = id; gsRuntime(el); });
+    el.querySelector('#gsLoBtn').addEventListener('click', () => { GS_ROLE = 'liveops'; GS_ROLE_SID = id; gsLiveops(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

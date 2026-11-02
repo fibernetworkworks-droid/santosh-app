@@ -2587,3 +2587,10 @@ body.albon{overflow:hidden}
 #app .rt-tok { margin: 8px 0; padding: 10px; overflow-wrap: anywhere; }
 #app .rt-tok code, #app .rt-cfg { font-size: 12.5px; }
 #app .rt-cfg { white-space: pre-wrap; overflow-x: auto; }
+
+/* v0.428 LIVE OPS */
+#app .lo-dau { display: flex; align-items: flex-end; gap: 4px; height: 44px; margin-top: 10px; }
+#app .lo-dau span { flex: 1; background: var(--acc, #6d5bd0); border-radius: 3px 3px 0 0; min-width: 6px; }
+#app .lo-row { margin: 8px 0; padding: 10px 12px; }
+#app .lo-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 8px 0; }
+#app .lo-form textarea { grid-column: 1 / -1; font: 12.5px/1.4 var(--mono, monospace); }

@@ -141,6 +141,11 @@ HARD RULES (the build fails otherwise)
   runs HoolaRuntime seeds the game so a recorded play replays exactly (randf / randi are fine; real players still get
   a fresh random start). On the title screen call
   `if HoolaRuntime.needs_consent(): HoolaRuntime.ask_consent(self)` (it asks the player once; nothing is sent without yes).
+  LIVE OPS: read tunable numbers through HoolaRuntime so live events and A/B tests can change them without a new build:
+  `HoolaRuntime.num("player.hp", HoolaBible.DATA["player"]["hp"])` (paths = player.<field>, economy.<field>,
+  <kind>.<id>.<field> of the Bible), switches with `HoolaRuntime.flag("double_coins")`; report game moments with
+  `HoolaRuntime.track("level_up", level)` / `track("game_over", level)` / `track("purchase")` (sent only with the
+  player's yes). Never build paid random items (loot boxes) or pressure to buy.
 - GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
   NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
   HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])
