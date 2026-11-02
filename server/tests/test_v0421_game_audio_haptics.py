@@ -133,11 +133,11 @@ def test_audio_and_haptics_go_into_the_build(st, monkeypatch):  # noqa: F811
     assert A.audio_file(a["id"], "zones.wav", sig) and A.audio_file(a["id"], "zones.wav", "0" * 16) is None
     h = H.make("default", words="jump aur coin", studio=st["sid"])
     assert h["status"] == "draft" and h["report"]["verdict"] == "PASS"
-    assert packs.for_game("default", st["gid"]) == {}
+    assert not {"hoola_audio.gd", "hoola_haptics.gd"} & set(packs.for_game("default", st["gid"]))
     A.approve("default", "A-001")
     H.approve("default", "H-001")
     got = packs.for_game("default", st["gid"])
-    assert set(got) == {"hoola_audio.gd", "hoola_haptics.gd"}
+    assert {"hoola_audio.gd", "hoola_haptics.gd"} <= set(got)                    # (+ HoolaRuntime, v0.425)
     files = {"main.gd": "extends Node\n", **{k: v[0] for k, v in got.items()}}
     assert guard.problems(files) == []
     proj = template.files("t", "portrait", files)["project.godot"]

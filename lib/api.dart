@@ -1098,6 +1098,15 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/$base/${Uri.encodeComponent(id)}/$what', body: {}) as Map);
   Future<Map<String, dynamic>> gamePackApply(String base, String studio) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/$base/apply', body: {'studio': studio}) as Map);
+  // v0.425 Hoola Runtime (replay tests, opt-in telemetry)
+  Future<Map<String, dynamic>> gameRuntime(String sid) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/runtime/${Uri.encodeComponent(sid)}') as Map);
+  Future<Map<String, dynamic>> gameRuntimeSet(String sid, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/runtime/${Uri.encodeComponent(sid)}', body: body) as Map);
+  Future<Map<String, dynamic>> gameReplayTest(String sid) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/runtime/${Uri.encodeComponent(sid)}/replay', body: {}) as Map);
+  Future<Map<String, dynamic>> gameTelemetry(String sid) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/runtime/${Uri.encodeComponent(sid)}/telemetry') as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk

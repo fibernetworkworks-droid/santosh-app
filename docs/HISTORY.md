@@ -16130,3 +16130,48 @@ Her apps talk to outside services through DECLARED HTTP actions (data, never cod
   diagrams as captioned figures, ADRs as cards with status chip + "Alternatives considered", risks coloured by level,
   numbered open questions, page numbers, a closing "nothing has been built" line. Test: every section present, no raw
   markdown, model text still escaped.
+## v0.425.0 HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8) - 2 Nov 2026
+Owner: "GO PHASE 8" (plan row: "Replay / bot / telemetry modules, Godot editor 'ask Hoola' panel via MCP").
+
+HOOLA RUNTIME (`gamedesk/runtime.py`, a role pack: HoolaRuntime autoload in every Studio build, default on; GDScript, not
+a C++ GDExtension - it runs on every export without a build per platform):
+- REPLAY + BOT: started only by Hoola's test runner (`--hoola-bot=seed,frames` / `--hoola-replay=<base64>` after `--`):
+  the in-engine bot injects seeded keys + taps with Input.parse_input_event (headless, no browser) and records them per
+  physics frame; the end state is fingerprinted (probe state + every Node2D / Node3D / Control position, sha256).
+  replay_test = bot run, the same seed again, then the recording played back - all three must match. A mismatch is
+  named with its likely cause from her code (randomize(), Time / OS clock). Real Godot 4.7.2: a deterministic test
+  game PASSES (600 frames, 116 bot inputs, three identical fingerprints); the same game with randomize() FAILS with
+  "randomize(" named; the replay is kept as a download (repro for any bug the bot finds).
+- FOUND before shipping: (1) the first version seeded the RNG on EVERY start - every player would have got the same
+  "random" game each session; the seed now applies ONLY in test runs; (2) the cause scan flagged Hoola's own runtime
+  file (it randomizes a separate generator for the install id) - Hoola's own files are excluded; (3) the guard caught
+  ConfigFile.load("user://...") as "loading files from outside the game" - a const path, as the haptics pack does.
+- TELEMETRY: OFF by default; needs her switch AND the player's yes (HoolaRuntime.ask_consent / needs_consent, saved in
+  user://); refused for a children's game (design-doc words; DPDP); a random install id on the device, event names +
+  frame numbers only, no device ids, no IP stored; posted only to POST /play/<token>/t on the play link's own host
+  (the page CSP allows nothing else) - the endpoint always answers 204, stores only when everything holds, caps 60
+  events / 16 KB a post and 30 posts / 10 min per install. Dashboard: installs, sessions by day, D1 / D7 retention from
+  install cohorts (a cohort too young says so), top events, the play funnel; she can delete it all.
+  The guard lets ONLY hoola_runtime.gd use HTTPRequest (and _own_packs replaces any file of that name the model writes).
+
+ASK HOOLA IN THE EDITOR (`gamedesk/editor.py`):
+- editor tokens: made in the console, shown ONCE, stored as sha256 (+ a 4-char hint), revocable, last use recorded;
+  scope = read her game projects, ask Hoola, add a To-do task (nothing else).
+- a real MCP server: POST /mcp/gamedesk, Streamable HTTP JSON-RPC 2.0 (initialize with protocol negotiation 2025-06-18
+  / 2025-03-26 / 2024-11-05, notifications -> 202, ping, tools/list, tools/call, batches; -32601 / -32602 / -32700
+  errors; GET 405), Bearer editor token (401 + WWW-Authenticate otherwise). Tools: hoola_projects, hoola_tasks,
+  hoola_bible, hoola_bugs, hoola_ask (her question + the open script -> an answer from her design doc, Bible and live
+  code; 30 an hour per token), hoola_add_task. Answers never change her files.
+- FOUND by the tests: my task tools read a field called "state" - tasks use "status", so "open tasks" was always empty.
+- the Godot plugin (addons/hoola: plugin.cfg, plugin.gd EditorPlugin dock, dock.gd: Ask / Tasks / Bible / Bugs over the
+  same MCP endpoint; server + token in HER EditorSettings, never in the project) is LOADED BY THE REAL GODOT EDITOR
+  (headless `--editor`) in the tests: "Hoola panel ready", no errors. Any MCP client (Claude Desktop, Cursor, a Godot
+  MCP bridge) can use the same address; the console shows the config snippet.
+
+Tool `game_runtime` (status / replay_test / telemetry / set; tokens never in chat). Console: "Runtime & editor" page
+(board) + "Editor" on the desk home (tokens, plugin download, MCP address + client config). Phone: GameRuntimeScreen
+(switches, replay test, telemetry numbers). Tests: test_v0425_game_runtime.py (8, two run the real Godot).
+NOT VERIFIED: telemetry from a real browser to the live server (the endpoint and the GDScript are tested separately),
+the plugin talking to the live server from her Godot (the build box has no network), and other MCP clients live.
+Not built from the plan's runtime list: save-game cloud sync, in-game feedback, Indian-language text-shaping checks,
+store billing hooks.
