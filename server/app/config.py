@@ -32,9 +32,9 @@ class Settings(BaseSettings):
     agent_long_effort: str = "xhigh"       # v0.331 Claude effort for long jobs (Anthropic: xhigh = agentic work over ~30 min); '' = model default
     agent_hard_effort: str = "high"        # v0.331 Claude effort for a hard reasoning ask (agent/hard.py); '' = model default
     agent_long_on_claude: bool = True       # v0.331 a long job's calls go to Claude even when CHAT_LLM picks a cheaper brain
-    agent_hard_model: str = "claude-opus-5-5"   # v0.426 SOCH KE JAWAB 2: a hard reasoning ask runs on the strongest model ('' = anthropic_model)
-    agent_hard_max_tokens: int = 16000      # v0.426 per call for a hard ask (thinking counts; 2000 cut the answer)
-    agent_hard_on_claude: bool = True       # v0.426 a hard ask goes to Claude even when CHAT_LLM picks a cheaper brain
+    agent_hard_model: str = "claude-opus-5-5"   # v0.427 SOCH KE JAWAB 2: a hard reasoning ask runs on the strongest model ('' = anthropic_model)
+    agent_hard_max_tokens: int = 16000      # v0.427 per call for a hard ask (thinking counts; 2000 cut the answer)
+    agent_hard_on_claude: bool = True       # v0.427 a hard ask goes to Claude even when CHAT_LLM picks a cheaper brain
     agent_goal_rounds: int = 6              # background continuation turns per goal (v0.221: 3 -> 6; resumes after her tap are free)
     agent_goal_minutes: int = 180           # WORKING minutes of one goal (v0.221: 60 -> 180; time waiting on her never counts)
     agent_goal_resume: bool = True          # v0.221 a goal paused on her tap / OTP / answer restarts by itself once she answers

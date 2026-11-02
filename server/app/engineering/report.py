@@ -359,3 +359,42 @@ def explode_png(mesh: dict[str, Any], kin: dict[str, Any], size: int = 900) -> b
     d = ImageDraw.Draw(img)
     d.text((20, 16), "Exploded view", fill=INK, font=_font(24))
     return render.png(img)
+
+
+# ---------------------------------------------------------------- v0.425 charts: cam curves + torque over time
+def _chart(series: list[tuple[str, list[float], list[float]]], title: str, xlabel: str, ylabels: list[str],
+           rows: int) -> bytes:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(rows, 1, figsize=(8, 2.2 * rows + 0.6), sharex=True, dpi=110)
+    axes = axes if rows > 1 else [axes]
+    for i, (label, x, y) in enumerate(series):
+        ax = axes[min(i, rows - 1)] if rows > 1 else axes[0]
+        ax.plot(x, y, linewidth=1.6, label=label)
+        ax.grid(True, alpha=0.3)
+    for ax, yl in zip(axes, ylabels):
+        ax.set_ylabel(yl)
+        if len(ax.get_lines()) > 1:
+            ax.legend(fontsize=8, loc="upper right")
+    axes[-1].set_xlabel(xlabel)
+    fig.suptitle(title, fontsize=11)
+    fig.tight_layout()
+    b = io.BytesIO()
+    fig.savefig(b, format="png")
+    plt.close(fig)
+    return b.getvalue()
+
+
+def cam_curve_png(cams: dict[str, Any]) -> bytes:
+    name, c = next(iter(cams.items()))
+    cv = c["curve"]
+    return _chart([("lift", cv["deg"], cv["s"]), ("velocity", cv["deg"], cv["v"]), ("acceleration", cv["deg"], cv["a"])],
+                  f"Cam {name}: follower motion at {c['rpm']:g} rpm", "cam angle (deg)",
+                  ["lift (mm)", "velocity (mm/s)", "acceleration (m/s²)"], 3)
+
+
+def dynamics_png(trace: dict[str, Any]) -> bytes:
+    t = trace["t"]
+    series = [(n, t, tau) for n, tau in trace["tau"].items()]
+    return _chart(series, "Motor torque / force during the move (MuJoCo)", "time (s)", ["N·m  /  N"], 1)

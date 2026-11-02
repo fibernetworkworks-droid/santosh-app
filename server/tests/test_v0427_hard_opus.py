@@ -1,4 +1,4 @@
-"""v0.426 SOCH KE JAWAB step 2 - a hard reasoning ask runs on the strongest model with room to think (owner: "GO STEP 2").
+"""v0.427 SOCH KE JAWAB step 2 - a hard reasoning ask runs on the strongest model with room to think (owner: "GO STEP 2").
 
 Before: v0.272 spotted the hard ask and turned thinking on, v0.331 SOCH GEHRI raised its effort to high - but the model
 stayed the chat model (Sonnet 5.5) and the call kept the chat-size 2,000 tokens, while thinking tokens count against
@@ -111,4 +111,4 @@ def test_settings_defaults():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.426.0"
+    assert APP_VERSION == "0.427.0"

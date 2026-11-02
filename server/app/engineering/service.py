@@ -43,7 +43,9 @@ FILES = ("part.step", "part.stl", "part.3mf", "part.glb", "section.dxf", "drawin
          # v0.365 after-build stage
          "analysis.pdf", "fea_0.png", "fea_1.png", "fea_2.png", "part.nc", "cam.png", "flat.dxf", "flat.png",
          # v0.406 mechanisms
-         "robot_urdf.zip", "motion.gif", "explode.png")
+         "robot_urdf.zip", "motion.gif", "explode.png",
+         # v0.425 cams + dynamics
+         "camcurve.png", "dynamics.png")
 
 
 class EngError(Exception):
@@ -332,6 +334,21 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
                                     + (f" + acceleration {r['dynamic']:.3g}" if r["dynamic"] else "") + ")"
                                     + (f", limit given {r['given']:.3g}" if r.get("given") is not None else
                                        f", limit set to {r['need'] * 1.5:.3g} (x 1.5)")})
+            dyn = kin.get("dynamics") or {}
+            if dyn.get("rows"):                         # v0.425 the real move in MuJoCo
+                for r in dyn["rows"]:
+                    out.append({"name": f"Move {r['joint']} ({dyn['move_time_s']:g} s)", "ok": bool(r["ok"]),
+                                "note": f"peak {r['peak']:.3g} {r['unit']}"
+                                        + (f" (cam {r['cam_peak']:.3g})" if r.get("cam_peak") is not None else "")
+                                        + f", rms {r['rms']:.3g}, speed {r['peak_speed']:g} {r['speed_unit']}, "
+                                        f"error {r['worst_error']:g} {r['error_unit']}"
+                                        + (f", saturated {r['saturated_pct']:g}% of the time" if r["saturated_pct"] else "")
+                                        + (f"; motor sized to {r['sized_to']:g}" if r.get("sized_to") else "")})
+                if dyn.get("loop_gap_m"):
+                    out.append({"name": "Loops stay closed while moving", "ok": dyn["loop_gap_m"] < 5e-4,
+                                "note": f"worst gap {dyn['loop_gap_m'] * 1000:.3g} mm"})
+            elif dyn.get("note"):
+                out.append({"name": "Dynamic simulation", "ok": dyn.get("ok") is not False, "note": dyn["note"]})
             for fb in kin.get("fourbar") or []:
                 out.append({"name": f"Four-bar {fb['loop']}", "ok": bool(fb["ok"]),
                             "note": f"{fb['grashof']}; links {fb['links_mm']}; min transmission angle "
@@ -342,6 +359,11 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
                             "note": f"free {r['free'][0]:g} .. {r['free'][1]:g} {r['unit']} (asked {r['asked'][0]:g} .. "
                                     f"{r['asked'][1]:g})" + "".join(f"; hits {' / '.join(h['parts'])} at {h['at']:g}"
                                                                     for h in hits)})
+    for cname, cm_ in (res.get("cams") or {}).items():   # v0.425 the cam designer's checks
+        for r in cm_.get("rows") or []:
+            out.append({"name": f"Cam {cname}: {r['check']}", "ok": bool(r["ok"]), "note": f"{r['measured']} ({r['limit']})"})
+            if not r["ok"]:
+                probs.append(f"cam {cname}: {r['check']} {r['measured']} (limit {r['limit']}): {r['fix']}")
     for row in res.get("expect") or []:             # v0.365 her own numbers, measured on the B-rep
         out.append({"name": f"Asked: {row.get('name')}", "ok": bool(row.get("ok")),
                     "note": f"{row.get('got')} (wanted {row.get('want')})"})
@@ -431,6 +453,19 @@ def _after_files(vdir: Path, res: dict[str, Any], ana: dict[str, Any], title: st
         except Exception as e:
             log.info("cam picture: %s", e)
     cp.unlink(missing_ok=True)
+    for name_, maker in (("dyn.json", "dynamics_png"),):
+        jp = vdir / name_
+        if jp.exists():
+            try:
+                (vdir / "dynamics.png").write_bytes(getattr(report, maker)(json.loads(jp.read_text(encoding="utf-8"))))
+            except Exception as e:
+                log.info("dynamics chart: %s", e)
+            jp.unlink(missing_ok=True)
+    if res.get("cams"):
+        try:
+            (vdir / "camcurve.png").write_bytes(report.cam_curve_png(res["cams"]))
+        except Exception as e:
+            log.info("cam chart: %s", e)
     kp = vdir / "kin.json"
     if kp.exists():                                  # v0.406 motion GIF + exploded view from the part transforms
         try:
@@ -562,6 +597,9 @@ def _run(pid: str) -> None:
                 kin = res.get("kinematics") or {}
                 hits = [r for r in kin.get("range") or [] if r.get("collides")]
                 weak_m = [r for r in kin.get("torque") or [] if not r.get("ok")]
+                weak_m += [{"joint": r["joint"], "need": r["peak"], "unit": r["unit"], "given": r.get("effort")}
+                           for r in (kin.get("dynamics") or {}).get("rows") or []
+                           if not r["ok"] and r.get("effort") is not None and r["saturated_pct"] >= 2.0]
                 if not probs and weak_m and kin_rounds > 0 and attempt < MAX_FIXES:
                     kin_rounds -= 1
                     probs = [f"mechanism: joint {r['joint']} needs {r['need']:.3g} {r['unit']} but her motor gives "

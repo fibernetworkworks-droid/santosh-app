@@ -184,6 +184,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.426 CAMS + SLOTS + DYNAMICS (built as 0.425; `engineering/cams.py` H.disc_cam from the follower motion + pressure / undercut / cusp checks, joint kind `slot`, `dynamics.py` MuJoCo move in her time: torque / saturation / loop gap, motors sized x1.25); VPS `pip install mujoco`.
 - v0.417 META ADS (A1, built as 0.409, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
 - v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
   (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
@@ -217,9 +218,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.426.0 (pubspec 0.426.0+470). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.427.0 (pubspec 0.427.0+471). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
-- v0.426 SOCH KE JAWAB 2/7: a hard reasoning ask runs on Opus 5.5 (agent_hard_model) at effort high with 16k tokens and
+- v0.427 SOCH KE JAWAB 2/7: a hard reasoning ask runs on Opus 5.5 (agent_hard_model) at effort high with 16k tokens and
   thinking; Opus failure = same call on Sonnet. Chat + long jobs unchanged. Next: step 3 a calculator / analysis tool.
 - v0.418 PRAYOGSHALA IN ENGLISH: all lab text, runtime, catalogue, phone screen and checker messages English (en-IN narration); a test blocks Hinglish.
 - v0.415 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin

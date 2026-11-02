@@ -16170,10 +16170,29 @@ Rich native UI in her apps + the custom component escape hatch.
 - Tests: tests/test_v0425_rang.py (3).
 - NOT built: camera capture / document scan, Lottie, offline map tiles, a barcode inventory flow, and iOS compile-failure
   marking for components (iOS builds run in her builds repo). Kits compile only in CI (no local Kotlin / Swift).
+## v0.426.0 CAMS + SLOTS + DYNAMICS (2 Nov 2026, built as 0.425)
+Owner: "cam and slot joints, dynamic simulation — fix and develop".
+- `engineering/cams.py` + `H.disc_cam(name, segments, base_radius, follower='roller'|'flat', roller_radius, offset, thickness,
+  bore, rpm, cam_joint, follower_joint, max_pressure_deg=30)`: the cam is made FROM the follower program (segments must add
+  to 360° and end where they started; laws cycloidal / harmonic / 3-4-5, closed forms checked at textbook points: half lift
+  at half angle, v max, a max). Roller: pitch curve, profile = pitch curve offset by the roller (measured = r), pressure
+  angle row, undercut row (pitch-curve min radius > roller). Flat: rho = Rb + s + s'' cusp row + face width. Follower
+  v / a / jerk at her rpm. Fails go back to the model (service.checks "Cam <name>: ..."). `H.cam` stays the CNC G-code call.
+- Slots: joint kind `slot` (direction + travel) is always a loop closure; residual = pin off the slot line; travel limits
+  lock the solve. URDF / SDF skip it (commented), MJCF = slide + hinge body + connect. Scotch yoke x = R cos θ − R exact.
+- `engineering/dynamics.py`: MuJoCo, meshes stripped, stiff equalities, payload body; independent joints follow quintic
+  0 → top → bottom → 0 in move_time_s (default 2 s), continuous / cam joints turn at rpm, followers follow the cam table;
+  computed torque (bias + Mjj PD 15 Hz) clipped at her effort -> peak / RMS / speed / error / saturation / energy / loop gap,
+  cam_peak + follower_peak (F x ds/dθ; the disc's own unbalance under gravity is real and kept in cam_peak). Motors with no
+  effort are sized peak x 1.25 (`sized_to`) and the package rewritten. Files dynamics.png + camcurve.png (console + phone).
+- Tests `test_v0425_cam_slot_dynamics.py`: laws, roller geometry + steep cam fails, yoke, slow move = m g L/2 (3 %), fast
+  > 1.5x, weak motor saturates, cam torque = follower force x ds/dθ (12 %), desk redesigns a steep cam.
+- NOT VERIFIED: no friction, backlash, link flex or contact force at the cam (the follower is a driven coordinate);
+  VPS needs `pip install mujoco` for the simulation (it says so when missing).
 
-## v0.426.0 SOCH KE JAWAB step 2 — hard asks on Opus with room to think (2 Nov 2026)
-Owner: "GO STEP 2" (step 2 of the 7-step hard-reasoning plan). Built as 0.425.0, re-versioned past the parallel
-v0.425.0 RANG.
+## v0.427.0 SOCH KE JAWAB step 2 — hard asks on Opus with room to think (2 Nov 2026)
+Owner: "GO STEP 2" (step 2 of the 7-step hard-reasoning plan). Built as 0.425.0 / 0.426.0, re-versioned past the parallel
+v0.425.0 RANG and v0.426.0 CAMS.
 - Already there before this step: v0.272 `agent/hard.py` spots a hard ask -> adaptive thinking from the first call;
   v0.331/0.336 SOCH GEHRI: effort high for a hard ask (agent_hard_effort), xhigh + Claude + 16,000 tokens for long jobs.
   Still missing: the MODEL (a hard ask ran on the chat model, Sonnet 5.5) and ROOM (a hard ask outside a long job kept
@@ -16189,4 +16208,4 @@ v0.425.0 RANG.
 - Tests `server/tests/test_v0426_hard_opus.py` (7): model_for; a hard turn = Opus + 16,000 + thinking + effort high, a
   chat turn = Sonnet + 2,000; Opus overloaded -> same call on Sonnet (switch stays on); 404 -> switch off, asked once;
   switch off keeps Sonnet. Turn / cache / usage / context / team / compaction / soch suites: 257 pass, same as main.
-  Not measured here: answer quality (no API key) - step 7 adds the scored set. Version 0.426.0 (pubspec 0.426.0+470).
+  Not measured here: answer quality (no API key) - step 7 adds the scored set. Version 0.427.0 (pubspec 0.427.0+471).
