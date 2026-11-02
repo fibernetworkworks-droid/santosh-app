@@ -111,14 +111,16 @@ def test_the_tick_drives_the_loop(cidev):
     assert S.get_task(T, v["number"])["status"] == "pr_open" and fake.ready == [1]
 
 
-def test_a_repo_without_ci_opens_the_pr_as_before(dev, monkeypatch):  # noqa: F811
+def test_a_repo_without_ci_is_reviewed_by_hoola_itself_before_the_handover(dev, monkeypatch):  # noqa: F811
     S = dev
     _join(S)
     from app.config import get_settings
     monkeypatch.setattr(get_settings(), "dev_loop", False, raising=False)
     monkeypatch.setattr(S, "model_json", lambda *a, **k: FIX_ANSWER)
     v = S.start(T, "fix", "Checkout crash")                                         # deploy.yml only = no CI
-    assert v["status"] == "pr_open" and S.FAKE.prs[1]["draft"] is False
+    # v0.443: the draft is opened, Hoola's own review runs inside the push, and the card is already the handover
+    assert v["status"] == "pr_open" and "review ke liye taiyaar" in v["say"]
+    # (this fake has no GraphQL, so its own draft flag never flips; the cidev tests cover the real mark-ready)
 
 
 def test_a_ci_fix_round_explores_with_the_tools_on_the_branch(cidev, monkeypatch):

@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     dev_review_steps: int = 25              # v0.377 a PR review explores at most this many steps (read-only tools)
     dev_review_minutes: int = 10            # ... and this many minutes, then the one-shot review is the fallback
     dev_spec_review: bool = True            # v0.402 ECC specialists in PR reviews; ON since the review card (same 8/8 caught, false alarms 8 -> 4, nits 3 -> 0)
+    dev_self_review: bool = True            # v0.445 ECC PHASE 2: Hoola reviews its OWN PR before marking it ready for review
+    dev_self_rounds: int = 2                # ... its own review may send the work back for a fix this many times
     dev_spec_fix: bool = True               # v0.402 ECC fixer specialist in CI fix rounds; ON since the fix card (6/6 + 6/6 with it, no harm)
     dev_spec_focus_lines: int = 150         # a PR this big (added lines) gets every focused pass
     dev_spec_focus_steps: int = 12          # steps for one focused pass
