@@ -376,3 +376,38 @@ def test_live_check_reports_a_model_failure_instead_of_crashing(A, monkeypatch):
 def test_live_check_is_a_vps_ops_job():
     wf = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text(encoding="utf-8")
     assert "- archdesk_check" in wf and "python -m app.archdesk check" in wf
+
+
+def test_pdf_prints_every_section_and_no_raw_markdown(tmp_path, monkeypatch):
+    """The printed design carries every part the design has (flows, integrations and security were missing before)
+    and renders the model's **bold** instead of printing the stars; model text stays escaped."""
+    from app.archdesk import capacity, service
+    from app.docstudio import htmlpdf
+    seen = {}
+
+    class FakePrinter:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def pdf(self, html):
+            seen["html"] = html
+            return b"%PDF-1.7 fake"
+    monkeypatch.setattr(htmlpdf, "Printer", FakePrinter)
+    d = service._valid({**json.loads(json.dumps(DESIGN)),
+                        "summary": "A **modular monolith** with `Redis`.\n- **One DB** first\n- <script>x</script> stays text",
+                        "integrations": [{"system": "UPI gateway", "how": "webhook", "failure": "reconciler polls"}],
+                        "security": ["OTP sign-in, DPDP consent"]})
+    cap = capacity.compute({"dau": 50000}, {"dau": "her"})
+    service._pdf(d, cap, [], tmp_path, {})
+    h = seen["html"]
+    assert (tmp_path / "design.pdf").read_bytes().startswith(b"%PDF")
+    for part in ("Summary", "Context", "Quality targets", "Capacity", "Components", "Data", "Key flows", "Integrations",
+                 "Security and privacy", "Failure modes", "Decisions (ADRs)", "Risks", "Roadmap", "Open questions"):
+        assert f"</span>{part}" in h, part
+    assert "<b>modular monolith</b>" in h and "<code>Redis</code>" in h and "**" not in h
+    assert "<script>x" not in h and "&lt;script&gt;" in h
+    assert "Alternatives considered" in h and "UPI gateway" in h and "reconciler polls" in h
+    assert "class='src her'" in h and "class='src assumed'" in h      # given vs assumed marked on the capacity inputs
