@@ -487,6 +487,11 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     tools = tools if tools is not None else TOOLS
     cap = max_tokens or settings.agent_max_tokens
     streaming = live is not None and live.streaming
+    # v0.439 a held answer (a hard ask being checked, a Gyaan answer) and any big answer still STREAM from Claude: the
+    # live reply decides what she sees (feed() only shows words while live.streaming), the API call is never one long
+    # blocking request (16k tokens + thinking as one HTTP call is the shape a client / proxy refuses or times out) and
+    # the thinking reaches the Soch card while the words are held
+    api_stream = streaming or live is not None or cap > NONSTREAM_MAX_TOKENS
     if brain in ("glm", "omniroute"):
         history = [{**m, "content": _no_think(m["content"])} for m in history]   # v0.232 Claude-only blocks
         if streaming:
@@ -506,7 +511,7 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         # she always gets an answer; a 404 / unknown model turns the switch off for this process.
         try:
             HARD_MODEL["calls"] += 1
-            return await _claude_call(over, system, history, settings, tools, live, cap, think, streaming)
+            return await _claude_call(over, system, history, settings, tools, live, cap, think, api_stream)
         except asyncio.CancelledError:
             raise
         except Exception as e:   # noqa: BLE001 - the chat model answers instead
@@ -516,7 +521,7 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
             log.warning("hard model %s failed, answering on %s: %s", over, settings.anthropic_model, str(e)[:200])
             if live is not None:
                 live.reset()
-    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, streaming)
+    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, api_stream)
 
 
 async def _claude_call(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
@@ -575,10 +580,26 @@ def _learn_claude(kw: dict, resp) -> None:
     _ctx.after_call("claude", kw.get("system"), kw.get("tools"), kw.get("messages") or [], n)
 
 
+NONSTREAM_MAX_TOKENS = 8192     # v0.439 above this an answer is always streamed from the API (no live reply needed)
+
+
+class _QuietLive:
+    """v0.439 a stream with no live reply to show it in (a sub-agent, a check): the words are just collected."""
+    def feed(self, piece: str) -> None:
+        pass
+
+    def feed_think(self, piece: str) -> None:
+        pass
+
+    def new_text_block(self) -> None:
+        pass
+
+
 async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
     """v0.161 Claude's answer word by word: text deltas go to the live reply; tool input (input_json_delta) is left to
     the SDK, which parses it only when the block is complete. Prompt caching is the same request shape.
     v0.171 thinking deltas (adaptive / extended thinking) stream to the console's Soch card, never into the answer."""
+    live = live if live is not None else _QuietLive()
     async with api.stream(**kw) as st:
         async for ev in st:
             t = getattr(ev, "type", "")

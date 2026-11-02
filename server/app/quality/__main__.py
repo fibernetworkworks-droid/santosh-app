@@ -47,6 +47,9 @@ def _hardcard(argv: list[str]) -> int:
 
     def arg(name, default=""):
         return argv[argv.index(name) + 1] if name in argv and len(argv) > argv.index(name) + 1 else default
+    if "--ping" in argv:                   # v0.439 one tiny real call per model + shape: which part does the API refuse?
+        print("\n".join(asyncio.run(H.ping())))
+        return 0
     items = H.pick(only=arg("--only"), limit=int(arg("--limit", "0") or 0), quick="--quick" in argv)
     card = asyncio.run(H.live_card(items, judge="--judge" in argv)) if "--live" in argv else H.free_card(items)
     card = H.save(card, arg("--label"))

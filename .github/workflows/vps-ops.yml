@@ -347,6 +347,7 @@ jobs:
                 # pylab, the self-check, all of it - scored in code. ~10-15 min, about Rs 60-120. The full 28 with the
                 # judge: on the VPS itself - python -m app.quality hardcard --live --judge.
                 echo 'cd $CORE && echo "== free card"; timeout 120 .venv/bin/python -m app.quality hardcard 2>&1 | head -5'
+                echo 'echo "== ping (v0.440: each model x plain / thinking / effort)"; cd $CORE && timeout 120 .venv/bin/python -m app.quality hardcard --ping 2>&1 | grep -v httpx | tail -10'
                 echo 'echo "== live, quick set"; cd $CORE && timeout 1200 .venv/bin/python -m app.quality hardcard --live --quick --label vps-ops 2>&1 | tail -30' ;;
               long_jobs)
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
