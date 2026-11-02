@@ -119,7 +119,7 @@ struct RowsSection: View {
                         if r.has("paid") && r.s("paid") != "No" { StatusPill(text: r.s("paid")) }
                         if r.n("total") > 0 { Text(rupees(r.n("total"))).font(.headline) }
                     }
-                    ForEach(fields.filter { $0.s("key") != head?.s("key") && !["status", "total", "paid"].contains($0.s("key")) && r.has($0.s("key")) && $0.s("type") != "photo" }.prefix(6), id: \.id) { f in
+                    ForEach(fields.filter { $0.s("key") != head?.s("key") && !["status", "total", "paid"].contains($0.s("key")) && r.has($0.s("key")) && !["photo", "signature", "photos", "video", "audio", "richtext"].contains($0.s("type")) }.prefix(6), id: \.id) { f in
                         Muted(T(f.s("label")) + ": " + Logic.show(r, f))      // v0.382 a link shows its row's name
                     }
                     if !auth.isStaff && coll == db.orderList && !r.b("pending") && r.s("pay") == "UPI" && r.s("paid", "No") == "No" {
@@ -140,6 +140,7 @@ struct RowsSection: View {
                         TrackButton(coll: coll, r: r)                // v0.412 the rider on a map while it is on its way
                         PayButton(coll: coll, r: r)                  // v0.419 PAISA: pay online through the shop's own gateway
                         ConnectButtons(coll: coll, r: r)             // v0.424 JODO: staff buttons for her approved connectors
+                        RichRowParts(fields: fields, r: r)           // v0.425 RANG: photos / signature / video / voice note / formatted text
                     }
                     AssignBox(coll: coll, r: r)
                     if !db.workflowField(coll).isEmpty {              // v0.382 DIMAAG: the server's workflow steps + approvals
@@ -220,6 +221,16 @@ struct FormBlock: View {
                 ScanRow(label: label, key: k)
             case "file":
                 FileRow(label: label, key: k)
+            case "signature":                                        // v0.425 RANG
+                SignatureRow(label: label, key: k)
+            case "photos":
+                PhotosRow(label: label, key: k)
+            case "video":
+                VideoRow(label: label, key: k)
+            case "audio":
+                AudioRow(label: label, key: k)
+            case "richtext":
+                RichTextRow(label: label, key: k)
             default:
                 TextField(label, text: state.binding(k)).textFieldStyle(.roundedBorder)
                     .keyboardType(f.s("type") == "phone" ? .phonePad : f.s("type") == "email" ? .emailAddress : f.s("type") == "number" ? .decimalPad : .default)
