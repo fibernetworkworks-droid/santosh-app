@@ -2210,7 +2210,7 @@ def _shop_cfg(r: Site) -> dict[str, Any]:
     from . import live as LV
     from . import shoppay as SP
     return {**SH.settings_of(facts), "upi": facts.get("upi") if LV.vpa_ok(str(facts.get("upi") or "")) else "",
-            "shop_name": facts.get("name") or r.name or "Shop", "online": SP.online_on(r.id)}   # v0.443 her own gateway
+            "shop_name": facts.get("name") or r.name or "Shop", "online": SP.online_on(r.id)}   # v0.446 her own gateway
 
 
 def shop_info(tenant: str, ref: str) -> dict[str, Any]:
@@ -2222,7 +2222,7 @@ def shop_info(tenant: str, ref: str) -> dict[str, Any]:
                 k: SH.rupees(cfg[k]) for k in ("delivery", "free_above", "min_order")},
             "upi": cfg["upi"], "products": SH.products(r.id, active_only=False), "summary": SH.summary(r.id),
             "from_lists": len(SH.from_collections(_j(r.plan, {}))),
-            "online": {"on": bool(cfg.get("online")), "app": _app_of(r)}}      # v0.443 her own gateway behind the site
+            "online": {"on": bool(cfg.get("online")), "app": _app_of(r)}}      # v0.446 her own gateway behind the site
 
 
 def _app_of(r: Site) -> str:

@@ -77,6 +77,8 @@ POST   /api/gamedesk/liveops/{sid}/experiments[/{key}/start|stop]  A/B tests (st
 POST   /api/gamedesk/liveops/{sid}/events[/{key}/approve|cancel]   live events calendar (approve = her tap)
 POST   /api/gamedesk/liveops/{sid}/crashes/{sig}/hotfix | /patch_check | /money (CSV)
 GET    /play/{token}/live                       what the game reads: running tests + approved events (same host)
+GET|POST /api/gamedesk/big[/{pid}/tasks[/{tno}[/reopen]]]   v0.433 big-studio projects in Unity / Unreal / Godot
+GET    /api/gamedesk/big/plugin/{unity|unreal}.zip   the Hoola Crew editor plugin (MCP client; writes only on her Apply)
 GET    /api/gamedesk/editor/tokens  POST {label} (shown ONCE)  DELETE /api/gamedesk/editor/tokens/{id}
 GET    /api/gamedesk/editor/plugin.zip          the Godot editor plugin (addons/hoola)
 POST   /mcp/gamedesk                            MCP (JSON-RPC 2.0, Streamable HTTP) with 'Authorization: Bearer <editor token>'
@@ -822,6 +824,44 @@ def make_router(require_key, current_tenant) -> APIRouter:
         _owner_game_dev(tenant)
         b = _b(body)
         return await call(LO.import_revenue, tenant, sid, str(b.get("csv") or ""), str(b.get("source") or ""))
+
+    # ------------------------------------------------------------ v0.433 Big-studio mode (Unity / Unreal on her machines)
+    from . import bigstudio as BS
+
+    @r.get("/api/gamedesk/big", dependencies=[Depends(require_key)])
+    async def bs_list(tenant: str = Depends(current_tenant)):
+        return {"projects": await call(BS.projects, tenant), "mcp_url": service.base_url().rstrip("/") + "/mcp/gamedesk",
+                "engines": BS.ENGINE_NAMES}
+
+    @r.post("/api/gamedesk/big", dependencies=[Depends(require_key)])
+    async def bs_new(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(BS.new_project, tenant, b.get("engine"), b.get("title"), b.get("engine_version") or "",
+                          b.get("about") or "", b.get("module") or "")
+
+    @r.post("/api/gamedesk/big/{pid}/tasks", dependencies=[Depends(require_key)])
+    async def bs_task_add(pid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(BS.add_task, tenant, pid, b.get("title"), b.get("detail") or "", b.get("priority") or 2)
+
+    @r.get("/api/gamedesk/big/{pid}/tasks/{tno}", dependencies=[Depends(require_key)])
+    async def bs_task_get(pid: str, tno: str, tenant: str = Depends(current_tenant)):
+        return await call(BS.task, tenant, pid, tno)
+
+    @r.post("/api/gamedesk/big/{pid}/tasks/{tno}/reopen", dependencies=[Depends(require_key)])
+    async def bs_task_reopen(pid: str, tno: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(BS.reopen, tenant, pid, tno, str(_b(body).get("note") or ""))
+
+    @r.get("/api/gamedesk/big/plugin/{engine}.zip", dependencies=[Depends(require_key)])
+    async def bs_plugin(engine: str):
+        if engine not in ("unity", "unreal"):
+            raise HTTPException(404, "unity or unreal")
+        name = "hoola_crew_unity.zip" if engine == "unity" else "hoola_crew_unreal.zip"
+        return Response(content=BS.plugin_zip(engine, service.base_url()), media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
     @r.get("/play/{token}/live")
     async def lo_live(token: str):

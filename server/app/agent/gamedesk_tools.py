@@ -344,6 +344,26 @@ GAMEDESK_TOOLS.append(
 
 GAMEDESK_LABELS.update({"game_liveops": "Game ke live ops dekh raha hoon"})
 
+# v0.433 Phase 10: big-studio mode (the Hoola Crew inside Unity / Unreal on her machines)
+GAMEDESK_TOOLS.append(
+    {"name": "game_bigstudio", "description": (
+        "Big-studio mode (part of the Game Developer desk): her game lives in HER own Unity / Unreal / Godot project on her "
+        "machines, and the Hoola Crew works inside her editor through its official scripting (Unity package, Unreal Python "
+        "plugin, any MCP client). Actions: projects / new_project (engine unity | unreal | godot, title, engine_version, "
+        "about, module = Unreal C++ module) / add_task (project E-001, title, detail) / tasks / task (task T-0001: the "
+        "proposal, checks, her editor's compile result) / reopen (task, note). Proposals are made when HER editor asks "
+        "(Hoola Crew > Next task), checked on the server (paths, banned calls, syntax), and written ONLY when she clicks "
+        "Apply in her editor; 'compiled' is said only when her editor reported it. Plugins + the editor token: console "
+        "Game Desk > Big studio - never in chat."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["projects", "new_project", "add_task", "tasks", "task", "reopen"]},
+         "project": {"type": "string"}, "engine": {"type": "string", "enum": ["unity", "unreal", "godot"]},
+         "title": {"type": "string"}, "engine_version": {"type": "string"}, "about": {"type": "string"}, "module": {"type": "string"},
+         "detail": {"type": "string"}, "task": {"type": "string"}, "note": {"type": "string"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_bigstudio": "Studio project dekh raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -942,6 +962,43 @@ async def game_vfx(ctx: Ctx, action="", words="", plan=None, setup="", **_):
                             {"not_here": "Blender / OpenColorIO / OpenUSD are not installed on the server"})
 
 
+async def game_bigstudio(ctx: Ctx, action="", project="", engine="", title="", engine_version="", about="", module="",
+                         detail="", task="", note="", **_):
+    from ..employee import hire
+    from ..gamedesk import bigstudio as B
+    from ..gamedesk import service as G
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action in ("new_project", "add_task", "reopen"):
+        _owner_only(ctx, "Studio project")
+    run = asyncio.to_thread
+    try:
+        if action == "projects":
+            return {"projects": [{k: p[k] for k in ("number", "engine_name", "title", "engine_version", "counts")} for p in await run(B.projects, t)],
+                    "how": "Her editor's Hoola Crew plugin asks for the next task; plugins in the console (Game Desk > Big studio)."}
+        if action == "new_project":
+            return await run(B.new_project, t, engine, title, engine_version, about, module)
+        if action == "add_task":
+            return await run(B.add_task, t, project, title, detail)
+        if action == "tasks":
+            ps = [p for p in await run(B.projects, t) if not project or p["number"] == project.upper() or p["id"] == project]
+            if not ps:
+                raise ToolError("Woh studio project nahi mila.")
+            return {"project": ps[0]["number"], "tasks": [{k: x[k] for k in ("number", "title", "status", "rounds", "files")} for x in ps[0]["tasks"]]}
+        if action == "task":
+            v = await run(B.task, t, project, task)
+            pr = v.get("proposal") or {}
+            return {k: v[k] for k in ("number", "title", "status", "rounds", "result")} | {
+                "why": pr.get("why"), "files": [f["path"] for f in pr.get("files", [])], "checks": pr.get("checks", []),
+                "problems": pr.get("problems", []), "manual": pr.get("manual", [])}
+        if action == "reopen":
+            return await run(B.reopen, t, project, task, note)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = projects | new_project | add_task | tasks | task | reopen")
+
+
 async def game_liveops(ctx: Ctx, action="", id="", key="", title="", goal="win", variants=None, mde=0.05, ship="",
                        starts="", ends="", set=None, sig="", **_):
     from ..employee import hire
@@ -1031,4 +1088,4 @@ GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_b
                      "game_physics": game_physics, "game_audio": game_audio, "game_haptics": game_haptics,
                      "game_net": game_net, "game_xr": game_xr, "game_sim": game_sim, "game_twin": game_twin,
                      "game_vfx": game_vfx, "game_runtime": game_runtime,
-                     "game_liveops": game_liveops}
+                     "game_liveops": game_liveops, "game_bigstudio": game_bigstudio}

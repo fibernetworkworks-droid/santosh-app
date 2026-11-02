@@ -56,3 +56,7 @@ pymysql>=1.1             # v0.404 APNA DATABASE 2: her MySQL-family database (My
 pymongo>=4.6             # v0.404 her MongoDB (Atlas: mongodb+srv needs dnspython, pulled in by pymongo) (Apache-2.0)
 google-cloud-firestore>=2.16   # v0.404 her Firebase (Cloud Firestore) with her service account (Apache-2.0)
 certifi                  # v0.404 CA bundle for TLS to her MySQL (PlanetScale / TiDB require TLS)
+# v0.433 big-studio mode: real C# / C++ syntax checks of Unity / Unreal proposals (optional: missing = NOT ASSESSED)
+tree-sitter>=0.23
+tree-sitter-c-sharp>=0.23
+tree-sitter-cpp>=0.23

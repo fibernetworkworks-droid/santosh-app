@@ -79,9 +79,9 @@ class SiteShopOrder(Base):
     ip_hash: Mapped[str] = mapped_column(String(24), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
-    discount: Mapped[int | None] = mapped_column(Integer, nullable=True)       # v0.443 paise off by her coupon
-    coupon: Mapped[str | None] = mapped_column(String(20), nullable=True)      # v0.443 the code used
-    pay_id: Mapped[str | None] = mapped_column(String(40), nullable=True)      # v0.443 her gateway payment (app_payment.id)
+    discount: Mapped[int | None] = mapped_column(Integer, nullable=True)       # v0.446 paise off by her coupon
+    coupon: Mapped[str | None] = mapped_column(String(20), nullable=True)      # v0.446 the code used
+    pay_id: Mapped[str | None] = mapped_column(String(40), nullable=True)      # v0.446 her gateway payment (app_payment.id)
 
 
 _TABLES_OK = False
@@ -96,7 +96,7 @@ def ensure_tables() -> None:
     if eng is not None:
         SiteShopProduct.__table__.create(eng, checkfirst=True)
         SiteShopOrder.__table__.create(eng, checkfirst=True)
-        try:                                            # v0.443 discount / coupon / pay_id on older databases
+        try:                                            # v0.446 discount / coupon / pay_id on older databases
             _db._add_missing_columns(eng)
         except Exception:                               # noqa: BLE001
             pass
@@ -298,7 +298,7 @@ def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any
         if cfg.get("min_order") and sub < cfg["min_order"]:
             raise ShopError(f"Kam se kam {rupees(cfg['min_order'])} ka order.")
         off, code, cnote = 0, "", ""
-        if str(body.get("coupon") or "").strip():          # v0.443 her code, applied by the server (never trusted from the page)
+        if str(body.get("coupon") or "").strip():          # v0.446 her code, applied by the server (never trusted from the page)
             from . import shoppay as SP
             off, code, cnote = SP.coupon_apply(site_id, str(body.get("coupon")), sub, phone)
         goods = sub - off
@@ -328,7 +328,7 @@ def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any
         start_view = {"id": o.id, "number": o.number, "name": name, "phone": phone, "total_paise": total}
     if cnote:
         out["coupon_note"] = cnote
-    if method == "online":                                # v0.443 her own gateway; PAID only from its verified answer
+    if method == "online":                                # v0.446 her own gateway; PAID only from its verified answer
         from . import shoppay as SP
         try:
             out["online"] = SP.start(site_id, start_view)
@@ -418,7 +418,7 @@ def set_status(site_id: str, number: str, to: str) -> dict[str, Any]:
         o.status, o.updated_at = to, now()
         o.history = json.dumps(json.loads(o.history or "[]") + [{"at": _iso(), "to": to}])
         view, code, phone = owner_view(o), (getattr(o, "coupon", None) or ""), o.phone
-    if to == "cancelled" and code:                     # v0.443 the coupon use goes back with a cancel
+    if to == "cancelled" and code:                     # v0.446 the coupon use goes back with a cancel
         from . import shoppay as SP
         SP.give_back(site_id, code, phone)
     return view

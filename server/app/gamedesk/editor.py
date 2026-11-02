@@ -170,9 +170,12 @@ def _rate(tid: str, limit: int = 30, window: float = 3600.0) -> bool:
 
 
 def call_tool(tenant: str, tid: str, name: str, args: dict) -> Any:
+    from . import bigstudio as BIG
     from . import qa as Q
     from . import studio as S
     args = args if isinstance(args, dict) else {}
+    if name in BIG.NAMES:                                # v0.433 big-studio mode (Unity / Unreal / outside Godot)
+        return BIG.call_tool(tenant, tid, name, args)
     if name == "hoola_projects":
         out = []
         for p in S.studios(tenant):
@@ -231,15 +234,19 @@ def handle_one(tenant: str, tid: str, msg: Any) -> dict | None:
         return {"jsonrpc": "2.0", "id": rid, "result": {
             "protocolVersion": want if want in PROTOCOLS else PROTOCOLS[0], "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": SERVER_INFO,
-            "instructions": "Hoola Game Desk: her game projects, tasks, Game Bible, bugs, and Ask Hoola. Read-only except "
-                            "adding a To-do task. Answers never change her files."}}
+            "instructions": "Hoola Game Desk: her Hoola-built game projects (tasks, Game Bible, bugs, Ask Hoola) and her "
+                            "big-studio projects in Unity / Unreal / Godot (hoola_studio_*: next task + a checked proposal, "
+                            "report the editor's compile result). The server never writes her files: a proposal is applied "
+                            "only by her, in her editor."}}
     if method == "ping":
         return {"jsonrpc": "2.0", "id": rid, "result": {}}
     if method == "tools/list":
-        return {"jsonrpc": "2.0", "id": rid, "result": {"tools": TOOLS}}
+        from . import bigstudio as BIG
+        return {"jsonrpc": "2.0", "id": rid, "result": {"tools": TOOLS + BIG.TOOLS}}
     if method == "tools/call":
         name = str((params or {}).get("name") or "")
-        if name not in {t["name"] for t in TOOLS}:
+        from . import bigstudio as BIG
+        if name not in {t["name"] for t in TOOLS} | BIG.NAMES:
             return _err(rid, -32602, f"Unknown tool: {name}")
         try:
             out = call_tool(tenant, tid, name, (params or {}).get("arguments") or {})

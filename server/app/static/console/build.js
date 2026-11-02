@@ -1674,7 +1674,7 @@ window.HoolaBuild = function (C) {
     if (lists.length) put('app', {type: 'line', labels: dl, series: lists.slice(0, 6).map(x => ({name: S(x.label), values: L(x.days)}))}, 'No new records in this period.');
   }
 
-  /* v0.443 DUKAAN PAISA: her own gateway (keys typed HERE only, sealed, shown nowhere), payments, coupons, reviews */
+  /* v0.446 DUKAAN PAISA: her own gateway (keys typed HERE only, sealed, shown nowhere), payments, coupons, reviews */
   async function payBox(o, box, info, reload) {
     const on = M(info.online), sec = document.createElement('section'); sec.className = 'stcol stpay';
     box.prepend(sec);
@@ -1778,7 +1778,7 @@ window.HoolaBuild = function (C) {
     payBox(o, box, info, () => loadShop(o, root));
     box.addEventListener('click', async e => {
       const rf = e.target.closest('[data-refund]');
-      if (rf) {                                          // v0.443 HER tap: the gateway's own refund for an online order
+      if (rf) {                                          // v0.446 HER tap: the gateway's own refund for an online order
         const amt = prompt(`Refund order ${rf.dataset.refund}: amount in ₹ (leave empty = the full amount left)`, '');
         if (amt === null || !confirm(`Refund ${amt ? '₹' + amt : 'the full amount'} for ${rf.dataset.refund} through your gateway?`)) return;
         rf.disabled = true;

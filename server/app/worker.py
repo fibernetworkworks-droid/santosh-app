@@ -861,7 +861,7 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_applink.migrate_all)
     except Exception:
         log.exception("site app migrate failed")
-    try:                                   # v0.443 website online orders never paid are cancelled (stock + coupon back)
+    try:                                   # v0.446 website online orders never paid are cancelled (stock + coupon back)
         from .site import shoppay as site_shoppay
         await asyncio.to_thread(site_shoppay.release_unpaid)
     except Exception:

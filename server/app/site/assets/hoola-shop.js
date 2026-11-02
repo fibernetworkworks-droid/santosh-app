@@ -9,7 +9,7 @@
   if (!meta) return;
   var API = meta.getAttribute('content'), KEY = 'hoola-cart:' + API;
   var opt = function (k) { return meta.getAttribute('data-' + k) || ''; };
-  var P = {}, cart = load(), box = null, btn = null, ONLINE = false, STARS = {};   // v0.443 her gateway + verified stars
+  var P = {}, cart = load(), box = null, btn = null, ONLINE = false, STARS = {};   // v0.446 her gateway + verified stars
 
   function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(cart)); } catch (e) {} paintCount(); }
@@ -21,7 +21,7 @@
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || 'Kuch gadbad hui, dobara koshish kijiye.'); return j; }); });
   }
 
-  function abs(u) {                                      // v0.443 her gateway page lives on Hoola's server (the API's origin)
+  function abs(u) {                                      // v0.446 her gateway page lives on Hoola's server (the API's origin)
     u = String(u || '');
     if (/^https?:\/\//.test(u)) return u;
     if (u.charAt(0) === '/') { try { return new URL(u, API).href; } catch (e) {} }
@@ -46,7 +46,7 @@
     });
   }
 
-  function starsOn(host, slug) {                       // v0.443 verified buyers only (the server counts them)
+  function starsOn(host, slug) {                       // v0.446 verified buyers only (the server counts them)
     var r = STARS[slug]; if (!r || !r.count || host.querySelector('.hs-stars')) return;
     var s = el('p', 'hs-stars', '★ ' + r.avg + ' (' + r.count + ')'); s.setAttribute('aria-label', r.avg + ' out of 5 from ' + r.count + ' buyers');
     host.appendChild(s);
@@ -123,7 +123,7 @@
     var pin = field(f, 'Pincode', 'pincode', 'text', true, {inputmode: 'numeric', pattern: '[1-9][0-9]{5}', maxlength: '6', autocomplete: 'postal-code'});
     if (pick) pick.addEventListener('change', function () { addr.required = pin.required = !pick.checked; addr.closest('label').hidden = pin.closest('label').hidden = pick.checked; });
     field(f, 'Kuch kehna hai? (optional)', 'note', 'text', false);
-    var cp = field(f, 'Coupon code (optional)', 'coupon', 'text', false, {autocomplete: 'off', maxlength: '16'});   // v0.443
+    var cp = field(f, 'Coupon code (optional)', 'coupon', 'text', false, {autocomplete: 'off', maxlength: '16'});   // v0.446
     var cmsg = el('p', 'muted hs-coupon-msg'); cmsg.setAttribute('role', 'status'); f.appendChild(cmsg);
     cp.addEventListener('change', function () {
       if (!cp.value.trim()) { cmsg.textContent = ''; return; }
@@ -172,7 +172,7 @@
     if (o.discount) panel.appendChild(el('p', 'muted', 'Coupon ' + o.coupon + ': ' + o.discount + ' off'));
     if (o.coupon_note) panel.appendChild(el('p', 'muted', o.coupon_note));
     panel.appendChild(el('p', 'hs-cart-sub', 'Total: ' + o.total + (o.delivery && o.delivery !== '₹0' ? ' (delivery ' + o.delivery + ')' : '')));
-    if (o.method === 'online' && o.status === 'new') {      // v0.443 not paid yet: her gateway's page again
+    if (o.method === 'online' && o.status === 'new') {      // v0.446 not paid yet: her gateway's page again
       var pb = el('button', 'btn btn-primary', 'Abhi pay karein ' + o.total); pb.type = 'button';
       var pm = el('p', 'hs-form-msg'); pm.setAttribute('role', 'status');
       pb.addEventListener('click', function () {
@@ -213,7 +213,7 @@
     var ta = el('a', '', 'yeh link'); ta.href = trackLink(o); t.appendChild(ta); panel.appendChild(t);
   }
 
-  function reviewBox(panel, o) {                         // v0.443 only a delivered order's buyer, once per item
+  function reviewBox(panel, o) {                         // v0.446 only a delivered order's buyer, once per item
     var wrap = el('div', 'hs-reviews'); wrap.appendChild(el('h3', '', 'Review dijiye'));
     (o.items || []).forEach(function (x) {
       var slug = x.slug; if (!slug) return;

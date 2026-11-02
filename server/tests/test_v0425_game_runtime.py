@@ -128,7 +128,10 @@ def test_mcp_server_end_to_end(st, monkeypatch):  # noqa: F811
     assert r["result"]["protocolVersion"] == "2025-06-18" and r["result"]["capabilities"]["tools"] is not None
     assert _rpc(c, tok, "notifications/initialized", rid=None).status_code == 202
     tools = _rpc(c, tok, "tools/list").json()["result"]["tools"]
-    assert {t["name"] for t in tools} == {"hoola_projects", "hoola_tasks", "hoola_bible", "hoola_bugs", "hoola_ask", "hoola_add_task"}
+    got = {t["name"] for t in tools}
+    assert {"hoola_projects", "hoola_tasks", "hoola_bible", "hoola_bugs", "hoola_ask", "hoola_add_task"} <= got
+    assert {n for n in got if not n.startswith("hoola_studio_")} == {"hoola_projects", "hoola_tasks", "hoola_bible",
+                                                                     "hoola_bugs", "hoola_ask", "hoola_add_task"}
     pj = json.loads(_rpc(c, tok, "tools/call", {"name": "hoola_projects", "arguments": {}}).json()["result"]["content"][0]["text"])
     assert pj[0]["id"] == "S-0001" and pj[0]["live_version"] == 1
     seen = {}

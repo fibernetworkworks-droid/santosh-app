@@ -2609,3 +2609,8 @@ body.albon{overflow:hidden}
 #app .lo-row { margin: 8px 0; padding: 10px 12px; }
 #app .lo-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 8px 0; }
 #app .lo-form textarea { grid-column: 1 / -1; font: 12.5px/1.4 var(--mono, monospace); }
+
+/* v0.433 BIG STUDIO */
+#app .bs-row { cursor: pointer; }
+#app .bs-row:hover td { background: var(--hover, rgba(0,0,0,.03)); }
+#app select#bsEng { min-height: 32px; }

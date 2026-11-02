@@ -1,4 +1,4 @@
-"""v0.443 DUKAAN PAISA (web Step 4 = W4 + the first of W5): her website shop takes online payments through HER gateway on the
+"""v0.446 DUKAAN PAISA (web Step 4 = W4 + the first of W5): her website shop takes online payments through HER gateway on the
 app payment engine - paid ONLY from the gateway (signed webhook or server read, amount must match), unpaid online orders
 released, late money never lost, refunds only by her tap; coupons applied by the server (once per mobile number, a cancel
 gives the use back); reviews only from buyers whose order was delivered, once per item, her hide."""
@@ -16,7 +16,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.443.0"
+    assert APP_VERSION == "0.446.0"
 
 
 @pytest.fixture()

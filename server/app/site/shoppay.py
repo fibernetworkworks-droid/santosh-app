@@ -1,4 +1,4 @@
-"""v0.443 DUKAAN PAISA (web Step 4 = W4 + the first of W5, docs/WEB_PLATFORM_PLAN.md): her website shop takes ONLINE
+"""v0.446 DUKAAN PAISA (web Step 4 = W4 + the first of W5, docs/WEB_PLATFORM_PLAN.md): her website shop takes ONLINE
 payments through HER OWN gateway account, on the same engine her apps use (`appmaker/pay.py`, v0.419 PAISA).
 
 - online checkout: the order is made first (prices, stock, delivery, coupon - all on the server), then a gateway order for

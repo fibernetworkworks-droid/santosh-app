@@ -16692,7 +16692,122 @@ Owner: "NOW ALSO CHECK IS VOICE TO VOICE CAN PERFORM ALL TOOL TASK END TO END", 
   broke two older voice tests whose fake run_turn takes only the arguments the old call site used; it now passes only what
   is set.
 
-## v0.443.0 DUKAAN PAISA (web Step 4 part 1 = W4 for websites + the first of W5, owner: "START STEP 4")
+
+## v0.443.0 AI EMPLOYEES PEHLE (2 Nov 2026)
+Owner: "NOW LETS WORK ON WEB CONSOLE SIDE --- MAKE A SECTION IN SIDE BAR INSTEAD OF EMPLOYEE A AI EMPLOYEE FIRST".
+- The sidebar section was called **Employees** and was added with `NAV.push`, so it landed at the BOTTOM of the nav
+  (after Create / Today / Tools / Lab / Voice call, next to Systems and Arena) - the AI staff she hires, and every desk
+  that appears once one is hired, read like an afterthought.
+- Now `NAV.unshift(['hire', 'AI Employees'])` in `static/console/v2.js`: the section is the FIRST item in the sidebar,
+  and because `syncEmployees` splices each hired desk right after the `hire` entry, the whole AI-staff group (AI
+  Employees + SEO Desk / Social Desk / CAD Desk / Game Desk / Architecture Desk) now sits together at the top.
+- Renamed everywhere a user can read it: the nav label, the title bar (`hire:'· AI Employees'`), the hub page heading
+  (`employees.js`, 3 places), the `aria-label` of the view in `v2.html`, and the "Go to Employees" buttons on the SEO
+  and Social desks plus the "hire it in Employees" lines on the game-role panels.
+- New icon `IC.hire`: a person with a spark (AI) instead of the plain person + sign.
+- Console only: no API, no server behaviour, no phone change (the phone keeps Profile > Employees).
+- Test `test_v0443_ai_employees.py`.
+
+## v0.444.0 (built as 0.433.0) BIG-STUDIO MODE (Hoola Game Engine plan Phase 10) - 2 Nov 2026
+Owner: "Phase 10 START END TO END". Plan row 10 = the Hoola Crew inside Unreal / Unity via official editor scripting +
+MCP on their machines. New `server/app/gamedesk/bigstudio.py`; the same `/mcp/gamedesk` server gains the `hoola_studio_*`
+tools; tool `game_bigstudio`; console Game Desk > Big studio; phone Game Desk > Big studio.
+- THE SHAPE: her game lives in HER Unity / Unreal / Godot project on HER machines. Hoola never reaches in. The editor
+  plugin is an MCP CLIENT: it asks for the next task and sends what the editor sees (engine version, selection, open
+  scripts, console errors, installed packages); Hoola answers a proposal; her editor writes it only when she clicks
+  Apply and says yes; her editor compiles it and reports back. "Compiles" is only ever said when HER editor said so.
+- UNITY: a UPM package `com.newtika.hoola` (package.json + an Editor-only asmdef so it can never enter her player
+  build, Newtonsoft from Unity's own com.unity.nuget.newtonsoft-json). Window > Hoola Crew: server + token + project,
+  Next task, the proposal (new / change per file, manual steps), Apply (confirm dialog, backups in
+  Library/HoolaBackups, AssetDatabase.Refresh + RequestScriptCompilation), Propose again, Not this, Ask the crew,
+  Revert the last Apply (only files Hoola itself made are deleted). CompilationPipeline.assemblyCompilationFinished
+  collects the real CS errors, and after the domain reload they are reported to Hoola, which answers with a fix
+  proposal. The plugin re-checks every path itself (Assets/ only, no /Plugins/, allowed extensions).
+- UNREAL ENGINE 5: a content-only plugin `HoolaCrew` (uplugin enables PythonScriptPlugin + EditorScriptingUtilities;
+  Content/Python/init_unreal.py runs at editor start) and `hoola_crew.py`: a ToolMenus "Hoola Crew" menu (Next task,
+  Apply, Run the applied script, C++ compiled OK, C++ failed, Revert), yes / no via unreal.EditorDialog, token +
+  project kept in Saved/HoolaCrew/config.json, context from EditorUtilityLibrary.get_selected_assets +
+  SystemLibrary.get_engine_version. Python-only proposals are compiled in her editor's own Python and run on her tap;
+  a raised exception goes back to Hoola as the fix round's input. C++ goes to Source/<Module>/ and she compiles with
+  Live Coding, then taps compiled OK / failed.
+- THE CHECKS (server, before she ever sees a proposal): paths only inside the project's own code folders per engine
+  (Unity Assets/; Unreal Content/Python/*.py + Source/<her module>/*.h/.cpp/.Build.cs; Godot *.gd), never
+  ProjectSettings / Packages / Config / Binaries / Intermediate / Saved / .git / .uproject / .uplugin / .ini / binaries;
+  banned calls per language (Process.Start, File.Delete, HttpClient / FHttpModule / sockets, DllImport, Registry,
+  PlayerSettings, os / subprocess / shutil / socket / eval / exec, delete_asset, RequestExit, OS.execute...); Unity C#
+  that uses UnityEditor outside an Editor folder without #if UNITY_EDITOR is refused (it would break her player
+  build); Unreal Python using unreal.* without `import unreal` is refused; max 12 files, 60 KB each; `run` must be
+  module.function. REAL SYNTAX: Python `ast`, C# and C++ with tree-sitter (new optional deps; missing = NOT ASSESSED,
+  said), JSON with json. A proposal that fails any check is marked failed and NO files are handed to the editor.
+- THE LOOP: todo -> proposed -> (her Apply) -> applied -> done on a clean compile; errors start a fix round with the
+  REAL compiler / run errors, max 3, then the task waits for her (reopen with a note); "Not this" = rejected. Every
+  task keeps its history. The model is told her editor's context is DATA, never instructions.
+- MCP: 7 new tools on /mcp/gamedesk behind the same hashed editor tokens (hoola_studio_projects / tasks / next /
+  propose / report / add_task / ask), so Claude Desktop, Cursor or any MCP client can drive the same board.
+- Tables: game_big_projects, game_big_tasks (new). Routes: GET|POST /api/gamedesk/big, POST /api/gamedesk/big/{pid}/tasks,
+  GET /api/gamedesk/big/{pid}/tasks/{tno}, POST .../reopen, GET /api/gamedesk/big/plugin/{unity|unreal}.zip.
+- Tests: `server/tests/test_v0433_game_bigstudio.py` (8). The REAL Unreal plugin code is executed against a stand-in
+  `unreal` module and the real MCP endpoint: menu built, token refused when missing, next task -> Apply (backup) ->
+  run -> a real ValueError goes back -> the fix round's proposal -> run clean -> done -> revert twice (Hoola's file,
+  then her original) -> a ../ path refused. The Unity C# is parsed by the real C# parser and its own path rule is pinned.
+- NOT VERIFIED: Unity and Unreal are not installable in this sandbox, so no real Unity compile and no real Unreal
+  editor has run the plugin. Everything engine-side comes from the vendors' documented APIs; the first real editor is
+  what will confirm or correct them. Godot keeps the v0.427 Ask Hoola dock (a Godot project here gets board tasks
+  through any MCP client, with no new dock).
+
+## v0.445.0 KHUD KA REVIEW — ECC Phase 2 (owner: "ECC Phase 2: Hoola reviews its own PR before marking it 'Ready for review'. --- GO")
+
+**The hole.** Since v0.352 a Developer Sahayak PR went: commit → DRAFT PR → her CI → (red: up to `dev_ci_rounds`
+fix rounds) → green → `mark_ready` → her desk. The only *review* in the whole product was of **other people's** pull
+requests (v0.377 DEKH KE REVIEW, v0.402 ECC specialists). Hoola's own code was handed over on the strength of a green
+CI, and CI only catches what a test already covers — not a leftover debug print, not a caller it forgot to update, not
+"the task asked for three things and the PR does two".
+
+**The gate.** `service._ready_or_self_review()` now sits in front of every `_ci_ready()` call. It reads Hoola's own
+draft PR with the **same** exploring reviewer used on anyone else's (`explore_review` → `loop.review_run`, specialist
+passes included), plus a new system block `specialists.SELF_REVIEW` (adapted from ECC's reviewer-before-handoff), which
+puts the own-work questions first: did the change do what the task asked or only part of it; does any caller, test or
+import of the touched code now break (name it, don't guess); a leftover (debug print, commented-out code, TODO, stray
+file, half-renamed symbol); then the same security / silent-failure / edge-case bar. The no-filler rule is repeated
+verbatim — **zero comments is the right review of a small, correct, tested change** — because a self-review that
+invents work is worse than none.
+
+- **Blocking** (`_self_blocking`) = its own `high` / `medium` comments + the automatic **HIGH** findings (a secret or an
+  injection on an added line). `low` comments and the `[Hoola check]` notes never block.
+- **A problem** → `self_round += 1`, the PR **stays a draft**, and `_round()` gets a `<self_review>` block listing
+  `path:line [severity] body` with "you reviewed your OWN pull request … fix every one that is real (explore first; a
+  caller or test may be the real break), and for anything you decide NOT to change, say why in risk. Do not widen the
+  task." Her CI then runs on the new commit and the gate runs again. At most `dev_self_rounds` = **2**.
+- **Clean** → handed over with "Maine khud bhi poora review kiya - koi problem nahi mili."
+- **Rounds used up** → handed over **anyway**, saying plainly what is still open (`path:line` + the comment, 3 shown):
+  the one thing it must not do is hide its own open findings.
+- The own review **never goes to GitHub**: her chat + the task log only (`task_view.self_review`). Merge is still only
+  her tap, and the gate never blocks a PR — any failure (model down, no files, GhError) falls through to the old
+  `_ci_ready`.
+
+**A repo with no CI is no longer the unread one.** Before, such a repo opened a normal PR with no check of any kind.
+Now it also gets the draft + the gate, and because there is nothing to wait for, the own review runs **inside the push**
+(no 15-minute `dev_ci_wait_min`) and its answer *is* the card she gets. With CI, `_ci_step`'s green / no-CI-ran /
+pending-too-long paths all route through the gate instead of `_ci_ready`.
+
+**Refactor that made it honest:** `review()`'s diff builder came out as `service.pr_diff(files)` → (automatic findings,
+`<pr_diff>` parts, commentable lines, added lines), so Hoola's own PR is read through exactly the same code as a
+stranger's — same secret-scrubbing of added lines, same added-lines-only commenting. `explore_review` gained
+`extra=` (an extra system block, appended to the main and focused passes).
+
+**Files:** `server/app/devsahayak/service.py` (`pr_diff`, `_self_blocking`, `_ready_or_self_review`, `push`, `_ci_step`
++ `say_tail`, `task_view`), `specialists.py` (`SELF_REVIEW`), `models.py` (nullable `self_round`, `self_review`),
+`config.py` (`dev_self_review` = True, `dev_self_rounds` = 2), `agent/devsahayak_tools.py` (the tool now says every PR
+opens as a draft and is self-reviewed first). Tests `server/tests/test_v0445_khud_review.py` (9): the fix round with the
+PR still a draft, the clean handover, rounds used up + what is still open said, no-CI repo, the gate never blocking,
+the switch off, `_self_blocking`'s severities, and one run through the real review loop proving `OWN WORK` +
+`REVIEW DISCIPLINE` are both in the system prompt. v0.352's "a repo without CI opens the PR as before" test was
+rewritten to the new truth (it is now reviewed before the handover).
+
+**NOT VERIFIED:** no live job has run through this gate yet — her Anthropic credit is empty, so the live cards and a
+real own-review round on her own repo are still to come.
+
+## v0.446.0 DUKAAN PAISA (web Step 4 part 1 = W4 for websites + the first of W5, owner: "START STEP 4")
 
 Her website shop (v0.351) now takes ONLINE payments through HER OWN gateway account, on the same engine her apps use
 (`appmaker/pay.py`, v0.419 PAISA) - one set of sealed keys, one webhook, one refund path, one settlement view.
@@ -16718,7 +16833,7 @@ Her website shop (v0.351) now takes ONLINE payments through HER OWN gateway acco
 - Shop page (`hoola-shop.js`): online method, coupon box with the server's check, "Abhi pay karein" for a waiting online
   order, review forms after delivery, stars. Console Shop tab: gateway card (keys, webhook address + how-to, totals),
   coupons, reviews, order rows show online paid / not paid + Refund.
-Tests: tests/test_v0443_dukaan_paisa.py (7) against the v0.419 fake Razorpay - paid only by signed webhook / status read,
+Tests: tests/test_v0446_dukaan_paisa.py (7) against the v0.419 fake Razorpay - paid only by signed webhook / status read,
 mismatch held, pay-again reuses the window, refund rules, abandoned release + late money, coupons once per mobile + give
 back, reviews only from delivered buyers + hide.
 NOT BUILT (rest of Step 4): GST tax invoices / credit notes for WEBSITE orders (the app's Rule 46 series lives on app rows;

@@ -21,14 +21,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   // ------------------------------------------------------------ the hub
   async function hub(el) {
     HUB = el;
-    if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Employees</h2></div><div class="empty">Loading…</div>';
+    if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>AI Employees</h2></div><div class="empty">Loading…</div>';
     let d;
     try { d = await api('GET', '/api/employees'); }
-    catch (e) { el.innerHTML = `<div class="vh"><h2>Employees</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    catch (e) { el.innerHTML = `<div class="vh"><h2>AI Employees</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
     changed(d.hired || {});
     const groups = {};                                    // v0.357 cards grouped (Business / Research, CAD, Hardware & Industrial Tech)
     for (const e of d.employees || []) (groups[e.group || 'Business'] ||= []).push(e);
-    el.innerHTML = `<div class="vh"><h2>Employees</h2><span class="muted em-sub">Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.</span></div>
+    el.innerHTML = `<div class="vh"><h2>AI Employees</h2><span class="muted em-sub">Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.</span></div>
       ${Object.entries(groups).map(([g, xs]) => `<h3 class="em-group">${esc(g)}</h3><div class="em-grid">${xs.map(card).join('')}</div>`).join('')}`;
     el.querySelectorAll('[data-em]').forEach(b => b.addEventListener('click', () => act(b.dataset.em, b.dataset.key)));
   }
@@ -66,7 +66,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     let d;
     try { d = await api('GET', '/api/seo/desk'); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>SEO Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
-    if (!d.hired) { el.innerHTML = `<div class="vh"><h2>SEO Desk</h2></div><div class="empty">The SEO Specialist is not hired. <button class="btn go" type="button" data-v="hire">Go to Employees</button></div>`; return; }
+    if (!d.hired) { el.innerHTML = `<div class="vh"><h2>SEO Desk</h2></div><div class="empty">The SEO Specialist is not hired. <button class="btn go" type="button" data-v="hire">Go to AI Employees</button></div>`; return; }
     if (!d.onboarded) { el.innerHTML = onboardForm(d); wireOnboard(el); return; }
     const [sc, sn] = STATE[d.state] || ['warn', d.state];
     const g = d.google || {};
@@ -251,7 +251,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     let d;
     try { d = await api('GET', '/api/social/desk'); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>Social Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
-    if (!d.hired) { el.innerHTML = `<div class="vh"><h2>Social Desk</h2></div><div class="empty">The Social Media Manager is not hired. <button class="btn go" type="button" data-v="hire">Go to Employees</button></div>`; return; }
+    if (!d.hired) { el.innerHTML = `<div class="vh"><h2>Social Desk</h2></div><div class="empty">The Social Media Manager is not hired. <button class="btn go" type="button" data-v="hire">Go to AI Employees</button></div>`; return; }
     if (!d.onboarded) { el.innerHTML = socialForm(d); wireSocialForm(el); return; }
     const [sc, sn] = STATE[d.state] || ['warn', d.state];
     const accs = d.accounts || [], b = d.baseline || {}, stg = d.strategy || {}, cal = d.calendar || [];
@@ -899,7 +899,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -913,7 +913,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="acts"><select id="gdOr" aria-label="Screen">${(d.orientations || ['portrait']).map(o => `<option value="${esc(o)}">${esc(o[0].toUpperCase() + o.slice(1))}</option>`).join('')}</select>
           <button class="btn go" type="button" id="gdNew"${h.ready ? '' : ' disabled'}>Write the design</button></div>
         <p class="muted em-small">A short design doc comes first; nothing is built until you say OK. The play link stays private until you share it.</p></div>
-      <div class="tile gl gd-team"><h3>Game Desk team</h3><p class="muted em-small">Each role is its own employee (hire it in Employees). Open a project's board to work on that game, or try them here on their own.</p>
+      <div class="tile gl gd-team"><h3>Game Desk team</h3><p class="muted em-small">Each role is its own employee (hire it in AI Employees). Open a project's board to work on that game, or try them here on their own.</p>
         <div class="acts"><button class="btn soft" type="button" data-gs-role="world">Worlds (Procedural World Engineer)</button>
           <button class="btn soft" type="button" data-gs-role="physics">Physics (Physics Engine Developer)</button>
           <button class="btn soft" type="button" data-gs-role="audio">Audio (Spatial Audio Programmer)</button>
@@ -923,7 +923,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <button class="btn soft" type="button" data-gs-role="sim">Simulators (Simulation Engineer)</button>
           <button class="btn soft" type="button" data-gs-role="twin">Digital twin (Twin Architect)</button>
           <button class="btn soft" type="button" data-gs-role="vfx">VFX pipeline (Pipeline TD)</button>
-          <button class="btn soft" type="button" data-gs-role="runtime">Editor (Ask Hoola in Godot)</button></div></div>
+          <button class="btn soft" type="button" data-gs-role="runtime">Editor (Ask Hoola in Godot)</button>
+          <button class="btn soft" type="button" data-gs-role="big">Big studio (Unity / Unreal)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
     el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
@@ -1329,7 +1330,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <input id="wdSeed" type="number" min="0" placeholder="Seed (optional)" aria-label="Seed">
           <button class="btn go" type="button" id="wdGo"${d.hired ? '' : ' disabled'}>Make the world</button>
           ${sid ? '<button class="btn soft" type="button" id="wdApply">Put approved worlds in the game</button>' : ''}</div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Procedural World Generation Engineer in Employees to make worlds.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Procedural World Generation Engineer in AI Employees to make worlds.</p>'}</div>
       ${(d.worlds || []).map(w => { const [c, n] = WST[w.status] || ['', w.status]; const f = w.files || {}, st = w.stats || {}, dm = w.demo || {};
         return `<section class="tile gl wd-card"><div class="em-h"><h3>${esc(w.number)} · ${esc(w.key)} <span class="muted">${esc(w.kind)} · seed ${num(w.seed)} · v${num(w.version)}</span></h3>${tag(c, n)}</div>
           <div class="wd-body">${f['preview.png'] ? `<img class="wd-prev" src="${esc(f['preview.png'])}" alt="Preview of world ${esc(w.number)}" loading="lazy">` : ''}
@@ -1376,7 +1377,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="acts"><button class="btn go" type="button" id="phGo"${d.hired ? '' : ' disabled'}>Run the physics lab</button>
           ${sid ? '<button class="btn soft" type="button" id="phApply">Put approved physics in the game</button>' : ''}</div>
         ${sid ? '<p class="muted em-small">With a project, the fastest speed in your Game Bible is used when you leave the speed as it is.</p>' : ''}
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Physics Engine Developer in Employees to run the lab.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Physics Engine Developer in AI Employees to run the lab.</p>'}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const lab = x.lab || {}, st = x.settings || {}, i = x.inputs || {};
         return `<section class="tile gl ph-card"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${num(i.speed)} px/s · ${num(i.wall)} px wall · ${num(i.ticks)} ticks · g ${num(i.gravity)}</span></h3>${tag(c, n)}${lab.verdict ? tag(lab.verdict === 'PASS' ? 'ok' : 'bad', lab.verdict + ' ' + num(lab.passed) + '/' + num(lab.total)) : ''}</div>
           <p class="em-small"><b>Settings:</b> ${num(st.ticks)} ticks · gravity ${num(st.gravity)}${st.ccd ? ' · continuous collision (cast-ray) above ' + num(st.ccd_min_speed) + ' px/s' : ''} - ${esc(st.why || '')}</p>
@@ -1418,7 +1419,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       <div class="tile gl"><h3>New audio setup</h3><div class="acts">${Object.keys(zp).map(k => `<label class="gs-sw"><input type="checkbox" data-au-z="${esc(k)}"${['room', 'hall'].includes(k) ? ' checked' : ''}> ${esc(k.replace('_', ' '))} <span class="muted em-small">${num(zp[k])} s</span></label>`).join('')}</div>
         <div class="ph-grid"><label>Full volume up to (m)<input id="auMin" type="number" min="0.1" step="0.1" value="1"></label><label>Silent beyond (m)<input id="auMax" type="number" min="1" value="40"></label></div>
         <div class="acts"><button class="btn go" type="button" id="auGo"${d.hired ? '' : ' disabled'}>Render and measure</button>${sid ? '<button class="btn soft" type="button" id="auApply">Put approved audio in the game</button>' : ''}</div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Spatial Audio Systems Programmer in Employees first.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Spatial Audio Systems Programmer in AI Employees first.</p>'}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {}, nb = rp.numbers || {};
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(((x.plan || {}).zones || []).map(z => z.key + ' ' + z.rt60 + ' s').join(' · '))}</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
           ${Object.keys(f).length ? `<div class="au-demos">${Object.entries(f).map(([k, u]) => `<div><b class="em-small">${esc(k.replace('.wav', ''))}</b><audio controls preload="none" src="${esc(u)}"></audio></div>`).join('')}</div><p class="muted em-small">Use headphones. Render ${num(nb.render_s)} s · ${num(nb.cpu_per_voice_s_per_s)} s CPU per voice per second · latency ${num(nb.latency_ms)} ms</p>` : (x.status === 'testing' ? '<p class="muted em-small">Rendering and measuring…</p>' : '')}
@@ -1451,7 +1452,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <textarea id="hpWords" rows="2" maxlength="600" placeholder="The moments that should buzz, e.g. jump, coin, hit, game over, level up" aria-label="Moments"></textarea>
         <div class="acts"><select id="hpAct" aria-label="Device">${Object.entries(acts).map(([k, a]) => `<option value="${esc(k)}">${esc(a.name)}</option>`).join('')}</select>
           <button class="btn go" type="button" id="hpGo"${d.hired ? '' : ' disabled'}>Make and check</button>${sid ? '<button class="btn soft" type="button" id="hpApply">Put approved haptics in the game</button>' : ''}</div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Haptic Feedback Systems Engineer in Employees first.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Haptic Feedback Systems Engineer in AI Employees first.</p>'}</div>
       ${(d.sets || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {}, comp = ((rp.kit || {}).drv2605_compile || {});
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(x.actuator_name)} · ${esc(Object.keys(x.patterns || {}).join(', '))}</span></h3>${tag(c, n)}</div>
           ${f['patterns.png'] ? `<img class="wd-prev hp-img" src="${esc(f['patterns.png'])}" alt="Pattern shapes" loading="lazy">` : ''}
@@ -1491,7 +1492,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       <p class="muted em-sub">Bots play your game's movement over a good network, the plan's 150 ms / 2 % loss network and a bad mobile one, through an authoritative server with prediction, reconciliation, interpolation and lag compensation. Measured: rubber-banding, desync (must be 0), bandwidth, hits the server agrees with. Then the Godot netcode itself runs with a server and three clients. The game server runs on your own cloud - Hoola hosts none - and the netcode is not inside the game build yet.</p>
       <div class="tile gl"><h3>New netcode setup</h3><div class="ph-grid">${F.map(([k, l]) => `<label>${l}<input data-nc="${k}" type="number" value="${num(df[k])}"></label>`).join('')}</div>
         <div class="acts"><button class="btn go" type="button" id="ncGo"${d.hired ? '' : ' disabled'}>Run the bots</button></div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Multiplayer Network Programmer in Employees first.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Multiplayer Network Programmer in AI Employees first.</p>'}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, i = x.inputs || {}, runs = rp.runs || {};
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${num(i.players)} players · ${num(i.tick)} Hz · ${num(i.send)} snapshots/s</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
           ${Object.keys(runs).length ? `<table class="ph-tbl"><thead><tr><th>Network</th><th>Correction p95 / max</th><th>Desync</th><th>Down / up per player</th><th>Lag-comp hits</th></tr></thead><tbody>${Object.values(runs).map(r => `<tr><td>${esc(r.net)}</td><td>${num(r.corr_p95_px)} / ${num(r.corr_max_px)} px</td><td>${num(r.desync_px_max)} px</td><td>${num(r.down_bps_per_player)} / ${num(r.up_bps_per_player)} B/s</td><td>${Math.round((r.lagcomp_agree || 0) * 100)}% (without: ${Math.round((r.no_lagcomp_agree || 0) * 100)}%)</td></tr>`).join('')}</tbody></table>` : (x.status === 'testing' ? '<p class="muted em-small">Bots are playing…</p>' : '')}
@@ -1522,7 +1523,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <select id="xrFps" aria-label="Device"><option value="72">Quest-class (72 fps)</option><option value="90">90 fps headset</option></select>
           <label class="gs-sw"><input type="checkbox" id="xrSeat" checked> Seated mode</label>
           <button class="btn go" type="button" id="xrGo"${d.hired ? '' : ' disabled'}>Check and build the demo room</button>${sid ? '<button class="btn soft" type="button" id="xrApply">Put approved VR / AR in the game</button>' : ''}</div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the AR / VR Interaction Engineer in Employees first.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the AR / VR Interaction Engineer in AI Employees first.</p>'}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, st = x.settings || {}, dm = x.demo || {}, gs = rp.gestures || {};
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc((st.mode || '').toUpperCase())} · snap ${num(st.snap_deg)}° · ${num(st.fps)} fps</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
           ${x.status === 'testing' ? '<p class="muted em-small">Checking and building…</p>' : ''}
@@ -1555,7 +1556,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       <div class="tile gl"><h3>${esc(cfg.formTitle)}</h3>${cfg.form(d)}
         <div class="acts"><button class="btn go" type="button" id="rpGo"${d.hired ? '' : ' disabled'}>${esc(cfg.go)}</button>
           ${sid && cfg.apply ? '<button class="btn soft" type="button" id="rpApply">Put the approved one in the game</button>' : ''}</div>
-        ${d.hired ? '' : `<p class="muted em-small">Hire the ${esc(cfg.who)} in Employees first.</p>`}</div>
+        ${d.hired ? '' : `<p class="muted em-small">Hire the ${esc(cfg.who)} in AI Employees first.</p>`}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {};
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(cfg.sub(x))}</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
           ${(rp.cases || []).length ? `<table class="ph-tbl"><thead><tr><th>Reference case</th><th>Measured</th><th>Expected</th><th></th></tr></thead><tbody>${rp.cases.map(k => `<tr><td>${esc(k.case)}<div class="muted em-small">${esc(k.note)}</div></td><td>${esc(String(k.measured))}</td><td>${esc(String(k.expected))}</td><td>${tag(k.ok ? 'ok' : 'bad', k.ok ? 'pass' : 'fail')}</td></tr>`).join('')}</tbody></table>` : ''}
@@ -1602,6 +1603,65 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       body: el2 => { const t = el2.querySelector('#vxPlan').value.trim(); let plan = null; if (t) { try { plan = JSON.parse(t); } catch { toast('The pipeline is not valid JSON.', true); } } return {plan}; },
       sub: x => `${x.show} · ${((x.plan || {}).shots || []).length} shots`,
       extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
+  }
+
+  // ---------------------------------------------------------------- v0.433 Big-studio mode (the Hoola Crew in Unity / Unreal)
+  let BIG_OPEN = '';
+  async function gsBig(el) {
+    clearTimeout(GTIMER);
+    let d;
+    try { d = await api('GET', '/api/gamedesk/big'); } catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const p = d.projects.find(x => x.id === BIG_OPEN) || d.projects[0];
+    let open = null;
+    const stTag = s => tag({done: 'ok', failed: 'bad', rejected: 'bad', proposed: '', applied: ''}[s] ?? '', s);
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="bsBack">← Game Desk</button><h2>Big studio</h2></div>
+      <p class="muted em-small">Your game lives in your own Unity / Unreal / Godot project, on your machines. The Hoola Crew works inside your editor: the plugin asks for the next task, Hoola sends a proposal the server has checked (paths, banned calls, syntax), and nothing is written until you click Apply in the editor. Your editor compiles it and tells Hoola; errors come back for a fix round.</p>
+      <section class="tile gl"><h3>Plugins</h3>
+        <div class="acts"><a class="btn go" href="/api/gamedesk/big/plugin/unity.zip" data-bs-dl="1">Unity package</a><a class="btn go" href="/api/gamedesk/big/plugin/unreal.zip" data-bs-dl="1">Unreal plugin</a>
+          <button class="btn soft" type="button" id="bsTok">Editor tokens</button></div>
+        <p class="em-small muted">Unity 2022.3+: Package Manager > Add package from disk. Unreal 5: copy HoolaCrew into Plugins/. Any MCP client can use <code>${esc(d.mcp_url)}</code> with an editor token.</p></section>
+      <section class="tile gl"><h3>Projects</h3>
+        <div class="acts">${d.projects.map(x => `<button class="btn ${p && x.id === p.id ? 'go' : 'soft'} gs-mini" type="button" data-bs-p="${esc(x.id)}">${esc(x.number)} ${esc(x.title)} · ${esc(x.engine_name)}</button>`).join('') || '<span class="muted em-small">No studio project yet.</span>'}</div>
+        <details${d.projects.length ? '' : ' open'}><summary>New studio project</summary><div class="lo-form">
+          <select id="bsEng" aria-label="Engine">${Object.entries(d.engines).map(([k, n]) => `<option value="${esc(k)}">${esc(n)}</option>`).join('')}</select>
+          <input id="bsTitle" placeholder="Project name" aria-label="Project name"><input id="bsVer" placeholder="Engine version (e.g. 6000.0 / 5.4)" aria-label="Engine version">
+          <input id="bsMod" placeholder="Unreal C++ module (optional)" aria-label="C++ module">
+          <textarea id="bsAbout" rows="2" placeholder="About the game: genre, platforms, what is built already" aria-label="About"></textarea>
+          <button class="btn go" type="button" id="bsNew">Make the project</button></div></details></section>
+      ${p ? `<section class="tile gl"><h3>${esc(p.number)} ${esc(p.title)} <span class="muted em-small">${esc(p.engine_name)} ${esc(p.engine_version)}</span></h3>
+        <p class="em-small">${Object.entries(p.counts).filter(([, n]) => n).map(([k, n]) => esc(k) + ' ' + num(n)).join(' · ') || 'No task yet.'}</p>
+        <table class="ph-tbl"><thead><tr><th>Task</th><th>Crew</th><th>State</th><th>Files</th></tr></thead><tbody>${p.tasks.map(t => `<tr data-bs-t="${esc(t.number)}" class="bs-row"><td>${esc(t.number)} ${esc(t.title)}${t.rounds ? ` <span class="muted em-small">fix round ${num(t.rounds)}</span>` : ''}</td><td class="em-small">${esc(t.role)}</td><td>${stTag(t.status)}</td><td class="em-small">${t.files.map(esc).join('<br>')}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Add the first task below.</td></tr>'}</tbody></table>
+        <div class="lo-form"><input id="bsTTitle" placeholder="Task: one small change (e.g. double jump with coyote time)" aria-label="Task"><textarea id="bsTDetail" rows="2" placeholder="Details (optional)" aria-label="Details"></textarea>
+          <button class="btn go" type="button" id="bsTAdd">Add to the board</button></div>
+        <div id="bsDetail"></div></section>` : ''}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBig(el); };
+    el.querySelector('#bsBack').addEventListener('click', () => { GS_ROLE = ''; game(el); });
+    el.querySelector('#bsTok').addEventListener('click', () => { GS_ROLE = 'runtime'; GS_ROLE_SID = ''; gsRuntime(el); });
+    el.querySelectorAll('[data-bs-dl]').forEach(a => a.addEventListener('click', async e => { e.preventDefault();
+      try { const r = await api('GET', a.getAttribute('href'), undefined, {raw: true}); const b = await r.blob(); const u = URL.createObjectURL(b);
+        const x = document.createElement('a'); x.href = u; x.download = 'hoola_crew_' + a.getAttribute('href').split('/').pop(); x.click(); URL.revokeObjectURL(u); } catch (err) { toast(err.message, true); } }));
+    el.querySelectorAll('[data-bs-p]').forEach(b => b.addEventListener('click', () => { BIG_OPEN = b.dataset.bsP; gsBig(el); }));
+    el.querySelector('#bsNew').addEventListener('click', () => go(async () => { const r = await api('POST', '/api/gamedesk/big', {engine: el.querySelector('#bsEng').value,
+      title: el.querySelector('#bsTitle').value.trim(), engine_version: el.querySelector('#bsVer').value.trim(), module: el.querySelector('#bsMod').value.trim(),
+      about: el.querySelector('#bsAbout').value.trim()}); BIG_OPEN = r.id; }, 'Project made. Download the plugin for its engine.'));
+    if (!p) return;
+    el.querySelector('#bsTAdd').addEventListener('click', () => go(() => api('POST', `/api/gamedesk/big/${encodeURIComponent(p.id)}/tasks`,
+      {title: el.querySelector('#bsTTitle').value.trim(), detail: el.querySelector('#bsTDetail').value.trim()}), 'On the board. Your editor gets it with Next task.'));
+    el.querySelectorAll('[data-bs-t]').forEach(row => row.addEventListener('click', async () => {
+      try { open = await api('GET', `/api/gamedesk/big/${encodeURIComponent(p.id)}/tasks/${encodeURIComponent(row.dataset.bsT)}`); } catch (e) { return toast(e.message, true); }
+      const pr = open.proposal || {}, res = open.result || {};
+      el.querySelector('#bsDetail').innerHTML = `<div class="tile lo-row"><b>${esc(open.number)} ${esc(open.title)}</b> ${stTag(open.status)}
+        ${pr.why ? `<p class="em-small">${esc(pr.why)}</p>` : ''}
+        ${(pr.problems || []).map(x => `<div class="badc em-small">✕ ${esc(x)}</div>`).join('')}
+        ${(pr.checks || []).length ? checksTable((pr.checks || []).map(c => ({check: c.file, ok: c.ok !== false, note: c.error || c.how}))) : ''}
+        ${(pr.manual || []).length ? `<p class="em-small"><b>By hand in the editor:</b></p><ul class="em-small">${pr.manual.map(m => `<li>${esc(m)}</li>`).join('')}</ul>` : ''}
+        ${(pr.files || []).map(f => `<details><summary class="em-small">${esc(f.path)}</summary><pre class="gs-sum rt-cfg">${esc(f.content)}</pre></details>`).join('')}
+        ${res.applied ? `<p class="em-small"><b>Her editor:</b> ${res.compiled === true ? 'compiled clean' : res.compiled === false ? 'compile failed' : 'not reported yet'}${(res.errors || []).length ? '<br>' + res.errors.map(esc).join('<br>') : ''}</p>` : ''}
+        <ul class="muted em-small">${(open.history || []).slice(-6).map(h => `<li>${esc((h.at || '').slice(0, 16).replace('T', ' '))} ${esc(h.what)}</li>`).join('')}</ul>
+        ${['failed', 'rejected', 'done'].includes(open.status) ? `<div class="acts"><input id="bsNote" placeholder="Note for the crew" aria-label="Note"><button class="btn soft gs-mini" type="button" id="bsReopen">Reopen</button></div>` : ''}</div>`;
+      el.querySelector('#bsReopen')?.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/big/${encodeURIComponent(p.id)}/tasks/${encodeURIComponent(open.number)}/reopen`,
+        {note: el.querySelector('#bsNote').value.trim()}), 'Back on the board.'));
+    }));
   }
 
   // ---------------------------------------------------------------- v0.428 Live ops (A/B, live events, crashes, patches, money)
