@@ -25,10 +25,10 @@ def test_kaam_plan_description_names_a_parameter_that_exists():
     spec = [t for t in GOAL_TOOLS if t["name"] == "kaam_plan"][0]
     desc = spec["description"]
     props = spec["input_schema"]["properties"]
-    assert "step (n, state done|failed|skipped|current, reason)" in desc
+    assert "step (n, state done|failed|skipped|current, reason, check)" in desc   # v0.443 + the step's own check
     assert "current, note)" not in desc                       # the parameter that never existed
     # every parameter the description names in its Actions line is really declared
-    for named in ("goal", "steps", "n", "state", "reason", "text"):
+    for named in ("goal", "steps", "n", "state", "reason", "text", "check"):
         assert named in props, named
 
 
