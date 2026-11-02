@@ -16589,7 +16589,109 @@ Owner: "GO STEP 7" (the last step of the 7-step hard-reasoning plan).
   delivery, pre-existing). NOT RUN HERE: the live card itself (no API key in the sandbox) - run it on the VPS; its first
   numbers are the honest measure of steps 1-6. Version 0.438.0 (pubspec 0.438.0+482, console ?v=0.438.0, pins).
 
-## v0.439.0 PAKKA KHATAM step 0 - crew timeout keeps finished work + the LONG CARD (owner: "0a and 0b - start", 2 Nov 2026)
+
+## v0.439.0 GMAIL POORA CALL PAR (2 Nov 2026)
+Owner, testing Gmail by voice: "FIRST CHECK IS ALL GMAIL TOOLS IS ATTACHED TO VOICE TO VOICE", then "GO".
+- FOUND: the call's VOICE_TOOL_NAMES held 11 of the 23 Gmail tools (+ email_accounts via santosh_kaam). The other 11 -
+  email_thread, email_label, email_drafts, email_filters, email_forwarding, email_alias, email_threads, email_rule,
+  email_snooze, email_vacation, email_bulk, email_bulk_status - had no tool and no route, so 13 of the 36 Gmail test-sheet
+  prompts could only fail on a call (chat had all 23).
+- FIX (`app/voice.py`): declared to the call = email_thread, email_snooze, email_drafts (everyday, light: +~2k chars;
+  the call's tool JSON stays ~57k of VOICE_TOOL_BUDGET 150k). VOICE_VIA_KAAM = email_label, email_threads, email_bulk,
+  email_bulk_status, email_filters, email_rule, email_vacation, email_forwarding, email_alias (settings / bulk: the full
+  brain runs them, any confirm card still reaches her phone). The persona Email line names both groups. Gemini Live and
+  OpenAI real voice both read `_tool_specs()`, so both engines get it.
+- ALSO FOUND (not fixed here, config): her voice test said "Gmail API not enabled" = Google 403 SERVICE_DISABLED for the
+  OAuth client's Cloud project; she enables the Gmail API (and Calendar / Drive / Docs / Sheets / Forms / Slides /
+  YouTube / Photos) in that project. Gmail + Calendar clients still pass Google's raw 403 text through (Drive / Sheets /
+  Forms / Slides / Photos / YouTube already say it plainly) - next fix if she wants it.
+- Test `test_v0439_gmail_call.py`: every name in EMAIL_TOOLS is declared or via_kaam (a new mail tool cannot be left off
+  a call again), schemas clean, budget kept, persona names them, email_vacation on a call goes to santosh_kaam.
+
+## v0.440.0 SOCH KE JAWAB - the live hard card measures for real (2 Nov 2026)
+Owner ran `python -m app.quality hardcard --live --judge` on the VPS: `RIGHT 0/28, pylab used 0/19, sourced research 0/2,
+self-check ran 0/28, errors 0, median 1.0 s`. Every turn returned in about a second, with no tools and no self-check, so
+the model never answered.
+- ROOT CAUSE of the blind card: `hard_card._one` scored whatever `run_turn` returned. A turn whose model call fails
+  returns the apology line ("Maaf kijiye, abhi kuch gadbad ho gayi (ref ...)", source `error`), and that was scored as
+  an answer. 28 dead turns therefore read as 28 wrong answers with "errors 0", and the real exception (the log line
+  `error ref <ref>: <exception>`) went to the `2>/dev/null` of her command.
+- FIX 1 (the card): a turn that published an assistant message with source `error` / `budget` (read from its saved
+  Event rows) is an ERROR row carrying `log` = the server's own WARNING+ lines for that turn, caught by a temporary
+  root handler. `live_card` stops after 3 dead turns in a row (`planned` vs `asks`). `lines()` prints "STOPPED after
+  n of m" and the first failure's log lines. Each scored row keeps its `log` too.
+- FIX 2 (the call): v0.436 held a hard answer for the self-check with `live.block(stream=False)`, and
+  `_call_brain` used that DISPLAY flag to choose the API mode, so the hard turn became the only Claude call in Hoola
+  sent as one blocking request: 16k tokens + adaptive thinking + effort high. Its thinking also never reached the Soch
+  card, which v0.436 had promised. Now `api_stream = live shown OR a live reply exists OR cap > NONSTREAM_MAX_TOKENS
+  (8192)`. `Live.feed` shows words only while `live.streaming`, so a held answer stays hidden while it streams.
+  `_QuietLive` collects a big stream with no live reply. GLM / omniroute are unchanged.
+- `hardcard --ping` (`hard_card.ping`): for the hard model and the chat model, one tiny streamed call in each of three
+  shapes (plain / thinking / thinking+effort), printing OK or the API's exact error. Costs a few paise.
+- Checked against an SSE stand-in for the Anthropic API (httpx2 MockTransport): Opus 5.5 streamed, thinking, the
+  self-check (code check flagged no pylab -> one fix round), right number, scored RIGHT.
+- NOT VERIFIED: the VPS's real exception is still unknown. The fixed card / `--ping` will print it on the next run.
+- Tests: `tests/test_v0440_hard_live.py`.
+
+## v0.441.0 PRAYOGSHALA STUDIO (built as 0.435.0, 2 Nov 2026)
+Owner: "NOW BUILD ALL 22 LABS LIKE THIS IN HOOLA. MAKE EVERY EXPERIMENT PERFECT AND ROBUST" (after approving the
+pendulum prototype artifact: "realistic like human lab", theory first, Ask Hoola inside the experiment page).
+- Engine `server/app/static/prayog/studio/studio.js` + `studio.css`: lab room, bench, lights, materials, shared devices
+  (stand, cork, ruler / scaleTex, stopwatch, meter incl. zero-centre galvanometer, thermometer, wire, terminal, cell,
+  power box, plug key, rheostat, resistance box, optical bench, upright, tuning fork, beaker, labels), the gloved hand
+  (tap / pinchMove / reach / shape / follow), camera views, workflow (Theory auto first, Result + graph and Viva last),
+  handwritten record book (`S.addRow`), toast `S.say`, Ask Hoola panel, test mode (`?test=1`, `S.fast`, `S.advance`).
+- 22 modules `server/app/static/prayog/exp/<id>.js` (contract + rules: `docs/PRAYOG_STUDIO.md`). Numbers only from the
+  kernels (`kernels.js` twin of `kernels.py`); the hidden unknown is shown only on the result line.
+- `lab.html` loads the studio module and falls back to the old `lab3d.js` runtime when a lab has none.
+- Ask Hoola: `POST /api/prayog/ask` (needs the key; `service.ask`, system prompt limited to THIS lab, live readings and
+  turns are data, 150 a day per account, 429 / 503 plain). Phone `PrayogLabView` injects `window.HOOLA_TOKEN`.
+- Ruler scale fix: the printed metre rule was stretched 1-1.6 %; zero now at the top end and v at lengthM - v exactly.
+- Proof: `node tools/prayog_walk.js http://localhost:PORT` drives every step's own `auto` through the button code paths:
+  22/22 PASS - g 9.817, k 20.12 / 20.00, mu 0.3006, eta 1.488, k 0.0200, PV 9.976, c 904.8, v 343.04, mu 0.0010,
+  R 4.9995, S 6.0017, r 0.999, V_K 0.663, slope 0.998, f 14.85 / 19.79, n 1.498 / 1.500, k 0.2698, D 23.40 / 0.510 mm.
+- NOT VERIFIED: on her phone WebView (GPU / memory on low-end Android); Ask Hoola answers live on the VPS model.
+
+## v0.442.0 PAKKA KAAM + SAB KAAM CALL PAR (2 Nov 2026; built as 0.440 / 0.441, re-versioned past the parallel v0.440 / v0.441)
+Owner: "NOW FOR VOICE TO VOICE --- CHECK DOES IT PERFORM LONG TASK", then "GO" on the fix.
+- CHECK RESULT: yes - a call hands a big job to santosh_kaam = the FULL run_turn (all tools, plan card, goal rounds up to
+  ~3 h, AAGE BADHO, ask-on-limit, goal.recover_tick, steering of a running job by a later ask on the same call since the
+  delegate passes voice=False, kaamwatch notes into the live call, `_late_result` truth from LAST_OUTCOME, closed call =
+  call followup for the next call). 68/68 existing long-job + voice tests green.
+- THE GAP: `Call._delegate` ran `asyncio.create_task(run_turn(...))` - memory only. Every typed chat message goes through
+  `turn_inbox` (v0.191: accepted before the 202, swept + re-run once after a restart); the call path skipped it. A deploy /
+  crash / OOM before the job had a goal record (or a plain multi-step job that never makes one) lost the job silently and
+  the next call only had her last words.
+- FIX: `_delegate` -> `turn_inbox.accept(..., place=)` BEFORE the job starts, then `turn_inbox.run_owned(..., place=)`;
+  `turn_inbox.sweep` re-runs a dead one once (tries cap, answered check, save_user=False when her row exists) with the
+  same place. New nullable `turn_inbox.place` (String 16; `_add_missing_columns` adds it to the live DB at start).
+  `Call._kaam_running` tracks the call's running jobs; `_save_drop_note` adds "ek bada kaam chal raha tha (rukta nahi,
+  natija chat mein aayega): ..." for up to 3 of them, OTPs she said masked.
+- Tests `test_v0441_pakka_kaam.py`: the job lands in the inbox done with its place; a 'running' row 10 min old with no turn
+  holding the chat is re-run exactly once with place 'pc' and never twice; the drop note names the running job, OTP masked.
+
+### v0.442 part 2: SAB KAAM CALL PAR (the same version)
+Owner: "NOW ALSO CHECK IS VOICE TO VOICE CAN PERFORM ALL TOOL TASK END TO END", then "GO".
+- MEASURED: 483 chat tools -> 105 declared to the live model, 256 already routed through santosh_kaam, and **122 with no
+  route at all**: Sheets (format, tabs, share, protect, clear, validation...), Drive (access, comments, revisions, delete,
+  storage, changes), Forms (edit, export, share, media, copy, delete), YouTube (upload, update, reply, playlists, my videos),
+  Slides (arrange, delete, share), WhatsApp campaigns + templates + lead lists, all ten enterprise desks + software_architect +
+  cad_part + eng_calc + the 17 game tools, mospi, indiamart, data_*, composio_apps, tally_entry, doc_studio, create_studio,
+  haal_ki_chats. `_execute` answered `{"error": "Unknown tool <name>"}` for every one of them, and the persona never told the
+  call that santosh_kaam could do them - so the call usually just said it could not.
+- FIX (voice only, chat untouched): `voice.registered(name)` reads the chat registry (`agent.tools.TOOLS` + `HANDLERS`) once
+  into `_REGISTRY`; `_execute` sends any registered-but-undeclared tool to `_delegate` exactly like a VOICE_VIA_KAAM one
+  (her words + what the model wanted); an unknown name still returns "Unknown tool". New `voice.call_route(name)` returns
+  `declared` / `kaam` / `""`. The persona's new line names the families and forbids "nahi kar sakta" before santosh_kaam has
+  tried, and says a sending / deleting / sharing / paying step still comes to her phone as a card.
+- The declared list and its JSON size do not change, so no call gets slower. Both engines share `_tool_specs` / `_execute`.
+- Test `test_v0442_sab_kaam_call.py`: EVERY name in `tools.TOOLS` has a route (a new tool can never be unreachable again),
+  the declared set did not grow, the persona line is there, `sheet_format` on a call reaches the full brain, and a made-up
+  name still answers "Unknown tool".
+- Also fixed here: v0.441's `run_owned` passed `context=""` / `client_id=""` / `save_user=True` to run_turn always, which
+  broke two older voice tests whose fake run_turn takes only the arguments the old call site used; it now passes only what
+  is set.
+## v0.443.0 PAKKA KHATAM step 0 (built as 0.439; another session shipped v0.439 GMAIL meanwhile - REBASE PROTOCOL) - crew timeout keeps finished work + the LONG CARD (owner: "0a and 0b - start", 2 Nov 2026)
 
 From the research report `reports/How AI agents finish long tasks.md` (notes in `research_notes/How AI agents finish long
 tasks/`): every agent that finishes long jobs reliably decides "done" by something the model cannot fake, and measures
@@ -16625,4 +16727,46 @@ measurement BEFORE changing the loop.
   evidence from the DB + cleanup, a REAL run_turn judged on what it left behind (scripted brain), sweeps skip card tenants.
 - NOT RUN HERE: the live card (no model key in the sandbox). Its first numbers are the baseline every next step (done =
   verified, one nudge per step, mid-turn clearing...) must beat. Cost estimate is a guess until the first card fills it.
-  Version 0.439.0 (pubspec 0.439.0+483, console ?v=0.439.0, pins).
+  Shipped as part of v0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).
+
+## v0.443.0 DONE = VERIFIED - a long job may not close on its own word (owner: "NOW NEXT", 2 Nov 2026)
+
+Items 1 + 2 of `reports/How AI agents finish long tasks.md`, and RCA fix 7 of `docs/LONG_TASK_RCA.md` (written 31 Oct,
+never built). The report's measured point: the leaders all decide "done" by something the model cannot fake (Anthropic's
+feature list with its `passes` field, Codex running the tests, Replit's testing sub-agent), and the biggest bucket of
+real agent failures is finishing failures - above all a confident false "done".
+
+- NEW `server/app/agent/verify.py` (no model call, no cost, never writes her data):
+  - `check_made(tenant, made)` - every thing the job claims it produced: a Hoola file id / `/api/pc/files/<id>` link
+    (the PcFile row of THIS tenant AND its bytes on disk, non-empty), an artifact id / link (ready, version > 0, its
+    html not blank), a `ds_...` dataset (loads, has rows), a http(s) link (one HEAD, 3 s, redirects followed; 403 /
+    405 / 501 fall back to a ranged GET), a bare file name (matched against her delivered files). A prose line in
+    `made` makes no row, so an honest job is never failed for writing a sentence there.
+  - HONEST about what it cannot know: 404 / 410 = FAILED ("link par kuch nahi hai"), but a timeout / DNS error /
+    5xx / 401 = `unknown` and never blocks (her VPS may be down, the site may block robots). Over MAX_LINKS = 6
+    links the rest are reported unchecked, never silently passed.
+  - `check_step(tenant, conv, step, calls)` - the step's OWN check, written by the plan: `file_pages>=N`,
+    `file_rows>=N`, `file_slides>=N`, `file:<name>`, `link_ok`, `artifact`, `reminder>=N`, `routine>=N`,
+    `list:<name>>=N`, `tool:<name>` (that tool really ran ok in THIS job - `ctx.calls`). The file family opens the
+    real file through the long card's reader (pypdf / openpyxl / python-docx / python-pptx). A check text it does not
+    understand is `unknown`, never a failure: a plan may not fail an honest job by inventing a check.
+  - `gate(...)` -> {ok, checked, failures, unknown, line}; wrapped so a broken check can never break her job.
+- `goal.finish(..., outcome="done")` runs the gate first (`goal._verify_done`, switch `goal_verify`, default on).
+  A failure does NOT close the card: the failing step (named by the step check, else the LAST done step) goes back to
+  `current` with "jaanch mein nahi mila: ...", the goal stays `working`, reason = "Jaanch baaki: ...", and the tool
+  returns `verified: False` + `verify.NUDGE` telling the model to really do that part now (or finish failed /
+  blocked_on_her honestly). No four-part report is written for a job that did not finish. `blocked_on_her` / `failed`
+  / `stopped` are untouched - only a claim of DONE is checked.
+- `kaam_plan` carries `check`: `set` takes steps as strings or `{"text":..., "check":...}`, `step` and `add` take
+  `check=`; the description tells the model to put the real file id / link in the step reason and in `made`.
+- Item 2: the free `draftcheck.fake_done` check (v0.223) had been switched OFF for the whole of goal mode on the idea
+  that the plan's own "X/Y steps ho gaye" line was truth enough - but a STEP IS TICKED BY THE MODEL, so a long job
+  could tick its steps and say "bhej diya" with only reads behind it. It now runs in goal mode too (`_goal_open`
+  deleted); the goal's own honest lines carry no claim verb, so they never trip it (tested).
+- Tests `server/tests/test_v0440_done_verified.py` (15): every piece (missing / empty / another tenant's file, page not
+  ready, blank page, 404 vs unreachable vs HEAD-refused link, empty dataset), prose skipped + link cap, every step
+  check, the gate (unknowns pass, failures block, a pending step is not checked, a crash reads unknown), finish
+  refused then accepted, only `done` is gated, the switch, the tool's nudge, checks from set / step / add, fake-done
+  in goal mode, and that the goal-mode exemption is gone.
+- NOT VERIFIED on a live model: the sandbox has no API key. The long card (v0.443 step 0) is what will say whether
+  false-done really falls - its target is under 5%. Version 0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).

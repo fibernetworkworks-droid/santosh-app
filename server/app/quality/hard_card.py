@@ -15,6 +15,7 @@ The answer key was computed in Python, never written from memory. HARD_CARD_V mo
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 from typing import Any
@@ -207,37 +208,109 @@ async def _judge(item: dict, reply: str, settings) -> dict | None:
         return None
 
 
+class _Catch(logging.Handler):
+    """v0.439 the turn's own warnings (a refused model, 'error ref ...: <the real exception>'): her 0/28 run printed
+    nothing because every failed turn's apology was scored as an answer and the logs went to 2>/dev/null."""
+
+    def __init__(self):
+        super().__init__(logging.WARNING)
+        self.lines: list[str] = []
+
+    def emit(self, record):
+        try:
+            self.lines.append(record.getMessage()[:400])
+        except Exception:
+            pass
+
+
 async def _one(item: dict, tenant: str, judge: bool) -> dict:
     from ..agent import santosh
     from ..config import get_settings
     from .run import _calls_of, _new_conv
     conv = _new_conv(tenant)
     t0 = time.time()
+    catch = _Catch()
+    root = logging.getLogger()
+    root.addHandler(catch)
     try:
         reply = await santosh.run_turn(conv, item["text"], tenant_id=tenant)
     except Exception as e:   # noqa: BLE001 - one broken ask is a row, not a dead card
         return {"id": item["id"], "kind": item["kind"], "error": str(e)[:200], "right": False, "behaviour_ok": False}
+    finally:
+        root.removeHandler(catch)
+    failed = _failed(conv)
+    if failed:   # the turn died and she got the apology line: that is an ERROR row with the real cause, never a score
+        why = [x for x in catch.lines if "error ref" in x or "failed" in x or "refused" in x] or catch.lines
+        return {"id": item["id"], "kind": item["kind"], "right": False, "behaviour_ok": False,
+                "error": (why[-1] if why else (reply or "turn failed"))[:300], "reply": (reply or "")[:300],
+                "log": catch.lines[-6:], "seconds": round(time.time() - t0, 1), "conv": conv}
     tools = [str(c.get("tool")) for c in _calls_of(conv)]
     row = score_answer(item, reply or "", tools)
-    row.update({"seconds": round(time.time() - t0, 1), "tools": tools[:20], "reply": (reply or "")[:1500], "conv": conv})
+    row.update({"seconds": round(time.time() - t0, 1), "tools": tools[:20], "reply": (reply or "")[:1500], "conv": conv,
+                "log": catch.lines[-6:]})
     if judge and item.get("judge"):
         row["judge"] = await _judge(item, reply or "", get_settings())
     return row
 
 
+def _failed(conv: str) -> bool:
+    """Did this turn publish its error / budget line (source error / budget) instead of an answer? (the saved events)"""
+    from sqlalchemy import select
+
+    from ..db import Event, session
+    with session() as s:
+        for e in s.scalars(select(Event).where(Event.conversation_id == conv, Event.kind == "message")).all():
+            p = e.payload or {}
+            if p.get("role") == "assistant" and p.get("source") in ("error", "budget"):
+                return True
+    return False
+
+
 async def live_card(items: list[dict] | None = None, judge: bool = False, tenant: str = "") -> dict:
     from .run import TENANT
-    rows = [await _one(a, tenant or TENANT, judge) for a in (items or SET)]
+    rows = []
+    for a in items or SET:
+        rows.append(await _one(a, tenant or TENANT, judge))
+        if len(rows) >= 3 and all("error" in r for r in rows):
+            break            # v0.439 three dead turns in a row: the cause is printed, the other asks are not wasted
     done = [r for r in rows if "error" not in r]
     calc = [r for r in done if r["kind"] == CALC]
     res = [r for r in done if r["kind"] == "research"]
     judged = [r["judge"]["score"] for r in done if r.get("judge")]
-    return {"kind": "live", "set": HARD_CARD_V, "asks": len(rows), "answered": len(done),
+    return {"kind": "live", "set": HARD_CARD_V, "asks": len(rows), "planned": len(items or SET), "answered": len(done),
             "right": sum(r["right"] for r in done), "pylab_used": sum(r["pylab"] for r in calc), "calc_asks": len(calc),
             "sourced": sum(r["links"] >= 2 for r in res), "research_asks": len(res),
             "checked": sum(r.get("checked", False) for r in done), "errors": len(rows) - len(done),
             "judge_avg": round(sum(judged) / len(judged), 1) if judged else None,
             "median_s": sorted(r["seconds"] for r in done)[len(done) // 2] if done else None, "rows": rows}
+
+
+async def ping() -> list[str]:
+    """v0.439 one tiny real call per model with the hard turn's own settings (thinking, effort, streamed), then the
+    same call plain: the API's own words say which part it refuses. A few paise."""
+    from ..agent import santosh
+    from ..config import get_settings
+    st = get_settings()
+    out = [f"key set: {bool(st.anthropic_api_key)}, chat model {st.anthropic_model}, hard model "
+           f"{getattr(st, 'agent_hard_model', '')}, effort {getattr(st, 'agent_hard_effort', '')}"]
+    shapes = [("plain", {}), ("thinking", {"thinking": {"type": "adaptive"}}),
+              ("thinking+effort", {"thinking": {"type": "adaptive"},
+                                   "extra_body": {"output_config": {"effort": getattr(st, "agent_hard_effort", "") or "high"}}})]
+    for model in dict.fromkeys([getattr(st, "agent_hard_model", "") or "", st.anthropic_model]):
+        if not model:
+            continue
+        for name, extra in shapes:
+            t0 = time.time()
+            try:
+                api = santosh.get_client().messages
+                async with api.stream(model=model, max_tokens=2000, messages=[{"role": "user", "content": "2+2? one word"}],
+                                      **extra) as s:
+                    msg = await s.get_final_message()
+                text = "".join(getattr(b, "text", "") for b in msg.content)
+                out.append(f"  {model} {name}: OK ({time.time() - t0:.1f} s) {text.strip()[:40]!r}")
+            except Exception as e:   # noqa: BLE001 - the error IS the answer here
+                out.append(f"  {model} {name}: FAILED {type(e).__name__}: {str(e)[:300]}")
+    return out
 
 
 def pick(only: str = "", limit: int = 0, quick: bool = False) -> list[dict]:
@@ -281,6 +354,12 @@ def lines(card: dict) -> list[str]:
            f"{card['research_asks']}, self-check ran {card['checked']}/{card['answered']}, errors {card['errors']}"
            + (f", judge avg {card['judge_avg']}/10" if card.get("judge_avg") is not None else "")
            + (f", median {card['median_s']} s" if card.get("median_s") is not None else "")]
+    if card.get("planned") and card["planned"] > card["asks"]:
+        out.append(f"  STOPPED after {card['asks']} of {card['planned']}: every turn failed - the cause is below")
+    first = next((r for r in card["rows"] if "error" in r and r.get("log")), None)
+    if first:
+        out.append("  first failure, the server's own log lines:")
+        out += [f"    | {x}" for x in first["log"]]
     for r in card["rows"]:
         if "error" in r:
             out.append(f"  - {r['id']}: ERROR {r['error']}")

@@ -3,6 +3,8 @@
 /// its simulation code, checked against the NCERT formula on the server.
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -44,7 +46,7 @@ class _PrayogScreenState extends State<PrayogScreen> {
 
   void _open(Map<String, dynamic> lab) {
     final url = widget.app.api!.absolute('/static/prayog/lab.html?id=${Uri.encodeComponent(_s(lab['id']))}');
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => PrayogLabView(url: url, title: _s(lab['title']))));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => PrayogLabView(url: url, title: _s(lab['title']), token: widget.app.api!.apiKey)));
   }
 
   @override
@@ -96,9 +98,10 @@ class _PrayogScreenState extends State<PrayogScreen> {
 
 /// One lab, full screen. Links that leave the Prayogshala open in the browser.
 class PrayogLabView extends StatefulWidget {
-  const PrayogLabView({super.key, required this.url, required this.title});
+  const PrayogLabView({super.key, required this.url, required this.title, this.token = ''});
   final String url;
   final String title;
+  final String token;   // lets Ask Hoola inside the lab answer as this user (our own page, our own origin)
   @override
   State<PrayogLabView> createState() => _PrayogLabViewState();
 }
@@ -112,7 +115,9 @@ class _PrayogLabViewState extends State<PrayogLabView> {
     super.initState();
     _web = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(NavigationDelegate(onProgress: (p) {
+      ..setNavigationDelegate(NavigationDelegate(onPageFinished: (_) {
+        if (widget.token.isNotEmpty) _web.runJavaScript('window.HOOLA_TOKEN = ${jsonEncode(widget.token)};');
+      }, onProgress: (p) {
         if (mounted) setState(() => _progress = p);
       }, onNavigationRequest: (r) {
         if (!r.url.contains('/static/prayog/') && !r.url.startsWith('blob:')) {
