@@ -213,6 +213,24 @@ FAMOUS = re.compile(r"\b(subway surfers?|candy crush|pubg|bgmi|free ?fire|minecr
                     r"ludo king|roblox|fruit ninja|plants vs\.? zombies|valorant|counter[- ]strike|genshin)\b", re.I)
 MONEY = re.compile(r"\b(real money|real-money|betting|bet karo|satta|casino|gambl\w*|cash prize|paise jeeto|rummy|teen ?patti|"
                    r"poker|fantasy (cricket|team)|matka|lottery)\b", re.I)
+# v0.447: the Promotion and Regulation of Online Gaming Act 2025 + Rules 2026 (in force 1 May 2026) turn on a STAKE plus an
+# expectation of monetary return, and Rule 9 weighs whether a reward is TRANSFERABLE, REDEEMABLE or MONETISABLE OUTSIDE the
+# game. Offering such a game is cognisable and non-bailable for whoever publishes it, so the words that describe cashing an
+# in-game reward out are refused even when "betting" never appears: an in-game value word near a money-out word.
+_EARNED = (r"coins?|points?|gems?|tokens?|credits?|rewards?|prizes?|winnings?|chips?|stars?|diamonds?|cash|balance|wallet|"
+           r"skins?|items?|cards?|score|sikke|ank")
+_CASHOUT = (r"withdraw\w*|cash ?out|cashout|payout|pay ?out|redeem\w*|encash\w*|convert\w* (?:to|into|in)|transfer\w*|"
+            r"exchang\w*|sell|trade|bank account|upi|paytm|phonepe|gpay|google pay|bhim|neft|imps|rtgs|real cash|"
+            r"asli paise|paise nikal\w*|nikal\w* (?:sakte|sakta|sakti)|paise mein|rupees?|rupaye|₹")
+MONEY_OUT = re.compile(rf"\b(?:{_EARNED})\b[^.;!?\n]{{0,60}}\b(?:{_CASHOUT})\b|"
+                       rf"\b(?:{_CASHOUT})\b[^.;!?\n]{{0,60}}\b(?:{_EARNED})\b", re.I)
+# a few shapes that need no pairing at all
+MONEY_OUT_FLAT = re.compile(r"\b(play to earn|play-to-earn|p2e|earn real (?:money|cash)|paisa kamao|paise kamao|"
+                            r"nft|crypto|cryptocurrenc\w*|token sale|airdrop|entry fee|buy-?in|stake\w*|wager\w*)\b", re.I)
+MONEY_OUT_SAY = ("Aisa game Hoola nahi bana sakta: us mein jeeta hua coin / point / item game ke BAAHAR paise mein badla ja "
+                 "sakta hai (withdraw, redeem, UPI, trade). India ke Online Gaming Act 2025 + Rules 2026 mein yeh 'online "
+                 "money game' hai - jo use publish karta hai uske liye yeh non-bailable jurm hai (3 saal tak, ₹1 crore tak). "
+                 "Coins / points sirf game ke andar chalein (naye level, skins, power-ups) - aisa game khushi se bana dunga.")
 WEAPON_SIM = re.compile(r"\b(weapon targeting|missile|target acquisition|bomb(ing)? run|military (strike|targeting)|"
                         r"sniper training sim|kill chain)\b", re.I)
 
@@ -223,6 +241,8 @@ def problem(brief: str) -> str:
     if MONEY.search(b):
         return ("Real-money, betting ya jua wale games Hoola nahi banata (India mein online money games band hain). "
                 "Points / coins wala normal game bana sakta hoon.")
+    if MONEY_OUT.search(b) or MONEY_OUT_FLAT.search(b):
+        return MONEY_OUT_SAY
     if WEAPON_SIM.search(b):
         return "Hathiyar nishana / military targeting simulator Hoola nahi banata. Flying, driving ya safety training sim bana sakta hoon."
     m = FAMOUS.search(b)

@@ -79,6 +79,8 @@ POST   /api/gamedesk/liveops/{sid}/crashes/{sig}/hotfix | /patch_check | /money 
 GET    /play/{token}/live                       what the game reads: running tests + approved events (same host)
 GET|POST /api/gamedesk/big[/{pid}/tasks[/{tno}[/reopen]]]   v0.433 big-studio projects in Unity / Unreal / Godot
 GET    /api/gamedesk/big/plugin/{unity|unreal}.zip   the Hoola Crew editor plugin (MCP client; writes only on her Apply)
+GET|POST /api/gamedesk/arena[/briefs|/{rid}[/stop]|/compare/{a}/{b}|/duel]  v0.447 Game Arena (owner only): fixed briefs,
+       runs judged by PLAYING, measured originality, run-vs-run compare, blind duels vs a rival's public game
 GET    /api/gamedesk/editor/tokens  POST {label} (shown ONCE)  DELETE /api/gamedesk/editor/tokens/{id}
 GET    /api/gamedesk/editor/plugin.zip          the Godot editor plugin (addons/hoola)
 POST   /mcp/gamedesk                            MCP (JSON-RPC 2.0, Streamable HTTP) with 'Authorization: Bearer <editor token>'
@@ -825,6 +827,53 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await call(LO.import_revenue, tenant, sid, str(b.get("csv") or ""), str(b.get("source") or ""))
 
+    # ------------------------------------------------------------ v0.447 Game Arena (is a Hoola game any good? as numbers)
+    from . import arena as AR
+
+    def _owner(tenant: str) -> None:
+        if tenant != "default":
+            raise HTTPException(403, "arena sirf owner ke liye hai")
+
+    @r.get("/api/gamedesk/arena", dependencies=[Depends(require_key)])
+    async def ar_runs(tenant: str = Depends(current_tenant)):
+        _owner(tenant)
+        return {"runs": await call(AR.runs, 20), "set": AR.SET_V, "total_briefs": len(AR.brief_set()),
+                "genres": sorted(AR.GENRES), "duels": await call(AR.duel_table)}
+
+    @r.get("/api/gamedesk/arena/briefs", dependencies=[Depends(require_key)])
+    async def ar_briefs(genre: str = "", limit: int = 40, tenant: str = Depends(current_tenant)):
+        _owner(tenant)
+        return await call(AR.catalogue, genre, limit)
+
+    @r.post("/api/gamedesk/arena", dependencies=[Depends(require_key)])
+    async def ar_start(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner(tenant)
+        b = _b(body)
+        return await call(AR.start, int(b.get("n") or 8), int(b.get("seed") or 1), float(b.get("budget_inr") or 0),
+                          str(b.get("note") or ""))
+
+    @r.get("/api/gamedesk/arena/{rid}", dependencies=[Depends(require_key)])
+    async def ar_view(rid: str, tenant: str = Depends(current_tenant)):
+        _owner(tenant)
+        return await call(AR.view, rid)
+
+    @r.post("/api/gamedesk/arena/{rid}/stop", dependencies=[Depends(require_key)])
+    async def ar_stop(rid: str, tenant: str = Depends(current_tenant)):
+        _owner(tenant)
+        return await call(AR.stop, rid)
+
+    @r.get("/api/gamedesk/arena/compare/{a}/{b}", dependencies=[Depends(require_key)])
+    async def ar_compare(a: str, b: str, tenant: str = Depends(current_tenant)):
+        _owner(tenant)
+        return await call(AR.compare, a, b)
+
+    @r.post("/api/gamedesk/arena/duel", dependencies=[Depends(require_key)])
+    async def ar_duel(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner(tenant)
+        b = _b(body)
+        return await call(AR.duel, str(b.get("brief") or ""), str(b.get("rival") or ""), str(b.get("url") or ""),
+                          str(b.get("game") or ""))
+
     # ------------------------------------------------------------ v0.433 Big-studio mode (Unity / Unreal on her machines)
     from . import bigstudio as BS
 
@@ -901,10 +950,12 @@ def make_router(require_key, current_tenant) -> APIRouter:
             body = json.loads(raw.decode("utf-8") or "null")
         except Exception:                               # noqa: BLE001
             return Response(content=json.dumps(ED._err(None, -32700, "Parse error")), media_type="application/json")
-        out = await asyncio.to_thread(ED.handle, who[0], who[1], body)
+        hdr = request.headers.get("mcp-protocol-version", "")
+        out = await asyncio.to_thread(ED.handle, who[0], who[1], body, hdr)
         if out is None:
-            return Response(status_code=202)
-        return Response(content=json.dumps(out, ensure_ascii=False), media_type="application/json")
+            return Response(status_code=202, headers={"MCP-Protocol-Version": ED.MODERN[0]})
+        return Response(content=json.dumps(out, ensure_ascii=False), media_type="application/json",
+                        headers={"MCP-Protocol-Version": ED.MODERN[0]})
 
     @r.get("/mcp/gamedesk")
     async def mcp_get():

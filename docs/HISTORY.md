@@ -16841,3 +16841,69 @@ website orders need their own adapter on the same series), AutoPay plans / payme
 apps and in her console's app page), multi-vendor marketplace (vendor sign-up / approval / dashboards / commissions /
 split rules per vendor), courier connector (Shiprocket / Delhivery), abandoned-cart reminders (needs opted-in messaging),
 wishlists. NOT VERIFIED: a real gateway account (fake gateway in tests, same as v0.419).
+
+
+## v0.453.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA - 2 Nov 2026
+Owner: "START BOTH", after `docs/GAME_MOAT_PLAN.md`. The two live defects that research found in shipped code, and the
+moat piece that was missing: a way to tell whether a Hoola game is any good.
+
+### Defect 1 - the money-game guard missed the test the law actually turns on
+`service.MONEY` caught betting / casino / rummy / teen patti / poker / fantasy cricket / lottery / cash prize. The
+Promotion and Regulation of Online Gaming Act 2025 + Rules 2026 (in force 1 May 2026) turn on a STAKE plus an
+expectation of monetary return, and **Rule 9 weighs whether a reward is transferable, redeemable or monetisable OUTSIDE
+the game**. So "a ludo game where players collect coins and withdraw them to UPI" passed the guard and got built - and
+offering that game is **cognisable and non-bailable** for whoever publishes it (to 3 years / ₹1 crore). New
+`service.MONEY_OUT` (an in-game value word within 60 characters of a money-out word, both orders) +
+`MONEY_OUT_FLAT` (play-to-earn, NFT, crypto, entry fee, stake, wager) + `MONEY_OUT_SAY`, which names the law and offers
+the in-game economy instead. Tested against 11 real phrasings (English + Hinglish) and 10 legitimate games that must
+still build - 0 misses, 0 false alarms. THE OTHER DOOR: the Game Bible, where an economy or an item's notes could say
+the same thing - new `bible.money_out()` checks the economy block's words AND keys (a `withdrawable: true` style key)
+and every entity's text, and `bible.check()` now blocks on it.
+
+### Defect 2 - our MCP server spoke only the removed dialect
+MCP's current revision is **2026-07-28**, which **removed the `initialize` handshake**: a request declares its version
+in `_meta["io.modelcontextprotocol/protocolVersion"]` (and, on HTTP, the `MCP-Protocol-Version` header), and
+**`server/discover` is MUST-implement**. We declared 2025-06-18 / 2025-03-26 / 2024-11-05 only, and the spec's own
+compatibility table says a dual-era client falls back and works but a **modern-only client FAILS**. So our own Godot /
+Unity / Unreal plugins were fine while Claude Desktop or Cursor might not connect at all. `editor.py` now serves BOTH
+eras: `MODERN` + `LEGACY` in `PROTOCOLS`, the version read from `_meta` or the header, `server/discover` returning
+supportedVersions / capabilities / serverInfo / instructions / ttlMs, `UnsupportedProtocolVersionError` (**-32022**)
+listing what we support, the `MCP-Protocol-Version` header on every answer, and the old `initialize` still answering.
+
+### THE GAME ARENA (`gamedesk/arena.py`, tool `game_arena`, console Game Desk > Game Arena, owner only)
+The QA farm proved a game RUNS; nothing proved it was worth playing, so every "more powerful" claim about the Game Desk
+was a claim. This is the games twin of the website Design Arena, built the same way because that mechanism caught four
+versions of regressions self-critique had missed.
+- **A FIXED SET of 500 briefs** (`SET_V` 1): 20 genres x 25 Indian settings, every choice seeded from its own key, so
+  two Hoola versions are judged on EXACTLY the same work. `pick(n, seed)` spreads across genres, same n for same seed.
+- **A RUN** builds each brief end to end as the hidden tenant `__gamearena__` (never her games, never her AI budget),
+  exactly as an owner would get it, one at a time, and stops at its rupee ceiling. One run at a time.
+- **THE CARD IS MEASURED BY PLAYING**, not by looking: the QA farm's own bots play the real web build and the card
+  records what the engine said - started, load seconds, median fps, script errors, events and state keys, whether a bot
+  reached an ending, and **RESPONDS**: did an input change state or raise an event that the IDLE run never saw. A game
+  that starts but answers nothing is `playable: false`.
+- **ORIGINALITY, MEASURED**: a design DNA read from the game's OWN code and design doc (verbs, Godot node kinds, input
+  kinds, end conditions, entity kinds, palette - never the model's opinion of itself), and same-ness = distance from the
+  CLOSEST OTHER game of the run. Weighted so what the game DOES counts most. This is a shippability number, not taste:
+  Apple 4.3(b) rejects apps "indistinguishable from what's already widely available".
+- **AN INDEPENDENT JUDGE** with its own rubric (never the builder's self-critique) sees the start screen, frames from
+  the bot's play and the MEASURED facts, and scores six things a player notices in thirty seconds (clear_in_30s,
+  goal_obvious, controls_fit, feedback, looks, originality_feel). It is told it cannot judge fun from frames.
+- **COMPARE** two runs metric by metric, the right way round (`LOWER_BETTER` for same-ness / rupees / errors / load), and
+  it SAYS SO when the two runs used a different seed or brief set and so are not a fair comparison.
+- **BLIND DUELS**: same brief, her rival's PUBLIC web game (Rosebud, Summer Engine, itch.io) opened in the same browser
+  and given the same seeded inputs; the judge scores them as A and B in a random order and is not told which is Hoola's.
+  A rival page carries no Hoola probe, so its state / events read None rather than being guessed.
+- **`fun` IS NOT ASSESSED** on every card and every summary, in those words: whether a game is fun cannot be measured
+  from frames, and a real player has to say.
+- Two things the tests found and fixed in the maths: an axis where NEITHER game has data was scoring 0 (so two identical
+  games read 0.64 alike and every game looked more original than it was - now such axes are left out of the average),
+  and a run of ONE game reported same-ness 0.0, which reads as "perfectly original" when the truth is that there was
+  nothing to compare against (now None).
+- Tables: game_arena_runs / items / duels. Routes: GET|POST /api/gamedesk/arena, /briefs, /{rid}, /{rid}/stop,
+  /compare/{a}/{b}, /duel. `start(..., background=False)` runs it in the caller's thread (tests, and a worker later).
+- Tests: `server/tests/test_v0447_game_arena.py` (12), including both MCP eras end to end through the real endpoint,
+  the money-out guard over 21 phrasings, and a whole run driven deterministically with a stubbed builder.
+- NOT VERIFIED: no real Arena run has been built on the VPS yet, so there are no numbers for a Hoola version yet - the
+  first run is what will produce them. The judge is a model and its scores are opinions about measured frames; only the
+  engine numbers on the card are facts.

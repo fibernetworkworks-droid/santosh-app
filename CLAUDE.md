@@ -224,7 +224,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.446.0 (pubspec 0.446.0+491). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.453.0 (pubspec 0.453.0+498). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.446 DUKAAN PAISA (web Step 4 part 1): `site/shoppay.py` = website shop online payments through HER gateway on the app engine (paid only from signed webhook / status read, amount must match, unpaid released after 3 h, late money kept, refunds her tap), coupons applied by the server (once per mobile), verified-buyer reviews (delivered orders only, her hide). Not yet: website GST invoices, marketplace, courier, wishlists.
 - v0.441 PRAYOGSHALA STUDIO (built as 0.435): all 22 labs in the realistic studio (`static/prayog/studio/studio.js` engine + `exp/<id>.js` per lab, contract `docs/PRAYOG_STUDIO.md`): real equipment, gloved hand, theory -> steps -> record book -> graph -> viva, Ask Hoola per lab (`/api/prayog/ask`); `tools/prayog_walk.js` = 22/22 within tolerance.
@@ -269,6 +269,14 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.381 SHIKSHA SUITE 0+1: `app/pylab` locked Python sandbox (tool `pylab`), `app/shiksha` (classes, learners + guardian
   consent, shared question bank, gradebook, `frameworks.json`), `app/pathyakram` curriculum & exam designer (papers, plans, rubrics).
 - v0.382 DIMAAG (App Phases 43-46 = Pillar A, `appmaker/logic/`: lang.py own locked interpreter, spec.py checker, engine.py hooks + approvals + schedules/SLA, service.py Opus draft -> her tap): links / formulas / rules / unique / workflows + maker-checker approvals / triggers / timed jobs / tested functions; kits Logic.kt / Logic.swift (RefField, WorkflowBox, RelatedBlock, AutoForm, hoola_approvals, hoola_data); `/api/apps/<ref>/logic*`, app `/approvals`, `/related/`, `/fn/`.
+- v0.453 TWO DEFECTS + GAME ARENA (built as 0.447; `gamedesk/arena.py`, tool game_arena, owner only): (1) `service.MONEY_OUT`
+  + `bible.money_out` refuse a reward that leaves the game as money (Rule 9 - "coins withdrawable to UPI" was being BUILT and is
+  non-bailable for her user); (2) /mcp/gamedesk now serves MCP 2026-07-28 too (no `initialize`: version in `_meta` / the
+  MCP-Protocol-Version header, `server/discover` MUST, -32022) AND the legacy handshake. (3) THE ARENA: 500 fixed seeded briefs
+  (20 genres x 25 Indian settings), runs built as `__gamearena__` and judged by PLAYING (QA bots: started / responds vs the idle
+  run / reached an ending / fps / errors), originality = design-DNA distance from every other game of the run (Apple 4.3(b), not
+  taste), independent judge on the first 30 s, run-vs-run compare that says when a comparison is unfair, blind duels vs a rival's
+  public game; `fun` always NOT ASSESSED. NOT VERIFIED: no real run built yet, so no numbers for any Hoola version yet.
 - PLAN: `docs/GAME_MOAT_PLAN.md` - the Game Desk's moat, researched (competitors, Indian market + law, engine gates). The
   short of it: MCP-drives-an-engine is COMMODITY (Unity ships its own free, into Claude Code); the unowned white space is
   QA -> builds -> store -> live ops as ONE product = what v0.416 + v0.432 already are, unproven; no game Arena exists so nothing

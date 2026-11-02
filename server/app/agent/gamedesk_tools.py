@@ -364,6 +364,28 @@ GAMEDESK_TOOLS.append(
 
 GAMEDESK_LABELS.update({"game_bigstudio": "Studio project dekh raha hoon"})
 
+# v0.447 Game Arena: "is a Hoola game any good?" as numbers (owner only)
+GAMEDESK_TOOLS.append(
+    {"name": "game_arena", "description": (
+        "Hoola Game Arena (owner only): proves whether Hoola's games are getting BETTER, as numbers. A fixed set of 500 "
+        "game briefs (every genre x an Indian setting, seeded) - a run builds n of them as a hidden tenant exactly as an "
+        "owner would get them, then the QA bots PLAY each build and the card records what the engine said (started, fps, "
+        "script errors, did any input change the game's state, did a bot reach an ending), an independent judge scores "
+        "the first thirty seconds, and originality is measured as distance from every other game of the run (Apple 4.3(b) "
+        "rejects games indistinguishable from what exists, so this is a shippability number). Actions: status (runs + duel "
+        "table) / briefs (the fixed set) / start (n, seed, budget_inr, note) / run (id) / stop (id) / compare (a, b: two "
+        "runs metric by metric) / duel (brief, rival, url: her rival's PUBLIC web game, both played by the same bots and "
+        "judged blind as A / B). Whether a game is FUN is NOT ASSESSED and the card says so - never claim it. Quote only "
+        "the numbers it returns."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["status", "briefs", "start", "run", "stop", "compare", "duel"]},
+         "n": {"type": "integer"}, "seed": {"type": "integer"}, "budget_inr": {"type": "number"},
+         "note": {"type": "string"}, "id": {"type": "string"}, "a": {"type": "string"}, "b": {"type": "string"},
+         "genre": {"type": "string"}, "brief": {"type": "string"}, "rival": {"type": "string"}, "url": {"type": "string"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_arena": "Game arena chala raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -962,6 +984,40 @@ async def game_vfx(ctx: Ctx, action="", words="", plan=None, setup="", **_):
                             {"not_here": "Blender / OpenColorIO / OpenUSD are not installed on the server"})
 
 
+async def game_arena(ctx: Ctx, action="", n=8, seed=1, budget_inr=0, note="", id="", a="", b="", genre="",
+                     brief="", rival="", url="", **_):
+    from ..gamedesk import arena as A
+    from ..gamedesk import service as G
+    _owner_only(ctx, "Arena")
+    if ctx.tenant_id != "default":
+        raise ToolError("Arena sirf owner ke liye hai.")
+    run = asyncio.to_thread
+    try:
+        if action == "status":
+            return {"runs": [{k: r[k] for k in ("number", "id", "version", "seed", "n", "status", "summary")}
+                             for r in await run(A.runs, 12)], "set": A.SET_V, "total_briefs": len(A.brief_set()),
+                    "duels": await run(A.duel_table)}
+        if action == "briefs":
+            return await run(A.catalogue, genre, 30)
+        if action == "start":
+            return await run(A.start, int(n or 8), int(seed or 1), float(budget_inr or 0), note) | {
+                "note": "Runs in the background, one game at a time; it stops at its rupee ceiling. Do not poll - look at the Arena page."}
+        if action == "run":
+            v = await run(A.view, id)
+            return {k: v[k] for k in ("number", "status", "version", "seed", "n", "summary")} | {
+                "items": [{k: it.get(k) for k in ("brief", "genre", "playable", "started", "responds", "reached_end",
+                                                  "fps", "errors", "sameness", "inr")} for it in v["items"]]}
+        if action == "stop":
+            return await run(A.stop, id)
+        if action == "compare":
+            return await run(A.compare, a, b)
+        if action == "duel":
+            return await run(A.duel, brief, rival, url)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = status | briefs | start | run | stop | compare | duel")
+
+
 async def game_bigstudio(ctx: Ctx, action="", project="", engine="", title="", engine_version="", about="", module="",
                          detail="", task="", note="", **_):
     from ..employee import hire
@@ -1088,4 +1144,5 @@ GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_b
                      "game_physics": game_physics, "game_audio": game_audio, "game_haptics": game_haptics,
                      "game_net": game_net, "game_xr": game_xr, "game_sim": game_sim, "game_twin": game_twin,
                      "game_vfx": game_vfx, "game_runtime": game_runtime,
-                     "game_liveops": game_liveops, "game_bigstudio": game_bigstudio}
+                     "game_liveops": game_liveops, "game_bigstudio": game_bigstudio,
+                     "game_arena": game_arena}

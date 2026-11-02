@@ -899,7 +899,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, arena: gsArena, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -924,7 +924,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <button class="btn soft" type="button" data-gs-role="twin">Digital twin (Twin Architect)</button>
           <button class="btn soft" type="button" data-gs-role="vfx">VFX pipeline (Pipeline TD)</button>
           <button class="btn soft" type="button" data-gs-role="runtime">Editor (Ask Hoola in Godot)</button>
-          <button class="btn soft" type="button" data-gs-role="big">Big studio (Unity / Unreal)</button></div></div>
+          <button class="btn soft" type="button" data-gs-role="big">Big studio (Unity / Unreal)</button>
+          <button class="btn soft" type="button" data-gs-role="arena">Game Arena (are we better?)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
     el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
@@ -1603,6 +1604,67 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       body: el2 => { const t = el2.querySelector('#vxPlan').value.trim(); let plan = null; if (t) { try { plan = JSON.parse(t); } catch { toast('The pipeline is not valid JSON.', true); } } return {plan}; },
       sub: x => `${x.show} · ${((x.plan || {}).shots || []).length} shots`,
       extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
+  }
+
+  // ---------------------------------------------------------------- v0.447 Game Arena (numbers, not claims)
+  let GAR_OPEN = '';
+  async function gsArena(el) {
+    clearTimeout(GTIMER);
+    let d, open = null;
+    try { d = await api('GET', '/api/gamedesk/arena'); } catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const rid = GAR_OPEN || (d.runs[0] || {}).id || '';
+    if (rid) { try { open = await api('GET', `/api/gamedesk/arena/${encodeURIComponent(rid)}`); } catch (e) { toast(e.message, true); } }
+    const pct = v => v == null ? '-' : Math.round(v * 10) / 10 + '%';
+    const nm = v => v == null ? '-' : num(Math.round(v * 100) / 100);
+    const sm = open && open.summary ? open.summary : {};
+    const yn = v => v === true ? '✓' : v === false ? '✕' : '-';
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="arBack">← Game Desk</button><h2>Game Arena</h2></div>
+      <p class="muted em-small">Whether Hoola's games are getting better, as numbers. ${num(d.total_briefs)} fixed briefs (set ${num(d.set)}): every genre × an Indian setting, seeded, so two Hoola versions are judged on exactly the same work. Each game is built like an owner's, then the QA bots <b>play</b> it and the card records what the engine said. Originality is measured against every other game of the run — Apple rejects games "indistinguishable from what's already widely available", so that number is about shippability, not taste. Whether a game is <b>fun</b> is NOT ASSESSED: a real player has to say.</p>
+      <section class="tile gl"><h3>New run</h3>
+        <div class="lo-form"><input id="arN" type="number" min="1" max="60" value="8" aria-label="How many games"><input id="arSeed" type="number" min="1" value="1" aria-label="Seed">
+          <input id="arBudget" type="number" min="0" step="50" value="400" aria-label="Rupee ceiling"><input id="arNote" placeholder="What this run is testing" aria-label="Note">
+          <button class="btn go" type="button" id="arGo">Start the run</button></div>
+        <p class="muted em-small">One game at a time, built end to end (design doc → approve → code → playtest → web build), as the hidden tenant — never your games, never your AI budget. It stops at the rupee ceiling.</p></section>
+      <section class="tile gl"><h3>Runs</h3>
+        <table class="ph-tbl"><thead><tr><th>Run</th><th>Version</th><th>Games</th><th>Playable</th><th>Judge</th><th>Same-ness</th><th>₹</th><th></th></tr></thead><tbody>${d.runs.map(r => `<tr${r.id === rid ? ' class="bs-row"' : ''}><td><button class="btn soft gs-mini" type="button" data-ar-open="${esc(r.id)}">${esc(r.number)}</button> ${tag(r.status === 'done' ? 'ok' : r.status === 'running' ? '' : 'bad', r.status)}</td>
+          <td class="em-small">${esc(r.version)}</td><td>${num(r.n)}</td><td>${pct((r.summary || {}).playable_pct)}</td><td>${nm((r.summary || {}).judge)}</td><td>${nm((r.summary || {}).sameness)}</td><td>${nm((r.summary || {}).total_inr)}</td>
+          <td>${r.status === 'running' ? `<button class="btn soft gs-mini" type="button" data-ar-stop="${esc(r.id)}">Stop</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">No run yet.</td></tr>'}</tbody></table>
+        ${d.runs.length > 1 ? `<div class="acts"><select id="arA" aria-label="Run A">${d.runs.map(r => `<option value="${esc(r.id)}">${esc(r.number)} ${esc(r.version)}</option>`).join('')}</select>
+          <select id="arB" aria-label="Run B">${d.runs.map((r, i) => `<option value="${esc(r.id)}"${i === 1 ? ' selected' : ''}>${esc(r.number)} ${esc(r.version)}</option>`).join('')}</select>
+          <button class="btn soft" type="button" id="arCmp">Compare</button></div><div id="arCmpOut"></div>` : ''}</section>
+      ${open ? `<section class="tile gl"><h3>${esc(open.number)} · ${esc(open.version)} · seed ${num(open.seed)}${open.note ? ' · ' + esc(open.note) : ''}</h3>
+        <div class="ph-grid"><div><b>${pct(sm.playable_pct)}</b><div class="muted em-small">playable</div></div><div><b>${pct(sm.responds_pct)}</b><div class="muted em-small">answers input</div></div>
+          <div><b>${pct(sm.reached_end_pct)}</b><div class="muted em-small">reached an ending</div></div><div><b>${nm(sm.judge)}</b><div class="muted em-small">judge / 10</div></div>
+          <div><b>${nm(sm.sameness)}</b><div class="muted em-small">same-ness (lower is better)</div></div><div><b>₹${nm(sm.total_inr)}</b><div class="muted em-small">whole run</div></div></div>
+        <p class="em-small">${['clear_in_30s', 'goal_obvious', 'controls_fit', 'feedback', 'looks', 'originality_feel'].map(k => `${esc(k.replace(/_/g, ' '))} ${nm(sm[k])}`).join(' · ')}</p>
+        <p class="muted em-small"><b>fun:</b> ${esc(sm.fun || 'NOT ASSESSED')}</p>
+        <table class="ph-tbl"><thead><tr><th>Brief</th><th>Genre</th><th>Started</th><th>Answers</th><th>Ending</th><th>fps</th><th>Errors</th><th>Judge</th><th>Same</th><th>₹</th></tr></thead><tbody>${(open.items || []).map(it => `<tr><td class="em-small">${esc(it.brief)}</td><td class="em-small">${esc(it.genre)}</td><td>${yn(it.started)}</td><td>${yn(it.responds)}</td><td>${yn(it.reached_end)}</td>
+          <td>${nm(it.fps)}</td><td>${num(it.errors)}</td><td>${nm((it.judge || {}).overall)}</td><td>${nm(it.sameness)}</td><td>${nm(it.inr)}</td></tr>
+          ${(it.judge || {}).worst ? `<tr><td colspan="10" class="muted em-small">first thing to fix: ${esc(it.judge.worst)}</td></tr>` : ''}`).join('') || '<tr><td colspan="10" class="muted">No game in this run yet.</td></tr>'}</tbody></table></section>` : ''}
+      <section class="tile gl"><h3>Blind duel</h3>
+        <p class="muted em-small">Same brief, your rival's public web game (Rosebud, Summer Engine, an itch.io game). Both are played by the same bots in the same browser, and the judge scores them as A and B in a random order without being told which is Hoola's.</p>
+        <div class="lo-form"><input id="arBrief" placeholder="Brief id (g1-runner-00)" aria-label="Brief"><input id="arRival" placeholder="Rival name" aria-label="Rival">
+          <input id="arUrl" placeholder="https://… their public game" aria-label="Rival URL"><button class="btn go" type="button" id="arDuel">Run the duel</button></div>
+        <div id="arDuelOut"></div>
+        ${Object.keys((d.duels || {}).rivals || {}).length ? `<table class="ph-tbl"><thead><tr><th>Rival</th><th>Won</th><th>Lost</th><th>Tie</th><th>Win %</th></tr></thead><tbody>${Object.entries(d.duels.rivals).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${num(v.won)}</td><td>${num(v.lost)}</td><td>${num(v.tie)}</td><td>${pct(v.win_pct)}</td></tr>`).join('')}</tbody></table>` : ''}
+        ${((d.duels || {}).recent || []).map(x => `<p class="em-small">${esc(x.brief)} vs ${esc(x.rival)} — ${tag(x.winner === 'hoola' ? 'ok' : x.winner === 'rival' ? 'bad' : '', x.winner)} ${esc(x.why)}</p>`).join('')}</section>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsArena(el); };
+    el.querySelector('#arBack').addEventListener('click', () => { GS_ROLE = ''; game(el); });
+    el.querySelectorAll('[data-ar-open]').forEach(b => b.addEventListener('click', () => { GAR_OPEN = b.dataset.arOpen; gsArena(el); }));
+    el.querySelectorAll('[data-ar-stop]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/arena/${encodeURIComponent(b.dataset.arStop)}/stop`), 'It will stop after this game.')));
+    el.querySelector('#arGo').addEventListener('click', e => { e.target.disabled = true;
+      go(() => api('POST', '/api/gamedesk/arena', {n: Number(el.querySelector('#arN').value), seed: Number(el.querySelector('#arSeed').value),
+        budget_inr: Number(el.querySelector('#arBudget').value), note: el.querySelector('#arNote').value.trim()}), 'Running. Come back in a while.'); });
+    el.querySelector('#arCmp')?.addEventListener('click', async () => {
+      const a = el.querySelector('#arA').value, b = el.querySelector('#arB').value;
+      try { const c = await api('GET', `/api/gamedesk/arena/compare/${encodeURIComponent(a)}/${encodeURIComponent(b)}`);
+        el.querySelector('#arCmpOut').innerHTML = `<p class="em-small">${esc(c.note)}</p><table class="ph-tbl"><thead><tr><th>Metric</th><th>${esc(c.a.number)}</th><th>${esc(c.b.number)}</th><th></th></tr></thead><tbody>${c.rows.map(r => `<tr><td>${esc(r.metric.replace(/_/g, ' '))}</td><td>${nm(r.a)}</td><td>${nm(r.b)}</td><td>${tag(r.verdict === 'better' ? 'ok' : r.verdict === 'worse' ? 'bad' : '', r.verdict)}</td></tr>`).join('')}</tbody></table>`;
+      } catch (e) { toast(e.message, true); } });
+    el.querySelector('#arDuel').addEventListener('click', async e => { e.target.disabled = true; e.target.textContent = 'Playing both…';
+      try { const o = await api('POST', '/api/gamedesk/arena/duel', {brief: el.querySelector('#arBrief').value.trim(),
+          rival: el.querySelector('#arRival').value.trim(), url: el.querySelector('#arUrl').value.trim()});
+        el.querySelector('#arDuelOut').innerHTML = `<p class="em-small">${tag(o.winner === 'hoola' ? 'ok' : o.winner === 'rival' ? 'bad' : '', o.winner)} ${esc(o.why)} <span class="muted">(${esc(o.blind)})</span></p>`;
+      } catch (err) { toast(err.message, true); } e.target.disabled = false; e.target.textContent = 'Run the duel'; });
   }
 
   // ---------------------------------------------------------------- v0.433 Big-studio mode (the Hoola Crew in Unity / Unreal)
