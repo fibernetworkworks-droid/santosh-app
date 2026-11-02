@@ -10,7 +10,7 @@
    "params": {
     "Sx": 4.953
    },
-   "note": "R = ρL/A with ρ = 1.1e-06 Ω·m and d = 0.376 mm gives about 4.95 Ω; a real wire differs by a few per cent.",
+   "note": "Its resistance follows R = ρL/A (ρ of nichrome = 1.1e-06 Ω·m, diameter 0.376 mm): work out the value you expect, then compare it with your measurement.",
    "source": {
     "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL); standard wire gauge table (BS 3737 / IS 2785)",
     "note": "Resistivity at 20 °C: nichrome 1.10e-6, constantan 4.9e-7, manganin 4.82e-7 Ω·m. SWG diameters: 24 = 0.559 mm, 26 = 0.457 mm, 28 = 0.376 mm, 30 = 0.315 mm, 32 = 0.274 mm."
@@ -29,7 +29,7 @@
    "params": {
     "Sx": 14.115
    },
-   "note": "R = ρL/A with ρ = 1.1e-06 Ω·m and d = 0.315 mm gives about 14.12 Ω; a real wire differs by a few per cent.",
+   "note": "Its resistance follows R = ρL/A (ρ of nichrome = 1.1e-06 Ω·m, diameter 0.315 mm): work out the value you expect, then compare it with your measurement.",
    "source": {
     "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL); standard wire gauge table (BS 3737 / IS 2785)",
     "note": "Resistivity at 20 °C: nichrome 1.10e-6, constantan 4.9e-7, manganin 4.82e-7 Ω·m. SWG diameters: 24 = 0.559 mm, 26 = 0.457 mm, 28 = 0.376 mm, 30 = 0.315 mm, 32 = 0.274 mm."
@@ -48,7 +48,7 @@
    "params": {
     "Sx": 18.655
    },
-   "note": "R = ρL/A with ρ = 1.1e-06 Ω·m and d = 0.274 mm gives about 18.66 Ω; a real wire differs by a few per cent.",
+   "note": "Its resistance follows R = ρL/A (ρ of nichrome = 1.1e-06 Ω·m, diameter 0.274 mm): work out the value you expect, then compare it with your measurement.",
    "source": {
     "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL); standard wire gauge table (BS 3737 / IS 2785)",
     "note": "Resistivity at 20 °C: nichrome 1.10e-6, constantan 4.9e-7, manganin 4.82e-7 Ω·m. SWG diameters: 24 = 0.559 mm, 26 = 0.457 mm, 28 = 0.376 mm, 30 = 0.315 mm, 32 = 0.274 mm."
@@ -67,7 +67,7 @@
    "params": {
     "Sx": 3.144
    },
-   "note": "R = ρL/A with ρ = 4.9e-07 Ω·m and d = 0.315 mm gives about 3.14 Ω; a real wire differs by a few per cent.",
+   "note": "Its resistance follows R = ρL/A (ρ of constantan = 4.9e-07 Ω·m, diameter 0.315 mm): work out the value you expect, then compare it with your measurement.",
    "source": {
     "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL); standard wire gauge table (BS 3737 / IS 2785)",
     "note": "Resistivity at 20 °C: nichrome 1.10e-6, constantan 4.9e-7, manganin 4.82e-7 Ω·m. SWG diameters: 24 = 0.559 mm, 26 = 0.457 mm, 28 = 0.376 mm, 30 = 0.315 mm, 32 = 0.274 mm."
@@ -86,7 +86,7 @@
    "params": {
     "Sx": 8.31
    },
-   "note": "R = ρL/A with ρ = 4.9e-07 Ω·m and d = 0.274 mm gives about 8.31 Ω; a real wire differs by a few per cent.",
+   "note": "Its resistance follows R = ρL/A (ρ of constantan = 4.9e-07 Ω·m, diameter 0.274 mm): work out the value you expect, then compare it with your measurement.",
    "source": {
     "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL); standard wire gauge table (BS 3737 / IS 2785)",
     "note": "Resistivity at 20 °C: nichrome 1.10e-6, constantan 4.9e-7, manganin 4.82e-7 Ω·m. SWG diameters: 24 = 0.559 mm, 26 = 0.457 mm, 28 = 0.376 mm, 30 = 0.315 mm, 32 = 0.274 mm."
@@ -105,7 +105,7 @@
    "params": {
     "Sx": 2.938
    },
-   "note": "R = ρL/A with ρ = 4.82e-07 Ω·m and d = 0.457 mm gives about 2.94 Ω; a real wire differs by a few per cent.",
+   "note": "Its resistance follows R = ρL/A (ρ of manganin = 4.82e-07 Ω·m, diameter 0.457 mm): work out the value you expect, then compare it with your measurement.",
    "source": {
     "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL); standard wire gauge table (BS 3737 / IS 2785)",
     "note": "Resistivity at 20 °C: nichrome 1.10e-6, constantan 4.9e-7, manganin 4.82e-7 Ω·m. SWG diameters: 24 = 0.559 mm, 26 = 0.457 mm, 28 = 0.376 mm, 30 = 0.315 mm, 32 = 0.274 mm."
@@ -124,7 +124,7 @@
    "params": {
     "Sx": 6.185
    },
-   "note": "R = ρL/A with ρ = 4.82e-07 Ω·m and d = 0.315 mm gives about 6.18 Ω; a real wire differs by a few per cent.",
+   "note": "Its resistance follows R = ρL/A (ρ of manganin = 4.82e-07 Ω·m, diameter 0.315 mm): work out the value you expect, then compare it with your measurement.",
    "source": {
     "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL); standard wire gauge table (BS 3737 / IS 2785)",
     "note": "Resistivity at 20 °C: nichrome 1.10e-6, constantan 4.9e-7, manganin 4.82e-7 Ω·m. SWG diameters: 24 = 0.559 mm, 26 = 0.457 mm, 28 = 0.376 mm, 30 = 0.315 mm, 32 = 0.274 mm."
@@ -143,7 +143,7 @@
    "params": {
     "Sx": 4.087
    },
-   "note": "R = ρL/A with ρ = 4.82e-07 Ω·m and d = 0.274 mm gives about 4.09 Ω; a real wire differs by a few per cent.",
+   "note": "Its resistance follows R = ρL/A (ρ of manganin = 4.82e-07 Ω·m, diameter 0.274 mm): work out the value you expect, then compare it with your measurement.",
    "source": {
     "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL); standard wire gauge table (BS 3737 / IS 2785)",
     "note": "Resistivity at 20 °C: nichrome 1.10e-6, constantan 4.9e-7, manganin 4.82e-7 Ω·m. SWG diameters: 24 = 0.559 mm, 26 = 0.457 mm, 28 = 0.376 mm, 30 = 0.315 mm, 32 = 0.274 mm."

@@ -102,7 +102,7 @@
   },
   {
    "key": "aluminium-bob",
-   "title": "Simple pendulum: g with a aluminium bob",
+   "title": "Simple pendulum: g with an aluminium bob",
    "sample": "Aluminium bob, 2.00 cm diameter (about 11 g)",
    "method": "Same lengths as with the brass bob: T does not depend on the mass of the bob.",
    "unknown": "the acceleration due to gravity g",
