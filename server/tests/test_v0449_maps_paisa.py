@@ -362,3 +362,21 @@ def test_usage_reads_its_values_inside_the_session(env):
     mapsbill.charge("t10", mapsbill.SKU_GEOCODE)
     u = mapsbill.usage("t10")        # would raise DetachedInstanceError if read outside
     assert u["calls"] == 1
+
+
+def test_the_usage_route_answers_and_names_what_we_guessed(env, monkeypatch):
+    """A route that exists is not a route that works - v0.399's lesson (the Systems page 500'd on open while
+    its test only asserted the route existed). So this one CALLS it."""
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(env["settings"], "api_key", "secret")
+    from app.main import app
+    with TestClient(app) as c:
+        assert c.get("/api/maps/usage").status_code == 401
+        r = c.get("/api/maps/usage", headers={"Authorization": "Bearer secret"})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        for k in ("day", "month", "calls", "free_calls", "inr", "cap_inr", "refused",
+                  "price_list", "assumed_tier", "unsourced_skus"):
+            assert k in body, f"/api/maps/usage is missing {k}"
+        assert body["price_list"] == "india"
+        assert mapsbill.SKU_ROUTES in body["assumed_tier"]

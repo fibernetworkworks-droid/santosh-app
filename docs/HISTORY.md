@@ -17100,7 +17100,7 @@ exists for it.
 
 ### Files
 
-New: `server/app/mapsbill.py`, `lib/ui/maps_card.dart`, `server/tests/test_v0449_maps_paisa.py` (27 tests),
+New: `server/app/mapsbill.py`, `lib/ui/maps_card.dart`, `server/tests/test_v0449_maps_paisa.py` (28 tests),
 `docs/research/maps/` (5 files: index + terms + APIs + her existing map + prices).
 Changed: `maps.py` (billing hook, `nearby`, `place_details`, `tier`, tenant threading), `agent/maps_tools.py`
 (3 tools + the card), `agent/tools.py` (lanes), `agent/prompts.py`, `voice.py`, `events.py`, `worker.py`

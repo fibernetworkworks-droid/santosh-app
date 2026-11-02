@@ -336,10 +336,33 @@ def charge(tenant_id: str, sku: str, n: int = 1) -> Receipt:
     d, mon = _today(), _month()
     key = f"{tenant_id}:{d.isoformat()}"
     cap = float(get_settings().maps_daily_inr)
+    # Read AND write in ONE transaction, so there is no gap between "is there room?" and "take it".
+    # Only the refusal needs a second transaction (below), because raising would roll the first one back.
+    spent_now, over = 0.0, False
     with session() as s:
         row = s.get(MapsSpend, key)
         spent_now = float(row.inr or 0.0) if row is not None else 0.0
         over = cap > 0 and spent_now + cost > cap
+        if not over:
+            if row is None:
+                row = MapsSpend(id=key, tenant_id=tenant_id, day=d)
+                s.add(row)
+                s.flush()
+            row.calls = int(row.calls or 0) + n
+            row.free_calls = int(row.free_calls or 0) + free_n
+            row.usd = float(row.usd or 0.0) + price_usd(sku, billed_n)
+            row.inr = float(row.inr or 0.0) + cost
+            counts = dict(p.split("=", 1) for p in (row.by_sku or "").split(";") if "=" in p)
+            counts[sku] = str(int(counts.get(sku, "0") or 0) + n)
+            row.by_sku = ";".join(f"{k}={v}" for k, v in sorted(counts.items()))[:4000]
+            if FREE_CAP().get(sku) not in (None, UNLIMITED):
+                fkey = f"{mon}:{sku}"
+                fr = s.get(MapsFree, fkey)
+                if fr is None:
+                    fr = MapsFree(id=fkey, month=mon, sku=sku)
+                    s.add(fr)
+                    s.flush()
+                fr.used = int(fr.used or 0) + n
     if over:
         # The refusal is counted in its OWN transaction: raising inside the session above would roll the
         # increment back with it, and she would never see that anything had been refused.
@@ -354,27 +377,6 @@ def charge(tenant_id: str, sku: str, n: int = 1) -> Receipt:
         raise MapsCapped(
             f"Aaj ka Google Maps budget (\u20b9{cap:.0f}) khatam ho gaya hai - ab tak \u20b9{spent_now:.2f} "
             f"lag chuke hain. Kal phir se chalega, ya aap cap badha sakti hain.")
-    with session() as s:
-        row = s.get(MapsSpend, key)
-        if row is None:
-            row = MapsSpend(id=key, tenant_id=tenant_id, day=d)
-            s.add(row)
-            s.flush()
-        row.calls = int(row.calls or 0) + n
-        row.free_calls = int(row.free_calls or 0) + free_n
-        row.usd = float(row.usd or 0.0) + price_usd(sku, billed_n)
-        row.inr = float(row.inr or 0.0) + cost
-        counts = dict(p.split("=", 1) for p in (row.by_sku or "").split(";") if "=" in p)
-        counts[sku] = str(int(counts.get(sku, "0") or 0) + n)
-        row.by_sku = ";".join(f"{k}={v}" for k, v in sorted(counts.items()))[:4000]
-        if FREE_CAP().get(sku) not in (None, UNLIMITED):
-            fkey = f"{mon}:{sku}"
-            fr = s.get(MapsFree, fkey)
-            if fr is None:
-                fr = MapsFree(id=fkey, month=mon, sku=sku)
-                s.add(fr)
-                s.flush()
-            fr.used = int(fr.used or 0) + n
     return Receipt(tenant_id=tenant_id, sku=sku, n=n, free=free_n, billed=billed_n,
                    inr=cost, usd=price_usd(sku, billed_n), day=d, month=mon)
 
