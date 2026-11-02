@@ -1769,7 +1769,7 @@ window.HoolaBuild = function (C) {
     });
   }
 
-  /* v0.433 who changed what (every change to the app's data, with the person) + who may do what */
+  /* v0.434 who changed what (every change to the app's data, with the person) + who may do what */
   async function auditBox(o, box) {
     let v; try { v = await api('GET', base(o) + '/audit?limit=60'); } catch (er) { return; }
     const sec = document.createElement('section'); sec.className = 'stlogic';

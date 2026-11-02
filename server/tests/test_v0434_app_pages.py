@@ -1,4 +1,4 @@
-"""v0.433 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3 of docs/WEB_PLATFORM_PLAN.md).
+"""v0.434 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3 of docs/WEB_PLATFORM_PLAN.md).
 
 W2: the website's app pages are a real in-page app per area (member / staff) - menu per role, tables with sort / search /
 filter / pages / bulk select, detail pages with linked lists, multi-step forms with checks + uploads, kanban, calendar.
@@ -16,7 +16,7 @@ from tests.test_v121_site import site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.433.0"
+    assert APP_VERSION == "0.434.0"
 
 
 @pytest.fixture
@@ -99,7 +99,7 @@ def test_signup_consent_is_recorded_and_required_on_new_pages(linked):
     base = f"/api/site-app/{linked}"
     assert _signup(c, base, "no@x.in", "No", consent=False).status_code == 400
     assert _signup(c, base, "yes@x.in", "Yes").status_code == 200
-    old = c.post(f"{base}/signup", json={"email": "old@x.in", "password": "pass-word-1"})   # a page built before v0.433
+    old = c.post(f"{base}/signup", json={"email": "old@x.in", "password": "pass-word-1"})   # a page built before v0.434
     assert old.status_code == 200
     with session() as s:
         got = {m.email: m.consent for m in s.query(W.SiteAppMember).all()}

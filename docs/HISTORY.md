@@ -16396,7 +16396,29 @@ New `server/app/gamedesk/liveops.py`; HoolaRuntime (`runtime.py`) extended; tool
 - NOT VERIFIED: no real player has sent telemetry, crashes or A/B data yet; the Web export's HTTPRequest fetch of
   /live was not run in a browser here (the same host as telemetry, which uses the same path).
 
-## v0.433.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 3")
+## v0.433.0 SOCH KE JAWAB step 4 — the reasoning recipe (2 Nov 2026)
+Owner: "GO STEP 4" (step 4 of the 7-step hard-reasoning plan).
+- Steps 1-3 decided WHO thinks (agent/hard.py), on WHAT (Opus 5.5, effort high, 16k tokens, adaptive thinking) and WITH
+  WHAT (pylab for every number). Nothing said HOW: the reply rulebook (replystyle.CHAT) is tuned for crisp chat and has
+  no method for a hard question.
+- `agent/hard.py`: RECIPE_CORE "SOCH KA TAREEKA" (~1.6 KB) - 1 the real question (most likely reading in ONE line; a
+  question only when a wrong guess costs her money / a filing / a send); 2 facts first (a missing fact = a stated
+  assumption "maan ke chal rahe hain: ...", never made up; rates / rules that change = check or look up); 3 work in
+  parts, EVERY number from pylab, units, Rs / lakh / crore; 4 check before writing (totals, units, orders of magnitude,
+  the strongest objection, re-run the key figure); 5 write: answer / decision FIRST with the key number, compact
+  reasoning (steps or a small table), the assumptions that matter, what would change the answer, the next step;
+  uncertainty plain; private thinking is not the reply. RECIPE_KIND lines (calculation, word problem, maths, decision,
+  plan, diagnosis, analysis, rules -> name the section + a CA / lawyer confirms, impact, deep) chosen by `recipe(why)`
+  from assess() labels (synonyms mapped: judgement / difference -> decision, reasons / why / fix -> diagnosis, ...),
+  max 3, no repeats. 74 of 75 hard asks get their own lines (the one left is a judge-zone Hindi ask: core only).
+- `santosh._steps`: a hard turn appends recipe(state["hard_why"]["why"]) to the system tail (setting hard_recipe,
+  default on). The reply rulebook still governs the writing (her language first, answer first, length follows the
+  question). Ordinary chat never carries the recipe.
+- Tests `server/tests/test_v0433_recipe.py` (18). Turn / reply / scorecard / draft-check / soch / tool-choice /
+  compact suites: 240 pass, same as main. Not measured here: the live answers (no key) - step 7 scores them.
+  Version 0.433.0 (pubspec 0.433.0+477, console ?v=0.433.0, pins). Server-only deploy.
+
+## v0.434.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 3")
 
 **W2 - real app pages on the web (`site/assets/hoola-app.js` rewritten, `site/build.py` app_page, `hoola-site.css`).**
 The account and staff pages are now one in-page app each (`data-hoola-app="shell" data-area="member|staff"`), hash-routed
@@ -16433,7 +16455,7 @@ Bugs found by the tests and fixed: a wrong OTP raised inside the DB transaction,
 (unlimited guesses) - the counter is now saved before any refusal; two logins in the same second got the SAME token, so
 ending one device ended both - tokens now carry a random part of a day in their expiry; an OTP was spent when a new
 person forgot the consent tick - it is now refused before the code is used.
-Proof: tests/test_v0433_app_pages.py (8) incl. a real Chromium run of the built account + staff pages against the real API
+Proof: tests/test_v0434_app_pages.py (8) incl. a real Chromium run of the built account + staff pages against the real API
 (login, member menu without audit, sort, search, detail, form checks, my devices, staff kanban 3 lanes / 4 cards, bulk
 select, audit, matrix).
 NOT BUILT (rest of W2 / W3): Google sign-in and email magic link (Google needs every customer domain registered on the

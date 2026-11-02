@@ -57,9 +57,9 @@ class SiteAppMember(Base):
     role: Mapped[str] = mapped_column(String(10), default="member")
     gen: Mapped[int] = mapped_column(Integer, default=0)            # bump = every token of this member stops working
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
-    phone: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)   # v0.433 OTP login (10 digits)
-    consent: Mapped[str | None] = mapped_column(Text, nullable=True)  # v0.433 DPDP consent {v, at, via}
-    totp: Mapped[str | None] = mapped_column(Text, nullable=True)     # v0.433 staff 2FA secret (encrypted) {on, s}
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)   # v0.434 OTP login (10 digits)
+    consent: Mapped[str | None] = mapped_column(Text, nullable=True)  # v0.434 DPDP consent {v, at, via}
+    totp: Mapped[str | None] = mapped_column(Text, nullable=True)     # v0.434 staff 2FA secret (encrypted) {on, s}
 
 
 class SiteAppRow(Base):
@@ -86,7 +86,7 @@ def ensure_tables() -> None:
     if eng is not None:
         SiteAppMember.__table__.create(eng, checkfirst=True)
         SiteAppRow.__table__.create(eng, checkfirst=True)
-        try:                                     # v0.433 sessions / OTP tables + the new member columns on old databases
+        try:                                     # v0.434 sessions / OTP tables + the new member columns on old databases
             from . import security as SEC
             SEC.ensure_tables(eng)
             _db._add_missing_columns(eng)
@@ -189,7 +189,7 @@ def check_pw(pw: str, stored: str) -> bool:
 
 
 def make_token(site_id: str, m: SiteAppMember) -> str:
-    # v0.433 a random part of a day in the expiry makes every login's token unique (two logins in one second used to be
+    # v0.434 a random part of a day in the expiry makes every login's token unique (two logins in one second used to be
     # the SAME token, so ending one device's login ended the other); the format and every check stay the same
     exp = int(time.time()) + TOKEN_DAYS * 86400 - secrets.randbelow(86400)
     body = f"{site_id}.{m.id}.{m.gen}.{exp}"
@@ -270,7 +270,7 @@ def logout_all(site_id: str, m: SiteAppMember) -> None:
 
 def view_member(m: SiteAppMember) -> dict[str, Any]:
     out = {"id": m.id, "email": m.email, "name": m.name, "role": m.role}
-    if getattr(m, "phone", None):                        # v0.433
+    if getattr(m, "phone", None):                        # v0.434
         out["phone"] = m.phone[:2] + "******" + m.phone[-2:]
     if getattr(m, "totp", None):
         try:
@@ -364,7 +364,7 @@ def _can_write(c: dict[str, Any], who: Who, row: SiteAppRow, op: str) -> bool:
 
 def row_view(c: dict[str, Any], row: SiteAppRow, who: Who) -> dict[str, Any]:
     d = json.loads(row.data or "{}")
-    see_all = who.owner or who.staff                    # v0.433 a `private` field is for staff / her only (per-field rule)
+    see_all = who.owner or who.staff                    # v0.434 a `private` field is for staff / her only (per-field rule)
     return {"id": row.id, **{f["key"]: d.get(f["key"], "") for f in c["fields"] if see_all or not f.get("private")},
             "created": row.created_at.isoformat() if row.created_at else "", "mine": bool(who.id) and row.owner == who.id}
 

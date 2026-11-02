@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.433.0"   # v0.433.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3, owner: "START STEP 3"). The website's account and staff pages are now a real in-page app per role: a menu by role, tables you sort / search / filter / page / bulk-select, detail pages with linked lists, multi-step forms that check before sending and upload photos / files, kanban, month calendar, approvals, members, who-can-do-what and the audit log, dressed in the site's own design. People log in safely: phone OTP through a DLT SMS provider (only a hash kept, 5 minutes, 5 tries, rate limits), 2-step login (authenticator code) for staff, every logged-in device listed with "log out" and "sign out everywhere", DPDP consent on sign-up, download-my-data and delete-my-account, every change journaled with WHO made it, staff-only fields. Fixed on the way: a wrong OTP rolled back its own try counter (unlimited guesses), two logins in one second shared a token, the staff page lost its charts. Previous: v0.432.0 (built as 0.430.0) LIVE OPS (Hoola Game Engine plan Phase 9, owner: "GO PHASE 9"; gamedesk/liveops.py, tool game_liveops). The game reads GET /play/<token>/live from its own host (cached on the device): running A/B tests + approved live events, values via HoolaRuntime.num / flag - only Game Bible numbers within 1/4x - 4x, or flag.<name>. A/B tests: sha256(install:key) groups (same sum in GDScript, checked in the real Godot), sample-size target, sample-ratio check, z-test + Bonferroni, NOT ENOUGH PLAYERS before the target, start / stop = her tap, ship = a board task. Live events calendar (India time, her tap, no clashes with each other or a running test). Crashes caught by Godot's Logger (4.5+) from consenting players, grouped + scrubbed, crash-free per version, one-tap hotfix task. Patch check: saved replays + a bot run on the newest version in the real engine. Dashboard + D30 / DAU / balance outliers / difficulty spikes; money only from her imported store CSV (ARPDAU an upper bound). Console Live ops page, phone Live ops screen.
+APP_VERSION = "0.434.0"   # v0.434.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3, owner: "START STEP 3"). The website's account and staff pages are now a real in-page app per role: a menu by role, tables you sort / search / filter / page / bulk-select, detail pages with linked lists, multi-step forms that check before sending and upload photos / files, kanban, month calendar, approvals, members, who-can-do-what and the audit log, dressed in the site's own design. People log in safely: phone OTP through a DLT SMS provider (only a hash kept, 5 minutes, 5 tries, rate limits), 2-step login (authenticator code) for staff, every logged-in device listed with "log out" and "sign out everywhere", DPDP consent on sign-up, download-my-data and delete-my-account, every change journaled with WHO made it, staff-only fields. Fixed on the way: a wrong OTP rolled back its own try counter (unlimited guesses), two logins in one second shared a token, the staff page lost its charts. Previous: v0.433.0 SOCH KE JAWAB step 4 - the reasoning recipe (owner: "GO STEP 4"): steps 1-3 decided WHO thinks (a hard ask), on WHAT (Opus 5.5, effort high, 16k, thinking) and WITH WHAT (pylab); nothing said HOW - the reply rulebook is tuned for crisp chat. A hard turn's system prompt now carries hard.RECIPE_CORE "SOCH KA TAREEKA" (~1.6 KB): the real question (most likely reading in one line, ask only when a wrong guess costs her), facts first (missing fact = a stated assumption, never made up; changing rules / rates = check or look up), work in parts with EVERY number from pylab, check before writing (totals, units, magnitudes, strongest objection, re-run the key figure), then the answer / decision FIRST + compact reasoning + assumptions + what would change it + next step, uncertainty said plainly, private thinking never pasted - plus up to 3 kind lines (calculation, word problem, maths, decision, plan, diagnosis, analysis, rules, impact, deep) picked from assess() labels; 74 of 75 hard asks get their own lines. Ordinary chat never carries it (hard_recipe switch). Previous: v0.432.0 v0.432.0 (built as 0.430.0) LIVE OPS (Hoola Game Engine plan Phase 9, owner: "GO PHASE 9"; gamedesk/liveops.py, tool game_liveops). The game reads GET /play/<token>/live from its own host (cached on the device): running A/B tests + approved live events, values via HoolaRuntime.num / flag - only Game Bible numbers within 1/4x - 4x, or flag.<name>. A/B tests: sha256(install:key) groups (same sum in GDScript, checked in the real Godot), sample-size target, sample-ratio check, z-test + Bonferroni, NOT ENOUGH PLAYERS before the target, start / stop = her tap, ship = a board task. Live events calendar (India time, her tap, no clashes with each other or a running test). Crashes caught by Godot's Logger (4.5+) from consenting players, grouped + scrubbed, crash-free per version, one-tap hotfix task. Patch check: saved replays + a bot run on the newest version in the real engine. Dashboard + D30 / DAU / balance outliers / difficulty spikes; money only from her imported store CSV (ARPDAU an upper bound). Console Live ops page, phone Live ops screen.
 
 
 def _quiet_http_logs() -> None:
@@ -8466,7 +8466,7 @@ async def _site_pub(site_id: str, op: str, request: Request, body: dict | None =
     backend + DIMAAG logic for a linked one (site/applink.py). The site's pages keep the same addresses."""
     from .site import applink as AL
     tok, ip = _site_tok(request), _ip(request)
-    kw.setdefault("ua", (request.headers.get("user-agent") or "")[:160])     # v0.433 the sessions list names the device
+    kw.setdefault("ua", (request.headers.get("user-agent") or "")[:160])     # v0.434 the sessions list names the device
     return await asyncio.to_thread(_app_call, lambda: AL.call(site_id, op, tok, body or {}, ip, **kw))
 
 
@@ -8549,7 +8549,7 @@ async def site_app_decide(site_id: str, appr_id: str, request: Request):
     return await _site_pub(site_id, "decide", request, await _json_body(request), appr_id=appr_id)
 
 
-# v0.433 LOGIN AUR SURAKSHA: phone OTP, staff 2FA, sessions, her data (export / delete), audit log, permissions, uploads
+# v0.434 LOGIN AUR SURAKSHA: phone OTP, staff 2FA, sessions, her data (export / delete), audit log, permissions, uploads
 @app.post("/api/site-app/{site_id}/otp/start")
 async def site_app_otp_start(site_id: str, request: Request):
     return await _site_pub(site_id, "otp_start", request, await _json_body(request))
@@ -8617,7 +8617,7 @@ async def site_app_upload(site_id: str, request: Request):
 
 @app.get("/api/site-app/{site_id}/file/{fid}")
 async def site_app_file(site_id: str, fid: str, request: Request):
-    """v0.433 a photo / PDF from a form, for whoever may see it (the page fetches it with the login header)."""
+    """v0.434 a photo / PDF from a form, for whoever may see it (the page fetches it with the login header)."""
     from .appmaker import backend as BE
     from .site import applink as AL
     from .site import service as S
@@ -8692,7 +8692,7 @@ async def sites_logic_apply(ref: str, body: dict, tenant: str = Depends(current_
 
 @app.get("/api/sites/{ref}/audit", dependencies=[Depends(require_key)])
 async def sites_audit(ref: str, limit: int = 100, tenant: str = Depends(current_tenant)):
-    """v0.433 her website app's audit log (every change, who made it) + the permissions matrix."""
+    """v0.434 her website app's audit log (every change, who made it) + the permissions matrix."""
     from .site import applink as AL
     return await asyncio.to_thread(_site_logic, AL.owner_audit, tenant, ref, max(1, min(limit, 500)))
 

@@ -1,12 +1,12 @@
-/* Hoola web app (v0.305, v0.433 APP PAGES, MIT, Newtika): the app part of a Hoola-built website.
-   v0.433: one in-page app per area (data-hoola-app="shell" data-area="member|staff") with its own menu per role -
+/* Hoola web app (v0.305, v0.434 APP PAGES, MIT, Newtika): the app part of a Hoola-built website.
+   v0.434: one in-page app per area (data-hoola-app="shell" data-area="member|staff") with its own menu per role -
    home, tables (sort, search, filter, pages, bulk select), detail pages with linked lists, multi-step forms with checks
    and photo / file upload, kanban, calendar, approvals, members, audit log, permissions, and My account (devices,
    sign out everywhere, 2-step login for staff, download my data, delete my account). Login: email + password, mobile
    OTP (when the site has SMS), the authenticator code for staff with 2-step on.
    Talks only to Hoola's API (meta[name=hoola-app]); the login token lives in this browser only. Every value from the
    server is put on the page as TEXT (never as HTML), and the server checks every rule again on every call.
-   The older placeholders (login / form / list / admin) keep working for pages built before v0.433. */
+   The older placeholders (login / form / list / admin) keep working for pages built before v0.434. */
 (function () {
   'use strict';
   var d = document, meta = d.querySelector('meta[name="hoola-app"]');
@@ -239,7 +239,7 @@
     draw(); box.appendChild(f);
   }
 
-  // ---------------------------------------------------------------- older placeholders (pages built before v0.433)
+  // ---------------------------------------------------------------- older placeholders (pages built before v0.434)
   function form(box) {
     var c = C(box.getAttribute('data-c')); box.textContent = ''; if (!c) return;
     if (c.rules.create === 'member' && !me) { box.appendChild(el('p', {'class': 'muted', text: t.need})); return; }

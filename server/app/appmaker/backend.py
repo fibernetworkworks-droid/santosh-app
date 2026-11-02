@@ -414,7 +414,7 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     worker process still makes exactly ONE row."""
     from . import backup as BK
     cid = str((body or {}).get("cid") or "") if isinstance(body, dict) else ""
-    with BK.acting(w):                                   # v0.433 the journal records who made it
+    with BK.acting(w):                                   # v0.434 the journal records who made it
         if cid and CID.match(cid):
             from . import locks as LK
             with LK.hold(f"cid:{r.id}:{w.id}:{cid}"):
@@ -535,7 +535,7 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
 
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
     from . import backup as BK
-    with BK.acting(w):                               # v0.433 the journal records who made it
+    with BK.acting(w):                               # v0.434 the journal records who made it
         return _update_inner(r, coll, row_id, body, w)
 
 
@@ -622,7 +622,7 @@ def status_moved(r: AppProject, row_id: str, status: str) -> None:
 
 def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
     from . import backup as BK
-    with BK.acting(w):                               # v0.433 the journal records who made it
+    with BK.acting(w):                               # v0.434 the journal records who made it
         return _delete_inner(r, coll, row_id, w)
 
 
@@ -643,7 +643,7 @@ def _delete_inner(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, 
 
 def delete_me(r: AppProject, w: W.Who) -> dict[str, Any]:
     from . import backup as BK
-    with BK.acting(w):                               # v0.433 the journal records who made it
+    with BK.acting(w):                               # v0.434 the journal records who made it
         return _delete_me_inner(r, w)
 
 
@@ -726,7 +726,7 @@ def owner_rows(r: AppProject, coll: str, limit: int = 300) -> list[dict[str, Any
 
 def owner_update(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) -> dict[str, Any]:
     from . import backup as BK
-    with BK.acting(W.Who(None, owner=True)):                               # v0.433 the journal records who made it
+    with BK.acting(W.Who(None, owner=True)):                               # v0.434 the journal records who made it
         return _owner_update_inner(r, coll, row_id, body)
 
 
@@ -1353,7 +1353,7 @@ def _new_field(a: dict[str, Any], colls: dict[str, Any], fresh: bool) -> dict[st
     typ = a.get("type") if a.get("type") in (*W.TYPES, *EXTRA_TYPES, "ref") else "text"
     fd: dict[str, Any] = {"key": k, "label": str(a.get("label") or k.replace("_", " ").title())[:60], "type": typ,
                           "required": bool(a.get("required")) and fresh and typ != "choice", "admin_only": bool(a.get("admin_only"))}
-    if a.get("private") is True:            # v0.433 per-field rule: only staff / her see it (row_view hides it from others)
+    if a.get("private") is True:            # v0.434 per-field rule: only staff / her see it (row_view hides it from others)
         fd["private"], fd["admin_only"] = True, True
     if typ == "choice":
         opts = [str(o)[:40] for o in (a.get("options") or []) if str(o).strip()][:20]

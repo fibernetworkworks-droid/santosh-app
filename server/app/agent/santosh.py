@@ -945,6 +945,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools, _last_user_text(history))
     tail += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
     tail += state.get("hint") or ""
+    if state.get("hard") and getattr(settings, "hard_recipe", True):
+        # v0.433 SOCH KE JAWAB step 4: a hard question gets the reasoning recipe (ordinary chat never pays for it)
+        from . import hard as _hardr
+        tail += "\n\n" + _hardr.recipe(((state.get("hard_why") or {}).get("why")) or [])
     if _secret:   # v0.250 incognito: she knows nothing from here is kept; never promise it is
         tail += ("\n\nINCOGNITO CHAT: she opened this chat in incognito. Nothing from it goes into her memory (no facts, "
                  "no diary, no search, no memory page) and other chats will not know it. Never say 'yaad rakh liya'; if "

@@ -485,7 +485,7 @@ CHART_JS = Path(__file__).resolve().parents[1] / "static" / "console" / "charts.
 def uses_charts(body: str) -> bool:
     """A page loads assets/hoola-chart.js only when it draws a chart: a section's <figure data-hoola-chart> or the web
     app's staff panel (its dashboard)."""
-    return "data-hoola-chart" in body or 'data-hoola-app="admin"' in body or 'data-area="staff"' in body   # v0.433 staff app
+    return "data-hoola-chart" in body or 'data-hoola-app="admin"' in body or 'data-area="staff"' in body   # v0.434 staff app
 
 
 # ---------------------------------------------------------------- v0.351 her shop (code only: prices come live from the API)
@@ -538,10 +538,10 @@ def buy_box(site: dict[str, Any], slug: str) -> str:
 def app_page(kind: str, site: dict[str, Any]) -> str:
     """The account / staff pages: containers the app script fills from the live schema (no data in the HTML)."""
     w = app_words(site)
-    if kind == "admin":                  # v0.433 APP PAGES: the staff app (menu, tables, board, calendar, approvals, audit...)
+    if kind == "admin":                  # v0.434 APP PAGES: the staff app (menu, tables, board, calendar, approvals, audit...)
         return (f'<section class="hs"><div class="wrap"><h1>{esc(w["admin_h"])}</h1><p class="lead">{esc(w["admin_p"])}</p>'
                 f'<div data-hoola-app="login"></div><div data-hoola-app="shell" data-area="staff"></div></div></section>')
-    if (site.get("app") or {}).get("shell", True):   # v0.433 the member's own app area (her lists, her account)
+    if (site.get("app") or {}).get("shell", True):   # v0.434 the member's own app area (her lists, her account)
         return (f'<section class="hs"><div class="wrap"><h1>{esc(w["account"])}</h1><div data-hoola-app="login"></div>'
                 f'<div data-hoola-app="shell" data-area="member"></div></div></section>')
     parts = [f'<section class="hs"><div class="wrap"><h1>{esc(w["account"])}</h1><div data-hoola-app="login"></div></div></section>']

@@ -175,3 +175,56 @@ async def decide(text: str, settings) -> dict:
                 STATS["hard"] += 1
             return {"hard": bool(j), "by": "judge", "why": a["why"]}
     return {"hard": False, "by": "rules", "why": a["why"]}
+
+
+# ---------------------------------------------------------------- v0.433 SOCH KE JAWAB step 4: the reasoning recipe
+# Rides in the system prompt ONLY on a hard turn (ordinary chat stays lean). The core is how a careful analyst works;
+# the kind lines come from the labels assess() found. The reply rulebook (her language, answer first, length follows
+# the question, light formatting) still governs HOW it is written - this governs how it is THOUGHT.
+RECIPE_CORE = """SOCH KA TAREEKA (this is a hard question - think it through like a careful analyst, then answer like Hoola):
+1. The real question: what decision or number does she actually need? If the words allow two readings, take the most
+   likely one and say it in ONE line; ask a question only when a wrong guess would cost her (money, a filing, a send).
+2. Facts first: use what she gave, this chat, her files and memory. A fact you need and do not have = a stated
+   assumption in one short line ("maan ke chal rahe hain: ..."), never a made-up fact. Current rates, rules or prices
+   that change = say they should be checked, or look them up with a tool.
+3. Work it out in parts. EVERY number you work out comes from pylab (run it, quote the printed result) - never mental
+   maths. Keep units and the Indian way of writing money (Rs / lakh / crore).
+4. Check before you write: do the totals add up, are units and orders of magnitude sane, does the answer survive the
+   strongest objection? Re-run the one figure the answer stands on. If a check fails, fix it before writing.
+5. Write it: the answer or decision FIRST (one or two lines, with the key number); then the reasoning, compact - steps,
+   or a small table when comparing; then the assumptions that matter, what would change the answer, and the next step
+   for her. Say plainly what is uncertain. Your private thinking is not the reply - show the clean result."""
+
+RECIPE_KIND = {
+    "calculation": "Calculation: write the formula in words, compute it in pylab, show the 2-4 inputs and the result; "
+                   "for money over time give the monthly AND total figure.",
+    "word problem": "Word problem: list the givens, solve step by step (pylab for the arithmetic), then check the "
+                    "answer against the question's own numbers.",
+    "maths": "Maths / logic: show each step so she can follow it; for a proof state the claim, the method, and close "
+             "it cleanly; verify any numeric result in pylab.",
+    "decision": "Decision: name 2-3 real options, judge them on HER criteria (cost, risk, time, effort) - a small table "
+                "when it helps - then recommend ONE and say when the other would be better.",
+    "plan": "Plan / strategy: goal and constraints first, then phases with what happens, who, by when and rough cost; "
+            "name the 2-3 biggest risks and the first step for this week.",
+    "diagnosis": "Root cause: list the likely causes ranked by how well the evidence fits, what she can check to "
+                 "confirm each, and the fix for the most likely one first.",
+    "analysis": "Analysis: what the data says (numbers from pylab), what it means, and what she should do about it - "
+                "separate facts from your reading of them.",
+    "rules": "Tax / legal / compliance: name the rule or section you rely on, apply it to her facts, say what is "
+             "uncertain, and that a CA / lawyer should confirm before she files or signs.",
+    "impact": "Impact / what-if: compare before vs after with the numbers, and name second-order effects.",
+    "deep": "Explanation: build from the basics up, one idea per paragraph, with one concrete example from her world.",
+}
+
+
+def recipe(why: list[str] | None) -> str:
+    """The reasoning recipe for one hard turn: the core + the lines for the kinds of reasoning found (max 3)."""
+    kinds = []
+    for w in why or []:
+        k = {"how-long": "calculation", "numbers": "calculation", "judgement": "decision", "difference": "decision",
+             "how-to-improve": "plan", "reasons": "diagnosis", "why": "diagnosis", "design": "plan", "fix": "diagnosis",
+             "what-if": "impact", "explain": "deep"}.get(w, w)
+        if k in RECIPE_KIND and k not in kinds:
+            kinds.append(k)
+    lines = [RECIPE_KIND[k] for k in kinds[:3]]
+    return RECIPE_CORE + ("\n" + "\n".join("- " + x for x in lines) if lines else "")
