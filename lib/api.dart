@@ -1180,9 +1180,9 @@ class Api {
   // ---- v0.410 Architecture Desk (Principal Software Architect) ----
   Future<Map<String, dynamic>> archProjects() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/arch/projects', timeout: const Duration(seconds: 30)) as Map);
-  Future<Map<String, dynamic>> archStart(String brief, {String repo = '', int? dau}) async =>
+  Future<Map<String, dynamic>> archStart(String brief, {String repo = '', int? dau, String kind = 'design'}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/arch/projects',
-          body: {'brief': brief, 'repo': repo, 'scale': {if (dau != null) 'dau': dau}}, timeout: const Duration(seconds: 60)) as Map);
+          body: {'brief': brief, 'repo': repo, 'kind': kind, 'scale': {if (dau != null) 'dau': dau}}, timeout: const Duration(seconds: 60)) as Map);
   Future<Map<String, dynamic>> archGet(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/arch/projects/$id', timeout: const Duration(seconds: 30)) as Map);
   Future<void> archApprove(String id) async => _send('POST', '/api/arch/projects/$id/approve', body: const {});

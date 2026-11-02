@@ -17,6 +17,36 @@ String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
 
+Map<String, dynamic> _m(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
+List<String> _strs(dynamic l) {
+  if (l is String) return l.isEmpty ? <String>[] : <String>[l];
+  if (l is! List) return <String>[];
+  return [for (final e in l) e is Map ? _s(e['name'] ?? e['what'] ?? e) : _s(e)];
+}
+String _bytes(dynamic v) {
+  final n0 = v is num ? v.toDouble() : double.tryParse(_s(v));
+  if (n0 == null || n0 < 0) return '-';
+  const u = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  var n = n0;
+  var i = 0;
+  while (n >= 1024 && i < u.length - 1) {
+    n = n / 1024;
+    i++;
+  }
+  return '${n >= 100 || i == 0 ? n.round() : n.toStringAsFixed(1)} ${u[i]}';
+}
+
+// v0.426 MASTER ARCHITECT: the six kinds of job; assess / migrate read her repo first, so they need one
+const _kinds = {
+  'design': 'Naya design',
+  'assess': 'Jaanch (assess)',
+  'migrate': 'Migration',
+  'decide': 'Faisla (decide)',
+  'threat': 'Threat model',
+  'scale': 'Scale',
+};
+const _needsRepo = ['assess', 'migrate'];
+
 const _busyStates = ['reading', 'designing', 'drawing'];
 const _stateLabel = {
   'reading': 'Repo padh raha hai',
@@ -43,6 +73,7 @@ class _ArchDeskScreenState extends State<ArchDeskScreen> {
   bool _loaded = false;
   bool _busy = false;
   String _err = '';
+  String _kind = 'design';
   Timer? _poll;
 
   @override
@@ -82,10 +113,15 @@ class _ArchDeskScreenState extends State<ArchDeskScreen> {
   Future<void> _start() async {
     final brief = _brief.text.trim();
     if (brief.isEmpty) return;
+    if (_needsRepo.contains(_kind) && _repo.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Is kaam ke liye GitHub repo chahiye (owner/naam) - pehle code padhega.')));
+      return;
+    }
     setState(() => _busy = true);
     try {
       final dau = int.tryParse(_dau.text.replaceAll(RegExp(r'[, ]'), ''));
-      final p = await widget.app.api!.archStart(brief, repo: _repo.text.trim(), dau: dau);
+      final p = await widget.app.api!.archStart(brief, repo: _repo.text.trim(), dau: dau, kind: _kind);
       _brief.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Design ban raha hai - kuch minute lagenge.')));
@@ -120,6 +156,21 @@ class _ArchDeskScreenState extends State<ArchDeskScreen> {
                     const Text('System kya karega, kaun use karega, roz kitne log. Repo ho to owner/naam likhiye - pehle use padhega.',
                         style: TextStyle(color: C.faint, fontSize: 12)),
                     const SizedBox(height: 8),
+                    Wrap(spacing: 6, runSpacing: 4, children: [
+                      for (final k in _kinds.entries)
+                        ChoiceChip(
+                          label: Text(k.value, style: const TextStyle(fontSize: 12.5)),
+                          selected: _kind == k.key,
+                          onSelected: (_) => setState(() => _kind = k.key),
+                        ),
+                    ]),
+                    if (_needsRepo.contains(_kind))
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text('Is kaam mein pehle aapka code padha jayega - GitHub repo zaroori hai.',
+                            style: TextStyle(color: C.warn, fontSize: 12)),
+                      ),
+                    const SizedBox(height: 8),
                     TextField(controller: _brief, minLines: 3, maxLines: 8, maxLength: 6000,
                         decoration: const InputDecoration(hintText: 'e.g. 3 shehron ke liye food delivery backend...', border: OutlineInputBorder())),
                     TextField(controller: _repo, decoration: const InputDecoration(labelText: 'GitHub repo (optional) owner/naam')),
@@ -142,7 +193,8 @@ class _ArchDeskScreenState extends State<ArchDeskScreen> {
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(_s(p['title']), style: const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text('${_stateLabel[p['status']] ?? _s(p['status'])}'
+                        subtitle: Text('${_s(p['kind_title']).isNotEmpty ? '${_s(p['kind_title'])}\n' : ''}'
+                            '${_stateLabel[p['status']] ?? _s(p['status'])}'
                             '${(p['version'] ?? 0) != 0 ? ' · v${p['version']}' : ''}'
                             '${_s(p['repo']).isNotEmpty ? ' · ${p['repo']}' : ''}'),
                         trailing: const Icon(Icons.chevron_right_rounded),
@@ -227,6 +279,278 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
         ),
       );
 
+  Widget _line(String t, TextStyle st) => Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(t, style: st));
+
+  Color _sevColor(dynamic s) {
+    final k = _s(s).toLowerCase();
+    if (k == 'high' || k == 'critical' || k == 'blocker') return C.bad;
+    if (k == 'medium') return C.warn;
+    return C.muted;
+  }
+
+  /// v0.426 MASTER ARCHITECT: the kind's own section, then growth scenarios, boundary rules, module map,
+  /// peer review, design checks, API contract. Every key may be missing - only what the server sent is drawn.
+  List<Widget> _master(TextStyle body) {
+    final x = _m(_p['extra']);
+    const small = TextStyle(color: C.muted, fontSize: 12);
+    final out = <Widget>[];
+
+    // assessment
+    if (x['assessment'] is Map) {
+      final a = _m(x['assessment']);
+      final sr = _m(x['scorecard_result']);
+      out.add(_section('Jaanch (assessment)', [
+        if (_s(a['as_is']).isNotEmpty) MdText(_s(a['as_is']), style: body),
+        if (sr['average'] != null)
+          _line('Score ${_s(sr['average'])}${sr['out_of'] != null ? ' / ${_s(sr['out_of'])}' : ''}'
+              '${_strs(sr['weakest']).isNotEmpty ? ' · kamzor: ${_strs(sr['weakest']).join(', ')}' : ''}',
+              const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+        for (final r in _list(a['scorecard'])) _line('${_s(r['dimension'])}: ${_s(r['score'])} - ${_s(r['why'])}', body),
+        if (_strs(a['strengths']).isNotEmpty) _line('Achha: ${_strs(a['strengths']).join(' · ')}', body),
+        for (final r in _list(a['problems']))
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${_s(r['severity'])} · ${_s(r['area'])}', style: TextStyle(color: _sevColor(r['severity']), fontSize: 12)),
+              Text(_s(r['finding']), style: body),
+              if (_s(r['evidence']).isNotEmpty) Text('Saboot: ${_s(r['evidence'])}', style: small),
+              Text('→ ${_s(r['fix'])}', style: body),
+            ]),
+          ),
+      ]));
+    }
+
+    // migration
+    if (x['migration'] is Map) {
+      final g = _m(x['migration']);
+      out.add(_section('Migration plan', [
+        if (_s(g['from']).isNotEmpty || _s(g['to']).isNotEmpty) _line('${_s(g['from'])} → ${_s(g['to'])}', body),
+        if (_s(g['strategy']).isNotEmpty)
+          _line('Strategy: ${_s(g['strategy'])}${_s(g['why_strategy']).isNotEmpty ? ' - ${_s(g['why_strategy'])}' : ''}', body),
+        for (final r in _list(g['phases']))
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Phase ${_s(r['phase'])}: ${_s(r['what'])}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              if (_s(r['rollback']).isNotEmpty) Text('Wapas (rollback): ${_s(r['rollback'])}', style: body),
+              if (_s(r['exit']).isNotEmpty) Text('Poora jab: ${_s(r['exit'])}', style: small),
+              if (_s(r['risk']).isNotEmpty) Text('Risk: ${_s(r['risk'])}', style: small),
+            ]),
+          ),
+        if (_s(g['data_migration']).isNotEmpty) _line('Data: ${_s(g['data_migration'])}', body),
+        if (_s(g['cutover']).isNotEmpty) _line('Cutover: ${_s(g['cutover'])}', body),
+      ]));
+    }
+
+    // decision
+    if (x['decision'] is Map || x['decision_result'] is Map) {
+      final dc = _m(x['decision']);
+      final dr = _m(x['decision_result']);
+      final crit = _list(dc['criteria']);
+      final opts = _list(dc['options']);
+      out.add(_section('Faisla (decision)', [
+        if (_s(dc['question']).isNotEmpty) _line(_s(dc['question']), const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+        if (_s(dr['error']).isNotEmpty) _line(_s(dr['error']), const TextStyle(color: C.bad, fontSize: 12.5)),
+        for (final t in _list(dr['totals']))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${_s(t['rank'])}. ${_s(t['option'])}  ${_s(t['score'])}', style: body),
+              const SizedBox(height: 2),
+              LinearProgressIndicator(
+                value: ((t['score'] is num ? (t['score'] as num).toDouble() : 0.0) / 100).clamp(0.0, 1.0).toDouble(),
+                minHeight: 6,
+                color: C.violet,
+                backgroundColor: C.line,
+              ),
+            ]),
+          ),
+        if (_s(dr['winner']).isNotEmpty)
+          _line('${dr['close'] == true ? 'Close call' : 'Winner'}: ${_s(dr['winner'])}'
+              '${dr['margin'] != null ? ' (${_s(dr['margin'])} se)' : ''}',
+              TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: dr['close'] == true ? C.warn : C.ok)),
+        if (_strs(dr['flips']).isNotEmpty) _line('Badal jata hai jab: ${_strs(dr['flips']).join(' · ')}', small),
+        if (_strs(dr['missing']).isNotEmpty) _line('Score nahi diya: ${_strs(dr['missing']).join(' · ')}', small),
+        if (crit.isNotEmpty && opts.isNotEmpty)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columnSpacing: 14,
+              headingRowHeight: 32,
+              columns: [
+                const DataColumn(label: Text('Criterion (weight)', style: TextStyle(fontSize: 12))),
+                for (final o in opts) DataColumn(label: Text(_s(o['name']), style: const TextStyle(fontSize: 12))),
+              ],
+              rows: [
+                for (final c in crit)
+                  DataRow(cells: [
+                    DataCell(Text('${_s(c['name'])} (${_s(c['weight'])})', style: const TextStyle(fontSize: 12))),
+                    for (final o in opts)
+                      DataCell(Text(_s(_m(o['scores'])[_s(c['name'])] ?? '-'), style: const TextStyle(fontSize: 12))),
+                  ]),
+              ],
+            ),
+          ),
+        for (final o in opts)
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: Text(_s(o['name']), style: const TextStyle(fontSize: 13.5)),
+            subtitle: _s(o['summary']).isEmpty ? null : Text(_s(o['summary']), style: small),
+            children: [
+              if (_strs(o['pros']).isNotEmpty) _line('Fayde: ${_strs(o['pros']).join(' · ')}', body),
+              if (_strs(o['cons']).isNotEmpty) _line('Nuksaan: ${_strs(o['cons']).join(' · ')}', body),
+              if (_s(o['cost_note']).isNotEmpty) _line(_s(o['cost_note']), small),
+            ],
+          ),
+        if (_s(dc['recommendation']).isNotEmpty) _line('Salah: ${_s(dc['recommendation'])}', body),
+      ]));
+    }
+
+    // threat model
+    final tr = _m(x['threat_result']);
+    final threats = _list(tr['rows']).isNotEmpty ? _list(tr['rows']) : _list(x['threats']);
+    if (x['threat_result'] is Map || threats.isNotEmpty) {
+      out.add(_section('Threat model (STRIDE)', [
+        if (tr['total'] != null)
+          _line('${_s(tr['total'])} threats${tr['open_high'] != null ? ' · ${_s(tr['open_high'])} high aur abhi khule' : ''}', body),
+        if (_strs(x['trust_boundaries']).isNotEmpty) _line('Trust boundaries: ${_strs(x['trust_boundaries']).join(' · ')}', small),
+        for (final r in threats)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${_s(r['stride'])} · ${_s(r['target'])} · risk ${_s(r['risk'])} (${_s(r['likelihood'])}x${_s(r['impact'])})',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              Text(_s(r['threat']), style: body),
+              Text('→ ${_s(r['mitigation'])} · ${_s(r['status'])}', style: small),
+            ]),
+          ),
+        if (_strs(tr['letters_unused']).isNotEmpty)
+          _line('Abhi socha nahi gaya: ${_strs(tr['letters_unused']).join(', ')}', const TextStyle(color: C.warn, fontSize: 12.5)),
+        if (_strs(tr['uncovered']).isNotEmpty) _line('Bina threat ke hisse: ${_strs(tr['uncovered']).join(', ')}', small),
+      ]));
+    }
+
+    // scale plan
+    final sp = _list(x['scale_plan']);
+    if (sp.isNotEmpty) {
+      out.add(_section('Scale plan', [
+        for (final r in sp)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${_s(r['at'])}: ${_s(r['breaks'])}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              if (_s(r['signal']).isNotEmpty) Text('Nishaan: ${_s(r['signal'])}', style: small),
+              Text('→ ${_s(r['change'])}', style: body),
+            ]),
+          ),
+      ]));
+    }
+
+    // growth scenarios
+    final sc = _m(x['scenarios']);
+    final scRows = _list(sc['rows']);
+    final scBreaks = _list(sc['breaks']);
+    if (scRows.isNotEmpty || scBreaks.isNotEmpty) {
+      out.add(_section('Growth scenarios (code se hisaab)', [
+        for (final r in scRows)
+          _line('${_s(r['x'])}x: ${_s(r['dau'])} log/din · peak ${_s(r['peak_rps'])} req/s · writes ${_s(r['write_rps'])}/s · '
+              '${_s(r['servers'])} servers · storage ${_bytes(r['storage_bytes'])} · egress ${_bytes(r['egress_bps'])}/s', body),
+        for (final b in scBreaks)
+          _line('Pehle tootega ${_s(b['at'])}: ${_s(b['what'])}${_s(b['why']).isNotEmpty ? ' - ${_s(b['why'])}' : ''}',
+              const TextStyle(color: C.warn, fontSize: 12.5)),
+      ]));
+    }
+
+    // boundary rules
+    final fr = _list(x['fitness_rules']);
+    final fnow = x['fitness_now'] is List ? _list(x['fitness_now']) : null;
+    if (fr.isNotEmpty || fnow != null) {
+      out.add(_section('Boundary rules', [
+        for (final r in fr)
+          _line('${_s(r['name'])}: ${_s(r['from'])} ✗ ${_strs(r['must_not_depend_on']).join(', ')}'
+              '${_s(r['why']).isNotEmpty ? ' - ${_s(r['why'])}' : ''}', body),
+        if (fnow != null && fnow.isEmpty) _line('✓ Aaj code har rule maan raha hai.', const TextStyle(color: C.ok, fontSize: 12.5)),
+        if (fnow != null)
+          for (final r in fnow)
+            _line('Toota: ${_s(r['rule'])} · ${_s(r['from'])} → ${_s(r['to'])}', const TextStyle(color: C.bad, fontSize: 12.5)),
+      ]));
+    }
+
+    // module map
+    final mm = _m(_m(_p['repo_facts'])['module_map']);
+    if (mm.isNotEmpty) {
+      final cycles = (mm['cycles'] is List ? mm['cycles'] as List : const []);
+      out.add(_section('Module map (asli imports se)', [
+        _line('${(mm['modules'] is List ? (mm['modules'] as List).length : 0)} modules · '
+            '${(mm['edges'] is List ? (mm['edges'] as List).length : 0)} links'
+            '${mm['files_scanned'] != null ? ' · ${_s(mm['files_scanned'])} files padhe' : ''}', small),
+        if (cycles.isEmpty) _line('✓ Koi import cycle nahi.', const TextStyle(color: C.ok, fontSize: 12.5)),
+        for (final c in cycles) _line('Cycle: ${_strs(c).join(' → ')}', const TextStyle(color: C.bad, fontSize: 12.5)),
+        for (final h in _list(mm['hotspots']))
+          _line('${_s(h['module'])}: ${_s(h['fan_in'])} use karte, ${_s(h['fan_out'])} ko use karta, ${_s(h['lines'])} lines', body),
+      ]));
+    }
+
+    // peer review
+    if (x['review'] is Map) {
+      final rv = _m(x['review']);
+      final issues = _list(rv['issues']);
+      out.add(_section('Peer review', [
+        _line('${_s(rv['verdict']).isNotEmpty ? '${_s(rv['verdict'])} · ' : ''}${issues.length} issues'
+            '${rv['revised'] == true ? ' · is version mein theek kiya' : ''}',
+            TextStyle(fontSize: 13, color: rv['revised'] == true ? C.ok : C.muted)),
+        for (final r in issues)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${_s(r['severity'])} · ${_s(r['area'])}', style: TextStyle(color: _sevColor(r['severity']), fontSize: 12)),
+              Text(_s(r['issue']), style: body),
+              Text('→ ${_s(r['fix'])}', style: small),
+            ]),
+          ),
+      ]));
+    }
+
+    // design checks
+    final checks = _list(x['checks']);
+    if (checks.isNotEmpty) {
+      final pass = checks.where((c) => c['ok'] == true).length;
+      out.add(_section('Design checks ($pass/${checks.length} pass)', [
+        for (final c in checks)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text.rich(TextSpan(children: [
+              TextSpan(text: c['ok'] == true ? '✓ ' : '✗ ', style: TextStyle(color: c['ok'] == true ? C.ok : C.bad, fontSize: 13.5)),
+              TextSpan(text: _s(c['check']), style: body),
+              if (_s(c['detail']).isNotEmpty) TextSpan(text: ' - ${_s(c['detail'])}', style: small),
+            ])),
+          ),
+      ]));
+    }
+
+    // API contract
+    final ac = _m(x['api_check']);
+    if (ac.isNotEmpty || _s(_p['api_yaml']).isNotEmpty) {
+      out.add(_section('API contract', [
+        if (ac['skipped'] != null && ac['skipped'] != false)
+          _line('Check nahi hua${ac['skipped'] is String ? ': ${_s(ac['skipped'])}' : ''}.', small)
+        else if (ac.isNotEmpty)
+          _line(
+              ac['ok'] == true
+                  ? '✓ Sahi OpenAPI: ${_s(ac['paths'])} paths, ${_s(ac['operations'])} operations'
+                  : '✗ Parse nahi hua: ${_s(ac['error'])}',
+              TextStyle(color: ac['ok'] == true ? C.ok : C.bad, fontSize: 12.5)),
+        if (_s(_p['api_yaml']).isNotEmpty)
+          TextButton(
+            onPressed: () => launchUrl(Uri.parse(_url(_s(_p['api_yaml']))), mode: LaunchMode.externalApplication),
+            child: const Text('api.yaml kholo'),
+          ),
+      ]));
+    }
+    return out;
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final api = widget.app.api!;
@@ -258,8 +582,16 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                       onPressed: () => launchUrl(Uri.parse(_url(_s(_p['pdf']))), mode: LaunchMode.externalApplication),
                       child: const Text('PDF'),
                     ),
+                  if (_s(_p['api_yaml']).isNotEmpty)
+                    OutlinedButton(
+                      onPressed: () => launchUrl(Uri.parse(_url(_s(_p['api_yaml']))), mode: LaunchMode.externalApplication),
+                      child: const Text('API contract (api.yaml)'),
+                    ),
                 ]),
+                if (_s(_p['kind_title']).isNotEmpty)
+                  Text(_s(_p['kind_title']), style: const TextStyle(color: C.faint, fontSize: 12)),
                 if (d['summary'] != null) _section('Saar', [MdText(_s(d['summary']), style: body)]),
+                ..._master(body),
                 if (_list(_p['diagrams']).isNotEmpty)
                   _section('Diagrams', [
                     for (final g in _list(_p['diagrams']))
