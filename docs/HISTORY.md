@@ -16463,8 +16463,177 @@ OAuth client; mail needs a sending account), passkeys (plan: later), custom role
 staff / admin), an owner switch that FORCES 2FA on all staff, timeline / map-of-rows views. NOT VERIFIED: MSG91 live
 (written from its OTP API; needs her DLT template + key).
 
+## v0.435.0 PARIVAAR (App Sahayak Pillar H, Phases 58-59) - one business, several apps, one backend + a web admin
+Owner: "START PILLAR H" (docs/COMPLEX_APPS_PLAN.md: multi-app products + web admin). Built as v0.426 / v0.433 in this session (two other sessions took 0.433 / 0.434 first).
+- FACES: a delivery partner (rider) / partner shop (vendor) / staff / customer app is its OWN App Sahayak project (normal
+  plan card -> looks -> design she approves -> Android / iPhone builds, own package, own store listing), marked
+  `plan.face = {of, kind}`. `backend.by_key` notes the face (`family.note_key`) and returns `family.home(r)` = the MAIN
+  app, so every /api/app-api/<face key>/... call runs on the main backend: one set of accounts, lists, rows, logic,
+  payments, connectors, live stream. Nothing copied. `backend.seed_hint(face)` = the main app's lists + `face` +
+  `partner` (rider / vendor) so the face build's screens use the real lists. Owner data routes use `_be_data` (main app);
+  per-app ones (components, crashes, turant, export) keep the face. Tool data actions use `BE.data_app`.
+- PARTNERS (`appmaker/family.py`, table app_partner): a partner applies from its app (POST /partner/request; staff /
+  admin accounts cannot), she or an app ADMIN approves (role "partner"); a partner shop is tied to ONE row of her
+  partner list (the ref the order list points at, e.g. orders.shop -> restaurants). Checked in code on rows / update /
+  create / delete / live / shift:
+  * rider: offers = open, unassigned jobs in her "offer" statuses (default Ready...) WITHOUT phone / e-mail / location,
+    first name only; take = one cross-process lock, first tap wins (409 after), max open jobs (default 3); then the full
+    job (phone, address, route) and only his steps (Picked up -> Out for delivery -> Delivered) + proof fields
+    (signature / photo). Taking reuses `_to` (Pillar D's tracking just works; the shift is open to approved riders).
+  * vendor: only orders whose ref == its shop row, limited view, only its steps (Accepted / Preparing / Ready /
+    Cancelled) and only until a rider has the order; its own rows in lists that point at its shop (menu) - the shop
+    link is set by the server, never by the app; other lists keep their own rules.
+  * writes are checked, then done as the system through the normal path (logic, connectors, push, stock / coupon give
+    back run) and the row remembers `_by` / `_by_kind`. Removed partner: role member + every token stops + his open
+    jobs back in the pool.
+  * push: a new order -> that shop's phones; a job reaching an offer status -> approved riders.
+- WEB ADMIN `/app-admin/<app_key>` (static/appadmin: index.html + admin.js + admin.css; CSP script-src 'self',
+  frame-ancestors 'none', no-referrer): sign in with an app staff / admin account; dashboard (/stats), every list with
+  search, status filter, paging, edit drawer, assign, CSV export (`'` before = + - @ so no cell runs as a formula),
+  partners (approve with the shop picker / refuse / remove - admin only), team roles (admin makes member / staff, never
+  admin, never itself), apps on the business. Data written with textContent only (a test checks no innerHTML).
+  Routes /api/app-api/<key>/admin/{overview, members, members/<id>/role, partners, partners/<id>, export/<coll>}.
+- Her side: /api/apps/<ref>/family (GET), /family/face (POST kind, words), /family/settings (PUT jobs / rider offer +
+  steps + max / vendor steps + link; changing the job list takes THAT list's status words), /family/partners/<pid>.
+  Console "App family" box; phone `lib/ui/app_family.dart`; tool app_banao action=family (face / partner + pdo / shop),
+  app_dekho what=family.
+- Kits: Partner.kt / Partner.swift (PartnerScreen + PartnerJobsBlock: sign-in / apply / waiting / my jobs / new jobs
+  with Take, steps, Call, Route; everything decided by GET /partner/jobs); Auth role "partner" opens ShiftBlock + Track
+  load. Generators add the `hoola_jobs` screen (registry, QA screens list) ONLY in a partner build; the code-made first
+  tab of a partner app starts with PartnerJobsBlock(); the screen writer is told so (`family.prompt_line`).
+- Tests: `server/tests/test_v0435_parivaar.py` (3: food-delivery end to end, web admin + roles, generators).
+- NOT VERIFIED: no real rider / shop phone yet; Partner.kt / Partner.swift compile only on CI; the web admin was not
+  opened in a browser here (its JS was syntax-checked, routes tested); the plan's "React" admin is plain JS on purpose
+  (no build step, same server rules). Not built: a separate partner store listing flow beyond the normal per-app one,
+  payouts to riders (Pillar E's split payouts exist for shops), the food-delivery proof on real phones.
 
-## v0.435.0 PRAYOGSHALA STUDIO (2 Nov 2026)
+## v0.436.0 SOCH KE JAWAB step 5 — the self-check before a hard answer goes out (2 Nov 2026)
+Owner: "GO STEP 5" (step 5 of the 7-step hard-reasoning plan).
+- Before: a hard answer streamed to her while it was written (live reply); the only later look was draftcheck
+  (v0.223: a cheap model, after the words were on her screen, numbers never recomputed) - a wrong figure could only be
+  followed by a note.
+- Now (`agent/hard.py` + `santosh._hard_held` / `_hard_check`): her hard question's answer is HELD - live.block(stream
+  False), the Soch card still streams the thinking - and before it is saved or shown:
+  1. `code_check` (free): a calculation-kind ask (calculation / word problem / maths / numbers / how-long / impact)
+     whose draft carries 2+ worked-out figures (3+ digits, not her own numbers) while pylab never ran this turn.
+  2. `review` - ONE independent reviewer call (hard_check_model, '' = the chat model; max_tokens 900; timeout
+     hard_check_timeout_s 60): CHECK_SYSTEM asks only for REAL problems (a number that does not follow, a figure not
+     in the evidence, a logic gap / wrong formula / unit / total, a wrong rule or a hidden assumption, a part of her
+     question unanswered; never style) as JSON {ok} / {ok:false, problems[<=4]}. `evidence(history)` = this turn's
+     tool calls + results from her last real message on (pylab code + output first-class), capped 9,000 chars.
+  A problem -> the draft is saved with display None (the model keeps it, she never sees it), the JAANCH fix note goes
+  back (run pylab again, write the COMPLETE corrected answer, do not mention the check) and the corrected answer is
+  what she sees. ONE check per turn (state hard_checked) - never a second review round. Step chip "Jawab jaanch raha
+  hoon" -> "Jawab jaanch liya". Any reviewer failure / timeout / bad JSON = [] = the draft goes out (never blocks).
+  draftcheck.after_turn is skipped for a turn that passed the self-check. Ordinary chat is never held or checked.
+- Settings hard_check (on), hard_check_model, hard_check_timeout_s; conftest HARD_CHECK=false (scripted turns), the
+  suite turns it on. `_text_of` reads SDK objects and dict blocks (judge + review).
+- Tests `server/tests/test_v0436_self_check.py` (12): code check, evidence, reviewer verdicts + failure, a mental-maths
+  EMI fixed before she sees it (draft hidden, only the fixed answer shown), a right answer passes the reviewer, a
+  reviewer-found wrong rate fixed in exactly one round, chat never held. Turn suites (25 files): 288 pass, same as main.
+  Not measured here: live reviewer quality (no key) - step 7 scores whole answers. Version 0.436.0 (pubspec 0.436.0+480).
+
+## v0.437.0 SOCH KE JAWAB step 6 — deep research (2 Nov 2026)
+Owner: "GO STEP 6" (step 6 of the 7-step hard-reasoning plan).
+- Found: 5 of 5 deep-research asks ("Do deep research on ... and give a PDF", "Deep research karo ...", "market study",
+  "detailed report with sources") scored 0 in agent/hard.py -> no Opus, no thinking, no recipe, no self-check. The
+  crew (agent/team.py) gave each agent 8 steps and 1,500 tokens, asked for ~8 lines and no sources, and an inline crew
+  past its 260 s clock dropped EVERY agent's work.
+- `agent/hard.py`: a "research" signal (3 points = hard on its own): deep research; research karo / kar do / kijiye /
+  report / on / about / into / paper; market | industry | sector | competitor(s) | feasibility | landscape + study |
+  research | analysis | report | overview | size | sizing | map; detailed report / study / analysis; with sources /
+  sources ke saath; literature review; white paper; state of the; trends in; "pe detailed report"; shodh / research
+  in Devanagari. `research_wanted()`. RECIPE_KIND["research"] leads the recipe: 4-6 sub-questions; deploy_agents (one
+  agent per independent sub-question, inline) + web_sources / google_search / open_website; primary sources
+  (government, regulator, company filings, MoSPI); every fact and number with [n] + date, key numbers from two
+  sources, disagreements said; derived figures from pylab; a 5-7 line summary first, findings by sub-question, what
+  is uncertain, "Sources: [n] title - link - date"; doc_studio PDF when asked / long; never a link no tool returned.
+  `research_check(draft, evidence)` (free, inside code_check for a research ask): no link at all -> "cites no
+  sources"; a link that appears in no tool result of this work -> named as not from a tool. CHECK_SYSTEM gains the
+  research line. `evidence(limit, per)`; the code check reads the FULL evidence (400k / 200k per result) so a long
+  result's real links are never mistaken for invented ones; the reviewer keeps 9 KB.
+- `santosh`: ctx.research = hard + research. `agent/team.py`: deploy_agents passes shared["research"] (inline) and the
+  background spec carries "research" (shared soft_s = max(170, 75% of team_bg_timeout_s)); a research agent gets
+  team_research_max_steps 14 / team_research_max_tokens 4000 / RESEARCH_RULE (open real pages, primary sources, link +
+  date per fact, ~15 lines, never a link not from a tool) and, when the soft deadline (team_research_soft_s 170)
+  passes or its steps run out mid-search, ONE WRAP_UP call ("no more tools, write your report now with sources",
+  tools still declared because the API needs them with tool_use in history, 60 s) whose text becomes the
+  deliverable. Ordinary crews unchanged (8 / 1,500 / no rule).
+- Measured: 15/15 research asks spotted (10 in the test file), 0 of 50 everyday asks, tool-choice asks: web_research +
+  web_claim ("source ke saath") count as research.
+- Tests `server/tests/test_v0437_research.py` (22). Team / turn / reply / scorecard / draft-check / soch / tool-choice /
+  shodh suites (25 files): 317 pass, same as main. Not measured here: a live research run (no key) - step 7.
+  Version 0.437.0 (pubspec 0.437.0+481, console ?v=0.437.0, pins). Server-only deploy.
+
+## v0.438.0 SOCH KE JAWAB step 7 — the HARD CARD (2 Nov 2026)
+Owner: "GO STEP 7" (the last step of the 7-step hard-reasoning plan).
+- Steps 1-6 changed HOW a hard ask is handled (v0.272 spotted, v0.429 Opus + thinking + 16k, v0.430 pylab, v0.433 the
+  recipe, v0.436 the held self-check, v0.437 deep research); nothing measured whether the ANSWERS were right.
+- `app/quality/hard_card.py` (HARD_CARD_V 1): 28 asks with known answers - 13 money maths (EMI 20 L / 9% / 20 y =
+  17,994.52 + 23,18,684.59 interest; break-even 421.05 cakes; CAGR 24.14%; SIP 74.9-75.7 L; solar payback 55.6 months /
+  21.6%; price +10% / volume -6% at 18% margin = +46.2% profit; doubling at 15% = 4.96 y; FD 5 L / 8% quarterly / 5 y =
+  7,42,973.70; GST 5,310 / 810; real return 0.94%; LTV/CAC 2.5; 20%+10% = 28%; tiffin 35 a meal / 10,500 a day),
+  6 word problems / logic (trains 3 h, ages 10 / 30, dice 51.77%, x = -12, machines 5 min, workers 9 days), 2 proofs
+  (root 2, the mislabelled boxes), 5 rules / decision / diagnosis / plan asks (GST composition 1.5 crore / 1% / no ITC,
+  TDS 194J 10% = 6,000, rent vs buy, ads root cause, a 6-month GTM) and 2 research asks (CPI from MoSPI, EV two-wheelers).
+  Every key computed in Python (and re-derived in the test so a wrong key can never pass a wrong answer).
+  `numbers()` reads answers the Indian way (Rs, commas, lakh, crore, k, negatives); `score_answer` = numbers within
+  tolerance + must-have points + behaviour (pylab for a calculation, 2+ source links for research) + whether the
+  self-check ran ("jaanch" step). `free_card` (no model): every ask spotted hard, pylab in view, its own recipe line,
+  research routed - 28/28, 28/28, 28/28, 2/2. `live_card`: ONE real turn per ask on tenant __quality__ (run.py's
+  _new_conv / _calls_of), errors are rows; optional Opus judge 0-10 (substance only; a made-up figure caps at 3) on
+  the 7 open asks; `pick(only, limit, quick)` (QUICK = 10 exact-answer asks); save / saved / lines.
+- CLI `python -m app.quality hardcard [--live] [--judge] [--quick] [--only id,id] [--limit N] [--label ...]`;
+  GET /api/quality/hardcard (free card + saved cards); vps-ops job `hard_card` (free card + live quick set, ~10-15 min).
+- Tests `server/tests/test_v0438_hard_card.py` (16). Quality / turn suites: same failures as main (App Sahayak bhasha /
+  delivery, pre-existing). NOT RUN HERE: the live card itself (no API key in the sandbox) - run it on the VPS; its first
+  numbers are the honest measure of steps 1-6. Version 0.438.0 (pubspec 0.438.0+482, console ?v=0.438.0, pins).
+
+
+## v0.439.0 GMAIL POORA CALL PAR (2 Nov 2026)
+Owner, testing Gmail by voice: "FIRST CHECK IS ALL GMAIL TOOLS IS ATTACHED TO VOICE TO VOICE", then "GO".
+- FOUND: the call's VOICE_TOOL_NAMES held 11 of the 23 Gmail tools (+ email_accounts via santosh_kaam). The other 11 -
+  email_thread, email_label, email_drafts, email_filters, email_forwarding, email_alias, email_threads, email_rule,
+  email_snooze, email_vacation, email_bulk, email_bulk_status - had no tool and no route, so 13 of the 36 Gmail test-sheet
+  prompts could only fail on a call (chat had all 23).
+- FIX (`app/voice.py`): declared to the call = email_thread, email_snooze, email_drafts (everyday, light: +~2k chars;
+  the call's tool JSON stays ~57k of VOICE_TOOL_BUDGET 150k). VOICE_VIA_KAAM = email_label, email_threads, email_bulk,
+  email_bulk_status, email_filters, email_rule, email_vacation, email_forwarding, email_alias (settings / bulk: the full
+  brain runs them, any confirm card still reaches her phone). The persona Email line names both groups. Gemini Live and
+  OpenAI real voice both read `_tool_specs()`, so both engines get it.
+- ALSO FOUND (not fixed here, config): her voice test said "Gmail API not enabled" = Google 403 SERVICE_DISABLED for the
+  OAuth client's Cloud project; she enables the Gmail API (and Calendar / Drive / Docs / Sheets / Forms / Slides /
+  YouTube / Photos) in that project. Gmail + Calendar clients still pass Google's raw 403 text through (Drive / Sheets /
+  Forms / Slides / Photos / YouTube already say it plainly) - next fix if she wants it.
+- Test `test_v0439_gmail_call.py`: every name in EMAIL_TOOLS is declared or via_kaam (a new mail tool cannot be left off
+  a call again), schemas clean, budget kept, persona names them, email_vacation on a call goes to santosh_kaam.
+
+## v0.440.0 SOCH KE JAWAB - the live hard card measures for real (2 Nov 2026)
+Owner ran `python -m app.quality hardcard --live --judge` on the VPS: `RIGHT 0/28, pylab used 0/19, sourced research 0/2,
+self-check ran 0/28, errors 0, median 1.0 s`. Every turn returned in about a second, with no tools and no self-check, so
+the model never answered.
+- ROOT CAUSE of the blind card: `hard_card._one` scored whatever `run_turn` returned. A turn whose model call fails
+  returns the apology line ("Maaf kijiye, abhi kuch gadbad ho gayi (ref ...)", source `error`), and that was scored as
+  an answer. 28 dead turns therefore read as 28 wrong answers with "errors 0", and the real exception (the log line
+  `error ref <ref>: <exception>`) went to the `2>/dev/null` of her command.
+- FIX 1 (the card): a turn that published an assistant message with source `error` / `budget` (read from its saved
+  Event rows) is an ERROR row carrying `log` = the server's own WARNING+ lines for that turn, caught by a temporary
+  root handler. `live_card` stops after 3 dead turns in a row (`planned` vs `asks`). `lines()` prints "STOPPED after
+  n of m" and the first failure's log lines. Each scored row keeps its `log` too.
+- FIX 2 (the call): v0.436 held a hard answer for the self-check with `live.block(stream=False)`, and
+  `_call_brain` used that DISPLAY flag to choose the API mode, so the hard turn became the only Claude call in Hoola
+  sent as one blocking request: 16k tokens + adaptive thinking + effort high. Its thinking also never reached the Soch
+  card, which v0.436 had promised. Now `api_stream = live shown OR a live reply exists OR cap > NONSTREAM_MAX_TOKENS
+  (8192)`. `Live.feed` shows words only while `live.streaming`, so a held answer stays hidden while it streams.
+  `_QuietLive` collects a big stream with no live reply. GLM / omniroute are unchanged.
+- `hardcard --ping` (`hard_card.ping`): for the hard model and the chat model, one tiny streamed call in each of three
+  shapes (plain / thinking / thinking+effort), printing OK or the API's exact error. Costs a few paise.
+- Checked against an SSE stand-in for the Anthropic API (httpx2 MockTransport): Opus 5.5 streamed, thinking, the
+  self-check (code check flagged no pylab -> one fix round), right number, scored RIGHT.
+- NOT VERIFIED: the VPS's real exception is still unknown. The fixed card / `--ping` will print it on the next run.
+- Tests: `tests/test_v0440_hard_live.py`.
+
+## v0.441.0 PRAYOGSHALA STUDIO (built as 0.435.0, 2 Nov 2026)
 Owner: "NOW BUILD ALL 22 LABS LIKE THIS IN HOOLA. MAKE EVERY EXPERIMENT PERFECT AND ROBUST" (after approving the
 pendulum prototype artifact: "realistic like human lab", theory first, Ask Hoola inside the experiment page).
 - Engine `server/app/static/prayog/studio/studio.js` + `studio.css`: lab room, bench, lights, materials, shared devices

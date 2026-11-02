@@ -87,7 +87,7 @@ object Track {
             ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
     suspend fun load() {
-        if (!Auth.isStaff || !on) return
+        if (!(Auth.isStaff || Auth.role == "partner") || !on) return   // v0.435 a delivery partner too
         val r = Cloud.call("GET", "/track/me", null, Auth.token())
         if (r.ok) onShift.value = r.body.optBoolean("on")
     }
@@ -205,7 +205,7 @@ class TrackService : Service(), LocationListener {
 /** Staff: Start shift / End shift, with the notice Play requires before the location dialog. Shows nothing when tracking is off. */
 @Composable
 fun ShiftBlock() {
-    if (!Auth.isStaff || !Track.on) return
+    if (!(Auth.isStaff || Auth.role == "partner") || !Track.on) return   // v0.435 a delivery partner too
     val c = ctx()
     val scope = rememberCoroutineScope()
     var ask by remember { mutableStateOf(false) }

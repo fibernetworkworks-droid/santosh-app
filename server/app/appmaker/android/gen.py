@@ -204,8 +204,10 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
     cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()\n            "hoola_inbox" -> InboxScreen()\n            "hoola_chat" -> ChatScreen()\n            "hoola_approvals" -> ApprovalsScreen()\n            "hoola_data" -> DataScreen()'
     if spec.get("custom"):                     # v0.425 RANG: her approved custom components on one check screen
         cwhens += '\n            "hoola_components" -> ComponentsGallery()'
+    if partner_kind(spec):                     # v0.435 PARIVAAR: the partner app's jobs screen
+        cwhens += '\n            "hoola_jobs" -> PartnerScreen()'
     all_ids = ", ".join(kstr(x) for x in ids + [c for c in code if c in code_when] + list(KIT_SCREENS)
-                        + (["hoola_components"] if spec.get("custom") else []))
+                        + (["hoola_components"] if spec.get("custom") else []) + (["hoola_jobs"] if partner_kind(spec) else []))
     fab = spec.get("fab") or {}
     fab_main = (f"FabAction({kstr(fab['label'])}, {kstr(fab.get('icon') or 'plus')}, {kstr(fab['go'])})"
                 if fab.get("go") in ids else "null")
@@ -557,6 +559,12 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
     return out
 
 
+def partner_kind(spec: dict[str, Any]) -> str:
+    """v0.435 PARIVAAR: 'rider' / 'vendor' when this build is a partner app (from its seed backend), else ''."""
+    k = str(((spec.get("seed") or {}).get("backend") or {}).get("partner") or "")
+    return k if k in ("rider", "vendor") else ""
+
+
 def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dict[str, Any] | None = None) -> str:
     """A plain, honest screen built only from kit blocks: title, purpose, the records of its list, its actions.
     v0.314: a list the app keeps on its server shows the user's REAL rows (liveRows), a cart places a real order and a
@@ -569,6 +577,8 @@ def fallback_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend:
     rows = []
     if s.get("purpose"):
         rows.append(f"        block {{ Small(T({kstr(s['purpose'])})) }}")
+    if (backend or {}).get("partner") and sid == ((tabs or ids or [""])[0]):    # v0.435 PARIVAAR: a partner app opens on its jobs
+        rows.append("        block { PartnerJobsBlock() }")
     colls = {str(c.get("key")): c for c in (backend or {}).get("collections") or []
              if isinstance(c, dict) and ID_RE.match(str(c.get("key") or ""))}
     order = str((backend or {}).get("order") or "")
@@ -785,6 +795,8 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     shots = ids + [c for c in ("seller_info", "privacy", "delete_account") if c in (spec.get("code_screens") or [])] + list(KIT_SCREENS)
     if spec.get("custom"):                     # v0.425 the custom components' check screen is opened too
         shots = shots + ["hoola_components"]
+    if partner_kind(spec):                     # v0.435 the partner jobs screen is opened on the device check too
+        shots = shots + ["hoola_jobs"]
     (qa / "screens.txt").write_text(" ".join(x for x in shots if x not in AUTH_IDS) + "\n")
     (tmp / ".gitignore").write_text(".gradle/\nbuild/\napp/build/\nlocal.properties\nkeys/\nqa/\n")
     if out.exists():

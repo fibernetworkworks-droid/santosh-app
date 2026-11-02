@@ -121,7 +121,8 @@ def tokens_swift(spec: dict[str, Any]) -> str:
     label = {s["id"]: s.get("label") or s["id"] for s in scr}
     icon = {s["id"]: symbol_for(s["id"], s.get("icon") or "") for s in scr}
     tab_rows = ",\n        ".join(f"TabSpec(id: {sstr(t)}, label: {sstr(label[t])}, symbol: {sstr(icon[t])})" for t in tabs)
-    every = ids + list(CODE_SCREENS) + list(KIT_SCREENS) + (["hoola_components"] if spec.get("custom") else [])
+    every = ids + list(CODE_SCREENS) + list(KIT_SCREENS) + (["hoola_components"] if spec.get("custom") else []) \
+        + (["hoola_jobs"] if partner_kind(spec) else [])
     lang = str(app.get("language") or "en")
     return f'''// Made by Hoola App Sahayak from the approved design's tokens. Do not edit: a new design version rewrites it.
 import SwiftUI
@@ -159,6 +160,8 @@ def screens_swift(spec: dict[str, Any]) -> str:
               '    case "hoola_data": return AnyView(DataScreen())']
     if spec.get("custom"):                                   # v0.425 RANG: the custom components' check screen
         cases.append('    case "hoola_components": return AnyView(ComponentsGallery())')
+    if partner_kind(spec):                                   # v0.435 PARIVAAR: the partner app's jobs screen
+        cases.append('    case "hoola_jobs": return AnyView(PartnerScreen())')
     body = "\n".join(cases)
     return f'''// Made by Hoola App Sahayak from the approved design: which screens exist and which view each id opens.
 import SwiftUI
@@ -231,6 +234,12 @@ struct HoolaApp: App {
 
 
 # ---------------------------------------------------------------- the code-made screen (always compiles)
+def partner_kind(spec: dict[str, Any]) -> str:
+    """v0.435 PARIVAAR: 'rider' / 'vendor' when this build is a partner app (from its seed backend), else ''."""
+    k = str(((spec.get("seed") or {}).get("backend") or {}).get("partner") or "")
+    return k if k in ("rider", "vendor") else ""
+
+
 def code_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dict[str, Any] | None = None) -> str:
     """A plain, honest SwiftUI screen built only from kit blocks - the same decisions as the Android `fallback_screen`:
     a server list shows the user's REAL rows, a cart places a real order, a booking / enquiry screen gets that list's
@@ -245,6 +254,8 @@ def code_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dic
     rows: list[str] = []
     if s.get("purpose"):
         rows.append(f"            Muted(T({sstr(s['purpose'])}))")
+    if (backend or {}).get("partner") and sid == ((tabs or ids or [""])[0]):    # v0.435 PARIVAAR: a partner app opens on its jobs
+        rows.append("            PartnerJobsBlock()")
     form = ""
     if order in colls and any(w in sid for w in CART_WORDS):
         form = order
@@ -734,7 +745,8 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     if isinstance(store, dict):                          # v0.338 the listing + screenshots to send (kind store / review)
         (qa / "store.json").write_text(json.dumps({**store, "bundle_id": bid}, ensure_ascii=False, indent=1))
     (qa / "bundle.txt").write_text(bid + "\n")
-    every = [x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS) + (["hoola_components"] if spec.get("custom") else [])
+    every = [x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS) + (["hoola_components"] if spec.get("custom") else []) \
+        + (["hoola_jobs"] if partner_kind(spec) else [])
     (qa / "screens.txt").write_text(" ".join(every) + "\n")
     for rel, srcx in _custom_files().swift_files(spec.get("custom") or []).items():
         p = src / "Kit" / rel

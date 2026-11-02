@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     hard_judge_model: str = "claude-haiku-5-5"
     hard_judge_timeout_s: float = 2.5
     hard_recipe: bool = True                # v0.433 a hard ask gets the reasoning recipe in its system prompt (agent/hard.py)
+    hard_check: bool = True                 # v0.436 SOCH KE JAWAB 5: a hard answer is held + checked (code + one reviewer call) before she sees it
+    hard_check_model: str = ""              # v0.436 the reviewer's model ('' = anthropic_model)
+    hard_check_timeout_s: float = 60.0      # v0.436 a slow reviewer never blocks the answer
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
@@ -115,6 +118,9 @@ class Settings(BaseSettings):
     team_agent_max_steps: int = 8           # model steps per sub-agent
     team_agent_timeout_s: int = 240         # per-agent wall clock (inline clamps to 260: the main tool clock is 300 s)
     team_max_tokens: int = 1500             # per sub-agent model call
+    team_research_max_steps: int = 14       # v0.437 a deep-research crew's agents: more steps (pages to open, sources to check)
+    team_research_max_tokens: int = 4000    # v0.437 ... and room for a sourced report (~15 lines with links)
+    team_research_soft_s: float = 170.0     # v0.437 a research agent writes its sourced report at this mark (the inline crew clock is 260 s)
     team_background: bool = True            # mode="background" crews (persisted, worker-run, self-reporting)
     team_bg_max_running: int = 2            # running background crews per tenant
     team_bg_timeout_s: int = 1200           # a whole background crew's wall clock
