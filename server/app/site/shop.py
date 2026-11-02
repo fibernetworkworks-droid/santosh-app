@@ -54,8 +54,8 @@ class SiteShopProduct(Base):
     active: Mapped[int] = mapped_column(Integer, default=1)
     photo: Mapped[str] = mapped_column(String(60), default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
-    vendor: Mapped[str | None] = mapped_column(String(40), nullable=True)     # v0.449 a marketplace seller's product
-    mod: Mapped[str | None] = mapped_column(String(10), nullable=True)        # v0.449 pending | ok | rejected (her OK)
+    vendor: Mapped[str | None] = mapped_column(String(40), nullable=True)     # v0.451 a marketplace seller's product
+    mod: Mapped[str | None] = mapped_column(String(10), nullable=True)        # v0.451 pending | ok | rejected (her OK)
 
 
 class SiteShopOrder(Base):
@@ -84,7 +84,7 @@ class SiteShopOrder(Base):
     discount: Mapped[int | None] = mapped_column(Integer, nullable=True)       # v0.446 paise off by her coupon
     coupon: Mapped[str | None] = mapped_column(String(20), nullable=True)      # v0.446 the code used
     pay_id: Mapped[str | None] = mapped_column(String(40), nullable=True)      # v0.446 her gateway payment (app_payment.id)
-    inv_row: Mapped[str | None] = mapped_column(String(40), nullable=True)     # v0.449 the hidden app row that holds the GST numbers
+    inv_row: Mapped[str | None] = mapped_column(String(40), nullable=True)     # v0.451 the hidden app row that holds the GST numbers
 
 
 _TABLES_OK = False
@@ -331,7 +331,7 @@ def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any
         start_view = {"id": o.id, "number": o.number, "name": name, "phone": phone, "total_paise": total}
     if cnote:
         out["coupon_note"] = cnote
-    try:                                                  # v0.449 a real order closes this number's reminder cart
+    try:                                                  # v0.451 a real order closes this number's reminder cart
         from . import shopplus as SPL
         SPL.ordered(site_id, phone)
     except Exception:                                     # noqa: BLE001
@@ -429,7 +429,7 @@ def set_status(site_id: str, number: str, to: str) -> dict[str, Any]:
     if to == "cancelled" and code:                     # v0.446 the coupon use goes back with a cancel
         from . import shoppay as SP
         SP.give_back(site_id, code, phone)
-    if to == "cancelled":                              # v0.449 an INVOICED order gets its GST credit note, once
+    if to == "cancelled":                              # v0.451 an INVOICED order gets its GST credit note, once
         from . import shopplus as SPL
         cn = SPL.credit_on_cancel(site_id, number)
         if cn:

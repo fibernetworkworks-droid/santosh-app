@@ -1725,7 +1725,7 @@ window.HoolaBuild = function (C) {
     };
   }
 
-  /* v0.449 DUKAAN PLUS: sellers (her approval, commission, Route account), product approvals, Shiprocket, cart reminders */
+  /* v0.451 DUKAAN PLUS: sellers (her approval, commission, Route account), product approvals, Shiprocket, cart reminders */
   async function plusBox(o, box, reload, info) {
     let vs = {}, cr = {}, ca = {};
     try { [vs, cr, ca] = await Promise.all([api('GET', base(o) + '/shop/vendors'), api('GET', base(o) + '/shop/courier'), api('GET', base(o) + '/shop/carts')]); } catch (er) { return; }
@@ -1822,7 +1822,7 @@ window.HoolaBuild = function (C) {
     plusBox(o, box, () => loadShop(o, root), info);
     box.addEventListener('click', async e => {
       const iv = e.target.closest('[data-inv]');
-      if (iv) {                                          // v0.449 her GST bill / credit note (her one series)
+      if (iv) {                                          // v0.451 her GST bill / credit note (her one series)
         try { const r = await api('GET', `${base(o)}/shop/orders/${encodeURIComponent(iv.dataset.inv)}/invoice${iv.dataset.doc ? '?doc=credit' : ''}`, undefined, {raw: true});
           window.open(URL.createObjectURL(await r.blob()), '_blank', 'noopener'); } catch (er) { toast(er.message, true); }
         return;

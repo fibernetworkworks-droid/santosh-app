@@ -1,14 +1,52 @@
 # Google Maps for Hoola — the plan
 
-Owner's ask (2 Nov 2026): *"BEFORE THIS LETS WORK ON GOOGLE MAPS FOR HOOLA --- MAKE A PLAN"*.
+Owner's asks:
+- 2 Nov 2026: *"BEFORE THIS LETS WORK ON GOOGLE MAPS FOR HOOLA --- MAKE A PLAN"*
+- 2 Nov 2026: *"WE WANT MAP FOR ::: 1) USER CAN USE A EXISTING GOOGLE MAP MANUALLY, AI WILL DO ALL THOSE THINGS
+  2) API FOR NEAR BY THINGS 3) GOOGLE MAP LEAD GENERATION SCRAPER ------- ETC OBJECTIVE HOOLA AI CAN PERFORM
+  ALL MAP TASK"*
 
 Plan only. Nothing is built until she says GO on a phase.
 
+**Her answers, 2 Nov 2026 (recorded, they shape the phases below):**
+- **Requirement #1 = all three.** Her **business listing**, a **My Maps map she drew**, *and* her **saved
+  places and lists**. So "all map tasks" is literal, and the saved-lists row below changes from *no route* to
+  *the Takeout file she downloads, imported by Hoola* - see Phase 9.
+- **Requirement #3 = the live search-and-act desk** (§5), not an exportable list. Her choice, on the record.
+  Nothing persists a business's name, address or phone.
+
+Everything below rests on `docs/research/maps/` — three registers read out of Google's own documents on 2 Nov,
+with every load-bearing quote re-verified by hand. Read `docs/research/maps/00_INDEX.md` first.
+
 ---
 
-## 1. What exists today, measured
+## 1. Her three requirements, answered straight
 
-`server/app/maps.py` is 10 KB and calls **three** Google Maps Platform APIs:
+| # | What she asked for | Answer |
+|---|---|---|
+| **1** | *use an existing Google map manually, AI does all those things* | **She wants all three.** Business listing: **fully operable**, after an application. My Maps map: **read once**, never written to. Saved lists: **no API** — her own Takeout file, imported. |
+| **2** | *API for nearby things* | **Yes, in full, this week.** No permission needed from anyone. |
+| **3** | *Google Map lead generation scraper* | **Cannot be built as asked.** Refused by two separate Google documents and by her own non-negotiable rules. **The objective is reachable another way** — §5. |
+
+### Requirement #1 splits three ways, and only she knows which she meant
+- **Her business's listing on Google Maps** — reviews, posts, photos, hours, Q&A, the numbers on how people
+  found her. **Fully operable** through the Google Business Profile APIs. This is what a business owner usually
+  means by "my Google map", and it is the richest of the three. Gated: see §4.
+- **A My Maps custom map** she drew herself (google.com/maps/d/). Hoola can read its contents **once**, with her
+  consent, via the Data Portability API (KMZ), and can list her maps via Drive. **There is no API to write to it
+  or keep it in sync — none.** So the honest shape is: she hands it over once, and from then on Hoola owns the
+  data and draws it itself. Anything promising "Hoola will keep editing your My Maps map" could only be done by
+  driving the web app, which is scraping, and would break.
+- **Her saved places and lists** (Want to go, Favourites, starred). **No API at all**, not even in Data
+  Portability, and no way to add a place to a list programmatically. What *can* be done, and what she asked
+  for: she exports "Saved" from Takeout and **Hoola imports the file**. Even the format is undocumented, so the
+  importer sniffs it rather than assuming — Phase 9.
+
+---
+
+## 2. What exists today, measured
+
+`server/app/maps.py` is 10 KB, is the single door to Google, and calls **three** APIs:
 
 | In use | Endpoint | What it gives |
 |---|---|---|
@@ -17,148 +55,232 @@ Plan only. Nothing is built until she says GO on a phase.
 | Geocoding API | `maps/api/geocode/json` | address → coordinates |
 | (no key needed) | `google.com/maps/dir/`, `/maps/search/` | deep links that open her Google Maps app |
 
-Plus `where_am_i` / `save_location` against the `UserLocation` table, and three agent tools:
-`maps_search`, `maps_directions`, `maps_navigate`.
+Three agent tools: `maps_search`, `maps_directions`, `maps_navigate`. Six modules use them: `propagent`,
+`fleet`, `helpdesk`, `phonedoc`, `bazar_tools`, `main`.
 
-**Who actually uses it:** `propagent`, `fleet`, `helpdesk`, `phonedoc`, `bazar_tools`, `main`. Six modules.
-
----
-
-## 2. The three gaps, in the order they matter
-
-### Gap 1 — she pays Google per call, and nothing controls it
-**There is no cache, no daily cap and no budget anywhere in `maps.py`.** Every search, every route, every
-geocode goes to Google and is billed. The field mask is set correctly (that is what picks the SKU), so the
-per-call cost is not reckless — but the *number* of calls is unbounded, and a chatty job or a loop over a
-list of addresses bills every row.
-
-This is first in the plan because it is the only gap that can cost her money while she sleeps.
-
-**What a fix looks like:** a `maps` budget like the Studio and Arena already have (`SITE_ARENA_MAX_INR`,
-`studio_project_usd` are the precedent), a per-call price table so a result can carry its own cost, a daily
-cap that refuses rather than overspends, and a cache.
-
-**The cache has a legal shape, not just a technical one.** Google's Maps Platform terms restrict what may be
-stored and for how long — place IDs are treated differently from the rest of a place's content, and there are
-limits on retaining geocodes. **I will not design the cache until I have read the current terms**, and the
-plan will quote them. Caching the wrong field for too long is a licence breach, not a clever saving.
-
-### Gap 2 — Hoola never shows her a map
-MapLibre GL is vendored in `static/vendor/maplibre/`, and it is used in exactly one place:
-`console/build.js` — the **website builder**, for the maps that go on *her customers'* sites.
-
-So in Hoola's own surfaces — the chat, the console, the phone — **every geographic answer is text plus a link
-that leaves Hoola.** "Teen godown yahan hain" with three addresses and a Google link. She has to leave to see
-where anything is.
-
-That is the biggest product gap and the most visible fix.
-
-### Gap 3 — thirteen roles are geographic; Maps serves six modules thinly
-These exist already and all of them are about *where things are*:
-
-`fleet_manager` · `courier_desk` · `driver_coordinator` · `logistics_coordinator` · `field_service` ·
-`warehouse_manager` · `site_supervisor` · `site_manager` (Theka sahayak) · `property_manager` ·
-`travel_agent` · `tour_guide` · `homestay_host` · `event_planner`
-
-What they need and `maps.py` cannot do:
-- **many-to-many distances** (which of my 8 technicians is nearest to this complaint?) — needs Routes matrix
-- **multi-stop ordering** (12 deliveries, best sequence) — needs route optimisation; today v0.346 NAKSHA only
-  sorts "nearest first" inside a generated app, which is not the same thing and is often much worse
-- **a map image in a report or PDF** — needs Static Maps; `docstudio` prints beautiful PDFs with no maps in them
-- **address validation** before a delivery is promised — needs Address Validation
-- **a place's details** (phone, hours, rating, photo) — Places details, not just text search
+**And no cache, no daily cap, no budget anywhere in the file.** Every call is billed; the field mask is set
+correctly so the per-call SKU is not reckless, but the *number* of calls is unbounded, and a loop over a list of
+addresses bills every row.
 
 ---
 
-## 3. What Google Maps Platform offers that Hoola does not touch
+## 3. Every manual Google Maps task, and whether Hoola can do it
 
-Each line is a real product she already has a key for, or can enable on the same key.
+This is requirement #1 read as *"Hoola AI can perform all map tasks"* — the full inventory, so nothing is
+quietly left out.
 
-| API | What it would unlock in Hoola | For whom |
+| What she does by hand | Official route | In Hoola now | Phase |
+|---|---|---|---|
+| search a place by name | Places Text Search | **yes** | — |
+| "chemist near me" | Places **Nearby Search** | partial | **3** |
+| type an address, get suggestions | Places Autocomplete | no | **6** |
+| a place card: hours, phone, website, photos | Place **Details** + Photos | partial | **3** |
+| directions, car / bike / walk / transit | Routes computeRoutes | **yes** | — |
+| compare times to several places | Routes **computeRouteMatrix** | no | **4** |
+| add stops and reorder them | **Route Optimization API** | no | **5** |
+| start navigation on the phone | maps deep link (free) | **yes** | — |
+| drop a pin, read coordinates | Geocoding + **reverse** geocoding | partial | **6** |
+| **see the map, pan and zoom** | **Dynamic Maps** (Google's own) | **no** | **2** |
+| a map picture in a PDF or WhatsApp | **Static Maps** | no | **7** |
+| look at a street | **Street View Static** (metadata free) | no | **7** |
+| traffic now vs typical | Routes + `departureTime` | partial | **4** |
+| is this address deliverable | **Address Validation** | no | **6** |
+| **reply to reviews of her business** | **Business Profile v4** | no | **8** |
+| **update her listing, post, photos** | **Business Profile** v1 + v4 | no | **8** |
+| **how people found her business** | **Performance API** | no | **8** |
+| her own pins and areas on a map | **Datasets API** or **Data layer** | no | **9** |
+| read a My Maps map she drew | **Data Portability** (KMZ, once) | no | **9** |
+| rooftop solar potential | Solar API | no | 10 |
+| elevation / slope | Elevation API | no | 10 |
+| air quality, pollen | Air Quality / Pollen | no | 10 |
+| clean a GPS trail | Roads snap-to-road | no | 10 |
+| her saved lists | **no API** - her **Takeout** file, imported | no | **9** |
+| write to her My Maps map | **no route at all** | — | **never** |
+| keep a My Maps map in sync | **no route at all** | — | **never** |
+| delete a bad review | **no route** (reply only) | — | **never** |
+
+Three rows say **never**, and they say it on Google's authority, not ours: there is no way to write to a My Maps
+map, no way to keep one in sync, and no way to delete a review (only to reply to it). Those are the only gaps in
+"all map tasks", and the plan names them rather than hiding them.
+
+---
+
+## 4. The two halves have very different lead times
+
+**Finding places** — Places API (New). Enable it, attach billing, create a key, go. No form, no review.
+(Without a billing account the quota is **1 request per day**, which is the whole quota.)
+
+**Operating her own listing** — every Business Profile API is behind a **human application**:
+1. *"Manage a Google Business Profile that is verified and active for 60+ days."*
+2. *"Have a website representing the business listed on the GBP."*
+3. An Organization account; then the **"Application for Basic API Access"** form, from an email that is an
+   owner/manager on the profile and matches the website domain, carrying the Cloud **Project Number**.
+
+**No published review turnaround.** Approval appears as the Cloud Console quota going from **0 QPM** to
+**300 QPM**. The API itself is **free**.
+
+**So: the application is submitted in week one, and the code is written against the documented shapes while it
+waits.** Nothing we build shortens that queue, and it must not be promised on a date.
+
+---
+
+## 5. Requirement #3 — what is refused, and what replaces it
+
+### What is refused, and why
+| The thing | Clause |
+|---|---|
+| store business names / addresses / phones | ToS §3.2.3(b) + §3.2.3(a)(iii) *"copy and save business names, addresses, or user reviews"* |
+| bulk-pull places to build a list | §3.2.3(a)(ii) |
+| territory / point-in-polygon analysis on stored coordinates | §3.2.3(c)(iv) — named as an example |
+| train a model on any of it | §3.2.3(c)(vii) |
+| build a directory, listings or advertising product | §3.2.3(d)(iii) |
+| hand the data to her customers, or resell it | §3.2.3(a)(i), §3.2.1(b) |
+| bulk outreach from it | AUP, *"unsolicited mass email, promotions, advertisements"* |
+| use `GoogleLocations` for it | GBP policies: *"lead generation or other analysis … will result in immediate revocation of your API access"* |
+| scrape maps.google.com instead | consumer terms *"copy the content"* / *"mass download or create bulk feeds"*; `robots.txt` `Disallow: /maps/` |
+
+**The cost of ignoring this is not a fine.** ToS §5.2(d) allows **immediate suspension with no notice and no
+cure period** for any §3.2 breach — the Maps key dying mid-business-day across every Hoola feature that uses it.
+Plus §14: the customer **indemnifies Google**. And it breaks the first line of Hoola's own NON-NEGOTIABLE RULES:
+*"Official routes only: no scraping, no unofficial MCP."*
+
+### What replaces it — the live search-and-act desk
+**The limit is on keeping, not on getting.** Places returns name, address, phone, website, rating and hours, and
+§14.1 expressly permits showing all of it **without** a Google map. So:
+
+1. She searches — by trade and area ("hardware shops in Akola"), using the 50-type filters.
+2. Results show on screen, **with Google attribution**, every field visible.
+3. She acts **in the session** — ring it, open the website, or write her own note.
+4. Hoola persists **only** the `place_id` (permitted indefinitely) **plus what she herself typed, confirmed or
+   corrected**. That is her own CRM row; Google's terms do not touch it.
+5. Google's fields are **re-fetched on every view**, never read back from a table. The dedicated
+   **"Places Details - ID Refresh"** SKU exists for exactly this and is free.
+
+She loses the exportable spreadsheet. She keeps the workflow: find the businesses, work through them, remember
+which ones she has spoken to and what was said.
+
+### Two guards this needs, and one of them is in her own code
+- **`server/app/campaigns.py:99`** reads `if ll.has_consent_column and only_opted_in:` — so a list **with** a
+  consent column is filtered to opted-in rows, but a list with **no** consent column is **not filtered at all**.
+  Any list Hoola generates itself must be marked no-consent **and explicitly blocked** from the campaign path.
+  It must not inherit "no consent column = send to everyone". **This matters more than Google's terms do**,
+  because it is the path that would actually send the messages.
+- **TRAI's UCC / DLT regime and the DPDP Act** gate the outreach regardless of where the names came from. A
+  separate check, not covered by this research.
+
+### If she wants the exportable list anyway
+Then it has to come from a **licensed B2B data vendor whose terms permit resale** — not from Google. That is a
+real option and a commercial decision; it is not something code can route around.
+
+---
+
+## 6. The cost trap, and the pattern that avoids it
+
+Billing rule, verbatim: ***"You are then billed at the highest SKU applicable to your request."***
+One Enterprise field bills the **whole** request at Enterprise — and the fields a useful result card wants are
+exactly the Enterprise ones: **phone, website, rating, review count, opening hours**.
+**Nearby Search has no cheap tier at all** — every field on it is Pro or above.
+
+**So the split goes in from the first line of code:**
+1. **List pass** — Text Search at **Essentials (IDs Only)** (free cap **Unlimited**) or Pro: ids, names,
+   addresses.
+2. **Details pass** — one `GET places/PLACE_ID` at **Enterprise**, only for the place she actually opens.
+
+Asking for phone and rating across a 20-row page bills 20 rows at Enterprise; asking on the one row she tapped
+bills one. Same screen, a twentyfold difference.
+
+Ceilings to design around: **Nearby Search = circle only, radius ≤ 50 km, 20 results, no paging.**
+**Text Search = 60 results across pages**, and it is the only one with an IDs-only tier.
+
+---
+
+## 7. The map card — and the correction to the first version of this plan
+
+**The first draft of this plan recommended MapLibre with free OpenStreetMap tiles plus Google data. That is a
+licence breach and the recommendation is withdrawn.**
+
+ToS §3.2.3(e): *"Customer will not use the Google Maps Core Services with or near a non-Google Map … For
+example, Customer will not (i) display or use Places content on a non-Google Map."*
+SST §14.2: *"Customer must not use Google Maps Content from the Places API in conjunction with a non-Google
+map."*
+
+There are exactly **two** legal shapes, and the choice between them is the one real decision here:
+
+| | What she sees | Cost |
 |---|---|---|
-| **Routes: computeRouteMatrix** | nearest technician / nearest godown / nearest driver, properly | field_service, fleet, courier, helpdesk |
-| **Route Optimization** | the day's stop order for a van, with time windows | courier_desk, logistics, driver_coordinator |
-| **Places: details, photos, autocomplete** | a real place card — hours, phone, rating, photo; typing an address with suggestions | bazar, propagent, travel, tour_guide |
-| **Address Validation** | "is this a deliverable Indian address?" before she promises a date | courier, ecommerce, app backends |
-| **Static Maps** | a map **picture** inside a PDF, a report, a WhatsApp message, a site plan | docstudio, SEO local, propagent, site reports |
-| **Roads / snap-to-road** | clean a GPS trail into a real route travelled | fleet, drivers, field_service |
-| **Elevation** | slope for a site, a route's climb | design/construction work, cycling/trek routes |
-| **Time Zone** | correct local time for a coordinate | travel_agent |
-| **Solar API** | rooftop solar potential, roof segments, annual kWh from a building's address | **ties straight into the solar O&M and rooftop-solar design work** |
-| **Air Quality / Pollen** | a real health answer for a location | seva, homestay, travel |
-| **Places aggregate / area insights** | how many competitors of a type are near a plot | propagent, feasibility, SEO local |
+| **A — no map** | results as rich cards, with distance and attribution; a tap opens Google Maps | **free** (§14.1 expressly allows it) |
+| **B — a Google map** | pins and route lines on a real Google map inside Hoola | **Dynamic Maps** SKU: 10,000 loads free a month, then $7.00/1,000 down to $0.53 |
 
-Not all are worth building. The plan picks by what her existing roles are already trying to do.
+MapLibre stays where it is — in `console/build.js`, drawing maps on *her customers'* websites, where no Google
+data is involved. It must not be reused for Google results.
+
+**My recommendation: A first, B behind her switch.** Option A is free, ships immediately and covers most asks;
+Option B is worth real money for fleet, courier and site work where seeing the pins *is* the answer. Building A
+first costs nothing if she later wants B.
 
 ---
 
-## 4. The shape I would build — one engine, every surface
-
-`maps.py` stays the single door to Google (every other module already imports it, which is the right shape
-and should not change). It grows:
-
-1. **A priced, capped, cached client.** One place that knows what each call costs, keeps a daily budget,
-   caches what the terms allow, and **refuses with a reason** instead of silently spending.
-2. **A map Hoola can draw.** MapLibre is already vendored — reuse it, do not add a second map library.
-   A `maps` result becomes a **card with a real map** in the console and the phone: pins, a route line, a
-   fitted viewport. Where tiles come from is a decision below (§7).
-3. **The missing calls**, in the order the roles need them: matrix → optimisation → static image → place
-   details → address validation.
-4. **Every number from the API, never from the model.** The v0.374/v0.375 rule applies here too: a distance,
-   an ETA, a stop order is computed by Google or by our own code over Google's matrix — never produced in a
-   sentence. A wrong ETA looks exactly as confident as a right one.
-
----
-
-## 5. Build phases
+## 8. Build phases
 
 | Phase | What ships | Why here |
 |---|---|---|
-| **1 — PAISA PEHLE** | the priced/capped/cached client: a per-call price table, `MAPS_DAILY_INR` cap that refuses, a cache whose field and TTL rules are **quoted from Google's terms**, and a usage line she can see | the only gap that can cost her money unattended |
-| **2 — NAKSHA DIKHE** | a real map card in the console and the phone (MapLibre, reused): pins, route line, fitted bounds, tap to open Google Maps | the biggest visible gap; every geographic answer stops being a wall of addresses |
-| **3 — SABSE PAAS** | Routes **computeRouteMatrix** → "nearest of these N" as a first-class answer, wired into field_service / fleet / courier / helpdesk | the single most asked geographic question in her business |
-| **4 — DIN KA RASTA** | **Route Optimization**: the day's stop order with time windows, service durations and vehicle capacity, as a card she approves | turns courier/logistics from a list into a plan; v0.346's "nearest first" is replaced where it is wrong |
-| **5 — NAKSHA KAAGAZ PAR** | **Static Maps** images inside `docstudio` PDFs, reports and WhatsApp messages | a map in a document is worth more than a link, and it needs no app |
-| **6 — JAGAH KA PATA** | Places **details / photos / autocomplete** + **Address Validation**, with Indian address reality (landmark-based addresses, PIN checks) | stops a bad address becoming a failed delivery |
-| **7 — CHHAT PAR SOORAJ** | **Solar API** on a building's address → roof segments, annual kWh, panel count | feeds the solar O&M role and the building-design work already planned |
-| **8 — ASLI RASTA** | **Roads/snap-to-road** + trip trails for fleet, and geofence arrive/leave events | the fleet roles' real daily need |
-| **9 — PROOF** | a maps card like the coding/tool cards: fixed geographic questions with known answers, scored, and the **rupees each answer cost** | the only honest way to claim it works and to see the bill |
+| **1 — PAISA PEHLE** | the priced / capped / cached client: per-call SKU price table, `MAPS_DAILY_INR` cap that **refuses** rather than overspends, a cache that stores **only `place_id` (kept) and lat/lng (30-day TTL, auto-deleted)**, and a usage line she can see | the only gap that can cost her money while she sleeps — and the cache's shape is now set by the terms, not guessed |
+| **2 — NAKSHA DIKHE** | the result card: rich place cards with attribution and distance, **no map** (Option A). Google map (Option B) behind a setting, off by default | the biggest visible gap, at zero licence risk and zero cost |
+| **3 — PAAS KYA HAI** | **requirement #2**: Nearby Search with the 50-type filters + Place Details on open, on the IDs-first/Details-on-open split; new tools `maps_nearby`, `maps_place` | her literal second ask, and the foundation of #3's replacement |
+| **4 — SABSE PAAS** | Routes **computeRouteMatrix** → "nearest of these N" as a first-class answer, into field_service / fleet / courier / helpdesk | the most asked geographic question in her business |
+| **5 — DIN KA RASTA** | **Route Optimization**: the day's stop order with time windows and capacity, as a card she approves | turns courier/logistics from a list into a plan; replaces v0.346's "nearest first" where it is wrong |
+| **6 — PATA PAKKA** | Autocomplete (session-billed), reverse geocoding, **Address Validation** with Indian address reality (landmark addresses, PIN checks) | stops a bad address becoming a failed delivery |
+| **7 — KAAGAZ PAR** | **Static Maps** in `docstudio` PDFs and WhatsApp, + **Street View Static** (check with the **free** metadata SKU before paying for an image) | a map in a document beats a link, and needs no app |
+| **8 — APNI DUKAAN** | **requirement #1, the real one**: Business Profile — reviews read + **drafted** replies, posts, photos, hours, Q&A, and the Performance numbers. **Every write is draft-plus-her-tap**, per the policy's *"prior specific and express consent"* | the richest half of her ask; starts the day the quota reads 300 QPM, so the application goes in at Phase 1 |
+| **9 — APNA NAKSHA** | **requirement #1, the other two parts**: her own pins and areas via the **Data layer** (`addGeoJson` from Hoola's own backend — her data never leaves her server), with the **Datasets API** as the Google-hosted alternative; **one-shot My Maps import** (Data Portability KMZ, or the KML/KMZ she exports herself); and **her saved lists imported from the Takeout file she downloads** | replaces My Maps properly, and better, since writing to My Maps has no route |
+| **10 — BAAKI SAB** | Solar, Elevation, Air Quality / Pollen, Roads snap-to-road, Time Zone | the remaining "all map tasks", once the daily ones work |
+| **11 — PROOF** | a maps card like the coding and tool cards: fixed geographic questions with known answers, scored, **and the rupees each answer cost** | the only honest way to claim it works and to see the bill |
+
+**Note on the saved-lists import (Phase 9).** There is no API, so the shape is: she exports "Saved" from
+takeout.google.com and hands Hoola the file. **Google does not document that file's format** - third-party
+accounts disagree on whether it is one CSV per list or a single `Saved Places.json`. So the importer must
+**sniff the file and handle both**, and say plainly what it found rather than assume. The first real export she
+gives us is what settles it; nothing is designed against a guess.
 
 ---
 
-## 6. What it will not do
+## 9. What it will not do
 
-- **Official routes only.** Google Maps Platform APIs with her key. No scraping of Google Maps pages, no
-  unofficial endpoints, no screenshotting map tiles to dodge a licence.
-- **No storing what the terms forbid**, and no cache TTL I have not read the terms for.
-- **Never a guessed distance, ETA or stop order.** If the API cannot answer, Hoola says so.
-- **No live tracking of a person without their knowing.** A driver's trail is a work record on her own fleet,
-  shown to her, and that is where it stops.
-- **Her key is hers.** CLAUDE.md's rule stands: *don't modify her FNW Flow Maps key.* This plan uses
+- **Official routes only.** No scraping of Google Maps pages, no undocumented endpoints (the
+  `maps/d/kml?mid=` link included), no screenshotting tiles to dodge a licence.
+- **No storing what the terms forbid.** Only `place_id` and a 30-day lat/lng. Names, addresses, phones,
+  ratings and hours are **shown live and never written down**.
+- **No Places data on a non-Google map.** §3.2.3(e). Either a Google map or no map.
+- **No exportable, sellable list of businesses.** §3.2.3(d)(iii).
+- **No unattended writes to her listing.** *"you must not automate or trigger review replies, Q&As, listing
+  creations, listing edits … without the user's prior specific and express consent."* Draft, then her tap.
+- **Never a guessed distance, ETA or stop order.** If the API cannot answer, Hoola says so. A wrong ETA looks
+  exactly as confident as a right one.
+- **No live tracking of a person without their knowing.** A driver's trail is a work record on her own fleet.
+- **Her key is hers.** CLAUDE.md stands: *don't modify her FNW Flow Maps key.* This plan uses
   `GOOGLE_MAPS_API_KEY` and touches nothing else.
 
 ---
 
-## 7. Decisions I need from her
+## 10. Decisions I need from her
 
-1. **Tiles for the map card — this is the one real cost decision.** Google's **Map Tiles / Dynamic Maps** are
-   billed per map load. MapLibre can instead draw **free OpenStreetMap-based tiles** (or MapTiler/Protomaps on
-   a cheap plan) while *all the data* — places, routes, ETAs — still comes from Google. That keeps Google for
-   what it is unbeatable at and makes showing a map nearly free. **I recommend free tiles + Google data**, and
-   I need her yes because it changes what the map looks like.
-2. **A daily rupee cap for Maps.** Pick a number for Phase 1 to enforce. Studio and Arena have one; Maps does
-   not.
-3. **Which role first after the map card** — field_service/helpdesk ("who is nearest?") or courier/logistics
-   ("what order today?"). I would do nearest-first because it is one call and immediately useful.
-4. **Is Solar API wanted now or later?** It is the most interesting one for the building/design work, but it
-   is a different audience from her delivery and field roles.
-5. **Does the phone need offline maps?** Expensive to do properly. My recommendation: no — show the map when
-   there is signal, and always keep the "open in Google Maps" button that works offline-ish and costs nothing.
+1. ~~Which "existing Google map" did she mean?~~ **ANSWERED: all three.** Business listing (Phase 8), My Maps
+   (Phase 9), saved lists (Phase 9, via her Takeout file).
+2. **Map card: Option A (no map, free) or Option B (Google map, paid)?** I recommend A now, B behind a switch.
+3. **A daily rupee cap for Maps**, for Phase 1 to enforce. Studio and Arena have one; Maps does not.
+4. **Does she have a Google Business Profile that is verified and 60+ days old, with a website?** If yes, the
+   application can go in this week and Phase 8 becomes real. If not, that clock starts first.
+5. ~~On requirement #3?~~ **ANSWERED: the live search-and-act desk (§5).** Nothing exportable is built.
 
 ---
 
-## 8. What I would do first if she just says "GO"
+## 11. What I would do first if she just says "GO"
 
-Phase 1 and Phase 2 together, as one version: **the bill gets a cap and a cache, and she finally sees a
-map.** Those two are independent of every decision above except the tiles question, which is why §7.1 is the
-one answer I actually need to start.
+**Phases 1, 2 and 3 as one version** — the bill gets a cap and a terms-shaped cache, she finally sees results
+as proper cards, and "what's near here" works properly with the cheap/expensive split built in.
+
+That is her requirement #2 delivered in full, requirement #3's replacement standing up, and it depends on **none
+of the decisions above except §10.2** — and even that one defaults safely to the free option.
+
+**And on day one, in parallel: submit the Business Profile API application.** It is the long pole for
+requirement #1 and no amount of code shortens it.

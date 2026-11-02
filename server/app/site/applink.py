@@ -275,7 +275,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return {"matrix": SEC.matrix(BE.schema(p))}
     if op == "upload":
         return BE.upload(p, w, kw.get("raw") or b"", ip)
-    if op in ("pay_plans", "pay_subscribe", "pay_subs", "pay_cancel"):   # v0.449 AutoPay plans on the website (her plans)
+    if op in ("pay_plans", "pay_subscribe", "pay_subs", "pay_cancel"):   # v0.451 AutoPay plans on the website (her plans)
         from ..appmaker import pay as PY
         if op == "pay_plans":
             return PY.plans(p)

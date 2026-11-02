@@ -1,4 +1,4 @@
-"""v0.449 DUKAAN PLUS (web Step 4B): GST invoice + credit note for website orders on HER ONE series (shared with her app),
+"""v0.451 DUKAAN PLUS (web Step 4B): GST invoice + credit note for website orders on HER ONE series (shared with her app),
 marketplace sellers (her approval, product moderation, Route transfers of the sellers' shares once), Shiprocket courier
 (her tap, AWB + label + tracking), opted-in cart reminders (SHE taps the WhatsApp link), AutoPay plans for website members."""
 import json
@@ -15,7 +15,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.449.0"
+    assert APP_VERSION == "0.451.0"
 
 
 def _gstin():

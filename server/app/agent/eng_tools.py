@@ -40,10 +40,16 @@ ENG_TOOLS.append(
         "grade, grip_mm, plates: steel|aluminium|cast iron|copper, load_N (total tension), shear_N, bolts, preload_pct} "
         "VDI 2230-style bolted joint (stiffness, load factor, separation, yield, bolt fatigue, slip); kind=fatigue "
         "args={sigma_max_MPa, sigma_min_MPa, material, finish, size_mm, reliability, life, kt} stress-life fatigue "
-        "(Goodman + Marin). Show the numbers "
+        "(Goodman + Marin); kind=column args={length_mm, section:{type: rect|round|tube|rect_tube|i, ...}, ends: "
+        "pinned|fixed_free|fixed_fixed|fixed_pinned, load_N, material, min_sf} a strut in compression - does it FOLD "
+        "before it squashes (Euler above the changeover slenderness, J. B. Johnson's parabola below it); kind=gear "
+        "args={module, pinion_teeth, wheel_teeth, width_mm, torque_Nm, rpm, material, quality (6 commercial / 8 hobbed "
+        "/ 10 ground), application (uniform|light shock|medium shock|heavy shock), life_hours, mounting, min_sf} "
+        "ISO 6336 spur gear life: tooth bending + flank pitting safety factors on the pinion, from the real hobbed "
+        "root geometry. Show the numbers "
         "with units and say it is a draft for an engineer's check."),
      "input_schema": {"type": "object", "properties": {
-         "kind": {"type": "string", "enum": ["fit", "stack", "bolt", "weld", "beam", "pipe", "joint", "fatigue"]},
+         "kind": {"type": "string", "enum": ["fit", "stack", "bolt", "weld", "beam", "pipe", "joint", "fatigue", "column", "gear"]},
          "args": {"type": "object"}}, "required": ["kind", "args"]}})
 ENG_LABELS = {"cad_part": "CAD part bana raha hoon", "eng_calc": "Engineering hisaab laga raha hoon"}
 

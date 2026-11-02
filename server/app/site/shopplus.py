@@ -1,4 +1,4 @@
-"""v0.449 DUKAAN PLUS (web Step 4B = the rest of W4 + W5, docs/WEB_PLATFORM_PLAN.md) for her website shop.
+"""v0.451 DUKAAN PLUS (web Step 4B = the rest of W4 + W5, docs/WEB_PLATFORM_PLAN.md) for her website shop.
 
 1. GST tax invoice + credit note for WEBSITE orders on HER ONE series (Rule 46): an invoiced website order gets a hidden row
    on the site's app project (coll `_web_orders`), so `appmaker/gst.py` gives the number (the same INV/<FY>/0001 series as

@@ -493,7 +493,7 @@ def _paid(r: AppProject, pid: str, payment_id: str, amount: int, method: str, so
     if kind == "site" and row_id:                       # v0.446 a website shop order (site/shoppay.py), same verified rule
         from ..site import shoppay as SP
         _site_id, what = SP.on_paid(row_id, payment_id, amount, gw, label)
-        if what == "confirmed":                          # v0.449 marketplace: approved sellers' shares, once
+        if what == "confirmed":                          # v0.451 marketplace: approved sellers' shares, once
             try:
                 from ..site import shopplus as SPL
                 SPL.vendor_transfers(r, pid, payment_id, row_id)

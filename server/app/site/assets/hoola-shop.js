@@ -52,7 +52,7 @@
     var s = el('p', 'hs-stars', '★ ' + r.avg + ' (' + r.count + ')'); s.setAttribute('aria-label', r.avg + ' out of 5 from ' + r.count + ' buyers');
     host.appendChild(s);
   }
-  // v0.449 wishlist: kept only in this browser (nothing about her customers leaves the phone)
+  // v0.451 wishlist: kept only in this browser (nothing about her customers leaves the phone)
   var WK = KEY + ':wish';
   function wishes() { try { return JSON.parse(localStorage.getItem(WK) || '[]') || []; } catch (e) { return []; } }
   function wishOn(host, slug) {
@@ -113,7 +113,7 @@
     panel.appendChild(list);
     panel.appendChild(el('p', 'hs-cart-sub', 'Saaman: ' + rs(sub)));
     var ws = wishes().filter(function (s2) { return P[s2] && !cart[s2]; });
-    if (ws.length) {                                      // v0.449 saved for later
+    if (ws.length) {                                      // v0.451 saved for later
       var wl = el('div', 'hs-wishlist'); wl.appendChild(el('p', 'muted', 'Saved for later:'));
       ws.forEach(function (s2) { var b = el('button', 'btn btn-ghost', '+ ' + P[s2].title); b.type = 'button';
         b.addEventListener('click', function () { add(s2); open(cartView); }); wl.appendChild(b); });
@@ -165,7 +165,7 @@
       l.appendChild(r); l.appendChild(el('span', '', w[1])); pays.appendChild(l);
     });
     f.appendChild(pays);
-    var rl = el('label', 'hs-check'), rm = d.createElement('input'); rm.type = 'checkbox'; rm.name = 'remind';   // v0.449 opt-in only
+    var rl = el('label', 'hs-check'), rm = d.createElement('input'); rm.type = 'checkbox'; rm.name = 'remind';   // v0.451 opt-in only
     rl.appendChild(rm); rl.appendChild(el('span', '', 'Order adhoora rahe to WhatsApp par ek baar yaad dilana (dukaan khud bhejegi)'));
     f.appendChild(rl);
     rm.addEventListener('change', function () {
@@ -219,7 +219,7 @@
       panel.appendChild(el('p', 'hs-status', 'Online payment mil gaya (gateway ne pakka kiya).'));
     }
     if (o.status === 'delivered') reviewBox(panel, o);
-    if (['confirmed', 'packed', 'shipped', 'delivered', 'cancelled'].indexOf(o.status) >= 0) {   // v0.449 her GST bill (if she is registered)
+    if (['confirmed', 'packed', 'shipped', 'delivered', 'cancelled'].indexOf(o.status) >= 0) {   // v0.451 her GST bill (if she is registered)
       var inv = el('a', 'btn btn-ghost', o.status === 'cancelled' ? 'Credit note (PDF)' : 'GST bill (PDF)');
       inv.href = API + '/order/' + encodeURIComponent(o.number) + '/invoice?t=' + encodeURIComponent(o.token) + (o.status === 'cancelled' ? '&doc=credit' : '');
       inv.target = '_blank'; inv.rel = 'noopener'; panel.appendChild(inv);
