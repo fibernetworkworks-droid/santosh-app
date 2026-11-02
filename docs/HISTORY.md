@@ -17821,5 +17821,12 @@ the avatar; all twelve pages carry all three links; the brand marks are the logo
 present; the status icon is white-on-transparent with both orbits and a readable stroke width; and every size is
 one `tool/make_logo.py` builds. In `app-load.yml`.
 
-**Not verified:** the real launcher icon comes out of `dart run flutter_launcher_icons` in CI, which cannot run
-in this sandbox (no Flutter). The APK this version builds is what will show the icon on her phone.
+**Verified in the built APK** (`v0.462.0-b1305`, downloaded and unpacked, not read back off my own source
+files): the legacy launcher icon is present at all five densities (48 / 72 / 96 / 144 / 192) with the logo's navy
+as its dominant colour, and the adaptive foreground is present at all five adaptive densities (108 / 162 / 216 /
+324 / 432) as RGBA with alpha and a 26-27 % margin on every side - comfortably clear of the ~66 % circular mask,
+which is the whole reason the foreground is a separate cut-out. R8 renames every resource to `res/XX.png`, so they
+were found by image content (size, squareness, dominant colour, alpha) rather than by name. The adaptive pair was
+also composed the way a launcher draws it - foreground over `#090F32`, cropped to the circle - and looked at.
+
+Still only the emulator's answer: the icon on HER phone is the APK install.
