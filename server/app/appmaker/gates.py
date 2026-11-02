@@ -246,9 +246,12 @@ def gate_settings(r: AppProject, proj: Path, apk: Path | None) -> list[dict[str,
             except OSError:
                 tail = b""
             v2 = b"APK Sig Block 42" in tail
-            rows.append(_row("settings", "The built app is signed", "pass" if (v1 or v2) else "fail",
-                             "APK par signature hai (" + ("v1" if v1 else "") + (" v2/v3" if v2 else "").strip() + ")."
-                             if (v1 or v2) else "APK par koi signature nahi mila - aisi app install hi nahi hoti.",
+            # SAID, never a blocker: the store gets a .aab signed with her UPLOAD key, so the preview APK's own
+            # signature tells her whether THIS file installs on a phone - it says nothing about the store upload.
+            rows.append(_row("settings", "The preview app is signed", "pass" if (v1 or v2) else "warn",
+                             "Preview APK par signature hai (" + ("v1" if v1 else "") + (" v2/v3" if v2 else "").strip() + ")."
+                             if (v1 or v2) else "Preview APK par signature nahi mila - woh file phone par install nahi hogi "
+                             "(store par .aab aapki upload key se jata hai, isliye upload nahi ruka).",
                              f"{len(names)} entries"))
         except (zipfile.BadZipFile, OSError):
             rows.append(_row("settings", "The built app is signed", "not_checked", "APK padhi nahi ja saki."))

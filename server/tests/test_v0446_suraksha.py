@@ -227,9 +227,12 @@ def test_security_gates_block_the_store(droid_env, monkeypatch):
         s.expunge(r)
     GT.set_osv(lambda deps: [[] for _ in deps])
     try:
-        # the CI fixture's build machine is a fake, so its APK carries no signature: the gate SAYS so, which is right
+        # the CI fixture's build machine is a fake, so its APK carries no signature: the gate SAYS so as a WARNING,
+        # because the store gets a .aab signed with her upload key - the preview APK's signature is not that gate.
         v0 = GT.scan(r, "android")
-        assert v0["ok"] is False and any("signature" in b for b in v0["blocks"])
+        sig = next(x for x in v0["rows"] if x["check"] == "The preview app is signed")
+        assert sig["state"] == "warn" and "install nahi hogi" in sig["say"]
+        assert v0["ok"] is True, v0["blocks"]
         proj, apk = GT._proj(r, "android")
         assert apk is not None
         import zipfile
@@ -237,6 +240,7 @@ def test_security_gates_block_the_store(droid_env, monkeypatch):
             z.writestr("META-INF/CERT.RSA", b"\x30\x82 not a real certificate, only its place")
         v = c.post(f"/api/apps/{aid}/security/check", json={"platform": "android"}).json()
         assert v["ok"] is True, v["blocks"]
+        assert next(x for x in v["rows"] if x["check"] == "The preview app is signed")["state"] == "pass"
         assert {x["gate"] for x in v["rows"]} >= {"secrets", "permissions", "settings", "libraries", "login", "data"}
         assert v["pass"] >= 8 and v["fail"] == 0
         libs = next(x for x in v["rows"] if x["gate"] == "libraries")
