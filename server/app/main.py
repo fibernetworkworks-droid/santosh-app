@@ -9968,7 +9968,7 @@ def _ua_of(request: Request) -> str:
 
 @app.post("/api/app-api/{app_key}/signup")
 async def app_api_signup(app_key: str, request: Request):
-    """v0.446 the sign-up records the DPDP consent tick and this login as a session she can end."""
+    """v0.453 the sign-up records the DPDP consent tick and this login as a session she can end."""
     from .appmaker import backend as BE
     from .appmaker import sign as SG
     body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
@@ -9977,14 +9977,14 @@ async def app_api_signup(app_key: str, request: Request):
 
 @app.post("/api/app-api/{app_key}/login")
 async def app_api_login(app_key: str, request: Request):
-    """v0.446 a staff account with 2FA on gets {need_2fa, ticket} here and finishes at /login/2fa."""
+    """v0.453 a staff account with 2FA on gets {need_2fa, ticket} here and finishes at /login/2fa."""
     from .appmaker import backend as BE
     from .appmaker import sign as SG
     body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
     return await asyncio.to_thread(_be_call, lambda: SG.password_login(BE.by_key(app_key), body, ua, ip))
 
 
-# ---- v0.446 SURAKSHIT LOGIN (App Sahayak Pillar I): phone OTP, Google / Apple checked on the SERVER, sessions she can
+# ---- v0.453 SURAKSHIT LOGIN (App Sahayak Pillar I): phone OTP, Google / Apple checked on the SERVER, sessions she can
 # end, staff 2FA, her own data (DPDP). The engine is the website's (site/security.py) on the same backend id.
 @app.post("/api/app-api/{app_key}/login/otp")
 async def app_api_login_otp(app_key: str, request: Request):
@@ -11047,7 +11047,7 @@ async def app_admin_page(app_key: str):
 
 @app.get("/api/apps/{ref}/sign", dependencies=[Depends(require_key)])
 async def apps_sign(ref: str, tenant: str = Depends(current_tenant)):
-    """v0.446 her login + security card: which ways are on, her client ids (masked where long), the permissions matrix,
+    """v0.453 her login + security card: which ways are on, her client ids (masked where long), the permissions matrix,
     the audit log, and the last security gate."""
     from .appmaker import gates as GT
     from .appmaker import sign as SG
@@ -11066,7 +11066,7 @@ async def apps_sign_save(ref: str, body: dict, tenant: str = Depends(current_ten
 
 @app.post("/api/apps/{ref}/security/check", dependencies=[Depends(require_key)])
 async def apps_security_check(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
-    """v0.446 run the security gates on the newest build (a failing gate blocks the store upload)."""
+    """v0.453 run the security gates on the newest build (a failing gate blocks the store upload)."""
     from .appmaker import gates as GT
     b = body or {}
     return await asyncio.to_thread(_be_owner_call,

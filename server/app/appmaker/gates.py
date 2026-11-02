@@ -1,4 +1,4 @@
-"""v0.446 SURAKSHA GATE (App Sahayak Pillar I, Phase 60, second half): a security check on every build, and a FAILING
+"""v0.453 SURAKSHA GATE (App Sahayak Pillar I, Phase 60, second half): a security check on every build, and a FAILING
 gate blocks the store upload.
 
 Not a label on a sticker: every row here is a check that reads the REAL build - the generated project on disk, its

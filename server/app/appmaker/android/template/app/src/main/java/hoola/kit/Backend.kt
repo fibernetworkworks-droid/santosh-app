@@ -37,7 +37,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 /** The code-made sign-in screen and the account screen (my orders / bookings; staff see and handle everyone's). */
 const val SCREEN_LOGIN = "hoola_login"
-/** v0.446 login said "right, now the authenticator code" (staff 2FA). */
+/** v0.453 login said "right, now the authenticator code" (staff 2FA). */
 const val NEED_2FA = "\u0000need_2fa"
 const val SCREEN_ACCOUNT = "hoola_account"
 
@@ -250,14 +250,14 @@ object Auth {
     suspend fun login(ctx: Context, email: String, password: String): String? {
         bye?.join()
         val r = Cloud.call("POST", "/login", JSONObject().put("email", email.trim()).put("password", password))
-        if (r.ok && r.body.optBoolean("need_2fa")) {              // v0.446 staff 2FA: the authenticator code is step two
+        if (r.ok && r.body.optBoolean("need_2fa")) {              // v0.453 staff 2FA: the authenticator code is step two
             ticket = r.body.optString("ticket", "")
             return NEED_2FA
         }
         return keep(ctx, r)
     }
 
-    // v0.446 SURAKSHIT LOGIN: mobile OTP, Google / Apple and the second step. The code / token is sent straight to the
+    // v0.453 SURAKSHIT LOGIN: mobile OTP, Google / Apple and the second step. The code / token is sent straight to the
     // app's own server and is never stored, shown again or logged here.
     private var ticket = ""
 

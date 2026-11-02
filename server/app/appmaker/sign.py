@@ -1,4 +1,4 @@
-"""v0.446 SURAKSHIT LOGIN (App Sahayak Pillar I, Phase 60) - how the PEOPLE of her native apps sign in, and safely.
+"""v0.453 SURAKSHIT LOGIN (App Sahayak Pillar I, Phase 60) - how the PEOPLE of her native apps sign in, and safely.
 
 The engine is the one v0.434 built for her website (`site/security.py`: OTP hashed + rate limited, TOTP 2FA for staff,
 sessions she can end, DPDP consent / export, audit log, permissions matrix). It works on the app backend id
