@@ -236,11 +236,17 @@ first costs nothing if she later wants B.
 
 ## 8. Build phases
 
+**Phases 1-3 SHIPPED as v0.460.0** on 2 Nov 2026 (built as 0.449; parallel sessions took that number).
+Details in `docs/HISTORY.md`. What landed differs from the plan in one place, said here so the plan is not
+read as the truth: `maps_search` KEPT its Enterprise field mask rather than moving to the cheap tier, so
+nothing she already had got worse - it is priced and capped now, and the cheap-list / details-on-open
+split applies to the NEW `maps_nearby` + `maps_place` pair instead.
+
 | Phase | What ships | Why here |
 |---|---|---|
-| **1 — PAISA PEHLE** | the priced / capped / cached client: per-call SKU price table, `MAPS_DAILY_INR` cap that **refuses** rather than overspends, a cache that stores **only `place_id` (kept) and lat/lng (30-day TTL, auto-deleted)**, and a usage line she can see | the only gap that can cost her money while she sleeps — and the cache's shape is now set by the terms, not guessed |
-| **2 — NAKSHA DIKHE** | the result card: rich place cards with attribution and distance, **no map** (Option A). Google map (Option B) behind a setting, off by default | the biggest visible gap, at zero licence risk and zero cost |
-| **3 — PAAS KYA HAI** | **requirement #2**: Nearby Search with the 50-type filters + Place Details on open, on the IDs-first/Details-on-open split; new tools `maps_nearby`, `maps_place` | her literal second ask, and the foundation of #3's replacement |
+| **1 — PAISA PEHLE** ✅ DONE v0.460 | the priced / capped / cached client: per-call SKU price table, `MAPS_DAILY_INR` cap that **refuses** rather than overspends, a cache that stores **only `place_id` (kept) and lat/lng (30-day TTL, auto-deleted)**, and a usage line she can see | the only gap that can cost her money while she sleeps — and the cache's shape is now set by the terms, not guessed |
+| **2 — NAKSHA DIKHE** ✅ DONE v0.460 | the result card: rich place cards with attribution and distance, **no map** (Option A). Google map (Option B) behind a setting, off by default | the biggest visible gap, at zero licence risk and zero cost |
+| **3 — PAAS KYA HAI** ✅ DONE v0.460 | **requirement #2**: Nearby Search with the 50-type filters + Place Details on open, on the IDs-first/Details-on-open split; new tools `maps_nearby`, `maps_place` | her literal second ask, and the foundation of #3's replacement |
 | **4 — SABSE PAAS** | Routes **computeRouteMatrix** → "nearest of these N" as a first-class answer, into field_service / fleet / courier / helpdesk | the most asked geographic question in her business |
 | **5 — DIN KA RASTA** | **Route Optimization**: the day's stop order with time windows and capacity, as a card she approves | turns courier/logistics from a list into a plan; replaces v0.346's "nearest first" where it is wrong |
 | **6 — PATA PAKKA** | Autocomplete (session-billed), reverse geocoding, **Address Validation** with Indian address reality (landmark addresses, PIN checks) | stops a bad address becoming a failed delivery |
@@ -288,13 +294,18 @@ gives us is what settles it; nothing is designed against a guess.
 
 ---
 
-## 11. What I would do first if she just says "GO"
+## 11. Done, and what is next
 
-**Phases 1, 2 and 3 as one version** — the bill gets a cap and a terms-shaped cache, she finally sees results
-as proper cards, and "what's near here" works properly with the cheap/expensive split built in.
+**Phases 1-3 shipped as v0.460.0** (2 Nov 2026). The bill has a cap that refuses, the cache has the licence's
+shape, results are cards, and "what's near here" works with the cheap-list / details-on-open split.
 
-That is her requirement #2 delivered in full, requirement #3's replacement standing up, and it depends on **none
-of the decisions above except §10.2** — and even that one defaults safely to the free option.
+**Next, and in this order:**
+1. **Submit the Business Profile API application** - it is the long pole for requirement #1 and no code shortens
+   it. Needs a profile verified 60+ days with a website (§4).
+2. **Her first real Maps bill** against `GET /api/maps/usage` - that is what confirms or corrects the price
+   table, and `assumed_tier` names the one rate we guessed (which Routes tier our field mask maps to).
+3. **Phase 4 SABSE PAAS** (`computeRouteMatrix`, "nearest of these N") - the per-element billing is already
+   modelled for it, so it is the cheapest next phase to build.
 
-**And on day one, in parallel: submit the Business Profile API application.** It is the long pole for
-requirement #1 and no amount of code shortens it.
+Still open from §10: the map card option (A free / B paid Google map), the daily rupee cap number, and whether
+she has a 60-day-old verified Business Profile.
