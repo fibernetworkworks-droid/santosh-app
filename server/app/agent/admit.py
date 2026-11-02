@@ -490,6 +490,33 @@ def route(text: str, settings=None) -> dict[str, str]:
     return why
 
 
+# v0.430 SOCH KE JAWAB step 3: pylab (the locked Python sandbox - pandas / numpy / scipy / statsmodels / matplotlib,
+# no network, no secrets) lived in the Shiksha family and was in view for 1 of 50 hard asks, so Hoola did EMIs, CAGRs,
+# break-evens and forecasts in its head. It now rides with every ask that needs a worked-out number or real analysis.
+_CALC = re.compile(r"\bcalculat\w*|\bcompute\b|\bstatistic\w*|\baverage\b|\bmean\b|\bmedian\b|\bcorrelat\w*|"
+                   r"\bregression|\btrend\b|\bgrowth\s+rate|\bchart\b|\bgraph\b|\bplot\b|\bhisaab\s+laga|\bjod\s+ke|"
+                   r"\btotal\s+(?:kitna|nikal)|\bpercent\w*|\b\d+(?:\.\d+)?\s*%|\bganana|गणना|\bforecast|\bproject(?:ion|ed)\b",
+                   re.I)
+
+
+def calc_needed(text: str, why: dict | None = None) -> bool:
+    """Does this ask need numbers worked out / data analysed for real? A hard reasoning ask (agent/hard.py), a data job,
+    a reverse-engineering list, or plain calculation words."""
+    t = str(text or "")
+    if not t.strip() or t.lstrip().startswith(("[", "(")):
+        return False
+    why = why or {}
+    if any(str(v).startswith(("intent:data", "intent:business numbers")) for v in why.values()):
+        return True
+    if _CALC.search(t):
+        return True
+    try:
+        from . import hard
+        return hard.assess(t)["hard"]
+    except Exception:
+        return False
+
+
 def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     """The admitted set for one turn, routed on her words (+ goal steps / worker notes).
     None = admission is off or the valve tripped: caller uses the FULL registry (v0.190 behaviour)."""
@@ -503,6 +530,9 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     if why:
         adm.admit_families(why)
         adm.why = why
+    if calc_needed(text, why):
+        adm.extra.add("pylab")          # v0.430 SOCH KE JAWAB 3: every worked-out number comes from real code
+        adm.why = {**adm.why, "pylab": "calculation"}
     STATS["turns"] += 1
     if adm.size() > max(40, int(getattr(settings, "tool_admit_cap", 220))):
         STATS["full_fallback"] += 1     # router over-matched: never worse than the full registry

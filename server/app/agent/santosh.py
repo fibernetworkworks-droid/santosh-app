@@ -974,6 +974,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if _sticky - adm.families:
                 adm.admit_families(_sticky)
                 adm.why.update({f: "chat" for f in _sticky})
+    if adm is not None and state.get("hard"):
+        adm.extra.add("pylab")      # v0.430 a hard ask the judge (not the rules) found also gets the sandbox
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 

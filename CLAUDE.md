@@ -218,8 +218,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.429.0 (pubspec 0.429.0+473). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.430.0 (pubspec 0.430.0+474). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.430 SOCH KE JAWAB 3/7: pylab (locked Python sandbox) rides with every hard / data / calculation ask (admit.calc_needed),
+  'a number you work out = pylab, never mental maths'. Next: step 4 the reasoning recipe.
 - v0.429 SOCH KE JAWAB 2/7: a hard reasoning ask runs on Opus 5.5 (agent_hard_model) at effort high with 16k tokens and
   thinking; Opus failure = same call on Sonnet. Chat + long jobs unchanged. Next: step 3 a calculator / analysis tool.
 - v0.418 PRAYOGSHALA IN ENGLISH: all lab text, runtime, catalogue, phone screen and checker messages English (en-IN narration); a test blocks Hinglish.

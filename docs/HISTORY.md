@@ -16299,3 +16299,29 @@ v0.425.0-v0.428.0.
   chat turn = Sonnet + 2,000; Opus overloaded -> same call on Sonnet (switch stays on); 404 -> switch off, asked once;
   switch off keeps Sonnet. Turn / cache / usage / context / team / compaction / soch suites: 257 pass, same as main.
   Not measured here: answer quality (no API key) - step 7 adds the scored set. Version 0.429.0 (pubspec 0.429.0+473).
+
+## v0.430.0 SOCH KE JAWAB step 3 — every worked-out number comes from real code (2 Nov 2026)
+Owner: "GO STEP 3" (step 3 of the 7-step hard-reasoning plan: a calculator / analysis tool).
+- Found: no new tool was needed. `pylab` (Shiksha suite, `app/pylab/runner.py` + `service.py`) is a locked Python
+  sandbox - pandas, numpy, scipy, statsmodels, matplotlib, openpyxl; its own empty work folder (her data_fetch datasets
+  copied in as <id>.csv, her chat files by name), a clean environment (-I, no keys), its own empty network namespace
+  (unshare -rn) plus an audit hook refusing sockets, subprocess / exec / fork, ctypes and any write outside the folder,
+  CPU / memory / file-size / open-file limits and a wall-clock kill; charts / tables it writes come back to her chat.
+  But it sat in the "shiksha" family and was in view for 1 of 50 hard asks (only "statistic" words loaded it), so
+  Hoola did EMIs, CAGRs, break-evens and forecasts in its head.
+- `agent/admit.py`: `calc_needed(text, why)` = a hard ask (agent/hard.py rules), a data / business-numbers intent, or
+  calculation words (`_CALC`: calculate, compute, statistics, average / mean / median, correlation, regression, trend,
+  growth rate, chart / graph / plot, hisaab laga, total kitna, percent / N%, ganana, forecast, projection); plan_for
+  adds ONLY pylab via adm.extra (not the five Shiksha tools). `santosh`: a hard ask the judge (not the rules) found also
+  gets pylab. Measured: HARD 50/50 with pylab (was 1/50), EASY + HOLDOUT_EASY 0/50, tool-choice asks 19/163 (data jobs).
+- What the model reads: pylab's description opens "CALCULATOR + ANALYSIS: every number you work out (EMI, CAGR, %,
+  totals, break-even, forecast, statistics) is computed here and quoted from its printed output - never mental maths";
+  the pinned TOOL CHOOSER: "A number you WORK OUT ... = pylab: write the code, run it, quote its printed result - never
+  mental maths; her Excel / CSV goes into pylab by its file id, a data_fetch dataset by its dataset id."
+- Checked here: EMI 20 lakh / 9% / 20 yr = 17,994.52 a month, interest 23,18,684.59 (0.41 s, network isolated); her
+  CSV via dispatch -> 460 / 115.0 / Apr; a socket connect is refused.
+- Tests `server/tests/test_v0430_pylab_calc.py` (14). Router / tool choice / pylab / shiksha / turn suites: same as main
+  (main's own failures: test_v0314_app_backend x3, test_v0381_shiksha pylab files). Not measured: whether the live model
+  now calls pylab for every figure (no key here) - step 5 (self-check) and step 7 (scored set) cover that.
+  Version 0.430.0 (pubspec 0.430.0+474, console ?v=0.430.0, pins). Server-only deploy; her VPS needs the pylab libraries
+  (`app.pylab.service.status()` / the Shiksha pylab status route shows them).
