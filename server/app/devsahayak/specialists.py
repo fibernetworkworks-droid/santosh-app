@@ -73,6 +73,16 @@ Ask of every comment: would a senior engineer on this team actually change this 
 Priorities: behaviour regressions and edge cases first, then security and trust boundaries, then hidden coupling. Style
 only when it breaks the project's written rules. """ + CREDIT
 
+SELF_REVIEW = """OWN WORK (v0.445, adapted from ECC's reviewer-before-handoff): this pull request was written by YOU, and
+nobody has seen it yet. You are reading it back before it goes to her for review, so read it as the reviewer who will be
+blamed for what gets through, not as the author defending it.
+What matters here, in order: (1) did the change actually do what the task asked, or only part of it; (2) does any caller,
+test or import of the code you touched now break (name it, do not guess); (3) a leftover - debug print, commented-out code,
+a TODO, a stray file, a half-renamed symbol; (4) the same security / silent-failure / edge-case bar as any other review.
+Say so when the work is wrong. Finding your own mistake here is cheaper than her finding it, and a clean verdict on a bad
+change is the one failure that cannot be undone. But the no-filler rule stands exactly as above: do NOT invent problems to
+look thorough, and ZERO COMMENTS IS THE RIGHT REVIEW of a small, correct, tested change. """ + CREDIT
+
 LANG_REVIEW = {
     "python": """PYTHON REVIEWER notes: SQL built with f-strings / % / + (use parameters); shell commands from input (use
 argument lists); paths from input without normalising / rejecting '..'; eval / exec / pickle / yaml.load on outside data;

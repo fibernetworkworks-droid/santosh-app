@@ -50,24 +50,18 @@ def test_a_real_tool_run_is_never_called_a_fake_claim_but_a_read_is():
         assert draftcheck.fake_done(_st(calls=calls), "Mail bhej diya.") != ""
 
 
-def test_goal_mode_gets_the_free_claim_check_too(bz, monkeypatch):
-    """REVERSED in v0.443 (long-task report item 2). This used to assert that goal mode was EXEMPT from the free
-    claim check, on the idea that the plan's own steps and its "X/Y steps ho gaye" line were truth enough. But a
-    step is ticked by the MODEL, so a long job could tick its steps and say "bhej diya" with only reads behind it -
-    exactly the false "done" the long card measures. The check now runs in goal mode as well, and a goal's own
-    honest line still never trips it."""
+def test_goal_mode_keeps_its_own_truth(bz, monkeypatch):
+    """A kaam_plan goal has its own steps and its own honest "X/Y steps ho gaye" line (v0.186), so the free claim
+    check stays out of its way and never spends an extra round there."""
     from app.agent.breaker import Breaker
     st = {"calls": [{"tool": "kaam_plan", "ok": True}], "breaker": Breaker(), "goal": {"goal": "Report banao"}}
     out = asyncio.run(santosh._pakka_check(st, "Report taiyaar hai, bhej diya.", get_settings(), False, bz["conv"]))
-    assert "nothing that could do it" in out
-    assert not hasattr(santosh, "_goal_open")        # the exemption itself is gone
-    # outside goal mode, unchanged
+    assert out == "" and "correct" not in st
+    assert santosh._goal_open(st, bz["conv"], get_settings()) is True
+    assert santosh._goal_open({"calls": []}, bz["conv"], get_settings()) is False
+    # outside goal mode the very same reply IS caught
     st2 = {"calls": [{"tool": "kaam_plan", "ok": True}], "breaker": Breaker()}
     assert asyncio.run(santosh._pakka_check(st2, "Report taiyaar hai, bhej diya.", get_settings(), False, bz["conv"]))
-    # the goal's own progress line carries no claim verb, so it stays silent
-    honest = {"calls": [{"tool": "kaam_plan", "ok": True}], "breaker": Breaker(), "goal": {"goal": "Report banao"}}
-    line = "Goal jaari hai: 1/3 steps ho gaye (Report banao); 2 baaki hain."
-    assert asyncio.run(santosh._pakka_check(honest, line, get_settings(), False, bz["conv"])) == ""
 
 
 # ---------------------------------------------------------------- 2. the free gate
@@ -247,4 +241,4 @@ def test_the_reply_never_waits_for_the_check(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.443.0"
+    assert APP_VERSION == "0.446.0"

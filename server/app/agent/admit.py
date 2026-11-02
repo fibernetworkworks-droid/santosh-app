@@ -131,7 +131,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "replay test", "game replay", "game telemetry", "retention", "godot editor", "godot plugin", "ask hoola panel",
                  # v0.428 Phase 9: live ops
                  "live ops", "liveops", "a/b test", "ab test", "live event", "game event", "game crash", "hotfix",
-                 "patch check", "arpdau", "game revenue", "game ka event", "game ka a/b"),
+                 "patch check", "arpdau", "game revenue", "game ka event", "game ka a/b",
+                 # v0.433 Phase 10: big-studio mode
+                 "unity", "unreal", "unreal engine", "ue5", "big studio", "hoola crew plugin", "editor plugin"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",

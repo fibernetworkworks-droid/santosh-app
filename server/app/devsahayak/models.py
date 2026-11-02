@@ -74,6 +74,8 @@ class DevTask(Base):
     rounds: Mapped[int] = mapped_column(Integer, default=0)
     ci_round: Mapped[int | None] = mapped_column(Integer, nullable=True)     # v0.351 CI fix rounds done before the PR is ready
     ci_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # v0.351 when this CI wait began
+    self_round: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.445 own-review fix rounds done before the PR is ready
+    self_review: Mapped[str | None] = mapped_column(Text, nullable=True)     # v0.445 the last own review (JSON) + has_ci
     conv: Mapped[str] = mapped_column(String(40), default="")
     log: Mapped[str] = mapped_column(Text, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
