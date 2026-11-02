@@ -28,7 +28,7 @@ HoolaStudio.define('simple-pendulum', function (S) {
   var prot = new T.Mesh(new T.PlaneGeometry(0.3, 0.164), new T.MeshStandardMaterial({ map: protTex, transparent: true, roughness: 0.1, side: T.DoubleSide, depthWrite: false }));
   prot.position.set(0, PIVOT.y - 0.078, 0.014); prot.scale.y = -1; prot.renderOrder = 3; S.scene.add(prot);
   var ruler = S.ruler(1.0, { title: 'METRE SCALE · cm · LC 1 mm', labelEvery: 10 });
-  ruler.position.set(0.075, PIVOT.y - 1.005, -0.03);   // zero (top) level with the point of suspension
+  ruler.position.set(0.075, PIVOT.y - 1.0, -0.03);   // zero (top) level with the point of suspension
   var rfoot = S.rounded(0.08, 0.05, 0.03, 0.008, M.black); rfoot.rotation.x = -Math.PI / 2; rfoot.position.set(0.075, 0.015, -0.03); S.scene.add(rfoot); S.contact(0.14, 0.1, 0.075, -0.03, 0.5);
   var watch = S.stopwatch([0.21, 0.035, 0.17], [-1.15, 0, 0.25]);
   // vernier callipers + spare bob (bob diameter)

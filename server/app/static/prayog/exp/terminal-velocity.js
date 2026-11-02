@@ -16,9 +16,9 @@ HoolaStudio.define('terminal-velocity', function (S) {
   var JX = 0, JZ = -0.05, RO = 0.032, RI = 0.029, FOOT = 0.012, JH = 0.62, TB = 0.006;
   var FLOOR = FOOT + TB, SURF = FLOOR + 0.58, RIM = FOOT + JH;
   var RX = 0.062, RZ = -0.05, RLEN = 0.6, MM = RLEN * 1000, ZERO = 0.66;
-  var RY = ZERO - (RLEN + 0.01) + 5 * (MM + 20) / (MM + 10) / 1000;
-  function markY(cm) { return RY + (RLEN + 0.01) - (5 + cm * 10) * (MM + 20) / (MM + 10) / 1000; }
-  function cmAt(y) { return ((RY + RLEN + 0.01 - y) * 1000 * (MM + 10) / (MM + 20) - 5) / 10; }
+  var RY = ZERO - RLEN;   // zero mark at ZERO
+  function markY(cm) { return RY + RLEN - cm / 100; }
+  function cmAt(y) { return (RY + RLEN - y) * 100; }
   var RS = cmAt(SURF), BAND1 = 16.0, BAND2 = 46.0, RF = cmAt(FLOOR);
   var D1 = (BAND1 - RS) / 100, D2 = (BAND2 - RS) / 100;        // true depths of the bands below the surface (m)
   function depthMax() { return (RF - RS) / 100 - p.r; }

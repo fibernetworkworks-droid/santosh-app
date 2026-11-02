@@ -38,7 +38,7 @@ HoolaStudio.define('resonance-tube', function (S) {
   var col = S.mesh(new T.CylinderGeometry(RIN - 0.0004, RIN - 0.0004, 1, 32), waterM, false); S.scene.add(col);
   var meniscus = S.mesh(new T.TorusGeometry(RIN - 0.0012, 0.0012, 6, 32), waterM, false); meniscus.rotation.x = Math.PI / 2; S.scene.add(meniscus);
   var ruler = S.ruler(1.0, { title: 'METRE SCALE · cm from the open end', labelEvery: 10 });
-  ruler.position.set(TX + 0.042, Y_TOP - 1.005, TZ); S.scene.add(ruler);
+  ruler.position.set(TX + 0.042, Y_TOP - 1.0, TZ);   // zero at the open end S.scene.add(ruler);
   var thermo = S.thermometer({ len: 0.24, min: -10, max: 50, value: p.Tc, pos: [-0.052, 0.52, -0.186] });
   var tl = S.label('ROOM', { w: 0.026, ratio: 0.3, color: '#4a3412' }); tl.position.set(-0.05, 0.5, -0.1895); S.scene.add(tl);
   // reservoir: a glass can on a sliding clamp

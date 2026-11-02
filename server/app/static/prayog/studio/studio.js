@@ -247,14 +247,16 @@
       opts = opts || {}; var pxPerMm = opts.pxPerMm || 4, mm = Math.round(lengthM * 1000), H = mm * pxPerMm + 40, W = opts.w || 160;
       return S.canvasTex(W, Math.min(H, 8192), function (x, w, h) {
         x.drawImage(S.woodTex.image, 0, 0, w, h); if (opts.bg) { x.fillStyle = opts.bg; x.fillRect(0, 0, w, h); }
-        var k = h / (mm + 10); x.fillStyle = opts.ink || '#151515'; x.font = '600 ' + Math.round(w * 0.2) + 'px "Public Sans", sans-serif';
+        var k = h / (mm + 20); x.fillStyle = opts.ink || '#151515'; x.font = '600 ' + Math.round(w * 0.2) + 'px "Public Sans", sans-serif';
         var step = opts.labelEvery || 10, start = opts.start || 0, unitDiv = opts.unitDiv || 10;
-        for (var i = 0; i <= mm; i++) { var y = (5 + i) * k, len = i % 10 === 0 ? w * 0.38 : i % 5 === 0 ? w * 0.26 : w * 0.16; x.fillRect(0, y - 0.8, len, 1.6);
+        for (var i = 0; i <= mm; i++) { var y = (10 + i) * k, len = i % 10 === 0 ? w * 0.38 : i % 5 === 0 ? w * 0.26 : w * 0.16; x.fillRect(0, y - 0.8, len, 1.6);
           if (i % step === 0) x.fillText(String(start + i / unitDiv), w * 0.46, y + w * 0.07); }
         if (opts.title) { x.save(); x.fillStyle = '#6b4a14'; x.font = '600 ' + Math.round(w * 0.15) + 'px "Public Sans", sans-serif'; x.translate(w * 0.86, h - 30); x.rotate(-Math.PI / 2); x.fillText(opts.title, 0, 0); x.restore(); }
       });
     };
-    S.ruler = function (lengthM, opts) {   // a wooden scale lying along +y of its group (rotate the group to place it)
+    // S.ruler: a wooden scale along +y of its group; its ZERO mark sits at local y = lengthM and the mark for v metres at
+    // local y = lengthM - v (true scale: 1 printed mm = 1 mm), so placing the group at (zeroY - lengthM) puts zero at zeroY
+    S.ruler = function (lengthM, opts) {
       opts = opts || {}; var tex = S.scaleTex(lengthM, opts), wdt = opts.width || 0.03;
       var edge = M.wood, face = new T.MeshStandardMaterial({ map: tex, roughness: 0.55 });
       var m = S.mesh(new T.BoxGeometry(wdt, lengthM + 0.02, opts.thick || 0.006), [edge, edge, edge, edge, face, edge]);
@@ -493,8 +495,8 @@
     var target = S.target = new T.Vector3();
     S.home = { pos: new T.Vector3(0.78, 1.0, 1.75), look: new T.Vector3(-0.05, 0.55, -0.15) };
     camera.position.copy(S.home.pos); camera.lookAt(S.home.look); target.copy(S.home.look);
-    S.fly = function (pos, look, ms) { var p0 = camera.position.clone(), l0 = target.clone(), p1 = Array.isArray(pos) ? new T.Vector3().fromArray(pos) : pos, l1 = Array.isArray(look) ? new T.Vector3().fromArray(look) : look;
-      return S.tween(ms || 1000, function (k) { camera.position.lerpVectors(p0, p1, k); target.lerpVectors(l0, l1, k); camera.lookAt(target); }); };
+    S.fly = function (pos, look, ms) { if (S._fly) S._fly.dead = true; var me = S._fly = { dead: false }; var p0 = camera.position.clone(), l0 = target.clone(), p1 = Array.isArray(pos) ? new T.Vector3().fromArray(pos) : pos, l1 = Array.isArray(look) ? new T.Vector3().fromArray(look) : look;
+      return S.tween(ms || 1000, function (k) { if (me.dead) return; camera.position.lerpVectors(p0, p1, k); target.lerpVectors(l0, l1, k); camera.lookAt(target); }); };   // a newer fly wins
     S.views = {};
     S.focus = function (k) { var v = S.views[k]; if (v) S.fly(v[0], v[1]); S.flash(k); };
     var flashUntil = 0, flashKey = '';

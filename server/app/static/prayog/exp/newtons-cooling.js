@@ -60,7 +60,10 @@ HoolaStudio.define('newtons-cooling', function (S) {
   var stand = clampStand(TX, TZ, 0.27, 0.3, 0.46);
   // hot water in a beaker beside it (from the kettle)
   var BK = { r: 0.042, h: 0.11, x: 0.33, z: -0.04, level: 0.68 };
-  var beaker = S.beaker(BK.r, BK.h, [BK.x, 0, BK.z], 0xbfdbe6, BK.level);
+  var beaker = S.beaker(BK.r, BK.h, [BK.x, 0, BK.z]);
+  var bwater = S.mesh(new T.CylinderGeometry(BK.r * 0.95, BK.r * 0.95, 1, 36), new T.MeshStandardMaterial({ color: 0x6aaccc, roughness: 0.05, metalness: 0.08 }), false); beaker.add(bwater);
+  beaker.setLevel = function (f) { var hh = Math.max(0.001, BK.h * f); bwater.scale.y = hh; bwater.position.y = 0.002 + hh / 2; bwater.visible = f > 0.02; };   // opaque water shows through the beaker glass
+  beaker.setLevel(BK.level);
   var bkShadow = S.contact(0.12, 0.12, BK.x, BK.z, 0.45);
   var bl = S.label('HOT WATER', { w: 0.05, ratio: 0.2, color: '#a3241b', weight: 700 }); bl.position.set(0, 0.04, BK.r + 0.0008); beaker.add(bl);
   var stream = S.mesh(new T.CylinderGeometry(0.0035, 0.0045, 1, 12), waterM, false); stream.visible = false; S.scene.add(stream);
@@ -113,13 +116,14 @@ HoolaStudio.define('newtons-cooling', function (S) {
       { ms: 1400, fn: function (k) { var th = TH * (1 - k); return gripAt(posAt(TH, lipEnd).lerp(start, k), th); },
         onK: function (k) { stream.visible = false; placeBeaker(posAt(TH, lipEnd).lerp(start, k), TH * (1 - k)); } },
     ];
-    return carry(gripAt(start, 0), legs, 'grip').then(function () {
+    return carry(gripAt(start, 0), legs, 'pinch').then(function () {
       placeBeaker(start, 0); beaker.setLevel(BK.level * 0.08); setCalWater(1); stream.visible = false;
       sim = K.init(p); st.poured = true; S.say('Hot water poured. Stir gently and watch the thermometer rise to about ' + readT(p.T0).toFixed(0) + ' °C.'); S.render(); });
   }
   function pressWatch() {
     if (S.hand.busy) return Promise.resolve();
     if (!st.poured) { S.say('Pour the hot water in first.'); return Promise.resolve(); }
+    if (!watch.on && S.rows.length) { S.say('This series is already timed. To start a fresh series, delete the readings in the table first.'); return Promise.resolve(); }
     return S.hand.tap(watch.start).then(function () {
       S.click(2400);
       if (!watch.on) { watch.t = 0; watch.on = true; st.nextMark = 30; note(true); }

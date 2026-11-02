@@ -18,8 +18,8 @@ HoolaStudio.define('hookes-law', function (S) {
   var DR = 0.02, DT = 0.0045, STEM = 0.1;        // slotted mass radius / thickness, hanger stem length
   var RX = 0.11, RZ = -0.05, RY = 0.03, RLEN = 1.0;   // metre scale (standing in a foot)
   var MM = RLEN * 1000;
-  function markY(cm) { return RY + (RLEN + 0.01) - (5 + cm * 10) * (MM + 20) / (MM + 10) / 1000; }   // where the printed mark sits
-  function cmAt(y) { return ((RY + RLEN + 0.01 - y) * 1000 * (MM + 10) / (MM + 20) - 5) / 10; }
+  function markY(cm) { return RY + RLEN - cm / 100; }   // true-scale ruler: zero at RY + RLEN   // where the printed mark sits
+  function cmAt(y) { return (RY + RLEN - y) * 100; }
   var PTR0 = YTOP - LC0 - 0.026;                 // pointer height with the spring unstretched
   var R0 = cmAt(PTR0);                           // scale reading with zero extension (not shown: the student reads it)
   function ext() { return p.m * G / p.k + sim.y[0]; }

@@ -135,8 +135,8 @@ HoolaStudio.define('boyles-law', function (S) {
   return {
     camera: { pos: [0.42, 0.52, 1.1], look: [0.04, 0.22, -0.1] },
     views: { syr: [[0.12, 0.36, 0.42], [SX, 0.27, SZ]], plunger: [[0.12, 0.5, 0.45], [SX, 0.4, SZ]], gauge: [[0.24, 0.17, 0.2], [GX, GY, GZ]],
-      tube: [[0.2, 0.2, 0.45], [0.06, 0.06, SZ]], clip: [[0.04, 0.12, 0.2], [SX, YB - 0.08, SZ]], stand: [[0.4, 0.5, 0.7], [SX, 0.3, -0.2]],
-      work: [[0.22, 0.38, 0.62], [0.07, 0.24, SZ]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
+      tube: [[0.2, 0.2, 0.45], [0.06, 0.06, SZ]], clip: [[0.14, 0.24, 0.42], [SX + 0.02, YB - 0.05, SZ]], stand: [[0.4, 0.5, 0.7], [SX, 0.3, -0.2]],
+      work: [[0.3, 0.52, 0.86], [0.06, 0.3, SZ]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'For a fixed mass of gas at constant temperature, the pressure is inversely proportional to the volume. Squeeze the air into half the room and its molecules hit the walls twice as often.',
       formula: 'P V = constant  (= nRT)', formulaNote: 'so P against 1/V is a straight line through the origin; its slope is PV',
       more: ['A graph of P against V is a rectangular hyperbola. In kPa and litres, the product P × V comes out directly in joules (1 kPa · L = 1 J).'],
@@ -157,7 +157,7 @@ HoolaStudio.define('boyles-law', function (S) {
     steps: [
       { id: 'trap', title: 'Trap the air', view: 'clip', render: function (u) {
           u.h2('Trap a fixed mass of air');
-          u.p('The plunger stands at ' + st.V + ' mL and the gauge reads the room pressure. Close the pinch clip on the rubber tube so no air can get in or out.');
+          u.p('Before you move the plunger, close the pinch clip on the rubber tube so no air can get in or out. At 100 mL the gauge shows the room pressure, about 100 kPa.');
           u.task('Close the pinch clip', st.clip, st.clip ? 'Closed: the air is trapped' : 'Open: air can escape')
             .add(u.button(st.clip ? 'Closed' : 'Close the pinch clip', function () { closeClip(); }, !st.clip, st.clip || S.hand.busy));
           u.live(function () { return 'V = ' + st.V + ' mL · P = ' + readP() + ' kPa'; });

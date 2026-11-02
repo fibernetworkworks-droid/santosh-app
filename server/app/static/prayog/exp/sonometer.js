@@ -38,13 +38,13 @@ HoolaStudio.define('sonometer', function (S) {
   var brA = bridge(AX, M.darkWood), brB = bridge(AX + st.l, M.darkWood);
   var idx = S.mesh(new T.BoxGeometry(0.0015, 0.0012, 0.03), M.red); idx.position.set(0, 0.0006, 0.05); brB.add(idx);
   var outer = new T.Group(); sono.add(outer); var rul = S.ruler(0.86, { title: 'METRE SCALE · cm', labelEvery: 10, width: 0.026, thick: 0.003 }); outer.add(rul);
-  rul.rotation.z = Math.PI / 2; outer.rotation.x = -Math.PI / 2; outer.position.set(AX + 0.865, YTOP + 0.0016, BZ + 0.048);
+  rul.rotation.z = Math.PI / 2; outer.rotation.x = -Math.PI / 2; outer.position.set(AX + 0.86, YTOP + 0.0016, BZ + 0.048);   // zero at the fixed bridge
   var PX = BX1 + 0.025, PR = 0.02;
   var bracket = S.mesh(new T.BoxGeometry(0.03, 0.05, 0.012), M.iron); bracket.position.set(BX1 + 0.012, WY - PR, BZ - 0.014); sono.add(bracket);
   var pulley = S.mesh(new T.CylinderGeometry(PR, PR, 0.008, 40), M.brass); pulley.rotation.x = Math.PI / 2; pulley.position.set(PX, WY - PR, BZ); sono.add(pulley);
   var axle = S.mesh(new T.CylinderGeometry(0.003, 0.003, 0.03, 12), M.steel); axle.rotation.x = Math.PI / 2; axle.position.set(PX, WY - PR, BZ - 0.008); sono.add(axle);
-  var wireM = new T.MeshStandardMaterial({ color: 0xd9dde0, roughness: 0.25, metalness: 1 });
-  function wire() { var m = S.mesh(new T.CylinderGeometry(0.0006, 0.0006, 1, 8), wireM, true, false); S.scene.add(m); return m; }
+  var wireM = new T.MeshStandardMaterial({ color: 0xeef1f3, roughness: 0.2, metalness: 0.9, emissive: 0x2a2c2e });
+  function wire() { var m = S.mesh(new T.CylinderGeometry(0.0009, 0.0009, 1, 8), wireM, true, false); S.scene.add(m); return m; }
   var w0 = wire(), w1 = wire(), w2 = wire(), w3 = wire();
   var blurTex = S.canvasTex(256, 64, function (x, w, h) { x.clearRect(0, 0, w, h); var g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(220,224,228,0)'); g.addColorStop(0.5, 'rgba(220,224,228,.9)'); g.addColorStop(1, 'rgba(220,224,228,0)');
     x.fillStyle = g; x.beginPath(); x.moveTo(0, h / 2); for (var i = 0; i <= 64; i++) { var u = i / 64; x.lineTo(u * w, h / 2 - Math.sin(Math.PI * u) * h / 2); } for (i = 64; i >= 0; i--) { u = i / 64; x.lineTo(u * w, h / 2 + Math.sin(Math.PI * u) * h / 2); } x.fill(); });
@@ -191,7 +191,7 @@ HoolaStudio.define('sonometer', function (S) {
     camera: { pos: [0.4, 0.85, 1.45], look: [0.12, 0.13, -0.12] },
     views: { box: [[-0.05, 0.5, 0.55], [-0.1, 0.2, BZ]], brA: [[-0.38, 0.36, 0.05], [AX, YTOP, BZ]], brB: [[AX + 0.38, 0.37, 0.06], [AX + 0.3, YTOP, BZ]],
       wire: [[-0.1, 0.48, 0.35], [-0.2, WY, BZ]], hanger: [[0.72, 0.3, 0.25], [HX, 0.12, BZ]], rider: [[-0.2, 0.33, -0.06], [-0.33, WY, BZ]],
-      forks: [[0.8, 0.3, 0.42], [FBX, 0.02, FBZ]], pad: [[1.0, 0.22, 0.42], [PADX, 0.02, PADZ]], work: [[0.05, 0.62, 0.78], [-0.12, 0.2, -0.2]],
+      forks: [[0.8, 0.3, 0.42], [FBX, 0.02, FBZ]], pad: [[1.0, 0.22, 0.42], [PADX, 0.02, PADZ]], work: [[0.02, 0.78, 0.82], [-0.1, 0.24, -0.28]],
       load: [[0.95, 0.5, 0.5], [0.52, 0.13, -0.26]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'A wire stretched between two bridges vibrates most strongly in its fundamental mode. When that natural frequency equals the frequency of a tuning fork pressed on the box, the wire resonates: its amplitude grows large and a paper rider on its middle falls off.',
       formula: 'f = (1 / 2l) √(T / μ)', formulaNote: 'so μ = T / (4 l² f²) · T = Mg, the weight on the hanger',
