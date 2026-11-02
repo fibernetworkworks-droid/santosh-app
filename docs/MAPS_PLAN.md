@@ -8,6 +8,13 @@ Owner's asks:
 
 Plan only. Nothing is built until she says GO on a phase.
 
+**Her answers, 2 Nov 2026 (recorded, they shape the phases below):**
+- **Requirement #1 = all three.** Her **business listing**, a **My Maps map she drew**, *and* her **saved
+  places and lists**. So "all map tasks" is literal, and the saved-lists row below changes from *no route* to
+  *the Takeout file she downloads, imported by Hoola* - see Phase 9.
+- **Requirement #3 = the live search-and-act desk** (§5), not an exportable list. Her choice, on the record.
+  Nothing persists a business's name, address or phone.
+
 Everything below rests on `docs/research/maps/` — three registers read out of Google's own documents on 2 Nov,
 with every load-bearing quote re-verified by hand. Read `docs/research/maps/00_INDEX.md` first.
 
@@ -17,7 +24,7 @@ with every load-bearing quote re-verified by hand. Read `docs/research/maps/00_I
 
 | # | What she asked for | Answer |
 |---|---|---|
-| **1** | *use an existing Google map manually, AI does all those things* | **Yes for her business listing** (after an application). **Read-once for a My Maps map.** **No route for saved lists.** |
+| **1** | *use an existing Google map manually, AI does all those things* | **She wants all three.** Business listing: **fully operable**, after an application. My Maps map: **read once**, never written to. Saved lists: **no API** — her own Takeout file, imported. |
 | **2** | *API for nearby things* | **Yes, in full, this week.** No permission needed from anyone. |
 | **3** | *Google Map lead generation scraper* | **Cannot be built as asked.** Refused by two separate Google documents and by her own non-negotiable rules. **The objective is reachable another way** — §5. |
 
@@ -31,8 +38,9 @@ with every load-bearing quote re-verified by hand. Read `docs/research/maps/00_I
   data and draws it itself. Anything promising "Hoola will keep editing your My Maps map" could only be done by
   driving the web app, which is scraping, and would break.
 - **Her saved places and lists** (Want to go, Favourites, starred). **No API at all**, not even in Data
-  Portability. Takeout export by her own hand, and even the export's file format is undocumented. The honest
-  answer here is to say there is no route.
+  Portability, and no way to add a place to a list programmatically. What *can* be done, and what she asked
+  for: she exports "Saved" from Takeout and **Hoola imports the file**. Even the format is undocumented, so the
+  importer sniffs it rather than assuming — Phase 9.
 
 ---
 
@@ -86,12 +94,14 @@ quietly left out.
 | elevation / slope | Elevation API | no | 10 |
 | air quality, pollen | Air Quality / Pollen | no | 10 |
 | clean a GPS trail | Roads snap-to-road | no | 10 |
-| her saved lists | **no route** | — | **never** |
-| write to her My Maps map | **no route** | — | **never** |
+| her saved lists | **no API** - her **Takeout** file, imported | no | **9** |
+| write to her My Maps map | **no route at all** | — | **never** |
+| keep a My Maps map in sync | **no route at all** | — | **never** |
 | delete a bad review | **no route** (reply only) | — | **never** |
 
-Three rows say **never**, and they say it on Google's authority, not ours. Those are the only gaps in "all map
-tasks", and the plan names them rather than hiding them.
+Three rows say **never**, and they say it on Google's authority, not ours: there is no way to write to a My Maps
+map, no way to keep one in sync, and no way to delete a review (only to reply to it). Those are the only gaps in
+"all map tasks", and the plan names them rather than hiding them.
 
 ---
 
@@ -222,9 +232,15 @@ first costs nothing if she later wants B.
 | **6 — PATA PAKKA** | Autocomplete (session-billed), reverse geocoding, **Address Validation** with Indian address reality (landmark addresses, PIN checks) | stops a bad address becoming a failed delivery |
 | **7 — KAAGAZ PAR** | **Static Maps** in `docstudio` PDFs and WhatsApp, + **Street View Static** (check with the **free** metadata SKU before paying for an image) | a map in a document beats a link, and needs no app |
 | **8 — APNI DUKAAN** | **requirement #1, the real one**: Business Profile — reviews read + **drafted** replies, posts, photos, hours, Q&A, and the Performance numbers. **Every write is draft-plus-her-tap**, per the policy's *"prior specific and express consent"* | the richest half of her ask; starts the day the quota reads 300 QPM, so the application goes in at Phase 1 |
-| **9 — APNA NAKSHA** | her own pins and areas: **Data layer** (`addGeoJson` from Hoola's own backend — her data never leaves her server) with the **Datasets API** as the Google-hosted alternative; + one-shot My Maps import via Data Portability KMZ | replaces My Maps properly, and better, since writing to My Maps has no route |
+| **9 — APNA NAKSHA** | **requirement #1, the other two parts**: her own pins and areas via the **Data layer** (`addGeoJson` from Hoola's own backend — her data never leaves her server), with the **Datasets API** as the Google-hosted alternative; **one-shot My Maps import** (Data Portability KMZ, or the KML/KMZ she exports herself); and **her saved lists imported from the Takeout file she downloads** | replaces My Maps properly, and better, since writing to My Maps has no route |
 | **10 — BAAKI SAB** | Solar, Elevation, Air Quality / Pollen, Roads snap-to-road, Time Zone | the remaining "all map tasks", once the daily ones work |
 | **11 — PROOF** | a maps card like the coding and tool cards: fixed geographic questions with known answers, scored, **and the rupees each answer cost** | the only honest way to claim it works and to see the bill |
+
+**Note on the saved-lists import (Phase 9).** There is no API, so the shape is: she exports "Saved" from
+takeout.google.com and hands Hoola the file. **Google does not document that file's format** - third-party
+accounts disagree on whether it is one CSV per list or a single `Saved Places.json`. So the importer must
+**sniff the file and handle both**, and say plainly what it found rather than assume. The first real export she
+gives us is what settles it; nothing is designed against a guess.
 
 ---
 
@@ -248,16 +264,13 @@ first costs nothing if she later wants B.
 
 ## 10. Decisions I need from her
 
-1. **Which "existing Google map" did she mean** — her **business listing** on Google Maps (the rich one, needs
-   the application), a **My Maps** map she drew, or her **saved lists** (no route)? This picks Phase 8 vs 9 and
-   is the one answer I cannot infer.
+1. ~~Which "existing Google map" did she mean?~~ **ANSWERED: all three.** Business listing (Phase 8), My Maps
+   (Phase 9), saved lists (Phase 9, via her Takeout file).
 2. **Map card: Option A (no map, free) or Option B (Google map, paid)?** I recommend A now, B behind a switch.
 3. **A daily rupee cap for Maps**, for Phase 1 to enforce. Studio and Arena have one; Maps does not.
 4. **Does she have a Google Business Profile that is verified and 60+ days old, with a website?** If yes, the
    application can go in this week and Phase 8 becomes real. If not, that clock starts first.
-5. **On requirement #3**: accept the live search-and-act desk (§5), or does she want a licensed data vendor
-   priced instead? If she wants the exportable list from Google anyway after reading §5, that is her call to
-   make explicitly — it will be recorded here as her decision, not built quietly.
+5. ~~On requirement #3?~~ **ANSWERED: the live search-and-act desk (§5).** Nothing exportable is built.
 
 ---
 
