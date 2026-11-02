@@ -6,14 +6,14 @@
 <title>Hoola Prayogshala</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="studio/studio.css?v=0.441.0">
-<link rel="stylesheet" href="lab.css?v=0.441.0" media="(max-width: 0px)" id="oldcss">
+<link rel="stylesheet" href="studio/studio.css?v=0.458.0">
+<link rel="stylesheet" href="lab.css?v=0.458.0" media="(max-width: 0px)" id="oldcss">
 </head>
 <body>
 <div id="app" style="height:100%"><p style="padding:16px;color:#5d6370">Setting up the lab bench…</p></div>
 <script src="/api/prayog/three.js"></script>
-<script src="kernels.js?v=0.441.0"></script>
-<script src="studio/studio.js?v=0.441.0"></script>
+<script src="kernels.js?v=0.458.0"></script>
+<script src="studio/studio.js?v=0.458.0"></script>
 <script>
 (function () {
   var id = (new URLSearchParams(location.search).get('id') || '').replace(/[^a-z0-9-]/g, '');
@@ -22,14 +22,14 @@
   if (!window.THREE || !window.HoolaStudio) { fail('The 3D engine did not load. Check the internet and open again.'); return; }
   function load(src) { return new Promise(function (ok, no) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.body.appendChild(s); }); }
   var labP = fetch('/api/prayog/labs/' + id).then(function (r) { if (!r.ok) throw new Error(r.status === 404 ? 'This lab was not found.' : 'The lab did not load (' + r.status + ').'); return r.json(); });
-  labP.then(function (d) { var rig = (d.lab.rig || d.lab.id).replace(/[^a-z0-9-]/g, ''); return load('exp/' + rig + '.js?v=0.441.0').then(function () { return rig; }, function () { return ''; }); }).then(function (rig) {
+  labP.then(function (d) { var rig = (d.lab.rig || d.lab.id).replace(/[^a-z0-9-]/g, ''); return load('exp/' + rig + '.js?v=0.458.0').then(function () { return rig; }, function () { return ''; }); }).then(function (rig) {
     return labP.then(function (d) { return [d, rig]; });
   }).then(function (res) {
     var lab = res[0].lab, rig = res[1]; document.title = lab.title + ' · Prayogshala';
     if (rig && window.HoolaStudio.defs[rig]) { window.HoolaStudio.start(app, lab); return; }
     // no studio module yet: the earlier runtime still opens the lab
     document.getElementById('oldcss').media = 'all';
-    return load('lab3d.js?v=0.441.0').then(function () { app.style.height = ''; window.HoolaLab.open(app, lab); });
+    return load('lab3d.js?v=0.458.0').then(function () { app.style.height = ''; window.HoolaLab.open(app, lab); });
   }).catch(function (e) { fail(e.message || String(e)); });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 })();

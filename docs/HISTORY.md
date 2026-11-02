@@ -17407,3 +17407,61 @@ and gear teeth). `fea.plastic`, kind 'plastic' / 'yield' / 'collapse'.
 - Not covered: large displacements (small-strain kinematics), one monotonic load path only, no creep, no ratchetting
   under cycling, and no interaction with buckling - a slender part can fold first, so run the buckling check too.
 - Tests `test_v0451_plastic.py` (6).
+
+
+## v0.458.0 PRAYOGSHALA: EK RIG, KAI PRAYOG (2 Nov 2026)
+Owner: "NOW LETS WORK ON PHYSICS REMAINING EXPERIMENTS --- COVER 1 LAKH EXPERIMENT FROM ALL CHAPTERS TILL PHD", then "GO P0 + P1".
+Plan written first: `docs/PRAYOG_PHYSICS_LAKH_PLAN.md` (P0 count, P1 rig engine, P2-P5 levels, P6 variants, P7 find it, P8 card).
+
+### P1 - the rig engine (a lab is now RIG + SPEC)
+- `server/app/prayog/specs.py`: a family file `prayog/families/<base-lab-id>.json` lists variants of one set-up - another
+  sample, method, unknown, level or condition - as DATA. `apply()` makes a full lab: id `<base>--<key>`, `lab.rig` = the
+  base, the variant's params (the hidden unknown among them, its knob moved to that value), `lab.variant`
+  {sample, method, unknown, note, source}, and the lab's OWN NCERT check re-run on the NEW numbers. A `grid` block is the
+  generator: the product of its axes, titles filled from each item's label.
+- `service.py`: `index()` = one summary row per experiment (no lab built), `search_page()` = filters (q, level, chapter,
+  base, variants) + paging + total, `_variant()` builds a variant lab on first open and caches it. A variant that fails the
+  checker or its check is logged and NEVER served; a bad family file is skipped, not fatal.
+- `studio.js` runs `DEFS[lab.rig || lab.id]`, and the Theory step shows a "This experiment" box (sample / method / what you
+  will find / note). `lab.html` loads the family's rig. `GET /api/prayog/labs` is paged; console `index.html` and the phone
+  `prayog_screen.dart` list set-ups with "N experiments" and search every variant on the server.
+- `lsl.py` accepts `rig`, `variant`, `chapter`. `tools/prayog_serve.py` serves Prayogshala alone for the walk;
+  `tools/prayog_walk.js` pages the whole catalogue and takes `BASE=<id>` and `SHARD=i/n`; `.github/workflows/prayog-walk.yml`
+  walks everything in 4 shards on every Prayogshala change.
+- RULE found while building: a variant's params must be names the kernel already knows, and a knob's min/max must use the
+  ROUNDED value (1e-5 gave value 10.0 but min 10.000000000000002, and the variant failed its own check).
+
+### The 22 families (real constants, each with its source)
+- MECHANICS: g at 6 Indian cities (WGS84 Somigliana + free-air), 3 bob materials; 11 spring wires (k = Gd^4/8D^3N, Shigley
+  Table 10-5) + 2 unknown springs; 8 friction pairs (CRC, Serway); 12 ball-in-liquid pairs (glycerine / 90% / castor oil at
+  20 and 30 C, silicone 1000 cSt; Segur & Oberstar, Kaye & Laby, DOWSIL).
+- HEAT + WAVES: cooling in 2 rooms + glycerol / olive oil; Boyle at 2 temperatures, 2 trapped volumes, 2 altitudes (ICAO);
+  8 metals by CRC specific heat; 8 forks of the 256 Hz school set; 8 sonometer wires (SWG + densities).
+- ELECTRICITY: nichrome / constantan / manganin at SWG 24-32 (Kaye & Laby + BS 3737) for Ohm and the metre bridge; Daniell /
+  zinc-carbon / alkaline / polarised cells; 1N4001, 1N4148, Ge, 1N5819 and 4 LEDs (LTspice standard.dio, Kingbright);
+  E-series capacitor sets + an unknown-C mode (IEC 60063 / 60384-4); 100 / 500 turn coils, ferrite and NdFeB N35 magnets.
+- OPTICS + MEASUREMENT: SCHOTT BK7 / BaK4 / F2 / SF10, PMMA, fused silica, water and glycerol (hollow prism); mirror R and
+  lens f sets; 12 SWG wires on the screw gauge; steel balls (ISO 3290-1) and ₹1/₹2/₹5/₹10 coins (G.S.R. 184(E), 2019).
+- PROOF: 198 experiments, every one opened in headless Chromium and run through its own buttons: **198/198 PASS**, each
+  result within tolerance of its true value. 35 server tests (`test_prayog_variants.py` + `test_v0418_prayog.py`).
+
+### P0 - the honest count (`python -m app.prayog.count`)
+`prayog/syllabus/physics/<level>.json` = every distinct set-up of a level, chapter by chapter, each citing its syllabus:
+
+| Level | Set-ups | Variants | Sources read as the real document |
+|---|---|---|---|
+| Class 6-10 | 88 | 169 | 0 of 9 |
+| Class 11-12 | 71 | 174 | 0 of 5 |
+| B.Sc / B.Tech | 318 | 713 | 5 of 7 (DU LOCF 2019 + UGCF 2022, UGC LOCF, HNBGU, Gurugram) |
+| M.Sc | 218 | 1,237 | 5 of 8 (DU M.Sc 2025-26, IIT Kanpur PHY 461/462, CU Kerala, SGGU, MLSU) |
+| PhD techniques | 112 | 1,061 | 2 of 34 (MIT OCW 8.13-14) |
+| **TOTAL** | **807** | **3,354** | **12 of 63** |
+
+**SAID PLAINLY: 1 lakh is NOT reachable from the real syllabi.** The plan estimated ~2,200 set-ups x ~45 variants; the real
+counted figures are 807 set-ups and ~4 variants each. Reaching 1 lakh would need ~30 invented variants per set-up, i.e.
+near-duplicates. The agents listed only what the documents name and refused to pad. Two honest gaps remain: ncert.nic.in and
+cbseacademic.nic.in did not answer from the sandbox (every school row is "from knowledge of the document", 0 checked), and
+many state-university B.Sc classics are missing for the same reason - worth a few hundred set-ups, not 97,000.
+
+NOT VERIFIED: the school rows against the real NCERT / CBSE PDFs; most PhD rows against their textbooks; any of this on a
+low-end Android phone.
