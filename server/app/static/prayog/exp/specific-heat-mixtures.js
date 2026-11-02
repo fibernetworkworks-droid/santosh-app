@@ -48,8 +48,10 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
   var hl = S.label('HOT PLATE  ·  1 kW', { w: 0.07, ratio: 0.14, color: '#3b3b3b' }); hl.position.set(HX - 0.005, 0.034, HZ + 0.0855); heater.add(hl);
   S.contact(0.24, 0.24, HX, HZ, 0.55);
   var BR = 0.046, BH = 0.115;
-  var beaker = S.beaker(BR, BH, [HX, PLATE, HZ], 0xc4dde6, 0.62);
-  var bubbles = []; for (var i = 0; i < 16; i++) { var b = S.mesh(new T.SphereGeometry(0.0022 + (i % 3) * 0.0008, 8, 6), new T.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, transparent: true, opacity: 0.55 }), false);
+  var beaker = S.beaker(BR, BH, [HX, PLATE, HZ]);
+  var bw = S.mesh(new T.CylinderGeometry(BR * 0.95, BR * 0.95, BH * 0.62, 36), new T.MeshStandardMaterial({ color: 0x8cc4dc, roughness: 0.05, metalness: 0.05, transparent: true, opacity: 0.55, depthWrite: false }), false);
+  bw.position.y = 0.002 + BH * 0.31; bw.renderOrder = 2; beaker.add(bw);
+  var bubbles = []; for (var i = 0; i < 16; i++) { var b = S.mesh(new T.SphereGeometry(0.0022 + (i % 3) * 0.0008, 8, 6), new T.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, transparent: true, opacity: 0.8 }), false); b.renderOrder = 3;
     b.userData = { ph: i / 16, x: (((i * 37) % 17) / 17 - 0.5) * 0.06, z: (((i * 53) % 13) / 13 - 0.5) * 0.06 }; b.visible = false; S.scene.add(b); bubbles.push(b); }
   // the metal: a cylinder on a wire gauze platform in the boiling water
   var BLOCK_R = 0.017, BLOCK_H = 0.032;
