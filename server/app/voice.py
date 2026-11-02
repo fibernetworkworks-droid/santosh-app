@@ -175,6 +175,7 @@ Doing real work
 - Use your tools instead of only talking about it. Before a tool that takes a moment, say ONE short, varied line ("ek sec", "dekhta hoon", "ruko, check karta hoon"), then call it; not while the user is still talking. When the result comes, lead with the answer and do not repeat the filler.
 - Slow tools (a website, her PC, a search, mail, Drive, santosh_kaam) run in the background: say ONE short line ("dekh raha hoon"), keep talking with her normally, and give the result only when it arrives - never guess or invent it meanwhile. Quick tools (reminders, lists, weather, alarms) answer at once.
 - Never say something is done before the tool says so. If a tool fails, say "ek sec, doosra tareeka try karta hoon" and actually try the next way (a known fix in the result, other input, another tool; a bigger job goes to santosh_kaam). Never read an error out.
+- ANY job you have no tool for on this call - Sheets formatting / tabs / sharing, Drive access / comments / versions, Forms edits, YouTube upload / edits / replies, Slides arranging, WhatsApp campaigns and templates, ERP / CRM / business desks, data files, official statistics (MoSPI), IndiaMART prices, Tally entries, documents, games, CAD - goes to santosh_kaam with her exact words: Hoola can do it, the full brain has every tool. Never say 'nahi kar sakta' or 'yeh call pe nahi hota' before santosh_kaam has tried; anything that sends, deletes, shares or pays still comes to her phone as a card.
 - A MULTI-STEP goal ("order kar do...", "ye pura kaam kar do...") goes to santosh_kaam as ONE request with the WHOLE goal and its details — never split it into piecewise asks, never say "nahi ho paya" before santosh_kaam has tried. It keeps going after this call ends if it must, and the result lands in chat + a note.
 - A result that arrives late: first say what it is about ("woh jo aapne poochha tha, kal ki meeting..."), then the answer.
 - If santosh_kaam says the job is still working, carry on chatting. When a note says it is done or could not be finished, tell the user in a line or two.
@@ -276,6 +277,33 @@ VOICE_TOOL_BUDGET = 150_000   # characters of tool JSON sent to Gemini Live (v0.
 def via_kaam(name: str) -> bool:
     base = name[:-6] if name.endswith("_dekho") else name
     return name in VOICE_VIA_KAAM or base in VOICE_VIA_KAAM
+
+
+_REGISTRY: set[str] = set()
+
+
+def registered(name: str) -> bool:
+    """v0.442 SAB KAAM CALL PAR: is `name` one of Hoola's chat tools at all? A call reaches EVERY one of them - the 105
+    declared ones directly, everything else through santosh_kaam (the full brain) - never 'Unknown tool'. The list is
+    read once from the chat registry (the tools the full brain really has)."""
+    if not _REGISTRY:
+        try:
+            from .agent import tools as _t
+            _REGISTRY.update(t["name"] for t in getattr(_t, "TOOLS", []) if isinstance(t, dict) and t.get("name"))
+            _REGISTRY.update(getattr(_t, "HANDLERS", {}).keys())
+        except Exception:
+            log.exception("voice: tool registry unreadable")
+            return False
+    return name in _REGISTRY
+
+
+def call_route(name: str) -> str:
+    """How a call reaches a tool: 'declared' (the live model calls it), 'kaam' (santosh_kaam runs it), '' (no such tool)."""
+    if name in VOICE_TOOL_NAMES and not via_kaam(name):
+        return "declared"
+    if (name in VOICE_TOOL_NAMES and via_kaam(name)) or registered(name):
+        return "kaam"
+    return ""
 
 
 def _short(text: str, limit: int) -> str:
@@ -2484,8 +2512,9 @@ class Call:
             out = await asyncio.wait_for(mcp_live.run(self.ctx, self._mcp_route, name, args),
                                          timeout=max(5, get_settings().voice_tool_timeout_s))
             return {"result": out}
-        if name in VOICE_TOOL_NAMES and via_kaam(name):
+        if (name in VOICE_TOOL_NAMES and via_kaam(name)) or (name not in VOICE_TOOL_NAMES and registered(name)):
             # v0.149 not declared in calls: the full brain does it from her words + what Gemini wanted
+            # v0.442 any other Hoola tool too (Sheets formatting, Drive access, campaigns, desks...): never 'Unknown tool' 
             ask = (self.user_buf or "").strip()
             return await self._delegate(f"{ask}\n(Call ne {name} chahiya tha: "
                                         f"{json.dumps(args, ensure_ascii=False, default=str)[:600]})".strip())

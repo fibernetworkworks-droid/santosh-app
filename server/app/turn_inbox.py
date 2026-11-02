@@ -115,8 +115,10 @@ async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenan
     from .agent import run_turn
     mark(inbox_id, "running")
     try:
-        out = await run_turn(conversation_id, text, tenant, voice, context=context, client_id=client_id,
-                             save_user=save_user, **({"place": place} if place else {}))
+        kw = {k: v for k, v in (("context", context), ("client_id", client_id), ("place", place)) if v}
+        if not save_user:
+            kw["save_user"] = False
+        out = await run_turn(conversation_id, text, tenant, voice, **kw)
         mark(inbox_id, "done")
         STATS["done"] += 1
         return out
