@@ -315,7 +315,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           ${(pl.boosts || []).length ? `<h3 class="sc-h">Worth a boost</h3>${pl.boosts.map(x => `<p class="em-small"><a href="${esc(x.permalink)}" target="_blank" rel="noopener">${esc(x.fmt)} · ${esc(x.date)}</a> <b>${esc(String(x.times))}x</b> your normal. <span class="muted">${esc(x.plan)}</span></p>`).join('')}` : ''}</div>
       </div>` : ''}
       ${accs.length ? growthTile(d.growth || {}) : ''}
-      ${accs.length ? '<div class="tile gl sc-ytads" id="scYtAds"><div class="em-h"><h3>YouTube ads</h3></div><div class="empty">Loading…</div></div>' : ''}
+      ${accs.length ? '<div class="tile gl sc-ytads" id="scYtAds"><div class="em-h"><h3>Google ads</h3></div><div class="empty">Loading…</div></div>' : ''}
       ${accs.length ? '<div class="tile gl sc-ytads" id="scMetaAds"><div class="em-h"><h3>Facebook &amp; Instagram ads</h3></div><div class="empty">Loading…</div></div>' : ''}
       ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
         <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
@@ -438,26 +438,43 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     const box = el.querySelector('#scYtAds'); if (!box) return;
     let v;
     try { v = await api('GET', '/api/social/ytads'); }
-    catch (e) { box.innerHTML = `<div class="em-h"><h3>YouTube ads</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
-    const head = `<div class="em-h"><h3>YouTube ads</h3><span class="muted em-small">Your own Google Ads account. An ad is made paused; money is spent only after you tap Start.</span></div>`;
+    catch (e) { box.innerHTML = `<div class="em-h"><h3>Google ads</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const head = `<div class="em-h"><h3>Google ads</h3><span class="muted em-small">YouTube, Search and Performance Max in your own Google Ads account. An ad is made paused; money is spent only after you tap Start.</span></div>`;
     if (!v.configured) { box.innerHTML = head + '<div class="empty">Not set up on the server yet (Google sign-in).</div>'; return; }
     const a = v.account;
     if (!a) { box.innerHTML = head + '<button class="btn go" type="button" id="ytConn">Connect Google Ads</button>'; wireYt(el, box, v); return; }
-    const pick = !a.customer_id ? `<p class="em-small">Which ad account runs your YouTube ads?</p><div class="acts">${(a.customers || []).filter(c => !c.manager).map(c =>
+    const pick = !a.customer_id ? `<p class="em-small">Which ad account runs your Google ads?</p><div class="acts">${(a.customers || []).filter(c => !c.manager).map(c =>
       `<button class="btn soft" type="button" data-ytcust="${esc(c.id)}">${esc(c.name || c.id)} (${esc(c.currency || '')})${c.test ? ' - test' : ''}</button>`).join('') || '<span class="muted">No ad account found in this Google login.</span>'}</div>` : '';
-    const card = d => { const [c, n] = YTS[d.status] || ['', d.status]; const ro = !['draft', 'checked', 'failed'].includes(d.status);
-      return `<div class="em-item sc-ytd" data-did="${esc(d.id)}"><div class="em-meta"><b>${esc(d.video_title || d.video_id || 'New ad')}</b>${tag(c, n)}
-          <span class="muted">${num(d.daily)} ${esc(a.currency || '')} a day x ${num(d.days)} days = ${num(d.total)}${d.stop_on ? ' · until ' + esc(d.stop_on) : ''}</span></div>
-        ${ro ? `<p class="em-small">${d.headlines.map(esc).join(' · ')}</p>` : `<div class="ar-form em-form sc-ytform">
-          <label><span>Video</span><select data-f="video_id">${(v.videos || []).map(x => `<option value="${esc(x.id)}"${x.id === d.video_id ? ' selected' : ''}>${esc(x.title || x.id)} (${num(x.views)} views)</option>`).join('')}<option value="${esc(d.video_id)}"${(v.videos || []).some(x => x.id === d.video_id) ? '' : ' selected'}>${esc(d.video_id || 'Choose')}</option></select></label>
-          <label><span>Headlines (one per line, up to 5, 40 letters each)</span><textarea data-f="headlines" rows="3">${esc(d.headlines.join('\n'))}</textarea></label>
-          <label><span>Long headline (90)</span><input data-f="long_headline" value="${esc(d.long_headline)}"></label>
-          <label><span>Descriptions (one per line, up to 5, 90 each)</span><textarea data-f="descriptions" rows="2">${esc(d.descriptions.join('\n'))}</textarea></label>
-          <label><span>Business name (25)</span><input data-f="business" value="${esc(d.business)}"></label>
-          <label><span>Where the ad leads (https://...)</span><input data-f="final_url" value="${esc(d.final_url)}"></label>
+    const lines = (f, rows, hint, list) => `<label><span>${hint}</span><textarea data-f="${f}" rows="${rows}">${esc((list || []).join('\n'))}</textarea></label>`;
+    const common = d => `<label><span>Where the ad leads (https://...)</span><input data-f="final_url" value="${esc(d.final_url)}"></label>
           <label><span>Daily budget (${esc(a.currency || '')}, up to ${num(v.cap)})</span><input data-f="daily" type="number" min="1" max="${esc(String(v.cap))}" value="${esc(String(d.daily))}"></label>
-          <label><span>Days (1-30)</span><input data-f="days" type="number" min="1" max="30" value="${esc(String(d.days))}"></label>
-          <label class="btn soft sc-up">${d.logo_asset ? 'Change logo' : 'Add logo (square)'}<input type="file" accept="image/*" data-ytlogo="${esc(d.id)}" hidden></label></div>`}
+          <label><span>Days (1-30)</span><input data-f="days" type="number" min="1" max="30" value="${esc(String(d.days))}"></label>`;
+    const places = d => `<label><span>Cities (one per line, empty = all India)</span><textarea data-f="cities" rows="2">${esc((d.cities || []).join('\n'))}</textarea></label>`;
+    const forms = {
+      youtube: d => `<label><span>Video</span><select data-f="video_id">${(v.videos || []).map(x => `<option value="${esc(x.id)}"${x.id === d.video_id ? ' selected' : ''}>${esc(x.title || x.id)} (${num(x.views)} views)</option>`).join('')}<option value="${esc(d.video_id)}"${(v.videos || []).some(x => x.id === d.video_id) ? '' : ' selected'}>${esc(d.video_id || 'Choose')}</option></select></label>
+          ${lines('headlines', 3, 'Headlines (one per line, up to 5, 40 letters each)', d.headlines)}
+          <label><span>Long headline (90)</span><input data-f="long_headline" value="${esc(d.long_headline)}"></label>
+          ${lines('descriptions', 2, 'Descriptions (one per line, up to 5, 90 each)', d.descriptions)}
+          <label><span>Business name (25)</span><input data-f="business" value="${esc(d.business)}"></label>${common(d)}
+          <label class="btn soft sc-up">${d.logo_asset ? 'Change logo' : 'Add logo (square)'}<input type="file" accept="image/*" data-ytlogo="${esc(d.id)}" hidden></label>`,
+      search: d => `${lines('keywords', 4, 'Keywords - what people type on Google (one per line, up to 20)', d.keywords)}
+          <div class="acts"><button class="btn soft" type="button" data-ytideas="${esc(d.id)}">Keyword ideas from Google</button></div><div class="yt-ideas"></div>
+          ${lines('negatives', 2, 'Not these words (one per line, e.g. free, job)', d.negatives)}
+          ${lines('headlines', 5, 'Headlines (one per line, 3 to 15, 30 letters each)', d.headlines)}
+          ${lines('descriptions', 3, 'Descriptions (one per line, 2 to 4, 90 each)', d.descriptions)}
+          ${lines('paths', 2, 'Display path (up to 2 words, 15 letters each)', d.paths)}${places(d)}${common(d)}`,
+      pmax: d => `${lines('headlines', 4, 'Headlines (one per line, 3 to 5, 30 letters each)', d.headlines)}
+          <label><span>Long headline (90)</span><input data-f="long_headline" value="${esc(d.long_headline)}"></label>
+          ${lines('descriptions', 3, 'Descriptions (one per line, 2 to 5, 90 each, one 60 or shorter)', d.descriptions)}
+          <label><span>Business name (25)</span><input data-f="business" value="${esc(d.business)}"></label>${places(d)}${common(d)}
+          <p class="muted em-small">${(d.images || []).length} photo(s) - Hoola cuts each to Google's wide (1.91:1) and square shapes.</p>
+          <div class="acts"><label class="btn soft sc-up">Add photos<input type="file" accept="image/*" multiple data-ytpics="${esc(d.id)}" hidden></label>
+          <label class="btn soft sc-up">${d.logo_asset ? 'Change logo' : 'Add logo (square)'}<input type="file" accept="image/*" data-ytlogo="${esc(d.id)}" hidden></label></div>`,
+    };
+    const card = d => { const [c, n] = YTS[d.status] || ['', d.status]; const ro = !['draft', 'checked', 'failed'].includes(d.status);
+      return `<div class="em-item sc-ytd" data-did="${esc(d.id)}" data-kind="${esc(d.kind)}"><div class="em-meta"><b>${esc(d.title || 'New ad')}</b>${tag('v', d.kind_label)}${tag(c, n)}
+          <span class="muted">${num(d.daily)} ${esc(a.currency || '')} a day x ${num(d.days)} days = ${num(d.total)}${d.kind !== 'youtube' ? ' · ' + esc((d.cities || []).join(', ') || 'all India') : ''}${d.stop_on ? ' · until ' + esc(d.stop_on) : ''}</span></div>
+        ${ro ? `<p class="em-small">${d.headlines.map(esc).join(' · ')}</p>` : `<div class="ar-form em-form sc-ytform">${(forms[d.kind] || forms.youtube)(d)}</div>`}
         ${(d.problems || []).length ? `<p class="em-small warnc">${d.problems.map(esc).join(' ')}</p>` : ''}${d.error ? `<p class="em-small badc">${esc(d.error)}</p>` : ''}
         <div class="acts">${ro ? '' : `<button class="btn soft" type="button" data-ytsave="${esc(d.id)}">Save</button>
           <button class="btn soft" type="button" data-ytact="check" data-id="${esc(d.id)}">Check with Google (free)</button>
@@ -465,10 +482,12 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           ${['created', 'paused'].includes(d.status) ? `<button class="btn go" type="button" data-ytact="start" data-id="${esc(d.id)}" data-total="${esc(String(d.total))}">Start</button>` : ''}
           ${d.status === 'running' ? `<button class="btn soft" type="button" data-ytact="pause" data-id="${esc(d.id)}">Pause</button>` : ''}</div></div>`; };
     box.innerHTML = head + `<p class="muted em-small">Google account ${esc(a.email)}${a.customer_id ? ' · ad account ' + esc(a.customer_id) : ''}${a.error ? ' · ' + esc(a.error) : ''}</p>` + pick +
-      (a.customer_id ? `<div class="acts em-run"><button class="btn soft" type="button" id="ytRead">Read my YouTube ads</button>
+      (a.customer_id ? `<div class="acts em-run"><button class="btn soft" type="button" id="ytRead">Read my Google ads</button>
+        <button class="btn soft" type="button" data-ytnew="search">New Search ad</button>
+        <button class="btn soft" type="button" data-ytnew="pmax">New Performance Max</button>
         <button class="btn soft" type="button" id="ytNew"${(v.videos || []).length ? '' : ' disabled title="Connect YouTube first"'}>New YouTube ad</button></div>
         <div id="ytCamps"></div><div class="sc-items">${(v.drafts || []).map(card).join('')}</div>
-        <p class="muted em-small">Runs on YouTube only (in-stream, in-feed, Shorts) as a Demand Gen campaign, India, your languages. Older in-stream "Video" campaigns cannot be made through Google's API - make those in Google Ads.</p>` : '');
+        <p class="muted em-small">Search = your ad on Google when people type your keywords. Performance Max = one campaign across Search, YouTube, Maps, Gmail and Display (Google needs a conversion goal in your account, and your Business Profile linked once for Maps). YouTube = a Demand Gen video ad on in-stream, in-feed and Shorts.</p>` : '');
     wireYt(el, box, v);
   }
 
@@ -479,18 +498,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       catch (e) { toast(e.message, true); }
     });
     box.querySelectorAll('[data-ytcust]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/account', {customer_id: b.dataset.ytcust}), 'Ad account chosen.')));
+    box.querySelectorAll('[data-ytnew]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/drafts', {kind: b.dataset.ytnew}),
+      'Draft made from your business facts - change anything, then Check with Google.')));
     box.querySelector('#ytNew')?.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/drafts', {video_id: (v.videos[0] || {}).id || ''}), 'Draft made - change anything, then Check with Google.'));
     box.querySelector('#ytRead')?.addEventListener('click', async () => {
       const out = box.querySelector('#ytCamps'); out.innerHTML = '<div class="empty">Reading…</div>';
       try {
         const r = await api('POST', '/api/social/ytads/read');
-        out.innerHTML = (r.campaigns || []).length ? `<table class="em-tbl"><thead><tr><th>Campaign</th><th>Status</th><th>Spent (${esc(r.currency || '')})</th><th>Views</th><th>Cost a view</th><th>Clicks</th><th>Results</th></tr></thead><tbody>${r.campaigns.map(c =>
-          `<tr><td>${esc(c.name)}</td><td>${esc(c.status)}</td><td>${num(c.spend)}</td><td>${num(c.views)}</td><td>${c.cpv == null ? '–' : num(c.cpv)}</td><td>${num(c.clicks)}</td><td>${num(c.conversions)}</td></tr>`).join('')}</tbody></table>
-          ${r.ads_desk ? `<p class="muted em-small">Ads desk: ${esc(r.ads_desk)}</p>` : ''}` : '<div class="empty">No YouTube campaigns in the last 30 days.</div>';
+        out.innerHTML = (r.campaigns || []).length ? `<table class="em-tbl"><thead><tr><th>Campaign</th><th>Type</th><th>Status</th><th>Spent (${esc(r.currency || '')})</th><th>Views</th><th>Cost a view</th><th>Clicks</th><th>Results</th></tr></thead><tbody>${r.campaigns.map(c =>
+          `<tr><td>${esc(c.name)}</td><td>${esc(({SEARCH: 'Search', PERFORMANCE_MAX: 'Performance Max', DEMAND_GEN: 'YouTube', VIDEO: 'YouTube', DISPLAY: 'Display'})[c.type] || c.type || '')}</td><td>${esc(c.status)}</td><td>${num(c.spend)}</td><td>${num(c.views)}</td><td>${c.cpv == null ? '–' : num(c.cpv)}</td><td>${num(c.clicks)}</td><td>${num(c.conversions)}</td></tr>`).join('')}</tbody></table>
+          ${r.terms ? `<p class="muted em-small">${num(r.terms)} search terms went to the Ads desk - it shows the ones spending with no result.</p>` : ''}
+          ${r.ads_desk ? `<p class="muted em-small">Ads desk: ${esc(r.ads_desk)}</p>` : ''}` : '<div class="empty">No Google campaigns in the last 30 days.</div>';
       } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
     });
     const body = card => { const o = {}; card.querySelectorAll('[data-f]').forEach(i => { const f = i.dataset.f;
-      o[f] = ['headlines', 'descriptions'].includes(f) ? i.value.split('\n').map(x => x.trim()).filter(Boolean) : (['daily', 'days'].includes(f) ? Number(i.value) : i.value); }); return o; };
+      o[f] = ['headlines', 'descriptions', 'keywords', 'negatives', 'paths', 'cities'].includes(f) ? i.value.split('\n').map(x => x.trim()).filter(Boolean) : (['daily', 'days'].includes(f) ? Number(i.value) : i.value); }); return o; };
     box.querySelectorAll('[data-ytsave]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/social/ytads/drafts/${encodeURIComponent(b.dataset.ytsave)}`, body(b.closest('.sc-ytd'))), 'Saved.')));
     box.querySelectorAll('[data-ytlogo]').forEach(inp => inp.addEventListener('change', async () => {
       const f = inp.files && inp.files[0]; if (!f) return;
@@ -498,10 +520,29 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       go(async () => { const a = await api('POST', '/api/social/media', undefined, {form: fd});
         await api('POST', `/api/social/ytads/drafts/${encodeURIComponent(inp.dataset.ytlogo)}`, {...body(inp.closest('.sc-ytd')), logo_asset: a.id}); }, 'Logo added.');
     }));
+    box.querySelectorAll('[data-ytpics]').forEach(inp => inp.addEventListener('change', async () => {
+      const files = Array.from(inp.files || []).slice(0, 5); if (!files.length) return;
+      const card = inp.closest('.sc-ytd'), did = inp.dataset.ytpics, had = ((v.drafts || []).find(x => x.id === did) || {}).images || [];
+      go(async () => { const ids = [];
+        for (const f of files) { const fd = new FormData(); fd.append('file', f); ids.push((await api('POST', '/api/social/media', undefined, {form: fd})).id); }
+        await api('POST', `/api/social/ytads/drafts/${encodeURIComponent(did)}`, {...body(card), images: had.concat(ids).slice(-5)}); }, 'Photos added.');
+    }));
+    box.querySelectorAll('[data-ytideas]').forEach(b => b.addEventListener('click', async () => {
+      const card = b.closest('.sc-ytd'), f = body(card), out = card.querySelector('.yt-ideas');
+      out.innerHTML = '<div class="empty">Asking Google Keyword Planner…</div>';
+      try {
+        const r = await api('POST', '/api/social/ytads/ideas', {seeds: (f.keywords || []).slice(0, 10), url: f.final_url || '', cities: f.cities || []});
+        out.innerHTML = (r.ideas || []).length ? `<table class="em-tbl"><thead><tr><th>Idea</th><th>Searches a month</th><th>Competition</th><th>Top-of-page bid (${esc(r.currency || '')})</th><th></th></tr></thead><tbody>${r.ideas.slice(0, 20).map(x =>
+          `<tr><td>${esc(x.text)}</td><td>${num(x.searches)}</td><td>${esc(x.competition)}</td><td>${x.high ? num(x.low) + ' - ' + num(x.high) : '–'}</td><td><button class="btn soft" type="button" data-ytaddkw="${esc(x.text)}">Add</button></td></tr>`).join('')}</tbody></table><p class="muted em-small">${esc(r.note || '')}</p>` : '<div class="empty">Google had no ideas for these words.</div>';
+        out.querySelectorAll('[data-ytaddkw]').forEach(x => x.addEventListener('click', () => {
+          const ta = card.querySelector('[data-f="keywords"]'); const have = ta.value.split('\n').map(y => y.trim()).filter(Boolean);
+          if (!have.includes(x.dataset.ytaddkw)) ta.value = have.concat([x.dataset.ytaddkw]).join('\n'); x.disabled = true; }));
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    }));
     box.querySelectorAll('[data-ytact]').forEach(b => b.addEventListener('click', async () => {
       const act = b.dataset.ytact, id = encodeURIComponent(b.dataset.id);
       if (act === 'create' && !confirm('Create this ad in your Google Ads account? It is made PAUSED - nothing is spent until you tap Start.')) return;
-      if (act === 'start' && !confirm(`Start this YouTube ad? Google can spend up to its daily budget every day, about ${b.dataset.total} in total. You can Pause any time.`)) return;
+      if (act === 'start' && !confirm(`Start this Google ad? Google can spend up to its daily budget every day, about ${b.dataset.total} in total. You can Pause any time.`)) return;
       b.disabled = true;
       go(() => api('POST', `/api/social/ytads/drafts/${id}/${act}`, act === 'start' ? {confirm: true} : {}),
          {check: 'Google checked it - no problems.', create: 'Made in Google Ads, paused.', start: 'Started.', pause: 'Paused.'}[act]);

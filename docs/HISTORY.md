@@ -16118,3 +16118,34 @@ Her apps talk to outside services through DECLARED HTTP actions (data, never cod
 - Tests: tests/test_v0424_jodo.py (4), against a fake service and a fake resolver.
 - NOT VERIFIED: no live provider account has answered. The pack shapes follow each provider's docs, and the first real
   run on a test entry will confirm or correct them. The Google service account and the KYC provider's URL are hers to set up.
+
+## v0.425.0 GOOGLE ADS 2 (ad plan A2) - 2 Nov 2026
+Owner: "GO A2" (from the India ad-market report: A1 Meta one-tap, A2 Google beyond YouTube).
+- **Why:** v0.401 used her Google Ads link only for YouTube (Demand Gen). Search and Performance Max are what Indian
+  shops actually buy on Google, and both need nothing new from Newtika: same OAuth, same Cloud project access (Basic).
+- **Search** (`ads/gads.py`, kind `search`): keywords (phrase match, 1-20), not-these words (campaign negatives, broad),
+  responsive search ad (3-15 headlines of 30, 2-4 descriptions of 90, path1/path2 of 15), cities -> geo targets on the
+  campaign + languages, Maximize clicks (`targetSpend`), Google Search + search partners, no Display.
+  `keyword_ideas` = KeywordPlanIdeaService.GenerateKeywordIdeas (keywordSeed / urlSeed / both, her geo targets, Google
+  Search network): avg monthly searches, competition, low/high top-of-page bid; read-only, free.
+- **Performance Max** (kind `pmax`): budget (not shared), campaign PAUSED with `maximizeConversions`,
+  `brandGuidelinesEnabled: false` (business name + logo on the asset group), places + languages, ONE asset group with
+  text assets (headlines 3-5 x 30, long headline 90, descriptions 2-5 x 90 with one <= 60, business name 25) and image
+  assets: logo + each of her photos centre-cut by Hoola to 1200x628 (1.91:1) and 1200x1200 (Pillow, JPEG) - all in one
+  Mutate (Google requires campaign + asset group together); every asset op comes before the asset-group link that uses it.
+  A missing conversion goal is translated to a plain "Google Ads > Goals > Conversions" line. Local campaigns were folded
+  into Performance Max by Google in 2022, so Maps reach comes through here (Business Profile linked once in Google Ads).
+- **Places:** `geo_targets` = geoTargetConstants:suggest (India); empty = all India; a name Google does not know is
+  NAMED in the error, never silently dropped.
+- **Read:** every campaign type (VIDEO, DEMAND_GEN, SEARCH, PERFORMANCE_MAX, DISPLAY, not REMOVED) by day into the Ads
+  desk, plus `search_term_view` summed over the window as term rows (`google_search_terms.csv`), so the desk's existing
+  "terms spending with no result" leak works on live data.
+- New GAdsDraft columns (nullable defaults): kind, keywords, negatives, paths, cities, images. Old drafts = youtube.
+- Routes: POST /api/social/ytads/drafts takes `kind`; new POST /api/social/ytads/ideas.
+- Tool: `ads` action=google_draft (owner only; draft only) + google_ideas (read-only).
+- UI: console Social Desk tile is now "Google ads" (New Search / New Performance Max / New YouTube, per-kind forms,
+  "Keyword ideas from Google" table with Add, photo upload for PMax, Type column in the read table); phone "Google ads"
+  screen gets the two new buttons, an Edit sheet for every kind, photo + logo pickers.
+- Tests: `server/tests/test_v0425_google_ads2.py` (5) + the v0.401 suite unchanged.
+- NOT VERIFIED against a live Google Ads account; field names follow Google's v26 REST and its AddPerformanceMaxCampaign /
+  AddResponsiveSearchAd / GenerateKeywordIdeas examples. The first real Check will confirm or correct them.

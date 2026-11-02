@@ -184,6 +184,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.425 GOOGLE ADS 2 (A2, `ads/gads.py` kind search / pmax): Search (keywords + Keyword Planner ideas, negatives, RSA, cities) + Performance Max (photos cut to 1.91:1 + 1:1, one asset group) on the same Google link; check -> Create PAUSED -> Start on confirm; read = every type + search terms to the Ads desk; NOT VERIFIED live.
 - v0.417 META ADS (A1, built as 0.409, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
 - v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
   (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
@@ -217,7 +218,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.424.0 (pubspec 0.424.0+468). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.425.0 (pubspec 0.425.0+469). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.418 PRAYOGSHALA IN ENGLISH: all lab text, runtime, catalogue, phone screen and checker messages English (en-IN narration); a test blocks Hinglish.
 - v0.415 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin

@@ -1133,8 +1133,11 @@ class Api {
   Future<String> socialYtAdsConnect() async => (await _send('GET', '/api/social/ytads/connect'))['url'] as String;
   Future<Map<String, dynamic>> socialYtAdsAccount(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/account', body: {'customer_id': id}) as Map);
-  Future<Map<String, dynamic>> socialYtAdsNew(String videoId) async =>
-      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts', body: {'video_id': videoId}) as Map);
+  Future<Map<String, dynamic>> socialYtAdsNew(String videoId, {String kind = 'youtube'}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts', body: {'video_id': videoId, 'kind': kind}) as Map);
+  // v0.425 Google Search + Performance Max drafts share the YouTube ads routes
+  Future<Map<String, dynamic>> socialYtAdsEdit(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id', body: body) as Map);
   Future<Map<String, dynamic>> socialYtAdsAct(String id, String action, {bool confirm = false}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id/$action', body: {'confirm': confirm},
           timeout: const Duration(seconds: 90)) as Map);

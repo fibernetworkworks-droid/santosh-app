@@ -1201,8 +1201,8 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
               child: Row(children: [
                 const Icon(Icons.campaign_rounded, color: C.accent),
                 const SizedBox(width: 10),
-                Expanded(child: Text('YouTube ads', style: display(14))),
-                const Text('Your Google Ads, your tap', style: TextStyle(color: C.muted, fontSize: 12)),
+                Expanded(child: Text('Google ads', style: display(14))),
+                const Text('YouTube, Search, Performance Max', style: TextStyle(color: C.muted, fontSize: 12)),
                 const Icon(Icons.chevron_right_rounded, color: C.muted),
               ]),
             ),
@@ -1594,16 +1594,89 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
       ) ==
       true;
 
+  // v0.425 one edit sheet for every kind (lists are one per line)
+  Future<void> _edit(Map<String, dynamic> d) async {
+    final kind = _s(d['kind']);
+    String ls(dynamic v) => ((v as List?) ?? const []).join('\n');
+    final f = <String, TextEditingController>{
+      'headlines': TextEditingController(text: ls(d['headlines'])),
+      'descriptions': TextEditingController(text: ls(d['descriptions'])),
+      'long_headline': TextEditingController(text: _s(d['long_headline'])),
+      'business': TextEditingController(text: _s(d['business'])),
+      'keywords': TextEditingController(text: ls(d['keywords'])),
+      'negatives': TextEditingController(text: ls(d['negatives'])),
+      'cities': TextEditingController(text: ls(d['cities'])),
+      'final_url': TextEditingController(text: _s(d['final_url'])),
+      'daily': TextEditingController(text: _s(d['daily'])),
+      'days': TextEditingController(text: _s(d['days'])),
+    };
+    Widget box(String k, String label, {int lines = 1, bool numeric = false}) => TextField(
+        controller: f[k], minLines: lines, maxLines: lines > 1 ? 8 : 1,
+        keyboardType: numeric ? TextInputType.number : TextInputType.text, decoration: InputDecoration(labelText: label));
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('Edit ${_s(d['kind_label'])}'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (kind == 'search') box('keywords', 'Keywords (one per line)', lines: 3),
+            if (kind == 'search') box('negatives', 'Not these words (one per line)', lines: 2),
+            box('headlines', kind == 'search' ? 'Headlines (3-15, 30 letters)' : 'Headlines (one per line)', lines: 3),
+            if (kind != 'search') box('long_headline', 'Long headline (90)'),
+            box('descriptions', 'Descriptions (one per line)', lines: 2),
+            if (kind != 'search') box('business', 'Business name (25)'),
+            if (kind != 'youtube') box('cities', 'Cities (one per line, empty = all India)', lines: 2),
+            box('final_url', 'Where the ad leads (https://...)'),
+            box('daily', 'Daily budget', numeric: true),
+            box('days', 'Days (1-30)', numeric: true),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    List<String> lst(String k) => f[k]!.text.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
+    await _do(
+        () => widget.app.api!.socialYtAdsEdit(_s(d['id']), {
+              'headlines': lst('headlines'),
+              'descriptions': lst('descriptions'),
+              if (kind != 'search') 'long_headline': f['long_headline']!.text.trim(),
+              if (kind != 'search') 'business': f['business']!.text.trim(),
+              if (kind == 'search') 'keywords': lst('keywords'),
+              if (kind == 'search') 'negatives': lst('negatives'),
+              if (kind != 'youtube') 'cities': lst('cities'),
+              'final_url': f['final_url']!.text.trim(),
+              'daily': int.tryParse(f['daily']!.text.trim()) ?? d['daily'],
+              'days': int.tryParse(f['days']!.text.trim()) ?? d['days'],
+            }),
+        'Saved.');
+  }
+
+  Future<void> _pick(Map<String, dynamic> d, {required bool logo}) async {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90, maxWidth: 1600);
+    if (x == null) return;
+    final bytes = await x.readAsBytes();
+    await _do(() async {
+      final a = await widget.app.api!.socialUpload(x.name, bytes);
+      final had = ((d['images'] as List?) ?? const []).map((e) => '$e').toList();
+      return widget.app.api!.socialYtAdsEdit(_s(d['id']), logo ? {'logo_asset': _s(a['id'])} : {'images': [...had, _s(a['id'])]});
+    }, logo ? 'Logo added.' : 'Photo added.');
+  }
+
   Widget _draft(Map<String, dynamic> d, String cur) {
     final st = _s(d['status']);
     final probs = ((d['problems'] as List?) ?? const []).map((e) => '$e').toList();
+    final kind = _s(d['kind']);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Glass(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text(_s(d['video_title']).isEmpty ? _s(d['video_id']) : _s(d['video_title']),
+            Expanded(child: Text('${_s(d['kind_label'])} · ${_s(d['title']).isEmpty ? _s(d['video_id']) : _s(d['title'])}',
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5))),
             _Tag(_st[st] ?? st, st == 'running' ? C.ok : (st == 'failed' ? C.bad : C.warn)),
           ]),
@@ -1615,6 +1688,13 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
           if (_s(d['error']).isNotEmpty) Text(_s(d['error']), style: const TextStyle(color: C.bad, fontSize: 12.5)),
           Wrap(spacing: 8, children: [
             if (['draft', 'checked', 'failed'].contains(st)) ...[
+              TextButton(onPressed: _busy ? null : () => _edit(d), child: const Text('Edit')),
+              if (kind == 'pmax')
+                TextButton(onPressed: _busy ? null : () => _pick(d, logo: false),
+                    child: Text('Add photo (${((d['images'] as List?) ?? const []).length})')),
+              if (kind != 'search')
+                TextButton(onPressed: _busy ? null : () => _pick(d, logo: true),
+                    child: Text(_s(d['logo_asset']).isEmpty ? 'Add logo' : 'Change logo')),
               TextButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.socialYtAdsAct(_s(d['id']), 'check'), 'Google checked it.'),
                   child: const Text('Check with Google')),
               FilledButton(
@@ -1628,7 +1708,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
             if (['created', 'paused'].contains(st))
               FilledButton(
                   onPressed: _busy ? null : () async {
-                    if (await _confirm('Start this YouTube ad?',
+                    if (await _confirm('Start this Google ad?',
                         'Google can spend up to ${_num(d['daily'])} $cur a day, about ${_num(d['total'])} $cur in total. You can Pause any time.', 'Start')) {
                       _do(() => widget.app.api!.socialYtAdsAct(_s(d['id']), 'start', confirm: true), 'Started.');
                     }
@@ -1652,7 +1732,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
     if (v == null) {
       kids.add(const Center(child: CircularProgressIndicator()));
     } else if (v['configured'] != true) {
-      kids.add(const Text('YouTube ads are not set up on the server yet (Google sign-in).', style: TextStyle(fontSize: 14)));
+      kids.add(const Text('Google ads are not set up on the server yet (Google sign-in).', style: TextStyle(fontSize: 14)));
     } else if (a == null) {
       kids.addAll([
         const Text('Connect your own Google Ads account. Hoola makes ads PAUSED; money is spent only after you tap Start.',
@@ -1671,7 +1751,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
       kids.add(Text('Google account ${_s(a['email'])}${_s(a['customer_id']).isEmpty ? '' : ' · ad account ${_s(a['customer_id'])}'}',
           style: const TextStyle(color: C.muted, fontSize: 12.5)));
       if (_s(a['customer_id']).isEmpty) {
-        kids.add(const Padding(padding: EdgeInsets.only(top: 10), child: Text('Which ad account runs your YouTube ads?')));
+        kids.add(const Padding(padding: EdgeInsets.only(top: 10), child: Text('Which ad account runs your Google ads?')));
         for (final c in _list(a['customers']).where((c) => c['manager'] != true)) {
           kids.add(ListTile(
             dense: true,
@@ -1684,11 +1764,19 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
         final vids = _list(v['videos']);
         kids.add(Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Wrap(spacing: 8, children: [
+          child: Wrap(spacing: 8, runSpacing: 6, children: [
+            OutlinedButton(
+                onPressed: _busy ? null : () => _do(() => widget.app.api!.socialYtAdsNew('', kind: 'search'),
+                    'Search ad draft made from your business facts. Tap Edit to change it.'),
+                child: const Text('New Search ad')),
+            OutlinedButton(
+                onPressed: _busy ? null : () => _do(() => widget.app.api!.socialYtAdsNew('', kind: 'pmax'),
+                    'Performance Max draft made. Add photos and your logo.'),
+                child: const Text('New Performance Max')),
             OutlinedButton(
                 onPressed: _busy || vids.isEmpty ? null : () => _do(() => widget.app.api!.socialYtAdsNew(_s(vids.first['id'])),
-                    'Draft made from your latest video. Edit the words on the computer console if needed.'),
-                child: const Text('New ad from my latest video')),
+                    'Draft made from your latest video. Tap Edit to change the words.'),
+                child: const Text('YouTube ad from my latest video')),
           ]),
         ));
         for (final d in _list(v['drafts'])) {
@@ -1697,7 +1785,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
       }
     }
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('YouTube ads')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Google ads')),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
