@@ -371,8 +371,8 @@
     if (area === 'staff' && schema.approvals) items.push(['approvals', t.approvals]);
     if (area === 'staff') items.push(['members', t.members], ['matrix', t.matrix]);
     if (area === 'staff' && admin_()) items.push(['audit', t.audit]);
-    if (schema.live) items.push(['chat', area === 'staff' ? t.msgs : t.chatus]);          // v0.454 live chat
-    if (schema.live && schema.live.queue) items.push(['queue', t.queue]);              // v0.454 clinic queue
+    if (schema.live) items.push(['chat', area === 'staff' ? t.msgs : t.chatus]);          // v0.456 live chat
+    if (schema.live && schema.live.queue) items.push(['queue', t.queue]);              // v0.456 clinic queue
     items.push(['me', t.account]);
     items.forEach(function (it) { nav.appendChild(el('a', {href: '#/' + area + '/' + it[0], 'data-r': it[0], text: it[1]})); });
     function route() {
@@ -403,7 +403,7 @@
     if (shell.bound) removeEventListener('hashchange', shell.bound);
     shell.bound = route; addEventListener('hashchange', route);
     route();
-    if (schema.live) {                                   // v0.454 the page redraws itself when the data changes
+    if (schema.live) {                                   // v0.456 the page redraws itself when the data changes
       var dot = el('span', {'class': 'hs-live', 'aria-live': 'polite'}); nav.appendChild(dot); LIVE.dots.push(dot); paintDot();
       LIVE.views.push(function () {
         var busy = main.querySelector('form') && main.contains(d.activeElement);
@@ -833,7 +833,7 @@
     });
   }
 
-  // ---------------------------------------------------------------- v0.454 ABHI ABHI WEBSITE: live channel, chat, queue, push
+  // ---------------------------------------------------------------- v0.456 ABHI ABHI WEBSITE: live channel, chat, queue, push
   var LIVE = {on: false, last: '', ctl: null, views: [], dots: [], online: {}, chat: null, typing: null, wait: 1000, timer: 0};
   function paintDot() {
     var staffOn = Object.keys(LIVE.online).filter(function (k) { return LIVE.online[k].staff; }).length;

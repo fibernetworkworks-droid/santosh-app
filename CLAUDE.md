@@ -184,7 +184,6 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- v0.454 ABHI ABHI WEBSITE (web Step 5 = W6 + W7, `site/livesite.py` + `site/webpush.py`): linked websites get the live SSE (read-rule filtered, replay), visitor <-> team chat (her reply = her tap), clinic queue (tokens under lock, TV board numbers only, ONE "turn near" SMS via her approved connector), browser push only after her tap (RFC 8291/8292); connectors: `remind` trigger (once per booking, never cancelled), `queue`, HubSpot, Composio (her account), signed website webhooks; console Live panel.
 - v0.453 EDUCATION + ENTERPRISE IN THE HUB: AI Employees gains "Education, Research & Lab" (tutor / school office / curriculum / research / register / Prayogshala) + "Enterprise Systems & ERP" (the 10 enterprise roles); hiring adds the desk and gates NOTHING (tools stay open, tested); console Education Desk (tabs + Send / Not send share cards + labs); Enterprise Open desk = Systems on that role; phone opens each employee on its own screen.
 - v0.451 AI EMPLOYEES PREMIUM (built as 0.447): console AI Employees = department hub (4 dept cards, line art drawn once) -> equal-size role cards (filter / search) + detail panel with trust ladder and the real Hire / Pause / Resume / Leave; grid-auto-rows:1fr, motion once, reduced motion / calm off; Library above Create. Console only.
 - v0.443 AI EMPLOYEES PEHLE: console sidebar "Employees" -> "AI Employees", moved FIRST (above Create), person+spark icon; hub heading / title / desk links renamed. Console only.
@@ -198,6 +197,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.450 BUCKLING + GEAR TEETH: `fea.buckling` (K + lambda Kg) = the load factor at which a slender part FOLDS (Euler to 0.1 %, mode 2 = 9x mode 1, says whether buckling or strength limits it, below min_lf it is redesigned) + `calc.column` Euler / Johnson; `engineering/gears.py` = the REAL trochoid hobbed root in H.spur_gear (was a sharp corner) + ISO 6336 bending / pitting on the pair (H.gear_duty, calc kind=gear), critical section proved two independent ways within 1 %, undercut measured (~12 teeth with a rounded hob, not the textbook 17).
 - v0.431 FRICTION + BACKLASH + CAM CONTACT: H.joint(bearing=..., pin_d, friction, damping) = mu x real joint load in the MuJoCo move (motors pay, energy lost), H.couple(backlash=) = tip play vs H.robot(accuracy_mm) + a gap in the sim (lost motion, knocks), H.disc_cam contact = designed return spring / jump check / Hertz / guide jam.
 - v0.426 CAMS + SLOTS + DYNAMICS (built as 0.425; `engineering/cams.py` H.disc_cam from the follower motion + pressure / undercut / cusp checks, joint kind `slot`, `dynamics.py` MuJoCo move in her time: torque / saturation / loop gap, motors sized x1.25); VPS `pip install mujoco`.
+- v0.455 SURAKSHIT LOGIN + SURAKSHA GATE (Pillar I, built as 0.442 / 0.446 / 0.453, `appmaker/sign.py` + `gates.py`): native apps get v0.434's login engine (one account with her website) - mobile OTP, Google / Apple verified ON THE SERVER (signature, her aud, single-use nonce; no provider secret), sessions she can end, staff TOTP 2FA, DPDP consent + my-data; six security gates read the real build (secrets, permissions, release settings, OSV.dev CVEs, login + data rules) and a FAIL blocks the Play upload / App Store submit; kits SignIn.kt/.swift + hoola_security.
 - v0.435 PARIVAAR (Pillar H, built as 0.426 / 0.433, `appmaker/family.py`): rider / partner shop / staff apps = own projects on the MAIN backend (by_key -> home); partners apply, she approves; rider = ready jobs w/o phone, take under lock, his steps; shop = only its orders (no phone) + own menu; web admin /app-admin/<key>; kits Partner.kt/.swift.
 - v0.417 META ADS (A1, built as 0.409, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
 - v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
@@ -232,8 +232,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.454.0 (pubspec 0.454.0+499). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.456.0 (pubspec 0.456.0+501). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.456 ABHI ABHI WEBSITE (web Step 5 = W6 + W7, `site/livesite.py` + `site/webpush.py`): linked websites get the live SSE (read-rule filtered, replay), visitor <-> team chat (her reply = her tap), clinic queue (tokens under lock, TV board numbers only, ONE "turn near" SMS via her approved connector), browser push only after her tap (RFC 8291/8292); connectors: `remind` trigger (once per booking, never cancelled), `queue`, HubSpot, Composio (her account), signed website webhooks; console Live panel.
 - v0.452 DUKAAN PLUS (web Step 4B): `site/shopplus.py` = website GST invoice / credit note on HER ONE series (hidden `_web_orders` app rows), AutoPay plans for website members, marketplace (seller apply -> her approval, commission, Route account, product moderation, transfer once), Shiprocket (her tap: AWB + label, tracking), wishlist + opted-in cart reminders she sends herself.
 - v0.446 DUKAAN PAISA (web Step 4 part 1): `site/shoppay.py` = website shop online payments through HER gateway on the app engine (paid only from signed webhook / status read, amount must match, unpaid released after 3 h, late money kept, refunds her tap), coupons applied by the server (once per mobile), verified-buyer reviews (delivered orders only, her hide). Not yet: website GST invoices, marketplace, courier, wishlists.
 - v0.441 PRAYOGSHALA STUDIO (built as 0.435): all 22 labs in the realistic studio (`static/prayog/studio/studio.js` engine + `exp/<id>.js` per lab, contract `docs/PRAYOG_STUDIO.md`): real equipment, gloved hand, theory -> steps -> record book -> graph -> viva, Ask Hoola per lab (`/api/prayog/ask`); `tools/prayog_walk.js` = 22/22 within tolerance.
@@ -278,6 +279,24 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.381 SHIKSHA SUITE 0+1: `app/pylab` locked Python sandbox (tool `pylab`), `app/shiksha` (classes, learners + guardian
   consent, shared question bank, gradebook, `frameworks.json`), `app/pathyakram` curriculum & exam designer (papers, plans, rubrics).
 - v0.382 DIMAAG (App Phases 43-46 = Pillar A, `appmaker/logic/`: lang.py own locked interpreter, spec.py checker, engine.py hooks + approvals + schedules/SLA, service.py Opus draft -> her tap): links / formulas / rules / unique / workflows + maker-checker approvals / triggers / timed jobs / tested functions; kits Logic.kt / Logic.swift (RefField, WorkflowBox, RelatedBlock, AutoForm, hoola_approvals, hoola_data); `/api/apps/<ref>/logic*`, app `/approvals`, `/related/`, `/fn/`.
+- PLAN: `docs/CODING_HARNESS_PLAN.md` - researched (Claude Code docs, Anthropic engineering, SWE-agent paper, Cursor / Codex /
+  Jules / Devin / Aider / OpenHands): how long continuous coding + debugging actually works, and the 4 gaps in Hoola's dev loop.
+  The short of it: the HARNESS scores as much as the model (SWE-agent, model fixed: a linter guardrail on the edit tool +3.0,
+  whole file instead of a 100-line window -5.3, full history instead of last-5 observations -3.0); without a pass/fail command
+  the agent only knows "looks done" and SHE is the test suite; "compaction isn't sufficient" for long work - Anthropic use a
+  JSON feature list (flip `passes` only), progress notes, a commit per session and a session-start ritual; every competitor runs
+  code in a container / VM with the network off by default. Hoola gaps: no execution of her code, no context management in the
+  coding loop, no failure-first truncation / searchable log, no session handoff. Phases H1-H7; H3 (the lab) is blocked on an
+  isolation decision - this VPS has no `unshare -rn` and the per-user cloud VM is inside the PC freeze. Read it before touching
+  the dev loop.
+- v0.454 TWO DEFECTS + GAME ARENA (built as 0.447; `gamedesk/arena.py`, tool game_arena, owner only): (1) `service.MONEY_OUT`
+  + `bible.money_out` refuse a reward that leaves the game as money (Rule 9 - "coins withdrawable to UPI" was being BUILT and is
+  non-bailable for her user); (2) /mcp/gamedesk now serves MCP 2026-07-28 too (no `initialize`: version in `_meta` / the
+  MCP-Protocol-Version header, `server/discover` MUST, -32022) AND the legacy handshake. (3) THE ARENA: 500 fixed seeded briefs
+  (20 genres x 25 Indian settings), runs built as `__gamearena__` and judged by PLAYING (QA bots: started / responds vs the idle
+  run / reached an ending / fps / errors), originality = design-DNA distance from every other game of the run (Apple 4.3(b), not
+  taste), independent judge on the first 30 s, run-vs-run compare that says when a comparison is unfair, blind duels vs a rival's
+  public game; `fun` always NOT ASSESSED. NOT VERIFIED: no real run built yet, so no numbers for any Hoola version yet.
 - PLAN: `docs/GAME_MOAT_PLAN.md` - the Game Desk's moat, researched (competitors, Indian market + law, engine gates). The
   short of it: MCP-drives-an-engine is COMMODITY (Unity ships its own free, into Claude Code); the unowned white space is
   QA -> builds -> store -> live ops as ONE product = what v0.416 + v0.432 already are, unproven; no game Arena exists so nothing

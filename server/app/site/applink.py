@@ -214,7 +214,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         out = BE.public_schema(p)
         out["security"] = {"otp": bool(SEC.provider()), "consent": True}       # v0.434 what the login box may offer
         from . import livesite as LS
-        out["live"] = {"queue": bool(LS.cfg(p).get("on")), "push": True}       # v0.454 live channel / chat / queue / push
+        out["live"] = {"queue": bool(LS.cfg(p).get("on")), "push": True}       # v0.456 live channel / chat / queue / push
         return out
     if op == "signup":                                   # v0.434 DPDP: the website's sign-up needs her tick
         # the new page script always sends the tick (true / false); a page built before v0.434 sends nothing - it still
@@ -267,7 +267,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         if op == "export":
             return SEC.export(site, BE.schema(p), w.m)
         out = BE.delete_me(p, w)
-        try:                                            # v0.454 her browsers' notification addresses go with her account
+        try:                                            # v0.456 her browsers' notification addresses go with her account
             from . import webpush as WP
             WP.forget_member(site, w.m.id)
         except Exception:                               # noqa: BLE001
@@ -294,7 +294,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         if op == "pay_subs":
             return PY.my_subs(p, w)
         return PY.cancel_sub(p, w, str(kw.get("sid") or ""))
-    if op in LIVE_OPS:                                   # v0.454 live chat / presence / queue / browser notifications / hooks
+    if op in LIVE_OPS:                                   # v0.456 live chat / presence / queue / browser notifications / hooks
         return _live_op(site_id, p, w, op, body, ua, **{k: v for k, v in kw.items() if k != "ua"})
     if op == "rows":
         return {"rows": BE.rows(p, kw["key"], w)}
@@ -331,7 +331,7 @@ LIVE_OPS = ("chat_mine", "chat_write", "chat_threads", "chat_thread", "chat_repl
 
 
 def _live_op(site_id: str, p, w: W.Who, op: str, body: dict[str, Any], ua: str, **kw) -> dict[str, Any]:
-    """v0.454 ABHI ABHI WEBSITE: the website's live features on its linked app (site/livesite.py, appmaker/baat.py)."""
+    """v0.456 ABHI ABHI WEBSITE: the website's live features on its linked app (site/livesite.py, appmaker/baat.py)."""
     from ..appmaker import backend as BE
     from ..appmaker import baat as BT
     from ..appmaker import live as LV

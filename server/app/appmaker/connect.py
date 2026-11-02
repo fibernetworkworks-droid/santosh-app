@@ -49,8 +49,8 @@ from .models import AppProject
 log = logging.getLogger(__name__)
 STATS = {"runs": 0, "ok": 0, "failed": 0, "refused": 0, "hooks": 0, "hooks_bad": 0, "ambiguous": 0}
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
-TRIGGERS = ("manual", "create", "status", "remind", "queue")   # v0.454: a time before a booking / a queue turn near
-QUEUE_COLL = "_queue"                                     # v0.454 the clinic queue's tokens (site/livesite.py)
+TRIGGERS = ("manual", "create", "status", "remind", "queue")   # v0.456: a time before a booking / a queue turn near
+QUEUE_COLL = "_queue"                                     # v0.456 the clinic queue's tokens (site/livesite.py)
 TOOL_RE = re.compile(r"[A-Z][A-Z0-9_]{2,99}")
 AUTH_TYPES = ("none", "bearer", "basic", "header", "query", "login_token", "oauth_refresh", "google_sa")
 MAX_ACTIONS = 40
@@ -251,7 +251,7 @@ def _when(a: dict[str, Any], sch: dict[str, Any]) -> tuple[dict[str, Any], str, 
     trig = str(a.get("trigger") or "manual")
     if trig not in TRIGGERS:
         raise ConnError("Trigger: " + " | ".join(TRIGGERS) + ".", 400)
-    if trig == "queue" or coll == QUEUE_COLL:           # v0.454 the clinic queue: only 'your turn is near'
+    if trig == "queue" or coll == QUEUE_COLL:           # v0.456 the clinic queue: only 'your turn is near'
         if trig != "queue" or coll not in ("", QUEUE_COLL):
             raise ConnError("Queue ke liye trigger 'queue' aur list '_queue'.", 400)
         return colls, QUEUE_COLL, trig, "", {}
@@ -265,7 +265,7 @@ def _when(a: dict[str, Any], sch: dict[str, Any]) -> tuple[dict[str, Any], str, 
         if status not in opts:
             raise ConnError("Status list ke options mein se chuniye.", 400)
     when: dict[str, Any] = {}
-    if trig == "remind":                                # v0.454 a reminder before a booking's date (+ time)
+    if trig == "remind":                                # v0.456 a reminder before a booking's date (+ time)
         own = {f["key"]: f for f in colls[coll]["fields"]}
         df, tf = str(a.get("date_field") or "date"), str(a.get("time_field") or "")
         if df not in own:
@@ -283,7 +283,7 @@ def _when(a: dict[str, Any], sch: dict[str, Any]) -> tuple[dict[str, Any], str, 
 
 
 def _clean_composio(a: dict[str, Any], key: str, sch: dict[str, Any]) -> dict[str, Any]:
-    """v0.454 a Composio app SHE connected (Slack, Notion, HubSpot...) as a site / app action: the tool slug + its
+    """v0.456 a Composio app SHE connected (Slack, Notion, HubSpot...) as a site / app action: the tool slug + its
     arguments, filled from the row. Runs on HER Composio account only; no secrets of hers ride in the arguments."""
     toolkit = str(a.get("toolkit") or "").strip().lower()
     tool = str(a.get("tool") or "").strip().upper()
@@ -308,7 +308,7 @@ def _clean_composio(a: dict[str, Any], key: str, sch: dict[str, Any]) -> dict[st
 def _hash(a: dict[str, Any]) -> str:
     keep = {k: a.get(k) for k in ("method", "url", "headers", "query", "body", "body_type", "auth", "trigger", "coll", "status",
                                   "map", "staff", "idem")}
-    for k in ("kind", "toolkit", "tool", "args", "date_field", "time_field", "before_min"):   # v0.454 (absent = the old hash)
+    for k in ("kind", "toolkit", "tool", "args", "date_field", "time_field", "before_min"):   # v0.456 (absent = the old hash)
         if a.get(k) not in (None, "", {}):
             keep[k] = a.get(k)
     return hashlib.sha256(json.dumps(keep, sort_keys=True, default=str).encode()).hexdigest()[:16]
@@ -710,7 +710,7 @@ def _do(r: AppProject, rid: str) -> dict[str, Any]:
 def _finish(rid: str, st: str, code: int, tries: int, note: str) -> None:
     with session() as s:
         x = s.get(AppConnRun, rid)
-        keep = (x.note or "") if (x.note or "").startswith("[") else ""      # v0.454 a reminder's booking time stays
+        keep = (x.note or "") if (x.note or "").startswith("[") else ""      # v0.456 a reminder's booking time stays
         x.status, x.code, x.attempts, x.note, x.done = st, code, tries, (keep + " " + note).strip()[:600], now()
         if x.created:
             x.ms = int((now() - (x.created if x.created.tzinfo else x.created.replace(tzinfo=timezone.utc))).total_seconds() * 1000)
@@ -752,7 +752,7 @@ def tick(force: bool = False) -> int:
     """Runs queued for more than a minute (the server restarted mid-way) are done now; running > 10 min = failed."""
     ensure_tables()
     try:
-        remind_tick()                                         # v0.454 reminders before a booking
+        remind_tick()                                         # v0.456 reminders before a booking
     except Exception:                                          # noqa: BLE001
         log.exception("connector reminders")
     cut = now() - timedelta(seconds=60)
@@ -774,7 +774,7 @@ def tick(force: bool = False) -> int:
     return n
 
 
-# ---------------------------------------------------------------- v0.454 reminders before a booking (SMS / WhatsApp / email)
+# ---------------------------------------------------------------- v0.456 reminders before a booking (SMS / WhatsApp / email)
 IST = timezone(timedelta(hours=5, minutes=30))
 REMIND_SCAN = 5000
 

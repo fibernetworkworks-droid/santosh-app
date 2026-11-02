@@ -1,4 +1,4 @@
-"""v0.454 WEB PUSH (web Step 5, W6): a website member's browser gets a notification - her order moved, the shop replied in
+"""v0.456 WEB PUSH (web Step 5, W6): a website member's browser gets a notification - her order moved, the shop replied in
 chat, her queue turn is near - ONLY after the visitor said yes twice: the site's own "Notify me" button (a tap, never on
 page load) and then the browser's own permission prompt. No yes = nothing stored, nothing sent.
 
