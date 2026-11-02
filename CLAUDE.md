@@ -186,6 +186,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 ## Current state (latest first, one line each)
 - v0.431 FRICTION + BACKLASH + CAM CONTACT: H.joint(bearing=..., pin_d, friction, damping) = mu x real joint load in the MuJoCo move (motors pay, energy lost), H.couple(backlash=) = tip play vs H.robot(accuracy_mm) + a gap in the sim (lost motion, knocks), H.disc_cam contact = designed return spring / jump check / Hertz / guide jam.
 - v0.426 CAMS + SLOTS + DYNAMICS (built as 0.425; `engineering/cams.py` H.disc_cam from the follower motion + pressure / undercut / cusp checks, joint kind `slot`, `dynamics.py` MuJoCo move in her time: torque / saturation / loop gap, motors sized x1.25); VPS `pip install mujoco`.
+- v0.435 PARIVAAR (Pillar H, built as 0.426 / 0.433, `appmaker/family.py`): rider / partner shop / staff apps = own projects on the MAIN backend (by_key -> home); partners apply, she approves; rider = ready jobs w/o phone, take under lock, his steps; shop = only its orders (no phone) + own menu; web admin /app-admin/<key>; kits Partner.kt/.swift.
 - v0.417 META ADS (A1, built as 0.409, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
 - v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
   (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
@@ -219,7 +220,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.434.0 (pubspec 0.434.0+478). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.435.0 (pubspec 0.435.0+479). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.434 APP PAGES + SURAKSHA (web Step 3, W2 + W3): `hoola-app.js` = in-page app per role (tables sort/search/filter/pages/bulk, detail + linked lists, multi-step forms + uploads, kanban, calendar, approvals, members, audit, matrix, My account); `site/security.py` = phone OTP (MSG91 DLT, hash only), staff TOTP 2FA, sessions + sign out everywhere, DPDP consent / export / delete, journal `by` = audit log, `private` fields. Not built: Google / magic link / passkeys / custom roles.
 - v0.433 SOCH KE JAWAB 4/7: a hard turn's system prompt carries the reasoning recipe (hard.RECIPE_CORE 'SOCH KA TAREEKA'

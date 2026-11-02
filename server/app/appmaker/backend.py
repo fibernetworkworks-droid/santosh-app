@@ -303,7 +303,9 @@ def by_key(app_key: str) -> AppProject:
             raise NotFound()
         s.expunge(r)
     _KEYS[app_key] = (time.time(), r.id)
-    return r
+    from . import family as FA                       # v0.435 PARIVAAR: a rider / shop / staff app uses its main app's backend
+    FA.note_key(app_key, r)
+    return FA.home(r)
 
 
 def who(r: AppProject, token: str) -> W.Who:
@@ -415,6 +417,11 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     from . import backup as BK
     cid = str((body or {}).get("cid") or "") if isinstance(body, dict) else ""
     with BK.acting(w):                                   # v0.434 the journal records who made it
+        if w.m is not None and (w.m.role or "") == "partner":      # v0.435 PARIVAAR: a partner shop's own menu rows
+            from . import family as FA
+            got_p = FA.create(r, coll, body, w, ip)
+            if got_p is not None:
+                return got_p
         if cid and CID.match(cid):
             from . import locks as LK
             with LK.hold(f"cid:{r.id}:{w.id}:{cid}"):
@@ -496,6 +503,11 @@ def _create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = 
             from . import delivery as DL
             DL.confirm(r, out["id"])
     LE.after_create(r, coll, out["id"], w)          # v0.382 formulas stored, triggers, parents' totals
+    try:                                            # v0.435 PARIVAAR: the partner shop this order is for hears it at once
+        from . import family as FA
+        FA.on_create(r, coll, out["id"], out)
+    except Exception:
+        log.debug("family create", exc_info=True)
     try:                                            # v0.424 JODO: her approved connectors listening for a new row (queued)
         from . import connect as CN
         CN.fire(r, coll, out["id"], "create")
@@ -520,6 +532,11 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
          mine: bool = False) -> list[dict[str, Any]]:
     """v0.319 + search (q, any field) and a status filter, newest first; offset pages through them.
     v0.352 every row says who it is with (staff) / the first name on it (her own row); mine = only the rows given to me."""
+    if w.m is not None and (w.m.role or "") == "partner":          # v0.435 PARIVAAR: a partner sees only its own work
+        from . import family as FA
+        got_p = FA.rows(r, coll, w, limit, q, status, offset, mine)
+        if got_p is not None:
+            return got_p
     got = with_assign(r, W.rows(bid(r), schema(r), coll, w, 1000 if (q or status or offset or mine) else limit), w)
     if mine:
         got = [x for x in got if w.id and x.get("assigned_to") == w.id]
@@ -536,6 +553,9 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
     from . import backup as BK
     with BK.acting(w):                               # v0.434 the journal records who made it
+        if w.m is not None and (w.m.role or "") == "partner":      # v0.435 PARIVAAR: checked steps only, then as the system
+            from . import family as FA
+            return FA.update(r, coll, row_id, body, w)
         return _update_inner(r, coll, row_id, body, w)
 
 
@@ -603,6 +623,11 @@ def status_moved(r: AppProject, row_id: str, status: str) -> None:
             CN.fire(r, coll_, row_id, "status", status)
     except Exception:
         log.debug("connect status", exc_info=True)
+    try:                                            # v0.435 PARIVAAR: ready for pickup -> approved riders hear of the job
+        from . import family as FA
+        FA.on_status(r, row_id, status)
+    except Exception:
+        log.debug("family status", exc_info=True)
     if status.strip().lower() != "cancelled":
         return
     _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
@@ -623,6 +648,9 @@ def status_moved(r: AppProject, row_id: str, status: str) -> None:
 def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
     from . import backup as BK
     with BK.acting(w):                               # v0.434 the journal records who made it
+        if w.m is not None and (w.m.role or "") == "partner":      # v0.435 PARIVAAR
+            from . import family as FA
+            return FA.delete(r, coll, row_id, w)
         return _delete_inner(r, coll, row_id, w)
 
 
@@ -709,7 +737,15 @@ def by_key_or_ref(tenant: str, ref: str) -> AppProject:
     return r
 
 
+def data_app(tenant: str, ref: str) -> AppProject:
+    """v0.435 PARIVAAR: the app whose DATA she means - a rider / shop / staff app's data is its main app's."""
+    from . import family as FA
+    return FA.home(by_key_or_ref(tenant, ref))
+
+
 def owner_view(r: AppProject) -> dict[str, Any]:
+    from . import family as FA
+    r = FA.home(r)
     be = ensure(r)
     sch = be["schema"]
     from ..config import get_settings
@@ -721,6 +757,8 @@ def owner_view(r: AppProject) -> dict[str, Any]:
 
 
 def owner_rows(r: AppProject, coll: str, limit: int = 300) -> list[dict[str, Any]]:
+    from . import family as FA
+    r = FA.home(r)
     return rows(r, coll, W.Who(owner=True), limit)
 
 
@@ -732,6 +770,8 @@ def owner_update(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) ->
 
 def _owner_update_inner(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) -> dict[str, Any]:
     """Her change from Hoola; {"assign": member id | ""} gives the row to a staff member (v0.352)."""
+    from . import family as FA
+    r = FA.home(r)
     body = dict(body or {})
     if "assign" in body:
         body[ASSIGN_KEY] = body.pop("assign")
@@ -739,17 +779,24 @@ def _owner_update_inner(r: AppProject, coll: str, row_id: str, body: dict[str, A
 
 
 def members(r: AppProject) -> list[dict[str, Any]]:
+    from . import family as FA
+    r = FA.home(r)
     ensure(r)
     return W.members(bid(r))
 
 
 def set_role(r: AppProject, member_id: str, role: str) -> dict[str, Any]:
+    from . import family as FA
+    r = FA.home(r)
     ensure(r)
     return W.set_role(bid(r), member_id, role)
 
 
 def seed_hint(r: AppProject) -> dict[str, Any]:
     """What the build puts into the app (assets/seed.json 'backend'): the lists, their fields and rules - no data."""
+    from . import family as FA                             # v0.435 PARIVAAR: a face app carries its MAIN app's lists
+    face = FA.face_info(r)
+    r = FA.home(r)
     sch = schema(r)
     out = {"kind": sch.get("kind"), "order": sch.get("order"), "signup": sch.get("signup", True),
            "collections": sch["collections"]}
@@ -778,6 +825,10 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
             out["pay"] = {"on": True, "plans": bool(PY.plans(r)["plans"])}
     except Exception:                                      # noqa: BLE001
         log.debug("pay hint", exc_info=True)
+    if face:
+        out["face"] = face["kind"]
+        if face["kind"] in FA.PARTNER_KINDS:
+            out["partner"] = face["kind"]
     return out
 
 

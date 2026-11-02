@@ -16462,3 +16462,47 @@ NOT BUILT (rest of W2 / W3): Google sign-in and email magic link (Google needs e
 OAuth client; mail needs a sending account), passkeys (plan: later), custom roles such as "vendor" (roles stay member /
 staff / admin), an owner switch that FORCES 2FA on all staff, timeline / map-of-rows views. NOT VERIFIED: MSG91 live
 (written from its OTP API; needs her DLT template + key).
+
+## v0.435.0 PARIVAAR (App Sahayak Pillar H, Phases 58-59) - one business, several apps, one backend + a web admin
+Owner: "START PILLAR H" (docs/COMPLEX_APPS_PLAN.md: multi-app products + web admin). Built as v0.426 / v0.433 in this session (two other sessions took 0.433 / 0.434 first).
+- FACES: a delivery partner (rider) / partner shop (vendor) / staff / customer app is its OWN App Sahayak project (normal
+  plan card -> looks -> design she approves -> Android / iPhone builds, own package, own store listing), marked
+  `plan.face = {of, kind}`. `backend.by_key` notes the face (`family.note_key`) and returns `family.home(r)` = the MAIN
+  app, so every /api/app-api/<face key>/... call runs on the main backend: one set of accounts, lists, rows, logic,
+  payments, connectors, live stream. Nothing copied. `backend.seed_hint(face)` = the main app's lists + `face` +
+  `partner` (rider / vendor) so the face build's screens use the real lists. Owner data routes use `_be_data` (main app);
+  per-app ones (components, crashes, turant, export) keep the face. Tool data actions use `BE.data_app`.
+- PARTNERS (`appmaker/family.py`, table app_partner): a partner applies from its app (POST /partner/request; staff /
+  admin accounts cannot), she or an app ADMIN approves (role "partner"); a partner shop is tied to ONE row of her
+  partner list (the ref the order list points at, e.g. orders.shop -> restaurants). Checked in code on rows / update /
+  create / delete / live / shift:
+  * rider: offers = open, unassigned jobs in her "offer" statuses (default Ready...) WITHOUT phone / e-mail / location,
+    first name only; take = one cross-process lock, first tap wins (409 after), max open jobs (default 3); then the full
+    job (phone, address, route) and only his steps (Picked up -> Out for delivery -> Delivered) + proof fields
+    (signature / photo). Taking reuses `_to` (Pillar D's tracking just works; the shift is open to approved riders).
+  * vendor: only orders whose ref == its shop row, limited view, only its steps (Accepted / Preparing / Ready /
+    Cancelled) and only until a rider has the order; its own rows in lists that point at its shop (menu) - the shop
+    link is set by the server, never by the app; other lists keep their own rules.
+  * writes are checked, then done as the system through the normal path (logic, connectors, push, stock / coupon give
+    back run) and the row remembers `_by` / `_by_kind`. Removed partner: role member + every token stops + his open
+    jobs back in the pool.
+  * push: a new order -> that shop's phones; a job reaching an offer status -> approved riders.
+- WEB ADMIN `/app-admin/<app_key>` (static/appadmin: index.html + admin.js + admin.css; CSP script-src 'self',
+  frame-ancestors 'none', no-referrer): sign in with an app staff / admin account; dashboard (/stats), every list with
+  search, status filter, paging, edit drawer, assign, CSV export (`'` before = + - @ so no cell runs as a formula),
+  partners (approve with the shop picker / refuse / remove - admin only), team roles (admin makes member / staff, never
+  admin, never itself), apps on the business. Data written with textContent only (a test checks no innerHTML).
+  Routes /api/app-api/<key>/admin/{overview, members, members/<id>/role, partners, partners/<id>, export/<coll>}.
+- Her side: /api/apps/<ref>/family (GET), /family/face (POST kind, words), /family/settings (PUT jobs / rider offer +
+  steps + max / vendor steps + link; changing the job list takes THAT list's status words), /family/partners/<pid>.
+  Console "App family" box; phone `lib/ui/app_family.dart`; tool app_banao action=family (face / partner + pdo / shop),
+  app_dekho what=family.
+- Kits: Partner.kt / Partner.swift (PartnerScreen + PartnerJobsBlock: sign-in / apply / waiting / my jobs / new jobs
+  with Take, steps, Call, Route; everything decided by GET /partner/jobs); Auth role "partner" opens ShiftBlock + Track
+  load. Generators add the `hoola_jobs` screen (registry, QA screens list) ONLY in a partner build; the code-made first
+  tab of a partner app starts with PartnerJobsBlock(); the screen writer is told so (`family.prompt_line`).
+- Tests: `server/tests/test_v0435_parivaar.py` (3: food-delivery end to end, web admin + roles, generators).
+- NOT VERIFIED: no real rider / shop phone yet; Partner.kt / Partner.swift compile only on CI; the web admin was not
+  opened in a browser here (its JS was syntax-checked, routes tested); the plan's "React" admin is plain JS on purpose
+  (no build step, same server rules). Not built: a separate partner store listing flow beyond the normal per-app one,
+  payouts to riders (Pillar E's split payouts exist for shops), the food-delivery proof on real phones.

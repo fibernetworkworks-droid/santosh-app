@@ -2581,6 +2581,9 @@ body.albon{overflow:hidden}
 /* v0.425 RANG: custom components */
 .stcomp .ccode { max-height: 240px; overflow: auto; font-size: 12px; background: var(--tint, #f4f4f6); padding: 8px; border-radius: 8px; white-space: pre; }
 .stcomp .cnact { border: 1px solid var(--line, #e5e5ea); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.stfam .cnact { border: 1px solid var(--line, #e5e5ea); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.stfam h5 { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
+.stfam .stchk { display: inline-flex; gap: 4px; align-items: center; margin: 2px 10px 2px 0; font-size: 13px; }
 
 
 /* v0.425 HOOLA RUNTIME + EDITOR */
