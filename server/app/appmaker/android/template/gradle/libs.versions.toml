@@ -11,6 +11,8 @@ lifecycle = "2.9.1"
 coroutines = "1.10.2"
 codeScanner = "16.1.0"
 firebaseMessaging = "24.1.0"
+credentials = "1.5.0"
+googleid = "1.1.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -29,6 +31,10 @@ coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutin
 gms-code-scanner = { group = "com.google.android.gms", name = "play-services-code-scanner", version.ref = "codeScanner" }
 # v0.367 TURANT: Firebase Cloud Messaging - added to an app's build ONLY when she switches instant notifications on
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
+# v0.442 SURAKSHIT LOGIN: "Continue with Google" through Credential Manager - added ONLY when she turns Google login on
+credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
+credentials-play-services = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
+googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

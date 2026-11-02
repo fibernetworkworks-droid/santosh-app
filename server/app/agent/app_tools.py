@@ -120,6 +120,12 @@ APP_TOOLS = [
         "v0.353 RAAY: a finished row carries the customer's own rating (rating 1-5 + rating_note); only that customer gives it, once - "
         "never set or change a rating yourself; a 1-2 star rating already reached her chat. "
         "action=role (app, member, role staff|admin|member) makes an account staff (a staff app's new account sees nothing until then). "
+        "v0.442 action=login (app): the ways into her app - ways [email_password, phone_otp, google, apple], her PUBLIC client "
+        "ids, staff_2fa. Mobile OTP needs a DLT-registered SMS template on the server; Google needs her Google Cloud WEB client "
+        "id; Apple needs the app's bundle id. NEVER ask her for a client SECRET - native sign-in does not use one, and the "
+        "server checks every token itself. action=security_check (app, platform android|ios) runs the security gates on the "
+        "newest build (secrets in the app, permissions, release settings, library CVEs via OSV.dev, login + data rules); a "
+        "FAILING gate blocks the store upload until she fixes it. Read both with app_dekho what=login. "
         "v0.435 PARIVAAR action=family (app): more apps on the SAME data - face=rider (delivery partner app) / vendor (partner shop: "
         "restaurant, seller) / staff -> its own plan card next (same accounts, orders, rules; nothing copied); partner + pdo "
         "approve|refuse|remove decides a partner's application (ONLY on her words; a shop needs shop=<which shop row>). Partners "
@@ -130,7 +136,8 @@ APP_TOOLS = [
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
                                                  "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant",
                                                  "logic", "logic_switch", "approval", "logic_run",
-                                                 "data_safety", "backup_now", "limits", "own_db", "family"]},
+                                                 "data_safety", "backup_now", "limits", "own_db", "family", "login",
+                                                 "security_check"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -173,7 +180,11 @@ APP_TOOLS = [
          "face": {"type": "string", "enum": ["rider", "vendor", "staff", "customer"], "description": "action=family: add this app on the SAME data (rider = delivery partner app, vendor = partner shop / restaurant / seller app, staff = staff app)"},
          "partner": {"type": "string", "description": "action=family: the partner application id (app_dekho what=family) to decide"},
          "pdo": {"type": "string", "enum": ["approve", "refuse", "remove"], "description": "action=family with partner: HER decision (only when she said it)"},
-         "shop": {"type": "string", "description": "action=family pdo=approve for a partner shop: which shop row (id or name) it is"}},
+         "shop": {"type": "string", "description": "action=family pdo=approve for a partner shop: which shop row (id or name) it is"},
+         "ways": {"type": "array", "items": {"type": "string"},
+                  "description": "action=login: the ways into the app - email_password, phone_otp, google, apple (Google alone also turns Apple on: App Store 4.8)"},
+         "ids": {"type": "object", "description": "action=login: her PUBLIC client ids {google_web_client_id, google_ios_client_id, apple_bundle_id, apple_service_id} - no secret is needed or accepted"},
+         "staff_2fa": {"type": "boolean", "description": "action=login: every staff / admin account must keep the authenticator second step"}},
          "required": ["action"]}},
     {"name": "app_dekho", "description": (
         "Read her app designs (nothing changes). what=data (app, coll: the real rows her app's users made) | members (app) | crashes (app: crashes on users' phones) | apps | app (app: board, screens, checks, preview link, versions) | "
@@ -194,7 +205,8 @@ APP_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
-                                             "data", "members", "crashes", "store", "ios", "appstore", "logic", "family"]},
+                                             "data", "members", "crashes", "store", "ios", "appstore", "logic", "family",
+                                             "login"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
          "idea": {"type": "string"}, "coll": {"type": "string"}},
@@ -404,6 +416,35 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return LS.draft(r, words)
         except W.AppError as e:
             raise ToolError(str(e))
+    if action == "login":                     # v0.442 SURAKSHIT LOGIN: the ways into her app
+        if not _owner(ctx):
+            raise ToolError("Login ke tareeke sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import sign as SG
+        from ..site import webapp as W
+        r = BE.data_app(t, ref)
+        try:
+            body: dict[str, Any] = {}
+            for k in ("ways", "ids", "staff_2fa"):
+                if a.get(k) is not None:
+                    body[k] = a[k]
+            v = SG.save_settings(r, body) if body else SG.settings(r)
+        except W.AppError as e:
+            raise ToolError(str(e))
+        v["say"] = ("Login ke tareeke: " + ", ".join(v["ways"]).replace("_", " ")
+                    + (" (" + "; ".join(v["problems"].values()) + ")" if v.get("problems") else "")
+                    + " Agli build se app mein dikhenge.")
+        return v
+    if action == "security_check":            # v0.442 SURAKSHA GATE: the gates that block a store upload
+        from ..appmaker import backend as BE
+        from ..appmaker import gates as GT
+        from ..site import webapp as W
+        try:
+            v = GT.scan(BE.by_key_or_ref(t, ref), str(a.get("platform") or "android"))
+        except W.AppError as e:
+            raise ToolError(str(e))
+        return {k: v.get(k) for k in ("at", "platform", "build", "pass", "warn", "fail", "not_checked", "ok", "blocks")} | \
+            {"rows": [{kk: x.get(kk) for kk in ("gate", "check", "state", "say")} for x in v["rows"]]}
     if action == "family":                    # v0.435 PARIVAAR: more apps on the same data + partner decisions
         from ..appmaker import backend as BE
         from ..appmaker import family as FA
@@ -663,6 +704,14 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         d = v.get("draft") or {}
         return {"on": v["on"], "rev": v["rev"], "summary": v["summary"], "approvals": v["approvals"][:20],
                 "audit": v["audit"][:15], "draft": {k: d.get(k) for k in ("summary", "lines", "errors", "questions")} if d else None}
+    if what == "login":                                   # v0.442 SURAKSHIT LOGIN + the security gates
+        from ..appmaker import backend as BE
+        from ..appmaker import gates as GT
+        from ..appmaker import sign as SG
+        r = BE.data_app(t, ref)
+        v = SG.view(r)
+        return {k: v.get(k) for k in ("ways", "ids", "staff_2fa", "otp_ready", "signup", "problems", "matrix")} | \
+            {"audit": v.get("audit", [])[:15], "gate": GT.last(r)}
     if what == "family":                                  # v0.435 PARIVAAR: the apps on this data, partners, web admin
         from ..appmaker import backend as BE
         from ..appmaker import family as FA

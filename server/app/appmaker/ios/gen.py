@@ -121,8 +121,8 @@ def tokens_swift(spec: dict[str, Any]) -> str:
     label = {s["id"]: s.get("label") or s["id"] for s in scr}
     icon = {s["id"]: symbol_for(s["id"], s.get("icon") or "") for s in scr}
     tab_rows = ",\n        ".join(f"TabSpec(id: {sstr(t)}, label: {sstr(label[t])}, symbol: {sstr(icon[t])})" for t in tabs)
-    every = ids + list(CODE_SCREENS) + list(KIT_SCREENS) + (["hoola_components"] if spec.get("custom") else []) \
-        + (["hoola_jobs"] if partner_kind(spec) else [])
+    every = ids + list(CODE_SCREENS) + list(KIT_SCREENS) + ["hoola_security"] \
+        + (["hoola_components"] if spec.get("custom") else []) + (["hoola_jobs"] if partner_kind(spec) else [])
     lang = str(app.get("language") or "en")
     return f'''// Made by Hoola App Sahayak from the approved design's tokens. Do not edit: a new design version rewrites it.
 import SwiftUI
@@ -154,7 +154,9 @@ def screens_swift(spec: dict[str, Any]) -> str:
         view = "AuthScreen()" if sid in AUTH_IDS else f"{swift_name(sid)}()"
         cases.append(f"    case {sstr(sid)}: return AnyView({view})")
     cases += ['    case "seller_info": return AnyView(SellerScreen())', '    case "privacy": return AnyView(PrivacyScreen())',
-              '    case "delete_account": return AnyView(DeleteAccountScreen())', '    case "hoola_login": return AnyView(AuthScreen())',
+              '    case "delete_account": return AnyView(DeleteAccountScreen())',
+              '    case "hoola_security": return AnyView(SecurityScreen())',
+              '    case "hoola_login": return AnyView(' + ("SignInScreen()" if own_signin(spec) else "AuthScreen()") + ')',
               '    case "hoola_account": return AnyView(AccountScreen())', '    case "hoola_inbox": return AnyView(InboxScreen())',
               '    case "hoola_chat": return AnyView(ChatScreen())', '    case "hoola_approvals": return AnyView(ApprovalsScreen())',
               '    case "hoola_data": return AnyView(DataScreen())']
@@ -234,6 +236,20 @@ struct HoolaApp: App {
 
 
 # ---------------------------------------------------------------- the code-made screen (always compiles)
+def sign_ways(spec: dict[str, Any]) -> list[str]:
+    """v0.442 SURAKSHIT LOGIN: the ways into this build."""
+    w = (((spec.get("seed") or {}).get("backend") or {}).get("sign") or {}).get("ways")
+    return [str(x) for x in w] if isinstance(w, list) else []
+
+
+def apple_login(spec: dict[str, Any]) -> bool:
+    return "apple" in sign_ways(spec)
+
+
+def own_signin(spec: dict[str, Any]) -> bool:
+    return any(x in sign_ways(spec) for x in ("phone_otp", "google", "apple"))
+
+
 def partner_kind(spec: dict[str, Any]) -> str:
     """v0.435 PARIVAAR: 'rider' / 'vendor' when this build is a partner app (from its seed backend), else ''."""
     k = str(((spec.get("seed") or {}).get("backend") or {}).get("partner") or "")
@@ -435,8 +451,16 @@ def project_yml(spec: dict[str, Any]) -> str:
     build = str(int(ios.get("build") or app.get("version_code") or 1))
     team = re.sub(r"[^A-Z0-9]", "", str(ios.get("team_id") or ""))[:10]
     team_line = f"\n        DEVELOPMENT_TEAM: {team}" if team else ""
-    push_ent = ("\n    entitlements:\n      path: App.entitlements\n      properties:\n        aps-environment: production"
-                if spec.get("ios_push") else "")       # v0.368 the push capability (Automatic signing adds it to the App ID)
+    # v0.368 push + v0.442 Sign in with Apple: both are entitlements on one file (Automatic signing adds them to the App ID)
+    ents: dict[str, str] = {}
+    if spec.get("ios_push"):
+        ents["aps-environment"] = "production"
+    if apple_login(spec):
+        ents["com.apple.developer.applesignin"] = "\n          - Default"
+    push_ent = ""
+    if ents:
+        lines = "".join(f"\n        {k}:{v}" if v.startswith("\n") else f"\n        {k}: {v}" for k, v in ents.items())
+        push_ent = "\n    entitlements:\n      path: App.entitlements\n      properties:" + lines
     return f'''# Made by Hoola App Sahayak. XcodeGen turns this into the Xcode project on the Mac (xcodegen generate).
 name: {name}
 options:
@@ -745,8 +769,8 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     if isinstance(store, dict):                          # v0.338 the listing + screenshots to send (kind store / review)
         (qa / "store.json").write_text(json.dumps({**store, "bundle_id": bid}, ensure_ascii=False, indent=1))
     (qa / "bundle.txt").write_text(bid + "\n")
-    every = [x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS) + (["hoola_components"] if spec.get("custom") else []) \
-        + (["hoola_jobs"] if partner_kind(spec) else [])
+    every = [x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS) + ["hoola_security"] \
+        + (["hoola_components"] if spec.get("custom") else []) + (["hoola_jobs"] if partner_kind(spec) else [])
     (qa / "screens.txt").write_text(" ".join(every) + "\n")
     for rel, srcx in _custom_files().swift_files(spec.get("custom") or []).items():
         p = src / "Kit" / rel

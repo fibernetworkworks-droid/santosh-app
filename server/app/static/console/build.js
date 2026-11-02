@@ -877,6 +877,48 @@ window.HoolaBuild = function (C) {
       const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
     };
     try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
+    // v0.442 SURAKSHIT LOGIN + SURAKSHA GATE: the ways into her app, the permissions matrix, and the security check
+    const sgbox = document.createElement('section'); sgbox.className = 'stcol stsign'; box.appendChild(sgbox);
+    const drawSign = sg => {
+      const ways = L(sg.ways), ids = sg.ids || {}, probs = sg.problems || {}, g = sg.gate || {};
+      const WAYS = [['email_password', 'Email + password'], ['phone_otp', 'Mobile number + OTP'], ['google', 'Sign in with Google'], ['apple', 'Sign in with Apple']];
+      const IDS = [['google_web_client_id', 'Google WEB client id (Android uses this one)'], ['google_ios_client_id', 'Google iOS client id'],
+                   ['apple_bundle_id', "Apple: the app's bundle id"], ['apple_service_id', 'Apple Services ID (web / Android)']];
+      sgbox.innerHTML = `<h4>Login &amp; security <span>${ways.length} way${ways.length === 1 ? '' : 's'}${g.ok === false ? ' · check failed' : ''}</span></h4>
+        <p class="stnote">How the people of your app sign in. The code or token is always checked on the server - never by the phone. You never need a client SECRET here: native sign-in does not use one.</p>
+        <form class="stapp sgset" autocomplete="off">
+          <div>${WAYS.map(([k, lbl]) => `<label class="stchk"><input type="checkbox" name="way" value="${k}"${ways.includes(k) ? ' checked' : ''}> ${esc(lbl)}</label>`).join(' ')}</div>
+          ${IDS.map(([k, lbl]) => `<div class="row"><label class="stnote" style="flex:1">${esc(lbl)}<input name="${k}" value="${esc(S(ids[k]))}" maxlength="200" placeholder="(not set)"></label></div>`).join('')}
+          <label class="stchk"><input type="checkbox" name="staff_2fa"${sg.staff_2fa ? ' checked' : ''}> Every staff account must keep the authenticator second step</label>
+          <div class="row"><button class="btn go" type="submit">Save</button><span class="stnote">${sg.otp_ready ? 'SMS provider is set up.' : 'Mobile OTP also needs a DLT-registered SMS template on the server.'}</span></div>
+        </form>
+        ${Object.values(probs).map(v => `<p class="stnote">${esc(S(v))}</p>`).join('')}
+        <h5>Security check</h5>
+        <p class="stnote">Runs on the newest build: keys inside the app, permissions, release settings, library CVEs (OSV.dev), login and data rules. A failing check blocks the store upload.</p>
+        ${g.at ? `<p class="stnote">${esc(S(g.platform))} build ${esc(S(g.build))}: <b>${g.ok ? 'passed' : g.fail + ' failed'}</b> · ${Number(g.pass) || 0} pass, ${Number(g.warn) || 0} warn, ${Number(g.not_checked) || 0} not checked${L(g.blocks).length ? '<br>' + L(g.blocks).map(x => esc(S(x))).join('<br>') : ''}</p>` : '<p class="stempty">Not run yet.</p>'}
+        <div class="row"><button class="btn" type="button" data-sgrun="android">Check the Android build</button><button class="btn" type="button" data-sgrun="ios">Check the iPhone build</button></div>
+        <div data-sgout></div>
+        ${L(sg.matrix).length ? `<h5>Who may do what</h5><div class="tw"><table><thead><tr><th>List</th><th>Add</th><th>See</th><th>Change</th><th>Delete</th><th>Staff-only fields</th></tr></thead><tbody>${L(sg.matrix).map(m => `<tr><td>${esc(S(m.label || m.list))}</td><td>${esc(S(m.create))}</td><td>${esc(S(m.read))}</td><td>${esc(S(m.update))}</td><td>${esc(S(m.delete))}</td><td>${esc([...(m.staff_set || []), ...(m.staff_see || [])].join(', '))}</td></tr>`).join('')}</tbody></table></div>` : ''}
+        ${L(sg.audit).length ? `<h5>Who changed what</h5><ul class="stlines">${L(sg.audit).slice(0, 12).map(x => `<li>${esc(S(x.at || '').slice(0, 16).replace('T', ' '))} · ${esc(S(x.by))} · ${esc(S(x.op))} ${esc(S(x.list))}${L(x.fields).length ? ' (' + esc(L(x.fields).join(', ')) + ')' : ''}</li>`).join('')}</ul>` : ''}`;
+      const f = sgbox.querySelector('.sgset');
+      f.addEventListener('submit', async e => {
+        e.preventDefault();
+        const picked = [...f.querySelectorAll('input[name=way]:checked')].map(x => x.value);
+        const idv = {}; IDS.forEach(([k]) => { idv[k] = f[k].value.trim(); });
+        try { drawSign({...sg, ...(await api('PUT', base(o) + '/sign', {ways: picked, ids: idv, staff_2fa: f.staff_2fa.checked}))}); toast('Saved. The next build carries it.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      sgbox.querySelectorAll('[data-sgrun]').forEach(b => b.addEventListener('click', async () => {
+        const out = sgbox.querySelector('[data-sgout]');
+        out.textContent = 'Checking…';
+        try {
+          const v = await api('POST', base(o) + '/security/check', {platform: b.dataset.sgrun});
+          out.innerHTML = `<p class="stnote"><b>${v.ok ? 'Passed' : v.fail + ' failed'}</b> · ${v.pass} pass, ${v.warn} warn, ${v.not_checked} not checked</p>
+            <ul class="stlines">${L(v.rows).map(x => `<li><b>${esc(S(x.state))}</b> · ${esc(S(x.check))}: ${esc(S(x.say))}</li>`).join('')}</ul>`;
+        } catch (er) { out.textContent = er.message; }
+      }));
+    };
+    try { drawSign(await api('GET', base(o) + '/sign')); } catch (er) { sgbox.remove(); }
     // v0.435 PARIVAAR: the apps on this business (customer / delivery partner / partner shop / staff) + partners + web admin
     const fmbox = document.createElement('section'); fmbox.className = 'stcol stfam'; box.appendChild(fmbox);
     const drawFam = fm => {

@@ -9962,20 +9962,110 @@ async def app_api_schema(app_key: str):
     return await asyncio.to_thread(_be_call, lambda: BE.public_schema(BE.by_key(app_key)))
 
 
+def _ua_of(request: Request) -> str:
+    return (request.headers.get("user-agent") or "")[:160]
+
+
 @app.post("/api/app-api/{app_key}/signup")
 async def app_api_signup(app_key: str, request: Request):
+    """v0.442 the sign-up records the DPDP consent tick and this login as a session she can end."""
     from .appmaker import backend as BE
-    body, ip = await _json_body(request), _ip(request)
-    return await asyncio.to_thread(_be_call, lambda: BE.signup(BE.by_key(app_key), str(body.get("email") or ""),
-                                                               str(body.get("password") or ""), str(body.get("name") or ""), ip))
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    return await asyncio.to_thread(_be_call, lambda: SG.password_signup(BE.by_key(app_key), body, ua, ip))
 
 
 @app.post("/api/app-api/{app_key}/login")
 async def app_api_login(app_key: str, request: Request):
+    """v0.442 a staff account with 2FA on gets {need_2fa, ticket} here and finishes at /login/2fa."""
     from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    return await asyncio.to_thread(_be_call, lambda: SG.password_login(BE.by_key(app_key), body, ua, ip))
+
+
+# ---- v0.442 SURAKSHIT LOGIN (App Sahayak Pillar I): phone OTP, Google / Apple checked on the SERVER, sessions she can
+# end, staff 2FA, her own data (DPDP). The engine is the website's (site/security.py) on the same backend id.
+@app.post("/api/app-api/{app_key}/login/otp")
+async def app_api_login_otp(app_key: str, request: Request):
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
     body, ip = await _json_body(request), _ip(request)
-    return await asyncio.to_thread(_be_call, lambda: BE.login(BE.by_key(app_key), str(body.get("email") or ""),
-                                                              str(body.get("password") or ""), ip))
+    return await asyncio.to_thread(_be_call, lambda: SG.otp_start(BE.by_key(app_key), str(body.get("phone") or ""), ip))
+
+
+@app.post("/api/app-api/{app_key}/login/otp/check")
+async def app_api_login_otp_check(app_key: str, request: Request):
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    return await asyncio.to_thread(_be_call, lambda: SG.otp_verify(BE.by_key(app_key), body, ua, ip))
+
+
+@app.get("/api/app-api/{app_key}/login/nonce")
+async def app_api_login_nonce(app_key: str):
+    """One single-use nonce per Google / Apple attempt (the app passes it to the provider, the server checks it back)."""
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    return await asyncio.to_thread(_be_call, lambda: SG.nonce(BE.by_key(app_key)))
+
+
+@app.post("/api/app-api/{app_key}/login/{provider}")
+async def app_api_login_social(app_key: str, provider: str, request: Request):
+    """Google / Apple: the app sends the provider's ID token; this server checks its signature, audience and nonce."""
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    if provider == "2fa":
+        return await asyncio.to_thread(_be_call, lambda: SG.two_fa_login(BE.by_key(app_key), str(body.get("ticket") or ""),
+                                                                         str(body.get("code") or ""), ua, ip))
+    if provider not in ("google", "apple"):
+        return JSONResponse({"ok": False, "error": "login: google / apple / 2fa"}, status_code=404)
+    return await asyncio.to_thread(_be_call, lambda: SG.social_login(BE.by_key(app_key), provider, body, ua, ip))
+
+
+@app.get("/api/app-api/{app_key}/security")
+async def app_api_security(app_key: str, request: Request):
+    """The member's own security page in the app: her logins, 2FA, what consent she gave."""
+    from .appmaker import sign as SG
+
+    def go():
+        r, w = _be_app(app_key, request)
+        tok = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        return SG.my_security(r, w, tok)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/security/{what}")
+async def app_api_security_do(app_key: str, what: str, request: Request):
+    from .appmaker import sign as SG
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        if what == "end":
+            return SG.end_session(r, w, str(body.get("id") or ""))
+        if what == "end-all":
+            return SG.end_everywhere(r, w)
+        if what == "2fa-start":
+            return SG.two_fa_start(r, w)
+        if what == "2fa-on":
+            return SG.two_fa_confirm(r, w, str(body.get("code") or ""))
+        if what == "2fa-off":
+            return SG.two_fa_off(r, w, str(body.get("code") or ""))
+        raise SG.SignError("security: end / end-all / 2fa-start / 2fa-on / 2fa-off", 404)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/my-data")
+async def app_api_my_data(app_key: str, request: Request):
+    """DPDP: this account downloads everything of its own, from inside the app."""
+    from .appmaker import sign as SG
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return SG.my_data(r, w)
+    return await asyncio.to_thread(_be_call, go)
 
 
 @app.get("/api/app-api/{app_key}/me")
@@ -10953,6 +11043,34 @@ async def app_admin_page(app_key: str):
     return FileResponse(STATIC / "appadmin" / "index.html", media_type="text/html",
                         headers={"Content-Security-Policy": _ADMIN_CSP, "Cache-Control": "no-cache", "X-Frame-Options": "DENY",
                                  "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/apps/{ref}/sign", dependencies=[Depends(require_key)])
+async def apps_sign(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.442 her login + security card: which ways are on, her client ids (masked where long), the permissions matrix,
+    the audit log, and the last security gate."""
+    from .appmaker import gates as GT
+    from .appmaker import sign as SG
+
+    def go():
+        r = _be_data(tenant, ref)
+        return {**SG.view(r), "gate": GT.last(r)}
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.put("/api/apps/{ref}/sign", dependencies=[Depends(require_key)])
+async def apps_sign_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import sign as SG
+    return await asyncio.to_thread(_be_owner_call, lambda: SG.save_settings(_be_data(tenant, ref), body or {}))
+
+
+@app.post("/api/apps/{ref}/security/check", dependencies=[Depends(require_key)])
+async def apps_security_check(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """v0.442 run the security gates on the newest build (a failing gate blocks the store upload)."""
+    from .appmaker import gates as GT
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call,
+                                   lambda: GT.scan(_be_owner(tenant, ref), str(b.get("platform") or "android")))
 
 
 @app.get("/api/apps/{ref}/family", dependencies=[Depends(require_key)])
