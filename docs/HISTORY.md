@@ -17254,3 +17254,12 @@ versions of regressions self-critique had missed.
 - NOT VERIFIED: no real Arena run has been built on the VPS yet, so there are no numbers for a Hoola version yet - the
   first run is what will produce them. The judge is a model and its scores are opinions about measured frames; only the
   engine numbers on the card are facts.
+
+## v0.455.0 NO DESK ROWS (2 Nov 2026)
+Owner, with a screenshot of the sidebar's Education Desk / Social Desk / SEO Desk rows: "REMOVE THIS FORM SIDE BAR".
+- `console/v2.js` `syncEmployees`: no longer splices a row per hired desk under AI Employees (the v0.317 behaviour); it
+  removes any `*desk` row instead, so all six desks (SEO, Social, CAD, Game, Architecture, Education) are off the sidebar.
+  A desk that is open when its employee is let go still falls back to the hub. Each desk opens from AI Employees > Open desk
+  (`openView` -> `go(view)`); while a desk is open the AI Employees row is the lit one.
+- `console/employees.js`: the hub's three "in the sidebar" lines now say to open the desk from the hub.
+- Tests: `test_v0455_no_desk_rows.py`. Console only; the phone never had desk rows.

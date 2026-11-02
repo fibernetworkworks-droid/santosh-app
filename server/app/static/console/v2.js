@@ -115,16 +115,18 @@ IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 
 let EMP = null;
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
-function syncEmployees(hired) {                     // v0.317 a desk appears in the sidebar only while its employee is hired
+function syncEmployees(hired) {                     // v0.317 desks exist only while their employee is hired
+  // v0.455 her ask: NO desk rows in the sidebar ("REMOVE THIS FROM SIDE BAR" - Education / Social / SEO Desk). Every desk
+  // opens from AI Employees > Open desk; the sidebar keeps only the AI Employees entry. A desk that is open when its
+  // employee is let go still falls back to the hub.
   if (ME) ME.employees = hired || {};
-  let moved = false;
-  for (const [key, view, label] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk'], ['edu', 'edudesk', 'Education Desk']]) {   // v0.353 + Social Desk
-    const want = !!(hired && (hired[key] || (key === 'edu' && EDU_KEYS.some(k => hired[k])) || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev || hired.audio_dev || hired.haptics_dev || hired.netcode_dev || hired.xr_dev || hired.sim_dev || hired.twin_arch || hired.vfx_td)))), has = NAV.some(([k]) => k === view);   // v0.420 any Game Desk role opens the Game Desk
-    if (want && !has) NAV.splice(NAV.findIndex(([k]) => k === 'hire') + 1, 0, [view, label]);
-    if (!want && has) NAV.splice(NAV.findIndex(([k]) => k === view), 1);
-    if (want !== has) { moved = true; if (!want && VIEW === view) go('hire'); }
+  for (const [key, view] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk'], ['edu', 'edudesk', 'Education Desk']]) {
+    const want = !!(hired && (hired[key] || (key === 'edu' && EDU_KEYS.some(k => hired[k])) || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev || hired.audio_dev || hired.haptics_dev || hired.netcode_dev || hired.xr_dev || hired.sim_dev || hired.twin_arch || hired.vfx_td))));   // v0.420 any Game Desk role opens the Game Desk
+    if (!want && VIEW === view) go('hire');
   }
-  if (moved) drawNav();   // hired.social / hired.seo
+  const before = NAV.length;
+  for (let i = NAV.length - 1; i >= 0; i--) if (/desk$/.test(NAV[i][0])) NAV.splice(i, 1);   // never a desk row
+  if (NAV.length !== before) drawNav();
 }
 IC.edudesk = '<path d="M12 6c-2.5-1.4-5.5-1.6-9-1v13c3.5-.6 6.5-.4 9 1 2.5-1.4 5.5-1.6 9-1V5c-3.5-.6-6.5-.4-9 1zM12 6v13"/>';   // v0.453 Education Desk
 IC.lab = '<path d="M9 3h6M10 3v6L4.5 18.5A2 2 0 0 0 6.2 21.5h11.6a2 2 0 0 0 1.7-3L14 9V3M7 15h10"/>';   // Prayogshala
@@ -136,7 +138,7 @@ function navBadge(k) {
   return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
 }
 function drawNav() {
-  $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k === 'baat' ? 'call' : k])}<span class="txt">${n}</span>${navBadge(k)}</button>`).join('');
+  $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW || (k === 'hire' && /desk$/.test(VIEW))}">${svg(IC[k === 'baat' ? 'call' : k])}<span class="txt">${n}</span>${navBadge(k)}</button>`).join('');
   const T = [['chat','Chat'],['aaj','Today'],['baat',''],['kaam','Tools'],['main','Account']];
   $('#tabbar').innerHTML = T.map(([k, n]) => k === 'baat' ? `<div class="mid"><button class="baat" data-v="baat" aria-label="Voice call">${svg(IC.baat).replace('currentColor', '#1B1030')}</button></div>`
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
