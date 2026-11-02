@@ -110,7 +110,7 @@ def design(spec: dict[str, Any]) -> dict[str, Any]:
                      "limit": f"> roller {r:g} mm", "ok": bool(rho_min > r * 1.05),
                      "fix": "bigger base circle or a smaller roller"})
         out.update({"pitch": np.stack([px, py], 1), "profile": np.stack([cx, cy], 1), "phi_deg": phi,
-                    "rho_min": rho_min, "s0": s0})
+                    "rho_min": rho_min, "s0": s0, "rho_profile": rho - r, "roller_radius": r})
     elif kind == "flat":
         ang = th
         cx = (rb + s) * np.sin(ang) + v * np.cos(ang)
@@ -122,7 +122,7 @@ def design(spec: dict[str, Any]) -> dict[str, Any]:
         rows.append({"check": "Face width needed", "measured": f"{width:.1f} mm", "limit": "the follower face",
                      "ok": True, "fix": ""})
         out.update({"profile": np.stack([cx, cy], 1), "phi_deg": np.zeros_like(th), "rho_min": float(np.min(rho)),
-                    "face_width": width})
+                    "face_width": width, "rho_profile": rho})
     else:
         raise ValueError("cam follower: roller / flat")
     vel = v * w                                                  # mm/s
@@ -154,3 +154,128 @@ def solid(spec: dict[str, Any], des: dict[str, Any]):
 def table(des: dict[str, Any]) -> dict[str, list[float]]:
     """theta (rad) -> follower lift (m) for the joint coupling."""
     return {"theta": [float(x) for x in des["program"]["theta"]], "s": [float(x) / 1000.0 for x in des["program"]["s"]]}
+
+
+# ---------------------------------------------------------------- v0.427 cam CONTACT: the force at the cam, the spring
+# that keeps the follower on it, the Hertz stress, the guide's side load.
+# Allowable contact (surface fatigue) stress, MPa - STARTING POINTS: steel = AGMA 2001 grade 1 through-hardened at
+# ~200 HB (Sc = 2.22 HB + 200), 'hardened' = AGMA carburised grade 1; the others are common handbook figures. Her
+# number (contact_allow_mpa) always wins.
+CONTACT_ALLOW = {"hardened": 1240.0, "steel": 640.0, "stainless": 600.0, "cast iron": 450.0, "titanium": 800.0,
+                 "brass": 300.0, "copper": 250.0, "aluminium": 200.0, "aluminum": 200.0, "nylon": 40.0, "pom": 45.0,
+                 "abs": 25.0, "pla": 25.0, "petg": 25.0, "polycarbonate": 30.0, "wood": 10.0}
+
+
+def allow_for(material: str) -> tuple[str, float]:
+    n = (material or "steel").lower()
+    for k in sorted(CONTACT_ALLOW, key=len, reverse=True):
+        if k in n:
+            return k, CONTACT_ALLOW[k]
+    return "steel", CONTACT_ALLOW["steel"]
+
+
+def geometry(des: dict[str, Any], every: int = 2) -> dict[str, list[float]]:
+    """What the contact check needs per cam angle (kept small enough to travel in the job result)."""
+    pg = des["program"]
+    sl = slice(None, None, every)
+    return {"theta": [float(x) for x in pg["theta"][sl]], "s": [float(x) for x in pg["s"][sl]],
+            "v": [float(x) for x in pg["v"][sl]], "a": [float(x) for x in pg["a"][sl]],
+            "phi": [float(x) for x in des["phi_deg"][sl]], "rho": [float(x) for x in des["rho_profile"][sl]]}
+
+
+def _spring(F: np.ndarray, s_m: np.ndarray, k_given: float | None, p_given: float | None, sf: float = 1.3):
+    """The return spring: k (N/m), preload P (N). The cam can only PUSH, so the follower stays on only where
+    F_need + k s + P > 0. Designed (when she gave none) as the smallest preload for each stiffness, then the
+    stiffness that gives the lowest peak cam force; floor = 2 % of the peak need (>= 0.5 N)."""
+    floor = max(0.5, 0.02 * float(np.max(np.abs(F))))
+    deficit = sf * np.maximum(0.0, -F) + floor            # what the spring must give at each angle
+    if k_given is not None or p_given is not None:
+        return float(k_given or 0.0), float(p_given or 0.0), False
+    if float(np.max(-F)) < -floor:                          # gravity / the load alone keeps it on
+        return 0.0, 0.0, True
+    lift = float(np.max(s_m) - np.min(s_m)) or 1e-3
+    best = None
+    for k in np.linspace(0, 6 * float(np.max(deficit)) / lift, 121):
+        P = max(0.0, float(np.max(deficit - k * s_m)))
+        peak = float(np.max(F + k * s_m + P))
+        if best is None or peak < best[2] - 1e-9:
+            best = (float(k), P, peak)
+    return best[0], best[1], True
+
+
+def contact(geo: dict, F_need, rpm: float, *, kind: str = "roller", roller_radius: float = 5.0,
+            width: float = 10.0, cam_material: str = "steel", roller_material: str = "steel",
+            spring_k: float | None = None, preload: float | None = None, guide_mu: float = 0.0,
+            guide_len: float | None = None, overhang: float | None = None,
+            allow_mpa: float | None = None, E=None) -> dict[str, Any]:
+    """F_need(theta) = the force (N, along +lift) the follower needs to make its motion (inertia + gravity + its
+    load + joint friction). Returns the spring, the normal contact force N, Hertz stress and the cam torque.
+    Units: s mm, s' mm/rad, rpm; spring k reported in N/mm."""
+    th = np.asarray(geo["theta"], float)
+    F = np.asarray(F_need, float)
+    s_m = np.asarray(geo["s"], float) / 1000.0
+    ds = np.asarray(geo["v"], float) / 1000.0              # m/rad
+    phi = np.radians(np.asarray(geo["phi"], float))
+    rho = np.asarray(geo["rho"], float)                    # profile radius of curvature, + convex, mm
+    w = rpm * 2 * math.pi / 60
+    k, P, designed = _spring(F, s_m, None if spring_k is None else float(spring_k) * 1000.0, preload)
+    C = F + k * s_m + P                                    # axial push the cam must give
+    amp = 1.0 + (2.0 * float(overhang) / float(guide_len) if guide_len and overhang else 0.0)
+    side = guide_mu * np.abs(np.sin(phi)) * amp            # guide friction per unit normal force
+    vsign = np.sign(ds)
+    D = np.cos(phi) - side * np.where(C >= 0, vsign, -vsign)
+    D_worst = np.cos(phi) - side
+    Nn = np.where(D > 1e-6, C / np.maximum(D, 1e-6), np.inf)
+    # Hertz line contact: roller (or flat face) on the cam profile
+    (E1, n1), (E2, n2) = E or ((200000.0, 0.29), (200000.0, 0.29))
+    Es = 1.0 / ((1 - n1 * n1) / E1 + (1 - n2 * n2) / E2)
+    with np.errstate(divide="ignore"):
+        inv = (1.0 / roller_radius if kind == "roller" else 0.0) + np.where(np.abs(rho) > 1e-9, 1.0 / rho, 0.0)
+    Rs = np.where(inv > 1e-12, 1.0 / np.maximum(inv, 1e-12), np.inf)
+    Np = np.maximum(Nn, 0.0)
+    p = np.where(np.isfinite(Rs) & np.isfinite(Np), np.sqrt(Np * Es / (math.pi * width * np.where(np.isfinite(Rs), Rs, 1.0))), 0.0)
+    b = np.where(np.isfinite(Rs) & np.isfinite(Np), np.sqrt(4 * Np * np.where(np.isfinite(Rs), Rs, 1.0) / (math.pi * width * Es)), 0.0)
+    mat_key, allow = allow_for(cam_material)
+    if allow_mpa:
+        allow, mat_key = float(allow_mpa), "her number"
+    if kind == "roller":
+        rk, ra = allow_for(roller_material)
+        if not allow_mpa and ra < allow:
+            allow, mat_key = ra, f"roller {rk}"
+    torque = C * ds + guide_mu * np.where(np.isfinite(Nn), Nn, 0.0) * np.abs(np.sin(phi)) * amp * np.abs(ds)
+    i_min = int(np.argmin(C))
+    rows = []
+    rows.append({"check": "Follower stays on the cam", "ok": bool(np.min(C) > 0),
+                 "measured": f"min push {np.min(C):.3g} N at {math.degrees(th[i_min]):.0f}°", "limit": "> 0 N",
+                 "fix": "a stiffer return spring / more preload (or let Hoola design it: leave spring_k / preload out), "
+                        "a lower rpm or a gentler law"})
+    if designed:
+        sp = "not needed: gravity / the load keeps the follower on" if k == 0 and P == 0 else \
+            f"k {k / 1000:.3g} N/mm, preload {P:.3g} N, max {float(np.max(k * s_m + P)):.3g} N (x1.3 on the pull-off)"
+    else:
+        sp = f"her spring k {k / 1000:.3g} N/mm, preload {P:.3g} N"
+    rows.append({"check": "Return spring", "ok": True, "measured": sp, "limit": "-", "fix": ""})
+    rows.append({"check": "Contact force", "ok": bool(np.all(np.isfinite(Nn))),
+                 "measured": f"max {np.max(np.where(np.isfinite(Nn), Nn, 0)):.3g} N normal to the profile",
+                 "limit": "roller bearing / follower rated above this", "fix": "lower the pressure angle"})
+    rows.append({"check": "Contact stress (Hertz)", "ok": bool(np.max(p) <= allow),
+                 "measured": f"max {np.max(p):.0f} MPa, contact band {2 * float(np.max(b)):.3f} mm",
+                 "limit": f"<= {allow:.0f} MPa ({mat_key})",
+                 "fix": "a wider cam / roller, a bigger roller or base circle, a harder material, a lower rpm"})
+    if guide_mu:
+        rows.append({"check": "Follower guide does not jam", "ok": bool(np.min(D_worst) >= 0.5),
+                     "measured": f"min cos φ - μ·sin φ·(1+2b/l) = {np.min(D_worst):.3g}", "limit": ">= 0.5",
+                     "fix": "a lower pressure angle, a longer guide, less overhang, a lower-friction guide"})
+    return {"rows": rows, "spring_k_n_mm": round(k / 1000, 5), "preload_n": round(P, 4), "spring_designed": designed,
+            "min_push_n": round(float(np.min(C)), 4), "max_normal_n": round(float(np.max(np.where(np.isfinite(Nn), Nn, 0))), 4),
+            "max_hertz_mpa": round(float(np.max(p)), 2), "allow_mpa": allow,
+            "cam_torque_peak": round(float(np.max(np.abs(torque))), 5),
+            "curve": {"deg": [round(math.degrees(x), 2) for x in th[::3]], "push": [round(float(x), 4) for x in C[::3]],
+                      "normal": [round(float(x), 4) if np.isfinite(x) else None for x in Nn[::3]],
+                      "hertz": [round(float(x), 2) for x in p[::3]]}}
+
+
+def need_from_motion(geo: dict, mass_kg: float, rpm: float, g_along: float) -> np.ndarray:
+    """F_need for a rigid follower in pure translation: m (s'' w^2 - g.u), with g.u the gravity along +lift (m/s^2)."""
+    w = rpm * 2 * math.pi / 60
+    return mass_kg * (np.asarray(geo["a"], float) * w * w / 1000.0 - g_along)

@@ -344,11 +344,38 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
                                         f"error {r['worst_error']:g} {r['error_unit']}"
                                         + (f", saturated {r['saturated_pct']:g}% of the time" if r["saturated_pct"] else "")
                                         + (f"; motor sized to {r['sized_to']:g}" if r.get("sized_to") else "")})
+                for fr in dyn.get("friction") or []:      # v0.427 bearing friction in the move
+                    out.append({"name": f"Friction {fr['joint']}", "ok": True,
+                                "note": f"peak {fr['peak']:.3g} {fr['unit']}, {fr['energy_J']:.3g} J lost"
+                                        + (f" ({fr['bearing']}, mu {fr['mu']:g})" if fr.get("bearing") else "")})
+                if dyn.get("friction_share_pct") is not None:
+                    out.append({"name": "Energy lost to friction", "ok": True,
+                                "note": f"{dyn['friction_share_pct']:g}% of the motors' work in this move"})
+                for bl in dyn.get("backlash") or []:
+                    out.append({"name": f"Backlash {bl['joint']} in the move", "ok": True,
+                                "note": f"lost motion {bl['lost_motion']:g} {bl['unit']} (play {bl['play']:g}), "
+                                        f"{bl['knocks']} flank change(s), peak mesh {bl['peak_mesh']:.3g} {bl['mesh_unit']}"})
                 if dyn.get("loop_gap_m"):
                     out.append({"name": "Loops stay closed while moving", "ok": dyn["loop_gap_m"] < 5e-4,
                                 "note": f"worst gap {dyn['loop_gap_m'] * 1000:.3g} mm"})
             elif dyn.get("note"):
                 out.append({"name": "Dynamic simulation", "ok": dyn.get("ok") is not False, "note": dyn["note"]})
+            for bl in kin.get("backlash") or []:          # v0.427 play at the tip from gear / belt backlash
+                acc = bl.get("accuracy_mm")
+                out.append({"name": f"Backlash {bl['joint']}: play at the tip", "ok": bool(bl["ok"]),
+                            "note": f"{bl['tip_play_mm']:g} mm from {bl['backlash']:g} {bl['unit']}"
+                                    + (f" over {bl['reach_mm']:g} mm" if bl.get("reach_mm") else "")
+                                    + (f"; all backlash {bl['total_mm']:g} mm vs accuracy {acc:g} mm" if acc else "")})
+                if not bl["ok"]:
+                    probs.append(f"backlash: the tip plays {bl['total_mm']:g} mm, more than the {acc:g} mm asked - less "
+                                 "backlash (anti-backlash / preloaded gears, a tensioned belt, a smaller couple backlash) "
+                                 "or the backlash joint nearer the tip")
+            for cname, ct in (kin.get("cam_contact") or {}).items():   # v0.427 cam contact force / spring / Hertz
+                for r in ct.get("rows") or []:
+                    out.append({"name": f"Cam {cname}: {r['check']}", "ok": bool(r["ok"]),
+                                "note": f"{r['measured']} ({r['limit']}; force from {ct.get('force_from')})"})
+                    if not r["ok"]:
+                        probs.append(f"cam {cname}: {r['check']} {r['measured']} (limit {r['limit']}): {r['fix']}")
             for fb in kin.get("fourbar") or []:
                 out.append({"name": f"Four-bar {fb['loop']}", "ok": bool(fb["ok"]),
                             "note": f"{fb['grashof']}; links {fb['links_mm']}; min transmission angle "
@@ -463,7 +490,7 @@ def _after_files(vdir: Path, res: dict[str, Any], ana: dict[str, Any], title: st
             jp.unlink(missing_ok=True)
     if res.get("cams"):
         try:
-            (vdir / "camcurve.png").write_bytes(report.cam_curve_png(res["cams"]))
+            (vdir / "camcurve.png").write_bytes(report.cam_curve_png(res["cams"], (res.get("kinematics") or {}).get("cam_contact")))
         except Exception as e:
             log.info("cam chart: %s", e)
     kp = vdir / "kin.json"

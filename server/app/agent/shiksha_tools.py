@@ -95,6 +95,8 @@ SHIKSHA_TOOLS = [
          "subject": {"type": "string"}, "grade": {"type": "string"}, "board": {"type": "string"}},
          "required": ["what"]}},
     {"name": "pylab", "description": (
+        "CALCULATOR + ANALYSIS: every number you work out (EMI, CAGR, %, totals, break-even, forecast, statistics) is "
+        "computed here and quoted from its printed output - never mental maths. "
         "Run Python for data analysis in Hoola's locked sandbox (no internet, no secrets, no server files; pandas, numpy, "
         "scipy, statsmodels, matplotlib, openpyxl; up to 300 s). code = the program (main.py); datasets [ds_...] from "
         "data_fetch are copied in as <id>.csv; file_ids [] of files from her chat are copied in by name. print() what she "

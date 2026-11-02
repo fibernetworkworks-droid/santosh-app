@@ -346,7 +346,7 @@ def test_live_check_runs_one_design_inline_and_leaves_nothing(A, monkeypatch):
     from app.archdesk.models import ArchProject
     from app.db import session
     from app.employee import hire
-    monkeypatch.setattr(A.s, "_pdf", lambda design, cap, drawn, vdir, facts: (vdir / "design.pdf").write_bytes(b"%PDF" + b"x" * 2000))
+    monkeypatch.setattr(A.s, "_pdf", lambda design, cap, drawn, vdir, facts, extra=None: (vdir / "design.pdf").write_bytes(b"%PDF" + b"x" * 2000))
     spawn_before = A.s._spawn
     r = C._step_design()
     assert r["ok"], r

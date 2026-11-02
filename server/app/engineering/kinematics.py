@@ -567,6 +567,8 @@ def write_all(robot: str, parts: dict[str, Any], mech: Mech, props: dict[str, di
                 U.append(f'    <limit lower="{lo:.6g}" upper="{hi:.6g}" effort="{eff(j):.6g}" velocity="{j["velocity"]:.6g}"/>')
             else:
                 U.append(f'    <limit effort="{eff(j):.6g}" velocity="{j["velocity"]:.6g}"/>')
+            if j.get("friction") or j.get("damping"):
+                U.append(f'    <dynamics damping="{float(j.get("damping") or 0):.6g}" friction="{float(j.get("friction") or 0):.6g}"/>')
             c = mech.coup.get(j["name"])
             if c and not c.get("table"):
                 U.append(f'    <mimic joint={qa(c["leader"])} multiplier="{c["ratio"]:.6g}" offset="{c["offset"]:.6g}"/>')
@@ -606,6 +608,9 @@ def write_all(robot: str, parts: dict[str, Any], mech: Mech, props: dict[str, di
             if c and not c.get("table"):
                 S.append(f'        <mimic joint={qa(c["leader"])}><multiplier>{c["ratio"]:.6g}</multiplier>'
                          f'<offset>{c["offset"]:.6g}</offset><reference>0</reference></mimic>')
+            if j.get("friction") or j.get("damping"):
+                S.append(f'        <dynamics><damping>{float(j.get("damping") or 0):.6g}</damping>'
+                         f'<friction>{float(j.get("friction") or 0):.6g}</friction></dynamics>')
             S.append('      </axis>')
         S.append('    </joint>')
     S += ['  </model>', '</sdf>']
@@ -627,7 +632,9 @@ def write_all(robot: str, parts: dict[str, Any], mech: Mech, props: dict[str, di
             typ = "slide" if j["kind"] == "prismatic" else "hinge"
             rng = "" if j["kind"] == "continuous" else \
                 f' limited="true" range="{j["limits_si"][0]:.6g} {j["limits_si"][1]:.6g}"'
-            L.append(f'{pad}  <joint name={qa(j["name"])} type="{typ}" pos="0 0 0" axis="{_fmt(a / np.linalg.norm(a))}"{rng}/>')
+            dyn_ = (f' damping="{float(j["damping"]):.6g}"' if j.get("damping") else "") + \
+                (f' frictionloss="{float(j["friction"]):.6g}"' if j.get("friction") else "")
+            L.append(f'{pad}  <joint name={qa(j["name"])} type="{typ}" pos="0 0 0" axis="{_fmt(a / np.linalg.norm(a))}"{rng}{dyn_}/>')
         L.append(f'{pad}  <inertial pos="{_fmt((np.asarray(p["com_mm"]) - f) / 1000)}" mass="{max(p["mass_kg"], 1e-9):.6g}" '
                  f'fullinertia="{I[0, 0]:.6g} {I[1, 1]:.6g} {I[2, 2]:.6g} {I[0, 1]:.6g} {I[0, 2]:.6g} {I[1, 2]:.6g}"/>')
         L.append(f'{pad}  <geom type="mesh" mesh={qa("m_" + safe[n])} contype="0" conaffinity="0"/>')
@@ -835,6 +842,87 @@ def validate(urdf: str, sdf: str, mjcf: str, srdf: str, mdir: Path) -> list[dict
     return rows
 
 
+def backlash_play(parts: dict, mech: Mech, robot: dict) -> list[dict[str, Any]]:
+    """v0.427 the play each gear / belt backlash leaves at the far end of what it carries (zero pose, worst case):
+    angle x the farthest point of the downstream parts from the joint axis; a prismatic follower's play is itself."""
+    out = []
+    for f, c in mech.coup.items():
+        if not c.get("backlash") or c.get("table"):
+            continue
+        j = mech.joints[f]
+        if j["kind"] == "prismatic":
+            reach, play = None, float(c["backlash"])
+        else:
+            o = np.asarray(j["origin"], float)
+            a = np.asarray(j["axis"], float)
+            a = a / (np.linalg.norm(a) or 1.0)
+            reach = 0.0
+            for n in _subtree(mech.t, j["child"]):
+                bb = parts[n].BoundingBox()
+                for x in (bb.xmin, bb.xmax):
+                    for y in (bb.ymin, bb.ymax):
+                        for z in (bb.zmin, bb.zmax):
+                            d = np.array([x, y, z]) - o
+                            reach = max(reach, float(np.linalg.norm(d - np.dot(d, a) * a)))
+            play = math.radians(float(c["backlash"])) * reach
+        out.append({"joint": f, "leader": c["leader"], "backlash": float(c["backlash"]),
+                    "unit": "mm" if j["kind"] == "prismatic" else "deg",
+                    "reach_mm": round(reach, 2) if reach is not None else None, "tip_play_mm": round(play, 4)})
+    acc = robot.get("accuracy_mm")
+    tot = sum(r["tip_play_mm"] for r in out)
+    for r in out:
+        r["total_mm"] = round(tot, 4)
+        r["ok"] = acc is None or tot <= float(acc)
+        r["accuracy_mm"] = acc
+    return out
+
+
+def cam_contact(mech: Mech, props: dict, robot: dict, dyn: dict | None, material: str) -> dict[str, Any]:
+    """v0.427 each cam's contact check: the follower force (from the MuJoCo move when it covered the whole turn,
+    else m (s'' w^2 - g.u) for the follower and everything it carries), then the spring, push, Hertz, jam."""
+    import cams as _cams
+    import fea
+    out = {}
+    g = np.asarray(robot.get("gravity") or (0, 0, -G), float)
+    mats = robot.get("materials") or {}
+    for name, cm_ in (robot.get("cams") or {}).items():
+        cj, fj = cm_.get("cam_joint"), cm_.get("follower_joint")
+        if not cj or not fj or cj not in mech.joints or fj not in mech.joints or not cm_.get("geo"):
+            continue
+        geo = cm_["geo"]
+        jf = mech.joints[fj]
+        ax = np.asarray(jf["axis"], float)
+        ax = ax / (np.linalg.norm(ax) or 1.0)
+        mass = sum(props[n]["mass_kg"] for n in _subtree(mech.t, jf["child"]))
+        F = _cams.need_from_motion(geo, mass, float(cm_["rpm"]), float(np.dot(g, ax)))
+        src = "motion (m s'' w² - g)"
+        sim = ((dyn or {}).get("cam_force") or {}).get(fj)
+        if sim and len(sim["theta"]) > 20:
+            th = np.asarray(sim["theta"])
+            Fs = np.asarray(sim["F"])
+            o = np.argsort(th)
+            th, Fs = th[o], Fs[o]
+            gaps = np.diff(np.append(th, th[0] + 2 * math.pi))
+            if float(np.max(gaps)) < math.radians(5):
+                F = np.interp(np.asarray(geo["theta"]), th, Fs, period=2 * math.pi)
+                src = "the MuJoCo move"
+        cpart = mech.joints[cj]["child"]
+        _k1, m1 = fea.material(mats.get(cpart) or material)
+        ct = cm_.get("contact") or {}
+        rmat = ct.get("roller_material") or "steel"
+        _k2, m2 = fea.material(rmat)
+        res = _cams.contact(geo, F, float(cm_["rpm"]), kind=cm_.get("kind", "roller"),
+                            roller_radius=float(cm_.get("roller_radius") or 5.0), width=float(cm_.get("thickness") or 10.0),
+                            cam_material=mats.get(cpart) or material, roller_material=rmat,
+                            spring_k=ct.get("spring_k"), preload=ct.get("preload"), guide_mu=float(ct.get("guide_mu") or 0.0),
+                            guide_len=ct.get("guide_len"), overhang=ct.get("overhang"), allow_mpa=ct.get("allow_mpa"),
+                            E=((m1["E"], m1["nu"]), (m2["E"], m2["nu"])))
+        res["follower_kg"] = round(mass, 5)
+        res["force_from"] = src
+        out[name] = res
+    return out
+
+
 # ---------------------------------------------------------------- the whole job
 def run(part_list: list[tuple[str, Any]], spec_joints: list[dict], spec_robot: dict, material: str,
         out_dir: Path, couplings: list[dict] | None = None) -> dict[str, Any]:
@@ -858,6 +946,8 @@ def run(part_list: list[tuple[str, Any]], spec_joints: list[dict], spec_robot: d
                        "driver": bool(j.get("driver")), "closure": bool(j.get("closure")),
                        "direction": [float(x) for x in j["direction"]] if j.get("direction") else None,
                        "travel": [float(x) for x in j["travel"]] if j.get("travel") else None,
+                       "bearing": j.get("bearing"), "pin_d": j.get("pin_d"), "friction": j.get("friction"),
+                       "damping": j.get("damping"),
                        "assumed": [k for k in ("effort", "velocity") if not j.get(k)]})
     t = tree(names, joints)
     if t["problems"]:
@@ -869,6 +959,8 @@ def run(part_list: list[tuple[str, Any]], spec_joints: list[dict], spec_robot: d
             return {"ok": False, "problems": [f"couple: joint '{c['follower']}' / '{c['leader']}' not found"]}
         entry = {"follower": str(c["follower"]), "leader": str(c["leader"]), "ratio": float(c.get("ratio") or 0.0),
                  "offset": float(c.get("offset") or 0.0)}
+        if c.get("backlash"):                                    # v0.427 play at the follower (deg / mm)
+            entry["backlash"] = float(c["backlash"])
         if c.get("table"):                                       # a cam's lift curve (theta rad -> m)
             entry["table"] = {"theta": list(c["table"]["theta"]), "s": list(c["table"]["s"])}
             entry["cam"] = c.get("cam")
@@ -936,6 +1028,10 @@ def run(part_list: list[tuple[str, Any]], spec_joints: list[dict], spec_robot: d
                 pkg = write_all(robot, parts, mech, props, cm, out_dir)
         except Exception as e:
             dyn = {"ok": False, "note": f"simulation failed: {type(e).__name__}: {str(e)[:200]}"}
+    contact = cam_contact(mech, props, spec_robot, dyn, material) if spec_robot.get("cams") else {}
+    if dyn:
+        dyn.pop("cam_force", None)
+    play = backlash_play(parts, mech, spec_robot)
     frames, N = [], 16
     for k in range(N):
         q = {}
@@ -971,7 +1067,7 @@ def run(part_list: list[tuple[str, Any]], spec_joints: list[dict], spec_robot: d
             "loops": [c["name"] for c in t["closures"]], "passive": mech.passive, "drivers": sorted(mech.drivers),
             "couplings": [{k: v for k, v in c.items() if k != "table"} for c in coup], "links": [{"name": n, "mass_kg": round(props[n]["mass_kg"], 4),
                                           "com_mm": [round(x, 2) for x in props[n]["com_mm"]]} for n in names],
-            "range": rng, "torque": tq, "fourbar": fb, "dynamics": dyn,
+            "range": rng, "torque": tq, "fourbar": fb, "dynamics": dyn, "cam_contact": contact, "backlash": play,
             "slots": [c["name"] for c in t["closures"] if c["kind"] == "slot"],
             "collisions": {"poses": cm["poses"], "can_collide": cm["can_collide"], "disabled": len(cm["disable"])},
             "urdf": pkg}

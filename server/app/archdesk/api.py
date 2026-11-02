@@ -17,6 +17,7 @@ class StartIn(BaseModel):
     repo: str = ""
     conversation_id: str = ""
     scale: dict = {}
+    kind: str = "design"
 
 
 class ChangeIn(BaseModel):
@@ -50,12 +51,13 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.get("/api/arch/projects", dependencies=[Depends(require_key)])
     async def projects(tenant: str = Depends(current_tenant)):
         from ..employee import hire
+        from . import master
         return {"projects": await call(service.projects, tenant), "hired": hire.status(tenant, service.HIRE_KEY),
-                "health": service.health()}
+                "health": service.health(), "kinds": master.KINDS, "needs_repo": list(master.NEEDS_REPO)}
 
     @r.post("/api/arch/projects", dependencies=[Depends(require_key)])
     async def start(body: StartIn, tenant: str = Depends(current_tenant)):
-        return await call(service.start, tenant, body.conversation_id, body.brief, body.repo, body.scale)
+        return await call(service.start, tenant, body.conversation_id, body.brief, body.repo, body.scale, body.kind)
 
     @r.get("/api/arch/projects/{pid}", dependencies=[Depends(require_key)])
     async def one(pid: str, tenant: str = Depends(current_tenant)):
