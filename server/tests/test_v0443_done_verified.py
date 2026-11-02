@@ -278,6 +278,22 @@ def _state(calls, goal=None):
     return {"calls": calls, "goal": goal, "breaker": santosh.Breaker() if hasattr(santosh, "Breaker") else None}
 
 
+def test_an_earlier_round_that_really_did_it_is_never_nudged(env):
+    """v0.443: a long job works over several rounds. A later round that only ticks the last step and reports must
+    NOT be called a false claim - the question is asked of the WHOLE job through the harness log."""
+    from app.agent import draftcheck, eventlog
+    from app.agent.breaker import Breaker
+    conv = _conv("c_ver9")
+    v = G.set_goal("default", conv, "mail bhejo", ["likho", "bhejo"])
+    since = G.started_at(v["id"])
+    state = {"calls": [{"tool": "kaam_plan", "ok": True}], "breaker": Breaker(), "goal": v, "request": "mail bhejo"}
+    assert draftcheck.fake_done(dict(state), "Mail bhej diya.", conv, since)        # nothing has run yet
+    eventlog.log_event("default", conv, "tool_result", {"tool": "email_send", "ok": True}, "turn_1", "owner")
+    assert draftcheck.fake_done(dict(state), "Mail bhej diya.", conv, since) == ""  # round 1 really sent it
+    assert draftcheck.nothing_ran_in_job(conv, since) is False
+    assert draftcheck.nothing_ran_in_job("c_other", since) is True
+
+
 def test_fake_done_now_runs_in_goal_mode(env, monkeypatch):
     from app.agent.breaker import Breaker
     conv = _conv("c_ver7")

@@ -1506,6 +1506,14 @@ def _key(name: str, args) -> str:
     return k(name, args)
 
 
+def _goal_now(conversation_id: str, settings) -> dict | None:
+    """The working goal of this chat (v0.443: the claim check asks the whole job, not one round)."""
+    if not getattr(settings, "agent_goal", True):
+        return None
+    from . import goal as _g
+    return _g.active_for(conversation_id)
+
+
 async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, conversation_id: str) -> str:
     """v0.78 self-check before the turn ends: real results vs. her request. Returns a nudge to keep working, or ''.
     Sets state['correct'] when the answer claims more than was done, state['left'] when something stays open.
@@ -1520,7 +1528,12 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
         # the plan's own "X/Y steps ho gaye" line was truth enough - but a step is ticked by the MODEL, so a goal
         # could tick steps and claim sent / booked / saved with only reads behind it. Goal mode now gets the same
         # free check; its own honest lines never trip it (_ALREADY_HONEST + the goal line carries no claim verb).
-        fake = draftcheck.fake_done(state, final_text)
+        g0 = state.get("goal") or (_goal_now(conversation_id, settings))
+        since = None
+        if g0:
+            from . import goal as _g
+            since = _g.started_at(g0["id"]) if g0.get("id") else None
+        fake = draftcheck.fake_done(state, final_text, conversation_id, since)
         if fake:
             return fake
     calls = state.get("calls") or []

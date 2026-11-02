@@ -16763,16 +16763,25 @@ real agent failures is finishing failures - above all a confident false "done".
   that the plan's own "X/Y steps ho gaye" line was truth enough - but a STEP IS TICKED BY THE MODEL, so a long job
   could tick its steps and say "bhej diya" with only reads behind it. It now runs in goal mode too (`_goal_open`
   deleted); the goal's own honest lines carry no claim verb, so they never trip it (tested).
+  - Switching it on raised a FALSE-POSITIVE risk worth more care than the original fix: a long job works across
+    SEVERAL turns (background rounds), so a round that only ticks the last step and reports would read as "nothing
+    ran" even though round 1 really sent the mail - and the second match would staple "(Saaf baat: yeh kaam abhi hua
+    nahi hai)" onto an honest reply, which is exactly the v0.287 bug. So in goal mode the question is asked of the
+    WHOLE job: `draftcheck.nothing_ran_in_job(conv, goal.started_at)` reads the harness event log for a successful
+    non-read tool since the goal began (restart-proof; any trouble reading it answers "something ran", so the check
+    never nudges on a guess). Outside goal mode it stays per-turn, unchanged.
 - Tests `server/tests/test_v0443_done_verified.py` (15): every piece (missing / empty / another tenant's file, page not
   ready, blank page, 404 vs unreachable vs HEAD-refused link, empty dataset), prose skipped + link cap, every step
   check, the gate (unknowns pass, failures block, a pending step is not checked, a crash reads unknown), finish
   refused then accepted, only `done` is gated, the switch, the tool's nudge, checks from set / step / add, fake-done
-  in goal mode, and that the goal-mode exemption is gone.
+  in goal mode, an earlier round that really did the work never nudged, and that the goal-mode exemption is gone.
 - Three older tests pinned the reversed decisions and were rewritten to the new truth, not deleted:
   `test_v0223_draft_jaanch.test_goal_mode_keeps_its_own_truth` (it asserted the exemption; now
   `..._gets_the_free_claim_check_too`), `test_v0260_saaf_kaam` (the description now names `check` as well), and
   `test_v0228_long_jobs_b.test_finish_builds_the_four_part_report` (its `made` Drive link is made up, so the gate is
-  right to hold it; the gate is switched off for that one call because that test is about the REPORT).
+  right to hold it; the gate is switched off for that one call because that test is about the REPORT). A fourth,
+  `test_v0186_long_goal`, gained one scripted reply: its job ticks three steps with kaam_plan alone and then claims
+  "bhej diya", which item 2 now catches - the test documents that instead of hiding it.
 - New switch `goal_verify_links` (default on, `GOAL_VERIFY_LINKS=false` off): conftest turns it off so the whole
   suite stays offline and deterministic - a link check otherwise makes a real HEAD call from the test box.
 - NOT VERIFIED on a live model: the sandbox has no API key. The long card (v0.443 step 0) is what will say whether
