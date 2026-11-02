@@ -16691,3 +16691,19 @@ Owner: "NOW ALSO CHECK IS VOICE TO VOICE CAN PERFORM ALL TOOL TASK END TO END", 
 - Also fixed here: v0.441's `run_owned` passed `context=""` / `client_id=""` / `save_user=True` to run_turn always, which
   broke two older voice tests whose fake run_turn takes only the arguments the old call site used; it now passes only what
   is set.
+
+
+## v0.443.0 AI EMPLOYEES PEHLE (2 Nov 2026)
+Owner: "NOW LETS WORK ON WEB CONSOLE SIDE --- MAKE A SECTION IN SIDE BAR INSTEAD OF EMPLOYEE A AI EMPLOYEE FIRST".
+- The sidebar section was called **Employees** and was added with `NAV.push`, so it landed at the BOTTOM of the nav
+  (after Create / Today / Tools / Lab / Voice call, next to Systems and Arena) - the AI staff she hires, and every desk
+  that appears once one is hired, read like an afterthought.
+- Now `NAV.unshift(['hire', 'AI Employees'])` in `static/console/v2.js`: the section is the FIRST item in the sidebar,
+  and because `syncEmployees` splices each hired desk right after the `hire` entry, the whole AI-staff group (AI
+  Employees + SEO Desk / Social Desk / CAD Desk / Game Desk / Architecture Desk) now sits together at the top.
+- Renamed everywhere a user can read it: the nav label, the title bar (`hire:'· AI Employees'`), the hub page heading
+  (`employees.js`, 3 places), the `aria-label` of the view in `v2.html`, and the "Go to Employees" buttons on the SEO
+  and Social desks plus the "hire it in Employees" lines on the game-role panels.
+- New icon `IC.hire`: a person with a spark (AI) instead of the plain person + sign.
+- Console only: no API, no server behaviour, no phone change (the phone keeps Profile > Employees).
+- Test `test_v0443_ai_employees.py`.

@@ -21,14 +21,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   // ------------------------------------------------------------ the hub
   async function hub(el) {
     HUB = el;
-    if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Employees</h2></div><div class="empty">Loading…</div>';
+    if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>AI Employees</h2></div><div class="empty">Loading…</div>';
     let d;
     try { d = await api('GET', '/api/employees'); }
-    catch (e) { el.innerHTML = `<div class="vh"><h2>Employees</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    catch (e) { el.innerHTML = `<div class="vh"><h2>AI Employees</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
     changed(d.hired || {});
     const groups = {};                                    // v0.357 cards grouped (Business / Research, CAD, Hardware & Industrial Tech)
     for (const e of d.employees || []) (groups[e.group || 'Business'] ||= []).push(e);
-    el.innerHTML = `<div class="vh"><h2>Employees</h2><span class="muted em-sub">Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.</span></div>
+    el.innerHTML = `<div class="vh"><h2>AI Employees</h2><span class="muted em-sub">Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.</span></div>
       ${Object.entries(groups).map(([g, xs]) => `<h3 class="em-group">${esc(g)}</h3><div class="em-grid">${xs.map(card).join('')}</div>`).join('')}`;
     el.querySelectorAll('[data-em]').forEach(b => b.addEventListener('click', () => act(b.dataset.em, b.dataset.key)));
   }
@@ -66,7 +66,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     let d;
     try { d = await api('GET', '/api/seo/desk'); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>SEO Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
-    if (!d.hired) { el.innerHTML = `<div class="vh"><h2>SEO Desk</h2></div><div class="empty">The SEO Specialist is not hired. <button class="btn go" type="button" data-v="hire">Go to Employees</button></div>`; return; }
+    if (!d.hired) { el.innerHTML = `<div class="vh"><h2>SEO Desk</h2></div><div class="empty">The SEO Specialist is not hired. <button class="btn go" type="button" data-v="hire">Go to AI Employees</button></div>`; return; }
     if (!d.onboarded) { el.innerHTML = onboardForm(d); wireOnboard(el); return; }
     const [sc, sn] = STATE[d.state] || ['warn', d.state];
     const g = d.google || {};
@@ -251,7 +251,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     let d;
     try { d = await api('GET', '/api/social/desk'); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>Social Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
-    if (!d.hired) { el.innerHTML = `<div class="vh"><h2>Social Desk</h2></div><div class="empty">The Social Media Manager is not hired. <button class="btn go" type="button" data-v="hire">Go to Employees</button></div>`; return; }
+    if (!d.hired) { el.innerHTML = `<div class="vh"><h2>Social Desk</h2></div><div class="empty">The Social Media Manager is not hired. <button class="btn go" type="button" data-v="hire">Go to AI Employees</button></div>`; return; }
     if (!d.onboarded) { el.innerHTML = socialForm(d); wireSocialForm(el); return; }
     const [sc, sn] = STATE[d.state] || ['warn', d.state];
     const accs = d.accounts || [], b = d.baseline || {}, stg = d.strategy || {}, cal = d.calendar || [];
@@ -913,7 +913,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="acts"><select id="gdOr" aria-label="Screen">${(d.orientations || ['portrait']).map(o => `<option value="${esc(o)}">${esc(o[0].toUpperCase() + o.slice(1))}</option>`).join('')}</select>
           <button class="btn go" type="button" id="gdNew"${h.ready ? '' : ' disabled'}>Write the design</button></div>
         <p class="muted em-small">A short design doc comes first; nothing is built until you say OK. The play link stays private until you share it.</p></div>
-      <div class="tile gl gd-team"><h3>Game Desk team</h3><p class="muted em-small">Each role is its own employee (hire it in Employees). Open a project's board to work on that game, or try them here on their own.</p>
+      <div class="tile gl gd-team"><h3>Game Desk team</h3><p class="muted em-small">Each role is its own employee (hire it in AI Employees). Open a project's board to work on that game, or try them here on their own.</p>
         <div class="acts"><button class="btn soft" type="button" data-gs-role="world">Worlds (Procedural World Engineer)</button>
           <button class="btn soft" type="button" data-gs-role="physics">Physics (Physics Engine Developer)</button>
           <button class="btn soft" type="button" data-gs-role="audio">Audio (Spatial Audio Programmer)</button>
@@ -1329,7 +1329,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <input id="wdSeed" type="number" min="0" placeholder="Seed (optional)" aria-label="Seed">
           <button class="btn go" type="button" id="wdGo"${d.hired ? '' : ' disabled'}>Make the world</button>
           ${sid ? '<button class="btn soft" type="button" id="wdApply">Put approved worlds in the game</button>' : ''}</div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Procedural World Generation Engineer in Employees to make worlds.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Procedural World Generation Engineer in AI Employees to make worlds.</p>'}</div>
       ${(d.worlds || []).map(w => { const [c, n] = WST[w.status] || ['', w.status]; const f = w.files || {}, st = w.stats || {}, dm = w.demo || {};
         return `<section class="tile gl wd-card"><div class="em-h"><h3>${esc(w.number)} · ${esc(w.key)} <span class="muted">${esc(w.kind)} · seed ${num(w.seed)} · v${num(w.version)}</span></h3>${tag(c, n)}</div>
           <div class="wd-body">${f['preview.png'] ? `<img class="wd-prev" src="${esc(f['preview.png'])}" alt="Preview of world ${esc(w.number)}" loading="lazy">` : ''}
@@ -1376,7 +1376,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="acts"><button class="btn go" type="button" id="phGo"${d.hired ? '' : ' disabled'}>Run the physics lab</button>
           ${sid ? '<button class="btn soft" type="button" id="phApply">Put approved physics in the game</button>' : ''}</div>
         ${sid ? '<p class="muted em-small">With a project, the fastest speed in your Game Bible is used when you leave the speed as it is.</p>' : ''}
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Physics Engine Developer in Employees to run the lab.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Physics Engine Developer in AI Employees to run the lab.</p>'}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const lab = x.lab || {}, st = x.settings || {}, i = x.inputs || {};
         return `<section class="tile gl ph-card"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${num(i.speed)} px/s · ${num(i.wall)} px wall · ${num(i.ticks)} ticks · g ${num(i.gravity)}</span></h3>${tag(c, n)}${lab.verdict ? tag(lab.verdict === 'PASS' ? 'ok' : 'bad', lab.verdict + ' ' + num(lab.passed) + '/' + num(lab.total)) : ''}</div>
           <p class="em-small"><b>Settings:</b> ${num(st.ticks)} ticks · gravity ${num(st.gravity)}${st.ccd ? ' · continuous collision (cast-ray) above ' + num(st.ccd_min_speed) + ' px/s' : ''} - ${esc(st.why || '')}</p>
@@ -1418,7 +1418,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       <div class="tile gl"><h3>New audio setup</h3><div class="acts">${Object.keys(zp).map(k => `<label class="gs-sw"><input type="checkbox" data-au-z="${esc(k)}"${['room', 'hall'].includes(k) ? ' checked' : ''}> ${esc(k.replace('_', ' '))} <span class="muted em-small">${num(zp[k])} s</span></label>`).join('')}</div>
         <div class="ph-grid"><label>Full volume up to (m)<input id="auMin" type="number" min="0.1" step="0.1" value="1"></label><label>Silent beyond (m)<input id="auMax" type="number" min="1" value="40"></label></div>
         <div class="acts"><button class="btn go" type="button" id="auGo"${d.hired ? '' : ' disabled'}>Render and measure</button>${sid ? '<button class="btn soft" type="button" id="auApply">Put approved audio in the game</button>' : ''}</div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Spatial Audio Systems Programmer in Employees first.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Spatial Audio Systems Programmer in AI Employees first.</p>'}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {}, nb = rp.numbers || {};
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(((x.plan || {}).zones || []).map(z => z.key + ' ' + z.rt60 + ' s').join(' · '))}</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
           ${Object.keys(f).length ? `<div class="au-demos">${Object.entries(f).map(([k, u]) => `<div><b class="em-small">${esc(k.replace('.wav', ''))}</b><audio controls preload="none" src="${esc(u)}"></audio></div>`).join('')}</div><p class="muted em-small">Use headphones. Render ${num(nb.render_s)} s · ${num(nb.cpu_per_voice_s_per_s)} s CPU per voice per second · latency ${num(nb.latency_ms)} ms</p>` : (x.status === 'testing' ? '<p class="muted em-small">Rendering and measuring…</p>' : '')}
@@ -1451,7 +1451,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <textarea id="hpWords" rows="2" maxlength="600" placeholder="The moments that should buzz, e.g. jump, coin, hit, game over, level up" aria-label="Moments"></textarea>
         <div class="acts"><select id="hpAct" aria-label="Device">${Object.entries(acts).map(([k, a]) => `<option value="${esc(k)}">${esc(a.name)}</option>`).join('')}</select>
           <button class="btn go" type="button" id="hpGo"${d.hired ? '' : ' disabled'}>Make and check</button>${sid ? '<button class="btn soft" type="button" id="hpApply">Put approved haptics in the game</button>' : ''}</div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Haptic Feedback Systems Engineer in Employees first.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Haptic Feedback Systems Engineer in AI Employees first.</p>'}</div>
       ${(d.sets || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {}, comp = ((rp.kit || {}).drv2605_compile || {});
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(x.actuator_name)} · ${esc(Object.keys(x.patterns || {}).join(', '))}</span></h3>${tag(c, n)}</div>
           ${f['patterns.png'] ? `<img class="wd-prev hp-img" src="${esc(f['patterns.png'])}" alt="Pattern shapes" loading="lazy">` : ''}
@@ -1491,7 +1491,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       <p class="muted em-sub">Bots play your game's movement over a good network, the plan's 150 ms / 2 % loss network and a bad mobile one, through an authoritative server with prediction, reconciliation, interpolation and lag compensation. Measured: rubber-banding, desync (must be 0), bandwidth, hits the server agrees with. Then the Godot netcode itself runs with a server and three clients. The game server runs on your own cloud - Hoola hosts none - and the netcode is not inside the game build yet.</p>
       <div class="tile gl"><h3>New netcode setup</h3><div class="ph-grid">${F.map(([k, l]) => `<label>${l}<input data-nc="${k}" type="number" value="${num(df[k])}"></label>`).join('')}</div>
         <div class="acts"><button class="btn go" type="button" id="ncGo"${d.hired ? '' : ' disabled'}>Run the bots</button></div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the Multiplayer Network Programmer in Employees first.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Multiplayer Network Programmer in AI Employees first.</p>'}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, i = x.inputs || {}, runs = rp.runs || {};
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${num(i.players)} players · ${num(i.tick)} Hz · ${num(i.send)} snapshots/s</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
           ${Object.keys(runs).length ? `<table class="ph-tbl"><thead><tr><th>Network</th><th>Correction p95 / max</th><th>Desync</th><th>Down / up per player</th><th>Lag-comp hits</th></tr></thead><tbody>${Object.values(runs).map(r => `<tr><td>${esc(r.net)}</td><td>${num(r.corr_p95_px)} / ${num(r.corr_max_px)} px</td><td>${num(r.desync_px_max)} px</td><td>${num(r.down_bps_per_player)} / ${num(r.up_bps_per_player)} B/s</td><td>${Math.round((r.lagcomp_agree || 0) * 100)}% (without: ${Math.round((r.no_lagcomp_agree || 0) * 100)}%)</td></tr>`).join('')}</tbody></table>` : (x.status === 'testing' ? '<p class="muted em-small">Bots are playing…</p>' : '')}
@@ -1522,7 +1522,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <select id="xrFps" aria-label="Device"><option value="72">Quest-class (72 fps)</option><option value="90">90 fps headset</option></select>
           <label class="gs-sw"><input type="checkbox" id="xrSeat" checked> Seated mode</label>
           <button class="btn go" type="button" id="xrGo"${d.hired ? '' : ' disabled'}>Check and build the demo room</button>${sid ? '<button class="btn soft" type="button" id="xrApply">Put approved VR / AR in the game</button>' : ''}</div>
-        ${d.hired ? '' : '<p class="muted em-small">Hire the AR / VR Interaction Engineer in Employees first.</p>'}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the AR / VR Interaction Engineer in AI Employees first.</p>'}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, st = x.settings || {}, dm = x.demo || {}, gs = rp.gestures || {};
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc((st.mode || '').toUpperCase())} · snap ${num(st.snap_deg)}° · ${num(st.fps)} fps</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
           ${x.status === 'testing' ? '<p class="muted em-small">Checking and building…</p>' : ''}
@@ -1555,7 +1555,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       <div class="tile gl"><h3>${esc(cfg.formTitle)}</h3>${cfg.form(d)}
         <div class="acts"><button class="btn go" type="button" id="rpGo"${d.hired ? '' : ' disabled'}>${esc(cfg.go)}</button>
           ${sid && cfg.apply ? '<button class="btn soft" type="button" id="rpApply">Put the approved one in the game</button>' : ''}</div>
-        ${d.hired ? '' : `<p class="muted em-small">Hire the ${esc(cfg.who)} in Employees first.</p>`}</div>
+        ${d.hired ? '' : `<p class="muted em-small">Hire the ${esc(cfg.who)} in AI Employees first.</p>`}</div>
       ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {};
         return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(cfg.sub(x))}</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
           ${(rp.cases || []).length ? `<table class="ph-tbl"><thead><tr><th>Reference case</th><th>Measured</th><th>Expected</th><th></th></tr></thead><tbody>${rp.cases.map(k => `<tr><td>${esc(k.case)}<div class="muted em-small">${esc(k.note)}</div></td><td>${esc(String(k.measured))}</td><td>${esc(String(k.expected))}</td><td>${tag(k.ok ? 'ok' : 'bad', k.ok ? 'pass' : 'fail')}</td></tr>`).join('')}</tbody></table>` : ''}
