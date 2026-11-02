@@ -13,9 +13,14 @@ KEY = "architect"
 
 ARCH_TOOLS = [
     {"name": "software_architect", "description": (
-        "Principal Software Architect employee: designs HER software system (architecture doc, ADRs, Mermaid diagrams, "
-        "capacity sheet worked out in code, NFRs, risks, failure modes, roadmap, PDF) and checks pull requests against "
-        "the approved design. action=new (brief = what the system must do / who uses it / how many people a day in her "
+        "Principal Software Architect employee (MASTER): any architecture job on HER software, as a peer-reviewed "
+        "document with diagrams, ADRs, risks, roadmap, PDF + every number worked out in code. kind = design (a new "
+        "system), assess (judge her EXISTING repo: scorecard, problems with evidence, module map + dependency cycles "
+        "from the real imports - needs repo), migrate (modernise / move her existing system: phases with rollback, data "
+        "move, cut-over - needs repo), decide (one technology choice: options x weighted criteria, ranked + sensitivity "
+        "in code), threat (STRIDE threat model, risk scores + coverage gaps), scale (what breaks at 10x / 100x). Every "
+        "design also gets boundary rules checked by code on her repo and on each PR, an OpenAPI contract (api.yaml) and "
+        "design checks. action=new (kind, brief = what the system must do / who uses it / how many people a day in her "
         "words; repo = owner/name of her GitHub repo to read first, optional; scale = her numbers: dau, "
         "requests_per_user_per_day, peak_factor, write_ratio, record_kb, retention_days...) works in the background - "
         "tell her it is being designed and the desk shows it. action=status (id) / list. action=change (id, words) = the "
@@ -25,6 +30,8 @@ ARCH_TOOLS = [
         "returns; never invent scale. It never pushes, merges, deploys or runs her code."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "list", "status", "change", "approve", "review_pr", "watch", "cancel"]},
+         "kind": {"type": "string", "enum": ["design", "assess", "migrate", "decide", "threat", "scale"],
+                  "description": "action=new: which architecture job (default design)"},
          "brief": {"type": "string", "description": "action=new: the system in her words"},
          "repo": {"type": "string", "description": "action=new: her GitHub repo owner/name (optional)"},
          "scale": {"type": "object", "description": "her numbers: dau, requests_per_user_per_day, peak_factor, "
@@ -42,7 +49,23 @@ def _short(v: dict[str, Any]) -> dict[str, Any]:
     """What the model needs to talk about a design (the full doc stays on the desk)."""
     d = v.get("design") or {}
     cap = v.get("capacity") or {}
-    out = {k: v.get(k) for k in ("id", "title", "status", "stage", "error", "version", "repo", "pdf", "watch_prs")}
+    out = {k: v.get(k) for k in ("id", "title", "kind", "status", "stage", "error", "version", "repo", "pdf", "api_yaml", "watch_prs")}
+    x = v.get("extra") or {}
+    if (x.get("decision_result") or {}).get("totals"):
+        out["decision"] = {k: x["decision_result"].get(k) for k in ("winner", "margin", "robust", "flips", "totals")}
+    if (x.get("threat_result") or {}).get("rows"):
+        out["threats"] = {"total": x["threat_result"]["total"], "open_high": x["threat_result"]["open_high"],
+                          "not_considered": x["threat_result"]["letters_unused"]}
+    if x.get("scorecard_result"):
+        out["scorecard"] = x["scorecard_result"]
+    if (x.get("scenarios") or {}).get("breaks"):
+        out["breaks_first"] = x["scenarios"]["breaks"]
+    if x.get("review"):
+        out["peer_review"] = {"issues": len(x["review"].get("issues") or []), "fixed": bool(x["review"].get("revised"))}
+    if x.get("checks"):
+        out["checks"] = f"{sum(1 for c in x['checks'] if c['ok'])}/{len(x['checks'])} pass"
+    if x.get("fitness_now") is not None:
+        out["boundary_breaks_today"] = len(x["fitness_now"])
     if d:
         out["summary"] = d.get("summary", "")[:1500]
         out["adrs"] = [f"{a.get('id')}: {a.get('title')} - {str(a.get('decision') or '')[:200]}" for a in d.get("adrs") or []][:10]
@@ -61,7 +84,7 @@ def _short(v: dict[str, Any]) -> dict[str, Any]:
 
 
 async def software_architect(ctx: Ctx, action="", brief="", repo="", scale=None, id="", words="", watch_prs=None,
-                             pr=0, **_):
+                             pr=0, kind="design", **_):
     from ..archdesk import service as A
     from ..employee import hire
     t = ctx.tenant_id
@@ -73,7 +96,7 @@ async def software_architect(ctx: Ctx, action="", brief="", repo="", scale=None,
     try:
         if action == "new":
             return _short(await asyncio.to_thread(A.start, t, ctx.conversation_id, brief, repo,
-                                                  scale if isinstance(scale, dict) else {}))
+                                                  scale if isinstance(scale, dict) else {}, kind or "design"))
         if action == "list":
             return {"designs": await asyncio.to_thread(A.projects, t)}
         if not id:

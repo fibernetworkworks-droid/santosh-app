@@ -29,6 +29,8 @@ class ArchProject(Base):
     diagrams: Mapped[list] = mapped_column(JSON, default=list)          # [{name, mermaid, ok, error, svg, png}]
     repo_facts: Mapped[dict] = mapped_column(JSON, default=dict)        # files read, languages, manifests
     changes: Mapped[list] = mapped_column(JSON, default=list)           # her change requests, oldest first
+    kind: Mapped[str | None] = mapped_column(String(16), nullable=True)  # MASTER: design|assess|migrate|decide|threat|scale (None = design)
+    extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)      # MASTER: kind sections + sums made in code + peer review + checks
     watch_prs: Mapped[bool | None] = mapped_column(Boolean, nullable=True)       # review new PRs against the approved design
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
