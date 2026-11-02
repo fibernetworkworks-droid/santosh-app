@@ -899,7 +899,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -923,7 +923,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <button class="btn soft" type="button" data-gs-role="sim">Simulators (Simulation Engineer)</button>
           <button class="btn soft" type="button" data-gs-role="twin">Digital twin (Twin Architect)</button>
           <button class="btn soft" type="button" data-gs-role="vfx">VFX pipeline (Pipeline TD)</button>
-          <button class="btn soft" type="button" data-gs-role="runtime">Editor (Ask Hoola in Godot)</button></div></div>
+          <button class="btn soft" type="button" data-gs-role="runtime">Editor (Ask Hoola in Godot)</button>
+          <button class="btn soft" type="button" data-gs-role="big">Big studio (Unity / Unreal)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
     el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
@@ -1602,6 +1603,65 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       body: el2 => { const t = el2.querySelector('#vxPlan').value.trim(); let plan = null; if (t) { try { plan = JSON.parse(t); } catch { toast('The pipeline is not valid JSON.', true); } } return {plan}; },
       sub: x => `${x.show} · ${((x.plan || {}).shots || []).length} shots`,
       extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
+  }
+
+  // ---------------------------------------------------------------- v0.433 Big-studio mode (the Hoola Crew in Unity / Unreal)
+  let BIG_OPEN = '';
+  async function gsBig(el) {
+    clearTimeout(GTIMER);
+    let d;
+    try { d = await api('GET', '/api/gamedesk/big'); } catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const p = d.projects.find(x => x.id === BIG_OPEN) || d.projects[0];
+    let open = null;
+    const stTag = s => tag({done: 'ok', failed: 'bad', rejected: 'bad', proposed: '', applied: ''}[s] ?? '', s);
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="bsBack">← Game Desk</button><h2>Big studio</h2></div>
+      <p class="muted em-small">Your game lives in your own Unity / Unreal / Godot project, on your machines. The Hoola Crew works inside your editor: the plugin asks for the next task, Hoola sends a proposal the server has checked (paths, banned calls, syntax), and nothing is written until you click Apply in the editor. Your editor compiles it and tells Hoola; errors come back for a fix round.</p>
+      <section class="tile gl"><h3>Plugins</h3>
+        <div class="acts"><a class="btn go" href="/api/gamedesk/big/plugin/unity.zip" data-bs-dl="1">Unity package</a><a class="btn go" href="/api/gamedesk/big/plugin/unreal.zip" data-bs-dl="1">Unreal plugin</a>
+          <button class="btn soft" type="button" id="bsTok">Editor tokens</button></div>
+        <p class="em-small muted">Unity 2022.3+: Package Manager > Add package from disk. Unreal 5: copy HoolaCrew into Plugins/. Any MCP client can use <code>${esc(d.mcp_url)}</code> with an editor token.</p></section>
+      <section class="tile gl"><h3>Projects</h3>
+        <div class="acts">${d.projects.map(x => `<button class="btn ${p && x.id === p.id ? 'go' : 'soft'} gs-mini" type="button" data-bs-p="${esc(x.id)}">${esc(x.number)} ${esc(x.title)} · ${esc(x.engine_name)}</button>`).join('') || '<span class="muted em-small">No studio project yet.</span>'}</div>
+        <details${d.projects.length ? '' : ' open'}><summary>New studio project</summary><div class="lo-form">
+          <select id="bsEng" aria-label="Engine">${Object.entries(d.engines).map(([k, n]) => `<option value="${esc(k)}">${esc(n)}</option>`).join('')}</select>
+          <input id="bsTitle" placeholder="Project name" aria-label="Project name"><input id="bsVer" placeholder="Engine version (e.g. 6000.0 / 5.4)" aria-label="Engine version">
+          <input id="bsMod" placeholder="Unreal C++ module (optional)" aria-label="C++ module">
+          <textarea id="bsAbout" rows="2" placeholder="About the game: genre, platforms, what is built already" aria-label="About"></textarea>
+          <button class="btn go" type="button" id="bsNew">Make the project</button></div></details></section>
+      ${p ? `<section class="tile gl"><h3>${esc(p.number)} ${esc(p.title)} <span class="muted em-small">${esc(p.engine_name)} ${esc(p.engine_version)}</span></h3>
+        <p class="em-small">${Object.entries(p.counts).filter(([, n]) => n).map(([k, n]) => esc(k) + ' ' + num(n)).join(' · ') || 'No task yet.'}</p>
+        <table class="ph-tbl"><thead><tr><th>Task</th><th>Crew</th><th>State</th><th>Files</th></tr></thead><tbody>${p.tasks.map(t => `<tr data-bs-t="${esc(t.number)}" class="bs-row"><td>${esc(t.number)} ${esc(t.title)}${t.rounds ? ` <span class="muted em-small">fix round ${num(t.rounds)}</span>` : ''}</td><td class="em-small">${esc(t.role)}</td><td>${stTag(t.status)}</td><td class="em-small">${t.files.map(esc).join('<br>')}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Add the first task below.</td></tr>'}</tbody></table>
+        <div class="lo-form"><input id="bsTTitle" placeholder="Task: one small change (e.g. double jump with coyote time)" aria-label="Task"><textarea id="bsTDetail" rows="2" placeholder="Details (optional)" aria-label="Details"></textarea>
+          <button class="btn go" type="button" id="bsTAdd">Add to the board</button></div>
+        <div id="bsDetail"></div></section>` : ''}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBig(el); };
+    el.querySelector('#bsBack').addEventListener('click', () => { GS_ROLE = ''; game(el); });
+    el.querySelector('#bsTok').addEventListener('click', () => { GS_ROLE = 'runtime'; GS_ROLE_SID = ''; gsRuntime(el); });
+    el.querySelectorAll('[data-bs-dl]').forEach(a => a.addEventListener('click', async e => { e.preventDefault();
+      try { const r = await api('GET', a.getAttribute('href'), undefined, {raw: true}); const b = await r.blob(); const u = URL.createObjectURL(b);
+        const x = document.createElement('a'); x.href = u; x.download = 'hoola_crew_' + a.getAttribute('href').split('/').pop(); x.click(); URL.revokeObjectURL(u); } catch (err) { toast(err.message, true); } }));
+    el.querySelectorAll('[data-bs-p]').forEach(b => b.addEventListener('click', () => { BIG_OPEN = b.dataset.bsP; gsBig(el); }));
+    el.querySelector('#bsNew').addEventListener('click', () => go(async () => { const r = await api('POST', '/api/gamedesk/big', {engine: el.querySelector('#bsEng').value,
+      title: el.querySelector('#bsTitle').value.trim(), engine_version: el.querySelector('#bsVer').value.trim(), module: el.querySelector('#bsMod').value.trim(),
+      about: el.querySelector('#bsAbout').value.trim()}); BIG_OPEN = r.id; }, 'Project made. Download the plugin for its engine.'));
+    if (!p) return;
+    el.querySelector('#bsTAdd').addEventListener('click', () => go(() => api('POST', `/api/gamedesk/big/${encodeURIComponent(p.id)}/tasks`,
+      {title: el.querySelector('#bsTTitle').value.trim(), detail: el.querySelector('#bsTDetail').value.trim()}), 'On the board. Your editor gets it with Next task.'));
+    el.querySelectorAll('[data-bs-t]').forEach(row => row.addEventListener('click', async () => {
+      try { open = await api('GET', `/api/gamedesk/big/${encodeURIComponent(p.id)}/tasks/${encodeURIComponent(row.dataset.bsT)}`); } catch (e) { return toast(e.message, true); }
+      const pr = open.proposal || {}, res = open.result || {};
+      el.querySelector('#bsDetail').innerHTML = `<div class="tile lo-row"><b>${esc(open.number)} ${esc(open.title)}</b> ${stTag(open.status)}
+        ${pr.why ? `<p class="em-small">${esc(pr.why)}</p>` : ''}
+        ${(pr.problems || []).map(x => `<div class="badc em-small">✕ ${esc(x)}</div>`).join('')}
+        ${(pr.checks || []).length ? checksTable((pr.checks || []).map(c => ({check: c.file, ok: c.ok !== false, note: c.error || c.how}))) : ''}
+        ${(pr.manual || []).length ? `<p class="em-small"><b>By hand in the editor:</b></p><ul class="em-small">${pr.manual.map(m => `<li>${esc(m)}</li>`).join('')}</ul>` : ''}
+        ${(pr.files || []).map(f => `<details><summary class="em-small">${esc(f.path)}</summary><pre class="gs-sum rt-cfg">${esc(f.content)}</pre></details>`).join('')}
+        ${res.applied ? `<p class="em-small"><b>Her editor:</b> ${res.compiled === true ? 'compiled clean' : res.compiled === false ? 'compile failed' : 'not reported yet'}${(res.errors || []).length ? '<br>' + res.errors.map(esc).join('<br>') : ''}</p>` : ''}
+        <ul class="muted em-small">${(open.history || []).slice(-6).map(h => `<li>${esc((h.at || '').slice(0, 16).replace('T', ' '))} ${esc(h.what)}</li>`).join('')}</ul>
+        ${['failed', 'rejected', 'done'].includes(open.status) ? `<div class="acts"><input id="bsNote" placeholder="Note for the crew" aria-label="Note"><button class="btn soft gs-mini" type="button" id="bsReopen">Reopen</button></div>` : ''}</div>`;
+      el.querySelector('#bsReopen')?.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/big/${encodeURIComponent(p.id)}/tasks/${encodeURIComponent(open.number)}/reopen`,
+        {note: el.querySelector('#bsNote').value.trim()}), 'Back on the board.'));
+    }));
   }
 
   // ---------------------------------------------------------------- v0.428 Live ops (A/B, live events, crashes, patches, money)

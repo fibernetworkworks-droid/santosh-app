@@ -1101,3 +1101,141 @@ class _GameLiveopsScreenState extends State<GameLiveopsScreen> {
     );
   }
 }
+
+// ---------------------------------------------------------------- v0.433 Big-studio mode
+class GameBigStudioScreen extends StatefulWidget {
+  const GameBigStudioScreen({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<GameBigStudioScreen> createState() => _GameBigStudioScreenState();
+}
+
+class _GameBigStudioScreenState extends State<GameBigStudioScreen> {
+  Map<String, dynamic> _d = {};
+  String _open = '';
+  bool _loaded = false;
+  bool _busy = false;
+  final _task = TextEditingController();
+  final _title = TextEditingController();
+  String _engine = 'unity';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _task.dispose();
+    _title.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final d = await widget.app.api!.gameBig();
+      if (!mounted) return;
+      setState(() {
+        _d = d;
+        _loaded = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loaded = true);
+        _snack(context, '$e');
+      }
+    }
+  }
+
+  Future<void> _do(Future<dynamic> Function() f, String ok) async {
+    setState(() => _busy = true);
+    try {
+      await f();
+      if (mounted) _snack(context, ok);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+    await _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ps = _list(_d['projects']);
+    final p = ps.isEmpty ? <String, dynamic>{} : ps.firstWhere((x) => _s(x['id']) == _open, orElse: () => ps.first);
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Big studio')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+            const Text('Your Unity / Unreal / Godot project on your own machines. The Hoola Crew plugin in your editor takes the next task; '
+                'nothing is written until you click Apply there. Plugins and editor tokens: web console > Game Desk > Big studio.',
+                style: TextStyle(color: C.muted, fontSize: 13.5, height: 1.35)),
+            if (!_loaded)
+              const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+            else ...[
+              const SizedBox(height: 10),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final x in ps)
+                  ChoiceChip(
+                      label: Text('${_s(x['number'])} ${_s(x['title'])} · ${_s(x['engine_name'])}'),
+                      selected: _s(x['id']) == _s(p['id']),
+                      onSelected: (_) => setState(() => _open = _s(x['id']))),
+              ]),
+              if (ps.isEmpty)
+                Glass(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('New studio project', style: display(15)),
+                    TextField(controller: _title, decoration: const InputDecoration(labelText: 'Project name')),
+                    DropdownButton<String>(
+                        value: _engine,
+                        items: const [
+                          DropdownMenuItem(value: 'unity', child: Text('Unity')),
+                          DropdownMenuItem(value: 'unreal', child: Text('Unreal Engine')),
+                          DropdownMenuItem(value: 'godot', child: Text('Godot')),
+                        ],
+                        onChanged: (v) => setState(() => _engine = v ?? 'unity')),
+                    TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _do(() => widget.app.api!.gameBigNew({'engine': _engine, 'title': _title.text.trim()}), 'Project made.'),
+                        child: const Text('Make the project')),
+                  ]),
+                ),
+              if (p.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${_s(p['number'])} ${_s(p['title'])}', style: display(15)),
+                    for (final t in _list(p['tasks']))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text('${_s(t['number'])} ${_s(t['title'])} · ${_s(t['status'])}'
+                            '${_i(t['rounds']) > 0 ? ' · fix round ${_s(t['rounds'])}' : ''}',
+                            style: TextStyle(fontSize: 13, color: _s(t['status']) == 'failed' ? C.bad : (_s(t['status']) == 'done' ? C.ok : null))),
+                      ),
+                    TextField(
+                        controller: _task,
+                        onChanged: (_) => setState(() {}),
+                        decoration: const InputDecoration(labelText: 'New task (one small change)')),
+                    TextButton(
+                        onPressed: _busy || _task.text.trim().length < 3
+                            ? null
+                            : () => _do(() async {
+                                  await widget.app.api!.gameBigTask(_s(p['id']), {'title': _task.text.trim()});
+                                  _task.clear();
+                                }, 'On the board. Your editor gets it with Next task.'),
+                        child: const Text('Add to the board')),
+                  ]),
+                ),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}
