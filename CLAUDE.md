@@ -217,8 +217,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.424.0 (pubspec 0.424.0+468). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.425.0 (pubspec 0.425.0+469). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.425 APP PAGES + SURAKSHA (web Step 3, W2 + W3): `hoola-app.js` = in-page app per role (tables sort/search/filter/pages/bulk, detail + linked lists, multi-step forms + uploads, kanban, calendar, approvals, members, audit, matrix, My account); `site/security.py` = phone OTP (MSG91 DLT, hash only), staff TOTP 2FA, sessions + sign out everywhere, DPDP consent / export / delete, journal `by` = audit log, `private` fields. Not built: Google / magic link / passkeys / custom roles.
 - v0.418 PRAYOGSHALA IN ENGLISH: all lab text, runtime, catalogue, phone screen and checker messages English (en-IN narration); a test blocks Hinglish.
 - v0.415 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin
   (same numbers, tested), 22 NCERT physics practicals within 1 %, lab3d.js runtime, tool prayog, console Lab + phone Prayogshala.

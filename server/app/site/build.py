@@ -485,7 +485,7 @@ CHART_JS = Path(__file__).resolve().parents[1] / "static" / "console" / "charts.
 def uses_charts(body: str) -> bool:
     """A page loads assets/hoola-chart.js only when it draws a chart: a section's <figure data-hoola-chart> or the web
     app's staff panel (its dashboard)."""
-    return "data-hoola-chart" in body or 'data-hoola-app="admin"' in body
+    return "data-hoola-chart" in body or 'data-hoola-app="admin"' in body or 'data-area="staff"' in body   # v0.425 staff app
 
 
 # ---------------------------------------------------------------- v0.351 her shop (code only: prices come live from the API)
@@ -538,9 +538,12 @@ def buy_box(site: dict[str, Any], slug: str) -> str:
 def app_page(kind: str, site: dict[str, Any]) -> str:
     """The account / staff pages: containers the app script fills from the live schema (no data in the HTML)."""
     w = app_words(site)
-    if kind == "admin":
+    if kind == "admin":                  # v0.425 APP PAGES: the staff app (menu, tables, board, calendar, approvals, audit...)
         return (f'<section class="hs"><div class="wrap"><h1>{esc(w["admin_h"])}</h1><p class="lead">{esc(w["admin_p"])}</p>'
-                f'<div data-hoola-app="login"></div><div data-hoola-app="admin"></div></div></section>')
+                f'<div data-hoola-app="login"></div><div data-hoola-app="shell" data-area="staff"></div></div></section>')
+    if (site.get("app") or {}).get("shell", True):   # v0.425 the member's own app area (her lists, her account)
+        return (f'<section class="hs"><div class="wrap"><h1>{esc(w["account"])}</h1><div data-hoola-app="login"></div>'
+                f'<div data-hoola-app="shell" data-area="member"></div></div></section>')
     parts = [f'<section class="hs"><div class="wrap"><h1>{esc(w["account"])}</h1><div data-hoola-app="login"></div></div></section>']
     for c in (site.get("app") or {}).get("collections", []):
         r = c["rules"]
@@ -723,7 +726,8 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
     if site.get("noindex") or page["slug"] in ("admin", "account"):
         meta.append('<meta name="robots" content="noindex">')
     if site.get("app_api"):                      # v0.305 where the app script talks to (Hoola's API, never the site host)
-        meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}">')
+        meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}" '
+                    f'data-privacy="{rel}privacy/">')
     shop = site.get("shop") or {}
     if shop.get("api"):                          # v0.351 her shop: the cart script talks to Hoola's shop API
         meta.append(f'<meta name="hoola-shop" content="{esc(shop["api"])}" data-cod="{1 if shop.get("cod") else 0}" '

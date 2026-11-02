@@ -260,6 +260,9 @@ class Settings(BaseSettings):
     site_parallel_big: int = 8             # v0.315 sections written at the same time on a big site (v0.400: 5 -> 8)
     site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
+    site_sms_provider: str = ""            # v0.425 website phone-OTP login: "" off | msg91 (DLT registered, her account)
+    msg91_authkey: str = ""                # v0.425 MSG91 auth key (VPS .env only)
+    msg91_otp_template: str = ""           # v0.425 MSG91 OTP template id (DLT approved)
     site_app_link: bool = True             # v0.414 every website web app runs on App Sahayak's backend + DIMAAG (old v0.305 sites moved by the worker)
     site_journeys: bool = True             # v0.402 visitor journeys (menu / form / shop / blog / language) on every version
     site_arena_max_inr: float = 3000       # v0.307 Design Arena: rupee ceiling of one run (each site ~Rs 100-300 with Opus)

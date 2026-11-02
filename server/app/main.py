@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.424.0"   # v0.424.0 JODO (App Sahayak Pillar F, Phase 54, owner: "START PILLAR F"): connectors inside her apps as DECLARED HTTP actions, never code (appmaker/connect.py) - nothing runs before her approval tap, bound to a hash of the exact action (any change = approve again); https + the approved host only, the address resolved and refused when private / loopback / link-local / metadata, no redirects, 1 MB answers; her secrets sealed, returned by no route, scrubbed from every run log; auth bearer / basic / header / query / login token / refresh token (QuickBooks rotation kept) / Google service account; answers are DATA written only into real fields through their type checks; safe retries only, a POST that timed out = ambiguous and never resent; new-row / status triggers queued in the background (the order never waits), staff buttons only where she allowed; signed inbound webhooks mapped into a matched row; Aadhaar refused. 13 ready packs from the providers' own docs (connect_packs.py: Shiprocket, Delhivery, MSG91, Fast2SMS, WhatsApp Cloud, Brevo, Resend, Google Sheets, Google Calendar, Zoho Books, QuickBooks, Tally = export, licensed KYC). Kits Connect.kt / Connect.swift, console Connectors box, phone panel. NOT VERIFIED against live accounts. Previous: v0.423.0 GAME DESK ROLES 4: SIMULATORS + DIGITAL TWIN + VFX PIPELINE (Hoola Game Engine plan Phase 7 batch 4 = Game Desk plan phase 5, owner: "GO PHASE 7" - Phase 7 done: all ten Game Desk employees live). Simulation Software Engineer (gamedesk/sim.py, tool game_sim): orbit (two-body + J2, WGS 84 constants), light-aircraft glide and car-handling models in RK4, each validated against its textbook case (orbit period, energy drift, J2 node regression - sun-synchronous at 98 degrees, GEO = a sidereal day; glide angle, Lanchester phugoid; steady yaw rate), sources cited, scenarios run twice, HoolaSim's GDScript step matching the Python one in the real Godot; weapon / targeting / combat simulators refused. Digital Twin Architect (gamedesk/twin.py, tool game_twin): her line as data with every number traced to a data tag or a stated assumption, read-only by construction, Hoola's event engine checked against exact answers and Erlang C, throughput / utilisation / WIP / lead time / bottleneck + what-ifs on common random numbers, validated only against her real week (else NOT ASSESSED). VFX Pipeline TD (gamedesk/vfx.py, tool game_vfx): naming + versions, ACES colour converted and measured (LogC3 / S-Log3 18 % grey), a real ACEScg EXR written and read back, a render queue with re-queue and cost per shot, every frame traced to its scene sha256; Blender / OCIO not run on the server (said).
+APP_VERSION = "0.425.0"   # v0.425.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3, owner: "START STEP 3"). The website's account and staff pages are now a real in-page app per role: a menu by role, tables you sort / search / filter / page / bulk-select, detail pages with linked lists, multi-step forms that check before sending and upload photos / files, kanban, month calendar, approvals, members, who-can-do-what and the audit log, dressed in the site's own design. People log in safely: phone OTP through a DLT SMS provider (only a hash kept, 5 minutes, 5 tries, rate limits), 2-step login (authenticator code) for staff, every logged-in device listed with "log out" and "sign out everywhere", DPDP consent on sign-up, download-my-data and delete-my-account, every change journaled with WHO made it, staff-only fields. Fixed on the way: a wrong OTP rolled back its own try counter (unlimited guesses), two logins in one second shared a token, the staff page lost its charts. Previous: v0.424.0 JODO (App Sahayak Pillar F, Phase 54, owner: "START PILLAR F"): connectors inside her apps as DECLARED HTTP actions, never code (appmaker/connect.py) - nothing runs before her approval tap, bound to a hash of the exact action (any change = approve again); https + the approved host only, the address resolved and refused when private / loopback / link-local / metadata, no redirects, 1 MB answers; her secrets sealed, returned by no route, scrubbed from every run log; auth bearer / basic / header / query / login token / refresh token (QuickBooks rotation kept) / Google service account; answers are DATA written only into real fields through their type checks; safe retries only, a POST that timed out = ambiguous and never resent; new-row / status triggers queued in the background (the order never waits), staff buttons only where she allowed; signed inbound webhooks mapped into a matched row; Aadhaar refused. 13 ready packs from the providers' own docs (connect_packs.py: Shiprocket, Delhivery, MSG91, Fast2SMS, WhatsApp Cloud, Brevo, Resend, Google Sheets, Google Calendar, Zoho Books, QuickBooks, Tally = export, licensed KYC). Kits Connect.kt / Connect.swift, console Connectors box, phone panel. NOT VERIFIED against live accounts. Previous: v0.423.0 GAME DESK ROLES 4: SIMULATORS + DIGITAL TWIN + VFX PIPELINE (Hoola Game Engine plan Phase 7 batch 4 = Game Desk plan phase 5, owner: "GO PHASE 7" - Phase 7 done: all ten Game Desk employees live). Simulation Software Engineer (gamedesk/sim.py, tool game_sim): orbit (two-body + J2, WGS 84 constants), light-aircraft glide and car-handling models in RK4, each validated against its textbook case (orbit period, energy drift, J2 node regression - sun-synchronous at 98 degrees, GEO = a sidereal day; glide angle, Lanchester phugoid; steady yaw rate), sources cited, scenarios run twice, HoolaSim's GDScript step matching the Python one in the real Godot; weapon / targeting / combat simulators refused. Digital Twin Architect (gamedesk/twin.py, tool game_twin): her line as data with every number traced to a data tag or a stated assumption, read-only by construction, Hoola's event engine checked against exact answers and Erlang C, throughput / utilisation / WIP / lead time / bottleneck + what-ifs on common random numbers, validated only against her real week (else NOT ASSESSED). VFX Pipeline TD (gamedesk/vfx.py, tool game_vfx): naming + versions, ACES colour converted and measured (LogC3 / S-Log3 18 % grey), a real ACEScg EXR written and read back, a render queue with re-queue and cost per shot, every frame traced to its scene sha256; Blender / OCIO not run on the server (said).
 
 
 def _quiet_http_logs() -> None:
@@ -8466,6 +8466,7 @@ async def _site_pub(site_id: str, op: str, request: Request, body: dict | None =
     backend + DIMAAG logic for a linked one (site/applink.py). The site's pages keep the same addresses."""
     from .site import applink as AL
     tok, ip = _site_tok(request), _ip(request)
+    kw.setdefault("ua", (request.headers.get("user-agent") or "")[:160])     # v0.425 the sessions list names the device
     return await asyncio.to_thread(_app_call, lambda: AL.call(site_id, op, tok, body or {}, ip, **kw))
 
 
@@ -8548,6 +8549,95 @@ async def site_app_decide(site_id: str, appr_id: str, request: Request):
     return await _site_pub(site_id, "decide", request, await _json_body(request), appr_id=appr_id)
 
 
+# v0.425 LOGIN AUR SURAKSHA: phone OTP, staff 2FA, sessions, her data (export / delete), audit log, permissions, uploads
+@app.post("/api/site-app/{site_id}/otp/start")
+async def site_app_otp_start(site_id: str, request: Request):
+    return await _site_pub(site_id, "otp_start", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/otp/verify")
+async def site_app_otp_verify(site_id: str, request: Request):
+    return await _site_pub(site_id, "otp_verify", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/2fa/login")
+async def site_app_2fa_login(site_id: str, request: Request):
+    return await _site_pub(site_id, "2fa_login", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/2fa/{step}")
+async def site_app_2fa(site_id: str, step: str, request: Request):
+    if step not in ("start", "confirm", "off"):
+        raise HTTPException(404, "not found")
+    return await _site_pub(site_id, "2fa_" + step, request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/sessions")
+async def site_app_sessions(site_id: str, request: Request):
+    return await _site_pub(site_id, "sessions", request)
+
+
+@app.post("/api/site-app/{site_id}/sessions/{sid}/end")
+async def site_app_session_end(site_id: str, sid: str, request: Request):
+    return await _site_pub(site_id, "session_end", request, sid=sid)
+
+
+@app.post("/api/site-app/{site_id}/logout-all")
+async def site_app_logout_all(site_id: str, request: Request):
+    return await _site_pub(site_id, "logout_all", request)
+
+
+@app.get("/api/site-app/{site_id}/me/export")
+async def site_app_export(site_id: str, request: Request):
+    return await _site_pub(site_id, "export", request)
+
+
+@app.post("/api/site-app/{site_id}/me/delete")
+async def site_app_delete_me(site_id: str, request: Request):
+    return await _site_pub(site_id, "delete_me", request)
+
+
+@app.get("/api/site-app/{site_id}/audit")
+async def site_app_audit(site_id: str, request: Request, limit: int = 200, coll: str = ""):
+    return await _site_pub(site_id, "audit", request, limit=limit, coll=coll)
+
+
+@app.get("/api/site-app/{site_id}/matrix")
+async def site_app_matrix(site_id: str, request: Request):
+    return await _site_pub(site_id, "matrix", request)
+
+
+@app.post("/api/site-app/{site_id}/upload")
+async def site_app_upload(site_id: str, request: Request):
+    raw = await request.body()
+    if len(raw) > 12 * 1024 * 1024:
+        raise HTTPException(413, "File bahut badi hai (12 MB tak).")
+    return await _site_pub(site_id, "upload", request, raw=raw)
+
+
+@app.get("/api/site-app/{site_id}/file/{fid}")
+async def site_app_file(site_id: str, fid: str, request: Request):
+    """v0.425 a photo / PDF from a form, for whoever may see it (the page fetches it with the login header)."""
+    from .appmaker import backend as BE
+    from .site import applink as AL
+    from .site import service as S
+    from .site import webapp as W
+
+    def go():
+        r, _ = S.public_app(site_id)
+        p = AL.project(r)
+        if p is None:
+            raise W.AppError("not found", 404)
+        return BE.file_for(p, fid, AL._who(site_id, p, _site_tok(request)))
+    try:
+        path = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    from fastapi.responses import FileResponse
+    return FileResponse(path, media_type="application/pdf" if str(path).endswith(".pdf") else "image/jpeg",
+                        headers={**_SITE_APP_CORS, "Cache-Control": "private, max-age=300"})
+
+
 @app.post("/api/site-app/{site_id}/fn/{name}")
 async def site_app_fn(site_id: str, name: str, request: Request):
     """v0.407 a callable locked function of the site's logic (its own tests passed before it went live)."""
@@ -8598,6 +8688,13 @@ async def sites_logic_apply(ref: str, body: dict, tenant: str = Depends(current_
     """ONLY her tap: the draft she saw (by its hash) goes live on the site + its app."""
     from .site import applink as AL
     return await asyncio.to_thread(_site_logic, AL.logic_apply, tenant, ref, str(body.get("hash") or ""))
+
+
+@app.get("/api/sites/{ref}/audit", dependencies=[Depends(require_key)])
+async def sites_audit(ref: str, limit: int = 100, tenant: str = Depends(current_tenant)):
+    """v0.425 her website app's audit log (every change, who made it) + the permissions matrix."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.owner_audit, tenant, ref, max(1, min(limit, 500)))
 
 
 @app.post("/api/sites/{ref}/link-app", dependencies=[Depends(require_key)])

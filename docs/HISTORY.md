@@ -16118,3 +16118,48 @@ Her apps talk to outside services through DECLARED HTTP actions (data, never cod
 - Tests: tests/test_v0424_jodo.py (4), against a fake service and a fake resolver.
 - NOT VERIFIED: no live provider account has answered. The pack shapes follow each provider's docs, and the first real
   run on a test entry will confirm or correct them. The Google service account and the KYC provider's URL are hers to set up.
+
+## v0.425.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 3")
+
+**W2 - real app pages on the web (`site/assets/hoola-app.js` rewritten, `site/build.py` app_page, `hoola-site.css`).**
+The account and staff pages are now one in-page app each (`data-hoola-app="shell" data-area="member|staff"`), hash-routed
+(`#/member/...`, `#/staff/...`), with a menu per role: a member sees Home + the lists she may read / add to + My account;
+staff also see Approvals, Members, Who-can-do-what; an admin also sees the Audit log.
+- Tables: columns from the list, click-to-sort (aria-sort), search across every field, filter by the workflow / choice
+  field, 20 a page, staff bulk select -> move to a workflow state / delete, one call at a time so the server checks each.
+- Detail page: every field (photos shown, files open, location -> Maps link), workflow buttons, approval pill + decide,
+  linked lists (the logic's relations), edit / delete by the list's rules.
+- Multi-step form: more than 6 fields = steps of 5 with Next / Back, the server's own checks before the trip (required,
+  email, 10-digit Indian mobile, number), photo / file fields upload first (new POST /api/site-app/<site>/upload, served
+  back by GET .../file/<id> for whoever may see it).
+- Kanban (workflow / first choice field; drag only onto a step the workflow allows), month calendar (first date field).
+- Dressed by the site's design tokens (--c-primary, --c-line, --radius...), phone-first layout; React export unchanged
+  (HoolaApp.start). Pages built before this version keep working (old placeholders kept; their next rebuild ships the app).
+
+**W3 - login and security for people (`site/security.py`, routes under /api/site-app/<site>/...).**
+- Phone OTP (otp/start, otp/verify): 6 digits, only an HMAC hash stored (`site_app_otps`), 5 minutes, 5 tries, 3 codes per
+  number per 10 min + 10 per IP per hour, a new account needs the consent tick; sent by MSG91's OTP API (DLT template)
+  with HER keys (`SITE_SMS_PROVIDER=msg91`, `MSG91_AUTHKEY`, `MSG91_OTP_TEMPLATE` in the VPS .env); no provider = the login
+  box hides the tab and the API answers 503. A code is never logged, shown or put in a reply.
+- Staff 2-step login (2fa/start|confirm|off, 2fa/login): RFC 6238 TOTP (checked against the RFC's own test vectors),
+  secret encrypted with SECRET_KEY, a password login of a staff member with 2FA returns a 5-minute signed ticket instead
+  of a token.
+- Sessions (`site_app_sessions`, sessions / sessions/<id>/end / logout-all): device name from the browser, masked IP,
+  last seen; ending one stops that token, "sign out everywhere" bumps the member's generation.
+- DPDP: the website's sign-up needs the tick (version + time kept on the member; a page built before v0.425 that sends no
+  tick still works but records none); me/export = her profile + every row she owns (JSON); me/delete = account + rows.
+- Audit log: the app journal (`appmaker/backup.py`) now records WHO (`by`: role:member id / owner / system) for every
+  write through the backend; GET .../audit (admin) and GET /api/sites/<ref>/audit (her console, "Who changed what").
+- Per-field rule `private: true` (staff / owner see it, others never receive it) + GET .../matrix (who may add / see /
+  change / delete each list, staff-only fields), shown on the staff page and her console.
+Bugs found by the tests and fixed: a wrong OTP raised inside the DB transaction, which ROLLED BACK the try counter
+(unlimited guesses) - the counter is now saved before any refusal; two logins in the same second got the SAME token, so
+ending one device ended both - tokens now carry a random part of a day in their expiry; an OTP was spent when a new
+person forgot the consent tick - it is now refused before the code is used.
+Proof: tests/test_v0425_app_pages.py (8) incl. a real Chromium run of the built account + staff pages against the real API
+(login, member menu without audit, sort, search, detail, form checks, my devices, staff kanban 3 lanes / 4 cards, bulk
+select, audit, matrix).
+NOT BUILT (rest of W2 / W3): Google sign-in and email magic link (Google needs every customer domain registered on the
+OAuth client; mail needs a sending account), passkeys (plan: later), custom roles such as "vendor" (roles stay member /
+staff / admin), an owner switch that FORCES 2FA on all staff, timeline / map-of-rows views. NOT VERIFIED: MSG91 live
+(written from its OTP API; needs her DLT template + key).

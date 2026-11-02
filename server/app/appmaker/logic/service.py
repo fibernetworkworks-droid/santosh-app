@@ -35,6 +35,7 @@ Return JSON: {"summary": "2-4 short lines in her language (Hinglish ok) - what w
  "fields": [{"coll", "key", "label", "type", "options", "to"}],
  "logic":  {...the spec below...}}
 Field types: text long_text number phone email date choice yes_no photo location file ref (ref needs "to": a list key).
+A field may carry "private": true = only staff / the owner see it (e.g. internal notes, cost price, a teacher's remark).
 New fields on EXISTING lists are never required. Staff-only lists use rules admin/admin/admin/admin.
 
 THE SPEC ("logic"):

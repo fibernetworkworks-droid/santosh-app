@@ -408,12 +408,14 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     """One write from the app. `cid` = the phone's own id for this write: the same cid again returns the first row.
     v0.390 the cid check and the insert hold one cross-process lock, so a phone's retry racing its first try in another
     worker process still makes exactly ONE row."""
+    from . import backup as BK
     cid = str((body or {}).get("cid") or "") if isinstance(body, dict) else ""
-    if cid and CID.match(cid):
-        from . import locks as LK
-        with LK.hold(f"cid:{r.id}:{w.id}:{cid}"):
-            return _create(r, coll, body, w, ip)
-    return _create(r, coll, body, w, ip)
+    with BK.acting(w):                                   # v0.425 the journal records who made it
+        if cid and CID.match(cid):
+            from . import locks as LK
+            with LK.hold(f"cid:{r.id}:{w.id}:{cid}"):
+                return _create(r, coll, body, w, ip)
+        return _create(r, coll, body, w, ip)
 
 
 def _create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "") -> dict[str, Any]:
@@ -528,6 +530,12 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
 
 
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
+    from . import backup as BK
+    with BK.acting(w):                               # v0.425 the journal records who made it
+        return _update_inner(r, coll, row_id, body, w)
+
+
+def _update_inner(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
     body = {k: v for k, v in (body if isinstance(body, dict) else {}).items() if k not in ("cid", "cart")}
     if body.get("_credit"):                  # v0.359 KHATA: staff's "on credit" through the outbox (works offline)
         from . import khata as KH
@@ -609,6 +617,12 @@ def status_moved(r: AppProject, row_id: str, status: str) -> None:
 
 
 def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
+    from . import backup as BK
+    with BK.acting(w):                               # v0.425 the journal records who made it
+        return _delete_inner(r, coll, row_id, w)
+
+
+def _delete_inner(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
     _guard_assigned(r, coll, row_id, w)
     from .logic import engine as LE                  # v0.382 children first: restrict / cascade / nullify
     sch = schema(r)
@@ -624,6 +638,12 @@ def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
 
 
 def delete_me(r: AppProject, w: W.Who) -> dict[str, Any]:
+    from . import backup as BK
+    with BK.acting(w):                               # v0.425 the journal records who made it
+        return _delete_me_inner(r, w)
+
+
+def _delete_me_inner(r: AppProject, w: W.Who) -> dict[str, Any]:
     """In-app account deletion: the account and every row it owns are gone (Play + App Store rule, DPDP right to erase)."""
     if w.m is None:
         raise W.AppError("Pehle login kijiye.", 401)
@@ -701,6 +721,12 @@ def owner_rows(r: AppProject, coll: str, limit: int = 300) -> list[dict[str, Any
 
 
 def owner_update(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    from . import backup as BK
+    with BK.acting(W.Who(None, owner=True)):                               # v0.425 the journal records who made it
+        return _owner_update_inner(r, coll, row_id, body)
+
+
+def _owner_update_inner(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) -> dict[str, Any]:
     """Her change from Hoola; {"assign": member id | ""} gives the row to a staff member (v0.352)."""
     body = dict(body or {})
     if "assign" in body:
@@ -1247,6 +1273,8 @@ def _new_field(a: dict[str, Any], colls: dict[str, Any], fresh: bool) -> dict[st
     typ = a.get("type") if a.get("type") in (*W.TYPES, *EXTRA_TYPES, "ref") else "text"
     fd: dict[str, Any] = {"key": k, "label": str(a.get("label") or k.replace("_", " ").title())[:60], "type": typ,
                           "required": bool(a.get("required")) and fresh and typ != "choice", "admin_only": bool(a.get("admin_only"))}
+    if a.get("private") is True:            # v0.425 per-field rule: only staff / her see it (row_view hides it from others)
+        fd["private"], fd["admin_only"] = True, True
     if typ == "choice":
         opts = [str(o)[:40] for o in (a.get("options") or []) if str(o).strip()][:20]
         if not opts:

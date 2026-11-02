@@ -1686,6 +1686,7 @@ window.HoolaBuild = function (C) {
       catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
     });
     if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
+    if (info.linked) auditBox(o, box);
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
       let rows = [];
@@ -1743,6 +1744,17 @@ window.HoolaBuild = function (C) {
       try { const r = await api('POST', base(o) + '/logic/apply', {hash: S(d.hash)}); toast(S(r?.say) || 'Applied.'); reload(); }
       catch (er) { toast(er.message, true); ap.disabled = false; }
     });
+  }
+
+  /* v0.425 who changed what (every change to the app's data, with the person) + who may do what */
+  async function auditBox(o, box) {
+    let v; try { v = await api('GET', base(o) + '/audit?limit=60'); } catch (er) { return; }
+    const sec = document.createElement('section'); sec.className = 'stlogic';
+    sec.innerHTML = `<h4>Who changed what <span>last ${L(v.audit).length}</span></h4>`
+      + (L(v.audit).length ? `<div class="sttbl"><table><thead><tr><th>When</th><th>Who</th><th>List</th><th>Change</th><th>Fields</th></tr></thead><tbody>${L(v.audit).map(a => `<tr><td>${esc(new Date(S(a.at)).toLocaleString())}</td><td>${esc(S(a.by))}</td><td>${esc(S(a.list))}</td><td>${esc(S(a.op))}</td><td>${esc(L(a.fields).join(', '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No changes yet.</p>')
+      + `<h4 style="margin-top:12px">Who can do what</h4><div class="sttbl"><table><thead><tr><th>List</th><th>Add</th><th>See</th><th>Change</th><th>Delete</th><th>Only staff see</th></tr></thead><tbody>${L(v.matrix).map(m => `<tr><td>${esc(S(m.label))}</td><td>${esc(S(m.create))}</td><td>${esc(S(m.read))}</td><td>${esc(S(m.update))}</td><td>${esc(S(m['delete']))}</td><td>${esc(L(m.staff_see).join(', '))}</td></tr>`).join('')}</tbody></table></div>`
+      + `<p class="stnote">Mobile OTP login: ${v.otp ? 'on' : 'off (needs an SMS provider on the server)'}</p>`;
+    box.appendChild(sec);
   }
 
   /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */

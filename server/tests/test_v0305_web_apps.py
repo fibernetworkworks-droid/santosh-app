@@ -74,9 +74,10 @@ def test_web_app_end_to_end(app_site):
     home, acct, adm = (out / "index.html").read_text(), (out / "account" / "index.html").read_text(), (out / "admin" / "index.html").read_text()
     assert 'href="account/"' in home and 'href="admin/"' not in home                      # Account in the menu, staff page not
     assert f'name="hoola-app" content="/api/site-app/{sid}"' in acct and "assets/hoola-app.js" in acct
-    assert 'data-hoola-app="form" data-c="orders"' in acct and 'data-hoola-app="list" data-c="notices"' in acct
-    assert 'data-hoola-app="form" data-c="notices"' not in acct                           # notices: only staff create
-    assert 'data-hoola-app="admin"' in adm and 'content="noindex"' in adm and (out / "assets" / "hoola-app.js").exists()
+    # v0.425 APP PAGES: the account page is the member's app (her lists by the rules, live from the schema), the staff page
+    # the staff app - the HTML holds no data and no per-list markup any more
+    assert 'data-hoola-app="shell" data-area="member"' in acct and 'data-hoola-app="shell" data-area="staff"' in adm
+    assert 'data-hoola-app="admin"' not in acct and 'content="noindex"' in adm and (out / "assets" / "hoola-app.js").exists()
     # the public API
     base = f"/api/site-app/{sid}"
     pre = c.options(f"{base}/c/orders")
@@ -168,5 +169,5 @@ def test_tool_and_version():
     assert "app" in ST.SITE_TOOLS[0]["input_schema"]["properties"]["action"]["enum"]
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.424.0"
-    assert "0.424.0+468" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.425.0"
+    assert "0.425.0+469" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
