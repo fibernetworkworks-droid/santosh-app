@@ -105,6 +105,11 @@ refunds only. Checkpoint = a real Rs 1 test payment in her own account (not done
 - Stays out: holding customer money in Hoola, lending, wallets (licences needed).
 
 ### F. Connectors inside apps — Phase 54
+**Status: BUILT in v0.424.0 JODO** (`server/app/appmaker/connect.py` + `connect_packs.py`, kits `Connect.kt` / `Connect.swift`) —
+declared actions with her approval (hash-bound), sealed secrets, host guard (https, public address only), limits, safe retries,
+data-only write-back, background triggers, staff buttons, signed inbound webhooks; packs for Shiprocket, Delhivery, MSG91, Fast2SMS,
+WhatsApp Cloud, Brevo, Resend, Google Sheets / Calendar (service account), Zoho Books, QuickBooks, licensed KYC (no Aadhaar);
+Tally = the monthly XML export (Tally is not reachable over the internet). Checkpoint (courier + SMS live) = her real accounts.
 - Declared HTTP actions in the app spec (method, URL, fields), her keys sealed, allowlisted hosts, rate limits, retries,
   responses mapped into lists; inbound webhooks with signature checks.
 - Ready packs: couriers (Shiprocket / Delhivery), SMS (DLT-registered templates), email, WhatsApp Business (her

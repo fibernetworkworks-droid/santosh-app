@@ -16080,3 +16080,41 @@ HoolaSim, HoolaNet kit-only) + Digital Twin and VFX Pipeline (reports + kits). R
 4.7.2 tunnels past HALF a wall and only cast-ray CCD works; a sphere's level difference peaks near 60 degrees; two
 netcode bugs (stale snapshots, lost tail inputs); the XR camera sits on the floor without a headset; the platformer
 generator made unwinnable levels (fixed until 0 of 560 fail).
+
+## v0.424.0 JODO (App Sahayak Pillar F, Phase 54 — owner: "START PILLAR F")
+Her apps talk to outside services through DECLARED HTTP actions (data, never code).
+- `server/app/appmaker/connect.py` + tables app_conn_secret / app_conn_run (registered in db.init_db + ensure_tables).
+  Actions live in backend.connect.actions.
+  - Approval: an action runs only after her approve tap. The approval is bound to `_hash` of method, url, headers, query,
+    body, auth, trigger, list, status, map, staff and idem; any change clears it.
+  - Save-time checks (`_clean`): https, a public host (no port, no user:pass, no {{}} in the host), the list and its
+    fields exist, a status is one of the list's options, the auth type is known, and any mention of Aadhaar is refused.
+  - Run-time checks: the host is resolved and refused when private / loopback / link-local / reserved (incl.
+    169.254.169.254); redirects are off; answers are capped at 1 MB with a 15 s timeout; per-action and per-app
+    per-minute limits.
+  - Auth: bearer / basic / header / query / login_token (Shiprocket) / oauth_refresh (Zoho; QuickBooks client
+    credentials as Basic, and a rotated refresh token is re-sealed) / google_sa (an RS256 JWT -> oauth2 token). Tokens
+    are cached in memory only.
+  - Placeholders {{row.x}} {{app.name}} {{facts.x}} {{now}} {{today}} {{run.id}} {{secret.x}}. A whole-placeholder
+    string keeps its type. Form bodies JSON-encode nested values (Delhivery data=).
+  - Secrets are sealed (vault) and returned by no route. Every stored note is scrubbed of their values.
+  - Write-back: `map` takes JSON paths into existing fields only, through W._value; values that don't fit are dropped.
+  - Retries happen only for GET or an idempotency header. A POST that timed out becomes `ambiguous` and is never resent.
+    A run stuck in `running` > 10 min becomes ambiguous, and the worker tick finishes `queued` ones.
+  - Triggers: `fire()` from BE._create (create) and BE.status_moved (status) queues the run in a thread pool, so the
+    order never waits. Staff buttons go through POST /api/app-api/<key>/connect/<action>/run (staff only, actions she
+    marked staff + manual); the backend hint lists them under `connect`.
+  - Inbound hooks: POST /api/app-api/<key>/hook/<name> with HMAC-SHA256 hex / base64 or a token in a header she names.
+    The secret is generated and shown once. One row is matched by a field; `set` paths are typed per field; the payload
+    is data (a status goes through status_moved).
+  - Owner routes: /api/apps/<ref>/connect (status, pack, actions, approve, run, secrets, hooks).
+- `connect_packs.py`: 13 packs from the providers' docs: Shiprocket (create + track), Delhivery (create + track), MSG91
+  flow, Fast2SMS DLT, WhatsApp Cloud template, Brevo, Resend (Idempotency-Key), Google Sheets append, Google Calendar
+  event, Zoho Books contact, QuickBooks sales receipt, Tally (export only, since Tally is local), licensed KYC.
+  A pack names the list fields it needs. An action whose fields are missing is reported, never invented.
+- Kits `Connect.kt` / `Connect.swift`: staff buttons on row cards (ConnectButtons).
+  Console Connectors box: packs, approve card with what leaves (host, fields, keys, write-back, when), run on an entry,
+  keys, webhooks, run log. Phone: `lib/ui/app_connect.dart` (approve + runs).
+- Tests: tests/test_v0424_jodo.py (4), against a fake service and a fake resolver.
+- NOT VERIFIED: no live provider account has answered. The pack shapes follow each provider's docs, and the first real
+  run on a test entry will confirm or correct them. The Google service account and the KYC provider's URL are hers to set up.
