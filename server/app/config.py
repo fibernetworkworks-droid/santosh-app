@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     hard_judge_timeout_s: float = 2.5
     hard_recipe: bool = True                # v0.433 a hard ask gets the reasoning recipe in its system prompt (agent/hard.py)
     hard_check: bool = True                 # v0.436 SOCH KE JAWAB 5: a hard answer is held + checked (code + one reviewer call) before she sees it
+    # v0.457 HOOLA INTERACTIVE (docs/INTERACTIVE_AVATAR_PLAN.md): the GPU Model Lab. Address + key live in the VPS
+    # .env only; empty = the feature is simply off (never half-open).
+    avatar_engine_url: str = ""            # e.g. https://<account>--hoola-lab-web.modal.run
+    avatar_engine_key: str = ""            # the same ENGINE_KEY the lab's Modal secret holds
     hard_check_model: str = ""              # v0.436 the reviewer's model ('' = anthropic_model)
     hard_check_timeout_s: float = 60.0      # v0.436 a slow reviewer never blocks the answer
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)

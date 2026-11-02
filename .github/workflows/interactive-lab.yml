@@ -1,0 +1,89 @@
+#  v0.457 HOOLA INTERACTIVE - the Model Lab, run by hand from the Actions tab.
+#  Nothing here runs on a push: GPU time costs money, so every run is the owner's choice.
+#
+#  Repository secrets it needs (Settings > Secrets and variables > Actions):
+#    MODAL_TOKEN_ID / MODAL_TOKEN_SECRET  - from `modal token new` on her machine, or the Modal dashboard
+#    HOOLA_ENGINE_KEY                     - any long random string; the Hoola server sends it as its bearer key
+#    HF_TOKEN                             - a Hugging Face token whose account accepted AI4Bharat's gated terms
+#  The keys are written into Modal's own secret store ("hoola-lab"); they are never printed by any step.
+name: Interactive lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: What to run
+        type: choice
+        default: smoke
+        options: [setup, prefetch, smoke, deploy, down]
+      gpu:
+        description: GPU for this run (T4 is cheapest, L4 is the free-credit default, A10G / L40S are faster)
+        type: choice
+        default: L4
+        options: [T4, L4, A10G, L40S]
+
+concurrency:
+  group: interactive-lab
+  cancel-in-progress: false
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+      HOOLA_LAB_GPU: ${{ inputs.gpu }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install the Modal client
+        run: pip install --quiet modal
+      - name: Check the secrets are set
+        run: |
+          for v in MODAL_TOKEN_ID MODAL_TOKEN_SECRET; do
+            [ -n "${!v}" ] || { echo "::error::$v is not set in this repository's secrets"; exit 1; }
+          done
+
+      - name: Put the keys in Modal's secret store
+        if: inputs.job == 'setup'
+        env:
+          ENGINE_KEY: ${{ secrets.HOOLA_ENGINE_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          [ -n "$ENGINE_KEY" ] || { echo "::error::HOOLA_ENGINE_KEY is not set"; exit 1; }
+          modal secret create hoola-lab ENGINE_KEY="$ENGINE_KEY" HF_TOKEN="$HF_TOKEN" --force
+          echo "Secret hoola-lab is in place."
+
+      - name: Download the model weights (no GPU)
+        if: inputs.job == 'prefetch'
+        working-directory: avatar_engine
+        run: modal run modal_app.py::prefetch
+
+      - name: Smoke test - voices and one talking clip
+        if: inputs.job == 'smoke'
+        working-directory: avatar_engine
+        run: modal run modal_app.py::smoke
+
+      - name: Deploy the engine endpoint
+        if: inputs.job == 'deploy'
+        working-directory: avatar_engine
+        run: |
+          modal deploy modal_app.py | tee deploy.log
+          echo "::notice::Put the printed web URL in the VPS .env as AVATAR_ENGINE_URL (with AVATAR_ENGINE_KEY = HOOLA_ENGINE_KEY)."
+
+      - name: Stop the engine (no more GPU time)
+        if: inputs.job == 'down'
+        working-directory: avatar_engine
+        run: modal app stop hoola-lab
+
+      - name: Keep the clips and the timing report
+        if: inputs.job == 'smoke' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-output-${{ inputs.gpu }}
+          path: avatar_engine/lab_out/
+          if-no-files-found: warn
+          retention-days: 14
