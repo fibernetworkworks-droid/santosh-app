@@ -1,6 +1,7 @@
 """HTTP routes of the Developer Sahayak (/api/devsahayak/*). main.py: app.include_router(make_router(require_key, current_tenant)).
 
 The ONLY ways something happens in her GitHub that she has to agree to:
+  POST /api/devsahayak/tasks/{id}/plan-ok       (v0.451 her Haan on a LARGE job's plan, before any file is touched)
   POST /api/devsahayak/tasks/{id}/push          (open the PR of a prepared change: public repos / ask_before_pr)
   POST /api/devsahayak/reviews/{id}/post        (post Hoola's draft review, her chosen event)
   POST /api/devsahayak/actions/{id}/decide      (MERGE / DEPLOY)
@@ -91,6 +92,11 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/tasks/{tid}/push")
     async def push(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.push, tenant, tid, str(_b(body).get("hash") or ""), by_tap=True)
+
+    @r.post("/tasks/{tid}/plan-ok")
+    async def plan_ok(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.plan_ok, tenant, tid, str(b.get("hash") or ""), by_tap=True, note=str(b.get("note") or ""))
 
     @r.post("/tasks/{tid}/begin")
     async def begin(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

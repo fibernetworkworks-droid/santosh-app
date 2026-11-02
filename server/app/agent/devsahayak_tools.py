@@ -24,7 +24,7 @@ DEV_TOOLS = [
         "action=repo_add (repo, deploy_workflow = her workflow_dispatch file, deploy_ref) | repo_remove | settings (review_post draft|"
         "direct, ask_before_pr, draft_pr, allow_workflows, merge_method, max_files, max_lines, rules, default_repo; owner only)."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["write", "fix", "tests", "docs", "explain", "begin", "revise", "fix_ci", "refresh", "cancel", "review",
+         "action": {"type": "string", "enum": ["write", "fix", "tests", "docs", "explain", "plan_ok", "begin", "revise", "fix_ci", "refresh", "cancel", "review",
                                                "merge", "deploy", "repo_add", "repo_remove", "settings"]},
          "text": {"type": "string", "description": "Her exact words / the error, stack trace or log (data, pasted as is)"},
          "repo": {"type": "string"}, "issue": {"type": "integer"}, "files": {"type": "array", "items": {"type": "string"}},
@@ -71,6 +71,13 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                            [str(x) for x in (a.get("files") or []) if x][:10], conv, actor)
         if action == "begin":      # a draft task (e.g. from App Review): the PR still waits for her tap
             return S.begin(t, _s(a.get("task")), _s(a.get("repo")), conv, actor)
+        if action == "plan_ok":    # v0.451 ECC PHASE 4: her Haan on a LARGE job's plan (she said it herself, in chat)
+            if not _owner(ctx):
+                raise ToolError("Plan par haan sirf owner de sakti hain.")
+            v = S.get_task(t, _s(a.get("task")))
+            if v.get("status") != "plan_wait":
+                raise ToolError(f"Yeh kaam '{v.get('status_label') or v.get('status')}' hai; plan ka intezaar nahi hai.")
+            return S.plan_ok(t, _s(a.get("task")), str(v.get("hash") or ""), by_tap=True, note=_s(a.get("text")), conv=conv)
         if action == "revise":
             return S.revise(t, _s(a.get("task")), _s(a.get("text")), conv)
         if action == "fix_ci":
