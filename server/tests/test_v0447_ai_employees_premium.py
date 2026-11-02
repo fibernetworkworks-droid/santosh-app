@@ -31,7 +31,7 @@ def test_all_cards_same_size():
 def test_hiring_keeps_the_real_actions():
     assert "api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined)" in EMP
     assert "confirm('Let go of this employee?" in EMP and 'data-ae="${e.status === \'paused\' ? \'resume\' : \'pause\'}"' in EMP
-    assert "return {hub, desk, social, cad, game, arch};" in EMP
+    assert "return {hub, desk, social, cad, game, arch, edu};" in EMP   # v0.453 + the Education Desk
 
 
 def test_motion_once_and_crisp():

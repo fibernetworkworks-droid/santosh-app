@@ -2,7 +2,7 @@
    (onboarding, KPIs against the baseline, the 90-day plan board, alerts, schedule, run-now buttons).
    Talks to /api/employees* and /api/seo/{onboard,desk,roadmap,run,gsc/link}. Every value from the server goes on the
    page through esc() - site names, issue texts and plan items are data. */
-window.HoolaEmployees = function ({api, esc, toast, changed}) {
+window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView}) {
   let HUB = null, DESK = null, TIMER = null;
   const TRUST = {seekh: ['Seekh', 'asks you before every change outside Hoola'],
                  saathi: ['Saathi', 'does small, undoable changes and tells you the same day'],
@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
+  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems'};   // v0.420 the Game Desk roles share it
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
@@ -31,12 +31,18 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     {g: 'Research, CAD, Hardware & Industrial Tech', id: 'eng', name: 'Engineering & Hardware', art: 'eng',
      desc: '3D parts, simulation and code drafts for engineering teams. Every number measured, never certified on its own.'},
     {g: 'Software Architecture, Engineering & Core Systems', id: 'soft', name: 'Software & Systems', art: 'soft',
-     desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'}];
+     desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'},
+    {g: 'Education, Research & Lab', id: 'edu', name: 'Education, Research & Lab', art: 'edu',   // v0.453
+     desc: 'A tutor, a school office, a paper setter, a research assistant, the register and a 3D science lab. Children only with guardian consent.'},
+    {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.453
+     desc: 'ERP, CRM, PLM, supply chain and compliance work on your own systems. Every write is planned, dry-run and waits for your tap.'}];
   const ART = {   // line drawings; every path is drawn on once (pathLength 1 + .ae-draw)
     game: '<path d="M140 80h120a40 40 0 0 1 40 40v12a26 26 0 0 1-26 26c-10 0-17-5-22-12l-10-14h-84l-10 14c-5 7-12 12-22 12a26 26 0 0 1-26-26v-12a40 40 0 0 1 40-40z" stroke-width="2.6"/><path d="M152 116h26M165 103v26" stroke-width="2.6" style="animation-delay:.45s"/><path d="M60 56l16 9v18l-16 9-16-9V65zM340 140l16 9v18l-16 9-16-9v-18z" stroke-width="1.6" opacity=".5" style="animation-delay:.2s"/><path d="M70 186c26-18 52-18 78 0" stroke-width="1.5" opacity=".45" style="animation-delay:.55s"/><circle class="ae-fadein" cx="236" cy="110" r="5" fill="currentColor"/><circle class="ae-fadein" cx="252" cy="124" r="5" fill="currentColor"/>',
     biz: '<path d="M50 176h300" stroke-width="1.5" opacity=".35"/><rect x="84" y="128" width="38" height="48" rx="7" stroke-width="2" opacity=".55" style="animation-delay:.1s"/><rect x="142" y="100" width="38" height="76" rx="7" stroke-width="2" opacity=".75" style="animation-delay:.22s"/><rect x="200" y="70" width="38" height="106" rx="7" stroke-width="2.2" style="animation-delay:.34s"/><path d="M262 140l32-30 28 18 44-50" stroke-width="2.6" style="animation-delay:.55s"/><path d="M350 78h16v16" stroke-width="2.6" style="animation-delay:.9s"/>',
     eng: '<path d="M200 46l62 34v70l-62 34-62-34V80z" stroke-width="2.4"/><path d="M138 80l62 34 62-34M200 114v70" stroke-width="2.2" style="animation-delay:.45s"/><path d="M62 60h44M62 60v28M338 160h-44M338 160v-28" stroke-width="1.6" opacity=".55" style="animation-delay:.2s"/><circle cx="84" cy="160" r="16" stroke-width="1.6" opacity=".55" style="animation-delay:.3s"/>',
     soft: '<rect x="164" y="50" width="72" height="38" rx="9" stroke-width="2.3"/><rect x="80" y="136" width="72" height="38" rx="9" stroke-width="2" opacity=".8" style="animation-delay:.35s"/><rect x="248" y="136" width="72" height="38" rx="9" stroke-width="2" opacity=".8" style="animation-delay:.45s"/><path d="M200 88v18h-84v30M200 106h84v30" stroke-width="1.9" style="animation-delay:.2s"/><path d="M40 98l-14 14 14 14M360 98l14 14-14 14" stroke-width="1.6" opacity=".5" style="animation-delay:.6s"/>',
+    edu: '<path d="M200 74c-30-16-64-18-104-10v104c40-8 74-6 104 10 30-16 64-18 104-10V64c-40-8-74-6-104 10z" stroke-width="2.4"/><path d="M200 74v104" stroke-width="2" style="animation-delay:.4s"/><path d="M122 96c22-4 44-2 62 6M122 120c22-4 44-2 62 6M216 102c18-8 40-10 62-6M216 126c18-8 40-10 62-6" stroke-width="1.5" opacity=".55" style="animation-delay:.55s"/><path d="M60 52l26-12 26 12-26 12zM74 58v14c8 6 16 6 24 0V58" stroke-width="1.7" opacity=".6" style="animation-delay:.2s"/><path d="M322 160h20M326 160v-26l-10-18h32l-10 18v26" stroke-width="1.7" opacity=".6" style="animation-delay:.3s"/>',
+    ent: '<rect x="150" y="44" width="100" height="34" rx="8" stroke-width="2.3"/><rect x="150" y="94" width="100" height="34" rx="8" stroke-width="2.3" style="animation-delay:.15s"/><rect x="150" y="144" width="100" height="34" rx="8" stroke-width="2.3" style="animation-delay:.3s"/><path d="M168 61h.01M168 111h.01M168 161h.01" stroke-width="5"/><path d="M250 61h50v100h-50M150 111H96" stroke-width="1.8" opacity=".6" style="animation-delay:.5s"/><circle cx="314" cy="111" r="14" stroke-width="1.8" opacity=".6" style="animation-delay:.6s"/><circle cx="82" cy="111" r="14" stroke-width="1.8" opacity=".6" style="animation-delay:.6s"/>',
     other: '<circle cx="200" cy="110" r="46" stroke-width="2.2"/><path d="M200 64v92M154 110h92" stroke-width="1.6" opacity=".5" style="animation-delay:.3s"/>'};
   const SPARK = '<path class="ae-spark" d="M318 48l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" stroke-width="1.6"/><path class="ae-spark" d="M96 128l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z" stroke-width="1.4"/>';
   const HS = {view: 'home', dept: '', sel: '', filter: 'all', q: '', burst: '', counted: false};   // survives the re-fetch after every action
@@ -218,7 +224,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   }
 
   async function act(what, key) {
-    if (what === 'open') { location.hash = ''; document.querySelector(`[data-v="${DESKS[key] || key + 'desk'}"]`)?.click(); return; }   // seodesk / socialdesk / caddesk / gamedesk
+    if (what === 'open') { location.hash = ''; const v = DESKS[key] || key + 'desk';
+      if (openView) openView(v, v === 'systems' ? key : ''); else document.querySelector(`[data-v="${v}"]`)?.click(); return; }   // v0.453 Systems opens on that role   // seodesk / socialdesk / caddesk / gamedesk
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
       await api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined);
@@ -2431,5 +2438,93 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     return out.join('');
   }
 
-  return {hub, desk, social, cad, game, arch};
+  // ------------------------------------------------------------ v0.453 the Education Desk (Education, Research & Lab)
+  // One desk for the six education employees. It READS the same routes the phone screens use (/api/guru, /api/daftar,
+  // /api/pathyakram, /api/shodh, /api/shiksha, /api/prayog/labs); the only writes are her own taps on the guardian /
+  // share cards (POST .../shares/<id>/decide with the card's hash, exactly what the phone sends). Everything else is
+  // started as a plain ask in the chat, where the employee's own rules and confirm cards already live.
+  let EDU_TAB = 'home';
+  const EDU_TABS = [['home', 'Overview'], ['tutor', 'Tutor'], ['office', 'School office'], ['papers', 'Papers'],
+                    ['research', 'Research'], ['register', 'Register'], ['lab', 'Lab']];
+  const EDU_ASKS = {
+    tutor: ['Start a maths doubt session for Class 8: fractions', 'Make a 10-question practice set on photosynthesis for Class 7', 'Show this week\'s revision due for my learners'],
+    office: ['Take today\'s attendance for Class 6 A', 'Grade this OMR sheet against the answer key', 'Make the timetable: 8 periods a day, Monday to Saturday'],
+    papers: ['Make a CBSE Class 10 science paper, 80 marks, 3 hours, with an answer key', 'Make a year plan for Class 9 maths', 'Make a rubric for a Class 8 English essay'],
+    research: ['Start a research project: effect of mobile phone use on sleep in teenagers', 'Find recent open-access papers on millet nutrition in India', 'Make my references in APA style'],
+    register: ['Add a class: Class 7 B, CBSE, English medium', 'Which learners still need guardian consent?', 'Show the gradebook for Class 9 A'],
+  };
+  const eduN = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  async function edu(el) {
+    const get = p => api('GET', p).catch(e => ({_err: e.message}));
+    const [g, d, p, r, s, l] = await Promise.all([get('/api/guru'), get('/api/daftar'), get('/api/pathyakram'), get('/api/shodh'),
+                                                 get('/api/shiksha'), get('/api/prayog/labs')]);
+    if (!el.isConnected) return;
+    const labs = l.labs || [], waiting = [
+      ...(g.waiting || []).map(x => ({...x, src: 'guru', what: 'Weekly report for a guardian'})),
+      ...(d.waiting || []).map(x => ({...x, src: 'daftar', what: x.kind === 'absent' ? 'Absence alert for guardians' : 'Report card for a guardian'})),
+      ...(p.waiting || []).map(x => ({...x, src: 'pathyakram', what: 'Share a paper or plan'}))];
+    const errs = [g, d, p, r, s].filter(x => x._err).map(x => x._err);
+    const tile = (tab, n, label, sub) => `<button class="tile gl ed-tile" type="button" data-edtab="${tab}"><b>${esc(String(n))}</b><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`;
+    const asks = tab => (EDU_ASKS[tab] || []).length ? `<section class="tile gl ed-asks"><h3>Ask in the chat</h3><div class="ed-chips">${EDU_ASKS[tab].map(a =>
+      `<button class="ed-chip" type="button" data-edask="${esc(a)}">${esc(a)}</button>`).join('')}</div></section>` : '';
+    const wait = list => list.length ? `<section class="tile gl"><h3>Waiting for your tap</h3>${list.map(w => {
+      const who = (w.to_name ? 'To ' + w.to_name : '') || (w.payload && (w.payload.title || w.payload.name || (w.payload.people || []).map(x => x.name).join(', '))) || (w.report && w.report.name) || '';
+      return `<div class="ed-row"><div><b>${esc(w.what)}</b>${w.number ? ` <small class="muted">${esc(w.number)}</small>` : ''}${who ? `<p class="muted em-small">${esc(String(who).slice(0, 160))}</p>` : ''}</div>
+        <div class="acts"><button class="btn go gs-mini" type="button" data-edyes="1" data-src="${esc(w.src)}" data-id="${esc(w.id)}" data-hash="${esc(w.hash || '')}">Send</button>
+        <button class="btn soft gs-mini" type="button" data-edyes="0" data-src="${esc(w.src)}" data-id="${esc(w.id)}" data-hash="${esc(w.hash || '')}">Don't send</button></div></div>`; }).join('')}</section>` : '';
+    const empty = t => `<p class="muted em-small">${esc(t)}</p>`;
+    const st = s.settings || {};
+    let body = '';
+    if (EDU_TAB === 'home') body = `<div class="ed-tiles">
+        ${tile('tutor', (g.open || []).length, 'Tutor sessions open', eduN((g.waiting || []).length, 'report waiting', 'reports waiting'))}
+        ${tile('office', d.unsigned || 0, 'Marks to sign off', (d.attendance_pending || []).length ? `Attendance due: ${(d.attendance_pending || []).length}` : 'Attendance done today')}
+        ${tile('papers', (p.papers || []).length, 'Papers', eduN((p.plans || []).length, 'plan', 'plans'))}
+        ${tile('research', (r.projects || []).length, 'Research projects', '')}
+        ${tile('register', (s.classes || []).length, 'Classes', `${eduN(s.learners || 0, 'learner', 'learners')}${s.consent_pending ? ` · ${s.consent_pending} consent due` : ''}`)}
+        ${tile('lab', labs.length, 'Lab practicals', 'Physics, Class XI-XII')}</div>${wait(waiting)}`;
+    if (EDU_TAB === 'tutor') body = `<section class="tile gl"><h3>Open sessions</h3>${(g.open || []).map(x => `<div class="ed-row"><div><b>${esc([x.subject, x.topic].filter(Boolean).join(' · ') || 'Session')}</b> <small class="muted">${esc(x.number || '')}</small>
+        <p class="muted em-small">${esc([x.grade && 'Class ' + x.grade, x.mode, x.language, x.minutes ? x.minutes + ' min' : '', x.rungs ? `hint ${x.rung} of ${x.rungs}` : '', x.exam_safe ? 'exam mode: hints only' : ''].filter(Boolean).join(' · '))}</p></div></div>`).join('') || empty('No session open. Start one from the chat or the phone.')}
+        <p class="muted em-small">Daily limit ${esc(String((g.settings || {}).day_minutes || 60))} min${(g.settings || {}).exam_mode ? ' · exam mode on (hints only)' : ''}.</p></section>${wait(waiting.filter(w => w.src === 'guru'))}${asks('tutor')}`;
+    if (EDU_TAB === 'office') body = `<section class="tile gl"><h3>Today</h3>
+        <p>${(d.attendance_pending || []).length ? `Attendance still to take: ${esc((d.attendance_pending || []).join(', '))}` : 'Attendance is done for every class.'}</p>
+        <p>${d.unsigned ? `${esc(String(d.unsigned))} marks wait for the teacher's sign-off. Hoola's marks stay suggestions until then.` : 'No marks waiting for sign-off.'}</p></section>
+        <section class="tile gl"><h3>Recent grading</h3>${(d.gradings || []).map(x => `<div class="ed-row"><div><b>${esc(x.assessment || 'Assessment')}</b> <small class="muted">${esc(x.number || '')}</small>
+        <p class="muted em-small">${esc([x.subject, x.source, (x.results || []).length ? eduN((x.results || []).length, 'learner', 'learners') : '', when(x.created_at)].filter(Boolean).join(' · '))}</p></div></div>`).join('') || empty('Nothing graded yet.')}</section>${wait(waiting.filter(w => w.src === 'daftar'))}${asks('office')}`;
+    if (EDU_TAB === 'papers') body = `<section class="tile gl"><h3>Papers</h3>${(p.papers || []).map(x => `<div class="ed-row"><div><b>${esc(x.title || 'Paper')}</b> <small class="muted">${esc(x.number || '')}</small>
+        <p class="muted em-small">${esc([x.board, x.grade && 'Class ' + x.grade, x.subject, x.questions ? x.questions + ' questions' : '', x.max_marks ? x.max_marks + ' marks' : '', x.drafts ? x.drafts + ' still drafts' : 'all approved'].filter(Boolean).join(' · '))}</p></div>${tag(x.status === 'approved' ? 'ok' : 'warn', x.status === 'approved' ? 'Approved' : 'Draft')}</div>`).join('') || empty('No papers yet.')}</section>
+        <section class="tile gl"><h3>Plans and rubrics</h3>${(p.plans || []).map(x => `<div class="ed-row"><div><b>${esc(x.title || x.kind)}</b> <small class="muted">${esc(x.number || '')}</small>
+        <p class="muted em-small">${esc([x.kind, x.board, x.grade && 'Class ' + x.grade, x.subject].filter(Boolean).join(' · '))}</p></div>${tag(x.status === 'approved' ? 'ok' : 'warn', x.status === 'approved' ? 'Approved' : 'Draft')}</div>`).join('') || empty('No plans yet.')}</section>${wait(waiting.filter(w => w.src === 'pathyakram'))}${asks('papers')}`;
+    if (EDU_TAB === 'research') body = `<section class="tile gl"><h3>Projects</h3>${(r.projects || []).map(x => { const c = x.papers || {}, tot = Object.values(c).reduce((a, b) => a + b, 0);
+        return `<div class="ed-row"><div><b>${esc(x.title || 'Project')}</b> <small class="muted">${esc(x.number || '')}</small>${x.question ? `<p class="em-small">${esc(x.question)}</p>` : ''}
+        <p class="muted em-small">${esc([x.field, eduN(tot, 'paper', 'papers'), ...Object.entries(c).map(([k, v]) => `${v} ${k}`)].filter(Boolean).join(' · '))}</p></div></div>`; }).join('') || empty('No research project yet.')}
+        <p class="muted em-small">Papers come only from official scholarly APIs; every DOI is checked on Crossref. Citation style: ${esc(((r.settings || {}).style || 'apa').toUpperCase())}.</p></section>${asks('research')}`;
+    if (EDU_TAB === 'register') body = `<section class="tile gl"><h3>${esc(st.institution || 'Your institution')}</h3><p class="muted em-small">${esc([st.board, st.medium && st.medium + ' medium', st.academic_year, st.city].filter(Boolean).join(' · ') || 'Set the institution, board and year from the chat or the phone.')}</p>
+        <p>${esc(eduN(s.learners || 0, 'learner', 'learners'))}${s.consent_pending ? ` · <b>${esc(String(s.consent_pending))}</b> still need guardian consent` : ''}${s.drafts ? ` · ${esc(String(s.drafts))} questions wait for a teacher's review` : ''}</p></section>
+        <section class="tile gl"><h3>Classes</h3>${(s.classes || []).map(x => `<div class="ed-row"><div><b>${esc(x.name || ('Class ' + (x.grade || '')))}</b>${x.section ? ` <small class="muted">Section ${esc(x.section)}</small>` : ''}
+        <p class="muted em-small">${esc([x.board, (x.subjects || []).slice(0, 6).join(', '), x.teacher, eduN(x.learners || 0, 'learner', 'learners')].filter(Boolean).join(' · '))}</p></div></div>`).join('') || empty('No class yet.')}</section>${asks('register')}`;
+    if (EDU_TAB === 'lab') { const by = {}; labs.forEach(x => (by[x.group || x.field || 'Labs'] = by[x.group || x.field || 'Labs'] || []).push(x));
+      body = Object.entries(by).map(([grp, xs]) => `<section class="tile gl"><h3>${esc(grp)}</h3>${xs.map(x => `<div class="ed-row"><div><b>${esc(x.title)}</b>
+        <p class="muted em-small">${esc([x.level, x.topic].filter(Boolean).join(' · '))}</p>${x.aim ? `<p class="em-small">${esc(x.aim)}</p>` : ''}</div>
+        <button class="btn soft gs-mini" type="button" data-edlab="${esc(x.id)}">Open lab</button></div>`).join('')}</section>`).join('') || empty('The labs could not be loaded.'); }
+    el.innerHTML = `<div class="vh"><h2>Education Desk</h2><span class="muted em-sub">Your tutor, school office, paper setter, research assistant, register and science lab in one place. Anything that reaches a guardian or leaves the school waits for your tap.</span></div>
+      <div class="ed-tabs" role="tablist">${EDU_TABS.map(([k, n]) => `<button type="button" role="tab" class="ed-tab" aria-selected="${k === EDU_TAB}" data-edtab="${k}">${esc(n)}</button>`).join('')}</div>
+      ${errs.length ? `<p class="badc">${esc(errs[0])}</p>` : ''}<div class="ed-body">${body}</div>`;
+    el.querySelectorAll('[data-edtab]').forEach(b => b.addEventListener('click', () => { EDU_TAB = b.dataset.edtab; edu(el); }));
+    el.querySelectorAll('[data-edask]').forEach(b => b.addEventListener('click', () => say && say(b.dataset.edask)));
+    el.querySelectorAll('[data-edlab]').forEach(b => b.addEventListener('click', () => openView && openView('lab', b.dataset.edlab)));
+    el.querySelectorAll('[data-edyes]').forEach(b => b.addEventListener('click', async () => {
+      const yes = b.dataset.edyes === '1';
+      el.querySelectorAll(`[data-id="${CSS.escape(b.dataset.id)}"]`).forEach(x => x.disabled = true);
+      try {
+        const res = await api('POST', `/api/${b.dataset.src}/shares/${encodeURIComponent(b.dataset.id)}/decide`, {yes, hash: b.dataset.hash});
+        const links = []; (function walk(o) { if (!o || typeof o !== 'object') return; if (typeof o.link === 'string' && /^https:\/\//.test(o.link)) links.push(o); Object.values(o).forEach(walk); })(res);
+        toast(res.stale ? 'This card changed. Make a new one.' : yes ? 'Sent.' : 'Not sent.', !!res.stale);
+        await edu(el);
+        if (links.length) el.querySelector('.ed-body').insertAdjacentHTML('afterbegin', `<section class="tile gl"><h3>Open in WhatsApp to send</h3>${links.map(x =>
+          `<div class="ed-row"><span>${esc(x.to || x.learner || 'Guardian')}</span><a class="btn soft gs-mini" href="${esc(x.link)}" target="_blank" rel="noopener">Open</a></div>`).join('')}</section>`);
+      } catch (e) { toast(e.message, true); edu(el); }
+    }));
+  }
+
+  return {hub, desk, social, cad, game, arch, edu};
 };
