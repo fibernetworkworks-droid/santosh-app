@@ -168,5 +168,5 @@ def test_tool_and_version():
     assert "app" in ST.SITE_TOOLS[0]["input_schema"]["properties"]["action"]["enum"]
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.432.0"
-    assert "0.432.0+476" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.433.0"
+    assert "0.433.0+477" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     hard_judge: bool = True                 # v0.272 the 'not sure' zone asks one tiny model call (1 token, time-limited)
     hard_judge_model: str = "claude-haiku-5-5"
     hard_judge_timeout_s: float = 2.5
+    hard_recipe: bool = True                # v0.433 a hard ask gets the reasoning recipe in its system prompt (agent/hard.py)
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)

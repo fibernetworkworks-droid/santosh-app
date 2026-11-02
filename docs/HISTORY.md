@@ -16395,3 +16395,25 @@ New `server/app/gamedesk/liveops.py`; HoolaRuntime (`runtime.py`) extended; tool
   caught errors; patch check with a saved replay).
 - NOT VERIFIED: no real player has sent telemetry, crashes or A/B data yet; the Web export's HTTPRequest fetch of
   /live was not run in a browser here (the same host as telemetry, which uses the same path).
+
+## v0.433.0 SOCH KE JAWAB step 4 — the reasoning recipe (2 Nov 2026)
+Owner: "GO STEP 4" (step 4 of the 7-step hard-reasoning plan).
+- Steps 1-3 decided WHO thinks (agent/hard.py), on WHAT (Opus 5.5, effort high, 16k tokens, adaptive thinking) and WITH
+  WHAT (pylab for every number). Nothing said HOW: the reply rulebook (replystyle.CHAT) is tuned for crisp chat and has
+  no method for a hard question.
+- `agent/hard.py`: RECIPE_CORE "SOCH KA TAREEKA" (~1.6 KB) - 1 the real question (most likely reading in ONE line; a
+  question only when a wrong guess costs her money / a filing / a send); 2 facts first (a missing fact = a stated
+  assumption "maan ke chal rahe hain: ...", never made up; rates / rules that change = check or look up); 3 work in
+  parts, EVERY number from pylab, units, Rs / lakh / crore; 4 check before writing (totals, units, orders of magnitude,
+  the strongest objection, re-run the key figure); 5 write: answer / decision FIRST with the key number, compact
+  reasoning (steps or a small table), the assumptions that matter, what would change the answer, the next step;
+  uncertainty plain; private thinking is not the reply. RECIPE_KIND lines (calculation, word problem, maths, decision,
+  plan, diagnosis, analysis, rules -> name the section + a CA / lawyer confirms, impact, deep) chosen by `recipe(why)`
+  from assess() labels (synonyms mapped: judgement / difference -> decision, reasons / why / fix -> diagnosis, ...),
+  max 3, no repeats. 74 of 75 hard asks get their own lines (the one left is a judge-zone Hindi ask: core only).
+- `santosh._steps`: a hard turn appends recipe(state["hard_why"]["why"]) to the system tail (setting hard_recipe,
+  default on). The reply rulebook still governs the writing (her language first, answer first, length follows the
+  question). Ordinary chat never carries the recipe.
+- Tests `server/tests/test_v0433_recipe.py` (18). Turn / reply / scorecard / draft-check / soch / tool-choice /
+  compact suites: 240 pass, same as main. Not measured here: the live answers (no key) - step 7 scores them.
+  Version 0.433.0 (pubspec 0.433.0+477, console ?v=0.433.0, pins). Server-only deploy.
