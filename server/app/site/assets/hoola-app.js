@@ -746,7 +746,7 @@
         tf.appendChild(off);
       }
     }
-    var ap = el('section', {'class': 'hs-appx-rel'}, [el('h3', {text: 'AutoPay'})]); main.appendChild(ap);   // v0.451 her plans
+    var ap = el('section', {'class': 'hs-appx-rel'}, [el('h3', {text: 'AutoPay'})]); main.appendChild(ap);   // v0.452 her plans
     call('GET', '/pay/plans').then(function (j) {
       var plans = j.plans || [];
       if (!plans.length) { ap.remove(); return; }
