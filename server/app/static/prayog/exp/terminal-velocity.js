@@ -122,7 +122,7 @@ HoolaStudio.define('terminal-velocity', function (S) {
   var EXP = {
     camera: { pos: [0.62, 0.62, 1.42], look: [0.03, 0.3, -0.04] },
     views: { jar: [[0.38, 0.5, 0.78], [0.0, 0.33, -0.05]], bands: [[0.26, 0.4, 0.55], [0.04, 0.35, -0.05]], ruler: [[0.26, 0.4, 0.55], [0.05, 0.35, -0.05]],
-      setup: [[0.42, 0.48, 0.92], [0.06, 0.32, -0.04]], drop: [[0.46, 0.62, 0.86], [0.08, 0.36, -0.02]], fall: [[0.42, 0.42, 0.95], [0.02, 0.33, -0.04]],
+      setup: [[0.42, 0.48, 0.92], [0.06, 0.32, -0.04]], drop: [[0.5, 0.74, 0.98], [0.05, 0.44, -0.04]], fall: [[0.42, 0.42, 0.95], [0.02, 0.33, -0.04]],
       balls: [[0.38, 0.22, 0.38], [0.24, 0.0, 0.1]], sw: [[0.1, 0.5, 0.95], [-0.08, 0.3, 0.02]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'A small sphere falling through a viscous liquid soon stops accelerating: its weight is balanced by the upthrust and the viscous drag 6πηrv. It then falls at a steady terminal velocity.',
       formula: 'v = 2 r² (ρ − σ) g / 9η', formulaNote: 'so η = 2 r² (ρ − σ) g / 9v · ρ = 7800 kg/m³ (steel), σ = 1260 kg/m³ (glycerine)',

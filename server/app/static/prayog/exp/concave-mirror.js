@@ -14,6 +14,8 @@ HoolaStudio.define('concave-mirror', function (S) {
 
   // ---------- the optical bench and its uprights
   var bench = S.opticalBench({ len: LEN, x0: X0, z: BZ, start: 0 });
+  // the engine's bench feet are 8 cm tall and poke up through the bed at both ends: tuck them under the bed
+  bench.children.forEach(function (m) { if (m.geometry && m.geometry.type === 'ExtrudeGeometry') { m.scale.z = 0.25; m.position.y = 0.01; } });
   var plate = S.label('OPTICAL BENCH · scale in cm · LC 1 mm', { w: 0.2, ratio: 0.1, color: '#e8e2cf', weight: 600 });
   plate.position.set(X0 + LEN - 0.16, 0.03, BZ + 0.0302); bench.add(plate);
 
