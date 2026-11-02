@@ -1,13 +1,19 @@
-"""v0.455 fix: the iPhone simulator check calls a screen crashed only when the app really is gone.
+"""v0.455 fix: the iPhone simulator check checks the APP, and calls a screen crashed only when it really is gone.
 
-The old probe compared the pid `simctl launch` printed with the pid column of `launchctl list`. On the FIRST
-simulator of a job that matched; on the second and third (Pro Max for the App Store shots, then the 13-inch iPad)
-it failed for EVERY screen - the run said "opened 0, 17 crashed" while the very same step saved 18 correctly
-sized, non-blank screenshots of those screens. A crashed app cannot be photographed, so the report was wrong and
-the iPhone workflow had been red on that for weeks.
+Two faults, found in this order:
 
-These tests drive the real awk + case logic out of the shipped script, so the shape of a live and of an exited
-service is pinned here and not in a comment.
+1. The probe compared the pid `simctl launch` printed with the pid column of `launchctl list`. The printed pid is
+   parsed out of simctl's own text, so anything extra in that text welds the digits together. It now reads the pid
+   column for our bundle id and asks only whether it is numeric ("-" means the service has exited).
+
+2. The REAL cause of fifteen red runs: `find ... -name "*.app" | head -1` picked `AppUITests-Runner.app` once the
+   flow walk had built it beside the app. The Pro Max and iPad steps installed the TEST RUNNER, launched a bundle
+   id that was not on that device, and `simctl io screenshot` photographed the simulator's HOME SCREEN - which is
+   a valid, correctly sized, non-blank PNG, so the App Store size check passed on pictures of an iPad springboard.
+   The same selection is in her real app builds, whose screenshots go to App Store Connect.
+
+These tests run the shipped awk, `case` and bundle-id guard out of the script itself, so the behaviour is pinned
+here and not in a comment.
 """
 from __future__ import annotations
 
@@ -73,3 +79,48 @@ def test_the_e2e_check_step_waits_for_the_server_step():
     wf = (Path(__file__).resolve().parents[2] / ".github/workflows/ios-check.yml").read_text()
     assert "steps.e2e_server.outcome == 'success'" in wf
     assert wf.count("if: always()\n") >= 1          # the other always() steps are untouched
+
+
+# ---------------------------------------------------------------- the app under test is the APP, not the runner
+def _fake_app(root: Path, bundle_id: str) -> Path:
+    import plistlib
+    app = root / "App.app"
+    app.mkdir(parents=True, exist_ok=True)
+    (app / "Info.plist").write_bytes(plistlib.dumps({"CFBundleIdentifier": bundle_id, "CFBundleExecutable": "App"}))
+    return app
+
+
+def _run(app: str, bid: str, out: Path):
+    return subprocess.run(["bash", str(SIM), app, bid, str(out), "home"], capture_output=True, text=True)
+
+
+def test_a_bundle_that_is_not_the_app_under_test_is_refused(tmp_path):
+    """The flow walk builds AppUITests-Runner.app beside the app; find ... | head -1 then picked the RUNNER, and
+    the check installed it, launched a bundle id that was not on the device and photographed the home screen."""
+    runner = _fake_app(tmp_path / "r", "in.hoola.preview.fixture.xctrunner")
+    r = _run(str(runner), "in.hoola.preview.fixture", tmp_path / "out")
+    assert r.returncode == 1
+    assert "wrong app bundle" in r.stdout + r.stderr
+    assert "xctrunner" in r.stdout + r.stderr          # it says WHICH bundle it was handed
+
+
+def test_a_missing_bundle_is_refused_loudly(tmp_path):
+    r = _run(str(tmp_path / "nope.app"), "in.hoola.preview.fixture", tmp_path / "out")
+    assert r.returncode == 1 and "no app bundle" in r.stdout + r.stderr
+
+
+def test_the_real_app_gets_past_the_guard(tmp_path):
+    """Same id = the check proceeds (and then stops at the simulator, which this machine has not got)."""
+    app = _fake_app(tmp_path / "a", "in.hoola.preview.fixture")
+    r = _run(str(app), "in.hoola.preview.fixture", tmp_path / "out")
+    said = r.stdout + r.stderr
+    assert "wrong app bundle" not in said and "no app bundle" not in said
+
+
+def test_no_caller_can_pick_the_test_runner():
+    """Both workflows - the fixture check AND her real app builds, whose App Store screenshots go to Apple."""
+    for rel in (".github/workflows/ios-check.yml", "server/app_builder/hoola-ios.yml"):
+        y = (Path(__file__).resolve().parents[2] / rel).read_text()
+        assert '-name "*.app" | head -1' not in y and "-name '*.app' | head -1" not in y, rel
+        assert y.count("! -name") >= 3 or rel.endswith("hoola-ios.yml"), rel
+        assert "Runner.app" in y, rel
