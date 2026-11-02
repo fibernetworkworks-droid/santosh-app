@@ -17708,8 +17708,10 @@ itself — a running app reads alive among other services, an exited and an abse
 go back to comparing simctl's pid, a UI-test runner is refused by id (and the message names it), the real app gets
 through, and neither workflow may select a `*-Runner.app`. In `app-load.yml`.
 
-**Still not verified:** this sandbox has no Mac, so whether all 18 screens open on a 13-inch iPad is for the macOS
-runner to answer. The lesson worth keeping: a check that cannot tell "the app is on screen" from "something is on
+**Answered by the runner** (run 41473467596, after the consent fix below landed too): the iPhone check is GREEN
+for the first time in sixteen runs across six sessions - iPhone 18/18 screens opened and 0 crashed, 90 buttons
+tapped with 0 crashes, Pro Max 3/3, iPad 18/18 with 19 correctly sized screenshots and 0 crashed, and
+`HOOLA_E2E OK`. The lesson worth keeping: a check that cannot tell "the app is on screen" from "something is on
 screen" will pass for weeks, and the only reason this was ever caught was opening the picture it saved.
 
 **Rule learned:** a screenshot of a simulator is evidence about the device, not about the app. Before reasoning from
@@ -17859,6 +17861,10 @@ what it asked; and both device walks tick the box, the way a real user does.
 Tests: one more in `server/tests/test_v0455_suraksha.py` — server side, consent omitted is allowed, an explicit
 no is refused and a yes is RECORDED (`/security` reports `via: signup`); kit side, neither kit may send a bare
 false, every account-creating screen must both ask and send, and both e2e walks must tick it.
+
+Green on the runner: `HOOLA_E2E OK` - sign-up, the server-priced order, the duplicate write, the photo round
+trip, the UPI paid claim, the updates check, the crash report and sign out / in all pass on a real server for the
+first time since the iPad check started hiding them.
 
 **The lesson, again:** a failing check hides every check behind it. Fifteen runs of "the iPad crashed" were also
 fifteen runs in which the sign-up, the order, the paid claim and the crash report were never exercised at all.
