@@ -17006,3 +17006,54 @@ prototype -> "MAKE IT MORE PREMIUM ... STUNNING, ADVANCE ANIMATION" -> "GO . MAK
 - `v2.js`: Library is spliced in just above Create, so it can never land between AI Employees and the hired desks.
 - Tests: `test_v0447_ai_employees_premium.py` (structure, equal-size CSS, real actions, motion once, escaping, Library
   position); `test_v0443` heading assert updated. Console only - no server route changed.
+
+## v0.450.0 BUCKLING + GEAR TOOTH STRENGTH (2 Nov 2026)
+Owner asked whether every simple / medium / complex CAD job was covered; the honest answer named buckling, gear
+tooth strength and plastic stress as the real holes. The first two are closed here (plastic next).
+
+### Buckling (`fea.buckling`, kind 'buckling', `calc.column`)
+- A slender part in compression FOLDS at a load far below the one that breaks it, and a stress check cannot see it.
+- Linear eigenvalue buckling on the part's own stress state: one static solve, the geometric stiffness
+  `Kg = ∫ σ_ij ∂u_k/∂x_i ∂v_k/∂x_j dV` assembled from that stress (skfem BilinearForm with σ at the quadrature
+  points), then `(-Kg) φ = (1/λ) K φ` solved as a generalized SYMMETRIC problem so K stays positive definite and
+  the smallest positive factor comes out first. `_assemble` was factored out of `_static_once` so both share the
+  mesh / load / support code.
+- Reports: load factor, next modes, critical load, mode-1 shape, a 3x-coarser convergence check, and which mode
+  GOVERNS (folds at xN vs yields at xM). A stubby part or one in tension is told plainly that it cannot buckle and
+  that the stress check is what matters (`not_a_buckling_case`). Below `min_lf` (2.0 default, or hers) it goes back
+  to the model with the real fix: depth across the folding direction (I ~ h³), a tube/box, a shorter free length,
+  a mid-brace - never "make it a bit thicker".
+- VALIDATED: Euler cantilever to 0.1 % (4.575 vs 4.569) and mode 2 at exactly 9x mode 1; λ halves when the load
+  doubles and quarters when the length doubles; a same-area deep section beats a flat bar by >5x.
+- `calc.column` (eng_calc kind=column): Euler above the changeover slenderness π√(2E/Sy), J. B. Johnson's parabola
+  below it, end factors K (pinned 1.0 / fixed-free 2.0 / fixed-fixed 0.5 / fixed-pinned 0.699). Agrees with the FEA
+  to 0.1 %.
+
+### Gear teeth (`engineering/gears.py`, `H.spur_gear` root, `H.gear_duty`, eng_calc kind=gear)
+- THE GEOMETRY WAS WRONG: `spur_gear` drew a sharp root corner with no fillet. It now cuts the real TROCHOID a hob
+  leaves (the envelope of the rounded rack tip as it rolls), so the model matches a cut gear and has no false
+  stress riser. The rack-corner offset is exactly ISO 6336-3's E term - derived independently here, which is itself
+  a check.
+- THE CRITICAL SECTION, PROVED TWO WAYS: the generated trochoid measured with ISO's 30-degree-tangent rule
+  (arc-length resampled tangent, least-squares circle for ρ_F, bending arm to where the real line of action crosses
+  the centre line) vs ISO 6336-3's closed-form equations (G, E, H, θ). They agree within 1 % on the root chord and
+  the bending arm, 3 % on the fillet radius, for 10 to 200 teeth. The fillet bottoms exactly on the root circle and
+  meets the involute with a 0.0000 mm step.
+- Bending (6336-3) + pitting (6336-2) on the PINION: Y_Fa / Y_Sa, Z_H / Z_E / Z_ε, K_v from the pitch-line speed
+  and cut quality (AGMA 2001 dynamic factor, and it says when the speed is above what that quality is rated for),
+  K_A from her words about the drive, K_Hβ from how it is mounted, life factors from the tooth-load count,
+  allowables per material grade (ISO 6336-5 MQ; hers override). Z_H comes out 2.4946 against its published 2.495.
+- UNDERCUT measured on the real tooth: a rounded hob tip (ρ_fP = 0.38 m) ends its straight flank 0.74 m below the
+  pitch line, not 1.0 m, so real undercut starts near 12 teeth, not the textbook 17.1. BOTH are reported - a fault
+  when measured, a warning when only below the classical limit - and a profile shift cures it.
+- Checks go back to the model with the right fix (bigger module first: bending falls as 1/m²; then face width,
+  teeth, case-hardened steel). Rows on the card, a section in analysis.pdf, a line in her chat note.
+- NOT VERIFIED against our own FEA, and said so in the module: the bending stress was cross-checked against a real
+  FEA of the same tooth (load + reaction balanced to 0 %, peak on the right side of the fillet) but the recovered
+  peak FELL with refinement (89 -> 46 MPa), which cannot be right at a stress raiser. The same solver converges
+  correctly up to Kt 2.98 against the textbook 3.0 on a plate with a hole, so the solver is sound and the gear root
+  fillet is simply too small for its point-cloud mesher. The check rests on the standard's equations, the two
+  independent geometry methods and the published factors.
+- Also: `H.robot(move_time_s=)` / `accuracy_mm=` accepted (the v0.426 guide named them but `robot()` refused them);
+  studies per part 3 -> 4 so buckling can ride beside static.
+- Tests: `test_v0432_buckling.py` (8), `test_v0432_gear_strength.py` (9).
