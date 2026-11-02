@@ -16633,8 +16633,26 @@ the model never answered.
 - NOT VERIFIED: the VPS's real exception is still unknown. The fixed card / `--ping` will print it on the next run.
 - Tests: `tests/test_v0440_hard_live.py`.
 
+## v0.441.0 PRAYOGSHALA STUDIO (built as 0.435.0, 2 Nov 2026)
+Owner: "NOW BUILD ALL 22 LABS LIKE THIS IN HOOLA. MAKE EVERY EXPERIMENT PERFECT AND ROBUST" (after approving the
+pendulum prototype artifact: "realistic like human lab", theory first, Ask Hoola inside the experiment page).
+- Engine `server/app/static/prayog/studio/studio.js` + `studio.css`: lab room, bench, lights, materials, shared devices
+  (stand, cork, ruler / scaleTex, stopwatch, meter incl. zero-centre galvanometer, thermometer, wire, terminal, cell,
+  power box, plug key, rheostat, resistance box, optical bench, upright, tuning fork, beaker, labels), the gloved hand
+  (tap / pinchMove / reach / shape / follow), camera views, workflow (Theory auto first, Result + graph and Viva last),
+  handwritten record book (`S.addRow`), toast `S.say`, Ask Hoola panel, test mode (`?test=1`, `S.fast`, `S.advance`).
+- 22 modules `server/app/static/prayog/exp/<id>.js` (contract + rules: `docs/PRAYOG_STUDIO.md`). Numbers only from the
+  kernels (`kernels.js` twin of `kernels.py`); the hidden unknown is shown only on the result line.
+- `lab.html` loads the studio module and falls back to the old `lab3d.js` runtime when a lab has none.
+- Ask Hoola: `POST /api/prayog/ask` (needs the key; `service.ask`, system prompt limited to THIS lab, live readings and
+  turns are data, 150 a day per account, 429 / 503 plain). Phone `PrayogLabView` injects `window.HOOLA_TOKEN`.
+- Ruler scale fix: the printed metre rule was stretched 1-1.6 %; zero now at the top end and v at lengthM - v exactly.
+- Proof: `node tools/prayog_walk.js http://localhost:PORT` drives every step's own `auto` through the button code paths:
+  22/22 PASS - g 9.817, k 20.12 / 20.00, mu 0.3006, eta 1.488, k 0.0200, PV 9.976, c 904.8, v 343.04, mu 0.0010,
+  R 4.9995, S 6.0017, r 0.999, V_K 0.663, slope 0.998, f 14.85 / 19.79, n 1.498 / 1.500, k 0.2698, D 23.40 / 0.510 mm.
+- NOT VERIFIED: on her phone WebView (GPU / memory on low-end Android); Ask Hoola answers live on the VPS model.
 
-## v0.441.0 PAKKA KAAM (2 Nov 2026; built as 0.440.0, re-versioned past the parallel v0.440 HARD CARD SACH)
+## v0.442.0 PAKKA KAAM + SAB KAAM CALL PAR (2 Nov 2026; built as 0.440 / 0.441, re-versioned past the parallel v0.440 / v0.441)
 Owner: "NOW FOR VOICE TO VOICE --- CHECK DOES IT PERFORM LONG TASK", then "GO" on the fix.
 - CHECK RESULT: yes - a call hands a big job to santosh_kaam = the FULL run_turn (all tools, plan card, goal rounds up to
   ~3 h, AAGE BADHO, ask-on-limit, goal.recover_tick, steering of a running job by a later ask on the same call since the
@@ -16651,3 +16669,25 @@ Owner: "NOW FOR VOICE TO VOICE --- CHECK DOES IT PERFORM LONG TASK", then "GO" o
   natija chat mein aayega): ..." for up to 3 of them, OTPs she said masked.
 - Tests `test_v0441_pakka_kaam.py`: the job lands in the inbox done with its place; a 'running' row 10 min old with no turn
   holding the chat is re-run exactly once with place 'pc' and never twice; the drop note names the running job, OTP masked.
+
+### v0.442 part 2: SAB KAAM CALL PAR (the same version)
+Owner: "NOW ALSO CHECK IS VOICE TO VOICE CAN PERFORM ALL TOOL TASK END TO END", then "GO".
+- MEASURED: 483 chat tools -> 105 declared to the live model, 256 already routed through santosh_kaam, and **122 with no
+  route at all**: Sheets (format, tabs, share, protect, clear, validation...), Drive (access, comments, revisions, delete,
+  storage, changes), Forms (edit, export, share, media, copy, delete), YouTube (upload, update, reply, playlists, my videos),
+  Slides (arrange, delete, share), WhatsApp campaigns + templates + lead lists, all ten enterprise desks + software_architect +
+  cad_part + eng_calc + the 17 game tools, mospi, indiamart, data_*, composio_apps, tally_entry, doc_studio, create_studio,
+  haal_ki_chats. `_execute` answered `{"error": "Unknown tool <name>"}` for every one of them, and the persona never told the
+  call that santosh_kaam could do them - so the call usually just said it could not.
+- FIX (voice only, chat untouched): `voice.registered(name)` reads the chat registry (`agent.tools.TOOLS` + `HANDLERS`) once
+  into `_REGISTRY`; `_execute` sends any registered-but-undeclared tool to `_delegate` exactly like a VOICE_VIA_KAAM one
+  (her words + what the model wanted); an unknown name still returns "Unknown tool". New `voice.call_route(name)` returns
+  `declared` / `kaam` / `""`. The persona's new line names the families and forbids "nahi kar sakta" before santosh_kaam has
+  tried, and says a sending / deleting / sharing / paying step still comes to her phone as a card.
+- The declared list and its JSON size do not change, so no call gets slower. Both engines share `_tool_specs` / `_execute`.
+- Test `test_v0442_sab_kaam_call.py`: EVERY name in `tools.TOOLS` has a route (a new tool can never be unreachable again),
+  the declared set did not grow, the persona line is there, `sheet_format` on a call reaches the full brain, and a made-up
+  name still answers "Unknown tool".
+- Also fixed here: v0.441's `run_owned` passed `context=""` / `client_id=""` / `save_user=True` to run_turn always, which
+  broke two older voice tests whose fake run_turn takes only the arguments the old call site used; it now passes only what
+  is set.
