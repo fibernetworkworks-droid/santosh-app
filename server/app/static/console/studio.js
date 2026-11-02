@@ -198,7 +198,7 @@ window.HoolaCreate = ctx => {
     return `<link rel="stylesheet" href="/static/console/studio.css?v=${esc(ctx.version || '')}">
 <div id="shell">
   <aside class="side" aria-label="Create studio">
-    <div class="shd"><div class="mark"><img class="av" src="${esc(ctx.avatar?.() || '/static/santosh-head.png')}" alt=""><span>Hoola</span><small>Studio</small></div>
+    <div class="shd"><div class="mark"><img class="av" src="${esc(ctx.avatar?.() || '/static/hoola-logo.png')}" alt=""><span>Hoola</span><small>Studio</small></div>
       <button class="ib" id="collapse" aria-label="Collapse sidebar">${I('side')}</button></div>
     <button class="back" data-close>${I('left', 'width:16px;height:16px')}<span>Back to chat</span></button>
     <nav class="snav" id="snav"></nav>
