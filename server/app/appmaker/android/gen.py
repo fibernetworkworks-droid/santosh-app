@@ -675,6 +675,16 @@ def scan_screen(src: str, sid: str, ids: list[str]) -> list[str]:
 
 
 # ---------------------------------------------------------------- write the project
+def _custom_files():
+    """v0.425 custom_files works inside the package and when this file runs as a script in CI."""
+    if __package__:
+        from .. import custom_files
+        return custom_files
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import custom_files                                    # type: ignore[no-redef]
+    return custom_files
+
+
 def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     out = Path(out)
     tmp = out.with_name(out.name + ".tmp")
@@ -738,8 +748,7 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
             made[sid] = "code"
         (appd / "screens" / f"{kotlin_name(sid)}.kt").write_text(src)
     (appd / "AppScreens.kt").write_text(screens_kt(spec, set(ids)))
-    from .. import custom as CU                # v0.425 RANG: her approved custom components (Kotlin) + their check screen
-    for rel, src in CU.android_files(spec.get("custom") or []).items():
+    for rel, src in _custom_files().android_files(spec.get("custom") or []).items():
         p = main / "java/hoola/kit" / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(src)

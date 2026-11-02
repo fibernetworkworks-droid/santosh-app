@@ -16278,3 +16278,24 @@ rules, its own section in the document and its own sums in CODE (`app/archdesk/m
   only, decision sums + sensitivity + named gaps, STRIDE scoring + coverage, scenarios + first break, OpenAPI check,
   assess with peer review + revision end to end, decide + threat documents, PR boundary break by code, tool + route,
   console + phone wiring).
+
+
+## v0.429.0 SOCH KE JAWAB step 2 — hard asks on Opus with room to think (2 Nov 2026)
+Owner: "GO STEP 2" (step 2 of the 7-step hard-reasoning plan). Built as 0.425.0, re-versioned past the parallel
+v0.425.0-v0.428.0.
+- Already there before this step: v0.272 `agent/hard.py` spots a hard ask -> adaptive thinking from the first call;
+  v0.331/0.336 SOCH GEHRI: effort high for a hard ask (agent_hard_effort), xhigh + Claude + 16,000 tokens for long jobs.
+  Still missing: the MODEL (a hard ask ran on the chat model, Sonnet 5.5) and ROOM (a hard ask outside a long job kept
+  agent_max_tokens 2,000 while thinking tokens count against max_tokens - the answer got cut and stitched by nudges).
+- Now (`agent/santosh.py`): `_MODEL_NOW` contextvar set once per step (like `_EFFORT_NOW`) by `model_for(settings, hard,
+  long_job)` = agent_hard_model (claude-opus-5-5) for a hard ask that is not a long job, '' otherwise; `_call_brain`'s
+  Claude path tries that model first via the new `_claude_call(model, ...)` (the old body, model as a parameter) and on
+  ANY failure retries the same call on settings.anthropic_model; `_model_refused` (404 / not_found / unknown model)
+  sets HARD_MODEL["ok"] False for the process. A hard ask's state["max_tokens"] = agent_hard_max_tokens (16,000);
+  agent_hard_on_claude moves a hard ask from a cheaper CHAT_LLM brain to Claude. Usage pricing already knew Opus 5.5.
+- Unchanged: ordinary chat (Sonnet, 2,000, no thinking, default effort), long jobs (Sonnet, xhigh, 16,000), sub-agents,
+  the voice call.
+- Tests `server/tests/test_v0426_hard_opus.py` (7): model_for; a hard turn = Opus + 16,000 + thinking + effort high, a
+  chat turn = Sonnet + 2,000; Opus overloaded -> same call on Sonnet (switch stays on); 404 -> switch off, asked once;
+  switch off keeps Sonnet. Turn / cache / usage / context / team / compaction / soch suites: 257 pass, same as main.
+  Not measured here: answer quality (no API key) - step 7 adds the scored set. Version 0.429.0 (pubspec 0.429.0+473).
