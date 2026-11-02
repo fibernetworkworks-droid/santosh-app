@@ -42,6 +42,19 @@ def _code(argv: list[str]) -> int:
     return 0
 
 
+def _hardcard(argv: list[str]) -> int:
+    from . import hard_card as H
+
+    def arg(name, default=""):
+        return argv[argv.index(name) + 1] if name in argv and len(argv) > argv.index(name) + 1 else default
+    items = H.pick(only=arg("--only"), limit=int(arg("--limit", "0") or 0), quick="--quick" in argv)
+    card = asyncio.run(H.live_card(items, judge="--judge" in argv)) if "--live" in argv else H.free_card(items)
+    card = H.save(card, arg("--label"))
+    print("\n".join(H.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if argv and argv[0] == "review":        # v0.401 PR review card (old vs ECC specialists)
         from . import reviewcard as RC
@@ -67,6 +80,8 @@ def main(argv: list[str]) -> int:
         hours = int(argv[argv.index("--hours") + 1]) if "--hours" in argv and len(argv) > argv.index("--hours") + 1 else 24
         print("\n".join(LJ.lines(LJ.report(hours))))
         return 0
+    if argv and argv[0] == "hardcard":      # v0.438 the hard card: known answers, scored (free, or --live)
+        return _hardcard(argv[1:])
     if argv and argv[0] == "hard":          # v0.272 the hard-reasoning detector card (free, no model)
         from . import hard_asks as HA
         print("\n".join(HA.lines(HA.card())))

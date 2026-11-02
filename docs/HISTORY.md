@@ -16564,3 +16564,27 @@ Owner: "GO STEP 6" (step 6 of the 7-step hard-reasoning plan).
 - Tests `server/tests/test_v0437_research.py` (22). Team / turn / reply / scorecard / draft-check / soch / tool-choice /
   shodh suites (25 files): 317 pass, same as main. Not measured here: a live research run (no key) - step 7.
   Version 0.437.0 (pubspec 0.437.0+481, console ?v=0.437.0, pins). Server-only deploy.
+
+## v0.438.0 SOCH KE JAWAB step 7 — the HARD CARD (2 Nov 2026)
+Owner: "GO STEP 7" (the last step of the 7-step hard-reasoning plan).
+- Steps 1-6 changed HOW a hard ask is handled (v0.272 spotted, v0.429 Opus + thinking + 16k, v0.430 pylab, v0.433 the
+  recipe, v0.436 the held self-check, v0.437 deep research); nothing measured whether the ANSWERS were right.
+- `app/quality/hard_card.py` (HARD_CARD_V 1): 28 asks with known answers - 13 money maths (EMI 20 L / 9% / 20 y =
+  17,994.52 + 23,18,684.59 interest; break-even 421.05 cakes; CAGR 24.14%; SIP 74.9-75.7 L; solar payback 55.6 months /
+  21.6%; price +10% / volume -6% at 18% margin = +46.2% profit; doubling at 15% = 4.96 y; FD 5 L / 8% quarterly / 5 y =
+  7,42,973.70; GST 5,310 / 810; real return 0.94%; LTV/CAC 2.5; 20%+10% = 28%; tiffin 35 a meal / 10,500 a day),
+  6 word problems / logic (trains 3 h, ages 10 / 30, dice 51.77%, x = -12, machines 5 min, workers 9 days), 2 proofs
+  (root 2, the mislabelled boxes), 5 rules / decision / diagnosis / plan asks (GST composition 1.5 crore / 1% / no ITC,
+  TDS 194J 10% = 6,000, rent vs buy, ads root cause, a 6-month GTM) and 2 research asks (CPI from MoSPI, EV two-wheelers).
+  Every key computed in Python (and re-derived in the test so a wrong key can never pass a wrong answer).
+  `numbers()` reads answers the Indian way (Rs, commas, lakh, crore, k, negatives); `score_answer` = numbers within
+  tolerance + must-have points + behaviour (pylab for a calculation, 2+ source links for research) + whether the
+  self-check ran ("jaanch" step). `free_card` (no model): every ask spotted hard, pylab in view, its own recipe line,
+  research routed - 28/28, 28/28, 28/28, 2/2. `live_card`: ONE real turn per ask on tenant __quality__ (run.py's
+  _new_conv / _calls_of), errors are rows; optional Opus judge 0-10 (substance only; a made-up figure caps at 3) on
+  the 7 open asks; `pick(only, limit, quick)` (QUICK = 10 exact-answer asks); save / saved / lines.
+- CLI `python -m app.quality hardcard [--live] [--judge] [--quick] [--only id,id] [--limit N] [--label ...]`;
+  GET /api/quality/hardcard (free card + saved cards); vps-ops job `hard_card` (free card + live quick set, ~10-15 min).
+- Tests `server/tests/test_v0438_hard_card.py` (16). Quality / turn suites: same failures as main (App Sahayak bhasha /
+  delivery, pre-existing). NOT RUN HERE: the live card itself (no API key in the sandbox) - run it on the VPS; its first
+  numbers are the honest measure of steps 1-6. Version 0.438.0 (pubspec 0.438.0+482, console ?v=0.438.0, pins).
