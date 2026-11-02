@@ -16131,7 +16131,46 @@ Her apps talk to outside services through DECLARED HTTP actions (data, never cod
   numbered open questions, page numbers, a closing "nothing has been built" line. Test: every section present, no raw
   markdown, model text still escaped.
 
-## v0.425.0 CAMS + SLOTS + DYNAMICS (2 Nov 2026)
+## v0.425.0 RANG (App Sahayak Pillar G, Phases 55-57 — owner: "START PILLAR G")
+Rich native UI in her apps + the custom component escape hatch.
+- Server (`appmaker/backend.py`):
+  - EXTRA_TYPES gains signature / photos / video / audio / richtext.
+    - signature: a picture, like a photo.
+    - photos: up to 6 comma-separated ids, each hers and an image.
+    - video / audio: the file must be that kind.
+    - richtext: markdown words up to 4000 characters with tags stripped; webapp `_value` keeps richtext long.
+  - `_upload_media`: an ISO-BMFF container with a known `ftyp` brand. Video is MP4 / MOV up to 50 MB; audio (when the app
+    says audio/*) is M4A up to 10 MB. Kept as sent; the meta stores kind + ext.
+  - `file_for` serves the right file. POST /files/<id>/link returns a 15-minute HMAC address
+    /api/app-api/<key>/media/<id>.<exp>.<sig> (CSP sandbox, no token) for the phone's own players.
+- Kits `Rich.kt` / `Rich.swift`, native only:
+  - Fields: SignatureField/Row, PhotosField/Row, VideoField/Row, AudioField/Row (record 2 min, permission on tap),
+    RichTextField/Row.
+  - Showing: RichText(View), PhotosStrip(View), VideoPlayer(View) (VideoView / AVPlayer), AudioPlayer(View),
+    PdfViewer(View) (PdfRenderer page by page / PDFKit).
+  - Blocks: CalendarBlock, KanbanBlock (staff move cards through Db.update), GanttBlock, LineChart, PieChart, Carousel
+    (HorizontalPager / TabView), OnboardingPager.
+  - The outbox sends multi-photo values and video / audio with the right Content-Type.
+  - Hooked in: the generator's `_form_rows`, AutoForm (Logic.kt/.swift), RowsSection (Accounts) and the iOS form
+    switch + RichRowParts.
+  - Permissions: RECORD_AUDIO / NSMicrophoneUsageDescription only in apps with an audio field. Screen-writer prompts
+    list the pieces.
+- `appmaker/custom.py` custom components:
+  - Opus writes Kotlin + Swift + literal samples, with one repair round. `problems()` checks the house rules in CODE:
+    the name Custom*, package hoola.kit, allowed imports, banned web / net / io / intent / reflection / thread / log /
+    data-store / sign-in tokens, balanced braces, literal-only samples.
+  - JSON files live in the app folder. Approval is her tap, bound to a hash.
+  - `for_build`: approved + unchanged + clean components go into the build. android_files / swift_files write the files
+    plus ComponentsGallery (screen `hoola_components`, added to the registries and the QA screen lists only when there
+    are components).
+  - The Android compile loop: a log naming custom/<Name>.kt takes that component out of the build, marks it failed and
+    notes her. A finished build marks the rest verified. Screens are told about the approved components.
+  - Routes /api/apps/<ref>/components (GET, POST /draft, POST /<name>/approve, DELETE). Console box + phone
+    `lib/ui/app_components.dart`.
+- Tests: tests/test_v0425_rang.py (3).
+- NOT built: camera capture / document scan, Lottie, offline map tiles, a barcode inventory flow, and iOS compile-failure
+  marking for components (iOS builds run in her builds repo). Kits compile only in CI (no local Kotlin / Swift).
+## v0.426.0 CAMS + SLOTS + DYNAMICS (2 Nov 2026, built as 0.425)
 Owner: "cam and slot joints, dynamic simulation — fix and develop".
 - `engineering/cams.py` + `H.disc_cam(name, segments, base_radius, follower='roller'|'flat', roller_radius, offset, thickness,
   bore, rpm, cam_joint, follower_joint, max_pressure_deg=30)`: the cam is made FROM the follower program (segments must add

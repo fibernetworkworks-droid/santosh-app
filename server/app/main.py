@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.425.0"   # v0.425.0 CAMS + SLOTS + DYNAMICS (owner: "cam and slot joints, dynamic simulation - fix and develop"): H.disc_cam designs a disc cam FROM the follower motion (rise / dwell / return, cycloidal / harmonic / 3-4-5 closed forms, roller or flat-faced follower) and checks it like a cam designer (pressure angle, pitch-curve radius vs roller = undercut, flat-face cusps + face width, v / a / jerk at her rpm) - a fail goes back to be redesigned; the follower joint is tied to the cam joint by the lift table. kind="slot" joints (pin in a slot: Scotch yoke, quick return) solved as loop closures with travel limits, written to MJCF as a slide + hinge + connect. engineering/dynamics.py moves the mechanism in MuJoCo in her time (H.robot(move_time_s=)) - computed torque clipped at her motor effort: peak / RMS torque, speed, tracking error, saturation %, energy, loop gap, cam torque = follower force x ds/dtheta; unnamed motors sized at peak x 1.25; dynamics.png + camcurve.png. MuJoCo optional (pip install mujoco). Previous: v0.424.0 JODO (App Sahayak Pillar F, Phase 54, owner: "START PILLAR F"): connectors inside her apps as DECLARED HTTP actions, never code (appmaker/connect.py) - nothing runs before her approval tap, bound to a hash of the exact action (any change = approve again); https + the approved host only, the address resolved and refused when private / loopback / link-local / metadata, no redirects, 1 MB answers; her secrets sealed, returned by no route, scrubbed from every run log; auth bearer / basic / header / query / login token / refresh token (QuickBooks rotation kept) / Google service account; answers are DATA written only into real fields through their type checks; safe retries only, a POST that timed out = ambiguous and never resent; new-row / status triggers queued in the background (the order never waits), staff buttons only where she allowed; signed inbound webhooks mapped into a matched row; Aadhaar refused. 13 ready packs from the providers' own docs (connect_packs.py: Shiprocket, Delhivery, MSG91, Fast2SMS, WhatsApp Cloud, Brevo, Resend, Google Sheets, Google Calendar, Zoho Books, QuickBooks, Tally = export, licensed KYC). Kits Connect.kt / Connect.swift, console Connectors box, phone panel. NOT VERIFIED against live accounts. Previous: v0.423.0 GAME DESK ROLES 4: SIMULATORS + DIGITAL TWIN + VFX PIPELINE (Hoola Game Engine plan Phase 7 batch 4 = Game Desk plan phase 5, owner: "GO PHASE 7" - Phase 7 done: all ten Game Desk employees live). Simulation Software Engineer (gamedesk/sim.py, tool game_sim): orbit (two-body + J2, WGS 84 constants), light-aircraft glide and car-handling models in RK4, each validated against its textbook case (orbit period, energy drift, J2 node regression - sun-synchronous at 98 degrees, GEO = a sidereal day; glide angle, Lanchester phugoid; steady yaw rate), sources cited, scenarios run twice, HoolaSim's GDScript step matching the Python one in the real Godot; weapon / targeting / combat simulators refused. Digital Twin Architect (gamedesk/twin.py, tool game_twin): her line as data with every number traced to a data tag or a stated assumption, read-only by construction, Hoola's event engine checked against exact answers and Erlang C, throughput / utilisation / WIP / lead time / bottleneck + what-ifs on common random numbers, validated only against her real week (else NOT ASSESSED). VFX Pipeline TD (gamedesk/vfx.py, tool game_vfx): naming + versions, ACES colour converted and measured (LogC3 / S-Log3 18 % grey), a real ACEScg EXR written and read back, a render queue with re-queue and cost per shot, every frame traced to its scene sha256; Blender / OCIO not run on the server (said).
+APP_VERSION = "0.426.0"   # v0.426.0 CAMS (built as 0.425) + SLOTS + DYNAMICS (owner: "cam and slot joints, dynamic simulation - fix and develop"): H.disc_cam designs a disc cam FROM the follower motion (rise / dwell / return, cycloidal / harmonic / 3-4-5 closed forms, roller or flat-faced follower) and checks it like a cam designer (pressure angle, pitch-curve radius vs roller = undercut, flat-face cusps + face width, v / a / jerk at her rpm) - a fail goes back to be redesigned; the follower joint is tied to the cam joint by the lift table. kind="slot" joints (pin in a slot: Scotch yoke, quick return) solved as loop closures with travel limits, written to MJCF as a slide + hinge + connect. engineering/dynamics.py moves the mechanism in MuJoCo in her time (H.robot(move_time_s=)) - computed torque clipped at her motor effort: peak / RMS torque, speed, tracking error, saturation %, energy, loop gap, cam torque = follower force x ds/dtheta; unnamed motors sized at peak x 1.25; dynamics.png + camcurve.png. MuJoCo optional (pip install mujoco). Previous: v0.425.0 RANG (App Sahayak Pillar G, Phases 55-57, owner: "START PILLAR G"): rich native UI in her apps + the custom component escape hatch. Kit pieces in Compose AND SwiftUI (no web views, no new libraries): signature pad, up to 6 photos, video (system picker), voice note (microphone asked only on Record; the permission only in apps that have the field), formatted text (markdown words, HTML stripped), PDF reader (PdfRenderer / PDFKit), players on a 15-minute signed address, calendar, kanban (staff move cards), Gantt, line + pie charts, carousel, onboarding pager; forms, rows, AutoForm and the generator draw them. Server: new field kinds signature / photos / video / audio / richtext, an MP4 / M4A checked by its ftyp box (50 / 10 MB), the right kind per field, own files only. Custom components: Opus writes Kotlin + Swift under house rules checked in CODE (UI only - no network, files, web views, data stores, sign-in), literal-only samples, her approval bound to a hash, written into both builds with a Components check screen the device check opens; one that fails to compile is taken out of that build (never the app) and marked failed. Not built: camera capture / document scan, Lottie, offline maps. Previous: v0.424.0 JODO (App Sahayak Pillar F, Phase 54, owner: "START PILLAR F"): connectors inside her apps as DECLARED HTTP actions, never code (appmaker/connect.py) - nothing runs before her approval tap, bound to a hash of the exact action (any change = approve again); https + the approved host only, the address resolved and refused when private / loopback / link-local / metadata, no redirects, 1 MB answers; her secrets sealed, returned by no route, scrubbed from every run log; auth bearer / basic / header / query / login token / refresh token (QuickBooks rotation kept) / Google service account; answers are DATA written only into real fields through their type checks; safe retries only, a POST that timed out = ambiguous and never resent; new-row / status triggers queued in the background (the order never waits), staff buttons only where she allowed; signed inbound webhooks mapped into a matched row; Aadhaar refused. 13 ready packs from the providers' own docs (connect_packs.py: Shiprocket, Delhivery, MSG91, Fast2SMS, WhatsApp Cloud, Brevo, Resend, Google Sheets, Google Calendar, Zoho Books, QuickBooks, Tally = export, licensed KYC). Kits Connect.kt / Connect.swift, console Connectors box, phone panel. NOT VERIFIED against live accounts. Previous: v0.423.0 GAME DESK ROLES 4: SIMULATORS + DIGITAL TWIN + VFX PIPELINE (Hoola Game Engine plan Phase 7 batch 4 = Game Desk plan phase 5, owner: "GO PHASE 7" - Phase 7 done: all ten Game Desk employees live). Simulation Software Engineer (gamedesk/sim.py, tool game_sim): orbit (two-body + J2, WGS 84 constants), light-aircraft glide and car-handling models in RK4, each validated against its textbook case (orbit period, energy drift, J2 node regression - sun-synchronous at 98 degrees, GEO = a sidereal day; glide angle, Lanchester phugoid; steady yaw rate), sources cited, scenarios run twice, HoolaSim's GDScript step matching the Python one in the real Godot; weapon / targeting / combat simulators refused. Digital Twin Architect (gamedesk/twin.py, tool game_twin): her line as data with every number traced to a data tag or a stated assumption, read-only by construction, Hoola's event engine checked against exact answers and Erlang C, throughput / utilisation / WIP / lead time / bottleneck + what-ifs on common random numbers, validated only against her real week (else NOT ASSESSED). VFX Pipeline TD (gamedesk/vfx.py, tool game_vfx): naming + versions, ACES colour converted and measured (LogC3 / S-Log3 18 % grey), a real ACEScg EXR written and read back, a render queue with re-queue and cost per shot, every frame traced to its scene sha256; Blender / OCIO not run on the server (said).
 
 
 def _quiet_http_logs() -> None:
@@ -9900,11 +9900,35 @@ async def app_api_upload(app_key: str, request: Request):
     from .appmaker import backend as BE
     raw = await request.body()
     ip = _ip(request)
+    ctype = request.headers.get("content-type") or ""
 
     def go():
         r, w = _be_app(app_key, request)
-        return BE.upload(r, w, raw, ip)
+        return BE.upload(r, w, raw, ip, ctype)
     return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/files/{fid}/link")
+async def app_api_file_link(app_key: str, fid: str, request: Request):
+    """v0.425 RANG: a 15-minute signed address for the phone's own video / audio / PDF player (no token in it)."""
+    from .appmaker import backend as BE
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.media_link(r, fid, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/media/{tok}")
+async def app_api_media(app_key: str, tok: str):
+    from .appmaker import backend as BE
+    from .site import webapp as W
+    try:
+        f = await asyncio.to_thread(lambda: BE.media_file(BE.by_key(app_key), tok))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type=BE.MEDIA_MIME.get(f.suffix, "application/octet-stream"),
+                        headers={"Cache-Control": "private, max-age=900", "X-Content-Type-Options": "nosniff",
+                                 "Content-Security-Policy": "sandbox", "Referrer-Policy": "no-referrer"})
 
 
 @app.get("/api/app-api/{app_key}/files/{fid}")
@@ -9916,6 +9940,10 @@ async def app_api_file(app_key: str, fid: str, request: Request):
         f = await asyncio.to_thread(BE.file_for, r, fid, w)
     except W.AppError:
         raise HTTPException(404, "not found")
+    if f.suffix in (".mp4", ".mov", ".m4a"):     # v0.425 RANG: video / voice note for the phone's own player (range requests)
+        return FileResponse(f, media_type=BE.MEDIA_MIME[f.suffix], headers={"Cache-Control": "private, max-age=3600",
+                                                                            "X-Content-Type-Options": "nosniff",
+                                                                            "Content-Security-Policy": "sandbox"})
     if str(f).endswith(".pdf"):                  # v0.346 a PDF is only ever a download, never opened in a page
         return FileResponse(f, media_type="application/pdf", filename=f"{fid}.pdf",
                             headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff",
@@ -10530,6 +10558,32 @@ async def apps_connect_hook_save(ref: str, body: dict, tenant: str = Depends(cur
 async def apps_connect_hook_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
     return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_hook(_be_owner(tenant, ref), key))
+
+
+# ---- v0.425 RANG (App Sahayak Pillar G): custom native components (Kotlin + Swift) - house rules in code, her tap, build-proved.
+@app.get("/api/apps/{ref}/components", dependencies=[Depends(require_key)])
+async def apps_components(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.listing(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/components/draft", dependencies=[Depends(require_key)])
+async def apps_component_draft(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{words}: Opus drafts one component (Kotlin + Swift); refused when a house rule fails. Waits for her approval."""
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.draft(_be_owner(tenant, ref), str((body or {}).get("words") or "")))
+
+
+@app.post("/api/apps/{ref}/components/{name}/approve", dependencies=[Depends(require_key)])
+async def apps_component_approve(ref: str, name: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.approve(_be_owner(tenant, ref), name, bool((body or {}).get("her_tap"))))
+
+
+@app.delete("/api/apps/{ref}/components/{name}", dependencies=[Depends(require_key)])
+async def apps_component_drop(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.remove(_be_owner(tenant, ref), name))
 
 
 def _be_owner(tenant: str, ref: str):

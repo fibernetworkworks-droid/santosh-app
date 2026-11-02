@@ -313,7 +313,7 @@ def _value(f: dict[str, Any], v: Any) -> Any:
         if s not in f["options"]:
             raise AppError(f"{f['label']}: in mein se chuniye: {', '.join(f['options'])}.")
         return s
-    return s[:4000 if t == "long_text" else 300]
+    return s[:4000 if t in ("long_text", "richtext") else 300]   # v0.425 richtext = long markdown text
 
 
 def _clean(c: dict[str, Any], data: dict[str, Any], who: Who, partial: bool = False) -> dict[str, Any]:

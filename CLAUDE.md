@@ -184,7 +184,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- v0.425 CAMS + SLOTS + DYNAMICS (`engineering/cams.py` H.disc_cam from the follower motion + pressure / undercut / cusp checks, joint kind `slot`, `dynamics.py` MuJoCo move in her time: torque / saturation / loop gap, motors sized x1.25); VPS `pip install mujoco`.
+- v0.426 CAMS + SLOTS + DYNAMICS (built as 0.425; `engineering/cams.py` H.disc_cam from the follower motion + pressure / undercut / cusp checks, joint kind `slot`, `dynamics.py` MuJoCo move in her time: torque / saturation / loop gap, motors sized x1.25); VPS `pip install mujoco`.
 - v0.417 META ADS (A1, built as 0.409, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
 - v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
   (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
@@ -218,7 +218,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.425.0 (pubspec 0.425.0+469). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.426.0 (pubspec 0.426.0+470). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.418 PRAYOGSHALA IN ENGLISH: all lab text, runtime, catalogue, phone screen and checker messages English (en-IN narration); a test blocks Hinglish.
 - v0.415 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin
@@ -229,6 +229,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   Core Systems" (10 roles, 1 live); repo read -> Opus design -> capacity in CODE -> Mermaid (vendored) diagrams -> PDF -> her OK;
   PRs vs the approved design (draft, her tap posts); tool `software_architect`, /api/arch/*; POST /api/game checks the hire.
 - v0.407 EK DIMAAG + ARCHITECT (web Step 2): `site/applink.py` = a website's web app on App Sahayak's backend + DIMAAG (members / rows moved, old logins work, same /api/site-app addresses; logic draft -> her tap); `site/architect.py` = her one line -> spec card (pages / users / data / logic / features) -> her Haan builds site + app brain (`/api/site-architect*`, website action=architect*).
+- v0.425 RANG (Pillar G): kits Rich.kt / Rich.swift (signature, photos, video, voice note, rich text, PDF, calendar, kanban, Gantt, charts, carousel, onboarding; native only) + field kinds signature/photos/video/audio/richtext (ftyp-checked media, signed player links) + `appmaker/custom.py` custom components (house rules in code, her tap, compile failure = left out of that build).
 - v0.424 JODO (Pillar F): `appmaker/connect.py` declared HTTP actions (her approval tap bound to a hash, https + approved host, private IPs refused, sealed secrets scrubbed from logs, data-only write-back, safe retries / ambiguous, queued triggers, signed inbound hooks, no Aadhaar) + 13 packs `connect_packs.py`; kits Connect.kt / Connect.swift.
 - v0.419 PAISA (Pillar E): `paygate/gw.py` (Razorpay / Cashfree / PhonePe official APIs) + `appmaker/pay.py`: her sealed keys, pay page, PAID only from a signed webhook / server status read (amount must match), refunds her tap (fixed number, ambiguous never resent), links, settlements, AutoPay plans (customer consent), split payouts by her rule; kits Pay.kt / Pay.swift.
 - v0.412 NAKSHA LIVE (Pillar D): `appmaker/track.py` her switch -> staff shifts (FGS location / iPhone blue pill), one current point wiped at shift end, customer sees only HER rider while on the way, ETA estimate, near/arrived; maps MapLibre+OpenFreeMap (vendored `static/vendor/maplibre`) / Apple Maps; kits Track.kt / Track.swift.
