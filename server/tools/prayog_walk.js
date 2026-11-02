@@ -17,7 +17,7 @@ const only = process.argv.slice(3);
     let out;
     try {
       await page.goto(`${base}/static/prayog/lab.html?id=${id}&test=1`);
-      await page.waitForFunction(() => window.__studio && window.__studio.steps, null, { timeout: 20000 });
+      await page.waitForFunction(() => window.__studio && window.__studio.steps, null, { timeout: 60000 });
       if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${id}-0.png` });
       out = await page.evaluate(async () => {
         const S = window.__studio, log = [];

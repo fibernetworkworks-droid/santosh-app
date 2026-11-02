@@ -514,7 +514,7 @@
       if (drag) { setNdc(e); drag.move(ray); return; }
       var off = camera.position.clone().sub(target), sp = new T.Spherical().setFromVector3(off);
       sp.theta -= dx * 0.006; sp.phi = Math.min(1.45, Math.max(0.25, sp.phi - dy * 0.006)); off.setFromSpherical(sp); camera.position.copy(target).add(off); camera.lookAt(target); });
-    function zoom(f) { var off = camera.position.clone().sub(target); off.setLength(Math.min(2.6, Math.max(0.08, off.length() * f))); camera.position.copy(target).add(off); }
+    function zoom(f) { var off = camera.position.clone().sub(target); off.setLength(Math.min(2.6, Math.max(0.015, off.length() * f))); camera.position.copy(target).add(off); }   // 0.015: small instruments need close views
     function up(e) { if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId); pinch = 0; if (drag) { if (drag.end) drag.end(); drag = null; return; } if (moved < 6) pick(e); }
     cvs.addEventListener('pointerup', up); cvs.addEventListener('pointercancel', function (e) { ptrs.delete(e.pointerId); pinch = 0; drag = null; });
     cvs.addEventListener('wheel', function (e) { e.preventDefault(); zoom(e.deltaY > 0 ? 1.08 : 0.92); }, { passive: false });
@@ -636,6 +636,12 @@
         b.add = function (x) { b.insertBefore(x, st); return b; }; b.appendChild(st); return b; },
       live: function (fn, cls) { var d = el('div', cls || 'live', ''); pane.appendChild(d); lives.push({ el: d, fn: fn }); d.textContent = fn(); return d; },
       table: function () { pane.appendChild(table()); },
+      input: function (label, get, set, unit) {   // a typed reading (vernier, screw gauge...)
+        var l = el('label', 'slider'), h = el('div', 'h'); h.appendChild(el('span', '', label)); if (unit) h.appendChild(el('span', 'v', unit)); l.appendChild(h);
+        var inp = el('input'); inp.type = 'number'; inp.step = 'any'; inp.inputMode = 'decimal'; inp.id = 'in_' + label.replace(/\W+/g, '_');
+        inp.style.cssText = 'border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:40px;background:var(--bg);color:var(--ink);font:inherit';
+        var v0 = get(); if (v0 !== undefined && v0 !== null && v0 !== '') inp.value = v0;
+        inp.addEventListener('input', function () { set(inp.value === '' ? null : Number(inp.value)); }); l.appendChild(inp); pane.appendChild(l); return l; },
       next: function (label, ok) { var b = el('button', 'btn pri', label || 'Next'); b.type = 'button'; b.disabled = ok === false; b.addEventListener('click', function () { if (!b.disabled) S.next(); }); pane.appendChild(el('div', 'row')).appendChild(b); return b; },
       el: function (x) { pane.appendChild(x); return x; },
     }; }
