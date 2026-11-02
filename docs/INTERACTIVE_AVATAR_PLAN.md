@@ -4,6 +4,10 @@ Owner's ask (2 Nov 2026): "LET WE BUILD OUR OWN HEYGEN — HOOLA INTERACTIVE AI"
 a real-looking teacher who gives pre-made chapter lessons and talks live with the student when he raises his hand,
 the same face in both, natural classroom background, the student's own language.
 
+Owner's decision (2 Nov 2026, later): "AS WE ARE BUILDING WORLD CLASS PRODUCT :: WE WILL BUILD OUR OWN HEYGEN FOR WORLD AS
+GPU ON VPS". So the scope is the WHOLE product for every user worldwide (section 7), on our own rented GPU server(s);
+the Personal Tutor is its first customer, not its limit.
+
 Status: PLAN. No code written yet. Nothing here has run on a GPU yet — every speed figure is the model authors' or a
 framework's own published number, to be re-measured on our machine in Phase 1.
 
@@ -93,9 +97,50 @@ Hoola's sandbox has no GPU: code for Phases 1-6 can be written here, but it is o
 
 ## 6. What she decides before Phase 0 starts
 
-1. **GPU**: an India-hosted provider (to be quoted) or a global one (RunPod and similar), and a monthly cap.
+1. **GPU**: decided - our own GPU server (section 8). Still open: which provider (India-hosted quotes first) and a monthly cap.
 2. **The face**: a consenting real presenter, or an AI-made person.
 3. **Order**: lessons first (cheaper, proves the look) or live first.
+
+
+## 7. The world product — HeyGen's list, mapped to ours
+
+| HeyGen feature | Hoola Interactive module | Built on | Phase |
+|---|---|---|---|
+| Stock avatars | **Faces library**: a starting set of consented / AI-made presenters, many ages, regions, looks | face engine | 2 |
+| Digital Twin | **My Twin**: a user records 30-60 s of themselves + a spoken consent line; becomes their avatar | face engine + consent check | 8 |
+| Photo avatar (Avatar IV) | **Photo to talking video** | needs a photo-to-video model; licence sweep first | 11 |
+| Text to talking video | **Hoola Studio Video**: script / prompt -> presenter video | lesson renderer (Phase 2) + Create Studio Director | 2, 9 |
+| LiveAvatar | **Hoola Live**: real-time talking avatar for tutors, support desks, sales, kiosks | live engine (Phase 3) | 3-4 |
+| Voice cloning | **My Voice**: a user's own voice from a consented recording | open voice-clone model, licence sweep first | 10 |
+| Video Translate | **Lip-sync dubbing**: re-dub any video into Indian + world languages, lips matched | face engine + existing Dubbing | 9 |
+| AI Studio, Templates, Brand Kit, Video Agent | already in Create Studio (Video Editor, Director, Brand kit, templates) — gains the avatar track | Create Studio | 9 |
+| Video Podcast | **Two-host video podcast** from a script / PDF / link | Notebook podcast + two faces | 12 |
+| Personalised video at scale | **One video, many names** (each viewer's name / details), opted-in contacts only | renderer + Phase 6 queue | 12 |
+| API, MCP, integrations | **Hoola Interactive API** (keys, per-minute metering, webhooks) + MCP server | Phase 6 meter | 13 |
+
+## 8. GPU on our own VPS — what to rent
+
+- **Start: one GPU server**, Ubuntu, NVIDIA driver + CUDA, Docker, a public IP for WebRTC, 100+ GB disk.
+  RTX 4090 (24 GB, cheapest per frame, ~2 live streams) or L40S (48 GB, room for lesson rendering + live on one box).
+- **Where**: an India-hosted GPU provider first (students' and Indian users' data stays in India under DPDP); a second
+  region (EU / US) when foreign users arrive. Quotes needed — Indian GPU prices were not found published.
+- **How it joins Hoola**: the main VPS stays the brain (accounts, voice, tutor, billing). The GPU server runs ONLY the face
+  engine behind a private, key-protected API; it stores no user data beyond the job it is rendering, and wipes it after.
+- **Scale**: more GPU servers behind one queue; a server is started only when the queue needs it (Phase 6).
+- Deploy like the rest of Hoola: a setup script + a vps-ops job; keys only in that server's `.env`, never in chat.
+
+## 9. Trust and safety — required for a public avatar product
+
+A public "make anyone talk" tool is a deepfake tool unless these hold, in code, from the first public release:
+- **Consent you can prove**: a Twin is made only from a person who records themselves on the spot saying a random
+  sentence shown on screen (liveness), matched to the face in the upload. No upload of someone else's video or photo.
+- **Refused faces**: children; public figures / politicians / celebrities (a face-match block list); anyone without
+  the consent record.
+- **Marked as AI**: a visible "AI" mark on every frame plus C2PA content credentials in every file we export.
+- **Content rules**: no political persuasion, no impersonating a real organisation, no financial / medical claims in a
+  real person's voice; a report button and a takedown queue.
+- **Indian law**: the IT Rules on synthetically generated content (labelling) and DPDP consent apply; reviewed with a
+  lawyer before the public launch.
 
 ## Sources (2 Nov 2026)
 - Licences read directly: github.com/TMElyralab/MuseTalk (LICENSE + README), huggingface.co/TMElyralab/MuseTalk (model card
