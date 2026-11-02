@@ -103,7 +103,9 @@ def test_holding_torque_matches_statics_and_mujoco(tmp_path):
     el = next(x for x in r["torque"] if x["joint"] == "elbow")
     assert el["static"] == pytest.approx(g * (m2 * 0.05 + 0.5 * 0.1), rel=0.01)
     j_sh = next(j for j in r["joints"] if j["name"] == "shoulder")
-    assert j_sh["effort"] == pytest.approx(round(sh["need"] * 1.5, 3), rel=1e-6)    # effort = need x 1.5
+    dyn = next((x for x in (r.get("dynamics") or {}).get("rows") or [] if x["joint"] == "shoulder"), None)
+    want = max(round(sh["need"] * 1.5, 3), round(dyn["peak"] * 1.25, 4) if dyn else 0.0)
+    assert j_sh["effort"] == pytest.approx(want, rel=1e-6)          # need x 1.5, or the real move's peak x 1.25 (v0.425)
     mujoco = pytest.importorskip("mujoco")
     z = zipfile.ZipFile(tmp_path / "robot_urdf.zip")
     z.extractall(tmp_path / "pkg")
