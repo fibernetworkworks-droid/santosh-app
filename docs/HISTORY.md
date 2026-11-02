@@ -17310,3 +17310,71 @@ Owner: "START PILLAR I" (docs/COMPLEX_APPS_PLAN.md: auth + security). Built as v
   passkeys, magic links, company SSO and device binding from the v0.131 plan are still only a plan; the gates do not run
   the app and watch it (that is the device check), do not see inside an IPA (never built on Hoola's machine), and do not
   audit her own server.
+
+## v0.456.0 PRAYOGSHALA — the coding lab, step 1: the box
+
+Owner, answering the three open questions at the end of `docs/CODING_HARNESS_PLAN.md`: *"Docker on the VPS -- YES,
+OWN AS WELL AS THIRD PARTY CLONEING FOR CHECKING, setup command + cached snapshot acceptable to maintain -- SAME AS
+CLAUDE CODE."*
+
+**Why.** The research (same doc, §1.2) found the thing that separates Hoola's coding from Claude Code's: *"If it has
+nothing to run that tells it whether the work actually is done, 'looks done' is all it has to go on. In practice that
+makes you the test suite."* Hoola's only oracle was her CI after a push — minutes per round, three rounds, and only
+what CI already covers. This version builds the box that can run a check in seconds. **It is not wired to the model
+yet** (`dev_lab` defaults to False) — she verifies the walls first.
+
+**`app/devlab/box.py` — the walls.** A CHECK runs `docker run` with `--network none`, `--user 1000:1000`,
+`--read-only` plus tmpfs on `/tmp` and `/home/lab`, `--cap-drop ALL`, `--security-opt no-new-privileges`,
+`--memory 2g --memory-swap 2g --cpus 2 --pids-limit 512`, a hard timeout, and an environment containing nothing but
+HOME / LANG / CI / PYTHONDONTWRITEBYTECODE. Only the one-time SETUP step gets `--network bridge`, which is exactly
+Codex's split (*"Codex blocks internet access during the agent phase... setup scripts still run with internet access"*).
+We do not filter command text — Anthropic call that *"fragile"* with worked bypasses — we take away what a command
+could reach. A timed-out container is killed by name. `prune(keep)` drops the oldest snapshots; the base image never.
+
+**`spec.py` — the command is declared, never invented.** Every product that does this gets the command from a
+declared place (Aider's `--test-cmd`, Devin's blueprint items named `lint`/`test`/`build`, Jules's setup script, Codex
+via AGENTS.md). Order here: **her own word** → `.hoola/lab.json` → the repo's own rules (`AGENTS.md`, `CLAUDE.md`,
+`CONTRIBUTING.md`, `README.md`: labelled list lines like *"- Run one test file: pnpm vitest run x"*, bare command lines
+under a test-ish heading) → the CI workflow's `run:` steps → a language default. Every answer carries its `source`, and
+anything Hoola merely *read* carries `confirm: True` — **it waits for one tap and is then remembered**; her own word
+never asks. A `sudo` / `docker` / `while true` / secret-bearing command is **refused and SAID** (`refused: [...]`, in
+her words) instead of being silently swapped for something else. Nothing declared anywhere = **nothing runs**:
+*"Hoola khud se command banakar nahi chalayega."*
+
+**`service.py` — the run, in three steps.** (1) MATERIALIZE: clone the branch *outside* the box with her token handed
+over through a `GIT_ASKPASS` file that is deleted immediately — never in `argv` (where `ps` would show it), never in
+the clone's config — then `rm -rf .git`, so no credential, no history and no remote can exist inside the box and the
+repo's own code cannot push anywhere. Size-capped at 600 MB. (2) SNAPSHOT: the dependency install runs **once per
+lock-file hash** (`spec.deps_key` over requirements/pyproject/package.json/lockfiles/Makefile) with the network on,
+and the container is committed as `hoola-devlab:<repo>-<key>` — a code change reuses it, a dependency change rebuilds
+it. (3) CHECK: her command on that snapshot, sealed, with the output shaped. Third-party repos are allowed (her
+decision) and get identical walls, which is sound precisely because nothing of hers is inside.
+
+**`out.py` — failure-first, correcting the contract Claude Code ships.** Measured from
+code.claude.com/docs/en/tools-reference: Claude Code returns ~30,000 chars inline on success but only a ~10,000-char
+head-and-tail excerpt **with no log path** on failure. Our research called that backwards — the failing run is the one
+whose full output you want — so here a PASS shows 4,000 chars ("it passed, so the rest is not shown") and a FAIL shows
+2,000 from the start plus **24,000 from the end** (the traceback is at the bottom), always with the true byte count and
+a log file. `grep_log(path, pattern)` lets the model ask that log a second question (regex or substring, ±context,
+capped at 400 lines / 8,000 chars); `tail(path, n)` for the last lines. Logs are 0600, kept 60 runs deep.
+
+**Proof on her own VPS:** `python -m app.devlab check` builds the base image if missing and then runs five checks — a
+passing test, a failing test (and that the failure's *end* is what survives), **network blocked**, **root filesystem
+read-only**, **non-root user** — printing `GADBAD` / `KHATRA` if any wall fails. vps-ops jobs: **`lab_check`**,
+`lab_setup`, `lab_images`, `lab_prune`. Also `python -m app.devlab run --repo owner/name [--ref ...] [--cmd ...]` for
+a real repo from the command line, and `grep`.
+
+**Files:** new `server/app/devlab/{__init__,box,spec,service,out,__main__}.py`, new `deploy/devlab/Dockerfile`
+(debian-12-slim + python3 + node + npm + jdk17 + git + ripgrep + pytest/ruff, non-root `lab` user), `config.py`
+(`dev_lab` **False**, `dev_lab_timeout` 600, `dev_lab_keep` 12), `.github/workflows/vps-ops.yml` (4 jobs).
+Tests `server/tests/test_v0456_devlab.py` (19): her word wins and never asks, repo rules beat CI beat the language
+default, `.hoola/lab.json` trusted, nothing declared = nothing runs, the refusal list, a read command waiting for a
+tap (with `run_in` monkeypatched to fail the test if anything runs first), the snapshot key moving only with
+dependency files, failure keeping its end + the log, a pass shown short, a timeout not counted as a pass, grep with
+context + its caps, the wall flags asserted in `box._limits`, docker-missing saying why, and the clone leaving no
+token behind. The sealed-box test runs only where Docker exists (skipped in the sandbox).
+
+**NOT VERIFIED:** no Docker daemon exists in the build sandbox, so every container path here has been exercised only
+through its argument list and its monkeypatched callers. `lab_check` on the VPS is the first real proof, and
+**`dev_lab` stays False until it passes.** Step 2 (H3b) wires `run_check` / `grep_log` into the dev loop, makes the
+v0.447 bug proof local, and executes the v0.451 plan's `done_when` lines instead of asserting them.
