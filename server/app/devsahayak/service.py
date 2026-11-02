@@ -34,6 +34,7 @@ from typing import Any
 from sqlalchemy import select
 
 from ..db import new_id, now, session
+from . import plan as P
 from . import rules as R
 from .gh import Gh, GhError
 from .models import DevAction, DevRepo, DevReview, DevSettings, DevTask
@@ -42,7 +43,7 @@ log = logging.getLogger("santosh.devsahayak")
 
 KINDS = {"write": "Naya code", "fix": "Bug fix", "tests": "Tests", "docs": "Docs", "explain": "Bug samjhao"}
 STATUS = {"new": "Shuru", "refused": "Roka (niyam)", "ready": "PR ke liye aapki haan", "pr_open": "PR khula", "checks_failed": "CI fail",
-          "ci_running": "CI chal raha (draft PR)", "merged": "Merge ho gaya", "closed": "PR band", "explained": "Samjha diya", "failed": "Nahi ho paya", "cancelled": "Cancel"}
+          "plan_wait": "Plan par haan ka intezaar", "ci_running": "CI chal raha (draft PR)", "merged": "Merge ho gaya", "closed": "PR band", "explained": "Samjha diya", "failed": "Nahi ho paya", "cancelled": "Cancel"}
 _LAST_POLL: dict[str, datetime] = {}
 
 
@@ -356,10 +357,11 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
     v = {"id": t.id, "number": t.number, "kind": t.kind, "kind_label": KINDS.get(t.kind, t.kind), "repo": t.repo,
          "status": t.status, "status_label": STATUS.get(t.status, t.status), "title": t.pr_title or t.text[:80],
          "explain": t.explain, "branch": t.branch, "pr_number": t.pr_number, "pr_url": t.pr_url, "head_sha": t.head_sha[:12],
-         "ci": _j(t.ci, {}), "error": t.error, "hash": t.hash if t.status == "ready" else "",
+         "ci": _j(t.ci, {}), "error": t.error, "hash": t.hash if t.status in ("ready", "plan_wait") else "",
          "files": [{"path": c["path"], "why": c.get("why", ""), "added": c.get("added", 0), "removed": c.get("removed", 0),
                     "new": not c.get("old_sha")} for c in ch],
          "checks": _j(t.checks, []), "risk": t.risk, "test_plan": t.test_plan, "rounds": t.rounds,
+         "tier": t.tier or "", "plan": _j(t.plan or "", {}),
          "self_round": int(t.self_round or 0), "self_review": _j(t.self_review or "", {}),
          "proof": _j(t.proof or "", {}),
          "at": t.created_at.isoformat() if t.created_at else ""}
@@ -721,6 +723,13 @@ def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], is
     if issue:
         lines += ["", f"Refs #{issue}"]
     lines += ["", "### Test plan", str(out.get("test_plan") or "- CI").strip(), "", "### Risk", str(out.get("risk") or "-").strip()]
+    pl = _j(t.plan or "", {}) or {}                 # v0.451 ECC PHASE 4: the approved plan, so a reviewer sees the target
+    if pl.get("done_when") or pl.get("steps"):
+        lines += ["", f"### Plan ({t.tier or 'standard'})", (str(pl.get("goal") or "")).strip() or "-"]
+        if pl.get("done_when"):
+            lines += ["", "**Done when**", *[f"- [ ] {d}" for d in pl["done_when"][:12]]]
+        if pl.get("note"):
+            lines += ["", f"Owner's note on the plan: {pl['note']}"]
     rules = [str(x) for x in (out.get("rules_read") or [])]
     if rules or out.get("rules_followed"):         # v0.356 PEHLE NIYAM: the reviewer sees which repo rules were followed
         lines += ["", "### Project rules", ("Read first: " + ", ".join(f"`{r}`" for r in rules[:10])) if rules
@@ -757,25 +766,112 @@ def _progress(tid: str, line: str) -> None:
         log.debug("dev progress line failed", exc_info=True)
 
 
-def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_pr: bool = False) -> dict[str, Any]:
+def _plan_pass(tenant: str, t: DevTask, g: Gh, extra_files: list[str], issue_txt: str, tier: str,
+               note: str = "") -> dict[str, Any]:
+    """v0.451 ECC PHASE 4: the READ-ONLY planning pass. Returns the plan (or {} when it could not run - the work then
+    goes ahead exactly as before, because a plan is help, never a gate Hoola invented for itself)."""
+    from . import loop as L
+    cfg = _cfg(tenant)
+    try:
+        _progress(t.id, f"{t.number}: plan bana raha hoon (kuch badal nahi raha, sirf padh raha hoon)")
+        out = L.plan_run(g, t, cfg.rules, extra_files, issue_txt, max_steps=int(_setting("dev_plan_steps", 18)),
+                         minutes=float(_setting("dev_plan_minutes", 8)),
+                         on_step=lambda line: _progress(t.id, line))
+    except (L.LoopUnavailable, GhError) as e:
+        log.info("dev plan pass %s: %s", t.id, e)
+        return {}
+    except Exception:
+        log.exception("dev plan pass failed: working without a plan")
+        return {}
+    if not out.get("steps") and not out.get("files"):
+        return {}
+    out["tier"], out["note"] = tier, note
+    return out
+
+
+def plan_ok(tenant: str, ref: str, hash_: str, by_tap: bool = False, note: str = "", conv: str = "") -> dict[str, Any]:
+    """v0.451 her Haan on the plan of a LARGE job (ECC's Gate 1) - from her card only. `note` = what she wants changed;
+    it rides into the edit loop with the plan. Merge and the PR still need their own taps later."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        s.expunge(t)
+    if not by_tap:
+        raise DevError("Plan par haan sirf aapke app ke card se.")
+    if t.status != "plan_wait":
+        raise DevError(f"Yeh kaam '{STATUS.get(t.status, t.status)}' hai.")
+    if hash_ != t.hash:
+        raise DevError("Card badal gaya; naya card dekhiye.")
+    clean, warn = _clean_text(note or "")
+    pl = _j(t.plan or "", {}) or {}
+    if clean:
+        pl["note"] = clean[:1500]
+    with session() as s:
+        row = s.get(DevTask, t.id)
+        row.plan, row.status, row.hash = json.dumps(pl), "new", ""
+        if conv:
+            row.conv = conv
+        _log(row, "plan par haan mil gayi" + (" (aapki baat ke saath)" if clean else ""))
+        s.flush()
+    g = gh(tenant)
+    try:
+        return _work(tenant, t.id, g, [], warn, plan=pl)
+    except (DevError, GhError) as e:
+        _set(t.id, status="failed", error=str(e))
+        raise DevError(str(e))
+
+
+def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_pr: bool = False,
+          plan: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = _cfg(tenant)
     with session() as s:
         t = s.get(DevTask, tid)
         s.expunge(t)
+    issue_txt = ""
+    if t.issue:
+        try:
+            iss = g.issue(t.repo, t.issue)
+            issue_txt = f"#{t.issue} {iss.get('title', '')}\n{(iss.get('body') or '')[:8000]}"
+        except GhError as e:
+            log.info("devsahayak issue %s: %s", t.id, e)
+    # v0.451 ECC PHASE 4: ceremony scales to blast radius - score the ask, plan the big ones read-only first
+    sized = P.assess(t.kind, t.text, extra_files, issue_txt)
+    tier = str(sized["tier"])
+    if plan is None and _loop_on() and bool(_setting("dev_plan_first", True)) and P.needs_plan(tier):
+        plan = _plan_pass(tenant, t, g, extra_files, issue_txt, tier) or None
+        if plan:
+            waiting = P.waits(tier) and bool(_setting("dev_plan_gate", True))
+            with session() as s:
+                row = s.get(DevTask, tid)
+                plan["size"] = sized
+                row.tier, row.plan = tier, json.dumps(plan)
+                if waiting:
+                    row.status = "plan_wait"
+                    row.hash = R.card_hash(row.id, row.repo, "plan", plan.get("base_sha", ""),
+                                           *[str(x) for x in (plan.get("steps") or [])])
+                _log(row, f"plan taiyaar ({tier}): {len(plan.get('files') or [])} file, "
+                          f"{len(plan.get('steps') or [])} kadam" + (", haan ka intezaar" if waiting else ""))
+                s.flush()
+                v = task_view(row)
+                say = P.card_say(row.number, plan, tier, waiting) + warn
+                v["say"] = say
+                _publish(tenant, "devsahayak_plan", {"task": v, "say": say}, row.conv)
+                if waiting:
+                    return v
+    with session() as s:
+        row = s.get(DevTask, tid)
+        row.tier = tier
+        s.flush()
+    plan_txt = P.as_text(plan or {})
     base_sha = read = ctx = out = None
     if _loop_on():
         # v0.350 KADAM-BA-KADAM: the model explores the repo with tools and edits step by step (devsahayak/loop.py);
         # anything that stops the loop early falls back to the one-shot path below, so the task never dies of it
         from . import loop as L
         try:
-            issue_txt = ""
-            if t.issue:
-                iss = g.issue(t.repo, t.issue)
-                issue_txt = f"#{t.issue} {iss.get('title', '')}\n{(iss.get('body') or '')[:8000]}"
             base_sha, read, ctx, out = L.run(g, t, cfg.rules, extra_files, cfg.allow_workflows, issue_txt,
                                              max_steps=_setting("dev_loop_steps", 40),
                                              minutes=float(_setting("dev_loop_minutes", 20)),
-                                             on_step=lambda line: _progress(tid, line))
+                                             on_step=lambda line: _progress(tid, line), plan_txt=plan_txt)
         except L.LoopUnavailable as e:
             L.STATS["fallback"] += 1
             log.info("dev loop unavailable (%s): one-shot path", e)
@@ -1769,8 +1865,11 @@ def _ready_or_self_review(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str,
         findings, diff_parts, _valid, added_lines = pr_diff(g.pr_files(t.repo, t.pr_number))
         if not diff_parts:
             raise DevError("PR mein koi file nahi mili")
+        pl = _j(t.plan or "", {}) or {}          # v0.451 the own review now has the plan's acceptance criteria to check
+        acc = ("\nIt was planned, and APPROVED, to do exactly this - check the work against it:\n" + P.as_text(pl)
+               if pl.get("done_when") else "")
         pr_text = (f"<pr>\nRepo {t.repo} PR #{t.pr_number}: {t.pr_title}\nBy: Hoola Developer Sahayak (YOUR OWN work)\n"
-                   f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}\n</pr>")
+                   f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}{acc}\n</pr>")
         out = explore_review(g, t.repo, t.head_sha, pr_text, diff_parts, added_lines, cfg.rules,
                              json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW)
     except Exception as e:  # noqa: BLE001 - the own review is extra: a PR is never stuck because it could not run

@@ -11,6 +11,8 @@ Runs in the analysis child (analysis_runner.py, same box limits as the CAD runne
   check (reactions = loads) and a two-mesh convergence check.
 - thermal: steady conduction with fixed temperatures, heat input (W) and convection.
 - modal: natural frequencies (Hz) with the supports given, or free-free.
+- buckling (v0.432): the load factor at which a slender part FOLDS instead of breaking (linear eigenvalue
+  buckling on the real stress state); the perfect-shape ceiling, with the thin-wall knock-down said out loud.
 Units: mm, N, MPa, tonne/mm³, W, W/(mm·K), °C. Validated in tests against beam theory and 1-D conduction.
 Libraries: scikit-fem (BSD-3), SciPy (BSD), PyAMG (MIT, optional). DRAFT results for an engineer's review."""
 from __future__ import annotations
@@ -360,16 +362,15 @@ def _vector_dofs_xyz(ib) -> np.ndarray:
 
 
 # ---------------------------------------------------------------- static
-def _static_once(shape, spec: dict, mat: dict, nodes: int) -> dict[str, Any]:
+def _assemble(shape, spec: dict, mat: dict, nodes: int) -> dict[str, Any]:
+    """The mesh, the stiffness matrix, the load vector and the held dofs - shared by static and buckling."""
     import skfem
-    from scipy.spatial import cKDTree
-    from skfem.helpers import sym_grad
-    from skfem.models.elasticity import lame_parameters, linear_elasticity, linear_stress
     msh = build_mesh(shape, nodes)
     m = skfem.MeshTet(msh["X"].T.copy(), msh["T"].T.copy())
     e = skfem.ElementVector(skfem.ElementTetP2())
     ib = skfem.Basis(m, e)
     E, nu = mat["E"], mat["nu"]
+    from skfem.models.elasticity import lame_parameters, linear_elasticity
     K = skfem.asm(linear_elasticity(*lame_parameters(E, nu)), ib)
     f = np.zeros(K.shape[0])
     applied = np.zeros(3)
@@ -414,6 +415,19 @@ def _static_once(shape, spec: dict, mat: dict, nodes: int) -> dict[str, Any]:
                 return t[0] * v[0] + t[1] * v[1] + t[2] * v[2]
             f += skfem.asm(trac, fb)
             applied += F
+    return {"msh": msh, "m": m, "ib": ib, "K": K, "f": f, "D": D, "applied": applied,
+            "fixed_nodes": fixed_nodes, "E": E, "nu": nu}
+
+
+def _static_once(shape, spec: dict, mat: dict, nodes: int) -> dict[str, Any]:
+    import skfem
+    from scipy.spatial import cKDTree
+    from skfem.helpers import sym_grad
+    from skfem.models.elasticity import lame_parameters, linear_stress
+    A = _assemble(shape, spec, mat, nodes)
+    msh, m, ib, K, f, D = A["msh"], A["m"], A["ib"], A["K"], A["f"], A["D"]
+    E, nu, applied, fixed_nodes = A["E"], A["nu"], A["applied"], A["fixed_nodes"]
+    e = skfem.ElementVector(skfem.ElementTetP2())
     xyz = _vector_dofs_xyz(ib)
     u = _solve(K, f, D, xyz)
     rsum = _reaction_sum(K, u, D)
@@ -501,6 +515,95 @@ def static(shape, spec: dict) -> dict[str, Any]:
         fe.update({"load": kind, "need_sf": need, "passes": fe["fatigue_sf"] >= need})
         res["fatigue"] = fe
     res["surface"] = _surface(fine["m"], vm, lo, hi)
+    return res
+
+
+# ---------------------------------------------------------------- v0.432 buckling (linear eigenvalue)
+def buckling(shape, spec: dict) -> dict[str, Any]:
+    """Does it FOLD before it breaks? The part is loaded once, the stress that comes out stiffens (or softens) it,
+    and the load factor at which the softened part has no stiffness left in some shape is the buckling factor:
+      (K + lambda Kg) phi = 0,  Kg = integral sigma_ij du_k/dx_i dv_k/dx_j dV   (the geometric stiffness)
+    lambda = 1 means it buckles under exactly the load she gave; 3 means at three times it. Solved as the
+    generalized symmetric problem (-Kg) phi = (1/lambda) K phi, so K stays positive definite and the FIRST
+    (smallest positive) factor comes out first. Checked in tests against Euler's column (0.1 % on mode 1, and
+    mode 2 at 9x as theory says). HONEST LIMIT: this is the PERFECT part. A real thin shell / tube dents first and
+    buckles lower - the knock-down is said in the result, never hidden."""
+    import scipy.sparse.linalg as sl
+    import skfem
+    from skfem.helpers import grad, sym_grad
+    from skfem.models.elasticity import lame_parameters, linear_stress
+    t0 = time.time()
+    mname, mat = material(spec.get("material"))
+    nodes = int(spec.get("nodes") or 3000)
+    A = _assemble(shape, spec, mat, nodes)
+    m, ib, K, f, D = A["m"], A["ib"], A["K"], A["f"], A["D"]
+    E, nu, applied = A["E"], A["nu"], A["applied"]
+    if not (spec.get("loads") or []):
+        raise FeaError("buckling: loads chahiye (buckling ek compression ka load factor hai)")
+    u = _solve(K, f, D, _vector_dofs_xyz(ib))
+    sig = linear_stress(*lame_parameters(E, nu))(sym_grad(ib.interpolate(u)))
+
+    @skfem.BilinearForm
+    def kgeom(uu, vv, w):
+        sg = w["sig"]
+        return sum(sg[i][j] * sum(grad(uu)[k][i] * grad(vv)[k][j] for k in range(3))
+                   for i in range(3) for j in range(3))
+    Kg = skfem.asm(kgeom, ib, sig=sig)
+    I = ib.complement_dofs(D)
+    n = max(1, min(int(spec.get("modes") or 3), 6))
+    lam, vec = sl.eigsh((-Kg)[I][:, I].tocsc(), k=min(n + 2, len(I) - 2), M=K[I][:, I].tocsc(), which="LA")
+    order = np.argsort(-lam)
+    lam, vec = lam[order], vec[:, order]
+    pos = [(float(1.0 / x), k) for k, x in enumerate(lam) if x > 1e-12]
+    comp = float(np.min(sig[0][0] + sig[1][1] + sig[2][2])) / 3.0        # most compressive mean stress (MPa)
+    if not pos:
+        return {"kind": "buckling", "material": mname, "load_factor": None, "buckles": False,
+                "note": "nothing in this part is in compression under this load, so it cannot buckle - "
+                        "the stress check is the one that matters here",
+                "applied_N": np.round(applied, 3).tolist(), "mean_stress_min_MPa": round(comp, 3),
+                "mesh": {"nodes": int(m.p.shape[1]), "elements": int(m.t.shape[1]), "h_mm": round(A["msh"]["h"], 3)},
+                "seconds": round(time.time() - t0, 1)}
+    factors = [round(p[0], 3) for p in pos[:n]]
+    lf = pos[0][0]
+    vmq = float(np.percentile(_vm(sig), 99.5))                           # 99.5 % so a clamp spike cannot lie
+    yield_lf = mat["yield"] / max(vmq, 1e-12)                            # the factor at which it first yields
+    uu = np.zeros(K.shape[0])
+    uu[I] = vec[:, pos[0][1]]
+    mag = np.sqrt(sum(uu[ib.nodal_dofs[k]] ** 2 for k in range(3)))
+    mag = mag / max(mag.max(), 1e-12)
+    need = float(spec.get("min_lf") or spec.get("min_sf") or 0) or 2.0
+    given = bool(spec.get("min_lf") or spec.get("min_sf"))
+    Fmag = float(np.linalg.norm(applied))
+    res = {"kind": "buckling", "material": mname, "E_MPa": mat["E"], "load_factor": round(lf, 3),
+           "factors": factors, "buckles": lf < 1.0, "need_lf": need, "need_given": given,
+           "passes": lf >= need, "applied_N": np.round(applied, 3).tolist(),
+           "critical_load_N": round(Fmag * lf, 2) if Fmag > 1e-9 else None,
+           "mean_stress_min_MPa": round(comp, 3), "yield_factor": round(yield_lf, 3),
+           "governs": "buckling" if lf < yield_lf else "strength",
+           "mesh": {"nodes": int(m.p.shape[1]), "elements": int(m.t.shape[1]), "h_mm": round(A["msh"]["h"], 3),
+                    "element": "quadratic tetra (P2)"},
+           "scale": {"label": "Buckling mode 1 (relative)", "lo": 0, "hi": 1},
+           "surface": _surface(m, mag, 0.0, 1.0),
+           "note": ("this part is nowhere near folding - it would yield / break long before it buckles "
+                    f"(yields at x{yield_lf:.3g}, folds at x{lf:.3g}), so the stress check is the one that "
+                    "matters here" if lf > 20 * yield_lf else
+                    "linear buckling of the PERFECT shape; a real thin wall / tube with a dent buckles lower "
+                    "(thin shells 40-70 % of this), so treat the factor as the ceiling, not the promise"),
+           "not_a_buckling_case": bool(lf > 20 * yield_lf),
+           "seconds": round(time.time() - t0, 1)}
+    if spec.get("converge", True) and nodes >= 1200:
+        try:
+            cs = dict(spec)
+            cs["converge"] = False
+            cs["nodes"] = max(500, nodes // 3)
+            cs["modes"] = 1
+            co = buckling(shape, cs)
+            if co.get("load_factor"):
+                ch = abs(lf - co["load_factor"]) / max(lf, 1e-12)
+                res["convergence"] = {"coarse_lf": co["load_factor"], "change_pct": round(100 * ch, 1),
+                                      "ok": ch < 0.10}
+        except Exception:
+            res["convergence"] = None
     return res
 
 
@@ -751,7 +854,7 @@ def _perimeter(shape, faces, idx) -> float:
 def run(shape, spec: dict) -> dict[str, Any]:
     kind = str(spec.get("kind") or "static").lower()
     fn = {"static": static, "stress": static, "thermal": thermal, "heat": thermal, "modal": modal,
-          "vibration": modal, "flow": flow, "cfd": flow}.get(kind)
+          "vibration": modal, "flow": flow, "cfd": flow, "buckling": buckling, "buckle": buckling}.get(kind)
     if fn is None:
-        raise FeaError(f"analysis kind '{kind}' nahi hai (static / thermal / modal / flow)")
+        raise FeaError(f"analysis kind '{kind}' nahi hai (static / thermal / modal / flow / buckling)")
     return fn(shape, spec)

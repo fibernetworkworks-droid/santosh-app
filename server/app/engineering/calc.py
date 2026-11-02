@@ -6,6 +6,8 @@ bolt      ISO 898-1 bolts M3-M24, grades 4.6-12.9: tensile area, proof load, pre
           and tension utilisation per bolt (EN 1993-1-8 resistances)
 weld      fillet weld (EN 1993-1-8 simplified directional-free method): throat, stress, utilisation
 beam      cantilever / simply supported, point or uniform load, rect / round / tube / I section: deflection + stress
+gear      ISO 6336 spur gear pair: tooth bending + flank pitting safety factors (v0.432)
+column    strut in compression: Euler / Johnson critical load, slenderness, end-condition factor (v0.432)
 pipe      pipe / duct flow (Darcy-Weisbach, Swamee-Jain friction): velocity, Reynolds, pressure drop, regime
 Pure Python, no network; every result carries its formula + DRAFT note (a qualified engineer signs, never Hoola)."""
 from __future__ import annotations
@@ -229,6 +231,54 @@ def beam(support: str, length_mm: float, section: dict[str, Any], load_N: float 
             "formula": "Euler-Bernoulli beam tables; σ = M·c/I; f1 = λ²/(2πL²)·√(EI/ρA)", "note": NOTE}
 
 
+# v0.432 column buckling: Euler for long columns, J. B. Johnson's parabola for the short ones that yield first.
+ENDS = {"pinned": 1.0, "pinned_pinned": 1.0, "fixed_free": 2.0, "cantilever": 2.0, "fixed_fixed": 0.5,
+        "fixed_pinned": 0.699, "built_in": 0.5}
+
+
+def column(length_mm: float, section: dict[str, Any], ends: str = "pinned", load_N: float = 0.0,
+           material: str = "steel", min_sf: float = 0.0) -> dict[str, Any]:
+    """A strut in compression: does it FOLD before it squashes? Euler P_cr = pi^2 E I / (K L)^2 above the changeover
+    slenderness, Johnson's parabola below it (a short column yields, it does not fold). K = the end-condition factor
+    (pinned 1.0, fixed-free 2.0, fixed-fixed 0.5, fixed-pinned 0.699). Radius of gyration from the section."""
+    from .fea import material as _mat
+    mname, mat = _mat(material)
+    E, Sy = mat["E"], mat["yield"]
+    I, _c, A, lab = _section(section)
+    k = ENDS.get(str(ends).lower())
+    if k is None:
+        raise CalcError(f"ends: {' / '.join(sorted(set(ENDS)))}")
+    L = float(length_mm)
+    if L <= 0 or A <= 0:
+        raise CalcError("column: length and section must be positive")
+    r = math.sqrt(I / A)                                            # radius of gyration, mm
+    sr = k * L / r                                                  # slenderness ratio (K L / r)
+    sr_c = math.pi * math.sqrt(2 * E / Sy)                          # changeover: Euler = Johnson here
+    euler = math.pi ** 2 * E * I / (k * L) ** 2
+    if sr >= sr_c:
+        pcr, mode = euler, "Euler (long column: it folds)"
+    else:
+        pcr = A * (Sy - (Sy * sr / (2 * math.pi)) ** 2 / E)         # Johnson parabola
+        mode = "Johnson (short column: it yields as it folds)"
+    P = abs(float(load_N))
+    sf = pcr / P if P > 0 else None
+    need = float(min_sf or 0) or None
+    out = {"material": mname, "section": lab, "ends": str(ends).lower(), "K": k, "length_mm": L,
+           "I_mm4": round(I, 1), "area_mm2": round(A, 2), "radius_of_gyration_mm": round(r, 3),
+           "slenderness_KL_r": round(sr, 1), "changeover_slenderness": round(sr_c, 1), "mode": mode,
+           "critical_load_N": round(pcr, 1), "euler_load_N": round(euler, 1),
+           "critical_stress_MPa": round(pcr / A, 2), "load_N": round(P, 1) if P else None,
+           "safety_factor": round(sf, 2) if sf else None, "min_sf": need,
+           "passes": (sf >= need) if (sf and need) else None,
+           "formula": "P_cr = π²EI/(KL)² (Euler); P_cr = A[Sy - (Sy·KL/r / 2π)²/E] (J. B. Johnson); "
+                      "changeover at KL/r = π√(2E/Sy)",
+           "warning": "a straight, centrally loaded, perfect column. Any bend or off-centre load drops this a lot - "
+                      "that is what the safety factor is for (2-3 is usual for a strut).", "note": NOTE}
+    if P > 0 and sf is not None and sf < 1:
+        out["verdict"] = f"IT FOLDS: {P:.3g} N is above the {pcr:.3g} N this strut can take"
+    return out
+
+
 FLUIDS = {"water": (998.0, 1.0e-3), "air": (1.204, 1.81e-5), "oil": (870.0, 0.087), "diesel": (832.0, 2.4e-3)}
 
 
@@ -329,9 +379,18 @@ def fatigue(sigma_max_MPa: float, sigma_min_MPa: float = 0.0, material: str = "s
     return out
 
 
+def gear(**kw) -> dict[str, Any]:
+    """ISO 6336 spur gear pair life (v0.432): tooth bending + flank pitting on the pinion. See engineering/gears.py."""
+    from .gears import pair
+    kw.setdefault("width_mm", kw.pop("width", 0.0) or 0.0)
+    out = pair(**kw)
+    out["note"] = NOTE
+    return out
+
+
 def run(kind: str, args: dict[str, Any]) -> dict[str, Any]:
     fns = {"fit": fit, "stack": stack, "bolt": bolt, "weld": weld, "beam": beam, "pipe": pipe, "joint": joint,
-           "fatigue": fatigue}
+           "fatigue": fatigue, "column": column, "gear": gear}
     if kind not in fns:
         raise CalcError(f"calc: {', '.join(fns)}")
     try:

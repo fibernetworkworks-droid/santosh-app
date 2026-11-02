@@ -1457,6 +1457,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
     // v0.137 Tech suite
     case 'devsahayak_task':
       return DevTaskCard(key: ValueKey('dt${(it.data['task'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'devsahayak_plan':
+      return DevTaskCard(key: ValueKey('dt${(it.data['task'] as Map?)?['id']}'), app: app, data: it.data);
     case 'devsahayak_push':
       return DevTaskCard(key: ValueKey('dt${(it.data['task'] as Map?)?['id']}'), app: app, data: it.data);
     case 'devsahayak_review':

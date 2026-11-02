@@ -16989,7 +16989,7 @@ real agent failures is finishing failures - above all a confident false "done".
 - NOT VERIFIED on a live model: the sandbox has no API key. The long card (v0.443 step 0) is what will say whether
   false-done really falls - its target is under 5%. Version 0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).
 
-## v0.449.0 AI EMPLOYEES PREMIUM (built as 0.447) (2 Nov 2026)
+## v0.451.0 AI EMPLOYEES PREMIUM (built as 0.447) (2 Nov 2026)
 Owner: "MAKE AI ENGINEER SECTION MORE PREMIUM AND ADVANCE ... USER WILL CLICK ON SECTION EXAMPLE GAMMING" -> design canvas
 prototype -> "MAKE IT MORE PREMIUM ... STUNNING, ADVANCE ANIMATION" -> "GO . MAKE ALL CARD OF SAME SIZE".
 - `static/console/employees.js` hub rewritten: home = 4 department cards built from the server's role groups (`DEPT` map:
@@ -17006,3 +17006,153 @@ prototype -> "MAKE IT MORE PREMIUM ... STUNNING, ADVANCE ANIMATION" -> "GO . MAK
 - `v2.js`: Library is spliced in just above Create, so it can never land between AI Employees and the hired desks.
 - Tests: `test_v0447_ai_employees_premium.py` (structure, equal-size CSS, real actions, motion once, escaping, Library
   position); `test_v0443` heading assert updated. Console only - no server route changed.
+
+## v0.450.0 BUCKLING + GEAR TOOTH STRENGTH (2 Nov 2026)
+Owner asked whether every simple / medium / complex CAD job was covered; the honest answer named buckling, gear
+tooth strength and plastic stress as the real holes. The first two are closed here (plastic next).
+
+### Buckling (`fea.buckling`, kind 'buckling', `calc.column`)
+- A slender part in compression FOLDS at a load far below the one that breaks it, and a stress check cannot see it.
+- Linear eigenvalue buckling on the part's own stress state: one static solve, the geometric stiffness
+  `Kg = ∫ σ_ij ∂u_k/∂x_i ∂v_k/∂x_j dV` assembled from that stress (skfem BilinearForm with σ at the quadrature
+  points), then `(-Kg) φ = (1/λ) K φ` solved as a generalized SYMMETRIC problem so K stays positive definite and
+  the smallest positive factor comes out first. `_assemble` was factored out of `_static_once` so both share the
+  mesh / load / support code.
+- Reports: load factor, next modes, critical load, mode-1 shape, a 3x-coarser convergence check, and which mode
+  GOVERNS (folds at xN vs yields at xM). A stubby part or one in tension is told plainly that it cannot buckle and
+  that the stress check is what matters (`not_a_buckling_case`). Below `min_lf` (2.0 default, or hers) it goes back
+  to the model with the real fix: depth across the folding direction (I ~ h³), a tube/box, a shorter free length,
+  a mid-brace - never "make it a bit thicker".
+- VALIDATED: Euler cantilever to 0.1 % (4.575 vs 4.569) and mode 2 at exactly 9x mode 1; λ halves when the load
+  doubles and quarters when the length doubles; a same-area deep section beats a flat bar by >5x.
+- `calc.column` (eng_calc kind=column): Euler above the changeover slenderness π√(2E/Sy), J. B. Johnson's parabola
+  below it, end factors K (pinned 1.0 / fixed-free 2.0 / fixed-fixed 0.5 / fixed-pinned 0.699). Agrees with the FEA
+  to 0.1 %.
+
+### Gear teeth (`engineering/gears.py`, `H.spur_gear` root, `H.gear_duty`, eng_calc kind=gear)
+- THE GEOMETRY WAS WRONG: `spur_gear` drew a sharp root corner with no fillet. It now cuts the real TROCHOID a hob
+  leaves (the envelope of the rounded rack tip as it rolls), so the model matches a cut gear and has no false
+  stress riser. The rack-corner offset is exactly ISO 6336-3's E term - derived independently here, which is itself
+  a check.
+- THE CRITICAL SECTION, PROVED TWO WAYS: the generated trochoid measured with ISO's 30-degree-tangent rule
+  (arc-length resampled tangent, least-squares circle for ρ_F, bending arm to where the real line of action crosses
+  the centre line) vs ISO 6336-3's closed-form equations (G, E, H, θ). They agree within 1 % on the root chord and
+  the bending arm, 3 % on the fillet radius, for 10 to 200 teeth. The fillet bottoms exactly on the root circle and
+  meets the involute with a 0.0000 mm step.
+- Bending (6336-3) + pitting (6336-2) on the PINION: Y_Fa / Y_Sa, Z_H / Z_E / Z_ε, K_v from the pitch-line speed
+  and cut quality (AGMA 2001 dynamic factor, and it says when the speed is above what that quality is rated for),
+  K_A from her words about the drive, K_Hβ from how it is mounted, life factors from the tooth-load count,
+  allowables per material grade (ISO 6336-5 MQ; hers override). Z_H comes out 2.4946 against its published 2.495.
+- UNDERCUT measured on the real tooth: a rounded hob tip (ρ_fP = 0.38 m) ends its straight flank 0.74 m below the
+  pitch line, not 1.0 m, so real undercut starts near 12 teeth, not the textbook 17.1. BOTH are reported - a fault
+  when measured, a warning when only below the classical limit - and a profile shift cures it.
+- Checks go back to the model with the right fix (bigger module first: bending falls as 1/m²; then face width,
+  teeth, case-hardened steel). Rows on the card, a section in analysis.pdf, a line in her chat note.
+- NOT VERIFIED against our own FEA, and said so in the module: the bending stress was cross-checked against a real
+  FEA of the same tooth (load + reaction balanced to 0 %, peak on the right side of the fillet) but the recovered
+  peak FELL with refinement (89 -> 46 MPa), which cannot be right at a stress raiser. The same solver converges
+  correctly up to Kt 2.98 against the textbook 3.0 on a plate with a hole, so the solver is sound and the gear root
+  fillet is simply too small for its point-cloud mesher. The check rests on the standard's equations, the two
+  independent geometry methods and the published factors.
+- Also: `H.robot(move_time_s=)` / `accuracy_mm=` accepted (the v0.426 guide named them but `robot()` refused them);
+  studies per part 3 -> 4 so buckling can ride beside static.
+- Tests: `test_v0432_buckling.py` (8), `test_v0432_gear_strength.py` (9).
+
+## v0.451.0 PLAN PEHLE — ceremony that scales, and her Haan on a big plan (ECC Phase 4)
+
+Owner: *"GO PHASE 4."* Taken from ECC's `orch-pipeline` skill (MIT, affaan-m/ECC), the two ideas its own README leans
+on: **"Ceremony scales to blast radius. Score the request on three signals, take the HIGHEST tier any signal reaches,
+and state the result in one line so the user can override"**, and **GATE 1 — after Plan: present the task list; do not
+write implementation code until the user approves**; plus *"the pipeline carries no hidden state — the planning docs
+ARE the handoff"* and `intent-driven-development`'s acceptance criteria.
+
+**The hole.** Developer Sahayak has gone explore → edit for every job since v0.350, big or small. That is how a
+cross-cutting ask ("payment gateway jodo: checkout, webhook, refund aur invoice") comes back with two of the four
+things done and nobody notices until she reads the PR — and equally how a one-line typo fix still pays for a full
+exploration. There was no statement of intent anywhere between her sentence and the first `edit_file`.
+
+**The classifier** (`devsahayak/plan.py`, **no model call** — the tier must be free, or a small job pays for the
+ceremony it is meant to escape). Signals read from her own words: how many things she asked for (`_parts`: a colon
+list's items, `aur` / `and` / commas / bullet lines), a **trigger** (login, password, token, session, permission,
+payment, UPI, refund, invoice, GST, price, webhook, migration, schema, API, endpoint, Aadhaar, OTP, bank…), **WIDE**
+words (poora / sab / whole / refactor / rewrite / migrate / system / module), a **VAGUE** ask (theek karo / kuch
+gadbad / improve / optimise), and whether an error or a file is named. Highest wins, and ECC's tie-breaker is kept:
+anything touching a trust boundary or a contract is **at least standard**.
+
+| tier | what it is | what happens |
+|---|---|---|
+| trivial | an explain, a docs line, one named file | straight to work, nothing shown |
+| small | one file / one function, error named | straight to work |
+| standard | 2–5 files, one real choice | **plan pass**, plan shown, work starts at once |
+| large | cross-cutting, several parts, refactor | **plan pass + WAITS for her Haan** |
+
+A vague ask is deliberately **not** made `large`: v0.371 POOCHH LO already answers it with ONE question instead of
+guessing, and stacking a plan pass on top of that would be ceremony for its own sake.
+
+**The plan pass** (`loop.plan_run` + `PLAN_TOOLS`): the same exploring loop, but the edit tools **are not given** —
+`list_dir`, `search_code`, `read_file`, `find_usages`, `done` and nothing else, and anything else is refused in words
+("not available while planning — read-only, no file is changed in this pass"), so a plan can never be a half-done
+change. `PLAN_SYSTEM` demands the real files ("a plan that names a file you have not opened is worthless"), steps in
+build order each naming its file, **`done_when`** as checks anyone can run (*"not 'code is clean'"*), `risk` naming the
+callers and tests found **by name**, and `questions` only for what the repo cannot answer.
+
+**Gate 1.** A `large` job stops at `status = "plan_wait"` with a card hash: the phone shows the plan (goal, files +
+why, numbered steps, "Kaam poora kab mana jayega", open questions) and **"Haan, shuru karo"**. Nothing is committed,
+no branch, no PR, until that tap — `POST /api/devsahayak/tasks/{id}/plan-ok` (+ `note` = what she wants changed, which
+rides into the work), or in chat via the new owner-only tool action `plan_ok`. "Mana" cancels. `dev_plan_gate` off =
+nothing ever waits; `dev_plan_first` off = no plan pass at all.
+
+**The plan is the handoff, not a note.** `plan.as_text()` goes into the edit loop's first message as
+`<approved_plan>` with the done_when list labelled as acceptance criteria ("the work is not finished until every one is
+true, and if one cannot be met you say so in risk instead of dropping it quietly" — ECC's rule 10), the PR body grows a
+`### Plan (tier)` section with a `- [ ]` checklist, and **v0.445's own review now reads those criteria** and is asked
+to check the work against them instead of judging "did the task get done" from the diff alone.
+
+**Files:** new `server/app/devsahayak/plan.py`; `loop.py` (`PLAN_SYSTEM`, `PLAN_TOOLS`, `plan_run`, `run(plan_txt=)`);
+`service.py` (`_plan_pass`, `plan_ok`, `_work` scoring + gate, `_pr_body`, the own-review prompt, `task_view`,
+`STATUS["plan_wait"]`, the hash now shown for a plan card); `api.py` (`POST …/plan-ok`);
+`agent/devsahayak_tools.py` (action `plan_ok`, owner only); `models.py` (nullable `tier`, `plan`); `config.py`
+(`dev_plan_first`, `dev_plan_gate`, `dev_plan_steps` 18, `dev_plan_minutes` 8); `push.py` (the plan card pushes);
+Flutter `lib/ui/devsahayak_screen.dart` (the plan on the card + both buttons), `lib/ui/chat_screen.dart`,
+`lib/state.dart` (kind `devsahayak_plan`).
+
+**Tests** `server/tests/test_v0451_plan_pehle.py` (8): the whole tier table on real Hinglish asks, a small job planning
+nothing, a large job planning first and **writing nothing at all** until her Haan (refs and PRs untouched), the Haan
+being hers alone (not by tap / wrong hash / twice refused) with her note reaching the work, a standard job starting at
+once, the plan reaching the PR and the own review, the plan pass refusing an edit tool, and both switches. Three older
+suites that script the edit loop turn by turn got an autouse fixture turning the plan pass off — **and finding that
+fixture took one real debugging round: `monkeypatch.setattr(get_settings(), …)` in an autouse fixture that does not
+depend on `dev` runs BEFORE the `env` fixture rebuilds the settings, so the patch is silently lost.** Any such fixture
+must take `dev` (or `env`) as an argument.
+
+**NOT VERIFIED:** no live job has run through the gate (her Anthropic credit is empty). The plan pass's quality — are
+the done_when lines real checks? — is exactly what the next real coding job will show.
+
+## v0.452.0 DUKAAN PLUS (web Step 4B = the rest of W4 + W5 for her website shop, owner: "GO STEP 4B")
+
+`site/shopplus.py` + `shoppay` / `shop` hooks + `hoola-shop.js` / `hoola-app.js` + the console Shop tab.
+1. GST tax invoice + credit note for WEBSITE orders on HER ONE series: an invoiced website order gets a hidden row on the
+   site's app project (coll `_web_orders`, data = buyer, address, "qty x item @ Rs price" lines, total, delivery, coupon), so
+   `appmaker/gst.number_for` gives the next INV/<FY>/NNNN of the SAME series as her app (Rule 46: one series per GSTIN),
+   `receipt._tax_invoice` draws the PDF and the CA exports read it like any app sale. Only after the order is confirmed /
+   paid; her console "GST bill" (optional buyer GSTIN for B2B) + the buyer's private link; a cancelled invoiced order gets
+   its CN series credit note once (`set_status` cancelled -> `credit_on_cancel`). Console GST form saves her GSTIN.
+2. AutoPay on the website: her plans (made in the app's pay card) show on the member's My account; subscribe opens the
+   gateway's consent page (customer's own approval), My account lists + cancels (`/api/site-app/<site>/pay/*`). Payment
+   links already work from the same app pay card.
+3. Marketplace: `/api/site-shop/<site>/seller` = apply form; HER tap approves / blocks a seller, sets commission % and the
+   seller's Razorpay Route linked account (`acc_...` only - a bank number is refused); approval gives the seller a private
+   dashboard link (their products with moderation state, their order lines WITHOUT the buyer's phone / address, sales and
+   what they earn); seller products wait for HER OK; a blocked seller's products leave the shop. On a PAID online order each
+   approved seller with an account gets (their lines - commission) as ONE Route transfer per order (never twice; a
+   failure goes to her chat, the order stays paid). Cashfree / PhonePe split for websites not built.
+4. Courier: Shiprocket with HER API user (typed in the console, checked by a real login, sealed). HER tap on a confirmed /
+   packed order -> adhoc order -> AWB -> label (opened for printing); order -> shipped with the AWB; never twice; the
+   customer's tracking page reads Shiprocket's own status + last scan. Delhivery not built.
+5. Wishlist (kept only in the customer's browser; "Saved for later" in the cart) + cart reminders ONLY for customers who tick
+   "remind me": the cart waits 2 h, then shows on HER list with a WhatsApp link SHE taps (Hoola sends nothing); an order
+   from that number closes it; the customer's STOP ends it for good.
+Tests: tests/test_v0452_dukaan_plus.py (7): one series across website orders (0001, 0002) + credit note once; sellers,
+moderation, Route transfer once (320 of 400 at 20%), seller page hides the buyer; Shiprocket fake (wrong login never saved,
+AWB, label, never twice, tracking); reminders opted-in / ordered closes / once / STOP; AutoPay plan subscribe for members.
+NOT VERIFIED live: Shiprocket API (from its documented external API), Razorpay Route transfers (fake gateway, as v0.419).
