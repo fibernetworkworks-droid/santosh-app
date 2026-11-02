@@ -2,7 +2,7 @@
    (onboarding, KPIs against the baseline, the 90-day plan board, alerts, schedule, run-now buttons).
    Talks to /api/employees* and /api/seo/{onboard,desk,roadmap,run,gsc/link}. Every value from the server goes on the
    page through esc() - site names, issue texts and plan items are data. */
-window.HoolaEmployees = function ({api, esc, toast, changed}) {
+window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView}) {
   let HUB = null, DESK = null, TIMER = null;
   const TRUST = {seekh: ['Seekh', 'asks you before every change outside Hoola'],
                  saathi: ['Saathi', 'does small, undoable changes and tells you the same day'],
@@ -15,48 +15,224 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
+  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems'};   // v0.420 the Game Desk roles share it
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
+  // v0.447 AI EMPLOYEES PREMIUM (owner approved the prototype: "GO. MAKE ALL CARD OF SAME SIZE"): departments first,
+  // then the employees inside one, then the chosen employee's details beside them. Every card in a grid has the same
+  // size (grid-auto-rows:1fr). Entrances play once, numbers count up once, drawings trace themselves once; nothing
+  // loops under text (CRISP TEXT), and reduced motion / calm switch all of it off. Every server value goes through esc().
+  const DEPT = [   // the server's group name -> how the hub shows it; an unknown group still shows, plainly
+    {g: 'Game Development, Simulation & VR', id: 'game', name: 'Games, Simulation & VR', art: 'game',
+     desc: 'Games, worlds, physics, 3D sound and VR rooms. Each one is built, tested by Hoola itself, and playable from a link.'},
+    {g: 'Business', id: 'biz', name: 'Business', art: 'biz',
+     desc: 'Marketing, customers and back office for your shop or company. Plans and drafts first; nothing goes out without your OK.'},
+    {g: 'Research, CAD, Hardware & Industrial Tech', id: 'eng', name: 'Engineering & Hardware', art: 'eng',
+     desc: '3D parts, simulation and code drafts for engineering teams. Every number measured, never certified on its own.'},
+    {g: 'Software Architecture, Engineering & Core Systems', id: 'soft', name: 'Software & Systems', art: 'soft',
+     desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'},
+    {g: 'Education, Research & Lab', id: 'edu', name: 'Education, Research & Lab', art: 'edu',   // v0.453
+     desc: 'A tutor, a school office, a paper setter, a research assistant, the register and a 3D science lab. Children only with guardian consent.'},
+    {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.453
+     desc: 'ERP, CRM, PLM, supply chain and compliance work on your own systems. Every write is planned, dry-run and waits for your tap.'}];
+  const ART = {   // line drawings; every path is drawn on once (pathLength 1 + .ae-draw)
+    game: '<path d="M140 80h120a40 40 0 0 1 40 40v12a26 26 0 0 1-26 26c-10 0-17-5-22-12l-10-14h-84l-10 14c-5 7-12 12-22 12a26 26 0 0 1-26-26v-12a40 40 0 0 1 40-40z" stroke-width="2.6"/><path d="M152 116h26M165 103v26" stroke-width="2.6" style="animation-delay:.45s"/><path d="M60 56l16 9v18l-16 9-16-9V65zM340 140l16 9v18l-16 9-16-9v-18z" stroke-width="1.6" opacity=".5" style="animation-delay:.2s"/><path d="M70 186c26-18 52-18 78 0" stroke-width="1.5" opacity=".45" style="animation-delay:.55s"/><circle class="ae-fadein" cx="236" cy="110" r="5" fill="currentColor"/><circle class="ae-fadein" cx="252" cy="124" r="5" fill="currentColor"/>',
+    biz: '<path d="M50 176h300" stroke-width="1.5" opacity=".35"/><rect x="84" y="128" width="38" height="48" rx="7" stroke-width="2" opacity=".55" style="animation-delay:.1s"/><rect x="142" y="100" width="38" height="76" rx="7" stroke-width="2" opacity=".75" style="animation-delay:.22s"/><rect x="200" y="70" width="38" height="106" rx="7" stroke-width="2.2" style="animation-delay:.34s"/><path d="M262 140l32-30 28 18 44-50" stroke-width="2.6" style="animation-delay:.55s"/><path d="M350 78h16v16" stroke-width="2.6" style="animation-delay:.9s"/>',
+    eng: '<path d="M200 46l62 34v70l-62 34-62-34V80z" stroke-width="2.4"/><path d="M138 80l62 34 62-34M200 114v70" stroke-width="2.2" style="animation-delay:.45s"/><path d="M62 60h44M62 60v28M338 160h-44M338 160v-28" stroke-width="1.6" opacity=".55" style="animation-delay:.2s"/><circle cx="84" cy="160" r="16" stroke-width="1.6" opacity=".55" style="animation-delay:.3s"/>',
+    soft: '<rect x="164" y="50" width="72" height="38" rx="9" stroke-width="2.3"/><rect x="80" y="136" width="72" height="38" rx="9" stroke-width="2" opacity=".8" style="animation-delay:.35s"/><rect x="248" y="136" width="72" height="38" rx="9" stroke-width="2" opacity=".8" style="animation-delay:.45s"/><path d="M200 88v18h-84v30M200 106h84v30" stroke-width="1.9" style="animation-delay:.2s"/><path d="M40 98l-14 14 14 14M360 98l14 14-14 14" stroke-width="1.6" opacity=".5" style="animation-delay:.6s"/>',
+    edu: '<path d="M200 74c-30-16-64-18-104-10v104c40-8 74-6 104 10 30-16 64-18 104-10V64c-40-8-74-6-104 10z" stroke-width="2.4"/><path d="M200 74v104" stroke-width="2" style="animation-delay:.4s"/><path d="M122 96c22-4 44-2 62 6M122 120c22-4 44-2 62 6M216 102c18-8 40-10 62-6M216 126c18-8 40-10 62-6" stroke-width="1.5" opacity=".55" style="animation-delay:.55s"/><path d="M60 52l26-12 26 12-26 12zM74 58v14c8 6 16 6 24 0V58" stroke-width="1.7" opacity=".6" style="animation-delay:.2s"/><path d="M322 160h20M326 160v-26l-10-18h32l-10 18v26" stroke-width="1.7" opacity=".6" style="animation-delay:.3s"/>',
+    ent: '<rect x="150" y="44" width="100" height="34" rx="8" stroke-width="2.3"/><rect x="150" y="94" width="100" height="34" rx="8" stroke-width="2.3" style="animation-delay:.15s"/><rect x="150" y="144" width="100" height="34" rx="8" stroke-width="2.3" style="animation-delay:.3s"/><path d="M168 61h.01M168 111h.01M168 161h.01" stroke-width="5"/><path d="M250 61h50v100h-50M150 111H96" stroke-width="1.8" opacity=".6" style="animation-delay:.5s"/><circle cx="314" cy="111" r="14" stroke-width="1.8" opacity=".6" style="animation-delay:.6s"/><circle cx="82" cy="111" r="14" stroke-width="1.8" opacity=".6" style="animation-delay:.6s"/>',
+    other: '<circle cx="200" cy="110" r="46" stroke-width="2.2"/><path d="M200 64v92M154 110h92" stroke-width="1.6" opacity=".5" style="animation-delay:.3s"/>'};
+  const SPARK = '<path class="ae-spark" d="M318 48l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" stroke-width="1.6"/><path class="ae-spark" d="M96 128l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z" stroke-width="1.4"/>';
+  const HS = {view: 'home', dept: '', sel: '', filter: 'all', q: '', burst: '', counted: false};   // survives the re-fetch after every action
+  let DATA = null;
+  const arrow = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  const tick = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>';
+  const ini = n => String(n || '').replace(/\(.*?\)/g, '').split(/[\s/-]+/).filter(w => /^[A-Za-z]/.test(w)).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '•';
+  const isHired = e => e.status === 'hired' || e.status === 'paused';
+  const deptOf = g => DEPT.find(d => d.g === g) || {g, id: 'x' + String(g).toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: g, art: 'other', desc: ''};
+  const art = (k, cls = '') => `<svg class="ae-art-svg ${cls}" aria-hidden="true" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${(ART[k] || ART.other).replace(/<(path|rect|circle)(?![^>]*ae-fadein)/g, '<$1 class="ae-draw" pathLength="1"')}${cls ? '' : SPARK}</svg>`;
+  function status(e) {
+    if (e.status === 'hired') return ['ok', 'On your team'];
+    if (e.status === 'paused') return ['warn', 'Paused'];
+    return e.live ? ['ready', 'Ready to hire'] : ['soon', 'Coming soon'];
+  }
+  function depts() {
+    const out = new Map();
+    for (const d of DEPT) out.set(d.g, {...d, xs: []});
+    for (const e of DATA.employees || []) { const g = e.group || 'Business'; if (!out.has(g)) out.set(g, {...deptOf(g), xs: []}); out.get(g).xs.push(e); }
+    return [...out.values()].filter(d => d.xs.length);
+  }
+
   async function hub(el) {
     HUB = el;
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>AI Employees</h2></div><div class="empty">Loading…</div>';
-    let d;
-    try { d = await api('GET', '/api/employees'); }
+    try { DATA = await api('GET', '/api/employees'); }
     catch (e) { el.innerHTML = `<div class="vh"><h2>AI Employees</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
-    changed(d.hired || {});
-    const groups = {};                                    // v0.357 cards grouped (Business / Research, CAD, Hardware & Industrial Tech)
-    for (const e of d.employees || []) (groups[e.group || 'Business'] ||= []).push(e);
-    el.innerHTML = `<div class="vh"><h2>AI Employees</h2><span class="muted em-sub">Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.</span></div>
-      ${Object.entries(groups).map(([g, xs]) => `<h3 class="em-group">${esc(g)}</h3><div class="em-grid">${xs.map(card).join('')}</div>`).join('')}`;
-    el.querySelectorAll('[data-em]').forEach(b => b.addEventListener('click', () => act(b.dataset.em, b.dataset.key)));
+    changed(DATA.hired || {});
+    if (!el._aeWired) { el._aeWired = true; wireHub(el); }
+    draw();
   }
 
-  function card(e) {
-    const hired = e.status === 'hired' || e.status === 'paused';
-    const st = e.status === 'hired' ? tag('ok', 'Working') : e.status === 'paused' ? tag('warn', 'Paused') : !e.live ? tag('', 'Coming soon') : '';
-    const list = (t, xs) => xs && xs.length ? `<h4>${esc(t)}</h4><ul>${xs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
-    let btns = '';
-    if (!e.live) btns = '<button class="btn soft" type="button" disabled>Coming soon</button>';
-    else if (!hired) btns = `<button class="btn go" type="button" data-em="hire" data-key="${esc(e.key)}">Hire ${esc(e.name)}</button>`;
-    else btns = `<button class="btn go" type="button" data-em="open" data-key="${esc(e.key)}">Open desk</button>
-      <button class="btn soft" type="button" data-em="${e.status === 'paused' ? 'resume' : 'pause'}" data-key="${esc(e.key)}">${e.status === 'paused' ? 'Resume' : 'Pause'}</button>
-      <button class="btn soft em-leave" type="button" data-em="leave" data-key="${esc(e.key)}">Let go</button>`;
-    return `<article class="tile gl em-card${e.live ? '' : ' em-soon'}"><div class="em-h"><h3>${esc(e.name)}</h3>${st}</div>
-      <p class="em-pitch">${esc(e.pitch || '')}</p>${list('What it does', e.does)}${list('What it needs', e.needs)}${list('What it will never do', e.never)}
-      <div class="acts">${btns}</div></article>`;
+  function draw() {
+    const el = HUB; if (!el || !DATA) return;
+    const ds = depts(), all = DATA.employees || [];
+    if (HS.view === 'dept' && !ds.some(d => d.id === HS.dept)) HS.view = 'home';
+    const at = HS.view + ':' + HS.dept;                      // a redraw of the SAME page (filter, pick, search, after an action)
+    el.classList.toggle('ae-settled', at === HS.drawn);      // keeps still: entrances play once per page, never on each click
+    HS.drawn = at;
+    el.innerHTML = HS.view === 'dept' ? deptPage(ds.find(d => d.id === HS.dept)) : homePage(ds, all);
+    if (HS.view === 'home' && !HS.counted) { HS.counted = true; countUp(el); }
+  }
+
+  function homePage(ds, all) {
+    const ready = all.filter(e => e.live).length, team = all.filter(isHired);
+    const stat = (n, label, cls, pct, d) => `<div class="ae-stat ae-up" style="animation-delay:${d}s"><b class="${cls}" data-count="${n}">${HS.counted ? n : 0}</b><span>${label}</span><i class="ae-meter"><i class="ae-bar ${cls}" style="width:${pct}%"></i></i></div>`;
+    const q = HS.q.trim().toLowerCase();
+    const results = q ? all.filter(e => `${e.name} ${e.pitch || ''} ${e.group || ''}`.toLowerCase().includes(q)) : [];
+    return `<header class="ae-hero ae-up">
+        <div class="ae-hero-row">
+          <div class="ae-hero-tx"><span class="ae-badge"><i aria-hidden="true"></i>Your AI workforce</span>
+            <h2 class="ae-h1">AI Employees</h2>
+            <p>Hire an AI employee for one job. Each one gets its own desk, works around the clock, and asks you before anything big. You stay in charge.</p></div>
+          <label class="ae-search"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <span class="ae-sr">Search all employees</span><input id="aeQ" type="search" autocomplete="off" placeholder="Search ${all.length} roles: SEO, games, CAD…" value="${esc(HS.q)}"></label>
+        </div>
+        <div class="ae-stats">${stat(all.length, `roles in ${ds.length} departments`, '', 100, .08)}${stat(ready, 'ready to hire today', 'ok', all.length ? Math.round(ready / all.length * 100) : 0, .14)}${stat(all.length - ready, 'coming soon', 'warn', all.length ? Math.round((all.length - ready) / all.length * 100) : 0, .2)}${stat(team.length, 'on your team', 'pri', ready ? Math.round(team.length / ready * 100) : 0, .26)}</div>
+      </header>
+      <section class="ae-team ae-up" style="animation-delay:.16s" aria-labelledby="aeTeamH">
+        <div class="ae-row"><h3 id="aeTeamH">Your team</h3><span class="ae-mut">Each hired employee gets its own desk in the sidebar</span></div>
+        ${team.length ? `<div class="ae-members">${team.map(e => { const d = deptOf(e.group); return `<button class="ae-member ae-pop ae-d-${d.id}" type="button" data-ae="role" data-key="${esc(e.key)}"><span class="ae-mono">${esc(ini(e.name))}<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i></span><span><b>${esc(e.name)}</b><small>${e.status === 'paused' ? 'Paused' : 'Working'} · ${esc((TRUST[e.trust] || TRUST.seekh)[0])}</small></span></button>`; }).join('')}</div>`
+          : `<div class="ae-empty-team"><span class="ae-seats" aria-hidden="true"><i></i><i></i><i></i></span><p>No one hired yet. Open a department, pick a role and press Hire.</p>${ds[0] ? `<button class="btn soft ae-btn" type="button" data-ae="dept" data-id="${esc(ds[0].id)}">Start with ${esc(ds[0].name)}${arrow}</button>` : ''}</div>`}
+      </section>
+      ${q ? `<section class="ae-sec" aria-labelledby="aeResH"><h3 id="aeResH" class="ae-sech">${results.length} ${results.length === 1 ? 'role matches' : 'roles match'} “${esc(HS.q.trim())}”</h3>
+          ${results.length ? `<div class="ae-roles">${results.map((e, i) => roleCard(e, i, true)).join('')}</div>` : '<p class="ae-mut">No role matches that yet. Try a job title or a word like “Instagram”, “3D” or “server”.</p>'}</section>`
+        : `<section class="ae-sec" aria-labelledby="aeDeptH"><div class="ae-row ae-up" style="animation-delay:.22s"><h3 id="aeDeptH" class="ae-sech">Departments</h3><span class="ae-mut">Open one to meet its employees</span></div>
+          <div class="ae-depts">${ds.map(deptCard).join('')}</div></section>`}`;
+  }
+
+  function deptCard(d, i) {
+    const ready = d.xs.filter(e => e.live).length, onTeam = d.xs.filter(isHired).length;
+    const line = ready === d.xs.length ? `All ${d.xs.length} ready to hire` : ready ? `${ready} ready · ${d.xs.length - ready} coming soon` : `${d.xs.length} coming soon`;
+    return `<button class="ae-dept ae-up ae-d-${esc(d.id)}" type="button" data-ae="dept" data-id="${esc(d.id)}" style="animation-delay:${(.28 + i * .08).toFixed(2)}s" aria-label="Open ${esc(d.name)}: ${d.xs.length} roles, ${esc(line)}">
+        <span class="ae-topline" aria-hidden="true"></span>
+        <span class="ae-art">${art(d.art)}<span class="ae-ready"><i aria-hidden="true"></i>${esc(line)}</span></span>
+        <span class="ae-dept-bd"><span class="ae-dept-n">${esc(d.name)}</span><span class="ae-dept-d">${esc(d.desc || '')}</span>
+          <span class="ae-dept-ft"><span class="ae-faces" aria-hidden="true">${d.xs.slice(0, 5).map(e => `<i>${esc(ini(e.name))}</i>`).join('')}${d.xs.length > 5 ? `<em>+${d.xs.length - 5} more</em>` : ''}</span>
+            <span class="ae-meet">Meet ${d.xs.length}${arrow}</span></span>
+          ${onTeam ? `<span class="ae-onteam"><i aria-hidden="true"></i>${onTeam} on your team</span>` : ''}</span>
+      </button>`;
+  }
+
+  function roleCard(e, i, withDept) {
+    const d = deptOf(e.group), [sc, st] = status(e), on = HS.view === 'dept' && HS.sel === e.key;
+    return `<button class="ae-role ae-up ae-d-${esc(d.id)}${on ? ' on' : ''}" type="button" data-ae="role" data-key="${esc(e.key)}" aria-pressed="${on}" style="animation-delay:${(.12 + i * .04).toFixed(2)}s">
+        <span class="ae-role-h"><span class="ae-mono">${esc(ini(e.name))}${isHired(e) ? `<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i>` : ''}</span><span><b>${esc(e.name)}</b>${withDept ? `<small>${esc(d.name)}</small>` : ''}</span></span>
+        <span class="ae-role-p">${esc(e.pitch || '')}</span>
+        <span class="ae-role-ft"><span class="ae-chip ${sc}">${st}</span><span class="ae-more">Details${arrow}</span></span>
+      </button>`;
+  }
+
+  function deptPage(d) {
+    const xs = d.xs, ready = xs.filter(e => e.live).length, team = xs.filter(isHired).length;
+    if (!xs.some(e => e.key === HS.sel)) HS.sel = (xs.find(e => e.live) || xs[0] || {}).key || '';
+    const F = [['all', 'All', xs.length], ['ready', 'Ready to hire', xs.filter(e => e.live && !isHired(e)).length], ['soon', 'Coming soon', xs.length - ready], ['team', 'On your team', team]]
+      .filter(f => f[0] === 'all' || f[2] > 0);
+    if (!F.some(f => f[0] === HS.filter)) HS.filter = 'all';
+    const shown = xs.filter(e => HS.filter === 'all' || (HS.filter === 'ready' && e.live && !isHired(e)) || (HS.filter === 'soon' && !e.live) || (HS.filter === 'team' && isHired(e)));
+    return `<nav class="ae-crumb ae-fadein" aria-label="Breadcrumb"><button type="button" data-ae="home"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>AI Employees</button><span aria-hidden="true">/</span><b>${esc(d.name)}</b></nav>
+      <section class="ae-dhero ae-scale ae-d-${esc(d.id)}">
+        <div class="ae-dhero-tx"><span class="ae-ready ae-static"><i aria-hidden="true"></i>Department</span>
+          <h2 class="ae-h1">${esc(d.name)}</h2>${d.desc ? `<p>${esc(d.desc)}</p>` : ''}
+          <div class="ae-dstats"><span><b>${xs.length}</b>roles</span><span><b class="ok">${ready}</b>ready to hire</span><span><b class="pri">${team}</b>on your team</span></div></div>
+        <div class="ae-dhero-art">${art(d.art, 'big')}</div>
+      </section>
+      <div class="ae-filters ae-up" role="group" aria-label="Show" style="animation-delay:.12s">${F.map(f => `<button class="ae-pill${HS.filter === f[0] ? ' on' : ''}" type="button" data-ae="filter" data-f="${f[0]}" aria-pressed="${HS.filter === f[0]}">${f[1]} <span>${f[2]}</span></button>`).join('')}</div>
+      <div class="ae-split">
+        <div class="ae-roles">${shown.map((e, i) => roleCard(e, i, false)).join('') || '<p class="ae-mut">Nothing here for this filter.</p>'}</div>
+        <aside class="ae-panel" aria-label="Employee details" aria-live="polite">${panel(xs.find(e => e.key === HS.sel), d)}</aside>
+      </div>`;
+  }
+
+  function panel(e, d) {
+    if (!e) return '<p class="ae-mut ae-pad">Pick an employee to see what they do, what they need and what they will never do.</p>';
+    const [sc, st] = status(e), hired = isHired(e), short = String(e.name).split(' (')[0];
+    const list = (t, xs, cls, i) => xs && xs.length ? `<div class="ae-blk ae-up ${cls}" style="animation-delay:${(.08 + i * .08).toFixed(2)}s"><h4>${t}</h4><ul>${xs.map(x => `<li>${cls === 'ae-does' ? `<i aria-hidden="true">${tick}</i>` : ''}<span>${esc(x)}</span></li>`).join('')}</ul></div>` : '';
+    const lvl = TRUST[e.trust] ? e.trust : 'seekh';
+    const burst = HS.burst === e.key ? `<span class="ae-burst" aria-hidden="true">${['#5B45E0', '#EE8F35', '#B347E6', '#13875F', '#F27A52', '#6E55F0', '#EE8F35', '#B347E6'].map((c, i) => `<i style="--dx:${[34, -30, 40, -38, 10, -12, 26, -26][i]}px;--dy:${[-26, -24, 10, 14, -40, 36, 30, -38][i]}px;background:${c};animation-delay:${(i % 4) * .02}s"></i>`).join('')}</span>` : '';
+    let acts;
+    if (!e.live) acts = '<button class="btn soft ae-wide-btn" type="button" disabled>Coming soon</button>';
+    else if (!hired) acts = `<button class="ae-hire" type="button" data-ae="hire" data-key="${esc(e.key)}">Hire ${esc(short)}${arrow}</button>`;
+    else acts = `<div class="ae-joined ${HS.burst === e.key ? 'ae-pop' : ''}"><span class="ae-tick">${tick.replace('<path', '<path class="ae-check" pathLength="1"')}${burst}</span>
+        <span><b>${esc(short)} ${e.status === 'paused' ? 'is paused' : HS.burst === e.key ? 'joined your team' : 'is on your team'}</b><small>${e.status === 'paused' ? 'No jobs run until you resume it.' : `Its desk is in the sidebar. Trust: ${esc(TRUST[lvl][0])}.`}</small></span></div>
+      <button class="ae-open" type="button" data-ae="open" data-key="${esc(e.key)}">Open desk${arrow}</button>
+      <div class="ae-row2"><button class="btn soft" type="button" data-ae="${e.status === 'paused' ? 'resume' : 'pause'}" data-key="${esc(e.key)}">${e.status === 'paused' ? 'Resume' : 'Pause'}</button>
+        <button class="btn soft em-leave" type="button" data-ae="leave" data-key="${esc(e.key)}">Let go</button></div>`;
+    if (HS.lastSel !== e.key) { HS.flip = !HS.flip; HS.lastSel = e.key; }   // the panel slides in only when the person changes
+    return `<div class="${HS.flip ? 'ae-panel-a' : 'ae-panel-b'} ae-d-${esc(d.id)}">
+        <div class="ae-ph"><div class="ae-ph-row"><span class="ae-mono big">${esc(ini(e.name))}</span><div><h3>${esc(e.name)}</h3><span class="ae-chip ${sc}">${st}</span></div></div>
+          <p>${esc(e.pitch || '')}</p></div>
+        <div class="ae-pb">
+          ${list('What it does', e.does, 'ae-does', 0)}${list('What it needs from you', e.needs, 'ae-needs', 1)}${list('It will never', e.never, 'ae-never', 2)}
+          ${e.live ? `<div class="ae-blk ae-up" style="animation-delay:.32s"><h4>How its trust grows</h4><ol class="ae-ladder">
+            <li class="${lvl === 'seekh' ? 'on' : ''}"><i>1</i><span><b>${TRUST.seekh[0]}</b> · starts here: ${TRUST.seekh[1]}.</span></li>
+            <li class="${lvl === 'saathi' ? 'on' : ''}"><i>2</i><span><b>${TRUST.saathi[0]}</b> · ${TRUST.saathi[1]}.</span></li>
+            <li class="${lvl === 'bharosa' ? 'on' : ''}"><i>3</i><span><b>${TRUST.bharosa[0]}</b> · ${TRUST.bharosa[1]}.</span></li></ol>
+            <p class="ae-mut ae-small">Hoola suggests the next level after a run of your Haan; one correction drops it a level.</p></div>`
+          : '<p class="ae-soonnote ae-up">This employee is being built. Its full job list, what it needs and its limits appear here the day it is ready to hire.</p>'}
+          <div class="ae-acts">${acts}</div>
+        </div></div>`;
+  }
+
+  function countUp(el) {
+    const nums = [...el.querySelectorAll('[data-count]')];
+    const calm = document.documentElement.classList.contains('calm') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (calm || typeof requestAnimationFrame !== 'function') { nums.forEach(n => n.textContent = n.dataset.count); return; }
+    const t0 = performance.now();
+    const step = now => {
+      const k = Math.min(1, (now - t0) / 1100), e = 1 - Math.pow(1 - k, 3);
+      nums.forEach(n => { if (n.isConnected) n.textContent = Math.round(+n.dataset.count * e); });
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  function wireHub(el) {
+    el.addEventListener('click', ev => {
+      const b = ev.target.closest('[data-ae]'); if (!b || !el.contains(b)) return;
+      const what = b.dataset.ae, key = b.dataset.key;
+      if (what === 'home') { HS.view = 'home'; HS.burst = ''; draw(); el.scrollIntoView?.({block: 'start'}); return; }
+      if (what === 'dept') { HS.view = 'dept'; HS.dept = b.dataset.id; HS.sel = ''; HS.filter = 'all'; HS.q = ''; HS.burst = ''; draw(); el.scrollIntoView?.({block: 'start'}); return; }
+      if (what === 'filter') { HS.filter = b.dataset.f; draw(); return; }
+      if (what === 'role') {
+        const e = (DATA.employees || []).find(x => x.key === key); if (!e) return;
+        if (HS.view === 'dept' && HS.sel === key) return;
+        HS.view = 'dept'; HS.dept = deptOf(e.group || 'Business').id; HS.sel = key; HS.burst = ''; HS.q = '';
+        draw();
+        el.querySelector('.ae-panel')?.scrollIntoView?.({block: 'nearest', behavior: 'smooth'});
+        return;
+      }
+      act(what, key);
+    });
+    el.addEventListener('input', ev => {
+      if (ev.target.id !== 'aeQ') return;
+      HS.q = ev.target.value; const pos = ev.target.selectionStart;
+      draw();
+      const q = el.querySelector('#aeQ'); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (_) {} }
+    });
   }
 
   async function act(what, key) {
-    if (what === 'open') { location.hash = ''; document.querySelector(`[data-v="${DESKS[key] || key + 'desk'}"]`)?.click(); return; }   // seodesk / socialdesk / caddesk / gamedesk
+    if (what === 'open') { location.hash = ''; const v = DESKS[key] || key + 'desk';
+      if (openView) openView(v, v === 'systems' ? key : ''); else document.querySelector(`[data-v="${v}"]`)?.click(); return; }   // v0.453 Systems opens on that role   // seodesk / socialdesk / caddesk / gamedesk
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
       await api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined);
-      toast(what === 'hire' ? 'Hired. Open the desk to set it up.' : what === 'leave' ? 'Let go. Its jobs have stopped.' : what === 'pause' ? 'Paused. No jobs run until you resume.' : 'Back at work.');
+      toast(what === 'hire' ? 'Hired. Its desk is in the sidebar.' : what === 'leave' ? 'Let go. Its jobs have stopped.' : what === 'pause' ? 'Paused. No jobs run until you resume.' : 'Back at work.');
+      HS.burst = what === 'hire' ? key : '';
     } catch (e) { toast(e.message, true); }
     await hub(HUB);
-    if (what === 'hire') document.querySelector(`[data-v="${DESKS[key] || key + 'desk'}"]`)?.click();
   }
 
   // ------------------------------------------------------------ the SEO desk
@@ -899,7 +1075,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, arena: gsArena, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -924,7 +1100,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <button class="btn soft" type="button" data-gs-role="twin">Digital twin (Twin Architect)</button>
           <button class="btn soft" type="button" data-gs-role="vfx">VFX pipeline (Pipeline TD)</button>
           <button class="btn soft" type="button" data-gs-role="runtime">Editor (Ask Hoola in Godot)</button>
-          <button class="btn soft" type="button" data-gs-role="big">Big studio (Unity / Unreal)</button></div></div>
+          <button class="btn soft" type="button" data-gs-role="big">Big studio (Unity / Unreal)</button>
+          <button class="btn soft" type="button" data-gs-role="arena">Game Arena (are we better?)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
     el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
@@ -1605,6 +1782,67 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
   }
 
+  // ---------------------------------------------------------------- v0.447 Game Arena (numbers, not claims)
+  let GAR_OPEN = '';
+  async function gsArena(el) {
+    clearTimeout(GTIMER);
+    let d, open = null;
+    try { d = await api('GET', '/api/gamedesk/arena'); } catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const rid = GAR_OPEN || (d.runs[0] || {}).id || '';
+    if (rid) { try { open = await api('GET', `/api/gamedesk/arena/${encodeURIComponent(rid)}`); } catch (e) { toast(e.message, true); } }
+    const pct = v => v == null ? '-' : Math.round(v * 10) / 10 + '%';
+    const nm = v => v == null ? '-' : num(Math.round(v * 100) / 100);
+    const sm = open && open.summary ? open.summary : {};
+    const yn = v => v === true ? '✓' : v === false ? '✕' : '-';
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="arBack">← Game Desk</button><h2>Game Arena</h2></div>
+      <p class="muted em-small">Whether Hoola's games are getting better, as numbers. ${num(d.total_briefs)} fixed briefs (set ${num(d.set)}): every genre × an Indian setting, seeded, so two Hoola versions are judged on exactly the same work. Each game is built like an owner's, then the QA bots <b>play</b> it and the card records what the engine said. Originality is measured against every other game of the run — Apple rejects games "indistinguishable from what's already widely available", so that number is about shippability, not taste. Whether a game is <b>fun</b> is NOT ASSESSED: a real player has to say.</p>
+      <section class="tile gl"><h3>New run</h3>
+        <div class="lo-form"><input id="arN" type="number" min="1" max="60" value="8" aria-label="How many games"><input id="arSeed" type="number" min="1" value="1" aria-label="Seed">
+          <input id="arBudget" type="number" min="0" step="50" value="400" aria-label="Rupee ceiling"><input id="arNote" placeholder="What this run is testing" aria-label="Note">
+          <button class="btn go" type="button" id="arGo">Start the run</button></div>
+        <p class="muted em-small">One game at a time, built end to end (design doc → approve → code → playtest → web build), as the hidden tenant — never your games, never your AI budget. It stops at the rupee ceiling.</p></section>
+      <section class="tile gl"><h3>Runs</h3>
+        <table class="ph-tbl"><thead><tr><th>Run</th><th>Version</th><th>Games</th><th>Playable</th><th>Judge</th><th>Same-ness</th><th>₹</th><th></th></tr></thead><tbody>${d.runs.map(r => `<tr${r.id === rid ? ' class="bs-row"' : ''}><td><button class="btn soft gs-mini" type="button" data-ar-open="${esc(r.id)}">${esc(r.number)}</button> ${tag(r.status === 'done' ? 'ok' : r.status === 'running' ? '' : 'bad', r.status)}</td>
+          <td class="em-small">${esc(r.version)}</td><td>${num(r.n)}</td><td>${pct((r.summary || {}).playable_pct)}</td><td>${nm((r.summary || {}).judge)}</td><td>${nm((r.summary || {}).sameness)}</td><td>${nm((r.summary || {}).total_inr)}</td>
+          <td>${r.status === 'running' ? `<button class="btn soft gs-mini" type="button" data-ar-stop="${esc(r.id)}">Stop</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">No run yet.</td></tr>'}</tbody></table>
+        ${d.runs.length > 1 ? `<div class="acts"><select id="arA" aria-label="Run A">${d.runs.map(r => `<option value="${esc(r.id)}">${esc(r.number)} ${esc(r.version)}</option>`).join('')}</select>
+          <select id="arB" aria-label="Run B">${d.runs.map((r, i) => `<option value="${esc(r.id)}"${i === 1 ? ' selected' : ''}>${esc(r.number)} ${esc(r.version)}</option>`).join('')}</select>
+          <button class="btn soft" type="button" id="arCmp">Compare</button></div><div id="arCmpOut"></div>` : ''}</section>
+      ${open ? `<section class="tile gl"><h3>${esc(open.number)} · ${esc(open.version)} · seed ${num(open.seed)}${open.note ? ' · ' + esc(open.note) : ''}</h3>
+        <div class="ph-grid"><div><b>${pct(sm.playable_pct)}</b><div class="muted em-small">playable</div></div><div><b>${pct(sm.responds_pct)}</b><div class="muted em-small">answers input</div></div>
+          <div><b>${pct(sm.reached_end_pct)}</b><div class="muted em-small">reached an ending</div></div><div><b>${nm(sm.judge)}</b><div class="muted em-small">judge / 10</div></div>
+          <div><b>${nm(sm.sameness)}</b><div class="muted em-small">same-ness (lower is better)</div></div><div><b>₹${nm(sm.total_inr)}</b><div class="muted em-small">whole run</div></div></div>
+        <p class="em-small">${['clear_in_30s', 'goal_obvious', 'controls_fit', 'feedback', 'looks', 'originality_feel'].map(k => `${esc(k.replace(/_/g, ' '))} ${nm(sm[k])}`).join(' · ')}</p>
+        <p class="muted em-small"><b>fun:</b> ${esc(sm.fun || 'NOT ASSESSED')}</p>
+        <table class="ph-tbl"><thead><tr><th>Brief</th><th>Genre</th><th>Started</th><th>Answers</th><th>Ending</th><th>fps</th><th>Errors</th><th>Judge</th><th>Same</th><th>₹</th></tr></thead><tbody>${(open.items || []).map(it => `<tr><td class="em-small">${esc(it.brief)}</td><td class="em-small">${esc(it.genre)}</td><td>${yn(it.started)}</td><td>${yn(it.responds)}</td><td>${yn(it.reached_end)}</td>
+          <td>${nm(it.fps)}</td><td>${num(it.errors)}</td><td>${nm((it.judge || {}).overall)}</td><td>${nm(it.sameness)}</td><td>${nm(it.inr)}</td></tr>
+          ${(it.judge || {}).worst ? `<tr><td colspan="10" class="muted em-small">first thing to fix: ${esc(it.judge.worst)}</td></tr>` : ''}`).join('') || '<tr><td colspan="10" class="muted">No game in this run yet.</td></tr>'}</tbody></table></section>` : ''}
+      <section class="tile gl"><h3>Blind duel</h3>
+        <p class="muted em-small">Same brief, your rival's public web game (Rosebud, Summer Engine, an itch.io game). Both are played by the same bots in the same browser, and the judge scores them as A and B in a random order without being told which is Hoola's.</p>
+        <div class="lo-form"><input id="arBrief" placeholder="Brief id (g1-runner-00)" aria-label="Brief"><input id="arRival" placeholder="Rival name" aria-label="Rival">
+          <input id="arUrl" placeholder="https://… their public game" aria-label="Rival URL"><button class="btn go" type="button" id="arDuel">Run the duel</button></div>
+        <div id="arDuelOut"></div>
+        ${Object.keys((d.duels || {}).rivals || {}).length ? `<table class="ph-tbl"><thead><tr><th>Rival</th><th>Won</th><th>Lost</th><th>Tie</th><th>Win %</th></tr></thead><tbody>${Object.entries(d.duels.rivals).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${num(v.won)}</td><td>${num(v.lost)}</td><td>${num(v.tie)}</td><td>${pct(v.win_pct)}</td></tr>`).join('')}</tbody></table>` : ''}
+        ${((d.duels || {}).recent || []).map(x => `<p class="em-small">${esc(x.brief)} vs ${esc(x.rival)} — ${tag(x.winner === 'hoola' ? 'ok' : x.winner === 'rival' ? 'bad' : '', x.winner)} ${esc(x.why)}</p>`).join('')}</section>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsArena(el); };
+    el.querySelector('#arBack').addEventListener('click', () => { GS_ROLE = ''; game(el); });
+    el.querySelectorAll('[data-ar-open]').forEach(b => b.addEventListener('click', () => { GAR_OPEN = b.dataset.arOpen; gsArena(el); }));
+    el.querySelectorAll('[data-ar-stop]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/arena/${encodeURIComponent(b.dataset.arStop)}/stop`), 'It will stop after this game.')));
+    el.querySelector('#arGo').addEventListener('click', e => { e.target.disabled = true;
+      go(() => api('POST', '/api/gamedesk/arena', {n: Number(el.querySelector('#arN').value), seed: Number(el.querySelector('#arSeed').value),
+        budget_inr: Number(el.querySelector('#arBudget').value), note: el.querySelector('#arNote').value.trim()}), 'Running. Come back in a while.'); });
+    el.querySelector('#arCmp')?.addEventListener('click', async () => {
+      const a = el.querySelector('#arA').value, b = el.querySelector('#arB').value;
+      try { const c = await api('GET', `/api/gamedesk/arena/compare/${encodeURIComponent(a)}/${encodeURIComponent(b)}`);
+        el.querySelector('#arCmpOut').innerHTML = `<p class="em-small">${esc(c.note)}</p><table class="ph-tbl"><thead><tr><th>Metric</th><th>${esc(c.a.number)}</th><th>${esc(c.b.number)}</th><th></th></tr></thead><tbody>${c.rows.map(r => `<tr><td>${esc(r.metric.replace(/_/g, ' '))}</td><td>${nm(r.a)}</td><td>${nm(r.b)}</td><td>${tag(r.verdict === 'better' ? 'ok' : r.verdict === 'worse' ? 'bad' : '', r.verdict)}</td></tr>`).join('')}</tbody></table>`;
+      } catch (e) { toast(e.message, true); } });
+    el.querySelector('#arDuel').addEventListener('click', async e => { e.target.disabled = true; e.target.textContent = 'Playing both…';
+      try { const o = await api('POST', '/api/gamedesk/arena/duel', {brief: el.querySelector('#arBrief').value.trim(),
+          rival: el.querySelector('#arRival').value.trim(), url: el.querySelector('#arUrl').value.trim()});
+        el.querySelector('#arDuelOut').innerHTML = `<p class="em-small">${tag(o.winner === 'hoola' ? 'ok' : o.winner === 'rival' ? 'bad' : '', o.winner)} ${esc(o.why)} <span class="muted">(${esc(o.blind)})</span></p>`;
+      } catch (err) { toast(err.message, true); } e.target.disabled = false; e.target.textContent = 'Run the duel'; });
+  }
+
   // ---------------------------------------------------------------- v0.433 Big-studio mode (the Hoola Crew in Unity / Unreal)
   let BIG_OPEN = '';
   async function gsBig(el) {
@@ -2200,5 +2438,93 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     return out.join('');
   }
 
-  return {hub, desk, social, cad, game, arch};
+  // ------------------------------------------------------------ v0.453 the Education Desk (Education, Research & Lab)
+  // One desk for the six education employees. It READS the same routes the phone screens use (/api/guru, /api/daftar,
+  // /api/pathyakram, /api/shodh, /api/shiksha, /api/prayog/labs); the only writes are her own taps on the guardian /
+  // share cards (POST .../shares/<id>/decide with the card's hash, exactly what the phone sends). Everything else is
+  // started as a plain ask in the chat, where the employee's own rules and confirm cards already live.
+  let EDU_TAB = 'home';
+  const EDU_TABS = [['home', 'Overview'], ['tutor', 'Tutor'], ['office', 'School office'], ['papers', 'Papers'],
+                    ['research', 'Research'], ['register', 'Register'], ['lab', 'Lab']];
+  const EDU_ASKS = {
+    tutor: ['Start a maths doubt session for Class 8: fractions', 'Make a 10-question practice set on photosynthesis for Class 7', 'Show this week\'s revision due for my learners'],
+    office: ['Take today\'s attendance for Class 6 A', 'Grade this OMR sheet against the answer key', 'Make the timetable: 8 periods a day, Monday to Saturday'],
+    papers: ['Make a CBSE Class 10 science paper, 80 marks, 3 hours, with an answer key', 'Make a year plan for Class 9 maths', 'Make a rubric for a Class 8 English essay'],
+    research: ['Start a research project: effect of mobile phone use on sleep in teenagers', 'Find recent open-access papers on millet nutrition in India', 'Make my references in APA style'],
+    register: ['Add a class: Class 7 B, CBSE, English medium', 'Which learners still need guardian consent?', 'Show the gradebook for Class 9 A'],
+  };
+  const eduN = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  async function edu(el) {
+    const get = p => api('GET', p).catch(e => ({_err: e.message}));
+    const [g, d, p, r, s, l] = await Promise.all([get('/api/guru'), get('/api/daftar'), get('/api/pathyakram'), get('/api/shodh'),
+                                                 get('/api/shiksha'), get('/api/prayog/labs')]);
+    if (!el.isConnected) return;
+    const labs = l.labs || [], waiting = [
+      ...(g.waiting || []).map(x => ({...x, src: 'guru', what: 'Weekly report for a guardian'})),
+      ...(d.waiting || []).map(x => ({...x, src: 'daftar', what: x.kind === 'absent' ? 'Absence alert for guardians' : 'Report card for a guardian'})),
+      ...(p.waiting || []).map(x => ({...x, src: 'pathyakram', what: 'Share a paper or plan'}))];
+    const errs = [g, d, p, r, s].filter(x => x._err).map(x => x._err);
+    const tile = (tab, n, label, sub) => `<button class="tile gl ed-tile" type="button" data-edtab="${tab}"><b>${esc(String(n))}</b><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`;
+    const asks = tab => (EDU_ASKS[tab] || []).length ? `<section class="tile gl ed-asks"><h3>Ask in the chat</h3><div class="ed-chips">${EDU_ASKS[tab].map(a =>
+      `<button class="ed-chip" type="button" data-edask="${esc(a)}">${esc(a)}</button>`).join('')}</div></section>` : '';
+    const wait = list => list.length ? `<section class="tile gl"><h3>Waiting for your tap</h3>${list.map(w => {
+      const who = (w.to_name ? 'To ' + w.to_name : '') || (w.payload && (w.payload.title || w.payload.name || (w.payload.people || []).map(x => x.name).join(', '))) || (w.report && w.report.name) || '';
+      return `<div class="ed-row"><div><b>${esc(w.what)}</b>${w.number ? ` <small class="muted">${esc(w.number)}</small>` : ''}${who ? `<p class="muted em-small">${esc(String(who).slice(0, 160))}</p>` : ''}</div>
+        <div class="acts"><button class="btn go gs-mini" type="button" data-edyes="1" data-src="${esc(w.src)}" data-id="${esc(w.id)}" data-hash="${esc(w.hash || '')}">Send</button>
+        <button class="btn soft gs-mini" type="button" data-edyes="0" data-src="${esc(w.src)}" data-id="${esc(w.id)}" data-hash="${esc(w.hash || '')}">Don't send</button></div></div>`; }).join('')}</section>` : '';
+    const empty = t => `<p class="muted em-small">${esc(t)}</p>`;
+    const st = s.settings || {};
+    let body = '';
+    if (EDU_TAB === 'home') body = `<div class="ed-tiles">
+        ${tile('tutor', (g.open || []).length, 'Tutor sessions open', eduN((g.waiting || []).length, 'report waiting', 'reports waiting'))}
+        ${tile('office', d.unsigned || 0, 'Marks to sign off', (d.attendance_pending || []).length ? `Attendance due: ${(d.attendance_pending || []).length}` : 'Attendance done today')}
+        ${tile('papers', (p.papers || []).length, 'Papers', eduN((p.plans || []).length, 'plan', 'plans'))}
+        ${tile('research', (r.projects || []).length, 'Research projects', '')}
+        ${tile('register', (s.classes || []).length, 'Classes', `${eduN(s.learners || 0, 'learner', 'learners')}${s.consent_pending ? ` · ${s.consent_pending} consent due` : ''}`)}
+        ${tile('lab', labs.length, 'Lab practicals', 'Physics, Class XI-XII')}</div>${wait(waiting)}`;
+    if (EDU_TAB === 'tutor') body = `<section class="tile gl"><h3>Open sessions</h3>${(g.open || []).map(x => `<div class="ed-row"><div><b>${esc([x.subject, x.topic].filter(Boolean).join(' · ') || 'Session')}</b> <small class="muted">${esc(x.number || '')}</small>
+        <p class="muted em-small">${esc([x.grade && 'Class ' + x.grade, x.mode, x.language, x.minutes ? x.minutes + ' min' : '', x.rungs ? `hint ${x.rung} of ${x.rungs}` : '', x.exam_safe ? 'exam mode: hints only' : ''].filter(Boolean).join(' · '))}</p></div></div>`).join('') || empty('No session open. Start one from the chat or the phone.')}
+        <p class="muted em-small">Daily limit ${esc(String((g.settings || {}).day_minutes || 60))} min${(g.settings || {}).exam_mode ? ' · exam mode on (hints only)' : ''}.</p></section>${wait(waiting.filter(w => w.src === 'guru'))}${asks('tutor')}`;
+    if (EDU_TAB === 'office') body = `<section class="tile gl"><h3>Today</h3>
+        <p>${(d.attendance_pending || []).length ? `Attendance still to take: ${esc((d.attendance_pending || []).join(', '))}` : 'Attendance is done for every class.'}</p>
+        <p>${d.unsigned ? `${esc(String(d.unsigned))} marks wait for the teacher's sign-off. Hoola's marks stay suggestions until then.` : 'No marks waiting for sign-off.'}</p></section>
+        <section class="tile gl"><h3>Recent grading</h3>${(d.gradings || []).map(x => `<div class="ed-row"><div><b>${esc(x.assessment || 'Assessment')}</b> <small class="muted">${esc(x.number || '')}</small>
+        <p class="muted em-small">${esc([x.subject, x.source, (x.results || []).length ? eduN((x.results || []).length, 'learner', 'learners') : '', when(x.created_at)].filter(Boolean).join(' · '))}</p></div></div>`).join('') || empty('Nothing graded yet.')}</section>${wait(waiting.filter(w => w.src === 'daftar'))}${asks('office')}`;
+    if (EDU_TAB === 'papers') body = `<section class="tile gl"><h3>Papers</h3>${(p.papers || []).map(x => `<div class="ed-row"><div><b>${esc(x.title || 'Paper')}</b> <small class="muted">${esc(x.number || '')}</small>
+        <p class="muted em-small">${esc([x.board, x.grade && 'Class ' + x.grade, x.subject, x.questions ? x.questions + ' questions' : '', x.max_marks ? x.max_marks + ' marks' : '', x.drafts ? x.drafts + ' still drafts' : 'all approved'].filter(Boolean).join(' · '))}</p></div>${tag(x.status === 'approved' ? 'ok' : 'warn', x.status === 'approved' ? 'Approved' : 'Draft')}</div>`).join('') || empty('No papers yet.')}</section>
+        <section class="tile gl"><h3>Plans and rubrics</h3>${(p.plans || []).map(x => `<div class="ed-row"><div><b>${esc(x.title || x.kind)}</b> <small class="muted">${esc(x.number || '')}</small>
+        <p class="muted em-small">${esc([x.kind, x.board, x.grade && 'Class ' + x.grade, x.subject].filter(Boolean).join(' · '))}</p></div>${tag(x.status === 'approved' ? 'ok' : 'warn', x.status === 'approved' ? 'Approved' : 'Draft')}</div>`).join('') || empty('No plans yet.')}</section>${wait(waiting.filter(w => w.src === 'pathyakram'))}${asks('papers')}`;
+    if (EDU_TAB === 'research') body = `<section class="tile gl"><h3>Projects</h3>${(r.projects || []).map(x => { const c = x.papers || {}, tot = Object.values(c).reduce((a, b) => a + b, 0);
+        return `<div class="ed-row"><div><b>${esc(x.title || 'Project')}</b> <small class="muted">${esc(x.number || '')}</small>${x.question ? `<p class="em-small">${esc(x.question)}</p>` : ''}
+        <p class="muted em-small">${esc([x.field, eduN(tot, 'paper', 'papers'), ...Object.entries(c).map(([k, v]) => `${v} ${k}`)].filter(Boolean).join(' · '))}</p></div></div>`; }).join('') || empty('No research project yet.')}
+        <p class="muted em-small">Papers come only from official scholarly APIs; every DOI is checked on Crossref. Citation style: ${esc(((r.settings || {}).style || 'apa').toUpperCase())}.</p></section>${asks('research')}`;
+    if (EDU_TAB === 'register') body = `<section class="tile gl"><h3>${esc(st.institution || 'Your institution')}</h3><p class="muted em-small">${esc([st.board, st.medium && st.medium + ' medium', st.academic_year, st.city].filter(Boolean).join(' · ') || 'Set the institution, board and year from the chat or the phone.')}</p>
+        <p>${esc(eduN(s.learners || 0, 'learner', 'learners'))}${s.consent_pending ? ` · <b>${esc(String(s.consent_pending))}</b> still need guardian consent` : ''}${s.drafts ? ` · ${esc(String(s.drafts))} questions wait for a teacher's review` : ''}</p></section>
+        <section class="tile gl"><h3>Classes</h3>${(s.classes || []).map(x => `<div class="ed-row"><div><b>${esc(x.name || ('Class ' + (x.grade || '')))}</b>${x.section ? ` <small class="muted">Section ${esc(x.section)}</small>` : ''}
+        <p class="muted em-small">${esc([x.board, (x.subjects || []).slice(0, 6).join(', '), x.teacher, eduN(x.learners || 0, 'learner', 'learners')].filter(Boolean).join(' · '))}</p></div></div>`).join('') || empty('No class yet.')}</section>${asks('register')}`;
+    if (EDU_TAB === 'lab') { const by = {}; labs.forEach(x => (by[x.group || x.field || 'Labs'] = by[x.group || x.field || 'Labs'] || []).push(x));
+      body = Object.entries(by).map(([grp, xs]) => `<section class="tile gl"><h3>${esc(grp)}</h3>${xs.map(x => `<div class="ed-row"><div><b>${esc(x.title)}</b>
+        <p class="muted em-small">${esc([x.level, x.topic].filter(Boolean).join(' · '))}</p>${x.aim ? `<p class="em-small">${esc(x.aim)}</p>` : ''}</div>
+        <button class="btn soft gs-mini" type="button" data-edlab="${esc(x.id)}">Open lab</button></div>`).join('')}</section>`).join('') || empty('The labs could not be loaded.'); }
+    el.innerHTML = `<div class="vh"><h2>Education Desk</h2><span class="muted em-sub">Your tutor, school office, paper setter, research assistant, register and science lab in one place. Anything that reaches a guardian or leaves the school waits for your tap.</span></div>
+      <div class="ed-tabs" role="tablist">${EDU_TABS.map(([k, n]) => `<button type="button" role="tab" class="ed-tab" aria-selected="${k === EDU_TAB}" data-edtab="${k}">${esc(n)}</button>`).join('')}</div>
+      ${errs.length ? `<p class="badc">${esc(errs[0])}</p>` : ''}<div class="ed-body">${body}</div>`;
+    el.querySelectorAll('[data-edtab]').forEach(b => b.addEventListener('click', () => { EDU_TAB = b.dataset.edtab; edu(el); }));
+    el.querySelectorAll('[data-edask]').forEach(b => b.addEventListener('click', () => say && say(b.dataset.edask)));
+    el.querySelectorAll('[data-edlab]').forEach(b => b.addEventListener('click', () => openView && openView('lab', b.dataset.edlab)));
+    el.querySelectorAll('[data-edyes]').forEach(b => b.addEventListener('click', async () => {
+      const yes = b.dataset.edyes === '1';
+      el.querySelectorAll(`[data-id="${CSS.escape(b.dataset.id)}"]`).forEach(x => x.disabled = true);
+      try {
+        const res = await api('POST', `/api/${b.dataset.src}/shares/${encodeURIComponent(b.dataset.id)}/decide`, {yes, hash: b.dataset.hash});
+        const links = []; (function walk(o) { if (!o || typeof o !== 'object') return; if (typeof o.link === 'string' && /^https:\/\//.test(o.link)) links.push(o); Object.values(o).forEach(walk); })(res);
+        toast(res.stale ? 'This card changed. Make a new one.' : yes ? 'Sent.' : 'Not sent.', !!res.stale);
+        await edu(el);
+        if (links.length) el.querySelector('.ed-body').insertAdjacentHTML('afterbegin', `<section class="tile gl"><h3>Open in WhatsApp to send</h3>${links.map(x =>
+          `<div class="ed-row"><span>${esc(x.to || x.learner || 'Guardian')}</span><a class="btn soft gs-mini" href="${esc(x.link)}" target="_blank" rel="noopener">Open</a></div>`).join('')}</section>`);
+      } catch (e) { toast(e.message, true); edu(el); }
+    }));
+  }
+
+  return {hub, desk, social, cad, game, arch, edu};
 };

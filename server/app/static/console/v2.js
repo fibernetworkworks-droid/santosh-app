@@ -114,17 +114,19 @@ IC.gamedesk = '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01M17.3 5H6.7A4.7 4.7 0 
 IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
 let EMP = null;
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
+const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
 function syncEmployees(hired) {                     // v0.317 a desk appears in the sidebar only while its employee is hired
   if (ME) ME.employees = hired || {};
   let moved = false;
-  for (const [key, view, label] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk']]) {   // v0.353 + Social Desk
-    const want = !!(hired && (hired[key] || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev || hired.audio_dev || hired.haptics_dev || hired.netcode_dev || hired.xr_dev || hired.sim_dev || hired.twin_arch || hired.vfx_td)))), has = NAV.some(([k]) => k === view);   // v0.420 any Game Desk role opens the Game Desk
+  for (const [key, view, label] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk'], ['edu', 'edudesk', 'Education Desk']]) {   // v0.353 + Social Desk
+    const want = !!(hired && (hired[key] || (key === 'edu' && EDU_KEYS.some(k => hired[k])) || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev || hired.audio_dev || hired.haptics_dev || hired.netcode_dev || hired.xr_dev || hired.sim_dev || hired.twin_arch || hired.vfx_td)))), has = NAV.some(([k]) => k === view);   // v0.420 any Game Desk role opens the Game Desk
     if (want && !has) NAV.splice(NAV.findIndex(([k]) => k === 'hire') + 1, 0, [view, label]);
     if (!want && has) NAV.splice(NAV.findIndex(([k]) => k === view), 1);
     if (want !== has) { moved = true; if (!want && VIEW === view) go('hire'); }
   }
   if (moved) drawNav();   // hired.social / hired.seo
 }
+IC.edudesk = '<path d="M12 6c-2.5-1.4-5.5-1.6-9-1v13c3.5-.6 6.5-.4 9 1 2.5-1.4 5.5-1.6 9-1V5c-3.5-.6-6.5-.4-9 1zM12 6v13"/>';   // v0.453 Education Desk
 IC.lab = '<path d="M9 3h6M10 3v6L4.5 18.5A2 2 0 0 0 6.2 21.5h11.6a2 2 0 0 0 1.7-3L14 9V3M7 15h10"/>';   // Prayogshala
 IC.call = '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>';
 let JOBS = [];          // v0.222 her live jobs (working / waiting) for the home row and the Today badge
@@ -139,23 +141,25 @@ function drawNav() {
   $('#tabbar').innerHTML = T.map(([k, n]) => k === 'baat' ? `<div class="mid"><button class="baat" data-v="baat" aria-label="Voice call">${svg(IC.baat).replace('currentColor', '#1B1030')}</button></div>`
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
 }
-function go(v) {
+function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
   if (v === 'bana') PN?.library($('#bana'));
   if (v === 'arena') AR?.draw($('#arena'));
-  if (v === 'lab' && !$('#labframe').src) $('#labframe').src = '/static/prayog/index.html';   // Prayogshala (public labs)
-  if (v === 'systems') ENT?.open($('#systems'), 'erp');   // v0.396 CONNECT: her own ERP / CRM address + key
+  if (v === 'lab' && arg) $('#labframe').src = '/static/prayog/lab.html?id=' + encodeURIComponent(arg);   // v0.453 a lab opened from the Education Desk
+  else if (v === 'lab' && !$('#labframe').src) $('#labframe').src = '/static/prayog/index.html';   // Prayogshala (public labs)
+  if (v === 'systems') ENT?.open($('#systems'), arg || 'erp');   // v0.453 an Enterprise employee's Open desk lands on its own role   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
   if (v === 'socialdesk') EMP?.social($('#socialdesk'));
   if (v === 'caddesk') EMP?.cad($('#caddesk'));
   if (v === 'gamedesk') EMP?.game($('#gamedesk'));
   if (v === 'archdesk') EMP?.arch($('#archdesk'));   // v0.410
+  if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
 }
@@ -240,7 +244,8 @@ async function enter() {
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
   $('#greet').innerHTML = esc(h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
   if (window.HoolaEmployees && !EMP) {           // v0.317 Employees for everyone; a desk only once its employee is hired
-    EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees});
+    EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees, open: (v, arg) => go(v, arg),   // v0.453 desks open Systems / a lab directly
+                          say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'hire')) NAV.unshift(['hire', 'AI Employees']);   // v0.443 her AI staff is the FIRST section
   }
   syncEmployees(ME.employees || {});
@@ -272,7 +277,7 @@ async function enter() {
       say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
       closeStudio: () => { if (B?.isOpen()) B.close(); },
       studio: (kind, p) => { go('chat'); const b = col.querySelector(`[data-key="${CSS.escape(kind + ':' + p.id)}"] [data-ba="studio"]`); if (b) b.click(); else toast('To open the studio, open that job’s card in the chat.'); }});
-    NAV.splice(1, 0, ['bana', 'Library']); drawNav();
+    NAV.splice(Math.max(0, NAV.findIndex(([k]) => k === 'creative')), 0, ['bana', 'Library']); drawNav();   // v0.447 just above Create, never inside the AI Employees group
   }
   const list = await loadRecents();
   const fromUrl = (location.pathname.match(/^\/console\/c\/([^/?#]+)/) || [])[1];

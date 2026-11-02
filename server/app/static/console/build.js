@@ -877,6 +877,48 @@ window.HoolaBuild = function (C) {
       const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
     };
     try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
+    // v0.455 SURAKSHIT LOGIN + SURAKSHA GATE: the ways into her app, the permissions matrix, and the security check
+    const sgbox = document.createElement('section'); sgbox.className = 'stcol stsign'; box.appendChild(sgbox);
+    const drawSign = sg => {
+      const ways = L(sg.ways), ids = sg.ids || {}, probs = sg.problems || {}, g = sg.gate || {};
+      const WAYS = [['email_password', 'Email + password'], ['phone_otp', 'Mobile number + OTP'], ['google', 'Sign in with Google'], ['apple', 'Sign in with Apple']];
+      const IDS = [['google_web_client_id', 'Google WEB client id (Android uses this one)'], ['google_ios_client_id', 'Google iOS client id'],
+                   ['apple_bundle_id', "Apple: the app's bundle id"], ['apple_service_id', 'Apple Services ID (web / Android)']];
+      sgbox.innerHTML = `<h4>Login &amp; security <span>${ways.length} way${ways.length === 1 ? '' : 's'}${g.ok === false ? ' · check failed' : ''}</span></h4>
+        <p class="stnote">How the people of your app sign in. The code or token is always checked on the server - never by the phone. You never need a client SECRET here: native sign-in does not use one.</p>
+        <form class="stapp sgset" autocomplete="off">
+          <div>${WAYS.map(([k, lbl]) => `<label class="stchk"><input type="checkbox" name="way" value="${k}"${ways.includes(k) ? ' checked' : ''}> ${esc(lbl)}</label>`).join(' ')}</div>
+          ${IDS.map(([k, lbl]) => `<div class="row"><label class="stnote" style="flex:1">${esc(lbl)}<input name="${k}" value="${esc(S(ids[k]))}" maxlength="200" placeholder="(not set)"></label></div>`).join('')}
+          <label class="stchk"><input type="checkbox" name="staff_2fa"${sg.staff_2fa ? ' checked' : ''}> Every staff account must keep the authenticator second step</label>
+          <div class="row"><button class="btn go" type="submit">Save</button><span class="stnote">${sg.otp_ready ? 'SMS provider is set up.' : 'Mobile OTP also needs a DLT-registered SMS template on the server.'}</span></div>
+        </form>
+        ${Object.values(probs).map(v => `<p class="stnote">${esc(S(v))}</p>`).join('')}
+        <h5>Security check</h5>
+        <p class="stnote">Runs on the newest build: keys inside the app, permissions, release settings, library CVEs (OSV.dev), login and data rules. A failing check blocks the store upload.</p>
+        ${g.at ? `<p class="stnote">${esc(S(g.platform))} build ${esc(S(g.build))}: <b>${g.ok ? 'passed' : g.fail + ' failed'}</b> · ${Number(g.pass) || 0} pass, ${Number(g.warn) || 0} warn, ${Number(g.not_checked) || 0} not checked${L(g.blocks).length ? '<br>' + L(g.blocks).map(x => esc(S(x))).join('<br>') : ''}</p>` : '<p class="stempty">Not run yet.</p>'}
+        <div class="row"><button class="btn" type="button" data-sgrun="android">Check the Android build</button><button class="btn" type="button" data-sgrun="ios">Check the iPhone build</button></div>
+        <div data-sgout></div>
+        ${L(sg.matrix).length ? `<h5>Who may do what</h5><div class="tw"><table><thead><tr><th>List</th><th>Add</th><th>See</th><th>Change</th><th>Delete</th><th>Staff-only fields</th></tr></thead><tbody>${L(sg.matrix).map(m => `<tr><td>${esc(S(m.label || m.list))}</td><td>${esc(S(m.create))}</td><td>${esc(S(m.read))}</td><td>${esc(S(m.update))}</td><td>${esc(S(m.delete))}</td><td>${esc([...(m.staff_set || []), ...(m.staff_see || [])].join(', '))}</td></tr>`).join('')}</tbody></table></div>` : ''}
+        ${L(sg.audit).length ? `<h5>Who changed what</h5><ul class="stlines">${L(sg.audit).slice(0, 12).map(x => `<li>${esc(S(x.at || '').slice(0, 16).replace('T', ' '))} · ${esc(S(x.by))} · ${esc(S(x.op))} ${esc(S(x.list))}${L(x.fields).length ? ' (' + esc(L(x.fields).join(', ')) + ')' : ''}</li>`).join('')}</ul>` : ''}`;
+      const f = sgbox.querySelector('.sgset');
+      f.addEventListener('submit', async e => {
+        e.preventDefault();
+        const picked = [...f.querySelectorAll('input[name=way]:checked')].map(x => x.value);
+        const idv = {}; IDS.forEach(([k]) => { idv[k] = f[k].value.trim(); });
+        try { drawSign({...sg, ...(await api('PUT', base(o) + '/sign', {ways: picked, ids: idv, staff_2fa: f.staff_2fa.checked}))}); toast('Saved. The next build carries it.'); }
+        catch (er) { toast(er.message, true); }
+      });
+      sgbox.querySelectorAll('[data-sgrun]').forEach(b => b.addEventListener('click', async () => {
+        const out = sgbox.querySelector('[data-sgout]');
+        out.textContent = 'Checking…';
+        try {
+          const v = await api('POST', base(o) + '/security/check', {platform: b.dataset.sgrun});
+          out.innerHTML = `<p class="stnote"><b>${v.ok ? 'Passed' : v.fail + ' failed'}</b> · ${v.pass} pass, ${v.warn} warn, ${v.not_checked} not checked</p>
+            <ul class="stlines">${L(v.rows).map(x => `<li><b>${esc(S(x.state))}</b> · ${esc(S(x.check))}: ${esc(S(x.say))}</li>`).join('')}</ul>`;
+        } catch (er) { out.textContent = er.message; }
+      }));
+    };
+    try { drawSign(await api('GET', base(o) + '/sign')); } catch (er) { sgbox.remove(); }
     // v0.435 PARIVAAR: the apps on this business (customer / delivery partner / partner shop / staff) + partners + web admin
     const fmbox = document.createElement('section'); fmbox.className = 'stcol stfam'; box.appendChild(fmbox);
     const drawFam = fm => {
@@ -1725,6 +1767,47 @@ window.HoolaBuild = function (C) {
     };
   }
 
+  /* v0.452 DUKAAN PLUS: sellers (her approval, commission, Route account), product approvals, Shiprocket, cart reminders */
+  async function plusBox(o, box, reload, info) {
+    let vs = {}, cr = {}, ca = {};
+    try { [vs, cr, ca] = await Promise.all([api('GET', base(o) + '/shop/vendors'), api('GET', base(o) + '/shop/courier'), api('GET', base(o) + '/shop/carts')]); } catch (er) { return; }
+    const sec = document.createElement('section'); sec.className = 'stcol';
+    sec.innerHTML = `<h4>Sellers (marketplace) <span>${L(vs.vendors).length}</span></h4>
+      <p class="stnote">Sellers apply at <code>/api/site-shop/…/seller</code> (link it from your site). You approve each seller and each of their products; their share goes through Razorpay Route.</p>
+      ${L(vs.vendors).length ? `<div class="sttbl"><table><thead><tr><th>Seller</th><th>Status</th><th>Commission %</th><th>Route account</th><th></th></tr></thead><tbody>${L(vs.vendors).map(v => `<tr data-v="${esc(S(v.id))}"><td>${esc(S(v.name))}<br><small>${esc(S(v.phone))}${v.gstin ? ' · ' + esc(S(v.gstin)) : ''}</small></td><td>${esc(S(v.status))}${v.portal ? `<br><small>seller link: ?k=${esc(S(v.portal))}</small>` : ''}</td>
+        <td><input name="commission" value="${N(v.commission)}" inputmode="numeric" aria-label="Commission"></td><td><input name="account" value="${esc(S(v.account))}" placeholder="acc_…" aria-label="Route account"></td>
+        <td><button class="btn soft" type="button" data-vs="approved">Approve / save</button> <button class="btn soft" type="button" data-vs="blocked">Block</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No sellers yet.</p>'}
+      ${L(vs.pending_products).length ? `<h4 style="margin-top:12px">Products waiting for you</h4><ul class="stmems">${L(vs.pending_products).map(p => `<li data-ps="${esc(S(p.slug))}"><span>${esc(S(p.title))} · ${esc(S(p.price))}</span><span><button class="btn soft" type="button" data-pok="1">Approve</button> <button class="btn soft" type="button" data-pok="0">Reject</button></span></li>`).join('')}</ul>` : ''}
+      <h4 style="margin-top:12px">GST bills <span>${M(info?.online).app ? 'your one invoice series (website + app)' : 'set up online payments / the app link first'}</span></h4>
+      ${M(info?.online).app ? `<form class="stapp" data-c="gst" autocomplete="off"><div class="row"><label><span>Your GSTIN</span><input name="gstin" maxlength="15"></label><label><span>Legal name</span><input name="legal_name"></label></div><div class="acts"><button class="btn soft" type="submit">Save GST details</button></div></form>` : ''}
+      <h4 style="margin-top:12px">Courier <span>${cr.on ? 'Shiprocket · pickup ' + esc(S(cr.pickup)) : 'not connected'}</span></h4>
+      <form class="stapp" data-c="courier" autocomplete="off"><div class="row"><label><span>Shiprocket API user email</span><input name="email" type="email"></label><label><span>API user password</span><input name="password" type="password" autocomplete="off"></label>
+        <label><span>Pickup nickname</span><input name="pickup" value="${esc(S(cr.pickup || 'Primary'))}"></label><label><span>Parcel kg</span><input name="weight" value="${esc(S(cr.weight || '0.5'))}" inputmode="decimal"></label></div>
+        <div class="acts"><button class="btn soft" type="submit">${cr.on ? 'Change' : 'Connect Shiprocket'}</button></div></form>
+      <h4 style="margin-top:12px">Carts to remind <span>${L(ca.carts).length}</span></h4><p class="stnote">${esc(S(ca.note))}</p>
+      ${L(ca.carts).length ? `<ul class="stmems">${L(ca.carts).map(c => `<li data-cart="${esc(S(c.id))}"><span>${esc(S(c.name))} ${esc(S(c.phone))} · ${esc(S(c.items))}</span><a class="btn soft" target="_blank" rel="noopener" href="${esc(S(c.wa))}" data-sent>Send on WhatsApp</a></li>`).join('')}</ul>` : ''}`;
+    box.appendChild(sec);
+    sec.onclick = async e => {
+      const vb = e.target.closest('[data-vs]'), tr = e.target.closest('tr[data-v]');
+      if (vb && tr) { try { await api('POST', base(o) + '/shop/vendors/' + encodeURIComponent(tr.dataset.v), {status: vb.dataset.vs, commission: tr.querySelector('[name=commission]').value, account: tr.querySelector('[name=account]').value.trim()}); reload(); } catch (er) { toast(er.message, true); } return; }
+      const pb = e.target.closest('[data-pok]'), li = e.target.closest('li[data-ps]');
+      if (pb && li) { try { await api('POST', base(o) + '/shop/products/' + encodeURIComponent(li.dataset.ps) + '/approve', {ok: pb.dataset.pok === '1'}); reload(); } catch (er) { toast(er.message, true); } return; }
+      const sent = e.target.closest('[data-sent]'), cl = e.target.closest('li[data-cart]');
+      if (sent && cl) { api('POST', base(o) + '/shop/carts/' + encodeURIComponent(cl.dataset.cart) + '/reminded').then(reload).catch(() => {}); }
+    };
+    const gf = sec.querySelector('[data-c=gst]');
+    if (gf) gf.onsubmit = async e => {
+      e.preventDefault();
+      try { await api('PUT', `/api/apps/${encodeURIComponent(S(M(info.online).app))}/gst`, {gstin: gf.gstin.value.trim(), legal_name: gf.legal_name.value.trim()}); toast('GST details saved.'); }
+      catch (er) { toast(er.message, true); }
+    };
+    sec.querySelector('[data-c=courier]').onsubmit = async e => {
+      e.preventDefault(); const f = e.target, b = f.querySelector('button'); b.disabled = true;
+      try { await api('PUT', base(o) + '/shop/courier', {email: f.email.value, password: f.password.value, pickup: f.pickup.value, weight: f.weight.value}); toast('Shiprocket connected.'); reload(); }
+      catch (er) { toast(er.message, true); b.disabled = false; } finally { f.password.value = ''; }
+    };
+  }
+
   async function loadShop(o, root) {
     const box = root.querySelector('.stshop'); if (!box) return;
     let info, ord;
@@ -1745,7 +1828,9 @@ window.HoolaBuild = function (C) {
         <td><b>${esc(S(x.number))}</b><br><small>${esc(S(x.created).slice(0, 16).replace('T', ' '))}</small></td>
         <td>${esc(S(x.name))}<br><small>${esc(S(x.phone))} · ${esc(S(x.address).slice(0, 60))} ${esc(S(x.pincode))}</small></td>
         <td>${L(x.items).map(i => `${esc(S(i.title))} × ${N(i.qty)}`).join('<br>')}</td>
-        <td>${esc(S(x.total))}${x.discount ? `<br><small>${esc(S(x.coupon))} −${esc(S(x.discount))}</small>` : ''}<br><small>${x.method === 'cod' ? 'COD' : x.method === 'online' ? (x.paid_online ? 'Online · paid (gateway)' : 'Online · not paid yet') : 'UPI'}${x.utr ? ' · ' + (x.method === 'online' ? 'pay ' : 'UTR ') + esc(S(x.utr)) : ''}</small>${x.paid_online ? `<br><button class="btn soft" type="button" data-refund="${esc(S(x.number))}">Refund…</button>` : ''}</td>
+        <td>${esc(S(x.total))}${x.discount ? `<br><small>${esc(S(x.coupon))} −${esc(S(x.discount))}</small>` : ''}<br><small>${x.method === 'cod' ? 'COD' : x.method === 'online' ? (x.paid_online ? 'Online · paid (gateway)' : 'Online · not paid yet') : 'UPI'}${x.utr ? ' · ' + (x.method === 'online' ? 'pay ' : 'UTR ') + esc(S(x.utr)) : ''}</small>${x.paid_online ? `<br><button class="btn soft" type="button" data-refund="${esc(S(x.number))}">Refund…</button>` : ''}
+        ${['confirmed', 'packed', 'shipped', 'delivered', 'cancelled'].includes(S(x.status)) ? `<br><button class="btn soft" type="button" data-inv="${esc(S(x.number))}" data-doc="${x.status === 'cancelled' ? 'credit' : ''}">${x.status === 'cancelled' ? 'Credit note' : 'GST bill'}</button>` : ''}
+        ${['confirmed', 'packed'].includes(S(x.status)) ? `<button class="btn soft" type="button" data-ship="${esc(S(x.number))}">Ship (Shiprocket)</button>` : ''}</td>
         <td>${esc(S(x.status_text))}</td>
         <td>${L(x.next).map(t => `<button class="btn soft" type="button" data-to="${esc(S(t))}">${esc(OSTEP[t] || t)}</button>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No orders yet.</p>'}</section>
       <section class="stcol"><h4>Products <span>${prods.length}</span></h4>
@@ -1776,7 +1861,22 @@ window.HoolaBuild = function (C) {
     });
     const fl = box.querySelector('[data-x=from-lists]'); if (fl) fl.addEventListener('click', e => send({from_lists: true}, e.target));
     payBox(o, box, info, () => loadShop(o, root));
+    plusBox(o, box, () => loadShop(o, root), info);
     box.addEventListener('click', async e => {
+      const iv = e.target.closest('[data-inv]');
+      if (iv) {                                          // v0.452 her GST bill / credit note (her one series)
+        try { const r = await api('GET', `${base(o)}/shop/orders/${encodeURIComponent(iv.dataset.inv)}/invoice${iv.dataset.doc ? '?doc=credit' : ''}`, undefined, {raw: true});
+          window.open(URL.createObjectURL(await r.blob()), '_blank', 'noopener'); } catch (er) { toast(er.message, true); }
+        return;
+      }
+      const sh = e.target.closest('[data-ship]');
+      if (sh) {
+        if (!confirm(`Book Shiprocket pickup for ${sh.dataset.ship}? Shiprocket charges your wallet.`)) return;
+        sh.disabled = true;
+        try { const r = await api('POST', `${base(o)}/shop/orders/${encodeURIComponent(sh.dataset.ship)}/ship`); toast(`AWB ${S(r.awb)} (${S(r.courier)})`); if (r.label) window.open(r.label, '_blank', 'noopener'); loadShop(o, root); }
+        catch (er) { toast(er.message, true); sh.disabled = false; }
+        return;
+      }
       const rf = e.target.closest('[data-refund]');
       if (rf) {                                          // v0.446 HER tap: the gateway's own refund for an online order
         const amt = prompt(`Refund order ${rf.dataset.refund}: amount in ₹ (leave empty = the full amount left)`, '');
@@ -1825,6 +1925,7 @@ window.HoolaBuild = function (C) {
     });
     if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
     if (info.linked) auditBox(o, box);
+    if (info.linked) liveBox(o, box, M(info.linked), S(info.site_id), S(info.api));
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
       let rows = [];
@@ -1893,6 +1994,66 @@ window.HoolaBuild = function (C) {
       + `<h4 style="margin-top:12px">Who can do what</h4><div class="sttbl"><table><thead><tr><th>List</th><th>Add</th><th>See</th><th>Change</th><th>Delete</th><th>Only staff see</th></tr></thead><tbody>${L(v.matrix).map(m => `<tr><td>${esc(S(m.label))}</td><td>${esc(S(m.create))}</td><td>${esc(S(m.read))}</td><td>${esc(S(m.update))}</td><td>${esc(S(m['delete']))}</td><td>${esc(L(m.staff_see).join(', '))}</td></tr>`).join('')}</tbody></table></div>`
       + `<p class="stnote">Mobile OTP login: ${v.otp ? 'on' : 'off (needs an SMS provider on the server)'}</p>`;
     box.appendChild(sec);
+  }
+
+  /* v0.459 ABHI ABHI WEBSITE: live chat (her reply = her tap), the clinic queue, browser notifications, connectors */
+  async function liveBox(o, box, link, siteId, apiBase) {
+    const A = `/api/apps/${encodeURIComponent(S(link.app))}`;
+    let q = {}, ch = {}, cn = {}, pu = {};
+    try { [q, ch, cn, pu] = await Promise.all([api('GET', A + '/queue'), api('GET', A + '/chat'), api('GET', A + '/connect'), api('GET', A + '/push').catch(() => ({}))]); }
+    catch (er) { return; }
+    const st = M(q.settings), bd = M(q.board), host = S(apiBase).replace(/\/api\/site-app\/.*$/, '');
+    const boardUrl = `${host}/api/site-app/${encodeURIComponent(siteId)}/queue/board`;
+    const sec = document.createElement('section'); sec.className = 'stlogic';
+    const packs = L(cn.packs).filter(p => !p.no_actions);
+    sec.innerHTML = `<h4>Live <span>${N(pu.browsers)} browser(s) said yes to notifications</span></h4>
+      <p class="stnote">Signed-in visitors see changes as they happen (orders, tickets, dashboards), can message your team and get browser notifications only after they tap "Notify me".</p>
+      <h4 style="margin-top:12px">Messages <span>${N(ch.unread)} new</span></h4>
+      ${L(ch.threads).length ? `<ul class="stmems">${L(ch.threads).slice(0, 20).map(t => `<li data-th="${esc(S(t.member))}"><span><b>${esc(S(t.name))}</b>${t.unread ? ' (' + N(t.unread) + ')' : ''} · ${esc(S(t.last))}</span><span class="row"><input aria-label="Reply" placeholder="Reply…"><button class="btn soft" type="button" data-rep>Send</button></span></li>`).join('')}</ul>` : '<p class="stempty">No messages yet.</p>'}
+      <h4 style="margin-top:12px">Queue <span>${st.on ? (bd.now != null ? 'now serving ' + N(bd.now) + ' · ' : '') + N(bd.waiting) + ' waiting' : 'off'}</span></h4>
+      <form class="stapp" data-q="cfg" autocomplete="off"><div class="row">
+        <label><input type="checkbox" name="on"${st.on ? ' checked' : ''}> Queue on</label><label><span>Name</span><input name="label" value="${esc(S(st.label))}"></label>
+        <label><input type="checkbox" name="self_take"${st.self_take ? ' checked' : ''}> Patients take tokens on the site</label><label><input type="checkbox" name="open"${st.open ? ' checked' : ''}> Open today</label>
+        <label><span>Minutes each</span><input name="avg_min" value="${N(st.avg_min)}" inputmode="numeric"></label><label><span>Tell when this many are ahead</span><input name="near" value="${N(st.near)}" inputmode="numeric"></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Save queue</button>${st.on ? `<a class="btn soft" target="_blank" rel="noopener" href="${esc(boardUrl)}">Open TV board</a><button class="btn go" type="button" data-q="next">Call next</button>` : ''}</div></form>
+      ${st.on ? `<form class="stapp" data-q="add" autocomplete="off"><div class="row"><label><span>Walk-in name</span><input name="name"></label><label><span>Mobile (for the SMS)</span><input name="phone" inputmode="numeric" maxlength="10"></label></div><div class="acts"><button class="btn soft" type="submit">Add token</button></div></form>
+        ${L(q.tokens).length ? `<div class="sttbl"><table><thead><tr><th>Token</th><th>Name</th><th>Status</th><th>Told</th></tr></thead><tbody>${L(q.tokens).map(k => `<tr><td>${N(k.token)}</td><td>${esc(S(k.name))}</td><td>${esc(S(k.status))}</td><td>${k.near_sent ? 'yes' : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}` : ''}
+      <h4 style="margin-top:12px">Connectors <span>${L(cn.actions).length} action(s)</span></h4>
+      <p class="stnote">Each action does nothing until you approve it; a change needs approving again. Keys are sealed and never shown again. SMS / WhatsApp use your own DLT / approved templates.</p>
+      ${L(cn.actions).length ? `<ul class="stmems">${L(cn.actions).map(a => `<li data-ak="${esc(S(a.key))}"><span><b>${esc(S(a.label))}</b> · ${esc(S(M(a.leaves).when))} · to ${esc(S(M(a.leaves).host))}${L(M(a.leaves).fields).length ? ' · sends ' + esc(L(M(a.leaves).fields).join(', ')) : ''}</span>
+        <span>${a.approved ? '<em>approved</em>' : '<button class="btn go" type="button" data-ok>Approve</button>'} <button class="btn soft" type="button" data-rm>Remove</button></span></li>`).join('')}</ul>` : ''}
+      <form class="stapp" data-c="pack" autocomplete="off"><div class="row"><label><span>Add a ready pack</span><select name="pack">${packs.map(p => `<option value="${esc(S(p.key))}">${esc(S(p.group))}: ${esc(S(p.label))}</option>`).join('')}</select></label></div><div class="stpk"></div><div class="acts"><button class="btn soft" type="submit">Add (waits for your approval)</button></div></form>
+      ${L(cn.runs).length ? `<div class="sttbl"><table><thead><tr><th>When</th><th>Action</th><th>Why</th><th>Result</th></tr></thead><tbody>${L(cn.runs).slice(0, 12).map(r => `<tr><td>${esc(new Date(S(r.at)).toLocaleString())}</td><td>${esc(S(r.action))}</td><td>${esc(S(r.trigger))}</td><td>${esc(S(r.status))} ${esc(S(r.note))}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${L(cn.hooks).length ? `<p class="stnote">Incoming (signed) webhooks: ${L(cn.hooks).map(h => `<code>${esc(host)}/api/site-app/${esc(siteId)}/hook/${esc(S(h.key))}</code>`).join(' · ')}</p>` : ''}`;
+    box.appendChild(sec);
+    const reload = () => { sec.remove(); liveBox(o, box, link, siteId, apiBase); };
+    const pf = sec.querySelector('[data-c=pack]'), pk = sec.querySelector('.stpk');
+    const fields = () => { const p = packs.find(x => S(x.key) === pf.pack.value); if (!p) return;
+      pk.innerHTML = `<p class="stnote">${esc(S(p.note))}</p><div class="row">${Object.entries(M(p.settings)).map(([k, v]) => `<label><span>${esc(k)}</span><input data-set="${esc(k)}" value="${esc(S(v))}"></label>`).join('')}
+        ${L(p.secrets).map(k => `<label><span>${esc(k)} (sealed)</span><input type="password" autocomplete="off" data-sec="${esc(k)}"></label>`).join('')}</div>`; };
+    if (pf) { pf.pack.onchange = fields; fields();
+      pf.onsubmit = async e => { e.preventDefault(); const settings = {}, secrets = {};
+        pk.querySelectorAll('[data-set]').forEach(i => { settings[i.dataset.set] = i.value.trim(); });
+        pk.querySelectorAll('[data-sec]').forEach(i => { if (i.value) secrets[i.dataset.sec] = i.value; });
+        try { const r = await api('POST', A + '/connect/pack', {pack: pf.pack.value, settings, secrets}); toast(L(r.problems).length ? L(r.problems).join(' · ') : 'Added. Approve it to switch it on.', L(r.problems).length > 0); reload(); }
+        catch (er) { toast(er.message, true); } }; }
+    const qf = sec.querySelector('[data-q=cfg]');
+    qf.onsubmit = async e => { e.preventDefault();
+      try { await api('PUT', A + '/queue', {on: qf.on.checked, label: qf.label.value, self_take: qf.self_take.checked, open: qf.open.checked, avg_min: qf.avg_min.value, near: qf.near.value}); toast('Queue saved.'); reload(); }
+      catch (er) { toast(er.message, true); } };
+    const af = sec.querySelector('[data-q=add]');
+    if (af) af.onsubmit = async e => { e.preventDefault(); try { await api('POST', A + '/queue/add', {name: af.name.value, phone: af.phone.value}); reload(); } catch (er) { toast(er.message, true); } };
+    sec.onclick = async e => {
+      if (e.target.closest('[data-q=next]')) { try { await api('POST', A + '/queue/call', {}); reload(); } catch (er) { toast(er.message, true); } return; }
+      const li = e.target.closest('li[data-ak]');
+      if (li && e.target.closest('[data-ok]')) {
+        if (!confirm('Switch this action on? It will send the listed fields to the listed address whenever its moment comes.')) return;
+        try { await api('POST', A + '/connect/actions/' + encodeURIComponent(li.dataset.ak) + '/approve', {her_tap: true}); reload(); } catch (er) { toast(er.message, true); } return; }
+      if (li && e.target.closest('[data-rm]')) { if (!confirm('Remove this action?')) return; try { await api('DELETE', A + '/connect/actions/' + encodeURIComponent(li.dataset.ak)); reload(); } catch (er) { toast(er.message, true); } return; }
+      const th = e.target.closest('li[data-th]');
+      if (th && e.target.closest('[data-rep]')) { const inp = th.querySelector('input'), v = inp.value.trim(); if (!v) return;
+        try { await api('POST', A + '/chat/' + encodeURIComponent(th.dataset.th), {text: v, her_tap: true}); toast('Sent.'); reload(); } catch (er) { toast(er.message, true); } }
+    };
   }
 
   /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */

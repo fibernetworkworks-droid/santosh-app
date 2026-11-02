@@ -1819,6 +1819,7 @@ class Santosh extends ChangeNotifier {
         break;
       case 'devsahayak_task':
       case 'devsahayak_push':
+      case 'devsahayak_plan':
       case 'devsahayak_review':
       case 'devsahayak_merge':
       case 'devsahayak_deploy':
@@ -2753,7 +2754,7 @@ String sevaCardKey(String kind, Map<String, dynamic> p) {
 String techCardKey(String kind, Map<String, dynamic> p) {
   String sub(String k) => p[k] is Map ? '${(p[k] as Map)['id'] ?? ''}' : '';
   final (group, id) = switch (kind) {
-    'devsahayak_task' || 'devsahayak_push' => ('devtask', sub('task')),
+    'devsahayak_task' || 'devsahayak_push' || 'devsahayak_plan' => ('devtask', sub('task')),
     'devsahayak_review' => ('devreview', sub('review')),
     'devsahayak_merge' || 'devsahayak_deploy' => ('devaction', sub('action')),
     'qa_run' => ('qarun', sub('run')),

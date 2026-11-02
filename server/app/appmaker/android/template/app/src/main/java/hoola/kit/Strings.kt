@@ -282,4 +282,43 @@ object Strings {
     val ptRoute get() = t("Route", "रास्ता", "रस्ता", "Raasta")
     val ptRefresh get() = t("Refresh", "ताज़ा करें", "रिफ्रेश करा", "Taaza karein")
     val ptRetry get() = t("Try again", "फिर कोशिश करें", "पुन्हा प्रयत्न करा", "Phir koshish karein")
+    // v0.455 SURAKSHIT LOGIN
+    val sgPhone get() = t("Mobile number", "मोबाइल नंबर", "मोबाइल नंबर", "Mobile number")
+    val sgSendCode get() = t("Send the code", "कोड भेजें", "कोड पाठवा", "Code bhejiye")
+    val sgSentTo get() = t("Code sent to", "कोड भेजा गया", "कोड पाठवला", "Code bheja gaya")
+    val sgCode get() = t("6-digit code", "6 अंकों का कोड", "6 अंकी कोड", "6 ank ka code")
+    val sgAgain get() = t("Change number / send again", "नंबर बदलें / फिर भेजें", "नंबर बदला / पुन्हा पाठवा", "Number badlein / phir bhejiye")
+    val sgUseEmail get() = t("Use email instead", "ईमेल से करें", "ईमेलने करा", "Email se karein")
+    val sgUsePhone get() = t("Use mobile number instead", "मोबाइल नंबर से करें", "मोबाइल नंबरने करा", "Mobile number se karein")
+    val sgConsent get() = t("I agree to the privacy notice", "मैं प्राइवेसी नोटिस से सहमत हूँ", "मी प्रायव्हसी नोटिसला सहमत आहे", "Main privacy notice se sehmat hoon")
+    val sgNever get() = t("The code goes only into this box. Nobody from this business or Hoola will ever ask you for it.",
+        "कोड सिर्फ इसी बॉक्स में डालें। यह बिज़नेस या Hoola आपसे कोड कभी नहीं माँगेगा।",
+        "कोड फक्त याच बॉक्समध्ये टाका. हा व्यवसाय किंवा Hoola तुमचा कोड कधीच मागणार नाही.",
+        "Code sirf isi box mein daaliye. Yeh business ya Hoola aapse code kabhi nahi maangega.")
+    val sgGoogle get() = t("Continue with Google", "Google से जारी रखें", "Google ने पुढे जा", "Google se aage badhiye")
+    val sgSecurity get() = t("Security", "सुरक्षा", "सुरक्षा", "Suraksha")
+    val sgLogins get() = t("Where you are signed in", "आप कहाँ साइन इन हैं", "तुम्ही कुठे साइन इन आहात", "Aap kahan sign in hain")
+    val sgThisPhone get() = t("this phone", "यही फ़ोन", "हाच फोन", "yahi phone")
+    val sgEnd get() = t("Sign out", "साइन आउट", "साइन आउट", "Sign out")
+    val sgEndAll get() = t("Sign out everywhere", "हर जगह से साइन आउट", "सर्वत्र साइन आउट", "Har jagah se sign out")
+    val sg2fa get() = t("Second step (authenticator)", "दूसरा चरण (ऑथेंटिकेटर)", "दुसरी पायरी (ऑथेंटिकेटर)", "Doosra step (authenticator)")
+    val sg2faWhy get() = t("Staff accounts can add a 6-digit code from an authenticator app as a second step.",
+        "स्टाफ अकाउंट दूसरे चरण के लिए ऑथेंटिकेटर ऐप का 6 अंकों का कोड जोड़ सकते हैं।",
+        "स्टाफ अकाउंट दुसऱ्या पायरीसाठी ऑथेंटिकेटर ॲपचा 6 अंकी कोड जोडू शकतात.",
+        "Staff account doosre step ke liye authenticator app ka 6 ank ka code jod sakte hain.")
+    val sg2faStart get() = t("Turn it on", "चालू करें", "चालू करा", "Chalu karein")
+    val sg2faAdd get() = t("Add this key in your authenticator app, then type the code it shows.",
+        "यह की अपने ऑथेंटिकेटर ऐप में डालें, फिर उसका कोड लिखें।", "ही की तुमच्या ऑथेंटिकेटर ॲपमध्ये टाका, नंतर कोड लिहा.",
+        "Yeh key apne authenticator app mein daaliye, phir uska code likhiye.")
+    val sg2faOn get() = t("Second step is on.", "दूसरा चरण चालू है।", "दुसरी पायरी चालू आहे.", "Doosra step chalu hai.")
+    val sg2faIsOn get() = t("Second step is on for this account.", "इस अकाउंट पर दूसरा चरण चालू है।", "या अकाउंटवर दुसरी पायरी चालू आहे.", "Is account par doosra step chalu hai.")
+    val sg2faOff get() = t("Turn it off", "बंद करें", "बंद करा", "Band karein")
+    val sg2faMust get() = t("The business asks every staff account to keep the second step on.",
+        "बिज़नेस चाहता है कि हर स्टाफ अकाउंट पर दूसरा चरण चालू रहे।", "व्यवसायाची अपेक्षा आहे की प्रत्येक स्टाफ अकाउंटवर दुसरी पायरी चालू राहावी.",
+        "Business chahta hai ki har staff account par doosra step chalu rahe.")
+    val sgMyData get() = t("My data", "मेरी जानकारी", "माझी माहिती", "Meri jaankari")
+    val sgMyDataWhy get() = t("Take a copy of everything this account has here.", "इस अकाउंट की सारी जानकारी की कॉपी लें।",
+        "या अकाउंटची सर्व माहितीची कॉपी घ्या.", "Is account ki saari jaankari ki copy lijiye.")
+    val sgMyDataGet get() = t("Copy my data", "मेरी जानकारी कॉपी करें", "माझी माहिती कॉपी करा", "Meri jaankari copy karein")
+    val sgMyDataReady get() = t("Copied. Paste it anywhere to keep it.", "कॉपी हो गई। कहीं पेस्ट कर लें।", "कॉपी झाली. कुठेही पेस्ट करा.", "Copy ho gayi. Kahin paste kar lijiye.")
 }

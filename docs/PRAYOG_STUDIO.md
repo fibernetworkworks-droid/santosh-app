@@ -106,3 +106,39 @@ Use a port of your own, 8801 or above. Every lab must print **PASS**. Then **loo
 view) and `<id>-1.png` (the first step) with the Read tool. Fix anything that looks wrong: floating parts, objects
 inside each other, parts off-screen, a camera view that misses the action, a fake-looking device. Run the walk once
 more. Also run `node --check exp/<id>.js`.
+
+## Rigs and variants (P1 of `docs/PRAYOG_PHYSICS_LAKH_PLAN.md`)
+
+A studio module is now a **rig**: one apparatus + procedure that serves a whole family of experiments. A variant
+is data in `server/app/prayog/families/<base-lab-id>.json`. It is a different sample, method, unknown, level or
+condition on the same set-up. `server/app/prayog/specs.py` turns it into a lab with:
+
+- id `<base>--<key>` and `lab.rig = <base>`;
+- the variant's `params` (the hidden unknown is usually one of them);
+- `lab.variant = {sample, method, unknown, note, source}`;
+- its own NCERT check, run on the NEW numbers. A variant that fails the check is never served.
+
+Family file (explicit `variants`, or a `grid` whose axes multiply; titles fill `{axis}` from each item's `label`):
+
+```json
+{"base": "screw-gauge", "chapter": "Units and Measurement",
+ "grid": {"title": "Screw gauge: diameter of {wire}", "unknown": "the diameter of {wire}",
+          "axes": {"wire": [{"key": "swg24", "label": "an SWG 24 copper wire", "sample": "Copper wire, SWG 24",
+                             "params": {"L": 0.000559}, "source": {"title": "BS 3737 / IS standard wire gauge table"}}]}}}
+```
+
+A rig must work for EVERY variant of its family:
+- Read every number from `S.lab.params` through `HoolaKernels.paramsFor(kernel, S.lab.params)`. Never hard-code
+  the base lab's numbers: scale ranges, slider limits, band positions, expected readings and text like "about 20
+  N/m" all have to follow the params.
+- Show the sample where it is real: the wire's colour, the liquid's name, the glass, the solid in the calorimeter.
+  Read it from `S.lab.variant.sample`, with a sensible default when there is no variant.
+- Keep `result().truth` = the param the student measures.
+
+Constants in a family file must be REAL, with a source: a material's density, refractive index, viscosity,
+specific heat, an SWG diameter, a fork frequency. When the value is not a property of a named material (a
+generic spring, an unknown resistor), say so in `sample`, e.g. "Unknown resistor X".
+
+Verify a family: `BASE=<id> node tools/prayog_walk.js http://localhost:<port>` must print PASS for every member.
+Serve the pages with `cd server && python -m uvicorn tools.prayog_serve:app --port <port>`. `lsl.run_check` must
+also pass for every variant; the server test suite checks it.

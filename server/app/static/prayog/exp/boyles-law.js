@@ -8,8 +8,11 @@ HoolaStudio.define('boyles-law', function (S) {
   function labParams(name) { var o = {}; (S.lab.knobs || []).forEach(function (k) { if (k.param) o[k.param] = k.value * (k.k || 1); });
     var lp = S.lab.params || {}; Object.keys(lp).forEach(function (key) { o[key] = lp[key]; }); return HK.paramsFor(name, o); }
   var p = labParams('boyle');
-  var VMIN = 20, VMAX = 200, PMAX = 600;
-  var st = { V: Math.round(p.V * 1e6), target: 60, clip: false, shownP: 0 };
+  var VMAX = 200, PMAX = 600, NRT = p.n * p.R * p.Temp;
+  // the smallest volume keeps the gauge on scale (below 95 % of 600 kPa); never below 20 mL, the end of the printed scale
+  var VMIN = Math.max(20, Math.ceil(NRT / (0.95 * PMAX * 1000) * 1e6 / 10) * 10);
+  var V0 = Math.max(VMIN, Math.min(VMAX, Math.round(p.V * 1e6))), P0 = Math.round(NRT / (V0 * 1e-6) / 1000), TC = Math.round(p.Temp - 273.15);
+  var st = { V: V0, target: 60, clip: false, shownP: 0 };
   function view() { p.V = st.V * 1e-6; return K.view({}, p); }
   function readP() { return Math.round(view().P_kPa); }             // gauge read to the nearest 1 kPa
 
@@ -93,7 +96,7 @@ HoolaStudio.define('boyles-law', function (S) {
   var pad = S.mesh(new T.BoxGeometry(0.012, 0.007, 0.014), M.red); pad.position.set(0, 0, 0.024); clip.add(pad);
   function showClip() { var s = st.clip ? 0.0068 : 0.013; jawA.position.x = -s; jawB.position.x = s; jawA.rotation.y = st.clip ? 0 : 0.18; jawB.rotation.y = st.clip ? 0 : -0.18; }
   showClip();
-  var room = S.label('Room 27 °C · keep the barrel out of the sun', { w: 0.13, ratio: 0.09, color: '#3c3c3c', bg: '#f3efe2' }); room.rotation.x = -Math.PI / 2 + 0.25; room.position.set(GX, 0.047, GZ + 0.04); S.scene.add(room);
+  var room = S.label(P0 < 95 || P0 > 108 ? 'Room ' + TC + ' °C · air ' + P0 + ' kPa · out of the sun' : 'Room ' + TC + ' °C · keep the barrel out of the sun', { w: 0.13, ratio: 0.09, color: '#3c3c3c', bg: '#f3efe2' }); room.rotation.x = -Math.PI / 2 + 0.25; room.position.set(GX, 0.047, GZ + 0.04); S.scene.add(room);
 
   S.addApparatus('syr', syr, 'Glass syringe', 'Holds a fixed mass of air. Printed scale in mL: 1 cm of plunger travel = 10 mL.');
   S.addApparatus('plunger', plunger, 'Plunger', 'Push it down to squeeze the air, pull it up to let it expand.');
@@ -140,8 +143,8 @@ HoolaStudio.define('boyles-law', function (S) {
     theory: { principle: 'For a fixed mass of gas at constant temperature, the pressure is inversely proportional to the volume. Squeeze the air into half the room and its molecules hit the walls twice as often.',
       formula: 'P V = constant  (= nRT)', formulaNote: 'so P against 1/V is a straight line through the origin; its slope is PV',
       more: ['A graph of P against V is a rectangular hyperbola. In kPa and litres, the product P × V comes out directly in joules (1 kPa · L = 1 J).'],
-      precautions: 'Close the pinch clip before you move the plunger, so no air leaks. Move the plunger slowly and wait a few seconds: a quick squeeze warms the air. Read the gauge with your eye square to the dial. Do not take the volume below 20 mL.' },
-    book: { title: 'Expt. — Boyle\'s Law', lines: ['Aim: to verify PV = constant at constant T.', 'Air in a glass syringe, room 27 °C', 'Gauge: absolute pressure, kPa', 'P ∝ 1/V  →  PV = nRT', '1 kPa × 1 L = 1 J'],
+      precautions: 'Close the pinch clip before you move the plunger, so no air leaks. Move the plunger slowly and wait a few seconds: a quick squeeze warms the air. Read the gauge with your eye square to the dial. Do not take the volume below ' + VMIN + ' mL.' },
+    book: { title: 'Expt. — Boyle\'s Law', lines: ['Aim: to verify PV = constant at constant T.', 'Air in a glass syringe, room ' + TC + ' °C' + (P0 < 95 || P0 > 108 ? ', air ' + P0 + ' kPa' : ''), 'Gauge: absolute pressure, kPa', 'P ∝ 1/V  →  PV = nRT', '1 kPa × 1 L = 1 J'],
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'V (mL)', get: function (r) { return String(r.V_mL); } },
         { label: 'P (kPa)', get: function (r) { return String(r.P_kPa); } }, { label: '1/V (L⁻¹)', get: function (r) { return (1000 / r.V_mL).toFixed(2); } },
         { label: 'PV (J)', get: function (r) { return (r.P_kPa * r.V_mL / 1000).toFixed(2); } }] },
@@ -157,7 +160,7 @@ HoolaStudio.define('boyles-law', function (S) {
     steps: [
       { id: 'trap', title: 'Trap the air', view: 'clip', render: function (u) {
           u.h2('Trap a fixed mass of air');
-          u.p('Before you move the plunger, close the pinch clip on the rubber tube so no air can get in or out. At 100 mL the gauge shows the room pressure, about 100 kPa.');
+          u.p('Before you move the plunger, close the pinch clip on the rubber tube so no air can get in or out. At ' + V0 + ' mL the gauge shows the room pressure, about ' + P0 + ' kPa.');
           u.task('Close the pinch clip', st.clip, st.clip ? 'Closed: the air is trapped' : 'Open: air can escape')
             .add(u.button(st.clip ? 'Closed' : 'Close the pinch clip', function () { closeClip(); }, !st.clip, st.clip || S.hand.busy));
           u.live(function () { return 'V = ' + st.V + ' mL · P = ' + readP() + ' kPa'; });
@@ -167,7 +170,7 @@ HoolaStudio.define('boyles-law', function (S) {
         auto: function () { return st.clip ? Promise.resolve() : closeClip(); } },
       { id: 'readings', title: 'Readings', view: 'work', render: function (u) {
           u.h2('Change V, read P');
-          u.p('Choose a volume, let the hand move the plunger, wait for the needle to settle, then record P and V. Take at least 5 readings from 40 to 200 mL.');
+          u.p('Choose a volume, let the hand move the plunger, wait for the needle to settle, then record P and V. Take at least 5 readings from ' + Math.max(40, VMIN) + ' to ' + VMAX + ' mL.');
           u.slider('Volume to set', VMIN, VMAX, 5, function () { return st.target; }, function (v) { st.target = v; }, 'mL', 0);
           u.row(u.button(S.hand.busy ? 'Moving…' : 'Move the plunger', function () { movePlunger(st.target); S.render(); }, true, S.hand.busy || !st.clip),
             u.button('Record P and V', function () { record(); }, false, S.hand.busy));
@@ -179,7 +182,8 @@ HoolaStudio.define('boyles-law', function (S) {
         },
         ok: function () { var vs = S.rows.map(function (r) { return r.V_mL; }); return S.rows.length >= 5 && Math.max.apply(null, vs) >= 2 * Math.min.apply(null, vs); },
         auto: function () {
-          return [100, 80, 60, 50, 40, 140, 200].reduce(function (pr, v) { return pr.then(function () {
+          var vs = [100, 80, 60, 50, 40, 140, 200].filter(function (v) { return v >= VMIN; }); [160, 180, 120].forEach(function (v) { if (vs.length < 7) vs.push(v); });
+          return vs.reduce(function (pr, v) { return pr.then(function () {
             return (st.V === v ? Promise.resolve() : movePlunger(v)).then(function () { S.advance(1); record(); }); }); }, Promise.resolve()); } },
     ],
 

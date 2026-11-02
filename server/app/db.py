@@ -772,6 +772,7 @@ def init_db(url: str | None = None):
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
     from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
+    from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
@@ -935,6 +936,7 @@ def init_db(url: str | None = None):
     from .gamedesk import editor as _gameeditor  # noqa: F401  (v0.425 editor tokens + MCP)
     from .gamedesk import liveops as _gameliveops  # noqa: F401  (v0.428 live ops: crash groups)
     from .gamedesk import bigstudio as _gamebig  # noqa: F401  (v0.433 big-studio mode: Unity / Unreal projects)
+    from .gamedesk import arena as _gamearena  # noqa: F401  (v0.447 Game Arena: runs, items, duels)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

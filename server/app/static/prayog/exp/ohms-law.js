@@ -5,12 +5,24 @@ HoolaStudio.define('ohms-law', function (S) {
   var T = S.T, M = S.M, K = window.HoolaKernels.K.circuit, CFG = S.lab.cfg;
   var p = window.HoolaKernels.paramsFor('circuit', S.lab.params);
   var RH_MAX = 20, RH_LEN = 0.3;
+  // the sample on the bench (a family variant names it) and meter ranges that follow the lab's own numbers
+  var V_ = S.lab.variant || {}, SAMPLE = V_.sample || '';
+  function pick(list, need) { for (var i = 0; i < list.length; i++) if (list[i] >= need - 1e-9) return list[i]; return list[list.length - 1]; }
+  var EB = p.Eb, VMAX = pick([1, 3, 5, 10, 15], EB), AMAX = pick([0.5, 1, 2, 3, 5], EB / (p.Rx + 0.5));
+  var ARES = AMAX / 100, VRES = VMAX / 300;          // read to half a division: 0-1 A -> 0.01 A, 0-3 V -> 0.01 V
+  function fmtN(v) { return String(+v.toFixed(2)); }
+  var ATXT = AMAX < 1 ? Math.round(AMAX * 1000) + ' mA' : fmtN(AMAX) + ' A', VTXT = fmtN(VMAX) + ' V';
+  var IDIG = ARES < 0.01 - 1e-12 ? 3 : 2;
   var st = { traced: false, zero: false, key: false, f: 1, target: 1 };
   var view = {};
   function solve() { p.key = st.key ? 1 : 0; p.Rh = RH_MAX * st.f; view = K.view(K.init(p, CFG), p, CFG); }
   function I() { return st.key ? view.I_AM : 0; }
   function V() { return st.key ? view.V_VM : 0; }
   function r2(v) { return Math.round(v * 100) / 100; }
+  function rI(v) { return Math.round(v / ARES) * ARES; }
+  function rV(v) { return Math.round(v / VRES) * VRES; }
+  function fI(v) { return rI(v).toFixed(IDIG); }
+  function fV(v) { return rV(v).toFixed(2); }
 
   // ---------- helpers (kept inside this module)
   function wpt(o, x, y, z) { o.updateMatrixWorld(true); return o.localToWorld(new T.Vector3(x || 0, y || 0, z || 0)); }
@@ -21,10 +33,10 @@ HoolaStudio.define('ohms-law', function (S) {
     pts.push([b.x, b.y + up, b.z], [b.x, b.y, b.z]); var w = S.wire(pts, color); if (color === 'black') { w.material.color.setHex(0x111113); w.material.roughness = 0.8; } return w;
   }
 
-  // ---------- battery eliminator (3 V DC)
+  // ---------- battery eliminator (Eb DC)
   var PB = [-0.66, -0.5];
   var pb = S.powerBox([PB[0], 0, PB[1]], 'BATTERY ELIMINATOR');
-  var pbV = S.label('3 V DC', { w: 0.05, ratio: 0.3, color: '#f2f2f2' }); pbV.position.set(PB[0] + 0.045, 0.034, PB[1] + 0.0405); S.scene.add(pbV);
+  var pbV = S.label(fmtN(EB) + ' V DC', { w: 0.05, ratio: 0.3, color: '#f2f2f2' }); pbV.position.set(PB[0] + 0.045, 0.034, PB[1] + 0.0405); S.scene.add(pbV);
   var lamp = S.mesh(new T.SphereGeometry(0.004, 12, 10), new T.MeshStandardMaterial({ color: 0x3a0b08, emissive: 0x000000, roughness: 0.3 }));
   lamp.position.set(PB[0] - 0.05, 0.035, PB[1] + 0.041); S.scene.add(lamp);
   var pbPlus = { at: new T.Vector3(PB[0] + 0.04, 0.109, PB[1]) }, pbMinus = { at: new T.Vector3(PB[0] - 0.04, 0.109, PB[1]) };
@@ -50,8 +62,8 @@ HoolaStudio.define('ohms-law', function (S) {
   }
 
   // ---------- ammeter (series) and voltmeter (across the coil)
-  var am = S.meter({ min: 0, max: 1, ticks: 10, unit: 'A', symbol: 'A', caption: 'DC AMMETER 0–1 A', pos: [-0.16, 0, -0.22] });
-  var vm = S.meter({ min: 0, max: 3, ticks: 6, unit: 'V', symbol: 'V', caption: 'DC VOLTMETER 0–3 V', pos: [0.3, 0, -0.73] });
+  var am = S.meter({ min: 0, max: AMAX, ticks: AMAX === 0.5 ? 5 : AMAX === 1 ? 10 : AMAX === 3 ? 6 : AMAX === 5 ? 5 : 4, unit: 'A', symbol: 'A', caption: 'DC AMMETER 0–' + fmtN(AMAX) + ' A', pos: [-0.16, 0, -0.22] });
+  var vm = S.meter({ min: 0, max: VMAX, ticks: VMAX === 1 ? 10 : VMAX === 3 ? 6 : 5, unit: 'V', symbol: 'V', caption: 'DC VOLTMETER 0–' + VTXT, pos: [0.3, 0, -0.73] });
   var amP = { at: wpt(am, 0.035, 0.07, -0.03) }, amM = { at: wpt(am, -0.035, 0.07, -0.03) };
   var vmP = { at: wpt(vm, 0.035, 0.07, -0.03) }, vmM = { at: wpt(vm, -0.035, 0.07, -0.03) };
 
@@ -82,13 +94,15 @@ HoolaStudio.define('ohms-law', function (S) {
   var former = S.mesh(new T.CylinderGeometry(0.0085, 0.0085, CL + 0.02, 28), M.white); former.rotation.z = Math.PI / 2; former.position.y = 0.034; coil.add(former);
   var hpts = [], turns = 26;
   for (var i = 0; i <= turns * 24; i++) { var t = i / (turns * 24), a = t * turns * Math.PI * 2; hpts.push(new T.Vector3(-CL / 2 + 0.006 + t * (CL - 0.012), 0.034 + 0.0095 * Math.cos(a), 0.0095 * Math.sin(a))); }
-  var wireM = new T.MeshStandardMaterial({ color: 0xb7a48c, roughness: 0.28, metalness: 0.9 });
+  var wireCol = /nichrome/i.test(SAMPLE) ? 0xb4b2ae : /constantan|eureka/i.test(SAMPLE) ? 0xc9b49a : /manganin/i.test(SAMPLE) ? 0xb08f72 : 0xb7a48c;
+  var wireM = new T.MeshStandardMaterial({ color: wireCol, roughness: 0.28, metalness: 0.9 });
   coil.add(S.mesh(new T.TubeGeometry(new T.CatmullRomCurve3(hpts), turns * 24, 0.0009, 6, false), wireM));
   var cT1x = -(CL / 2 + 0.03), cT2x = CL / 2 + 0.03;
   [[hpts[0], cT1x], [hpts[hpts.length - 1], cT2x]].forEach(function (e) { var s0 = e[0];
     var c = new T.CatmullRomCurve3([s0.clone(), new T.Vector3(s0.x + Math.sign(e[1]) * 0.008, 0.03, s0.z + 0.004), new T.Vector3(e[1], 0.026, 0.002)]);
     coil.add(S.mesh(new T.TubeGeometry(c, 16, 0.0009, 6, false), wireM)); });
-  var ctag = S.label('R  (unknown)', { w: 0.07, ratio: 0.2, color: '#f3ead2' }); ctag.rotation.x = -Math.PI / 2; ctag.position.set(0, 0.0165, 0.028); coil.add(ctag);
+  var ctag = SAMPLE ? S.label(SAMPLE + '  ·  R unknown', { w: 0.17, ratio: Math.min(0.09, 2.4 / (SAMPLE.length + 13)), px: 1024, color: '#f3ead2' }) : S.label('R  (unknown)', { w: 0.07, ratio: 0.2, color: '#f3ead2' });
+  ctag.rotation.x = -Math.PI / 2; ctag.position.set(0, 0.0165, 0.028); coil.add(ctag);
   coil.position.set(CB[0], 0, CB[1]); S.contact(CL + 0.16, 0.14, CB[0], CB[1], 0.5);
   var cT1 = post(CB[0] + cT1x, 0.016, CB[1] + 0.002), cT2 = post(CB[0] + cT2x, 0.016, CB[1] + 0.002);
 
@@ -101,12 +115,12 @@ HoolaStudio.define('ohms-law', function (S) {
   lead(vmP.at, cT2.at, 'red', [[0.37, -0.68], [0.42, -0.6]]);
   lead(vmM.at, cT1.at, 'black', [[0.22, -0.68], [0.16, -0.58]]);
 
-  S.addApparatus('pb', pb, 'Battery eliminator (3 V DC)', 'Gives a steady 3 V. Its + terminal (red) goes towards the key and the ammeter\'s + terminal.');
+  S.addApparatus('pb', pb, 'Battery eliminator (' + fmtN(EB) + ' V DC)', 'Gives a steady ' + fmtN(EB) + ' V. Its + terminal (red) goes towards the key and the ammeter\'s + terminal.');
   S.addApparatus('key', key, 'Plug key K', 'Closes the circuit when the brass plug is pushed in. Take it out between readings so the wire does not heat up.');
-  S.addApparatus('am', am, 'Ammeter (0–1 A)', 'Connected in series, + to the battery side. Very low resistance. Least count 0.02 A; read to 0.01 A.');
+  S.addApparatus('am', am, 'Ammeter (0–' + fmtN(AMAX) + ' A)', 'Connected in series, + to the battery side. Very low resistance. Least count ' + fmtN(ARES * 2) + ' A; read to ' + fmtN(ARES) + ' A.');
   S.addApparatus('rh', rh, 'Rheostat (20 Ω)', 'A variable resistor in series. Sliding the contact changes the current in the circuit.');
-  S.addApparatus('coil', coil, 'Resistance wire (coil)', 'The unknown resistance R: a coil of resistance wire between two terminals.');
-  S.addApparatus('vm', vm, 'Voltmeter (0–3 V)', 'Connected in parallel across the coil. Very high resistance, so it takes almost no current.');
+  S.addApparatus('coil', coil, SAMPLE ? 'Resistance wire: ' + SAMPLE : 'Resistance wire (coil)', 'The unknown resistance R: a coil of resistance wire between two terminals.');
+  S.addApparatus('vm', vm, 'Voltmeter (0–' + VTXT + ')', 'Connected in parallel across the coil. Very high resistance, so it takes almost no current.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
 
   // the record book moves to the front right (book.at): drop the engine's shadow left at its default place
@@ -117,15 +131,16 @@ HoolaStudio.define('ohms-law', function (S) {
   function record() {
     if (S.hand.busy) { S.say('Wait for the hand to finish.'); return false; }
     if (!st.key) { S.say('The key is open, so no current flows. Insert the plug key first.'); return false; }
-    var i = r2(I()), v = r2(V());
+    var i = +fI(I()), v = +fV(V());
     if (i <= 0) { S.say('The ammeter reads zero. Check the key.'); return false; }
-    if (S.rows.some(function (r) { return Math.abs(r.I - i) < 0.005; })) { S.say('You already have a reading at I = ' + i.toFixed(2) + ' A. Move the rheostat contact for a new current.'); return false; }
+    if (I() > AMAX * 1.02) { S.say('The ammeter is beyond its range (' + fmtN(AMAX) + ' A). Slide the contact back towards end B.'); return false; }
+    if (S.rows.some(function (r) { return Math.abs(r.I - i) < ARES / 2; })) { S.say('You already have a reading at I = ' + i.toFixed(IDIG) + ' A. Move the rheostat contact for a new current.'); return false; }
     if (S.rows.length >= 12) { S.say('Twelve readings are plenty. Go on to the graph.'); return false; }
     S.addRow({ V: v, I: i });
-    S.say('Written in your record book: V = ' + v.toFixed(2) + ' V, I = ' + i.toFixed(2) + ' A.');
+    S.say('Written in your record book: V = ' + v.toFixed(2) + ' V, I = ' + i.toFixed(IDIG) + ' A.');
     return true;
   }
-  function trace() { st.traced = true; S.focus('am'); S.say('Battery +, key, ammeter (+ to −), rheostat, coil, back to battery −: all in series. The voltmeter is across the coil, + to the side the current enters.'); S.render(); }
+  function trace() { st.traced = true; S.focus('am'); S.say((SAMPLE ? 'The coil is ' + SAMPLE + '. ' : '') + 'Battery +, key, ammeter (+ to −), rheostat, coil, back to battery −: all in series. The voltmeter is across the coil, + to the side the current enters.'); S.render(); }
   function zeroCheck() {
     if (st.key) { S.say('Take the key out first: zero is checked with no current.'); return; }
     st.zero = true; S.focus('vm'); S.say('With the key open both needles rest exactly on zero: no zero error.'); S.render();
@@ -141,8 +156,8 @@ HoolaStudio.define('ohms-law', function (S) {
       more: ['The ammeter goes in series with the conductor (very low resistance); the voltmeter goes in parallel across it (very high resistance). The rheostat changes the current, and for each setting you record V and I. A graph of V against I is a straight line through the origin.'],
       precautions: 'Connections must be tight and clean. The + terminals of both meters go towards the + of the battery. Start with the rheostat at its maximum resistance. Take the plug out of the key between readings so the wire does not heat up.' },
     book: { title: "Expt. — Ohm's law", at: [0.66, 0.08, -0.1],
-      lines: ['Aim: to verify Ohm\'s law and find R of the given wire.', 'Ammeter: 0–1 A, read to 0.01 A', 'Voltmeter: 0–3 V, read to 0.01 V', 'R = V / I  = slope of V–I graph', 'Precautions: start at max rheostat R,', 'key out between readings.'],
-      columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'I (A)', get: function (r) { return r.I.toFixed(2); } },
+      lines: ['Aim: to verify Ohm\'s law and find R of the given wire.'].concat(SAMPLE ? ['Wire: ' + SAMPLE] : []).concat([ 'Ammeter: 0–' + fmtN(AMAX) + ' A, read to ' + fmtN(ARES) + ' A', 'Voltmeter: 0–' + VTXT + ', read to ' + fmtN(VRES < 0.01 ? 0.01 : VRES) + ' V', 'R = V / I  = slope of V–I graph', 'Precautions: start at max rheostat R,', 'key out between readings.']),
+      columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'I (A)', get: function (r) { return r.I.toFixed(IDIG); } },
         { label: 'V (V)', get: function (r) { return r.V.toFixed(2); } }, { label: 'V/I (Ω)', get: function (r) { return (r.V / r.I).toFixed(2); } }] },
     graph: { x: function (r) { return r.I; }, y: function (r) { return r.V; }, xlabel: 'I (A)', ylabel: 'V (V)', x0: 0, y0: 0,
       line: function (pts) { var k = S.fit.origin(pts); return function (x) { return k * x; }; } },
@@ -152,8 +167,8 @@ HoolaStudio.define('ohms-law', function (S) {
     chips: ['Why is the ammeter in series?', 'Why does the graph pass through the origin?', 'What does the rheostat do?', 'Check my readings', 'Why should the key be removed between readings?'],
     viva: [['Why should the voltmeter have a very high resistance?', ['So it draws almost no current from the circuit', 'So it reads larger voltages', 'So the ammeter reads correctly only then'], 0, 'A voltmeter in parallel must not change the current it is measuring across.'],
       ['The V–I graph of a metallic wire at constant temperature is', ['A straight line through the origin', 'A curve bending upwards', 'A horizontal line'], 0, 'V is proportional to I, so the graph is a straight line through the origin.']],
-    askState: function () { return { key_closed: st.key, rheostat_contact_percent: Math.round(st.f * 100), ammeter_A: r2(I()), voltmeter_V: r2(V()),
-      ammeter_range: '0-1 A', voltmeter_range: '0-3 V', readings_taken: S.rows.length }; },
+    askState: function () { return { key_closed: st.key, rheostat_contact_percent: Math.round(st.f * 100), ammeter_A: +fI(I()), voltmeter_V: +fV(V()),
+      ammeter_range: '0-' + fmtN(AMAX) + ' A', voltmeter_range: '0-' + VTXT, battery_V: EB, wire: SAMPLE || 'resistance wire coil', readings_taken: S.rows.length }; },
 
     steps: [
       { id: 'check', title: 'Check circuit', view: 'circuit', render: function (u) {
@@ -175,7 +190,7 @@ HoolaStudio.define('ohms-law', function (S) {
             u.button(st.key ? 'Key is in' : 'Insert the plug', function () {
               if (st.f < 0.9) { S.say('Slide the rheostat contact back to end B (maximum resistance) before closing the key.'); return; }
               setKey(true); }, true, st.key || S.hand.busy)));
-          u.live(function () { return 'Ammeter ' + r2(I()).toFixed(2) + ' A · Voltmeter ' + r2(V()).toFixed(2) + ' V'; });
+          u.live(function () { return 'Ammeter ' + fI(I()) + ' A · Voltmeter ' + fV(V()) + ' V'; });
           u.next('Next: take readings', st.key);
         },
         ok: function () { return st.key; },
@@ -186,9 +201,9 @@ HoolaStudio.define('ohms-law', function (S) {
           u.slider('Sliding contact from end A', 0, 100, 1, function () { return Math.round(st.target * 100); }, function (v) { st.target = v / 100; }, '%', 0);
           u.row(u.button('Slide the contact', function () { slide(st.target); }, true, S.hand.busy),
             u.button(st.key ? 'Take the key out' : 'Insert the key', function () { setKey(!st.key); }, false, S.hand.busy));
-          u.live(function () { return 'Contact at ' + Math.round(st.f * 100) + '% · Ammeter ' + r2(I()).toFixed(2) + ' A · Voltmeter ' + r2(V()).toFixed(2) + ' V'; });
+          u.live(function () { return 'Contact at ' + Math.round(st.f * 100) + '% · Ammeter ' + fI(I()) + ' A · Voltmeter ' + fV(V()) + ' V'; });
           u.row(u.button('Record this reading', function () { record(); }, true, !st.key));
-          u.note('Moving the contact towards end A puts less of the rheostat in the circuit, so the current rises. Keep I under 0.6 A.');
+          u.note('Moving the contact towards end A puts less of the rheostat in the circuit, so the current rises. Keep I under ' + fmtN(0.6 * AMAX) + ' A.');
           u.h3('Observation table'); u.table();
           u.next('Next: plot V against I', S.rows.length >= 5);
           if (S.rows.length < 5) u.p(S.rows.length + ' of at least 5 readings recorded.');
@@ -203,7 +218,7 @@ HoolaStudio.define('ohms-law', function (S) {
       solve();
       am.set(I()); vm.set(V());
       lamp.material.emissive.setRGB(0.9, 0.08, 0.04);
-      hudI.set(r2(I()).toFixed(2) + ' A'); hudV.set(r2(V()).toFixed(2) + ' V'); hudK.set(st.key ? 'Closed' : 'Open');
+      hudI.set(fI(I()) + ' A'); hudV.set(fV(V()) + ' V'); hudK.set(st.key ? 'Closed' : 'Open');
     },
   };
 });

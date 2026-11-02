@@ -1,0 +1,126 @@
+{
+  "base": "sonometer",
+  "chapter": "Waves",
+  "variants": [
+    {
+      "key": "steel-swg22",
+      "title": "Sonometer: mass per unit length of a steel (music wire) wire, SWG 22",
+      "sample": "Steel (music wire) wire, SWG 22 (0.711 mm diameter)",
+      "method": "Resonance with tuning forks, μ = T / (4 l² f²)",
+      "unknown": "the linear mass density μ of the steel (music wire) wire",
+      "params": {
+        "mu": 0.0031167
+      },
+      "note": "μ = ρ π d² / 4 = 7850 x π x (0.711 mm)² / 4 = 3.117 g/m. With 4 kg on the hanger the 256 Hz fork resonates near l = 22 cm.",
+      "source": {
+        "title": "BS 3737 Standard Wire Gauge: SWG 22 = 0.711 mm",
+        "note": "CRC Handbook / ASTM A228 music wire: density of carbon steel 7.85 g/cm3"
+      }
+    },
+    {
+      "key": "steel-swg24",
+      "title": "Sonometer: mass per unit length of a steel (music wire) wire, SWG 24",
+      "sample": "Steel (music wire) wire, SWG 24 (0.559 mm diameter)",
+      "method": "Resonance with tuning forks, μ = T / (4 l² f²)",
+      "unknown": "the linear mass density μ of the steel (music wire) wire",
+      "params": {
+        "mu": 0.0019266
+      },
+      "note": "μ = ρ π d² / 4 = 7850 x π x (0.559 mm)² / 4 = 1.927 g/m. With 4 kg on the hanger the 256 Hz fork resonates near l = 28 cm.",
+      "source": {
+        "title": "BS 3737 Standard Wire Gauge: SWG 24 = 0.559 mm",
+        "note": "CRC Handbook / ASTM A228 music wire: density of carbon steel 7.85 g/cm3"
+      }
+    },
+    {
+      "key": "steel-swg26",
+      "title": "Sonometer: mass per unit length of a steel (music wire) wire, SWG 26",
+      "sample": "Steel (music wire) wire, SWG 26 (0.457 mm diameter)",
+      "method": "Resonance with tuning forks, μ = T / (4 l² f²)",
+      "unknown": "the linear mass density μ of the steel (music wire) wire",
+      "params": {
+        "mu": 0.0012876
+      },
+      "note": "μ = ρ π d² / 4 = 7850 x π x (0.457 mm)² / 4 = 1.288 g/m. With 4 kg on the hanger the 256 Hz fork resonates near l = 34 cm.",
+      "source": {
+        "title": "BS 3737 Standard Wire Gauge: SWG 26 = 0.457 mm",
+        "note": "CRC Handbook / ASTM A228 music wire: density of carbon steel 7.85 g/cm3"
+      }
+    },
+    {
+      "key": "steel-swg28",
+      "title": "Sonometer: mass per unit length of a steel (music wire) wire, SWG 28",
+      "sample": "Steel (music wire) wire, SWG 28 (0.376 mm diameter)",
+      "method": "Resonance with tuning forks, μ = T / (4 l² f²)",
+      "unknown": "the linear mass density μ of the steel (music wire) wire",
+      "params": {
+        "mu": 0.0008716
+      },
+      "note": "μ = ρ π d² / 4 = 7850 x π x (0.376 mm)² / 4 = 0.872 g/m. With 4 kg on the hanger the 256 Hz fork resonates near l = 41 cm.",
+      "source": {
+        "title": "BS 3737 Standard Wire Gauge: SWG 28 = 0.376 mm",
+        "note": "CRC Handbook / ASTM A228 music wire: density of carbon steel 7.85 g/cm3"
+      }
+    },
+    {
+      "key": "steel-swg30",
+      "title": "Sonometer: mass per unit length of a steel (music wire) wire, SWG 30",
+      "sample": "Steel (music wire) wire, SWG 30 (0.315 mm diameter)",
+      "method": "Resonance with tuning forks, μ = T / (4 l² f²)",
+      "unknown": "the linear mass density μ of the steel (music wire) wire",
+      "params": {
+        "mu": 0.0006118
+      },
+      "note": "μ = ρ π d² / 4 = 7850 x π x (0.315 mm)² / 4 = 0.612 g/m. With 4 kg on the hanger the 256 Hz fork resonates near l = 49 cm.",
+      "source": {
+        "title": "BS 3737 Standard Wire Gauge: SWG 30 = 0.315 mm",
+        "note": "CRC Handbook / ASTM A228 music wire: density of carbon steel 7.85 g/cm3"
+      }
+    },
+    {
+      "key": "brass-swg24",
+      "title": "Sonometer: mass per unit length of a brass wire, SWG 24",
+      "sample": "Brass wire, SWG 24 (0.559 mm diameter)",
+      "method": "Resonance with tuning forks, μ = T / (4 l² f²)",
+      "unknown": "the linear mass density μ of the brass wire",
+      "params": {
+        "mu": 0.0020861
+      },
+      "note": "μ = ρ π d² / 4 = 8500 x π x (0.559 mm)² / 4 = 2.086 g/m. With 4 kg on the hanger the 256 Hz fork resonates near l = 27 cm.",
+      "source": {
+        "title": "BS 3737 Standard Wire Gauge: SWG 24 = 0.559 mm",
+        "note": "Engineering ToolBox, Metals and alloys - densities: brass 8.4-8.73 g/cm3 (8.5 used)"
+      }
+    },
+    {
+      "key": "brass-swg26",
+      "title": "Sonometer: mass per unit length of a brass wire, SWG 26",
+      "sample": "Brass wire, SWG 26 (0.457 mm diameter)",
+      "method": "Resonance with tuning forks, μ = T / (4 l² f²)",
+      "unknown": "the linear mass density μ of the brass wire",
+      "params": {
+        "mu": 0.0013943
+      },
+      "note": "μ = ρ π d² / 4 = 8500 x π x (0.457 mm)² / 4 = 1.394 g/m. With 4 kg on the hanger the 256 Hz fork resonates near l = 33 cm.",
+      "source": {
+        "title": "BS 3737 Standard Wire Gauge: SWG 26 = 0.457 mm",
+        "note": "Engineering ToolBox, Metals and alloys - densities: brass 8.4-8.73 g/cm3 (8.5 used)"
+      }
+    },
+    {
+      "key": "copper-swg22",
+      "title": "Sonometer: mass per unit length of a hard-drawn copper wire, SWG 22",
+      "sample": "Hard-drawn copper wire, SWG 22 (0.711 mm diameter)",
+      "method": "Resonance with tuning forks, μ = T / (4 l² f²)",
+      "unknown": "the linear mass density μ of the hard-drawn copper wire",
+      "params": {
+        "mu": 0.0035574
+      },
+      "note": "μ = ρ π d² / 4 = 8960 x π x (0.711 mm)² / 4 = 3.557 g/m. With 4 kg on the hanger the 256 Hz fork resonates near l = 21 cm.",
+      "source": {
+        "title": "BS 3737 Standard Wire Gauge: SWG 22 = 0.711 mm",
+        "note": "CRC Handbook of Chemistry and Physics: density of copper 8.96 g/cm3"
+      }
+    }
+  ]
+}

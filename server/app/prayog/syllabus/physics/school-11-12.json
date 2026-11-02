@@ -1,0 +1,1233 @@
+{
+ "level": "school-11-12",
+ "sources": [
+  {
+   "id": "ncert-labman-11",
+   "title": "Laboratory Manual Physics Class XI, NCERT",
+   "url": "https://ncert.nic.in/pdf/publication/sciencelaboratorymanuals/classXI/physics/",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in / cbseacademic.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "ncert-labman-12",
+   "title": "Laboratory Manual Physics Class XII, NCERT",
+   "url": "https://ncert.nic.in/pdf/publication/sciencelaboratorymanuals/classXII/physics/",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in / cbseacademic.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "cbse-phy-ssc-2025-26",
+   "title": "CBSE Senior Secondary Curriculum 2025-26, Physics (Classes XI-XII), practical syllabus",
+   "url": "https://cbseacademic.nic.in/curriculum_2026.html",
+   "checked": false,
+   "note": "Official PDF answered 503. The Class XII Section A/B experiment and activity list was cross-read in a third-party reproduction (careers360.com), which is not the document; Class XI list from knowledge."
+  },
+  {
+   "id": "ncert-phy-11",
+   "title": "Physics, Textbook for Class XI (Parts I and II), NCERT",
+   "url": "https://ncert.nic.in/textbook.php?keph1=0-7",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in / cbseacademic.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "ncert-phy-12",
+   "title": "Physics, Textbook for Class XII (Parts I and II), NCERT",
+   "url": "https://ncert.nic.in/textbook.php?leph1=0-8",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in / cbseacademic.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  }
+ ],
+ "chapters": [
+  {
+   "name": "Units and Measurements",
+   "setups": [
+    {
+     "id": "vernier-outside-jaws",
+     "title": "Vernier callipers: diameter of a small sphere or cylinder, and density of a regular body",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: use of vernier callipers",
+     "kind": "practical",
+     "methods": [
+      "outside jaws"
+     ],
+     "samples": [
+      "spherical bob",
+      "solid cylinder",
+      "rectangular block of known mass"
+     ],
+     "unknowns": [
+      "diameter",
+      "volume",
+      "density"
+     ],
+     "conditions": [],
+     "built": "vernier-callipers",
+     "kernel": "vernier"
+    },
+    {
+     "id": "vernier-inside-depth",
+     "title": "Vernier callipers: internal diameter and depth of a beaker or calorimeter, and its volume",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: use of vernier callipers",
+     "kind": "practical",
+     "methods": [
+      "inside jaws and depth strip"
+     ],
+     "samples": [
+      "beaker",
+      "calorimeter"
+     ],
+     "unknowns": [
+      "internal diameter",
+      "depth",
+      "internal volume"
+     ],
+     "conditions": [],
+     "kernel": "vernier"
+    },
+    {
+     "id": "screw-gauge-wire",
+     "title": "Screw gauge: diameter of a given wire",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: use of screw gauge",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "copper wire",
+      "nichrome wire",
+      "steel wire"
+     ],
+     "unknowns": [
+      "diameter",
+      "cross-sectional area"
+     ],
+     "conditions": [
+      "zero error positive",
+      "zero error negative"
+     ],
+     "built": "screw-gauge",
+     "kernel": "screw-gauge"
+    },
+    {
+     "id": "screw-gauge-sheet",
+     "title": "Screw gauge: thickness of a sheet and volume of an irregular lamina",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: use of screw gauge",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "metal sheet",
+      "irregular lamina"
+     ],
+     "unknowns": [
+      "thickness",
+      "volume"
+     ],
+     "conditions": [],
+     "kernel": "screw-gauge"
+    },
+    {
+     "id": "spherometer-radius",
+     "title": "Spherometer: radius of curvature of a spherical surface",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: spherometer",
+     "kind": "practical",
+     "methods": [
+      "convex surface",
+      "concave surface"
+     ],
+     "samples": [
+      "watch glass"
+     ],
+     "unknowns": [
+      "radius of curvature"
+     ],
+     "conditions": [],
+     "kernel": "spherometer"
+    },
+    {
+     "id": "paper-scale-least-count",
+     "title": "Make a paper scale of a given least count",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "least count 0.2 cm",
+      "least count 0.5 cm"
+     ],
+     "kernel": "paper-scale"
+    },
+    {
+     "id": "graph-with-error-bars",
+     "title": "Plot a graph for a given set of data with a proper choice of scales and error bars",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "graph-errors"
+    }
+   ]
+  },
+  {
+   "name": "Laws of Motion",
+   "setups": [
+    {
+     "id": "beam-balance-mass",
+     "title": "Beam balance: mass of two different bodies",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: beam balance",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "mass of each body"
+     ],
+     "conditions": [],
+     "kernel": "beam-balance"
+    },
+    {
+     "id": "limiting-friction-horizontal",
+     "title": "Limiting friction and normal reaction: coefficient of friction between a block and a horizontal surface",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: limiting friction",
+     "kind": "practical",
+     "methods": [
+      "pan and pulley with added weights on the block"
+     ],
+     "samples": [],
+     "unknowns": [
+      "coefficient of limiting friction",
+      "graph of F against R"
+     ],
+     "conditions": [],
+     "kernel": "friction-block"
+    },
+    {
+     "id": "rolling-friction-roller",
+     "title": "Force of limiting friction for rolling of a roller on a horizontal plane",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "rolling-friction"
+    },
+    {
+     "id": "incline-block-friction",
+     "title": "Least force to move a block up an inclined plane and the coefficient of friction",
+     "src": "ncert-phy-11",
+     "ref": "Chapter Laws of Motion, Friction",
+     "kind": "activity",
+     "methods": [
+      "force up the plane",
+      "angle of repose"
+     ],
+     "samples": [],
+     "unknowns": [
+      "coefficient of friction"
+     ],
+     "conditions": [],
+     "built": "inclined-plane-friction",
+     "kernel": "incline"
+    }
+   ]
+  },
+  {
+   "name": "Motion in a Plane",
+   "setups": [
+    {
+     "id": "parallelogram-law-weight",
+     "title": "Parallelogram law of vectors: weight of a given body",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: parallelogram law of vectors",
+     "kind": "practical",
+     "methods": [
+      "parallelogram law apparatus (two pulleys)"
+     ],
+     "samples": [],
+     "unknowns": [
+      "weight of the given body"
+     ],
+     "conditions": [],
+     "kernel": "vector-forces"
+    },
+    {
+     "id": "projectile-range-angle",
+     "title": "Variation in the range of a projectile with the angle of projection",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "angle for maximum range"
+     ],
+     "conditions": [],
+     "kernel": "projectile"
+    }
+   ]
+  },
+  {
+   "name": "Work, Energy and Power",
+   "setups": [
+    {
+     "id": "incline-roller-sin-theta",
+     "title": "Downward force along an inclined plane on a roller and its relation with sin theta",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: force along an inclined plane",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "graph of force against sin theta",
+      "weight of the roller"
+     ],
+     "conditions": [],
+     "kernel": "incline-roller"
+    },
+    {
+     "id": "double-incline-energy",
+     "title": "Conservation of energy of a ball rolling down an inclined plane (double inclined plane)",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "double-incline"
+    }
+   ]
+  },
+  {
+   "name": "System of Particles and Rotational Motion",
+   "setups": [
+    {
+     "id": "metre-scale-moments",
+     "title": "Mass of a body using a metre scale and the principle of moments",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "mass of the given body"
+     ],
+     "conditions": [],
+     "kernel": "moments"
+    }
+   ]
+  },
+  {
+   "name": "Mechanical Properties of Solids",
+   "setups": [
+    {
+     "id": "searle-young-modulus",
+     "title": "Young's modulus of the material of a wire (Searle's apparatus)",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: Young's modulus",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "steel wire",
+      "brass wire",
+      "copper wire"
+     ],
+     "unknowns": [
+      "Young's modulus"
+     ],
+     "conditions": [
+      "loading",
+      "unloading"
+     ],
+     "kernel": "searle"
+    },
+    {
+     "id": "helical-spring-load-extension",
+     "title": "Spring constant of a helical spring from a load-extension graph",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: force constant of a helical spring",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "spring constant",
+      "unknown load from its extension"
+     ],
+     "conditions": [],
+     "built": "hookes-law",
+     "kernel": "hooke"
+    },
+    {
+     "id": "metre-scale-depression",
+     "title": "Effect of load on the depression of a clamped metre scale",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [
+      "loaded at its end (cantilever)",
+      "loaded in the middle (supported at both ends)"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "beam-bending"
+    }
+   ]
+  },
+  {
+   "name": "Mechanical Properties of Fluids",
+   "setups": [
+    {
+     "id": "capillary-rise-surface-tension",
+     "title": "Surface tension of water by capillary rise",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: surface tension",
+     "kind": "practical",
+     "methods": [
+      "travelling microscope for height and bore"
+     ],
+     "samples": [
+      "water"
+     ],
+     "unknowns": [
+      "surface tension"
+     ],
+     "conditions": [
+      "capillary tubes of different bore"
+     ],
+     "kernel": "capillary"
+    },
+    {
+     "id": "detergent-capillary-rise",
+     "title": "Effect of a detergent on the surface tension of water by observing capillary rise",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "water",
+      "water with detergent"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "capillary"
+    },
+    {
+     "id": "stokes-terminal-velocity",
+     "title": "Coefficient of viscosity of a liquid from the terminal velocity of a falling sphere",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: viscosity",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "glycerine",
+      "castor oil"
+     ],
+     "unknowns": [
+      "coefficient of viscosity"
+     ],
+     "conditions": [
+      "steel balls of different radii"
+     ],
+     "built": "terminal-velocity",
+     "kernel": "stokes"
+    }
+   ]
+  },
+  {
+   "name": "Thermal Properties of Matter",
+   "setups": [
+    {
+     "id": "cooling-curve-newton",
+     "title": "Temperature of a hot body against time: cooling curve",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: cooling curve",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "hot water in a calorimeter"
+     ],
+     "unknowns": [
+      "rate of cooling",
+      "Newton's law of cooling"
+     ],
+     "conditions": [],
+     "built": "newtons-cooling",
+     "kernel": "cooling"
+    },
+    {
+     "id": "specific-heat-solid-mixtures",
+     "title": "Specific heat capacity of a solid by the method of mixtures",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: specific heat of a solid",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "aluminium",
+      "copper",
+      "brass",
+      "iron",
+      "lead"
+     ],
+     "unknowns": [
+      "specific heat capacity"
+     ],
+     "conditions": [],
+     "built": "specific-heat-mixtures",
+     "kernel": "mixtures"
+    },
+    {
+     "id": "specific-heat-liquid-mixtures",
+     "title": "Specific heat capacity of a liquid by the method of mixtures",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: specific heat of a liquid",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "kerosene oil"
+     ],
+     "unknowns": [
+      "specific heat capacity"
+     ],
+     "conditions": [],
+     "kernel": "mixtures"
+    },
+    {
+     "id": "wax-cooling-curve",
+     "title": "Change of state and cooling curve of molten wax",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "melting point"
+     ],
+     "conditions": [],
+     "kernel": "phase-cooling"
+    },
+    {
+     "id": "bimetallic-strip",
+     "title": "Effect of heating on a bimetallic strip",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "bimetal"
+    },
+    {
+     "id": "liquid-level-on-heating",
+     "title": "Change in the level of a liquid in a container on heating",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "expansion-liquid"
+    },
+    {
+     "id": "rate-of-heat-loss-factors",
+     "title": "Factors affecting the rate of loss of heat of a liquid",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [
+      "area of exposed surface",
+      "nature of the surface",
+      "temperature difference",
+      "mass of liquid"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "cooling"
+    }
+   ]
+  },
+  {
+   "name": "Thermodynamics and Kinetic Theory",
+   "setups": [
+    {
+     "id": "boyle-law-air",
+     "title": "Variation in volume with pressure for a sample of air at constant temperature (Boyle's law)",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: Boyle's law",
+     "kind": "practical",
+     "methods": [
+      "V against P graph",
+      "V against 1/P graph"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "built": "boyles-law",
+     "kernel": "boyle"
+    }
+   ]
+  },
+  {
+   "name": "Oscillations",
+   "setups": [
+    {
+     "id": "simple-pendulum-l-t",
+     "title": "Simple pendulum: relation between length and time period, g and the seconds pendulum",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Experiment: simple pendulum",
+     "kind": "practical",
+     "methods": [
+      "L against T graph",
+      "L against T squared graph"
+     ],
+     "samples": [],
+     "unknowns": [
+      "g",
+      "length of the seconds pendulum"
+     ],
+     "conditions": [],
+     "built": "simple-pendulum",
+     "kernel": "pendulum"
+    },
+    {
+     "id": "pendulum-energy-dissipation",
+     "title": "Dissipation of energy of a simple pendulum: amplitude against time",
+     "src": "ncert-labman-11",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "pendulum-damped"
+    },
+    {
+     "id": "spring-mass-oscillation",
+     "title": "Time period of a loaded spring against the mass",
+     "src": "ncert-phy-11",
+     "ref": "Chapter Oscillations, oscillations due to a spring",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "spring constant"
+     ],
+     "conditions": [],
+     "built": "spring-oscillation",
+     "kernel": "shm"
+    }
+   ]
+  },
+  {
+   "name": "Waves",
+   "setups": [
+    {
+     "id": "sonometer-frequency-length",
+     "title": "Sonometer: frequency against resonating length, and length against tension",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: sonometer",
+     "kind": "practical",
+     "methods": [
+      "frequency against length at constant tension",
+      "length against tension at constant frequency"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "built": "sonometer",
+     "kernel": "sonometer"
+    },
+    {
+     "id": "resonance-tube-speed-of-sound",
+     "title": "Speed of sound in air at room temperature with a resonance tube",
+     "src": "ncert-labman-11",
+     "ref": "Section B, Experiment: resonance tube",
+     "kind": "practical",
+     "methods": [
+      "two resonance positions",
+      "first resonance with end correction"
+     ],
+     "samples": [],
+     "unknowns": [
+      "speed of sound",
+      "end correction"
+     ],
+     "conditions": [],
+     "built": "resonance-tube",
+     "kernel": "resonance"
+    }
+   ]
+  },
+  {
+   "name": "Electric Charges and Fields",
+   "setups": [
+    {
+     "id": "charging-by-rubbing",
+     "title": "Charging by rubbing, attraction and repulsion, gold-leaf electroscope",
+     "src": "ncert-phy-12",
+     "ref": "Chapter 1, simple experiments on electric charge",
+     "kind": "demonstration",
+     "methods": [
+      "glass rod with silk",
+      "plastic rod with fur or wool",
+      "gold-leaf electroscope"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "electrostatics"
+    }
+   ]
+  },
+  {
+   "name": "Current Electricity",
+   "setups": [
+    {
+     "id": "resistivity-v-i-graph",
+     "title": "Resistivity of wires from a graph of potential difference against current",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Experiment: resistivity by V-I graph",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "nichrome",
+      "constantan",
+      "manganin"
+     ],
+     "unknowns": [
+      "resistance",
+      "resistivity"
+     ],
+     "conditions": [
+      "SWG 22",
+      "SWG 24",
+      "SWG 26"
+     ],
+     "built": "ohms-law",
+     "kernel": "ohm"
+    },
+    {
+     "id": "metre-bridge-resistance",
+     "title": "Resistance of a given wire or standard resistor with a metre bridge",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Experiment: metre bridge",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "nichrome wire",
+      "constantan wire",
+      "standard resistor"
+     ],
+     "unknowns": [
+      "resistance",
+      "resistivity"
+     ],
+     "conditions": [],
+     "built": "meter-bridge",
+     "kernel": "meter-bridge"
+    },
+    {
+     "id": "metre-bridge-combination",
+     "title": "Laws of combination of resistances with a metre bridge",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Experiment: combination of resistances",
+     "kind": "practical",
+     "methods": [
+      "series",
+      "parallel"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "meter-bridge"
+    },
+    {
+     "id": "potentiometer-compare-emf",
+     "title": "Comparison of the emfs of two primary cells with a potentiometer",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Experiment: potentiometer, comparison of emfs",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Leclanche cell and Daniell cell"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "potentiometer"
+    },
+    {
+     "id": "potentiometer-internal-resistance",
+     "title": "Internal resistance of a primary cell with a potentiometer",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Experiment: potentiometer, internal resistance",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Leclanche cell"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "built": "potentiometer-internal-resistance",
+     "kernel": "potentiometer"
+    },
+    {
+     "id": "potential-drop-with-length",
+     "title": "Variation in potential drop with the length of a wire for a steady current",
+     "src": "cbse-phy-ssc-2025-26",
+     "ref": "Class XII Section A, Experiment 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "potentiometer"
+    },
+    {
+     "id": "galvanometer-half-deflection",
+     "title": "Resistance of a galvanometer by the half-deflection method and its figure of merit",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Experiment: half-deflection method",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "galvanometer resistance",
+      "figure of merit"
+     ],
+     "conditions": [],
+     "kernel": "galvanometer"
+    },
+    {
+     "id": "galvanometer-to-voltmeter",
+     "title": "Convert a galvanometer into a voltmeter of a desired range and verify it",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Experiment: galvanometer to voltmeter",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "galvanometer"
+    },
+    {
+     "id": "galvanometer-to-ammeter",
+     "title": "Convert a galvanometer into an ammeter of a desired range and verify it",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Experiment: galvanometer to ammeter",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "galvanometer"
+    },
+    {
+     "id": "multimeter-measurements",
+     "title": "Use a multimeter to measure resistance, AC/DC voltage, current and continuity",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [
+      "resistance",
+      "DC voltage",
+      "AC voltage",
+      "current",
+      "continuity"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "multimeter"
+    },
+    {
+     "id": "household-circuit",
+     "title": "Assemble a household circuit of three bulbs, three on/off switches, a fuse and a power source",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circuit-builder"
+    },
+    {
+     "id": "assemble-circuit-components",
+     "title": "Assemble the components of a given electrical circuit",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circuit-builder"
+    },
+    {
+     "id": "open-circuit-fault-diagram",
+     "title": "Draw the diagram of a given open circuit, mark wrongly connected parts and correct it",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circuit-builder"
+    }
+   ]
+  },
+  {
+   "name": "Electromagnetic Induction",
+   "setups": [
+    {
+     "id": "faraday-magnet-coil",
+     "title": "Faraday's experiments: induced current in a coil with a magnet or a second coil",
+     "src": "ncert-phy-12",
+     "ref": "Chapter Electromagnetic Induction, experiments of Faraday and Henry",
+     "kind": "demonstration",
+     "methods": [
+      "magnet moved into the coil",
+      "current-carrying coil moved near the coil",
+      "second coil switched on and off"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "slow motion",
+      "fast motion"
+     ],
+     "built": "electromagnetic-induction",
+     "kernel": "induction"
+    }
+   ]
+  },
+  {
+   "name": "Alternating Current",
+   "setups": [
+    {
+     "id": "ac-mains-frequency-sonometer",
+     "title": "Frequency of AC mains with a sonometer",
+     "src": "ncert-labman-12",
+     "ref": "Section A, Experiment: frequency of AC mains",
+     "kind": "practical",
+     "methods": [
+      "electromagnet and soft iron wire",
+      "permanent magnet and non-magnetic wire carrying AC"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "sonometer"
+    },
+    {
+     "id": "inductor-impedance",
+     "title": "Resistance and impedance of an inductor with and without an iron core",
+     "src": "cbse-phy-ssc-2025-26",
+     "ref": "Class XII Section A, Activity 1",
+     "kind": "activity",
+     "methods": [
+      "air core",
+      "iron core"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ac-inductor"
+    }
+   ]
+  },
+  {
+   "name": "Ray Optics and Optical Instruments",
+   "setups": [
+    {
+     "id": "concave-mirror-u-v",
+     "title": "Concave mirror: v for different u and the focal length",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: concave mirror",
+     "kind": "practical",
+     "methods": [
+      "u against v graph",
+      "1/u against 1/v graph"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "built": "concave-mirror",
+     "kernel": "mirror"
+    },
+    {
+     "id": "convex-lens-u-v",
+     "title": "Convex lens: focal length from u-v or 1/u-1/v graphs",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: convex lens",
+     "kind": "practical",
+     "methods": [
+      "u against v graph",
+      "1/u against 1/v graph"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "built": "convex-lens",
+     "kernel": "lens"
+    },
+    {
+     "id": "convex-mirror-using-lens",
+     "title": "Focal length of a convex mirror using a convex lens",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: convex mirror",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "mirror"
+    },
+    {
+     "id": "concave-lens-using-convex",
+     "title": "Focal length of a concave lens using a convex lens",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: concave lens",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "lens"
+    },
+    {
+     "id": "prism-i-d-curve",
+     "title": "Angle of minimum deviation of a prism from the i-d graph",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: prism",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "angle of minimum deviation",
+      "refractive index of the prism"
+     ],
+     "conditions": [],
+     "built": "prism-minimum-deviation",
+     "kernel": "prism"
+    },
+    {
+     "id": "travelling-microscope-slab",
+     "title": "Refractive index of a glass slab with a travelling microscope",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: travelling microscope",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "refractive index"
+     ],
+     "conditions": [],
+     "built": "glass-slab-apparent-depth",
+     "kernel": "slab"
+    },
+    {
+     "id": "liquid-lens-plane-mirror",
+     "title": "Refractive index of a liquid using a convex lens and a plane mirror",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: liquid lens",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water"
+     ],
+     "unknowns": [
+      "refractive index of the liquid"
+     ],
+     "conditions": [],
+     "kernel": "liquid-lens"
+    },
+    {
+     "id": "liquid-concave-mirror",
+     "title": "Refractive index of a liquid using a concave mirror and a plane mirror",
+     "src": "cbse-phy-ssc-2025-26",
+     "ref": "Class XII Section B, Experiment 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "liquid-lens"
+    },
+    {
+     "id": "slab-lateral-deviation",
+     "title": "Refraction and lateral deviation of a beam incident obliquely on a glass slab",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "slab-ray"
+    },
+    {
+     "id": "image-nature-candle-screen",
+     "title": "Nature and size of the image of a candle at different distances",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [
+      "convex lens",
+      "concave mirror"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "lens"
+    },
+    {
+     "id": "lens-combination",
+     "title": "Lens combination of a specified focal length from a set of lenses",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "lens"
+    }
+   ]
+  },
+  {
+   "name": "Wave Optics",
+   "setups": [
+    {
+     "id": "single-slit-diffraction",
+     "title": "Diffraction of light due to a thin slit",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "diffraction"
+    },
+    {
+     "id": "polaroid-polarisation",
+     "title": "Polarisation of light using two polaroids",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "polarisation"
+    }
+   ]
+  },
+  {
+   "name": "Semiconductor Electronics",
+   "setups": [
+    {
+     "id": "pn-diode-i-v",
+     "title": "I-V characteristic of a p-n junction diode in forward and reverse bias",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: p-n junction diode",
+     "kind": "practical",
+     "methods": [
+      "forward bias",
+      "reverse bias"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "built": "pn-junction-diode",
+     "kernel": "diode"
+    },
+    {
+     "id": "zener-characteristic",
+     "title": "Characteristic of a Zener diode and its reverse breakdown voltage",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: Zener diode",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "zener"
+    },
+    {
+     "id": "transistor-ce-characteristics",
+     "title": "Characteristics of a common-emitter transistor and its current and voltage gain",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Experiment: transistor characteristics",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "n-p-n transistor",
+      "p-n-p transistor"
+     ],
+     "unknowns": [
+      "current gain",
+      "voltage gain"
+     ],
+     "conditions": [],
+     "kernel": "transistor"
+    },
+    {
+     "id": "identify-components",
+     "title": "Identify a diode, an LED, a resistor and a capacitor from a mixed collection",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "components"
+    },
+    {
+     "id": "diode-led-multimeter",
+     "title": "Unidirectional flow of current in a diode and an LED, and checking a component with a multimeter",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "diode",
+      "LED"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "diode"
+    },
+    {
+     "id": "ldr-light-intensity",
+     "title": "Effect of the intensity of light on an LDR (distance of the source)",
+     "src": "ncert-labman-12",
+     "ref": "Section B, Activities",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ldr"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1382 @@
+{
+ "level": "school-6-10",
+ "sources": [
+  {
+   "id": "ncert-sci-6",
+   "title": "Science, Textbook for Class VI, NCERT (edition before 2024)",
+   "url": "https://ncert.nic.in/textbook.php?fesc1=0-16",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it. Chapter names used in refs: Motion and Measurement of Distances; Light, Shadows and Reflections; Electricity and Circuits; Fun with Magnets."
+  },
+  {
+   "id": "ncert-sci-7",
+   "title": "Science, Textbook for Class VII, NCERT (edition before 2025)",
+   "url": "https://ncert.nic.in/textbook.php?gesc1=0-13",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "ncert-sci-8",
+   "title": "Science, Textbook for Class VIII, NCERT (edition before 2025)",
+   "url": "https://ncert.nic.in/textbook.php?hesc1=0-13",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "ncert-curiosity-6",
+   "title": "Curiosity, Textbook of Science for Grade 6, NCERT (2024)",
+   "url": "https://ncert.nic.in/textbook.php?fecu1=0-12",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "ncert-curiosity-7",
+   "title": "Curiosity, Textbook of Science for Grade 7, NCERT (2025)",
+   "url": "https://ncert.nic.in/textbook.php?gecu1=0-12",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "ncert-sci-9",
+   "title": "Science, Textbook for Class IX, NCERT",
+   "url": "https://ncert.nic.in/textbook.php?iesc1=0-12",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "ncert-sci-10",
+   "title": "Science, Textbook for Class X, NCERT",
+   "url": "https://ncert.nic.in/textbook.php?jesc1=0-13",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "ncert-labman-9",
+   "title": "Laboratory Manual Science Class IX, NCERT",
+   "url": "https://ncert.nic.in/pdf/publication/sciencelaboratorymanuals/classIX/science/",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  },
+  {
+   "id": "ncert-labman-10",
+   "title": "Laboratory Manual Science Class X, NCERT",
+   "url": "https://ncert.nic.in/pdf/publication/sciencelaboratorymanuals/classX/science/",
+   "checked": false,
+   "note": "Official PDF could not be fetched from this session (ncert.nic.in answered 503 or failed TLS); rows come from knowledge of the document and must be checked against it."
+  }
+ ],
+ "chapters": [
+  {
+   "name": "Measurement",
+   "setups": [
+    {
+     "id": "non-standard-units",
+     "title": "Measuring a length with non-standard units",
+     "src": "ncert-sci-6",
+     "ref": "Motion and Measurement of Distances",
+     "kind": "activity",
+     "methods": [
+      "handspan",
+      "cubit",
+      "footstep"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "length-measure"
+    },
+    {
+     "id": "ruler-correct-reading",
+     "title": "Measuring length with a scale: placing the scale and the eye correctly",
+     "src": "ncert-curiosity-6",
+     "ref": "Measurement of Length and Motion",
+     "kind": "activity",
+     "methods": [
+      "ruler",
+      "measuring tape"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "length-measure"
+    },
+    {
+     "id": "curved-line-thread",
+     "title": "Length of a curved line with a thread",
+     "src": "ncert-sci-6",
+     "ref": "Motion and Measurement of Distances",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "length-measure"
+    },
+    {
+     "id": "thermometer-reading",
+     "title": "Reading a clinical and a laboratory thermometer",
+     "src": "ncert-curiosity-6",
+     "ref": "Temperature and its Measurement",
+     "kind": "activity",
+     "methods": [
+      "clinical thermometer (body temperature)",
+      "laboratory thermometer (water)"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "thermometer"
+    },
+    {
+     "id": "pendulum-time-period-basic",
+     "title": "Time period of a simple pendulum with a stopwatch",
+     "src": "ncert-curiosity-7",
+     "ref": "Measurement of Time and Motion",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "different lengths of thread"
+     ],
+     "kernel": "pendulum"
+    }
+   ]
+  },
+  {
+   "name": "Motion",
+   "setups": [
+    {
+     "id": "speed-distance-time",
+     "title": "Speed of a moving body from distance and time",
+     "src": "ncert-sci-7",
+     "ref": "Motion and Time",
+     "kind": "activity",
+     "methods": [
+      "a person walking",
+      "a ball rolled on the floor"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "kinematics-1d"
+    },
+    {
+     "id": "distance-time-graph",
+     "title": "Plotting a distance-time graph from measured data",
+     "src": "ncert-sci-9",
+     "ref": "Motion",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "kinematics-1d"
+    },
+    {
+     "id": "stone-circular-release",
+     "title": "A stone whirled on a thread moves along the tangent when released",
+     "src": "ncert-sci-9",
+     "ref": "Motion, uniform circular motion",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circular-motion"
+    }
+   ]
+  },
+  {
+   "name": "Force and Laws of Motion",
+   "setups": [
+    {
+     "id": "push-pull-effects",
+     "title": "Effects of a force: change of speed, direction and shape",
+     "src": "ncert-sci-8",
+     "ref": "Force and Pressure",
+     "kind": "activity",
+     "methods": [
+      "change of speed",
+      "change of direction",
+      "change of shape"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "force-effects"
+    },
+    {
+     "id": "inertia-coin-card",
+     "title": "Inertia of rest: coin on a card, carrom coins hit by a striker",
+     "src": "ncert-sci-9",
+     "ref": "Force and Laws of Motion, inertia",
+     "kind": "activity",
+     "methods": [
+      "coin on a card over a glass",
+      "stack of carrom coins hit by a striker"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "inertia"
+    },
+    {
+     "id": "third-law-spring-balances",
+     "title": "Third law of motion with two connected spring balances",
+     "src": "ncert-labman-9",
+     "ref": "Experiment: third law of motion",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "spring-balance"
+    },
+    {
+     "id": "balloon-rocket",
+     "title": "Action and reaction: a balloon rocket along a thread",
+     "src": "ncert-sci-9",
+     "ref": "Force and Laws of Motion, third law",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "rocket-1d"
+    }
+   ]
+  },
+  {
+   "name": "Friction",
+   "setups": [
+    {
+     "id": "friction-surfaces-spring-balance",
+     "title": "Force of friction on different surfaces with a spring balance",
+     "src": "ncert-sci-8",
+     "ref": "Friction",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "smooth floor",
+      "glass top",
+      "cloth or towel",
+      "sand paper"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "friction-block"
+    },
+    {
+     "id": "rolling-down-incline-surfaces",
+     "title": "How far a ball or pencil cell rolls after an inclined plane on different surfaces",
+     "src": "ncert-sci-8",
+     "ref": "Friction",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "bare table",
+      "newspaper",
+      "cloth",
+      "sand"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "incline-rolling"
+    },
+    {
+     "id": "rolling-vs-sliding",
+     "title": "Rolling friction is smaller than sliding friction (book on pencils or rollers)",
+     "src": "ncert-sci-8",
+     "ref": "Friction",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "rolling-friction"
+    },
+    {
+     "id": "lubricant-reduces-friction",
+     "title": "Powder or oil reduces friction",
+     "src": "ncert-sci-8",
+     "ref": "Friction",
+     "kind": "activity",
+     "methods": [
+      "dry surface",
+      "talcum powder",
+      "oil"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "friction-block"
+    }
+   ]
+  },
+  {
+   "name": "Pressure",
+   "setups": [
+    {
+     "id": "liquid-pressure-holes",
+     "title": "Liquid pressure: water from holes in a bottle",
+     "src": "ncert-sci-8",
+     "ref": "Force and Pressure",
+     "kind": "activity",
+     "methods": [
+      "holes at different heights",
+      "holes at the same height around the bottle"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "fluid-pressure"
+    },
+    {
+     "id": "rubber-sheet-pressure",
+     "title": "Pressure of water on the bottom and the sides of a container (rubber sheet on a pipe)",
+     "src": "ncert-sci-8",
+     "ref": "Force and Pressure",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "fluid-pressure"
+    },
+    {
+     "id": "atmospheric-pressure-sucker",
+     "title": "Atmospheric pressure with a rubber sucker",
+     "src": "ncert-sci-8",
+     "ref": "Force and Pressure",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "atmospheric-pressure"
+    },
+    {
+     "id": "pressure-cuboid-sand",
+     "title": "Pressure of a solid iron cuboid on sand when placed on its three different faces",
+     "src": "ncert-labman-9",
+     "ref": "Experiment: pressure of a cuboid on sand",
+     "kind": "practical",
+     "methods": [
+      "largest face",
+      "middle face",
+      "smallest face"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "pressure-area"
+    }
+   ]
+  },
+  {
+   "name": "Gravitation and Floatation",
+   "setups": [
+    {
+     "id": "free-fall-stone-paper",
+     "title": "A stone and a sheet of paper falling from the same height",
+     "src": "ncert-sci-9",
+     "ref": "Gravitation, free fall",
+     "kind": "activity",
+     "methods": [
+      "flat sheet",
+      "crumpled paper ball"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "free-fall"
+    },
+    {
+     "id": "bottle-upthrust",
+     "title": "Upthrust on an empty plastic bottle pushed into water",
+     "src": "ncert-sci-9",
+     "ref": "Gravitation, buoyancy",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "buoyancy"
+    },
+    {
+     "id": "cork-nail-sinking",
+     "title": "Why a cork floats and an iron nail sinks",
+     "src": "ncert-sci-9",
+     "ref": "Gravitation, buoyancy",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "cork",
+      "iron nail"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "buoyancy"
+    },
+    {
+     "id": "archimedes-loss-of-weight",
+     "title": "Loss in weight of a fully immersed solid equals the weight of water displaced",
+     "src": "ncert-labman-9",
+     "ref": "Experiment: Archimedes' principle",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "tap water",
+      "strongly salty water"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "buoyancy"
+    },
+    {
+     "id": "density-spring-balance-cylinder",
+     "title": "Density of a solid denser than water with a spring balance and a measuring cylinder",
+     "src": "ncert-labman-9",
+     "ref": "Experiment: density of a solid",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "mass",
+      "volume",
+      "density"
+     ],
+     "conditions": [],
+     "kernel": "density"
+    }
+   ]
+  },
+  {
+   "name": "Work and Energy",
+   "setups": [
+    {
+     "id": "ball-in-sand-potential-energy",
+     "title": "A heavy ball dropped into wet sand from different heights",
+     "src": "ncert-sci-9",
+     "ref": "Work and Energy, potential energy",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "different heights",
+      "balls of different mass"
+     ],
+     "kernel": "potential-energy"
+    },
+    {
+     "id": "trolley-hits-block",
+     "title": "A moving trolley pushes a wooden block: kinetic energy and speed",
+     "src": "ncert-sci-9",
+     "ref": "Work and Energy, kinetic energy",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "kinetic-energy"
+    },
+    {
+     "id": "power-climbing-stairs",
+     "title": "Your own power from running up a staircase",
+     "src": "ncert-sci-9",
+     "ref": "Work and Energy, power",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "power"
+    }
+   ]
+  },
+  {
+   "name": "Sound",
+   "setups": [
+    {
+     "id": "vibration-makes-sound",
+     "title": "Sound is produced by vibrating objects",
+     "src": "ncert-sci-8",
+     "ref": "Sound",
+     "kind": "activity",
+     "methods": [
+      "plate struck with a spoon",
+      "stretched rubber band",
+      "tuning fork touched to water"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "vibration"
+    },
+    {
+     "id": "tuning-fork-ping-pong",
+     "title": "A vibrating tuning fork pushes a suspended table-tennis ball",
+     "src": "ncert-sci-9",
+     "ref": "Sound",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "vibration"
+    },
+    {
+     "id": "bell-jar-vacuum",
+     "title": "Sound needs a medium: electric bell in a bell jar",
+     "src": "ncert-sci-9",
+     "ref": "Sound, propagation",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "sound-medium"
+    },
+    {
+     "id": "sound-through-solids",
+     "title": "Sound travels through solids",
+     "src": "ncert-sci-8",
+     "ref": "Sound",
+     "kind": "activity",
+     "methods": [
+      "ear on a metre scale or table",
+      "string telephone"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "sound-medium"
+    },
+    {
+     "id": "jaltarang-pitch",
+     "title": "Pitch changes with the water in glasses (jaltarang)",
+     "src": "ncert-sci-8",
+     "ref": "Sound",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "air-column"
+    },
+    {
+     "id": "slinky-wave-types",
+     "title": "Longitudinal and transverse waves on a slinky",
+     "src": "ncert-sci-9",
+     "ref": "Sound",
+     "kind": "activity",
+     "methods": [
+      "longitudinal push",
+      "transverse shake"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "wave-string"
+    },
+    {
+     "id": "reflection-of-sound-tubes",
+     "title": "Laws of reflection of sound with two tubes",
+     "src": "ncert-labman-9",
+     "ref": "Experiment: reflection of sound",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "sound-reflection"
+    },
+    {
+     "id": "pulse-speed-slinky-string",
+     "title": "Speed of a pulse along a stretched slinky or string",
+     "src": "ncert-labman-9",
+     "ref": "Experiment: velocity of a pulse",
+     "kind": "practical",
+     "methods": [
+      "slinky",
+      "stretched string"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "wave-string"
+    }
+   ]
+  },
+  {
+   "name": "Heat",
+   "setups": [
+    {
+     "id": "conduction-rod-wax",
+     "title": "Conduction along a metal rod with wax-stuck pins",
+     "src": "ncert-curiosity-7",
+     "ref": "Heat Transfer in Nature",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "conduction-1d"
+    },
+    {
+     "id": "spoons-conductors-insulators",
+     "title": "Good and poor conductors of heat: spoons in hot water",
+     "src": "ncert-sci-7",
+     "ref": "Heat",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "steel spoon",
+      "plastic spoon",
+      "wooden spoon"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "conduction-1d"
+    },
+    {
+     "id": "convection-water-crystal",
+     "title": "Convection in water with a potassium permanganate crystal",
+     "src": "ncert-sci-7",
+     "ref": "Heat",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "convection"
+    },
+    {
+     "id": "convection-air-smoke",
+     "title": "Convection in air: smoke over a lit candle or lamp",
+     "src": "ncert-sci-7",
+     "ref": "Heat",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "convection"
+    },
+    {
+     "id": "radiation-black-white-tins",
+     "title": "Absorption of heat by black and white tins in sunlight",
+     "src": "ncert-sci-7",
+     "ref": "Heat",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "black tin",
+      "white tin"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "radiation"
+    },
+    {
+     "id": "melting-ice-boiling-water",
+     "title": "Melting point of ice and boiling point of water",
+     "src": "ncert-labman-9",
+     "ref": "Experiment: melting point of ice and boiling point of water",
+     "kind": "practical",
+     "methods": [
+      "melting ice",
+      "boiling water"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "phase-change"
+    }
+   ]
+  },
+  {
+   "name": "Light: Shadows and Reflection",
+   "setups": [
+    {
+     "id": "light-straight-line",
+     "title": "Light travels in a straight line",
+     "src": "ncert-sci-6",
+     "ref": "Light, Shadows and Reflections",
+     "kind": "activity",
+     "methods": [
+      "straight and bent pipe",
+      "three cardboards with holes in a line"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ray-straight"
+    },
+    {
+     "id": "transparent-opaque",
+     "title": "Transparent, translucent and opaque objects with a torch",
+     "src": "ncert-sci-6",
+     "ref": "Light, Shadows and Reflections",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "glass",
+      "tracing paper",
+      "cardboard",
+      "wood"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ray-straight"
+    },
+    {
+     "id": "shadow-size",
+     "title": "Shadow formation and its size with distance",
+     "src": "ncert-curiosity-7",
+     "ref": "Light: Shadows and Reflections",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "object near the source",
+      "object near the screen"
+     ],
+     "kernel": "shadow"
+    },
+    {
+     "id": "pinhole-camera",
+     "title": "Making a pinhole camera",
+     "src": "ncert-sci-6",
+     "ref": "Light, Shadows and Reflections",
+     "kind": "project",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "pinhole"
+    },
+    {
+     "id": "plane-mirror-image",
+     "title": "Image in a plane mirror: distance and lateral inversion",
+     "src": "ncert-sci-7",
+     "ref": "Light",
+     "kind": "activity",
+     "methods": [
+      "candle in front of a mirror",
+      "letters seen in a mirror"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "plane-mirror"
+    },
+    {
+     "id": "reflection-comb-torch",
+     "title": "Laws of reflection with a torch beam through a comb",
+     "src": "ncert-sci-8",
+     "ref": "Light",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "plane-mirror"
+    },
+    {
+     "id": "inclined-mirrors-kaleidoscope",
+     "title": "Multiple images in inclined mirrors and a kaleidoscope",
+     "src": "ncert-sci-8",
+     "ref": "Light",
+     "kind": "activity",
+     "methods": [
+      "two mirrors at an angle",
+      "kaleidoscope"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "plane-mirror"
+    },
+    {
+     "id": "periscope",
+     "title": "Making a periscope",
+     "src": "ncert-sci-6",
+     "ref": "Light, Shadows and Reflections",
+     "kind": "project",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "plane-mirror"
+    },
+    {
+     "id": "spoon-curved-mirrors",
+     "title": "Images in the two sides of a shining spoon",
+     "src": "ncert-sci-7",
+     "ref": "Light",
+     "kind": "activity",
+     "methods": [
+      "inner side (concave)",
+      "outer side (convex)"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "mirror"
+    },
+    {
+     "id": "newtons-colour-disc",
+     "title": "Newton's colour disc",
+     "src": "ncert-sci-7",
+     "ref": "Light",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "colour-mix"
+    },
+    {
+     "id": "spectrum-prism-mirror-water",
+     "title": "Splitting white light into colours",
+     "src": "ncert-sci-7",
+     "ref": "Light",
+     "kind": "activity",
+     "methods": [
+      "glass prism",
+      "plane mirror in a bowl of water"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dispersion"
+    }
+   ]
+  },
+  {
+   "name": "Light: Reflection and Refraction (Class 10)",
+   "setups": [
+    {
+     "id": "focal-length-concave-distant",
+     "title": "Focal length of a concave mirror from the image of a distant object",
+     "src": "ncert-labman-10",
+     "ref": "Experiment: focal length of a concave mirror",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "mirror"
+    },
+    {
+     "id": "focal-length-convex-distant",
+     "title": "Focal length of a convex lens from the image of a distant object",
+     "src": "ncert-labman-10",
+     "ref": "Experiment: focal length of a convex lens",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "lens"
+    },
+    {
+     "id": "glass-slab-ray-tracing",
+     "title": "Path of a ray through a rectangular glass slab for different angles of incidence",
+     "src": "ncert-labman-10",
+     "ref": "Experiment: refraction through a glass slab",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "angle of refraction",
+      "angle of emergence",
+      "lateral displacement"
+     ],
+     "conditions": [],
+     "kernel": "slab-ray"
+    },
+    {
+     "id": "prism-ray-tracing",
+     "title": "Path of a ray through a glass prism",
+     "src": "ncert-labman-10",
+     "ref": "Experiment: refraction through a prism",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "angle of deviation"
+     ],
+     "conditions": [],
+     "kernel": "prism"
+    },
+    {
+     "id": "convex-lens-image-positions",
+     "title": "Images by a convex lens for different object positions",
+     "src": "ncert-sci-10",
+     "ref": "Light - Reflection and Refraction",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "beyond 2F",
+      "at 2F",
+      "between F and 2F",
+      "at F",
+      "between F and the lens"
+     ],
+     "kernel": "lens"
+    },
+    {
+     "id": "concave-mirror-image-positions",
+     "title": "Images by a concave mirror for different object positions",
+     "src": "ncert-sci-10",
+     "ref": "Light - Reflection and Refraction",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "beyond C",
+      "at C",
+      "between C and F",
+      "at F",
+      "between F and the pole"
+     ],
+     "kernel": "mirror"
+    },
+    {
+     "id": "coin-pencil-refraction",
+     "title": "Refraction: a coin in water appears raised, a pencil appears bent",
+     "src": "ncert-sci-10",
+     "ref": "Light - Reflection and Refraction",
+     "kind": "activity",
+     "methods": [
+      "coin in a bucket of water",
+      "pencil in a glass of water"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "slab"
+    },
+    {
+     "id": "prism-dispersion",
+     "title": "Dispersion of white light by a glass prism",
+     "src": "ncert-sci-10",
+     "ref": "The Human Eye and the Colourful World",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dispersion"
+    },
+    {
+     "id": "tyndall-scattering",
+     "title": "Scattering of light in a colloidal solution (sodium thiosulphate and acid)",
+     "src": "ncert-sci-10",
+     "ref": "The Human Eye and the Colourful World",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "scattering"
+    }
+   ]
+  },
+  {
+   "name": "Electricity",
+   "setups": [
+    {
+     "id": "torch-bulb-circuit",
+     "title": "A simple circuit with a cell, a torch bulb and wires",
+     "src": "ncert-sci-6",
+     "ref": "Electricity and Circuits",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circuit-builder"
+    },
+    {
+     "id": "conductors-insulators-tester",
+     "title": "Electric conductors and insulators with a circuit tester",
+     "src": "ncert-sci-6",
+     "ref": "Electricity and Circuits",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "iron nail",
+      "aluminium foil",
+      "coin",
+      "pencil lead",
+      "plastic",
+      "wood",
+      "rubber",
+      "glass"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circuit-builder"
+    },
+    {
+     "id": "make-a-switch",
+     "title": "Making a switch with drawing pins and a safety pin",
+     "src": "ncert-sci-6",
+     "ref": "Electricity and Circuits",
+     "kind": "project",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circuit-builder"
+    },
+    {
+     "id": "cells-in-series",
+     "title": "Circuit components and cells joined into a battery",
+     "src": "ncert-curiosity-7",
+     "ref": "Electricity: Circuits and their Components",
+     "kind": "activity",
+     "methods": [
+      "one cell",
+      "two cells in series"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circuit-builder"
+    },
+    {
+     "id": "heating-effect-wire",
+     "title": "Heating effect of current in a wire",
+     "src": "ncert-sci-7",
+     "ref": "Electric Current and its Effects",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "joule-heating"
+    },
+    {
+     "id": "liquid-conductivity-tester",
+     "title": "Which liquids conduct electricity (LED tester)",
+     "src": "ncert-sci-8",
+     "ref": "Chemical Effects of Electric Current",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "tap water",
+      "distilled water",
+      "lemon juice",
+      "vinegar",
+      "salt solution"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "electrolysis"
+    },
+    {
+     "id": "electroplating-copper",
+     "title": "Electroplating with copper sulphate solution and copper plates",
+     "src": "ncert-sci-8",
+     "ref": "Chemical Effects of Electric Current",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "electrolysis"
+    },
+    {
+     "id": "ohms-law-v-i",
+     "title": "Dependence of the current through a resistor on the potential difference across it",
+     "src": "ncert-labman-10",
+     "ref": "Experiment: V-I of a resistor",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "resistance"
+     ],
+     "conditions": [],
+     "built": "ohms-law",
+     "kernel": "ohm"
+    },
+    {
+     "id": "resistance-factors",
+     "title": "Factors on which the resistance of a conductor depends",
+     "src": "ncert-sci-10",
+     "ref": "Electricity",
+     "kind": "activity",
+     "methods": [
+      "length",
+      "area of cross-section",
+      "material"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ohm"
+    },
+    {
+     "id": "series-resistors",
+     "title": "Equivalent resistance of two resistors in series",
+     "src": "ncert-labman-10",
+     "ref": "Experiment: resistors in series",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ohm"
+    },
+    {
+     "id": "parallel-resistors",
+     "title": "Equivalent resistance of two resistors in parallel",
+     "src": "ncert-labman-10",
+     "ref": "Experiment: resistors in parallel",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ohm"
+    }
+   ]
+  },
+  {
+   "name": "Magnetism",
+   "setups": [
+    {
+     "id": "magnetic-nonmagnetic",
+     "title": "Sorting magnetic and non-magnetic materials",
+     "src": "ncert-curiosity-6",
+     "ref": "Exploring Magnets",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "iron nail",
+      "steel spoon",
+      "plastic",
+      "wood",
+      "aluminium foil",
+      "rubber"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "magnet"
+    },
+    {
+     "id": "magnet-poles-filings",
+     "title": "Poles of a magnet with iron filings",
+     "src": "ncert-curiosity-6",
+     "ref": "Exploring Magnets",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "magnet"
+    },
+    {
+     "id": "suspended-magnet-direction",
+     "title": "A freely suspended magnet points north-south; a home-made compass",
+     "src": "ncert-curiosity-6",
+     "ref": "Exploring Magnets",
+     "kind": "activity",
+     "methods": [
+      "bar magnet hung by a thread",
+      "magnetised needle floating on water"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "magnet"
+    },
+    {
+     "id": "like-unlike-poles",
+     "title": "Attraction and repulsion between poles",
+     "src": "ncert-curiosity-6",
+     "ref": "Exploring Magnets",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "magnet"
+    },
+    {
+     "id": "make-a-magnet-stroking",
+     "title": "Making a magnet by stroking an iron strip",
+     "src": "ncert-sci-6",
+     "ref": "Fun with Magnets",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "magnet"
+    },
+    {
+     "id": "field-lines-bar-magnet",
+     "title": "Magnetic field lines of a bar magnet",
+     "src": "ncert-sci-10",
+     "ref": "Magnetic Effects of Electric Current",
+     "kind": "activity",
+     "methods": [
+      "iron filings",
+      "compass plotting"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "magnet-field"
+    }
+   ]
+  },
+  {
+   "name": "Magnetic Effects of Current",
+   "setups": [
+    {
+     "id": "compass-near-wire",
+     "title": "A compass needle deflects near a current-carrying wire",
+     "src": "ncert-sci-7",
+     "ref": "Electric Current and its Effects",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "magnet-field"
+    },
+    {
+     "id": "electromagnet-nail",
+     "title": "An electromagnet from a coil on an iron nail",
+     "src": "ncert-sci-7",
+     "ref": "Electric Current and its Effects",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "electromagnet"
+    },
+    {
+     "id": "field-straight-conductor",
+     "title": "Magnetic field of a straight current-carrying conductor",
+     "src": "ncert-sci-10",
+     "ref": "Magnetic Effects of Electric Current",
+     "kind": "activity",
+     "methods": [
+      "iron filings",
+      "compass"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "current reversed"
+     ],
+     "kernel": "magnet-field"
+    },
+    {
+     "id": "field-circular-loop",
+     "title": "Magnetic field of a current-carrying circular loop",
+     "src": "ncert-sci-10",
+     "ref": "Magnetic Effects of Electric Current",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "magnet-field"
+    },
+    {
+     "id": "field-solenoid",
+     "title": "Magnetic field of a solenoid",
+     "src": "ncert-sci-10",
+     "ref": "Magnetic Effects of Electric Current",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "magnet-field"
+    },
+    {
+     "id": "force-on-conductor",
+     "title": "Force on a current-carrying aluminium rod in a magnetic field",
+     "src": "ncert-sci-10",
+     "ref": "Magnetic Effects of Electric Current",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "current reversed",
+      "magnet reversed"
+     ],
+     "kernel": "lorentz-rod"
+    },
+    {
+     "id": "induced-current-coil-magnet",
+     "title": "Induced current when a magnet moves in a coil",
+     "src": "ncert-sci-10",
+     "ref": "Magnetic Effects of Electric Current, electromagnetic induction (older edition)",
+     "kind": "activity",
+     "methods": [
+      "magnet moved in",
+      "magnet moved out",
+      "magnet held still"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "built": "electromagnetic-induction",
+     "kernel": "induction"
+    }
+   ]
+  },
+  {
+   "name": "Static Electricity",
+   "setups": [
+    {
+     "id": "charging-by-rubbing-6-10",
+     "title": "Charging by rubbing: attraction and repulsion",
+     "src": "ncert-sci-8",
+     "ref": "Some Natural Phenomena",
+     "kind": "activity",
+     "methods": [
+      "balloons rubbed with wool",
+      "refill rubbed with polythene",
+      "comb picking up paper bits"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "electrostatics"
+    },
+    {
+     "id": "jar-electroscope",
+     "title": "A simple electroscope from a jar and foil strips",
+     "src": "ncert-sci-8",
+     "ref": "Some Natural Phenomena",
+     "kind": "project",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "electrostatics"
+    }
+   ]
+  }
+ ]
+}

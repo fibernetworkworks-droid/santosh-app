@@ -26,8 +26,11 @@ def make_router(require_key=None, current_tenant=None) -> APIRouter:
                 raise HTTPException(e.status, str(e))
 
     @r.get("/api/prayog/labs")
-    def list_labs(q: str = "", field: str = "", limit: int = 100):
-        return {"labs": S.search(q, field, limit), "note": S.NOTE}
+    def list_labs(q: str = "", field: str = "", limit: int = 100, level: str = "", chapter: str = "", base: str = "",
+                  page: int = 1, variants: bool = True):
+        out = S.search_page(q, field, limit, level, chapter, base, page, variants)
+        out["note"] = S.NOTE
+        return out
 
     @r.get("/api/prayog/labs/{lab_id}")
     def get_lab(lab_id: str):

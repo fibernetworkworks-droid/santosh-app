@@ -1,0 +1,24 @@
+{
+  "base": "convex-lens",
+  "chapter": "Ray Optics and Optical Instruments",
+  "variants": [
+    {"key": "crown-f10", "title": "Convex lens: f of a 10 cm crown glass lens", "sample": "Biconvex crown glass (BK7) lens, n = 1.5168, both faces R = 10.34 cm",
+     "unknown": "the focal length f of the lens", "params": {"n": 1.5168, "R": 0.10336},
+     "source": {"title": "SCHOTT optical glass data sheet N-BK7: nd = 1.5168 (587.6 nm); refractiveindex.info"}},
+    {"key": "crown-f15", "title": "Convex lens: f of a 15 cm crown glass lens", "sample": "Biconvex crown glass (BK7) lens, n = 1.5168, both faces R = 15.50 cm",
+     "unknown": "the focal length f of the lens", "params": {"n": 1.5168, "R": 0.15504},
+     "source": {"title": "SCHOTT optical glass data sheet N-BK7: nd = 1.5168 (587.6 nm); refractiveindex.info"}},
+    {"key": "crown-f25", "title": "Convex lens: f of a 25 cm crown glass lens", "sample": "Biconvex crown glass (BK7) lens, n = 1.5168, both faces R = 25.84 cm",
+     "unknown": "the focal length f of the lens", "params": {"n": 1.5168, "R": 0.2584},
+     "source": {"title": "SCHOTT optical glass data sheet N-BK7: nd = 1.5168 (587.6 nm); refractiveindex.info"}},
+    {"key": "crown-f30", "title": "Convex lens: f of a 30 cm crown glass lens", "sample": "Biconvex crown glass (BK7) lens, n = 1.5168, both faces R = 31.01 cm",
+     "unknown": "the focal length f of the lens", "params": {"n": 1.5168, "R": 0.31008}, "note": "A long-focus lens: u and v together nearly fill the bench.",
+     "source": {"title": "SCHOTT optical glass data sheet N-BK7: nd = 1.5168 (587.6 nm); refractiveindex.info"}},
+    {"key": "flint-f20", "title": "Convex lens: f of a flint glass lens", "sample": "Biconvex flint glass (F2) lens, n = 1.6200, both faces R = 24.80 cm",
+     "unknown": "the focal length f of the lens", "params": {"n": 1.62004, "R": 0.248016}, "note": "Flint bends light more than crown glass, so flatter faces give the same focal length.",
+     "source": {"title": "SCHOTT optical glass data sheet F2: nd = 1.62004 (587.6 nm); refractiveindex.info"}},
+    {"key": "acrylic-f20", "title": "Convex lens: f of an acrylic (PMMA) lens", "sample": "Biconvex acrylic (PMMA) plastic lens, n = 1.4905, both faces R = 19.62 cm",
+     "unknown": "the focal length f of the lens", "params": {"n": 1.4905, "R": 0.1962},
+     "source": {"title": "PMMA refractive index 1.4905 at 589 nm (refractiveindex.info, Szczurowski data)"}}
+  ]
+}

@@ -16989,11 +16989,531 @@ real agent failures is finishing failures - above all a confident false "done".
 - NOT VERIFIED on a live model: the sandbox has no API key. The long card (v0.443 step 0) is what will say whether
   false-done really falls - its target is under 5%. Version 0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).
 
+## v0.451.0 AI EMPLOYEES PREMIUM (built as 0.447) (2 Nov 2026)
+Owner: "MAKE AI ENGINEER SECTION MORE PREMIUM AND ADVANCE ... USER WILL CLICK ON SECTION EXAMPLE GAMMING" -> design canvas
+prototype -> "MAKE IT MORE PREMIUM ... STUNNING, ADVANCE ANIMATION" -> "GO . MAKE ALL CARD OF SAME SIZE".
+- `static/console/employees.js` hub rewritten: home = 4 department cards built from the server's role groups (`DEPT` map:
+  Games, Simulation & VR / Business / Engineering & Hardware / Software & Systems; an unknown group still shows, with its own
+  name), each with line-art SVG that draws itself once (`pathLength=1`), live / coming / on-team counts (count-up once).
+  Department page = role cards (filter All / Live / On team / Coming + search `#aeQ`, focus kept on redraw) beside a
+  detail panel: pitch, what it does, what it needs, what it never does, trust ladder (Seekh / Saathi / Bharosa) and the
+  SAME API as before (`POST /api/employees/{key}/hire|pause|resume|leave`, hire with trust seekh, leave behind confirm).
+  Hiring no longer jumps to the desk; the card plays a one-time "joined" burst and the desk appears in the sidebar.
+- `v2.css` block "v0.447 AI EMPLOYEES PREMIUM": department accent tokens (light + dark), `.ae-depts` / `.ae-roles` grids with
+  `grid-auto-rows:1fr` = every card in a grid the same size (measured: dept cards all 481x348, role cards all 211px tall).
+  Entrances play once per page (`#hire.ae-settled`), the only loop is the small live dot (not under text, CRISP TEXT),
+  reduced motion and calm mode switch the motion off. Search label class `ae-sr` (`.sr` was taken).
+- `v2.js`: Library is spliced in just above Create, so it can never land between AI Employees and the hired desks.
+- Tests: `test_v0447_ai_employees_premium.py` (structure, equal-size CSS, real actions, motion once, escaping, Library
+  position); `test_v0443` heading assert updated. Console only - no server route changed.
+
+## v0.450.0 BUCKLING + GEAR TOOTH STRENGTH (2 Nov 2026)
+Owner asked whether every simple / medium / complex CAD job was covered; the honest answer named buckling, gear
+tooth strength and plastic stress as the real holes. The first two are closed here (plastic next).
+
+### Buckling (`fea.buckling`, kind 'buckling', `calc.column`)
+- A slender part in compression FOLDS at a load far below the one that breaks it, and a stress check cannot see it.
+- Linear eigenvalue buckling on the part's own stress state: one static solve, the geometric stiffness
+  `Kg = ∫ σ_ij ∂u_k/∂x_i ∂v_k/∂x_j dV` assembled from that stress (skfem BilinearForm with σ at the quadrature
+  points), then `(-Kg) φ = (1/λ) K φ` solved as a generalized SYMMETRIC problem so K stays positive definite and
+  the smallest positive factor comes out first. `_assemble` was factored out of `_static_once` so both share the
+  mesh / load / support code.
+- Reports: load factor, next modes, critical load, mode-1 shape, a 3x-coarser convergence check, and which mode
+  GOVERNS (folds at xN vs yields at xM). A stubby part or one in tension is told plainly that it cannot buckle and
+  that the stress check is what matters (`not_a_buckling_case`). Below `min_lf` (2.0 default, or hers) it goes back
+  to the model with the real fix: depth across the folding direction (I ~ h³), a tube/box, a shorter free length,
+  a mid-brace - never "make it a bit thicker".
+- VALIDATED: Euler cantilever to 0.1 % (4.575 vs 4.569) and mode 2 at exactly 9x mode 1; λ halves when the load
+  doubles and quarters when the length doubles; a same-area deep section beats a flat bar by >5x.
+- `calc.column` (eng_calc kind=column): Euler above the changeover slenderness π√(2E/Sy), J. B. Johnson's parabola
+  below it, end factors K (pinned 1.0 / fixed-free 2.0 / fixed-fixed 0.5 / fixed-pinned 0.699). Agrees with the FEA
+  to 0.1 %.
+
+### Gear teeth (`engineering/gears.py`, `H.spur_gear` root, `H.gear_duty`, eng_calc kind=gear)
+- THE GEOMETRY WAS WRONG: `spur_gear` drew a sharp root corner with no fillet. It now cuts the real TROCHOID a hob
+  leaves (the envelope of the rounded rack tip as it rolls), so the model matches a cut gear and has no false
+  stress riser. The rack-corner offset is exactly ISO 6336-3's E term - derived independently here, which is itself
+  a check.
+- THE CRITICAL SECTION, PROVED TWO WAYS: the generated trochoid measured with ISO's 30-degree-tangent rule
+  (arc-length resampled tangent, least-squares circle for ρ_F, bending arm to where the real line of action crosses
+  the centre line) vs ISO 6336-3's closed-form equations (G, E, H, θ). They agree within 1 % on the root chord and
+  the bending arm, 3 % on the fillet radius, for 10 to 200 teeth. The fillet bottoms exactly on the root circle and
+  meets the involute with a 0.0000 mm step.
+- Bending (6336-3) + pitting (6336-2) on the PINION: Y_Fa / Y_Sa, Z_H / Z_E / Z_ε, K_v from the pitch-line speed
+  and cut quality (AGMA 2001 dynamic factor, and it says when the speed is above what that quality is rated for),
+  K_A from her words about the drive, K_Hβ from how it is mounted, life factors from the tooth-load count,
+  allowables per material grade (ISO 6336-5 MQ; hers override). Z_H comes out 2.4946 against its published 2.495.
+- UNDERCUT measured on the real tooth: a rounded hob tip (ρ_fP = 0.38 m) ends its straight flank 0.74 m below the
+  pitch line, not 1.0 m, so real undercut starts near 12 teeth, not the textbook 17.1. BOTH are reported - a fault
+  when measured, a warning when only below the classical limit - and a profile shift cures it.
+- Checks go back to the model with the right fix (bigger module first: bending falls as 1/m²; then face width,
+  teeth, case-hardened steel). Rows on the card, a section in analysis.pdf, a line in her chat note.
+- NOT VERIFIED against our own FEA, and said so in the module: the bending stress was cross-checked against a real
+  FEA of the same tooth (load + reaction balanced to 0 %, peak on the right side of the fillet) but the recovered
+  peak FELL with refinement (89 -> 46 MPa), which cannot be right at a stress raiser. The same solver converges
+  correctly up to Kt 2.98 against the textbook 3.0 on a plate with a hole, so the solver is sound and the gear root
+  fillet is simply too small for its point-cloud mesher. The check rests on the standard's equations, the two
+  independent geometry methods and the published factors.
+- Also: `H.robot(move_time_s=)` / `accuracy_mm=` accepted (the v0.426 guide named them but `robot()` refused them);
+  studies per part 3 -> 4 so buckling can ride beside static.
+- Tests: `test_v0432_buckling.py` (8), `test_v0432_gear_strength.py` (9).
+
+## v0.451.0 PLAN PEHLE — ceremony that scales, and her Haan on a big plan (ECC Phase 4)
+
+Owner: *"GO PHASE 4."* Taken from ECC's `orch-pipeline` skill (MIT, affaan-m/ECC), the two ideas its own README leans
+on: **"Ceremony scales to blast radius. Score the request on three signals, take the HIGHEST tier any signal reaches,
+and state the result in one line so the user can override"**, and **GATE 1 — after Plan: present the task list; do not
+write implementation code until the user approves**; plus *"the pipeline carries no hidden state — the planning docs
+ARE the handoff"* and `intent-driven-development`'s acceptance criteria.
+
+**The hole.** Developer Sahayak has gone explore → edit for every job since v0.350, big or small. That is how a
+cross-cutting ask ("payment gateway jodo: checkout, webhook, refund aur invoice") comes back with two of the four
+things done and nobody notices until she reads the PR — and equally how a one-line typo fix still pays for a full
+exploration. There was no statement of intent anywhere between her sentence and the first `edit_file`.
+
+**The classifier** (`devsahayak/plan.py`, **no model call** — the tier must be free, or a small job pays for the
+ceremony it is meant to escape). Signals read from her own words: how many things she asked for (`_parts`: a colon
+list's items, `aur` / `and` / commas / bullet lines), a **trigger** (login, password, token, session, permission,
+payment, UPI, refund, invoice, GST, price, webhook, migration, schema, API, endpoint, Aadhaar, OTP, bank…), **WIDE**
+words (poora / sab / whole / refactor / rewrite / migrate / system / module), a **VAGUE** ask (theek karo / kuch
+gadbad / improve / optimise), and whether an error or a file is named. Highest wins, and ECC's tie-breaker is kept:
+anything touching a trust boundary or a contract is **at least standard**.
+
+| tier | what it is | what happens |
+|---|---|---|
+| trivial | an explain, a docs line, one named file | straight to work, nothing shown |
+| small | one file / one function, error named | straight to work |
+| standard | 2–5 files, one real choice | **plan pass**, plan shown, work starts at once |
+| large | cross-cutting, several parts, refactor | **plan pass + WAITS for her Haan** |
+
+A vague ask is deliberately **not** made `large`: v0.371 POOCHH LO already answers it with ONE question instead of
+guessing, and stacking a plan pass on top of that would be ceremony for its own sake.
+
+**The plan pass** (`loop.plan_run` + `PLAN_TOOLS`): the same exploring loop, but the edit tools **are not given** —
+`list_dir`, `search_code`, `read_file`, `find_usages`, `done` and nothing else, and anything else is refused in words
+("not available while planning — read-only, no file is changed in this pass"), so a plan can never be a half-done
+change. `PLAN_SYSTEM` demands the real files ("a plan that names a file you have not opened is worthless"), steps in
+build order each naming its file, **`done_when`** as checks anyone can run (*"not 'code is clean'"*), `risk` naming the
+callers and tests found **by name**, and `questions` only for what the repo cannot answer.
+
+**Gate 1.** A `large` job stops at `status = "plan_wait"` with a card hash: the phone shows the plan (goal, files +
+why, numbered steps, "Kaam poora kab mana jayega", open questions) and **"Haan, shuru karo"**. Nothing is committed,
+no branch, no PR, until that tap — `POST /api/devsahayak/tasks/{id}/plan-ok` (+ `note` = what she wants changed, which
+rides into the work), or in chat via the new owner-only tool action `plan_ok`. "Mana" cancels. `dev_plan_gate` off =
+nothing ever waits; `dev_plan_first` off = no plan pass at all.
+
+**The plan is the handoff, not a note.** `plan.as_text()` goes into the edit loop's first message as
+`<approved_plan>` with the done_when list labelled as acceptance criteria ("the work is not finished until every one is
+true, and if one cannot be met you say so in risk instead of dropping it quietly" — ECC's rule 10), the PR body grows a
+`### Plan (tier)` section with a `- [ ]` checklist, and **v0.445's own review now reads those criteria** and is asked
+to check the work against them instead of judging "did the task get done" from the diff alone.
+
+**Files:** new `server/app/devsahayak/plan.py`; `loop.py` (`PLAN_SYSTEM`, `PLAN_TOOLS`, `plan_run`, `run(plan_txt=)`);
+`service.py` (`_plan_pass`, `plan_ok`, `_work` scoring + gate, `_pr_body`, the own-review prompt, `task_view`,
+`STATUS["plan_wait"]`, the hash now shown for a plan card); `api.py` (`POST …/plan-ok`);
+`agent/devsahayak_tools.py` (action `plan_ok`, owner only); `models.py` (nullable `tier`, `plan`); `config.py`
+(`dev_plan_first`, `dev_plan_gate`, `dev_plan_steps` 18, `dev_plan_minutes` 8); `push.py` (the plan card pushes);
+Flutter `lib/ui/devsahayak_screen.dart` (the plan on the card + both buttons), `lib/ui/chat_screen.dart`,
+`lib/state.dart` (kind `devsahayak_plan`).
+
+**Tests** `server/tests/test_v0451_plan_pehle.py` (8): the whole tier table on real Hinglish asks, a small job planning
+nothing, a large job planning first and **writing nothing at all** until her Haan (refs and PRs untouched), the Haan
+being hers alone (not by tap / wrong hash / twice refused) with her note reaching the work, a standard job starting at
+once, the plan reaching the PR and the own review, the plan pass refusing an edit tool, and both switches. Three older
+suites that script the edit loop turn by turn got an autouse fixture turning the plan pass off — **and finding that
+fixture took one real debugging round: `monkeypatch.setattr(get_settings(), …)` in an autouse fixture that does not
+depend on `dev` runs BEFORE the `env` fixture rebuilds the settings, so the patch is silently lost.** Any such fixture
+must take `dev` (or `env`) as an argument.
+
+**NOT VERIFIED:** no live job has run through the gate (her Anthropic credit is empty). The plan pass's quality — are
+the done_when lines real checks? — is exactly what the next real coding job will show.
+
+## v0.452.0 DUKAAN PLUS (web Step 4B = the rest of W4 + W5 for her website shop, owner: "GO STEP 4B")
+
+`site/shopplus.py` + `shoppay` / `shop` hooks + `hoola-shop.js` / `hoola-app.js` + the console Shop tab.
+1. GST tax invoice + credit note for WEBSITE orders on HER ONE series: an invoiced website order gets a hidden row on the
+   site's app project (coll `_web_orders`, data = buyer, address, "qty x item @ Rs price" lines, total, delivery, coupon), so
+   `appmaker/gst.number_for` gives the next INV/<FY>/NNNN of the SAME series as her app (Rule 46: one series per GSTIN),
+   `receipt._tax_invoice` draws the PDF and the CA exports read it like any app sale. Only after the order is confirmed /
+   paid; her console "GST bill" (optional buyer GSTIN for B2B) + the buyer's private link; a cancelled invoiced order gets
+   its CN series credit note once (`set_status` cancelled -> `credit_on_cancel`). Console GST form saves her GSTIN.
+2. AutoPay on the website: her plans (made in the app's pay card) show on the member's My account; subscribe opens the
+   gateway's consent page (customer's own approval), My account lists + cancels (`/api/site-app/<site>/pay/*`). Payment
+   links already work from the same app pay card.
+3. Marketplace: `/api/site-shop/<site>/seller` = apply form; HER tap approves / blocks a seller, sets commission % and the
+   seller's Razorpay Route linked account (`acc_...` only - a bank number is refused); approval gives the seller a private
+   dashboard link (their products with moderation state, their order lines WITHOUT the buyer's phone / address, sales and
+   what they earn); seller products wait for HER OK; a blocked seller's products leave the shop. On a PAID online order each
+   approved seller with an account gets (their lines - commission) as ONE Route transfer per order (never twice; a
+   failure goes to her chat, the order stays paid). Cashfree / PhonePe split for websites not built.
+4. Courier: Shiprocket with HER API user (typed in the console, checked by a real login, sealed). HER tap on a confirmed /
+   packed order -> adhoc order -> AWB -> label (opened for printing); order -> shipped with the AWB; never twice; the
+   customer's tracking page reads Shiprocket's own status + last scan. Delhivery not built.
+5. Wishlist (kept only in the customer's browser; "Saved for later" in the cart) + cart reminders ONLY for customers who tick
+   "remind me": the cart waits 2 h, then shows on HER list with a WhatsApp link SHE taps (Hoola sends nothing); an order
+   from that number closes it; the customer's STOP ends it for good.
+Tests: tests/test_v0452_dukaan_plus.py (7): one series across website orders (0001, 0002) + credit note once; sellers,
+moderation, Route transfer once (320 of 400 at 20%), seller page hides the buyer; Shiprocket fake (wrong login never saved,
+AWB, label, never twice, tracking); reminders opted-in / ordered closes / once / STOP; AutoPay plan subscribe for members.
+NOT VERIFIED live: Shiprocket API (from its documented external API), Razorpay Route transfers (fake gateway, as v0.419).
+
+## v0.453.0 EDUCATION, RESEARCH & LAB + ENTERPRISE IN THE HUB (2 Nov 2026)
+Owner: "NOW AGAIN ENTIER EDUCATION SYSTEM AI EMPLOYEE ALSO THERE CHECK" -> the check found the Shiksha suite and
+Prayogshala live on the server and the phone (own screens, own /api routes, chat tools for every user) but absent from
+the AI Employees hub, and the ten Enterprise Systems & ERP jobs absent too -> "YES INCLUDE ALL -- EVEN LAB PUT IT UNDER
+EDUCATION & RESEARCH & LAB".
+- `employee/hire.py`: `EDU_GROUP` "Education, Research & Lab" with six live employees - `tutor` (Guru Sahayak), `school_office`
+  (Daftar), `curriculum` (Pathyakram), `research` (Shodh), `school_register` (Shiksha), `lab` (Prayogshala); `ENT_GROUP`
+  "Enterprise Systems & ERP" with exactly the keys of `enterprise/rules.ROLES` (erp, crm_arch, tpm, bpa, ecom_arch, health_int,
+  bank_int, supply_opt, plm, regtech). Each has pitch / does / needs / never in English, written from the module's own NEVER
+  lists and rules; the capped roles (bank_int, health_int, regtech) name their cap. Hub = 51 employees in 6 departments.
+- HIRING GATES NOTHING HERE (`EDU_OPEN`): these tools were open to every user before; hiring only adds the desk. A test fails
+  if any of guru / daftar / shiksha / shodh / prayog / enterprise tools ever calls `is_hired`, and the six /api routes answer
+  200 with nobody hired.
+- Console hub (`employees.js`): two departments with their own line art (open book + cap + flask; stacked systems) and accents
+  (light + dark); all six department cards measure the same (481 x 375), role cards the same height. Open desk: education keys
+  -> the Education Desk, enterprise keys -> the Systems page ON THAT ROLE (`go(v, arg)` -> `ENT.open(el, role)`).
+- Console Education Desk (`edudesk`, sidebar entry while any education employee is hired): tabs Overview / Tutor / School office
+  / Papers / Research / Register / Lab built from /api/guru, /api/daftar, /api/pathyakram, /api/shodh, /api/shiksha and
+  /api/prayog/labs. Her only writes are Send / Don't send on a waiting guardian or share card (POST .../shares/<id>/decide with
+  the card's hash, the same call the phone makes; a changed card answers 'stale'); a WhatsApp link the server hands back is
+  shown for her to open. Lab rows open that practical in the Lab view (`/static/prayog/lab.html?id=`); everything else is a
+  ready ask sent into the chat. Every server value is escaped. FOUND while checking it in the browser: `--fs` is a font SIZE
+  token, so `font:600 26px var(--fs)` was an invalid shorthand the browser dropped whole - the block uses `--fb`, and the test
+  refuses `var(--fs)` inside a font shorthand.
+- Phone (`lib/ui/employees_screen.dart`): `_deskFor(key)` opens each hired employee on its own screen - Guru / Daftar / Shiksha
+  / Shodh / Prayog / EnterpriseScreen(role: key). Before this, any key that was not seo / social / cad / game_dev / architect
+  fell through to the SEO Desk - which is where the nine non-lead Game Desk roles (procgen_dev, physics_dev...) had been
+  landing since v0.420; they now open the Game Desk.
+- Tests: `test_v0453_edu_ent_hub.py` (departments complete and live, English text, caps named, hire / pause / leave through the
+  API, tools stay open, console hub + desk wiring, CSS rules, escaping, the phone mapping matches the catalogue); v0.447's
+  export assertion updated. NOT VERIFIED: the Flutter change is checked by CI's analyzer, not run on a phone here.
+
+
+## v0.454.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA - 2 Nov 2026
+Owner: "START BOTH", after `docs/GAME_MOAT_PLAN.md`. The two live defects that research found in shipped code, and the
+moat piece that was missing: a way to tell whether a Hoola game is any good.
+
+### Defect 1 - the money-game guard missed the test the law actually turns on
+`service.MONEY` caught betting / casino / rummy / teen patti / poker / fantasy cricket / lottery / cash prize. The
+Promotion and Regulation of Online Gaming Act 2025 + Rules 2026 (in force 1 May 2026) turn on a STAKE plus an
+expectation of monetary return, and **Rule 9 weighs whether a reward is transferable, redeemable or monetisable OUTSIDE
+the game**. So "a ludo game where players collect coins and withdraw them to UPI" passed the guard and got built - and
+offering that game is **cognisable and non-bailable** for whoever publishes it (to 3 years / ₹1 crore). New
+`service.MONEY_OUT` (an in-game value word within 60 characters of a money-out word, both orders) +
+`MONEY_OUT_FLAT` (play-to-earn, NFT, crypto, entry fee, stake, wager) + `MONEY_OUT_SAY`, which names the law and offers
+the in-game economy instead. Tested against 11 real phrasings (English + Hinglish) and 10 legitimate games that must
+still build - 0 misses, 0 false alarms. THE OTHER DOOR: the Game Bible, where an economy or an item's notes could say
+the same thing - new `bible.money_out()` checks the economy block's words AND keys (a `withdrawable: true` style key)
+and every entity's text, and `bible.check()` now blocks on it.
+
+### Defect 2 - our MCP server spoke only the removed dialect
+MCP's current revision is **2026-07-28**, which **removed the `initialize` handshake**: a request declares its version
+in `_meta["io.modelcontextprotocol/protocolVersion"]` (and, on HTTP, the `MCP-Protocol-Version` header), and
+**`server/discover` is MUST-implement**. We declared 2025-06-18 / 2025-03-26 / 2024-11-05 only, and the spec's own
+compatibility table says a dual-era client falls back and works but a **modern-only client FAILS**. So our own Godot /
+Unity / Unreal plugins were fine while Claude Desktop or Cursor might not connect at all. `editor.py` now serves BOTH
+eras: `MODERN` + `LEGACY` in `PROTOCOLS`, the version read from `_meta` or the header, `server/discover` returning
+supportedVersions / capabilities / serverInfo / instructions / ttlMs, `UnsupportedProtocolVersionError` (**-32022**)
+listing what we support, the `MCP-Protocol-Version` header on every answer, and the old `initialize` still answering.
+
+### THE GAME ARENA (`gamedesk/arena.py`, tool `game_arena`, console Game Desk > Game Arena, owner only)
+The QA farm proved a game RUNS; nothing proved it was worth playing, so every "more powerful" claim about the Game Desk
+was a claim. This is the games twin of the website Design Arena, built the same way because that mechanism caught four
+versions of regressions self-critique had missed.
+- **A FIXED SET of 500 briefs** (`SET_V` 1): 20 genres x 25 Indian settings, every choice seeded from its own key, so
+  two Hoola versions are judged on EXACTLY the same work. `pick(n, seed)` spreads across genres, same n for same seed.
+- **A RUN** builds each brief end to end as the hidden tenant `__gamearena__` (never her games, never her AI budget),
+  exactly as an owner would get it, one at a time, and stops at its rupee ceiling. One run at a time.
+- **THE CARD IS MEASURED BY PLAYING**, not by looking: the QA farm's own bots play the real web build and the card
+  records what the engine said - started, load seconds, median fps, script errors, events and state keys, whether a bot
+  reached an ending, and **RESPONDS**: did an input change state or raise an event that the IDLE run never saw. A game
+  that starts but answers nothing is `playable: false`.
+- **ORIGINALITY, MEASURED**: a design DNA read from the game's OWN code and design doc (verbs, Godot node kinds, input
+  kinds, end conditions, entity kinds, palette - never the model's opinion of itself), and same-ness = distance from the
+  CLOSEST OTHER game of the run. Weighted so what the game DOES counts most. This is a shippability number, not taste:
+  Apple 4.3(b) rejects apps "indistinguishable from what's already widely available".
+- **AN INDEPENDENT JUDGE** with its own rubric (never the builder's self-critique) sees the start screen, frames from
+  the bot's play and the MEASURED facts, and scores six things a player notices in thirty seconds (clear_in_30s,
+  goal_obvious, controls_fit, feedback, looks, originality_feel). It is told it cannot judge fun from frames.
+- **COMPARE** two runs metric by metric, the right way round (`LOWER_BETTER` for same-ness / rupees / errors / load), and
+  it SAYS SO when the two runs used a different seed or brief set and so are not a fair comparison.
+- **BLIND DUELS**: same brief, her rival's PUBLIC web game (Rosebud, Summer Engine, itch.io) opened in the same browser
+  and given the same seeded inputs; the judge scores them as A and B in a random order and is not told which is Hoola's.
+  A rival page carries no Hoola probe, so its state / events read None rather than being guessed.
+- **`fun` IS NOT ASSESSED** on every card and every summary, in those words: whether a game is fun cannot be measured
+  from frames, and a real player has to say.
+- Two things the tests found and fixed in the maths: an axis where NEITHER game has data was scoring 0 (so two identical
+  games read 0.64 alike and every game looked more original than it was - now such axes are left out of the average),
+  and a run of ONE game reported same-ness 0.0, which reads as "perfectly original" when the truth is that there was
+  nothing to compare against (now None).
+- Tables: game_arena_runs / items / duels. Routes: GET|POST /api/gamedesk/arena, /briefs, /{rid}, /{rid}/stop,
+  /compare/{a}/{b}, /duel. `start(..., background=False)` runs it in the caller's thread (tests, and a worker later).
+- Tests: `server/tests/test_v0447_game_arena.py` (12), including both MCP eras end to end through the real endpoint,
+  the money-out guard over 21 phrasings, and a whole run driven deterministically with a stubbed builder.
+- NOT VERIFIED: no real Arena run has been built on the VPS yet, so there are no numbers for a Hoola version yet - the
+  first run is what will produce them. The judge is a model and its scores are opinions about measured frames; only the
+  engine numbers on the card are facts.
+
+## v0.455.0 SURAKSHIT LOGIN + SURAKSHA GATE (App Sahayak Pillar I, Phase 60)
+Owner: "START PILLAR I" (docs/COMPLEX_APPS_PLAN.md: auth + security). Built as v0.442 / v0.446 / v0.453 in this session (three other sessions took those numbers first).446 in this session (other sessions took those numbers first).
+- ONE ENGINE, NOT A SECOND ONE: `appmaker/sign.py` opens the website's v0.434 security engine (`site/security.py`) to
+  the native apps. Both work on the app backend id (`app:<project>`), so a customer who signed up on the website IS the
+  same account in the phone app, and "sign out everywhere" ends both. Everything goes through `family.home(r)`, so a
+  rider / shop / staff app of one business shares its accounts.
+- PHONE OTP in the app: the code is typed only into the app's own box, hashed on the server (5 min, 5 tries, 3 codes per
+  number per 10 min), never shown, logged or sent to Hoola; a missing consent tick refuses BEFORE the code is spent.
+- GOOGLE / APPLE CHECKED ON THE SERVER (`verify_token`): RS256 signature against the provider's own published keys
+  (Google /oauth2/v3/certs, Apple /auth/keys, cached 1 h), `iss`, `aud` must be one of HER PUBLIC client ids, `exp` /
+  `iat` with 120 s skew, Google's `email_verified`, and a single-use nonce the SERVER made (Apple's SHA-256 form
+  accepted). Tested: a token signed by another key, aimed at another app, expired, unverified e-mail, an invented nonce,
+  the same token twice, or an Apple token sent to the Google door - all refused. Native sign-in uses NO provider secret,
+  so there is no key in this feature to leak; Apple's private-relay address is kept as the e-mail, as Apple intends.
+  The nonce is spent only when everything else passed.
+- SESSIONS: every login is a row (device, masked IP, how); `backend.who` now asks `SEC.token_ok`, so a login she or the
+  member ENDED stops working on the app side too, at once (tested: the ended token gets 401 on every route).
+- STAFF 2FA: TOTP as step two of password AND OTP login (`{need_2fa, ticket}` -> `/login/2fa`); her switch
+  `staff_2fa` makes it compulsory and then the member cannot turn it off.
+- DPDP: the consent tick on every new account (password / OTP / social), "my data" as JSON from inside the app.
+- Her switches: `ways` = email_password / phone_otp / google / apple (Google alone also turns Apple on - App Store 4.8),
+  her public client ids, staff_2fa. `problems` says plainly what is still missing (no SMS template, no client id).
+- KITS: `SignIn.kt` / `SignIn.swift` (sign-in screen with OTP / social / second step + `hoola_security` screen:
+  sessions, 2FA, my data), `Backend.kt` / `Backend.swift` gained otpStart / otpCheck / social / nonce / twoFa.
+  The Google button is Credential Manager (`android/glogin/SignInGoogle.kt` + androidx.credentials + googleid) written
+  into a build ONLY when she turns Google on - an app that does not use it carries neither the file nor the libraries;
+  the OFF file compiles to nothing. Apple uses the system framework, and the `applesignin` entitlement is added only
+  when Apple is on. New CI job `glogin` builds the Google variant (debug + release R8).
+- SURAKSHA GATE (`appmaker/gates.py`), six gates that read the REAL build: (1) secrets in the app's files AND inside the
+  APK's assets (a hit is a FAIL - an APK is public), (2) permissions: only ones a feature in THIS app needs, none from
+  Play's restricted list, (3) release settings: debuggable, allowBackup, https-only (http only for 10.0.2.2 in debug),
+  every component exported on purpose, a real signature (v1 META-INF or the v2/v3 APK Signing Block), (4) library CVEs
+  from the pinned `libs.versions.toml` asked at OSV.dev (Google's own free database) - HIGH / CRITICAL FAILS, and OSV
+  unreachable is "not checked", NEVER a quiet pass, (5) login rules: Apple where Google is offered, no password box
+  outside the kit's sign-in screen, in-app deletion, (6) data rules: privacy / consent pages, store data-safety answers
+  matching the permissions actually in the build. `must_pass` is called by `store.publish` AND `appstore.submit`, so a
+  FAILING gate blocks the Play upload and the App Store submit (tested, including that the callers exist - v0.393's
+  lesson). `not_checked` is reported as its own number and says what Hoola did not see.
+- Found by the gate while writing it: it had counted `BIND_JOB_SERVICE` (a permission the SYSTEM holds, named on a
+  service) as the app asking for one, and it had only looked for v1 signatures, so a modern v2/v3-signed APK would have
+  read as unsigned. Both fixed before shipping.
+- Routes: /api/app-api/<key>/{login/otp, login/otp/check, login/nonce, login/<google|apple|2fa>, security,
+  security/<what>, my-data}; hers /api/apps/<ref>/sign (GET / PUT) and /api/apps/<ref>/security/check (POST - a
+  one-segment path would have been eaten by the `{action}` catch-all, the same trap as v0.425).
+- Console "Login & security" box (ways, client ids, staff 2FA, the gate card with every row, the permissions matrix,
+  who changed what), phone `lib/ui/app_login.dart`, tool app_banao action=login / security_check, app_dekho what=login.
+- Tests: `server/tests/test_v0455_suraksha.py` (5: her switches + what the app is told, OTP + sessions + 2FA, the
+  token checks, the gates blocking the store, both generators + both kits).
+- NOT VERIFIED / NOT BUILT, said plainly: no real Google or Apple account has signed in (every token in the tests is one
+  this test signed itself - the shapes come from the providers' documentation); mobile OTP needs her DLT-registered SMS
+  template and MSG91 key on the server; the Credential Manager Kotlin compiles only on CI (the new `glogin` job is its
+  first proof); Google sign-in on the iPhone is NOT built (it needs the GoogleSignIn SDK - Apple is there instead);
+  passkeys, magic links, company SSO and device binding from the v0.131 plan are still only a plan; the gates do not run
+  the app and watch it (that is the device check), do not see inside an IPA (never built on Hoola's machine), and do not
+  audit her own server.
+
+## v0.456.0 PRAYOGSHALA — the coding lab, step 1: the box
+
+Owner, answering the three open questions at the end of `docs/CODING_HARNESS_PLAN.md`: *"Docker on the VPS -- YES,
+OWN AS WELL AS THIRD PARTY CLONEING FOR CHECKING, setup command + cached snapshot acceptable to maintain -- SAME AS
+CLAUDE CODE."*
+
+**Why.** The research (same doc, §1.2) found the thing that separates Hoola's coding from Claude Code's: *"If it has
+nothing to run that tells it whether the work actually is done, 'looks done' is all it has to go on. In practice that
+makes you the test suite."* Hoola's only oracle was her CI after a push — minutes per round, three rounds, and only
+what CI already covers. This version builds the box that can run a check in seconds. **It is not wired to the model
+yet** (`dev_lab` defaults to False) — she verifies the walls first.
+
+**`app/devlab/box.py` — the walls.** A CHECK runs `docker run` with `--network none`, `--user 1000:1000`,
+`--read-only` plus tmpfs on `/tmp` and `/home/lab`, `--cap-drop ALL`, `--security-opt no-new-privileges`,
+`--memory 2g --memory-swap 2g --cpus 2 --pids-limit 512`, a hard timeout, and an environment containing nothing but
+HOME / LANG / CI / PYTHONDONTWRITEBYTECODE. Only the one-time SETUP step gets `--network bridge`, which is exactly
+Codex's split (*"Codex blocks internet access during the agent phase... setup scripts still run with internet access"*).
+We do not filter command text — Anthropic call that *"fragile"* with worked bypasses — we take away what a command
+could reach. A timed-out container is killed by name. `prune(keep)` drops the oldest snapshots; the base image never.
+
+**`spec.py` — the command is declared, never invented.** Every product that does this gets the command from a
+declared place (Aider's `--test-cmd`, Devin's blueprint items named `lint`/`test`/`build`, Jules's setup script, Codex
+via AGENTS.md). Order here: **her own word** → `.hoola/lab.json` → the repo's own rules (`AGENTS.md`, `CLAUDE.md`,
+`CONTRIBUTING.md`, `README.md`: labelled list lines like *"- Run one test file: pnpm vitest run x"*, bare command lines
+under a test-ish heading) → the CI workflow's `run:` steps → a language default. Every answer carries its `source`, and
+anything Hoola merely *read* carries `confirm: True` — **it waits for one tap and is then remembered**; her own word
+never asks. A `sudo` / `docker` / `while true` / secret-bearing command is **refused and SAID** (`refused: [...]`, in
+her words) instead of being silently swapped for something else. Nothing declared anywhere = **nothing runs**:
+*"Hoola khud se command banakar nahi chalayega."*
+
+**`service.py` — the run, in three steps.** (1) MATERIALIZE: clone the branch *outside* the box with her token handed
+over through a `GIT_ASKPASS` file that is deleted immediately — never in `argv` (where `ps` would show it), never in
+the clone's config — then `rm -rf .git`, so no credential, no history and no remote can exist inside the box and the
+repo's own code cannot push anywhere. Size-capped at 600 MB. (2) SNAPSHOT: the dependency install runs **once per
+lock-file hash** (`spec.deps_key` over requirements/pyproject/package.json/lockfiles/Makefile) with the network on,
+and the container is committed as `hoola-devlab:<repo>-<key>` — a code change reuses it, a dependency change rebuilds
+it. (3) CHECK: her command on that snapshot, sealed, with the output shaped. Third-party repos are allowed (her
+decision) and get identical walls, which is sound precisely because nothing of hers is inside.
+
+**`out.py` — failure-first, correcting the contract Claude Code ships.** Measured from
+code.claude.com/docs/en/tools-reference: Claude Code returns ~30,000 chars inline on success but only a ~10,000-char
+head-and-tail excerpt **with no log path** on failure. Our research called that backwards — the failing run is the one
+whose full output you want — so here a PASS shows 4,000 chars ("it passed, so the rest is not shown") and a FAIL shows
+2,000 from the start plus **24,000 from the end** (the traceback is at the bottom), always with the true byte count and
+a log file. `grep_log(path, pattern)` lets the model ask that log a second question (regex or substring, ±context,
+capped at 400 lines / 8,000 chars); `tail(path, n)` for the last lines. Logs are 0600, kept 60 runs deep.
+
+**Proof on her own VPS:** `python -m app.devlab check` builds the base image if missing and then runs five checks — a
+passing test, a failing test (and that the failure's *end* is what survives), **network blocked**, **root filesystem
+read-only**, **non-root user** — printing `GADBAD` / `KHATRA` if any wall fails. vps-ops jobs: **`lab_check`**,
+`lab_setup`, `lab_images`, `lab_prune`. Also `python -m app.devlab run --repo owner/name [--ref ...] [--cmd ...]` for
+a real repo from the command line, and `grep`.
+
+**Files:** new `server/app/devlab/{__init__,box,spec,service,out,__main__}.py`, new `deploy/devlab/Dockerfile`
+(debian-12-slim + python3 + node + npm + jdk17 + git + ripgrep + pytest/ruff, non-root `lab` user), `config.py`
+(`dev_lab` **False**, `dev_lab_timeout` 600, `dev_lab_keep` 12), `.github/workflows/vps-ops.yml` (4 jobs).
+Tests `server/tests/test_v0456_devlab.py` (19): her word wins and never asks, repo rules beat CI beat the language
+default, `.hoola/lab.json` trusted, nothing declared = nothing runs, the refusal list, a read command waiting for a
+tap (with `run_in` monkeypatched to fail the test if anything runs first), the snapshot key moving only with
+dependency files, failure keeping its end + the log, a pass shown short, a timeout not counted as a pass, grep with
+context + its caps, the wall flags asserted in `box._limits`, docker-missing saying why, and the clone leaving no
+token behind. The sealed-box test runs only where Docker exists (skipped in the sandbox).
+
+**NOT VERIFIED:** no Docker daemon exists in the build sandbox, so every container path here has been exercised only
+through its argument list and its monkeypatched callers. `lab_check` on the VPS is the first real proof, and
+**`dev_lab` stays False until it passes.** Step 2 (H3b) wires `run_check` / `grep_log` into the dev loop, makes the
+v0.447 bug proof local, and executes the v0.451 plan's `done_when` lines instead of asserting them.
+
+## v0.457.0 PAST YIELD (plastic stress) (2 Nov 2026)
+The third of the three holes named when the owner asked whether every CAD job was covered (v0.450 closed buckling
+and gear teeth). `fea.plastic`, kind 'plastic' / 'yield' / 'collapse'.
+
+- The linear check only ever says "it has yielded somewhere". This says what happens next: the load is put on in
+  steps with the metal really yielding (J2 / von Mises radial return at every integration point, `_return_map`,
+  vectorised), equilibrium is re-solved, the load is taken off ELASTICALLY, and what is left is the PERMANENT SET.
+- WHY IT DID NOT WORK AT FIRST, and the fix: modified Newton keeps the elastic stiffness, so once a region goes
+  soft every correction is too small - the residual crept down by ~0.96 per round and 90 rounds got nowhere, which
+  looked like collapse at 1.5x on a bar that was 99 % elastic. The ratio is measurable, so the whole remaining
+  geometric series is added in one go (Aitken), kept only when it really lowers the residual. With that, the bar
+  reaches its true collapse (61 % of the section plastic). `_factorise` also replaced the per-iteration solve: one
+  condense + AMG/LU setup reused for every round.
+- Reports: first-yield factor, the set at her load vs what a linear check would say, % of the part yielded, worst
+  plastic strain, the load factor where it RUNS AWAY (4x the elastic displacement rate = a plastic hinge forming),
+  `carries_up_to` (the last load it clearly still held, for when something must be safe), and the step history.
+- TEAR check: linear hardening alone will carry any load by stretching for ever - the first version "held" a 3x
+  overload at 262 % strain. A spot past the material's elongation (`TEAR`: steel 15 %, mild steel 20 %, aluminium
+  8 %, cast iron 1 %, PLA 3 %; her `max_strain_pct` overrides) is now reported as SPLITTING, not bending.
+- Default hardening E/200 (a modest, realistic slope; `hardening_MPa=0` gives the textbook limit load).
+- HOW CLOSE, measured and said in the module: against both textbook limit loads it lands within about 20 % either
+  way - a bar in tension 1.75 vs 2.0, a stubby rectangular cantilever 1.75 vs 1.5 (the plastic shape factor), with
+  one load step being 0.15. So the collapse factor is a band, not a number, and `carries_up_to` is the safe one.
+- `H.analyze('plastic', fixed=..., loads=[...], max_set_mm=0.05)`: too much permanent bend, or collapse under her
+  own load, comes back to the model with the real fix. Rows on the card, in analysis.pdf and in her chat note.
+- Not covered: large displacements (small-strain kinematics), one monotonic load path only, no creep, no ratchetting
+  under cycling, and no interaction with buckling - a slender part can fold first, so run the buckling check too.
+- Tests `test_v0451_plastic.py` (6).
+
+
+## v0.458.0 PRAYOGSHALA: EK RIG, KAI PRAYOG (2 Nov 2026)
+Owner: "NOW LETS WORK ON PHYSICS REMAINING EXPERIMENTS --- COVER 1 LAKH EXPERIMENT FROM ALL CHAPTERS TILL PHD", then "GO P0 + P1".
+Plan written first: `docs/PRAYOG_PHYSICS_LAKH_PLAN.md` (P0 count, P1 rig engine, P2-P5 levels, P6 variants, P7 find it, P8 card).
+
+### P1 - the rig engine (a lab is now RIG + SPEC)
+- `server/app/prayog/specs.py`: a family file `prayog/families/<base-lab-id>.json` lists variants of one set-up - another
+  sample, method, unknown, level or condition - as DATA. `apply()` makes a full lab: id `<base>--<key>`, `lab.rig` = the
+  base, the variant's params (the hidden unknown among them, its knob moved to that value), `lab.variant`
+  {sample, method, unknown, note, source}, and the lab's OWN NCERT check re-run on the NEW numbers. A `grid` block is the
+  generator: the product of its axes, titles filled from each item's label.
+- `service.py`: `index()` = one summary row per experiment (no lab built), `search_page()` = filters (q, level, chapter,
+  base, variants) + paging + total, `_variant()` builds a variant lab on first open and caches it. A variant that fails the
+  checker or its check is logged and NEVER served; a bad family file is skipped, not fatal.
+- `studio.js` runs `DEFS[lab.rig || lab.id]`, and the Theory step shows a "This experiment" box (sample / method / what you
+  will find / note). `lab.html` loads the family's rig. `GET /api/prayog/labs` is paged; console `index.html` and the phone
+  `prayog_screen.dart` list set-ups with "N experiments" and search every variant on the server.
+- `lsl.py` accepts `rig`, `variant`, `chapter`. `tools/prayog_serve.py` serves Prayogshala alone for the walk;
+  `tools/prayog_walk.js` pages the whole catalogue and takes `BASE=<id>` and `SHARD=i/n`; `.github/workflows/prayog-walk.yml`
+  walks everything in 4 shards on every Prayogshala change.
+- RULE found while building: a variant's params must be names the kernel already knows, and a knob's min/max must use the
+  ROUNDED value (1e-5 gave value 10.0 but min 10.000000000000002, and the variant failed its own check).
+
+### The 22 families (real constants, each with its source)
+- MECHANICS: g at 6 Indian cities (WGS84 Somigliana + free-air), 3 bob materials; 11 spring wires (k = Gd^4/8D^3N, Shigley
+  Table 10-5) + 2 unknown springs; 8 friction pairs (CRC, Serway); 12 ball-in-liquid pairs (glycerine / 90% / castor oil at
+  20 and 30 C, silicone 1000 cSt; Segur & Oberstar, Kaye & Laby, DOWSIL).
+- HEAT + WAVES: cooling in 2 rooms + glycerol / olive oil; Boyle at 2 temperatures, 2 trapped volumes, 2 altitudes (ICAO);
+  8 metals by CRC specific heat; 8 forks of the 256 Hz school set; 8 sonometer wires (SWG + densities).
+- ELECTRICITY: nichrome / constantan / manganin at SWG 24-32 (Kaye & Laby + BS 3737) for Ohm and the metre bridge; Daniell /
+  zinc-carbon / alkaline / polarised cells; 1N4001, 1N4148, Ge, 1N5819 and 4 LEDs (LTspice standard.dio, Kingbright);
+  E-series capacitor sets + an unknown-C mode (IEC 60063 / 60384-4); 100 / 500 turn coils, ferrite and NdFeB N35 magnets.
+- OPTICS + MEASUREMENT: SCHOTT BK7 / BaK4 / F2 / SF10, PMMA, fused silica, water and glycerol (hollow prism); mirror R and
+  lens f sets; 12 SWG wires on the screw gauge; steel balls (ISO 3290-1) and ₹1/₹2/₹5/₹10 coins (G.S.R. 184(E), 2019).
+- PROOF: 198 experiments, every one opened in headless Chromium and run through its own buttons: **198/198 PASS**, each
+  result within tolerance of its true value. 35 server tests (`test_prayog_variants.py` + `test_v0418_prayog.py`).
+
+### P0 - the honest count (`python -m app.prayog.count`)
+`prayog/syllabus/physics/<level>.json` = every distinct set-up of a level, chapter by chapter, each citing its syllabus:
+
+| Level | Set-ups | Variants | Sources read as the real document |
+|---|---|---|---|
+| Class 6-10 | 88 | 169 | 0 of 9 |
+| Class 11-12 | 71 | 174 | 0 of 5 |
+| B.Sc / B.Tech | 318 | 713 | 5 of 7 (DU LOCF 2019 + UGCF 2022, UGC LOCF, HNBGU, Gurugram) |
+| M.Sc | 218 | 1,237 | 5 of 8 (DU M.Sc 2025-26, IIT Kanpur PHY 461/462, CU Kerala, SGGU, MLSU) |
+| PhD techniques | 112 | 1,061 | 2 of 34 (MIT OCW 8.13-14) |
+| **TOTAL** | **807** | **3,354** | **12 of 63** |
+
+**SAID PLAINLY: 1 lakh is NOT reachable from the real syllabi.** The plan estimated ~2,200 set-ups x ~45 variants; the real
+counted figures are 807 set-ups and ~4 variants each. Reaching 1 lakh would need ~30 invented variants per set-up, i.e.
+near-duplicates. The agents listed only what the documents name and refused to pad. Two honest gaps remain: ncert.nic.in and
+cbseacademic.nic.in did not answer from the sandbox (every school row is "from knowledge of the document", 0 checked), and
+many state-university B.Sc classics are missing for the same reason - worth a few hundred set-ups, not 97,000.
+
+NOT VERIFIED: the school rows against the real NCERT / CBSE PDFs; most PhD rows against their textbooks; any of this on a
+low-end Android phone.
+
+## v0.459.0 ABHI ABHI WEBSITE (web Step 5 = W6 live features + W7 connectors; checkpoint "Clinic live queue + SMS reminders")
+Owner: "Step 5 (live features + connectors)." Everything below runs on a website LINKED to its App Sahayak project (v0.407 EK
+DIMAAG); a plain v0.305 site answers these routes with "pehle jodiye" (404).
+- LIVE CHANNEL `/api/site-app/<site>/live` = `appmaker/live.py`'s SSE on the linked project (journal-fed, every process,
+  filtered per person by the list's read rule, `?last=j<id>` / Last-Event-ID replay, 3 streams per member, 429 over caps).
+  New `check=` on `LV.stream`: the website's own login rule (`livesite.still` -> `applink._who`: old site-signed logins and
+  ended sessions) ends a stream within a minute. Page script reads it with fetch + the Authorization header (EventSource
+  cannot send one), redraws the open view on row events (never while she is typing in a form, never a new / edit page),
+  shows "Live · Team online: n", reconnects with backoff, stops on 'bye login'.
+- LIVE CHAT: `/chat` (member: her thread; staff `?all=1` threads + unread, `?member=` one), POST `/chat`, POST `/chat/<member>`
+  (website staff), `/live/typing`, `/live/presence` - `appmaker/baat.py` + live typing/presence. Her own replies only via
+  `/api/apps/<id>/chat/<member>` with her_tap (console Live panel).
+- CLINIC QUEUE `site/livesite.py`: settings on the project backend `queue` (on, label, self_take, open, avg_min, near,
+  max_day) via `/api/apps/<id>/queue` PUT; tokens = SiteAppRow coll `_queue` {token, name, phone, status waiting/called/
+  done/skipped, day IST}; numbers given under `locks.app` (8 parallel desks -> 1..8, tested); one active token per member
+  a day; `call_next` (called -> done, next / token n -> called, browser push "your turn"), `mark` done/skipped/waiting.
+  Public `/queue` + `/queue/live` (SSE, 1 s cache per site, 6 per address / 3000 per process) + `/queue/board` (TV page)
+  carry NUMBERS ONLY (now, next 8, waiting, measured minutes each = median of today's call gaps). `near()` tells the front N
+  ONCE each: `CN.fire(p, "_queue", row, "queue")` (her approved SMS / WhatsApp action) + browser push.
+- WEB PUSH `site/webpush.py`: RFC 8291 aes128gcm + RFC 8292 VAPID with `cryptography` (no new package); VAPID key derived
+  from the server secret (HKDF), never stored; endpoints only on the browser makers' push services; subscribe needs login +
+  consent:true (the page asks only inside the "Notify me" button's click, then the browser's prompt); 404/410 = deleted;
+  5 browsers per member; account delete forgets them. `turant.later` now also sends the same news to subscribed browsers
+  (status moved, chat reply, assignment, new order to staff). Service worker `assets/hoola-push-sw.js` (push + click only).
+- CONNECTORS (`appmaker/connect.py`): triggers `remind` (date_field / time_field / before_min 5 min..7 days; `remind_tick`
+  in the worker's connector tick; once per booking time via the run note `[YYYY-MM-DD HH:MM]`; cancelled / rejected never)
+  and `queue` (coll `_queue` only); `kind: composio` actions (toolkit + tool + args from the row; her tenant's connected
+  account found by the server; `{{secret.*}}` refused; approval hash includes tool + args). Packs: sms_reminder,
+  wa_reminder, sms_queue, hubspot, composio. Signed inbound webhooks on `/api/site-app/<site>/hook/<key>`.
+- CONSOLE: website App & data > Live panel (`build.js liveBox`): browsers count, messages + reply (her tap), queue settings
+  / TV board link / call next / walk-in / today's tokens, connectors (packs with sealed secrets, approve with a confirm,
+  remove, runs, hook addresses). `app_info` returns `site_id`.
+- Tests `tests/test_v0454_abhi_abhi_website.py`: RFC 8291 round trip decrypted from the browser's side, VAPID signature
+  verified, host allowlist, push consent / 410 / delete, website live stream filtering + replay + logout check, chat,
+  the clinic queue end to end with SMS bodies, parallel tokens, board caps, reminders once / cancelled never / not before
+  approval, HubSpot + Composio, signed webhook, page script asks only on a tap.
+- NOT VERIFIED live: no real MSG91 / WhatsApp / HubSpot / Composio account answered; browser push not yet tried on a real
+  Chrome / Firefox / Safari (the encryption is proven against the RFC, delivery is not). Shop orders (`hoola-shop.js`
+  tracking) are not on the live channel yet - they are not app rows.
+
 ---
 
-## v0.449.0 — GOOGLE MAPS Phases 1–3: PAISA PEHLE + NAKSHA DIKHE + PAAS KYA HAI
+## v0.460.0 — GOOGLE MAPS Phases 1–3: PAISA PEHLE + NAKSHA DIKHE + PAAS KYA HAI
 
 Owner: *"Phases 1–3 as one version -- GO"* (2 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**Built as v0.449.0.** Parallel sessions shipped v0.450-v0.459 while this was in test, so it was re-versioned
+to **0.460.0** on the merge, per CLAUDE.md's REBASE PROTOCOL, and both works kept.
 
 Built on three research registers read the same day out of Google's own documents —
 `docs/research/maps/01_terms_caching_and_leads.md`, `02_places_and_business_profile.md`,

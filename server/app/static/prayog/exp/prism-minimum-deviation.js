@@ -9,6 +9,14 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   var PX = 0.25, PZ = -0.21, BT = 0.018, PAPER_W = 0.40, PAPER_D = 0.28, KCX = 0.018, KCY = 0.012;   // board / paper / kernel centre
   var PY = BT + 0.0004;                                         // paper surface
   function W(q, y) { return new T.Vector3(PX + q[0] - KCX, y === undefined ? PY : y, PZ - (q[1] - KCY)); }   // kernel (x, y) on the paper -> world
+  var AD = Math.round(p.A / DEG * 10) / 10;                    // prism angle, degrees
+  var IM = Math.asin(Math.min(1, p.n * Math.sin(p.A / 2))) / DEG; // angle of incidence at minimum deviation (sets the walk-through's angles)
+  var IT = (function () { var x = p.n * Math.sin(p.A - Math.asin(1 / p.n)); return x >= 1 ? 90 : Math.asin(Math.max(-1, x)) / DEG; })();   // below it the light cannot leave face AC
+  var I_LO = Math.min(30, Math.floor(IM - 18)), I_HI = Math.max(70, Math.min(85, Math.ceil(IM + 20)));
+  var SAMPLE = ((S.lab.variant || {}).sample || '');
+  var LIQ = /water|glycerol|glycerin|liquid|hollow/i.test(SAMPLE);
+  var KIND = /flint|sf10|f2\b/i.test(SAMPLE) ? 'flint' : /acrylic|pmma/i.test(SAMPLE) ? 'acrylic' : /quartz|silica/i.test(SAMPLE) ? 'silica' : /bak4|barium/i.test(SAMPLE) ? 'barium' : LIQ ? 'liquid' : 'crown';
+  var TINT = { flint: 0xeee9c8, acrylic: 0xe2f0f8, silica: 0xf2f8fa, barium: 0xd8efe4, liquid: 0xcfe6f6, crown: 0xd2efe6 }[KIND];
   var st = { placed: false, traced: false, iSet: 40, cur: null, protOn: false, prismOn: false };
 
   // ---------- drawing board, paper, drawing pins
@@ -48,12 +56,18 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   var shape = new T.Shape(); shape.moveTo(apex[0], apex[1]); shape.lineTo(bl[0], bl[1]); shape.lineTo(br[0], br[1]); shape.closePath();
   var prismGeo = new T.ExtrudeGeometry(shape, { depth: 0.036, bevelEnabled: true, bevelThickness: 0.0008, bevelSize: 0.0008, bevelSegments: 2 });
   // clear glass drawn without a transmission pass (one render per frame keeps slow devices smooth): faint green body, bright reflections
-  var prismMat = new T.MeshPhysicalMaterial({ color: 0xd2efe6, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.26, depthWrite: false, clearcoat: 1, clearcoatRoughness: 0.02,
+  var prismMat = new T.MeshPhysicalMaterial({ color: TINT, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.26, depthWrite: false, clearcoat: 1, clearcoatRoughness: 0.02,
     specularIntensity: 1, envMapIntensity: 1.6, side: T.DoubleSide });
   var prism = new T.Group(); S.scene.add(prism);
   var glassM = S.mesh(prismGeo, prismMat); glassM.rotation.x = -Math.PI / 2; glassM.position.y = 0.0008; glassM.renderOrder = 3; prism.add(glassM);
   var edgeG = new T.EdgesGeometry(prismGeo, 30), edges = new T.LineSegments(edgeG, new T.LineBasicMaterial({ color: 0x9fc9c0, transparent: true, opacity: 0.6 }));
   edges.rotation.x = -Math.PI / 2; edges.position.y = 0.0008; prism.add(edges);
+  if (LIQ) {      // a hollow prism: thin glass walls round the liquid, filled to just below the top
+    var liqShape = new T.Shape(), sh = 0.92; liqShape.moveTo(apex[0], apex[1] - 0.004); liqShape.lineTo(bl[0] * sh + 0.002, bl[1] + 0.002); liqShape.lineTo(br[0] * sh - 0.002, br[1] + 0.002); liqShape.closePath();
+    var liq = S.mesh(new T.ExtrudeGeometry(liqShape, { depth: 0.03, bevelEnabled: false }), new T.MeshPhysicalMaterial({ color: /glycer/i.test(SAMPLE) ? 0xeaf2d8 : 0xa9d4f2, roughness: 0.05,
+      transparent: true, opacity: 0.32, depthWrite: false })); liq.rotation.x = -Math.PI / 2; liq.position.y = 0.0016; liq.renderOrder = 2; prism.add(liq);
+    var lid = S.mesh(new T.CylinderGeometry(0.004, 0.004, 0.003, 16), M.black); lid.position.set(0, 0.0372, -apex[1] * 0.45); prism.add(lid);
+  }
   var prShadow = S.contact(0.13, 0.12, 0, 0, 0.22, PY);
   var PRISM_HOME = new T.Vector3(PX + 0.36, 0, PZ - 0.06), PRISM_ON = W([0, 0], PY);
   function setPrism(pos) { prism.position.copy(pos); var onB = Math.abs(pos.x - PRISM_ON.x) < 0.2 && Math.abs(pos.z - PRISM_ON.z) < 0.15; prShadow.position.set(pos.x, (onB ? PY : 0) + 0.0008, pos.z - SD * 0.3); prShadow.material.opacity = 0.22 * Math.max(0.2, 1 - Math.max(0, pos.y - (onB ? PY : 0)) * 12); }
@@ -101,7 +115,7 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   rayLine.visible = false; rayLine.renderOrder = 7; S.scene.add(rayLine);
 
   S.addApparatus('board', board, 'Drawing board and white paper', 'A soft-wood board with a white sheet held by drawing pins. Pins push into it easily.');
-  S.addApparatus('prism', prism, 'Glass prism', 'An equilateral prism, angle A = 60°. Its refractive index is what you will find.');
+  S.addApparatus('prism', prism, LIQ ? 'Hollow prism' : 'Glass prism', (SAMPLE ? SAMPLE + '. ' : '') + (Math.abs(AD - 60) < 0.05 ? 'An equilateral prism, angle A = 60°. ' : 'A prism of angle A = ' + AD + '°. ') + 'Its refractive index is what you will find.');
   S.addApparatus('pins', cushion, 'Steel pins', 'Two pins mark the incident ray; two more are fixed in line with their images, seen through the prism.');
   S.addApparatus('pencil', pencil, 'Sharp pencil', 'Fine lines give exact angles. Draw the outline, the normal and the rays with it.');
   S.addApparatus('prot', prot, 'Protractor', 'Sets the angle of incidence and measures the deviation. Least count 1°; read to half a degree.');
@@ -159,7 +173,7 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
     var nA = [Q[0] + 0.035 * n1[0], Q[1] + 0.035 * n1[1]], nB = [Q[0] - 0.05 * n1[0], Q[1] - 0.05 * n1[1]];
     return pencilStroke([{ pts: [apex, bl, br, apex] }, { pts: [nA, nB], dash: true, w: 2 }], function () {
       words.push({ text: 'A', at: [apex[0], apex[1] + 0.012] }, { text: 'B', at: [bl[0] - 0.01, bl[1] - 0.008] }, { text: 'C', at: [br[0] + 0.01, br[1] - 0.008] },
-        { text: 'N', at: [nA[0] - 0.006, nA[1] + 0.005] }, { text: 'Q', at: [Q[0] + 0.009, Q[1] + 0.001] }, { text: 'A = 60°', at: [apex[0], apex[1] - 0.03], size: 36 });
+        { text: 'N', at: [nA[0] - 0.006, nA[1] + 0.005] }, { text: 'Q', at: [Q[0] + 0.009, Q[1] + 0.001] }, { text: 'A = ' + AD + '°', at: [apex[0], apex[1] - 0.03], size: 36 });
       st.traced = true; drawPaper(); S.say('Outline traced, and the normal NQ drawn on face AB.'); S.render(); });
   }
   function clearReading() { if (!st.cur) return; strokes = strokes.filter(function (s) { return !s.reading; }); words = words.filter(function (t) { return !t.reading; }); marks = []; st.cur = null; rayLine.visible = false; }
@@ -167,7 +181,7 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
     if (!st.traced) { S.say('Trace the prism and draw the normal first.'); return Promise.resolve(false); }
     if (st.cur && st.cur.phase > 0 && st.cur.phase < 4) { S.say('Finish this reading first (measure δ), then choose a new angle.'); return Promise.resolve(false); }
     if (S.hand.busy) return wait();
-    if (!(i >= 30 && i <= 70)) { S.say('Choose i between 30° and 70°.'); return Promise.resolve(false); }
+    if (!(i >= I_LO && i <= I_HI)) { S.say('Choose i between ' + I_LO + '° and ' + I_HI + '°.'); return Promise.resolve(false); }
     if (S.rows.some(function (r) { return Math.abs(r.i - i) < 0.25; })) { S.say('You already have a reading at i = ' + i + '°. Choose another angle.'); return Promise.resolve(false); }
     clearReading();
     var g = geo(i); st.cur = { i: i, g: g, phase: 0 };
@@ -265,21 +279,22 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   return {
     camera: { pos: [0.36, 0.6, 0.76], look: [0.3, 0.0, -0.2] },
     views: VIEWS,
-    book: { title: 'Expt. — Prism: δ against i', lines: ['Aim: find δm and n of the prism glass.', 'Angle of prism A = 60°', 'i: protractor at the normal at Q', 'δ: between incident ray produced and', '      the emergent ray (protractor)', 'n = sin((A + δm)/2) / sin(A/2)'],
+    book: { title: 'Expt. — Prism: δ against i', lines: ['Aim: find δm and n of the prism ' + (LIQ ? 'liquid.' : 'glass.'), 'Angle of prism A = ' + AD + '°', 'i: protractor at the normal at Q', 'δ: between incident ray produced and', '      the emergent ray (protractor)', 'n = sin((A + δm)/2) / sin(A/2)'],
       columns: [{ label: 'No.', get: function (r, i) { return i + 1; } }, { label: 'i (°)', get: function (r) { return r.i.toFixed(1); } },
         { label: 'e (°)', get: function (r) { return r.e.toFixed(1); } }, { label: 'δ (°)', get: function (r) { return r.d.toFixed(1); } }] },
     theory: { principle: 'A ray passing through a prism is bent twice, both times towards the base. The total deviation δ first falls as the angle of incidence i grows, reaches a least value δm, then rises again. At δm the ray inside the prism runs parallel to the base and i = e.',
-      formula: 'n = sin((A + δm)/2) / sin(A/2)', formulaNote: 'A = angle of the prism (60°) · δm = angle of minimum deviation · also i + e = A + δ',
+      formula: 'n = sin((A + δm)/2) / sin(A/2)', formulaNote: 'A = angle of the prism (' + AD + '°) · δm = angle of minimum deviation · also i + e = A + δ',
       more: ['You will draw the ray for one angle of incidence at a time: two pins on the incident ray, two pins sighted through the prism on the emergent ray, then δ measured with a protractor. A graph of δ against i is a U-shaped curve; its lowest point gives δm.'],
       precautions: 'Keep the pins upright and at least 6 cm apart. Look at the feet of the pins, not their heads, when lining them up. Draw thin pencil lines. Take extra readings close to the lowest point of the curve. Do not let the prism move between readings.' },
-    graph: { x: function (r) { return r.i; }, y: function (r) { return r.d; }, xlabel: 'i (°)', ylabel: 'δ (°)', x0: 30, y0: 30, x1: 70, line: function (pts) { return pts.length >= 4 ? cubic(pts) : null; } },
+    graph: Object.defineProperties({ x: function (r) { return r.i; }, y: function (r) { return r.d; }, xlabel: 'i (°)', ylabel: 'δ (°)', x0: I_LO, x1: I_HI, line: function (pts) { return pts.length >= 4 ? cubic(pts) : null; } }, { y0: { enumerable: true, get: function () {
+      var lo = S.rows.length ? Math.min.apply(null, S.rows.map(function (r) { return r.d; })) : 35; return Math.min(30, Math.floor(lo / 5) * 5 - 5); } } }),
     result: function (rows) { if (rows.length < 3) return null; var dm = Math.min.apply(null, rows.map(function (r) { return r.d; }));
-      return { label: 'n', value: nFrom(dm), unit: '', digits: 3, truth: p.n, note: 'δm = ' + dm.toFixed(1) + '° from the lowest point of the δ–i curve; A = 60°.' }; },
+      return { label: 'n', value: nFrom(dm), unit: '', digits: 3, truth: p.n, note: 'δm = ' + dm.toFixed(1) + '° from the lowest point of the δ–i curve; A = ' + AD + '°.' }; },
     tol: 0.01,
     chips: ['Why does δ first fall and then rise?', 'Why is i = e at minimum deviation?', 'How do I line up the pins?', 'Check my readings', 'Why can I not see the pins at small i?'],
     viva: [['At minimum deviation, the ray inside the prism is…', ['parallel to the base', 'perpendicular to the base', 'along the normal'], 0, 'The path is symmetric, so the ray inside runs parallel to the base.'],
       ['Why do we look at the feet of the pins when lining them up?', ['The heads may be tilted; the feet mark the true points on the ray', 'The feet are brighter', 'It reduces glare'], 0, 'Only where the pins enter the paper are they exactly on the drawn line.']],
-    askState: function () { var c = st.cur, v = look(c ? c.i : st.iSet); return { prism_angle_deg: 60, prism_on_paper: st.placed, outline_traced: st.traced, angle_of_incidence_deg: c ? c.i : st.iSet,
+    askState: function () { var c = st.cur, v = look(c ? c.i : st.iSet); return { prism_angle_deg: AD, prism_on_paper: st.placed, outline_traced: st.traced, angle_of_incidence_deg: c ? c.i : st.iSet,
       pins_fixed: c ? Math.min(4, c.phase >= 3 ? 4 : c.phase >= 2 ? 2 : 0) : 0, deviation_deg: c && c.phase >= 4 ? half(v.dev / DEG) : null, light_totally_reflected: !!v.tir, readings: S.rows.length }; },
 
     steps: [
@@ -299,7 +314,7 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
           var c = st.cur, ph = c ? c.phase : 0;
           u.h2('Trace the ray, measure δ');
           u.p('For each angle of incidence: draw the incident ray, fix pins P1 and P2 on it, look through face AC and fix P3 and P4 in line with the images of P1 and P2, then join them and measure the deviation δ.');
-          u.slider('Angle of incidence i (protractor)', 30, 70, 1, function () { return st.iSet; }, function (x) { st.iSet = x; if (!st.cur || st.cur.phase >= 4) update(); }, '°', 0);
+          u.slider('Angle of incidence i (protractor)', I_LO, I_HI, 1, function () { return st.iSet; }, function (x) { st.iSet = x; if (!st.cur || st.cur.phase >= 4) update(); }, '°', 0);
           u.task('1. Draw the incident ray at i = ' + (c && ph < 4 ? c.i : st.iSet) + '°', ph >= 1 && ph < 4, ph >= 1 && ph < 4 ? 'Drawn' : 'Protractor on the normal at Q')
             .add(u.button('Draw the incident ray', function () { drawIncident(st.iSet); }, ph === 0 || ph >= 4, S.hand.busy || (ph >= 1 && ph < 4)));
           u.task('2. Fix pins P1 and P2', ph >= 2 && ph < 4, ph >= 2 && ph < 4 ? 'Fixed upright on the incident ray' : 'Two pins, about 5 cm apart')
@@ -317,7 +332,9 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
         },
         ok: function () { return S.rows.length >= 6 && uShape(); },
         auto: function () {
-          return [35, 40, 45, 48, 50, 52, 55, 60, 65].reduce(function (pr, i) { return pr.then(function () { st.iSet = i; return reading(i); }); }, Promise.resolve())
+          var sh = Math.round(IM - 48.59), is = [35, 40, 45, 48, 50, 52, 55, 60, 65].map(function (i) { return i + sh; })
+            .filter(function (i) { return i >= I_LO && i <= I_HI && i > IT + 1.5; });
+          return is.reduce(function (pr, i) { return pr.then(function () { st.iSet = i; return reading(i); }); }, Promise.resolve())
             .then(function () { S.render(); }); } },
     ],
 
