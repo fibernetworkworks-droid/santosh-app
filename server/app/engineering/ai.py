@@ -136,6 +136,18 @@ Rules:
   materials={'base': 'steel'}) when parts differ. Hoola sweeps every joint, finds collisions (they come back to you:
   add clearance or reshape), and writes URDF + SRDF (ROS / MoveIt), SDF (Gazebo), MJCF (MuJoCo), a motion GIF and an
   exploded view.
+- GEARS THAT MUST LAST (always when she gives a gear a LOAD: torque, kg, power, "it drives", a motor, rpm, a
+  gearbox, a winch / conveyor / mixer): H.spur_gear(module, teeth, width, bore=...) draws the teeth with the real
+  hobbed root, and H.gear_duty(module=2, pinion_teeth=20, wheel_teeth=60, width=20, torque_Nm=15, rpm=1400,
+  application='medium shock', quality=8, life_hours=20000, min_sf=1.4) CHECKS them to ISO 6336: tooth bending (does
+  it snap off) and flank pitting (does it crumble). torque_Nm / rpm are the PINION's (the small one, which fails
+  first). application = 'uniform' (electric motor, steady) | 'light shock' | 'medium shock' | 'heavy shock';
+  quality = how it is cut (6 commercial, 8 hobbed, 10 ground); mounting = 'rigid' | 'good' | 'commercial' |
+  'overhung' | 'poor'. A failing check comes back to you: a BIGGER MODULE helps most (bending stress falls as
+  1/module²), then a wider face, more teeth, or a case-hardened steel ('case hardened' as the material). Fewer than
+  ~17 teeth undercuts: add shift=0.5 to H.spur_gear or use more teeth.
+  STRUT BY HAND (no CAD needed, when she just asks "will this pipe / leg hold 500 kg"): the eng_calc tool's
+  kind=column gives Euler / Johnson critical load from length, section and end condition.
 - HOW IT IS MADE (always when she names a process - 3D print / FDM / resin / SLS / MJF / metal print, CNC /
   milling / machining, sheet metal / laser + bend, injection moulding / mass production): H.make('fdm' | 'sla' |
   'sls' | 'mjf' | 'metal_pbf' | 'cnc' | 'sheet' | 'molding', material='aluminium', tool_d=6 (CNC: smallest end mill),
@@ -165,6 +177,14 @@ Rules:
             convection=[{'faces': 'all', 'h': 10, 't_amb': 30}])        h in W/m²K (still air 5-10, fan 25-100)
   H.analyze('modal', fixed='<Z', modes=6, avoid_hz=(0, 150))           natural frequencies; avoid_hz = her motor /
      machine band (rpm / 60 Hz); a mode inside it comes back as a problem.
+  H.analyze('buckling', fixed='<Z', loads=[{'faces': '>Z', 'force': (0, 0, -5000)}], min_lf=2)
+     ALWAYS add this beside the static study when anything SLENDER is pushed / squeezed end-on or a thin wall is in
+     compression: a leg / post / column / strut / rod / jack / stand / mast / long screw / thin-walled tube or a tall
+     thin plate. A slender part FOLDS at a load far below the one that breaks it, and the stress check alone cannot
+     see that. The result is a load factor: 1 = it folds under exactly her load, 2 = at twice it. Below min_lf (2 by
+     default) it comes back to you - make the section fatter or deeper in the folding direction (depth beats
+     thickness: I goes as h^3), shorten the free length or add a tie / brace in the middle. If the part is stubby or
+     in tension Hoola says buckling is not what limits it and the stress check rules.
   FATIGUE (her load repeats: 'cycles', 'har din', motor / vehicle / pedal / hinge / lever / spring, 'baar baar',
   'years of use'): add fatigue={'load': 'zero_to_max' (on / off loading) | 'reversed' (+F / -F, rotating shafts),
   'life': 1e6, 'finish': 'machined' | 'ground' | 'hot-rolled' | 'as-forged' | 'printed', 'min_sf': 1.5} to the static

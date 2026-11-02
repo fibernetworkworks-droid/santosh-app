@@ -148,11 +148,19 @@ _DPDP = re.compile(r"(?i)\b(aadhaar|aadhar|pan_?(no|number|card)|date_?of_?birth
 _ENC = re.compile(r"(?i)(encrypt|hash|mask|seal|fernet|aes|kms|tokeni[sz]e|redact|bcrypt|argon)")
 
 
+TEST_PATH = re.compile(r"(?i)(^|/)(tests?|__tests__|spec)/|_test\.|\.test\.|\.spec\.|(^|/)test_")
+
+
+def is_test_path(path: str) -> bool:
+    """v0.447 a test file of the repo (the proof-of-the-bug commit carries only these)."""
+    return bool(TEST_PATH.search(path or ""))
+
+
 def code_checks(added: str, path: str = "") -> list[dict[str, Any]]:
     """Secure-coding warnings on ADDED lines only. Warnings, not verdicts: the PR's risk notes / review tell her and her team."""
     out: list[dict[str, Any]] = []
     seen: set[tuple[str, int]] = set()
-    is_test = bool(re.search(r"(?i)(^|/)(tests?|__tests__|spec)/|_test\.|\.test\.|\.spec\.|test_", path or ""))
+    is_test = is_test_path(path)
     for i, line in enumerate((added or "").splitlines(), 1):
         s = line.strip()
         if not s or s.startswith(("#!", "* ")):

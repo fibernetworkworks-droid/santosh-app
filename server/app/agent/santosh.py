@@ -487,7 +487,7 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     tools = tools if tools is not None else TOOLS
     cap = max_tokens or settings.agent_max_tokens
     streaming = live is not None and live.streaming
-    # v0.439 a held answer (a hard ask being checked, a Gyaan answer) and any big answer still STREAM from Claude: the
+    # v0.443 a held answer (a hard ask being checked, a Gyaan answer) and any big answer still STREAM from Claude: the
     # live reply decides what she sees (feed() only shows words while live.streaming), the API call is never one long
     # blocking request (16k tokens + thinking as one HTTP call is the shape a client / proxy refuses or times out) and
     # the thinking reaches the Soch card while the words are held
@@ -580,11 +580,11 @@ def _learn_claude(kw: dict, resp) -> None:
     _ctx.after_call("claude", kw.get("system"), kw.get("tools"), kw.get("messages") or [], n)
 
 
-NONSTREAM_MAX_TOKENS = 8192     # v0.439 above this an answer is always streamed from the API (no live reply needed)
+NONSTREAM_MAX_TOKENS = 8192     # v0.443 above this an answer is always streamed from the API (no live reply needed)
 
 
 class _QuietLive:
-    """v0.439 a stream with no live reply to show it in (a sub-agent, a check): the words are just collected."""
+    """v0.443 a stream with no live reply to show it in (a sub-agent, a check): the words are just collected."""
     def feed(self, piece: str) -> None:
         pass
 
@@ -1032,6 +1032,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     if adm is not None and state.get("hard"):
         adm.extra.add("pylab")      # v0.430 a hard ask the judge (not the rules) found also gets the sandbox
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
+    ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 
     def _system(fams) -> str:
@@ -1505,15 +1506,12 @@ def _key(name: str, args) -> str:
     return k(name, args)
 
 
-def _goal_open(state: dict, conversation_id: str, settings) -> bool:
-    """A kaam_plan goal is open for this chat (v0.186): its steps and its honest "X/Y steps ho gaye" line are the
-    truth machinery there, so v0.223's free claim check stays out of its way."""
-    if state.get("goal"):
-        return True
-    if not settings.agent_goal:
-        return False
+def _goal_now(conversation_id: str, settings) -> dict | None:
+    """The working goal of this chat (v0.443: the claim check asks the whole job, not one round)."""
+    if not getattr(settings, "agent_goal", True):
+        return None
     from . import goal as _g
-    return _g.active_for(conversation_id) is not None
+    return _g.active_for(conversation_id)
 
 
 async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, conversation_id: str) -> str:
@@ -1524,10 +1522,18 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     cap = pakka.SELF_CHECKS_GOAL if state.get("goal") else pakka.SELF_CHECKS_PER_TURN
     if conversation_id in _stopped or state["breaker"].stopped or state.get("halted"):
         return ""
-    if settings.draft_check and not _goal_open(state, conversation_id, settings):
-        # v0.223 free, in code: the reply claims work that never ran. pakka below owns the case where tools DID run,
-        # and goal mode (v0.186) owns its own truth - its steps and its honest "X/Y steps ho gaye" line.
-        fake = draftcheck.fake_done(state, final_text)
+    if settings.draft_check:
+        # v0.223 free, in code: the reply claims work that never ran. pakka below owns the case where tools DID run.
+        # v0.443 (long-task report item 2) this used to be switched OFF for the whole of goal mode, on the idea that
+        # the plan's own "X/Y steps ho gaye" line was truth enough - but a step is ticked by the MODEL, so a goal
+        # could tick steps and claim sent / booked / saved with only reads behind it. Goal mode now gets the same
+        # free check; its own honest lines never trip it (_ALREADY_HONEST + the goal line carries no claim verb).
+        g0 = state.get("goal") or (_goal_now(conversation_id, settings))
+        since = None
+        if g0:
+            from . import goal as _g
+            since = _g.started_at(g0["id"]) if g0.get("id") else None
+        fake = draftcheck.fake_done(state, final_text, conversation_id, since)
         if fake:
             return fake
     calls = state.get("calls") or []

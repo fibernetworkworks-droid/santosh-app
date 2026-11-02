@@ -38,6 +38,7 @@
       var p = P[card.getAttribute('data-hoola-product')]; if (!p) return;
       var pr = card.querySelector('[data-hoola-price]'); if (pr) pr.textContent = p.price_text;
       starsOn(card, card.getAttribute('data-hoola-product'));
+      wishOn(card, card.getAttribute('data-hoola-product'));
     });
     Array.prototype.forEach.call(d.querySelectorAll('[data-hoola-buy]'), function (b) {
       var p = P[b.getAttribute('data-hoola-buy')];
@@ -50,6 +51,21 @@
     var r = STARS[slug]; if (!r || !r.count || host.querySelector('.hs-stars')) return;
     var s = el('p', 'hs-stars', '★ ' + r.avg + ' (' + r.count + ')'); s.setAttribute('aria-label', r.avg + ' out of 5 from ' + r.count + ' buyers');
     host.appendChild(s);
+  }
+  // v0.452 wishlist: kept only in this browser (nothing about her customers leaves the phone)
+  var WK = KEY + ':wish';
+  function wishes() { try { return JSON.parse(localStorage.getItem(WK) || '[]') || []; } catch (e) { return []; } }
+  function wishOn(host, slug) {
+    if (!slug || host.querySelector('.hs-wish')) return;
+    var b = el('button', 'hs-wish'); b.type = 'button';
+    var paint = function () { var on = wishes().indexOf(slug) >= 0; b.textContent = on ? '♥ Saved' : '♡ Save'; b.setAttribute('aria-pressed', String(on)); };
+    b.addEventListener('click', function (e) {
+      e.preventDefault(); var w = wishes(), i = w.indexOf(slug);
+      if (i >= 0) w.splice(i, 1); else w.push(slug);
+      try { localStorage.setItem(WK, JSON.stringify(w.slice(-100))); } catch (er) {}
+      paint();
+    });
+    paint(); host.appendChild(b);
   }
   function add(slug) {
     var p = P[slug];
@@ -96,6 +112,13 @@
     });
     panel.appendChild(list);
     panel.appendChild(el('p', 'hs-cart-sub', 'Saaman: ' + rs(sub)));
+    var ws = wishes().filter(function (s2) { return P[s2] && !cart[s2]; });
+    if (ws.length) {                                      // v0.452 saved for later
+      var wl = el('div', 'hs-wishlist'); wl.appendChild(el('p', 'muted', 'Saved for later:'));
+      ws.forEach(function (s2) { var b = el('button', 'btn btn-ghost', '+ ' + P[s2].title); b.type = 'button';
+        b.addEventListener('click', function () { add(s2); open(cartView); }); wl.appendChild(b); });
+      panel.appendChild(wl);
+    }
     var dl = opt('delivery'), fr = opt('free');
     if (dl && dl !== '₹0') panel.appendChild(el('p', 'muted', 'Delivery: ' + dl + (fr ? ' (' + fr + ' se upar free)' : '') + ' - final total order par.'));
     var go = el('button', 'btn btn-primary', 'Aage badhein'); go.type = 'button';
@@ -142,6 +165,15 @@
       l.appendChild(r); l.appendChild(el('span', '', w[1])); pays.appendChild(l);
     });
     f.appendChild(pays);
+    var rl = el('label', 'hs-check'), rm = d.createElement('input'); rm.type = 'checkbox'; rm.name = 'remind';   // v0.452 opt-in only
+    rl.appendChild(rm); rl.appendChild(el('span', '', 'Order adhoora rahe to WhatsApp par ek baar yaad dilana (dukaan khud bhejegi)'));
+    f.appendChild(rl);
+    rm.addEventListener('change', function () {
+      var ph = f.querySelector('[name=phone]').value;
+      if (!rm.checked || !/^[6-9][0-9]{9}$/.test(ph)) return;
+      req('POST', '/cart/remind', {phone: ph, name: f.querySelector('[name=name]').value, consent: true,
+        items: Object.keys(cart).map(function (s2) { return {slug: s2, qty: cart[s2]}; })}).catch(function () {});
+    });
     var msg = el('p', 'hs-form-msg'); msg.setAttribute('role', 'status');
     var sub = el('button', 'btn btn-primary', 'Order bhejiye'); sub.type = 'submit';
     f.appendChild(sub); f.appendChild(msg); panel.appendChild(f);
@@ -187,6 +219,17 @@
       panel.appendChild(el('p', 'hs-status', 'Online payment mil gaya (gateway ne pakka kiya).'));
     }
     if (o.status === 'delivered') reviewBox(panel, o);
+    if (['confirmed', 'packed', 'shipped', 'delivered', 'cancelled'].indexOf(o.status) >= 0) {   // v0.452 her GST bill (if she is registered)
+      var inv = el('a', 'btn btn-ghost', o.status === 'cancelled' ? 'Credit note (PDF)' : 'GST bill (PDF)');
+      inv.href = API + '/order/' + encodeURIComponent(o.number) + '/invoice?t=' + encodeURIComponent(o.token) + (o.status === 'cancelled' ? '&doc=credit' : '');
+      inv.target = '_blank'; inv.rel = 'noopener'; panel.appendChild(inv);
+    }
+    if (o.status === 'shipped' || o.status === 'delivered') {
+      var tk = el('p', 'muted hs-track-live'); panel.appendChild(tk);
+      req('GET', '/order/' + encodeURIComponent(o.number) + '/track?t=' + encodeURIComponent(o.token)).then(function (j) {
+        if (j.awb) tk.textContent = 'Courier AWB ' + j.awb + (j.status ? ': ' + j.status : '') + ((j.events || [])[0] ? ' (' + j.events[0].what + ', ' + j.events[0].where + ')' : '');
+      }).catch(function () {});
+    }
     if (o.pay && o.status === 'new') {
       var pay = el('div', 'hs-shop-pay');
       pay.appendChild(el('p', '', o.pay.amount + ' bhejiye: ' + o.pay.vpa));

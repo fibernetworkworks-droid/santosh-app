@@ -17,6 +17,14 @@ def _add(fake, files):
         tree.append({"path": path, "mode": "100644", "type": "blob", "sha": fake._blob(text.encode())})
 
 
+
+@pytest.fixture(autouse=True)
+def _no_plan_pass(dev, monkeypatch):  # noqa: F811 - after `dev`, so the settings object is the live one
+    """v0.451 ECC PHASE 4 added a read-only PLAN pass before the edit loop for standard / large asks. These tests script
+    the EDIT loop turn by turn, so the plan pass is off here; it has its own file (test_v0451_plan_pehle.py)."""
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "dev_plan_first", False, raising=False)
+
 @pytest.fixture
 def rdev(dev):  # noqa: F811
     S = dev

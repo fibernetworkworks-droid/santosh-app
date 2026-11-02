@@ -202,7 +202,8 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         if op == "stats":
             return W.stats(site_id, sch, w, int(kw.get("days") or 30))
         if op in ("approvals", "decide", "related", "fn", "otp_start", "otp_verify", "2fa_login", "sessions", "session_end",
-                  "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me", "audit", "matrix", "upload"):
+                  "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me", "audit", "matrix", "upload",
+                  "pay_plans", "pay_subscribe", "pay_subs", "pay_cancel"):
             raise W.AppError("Is website mein yeh abhi nahi; pehle website ko app ke dimaag se jodiye.", 404)
         raise W.AppError("not found", 404)
     from ..appmaker import backend as BE
@@ -274,6 +275,17 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return {"matrix": SEC.matrix(BE.schema(p))}
     if op == "upload":
         return BE.upload(p, w, kw.get("raw") or b"", ip)
+    if op in ("pay_plans", "pay_subscribe", "pay_subs", "pay_cancel"):   # v0.452 AutoPay plans on the website (her plans)
+        from ..appmaker import pay as PY
+        if op == "pay_plans":
+            return PY.plans(p)
+        if not w.m:
+            raise W.AppError("Pehle login kijiye.", 401)
+        if op == "pay_subscribe":
+            return PY.subscribe(p, w, str(kw.get("key") or ""))
+        if op == "pay_subs":
+            return PY.my_subs(p, w)
+        return PY.cancel_sub(p, w, str(kw.get("sid") or ""))
     if op == "rows":
         return {"rows": BE.rows(p, kw["key"], w)}
     if op == "create":

@@ -16842,8 +16842,323 @@ apps and in her console's app page), multi-vendor marketplace (vendor sign-up / 
 split rules per vendor), courier connector (Shiprocket / Delhivery), abandoned-cart reminders (needs opted-in messaging),
 wishlists. NOT VERIFIED: a real gateway account (fake gateway in tests, same as v0.419).
 
+## v0.447.0 SABOOT — prove the bug before you fix it (ECC Phase 3)
 
-## v0.453.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA - 2 Nov 2026
+Owner: *"ECC Phase 3 — the next idea from that repo."* Read from the ECC clone (MIT, affaan-m/ECC v2.2.3): 71 agents,
+314 skills. The idea taken is `skills/orch-fix-defect`'s first move — **"reproduce the bug as a new failing test, then fix
+until it goes green. Proving the bug exists first is what separates a fix from a tweak."** — with the reporting rule from
+`skills/verification-loop` ("report VERIFIED or FAILED **with its evidence**"; say NOT PERFORMED where you could not check).
+
+**The hole it closes.** `loop.SYSTEM` rule 4 has said since v0.350 that a bug fix comes with a test that fails before the
+fix and passes after. Nothing ever checked it. The coding card DOES check it — `codecard` re-runs the new test against the
+old code and marks `proves` — but the live product never did, so Hoola could write "test ise saabit karta hai" in the PR
+with no evidence whatsoever, and a test that happened to pass on the broken code looked exactly like a real regression
+test. The repo's code never runs on Hoola's server (her deps, her runner), so the only honest test runner available is
+**her own CI**.
+
+**Red, then green.** For a fix whose change has both test and non-test files, in a repo that has CI:
+
+1. `push()` commits the **test files only** on the `hoola/<task>` branch (`test: <title>` + a message saying the run is
+   expected to fail and why) and opens the DRAFT PR on it. `proof = {"state": "wait", …}`.
+2. `_ci_step` sees `proof.state == "wait"` **before** any other CI handling, so a red run here is never mistaken for a
+   broken build and never starts a fix round. `_proof_step` reads what her CI said:
+   - **failure** → `proven` when `_proof_named()` finds the new test's path or name in the failure text / annotations,
+     else `proven_unnamed` (her CI may be red for an unrelated reason, and a proof nobody can point at is not a proof);
+   - **success** → `not_proven`;
+   - no result past `dev_ci_wait_min`, or pending past `dev_ci_max_min` → `unknown`.
+3. `_proof_land()` then commits the **whole** change set on top of the test commit (`base_tree`, so it is a real second
+   commit), resets the CI wait, writes the verdict into the task log and the chat card, and PATCHes a
+   "### Proof of the bug" section into the PR body (`gh.update_pr`, new). From there everything is as before: CI on the
+   full change → v0.445 own review → Ready for review → her tap to merge.
+
+**It never hides the answer.** `not_proven` says on the card *"naya test PURANE code par bhi PASS ho gaya, to yeh test bug
+ko saabit nahi karta"* and writes **NOT proven** into the PR — the fix still lands (it may be right; the *test* is what is
+unproven), but nobody can read that PR and think the bug was reproduced. `unknown` is reported as not measured, never as
+proven.
+
+**Guards:** only `kind == "fix"`; only when `_has_ci()`; only when the change has test **and** non-test files (a tests-only
+change has no fix to split off); switch `dev_fix_proof` (default True). A GhError landing the fix fails the task loudly
+rather than leaving the branch at the test commit. One extra CI run per fix is the whole cost.
+
+**Also:** `loop.SYSTEM` rule 4 now tells the model the test is pushed first and that a test passing on the unfixed code
+proves nothing — so it must be written against the BUG she reported, not against the fix. `rules.TEST_PATH` /
+`is_test_path()` factored out of `code_checks` and shared. New nullable `devsahayak_tasks.proof`; `task_view` carries it.
+
+**Files:** `server/app/devsahayak/service.py` (`_proof_tests`, `_proof_named`, `_proof_land`, `_proof_step`, `PROOF_SAY`,
+`PROOF_PR`, `push`, `_ci_step`, `task_view`), `gh.py` (`update_pr`), `loop.py` (rule 4), `rules.py`, `models.py`,
+`config.py`. Tests `server/tests/test_v0447_saboot.py` (7): the test-only first commit (the broken file still broken on
+it), red → proven → fix commit → green → ready, green-on-old-code said plainly + written into the PR, a red run that does
+not name the test, no CI result = not measured, the skips (no test in the change / a feature / tests only / no CI), and the
+default switch. v0.352's `cidev` fixture turns the proof run off so that suite keeps testing the CI fix loop.
+
+**NOT VERIFIED:** no live job has run through this yet (her Anthropic credit is empty). The first real fix on her own repo
+is what will show the red-then-green history in a PR.
+## v0.443.0 PAKKA KHATAM step 0 (built as 0.439; another session shipped v0.439 GMAIL meanwhile - REBASE PROTOCOL) - crew timeout keeps finished work + the LONG CARD (owner: "0a and 0b - start", 2 Nov 2026)
+
+From the research report `reports/How AI agents finish long tasks.md` (notes in `research_notes/How AI agents finish long
+tasks/`): every agent that finishes long jobs reliably decides "done" by something the model cannot fake, and measures
+pass^k. Hoola had no number for how often a long job really finishes. Step 0 = fix the one confirmed bug and build the
+measurement BEFORE changing the loop.
+
+- 0a CREW TIMEOUT (`agent/team.py`): inline crews used `asyncio.wait_for(gather(...))`; on the 260 s clock EVERY agent's
+  deliverable was replaced with "time out", also the ones that had already finished. Background crews lost all results
+  the same way (`results = []` on the crew timeout). `_run_crew(..., timeout=)` now uses `asyncio.wait`: only agents
+  still running are cancelled and marked `timed_out`; finished agents keep their deliverables (spec order kept,
+  `STATS["timed_out"]`). A background crew is `failed` only when nothing at all came back. Inline deploy now goes
+  through `_run_crew` (one code path). Tests `test_v0439_team_timeout.py` (3); `test_v0193_harness3` fakes take `timeout`.
+- 0b LONG CARD (`app/quality/long_asks.py` set `long-1`, `app/quality/longcard.py`): 25 multi-step asks of her real job
+  kinds - research -> PDF / Excel / Word, her numbers -> sums -> file (keys computed: 47,149 / 5,65,788; EMI 17,356),
+  lists + reminders, routine, memory, pages, slides, translation, data tables (MoSPI, states), and 3 asks where the
+  right move is to ASK her (supplier email, annual report numbers, cab). Each ask runs k times (default 3) through the
+  real `santosh.run_turn` on its own tenant `__longcard__<stamp>_<id>_<k>` (never her chats / budget); the card waits
+  for the goal's background rounds (lock + goal._PENDING) until nothing runs or its clock (75 min) ends. Then CODE
+  reads the end state: delivered files (PcFile on disk) opened with pypdf / openpyxl / python-docx / python-pptx -
+  pages / rows / slides / words / links; ready Artifacts (latest version html); list items; active reminders /
+  routines; memory facts; every assistant reply; step events (tool ok). `judge()` -> rows per check; `score_run()`:
+  passed, claimed_done (goal `done`, or the turn's TaskRun outcome `done`), FALSE DONE, false stuck (blocked / stuck
+  with nothing needed from her), cap stopped (hold=limit, turn timeout, card clock). `summarise()`: finished %,
+  false-done %, false-stuck %, cap-stopped %, Rs per finished job (usage.month_usd of the run's tenant x usd_inr),
+  pass@k, pass^k, median minutes. Saved after EVERY run (`data/quality/longcard-*.json`). Reminders / routines the card
+  made are cancelled after each run. `goal.CARD_PREFIX`: the live server's resume / recover sweeps skip card tenants
+  (no second copy of a card job in the pm2 process).
+- CLI `python -m app.quality longcard --check` (free: set valid + cost estimate) | `--status` | `[--k 3] [--only] [--limit]
+  [--parallel 3] [--max-min 75] [--label]`. vps-ops `long_card_try` (5 asks x 1, ~Rs 300-1,100), `long_card` (25 x 3,
+  ~Rs 4,500-16,500, hours) - both start DETACHED (nohup setsid, refuses a second copy) - and `long_card_status`.
+- Tests `test_v0439_longcard.py` (12): set valid / broken sets caught, real pdf / xlsx / docx / pptx read (a junk file is
+  not a file), every check kind, asked_her needs a question AND nothing made, the four outcomes, strict pass^k + rupees,
+  evidence from the DB + cleanup, a REAL run_turn judged on what it left behind (scripted brain), sweeps skip card tenants.
+- NOT RUN HERE: the live card (no model key in the sandbox). Its first numbers are the baseline every next step (done =
+  verified, one nudge per step, mid-turn clearing...) must beat. Cost estimate is a guess until the first card fills it.
+  Shipped as part of v0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).
+
+## v0.443.0 DONE = VERIFIED - a long job may not close on its own word (owner: "NOW NEXT", 2 Nov 2026)
+
+Items 1 + 2 of `reports/How AI agents finish long tasks.md`, and RCA fix 7 of `docs/LONG_TASK_RCA.md` (written 31 Oct,
+never built). The report's measured point: the leaders all decide "done" by something the model cannot fake (Anthropic's
+feature list with its `passes` field, Codex running the tests, Replit's testing sub-agent), and the biggest bucket of
+real agent failures is finishing failures - above all a confident false "done".
+
+- NEW `server/app/agent/verify.py` (no model call, no cost, never writes her data):
+  - `check_made(tenant, made)` - every thing the job claims it produced: a Hoola file id / `/api/pc/files/<id>` link
+    (the PcFile row of THIS tenant AND its bytes on disk, non-empty), an artifact id / link (ready, version > 0, its
+    html not blank), a `ds_...` dataset (loads, has rows), a http(s) link (one HEAD, 3 s, redirects followed; 403 /
+    405 / 501 fall back to a ranged GET), a bare file name (matched against her delivered files). A prose line in
+    `made` makes no row, so an honest job is never failed for writing a sentence there.
+  - HONEST about what it cannot know: 404 / 410 = FAILED ("link par kuch nahi hai"), but a timeout / DNS error /
+    5xx / 401 = `unknown` and never blocks (her VPS may be down, the site may block robots). Over MAX_LINKS = 6
+    links the rest are reported unchecked, never silently passed.
+  - `check_step(tenant, conv, step, calls)` - the step's OWN check, written by the plan: `file_pages>=N`,
+    `file_rows>=N`, `file_slides>=N`, `file:<name>`, `link_ok`, `artifact`, `reminder>=N`, `routine>=N`,
+    `list:<name>>=N`, `tool:<name>` (that tool really ran ok in THIS job - `ctx.calls`). The file family opens the
+    real file through the long card's reader (pypdf / openpyxl / python-docx / python-pptx). A check text it does not
+    understand is `unknown`, never a failure: a plan may not fail an honest job by inventing a check.
+  - `gate(...)` -> {ok, checked, failures, unknown, line}; wrapped so a broken check can never break her job.
+- `goal.finish(..., outcome="done")` runs the gate first (`goal._verify_done`, switch `goal_verify`, default on).
+  A failure does NOT close the card: the failing step (named by the step check, else the LAST done step) goes back to
+  `current` with "jaanch mein nahi mila: ...", the goal stays `working`, reason = "Jaanch baaki: ...", and the tool
+  returns `verified: False` + `verify.NUDGE` telling the model to really do that part now (or finish failed /
+  blocked_on_her honestly). No four-part report is written for a job that did not finish. `blocked_on_her` / `failed`
+  / `stopped` are untouched - only a claim of DONE is checked.
+- `kaam_plan` carries `check`: `set` takes steps as strings or `{"text":..., "check":...}`, `step` and `add` take
+  `check=`; the description tells the model to put the real file id / link in the step reason and in `made`.
+- Item 2: the free `draftcheck.fake_done` check (v0.223) had been switched OFF for the whole of goal mode on the idea
+  that the plan's own "X/Y steps ho gaye" line was truth enough - but a STEP IS TICKED BY THE MODEL, so a long job
+  could tick its steps and say "bhej diya" with only reads behind it. It now runs in goal mode too (`_goal_open`
+  deleted); the goal's own honest lines carry no claim verb, so they never trip it (tested).
+  - Switching it on raised a FALSE-POSITIVE risk worth more care than the original fix: a long job works across
+    SEVERAL turns (background rounds), so a round that only ticks the last step and reports would read as "nothing
+    ran" even though round 1 really sent the mail - and the second match would staple "(Saaf baat: yeh kaam abhi hua
+    nahi hai)" onto an honest reply, which is exactly the v0.287 bug. So in goal mode the question is asked of the
+    WHOLE job: `draftcheck.nothing_ran_in_job(conv, goal.started_at)` reads the harness event log for a successful
+    non-read tool since the goal began (restart-proof; any trouble reading it answers "something ran", so the check
+    never nudges on a guess). Outside goal mode it stays per-turn, unchanged.
+- Tests `server/tests/test_v0443_done_verified.py` (15): every piece (missing / empty / another tenant's file, page not
+  ready, blank page, 404 vs unreachable vs HEAD-refused link, empty dataset), prose skipped + link cap, every step
+  check, the gate (unknowns pass, failures block, a pending step is not checked, a crash reads unknown), finish
+  refused then accepted, only `done` is gated, the switch, the tool's nudge, checks from set / step / add, fake-done
+  in goal mode, an earlier round that really did the work never nudged, and that the goal-mode exemption is gone.
+- Three older tests pinned the reversed decisions and were rewritten to the new truth, not deleted:
+  `test_v0223_draft_jaanch.test_goal_mode_keeps_its_own_truth` (it asserted the exemption; now
+  `..._gets_the_free_claim_check_too`), `test_v0260_saaf_kaam` (the description now names `check` as well), and
+  `test_v0228_long_jobs_b.test_finish_builds_the_four_part_report` (its `made` Drive link is made up, so the gate is
+  right to hold it; the gate is switched off for that one call because that test is about the REPORT). A fourth,
+  `test_v0186_long_goal`, gained one scripted reply: its job ticks three steps with kaam_plan alone and then claims
+  "bhej diya", which item 2 now catches - the test documents that instead of hiding it.
+- New switch `goal_verify_links` (default on, `GOAL_VERIFY_LINKS=false` off): conftest turns it off so the whole
+  suite stays offline and deterministic - a link check otherwise makes a real HEAD call from the test box.
+- NOT VERIFIED on a live model: the sandbox has no API key. The long card (v0.443 step 0) is what will say whether
+  false-done really falls - its target is under 5%. Version 0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).
+
+## v0.451.0 AI EMPLOYEES PREMIUM (built as 0.447) (2 Nov 2026)
+Owner: "MAKE AI ENGINEER SECTION MORE PREMIUM AND ADVANCE ... USER WILL CLICK ON SECTION EXAMPLE GAMMING" -> design canvas
+prototype -> "MAKE IT MORE PREMIUM ... STUNNING, ADVANCE ANIMATION" -> "GO . MAKE ALL CARD OF SAME SIZE".
+- `static/console/employees.js` hub rewritten: home = 4 department cards built from the server's role groups (`DEPT` map:
+  Games, Simulation & VR / Business / Engineering & Hardware / Software & Systems; an unknown group still shows, with its own
+  name), each with line-art SVG that draws itself once (`pathLength=1`), live / coming / on-team counts (count-up once).
+  Department page = role cards (filter All / Live / On team / Coming + search `#aeQ`, focus kept on redraw) beside a
+  detail panel: pitch, what it does, what it needs, what it never does, trust ladder (Seekh / Saathi / Bharosa) and the
+  SAME API as before (`POST /api/employees/{key}/hire|pause|resume|leave`, hire with trust seekh, leave behind confirm).
+  Hiring no longer jumps to the desk; the card plays a one-time "joined" burst and the desk appears in the sidebar.
+- `v2.css` block "v0.447 AI EMPLOYEES PREMIUM": department accent tokens (light + dark), `.ae-depts` / `.ae-roles` grids with
+  `grid-auto-rows:1fr` = every card in a grid the same size (measured: dept cards all 481x348, role cards all 211px tall).
+  Entrances play once per page (`#hire.ae-settled`), the only loop is the small live dot (not under text, CRISP TEXT),
+  reduced motion and calm mode switch the motion off. Search label class `ae-sr` (`.sr` was taken).
+- `v2.js`: Library is spliced in just above Create, so it can never land between AI Employees and the hired desks.
+- Tests: `test_v0447_ai_employees_premium.py` (structure, equal-size CSS, real actions, motion once, escaping, Library
+  position); `test_v0443` heading assert updated. Console only - no server route changed.
+
+## v0.450.0 BUCKLING + GEAR TOOTH STRENGTH (2 Nov 2026)
+Owner asked whether every simple / medium / complex CAD job was covered; the honest answer named buckling, gear
+tooth strength and plastic stress as the real holes. The first two are closed here (plastic next).
+
+### Buckling (`fea.buckling`, kind 'buckling', `calc.column`)
+- A slender part in compression FOLDS at a load far below the one that breaks it, and a stress check cannot see it.
+- Linear eigenvalue buckling on the part's own stress state: one static solve, the geometric stiffness
+  `Kg = ∫ σ_ij ∂u_k/∂x_i ∂v_k/∂x_j dV` assembled from that stress (skfem BilinearForm with σ at the quadrature
+  points), then `(-Kg) φ = (1/λ) K φ` solved as a generalized SYMMETRIC problem so K stays positive definite and
+  the smallest positive factor comes out first. `_assemble` was factored out of `_static_once` so both share the
+  mesh / load / support code.
+- Reports: load factor, next modes, critical load, mode-1 shape, a 3x-coarser convergence check, and which mode
+  GOVERNS (folds at xN vs yields at xM). A stubby part or one in tension is told plainly that it cannot buckle and
+  that the stress check is what matters (`not_a_buckling_case`). Below `min_lf` (2.0 default, or hers) it goes back
+  to the model with the real fix: depth across the folding direction (I ~ h³), a tube/box, a shorter free length,
+  a mid-brace - never "make it a bit thicker".
+- VALIDATED: Euler cantilever to 0.1 % (4.575 vs 4.569) and mode 2 at exactly 9x mode 1; λ halves when the load
+  doubles and quarters when the length doubles; a same-area deep section beats a flat bar by >5x.
+- `calc.column` (eng_calc kind=column): Euler above the changeover slenderness π√(2E/Sy), J. B. Johnson's parabola
+  below it, end factors K (pinned 1.0 / fixed-free 2.0 / fixed-fixed 0.5 / fixed-pinned 0.699). Agrees with the FEA
+  to 0.1 %.
+
+### Gear teeth (`engineering/gears.py`, `H.spur_gear` root, `H.gear_duty`, eng_calc kind=gear)
+- THE GEOMETRY WAS WRONG: `spur_gear` drew a sharp root corner with no fillet. It now cuts the real TROCHOID a hob
+  leaves (the envelope of the rounded rack tip as it rolls), so the model matches a cut gear and has no false
+  stress riser. The rack-corner offset is exactly ISO 6336-3's E term - derived independently here, which is itself
+  a check.
+- THE CRITICAL SECTION, PROVED TWO WAYS: the generated trochoid measured with ISO's 30-degree-tangent rule
+  (arc-length resampled tangent, least-squares circle for ρ_F, bending arm to where the real line of action crosses
+  the centre line) vs ISO 6336-3's closed-form equations (G, E, H, θ). They agree within 1 % on the root chord and
+  the bending arm, 3 % on the fillet radius, for 10 to 200 teeth. The fillet bottoms exactly on the root circle and
+  meets the involute with a 0.0000 mm step.
+- Bending (6336-3) + pitting (6336-2) on the PINION: Y_Fa / Y_Sa, Z_H / Z_E / Z_ε, K_v from the pitch-line speed
+  and cut quality (AGMA 2001 dynamic factor, and it says when the speed is above what that quality is rated for),
+  K_A from her words about the drive, K_Hβ from how it is mounted, life factors from the tooth-load count,
+  allowables per material grade (ISO 6336-5 MQ; hers override). Z_H comes out 2.4946 against its published 2.495.
+- UNDERCUT measured on the real tooth: a rounded hob tip (ρ_fP = 0.38 m) ends its straight flank 0.74 m below the
+  pitch line, not 1.0 m, so real undercut starts near 12 teeth, not the textbook 17.1. BOTH are reported - a fault
+  when measured, a warning when only below the classical limit - and a profile shift cures it.
+- Checks go back to the model with the right fix (bigger module first: bending falls as 1/m²; then face width,
+  teeth, case-hardened steel). Rows on the card, a section in analysis.pdf, a line in her chat note.
+- NOT VERIFIED against our own FEA, and said so in the module: the bending stress was cross-checked against a real
+  FEA of the same tooth (load + reaction balanced to 0 %, peak on the right side of the fillet) but the recovered
+  peak FELL with refinement (89 -> 46 MPa), which cannot be right at a stress raiser. The same solver converges
+  correctly up to Kt 2.98 against the textbook 3.0 on a plate with a hole, so the solver is sound and the gear root
+  fillet is simply too small for its point-cloud mesher. The check rests on the standard's equations, the two
+  independent geometry methods and the published factors.
+- Also: `H.robot(move_time_s=)` / `accuracy_mm=` accepted (the v0.426 guide named them but `robot()` refused them);
+  studies per part 3 -> 4 so buckling can ride beside static.
+- Tests: `test_v0432_buckling.py` (8), `test_v0432_gear_strength.py` (9).
+
+## v0.451.0 PLAN PEHLE — ceremony that scales, and her Haan on a big plan (ECC Phase 4)
+
+Owner: *"GO PHASE 4."* Taken from ECC's `orch-pipeline` skill (MIT, affaan-m/ECC), the two ideas its own README leans
+on: **"Ceremony scales to blast radius. Score the request on three signals, take the HIGHEST tier any signal reaches,
+and state the result in one line so the user can override"**, and **GATE 1 — after Plan: present the task list; do not
+write implementation code until the user approves**; plus *"the pipeline carries no hidden state — the planning docs
+ARE the handoff"* and `intent-driven-development`'s acceptance criteria.
+
+**The hole.** Developer Sahayak has gone explore → edit for every job since v0.350, big or small. That is how a
+cross-cutting ask ("payment gateway jodo: checkout, webhook, refund aur invoice") comes back with two of the four
+things done and nobody notices until she reads the PR — and equally how a one-line typo fix still pays for a full
+exploration. There was no statement of intent anywhere between her sentence and the first `edit_file`.
+
+**The classifier** (`devsahayak/plan.py`, **no model call** — the tier must be free, or a small job pays for the
+ceremony it is meant to escape). Signals read from her own words: how many things she asked for (`_parts`: a colon
+list's items, `aur` / `and` / commas / bullet lines), a **trigger** (login, password, token, session, permission,
+payment, UPI, refund, invoice, GST, price, webhook, migration, schema, API, endpoint, Aadhaar, OTP, bank…), **WIDE**
+words (poora / sab / whole / refactor / rewrite / migrate / system / module), a **VAGUE** ask (theek karo / kuch
+gadbad / improve / optimise), and whether an error or a file is named. Highest wins, and ECC's tie-breaker is kept:
+anything touching a trust boundary or a contract is **at least standard**.
+
+| tier | what it is | what happens |
+|---|---|---|
+| trivial | an explain, a docs line, one named file | straight to work, nothing shown |
+| small | one file / one function, error named | straight to work |
+| standard | 2–5 files, one real choice | **plan pass**, plan shown, work starts at once |
+| large | cross-cutting, several parts, refactor | **plan pass + WAITS for her Haan** |
+
+A vague ask is deliberately **not** made `large`: v0.371 POOCHH LO already answers it with ONE question instead of
+guessing, and stacking a plan pass on top of that would be ceremony for its own sake.
+
+**The plan pass** (`loop.plan_run` + `PLAN_TOOLS`): the same exploring loop, but the edit tools **are not given** —
+`list_dir`, `search_code`, `read_file`, `find_usages`, `done` and nothing else, and anything else is refused in words
+("not available while planning — read-only, no file is changed in this pass"), so a plan can never be a half-done
+change. `PLAN_SYSTEM` demands the real files ("a plan that names a file you have not opened is worthless"), steps in
+build order each naming its file, **`done_when`** as checks anyone can run (*"not 'code is clean'"*), `risk` naming the
+callers and tests found **by name**, and `questions` only for what the repo cannot answer.
+
+**Gate 1.** A `large` job stops at `status = "plan_wait"` with a card hash: the phone shows the plan (goal, files +
+why, numbered steps, "Kaam poora kab mana jayega", open questions) and **"Haan, shuru karo"**. Nothing is committed,
+no branch, no PR, until that tap — `POST /api/devsahayak/tasks/{id}/plan-ok` (+ `note` = what she wants changed, which
+rides into the work), or in chat via the new owner-only tool action `plan_ok`. "Mana" cancels. `dev_plan_gate` off =
+nothing ever waits; `dev_plan_first` off = no plan pass at all.
+
+**The plan is the handoff, not a note.** `plan.as_text()` goes into the edit loop's first message as
+`<approved_plan>` with the done_when list labelled as acceptance criteria ("the work is not finished until every one is
+true, and if one cannot be met you say so in risk instead of dropping it quietly" — ECC's rule 10), the PR body grows a
+`### Plan (tier)` section with a `- [ ]` checklist, and **v0.445's own review now reads those criteria** and is asked
+to check the work against them instead of judging "did the task get done" from the diff alone.
+
+**Files:** new `server/app/devsahayak/plan.py`; `loop.py` (`PLAN_SYSTEM`, `PLAN_TOOLS`, `plan_run`, `run(plan_txt=)`);
+`service.py` (`_plan_pass`, `plan_ok`, `_work` scoring + gate, `_pr_body`, the own-review prompt, `task_view`,
+`STATUS["plan_wait"]`, the hash now shown for a plan card); `api.py` (`POST …/plan-ok`);
+`agent/devsahayak_tools.py` (action `plan_ok`, owner only); `models.py` (nullable `tier`, `plan`); `config.py`
+(`dev_plan_first`, `dev_plan_gate`, `dev_plan_steps` 18, `dev_plan_minutes` 8); `push.py` (the plan card pushes);
+Flutter `lib/ui/devsahayak_screen.dart` (the plan on the card + both buttons), `lib/ui/chat_screen.dart`,
+`lib/state.dart` (kind `devsahayak_plan`).
+
+**Tests** `server/tests/test_v0451_plan_pehle.py` (8): the whole tier table on real Hinglish asks, a small job planning
+nothing, a large job planning first and **writing nothing at all** until her Haan (refs and PRs untouched), the Haan
+being hers alone (not by tap / wrong hash / twice refused) with her note reaching the work, a standard job starting at
+once, the plan reaching the PR and the own review, the plan pass refusing an edit tool, and both switches. Three older
+suites that script the edit loop turn by turn got an autouse fixture turning the plan pass off — **and finding that
+fixture took one real debugging round: `monkeypatch.setattr(get_settings(), …)` in an autouse fixture that does not
+depend on `dev` runs BEFORE the `env` fixture rebuilds the settings, so the patch is silently lost.** Any such fixture
+must take `dev` (or `env`) as an argument.
+
+**NOT VERIFIED:** no live job has run through the gate (her Anthropic credit is empty). The plan pass's quality — are
+the done_when lines real checks? — is exactly what the next real coding job will show.
+
+## v0.452.0 DUKAAN PLUS (web Step 4B = the rest of W4 + W5 for her website shop, owner: "GO STEP 4B")
+
+`site/shopplus.py` + `shoppay` / `shop` hooks + `hoola-shop.js` / `hoola-app.js` + the console Shop tab.
+1. GST tax invoice + credit note for WEBSITE orders on HER ONE series: an invoiced website order gets a hidden row on the
+   site's app project (coll `_web_orders`, data = buyer, address, "qty x item @ Rs price" lines, total, delivery, coupon), so
+   `appmaker/gst.number_for` gives the next INV/<FY>/NNNN of the SAME series as her app (Rule 46: one series per GSTIN),
+   `receipt._tax_invoice` draws the PDF and the CA exports read it like any app sale. Only after the order is confirmed /
+   paid; her console "GST bill" (optional buyer GSTIN for B2B) + the buyer's private link; a cancelled invoiced order gets
+   its CN series credit note once (`set_status` cancelled -> `credit_on_cancel`). Console GST form saves her GSTIN.
+2. AutoPay on the website: her plans (made in the app's pay card) show on the member's My account; subscribe opens the
+   gateway's consent page (customer's own approval), My account lists + cancels (`/api/site-app/<site>/pay/*`). Payment
+   links already work from the same app pay card.
+3. Marketplace: `/api/site-shop/<site>/seller` = apply form; HER tap approves / blocks a seller, sets commission % and the
+   seller's Razorpay Route linked account (`acc_...` only - a bank number is refused); approval gives the seller a private
+   dashboard link (their products with moderation state, their order lines WITHOUT the buyer's phone / address, sales and
+   what they earn); seller products wait for HER OK; a blocked seller's products leave the shop. On a PAID online order each
+   approved seller with an account gets (their lines - commission) as ONE Route transfer per order (never twice; a
+   failure goes to her chat, the order stays paid). Cashfree / PhonePe split for websites not built.
+4. Courier: Shiprocket with HER API user (typed in the console, checked by a real login, sealed). HER tap on a confirmed /
+   packed order -> adhoc order -> AWB -> label (opened for printing); order -> shipped with the AWB; never twice; the
+   customer's tracking page reads Shiprocket's own status + last scan. Delhivery not built.
+5. Wishlist (kept only in the customer's browser; "Saved for later" in the cart) + cart reminders ONLY for customers who tick
+   "remind me": the cart waits 2 h, then shows on HER list with a WhatsApp link SHE taps (Hoola sends nothing); an order
+   from that number closes it; the customer's STOP ends it for good.
+Tests: tests/test_v0452_dukaan_plus.py (7): one series across website orders (0001, 0002) + credit note once; sellers,
+moderation, Route transfer once (320 of 400 at 20%), seller page hides the buyer; Shiprocket fake (wrong login never saved,
+AWB, label, never twice, tracking); reminders opted-in / ordered closes / once / STOP; AutoPay plan subscribe for members.
+NOT VERIFIED live: Shiprocket API (from its documented external API), Razorpay Route transfers (fake gateway, as v0.419).
+
+
+## vNEXT (built as 0.447.0) TWO DEFECTS + THE GAME ARENA - 2 Nov 2026
 Owner: "START BOTH", after `docs/GAME_MOAT_PLAN.md`. The two live defects that research found in shipped code, and the
 moat piece that was missing: a way to tell whether a Hoola game is any good.
 

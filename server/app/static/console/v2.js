@@ -272,7 +272,7 @@ async function enter() {
       say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
       closeStudio: () => { if (B?.isOpen()) B.close(); },
       studio: (kind, p) => { go('chat'); const b = col.querySelector(`[data-key="${CSS.escape(kind + ':' + p.id)}"] [data-ba="studio"]`); if (b) b.click(); else toast('To open the studio, open that job’s card in the chat.'); }});
-    NAV.splice(1, 0, ['bana', 'Library']); drawNav();
+    NAV.splice(Math.max(0, NAV.findIndex(([k]) => k === 'creative')), 0, ['bana', 'Library']); drawNav();   // v0.447 just above Create, never inside the AI Employees group
   }
   const list = await loadRecents();
   const fromUrl = (location.pathname.match(/^\/console\/c\/([^/?#]+)/) || [])[1];

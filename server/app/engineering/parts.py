@@ -142,12 +142,20 @@ def _involute_tooth_pts(module, teeth, pa_deg, steps=8):
     return [start] + right + left + [end], rf
 
 
-def spur_gear(module, teeth, width, bore=0.0, pressure_angle=20.0):
-    """True involute spur gear, pitch diameter = module x teeth. Raises for teeth < 8."""
+def spur_gear(module, teeth, width, bore=0.0, pressure_angle=20.0, shift=0.0):
+    """True involute spur gear, pitch diameter = module x teeth. The root is the real TROCHOID a hob cuts (v0.432),
+    not a sharp corner, so the model matches a cut gear and has no false stress riser. shift = profile shift
+    coefficient x (used to rescue a pinion with few teeth). Raises for teeth < 8."""
     teeth = int(teeth)
     if teeth < 8:
         raise ValueError("gear ke kam se kam 8 daante")
-    tooth, rf = _involute_tooth_pts(module, teeth, pressure_angle)
+    try:
+        import gears as _g
+    except ImportError:
+        from . import gears as _g
+    n = max(4, min(12, 420 // max(teeth, 1)))   # enough for a clean solid; the strength check meshes its own profile
+    pr = _g.profile(float(module), teeth, float(pressure_angle), float(shift), n_flank=n, n_fillet=n)
+    tooth = [(float(a), float(b)) for a, b in pr["whole"]]
     pts = []
     for k in range(teeth):
         a = 2 * math.pi * k / teeth          # counter-clockwise, the same way each tooth is drawn
@@ -156,6 +164,10 @@ def spur_gear(module, teeth, width, bore=0.0, pressure_angle=20.0):
     g = cq.Workplane("XY").polyline(pts).close().extrude(width)
     if bore:
         g = g.faces(">Z").workplane().hole(bore)
+    GEARS.append({"module": float(module), "teeth": teeth, "width": float(width), "bore": float(bore),
+                  "pressure_angle": float(pressure_angle), "shift": float(shift),
+                  "undercut": bool(pr["undercut"]), "below_classical_limit": bool(pr["below_classical_limit"]),
+                  "teeth_for_no_undercut": pr["teeth_for_no_undercut"]})
     return g
 
 
@@ -416,13 +428,14 @@ def expect(**kw):
 
 
 def analyze(kind="static", **kw):
-    """FEA after the build. kind static | thermal | modal. See the guide for fixed / loads / temps / heat / convection."""
-    if kind not in ("static", "thermal", "modal", "flow"):
-        raise ValueError("analyze kind: static / thermal / modal / flow")
+    """FEA after the build. kind static | thermal | modal | flow | buckling. See the guide for fixed / loads /
+    temps / heat / convection / min_lf."""
+    if kind not in ("static", "thermal", "modal", "flow", "buckling"):
+        raise ValueError("analyze kind: static / thermal / modal / flow / buckling")
     if kind == "flow" and kw.get("domain") is None:
         raise ValueError("flow: domain=<the FLUID body> chahiye (channel / cavity / box minus the part)")
-    if len(STUDIES) >= 3:
-        raise ValueError("ek part par 3 analysis tak")
+    if len(STUDIES) >= 4:
+        raise ValueError("ek part par 4 analysis tak")
     STUDIES.append({"kind": kind, **kw})
 
 
@@ -455,6 +468,8 @@ ROBOT: dict = {}
 
 
 COUPLES: list = []
+GEARS: list = []
+GEAR_DUTY: list = []
 
 
 def joint(name, parent, child, kind="revolute", origin=(0, 0, 0), axis=(0, 0, 1), limits=None, effort=None,
@@ -520,6 +535,24 @@ def disc_cam(name, segments, base_radius, follower="roller", roller_radius=5.0, 
         COUPLES.append({"follower": str(follower_joint), "leader": str(cam_joint), "table": _cams.table(des),
                         "offset": 0.0, "cam": str(name)})
     return _cams.solid(spec, des)
+
+
+def gear_duty(module, pinion_teeth, wheel_teeth, width, torque_Nm, rpm, material=None, wheel_material=None,
+              pressure_angle=20.0, quality=8, application="uniform", life_hours=20000.0, shift=0.0,
+              mounting="commercial", min_sf=1.4, sigma_flim=None, sigma_hlim=None):
+    """WILL THE GEAR LAST? The duty of a spur gear pair -> ISO 6336 tooth bending + flank pitting checks on the
+    pinion (the one that fails first). torque_Nm / rpm are the PINION's. application = how rough the drive is
+    ('uniform' | 'light shock' | 'medium shock' | 'heavy shock'); quality = the ISO/AGMA cut grade (6 commercial,
+    8 hobbed, 10 ground); life_hours = how long it must run; mounting = 'rigid' | 'good' | 'commercial' |
+    'overhung' | 'poor'. A failing check comes back to you: bigger module, wider face, more teeth, harder steel."""
+    if len(GEAR_DUTY) >= 4:
+        raise ValueError("4 gear pair tak")
+    GEAR_DUTY.append({"module": float(module), "pinion_teeth": int(pinion_teeth), "wheel_teeth": int(wheel_teeth),
+                      "width_mm": float(width), "torque_Nm": float(torque_Nm), "rpm": float(rpm),
+                      "material": material, "wheel_material": wheel_material, "alpha_deg": float(pressure_angle),
+                      "quality": int(quality), "application": str(application), "life_hours": float(life_hours),
+                      "shift": float(shift), "mounting": str(mounting), "min_sf": float(min_sf),
+                      "sigma_flim": sigma_flim, "sigma_hlim": sigma_hlim})
 
 
 def couple(follower, leader, ratio=None, offset=0.0, teeth=None, backlash=None):
@@ -599,6 +632,7 @@ class _H:
     make = staticmethod(make)
     joint = staticmethod(joint)
     couple = staticmethod(couple)
+    gear_duty = staticmethod(gear_duty)
     cam = staticmethod(cam)
     robot = staticmethod(robot)
     drawing = staticmethod(drawing)

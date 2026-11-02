@@ -34,6 +34,7 @@ from typing import Any
 from sqlalchemy import select
 
 from ..db import new_id, now, session
+from . import plan as P
 from . import rules as R
 from .gh import Gh, GhError
 from .models import DevAction, DevRepo, DevReview, DevSettings, DevTask
@@ -42,7 +43,7 @@ log = logging.getLogger("santosh.devsahayak")
 
 KINDS = {"write": "Naya code", "fix": "Bug fix", "tests": "Tests", "docs": "Docs", "explain": "Bug samjhao"}
 STATUS = {"new": "Shuru", "refused": "Roka (niyam)", "ready": "PR ke liye aapki haan", "pr_open": "PR khula", "checks_failed": "CI fail",
-          "ci_running": "CI chal raha (draft PR)", "merged": "Merge ho gaya", "closed": "PR band", "explained": "Samjha diya", "failed": "Nahi ho paya", "cancelled": "Cancel"}
+          "plan_wait": "Plan par haan ka intezaar", "ci_running": "CI chal raha (draft PR)", "merged": "Merge ho gaya", "closed": "PR band", "explained": "Samjha diya", "failed": "Nahi ho paya", "cancelled": "Cancel"}
 _LAST_POLL: dict[str, datetime] = {}
 
 
@@ -356,11 +357,13 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
     v = {"id": t.id, "number": t.number, "kind": t.kind, "kind_label": KINDS.get(t.kind, t.kind), "repo": t.repo,
          "status": t.status, "status_label": STATUS.get(t.status, t.status), "title": t.pr_title or t.text[:80],
          "explain": t.explain, "branch": t.branch, "pr_number": t.pr_number, "pr_url": t.pr_url, "head_sha": t.head_sha[:12],
-         "ci": _j(t.ci, {}), "error": t.error, "hash": t.hash if t.status == "ready" else "",
+         "ci": _j(t.ci, {}), "error": t.error, "hash": t.hash if t.status in ("ready", "plan_wait") else "",
          "files": [{"path": c["path"], "why": c.get("why", ""), "added": c.get("added", 0), "removed": c.get("removed", 0),
                     "new": not c.get("old_sha")} for c in ch],
          "checks": _j(t.checks, []), "risk": t.risk, "test_plan": t.test_plan, "rounds": t.rounds,
+         "tier": t.tier or "", "plan": _j(t.plan or "", {}),
          "self_round": int(t.self_round or 0), "self_review": _j(t.self_review or "", {}),
+         "proof": _j(t.proof or "", {}),
          "at": t.created_at.isoformat() if t.created_at else ""}
     if full:
         v["text"] = t.text
@@ -720,6 +723,13 @@ def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], is
     if issue:
         lines += ["", f"Refs #{issue}"]
     lines += ["", "### Test plan", str(out.get("test_plan") or "- CI").strip(), "", "### Risk", str(out.get("risk") or "-").strip()]
+    pl = _j(t.plan or "", {}) or {}                 # v0.451 ECC PHASE 4: the approved plan, so a reviewer sees the target
+    if pl.get("done_when") or pl.get("steps"):
+        lines += ["", f"### Plan ({t.tier or 'standard'})", (str(pl.get("goal") or "")).strip() or "-"]
+        if pl.get("done_when"):
+            lines += ["", "**Done when**", *[f"- [ ] {d}" for d in pl["done_when"][:12]]]
+        if pl.get("note"):
+            lines += ["", f"Owner's note on the plan: {pl['note']}"]
     rules = [str(x) for x in (out.get("rules_read") or [])]
     if rules or out.get("rules_followed"):         # v0.356 PEHLE NIYAM: the reviewer sees which repo rules were followed
         lines += ["", "### Project rules", ("Read first: " + ", ".join(f"`{r}`" for r in rules[:10])) if rules
@@ -756,25 +766,112 @@ def _progress(tid: str, line: str) -> None:
         log.debug("dev progress line failed", exc_info=True)
 
 
-def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_pr: bool = False) -> dict[str, Any]:
+def _plan_pass(tenant: str, t: DevTask, g: Gh, extra_files: list[str], issue_txt: str, tier: str,
+               note: str = "") -> dict[str, Any]:
+    """v0.451 ECC PHASE 4: the READ-ONLY planning pass. Returns the plan (or {} when it could not run - the work then
+    goes ahead exactly as before, because a plan is help, never a gate Hoola invented for itself)."""
+    from . import loop as L
+    cfg = _cfg(tenant)
+    try:
+        _progress(t.id, f"{t.number}: plan bana raha hoon (kuch badal nahi raha, sirf padh raha hoon)")
+        out = L.plan_run(g, t, cfg.rules, extra_files, issue_txt, max_steps=int(_setting("dev_plan_steps", 18)),
+                         minutes=float(_setting("dev_plan_minutes", 8)),
+                         on_step=lambda line: _progress(t.id, line))
+    except (L.LoopUnavailable, GhError) as e:
+        log.info("dev plan pass %s: %s", t.id, e)
+        return {}
+    except Exception:
+        log.exception("dev plan pass failed: working without a plan")
+        return {}
+    if not out.get("steps") and not out.get("files"):
+        return {}
+    out["tier"], out["note"] = tier, note
+    return out
+
+
+def plan_ok(tenant: str, ref: str, hash_: str, by_tap: bool = False, note: str = "", conv: str = "") -> dict[str, Any]:
+    """v0.451 her Haan on the plan of a LARGE job (ECC's Gate 1) - from her card only. `note` = what she wants changed;
+    it rides into the edit loop with the plan. Merge and the PR still need their own taps later."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        s.expunge(t)
+    if not by_tap:
+        raise DevError("Plan par haan sirf aapke app ke card se.")
+    if t.status != "plan_wait":
+        raise DevError(f"Yeh kaam '{STATUS.get(t.status, t.status)}' hai.")
+    if hash_ != t.hash:
+        raise DevError("Card badal gaya; naya card dekhiye.")
+    clean, warn = _clean_text(note or "")
+    pl = _j(t.plan or "", {}) or {}
+    if clean:
+        pl["note"] = clean[:1500]
+    with session() as s:
+        row = s.get(DevTask, t.id)
+        row.plan, row.status, row.hash = json.dumps(pl), "new", ""
+        if conv:
+            row.conv = conv
+        _log(row, "plan par haan mil gayi" + (" (aapki baat ke saath)" if clean else ""))
+        s.flush()
+    g = gh(tenant)
+    try:
+        return _work(tenant, t.id, g, [], warn, plan=pl)
+    except (DevError, GhError) as e:
+        _set(t.id, status="failed", error=str(e))
+        raise DevError(str(e))
+
+
+def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_pr: bool = False,
+          plan: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = _cfg(tenant)
     with session() as s:
         t = s.get(DevTask, tid)
         s.expunge(t)
+    issue_txt = ""
+    if t.issue:
+        try:
+            iss = g.issue(t.repo, t.issue)
+            issue_txt = f"#{t.issue} {iss.get('title', '')}\n{(iss.get('body') or '')[:8000]}"
+        except GhError as e:
+            log.info("devsahayak issue %s: %s", t.id, e)
+    # v0.451 ECC PHASE 4: ceremony scales to blast radius - score the ask, plan the big ones read-only first
+    sized = P.assess(t.kind, t.text, extra_files, issue_txt)
+    tier = str(sized["tier"])
+    if plan is None and _loop_on() and bool(_setting("dev_plan_first", True)) and P.needs_plan(tier):
+        plan = _plan_pass(tenant, t, g, extra_files, issue_txt, tier) or None
+        if plan:
+            waiting = P.waits(tier) and bool(_setting("dev_plan_gate", True))
+            with session() as s:
+                row = s.get(DevTask, tid)
+                plan["size"] = sized
+                row.tier, row.plan = tier, json.dumps(plan)
+                if waiting:
+                    row.status = "plan_wait"
+                    row.hash = R.card_hash(row.id, row.repo, "plan", plan.get("base_sha", ""),
+                                           *[str(x) for x in (plan.get("steps") or [])])
+                _log(row, f"plan taiyaar ({tier}): {len(plan.get('files') or [])} file, "
+                          f"{len(plan.get('steps') or [])} kadam" + (", haan ka intezaar" if waiting else ""))
+                s.flush()
+                v = task_view(row)
+                say = P.card_say(row.number, plan, tier, waiting) + warn
+                v["say"] = say
+                _publish(tenant, "devsahayak_plan", {"task": v, "say": say}, row.conv)
+                if waiting:
+                    return v
+    with session() as s:
+        row = s.get(DevTask, tid)
+        row.tier = tier
+        s.flush()
+    plan_txt = P.as_text(plan or {})
     base_sha = read = ctx = out = None
     if _loop_on():
         # v0.350 KADAM-BA-KADAM: the model explores the repo with tools and edits step by step (devsahayak/loop.py);
         # anything that stops the loop early falls back to the one-shot path below, so the task never dies of it
         from . import loop as L
         try:
-            issue_txt = ""
-            if t.issue:
-                iss = g.issue(t.repo, t.issue)
-                issue_txt = f"#{t.issue} {iss.get('title', '')}\n{(iss.get('body') or '')[:8000]}"
             base_sha, read, ctx, out = L.run(g, t, cfg.rules, extra_files, cfg.allow_workflows, issue_txt,
                                              max_steps=_setting("dev_loop_steps", 40),
                                              minutes=float(_setting("dev_loop_minutes", 20)),
-                                             on_step=lambda line: _progress(tid, line))
+                                             on_step=lambda line: _progress(tid, line), plan_txt=plan_txt)
         except L.LoopUnavailable as e:
             L.STATS["fallback"] += 1
             log.info("dev loop unavailable (%s): one-shot path", e)
@@ -863,12 +960,20 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
                 _, sha_now = g.file(t.repo, c["path"], head_now)
                 if sha_now != c["old_sha"]:
                     raise DevError(f"{c['path']} is beech base branch par badal gayi; kaam dobara karwaiye.")
-        sha = g.commit_files(t.repo, t.branch, head_now, [(c["path"], c["new"]) for c in changes],
-                             f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
         cfg = _cfg(tenant)
         # v0.351 PEHLE CI, PHIR PR: a repo with CI gets a DRAFT PR first; the tick runs her CI, fixes until it passes
         # (up to DEV_CI_ROUNDS) and only then marks the PR ready for review
         has_ci = _has_ci(g, t.repo, head_now)
+        tests_first = _proof_tests(t, changes, has_ci)   # v0.447 ECC PHASE 3: the test commit goes in on its own, first
+        if tests_first:
+            sha = g.commit_files(t.repo, t.branch, head_now,
+                                 [(c["path"], c["new"]) for c in changes if c["path"] in tests_first],
+                                 f"test: {t.pr_title}\n\nTest that reproduces the bug. It is EXPECTED TO FAIL on this commit - "
+                                 f"that red run is the proof the bug is real. The fix is the next commit.\n"
+                                 f"{t.number} by Hoola Developer Sahayak")
+        else:
+            sha = g.commit_files(t.repo, t.branch, head_now, [(c["path"], c["new"]) for c in changes],
+                                 f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
         # v0.445 ECC PHASE 2: even a repo with no CI gets the draft + loop, because the loop now holds the OWN-REVIEW gate
         ci_loop = bool(_setting("dev_ci_loop", True)) and (has_ci or bool(_setting("dev_self_review", True)))
         pr = g.open_pr(t.repo, t.branch, t.base, t.pr_title, t.pr_body, True if ci_loop else cfg.draft_pr)
@@ -890,13 +995,20 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
             return _card(tenant, row, say.strip())
         row.status, row.ci_round, row.ci_since = "ci_running", 0, now()
         row.self_round, row.self_review = 0, json.dumps({"has_ci": has_ci})
-        _log(row, f"draft PR #{row.pr_number} khula" + (", CI chal raha" if has_ci else ""))
+        if tests_first:
+            row.proof = json.dumps({"state": "wait", "tests": tests_first, "test_sha": sha})
+        _log(row, (f"test pehle commit hua ({len(tests_first)} file), bug ka saboot CI se" if tests_first
+                   else f"draft PR #{row.pr_number} khula" + (", CI chal raha" if has_ci else "")))
         s.flush()
         mine = (" Uske baad PR dene se pehle main khud bhi apna code review karunga."
                 if _setting("dev_self_review", True) else "")
-        say = (f"{row.number}: badlav draft PR #{row.pr_number} par gaya ({len(changes)} file). "
-               + ("Aapka CI chal raha hai - fail hua to main khud theek karunga, aur PASS hone par hi PR review ke liye "
-                  "taiyaar karunga." if has_ci else "Is repo mein CI nahi hai.") + mine + warn)
+        if tests_first:
+            say = (f"{row.number}: pehle sirf test draft PR #{row.pr_number} par gaya. Aapka CI ise chalayega - test FAIL "
+                   "hona chahiye, wahi bug ka saboot hai; uske baad fix ka commit jayega." + mine + warn)
+        else:
+            say = (f"{row.number}: badlav draft PR #{row.pr_number} par gaya ({len(changes)} file). "
+                   + ("Aapka CI chal raha hai - fail hua to main khud theek karunga, aur PASS hone par hi PR review ke liye "
+                      "taiyaar karunga." if has_ci else "Is repo mein CI nahi hai.") + mine + warn)
         if has_ci:
             return _card(tenant, row, say)              # the tick watches her CI, then the own review runs
         tid = row.id
@@ -1631,6 +1743,95 @@ def _ci_ready(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str, Any]:
         return _card(tenant, row, say + note)
 
 
+PROOF_SAY = {
+    "proven": "Aapke CI ne test ko FAIL kiya - bug saabit ho gaya, phir fix ka commit gaya.",
+    "proven_unnamed": "Aapka CI test ke commit par RED hua (par fail ke log mein naya test naam se nahi dikha), phir fix gaya.",
+    "not_proven": "Saaf baat: naya test PURANE code par bhi PASS ho gaya, to yeh test bug ko saabit nahi karta. Fix commit "
+                  "ho gaya hai - test par dhyaan dijiye.",
+    "unknown": "Bug ka saboot naap nahi paya (test ke commit par koi CI nateeja nahi aaya). Fix commit ho gaya hai.",
+}
+PROOF_PR = {
+    "proven": "**Proven.** Her CI ran the test-only commit `{sha}` and it FAILED{named} - the bug is real. The fix is the "
+              "next commit on this branch.",
+    "proven_unnamed": "**Red, not named.** Her CI failed on the test-only commit `{sha}`, but the failure text does not "
+                      "name the new test, so the red run may have another cause. Read the run before trusting it.",
+    "not_proven": "**NOT proven.** Her CI ran the test-only commit `{sha}` and it PASSED - the test does not reproduce the "
+                  "bug, so this change is not shown to fix anything. The test needs to fail on the old code.",
+    "unknown": "**Not measured.** No CI result arrived for the test-only commit `{sha}`, so nothing proves the bug here.",
+}
+
+
+def _proof_tests(t: DevTask, changes: list[dict[str, Any]], has_ci: bool) -> list[str]:
+    """v0.447 ECC PHASE 3 (ECC's orch-fix-defect: "proving the bug exists first is what separates a fix from a tweak").
+    The test files of a FIX that go in as their own first commit, so her CI's RED run is the proof. [] = no proof run:
+    not a fix, no CI in the repo, the switch is off, no test in the change, or nothing but tests (no fix to split off)."""
+    if t.kind != "fix" or not has_ci or not bool(_setting("dev_fix_proof", True)):
+        return []
+    tests = [c["path"] for c in changes if R.is_test_path(c["path"])]
+    rest = [c["path"] for c in changes if not R.is_test_path(c["path"])]
+    return tests if tests and rest else []
+
+
+def _proof_named(ci: dict[str, Any], tests: list[str]) -> bool:
+    """Does the red run's own text name the new test (file, or its basename without extension)? Her CI may be red for an
+    unrelated reason, and a proof nobody can point at is not a proof."""
+    text = " ".join(str(f.get("text") or "") for f in (ci.get("failures") or []))
+    if not text:
+        return False
+    for p in tests:
+        base = p.rsplit("/", 1)[-1]
+        if p in text or base in text or base.rsplit(".", 1)[0] in text:
+            return True
+    return False
+
+
+def _proof_land(tenant: str, t: DevTask, g: Gh, verdict: str, ci: dict[str, Any]) -> dict[str, Any]:
+    """The proof run is over (whatever it said): the fix commit goes on top of the test commit and the CI wait starts
+    again. The verdict is REPORTED, never hidden - a test that passed on the old code says so on the card and in the PR."""
+    changes = _j(t.changes, [])
+    pf = _j(t.proof or "", {}) or {}
+    try:
+        parent = g.branch_sha(t.repo, t.branch)
+        sha = g.commit_files(t.repo, t.branch, parent, [(c["path"], c["new"]) for c in changes],
+                             f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
+    except GhError as e:
+        _set(t.id, status="failed", error=str(e))
+        raise DevError(str(e))
+    pf.update({"state": verdict, "fix_sha": sha, "failed": (ci.get("failed") or [])[:3]})
+    with session() as s:
+        row = s.get(DevTask, t.id)
+        row.proof, row.head_sha, row.ci_since = json.dumps(pf), sha, now()
+        row.ci = json.dumps({"state": "pending", "say": "CI shuru hone wala"})
+        _log(row, "bug ka saboot: " + verdict)
+        s.flush()
+        body = row.pr_body
+        s.expunge(row)
+    note = PROOF_PR.get(verdict, "").format(sha=str(pf.get("test_sha") or "")[:7],
+                                            named=" on the new test" if verdict == "proven" else "")
+    if body and note and row.pr_number:              # the PR says what her CI answered, for whoever reviews it
+        try:
+            g.update_pr(t.repo, row.pr_number, body=body + "\n\n### Proof of the bug (ECC phase 3)\n" + note)
+        except GhError as e:
+            log.info("devsahayak proof pr body %s: %s", t.id, e)
+    return _card(tenant, row, f"{row.number}: {PROOF_SAY.get(verdict, '')} Ab CI poore badlav par chal raha hai.")
+
+
+def _proof_step(tenant: str, t: DevTask, g: Gh, ci: dict[str, Any], state: str, waited: float) -> dict[str, Any] | None:
+    """One step of the proof run: her CI on the test-only commit. RED = the bug is real -> the fix lands. GREEN = the test
+    does not reproduce it -> the fix still lands, and she is TOLD. No result = said as not measured, never as proven."""
+    pf = _j(t.proof or "", {}) or {}
+    tests = [str(x) for x in (pf.get("tests") or [])]
+    if state == "failure":
+        return _proof_land(tenant, t, g, "proven" if _proof_named(ci, tests) else "proven_unnamed", ci)
+    if state == "success":
+        return _proof_land(tenant, t, g, "not_proven", ci)
+    if state in ("none", None, "") and waited >= float(_setting("dev_ci_wait_min", 15)):
+        return _proof_land(tenant, t, g, "unknown", ci)
+    if state == "pending" and waited >= float(_setting("dev_ci_max_min", 45)):
+        return _proof_land(tenant, t, g, "unknown", ci)
+    return None
+
+
 def _self_blocking(out: dict[str, Any], findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """What Hoola's own review found that must be fixed before she is asked to look: its own high / medium comments and the
     automatic HIGH findings (a secret / injection on an added line). Low comments and the [Hoola check] notes never block."""
@@ -1664,8 +1865,11 @@ def _ready_or_self_review(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str,
         findings, diff_parts, _valid, added_lines = pr_diff(g.pr_files(t.repo, t.pr_number))
         if not diff_parts:
             raise DevError("PR mein koi file nahi mili")
+        pl = _j(t.plan or "", {}) or {}          # v0.451 the own review now has the plan's acceptance criteria to check
+        acc = ("\nIt was planned, and APPROVED, to do exactly this - check the work against it:\n" + P.as_text(pl)
+               if pl.get("done_when") else "")
         pr_text = (f"<pr>\nRepo {t.repo} PR #{t.pr_number}: {t.pr_title}\nBy: Hoola Developer Sahayak (YOUR OWN work)\n"
-                   f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}\n</pr>")
+                   f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}{acc}\n</pr>")
         out = explore_review(g, t.repo, t.head_sha, pr_text, diff_parts, added_lines, cfg.rules,
                              json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW)
     except Exception as e:  # noqa: BLE001 - the own review is extra: a PR is never stuck because it could not run
@@ -1721,6 +1925,8 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = 
     waited = (at - since).total_seconds() / 60
     rounds = int(t.ci_round or 0)
     g = gh(tenant)
+    if (_j(t.proof or "", {}) or {}).get("state") == "wait":    # v0.447 her CI is running the test-only commit
+        return _proof_step(tenant, t, g, ci, state, waited)
     if state == "success":
         tail = f" ({rounds} fix round ke baad)" if rounds else ""
         return _ready_or_self_review(tenant, t, g, f"{t.number}: aapka CI PASS{tail}. PR #{t.pr_number} review ke liye "
