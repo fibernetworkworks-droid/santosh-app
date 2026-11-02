@@ -20,7 +20,17 @@ HoolaStudio.define('screw-gauge', function (S) {
   var FONT = '"Public Sans", Arial, Helvetica, sans-serif';
   var GX = -0.01, GZ = -0.03, AXY = 0.062;                      // world: anvil face on the spindle axis
   var SLV0 = 42;                                                // sleeve zero line, mm from the anvil face
-  var OPEN = 1.5;
+  var OPEN = Math.max(1.5, Math.ceil((WD + 0.7) / PITCH - 1e-9) * PITCH);   // open far enough for this wire to slip in
+  function fmt(v) { return String(+(+v).toFixed(4)); }
+  var PS = fmt(PITCH) + ' mm', LS = fmt(LC) + ' mm';
+  // the wire under test: its metal from the variant's sample line (copper by default)
+  var SAMPLE = ((S.lab.variant || {}).sample || '');
+  var WIRES = [[/constantan|eureka/i, 'Constantan wire', 'Cu-Ni', 0xbdb3a6, '#a99f92'], [/manganin/i, 'Manganin wire', 'Mn', 0xc29878, '#a87e5f'],
+    [/nichrome/i, 'Nichrome wire', 'Ni-Cr', 0xa9abad, '#8f9294'], [/steel/i, 'Steel wire', 'Steel', 0xb7bcc1, '#9aa0a6'],
+    [/brass/i, 'Brass wire', 'Brass', 0xcaa44c, '#b08a35'], [/alumin/i, 'Aluminium wire', 'Al', 0xd5d9dc, '#bfc4c8'], [/./, 'Copper wire', 'Cu', 0xc8764a, '#b8683d']];
+  var WL = WIRES.filter(function (w) { return w[0].test(SAMPLE || 'copper'); })[0];
+  var WNAME = WL[1], WSYM = WL[2];
+  var SWG = (SAMPLE.match(/SWG\s*(\d+)/i) || [])[1];
   var ZS = [-14, 0, 14];                                        // three places along the wire (mm)
 
   var st = { gap: 3.0, wire: 'bench', zi: 0, wk: 1, placedFor: -1, lcOk: false, zeroOk: false, tries: { zero: 0, read: 0 },
@@ -55,7 +65,7 @@ HoolaStudio.define('screw-gauge', function (S) {
     s.lineTo(30, 8); s.lineTo(30, -18); s.quadraticCurveTo(30, -24, 24, -24); s.lineTo(-2, -24); s.quadraticCurveTo(-8, -24, -8, -18); s.lineTo(-8, 7); s.closePath();
     var g = new T.ExtrudeGeometry(s, { depth: 6, bevelEnabled: true, bevelThickness: 1, bevelSize: 0.9, bevelSegments: 3, curveSegments: 16 }); g.translate(0, 0, -3);
     var f = S.mesh(g, enamel); G.add(f); })();
-  var plate = S.label('0–25 mm   LC 0.01 mm', { w: 26, ratio: 0.14, color: '#e9ede6', weight: 600 }); plate.position.set(10, -29.2, 4.05); G.add(plate);
+  var plate = S.label('0–25 mm   LC ' + LS, { w: 26, ratio: 0.14, color: '#e9ede6', weight: 600 }); plate.position.set(10, -29.2, 4.05); G.add(plate);
   var anvil = alongX(S.mesh(new T.CylinderGeometry(3.25, 3.25, 9, 40), satin)); anvil.position.set(-4.5, 0, 0); G.add(anvil);
   var aface = alongX(S.mesh(new T.CylinderGeometry(3.0, 3.0, 0.3, 40), new T.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.2, metalness: 1 }))); aface.position.set(-0.15, 0, 0); G.add(aface);
   var boss = alongX(S.mesh(new T.CylinderGeometry(6.5, 6.5, 4, 32), enamel)); boss.position.set(35, 0, 0); G.add(boss);
@@ -115,11 +125,11 @@ HoolaStudio.define('screw-gauge', function (S) {
   var cknob = S.mesh(new T.CylinderGeometry(4.5, 4.5, 3.2, 6), M.black); cknob.rotation.x = Math.PI / 2; cknob.position.set(11, -36, 13.6); G.add(cknob);
   S.contact(0.11, 0.075, GX + 0.011, GZ, 0.55);
 
-  // ---------------------------------------------------------------- copper wire + a reel on the bench
-  var wireMat = new T.MeshStandardMaterial({ color: 0xc8764a, roughness: 0.28, metalness: 1 });
+  // ---------------------------------------------------------------- the wire + its reel on the bench
+  var wireMat = new T.MeshStandardMaterial({ color: WL[3], roughness: 0.28, metalness: 1 });
   var wire = S.mesh(new T.BufferGeometry(), wireMat, true, false); G.add(wire);
-  var tagTex = S.canvasTex(256, 128, function (x, w, h) { x.fillStyle = '#f4efe2'; x.fillRect(0, 0, w, h); x.fillStyle = '#7a2f1b'; x.font = '700 46px ' + FONT; x.textAlign = 'center'; x.fillText('Cu', w / 2, 60);
-    x.font = '500 28px ' + FONT; x.fillStyle = '#333'; x.fillText('SWG wire', w / 2, 104); });
+  var tagTex = S.canvasTex(256, 128, function (x, w, h) { x.fillStyle = '#f4efe2'; x.fillRect(0, 0, w, h); x.fillStyle = '#7a2f1b'; x.font = '700 ' + (WSYM.length > 3 ? 38 : 46) + 'px ' + FONT; x.textAlign = 'center'; x.fillText(WSYM, w / 2, 60);
+    x.font = '500 28px ' + FONT; x.fillStyle = '#333'; x.fillText(SWG ? 'SWG ' + SWG : 'SWG wire', w / 2, 104); });
   var tag = new T.Mesh(new T.PlaneGeometry(9, 4.5), new T.MeshStandardMaterial({ map: tagTex, roughness: 0.9, side: T.DoubleSide })); G.add(tag);
   var wireShadow = S.contact(0.09, 0.03, 0, 0, 0.3);
   var BY = -AXY * 1000;                                          // the bench, in gauge mm
@@ -136,14 +146,14 @@ HoolaStudio.define('screw-gauge', function (S) {
     wireShadow.position.set(wm.x, 0.0009, wm.z); wireShadow.rotation.z = st.wire === 'gauge' ? Math.PI / 2 : 0; st.wpts = pts; }
   var reel = new T.Group(); reel.position.set(0.19, 0, -0.17); S.scene.add(reel);
   [0.003, 0.033].forEach(function (y) { var f = S.mesh(new T.CylinderGeometry(0.024, 0.024, 0.003, 40), new T.MeshStandardMaterial({ color: 0x2b3a67, roughness: 0.5 })); f.position.y = y; reel.add(f); });
-  var coilTex = S.canvasTex(512, 128, function (x, w, h) { x.fillStyle = '#b8683d'; x.fillRect(0, 0, w, h); for (var i = 0; i < h; i += 3) { x.fillStyle = i % 6 ? 'rgba(255,220,180,.35)' : 'rgba(80,30,10,.35)'; x.fillRect(0, i, w, 1.4); } });
+  var coilTex = S.canvasTex(512, 128, function (x, w, h) { x.fillStyle = WL[4]; x.fillRect(0, 0, w, h); for (var i = 0; i < h; i += 3) { x.fillStyle = i % 6 ? 'rgba(255,220,180,.35)' : 'rgba(80,30,10,.35)'; x.fillRect(0, i, w, 1.4); } });
   var coil = S.mesh(new T.CylinderGeometry(0.016, 0.016, 0.027, 40), new T.MeshStandardMaterial({ map: coilTex, roughness: 0.3, metalness: 0.9 })); coil.position.y = 0.018; reel.add(coil);
   S.contact(0.07, 0.07, 0.19, -0.17, 0.5);
 
-  S.addApparatus('sg', G, 'Screw gauge', 'Micrometer screw gauge in a bench stand. Pitch 0.5 mm, 50 thimble divisions: least count 0.01 mm.');
-  S.addApparatus('thimble', thimble, 'Thimble', 'Turns with the spindle. 50 divisions round it; one turn moves the spindle 0.5 mm.');
+  S.addApparatus('sg', G, 'Screw gauge', 'Micrometer screw gauge in a bench stand. Pitch ' + PS + ', ' + NDIV + ' thimble divisions: least count ' + LS + '.');
+  S.addApparatus('thimble', thimble, 'Thimble', 'Turns with the spindle. ' + NDIV + ' divisions round it; one turn moves the spindle ' + PS + '.');
   S.addApparatus('ratchet', ratchet, 'Ratchet', 'Slips with a click once the faces grip, so every reading uses the same gentle pressure.');
-  S.addApparatus('wire', wire, 'Copper wire', 'The wire to measure. Its true diameter is hidden: you find it.');
+  S.addApparatus('wire', wire, WNAME + (SWG ? ' (SWG ' + SWG + ')' : ''), 'The wire to measure. Its true diameter is hidden: you find it.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
   var hudLC = S.hudCard('Least count'), hudS = S.hudCard('Spindle'), hudN = S.hudCard('Readings');
 
@@ -163,7 +173,7 @@ HoolaStudio.define('screw-gauge', function (S) {
   function run(fn) { st.acting = true; S.render(); S.focus('act'); return Promise.resolve().then(fn).catch(function (e) { console.warn(e); })
     .then(function () { st.acting = false; place(); S.render(); }); }
   function clicks() { var pr = Promise.resolve(); [0, 1, 2].forEach(function () { pr = pr.then(function () { S.click(3400, 0.012, 0.08); return S.wait(130); }); }); return pr; }
-  function turnTo(g1, ms) {   // fingers turn the ratchet (or the thimble); the screw advances 0.5 mm a turn
+  function turnTo(g1, ms) {   // fingers turn the ratchet (or the thimble); the screw advances one pitch a turn
     var g0 = st.gap; if (Math.abs(g1 - g0) < 1e-9) return Promise.resolve();
     var turns = Math.abs(g1 - g0) / PITCH, dur = ms || Math.min(2600, 700 + turns * 450);
     return S.hand.pinchMove(ratchetPt(g0), function (k) { return ratchetPt(g0 + (g1 - g0) * k); },
@@ -181,7 +191,7 @@ HoolaStudio.define('screw-gauge', function (S) {
     if (st.wire === 'gauge' && st.gap < WD + 0.6) { S.say('Open the gauge from the wire first.'); return Promise.resolve(); }
     var g1 = st.gap + PITCH <= 5 ? st.gap + PITCH : st.gap - PITCH;
     return run(function () { updViews(); return turnTo(g1, 1800).then(function () { st.turned = true; updViews(); S.focus('read');
-      S.say('One full turn of the thimble: its edge moved by exactly one division of the sleeve scale, 0.5 mm. That is the pitch.'); }); });
+      S.say('One full turn of the thimble: its edge moved by exactly one division of the sleeve scale, ' + PS + '. That is the pitch.'); }); });
   }
   function openGauge() {
     if (busy()) return Promise.resolve();
@@ -227,8 +237,8 @@ HoolaStudio.define('screw-gauge', function (S) {
   function submitLC() {
     var v = num(st.inp.lc);
     if (!isFinite(v)) { S.say('Type the least count as a number, in mm.'); return false; }
-    if (same(v, LC)) { st.lcOk = true; S.say('Right: least count = pitch ÷ divisions = 0.5 mm ÷ 50 = 0.01 mm.'); S.render(); return true; }
-    if (same(v, PITCH)) S.say('0.5 mm is the pitch: the distance the spindle moves in one full turn. Divide it among the thimble divisions.');
+    if (same(v, LC)) { st.lcOk = true; S.say('Right: least count = pitch ÷ divisions = ' + PS + ' ÷ ' + NDIV + ' = ' + LS + '.'); S.render(); return true; }
+    if (same(v, PITCH)) S.say(PS + ' is the pitch: the distance the spindle moves in one full turn. Divide it among the thimble divisions.');
     else if (same(v, NDIV) || same(v, 1 / NDIV)) S.say('Use millimetres: least count = pitch (mm) ÷ number of thimble divisions.');
     else S.say('Not yet. Least count = pitch ÷ number of divisions on the thimble.');
     S.render(); return false;
@@ -241,7 +251,7 @@ HoolaStudio.define('screw-gauge', function (S) {
     var d = Math.round(Math.abs(ZR) / LC);
     if (d && (same(Math.abs(v), d) || same(Math.abs(v), NDIV - d))) S.say('That is a division number. Multiply it by the least count to get millimetres.');
     else if (same(v, -ZR)) S.say('Check the sign. If the thimble zero is below the datum line when the faces touch, the zero error is positive; above it, negative.');
-    else S.say(st.tries.zero > 1 ? 'Not yet. Use "Look through the lens". Find where the thimble zero is, and which thimble division is on the datum line. Zero error = divisions × 0.01 mm.' :
+    else S.say(st.tries.zero > 1 ? 'Not yet. Use "Look through the lens". Find where the thimble zero is, and which thimble division is on the datum line. Zero error = divisions × ' + LS + '.' :
       'Not yet. With the faces touching, which thimble division is on the datum line, and is the thimble zero above or below it?');
     S.render(); return false;
   }
@@ -251,14 +261,14 @@ HoolaStudio.define('screw-gauge', function (S) {
     if (sState() !== 'wire') { S.say('Turn the ratchet until it clicks on the wire before you read.'); return false; }
     var m = num(st.inp.psr), v = num(st.inp.hsr);
     if (!isFinite(m) || !isFinite(v)) { S.say('Type both: the pitch scale reading in mm, and the thimble division on the datum line (a whole number).'); return false; }
-    if (Math.round(v) !== v || v < 0 || v >= NDIV) { S.say('The thimble division is a whole number from 0 to 49.'); return false; }
+    if (Math.round(v) !== v || v < 0 || v >= NDIV) { S.say('The thimble division is a whole number from 0 to ' + (NDIV - 1) + '.'); return false; }
     var mOk = same(m, PSR), vOk = v === HSR;
     if (mOk && vOk) {
       var obs = r6(m + v * LC), corr = r6(obs - ZR);
       if (!same(corr, KREAD)) console.warn('screw gauge: corrected reading', corr, 'differs from the kernel', KREAD);
       S.addRow({ psr: m, hsr: v, obs: obs, ze: ZR, corr: corr, at: ZS[st.zi] });
       st.inp.psr = ''; st.inp.hsr = ''; st.tries.read = 0;
-      S.say('Recorded: ' + m.toFixed(1) + ' mm + ' + v + ' × 0.01 mm = ' + obs.toFixed(2) + ' mm; corrected: ' + corr.toFixed(2) + ' mm.' + (S.rows.length < 3 ? ' Open the gauge and slide the wire to a new place.' : ''));
+      S.say('Recorded: ' + m.toFixed(1) + ' mm + ' + v + ' × ' + LS + ' = ' + obs.toFixed(2) + ' mm; corrected: ' + corr.toFixed(2) + ' mm.' + (S.rows.length < 3 ? ' Open the gauge and slide the wire to a new place.' : ''));
       S.render(); return true;
     }
     var msg = [];
@@ -295,21 +305,21 @@ HoolaStudio.define('screw-gauge', function (S) {
   return {
     camera: { pos: [0.13, 0.2, 0.4], look: [0.035, 0.045, -0.03] },
     views: VIEWS,
-    theory: { principle: 'The spindle is a fine screw. One full turn of the thimble moves it forward by one pitch, 0.5 mm, read on the sleeve. The thimble is divided into 50 parts, so turning it by one division moves the spindle 0.5 ÷ 50 = 0.01 mm.',
-      formula: 'D = PSR + HSR × LC − zero error', formulaNote: 'LC = pitch ÷ number of thimble divisions = 0.5 mm ÷ 50 = 0.01 mm',
+    theory: { principle: 'The spindle is a fine screw. One full turn of the thimble moves it forward by one pitch, ' + PS + ', read on the sleeve. The thimble is divided into ' + NDIV + ' parts, so turning it by one division moves the spindle ' + fmt(PITCH) + ' ÷ ' + NDIV + ' = ' + LS + '.',
+      formula: 'D = PSR + HSR × LC − zero error', formulaNote: 'LC = pitch ÷ number of thimble divisions = ' + PS + ' ÷ ' + NDIV + ' = ' + LS,
       more: ['PSR (pitch scale reading) is the last mark on the sleeve uncovered by the thimble edge; marks above the datum line are whole millimetres, marks below are the half millimetres. HSR is the thimble division lying on the datum line.',
         'Zero error: turn the ratchet until the faces touch. If the thimble zero is below the datum line, the error is positive (+n × LC); above it, negative. Corrected reading = observed − zero error.'],
       precautions: 'Always turn by the ratchet, never by the thimble, at the end: it slips at the same gentle pressure every time. Look straight at the datum line. Measure the wire at several places along its length (and in two perpendicular directions) and take the mean.' },
-    book: { title: 'Expt. — Screw Gauge', lines: ['Aim: diameter of a thin wire.', 'Pitch = 0.5 mm,  50 thimble divisions', 'LC = pitch / 50 = 0.01 mm', 'Zero error = …', 'D = PSR + HSR × LC − z.e.', 'Precautions: use the ratchet; no parallax.'],
+    book: { title: 'Expt. — Screw Gauge', lines: ['Aim: diameter of a thin wire' + (SAMPLE ? ' (' + WNAME.toLowerCase() + (SWG ? ', SWG ' + SWG : '') + ').' : '.'), 'Pitch = ' + PS + ',  ' + NDIV + ' thimble divisions', 'LC = pitch / ' + NDIV + ' = ' + LS, 'Zero error = …', 'D = PSR + HSR × LC − z.e.', 'Precautions: use the ratchet; no parallax.'],
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'PSR (mm)', get: function (r) { return r.psr.toFixed(1); } },
         { label: 'HSR', get: function (r) { return String(r.hsr); } }, { label: 'Obs. (mm)', get: function (r) { return r.obs.toFixed(2); } },
         { label: 'z.e. (mm)', get: function (r) { return sgn(r.ze); } }, { label: 'D (mm)', get: function (r) { return r.corr.toFixed(2); } }] },
     result: function (rows) { if (!rows.length) return null; var m = S.fit.mean(rows.map(function (r) { return r.corr; }));
-      return { label: 'Mean diameter D', value: m, unit: 'mm', digits: 3, truth: p.L * 1000, note: 'Mean of ' + rows.length + ' corrected readings (least count 0.01 mm).' }; },
+      return { label: 'Mean diameter D', value: m, unit: 'mm', digits: 3, truth: p.L * 1000, note: 'Mean of ' + rows.length + ' corrected readings (least count ' + LS + ').' }; },
     tol: (LC + 1e-9) / (p.L * 1000),
-    resultNote: 'Each reading is good only to the least count, 0.01 mm. Your mean can differ from the true diameter by up to that much.',
+    resultNote: 'Each reading is good only to the least count, ' + LS + '. Your mean can differ from the true diameter by up to that much.',
     chips: ['How do I read the PSR?', 'How do I read the thimble?', 'What is the zero error?', 'Why use the ratchet?', 'Check my readings'],
-    viva: [['With the faces touching, the thimble zero is 3 divisions below the datum line. The zero error is…', ['+0.03 mm', '−0.03 mm', '+0.3 mm'], 0, 'Below the line means the gauge reads too much: +3 × 0.01 mm.'],
+    viva: [['With the faces touching, the thimble zero is 3 divisions below the datum line. The zero error is…', ['+' + fmt(3 * LC) + ' mm', '−' + fmt(3 * LC) + ' mm', '+' + fmt(30 * LC) + ' mm'], 0, 'Below the line means the gauge reads too much: +3 × ' + LS + '.'],
       ['Why do we turn the ratchet and not the thimble at the end?', ['It slips at a fixed gentle pressure', 'It turns faster', 'It reads the zero error'], 0, 'Equal, gentle pressure every time: the wire is not squeezed.']],
     askState: function () { return { least_count_mm: LC, pitch_mm: PITCH, thimble_divisions: NDIV, spindle: sState(), wire_place: st.wire, place_along_wire: st.zi + 1,
       least_count_found: st.lcOk, zero_error_found: st.zeroOk, typed_zero_error_mm: st.inp.zero || null, typed_psr_mm: st.inp.psr || null, typed_hsr: st.inp.hsr || null,

@@ -7,9 +7,19 @@ HoolaStudio.define('newtons-cooling', function (S) {
   function labParams(name) { var o = {}; (S.lab.knobs || []).forEach(function (k) { if (k.param) o[k.param] = k.value * (k.k || 1); });
     var lp = S.lab.params || {}; Object.keys(lp).forEach(function (key) { o[key] = lp[key]; }); return HK.paramsFor(name, o); }
   var p = labParams('cooling');
+  // the liquid that cools: from the variant's sample line, water when there is no variant
+  var VAR = S.lab.variant || {}, SAMPLE = String(VAR.sample || '');
+  var LIQ = /glycer/i.test(SAMPLE) ? { name: 'glycerine', cap: 'Glycerine', tag: 'HOT GLYCERINE', col: 0xe4ecea, deep: 0xc9d8d6, op: 0.82 }
+    : /olive/i.test(SAMPLE) ? { name: 'olive oil', cap: 'Olive oil', tag: 'HOT OLIVE OIL', col: 0xc9b247, deep: 0xb39a2c, op: 0.88 }
+    : { name: 'water', cap: 'Water', tag: 'HOT WATER', col: 0x9cc6d6, deep: 0x6aaccc, op: 0.9 };
+  // reading interval: 30 s as in the manual, shorter when the liquid would reach room temperature before 6 readings
+  var DT0 = Math.max(1, p.T0 - p.Ts), EVERY = 30;
+  if (DT0 * Math.exp(-p.k * 150) < 2) EVERY = Math.max(5, Math.floor(Math.log(DT0 / 2) / (5 * p.k) / 5) * 5);
+  else if (p.k * 240 < 0.5) EVERY = 60;
+  var SPAN = 4 * EVERY;                                       // the readings must cover at least this many seconds
   var LC = 0.5;                                               // thermometer least count (°C)
   function readT(v) { return Math.round(v / LC) * LC; }
-  var sim = K.init(p), st = { roomRead: false, Ts: null, poured: false, speed: 5, autoNote: false, nextMark: 30, shown: p.Ts };
+  var sim = K.init(p), st = { roomRead: false, Ts: null, poured: false, speed: 5, autoNote: false, nextMark: EVERY, shown: p.Ts };
 
   // ---------- helpers (a hand that carries a thing along several legs, then lets go)
   function carry(startPt, legs, pose) {
@@ -28,7 +38,7 @@ HoolaStudio.define('newtons-cooling', function (S) {
     var bc = new T.Vector3(-0.12, 0, 0).applyAxisAngle(up, rotY); blob.position.set(g.position.x + bc.x, blob.position.y, g.position.z + bc.z); blob.rotation.z = rotY;
     return g;
   }
-  var waterM = new T.MeshStandardMaterial({ color: 0x9cc6d6, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.9 });
+  var waterM = new T.MeshStandardMaterial({ color: LIQ.col, roughness: 0.05, metalness: 0.1, transparent: true, opacity: LIQ.op });
   function vessel(r, h, mat) {                       // thin-walled open vessel with a rolled rim (lathe)
     var pts = [[0, 0.0005], [r - 0.005, 0.0005], [r, 0.005], [r, h], [r + 0.0018, h + 0.0012], [r - 0.0012, h + 0.0004], [r - 0.0012, 0.006], [r - 0.006, 0.0018], [0, 0.0018]]
       .map(function (a) { return new T.Vector2(a[0], a[1]); });
@@ -61,11 +71,11 @@ HoolaStudio.define('newtons-cooling', function (S) {
   // hot water in a beaker beside it (from the kettle)
   var BK = { r: 0.042, h: 0.11, x: 0.33, z: -0.04, level: 0.68 };
   var beaker = S.beaker(BK.r, BK.h, [BK.x, 0, BK.z]);
-  var bwater = S.mesh(new T.CylinderGeometry(BK.r * 0.95, BK.r * 0.95, 1, 36), new T.MeshStandardMaterial({ color: 0x6aaccc, roughness: 0.05, metalness: 0.08 }), false); beaker.add(bwater);
+  var bwater = S.mesh(new T.CylinderGeometry(BK.r * 0.95, BK.r * 0.95, 1, 36), new T.MeshStandardMaterial({ color: LIQ.deep, roughness: 0.05, metalness: 0.08 }), false); beaker.add(bwater);
   beaker.setLevel = function (f) { var hh = Math.max(0.001, BK.h * f); bwater.scale.y = hh; bwater.position.y = 0.002 + hh / 2; bwater.visible = f > 0.02; };   // opaque water shows through the beaker glass
   beaker.setLevel(BK.level);
   var bkShadow = S.contact(0.12, 0.12, BK.x, BK.z, 0.45);
-  var bl = S.label('HOT WATER', { w: 0.05, ratio: 0.2, color: '#a3241b', weight: 700 }); bl.position.set(0, 0.04, BK.r + 0.0008); beaker.add(bl);
+  var bl = S.label(LIQ.tag, { w: LIQ.tag.length > 10 ? 0.064 : 0.05, ratio: 0.2, color: '#a3241b', weight: 700 }); bl.position.set(0, 0.04, BK.r + 0.0008); beaker.add(bl);
   var stream = S.mesh(new T.CylinderGeometry(0.0035, 0.0045, 1, 12), waterM, false); stream.visible = false; S.scene.add(stream);
   var watch = S.stopwatch([0.3, 0.035, 0.17], [-1.15, 0, -0.2]);
   // steam wisps over hot water
@@ -73,22 +83,22 @@ HoolaStudio.define('newtons-cooling', function (S) {
   var wisps = []; for (var i = 0; i < 6; i++) { var w = new T.Mesh(new T.PlaneGeometry(0.045, 0.045), new T.MeshBasicMaterial({ map: steamTex, transparent: true, opacity: 0, depthWrite: false }));
     w.userData.ph = i / 6; S.scene.add(w); wisps.push(w); }
 
-  S.addApparatus('cal', cal, 'Copper calorimeter', 'Thin copper vessel: it takes up the water temperature quickly. Holds the hot water that cools.');
-  S.addApparatus('block', block, 'Wooden insulating stand', 'Wood conducts heat poorly, so the water loses heat mainly to the air around it.');
-  S.addApparatus('thermo', thermo, 'Mercury thermometer', 'Range −10 to 110 °C, least count 0.5 °C. The bulb sits in the water, clear of the bottom.');
+  S.addApparatus('cal', cal, 'Copper calorimeter', 'Thin copper vessel: it takes up the liquid\'s temperature quickly. Holds the hot ' + LIQ.name + ' that cools.');
+  S.addApparatus('block', block, 'Wooden insulating stand', 'Wood conducts heat poorly, so the ' + LIQ.name + ' loses heat mainly to the air around it.');
+  S.addApparatus('thermo', thermo, 'Mercury thermometer', 'Range −10 to 110 °C, least count 0.5 °C. The bulb sits in the ' + LIQ.name + ', clear of the bottom.');
   S.addApparatus('stand', stand, 'Clamp stand', 'Holds the thermometer upright so the bulb never touches the copper.');
-  S.addApparatus('stir', stir, 'Stirrer', 'Keeps the water at one temperature throughout.');
-  S.addApparatus('beaker', beaker, 'Beaker of hot water', 'Water at about 90 °C from the kettle. Hold it by the side and pour slowly.');
-  S.addApparatus('sw', watch.group, 'Digital stopwatch', 'Least count 0.01 s. Read the temperature every 30 s.');
+  S.addApparatus('stir', stir, 'Stirrer', 'Keeps the ' + LIQ.name + ' at one temperature throughout.');
+  S.addApparatus('beaker', beaker, 'Beaker of hot ' + LIQ.name, LIQ.cap + ' at about ' + Math.round(p.T0) + ' °C' + (LIQ.name === 'water' ? ' from the kettle' : ', heated in a water bath') + '. Hold it by the side and pour slowly.');
+  S.addApparatus('sw', watch.group, 'Digital stopwatch', 'Least count 0.01 s. Read the temperature every ' + EVERY + ' s.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
 
-  var bookLines = ['Aim: to study the cooling of hot water and find k.', 'Room temperature Ts = ……', 'dT/dt = −k(T − Ts)', 'ln(T − Ts) = ln(T₀ − Ts) − kt', 'Readings every 30 s, thermometer LC 0.5 °C.'];
+  var bookLines = ['Aim: to study the cooling of hot ' + LIQ.name + ' and find k.', 'Room temperature Ts = ……', 'dT/dt = −k(T − Ts)', 'ln(T − Ts) = ln(T₀ − Ts) − kt', 'Readings every ' + EVERY + ' s, thermometer LC 0.5 °C.'];
   var hudT = S.hudCard('Thermometer'), hudt = S.hudCard('Stopwatch'), hudN = S.hudCard('Readings');
 
   // ---------- actions
   function Tnow() { return sim.y[0]; }
   function readRoom() {
-    if (st.poured) { S.say('The water is already in. Room temperature is read before pouring.'); return; }
+    if (st.poured) { S.say('The ' + LIQ.name + ' is already in. Room temperature is read before pouring.'); return; }
     st.roomRead = true; st.Ts = readT(p.Ts); bookLines[1] = 'Room temperature Ts = ' + st.Ts.toFixed(1) + ' °C'; S.focus('thermo');
     S.say('Room temperature Ts = ' + st.Ts.toFixed(1) + ' °C (thermometer in air). Written in your record book.'); S.book.draw(); S.render();
   }
@@ -118,24 +128,24 @@ HoolaStudio.define('newtons-cooling', function (S) {
     ];
     return carry(gripAt(start, 0), legs, 'pinch').then(function () {
       placeBeaker(start, 0); beaker.setLevel(BK.level * 0.08); setCalWater(1); stream.visible = false;
-      sim = K.init(p); st.poured = true; S.say('Hot water poured. Stir gently and watch the thermometer rise to about ' + readT(p.T0).toFixed(0) + ' °C.'); S.render(); });
+      sim = K.init(p); st.poured = true; S.say('Hot ' + LIQ.name + ' poured. Stir gently and watch the thermometer rise to about ' + readT(p.T0).toFixed(0) + ' °C.'); S.render(); });
   }
   function pressWatch() {
     if (S.hand.busy) return Promise.resolve();
-    if (!st.poured) { S.say('Pour the hot water in first.'); return Promise.resolve(); }
+    if (!st.poured) { S.say('Pour the hot ' + LIQ.name + ' in first.'); return Promise.resolve(); }
     if (!watch.on && S.rows.length) { S.say('This series is already timed. To start a fresh series, delete the readings in the table first.'); return Promise.resolve(); }
     return S.hand.tap(watch.start).then(function () {
       S.click(2400);
-      if (!watch.on) { watch.t = 0; watch.on = true; st.nextMark = 30; note(true); }
+      if (!watch.on) { watch.t = 0; watch.on = true; st.nextMark = EVERY; note(true); }
       else { watch.on = false; S.say('Stopwatch stopped at ' + watch.t.toFixed(1) + ' s.'); }
       S.render(); });
   }
   function note(quiet) {
-    if (!st.poured) { S.say('Pour the hot water in first.'); return; }
+    if (!st.poured) { S.say('Pour the hot ' + LIQ.name + ' in first.'); return; }
     if (!watch.on) { S.say('Start the stopwatch first: every reading needs its time.'); return; }
     var t = Math.round(watch.t), Tr = readT(Tnow());
-    if (S.rows.length && t - S.rows[S.rows.length - 1].t < 10) { S.say('Wait for the next reading: about 30 s apart.'); return; }
-    if (Tr - st.Ts < 1) { S.say('The water is almost at room temperature now. Stop: these readings are too close to Ts to use.'); return; }
+    if (S.rows.length && t - S.rows[S.rows.length - 1].t < Math.max(3, EVERY / 3)) { S.say('Wait for the next reading: about ' + EVERY + ' s apart.'); return; }
+    if (Tr - st.Ts < 1) { S.say('The ' + LIQ.name + ' is almost at room temperature now. Stop: these readings are too close to Ts to use.'); return; }
     S.addRow({ t: t, T: Tr });
     if (!quiet) S.say('Written: t = ' + t + ' s, T = ' + Tr.toFixed(1) + ' °C.');
   }
@@ -154,7 +164,7 @@ HoolaStudio.define('newtons-cooling', function (S) {
     theory: { principle: 'A hot body loses heat to its surroundings at a rate proportional to the difference between its temperature and the room temperature, as long as the difference is not too large.',
       formula: 'dT/dt = −k (T − Ts)', formulaNote: 'so T − Ts = (T₀ − Ts) e^(−kt) and ln(T − Ts) = ln(T₀ − Ts) − k t',
       more: ['A graph of T against t is the cooling curve: steep at first, flatter later. A graph of ln(T − Ts) against t is a straight line; its slope is −k.'],
-      precautions: 'Read the room temperature before pouring. Keep the bulb fully in the water and clear of the copper. Stir gently. Keep the calorimeter away from draughts and the window. Read the thermometer with your eye level with the mercury.' },
+      precautions: 'Read the room temperature before pouring. Keep the bulb fully in the liquid and clear of the copper. Stir gently. Keep the calorimeter away from draughts and the window. Read the thermometer with your eye level with the mercury.' },
     book: { title: 'Expt. — Newton\'s Law of Cooling', lines: bookLines,
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 't (s)', get: function (r) { return String(r.t); } },
         { label: 'T (°C)', get: function (r) { return r.T.toFixed(1); } }, { label: 'T − Ts', get: function (r) { return (r.T - (st.Ts === null ? p.Ts : st.Ts)).toFixed(1); } },
@@ -168,40 +178,40 @@ HoolaStudio.define('newtons-cooling', function (S) {
     viva: [['Why is the calorimeter made of thin copper?', ['Copper conducts well, so the vessel and water share one temperature', 'Copper does not lose heat', 'It is cheap'], 0, 'Good conduction keeps the water and the vessel at the same temperature.'],
       ['What does the slope of ln(T − Ts) against t give?', ['−k', 'Ts', 'T₀'], 0, 'ln(T − Ts) = ln(T₀ − Ts) − kt is a straight line of slope −k.']],
     askState: function () { return { room_temperature_C: st.Ts, water_poured: st.poured, thermometer_C: readT(st.poured ? Tnow() : p.Ts), stopwatch_s: +watch.t.toFixed(1),
-      stopwatch_running: watch.on, time_runs_faster_by: st.speed, readings_taken: S.rows.length }; },
+      stopwatch_running: watch.on, time_runs_faster_by: st.speed, readings_taken: S.rows.length, liquid: LIQ.name, reading_every_s: EVERY }; },
 
     steps: [
       { id: 'prepare', title: 'Set up', view: 'cal', render: function (u) {
-          u.h2('Room temperature, then hot water');
+          u.h2('Room temperature, then hot ' + LIQ.name);
           u.task('1. Read the room temperature', st.roomRead, st.roomRead ? 'Ts = ' + st.Ts.toFixed(1) + ' °C' : 'The thermometer is still in air: it shows the room temperature')
             .add(u.button(st.roomRead ? 'Read' : 'Read the thermometer', readRoom, !st.roomRead, st.roomRead || st.poured));
-          u.task('2. Pour the hot water into the calorimeter', st.poured, st.poured ? 'Filled to about two thirds' : 'The hand lifts the beaker by its side and pours slowly')
-            .add(u.button(st.poured ? 'Poured' : 'Pour the hot water', function () { pour(); S.render(); }, st.roomRead && !st.poured, !st.roomRead || st.poured || S.hand.busy));
+          u.task('2. Pour the hot ' + LIQ.name + ' into the calorimeter', st.poured, st.poured ? 'Filled to about two thirds' : 'The hand lifts the beaker by its side and pours slowly')
+            .add(u.button(st.poured ? 'Poured' : 'Pour the hot ' + LIQ.name, function () { pour(); S.render(); }, st.roomRead && !st.poured, !st.roomRead || st.poured || S.hand.busy));
           u.live(function () { return 'Thermometer: ' + readT(st.shown).toFixed(1) + ' °C'; });
-          u.note('Fill the calorimeter only about two thirds, so the water does not spill when you stir.');
+          u.note('Fill the calorimeter only about two thirds, so the ' + LIQ.name + ' does not spill when you stir.');
           u.next('Next: take the readings', st.roomRead && st.poured);
         },
         ok: function () { return st.roomRead && st.poured; },
         auto: function () { readRoom(); return pour(); } },
       { id: 'record', title: 'Readings', view: 'sw', render: function (u) {
-          u.h2('Read T every 30 seconds');
-          u.p('Start the stopwatch: the first reading is written at t = 0. Then note the temperature every 30 s. Keep going for at least 3 minutes.');
+          u.h2('Read T every ' + EVERY + ' seconds');
+          u.p('Start the stopwatch: the first reading is written at t = 0. Then note the temperature every ' + EVERY + ' s. Keep going for at least ' + (6 * EVERY >= 120 ? Math.round(6 * EVERY / 60) + ' minutes' : 6 * EVERY + ' s') + '.');
           u.row(u.button(watch.on ? 'STOP the stopwatch' : 'START the stopwatch', function () { pressWatch(); }, true, !st.poured || S.hand.busy),
             u.button('Note the reading now', function () { note(); }, false, !watch.on));
-          u.row(u.button((st.autoNote ? '✓ ' : '') + 'Note every 30 s for me', function () { st.autoNote = !st.autoNote; if (st.autoNote && watch.on) st.nextMark = Math.ceil((watch.t + 1) / 30) * 30; S.render(); }, false, false));
+          u.row(u.button((st.autoNote ? '✓ ' : '') + 'Note every ' + EVERY + ' s for me', function () { st.autoNote = !st.autoNote; if (st.autoNote && watch.on) st.nextMark = Math.ceil((watch.t + 1) / EVERY) * EVERY; S.render(); }, false, false));
           u.live(function () { return 't = ' + watch.t.toFixed(1) + ' s · T = ' + readT(st.poured ? Tnow() : p.Ts).toFixed(1) + ' °C'; });
           var sp = u.row(); sp.appendChild(document.createTextNode('Time runs: '));
           [1, 5, 10].forEach(function (v) { sp.appendChild(u.button((st.speed === v ? '✓ ' : '') + v + '×', function () { setSpeed(v); }, false, false)); });
-          u.note('Real water takes many minutes; the clock can run faster. The stopwatch shows the lab time.');
+          u.note('A real liquid takes many minutes; the clock can run faster. The stopwatch shows the lab time.');
           u.h3('Observation table'); u.table();
           var span = S.rows.length ? S.rows[S.rows.length - 1].t - S.rows[0].t : 0;
-          u.next('Next: plot the cooling curve', S.rows.length >= 6 && span >= 120);
-          if (S.rows.length < 6 || span < 120) u.p(S.rows.length + ' readings so far. Take at least 6, over at least 2 minutes.');
+          u.next('Next: plot the cooling curve', S.rows.length >= 6 && span >= SPAN);
+          if (S.rows.length < 6 || span < SPAN) u.p(S.rows.length + ' readings so far. Take at least 6, over at least ' + (SPAN % 60 === 0 ? SPAN / 60 + ' minute' + (SPAN === 60 ? '' : 's') : SPAN + ' s') + '.');
         },
-        ok: function () { var span = S.rows.length ? S.rows[S.rows.length - 1].t - S.rows[0].t : 0; return S.rows.length >= 6 && span >= 120; },
+        ok: function () { var span = S.rows.length ? S.rows[S.rows.length - 1].t - S.rows[0].t : 0; return S.rows.length >= 6 && span >= SPAN; },
         auto: function () {
           return pressWatch().then(function () {
-            for (var i = 1; i <= 8; i++) { S.advance(400, function () { return watch.t >= 30 * i; }); note(true); }
+            for (var i = 1; i <= 8; i++) { S.advance(400, function () { return watch.t >= EVERY * i; }); note(true); }
             return pressWatch(); }); } },
     ],
 
@@ -209,7 +219,7 @@ HoolaStudio.define('newtons-cooling', function (S) {
       var sdt = dt * st.speed;
       if (st.poured) { K.step(sim, p, sdt); if (watch.on) watch.t += dt * (st.speed - 1); }
       var target = st.poured ? Tnow() : p.Ts; st.shown += (target - st.shown) * Math.min(1, dt * 4); thermo.set(st.shown);
-      if (st.autoNote && watch.on && watch.t >= st.nextMark) { st.nextMark += 30; note(true); }
+      if (st.autoNote && watch.on && watch.t >= st.nextMark) { st.nextMark += EVERY; note(true); }
       // steam
       var hot = st.poured ? Math.max(0, Math.min(1, (Tnow() - 45) / 40)) : 0, now = (S._steamT = (S._steamT || 0) + dt);
       wisps.forEach(function (w) { var ph = (now * 0.25 + w.userData.ph) % 1; w.position.set(CX + Math.sin(ph * 6 + w.userData.ph * 9) * 0.012, CAL_Y + CAL_H + 0.01 + ph * 0.12, CZ + 0.005);
