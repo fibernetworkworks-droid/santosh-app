@@ -64,7 +64,9 @@ face_image = (
         f"git clone --depth 1 https://github.com/TMElyralab/MuseTalk.git {MUSE_DIR}",
         f"cd {MUSE_DIR} && git rev-parse HEAD > COMMIT && pip install -r requirements.txt",
         "pip install --no-cache-dir -U openmim",
-        "mim install mmengine", 'mim install "mmcv==2.0.1"', 'mim install "mmdet==3.1.0"', 'mim install "mmpose==1.1.0"',
+        "mim install mmengine", 'mim install "mmcv==2.0.1"', 'mim install "mmdet==3.1.0"',
+        # chumpy's setup.py imports pip, which pip's isolated build env lacks -> build it in this env first
+        "pip install --no-build-isolation chumpy", 'mim install "mmpose==1.1.0"',
         "pip install 'huggingface_hub[cli]' gdown",
         # MuseTalk's script points downloads at a mirror; the lab downloads from the source.
         f"sed -i '/HF_ENDPOINT/d' {MUSE_DIR}/download_weights.sh",
