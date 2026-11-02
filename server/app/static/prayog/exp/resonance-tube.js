@@ -34,7 +34,7 @@ HoolaStudio.define('resonance-tube', function (S) {
   var foot = S.mesh(new T.CylinderGeometry(ROUT + 0.003, 0.006, 0.03, 32), M.brass); foot.position.set(TX, Y_BOT - 0.012, TZ); S.scene.add(foot);
   [0.28, 0.82].forEach(function (y) { var band = S.mesh(new T.TorusGeometry(ROUT + 0.002, 0.0022, 8, 32), M.alu); band.rotation.x = Math.PI / 2; band.position.set(TX, y, TZ); S.scene.add(band);
     var arm = S.mesh(new T.BoxGeometry(0.008, 0.008, 0.03), M.alu); arm.position.set(TX, y, TZ - ROUT - 0.013); S.scene.add(arm); });
-  var waterM = new T.MeshStandardMaterial({ color: 0x8fc0d8, roughness: 0.08, metalness: 0, transparent: true, opacity: 0.62 });
+  var waterM = new T.MeshStandardMaterial({ color: 0x4f9fcf, roughness: 0.06, metalness: 0, transparent: true, opacity: 0.5 });
   var col = S.mesh(new T.CylinderGeometry(RIN - 0.0004, RIN - 0.0004, 1, 32), waterM, false); S.scene.add(col);
   var meniscus = S.mesh(new T.TorusGeometry(RIN - 0.0012, 0.0012, 6, 32), waterM, false); meniscus.rotation.x = Math.PI / 2; S.scene.add(meniscus);
   var ruler = S.ruler(1.0, { title: 'METRE SCALE · cm from the open end', labelEvery: 10 });
@@ -160,7 +160,7 @@ HoolaStudio.define('resonance-tube', function (S) {
     camera: { pos: [0.95, 0.9, 1.85], look: [0.1, 0.5, -0.12] },
     views: { tube: [[0.5, 0.75, 1.2], [0.05, 0.6, TZ]], ruler: [[0.2, 0.85, 0.38], [0.04, 0.8, TZ]], res: [[0.6, 0.45, 0.6], [0.26, 0.3, TZ]],
       fork: [[0.52, 0.25, 0.42], [0.37, 0.03, 0.08]], pad: [[0.7, 0.22, 0.45], [0.56, 0.02, 0.14]], meter: [[-0.05, 0.25, 0.32], [-0.2, 0.05, -0.08]],
-      thermo: [[0.05, 0.6, 0.25], [-0.05, 0.6, -0.19]], mouth: [[0.38, 1.15, 0.55], [0.06, 1.0, TZ]], work: [[0.85, 1.1, 1.25], [0.12, 0.72, -0.1]],
+      thermo: [[0.05, 0.6, 0.25], [-0.05, 0.6, -0.19]], mouth: [[0.38, 1.15, 0.55], [0.06, 1.0, TZ]], work: [[0.62, 1.12, 0.78], [0.14, 0.9, -0.15]], work2: [[0.8, 1.02, 1.2], [0.14, 0.74, -0.15]],
       book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'A tuning fork held over a tube closed at one end sets the air column vibrating. When the column\'s natural frequency matches the fork, it resonates and the sound swells. This happens when the column (plus a small end correction e at the open end) is a quarter wavelength, then three quarters.',
       formula: 'l₁ + e = λ/4,  l₂ + e = 3λ/4', formulaNote: 'so l₂ − l₁ = λ/2 and v = fλ = 2f(l₂ − l₁) · e ≈ 0.3 d cancels out',
@@ -186,7 +186,7 @@ HoolaStudio.define('resonance-tube', function (S) {
             .add(u.button('Read the fork', function () { st.forkRead = true; S.focus('fork'); S.render(); }, !st.forkRead, st.forkRead));
           u.task('2. Note the room temperature', st.roomRead, st.roomRead ? 'Room ' + p.Tc.toFixed(0) + ' °C' : 'The thermometer is on the back board')
             .add(u.button('Read the thermometer', function () { st.roomRead = true; S.focus('thermo'); S.render(); }, !st.roomRead, st.roomRead));
-          u.note('The water is near the top now (air column ' + (st.h * 100).toFixed(1) + ' cm). You will lengthen the air column by lowering the reservoir. Sound plays after your first tap on Strike.');
+          u.note('The air column is ' + (st.h * 100).toFixed(1) + ' cm now. You will lengthen the air column by lowering the reservoir. Sound plays after your first tap on Strike.');
           u.next('Next: find the first resonance', st.forkRead && st.roomRead);
         },
         ok: function () { return st.forkRead && st.roomRead; },
@@ -201,7 +201,7 @@ HoolaStudio.define('resonance-tube', function (S) {
         },
         ok: function () { return !!has(1); },
         auto: function () { return find(0.1, 0.25).then(function () { mark(1); }); } },
-      { id: 'second', title: 'Second resonance', view: 'work', render: function (u) {
+      { id: 'second', title: 'Second resonance', view: 'work2', render: function (u) {
           u.h2('Find l₂, the second resonance');
           u.p('Keep lowering the reservoir. The next loud point is roughly three times as deep as l₁. Find its loudest point and mark it.');
           stepUi(u, 2);

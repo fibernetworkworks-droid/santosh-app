@@ -79,7 +79,7 @@ HoolaStudio.define('hookes-law', function (S) {
   // slotted masses: a pile on the bench, the hand takes the top one
   var discGeo = slotted(), lblTex = S.canvasTex(128, 64, function (x) { x.fillStyle = '#5a3d0c'; x.font = '700 40px "Public Sans", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('50 g', 64, 34); });
   var lblMat = new T.MeshStandardMaterial({ map: lblTex, transparent: true, roughness: 0.5, depthWrite: false }), lblGeo = new T.PlaneGeometry(0.014, 0.007);
-  var PILE = new T.Vector3(0.3, 0, 0.06), discs = [], onHanger = [];
+  var PILE = new T.Vector3(0.27, 0, 0.08), discs = [], onHanger = [];
   for (var i = 0; i < MAXN; i++) { var d = new T.Group(), dm = S.mesh(discGeo, M.brass); d.add(dm);
     var lb = new T.Mesh(lblGeo, lblMat); lb.rotation.x = -Math.PI / 2; lb.position.set(0.0115, DT / 2 + 0.0002, 0); lb.rotation.z = Math.PI / 2; lb.renderOrder = 2; d.add(lb);
     d.position.set(PILE.x, DT / 2 + i * DT, PILE.z); S.scene.add(d); discs.push(d); }
@@ -140,8 +140,8 @@ HoolaStudio.define('hookes-law', function (S) {
   var EXP = {
     camera: { pos: [0.82, 0.86, 1.76], look: [0.09, 0.5, -0.05] },
     views: { stand: [[0.45, 0.85, 1.1], [-0.05, 0.6, -0.05]], spring: [[0.2, 0.9, 0.5], [0.06, 0.84, -0.05]], hanger: [[0.2, 0.8, 0.45], [0.07, 0.76, -0.05]],
-      ruler: [[0.22, 0.86, 0.42], [0.1, 0.8, -0.05]], masses: [[0.45, 0.25, 0.4], [0.3, 0.03, 0.06]],
-      rig: [[0.62, 0.72, 1.3], [0.18, 0.5, -0.02]], read: [[0.17, 0.82, 0.36], [0.09, 0.78, -0.05]],
+      ruler: [[0.22, 0.86, 0.42], [0.1, 0.8, -0.05]], masses: [[0.45, 0.25, 0.42], [0.27, 0.03, 0.08]],
+      rig: [[0.7, 0.62, 1.3], [0.16, 0.44, 0.0]], read: [[0.17, 0.82, 0.36], [0.09, 0.78, -0.05]],
       book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'A spring stretches when a load hangs from it. Within the elastic limit the restoring force is proportional to the extension: F = k x (Hooke\'s law), where k is the spring constant.',
       formula: 'F = mg = k x', formulaNote: 'so k = slope of the graph of load F against extension x',

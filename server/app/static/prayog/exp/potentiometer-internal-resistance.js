@@ -17,7 +17,7 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
   function lead(a, b, color, via, lift) {
     var up = lift || 0.014, pts = [[a.x, a.y, a.z], [a.x, a.y + up, a.z]];
     (via || []).forEach(function (v) { pts.push(v.length === 2 ? [v[0], 0.0035, v[1]] : v); });
-    pts.push([b.x, b.y + up, b.z], [b.x, b.y, b.z]); return S.wire(pts, color);
+    pts.push([b.x, b.y + up, b.z], [b.x, b.y, b.z]); var w = S.wire(pts, color); if (color === 'black') { w.material.color.setHex(0x111113); w.material.roughness = 0.8; } return w;
   }
   function busy() { if (S.hand.busy) { S.say('Wait for the hand to finish.'); return true; } return false; }
   var ZAX = new T.Vector3(0, 0, 1), XAX = new T.Vector3(1, 0, 0);
@@ -121,8 +121,8 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
   function apply(q) { jock.position.copy(q.pos); jock.rotation.set(0, 0, q.rz);
     jShadow.position.set(q.pos.x - 0.045 * Math.sin(q.rz), 0.0009, q.pos.z); jShadow.scale.setScalar(q.rz > 0.7 ? 1.4 : 0.8);
     var c = capOf(q), key2 = c.x.toFixed(4) + c.y.toFixed(4) + c.z.toFixed(4); if (key2 === lastCap) return; lastCap = key2;
-    var g = gP.at, pts = [[g.x, g.y, g.z], [g.x, g.y + 0.03, g.z], [g.x * 0.6 + c.x * 0.4, 0.13, -0.6], [c.x, Math.max(c.y + 0.03, 0.115), c.z - 0.035], [c.x, c.y, c.z]];
-    if (!jLead) jLead = S.wire(pts, 'black'); else jLead.set(pts); }
+    var g = gP.at, pts = [[g.x, g.y, g.z], [g.x, g.y + 0.03, g.z], [g.x + 0.1, 0.1, g.z], [(g.x + 0.1) * 0.6 + c.x * 0.4, 0.13, -0.6], [c.x, Math.max(c.y + 0.03, 0.115), c.z - 0.035], [c.x, c.y, c.z]];
+    if (!jLead) { jLead = S.wire(pts, 'black'); jLead.material.color.setHex(0x111113); jLead.material.roughness = 0.8; } else jLead.set(pts); }
   apply(REST);
   function moveJockey(l) {
     if (busy()) return Promise.resolve(false);
@@ -148,7 +148,7 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
   lead(pbPlus.at, K1.L.at, 'red', [[-0.82, -0.58], [-0.86, -0.5]]);
   lead(K1.R.at, rhA.at, 'red', [[-0.76, -0.47], [-0.64, -0.6], [-0.6, -0.68]]);
   lead(rhC.at, tA.at, 'red', [[-0.3, -0.64], [-0.5, -0.585]], 0.012);
-  lead(pbMinus.at, tB.at, 'black', [[-0.94, -0.6], [-0.94, -0.3], [-0.64, -0.265]]);
+  lead(pbMinus.at, tB.at, 'black', [[-0.88, -0.6], [-0.74, -0.52], [-0.72, -0.3], [-0.64, -0.265]]);
   lead(cPlus.at, tA.at, 'yellow', [[0.56, -0.6], [0.0, -0.59], [-0.45, -0.575]]);
   lead(cMinus.at, gM.at, 'blue', [[0.52, -0.73]]);
   lead(rbL.at, cPlus.at, 'yellow', [[0.7, -0.52], [0.64, -0.6]]);

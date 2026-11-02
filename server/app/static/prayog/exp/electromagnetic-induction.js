@@ -189,7 +189,7 @@ HoolaStudio.define('electromagnetic-induction', function (S) {
     viva: [['The magnet is pushed in twice as fast. The peak emf is?', ['Doubled', 'Halved', 'The same'], 0, 'The flux changes twice as fast, so dΦ/dt doubles.'],
       ['Why is the emf negative going in and positive coming out?', ['The flux increases and then decreases (Lenz)', 'The magnet turns round', 'The meter reverses'], 0, 'The induced emf opposes the change in flux, and the change reverses.']],
     askState: function () { return { magnet_speed_m_per_s: st.speed, magnet_distance_from_coil_centre_cm: +(-sim.z * 100).toFixed(1), moving: !!mot, emf_now_mV: round(emf * 1000, 1),
-      dmm_max_mV: dmm.max, dmm_min_mV: dmm.min, coil_turns: Math.round(p.N), passes_recorded: S.rows.length }; },
+      dmm_max_mV: round(dmm.max, 1), dmm_min_mV: round(dmm.min, 1), coil_turns: Math.round(p.N), passes_recorded: S.rows.length }; },
 
     steps: [
       { id: 'look', title: 'See it happen', view: 'run', render: function (u) {

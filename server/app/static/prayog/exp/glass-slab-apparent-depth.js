@@ -6,7 +6,7 @@ HoolaStudio.define('glass-slab-apparent-depth', function (S) {
   var T = S.T, M = S.M, K = window.HoolaKernels.K.slab;
   var p = window.HoolaKernels.paramsFor('slab', S.lab.params);
   (S.lab.knobs || []).forEach(function (k) { if (k.param === 'n' && isFinite(k.value)) p.n = +k.value; });   // the glass under test
-  var MX = 0.2, MZ = -0.32, BASE_TOP = 0.03, PAPER_Y = BASE_TOP + 0.0004, WD = 0.06, OBJ_Z = MZ + 0.05;
+  var MX = 0.2, MZ = -0.32, BASE_TOP = 0.034, PAPER_Y = BASE_TOP + 0.0004, WD = 0.06, OBJ_Z = MZ + 0.05;
   var Y_ZERO = PAPER_Y + WD + 0.06 - 0.05;                       // the main scale's zero: reading R (cm) = 100 (F + 0.05)
   var SLABS = [{ id: 'A', t: 0.02 }, { id: 'B', t: 0.03 }, { id: 'C', t: 0.04 }, { id: 'D', t: 0.05 }];
   var SW = 0.07, SDp = 0.05;                                     // slab length (x) and width (z)
@@ -14,10 +14,10 @@ HoolaStudio.define('glass-slab-apparent-depth', function (S) {
 
   // ---------- the travelling microscope
   var micro = new T.Group(); S.scene.add(micro);
-  var base = S.rounded(0.27, 0.2, 0.03, 0.012, M.iron); base.rotation.x = -Math.PI / 2; base.position.set(MX, 0.017, MZ); micro.add(base);
+  var base = S.rounded(0.27, 0.2, 0.03, 0.012, M.iron); base.rotation.x = -Math.PI / 2; base.position.set(MX, 0.019, MZ); micro.add(base);
   [[-0.115, -0.08], [0.115, -0.08], [0.1, 0.085]].forEach(function (f) { var s = S.mesh(new T.CylinderGeometry(0.008, 0.009, 0.004, 18), M.brass); s.position.set(MX + f[0], 0.002, MZ + f[1]); micro.add(s);
-    var kn = S.mesh(new T.CylinderGeometry(0.011, 0.011, 0.006, 20), M.bakelite); kn.position.set(MX + f[0], 0.033, MZ + f[1]); micro.add(kn); });
-  var bubble = S.mesh(new T.CylinderGeometry(0.009, 0.009, 0.004, 20), M.glass); bubble.position.set(MX + 0.07, 0.034, MZ - 0.07); micro.add(bubble);
+    var kn = S.mesh(new T.CylinderGeometry(0.011, 0.011, 0.006, 20), M.bakelite); kn.position.set(MX + f[0], BASE_TOP + 0.003, MZ + f[1]); micro.add(kn); });
+  var bubble = S.mesh(new T.CylinderGeometry(0.009, 0.009, 0.004, 20), M.glass); bubble.position.set(MX + 0.07, BASE_TOP + 0.002, MZ - 0.07); micro.add(bubble);
   S.contact(0.36, 0.28, MX, MZ, 0.55);
   var PIL_X = MX - 0.075, PIL_Z = OBJ_Z, PIL_W = 0.03, PIL_H = 0.33, FACE = PIL_Z + PIL_W / 2;
   var pillar = S.mesh(new T.BoxGeometry(PIL_W, PIL_H, PIL_W), M.steel); pillar.position.set(PIL_X, BASE_TOP + PIL_H / 2, PIL_Z); micro.add(pillar);
@@ -71,14 +71,14 @@ HoolaStudio.define('glass-slab-apparent-depth', function (S) {
 
   // ---------- glass slabs on a cloth, and the lycopodium sprinkler
   var cloth = S.mesh(new T.BoxGeometry(0.4, 0.002, 0.11), new T.MeshStandardMaterial({ color: 0x2f5d87, roughness: 1 })); cloth.position.set(0.66, 0.001, -0.13); S.scene.add(cloth);
-  var slabMat = new T.MeshPhysicalMaterial({ color: 0xeef8f5, roughness: 0.02, metalness: 0, transmission: 0.95, thickness: 0.04, ior: p.n, transparent: true, opacity: 0.96,
-    attenuationColor: new T.Color(0xbfe8da), attenuationDistance: 0.3, clearcoat: 1, envMapIntensity: 1.3 });
+  var slabMat = new T.MeshPhysicalMaterial({ color: 0xf6fffc, roughness: 0, metalness: 0, transmission: 1, thickness: 0.03, ior: p.n, specularIntensity: 1,
+    attenuationColor: new T.Color(0x9fdcc6), attenuationDistance: 0.12, envMapIntensity: 1.2 });
   var edgeMat = new T.LineBasicMaterial({ color: 0x8fc8b6, transparent: true, opacity: 0.75 });
   SLABS.forEach(function (sl, i) { var g = new T.Group(); S.scene.add(g);
     var geo = new T.BoxGeometry(SW, sl.t, SDp); var m = S.mesh(geo, slabMat); m.position.y = sl.t / 2; m.renderOrder = 3; g.add(m);
     var e = new T.LineSegments(new T.EdgesGeometry(geo), edgeMat); e.position.y = sl.t / 2; g.add(e);
-    var tag = S.label(sl.id, { w: 0.012, ratio: 1, color: '#1b2a6b', bg: '#f6f2e4', weight: 700 }); tag.rotation.x = -Math.PI / 2; tag.position.set(SW / 2 - 0.01, sl.t + 0.0003, SDp / 2 - 0.01); g.add(tag);
-    sl.g = g; sl.home = new T.Vector3(0.5 + i * 0.1, 0.002, -0.13); g.position.copy(sl.home);
+    sl.g = g; sl.home = new T.Vector3(0.5 + i * 0.1, 0.002, -0.14); g.position.copy(sl.home);
+    var tag = S.label('Slab ' + sl.id, { w: 0.03, ratio: 0.32, color: '#1b2a6b', bg: '#f6f2e4', weight: 700 }); tag.rotation.x = -Math.PI / 2; tag.position.set(sl.home.x, 0.0024, -0.072); S.scene.add(tag);
     sl.sh = S.contact(SW + 0.03, SDp + 0.03, sl.home.x, sl.home.z, 0.35, 0.002); });
   var grains = (function () { var n = 260, pos = new Float32Array(n * 3), i; for (i = 0; i < n; i++) { var rr = Math.sqrt(S.rnd()) * 0.016, a = S.rnd() * Math.PI * 2; pos[i * 3] = Math.cos(a) * rr; pos[i * 3 + 1] = 0.0004; pos[i * 3 + 2] = Math.sin(a) * rr * 0.8; }
     var gg = new T.BufferGeometry(); gg.setAttribute('position', new T.BufferAttribute(pos, 3));

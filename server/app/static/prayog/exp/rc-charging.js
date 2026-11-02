@@ -12,7 +12,7 @@ HoolaStudio.define('rc-charging', function (S) {
   function refresh() { if (st.cap < 0) { vc = 0; return; } KC.step(sim, p, 1e-5, cfg); vc = KC.view(sim, p, cfg).V_C1; }   // re-read V_C after a change of state
   function round(v, d) { var k = Math.pow(10, d); return Math.round(v * k) / k; }
   function readV() { return round(vc, 2); }
-  function watchRead() { return Math.floor(watch.t * 100 + 1e-6) / 100; }   // what the LCD shows (it truncates)
+  function watchRead() { var t = watch.t, w = Math.floor(t); return w + Math.floor((t - w) * 100) / 100; }   // exactly what the LCD shows (it truncates)
   function wpos(o, x, y, z) { o.updateMatrixWorld(true); return o.localToWorld(new T.Vector3(x || 0, y || 0, z || 0)); }
   function arr(v) { return [v.x, v.y, v.z]; }
   function rod(a, b, r, mat, parent) { var d = b.clone().sub(a), m = S.mesh(new T.CylinderGeometry(r, r, d.length(), 8), mat); m.position.copy(a).add(b).multiplyScalar(0.5);

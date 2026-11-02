@@ -9,7 +9,7 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   var PX = 0.25, PZ = -0.21, BT = 0.018, PAPER_W = 0.40, PAPER_D = 0.28, KCX = 0.018, KCY = 0.012;   // board / paper / kernel centre
   var PY = BT + 0.0004;                                         // paper surface
   function W(q, y) { return new T.Vector3(PX + q[0] - KCX, y === undefined ? PY : y, PZ - (q[1] - KCY)); }   // kernel (x, y) on the paper -> world
-  var st = { placed: false, traced: false, iSet: 40, cur: null, protOn: false };
+  var st = { placed: false, traced: false, iSet: 40, cur: null, protOn: false, prismOn: false };
 
   // ---------- drawing board, paper, drawing pins
   var board = new T.Group(); S.scene.add(board);
@@ -32,14 +32,14 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
       x.fillStyle = 'rgba(120,110,90,0.05)'; for (var i = 0; i < 400; i++) { var s0 = (i * 7919) % 997 / 997, s1 = (i * 104729) % 991 / 991; x.fillRect(s0 * w, s1 * h, 2, 2); }
       x.lineCap = 'round'; x.lineJoin = 'round';
       strokes.forEach(function (sk) { if (sk.frac <= 0) return; var pts = sk.pts, segs = pts.length - 1, upto = sk.frac * segs;
-        x.strokeStyle = sk.color || 'rgba(55,55,60,0.85)'; x.lineWidth = sk.w || 3; x.setLineDash(sk.dash ? [18, 14] : []);
+        x.strokeStyle = sk.color || 'rgba(38,38,44,0.92)'; x.lineWidth = (sk.w || 3) * 1.9; x.setLineDash(sk.dash ? [18, 14] : []);
         x.beginPath(); var a = C(pts[0]); x.moveTo(a[0], a[1]);
         for (var j = 1; j <= Math.ceil(upto); j++) { var q0 = pts[j - 1], q1 = pts[j], t = Math.min(1, upto - (j - 1)), q = [q0[0] + (q1[0] - q0[0]) * t, q0[1] + (q1[1] - q0[1]) * t], c = C(q); x.lineTo(c[0], c[1]); }
         x.stroke(); });
       x.setLineDash([]);
       marks.forEach(function (m) { var c = C(m); x.fillStyle = 'rgba(30,30,35,0.9)'; x.beginPath(); x.arc(c[0], c[1], 5, 0, Math.PI * 2); x.fill();
         x.strokeStyle = 'rgba(40,40,45,0.7)'; x.lineWidth = 2; x.beginPath(); x.arc(c[0], c[1], 14, 0, Math.PI * 2); x.stroke(); });
-      words.forEach(function (t) { var c = C(t.at); x.fillStyle = t.color || 'rgba(40,40,48,0.92)'; x.font = (t.size || 44) + 'px "Caveat", "Comic Sans MS", cursive'; x.textAlign = 'center'; x.fillText(t.text, c[0], c[1]); });
+      words.forEach(function (t) { var c = C(t.at); x.fillStyle = t.color || 'rgba(40,40,48,0.92)'; x.font = Math.round((t.size || 44) * 1.35) + 'px "Caveat", "Comic Sans MS", cursive'; x.textAlign = 'center'; x.fillText(t.text, c[0], c[1]); });
     });
   }
 
@@ -47,15 +47,15 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   var A = p.A, SD = p.side, apex = [0, SD * Math.cos(A / 2)], bl = [-SD * Math.sin(A / 2), 0], br = [SD * Math.sin(A / 2), 0];
   var shape = new T.Shape(); shape.moveTo(apex[0], apex[1]); shape.lineTo(bl[0], bl[1]); shape.lineTo(br[0], br[1]); shape.closePath();
   var prismGeo = new T.ExtrudeGeometry(shape, { depth: 0.036, bevelEnabled: true, bevelThickness: 0.0008, bevelSize: 0.0008, bevelSegments: 2 });
-  var prismMat = new T.MeshPhysicalMaterial({ color: 0xeaf6f4, roughness: 0.03, metalness: 0, transmission: 0.95, thickness: 0.03, ior: 1.5, transparent: true, opacity: 0.95,
-    clearcoat: 1, clearcoatRoughness: 0.03, attenuationColor: new T.Color(0xcfeee6), attenuationDistance: 0.25, envMapIntensity: 1.3 });
+  var prismMat = new T.MeshPhysicalMaterial({ color: 0xf6fffc, roughness: 0, metalness: 0, transmission: 1, thickness: 0.035, ior: 1.5, specularIntensity: 1,
+    attenuationColor: new T.Color(0xa6dcca), attenuationDistance: 0.14, envMapIntensity: 1.2 });
   var prism = new T.Group(); S.scene.add(prism);
   var glassM = S.mesh(prismGeo, prismMat); glassM.rotation.x = -Math.PI / 2; glassM.position.y = 0.0008; glassM.renderOrder = 3; prism.add(glassM);
   var edgeG = new T.EdgesGeometry(prismGeo, 30), edges = new T.LineSegments(edgeG, new T.LineBasicMaterial({ color: 0x9fc9c0, transparent: true, opacity: 0.6 }));
   edges.rotation.x = -Math.PI / 2; edges.position.y = 0.0008; prism.add(edges);
-  var prShadow = S.contact(0.16, 0.16, 0, 0, 0.32, PY);
+  var prShadow = S.contact(0.13, 0.12, 0, 0, 0.22, PY);
   var PRISM_HOME = new T.Vector3(PX + 0.36, 0, PZ - 0.06), PRISM_ON = W([0, 0], PY);
-  function setPrism(pos) { prism.position.copy(pos); var onB = Math.abs(pos.x - PRISM_ON.x) < 0.2 && Math.abs(pos.z - PRISM_ON.z) < 0.15; prShadow.position.set(pos.x, (onB ? PY : 0) + 0.0008, pos.z - SD * 0.3); prShadow.material.opacity = 0.32 * Math.max(0.2, 1 - Math.max(0, pos.y - (onB ? PY : 0)) * 12); }
+  function setPrism(pos) { prism.position.copy(pos); var onB = Math.abs(pos.x - PRISM_ON.x) < 0.2 && Math.abs(pos.z - PRISM_ON.z) < 0.15; prShadow.position.set(pos.x, (onB ? PY : 0) + 0.0008, pos.z - SD * 0.3); prShadow.material.opacity = 0.22 * Math.max(0.2, 1 - Math.max(0, pos.y - (onB ? PY : 0)) * 12); }
   setPrism(PRISM_HOME);
   var hold = new T.Vector3(0, 0.036, -SD * Math.cos(A / 2) * 0.4);   // where the fingers hold it: top face, near the middle
 
@@ -78,7 +78,7 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   var plead = S.mesh(new T.ConeGeometry(0.0011, 0.004, 8), M.black); plead.rotation.x = Math.PI; plead.position.y = 0.002; pencil.add(plead);
   var pend = S.mesh(new T.CylinderGeometry(0.0036, 0.0036, 0.008, 12), new T.MeshStandardMaterial({ color: 0xd88aa0, roughness: 0.8 })); pend.position.y = 0.1495; pencil.add(pend);
   var UP = new T.Vector3(0, 1, 0), WRITE = new T.Vector3(0.38, 0.88, 0.28).normalize(), REST_DIR = new T.Vector3(1, 0, 0.12).normalize();
-  var PENCIL_REST = new T.Vector3(PX + 0.18, BT + 0.0036, PZ + 0.135);
+  var PENCIL_REST = new T.Vector3(PX + 0.08, BT + 0.0036, PZ + 0.158);
   function setPencil(tip, dir) { pencil.position.copy(tip); pencil.quaternion.setFromUnitVectors(UP, dir); }
   setPencil(PENCIL_REST.clone().sub(REST_DIR.clone().multiplyScalar(0.0)), REST_DIR);
 
@@ -123,12 +123,15 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
 
   // ---------- human actions
   function wait() { S.say('Wait for the hand to finish.'); return Promise.resolve(false); }
-  function placePrism() {
-    if (st.placed) return Promise.resolve(true); if (S.hand.busy) return wait();
-    var a = PRISM_HOME.clone(), b = PRISM_ON.clone().add(new T.Vector3(0, 0.0, 0));
+  function movePrism(on) {             // the hand carries the prism onto its outline (on) or off the paper
+    var a = prism.position.clone(), b = (on ? PRISM_ON : PRISM_HOME).clone();
     function at(k) { var q = a.clone().lerp(b, k); q.y = (k < 1 ? 0.06 * Math.sin(Math.PI * k) : 0) + (b.y - a.y) * k + a.y; return q; }
     return S.hand.pinchMove(at(0).add(hold), function (k) { return at(k).add(hold); }, function (k) { setPrism(at(k)); }, { mode: 'top', ms: 1300, pose: 'grip' })
-      .then(function () { setPrism(PRISM_ON); st.placed = true; S.say('The prism stands on the paper, its base towards you.'); S.render(); return true; });
+      .then(function () { setPrism(b); st.prismOn = on; });
+  }
+  function placePrism() {
+    if (st.placed) return Promise.resolve(true); if (S.hand.busy) return wait();
+    return movePrism(true).then(function () { st.placed = true; S.say('The prism stands on the paper, its base towards you.'); S.render(); return true; });
   }
   function pencilStroke(list, onDone) {        // list = [{pts, dash}] drawn one after another with the pencil
     var all = []; list.forEach(function (sk) { sk.frac = 0; strokes.push(sk); });
@@ -161,6 +164,7 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   function clearReading() { if (!st.cur) return; strokes = strokes.filter(function (s) { return !s.reading; }); words = words.filter(function (t) { return !t.reading; }); marks = []; st.cur = null; rayLine.visible = false; }
   function drawIncident(i) {
     if (!st.traced) { S.say('Trace the prism and draw the normal first.'); return Promise.resolve(false); }
+    if (st.cur && st.cur.phase > 0 && st.cur.phase < 4) { S.say('Finish this reading first (measure δ), then choose a new angle.'); return Promise.resolve(false); }
     if (S.hand.busy) return wait();
     if (!(i >= 30 && i <= 70)) { S.say('Choose i between 30° and 70°.'); return Promise.resolve(false); }
     if (S.rows.some(function (r) { return Math.abs(r.i - i) < 0.25; })) { S.say('You already have a reading at i = ' + i + '°. Choose another angle.'); return Promise.resolve(false); }
@@ -203,13 +207,19 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
     return S.hand.pinchMove(pos(0).add(grabOff), function (k) { return pos(k).add(grabOff); }, function (k) { prot.position.copy(pos(k)); prot.rotation.y = r0 + (r1 - r0) * k; }, { mode: 'top', ms: 800, reachMs: 500, hold: 350 })
       .then(function () { prot.position.copy(to); prot.rotation.y = r1; st.protOn = true; });
   }
-  function hideProt() { prot.position.copy(PROT_HOME); prot.rotation.y = PROT_HOME_ROT; st.protOn = false; return Promise.resolve(); }
+  function hideProt() {                 // the hand puts the protractor back beside the board
+    if (!st.protOn) return Promise.resolve();
+    var from = prot.position.clone(), r0 = prot.rotation.y, grabOff = new T.Vector3(0, 0.002, -0.03);
+    function pos(k) { var q = from.clone().lerp(PROT_HOME, k); q.y += 0.04 * Math.sin(Math.PI * k); return q; }
+    return S.hand.pinchMove(pos(0).add(grabOff), function (k) { return pos(k).add(grabOff); }, function (k) { prot.position.copy(pos(k)); prot.rotation.y = r0 + (PROT_HOME_ROT - r0) * k; }, { mode: 'top', ms: 700, reachMs: 450, hold: 100 })
+      .then(function () { prot.position.copy(PROT_HOME); prot.rotation.y = PROT_HOME_ROT; st.protOn = false; }); }
   function measure() {
     var c = st.cur; if (!c || c.phase < 3) { S.say('Fix all four pins first.'); return Promise.resolve(false); }
     if (S.hand.busy) return wait();
     var g = c.g, ext = [g.O[0] + 0.05 * g.din[0], g.O[1] + 0.05 * g.din[1]], back = [g.O[0] - 0.0 * g.d2[0], g.O[1] - 0.0 * g.d2[1]];
     var d = half(g.v.dev / DEG), e = half(g.v.e / DEG);
-    return pencilStroke([{ pts: [g.P4, g.hit2], reading: true }, { pts: [g.hit1, g.hit2], reading: true, w: 2.5 }, { pts: [g.hit1, ext], dash: true, w: 2, reading: true }, { pts: [g.hit2, back], dash: true, w: 2, reading: true }])
+    S.say('Lift the prism off its outline, then join the pins and produce the rays.');
+    return movePrism(false).then(function () { return pencilStroke([{ pts: [g.P4, g.hit2], reading: true }, { pts: [g.hit1, g.hit2], reading: true, w: 2.5 }, { pts: [g.hit1, ext], dash: true, w: 2, reading: true }, { pts: [g.hit2, back], dash: true, w: 2, reading: true }]); })
       .then(function () { return showProt(g.O, Math.atan2(g.din[1], g.din[0]) - Math.PI / 2); })
       .then(function () {
         var a0 = Math.atan2(g.din[1], g.din[0]), a1 = Math.atan2(g.d2[1], g.d2[0]), arc = [];
@@ -219,7 +229,9 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
         drawPaper();
         S.addRow({ i: c.i, e: e, d: d });
         S.say('Measured with the protractor: δ = ' + d.toFixed(1) + '° (and e = ' + e.toFixed(1) + '°). Written in your record book.');
-        c.phase = 4; S.render(); return true; });
+        return S.wait(900); })
+      .then(function () { return hideProt(); }).then(function () { return movePrism(true); })
+      .then(function () { c.phase = 4; S.render(); return true; });
   }
   function reading(i) { return drawIncident(i).then(function (ok) { return ok && fixIncidentPins(); }).then(function (ok) { return ok && fixEmergentPins(); }).then(function (ok) { return ok && measure(); }); }
 
@@ -250,7 +262,7 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   if (document.fonts && document.fonts.load) document.fonts.load('40px "Caveat"').then(function () { drawPaper(); }).catch(function () {});
 
   return {
-    camera: { pos: [0.3, 0.62, 0.78], look: [0.2, 0.0, -0.2] },
+    camera: { pos: [0.36, 0.6, 0.76], look: [0.3, 0.0, -0.2] },
     views: VIEWS,
     book: { title: 'Expt. — Prism: δ against i', lines: ['Aim: find δm and n of the prism glass.', 'Angle of prism A = 60°', 'i: protractor at the normal at Q', 'δ: between incident ray produced and', '      the emergent ray (protractor)', 'n = sin((A + δm)/2) / sin(A/2)'],
       columns: [{ label: 'No.', get: function (r, i) { return i + 1; } }, { label: 'i (°)', get: function (r) { return r.i.toFixed(1); } },

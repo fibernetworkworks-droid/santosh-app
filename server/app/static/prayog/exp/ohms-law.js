@@ -18,7 +18,7 @@ HoolaStudio.define('ohms-law', function (S) {
   function lead(a, b, color, via, lift) {   // an insulated lead from terminal a to terminal b, lying on the bench in between
     var up = lift || 0.014, pts = [[a.x, a.y, a.z], [a.x, a.y + up, a.z]];
     (via || []).forEach(function (v) { pts.push(v.length === 2 ? [v[0], 0.0035, v[1]] : v); });
-    pts.push([b.x, b.y + up, b.z], [b.x, b.y, b.z]); return S.wire(pts, color);
+    pts.push([b.x, b.y + up, b.z], [b.x, b.y, b.z]); var w = S.wire(pts, color); if (color === 'black') { w.material.color.setHex(0x111113); w.material.roughness = 0.8; } return w;
   }
 
   // ---------- battery eliminator (3 V DC)
