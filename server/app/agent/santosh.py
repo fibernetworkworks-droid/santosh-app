@@ -384,6 +384,23 @@ THINK = {"ok": True, "calls": 0, "refused": 0}   # v0.232 PHASE C: Claude's adap
 # v0.331 SOCH GEHRI: a long job / hard ask runs at a higher Claude effort (output_config.effort, set once per turn so the
 # prompt cache inside the turn holds). Sent via extra_body so any SDK version carries it; a 400 about it turns it off.
 _EFFORT_NOW: _cv.ContextVar[str] = _cv.ContextVar("hoola_effort_now", default="")
+# v0.426 SOCH KE JAWAB step 2: the model for THIS step ('' = settings.anthropic_model). Set once per step from the
+# turn's state, like _EFFORT_NOW, so sub-agents and every caller of _call_brain keep their signature.
+_MODEL_NOW: _cv.ContextVar[str] = _cv.ContextVar("hoola_model_now", default="")
+HARD_MODEL = {"ok": True, "calls": 0, "failed": 0}
+
+
+def _model_refused(e: Exception) -> bool:
+    m = str(e).lower()
+    return ("not_found" in m or "404" in m or "unknown model" in m or "model:" in m) and "model" in m
+
+
+def model_for(settings, hard: bool, long_job: bool) -> str:
+    """'' = the chat model. A hard reasoning ask (not a long job - those run many steps and stay on the chat model at
+    agent_long_effort) gets agent_hard_model."""
+    if hard and not long_job:
+        return str(getattr(settings, "agent_hard_model", "") or "")
+    return ""
 EFFORT = {"ok": True, "calls": 0, "refused": 0}
 
 
@@ -455,8 +472,31 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         from . import context as _ctx   # v0.237 the gauge learns this brain's real chars-per-token
         _ctx.after_call(brain, system, tools, history, usage.get("prompt_tokens"), bool(usage.get("estimated")))
         return blocks, stop
+    over = _MODEL_NOW.get()
+    if over and over != settings.anthropic_model and HARD_MODEL["ok"]:
+        # v0.426 SOCH KE JAWAB step 2: a hard reasoning ask runs on the strongest model (agent_hard_model, Opus). Any
+        # failure there (not available on this key, overloaded, ...) retries the SAME call on the chat model once, so
+        # she always gets an answer; a 404 / unknown model turns the switch off for this process.
+        try:
+            HARD_MODEL["calls"] += 1
+            return await _claude_call(over, system, history, settings, tools, live, cap, think, streaming)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:   # noqa: BLE001 - the chat model answers instead
+            HARD_MODEL["failed"] += 1
+            if _model_refused(e):
+                HARD_MODEL["ok"] = False
+            log.warning("hard model %s failed, answering on %s: %s", over, settings.anthropic_model, str(e)[:200])
+            if live is not None:
+                live.reset()
+    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, streaming)
+
+
+async def _claude_call(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
+                       think: bool, streaming: bool) -> tuple[list[dict], str]:
+    """One Claude call on `model` (v0.426 split out of _call_brain so a hard ask can try Opus and fall back)."""
     from . import cache
-    kw = cache.shape(dict(model=settings.anthropic_model, max_tokens=cap,
+    kw = cache.shape(dict(model=model, max_tokens=cap,
                           system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
     api = get_client().messages
     if think and THINK["ok"] and _loop_ok(history):
@@ -713,6 +753,9 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
             from . import hard as _hard
             _hv = await _hard.decide(user_text or "", settings)
             state["hard"], state["hard_why"] = bool(_hv["hard"]), _hv
+            if state["hard"]:   # v0.426 thinking tokens count against max_tokens: a hard answer gets real room
+                state["max_tokens"] = max(state.get("max_tokens") or 0,
+                                          int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
         except Exception:
             log.exception("hard check failed")
     if settings.agent_goal:
@@ -966,7 +1009,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         _long_now = bool(state.get("goal") or state.get("extended") or state.get("auto_plan") or state.get("big"))
         if _long_now and brain != "claude" and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
             brain = "claude"   # v0.331 a long job runs on Claude even when a cheaper brain answers ordinary chat
+        if state.get("hard") and brain != "claude" and _claude_ready() and getattr(settings, "agent_hard_on_claude", True):
+            brain = "claude"   # v0.426 a hard reasoning ask runs on Claude even when a cheaper brain answers chat
         _EFFORT_NOW.set(effort_for(settings, _long_now, bool(state.get("hard"))))
+        _MODEL_NOW.set(model_for(settings, bool(state.get("hard")), _long_now) if brain == "claude" else "")
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or
                                                    (state.get("hard") and getattr(settings, "hard_thinking", True)))))
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
