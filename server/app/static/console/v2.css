@@ -2584,6 +2584,9 @@ body.albon{overflow:hidden}
 .stfam .cnact { border: 1px solid var(--line, #e5e5ea); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
 .stfam h5 { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
 .stfam .stchk { display: inline-flex; gap: 4px; align-items: center; margin: 2px 10px 2px 0; font-size: 13px; }
+.stsign .stchk { display: inline-flex; gap: 4px; align-items: center; margin: 2px 10px 2px 0; font-size: 13px; }
+.stsign h5 { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
+.stsign input[name$="_id"] { width: 100%; }
 
 
 /* v0.425 HOOLA RUNTIME + EDITOR */

@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 @Composable
-private fun PasswordBox(value: String, onChange: (String) -> Unit) {
+internal fun PasswordBox(value: String, onChange: (String) -> Unit) {   // v0.455 the sign-in screen uses it too
     val c = H.c
     OutlinedTextField(
         value = value,
@@ -138,6 +138,9 @@ fun AccountScreen() {
             val read = Db.rule(coll, "read")
             val visible = read == "public" || (me != null && (read != "admin" || Auth.isStaff))
             if (visible) block { RowsSection(coll) }
+        }
+        if (me != null) block {                      // v0.455 her logins, second step and own data
+            ListRow(Strings.sgSecurity, Strings.sgLogins, icon = "lock") { nav.go("hoola_security") }
         }
         if (me != null) block {
             Btn(Strings.logout, kind = BtnKind.Ghost, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Auth.logout(c) }

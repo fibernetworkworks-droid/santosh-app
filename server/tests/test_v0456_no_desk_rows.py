@@ -1,4 +1,4 @@
-"""v0.455 NO DESK ROWS (owner, with a screenshot of Education Desk / Social Desk / SEO Desk: "REMOVE THIS FORM SIDE BAR").
+"""v0.456 NO DESK ROWS (owner, with a screenshot of Education Desk / Social Desk / SEO Desk: "REMOVE THIS FORM SIDE BAR").
 
 Hired employees' desks no longer get a sidebar row; each desk opens from AI Employees > Open desk, and the sidebar keeps
 only the AI Employees entry (lit while a desk is open)."""
@@ -31,3 +31,13 @@ def test_desks_still_open_from_the_hub():
 
 def test_no_sidebar_promise_left_in_the_hub():
     assert "in the sidebar" not in EMP
+
+
+def test_no_lab_or_systems_row():
+    """v0.456 'NOW REMOVE LAB AND SYSTEMS': both rows gone; both views still open from their desks."""
+    nav = V2[V2.index("const NAV = ["):V2.index("\n", V2.index("const NAV = ["))]
+    assert "'lab'" not in nav and "'systems'" not in nav
+    assert "NAV.push(['systems'" not in V2 and "NAV.push(['lab'" not in V2
+    assert "ENT?.open($('#systems'), arg || 'erp')" in V2                              # Enterprise Open desk -> Systems
+    assert "'/static/prayog/lab.html?id=' + encodeURIComponent(arg)" in V2             # Education Desk -> a lab
+    assert "openView('lab', b.dataset.edlab)" in EMP

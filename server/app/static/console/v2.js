@@ -100,7 +100,9 @@ let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create butt
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
-const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['lab','Lab'],['baat','Voice call']];   // v0.415 Lab = Prayogshala 3D practicals
+const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];   // v0.456 her ask: no Lab / Systems rows
+// (was ['lab','Lab'] since v0.415): Prayogshala opens from the Education Desk's Lab tab, Systems from an Enterprise
+// employee's Open desk - both views (#v-lab, #v-systems) and go('lab' | 'systems', arg) stay as they were.
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
 IC.bana = '<path d="M4 5h16v14H4zM4 10h16M10 10v9"/>';
 IC.arena = '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>';   // v0.312 Design Arena (owner only)
@@ -116,7 +118,7 @@ let EMP = null;
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
 function syncEmployees(hired) {                     // v0.317 desks exist only while their employee is hired
-  // v0.455 her ask: NO desk rows in the sidebar ("REMOVE THIS FROM SIDE BAR" - Education / Social / SEO Desk). Every desk
+  // v0.456 her ask: NO desk rows in the sidebar ("REMOVE THIS FROM SIDE BAR" - Education / Social / SEO Desk). Every desk
   // opens from AI Employees > Open desk; the sidebar keeps only the AI Employees entry. A desk that is open when its
   // employee is let go still falls back to the hub.
   if (ME) ME.employees = hired || {};
@@ -253,7 +255,6 @@ async function enter() {
   syncEmployees(ME.employees || {});
   if (window.HoolaEnterprise && !ENT) {        // v0.396 CONNECT: the only door an enterprise credential has
     ENT = HoolaEnterprise({api, esc, toast});
-    if (!NAV.some(([k]) => k === 'systems')) NAV.push(['systems', 'Systems']);
   }
   if (ME.arena && window.HoolaArena && !AR) { AR = HoolaArena({api, esc, toast}); if (!NAV.some(([k]) => k === 'arena')) NAV.push(['arena', 'Arena']); }   // v0.312 owner only
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');

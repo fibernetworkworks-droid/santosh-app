@@ -201,12 +201,15 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
                       for s in ids if s in have or s in AUTH_IDS)
     code_when = {"seller_info": "SellerScreen()", "privacy": "PrivacyScreen()", "delete_account": "DeleteAccountScreen()"}
     cwhens = "\n".join(f"            {kstr(c)} -> {code_when[c]}" for c in code if c in code_when)
-    cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()\n            "hoola_inbox" -> InboxScreen()\n            "hoola_chat" -> ChatScreen()\n            "hoola_approvals" -> ApprovalsScreen()\n            "hoola_data" -> DataScreen()'
+    cwhens += ('\n            "hoola_login" -> ' + ("SignInScreen()" if own_signin(spec) else "AuthScreen()")
+               + '\n            "hoola_security" -> SecurityScreen()')
+    cwhens += '\n            "hoola_account" -> AccountScreen()\n            "hoola_inbox" -> InboxScreen()\n            "hoola_chat" -> ChatScreen()\n            "hoola_approvals" -> ApprovalsScreen()\n            "hoola_data" -> DataScreen()'
     if spec.get("custom"):                     # v0.425 RANG: her approved custom components on one check screen
         cwhens += '\n            "hoola_components" -> ComponentsGallery()'
     if partner_kind(spec):                     # v0.435 PARIVAAR: the partner app's jobs screen
         cwhens += '\n            "hoola_jobs" -> PartnerScreen()'
     all_ids = ", ".join(kstr(x) for x in ids + [c for c in code if c in code_when] + list(KIT_SCREENS)
+                        + ["hoola_security"]
                         + (["hoola_components"] if spec.get("custom") else []) + (["hoola_jobs"] if partner_kind(spec) else []))
     fab = spec.get("fab") or {}
     fab_main = (f"FabAction({kstr(fab['label'])}, {kstr(fab.get('icon') or 'plus')}, {kstr(fab['go'])})"
@@ -559,6 +562,22 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
     return out
 
 
+def sign_ways(spec: dict[str, Any]) -> list[str]:
+    """v0.455 SURAKSHIT LOGIN: the ways into this build, from the backend the app carries."""
+    w = (((spec.get("seed") or {}).get("backend") or {}).get("sign") or {}).get("ways")
+    return [str(x) for x in w] if isinstance(w, list) else []
+
+
+def google_login(spec: dict[str, Any]) -> bool:
+    return "google" in sign_ways(spec) and bool(
+        (((spec.get("seed") or {}).get("backend") or {}).get("sign") or {}).get("google_server_client_id"))
+
+
+def own_signin(spec: dict[str, Any]) -> bool:
+    """The kit's full sign-in screen (OTP / Google / second step) instead of the plain e-mail one."""
+    return any(x in sign_ways(spec) for x in ("phone_otp", "google", "apple"))
+
+
 def partner_kind(spec: dict[str, Any]) -> str:
     """v0.435 PARIVAAR: 'rider' / 'vendor' when this build is a partner app (from its seed backend), else ''."""
     k = str(((spec.get("seed") or {}).get("backend") or {}).get("partner") or "")
@@ -723,6 +742,13 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
         g = tmp / "app/build.gradle.kts"
         g.write_text(g.read_text().replace("    implementation(libs.gms.code.scanner)\n",
                                            "    implementation(libs.gms.code.scanner)\n    implementation(libs.firebase.messaging)\n", 1))
+    if google_login(spec):                     # v0.455 SURAKSHIT LOGIN: the real Google button + its two libraries
+        shutil.copy(HERE / "glogin/SignInGoogle.kt", main / "java/hoola/kit/SignInGoogle.kt")
+        g = tmp / "app/build.gradle.kts"
+        g.write_text(g.read_text().replace(
+            "    implementation(libs.gms.code.scanner)\n",
+            "    implementation(libs.gms.code.scanner)\n    implementation(libs.credentials)\n"
+            "    implementation(libs.credentials.play.services)\n    implementation(libs.googleid)\n", 1))
     resources(spec, tmp)
     fonts_have: dict[str, bool] = {}
     for which, files in (spec.get("fonts") or {}).items():
@@ -792,7 +818,8 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     (qa / "device_check.sh").chmod(0o755)
     (qa / "tablet_check.sh").chmod(0o755)
     (qa / "package.txt").write_text(app_id + "\n")
-    shots = ids + [c for c in ("seller_info", "privacy", "delete_account") if c in (spec.get("code_screens") or [])] + list(KIT_SCREENS)
+    shots = ids + [c for c in ("seller_info", "privacy", "delete_account") if c in (spec.get("code_screens") or [])] \
+        + list(KIT_SCREENS) + ["hoola_security"]
     if spec.get("custom"):                     # v0.425 the custom components' check screen is opened too
         shots = shots + ["hoola_components"]
     if partner_kind(spec):                     # v0.435 the partner jobs screen is opened on the device check too

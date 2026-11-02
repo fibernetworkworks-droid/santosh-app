@@ -95,6 +95,9 @@ enum Keychain {
 }
 
 @MainActor
+/// v0.455 login said "right, now the authenticator code" (staff 2FA).
+let needTwoFa = "\u{0}need_2fa"
+
 final class Auth: ObservableObject {
     static let shared = Auth()
     @Published var me: Item?
@@ -127,13 +130,61 @@ final class Auth: ObservableObject {
         return nil
     }
 
-    func signup(email: String, password: String, name: String) async -> String? {
+    func signup(email: String, password: String, name: String, consent: Bool = false) async -> String? {
         await keep(await Cloud.call("POST", "/signup", ["email": email.trimmingCharacters(in: .whitespaces), "password": password,
-                                                        "name": name.trimmingCharacters(in: .whitespaces)]))
+                                                        "name": name.trimmingCharacters(in: .whitespaces), "consent": consent]))
     }
 
     func login(email: String, password: String) async -> String? {
-        await keep(await Cloud.call("POST", "/login", ["email": email.trimmingCharacters(in: .whitespaces), "password": password]))
+        let r = await Cloud.call("POST", "/login", ["email": email.trimmingCharacters(in: .whitespaces), "password": password])
+        if r.ok, r.body["need_2fa"] as? Bool == true {          // v0.455 staff 2FA: the authenticator code is step two
+            ticket = r.body["ticket"] as? String ?? ""
+            return needTwoFa
+        }
+        return await keep(r)
+    }
+
+    // v0.455 SURAKSHIT LOGIN: mobile OTP, Apple / Google and the second step. A code or token is sent straight to the
+    // app's own server; nothing of it is kept here.
+    private var ticket = ""
+
+    func otpStart(_ phone: String) async -> String? {
+        let r = await Cloud.call("POST", "/login/otp", ["phone": phone.trimmingCharacters(in: .whitespaces)])
+        return r.ok ? nil : (r.error.isEmpty ? (r.offline ? Words.offline : Words.tryAgain) : r.error)
+    }
+
+    func otpCheck(_ phone: String, _ code: String, _ name: String, _ consent: Bool) async -> String? {
+        let r = await Cloud.call("POST", "/login/otp/check", ["phone": phone.trimmingCharacters(in: .whitespaces),
+                                                              "code": code.trimmingCharacters(in: .whitespaces),
+                                                              "name": name, "consent": consent])
+        if r.ok, r.body["need_2fa"] as? Bool == true {
+            ticket = r.body["ticket"] as? String ?? ""
+            return needTwoFa
+        }
+        return await keep(r)
+    }
+
+    /// The provider's own identity token; the SERVER checks its signature, audience and nonce.
+    func social(_ provider: String, _ idToken: String, _ nonce: String, _ name: String, _ consent: Bool) async -> String? {
+        let r = await Cloud.call("POST", "/login/\(provider)", ["id_token": idToken, "nonce": nonce,
+                                                                "name": name, "consent": consent])
+        if r.ok, r.body["need_2fa"] as? Bool == true {
+            ticket = r.body["ticket"] as? String ?? ""
+            return needTwoFa
+        }
+        return await keep(r)
+    }
+
+    func nonce() async -> String {
+        let r = await Cloud.call("GET", "/login/nonce", nil)
+        return r.ok ? (r.body["nonce"] as? String ?? "") : ""
+    }
+
+    func twoFa(_ code: String) async -> String? {
+        if ticket.isEmpty { return Words.tryAgain }
+        let r = await Cloud.call("POST", "/login/2fa", ["ticket": ticket, "code": code.trimmingCharacters(in: .whitespaces)])
+        if r.ok { ticket = "" }
+        return await keep(r)
     }
 
     func logout() {

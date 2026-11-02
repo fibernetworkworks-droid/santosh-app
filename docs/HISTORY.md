@@ -17255,7 +17255,63 @@ versions of regressions self-critique had missed.
   first run is what will produce them. The judge is a model and its scores are opinions about measured frames; only the
   engine numbers on the card are facts.
 
-## v0.455.0 NO DESK ROWS (2 Nov 2026)
+## v0.455.0 SURAKSHIT LOGIN + SURAKSHA GATE (App Sahayak Pillar I, Phase 60)
+Owner: "START PILLAR I" (docs/COMPLEX_APPS_PLAN.md: auth + security). Built as v0.442 / v0.446 / v0.453 in this session (three other sessions took those numbers first).446 in this session (other sessions took those numbers first).
+- ONE ENGINE, NOT A SECOND ONE: `appmaker/sign.py` opens the website's v0.434 security engine (`site/security.py`) to
+  the native apps. Both work on the app backend id (`app:<project>`), so a customer who signed up on the website IS the
+  same account in the phone app, and "sign out everywhere" ends both. Everything goes through `family.home(r)`, so a
+  rider / shop / staff app of one business shares its accounts.
+- PHONE OTP in the app: the code is typed only into the app's own box, hashed on the server (5 min, 5 tries, 3 codes per
+  number per 10 min), never shown, logged or sent to Hoola; a missing consent tick refuses BEFORE the code is spent.
+- GOOGLE / APPLE CHECKED ON THE SERVER (`verify_token`): RS256 signature against the provider's own published keys
+  (Google /oauth2/v3/certs, Apple /auth/keys, cached 1 h), `iss`, `aud` must be one of HER PUBLIC client ids, `exp` /
+  `iat` with 120 s skew, Google's `email_verified`, and a single-use nonce the SERVER made (Apple's SHA-256 form
+  accepted). Tested: a token signed by another key, aimed at another app, expired, unverified e-mail, an invented nonce,
+  the same token twice, or an Apple token sent to the Google door - all refused. Native sign-in uses NO provider secret,
+  so there is no key in this feature to leak; Apple's private-relay address is kept as the e-mail, as Apple intends.
+  The nonce is spent only when everything else passed.
+- SESSIONS: every login is a row (device, masked IP, how); `backend.who` now asks `SEC.token_ok`, so a login she or the
+  member ENDED stops working on the app side too, at once (tested: the ended token gets 401 on every route).
+- STAFF 2FA: TOTP as step two of password AND OTP login (`{need_2fa, ticket}` -> `/login/2fa`); her switch
+  `staff_2fa` makes it compulsory and then the member cannot turn it off.
+- DPDP: the consent tick on every new account (password / OTP / social), "my data" as JSON from inside the app.
+- Her switches: `ways` = email_password / phone_otp / google / apple (Google alone also turns Apple on - App Store 4.8),
+  her public client ids, staff_2fa. `problems` says plainly what is still missing (no SMS template, no client id).
+- KITS: `SignIn.kt` / `SignIn.swift` (sign-in screen with OTP / social / second step + `hoola_security` screen:
+  sessions, 2FA, my data), `Backend.kt` / `Backend.swift` gained otpStart / otpCheck / social / nonce / twoFa.
+  The Google button is Credential Manager (`android/glogin/SignInGoogle.kt` + androidx.credentials + googleid) written
+  into a build ONLY when she turns Google on - an app that does not use it carries neither the file nor the libraries;
+  the OFF file compiles to nothing. Apple uses the system framework, and the `applesignin` entitlement is added only
+  when Apple is on. New CI job `glogin` builds the Google variant (debug + release R8).
+- SURAKSHA GATE (`appmaker/gates.py`), six gates that read the REAL build: (1) secrets in the app's files AND inside the
+  APK's assets (a hit is a FAIL - an APK is public), (2) permissions: only ones a feature in THIS app needs, none from
+  Play's restricted list, (3) release settings: debuggable, allowBackup, https-only (http only for 10.0.2.2 in debug),
+  every component exported on purpose, a real signature (v1 META-INF or the v2/v3 APK Signing Block), (4) library CVEs
+  from the pinned `libs.versions.toml` asked at OSV.dev (Google's own free database) - HIGH / CRITICAL FAILS, and OSV
+  unreachable is "not checked", NEVER a quiet pass, (5) login rules: Apple where Google is offered, no password box
+  outside the kit's sign-in screen, in-app deletion, (6) data rules: privacy / consent pages, store data-safety answers
+  matching the permissions actually in the build. `must_pass` is called by `store.publish` AND `appstore.submit`, so a
+  FAILING gate blocks the Play upload and the App Store submit (tested, including that the callers exist - v0.393's
+  lesson). `not_checked` is reported as its own number and says what Hoola did not see.
+- Found by the gate while writing it: it had counted `BIND_JOB_SERVICE` (a permission the SYSTEM holds, named on a
+  service) as the app asking for one, and it had only looked for v1 signatures, so a modern v2/v3-signed APK would have
+  read as unsigned. Both fixed before shipping.
+- Routes: /api/app-api/<key>/{login/otp, login/otp/check, login/nonce, login/<google|apple|2fa>, security,
+  security/<what>, my-data}; hers /api/apps/<ref>/sign (GET / PUT) and /api/apps/<ref>/security/check (POST - a
+  one-segment path would have been eaten by the `{action}` catch-all, the same trap as v0.425).
+- Console "Login & security" box (ways, client ids, staff 2FA, the gate card with every row, the permissions matrix,
+  who changed what), phone `lib/ui/app_login.dart`, tool app_banao action=login / security_check, app_dekho what=login.
+- Tests: `server/tests/test_v0455_suraksha.py` (5: her switches + what the app is told, OTP + sessions + 2FA, the
+  token checks, the gates blocking the store, both generators + both kits).
+- NOT VERIFIED / NOT BUILT, said plainly: no real Google or Apple account has signed in (every token in the tests is one
+  this test signed itself - the shapes come from the providers' documentation); mobile OTP needs her DLT-registered SMS
+  template and MSG91 key on the server; the Credential Manager Kotlin compiles only on CI (the new `glogin` job is its
+  first proof); Google sign-in on the iPhone is NOT built (it needs the GoogleSignIn SDK - Apple is there instead);
+  passkeys, magic links, company SSO and device binding from the v0.131 plan are still only a plan; the gates do not run
+  the app and watch it (that is the device check), do not see inside an IPA (never built on Hoola's machine), and do not
+  audit her own server.
+
+## v0.456.0 NO DESK ROWS (built as 0.455) (2 Nov 2026)
 Owner, with a screenshot of the sidebar's Education Desk / Social Desk / SEO Desk rows: "REMOVE THIS FORM SIDE BAR".
 - `console/v2.js` `syncEmployees`: no longer splices a row per hired desk under AI Employees (the v0.317 behaviour); it
   removes any `*desk` row instead, so all six desks (SEO, Social, CAD, Game, Architecture, Education) are off the sidebar.
@@ -17263,3 +17319,9 @@ Owner, with a screenshot of the sidebar's Education Desk / Social Desk / SEO Des
   (`openView` -> `go(view)`); while a desk is open the AI Employees row is the lit one.
 - `console/employees.js`: the hub's three "in the sidebar" lines now say to open the desk from the hub.
 - Tests: `test_v0455_no_desk_rows.py`. Console only; the phone never had desk rows.
+- Same version, her next ask "NOW REMOVE LAB AND SYSTEMS": `NAV` drops ['lab','Lab'] (since v0.415) and the boot no longer
+  pushes ['systems','Systems'] (since v0.396). The views and their routes are unchanged: a lab opens from the Education Desk's
+  Lab tab (`go('lab', id)` -> `/static/prayog/lab.html?id=`), Systems from an Enterprise employee's Open desk
+  (`go('systems', role)`). Consequence said plainly: on the console the Lab list and the Systems page are now reached only
+  through a hired education / enterprise employee (hiring is free and gates no tool); the phone keeps its own Profile entries.
+  `test_v0418_prayog` no longer pins the Lab row; `test_v0456_no_desk_rows.py` checks both rows are gone and both doors work.

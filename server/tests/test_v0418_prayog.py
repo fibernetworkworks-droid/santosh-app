@@ -349,7 +349,7 @@ def test_wiring():
     assert "PRACTICAL LAB (Prayogshala)" in prompts.__dict__.get("SYSTEM", "") or "Prayogshala" in Path(prompts.__file__).read_text()
     html = (ROOT / "app" / "static" / "console" / "v2.html").read_text()
     js = (ROOT / "app" / "static" / "console" / "v2.js").read_text()
-    assert 'id="labframe"' in html and "['lab','Lab']" in js and "/static/prayog/index.html" in js
+    assert 'id="labframe"' in html and "/static/prayog/index.html" in js   # v0.456 no Lab row; opens from the Education Desk
     dart = (ROOT.parent / "lib" / "ui" / "prayog_screen.dart").read_text()
     assert "/api/prayog/labs" in dart and "/static/prayog/lab.html" in dart
     assert "PrayogScreen(app: app)" in (ROOT.parent / "lib" / "ui" / "profile_screen.dart").read_text()
@@ -357,7 +357,7 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.455.0"
+    assert APP_VERSION == "0.456.0"
 
 
 # ------------------------------------------------------------------------------------------- the realistic studio
