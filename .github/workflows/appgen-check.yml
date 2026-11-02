@@ -248,7 +248,7 @@ jobs:
           if-no-files-found: ignore
 
   glogin:
-    # v0.453 SURAKSHIT LOGIN: the shop app with Google sign-in switched on must compile and shrink (debug + release R8).
+    # v0.455 SURAKSHIT LOGIN: the shop app with Google sign-in switched on must compile and shrink (debug + release R8).
     # It pulls in androidx.credentials + googleid, so this job is the proof those libraries and SignInGoogle.kt build.
     # The client id here is a made-up test value - nothing signs in, only the build is checked.
     runs-on: ubuntu-24.04

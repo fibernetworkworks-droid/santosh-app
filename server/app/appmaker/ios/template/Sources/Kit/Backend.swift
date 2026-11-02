@@ -95,7 +95,7 @@ enum Keychain {
 }
 
 @MainActor
-/// v0.453 login said "right, now the authenticator code" (staff 2FA).
+/// v0.455 login said "right, now the authenticator code" (staff 2FA).
 let needTwoFa = "\u{0}need_2fa"
 
 final class Auth: ObservableObject {
@@ -137,14 +137,14 @@ final class Auth: ObservableObject {
 
     func login(email: String, password: String) async -> String? {
         let r = await Cloud.call("POST", "/login", ["email": email.trimmingCharacters(in: .whitespaces), "password": password])
-        if r.ok, r.body["need_2fa"] as? Bool == true {          // v0.453 staff 2FA: the authenticator code is step two
+        if r.ok, r.body["need_2fa"] as? Bool == true {          // v0.455 staff 2FA: the authenticator code is step two
             ticket = r.body["ticket"] as? String ?? ""
             return needTwoFa
         }
         return await keep(r)
     }
 
-    // v0.453 SURAKSHIT LOGIN: mobile OTP, Apple / Google and the second step. A code or token is sent straight to the
+    // v0.455 SURAKSHIT LOGIN: mobile OTP, Apple / Google and the second step. A code or token is sent straight to the
     // app's own server; nothing of it is kept here.
     private var ticket = ""
 

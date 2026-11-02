@@ -311,7 +311,7 @@ def by_key(app_key: str) -> AppProject:
 def who(r: AppProject, token: str) -> W.Who:
     m = W.member_of(bid(r), token) if token else None
     if m is not None:
-        from ..site import security as SEC                 # v0.453 a login she / the member ENDED stops working at once
+        from ..site import security as SEC                 # v0.455 a login she / the member ENDED stops working at once
         if not SEC.token_ok(bid(r), token):
             return W.Who(None)
     return W.Who(m)
@@ -326,7 +326,7 @@ def public_schema(r: AppProject) -> dict[str, Any]:
     tr = _track_public(r)                                                 # v0.412 NAKSHA LIVE
     if tr:
         out["track"] = tr
-    try:                                                                  # v0.453 SURAKSHIT LOGIN: the login box's ways
+    try:                                                                  # v0.455 SURAKSHIT LOGIN: the login box's ways
         from . import sign as SG
         out["sign"] = SG.public(r)
     except Exception:                                                     # noqa: BLE001
@@ -812,7 +812,7 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
            "collections": sch["collections"]}
     if sch.get("approvals"):                               # v0.382 DIMAAG: the Approvals button for staff
         out["approvals"] = True
-    try:                                                   # v0.453 SURAKSHIT LOGIN: which ways the app's login box offers
+    try:                                                   # v0.455 SURAKSHIT LOGIN: which ways the app's login box offers
         from . import sign as SG
         out["sign"] = SG.public(r)
     except Exception:                                      # noqa: BLE001

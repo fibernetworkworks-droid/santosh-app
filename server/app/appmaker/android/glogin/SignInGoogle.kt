@@ -1,6 +1,6 @@
 package hoola.kit
 
-// Made by Hoola App Sahayak (v0.453). The ON version: "Continue with Google" through Android's Credential Manager.
+// Made by Hoola App Sahayak (v0.455). The ON version: "Continue with Google" through Android's Credential Manager.
 // This file is written into the build ONLY when the owner turned Google sign-in on; then androidx.credentials and
 // googleid are added to this app's libraries too. The app never sees a Google secret - it gets an ID token and hands
 // it to its own server, which checks the signature, the audience (her client id) and the single-use nonce.

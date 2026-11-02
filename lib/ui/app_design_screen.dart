@@ -856,7 +856,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
             const SizedBox(height: 10),
             Glass(child: AppFamilyPanel(app: app, id: widget.id)),         // v0.435 PARIVAAR: apps on this data + partners
             const SizedBox(height: 10),
-            Glass(child: AppLoginPanel(app: app, id: widget.id)),          // v0.453 SURAKSHIT LOGIN + security gates
+            Glass(child: AppLoginPanel(app: app, id: widget.id)),          // v0.455 SURAKSHIT LOGIN + security gates
             const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),

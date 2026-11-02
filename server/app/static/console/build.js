@@ -877,7 +877,7 @@ window.HoolaBuild = function (C) {
       const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
     };
     try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
-    // v0.453 SURAKSHIT LOGIN + SURAKSHA GATE: the ways into her app, the permissions matrix, and the security check
+    // v0.455 SURAKSHIT LOGIN + SURAKSHA GATE: the ways into her app, the permissions matrix, and the security check
     const sgbox = document.createElement('section'); sgbox.className = 'stcol stsign'; box.appendChild(sgbox);
     const drawSign = sg => {
       const ways = L(sg.ways), ids = sg.ids || {}, probs = sg.problems || {}, g = sg.gate || {};

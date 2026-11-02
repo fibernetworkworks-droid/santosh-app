@@ -237,7 +237,7 @@ struct HoolaApp: App {
 
 # ---------------------------------------------------------------- the code-made screen (always compiles)
 def sign_ways(spec: dict[str, Any]) -> list[str]:
-    """v0.453 SURAKSHIT LOGIN: the ways into this build."""
+    """v0.455 SURAKSHIT LOGIN: the ways into this build."""
     w = (((spec.get("seed") or {}).get("backend") or {}).get("sign") or {}).get("ways")
     return [str(x) for x in w] if isinstance(w, list) else []
 
@@ -451,7 +451,7 @@ def project_yml(spec: dict[str, Any]) -> str:
     build = str(int(ios.get("build") or app.get("version_code") or 1))
     team = re.sub(r"[^A-Z0-9]", "", str(ios.get("team_id") or ""))[:10]
     team_line = f"\n        DEVELOPMENT_TEAM: {team}" if team else ""
-    # v0.368 push + v0.453 Sign in with Apple: both are entitlements on one file (Automatic signing adds them to the App ID)
+    # v0.368 push + v0.455 Sign in with Apple: both are entitlements on one file (Automatic signing adds them to the App ID)
     ents: dict[str, str] = {}
     if spec.get("ios_push"):
         ents["aps-environment"] = "production"

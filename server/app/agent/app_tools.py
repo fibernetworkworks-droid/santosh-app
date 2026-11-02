@@ -120,7 +120,7 @@ APP_TOOLS = [
         "v0.353 RAAY: a finished row carries the customer's own rating (rating 1-5 + rating_note); only that customer gives it, once - "
         "never set or change a rating yourself; a 1-2 star rating already reached her chat. "
         "action=role (app, member, role staff|admin|member) makes an account staff (a staff app's new account sees nothing until then). "
-        "v0.453 action=login (app): the ways into her app - ways [email_password, phone_otp, google, apple], her PUBLIC client "
+        "v0.455 action=login (app): the ways into her app - ways [email_password, phone_otp, google, apple], her PUBLIC client "
         "ids, staff_2fa. Mobile OTP needs a DLT-registered SMS template on the server; Google needs her Google Cloud WEB client "
         "id; Apple needs the app's bundle id. NEVER ask her for a client SECRET - native sign-in does not use one, and the "
         "server checks every token itself. action=security_check (app, platform android|ios) runs the security gates on the "
@@ -416,7 +416,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return LS.draft(r, words)
         except W.AppError as e:
             raise ToolError(str(e))
-    if action == "login":                     # v0.453 SURAKSHIT LOGIN: the ways into her app
+    if action == "login":                     # v0.455 SURAKSHIT LOGIN: the ways into her app
         if not _owner(ctx):
             raise ToolError("Login ke tareeke sirf maalkin badal sakti hain.")
         from ..appmaker import backend as BE
@@ -435,7 +435,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                     + (" (" + "; ".join(v["problems"].values()) + ")" if v.get("problems") else "")
                     + " Agli build se app mein dikhenge.")
         return v
-    if action == "security_check":            # v0.453 SURAKSHA GATE: the gates that block a store upload
+    if action == "security_check":            # v0.455 SURAKSHA GATE: the gates that block a store upload
         from ..appmaker import backend as BE
         from ..appmaker import gates as GT
         from ..site import webapp as W
@@ -704,7 +704,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         d = v.get("draft") or {}
         return {"on": v["on"], "rev": v["rev"], "summary": v["summary"], "approvals": v["approvals"][:20],
                 "audit": v["audit"][:15], "draft": {k: d.get(k) for k in ("summary", "lines", "errors", "questions")} if d else None}
-    if what == "login":                                   # v0.453 SURAKSHIT LOGIN + the security gates
+    if what == "login":                                   # v0.455 SURAKSHIT LOGIN + the security gates
         from ..appmaker import backend as BE
         from ..appmaker import gates as GT
         from ..appmaker import sign as SG

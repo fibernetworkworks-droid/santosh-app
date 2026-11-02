@@ -137,7 +137,7 @@ steps, partner shop = only its orders + menu), web admin (plain JS, not React). 
 - Proof: Swiggy-class food delivery = customer app + rider app + restaurant app + admin web, end to end.
 
 ### I. Auth + security — Phase 60
-**Status: BUILT in v0.453.0 SURAKSHIT LOGIN + SURAKSHA GATE** (`server/app/appmaker/sign.py` + `gates.py`, kits
+**Status: BUILT in v0.455.0 SURAKSHIT LOGIN + SURAKSHA GATE** (`server/app/appmaker/sign.py` + `gates.py`, kits
 `SignIn.kt` / `SignIn.swift`) — phone OTP, Google / Apple verified on the server, sessions, staff TOTP 2FA, DPDP consent +
 export, permissions matrix + audit log (v0.434's engine), and six security gates that block a store upload when one fails.
 Not built: Google sign-in on iPhone (needs the GoogleSignIn SDK), passkeys, magic links, company SSO, device binding.

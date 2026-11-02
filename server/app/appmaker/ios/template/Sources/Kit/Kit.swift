@@ -59,7 +59,7 @@ enum Words {
     static var skipWord: String { t("Skip", "छोड़ें", "Chhodein") }
     static var doneWord: String { t("Done", "हो गया", "Ho gaya") }
     static var connDone: String { t("Done.", "हो गया।", "Ho gaya.") }   // v0.424 JODO
-    // v0.453 SURAKSHIT LOGIN
+    // v0.455 SURAKSHIT LOGIN
     static var sgWhy: String { t("Sign in to order, book and see what you asked for.", "ऑर्डर, बुकिंग और अपनी जानकारी के लिए साइन इन करें।", "Order, booking aur apni jaankari ke liye sign in karein.") }
     static var sgPhone: String { t("Mobile number", "मोबाइल नंबर", "Mobile number") }
     static var sgSendCode: String { t("Send the code", "कोड भेजें", "Code bhejiye") }

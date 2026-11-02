@@ -289,7 +289,7 @@ def submit(tenant: str, ref: str, her_tap: bool = False) -> dict[str, Any]:
     st = state(r)
     if not st.get("pushed"):
         raise AppStoreError("Pehle listing + screenshots App Store par bhejiye.")
-    from .. import gates as GT                       # v0.453 SURAKSHA GATE: a failing security check blocks the submit
+    from .. import gates as GT                       # v0.455 SURAKSHA GATE: a failing security check blocks the submit
     try:
         GT.must_pass(r, "ios")
     except GT.GateError as e:
