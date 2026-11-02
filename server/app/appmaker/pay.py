@@ -493,6 +493,12 @@ def _paid(r: AppProject, pid: str, payment_id: str, amount: int, method: str, so
     if kind == "site" and row_id:                       # v0.446 a website shop order (site/shoppay.py), same verified rule
         from ..site import shoppay as SP
         _site_id, what = SP.on_paid(row_id, payment_id, amount, gw, label)
+        if what == "confirmed":                          # v0.449 marketplace: approved sellers' shares, once
+            try:
+                from ..site import shopplus as SPL
+                SPL.vendor_transfers(r, pid, payment_id, row_id)
+            except Exception:                            # noqa: BLE001 - a payout problem never un-pays an order
+                log.exception("seller transfers")
         _note(r, (f"Website order ka online payment aaya: {label} - {_rs(amount)} ({gw.title()}, {payment_id}). Order pakka ho gaya."
                   if what == "confirmed" else
                   f"{label}: {_rs(amount)} ka payment order radd hone ke BAAD aaya - refund kijiye ya order dobara pakka kijiye."))

@@ -16988,3 +16988,32 @@ real agent failures is finishing failures - above all a confident false "done".
   suite stays offline and deterministic - a link check otherwise makes a real HEAD call from the test box.
 - NOT VERIFIED on a live model: the sandbox has no API key. The long card (v0.443 step 0) is what will say whether
   false-done really falls - its target is under 5%. Version 0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).
+
+## v0.449.0 DUKAAN PLUS (web Step 4B = the rest of W4 + W5 for her website shop, owner: "GO STEP 4B")
+
+`site/shopplus.py` + `shoppay` / `shop` hooks + `hoola-shop.js` / `hoola-app.js` + the console Shop tab.
+1. GST tax invoice + credit note for WEBSITE orders on HER ONE series: an invoiced website order gets a hidden row on the
+   site's app project (coll `_web_orders`, data = buyer, address, "qty x item @ Rs price" lines, total, delivery, coupon), so
+   `appmaker/gst.number_for` gives the next INV/<FY>/NNNN of the SAME series as her app (Rule 46: one series per GSTIN),
+   `receipt._tax_invoice` draws the PDF and the CA exports read it like any app sale. Only after the order is confirmed /
+   paid; her console "GST bill" (optional buyer GSTIN for B2B) + the buyer's private link; a cancelled invoiced order gets
+   its CN series credit note once (`set_status` cancelled -> `credit_on_cancel`). Console GST form saves her GSTIN.
+2. AutoPay on the website: her plans (made in the app's pay card) show on the member's My account; subscribe opens the
+   gateway's consent page (customer's own approval), My account lists + cancels (`/api/site-app/<site>/pay/*`). Payment
+   links already work from the same app pay card.
+3. Marketplace: `/api/site-shop/<site>/seller` = apply form; HER tap approves / blocks a seller, sets commission % and the
+   seller's Razorpay Route linked account (`acc_...` only - a bank number is refused); approval gives the seller a private
+   dashboard link (their products with moderation state, their order lines WITHOUT the buyer's phone / address, sales and
+   what they earn); seller products wait for HER OK; a blocked seller's products leave the shop. On a PAID online order each
+   approved seller with an account gets (their lines - commission) as ONE Route transfer per order (never twice; a
+   failure goes to her chat, the order stays paid). Cashfree / PhonePe split for websites not built.
+4. Courier: Shiprocket with HER API user (typed in the console, checked by a real login, sealed). HER tap on a confirmed /
+   packed order -> adhoc order -> AWB -> label (opened for printing); order -> shipped with the AWB; never twice; the
+   customer's tracking page reads Shiprocket's own status + last scan. Delhivery not built.
+5. Wishlist (kept only in the customer's browser; "Saved for later" in the cart) + cart reminders ONLY for customers who tick
+   "remind me": the cart waits 2 h, then shows on HER list with a WhatsApp link SHE taps (Hoola sends nothing); an order
+   from that number closes it; the customer's STOP ends it for good.
+Tests: tests/test_v0449_dukaan_plus.py (7): one series across website orders (0001, 0002) + credit note once; sellers,
+moderation, Route transfer once (320 of 400 at 20%), seller page hides the buyer; Shiprocket fake (wrong login never saved,
+AWB, label, never twice, tracking); reminders opted-in / ordered closes / once / STOP; AutoPay plan subscribe for members.
+NOT VERIFIED live: Shiprocket API (from its documented external API), Razorpay Route transfers (fake gateway, as v0.419).

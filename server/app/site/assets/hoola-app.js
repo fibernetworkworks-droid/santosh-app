@@ -746,6 +746,31 @@
         tf.appendChild(off);
       }
     }
+    var ap = el('section', {'class': 'hs-appx-rel'}, [el('h3', {text: 'AutoPay'})]); main.appendChild(ap);   // v0.449 her plans
+    call('GET', '/pay/plans').then(function (j) {
+      var plans = j.plans || [];
+      if (!plans.length) { ap.remove(); return; }
+      plans.forEach(function (pl) {
+        ap.appendChild(el('p', {}, [(pl.name || '') + ' · ' + (pl.amount_rs || '') + ' / ' + (pl.period || '') + ' ',
+          btn(t.add, 'btn-primary', function (e) {
+            e.target.disabled = true;
+            call('POST', '/pay/plans/' + encodeURIComponent(pl.key) + '/subscribe').then(function (r) {
+              var u = String(r.path || r.url || ''); if (u.charAt(0) === '/') u = new URL(u, API).href;
+              if (/^https?:\/\//.test(u)) location.href = u;
+            }).catch(function (er) { e.target.disabled = false; alert(er.message); });
+          })]));
+      });
+      call('GET', '/pay/subs').then(function (k) {
+        (k.subs || []).forEach(function (sb) {
+          ap.appendChild(el('p', {'class': 'muted'}, [(sb.plan || '') + ': ' + (sb.status || '') + ' ',
+            sb.status === 'cancelled' ? null : btn(t.cancel, 'btn-ghost', function (e) {
+              if (!confirm(t.cancel + '?')) return;
+              e.target.disabled = true;
+              call('POST', '/pay/subs/' + encodeURIComponent(sb.id) + '/cancel').then(function () { main.textContent = ''; accountView(main); }).catch(function (er) { alert(er.message); });
+            })]));
+        });
+      }).catch(function () {});
+    }).catch(function () { ap.remove(); });
     var data = el('section', {'class': 'hs-appx-rel'}, [el('h3', {text: t.export})]); main.appendChild(data);
     data.appendChild(btn(t.export, 'btn-ghost', function () {
       call('GET', '/me/export').then(function (j) {
