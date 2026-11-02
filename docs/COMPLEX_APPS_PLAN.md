@@ -116,6 +116,11 @@ Tally = the monthly XML export (Tally is not reachable over the internet). Check
   templates), Google Sheets / Calendar, Tally / Zoho / QuickBooks, Aadhaar-free KYC via licensed providers only.
 
 ### G. Rich UI — Phases 55–57
+**Status: BUILT in v0.425.0 RANG** (kits `Rich.kt` / `Rich.swift`, `server/app/appmaker/custom.py`) — signature, multi-photo,
+video, voice note, rich text, PDF reader, calendar, kanban, Gantt, line / pie charts, carousel, onboarding (native, no web views,
+no new libraries); custom components (Kotlin + Swift) with house rules in code, her approval, build-proved, failing ones left out.
+Not built yet: camera capture flows + document scan (Android needs an extra ML Kit library), Lottie (an extra library; native
+animations instead), offline map tiles, barcode inventory flow (scan field + stock exist separately).
 - Kit growth: camera capture flows (multi-photo, document scan), video player + upload, audio record, rich text editor,
   calendar / scheduler, Gantt / kanban, charts dashboard, carousels, onboarding, animations (Lottie), signature pad,
   barcode inventory flows, PDF viewer, offline maps.

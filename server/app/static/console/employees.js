@@ -854,7 +854,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     // v0.365 analysis (FEA), CNC and sheet metal
     const ana = (v.analysis || []).map(a => `<div class="cad-ana"><b>${esc((a.lines || [])[0] || a.kind)}</b>${
       (a.lines || []).slice(1).map(l => `<div class="${l.startsWith('!') ? 'badc' : 'muted'}">${esc(l.replace(/^! /, ''))}</div>`).join('')}</div>`).join('');
-    const pics = ['fea_0.png', 'fea_1.png', 'fea_2.png', 'cam.png', 'flat.png', 'motion.gif', 'explode.png'].filter(k => v.files[k])
+    const pics = ['fea_0.png', 'fea_1.png', 'fea_2.png', 'cam.png', 'flat.png', 'motion.gif', 'explode.png', 'camcurve.png', 'dynamics.png'].filter(k => v.files[k])
       .map(k => `<a href="${esc(v.files[k])}" target="_blank" rel="noopener"><img src="${esc(v.files[k])}" alt="${esc(k)}" loading="lazy"></a>`).join('');
     const cam = v.cam ? `<p class="muted">${v.cam.ok ? `CNC: ${esc((v.cam.ops || []).join(', '))} · tool Ø${num(v.cam.tool_d)} mm · about ${num(v.cam.minutes)} min · simulate before cutting`
       : `CNC G-code did not run: ${esc(v.cam.error || '')}`}</p>` : '';
@@ -899,7 +899,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({runtime: gsRuntime, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -922,7 +922,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
           <button class="btn soft" type="button" data-gs-role="xr">VR / AR (Interaction Engineer)</button>
           <button class="btn soft" type="button" data-gs-role="sim">Simulators (Simulation Engineer)</button>
           <button class="btn soft" type="button" data-gs-role="twin">Digital twin (Twin Architect)</button>
-          <button class="btn soft" type="button" data-gs-role="vfx">VFX pipeline (Pipeline TD)</button></div></div>
+          <button class="btn soft" type="button" data-gs-role="vfx">VFX pipeline (Pipeline TD)</button>
+          <button class="btn soft" type="button" data-gs-role="runtime">Editor (Ask Hoola in Godot)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
     el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
@@ -1603,6 +1604,58 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
   }
 
+  // ---------------------------------------------------------------- v0.425 Hoola Runtime + Ask Hoola in the editor
+  let GS_NEWTOK = null;        // a just-made editor token, shown once
+  async function gsRuntime(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID;
+    let rt = null, tel = null, ed;
+    try {
+      [ed, rt, tel] = await Promise.all([api('GET', '/api/gamedesk/editor/tokens'),
+        sid ? api('GET', `/api/gamedesk/runtime/${encodeURIComponent(sid)}`) : Promise.resolve(null),
+        sid ? api('GET', `/api/gamedesk/runtime/${encodeURIComponent(sid)}/telemetry`).catch(() => null) : Promise.resolve(null)]);
+    } catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const last = rt && rt.tests.length ? rt.tests[rt.tests.length - 1] : null;
+    const pct = v => v == null ? '-' : Math.round(v * 100) + '%';
+    const mcpCfg = JSON.stringify({mcpServers: {hoola: {type: 'http', url: ed.mcp_url, headers: {Authorization: 'Bearer <your editor token>'}}}}, null, 2);
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="rtBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>${sid ? 'Runtime & editor' : 'Editor'}</h2></div>
+      ${sid ? `<section class="tile gl"><h3>Hoola Runtime in this game</h3>
+        <p class="muted em-small">HoolaRuntime goes into every build: a replay recorder and a test bot (they run only when Hoola tests the game) and opt-in telemetry.</p>
+        <label class="gs-sw"><input type="checkbox" id="rtOn"${rt.on ? ' checked' : ''}> Hoola Runtime on (replay tests)</label>
+        <label class="gs-sw"><input type="checkbox" id="rtTel"${rt.telemetry ? ' checked' : ''}${rt.kids ? ' disabled' : ''}> Telemetry (each player is asked first; anonymous; no device ids)${rt.kids ? ' <span class="muted em-small">- not for a children\'s game</span>' : ''}</label>
+        <div class="acts"><button class="btn go" type="button" id="rtTest">Run a replay test</button></div>
+        ${last ? `<p class="em-small"><b>Last test</b> v${num(last.version)} · ${esc((last.at || '').slice(0, 16).replace('T', ' '))} · ${num(last.frames)} frames · ${num(last.inputs)} bot inputs ${tag(last.verdict === 'PASS' ? 'ok' : 'bad', last.verdict)}</p>
+          ${checksTable(last.checks)}${last.replay ? `<a class="btn soft gs-mini" href="/api/gamedesk/runtime/${encodeURIComponent(sid)}/replay/${esc(last.replay)}" data-dl="1">Download the replay</a>` : ''}` : '<p class="muted em-small">No replay test yet.</p>'}</section>
+      ${tel ? `<section class="tile gl"><h3>Telemetry</h3><p class="muted em-small">${esc(tel.privacy)}</p>
+        <div class="ph-grid"><div><b>${num(tel.installs)}</b><div class="muted em-small">players (installs)</div></div><div><b>${num(tel.events)}</b><div class="muted em-small">events</div></div>
+          <div><b>${pct(tel.d1.share)}</b><div class="muted em-small">came back next day${tel.d1.cohort ? ' (of ' + num(tel.d1.cohort) + ')' : ''}</div></div><div><b>${pct(tel.d7.share)}</b><div class="muted em-small">came back on day 7${tel.d7.cohort ? ' (of ' + num(tel.d7.cohort) + ')' : ''}</div></div></div>
+        <table class="ph-tbl"><thead><tr><th>Step</th><th>Players</th></tr></thead><tbody>${tel.funnel.map(f => `<tr><td>${esc(f.step)}</td><td>${num(f.players)}</td></tr>`).join('')}</tbody></table>
+        <div class="acts"><button class="btn soft gs-mini em-leave" type="button" id="rtDel">Delete all telemetry of this game</button></div></section>` : ''}` : ''}
+      <section class="tile gl"><h3>Ask Hoola inside the Godot editor</h3>
+        <p class="muted em-small">The Hoola plugin adds a dock to your Godot editor: ask about your code, see your tasks, Game Bible and bugs. Any MCP client (Claude Desktop, Cursor, a Godot MCP bridge) can use the same address. A token can read your game projects, ask Hoola and add a To-do task - nothing else.</p>
+        <div class="acts"><a class="btn go" href="/api/gamedesk/editor/plugin.zip" id="rtPlug">Download the Godot plugin</a>
+          <input id="rtLabel" maxlength="60" placeholder="Token name (e.g. my laptop)" aria-label="Token name"><button class="btn soft" type="button" id="rtTok">Make an editor token</button></div>
+        ${GS_NEWTOK ? `<div class="tile rt-tok"><b>Your new token (shown only now):</b> <code>${esc(GS_NEWTOK)}</code> <button class="btn soft gs-mini" type="button" id="rtCopy">Copy</button></div>` : ''}
+        <p class="em-small"><b>MCP address:</b> <code>${esc(ed.mcp_url)}</code></p>
+        <pre class="gs-sum rt-cfg">${esc(mcpCfg)}</pre>
+        <table class="ph-tbl"><thead><tr><th>Token</th><th>Made</th><th>Last used</th><th></th></tr></thead><tbody>${(ed.tokens || []).map(t => `<tr><td>${esc(t.label)} <span class="muted">${esc(t.hint)}</span></td><td>${esc((t.created || '').slice(0, 10))}</td><td>${esc((t.last_used || '').slice(0, 16).replace('T', ' ') || '-')}</td>
+          <td>${t.revoked ? tag('', 'revoked') : `<button class="btn soft gs-mini" type="button" data-rt-rev="${esc(t.id)}">Revoke</button>`}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No tokens yet.</td></tr>'}</tbody></table></section>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsRuntime(el); };
+    el.querySelector('#rtBack').addEventListener('click', () => { GS_NEWTOK = null; roleBack(el); });
+    const dl = async (a) => { try { const r = await api('GET', a.getAttribute('href'), undefined, {raw: true});
+      const b = await r.blob(); const u = URL.createObjectURL(b); const x = document.createElement('a'); x.href = u; x.download = a.getAttribute('href').split('/').pop(); x.click(); URL.revokeObjectURL(u); } catch (e) { toast(e.message, true); } };
+    el.querySelector('#rtPlug').addEventListener('click', e => { e.preventDefault(); dl(e.currentTarget); });
+    el.querySelectorAll('[data-dl]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); dl(a); }));
+    el.querySelector('#rtOn')?.addEventListener('change', e => go(() => api('POST', `/api/gamedesk/runtime/${encodeURIComponent(sid)}`, {on: e.target.checked}), 'Saved - the next build carries it.'));
+    el.querySelector('#rtTel')?.addEventListener('change', e => go(() => api('POST', `/api/gamedesk/runtime/${encodeURIComponent(sid)}`, {telemetry: e.target.checked}), 'Saved - the next build asks players first.'));
+    el.querySelector('#rtTest')?.addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Testing…';
+      go(() => api('POST', `/api/gamedesk/runtime/${encodeURIComponent(sid)}/replay`), 'The bot is playing; the result shows here in about half a minute.'); });
+    el.querySelector('#rtDel')?.addEventListener('click', () => { if (confirm('Delete all telemetry of this game?')) go(() => api('DELETE', `/api/gamedesk/runtime/${encodeURIComponent(sid)}/telemetry`), 'Deleted.'); });
+    el.querySelector('#rtTok').addEventListener('click', async () => { try { const t = await api('POST', '/api/gamedesk/editor/tokens', {label: el.querySelector('#rtLabel').value.trim()}); GS_NEWTOK = t.token; } catch (e) { toast(e.message, true); } gsRuntime(el); });
+    el.querySelector('#rtCopy')?.addEventListener('click', () => { navigator.clipboard?.writeText(GS_NEWTOK); toast('Copied. Paste it in the Hoola dock.'); });
+    el.querySelectorAll('[data-rt-rev]').forEach(b => b.addEventListener('click', () => go(() => api('DELETE', `/api/gamedesk/editor/tokens/${encodeURIComponent(b.dataset.rtRev)}`), 'Revoked.')));
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
     if (GS_BIBLE) return gsBible(el, id);
@@ -1630,6 +1683,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <button class="btn soft" type="button" id="gsNetBtn">Multiplayer</button>
         <button class="btn soft" type="button" id="gsXrBtn">VR / AR</button>
         <button class="btn soft" type="button" id="gsSimBtn">Simulator</button>
+        <button class="btn soft" type="button" id="gsRtBtn">Runtime & editor</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
@@ -1687,6 +1741,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     el.querySelector('#gsNetBtn').addEventListener('click', () => { GS_ROLE = 'net'; GS_ROLE_SID = id; gsNet(el); });
     el.querySelector('#gsXrBtn').addEventListener('click', () => { GS_ROLE = 'xr'; GS_ROLE_SID = id; gsXr(el); });
     el.querySelector('#gsSimBtn').addEventListener('click', () => { GS_ROLE = 'sim'; GS_ROLE_SID = id; gsSim(el); });
+    el.querySelector('#gsRtBtn').addEventListener('click', () => { GS_ROLE = 'runtime'; GS_ROLE_SID = id; gsRuntime(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

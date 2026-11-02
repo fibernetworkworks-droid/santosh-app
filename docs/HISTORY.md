@@ -16130,3 +16130,151 @@ Her apps talk to outside services through DECLARED HTTP actions (data, never cod
   diagrams as captioned figures, ADRs as cards with status chip + "Alternatives considered", risks coloured by level,
   numbered open questions, page numbers, a closing "nothing has been built" line. Test: every section present, no raw
   markdown, model text still escaped.
+
+## v0.425.0 RANG (App Sahayak Pillar G, Phases 55-57 — owner: "START PILLAR G")
+Rich native UI in her apps + the custom component escape hatch.
+- Server (`appmaker/backend.py`):
+  - EXTRA_TYPES gains signature / photos / video / audio / richtext.
+    - signature: a picture, like a photo.
+    - photos: up to 6 comma-separated ids, each hers and an image.
+    - video / audio: the file must be that kind.
+    - richtext: markdown words up to 4000 characters with tags stripped; webapp `_value` keeps richtext long.
+  - `_upload_media`: an ISO-BMFF container with a known `ftyp` brand. Video is MP4 / MOV up to 50 MB; audio (when the app
+    says audio/*) is M4A up to 10 MB. Kept as sent; the meta stores kind + ext.
+  - `file_for` serves the right file. POST /files/<id>/link returns a 15-minute HMAC address
+    /api/app-api/<key>/media/<id>.<exp>.<sig> (CSP sandbox, no token) for the phone's own players.
+- Kits `Rich.kt` / `Rich.swift`, native only:
+  - Fields: SignatureField/Row, PhotosField/Row, VideoField/Row, AudioField/Row (record 2 min, permission on tap),
+    RichTextField/Row.
+  - Showing: RichText(View), PhotosStrip(View), VideoPlayer(View) (VideoView / AVPlayer), AudioPlayer(View),
+    PdfViewer(View) (PdfRenderer page by page / PDFKit).
+  - Blocks: CalendarBlock, KanbanBlock (staff move cards through Db.update), GanttBlock, LineChart, PieChart, Carousel
+    (HorizontalPager / TabView), OnboardingPager.
+  - The outbox sends multi-photo values and video / audio with the right Content-Type.
+  - Hooked in: the generator's `_form_rows`, AutoForm (Logic.kt/.swift), RowsSection (Accounts) and the iOS form
+    switch + RichRowParts.
+  - Permissions: RECORD_AUDIO / NSMicrophoneUsageDescription only in apps with an audio field. Screen-writer prompts
+    list the pieces.
+- `appmaker/custom.py` custom components:
+  - Opus writes Kotlin + Swift + literal samples, with one repair round. `problems()` checks the house rules in CODE:
+    the name Custom*, package hoola.kit, allowed imports, banned web / net / io / intent / reflection / thread / log /
+    data-store / sign-in tokens, balanced braces, literal-only samples.
+  - JSON files live in the app folder. Approval is her tap, bound to a hash.
+  - `for_build`: approved + unchanged + clean components go into the build. android_files / swift_files write the files
+    plus ComponentsGallery (screen `hoola_components`, added to the registries and the QA screen lists only when there
+    are components).
+  - The Android compile loop: a log naming custom/<Name>.kt takes that component out of the build, marks it failed and
+    notes her. A finished build marks the rest verified. Screens are told about the approved components.
+  - Routes /api/apps/<ref>/components (GET, POST /draft, POST /<name>/approve, DELETE). Console box + phone
+    `lib/ui/app_components.dart`.
+- Tests: tests/test_v0425_rang.py (3).
+- NOT built: camera capture / document scan, Lottie, offline map tiles, a barcode inventory flow, and iOS compile-failure
+  marking for components (iOS builds run in her builds repo). Kits compile only in CI (no local Kotlin / Swift).
+## v0.426.0 CAMS + SLOTS + DYNAMICS (2 Nov 2026, built as 0.425)
+Owner: "cam and slot joints, dynamic simulation — fix and develop".
+- `engineering/cams.py` + `H.disc_cam(name, segments, base_radius, follower='roller'|'flat', roller_radius, offset, thickness,
+  bore, rpm, cam_joint, follower_joint, max_pressure_deg=30)`: the cam is made FROM the follower program (segments must add
+  to 360° and end where they started; laws cycloidal / harmonic / 3-4-5, closed forms checked at textbook points: half lift
+  at half angle, v max, a max). Roller: pitch curve, profile = pitch curve offset by the roller (measured = r), pressure
+  angle row, undercut row (pitch-curve min radius > roller). Flat: rho = Rb + s + s'' cusp row + face width. Follower
+  v / a / jerk at her rpm. Fails go back to the model (service.checks "Cam <name>: ..."). `H.cam` stays the CNC G-code call.
+- Slots: joint kind `slot` (direction + travel) is always a loop closure; residual = pin off the slot line; travel limits
+  lock the solve. URDF / SDF skip it (commented), MJCF = slide + hinge body + connect. Scotch yoke x = R cos θ − R exact.
+- `engineering/dynamics.py`: MuJoCo, meshes stripped, stiff equalities, payload body; independent joints follow quintic
+  0 → top → bottom → 0 in move_time_s (default 2 s), continuous / cam joints turn at rpm, followers follow the cam table;
+  computed torque (bias + Mjj PD 15 Hz) clipped at her effort -> peak / RMS / speed / error / saturation / energy / loop gap,
+  cam_peak + follower_peak (F x ds/dθ; the disc's own unbalance under gravity is real and kept in cam_peak). Motors with no
+  effort are sized peak x 1.25 (`sized_to`) and the package rewritten. Files dynamics.png + camcurve.png (console + phone).
+- Tests `test_v0425_cam_slot_dynamics.py`: laws, roller geometry + steep cam fails, yoke, slow move = m g L/2 (3 %), fast
+  > 1.5x, weak motor saturates, cam torque = follower force x ds/dθ (12 %), desk redesigns a steep cam.
+- NOT VERIFIED: no friction, backlash, link flex or contact force at the cam (the follower is a driven coordinate);
+  VPS needs `pip install mujoco` for the simulation (it says so when missing).
+
+
+## v0.427.0 (built as 0.425.0) HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8) - 2 Nov 2026
+Owner: "GO PHASE 8" (plan row: "Replay / bot / telemetry modules, Godot editor 'ask Hoola' panel via MCP").
+
+HOOLA RUNTIME (`gamedesk/runtime.py`, a role pack: HoolaRuntime autoload in every Studio build, default on; GDScript, not
+a C++ GDExtension - it runs on every export without a build per platform):
+- REPLAY + BOT: started only by Hoola's test runner (`--hoola-bot=seed,frames` / `--hoola-replay=<base64>` after `--`):
+  the in-engine bot injects seeded keys + taps with Input.parse_input_event (headless, no browser) and records them per
+  physics frame; the end state is fingerprinted (probe state + every Node2D / Node3D / Control position, sha256).
+  replay_test = bot run, the same seed again, then the recording played back - all three must match. A mismatch is
+  named with its likely cause from her code (randomize(), Time / OS clock). Real Godot 4.7.2: a deterministic test
+  game PASSES (600 frames, 116 bot inputs, three identical fingerprints); the same game with randomize() FAILS with
+  "randomize(" named; the replay is kept as a download (repro for any bug the bot finds).
+- FOUND before shipping: (1) the first version seeded the RNG on EVERY start - every player would have got the same
+  "random" game each session; the seed now applies ONLY in test runs; (2) the cause scan flagged Hoola's own runtime
+  file (it randomizes a separate generator for the install id) - Hoola's own files are excluded; (3) the guard caught
+  ConfigFile.load("user://...") as "loading files from outside the game" - a const path, as the haptics pack does.
+- TELEMETRY: OFF by default; needs her switch AND the player's yes (HoolaRuntime.ask_consent / needs_consent, saved in
+  user://); refused for a children's game (design-doc words; DPDP); a random install id on the device, event names +
+  frame numbers only, no device ids, no IP stored; posted only to POST /play/<token>/t on the play link's own host
+  (the page CSP allows nothing else) - the endpoint always answers 204, stores only when everything holds, caps 60
+  events / 16 KB a post and 30 posts / 10 min per install. Dashboard: installs, sessions by day, D1 / D7 retention from
+  install cohorts (a cohort too young says so), top events, the play funnel; she can delete it all.
+  The guard lets ONLY hoola_runtime.gd use HTTPRequest (and _own_packs replaces any file of that name the model writes).
+
+ASK HOOLA IN THE EDITOR (`gamedesk/editor.py`):
+- editor tokens: made in the console, shown ONCE, stored as sha256 (+ a 4-char hint), revocable, last use recorded;
+  scope = read her game projects, ask Hoola, add a To-do task (nothing else).
+- a real MCP server: POST /mcp/gamedesk, Streamable HTTP JSON-RPC 2.0 (initialize with protocol negotiation 2025-06-18
+  / 2025-03-26 / 2024-11-05, notifications -> 202, ping, tools/list, tools/call, batches; -32601 / -32602 / -32700
+  errors; GET 405), Bearer editor token (401 + WWW-Authenticate otherwise). Tools: hoola_projects, hoola_tasks,
+  hoola_bible, hoola_bugs, hoola_ask (her question + the open script -> an answer from her design doc, Bible and live
+  code; 30 an hour per token), hoola_add_task. Answers never change her files.
+- FOUND by the tests: my task tools read a field called "state" - tasks use "status", so "open tasks" was always empty.
+- the Godot plugin (addons/hoola: plugin.cfg, plugin.gd EditorPlugin dock, dock.gd: Ask / Tasks / Bible / Bugs over the
+  same MCP endpoint; server + token in HER EditorSettings, never in the project) is LOADED BY THE REAL GODOT EDITOR
+  (headless `--editor`) in the tests: "Hoola panel ready", no errors. Any MCP client (Claude Desktop, Cursor, a Godot
+  MCP bridge) can use the same address; the console shows the config snippet.
+
+Tool `game_runtime` (status / replay_test / telemetry / set; tokens never in chat). Console: "Runtime & editor" page
+(board) + "Editor" on the desk home (tokens, plugin download, MCP address + client config). Phone: GameRuntimeScreen
+(switches, replay test, telemetry numbers). Tests: test_v0425_game_runtime.py (8, two run the real Godot).
+NOT VERIFIED: telemetry from a real browser to the live server (the endpoint and the GDScript are tested separately),
+the plugin talking to the live server from her Godot (the build box has no network), and other MCP clients live.
+Not built from the plan's runtime list: save-game cloud sync, in-game feedback, Indian-language text-shaping checks,
+store billing hooks.
+
+## v0.428.0 MASTER ARCHITECT (built as 0.426; owner: "MAKE THIS Principal Software Architect -- MORE PRO AND ADVANCE THAT CAN WORK ANY COMPLEX TASK OF HIS FIELD -- MAKE A MASTER")
+The Architect did ONE job (a new-system design). A principal architect is asked for six, and each now has its own
+rules, its own section in the document and its own sums in CODE (`app/archdesk/master.py`):
+- **design** (new system) · **assess** (her EXISTING repo judged as it is: scorecard 1-5 on 8 dimensions with the
+  average + weakest computed, problems each with EVIDENCE) · **migrate** (strategy, phases each with a ROLLBACK and a
+  done-when, data move, cut-over) · **decide** (one technology choice: options x weighted criteria -> weighted totals
+  /100, ranking, margin, "close call", and a SENSITIVITY check - does the winner change when any one weight moves by 1;
+  a missing score is NAMED, never guessed) · **threat** (STRIDE: risk = likelihood x impact 1-9, sorted, open high
+  risks counted, target x letter coverage grid, letters never considered + components with no threats NAMED) ·
+  **scale** (what breaks first at 10x / 100x). assess / migrate refuse without her repo.
+- **Module map from the real code** (`archdesk/repomap.py`): up to 160 source files read through her Developer Sahayak
+  token, import lines of Python / JS / TS / Go / Java / Kotlin / C# / PHP / Rust resolved INSIDE the repo only (outside
+  packages counted as external, never guessed), module graph, dependency CYCLES (Tarjan), fan-in / fan-out hot-spots,
+  biggest modules; fed to the model as facts AND drawn as an extra "As-is module dependencies (from the code)" diagram.
+- **Boundary rules (fitness functions)**: every design states rules ("app/orders must not depend on app/riders");
+  code checks them on today's repo (breaks shown in the document) and on every PR review - only the lines the PR ADDS
+  are read, so an old import is never blamed on it; a break is a high finding "boundary (checked by code)" and turns a
+  model 'fits' into 'drifts'. Posting is still her tap.
+- **Growth scenarios** for every design with users-a-day: the capacity sheet at 1x / 10x / 100x, and what crosses a
+  limit first (single DB primary vs the db_write_rps limit she gave / the design states, app fleet > 20 servers,
+  > 2 TB storage) - no limit invented.
+- **Peer review + one revision**: a second principal-architect pass reviews every draft (NFRs measurable, SPOFs, data
+  ownership, security / DPDP, capacity agrees with the COMPUTED sheet, the kind's own section complete); any high /
+  medium issue -> one revision call; the document says how many issues and whether they were fixed.
+- **API contract**: the main public API as OpenAPI 3.1, parsed and checked in code (3.x, operations, responses),
+  delivered as api.yaml.
+- **Design checks** (code, free): measurable targets, alternatives on every ADR, mitigations, done-when on phases,
+  every component in a diagram, every diagram drawn, security + failure handling, plus per kind (every option scored /
+  all six STRIDE letters / every component has threats / rollback per phase / evidence per problem), valid API, her code
+  following the rules today. Shown as n/m pass on the cover and at the end.
+- Document: kind on the cover, peer-review line, 6 at-a-glance boxes (checks added), the kind's section right after
+  the summary, then the usual sections, growth scenarios, boundary rules, API contract, peer review, design checks.
+- Tool `software_architect` kind=..., POST /api/arch/projects kind, GET lists kinds + needs_repo; console + phone kind
+  picker and every new section; model columns `kind` + `extra` (nullable, old designs = design).
+- Cost: a design is now 2-3 Opus calls (draft, peer review, revision when needed) instead of 1; the daily limit of 6
+  is unchanged. NOT VERIFIED LIVE yet: the six kinds against a real Opus run (the sample PDFs were made through the real
+  pipeline with a hand-written design), and the module map on her real repos (tested on fixtures in 4 languages).
+- Tests: NEW test_v0426_master_architect.py (file name kept) (module map + cycles, JS/Go/Java resolution, rules on repo + PR-added lines
+  only, decision sums + sensitivity + named gaps, STRIDE scoring + coverage, scenarios + first break, OpenAPI check,
+  assess with peer review + revision end to end, decide + threat documents, PR boundary break by code, tool + route,
+  console + phone wiring).

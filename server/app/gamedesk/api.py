@@ -65,6 +65,17 @@ GET    /api/gamedesk/twin/{id}      POST /api/gamedesk/twin/{id}/approve|reject 
 GET    /api/gamedesk/vfx            POST /api/gamedesk/vfx {plan?: {show, seq, shots, sources, working, view, workers, fail_rate...}}
 GET    /api/gamedesk/vfx/{id}       POST /api/gamedesk/vfx/{id}/approve|reject   GET .../file/kit.zip?sig
 
+v0.425 Hoola Runtime + Ask Hoola in the editor (Game Engine plan Phase 8):
+GET    /api/gamedesk/runtime/{sid}              settings (on, telemetry, kids), last replay tests
+POST   /api/gamedesk/runtime/{sid}              {on?, telemetry?}  telemetry refused for a children's game
+POST   /api/gamedesk/runtime/{sid}/replay       start a replay test (bot run, same seed again, the replay played back)
+GET    /api/gamedesk/runtime/{sid}/replay/{rid} the recorded replay JSON
+GET    /api/gamedesk/runtime/{sid}/telemetry    dashboard (installs, sessions, D1 / D7, funnel)   DELETE: wipe it
+POST   /play/{token}/t                          telemetry from the game (same host as the play link; always 204)
+GET    /api/gamedesk/editor/tokens  POST {label} (shown ONCE)  DELETE /api/gamedesk/editor/tokens/{id}
+GET    /api/gamedesk/editor/plugin.zip          the Godot editor plugin (addons/hoola)
+POST   /mcp/gamedesk                            MCP (JSON-RPC 2.0, Streamable HTTP) with 'Authorization: Bearer <editor token>'
+
 v0.416 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
 GET    /api/gamestudio/{id}/releases            releases + where each platform can be built + package + itch key set?
 POST   /api/gamestudio/{id}/releases            {platforms: [linux, windows, macos, android], android_format: apk|aab}
@@ -113,6 +124,7 @@ POST   /api/gamestudio/{id}/bible/recurve           {kind}  numbers re-made from
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
@@ -688,6 +700,92 @@ def make_router(require_key, current_tenant) -> APIRouter:
     _pack_routes("audio", AU, AU.KEY, "Spatial Audio Systems Programmer", "setups", _audio_make, AU.audio_file, {".wav": "audio/wav"})
     _pack_routes("haptics", HP, HP.KEY, "Haptic Feedback Systems Engineer", "sets", _haptics_make, HP.haptics_file,
                  {".zip": "application/zip", ".png": "image/png"})
+
+    # ------------------------------------------------------------ v0.425 Hoola Runtime + Ask Hoola in the editor (MCP)
+    from . import editor as ED
+    from . import runtime as RT
+
+    def _owner_game_dev(tenant: str) -> None:
+        _working(tenant, "game_dev", "Game Developer")
+
+    @r.get("/api/gamedesk/runtime/{sid}", dependencies=[Depends(require_key)])
+    async def rt_get(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(RT.settings, tenant, sid)
+
+    @r.post("/api/gamedesk/runtime/{sid}", dependencies=[Depends(require_key)])
+    async def rt_set(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(RT.set_runtime, tenant, sid, b.get("on") if "on" in b else None,
+                          b.get("telemetry") if "telemetry" in b else None)
+
+    @r.post("/api/gamedesk/runtime/{sid}/replay", dependencies=[Depends(require_key)])
+    async def rt_replay(sid: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(RT.start_replay_test, tenant, sid)
+
+    @r.get("/api/gamedesk/runtime/{sid}/replay/{rid}", dependencies=[Depends(require_key)])
+    async def rt_replay_file(sid: str, rid: str, tenant: str = Depends(current_tenant)):
+        p = await call(RT.replay_file, tenant, sid, rid)
+        if p is None:
+            raise HTTPException(404, "replay nahi mila")
+        return FileResponse(p, media_type="application/json", filename=p.name)
+
+    @r.get("/api/gamedesk/runtime/{sid}/telemetry", dependencies=[Depends(require_key)])
+    async def rt_tel(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(RT.dashboard, tenant, sid)
+
+    @r.delete("/api/gamedesk/runtime/{sid}/telemetry", dependencies=[Depends(require_key)])
+    async def rt_tel_del(sid: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(RT.delete_telemetry, tenant, sid)
+
+    @r.post("/play/{token}/t")
+    async def rt_ingest(token: str, request: Request):
+        raw = await request.body()
+        await asyncio.to_thread(RT.ingest, token, raw[: RT.MAX_BODY + 1])
+        return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+    @r.get("/api/gamedesk/editor/tokens", dependencies=[Depends(require_key)])
+    async def ed_tokens(tenant: str = Depends(current_tenant)):
+        return {"tokens": await call(ED.tokens, tenant), "mcp_url": service.base_url().rstrip("/") + "/mcp/gamedesk"}
+
+    @r.post("/api/gamedesk/editor/tokens", dependencies=[Depends(require_key)])
+    async def ed_token_new(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(ED.create_token, tenant, str(_b(body).get("label") or ""))
+
+    @r.delete("/api/gamedesk/editor/tokens/{tid}", dependencies=[Depends(require_key)])
+    async def ed_token_del(tid: str, tenant: str = Depends(current_tenant)):
+        return await call(ED.revoke, tenant, tid)
+
+    @r.get("/api/gamedesk/editor/plugin.zip", dependencies=[Depends(require_key)])
+    async def ed_plugin(tenant: str = Depends(current_tenant)):
+        data = ED.plugin_zip(service.base_url())
+        return Response(content=data, media_type="application/zip",
+                        headers={"Content-Disposition": 'attachment; filename="hoola_godot_plugin.zip"'})
+
+    @r.post("/mcp/gamedesk")
+    async def mcp(request: Request):
+        who = await asyncio.to_thread(ED.auth, request.headers.get("authorization", ""))
+        if who is None:
+            return Response(status_code=401, headers={"WWW-Authenticate": 'Bearer realm="hoola-gamedesk"'},
+                            content=b'{"error":"an editor token from Hoola (Game Desk > Editor) is needed"}', media_type="application/json")
+        raw = await request.body()
+        if len(raw) > 64 * 1024:
+            raise HTTPException(413, "too big")
+        try:
+            body = json.loads(raw.decode("utf-8") or "null")
+        except Exception:                               # noqa: BLE001
+            return Response(content=json.dumps(ED._err(None, -32700, "Parse error")), media_type="application/json")
+        out = await asyncio.to_thread(ED.handle, who[0], who[1], body)
+        if out is None:
+            return Response(status_code=202)
+        return Response(content=json.dumps(out, ensure_ascii=False), media_type="application/json")
+
+    @r.get("/mcp/gamedesk")
+    async def mcp_get():
+        return Response(status_code=405, headers={"Allow": "POST"})
 
     @r.get("/play/{token}")
     def play_root(token: str):

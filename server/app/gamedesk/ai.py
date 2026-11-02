@@ -136,6 +136,11 @@ HARD RULES (the build fails otherwise)
 - SIMULATOR: if the files include hoola_sim.gd (the HoolaSim autoload, a VALIDATED orbit model - NEVER edit or re-output
   it), move spacecraft only with HoolaSim.step([position_km, velocity_kms], dt_s) (RK4, two-body + J2); draw kilometres
   scaled to the screen; never invent another physics for orbits.
+- RUNTIME: if the files include hoola_runtime.gd (the HoolaRuntime autoload: Hoola's replay recorder, test bot and
+  opt-in telemetry - NEVER edit or re-output it), NEVER call randomize() and never seed from the clock: in Hoola's test
+  runs HoolaRuntime seeds the game so a recorded play replays exactly (randf / randi are fine; real players still get
+  a fresh random start). On the title screen call
+  `if HoolaRuntime.needs_consent(): HoolaRuntime.ask_consent(self)` (it asks the player once; nothing is sent without yes).
 - GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
   NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
   HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])

@@ -33,6 +33,31 @@ enum Words {
     static var isOnline: String { t("online", "ऑनलाइन", "online") }
     static var isTyping: String { t("typing…", "लिख रहे हैं…", "likh rahe hain…") }
     static var live: String { t("Live", "लाइव", "Live") }
+    // v0.425 RANG
+    static var signAgain: String { t("Sign again", "फिर से साइन करें", "Phir se sign karein") }
+    static var useSignature: String { t("Use this signature", "यह साइन लें", "Yeh sign lein") }
+    static var clearWord: String { t("Clear", "मिटाएँ", "Mitayein") }
+    static var addPhotos: String { t("Add photos", "फ़ोटो जोड़ें", "Photos jodiye") }
+    static var videoTooBig: String { t("The video did not open or is over 50 MB.", "वीडियो नहीं खुला या 50 MB से बड़ा है।", "Video nahi khula ya 50 MB se bada hai.") }
+    static var videoReady: String { t("Video ready - it is sent with the form.", "वीडियो तैयार - फ़ॉर्म के साथ जाएगा।", "Video taiyaar - form ke saath jayega.") }
+    static var videoSaved: String { t("Video saved.", "वीडियो सेव है।", "Video save hai.") }
+    static var addVideo: String { t("Add video", "वीडियो जोड़ें", "Video jodiye") }
+    static var changeVideo: String { t("Change video", "वीडियो बदलें", "Video badlein") }
+    static var recording: String { t("Recording…", "रिकॉर्ड हो रहा है…", "Record ho raha hai…") }
+    static var record: String { t("Record", "रिकॉर्ड करें", "Record karein") }
+    static var recordAgain: String { t("Record again", "फिर रिकॉर्ड करें", "Phir record karein") }
+    static var stopWord: String { t("Stop", "रोकें", "Rokein") }
+    static var micDenied: String { t("Microphone not allowed. You can type instead.", "माइक की अनुमति नहीं मिली। लिख दीजिए।", "Mic ki anumati nahi mili. Likh dijiye.") }
+    static var listWord: String { t("List", "सूची", "List") }
+    static var playVideo: String { t("Play video", "वीडियो चलाएँ", "Video chalayein") }
+    static var pauseWord: String { t("Pause", "रोकें", "Rokein") }
+    static var playWord: String { t("Play", "चलाएँ", "Chalayein") }
+    static var pdfFailed: String { t("The PDF did not open.", "PDF नहीं खुला।", "PDF nahi khula.") }
+    static var pageWord: String { t("Page", "पेज", "Page") }
+    static var prevWord: String { t("Back", "पीछे", "Peeche") }
+    static var nextWord: String { t("Next", "आगे", "Aage") }
+    static var skipWord: String { t("Skip", "छोड़ें", "Chhodein") }
+    static var doneWord: String { t("Done", "हो गया", "Ho gaya") }
     static var connDone: String { t("Done.", "हो गया।", "Ho gaya.") }   // v0.424 JODO
     // v0.419 PAISA
     static var payOnline: String { t("Pay online", "ऑनलाइन भुगतान", "Online pay karein") }

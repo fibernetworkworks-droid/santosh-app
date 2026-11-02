@@ -2578,6 +2578,15 @@ body.albon{overflow:hidden}
 .stconn .cnact { border: 1px solid var(--line, #e5e5ea); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
 .stconn h5 { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
 .stconn code { font-size: 12.5px; word-break: break-all; }
+/* v0.425 RANG: custom components */
+.stcomp .ccode { max-height: 240px; overflow: auto; font-size: 12px; background: var(--tint, #f4f4f6); padding: 8px; border-radius: 8px; white-space: pre; }
+.stcomp .cnact { border: 1px solid var(--line, #e5e5ea); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+
+
+/* v0.425 HOOLA RUNTIME + EDITOR */
+#app .rt-tok { margin: 8px 0; padding: 10px; overflow-wrap: anywhere; }
+#app .rt-tok code, #app .rt-cfg { font-size: 12.5px; }
+#app .rt-cfg { white-space: pre-wrap; overflow-x: auto; }
 /* v0.426 MASTER ARCHITECT: kind line, decision bars, design checks, wide tables */
 #app .ar-kt{font-size:13px;color:var(--mut);margin:2px 0 6px}
 #app .ar-kind select{font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;min-width:260px}
