@@ -877,6 +877,145 @@ window.HoolaBuild = function (C) {
       const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
     };
     try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
+    // v0.425 RANG: custom native components (Kotlin + Swift) - house rules checked in code, her approval, proved by the next build
+    const ccbox = document.createElement('section'); ccbox.className = 'stcol stcomp'; box.appendChild(ccbox);
+    const drawComp = cc => {
+      ccbox.innerHTML = `<h4>Custom components <span>${L(cc.components).filter(x => x.approved).length} approved</span></h4>
+        <p class="stnote">When no ready piece fits, describe it and Hoola writes one native component for Android and iPhone. It is UI only (no internet, files or web views - checked by code). It goes into the app only after you approve it; the next build compiles it and opens it on the device check, and one that fails is left out of that build.</p>
+        <form class="stapp ccnew" autocomplete="off"><div class="row"><input name="words" maxlength="800" placeholder="e.g. a horizontal bar per star level showing how many ratings" aria-label="Describe the component"><button class="btn go" type="submit">Write it</button></div></form>
+        ${L(cc.components).map(x => `<div class="cnact" data-n="${esc(S(x.name))}"><b>${esc(S(x.name))}</b> <span class="stnote">${esc(S(x.status))}${x.approved ? ' · approved' : ''}</span>
+          <p class="stnote">${esc(S(x.purpose))} · ${esc(S(x.params))}${x.error ? '<br>Build said: ' + esc(S(x.error).slice(0, 300)) : ''}</p>
+          <details><summary>Code</summary><pre class="ccode">${esc(S(x.kotlin))}</pre><pre class="ccode">${esc(S(x.swift))}</pre></details>
+          <div class="row">${x.approved ? '' : '<button class="btn go" type="button" data-ccok>Approve</button>'}<button class="btn" type="button" data-ccx>Remove</button></div></div>`).join('') || '<p class="stempty">None yet.</p>'}`;
+      const f = ccbox.querySelector('.ccnew');
+      f.addEventListener('submit', async e => { e.preventDefault(); const b = f.querySelector('button'); b.disabled = true; b.textContent = 'Writing…';
+        try { await api('POST', base(o) + '/components/draft', {words: f.words.value}); drawComp(await api('GET', base(o) + '/components')); toast('Drafted - read it and approve.'); }
+        catch (er) { toast(er.message, true); b.disabled = false; b.textContent = 'Write it'; } });
+      ccbox.addEventListener('click', async e => {
+        const it = e.target.closest('.cnact'), n = it && it.dataset.n;
+        try {
+          if (e.target.closest('[data-ccok]')) { if (!confirm('Approve ' + n + '? It goes into the next build of the app.')) return; await api('POST', `${base(o)}/components/${encodeURIComponent(n)}/approve`, {her_tap: true}); drawComp(await api('GET', base(o) + '/components')); }
+          if (e.target.closest('[data-ccx]')) { if (!confirm('Remove ' + n + '?')) return; drawComp(await api('DELETE', `${base(o)}/components/${encodeURIComponent(n)}`)); }
+        } catch (er) { toast(er.message, true); }
+      });
+    };
+    try { drawComp(await api('GET', base(o) + '/components')); } catch (er) { ccbox.remove(); }
+    // v0.424 JODO: connectors - ready packs or her own declared action; each needs HER approval; secrets never shown again
+    const cnbox = document.createElement('section'); cnbox.className = 'stcol stconn'; box.appendChild(cnbox);
+    const drawConn = cn => {
+      const packs = L(cn.packs);
+      cnbox.innerHTML = `<h4>Connectors <span>${L(cn.actions).filter(a => a.approved).length} on</span></h4>
+        <p class="stnote">Your app talks to your courier, SMS, WhatsApp, e-mail, Google Sheets / Calendar, Zoho / QuickBooks or KYC provider with YOUR keys. Nothing runs until you approve it, and any change needs approving again. Keys are locked away and never shown again.</p>
+        <form class="stapp cnpack" autocomplete="off"><div class="row"><label>Add <select name="pack">${packs.map(p => `<option value="${esc(S(p.key))}">${esc(S(p.group))}: ${esc(S(p.label))}</option>`).join('')}</select></label></div><div class="cnf"></div>
+          <div class="row"><button class="btn go" type="submit">Add pack</button></div></form>
+        ${L(cn.actions).map(a => { const lv = M(a.leaves); return `<div class="cnact" data-k="${esc(S(a.key))}"><b>${esc(S(a.label))}</b> <span class="stnote">${a.approved ? 'Approved' : 'Waiting for your approval'}</span>
+          <p class="stnote">${esc(S(lv.method))} to <b>${esc(S(lv.host))}</b> · when: ${esc(S(lv.when))} · sends: ${esc(L(lv.fields).join(', ') || 'no customer data')} · keys used: ${esc(L(lv.secrets).join(', ') || 'none')}${L(lv.writes_back).length ? ' · writes back: ' + esc(L(lv.writes_back).join(', ')) : ''}${a.staff ? ' · staff button in the app' : ''}</p>
+          <div class="row">${a.approved ? '' : '<button class="btn go" type="button" data-cnok>Approve</button>'}<button class="btn" type="button" data-cnrun>Run on an entry…</button><button class="btn" type="button" data-cnx>Remove</button></div></div>`; }).join('') || '<p class="stempty">No connectors yet.</p>'}
+        <h5>Keys</h5><p class="stnote">${L(cn.secrets).map(s => esc(S(s))).join(', ') || 'none'} (values never shown)</p>
+        <form class="stapp cnsec" autocomplete="off"><div class="row"><input name="name" placeholder="key name (e.g. hub_token)" aria-label="Key name" spellcheck="false"><input name="value" type="password" placeholder="value" aria-label="Key value" autocomplete="off"><button class="btn" type="submit">Save key</button></div></form>
+        <h5>Incoming (webhooks)</h5>${L(cn.hooks).map(h => `<p class="stnote">${esc(S(h.key))} → ${esc(S(h.coll))} · <code>${esc(S(h.url))}</code> · signed ${esc(S(M(h.sig).type))} in ${esc(S(M(h.sig).header))} <button class="ib" type="button" data-hkx="${esc(S(h.key))}">Remove</button></p>`).join('') || '<p class="stempty">None.</p>'}
+        <form class="stapp cnhook" autocomplete="off"><div class="row"><input name="key" placeholder="name (e.g. courier)" aria-label="Hook name"><input name="coll" placeholder="list (e.g. orders)" aria-label="List"><input name="match" placeholder="match: field=$.path" aria-label="Match"><input name="set" placeholder="set: status=$.state, note=$.msg" aria-label="Set"><button class="btn" type="submit">Add webhook</button></div></form>
+        ${L(cn.runs).length ? `<h5>Last runs</h5><div class="sttbl"><table><thead><tr><th>When</th><th>Action</th><th>Why</th><th>Result</th><th>Note</th></tr></thead><tbody>${L(cn.runs).map(x => `<tr><td>${esc(S(x.at).slice(0, 16).replace('T', ' '))}</td><td>${esc(S(x.action))}</td><td>${esc(S(x.trigger))}</td><td>${esc(S(x.status))}${x.code ? ' ' + N(x.code) : ''}</td><td>${esc(S(x.note))}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+      const pf = cnbox.querySelector('.cnpack'), ff = pf.querySelector('.cnf');
+      const fields = () => { const p = packs.find(x => x.key === pf.pack.value) || {};
+        ff.innerHTML = `<p class="stnote">${esc(S(p.note))}${L(p.needs_fields).length ? ' Needs these fields on the list: ' + esc(L(p.needs_fields).join(', ')) + '.' : ''} ${esc(S(p.not_verified))}</p>` +
+          (p.no_actions ? '' : `<div class="row">${Object.entries(M(p.settings)).map(([k, v]) => `<input name="s_${esc(k)}" value="${esc(S(v))}" placeholder="${esc(k.replace(/_/g, ' '))}" aria-label="${esc(k)}">`).join('')}</div>
+          <div class="row">${L(p.secrets).map(k => `<input name="k_${esc(S(k))}" type="password" placeholder="${esc(S(k).replace(/_/g, ' '))}" aria-label="${esc(S(k))}" autocomplete="off">`).join('')}</div>`); };
+      pf.pack.addEventListener('change', fields); fields();
+      pf.addEventListener('submit', async e => { e.preventDefault(); const settings = {}, secrets = {};
+        pf.querySelectorAll('input').forEach(i => { if (i.name.startsWith('s_')) settings[i.name.slice(2)] = i.value.trim(); if (i.name.startsWith('k_') && i.value) secrets[i.name.slice(2)] = i.value; });
+        try { const v = await api('POST', base(o) + '/connect/pack', {pack: pf.pack.value, settings, secrets}); drawConn(v); toast(L(v.made).length ? `Added ${L(v.made).length} action(s) - approve each one.` + (L(v.problems).length ? ' Some need list fields first: ' + L(v.problems).join('; ') : '') : (L(v.problems).join('; ') || S(v.note))); }
+        catch (er) { toast(er.message, true); } });
+      cnbox.addEventListener('click', async e => {
+        const act = e.target.closest('.cnact'), k = act && act.dataset.k;
+        try {
+          if (e.target.closest('[data-cnok]')) { if (!confirm('Approve this connector? It will send exactly what is listed to that address with your key.')) return; drawConn(await api('POST', `${base(o)}/connect/actions/${encodeURIComponent(k)}/approve`, {her_tap: true})); }
+          if (e.target.closest('[data-cnrun]')) { const row = prompt('Entry id to run it on (blank = none):', ''); if (row === null) return; const v = await api('POST', `${base(o)}/connect/actions/${encodeURIComponent(k)}/run`, {row: row.trim(), her_tap: true}); toast('Result: ' + S(v.status) + (v.why ? ' - ' + S(v.why) : '')); drawConn(await api('GET', base(o) + '/connect')); }
+          if (e.target.closest('[data-cnx]')) { if (!confirm('Remove this connector?')) return; drawConn(await api('DELETE', `${base(o)}/connect/actions/${encodeURIComponent(k)}`)); }
+          const hx = e.target.closest('[data-hkx]'); if (hx) { drawConn(await api('DELETE', `${base(o)}/connect/hooks/${encodeURIComponent(hx.dataset.hkx)}`)); }
+        } catch (er) { toast(er.message, true); }
+      });
+      const sf = cnbox.querySelector('.cnsec');
+      sf.addEventListener('submit', async e => { e.preventDefault(); try { await api('PUT', `${base(o)}/connect/secrets/${encodeURIComponent(sf.name.value.trim())}`, {value: sf.value.value}); sf.value.value = ''; drawConn(await api('GET', base(o) + '/connect')); toast('Key saved and locked.'); } catch (er) { toast(er.message, true); } });
+      const hf = cnbox.querySelector('.cnhook');
+      hf.addEventListener('submit', async e => { e.preventDefault();
+        const pair = s => { const [k, ...v] = s.split('='); return [k.trim(), v.join('=').trim()]; };
+        const set = {}; hf.set.value.split(',').filter(x => x.includes('=')).forEach(x => { const [k, v] = pair(x); set[k] = v; });
+        const [mk, mv] = pair(hf.match.value);
+        try { const v = await api('PUT', base(o) + '/connect/hooks', {hook: {key: hf.key.value.trim(), coll: hf.coll.value.trim(), match: {[mk]: mv}, set}}); drawConn(v); if (v.new_secret) prompt('Webhook secret - shown only now. Put it in your service (HMAC-SHA256 hex of the body in x-signature):', S(v.new_secret)); }
+        catch (er) { toast(er.message, true); } });
+    };
+    try { drawConn(await api('GET', base(o) + '/connect')); } catch (er) { cnbox.remove(); }
+    // v0.419 PAISA: her own gateway (keys typed here, sealed, never shown again), payments + refunds (her tap), links, AutoPay, split
+    const pybox = document.createElement('section'); pybox.className = 'stcol stpay'; box.appendChild(pybox);
+    const rs = p => 'Rs ' + (N(p) / 100).toLocaleString('en-IN', {maximumFractionDigits: 2});
+    const drawPay = py => {
+      if (!py.on) {
+        const f = py.fields || {};
+        pybox.innerHTML = `<h4>Online payments <span>Off</span></h4>
+          <p class="stnote">Join YOUR payment gateway. Customers pay on the gateway's own page and the money goes to your bank account; Hoola never holds it. An order is marked paid only when the gateway itself confirms it. Your keys are checked with the gateway, locked away, and never shown again.</p>
+          <form class="stapp" autocomplete="off"><div class="row"><label>Gateway <select name="gw">${L(py.gateways).map(g => `<option value="${esc(S(g))}">${esc(S(g).replace(/^./, c => c.toUpperCase()))}</option>`).join('')}</select></label>
+          <label class="chk"><input type="checkbox" name="test"> Test mode</label></div><div class="row pyf"></div>
+          <div class="row"><button class="btn go" type="submit">Check and join</button></div></form>`;
+        const fm = pybox.querySelector('form'), ff = fm.querySelector('.pyf');
+        const fields = () => { ff.innerHTML = L(f[fm.gw.value]).map(k => `<input name="${esc(S(k))}" placeholder="${esc(S(k).replace(/_/g, ' '))}" aria-label="${esc(S(k))}" autocomplete="off" spellcheck="false" ${/secret|password/.test(k) ? 'type="password"' : ''}>`).join(''); };
+        fm.gw.addEventListener('change', fields); fields();
+        fm.addEventListener('submit', async e => {
+          e.preventDefault(); const b = fm.querySelector('button.go'); b.disabled = true;
+          const keys = {}; ff.querySelectorAll('input').forEach(i => { keys[i.name] = i.value.trim(); });
+          try { drawPay(await api('PUT', base(o) + '/pay/keys', {gateway: fm.gw.value, keys, test: fm.test.checked})); toast('Gateway joined. Now add the webhook address shown here in your gateway dashboard.'); }
+          catch (er) { toast(er.message, true); b.disabled = false; }
+        });
+        return;
+      }
+      const tot = M(py.totals), can = L(py.can);
+      pybox.innerHTML = `<h4>Online payments <span>${esc(S(py.gateway))}${py.test ? ' · test' : ''}</span></h4>
+        <p class="stnote">Received ${esc(rs(tot.paid))} in ${N(tot.count)} payments · refunded ${esc(rs(tot.refunded))}${N(tot.mismatch) ? ` · <b>${N(tot.mismatch)} amount mismatch to check</b>` : ''}</p>
+        <p class="stnote">Webhook address for your gateway: <code>${esc(S(py.webhook_url))}</code><br>${esc(S(py.webhook_how))}</p>
+        <div class="row"><button class="btn" type="button" data-pyset>Settlements</button><button class="btn" type="button" data-pyoff>Remove gateway</button></div><div class="pyset"></div>
+        ${L(py.payments).length ? `<div class="sttbl"><table><thead><tr><th>When</th><th>What</th><th>Amount</th><th>Status</th><th>Refunded</th><th></th></tr></thead><tbody>${L(py.payments).map(p => `<tr data-p="${esc(S(p.id))}"><td>${esc(S(p.created).slice(0, 16).replace('T', ' '))}</td><td>${esc(S(p.label))}${p.url ? ` <a href="${esc(S(p.url))}" target="_blank" rel="noopener">link</a>` : ''}</td><td>${esc(S(p.amount_rs))}</td><td>${esc(S(p.status))}${p.why ? ' · ' + esc(S(p.why)) : ''}</td><td>${N(p.refunded) ? esc(rs(p.refunded)) : ''}${L(p.refunds).filter(f => ['ambiguous', 'pending', 'sending'].includes(f.status)).map(f => ` <button class="ib" type="button" data-rfchk="${esc(S(f.id))}">Check ${esc(S(f.amount_rs))}</button>`).join('')}</td><td>${p.status === 'paid' && N(p.refunded) < N(p.amount) && can.includes('refund') ? '<button class="ib" type="button" data-rf>Refund…</button>' : ''}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No online payments yet.</p>'}
+        ${can.includes('links') ? `<form class="stapp pylink" autocomplete="off"><div class="row"><input name="amount" inputmode="decimal" placeholder="Amount (Rs)" aria-label="Amount"><input name="purpose" placeholder="For what (e.g. udhaar)" aria-label="Purpose"><input name="phone" inputmode="tel" placeholder="Customer phone (optional)" aria-label="Phone"><button class="btn go" type="submit">Make payment link</button></div></form>` : ''}
+        ${can.includes('subscriptions') ? `<h5>AutoPay plans</h5>${L(py.plans).map(p => `<p class="stnote">${esc(S(p.name))} · ${esc(rs(p.amount))} every ${esc(S(p.period))} × ${N(p.count)} <button class="ib" type="button" data-plx="${esc(S(p.key))}">Stop offering</button></p>`).join('') || '<p class="stempty">No plans.</p>'}
+          <form class="stapp pyplan" autocomplete="off"><div class="row"><input name="name" placeholder="Plan name (e.g. Daily milk)" aria-label="Plan name"><input name="amount" inputmode="decimal" placeholder="Amount (Rs)" aria-label="Amount"><select name="period" aria-label="Every"><option value="month">every month</option><option value="week">every week</option><option value="year">every year</option></select><input name="count" inputmode="numeric" placeholder="How many times" aria-label="How many times" value="12"><button class="btn go" type="submit">Add plan</button></div></form>
+          ${L(py.subs).filter(x => !['created'].includes(x.status)).map(x => `<p class="stnote">Subscription ${esc(S(x.plan))} · ${esc(S(x.status))} · ${N(x.charges)} charged ${['cancelled', 'completed'].includes(x.status) ? '' : `<button class="ib" type="button" data-subx="${esc(S(x.id))}">Cancel</button>`}</p>`).join('')}` : ''}
+        ${can.includes('split') ? `<h5>Vendor payouts${M(py.split).hash ? ' · rule ' + esc(S(M(py.split).hash)) + ' approved' : ''}</h5>
+          <p class="stnote">One line per vendor: name, the vendor's account id from your gateway (Razorpay Route linked account / Cashfree vendor id), percent of each order. The rest stays with you.</p>
+          <form class="stapp pysplit"><textarea name="lines" rows="3" aria-label="Vendor lines" placeholder="Kisan Dairy, acc_ABC123, 20">${esc(L(M(py.split).rules).map(x => { const v = L(M(py.split).vendors).find(v => v.key === x.vendor) || {}; return `${S(v.name)}, ${S(v.account)}, ${x.percent}`; }).join('\n'))}</textarea>
+          <div class="row"><button class="btn go" type="submit">Approve this payout rule</button></div></form>` : ''}`;
+      const reload = async () => drawPay(await api('GET', base(o) + '/pay'));
+      pybox.querySelector('[data-pyoff]').onclick = async () => { if (!confirm('Remove the gateway? Online payment stops in the app; past payments stay.')) return; try { drawPay(await api('DELETE', base(o) + '/pay/keys')); } catch (er) { toast(er.message, true); } };
+      pybox.querySelector('[data-pyset]').onclick = async () => {
+        const bx = pybox.querySelector('.pyset');
+        try { const s = await api('GET', base(o) + '/pay/settlements'); bx.innerHTML = L(s.settlements).length ? `<div class="sttbl"><table><thead><tr><th>Settlement</th><th>Amount</th><th>Fees + tax</th><th>Status</th><th>UTR</th></tr></thead><tbody>${L(s.settlements).map(x => `<tr><td>${esc(S(x.id))}</td><td>${esc(rs(x.amount))}</td><td>${esc(rs(N(x.fees) + N(x.tax)))}</td><td>${esc(S(x.status))}</td><td>${esc(S(x.utr))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No settlements.</p>'; }
+        catch (er) { bx.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; }
+      };
+      pybox.addEventListener('click', async e => {
+        const rf = e.target.closest('[data-rf]'), chk = e.target.closest('[data-rfchk]'), plx = e.target.closest('[data-plx]'), sx = e.target.closest('[data-subx]');
+        try {
+          if (rf) { const tr = rf.closest('tr[data-p]'); const amt = prompt('Refund amount in Rs (blank = everything not yet refunded):', ''); if (amt === null) return;
+            const v = await api('POST', `${base(o)}/pay/${encodeURIComponent(tr.dataset.p)}/refund`, {amount: amt.trim() || null, her_tap: true}); toast(S(v.say)); await reload(); }
+          if (chk) { const v = await api('POST', `${base(o)}/pay/refunds/${encodeURIComponent(chk.dataset.rfchk)}/check`); toast('Refund: ' + S(v.status)); await reload(); }
+          if (plx) { drawPay(await api('DELETE', `${base(o)}/pay/plans/${encodeURIComponent(plx.dataset.plx)}`)); }
+          if (sx) { if (!confirm('Cancel this customer\'s AutoPay?')) return; await api('POST', `${base(o)}/pay/subs/${encodeURIComponent(sx.dataset.subx)}/cancel`); await reload(); }
+        } catch (er) { toast(er.message, true); }
+      });
+      const lf = pybox.querySelector('.pylink');
+      if (lf) lf.addEventListener('submit', async e => { e.preventDefault();
+        try { const v = await api('POST', base(o) + '/pay/link', {amount: lf.amount.value, purpose: lf.purpose.value, phone: lf.phone.value, her_tap: true}); toast(S(v.say)); if (v.url) prompt('Payment link (copy and send it yourself):', S(v.url)); await reload(); }
+        catch (er) { toast(er.message, true); } });
+      const pf = pybox.querySelector('.pyplan');
+      if (pf) pf.addEventListener('submit', async e => { e.preventDefault();
+        try { drawPay(await api('POST', base(o) + '/pay/plans', {name: pf.name.value, amount: pf.amount.value, period: pf.period.value, count: pf.count.value, her_tap: true})); toast('Plan added. Customers see it under AutoPay in the app.'); }
+        catch (er) { toast(er.message, true); } });
+      const sf = pybox.querySelector('.pysplit');
+      if (sf) sf.addEventListener('submit', async e => { e.preventDefault();
+        const vendors = [], rules = [];
+        sf.lines.value.split('\n').map(x => x.split(',').map(y => y.trim())).filter(x => x.length >= 3 && x[1]).forEach((x, i) => { const k = 'v' + (i + 1); vendors.push({key: k, name: x[0], account: x[1]}); rules.push({vendor: k, percent: Number(x[2])}); });
+        if (!confirm(`Approve this payout rule? ${rules.map(r => r.percent + '%').join(' + ')} of every paid order goes to these vendors through ${S(py.gateway)}.`)) return;
+        try { drawPay(await api('PUT', base(o) + '/pay/split', {vendors, rules, her_tap: true})); toast('Payout rule approved.'); }
+        catch (er) { toast(er.message, true); } });
+    };
+    try { drawPay(await api('GET', base(o) + '/pay')); } catch (er) { pybox.remove(); }
     // v0.355 GST BILL: her GST details -> finished rows get a tax invoice (GST-inclusive prices)
     const gbox = document.createElement('section'); gbox.className = 'stcol stgst'; box.appendChild(gbox);
     const drawGst = g => {
@@ -1570,6 +1709,7 @@ window.HoolaBuild = function (C) {
       catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
     });
     if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
+    if (info.linked) auditBox(o, box);
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
       let rows = [];
@@ -1627,6 +1767,17 @@ window.HoolaBuild = function (C) {
       try { const r = await api('POST', base(o) + '/logic/apply', {hash: S(d.hash)}); toast(S(r?.say) || 'Applied.'); reload(); }
       catch (er) { toast(er.message, true); ap.disabled = false; }
     });
+  }
+
+  /* v0.434 who changed what (every change to the app's data, with the person) + who may do what */
+  async function auditBox(o, box) {
+    let v; try { v = await api('GET', base(o) + '/audit?limit=60'); } catch (er) { return; }
+    const sec = document.createElement('section'); sec.className = 'stlogic';
+    sec.innerHTML = `<h4>Who changed what <span>last ${L(v.audit).length}</span></h4>`
+      + (L(v.audit).length ? `<div class="sttbl"><table><thead><tr><th>When</th><th>Who</th><th>List</th><th>Change</th><th>Fields</th></tr></thead><tbody>${L(v.audit).map(a => `<tr><td>${esc(new Date(S(a.at)).toLocaleString())}</td><td>${esc(S(a.by))}</td><td>${esc(S(a.list))}</td><td>${esc(S(a.op))}</td><td>${esc(L(a.fields).join(', '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No changes yet.</p>')
+      + `<h4 style="margin-top:12px">Who can do what</h4><div class="sttbl"><table><thead><tr><th>List</th><th>Add</th><th>See</th><th>Change</th><th>Delete</th><th>Only staff see</th></tr></thead><tbody>${L(v.matrix).map(m => `<tr><td>${esc(S(m.label))}</td><td>${esc(S(m.create))}</td><td>${esc(S(m.read))}</td><td>${esc(S(m.update))}</td><td>${esc(S(m['delete']))}</td><td>${esc(L(m.staff_see).join(', '))}</td></tr>`).join('')}</tbody></table></div>`
+      + `<p class="stnote">Mobile OTP login: ${v.otp ? 'on' : 'off (needs an SMS provider on the server)'}</p>`;
+    box.appendChild(sec);
   }
 
   /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */

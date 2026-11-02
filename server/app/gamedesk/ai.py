@@ -112,6 +112,40 @@ HARD RULES (the build fails otherwise)
   "red_bat" -> sprite "red_bat", level "l1" -> background "bg_l1"; sounds "sfx_jump" ...). ALWAYS keep the drawn
   fallback when has(key) is false. If HoolaAssets.CREDITS is not empty, show it in small text on the title screen.
   Load no other files.
+- WORLD: if the files include hoola_world.gd (the HoolaWorld autoload, written by Hoola from an approved generated world -
+  NEVER edit or re-output it), build the map from it instead of inventing one: HoolaWorld.keys(), HoolaWorld.size(key)
+  -> Vector2i, tile(x, y, key) -> int, tile_name(id, key), walkable(x, y, key), solid(x, y, key), height(x, y, key)
+  0..1, spawn(key) -> Vector2i, points("villages" / "rooms" / "exit" / "treasure" / "goal" / "coins", key) -> Array of
+  Vector2i, sprite(key, cell_px) -> Sprite2D of the whole map (fast; add it under a Node2D), color(id, key).
+  key "" = the first world. A "side" view world is a platformer level (y = 0 is the top row).
+- PHYSICS: if the files include hoola_physics.gd (the HoolaPhysics autoload, settings PROVED in Hoola's physics lab -
+  NEVER edit or re-output it), never set physics ticks or gravity yourself: it already did. Use
+  HoolaPhysics.jump_velocity(height_px) for jumps, jump_height(v), air_time(v), range_of(vx, vy), gravity(), and call
+  HoolaPhysics.fast(body) on every fast RigidBody2D when HoolaPhysics.needs_ccd(speed) is true.
+- AUDIO: if the files include hoola_audio.gd (the HoolaAudio autoload, MEASURED by Hoola - NEVER edit or re-output it),
+  make positional players with HoolaAudio.player2d(stream) / player3d(stream) (distance set already), call
+  HoolaAudio.set_zone(key) when the player enters a place named in HoolaAudio.zones(), and HoolaAudio.occlude(player,
+  true / false) when a wall is between a sound and the player.
+- HAPTICS: if the files include hoola_haptics.gd (the HoolaHaptics autoload - NEVER edit or re-output it), call
+  HoolaHaptics.play(name) for the moments in HoolaHaptics.names() (e.g. "jump", "coin", "hit", "game_over"); put
+  HoolaHaptics.set_enabled(on) and set_intensity(0..1) on the settings / pause screen. Never vibrate any other way.
+- XR: if the files include hoola_xr.gd (the HoolaXR autoload - NEVER edit or re-output it), build the 3D scene with an
+  XROrigin3D holding an XRCamera3D plus a normal Camera3D at head height for players without a headset; start XR only
+  from a tap with HoolaXR.start(origin); move only by HoolaXR.teleport(point) and turn only by HoolaXR.snap_turn(+-1)
+  (never smooth motion); read hand gestures with HoolaXR.gesture(joints) -> "pinch" / "grab" / "point" / "open".
+- SIMULATOR: if the files include hoola_sim.gd (the HoolaSim autoload, a VALIDATED orbit model - NEVER edit or re-output
+  it), move spacecraft only with HoolaSim.step([position_km, velocity_kms], dt_s) (RK4, two-body + J2); draw kilometres
+  scaled to the screen; never invent another physics for orbits.
+- RUNTIME: if the files include hoola_runtime.gd (the HoolaRuntime autoload: Hoola's replay recorder, test bot and
+  opt-in telemetry - NEVER edit or re-output it), NEVER call randomize() and never seed from the clock: in Hoola's test
+  runs HoolaRuntime seeds the game so a recorded play replays exactly (randf / randi are fine; real players still get
+  a fresh random start). On the title screen call
+  `if HoolaRuntime.needs_consent(): HoolaRuntime.ask_consent(self)` (it asks the player once; nothing is sent without yes).
+  LIVE OPS: read tunable numbers through HoolaRuntime so live events and A/B tests can change them without a new build:
+  `HoolaRuntime.num("player.hp", HoolaBible.DATA["player"]["hp"])` (paths = player.<field>, economy.<field>,
+  <kind>.<id>.<field> of the Bible), switches with `HoolaRuntime.flag("double_coins")`; report game moments with
+  `HoolaRuntime.track("level_up", level)` / `track("game_over", level)` / `track("purchase")` (sent only with the
+  player's yes). Never build paid random items (loot boxes) or pressure to buy.
 - GAME BIBLE: if the files include hoola_bible.gd (the HoolaBible autoload), it is the source of truth written by Hoola -
   NEVER edit or re-output it. Read every name, colour and number that exists there from HoolaBible.DATA (e.g.
   HoolaBible.DATA["player"]["hp"], HoolaBible.DATA["by_id"]["enemy"]["red_bat"]["speed"], HoolaBible.DATA["entities"]["level"])

@@ -15818,3 +15818,667 @@ The meter bridge was re-run in Chromium: S = 6.01 Ω against the lab's true 6.00
 A new test, `test_everything_the_learner_sees_is_english`, fails if Hinglish words return to the labs, the runtime, the pages or the phone screen.
 
 The static `?v=` stamps and the service-worker cache name moved to 0.418.0, so phones fetch the new runtime.
+## v0.419.0 PAISA (App Sahayak Pillar E, Phases 52-53 — owner: "START PILLAR E"; built as 0.417 / 0.418, re-versioned on rebase)
+Online payments in her native apps through HER own gateway. Hoola never holds money.
+- `server/app/paygate/gw.py`: Razorpay / Cashfree PG / PhonePe PG (Standard Checkout v2) through their official server APIs
+  (httpx, injectable transport for tests). It covers create order, order state, webhook verification, event parsing, refund,
+  refund state, settlements, payment links, plans, subscriptions, cancel, and transfers. A timeout is reported as
+  `ambiguous`. PhonePe does orders + refunds only.
+  - Razorpay webhook: hex HMAC-SHA256 of the body with her webhook secret.
+  - Cashfree webhook: base64 HMAC-SHA256 of timestamp + body with her client secret.
+  - PhonePe webhook: sha256(user:password).
+- `server/app/appmaker/pay.py` + tables app_pay_keys / app_payment / app_refund / app_sub (registered in db.init_db, with
+  ensure_tables):
+  - Keys: PUT /api/apps/<ref>/pay/keys. The gateway checks them first (wrong keys are never saved), then they are sealed
+    (vault). No route returns them.
+  - Pay start: POST /api/app-api/<key>/pay/c/<coll>/<id>/start, the customer's own unpaid order only. The amount is the
+    SERVER's total in paise. The same order within 25 minutes reuses the same payment.
+  - Pay page: GET /pay/p/<token>, an HMAC-signed link that lasts 30 minutes (forged = 404, expired = 410). It shows the
+    gateway's own checkout (Razorpay Checkout / Cashfree JS / PhonePe redirect) under a strict CSP. GET /pay/s/<token>
+    returns the state.
+  - Paid: `_paid` is the ONE place a payment becomes paid. It takes only what the gateway said: a verified webhook,
+    the pay-page status read (at most every 4 s), or the tick for orders still "created" 1-120 min old. The amount
+    must match; a different amount is held as `mismatch` + a chat note. A paid order gets paid=Verified + `_pay` on the
+    row (journaled -> live).
+  - Refunds: her_tap only, at most paid minus refunded minus refunds in flight. The refund number is recorded BEFORE the
+    call (the gateway's idempotency). A timeout becomes `ambiguous`; /refunds/<id>/check and the tick ask with the SAME
+    number. The webhook counts each refund once.
+  - Payment links (her tap), settlements (read-only).
+  - AutoPay: plans (her tap) live in backend.pay.plans. The customer subscribes and approves the mandate on the gateway
+    page; the consent text shows the amount, how often, how many times, and that she can cancel any time. One live
+    subscription per plan. The customer cancels her own, the owner cancels any.
+  - Split: a vendor rule she approved (hash + time; any change = approve again; at most 100%). Cashfree sends
+    order_splits on the order. Razorpay Route transfers run once per payment, recorded before sending.
+- Apps get `pay: {on, plans}` in the backend hint.
+  - Android `Pay.kt` and iPhone `Pay.swift`: PayButton on the customer's unpaid order (opens the page in the browser,
+    then waits for the gateway's word) and PlansBlock (plans + her own subscriptions with Cancel).
+  - Console: Payments box (join, webhook address + how, payments, refund / check, settlements, link, plans,
+    subscriptions, payout rule). Phone: `lib/ui/app_pay.dart` (join, payments, refund after a confirm, link).
+- Tests: tests/test_v0419_paisa.py (5) against a fake gateway in the documented shapes.
+- NOT VERIFIED: no live merchant account has answered. Cashfree subscription field names and the PhonePe v2 shapes follow
+  the docs from memory and need checking against her first real test payment. Native gateway SDKs are not used; the
+  hosted checkout is official.
+
+## v0.420.0 GAME DESK ROLES 1: PROCEDURAL WORLDS + PHYSICS LAB (Hoola Game Engine plan Phase 7 batch 1 = Game Desk plan phase 2) - 1 Nov 2026
+Owner: "GO PHASE 7". Phase 7 = the nine other Game Desk roles in batches (docs/GAME_DESK_PLAN.md section 5). This is
+batch 1: the Procedural World Generation Engineer and the Physics Engine Developer, both LIVE hire cards now. Batches 2-4
+(spatial audio + haptics; multiplayer + AR/VR; VFX TD + simulation + digital twin) are not built yet.
+
+ROLE PACKS (`gamedesk/packs.py`): each role writes its OWN autoload into every build of her game, the same rule as the
+Bible and the assets - Hoola writes it from data she approved, the model only reads it (ai.GUIDE) and never edits or
+re-outputs it. `template.HOOLA_OWN` lists Hoola's autoloads (bible, assets, world, physics) for the project file and the
+guard; `service._own_packs` drops anything the model wrote under those names and leaves no stale file behind; a pack
+that fails never breaks a build. A pack can also serve a Hoola-made demo at /play/<token>/ (`packs.demo_build`).
+
+PROCEDURAL WORLDS (`gamedesk/world.py`, table `game_worlds`, tool `game_world`, /api/gamedesk/world*):
+- kinds terrain (fbm value noise + island mask, biomes from height + moisture, rivers by steepest descent that carve on
+  through pits to the sea, passes cut so the land joins, villages), dungeon (rooms, Prim MST corridors + loops, exit =
+  farthest room, treasure), city (road grid with gaps that never split the network, blocks, buildings only where a
+  real road is beside them, taller near the centre, parks / squares), level (side view: ground, gaps, steps, floating
+  platforms, spikes, coins, goal). numpy only, no model, no money; her words -> params via a small model call that
+  only PICKS numbers (clamped in code), rules when there is no model.
+- CHECKED in code: generated twice (fingerprints must match = same seed same world); flood-fill reachability from the
+  spawn for every village / room / exit / treasure, a stuck spawn named, a cut-off landmass named with its share; a
+  level is walked by a jump graph that follows the real ARC (`can_jump`: full height only up to half the jump width,
+  level at full width) with head room - the first generator failed 18 of 60 levels against this check (two gaps in a
+  row, spikes on jump edges, back-to-back spikes, steps right after a gap) and was fixed until 0 of 560 fail across 7
+  jump settings; cities first left buildings with no road beside them (fixed: frontage is checked on real road cells).
+- files: preview.png, world.json, 16-bit heightmap.png, world.glb (glTF 2.0 binary written from numpy, parsed back by
+  `read_glb` before it is kept), each behind a signed link.
+- walk-it demo: Hoola's own explorer (top view: walk by keys / taps) or runner (side view: the jump is worked out from
+  the level's own jump height / width) built in Godot, exported to Web and played by the usual playtest; served at
+  /play/<token>/.
+- her OK -> HoolaWorld in her game (tile / walkable / solid / height / spawn / points / sprite / image...), rebuilt
+  through G.data_build with no model call; one approved world per key.
+
+PHYSICS LAB (`gamedesk/physics.py`, table `game_physics`, tool `game_physics`, /api/gamedesk/physics*):
+- her numbers (fastest body px/s, thinnest wall px, ticks, gravity) from the inputs, her words or the biggest 'speed'
+  in her Game Bible; settings chosen in CODE (`choose`): keep her ticks when safe, raise them when <= 120 is enough,
+  else continuous collision on fast bodies.
+- the lab = Hoola's own GDScript run headless with --fixed-fps: free fall (vs 1/2 g t^2 AND vs the integrator's own
+  step answer y_n = g dt^2 n(n+1)/2 - measured 498.17 px = 0.0% from the step answer, 1.67% from the textbook, so the
+  error is explained), projectile range (2.04%), elastic collision masses 1 / 2 (v -100 / 200 exactly, momentum and
+  energy 0.0%), tunnelling at HER speed into HER wall (six bullets per mode from six start points, without CCD /
+  cast-ray / cast-shape), six-box stack (drift 0.23 px, sink 1.7 px), 3D drop (1.67%), and the whole lab twice
+  (fingerprints must match). When Hoola changes her settings, her old settings run once more as the evidence.
+- FOUND IN THE REAL ENGINE (Godot 4.7.2), and the rules were changed to match: (1) without CCD a body is pushed out on
+  whichever side its centre is nearer, so once a step can carry the centre past the MIDDLE of the wall it stops or
+  goes through depending on where the steps land (the first lab showed 900 px/s "through" a 16 px wall but 3000 px/s
+  "stopped" by an 8 px one - luck, not physics; with six start points 3000 / 8 goes through 5 of 6) -> safe without
+  CCD only when one step <= half the wall; (2) of the two CCD modes only CAST_RAY stopped every case; CAST_SHAPE
+  behaved like no CCD -> HoolaPhysics.fast() uses cast-ray, and the lab keeps measuring both.
+- only a PASS can be approved; her OK -> HoolaPhysics in her game (ticks, gravity, fast(), needs_ccd(), step_ok(),
+  jump_velocity / jump_height / air_time / range_of with the formulas the lab checked).
+- Fluids are NOT part of this pack yet (said on the card, in the tool and in the hire card).
+
+Console: Game Desk home "Game Desk team" + board buttons Worlds / Physics (gsWorld / gsPhysics), the Game Desk shows in
+the sidebar when any Game Desk role is hired. Phone: lib/ui/game_roles_screen.dart (GameWorldsScreen /
+GamePhysicsScreen) from the desk and the project screen. Tests: test_v0420_game_roles.py (20, two run the real Godot
+when it is installed).
+Verified here with Godot 4.7.2: terrain and level walk-it demos built, exported and played (46 / 45 fps on the server,
+2.8 / 1.4 s load); the physics lab PASS 7/7 for 400/16, 900/16 (113 ticks), 3000/8 and 20000/4 (cast-ray), each in
+about half a second. NOT VERIFIED: on her VPS, and a model-written game actually reading HoolaWorld / HoolaPhysics
+(the guide tells it how; the next real game build will show it).
+
+## v0.421.0 GAME DESK ROLES 2: SPATIAL AUDIO + HAPTICS (Hoola Game Engine plan Phase 7 batch 2 = Game Desk plan phase 3) - 1 Nov 2026
+Owner: "GO PHASE 7" (batch 2 of 4). Two more Game Desk employees went live, each a role pack (v0.420's packs.py: a
+Hoola-owned autoload in every build, the model only reads it). Batches 3-4 (multiplayer + AR/VR; VFX TD + simulation +
+digital twin) are not built yet.
+
+SPATIAL AUDIO SYSTEMS PROGRAMMER (`gamedesk/audio.py`, table `game_audio`, tool `game_audio`, /api/gamedesk/audio*):
+- renderer in numpy + scipy, licence-clean (no recorded HRTF set): Brown & Duda (1998) spherical head - Woodworth ITD
+  + a one-pole / one-zero head-shadow filter per ear (bilinear transform at 48 kHz), inverse-distance gain + air
+  absorption, occlusion = -10 dB + 800 Hz low-pass, reverb zones = early reflections + exponentially decaying noise
+  designed to an RT60.
+- every claim MEASURED (`judge`): ear-to-ear time at 13 directions by cross-correlation vs Woodworth; level
+  difference 2-8 kHz by side; 6 dB per doubling (measured -6.02 / -6.02 / -6.02); occlusion -11.6 dB overall with
+  highs -32.6 dB; each zone's RT60 measured back by Schroeder T20 (0.6 / 1.8 / 3.0 s designed -> 0.598 / 1.792 /
+  2.993 s); loudness by ITU-R BS.1770 (K-weighting + both gates) to -16 LUFS with the true peak (4x oversampled) under
+  -1 dBFS; the render twice (byte-identical).
+- THREE expectations were wrong and the checks were corrected to the physics, not loosened to pass: the measured ITD
+  runs up to 11% over Woodworth's pure delay because the head-shadow filter delays the far ear too (a real head does
+  the same at low frequencies) -> limit 40 us or 12%; the level difference PEAKS NEAR 60 degrees, not 90 (sound bends
+  round a sphere and meets behind the far ear - the bright spot) -> it must grow 0 -> 30 -> 60 and stay above the
+  30-degree value at 90; a clap cannot reach -16 LUFS without clipping -> such a demo is reported "peak-limited" at
+  its real loudness, never squashed by a compressor. Also found by the tests: numpy floats / bools leaking into the
+  report would have broken saving it (cast to Python types).
+- said plainly on the card, the tool and the hire card: a spherical head gives no front / back or height cue (the
+  cone of confusion - 30 and 150 degrees measure the same), and in-game positional sound is Godot's own panning +
+  distance + zones; the binaural render is for the headphone demos and baked ambience.
+- demos: walkaround.wav (a sound circling the head in 8 s), distance.wav, zones.wav (48 kHz stereo, signed links).
+- her OK -> HoolaAudio: a bus per zone with AudioEffectReverb (room_size / damping mapped from RT60 - an approximation,
+  said), an occlusion bus (-10 dB + low-pass), player2d / player3d set to inverse distance with her min / max,
+  set_zone(), occlude().
+
+HAPTIC FEEDBACK SYSTEMS ENGINEER (`gamedesk/haptics.py`, table `game_haptics`, tool `game_haptics`, /api/gamedesk/haptics*):
+- patterns as data (events t / d ms, amplitude, sharpness), 15 library patterns, her moments matched by words (jump,
+  coin, hit, game over...); library patterns are FITTED to the chosen motor (pulses lengthened, later pulses moved to
+  keep the gap); numbers she types are checked as they are, never changed.
+- checks in code: shortest felt pulse per actuator (phone LRA 10 ms, phone ERM 30 ms, controller 40 ms, DRV2605 LRA /
+  ERM), gaps >= 20 ms, feedback <= 1.5 s, no two patterns that feel the same (5 ms envelope + pulse count distance <
+  0.18 is named), battery per play and per 1,000 plays from on-time x amplitude^2 x a stated drive power, an off switch
+  and an intensity slider always.
+- kit.zip: Core Haptics .ahap per pattern (validated: Version, EventType, Time, EventDuration, parameters 0-1) +
+  HoolaHaptics.swift, Android HoolaHaptics.kt (VibrationEffect waveforms, amplitudes 1-255, hasAmplitudeControl
+  fallback, VIBRATE permission noted), a DRV2605 real-time-playback C driver COMPILED here with gcc -Wall -Werror
+  against stand-in Arduino / Wire headers (no compiler = NOT ASSESSED), patterns.json + a pattern picture.
+- her OK -> HoolaHaptics: play(name) on phones (Input.vibrate_handheld; on the web Android Chrome only - iPhone browsers
+  have no vibration, said) and controllers (start_joy_vibration), set_enabled / set_intensity saved in user://. The
+  console can play the set on the phone it is opened on (navigator.vibrate).
+
+Console: Audio + Haptics pages (gsAudio / gsHaptics) on the Game Desk home and every board; the Game Desk shows when any
+of its roles is hired. Phone: GameAudioScreen / GameHapticsScreen (game_roles_screen.dart). Tests:
+test_v0421_game_audio_haptics.py (10, one runs both autoloads in the real Godot).
+Verified here with Godot 4.7.2: both autoloads load and run headless (zone bus, occlusion bus, haptics with the saved
+intensity); the audio report PASS 11/11 (3 zones) and 10/10 (2 zones), render ~1.7 s; the DRV2605 driver compiles.
+NOT VERIFIED: how the demos sound to her ears, the Android / iPhone kit code compiled in a real app (not here), and a
+real DRV2605 board.
+
+## v0.422.0 GAME DESK ROLES 3: MULTIPLAYER NETCODE + AR / VR (Hoola Game Engine plan Phase 7 batch 3 = Game Desk plan phase 4) - 1 Nov 2026
+Owner: "GO PHASE 7" (batch 3 of 4). Two more Game Desk employees live. Batch 4 (VFX TD + simulation + digital twin)
+not built yet. Also carries a re-trigger of the APK build: v0.421.0's CI run failed BEFORE any code ran (the Flutter
+setup step could not download Flutter, curl exit 35) and this session may not re-run workflows.
+
+MULTIPLAYER NETWORK PROGRAMMER (`gamedesk/netcode.py`, table `game_net`, tool `game_net`, /api/gamedesk/net*):
+- the bot run (`simulate`, deterministic event simulation): N bots at her speed through an authoritative server at her
+  tick rate, snapshots at her send rate with interest management + delta sizing against the last acknowledged
+  snapshot, a simulated network per packet (latency, jitter = out-of-order arrival, loss); clients predict their own
+  player, reconcile on every snapshot (server answer + replay of unconfirmed inputs), draw others 100 ms behind
+  (interpolation); the server rewinds for hits (lag compensation). Three networks: good 40 ms, the plan's 150 ms /
+  2 % / 20 ms, bad mobile 300 ms / 5 % / 60 ms.
+- MEASURED: rubber-banding (p95 / max correction, limit = a quarter of the player's size on the plan's network),
+  desync after inputs stop (must be exactly 0), bandwidth per player down / up (and without interest + deltas),
+  interpolation dry-outs (with the buffer this network needs: two send intervals + twice the jitter), lag-compensated
+  hit agreement vs none (100% vs 13% on the plan's network), the run twice.
+- THE BOTS FOUND TWO REAL NETCODE BUGS, both fixed in the simulation AND the Godot code: (1) a late OLDER snapshot
+  arriving after a newer one was applied - the client stepped back without the inputs it needed to replay - 12.8 px
+  of permanent desync on the bad mobile network -> snapshots older than the newest applied are dropped (2,264 dropped
+  in that run); (2) an input lost at the very end was never seen by the server (no later input revealed the gap) ->
+  4-13 px desync -> every client resends ALL unacknowledged inputs (up to 8) every tick, and the server waits 3 ticks
+  for a missing one before skipping it. After both: desync 0 px on every network, setting and seed tried, no input had
+  to be skipped; the cost (~1.8 KB/s up per player) is stated. Also corrected: my first interpolation measure mixed a
+  server-clock estimate with local arrival times (it read 45% dry); it now uses arrival times, as the Godot code does.
+- the Godot netcode (`GD_NET`, Hoola's own GDScript: shared quantised step, server tick + history, snapshot_for with
+  interest, rewind_hit, client_input / unacked / client_snapshot / remote) RUN IN THE REAL ENGINE by `godot_lab`: a
+  server + 3 clients in one headless process over an in-memory lossy link (the build box has no sockets): desync 0 px
+  on all three networks, interpolation works.
+- kit.zip: server/ (HoolaNet + a WebSocket server.gd + Dockerfile) for HER cloud, client/ HoolaNet, settings.
+- said plainly: Hoola hosts no game server (a Hoola box is an open owner decision, GAME_DESK_PLAN section 8); the
+  socket transport is not tested here; HoolaNet is NOT inside the game build yet (game code may not open sockets and
+  play links allow only their own host) - set_server stores HER wss:// address for the next step.
+
+AR / VR INTERACTION ENGINEER (`gamedesk/xr.py`, table `game_xr`, tool `game_xr`, /api/gamedesk/xr*):
+- comfort in code: teleport (smooth movement only with a vignette), snap turning 30 / 45, a seated mode, panels 1-3 m,
+  text >= 1.2 degrees (its mm height at that distance stated), fps target + triangle budget - headset frame rate NOT
+  ASSESSED (no headset).
+- gestures (pinch / grab / point / open) by rules on the 25 WebXR joints; a jointed synthetic hand model posed per
+  gesture with random size / rotation / position + 3 mm noise = 240 labelled hands: 97.9% (pinch 100, grab 97, point
+  95, open 100) with the confusion table; synthetic, said plainly. The SAME rules in GDScript (HoolaXR.gesture) agreed
+  on 80 of 80 hands in the real Godot.
+- demo: Hoola's WebXR room (floor, teleport pads, a panel sized from the text rule) built, exported and played (59 fps
+  on the server, 2.9 s load). FOUND in the screenshot: without a headset the XRCamera3D sits at the tracker pose = the
+  floor -> a normal camera at head height until a real XR session starts.
+- her OK -> HoolaXR (start from a tap via WebXR / OpenXR, snap_turn, teleport, seated_offset, gesture).
+
+Console: Multiplayer + VR / AR pages (gsNet / gsXr). Phone: GameNetScreen / GameXrScreen. Tests:
+test_v0422_game_net_xr.py (9, one runs the netcode + gestures in the real Godot).
+NOT VERIFIED: a real game server on her cloud, a real headset / phone XR session, her own hands.
+
+## v0.423.0 GAME DESK ROLES 4: SIMULATORS + DIGITAL TWIN + VFX PIPELINE (Hoola Game Engine plan Phase 7 batch 4 = Game Desk plan phase 5) - 1 Nov 2026
+Owner: "GO PHASE 7" (batch 4 of 4 - Phase 7 is now built: all ten Game Desk employees are live hire cards). None of
+Blender, OpenColorIO, OpenEXR, OpenUSD, SimPy or SGP4 is installed on the server, so all three packs are numpy / scipy
+and Hoola's own code, with every limit said.
+
+SIMULATION SOFTWARE ENGINEER (`gamedesk/sim.py`, table `game_sims`, tool `game_sim`, /api/gamedesk/sim*):
+- orbit (two-body + J2, RK4; mu / Re / J2 from WGS 84 / EGM96), flight (point-mass longitudinal light aircraft, drag
+  polar, ISA sea-level air; GENERIC parameters stated as assumptions), driving (linear single-track car). Every model
+  validated against its textbook case: orbit period vs 2 pi sqrt(a^3/mu) (5676.98 s = 5676.98 s), energy drift
+  (2.9e-11), J2 node regression vs -3/2 n J2 (Re/p)^2 cos i (-4.84 vs -4.75 deg/day at 500 km / 51.6 deg; +0.90 deg/day
+  at 98 deg = the sun-synchronous behaviour; GEO period 86,164 s = a sidereal day); glide angle vs atan(CD/CL); phugoid
+  20.4 s vs Lanchester 20.4 s; steady yaw rate vs V / (L + K V^2) (exact) + understeer / characteristic speed.
+  Scenarios = data (gust, burn), run twice (identical logs). log.csv + plot.png.
+- FOUND by a test case: the first period check assumed the orbit crosses y = 0 going up, so a 98-degree orbit "failed";
+  it now measures the swept angle reaching 360 degrees (any inclination / direction).
+- HoolaSim (the orbit RK4 step in GDScript) agrees with the Python model to < 1e-4 relative after 360 steps in the
+  REAL Godot (Godot vectors are 32-bit floats - said); an approved orbit simulator goes into her game; flight / driving
+  are reports + logs (GDScript ports not built). Weapon / targeting / combat simulators are refused in code; "a
+  training aid, not a certified flight training device".
+
+DIGITAL TWIN ARCHITECT (`gamedesk/twin.py`, table `game_twins`, tool `game_twin`, /api/gamedesk/twin*):
+- her line as data (stations: machines, cycle time + variation, MTBF / MTTR, buffers; shifts, days); Hoola's own
+  discrete-event engine (blocking buffers, lognormal cycles, breakdowns, per-machine seeded streams = common random
+  numbers for what-ifs); throughput, utilisation, WIP, lead time, bottleneck, what-ifs (one more machine at the
+  bottleneck, 20 % faster, a second shift), a layout picture.
+- checks: traceability (every number {value, source: tag:<her tag> | assumption: ...}; untraced numbers and tags not in
+  the data map are NAMED), read-only (data-map kinds csv / mqtt-subscribe / opcua-read / historian-read only; write /
+  setpoint / command words refused), the LINE engine on exact answers (one steady station 90.02 vs 90 / h, the slower
+  station sets the pace 80.0 vs 80 / h, breakdowns 53.29 vs 53.33 / h over 200 days), random queueing vs theory (M/M/1
+  and M/M/3 Erlang C within 5 % at 300,000 arrivals), the run twice, and her real week (within 10 %) - without it NOT
+  ASSESSED, never "validated".
+- FOUND: my first engine check used a separate little queue loop (not the line engine the twin uses) and too few
+  customers (6-7 % off at rho 0.8); the line engine now has its own exact-answer cases and the queueing check runs long
+  enough. A 3D twin view is not built (a 2D layout is).
+
+VFX PIPELINE TECHNICAL DIRECTOR (`gamedesk/vfx.py`, table `game_vfx`, tool `game_vfx`, /api/gamedesk/vfx*):
+- naming <show>_<seq>_<shot>_<task>_v###.####.ext with versions; colour end to end (declared sources: sRGB texture,
+  linear sRGB, ARRI LogC3, Sony S-Log3, ACEScg -> working ACEScg -> sRGB / Rec.709 view), the conversion DONE and
+  measured (round-trip on a 1,485-patch chart; LogC3 and S-Log3 decode their published 18 % grey codes to 0.1800);
+  a real OpenEXR (scanline, uncompressed, HALF RGB, AP1 chromaticities) written and read back by Hoola's own reader -
+  pixels exact; a render queue (workers, per-frame failure chance, re-queue up to 3 times, every frame done or named,
+  cost per shot from core-hours x her rate, farm wall time); a publish manifest tracing every frame to shot, version,
+  scene sha256, colour space, worker, attempt.
+- kit.zip: manifest, pipeline, a Blender (Cycles, EXR) render script for HER machines, the ACEScg test EXR, README -
+  Blender / OCIO / OpenUSD are not run on the server (said).
+
+Console: Simulators / Digital twin / VFX pipeline pages (one shared report page). Phone: GameSimScreen /
+GameTwinScreen / GameVfxScreen. Tests: test_v0423_game_sim_twin_vfx.py (12, one runs HoolaSim in the real Godot).
+NOT VERIFIED: a real plant week, a real render farm / Blender run, the EXR opened in Nuke / Resolve, a certified sim.
+
+PHASE 7 SUMMARY (v0.420 - v0.423): ten Game Desk roles live as role packs on the shared desk - World, Physics, Audio,
+Haptics, Netcode, XR, Simulator (Hoola-owned autoloads HoolaWorld / HoolaPhysics / HoolaAudio / HoolaHaptics / HoolaXR /
+HoolaSim, HoolaNet kit-only) + Digital Twin and VFX Pipeline (reports + kits). Real findings that changed code: Godot
+4.7.2 tunnels past HALF a wall and only cast-ray CCD works; a sphere's level difference peaks near 60 degrees; two
+netcode bugs (stale snapshots, lost tail inputs); the XR camera sits on the floor without a headset; the platformer
+generator made unwinnable levels (fixed until 0 of 560 fail).
+
+## v0.424.0 JODO (App Sahayak Pillar F, Phase 54 — owner: "START PILLAR F")
+Her apps talk to outside services through DECLARED HTTP actions (data, never code).
+- `server/app/appmaker/connect.py` + tables app_conn_secret / app_conn_run (registered in db.init_db + ensure_tables).
+  Actions live in backend.connect.actions.
+  - Approval: an action runs only after her approve tap. The approval is bound to `_hash` of method, url, headers, query,
+    body, auth, trigger, list, status, map, staff and idem; any change clears it.
+  - Save-time checks (`_clean`): https, a public host (no port, no user:pass, no {{}} in the host), the list and its
+    fields exist, a status is one of the list's options, the auth type is known, and any mention of Aadhaar is refused.
+  - Run-time checks: the host is resolved and refused when private / loopback / link-local / reserved (incl.
+    169.254.169.254); redirects are off; answers are capped at 1 MB with a 15 s timeout; per-action and per-app
+    per-minute limits.
+  - Auth: bearer / basic / header / query / login_token (Shiprocket) / oauth_refresh (Zoho; QuickBooks client
+    credentials as Basic, and a rotated refresh token is re-sealed) / google_sa (an RS256 JWT -> oauth2 token). Tokens
+    are cached in memory only.
+  - Placeholders {{row.x}} {{app.name}} {{facts.x}} {{now}} {{today}} {{run.id}} {{secret.x}}. A whole-placeholder
+    string keeps its type. Form bodies JSON-encode nested values (Delhivery data=).
+  - Secrets are sealed (vault) and returned by no route. Every stored note is scrubbed of their values.
+  - Write-back: `map` takes JSON paths into existing fields only, through W._value; values that don't fit are dropped.
+  - Retries happen only for GET or an idempotency header. A POST that timed out becomes `ambiguous` and is never resent.
+    A run stuck in `running` > 10 min becomes ambiguous, and the worker tick finishes `queued` ones.
+  - Triggers: `fire()` from BE._create (create) and BE.status_moved (status) queues the run in a thread pool, so the
+    order never waits. Staff buttons go through POST /api/app-api/<key>/connect/<action>/run (staff only, actions she
+    marked staff + manual); the backend hint lists them under `connect`.
+  - Inbound hooks: POST /api/app-api/<key>/hook/<name> with HMAC-SHA256 hex / base64 or a token in a header she names.
+    The secret is generated and shown once. One row is matched by a field; `set` paths are typed per field; the payload
+    is data (a status goes through status_moved).
+  - Owner routes: /api/apps/<ref>/connect (status, pack, actions, approve, run, secrets, hooks).
+- `connect_packs.py`: 13 packs from the providers' docs: Shiprocket (create + track), Delhivery (create + track), MSG91
+  flow, Fast2SMS DLT, WhatsApp Cloud template, Brevo, Resend (Idempotency-Key), Google Sheets append, Google Calendar
+  event, Zoho Books contact, QuickBooks sales receipt, Tally (export only, since Tally is local), licensed KYC.
+  A pack names the list fields it needs. An action whose fields are missing is reported, never invented.
+- Kits `Connect.kt` / `Connect.swift`: staff buttons on row cards (ConnectButtons).
+  Console Connectors box: packs, approve card with what leaves (host, fields, keys, write-back, when), run on an entry,
+  keys, webhooks, run log. Phone: `lib/ui/app_connect.dart` (approve + runs).
+- Tests: tests/test_v0424_jodo.py (4), against a fake service and a fake resolver.
+- NOT VERIFIED: no live provider account has answered. The pack shapes follow each provider's docs, and the first real
+  run on a test entry will confirm or correct them. The Google service account and the KYC provider's URL are hers to set up.
+
+### follow-up: ARCHITECTURE PDF LIKE A REAL DOCUMENT (owner: "SHOW ME A PERFECT PROTOTYPE OF IT HOW OUTPUT LOOK LIKE")
+- Live check passed on the VPS (v0.424.0): 2/2 diagrams in 2.7 s, capacity sums, one real Opus design in 326 s
+  (14 components, 6 ADRs, 7 risks, 4/4 diagrams, PDF 254 KB). Rendering a sample through the real pipeline then showed
+  four PDF faults every real design had: summary printed raw `**stars**`, goals / constraints unlabeled, ADR
+  alternatives unlabeled, and Key flows / Integrations / Security MISSING from the PDF (the Markdown had them).
+- `archdesk/service._pdf` rewritten: cover with an at-a-glance strip (components, decisions, risks, diagrams, peak
+  req/s from the capacity code), 15 numbered sections, `_inline` / `_prose` keep **bold**, `code`, *italic* and summary
+  bullets (everything else escaped), labelled Goals / Constraints / Assumptions, capacity inputs marked given / assumed,
+  diagrams as captioned figures, ADRs as cards with status chip + "Alternatives considered", risks coloured by level,
+  numbered open questions, page numbers, a closing "nothing has been built" line. Test: every section present, no raw
+  markdown, model text still escaped.
+
+## v0.425.0 RANG (App Sahayak Pillar G, Phases 55-57 — owner: "START PILLAR G")
+Rich native UI in her apps + the custom component escape hatch.
+- Server (`appmaker/backend.py`):
+  - EXTRA_TYPES gains signature / photos / video / audio / richtext.
+    - signature: a picture, like a photo.
+    - photos: up to 6 comma-separated ids, each hers and an image.
+    - video / audio: the file must be that kind.
+    - richtext: markdown words up to 4000 characters with tags stripped; webapp `_value` keeps richtext long.
+  - `_upload_media`: an ISO-BMFF container with a known `ftyp` brand. Video is MP4 / MOV up to 50 MB; audio (when the app
+    says audio/*) is M4A up to 10 MB. Kept as sent; the meta stores kind + ext.
+  - `file_for` serves the right file. POST /files/<id>/link returns a 15-minute HMAC address
+    /api/app-api/<key>/media/<id>.<exp>.<sig> (CSP sandbox, no token) for the phone's own players.
+- Kits `Rich.kt` / `Rich.swift`, native only:
+  - Fields: SignatureField/Row, PhotosField/Row, VideoField/Row, AudioField/Row (record 2 min, permission on tap),
+    RichTextField/Row.
+  - Showing: RichText(View), PhotosStrip(View), VideoPlayer(View) (VideoView / AVPlayer), AudioPlayer(View),
+    PdfViewer(View) (PdfRenderer page by page / PDFKit).
+  - Blocks: CalendarBlock, KanbanBlock (staff move cards through Db.update), GanttBlock, LineChart, PieChart, Carousel
+    (HorizontalPager / TabView), OnboardingPager.
+  - The outbox sends multi-photo values and video / audio with the right Content-Type.
+  - Hooked in: the generator's `_form_rows`, AutoForm (Logic.kt/.swift), RowsSection (Accounts) and the iOS form
+    switch + RichRowParts.
+  - Permissions: RECORD_AUDIO / NSMicrophoneUsageDescription only in apps with an audio field. Screen-writer prompts
+    list the pieces.
+- `appmaker/custom.py` custom components:
+  - Opus writes Kotlin + Swift + literal samples, with one repair round. `problems()` checks the house rules in CODE:
+    the name Custom*, package hoola.kit, allowed imports, banned web / net / io / intent / reflection / thread / log /
+    data-store / sign-in tokens, balanced braces, literal-only samples.
+  - JSON files live in the app folder. Approval is her tap, bound to a hash.
+  - `for_build`: approved + unchanged + clean components go into the build. android_files / swift_files write the files
+    plus ComponentsGallery (screen `hoola_components`, added to the registries and the QA screen lists only when there
+    are components).
+  - The Android compile loop: a log naming custom/<Name>.kt takes that component out of the build, marks it failed and
+    notes her. A finished build marks the rest verified. Screens are told about the approved components.
+  - Routes /api/apps/<ref>/components (GET, POST /draft, POST /<name>/approve, DELETE). Console box + phone
+    `lib/ui/app_components.dart`.
+- Tests: tests/test_v0425_rang.py (3).
+- NOT built: camera capture / document scan, Lottie, offline map tiles, a barcode inventory flow, and iOS compile-failure
+  marking for components (iOS builds run in her builds repo). Kits compile only in CI (no local Kotlin / Swift).
+## v0.426.0 CAMS + SLOTS + DYNAMICS (2 Nov 2026, built as 0.425)
+Owner: "cam and slot joints, dynamic simulation — fix and develop".
+- `engineering/cams.py` + `H.disc_cam(name, segments, base_radius, follower='roller'|'flat', roller_radius, offset, thickness,
+  bore, rpm, cam_joint, follower_joint, max_pressure_deg=30)`: the cam is made FROM the follower program (segments must add
+  to 360° and end where they started; laws cycloidal / harmonic / 3-4-5, closed forms checked at textbook points: half lift
+  at half angle, v max, a max). Roller: pitch curve, profile = pitch curve offset by the roller (measured = r), pressure
+  angle row, undercut row (pitch-curve min radius > roller). Flat: rho = Rb + s + s'' cusp row + face width. Follower
+  v / a / jerk at her rpm. Fails go back to the model (service.checks "Cam <name>: ..."). `H.cam` stays the CNC G-code call.
+- Slots: joint kind `slot` (direction + travel) is always a loop closure; residual = pin off the slot line; travel limits
+  lock the solve. URDF / SDF skip it (commented), MJCF = slide + hinge body + connect. Scotch yoke x = R cos θ − R exact.
+- `engineering/dynamics.py`: MuJoCo, meshes stripped, stiff equalities, payload body; independent joints follow quintic
+  0 → top → bottom → 0 in move_time_s (default 2 s), continuous / cam joints turn at rpm, followers follow the cam table;
+  computed torque (bias + Mjj PD 15 Hz) clipped at her effort -> peak / RMS / speed / error / saturation / energy / loop gap,
+  cam_peak + follower_peak (F x ds/dθ; the disc's own unbalance under gravity is real and kept in cam_peak). Motors with no
+  effort are sized peak x 1.25 (`sized_to`) and the package rewritten. Files dynamics.png + camcurve.png (console + phone).
+- Tests `test_v0425_cam_slot_dynamics.py`: laws, roller geometry + steep cam fails, yoke, slow move = m g L/2 (3 %), fast
+  > 1.5x, weak motor saturates, cam torque = follower force x ds/dθ (12 %), desk redesigns a steep cam.
+- NOT VERIFIED: no friction, backlash, link flex or contact force at the cam (the follower is a driven coordinate);
+  VPS needs `pip install mujoco` for the simulation (it says so when missing).
+
+
+## v0.427.0 (built as 0.425.0) HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8) - 2 Nov 2026
+Owner: "GO PHASE 8" (plan row: "Replay / bot / telemetry modules, Godot editor 'ask Hoola' panel via MCP").
+
+HOOLA RUNTIME (`gamedesk/runtime.py`, a role pack: HoolaRuntime autoload in every Studio build, default on; GDScript, not
+a C++ GDExtension - it runs on every export without a build per platform):
+- REPLAY + BOT: started only by Hoola's test runner (`--hoola-bot=seed,frames` / `--hoola-replay=<base64>` after `--`):
+  the in-engine bot injects seeded keys + taps with Input.parse_input_event (headless, no browser) and records them per
+  physics frame; the end state is fingerprinted (probe state + every Node2D / Node3D / Control position, sha256).
+  replay_test = bot run, the same seed again, then the recording played back - all three must match. A mismatch is
+  named with its likely cause from her code (randomize(), Time / OS clock). Real Godot 4.7.2: a deterministic test
+  game PASSES (600 frames, 116 bot inputs, three identical fingerprints); the same game with randomize() FAILS with
+  "randomize(" named; the replay is kept as a download (repro for any bug the bot finds).
+- FOUND before shipping: (1) the first version seeded the RNG on EVERY start - every player would have got the same
+  "random" game each session; the seed now applies ONLY in test runs; (2) the cause scan flagged Hoola's own runtime
+  file (it randomizes a separate generator for the install id) - Hoola's own files are excluded; (3) the guard caught
+  ConfigFile.load("user://...") as "loading files from outside the game" - a const path, as the haptics pack does.
+- TELEMETRY: OFF by default; needs her switch AND the player's yes (HoolaRuntime.ask_consent / needs_consent, saved in
+  user://); refused for a children's game (design-doc words; DPDP); a random install id on the device, event names +
+  frame numbers only, no device ids, no IP stored; posted only to POST /play/<token>/t on the play link's own host
+  (the page CSP allows nothing else) - the endpoint always answers 204, stores only when everything holds, caps 60
+  events / 16 KB a post and 30 posts / 10 min per install. Dashboard: installs, sessions by day, D1 / D7 retention from
+  install cohorts (a cohort too young says so), top events, the play funnel; she can delete it all.
+  The guard lets ONLY hoola_runtime.gd use HTTPRequest (and _own_packs replaces any file of that name the model writes).
+
+ASK HOOLA IN THE EDITOR (`gamedesk/editor.py`):
+- editor tokens: made in the console, shown ONCE, stored as sha256 (+ a 4-char hint), revocable, last use recorded;
+  scope = read her game projects, ask Hoola, add a To-do task (nothing else).
+- a real MCP server: POST /mcp/gamedesk, Streamable HTTP JSON-RPC 2.0 (initialize with protocol negotiation 2025-06-18
+  / 2025-03-26 / 2024-11-05, notifications -> 202, ping, tools/list, tools/call, batches; -32601 / -32602 / -32700
+  errors; GET 405), Bearer editor token (401 + WWW-Authenticate otherwise). Tools: hoola_projects, hoola_tasks,
+  hoola_bible, hoola_bugs, hoola_ask (her question + the open script -> an answer from her design doc, Bible and live
+  code; 30 an hour per token), hoola_add_task. Answers never change her files.
+- FOUND by the tests: my task tools read a field called "state" - tasks use "status", so "open tasks" was always empty.
+- the Godot plugin (addons/hoola: plugin.cfg, plugin.gd EditorPlugin dock, dock.gd: Ask / Tasks / Bible / Bugs over the
+  same MCP endpoint; server + token in HER EditorSettings, never in the project) is LOADED BY THE REAL GODOT EDITOR
+  (headless `--editor`) in the tests: "Hoola panel ready", no errors. Any MCP client (Claude Desktop, Cursor, a Godot
+  MCP bridge) can use the same address; the console shows the config snippet.
+
+Tool `game_runtime` (status / replay_test / telemetry / set; tokens never in chat). Console: "Runtime & editor" page
+(board) + "Editor" on the desk home (tokens, plugin download, MCP address + client config). Phone: GameRuntimeScreen
+(switches, replay test, telemetry numbers). Tests: test_v0425_game_runtime.py (8, two run the real Godot).
+NOT VERIFIED: telemetry from a real browser to the live server (the endpoint and the GDScript are tested separately),
+the plugin talking to the live server from her Godot (the build box has no network), and other MCP clients live.
+Not built from the plan's runtime list: save-game cloud sync, in-game feedback, Indian-language text-shaping checks,
+store billing hooks.
+
+## v0.428.0 MASTER ARCHITECT (built as 0.426; owner: "MAKE THIS Principal Software Architect -- MORE PRO AND ADVANCE THAT CAN WORK ANY COMPLEX TASK OF HIS FIELD -- MAKE A MASTER")
+The Architect did ONE job (a new-system design). A principal architect is asked for six, and each now has its own
+rules, its own section in the document and its own sums in CODE (`app/archdesk/master.py`):
+- **design** (new system) · **assess** (her EXISTING repo judged as it is: scorecard 1-5 on 8 dimensions with the
+  average + weakest computed, problems each with EVIDENCE) · **migrate** (strategy, phases each with a ROLLBACK and a
+  done-when, data move, cut-over) · **decide** (one technology choice: options x weighted criteria -> weighted totals
+  /100, ranking, margin, "close call", and a SENSITIVITY check - does the winner change when any one weight moves by 1;
+  a missing score is NAMED, never guessed) · **threat** (STRIDE: risk = likelihood x impact 1-9, sorted, open high
+  risks counted, target x letter coverage grid, letters never considered + components with no threats NAMED) ·
+  **scale** (what breaks first at 10x / 100x). assess / migrate refuse without her repo.
+- **Module map from the real code** (`archdesk/repomap.py`): up to 160 source files read through her Developer Sahayak
+  token, import lines of Python / JS / TS / Go / Java / Kotlin / C# / PHP / Rust resolved INSIDE the repo only (outside
+  packages counted as external, never guessed), module graph, dependency CYCLES (Tarjan), fan-in / fan-out hot-spots,
+  biggest modules; fed to the model as facts AND drawn as an extra "As-is module dependencies (from the code)" diagram.
+- **Boundary rules (fitness functions)**: every design states rules ("app/orders must not depend on app/riders");
+  code checks them on today's repo (breaks shown in the document) and on every PR review - only the lines the PR ADDS
+  are read, so an old import is never blamed on it; a break is a high finding "boundary (checked by code)" and turns a
+  model 'fits' into 'drifts'. Posting is still her tap.
+- **Growth scenarios** for every design with users-a-day: the capacity sheet at 1x / 10x / 100x, and what crosses a
+  limit first (single DB primary vs the db_write_rps limit she gave / the design states, app fleet > 20 servers,
+  > 2 TB storage) - no limit invented.
+- **Peer review + one revision**: a second principal-architect pass reviews every draft (NFRs measurable, SPOFs, data
+  ownership, security / DPDP, capacity agrees with the COMPUTED sheet, the kind's own section complete); any high /
+  medium issue -> one revision call; the document says how many issues and whether they were fixed.
+- **API contract**: the main public API as OpenAPI 3.1, parsed and checked in code (3.x, operations, responses),
+  delivered as api.yaml.
+- **Design checks** (code, free): measurable targets, alternatives on every ADR, mitigations, done-when on phases,
+  every component in a diagram, every diagram drawn, security + failure handling, plus per kind (every option scored /
+  all six STRIDE letters / every component has threats / rollback per phase / evidence per problem), valid API, her code
+  following the rules today. Shown as n/m pass on the cover and at the end.
+- Document: kind on the cover, peer-review line, 6 at-a-glance boxes (checks added), the kind's section right after
+  the summary, then the usual sections, growth scenarios, boundary rules, API contract, peer review, design checks.
+- Tool `software_architect` kind=..., POST /api/arch/projects kind, GET lists kinds + needs_repo; console + phone kind
+  picker and every new section; model columns `kind` + `extra` (nullable, old designs = design).
+- Cost: a design is now 2-3 Opus calls (draft, peer review, revision when needed) instead of 1; the daily limit of 6
+  is unchanged. NOT VERIFIED LIVE yet: the six kinds against a real Opus run (the sample PDFs were made through the real
+  pipeline with a hand-written design), and the module map on her real repos (tested on fixtures in 4 languages).
+- Tests: NEW test_v0426_master_architect.py (file name kept) (module map + cycles, JS/Go/Java resolution, rules on repo + PR-added lines
+  only, decision sums + sensitivity + named gaps, STRIDE scoring + coverage, scenarios + first break, OpenAPI check,
+  assess with peer review + revision end to end, decide + threat documents, PR boundary break by code, tool + route,
+  console + phone wiring).
+
+
+## v0.429.0 SOCH KE JAWAB step 2 — hard asks on Opus with room to think (2 Nov 2026)
+Owner: "GO STEP 2" (step 2 of the 7-step hard-reasoning plan). Built as 0.425.0, re-versioned past the parallel
+v0.425.0-v0.428.0.
+- Already there before this step: v0.272 `agent/hard.py` spots a hard ask -> adaptive thinking from the first call;
+  v0.331/0.336 SOCH GEHRI: effort high for a hard ask (agent_hard_effort), xhigh + Claude + 16,000 tokens for long jobs.
+  Still missing: the MODEL (a hard ask ran on the chat model, Sonnet 5.5) and ROOM (a hard ask outside a long job kept
+  agent_max_tokens 2,000 while thinking tokens count against max_tokens - the answer got cut and stitched by nudges).
+- Now (`agent/santosh.py`): `_MODEL_NOW` contextvar set once per step (like `_EFFORT_NOW`) by `model_for(settings, hard,
+  long_job)` = agent_hard_model (claude-opus-5-5) for a hard ask that is not a long job, '' otherwise; `_call_brain`'s
+  Claude path tries that model first via the new `_claude_call(model, ...)` (the old body, model as a parameter) and on
+  ANY failure retries the same call on settings.anthropic_model; `_model_refused` (404 / not_found / unknown model)
+  sets HARD_MODEL["ok"] False for the process. A hard ask's state["max_tokens"] = agent_hard_max_tokens (16,000);
+  agent_hard_on_claude moves a hard ask from a cheaper CHAT_LLM brain to Claude. Usage pricing already knew Opus 5.5.
+- Unchanged: ordinary chat (Sonnet, 2,000, no thinking, default effort), long jobs (Sonnet, xhigh, 16,000), sub-agents,
+  the voice call.
+- Tests `server/tests/test_v0426_hard_opus.py` (7): model_for; a hard turn = Opus + 16,000 + thinking + effort high, a
+  chat turn = Sonnet + 2,000; Opus overloaded -> same call on Sonnet (switch stays on); 404 -> switch off, asked once;
+  switch off keeps Sonnet. Turn / cache / usage / context / team / compaction / soch suites: 257 pass, same as main.
+  Not measured here: answer quality (no API key) - step 7 adds the scored set. Version 0.429.0 (pubspec 0.429.0+473).
+
+## v0.430.0 SOCH KE JAWAB step 3 — every worked-out number comes from real code (2 Nov 2026)
+Owner: "GO STEP 3" (step 3 of the 7-step hard-reasoning plan: a calculator / analysis tool).
+- Found: no new tool was needed. `pylab` (Shiksha suite, `app/pylab/runner.py` + `service.py`) is a locked Python
+  sandbox - pandas, numpy, scipy, statsmodels, matplotlib, openpyxl; its own empty work folder (her data_fetch datasets
+  copied in as <id>.csv, her chat files by name), a clean environment (-I, no keys), its own empty network namespace
+  (unshare -rn) plus an audit hook refusing sockets, subprocess / exec / fork, ctypes and any write outside the folder,
+  CPU / memory / file-size / open-file limits and a wall-clock kill; charts / tables it writes come back to her chat.
+  But it sat in the "shiksha" family and was in view for 1 of 50 hard asks (only "statistic" words loaded it), so
+  Hoola did EMIs, CAGRs, break-evens and forecasts in its head.
+- `agent/admit.py`: `calc_needed(text, why)` = a hard ask (agent/hard.py rules), a data / business-numbers intent, or
+  calculation words (`_CALC`: calculate, compute, statistics, average / mean / median, correlation, regression, trend,
+  growth rate, chart / graph / plot, hisaab laga, total kitna, percent / N%, ganana, forecast, projection); plan_for
+  adds ONLY pylab via adm.extra (not the five Shiksha tools). `santosh`: a hard ask the judge (not the rules) found also
+  gets pylab. Measured: HARD 50/50 with pylab (was 1/50), EASY + HOLDOUT_EASY 0/50, tool-choice asks 19/163 (data jobs).
+- What the model reads: pylab's description opens "CALCULATOR + ANALYSIS: every number you work out (EMI, CAGR, %,
+  totals, break-even, forecast, statistics) is computed here and quoted from its printed output - never mental maths";
+  the pinned TOOL CHOOSER: "A number you WORK OUT ... = pylab: write the code, run it, quote its printed result - never
+  mental maths; her Excel / CSV goes into pylab by its file id, a data_fetch dataset by its dataset id."
+- Checked here: EMI 20 lakh / 9% / 20 yr = 17,994.52 a month, interest 23,18,684.59 (0.41 s, network isolated); her
+  CSV via dispatch -> 460 / 115.0 / Apr; a socket connect is refused.
+- Tests `server/tests/test_v0430_pylab_calc.py` (14). Router / tool choice / pylab / shiksha / turn suites: same as main
+  (main's own failures: test_v0314_app_backend x3, test_v0381_shiksha pylab files). Not measured: whether the live model
+  now calls pylab for every figure (no key here) - step 5 (self-check) and step 7 (scored set) cover that.
+  Version 0.430.0 (pubspec 0.430.0+474, console ?v=0.430.0, pins). Server-only deploy; her VPS needs the pylab libraries
+  (`app.pylab.service.status()` / the Shiksha pylab status route shows them).
+
+## v0.431.0 FRICTION + BACKLASH + CAM CONTACT (2 Nov 2026)
+Owner: "friction, backlash and cam contact force — fix and develop".
+- FRICTION (`dynamics.BEARINGS`, `friction_of`): H.joint(bearing='ball' 0.0015 | 'roller' 0.002 | 'needle' 0.0025 | 'bush' 0.08 |
+  'dry' 0.2 | 'rail' 0.005 | 'slide' 0.12, pin_d mm (10 default), friction = constant N·m / N, damping). In the MuJoCo move:
+  mu x |radial joint load| (mj_rnePostConstraint cfrc_int) x pin radius + constant (tanh through zero speed) + damping,
+  applied on every such joint, fed forward to the motors; rows Friction <joint> (peak, J lost) + Energy lost to friction (%).
+  URDF `<dynamics>`, SDF `<dynamics>`, MJCF damping / frictionloss written. Checked: dry pin 20 mm = 0.2 m g r exactly.
+- BACKLASH: H.couple(..., backlash=deg | mm at the follower). `kinematics.backlash_play`: tip play = angle x farthest
+  downstream point from the axis, summed vs H.robot(accuracy_mm) -> problem -> redesign. In the sim the coupling's
+  equality is dropped and replaced by a gap with a stiff mesh (150 Hz on the follower's inertia, flanks only push), the
+  follower starting on its loaded flank: lost motion, knocks (flank changes), peak mesh torque. Slow move: 0 knocks,
+  lost motion = half the play; fast move: knocks + a mesh spike.
+- CAM CONTACT (`cams.contact`, `kinematics.cam_contact`): follower force from the MuJoCo move (fine per-angle samples,
+  whole turn covered) else m (s'' w² − g·u); return spring designed (smallest preload per stiffness, x1.3 on the
+  pull-off, floor 2 % / 0.5 N) or hers checked ("Follower stays on the cam" fails = jump -> redesign); normal force
+  N = push / (cos φ − μ sin φ ...); Hertz line contact (roller + profile radius, cam thickness) vs CONTACT_ALLOW
+  (steel 640 = AGMA 2001 grade 1 at ~200 HB, hardened 1240, ... her contact_allow_mpa wins); guide jam (≥ 0.5);
+  cam torque incl. guide friction; camcurve.png gains the push / normal force panel.
+- FIX: H.robot(move_time_s=...) was in the v0.426 guide but robot() refused it - now accepted (0.05..120 s).
+- Tests `test_v0427_friction_backlash_contact.py` (Hertz = Shigley eq. 3-73/3-74, spring, jam, MuJoCo vs motion force,
+  friction = mu m g r, tip play, knocks, desk redesigns a jumping follower).
+- NOT VERIFIED: allowables / friction coefficients are published starting points; no gear-tooth flex beyond the mesh
+  spring, no Stribeck static-friction peak, roller slip not modelled.
+
+
+## v0.432.0 (built as 0.430.0) LIVE OPS (Hoola Game Engine plan Phase 9) - 2 Nov 2026
+Owner: "GO PHASE 9". Plan row 9 = telemetry dashboards, A/B, events, patches - for games that run for years.
+New `server/app/gamedesk/liveops.py`; HoolaRuntime (`runtime.py`) extended; tool `game_liveops`; console Live ops page
+(board button); phone `GameLiveopsScreen` (Studio > Live ops).
+- LIVE CONFIG: GET /play/<token>/live (the game's own host - the play page CSP is connect-src 'self') = running A/B tests
+  + approved, not-ended events. HoolaRuntime fetches it at start (normal play only, never in Hoola's test runs), keeps
+  the last answer on the device (user://hoola_live.cfg, works offline). The game reads values with
+  `HoolaRuntime.num("player.hp", fallback)`, `flag("double_coins")`, `active_events()`, and reports moments with
+  `track(event, value)` (only with her switch + the player's yes). An event beats a test for the same value.
+- VALUES: only a number that is in her Game Bible (player.<f>, economy.<f>, <kind>.<id>.<f>) within 1/4x - 4x of the
+  Bible's own number, or flag.<name> = true / false. A Bible number of 0 cannot be changed live. A bigger change = Bible.
+- A/B TESTS: draft -> start (her tap; refused while telemetry is off - unmeasurable) -> stop (her tap; ship = a Studio
+  board task "Make group X the game's own: player.hp = 150", never a silent change). Groups: sha256(install:key)[:8]
+  mod 10000 against the split in basis points - the SAME sum in Python and GDScript (real-Godot test, 4 installs).
+  Results: players per group, goal rate (an event, or d1), sample-size target per group (normal approximation,
+  alpha 0.05, power 0.8, her smallest difference worth knowing), sample-ratio check (chi-square, p < 0.001 = SPLIT
+  BROKEN, result not trusted), two-proportion z-test, Bonferroni for >2 groups. Below the target the verdict is
+  NOT ENOUGH PLAYERS even when the gap looks big (tested: a 15-point gap at 100 per group). Max 3 running; two tests,
+  or a test and an approved event, may not change the same value at the same time.
+- LIVE EVENTS: key, title, start / end (India time when no zone is written), values; draft -> approve (her tap) ->
+  scheduled / live / ended; cancel. Max 31 days, within a year, two approved events overlapping on one value refused.
+- CRASHES: HoolaRuntime registers a Godot `Logger` (4.5+, `OS.add_logger`; checked in 4.7.2: it gets push_error AND
+  script errors, with the GDScript backtrace -> res:// file + line), dedups per session, sends up to 20 per session
+  only with the player's yes. Server groups by file + line + message (digits / e-mails scrubbed), hashed install ids,
+  versions, crash-free players per version. One tap = a priority-1 "fix" board task. "Not seen on the newest version"
+  only when >= 20 players are on a newer version and none sent it; otherwise fixing / open.
+- PATCH CHECK (real engine, background): the newest good version gets every saved replay (max 3) played back - must
+  reach the end with no script errors - plus a fresh bot run (seed 11); no saved replay = NOT ASSESSED (said, not
+  passed). Open player crashes = NOT ASSESSED until players run the new version. Release notes drafted from done tasks.
+- DASHBOARD: + D30, DAU 14 days, balance (numeric values per event: median, IQR, Tukey outliers, flagged > 5 %),
+  difficulty spikes (a level with > 2x the median game-overs).
+- MONEY: Hoola sees no store. Revenue only from the CSV she imports (date, rupees, source; ₹ / commas ok; same day +
+  source replaced). ARPDAU = revenue / DAU of consenting players = an UPPER bound, said. Payer share from
+  track("purchase"). Children's game: the note that no paid random items / pressure to buy are built.
+- Runtime refactor: `runtime.prepare()` (a test copy of the project) shared by replay test + patch check;
+  `_run_mode(..., extra)` takes more args (--hoola-live=<b64>, --hoola-install=<hex> for tests).
+- Tables: game_crashes (new), game_telemetry.ab (new nullable column), game_studios.liveops (new nullable JSON).
+- Routes: /api/gamedesk/liveops/{sid} [GET, /dashboard, /crashes, /money GET+POST, /experiments POST,
+  /experiments/{key} GET, /start, /stop, /events POST, /events/{key}/approve|cancel, /crashes/{sig}/hotfix,
+  /patch_check], GET /play/{token}/live.
+- Tests: `server/tests/test_v0428_game_liveops.py` (13, two in the real Godot 4.7.2: groups + live values + events +
+  caught errors; patch check with a saved replay).
+- NOT VERIFIED: no real player has sent telemetry, crashes or A/B data yet; the Web export's HTTPRequest fetch of
+  /live was not run in a browser here (the same host as telemetry, which uses the same path).
+
+## v0.433.0 SOCH KE JAWAB step 4 — the reasoning recipe (2 Nov 2026)
+Owner: "GO STEP 4" (step 4 of the 7-step hard-reasoning plan).
+- Steps 1-3 decided WHO thinks (agent/hard.py), on WHAT (Opus 5.5, effort high, 16k tokens, adaptive thinking) and WITH
+  WHAT (pylab for every number). Nothing said HOW: the reply rulebook (replystyle.CHAT) is tuned for crisp chat and has
+  no method for a hard question.
+- `agent/hard.py`: RECIPE_CORE "SOCH KA TAREEKA" (~1.6 KB) - 1 the real question (most likely reading in ONE line; a
+  question only when a wrong guess costs her money / a filing / a send); 2 facts first (a missing fact = a stated
+  assumption "maan ke chal rahe hain: ...", never made up; rates / rules that change = check or look up); 3 work in
+  parts, EVERY number from pylab, units, Rs / lakh / crore; 4 check before writing (totals, units, orders of magnitude,
+  the strongest objection, re-run the key figure); 5 write: answer / decision FIRST with the key number, compact
+  reasoning (steps or a small table), the assumptions that matter, what would change the answer, the next step;
+  uncertainty plain; private thinking is not the reply. RECIPE_KIND lines (calculation, word problem, maths, decision,
+  plan, diagnosis, analysis, rules -> name the section + a CA / lawyer confirms, impact, deep) chosen by `recipe(why)`
+  from assess() labels (synonyms mapped: judgement / difference -> decision, reasons / why / fix -> diagnosis, ...),
+  max 3, no repeats. 74 of 75 hard asks get their own lines (the one left is a judge-zone Hindi ask: core only).
+- `santosh._steps`: a hard turn appends recipe(state["hard_why"]["why"]) to the system tail (setting hard_recipe,
+  default on). The reply rulebook still governs the writing (her language first, answer first, length follows the
+  question). Ordinary chat never carries the recipe.
+- Tests `server/tests/test_v0433_recipe.py` (18). Turn / reply / scorecard / draft-check / soch / tool-choice /
+  compact suites: 240 pass, same as main. Not measured here: the live answers (no key) - step 7 scores them.
+  Version 0.433.0 (pubspec 0.433.0+477, console ?v=0.433.0, pins). Server-only deploy.
+
+## v0.434.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 3")
+
+**W2 - real app pages on the web (`site/assets/hoola-app.js` rewritten, `site/build.py` app_page, `hoola-site.css`).**
+The account and staff pages are now one in-page app each (`data-hoola-app="shell" data-area="member|staff"`), hash-routed
+(`#/member/...`, `#/staff/...`), with a menu per role: a member sees Home + the lists she may read / add to + My account;
+staff also see Approvals, Members, Who-can-do-what; an admin also sees the Audit log.
+- Tables: columns from the list, click-to-sort (aria-sort), search across every field, filter by the workflow / choice
+  field, 20 a page, staff bulk select -> move to a workflow state / delete, one call at a time so the server checks each.
+- Detail page: every field (photos shown, files open, location -> Maps link), workflow buttons, approval pill + decide,
+  linked lists (the logic's relations), edit / delete by the list's rules.
+- Multi-step form: more than 6 fields = steps of 5 with Next / Back, the server's own checks before the trip (required,
+  email, 10-digit Indian mobile, number), photo / file fields upload first (new POST /api/site-app/<site>/upload, served
+  back by GET .../file/<id> for whoever may see it).
+- Kanban (workflow / first choice field; drag only onto a step the workflow allows), month calendar (first date field).
+- Dressed by the site's design tokens (--c-primary, --c-line, --radius...), phone-first layout; React export unchanged
+  (HoolaApp.start). Pages built before this version keep working (old placeholders kept; their next rebuild ships the app).
+
+**W3 - login and security for people (`site/security.py`, routes under /api/site-app/<site>/...).**
+- Phone OTP (otp/start, otp/verify): 6 digits, only an HMAC hash stored (`site_app_otps`), 5 minutes, 5 tries, 3 codes per
+  number per 10 min + 10 per IP per hour, a new account needs the consent tick; sent by MSG91's OTP API (DLT template)
+  with HER keys (`SITE_SMS_PROVIDER=msg91`, `MSG91_AUTHKEY`, `MSG91_OTP_TEMPLATE` in the VPS .env); no provider = the login
+  box hides the tab and the API answers 503. A code is never logged, shown or put in a reply.
+- Staff 2-step login (2fa/start|confirm|off, 2fa/login): RFC 6238 TOTP (checked against the RFC's own test vectors),
+  secret encrypted with SECRET_KEY, a password login of a staff member with 2FA returns a 5-minute signed ticket instead
+  of a token.
+- Sessions (`site_app_sessions`, sessions / sessions/<id>/end / logout-all): device name from the browser, masked IP,
+  last seen; ending one stops that token, "sign out everywhere" bumps the member's generation.
+- DPDP: the website's sign-up needs the tick (version + time kept on the member; a page built before v0.425 that sends no
+  tick still works but records none); me/export = her profile + every row she owns (JSON); me/delete = account + rows.
+- Audit log: the app journal (`appmaker/backup.py`) now records WHO (`by`: role:member id / owner / system) for every
+  write through the backend; GET .../audit (admin) and GET /api/sites/<ref>/audit (her console, "Who changed what").
+- Per-field rule `private: true` (staff / owner see it, others never receive it) + GET .../matrix (who may add / see /
+  change / delete each list, staff-only fields), shown on the staff page and her console.
+Bugs found by the tests and fixed: a wrong OTP raised inside the DB transaction, which ROLLED BACK the try counter
+(unlimited guesses) - the counter is now saved before any refusal; two logins in the same second got the SAME token, so
+ending one device ended both - tokens now carry a random part of a day in their expiry; an OTP was spent when a new
+person forgot the consent tick - it is now refused before the code is used.
+Proof: tests/test_v0434_app_pages.py (8) incl. a real Chromium run of the built account + staff pages against the real API
+(login, member menu without audit, sort, search, detail, form checks, my devices, staff kanban 3 lanes / 4 cards, bulk
+select, audit, matrix).
+NOT BUILT (rest of W2 / W3): Google sign-in and email magic link (Google needs every customer domain registered on the
+OAuth client; mail needs a sending account), passkeys (plan: later), custom roles such as "vendor" (roles stay member /
+staff / admin), an owner switch that FORCES 2FA on all staff, timeline / map-of-rows views. NOT VERIFIED: MSG91 live
+(written from its OTP API; needs her DLT template + key).
+
+
+## v0.435.0 PRAYOGSHALA STUDIO (2 Nov 2026)
+Owner: "NOW BUILD ALL 22 LABS LIKE THIS IN HOOLA. MAKE EVERY EXPERIMENT PERFECT AND ROBUST" (after approving the
+pendulum prototype artifact: "realistic like human lab", theory first, Ask Hoola inside the experiment page).
+- Engine `server/app/static/prayog/studio/studio.js` + `studio.css`: lab room, bench, lights, materials, shared devices
+  (stand, cork, ruler / scaleTex, stopwatch, meter incl. zero-centre galvanometer, thermometer, wire, terminal, cell,
+  power box, plug key, rheostat, resistance box, optical bench, upright, tuning fork, beaker, labels), the gloved hand
+  (tap / pinchMove / reach / shape / follow), camera views, workflow (Theory auto first, Result + graph and Viva last),
+  handwritten record book (`S.addRow`), toast `S.say`, Ask Hoola panel, test mode (`?test=1`, `S.fast`, `S.advance`).
+- 22 modules `server/app/static/prayog/exp/<id>.js` (contract + rules: `docs/PRAYOG_STUDIO.md`). Numbers only from the
+  kernels (`kernels.js` twin of `kernels.py`); the hidden unknown is shown only on the result line.
+- `lab.html` loads the studio module and falls back to the old `lab3d.js` runtime when a lab has none.
+- Ask Hoola: `POST /api/prayog/ask` (needs the key; `service.ask`, system prompt limited to THIS lab, live readings and
+  turns are data, 150 a day per account, 429 / 503 plain). Phone `PrayogLabView` injects `window.HOOLA_TOKEN`.
+- Ruler scale fix: the printed metre rule was stretched 1-1.6 %; zero now at the top end and v at lengthM - v exactly.
+- Proof: `node tools/prayog_walk.js http://localhost:PORT` drives every step's own `auto` through the button code paths:
+  22/22 PASS - g 9.817, k 20.12 / 20.00, mu 0.3006, eta 1.488, k 0.0200, PV 9.976, c 904.8, v 343.04, mu 0.0010,
+  R 4.9995, S 6.0017, r 0.999, V_K 0.663, slope 0.998, f 14.85 / 19.79, n 1.498 / 1.500, k 0.2698, D 23.40 / 0.510 mm.
+- NOT VERIFIED: on her phone WebView (GPU / memory on low-end Android); Ask Hoola answers live on the VPS model.

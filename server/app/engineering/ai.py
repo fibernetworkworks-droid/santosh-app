@@ -113,7 +113,26 @@ Rules:
   the loop, finds where it locks, classifies a four-bar (Grashof) and its transmission angle. GEARS / BELTS:
   H.couple('gear2_spin', 'gear1_spin', teeth=(20, 40)) or ratio=... (belts +ratio). LOADS for motor sizing:
   H.robot(payload={'part': 'gripper', 'kg': 0.5}, accel_deg_s2=180) - Hoola computes each joint's worst-case
-  torque (and checks her motor's effort). H.robot(name='my_arm',
+  torque (and checks her motor's effort).
+  CAMS: c = H.disc_cam('main_cam', segments=[{'type': 'rise', 'lift': 10, 'deg': 120, 'law': 'cycloidal'},
+  {'type': 'dwell', 'deg': 60}, {'type': 'return', 'lift': 10, 'deg': 120, 'law': 'cycloidal'}, {'type': 'dwell',
+  'deg': 60}], base_radius=30, follower='roller', roller_radius=6, rpm=120, cam_joint='cam_spin',
+  follower_joint='lift') -> the cam disc DESIGNED from her motion (centre at the origin, +Z, place it with
+  .translate); add H.joint('cam_spin', kind='continuous', ...) and the follower's prismatic joint 'lift' along the
+  follower axis (its zero = the follower touching the base circle). Pressure angle / undercut fails come back to you
+  (bigger base circle, smaller roller, longer rise angle). CAM CONTACT: Hoola works out the force at the cam (follower
+  inertia + gravity + its load), DESIGNS the return spring unless she gave spring_k=N/mm, preload=N, and checks the
+  push never goes below 0 (follower jumps), the Hertz contact stress vs the material (contact_allow_mpa= her number,
+  roller_material=...), and with guide_mu= (+ guide_len=, overhang= mm) that the follower guide does not jam.
+  FRICTION: H.joint(..., bearing='ball'|'roller'|'needle'|'bush'|'dry'|'rail'|'slide', pin_d=12, friction=<constant
+  N·m or N>, damping=...) whenever she names bearings / bushes / slides - the move then pays for it. BACKLASH:
+  H.couple(..., backlash=0.3) (degrees at the follower; mm for a prismatic one) when she gives gear / belt play;
+  H.robot(accuracy_mm=0.1) = the tip play allowed - more comes back to you.
+  SLOTS (pin in a slot: Scotch yoke, quick return, shaper, slotted link): H.joint('pin', parent=<the part WITH the
+  slot>, child=<the part with the pin>, kind='slot', origin=<the pin centre as drawn>, axis=<pin axis>,
+  direction=<along the slot>, travel=(-40, 40) mm from the drawn spot) - always a loop-closing joint.
+  MOTION IN TIME: Hoola simulates the mechanism in MuJoCo (H.robot(move_time_s=2) - how fast she wants the move):
+  real motor torque with inertia, a named motor that saturates comes back to you. H.robot(name='my_arm',
   materials={'base': 'steel'}) when parts differ. Hoola sweeps every joint, finds collisions (they come back to you:
   add clearance or reshape), and writes URDF + SRDF (ROS / MoveIt), SDF (Gazebo), MJCF (MuJoCo), a motion GIF and an
   exploded view.

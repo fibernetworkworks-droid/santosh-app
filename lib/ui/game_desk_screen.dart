@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'game_roles_screen.dart';
 import 'game_studio_screen.dart';
 import 'glass.dart';
 
@@ -282,6 +283,45 @@ class _GameDeskScreenState extends State<GameDeskScreen> {
                 style: TextStyle(color: ready ? C.muted : C.bad, fontSize: 13.5, height: 1.35)),
             const SizedBox(height: 12),
             if (!_loaded) const Center(child: CircularProgressIndicator()) else _newGame(ready),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: [      // v0.420 the Game Desk team (each role hired on its own)
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.terrain_outlined),
+                  label: const Text('Worlds'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameWorldsScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.sports_baseball_outlined),
+                  label: const Text('Physics'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GamePhysicsScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.surround_sound_outlined),
+                  label: const Text('Audio'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameAudioScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.vibration_outlined),
+                  label: const Text('Haptics'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameHapticsScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.groups_outlined),
+                  label: const Text('Multiplayer'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameNetScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.view_in_ar_outlined),
+                  label: const Text('VR / AR'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameXrScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.flight_outlined),
+                  label: const Text('Simulators'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameSimScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.factory_outlined),
+                  label: const Text('Digital twin'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameTwinScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.movie_filter_outlined),
+                  label: const Text('VFX pipeline'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameVfxScreen(app: widget.app, studio: '')))),
+            ]),
             if (_loaded) GameStudioList(key: ValueKey(games.length), app: widget.app, games: games),
             for (final g in games) _card(g),
           ]),

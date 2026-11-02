@@ -121,7 +121,7 @@ def tokens_swift(spec: dict[str, Any]) -> str:
     label = {s["id"]: s.get("label") or s["id"] for s in scr}
     icon = {s["id"]: symbol_for(s["id"], s.get("icon") or "") for s in scr}
     tab_rows = ",\n        ".join(f"TabSpec(id: {sstr(t)}, label: {sstr(label[t])}, symbol: {sstr(icon[t])})" for t in tabs)
-    every = ids + list(CODE_SCREENS) + list(KIT_SCREENS)
+    every = ids + list(CODE_SCREENS) + list(KIT_SCREENS) + (["hoola_components"] if spec.get("custom") else [])
     lang = str(app.get("language") or "en")
     return f'''// Made by Hoola App Sahayak from the approved design's tokens. Do not edit: a new design version rewrites it.
 import SwiftUI
@@ -157,6 +157,8 @@ def screens_swift(spec: dict[str, Any]) -> str:
               '    case "hoola_account": return AnyView(AccountScreen())', '    case "hoola_inbox": return AnyView(InboxScreen())',
               '    case "hoola_chat": return AnyView(ChatScreen())', '    case "hoola_approvals": return AnyView(ApprovalsScreen())',
               '    case "hoola_data": return AnyView(DataScreen())']
+    if spec.get("custom"):                                   # v0.425 RANG: the custom components' check screen
+        cases.append('    case "hoola_components": return AnyView(ComponentsGallery())')
     body = "\n".join(cases)
     return f'''// Made by Hoola App Sahayak from the approved design: which screens exist and which view each id opens.
 import SwiftUI
@@ -557,6 +559,10 @@ def info_plist(spec: dict[str, Any]) -> str:
     elif uses_location(spec):
         extra += ("    <key>NSLocationWhenInUseUsageDescription</key>\n"
                   "    <string>Your location is added to your order or request only when you tap Use my location.</string>\n")
+    if any(f.get("type") == "audio" for c in ((spec.get("seed") or {}).get("backend") or {}).get("collections") or []
+           for f in c.get("fields") or []):              # v0.425 RANG: a voice note, only on the user's Record tap
+        extra += ("    <key>NSMicrophoneUsageDescription</key>\n"
+                  "    <string>The microphone records a voice note only while you hold Record. Nothing is recorded otherwise.</string>\n")
     if uses_scan(spec):                                  # v0.340 the scanner's camera
         extra += ("    <key>NSCameraUsageDescription</key>\n"
                   "    <string>The camera reads a barcode or QR code only when you tap Scan. Nothing is recorded.</string>\n")
@@ -659,6 +665,16 @@ def privacy_manifest() -> str:
 '''
 
 
+def _custom_files():
+    """v0.425 custom_files works inside the package and when this file runs as a script in CI."""
+    if __package__:
+        from .. import custom_files
+        return custom_files
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import custom_files                                    # type: ignore[no-redef]
+    return custom_files
+
+
 def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     out = Path(out)
     tmp = out.with_name(out.name + ".tmp")
@@ -718,8 +734,12 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     if isinstance(store, dict):                          # v0.338 the listing + screenshots to send (kind store / review)
         (qa / "store.json").write_text(json.dumps({**store, "bundle_id": bid}, ensure_ascii=False, indent=1))
     (qa / "bundle.txt").write_text(bid + "\n")
-    every = [x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS)
+    every = [x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS) + (["hoola_components"] if spec.get("custom") else [])
     (qa / "screens.txt").write_text(" ".join(every) + "\n")
+    for rel, srcx in _custom_files().swift_files(spec.get("custom") or []).items():
+        p = src / "Kit" / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(srcx)
     (tmp / "UITests").mkdir(exist_ok=True)                 # v0.345 the flow walk (XCUITest), debug only
     (tmp / "UITests" / "FlowTests.swift").write_text(flow_tests(every))
     shutil.copy(HERE / "flows.py", qa / "flows.py")

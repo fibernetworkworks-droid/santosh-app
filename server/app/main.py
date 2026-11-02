@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.418.0"   # v0.418.0 PRAYOGSHALA IN ENGLISH (owner: "FIRST MAKE ENTIER THING IN ENGLISH"): every word a learner sees in the 22 labs is English now - titles, aims, part names, knobs, meters, table columns, steps, theory, safety, tour narration (spoken en-IN), quiz, the runtime buttons and tabs (Run / Record reading / Predict / Theory), the catalogue page, the phone screen, the tool notes and the lab checker's messages; numbers, 3D layout, kernels and NCERT checks byte-identical (checked by comparing the old and new catalogue with the text stripped). A test now fails if Hinglish comes back. Tests: test_v0418_prayog.py. Previous: v0.417.0 META ADS (built as 0.409) (ad plan A1; owner: "GO A1" after the India ad-market check): her Facebook / Instagram ad account by ONE Facebook Login on the HOOLA app (ads_management + ads_read, ads/metaads.py) instead of a pasted system-user token; ad accounts + Pages listed, one account chosen at once, the Ads desk (reads, leaks, budget changes on her tap) works on the login unchanged. Drafts with one goal (WhatsApp / Messenger / Instagram chats, website visits, boost a Page post), her photo, cities + km, ages, daily x days; money ads refused, META_ADS_MAX_DAILY cap; Check with Meta (validate_only, free) -> Create = campaign, ad set and ad all PAUSED -> Start only with a confirm (end time set so Meta itself stops it, campaign goes live last) -> auto-marked finished after the days. Routes /api/ads/meta/* + /api/ads/metaads*, tool ads action=meta_draft, Social Desk tile + phone MetaAdsScreen. NOT VERIFIED against a live ad account. Previous: v0.416.0 ASSET PIPELINE + QA FARM + GAME PLATFORMS (Hoola Game Engine plan Phases 4-6, owner: "GO PHASE 4" / "GO PHASE 5" / "GO PHASE 6"; built as 0.409-0.415, shipped as one version because main moved to v0.414 and v0.415). Phase 4 (gamedesk/assets.py + sfx.py, tool game_assets): style-locked art (magenta key, exact size, palette lock), sound effects made in code (seeded presets, free), music / voice / 3D models; paid kinds wait on a price card until her tap, every file checked in code, nothing enters the game before her OK, HoolaAssets autoload in every build. Phase 5 (gamedesk/qa.py, tool game_qa): seeded bots (idle / monkey / tapper / keys / restarter) play a DEBUG web build on desktop and phone CPU speeds - release builds hide script errors, so every build's playtest plays debug too - numbered bugs with repro, fixed only when the bot no longer finds it, golden start screen, speed vs last run, verdict counted in code. Phase 6 (gamedesk/platforms.py, tool game_release): Linux / Windows / macOS downloads exported and checked on the server (setup_godot.py --desktop), Android APK / AAB in her builds repo (hoola-game.yml) signed with the game's own sealed upload key, no internet permission, package fixed + version code only up; store kit (itch / Steam / Play texts in limits, images in exact sizes, AI disclosure, Steam scripts), age-rating DRAFT, itch.io butler push only on her tap. Android and itch not verified here; iOS not built.
+APP_VERSION = "0.435.0"   # v0.435.0 PRAYOGSHALA STUDIO (owner: "NOW BUILD ALL 22 LABS LIKE THIS IN HOOLA. MAKE EVERY EXPERIMENT PERFECT AND ROBUST"). All 22 physics labs now open in the realistic studio approved in the prototype: a real lab room and bench with real equipment (stands, meters, rheostats, optical bench, travelling microscope, vernier, screw gauge...), the gloved hand does every manipulation, theory first then a guided step-by-step workflow, readings written into a handwritten record book, result with graph and viva, and Ask Hoola inside the page answering only about this experiment (POST /api/prayog/ask, key-protected, 150 a day per account). Every number still comes from the tested kernels; a headless walk-through runs every lab through its real buttons and lands within tolerance of the true value (22/22). Previous: v0.434.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3, owner: "START STEP 3"). The website's account and staff pages are now a real in-page app per role: a menu by role, tables you sort / search / filter / page / bulk-select, detail pages with linked lists, multi-step forms that check before sending and upload photos / files, kanban, month calendar, approvals, members, who-can-do-what and the audit log, dressed in the site's own design. People log in safely: phone OTP through a DLT SMS provider (only a hash kept, 5 minutes, 5 tries, rate limits), 2-step login (authenticator code) for staff, every logged-in device listed with "log out" and "sign out everywhere", DPDP consent on sign-up, download-my-data and delete-my-account, every change journaled with WHO made it, staff-only fields. Fixed on the way: a wrong OTP rolled back its own try counter (unlimited guesses), two logins in one second shared a token, the staff page lost its charts. Previous: v0.433.0 SOCH KE JAWAB step 4 - the reasoning recipe (owner: "GO STEP 4"): steps 1-3 decided WHO thinks (a hard ask), on WHAT (Opus 5.5, effort high, 16k, thinking) and WITH WHAT (pylab); nothing said HOW - the reply rulebook is tuned for crisp chat. A hard turn's system prompt now carries hard.RECIPE_CORE "SOCH KA TAREEKA" (~1.6 KB): the real question (most likely reading in one line, ask only when a wrong guess costs her), facts first (missing fact = a stated assumption, never made up; changing rules / rates = check or look up), work in parts with EVERY number from pylab, check before writing (totals, units, magnitudes, strongest objection, re-run the key figure), then the answer / decision FIRST + compact reasoning + assumptions + what would change it + next step, uncertainty said plainly, private thinking never pasted - plus up to 3 kind lines (calculation, word problem, maths, decision, plan, diagnosis, analysis, rules, impact, deep) picked from assess() labels; 74 of 75 hard asks get their own lines. Ordinary chat never carries it (hard_recipe switch). Previous: v0.432.0 v0.432.0 (built as 0.430.0) LIVE OPS (Hoola Game Engine plan Phase 9, owner: "GO PHASE 9"; gamedesk/liveops.py, tool game_liveops). The game reads GET /play/<token>/live from its own host (cached on the device): running A/B tests + approved live events, values via HoolaRuntime.num / flag - only Game Bible numbers within 1/4x - 4x, or flag.<name>. A/B tests: sha256(install:key) groups (same sum in GDScript, checked in the real Godot), sample-size target, sample-ratio check, z-test + Bonferroni, NOT ENOUGH PLAYERS before the target, start / stop = her tap, ship = a board task. Live events calendar (India time, her tap, no clashes with each other or a running test). Crashes caught by Godot's Logger (4.5+) from consenting players, grouped + scrubbed, crash-free per version, one-tap hotfix task. Patch check: saved replays + a bot run on the newest version in the real engine. Dashboard + D30 / DAU / balance outliers / difficulty spikes; money only from her imported store CSV (ARPDAU an upper bound). Console Live ops page, phone Live ops screen.
 
 
 def _quiet_http_logs() -> None:
@@ -8466,6 +8466,7 @@ async def _site_pub(site_id: str, op: str, request: Request, body: dict | None =
     backend + DIMAAG logic for a linked one (site/applink.py). The site's pages keep the same addresses."""
     from .site import applink as AL
     tok, ip = _site_tok(request), _ip(request)
+    kw.setdefault("ua", (request.headers.get("user-agent") or "")[:160])     # v0.434 the sessions list names the device
     return await asyncio.to_thread(_app_call, lambda: AL.call(site_id, op, tok, body or {}, ip, **kw))
 
 
@@ -8548,6 +8549,95 @@ async def site_app_decide(site_id: str, appr_id: str, request: Request):
     return await _site_pub(site_id, "decide", request, await _json_body(request), appr_id=appr_id)
 
 
+# v0.434 LOGIN AUR SURAKSHA: phone OTP, staff 2FA, sessions, her data (export / delete), audit log, permissions, uploads
+@app.post("/api/site-app/{site_id}/otp/start")
+async def site_app_otp_start(site_id: str, request: Request):
+    return await _site_pub(site_id, "otp_start", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/otp/verify")
+async def site_app_otp_verify(site_id: str, request: Request):
+    return await _site_pub(site_id, "otp_verify", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/2fa/login")
+async def site_app_2fa_login(site_id: str, request: Request):
+    return await _site_pub(site_id, "2fa_login", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/2fa/{step}")
+async def site_app_2fa(site_id: str, step: str, request: Request):
+    if step not in ("start", "confirm", "off"):
+        raise HTTPException(404, "not found")
+    return await _site_pub(site_id, "2fa_" + step, request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/sessions")
+async def site_app_sessions(site_id: str, request: Request):
+    return await _site_pub(site_id, "sessions", request)
+
+
+@app.post("/api/site-app/{site_id}/sessions/{sid}/end")
+async def site_app_session_end(site_id: str, sid: str, request: Request):
+    return await _site_pub(site_id, "session_end", request, sid=sid)
+
+
+@app.post("/api/site-app/{site_id}/logout-all")
+async def site_app_logout_all(site_id: str, request: Request):
+    return await _site_pub(site_id, "logout_all", request)
+
+
+@app.get("/api/site-app/{site_id}/me/export")
+async def site_app_export(site_id: str, request: Request):
+    return await _site_pub(site_id, "export", request)
+
+
+@app.post("/api/site-app/{site_id}/me/delete")
+async def site_app_delete_me(site_id: str, request: Request):
+    return await _site_pub(site_id, "delete_me", request)
+
+
+@app.get("/api/site-app/{site_id}/audit")
+async def site_app_audit(site_id: str, request: Request, limit: int = 200, coll: str = ""):
+    return await _site_pub(site_id, "audit", request, limit=limit, coll=coll)
+
+
+@app.get("/api/site-app/{site_id}/matrix")
+async def site_app_matrix(site_id: str, request: Request):
+    return await _site_pub(site_id, "matrix", request)
+
+
+@app.post("/api/site-app/{site_id}/upload")
+async def site_app_upload(site_id: str, request: Request):
+    raw = await request.body()
+    if len(raw) > 12 * 1024 * 1024:
+        raise HTTPException(413, "File bahut badi hai (12 MB tak).")
+    return await _site_pub(site_id, "upload", request, raw=raw)
+
+
+@app.get("/api/site-app/{site_id}/file/{fid}")
+async def site_app_file(site_id: str, fid: str, request: Request):
+    """v0.434 a photo / PDF from a form, for whoever may see it (the page fetches it with the login header)."""
+    from .appmaker import backend as BE
+    from .site import applink as AL
+    from .site import service as S
+    from .site import webapp as W
+
+    def go():
+        r, _ = S.public_app(site_id)
+        p = AL.project(r)
+        if p is None:
+            raise W.AppError("not found", 404)
+        return BE.file_for(p, fid, AL._who(site_id, p, _site_tok(request)))
+    try:
+        path = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    from fastapi.responses import FileResponse
+    return FileResponse(path, media_type="application/pdf" if str(path).endswith(".pdf") else "image/jpeg",
+                        headers={**_SITE_APP_CORS, "Cache-Control": "private, max-age=300"})
+
+
 @app.post("/api/site-app/{site_id}/fn/{name}")
 async def site_app_fn(site_id: str, name: str, request: Request):
     """v0.407 a callable locked function of the site's logic (its own tests passed before it went live)."""
@@ -8598,6 +8688,13 @@ async def sites_logic_apply(ref: str, body: dict, tenant: str = Depends(current_
     """ONLY her tap: the draft she saw (by its hash) goes live on the site + its app."""
     from .site import applink as AL
     return await asyncio.to_thread(_site_logic, AL.logic_apply, tenant, ref, str(body.get("hash") or ""))
+
+
+@app.get("/api/sites/{ref}/audit", dependencies=[Depends(require_key)])
+async def sites_audit(ref: str, limit: int = 100, tenant: str = Depends(current_tenant)):
+    """v0.434 her website app's audit log (every change, who made it) + the permissions matrix."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.owner_audit, tenant, ref, max(1, min(limit, 500)))
 
 
 @app.post("/api/sites/{ref}/link-app", dependencies=[Depends(require_key)])
@@ -9900,11 +9997,35 @@ async def app_api_upload(app_key: str, request: Request):
     from .appmaker import backend as BE
     raw = await request.body()
     ip = _ip(request)
+    ctype = request.headers.get("content-type") or ""
 
     def go():
         r, w = _be_app(app_key, request)
-        return BE.upload(r, w, raw, ip)
+        return BE.upload(r, w, raw, ip, ctype)
     return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/files/{fid}/link")
+async def app_api_file_link(app_key: str, fid: str, request: Request):
+    """v0.425 RANG: a 15-minute signed address for the phone's own video / audio / PDF player (no token in it)."""
+    from .appmaker import backend as BE
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.media_link(r, fid, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/media/{tok}")
+async def app_api_media(app_key: str, tok: str):
+    from .appmaker import backend as BE
+    from .site import webapp as W
+    try:
+        f = await asyncio.to_thread(lambda: BE.media_file(BE.by_key(app_key), tok))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type=BE.MEDIA_MIME.get(f.suffix, "application/octet-stream"),
+                        headers={"Cache-Control": "private, max-age=900", "X-Content-Type-Options": "nosniff",
+                                 "Content-Security-Policy": "sandbox", "Referrer-Policy": "no-referrer"})
 
 
 @app.get("/api/app-api/{app_key}/files/{fid}")
@@ -9916,6 +10037,10 @@ async def app_api_file(app_key: str, fid: str, request: Request):
         f = await asyncio.to_thread(BE.file_for, r, fid, w)
     except W.AppError:
         raise HTTPException(404, "not found")
+    if f.suffix in (".mp4", ".mov", ".m4a"):     # v0.425 RANG: video / voice note for the phone's own player (range requests)
+        return FileResponse(f, media_type=BE.MEDIA_MIME[f.suffix], headers={"Cache-Control": "private, max-age=3600",
+                                                                            "X-Content-Type-Options": "nosniff",
+                                                                            "Content-Security-Policy": "sandbox"})
     if str(f).endswith(".pdf"):                  # v0.346 a PDF is only ever a download, never opened in a page
         return FileResponse(f, media_type="application/pdf", filename=f"{fid}.pdf",
                             headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff",
@@ -10273,6 +10398,289 @@ async def apps_track_order(ref: str, coll: str, row_id: str, tenant: str = Depen
     from .appmaker import track as TR
     from .site import webapp as W
     return await asyncio.to_thread(_be_owner_call, lambda: TR.order(_be_owner(tenant, ref), W.Who(owner=True), coll, row_id))
+
+
+def html_escape(s: str) -> str:
+    import html as _h
+    return _h.escape(s)
+
+
+# ---- v0.419 PAISA (App Sahayak Pillar E): online payments through HER gateway. Paid only from the gateway's word.
+@app.get("/api/app-api/{app_key}/pay/c/{coll}/{row_id}")
+async def app_api_pay_row(app_key: str, coll: str, row_id: str, request: Request):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.row_info(*_be_app(app_key, request), coll, row_id))
+
+
+@app.post("/api/app-api/{app_key}/pay/c/{coll}/{row_id}/start")
+async def app_api_pay_start(app_key: str, coll: str, row_id: str, request: Request):
+    """The customer's own unpaid order -> her gateway order for the SERVER's total -> {path} of the pay page."""
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.start(*_be_app(app_key, request), coll, row_id))
+
+
+@app.get("/api/app-api/{app_key}/pay/p/{tok}", response_class=HTMLResponse)
+async def app_api_pay_page(app_key: str, tok: str):
+    """The pay page (signed link, 30 min): the gateway's own checkout. Shows nothing secret."""
+    from .appmaker import backend as BE
+    from .appmaker import pay as PY
+    from .site import webapp as W
+    try:
+        body = await asyncio.to_thread(lambda: PY.page(BE.by_key(app_key), tok))
+    except W.AppError as e:
+        return HTMLResponse(f"<!doctype html><meta charset=utf-8><p style='font:16px system-ui;padding:24px'>{html_escape(str(e))}</p>",
+                            status_code=e.code, headers={"Content-Security-Policy": "default-src 'none'"})
+    return HTMLResponse(body, headers={"Content-Security-Policy": PY.PAGE_CSP, "Cache-Control": "no-store",
+                                       "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/app-api/{app_key}/pay/s/{tok}")
+async def app_api_pay_state(app_key: str, tok: str):
+    from .appmaker import backend as BE
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.page_state(BE.by_key(app_key), tok))
+
+
+@app.post("/api/app-api/{app_key}/pay/webhook")
+async def app_api_pay_webhook(app_key: str, request: Request):
+    """Her gateway calls this. Nothing happens unless the signature verifies with HER secret."""
+    from .appmaker import backend as BE
+    from .appmaker import pay as PY
+    raw = await request.body()
+    if len(raw) > 512_000:
+        return JSONResponse({"ok": False}, status_code=413)
+    hdrs = dict(request.headers)
+    return await asyncio.to_thread(_be_call, lambda: PY.webhook(BE.by_key(app_key), hdrs, raw))
+
+
+@app.get("/api/app-api/{app_key}/pay/plans")
+async def app_api_pay_plans(app_key: str):
+    from .appmaker import backend as BE
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.plans(BE.by_key(app_key)))
+
+
+@app.post("/api/app-api/{app_key}/pay/plans/{key}/subscribe")
+async def app_api_pay_subscribe(app_key: str, key: str, request: Request):
+    """The customer starts AutoPay on a plan; she authorises the mandate on the gateway's own page."""
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.subscribe(*_be_app(app_key, request), key))
+
+
+@app.get("/api/app-api/{app_key}/pay/subs")
+async def app_api_pay_subs(app_key: str, request: Request):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.my_subs(*_be_app(app_key, request)))
+
+
+@app.post("/api/app-api/{app_key}/pay/subs/{sid}/cancel")
+async def app_api_pay_sub_cancel(app_key: str, sid: str, request: Request):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_call, lambda: PY.cancel_sub(*_be_app(app_key, request), sid))
+
+
+@app.get("/api/apps/{ref}/pay", dependencies=[Depends(require_key)])
+async def apps_pay(ref: str, tenant: str = Depends(current_tenant)):
+    """Her payments page: gateway (never the keys), webhook address, payments + refunds, plans, AutoPay, split rule."""
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.status(_be_owner(tenant, ref)))
+
+
+@app.put("/api/apps/{ref}/pay/keys", dependencies=[Depends(require_key)])
+async def apps_pay_keys(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{gateway, keys: {...}, test}: typed in the app, checked with the gateway, sealed; returned by no route."""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_keys(_be_owner(tenant, ref), str(b.get("gateway") or ""),
+                                                                       b.get("keys") if isinstance(b.get("keys"), dict) else {},
+                                                                       bool(b.get("test"))))
+
+
+@app.delete("/api/apps/{ref}/pay/keys", dependencies=[Depends(require_key)])
+async def apps_pay_keys_forget(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.forget_keys(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/pay/{pid}/refund", dependencies=[Depends(require_key)])
+async def apps_pay_refund(ref: str, pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap only {amount? (rupees, blank = the rest), why, her_tap: true}."""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund(_be_owner(tenant, ref), pid, b.get("amount"),
+                                                                     str(b.get("why") or ""), bool(b.get("her_tap"))))
+
+
+@app.post("/api/apps/{ref}/pay/refunds/{fid}/check", dependencies=[Depends(require_key)])
+async def apps_pay_refund_check(ref: str, fid: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund_check(_be_owner(tenant, ref), fid))
+
+
+@app.get("/api/apps/{ref}/pay/settlements", dependencies=[Depends(require_key)])
+async def apps_pay_settlements(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.settlements(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/pay/link", dependencies=[Depends(require_key)])
+async def apps_pay_link(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{amount, purpose, name?, phone?, her_tap: true} -> a payment link she sends herself."""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.link(_be_owner(tenant, ref), b.get("amount"), str(b.get("purpose") or ""),
+                                                                   str(b.get("name") or ""), str(b.get("phone") or ""), bool(b.get("her_tap"))))
+
+
+@app.post("/api/apps/{ref}/pay/plans", dependencies=[Depends(require_key)])
+async def apps_pay_plan_add(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{name, amount, period: week|month|year, count, her_tap: true}"""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.add_plan(_be_owner(tenant, ref), str(b.get("name") or ""), b.get("amount"),
+                                                                       str(b.get("period") or ""), b.get("count"), bool(b.get("her_tap"))))
+
+
+@app.delete("/api/apps/{ref}/pay/plans/{key}", dependencies=[Depends(require_key)])
+async def apps_pay_plan_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.drop_plan(_be_owner(tenant, ref), key))
+
+
+@app.post("/api/apps/{ref}/pay/subs/{sid}/cancel", dependencies=[Depends(require_key)])
+async def apps_pay_sub_cancel(ref: str, sid: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import pay as PY
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.cancel_sub(_be_owner(tenant, ref), W.Who(owner=True), sid))
+
+
+@app.put("/api/apps/{ref}/pay/split", dependencies=[Depends(require_key)])
+async def apps_pay_split(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{vendors: [{key, name, account}], rules: [{vendor, percent}], her_tap: true} - her approved payout rule."""
+    from .appmaker import pay as PY
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_split(_be_owner(tenant, ref), b.get("vendors") or [], b.get("rules") or [],
+                                                                        bool(b.get("her_tap"))))
+
+
+# ---- v0.424 JODO (App Sahayak Pillar F): declared connectors (couriers, SMS, WhatsApp, e-mail, Google, accounts, KYC).
+@app.post("/api/app-api/{app_key}/connect/{key}/run")
+async def app_api_connect_run(app_key: str, key: str, request: Request):
+    """A staff button in the app {row}: only an approved action she allowed staff to run."""
+    from .appmaker import connect as CN
+    body = await _json_body(request)
+    return await asyncio.to_thread(_be_call, lambda: CN.staff_run(*_be_app(app_key, request), key, str(body.get("row") or "")))
+
+
+@app.post("/api/app-api/{app_key}/hook/{key}")
+async def app_api_connect_hook(app_key: str, key: str, request: Request):
+    """Her outside service calls the app. Nothing happens unless the signature verifies with the hook's secret."""
+    from .appmaker import backend as BE
+    from .appmaker import connect as CN
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"ok": False}, status_code=413)
+    hdrs = dict(request.headers)
+    return await asyncio.to_thread(_be_call, lambda: CN.hook(BE.by_key(app_key), key, hdrs, raw))
+
+
+@app.get("/api/apps/{ref}/connect", dependencies=[Depends(require_key)])
+async def apps_connect(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.status(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/connect/pack", dependencies=[Depends(require_key)])
+async def apps_connect_pack(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{pack, settings, secrets}: secrets sealed at once; the drafted actions wait for her approval tap."""
+    from .appmaker import connect as CN
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.apply_pack(_be_owner(tenant, ref), str(b.get("pack") or ""),
+                                                                         b.get("settings") if isinstance(b.get("settings"), dict) else {},
+                                                                         b.get("secrets") if isinstance(b.get("secrets"), dict) else {}))
+
+
+@app.put("/api/apps/{ref}/connect/actions", dependencies=[Depends(require_key)])
+async def apps_connect_action(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_action(_be_owner(tenant, ref), (body or {}).get("action") or {}))
+
+
+@app.post("/api/apps/{ref}/connect/actions/{key}/approve", dependencies=[Depends(require_key)])
+async def apps_connect_approve(ref: str, key: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.approve(_be_owner(tenant, ref), key, bool((body or {}).get("her_tap"))))
+
+
+@app.delete("/api/apps/{ref}/connect/actions/{key}", dependencies=[Depends(require_key)])
+async def apps_connect_action_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_action(_be_owner(tenant, ref), key))
+
+
+@app.post("/api/apps/{ref}/connect/actions/{key}/run", dependencies=[Depends(require_key)])
+async def apps_connect_run(ref: str, key: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap {row?, her_tap: true}: run an approved action now (a test on one entry)."""
+    from .appmaker import connect as CN
+    from .site import webapp as W
+    b = body or {}
+
+    def go():
+        if not b.get("her_tap"):
+            raise W.AppError("Sirf aapke tap se.", 403)
+        return CN.run(_be_owner(tenant, ref), key, str(b.get("row") or ""), "her_tap", wait=True)
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.put("/api/apps/{ref}/connect/secrets/{name}", dependencies=[Depends(require_key)])
+async def apps_connect_secret(ref: str, name: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{value}: typed in the app, sealed at once, returned by no route."""
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.set_secret(_be_owner(tenant, ref), name, str((body or {}).get("value") or "")))
+
+
+@app.delete("/api/apps/{ref}/connect/secrets/{name}", dependencies=[Depends(require_key)])
+async def apps_connect_secret_drop(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.forget_secret(_be_owner(tenant, ref), name))
+
+
+@app.put("/api/apps/{ref}/connect/hooks", dependencies=[Depends(require_key)])
+async def apps_connect_hook_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_hook(_be_owner(tenant, ref), (body or {}).get("hook") or {}))
+
+
+@app.delete("/api/apps/{ref}/connect/hooks/{key}", dependencies=[Depends(require_key)])
+async def apps_connect_hook_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import connect as CN
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_hook(_be_owner(tenant, ref), key))
+
+
+# ---- v0.425 RANG (App Sahayak Pillar G): custom native components (Kotlin + Swift) - house rules in code, her tap, build-proved.
+@app.get("/api/apps/{ref}/components", dependencies=[Depends(require_key)])
+async def apps_components(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.listing(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/components/draft", dependencies=[Depends(require_key)])
+async def apps_component_draft(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{words}: Opus drafts one component (Kotlin + Swift); refused when a house rule fails. Waits for her approval."""
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.draft(_be_owner(tenant, ref), str((body or {}).get("words") or "")))
+
+
+@app.post("/api/apps/{ref}/components/{name}/approve", dependencies=[Depends(require_key)])
+async def apps_component_approve(ref: str, name: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.approve(_be_owner(tenant, ref), name, bool((body or {}).get("her_tap"))))
+
+
+@app.delete("/api/apps/{ref}/components/{name}", dependencies=[Depends(require_key)])
+async def apps_component_drop(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.remove(_be_owner(tenant, ref), name))
 
 
 def _be_owner(tenant: str, ref: str):

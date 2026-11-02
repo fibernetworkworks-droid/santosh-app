@@ -9,6 +9,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import re
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -249,8 +251,9 @@ def test_everything_the_learner_sees_is_english():
     def walk(v, where):
         if isinstance(v, str):
             low = f" {v} "
-            for w in HINGLISH:
-                assert w not in low, (where, w, v)
+            for w in HINGLISH:                           # whole words only: 'var hair' in code is not ' hai'
+                pat = r"(?<![A-Za-z])" + re.escape(w.strip()) + r"(?![A-Za-z])"
+                assert not re.search(pat, low), (where, w, v)
         elif isinstance(v, dict):
             for k, x in v.items():
                 walk(x, f"{where}.{k}")
@@ -354,7 +357,7 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.418.0"
+    assert APP_VERSION == "0.435.0"
 
 
 # ------------------------------------------------------------------------------------------- the realistic studio

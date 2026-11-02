@@ -148,6 +148,16 @@ FILE CONTRACT
   rider on shift on a live map); an order tracking screen: block { TrackOrderBlock("orders", id) } (the rider moving on a
   map + ETA); any map: LiveMap(listOf(MapPin(lat, lng, "label", "rider"|"dest"))). LiveRowsBlock already adds "Track live".
   Never ask for location yourself, never draw your own map, never add a location loop.
+  ONLINE PAYMENT (v0.419, only when the business joined its gateway; each block shows nothing otherwise): LiveRowsBlock already
+  shows "Pay online" on the customer's unpaid order; a payment screen: PayButton("orders", row); AutoPay plans: block {
+  PlansBlock() }. NEVER build a card / UPI form, never mark an order paid yourself - the server does it from the gateway.
+  RICH PIECES (v0.425, native, no web views): fields [signature] SignatureField(label, key), [photos] PhotosField(label, key),
+  [video] VideoField(label, key), [audio] AudioField(label, key), [richtext] RichTextField(label, key); show RichText(text),
+  PhotosStrip(ids), VideoPlayer(fileId), AudioPlayer(fileId), PdfViewer(fileId); blocks CalendarBlock("bookings", "date"),
+  KanbanBlock("orders") (columns by status, staff move cards), GanttBlock(list, "start", "end"), LineChart(values, labels),
+  PieChart(values, labels), Carousel(photoIds), OnboardingPager(listOf("Title" to "words"), onDone). Never a WebView.
+  CONNECTORS (v0.424): LiveRowsBlock already shows the staff buttons for her approved connectors (courier, SMS...); a staff
+  screen may add ConnectButtons("orders", row). NEVER call an outside API from the app, never put a key in the app.
   Fields marked [location]: LocationField(label, key) ("Use my location" with the
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.
 - Actions: val c = ctx(); Act.call(c), Act.whatsapp(c, text), Act.share(c, text), Act.maps(c), Act.payUpi(c, amount, note)

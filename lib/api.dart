@@ -1069,6 +1069,49 @@ class Api {
   Future<Map<String, dynamic>> gameItchPush(String id, String rid, String hash) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/releases/$rid/itch/push', body: {'hash': hash},
           timeout: const Duration(seconds: 900)) as Map);
+  // v0.420 Game Desk roles: Procedural World Engineer + Physics Engine Developer
+  Future<Map<String, dynamic>> gameWorlds(String studio) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/worlds${studio.isEmpty ? '' : '?studio=${Uri.encodeQueryComponent(studio)}'}',
+          timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gameWorldNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/worlds', body: body, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> gameWorldDo(String id, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/world/${Uri.encodeComponent(id)}/$what', body: {}) as Map);
+  Future<Map<String, dynamic>> gameWorldsApply(String studio) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/worlds/apply', body: {'studio': studio}) as Map);
+  Future<Map<String, dynamic>> gamePhysics(String studio) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/physics${studio.isEmpty ? '' : '?studio=${Uri.encodeQueryComponent(studio)}'}',
+          timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gamePhysicsNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/physics', body: body) as Map);
+  Future<Map<String, dynamic>> gamePhysicsDo(String id, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/physics/${Uri.encodeComponent(id)}/$what', body: {}) as Map);
+  Future<Map<String, dynamic>> gamePhysicsApply(String studio) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/physics/apply', body: {'studio': studio}) as Map);
+  // v0.421 Game Desk roles: Spatial Audio + Haptics (one helper each, base = audio | haptics)
+  Future<Map<String, dynamic>> gamePack(String base, String studio) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/$base${studio.isEmpty ? '' : '?studio=${Uri.encodeQueryComponent(studio)}'}',
+          timeout: const Duration(seconds: 40)) as Map);
+  Future<Map<String, dynamic>> gamePackNew(String base, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/$base', body: body, timeout: const Duration(seconds: 90)) as Map);
+  Future<Map<String, dynamic>> gamePackDo(String base, String id, String what) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/$base/${Uri.encodeComponent(id)}/$what', body: {}) as Map);
+  Future<Map<String, dynamic>> gamePackApply(String base, String studio) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/$base/apply', body: {'studio': studio}) as Map);
+  // v0.425 Hoola Runtime (replay tests, opt-in telemetry)
+  Future<Map<String, dynamic>> gameRuntime(String sid) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/runtime/${Uri.encodeComponent(sid)}') as Map);
+  Future<Map<String, dynamic>> gameRuntimeSet(String sid, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/runtime/${Uri.encodeComponent(sid)}', body: body) as Map);
+  Future<Map<String, dynamic>> gameReplayTest(String sid) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/runtime/${Uri.encodeComponent(sid)}/replay', body: {}) as Map);
+  Future<Map<String, dynamic>> gameTelemetry(String sid) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/runtime/${Uri.encodeComponent(sid)}/telemetry') as Map);
+  // v0.428 Live ops (A/B tests, live events, crashes, patch check, money)
+  Future<Map<String, dynamic>> gameLiveops(String sid, [String part = '']) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/liveops/${Uri.encodeComponent(sid)}$part') as Map);
+  Future<Map<String, dynamic>> gameLiveopsDo(String sid, String part, [Map<String, dynamic>? body]) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/liveops/${Uri.encodeComponent(sid)}$part', body: body ?? {}) as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamestudio/$id/settings', body: body) as Map);
   // v0.353 the Social Media Manager's desk
@@ -1151,9 +1194,9 @@ class Api {
   // ---- v0.410 Architecture Desk (Principal Software Architect) ----
   Future<Map<String, dynamic>> archProjects() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/arch/projects', timeout: const Duration(seconds: 30)) as Map);
-  Future<Map<String, dynamic>> archStart(String brief, {String repo = '', int? dau}) async =>
+  Future<Map<String, dynamic>> archStart(String brief, {String repo = '', int? dau, String kind = 'design'}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/arch/projects',
-          body: {'brief': brief, 'repo': repo, 'scale': {if (dau != null) 'dau': dau}}, timeout: const Duration(seconds: 60)) as Map);
+          body: {'brief': brief, 'repo': repo, 'kind': kind, 'scale': {if (dau != null) 'dau': dau}}, timeout: const Duration(seconds: 60)) as Map);
   Future<Map<String, dynamic>> archGet(String id) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/arch/projects/$id', timeout: const Duration(seconds: 30)) as Map);
   Future<void> archApprove(String id) async => _send('POST', '/api/arch/projects/$id/approve', body: const {});

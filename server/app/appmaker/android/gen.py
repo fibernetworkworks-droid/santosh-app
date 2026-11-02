@@ -202,7 +202,10 @@ def screens_kt(spec: dict[str, Any], have: set[str]) -> str:
     code_when = {"seller_info": "SellerScreen()", "privacy": "PrivacyScreen()", "delete_account": "DeleteAccountScreen()"}
     cwhens = "\n".join(f"            {kstr(c)} -> {code_when[c]}" for c in code if c in code_when)
     cwhens += '\n            "hoola_login" -> AuthScreen()\n            "hoola_account" -> AccountScreen()\n            "hoola_inbox" -> InboxScreen()\n            "hoola_chat" -> ChatScreen()\n            "hoola_approvals" -> ApprovalsScreen()\n            "hoola_data" -> DataScreen()'
-    all_ids = ", ".join(kstr(x) for x in ids + [c for c in code if c in code_when] + list(KIT_SCREENS))
+    if spec.get("custom"):                     # v0.425 RANG: her approved custom components on one check screen
+        cwhens += '\n            "hoola_components" -> ComponentsGallery()'
+    all_ids = ", ".join(kstr(x) for x in ids + [c for c in code if c in code_when] + list(KIT_SCREENS)
+                        + (["hoola_components"] if spec.get("custom") else []))
     fab = spec.get("fab") or {}
     fab_main = (f"FabAction({kstr(fab['label'])}, {kstr(fab.get('icon') or 'plus')}, {kstr(fab['go'])})"
                 if fab.get("go") in ids else "null")
@@ -362,6 +365,12 @@ def uses_location(spec: dict[str, Any]) -> bool:
                for f in c.get("fields") or [])
 
 
+def uses_audio(spec: dict[str, Any]) -> bool:
+    """v0.425 RANG: a voice-note field -> the microphone permission (asked only when the user taps Record)."""
+    return any(f.get("type") == "audio" for c in ((spec.get("seed") or {}).get("backend") or {}).get("collections") or []
+               for f in c.get("fields") or [])
+
+
 def uses_tracking(spec: dict[str, Any]) -> bool:
     """v0.412 NAKSHA LIVE: she turned live tracking on -> the rider's location service + its permissions are in the build."""
     return bool((((spec.get("seed") or {}).get("backend") or {}).get("track") or {}).get("on"))
@@ -373,6 +382,8 @@ def manifest_xml(spec: dict[str, Any]) -> str:
                     '            </intent-filter>\n        </service>\n') if fcm_config(spec) else ""   # v0.367 TURANT
     loc = ('    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
            '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n') if uses_location(spec) else ""
+    if uses_audio(spec):                       # v0.425 a voice note, only on the user's Record tap
+        loc += '    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n'
     track = uses_tracking(spec)
     if track:                                  # v0.412 the shift's location service (foreground, while-in-use; never background-location)
         if not loc:
@@ -524,6 +535,11 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
         if f.get("type") == "scan":                # v0.340
             out.append(f"        block {{ ScanField(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
             continue
+        rich = {"signature": "SignatureField", "photos": "PhotosField", "video": "VideoField", "audio": "AudioField",
+                "richtext": "RichTextField"}.get(str(f.get("type")))           # v0.425 RANG
+        if rich:
+            out.append(f"        block {{ {rich}(T({kstr(f.get('label') or k)}), {kstr(k)}) }}")
+            continue
         if f.get("type") == "choice" and f.get("options"):
             opts = ", ".join(kstr(o) for o in f["options"][:8])
             out.append(f"        block {{ Label(T({kstr(f.get('label') or k)})) }}")
@@ -659,6 +675,16 @@ def scan_screen(src: str, sid: str, ids: list[str]) -> list[str]:
 
 
 # ---------------------------------------------------------------- write the project
+def _custom_files():
+    """v0.425 custom_files works inside the package and when this file runs as a script in CI."""
+    if __package__:
+        from .. import custom_files
+        return custom_files
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import custom_files                                    # type: ignore[no-redef]
+    return custom_files
+
+
 def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     out = Path(out)
     tmp = out.with_name(out.name + ".tmp")
@@ -722,6 +748,10 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
             made[sid] = "code"
         (appd / "screens" / f"{kotlin_name(sid)}.kt").write_text(src)
     (appd / "AppScreens.kt").write_text(screens_kt(spec, set(ids)))
+    for rel, src in _custom_files().android_files(spec.get("custom") or []).items():
+        p = main / "java/hoola/kit" / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(src)
     # v0.314 debug builds only: Hoola's emulator test may reach a test server on the host (10.0.2.2) without https;
     # the release build keeps the https-only config written by resources()
     dbg = tmp / "app/src/debug/res/xml"
@@ -753,6 +783,8 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     (qa / "tablet_check.sh").chmod(0o755)
     (qa / "package.txt").write_text(app_id + "\n")
     shots = ids + [c for c in ("seller_info", "privacy", "delete_account") if c in (spec.get("code_screens") or [])] + list(KIT_SCREENS)
+    if spec.get("custom"):                     # v0.425 the custom components' check screen is opened too
+        shots = shots + ["hoola_components"]
     (qa / "screens.txt").write_text(" ".join(x for x in shots if x not in AUTH_IDS) + "\n")
     (tmp / ".gitignore").write_text(".gradle/\nbuild/\napp/build/\nlocal.properties\nkeys/\nqa/\n")
     if out.exists():

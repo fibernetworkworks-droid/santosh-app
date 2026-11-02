@@ -65,7 +65,7 @@ object Cloud {
     internal val baseUrl: String get() = base
 
     /** v0.319 a photo (JPEG bytes) -> {id}. */
-    internal suspend fun upload(bytes: ByteArray, token: String): Reply = withContext(Dispatchers.IO) {
+    internal suspend fun upload(bytes: ByteArray, token: String, ctype: String? = null): Reply = withContext(Dispatchers.IO) {
         if (!ready) return@withContext Reply(0, JSONObject())
         var c: HttpURLConnection? = null
         try {
@@ -77,7 +77,7 @@ object Cloud {
                 doOutput = true
                 setFixedLengthStreamingMode(bytes.size)
                 // v0.346 a document (PDF) goes up as itself; photos as JPEG
-                setRequestProperty("Content-Type", if (bytes.size > 5 && String(bytes, 0, 5, Charsets.US_ASCII) == "%PDF-") "application/pdf" else "image/jpeg")
+                setRequestProperty("Content-Type", ctype ?: if (bytes.size > 5 && String(bytes, 0, 5, Charsets.US_ASCII) == "%PDF-") "application/pdf" else "image/jpeg")
                 setRequestProperty("Accept", "application/json")
                 if (token.isNotEmpty()) setRequestProperty("Authorization", "Bearer $token")
             }
@@ -397,6 +397,22 @@ object Db {
         val show = job.optJSONObject("show")
         for (k in data.keys().asSequence().toList()) {
             val v = data.optString(k)
+            if (v.contains(",local:") || (v.startsWith("local:") && v.contains(","))) {     // v0.425 several photos in one field
+                val parts = v.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+                for (i in parts.indices) {
+                    if (!parts[i].startsWith("local:")) continue
+                    val pf = java.io.File(parts[i].removePrefix("local:"))
+                    val pb = try { pf.readBytes() } catch (_: Exception) { null }
+                    if (pb == null) { parts[i] = ""; continue }
+                    val pr = Cloud.upload(pb, Auth.token())
+                    if (pr.ok && pr.body.optString("id").startsWith("f_")) { parts[i] = pr.body.optString("id"); pf.delete() }
+                    else if (pr.retry || pr.code == 401) { data.put(k, parts.filter { it.isNotEmpty() }.joinToString(",")); synchronized(this) { persist() }; return pr }
+                    else parts[i] = ""
+                    data.put(k, parts.filter { it.isNotEmpty() }.joinToString(","))
+                    synchronized(this) { persist() }
+                }
+                continue
+            }
             if (!v.startsWith("local:")) continue
             val f = java.io.File(v.removePrefix("local:"))
             val bytes = try { f.readBytes() } catch (_: Exception) { null }
@@ -404,7 +420,8 @@ object Db {
                 data.remove(k); show?.remove(k)
                 continue
             }
-            val r = Cloud.upload(bytes, Auth.token())
+            val ctype = when (f.extension.lowercase()) { "m4a" -> "audio/mp4"; "mp4", "mov" -> "video/mp4"; else -> null }   // v0.425
+            val r = Cloud.upload(bytes, Auth.token(), ctype)
             if (r.ok && r.body.optString("id").startsWith("f_")) {
                 data.put(k, r.body.optString("id"))
                 f.delete()

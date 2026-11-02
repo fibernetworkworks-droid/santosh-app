@@ -16,6 +16,9 @@ import 'app_logic.dart';
 import 'app_safety.dart';
 import 'app_owndb.dart';
 import 'app_track.dart';
+import 'app_pay.dart';
+import 'app_connect.dart';
+import 'app_components.dart';
 import 'app_android.dart';
 import 'app_ios.dart';
 import 'site_screen.dart' show SiteStages;
@@ -842,6 +845,12 @@ class _AppDesignPageState extends State<AppDesignPage> {
             Glass(child: AppOwnDbPanel(app: app, id: widget.id)),          // v0.396 APNA DATABASE: her own database
             const SizedBox(height: 10),
             Glass(child: AppTrackPanel(app: app, id: widget.id)),          // v0.412 NAKSHA LIVE: tracking switch + riders
+            const SizedBox(height: 10),
+            Glass(child: AppPayPanel(app: app, id: widget.id)),            // v0.419 PAISA: her gateway, payments, refunds
+            const SizedBox(height: 10),
+            Glass(child: AppConnectPanel(app: app, id: widget.id)),        // v0.424 JODO: connectors - approve + runs
+            const SizedBox(height: 10),
+            Glass(child: AppComponentsPanel(app: app, id: widget.id)),     // v0.425 RANG: custom native components
             const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),

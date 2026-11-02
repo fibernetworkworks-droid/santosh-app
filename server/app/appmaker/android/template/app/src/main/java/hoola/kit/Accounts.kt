@@ -129,6 +129,7 @@ fun AccountScreen() {
         if (me != null && Auth.isStaff) block { StatsBlock() }     // v0.340 the staff dashboard
         if (me != null && Auth.isStaff) block { StopsBlock() }     // v0.350 the open stops with a location, nearest first
         if (me != null && Auth.isStaff && Track.on) block { ShiftBlock() }   // v0.412 NAKSHA LIVE: Start / End shift
+        if (me != null && !Auth.isStaff && Pay.plansOn) block { PlansBlock() }   // v0.419 AutoPay plans + her own, with Cancel
         if (me != null && Auth.isStaff && Track.on) block { RidersMap() }    // v0.412 every rider on shift, live
         block { LanguagePicker() }                                 // v0.347 the app's words in her language
         if (Db.pending.value > 0) block { Pill("${Db.pending.value} ${Strings.pending}", "warn") }
@@ -194,10 +195,18 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
             if (paid.isNotEmpty() && paid != "No") Pill(T(paid), if (paid == "Verified") "ok" else "warn")
             if (r.has("total") && r.n("total") > 0) Title(rupees(r.n("total")))
         }
-        fields.filter { it.s("type") == "photo" && r.has(it.s("key")) }.take(2).forEach { f ->
+        fields.filter { it.s("type") in listOf("photo", "signature") && r.has(it.s("key")) }.take(2).forEach { f ->
             RemotePhoto(r.s(f.s("key")), Modifier.fillMaxWidth().padding(top = 6.dp), f.s("label"))
         }
-        fields.filter { it !== head && it.s("key") !in listOf("status", "total", "paid") && it.s("type") != "photo" && r.has(it.s("key")) }
+        fields.filter { it.s("type") in listOf("photos", "video", "audio", "richtext") && r.has(it.s("key")) && !r.b("pending") }.take(3).forEach { f ->
+            when (f.s("type")) {                                  // v0.425 RANG
+                "photos" -> PhotosStrip(r.s(f.s("key")))
+                "video" -> VideoPlayer(r.s(f.s("key")))
+                "audio" -> AudioPlayer(r.s(f.s("key")))
+                else -> RichText(r.s(f.s("key")))
+            }
+        }
+        fields.filter { it !== head && it.s("key") !in listOf("status", "total", "paid") && it.s("type") !in listOf("photo", "signature", "photos", "video", "audio", "richtext") && r.has(it.s("key")) }
             .take(6).forEach { f ->
                 if (f.s("type") == "location") {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -217,6 +226,8 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
         SlotChange(coll, r)                                                                       // v0.377 change the time
         if (r.s("delivery_note").isNotEmpty()) Small(r.s("delivery_note"), maxLines = 4)
         TrackButton(coll, r)                                      // v0.412 NAKSHA LIVE: the rider on a map while it is on its way
+        PayButton(coll, r)                                        // v0.419 PAISA: pay online through the shop's own gateway
+        ConnectButtons(coll, r)                                   // v0.424 JODO: staff buttons for her approved connectors
         RateBox(coll, r)                                          // v0.353 the customer rates her finished row once
         ReceiptButton(coll, r)                                    // v0.354 the receipt PDF of a finished row
         CreditButton(coll, r)                                     // v0.359 staff: this order on credit (udhaar)

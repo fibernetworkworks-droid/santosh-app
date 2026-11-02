@@ -458,12 +458,18 @@ COUPLES: list = []
 
 
 def joint(name, parent, child, kind="revolute", origin=(0, 0, 0), axis=(0, 0, 1), limits=None, effort=None,
-          velocity=None, driver=False, closure=False):
+          velocity=None, driver=False, closure=False, direction=None, travel=None, bearing=None, pin_d=None,
+          friction=None, damping=None):
     """A joint between two NAMED parts of the assembly, in the assembly's own (world) frame as modelled:
     kind revolute (limits in degrees) | continuous | prismatic (limits in mm) | fixed; origin = a point on the axis
-    (mm); axis = direction. Joints make a tree (each part the child of one joint). -> motion check, URDF, motion GIF."""
-    if kind not in ("revolute", "continuous", "prismatic", "fixed"):
-        raise ValueError("joint kind: revolute / continuous / prismatic / fixed")
+    (mm); axis = direction. Joints make a tree (each part the child of one joint). -> motion check, URDF, motion GIF.
+    FRICTION (v0.427): bearing = 'ball' | 'roller' | 'needle' | 'bush' (lubricated plain) | 'dry' (dry plain) |
+    'rail' (linear guide) | 'slide' (plain slideway) -> load-dependent friction mu x |joint load| x pin_d/2 (pin_d mm,
+    default 10 for a revolute); friction = a constant (Coulomb) torque N·m / force N; damping = N·m·s/rad or N·s/m."""
+    if kind not in ("revolute", "continuous", "prismatic", "fixed", "slot"):
+        raise ValueError("joint kind: revolute / continuous / prismatic / fixed / slot")
+    if kind == "slot" and not direction:
+        raise ValueError(f"slot {name}: direction=(dx, dy, dz) of the slot's length is needed (pin on child, slot in parent)")
     if len(JOINTS) >= 40:
         raise ValueError("40 joints tak")
     if limits is not None and (len(limits) != 2 or not float(limits[0]) < float(limits[1])):
@@ -471,27 +477,79 @@ def joint(name, parent, child, kind="revolute", origin=(0, 0, 0), axis=(0, 0, 1)
     JOINTS.append({"name": str(name), "parent": str(parent), "child": str(child), "kind": kind,
                    "origin": [float(x) for x in origin], "axis": [float(x) for x in axis],
                    "limits": [float(x) for x in limits] if limits is not None else None,
-                   "effort": effort, "velocity": velocity, "driver": bool(driver), "closure": bool(closure)})
+                   "effort": effort, "velocity": velocity, "driver": bool(driver), "closure": bool(closure),
+                   "direction": [float(x) for x in direction] if direction else None,
+                   "travel": [float(x) for x in travel] if travel else None,
+                   "bearing": str(bearing) if bearing else None, "pin_d": float(pin_d) if pin_d else None,
+                   "friction": float(friction) if friction else None, "damping": float(damping) if damping else None})
 
 
-def couple(follower, leader, ratio=None, offset=0.0, teeth=None):
+CAMS: dict = {}
+
+
+def disc_cam(name, segments, base_radius, follower="roller", roller_radius=5.0, offset=0.0, thickness=10.0, bore=10.0,
+        rpm=60.0, cam_joint=None, follower_joint=None, max_pressure_deg=30.0, spring_k=None, preload=None,
+        guide_mu=None, guide_len=None, overhang=None, roller_material=None, contact_allow_mpa=None):
+    """A disc cam DESIGNED from the follower motion: segments = [{'type': 'rise', 'lift': 10, 'deg': 120,
+    'law': 'cycloidal' | 'harmonic' | '345'}, {'type': 'dwell', 'deg': 60}, {'type': 'return', 'lift': 10, 'deg': 120},
+    {'type': 'dwell', 'deg': 60}] (360° in all); follower 'roller' (roller_radius, offset) or 'flat'. Returns the cam
+    disc (profile extruded along +Z from z=0, centre bore, cam centre at the origin - place it with .translate).
+    cam_joint / follower_joint (joint names) tie the follower's prismatic joint to the cam's turn.
+    CONTACT (v0.427, needs the joints): spring_k N/mm + preload N = her return spring (left out = Hoola designs it);
+    guide_mu (follower guide friction), guide_len / overhang mm (guide length, guide-to-contact distance);
+    roller_material, contact_allow_mpa (her allowable Hertz stress). -> push / spring / Hertz / jam checks."""
+    try:
+        import cams as _cams
+    except ImportError:
+        from . import cams as _cams
+    spec = {"segments": list(segments), "base_radius": float(base_radius), "follower": follower,
+            "roller_radius": float(roller_radius), "offset": float(offset), "thickness": float(thickness),
+            "bore": float(bore), "rpm": float(rpm), "max_pressure_deg": float(max_pressure_deg)}
+    des = _cams.design(spec)
+    CAMS[str(name)] = {"rows": des["rows"], "rpm": float(rpm), "cam_joint": cam_joint, "follower_joint": follower_joint,
+                       "lift": des["lift"], "kind": follower,
+                       "curve": {"deg": [round(math.degrees(x), 2) for x in des["program"]["theta"][::6]],
+                                 "s": [round(float(x), 4) for x in des["program"]["s"][::6]],
+                                 "v": [round(float(x), 3) for x in des["vel"][::6]],
+                                 "a": [round(float(x), 4) for x in des["acc"][::6]]},
+                       "geo": _cams.geometry(des), "thickness": float(thickness), "roller_radius": float(roller_radius),
+                       "contact": {"spring_k": spring_k, "preload": preload, "guide_mu": float(guide_mu or 0.0),
+                                   "guide_len": guide_len, "overhang": overhang, "roller_material": roller_material,
+                                   "allow_mpa": contact_allow_mpa}}
+    if cam_joint and follower_joint:
+        COUPLES.append({"follower": str(follower_joint), "leader": str(cam_joint), "table": _cams.table(des),
+                        "offset": 0.0, "cam": str(name)})
+    return _cams.solid(spec, des)
+
+
+def couple(follower, leader, ratio=None, offset=0.0, teeth=None, backlash=None):
     """Gear / belt / pulley coupling: joint `follower` = ratio x joint `leader` + offset. teeth=(z_leader, z_follower)
-    for a gear pair gives ratio = -z_leader / z_follower (external gears turn the other way)."""
+    for a gear pair gives ratio = -z_leader / z_follower (external gears turn the other way). backlash = the play at
+    the FOLLOWER joint (degrees, or mm for a prismatic one): play at the tip, lost motion and knocks in the move."""
     if ratio is None:
         if not teeth or len(teeth) != 2:
             raise ValueError("couple: ratio=... or teeth=(z_leader, z_follower)")
         ratio = -float(teeth[0]) / float(teeth[1])
     if not ratio:
         raise ValueError("couple: ratio must not be 0")
-    COUPLES.append({"follower": str(follower), "leader": str(leader), "ratio": float(ratio), "offset": float(offset)})
+    if backlash is not None and float(backlash) < 0:
+        raise ValueError("couple: backlash >= 0")
+    COUPLES.append({"follower": str(follower), "leader": str(leader), "ratio": float(ratio), "offset": float(offset),
+                    "backlash": float(backlash) if backlash else None})
 
 
-def robot(name="hoola_robot", materials=None, payload=None, accel_deg_s2=None, gravity=None):
+def robot(name="hoola_robot", materials=None, payload=None, accel_deg_s2=None, gravity=None, move_time_s=None,
+          accuracy_mm=None):
     """Robot description settings: the robot name; materials = {part: material} when parts differ; payload =
     {'part': 'gripper', 'kg': 0.5, 'at': (x, y, z) mm} for the joint torque check; accel_deg_s2 = the angular
-    acceleration the motors must give (adds I x alpha); gravity = (gx, gy, gz) m/s² if not straight down."""
+    acceleration the motors must give (adds I x alpha); gravity = (gx, gy, gz) m/s² if not straight down;
+    move_time_s = how long the simulated move takes (default 2 s); accuracy_mm = the play allowed at the tip (backlash)."""
+    if move_time_s is not None and not 0.05 <= float(move_time_s) <= 120:
+        raise ValueError("robot: move_time_s 0.05 .. 120")
     ROBOT.update({"name": str(name)[:60], "materials": dict(materials or {}), "payload": payload,
-                  "accel_deg_s2": accel_deg_s2, "gravity": gravity})
+                  "accel_deg_s2": accel_deg_s2, "gravity": gravity,
+                  "move_time_s": float(move_time_s) if move_time_s else None,
+                  "accuracy_mm": float(accuracy_mm) if accuracy_mm else None})
 
 
 def make(process, material=None, tool_d=None, pull="Z", limits=None):
@@ -536,11 +594,12 @@ class _H:
     spline_sweep = staticmethod(spline_sweep)
     expect = staticmethod(expect)
     analyze = staticmethod(analyze)
-    cam = staticmethod(cam)
+    disc_cam = staticmethod(disc_cam)
     fit = staticmethod(fit)
     make = staticmethod(make)
     joint = staticmethod(joint)
     couple = staticmethod(couple)
+    cam = staticmethod(cam)
     robot = staticmethod(robot)
     drawing = staticmethod(drawing)
 

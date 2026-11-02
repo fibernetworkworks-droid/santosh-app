@@ -33,6 +33,43 @@ enum Words {
     static var isOnline: String { t("online", "ऑनलाइन", "online") }
     static var isTyping: String { t("typing…", "लिख रहे हैं…", "likh rahe hain…") }
     static var live: String { t("Live", "लाइव", "Live") }
+    // v0.425 RANG
+    static var signAgain: String { t("Sign again", "फिर से साइन करें", "Phir se sign karein") }
+    static var useSignature: String { t("Use this signature", "यह साइन लें", "Yeh sign lein") }
+    static var clearWord: String { t("Clear", "मिटाएँ", "Mitayein") }
+    static var addPhotos: String { t("Add photos", "फ़ोटो जोड़ें", "Photos jodiye") }
+    static var videoTooBig: String { t("The video did not open or is over 50 MB.", "वीडियो नहीं खुला या 50 MB से बड़ा है।", "Video nahi khula ya 50 MB se bada hai.") }
+    static var videoReady: String { t("Video ready - it is sent with the form.", "वीडियो तैयार - फ़ॉर्म के साथ जाएगा।", "Video taiyaar - form ke saath jayega.") }
+    static var videoSaved: String { t("Video saved.", "वीडियो सेव है।", "Video save hai.") }
+    static var addVideo: String { t("Add video", "वीडियो जोड़ें", "Video jodiye") }
+    static var changeVideo: String { t("Change video", "वीडियो बदलें", "Video badlein") }
+    static var recording: String { t("Recording…", "रिकॉर्ड हो रहा है…", "Record ho raha hai…") }
+    static var record: String { t("Record", "रिकॉर्ड करें", "Record karein") }
+    static var recordAgain: String { t("Record again", "फिर रिकॉर्ड करें", "Phir record karein") }
+    static var stopWord: String { t("Stop", "रोकें", "Rokein") }
+    static var micDenied: String { t("Microphone not allowed. You can type instead.", "माइक की अनुमति नहीं मिली। लिख दीजिए।", "Mic ki anumati nahi mili. Likh dijiye.") }
+    static var listWord: String { t("List", "सूची", "List") }
+    static var playVideo: String { t("Play video", "वीडियो चलाएँ", "Video chalayein") }
+    static var pauseWord: String { t("Pause", "रोकें", "Rokein") }
+    static var playWord: String { t("Play", "चलाएँ", "Chalayein") }
+    static var pdfFailed: String { t("The PDF did not open.", "PDF नहीं खुला।", "PDF nahi khula.") }
+    static var pageWord: String { t("Page", "पेज", "Page") }
+    static var prevWord: String { t("Back", "पीछे", "Peeche") }
+    static var nextWord: String { t("Next", "आगे", "Aage") }
+    static var skipWord: String { t("Skip", "छोड़ें", "Chhodein") }
+    static var doneWord: String { t("Done", "हो गया", "Ho gaya") }
+    static var connDone: String { t("Done.", "हो गया।", "Ho gaya.") }   // v0.424 JODO
+    // v0.419 PAISA
+    static var payOnline: String { t("Pay online", "ऑनलाइन भुगतान", "Online pay karein") }
+    static var opening: String { t("Opening…", "खुल रहा है…", "Khul raha hai…") }
+    static var payWaiting: String { t("Waiting for the payment to be confirmed by the gateway…", "गेटवे से भुगतान की पुष्टि का इंतज़ार…", "Gateway se payment confirm hone ka intezaar…") }
+    static var autoPay: String { t("AutoPay plans", "ऑटोपे प्लान", "AutoPay plans") }
+    static var autoPayOn: String { t("AutoPay on", "ऑटोपे चालू", "AutoPay chalu") }
+    static var charged: String { t("payments made", "भुगतान हुए", "payment hue") }
+    static var cancelAutoPay: String { t("Cancel AutoPay", "ऑटोपे बंद करें", "AutoPay band karein") }
+    static var autoPayOff: String { t("AutoPay cancelled. Nothing more will be charged.", "ऑटोपे बंद। आगे कुछ नहीं कटेगा।", "AutoPay band. Aage kuch nahi katega.") }
+    static var autoPayWhy: String { t("Charged automatically {n} times through your bank's mandate. You approve it on the next page and can cancel any time here.", "आपके बैंक मैंडेट से {n} बार अपने आप कटेगा। अगले पेज पर आप मंज़ूर करेंगे, और यहाँ कभी भी बंद कर सकते हैं।", "Aapke bank mandate se {n} baar apne aap katega. Agle page par aap manzoor karenge, aur yahan kabhi bhi band kar sakte hain.") }
+    static var startAutoPay: String { t("Start AutoPay", "ऑटोपे शुरू करें", "AutoPay shuru karein") }
     // v0.412 NAKSHA LIVE
     static var cont: String { t("Continue", "आगे बढ़ें", "Aage badhiye") }
     static var later: String { t("Not now", "अभी नहीं", "Abhi nahi") }

@@ -13,6 +13,7 @@ import 'game_assets_screen.dart';
 import 'game_bible_screen.dart';
 import 'game_qa_screen.dart';
 import 'game_release_screen.dart';
+import 'game_roles_screen.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -473,6 +474,58 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
                   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameBibleScreen(app: widget.app, id: _s(_p['id']))));
                   await _load();
                 },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.terrain_outlined),
+                label: const Text('Worlds'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameWorldsScreen(app: widget.app, studio: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.sports_baseball_outlined),
+                label: const Text('Physics'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GamePhysicsScreen(app: widget.app, studio: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.surround_sound_outlined),
+                label: const Text('Audio'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameAudioScreen(app: widget.app, studio: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.vibration_outlined),
+                label: const Text('Haptics'),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameHapticsScreen(app: widget.app, studio: _s(_p['id']))));
+                  await _load();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.groups_outlined),
+                label: const Text('Multiplayer'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameNetScreen(app: widget.app, studio: _s(_p['id'])))),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.view_in_ar_outlined),
+                label: const Text('VR / AR'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameXrScreen(app: widget.app, studio: _s(_p['id'])))),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.replay_circle_filled_outlined),
+                label: const Text('Runtime'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameRuntimeScreen(app: widget.app, studio: _s(_p['id'])))),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.insights_outlined),
+                label: const Text('Live ops'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameLiveopsScreen(app: widget.app, studio: _s(_p['id'])))),
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.rocket_launch_outlined),

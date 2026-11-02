@@ -26,6 +26,61 @@ POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
 POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
 
+v0.420 Role packs (Phase 7: the Game Desk roles; each needs ITS employee hired for changes; reading is free):
+GET    /api/gamedesk/worlds?studio=             Procedural World Engineer: worlds + kinds + defaults
+POST   /api/gamedesk/worlds                     {words?, kind?, seed?, params?, studio?, key?}  generate + check (a draft)
+GET    /api/gamedesk/world/{wid}                one world (checks, stats, files, demo)
+POST   /api/gamedesk/world/{wid}/approve|reject|demo   her OK / no / build the walk-it demo (background)
+POST   /api/gamedesk/worlds/apply               {studio}  approved worlds into the live game (HoolaWorld, no model)
+GET    /api/gamedesk/world/{wid}/file/{name}?sig   preview.png | world.json | heightmap.png | world.glb (signed)
+GET    /api/gamedesk/physics?studio=            Physics Engine Developer: setups (inputs, chosen settings, lab)
+POST   /api/gamedesk/physics                    {words?, inputs?: {speed, wall, ticks, gravity, g3d}, studio?}  lab runs
+GET    /api/gamedesk/physics/{pid}
+POST   /api/gamedesk/physics/{pid}/approve|reject
+POST   /api/gamedesk/physics/apply              {studio}  approved settings into the live game (HoolaPhysics)
+GET    /api/gamedesk/audio?studio=              Spatial Audio Programmer: setups (zones, distances, measured report)
+POST   /api/gamedesk/audio                      {words?, plan?: {zones: [{key, rt60, wet}], min_d, max_d, px_per_m}, studio?}
+GET    /api/gamedesk/audio/{aid}                one setup
+POST   /api/gamedesk/audio/{aid}/approve|reject
+POST   /api/gamedesk/audio/apply                {studio}  approved setup into the live game (HoolaAudio)
+GET    /api/gamedesk/audio/{aid}/file/{name}?sig   walkaround.wav | distance.wav | zones.wav (signed)
+GET    /api/gamedesk/haptics?studio=            Haptics Engineer: pattern sets + checks + library + actuators
+POST   /api/gamedesk/haptics                    {words?, patterns?: {name: [{t, d, a, s}]}, actuator?, studio?}
+GET    /api/gamedesk/haptics/{hid}
+POST   /api/gamedesk/haptics/{hid}/approve|reject
+POST   /api/gamedesk/haptics/apply              {studio}  approved patterns into the live game (HoolaHaptics)
+GET    /api/gamedesk/haptics/{hid}/file/{name}?sig   kit.zip | patterns.png (signed)
+GET    /api/gamedesk/net?studio=                Multiplayer Programmer: setups (her numbers, the bot runs, verdict)
+POST   /api/gamedesk/net                        {words?, inputs?: {players, tick, send, speed, size, interest}, studio?}
+GET    /api/gamedesk/net/{nid}  POST /api/gamedesk/net/{nid}/approve|reject   GET .../file/kit.zip?sig
+POST   /api/gamedesk/net/{nid}/server           {url}  HER game server (wss:// only; Hoola hosts nothing)
+GET    /api/gamedesk/xr?studio=                 AR / VR Engineer: setups (comfort, gestures, demo play link)
+POST   /api/gamedesk/xr                         {words?, settings?: {mode, locomotion, turn, snap_deg, seated, ui_m, text_deg, fps}, studio?}
+GET    /api/gamedesk/xr/{xid}  POST /api/gamedesk/xr/{xid}/approve|reject  POST /api/gamedesk/xr/apply {studio}
+GET    /api/gamedesk/sim?studio=    POST /api/gamedesk/sim {words?, kind?: orbit|flight|driving, params?, scenario?, studio?}
+GET    /api/gamedesk/sim/{id}       POST /api/gamedesk/sim/{id}/approve|reject   POST /api/gamedesk/sim/apply {studio}
+GET    /api/gamedesk/sim/{id}/file/log.csv|plot.png?sig
+GET    /api/gamedesk/twin           POST /api/gamedesk/twin {words?, model?: {stations, data_map, shift_hours, days}, actual?: [per day]}
+GET    /api/gamedesk/twin/{id}      POST /api/gamedesk/twin/{id}/approve|reject   GET .../file/layout.png?sig
+GET    /api/gamedesk/vfx            POST /api/gamedesk/vfx {plan?: {show, seq, shots, sources, working, view, workers, fail_rate...}}
+GET    /api/gamedesk/vfx/{id}       POST /api/gamedesk/vfx/{id}/approve|reject   GET .../file/kit.zip?sig
+
+v0.425 Hoola Runtime + Ask Hoola in the editor (Game Engine plan Phase 8):
+GET    /api/gamedesk/runtime/{sid}              settings (on, telemetry, kids), last replay tests
+POST   /api/gamedesk/runtime/{sid}              {on?, telemetry?}  telemetry refused for a children's game
+POST   /api/gamedesk/runtime/{sid}/replay       start a replay test (bot run, same seed again, the replay played back)
+GET    /api/gamedesk/runtime/{sid}/replay/{rid} the recorded replay JSON
+GET    /api/gamedesk/runtime/{sid}/telemetry    dashboard (installs, sessions, D1 / D7, funnel)   DELETE: wipe it
+POST   /play/{token}/t                          telemetry from the game (same host as the play link; always 204)
+GET    /api/gamedesk/liveops/{sid}[/dashboard|/crashes|/money]   v0.428 live ops view, D30 / DAU / balance, crash groups, money
+POST   /api/gamedesk/liveops/{sid}/experiments[/{key}/start|stop]  A/B tests (start / stop = her tap); GET .../{key} = result
+POST   /api/gamedesk/liveops/{sid}/events[/{key}/approve|cancel]   live events calendar (approve = her tap)
+POST   /api/gamedesk/liveops/{sid}/crashes/{sig}/hotfix | /patch_check | /money (CSV)
+GET    /play/{token}/live                       what the game reads: running tests + approved events (same host)
+GET    /api/gamedesk/editor/tokens  POST {label} (shown ONCE)  DELETE /api/gamedesk/editor/tokens/{id}
+GET    /api/gamedesk/editor/plugin.zip          the Godot editor plugin (addons/hoola)
+POST   /mcp/gamedesk                            MCP (JSON-RPC 2.0, Streamable HTTP) with 'Authorization: Bearer <editor token>'
+
 v0.416 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
 GET    /api/gamestudio/{id}/releases            releases + where each platform can be built + package + itch key set?
 POST   /api/gamestudio/{id}/releases            {platforms: [linux, windows, macos, android], android_format: apk|aab}
@@ -74,6 +129,7 @@ POST   /api/gamestudio/{id}/bible/recurve           {kind}  numbers re-made from
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
@@ -471,6 +527,348 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def rel_itch_push(sid: str, rid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
         """HER TAP on the itch.io card - the only way anything is uploaded."""
         return await pcall(PF.itch_push, tenant, sid, rid, str(_b(body).get("hash") or ""))
+
+    # ------------------------------------------------------------ v0.420 role packs: Procedural World + Physics
+    from . import physics as PH
+    from . import world as WD
+
+    def _working(tenant: str, key: str, name: str) -> None:
+        from ..employee import hire
+        if not hire.is_working(tenant, key):
+            raise HTTPException(400, f"{name} abhi hired nahi hai (ya paused hai). Employees mein hire kijiye.")
+
+    @r.get("/api/gamedesk/worlds", dependencies=[Depends(require_key)])
+    async def worlds_list(studio: str = "", tenant: str = Depends(current_tenant)):
+        from ..employee import hire
+        return {"worlds": await call(WD.worlds, tenant, studio), "kinds": list(WD.KINDS), "defaults": WD.DEFAULTS,
+                "legend": {k: [n for n, _c, _w in v] for k, v in WD.LEGEND.items()},
+                "hired": await asyncio.to_thread(hire.is_working, tenant, WD.KEY)}
+
+    @r.post("/api/gamedesk/worlds", dependencies=[Depends(require_key)])
+    async def worlds_make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        _working(tenant, WD.KEY, "Procedural World Engineer")
+        seed = b.get("seed")
+        return await call(WD.make, tenant, str(b.get("words") or ""), str(b.get("kind") or ""),
+                          int(seed) if str(seed or "").lstrip("-").isdigit() else None,
+                          b.get("params") if isinstance(b.get("params"), dict) else None,
+                          str(b.get("studio") or ""), str(b.get("key") or ""))
+
+    @r.post("/api/gamedesk/worlds/apply", dependencies=[Depends(require_key)])
+    async def worlds_apply(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _working(tenant, WD.KEY, "Procedural World Engineer")
+        return await call(WD.apply, tenant, str(_b(body).get("studio") or ""))
+
+    @r.get("/api/gamedesk/world/{wid}", dependencies=[Depends(require_key)])
+    async def world_get(wid: str, tenant: str = Depends(current_tenant)):
+        return await call(WD.get, tenant, wid)
+
+    @r.post("/api/gamedesk/world/{wid}/{what}", dependencies=[Depends(require_key)])
+    async def world_do(wid: str, what: str, tenant: str = Depends(current_tenant)):
+        _working(tenant, WD.KEY, "Procedural World Engineer")
+        fn = {"approve": WD.approve, "reject": WD.reject, "demo": WD.demo}.get(what)
+        if fn is None:
+            raise HTTPException(404, "approve | reject | demo")
+        return await call(fn, tenant, wid)
+
+    @r.get("/api/gamedesk/world/{wid}/file/{name}")
+    def world_file(wid: str, name: str, sig: str = ""):
+        p = WD.world_file(wid, name, sig)
+        if p is None:
+            raise HTTPException(404, "link purana / galat hai")
+        media = {".png": "image/png", ".json": "application/json", ".glb": "model/gltf-binary"}.get(p.suffix, "application/octet-stream")
+        return FileResponse(p, media_type=media, headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=600"},
+                            filename=None if p.suffix == ".png" else p.name)
+
+    @r.get("/api/gamedesk/physics", dependencies=[Depends(require_key)])
+    async def physics_list(studio: str = "", tenant: str = Depends(current_tenant)):
+        from ..employee import hire
+        return {"setups": await call(PH.setups, tenant, studio), "defaults": PH.DEFAULTS, "limits": PH.LIMITS,
+                "hired": await asyncio.to_thread(hire.is_working, tenant, PH.KEY)}
+
+    @r.post("/api/gamedesk/physics", dependencies=[Depends(require_key)])
+    async def physics_make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        _working(tenant, PH.KEY, "Physics Engine Developer")
+        return await call(PH.setup, tenant, str(b.get("words") or ""),
+                          b.get("inputs") if isinstance(b.get("inputs"), dict) else None, str(b.get("studio") or ""))
+
+    @r.post("/api/gamedesk/physics/apply", dependencies=[Depends(require_key)])
+    async def physics_apply(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _working(tenant, PH.KEY, "Physics Engine Developer")
+        return await call(PH.apply, tenant, str(_b(body).get("studio") or ""))
+
+    @r.get("/api/gamedesk/physics/{pid}", dependencies=[Depends(require_key)])
+    async def physics_get(pid: str, tenant: str = Depends(current_tenant)):
+        return await call(PH.get, tenant, pid)
+
+    @r.post("/api/gamedesk/physics/{pid}/{what}", dependencies=[Depends(require_key)])
+    async def physics_do(pid: str, what: str, tenant: str = Depends(current_tenant)):
+        _working(tenant, PH.KEY, "Physics Engine Developer")
+        fn = {"approve": PH.approve, "reject": PH.reject}.get(what)
+        if fn is None:
+            raise HTTPException(404, "approve | reject")
+        return await call(fn, tenant, pid)
+
+    # ------------------------------------------------------------ v0.421 role packs: Spatial Audio + Haptics
+    from . import audio as AU
+    from . import haptics as HP
+
+    def _pack_routes(base: str, mod, key: str, name: str, lister: str, maker, files_fn, media: dict) -> None:
+        @r.get(f"/api/gamedesk/{base}", dependencies=[Depends(require_key)])
+        async def _list(studio: str = "", tenant: str = Depends(current_tenant)):
+            from ..employee import hire
+            extra = ({"library": sorted(HP.LIBRARY), "actuators": HP.ACTUATORS} if mod is HP else
+                     {"zone_presets": AU.ZONE_PRESETS} if mod is AU else
+                     {"networks": NC.NETWORKS, "defaults": NC.DEFAULTS} if mod is NC else
+                     {"defaults": SM.DEFAULTS, "kinds": list(SM.KINDS)} if mod is SM else
+                     {"example": TW.EXAMPLE} if mod is TW else {"example": VX.EXAMPLE} if mod is VX else {"defaults": XR.DEFAULTS})
+            return {lister: await call(getattr(mod, lister), tenant, studio), "hired": await asyncio.to_thread(hire.is_working, tenant, key), **extra}
+
+        @r.post(f"/api/gamedesk/{base}", dependencies=[Depends(require_key)])
+        async def _make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+            _working(tenant, key, name)
+            return await call(maker, tenant, _b(body))
+
+        @r.post(f"/api/gamedesk/{base}/apply", dependencies=[Depends(require_key)])
+        async def _apply(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+            _working(tenant, key, name)
+            return await call(mod.apply, tenant, str(_b(body).get("studio") or ""))
+
+        @r.get(f"/api/gamedesk/{base}/{{xid}}", dependencies=[Depends(require_key)])
+        async def _get(xid: str, tenant: str = Depends(current_tenant)):
+            return await call(mod.get, tenant, xid)
+
+        @r.post(f"/api/gamedesk/{base}/{{xid}}/{{what}}", dependencies=[Depends(require_key)])
+        async def _do(xid: str, what: str, tenant: str = Depends(current_tenant)):
+            _working(tenant, key, name)
+            fn = {"approve": mod.approve, "reject": mod.reject}.get(what)
+            if fn is None:
+                raise HTTPException(404, "approve | reject")
+            return await call(fn, tenant, xid)
+
+        @r.get(f"/api/gamedesk/{base}/{{xid}}/file/{{fname}}")
+        def _file(xid: str, fname: str, sig: str = ""):
+            p = files_fn(xid, fname, sig)
+            if p is None:
+                raise HTTPException(404, "link purana / galat hai")
+            return FileResponse(p, media_type=media.get(p.suffix, "application/octet-stream"),
+                                headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=600"},
+                                filename=p.name if p.suffix == ".zip" else None)
+
+    def _audio_make(tenant: str, b: dict):
+        return AU.setup(tenant, str(b.get("words") or ""), b.get("plan") if isinstance(b.get("plan"), dict) else None,
+                        str(b.get("studio") or ""))
+
+    def _haptics_make(tenant: str, b: dict):
+        return HP.make(tenant, str(b.get("words") or ""), b.get("patterns") if isinstance(b.get("patterns"), dict) else None,
+                       str(b.get("actuator") or "phone_lra"), str(b.get("studio") or ""))
+
+    from . import netcode as NC
+    from . import xr as XR
+
+    @r.post("/api/gamedesk/net/{nid}/server", dependencies=[Depends(require_key)])
+    async def net_server(nid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _working(tenant, NC.KEY, "Multiplayer Network Programmer")
+        return await call(NC.set_server, tenant, nid, str(_b(body).get("url") or ""))
+
+    def _net_make(tenant: str, b: dict):
+        return NC.setup(tenant, str(b.get("words") or ""), b.get("inputs") if isinstance(b.get("inputs"), dict) else None,
+                        str(b.get("studio") or ""))
+
+    def _xr_make(tenant: str, b: dict):
+        return XR.setup(tenant, str(b.get("words") or ""), b.get("settings") if isinstance(b.get("settings"), dict) else None,
+                        str(b.get("studio") or ""))
+
+    from . import sim as SM
+    from . import twin as TW
+    from . import vfx as VX
+
+    def _sim_make(tenant: str, b: dict):
+        return SM.setup(tenant, str(b.get("words") or ""), str(b.get("kind") or ""),
+                        b.get("params") if isinstance(b.get("params"), dict) else None,
+                        b.get("scenario") if isinstance(b.get("scenario"), dict) else None, str(b.get("studio") or ""))
+
+    def _twin_make(tenant: str, b: dict):
+        return TW.setup(tenant, str(b.get("words") or ""), b.get("model") if isinstance(b.get("model"), dict) else None,
+                        b.get("actual") if isinstance(b.get("actual"), list) else None, str(b.get("name") or ""))
+
+    def _vfx_make(tenant: str, b: dict):
+        return VX.setup(tenant, str(b.get("words") or ""), b.get("plan") if isinstance(b.get("plan"), dict) else None)
+
+    _pack_routes("sim", SM, SM.KEY, "Simulation Software Engineer", "setups", _sim_make, SM.sim_file,
+                 {".csv": "text/csv", ".png": "image/png"})
+    _pack_routes("twin", TW, TW.KEY, "Digital Twin Architect", "setups", _twin_make, TW.twin_file, {".png": "image/png"})
+    _pack_routes("vfx", VX, VX.KEY, "VFX Pipeline Technical Director", "setups", _vfx_make, VX.vfx_file, {".zip": "application/zip"})
+    _pack_routes("net", NC, NC.KEY, "Multiplayer Network Programmer", "setups", _net_make, NC.net_file, {".zip": "application/zip"})
+    _pack_routes("xr", XR, XR.KEY, "AR / VR Interaction Engineer", "setups", _xr_make, lambda *a: None, {})
+    _pack_routes("audio", AU, AU.KEY, "Spatial Audio Systems Programmer", "setups", _audio_make, AU.audio_file, {".wav": "audio/wav"})
+    _pack_routes("haptics", HP, HP.KEY, "Haptic Feedback Systems Engineer", "sets", _haptics_make, HP.haptics_file,
+                 {".zip": "application/zip", ".png": "image/png"})
+
+    # ------------------------------------------------------------ v0.425 Hoola Runtime + Ask Hoola in the editor (MCP)
+    from . import editor as ED
+    from . import runtime as RT
+
+    def _owner_game_dev(tenant: str) -> None:
+        _working(tenant, "game_dev", "Game Developer")
+
+    @r.get("/api/gamedesk/runtime/{sid}", dependencies=[Depends(require_key)])
+    async def rt_get(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(RT.settings, tenant, sid)
+
+    @r.post("/api/gamedesk/runtime/{sid}", dependencies=[Depends(require_key)])
+    async def rt_set(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(RT.set_runtime, tenant, sid, b.get("on") if "on" in b else None,
+                          b.get("telemetry") if "telemetry" in b else None)
+
+    @r.post("/api/gamedesk/runtime/{sid}/replay", dependencies=[Depends(require_key)])
+    async def rt_replay(sid: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(RT.start_replay_test, tenant, sid)
+
+    @r.get("/api/gamedesk/runtime/{sid}/replay/{rid}", dependencies=[Depends(require_key)])
+    async def rt_replay_file(sid: str, rid: str, tenant: str = Depends(current_tenant)):
+        p = await call(RT.replay_file, tenant, sid, rid)
+        if p is None:
+            raise HTTPException(404, "replay nahi mila")
+        return FileResponse(p, media_type="application/json", filename=p.name)
+
+    @r.get("/api/gamedesk/runtime/{sid}/telemetry", dependencies=[Depends(require_key)])
+    async def rt_tel(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(RT.dashboard, tenant, sid)
+
+    @r.delete("/api/gamedesk/runtime/{sid}/telemetry", dependencies=[Depends(require_key)])
+    async def rt_tel_del(sid: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(RT.delete_telemetry, tenant, sid)
+
+    @r.post("/play/{token}/t")
+    async def rt_ingest(token: str, request: Request):
+        raw = await request.body()
+        await asyncio.to_thread(RT.ingest, token, raw[: RT.MAX_BODY + 1])
+        return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+    # ------------------------------------------------------------ v0.428 Live ops (A/B, live events, crashes, patches, money)
+    from . import liveops as LO
+
+    @r.get("/api/gamedesk/liveops/{sid}", dependencies=[Depends(require_key)])
+    async def lo_get(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.view, tenant, sid)
+
+    @r.get("/api/gamedesk/liveops/{sid}/dashboard", dependencies=[Depends(require_key)])
+    async def lo_dash(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.dashboard, tenant, sid)
+
+    @r.post("/api/gamedesk/liveops/{sid}/experiments", dependencies=[Depends(require_key)])
+    async def lo_exp_add(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(LO.add_experiment, tenant, sid, b.get("key"), b.get("title") or "", b.get("goal") or "win",
+                          b.get("variants") if isinstance(b.get("variants"), list) else None, b.get("mde") or 0.05)
+
+    @r.get("/api/gamedesk/liveops/{sid}/experiments/{key}", dependencies=[Depends(require_key)])
+    async def lo_exp_res(sid: str, key: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.results, tenant, sid, key)
+
+    @r.post("/api/gamedesk/liveops/{sid}/experiments/{key}/start", dependencies=[Depends(require_key)])
+    async def lo_exp_start(sid: str, key: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.start_experiment, tenant, sid, key)
+
+    @r.post("/api/gamedesk/liveops/{sid}/experiments/{key}/stop", dependencies=[Depends(require_key)])
+    async def lo_exp_stop(sid: str, key: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.stop_experiment, tenant, sid, key, str(_b(body).get("ship") or ""))
+
+    @r.post("/api/gamedesk/liveops/{sid}/events", dependencies=[Depends(require_key)])
+    async def lo_ev_add(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(LO.add_event, tenant, sid, b.get("key"), b.get("title") or "", b.get("starts"), b.get("ends"), b.get("set"))
+
+    @r.post("/api/gamedesk/liveops/{sid}/events/{key}/approve", dependencies=[Depends(require_key)])
+    async def lo_ev_ok(sid: str, key: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.approve_event, tenant, sid, key)
+
+    @r.post("/api/gamedesk/liveops/{sid}/events/{key}/cancel", dependencies=[Depends(require_key)])
+    async def lo_ev_cancel(sid: str, key: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.cancel_event, tenant, sid, key)
+
+    @r.get("/api/gamedesk/liveops/{sid}/crashes", dependencies=[Depends(require_key)])
+    async def lo_crashes(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.crashes, tenant, sid)
+
+    @r.post("/api/gamedesk/liveops/{sid}/crashes/{sig}/hotfix", dependencies=[Depends(require_key)])
+    async def lo_hotfix(sid: str, sig: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.hotfix, tenant, sid, sig)
+
+    @r.post("/api/gamedesk/liveops/{sid}/patch_check", dependencies=[Depends(require_key)])
+    async def lo_patch(sid: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.start_patch_check, tenant, sid)
+
+    @r.get("/api/gamedesk/liveops/{sid}/money", dependencies=[Depends(require_key)])
+    async def lo_money(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.money, tenant, sid)
+
+    @r.post("/api/gamedesk/liveops/{sid}/money", dependencies=[Depends(require_key)])
+    async def lo_money_in(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(LO.import_revenue, tenant, sid, str(b.get("csv") or ""), str(b.get("source") or ""))
+
+    @r.get("/play/{token}/live")
+    async def lo_live(token: str):
+        d = await asyncio.to_thread(LO.live_config, token)
+        return Response(content=json.dumps(d), media_type="application/json",
+                        headers={"Cache-Control": "public, max-age=60", "X-Content-Type-Options": "nosniff"})
+
+    @r.get("/api/gamedesk/editor/tokens", dependencies=[Depends(require_key)])
+    async def ed_tokens(tenant: str = Depends(current_tenant)):
+        return {"tokens": await call(ED.tokens, tenant), "mcp_url": service.base_url().rstrip("/") + "/mcp/gamedesk"}
+
+    @r.post("/api/gamedesk/editor/tokens", dependencies=[Depends(require_key)])
+    async def ed_token_new(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(ED.create_token, tenant, str(_b(body).get("label") or ""))
+
+    @r.delete("/api/gamedesk/editor/tokens/{tid}", dependencies=[Depends(require_key)])
+    async def ed_token_del(tid: str, tenant: str = Depends(current_tenant)):
+        return await call(ED.revoke, tenant, tid)
+
+    @r.get("/api/gamedesk/editor/plugin.zip", dependencies=[Depends(require_key)])
+    async def ed_plugin(tenant: str = Depends(current_tenant)):
+        data = ED.plugin_zip(service.base_url())
+        return Response(content=data, media_type="application/zip",
+                        headers={"Content-Disposition": 'attachment; filename="hoola_godot_plugin.zip"'})
+
+    @r.post("/mcp/gamedesk")
+    async def mcp(request: Request):
+        who = await asyncio.to_thread(ED.auth, request.headers.get("authorization", ""))
+        if who is None:
+            return Response(status_code=401, headers={"WWW-Authenticate": 'Bearer realm="hoola-gamedesk"'},
+                            content=b'{"error":"an editor token from Hoola (Game Desk > Editor) is needed"}', media_type="application/json")
+        raw = await request.body()
+        if len(raw) > 64 * 1024:
+            raise HTTPException(413, "too big")
+        try:
+            body = json.loads(raw.decode("utf-8") or "null")
+        except Exception:                               # noqa: BLE001
+            return Response(content=json.dumps(ED._err(None, -32700, "Parse error")), media_type="application/json")
+        out = await asyncio.to_thread(ED.handle, who[0], who[1], body)
+        if out is None:
+            return Response(status_code=202)
+        return Response(content=json.dumps(out, ensure_ascii=False), media_type="application/json")
+
+    @r.get("/mcp/gamedesk")
+    async def mcp_get():
+        return Response(status_code=405, headers={"Allow": "POST"})
 
     @r.get("/play/{token}")
     def play_root(token: str):
