@@ -241,6 +241,9 @@ def write_screen(r: AppProject, sid: str, ctx: dict[str, Any], sp: dict[str, Any
     from .. import custom as CU                       # v0.425 RANG: her approved custom components may be used here
     if sp.get("custom"):
         system += "\n" + CU.prompt_line(sp["custom"])
+    from .. import family as FA                       # v0.435 PARIVAAR: a partner app's first tab opens on its jobs
+    if FA.prompt_line(sp["seed"].get("backend") or {}):
+        system += "\n" + FA.prompt_line(sp["seed"].get("backend") or {})
     prompt = (f"APP: {sp['app']['name']} ({ctx.get('goal')}).\nSCREEN: {sid} = {me['label']}"
               f"{' (a bottom tab)' if me['tab'] else ''}.\nPURPOSE: {me['purpose']}\nDATA SHOWN: {', '.join(me['data'])}\n"
               f"ACTIONS (label -> screen): {'; '.join(a['label'] + ' -> ' + a['go'] for a in me['actions'])}\n"

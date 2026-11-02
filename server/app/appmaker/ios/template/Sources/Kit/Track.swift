@@ -35,7 +35,7 @@ final class Track: NSObject, ObservableObject, CLLocationManagerDelegate {
     var declared: Bool { (Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] ?? []).contains("location") }
 
     func load() async {
-        guard Auth.shared.isStaff, on else { return }
+        guard Auth.shared.isStaff || Auth.shared.role == "partner", on else { return }   // v0.435
         let r = await Cloud.call("GET", "/track/me", nil, token: Auth.shared.token)
         if r.ok { onShift = r.body["on"] as? Bool ?? false; if onShift { begin() } }
     }
@@ -141,7 +141,7 @@ struct ShiftBlock: View {
     @State private var error = ""
     init() {}
     var body: some View {
-        if auth.isStaff && track.on {
+        if (auth.isStaff || auth.role == "partner") && track.on {   // v0.435 a delivery partner too
             VStack(alignment: .leading, spacing: 8) {
                 Muted(track.onShift ? Words.shiftOnNote : Words.shiftOffNote)
                 if !error.isEmpty { Text(error).foregroundStyle(.red).font(.subheadline) }

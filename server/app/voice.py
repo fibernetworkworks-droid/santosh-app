@@ -65,6 +65,11 @@ VOICE_TOOL_NAMES = {
     "google_search", "open_website", "open_on_phone", "browse_web", "artifact_make", "artifact_list", "agent_army", "browse_result", "pc_do", "pc_task_result", "hoola_pc_do",
     "email_check", "email_read", "email_draft", "email_triage", "email_forward", "email_action", "email_delete",
     "email_follow_up", "email_contacts", "email_attachment", "email_accounts",
+    # v0.439 GMAIL POORA CALL PAR: every Gmail tool is reachable on a call - three everyday ones declared, the settings /
+    # heavy ones go to santosh_kaam (VOICE_VIA_KAAM below). Before this 11 of the 23 had no way in at all.
+    "email_thread", "email_snooze", "email_drafts",
+    "email_label", "email_threads", "email_bulk", "email_bulk_status", "email_filters", "email_rule", "email_vacation",
+    "email_forwarding", "email_alias",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "calendar_update_event", "calendar_respond", "calendar_free_slots", "calendar_settings",
     "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "phone_doctor", "gst", "gst_dekho", "payroll", "payroll_dekho", "paisa", "paisa_dekho", "audit", "audit_dekho", "bima", "bima_dekho", "telecall", "telecall_dekho", "seo", "seo_dekho", "thok", "thok_dekho", "niryat", "niryat_dekho", "franchise", "franchise_dekho", "theka", "theka_dekho", "ads", "ads_dekho", "brand", "brand_dekho", "seva", "seva_dekho", "helpdesk", "helpdesk_dekho", "shikayat", "shikayat_dekho", "service_desk", "service_desk_dekho", "feedback", "feedback_dekho", "wapsi", "wapsi_dekho", "samudaay", "samudaay_dekho", "call_centre", "call_centre_dekho", "dev", "dev_dekho", "qa", "qa_dekho", "it_admin", "it_admin_dekho", "noc", "noc_dekho", "cyber", "cyber_dekho", "devops", "devops_dekho", "docs_writer", "docs_writer_dekho", "app_review_dekho", "product", "product_dekho", "customs", "customs_dekho", "travel", "travel_dekho", "warehouse", "warehouse_dekho", "fleet", "fleet_dekho", "courier", "courier_dekho", "drivers", "drivers_dekho", "logistics", "logistics_dekho", "propagent", "propagent_dekho", "rentdesk", "rentdesk_dekho", "sitesup", "sitesup_dekho", "interior", "interior_dekho", "archassist", "archassist_dekho", "society", "society_dekho", "vakil", "vakil_dekho", "legalres", "legalres_dekho", "compliance", "compliance_dekho", "contracts", "contracts_dekho", "cosec", "cosec_dekho", "notary", "notary_dekho", "pidesk", "pidesk_dekho", "dpo", "dpo_dekho", "front_office", "front_office_dekho", "event_plan", "event_plan_dekho", "shaadi", "shaadi_dekho", "tour_guide", "tour_guide_dekho", "homestay", "homestay_dekho", "banquet", "banquet_dekho", "edit_desk", "edit_desk_dekho", "motion_desk", "motion_desk_dekho", "film_desk", "film_desk_dekho", "patrakar", "patrakar_dekho", "photo_assist", "photo_assist_dekho", "graphic", "graphic_dekho", "artist_manager", "artist_manager_dekho", "kitab", "kitab_dekho", "podcast", "podcast_dekho", "influencer", "influencer_dekho", "kalam", "kalam_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder", "seo_dekho", "doc_desk", "sheet_milaan", "yaad_khojo", "gyaan_khojo", "gyaan",
@@ -170,6 +175,7 @@ Doing real work
 - Use your tools instead of only talking about it. Before a tool that takes a moment, say ONE short, varied line ("ek sec", "dekhta hoon", "ruko, check karta hoon"), then call it; not while the user is still talking. When the result comes, lead with the answer and do not repeat the filler.
 - Slow tools (a website, her PC, a search, mail, Drive, santosh_kaam) run in the background: say ONE short line ("dekh raha hoon"), keep talking with her normally, and give the result only when it arrives - never guess or invent it meanwhile. Quick tools (reminders, lists, weather, alarms) answer at once.
 - Never say something is done before the tool says so. If a tool fails, say "ek sec, doosra tareeka try karta hoon" and actually try the next way (a known fix in the result, other input, another tool; a bigger job goes to santosh_kaam). Never read an error out.
+- ANY job you have no tool for on this call - Sheets formatting / tabs / sharing, Drive access / comments / versions, Forms edits, YouTube upload / edits / replies, Slides arranging, WhatsApp campaigns and templates, ERP / CRM / business desks, data files, official statistics (MoSPI), IndiaMART prices, Tally entries, documents, games, CAD - goes to santosh_kaam with her exact words: Hoola can do it, the full brain has every tool. Never say 'nahi kar sakta' or 'yeh call pe nahi hota' before santosh_kaam has tried; anything that sends, deletes, shares or pays still comes to her phone as a card.
 - A MULTI-STEP goal ("order kar do...", "ye pura kaam kar do...") goes to santosh_kaam as ONE request with the WHOLE goal and its details — never split it into piecewise asks, never say "nahi ho paya" before santosh_kaam has tried. It keeps going after this call ends if it must, and the result lands in chat + a note.
 - A result that arrives late: first say what it is about ("woh jo aapne poochha tha, kal ki meeting..."), then the answer.
 - If santosh_kaam says the job is still working, carry on chatting. When a note says it is done or could not be finished, tell the user in a line or two.
@@ -198,7 +204,7 @@ Which tool (details are in each tool's description)
 - Current facts (news, prices, scores, timings, rules): google_search instead of guessing; say "Google pe dekh raha hoon" and give the answer in a line or two. open_website to read a site, open_on_phone to open one on their phone.
 - Places and travel: maps_search, maps_directions, maps_navigate.
 - Calendar: calendar_agenda, calendar_free_slots, calendar_add_event (meet=true for a Google Meet link), calendar_update_event, calendar_find_event, calendar_cancel_event, calendar_respond. Invites, changes to shared meetings, cancels and declines show a confirm card; say so.
-- Email: email_triage for what is important, email_check / email_read, email_draft (approved in the app with Bhejo; say so), email_forward, email_action, email_delete (approval card), email_follow_up. Give a mail's gist in a line; never read out OTPs or codes. Bulk mail goes through santosh_kaam.
+- Email: email_triage for what is important, email_check / email_read, email_thread (the whole conversation), email_draft (approved in the app with Bhejo; say so), email_forward, email_action, email_delete (approval card), email_follow_up, email_snooze (mail comes back later), email_drafts (her Gmail drafts: list / read / edit / send with a card). Labels, archiving whole conversations, bulk mail and its progress, Gmail filters, inbox rules, out-of-office, forwarding, send-as addresses and signature go through santosh_kaam with her exact words (one line that it is being done; any card comes to her phone). Give a mail's gist in a line; never read out OTPs or codes.
 - Google Drive, Sheets, Docs, Forms, Slides, Photos, Santosh Notebook, YouTube: use the matching tool. Sheet totals come from sheet_query, never your own maths. Photos: you cannot browse the library; photos_pick shows a card for the user to choose. Read out the gist, not every cell.
 - REA Khoj (reverse-engineering on call): when she asks how a feature WORKS in an app / program / file she has ("yeh app ka payment kaise karta hai", "is exe mein kya hai", "feature samjha de saboot ke saath"), it goes to santosh_kaam (REA Khoj, via kaam): say "file khangal raha hoon, ek-do minute" and keep the call natural. The file is never run - only read. The full brain comes back with the evidence; tell her the 2-3 key lines in plain words. Never crack a licence / unlock paid features / bypass anti-cheat - say no to that.
 - Running jobs (app, website, video, Studio, motion, website jobs in your browser): KAAM KI HAALAT in your brief and
@@ -260,6 +266,9 @@ VOICE_VIA_KAAM = {
     "hoola_business", "hoola_groups", "hoola_group_post", "hoola_group_digest", "tally_report", "drive_organize",
     "drive_share", "drive_create_doc", "doc_create", "drive_create_folder", "drive_upload", "drive_trash", "id_photo",
     "photo_clean", "make_document", "email_accounts", "calendar_settings", "seekhe_kaam", "gyaan",
+    # v0.439 Gmail settings + bulk work on a call: the full brain runs them, cards still come to her phone
+    "email_label", "email_threads", "email_bulk", "email_bulk_status", "email_filters", "email_rule", "email_vacation",
+    "email_forwarding", "email_alias",
 }
 # a name ending in _dekho goes with its base tool (darzi_dekho with darzi ...)
 VOICE_TOOL_BUDGET = 150_000   # characters of tool JSON sent to Gemini Live (v0.119, the last version that worked well: ~213k)
@@ -268,6 +277,33 @@ VOICE_TOOL_BUDGET = 150_000   # characters of tool JSON sent to Gemini Live (v0.
 def via_kaam(name: str) -> bool:
     base = name[:-6] if name.endswith("_dekho") else name
     return name in VOICE_VIA_KAAM or base in VOICE_VIA_KAAM
+
+
+_REGISTRY: set[str] = set()
+
+
+def registered(name: str) -> bool:
+    """v0.442 SAB KAAM CALL PAR: is `name` one of Hoola's chat tools at all? A call reaches EVERY one of them - the 105
+    declared ones directly, everything else through santosh_kaam (the full brain) - never 'Unknown tool'. The list is
+    read once from the chat registry (the tools the full brain really has)."""
+    if not _REGISTRY:
+        try:
+            from .agent import tools as _t
+            _REGISTRY.update(t["name"] for t in getattr(_t, "TOOLS", []) if isinstance(t, dict) and t.get("name"))
+            _REGISTRY.update(getattr(_t, "HANDLERS", {}).keys())
+        except Exception:
+            log.exception("voice: tool registry unreadable")
+            return False
+    return name in _REGISTRY
+
+
+def call_route(name: str) -> str:
+    """How a call reaches a tool: 'declared' (the live model calls it), 'kaam' (santosh_kaam runs it), '' (no such tool)."""
+    if name in VOICE_TOOL_NAMES and not via_kaam(name):
+        return "declared"
+    if (name in VOICE_TOOL_NAMES and via_kaam(name)) or registered(name):
+        return "kaam"
+    return ""
 
 
 def _short(text: str, limit: int) -> str:
@@ -1684,7 +1720,8 @@ class Call:
         work ('haan, line aa gayi - wahi kaam pe chalte hain') instead of greeting her like a stranger."""
         if self._drop_saved:
             return   # v0.224 one note per call (grace timer, shutdown and the call's end may all try)
-        if not (self.recent or self.user_buf.strip() or self.stats.get("turns")):
+        kaam = [r for r in (getattr(self, "_kaam_running", None) or {}).values() if r]
+        if not (self.recent or self.user_buf.strip() or self.stats.get("turns") or kaam):
             return   # nobody said anything: nothing to remember, no note (an abandoned dial is not a dropped chat)
         self._drop_saved = True
         user = self.recent[-1][0] if self.recent else ""
@@ -1698,6 +1735,12 @@ class Call:
             bits.append(f"aakhri poori baat: {user[-600:]}")
         if partial:
             bits.append(f"beech mein ye keh rahi thi (aadha hi suna): {partial[:400]}")
+        for r in kaam[:3]:   # v0.441 a job still running when the call ended: the next call knows it is still on
+            if self._otp_said:
+                from .operator.otpwords import mask
+                for v in self._otp_said:
+                    r = mask(r, v)
+            bits.append(f"ek bada kaam chal raha tha (rukta nahi, natija chat mein aayega): {r[:300]}")
         from . import yaad
         yaad.note_call_drop(self.conv, self.tenant, " | ".join(bits) or "(baat adhoori chal rahi thi)")
 
@@ -2375,11 +2418,21 @@ class Call:
     async def _delegate(self, request: str) -> dict:
         """Hand a big job to the full agent. A call never sits in silence for it: after a short wait the job
         carries on by itself and its result is spoken into the call when it is done."""
-        from .agent import run_turn
+        from . import turn_inbox
         place = self._place(request)     # v0.93 her PC vs Hoola's own browser travels with the job
-        job = asyncio.create_task(run_turn(self.conv, request, tenant_id=self.ctx.tenant_id, **({"place": place} if place else {})))
+        # v0.441 PAKKA KAAM: the job is saved in the durable turn inbox BEFORE it starts (like a chat message), so a
+        # server restart / deploy / crash mid-job re-runs it once by itself (turn_inbox.sweep) instead of losing it.
+        inbox_id = await asyncio.to_thread(turn_inbox.accept, self.ctx.tenant_id, self.conv, request, False, "", "",
+                                           place)
+        job = asyncio.create_task(turn_inbox.run_owned(inbox_id, self.conv, request, self.ctx.tenant_id, False,
+                                                       place=place))
         _JOBS.add(job)
         job.add_done_callback(_JOBS.discard)
+        running = getattr(self, "_kaam_running", None)
+        if running is None:
+            running = self._kaam_running = {}
+        running[id(job)] = request
+        job.add_done_callback(lambda j: running.pop(id(j), None))
         done, _ = await asyncio.wait({job}, timeout=max(1, get_settings().voice_tool_wait_s))
         if job in done:
             return {"result": job.result()}
@@ -2459,8 +2512,9 @@ class Call:
             out = await asyncio.wait_for(mcp_live.run(self.ctx, self._mcp_route, name, args),
                                          timeout=max(5, get_settings().voice_tool_timeout_s))
             return {"result": out}
-        if name in VOICE_TOOL_NAMES and via_kaam(name):
+        if (name in VOICE_TOOL_NAMES and via_kaam(name)) or (name not in VOICE_TOOL_NAMES and registered(name)):
             # v0.149 not declared in calls: the full brain does it from her words + what Gemini wanted
+            # v0.442 any other Hoola tool too (Sheets formatting, Drive access, campaigns, desks...): never 'Unknown tool' 
             ask = (self.user_buf or "").strip()
             return await self._delegate(f"{ask}\n(Call ne {name} chahiya tha: "
                                         f"{json.dumps(args, ensure_ascii=False, default=str)[:600]})".strip())

@@ -142,6 +142,9 @@ def _who(site_id: str, p, token: str) -> W.Who:
     from ..appmaker import backend as BE
     if p is None:
         return W.Who(W.member_of(site_id, token) if token else None)
+    from . import security as SEC
+    if token and not SEC.token_ok(BE.bid(p), token):     # v0.434 a login she / the member ended
+        return W.Who(None)
     w = BE.who(p, token)
     if w.m is not None or not token:
         return w
@@ -198,23 +201,79 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
             return _role(w, kw["member_id"], body, lambda mid, role: W.set_role(site_id, mid, role))
         if op == "stats":
             return W.stats(site_id, sch, w, int(kw.get("days") or 30))
-        if op in ("approvals", "decide", "related", "fn"):
+        if op in ("approvals", "decide", "related", "fn", "otp_start", "otp_verify", "2fa_login", "sessions", "session_end",
+                  "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me", "audit", "matrix", "upload"):
             raise W.AppError("Is website mein yeh abhi nahi; pehle website ko app ke dimaag se jodiye.", 404)
         raise W.AppError("not found", 404)
     from ..appmaker import backend as BE
     from ..appmaker.logic import engine as LE
+    from . import security as SEC
+    site, ua = BE.bid(p), str(kw.get("ua") or "")
     if op == "schema":
-        return BE.public_schema(p)
-    if op == "signup":
-        return BE.signup(p, str(body.get("email") or ""), str(body.get("password") or ""), str(body.get("name") or ""), ip)
+        out = BE.public_schema(p)
+        out["security"] = {"otp": bool(SEC.provider()), "consent": True}       # v0.434 what the login box may offer
+        return out
+    if op == "signup":                                   # v0.434 DPDP: the website's sign-up needs her tick
+        # the new page script always sends the tick (true / false); a page built before v0.434 sends nothing - it still
+        # works (until its next rebuild ships the new script) but no consent is recorded for it
+        if "consent" in body and body.get("consent") is not True:
+            raise W.AppError("Account banane ke liye privacy notice par haan (tick) zaroori hai.", 400)
+        out = BE.signup(p, str(body.get("email") or ""), str(body.get("password") or ""), str(body.get("name") or ""), ip)
+        mem = W.member_of(site, out.get("token") or "")
+        if mem is not None:
+            if body.get("consent") is True:
+                SEC.save_consent(site, mem.id, "signup")
+            SEC.record(site, mem, out["token"], ua, ip, "signup")
+        return out
     if op == "login":
-        return BE.login(p, str(body.get("email") or ""), str(body.get("password") or ""), ip)
+        out = BE.login(p, str(body.get("email") or ""), str(body.get("password") or ""), ip)
+        mem = W.member_of(site, out.get("token") or "")
+        if mem is not None and SEC.needs_2fa(site, mem.email):   # password right; the authenticator code is step two
+            return {"need_2fa": True, "ticket": SEC._ticket(site, mem)}
+        if mem is not None:
+            SEC.record(site, mem, out["token"], ua, ip, "password")
+        return out
+    if op == "otp_start":
+        return SEC.otp_start(site, str(body.get("phone") or ""), ip)
+    if op == "otp_verify":
+        return SEC.otp_verify(site, BE.schema(p), str(body.get("phone") or ""), str(body.get("code") or ""),
+                              str(body.get("name") or ""), body.get("consent") is True, ua, ip)
+    if op == "2fa_login":
+        return SEC.two_fa_login(site, str(body.get("ticket") or ""), str(body.get("code") or ""), ua, ip)
     if op == "me":
         return {"me": W.view_member(w.m) if w.m else None}
     if op == "logout":
         if w.m:
-            W.logout_all(BE.bid(p), w.m)
+            SEC.end_all(site, w.m)
         return {"ok": True}
+    if op in ("sessions", "session_end", "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me"):
+        if not w.m:
+            raise W.AppError("Pehle login kijiye.", 401)
+        if op == "sessions":
+            return {"sessions": SEC.sessions(site, w.m, token)}
+        if op == "session_end":
+            return SEC.end(site, w.m, str(kw.get("sid") or ""))
+        if op == "logout_all":
+            return SEC.end_all(site, w.m)
+        if op == "2fa_start":
+            return SEC.two_fa_start(site, w.m, (r.name or "Hoola") if r is not None else "Hoola")
+        if op == "2fa_confirm":
+            return SEC.two_fa_confirm(site, w.m, str(body.get("code") or ""))
+        if op == "2fa_off":
+            return SEC.two_fa_off(site, w.m, str(body.get("code") or ""))
+        if op == "export":
+            return SEC.export(site, BE.schema(p), w.m)
+        return BE.delete_me(p, w)
+    if op == "audit":                                    # admin only (her own view is the console)
+        if not (w.m and w.m.role == "admin"):
+            raise W.AppError("Audit log sirf admin dekh sakte hain.", 403)
+        return {"audit": SEC.audit(site, int(kw.get("limit") or 200), str(kw.get("coll") or ""))}
+    if op == "matrix":
+        if not w.staff:
+            raise W.AppError("Iski ijaazat nahi.", 403)
+        return {"matrix": SEC.matrix(BE.schema(p))}
+    if op == "upload":
+        return BE.upload(p, w, kw.get("raw") or b"", ip)
     if op == "rows":
         return {"rows": BE.rows(p, kw["key"], w)}
     if op == "create":
@@ -372,3 +431,18 @@ def phone_app(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
     return {"app": row.id, "number": row.number, "status": row.status, "app_key": (_j(row.android, {}) or {}).get("app_key", ""),
             "say": f"Phone app ka plan taiyaar (app {row.number}) - wahi data jo website par hai. Plan card par haan kahiye, "
                    "phir 3 looks; build ke baad Android / iPhone app aur website ek hi data dekhenge.", "view": v}
+
+
+# ---------------------------------------------------------------- v0.434 her view: who changed what, who may do what
+def owner_audit(tenant: str, ref: str, limit: int = 100) -> dict[str, Any]:
+    from ..appmaker import backend as BE
+    from . import security as SEC
+    from . import service as S
+    with session() as s:
+        r = S._find(s, tenant, ref)
+        s.expunge(r)
+    p = project(r)
+    if p is None:
+        return {"audit": [], "matrix": [], "linked": False}
+    return {"linked": True, "audit": SEC.audit(BE.bid(p), limit), "matrix": SEC.matrix(BE.schema(p)),
+            "otp": bool(SEC.provider())}

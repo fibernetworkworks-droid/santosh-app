@@ -334,7 +334,8 @@ def test_background_deploy_queues_fast_and_the_slot_runs_the_crew(env, monkeypat
                {"name": "b", "ok": True, "stopped": False, "seconds": 1.2, "tools": [],
                 "deliverable": "mail mein 3 unpaid"}]
 
-    async def fake_crew(specs, team_id, mission, fams, tenant, cv, turn_id, settings, shared=None, on_done=None):
+    async def fake_crew(specs, team_id, mission, fams, tenant, cv, turn_id, settings, shared=None, on_done=None,
+                        timeout=None):   # v0.443 the crew clock
         return results
 
     monkeypatch.setattr(team, "_run_crew", fake_crew)
@@ -377,7 +378,8 @@ def test_background_crew_reports_through_the_wake_lane(fu, monkeypatch):  # noqa
 
     monkeypatch.setattr(santosh, "run_turn", fake_turn)
 
-    async def fake_crew(specs, team_id, mission, fams, tenant, cv, turn_id, settings, shared=None, on_done=None):
+    async def fake_crew(specs, team_id, mission, fams, tenant, cv, turn_id, settings, shared=None, on_done=None,
+                        timeout=None):   # v0.443 the crew clock
         return [{"name": "sheet-bot", "ok": True, "stopped": False, "seconds": 1.0, "tools": [],
                  "deliverable": "Sheet: 120 naye rows"}]
 
@@ -421,7 +423,8 @@ def test_stale_running_crew_is_recovered_once(env, monkeypatch):
         tid = row.id
     seen = []
 
-    async def fake_crew(specs, team_id, mission, fams, tenant, cv, turn_id, settings, shared=None, on_done=None):
+    async def fake_crew(specs, team_id, mission, fams, tenant, cv, turn_id, settings, shared=None, on_done=None,
+                        timeout=None):   # v0.443 the crew clock
         seen.append(team_id)
         assert shared["check_stopped"]() is False
         return [{"name": "a", "ok": True, "stopped": False, "seconds": 0.1, "tools": [], "deliverable": "ho gaya"}]
@@ -451,7 +454,8 @@ def test_agent_status_stops_a_running_crew_and_the_runner_bails(env, monkeypatch
         tid = row.id
     steps = {"n": 0}
 
-    async def fake_crew(specs, team_id, mission, fams, tenant, cv, turn_id, settings, shared=None, on_done=None):
+    async def fake_crew(specs, team_id, mission, fams, tenant, cv, turn_id, settings, shared=None, on_done=None,
+                        timeout=None):   # v0.443 the crew clock
         for _ in range(20):
             if shared["check_stopped"]():
                 return [{"name": "a", "ok": False, "stopped": True, "seconds": 0.1, "tools": [],
@@ -513,7 +517,7 @@ def test_admission_carries_the_team_family():
 
 def test_version_and_config():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.431.0"
+    assert APP_VERSION == "0.449.0"
     s = get_settings()
     assert s.agent_team is True
     assert s.team_max_agents == 4

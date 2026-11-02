@@ -106,7 +106,7 @@ IC.bana = '<path d="M4 5h16v14H4zM4 10h16M10 10v9"/>';
 IC.arena = '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>';   // v0.312 Design Arena (owner only)
 let AR = null;         // v0.312 the Arena screen (arena.js)
 IC.systems = '<path d="M4 7h16M4 12h16M4 17h16M7 4v16"/>';   // v0.396 CONNECT: her own ERP / CRM systems
-IC.hire = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"/>';   // v0.317 Employees
+IC.hire = '<path d="M14 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20M8 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M18 2.5l1.1 2.4 2.4 1.1-2.4 1.1L18 9.5l-1.1-2.4L14.5 6l2.4-1.1z"/>';   // v0.443 AI Employees (person + spark)
 IC.seodesk = '<path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35M8 11h6M11 8v6"/>';                     // v0.317 SEO Desk
 IC.caddesk = '<path d="M12 2l9 5v10l-9 5-9-5V7l9-5zM3 7l9 5 9-5M12 12v10"/>';   // v0.357 CAD Desk
 IC.archdesk = '<path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6M9 13h.01M15 13h.01"/>';   // v0.410 Architecture Desk
@@ -142,7 +142,7 @@ function drawNav() {
 function go(v) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -241,7 +241,7 @@ async function enter() {
   $('#greet').innerHTML = esc(h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
   if (window.HoolaEmployees && !EMP) {           // v0.317 Employees for everyone; a desk only once its employee is hired
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees});
-    if (!NAV.some(([k]) => k === 'hire')) NAV.push(['hire', 'Employees']);
+    if (!NAV.some(([k]) => k === 'hire')) NAV.unshift(['hire', 'AI Employees']);   // v0.443 her AI staff is the FIRST section
   }
   syncEmployees(ME.employees || {});
   if (window.HoolaEnterprise && !ENT) {        // v0.396 CONNECT: the only door an enterprise credential has
@@ -272,7 +272,7 @@ async function enter() {
       say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
       closeStudio: () => { if (B?.isOpen()) B.close(); },
       studio: (kind, p) => { go('chat'); const b = col.querySelector(`[data-key="${CSS.escape(kind + ':' + p.id)}"] [data-ba="studio"]`); if (b) b.click(); else toast('To open the studio, open that job’s card in the chat.'); }});
-    NAV.splice(1, 0, ['bana', 'Library']); drawNav();
+    NAV.splice(Math.max(0, NAV.findIndex(([k]) => k === 'creative')), 0, ['bana', 'Library']); drawNav();   // v0.447 just above Create, never inside the AI Employees group
   }
   const list = await loadRecents();
   const fromUrl = (location.pathname.match(/^\/console\/c\/([^/?#]+)/) || [])[1];

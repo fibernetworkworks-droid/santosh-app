@@ -321,6 +321,10 @@ class _GameDeskScreenState extends State<GameDeskScreen> {
                   icon: const Icon(Icons.movie_filter_outlined),
                   label: const Text('VFX pipeline'),
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameVfxScreen(app: widget.app, studio: '')))),
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.business_outlined),
+                  label: const Text('Big studio'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GameBigStudioScreen(app: widget.app)))),
             ]),
             if (_loaded) GameStudioList(key: ValueKey(games.length), app: widget.app, games: games),
             for (final g in games) _card(g),

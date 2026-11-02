@@ -59,6 +59,23 @@ enum Words {
     static var skipWord: String { t("Skip", "छोड़ें", "Chhodein") }
     static var doneWord: String { t("Done", "हो गया", "Ho gaya") }
     static var connDone: String { t("Done.", "हो गया।", "Ho gaya.") }   // v0.424 JODO
+    // v0.435 PARIVAAR: the partner app's jobs screen
+    static var ptJobs: String { t("Jobs", "काम", "Kaam") }
+    static var ptLoginWhy: String { t("Sign in with your partner account to see your jobs.", "अपने काम देखने के लिए पार्टनर खाते से साइन इन करें।", "Apne kaam dekhne ke liye partner account se sign in karein.") }
+    static var ptWaiting: String { t("Your application is waiting", "आपकी अर्ज़ी रुकी है", "Aapki arzi ruki hai") }
+    static var ptWaitingWhy: String { t("The business will approve it. Jobs appear here after that.", "बिज़नेस इसे मंज़ूर करेगा। उसके बाद काम यहाँ दिखेंगे।", "Business ise manzoor karega. Uske baad kaam yahan dikhenge.") }
+    static var ptApply: String { t("Become a partner", "पार्टनर बनें", "Partner baniye") }
+    static var ptApplyWhy: String { t("Send an application. The business approves every partner itself.", "अर्ज़ी भेजें। हर पार्टनर को बिज़नेस खुद मंज़ूर करता है।", "Arzi bhejiye. Har partner ko business khud manzoor karta hai.") }
+    static var ptApplyBtn: String { t("Send application", "अर्ज़ी भेजें", "Arzi bhejiye") }
+    static var ptMine: String { t("My jobs", "मेरे काम", "Mere kaam") }
+    static var ptNew: String { t("New jobs", "नए काम", "Naye kaam") }
+    static var ptPast: String { t("Finished", "पूरे हुए", "Poore hue") }
+    static var ptNone: String { t("Nothing for you right now.", "अभी आपके लिए कुछ नहीं।", "Abhi aapke liye kuch nahi.") }
+    static var ptNoOffers: String { t("No new jobs right now.", "अभी कोई नया काम नहीं।", "Abhi koi naya kaam nahi.") }
+    static var ptTake: String { t("Take this job", "यह काम लें", "Yeh kaam lein") }
+    static var ptRoute: String { t("Route", "रास्ता", "Raasta") }
+    static var ptRefresh: String { t("Refresh", "ताज़ा करें", "Taaza karein") }
+    static var ptRetry: String { t("Try again", "फिर कोशिश करें", "Phir koshish karein") }
     // v0.419 PAISA
     static var payOnline: String { t("Pay online", "ऑनलाइन भुगतान", "Online pay karein") }
     static var opening: String { t("Opening…", "खुल रहा है…", "Khul raha hai…") }

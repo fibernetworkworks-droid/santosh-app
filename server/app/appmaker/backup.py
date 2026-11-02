@@ -11,6 +11,8 @@
 The journal keeps 35 days; older entries are only removed once a newer snapshot covers them."""
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import csv
 import gzip
 import io
@@ -50,9 +52,29 @@ class AppJournal(Base):
     created: Mapped[str] = mapped_column(String(40), default="")   # the row's own created_at (kept on a restore)
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     pushed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # v0.396 already in her own database (write-through)
+    by: Mapped[str | None] = mapped_column(String(80), nullable=True)      # v0.434 who made the change (audit log)
 
 
 _OK = False
+ACTOR: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_app_actor", default="")
+
+
+@contextlib.contextmanager
+def acting(w):
+    """v0.434 every write inside is journaled with WHO made it (member id + role, 'owner', or the engine)."""
+    if w is None:
+        who = "system"
+    elif getattr(w, "owner", False):
+        who = "owner"
+    elif getattr(w, "m", None) is not None:
+        who = f"{w.m.role}:{w.m.id}"
+    else:
+        who = "visitor"
+    tok = ACTOR.set(who)
+    try:
+        yield
+    finally:
+        ACTOR.reset(tok)
 
 
 def ensure_table() -> None:
@@ -63,6 +85,10 @@ def ensure_table() -> None:
     from .. import db as _db
     if _db._engine is not None:
         AppJournal.__table__.create(_db._engine, checkfirst=True)
+        try:                                    # v0.434 an older journal table gains `by` (else every journal write fails)
+            _db._add_missing_columns(_db._engine)
+        except Exception:                       # noqa: BLE001
+            log.exception("journal column check failed")
         _OK = True
 
 
@@ -99,7 +125,7 @@ def _journal(sess: Session, _ctx, _instances) -> None:
                 obj.id = new_id("row")
             created = obj.created_at.isoformat() if obj.created_at else now().isoformat()
             j = AppJournal(site_id=obj.site_id, row_id=obj.id, coll=obj.coll, op=op, owner=obj.owner or "",
-                           before=before, after=after, created=created)
+                           before=before, after=after, created=created, by=(ACTOR.get() or "system")[:80])
             sess.add(j)
             STATS["journal"] += 1
             from . import owndb as OD                   # v0.396 APNA DATABASE: queued for the write-through to her database

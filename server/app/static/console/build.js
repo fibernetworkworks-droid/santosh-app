@@ -877,6 +877,60 @@ window.HoolaBuild = function (C) {
       const el = trbox.querySelector('.stmap'); if (el) ridersMap(el, L(tr.riders));
     };
     try { drawTrack(await api('GET', base(o) + '/track')); } catch (er) { trbox.remove(); }
+    // v0.435 PARIVAAR: the apps on this business (customer / delivery partner / partner shop / staff) + partners + web admin
+    const fmbox = document.createElement('section'); fmbox.className = 'stcol stfam'; box.appendChild(fmbox);
+    const drawFam = fm => {
+      const st = fm.settings || {}, rd = st.rider || {}, vd = st.vendor || {}, opts = L(st.statuses);
+      const have = new Set(L(fm.faces).map(f => f.kind));
+      const chk = (name, on) => opts.map(x => `<label class="stchk"><input type="checkbox" name="${name}" value="${esc(x)}"${L(on).includes(x) ? ' checked' : ''}> ${esc(x)}</label>`).join(' ');
+      const waiting = L(fm.partners).filter(p => p.state === 'waiting').length;
+      fmbox.innerHTML = `<h4>App family <span>${L(fm.faces).length} app${L(fm.faces).length === 1 ? '' : 's'}${waiting ? ' · ' + waiting + ' waiting' : ''}</span></h4>
+        <p class="stnote">More apps on the SAME data: a delivery partner app, a partner shop (restaurant / seller) app, a staff app. Each gets its own plan, design and builds; accounts, orders and rules stay one. Partners apply from their app and only you (or an app admin) approve them.</p>
+        <ul class="stlines">${L(fm.faces).map(f => `<li><b>${esc(S(f.name || f.number))}</b> <span class="stnote">${esc(f.kind === 'main' ? 'Main app' : S(f.label))} · ${esc(S(f.number))} · ${esc(S(f.status))}${f.android ? ' · Android ' + esc(S(f.android)) : ''}</span></li>`).join('')}</ul>
+        <div class="row">${['rider', 'vendor', 'staff'].filter(k => !have.has(k)).map(k => `<button class="btn" type="button" data-fmadd="${k}"${fm.problems && fm.problems[k] ? ' title="' + esc(S(fm.problems[k])) + '"' : ''}>Add ${esc(S((fm.kinds || {})[k] || k))}</button>`).join('')}</div>
+        ${Object.entries(fm.problems || {}).filter(([k, v]) => v && !have.has(k)).map(([k, v]) => `<p class="stnote">${esc(S((fm.kinds || {})[k]))}: ${esc(S(v))}</p>`).join('')}
+        ${fm.admin_url ? `<p class="stnote">Web admin for your staff: <a href="${esc(S(fm.admin_url))}" target="_blank" rel="noopener noreferrer">${esc(S(fm.admin_url))}</a></p>` : `<p class="stnote">${esc(S(fm.admin_note))}</p>`}
+        ${opts.length ? `<form class="stapp fmset" autocomplete="off"><p class="stnote">Work list: <b>${esc(S(st.jobs))}</b>. Riders see these as new jobs:</p><div>${chk('offer', rd.offer)}</div>
+          <p class="stnote">Rider steps:</p><div>${chk('rsteps', rd.steps)}</div>
+          <p class="stnote">Partner shop steps${vd.link ? ' (shops = ' + esc(S(vd.link)) + ')' : ''}:</p><div>${chk('vsteps', vd.steps)}</div>
+          <div class="row"><label class="stnote">Jobs one rider may hold <input name="max" type="number" min="1" max="20" value="${Number(rd.max) || 3}" style="width:5em"></label><button class="btn go" type="submit">Save rules</button></div></form>` : ''}
+        <h5>Partners</h5>
+        ${L(fm.partners).map(p => `<div class="cnact" data-p="${esc(S(p.id))}" data-k="${esc(S(p.kind))}"><b>${esc(S(p.name))}</b> <span class="stnote">${esc(S(p.label))} · ${esc(S(p.state))}${p.link_name ? ' · ' + esc(S(p.link_name)) : ''}</span>
+          <div class="row">${p.state !== 'approved' ? '<button class="btn go" type="button" data-pok>Approve</button>' : ''}${p.state === 'waiting' ? '<button class="btn" type="button" data-pno>Refuse</button>' : ''}${p.state === 'approved' ? '<button class="btn" type="button" data-px>Remove</button>' : ''}</div></div>`).join('') || '<p class="stempty">No partner has applied yet.</p>'}`;
+      const f = fmbox.querySelector('.fmset');
+      if (f) f.addEventListener('submit', async e => {
+        e.preventDefault();
+        const pick = n => [...f.querySelectorAll(`input[name=${n}]:checked`)].map(x => x.value);
+        try { await api('PUT', base(o) + '/family/settings', {rider: {offer: pick('offer'), steps: pick('rsteps'), max: Number(f.max.value) || 3}, vendor: {steps: pick('vsteps')}}); drawFam(await api('GET', base(o) + '/family')); toast('Saved.'); }
+        catch (er) { toast(er.message, true); }
+      });
+    };
+    fmbox.addEventListener('click', async e => {
+      const add = e.target.closest('[data-fmadd]');
+      try {
+        if (add) {
+          const words = prompt('Anything special for this app? (optional)', ''); if (words === null) return;
+          const v = await api('POST', base(o) + '/family/face', {kind: add.dataset.fmadd, words});
+          toast(S(v.say) || 'Planned.'); drawFam(await api('GET', base(o) + '/family')); return;
+        }
+        const it = e.target.closest('.cnact'); if (!it) return;
+        const pid = it.dataset.p;
+        if (e.target.closest('[data-pok]')) {
+          let link_row = '';
+          if (it.dataset.k === 'vendor') {
+            const shops = (await api('GET', base(o) + '/data/' + encodeURIComponent((((await api('GET', base(o) + '/family')).settings || {}).vendor || {}).link || ''))).rows || [];
+            const pickd = prompt('Which shop is this partner? Type its number:\n' + shops.slice(0, 40).map((x, i) => `${i + 1}. ${S(x.name || x.title || x.id)}`).join('\n'), '');
+            if (pickd === null) return; const sh = shops[Number(pickd) - 1]; if (!sh) { toast('Pick a shop number from the list.', true); return; }
+            link_row = sh.id;
+          }
+          await api('POST', `${base(o)}/family/partners/${encodeURIComponent(pid)}`, {action: 'approve', link_row});
+        }
+        if (e.target.closest('[data-pno]')) await api('POST', `${base(o)}/family/partners/${encodeURIComponent(pid)}`, {action: 'refuse'});
+        if (e.target.closest('[data-px]')) { if (!confirm('Remove this partner? They are signed out and their open jobs go back to the pool.')) return; await api('POST', `${base(o)}/family/partners/${encodeURIComponent(pid)}`, {action: 'remove'}); }
+        if (e.target.closest('[data-pok],[data-pno],[data-px]')) drawFam(await api('GET', base(o) + '/family'));
+      } catch (er) { toast(er.message, true); }
+    });
+    try { drawFam(await api('GET', base(o) + '/family')); } catch (er) { fmbox.remove(); }
     // v0.425 RANG: custom native components (Kotlin + Swift) - house rules checked in code, her approval, proved by the next build
     const ccbox = document.createElement('section'); ccbox.className = 'stcol stcomp'; box.appendChild(ccbox);
     const drawComp = cc => {
@@ -1620,6 +1674,57 @@ window.HoolaBuild = function (C) {
     if (lists.length) put('app', {type: 'line', labels: dl, series: lists.slice(0, 6).map(x => ({name: S(x.label), values: L(x.days)}))}, 'No new records in this period.');
   }
 
+  /* v0.446 DUKAAN PAISA: her own gateway (keys typed HERE only, sealed, shown nowhere), payments, coupons, reviews */
+  async function payBox(o, box, info, reload) {
+    const on = M(info.online), sec = document.createElement('section'); sec.className = 'stcol stpay';
+    box.prepend(sec);
+    if (!on.app) {
+      sec.innerHTML = `<h4>Online payments <span>off</span></h4><p class="stnote">Take card / UPI / netbanking through YOUR own Razorpay, Cashfree or PhonePe account. Orders are marked paid only when the gateway confirms.</p><div class="acts"><button class="btn go" type="button" data-p="connect">Set up online payments</button></div>`;
+      sec.querySelector('[data-p=connect]').onclick = async e => { e.target.disabled = true; try { await api('POST', base(o) + '/payments/connect'); reload(); } catch (er) { toast(er.message, true); e.target.disabled = false; } };
+      return;
+    }
+    const A = `/api/apps/${encodeURIComponent(S(on.app))}`;
+    let st = {}, cps = {}, rv = [];
+    try { [st, cps, rv] = await Promise.all([api('GET', A + '/pay'), api('GET', A + '/coupons').catch(() => ({})), api('GET', base(o) + '/shop/reviews').then(j => L(j.reviews)).catch(() => [])]); } catch (er) { sec.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const F = M(st.fields), gw = S(st.gateway) || 'razorpay';
+    const codes = L(M(cps).coupons || (Array.isArray(cps) ? cps : []));
+    sec.innerHTML = `<h4>Online payments <span>${st.on ? esc(S(st.gateway)) + (st.test ? ' · test mode' : ' · live') : 'not connected'}</span></h4>
+      ${st.on ? `<p class="stnote">Webhook address for your ${esc(S(st.gateway))} dashboard: <code>${esc(S(st.webhook_url))}</code><br>${esc(S(st.webhook_how))}</p>
+        <p class="stnote">${N(M(st.totals).count)} paid · ${esc(S(M(st.totals).paid))} paise received · ${N(M(st.totals).mismatch)} amount mismatches</p>` : ''}
+      <form class="stapp" data-p="keys" autocomplete="off"><b>${st.on ? 'Change gateway keys' : 'Connect your gateway'}</b>
+        <label><span>Gateway</span><select name="gateway">${L(st.gateways).map(g => `<option${g === gw ? ' selected' : ''}>${esc(S(g))}</option>`).join('')}</select></label>
+        <div class="row">${L(F[gw]).map(k => `<label><span>${esc(S(k))}</span><input name="k_${esc(S(k))}" type="password" autocomplete="off"></label>`).join('')}</div>
+        <label class="sted-kind"><input type="checkbox" name="test"> Test mode</label>
+        <div class="acts"><button class="btn go" type="submit">Check and save</button></div></form>
+      <h4 style="margin-top:12px">Coupons <span>${codes.length}</span></h4>
+      ${codes.length ? `<ul class="stmems">${codes.map(c => `<li><span>${esc(S(c.code))} · ${c.kind === 'flat' ? '₹' + esc(S(c.value)) : esc(S(c.value)) + '%'} off${c.min ? ' · min ₹' + esc(S(c.min)) : ''}${c.until ? ' · till ' + esc(S(c.until)) : ''} · used ${N(c.used)}</span></li>`).join('')}</ul>` : '<p class="stempty">No codes yet.</p>'}
+      <form class="stapp" data-p="coupon" autocomplete="off"><div class="row"><label><span>Code</span><input name="code" placeholder="DIWALI10" maxlength="16"></label>
+        <label><span>Kind</span><select name="kind"><option value="percent">% off</option><option value="flat">₹ off</option></select></label>
+        <label><span>Value</span><input name="value" inputmode="decimal"></label><label><span>Min order ₹</span><input name="min" inputmode="decimal"></label>
+        <label><span>Last date</span><input name="until" type="date"></label></div>
+        <label class="sted-kind"><input type="checkbox" name="once" checked> Once per customer</label>
+        <div class="acts"><button class="btn soft" type="submit">Add coupon</button></div></form>
+      <h4 style="margin-top:12px">Reviews (verified buyers) <span>${rv.length}</span></h4>
+      ${rv.length ? `<ul class="stmems">${rv.map(r => `<li data-r="${esc(S(r.id))}"><span>${'★'.repeat(N(r.stars))} ${esc(S(r.slug))} · ${esc(S(r.name))}: ${esc(S(r.text))}</span><button class="btn soft" type="button" data-hide="${r.status === 'hidden' ? '0' : '1'}">${r.status === 'hidden' ? 'Show' : 'Hide'}</button></li>`).join('')}</ul>` : '<p class="stempty">No reviews yet.</p>'}`;
+    const kf = sec.querySelector('[data-p=keys]');
+    kf.gateway.onchange = () => { const g = kf.gateway.value; kf.querySelector('.row').innerHTML = L(F[g]).map(k => `<label><span>${esc(S(k))}</span><input name="k_${esc(S(k))}" type="password" autocomplete="off"></label>`).join(''); };
+    kf.onsubmit = async e => {
+      e.preventDefault(); const keys = {}; [...kf.querySelectorAll('input[name^=k_]')].forEach(i => { keys[i.name.slice(2)] = i.value.trim(); });
+      const b = kf.querySelector('button'); b.disabled = true;
+      try { await api('PUT', A + '/pay/keys', {gateway: kf.gateway.value, keys, test: kf.test.checked}); toast('Gateway connected. Add the webhook address in its dashboard.'); reload(); }
+      catch (er) { toast(er.message, true); b.disabled = false; } finally { [...kf.querySelectorAll('input[type=password]')].forEach(i => { i.value = ''; }); }
+    };
+    sec.querySelector('[data-p=coupon]').onsubmit = async e => {
+      e.preventDefault(); const f = e.target, b = {code: f.code.value, kind: f.kind.value, value: f.value.value, once: f.once.checked};
+      if (f.min.value) b.min = f.min.value; if (f.until.value) b.until = f.until.value;
+      try { await api('PUT', A + '/coupons', b); toast('Coupon saved.'); reload(); } catch (er) { toast(er.message, true); }
+    };
+    sec.onclick = async e => {
+      const h = e.target.closest('[data-hide]'), li = e.target.closest('li[data-r]'); if (!h || !li) return;
+      try { await api('POST', base(o) + '/shop/reviews/' + encodeURIComponent(li.dataset.r), {hide: h.dataset.hide === '1'}); reload(); } catch (er) { toast(er.message, true); }
+    };
+  }
+
   async function loadShop(o, root) {
     const box = root.querySelector('.stshop'); if (!box) return;
     let info, ord;
@@ -1640,7 +1745,7 @@ window.HoolaBuild = function (C) {
         <td><b>${esc(S(x.number))}</b><br><small>${esc(S(x.created).slice(0, 16).replace('T', ' '))}</small></td>
         <td>${esc(S(x.name))}<br><small>${esc(S(x.phone))} · ${esc(S(x.address).slice(0, 60))} ${esc(S(x.pincode))}</small></td>
         <td>${L(x.items).map(i => `${esc(S(i.title))} × ${N(i.qty)}`).join('<br>')}</td>
-        <td>${esc(S(x.total))}<br><small>${x.method === 'cod' ? 'COD' : 'UPI'}${x.utr ? ' · UTR ' + esc(S(x.utr)) : ''}</small></td>
+        <td>${esc(S(x.total))}${x.discount ? `<br><small>${esc(S(x.coupon))} −${esc(S(x.discount))}</small>` : ''}<br><small>${x.method === 'cod' ? 'COD' : x.method === 'online' ? (x.paid_online ? 'Online · paid (gateway)' : 'Online · not paid yet') : 'UPI'}${x.utr ? ' · ' + (x.method === 'online' ? 'pay ' : 'UTR ') + esc(S(x.utr)) : ''}</small>${x.paid_online ? `<br><button class="btn soft" type="button" data-refund="${esc(S(x.number))}">Refund…</button>` : ''}</td>
         <td>${esc(S(x.status_text))}</td>
         <td>${L(x.next).map(t => `<button class="btn soft" type="button" data-to="${esc(S(t))}">${esc(OSTEP[t] || t)}</button>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No orders yet.</p>'}</section>
       <section class="stcol"><h4>Products <span>${prods.length}</span></h4>
@@ -1670,7 +1775,17 @@ window.HoolaBuild = function (C) {
       send({products}, e.target);
     });
     const fl = box.querySelector('[data-x=from-lists]'); if (fl) fl.addEventListener('click', e => send({from_lists: true}, e.target));
+    payBox(o, box, info, () => loadShop(o, root));
     box.addEventListener('click', async e => {
+      const rf = e.target.closest('[data-refund]');
+      if (rf) {                                          // v0.446 HER tap: the gateway's own refund for an online order
+        const amt = prompt(`Refund order ${rf.dataset.refund}: amount in ₹ (leave empty = the full amount left)`, '');
+        if (amt === null || !confirm(`Refund ${amt ? '₹' + amt : 'the full amount'} for ${rf.dataset.refund} through your gateway?`)) return;
+        rf.disabled = true;
+        try { const r = await api('POST', `${base(o)}/shop/orders/${encodeURIComponent(rf.dataset.refund)}/refund`, {amount: amt || null, why: 'refund'}); toast('Refund ' + S(r?.status || 'sent') + '.'); loadShop(o, root); }
+        catch (er) { toast(er.message, true); rf.disabled = false; }
+        return;
+      }
       const b = e.target.closest('[data-to]'), tr = e.target.closest('tr[data-n]'); if (!b || !tr) return;
       if (b.dataset.to === 'cancelled' && !confirm(`Cancel order ${tr.dataset.n}? Its stock goes back.`)) return;
       if (b.dataset.to === 'confirmed' && !confirm(`Did you see the money for ${tr.dataset.n} in your bank / UPI app?`)) return;
@@ -1709,6 +1824,7 @@ window.HoolaBuild = function (C) {
       catch (er) { toast(er.message, true); } finally { e.target.disabled = false; }
     });
     if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
+    if (info.linked) auditBox(o, box);
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
       let rows = [];
@@ -1766,6 +1882,17 @@ window.HoolaBuild = function (C) {
       try { const r = await api('POST', base(o) + '/logic/apply', {hash: S(d.hash)}); toast(S(r?.say) || 'Applied.'); reload(); }
       catch (er) { toast(er.message, true); ap.disabled = false; }
     });
+  }
+
+  /* v0.434 who changed what (every change to the app's data, with the person) + who may do what */
+  async function auditBox(o, box) {
+    let v; try { v = await api('GET', base(o) + '/audit?limit=60'); } catch (er) { return; }
+    const sec = document.createElement('section'); sec.className = 'stlogic';
+    sec.innerHTML = `<h4>Who changed what <span>last ${L(v.audit).length}</span></h4>`
+      + (L(v.audit).length ? `<div class="sttbl"><table><thead><tr><th>When</th><th>Who</th><th>List</th><th>Change</th><th>Fields</th></tr></thead><tbody>${L(v.audit).map(a => `<tr><td>${esc(new Date(S(a.at)).toLocaleString())}</td><td>${esc(S(a.by))}</td><td>${esc(S(a.list))}</td><td>${esc(S(a.op))}</td><td>${esc(L(a.fields).join(', '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No changes yet.</p>')
+      + `<h4 style="margin-top:12px">Who can do what</h4><div class="sttbl"><table><thead><tr><th>List</th><th>Add</th><th>See</th><th>Change</th><th>Delete</th><th>Only staff see</th></tr></thead><tbody>${L(v.matrix).map(m => `<tr><td>${esc(S(m.label))}</td><td>${esc(S(m.create))}</td><td>${esc(S(m.read))}</td><td>${esc(S(m.update))}</td><td>${esc(S(m['delete']))}</td><td>${esc(L(m.staff_see).join(', '))}</td></tr>`).join('')}</tbody></table></div>`
+      + `<p class="stnote">Mobile OTP login: ${v.otp ? 'on' : 'off (needs an SMS provider on the server)'}</p>`;
+    box.appendChild(sec);
   }
 
   /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */

@@ -158,6 +158,8 @@ FILE CONTRACT
   PieChart(values, labels), Carousel(photoIds), OnboardingPager(listOf("Title" to "words"), onDone). Never a WebView.
   CONNECTORS (v0.424): LiveRowsBlock already shows the staff buttons for her approved connectors (courier, SMS...); a staff
   screen may add ConnectButtons("orders", row). NEVER call an outside API from the app, never put a key in the app.
+  PARTNER APPS (v0.435): block { PartnerJobsBlock() } = a delivery partner / partner shop's jobs (apply, waiting, new jobs,
+  my jobs with the allowed steps, call, route); the server decides every row and step. Use it only when told this is a partner app.
   Fields marked [location]: LocationField(label, key) ("Use my location" with the
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.
 - Actions: val c = ctx(); Act.call(c), Act.whatsapp(c, text), Act.share(c, text), Act.maps(c), Act.payUpi(c, amount, note)

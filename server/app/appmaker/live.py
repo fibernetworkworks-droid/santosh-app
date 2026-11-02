@@ -182,8 +182,18 @@ def event_for(sub: Sub, j: Any, sch: dict[str, Any] | None = None) -> dict[str, 
     c = next((x for x in sch.get("collections") or [] if x.get("key") == j.coll), None)
     if c is None:
         return None
+    how = ""
     if not W._can_read(c, w, SimpleNamespace(owner=j.owner or "")):
-        return None
+        if w.m is None or (w.m.role or "") != "partner" or j.op == "delete":
+            return None
+        try:                                               # v0.435 PARIVAAR: a partner's own work only, limited view
+            d0 = json.loads(j.after or "{}")
+        except ValueError:
+            return None
+        from . import family as FA
+        how = FA.sees(sub.r, w, j.coll, j.row_id, d0)
+        if not how:
+            return None
     ev = {"type": "row", "seq": j.id, "coll": j.coll, "op": j.op, "id": j.row_id}
     if j.op != "delete":
         try:
@@ -191,6 +201,9 @@ def event_for(sub: Sub, j: Any, sch: dict[str, Any] | None = None) -> dict[str, 
         except ValueError:
             d = {}
         ev["row"] = _row_view(c, j.row_id, d, j.owner or "", j.created or "", w)
+        if how:
+            from . import family as FA
+            ev["row"] = FA.limit_live(sub.r, c, ev["row"], how)
         if "status" in d:
             ev["status"] = str(d.get("status") or "")
     return ev

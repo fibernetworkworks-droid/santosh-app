@@ -130,7 +130,9 @@ the way Claude Code works. You have tools to explore and edit the repo. Work in 
 3. Make SMALL exact edits with edit_file (one place at a time) or new_file. Keep the repo's style, framework and libraries;
    never add a dependency unless asked.
 4. A bug fix comes WITH a test that fails before the fix and passes after, in the repo's existing test framework / folder
-   (look at an existing test first).
+   (look at an existing test first). That test is PUSHED FIRST, on its own commit, and her CI runs it: a RED run is the
+   proof the bug is real, and if your test passes on the unfixed code it proves nothing and she is told so. So write the
+   test against the BUG she reported (the exact input / state that misbehaves), not against your fix.
 5. show_diff, check your own change for mistakes AND against every project rule, then call done (say which rules applied
    in rules_followed).
 Never write secrets, keys, tokens, passwords or real personal data (Aadhaar, PAN, phone, card) into code, tests or docs - read

@@ -33,6 +33,15 @@ def make_router(require_key) -> APIRouter:
         return {"set": SET_V, "asks": [{"id": a["id"], "kind": a["kind"], "turns": turns_of(a),
                                         "band": list(a.get("band", ())), "want": a.get("want", [])} for a in ASKS]}
 
+    @r.get("/hardcard")
+    async def hardcard():
+        """v0.438 the hard card: the free check now + the saved live cards (python -m app.quality hardcard --live)."""
+        from . import hard_card as H
+        card = await asyncio.to_thread(H.free_card)
+        return {"free": {k: v for k, v in card.items() if k != "rows"}, "lines": H.lines(card),
+                "saved": await asyncio.to_thread(H.saved),
+                "how": "live: python -m app.quality hardcard --live [--judge] [--quick] (one real turn per ask)"}
+
     @r.get("/tools")
     async def tools():
         """v0.245 tool choice: the free router card now + the saved live cards (python -m app.quality tools --live)."""

@@ -71,6 +71,7 @@ class GameStudio(Base):
     qa: Mapped[list | None] = mapped_column(JSON, nullable=True)           # v0.416 QA farm reports (last 12)
     platform: Mapped[dict | None] = mapped_column(JSON, nullable=True)     # v0.416 {package (never changes), version_code}
     runtime: Mapped[dict | None] = mapped_column(JSON, nullable=True)      # v0.425 {on, telemetry, tests} (Hoola Runtime)
+    liveops: Mapped[dict | None] = mapped_column(JSON, nullable=True)      # v0.428 {experiments, events, revenue, patches}
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 

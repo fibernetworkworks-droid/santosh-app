@@ -173,6 +173,9 @@ def write_screen(r: AppProject, sid: str, ctx: dict[str, Any], sp: dict[str, Any
     system = PR.screen_system(sid, ids=ids, lists=SP.list_fields(sp["seed"]),
                               facts=sorted(k for k in sp["seed"]["facts"] if k != "privacy"), lang=AS._lang_line(r.language),
                               backend=sp["seed"].get("backend"))
+    from .. import family as FA                      # v0.435 PARIVAAR: a partner app's first tab opens on its jobs
+    if FA.prompt_line(sp["seed"].get("backend") or {}):
+        system += "\n" + FA.prompt_line(sp["seed"].get("backend") or {})
     prompt = (f"APP: {sp['app']['name']} ({ctx.get('goal')}).\nSCREEN: {sid} = {me['label']}"
               f"{' (a bottom tab)' if me['tab'] else ' (opened on top of a tab; Back is automatic)'}.\nPURPOSE: {me['purpose']}\n"
               f"DATA SHOWN: {', '.join(me['data'])}\n"

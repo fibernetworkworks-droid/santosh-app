@@ -360,6 +360,8 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "files": [{"path": c["path"], "why": c.get("why", ""), "added": c.get("added", 0), "removed": c.get("removed", 0),
                     "new": not c.get("old_sha")} for c in ch],
          "checks": _j(t.checks, []), "risk": t.risk, "test_plan": t.test_plan, "rounds": t.rounds,
+         "self_round": int(t.self_round or 0), "self_review": _j(t.self_review or "", {}),
+         "proof": _j(t.proof or "", {}),
          "at": t.created_at.isoformat() if t.created_at else ""}
     if full:
         v["text"] = t.text
@@ -862,12 +864,22 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
                 _, sha_now = g.file(t.repo, c["path"], head_now)
                 if sha_now != c["old_sha"]:
                     raise DevError(f"{c['path']} is beech base branch par badal gayi; kaam dobara karwaiye.")
-        sha = g.commit_files(t.repo, t.branch, head_now, [(c["path"], c["new"]) for c in changes],
-                             f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
         cfg = _cfg(tenant)
         # v0.351 PEHLE CI, PHIR PR: a repo with CI gets a DRAFT PR first; the tick runs her CI, fixes until it passes
         # (up to DEV_CI_ROUNDS) and only then marks the PR ready for review
-        ci_loop = bool(_setting("dev_ci_loop", True)) and _has_ci(g, t.repo, head_now)
+        has_ci = _has_ci(g, t.repo, head_now)
+        tests_first = _proof_tests(t, changes, has_ci)   # v0.447 ECC PHASE 3: the test commit goes in on its own, first
+        if tests_first:
+            sha = g.commit_files(t.repo, t.branch, head_now,
+                                 [(c["path"], c["new"]) for c in changes if c["path"] in tests_first],
+                                 f"test: {t.pr_title}\n\nTest that reproduces the bug. It is EXPECTED TO FAIL on this commit - "
+                                 f"that red run is the proof the bug is real. The fix is the next commit.\n"
+                                 f"{t.number} by Hoola Developer Sahayak")
+        else:
+            sha = g.commit_files(t.repo, t.branch, head_now, [(c["path"], c["new"]) for c in changes],
+                                 f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
+        # v0.445 ECC PHASE 2: even a repo with no CI gets the draft + loop, because the loop now holds the OWN-REVIEW gate
+        ci_loop = bool(_setting("dev_ci_loop", True)) and (has_ci or bool(_setting("dev_self_review", True)))
         pr = g.open_pr(t.repo, t.branch, t.base, t.pr_title, t.pr_body, True if ci_loop else cfg.draft_pr)
     except GhError as e:
         _set(t.id, status="failed", error=str(e))
@@ -877,20 +889,43 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         row.status, row.head_sha, row.pr_number, row.pr_url, row.base_sha = "pr_open", sha, int(pr.get("number") or 0), \
             str(pr.get("html_url") or ""), head_now
         row.ci = json.dumps({"state": "pending", "say": "CI shuru hone wala"})
-        if ci_loop:
-            row.status, row.ci_round, row.ci_since = "ci_running", 0, now()
-            _log(row, f"draft PR #{row.pr_number} khula, CI chal raha")
+        if not ci_loop:
+            _log(row, f"PR #{row.pr_number} khula")
             s.flush()
-            say = (f"{row.number}: badlav draft PR #{row.pr_number} par gaya ({len(changes)} file). Aapka CI chal raha hai - "
-                   "fail hua to main khud theek karunga, aur PASS hone par hi PR review ke liye taiyaar karunga." + warn)
-            return _card(tenant, row, say)
-        _log(row, f"PR #{row.pr_number} khula")
+            n_w = len(_j(row.checks, []))
+            say = (f"{row.number}: PR #{row.pr_number} khul gaya ({len(changes)} file). {row.explain[:300]} "
+                   + (f"{n_w} suraksha / data note PR mein likhe. " if n_w else "")
+                   + "CI ka nateeja aate hi bataunga. Merge sirf aapke tap se." + warn)
+            return _card(tenant, row, say.strip())
+        row.status, row.ci_round, row.ci_since = "ci_running", 0, now()
+        row.self_round, row.self_review = 0, json.dumps({"has_ci": has_ci})
+        if tests_first:
+            row.proof = json.dumps({"state": "wait", "tests": tests_first, "test_sha": sha})
+        _log(row, (f"test pehle commit hua ({len(tests_first)} file), bug ka saboot CI se" if tests_first
+                   else f"draft PR #{row.pr_number} khula" + (", CI chal raha" if has_ci else "")))
         s.flush()
-        n_w = len(_j(row.checks, []))
-        say = (f"{row.number}: PR #{row.pr_number} khul gaya ({len(changes)} file). {row.explain[:300]} "
-               + (f"{n_w} suraksha / data note PR mein likhe. " if n_w else "")
-               + "CI ka nateeja aate hi bataunga. Merge sirf aapke tap se." + warn)
-        return _card(tenant, row, say.strip())
+        mine = (" Uske baad PR dene se pehle main khud bhi apna code review karunga."
+                if _setting("dev_self_review", True) else "")
+        if tests_first:
+            say = (f"{row.number}: pehle sirf test draft PR #{row.pr_number} par gaya. Aapka CI ise chalayega - test FAIL "
+                   "hona chahiye, wahi bug ka saboot hai; uske baad fix ka commit jayega." + mine + warn)
+        else:
+            say = (f"{row.number}: badlav draft PR #{row.pr_number} par gaya ({len(changes)} file). "
+                   + ("Aapka CI chal raha hai - fail hua to main khud theek karunga, aur PASS hone par hi PR review ke liye "
+                      "taiyaar karunga." if has_ci else "Is repo mein CI nahi hai.") + mine + warn)
+        if has_ci:
+            return _card(tenant, row, say)              # the tick watches her CI, then the own review runs
+        tid = row.id
+    # v0.445 no CI in this repo: there is nothing to wait for, so Hoola's own review runs NOW and its answer is the card
+    try:
+        out = _ci_step(tenant, tid, say_tail=warn)
+    except (DevError, GhError) as e:                    # the gate never blocks a PR: the draft card stands
+        log.info("devsahayak own review on push %s: %s", tid, e)
+        out = None
+    if out:
+        return out
+    with session() as s:
+        return _card(tenant, s.get(DevTask, tid), say)
 
 
 def revise(tenant: str, ref: str, words: str, conv: str = "") -> dict[str, Any]:
@@ -1090,8 +1125,36 @@ def review_view(r: DevReview) -> dict[str, Any]:
             "posted_event": r.posted_event, "url": r.url, "at": r.created_at.isoformat() if r.created_at else ""}
 
 
+def pr_diff(files: list[dict[str, Any]], limit: int = 60) -> tuple[list[dict[str, Any]], list[str], dict[str, Any],
+                                                                        dict[str, set[int]]]:
+    """A pull request's files -> (automatic findings, <pr_diff> parts for the model, commentable lines, ADDED lines).
+    v0.445: taken out of review() so Hoola's own-PR review (the self-review gate) reads a PR exactly the way it reads
+    somebody else's. A secret on an added line is never shown to the model."""
+    findings: list[dict[str, Any]] = []
+    diff_parts: list[str] = []
+    valid: dict[str, Any] = {}
+    added_lines: dict[str, set[int]] = {}           # v0.377 the review loop comments on ADDED lines only
+    for f in files[:limit]:
+        path, patch = str(f.get("filename") or ""), str(f.get("patch") or "")
+        valid[path] = R.patch_lines(patch)
+        added = R.patch_added(patch)
+        added_lines[path] = {ln for ln, _ in added}
+        for ln, txt in added:
+            for sec in R.secrets_in(txt):
+                findings.append({"path": path, "line": ln, "severity": "high", "id": "secret",
+                                 "say": f"Is line par {sec['kind']} jaisa secret / personal data: hataiye aur key badaliye."})
+            for c in R.code_checks(txt, path):
+                findings.append({"path": path, "line": ln, "severity": "medium", "id": c["id"],
+                                 "say": f"{c['owasp']} {c['owasp_name']}: {c['say']}"})
+        shown = "\n".join(f"[L{ln}] +{tx}" for ln, tx in added)[:8000]
+        if R.secrets_in(shown):          # the model never sees a secret: those lines are replaced
+            shown = "\n".join(f"[L{ln}] +{'[secret hataya]' if R.secrets_in(tx) else tx}" for ln, tx in added)[:8000]
+        diff_parts.append(f'<pr_diff file="{path}" status="{f.get("status")}" additions="{f.get("additions")}">\n{shown}\n</pr_diff>')
+    return findings, diff_parts, valid, added_lines
+
+
 def explore_review(g, repo: str, head: str, pr_text: str, diff_parts: list[str], added_lines: dict[str, set[int]],
-                   rules: str = "", findings: str = "") -> dict[str, Any]:
+                   rules: str = "", findings: str = "", extra: str = "") -> dict[str, Any]:
     """v0.377 the exploring review + v0.402 ECC SPECIALISTS: with dev_spec_review on, the main pass gets the reviewer
     discipline + the language reviewer, and a big / sensitive / untested PR gets focused passes (security, silent failures,
     tests) whose comments merge into one list (same line = one comment). The review card calls this same function."""
@@ -1100,18 +1163,19 @@ def explore_review(g, repo: str, head: str, pr_text: str, diff_parts: list[str],
     steps, minutes = _setting("dev_review_steps", 25), float(_setting("dev_review_minutes", 10))
     diffs = "\n\n".join(diff_parts)
     if not _setting("dev_spec_review", False):
-        return L.review_run(g, repo, head, pr_text, diffs, added_lines, rules, findings, max_steps=steps, minutes=minutes)
+        return L.review_run(g, repo, head, pr_text, diffs, added_lines, rules, findings, max_steps=steps, minutes=minutes,
+                            system_extra=extra)
     paths = sorted(added_lines)
     added = sum(len(v) for v in added_lines.values())
     main = L.review_run(g, repo, head, pr_text, diffs, added_lines, rules, findings, max_steps=steps, minutes=minutes,
-                        system_extra=SP.review_addendum(paths))
+                        system_extra=SP.review_addendum(paths) + (("\n\n" + extra) if extra else ""))
     passes = SP.focus_passes(paths, diffs, added, _setting("dev_spec_focus_lines", 150))
     groups, extra_loops = [main.get("comments") or []], []
     for key in passes:
         try:
             f = L.review_run(g, repo, head, pr_text, diffs, added_lines, rules, findings,
                              max_steps=_setting("dev_spec_focus_steps", 12), minutes=minutes,
-                             system_extra=SP.REVIEW_CORE + "\n\n" + SP.FOCUS[key])
+                             system_extra=SP.REVIEW_CORE + "\n\n" + SP.FOCUS[key] + (("\n\n" + extra) if extra else ""))
         except Exception as e:  # noqa: BLE001 - a focused pass is extra; the main review stands without it
             log.info("focused review pass %s failed: %s", key, e)
             continue
@@ -1140,24 +1204,7 @@ def review(tenant: str, repo: str, pr_number: int, conv: str = "") -> dict[str, 
     if pr.get("state") != "open":
         raise DevError(f"PR #{pr_number} khula nahi hai.")
     head = str((pr.get("head") or {}).get("sha") or "")
-    findings, diff_parts, valid = [], [], {}
-    added_lines: dict[str, set[int]] = {}           # v0.377 the review loop comments on ADDED lines only
-    for f in files[:60]:
-        path, patch = str(f.get("filename") or ""), str(f.get("patch") or "")
-        valid[path] = R.patch_lines(patch)
-        added = R.patch_added(patch)
-        added_lines[path] = {ln for ln, _ in added}
-        for ln, txt in added:
-            for sec in R.secrets_in(txt):
-                findings.append({"path": path, "line": ln, "severity": "high", "id": "secret",
-                                 "say": f"Is line par {sec['kind']} jaisa secret / personal data: hataiye aur key badaliye."})
-            for c in R.code_checks(txt, path):
-                findings.append({"path": path, "line": ln, "severity": "medium", "id": c["id"],
-                                 "say": f"{c['owasp']} {c['owasp_name']}: {c['say']}"})
-        shown = "\n".join(f"[L{ln}] +{tx}" for ln, tx in added)[:8000]
-        if R.secrets_in(shown):          # the model never sees a secret: those lines are replaced
-            shown = "\n".join(f"[L{ln}] +{'[secret hataya]' if R.secrets_in(tx) else tx}" for ln, tx in added)[:8000]
-        diff_parts.append(f'<pr_diff file="{path}" status="{f.get("status")}" additions="{f.get("additions")}">\n{shown}\n</pr_diff>')
+    findings, diff_parts, valid, added_lines = pr_diff(files)
     body_txt = str(pr.get("body") or "")[:4000]
     prompt = (f"<pr>\nRepo {r.full_name} PR #{pr_number}: {pr.get('title')}\nBy: {(pr.get('user') or {}).get('login')}\n{body_txt}\n</pr>\n\n"
               + (f"Team coding rules: {cfg.rules}\n\n" if cfg.rules else "")
@@ -1600,7 +1647,169 @@ def _ci_ready(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str, Any]:
         return _card(tenant, row, say + note)
 
 
-def _ci_step(tenant: str, tid: str, at: datetime | None = None) -> dict[str, Any] | None:
+PROOF_SAY = {
+    "proven": "Aapke CI ne test ko FAIL kiya - bug saabit ho gaya, phir fix ka commit gaya.",
+    "proven_unnamed": "Aapka CI test ke commit par RED hua (par fail ke log mein naya test naam se nahi dikha), phir fix gaya.",
+    "not_proven": "Saaf baat: naya test PURANE code par bhi PASS ho gaya, to yeh test bug ko saabit nahi karta. Fix commit "
+                  "ho gaya hai - test par dhyaan dijiye.",
+    "unknown": "Bug ka saboot naap nahi paya (test ke commit par koi CI nateeja nahi aaya). Fix commit ho gaya hai.",
+}
+PROOF_PR = {
+    "proven": "**Proven.** Her CI ran the test-only commit `{sha}` and it FAILED{named} - the bug is real. The fix is the "
+              "next commit on this branch.",
+    "proven_unnamed": "**Red, not named.** Her CI failed on the test-only commit `{sha}`, but the failure text does not "
+                      "name the new test, so the red run may have another cause. Read the run before trusting it.",
+    "not_proven": "**NOT proven.** Her CI ran the test-only commit `{sha}` and it PASSED - the test does not reproduce the "
+                  "bug, so this change is not shown to fix anything. The test needs to fail on the old code.",
+    "unknown": "**Not measured.** No CI result arrived for the test-only commit `{sha}`, so nothing proves the bug here.",
+}
+
+
+def _proof_tests(t: DevTask, changes: list[dict[str, Any]], has_ci: bool) -> list[str]:
+    """v0.447 ECC PHASE 3 (ECC's orch-fix-defect: "proving the bug exists first is what separates a fix from a tweak").
+    The test files of a FIX that go in as their own first commit, so her CI's RED run is the proof. [] = no proof run:
+    not a fix, no CI in the repo, the switch is off, no test in the change, or nothing but tests (no fix to split off)."""
+    if t.kind != "fix" or not has_ci or not bool(_setting("dev_fix_proof", True)):
+        return []
+    tests = [c["path"] for c in changes if R.is_test_path(c["path"])]
+    rest = [c["path"] for c in changes if not R.is_test_path(c["path"])]
+    return tests if tests and rest else []
+
+
+def _proof_named(ci: dict[str, Any], tests: list[str]) -> bool:
+    """Does the red run's own text name the new test (file, or its basename without extension)? Her CI may be red for an
+    unrelated reason, and a proof nobody can point at is not a proof."""
+    text = " ".join(str(f.get("text") or "") for f in (ci.get("failures") or []))
+    if not text:
+        return False
+    for p in tests:
+        base = p.rsplit("/", 1)[-1]
+        if p in text or base in text or base.rsplit(".", 1)[0] in text:
+            return True
+    return False
+
+
+def _proof_land(tenant: str, t: DevTask, g: Gh, verdict: str, ci: dict[str, Any]) -> dict[str, Any]:
+    """The proof run is over (whatever it said): the fix commit goes on top of the test commit and the CI wait starts
+    again. The verdict is REPORTED, never hidden - a test that passed on the old code says so on the card and in the PR."""
+    changes = _j(t.changes, [])
+    pf = _j(t.proof or "", {}) or {}
+    try:
+        parent = g.branch_sha(t.repo, t.branch)
+        sha = g.commit_files(t.repo, t.branch, parent, [(c["path"], c["new"]) for c in changes],
+                             f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
+    except GhError as e:
+        _set(t.id, status="failed", error=str(e))
+        raise DevError(str(e))
+    pf.update({"state": verdict, "fix_sha": sha, "failed": (ci.get("failed") or [])[:3]})
+    with session() as s:
+        row = s.get(DevTask, t.id)
+        row.proof, row.head_sha, row.ci_since = json.dumps(pf), sha, now()
+        row.ci = json.dumps({"state": "pending", "say": "CI shuru hone wala"})
+        _log(row, "bug ka saboot: " + verdict)
+        s.flush()
+        body = row.pr_body
+        s.expunge(row)
+    note = PROOF_PR.get(verdict, "").format(sha=str(pf.get("test_sha") or "")[:7],
+                                            named=" on the new test" if verdict == "proven" else "")
+    if body and note and row.pr_number:              # the PR says what her CI answered, for whoever reviews it
+        try:
+            g.update_pr(t.repo, row.pr_number, body=body + "\n\n### Proof of the bug (ECC phase 3)\n" + note)
+        except GhError as e:
+            log.info("devsahayak proof pr body %s: %s", t.id, e)
+    return _card(tenant, row, f"{row.number}: {PROOF_SAY.get(verdict, '')} Ab CI poore badlav par chal raha hai.")
+
+
+def _proof_step(tenant: str, t: DevTask, g: Gh, ci: dict[str, Any], state: str, waited: float) -> dict[str, Any] | None:
+    """One step of the proof run: her CI on the test-only commit. RED = the bug is real -> the fix lands. GREEN = the test
+    does not reproduce it -> the fix still lands, and she is TOLD. No result = said as not measured, never as proven."""
+    pf = _j(t.proof or "", {}) or {}
+    tests = [str(x) for x in (pf.get("tests") or [])]
+    if state == "failure":
+        return _proof_land(tenant, t, g, "proven" if _proof_named(ci, tests) else "proven_unnamed", ci)
+    if state == "success":
+        return _proof_land(tenant, t, g, "not_proven", ci)
+    if state in ("none", None, "") and waited >= float(_setting("dev_ci_wait_min", 15)):
+        return _proof_land(tenant, t, g, "unknown", ci)
+    if state == "pending" and waited >= float(_setting("dev_ci_max_min", 45)):
+        return _proof_land(tenant, t, g, "unknown", ci)
+    return None
+
+
+def _self_blocking(out: dict[str, Any], findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """What Hoola's own review found that must be fixed before she is asked to look: its own high / medium comments and the
+    automatic HIGH findings (a secret / injection on an added line). Low comments and the [Hoola check] notes never block."""
+    bad: list[dict[str, Any]] = []
+    for c in (out.get("comments") or [])[:30]:
+        if not isinstance(c, dict) or str(c.get("severity") or "low") not in ("high", "medium"):
+            continue
+        body = str(c.get("body") or "").strip()
+        if not body or body.startswith("[Hoola check]") or R.secrets_in(body):
+            continue
+        bad.append({"path": str(c.get("path") or ""), "line": int(c.get("line") or 0) if str(c.get("line") or "0").isdigit() else 0,
+                    "severity": str(c.get("severity")), "body": body[:800]})
+    for f in findings:
+        if f.get("severity") == "high":
+            bad.append({"path": f.get("path", ""), "line": f.get("line", 0), "severity": "high", "body": f.get("say", "")})
+    return bad[:12]
+
+
+def _ready_or_self_review(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str, Any]:
+    """v0.445 ECC PHASE 2 - the gate before 'Ready for review': Hoola reads its OWN draft PR back the way it reads anyone
+    else's (same exploring reviewer, plus SELF_REVIEW: did the task really get done, does a caller / test break, leftovers).
+    A real problem goes back as ONE more fix round (dev_self_rounds at most) and the PR stays a draft; a clean read, or no
+    rounds left, hands it to her with the open points named. The own review is NEVER posted to GitHub - it is her chat only,
+    and merge stays her tap."""
+    if not _setting("dev_self_review", True) or not t.pr_number:
+        return _ci_ready(tenant, t, g, say)
+    from . import specialists as SP
+    rounds = int(t.self_round or 0)
+    cfg = _cfg(tenant)
+    try:
+        findings, diff_parts, _valid, added_lines = pr_diff(g.pr_files(t.repo, t.pr_number))
+        if not diff_parts:
+            raise DevError("PR mein koi file nahi mili")
+        pr_text = (f"<pr>\nRepo {t.repo} PR #{t.pr_number}: {t.pr_title}\nBy: Hoola Developer Sahayak (YOUR OWN work)\n"
+                   f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}\n</pr>")
+        out = explore_review(g, t.repo, t.head_sha, pr_text, diff_parts, added_lines, cfg.rules,
+                             json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW)
+    except Exception as e:  # noqa: BLE001 - the own review is extra: a PR is never stuck because it could not run
+        log.info("devsahayak self review %s: %s", t.id, e)
+        return _ci_ready(tenant, t, g, say)
+    bad = _self_blocking(out, findings)
+    note = {"round": rounds + 1 if bad else rounds, "summary": str(out.get("summary") or "")[:2000],
+            "verdict": "request_changes" if bad else "ok", "problems": bad,
+            "has_ci": bool((_j(t.self_review or "", {}) or {}).get("has_ci"))}
+    left = int(_setting("dev_self_rounds", 2)) - rounds
+    if bad and left > 0:
+        with session() as s:
+            row = s.get(DevTask, t.id)
+            row.self_round, row.self_review = rounds + 1, json.dumps(note)
+            _log(row, f"khud ke review mein {len(bad)} baat mili: theek karne ka round {rounds + 1}")
+            s.flush()
+            s.expunge(row)
+        points = "\n".join(f"- {b['path']}:{b['line']} [{b['severity']}] {b['body']}" for b in bad)
+        _progress(t.id, f"{t.number}: PR dene se pehle maine khud review kiya - {len(bad)} baat theek kar raha hoon.")
+        return _round(tenant, row, f"<self_review round=\"{rounds + 1}\">\n{points}\n</self_review>\nYou reviewed your OWN "
+                                   "pull request before handing it over and found the problems above. Fix every one that is "
+                                   "real (explore first; a caller or test may be the real break), and for anything you "
+                                   "decide NOT to change, say why in risk. Do not widen the task.", "")
+    with session() as s:
+        row = s.get(DevTask, t.id)
+        row.self_review = json.dumps(note)
+        _log(row, "khud ka review: " + (f"{len(bad)} baat khuli reh gayi" if bad else "koi problem nahi"))
+        s.flush()
+        s.expunge(row)
+    if bad:
+        points = "; ".join(f"{b['path']}:{b['line']} {b['body'][:120]}" for b in bad[:3])
+        tail = (f" Maine khud bhi review kiya aur {rounds} baar theek karne ke baad bhi {len(bad)} baat khuli hai, "
+                f"isliye saaf bata raha hoon: {points}. Dekh kar hi merge kijiye.")
+    else:
+        tail = " Maine khud bhi poora review kiya - koi problem nahi mili."
+    return _ci_ready(tenant, row, g, say + tail)
+
+
+def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = "") -> dict[str, Any] | None:
     """v0.351 PEHLE CI, PHIR PR - one step of the loop for a draft PR: green -> ready for review; red -> read the failure and
     commit a fix (DEV_CI_ROUNDS times at most) -> wait again; no CI result for DEV_CI_WAIT_MIN -> ready with a note;
     still running after DEV_CI_MAX_MIN -> ready with a note. Merge stays HER tap, always."""
@@ -1617,10 +1826,12 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None) -> dict[str, Any
     waited = (at - since).total_seconds() / 60
     rounds = int(t.ci_round or 0)
     g = gh(tenant)
+    if (_j(t.proof or "", {}) or {}).get("state") == "wait":    # v0.447 her CI is running the test-only commit
+        return _proof_step(tenant, t, g, ci, state, waited)
     if state == "success":
         tail = f" ({rounds} fix round ke baad)" if rounds else ""
-        return _ci_ready(tenant, t, g, f"{t.number}: aapka CI PASS{tail}. PR #{t.pr_number} ab review ke liye taiyaar hai. "
-                                       "Merge sirf aapke tap se.")
+        return _ready_or_self_review(tenant, t, g, f"{t.number}: aapka CI PASS{tail}. PR #{t.pr_number} review ke liye "
+                                                   "taiyaar hai. Merge sirf aapke tap se." + say_tail)
     if state == "failure":
         if rounds >= int(_setting("dev_ci_rounds", 3)):
             with session() as s:
@@ -1642,12 +1853,19 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None) -> dict[str, Any
         return _round(tenant, row, f"<ci_log>\n{log_txt}\n</ci_log>\nHer CI FAILED on this draft PR branch (round "
                                    f"{rounds + 1}). Explore, find the real cause and fix it (fix the code, not the test - "
                                    "unless the test is wrong: then say why in risk).", "")
+    sr0 = _j(t.self_review or "", {}) or {}
+    if state in ("none", None, "") and "has_ci" in sr0 and not sr0.get("has_ci"):
+        # v0.445 no CI in this repo at all: no point waiting 15 minutes, the own review is the only check there is
+        return _ready_or_self_review(tenant, t, g, f"{t.number}: is repo mein CI nahi hai, isliye test nahi chale - PR "
+                                                   f"#{t.pr_number} review ke liye taiyaar hai, dhyaan se dekhiye. Merge sirf aapke tap se." + say_tail)
     if state in ("none", None, "") and waited >= float(_setting("dev_ci_wait_min", 15)):
-        return _ci_ready(tenant, t, g, f"{t.number}: is PR par {int(waited)} minute mein koi CI nahi chala, isliye test nahi "
-                                       f"chale - PR #{t.pr_number} review ke liye taiyaar hai, dhyaan se dekhiye.")
+        return _ready_or_self_review(tenant, t, g, f"{t.number}: is PR par {int(waited)} minute mein koi CI nahi chala, "
+                                                   f"isliye test nahi chale - PR #{t.pr_number} review ke liye taiyaar hai, "
+                                                   "dhyaan se dekhiye." + say_tail)
     if state == "pending" and waited >= float(_setting("dev_ci_max_min", 45)):
-        return _ci_ready(tenant, t, g, f"{t.number}: CI {int(waited)} minute se chal raha hai; PR #{t.pr_number} review ke "
-                                       "liye taiyaar kar diya - CI ka nateeja aate hi bataunga.")
+        return _ready_or_self_review(tenant, t, g, f"{t.number}: CI {int(waited)} minute se chal raha hai; PR "
+                                                   f"#{t.pr_number} review ke liye taiyaar kar diya - CI ka nateeja aate hi "
+                                                   "bataunga." + say_tail)
     return None
 
 

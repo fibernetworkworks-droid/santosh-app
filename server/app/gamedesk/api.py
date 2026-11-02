@@ -72,6 +72,13 @@ POST   /api/gamedesk/runtime/{sid}/replay       start a replay test (bot run, sa
 GET    /api/gamedesk/runtime/{sid}/replay/{rid} the recorded replay JSON
 GET    /api/gamedesk/runtime/{sid}/telemetry    dashboard (installs, sessions, D1 / D7, funnel)   DELETE: wipe it
 POST   /play/{token}/t                          telemetry from the game (same host as the play link; always 204)
+GET    /api/gamedesk/liveops/{sid}[/dashboard|/crashes|/money]   v0.428 live ops view, D30 / DAU / balance, crash groups, money
+POST   /api/gamedesk/liveops/{sid}/experiments[/{key}/start|stop]  A/B tests (start / stop = her tap); GET .../{key} = result
+POST   /api/gamedesk/liveops/{sid}/events[/{key}/approve|cancel]   live events calendar (approve = her tap)
+POST   /api/gamedesk/liveops/{sid}/crashes/{sig}/hotfix | /patch_check | /money (CSV)
+GET    /play/{token}/live                       what the game reads: running tests + approved events (same host)
+GET|POST /api/gamedesk/big[/{pid}/tasks[/{tno}[/reopen]]]   v0.433 big-studio projects in Unity / Unreal / Godot
+GET    /api/gamedesk/big/plugin/{unity|unreal}.zip   the Hoola Crew editor plugin (MCP client; writes only on her Apply)
 GET    /api/gamedesk/editor/tokens  POST {label} (shown ONCE)  DELETE /api/gamedesk/editor/tokens/{id}
 GET    /api/gamedesk/editor/plugin.zip          the Godot editor plugin (addons/hoola)
 POST   /mcp/gamedesk                            MCP (JSON-RPC 2.0, Streamable HTTP) with 'Authorization: Bearer <editor token>'
@@ -745,6 +752,122 @@ def make_router(require_key, current_tenant) -> APIRouter:
         raw = await request.body()
         await asyncio.to_thread(RT.ingest, token, raw[: RT.MAX_BODY + 1])
         return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+    # ------------------------------------------------------------ v0.428 Live ops (A/B, live events, crashes, patches, money)
+    from . import liveops as LO
+
+    @r.get("/api/gamedesk/liveops/{sid}", dependencies=[Depends(require_key)])
+    async def lo_get(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.view, tenant, sid)
+
+    @r.get("/api/gamedesk/liveops/{sid}/dashboard", dependencies=[Depends(require_key)])
+    async def lo_dash(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.dashboard, tenant, sid)
+
+    @r.post("/api/gamedesk/liveops/{sid}/experiments", dependencies=[Depends(require_key)])
+    async def lo_exp_add(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(LO.add_experiment, tenant, sid, b.get("key"), b.get("title") or "", b.get("goal") or "win",
+                          b.get("variants") if isinstance(b.get("variants"), list) else None, b.get("mde") or 0.05)
+
+    @r.get("/api/gamedesk/liveops/{sid}/experiments/{key}", dependencies=[Depends(require_key)])
+    async def lo_exp_res(sid: str, key: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.results, tenant, sid, key)
+
+    @r.post("/api/gamedesk/liveops/{sid}/experiments/{key}/start", dependencies=[Depends(require_key)])
+    async def lo_exp_start(sid: str, key: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.start_experiment, tenant, sid, key)
+
+    @r.post("/api/gamedesk/liveops/{sid}/experiments/{key}/stop", dependencies=[Depends(require_key)])
+    async def lo_exp_stop(sid: str, key: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.stop_experiment, tenant, sid, key, str(_b(body).get("ship") or ""))
+
+    @r.post("/api/gamedesk/liveops/{sid}/events", dependencies=[Depends(require_key)])
+    async def lo_ev_add(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(LO.add_event, tenant, sid, b.get("key"), b.get("title") or "", b.get("starts"), b.get("ends"), b.get("set"))
+
+    @r.post("/api/gamedesk/liveops/{sid}/events/{key}/approve", dependencies=[Depends(require_key)])
+    async def lo_ev_ok(sid: str, key: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.approve_event, tenant, sid, key)
+
+    @r.post("/api/gamedesk/liveops/{sid}/events/{key}/cancel", dependencies=[Depends(require_key)])
+    async def lo_ev_cancel(sid: str, key: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.cancel_event, tenant, sid, key)
+
+    @r.get("/api/gamedesk/liveops/{sid}/crashes", dependencies=[Depends(require_key)])
+    async def lo_crashes(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.crashes, tenant, sid)
+
+    @r.post("/api/gamedesk/liveops/{sid}/crashes/{sig}/hotfix", dependencies=[Depends(require_key)])
+    async def lo_hotfix(sid: str, sig: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.hotfix, tenant, sid, sig)
+
+    @r.post("/api/gamedesk/liveops/{sid}/patch_check", dependencies=[Depends(require_key)])
+    async def lo_patch(sid: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(LO.start_patch_check, tenant, sid)
+
+    @r.get("/api/gamedesk/liveops/{sid}/money", dependencies=[Depends(require_key)])
+    async def lo_money(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(LO.money, tenant, sid)
+
+    @r.post("/api/gamedesk/liveops/{sid}/money", dependencies=[Depends(require_key)])
+    async def lo_money_in(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(LO.import_revenue, tenant, sid, str(b.get("csv") or ""), str(b.get("source") or ""))
+
+    # ------------------------------------------------------------ v0.433 Big-studio mode (Unity / Unreal on her machines)
+    from . import bigstudio as BS
+
+    @r.get("/api/gamedesk/big", dependencies=[Depends(require_key)])
+    async def bs_list(tenant: str = Depends(current_tenant)):
+        return {"projects": await call(BS.projects, tenant), "mcp_url": service.base_url().rstrip("/") + "/mcp/gamedesk",
+                "engines": BS.ENGINE_NAMES}
+
+    @r.post("/api/gamedesk/big", dependencies=[Depends(require_key)])
+    async def bs_new(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(BS.new_project, tenant, b.get("engine"), b.get("title"), b.get("engine_version") or "",
+                          b.get("about") or "", b.get("module") or "")
+
+    @r.post("/api/gamedesk/big/{pid}/tasks", dependencies=[Depends(require_key)])
+    async def bs_task_add(pid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(BS.add_task, tenant, pid, b.get("title"), b.get("detail") or "", b.get("priority") or 2)
+
+    @r.get("/api/gamedesk/big/{pid}/tasks/{tno}", dependencies=[Depends(require_key)])
+    async def bs_task_get(pid: str, tno: str, tenant: str = Depends(current_tenant)):
+        return await call(BS.task, tenant, pid, tno)
+
+    @r.post("/api/gamedesk/big/{pid}/tasks/{tno}/reopen", dependencies=[Depends(require_key)])
+    async def bs_task_reopen(pid: str, tno: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(BS.reopen, tenant, pid, tno, str(_b(body).get("note") or ""))
+
+    @r.get("/api/gamedesk/big/plugin/{engine}.zip", dependencies=[Depends(require_key)])
+    async def bs_plugin(engine: str):
+        if engine not in ("unity", "unreal"):
+            raise HTTPException(404, "unity or unreal")
+        name = "hoola_crew_unity.zip" if engine == "unity" else "hoola_crew_unreal.zip"
+        return Response(content=BS.plugin_zip(engine, service.base_url()), media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @r.get("/play/{token}/live")
+    async def lo_live(token: str):
+        d = await asyncio.to_thread(LO.live_config, token)
+        return Response(content=json.dumps(d), media_type="application/json",
+                        headers={"Cache-Control": "public, max-age=60", "X-Content-Type-Options": "nosniff"})
 
     @r.get("/api/gamedesk/editor/tokens", dependencies=[Depends(require_key)])
     async def ed_tokens(tenant: str = Depends(current_tenant)):

@@ -395,6 +395,33 @@ def _model_refused(e: Exception) -> bool:
     return ("not_found" in m or "404" in m or "unknown model" in m or "model:" in m) and "model" in m
 
 
+def _hard_held(state: dict, settings) -> bool:
+    """v0.436 is this turn's answer held for the self-check? Her hard question, check switched on."""
+    return bool(state.get("hard") and getattr(settings, "hard_check", True))
+
+
+async def _hard_check(conversation_id: str, state: dict, draft: str, history: list[dict], settings) -> list[str]:
+    """v0.436 SOCH KE JAWAB step 5: the free code check, then ONE independent reviewer call. Problems or []."""
+    from . import hard as _hardc
+    bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch raha hoon", "state": "running",
+                                          "id": "hard-check"})
+    try:
+        ev, names = _hardc.evidence(history)
+        full, _ = _hardc.evidence(history, limit=400_000, per=200_000)   # v0.437 every link a tool returned
+        why = ((state.get("hard_why") or {}).get("why")) or []
+        problems = _hardc.code_check(state.get("request", ""), draft, why, names, full)
+        if not problems:
+            problems = await _hardc.review(state.get("request", ""), draft, ev, settings)
+        state["hard_check"] = {"problems": problems, "tools": names[:12]}
+        return problems
+    except Exception:
+        log.exception("hard check failed")
+        return []
+    finally:
+        bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch liya", "state": "done",
+                                              "id": "hard-check"})
+
+
 def model_for(settings, hard: bool, long_job: bool) -> str:
     """'' = the chat model. A hard reasoning ask (not a long job - those run many steps and stay on the chat model at
     agent_long_effort) gets agent_hard_model."""
@@ -460,6 +487,11 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     tools = tools if tools is not None else TOOLS
     cap = max_tokens or settings.agent_max_tokens
     streaming = live is not None and live.streaming
+    # v0.443 a held answer (a hard ask being checked, a Gyaan answer) and any big answer still STREAM from Claude: the
+    # live reply decides what she sees (feed() only shows words while live.streaming), the API call is never one long
+    # blocking request (16k tokens + thinking as one HTTP call is the shape a client / proxy refuses or times out) and
+    # the thinking reaches the Soch card while the words are held
+    api_stream = streaming or live is not None or cap > NONSTREAM_MAX_TOKENS
     if brain in ("glm", "omniroute"):
         history = [{**m, "content": _no_think(m["content"])} for m in history]   # v0.232 Claude-only blocks
         if streaming:
@@ -479,7 +511,7 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         # she always gets an answer; a 404 / unknown model turns the switch off for this process.
         try:
             HARD_MODEL["calls"] += 1
-            return await _claude_call(over, system, history, settings, tools, live, cap, think, streaming)
+            return await _claude_call(over, system, history, settings, tools, live, cap, think, api_stream)
         except asyncio.CancelledError:
             raise
         except Exception as e:   # noqa: BLE001 - the chat model answers instead
@@ -489,7 +521,7 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
             log.warning("hard model %s failed, answering on %s: %s", over, settings.anthropic_model, str(e)[:200])
             if live is not None:
                 live.reset()
-    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, streaming)
+    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, api_stream)
 
 
 async def _claude_call(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
@@ -548,10 +580,26 @@ def _learn_claude(kw: dict, resp) -> None:
     _ctx.after_call("claude", kw.get("system"), kw.get("tools"), kw.get("messages") or [], n)
 
 
+NONSTREAM_MAX_TOKENS = 8192     # v0.443 above this an answer is always streamed from the API (no live reply needed)
+
+
+class _QuietLive:
+    """v0.443 a stream with no live reply to show it in (a sub-agent, a check): the words are just collected."""
+    def feed(self, piece: str) -> None:
+        pass
+
+    def feed_think(self, piece: str) -> None:
+        pass
+
+    def new_text_block(self) -> None:
+        pass
+
+
 async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
     """v0.161 Claude's answer word by word: text deltas go to the live reply; tool input (input_json_delta) is left to
     the SDK, which parses it only when the block is complete. Prompt caching is the same request shape.
     v0.171 thinking deltas (adaptive / extended thinking) stream to the console's Soch card, never into the answer."""
+    live = live if live is not None else _QuietLive()
     async with api.stream(**kw) as st:
         async for ev in st:
             t = getattr(ev, "type", "")
@@ -753,6 +801,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
             from . import hard as _hard
             _hv = await _hard.decide(user_text or "", settings)
             state["hard"], state["hard_why"] = bool(_hv["hard"]), _hv
+            # v0.437 a deep-research ask: the agent crew gets research room + must return sources
+            ctx.research = bool(_hv["hard"] and "research" in (_hv.get("why") or []))
             if state["hard"]:   # v0.429 thinking tokens count against max_tokens: a hard answer gets real room
                 state["max_tokens"] = max(state.get("max_tokens") or 0,
                                           int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
@@ -803,7 +853,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                           "routine" if actor == "goal" else actor)
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
-    if user_text and actor == "owner" and settings.draft_check:
+    if user_text and actor == "owner" and settings.draft_check and not state.get("hard_checked"):
+        # (v0.436 a hard answer already passed the self-check before she saw it - no second, weaker look after)
         # v0.223 the last look, in the background: the reply is already on her screen, so nothing waits for this
         from . import draftcheck
         state["chat_tail"] = _chat_tail(history)
@@ -945,6 +996,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools, _last_user_text(history))
     tail += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
     tail += state.get("hint") or ""
+    if state.get("hard") and getattr(settings, "hard_recipe", True):
+        # v0.433 SOCH KE JAWAB step 4: a hard question gets the reasoning recipe (ordinary chat never pays for it)
+        from . import hard as _hardr
+        tail += "\n\n" + _hardr.recipe(((state.get("hard_why") or {}).get("why")) or [])
     if _secret:   # v0.250 incognito: she knows nothing from here is kept; never promise it is
         tail += ("\n\nINCOGNITO CHAT: she opened this chat in incognito. Nothing from it goes into her memory (no facts, "
                  "no diary, no search, no memory page) and other chats will not know it. Never say 'yaad rakh liya'; if "
@@ -977,6 +1032,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     if adm is not None and state.get("hard"):
         adm.extra.add("pylab")      # v0.430 a hard ask the judge (not the rules) found also gets the sandbox
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
+    ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 
     def _system(fams) -> str:
@@ -1018,7 +1074,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or
                                                    (state.get("hard") and getattr(settings, "hard_thinking", True)))))
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
-            live.block(stream=not _gyaan.used(conversation_id))
+            # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
+            # still streams on the Soch card)
+            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings)))
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
@@ -1067,6 +1125,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _ctx.CONV.reset(_conv_tok)
         history.append({"role": "assistant", "content": blocks})
         texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
+        if texts and stop not in ("tool_use", "max_tokens") and _hard_held(state, settings) \
+                and not state.get("hard_checked"):
+            state["hard_checked"] = True
+            problems = await _hard_check(conversation_id, state, "\n\n".join(texts), history, settings)
+            if problems:   # v0.436 the draft is kept for the model but never shown; the fixed answer replaces it
+                _save(conversation_id, "assistant", blocks, display=None)
+                from . import hard as _hardc
+                nudge = _hardc.fix_note(problems)
+                history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": nudge}])
+                continue
         _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
         if texts:
             final_text = "\n\n".join(texts)
@@ -1437,15 +1506,12 @@ def _key(name: str, args) -> str:
     return k(name, args)
 
 
-def _goal_open(state: dict, conversation_id: str, settings) -> bool:
-    """A kaam_plan goal is open for this chat (v0.186): its steps and its honest "X/Y steps ho gaye" line are the
-    truth machinery there, so v0.223's free claim check stays out of its way."""
-    if state.get("goal"):
-        return True
-    if not settings.agent_goal:
-        return False
+def _goal_now(conversation_id: str, settings) -> dict | None:
+    """The working goal of this chat (v0.443: the claim check asks the whole job, not one round)."""
+    if not getattr(settings, "agent_goal", True):
+        return None
     from . import goal as _g
-    return _g.active_for(conversation_id) is not None
+    return _g.active_for(conversation_id)
 
 
 async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, conversation_id: str) -> str:
@@ -1456,10 +1522,18 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     cap = pakka.SELF_CHECKS_GOAL if state.get("goal") else pakka.SELF_CHECKS_PER_TURN
     if conversation_id in _stopped or state["breaker"].stopped or state.get("halted"):
         return ""
-    if settings.draft_check and not _goal_open(state, conversation_id, settings):
-        # v0.223 free, in code: the reply claims work that never ran. pakka below owns the case where tools DID run,
-        # and goal mode (v0.186) owns its own truth - its steps and its honest "X/Y steps ho gaye" line.
-        fake = draftcheck.fake_done(state, final_text)
+    if settings.draft_check:
+        # v0.223 free, in code: the reply claims work that never ran. pakka below owns the case where tools DID run.
+        # v0.443 (long-task report item 2) this used to be switched OFF for the whole of goal mode, on the idea that
+        # the plan's own "X/Y steps ho gaye" line was truth enough - but a step is ticked by the MODEL, so a goal
+        # could tick steps and claim sent / booked / saved with only reads behind it. Goal mode now gets the same
+        # free check; its own honest lines never trip it (_ALREADY_HONEST + the goal line carries no claim verb).
+        g0 = state.get("goal") or (_goal_now(conversation_id, settings))
+        since = None
+        if g0:
+            from . import goal as _g
+            since = _g.started_at(g0["id"]) if g0.get("id") else None
+        fake = draftcheck.fake_done(state, final_text, conversation_id, since)
         if fake:
             return fake
     calls = state.get("calls") or []

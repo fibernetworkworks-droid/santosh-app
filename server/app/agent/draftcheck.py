@@ -103,6 +103,37 @@ def nothing_ran(calls: list[dict] | None) -> bool:
     return True
 
 
+def nothing_ran_in_job(conv: str, since) -> bool:
+    """v0.443 the same question for a WHOLE long job, read from the harness event log: did any doing tool succeed in
+    this chat since the goal began? A long job works across several turns (background rounds), so the per-turn answer
+    would call a round that only ticks the last step "nothing ran" even though round 1 really sent the mail. Any
+    trouble reading the log answers False (never nudge on a guess)."""
+    if since is None:
+        return True
+    try:
+        from sqlalchemy import select
+
+        from ..db import session
+        from .eventlog import HarnessEvent, ensure_table
+        ensure_table()
+        import json as _json
+        with session() as s:
+            rows = s.scalars(select(HarnessEvent.payload)
+                             .where(HarnessEvent.conversation_id == conv, HarnessEvent.kind == "tool_result",
+                                    HarnessEvent.created_at >= since)).all()
+        for raw in rows:
+            try:
+                p = _json.loads(raw or "{}")
+            except ValueError:
+                continue
+            if p.get("ok") and not _is_read(p.get("tool")):
+                return False
+        return True
+    except Exception:   # noqa: BLE001
+        log.debug("job-wide claim check failed", exc_info=True)
+        return False
+
+
 NUDGE = ("[System check, not the user] Your message says the work is already done, but nothing that could do it "
          "ran this turn - only reads, so nothing was actually sent, saved, booked or ordered. Either do it NOW "
          "with the right tool (every card, "
@@ -120,15 +151,20 @@ def said_line(text: str) -> str:
     return SAID if _HINGLISH.search(text or "") else SAID_EN
 
 
-def fake_done(state: dict, text: str) -> str:
+def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
     """Inside the turn, free: returns a nudge the first time the reply claims work that never ran. The second time
-    it sets state['correct'] (added after the words she already read) and returns ''."""
+    it sets state['correct'] (added after the words she already read) and returns ''.
+    v0.443 `conv` + `since` (a goal's start): the "nothing ran" question is asked of the WHOLE job, not this round."""
     if _ALREADY_HONEST.search(text or ""):
         # it already says it is not done - saying so again is the loop this check used to create
         STATS["quiet"] += 1
         return ""
-    if not claims_done(text) or not nothing_ran(state.get("calls")):
+    if not claims_done(text):
         return ""
+    if not nothing_ran(state.get("calls")):
+        return ""
+    if since is not None and not nothing_ran_in_job(conv, since):
+        return ""          # an earlier round of this job really did it; this round only reported
     seen = state.get("fake_done", 0) + 1
     state["fake_done"] = seen
     if seen == 1:

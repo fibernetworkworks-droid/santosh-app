@@ -16349,3 +16349,660 @@ Owner: "friction, backlash and cam contact force — fix and develop".
   friction = mu m g r, tip play, knocks, desk redesigns a jumping follower).
 - NOT VERIFIED: allowables / friction coefficients are published starting points; no gear-tooth flex beyond the mesh
   spring, no Stribeck static-friction peak, roller slip not modelled.
+
+
+## v0.432.0 (built as 0.430.0) LIVE OPS (Hoola Game Engine plan Phase 9) - 2 Nov 2026
+Owner: "GO PHASE 9". Plan row 9 = telemetry dashboards, A/B, events, patches - for games that run for years.
+New `server/app/gamedesk/liveops.py`; HoolaRuntime (`runtime.py`) extended; tool `game_liveops`; console Live ops page
+(board button); phone `GameLiveopsScreen` (Studio > Live ops).
+- LIVE CONFIG: GET /play/<token>/live (the game's own host - the play page CSP is connect-src 'self') = running A/B tests
+  + approved, not-ended events. HoolaRuntime fetches it at start (normal play only, never in Hoola's test runs), keeps
+  the last answer on the device (user://hoola_live.cfg, works offline). The game reads values with
+  `HoolaRuntime.num("player.hp", fallback)`, `flag("double_coins")`, `active_events()`, and reports moments with
+  `track(event, value)` (only with her switch + the player's yes). An event beats a test for the same value.
+- VALUES: only a number that is in her Game Bible (player.<f>, economy.<f>, <kind>.<id>.<f>) within 1/4x - 4x of the
+  Bible's own number, or flag.<name> = true / false. A Bible number of 0 cannot be changed live. A bigger change = Bible.
+- A/B TESTS: draft -> start (her tap; refused while telemetry is off - unmeasurable) -> stop (her tap; ship = a Studio
+  board task "Make group X the game's own: player.hp = 150", never a silent change). Groups: sha256(install:key)[:8]
+  mod 10000 against the split in basis points - the SAME sum in Python and GDScript (real-Godot test, 4 installs).
+  Results: players per group, goal rate (an event, or d1), sample-size target per group (normal approximation,
+  alpha 0.05, power 0.8, her smallest difference worth knowing), sample-ratio check (chi-square, p < 0.001 = SPLIT
+  BROKEN, result not trusted), two-proportion z-test, Bonferroni for >2 groups. Below the target the verdict is
+  NOT ENOUGH PLAYERS even when the gap looks big (tested: a 15-point gap at 100 per group). Max 3 running; two tests,
+  or a test and an approved event, may not change the same value at the same time.
+- LIVE EVENTS: key, title, start / end (India time when no zone is written), values; draft -> approve (her tap) ->
+  scheduled / live / ended; cancel. Max 31 days, within a year, two approved events overlapping on one value refused.
+- CRASHES: HoolaRuntime registers a Godot `Logger` (4.5+, `OS.add_logger`; checked in 4.7.2: it gets push_error AND
+  script errors, with the GDScript backtrace -> res:// file + line), dedups per session, sends up to 20 per session
+  only with the player's yes. Server groups by file + line + message (digits / e-mails scrubbed), hashed install ids,
+  versions, crash-free players per version. One tap = a priority-1 "fix" board task. "Not seen on the newest version"
+  only when >= 20 players are on a newer version and none sent it; otherwise fixing / open.
+- PATCH CHECK (real engine, background): the newest good version gets every saved replay (max 3) played back - must
+  reach the end with no script errors - plus a fresh bot run (seed 11); no saved replay = NOT ASSESSED (said, not
+  passed). Open player crashes = NOT ASSESSED until players run the new version. Release notes drafted from done tasks.
+- DASHBOARD: + D30, DAU 14 days, balance (numeric values per event: median, IQR, Tukey outliers, flagged > 5 %),
+  difficulty spikes (a level with > 2x the median game-overs).
+- MONEY: Hoola sees no store. Revenue only from the CSV she imports (date, rupees, source; ₹ / commas ok; same day +
+  source replaced). ARPDAU = revenue / DAU of consenting players = an UPPER bound, said. Payer share from
+  track("purchase"). Children's game: the note that no paid random items / pressure to buy are built.
+- Runtime refactor: `runtime.prepare()` (a test copy of the project) shared by replay test + patch check;
+  `_run_mode(..., extra)` takes more args (--hoola-live=<b64>, --hoola-install=<hex> for tests).
+- Tables: game_crashes (new), game_telemetry.ab (new nullable column), game_studios.liveops (new nullable JSON).
+- Routes: /api/gamedesk/liveops/{sid} [GET, /dashboard, /crashes, /money GET+POST, /experiments POST,
+  /experiments/{key} GET, /start, /stop, /events POST, /events/{key}/approve|cancel, /crashes/{sig}/hotfix,
+  /patch_check], GET /play/{token}/live.
+- Tests: `server/tests/test_v0428_game_liveops.py` (13, two in the real Godot 4.7.2: groups + live values + events +
+  caught errors; patch check with a saved replay).
+- NOT VERIFIED: no real player has sent telemetry, crashes or A/B data yet; the Web export's HTTPRequest fetch of
+  /live was not run in a browser here (the same host as telemetry, which uses the same path).
+
+## v0.433.0 SOCH KE JAWAB step 4 — the reasoning recipe (2 Nov 2026)
+Owner: "GO STEP 4" (step 4 of the 7-step hard-reasoning plan).
+- Steps 1-3 decided WHO thinks (agent/hard.py), on WHAT (Opus 5.5, effort high, 16k tokens, adaptive thinking) and WITH
+  WHAT (pylab for every number). Nothing said HOW: the reply rulebook (replystyle.CHAT) is tuned for crisp chat and has
+  no method for a hard question.
+- `agent/hard.py`: RECIPE_CORE "SOCH KA TAREEKA" (~1.6 KB) - 1 the real question (most likely reading in ONE line; a
+  question only when a wrong guess costs her money / a filing / a send); 2 facts first (a missing fact = a stated
+  assumption "maan ke chal rahe hain: ...", never made up; rates / rules that change = check or look up); 3 work in
+  parts, EVERY number from pylab, units, Rs / lakh / crore; 4 check before writing (totals, units, orders of magnitude,
+  the strongest objection, re-run the key figure); 5 write: answer / decision FIRST with the key number, compact
+  reasoning (steps or a small table), the assumptions that matter, what would change the answer, the next step;
+  uncertainty plain; private thinking is not the reply. RECIPE_KIND lines (calculation, word problem, maths, decision,
+  plan, diagnosis, analysis, rules -> name the section + a CA / lawyer confirms, impact, deep) chosen by `recipe(why)`
+  from assess() labels (synonyms mapped: judgement / difference -> decision, reasons / why / fix -> diagnosis, ...),
+  max 3, no repeats. 74 of 75 hard asks get their own lines (the one left is a judge-zone Hindi ask: core only).
+- `santosh._steps`: a hard turn appends recipe(state["hard_why"]["why"]) to the system tail (setting hard_recipe,
+  default on). The reply rulebook still governs the writing (her language first, answer first, length follows the
+  question). Ordinary chat never carries the recipe.
+- Tests `server/tests/test_v0433_recipe.py` (18). Turn / reply / scorecard / draft-check / soch / tool-choice /
+  compact suites: 240 pass, same as main. Not measured here: the live answers (no key) - step 7 scores them.
+  Version 0.433.0 (pubspec 0.433.0+477, console ?v=0.433.0, pins). Server-only deploy.
+
+## v0.434.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3 of docs/WEB_PLATFORM_PLAN.md, owner: "START STEP 3")
+
+**W2 - real app pages on the web (`site/assets/hoola-app.js` rewritten, `site/build.py` app_page, `hoola-site.css`).**
+The account and staff pages are now one in-page app each (`data-hoola-app="shell" data-area="member|staff"`), hash-routed
+(`#/member/...`, `#/staff/...`), with a menu per role: a member sees Home + the lists she may read / add to + My account;
+staff also see Approvals, Members, Who-can-do-what; an admin also sees the Audit log.
+- Tables: columns from the list, click-to-sort (aria-sort), search across every field, filter by the workflow / choice
+  field, 20 a page, staff bulk select -> move to a workflow state / delete, one call at a time so the server checks each.
+- Detail page: every field (photos shown, files open, location -> Maps link), workflow buttons, approval pill + decide,
+  linked lists (the logic's relations), edit / delete by the list's rules.
+- Multi-step form: more than 6 fields = steps of 5 with Next / Back, the server's own checks before the trip (required,
+  email, 10-digit Indian mobile, number), photo / file fields upload first (new POST /api/site-app/<site>/upload, served
+  back by GET .../file/<id> for whoever may see it).
+- Kanban (workflow / first choice field; drag only onto a step the workflow allows), month calendar (first date field).
+- Dressed by the site's design tokens (--c-primary, --c-line, --radius...), phone-first layout; React export unchanged
+  (HoolaApp.start). Pages built before this version keep working (old placeholders kept; their next rebuild ships the app).
+
+**W3 - login and security for people (`site/security.py`, routes under /api/site-app/<site>/...).**
+- Phone OTP (otp/start, otp/verify): 6 digits, only an HMAC hash stored (`site_app_otps`), 5 minutes, 5 tries, 3 codes per
+  number per 10 min + 10 per IP per hour, a new account needs the consent tick; sent by MSG91's OTP API (DLT template)
+  with HER keys (`SITE_SMS_PROVIDER=msg91`, `MSG91_AUTHKEY`, `MSG91_OTP_TEMPLATE` in the VPS .env); no provider = the login
+  box hides the tab and the API answers 503. A code is never logged, shown or put in a reply.
+- Staff 2-step login (2fa/start|confirm|off, 2fa/login): RFC 6238 TOTP (checked against the RFC's own test vectors),
+  secret encrypted with SECRET_KEY, a password login of a staff member with 2FA returns a 5-minute signed ticket instead
+  of a token.
+- Sessions (`site_app_sessions`, sessions / sessions/<id>/end / logout-all): device name from the browser, masked IP,
+  last seen; ending one stops that token, "sign out everywhere" bumps the member's generation.
+- DPDP: the website's sign-up needs the tick (version + time kept on the member; a page built before v0.425 that sends no
+  tick still works but records none); me/export = her profile + every row she owns (JSON); me/delete = account + rows.
+- Audit log: the app journal (`appmaker/backup.py`) now records WHO (`by`: role:member id / owner / system) for every
+  write through the backend; GET .../audit (admin) and GET /api/sites/<ref>/audit (her console, "Who changed what").
+- Per-field rule `private: true` (staff / owner see it, others never receive it) + GET .../matrix (who may add / see /
+  change / delete each list, staff-only fields), shown on the staff page and her console.
+Bugs found by the tests and fixed: a wrong OTP raised inside the DB transaction, which ROLLED BACK the try counter
+(unlimited guesses) - the counter is now saved before any refusal; two logins in the same second got the SAME token, so
+ending one device ended both - tokens now carry a random part of a day in their expiry; an OTP was spent when a new
+person forgot the consent tick - it is now refused before the code is used.
+Proof: tests/test_v0434_app_pages.py (8) incl. a real Chromium run of the built account + staff pages against the real API
+(login, member menu without audit, sort, search, detail, form checks, my devices, staff kanban 3 lanes / 4 cards, bulk
+select, audit, matrix).
+NOT BUILT (rest of W2 / W3): Google sign-in and email magic link (Google needs every customer domain registered on the
+OAuth client; mail needs a sending account), passkeys (plan: later), custom roles such as "vendor" (roles stay member /
+staff / admin), an owner switch that FORCES 2FA on all staff, timeline / map-of-rows views. NOT VERIFIED: MSG91 live
+(written from its OTP API; needs her DLT template + key).
+
+## v0.435.0 PARIVAAR (App Sahayak Pillar H, Phases 58-59) - one business, several apps, one backend + a web admin
+Owner: "START PILLAR H" (docs/COMPLEX_APPS_PLAN.md: multi-app products + web admin). Built as v0.426 / v0.433 in this session (two other sessions took 0.433 / 0.434 first).
+- FACES: a delivery partner (rider) / partner shop (vendor) / staff / customer app is its OWN App Sahayak project (normal
+  plan card -> looks -> design she approves -> Android / iPhone builds, own package, own store listing), marked
+  `plan.face = {of, kind}`. `backend.by_key` notes the face (`family.note_key`) and returns `family.home(r)` = the MAIN
+  app, so every /api/app-api/<face key>/... call runs on the main backend: one set of accounts, lists, rows, logic,
+  payments, connectors, live stream. Nothing copied. `backend.seed_hint(face)` = the main app's lists + `face` +
+  `partner` (rider / vendor) so the face build's screens use the real lists. Owner data routes use `_be_data` (main app);
+  per-app ones (components, crashes, turant, export) keep the face. Tool data actions use `BE.data_app`.
+- PARTNERS (`appmaker/family.py`, table app_partner): a partner applies from its app (POST /partner/request; staff /
+  admin accounts cannot), she or an app ADMIN approves (role "partner"); a partner shop is tied to ONE row of her
+  partner list (the ref the order list points at, e.g. orders.shop -> restaurants). Checked in code on rows / update /
+  create / delete / live / shift:
+  * rider: offers = open, unassigned jobs in her "offer" statuses (default Ready...) WITHOUT phone / e-mail / location,
+    first name only; take = one cross-process lock, first tap wins (409 after), max open jobs (default 3); then the full
+    job (phone, address, route) and only his steps (Picked up -> Out for delivery -> Delivered) + proof fields
+    (signature / photo). Taking reuses `_to` (Pillar D's tracking just works; the shift is open to approved riders).
+  * vendor: only orders whose ref == its shop row, limited view, only its steps (Accepted / Preparing / Ready /
+    Cancelled) and only until a rider has the order; its own rows in lists that point at its shop (menu) - the shop
+    link is set by the server, never by the app; other lists keep their own rules.
+  * writes are checked, then done as the system through the normal path (logic, connectors, push, stock / coupon give
+    back run) and the row remembers `_by` / `_by_kind`. Removed partner: role member + every token stops + his open
+    jobs back in the pool.
+  * push: a new order -> that shop's phones; a job reaching an offer status -> approved riders.
+- WEB ADMIN `/app-admin/<app_key>` (static/appadmin: index.html + admin.js + admin.css; CSP script-src 'self',
+  frame-ancestors 'none', no-referrer): sign in with an app staff / admin account; dashboard (/stats), every list with
+  search, status filter, paging, edit drawer, assign, CSV export (`'` before = + - @ so no cell runs as a formula),
+  partners (approve with the shop picker / refuse / remove - admin only), team roles (admin makes member / staff, never
+  admin, never itself), apps on the business. Data written with textContent only (a test checks no innerHTML).
+  Routes /api/app-api/<key>/admin/{overview, members, members/<id>/role, partners, partners/<id>, export/<coll>}.
+- Her side: /api/apps/<ref>/family (GET), /family/face (POST kind, words), /family/settings (PUT jobs / rider offer +
+  steps + max / vendor steps + link; changing the job list takes THAT list's status words), /family/partners/<pid>.
+  Console "App family" box; phone `lib/ui/app_family.dart`; tool app_banao action=family (face / partner + pdo / shop),
+  app_dekho what=family.
+- Kits: Partner.kt / Partner.swift (PartnerScreen + PartnerJobsBlock: sign-in / apply / waiting / my jobs / new jobs
+  with Take, steps, Call, Route; everything decided by GET /partner/jobs); Auth role "partner" opens ShiftBlock + Track
+  load. Generators add the `hoola_jobs` screen (registry, QA screens list) ONLY in a partner build; the code-made first
+  tab of a partner app starts with PartnerJobsBlock(); the screen writer is told so (`family.prompt_line`).
+- Tests: `server/tests/test_v0435_parivaar.py` (3: food-delivery end to end, web admin + roles, generators).
+- NOT VERIFIED: no real rider / shop phone yet; Partner.kt / Partner.swift compile only on CI; the web admin was not
+  opened in a browser here (its JS was syntax-checked, routes tested); the plan's "React" admin is plain JS on purpose
+  (no build step, same server rules). Not built: a separate partner store listing flow beyond the normal per-app one,
+  payouts to riders (Pillar E's split payouts exist for shops), the food-delivery proof on real phones.
+
+## v0.436.0 SOCH KE JAWAB step 5 — the self-check before a hard answer goes out (2 Nov 2026)
+Owner: "GO STEP 5" (step 5 of the 7-step hard-reasoning plan).
+- Before: a hard answer streamed to her while it was written (live reply); the only later look was draftcheck
+  (v0.223: a cheap model, after the words were on her screen, numbers never recomputed) - a wrong figure could only be
+  followed by a note.
+- Now (`agent/hard.py` + `santosh._hard_held` / `_hard_check`): her hard question's answer is HELD - live.block(stream
+  False), the Soch card still streams the thinking - and before it is saved or shown:
+  1. `code_check` (free): a calculation-kind ask (calculation / word problem / maths / numbers / how-long / impact)
+     whose draft carries 2+ worked-out figures (3+ digits, not her own numbers) while pylab never ran this turn.
+  2. `review` - ONE independent reviewer call (hard_check_model, '' = the chat model; max_tokens 900; timeout
+     hard_check_timeout_s 60): CHECK_SYSTEM asks only for REAL problems (a number that does not follow, a figure not
+     in the evidence, a logic gap / wrong formula / unit / total, a wrong rule or a hidden assumption, a part of her
+     question unanswered; never style) as JSON {ok} / {ok:false, problems[<=4]}. `evidence(history)` = this turn's
+     tool calls + results from her last real message on (pylab code + output first-class), capped 9,000 chars.
+  A problem -> the draft is saved with display None (the model keeps it, she never sees it), the JAANCH fix note goes
+  back (run pylab again, write the COMPLETE corrected answer, do not mention the check) and the corrected answer is
+  what she sees. ONE check per turn (state hard_checked) - never a second review round. Step chip "Jawab jaanch raha
+  hoon" -> "Jawab jaanch liya". Any reviewer failure / timeout / bad JSON = [] = the draft goes out (never blocks).
+  draftcheck.after_turn is skipped for a turn that passed the self-check. Ordinary chat is never held or checked.
+- Settings hard_check (on), hard_check_model, hard_check_timeout_s; conftest HARD_CHECK=false (scripted turns), the
+  suite turns it on. `_text_of` reads SDK objects and dict blocks (judge + review).
+- Tests `server/tests/test_v0436_self_check.py` (12): code check, evidence, reviewer verdicts + failure, a mental-maths
+  EMI fixed before she sees it (draft hidden, only the fixed answer shown), a right answer passes the reviewer, a
+  reviewer-found wrong rate fixed in exactly one round, chat never held. Turn suites (25 files): 288 pass, same as main.
+  Not measured here: live reviewer quality (no key) - step 7 scores whole answers. Version 0.436.0 (pubspec 0.436.0+480).
+
+## v0.437.0 SOCH KE JAWAB step 6 — deep research (2 Nov 2026)
+Owner: "GO STEP 6" (step 6 of the 7-step hard-reasoning plan).
+- Found: 5 of 5 deep-research asks ("Do deep research on ... and give a PDF", "Deep research karo ...", "market study",
+  "detailed report with sources") scored 0 in agent/hard.py -> no Opus, no thinking, no recipe, no self-check. The
+  crew (agent/team.py) gave each agent 8 steps and 1,500 tokens, asked for ~8 lines and no sources, and an inline crew
+  past its 260 s clock dropped EVERY agent's work.
+- `agent/hard.py`: a "research" signal (3 points = hard on its own): deep research; research karo / kar do / kijiye /
+  report / on / about / into / paper; market | industry | sector | competitor(s) | feasibility | landscape + study |
+  research | analysis | report | overview | size | sizing | map; detailed report / study / analysis; with sources /
+  sources ke saath; literature review; white paper; state of the; trends in; "pe detailed report"; shodh / research
+  in Devanagari. `research_wanted()`. RECIPE_KIND["research"] leads the recipe: 4-6 sub-questions; deploy_agents (one
+  agent per independent sub-question, inline) + web_sources / google_search / open_website; primary sources
+  (government, regulator, company filings, MoSPI); every fact and number with [n] + date, key numbers from two
+  sources, disagreements said; derived figures from pylab; a 5-7 line summary first, findings by sub-question, what
+  is uncertain, "Sources: [n] title - link - date"; doc_studio PDF when asked / long; never a link no tool returned.
+  `research_check(draft, evidence)` (free, inside code_check for a research ask): no link at all -> "cites no
+  sources"; a link that appears in no tool result of this work -> named as not from a tool. CHECK_SYSTEM gains the
+  research line. `evidence(limit, per)`; the code check reads the FULL evidence (400k / 200k per result) so a long
+  result's real links are never mistaken for invented ones; the reviewer keeps 9 KB.
+- `santosh`: ctx.research = hard + research. `agent/team.py`: deploy_agents passes shared["research"] (inline) and the
+  background spec carries "research" (shared soft_s = max(170, 75% of team_bg_timeout_s)); a research agent gets
+  team_research_max_steps 14 / team_research_max_tokens 4000 / RESEARCH_RULE (open real pages, primary sources, link +
+  date per fact, ~15 lines, never a link not from a tool) and, when the soft deadline (team_research_soft_s 170)
+  passes or its steps run out mid-search, ONE WRAP_UP call ("no more tools, write your report now with sources",
+  tools still declared because the API needs them with tool_use in history, 60 s) whose text becomes the
+  deliverable. Ordinary crews unchanged (8 / 1,500 / no rule).
+- Measured: 15/15 research asks spotted (10 in the test file), 0 of 50 everyday asks, tool-choice asks: web_research +
+  web_claim ("source ke saath") count as research.
+- Tests `server/tests/test_v0437_research.py` (22). Team / turn / reply / scorecard / draft-check / soch / tool-choice /
+  shodh suites (25 files): 317 pass, same as main. Not measured here: a live research run (no key) - step 7.
+  Version 0.437.0 (pubspec 0.437.0+481, console ?v=0.437.0, pins). Server-only deploy.
+
+## v0.438.0 SOCH KE JAWAB step 7 — the HARD CARD (2 Nov 2026)
+Owner: "GO STEP 7" (the last step of the 7-step hard-reasoning plan).
+- Steps 1-6 changed HOW a hard ask is handled (v0.272 spotted, v0.429 Opus + thinking + 16k, v0.430 pylab, v0.433 the
+  recipe, v0.436 the held self-check, v0.437 deep research); nothing measured whether the ANSWERS were right.
+- `app/quality/hard_card.py` (HARD_CARD_V 1): 28 asks with known answers - 13 money maths (EMI 20 L / 9% / 20 y =
+  17,994.52 + 23,18,684.59 interest; break-even 421.05 cakes; CAGR 24.14%; SIP 74.9-75.7 L; solar payback 55.6 months /
+  21.6%; price +10% / volume -6% at 18% margin = +46.2% profit; doubling at 15% = 4.96 y; FD 5 L / 8% quarterly / 5 y =
+  7,42,973.70; GST 5,310 / 810; real return 0.94%; LTV/CAC 2.5; 20%+10% = 28%; tiffin 35 a meal / 10,500 a day),
+  6 word problems / logic (trains 3 h, ages 10 / 30, dice 51.77%, x = -12, machines 5 min, workers 9 days), 2 proofs
+  (root 2, the mislabelled boxes), 5 rules / decision / diagnosis / plan asks (GST composition 1.5 crore / 1% / no ITC,
+  TDS 194J 10% = 6,000, rent vs buy, ads root cause, a 6-month GTM) and 2 research asks (CPI from MoSPI, EV two-wheelers).
+  Every key computed in Python (and re-derived in the test so a wrong key can never pass a wrong answer).
+  `numbers()` reads answers the Indian way (Rs, commas, lakh, crore, k, negatives); `score_answer` = numbers within
+  tolerance + must-have points + behaviour (pylab for a calculation, 2+ source links for research) + whether the
+  self-check ran ("jaanch" step). `free_card` (no model): every ask spotted hard, pylab in view, its own recipe line,
+  research routed - 28/28, 28/28, 28/28, 2/2. `live_card`: ONE real turn per ask on tenant __quality__ (run.py's
+  _new_conv / _calls_of), errors are rows; optional Opus judge 0-10 (substance only; a made-up figure caps at 3) on
+  the 7 open asks; `pick(only, limit, quick)` (QUICK = 10 exact-answer asks); save / saved / lines.
+- CLI `python -m app.quality hardcard [--live] [--judge] [--quick] [--only id,id] [--limit N] [--label ...]`;
+  GET /api/quality/hardcard (free card + saved cards); vps-ops job `hard_card` (free card + live quick set, ~10-15 min).
+- Tests `server/tests/test_v0438_hard_card.py` (16). Quality / turn suites: same failures as main (App Sahayak bhasha /
+  delivery, pre-existing). NOT RUN HERE: the live card itself (no API key in the sandbox) - run it on the VPS; its first
+  numbers are the honest measure of steps 1-6. Version 0.438.0 (pubspec 0.438.0+482, console ?v=0.438.0, pins).
+
+
+## v0.439.0 GMAIL POORA CALL PAR (2 Nov 2026)
+Owner, testing Gmail by voice: "FIRST CHECK IS ALL GMAIL TOOLS IS ATTACHED TO VOICE TO VOICE", then "GO".
+- FOUND: the call's VOICE_TOOL_NAMES held 11 of the 23 Gmail tools (+ email_accounts via santosh_kaam). The other 11 -
+  email_thread, email_label, email_drafts, email_filters, email_forwarding, email_alias, email_threads, email_rule,
+  email_snooze, email_vacation, email_bulk, email_bulk_status - had no tool and no route, so 13 of the 36 Gmail test-sheet
+  prompts could only fail on a call (chat had all 23).
+- FIX (`app/voice.py`): declared to the call = email_thread, email_snooze, email_drafts (everyday, light: +~2k chars;
+  the call's tool JSON stays ~57k of VOICE_TOOL_BUDGET 150k). VOICE_VIA_KAAM = email_label, email_threads, email_bulk,
+  email_bulk_status, email_filters, email_rule, email_vacation, email_forwarding, email_alias (settings / bulk: the full
+  brain runs them, any confirm card still reaches her phone). The persona Email line names both groups. Gemini Live and
+  OpenAI real voice both read `_tool_specs()`, so both engines get it.
+- ALSO FOUND (not fixed here, config): her voice test said "Gmail API not enabled" = Google 403 SERVICE_DISABLED for the
+  OAuth client's Cloud project; she enables the Gmail API (and Calendar / Drive / Docs / Sheets / Forms / Slides /
+  YouTube / Photos) in that project. Gmail + Calendar clients still pass Google's raw 403 text through (Drive / Sheets /
+  Forms / Slides / Photos / YouTube already say it plainly) - next fix if she wants it.
+- Test `test_v0439_gmail_call.py`: every name in EMAIL_TOOLS is declared or via_kaam (a new mail tool cannot be left off
+  a call again), schemas clean, budget kept, persona names them, email_vacation on a call goes to santosh_kaam.
+
+## v0.440.0 SOCH KE JAWAB - the live hard card measures for real (2 Nov 2026)
+Owner ran `python -m app.quality hardcard --live --judge` on the VPS: `RIGHT 0/28, pylab used 0/19, sourced research 0/2,
+self-check ran 0/28, errors 0, median 1.0 s`. Every turn returned in about a second, with no tools and no self-check, so
+the model never answered.
+- ROOT CAUSE of the blind card: `hard_card._one` scored whatever `run_turn` returned. A turn whose model call fails
+  returns the apology line ("Maaf kijiye, abhi kuch gadbad ho gayi (ref ...)", source `error`), and that was scored as
+  an answer. 28 dead turns therefore read as 28 wrong answers with "errors 0", and the real exception (the log line
+  `error ref <ref>: <exception>`) went to the `2>/dev/null` of her command.
+- FIX 1 (the card): a turn that published an assistant message with source `error` / `budget` (read from its saved
+  Event rows) is an ERROR row carrying `log` = the server's own WARNING+ lines for that turn, caught by a temporary
+  root handler. `live_card` stops after 3 dead turns in a row (`planned` vs `asks`). `lines()` prints "STOPPED after
+  n of m" and the first failure's log lines. Each scored row keeps its `log` too.
+- FIX 2 (the call): v0.436 held a hard answer for the self-check with `live.block(stream=False)`, and
+  `_call_brain` used that DISPLAY flag to choose the API mode, so the hard turn became the only Claude call in Hoola
+  sent as one blocking request: 16k tokens + adaptive thinking + effort high. Its thinking also never reached the Soch
+  card, which v0.436 had promised. Now `api_stream = live shown OR a live reply exists OR cap > NONSTREAM_MAX_TOKENS
+  (8192)`. `Live.feed` shows words only while `live.streaming`, so a held answer stays hidden while it streams.
+  `_QuietLive` collects a big stream with no live reply. GLM / omniroute are unchanged.
+- `hardcard --ping` (`hard_card.ping`): for the hard model and the chat model, one tiny streamed call in each of three
+  shapes (plain / thinking / thinking+effort), printing OK or the API's exact error. Costs a few paise.
+- Checked against an SSE stand-in for the Anthropic API (httpx2 MockTransport): Opus 5.5 streamed, thinking, the
+  self-check (code check flagged no pylab -> one fix round), right number, scored RIGHT.
+- NOT VERIFIED: the VPS's real exception is still unknown. The fixed card / `--ping` will print it on the next run.
+- Tests: `tests/test_v0440_hard_live.py`.
+
+## v0.441.0 PRAYOGSHALA STUDIO (built as 0.435.0, 2 Nov 2026)
+Owner: "NOW BUILD ALL 22 LABS LIKE THIS IN HOOLA. MAKE EVERY EXPERIMENT PERFECT AND ROBUST" (after approving the
+pendulum prototype artifact: "realistic like human lab", theory first, Ask Hoola inside the experiment page).
+- Engine `server/app/static/prayog/studio/studio.js` + `studio.css`: lab room, bench, lights, materials, shared devices
+  (stand, cork, ruler / scaleTex, stopwatch, meter incl. zero-centre galvanometer, thermometer, wire, terminal, cell,
+  power box, plug key, rheostat, resistance box, optical bench, upright, tuning fork, beaker, labels), the gloved hand
+  (tap / pinchMove / reach / shape / follow), camera views, workflow (Theory auto first, Result + graph and Viva last),
+  handwritten record book (`S.addRow`), toast `S.say`, Ask Hoola panel, test mode (`?test=1`, `S.fast`, `S.advance`).
+- 22 modules `server/app/static/prayog/exp/<id>.js` (contract + rules: `docs/PRAYOG_STUDIO.md`). Numbers only from the
+  kernels (`kernels.js` twin of `kernels.py`); the hidden unknown is shown only on the result line.
+- `lab.html` loads the studio module and falls back to the old `lab3d.js` runtime when a lab has none.
+- Ask Hoola: `POST /api/prayog/ask` (needs the key; `service.ask`, system prompt limited to THIS lab, live readings and
+  turns are data, 150 a day per account, 429 / 503 plain). Phone `PrayogLabView` injects `window.HOOLA_TOKEN`.
+- Ruler scale fix: the printed metre rule was stretched 1-1.6 %; zero now at the top end and v at lengthM - v exactly.
+- Proof: `node tools/prayog_walk.js http://localhost:PORT` drives every step's own `auto` through the button code paths:
+  22/22 PASS - g 9.817, k 20.12 / 20.00, mu 0.3006, eta 1.488, k 0.0200, PV 9.976, c 904.8, v 343.04, mu 0.0010,
+  R 4.9995, S 6.0017, r 0.999, V_K 0.663, slope 0.998, f 14.85 / 19.79, n 1.498 / 1.500, k 0.2698, D 23.40 / 0.510 mm.
+- NOT VERIFIED: on her phone WebView (GPU / memory on low-end Android); Ask Hoola answers live on the VPS model.
+
+## v0.442.0 PAKKA KAAM + SAB KAAM CALL PAR (2 Nov 2026; built as 0.440 / 0.441, re-versioned past the parallel v0.440 / v0.441)
+Owner: "NOW FOR VOICE TO VOICE --- CHECK DOES IT PERFORM LONG TASK", then "GO" on the fix.
+- CHECK RESULT: yes - a call hands a big job to santosh_kaam = the FULL run_turn (all tools, plan card, goal rounds up to
+  ~3 h, AAGE BADHO, ask-on-limit, goal.recover_tick, steering of a running job by a later ask on the same call since the
+  delegate passes voice=False, kaamwatch notes into the live call, `_late_result` truth from LAST_OUTCOME, closed call =
+  call followup for the next call). 68/68 existing long-job + voice tests green.
+- THE GAP: `Call._delegate` ran `asyncio.create_task(run_turn(...))` - memory only. Every typed chat message goes through
+  `turn_inbox` (v0.191: accepted before the 202, swept + re-run once after a restart); the call path skipped it. A deploy /
+  crash / OOM before the job had a goal record (or a plain multi-step job that never makes one) lost the job silently and
+  the next call only had her last words.
+- FIX: `_delegate` -> `turn_inbox.accept(..., place=)` BEFORE the job starts, then `turn_inbox.run_owned(..., place=)`;
+  `turn_inbox.sweep` re-runs a dead one once (tries cap, answered check, save_user=False when her row exists) with the
+  same place. New nullable `turn_inbox.place` (String 16; `_add_missing_columns` adds it to the live DB at start).
+  `Call._kaam_running` tracks the call's running jobs; `_save_drop_note` adds "ek bada kaam chal raha tha (rukta nahi,
+  natija chat mein aayega): ..." for up to 3 of them, OTPs she said masked.
+- Tests `test_v0441_pakka_kaam.py`: the job lands in the inbox done with its place; a 'running' row 10 min old with no turn
+  holding the chat is re-run exactly once with place 'pc' and never twice; the drop note names the running job, OTP masked.
+
+### v0.442 part 2: SAB KAAM CALL PAR (the same version)
+Owner: "NOW ALSO CHECK IS VOICE TO VOICE CAN PERFORM ALL TOOL TASK END TO END", then "GO".
+- MEASURED: 483 chat tools -> 105 declared to the live model, 256 already routed through santosh_kaam, and **122 with no
+  route at all**: Sheets (format, tabs, share, protect, clear, validation...), Drive (access, comments, revisions, delete,
+  storage, changes), Forms (edit, export, share, media, copy, delete), YouTube (upload, update, reply, playlists, my videos),
+  Slides (arrange, delete, share), WhatsApp campaigns + templates + lead lists, all ten enterprise desks + software_architect +
+  cad_part + eng_calc + the 17 game tools, mospi, indiamart, data_*, composio_apps, tally_entry, doc_studio, create_studio,
+  haal_ki_chats. `_execute` answered `{"error": "Unknown tool <name>"}` for every one of them, and the persona never told the
+  call that santosh_kaam could do them - so the call usually just said it could not.
+- FIX (voice only, chat untouched): `voice.registered(name)` reads the chat registry (`agent.tools.TOOLS` + `HANDLERS`) once
+  into `_REGISTRY`; `_execute` sends any registered-but-undeclared tool to `_delegate` exactly like a VOICE_VIA_KAAM one
+  (her words + what the model wanted); an unknown name still returns "Unknown tool". New `voice.call_route(name)` returns
+  `declared` / `kaam` / `""`. The persona's new line names the families and forbids "nahi kar sakta" before santosh_kaam has
+  tried, and says a sending / deleting / sharing / paying step still comes to her phone as a card.
+- The declared list and its JSON size do not change, so no call gets slower. Both engines share `_tool_specs` / `_execute`.
+- Test `test_v0442_sab_kaam_call.py`: EVERY name in `tools.TOOLS` has a route (a new tool can never be unreachable again),
+  the declared set did not grow, the persona line is there, `sheet_format` on a call reaches the full brain, and a made-up
+  name still answers "Unknown tool".
+- Also fixed here: v0.441's `run_owned` passed `context=""` / `client_id=""` / `save_user=True` to run_turn always, which
+  broke two older voice tests whose fake run_turn takes only the arguments the old call site used; it now passes only what
+  is set.
+
+
+## v0.443.0 AI EMPLOYEES PEHLE (2 Nov 2026)
+Owner: "NOW LETS WORK ON WEB CONSOLE SIDE --- MAKE A SECTION IN SIDE BAR INSTEAD OF EMPLOYEE A AI EMPLOYEE FIRST".
+- The sidebar section was called **Employees** and was added with `NAV.push`, so it landed at the BOTTOM of the nav
+  (after Create / Today / Tools / Lab / Voice call, next to Systems and Arena) - the AI staff she hires, and every desk
+  that appears once one is hired, read like an afterthought.
+- Now `NAV.unshift(['hire', 'AI Employees'])` in `static/console/v2.js`: the section is the FIRST item in the sidebar,
+  and because `syncEmployees` splices each hired desk right after the `hire` entry, the whole AI-staff group (AI
+  Employees + SEO Desk / Social Desk / CAD Desk / Game Desk / Architecture Desk) now sits together at the top.
+- Renamed everywhere a user can read it: the nav label, the title bar (`hire:'· AI Employees'`), the hub page heading
+  (`employees.js`, 3 places), the `aria-label` of the view in `v2.html`, and the "Go to Employees" buttons on the SEO
+  and Social desks plus the "hire it in Employees" lines on the game-role panels.
+- New icon `IC.hire`: a person with a spark (AI) instead of the plain person + sign.
+- Console only: no API, no server behaviour, no phone change (the phone keeps Profile > Employees).
+- Test `test_v0443_ai_employees.py`.
+
+## v0.444.0 (built as 0.433.0) BIG-STUDIO MODE (Hoola Game Engine plan Phase 10) - 2 Nov 2026
+Owner: "Phase 10 START END TO END". Plan row 10 = the Hoola Crew inside Unreal / Unity via official editor scripting +
+MCP on their machines. New `server/app/gamedesk/bigstudio.py`; the same `/mcp/gamedesk` server gains the `hoola_studio_*`
+tools; tool `game_bigstudio`; console Game Desk > Big studio; phone Game Desk > Big studio.
+- THE SHAPE: her game lives in HER Unity / Unreal / Godot project on HER machines. Hoola never reaches in. The editor
+  plugin is an MCP CLIENT: it asks for the next task and sends what the editor sees (engine version, selection, open
+  scripts, console errors, installed packages); Hoola answers a proposal; her editor writes it only when she clicks
+  Apply and says yes; her editor compiles it and reports back. "Compiles" is only ever said when HER editor said so.
+- UNITY: a UPM package `com.newtika.hoola` (package.json + an Editor-only asmdef so it can never enter her player
+  build, Newtonsoft from Unity's own com.unity.nuget.newtonsoft-json). Window > Hoola Crew: server + token + project,
+  Next task, the proposal (new / change per file, manual steps), Apply (confirm dialog, backups in
+  Library/HoolaBackups, AssetDatabase.Refresh + RequestScriptCompilation), Propose again, Not this, Ask the crew,
+  Revert the last Apply (only files Hoola itself made are deleted). CompilationPipeline.assemblyCompilationFinished
+  collects the real CS errors, and after the domain reload they are reported to Hoola, which answers with a fix
+  proposal. The plugin re-checks every path itself (Assets/ only, no /Plugins/, allowed extensions).
+- UNREAL ENGINE 5: a content-only plugin `HoolaCrew` (uplugin enables PythonScriptPlugin + EditorScriptingUtilities;
+  Content/Python/init_unreal.py runs at editor start) and `hoola_crew.py`: a ToolMenus "Hoola Crew" menu (Next task,
+  Apply, Run the applied script, C++ compiled OK, C++ failed, Revert), yes / no via unreal.EditorDialog, token +
+  project kept in Saved/HoolaCrew/config.json, context from EditorUtilityLibrary.get_selected_assets +
+  SystemLibrary.get_engine_version. Python-only proposals are compiled in her editor's own Python and run on her tap;
+  a raised exception goes back to Hoola as the fix round's input. C++ goes to Source/<Module>/ and she compiles with
+  Live Coding, then taps compiled OK / failed.
+- THE CHECKS (server, before she ever sees a proposal): paths only inside the project's own code folders per engine
+  (Unity Assets/; Unreal Content/Python/*.py + Source/<her module>/*.h/.cpp/.Build.cs; Godot *.gd), never
+  ProjectSettings / Packages / Config / Binaries / Intermediate / Saved / .git / .uproject / .uplugin / .ini / binaries;
+  banned calls per language (Process.Start, File.Delete, HttpClient / FHttpModule / sockets, DllImport, Registry,
+  PlayerSettings, os / subprocess / shutil / socket / eval / exec, delete_asset, RequestExit, OS.execute...); Unity C#
+  that uses UnityEditor outside an Editor folder without #if UNITY_EDITOR is refused (it would break her player
+  build); Unreal Python using unreal.* without `import unreal` is refused; max 12 files, 60 KB each; `run` must be
+  module.function. REAL SYNTAX: Python `ast`, C# and C++ with tree-sitter (new optional deps; missing = NOT ASSESSED,
+  said), JSON with json. A proposal that fails any check is marked failed and NO files are handed to the editor.
+- THE LOOP: todo -> proposed -> (her Apply) -> applied -> done on a clean compile; errors start a fix round with the
+  REAL compiler / run errors, max 3, then the task waits for her (reopen with a note); "Not this" = rejected. Every
+  task keeps its history. The model is told her editor's context is DATA, never instructions.
+- MCP: 7 new tools on /mcp/gamedesk behind the same hashed editor tokens (hoola_studio_projects / tasks / next /
+  propose / report / add_task / ask), so Claude Desktop, Cursor or any MCP client can drive the same board.
+- Tables: game_big_projects, game_big_tasks (new). Routes: GET|POST /api/gamedesk/big, POST /api/gamedesk/big/{pid}/tasks,
+  GET /api/gamedesk/big/{pid}/tasks/{tno}, POST .../reopen, GET /api/gamedesk/big/plugin/{unity|unreal}.zip.
+- Tests: `server/tests/test_v0433_game_bigstudio.py` (8). The REAL Unreal plugin code is executed against a stand-in
+  `unreal` module and the real MCP endpoint: menu built, token refused when missing, next task -> Apply (backup) ->
+  run -> a real ValueError goes back -> the fix round's proposal -> run clean -> done -> revert twice (Hoola's file,
+  then her original) -> a ../ path refused. The Unity C# is parsed by the real C# parser and its own path rule is pinned.
+- NOT VERIFIED: Unity and Unreal are not installable in this sandbox, so no real Unity compile and no real Unreal
+  editor has run the plugin. Everything engine-side comes from the vendors' documented APIs; the first real editor is
+  what will confirm or correct them. Godot keeps the v0.427 Ask Hoola dock (a Godot project here gets board tasks
+  through any MCP client, with no new dock).
+
+## v0.445.0 KHUD KA REVIEW — ECC Phase 2 (owner: "ECC Phase 2: Hoola reviews its own PR before marking it 'Ready for review'. --- GO")
+
+**The hole.** Since v0.352 a Developer Sahayak PR went: commit → DRAFT PR → her CI → (red: up to `dev_ci_rounds`
+fix rounds) → green → `mark_ready` → her desk. The only *review* in the whole product was of **other people's** pull
+requests (v0.377 DEKH KE REVIEW, v0.402 ECC specialists). Hoola's own code was handed over on the strength of a green
+CI, and CI only catches what a test already covers — not a leftover debug print, not a caller it forgot to update, not
+"the task asked for three things and the PR does two".
+
+**The gate.** `service._ready_or_self_review()` now sits in front of every `_ci_ready()` call. It reads Hoola's own
+draft PR with the **same** exploring reviewer used on anyone else's (`explore_review` → `loop.review_run`, specialist
+passes included), plus a new system block `specialists.SELF_REVIEW` (adapted from ECC's reviewer-before-handoff), which
+puts the own-work questions first: did the change do what the task asked or only part of it; does any caller, test or
+import of the touched code now break (name it, don't guess); a leftover (debug print, commented-out code, TODO, stray
+file, half-renamed symbol); then the same security / silent-failure / edge-case bar. The no-filler rule is repeated
+verbatim — **zero comments is the right review of a small, correct, tested change** — because a self-review that
+invents work is worse than none.
+
+- **Blocking** (`_self_blocking`) = its own `high` / `medium` comments + the automatic **HIGH** findings (a secret or an
+  injection on an added line). `low` comments and the `[Hoola check]` notes never block.
+- **A problem** → `self_round += 1`, the PR **stays a draft**, and `_round()` gets a `<self_review>` block listing
+  `path:line [severity] body` with "you reviewed your OWN pull request … fix every one that is real (explore first; a
+  caller or test may be the real break), and for anything you decide NOT to change, say why in risk. Do not widen the
+  task." Her CI then runs on the new commit and the gate runs again. At most `dev_self_rounds` = **2**.
+- **Clean** → handed over with "Maine khud bhi poora review kiya - koi problem nahi mili."
+- **Rounds used up** → handed over **anyway**, saying plainly what is still open (`path:line` + the comment, 3 shown):
+  the one thing it must not do is hide its own open findings.
+- The own review **never goes to GitHub**: her chat + the task log only (`task_view.self_review`). Merge is still only
+  her tap, and the gate never blocks a PR — any failure (model down, no files, GhError) falls through to the old
+  `_ci_ready`.
+
+**A repo with no CI is no longer the unread one.** Before, such a repo opened a normal PR with no check of any kind.
+Now it also gets the draft + the gate, and because there is nothing to wait for, the own review runs **inside the push**
+(no 15-minute `dev_ci_wait_min`) and its answer *is* the card she gets. With CI, `_ci_step`'s green / no-CI-ran /
+pending-too-long paths all route through the gate instead of `_ci_ready`.
+
+**Refactor that made it honest:** `review()`'s diff builder came out as `service.pr_diff(files)` → (automatic findings,
+`<pr_diff>` parts, commentable lines, added lines), so Hoola's own PR is read through exactly the same code as a
+stranger's — same secret-scrubbing of added lines, same added-lines-only commenting. `explore_review` gained
+`extra=` (an extra system block, appended to the main and focused passes).
+
+**Files:** `server/app/devsahayak/service.py` (`pr_diff`, `_self_blocking`, `_ready_or_self_review`, `push`, `_ci_step`
++ `say_tail`, `task_view`), `specialists.py` (`SELF_REVIEW`), `models.py` (nullable `self_round`, `self_review`),
+`config.py` (`dev_self_review` = True, `dev_self_rounds` = 2), `agent/devsahayak_tools.py` (the tool now says every PR
+opens as a draft and is self-reviewed first). Tests `server/tests/test_v0445_khud_review.py` (9): the fix round with the
+PR still a draft, the clean handover, rounds used up + what is still open said, no-CI repo, the gate never blocking,
+the switch off, `_self_blocking`'s severities, and one run through the real review loop proving `OWN WORK` +
+`REVIEW DISCIPLINE` are both in the system prompt. v0.352's "a repo without CI opens the PR as before" test was
+rewritten to the new truth (it is now reviewed before the handover).
+
+**NOT VERIFIED:** no live job has run through this gate yet — her Anthropic credit is empty, so the live cards and a
+real own-review round on her own repo are still to come.
+
+## v0.446.0 DUKAAN PAISA (web Step 4 part 1 = W4 for websites + the first of W5, owner: "START STEP 4")
+
+Her website shop (v0.351) now takes ONLINE payments through HER OWN gateway account, on the same engine her apps use
+(`appmaker/pay.py`, v0.419 PAISA) - one set of sealed keys, one webhook, one refund path, one settlement view.
+- `site/shoppay.py`: Shop tab "Set up online payments" links the site to its App Sahayak project (applink) so the app's own
+  key routes take her keys (typed only in the console, checked with the gateway, sealed, returned by no route). The shop
+  gets payment method `online` (shown only when a gateway is connected; products API says `online`).
+- Online checkout: the order is made first (her prices, stock under the conditional update, delivery, coupon - all on the
+  server), then a gateway order for exactly that total (`AppPayment kind=site`, guest customer); the customer is sent to the
+  gateway's own page. PAID only from the gateway's signed webhook or a server-side status read with her keys, and only when
+  the amount matches (`pay._paid` kind site -> `shoppay.on_paid`: order -> confirmed, payment id kept, history says "verified");
+  a mismatch is held, never paid. The reconcile tick now covers site orders too.
+- An online order still unpaid after 3 h is cancelled by the worker (`release_unpaid`; stock + coupon back). Money that
+  arrives after that is never lost: the order keeps the payment id and its history + her chat say refund or re-confirm.
+- Refunds: POST /api/sites/<ref>/shop/orders/<n>/refund = her tap (console "Refund…", amount or all that is left), on the
+  gateway's refund API with a fixed number (v0.419 rules: never more than paid, an unsure one is checked, never resent);
+  UPI / COD orders answer 409 (she refunds those herself).
+- Coupons (W5): her codes in the app coupon store (console Shop tab), checked by POST /api/site-shop/<site>/coupon and
+  APPLIED by the server at order time (never trusted from the page); "once per customer" counts the mobile number; a
+  failing code never loses the order (coupon_note); a cancel gives the use back; free delivery is judged after the discount.
+- Reviews (W5, verified buyers only): POST /api/site-shop/<site>/order/<n>/review with the order's private token, only when
+  the order is DELIVERED and the item was in it, once per item per order, 1-5 + a line; first name only, never the phone;
+  GET .../reviews + stars on product cards / buy boxes; her console hides / shows (never edits the words).
+- Shop page (`hoola-shop.js`): online method, coupon box with the server's check, "Abhi pay karein" for a waiting online
+  order, review forms after delivery, stars. Console Shop tab: gateway card (keys, webhook address + how-to, totals),
+  coupons, reviews, order rows show online paid / not paid + Refund.
+Tests: tests/test_v0446_dukaan_paisa.py (7) against the v0.419 fake Razorpay - paid only by signed webhook / status read,
+mismatch held, pay-again reuses the window, refund rules, abandoned release + late money, coupons once per mobile + give
+back, reviews only from delivered buyers + hide.
+NOT BUILT (rest of Step 4): GST tax invoices / credit notes for WEBSITE orders (the app's Rule 46 series lives on app rows;
+website orders need their own adapter on the same series), AutoPay plans / payment links on the website (they exist for
+apps and in her console's app page), multi-vendor marketplace (vendor sign-up / approval / dashboards / commissions /
+split rules per vendor), courier connector (Shiprocket / Delhivery), abandoned-cart reminders (needs opted-in messaging),
+wishlists. NOT VERIFIED: a real gateway account (fake gateway in tests, same as v0.419).
+
+## v0.447.0 SABOOT — prove the bug before you fix it (ECC Phase 3)
+
+Owner: *"ECC Phase 3 — the next idea from that repo."* Read from the ECC clone (MIT, affaan-m/ECC v2.2.3): 71 agents,
+314 skills. The idea taken is `skills/orch-fix-defect`'s first move — **"reproduce the bug as a new failing test, then fix
+until it goes green. Proving the bug exists first is what separates a fix from a tweak."** — with the reporting rule from
+`skills/verification-loop` ("report VERIFIED or FAILED **with its evidence**"; say NOT PERFORMED where you could not check).
+
+**The hole it closes.** `loop.SYSTEM` rule 4 has said since v0.350 that a bug fix comes with a test that fails before the
+fix and passes after. Nothing ever checked it. The coding card DOES check it — `codecard` re-runs the new test against the
+old code and marks `proves` — but the live product never did, so Hoola could write "test ise saabit karta hai" in the PR
+with no evidence whatsoever, and a test that happened to pass on the broken code looked exactly like a real regression
+test. The repo's code never runs on Hoola's server (her deps, her runner), so the only honest test runner available is
+**her own CI**.
+
+**Red, then green.** For a fix whose change has both test and non-test files, in a repo that has CI:
+
+1. `push()` commits the **test files only** on the `hoola/<task>` branch (`test: <title>` + a message saying the run is
+   expected to fail and why) and opens the DRAFT PR on it. `proof = {"state": "wait", …}`.
+2. `_ci_step` sees `proof.state == "wait"` **before** any other CI handling, so a red run here is never mistaken for a
+   broken build and never starts a fix round. `_proof_step` reads what her CI said:
+   - **failure** → `proven` when `_proof_named()` finds the new test's path or name in the failure text / annotations,
+     else `proven_unnamed` (her CI may be red for an unrelated reason, and a proof nobody can point at is not a proof);
+   - **success** → `not_proven`;
+   - no result past `dev_ci_wait_min`, or pending past `dev_ci_max_min` → `unknown`.
+3. `_proof_land()` then commits the **whole** change set on top of the test commit (`base_tree`, so it is a real second
+   commit), resets the CI wait, writes the verdict into the task log and the chat card, and PATCHes a
+   "### Proof of the bug" section into the PR body (`gh.update_pr`, new). From there everything is as before: CI on the
+   full change → v0.445 own review → Ready for review → her tap to merge.
+
+**It never hides the answer.** `not_proven` says on the card *"naya test PURANE code par bhi PASS ho gaya, to yeh test bug
+ko saabit nahi karta"* and writes **NOT proven** into the PR — the fix still lands (it may be right; the *test* is what is
+unproven), but nobody can read that PR and think the bug was reproduced. `unknown` is reported as not measured, never as
+proven.
+
+**Guards:** only `kind == "fix"`; only when `_has_ci()`; only when the change has test **and** non-test files (a tests-only
+change has no fix to split off); switch `dev_fix_proof` (default True). A GhError landing the fix fails the task loudly
+rather than leaving the branch at the test commit. One extra CI run per fix is the whole cost.
+
+**Also:** `loop.SYSTEM` rule 4 now tells the model the test is pushed first and that a test passing on the unfixed code
+proves nothing — so it must be written against the BUG she reported, not against the fix. `rules.TEST_PATH` /
+`is_test_path()` factored out of `code_checks` and shared. New nullable `devsahayak_tasks.proof`; `task_view` carries it.
+
+**Files:** `server/app/devsahayak/service.py` (`_proof_tests`, `_proof_named`, `_proof_land`, `_proof_step`, `PROOF_SAY`,
+`PROOF_PR`, `push`, `_ci_step`, `task_view`), `gh.py` (`update_pr`), `loop.py` (rule 4), `rules.py`, `models.py`,
+`config.py`. Tests `server/tests/test_v0447_saboot.py` (7): the test-only first commit (the broken file still broken on
+it), red → proven → fix commit → green → ready, green-on-old-code said plainly + written into the PR, a red run that does
+not name the test, no CI result = not measured, the skips (no test in the change / a feature / tests only / no CI), and the
+default switch. v0.352's `cidev` fixture turns the proof run off so that suite keeps testing the CI fix loop.
+
+**NOT VERIFIED:** no live job has run through this yet (her Anthropic credit is empty). The first real fix on her own repo
+is what will show the red-then-green history in a PR.
+## v0.443.0 PAKKA KHATAM step 0 (built as 0.439; another session shipped v0.439 GMAIL meanwhile - REBASE PROTOCOL) - crew timeout keeps finished work + the LONG CARD (owner: "0a and 0b - start", 2 Nov 2026)
+
+From the research report `reports/How AI agents finish long tasks.md` (notes in `research_notes/How AI agents finish long
+tasks/`): every agent that finishes long jobs reliably decides "done" by something the model cannot fake, and measures
+pass^k. Hoola had no number for how often a long job really finishes. Step 0 = fix the one confirmed bug and build the
+measurement BEFORE changing the loop.
+
+- 0a CREW TIMEOUT (`agent/team.py`): inline crews used `asyncio.wait_for(gather(...))`; on the 260 s clock EVERY agent's
+  deliverable was replaced with "time out", also the ones that had already finished. Background crews lost all results
+  the same way (`results = []` on the crew timeout). `_run_crew(..., timeout=)` now uses `asyncio.wait`: only agents
+  still running are cancelled and marked `timed_out`; finished agents keep their deliverables (spec order kept,
+  `STATS["timed_out"]`). A background crew is `failed` only when nothing at all came back. Inline deploy now goes
+  through `_run_crew` (one code path). Tests `test_v0439_team_timeout.py` (3); `test_v0193_harness3` fakes take `timeout`.
+- 0b LONG CARD (`app/quality/long_asks.py` set `long-1`, `app/quality/longcard.py`): 25 multi-step asks of her real job
+  kinds - research -> PDF / Excel / Word, her numbers -> sums -> file (keys computed: 47,149 / 5,65,788; EMI 17,356),
+  lists + reminders, routine, memory, pages, slides, translation, data tables (MoSPI, states), and 3 asks where the
+  right move is to ASK her (supplier email, annual report numbers, cab). Each ask runs k times (default 3) through the
+  real `santosh.run_turn` on its own tenant `__longcard__<stamp>_<id>_<k>` (never her chats / budget); the card waits
+  for the goal's background rounds (lock + goal._PENDING) until nothing runs or its clock (75 min) ends. Then CODE
+  reads the end state: delivered files (PcFile on disk) opened with pypdf / openpyxl / python-docx / python-pptx -
+  pages / rows / slides / words / links; ready Artifacts (latest version html); list items; active reminders /
+  routines; memory facts; every assistant reply; step events (tool ok). `judge()` -> rows per check; `score_run()`:
+  passed, claimed_done (goal `done`, or the turn's TaskRun outcome `done`), FALSE DONE, false stuck (blocked / stuck
+  with nothing needed from her), cap stopped (hold=limit, turn timeout, card clock). `summarise()`: finished %,
+  false-done %, false-stuck %, cap-stopped %, Rs per finished job (usage.month_usd of the run's tenant x usd_inr),
+  pass@k, pass^k, median minutes. Saved after EVERY run (`data/quality/longcard-*.json`). Reminders / routines the card
+  made are cancelled after each run. `goal.CARD_PREFIX`: the live server's resume / recover sweeps skip card tenants
+  (no second copy of a card job in the pm2 process).
+- CLI `python -m app.quality longcard --check` (free: set valid + cost estimate) | `--status` | `[--k 3] [--only] [--limit]
+  [--parallel 3] [--max-min 75] [--label]`. vps-ops `long_card_try` (5 asks x 1, ~Rs 300-1,100), `long_card` (25 x 3,
+  ~Rs 4,500-16,500, hours) - both start DETACHED (nohup setsid, refuses a second copy) - and `long_card_status`.
+- Tests `test_v0439_longcard.py` (12): set valid / broken sets caught, real pdf / xlsx / docx / pptx read (a junk file is
+  not a file), every check kind, asked_her needs a question AND nothing made, the four outcomes, strict pass^k + rupees,
+  evidence from the DB + cleanup, a REAL run_turn judged on what it left behind (scripted brain), sweeps skip card tenants.
+- NOT RUN HERE: the live card (no model key in the sandbox). Its first numbers are the baseline every next step (done =
+  verified, one nudge per step, mid-turn clearing...) must beat. Cost estimate is a guess until the first card fills it.
+  Shipped as part of v0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).
+
+## v0.443.0 DONE = VERIFIED - a long job may not close on its own word (owner: "NOW NEXT", 2 Nov 2026)
+
+Items 1 + 2 of `reports/How AI agents finish long tasks.md`, and RCA fix 7 of `docs/LONG_TASK_RCA.md` (written 31 Oct,
+never built). The report's measured point: the leaders all decide "done" by something the model cannot fake (Anthropic's
+feature list with its `passes` field, Codex running the tests, Replit's testing sub-agent), and the biggest bucket of
+real agent failures is finishing failures - above all a confident false "done".
+
+- NEW `server/app/agent/verify.py` (no model call, no cost, never writes her data):
+  - `check_made(tenant, made)` - every thing the job claims it produced: a Hoola file id / `/api/pc/files/<id>` link
+    (the PcFile row of THIS tenant AND its bytes on disk, non-empty), an artifact id / link (ready, version > 0, its
+    html not blank), a `ds_...` dataset (loads, has rows), a http(s) link (one HEAD, 3 s, redirects followed; 403 /
+    405 / 501 fall back to a ranged GET), a bare file name (matched against her delivered files). A prose line in
+    `made` makes no row, so an honest job is never failed for writing a sentence there.
+  - HONEST about what it cannot know: 404 / 410 = FAILED ("link par kuch nahi hai"), but a timeout / DNS error /
+    5xx / 401 = `unknown` and never blocks (her VPS may be down, the site may block robots). Over MAX_LINKS = 6
+    links the rest are reported unchecked, never silently passed.
+  - `check_step(tenant, conv, step, calls)` - the step's OWN check, written by the plan: `file_pages>=N`,
+    `file_rows>=N`, `file_slides>=N`, `file:<name>`, `link_ok`, `artifact`, `reminder>=N`, `routine>=N`,
+    `list:<name>>=N`, `tool:<name>` (that tool really ran ok in THIS job - `ctx.calls`). The file family opens the
+    real file through the long card's reader (pypdf / openpyxl / python-docx / python-pptx). A check text it does not
+    understand is `unknown`, never a failure: a plan may not fail an honest job by inventing a check.
+  - `gate(...)` -> {ok, checked, failures, unknown, line}; wrapped so a broken check can never break her job.
+- `goal.finish(..., outcome="done")` runs the gate first (`goal._verify_done`, switch `goal_verify`, default on).
+  A failure does NOT close the card: the failing step (named by the step check, else the LAST done step) goes back to
+  `current` with "jaanch mein nahi mila: ...", the goal stays `working`, reason = "Jaanch baaki: ...", and the tool
+  returns `verified: False` + `verify.NUDGE` telling the model to really do that part now (or finish failed /
+  blocked_on_her honestly). No four-part report is written for a job that did not finish. `blocked_on_her` / `failed`
+  / `stopped` are untouched - only a claim of DONE is checked.
+- `kaam_plan` carries `check`: `set` takes steps as strings or `{"text":..., "check":...}`, `step` and `add` take
+  `check=`; the description tells the model to put the real file id / link in the step reason and in `made`.
+- Item 2: the free `draftcheck.fake_done` check (v0.223) had been switched OFF for the whole of goal mode on the idea
+  that the plan's own "X/Y steps ho gaye" line was truth enough - but a STEP IS TICKED BY THE MODEL, so a long job
+  could tick its steps and say "bhej diya" with only reads behind it. It now runs in goal mode too (`_goal_open`
+  deleted); the goal's own honest lines carry no claim verb, so they never trip it (tested).
+  - Switching it on raised a FALSE-POSITIVE risk worth more care than the original fix: a long job works across
+    SEVERAL turns (background rounds), so a round that only ticks the last step and reports would read as "nothing
+    ran" even though round 1 really sent the mail - and the second match would staple "(Saaf baat: yeh kaam abhi hua
+    nahi hai)" onto an honest reply, which is exactly the v0.287 bug. So in goal mode the question is asked of the
+    WHOLE job: `draftcheck.nothing_ran_in_job(conv, goal.started_at)` reads the harness event log for a successful
+    non-read tool since the goal began (restart-proof; any trouble reading it answers "something ran", so the check
+    never nudges on a guess). Outside goal mode it stays per-turn, unchanged.
+- Tests `server/tests/test_v0443_done_verified.py` (15): every piece (missing / empty / another tenant's file, page not
+  ready, blank page, 404 vs unreachable vs HEAD-refused link, empty dataset), prose skipped + link cap, every step
+  check, the gate (unknowns pass, failures block, a pending step is not checked, a crash reads unknown), finish
+  refused then accepted, only `done` is gated, the switch, the tool's nudge, checks from set / step / add, fake-done
+  in goal mode, an earlier round that really did the work never nudged, and that the goal-mode exemption is gone.
+- Three older tests pinned the reversed decisions and were rewritten to the new truth, not deleted:
+  `test_v0223_draft_jaanch.test_goal_mode_keeps_its_own_truth` (it asserted the exemption; now
+  `..._gets_the_free_claim_check_too`), `test_v0260_saaf_kaam` (the description now names `check` as well), and
+  `test_v0228_long_jobs_b.test_finish_builds_the_four_part_report` (its `made` Drive link is made up, so the gate is
+  right to hold it; the gate is switched off for that one call because that test is about the REPORT). A fourth,
+  `test_v0186_long_goal`, gained one scripted reply: its job ticks three steps with kaam_plan alone and then claims
+  "bhej diya", which item 2 now catches - the test documents that instead of hiding it.
+- New switch `goal_verify_links` (default on, `GOAL_VERIFY_LINKS=false` off): conftest turns it off so the whole
+  suite stays offline and deterministic - a link check otherwise makes a real HEAD call from the test box.
+- NOT VERIFIED on a live model: the sandbox has no API key. The long card (v0.443 step 0) is what will say whether
+  false-done really falls - its target is under 5%. Version 0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).
+
+## v0.449.0 AI EMPLOYEES PREMIUM (built as 0.447) (2 Nov 2026)
+Owner: "MAKE AI ENGINEER SECTION MORE PREMIUM AND ADVANCE ... USER WILL CLICK ON SECTION EXAMPLE GAMMING" -> design canvas
+prototype -> "MAKE IT MORE PREMIUM ... STUNNING, ADVANCE ANIMATION" -> "GO . MAKE ALL CARD OF SAME SIZE".
+- `static/console/employees.js` hub rewritten: home = 4 department cards built from the server's role groups (`DEPT` map:
+  Games, Simulation & VR / Business / Engineering & Hardware / Software & Systems; an unknown group still shows, with its own
+  name), each with line-art SVG that draws itself once (`pathLength=1`), live / coming / on-team counts (count-up once).
+  Department page = role cards (filter All / Live / On team / Coming + search `#aeQ`, focus kept on redraw) beside a
+  detail panel: pitch, what it does, what it needs, what it never does, trust ladder (Seekh / Saathi / Bharosa) and the
+  SAME API as before (`POST /api/employees/{key}/hire|pause|resume|leave`, hire with trust seekh, leave behind confirm).
+  Hiring no longer jumps to the desk; the card plays a one-time "joined" burst and the desk appears in the sidebar.
+- `v2.css` block "v0.447 AI EMPLOYEES PREMIUM": department accent tokens (light + dark), `.ae-depts` / `.ae-roles` grids with
+  `grid-auto-rows:1fr` = every card in a grid the same size (measured: dept cards all 481x348, role cards all 211px tall).
+  Entrances play once per page (`#hire.ae-settled`), the only loop is the small live dot (not under text, CRISP TEXT),
+  reduced motion and calm mode switch the motion off. Search label class `ae-sr` (`.sr` was taken).
+- `v2.js`: Library is spliced in just above Create, so it can never land between AI Employees and the hired desks.
+- Tests: `test_v0447_ai_employees_premium.py` (structure, equal-size CSS, real actions, motion once, escaping, Library
+  position); `test_v0443` heading assert updated. Console only - no server route changed.
