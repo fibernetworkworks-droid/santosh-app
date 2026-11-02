@@ -1,0 +1,4272 @@
+{
+ "level": "pg",
+ "sources": [
+  {
+   "id": "du-msc-2025",
+   "title": "University of Delhi, Master of Science in Physics (Two Years Programme 2nd year and One Year Programme-NEP, Coursework with Research), effective 2025-26, A.C. 24.07.2025 Appendix-09",
+   "url": "https://www.du.ac.in/uploads/2026/11082026-AC-Appendix-09.pdf",
+   "checked": true,
+   "note": "PDF fetched and its text read: lab lists of PH-DSE5112/5212 Nanomaterials Lab, 5114 Advanced Electronics-I Lab, 5116/5216 Advanced Nuclear Physics Lab, 5118 Lasers and Spectroscopy Lab, 5218 Advanced Laser Physics Lab, 5120/5220 Advanced Solid State Physics Lab, 5222 Advanced Observational Astrophysics Lab, 5163/5266 Foundational Laboratory, 5164/5267 Materials and Optical Physics Lab, 5221 Advanced Numerical Techniques, 5142 Computational Material Science. Rows citing it match those lists."
+  },
+  {
+   "id": "iitk-phy461",
+   "title": "IIT Kanpur Department of Physics, MSc Lab (PHY 461/462) list of experiments",
+   "url": "https://iitk.ac.in/phy/index.php/academics/teaching-labs/msc-lab-phy-461-462",
+   "checked": true,
+   "note": "Page fetched and read (41 experiments: Stefan's constant, conductivity of metals, ionic conductivity of alkali halides, superconductor R-T and AC susceptibility, BaTiO3 transition, P-E hysteresis, electro-optic / Kerr, Faraday effect Na + W lamps, CdS photoconductivity, Planck's constant Cs cell, Hall effect and its temperature dependence, magnetoresistance, two hysteresis set-ups, ESR, NMR 12-20 MHz, Zeeman, klystron, Gunn, microwave Bragg, two/four-probe Ge, GM, gamma and beta spectroscopy, Cu characteristic X-rays, Millikan, thermoluminescence, PL lifetime, UNH fluorescence, iodine absorption, Michelson He-Ne and Na, Mach-Zehnder, 2D diffraction, Rowland concave grating)."
+  },
+  {
+   "id": "cuk-phy5304",
+   "title": "Central University of Kerala, M.Sc. Physics Programme Structure and Syllabus (Revised in 2020), PHY5304 Experimental Physics III",
+   "url": "https://www.cukerala.ac.in/cukpdfs/IQAC/1.1.3/2016/1.1.3.DP.005.PDF",
+   "checked": true,
+   "note": "PDF text read: GM, scintillation, alpha and gamma detectors, nuclear reaction data analysis; Hall, four probe, band gap, optoelectronic devices, Kerr effect, XRD data analysis, thin film preparation; Zeeman, laser Raman, constant deviation spectrograph, ESR, NMR, ellipsometry."
+  },
+  {
+   "id": "sggu-msc-2023",
+   "title": "Shri Govind Guru University, Syllabus for M.Sc. Physics (CBCS Programme) Semester 1 and 2, effective June 2023",
+   "url": "https://sggu.ac.in/uploads/syllabus/18092023041216_PraposedSyllabusMScPhysicsSGGU20231.pdf",
+   "checked": true,
+   "note": "PDF text read: MSC1P109/110 and MSC1P209/210 lists (normal modes, Fourier analysis, e/m helical, Hall, ultrasonic interferometer, transducers, Michelson; graphite conductivity, band gap, SCR, RF oscillator, numerical polynomial roots, four probe, gas-filled photocell; RC amplifier, logic gates, Moon distance by parallax, aerosol spectrometer, solar spectrometer, Stefan's constant, AlO vibrational spectrum, lattice dynamics kit, h by solar cell; GM efficiency, vacuum pump and Gaede's equation, op-amp parameters and amplifiers, ESR, numerical analysis, Quincke's method, X-ray diffraction)."
+  },
+  {
+   "id": "mlsu-msc-sem3",
+   "title": "Mohanlal Sukhadia University, M.Sc. Physics Semester III Syllabus (NEP) 2024-2025",
+   "url": "https://mlsu.ac.in/syllabus/nep/12106_M.Sc%20Physics-Sem%20III%20Syllabus-2024-2025.pdf",
+   "checked": true,
+   "note": "PDF text read: Semiconductor Physics Lab (photo devices, opto-coupler, laser diode NA, fibre bending loss, Malus, Brewster, laser beam profile), Nanoscience Lab (sol-gel, solid state reaction, microwave, hydrothermal, co-precipitation, ball milling, sonochemical, Ag / Au / ZnSe / Fe oxide / Ni / ZnO / CdS / ZnS / PbS), Advance Electronics Lab (analogue computation, microwave bench, fibre TDM and voice links, TV receiver, DSP, robotics, embedded), Radiation Physics Lab (Monte Carlo photon scattering, XCOM, HPGe), Materials Characterization Lab (UV-Vis thin film, AFM, source meter, PL, XRD size/strain/dislocation, TGA, LCR, solar simulator, Compton profile)."
+  },
+  {
+   "id": "melissinos-napolitano",
+   "title": "A. C. Melissinos and J. Napolitano, Experiments in Modern Physics, 2nd ed. (Academic Press, 2003)",
+   "url": "https://www.sciencedirect.com/book/9780124898516/experiments-in-modern-physics",
+   "checked": false,
+   "note": "Not fetched; rows citing it come from knowledge of the book's chapters (atomic spectroscopy, Franck-Hertz, magnetic resonance, nuclear detectors)."
+  },
+  {
+   "id": "liao-microwave",
+   "title": "S. Y. Liao, Microwave Devices and Circuits, 3rd ed. (Pearson)",
+   "url": "https://www.pearson.com",
+   "checked": false,
+   "note": "Not fetched; named in the DU 2025 suggested readings. Rows citing it (microwave bench measurements) come from knowledge of standard M.Sc microwave bench practice."
+  },
+  {
+   "id": "kennedy-communication",
+   "title": "G. Kennedy and B. Davis, Electronic Communication Systems (McGraw-Hill)",
+   "url": "https://www.mheducation.co.in",
+   "checked": false,
+   "note": "Not fetched; rows citing it (analogue AM / FM modulation and demodulation) come from knowledge of the book and common M.Sc communication labs."
+  }
+ ],
+ "chapters": [
+  {
+   "name": "Optics, interferometry and lasers",
+   "setups": [
+    {
+     "id": "michelson-wavelength-dline",
+     "title": "Michelson interferometer: wavelength and sodium D-line separation",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: Michelson interferometer with He-Ne laser and with sodium lamp",
+     "kind": "practical",
+     "methods": [
+      "circular fringe counting",
+      "fringe visibility (coincidence and discordance)"
+     ],
+     "samples": [
+      "He-Ne laser",
+      "sodium lamp"
+     ],
+     "unknowns": [
+      "wavelength",
+      "D1-D2 separation"
+     ],
+     "conditions": [],
+     "kernel": "michelson"
+    },
+    {
+     "id": "michelson-thin-plate-index",
+     "title": "Michelson interferometer: refractive index and thickness of a thin plate",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P109 item 7 Michelson's interferometer",
+     "kind": "practical",
+     "methods": [
+      "white-light fringe shift",
+      "fringe count on rotating the plate"
+     ],
+     "samples": [
+      "glass cover slip",
+      "mica sheet"
+     ],
+     "unknowns": [
+      "refractive index",
+      "thickness"
+     ],
+     "conditions": [],
+     "kernel": "michelson"
+    },
+    {
+     "id": "mach-zehnder",
+     "title": "Mach-Zehnder interferometer",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: Mach-Zehnder interferometer",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "He-Ne laser"
+     ],
+     "unknowns": [
+      "phase change of a sample in one arm",
+      "refractive index of air vs pressure"
+     ],
+     "conditions": [],
+     "kernel": "michelson"
+    },
+    {
+     "id": "jamin-air-index",
+     "title": "Jamin's interferometer: refractive index of air",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit III: Jamin's interferometer - refractive index of air",
+     "kind": "practical",
+     "methods": [
+      "fringe count while evacuating the tube"
+     ],
+     "samples": [
+      "air"
+     ],
+     "unknowns": [
+      "refractive index of air",
+      "n-1 vs pressure slope"
+     ],
+     "conditions": [],
+     "kernel": "michelson"
+    },
+    {
+     "id": "fabry-perot-hyperfine",
+     "title": "Fabry-Perot etalon: hyperfine structure and finesse",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit IV: e/m or hyperfine structure using Fabry Perot interferometer",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "mercury 546.1 nm line",
+      "sodium D lines"
+     ],
+     "unknowns": [
+      "hyperfine splitting",
+      "etalon spacing",
+      "finesse"
+     ],
+     "conditions": [],
+     "kernel": "fabry_perot"
+    },
+    {
+     "id": "laser-2d-diffraction",
+     "title": "Diffraction of He-Ne laser light by two-dimensional objects",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: He-Ne laser diffraction by 2D objects",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "wire mesh",
+      "cross grating",
+      "circular aperture",
+      "square aperture"
+     ],
+     "unknowns": [
+      "lattice spacing",
+      "aperture size"
+     ],
+     "conditions": [],
+     "kernel": "fraunhofer"
+    },
+    {
+     "id": "laser-interference-diffraction",
+     "title": "Laser interference and diffraction: slits and gratings",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Laser based experiments: optical interference and diffraction",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "single slit",
+      "double slit",
+      "transmission grating"
+     ],
+     "unknowns": [
+      "slit width",
+      "slit separation",
+      "laser wavelength"
+     ],
+     "conditions": [],
+     "kernel": "fraunhofer"
+    },
+    {
+     "id": "transmission-holography",
+     "title": "Recording and reconstructing a transmission hologram",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5218 Unit I: transmission holography; PH-DSE5164: holography",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "small diffuse object"
+     ],
+     "unknowns": [
+      "reconstructed image position",
+      "fringe spacing vs beam angle"
+     ],
+     "conditions": [],
+     "kernel": "holography"
+    },
+    {
+     "id": "fibre-numerical-aperture",
+     "title": "Numerical aperture of an optical fibre / laser diode",
+     "src": "mlsu-msc-sem3",
+     "ref": "Semiconductor Physics Lab item 7: numerical aperture measurement, semiconductor laser diode",
+     "kind": "practical",
+     "methods": [
+      "far-field spot diameter"
+     ],
+     "samples": [
+      "multimode step-index fibre",
+      "plastic optical fibre"
+     ],
+     "unknowns": [
+      "numerical aperture",
+      "acceptance angle"
+     ],
+     "conditions": [],
+     "kernel": "fibre_na"
+    },
+    {
+     "id": "fibre-bending-loss",
+     "title": "Bending loss in a multimode optical fibre",
+     "src": "mlsu-msc-sem3",
+     "ref": "Semiconductor Physics Lab item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "multimode fibre"
+     ],
+     "unknowns": [
+      "loss vs bend radius"
+     ],
+     "conditions": [
+      "several mandrel radii"
+     ],
+     "kernel": "fibre_loss"
+    },
+    {
+     "id": "laser-beam-profile",
+     "title": "Beam profile and divergence of a laser",
+     "src": "mlsu-msc-sem3",
+     "ref": "Semiconductor Physics Lab item 11: laser beam profile of laser diode",
+     "kind": "practical",
+     "methods": [
+      "knife-edge scan",
+      "pinhole scan"
+     ],
+     "samples": [
+      "laser diode",
+      "He-Ne laser"
+     ],
+     "unknowns": [
+      "beam waist",
+      "divergence"
+     ],
+     "conditions": [],
+     "kernel": "gaussian_beam"
+    },
+    {
+     "id": "malus-law",
+     "title": "Polarisation of light and Malus's law",
+     "src": "mlsu-msc-sem3",
+     "ref": "Semiconductor Physics Lab item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "laser diode",
+      "He-Ne laser"
+     ],
+     "unknowns": [
+      "transmitted intensity vs analyser angle",
+      "extinction ratio"
+     ],
+     "conditions": [],
+     "kernel": "malus"
+    },
+    {
+     "id": "brewster-angle",
+     "title": "Refractive index from Brewster's angle",
+     "src": "mlsu-msc-sem3",
+     "ref": "Semiconductor Physics Lab item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "crown glass",
+      "flint glass",
+      "perspex"
+     ],
+     "unknowns": [
+      "Brewster angle",
+      "refractive index"
+     ],
+     "conditions": [],
+     "kernel": "brewster"
+    },
+    {
+     "id": "elliptical-polarisation",
+     "title": "Analysis of elliptically polarised light",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit III: study of elliptically polarized light",
+     "kind": "practical",
+     "methods": [
+      "quarter-wave plate and analyser",
+      "Babinet compensator"
+     ],
+     "samples": [
+      "mica plate",
+      "quarter-wave plate"
+     ],
+     "unknowns": [
+      "ellipticity",
+      "azimuth",
+      "retardation"
+     ],
+     "conditions": [],
+     "kernel": "jones"
+    },
+    {
+     "id": "birefringence",
+     "title": "Birefringence of a crystal plate",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5218 Unit IV: birefringence and photoelasticity",
+     "kind": "practical",
+     "methods": [
+      "Babinet compensator",
+      "rotating analyser"
+     ],
+     "samples": [
+      "mica",
+      "quartz plate"
+     ],
+     "unknowns": [
+      "birefringence",
+      "retardation"
+     ],
+     "conditions": [],
+     "kernel": "jones"
+    },
+    {
+     "id": "photoelasticity",
+     "title": "Photoelastic stress fringes",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5218 Unit IV: birefringence and photoelasticity",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "loaded disc",
+      "loaded beam"
+     ],
+     "unknowns": [
+      "stress-optic coefficient",
+      "fringe order vs load"
+     ],
+     "conditions": [
+      "plane polariscope",
+      "circular polariscope"
+     ],
+     "kernel": "photoelastic"
+    },
+    {
+     "id": "kerr-electro-optic",
+     "title": "Electro-optic Kerr effect",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: electro-optic and Kerr effect; CUK PHY5304: Kerr effect",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "nitrobenzene Kerr cell"
+     ],
+     "unknowns": [
+      "Kerr constant",
+      "half-wave voltage"
+     ],
+     "conditions": [],
+     "kernel": "kerr_eo"
+    },
+    {
+     "id": "pockels-effect",
+     "title": "Pockels effect: half-wave voltage",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5218 Unit II: Pockels effect",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "KDP crystal",
+      "lithium niobate crystal"
+     ],
+     "unknowns": [
+      "half-wave voltage",
+      "electro-optic coefficient"
+     ],
+     "conditions": [],
+     "kernel": "pockels"
+    },
+    {
+     "id": "faraday-rotation",
+     "title": "Faraday effect: Verdet constant",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: Faraday effect with sodium and tungsten lamps",
+     "kind": "practical",
+     "methods": [
+      "sodium lamp",
+      "tungsten lamp with filters"
+     ],
+     "samples": [
+      "flint glass",
+      "dense flint glass"
+     ],
+     "unknowns": [
+      "Verdet constant",
+      "dispersion of Verdet constant"
+     ],
+     "conditions": [],
+     "kernel": "faraday"
+    },
+    {
+     "id": "eo-modulation-link",
+     "title": "Electro-optic modulation of a laser beam",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Laser based experiments: electro-optic modulation",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "sine signal",
+      "audio signal"
+     ],
+     "unknowns": [
+      "modulation depth vs voltage",
+      "bandwidth"
+     ],
+     "conditions": [],
+     "kernel": "pockels"
+    },
+    {
+     "id": "acousto-optic-modulation",
+     "title": "Acousto-optic modulation and Bragg diffraction from sound",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Laser based experiments: acousto-optic modulation",
+     "kind": "practical",
+     "methods": [
+      "Raman-Nath regime",
+      "Bragg regime"
+     ],
+     "samples": [
+      "water cell",
+      "acousto-optic crystal"
+     ],
+     "unknowns": [
+      "sound velocity",
+      "diffraction efficiency"
+     ],
+     "conditions": [],
+     "kernel": "acousto_optic"
+    },
+    {
+     "id": "magneto-optic-modulation",
+     "title": "Magneto-optic modulation of a laser beam",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Laser based experiments: magneto-optic modulation",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "flint glass rod in a solenoid"
+     ],
+     "unknowns": [
+      "modulation depth vs coil current"
+     ],
+     "conditions": [],
+     "kernel": "faraday"
+    },
+    {
+     "id": "sound-modulated-laser",
+     "title": "Sound modulation of a laser carrier (free-space audio link)",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Laser based experiments: sound modulation of carrier waves",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "audio tone",
+      "speech"
+     ],
+     "unknowns": [
+      "received signal vs distance",
+      "frequency response"
+     ],
+     "conditions": [],
+     "kernel": "am_link"
+    },
+    {
+     "id": "film-thickness-interferometry",
+     "title": "Interferometric thin-film thickness measurement",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5218 Unit III: interferometric method for film thickness",
+     "kind": "practical",
+     "methods": [
+      "step fringe shift",
+      "fringes of equal chromatic order"
+     ],
+     "samples": [
+      "evaporated metal film on glass"
+     ],
+     "unknowns": [
+      "film thickness"
+     ],
+     "conditions": [],
+     "kernel": "thin_film_interf"
+    },
+    {
+     "id": "film-residual-strain",
+     "title": "Interferometric residual strain in a film",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5218 Unit III: residual strain measurement in the film",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "coated glass slide",
+      "coated silicon wafer"
+     ],
+     "unknowns": [
+      "substrate curvature",
+      "film stress"
+     ],
+     "conditions": [],
+     "kernel": "stoney"
+    },
+    {
+     "id": "photometry-luminous-intensity",
+     "title": "Radiant flux density and luminous intensity of a source",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5218 Unit IV",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "incandescent lamp",
+      "LED",
+      "fluorescent lamp"
+     ],
+     "unknowns": [
+      "luminous intensity",
+      "radiant flux density",
+      "inverse-square check"
+     ],
+     "conditions": [],
+     "kernel": "photometry"
+    }
+   ]
+  },
+  {
+   "name": "Atomic and molecular spectroscopy",
+   "setups": [
+    {
+     "id": "zeeman-effect",
+     "title": "Zeeman effect: e/m and Lande g-factor",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: Zeeman effect; DU PH-DSE5164: e/m with Fabry-Perot; CUK PHY5304",
+     "kind": "practical",
+     "methods": [
+      "Fabry-Perot etalon",
+      "Lummer-Gehrcke plate"
+     ],
+     "samples": [
+      "mercury 546.1 nm line",
+      "cadmium 643.8 nm line"
+     ],
+     "unknowns": [
+      "e/m",
+      "Bohr magneton",
+      "Lande g-factor"
+     ],
+     "conditions": [
+      "transverse view",
+      "longitudinal view"
+     ],
+     "kernel": "zeeman"
+    },
+    {
+     "id": "constant-deviation-hg",
+     "title": "Constant deviation spectrometer: fine structure of Hg lines",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit IV; CUK PHY5304 constant deviation spectrograph",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "mercury lamp",
+      "sodium lamp",
+      "neon lamp"
+     ],
+     "unknowns": [
+      "wavelengths",
+      "fine-structure separation"
+     ],
+     "conditions": [],
+     "kernel": "prism_spectrometer"
+    },
+    {
+     "id": "rowland-concave-grating",
+     "title": "Concave grating spectrometer in Rowland mounting",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: concave grating spectrometer, Rowland mounting",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "mercury lamp",
+      "iron arc"
+     ],
+     "unknowns": [
+      "dispersion",
+      "wavelength calibration",
+      "resolving power"
+     ],
+     "conditions": [],
+     "kernel": "grating"
+    },
+    {
+     "id": "iodine-absorption",
+     "title": "Iodine vapour absorption spectrum",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: iodine absorption spectrum",
+     "kind": "practical",
+     "methods": [
+      "Birge-Sponer extrapolation"
+     ],
+     "samples": [
+      "iodine vapour cell"
+     ],
+     "unknowns": [
+      "vibrational constants",
+      "dissociation energy"
+     ],
+     "conditions": [
+      "room temperature",
+      "heated cell"
+     ],
+     "kernel": "morse_bands"
+    },
+    {
+     "id": "alo-band-spectrum",
+     "title": "Vibrational analysis of the AlO band spectrum",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P209 item 7: vibrational spectrum of AlO molecule",
+     "kind": "practical",
+     "methods": [
+      "Deslandres table from recorded band heads"
+     ],
+     "samples": [
+      "AlO band spectrogram"
+     ],
+     "unknowns": [
+      "vibrational constants we and wexe"
+     ],
+     "conditions": [],
+     "kernel": "morse_bands"
+    },
+    {
+     "id": "uv-vis-electronic",
+     "title": "Electronic absorption spectra of molecules in solution",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5118 Unit I: electronic spectra of molecules and liquids",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "rhodamine 6G solution",
+      "potassium permanganate solution",
+      "benzene in hexane"
+     ],
+     "unknowns": [
+      "absorption maxima",
+      "molar absorptivity (Beer-Lambert)"
+     ],
+     "conditions": [],
+     "kernel": "beer_lambert"
+    },
+    {
+     "id": "ir-vibrational",
+     "title": "Infrared vibrational spectra of molecules and liquids",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5118 Unit I: vibrational spectra",
+     "kind": "practical",
+     "methods": [
+      "FTIR"
+     ],
+     "samples": [
+      "polystyrene film",
+      "liquid in a cell",
+      "CO2 gas"
+     ],
+     "unknowns": [
+      "band assignment",
+      "force constant"
+     ],
+     "conditions": [],
+     "kernel": "ir_vib"
+    },
+    {
+     "id": "hcl-rovibrational",
+     "title": "Rotation-vibration spectrum of HCl",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5118 Unit I: rotational spectra",
+     "kind": "practical",
+     "methods": [
+      "FTIR gas cell"
+     ],
+     "samples": [
+      "HCl gas"
+     ],
+     "unknowns": [
+      "rotational constant",
+      "bond length",
+      "isotope shift H35Cl / H37Cl"
+     ],
+     "conditions": [],
+     "kernel": "rovib"
+    },
+    {
+     "id": "band-spectrum-liquid",
+     "title": "Band spectrum of a liquid",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit IV: band spectrum in liquids",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "potassium permanganate solution",
+      "didymium solution"
+     ],
+     "unknowns": [
+      "band positions"
+     ],
+     "conditions": [],
+     "kernel": "beer_lambert"
+    },
+    {
+     "id": "laser-raman",
+     "title": "Laser Raman spectra of liquids and solids",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5118 Unit III; PH-DSE5164: Raman scattering using a laser source; CUK PHY5304",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "carbon tetrachloride",
+      "benzene",
+      "silicon wafer",
+      "graphite"
+     ],
+     "unknowns": [
+      "Raman shifts",
+      "depolarisation ratio",
+      "temperature from Stokes / anti-Stokes ratio"
+     ],
+     "conditions": [],
+     "kernel": "raman"
+    },
+    {
+     "id": "fluorescence-spectra",
+     "title": "Fluorescence spectra of liquids and solids",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5118 Unit III; PH-DSE5164 luminescence",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "rhodamine 6G solution",
+      "fluorescein solution",
+      "ruby crystal"
+     ],
+     "unknowns": [
+      "emission peak",
+      "Stokes shift"
+     ],
+     "conditions": [],
+     "kernel": "fluorescence"
+    },
+    {
+     "id": "uranyl-fluorescence",
+     "title": "Fluorescence of uranyl nitrate hexahydrate",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: fluorescence of UNH",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "uranyl nitrate hexahydrate"
+     ],
+     "unknowns": [
+      "vibronic band spacing",
+      "emission wavelengths"
+     ],
+     "conditions": [],
+     "kernel": "fluorescence"
+    },
+    {
+     "id": "pl-lifetime",
+     "title": "Photoluminescence lifetime",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: measurement of life time of photoluminescence",
+     "kind": "practical",
+     "methods": [
+      "pulsed excitation with oscilloscope decay"
+     ],
+     "samples": [
+      "ruby",
+      "phosphor"
+     ],
+     "unknowns": [
+      "lifetime"
+     ],
+     "conditions": [
+      "room temperature",
+      "cooled sample"
+     ],
+     "kernel": "exp_decay"
+    },
+    {
+     "id": "thermoluminescence",
+     "title": "Thermoluminescence of colour centres",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: thermo-luminescence of colour centres in crystals",
+     "kind": "practical",
+     "methods": [
+      "initial rise",
+      "peak shape (Chen)",
+      "heating-rate variation"
+     ],
+     "samples": [
+      "irradiated NaCl",
+      "irradiated KCl",
+      "LiF"
+     ],
+     "unknowns": [
+      "trap depth",
+      "frequency factor"
+     ],
+     "conditions": [],
+     "kernel": "glow_curve"
+    },
+    {
+     "id": "solids-absorption-reflection",
+     "title": "Absorption, transmission and reflection spectra of solids",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5118 Unit II",
+     "kind": "practical",
+     "methods": [
+      "transmission",
+      "diffuse reflectance (Kubelka-Munk)"
+     ],
+     "samples": [
+      "semiconductor thin film",
+      "glass",
+      "powder sample"
+     ],
+     "unknowns": [
+      "optical band gap (Tauc)",
+      "absorption coefficient"
+     ],
+     "conditions": [],
+     "kernel": "tauc"
+    },
+    {
+     "id": "low-t-optical-spectra",
+     "title": "Optical spectra at low temperatures",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5118 Unit III item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "semiconductor film",
+      "ruby"
+     ],
+     "unknowns": [
+      "band gap vs temperature",
+      "line narrowing"
+     ],
+     "conditions": [
+      "300 K",
+      "77 K"
+     ],
+     "kernel": "varshni"
+    },
+    {
+     "id": "thin-film-ellipsometry",
+     "title": "Optical constants of thin films by ellipsometry",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5118 Unit II item 3; CUK PHY5304 ellipsometry",
+     "kind": "practical",
+     "methods": [
+      "null ellipsometry",
+      "rotating analyser"
+     ],
+     "samples": [
+      "SiO2 on Si",
+      "metal film"
+     ],
+     "unknowns": [
+      "film thickness",
+      "refractive index",
+      "extinction coefficient"
+     ],
+     "conditions": [
+      "several angles of incidence"
+     ],
+     "kernel": "ellipsometry"
+    },
+    {
+     "id": "solar-spectrum",
+     "title": "Fraunhofer lines with a solar spectrometer",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P209 item 5: studies using solar spectrometer",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "sunlight"
+     ],
+     "unknowns": [
+      "Fraunhofer line wavelengths",
+      "elements identified"
+     ],
+     "conditions": [],
+     "kernel": "grating"
+    },
+    {
+     "id": "aerosol-spectrometer",
+     "title": "Analysis of aerosols with an aerosol spectrometer",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P209 item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "ambient air"
+     ],
+     "unknowns": [
+      "size distribution",
+      "number concentration"
+     ],
+     "conditions": [
+      "indoor",
+      "outdoor"
+     ],
+     "kernel": "aerosol_size"
+    },
+    {
+     "id": "franck-hertz",
+     "title": "Franck-Hertz experiment",
+     "src": "melissinos-napolitano",
+     "ref": "chapter on the Franck-Hertz experiment (quantised energy loss)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "mercury tube",
+      "neon tube"
+     ],
+     "unknowns": [
+      "first excitation potential",
+      "contact potential"
+     ],
+     "conditions": [
+      "several oven temperatures (Hg)"
+     ],
+     "kernel": "franck_hertz"
+    }
+   ]
+  },
+  {
+   "name": "Modern physics",
+   "setups": [
+    {
+     "id": "millikan-oil-drop",
+     "title": "Millikan's oil drop experiment",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: Millikan's oil drop experiment",
+     "kind": "practical",
+     "methods": [
+      "balancing method",
+      "rise and fall timing"
+     ],
+     "samples": [
+      "oil drops"
+     ],
+     "unknowns": [
+      "electronic charge"
+     ],
+     "conditions": [],
+     "kernel": "millikan"
+    },
+    {
+     "id": "em-helical",
+     "title": "e/m by the helical method",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P109 item 3: e/m helical method",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "CRT in a solenoid"
+     ],
+     "unknowns": [
+      "e/m"
+     ],
+     "conditions": [],
+     "kernel": "em_helical"
+    },
+    {
+     "id": "planck-photocell",
+     "title": "Planck's constant with a photocell",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: Planck's constant using Cs cell; DU PH-DSE5164",
+     "kind": "practical",
+     "methods": [
+      "stopping potential with filters",
+      "stopping potential with monochromator"
+     ],
+     "samples": [
+      "caesium photocell"
+     ],
+     "unknowns": [
+      "Planck's constant",
+      "work function"
+     ],
+     "conditions": [],
+     "kernel": "photoelectric"
+    },
+    {
+     "id": "planck-solar-cell",
+     "title": "Planck's constant with a solar cell",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P209 item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "silicon solar cell"
+     ],
+     "unknowns": [
+      "Planck's constant"
+     ],
+     "conditions": [
+      "several filter wavelengths"
+     ],
+     "kernel": "photoelectric"
+    },
+    {
+     "id": "gas-photocell",
+     "title": "Gas-filled photocell characteristics",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P110 item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "gas-filled photocell"
+     ],
+     "unknowns": [
+      "current vs voltage",
+      "current vs intensity"
+     ],
+     "conditions": [],
+     "kernel": "photocell"
+    },
+    {
+     "id": "stefan-constant",
+     "title": "Stefan's constant",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462 item 1; SGGU MSC1P209 item 6",
+     "kind": "practical",
+     "methods": [
+      "electrically heated black body cooling",
+      "filament power vs temperature"
+     ],
+     "samples": [
+      "blackened hollow body",
+      "tungsten filament"
+     ],
+     "unknowns": [
+      "Stefan's constant"
+     ],
+     "conditions": [],
+     "kernel": "stefan"
+    },
+    {
+     "id": "cu-characteristic-xrays",
+     "title": "Characteristic X-rays of copper",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: copper characteristic X-rays",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "copper target tube"
+     ],
+     "unknowns": [
+      "K-alpha and K-beta wavelengths",
+      "Ni filter effect"
+     ],
+     "conditions": [],
+     "kernel": "xray_spectrum"
+    }
+   ]
+  },
+  {
+   "name": "Magnetic resonance",
+   "setups": [
+    {
+     "id": "esr-dpph",
+     "title": "Electron spin resonance of DPPH",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: ESR; DU PH-DSE5120 Unit III: relaxation time and g by ESR; SGGU MSC1P210 item 5",
+     "kind": "practical",
+     "methods": [
+      "field sweep with Helmholtz coils at fixed RF",
+      "RF frequency change"
+     ],
+     "samples": [
+      "DPPH"
+     ],
+     "unknowns": [
+      "g-factor",
+      "line width / relaxation time"
+     ],
+     "conditions": [
+      "several RF frequencies"
+     ],
+     "kernel": "esr"
+    },
+    {
+     "id": "nmr-cw",
+     "title": "Continuous-wave NMR",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: NMR with 12-20 MHz spectrometer; CUK PHY5304 NMR",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water with a paramagnetic salt",
+      "glycerin",
+      "PTFE (19F)"
+     ],
+     "unknowns": [
+      "gyromagnetic ratio",
+      "nuclear g-factor"
+     ],
+     "conditions": [
+      "several frequencies in 12-20 MHz"
+     ],
+     "kernel": "nmr_cw"
+    }
+   ]
+  },
+  {
+   "name": "Solid state and materials",
+   "setups": [
+    {
+     "id": "hall-effect",
+     "title": "Hall effect in a semiconductor",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5120 Unit I items 1 and 3; IITK Hall effect; CUK; SGGU MSC1P109 item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "n-type germanium",
+      "p-type germanium"
+     ],
+     "unknowns": [
+      "Hall coefficient",
+      "carrier concentration",
+      "mobility",
+      "carrier type"
+     ],
+     "conditions": [],
+     "kernel": "hall"
+    },
+    {
+     "id": "hall-temperature",
+     "title": "Temperature dependence of the Hall effect",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5120 item 3: 77 K to room temperature; IITK temperature dependence of Hall effect",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "n-type germanium",
+      "p-type germanium"
+     ],
+     "unknowns": [
+      "band gap from intrinsic region",
+      "mobility vs temperature"
+     ],
+     "conditions": [
+      "77 K to 300 K",
+      "300 K to 420 K"
+     ],
+     "kernel": "hall"
+    },
+    {
+     "id": "magnetoresistance",
+     "title": "Transverse magnetoresistance",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5120 Unit I item 2; IITK magnetoresistance",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "n-type germanium",
+      "bismuth"
+     ],
+     "unknowns": [
+      "magnetoresistance coefficient",
+      "mobility"
+     ],
+     "conditions": [],
+     "kernel": "magnetoresistance"
+    },
+    {
+     "id": "four-probe-bandgap",
+     "title": "Four-probe resistivity and band gap",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5120 item 4; PH-DSE5164; IITK two- and four-probe Ge; SGGU MSC1P110 item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "germanium crystal",
+      "silicon wafer"
+     ],
+     "unknowns": [
+      "resistivity",
+      "band gap"
+     ],
+     "conditions": [
+      "room temperature",
+      "heated to about 420 K"
+     ],
+     "kernel": "four_probe"
+    },
+    {
+     "id": "van-der-pauw",
+     "title": "Van der Pauw resistivity",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5120 Unit I item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "semiconductor wafer",
+      "thin film"
+     ],
+     "unknowns": [
+      "sheet resistance",
+      "resistivity"
+     ],
+     "conditions": [],
+     "kernel": "van_der_pauw"
+    },
+    {
+     "id": "two-probe-conductivity",
+     "title": "Two-probe conductivity",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: two-probe Ge; SGGU MSC1P110 item 1 graphite conductivity",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "germanium",
+      "graphite"
+     ],
+     "unknowns": [
+      "conductivity",
+      "band gap"
+     ],
+     "conditions": [
+      "room temperature",
+      "temperature scan"
+     ],
+     "kernel": "two_probe"
+    },
+    {
+     "id": "metal-conductivity-t",
+     "title": "Electrical conductivity of metals vs temperature",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: conductivity of metals",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "copper wire",
+      "platinum wire",
+      "constantan wire"
+     ],
+     "unknowns": [
+      "temperature coefficient of resistance"
+     ],
+     "conditions": [],
+     "kernel": "metal_rt"
+    },
+    {
+     "id": "ionic-conductivity",
+     "title": "Ionic conductivity of alkali halides",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: ionic conductivity of alkali halides",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "NaCl crystal",
+      "KCl crystal"
+     ],
+     "unknowns": [
+      "activation energy",
+      "intrinsic and extrinsic regions"
+     ],
+     "conditions": [],
+     "kernel": "arrhenius"
+    },
+    {
+     "id": "thermoelectric-power",
+     "title": "Thermoelectric power (Seebeck coefficient)",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit II",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "n-type semiconductor",
+      "p-type semiconductor",
+      "metal"
+     ],
+     "unknowns": [
+      "Seebeck coefficient",
+      "carrier type"
+     ],
+     "conditions": [],
+     "kernel": "seebeck"
+    },
+    {
+     "id": "haynes-shockley",
+     "title": "Haynes-Shockley experiment",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit II: minority carrier lifetime",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "n-type germanium bar"
+     ],
+     "unknowns": [
+      "drift mobility",
+      "diffusion coefficient",
+      "minority carrier lifetime"
+     ],
+     "conditions": [],
+     "kernel": "haynes_shockley"
+    },
+    {
+     "id": "pn-ideality-bandgap",
+     "title": "Band gap and ideality factor of a p-n junction from I-V vs T",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5120 Unit II item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "silicon diode",
+      "germanium diode"
+     ],
+     "unknowns": [
+      "band gap",
+      "ideality factor",
+      "saturation current"
+     ],
+     "conditions": [
+      "several temperatures"
+     ],
+     "kernel": "diode_iv"
+    },
+    {
+     "id": "photoconductivity",
+     "title": "Photoconductivity",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: photoconductivity of CdS; DU PH-DSE5120 Unit II item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "CdS cell",
+      "semiconductor film"
+     ],
+     "unknowns": [
+      "photocurrent vs intensity",
+      "spectral response",
+      "rise and decay time"
+     ],
+     "conditions": [],
+     "kernel": "photoconductor"
+    },
+    {
+     "id": "superconductor-rt",
+     "title": "Resistance of a high-Tc superconductor vs temperature",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: resistance of superconductor; DU PH-DSE5164 transition in high Tc",
+     "kind": "practical",
+     "methods": [
+      "four-probe in liquid nitrogen cryostat"
+     ],
+     "samples": [
+      "YBCO pellet",
+      "BSCCO pellet"
+     ],
+     "unknowns": [
+      "Tc",
+      "transition width"
+     ],
+     "conditions": [],
+     "kernel": "sc_rt"
+    },
+    {
+     "id": "superconductor-ac-susceptibility",
+     "title": "AC susceptibility of a high-Tc superconductor",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462",
+     "kind": "practical",
+     "methods": [
+      "mutual inductance bridge"
+     ],
+     "samples": [
+      "YBCO pellet"
+     ],
+     "unknowns": [
+      "Tc",
+      "diamagnetic onset"
+     ],
+     "conditions": [],
+     "kernel": "ac_susc"
+    },
+    {
+     "id": "ferroelectric-curie",
+     "title": "Ferroelectric Curie temperature from dielectric constant",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5120 Unit III item 3; IITK BaTiO3 phase transition",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "barium titanate",
+      "lead zirconate titanate"
+     ],
+     "unknowns": [
+      "Curie temperature",
+      "Curie-Weiss constant"
+     ],
+     "conditions": [
+      "several frequencies"
+     ],
+     "kernel": "curie_weiss"
+    },
+    {
+     "id": "pe-hysteresis",
+     "title": "P-E hysteresis of a ferroelectric",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: P-E hysteresis",
+     "kind": "practical",
+     "methods": [
+      "Sawyer-Tower circuit"
+     ],
+     "samples": [
+      "barium titanate",
+      "PZT disc"
+     ],
+     "unknowns": [
+      "remanent polarisation",
+      "coercive field"
+     ],
+     "conditions": [
+      "room temperature",
+      "heated sample"
+     ],
+     "kernel": "pe_loop"
+    },
+    {
+     "id": "bh-hysteresis",
+     "title": "B-H hysteresis loop",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5120 Unit III item 1: B-H curve of iron, steel and nickel; IITK hysteresis",
+     "kind": "practical",
+     "methods": [
+      "integrator loop tracer on CRO",
+      "ballistic galvanometer"
+     ],
+     "samples": [
+      "iron",
+      "steel",
+      "nickel"
+     ],
+     "unknowns": [
+      "coercivity",
+      "retentivity",
+      "hysteresis loss"
+     ],
+     "conditions": [],
+     "kernel": "bh_loop"
+    },
+    {
+     "id": "ferrite-curie",
+     "title": "Transition temperature of a ferrite",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit II: transition temperature in ferrites",
+     "kind": "practical",
+     "methods": [
+      "inductance vs temperature"
+     ],
+     "samples": [
+      "Mn-Zn ferrite",
+      "Ni-Zn ferrite"
+     ],
+     "unknowns": [
+      "Curie temperature"
+     ],
+     "conditions": [],
+     "kernel": "curie_weiss"
+    },
+    {
+     "id": "liquid-crystal-transition",
+     "title": "Transition temperature of a liquid crystal",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit II",
+     "kind": "practical",
+     "methods": [
+      "crossed-polariser optical transmission",
+      "capacitance"
+     ],
+     "samples": [
+      "5CB",
+      "MBBA"
+     ],
+     "unknowns": [
+      "nematic-isotropic transition temperature"
+     ],
+     "conditions": [],
+     "kernel": "lc_transition"
+    },
+    {
+     "id": "quincke-susceptibility",
+     "title": "Magnetic susceptibility of a liquid by Quincke's method",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P210 item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "MnSO4 solution",
+      "FeCl3 solution",
+      "NiSO4 solution"
+     ],
+     "unknowns": [
+      "volume susceptibility",
+      "effective magnetic moment"
+     ],
+     "conditions": [
+      "several concentrations"
+     ],
+     "kernel": "quincke"
+    },
+    {
+     "id": "dielectric-lcr",
+     "title": "Dielectric constant and admittance with an LCR meter",
+     "src": "mlsu-msc-sem3",
+     "ref": "Materials Characterization Lab item 13",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "thin film capacitor",
+      "ceramic pellet",
+      "polymer sheet"
+     ],
+     "unknowns": [
+      "dielectric constant",
+      "loss tangent",
+      "admittance"
+     ],
+     "conditions": [
+      "frequency sweep",
+      "temperature sweep"
+     ],
+     "kernel": "dielectric"
+    },
+    {
+     "id": "xrd-powder-photograph",
+     "title": "Crystal structure by X-ray powder photograph",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit II",
+     "kind": "practical",
+     "methods": [
+      "Debye-Scherrer camera"
+     ],
+     "samples": [
+      "NaCl",
+      "copper",
+      "aluminium"
+     ],
+     "unknowns": [
+      "lattice type",
+      "lattice parameter"
+     ],
+     "conditions": [],
+     "kernel": "bragg_powder"
+    },
+    {
+     "id": "xrd-size-strain",
+     "title": "Crystallite size, strain and dislocation density by XRD",
+     "src": "mlsu-msc-sem3",
+     "ref": "Materials Characterization Lab items 8-11; DU nanomaterials Unit II; CUK XRD data analysis",
+     "kind": "practical",
+     "methods": [
+      "Scherrer equation",
+      "Williamson-Hall plot"
+     ],
+     "samples": [
+      "thin film",
+      "nanopowder"
+     ],
+     "unknowns": [
+      "crystallite size",
+      "microstrain",
+      "dislocation density",
+      "lattice parameter"
+     ],
+     "conditions": [],
+     "kernel": "bragg_powder"
+    },
+    {
+     "id": "lattice-dynamics-kit",
+     "title": "Phonon dispersion with a lattice dynamics kit",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P209 item 8; MSC1P210 item 8",
+     "kind": "practical",
+     "methods": [
+      "monatomic LC line",
+      "diatomic LC line"
+     ],
+     "samples": [],
+     "unknowns": [
+      "dispersion relation",
+      "cut-off frequency",
+      "band gap of diatomic chain"
+     ],
+     "conditions": [],
+     "kernel": "lattice_chain"
+    },
+    {
+     "id": "ultrasonic-interferometer",
+     "title": "Velocity of ultrasound in liquids",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit III; SGGU MSC1P109 item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water",
+      "kerosene",
+      "benzene",
+      "glycerin"
+     ],
+     "unknowns": [
+      "sound velocity",
+      "adiabatic compressibility"
+     ],
+     "conditions": [
+      "several temperatures"
+     ],
+     "kernel": "ultrasonic"
+    },
+    {
+     "id": "pulse-echo-solids",
+     "title": "Velocity of sound in solids by pulse echo",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit III",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "aluminium block",
+      "steel block",
+      "perspex block"
+     ],
+     "unknowns": [
+      "longitudinal velocity",
+      "elastic modulus"
+     ],
+     "conditions": [],
+     "kernel": "pulse_echo"
+    },
+    {
+     "id": "sound-velocity-cro",
+     "title": "Velocity of sound in air by CRO",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit III",
+     "kind": "practical",
+     "methods": [
+      "Lissajous phase method"
+     ],
+     "samples": [
+      "air"
+     ],
+     "unknowns": [
+      "velocity of sound"
+     ],
+     "conditions": [],
+     "kernel": "sound_phase"
+    },
+    {
+     "id": "lecher-wire",
+     "title": "EM wave propagation on a Lecher wire",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit III",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "air",
+      "liquid dielectric between wires"
+     ],
+     "unknowns": [
+      "wavelength",
+      "frequency",
+      "dielectric constant"
+     ],
+     "conditions": [],
+     "kernel": "transmission_line"
+    },
+    {
+     "id": "normal-modes",
+     "title": "Normal modes of coupled oscillators",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P109 item 1",
+     "kind": "practical",
+     "methods": [
+      "coupled pendulums",
+      "coupled LC circuits"
+     ],
+     "samples": [],
+     "unknowns": [
+      "normal mode frequencies",
+      "coupling constant",
+      "beat period"
+     ],
+     "conditions": [],
+     "kernel": "coupled_osc"
+    },
+    {
+     "id": "fourier-analysis",
+     "title": "Fourier analysis of waveforms",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P109 item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "square wave",
+      "triangular wave",
+      "half-wave rectified wave"
+     ],
+     "unknowns": [
+      "Fourier coefficients"
+     ],
+     "conditions": [],
+     "kernel": "fourier"
+    },
+    {
+     "id": "transducers",
+     "title": "Characteristics of transducers",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P109 item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "thermistor",
+      "strain gauge",
+      "LVDT",
+      "thermocouple"
+     ],
+     "unknowns": [
+      "sensitivity",
+      "linearity"
+     ],
+     "conditions": [],
+     "kernel": "transducer"
+    }
+   ]
+  },
+  {
+   "name": "Vacuum, low temperature and plasma",
+   "setups": [
+    {
+     "id": "gaede-vacuum-pump",
+     "title": "Vacuum pump performance and Gaede's equation",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P210 item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "rotary pump",
+      "diffusion pump"
+     ],
+     "unknowns": [
+      "pumping speed",
+      "ultimate pressure"
+     ],
+     "conditions": [],
+     "kernel": "pumpdown"
+    },
+    {
+     "id": "vacuum-gauges",
+     "title": "Gas pressure with different pumps and gauges",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit IV item 3; PH-DSE5164 production and measurement of low pressures",
+     "kind": "practical",
+     "methods": [
+      "Pirani gauge",
+      "Penning gauge",
+      "Bourdon gauge"
+     ],
+     "samples": [
+      "vacuum chamber"
+     ],
+     "unknowns": [
+      "pressure vs time",
+      "leak rate"
+     ],
+     "conditions": [],
+     "kernel": "pumpdown"
+    },
+    {
+     "id": "high-pressure",
+     "title": "Production and measurement of high pressures",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit I",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "hydraulic press cell"
+     ],
+     "unknowns": [
+      "pressure calibration"
+     ],
+     "conditions": [],
+     "kernel": "pressure_cell"
+    },
+    {
+     "id": "low-temperature-control",
+     "title": "Measurement and control of low temperatures",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit I",
+     "kind": "practical",
+     "methods": [
+      "thermocouple",
+      "platinum resistance",
+      "silicon diode sensor"
+     ],
+     "samples": [
+      "liquid nitrogen cryostat"
+     ],
+     "unknowns": [
+      "sensor calibration",
+      "PID setpoint stability"
+     ],
+     "conditions": [],
+     "kernel": "cryo_thermometry"
+    },
+    {
+     "id": "plasma-glow-discharge",
+     "title": "Production and characterisation of a plasma",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit I",
+     "kind": "practical",
+     "methods": [
+      "glow discharge with Langmuir probe"
+     ],
+     "samples": [
+      "air",
+      "argon"
+     ],
+     "unknowns": [
+      "breakdown voltage",
+      "electron temperature",
+      "plasma density"
+     ],
+     "conditions": [
+      "several pressures"
+     ],
+     "kernel": "langmuir"
+    }
+   ]
+  },
+  {
+   "name": "Materials synthesis and characterisation",
+   "setups": [
+    {
+     "id": "nano-wet-chemical",
+     "title": "Wet-chemical synthesis of nanoparticles",
+     "src": "mlsu-msc-sem3",
+     "ref": "Nanoscience Lab items 1, 3, 4, 5, 7; DU Nanomaterials Unit I item 1",
+     "kind": "practical",
+     "methods": [
+      "sol-gel",
+      "co-precipitation",
+      "hydrothermal",
+      "microwave-assisted",
+      "sonochemical"
+     ],
+     "samples": [
+      "ZnO",
+      "CdS",
+      "ZnS",
+      "iron oxide"
+     ],
+     "unknowns": [
+      "band gap from absorption",
+      "particle size"
+     ],
+     "conditions": [],
+     "kernel": "nano_synthesis"
+    },
+    {
+     "id": "nano-noble-metal",
+     "title": "Silver and gold nanoparticles",
+     "src": "mlsu-msc-sem3",
+     "ref": "Nanoscience Lab items 8, 9",
+     "kind": "practical",
+     "methods": [
+      "chemical reduction",
+      "biogenic reduction"
+     ],
+     "samples": [
+      "silver",
+      "gold"
+     ],
+     "unknowns": [
+      "plasmon peak",
+      "particle size"
+     ],
+     "conditions": [],
+     "kernel": "plasmon"
+    },
+    {
+     "id": "solid-state-reaction",
+     "title": "Polycrystalline sample by solid state reaction",
+     "src": "mlsu-msc-sem3",
+     "ref": "Nanoscience Lab item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "BaTiO3",
+      "ferrite"
+     ],
+     "unknowns": [
+      "phase purity by XRD"
+     ],
+     "conditions": [
+      "several sintering temperatures"
+     ],
+     "kernel": "nano_synthesis"
+    },
+    {
+     "id": "ball-milling",
+     "title": "Nanoparticles by ball milling",
+     "src": "mlsu-msc-sem3",
+     "ref": "Nanoscience Lab item 6; DU Nanomaterials Unit I item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "metal powder",
+      "oxide powder"
+     ],
+     "unknowns": [
+      "crystallite size vs milling time"
+     ],
+     "conditions": [],
+     "kernel": "nano_synthesis"
+    },
+    {
+     "id": "sputter-nanophase",
+     "title": "Nanophase growth by sputtering",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit I item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "metal target",
+      "oxide target"
+     ],
+     "unknowns": [
+      "film thickness vs time",
+      "grain size"
+     ],
+     "conditions": [],
+     "kernel": "sputter_rate"
+    },
+    {
+     "id": "thermal-evaporation-qd",
+     "title": "Quantum dots by thermal evaporation",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit I item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "CdS",
+      "ZnSe"
+     ],
+     "unknowns": [
+      "dot size",
+      "blue-shift of band gap"
+     ],
+     "conditions": [],
+     "kernel": "qd_confinement"
+    },
+    {
+     "id": "template-nanowires",
+     "title": "Nanomaterials by the nanopore template method",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit I item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "anodic alumina template"
+     ],
+     "unknowns": [
+      "wire diameter",
+      "length vs deposition charge"
+     ],
+     "conditions": [],
+     "kernel": "electrodeposition"
+    },
+    {
+     "id": "qd-in-glass",
+     "title": "Semiconductor quantum dots in a glass or polymer matrix",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit I item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "CdS in glass",
+      "CdSe in polymer"
+     ],
+     "unknowns": [
+      "dot size from absorption edge"
+     ],
+     "conditions": [],
+     "kernel": "qd_confinement"
+    },
+    {
+     "id": "ni-urea-decomposition",
+     "title": "Nickel nanoparticles by urea decomposition",
+     "src": "mlsu-msc-sem3",
+     "ref": "Nanoscience Lab item 12",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "nickel"
+     ],
+     "unknowns": [
+      "particle size",
+      "phase by XRD"
+     ],
+     "conditions": [],
+     "kernel": "nano_synthesis"
+    },
+    {
+     "id": "quantum-dot-bandgap",
+     "title": "Quantum dot synthesis and band gap",
+     "src": "mlsu-msc-sem3",
+     "ref": "Nanoscience Lab items 10, 14, 16",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "ZnSe",
+      "CdS",
+      "PbS"
+     ],
+     "unknowns": [
+      "band gap",
+      "dot size (effective mass model)"
+     ],
+     "conditions": [],
+     "kernel": "qd_confinement"
+    },
+    {
+     "id": "tem-grain-size",
+     "title": "Grain size and diffraction by TEM",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit II items 2, 5",
+     "kind": "demonstration",
+     "methods": [
+      "bright-field imaging",
+      "selected area electron diffraction"
+     ],
+     "samples": [
+      "nanopowder"
+     ],
+     "unknowns": [
+      "grain size",
+      "d-spacings"
+     ],
+     "conditions": [],
+     "kernel": "tem"
+    },
+    {
+     "id": "sem-morphology",
+     "title": "Surface morphology by SEM",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit II item 4",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [
+      "nanopowder",
+      "thin film"
+     ],
+     "unknowns": [
+      "particle size distribution"
+     ],
+     "conditions": [],
+     "kernel": "sem"
+    },
+    {
+     "id": "afm-roughness",
+     "title": "Surface roughness by AFM",
+     "src": "mlsu-msc-sem3",
+     "ref": "Materials Characterization Lab item 4; DU PH-DSE5112 Unit II item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "thin film",
+      "nanoparticle layer"
+     ],
+     "unknowns": [
+      "RMS roughness",
+      "grain size"
+     ],
+     "conditions": [],
+     "kernel": "afm"
+    },
+    {
+     "id": "bet-pore-size",
+     "title": "Pore size and surface area by BET",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit II item 6",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [
+      "mesoporous powder"
+     ],
+     "unknowns": [
+      "specific surface area",
+      "pore size"
+     ],
+     "conditions": [],
+     "kernel": "bet"
+    },
+    {
+     "id": "uv-vis-thin-film",
+     "title": "Thin film band gap, refractive index, thickness and optical conductivity by UV-Vis",
+     "src": "mlsu-msc-sem3",
+     "ref": "Materials Characterization Lab items 1, 2, 3, 6; DU PH-DSE5112 Unit III item 1",
+     "kind": "practical",
+     "methods": [
+      "Tauc plot",
+      "Swanepoel envelope"
+     ],
+     "samples": [
+      "oxide thin film",
+      "chalcogenide thin film"
+     ],
+     "unknowns": [
+      "optical band gap",
+      "refractive index vs wavelength",
+      "thickness",
+      "optical conductivity"
+     ],
+     "conditions": [],
+     "kernel": "tauc"
+    },
+    {
+     "id": "pl-nanomaterials",
+     "title": "Photoluminescence of nanomaterials",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit III items 2, 4; MLSU item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "ZnO nanoparticles",
+      "CdS quantum dots"
+     ],
+     "unknowns": [
+      "emission peak",
+      "defect bands",
+      "band gap"
+     ],
+     "conditions": [
+      "room temperature",
+      "low temperature"
+     ],
+     "kernel": "fluorescence"
+    },
+    {
+     "id": "raman-nanomaterials",
+     "title": "Raman spectra of nanomaterials",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit III item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "silicon nanocrystals",
+      "carbon nanotubes",
+      "graphene"
+     ],
+     "unknowns": [
+      "phonon confinement shift",
+      "D/G ratio"
+     ],
+     "conditions": [],
+     "kernel": "raman"
+    },
+    {
+     "id": "vsm-magnetisation",
+     "title": "Magnetisation of magnetic nanoparticles by VSM",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit III item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "iron oxide nanoparticles",
+      "ferrite nanoparticles"
+     ],
+     "unknowns": [
+      "saturation magnetisation",
+      "coercivity"
+     ],
+     "conditions": [],
+     "kernel": "mh_loop"
+    },
+    {
+     "id": "xps-edax-stoichiometry",
+     "title": "Stoichiometry by XPS / EDAX",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit IV item 2; PH-DSE5118 Unit IV item 2",
+     "kind": "demonstration",
+     "methods": [
+      "XPS",
+      "EDAX"
+     ],
+     "samples": [
+      "oxide film",
+      "nanopowder"
+     ],
+     "unknowns": [
+      "composition",
+      "chemical state"
+     ],
+     "conditions": [],
+     "kernel": "xps"
+    },
+    {
+     "id": "nano-ferroelectric",
+     "title": "Ferroelectric properties of nanomaterials",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit IV item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "BaTiO3 nanopowder pellet"
+     ],
+     "unknowns": [
+      "remanent polarisation",
+      "coercive field"
+     ],
+     "conditions": [],
+     "kernel": "pe_loop"
+    },
+    {
+     "id": "gas-sensor",
+     "title": "Sensor property of nanomaterials",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit IV item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "ZnO film",
+      "SnO2 film"
+     ],
+     "unknowns": [
+      "sensitivity",
+      "response time",
+      "recovery time"
+     ],
+     "conditions": [
+      "several operating temperatures"
+     ],
+     "kernel": "gas_sensor"
+    },
+    {
+     "id": "dsc-polymer",
+     "title": "Thermal characterisation of polymers by DSC",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 Unit IV item 4",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [
+      "polyethylene",
+      "PET"
+     ],
+     "unknowns": [
+      "glass transition",
+      "melting point",
+      "crystallinity"
+     ],
+     "conditions": [],
+     "kernel": "dsc"
+    },
+    {
+     "id": "tga-glass-transition",
+     "title": "Thermal analysis with TGA",
+     "src": "mlsu-msc-sem3",
+     "ref": "Materials Characterization Lab item 12",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [
+      "polymer",
+      "hydrated salt"
+     ],
+     "unknowns": [
+      "decomposition steps",
+      "mass loss"
+     ],
+     "conditions": [],
+     "kernel": "tga"
+    },
+    {
+     "id": "thin-film-resistivity-smu",
+     "title": "Thin film resistivity with a source meter",
+     "src": "mlsu-msc-sem3",
+     "ref": "Materials Characterization Lab item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "metal film",
+      "oxide film"
+     ],
+     "unknowns": [
+      "sheet resistance",
+      "resistivity"
+     ],
+     "conditions": [],
+     "kernel": "four_probe"
+    },
+    {
+     "id": "solar-simulator",
+     "title": "Solar cell performance with a solar simulator",
+     "src": "mlsu-msc-sem3",
+     "ref": "Materials Characterization Lab item 14",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "silicon solar cell",
+      "thin-film solar cell"
+     ],
+     "unknowns": [
+      "Voc",
+      "Isc",
+      "fill factor",
+      "efficiency"
+     ],
+     "conditions": [
+      "several intensities"
+     ],
+     "kernel": "solar_cell"
+    },
+    {
+     "id": "compton-profile",
+     "title": "Compton profile with a Cs-137 Compton spectrometer",
+     "src": "mlsu-msc-sem3",
+     "ref": "Materials Characterization Lab item 15",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "aluminium powder",
+      "graphite",
+      "metal oxide powder"
+     ],
+     "unknowns": [
+      "Compton profile",
+      "electron momentum distribution"
+     ],
+     "conditions": [],
+     "kernel": "compton_profile"
+    },
+    {
+     "id": "thin-film-preparation",
+     "title": "Thin film preparation",
+     "src": "cuk-phy5304",
+     "ref": "PHY5304 solid state: thin film preparation",
+     "kind": "practical",
+     "methods": [
+      "thermal evaporation",
+      "spin coating"
+     ],
+     "samples": [
+      "metal film",
+      "polymer film"
+     ],
+     "unknowns": [
+      "thickness",
+      "deposition rate"
+     ],
+     "conditions": [],
+     "kernel": "sputter_rate"
+    }
+   ]
+  },
+  {
+   "name": "Optoelectronic and semiconductor devices",
+   "setups": [
+    {
+     "id": "optoelectronic-characteristics",
+     "title": "Characteristics of optoelectronic devices",
+     "src": "mlsu-msc-sem3",
+     "ref": "Semiconductor Physics Lab items 1-6; CUK optoelectronic devices",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "phototransistor",
+      "photodiode",
+      "LDR",
+      "solar cell",
+      "LED",
+      "opto-coupler"
+     ],
+     "unknowns": [
+      "I-V curves",
+      "responsivity",
+      "spectral response"
+     ],
+     "conditions": [],
+     "kernel": "optodevice"
+    },
+    {
+     "id": "fet-transfer-gain",
+     "title": "FET transfer characteristics and gain",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5120 Unit II item 2; PH-DSE5163 Unit I item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "JFET",
+      "MOSFET"
+     ],
+     "unknowns": [
+      "transconductance",
+      "pinch-off / threshold voltage",
+      "voltage gain"
+     ],
+     "conditions": [],
+     "kernel": "fet"
+    },
+    {
+     "id": "ujt-relaxation",
+     "title": "UJT characteristics and relaxation oscillator",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit I item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "UJT"
+     ],
+     "unknowns": [
+      "intrinsic stand-off ratio",
+      "oscillation frequency"
+     ],
+     "conditions": [],
+     "kernel": "ujt"
+    },
+    {
+     "id": "scr-characteristics",
+     "title": "SCR characteristics and switching",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit I item 5; SGGU MSC1P110 item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "SCR"
+     ],
+     "unknowns": [
+      "break-over voltage",
+      "holding current",
+      "firing angle control"
+     ],
+     "conditions": [],
+     "kernel": "scr"
+    },
+    {
+     "id": "clipping-clamping",
+     "title": "Diode clipping and clamping circuits",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit I item 1",
+     "kind": "practical",
+     "methods": [
+      "series clipper",
+      "shunt clipper",
+      "positive clamper",
+      "negative clamper"
+     ],
+     "samples": [],
+     "unknowns": [
+      "output waveform levels"
+     ],
+     "conditions": [],
+     "kernel": "diode_wave"
+    }
+   ]
+  },
+  {
+   "name": "Electronics",
+   "setups": [
+    {
+     "id": "ce-amplifier-design",
+     "title": "Design of a transistor CE amplifier for a given gain",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Group A item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "voltage gain",
+      "bandwidth",
+      "input impedance"
+     ],
+     "conditions": [
+      "low gain specification",
+      "mid gain specification",
+      "high gain specification"
+     ],
+     "kernel": "bjt_amp"
+    },
+    {
+     "id": "power-amplifier",
+     "title": "Transistor power amplifier",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Group A: design power amplifier",
+     "kind": "practical",
+     "methods": [
+      "class A",
+      "class B push-pull"
+     ],
+     "samples": [],
+     "unknowns": [
+      "output power",
+      "efficiency",
+      "distortion"
+     ],
+     "conditions": [],
+     "kernel": "power_amp"
+    },
+    {
+     "id": "tuned-amplifier",
+     "title": "Tuned and double-tuned amplifier",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Group A; PH-DSE5163 multi-stage and tuned amplifiers",
+     "kind": "practical",
+     "methods": [
+      "single tuned",
+      "double tuned"
+     ],
+     "samples": [],
+     "unknowns": [
+      "centre frequency",
+      "bandwidth",
+      "Q"
+     ],
+     "conditions": [],
+     "kernel": "tuned_amp"
+    },
+    {
+     "id": "multistage-amplifier",
+     "title": "Multi-stage RC coupled amplifier",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit II item 5; SGGU MSC1P209 item 1",
+     "kind": "practical",
+     "methods": [
+      "single stage",
+      "two stage"
+     ],
+     "samples": [],
+     "unknowns": [
+      "overall gain",
+      "frequency response"
+     ],
+     "conditions": [],
+     "kernel": "bjt_amp"
+    },
+    {
+     "id": "rc-phase-shift-osc",
+     "title": "RC phase-shift oscillator",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Group A item 2",
+     "kind": "practical",
+     "methods": [
+      "transistor",
+      "op-amp"
+     ],
+     "samples": [],
+     "unknowns": [
+      "frequency vs RC",
+      "minimum gain"
+     ],
+     "conditions": [],
+     "kernel": "oscillator"
+    },
+    {
+     "id": "wien-bridge-osc",
+     "title": "Wien bridge oscillator",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Group A item 2",
+     "kind": "practical",
+     "methods": [
+      "op-amp"
+     ],
+     "samples": [],
+     "unknowns": [
+      "frequency",
+      "amplitude stability"
+     ],
+     "conditions": [],
+     "kernel": "oscillator"
+    },
+    {
+     "id": "crystal-osc",
+     "title": "Crystal oscillator",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Group A item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "quartz crystal"
+     ],
+     "unknowns": [
+      "frequency",
+      "stability"
+     ],
+     "conditions": [],
+     "kernel": "oscillator"
+    },
+    {
+     "id": "colpitts-osc",
+     "title": "Colpitts oscillator",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Group A item 2",
+     "kind": "practical",
+     "methods": [
+      "transistor"
+     ],
+     "samples": [],
+     "unknowns": [
+      "frequency vs tank values"
+     ],
+     "conditions": [],
+     "kernel": "oscillator"
+    },
+    {
+     "id": "hartley-osc",
+     "title": "Hartley oscillator",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Group A item 2",
+     "kind": "practical",
+     "methods": [
+      "transistor"
+     ],
+     "samples": [],
+     "unknowns": [
+      "frequency vs tank values"
+     ],
+     "conditions": [],
+     "kernel": "oscillator"
+    },
+    {
+     "id": "rf-oscillator",
+     "title": "RF oscillator",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P110 item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "frequency",
+      "output amplitude"
+     ],
+     "conditions": [],
+     "kernel": "oscillator"
+    },
+    {
+     "id": "opamp-parameters",
+     "title": "Op-amp parameters",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P210 item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "input offset voltage",
+      "input bias current",
+      "CMRR",
+      "slew rate",
+      "gain-bandwidth product"
+     ],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-linear",
+     "title": "Op-amp linear amplifier circuits",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit II item 1; SGGU MSC1P210 item 4",
+     "kind": "practical",
+     "methods": [
+      "inverting",
+      "non-inverting",
+      "summing",
+      "difference",
+      "voltage follower",
+      "averaging"
+     ],
+     "samples": [],
+     "unknowns": [
+      "gain",
+      "frequency response"
+     ],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-integrator-differentiator",
+     "title": "Op-amp integrator and differentiator",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit II item 1",
+     "kind": "practical",
+     "methods": [
+      "integrator",
+      "differentiator"
+     ],
+     "samples": [
+      "square wave input",
+      "sine wave input",
+      "triangular wave input"
+     ],
+     "unknowns": [
+      "output waveform",
+      "time constant"
+     ],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-comparators",
+     "title": "Zero-crossing detector, peak detector and instrumentation amplifier",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit II item 1",
+     "kind": "practical",
+     "methods": [
+      "zero-crossing detector",
+      "peak detector",
+      "instrumentation amplifier"
+     ],
+     "samples": [],
+     "unknowns": [
+      "transfer characteristic",
+      "CMRR (instrumentation)"
+     ],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "active-filters",
+     "title": "Active filters with Bode plots",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit II; PH-DSE5163 Unit II item 2",
+     "kind": "practical",
+     "methods": [
+      "low pass",
+      "high pass",
+      "band pass",
+      "band reject",
+      "all pass (phase shifter)"
+     ],
+     "samples": [],
+     "unknowns": [
+      "cut-off frequency",
+      "roll-off",
+      "phase response"
+     ],
+     "conditions": [],
+     "kernel": "filter"
+    },
+    {
+     "id": "passive-filters",
+     "title": "Passive RC filters with Bode plots",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit II; PH-DSE5163 Unit II item 2",
+     "kind": "practical",
+     "methods": [
+      "low pass",
+      "high pass",
+      "band pass"
+     ],
+     "samples": [],
+     "unknowns": [
+      "cut-off frequency",
+      "roll-off"
+     ],
+     "conditions": [],
+     "kernel": "filter"
+    },
+    {
+     "id": "resonant-circuits",
+     "title": "Series and parallel resonant circuits",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit II item 1",
+     "kind": "practical",
+     "methods": [
+      "series LCR",
+      "parallel LCR"
+     ],
+     "samples": [],
+     "unknowns": [
+      "resonant frequency",
+      "Q factor",
+      "bandwidth"
+     ],
+     "conditions": [],
+     "kernel": "lcr"
+    },
+    {
+     "id": "regulated-power-supply",
+     "title": "Power supply regulation and stabilisation",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit II item 3",
+     "kind": "practical",
+     "methods": [
+      "zener shunt regulator",
+      "series transistor regulator",
+      "IC regulator"
+     ],
+     "samples": [],
+     "unknowns": [
+      "line regulation",
+      "load regulation",
+      "ripple"
+     ],
+     "conditions": [],
+     "kernel": "regulator"
+    },
+    {
+     "id": "multivibrators",
+     "title": "Astable, monostable and bistable multivibrators",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit III; PH-DSE5163 Unit II item 6",
+     "kind": "practical",
+     "methods": [
+      "transistor",
+      "IC 555",
+      "op-amp"
+     ],
+     "samples": [],
+     "unknowns": [
+      "time period",
+      "duty cycle",
+      "pulse width"
+     ],
+     "conditions": [
+      "astable",
+      "monostable",
+      "bistable"
+     ],
+     "kernel": "multivibrator"
+    },
+    {
+     "id": "sweep-generators",
+     "title": "Sweep (time-base) generators",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit III",
+     "kind": "practical",
+     "methods": [
+      "RC sweep",
+      "UJT constant-current sweep",
+      "UJT sawtooth",
+      "zener sawtooth",
+      "bootstrap sweep"
+     ],
+     "samples": [],
+     "unknowns": [
+      "sweep linearity",
+      "sweep period"
+     ],
+     "conditions": [],
+     "kernel": "sweep"
+    },
+    {
+     "id": "triangular-wave-generator",
+     "title": "Triangular wave generator",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit II item 7",
+     "kind": "practical",
+     "methods": [
+      "op-amp integrator with comparator"
+     ],
+     "samples": [],
+     "unknowns": [
+      "frequency",
+      "amplitude"
+     ],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "sample-hold",
+     "title": "Sample and hold circuit",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit II item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "acquisition time",
+      "droop rate"
+     ],
+     "conditions": [],
+     "kernel": "sample_hold"
+    },
+    {
+     "id": "pll-lock-range",
+     "title": "Phase-locked loop lock and capture range",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit III: design various frequency lock range circuit",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "IC 565 PLL"
+     ],
+     "unknowns": [
+      "lock range",
+      "capture range",
+      "free-running frequency"
+     ],
+     "conditions": [],
+     "kernel": "pll"
+    },
+    {
+     "id": "analogue-computation",
+     "title": "Analogue computer: falling body and equations",
+     "src": "mlsu-msc-sem3",
+     "ref": "Advance Electronics Lab items 1, 2",
+     "kind": "practical",
+     "methods": [
+      "integrator chain for a falling body",
+      "simultaneous linear equations",
+      "second-order differential equation"
+     ],
+     "samples": [],
+     "unknowns": [
+      "velocity and displacement vs time",
+      "solution values"
+     ],
+     "conditions": [],
+     "kernel": "analog_computer"
+    },
+    {
+     "id": "interfacing-physics-experiments",
+     "title": "Interfacing circuits for physics experiments",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit IV",
+     "kind": "practical",
+     "methods": [
+      "I-V characteristic tracer",
+      "temperature controller",
+      "traffic light controller"
+     ],
+     "samples": [],
+     "unknowns": [
+      "working circuit output"
+     ],
+     "conditions": [],
+     "kernel": "interfacing"
+    },
+    {
+     "id": "logic-gates",
+     "title": "Logic gates and universal gates",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P209 item 2",
+     "kind": "practical",
+     "methods": [
+      "NAND realisation",
+      "NOR realisation"
+     ],
+     "samples": [],
+     "unknowns": [
+      "truth tables"
+     ],
+     "conditions": [],
+     "kernel": "logic"
+    },
+    {
+     "id": "combinational-logic",
+     "title": "Combinational logic circuits with ICs",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit IV; PH-DSE5163 digital item 1",
+     "kind": "practical",
+     "methods": [
+      "half and full adder",
+      "multiplexer",
+      "decoder",
+      "comparator"
+     ],
+     "samples": [],
+     "unknowns": [
+      "truth tables"
+     ],
+     "conditions": [],
+     "kernel": "logic"
+    },
+    {
+     "id": "flip-flops",
+     "title": "Flip-flops",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit IV",
+     "kind": "practical",
+     "methods": [
+      "RS",
+      "D",
+      "JK",
+      "master-slave JK"
+     ],
+     "samples": [],
+     "unknowns": [
+      "characteristic tables",
+      "timing"
+     ],
+     "conditions": [],
+     "kernel": "logic_seq"
+    },
+    {
+     "id": "shift-registers",
+     "title": "Shift registers",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit IV",
+     "kind": "practical",
+     "methods": [
+      "serial in serial out",
+      "parallel in parallel out"
+     ],
+     "samples": [],
+     "unknowns": [
+      "timing diagrams"
+     ],
+     "conditions": [],
+     "kernel": "logic_seq"
+    },
+    {
+     "id": "counters",
+     "title": "Asynchronous and synchronous counters",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5114 Unit IV",
+     "kind": "practical",
+     "methods": [
+      "asynchronous",
+      "synchronous"
+     ],
+     "samples": [],
+     "unknowns": [
+      "count sequence",
+      "modulus"
+     ],
+     "conditions": [],
+     "kernel": "logic_seq"
+    },
+    {
+     "id": "adc-dac",
+     "title": "A/D and D/A converters",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 digital item 3",
+     "kind": "practical",
+     "methods": [
+      "R-2R ladder DAC",
+      "binary weighted DAC",
+      "successive approximation ADC"
+     ],
+     "samples": [],
+     "unknowns": [
+      "resolution",
+      "linearity"
+     ],
+     "conditions": [],
+     "kernel": "adc_dac"
+    },
+    {
+     "id": "digital-modulation",
+     "title": "Digital modulation",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 digital item 4",
+     "kind": "practical",
+     "methods": [
+      "ASK",
+      "FSK",
+      "PSK",
+      "PCM"
+     ],
+     "samples": [],
+     "unknowns": [
+      "modulated waveform",
+      "demodulated output"
+     ],
+     "conditions": [],
+     "kernel": "digital_mod"
+    },
+    {
+     "id": "am-fm-modulation",
+     "title": "Amplitude and frequency modulation and demodulation",
+     "src": "kennedy-communication",
+     "ref": "chapters on AM and FM",
+     "kind": "practical",
+     "methods": [
+      "AM",
+      "FM"
+     ],
+     "samples": [],
+     "unknowns": [
+      "modulation index",
+      "sidebands",
+      "demodulated output"
+     ],
+     "conditions": [],
+     "kernel": "am_fm"
+    },
+    {
+     "id": "microprocessor-8085",
+     "title": "Microprocessor programming and applications",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 digital item 5: microprocessor application",
+     "kind": "practical",
+     "methods": [
+      "8085 assembly"
+     ],
+     "samples": [],
+     "unknowns": [
+      "program output"
+     ],
+     "conditions": [
+      "arithmetic",
+      "sorting",
+      "code conversion",
+      "port I/O"
+     ],
+     "kernel": "mp8085"
+    },
+    {
+     "id": "embedded-servo",
+     "title": "Embedded board and servo / microcontroller control",
+     "src": "mlsu-msc-sem3",
+     "ref": "Advance Electronics Lab items 8, 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "servo position vs command"
+     ],
+     "conditions": [],
+     "kernel": "microcontroller"
+    },
+    {
+     "id": "dsp-control",
+     "title": "DSP technique for controlling hardware",
+     "src": "mlsu-msc-sem3",
+     "ref": "Advance Electronics Lab item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "filter response",
+      "control output"
+     ],
+     "conditions": [],
+     "kernel": "dsp"
+    },
+    {
+     "id": "fibre-digital-link-tdm",
+     "title": "Optical fibre digital link in TDM mode",
+     "src": "mlsu-msc-sem3",
+     "ref": "Advance Electronics Lab item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "multiplexed channels recovered",
+      "bit error check"
+     ],
+     "conditions": [],
+     "kernel": "fibre_link"
+    },
+    {
+     "id": "fibre-voice-link",
+     "title": "Optical fibre voice communication link",
+     "src": "mlsu-msc-sem3",
+     "ref": "Advance Electronics Lab item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "modulating and received waveforms"
+     ],
+     "conditions": [],
+     "kernel": "fibre_link"
+    },
+    {
+     "id": "tv-receiver-sections",
+     "title": "Sections of a TV receiver",
+     "src": "mlsu-msc-sem3",
+     "ref": "Advance Electronics Lab item 6",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "horizontal and vertical sync waveforms"
+     ],
+     "conditions": [],
+     "kernel": "tv_receiver"
+    },
+    {
+     "id": "ic-cad-project",
+     "title": "Computer-aided design for IC and device fabrication",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5214 Group A (project)",
+     "kind": "project",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "simulated device characteristics"
+     ],
+     "conditions": [],
+     "kernel": "tcad"
+    },
+    {
+     "id": "device-fabrication-project",
+     "title": "Electronic device fabrication and characterisation",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5214 Group B (project)",
+     "kind": "project",
+     "methods": [],
+     "samples": [
+      "p-n junction by diffusion"
+     ],
+     "unknowns": [
+      "I-V characteristic"
+     ],
+     "conditions": [],
+     "kernel": "diode_iv"
+    }
+   ]
+  },
+  {
+   "name": "Microwaves",
+   "setups": [
+    {
+     "id": "reflex-klystron",
+     "title": "Reflex klystron mode characteristics",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: klystron; MLSU Advance Electronics Lab item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "mode curves",
+      "electronic tuning range",
+      "frequency"
+     ],
+     "conditions": [],
+     "kernel": "klystron"
+    },
+    {
+     "id": "gunn-oscillator",
+     "title": "Gunn oscillator characteristics",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: Gunn oscillator",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "I-V characteristic",
+      "threshold voltage",
+      "output power vs bias"
+     ],
+     "conditions": [],
+     "kernel": "gunn"
+    },
+    {
+     "id": "microwave-bragg",
+     "title": "Bragg diffraction of microwaves",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: Bragg diffraction with microwaves",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "cubic ball lattice model"
+     ],
+     "unknowns": [
+      "lattice spacing",
+      "Bragg angles"
+     ],
+     "conditions": [],
+     "kernel": "bragg_powder"
+    },
+    {
+     "id": "microwave-vswr-impedance",
+     "title": "Guide wavelength, VSWR and impedance on a microwave bench",
+     "src": "liao-microwave",
+     "ref": "waveguide and slotted-line measurement chapters",
+     "kind": "practical",
+     "methods": [
+      "slotted line",
+      "double minimum method for high VSWR"
+     ],
+     "samples": [
+      "matched load",
+      "short",
+      "horn"
+     ],
+     "unknowns": [
+      "guide wavelength",
+      "VSWR",
+      "load impedance"
+     ],
+     "conditions": [],
+     "kernel": "waveguide"
+    },
+    {
+     "id": "microwave-dielectric",
+     "title": "Dielectric constant by the waveguide shift method",
+     "src": "liao-microwave",
+     "ref": "microwave measurement chapter",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "perspex",
+      "PTFE",
+      "glass"
+     ],
+     "unknowns": [
+      "dielectric constant"
+     ],
+     "conditions": [],
+     "kernel": "waveguide"
+    },
+    {
+     "id": "horn-antenna-pattern",
+     "title": "Horn antenna radiation pattern",
+     "src": "liao-microwave",
+     "ref": "antenna chapter",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "beam width",
+      "gain"
+     ],
+     "conditions": [
+      "E-plane",
+      "H-plane"
+     ],
+     "kernel": "antenna"
+    }
+   ]
+  },
+  {
+   "name": "Nuclear physics",
+   "setups": [
+    {
+     "id": "gm-characteristics",
+     "title": "GM counter plateau and dead time",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit III item 1; IITK GM counter; CUK GM counter",
+     "kind": "practical",
+     "methods": [
+      "two-source method for dead time"
+     ],
+     "samples": [
+      "Cs-137",
+      "Sr-90"
+     ],
+     "unknowns": [
+      "operating voltage",
+      "plateau slope",
+      "dead time"
+     ],
+     "conditions": [],
+     "kernel": "gm"
+    },
+    {
+     "id": "gm-counting-statistics",
+     "title": "Counting statistics with a GM counter",
+     "src": "iitk-phy461",
+     "ref": "PHY 461/462: GM counter, counting statistics",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Cs-137",
+      "background"
+     ],
+     "unknowns": [
+      "Poisson fit",
+      "Gaussian fit",
+      "standard deviation"
+     ],
+     "conditions": [
+      "low count rate",
+      "high count rate"
+     ],
+     "kernel": "poisson"
+    },
+    {
+     "id": "gm-efficiency",
+     "title": "Efficiency of a GM counter",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P210 item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "beta source",
+      "gamma source"
+     ],
+     "unknowns": [
+      "efficiency"
+     ],
+     "conditions": [],
+     "kernel": "gm"
+    },
+    {
+     "id": "beta-absorption-endpoint",
+     "title": "Beta absorption and end-point energy",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit I item 4; PH-DSE5163 Unit IV item 2",
+     "kind": "practical",
+     "methods": [
+      "Feather's rule"
+     ],
+     "samples": [
+      "Sr-90/Y-90",
+      "Tl-204"
+     ],
+     "unknowns": [
+      "range in aluminium",
+      "end-point energy",
+      "mass absorption coefficient"
+     ],
+     "conditions": [],
+     "kernel": "beta_range"
+    },
+    {
+     "id": "gamma-absorption",
+     "title": "Gamma-ray absorption and half-value thickness",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit I item 3; PH-DSE5163 Unit IV item 1; IITK absorption cross-section",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "lead",
+      "copper",
+      "aluminium"
+     ],
+     "unknowns": [
+      "linear attenuation coefficient",
+      "half-value thickness",
+      "cross-section"
+     ],
+     "conditions": [
+      "Cs-137 (662 keV)",
+      "Co-60 (1.17 / 1.33 MeV)"
+     ],
+     "kernel": "attenuation"
+    },
+    {
+     "id": "nai-calibration-resolution",
+     "title": "NaI(Tl) spectrometer energy calibration and resolution",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit II item 1; PH-DSE5163 Unit III item 3; IITK gamma-ray spectrometer",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Cs-137",
+      "Co-60",
+      "Na-22",
+      "Ba-133"
+     ],
+     "unknowns": [
+      "calibration line",
+      "energy resolution",
+      "unknown gamma energy"
+     ],
+     "conditions": [],
+     "kernel": "gamma_spectrum"
+    },
+    {
+     "id": "nai-efficiency",
+     "title": "Detection efficiency of a NaI(Tl) spectrometer",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit II item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Cs-137",
+      "Co-60",
+      "Na-22"
+     ],
+     "unknowns": [
+      "photopeak efficiency vs energy"
+     ],
+     "conditions": [
+      "several source distances"
+     ],
+     "kernel": "gamma_spectrum"
+    },
+    {
+     "id": "scintillator-comparison",
+     "title": "Gamma detection with different scintillators",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit II item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "NaI(Tl)",
+      "CsI(Tl)",
+      "plastic scintillator",
+      "BGO"
+     ],
+     "unknowns": [
+      "resolution",
+      "efficiency"
+     ],
+     "conditions": [],
+     "kernel": "gamma_spectrum"
+    },
+    {
+     "id": "beta-spectroscopy-kurie",
+     "title": "Beta-ray spectroscopy and Kurie plot",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit III item 1; IITK beta-ray spectroscopy",
+     "kind": "practical",
+     "methods": [
+      "anthracene scintillation spectrometer",
+      "magnetic spectrometer"
+     ],
+     "samples": [
+      "Cs-137",
+      "Tl-204",
+      "Sr-90"
+     ],
+     "unknowns": [
+      "end-point energy",
+      "conversion electron energy"
+     ],
+     "conditions": [],
+     "kernel": "beta_spectrum"
+    },
+    {
+     "id": "compton-angular",
+     "title": "Angular distribution of Compton-scattered gamma rays",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit III item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "aluminium scatterer",
+      "copper scatterer"
+     ],
+     "unknowns": [
+      "scattered energy vs angle",
+      "differential cross-section",
+      "total cross-section"
+     ],
+     "conditions": [],
+     "kernel": "compton"
+    },
+    {
+     "id": "alpha-surface-barrier",
+     "title": "Alpha spectroscopy and stopping power with a Si surface-barrier detector",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit III item 3; PH-DSE5216 items 3, 4; PH-DSE5163 Unit III item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Am-241",
+      "Pu-239"
+     ],
+     "unknowns": [
+      "energy resolution",
+      "stopping power in foils",
+      "range in air"
+     ],
+     "conditions": [
+      "several chamber pressures"
+     ],
+     "kernel": "alpha_stopping"
+    },
+    {
+     "id": "proportional-counter-xray",
+     "title": "Proportional counter: energy response and low-energy X-rays",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit III item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Fe-55",
+      "Am-241"
+     ],
+     "unknowns": [
+      "gain vs voltage",
+      "energy resolution"
+     ],
+     "conditions": [],
+     "kernel": "prop_counter"
+    },
+    {
+     "id": "spark-counter-alpha",
+     "title": "Spark counter and range of alpha particles in air",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit III item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Am-241"
+     ],
+     "unknowns": [
+      "counting plateau",
+      "alpha range in air"
+     ],
+     "conditions": [],
+     "kernel": "alpha_stopping"
+    },
+    {
+     "id": "neutron-activation",
+     "title": "Thermal neutron activation analysis",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit I item 1; PH-DSE5216 Unit I item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "indium foil",
+      "silver foil",
+      "aluminium foil"
+     ],
+     "unknowns": [
+      "half-life of the product",
+      "neutron flux"
+     ],
+     "conditions": [],
+     "kernel": "activation"
+    },
+    {
+     "id": "k40-disintegration",
+     "title": "Absolute disintegration rate of K-40 and its partial beta half-life",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit I item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "KCl",
+      "UX2 standard"
+     ],
+     "unknowns": [
+      "specific activity",
+      "partial beta-decay half-life"
+     ],
+     "conditions": [],
+     "kernel": "activity"
+    },
+    {
+     "id": "short-lived-lifetime",
+     "title": "Half-life of a short-lived radioactive source",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit IV item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Ba-137m (Cs-137 isotope generator)",
+      "activated indium"
+     ],
+     "unknowns": [
+      "half-life"
+     ],
+     "conditions": [],
+     "kernel": "decay"
+    },
+    {
+     "id": "pulse-processing-coincidence",
+     "title": "Pulse processing with a digital shaping unit: single and coincidence",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit IV item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Na-22",
+      "Co-60"
+     ],
+     "unknowns": [
+      "shaping time effect",
+      "coincidence rate"
+     ],
+     "conditions": [],
+     "kernel": "coincidence"
+    },
+    {
+     "id": "fast-scintillator-timing",
+     "title": "Energy and timing response of fast scintillators",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5116 Unit IV item 2; PH-DSE5216 Unit IV item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "plastic scintillator",
+      "BaF2",
+      "CeBr3"
+     ],
+     "unknowns": [
+      "time resolution",
+      "energy resolution"
+     ],
+     "conditions": [],
+     "kernel": "timing"
+    },
+    {
+     "id": "coincidence-resolving-time",
+     "title": "Resolving time of fast and slow coincidence by random coincidences",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5216 Unit IV item 3",
+     "kind": "practical",
+     "methods": [
+      "fast coincidence",
+      "slow coincidence"
+     ],
+     "samples": [
+      "two independent sources"
+     ],
+     "unknowns": [
+      "resolving time"
+     ],
+     "conditions": [],
+     "kernel": "coincidence"
+    },
+    {
+     "id": "gamma-angular-correlation",
+     "title": "Directional correlation of cascade gamma rays",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5216 Unit III item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Co-60"
+     ],
+     "unknowns": [
+      "angular correlation coefficients A2 and A4"
+     ],
+     "conditions": [],
+     "kernel": "angular_correlation"
+    },
+    {
+     "id": "position-sensitive-detector",
+     "title": "Position-sensitive detector for imaging",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5216 Unit IV item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "point gamma source"
+     ],
+     "unknowns": [
+      "position resolution",
+      "image of source distribution"
+     ],
+     "conditions": [],
+     "kernel": "gamma_camera"
+    },
+    {
+     "id": "nuclear-emulsion-pi-mu-e",
+     "title": "Pi-mu-e decay in nuclear emulsions",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit IV: nuclear emulsions item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "exposed emulsion plate"
+     ],
+     "unknowns": [
+      "muon range",
+      "pion rest mass estimate"
+     ],
+     "conditions": [],
+     "kernel": "emulsion"
+    },
+    {
+     "id": "nuclear-emulsion-interactions",
+     "title": "High-energy interactions in nuclear emulsions",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5163 Unit IV: nuclear emulsions item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "exposed emulsion plate"
+     ],
+     "unknowns": [
+      "multiplicity",
+      "opening angles"
+     ],
+     "conditions": [],
+     "kernel": "emulsion"
+    },
+    {
+     "id": "hpge-spectra",
+     "title": "Gamma-ray spectra with an HPGe detector",
+     "src": "mlsu-msc-sem3",
+     "ref": "Radiation Physics Lab: use of HPGe detector in analysis of gamma-ray spectra",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "Eu-152",
+      "Co-60",
+      "environmental sample"
+     ],
+     "unknowns": [
+      "energy calibration",
+      "resolution",
+      "isotope identification"
+     ],
+     "conditions": [],
+     "kernel": "gamma_spectrum"
+    }
+   ]
+  },
+  {
+   "name": "Computational physics",
+   "setups": [
+    {
+     "id": "interpolation",
+     "title": "Lagrange and cubic spline interpolation",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit I",
+     "kind": "computational",
+     "methods": [
+      "Lagrange polynomial",
+      "cubic spline"
+     ],
+     "samples": [],
+     "unknowns": [
+      "interpolated values",
+      "error estimate"
+     ],
+     "conditions": [],
+     "kernel": "numerics"
+    },
+    {
+     "id": "finite-difference-pde",
+     "title": "Finite-difference heat and wave equations",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit II",
+     "kind": "computational",
+     "methods": [
+      "explicit scheme",
+      "implicit (Crank-Nicolson) scheme"
+     ],
+     "samples": [
+      "heat equation",
+      "wave equation"
+     ],
+     "unknowns": [
+      "field vs time",
+      "stability limit"
+     ],
+     "conditions": [],
+     "kernel": "fd_pde"
+    },
+    {
+     "id": "finite-element-intro",
+     "title": "Introduction to the finite element method",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit II",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "1D Poisson equation"
+     ],
+     "unknowns": [
+      "solution vs mesh size"
+     ],
+     "conditions": [],
+     "kernel": "fem1d"
+    },
+    {
+     "id": "least-squares-fit",
+     "title": "Least-squares fitting with and without errors",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit III",
+     "kind": "computational",
+     "methods": [
+      "linear least squares",
+      "weighted least squares",
+      "general linear least squares"
+     ],
+     "samples": [],
+     "unknowns": [
+      "parameters",
+      "parameter errors",
+      "chi-square"
+     ],
+     "conditions": [],
+     "kernel": "fit"
+    },
+    {
+     "id": "maximum-likelihood",
+     "title": "Maximum likelihood and Pearson chi-square",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit III",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "Poisson counts",
+      "Gaussian data"
+     ],
+     "unknowns": [
+      "estimator",
+      "goodness of fit"
+     ],
+     "conditions": [],
+     "kernel": "fit"
+    },
+    {
+     "id": "random-deviates",
+     "title": "Random numbers from arbitrary distributions",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit IV",
+     "kind": "computational",
+     "methods": [
+      "inverse transform",
+      "acceptance-rejection"
+     ],
+     "samples": [
+      "exponential",
+      "Gaussian",
+      "discrete"
+     ],
+     "unknowns": [
+      "histogram vs target"
+     ],
+     "conditions": [],
+     "kernel": "mc"
+    },
+    {
+     "id": "random-walk",
+     "title": "Random walk in 1, 2, 3 and n dimensions",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit IV",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "mean square displacement",
+      "return probability"
+     ],
+     "conditions": [
+      "1D",
+      "2D",
+      "3D"
+     ],
+     "kernel": "random_walk"
+    },
+    {
+     "id": "mc-decay-chain",
+     "title": "Monte Carlo radioactive decay chain",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit IV",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "single decay",
+      "parent-daughter chain"
+     ],
+     "unknowns": [
+      "populations vs time",
+      "secular equilibrium"
+     ],
+     "conditions": [],
+     "kernel": "decay"
+    },
+    {
+     "id": "mc-two-level-spin",
+     "title": "Monte Carlo two-level spin system",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit IV",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "magnetisation vs temperature",
+      "specific heat"
+     ],
+     "conditions": [],
+     "kernel": "ising"
+    },
+    {
+     "id": "mc-ising-msc",
+     "title": "Ising model by Monte Carlo",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit IV",
+     "kind": "computational",
+     "methods": [
+      "Metropolis"
+     ],
+     "samples": [],
+     "unknowns": [
+      "magnetisation",
+      "critical temperature"
+     ],
+     "conditions": [
+      "1D lattice",
+      "2D lattice"
+     ],
+     "kernel": "ising"
+    },
+    {
+     "id": "mc-integration",
+     "title": "Monte Carlo integration and the central limit theorem",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit IV",
+     "kind": "computational",
+     "methods": [
+      "hit-or-miss",
+      "sample mean",
+      "importance sampling"
+     ],
+     "samples": [],
+     "unknowns": [
+      "integral",
+      "error vs N"
+     ],
+     "conditions": [],
+     "kernel": "mc"
+    },
+    {
+     "id": "mc-scattering-toy",
+     "title": "Toy Monte Carlo of scattering",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5221 Unit IV",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "angular distribution"
+     ],
+     "conditions": [],
+     "kernel": "mc"
+    },
+    {
+     "id": "polynomial-roots",
+     "title": "Numerical solution of a polynomial",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P110 item 5; MSC1P210 item 6 numerical analysis",
+     "kind": "computational",
+     "methods": [
+      "bisection",
+      "Newton-Raphson",
+      "secant"
+     ],
+     "samples": [],
+     "unknowns": [
+      "roots",
+      "convergence"
+     ],
+     "conditions": [],
+     "kernel": "numerics"
+    },
+    {
+     "id": "dft-band-structure",
+     "title": "First-principles band structure and DOS",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5142 Units III-IV: band structures, DOS, PDOS, geometry optimisation",
+     "kind": "computational",
+     "methods": [
+      "LDA",
+      "GGA"
+     ],
+     "samples": [
+      "silicon",
+      "graphene",
+      "a simple metal"
+     ],
+     "unknowns": [
+      "band gap",
+      "lattice constant",
+      "density of states"
+     ],
+     "conditions": [],
+     "kernel": "dft"
+    },
+    {
+     "id": "mc-photon-tissue",
+     "title": "Monte Carlo multiple scattering of photons in tissue",
+     "src": "mlsu-msc-sem3",
+     "ref": "Radiation Physics Lab",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "water",
+      "soft tissue",
+      "bone"
+     ],
+     "unknowns": [
+      "scattered fraction",
+      "depth dose"
+     ],
+     "conditions": [],
+     "kernel": "photon_mc"
+    },
+    {
+     "id": "xcom-attenuation",
+     "title": "Photon cross-sections and mass attenuation coefficients with XCOM",
+     "src": "mlsu-msc-sem3",
+     "ref": "Radiation Physics Lab",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "water",
+      "bone",
+      "tissue-equivalent plastic",
+      "lead"
+     ],
+     "unknowns": [
+      "mass attenuation coefficient vs energy"
+     ],
+     "conditions": [],
+     "kernel": "attenuation"
+    },
+    {
+     "id": "nuclear-reaction-data",
+     "title": "Analysis of nuclear reaction data",
+     "src": "cuk-phy5304",
+     "ref": "PHY5304 nuclear physics",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "Q-value",
+      "cross-section vs energy"
+     ],
+     "conditions": [],
+     "kernel": "kinematics"
+    }
+   ]
+  },
+  {
+   "name": "Astrophysics",
+   "setups": [
+    {
+     "id": "telescope-alignment",
+     "title": "Telescope alignment, tracking and observation planning",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5222 Unit I",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "11-inch telescope"
+     ],
+     "unknowns": [
+      "pointing accuracy",
+      "observing log"
+     ],
+     "conditions": [],
+     "kernel": "sky_coords"
+    },
+    {
+     "id": "ccd-characterisation",
+     "title": "CCD / CMOS detector characterisation",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5222 Unit II: gain, read noise, dark current",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "CCD camera",
+      "CMOS camera"
+     ],
+     "unknowns": [
+      "gain",
+      "read noise",
+      "dark current"
+     ],
+     "conditions": [],
+     "kernel": "ccd"
+    },
+    {
+     "id": "atmospheric-extinction",
+     "title": "Atmospheric extinction, seeing and sky brightness",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5222 Unit III",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "extinction coefficient",
+      "seeing FWHM",
+      "sky brightness"
+     ],
+     "conditions": [],
+     "kernel": "extinction"
+    },
+    {
+     "id": "differential-photometry",
+     "title": "Differential photometry and light curves of variable stars",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5222 Unit III and example projects",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "eclipsing binary",
+      "pulsating variable"
+     ],
+     "unknowns": [
+      "light curve",
+      "period",
+      "colour index"
+     ],
+     "conditions": [],
+     "kernel": "photometry_astro"
+    },
+    {
+     "id": "solar-limb-sunspots",
+     "title": "Solar limb darkening, sunspots and rotation",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5222 Unit III",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "limb-darkening coefficient",
+      "solar rotation period"
+     ],
+     "conditions": [],
+     "kernel": "solar_disc"
+    },
+    {
+     "id": "asteroid-astrometry",
+     "title": "Asteroid motion and positions",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5222 example projects",
+     "kind": "project",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "proper motion",
+      "positions vs catalogue"
+     ],
+     "conditions": [],
+     "kernel": "astrometry"
+    },
+    {
+     "id": "moon-parallax",
+     "title": "Distance to the Moon by parallax",
+     "src": "sggu-msc-2023",
+     "ref": "MSC1P209 item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "Earth-Moon distance"
+     ],
+     "conditions": [],
+     "kernel": "parallax"
+    }
+   ]
+  }
+ ]
+}

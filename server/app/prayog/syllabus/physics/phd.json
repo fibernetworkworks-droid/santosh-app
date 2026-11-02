@@ -1,0 +1,2574 @@
+{
+ "level": "phd",
+ "sources": [
+  {
+   "id": "mit-junior-lab",
+   "title": "MIT OpenCourseWare 8.13-14 Experimental Physics I & II \"Junior Lab\" (Fall 2016 - Spring 2017), Experiments",
+   "url": "https://ocw.mit.edu/courses/8-13-14-experimental-physics-i-ii-junior-lab-fall-2016-spring-2017/pages/experiments",
+   "checked": true,
+   "note": "Page fetched and read: photoelectric effect, Poisson statistics, Michelson, Compton scattering, Franck-Hertz, relativistic dynamics, pulsed NMR spin echoes, speed and mean life of cosmic-ray muons, Rutherford scattering, optical emission spectra of hydrogenic atoms, X-ray physics, Johnson and shot noise, 21-cm radio astrophysics, optical trapping, optical pumping of Rb, Mossbauer, superconductivity, Doppler-free laser spectroscopy, quantum information processing, Raman spectroscopy."
+  },
+  {
+   "id": "du-msc-2025",
+   "title": "University of Delhi, Master of Science in Physics (Coursework with Research), effective 2025-26, A.C. 24.07.2025 Appendix-09",
+   "url": "https://www.du.ac.in/uploads/2026/11082026-AC-Appendix-09.pdf",
+   "checked": true,
+   "note": "PDF text read; cited here only for research-track characterisation it lists (XPS, VSM, TEM, AFM, Haynes-Shockley, DFT, observational pipelines)."
+  },
+  {
+   "id": "melissinos-napolitano",
+   "title": "A. C. Melissinos and J. Napolitano, Experiments in Modern Physics, 2nd ed. (Academic Press, 2003)",
+   "url": "https://www.sciencedirect.com/book/9780124898516/experiments-in-modern-physics",
+   "checked": false,
+   "note": "Not fetched; rows come from knowledge of the book (atomic and laser spectroscopy, magnetic resonance, particle detection and cosmic rays, Mossbauer, low temperature)."
+  },
+  {
+   "id": "preston-dietz",
+   "title": "D. W. Preston and E. R. Dietz, The Art of Experimental Physics (Wiley, 1991)",
+   "url": "https://www.wiley.com",
+   "checked": false,
+   "note": "Not fetched; rows come from knowledge of the book (lock-in detection, noise, vacuum and thin films, laser and optics experiments, X-ray diffraction, superconductivity)."
+  },
+  {
+   "id": "knoll-detection",
+   "title": "G. F. Knoll, Radiation Detection and Measurement, 4th ed. (Wiley, 2010)",
+   "url": "https://www.wiley.com",
+   "checked": false,
+   "note": "Not fetched (it is a suggested reading in the DU syllabus); rows on detectors come from knowledge of the book."
+  },
+  {
+   "id": "leo-techniques",
+   "title": "W. R. Leo, Techniques for Nuclear and Particle Physics Experiments, 2nd ed. (Springer, 1994)",
+   "url": "https://link.springer.com",
+   "checked": false,
+   "note": "Not fetched (suggested reading in the DU syllabus); rows on particle detectors and timing come from knowledge of the book."
+  },
+  {
+   "id": "pobell-low-t",
+   "title": "F. Pobell, Matter and Methods at Low Temperatures, 3rd ed. (Springer, 2007)",
+   "url": "https://link.springer.com",
+   "checked": false,
+   "note": "Not fetched; low-temperature thermometry, cryostats and dilution refrigeration rows come from knowledge of the book."
+  },
+  {
+   "id": "clarke-squid",
+   "title": "J. Clarke and A. I. Braginski (eds.), The SQUID Handbook, Vol. I (Wiley-VCH, 2004)",
+   "url": "https://www.wiley.com",
+   "checked": false,
+   "note": "Not fetched; Josephson and SQUID rows come from knowledge of the book."
+  },
+  {
+   "id": "foot-atomic",
+   "title": "C. J. Foot, Atomic Physics (Oxford University Press, 2005)",
+   "url": "https://global.oup.com",
+   "checked": false,
+   "note": "Not fetched; laser spectroscopy and cooling rows come from knowledge of the book."
+  },
+  {
+   "id": "loudon-light",
+   "title": "R. Loudon, The Quantum Theory of Light, 3rd ed. (Oxford University Press, 2000)",
+   "url": "https://global.oup.com",
+   "checked": false,
+   "note": "Not fetched; photon statistics rows (HBT, g2, HOM) come from knowledge of the book."
+  },
+  {
+   "id": "cullity-xrd",
+   "title": "B. D. Cullity and S. R. Stock, Elements of X-Ray Diffraction, 3rd ed. (Prentice Hall, 2001)",
+   "url": "https://www.pearson.com",
+   "checked": false,
+   "note": "Not fetched; diffraction rows come from knowledge of the book."
+  },
+  {
+   "id": "young-rietveld",
+   "title": "R. A. Young (ed.), The Rietveld Method (IUCr / Oxford University Press, 1993)",
+   "url": "https://global.oup.com",
+   "checked": false,
+   "note": "Not fetched; Rietveld refinement row comes from knowledge of the book."
+  },
+  {
+   "id": "goldstein-sem",
+   "title": "J. I. Goldstein et al., Scanning Electron Microscopy and X-Ray Microanalysis (Springer)",
+   "url": "https://link.springer.com",
+   "checked": false,
+   "note": "Not fetched; SEM / EDS rows come from knowledge of the book."
+  },
+  {
+   "id": "ohring-films",
+   "title": "M. Ohring, Materials Science of Thin Films, 2nd ed. (Academic Press, 2002)",
+   "url": "https://www.sciencedirect.com",
+   "checked": false,
+   "note": "Not fetched; deposition and film characterisation rows come from knowledge of the book."
+  },
+  {
+   "id": "fujiwara-ellipsometry",
+   "title": "H. Fujiwara, Spectroscopic Ellipsometry: Principles and Applications (Wiley, 2007)",
+   "url": "https://www.wiley.com",
+   "checked": false,
+   "note": "Not fetched; ellipsometry and MOKE-adjacent polarimetry rows come from knowledge of the book."
+  },
+  {
+   "id": "slichter-resonance",
+   "title": "C. P. Slichter, Principles of Magnetic Resonance, 3rd ed. (Springer, 1990)",
+   "url": "https://link.springer.com",
+   "checked": false,
+   "note": "Not fetched; NMR relaxation and FMR rows come from knowledge of the book."
+  },
+  {
+   "id": "hutchinson-plasma",
+   "title": "I. H. Hutchinson, Principles of Plasma Diagnostics, 2nd ed. (Cambridge University Press, 2002)",
+   "url": "https://www.cambridge.org",
+   "checked": false,
+   "note": "Not fetched; plasma diagnostics rows come from knowledge of the book."
+  },
+  {
+   "id": "wilson-radio",
+   "title": "T. L. Wilson, K. Rohlfs and S. Huttemeister, Tools of Radio Astronomy (Springer)",
+   "url": "https://link.springer.com",
+   "checked": false,
+   "note": "Not fetched; radio astronomy rows come from knowledge of the book."
+  },
+  {
+   "id": "newman-barkema",
+   "title": "M. E. J. Newman and G. T. Barkema, Monte Carlo Methods in Statistical Physics (Oxford University Press, 1999)",
+   "url": "https://global.oup.com",
+   "checked": false,
+   "note": "Not fetched; Monte Carlo rows come from knowledge of the book."
+  },
+  {
+   "id": "frenkel-smit",
+   "title": "D. Frenkel and B. Smit, Understanding Molecular Simulation, 2nd ed. (Academic Press, 2002)",
+   "url": "https://www.sciencedirect.com",
+   "checked": false,
+   "note": "Not fetched; molecular dynamics rows come from knowledge of the book."
+  },
+  {
+   "id": "public-astro-archives",
+   "title": "Public astronomy data archives: GWOSC (LIGO/Virgo open data), NASA MAST (TESS/Kepler), SDSS, ESA Gaia archive",
+   "url": "https://gwosc.org",
+   "checked": false,
+   "note": "Not fetched in this session; astrophysics data-lab rows use these published open datasets, named from knowledge."
+  },
+  {
+   "id": "ihn-nano",
+   "title": "T. Ihn, Semiconductor Nanostructures: Quantum States and Electronic Transport (Oxford University Press, 2010)",
+   "url": "https://global.oup.com",
+   "checked": false,
+   "note": "Not fetched; quantum Hall, Shubnikov-de Haas and weak localisation rows come from knowledge of the book."
+  },
+  {
+   "id": "tinkham-sc",
+   "title": "M. Tinkham, Introduction to Superconductivity, 2nd ed. (McGraw-Hill, 1996)",
+   "url": "https://store.doverpublications.com",
+   "checked": false,
+   "note": "Not fetched; tunnelling gap and critical current rows come from knowledge of the book."
+  },
+  {
+   "id": "schroder-char",
+   "title": "D. K. Schroder, Semiconductor Material and Device Characterization, 3rd ed. (Wiley, 2006)",
+   "url": "https://www.wiley.com",
+   "checked": false,
+   "note": "Not fetched; Hall / van der Pauw, C-V, DLTS and quantum efficiency rows come from knowledge of the book."
+  },
+  {
+   "id": "horowitz-hill",
+   "title": "P. Horowitz and W. Hill, The Art of Electronics, 3rd ed. (Cambridge University Press, 2015)",
+   "url": "https://www.cambridge.org",
+   "checked": false,
+   "note": "Not fetched; noise and boxcar rows come from knowledge of the book."
+  },
+  {
+   "id": "barsoukov-impedance",
+   "title": "E. Barsoukov and J. R. Macdonald (eds.), Impedance Spectroscopy: Theory, Experiment, and Applications (Wiley)",
+   "url": "https://www.wiley.com",
+   "checked": false,
+   "note": "Not fetched; impedance row comes from knowledge of the book."
+  },
+  {
+   "id": "boyd-nlo",
+   "title": "R. W. Boyd, Nonlinear Optics, 3rd ed. (Academic Press, 2008)",
+   "url": "https://www.sciencedirect.com",
+   "checked": false,
+   "note": "Not fetched; SHG and z-scan rows come from knowledge of the book."
+  },
+  {
+   "id": "shah-ultrafast",
+   "title": "J. Shah, Ultrafast Spectroscopy of Semiconductors and Semiconductor Nanostructures (Springer)",
+   "url": "https://link.springer.com",
+   "checked": false,
+   "note": "Not fetched; pump-probe row comes from knowledge of the book."
+  },
+  {
+   "id": "chen-stm",
+   "title": "C. J. Chen, Introduction to Scanning Tunneling Microscopy, 2nd ed. (Oxford University Press, 2008)",
+   "url": "https://global.oup.com",
+   "checked": false,
+   "note": "Not fetched; STM row comes from knowledge of the book."
+  },
+  {
+   "id": "taflove-fdtd",
+   "title": "A. Taflove and S. C. Hagness, Computational Electrodynamics: The Finite-Difference Time-Domain Method, 3rd ed. (Artech House, 2005)",
+   "url": "https://us.artechhouse.com",
+   "checked": false,
+   "note": "Not fetched; FDTD row comes from knowledge of the book."
+  },
+  {
+   "id": "birdsall-pic",
+   "title": "C. K. Birdsall and A. B. Langdon, Plasma Physics via Computer Simulation (IOP / CRC)",
+   "url": "https://www.routledge.com",
+   "checked": false,
+   "note": "Not fetched; particle-in-cell row comes from knowledge of the book."
+  },
+  {
+   "id": "giordano-comp",
+   "title": "N. J. Giordano and H. Nakanishi, Computational Physics, 2nd ed. (Pearson, 2006)",
+   "url": "https://www.pearson.com",
+   "checked": false,
+   "note": "Not fetched; N-body and numerical Schrodinger rows come from knowledge of the book."
+  },
+  {
+   "id": "ashcroft-mermin",
+   "title": "N. W. Ashcroft and N. D. Mermin, Solid State Physics (Holt, Rinehart and Winston, 1976)",
+   "url": "https://www.cengage.com",
+   "checked": false,
+   "note": "Not fetched; tight-binding row comes from knowledge of the book's tight-binding chapter."
+  },
+  {
+   "id": "sandvik-spin",
+   "title": "A. W. Sandvik, Computational Studies of Quantum Spin Systems, AIP Conference Proceedings 1297, 135 (2010)",
+   "url": "https://arxiv.org/abs/1101.3281",
+   "checked": false,
+   "note": "Not fetched; exact diagonalisation row comes from knowledge of these lecture notes."
+  }
+ ],
+ "chapters": [
+  {
+   "name": "Low temperature and superconductivity",
+   "setups": [
+    {
+     "id": "cryogenic-thermometry",
+     "title": "Cryogenic thermometry and sensor calibration",
+     "src": "pobell-low-t",
+     "ref": "chapters on thermometry",
+     "kind": "research-technique",
+     "methods": [
+      "silicon diode",
+      "platinum RTD",
+      "RuO2 / Cernox resistor",
+      "thermocouple"
+     ],
+     "samples": [
+      "liquid nitrogen cryostat",
+      "closed-cycle cryocooler",
+      "liquid helium cryostat"
+     ],
+     "unknowns": [
+      "calibration curve",
+      "sensitivity",
+      "self-heating error"
+     ],
+     "conditions": [],
+     "kernel": "cryo_thermometry"
+    },
+    {
+     "id": "sc-tc-four-probe",
+     "title": "Superconducting Tc by four-probe resistance vs temperature",
+     "src": "mit-junior-lab",
+     "ref": "Superconductivity experiment",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "YBCO",
+      "niobium film",
+      "lead"
+     ],
+     "unknowns": [
+      "Tc",
+      "transition width",
+      "residual resistance ratio"
+     ],
+     "conditions": [
+      "zero field",
+      "applied field"
+     ],
+     "kernel": "sc_rt"
+    },
+    {
+     "id": "sc-critical-current",
+     "title": "Critical current density of a superconductor",
+     "src": "tinkham-sc",
+     "ref": "superconductivity experiment",
+     "kind": "research-technique",
+     "methods": [
+      "transport I-V with 1 uV/cm criterion"
+     ],
+     "samples": [
+      "YBCO bridge",
+      "NbTi wire"
+     ],
+     "unknowns": [
+      "critical current density",
+      "Jc vs temperature",
+      "Jc vs field"
+     ],
+     "conditions": [],
+     "kernel": "sc_jc"
+    },
+    {
+     "id": "sc-mutual-inductance",
+     "title": "Meissner effect by mutual-inductance AC susceptibility",
+     "src": "mit-junior-lab",
+     "ref": "Superconductivity experiment",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "YBCO pellet",
+      "niobium"
+     ],
+     "unknowns": [
+      "Tc",
+      "shielding fraction",
+      "chi' and chi'' vs T"
+     ],
+     "conditions": [],
+     "kernel": "ac_susc"
+    },
+    {
+     "id": "josephson-iv",
+     "title": "Josephson junction I-V and Shapiro steps",
+     "src": "clarke-squid",
+     "ref": "Josephson effect chapter",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "Nb/AlOx/Nb junction (simulated instrument)"
+     ],
+     "unknowns": [
+      "critical current",
+      "IcRn product",
+      "Shapiro step voltage"
+     ],
+     "conditions": [
+      "no microwaves",
+      "microwave irradiated"
+     ],
+     "kernel": "rcsj"
+    },
+    {
+     "id": "squid-magnetometry",
+     "title": "SQUID magnetometry: M-H and ZFC-FC",
+     "src": "clarke-squid",
+     "ref": "SQUID magnetometer chapter",
+     "kind": "research-technique",
+     "methods": [
+      "M-H loop",
+      "ZFC-FC M-T"
+     ],
+     "samples": [
+      "paramagnetic salt",
+      "ferromagnetic nanoparticles",
+      "superconductor"
+     ],
+     "unknowns": [
+      "moment vs field",
+      "blocking temperature",
+      "Curie constant"
+     ],
+     "conditions": [],
+     "kernel": "squid"
+    },
+    {
+     "id": "dc-squid-flux",
+     "title": "DC SQUID voltage-flux characteristic",
+     "src": "clarke-squid",
+     "ref": "DC SQUID chapter",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "DC SQUID (simulated instrument)"
+     ],
+     "unknowns": [
+      "V-Phi modulation depth",
+      "flux quantum period",
+      "flux noise"
+     ],
+     "conditions": [],
+     "kernel": "squid"
+    },
+    {
+     "id": "dilution-refrigerator",
+     "title": "Dilution refrigerator operation",
+     "src": "pobell-low-t",
+     "ref": "dilution refrigeration chapter",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "3He-4He mixture (simulated instrument)"
+     ],
+     "unknowns": [
+      "base temperature",
+      "cooling power vs mixing chamber temperature"
+     ],
+     "conditions": [],
+     "kernel": "dilution_fridge"
+    },
+    {
+     "id": "heat-capacity-relaxation",
+     "title": "Heat capacity by the relaxation method",
+     "src": "pobell-low-t",
+     "ref": "calorimetry",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "copper (reference)",
+      "superconductor",
+      "magnetic insulator"
+     ],
+     "unknowns": [
+      "Debye temperature",
+      "Sommerfeld coefficient",
+      "transition anomaly"
+     ],
+     "conditions": [],
+     "kernel": "relaxation_calorimetry"
+    },
+    {
+     "id": "thermal-conductivity-low-t",
+     "title": "Steady-state thermal conductivity at low temperature",
+     "src": "pobell-low-t",
+     "ref": "thermal conductivity",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "copper",
+      "stainless steel",
+      "insulating crystal"
+     ],
+     "unknowns": [
+      "thermal conductivity vs T",
+      "phonon peak"
+     ],
+     "conditions": [],
+     "kernel": "thermal_conductivity"
+    }
+   ]
+  },
+  {
+   "name": "Quantum transport",
+   "setups": [
+    {
+     "id": "quantum-hall",
+     "title": "Integer quantum Hall effect (simulated instrument)",
+     "src": "ihn-nano",
+     "ref": "Hall effect and 2D electron gas",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "GaAs/AlGaAs 2DEG",
+      "graphene"
+     ],
+     "unknowns": [
+      "Hall plateaus h/ne^2",
+      "carrier density",
+      "mobility"
+     ],
+     "conditions": [
+      "1.5 K",
+      "300 mK"
+     ],
+     "kernel": "qhe"
+    },
+    {
+     "id": "shubnikov-de-haas",
+     "title": "Shubnikov-de Haas oscillations",
+     "src": "ihn-nano",
+     "ref": "magnetotransport",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "GaAs 2DEG",
+      "bismuth",
+      "graphene"
+     ],
+     "unknowns": [
+      "carrier density from 1/B period",
+      "effective mass from T dependence",
+      "quantum lifetime"
+     ],
+     "conditions": [],
+     "kernel": "sdh"
+    },
+    {
+     "id": "weak-localisation",
+     "title": "Weak localisation magnetoresistance",
+     "src": "ihn-nano",
+     "ref": "magnetotransport",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "thin metal film",
+      "doped semiconductor film"
+     ],
+     "unknowns": [
+      "phase coherence length",
+      "dephasing time vs T"
+     ],
+     "conditions": [],
+     "kernel": "weak_loc"
+    },
+    {
+     "id": "hall-bar-mobility",
+     "title": "Hall bar transport: carrier density and mobility vs temperature",
+     "src": "schroder-char",
+     "ref": "Hall and van der Pauw chapters",
+     "kind": "research-technique",
+     "methods": [
+      "Hall bar",
+      "van der Pauw"
+     ],
+     "samples": [
+      "doped silicon",
+      "oxide thin film",
+      "2D material flake"
+     ],
+     "unknowns": [
+      "carrier density",
+      "mobility vs T",
+      "scattering mechanism"
+     ],
+     "conditions": [],
+     "kernel": "hall"
+    },
+    {
+     "id": "seebeck-research",
+     "title": "Seebeck coefficient and thermoelectric figure of merit",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164 Unit II: measurement of thermoelectric power (research extension)",
+     "kind": "research-technique",
+     "methods": [
+      "differential steady-state",
+      "slope (quasi-static)"
+     ],
+     "samples": [
+      "bismuth telluride",
+      "doped silicon"
+     ],
+     "unknowns": [
+      "Seebeck coefficient",
+      "power factor"
+     ],
+     "conditions": [],
+     "kernel": "seebeck"
+    },
+    {
+     "id": "tunnel-junction-spectroscopy",
+     "title": "Tunnelling spectroscopy of a superconductor (Giaever)",
+     "src": "tinkham-sc",
+     "ref": "tunnelling",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "Al/AlOx/Pb junction (simulated instrument)"
+     ],
+     "unknowns": [
+      "superconducting gap",
+      "gap vs temperature (BCS)"
+     ],
+     "conditions": [],
+     "kernel": "tunnel_bcs"
+    },
+    {
+     "id": "dlts",
+     "title": "Deep level transient spectroscopy",
+     "src": "schroder-char",
+     "ref": "semiconductor measurements",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "Schottky diode on n-Si",
+      "GaAs diode"
+     ],
+     "unknowns": [
+      "trap activation energy",
+      "capture cross-section",
+      "trap density"
+     ],
+     "conditions": [],
+     "kernel": "dlts"
+    },
+    {
+     "id": "cv-profiling",
+     "title": "C-V doping profile of a Schottky or p-n junction",
+     "src": "schroder-char",
+     "ref": "semiconductor measurements",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "Schottky diode",
+      "p-n junction",
+      "MOS capacitor"
+     ],
+     "unknowns": [
+      "doping profile",
+      "built-in potential",
+      "flat-band voltage"
+     ],
+     "conditions": [],
+     "kernel": "cv"
+    },
+    {
+     "id": "haynes-shockley-research",
+     "title": "Drift mobility and lifetime by Haynes-Shockley with pulsed laser injection",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5164: Haynes-Shockley experiment",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "n-Ge",
+      "p-Si"
+     ],
+     "unknowns": [
+      "drift mobility",
+      "diffusion coefficient",
+      "lifetime vs temperature"
+     ],
+     "conditions": [],
+     "kernel": "haynes_shockley"
+    },
+    {
+     "id": "solar-cell-eqe",
+     "title": "Solar cell external quantum efficiency and dark I-V",
+     "src": "schroder-char",
+     "ref": "optoelectronic measurements",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "silicon cell",
+      "perovskite cell",
+      "thin-film CdTe cell"
+     ],
+     "unknowns": [
+      "EQE spectrum",
+      "Jsc from EQE",
+      "ideality factor"
+     ],
+     "conditions": [],
+     "kernel": "solar_cell"
+    }
+   ]
+  },
+  {
+   "name": "Signal recovery and noise",
+   "setups": [
+    {
+     "id": "lock-in-detection",
+     "title": "Phase-sensitive (lock-in) detection of a small signal",
+     "src": "preston-dietz",
+     "ref": "chapter on signal recovery",
+     "kind": "research-technique",
+     "methods": [
+      "single-phase lock-in",
+      "dual-phase (X, Y, R, theta)"
+     ],
+     "samples": [
+      "chopped photodiode signal",
+      "AC bridge imbalance"
+     ],
+     "unknowns": [
+      "signal amplitude",
+      "phase",
+      "SNR vs time constant"
+     ],
+     "conditions": [],
+     "kernel": "lockin"
+    },
+    {
+     "id": "johnson-noise",
+     "title": "Johnson noise and Boltzmann's constant",
+     "src": "mit-junior-lab",
+     "ref": "Johnson Noise and Shot Noise",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "metal film resistors"
+     ],
+     "unknowns": [
+      "Boltzmann's constant",
+      "noise vs resistance",
+      "noise vs temperature"
+     ],
+     "conditions": [
+      "300 K",
+      "77 K"
+     ],
+     "kernel": "johnson"
+    },
+    {
+     "id": "shot-noise",
+     "title": "Shot noise and the electron charge",
+     "src": "mit-junior-lab",
+     "ref": "Johnson Noise and Shot Noise",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "vacuum photodiode",
+      "p-n photodiode"
+     ],
+     "unknowns": [
+      "electron charge",
+      "noise vs current"
+     ],
+     "conditions": [],
+     "kernel": "shot_noise"
+    },
+    {
+     "id": "boxcar-averaging",
+     "title": "Boxcar averaging of a repetitive pulse",
+     "src": "horowitz-hill",
+     "ref": "signal recovery",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "pulsed laser photodiode signal",
+      "fluorescence decay"
+     ],
+     "unknowns": [
+      "SNR vs number of averages",
+      "decay time"
+     ],
+     "conditions": [],
+     "kernel": "boxcar"
+    },
+    {
+     "id": "noise-spectral-density",
+     "title": "Noise spectral density and 1/f noise",
+     "src": "horowitz-hill",
+     "ref": "noise",
+     "kind": "research-technique",
+     "methods": [
+      "FFT spectrum analyser"
+     ],
+     "samples": [
+      "resistor",
+      "op-amp front end",
+      "carbon resistor"
+     ],
+     "unknowns": [
+      "white noise floor",
+      "1/f corner frequency"
+     ],
+     "conditions": [],
+     "kernel": "noise_psd"
+    },
+    {
+     "id": "poisson-statistics-research",
+     "title": "Poisson statistics of counting",
+     "src": "mit-junior-lab",
+     "ref": "Poisson Statistics",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "scintillation counts",
+      "photon counts"
+     ],
+     "unknowns": [
+      "mean-variance relation",
+      "interval distribution"
+     ],
+     "conditions": [
+      "low rate",
+      "high rate"
+     ],
+     "kernel": "poisson"
+    }
+   ]
+  },
+  {
+   "name": "Laser spectroscopy and atomic physics",
+   "setups": [
+    {
+     "id": "saturated-absorption-rb",
+     "title": "Doppler-free saturated absorption spectroscopy of rubidium",
+     "src": "mit-junior-lab",
+     "ref": "Doppler-Free Laser Spectroscopy",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "rubidium vapour cell"
+     ],
+     "unknowns": [
+      "hyperfine splittings of 85Rb and 87Rb",
+      "crossover resonances",
+      "natural line width estimate"
+     ],
+     "conditions": [
+      "room temperature cell",
+      "heated cell"
+     ],
+     "kernel": "sat_abs"
+    },
+    {
+     "id": "optical-pumping-rb",
+     "title": "Optical pumping of rubidium",
+     "src": "mit-junior-lab",
+     "ref": "Optical Pumping of Rubidium Vapor",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "natural Rb vapour cell"
+     ],
+     "unknowns": [
+      "Lande g_F",
+      "nuclear spins of 85Rb and 87Rb",
+      "Earth's field",
+      "pumping time"
+     ],
+     "conditions": [],
+     "kernel": "optical_pumping"
+    },
+    {
+     "id": "hydrogen-isotope-shift",
+     "title": "Optical emission of hydrogenic atoms: Rydberg constant and H/D isotope shift",
+     "src": "mit-junior-lab",
+     "ref": "Optical Emission Spectra of Hydrogenic Atoms",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "hydrogen lamp",
+      "deuterium lamp",
+      "helium lamp"
+     ],
+     "unknowns": [
+      "Rydberg constant",
+      "deuteron/proton mass ratio"
+     ],
+     "conditions": [],
+     "kernel": "rydberg"
+    },
+    {
+     "id": "diode-laser-characterisation",
+     "title": "Diode laser threshold, tuning and rate equations",
+     "src": "foot-atomic",
+     "ref": "lasers chapter",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "780 nm diode laser",
+      "650 nm diode laser"
+     ],
+     "unknowns": [
+      "threshold current",
+      "slope efficiency",
+      "wavelength vs current and temperature"
+     ],
+     "conditions": [],
+     "kernel": "laser_rate"
+    },
+    {
+     "id": "fabry-perot-cavity",
+     "title": "Scanning Fabry-Perot cavity: free spectral range and finesse",
+     "src": "foot-atomic",
+     "ref": "optical cavities",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "He-Ne laser",
+      "diode laser"
+     ],
+     "unknowns": [
+      "free spectral range",
+      "finesse",
+      "laser mode structure"
+     ],
+     "conditions": [],
+     "kernel": "fabry_perot"
+    },
+    {
+     "id": "laser-frequency-lock",
+     "title": "Laser frequency locking to an atomic line",
+     "src": "foot-atomic",
+     "ref": "laser stabilisation",
+     "kind": "research-technique",
+     "methods": [
+      "side-of-fringe lock",
+      "dither / lock-in lock"
+     ],
+     "samples": [
+      "Rb saturated absorption line"
+     ],
+     "unknowns": [
+      "residual frequency noise",
+      "lock bandwidth"
+     ],
+     "conditions": [],
+     "kernel": "laser_lock"
+    },
+    {
+     "id": "second-harmonic-generation",
+     "title": "Second harmonic generation and phase matching",
+     "src": "boyd-nlo",
+     "ref": "nonlinear optics",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "KDP crystal",
+      "BBO crystal"
+     ],
+     "unknowns": [
+      "SHG power vs input power",
+      "phase matching angle"
+     ],
+     "conditions": [],
+     "kernel": "shg"
+    },
+    {
+     "id": "z-scan",
+     "title": "Z-scan nonlinear refraction and absorption",
+     "src": "boyd-nlo",
+     "ref": "nonlinear optics",
+     "kind": "research-technique",
+     "methods": [
+      "closed aperture",
+      "open aperture"
+     ],
+     "samples": [
+      "CS2",
+      "dye solution",
+      "nanoparticle colloid"
+     ],
+     "unknowns": [
+      "nonlinear refractive index n2",
+      "two-photon absorption coefficient"
+     ],
+     "conditions": [],
+     "kernel": "zscan"
+    },
+    {
+     "id": "tcspc-lifetime",
+     "title": "Fluorescence lifetime by time-correlated single photon counting",
+     "src": "loudon-light",
+     "ref": "photon counting",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "rhodamine 6G",
+      "quantum dots",
+      "ruby"
+     ],
+     "unknowns": [
+      "lifetime",
+      "multi-exponential components"
+     ],
+     "conditions": [],
+     "kernel": "exp_decay"
+    },
+    {
+     "id": "pump-probe",
+     "title": "Pump-probe transient absorption (ultrafast)",
+     "src": "shah-ultrafast",
+     "ref": "time-resolved spectroscopy",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "semiconductor film",
+      "dye solution"
+     ],
+     "unknowns": [
+      "carrier relaxation time",
+      "transient spectrum"
+     ],
+     "conditions": [],
+     "kernel": "pump_probe"
+    },
+    {
+     "id": "raman-research",
+     "title": "Raman spectroscopy: mapping and temperature dependence",
+     "src": "mit-junior-lab",
+     "ref": "Raman Spectroscopy",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "graphene",
+      "MoS2",
+      "silicon",
+      "carbon tetrachloride"
+     ],
+     "unknowns": [
+      "layer number",
+      "strain / doping shift",
+      "phonon anharmonicity vs T"
+     ],
+     "conditions": [],
+     "kernel": "raman"
+    },
+    {
+     "id": "laser-cooling-mot",
+     "title": "Magneto-optical trap (simulated instrument)",
+     "src": "foot-atomic",
+     "ref": "laser cooling and trapping",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "rubidium atoms"
+     ],
+     "unknowns": [
+      "atom number",
+      "cloud temperature by time of flight",
+      "capture velocity"
+     ],
+     "conditions": [],
+     "kernel": "mot"
+    },
+    {
+     "id": "bec-simulated",
+     "title": "Bose-Einstein condensation (simulated instrument)",
+     "src": "foot-atomic",
+     "ref": "BEC chapter",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "87Rb in a magnetic trap"
+     ],
+     "unknowns": [
+      "critical temperature",
+      "condensate fraction vs T",
+      "bimodal time-of-flight profile"
+     ],
+     "conditions": [],
+     "kernel": "bec"
+    }
+   ]
+  },
+  {
+   "name": "Interferometry, quantum optics and photon statistics",
+   "setups": [
+    {
+     "id": "michelson-metrology",
+     "title": "Michelson interferometric displacement and coherence length",
+     "src": "mit-junior-lab",
+     "ref": "Michelson Interferometer",
+     "kind": "research-technique",
+     "methods": [
+      "fringe counting with photodiode",
+      "white-light coherence scan"
+     ],
+     "samples": [
+      "He-Ne laser",
+      "LED",
+      "sodium lamp"
+     ],
+     "unknowns": [
+      "displacement",
+      "coherence length",
+      "source line width"
+     ],
+     "conditions": [],
+     "kernel": "michelson"
+    },
+    {
+     "id": "hanbury-brown-twiss",
+     "title": "Hanbury Brown-Twiss intensity correlations",
+     "src": "loudon-light",
+     "ref": "photon statistics chapter",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "pseudo-thermal light (rotating ground glass)",
+      "laser light"
+     ],
+     "unknowns": [
+      "g2(0)",
+      "coherence time"
+     ],
+     "conditions": [],
+     "kernel": "g2"
+    },
+    {
+     "id": "single-photon-antibunching",
+     "title": "Single-photon anticorrelation with heralded photons",
+     "src": "loudon-light",
+     "ref": "nonclassical light",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "SPDC heralded photons"
+     ],
+     "unknowns": [
+      "anticorrelation parameter alpha < 1",
+      "heralded g2(0)"
+     ],
+     "conditions": [],
+     "kernel": "g2"
+    },
+    {
+     "id": "hong-ou-mandel",
+     "title": "Hong-Ou-Mandel two-photon interference",
+     "src": "loudon-light",
+     "ref": "two-photon interference",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "SPDC photon pairs"
+     ],
+     "unknowns": [
+      "HOM dip visibility",
+      "photon coherence length"
+     ],
+     "conditions": [],
+     "kernel": "hom"
+    },
+    {
+     "id": "bell-inequality",
+     "title": "Entangled photons and the CHSH Bell inequality",
+     "src": "loudon-light",
+     "ref": "entanglement",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "type-I SPDC pair source"
+     ],
+     "unknowns": [
+      "CHSH S parameter",
+      "polarisation correlation visibility"
+     ],
+     "conditions": [],
+     "kernel": "chsh"
+    },
+    {
+     "id": "quantum-eraser",
+     "title": "Single-photon interference and quantum eraser",
+     "src": "loudon-light",
+     "ref": "single-photon interference",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "attenuated laser",
+      "heralded photons"
+     ],
+     "unknowns": [
+      "fringe visibility with and without which-path information"
+     ],
+     "conditions": [],
+     "kernel": "interference_1ph"
+    },
+    {
+     "id": "nmr-quantum-computing",
+     "title": "Quantum information processing with NMR",
+     "src": "mit-junior-lab",
+     "ref": "Quantum Information Processing",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "chloroform (13C-1H two-qubit system)"
+     ],
+     "unknowns": [
+      "gate fidelity",
+      "Deutsch-Jozsa / Grover output"
+     ],
+     "conditions": [],
+     "kernel": "nmr_qip"
+    },
+    {
+     "id": "optical-tweezers",
+     "title": "Optical tweezers: trap stiffness",
+     "src": "mit-junior-lab",
+     "ref": "Optical Trapping",
+     "kind": "research-technique",
+     "methods": [
+      "equipartition",
+      "power spectrum corner frequency",
+      "Stokes drag"
+     ],
+     "samples": [
+      "1 um silica bead",
+      "2 um polystyrene bead"
+     ],
+     "unknowns": [
+      "trap stiffness",
+      "Boltzmann's constant",
+      "viscosity"
+     ],
+     "conditions": [
+      "several laser powers"
+     ],
+     "kernel": "tweezers"
+    }
+   ]
+  },
+  {
+   "name": "Magnetic resonance and hyperfine methods",
+   "setups": [
+    {
+     "id": "pulsed-nmr-t1-t2",
+     "title": "Pulsed NMR: spin echoes, T1 and T2",
+     "src": "mit-junior-lab",
+     "ref": "Pulsed NMR: Spin Echoes",
+     "kind": "research-technique",
+     "methods": [
+      "inversion recovery (T1)",
+      "Hahn echo (T2)",
+      "Carr-Purcell-Meiboom-Gill (T2)"
+     ],
+     "samples": [
+      "water",
+      "glycerin",
+      "mineral oil",
+      "water with paramagnetic ions"
+     ],
+     "unknowns": [
+      "T1",
+      "T2",
+      "gyromagnetic ratio"
+     ],
+     "conditions": [
+      "several concentrations",
+      "several temperatures"
+     ],
+     "kernel": "bloch"
+    },
+    {
+     "id": "nmr-diffusion",
+     "title": "Self-diffusion by pulsed field gradient NMR",
+     "src": "slichter-resonance",
+     "ref": "spin echo with gradients",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "water",
+      "glycerin"
+     ],
+     "unknowns": [
+      "diffusion coefficient"
+     ],
+     "conditions": [
+      "several temperatures"
+     ],
+     "kernel": "bloch"
+    },
+    {
+     "id": "mossbauer-fe57",
+     "title": "Mossbauer spectroscopy of iron compounds",
+     "src": "mit-junior-lab",
+     "ref": "Mossbauer Spectroscopy",
+     "kind": "research-technique",
+     "methods": [
+      "constant acceleration drive"
+     ],
+     "samples": [
+      "alpha-iron foil",
+      "stainless steel",
+      "iron oxide (hematite)",
+      "sodium nitroprusside"
+     ],
+     "unknowns": [
+      "isomer shift",
+      "quadrupole splitting",
+      "hyperfine field"
+     ],
+     "conditions": [],
+     "kernel": "mossbauer"
+    },
+    {
+     "id": "ferromagnetic-resonance",
+     "title": "Ferromagnetic resonance",
+     "src": "slichter-resonance",
+     "ref": "magnetic resonance in ordered systems",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "YIG sphere",
+      "permalloy film"
+     ],
+     "unknowns": [
+      "Kittel relation fit",
+      "damping parameter",
+      "saturation magnetisation"
+     ],
+     "conditions": [],
+     "kernel": "fmr"
+    },
+    {
+     "id": "esr-research",
+     "title": "ESR line shape and relaxation",
+     "src": "slichter-resonance",
+     "ref": "electron spin resonance",
+     "kind": "research-technique",
+     "methods": [
+      "field-modulated derivative detection"
+     ],
+     "samples": [
+      "DPPH",
+      "Mn2+ in MgO",
+      "irradiated organic radical"
+     ],
+     "unknowns": [
+      "g-factor",
+      "hyperfine constant",
+      "line width"
+     ],
+     "conditions": [],
+     "kernel": "esr"
+    },
+    {
+     "id": "positron-annihilation",
+     "title": "Positron annihilation angular correlation and lifetime",
+     "src": "knoll-detection",
+     "ref": "coincidence spectroscopy",
+     "kind": "research-technique",
+     "methods": [
+      "fast-fast lifetime coincidence",
+      "angular correlation"
+     ],
+     "samples": [
+      "Na-22 with metal",
+      "Na-22 with polymer"
+     ],
+     "unknowns": [
+      "positron lifetime",
+      "momentum distribution"
+     ],
+     "conditions": [],
+     "kernel": "positron"
+    }
+   ]
+  },
+  {
+   "name": "Magnetism and magneto-optics",
+   "setups": [
+    {
+     "id": "moke",
+     "title": "Magneto-optic Kerr effect hysteresis",
+     "src": "fujiwara-ellipsometry",
+     "ref": "polarisation optics / magneto-optics",
+     "kind": "research-technique",
+     "methods": [
+      "polar MOKE",
+      "longitudinal MOKE"
+     ],
+     "samples": [
+      "cobalt film",
+      "permalloy film",
+      "Fe/MgO film"
+     ],
+     "unknowns": [
+      "coercive field",
+      "Kerr rotation",
+      "anisotropy axis"
+     ],
+     "conditions": [],
+     "kernel": "moke"
+    },
+    {
+     "id": "vsm-research",
+     "title": "Vibrating sample magnetometry vs temperature",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 VSM characterisation",
+     "kind": "research-technique",
+     "methods": [
+      "M-H loop",
+      "M-T"
+     ],
+     "samples": [
+      "ferrite nanoparticles",
+      "magnetic thin film",
+      "paramagnetic salt"
+     ],
+     "unknowns": [
+      "saturation magnetisation",
+      "Curie temperature",
+      "anisotropy"
+     ],
+     "conditions": [],
+     "kernel": "mh_loop"
+    }
+   ]
+  },
+  {
+   "name": "X-ray and electron methods",
+   "setups": [
+    {
+     "id": "xrd-rietveld",
+     "title": "Powder XRD and Rietveld refinement",
+     "src": "young-rietveld",
+     "ref": "Rietveld method",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "silicon standard",
+      "perovskite oxide",
+      "spinel ferrite",
+      "two-phase mixture"
+     ],
+     "unknowns": [
+      "lattice parameters",
+      "atomic positions",
+      "phase fractions",
+      "crystallite size"
+     ],
+     "conditions": [],
+     "kernel": "rietveld"
+    },
+    {
+     "id": "xrr-thin-film",
+     "title": "X-ray reflectivity of thin films",
+     "src": "cullity-xrd",
+     "ref": "X-ray methods for films",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "single layer on Si",
+      "multilayer"
+     ],
+     "unknowns": [
+      "thickness",
+      "density",
+      "interface roughness"
+     ],
+     "conditions": [],
+     "kernel": "xrr"
+    },
+    {
+     "id": "hrxrd-rocking-curve",
+     "title": "High-resolution XRD rocking curve",
+     "src": "cullity-xrd",
+     "ref": "single crystal methods",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "epitaxial film on substrate",
+      "silicon single crystal"
+     ],
+     "unknowns": [
+      "mosaic spread",
+      "lattice mismatch strain"
+     ],
+     "conditions": [],
+     "kernel": "rocking_curve"
+    },
+    {
+     "id": "laue-orientation",
+     "title": "Laue back-reflection crystal orientation",
+     "src": "cullity-xrd",
+     "ref": "Laue method",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "silicon crystal",
+      "NaCl crystal"
+     ],
+     "unknowns": [
+      "crystal orientation",
+      "symmetry axis"
+     ],
+     "conditions": [],
+     "kernel": "laue"
+    },
+    {
+     "id": "xray-physics-moseley",
+     "title": "X-ray physics: Moseley's law and absorption edges",
+     "src": "mit-junior-lab",
+     "ref": "X-Ray Physics",
+     "kind": "research-technique",
+     "methods": [
+      "fluorescence lines",
+      "absorption edges"
+     ],
+     "samples": [
+      "Cu",
+      "Zn",
+      "Mo",
+      "Ag",
+      "Zr"
+     ],
+     "unknowns": [
+      "Moseley screening constant",
+      "Rydberg constant",
+      "K-edge energies"
+     ],
+     "conditions": [],
+     "kernel": "moseley"
+    },
+    {
+     "id": "sem-eds",
+     "title": "SEM imaging and EDS microanalysis",
+     "src": "goldstein-sem",
+     "ref": "SEM and X-ray microanalysis",
+     "kind": "research-technique",
+     "methods": [
+      "secondary electron imaging",
+      "backscattered electron imaging",
+      "EDS"
+     ],
+     "samples": [
+      "metal alloy",
+      "nanoparticle film",
+      "fracture surface"
+     ],
+     "unknowns": [
+      "feature size",
+      "composition"
+     ],
+     "conditions": [
+      "several beam energies"
+     ],
+     "kernel": "sem"
+    },
+    {
+     "id": "tem-saed",
+     "title": "TEM imaging and selected area electron diffraction",
+     "src": "goldstein-sem",
+     "ref": "electron diffraction",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "gold nanoparticles",
+      "polycrystalline Al film",
+      "single crystal flake"
+     ],
+     "unknowns": [
+      "d-spacings",
+      "camera constant",
+      "particle size"
+     ],
+     "conditions": [],
+     "kernel": "tem"
+    },
+    {
+     "id": "afm-force-curves",
+     "title": "AFM imaging and force-distance spectroscopy",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5112 AFM; research technique",
+     "kind": "research-technique",
+     "methods": [
+      "contact mode",
+      "tapping mode",
+      "force-distance curve"
+     ],
+     "samples": [
+      "grating standard",
+      "polymer film",
+      "2D material flake"
+     ],
+     "unknowns": [
+      "roughness",
+      "step height",
+      "spring constant",
+      "adhesion force"
+     ],
+     "conditions": [],
+     "kernel": "afm"
+    },
+    {
+     "id": "stm-imaging",
+     "title": "Scanning tunnelling microscopy and spectroscopy",
+     "src": "chen-stm",
+     "ref": "tunnelling microscopy",
+     "kind": "research-technique",
+     "methods": [
+      "constant current imaging",
+      "I-V spectroscopy"
+     ],
+     "samples": [
+      "HOPG",
+      "gold (111)"
+     ],
+     "unknowns": [
+      "atomic lattice spacing",
+      "tunnel barrier height",
+      "local density of states"
+     ],
+     "conditions": [],
+     "kernel": "stm"
+    },
+    {
+     "id": "xps-research",
+     "title": "XPS chemical state and depth profile",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5118 Unit IV item 2",
+     "kind": "research-technique",
+     "methods": [
+      "survey and high-resolution scans",
+      "argon sputter depth profile"
+     ],
+     "samples": [
+      "oxide thin film",
+      "native oxide on Si"
+     ],
+     "unknowns": [
+      "composition",
+      "oxidation state",
+      "oxide thickness"
+     ],
+     "conditions": [],
+     "kernel": "xps"
+    },
+    {
+     "id": "rutherford-scattering",
+     "title": "Rutherford scattering of alpha particles",
+     "src": "mit-junior-lab",
+     "ref": "Rutherford Scattering",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "gold foil",
+      "aluminium foil"
+     ],
+     "unknowns": [
+      "angular dependence (1/sin^4)",
+      "nuclear charge dependence"
+     ],
+     "conditions": [],
+     "kernel": "rutherford"
+    }
+   ]
+  },
+  {
+   "name": "Thin films and vacuum",
+   "setups": [
+    {
+     "id": "vacuum-system-research",
+     "title": "High vacuum system: pumpdown, conductance and leak testing",
+     "src": "preston-dietz",
+     "ref": "vacuum techniques chapter",
+     "kind": "research-technique",
+     "methods": [
+      "rotary + turbomolecular pump",
+      "rotary + diffusion pump"
+     ],
+     "samples": [
+      "stainless chamber"
+     ],
+     "unknowns": [
+      "pumping speed",
+      "conductance",
+      "leak rate",
+      "outgassing rate"
+     ],
+     "conditions": [],
+     "kernel": "pumpdown"
+    },
+    {
+     "id": "thermal-evaporation-research",
+     "title": "Thermal evaporation with quartz crystal monitoring",
+     "src": "ohring-films",
+     "ref": "physical vapour deposition",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "aluminium",
+      "silver",
+      "gold",
+      "copper"
+     ],
+     "unknowns": [
+      "deposition rate",
+      "thickness",
+      "tooling factor"
+     ],
+     "conditions": [],
+     "kernel": "evaporation"
+    },
+    {
+     "id": "ebeam-evaporation",
+     "title": "Electron-beam evaporation",
+     "src": "ohring-films",
+     "ref": "physical vapour deposition",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "titanium",
+      "SiO2",
+      "TiO2"
+     ],
+     "unknowns": [
+      "deposition rate vs beam power",
+      "film thickness"
+     ],
+     "conditions": [],
+     "kernel": "evaporation"
+    },
+    {
+     "id": "magnetron-sputtering",
+     "title": "DC and RF magnetron sputtering",
+     "src": "ohring-films",
+     "ref": "sputter deposition",
+     "kind": "research-technique",
+     "methods": [
+      "DC sputtering",
+      "RF sputtering",
+      "reactive sputtering"
+     ],
+     "samples": [
+      "copper target",
+      "ZnO target",
+      "titanium target in Ar/N2"
+     ],
+     "unknowns": [
+      "deposition rate",
+      "film resistivity",
+      "stoichiometry"
+     ],
+     "conditions": [
+      "several pressures",
+      "several powers"
+     ],
+     "kernel": "sputter_rate"
+    },
+    {
+     "id": "pulsed-laser-deposition",
+     "title": "Pulsed laser deposition",
+     "src": "ohring-films",
+     "ref": "laser ablation",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "YBCO target",
+      "ZnO target",
+      "perovskite oxide target"
+     ],
+     "unknowns": [
+      "growth rate per pulse",
+      "crystallinity"
+     ],
+     "conditions": [
+      "several oxygen pressures",
+      "several substrate temperatures"
+     ],
+     "kernel": "pld"
+    },
+    {
+     "id": "spin-coating",
+     "title": "Spin coating and thickness vs spin speed",
+     "src": "ohring-films",
+     "ref": "solution deposition",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "polymer solution",
+      "sol-gel precursor"
+     ],
+     "unknowns": [
+      "thickness vs speed",
+      "uniformity"
+     ],
+     "conditions": [],
+     "kernel": "spin_coat"
+    },
+    {
+     "id": "cvd-growth",
+     "title": "Chemical vapour deposition",
+     "src": "ohring-films",
+     "ref": "CVD chapter",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "graphene on copper",
+      "carbon nanotubes",
+      "MoS2"
+     ],
+     "unknowns": [
+      "growth rate",
+      "coverage",
+      "Raman quality"
+     ],
+     "conditions": [],
+     "kernel": "cvd"
+    },
+    {
+     "id": "stylus-profilometry",
+     "title": "Film thickness by stylus profilometry",
+     "src": "ohring-films",
+     "ref": "film thickness measurement",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "metal film step",
+      "polymer film step"
+     ],
+     "unknowns": [
+      "step height",
+      "roughness"
+     ],
+     "conditions": [],
+     "kernel": "profilometer"
+    },
+    {
+     "id": "spectroscopic-ellipsometry",
+     "title": "Variable-angle spectroscopic ellipsometry",
+     "src": "fujiwara-ellipsometry",
+     "ref": "data analysis chapters",
+     "kind": "research-technique",
+     "methods": [
+      "Cauchy model",
+      "Tauc-Lorentz model"
+     ],
+     "samples": [
+      "SiO2 on Si",
+      "TiO2 film",
+      "ITO film"
+     ],
+     "unknowns": [
+      "thickness",
+      "n and k spectra",
+      "optical band gap"
+     ],
+     "conditions": [
+      "several angles"
+     ],
+     "kernel": "ellipsometry"
+    },
+    {
+     "id": "thin-film-stress",
+     "title": "Film stress by substrate curvature",
+     "src": "ohring-films",
+     "ref": "mechanical properties of films",
+     "kind": "research-technique",
+     "methods": [
+      "laser deflection curvature",
+      "profilometer curvature"
+     ],
+     "samples": [
+      "sputtered metal film",
+      "oxide film"
+     ],
+     "unknowns": [
+      "residual stress",
+      "thermal stress vs T"
+     ],
+     "conditions": [],
+     "kernel": "stoney"
+    },
+    {
+     "id": "impedance-spectroscopy",
+     "title": "Impedance and dielectric spectroscopy",
+     "src": "barsoukov-impedance",
+     "ref": "AC measurements",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "ionic conductor pellet",
+      "ceramic capacitor",
+      "polymer film"
+     ],
+     "unknowns": [
+      "bulk and grain-boundary resistance",
+      "dielectric relaxation time",
+      "activation energy"
+     ],
+     "conditions": [
+      "several temperatures"
+     ],
+     "kernel": "impedance"
+    }
+   ]
+  },
+  {
+   "name": "Nuclear, particle and cosmic-ray physics",
+   "setups": [
+    {
+     "id": "muon-lifetime",
+     "title": "Mean life of cosmic-ray muons",
+     "src": "mit-junior-lab",
+     "ref": "The Speed and Mean Life of Cosmic-Ray Muons",
+     "kind": "research-technique",
+     "methods": [
+      "stopped muon delayed coincidence"
+     ],
+     "samples": [
+      "plastic scintillator block",
+      "liquid scintillator tank"
+     ],
+     "unknowns": [
+      "muon mean life",
+      "mu-/mu+ capture effect"
+     ],
+     "conditions": [],
+     "kernel": "muon_decay"
+    },
+    {
+     "id": "muon-speed",
+     "title": "Speed of cosmic-ray muons by time of flight",
+     "src": "mit-junior-lab",
+     "ref": "The Speed and Mean Life of Cosmic-Ray Muons",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "two scintillator paddles"
+     ],
+     "unknowns": [
+      "muon speed"
+     ],
+     "conditions": [
+      "several paddle separations"
+     ],
+     "kernel": "tof"
+    },
+    {
+     "id": "cosmic-zenith",
+     "title": "Cosmic-ray coincidence telescope: zenith angle distribution",
+     "src": "melissinos-napolitano",
+     "ref": "cosmic rays chapter",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "scintillator paddles",
+      "GM tubes"
+     ],
+     "unknowns": [
+      "cos^n zenith law exponent",
+      "flux"
+     ],
+     "conditions": [
+      "several angles",
+      "with lead absorber"
+     ],
+     "kernel": "cosmic_flux"
+    },
+    {
+     "id": "compton-klein-nishina",
+     "title": "Compton scattering and the Klein-Nishina cross-section",
+     "src": "mit-junior-lab",
+     "ref": "Compton Scattering",
+     "kind": "research-technique",
+     "methods": [
+      "coincidence between scatterer and detector"
+     ],
+     "samples": [
+      "plastic scatterer",
+      "aluminium scatterer"
+     ],
+     "unknowns": [
+      "electron rest energy",
+      "differential cross-section vs angle"
+     ],
+     "conditions": [],
+     "kernel": "compton"
+    },
+    {
+     "id": "relativistic-dynamics",
+     "title": "Relativistic dynamics of beta electrons",
+     "src": "mit-junior-lab",
+     "ref": "Relativistic Dynamics",
+     "kind": "research-technique",
+     "methods": [
+      "magnetic momentum selection with energy measurement"
+     ],
+     "samples": [
+      "Sr-90"
+     ],
+     "unknowns": [
+      "momentum-energy relation",
+      "electron rest mass",
+      "e/m"
+     ],
+     "conditions": [],
+     "kernel": "relativistic_beta"
+    },
+    {
+     "id": "hpge-research",
+     "title": "High-resolution gamma spectroscopy with HPGe",
+     "src": "knoll-detection",
+     "ref": "semiconductor detectors",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "Eu-152",
+      "Co-60",
+      "soil sample",
+      "NORM building material"
+     ],
+     "unknowns": [
+      "efficiency curve",
+      "activity",
+      "isotope identification"
+     ],
+     "conditions": [],
+     "kernel": "gamma_spectrum"
+    },
+    {
+     "id": "sipm-timing",
+     "title": "SiPM and fast scintillator timing",
+     "src": "leo-techniques",
+     "ref": "timing methods",
+     "kind": "research-technique",
+     "methods": [
+      "leading-edge discrimination",
+      "constant-fraction discrimination"
+     ],
+     "samples": [
+      "LYSO with SiPM",
+      "plastic with SiPM"
+     ],
+     "unknowns": [
+      "coincidence time resolution",
+      "photoelectron spectrum"
+     ],
+     "conditions": [],
+     "kernel": "timing"
+    },
+    {
+     "id": "cherenkov-detector",
+     "title": "Cherenkov detector threshold and light yield",
+     "src": "leo-techniques",
+     "ref": "Cherenkov detectors",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "water radiator",
+      "acrylic radiator"
+     ],
+     "unknowns": [
+      "light yield",
+      "threshold velocity"
+     ],
+     "conditions": [],
+     "kernel": "cherenkov"
+    },
+    {
+     "id": "wire-chamber",
+     "title": "Multiwire proportional chamber / drift tube",
+     "src": "leo-techniques",
+     "ref": "gas detectors",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "Ar/CO2 gas"
+     ],
+     "unknowns": [
+      "gain vs voltage",
+      "drift velocity",
+      "position resolution"
+     ],
+     "conditions": [],
+     "kernel": "prop_counter"
+    },
+    {
+     "id": "silicon-strip",
+     "title": "Silicon strip / pad detector with minimum ionising particles",
+     "src": "leo-techniques",
+     "ref": "semiconductor detectors",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "Sr-90 beta source",
+      "cosmic muons"
+     ],
+     "unknowns": [
+      "Landau most-probable value",
+      "signal-to-noise",
+      "depletion voltage"
+     ],
+     "conditions": [],
+     "kernel": "landau"
+    },
+    {
+     "id": "geant4-response",
+     "title": "Detector response by Monte Carlo transport (Geant4-type)",
+     "src": "knoll-detection",
+     "ref": "detector response functions",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "NaI crystal",
+      "HPGe crystal",
+      "plastic scintillator"
+     ],
+     "unknowns": [
+      "response function",
+      "full-energy efficiency"
+     ],
+     "conditions": [],
+     "kernel": "photon_mc"
+    }
+   ]
+  },
+  {
+   "name": "Plasma diagnostics",
+   "setups": [
+    {
+     "id": "langmuir-probe",
+     "title": "Langmuir probe I-V",
+     "src": "hutchinson-plasma",
+     "ref": "electric probes chapter",
+     "kind": "research-technique",
+     "methods": [
+      "single probe",
+      "double probe",
+      "emissive probe"
+     ],
+     "samples": [
+      "argon DC glow discharge",
+      "argon RF discharge"
+     ],
+     "unknowns": [
+      "electron temperature",
+      "plasma density",
+      "floating and plasma potential"
+     ],
+     "conditions": [
+      "several pressures",
+      "several powers"
+     ],
+     "kernel": "langmuir"
+    },
+    {
+     "id": "paschen-curve",
+     "title": "Paschen breakdown curve",
+     "src": "hutchinson-plasma",
+     "ref": "discharge basics",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "air",
+      "argon",
+      "nitrogen"
+     ],
+     "unknowns": [
+      "minimum breakdown voltage",
+      "pd at minimum"
+     ],
+     "conditions": [],
+     "kernel": "paschen"
+    },
+    {
+     "id": "plasma-oes",
+     "title": "Optical emission spectroscopy of a plasma",
+     "src": "hutchinson-plasma",
+     "ref": "line radiation",
+     "kind": "research-technique",
+     "methods": [
+      "line-ratio (Boltzmann plot)",
+      "Stark broadening"
+     ],
+     "samples": [
+      "argon plasma",
+      "hydrogen plasma"
+     ],
+     "unknowns": [
+      "excitation temperature",
+      "electron density"
+     ],
+     "conditions": [],
+     "kernel": "plasma_oes"
+    },
+    {
+     "id": "microwave-interferometry-plasma",
+     "title": "Microwave interferometry of plasma density",
+     "src": "hutchinson-plasma",
+     "ref": "refractive index measurements",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "argon discharge"
+     ],
+     "unknowns": [
+      "line-integrated electron density"
+     ],
+     "conditions": [],
+     "kernel": "plasma_interf"
+    }
+   ]
+  },
+  {
+   "name": "Radio astronomy and astrophysics data",
+   "setups": [
+    {
+     "id": "hi-21cm-rotation",
+     "title": "21-cm hydrogen line and the Galactic rotation curve",
+     "src": "mit-junior-lab",
+     "ref": "21-cm Radio Astrophysics",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "Galactic plane pointings"
+     ],
+     "unknowns": [
+      "rotation curve",
+      "HI column density",
+      "local standard of rest velocity"
+     ],
+     "conditions": [],
+     "kernel": "hi21"
+    },
+    {
+     "id": "radio-sun-drift",
+     "title": "Radio telescope beam and solar drift scan",
+     "src": "wilson-radio",
+     "ref": "antennas and receivers",
+     "kind": "research-technique",
+     "methods": [],
+     "samples": [
+      "Sun",
+      "Cas A / Cyg A"
+     ],
+     "unknowns": [
+      "beam width",
+      "system temperature (Y-factor)",
+      "source flux"
+     ],
+     "conditions": [],
+     "kernel": "radio_beam"
+    },
+    {
+     "id": "exoplanet-transit",
+     "title": "Exoplanet transit light curve analysis",
+     "src": "public-astro-archives",
+     "ref": "TESS / Kepler light curves via MAST",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "TESS target light curve",
+      "Kepler target light curve"
+     ],
+     "unknowns": [
+      "planet radius ratio",
+      "orbital period",
+      "inclination"
+     ],
+     "conditions": [],
+     "kernel": "transit"
+    },
+    {
+     "id": "hubble-law",
+     "title": "Hubble's law from galaxy spectra",
+     "src": "public-astro-archives",
+     "ref": "SDSS spectra",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "SDSS galaxy spectra"
+     ],
+     "unknowns": [
+      "redshifts",
+      "Hubble constant"
+     ],
+     "conditions": [],
+     "kernel": "hubble"
+    },
+    {
+     "id": "hr-diagram-gaia",
+     "title": "Colour-magnitude diagram of a cluster from Gaia",
+     "src": "public-astro-archives",
+     "ref": "Gaia archive",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "open cluster member list"
+     ],
+     "unknowns": [
+      "cluster distance",
+      "turn-off age estimate"
+     ],
+     "conditions": [],
+     "kernel": "cmd"
+    },
+    {
+     "id": "gw-matched-filter",
+     "title": "Gravitational-wave event by matched filtering",
+     "src": "public-astro-archives",
+     "ref": "GWOSC open strain data",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "GW150914 strain",
+      "GW170817 strain"
+     ],
+     "unknowns": [
+      "chirp mass",
+      "SNR",
+      "merger time"
+     ],
+     "conditions": [],
+     "kernel": "matched_filter"
+    },
+    {
+     "id": "variable-star-period",
+     "title": "Variable star period from survey photometry",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5222 time-series analysis",
+     "kind": "computational",
+     "methods": [
+      "Lomb-Scargle periodogram",
+      "phase dispersion minimisation"
+     ],
+     "samples": [
+      "Cepheid",
+      "RR Lyrae",
+      "eclipsing binary"
+     ],
+     "unknowns": [
+      "period",
+      "amplitude",
+      "distance (period-luminosity)"
+     ],
+     "conditions": [],
+     "kernel": "periodogram"
+    },
+    {
+     "id": "ccd-reduction-pipeline",
+     "title": "CCD reduction and photometric pipeline",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5222 Units II-III",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "bias, dark and flat frames",
+      "science frames of a star field"
+     ],
+     "unknowns": [
+      "calibrated magnitudes",
+      "zero point",
+      "astrometric solution"
+     ],
+     "conditions": [],
+     "kernel": "ccd"
+    }
+   ]
+  },
+  {
+   "name": "Computational physics",
+   "setups": [
+    {
+     "id": "ising-metropolis-critical",
+     "title": "2D Ising model: critical temperature and exponents",
+     "src": "newman-barkema",
+     "ref": "Metropolis algorithm and finite-size scaling",
+     "kind": "computational",
+     "methods": [
+      "Metropolis",
+      "Wolff cluster"
+     ],
+     "samples": [],
+     "unknowns": [
+      "critical temperature",
+      "critical exponents",
+      "Binder cumulant crossing"
+     ],
+     "conditions": [
+      "several lattice sizes"
+     ],
+     "kernel": "ising"
+    },
+    {
+     "id": "heisenberg-xy-mc",
+     "title": "Monte Carlo of XY and Heisenberg models",
+     "src": "newman-barkema",
+     "ref": "continuous spin models",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "2D XY model",
+      "3D Heisenberg model"
+     ],
+     "unknowns": [
+      "helicity modulus (BKT)",
+      "critical temperature"
+     ],
+     "conditions": [],
+     "kernel": "spin_mc"
+    },
+    {
+     "id": "md-lennard-jones",
+     "title": "Molecular dynamics of a Lennard-Jones fluid",
+     "src": "frenkel-smit",
+     "ref": "molecular dynamics chapters",
+     "kind": "computational",
+     "methods": [
+      "velocity Verlet (NVE)",
+      "thermostatted (NVT)"
+     ],
+     "samples": [
+      "argon-like fluid"
+     ],
+     "unknowns": [
+      "radial distribution function",
+      "diffusion coefficient",
+      "equation of state"
+     ],
+     "conditions": [
+      "gas",
+      "liquid",
+      "solid"
+     ],
+     "kernel": "md_lj"
+    },
+    {
+     "id": "mc-nvt-fluid",
+     "title": "Metropolis Monte Carlo of a simple fluid",
+     "src": "frenkel-smit",
+     "ref": "Monte Carlo in the canonical ensemble",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "hard spheres",
+      "Lennard-Jones"
+     ],
+     "unknowns": [
+      "pressure",
+      "radial distribution function"
+     ],
+     "conditions": [],
+     "kernel": "mc_fluid"
+    },
+    {
+     "id": "dft-research",
+     "title": "DFT structure, bands and phonons",
+     "src": "du-msc-2025",
+     "ref": "PH-DSE5142 Computational Material Science",
+     "kind": "computational",
+     "methods": [
+      "GGA",
+      "hybrid functional"
+     ],
+     "samples": [
+      "silicon",
+      "GaAs",
+      "graphene",
+      "MoS2 monolayer"
+     ],
+     "unknowns": [
+      "band gap",
+      "lattice constant",
+      "phonon dispersion"
+     ],
+     "conditions": [],
+     "kernel": "dft"
+    },
+    {
+     "id": "tight-binding",
+     "title": "Tight-binding band structures",
+     "src": "ashcroft-mermin",
+     "ref": "lattice models (numerical diagonalisation)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "1D chain",
+      "graphene",
+      "square lattice"
+     ],
+     "unknowns": [
+      "band structure",
+      "density of states"
+     ],
+     "conditions": [],
+     "kernel": "tight_binding"
+    },
+    {
+     "id": "exact-diagonalisation",
+     "title": "Exact diagonalisation of a quantum spin chain",
+     "src": "sandvik-spin",
+     "ref": "quantum lattice models",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "Heisenberg chain",
+      "transverse-field Ising chain"
+     ],
+     "unknowns": [
+      "ground state energy",
+      "gap vs chain length",
+      "correlation function"
+     ],
+     "conditions": [],
+     "kernel": "ed_spin"
+    },
+    {
+     "id": "fdtd-em",
+     "title": "Finite-difference time-domain electromagnetics",
+     "src": "taflove-fdtd",
+     "ref": "numerical integration of field equations",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "slab waveguide",
+      "photonic crystal",
+      "metal nanoparticle"
+     ],
+     "unknowns": [
+      "transmission spectrum",
+      "band gap",
+      "field enhancement"
+     ],
+     "conditions": [],
+     "kernel": "fdtd"
+    },
+    {
+     "id": "pic-plasma",
+     "title": "Particle-in-cell simulation of a plasma",
+     "src": "birdsall-pic",
+     "ref": "plasma waves (computational)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "1D electrostatic plasma"
+     ],
+     "unknowns": [
+      "plasma frequency",
+      "two-stream instability growth rate"
+     ],
+     "conditions": [],
+     "kernel": "pic"
+    },
+    {
+     "id": "n-body",
+     "title": "N-body gravitational simulation",
+     "src": "giordano-comp",
+     "ref": "integrators for many-body dynamics",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "two-body orbit",
+      "star cluster"
+     ],
+     "unknowns": [
+      "energy conservation",
+      "virial ratio",
+      "relaxation time"
+     ],
+     "conditions": [],
+     "kernel": "nbody"
+    },
+    {
+     "id": "mcmc-fitting",
+     "title": "Bayesian parameter estimation by MCMC",
+     "src": "newman-barkema",
+     "ref": "Markov chain Monte Carlo",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "noisy spectral line",
+      "decay curve",
+      "transit light curve"
+     ],
+     "unknowns": [
+      "posterior parameters",
+      "credible intervals"
+     ],
+     "conditions": [],
+     "kernel": "mcmc"
+    },
+    {
+     "id": "schrodinger-numerical",
+     "title": "Numerical Schrodinger equation (shooting and split-step)",
+     "src": "giordano-comp",
+     "ref": "numerical methods",
+     "kind": "computational",
+     "methods": [
+      "shooting method",
+      "split-step Fourier"
+     ],
+     "samples": [
+      "harmonic oscillator",
+      "double well",
+      "hydrogen radial"
+     ],
+     "unknowns": [
+      "eigenvalues",
+      "tunnelling time"
+     ],
+     "conditions": [],
+     "kernel": "schrodinger"
+    }
+   ]
+  }
+ ]
+}

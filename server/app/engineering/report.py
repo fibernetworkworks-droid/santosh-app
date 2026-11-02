@@ -294,6 +294,30 @@ def summary_rows(st: dict[str, Any]) -> list[str]:
         if st.get("max_dp_pa") is not None:
             rows.append(("OK: " if st.get("passes") else "! Above ") + f"her pressure-drop limit {st['max_dp_pa']:g} Pa")
         return rows
+    if k == "plastic":                                            # v0.450 past yield: permanent set and collapse
+        rows = [f"Past yield (elastic-plastic, von Mises) · {st['material']} (yield {st['yield_MPa']:g} MPa)",
+                f"First yields at x{st['first_yield_factor']:.3g} of her load"]
+        hl = st.get("at_her_load")
+        if hl:
+            rows += [f"At her own load: moves {hl['max_disp_mm']:.4g} mm (a linear check would say "
+                     f"{hl['elastic_would_be_mm']:.4g} mm), {hl['yielded_pct']:g} % of the part has yielded, worst "
+                     f"permanent strain {hl['max_plastic_strain_pct']:.3g} %",
+                     f"PERMANENT SET once the load comes off: {hl['permanent_set_mm']:.4g} mm"
+                     + (f" (she allows {st['max_set_mm']:g} mm: {'PASS' if st.get('passes') else 'FAIL'})"
+                        if st.get("max_set_mm") else "")]
+        else:
+            rows.append("! It does not even hold her own load")
+        if st.get("collapse_factor"):
+            rows.append(f"COLLAPSES at about x{st['collapse_factor']:.3g} of her load")
+        else:
+            rows.append(f"No collapse up to x{st['collapse_at_least']:.3g} (as far as it was pushed)")
+        rows += [f"  x{h['factor']:g}: {h['max_disp_mm']:.4g} mm, {h['yielded_pct']:g} % yielded"
+                 for h in (st.get("steps") or [])[-6:]]
+        rows.append(mline)
+        if st.get("collapse_note"):
+            rows.append("~ " + st["collapse_note"])
+        rows.append("~ " + st["note"])
+        return [r for r in rows if r]
     if k == "buckling":                                           # v0.432 does it FOLD before it breaks
         if st.get("load_factor") is None:
             return [f"Buckling · {st['material']}", f"Cannot buckle: {st['note']}", mline]

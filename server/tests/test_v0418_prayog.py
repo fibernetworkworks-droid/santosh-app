@@ -298,9 +298,9 @@ def _client():
 
 def test_routes_are_public_read_only():
     c = _client()
-    d = c.get("/api/prayog/labs").json()
-    assert len(d["labs"]) == 22 and "simulation" in d["note"]
-    assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens"}).json()["labs"]} == {"convex-lens"}
+    d = c.get("/api/prayog/labs", params={"variants": False}).json()
+    assert len(d["labs"]) == 22 and "simulation" in d["note"]     # the 22 set-ups; their variants page separately
+    assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]} == {"convex-lens"}
     lab = c.get("/api/prayog/labs/simple-pendulum").json()["lab"]
     assert lab["kernel"] == "pendulum" and lab["check"]["textbook"] == "pendulum_T"
     assert c.get("/api/prayog/labs/nahi-hai").status_code == 404
@@ -333,7 +333,7 @@ def test_prayog_tool(env):
     assert chk["ok"] and chk["error_percent"] < 1
     with pytest.raises(T.ToolError):
         asyncio.run(prayog(ctx, "open", id="nope"))
-    assert asyncio.run(prayog(ctx, "all"))["count"] == 22
+    assert asyncio.run(prayog(ctx, "all"))["count"] >= 22        # set-ups + every variant
 
 
 def test_wiring():
@@ -349,7 +349,7 @@ def test_wiring():
     assert "PRACTICAL LAB (Prayogshala)" in prompts.__dict__.get("SYSTEM", "") or "Prayogshala" in Path(prompts.__file__).read_text()
     html = (ROOT / "app" / "static" / "console" / "v2.html").read_text()
     js = (ROOT / "app" / "static" / "console" / "v2.js").read_text()
-    assert 'id="labframe"' in html and "/static/prayog/index.html" in js   # v0.456 no Lab row; opens from the Education Desk
+    assert 'id="labframe"' in html and "['lab','Lab']" in js and "/static/prayog/index.html" in js
     dart = (ROOT.parent / "lib" / "ui" / "prayog_screen.dart").read_text()
     assert "/api/prayog/labs" in dart and "/static/prayog/lab.html" in dart
     assert "PrayogScreen(app: app)" in (ROOT.parent / "lib" / "ui" / "profile_screen.dart").read_text()
@@ -357,7 +357,7 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.456.0"
+    assert APP_VERSION == "0.461.0"
 
 
 # ------------------------------------------------------------------------------------------- the realistic studio
@@ -380,7 +380,7 @@ def test_studio_files_parse():
 
 def test_lab_page_loads_the_studio_and_falls_back():
     html = (STATIC / "lab.html").read_text()
-    assert "studio/studio.js" in html and "exp/' + id + '.js" in html and "lab3d.js" in html
+    assert "studio/studio.js" in html and "'exp/' + rig + '.js" in html and "lab3d.js" in html
 
 
 def _ask_client(monkeypatch, answer="Because sin θ ≈ θ only for small angles."):

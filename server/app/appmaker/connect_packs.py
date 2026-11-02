@@ -87,6 +87,39 @@ PACKS: dict[str, dict[str, Any]] = {
         "settings": {"coll": "orders", "realm_id": "", "item_id": "1", "sandbox": "no"},
         "note": "developer.intuit.com app ki keys + OAuth playground se refresh token; QuickBooks har baar naya refresh token deta hai - Hoola use band rakhta hai.",
     },
+    "sms_reminder": {
+        "label": "SMS reminder before a booking (MSG91, DLT)", "group": "SMS", "secrets": ["msg91_authkey"],
+        "settings": {"coll": "appointments", "date_field": "date", "time_field": "time", "before_min": "120", "template_id": ""},
+        "needs_fields": ["name", "phone", "date"],
+        "note": "v0.459: DLT par approve reminder template (var1 = naam, var2 = tareekh, var3 = samay) MSG91 mein jodiye. "
+                "Har booking ko EK baar, us samay se itne minute pehle; cancel hui booking ko kabhi nahi.",
+    },
+    "wa_reminder": {
+        "label": "WhatsApp reminder before a booking (approved template)", "group": "WhatsApp", "secrets": ["wa_token"],
+        "settings": {"coll": "appointments", "date_field": "date", "time_field": "time", "before_min": "120",
+                     "phone_number_id": "", "template": "", "lang": "en"},
+        "needs_fields": ["name", "phone", "date"],
+        "note": "v0.459: aapka APPROVED UTILITY template, body {{1}} = naam, {{2}} = tareekh, {{3}} = samay. Sirf official Cloud API.",
+    },
+    "sms_queue": {
+        "label": "SMS when a queue turn is near (MSG91, DLT)", "group": "SMS", "secrets": ["msg91_authkey"],
+        "settings": {"template_id": ""},
+        "note": "v0.459 clinic queue: jab token ke aage itne hi log bachen (queue settings > 'kitne pehle'), EK SMS. "
+                "DLT template: var1 = naam, var2 = token number.",
+    },
+    "hubspot": {
+        "label": "HubSpot (add a contact)", "group": "CRM", "secrets": ["hubspot_token"],
+        "settings": {"coll": "enquiries"},
+        "needs_fields": ["name", "email"],
+        "note": "HubSpot > Settings > Integrations > Private apps: scope crm.objects.contacts.write; access token yahan.",
+    },
+    "composio": {
+        "label": "An app you connected in Hoola (Composio: Slack, Notion, Jira...)", "group": "Apps", "secrets": [],
+        "settings": {"coll": "enquiries", "trigger": "create", "toolkit": "slack", "tool": "SLACK_SEND_MESSAGE",
+                     "args": '{"channel": "#leads", "text": "New: {{row.name}} {{row.phone}}"}'},
+        "note": "Pehle Hoola > Connect > Apps mein woh app jodiye. Yeh action AAPKE us account se chalta hai; arguments mein "
+                "{{row.field}} bhar sakte hain. Approve karne tak kuch nahi chalta.",
+    },
     "tally": {
         "label": "Tally", "group": "Accounts", "secrets": [], "settings": {},
         "note": "Tally aapke PC par chalta hai, internet se nahi pahunchta. Mahine ka Tally XML export (App > Hisaab) use kijiye - Tally > Import.",
@@ -224,6 +257,48 @@ def actions_for(pack: str, st: dict[str, Any]) -> list[dict[str, Any]]:
                  "body": {"Line": [{"Amount": "{{row.total}}", "DetailType": "SalesItemLineDetail",
                                     "SalesItemLineDetail": {"ItemRef": {"value": g("item_id") or "1"}}}],
                           "PrivateNote": "Hoola order {{row.id}}"}, "pack": pack}]
+    if pack == "sms_reminder":
+        return [{"key": "sms_remind", "label": f"SMS reminder {g('before_min')} min before", "method": "POST", "coll": coll,
+                 "trigger": "remind", "date_field": g("date_field") or "date", "time_field": g("time_field"), "before_min": g("before_min") or "120",
+                 "url": "https://control.msg91.com/api/v5/flow", "auth": {"type": "header", "name": "authkey", "secret": "msg91_authkey"},
+                 "body": {"template_id": g("template_id"), "short_url": "0",
+                          "recipients": [{"mobiles": "91{{row.phone}}", "var1": "{{row.name}}",
+                                          "var2": "{{row." + (re.sub(r"[^a-z0-9_]", "", g("date_field")) or "date") + "}}",
+                                          "var3": "{{row." + (re.sub(r"[^a-z0-9_]", "", g("time_field")) or "time") + "}}"}]}, "pack": pack}]
+    if pack == "wa_reminder":
+        pid = re.sub(r"\D", "", g("phone_number_id"))
+        df = re.sub(r"[^a-z0-9_]", "", g("date_field")) or "date"
+        tf = re.sub(r"[^a-z0-9_]", "", g("time_field")) or "time"
+        return [{"key": "wa_remind", "label": f"WhatsApp reminder {g('before_min')} min before", "method": "POST", "coll": coll,
+                 "trigger": "remind", "date_field": df, "time_field": g("time_field"), "before_min": g("before_min") or "120",
+                 "url": f"https://graph.facebook.com/v21.0/{pid or '0'}/messages", "auth": {"type": "bearer", "secret": "wa_token"},
+                 "body": {"messaging_product": "whatsapp", "to": "91{{row.phone}}", "type": "template",
+                          "template": {"name": g("template"), "language": {"code": g("lang") or "en"},
+                                       "components": [{"type": "body", "parameters": [{"type": "text", "text": "{{row.name}}"},
+                                                                                      {"type": "text", "text": "{{row." + df + "}}"},
+                                                                                      {"type": "text", "text": "{{row." + tf + "}}"}]}]}},
+                 "pack": pack}]
+    if pack == "sms_queue":
+        return [{"key": "sms_queue_near", "label": "SMS: your turn is near", "method": "POST", "coll": "_queue", "trigger": "queue",
+                 "url": "https://control.msg91.com/api/v5/flow", "auth": {"type": "header", "name": "authkey", "secret": "msg91_authkey"},
+                 "body": {"template_id": g("template_id"), "short_url": "0",
+                          "recipients": [{"mobiles": "91{{row.phone}}", "var1": "{{row.name}}", "var2": "{{row.token}}"}]}, "pack": pack}]
+    if pack == "hubspot":
+        return [{"key": "hubspot_contact", "label": "HubSpot: add the contact", "method": "POST", "coll": coll, "trigger": "create",
+                 "url": "https://api.hubapi.com/crm/v3/objects/contacts", "auth": {"type": "bearer", "secret": "hubspot_token"},
+                 "body": {"properties": {"email": "{{row.email}}", "firstname": "{{row.name}}", "phone": "{{row.phone}}"}}, "pack": pack}]
+    if pack == "composio":
+        import json as _json
+        raw = s.get("args")
+        try:
+            args = raw if isinstance(raw, dict) else _json.loads(str(raw or "{}"))
+        except ValueError:
+            args = {}
+        trig = g("trigger") if g("trigger") in ("create", "manual", "status") else "create"
+        return [{"key": "app_" + (re.sub(r"[^a-z0-9_]", "", g("toolkit").lower()) or "x")[:30], "kind": "composio",
+                 "label": f"{g('toolkit')}: {g('tool')}", "toolkit": g("toolkit").lower(), "tool": g("tool").upper(),
+                 "args": args if isinstance(args, dict) else {}, "coll": coll, "trigger": trig, "status": g("status"),
+                 "staff": trig == "manual", "pack": pack}]
     if pack == "kyc":
         return [{"key": "kyc_check", "label": "KYC check (licensed provider)", "method": "POST", "coll": coll, "trigger": "manual",
                  "url": g("url"), "auth": {"type": "header", "name": g("header") or "x-api-key", "secret": "kyc_key"},

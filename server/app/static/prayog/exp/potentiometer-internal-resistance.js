@@ -10,6 +10,10 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
   var FOM = 20e-6, LEN = 400, LMIN = 4, LMAX = 396;
   var st = { traced: false, k1: false, k2: false, R: 0, target: 150, endA: 0, endB: 0, pend: null };
   var J = { l: 150, mode: 'rest', pressed: false };
+  // the cell under test: a family variant names it (Daniell, dry cell...); the base lab is a Leclanché cell
+  var V_ = S.lab.variant || {}, SAMPLE = V_.sample || '';
+  var CELL = /daniell/i.test(SAMPLE) ? 'daniell' : /alkaline|AA\b/i.test(SAMPLE) ? 'aa' : /dry|zinc.carbon/i.test(SAMPLE) ? 'dry' : 'leclanche';
+  var CELL_NAME = SAMPLE || 'Leclanché cell';
 
   // ---------- helpers (kept inside this module)
   function wpt(o, x, y, z) { o.updateMatrixWorld(true); return o.localToWorld(new T.Vector3(x || 0, y || 0, z || 0)); }
@@ -64,25 +68,62 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
   // ---------- driver circuit: 6 V supply, key K1, rheostat (set once, not touched again)
   var PB = [-0.85, -0.68];
   var pb = S.powerBox([PB[0], 0, PB[1]], 'BATTERY ELIMINATOR');
-  var pbV = S.label('6 V DC', { w: 0.05, ratio: 0.3, color: '#f2f2f2' }); pbV.position.set(PB[0] + 0.045, 0.034, PB[1] + 0.0405); S.scene.add(pbV);
+  var pbV = S.label(String(+p.E0.toFixed(1)) + ' V DC', { w: 0.05, ratio: 0.3, color: '#f2f2f2' }); pbV.position.set(PB[0] + 0.045, 0.034, PB[1] + 0.0405); S.scene.add(pbV);
   var lamp = S.mesh(new T.SphereGeometry(0.004, 12, 10), new T.MeshStandardMaterial({ color: 0x3a0b08, emissive: 0xe0140a, roughness: 0.3 })); lamp.position.set(PB[0] - 0.05, 0.035, PB[1] + 0.041); S.scene.add(lamp);
   var pbPlus = { at: new T.Vector3(PB[0] + 0.04, 0.109, PB[1]) }, pbMinus = { at: new T.Vector3(PB[0] - 0.04, 0.109, PB[1]) };
   var K1 = plugKeyAt(-0.84, -0.44, 'K₁');
   var RHL = 0.24, RHP = [-0.45, -0.69], RH_TOTAL = 10;
-  var rh = S.rheostat([RHP[0], 0, RHP[1]], RHL); rh.setFraction(p.Rh / RH_TOTAL);
+  var rh = S.rheostat([RHP[0], 0, RHP[1]], RHL); rh.setFraction(Math.max(0, Math.min(1, p.Rh / RH_TOTAL)));
   var rhA = post(RHP[0] - RHL / 2 - 0.008, 0.05, RHP[1]); post(RHP[0] + RHL / 2 + 0.008, 0.05, RHP[1]);
   var rhC = post(RHP[0] + RHL / 2 - 0.004, 0.065, RHP[1]);
   var rhPlate = S.label('RHEOSTAT 10 Ω', { w: 0.06, ratio: 0.18, color: '#f3ead2', bg: '#2b2b2b' }); rhPlate.position.set(RHP[0] + RHL / 2, 0.025, RHP[1] + 0.0105); S.scene.add(rhPlate);
 
-  // ---------- Leclanché cell: glass jar of ammonium chloride, porous pot with a carbon rod (+), zinc rod (-)
-  var CC = [0.62, -0.66];
-  var cell = S.beaker(0.036, 0.1, [CC[0], 0, CC[1]], 0xe9ecdf, 0.62);
-  var pp = S.mesh(new T.CylinderGeometry(0.017, 0.017, 0.095, 28), new T.MeshStandardMaterial({ color: 0xb46a3c, roughness: 0.92 })); pp.position.set(-0.008, 0.0525, 0); cell.add(pp);
-  var ppTop = S.mesh(new T.CylinderGeometry(0.0172, 0.0172, 0.006, 28), M.black); ppTop.position.set(-0.008, 0.101, 0); cell.add(ppTop);
-  var carbon = S.mesh(new T.CylinderGeometry(0.006, 0.006, 0.05, 16), new T.MeshStandardMaterial({ color: 0x1f1f22, roughness: 0.7 })); carbon.position.set(-0.008, 0.12, 0); cell.add(carbon);
-  var zinc = S.mesh(new T.CylinderGeometry(0.0045, 0.0045, 0.125, 14), new T.MeshStandardMaterial({ color: 0x9ea4a8, roughness: 0.45, metalness: 0.7 })); zinc.position.set(0.022, 0.0675, 0.004); cell.add(zinc);
-  S.contact(0.11, 0.11, CC[0], CC[1], 0.5);
-  var cPlus = post(CC[0] - 0.008, 0.145, CC[1], 'red'), cMinus = post(CC[0] + 0.022, 0.13, CC[1] + 0.004, 'black');
+  // ---------- the cell under test
+  var CC = [0.62, -0.66], cell, cPlus, cMinus, CELL_INFO;
+  if (CELL === 'leclanche') {
+    // Leclanché cell: glass jar of ammonium chloride, porous pot with a carbon rod (+), zinc rod (-)
+    cell = S.beaker(0.036, 0.1, [CC[0], 0, CC[1]], 0xe9ecdf, 0.62);
+    var pp = S.mesh(new T.CylinderGeometry(0.017, 0.017, 0.095, 28), new T.MeshStandardMaterial({ color: 0xb46a3c, roughness: 0.92 })); pp.position.set(-0.008, 0.0525, 0); cell.add(pp);
+    var ppTop = S.mesh(new T.CylinderGeometry(0.0172, 0.0172, 0.006, 28), M.black); ppTop.position.set(-0.008, 0.101, 0); cell.add(ppTop);
+    var carbon = S.mesh(new T.CylinderGeometry(0.006, 0.006, 0.05, 16), new T.MeshStandardMaterial({ color: 0x1f1f22, roughness: 0.7 })); carbon.position.set(-0.008, 0.12, 0); cell.add(carbon);
+    var zinc = S.mesh(new T.CylinderGeometry(0.0045, 0.0045, 0.125, 14), new T.MeshStandardMaterial({ color: 0x9ea4a8, roughness: 0.45, metalness: 0.7 })); zinc.position.set(0.022, 0.0675, 0.004); cell.add(zinc);
+    S.contact(0.11, 0.11, CC[0], CC[1], 0.5);
+    cPlus = post(CC[0] - 0.008, 0.145, CC[1], 'red'); cMinus = post(CC[0] + 0.022, 0.13, CC[1] + 0.004, 'black');
+    CELL_INFO = 'Carbon rod in a porous pot (+), zinc rod (−), in ammonium chloride. Its internal resistance r is what we measure.';
+  } else if (CELL === 'daniell') {
+    // Daniell cell: copper pot of copper sulphate (+), porous pot of dilute sulphuric acid with a zinc rod (−)
+    cell = new T.Group(); cell.position.set(CC[0], 0, CC[1]); S.scene.add(cell);
+    var cuM = new T.MeshStandardMaterial({ color: 0xb8683a, roughness: 0.38, metalness: 0.85, side: T.DoubleSide });
+    var pot = S.mesh(new T.CylinderGeometry(0.036, 0.034, 0.1, 40, 1, true), cuM); pot.position.y = 0.05; cell.add(pot);
+    var potB = S.mesh(new T.CylinderGeometry(0.034, 0.034, 0.003, 40), cuM); potB.position.y = 0.0015; cell.add(potB);
+    var lip = S.mesh(new T.TorusGeometry(0.036, 0.0018, 8, 40), cuM); lip.rotation.x = Math.PI / 2; lip.position.y = 0.1; cell.add(lip);
+    var sol = S.mesh(new T.RingGeometry(0.019, 0.0355, 40), new T.MeshStandardMaterial({ color: 0x2f7fd0, roughness: 0.15, transparent: true, opacity: 0.9 })); sol.rotation.x = -Math.PI / 2; sol.position.y = 0.088; cell.add(sol);
+    var ppD = S.mesh(new T.CylinderGeometry(0.018, 0.018, 0.098, 28), new T.MeshStandardMaterial({ color: 0xd9c7a8, roughness: 0.95 })); ppD.position.set(0, 0.052, 0); cell.add(ppD);
+    var znD = S.mesh(new T.CylinderGeometry(0.0055, 0.0055, 0.13, 16), new T.MeshStandardMaterial({ color: 0x9ea4a8, roughness: 0.45, metalness: 0.7 })); znD.position.set(0, 0.07, 0); cell.add(znD);
+    var clamp = S.mesh(new T.BoxGeometry(0.012, 0.014, 0.008), M.brass); clamp.position.set(-0.036, 0.098, 0); cell.add(clamp);
+    var dl = S.label('DANIELL CELL', { w: 0.05, ratio: 0.18, color: '#f3ead2', bg: '#5a3418' }); dl.position.set(0, 0.045, 0.0365); cell.add(dl);
+    S.contact(0.11, 0.11, CC[0], CC[1], 0.5);
+    cPlus = post(CC[0] - 0.036, 0.105, CC[1], 'red'); cMinus = post(CC[0], 0.135, CC[1], 'black');
+    CELL_INFO = 'A copper pot of copper sulphate solution (+) with a porous pot of dilute sulphuric acid and a zinc rod (−) inside. Its internal resistance r is what we measure.';
+  } else {
+    // a dry cell standing in a holder: zinc can in a printed jacket, brass cap (+) clipped on top, base plate (−)
+    var big = CELL === 'dry', CR = big ? 0.017 : 0.0072, CH = big ? 0.0615 : 0.0505, HB = 0.008;
+    cell = new T.Group(); cell.position.set(CC[0], 0, CC[1]); S.scene.add(cell);
+    var hb = S.rounded(0.07, 0.07, HB, 0.005, M.wood); hb.rotation.x = -Math.PI / 2; hb.position.y = HB / 2; cell.add(hb);
+    var cupM = new T.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.3, metalness: 0.9 });
+    var cup = S.mesh(new T.CylinderGeometry(CR + 0.002, CR + 0.002, 0.006, 32), cupM); cup.position.y = HB + 0.003; cell.add(cup);
+    var jack = S.canvasTex(512, 256, function (x, w, h) { x.fillStyle = big ? '#1d4fa0' : '#151515'; x.fillRect(0, 0, w, h);
+      x.fillStyle = big ? '#f2c230' : '#c8892a'; x.fillRect(0, h * 0.62, w, h * 0.12);
+      x.fillStyle = '#ffffff'; x.textAlign = 'center'; x.font = '800 64px "Public Sans", sans-serif'; x.fillText('1.5 V', w * 0.5, h * 0.36);
+      x.font = '700 34px "Public Sans", sans-serif'; x.fillText(big ? 'ZINC–CARBON  ·  SIZE D' : 'ALKALINE  ·  SIZE AA', w * 0.5, h * 0.54); x.fillText('+', w * 0.12, h * 0.36); });
+    var body = S.mesh(new T.CylinderGeometry(CR, CR, CH, 40), new T.MeshStandardMaterial({ map: jack, roughness: 0.4 })); body.position.y = HB + CH / 2; cell.add(body);
+    var capT = S.mesh(new T.CylinderGeometry(CR * 0.35, CR * 0.38, 0.003, 24), cupM); capT.position.y = HB + CH + 0.0015; cell.add(capT);
+    var strapM = S.mesh(new T.BoxGeometry(0.03, 0.0015, 0.006), M.brass); strapM.position.set(CR + 0.015, HB + 0.001, 0); cell.add(strapM);
+    S.contact(0.1, 0.1, CC[0], CC[1], 0.5);
+    cPlus = post(CC[0], HB + CH + 0.003, CC[1], 'red'); cMinus = post(CC[0] + CR + 0.028, HB, CC[1], 'black');
+    CELL_INFO = (big ? 'A zinc–carbon dry cell (size D): zinc can (−) with a carbon rod and manganese dioxide paste (+) inside.' : 'An alkaline cell (size AA): zinc powder anode (−), manganese dioxide cathode (+), potassium hydroxide paste.')
+      + ' It stands in a holder: the top cap is +, the base plate −. Its internal resistance r is what we measure.';
+  }
 
   // ---------- galvanometer, resistance box R and key K2
   var gal = S.meter({ min: -30, max: 30, zeroCentre: true, ticks: 6, unit: 'G', symbol: 'G', caption: 'GALVANOMETER 30–0–30', pos: [0.33, 0, -0.7] });
@@ -158,8 +199,8 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
   S.addApparatus('pot', pot, 'Potentiometer (4 wires × 1 m)', 'Four uniform wires joined in series by copper strips: 400 cm from A to B, with a scale under each wire.');
   S.addApparatus('jockey', jock, 'Jockey', 'A knife-edge contact. Touch the wire gently; do not slide it while pressed.');
   S.addApparatus('gal', gal, 'Galvanometer (30–0–30)', 'Zero-centre. At balance no current flows through it. About 20 µA per division.');
-  S.addApparatus('cell', cell, 'Leclanché cell (under test)', 'Carbon rod in a porous pot (+), zinc rod (−), in ammonium chloride. Its internal resistance r is what we measure.');
-  S.addApparatus('pb', pb, 'Driver supply (6 V DC)', 'Keeps a steady current in the potentiometer wire. Its emf must be more than the cell\'s.');
+  S.addApparatus('cell', cell, CELL_NAME + ' (under test)', CELL_INFO);
+  S.addApparatus('pb', pb, 'Driver supply (' + String(+p.E0.toFixed(1)) + ' V DC)', 'Keeps a steady current in the potentiometer wire. Its emf must be more than the cell\'s.');
   S.addApparatus('k1', K1.g, 'Key K₁', 'Switches the driver current through the potentiometer wire.');
   S.addApparatus('rh', rh, 'Rheostat', 'Sets the current in the wire. Once set, do not move it: the potential gradient must stay the same.');
   S.addApparatus('rb', rb, 'Resistance box R', 'The shunt across the cell. Pull out plugs to choose R.');
@@ -238,7 +279,7 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
         var mid = Math.round((lo + hi) / 2); return probe(mid).then(function (dm) { if (dm === 0) { lo = hi = mid; return; } if ((dm > 0) === (dlo > 0)) { lo = mid; dlo = dm; } else { hi = mid; dhi = dm; } return step(); }); }
       return step().then(function () { return probe(Math.abs(dlo) <= Math.abs(dhi) ? lo : hi); }); });
   }
-  function trace() { st.traced = true; S.focus('pot'); S.say('Driver: supply +, K₁ and the rheostat to A, the wire to B, back to −. The cell\'s + also goes to A; its − goes through the galvanometer to the jockey. R and K₂ are across the cell.'); S.render(); }
+  function trace() { st.traced = true; S.focus('pot'); S.say((SAMPLE ? 'The cell under test is a ' + SAMPLE + '. ' : '') + 'Driver: supply +, K₁ and the rheostat to A, the wire to B, back to −. The cell\'s + also goes to A; its − goes through the galvanometer to the jockey. R and K₂ are across the cell.'); S.render(); }
   function jockeyControls(u) {
     u.slider('Jockey position from A', LMIN, LMAX, 0.1, function () { return st.target; }, function (v) { st.target = v; }, 'cm', 1);
     var hb = S.hand.busy, nh = J.mode !== 'held';
@@ -247,7 +288,9 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
       u.button('+1 mm', function () { moveJockey(J.l + 0.1); }, false, hb || nh), u.button('+1 cm', function () { moveJockey(J.l + 1); }, false, hb || nh));
     u.live(function () { return (J.mode === 'held' ? 'Jockey at ' + J.l.toFixed(1) + ' cm' : 'Jockey on the bench') + ' · Galvanometer: ' + divText(divNow()); });
   }
-  function rRow(u) { var row = u.row(); [2, 4, 5, 8, 10].forEach(function (v) { row.appendChild(u.button(v + ' Ω', function () { setR(v); }, st.R === v, S.hand.busy || K2.isOn())); }); }
+  // the resistance-box values to offer: the base set suits r of about 0.5-3 Ω; a variant's cell may need smaller or larger R
+  var RSET = !S.lab.variant ? [2, 4, 5, 8, 10] : [1, 2, 3, 4, 5, 8, 10, 15, 20, 30, 50];
+  function rRow(u) { var row = u.row(); RSET.forEach(function (v) { row.appendChild(u.button(v + ' Ω', function () { setR(v); }, st.R === v, S.hand.busy || K2.isOn())); }); }
 
   return {
     camera: { pos: [0.0, 1.5, 1.45], look: [0.0, 0.0, -0.42] },
@@ -260,7 +303,7 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
       more: ['The driver current in the wire is kept the same throughout (K₁ closed, rheostat not touched), so the fall of potential per cm, k, is constant: E = k l₁ and V = k l₂.'],
       precautions: 'The driver emf must be more than the cell\'s. Check that the jockey gives opposite deflections at the two ends before you start. Do not move the rheostat during the experiment. Close K₂ only while finding l₂. Touch the jockey gently.' },
     book: { title: 'Expt. — Potentiometer: r of a cell', at: [0.66, 0.08, -0.1],
-      lines: ['Aim: to find the internal resistance r of a cell.', 'Potentiometer wire: 400 cm, scale LC 0.1 cm', 'E = k l₁ (K₂ open),  V = k l₂ (K₂ closed)', 'r = R (l₁ − l₂) / l₂', 'Precautions: rheostat fixed, K₂ closed', 'only while balancing.'],
+      lines: ['Aim: to find the internal resistance r of a cell.'].concat(SAMPLE ? ['Cell: ' + SAMPLE] : []).concat(['Potentiometer wire: 400 cm, scale LC 0.1 cm', 'E = k l₁ (K₂ open),  V = k l₂ (K₂ closed)', 'r = R (l₁ − l₂) / l₂', 'Precautions: rheostat fixed, K₂ closed', 'only while balancing.']),
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'R (Ω)', get: function (r) { return r.R; } }, { label: 'l₁ (cm)', get: function (r) { return r.l1.toFixed(1); } },
         { label: 'l₂ (cm)', get: function (r) { return r.l2.toFixed(1); } }, { label: 'r (Ω)', get: function (r) { return (r.R * (r.l1 - r.l2) / r.l2).toFixed(3); } }] },
     graph: { x: function (r) { return 1 / r.R; }, y: function (r) { return r.l1 / r.l2; }, xlabel: '1/R (1/Ω)', ylabel: 'l₁ / l₂', x0: 0, y0: 0,
@@ -272,7 +315,7 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
     viva: [['Why is a potentiometer better than a voltmeter for measuring emf?', ['At balance it draws no current from the cell', 'It has a bigger scale', 'It needs no battery'], 0, 'A voltmeter draws some current, so it reads the terminal voltage, not the emf.'],
       ['If the jockey gives deflections in the same direction at both ends, the likely cause is', ['The driver emf is less than the cell\'s, or a polarity is reversed', 'The galvanometer is too sensitive', 'R is too large'], 0, 'With no point on the wire at the cell\'s potential there can be no balance.']],
     askState: function () { return { K1_closed: K1.isOn(), K2_closed: K2.isOn(), resistance_box_R_ohm: st.R, jockey_cm: J.mode === 'held' ? J.l : null, jockey_touching_wire: contact(),
-      galvanometer_div: +divNow().toFixed(1), galvanometer: divText(divNow()), noted_l1_cm: st.pend ? st.pend.l1 : null, readings_taken: S.rows.length, driver_emf_V: 6 }; },
+      galvanometer_div: +divNow().toFixed(1), galvanometer: divText(divNow()), noted_l1_cm: st.pend ? st.pend.l1 : null, readings_taken: S.rows.length, driver_emf_V: p.E0, cell_under_test: CELL_NAME }; },
 
     steps: [
       { id: 'driver', title: 'Driver circuit', view: 'driver', render: function (u) {
@@ -305,9 +348,16 @@ HoolaStudio.define('potentiometer-internal-resistance', function (S) {
         },
         ok: function () { return S.rows.length >= 3; },
         auto: function () {
-          return [10, 5, 4].reduce(function (pr, R) { return pr.then(function () {
-            return setKey(2, false).then(findNull).then(function () { recordL1(); return setR(R); }).then(function () { return setKey(2, true); })
-              .then(findNull).then(function () { recordL2(); return setKey(2, false); }); }); }, Promise.resolve()); } },
+          function one(R) { return setKey(2, false).then(findNull).then(function () { recordL1(); return setR(R); }).then(function () { return setKey(2, true); })
+              .then(findNull).then(function () { recordL2(); return setKey(2, false); }); }
+          if (!S.lab.variant) return [10, 5, 4].reduce(function (pr, R) { return pr.then(function () { return one(R); }); }, Promise.resolve());
+          // a cell of unknown r: one trial balance with R = 5 Ω, then R values of about r to 4r, so l₁ − l₂ is large enough to read well
+          var l1 = 0;
+          return one(5).then(function () { var row = S.rows[S.rows.length - 1]; if (!row) return;
+            l1 = row.l1; var est = 5 * (row.l1 - row.l2) / row.l2, list = [];
+            [1, 2, 3.5].forEach(function (f) { var R = Math.max(1, Math.min(100, Math.round(est * f))); if (R !== 5 && list.indexOf(R) < 0) list.push(R); });
+            [1, 2, 3, 4, 8].forEach(function (R) { if (list.length < 2 && R !== 5 && list.indexOf(R) < 0) list.push(R); });
+            return list.reduce(function (pr, R) { return pr.then(function () { return one(R); }); }, Promise.resolve()); }); } },
     ],
 
     tick: function () {

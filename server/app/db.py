@@ -751,6 +751,7 @@ def init_db(url: str | None = None):
     from .reels import models as _reels_models  # noqa: F401
     from .motion import models as _motion_models  # noqa: F401
     from . import idvault as _idvault  # noqa: F401
+    from . import mapsbill as _mapsbill  # noqa: F401  (v0.449 Maps spend, free caps, place_id cache)
     from . import voicestyle as _voicestyle  # noqa: F401  (v0.119 how she speaks, mis-hearings, her words)
     from .site import models as _site_models  # noqa: F401  (v0.121 Website Sahayak)
     from .site import hosting_models as _site_hosting  # noqa: F401  (v0.122 hosts, DNS plans, her keys)
@@ -771,6 +772,7 @@ def init_db(url: str | None = None):
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
     from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
+    from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)

@@ -29,6 +29,7 @@ best.sort()
 print(best[-1][3] if best else "")')
 [ -n "$DEV" ] || { echo "::error::no ${SIM_KIND:-iPhone} simulator on this Mac"; exit 1; }
 echo "simulator $DEV"
+xcrun simctl shutdown all 2>/dev/null || true          # v0.455 fix: only OUR device booted, so launchctl can only mean it
 xcrun simctl boot "$DEV" 2>/dev/null || true
 xcrun simctl bootstatus "$DEV" -b > /dev/null
 xcrun simctl status_bar "$DEV" override --time "9:41" --batteryState charged --batteryLevel 100 2>/dev/null || true
@@ -51,8 +52,16 @@ for s in "$@"; do
   t1=$(python3 -c 'import time; print(time.time())')
   LAUNCHES="$LAUNCHES $(python3 -c "print(int(($t1-$t0)*1000))")"
   sleep 3
+  # v0.455 fix: is the app still running? Read the PID COLUMN of this device's launchctl for our bundle id. It was
+  # compared with the pid simctl printed, and on the SECOND and THIRD simulator of a job (Pro Max, iPad) that
+  # comparison failed for every screen while the screenshots came out perfectly - a crash that never happened. A
+  # service that has exited shows "-" there, so a numeric pid is the real answer and a relaunched app is not a crash.
   alive=0
-  if [ -n "$pid" ] && xcrun simctl spawn "$DEV" launchctl list 2>/dev/null | grep "$BID" | awk '{print $1}' | grep -qx "$pid"; then alive=1; fi
+  lpid=$(xcrun simctl spawn "$DEV" launchctl list 2>/dev/null | awk -v b="$BID" 'index($3, b) > 0 {print $1; exit}')
+  case "$lpid" in
+    ''|*[!0-9]*) alive=0 ;;
+    *) alive=1 ;;
+  esac
   now=$(ls "$REPORTS" 2>/dev/null | grep -c "$NAME" || true)
   crashed=0
   if [ "$alive" = 0 ] || [ "$now" -gt "$before" ]; then

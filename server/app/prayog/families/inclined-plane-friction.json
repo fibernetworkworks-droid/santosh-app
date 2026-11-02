@@ -1,0 +1,110 @@
+{
+ "base": "inclined-plane-friction",
+ "chapter": "Laws of Motion",
+ "variants": [
+  {
+   "key": "wood-wood",
+   "title": "Friction on an incline: bare wooden block on the wooden plank",
+   "sample": "Bare wooden block on the wooden plank",
+   "unknown": "the coefficient of static friction μ between the two faces",
+   "params": {
+    "mu": 0.35
+   },
+   "note": "Wood on wood (dry): handbook μs lies between 0.25 and 0.5. This block's own value is the unknown. The block with its facing has a mass of 500 g.",
+   "source": {
+    "title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static μs)"
+   }
+  },
+  {
+   "key": "oak-parallel",
+   "title": "Friction on an incline: oak block on an oak plank, grain along the slope",
+   "sample": "Oak block on an oak plank, grain along the slope",
+   "unknown": "the coefficient of static friction μ between the two faces",
+   "params": {
+    "mu": 0.62
+   },
+   "note": "Oak on oak, fibres parallel, dry: μs = 0.62. The block with its facing has a mass of 500 g.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, 'Coefficient of friction' table (static, dry): oak and leather on oak"
+   }
+  },
+  {
+   "key": "oak-crossed",
+   "title": "Friction on an incline: oak block on an oak plank, grain across the slope",
+   "sample": "Oak block on an oak plank, grain across the slope",
+   "unknown": "the coefficient of static friction μ between the two faces",
+   "params": {
+    "mu": 0.54
+   },
+   "note": "Oak on oak, fibres crossed, dry: μs = 0.54. Turning the grain changes μ. The block with its facing has a mass of 500 g.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, 'Coefficient of friction' table (static, dry): oak and leather on oak"
+   }
+  },
+  {
+   "key": "leather-oak",
+   "title": "Friction on an incline: block faced with leather on an oak plank",
+   "sample": "Block faced with leather on an oak plank",
+   "unknown": "the coefficient of static friction μ between the two faces",
+   "params": {
+    "mu": 0.61
+   },
+   "note": "Leather on oak, dry: μs = 0.61. The block with its facing has a mass of 500 g.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, 'Coefficient of friction' table (static, dry): oak and leather on oak"
+   }
+  },
+  {
+   "key": "aluminium-steel",
+   "title": "Friction on an incline: block faced with aluminium sheet on a steel-faced plank",
+   "sample": "Block faced with aluminium sheet on a steel-faced plank",
+   "unknown": "the coefficient of static friction μ between the two faces",
+   "params": {
+    "mu": 0.61
+   },
+   "note": "Aluminium on steel, dry: μs = 0.61. The block with its facing has a mass of 500 g.",
+   "source": {
+    "title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static μs)"
+   }
+  },
+  {
+   "key": "copper-steel",
+   "title": "Friction on an incline: block faced with copper sheet on a steel-faced plank",
+   "sample": "Block faced with copper sheet on a steel-faced plank",
+   "unknown": "the coefficient of static friction μ between the two faces",
+   "params": {
+    "mu": 0.53
+   },
+   "note": "Copper on steel, dry: μs = 0.53. The block with its facing has a mass of 500 g.",
+   "source": {
+    "title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static μs)"
+   }
+  },
+  {
+   "key": "steel-steel",
+   "title": "Friction on an incline: block faced with steel sheet on a steel-faced plank",
+   "sample": "Block faced with steel sheet on a steel-faced plank",
+   "unknown": "the coefficient of static friction μ between the two faces",
+   "params": {
+    "mu": 0.74
+   },
+   "note": "Steel on steel, dry: μs = 0.74. Use small angles: the block needs a big load. The block with its facing has a mass of 500 g.",
+   "source": {
+    "title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static μs)"
+   }
+  },
+  {
+   "key": "oiled-metal",
+   "title": "Friction on an incline: metal faces lubricated with machine oil",
+   "sample": "Metal faces lubricated with machine oil",
+   "unknown": "the coefficient of static friction μ between the two faces",
+   "params": {
+    "mu": 0.15
+   },
+   "note": "Metal on metal, lubricated: μs = 0.15. A thin oil film cuts friction about five times. The block with its facing has a mass of 500 g.",
+   "source": {
+    "title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static μs)"
+   }
+  }
+ ]
+}

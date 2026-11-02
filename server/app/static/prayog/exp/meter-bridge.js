@@ -9,6 +9,7 @@ HoolaStudio.define('meter-bridge', function (S) {
   var FOM = 20e-6;                        // galvanometer figure of merit: 20 µA per division (30-0-30 scale)
   var st = { traced: false, key: false, R: 0, target: 50 };
   var J = { l: 50, mode: 'rest', pressed: false };
+  var V_ = S.lab.variant || {}, SAMPLE = V_.sample || '';   // the given wire, when a family variant names it
 
   // ---------- helpers (kept inside this module)
   function wpt(o, x, y, z) { o.updateMatrixWorld(true); return o.localToWorld(new T.Vector3(x || 0, y || 0, z || 0)); }
@@ -91,12 +92,13 @@ HoolaStudio.define('meter-bridge', function (S) {
   var former = S.mesh(new T.CylinderGeometry(0.0085, 0.0085, CL + 0.02, 28), M.white); former.rotation.z = Math.PI / 2; former.position.y = 0.034; coil.add(former);
   var hpts = [], turns = 20;
   for (var i = 0; i <= turns * 24; i++) { var t = i / (turns * 24), a = t * turns * Math.PI * 2; hpts.push(new T.Vector3(-CL / 2 + 0.006 + t * (CL - 0.012), 0.034 + 0.0095 * Math.cos(a), 0.0095 * Math.sin(a))); }
-  var cw = new T.MeshStandardMaterial({ color: 0xb7a48c, roughness: 0.28, metalness: 0.9 });
+  var cw = new T.MeshStandardMaterial({ color: /nichrome/i.test(SAMPLE) ? 0xb4b2ae : /constantan|eureka/i.test(SAMPLE) ? 0xc9b49a : /manganin/i.test(SAMPLE) ? 0xb08f72 : 0xb7a48c, roughness: 0.28, metalness: 0.9 });
   coil.add(S.mesh(new T.TubeGeometry(new T.CatmullRomCurve3(hpts), turns * 24, 0.0009, 6, false), cw));
   var cT1x = -(CL / 2 + 0.03), cT2x = CL / 2 + 0.03;
   [[hpts[0], cT1x], [hpts[hpts.length - 1], cT2x]].forEach(function (e) { var s0 = e[0];
     coil.add(S.mesh(new T.TubeGeometry(new T.CatmullRomCurve3([s0.clone(), new T.Vector3(s0.x + Math.sign(e[1]) * 0.008, 0.03, s0.z + 0.004), new T.Vector3(e[1], 0.026, 0.002)]), 16, 0.0009, 6, false), cw)); });
-  var ctag = S.label('S  (unknown)', { w: 0.06, ratio: 0.2, color: '#3a2a10' }); ctag.rotation.x = -Math.PI / 2; ctag.position.set(0, 0.0165, 0.028); coil.add(ctag);
+  var ctag = SAMPLE ? S.label('S: ' + SAMPLE, { w: 0.15, ratio: Math.min(0.1, 2.4 / (SAMPLE.length + 3)), px: 1024, color: '#3a2a10' }) : S.label('S  (unknown)', { w: 0.06, ratio: 0.2, color: '#3a2a10' });
+  ctag.rotation.x = -Math.PI / 2; ctag.position.set(0, 0.0165, 0.028); coil.add(ctag);
   coil.position.set(CB[0], 0, CB[1]); S.contact(CL + 0.16, 0.14, CB[0], CB[1], 0.5);
   var cT1 = post(CB[0] + cT1x, 0.016, CB[1] + 0.002), cT2 = post(CB[0] + cT2x, 0.016, CB[1] + 0.002);
 
@@ -164,7 +166,7 @@ HoolaStudio.define('meter-bridge', function (S) {
   S.addApparatus('jockey', jock, 'Jockey', 'A knife-edge contact. Touch the wire gently; dragging it along the wire scrapes it and changes its resistance.');
   S.addApparatus('gal', gal, 'Galvanometer (30–0–30)', 'Zero-centre: it shows which way current flows. At the null point it reads zero. About 20 µA per division.');
   S.addApparatus('rb', rb, 'Resistance box R', 'Pull out brass plugs to put known resistances in the left gap. Every plug left in shorts its coil.');
-  S.addApparatus('coil', coil, 'Unknown resistance S', 'The coil of wire whose resistance S we find, in the right gap.');
+  S.addApparatus('coil', coil, SAMPLE ? 'Unknown resistance S: ' + SAMPLE : 'Unknown resistance S', 'The coil of wire whose resistance S we find, in the right gap.');
   S.addApparatus('acc', acc, 'Lead accumulator (2 V)', 'Drives a steady current through the bridge wire.');
   S.addApparatus('key', key, 'Plug key K', 'Insert the plug only while taking a reading; the wire heats up otherwise.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
@@ -223,8 +225,9 @@ HoolaStudio.define('meter-bridge', function (S) {
         var mid = Math.round((lo + hi) / 2); return probe(mid).then(function (dm) { if (dm === 0) { lo = hi = mid; return; } if ((dm > 0) === (dlo > 0)) { lo = mid; dlo = dm; } else { hi = mid; dhi = dm; } return step(); }); }
       return step().then(function () { return probe(Math.abs(dlo) <= Math.abs(dhi) ? lo : hi); }); });
   }
-  function trace() { st.traced = true; S.focus('bridge'); S.say('Accumulator, key and the bridge wire A to C form the main circuit. R is in the left gap, S in the right gap, and the galvanometer joins the centre strip to the jockey.'); S.render(); }
-  function rButtons(u) { var opts = [2, 3, 4, 5, 6, 8, 10, 12, 15];
+  function trace() { st.traced = true; S.focus('bridge'); S.say((SAMPLE ? 'The wire in the right gap is ' + SAMPLE + '. ' : '') + 'Accumulator, key and the bridge wire A to C form the main circuit. R is in the left gap, S in the right gap, and the galvanometer joins the centre strip to the jockey.'); S.render(); }
+  var WIDE = !!S.lab.variant;   // a family variant's wire can be a few ohms or a few tens of ohms: offer the whole box
+  function rButtons(u) { var opts = WIDE ? [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40] : [2, 3, 4, 5, 6, 8, 10, 12, 15];
     var row = u.row(); opts.forEach(function (v) { row.appendChild(u.button(v + ' Ω', function () { setR(v); }, st.R === v, S.hand.busy)); }); return row; }
 
   return {
@@ -237,7 +240,7 @@ HoolaStudio.define('meter-bridge', function (S) {
       more: ['Because the wire is uniform, the resistance of each part is proportional to its length. The bridge is most sensitive when the null point lies near the middle of the wire (30–70 cm).'],
       precautions: 'Keep all connections tight and the copper strips clean. Touch the jockey gently; never slide it along the wire while pressing. Insert the key only while taking a reading. Choose R so the null point is between 30 cm and 70 cm.' },
     book: { title: 'Expt. — Meter bridge', at: [0.66, 0.08, -0.1],
-      lines: ['Aim: to find the resistance S of a given wire.', 'Wire: 1 m manganin, scale LC 0.1 cm', 'R / S = l / (100 − l)', 'S = R (100 − l) / l', 'Precautions: null point 30–70 cm,', 'jockey touched gently.'],
+      lines: ['Aim: to find the resistance S of a given wire.'].concat(SAMPLE ? ['Given wire: ' + SAMPLE] : []).concat(['Wire: 1 m manganin, scale LC 0.1 cm', 'R / S = l / (100 − l)', 'S = R (100 − l) / l', 'Precautions: null point 30–70 cm,', 'jockey touched gently.']),
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'R (Ω)', get: function (r) { return r.R; } }, { label: 'l (cm)', get: function (r) { return r.l.toFixed(1); } },
         { label: '100−l', get: function (r) { return (100 - r.l).toFixed(1); } }, { label: 'S (Ω)', get: function (r) { return (r.R * (100 - r.l) / r.l).toFixed(2); } }] },
     graph: { x: function (r) { return r.l / (100 - r.l); }, y: function (r) { return r.R; }, xlabel: 'l / (100 − l)', ylabel: 'R (Ω)', x0: 0, y0: 0,
@@ -249,7 +252,7 @@ HoolaStudio.define('meter-bridge', function (S) {
     viva: [['Why is the meter bridge wire made of manganin?', ['Its resistance hardly changes with temperature', 'It is a very good conductor', 'It is cheap and soft'], 0, 'Manganin has a very low temperature coefficient of resistance and a high resistivity.'],
       ['If R and S are interchanged, the null point', ['Moves to (100 − l)', 'Stays at l', 'Disappears'], 0, 'The ratio is reversed, so the balance length from A becomes 100 − l.']],
     askState: function () { return { key_closed: st.key, resistance_box_R_ohm: st.R, jockey_cm: J.mode === 'held' ? J.l : null, jockey_touching_wire: contact(),
-      galvanometer_div: +divNow().toFixed(1), galvanometer: divText(divNow()), readings_taken: S.rows.length }; },
+      galvanometer_div: +divNow().toFixed(1), galvanometer: divText(divNow()), given_wire: SAMPLE || 'unknown coil S', readings_taken: S.rows.length }; },
 
     steps: [
       { id: 'setup', title: 'Set up', view: 'setup', render: function (u) {
@@ -257,11 +260,12 @@ HoolaStudio.define('meter-bridge', function (S) {
           u.task('1. Trace the circuit', st.traced, st.traced ? 'Main circuit through the wire; R left gap, S right gap, G to the jockey' : 'Follow the leads from the accumulator')
             .add(u.button(st.traced ? 'Traced' : 'Trace the circuit', trace, !st.traced, st.traced));
           var t2 = u.task('2. Take a resistance out of the box', st.R > 0, st.R > 0 ? 'R = ' + st.R + ' Ω' : 'All plugs are in: R = 0 Ω');
-          var opts = [2, 3, 4, 5, 6, 8, 10]; var row = document.createElement('div'); row.className = 'row';
+          var opts = WIDE ? [1, 2, 4, 6, 10, 15, 20] : [2, 3, 4, 5, 6, 8, 10]; var row = document.createElement('div'); row.className = 'row';
           opts.forEach(function (v) { row.appendChild(u.button(v + ' Ω', function () { setR(v); }, st.R === v, S.hand.busy)); }); t2.add(row);
           u.task('3. Insert the plug key', st.key, st.key ? 'Key closed' : 'Key open').add(u.button(st.key ? 'Key is in' : 'Insert the plug', function () {
             if (!(st.R > 0)) { S.say('Take a plug out of the resistance box first.'); return; } setKey(true); }, true, st.key || S.hand.busy));
-          u.note('Start with R about equal to the expected S (a few ohms), so the null point falls near the middle of the wire.');
+          u.note(SAMPLE ? 'Start with R about equal to the expected S (work it out roughly from the wire\'s length and gauge, or try a value and see where the null point falls), so the null point comes near the middle of the wire.'
+            : 'Start with R about equal to the expected S (a few ohms), so the null point falls near the middle of the wire.');
           u.next('Next: find the null point', st.traced && st.R > 0 && st.key);
         },
         ok: function () { return st.traced && st.R > 0 && st.key; },
@@ -284,8 +288,17 @@ HoolaStudio.define('meter-bridge', function (S) {
         },
         ok: function () { return S.rows.length >= 3; },
         auto: function () {
-          return [4, 3, 5, 6, 8].reduce(function (pr, R) { return pr.then(function () {
-            return setR(R).then(function () { return st.key ? null : setKey(true); }).then(findNull).then(function () { record(); }); }); }, Promise.resolve()); } },
+          function one(R) { return setR(R).then(function () { return st.key ? null : setKey(true); }).then(findNull).then(function () { record(); }); }
+          // what a student does: a first try with R = 4 Ω, then R values chosen so the null point stays in 30-70 cm
+          return one(4).then(function () {
+            var l0 = J.l, est = 4 * (100 - l0) / l0, inMid = function (R) { var l = 100 * R / (R + est); return l >= 31 && l <= 69; };
+            var list = [3, 5, 6, 8];
+            if (!list.every(inMid) || !inMid(4)) {
+              list = []; [1, 0.8, 1.25, 0.65, 1.5, 0.55, 1.8].forEach(function (f) { var R = Math.max(1, Math.min(110, Math.round(est * f)));
+                if (inMid(R) && list.indexOf(R) < 0 && !S.rows.some(function (r) { return r.R === R; })) list.push(R); });
+              list = list.slice(0, 4);
+            }
+            return list.reduce(function (pr, R) { return pr.then(function () { return one(R); }); }, Promise.resolve()); }); } },
     ],
 
     tick: function () {

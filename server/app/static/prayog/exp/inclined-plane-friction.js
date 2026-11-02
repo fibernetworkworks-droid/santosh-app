@@ -7,7 +7,15 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
   var T = S.T, M = S.M, K = window.HoolaKernels.K.incline, DEG = Math.PI / 180;
   function hidden(id, dflt) { var k = (S.lab.knobs || []).filter(function (q) { return q.id === id; })[0]; return k ? k.value * (k.k || 1) : dflt; }
   var p = window.HoolaKernels.paramsFor('incline', S.lab.params);
-  p.mu = hidden('mu', 0.3); p.m = 0.5; p.F = 0;            // a 500 g wooden block (weighed on a balance: given)
+  p.mu = hidden('mu', 0.3); p.F = 0;
+  p.m = S.lab.params && S.lab.params.m > 0 ? +S.lab.params.m : 0.5;   // a 500 g wooden block (weighed on a balance: given)
+  var MG = Math.round(p.m * 1000);
+  // rig: the two faces in contact come from the variant's sample (default: a bare wooden block on the wooden plank)
+  var vs = ((S.lab.variant || {}).sample || '').toLowerCase();
+  var SHEET = { aluminium: 0xc8cdd2, copper: 0xc27a4a, steel: 0xa9aeb4, leather: 0x6b3f22 };
+  var blockFace = /aluminium/.test(vs) ? 'aluminium' : /copper/.test(vs) ? 'copper' : /leather/.test(vs) ? 'leather' : /block faced with steel|metal faces/.test(vs) ? 'steel' : null;
+  var plankFace = /steel-faced|metal faces/.test(vs) ? 'steel' : /oak/.test(vs) ? 'oak' : null;
+  var oiled = /lubricated|oil/.test(vs);
   var PAN = 50, SET = [200, 100, 100, 50, 20, 20, 10, 5, 2, 2, 1];   // pan 50 g + a standard 1–200 g weight box
   var st = { deg: 15, clamped: true, moved: false, movedLoad: null, held: false };
   p.angle = st.deg * DEG;
@@ -28,7 +36,9 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
     var lf = S.mesh(new T.BoxGeometry(0.03, 0.0015, 0.05), M.brass); lf.position.set(HX - 0.016, BT + 0.0008, z); hinge.add(lf); });
   var plank = new T.Group(); plank.position.set(HX, BT, 0); S.scene.add(plank);
   var pm = S.rounded(PL, PT, PW, 0.004, M.wood); pm.position.set(PL / 2, PT / 2, 0); plank.add(pm);
-  var face = S.mesh(new T.BoxGeometry(PL - 0.06, 0.0008, PW - 0.02), new T.MeshStandardMaterial({ color: 0xc9a46a, roughness: 0.75 })); face.position.set(PL / 2 + 0.02, PT + 0.0003, 0); plank.add(face);
+  var face = S.mesh(new T.BoxGeometry(PL - 0.06, 0.0008, PW - 0.02), plankFace === 'steel' ? new T.MeshStandardMaterial({ color: SHEET.steel, roughness: oiled ? 0.12 : 0.35, metalness: 0.9 })
+    : new T.MeshStandardMaterial({ color: plankFace === 'oak' ? 0xb3864f : 0xc9a46a, roughness: 0.75 })); face.position.set(PL / 2 + 0.02, PT + 0.0003, 0); plank.add(face);
+  if (plankFace) { face.scale.y = 2; face.position.y = PT + 0.0011; }   // a sheet laid on the plank sits proud of the wood
   var stop = S.rounded(0.02, 0.03, PW - 0.02, 0.003, M.darkWood); stop.position.set(0.03, PT + 0.015, 0); plank.add(stop);
   var idx = S.mesh(new T.BoxGeometry(0.003, PT * 0.8, 0.0015), M.red); idx.position.set(QR, PT / 2, PW / 2 + 0.0008); plank.add(idx);
   // pulley at the top end, on a bracket
@@ -40,8 +50,10 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
   var brk = S.mesh(new T.BoxGeometry(0.05, 0.004, 0.04), M.alu); brk.position.set(PL - 0.012, PT + 0.002, 0); plank.add(brk);
   // the block with its hook
   var block = new T.Group(); plank.add(block);
-  var bm = S.rounded(BL, BH, BW, 0.006, new T.MeshStandardMaterial({ map: S.woodTex, color: 0xb98a58, roughness: 0.6 })); bm.position.y = BH / 2; block.add(bm);
-  var bl = S.label('500 g', { w: 0.04, ratio: 0.3, color: '#3a2410' }); bl.position.set(0, BH / 2, BW / 2 + 0.0008); block.add(bl);
+  var bm = S.rounded(BL, BH, BW, 0.006, new T.MeshStandardMaterial({ map: S.woodTex, color: /oak/.test(vs) ? 0xa87a46 : 0xb98a58, roughness: 0.6 })); bm.position.y = BH / 2; block.add(bm);
+  if (blockFace) { var fp = S.mesh(new T.BoxGeometry(BL - 0.002, 0.0012, BW - 0.002), new T.MeshStandardMaterial({ color: SHEET[blockFace], roughness: blockFace === 'leather' ? 0.85 : oiled ? 0.12 : 0.3, metalness: blockFace === 'leather' ? 0 : 0.9 }));
+    fp.position.y = 0.0006; block.add(fp); bm.position.y = BH / 2 + 0.0012; }   // the facing sheet under the block
+  var bl = S.label(MG + ' g', { w: 0.04, ratio: 0.3, color: '#3a2410' }); bl.position.set(0, BH / 2, BW / 2 + 0.0008); block.add(bl);
   var eye = S.mesh(new T.TorusGeometry(0.004, 0.0012, 8, 20), M.brass); eye.position.set(BL / 2 + 0.005, BH / 2, 0); block.add(eye);
   var eyeS = S.mesh(new T.CylinderGeometry(0.0012, 0.0012, 0.006, 8), M.brass); eyeS.rotation.z = Math.PI / 2; eyeS.position.set(BL / 2 + 0.001, BH / 2, 0); block.add(eyeS);
   var blockShadow = new T.Mesh(new T.PlaneGeometry(BL * 1.25, BW * 1.3), new T.MeshBasicMaterial({ transparent: true, opacity: 0.45, depthWrite: false, map: (function () { var c = S.contact(0.01, 0.01, 0, -5, 0); c.visible = false; return c.material.map; })() }));
@@ -99,10 +111,14 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
     return { g: g, i: i, grp: gp, top: top, home: home, inPan: false, slot: ringSlots[panSlotOf[i]] };
   });
   var inPan = [];   // order the weights went into the pan
+  var BOXG = SET.reduce(function (a, b) { return a + b; }, 0);
+  function fits(d) { var need = p.m * 1000 * (Math.sin(d * DEG) + p.mu * Math.cos(d * DEG)); return need > PAN + 5 && need < PAN + BOXG - 5; }
+  var AUTO_ANG = [20, 25, 30, 15, 35].filter(fits).slice(0, 3);   // the usual 20°, 25°, 30° unless the box cannot serve them
+  if (AUTO_ANG.length < 3) AUTO_ANG = [20, 25, 30];
 
   S.addApparatus('plank', plank, 'Inclined plane', 'A smooth wooden plank hinged to a base board. Lift its upper end to set the angle θ.');
   S.addApparatus('quad', quad, 'Angle quadrant with clamp', 'A clear acrylic scale marked in degrees. The wing nut clamps the plank at the angle you set.');
-  S.addApparatus('block', block, 'Wooden block (500 g)', 'Mass m = 500 g, weighed on a balance. A hook on its upper face takes the thread.');
+  S.addApparatus('block', block, 'Wooden block (' + MG + ' g)', 'Mass m = ' + MG + ' g, weighed on a balance' + (blockFace ? ', with its ' + blockFace + ' facing' : '') + '. A hook on its upper face takes the thread.');
   S.addApparatus('pulley', pul, 'Pulley', 'A light, smooth pulley at the top of the plank, so the thread pulls the block straight up the slope.');
   S.addApparatus('pan', pan, 'Scale pan (50 g)', 'The pan itself is 50 g. Its weight and the weights in it pull the block up the plane.');
   S.addApparatus('box', box, 'Weight box', 'Brass weights 200, 100, 100, 50, 20, 20, 10, 5, 2, 2 and 1 g. Lift them by the knob.');
@@ -139,7 +155,8 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
     var from = w.home.clone(), to = slotWorld(w), G = new T.Vector3(0, w.top - 0.002, 0);
     var path = along([from, from.clone().setY(0.13), to.clone().setY(to.y + 0.08), to.clone().setY(to.y + 0.004), to]);
     return S.hand.pinchMove(from.clone().add(G), function (k) { return path(k).add(G); }, function (k) { w.grp.position.copy(path(k)); }, { ms: 1500 })
-      .then(function () { w.inPan = true; inPan.push(w); p.F = loadG() / 1000 * p.g; S.render(); });
+      .then(function () { w.inPan = true; inPan.push(w); p.F = loadG() / 1000 * p.g; S.render();
+        if (inPan.length === W.length && !S.fast) setTimeout(function () { if (!st.moved && inPan.length === W.length) S.say('Even the whole weight box does not move the block at this angle. Take the weights off and use a smaller angle.'); }, 1500); });
   }
   function removeWeight(i) {
     var w = W[i];
@@ -194,7 +211,7 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
       formula: 'F = mg (sin θ + μ cos θ)', formulaNote: 'so μ = (F − mg sin θ) / (mg cos θ) · F = least load × g',
       more: ['The least load includes the pan (50 g). In this lab the static and kinetic friction coefficients are taken as the same μ. A graph of limiting friction (F − mg sin θ) against normal reaction (mg cos θ) is a straight line through the origin with slope μ.'],
       precautions: 'Keep the plank and the block clean and dry. Keep the thread parallel to the plank. Add weights gently, the smallest last, and bring the block back to the same starting place each time.' },
-    book: { at: [-0.66, 0.06, 0.1], title: 'Expt. — Friction on an inclined plane', lines: ['Aim: to find μ between the block and the plank.', 'Block m = 500 g, pan = 50 g, g = 9.8 m/s²', 'F = least load × g', 'μ = (F − mg sinθ) / (mg cosθ)', 'Precautions: thread parallel to plank, add weights gently.'],
+    book: { at: [-0.66, 0.06, 0.1], title: 'Expt. — Friction on an inclined plane', lines: ['Aim: to find μ between the block and the plank.', 'Block m = ' + MG + ' g, pan = 50 g, g = 9.8 m/s²', 'F = least load × g', 'μ = (F − mg sinθ) / (mg cosθ)', 'Precautions: thread parallel to plank, add weights gently.'],
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'θ (°)', get: function (r) { return String(r.deg); } },
         { label: 'Load (g)', get: function (r) { return String(r.L); } }, { label: 'F (N)', get: function (r) { return r.F.toFixed(3); } },
         { label: 'μ', get: function (r) { return (r.f / r.R).toFixed(3); } }] },
@@ -207,7 +224,7 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
     viva: [['Why is the pan\'s own mass added to the load?', ['The pan pulls on the thread too', 'To make the numbers bigger', 'It does not matter'], 0, 'The thread carries the weight of the pan and everything in it.'],
       ['Does μ depend on the angle of the plane?', ['No, it depends on the two surfaces', 'Yes, it grows with the angle', 'Yes, it falls with the angle'], 0, 'μ is a property of the pair of surfaces; F changes with θ, μ does not.']],
     askState: function () { return { angle_deg: st.deg, plank_clamped: st.clamped, load_in_pan_g: loadG(), weights_in_pan_g: inPan.map(function (w) { return w.g; }),
-      block_moving: moving(), block_has_moved: st.moved, load_when_it_moved_g: st.movedLoad, block_mass_g: 500, pan_mass_g: PAN }; },
+      block_moving: moving(), block_has_moved: st.moved, load_when_it_moved_g: st.movedLoad, block_mass_g: MG, pan_mass_g: PAN }; },
 
     steps: [
       { id: 'angle', title: 'Set the angle', view: 'angle', render: function (u) {
@@ -222,7 +239,7 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
           u.next('Next: add weights', st.clamped && !S.hand.busy);
         },
         ok: function () { return st.clamped; },
-        auto: function () { return setAngle(20); } },
+        auto: function () { return setAngle(AUTO_ANG[0]); } },
       { id: 'load', title: 'Load the pan', view: 'load', render: function (u) {
           u.h2('Add weights until the block just moves');
           u.p('Take weights from the box with the hand and put them in the pan, largest first. If the block moves, take the last weight off, bring the block back and try a smaller one. Record the least load that just starts the block moving up.');
@@ -234,10 +251,10 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
           u.h3('Observation table'); u.table();
           u.row(u.button('Change the angle for the next reading', function () { S.go(1); }));
           u.next('Next: result', S.rows.length >= 3);
-          if (S.rows.length < 3) u.p(S.rows.length + ' of 3 angles recorded (try 20°, 25° and 30°).');
+          if (S.rows.length < 3) u.p(S.rows.length + ' of 3 angles recorded (' + (AUTO_ANG.join() === '20,25,30' ? 'try 20°, 25° and 30°' : 'try ' + AUTO_ANG.slice(0, 2).join('°, ') + '° and ' + AUTO_ANG[2] + '°') + ').');
         },
         ok: function () { return S.rows.length >= 3; },
-        auto: function () { return findLeast().then(function () { return [25, 30].reduce(function (pr, d) { return pr.then(function () { return emptyPan(); }).then(resetBlock)
+        auto: function () { return findLeast().then(function () { return AUTO_ANG.slice(1).reduce(function (pr, d) { return pr.then(function () { return emptyPan(); }).then(resetBlock)
           .then(function () { return setAngle(d); }).then(findLeast); }, Promise.resolve()); }); } },
     ],
 

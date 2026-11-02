@@ -4,7 +4,11 @@ HoolaStudio.define('simple-pendulum', function (S) {
   var T = S.T, M = S.M, K = window.HoolaKernels.K.pendulum;
   var BOB_R = 0.01, DEG = Math.PI / 180;
   var st = { threadCm: 79, diaDone: false, measured: false, target: 6 * DEG, released: false };
-  var p = window.HoolaKernels.paramsFor('pendulum', { L: 0.8, theta0: 0, b: 0.004 });
+  // rig: g (and any damping) come from the lab / variant; the bob is pulled aside by the hand, so theta0 starts at 0
+  var lp = S.lab.params || {}, vs = ((S.lab.variant || {}).sample || '').toLowerCase();
+  var p = window.HoolaKernels.paramsFor('pendulum', lp);
+  p.L = 0.8; p.theta0 = 0; p.b = lp.b > 0 ? lp.b : 0.004;   // light air drag so the swing dies away as in a real room
+  var BOB = /steel/.test(vs) ? { name: 'Steel', m: M.chrome } : /alumin/.test(vs) ? { name: 'Aluminium', m: M.alu } : /wood|teak/.test(vs) ? { name: 'Wooden', m: M.wood } : { name: 'Brass', m: M.brass };
   var sim = K.init(p), running = false, n = 0, halves = 0, lastSign = 0;
   function effL() { return st.threadCm / 100 + BOB_R; }
 
@@ -15,7 +19,7 @@ HoolaStudio.define('simple-pendulum', function (S) {
   var thread = S.mesh(new T.CylinderGeometry(0.0006, 0.0006, 1, 8), M.thread, true, false); S.scene.add(thread);
   var knot = S.mesh(new T.SphereGeometry(0.0016, 10, 8), M.thread); knot.position.copy(PIVOT); S.scene.add(knot);
   var bob = new T.Group(); S.scene.add(bob);
-  var ball = S.mesh(new T.SphereGeometry(BOB_R, 64, 48), M.brass); bob.add(ball);
+  var ball = S.mesh(new T.SphereGeometry(BOB_R, 64, 48), BOB.m); bob.add(ball);
   var eye = S.mesh(new T.TorusGeometry(0.0026, 0.0007, 10, 24), M.brass); eye.position.y = BOB_R + 0.0022; bob.add(eye);
   var bobShadow = S.contact(0.05, 0.05, 0, 0, 0.35);
   var protTex = S.canvasTex(1024, 560, function (x, w) { var cx = w / 2, cy = 30, R = 480;
@@ -36,11 +40,11 @@ HoolaStudio.define('simple-pendulum', function (S) {
   var vb = S.mesh(new T.BoxGeometry(0.2, 0.004, 0.016), M.steel); vc.add(vb);
   [[-0.096, 0.026, 0.008, 0.045], [-0.064, 0.002, 0.04, 0.022], [-0.075, 0.026, 0.008, 0.045]].forEach(function (a) { var m = S.mesh(new T.BoxGeometry(a[2], 0.005, a[3]), M.steel); m.position.set(a[0], 0, a[1]); vc.add(m); });
   vc.position.set(0.33, 0.004, -0.06); vc.rotation.y = 0.45; S.contact(0.24, 0.08, 0.31, -0.05, 0.35);
-  var spare = S.mesh(new T.SphereGeometry(BOB_R, 40, 30), M.brass); spare.position.set(0.25, BOB_R, -0.13); S.scene.add(spare);
+  var spare = S.mesh(new T.SphereGeometry(BOB_R, 40, 30), BOB.m); spare.position.set(0.25, BOB_R, -0.13); S.scene.add(spare);
 
   S.addApparatus('stand', stand, 'Retort stand', 'Heavy cast-iron base keeps the support rigid, so the pivot does not move.');
   S.addApparatus('cork', cork, 'Split cork', 'Grips the thread so the point of suspension is fixed and sharp.');
-  S.addApparatus('bob', bob, 'Brass bob with hook', 'Heavy and small, so air drag is negligible. Diameter 2.00 cm.');
+  S.addApparatus('bob', bob, BOB.name + ' bob with hook', BOB.name === 'Wooden' ? 'Light, so air drag stops its swing sooner, but T is the same. Diameter 2.00 cm.' : 'Heavy and small, so air drag is negligible. Diameter 2.00 cm.');
   S.addApparatus('thread', thread, 'Cotton thread', 'Light and inextensible: its length does not change while it swings.');
   S.addApparatus('ruler', ruler, 'Metre scale', 'Measures the thread length, zero at the point of suspension. Least count 1 mm.');
   S.addApparatus('prot', prot, 'Protractor', 'Reads the angle of displacement. Keep it under 10°.');
@@ -100,7 +104,7 @@ HoolaStudio.define('simple-pendulum', function (S) {
     result: function (rows) { if (rows.length < 2) return null; var k = S.fit.origin(rows.map(function (r) { return [r.T * r.T, r.L]; }));
       return { label: 'g', value: 4 * Math.PI * Math.PI * k, unit: 'm/s²', digits: 2, truth: p.g, note: 'From the slope of L against T².' }; },
     tol: 0.02,
-    chips: ['Why must the angle be small?', 'What is effective length?', 'Why time 20 oscillations?', 'Check my readings', 'Why is my g different from 9.8?'],
+    chips: ['Why must the angle be small?', 'What is effective length?', 'Why time 20 oscillations?', 'Check my readings', Math.abs(p.g - 9.8) < 1e-9 ? 'Why is my g different from 9.8?' : 'Why does g change from place to place?'],
     viva: [['Why do we time 20 oscillations instead of one?', ['It reduces the effect of reaction-time error', 'The pendulum speeds up later', 'One oscillation cannot be timed'], 0, 'Your reaction error is shared over 20 oscillations.']],
     askState: function () { return { thread_length_cm: st.threadCm, effective_length_cm: +(effL() * 100).toFixed(1), bob_diameter_cm: 2.0, angle_now_deg: +(sim.y[0] / DEG).toFixed(1),
       swinging: running, stopwatch_running: watch.on, stopwatch_s: +watch.t.toFixed(2), oscillations_counted: n }; },

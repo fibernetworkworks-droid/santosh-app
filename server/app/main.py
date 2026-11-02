@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.456.0"   # v0.456.0 NO DESK ROWS + NO LAB / SYSTEMS ROWS (built as 0.455) (owner, with a screenshot of Education Desk / Social Desk / SEO Desk in the sidebar: "REMOVE THIS FORM SIDE BAR"): hired employees' desks no longer get sidebar rows - every desk opens from AI Employees > Open desk, the sidebar keeps only AI Employees (lit while a desk is open), a desk open when its employee is let go still falls back to the hub, and the hub no longer says "in the sidebar". Console only. Then "NOW REMOVE LAB AND SYSTEMS": the Lab and Systems rows leave the sidebar too - the labs open from the Education Desk Lab tab, Systems from an Enterprise employee's Open desk (on that role); both views and their routes are unchanged. Previous: v0.455.0 (built as 0.442 / 0.446 / 0.453) SURAKSHIT LOGIN + SURAKSHA GATE (App Sahayak Pillar I, Phase 60; owner: "START PILLAR I"): the native apps get the login the website got in v0.434, on the SAME backend (one account for a website and its phone app, "sign out everywhere" ends both). Mobile OTP typed only into the app's own box (hashed, rate limited, never shown or logged); GOOGLE / APPLE verified ON THE SERVER - signature against the provider's own published keys, iss, aud must be one of HER PUBLIC client ids, exp, and a single-use server nonce (Apple's SHA-256 form too); a forged, re-aimed, expired or replayed token is refused, and native sign-in needs no provider secret at all. Sessions a member can end (an ended token dies at once, app side too), staff TOTP 2FA as step two of password and OTP login, her switch to make it compulsory, DPDP consent + "my data" in the app. Kits SignIn.kt / SignIn.swift (+ hoola_security screen, Credential Manager Google button only when she turns it on, Sign in with Apple entitlement only then too). SURAKSHA GATE (appmaker/gates.py): six gates read the REAL build - keys inside the app / APK, only permissions a feature needs and none from Play's restricted list, release settings (debuggable, backup, https, exported, v1+v2/v3 signature), library CVEs at OSV.dev (unreachable = NOT CHECKED, never a quiet pass), login rules (Apple where Google is offered, no password box outside the sign-in screen, in-app deletion) and data rules; a FAILING gate BLOCKS the Play upload and the App Store submit. Console Login & security box, phone panel, tool app_banao action=login / security_check. Previous: v0.454.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA (owner: "START BOTH", after docs/GAME_MOAT_PLAN.md). (1) The money-game guard missed the test India's Online Gaming Act 2025 + Rules 2026 actually turn on - Rule 9's reward that is TRANSFERABLE / REDEEMABLE / MONETISABLE OUTSIDE the game: "a ludo game where players collect coins and withdraw them to UPI" passed the guard and got BUILT, and offering that is cognisable and non-bailable for whoever publishes it. service.MONEY_OUT + MONEY_OUT_FLAT now refuse it (21 phrasings tested, English + Hinglish, 0 false alarms on 10 legitimate games), and bible.money_out closes the other door (the economy block's words AND keys, every entity's text). (2) /mcp/gamedesk spoke only the dialect MCP REMOVED - the current revision 2026-07-28 has no `initialize`: the version rides in _meta / the MCP-Protocol-Version header and server/discover is MUST-implement, so a modern-only client (Claude Desktop, Cursor) failed outright; both eras now answer, with UnsupportedProtocolVersionError -32022. (3) THE GAME ARENA (gamedesk/arena.py, tool game_arena, console Game Desk > Game Arena, owner only): the QA farm proved a game RUNS, nothing proved it was worth playing - 500 fixed seeded briefs (20 genres x 25 Indian settings) so two Hoola versions are judged on exactly the same work, each built as the hidden tenant __gamearena__ then PLAYED by the QA bots (started, median fps, script errors, reached an ending, and RESPONDS = an input changed something the idle run never saw), originality measured as design-DNA distance from the closest other game of the run (Apple 4.3(b) rejects games indistinguishable from what exists, so it is a shippability number), an independent judge with its own rubric on the first thirty seconds, run-vs-run compare that says when a comparison is unfair, and blind duels against a rival's public web game played by the same bots. `fun` is always NOT ASSESSED, in those words. NOT VERIFIED: no real Arena run has been built yet, so there are no numbers for any Hoola version yet.
+APP_VERSION = "0.461.0"   # v0.461.0 HOOLA INTERACTIVE MODEL LAB (Phase 0; owner: "LET WE BUILD OUR OWN HEYGEN ... AS GPU ON VPS", "DONE MODEL LAB"): the lab where our own HeyGen + ElevenLabs is built and measured - `avatar_engine/registry.py` holds every model with the licence verdict READ FROM ITS OWN MODEL CARD (commercial / lab_only / refused: F5-TTS, XTTS-v2, Fish S1-mini and Wav2Lip are refused outright; IndicF5, DWPose and MuseTalk's face-parser are lab-only until their weights' training-data terms are read, and check(purpose="ship") refuses them so a lab-only model cannot reach a user), `avatar_engine/modal_app.py` runs the three voice engines (Chatterbox multilingual, IndicF5, Indic Parler-TTS) and the MuseTalk 1.5 face engine in separate GPU containers on Modal's per-second billing with a key-locked endpoint (hmac compare, no key = locked, 2-minute idle shutdown so an idle lab is free), `server/app/interactive/lab.py` is Hoola's only door (address + key from the VPS .env, a face refused without consent - "ai_generated" or "signed:<record>" - before a byte uploads, every size capped, engine failures become plain lines), and Actions > Interactive lab runs setup / prefetch / smoke / deploy / down by hand and brings back the clips plus REPORT.txt with the real fps and x-real-time per GPU. NOT VERIFIED: no GPU in the sandbox, so nothing has been generated yet - the smoke run is what will confirm or correct every speed figure in docs/INTERACTIVE_AVATAR_PLAN.md. Previous: v0.460.0 = GOOGLE MAPS Phases 1-3 (owner: "Phases 1-3 as one version -- GO"). (1) PAISA PEHLE - maps.py called Google with no cache, no cap and no budget anywhere, so a loop over a list of addresses billed every row while Studio and Arena had had a ceiling for versions. New app/mapsbill.py: a per-tenant DAILY RUPEE CAP (maps_daily_inr, default Rs 200) checked BEFORE the HTTP call, so a cap hit is "aaj ka Maps budget khatam" and never a surprise bill; the real price list, sourced from Google's own SKU pages, with INDIA as the default (a separate, cheaper list in USD: Text Search Enterprise $10.50 per 1,000 against the global $35.00, and 7x the free caps - using global numbers for Indian traffic overstates the bill about threefold); Google's free MONTHLY allowance per SKU counted GLOBALLY, because it belongs to the billing account and not to a person ("Google aggregates service usage for all projects linked to the customer billing account"), so her early calls really do cost nothing and one tenant cannot hand another's free calls out again; and the billing UNIT right - Places bills per REQUEST ("Successful request for Enterprise fields", "billed at the highest SKU applicable to the requested fields": the field mask picks the tier and the request is charged once, so 20 places in one answer is ONE event, not twenty), while computeRouteMatrix alone bills "per ELEMENT returned from the request" = origins x destinations. A SKU we could not source is charged at the dearest rate we know, and an assumed tier (Routes) is REPORTED by /api/maps/usage rather than hidden, so a wrong estimate is visible. (2) THE CACHE HAS A LICENCE SHAPE, not a convenient one: Maps Platform is licensed as a live lookup service, not a data source, and the Places Service Specific Terms are exactly 14.1-14.3 - place_id may be kept indefinitely, lat/lng for 30 days ("after which Customer must delete the cached latitude and longitude values"), and NOTHING permits a name, address, phone, website, rating or opening hours while ToS 3.2.3(b) makes the absence of a permission a prohibition. So maps_place_cache holds place_id + lat/lng + HER OWN query text and nothing else; expiry is enforced on READ as well as by the worker's sweep, so a stale value can never be served because the sweeper is late; and a test pins the table's COLUMNS so a future session cannot "optimise" a name column in. (3) NAKSHA DIKHE - results are a card (console + phone) instead of a wall of addresses, with Google's attribution on it as ToS 3.2.2(b) requires. Deliberately NO map: the terms allow Places content with no map at all (14.1) and FORBID it on a non-Google map (14.2, 3.2.3(e) "display or use Places content on a non-Google Map"), so the free-tiles map an earlier draft of the plan had recommended would have been a licence breach - a Google map is a paid option behind a setting, never the default. (4) PAAS KYA HAI - maps_nearby (Places Nearby Search: a KIND of place around a point, by Google's own place types, ranked by real distance) with its documented ceilings enforced rather than discovered live (circle only - there is no rectangle; radius <= 50 km; <= 20 results; NO paging), maps_place (one place's phone, website, rating and week's hours - the Enterprise fields, bought for the place she actually opens and never for a whole list) and maps_kharcha (what Maps cost today, and why a call was refused). All three declared on a voice call, in TOOL_LANES so the model stops reaching for maps_search when she names a category, and in the prompt. Found and fixed in my own code on the way: raising inside the session that recorded a cap refusal rolled the counter back, so a cap that was working read as one that had never fired. (REBASE PROTOCOL: built as v0.449.0; parallel sessions shipped v0.450-v0.459 first, so this was re-versioned to 0.460.0 on the merge and both works kept.) Previous: v0.459.0 v0.459.0 ABHI ABHI WEBSITE (web Step 5 = W6 live features + W7 connectors, owner: "Step 5 (live features + connectors)."; plan checkpoint "Clinic live queue + SMS reminders"). A website linked to its app brain now lives in real time: signed-in visitors get the native apps' live channel on the same project (every write from every path, each event filtered by that list's read rule, replay on reconnect, the website's own login rule ends a stream), so order / ticket status, staff dashboards and presence update by themselves; live chat between a visitor and her team (her own replies only by her tap in the console); a clinic queue (tokens given under the app lock, a public TV board with numbers only - never a name or a phone - a patient's own place and measured wait, ONE "your turn is near" per token through her approved SMS / WhatsApp connector); browser notifications only after the visitor's tap and the browser's own permission (RFC 8291 encryption + RFC 8292 VAPID written here, push services only, a closed browser forgotten). Connectors on the website: reminders before a booking (once per booking time, never a cancelled one), the queue trigger, HubSpot, any Composio app she connected (her account, no secrets in the arguments), signed webhooks on the website's own address, and a console Live panel with chat, queue, packs, approvals and runs. Previous: v0.458.0 PRAYOGSHALA: EK RIG, KAI PRAYOG (owner: "COVER 1 LAKH EXPERIMENT FROM ALL CHAPTERS TILL PHD"; plan docs/PRAYOG_PHYSICS_LAKH_PLAN.md, P0 + P1). P1: a studio module is now a RIG that serves a whole family of experiments - every number is read from the lab's params, and a variant is DATA (server/app/prayog/families/<base>.json: another sample, method, unknown or condition, with a real constant and its source). specs.py builds a variant lab on first open, runs ITS own NCERT check, and never serves one that fails; the catalogue is paged (1 lakh cannot travel in one answer), the console and phone list each set-up with its variants, and the lab page loads the family rig. All 22 set-ups now carry real families - g at six Indian cities from the WGS84 formula, spring wires by Shigley, friction pairs, liquids by viscosity at 20 / 30 C, metals by CRC specific heat, the 256 Hz school fork set, sonometer and resistance wires by standard wire gauge, Daniell / zinc-carbon / alkaline cells, 1N4001 / 1N4148 / Ge / Schottky / LEDs, E-series capacitors, ferrite and NdFeB magnets, SCHOTT glasses, Indian coin diameters - 198 experiments, every one walked through its own buttons in headless Chromium (198/198 within tolerance of its true value). P0: the honest count of Indian physics practicals from the syllabi (prayog/syllabus/physics/*.json + `python -m app.prayog.count`) = 807 set-ups, 3,354 variants, school to PhD; 12 of 63 sources could be read as the real document. Said plainly: 1 lakh is NOT reachable from the real syllabi without padding. Previous: v0.457.0 PAST YIELD (the third hole in the CAD desk, after v0.450 buckling + gear teeth): fea.plastic = real elastic-plastic analysis - the load goes on in steps with the metal yielding for real (von Mises radial return at every integration point), equilibrium re-solved by modified Newton on ONE cached factorisation with Aitken extrapolation of the tail (the elastic stiffness under-corrects badly once a region goes soft: the residual crept down at 0.96 per round, so it never converged before - that is what the acceleration fixed), then the load is taken off elastically and whatever is left is the PERMANENT SET. Reports: where it first yields, the set after her load comes off, how much of the part has yielded, the load factor at which it runs away (plastic hinge: it moves 4x further per extra kilo than when elastic), the last load it clearly still carries, and a TEAR check - linear hardening would otherwise carry any load by stretching for ever, so a spot past the material's elongation (steel 15 %, cast iron 1 %) is reported as splitting, not bending. Measured against both textbook limit loads within ~20 % (a bar in tension 1.75 vs 2.0, a stubby cantilever 1.75 vs 1.5), said plainly in the module and the note. H.analyze('plastic', max_set_mm=...) -> too much permanent bend or collapse under her own load goes back to be redesigned. Previous: v0.459.0 PRAYOGSHALA - the coding lab, step 1: the box (owner answered the three questions from docs/CODING_HARNESS_PLAN.md: "Docker on the VPS -- YES, OWN AS WELL AS THIRD PARTY CLONEING FOR CHECKING, setup command + cached snapshot acceptable to maintain -- SAME AS CLAUDE CODE"). The research found that without a command that comes back pass or fail a coding agent only knows "looks done" and SHE is the test suite - which was exactly Hoola's position, because her repo's code never ran anywhere but her CI (minutes a round, three rounds). New `app/devlab`: (1) box.py = Docker with the only walls the research accepts - a CHECK runs with --network none, as uid 1000, --read-only root + tmpfs, --cap-drop ALL, no-new-privileges, memory / cpus / pids caps and a hard timeout, and NO secret of any kind in its environment; (2) spec.py = the command is DECLARED, never invented - her own word first, then `.hoola/lab.json`, then the repo's AGENTS.md / CLAUDE.md labelled lines, then its CI `run:` steps, then a language default, each answer carrying WHERE it came from, a command Hoola merely READ waiting for one tap, a sudo / docker / secret-bearing command refused and SAID instead of quietly swapped, and "nothing declared" meaning nothing runs; (3) service.py = clone her branch OUTSIDE the box with the token handed over through a deleted askpass file (never in argv, never in the config) then `rm -rf .git` so no credential and no remote can ever be inside, the dependency install run ONCE per lock-file hash with the network on and committed as a per-repo image snapshot (Codex's cached container, Jules's Run-and-Snapshot), then the check itself sealed; (4) out.py = failure-first output, correcting the contract Claude Code ships: a PASS is shown short because nobody debugs a pass, a FAIL keeps its END (the traceback is at the bottom) with the real byte count and a log file the model can `grep_log` for a second question. `python -m app.devlab check` proves the walls on the VPS (passing test, failing test, network blocked, root FS read-only, non-root user); vps-ops jobs lab_check / lab_setup / lab_images / lab_prune. Switch dev_lab stays OFF: nothing in the dev loop can reach the lab until she has seen lab_check pass. Previous: v0.455.0 (built as 0.442 / 0.446 / 0.453) SURAKSHIT LOGIN + SURAKSHA GATE (App Sahayak Pillar I, Phase 60; owner: "START PILLAR I"): the native apps get the login the website got in v0.434, on the SAME backend (one account for a website and its phone app, "sign out everywhere" ends both). Mobile OTP typed only into the app's own box (hashed, rate limited, never shown or logged); GOOGLE / APPLE verified ON THE SERVER - signature against the provider's own published keys, iss, aud must be one of HER PUBLIC client ids, exp, and a single-use server nonce (Apple's SHA-256 form too); a forged, re-aimed, expired or replayed token is refused, and native sign-in needs no provider secret at all. Sessions a member can end (an ended token dies at once, app side too), staff TOTP 2FA as step two of password and OTP login, her switch to make it compulsory, DPDP consent + "my data" in the app. Kits SignIn.kt / SignIn.swift (+ hoola_security screen, Credential Manager Google button only when she turns it on, Sign in with Apple entitlement only then too). SURAKSHA GATE (appmaker/gates.py): six gates read the REAL build - keys inside the app / APK, only permissions a feature needs and none from Play's restricted list, release settings (debuggable, backup, https, exported, v1+v2/v3 signature), library CVEs at OSV.dev (unreachable = NOT CHECKED, never a quiet pass), login rules (Apple where Google is offered, no password box outside the sign-in screen, in-app deletion) and data rules; a FAILING gate BLOCKS the Play upload and the App Store submit. Console Login & security box, phone panel, tool app_banao action=login / security_check. Previous: v0.454.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA (owner: "START BOTH", after docs/GAME_MOAT_PLAN.md). (1) The money-game guard missed the test India's Online Gaming Act 2025 + Rules 2026 actually turn on - Rule 9's reward that is TRANSFERABLE / REDEEMABLE / MONETISABLE OUTSIDE the game: "a ludo game where players collect coins and withdraw them to UPI" passed the guard and got BUILT, and offering that is cognisable and non-bailable for whoever publishes it. service.MONEY_OUT + MONEY_OUT_FLAT now refuse it (21 phrasings tested, English + Hinglish, 0 false alarms on 10 legitimate games), and bible.money_out closes the other door (the economy block's words AND keys, every entity's text). (2) /mcp/gamedesk spoke only the dialect MCP REMOVED - the current revision 2026-07-28 has no `initialize`: the version rides in _meta / the MCP-Protocol-Version header and server/discover is MUST-implement, so a modern-only client (Claude Desktop, Cursor) failed outright; both eras now answer, with UnsupportedProtocolVersionError -32022. (3) THE GAME ARENA (gamedesk/arena.py, tool game_arena, console Game Desk > Game Arena, owner only): the QA farm proved a game RUNS, nothing proved it was worth playing - 500 fixed seeded briefs (20 genres x 25 Indian settings) so two Hoola versions are judged on exactly the same work, each built as the hidden tenant __gamearena__ then PLAYED by the QA bots (started, median fps, script errors, reached an ending, and RESPONDS = an input changed something the idle run never saw), originality measured as design-DNA distance from the closest other game of the run (Apple 4.3(b) rejects games indistinguishable from what exists, so it is a shippability number), an independent judge with its own rubric on the first thirty seconds, run-vs-run compare that says when a comparison is unfair, and blind duels against a rival's public web game played by the same bots. `fun` is always NOT ASSESSED, in those words. NOT VERIFIED: no real Arena run has been built yet, so there are no numbers for any Hoola version yet.
 
 
 def _quiet_http_logs() -> None:
@@ -1812,6 +1812,15 @@ def voice_stats(tenant: str = Depends(current_tenant)):
 
 class VoiceEngineBody(BaseModel):
     engine: str
+
+
+@app.get("/api/maps/usage", dependencies=[Depends(require_key)])
+def maps_usage(tenant: str = Depends(current_tenant)):
+    """v0.449 PAISA PEHLE: today's Google Maps spend, the free allowance left this month, the daily cap and
+    how many calls it has refused. `assumed_tier` and `unsourced_skus` say where our price table is a guess
+    rather than a sourced rate, so a wrong estimate is visible instead of silent."""
+    from . import mapsbill
+    return mapsbill.usage(tenant)
 
 
 @app.get("/api/voice/engine", dependencies=[Depends(require_key)])
@@ -9092,6 +9101,182 @@ async def site_app_pay_subs(site_id: str, request: Request):
 @app.post("/api/site-app/{site_id}/pay/subs/{sid}/cancel")
 async def site_app_pay_cancel(site_id: str, sid: str, request: Request):
     return await _site_pub(site_id, "pay_cancel", request, sid=sid)
+
+
+# ---- v0.459 ABHI ABHI WEBSITE (web Step 5, W6 + W7): live channel, live chat, presence, clinic queue, browser notifications,
+# inbound webhooks - all on the website's linked app (site/livesite.py, appmaker/live.py, appmaker/baat.py, site/webpush.py).
+@app.get("/api/site-app/{site_id}/live")
+async def site_app_live(site_id: str, request: Request, colls: str = ""):
+    """The website's live stream for a signed-in member (Bearer token in the header; ?last=j<id> replays a reconnect)."""
+    from .appmaker import live as LV
+    from .site import applink as AL
+    from .site import livesite as LS
+    from .site import webapp as W
+    tok = _site_tok(request)
+
+    def go():
+        p, w = AL.live_open(site_id, tok)
+        LV.admit(p, w)
+        return p, w
+    try:
+        p, w = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    last = request.headers.get("last-event-id") or request.query_params.get("last") or ""
+    member = w.m.id if w.m else ""
+    return StreamingResponse(LV.stream(p, w, tok, colls, last, gone=request.is_disconnected,
+                                       check=lambda: LS.still(site_id, p, tok, member)),
+                             media_type="text/event-stream",
+                             headers={**_SITE_APP_CORS, "Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/site-app/{site_id}/live/typing")
+async def site_app_live_typing(site_id: str, request: Request):
+    return await _site_pub(site_id, "typing", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/live/presence")
+async def site_app_live_presence(site_id: str, request: Request):
+    return await _site_pub(site_id, "presence", request)
+
+
+@app.get("/api/site-app/{site_id}/chat")
+async def site_app_chat(site_id: str, request: Request, member: str = ""):
+    """A member: her own thread. Staff: every thread (member= one thread)."""
+    if member:
+        return await _site_pub(site_id, "chat_thread", request, member=member)
+    if request.query_params.get("all"):
+        return await _site_pub(site_id, "chat_threads", request)
+    return await _site_pub(site_id, "chat_mine", request)
+
+
+@app.post("/api/site-app/{site_id}/chat")
+async def site_app_chat_write(site_id: str, request: Request):
+    return await _site_pub(site_id, "chat_write", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/chat/{member}")
+async def site_app_chat_reply(site_id: str, member: str, request: Request):
+    return await _site_pub(site_id, "chat_reply", request, await _json_body(request), member=member)
+
+
+@app.get("/api/site-app/{site_id}/push/key")
+async def site_app_push_key(site_id: str, request: Request):
+    return await _site_pub(site_id, "push_key", request)
+
+
+@app.post("/api/site-app/{site_id}/push/subscribe")
+async def site_app_push_sub(site_id: str, request: Request):
+    """Only after the visitor's own tap AND the browser's permission (consent: true)."""
+    return await _site_pub(site_id, "push_sub", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/push/unsubscribe")
+async def site_app_push_unsub(site_id: str, request: Request):
+    return await _site_pub(site_id, "push_unsub", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/queue")
+async def site_app_queue(site_id: str, request: Request, mine: int = 0, staff: int = 0):
+    """Public: the board (numbers only). mine=1: my token. staff=1: today's list with names (staff only)."""
+    return await _site_pub(site_id, "queue_mine" if mine else "queue_staff" if staff else "queue_board", request)
+
+
+@app.post("/api/site-app/{site_id}/queue/{step}")
+async def site_app_queue_step(site_id: str, step: str, request: Request):
+    ops = {"take": "queue_take", "add": "queue_add", "call": "queue_call", "mark": "queue_mark"}
+    if step not in ops:
+        return JSONResponse({"ok": False, "error": "not found"}, status_code=404, headers=_SITE_APP_CORS)
+    return await _site_pub(site_id, ops[step], request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/queue/live")
+async def site_app_queue_live(site_id: str, request: Request):
+    """The public board as a stream (no login: numbers only), for the waiting-room TV and the site's own pages."""
+    from .site import applink as AL
+    from .site import livesite as LS
+    from .site import webapp as W
+    ip = _ip(request)
+
+    def go():
+        p = AL.queue_project(site_id)
+        LS.board_admit(ip)
+        return p
+    try:
+        p = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    return StreamingResponse(LS.board_stream(p, ip, gone=request.is_disconnected), media_type="text/event-stream",
+                             headers={**_SITE_APP_CORS, "Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/site-app/{site_id}/queue/board", response_class=HTMLResponse)
+async def site_app_queue_board(site_id: str):
+    """A full-screen live board for the clinic's TV: now serving, next, how many wait. No names, no phones."""
+    from .site import applink as AL
+    from .site import livesite as LS
+    from .site import webapp as W
+    try:
+        p = await asyncio.to_thread(AL.queue_project, site_id)
+        label = (await asyncio.to_thread(LS.cfg, p)).get("label") or "Queue"
+    except W.AppError:
+        return HTMLResponse("<!doctype html><title>Not found</title><p>Not found.</p>", status_code=404)
+    return HTMLResponse(LS.board_page(site_id, label), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
+
+
+@app.post("/api/site-app/{site_id}/hook/{key}")
+async def site_app_hook(site_id: str, key: str, request: Request):
+    """Her outside service tells the website's app something (signed with HER secret; the payload is data)."""
+    raw = (await request.body())[:1_000_000]
+    return await _site_pub(site_id, "hook", request, key=key, raw=raw, headers=dict(request.headers))
+
+
+# her own controls (console / phone): the queue of any of her apps or linked websites, by app id / number
+@app.get("/api/apps/{ref}/queue", dependencies=[Depends(require_key)])
+async def apps_queue(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import livesite as LS
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.staff_view(_be_data(tenant, ref), W.Who(owner=True)))
+
+
+@app.put("/api/apps/{ref}/queue", dependencies=[Depends(require_key)])
+async def apps_queue_settings(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import livesite as LS
+    from .site import webapp as W
+
+    def go():
+        p = _be_data(tenant, ref)
+        LS.save_cfg(p, body or {})
+        return LS.staff_view(p, W.Who(owner=True))
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.post("/api/apps/{ref}/queue/{step}", dependencies=[Depends(require_key)])
+async def apps_queue_step(ref: str, step: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{name, phone} add · {token?} call (next) · {token, status} mark."""
+    from .site import livesite as LS
+    from .site import webapp as W
+    b, who = body or {}, W.Who(owner=True)
+
+    def go():
+        p = _be_data(tenant, ref)
+        if step == "add":
+            return LS.add(p, who, b)
+        if step == "call":
+            n = b.get("token")
+            return LS.call_next(p, who, int(n) if str(n or "").isdigit() else None)
+        if step == "mark":
+            return LS.mark(p, who, int(b.get("token") or 0), str(b.get("status") or ""))
+        raise W.AppError("not found", 404)
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.get("/api/apps/{ref}/push", dependencies=[Depends(require_key)])
+async def apps_push(ref: str, tenant: str = Depends(current_tenant)):
+    """How many browsers said yes to notifications on this app's website (never who)."""
+    from .appmaker import backend as BE
+    from .site import webpush as WP
+    return await asyncio.to_thread(_be_owner_call, lambda: WP.status(BE.bid(_be_data(tenant, ref))))
 
 
 def _pdf_resp(go):

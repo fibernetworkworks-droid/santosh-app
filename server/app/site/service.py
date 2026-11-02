@@ -2114,7 +2114,7 @@ def app_info(tenant: str, ref: str) -> dict[str, Any]:
     W.ensure_tables()
     p = AL.project(r)                       # v0.407 a linked site counts the app's rows
     return {"app": app_schema(r), "counts": W.counts(("app:" + p.id) if p else r.id), "api": app_api(r),
-            "linked": {"app": p.id, "number": p.number} if p else None}
+            "linked": {"app": p.id, "number": p.number} if p else None, "site_id": r.id}
 
 
 def _owner_app(tenant: str, ref: str):

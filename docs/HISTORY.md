@@ -17311,6 +17311,391 @@ Owner: "START PILLAR I" (docs/COMPLEX_APPS_PLAN.md: auth + security). Built as v
   the app and watch it (that is the device check), do not see inside an IPA (never built on Hoola's machine), and do not
   audit her own server.
 
+## v0.456.0 PRAYOGSHALA — the coding lab, step 1: the box
+
+Owner, answering the three open questions at the end of `docs/CODING_HARNESS_PLAN.md`: *"Docker on the VPS -- YES,
+OWN AS WELL AS THIRD PARTY CLONEING FOR CHECKING, setup command + cached snapshot acceptable to maintain -- SAME AS
+CLAUDE CODE."*
+
+**Why.** The research (same doc, §1.2) found the thing that separates Hoola's coding from Claude Code's: *"If it has
+nothing to run that tells it whether the work actually is done, 'looks done' is all it has to go on. In practice that
+makes you the test suite."* Hoola's only oracle was her CI after a push — minutes per round, three rounds, and only
+what CI already covers. This version builds the box that can run a check in seconds. **It is not wired to the model
+yet** (`dev_lab` defaults to False) — she verifies the walls first.
+
+**`app/devlab/box.py` — the walls.** A CHECK runs `docker run` with `--network none`, `--user 1000:1000`,
+`--read-only` plus tmpfs on `/tmp` and `/home/lab`, `--cap-drop ALL`, `--security-opt no-new-privileges`,
+`--memory 2g --memory-swap 2g --cpus 2 --pids-limit 512`, a hard timeout, and an environment containing nothing but
+HOME / LANG / CI / PYTHONDONTWRITEBYTECODE. Only the one-time SETUP step gets `--network bridge`, which is exactly
+Codex's split (*"Codex blocks internet access during the agent phase... setup scripts still run with internet access"*).
+We do not filter command text — Anthropic call that *"fragile"* with worked bypasses — we take away what a command
+could reach. A timed-out container is killed by name. `prune(keep)` drops the oldest snapshots; the base image never.
+
+**`spec.py` — the command is declared, never invented.** Every product that does this gets the command from a
+declared place (Aider's `--test-cmd`, Devin's blueprint items named `lint`/`test`/`build`, Jules's setup script, Codex
+via AGENTS.md). Order here: **her own word** → `.hoola/lab.json` → the repo's own rules (`AGENTS.md`, `CLAUDE.md`,
+`CONTRIBUTING.md`, `README.md`: labelled list lines like *"- Run one test file: pnpm vitest run x"*, bare command lines
+under a test-ish heading) → the CI workflow's `run:` steps → a language default. Every answer carries its `source`, and
+anything Hoola merely *read* carries `confirm: True` — **it waits for one tap and is then remembered**; her own word
+never asks. A `sudo` / `docker` / `while true` / secret-bearing command is **refused and SAID** (`refused: [...]`, in
+her words) instead of being silently swapped for something else. Nothing declared anywhere = **nothing runs**:
+*"Hoola khud se command banakar nahi chalayega."*
+
+**`service.py` — the run, in three steps.** (1) MATERIALIZE: clone the branch *outside* the box with her token handed
+over through a `GIT_ASKPASS` file that is deleted immediately — never in `argv` (where `ps` would show it), never in
+the clone's config — then `rm -rf .git`, so no credential, no history and no remote can exist inside the box and the
+repo's own code cannot push anywhere. Size-capped at 600 MB. (2) SNAPSHOT: the dependency install runs **once per
+lock-file hash** (`spec.deps_key` over requirements/pyproject/package.json/lockfiles/Makefile) with the network on,
+and the container is committed as `hoola-devlab:<repo>-<key>` — a code change reuses it, a dependency change rebuilds
+it. (3) CHECK: her command on that snapshot, sealed, with the output shaped. Third-party repos are allowed (her
+decision) and get identical walls, which is sound precisely because nothing of hers is inside.
+
+**`out.py` — failure-first, correcting the contract Claude Code ships.** Measured from
+code.claude.com/docs/en/tools-reference: Claude Code returns ~30,000 chars inline on success but only a ~10,000-char
+head-and-tail excerpt **with no log path** on failure. Our research called that backwards — the failing run is the one
+whose full output you want — so here a PASS shows 4,000 chars ("it passed, so the rest is not shown") and a FAIL shows
+2,000 from the start plus **24,000 from the end** (the traceback is at the bottom), always with the true byte count and
+a log file. `grep_log(path, pattern)` lets the model ask that log a second question (regex or substring, ±context,
+capped at 400 lines / 8,000 chars); `tail(path, n)` for the last lines. Logs are 0600, kept 60 runs deep.
+
+**Proof on her own VPS:** `python -m app.devlab check` builds the base image if missing and then runs five checks — a
+passing test, a failing test (and that the failure's *end* is what survives), **network blocked**, **root filesystem
+read-only**, **non-root user** — printing `GADBAD` / `KHATRA` if any wall fails. vps-ops jobs: **`lab_check`**,
+`lab_setup`, `lab_images`, `lab_prune`. Also `python -m app.devlab run --repo owner/name [--ref ...] [--cmd ...]` for
+a real repo from the command line, and `grep`.
+
+**Files:** new `server/app/devlab/{__init__,box,spec,service,out,__main__}.py`, new `deploy/devlab/Dockerfile`
+(debian-12-slim + python3 + node + npm + jdk17 + git + ripgrep + pytest/ruff, non-root `lab` user), `config.py`
+(`dev_lab` **False**, `dev_lab_timeout` 600, `dev_lab_keep` 12), `.github/workflows/vps-ops.yml` (4 jobs).
+Tests `server/tests/test_v0456_devlab.py` (19): her word wins and never asks, repo rules beat CI beat the language
+default, `.hoola/lab.json` trusted, nothing declared = nothing runs, the refusal list, a read command waiting for a
+tap (with `run_in` monkeypatched to fail the test if anything runs first), the snapshot key moving only with
+dependency files, failure keeping its end + the log, a pass shown short, a timeout not counted as a pass, grep with
+context + its caps, the wall flags asserted in `box._limits`, docker-missing saying why, and the clone leaving no
+token behind. The sealed-box test runs only where Docker exists (skipped in the sandbox).
+
+**NOT VERIFIED:** no Docker daemon exists in the build sandbox, so every container path here has been exercised only
+through its argument list and its monkeypatched callers. `lab_check` on the VPS is the first real proof, and
+**`dev_lab` stays False until it passes.** Step 2 (H3b) wires `run_check` / `grep_log` into the dev loop, makes the
+v0.447 bug proof local, and executes the v0.451 plan's `done_when` lines instead of asserting them.
+
+## v0.457.0 PAST YIELD (plastic stress) (2 Nov 2026)
+The third of the three holes named when the owner asked whether every CAD job was covered (v0.450 closed buckling
+and gear teeth). `fea.plastic`, kind 'plastic' / 'yield' / 'collapse'.
+
+- The linear check only ever says "it has yielded somewhere". This says what happens next: the load is put on in
+  steps with the metal really yielding (J2 / von Mises radial return at every integration point, `_return_map`,
+  vectorised), equilibrium is re-solved, the load is taken off ELASTICALLY, and what is left is the PERMANENT SET.
+- WHY IT DID NOT WORK AT FIRST, and the fix: modified Newton keeps the elastic stiffness, so once a region goes
+  soft every correction is too small - the residual crept down by ~0.96 per round and 90 rounds got nowhere, which
+  looked like collapse at 1.5x on a bar that was 99 % elastic. The ratio is measurable, so the whole remaining
+  geometric series is added in one go (Aitken), kept only when it really lowers the residual. With that, the bar
+  reaches its true collapse (61 % of the section plastic). `_factorise` also replaced the per-iteration solve: one
+  condense + AMG/LU setup reused for every round.
+- Reports: first-yield factor, the set at her load vs what a linear check would say, % of the part yielded, worst
+  plastic strain, the load factor where it RUNS AWAY (4x the elastic displacement rate = a plastic hinge forming),
+  `carries_up_to` (the last load it clearly still held, for when something must be safe), and the step history.
+- TEAR check: linear hardening alone will carry any load by stretching for ever - the first version "held" a 3x
+  overload at 262 % strain. A spot past the material's elongation (`TEAR`: steel 15 %, mild steel 20 %, aluminium
+  8 %, cast iron 1 %, PLA 3 %; her `max_strain_pct` overrides) is now reported as SPLITTING, not bending.
+- Default hardening E/200 (a modest, realistic slope; `hardening_MPa=0` gives the textbook limit load).
+- HOW CLOSE, measured and said in the module: against both textbook limit loads it lands within about 20 % either
+  way - a bar in tension 1.75 vs 2.0, a stubby rectangular cantilever 1.75 vs 1.5 (the plastic shape factor), with
+  one load step being 0.15. So the collapse factor is a band, not a number, and `carries_up_to` is the safe one.
+- `H.analyze('plastic', fixed=..., loads=[...], max_set_mm=0.05)`: too much permanent bend, or collapse under her
+  own load, comes back to the model with the real fix. Rows on the card, in analysis.pdf and in her chat note.
+- Not covered: large displacements (small-strain kinematics), one monotonic load path only, no creep, no ratchetting
+  under cycling, and no interaction with buckling - a slender part can fold first, so run the buckling check too.
+- Tests `test_v0451_plastic.py` (6).
+
+
+## v0.458.0 PRAYOGSHALA: EK RIG, KAI PRAYOG (2 Nov 2026)
+Owner: "NOW LETS WORK ON PHYSICS REMAINING EXPERIMENTS --- COVER 1 LAKH EXPERIMENT FROM ALL CHAPTERS TILL PHD", then "GO P0 + P1".
+Plan written first: `docs/PRAYOG_PHYSICS_LAKH_PLAN.md` (P0 count, P1 rig engine, P2-P5 levels, P6 variants, P7 find it, P8 card).
+
+### P1 - the rig engine (a lab is now RIG + SPEC)
+- `server/app/prayog/specs.py`: a family file `prayog/families/<base-lab-id>.json` lists variants of one set-up - another
+  sample, method, unknown, level or condition - as DATA. `apply()` makes a full lab: id `<base>--<key>`, `lab.rig` = the
+  base, the variant's params (the hidden unknown among them, its knob moved to that value), `lab.variant`
+  {sample, method, unknown, note, source}, and the lab's OWN NCERT check re-run on the NEW numbers. A `grid` block is the
+  generator: the product of its axes, titles filled from each item's label.
+- `service.py`: `index()` = one summary row per experiment (no lab built), `search_page()` = filters (q, level, chapter,
+  base, variants) + paging + total, `_variant()` builds a variant lab on first open and caches it. A variant that fails the
+  checker or its check is logged and NEVER served; a bad family file is skipped, not fatal.
+- `studio.js` runs `DEFS[lab.rig || lab.id]`, and the Theory step shows a "This experiment" box (sample / method / what you
+  will find / note). `lab.html` loads the family's rig. `GET /api/prayog/labs` is paged; console `index.html` and the phone
+  `prayog_screen.dart` list set-ups with "N experiments" and search every variant on the server.
+- `lsl.py` accepts `rig`, `variant`, `chapter`. `tools/prayog_serve.py` serves Prayogshala alone for the walk;
+  `tools/prayog_walk.js` pages the whole catalogue and takes `BASE=<id>` and `SHARD=i/n`; `.github/workflows/prayog-walk.yml`
+  walks everything in 4 shards on every Prayogshala change.
+- RULE found while building: a variant's params must be names the kernel already knows, and a knob's min/max must use the
+  ROUNDED value (1e-5 gave value 10.0 but min 10.000000000000002, and the variant failed its own check).
+
+### The 22 families (real constants, each with its source)
+- MECHANICS: g at 6 Indian cities (WGS84 Somigliana + free-air), 3 bob materials; 11 spring wires (k = Gd^4/8D^3N, Shigley
+  Table 10-5) + 2 unknown springs; 8 friction pairs (CRC, Serway); 12 ball-in-liquid pairs (glycerine / 90% / castor oil at
+  20 and 30 C, silicone 1000 cSt; Segur & Oberstar, Kaye & Laby, DOWSIL).
+- HEAT + WAVES: cooling in 2 rooms + glycerol / olive oil; Boyle at 2 temperatures, 2 trapped volumes, 2 altitudes (ICAO);
+  8 metals by CRC specific heat; 8 forks of the 256 Hz school set; 8 sonometer wires (SWG + densities).
+- ELECTRICITY: nichrome / constantan / manganin at SWG 24-32 (Kaye & Laby + BS 3737) for Ohm and the metre bridge; Daniell /
+  zinc-carbon / alkaline / polarised cells; 1N4001, 1N4148, Ge, 1N5819 and 4 LEDs (LTspice standard.dio, Kingbright);
+  E-series capacitor sets + an unknown-C mode (IEC 60063 / 60384-4); 100 / 500 turn coils, ferrite and NdFeB N35 magnets.
+- OPTICS + MEASUREMENT: SCHOTT BK7 / BaK4 / F2 / SF10, PMMA, fused silica, water and glycerol (hollow prism); mirror R and
+  lens f sets; 12 SWG wires on the screw gauge; steel balls (ISO 3290-1) and ₹1/₹2/₹5/₹10 coins (G.S.R. 184(E), 2019).
+- PROOF: 198 experiments, every one opened in headless Chromium and run through its own buttons: **198/198 PASS**, each
+  result within tolerance of its true value. 35 server tests (`test_prayog_variants.py` + `test_v0418_prayog.py`).
+
+### P0 - the honest count (`python -m app.prayog.count`)
+`prayog/syllabus/physics/<level>.json` = every distinct set-up of a level, chapter by chapter, each citing its syllabus:
+
+| Level | Set-ups | Variants | Sources read as the real document |
+|---|---|---|---|
+| Class 6-10 | 88 | 169 | 0 of 9 |
+| Class 11-12 | 71 | 174 | 0 of 5 |
+| B.Sc / B.Tech | 318 | 713 | 5 of 7 (DU LOCF 2019 + UGCF 2022, UGC LOCF, HNBGU, Gurugram) |
+| M.Sc | 218 | 1,237 | 5 of 8 (DU M.Sc 2025-26, IIT Kanpur PHY 461/462, CU Kerala, SGGU, MLSU) |
+| PhD techniques | 112 | 1,061 | 2 of 34 (MIT OCW 8.13-14) |
+| **TOTAL** | **807** | **3,354** | **12 of 63** |
+
+**SAID PLAINLY: 1 lakh is NOT reachable from the real syllabi.** The plan estimated ~2,200 set-ups x ~45 variants; the real
+counted figures are 807 set-ups and ~4 variants each. Reaching 1 lakh would need ~30 invented variants per set-up, i.e.
+near-duplicates. The agents listed only what the documents name and refused to pad. Two honest gaps remain: ncert.nic.in and
+cbseacademic.nic.in did not answer from the sandbox (every school row is "from knowledge of the document", 0 checked), and
+many state-university B.Sc classics are missing for the same reason - worth a few hundred set-ups, not 97,000.
+
+NOT VERIFIED: the school rows against the real NCERT / CBSE PDFs; most PhD rows against their textbooks; any of this on a
+low-end Android phone.
+
+## v0.459.0 ABHI ABHI WEBSITE (web Step 5 = W6 live features + W7 connectors; checkpoint "Clinic live queue + SMS reminders")
+Owner: "Step 5 (live features + connectors)." Everything below runs on a website LINKED to its App Sahayak project (v0.407 EK
+DIMAAG); a plain v0.305 site answers these routes with "pehle jodiye" (404).
+- LIVE CHANNEL `/api/site-app/<site>/live` = `appmaker/live.py`'s SSE on the linked project (journal-fed, every process,
+  filtered per person by the list's read rule, `?last=j<id>` / Last-Event-ID replay, 3 streams per member, 429 over caps).
+  New `check=` on `LV.stream`: the website's own login rule (`livesite.still` -> `applink._who`: old site-signed logins and
+  ended sessions) ends a stream within a minute. Page script reads it with fetch + the Authorization header (EventSource
+  cannot send one), redraws the open view on row events (never while she is typing in a form, never a new / edit page),
+  shows "Live · Team online: n", reconnects with backoff, stops on 'bye login'.
+- LIVE CHAT: `/chat` (member: her thread; staff `?all=1` threads + unread, `?member=` one), POST `/chat`, POST `/chat/<member>`
+  (website staff), `/live/typing`, `/live/presence` - `appmaker/baat.py` + live typing/presence. Her own replies only via
+  `/api/apps/<id>/chat/<member>` with her_tap (console Live panel).
+- CLINIC QUEUE `site/livesite.py`: settings on the project backend `queue` (on, label, self_take, open, avg_min, near,
+  max_day) via `/api/apps/<id>/queue` PUT; tokens = SiteAppRow coll `_queue` {token, name, phone, status waiting/called/
+  done/skipped, day IST}; numbers given under `locks.app` (8 parallel desks -> 1..8, tested); one active token per member
+  a day; `call_next` (called -> done, next / token n -> called, browser push "your turn"), `mark` done/skipped/waiting.
+  Public `/queue` + `/queue/live` (SSE, 1 s cache per site, 6 per address / 3000 per process) + `/queue/board` (TV page)
+  carry NUMBERS ONLY (now, next 8, waiting, measured minutes each = median of today's call gaps). `near()` tells the front N
+  ONCE each: `CN.fire(p, "_queue", row, "queue")` (her approved SMS / WhatsApp action) + browser push.
+- WEB PUSH `site/webpush.py`: RFC 8291 aes128gcm + RFC 8292 VAPID with `cryptography` (no new package); VAPID key derived
+  from the server secret (HKDF), never stored; endpoints only on the browser makers' push services; subscribe needs login +
+  consent:true (the page asks only inside the "Notify me" button's click, then the browser's prompt); 404/410 = deleted;
+  5 browsers per member; account delete forgets them. `turant.later` now also sends the same news to subscribed browsers
+  (status moved, chat reply, assignment, new order to staff). Service worker `assets/hoola-push-sw.js` (push + click only).
+- CONNECTORS (`appmaker/connect.py`): triggers `remind` (date_field / time_field / before_min 5 min..7 days; `remind_tick`
+  in the worker's connector tick; once per booking time via the run note `[YYYY-MM-DD HH:MM]`; cancelled / rejected never)
+  and `queue` (coll `_queue` only); `kind: composio` actions (toolkit + tool + args from the row; her tenant's connected
+  account found by the server; `{{secret.*}}` refused; approval hash includes tool + args). Packs: sms_reminder,
+  wa_reminder, sms_queue, hubspot, composio. Signed inbound webhooks on `/api/site-app/<site>/hook/<key>`.
+- CONSOLE: website App & data > Live panel (`build.js liveBox`): browsers count, messages + reply (her tap), queue settings
+  / TV board link / call next / walk-in / today's tokens, connectors (packs with sealed secrets, approve with a confirm,
+  remove, runs, hook addresses). `app_info` returns `site_id`.
+- Tests `tests/test_v0454_abhi_abhi_website.py`: RFC 8291 round trip decrypted from the browser's side, VAPID signature
+  verified, host allowlist, push consent / 410 / delete, website live stream filtering + replay + logout check, chat,
+  the clinic queue end to end with SMS bodies, parallel tokens, board caps, reminders once / cancelled never / not before
+  approval, HubSpot + Composio, signed webhook, page script asks only on a tap.
+- NOT VERIFIED live: no real MSG91 / WhatsApp / HubSpot / Composio account answered; browser push not yet tried on a real
+  Chrome / Firefox / Safari (the encryption is proven against the RFC, delivery is not). Shop orders (`hoola-shop.js`
+  tracking) are not on the live channel yet - they are not app rows.
+
+---
+
+## v0.460.0 — GOOGLE MAPS Phases 1–3: PAISA PEHLE + NAKSHA DIKHE + PAAS KYA HAI
+
+Owner: *"Phases 1–3 as one version -- GO"* (2 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**Built as v0.449.0.** Parallel sessions shipped v0.450-v0.459 while this was in test, so it was re-versioned
+to **0.460.0** on the merge, per CLAUDE.md's REBASE PROTOCOL, and both works kept.
+
+Built on three research registers read the same day out of Google's own documents —
+`docs/research/maps/01_terms_caching_and_leads.md`, `02_places_and_business_profile.md`,
+`03_her_existing_map.md` — with every load-bearing quote re-verified by hand against the downloaded page.
+
+### Phase 1 — PAISA PEHLE (`server/app/mapsbill.py`, new)
+
+`maps.py` had **no cache, no cap and no budget anywhere**. Every call was billed, and `fleet/service.py:1088`
+loops `maps.route()` over a list of points — one row, one bill. Studio and Arena have had a ceiling for
+versions (`studio_project_usd`, `site_arena_max_inr`); Maps had none.
+
+**The cap.** `maps_daily_inr` (default ₹200) per tenant per day, checked **before** the HTTP call. A cap hit
+raises `MapsCapped`, which `maps._bill()` turns into a `MapsError` so every existing `except MapsError`
+handler already shows her a sensible line. `maps_daily_inr = 0` means no ceiling.
+
+**The price list, sourced.** India is the **default** and is a genuinely different list:
+
+| SKU | India (USD/1,000) | Global | India free/month | Global free |
+|---|---|---|---|---|
+| Text Search Pro | 9.60 | 32.00 | 35,000 | 5,000 |
+| Text Search Enterprise | 10.50 | 35.00 | 7,000 | 1,000 |
+| Nearby Search Pro | 9.60 | 32.00 | 35,000 | 5,000 |
+| Place Details Enterprise | 6.00 | 20.00 | 7,000 | 1,000 |
+| Geocoding | 1.50 | 5.00 | 70,000 | 10,000 |
+
+Using the global numbers for Indian traffic overstates the bill about **threefold**. Both lists are in USD;
+`maps_usd_inr` only converts for display, because Google bills the billing account's currency.
+
+**The free allowance is counted GLOBALLY, not per tenant.** It belongs to the billing account — *"Google
+aggregates service usage for all projects linked to the customer billing account"* — so `MapsFree` is one row
+per month per SKU across every tenant sharing the key. A per-tenant counter would hand the same free calls out
+many times and the real bill would arrive anyway. Consequence she will notice: her early calls genuinely cost
+**₹0**, and `usage()` reports `free_calls` separately from `calls`.
+
+**The billing unit, got right.** Each Places SKU's billable event is *"Successful request for &lt;tier&gt;
+fields"*, and *"The request is billed at the highest SKU applicable to the requested fields"* — the field mask
+picks the **tier** and the **request** is charged once. **20 places in one answer is ONE billable event, not
+twenty**; counting results would overstate a search ~20×. (The plan's first draft said twenty, which made the
+cheap-list/details-on-open split sound ~20× more valuable than it is — corrected in `docs/MAPS_PLAN.md` §6.
+The split's real gain is the free allowance: Pro has 35,000 free calls a month against Enterprise's 7,000, so
+browsing on Pro sits five times further from paying. If she opens a place on every search it costs slightly
+*more* than one rich call, and the doc now says so.) The one exception is `computeRouteMatrix`, *"billed
+per ELEMENT returned from the request"* (origins × destinations), so `charge()` takes an `n` that means
+elements for that SKU alone and requests for every other. Both are pinned by a test.
+
+**Honesty about what is not sourced.** A SKU with no sourced rate is charged at the dearest rate known, so an
+unknown price can only make the cap fire **early**, never overspend. Routes is tiered Essentials / Pro /
+Enterprise and no Google page we found maps *our* field mask (`TRAFFIC_AWARE` + `navigationInstruction`) to a
+tier, so it is charged at Enterprise and `ASSUMED_TIER` is **reported by `/api/maps/usage`** rather than
+hidden. That is the first thing to correct against her real bill.
+
+### Phase 1b — the cache has a licence shape, not a convenient one
+
+Maps Platform is licensed as a **live lookup service, not a data source**. The Places Service Specific Terms
+are exactly §14.1–14.3: `place_id` may be cached indefinitely (§A.3), lat/lng for 30 days — *"after which
+Customer must delete the cached latitude and longitude values"* — and **nothing** permits a name, address,
+phone, website, rating or opening hours, while ToS §3.2.3(b) makes the absence of a permission a prohibition.
+
+So `maps_place_cache` holds exactly `place_id`, `lat`, `lng`, `latlng_at`, **her own query text** (hers, not
+Google's — the Place IDs guide suggests keeping the original request for ID refresh) and `first_seen`.
+
+- `LATLNG_TTL = timedelta(days=30)` is the licence's clock, not a tuning knob.
+- Expiry is enforced on **read** as well as by `sweep()`, so a stale value can never be served because the
+  worker is late.
+- `sweep()` runs in `worker.py` and **deletes** lat/lng while keeping the place_id.
+- **A test pins the table's column set**, because a future session "optimising" a `name` column in would be a
+  licence breach and nothing else would catch it.
+
+### Phase 2 — NAKSHA DIKHE, and a correction to the plan
+
+Results are now a card — `maps_places` event, rendered in `console/v2.js` and `lib/ui/maps_card.dart` — with
+name, distance, type, rating where bought, address, hours, and tap-to-call / website / Maps links.
+
+**Deliberately no map, and the plan's earlier recommendation was withdrawn.** `docs/MAPS_PLAN.md`'s first
+draft recommended MapLibre with free OpenStreetMap tiles plus Google data, to make a map nearly free. That is
+a **licence breach**: ToS §3.2.3(e) — *"Customer will not … (i) display or use Places content on a non-Google
+Map"* — and SST §14.2 says the same. Meanwhile §14.1 expressly permits Places content **without** any map. So
+the card shows no map and is free; a Google map (Dynamic Maps SKU) is a paid option behind a setting. MapLibre
+stays where it was, drawing her customers' website maps, where no Google data is involved. Google's
+attribution is on the card because §3.2.2(b) requires it wherever this content is shown, map or not.
+
+### Phase 3 — PAAS KYA HAI
+
+- **`maps_nearby`** → Places Nearby Search. A *kind* of place around a point, by Google's own Table A place
+  types, ranked by real distance. Google's documented ceilings are **enforced here rather than discovered in
+  production**: circle only (there is no rectangle on Nearby Search), radius ≤ 50 km, ≤ 20 results, and **no
+  paging** — so a wider sweep means tiling circles, and the tool says so.
+- **`maps_place`** → Place Details for **one** place: phone, website, rating, review count, the week's hours.
+  These are the Enterprise-priced fields, bought for the place she actually opens.
+- **`maps_kharcha`** → what Maps cost today, how much was inside the free allowance, the cap and what is left.
+  Also the answer to "why did that just refuse?".
+- **`GET /api/maps/usage`** returns the same, plus `assumed_tier` and `unsourced_skus`.
+
+All three are declared on a voice call, are in `TOOL_LANES` (so the model stops reaching for `maps_search`
+when she names a category), and are named in `prompts.py`. `search_places` gained an explicit `tier` and kept
+its Enterprise default, so **nothing she has today got worse** — it is now merely priced and capped.
+
+### Found in my own code on the way — four of them, all from re-reading the diff adversarially
+
+1. **The cap refusal was rolled back by its own exception.** `charge()` raised `MapsCapped` *inside* the
+   session that recorded the refusal, so the increment went with it and `refused` always read 0 — a cap that
+   worked but could not be seen working. The refusal is now counted in its own transaction.
+   → `test_a_refusal_survives_the_exception_and_is_visible`
+
+2. **A failed call still charged her.** `charge()` runs *before* the HTTP request so the cap can refuse
+   pre-flight, but Google's billable event is a **successful** request. Without a refund, a key missing an API
+   would answer 403 on every attempt and still burn the whole daily cap and the month's free allowance. And
+   the first refund **guessed**: it undid the free side first, so a failed call that had really been billed
+   got ₹0 back. `charge()` now returns a `Receipt` and `refund()` reverses **exactly** it.
+   → `test_a_failed_call_is_refunded`, `test_a_refund_reverses_exactly_what_was_charged`,
+     `test_a_refund_of_a_free_call_returns_the_allowance_not_money`
+
+3. **`usage()` read a detached ORM row** after its session had closed — it happened to work on SQLite and is
+   the kind of thing that surfaces first on Postgres. Every value is now read inside the session.
+   → `test_usage_reads_its_values_inside_the_session`
+
+4. **`charge()` read and wrote in two transactions**, so two callers could each see room and together cross
+   the cap. Read and write are now one session; only the refusal still needs its own, for reason 1.
+
+And one from the v0.399 lesson rather than from the diff: the usage route has a test that **calls** it, not
+one that asserts the path is registered. That is exactly how the Systems page shipped able to 500 on open.
+→ `test_the_usage_route_answers_and_names_what_we_guessed`
+
+### Files
+
+New: `server/app/mapsbill.py`, `lib/ui/maps_card.dart`, `server/tests/test_v0449_maps_paisa.py` (28 tests),
+`docs/research/maps/` (5 files: index + terms + APIs + her existing map + prices).
+Changed: `maps.py` (billing hook, `nearby`, `place_details`, `tier`, tenant threading), `agent/maps_tools.py`
+(3 tools + the card), `agent/tools.py` (lanes), `agent/prompts.py`, `voice.py`, `events.py`, `worker.py`
+(sweep), `main.py` (route), `config.py` (6 settings), `db.py` (model registration),
+`console/v2.js`, `lib/state.dart`, `lib/ui/chat_screen.dart`, `docs/MAPS_PLAN.md`.
+
+### Not done yet (the plan's later phases)
+
+Phase 4 `computeRouteMatrix` ("nearest of these N") — the per-element billing is already modelled for it.
+Phase 5 Route Optimization. Phase 6 Autocomplete / reverse geocoding / Address Validation. Phase 7 Static Maps
+in PDFs + Street View. Phase 8 the Business Profile desk, which is **blocked on Google's application** (a
+profile *"verified and active for 60+ days"*, with no published review turnaround). Phase 9 her own pins via
+the Data layer + the My Maps / Takeout imports. Phases 10–11 the rest, and the proof card.
+
+**Not verified live:** no call in this version has been made against the real Google APIs with her key — the
+tests drive a `MockTransport`. The rupee figures are an estimate from Google's published USD list; her first
+real bill is what will confirm or correct the price table, and `assumed_tier` names where we guessed.
+
+## v0.455.0 fix (2 Nov 2026) — the iPhone check told the truth about iPad for the first time in weeks
+
+The `App Sahayak iPhone build check` workflow had failed on **15 runs in a row**, across six parallel sessions,
+and the two lines it printed had sent the diagnosis the wrong way:
+
+- step 10 (13-inch iPad Pro) reported `"opened": 0` with all **17 screens crashed**;
+- step 14 then died on `ModuleNotFoundError: No module named 'sqlalchemy'`.
+
+**Neither reading was right.** The thing that settles it is in the step BEFORE the iPad one: the iPhone Pro Max
+step prints `home crashed=1 / cart crashed=1 / orders crashed=1` and, in the next line of the same step, saves
+four screenshots of those very screens at the correct 1320x2868, none of them blank. A crashed app cannot be
+photographed. The plain iPhone simulator in step 7 opens 17/17 of the same binary with zero crashes. So the app
+was fine and the CHECKER was wrong — on the **second and third simulator of the job**, never the first.
+
+`sim_check.sh` decided a screen had crashed when its liveness probe failed, and that probe compared the pid
+`simctl launch` printed with the pid column of `simctl spawn <dev> launchctl list`. Two things break it once a
+second device is in play: the printed pid is parsed out of simctl's own text (`awk -F': ' | tr -dc '0-9'`, which
+welds every line's digits together if simctl says anything extra), and with more than one simulator booted the
+`spawn` can answer for the wrong device. Now the probe reads the pid column for our bundle id straight out of
+`launchctl list` and asks only whether it is numeric — a service that has exited writes `-` there, so a REAL
+crash still reads as a crash and a relaunch no longer does — and `simctl shutdown all` runs before the boot, so
+only our own device is up. The crash-report count check is untouched, so a genuine crash is still caught twice.
+
+The `sqlalchemy` error was never a missing dependency: the workflow does install `server/requirements.txt`. Step
+10 failing SKIPPED steps 11-13 (setup-python, the server, the e2e run), and step 14 carried a bare
+`if: always()`, so it ran anyway with no Python set up — and its import error then sat at the bottom of the log
+looking like the cause. It now waits for `steps.e2e_server.outcome == 'success'`, so the next red run names its
+real failure.
+
+Tests: `server/tests/test_v0455_sim_probe.py` (5) drives the shipped awk + `case` out of the script itself, so the
+shape of a live and of an exited service is pinned in a test and not in a comment: a running app among other
+services reads alive, an exited one and an absent one read crashed, the probe may not go back to comparing
+simctl's pid, our simulator is the only booted one, and the e2e step is gated. Added to `app-load.yml`.
+
+**Not verified here:** this sandbox has no Mac, so whether all 17 screens now open on a 13-inch iPad is for the
+macOS runner to answer. The run this push triggers is the proof — and if the iPad genuinely does fail, the same
+fix is what will let that failure be read instead of buried.
+
 ## v0.456.0 NO DESK ROWS (built as 0.455) (2 Nov 2026)
 Owner, with a screenshot of the sidebar's Education Desk / Social Desk / SEO Desk rows: "REMOVE THIS FORM SIDE BAR".
 - `console/v2.js` `syncEmployees`: no longer splices a row per hired desk under AI Employees (the v0.317 behaviour); it
@@ -17325,3 +17710,38 @@ Owner, with a screenshot of the sidebar's Education Desk / Social Desk / SEO Des
   (`go('systems', role)`). Consequence said plainly: on the console the Lab list and the Systems page are now reached only
   through a hired education / enterprise employee (hiring is free and gates no tool); the phone keeps its own Profile entries.
   `test_v0418_prayog` no longer pins the Lab row; `test_v0456_no_desk_rows.py` checks both rows are gone and both doors work.
+
+## v0.461.0 HOOLA INTERACTIVE — the Model Lab (Phase 0) (2 Nov 2026)
+Owner: "LET WE BUILD OUR OWN HEYGEN", "AS WE ARE BUILDING WORLD CLASS PRODUCT :: WE WILL BUILD OUR OWN HEYGEN FOR WORLD
+AS GPU ON VPS", "IS ON GPU WE CAN CLONE A 11LABS", "DONE MODEL LAB". The plan (model choice, GPU server, trust & safety,
+HeyGen's 15 products mapped) is `docs/INTERACTIVE_AVATAR_PLAN.md`; this version is its Phase 0 — the lab, built so the
+GPU costs nothing while idle and so a wrong licence cannot ship.
+
+- **`avatar_engine/registry.py`** — one row per model with the licence verdict READ FROM ITS OWN MODEL CARD / LICENSE on
+  2 Nov 2026, and one gate every download and call passes:
+  - `commercial` (may ship): Chatterbox Multilingual V3 (MIT, Hindi + 22, cloning, Perth watermark on every clip),
+    Indic Parler-TTS (Apache-2.0, 21 Indian languages, voice described in words), MuseTalk 1.5 (MIT code + MIT weights),
+    sd-vae-ft-mse (MIT), whisper-tiny (Apache-2.0).
+  - `lab_only` (test, never ship): IndicF5 (MIT weights, training-data terms unread), DWPose, and MuseTalk's
+    face-parsing helper (commonly trained on CelebAMask-HQ, whose terms are non-commercial — must be replaced before
+    any public release). `check(purpose="ship")` REFUSES these, so a lab-only model cannot reach a user by accident.
+  - `refused` (never downloaded): F5-TTS (CC-BY-NC), XTTS-v2 (Coqui non-commercial), Fish S1-mini (CC-BY-NC-SA),
+    Wav2Lip (research / personal only).
+- **`avatar_engine/modal_app.py`** — the GPU app on Modal (per-second billing, free monthly credit): three voice engines
+  and the face engine in SEPARATE containers because their libraries clash (Chatterbox pins transformers 5.2, Parler
+  pins 4.46.1, MuseTalk needs torch 2.0.1 + mmcv 2.0.1), one shared weights volume, and a key-locked FastAPI endpoint
+  (`/health`, `/voice`, `/face/prepare`, `/face/speak`, `/face/forget`). Guards in code: `hmac.compare_digest` on the
+  key and NO key configured = locked (never open), `registry.check()` before every load, a face prepared only with
+  `ai_generated` or `signed:<record id>`, `stdin=DEVNULL` (MuseTalk's script asks y/n and would hang), the reference
+  video re-encoded to 25 fps (its training rate), 2-minute idle shutdown.
+- **`server/app/interactive/lab.py`** — Hoola's ONLY door to the lab. `AVATAR_ENGINE_URL` / `AVATAR_ENGINE_KEY` from the
+  VPS .env (empty = the feature is simply off); consent checked and sizes capped BEFORE any upload; a refused voice
+  model is not even reachable; every engine failure becomes a plain Hoola line, never a stack trace.
+- **`.github/workflows/interactive-lab.yml`** — Actions > Interactive lab, by hand only (GPU time costs money):
+  `setup` (keys into Modal's secret store), `prefetch` (weights, no GPU), `smoke` (one Hindi + one English line per
+  voice, one talking clip from MuseTalk's own sample face, uploaded as an artifact with REPORT.txt), `deploy`, `down`.
+  GPU chosen per run (T4 / L4 / A10G / L40S) so the speed numbers can be compared.
+- Tests: `test_v0457_interactive_lab.py` (12) — refused licences unloadable, lab-only unshippable, consent refused
+  before upload, caps, the key only ever in the header, engine failures as plain errors, the GPU app's own guards, the
+  workflow's hand-run + artifact. **NOT VERIFIED: this sandbox has no GPU.** Nothing has been generated yet; the first
+  `smoke` run is what will confirm or correct every speed figure in the plan.

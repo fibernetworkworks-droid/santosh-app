@@ -1,0 +1,132 @@
+{
+  "base": "resonance-tube",
+  "chapter": "Waves",
+  "variants": [
+    {
+      "key": "fork-288",
+      "title": "Resonance tube: speed of sound with a 288 Hz fork (D)",
+      "sample": "Tuning fork 288 Hz, stamped 'D' in the school set",
+      "method": "Two resonances, v = 2f(l2 - l1)",
+      "unknown": "the speed of sound in air at 20 °C",
+      "params": {
+        "f": 288,
+        "Tc": 20
+      },
+      "note": "At 20 °C the first resonance is near 29 cm and the second near 88 cm, both inside the 1 m tube.",
+      "source": {
+        "title": "Standard school tuning-fork set: C major scale on C = 256 Hz (256, 288, 320, 341.3, 384, 426.7, 480, 512 Hz)",
+        "note": "Scientific pitch, just intonation ratios 1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8, 2."
+      }
+    },
+    {
+      "key": "fork-320",
+      "title": "Resonance tube: speed of sound with a 320 Hz fork (E)",
+      "sample": "Tuning fork 320 Hz, stamped 'E' in the school set",
+      "method": "Two resonances, v = 2f(l2 - l1)",
+      "unknown": "the speed of sound in air at 20 °C",
+      "params": {
+        "f": 320,
+        "Tc": 20
+      },
+      "note": "At 20 °C the first resonance is near 26 cm and the second near 79 cm, both inside the 1 m tube.",
+      "source": {
+        "title": "Standard school tuning-fork set: C major scale on C = 256 Hz (256, 288, 320, 341.3, 384, 426.7, 480, 512 Hz)",
+        "note": "Scientific pitch, just intonation ratios 1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8, 2."
+      }
+    },
+    {
+      "key": "fork-341p3",
+      "title": "Resonance tube: speed of sound with a 341.3 Hz fork (F)",
+      "sample": "Tuning fork 341.3 Hz, stamped 'F' in the school set",
+      "method": "Two resonances, v = 2f(l2 - l1)",
+      "unknown": "the speed of sound in air at 20 °C",
+      "params": {
+        "f": 341.3,
+        "Tc": 20
+      },
+      "note": "At 20 °C the first resonance is near 24 cm and the second near 74 cm, both inside the 1 m tube.",
+      "source": {
+        "title": "Standard school tuning-fork set: C major scale on C = 256 Hz (256, 288, 320, 341.3, 384, 426.7, 480, 512 Hz)",
+        "note": "Scientific pitch, just intonation ratios 1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8, 2."
+      }
+    },
+    {
+      "key": "fork-384",
+      "title": "Resonance tube: speed of sound with a 384 Hz fork (G)",
+      "sample": "Tuning fork 384 Hz, stamped 'G' in the school set",
+      "method": "Two resonances, v = 2f(l2 - l1)",
+      "unknown": "the speed of sound in air at 20 °C",
+      "params": {
+        "f": 384,
+        "Tc": 20
+      },
+      "note": "At 20 °C the first resonance is near 21 cm and the second near 66 cm, both inside the 1 m tube.",
+      "source": {
+        "title": "Standard school tuning-fork set: C major scale on C = 256 Hz (256, 288, 320, 341.3, 384, 426.7, 480, 512 Hz)",
+        "note": "Scientific pitch, just intonation ratios 1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8, 2."
+      }
+    },
+    {
+      "key": "fork-426p7",
+      "title": "Resonance tube: speed of sound with a 426.7 Hz fork (A)",
+      "sample": "Tuning fork 426.7 Hz, stamped 'A' in the school set",
+      "method": "Two resonances, v = 2f(l2 - l1)",
+      "unknown": "the speed of sound in air at 20 °C",
+      "params": {
+        "f": 426.7,
+        "Tc": 20
+      },
+      "note": "At 20 °C the first resonance is near 19 cm and the second near 59 cm, both inside the 1 m tube.",
+      "source": {
+        "title": "Standard school tuning-fork set: C major scale on C = 256 Hz (256, 288, 320, 341.3, 384, 426.7, 480, 512 Hz)",
+        "note": "Scientific pitch, just intonation ratios 1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8, 2."
+      }
+    },
+    {
+      "key": "fork-480",
+      "title": "Resonance tube: speed of sound with a 480 Hz fork (B)",
+      "sample": "Tuning fork 480 Hz, stamped 'B' in the school set",
+      "method": "Two resonances, v = 2f(l2 - l1)",
+      "unknown": "the speed of sound in air at 20 °C",
+      "params": {
+        "f": 480,
+        "Tc": 20
+      },
+      "note": "At 20 °C the first resonance is near 17 cm and the second near 52 cm, both inside the 1 m tube.",
+      "source": {
+        "title": "Standard school tuning-fork set: C major scale on C = 256 Hz (256, 288, 320, 341.3, 384, 426.7, 480, 512 Hz)",
+        "note": "Scientific pitch, just intonation ratios 1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8, 2."
+      }
+    },
+    {
+      "key": "room-10c",
+      "title": "Resonance tube: speed of sound in a cold laboratory at 10 °C (512 Hz fork)",
+      "sample": "Tuning fork 512 Hz (C')",
+      "method": "Two resonances, v = 2f(l2 - l1)",
+      "unknown": "the speed of sound in air at 10 °C",
+      "params": {
+        "f": 512,
+        "Tc": 10
+      },
+      "note": "v = 331.3 sqrt(1 + t/273.15) = 337.3 m/s at 10 °C: the resonance lengths shrink with the speed of sound.",
+      "source": {
+        "title": "Speed of sound in dry air: v = 331.3 sqrt(1 + t/273.15) m/s (NCERT Physics Part 2, Class XI, Ch. 14 Waves: v proportional to sqrt(T))"
+      }
+    },
+    {
+      "key": "room-35c",
+      "title": "Resonance tube: speed of sound in a hot laboratory at 35 °C (512 Hz fork)",
+      "sample": "Tuning fork 512 Hz (C')",
+      "method": "Two resonances, v = 2f(l2 - l1)",
+      "unknown": "the speed of sound in air at 35 °C",
+      "params": {
+        "f": 512,
+        "Tc": 35
+      },
+      "note": "v = 331.3 sqrt(1 + t/273.15) = 351.9 m/s at 35 °C: the resonance lengths grow with the speed of sound.",
+      "source": {
+        "title": "Speed of sound in dry air: v = 331.3 sqrt(1 + t/273.15) m/s (NCERT Physics Part 2, Class XI, Ch. 14 Waves: v proportional to sqrt(T))"
+      }
+    }
+  ]
+}

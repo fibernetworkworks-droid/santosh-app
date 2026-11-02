@@ -1925,6 +1925,7 @@ window.HoolaBuild = function (C) {
     });
     if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
     if (info.linked) auditBox(o, box);
+    if (info.linked) liveBox(o, box, M(info.linked), S(info.site_id), S(info.api));
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
       let rows = [];
@@ -1993,6 +1994,66 @@ window.HoolaBuild = function (C) {
       + `<h4 style="margin-top:12px">Who can do what</h4><div class="sttbl"><table><thead><tr><th>List</th><th>Add</th><th>See</th><th>Change</th><th>Delete</th><th>Only staff see</th></tr></thead><tbody>${L(v.matrix).map(m => `<tr><td>${esc(S(m.label))}</td><td>${esc(S(m.create))}</td><td>${esc(S(m.read))}</td><td>${esc(S(m.update))}</td><td>${esc(S(m['delete']))}</td><td>${esc(L(m.staff_see).join(', '))}</td></tr>`).join('')}</tbody></table></div>`
       + `<p class="stnote">Mobile OTP login: ${v.otp ? 'on' : 'off (needs an SMS provider on the server)'}</p>`;
     box.appendChild(sec);
+  }
+
+  /* v0.459 ABHI ABHI WEBSITE: live chat (her reply = her tap), the clinic queue, browser notifications, connectors */
+  async function liveBox(o, box, link, siteId, apiBase) {
+    const A = `/api/apps/${encodeURIComponent(S(link.app))}`;
+    let q = {}, ch = {}, cn = {}, pu = {};
+    try { [q, ch, cn, pu] = await Promise.all([api('GET', A + '/queue'), api('GET', A + '/chat'), api('GET', A + '/connect'), api('GET', A + '/push').catch(() => ({}))]); }
+    catch (er) { return; }
+    const st = M(q.settings), bd = M(q.board), host = S(apiBase).replace(/\/api\/site-app\/.*$/, '');
+    const boardUrl = `${host}/api/site-app/${encodeURIComponent(siteId)}/queue/board`;
+    const sec = document.createElement('section'); sec.className = 'stlogic';
+    const packs = L(cn.packs).filter(p => !p.no_actions);
+    sec.innerHTML = `<h4>Live <span>${N(pu.browsers)} browser(s) said yes to notifications</span></h4>
+      <p class="stnote">Signed-in visitors see changes as they happen (orders, tickets, dashboards), can message your team and get browser notifications only after they tap "Notify me".</p>
+      <h4 style="margin-top:12px">Messages <span>${N(ch.unread)} new</span></h4>
+      ${L(ch.threads).length ? `<ul class="stmems">${L(ch.threads).slice(0, 20).map(t => `<li data-th="${esc(S(t.member))}"><span><b>${esc(S(t.name))}</b>${t.unread ? ' (' + N(t.unread) + ')' : ''} · ${esc(S(t.last))}</span><span class="row"><input aria-label="Reply" placeholder="Reply…"><button class="btn soft" type="button" data-rep>Send</button></span></li>`).join('')}</ul>` : '<p class="stempty">No messages yet.</p>'}
+      <h4 style="margin-top:12px">Queue <span>${st.on ? (bd.now != null ? 'now serving ' + N(bd.now) + ' · ' : '') + N(bd.waiting) + ' waiting' : 'off'}</span></h4>
+      <form class="stapp" data-q="cfg" autocomplete="off"><div class="row">
+        <label><input type="checkbox" name="on"${st.on ? ' checked' : ''}> Queue on</label><label><span>Name</span><input name="label" value="${esc(S(st.label))}"></label>
+        <label><input type="checkbox" name="self_take"${st.self_take ? ' checked' : ''}> Patients take tokens on the site</label><label><input type="checkbox" name="open"${st.open ? ' checked' : ''}> Open today</label>
+        <label><span>Minutes each</span><input name="avg_min" value="${N(st.avg_min)}" inputmode="numeric"></label><label><span>Tell when this many are ahead</span><input name="near" value="${N(st.near)}" inputmode="numeric"></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Save queue</button>${st.on ? `<a class="btn soft" target="_blank" rel="noopener" href="${esc(boardUrl)}">Open TV board</a><button class="btn go" type="button" data-q="next">Call next</button>` : ''}</div></form>
+      ${st.on ? `<form class="stapp" data-q="add" autocomplete="off"><div class="row"><label><span>Walk-in name</span><input name="name"></label><label><span>Mobile (for the SMS)</span><input name="phone" inputmode="numeric" maxlength="10"></label></div><div class="acts"><button class="btn soft" type="submit">Add token</button></div></form>
+        ${L(q.tokens).length ? `<div class="sttbl"><table><thead><tr><th>Token</th><th>Name</th><th>Status</th><th>Told</th></tr></thead><tbody>${L(q.tokens).map(k => `<tr><td>${N(k.token)}</td><td>${esc(S(k.name))}</td><td>${esc(S(k.status))}</td><td>${k.near_sent ? 'yes' : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}` : ''}
+      <h4 style="margin-top:12px">Connectors <span>${L(cn.actions).length} action(s)</span></h4>
+      <p class="stnote">Each action does nothing until you approve it; a change needs approving again. Keys are sealed and never shown again. SMS / WhatsApp use your own DLT / approved templates.</p>
+      ${L(cn.actions).length ? `<ul class="stmems">${L(cn.actions).map(a => `<li data-ak="${esc(S(a.key))}"><span><b>${esc(S(a.label))}</b> · ${esc(S(M(a.leaves).when))} · to ${esc(S(M(a.leaves).host))}${L(M(a.leaves).fields).length ? ' · sends ' + esc(L(M(a.leaves).fields).join(', ')) : ''}</span>
+        <span>${a.approved ? '<em>approved</em>' : '<button class="btn go" type="button" data-ok>Approve</button>'} <button class="btn soft" type="button" data-rm>Remove</button></span></li>`).join('')}</ul>` : ''}
+      <form class="stapp" data-c="pack" autocomplete="off"><div class="row"><label><span>Add a ready pack</span><select name="pack">${packs.map(p => `<option value="${esc(S(p.key))}">${esc(S(p.group))}: ${esc(S(p.label))}</option>`).join('')}</select></label></div><div class="stpk"></div><div class="acts"><button class="btn soft" type="submit">Add (waits for your approval)</button></div></form>
+      ${L(cn.runs).length ? `<div class="sttbl"><table><thead><tr><th>When</th><th>Action</th><th>Why</th><th>Result</th></tr></thead><tbody>${L(cn.runs).slice(0, 12).map(r => `<tr><td>${esc(new Date(S(r.at)).toLocaleString())}</td><td>${esc(S(r.action))}</td><td>${esc(S(r.trigger))}</td><td>${esc(S(r.status))} ${esc(S(r.note))}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${L(cn.hooks).length ? `<p class="stnote">Incoming (signed) webhooks: ${L(cn.hooks).map(h => `<code>${esc(host)}/api/site-app/${esc(siteId)}/hook/${esc(S(h.key))}</code>`).join(' · ')}</p>` : ''}`;
+    box.appendChild(sec);
+    const reload = () => { sec.remove(); liveBox(o, box, link, siteId, apiBase); };
+    const pf = sec.querySelector('[data-c=pack]'), pk = sec.querySelector('.stpk');
+    const fields = () => { const p = packs.find(x => S(x.key) === pf.pack.value); if (!p) return;
+      pk.innerHTML = `<p class="stnote">${esc(S(p.note))}</p><div class="row">${Object.entries(M(p.settings)).map(([k, v]) => `<label><span>${esc(k)}</span><input data-set="${esc(k)}" value="${esc(S(v))}"></label>`).join('')}
+        ${L(p.secrets).map(k => `<label><span>${esc(k)} (sealed)</span><input type="password" autocomplete="off" data-sec="${esc(k)}"></label>`).join('')}</div>`; };
+    if (pf) { pf.pack.onchange = fields; fields();
+      pf.onsubmit = async e => { e.preventDefault(); const settings = {}, secrets = {};
+        pk.querySelectorAll('[data-set]').forEach(i => { settings[i.dataset.set] = i.value.trim(); });
+        pk.querySelectorAll('[data-sec]').forEach(i => { if (i.value) secrets[i.dataset.sec] = i.value; });
+        try { const r = await api('POST', A + '/connect/pack', {pack: pf.pack.value, settings, secrets}); toast(L(r.problems).length ? L(r.problems).join(' · ') : 'Added. Approve it to switch it on.', L(r.problems).length > 0); reload(); }
+        catch (er) { toast(er.message, true); } }; }
+    const qf = sec.querySelector('[data-q=cfg]');
+    qf.onsubmit = async e => { e.preventDefault();
+      try { await api('PUT', A + '/queue', {on: qf.on.checked, label: qf.label.value, self_take: qf.self_take.checked, open: qf.open.checked, avg_min: qf.avg_min.value, near: qf.near.value}); toast('Queue saved.'); reload(); }
+      catch (er) { toast(er.message, true); } };
+    const af = sec.querySelector('[data-q=add]');
+    if (af) af.onsubmit = async e => { e.preventDefault(); try { await api('POST', A + '/queue/add', {name: af.name.value, phone: af.phone.value}); reload(); } catch (er) { toast(er.message, true); } };
+    sec.onclick = async e => {
+      if (e.target.closest('[data-q=next]')) { try { await api('POST', A + '/queue/call', {}); reload(); } catch (er) { toast(er.message, true); } return; }
+      const li = e.target.closest('li[data-ak]');
+      if (li && e.target.closest('[data-ok]')) {
+        if (!confirm('Switch this action on? It will send the listed fields to the listed address whenever its moment comes.')) return;
+        try { await api('POST', A + '/connect/actions/' + encodeURIComponent(li.dataset.ak) + '/approve', {her_tap: true}); reload(); } catch (er) { toast(er.message, true); } return; }
+      if (li && e.target.closest('[data-rm]')) { if (!confirm('Remove this action?')) return; try { await api('DELETE', A + '/connect/actions/' + encodeURIComponent(li.dataset.ak)); reload(); } catch (er) { toast(er.message, true); } return; }
+      const th = e.target.closest('li[data-th]');
+      if (th && e.target.closest('[data-rep]')) { const inp = th.querySelector('input'), v = inp.value.trim(); if (!v) return;
+        try { await api('POST', A + '/chat/' + encodeURIComponent(th.dataset.th), {text: v, her_tap: true}); toast('Sent.'); reload(); } catch (er) { toast(er.message, true); } }
+    };
   }
 
   /* ---------------- v0.295 edit mode: her own hands in the preview, no AI ---------------- */

@@ -49,7 +49,9 @@ from .models import AppProject
 log = logging.getLogger(__name__)
 STATS = {"runs": 0, "ok": 0, "failed": 0, "refused": 0, "hooks": 0, "hooks_bad": 0, "ambiguous": 0}
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
-TRIGGERS = ("manual", "create", "status")
+TRIGGERS = ("manual", "create", "status", "remind", "queue")   # v0.459: a time before a booking / a queue turn near
+QUEUE_COLL = "_queue"                                     # v0.459 the clinic queue's tokens (site/livesite.py)
+TOOL_RE = re.compile(r"[A-Z][A-Z0-9_]{2,99}")
 AUTH_TYPES = ("none", "bearer", "basic", "header", "query", "login_token", "oauth_refresh", "google_sa")
 MAX_ACTIONS = 40
 MAX_BODY = 1_000_000
@@ -194,6 +196,8 @@ def _clean(a: dict[str, Any], sch: dict[str, Any]) -> dict[str, Any]:
     key = str(a.get("key") or "").strip()
     if not re.fullmatch(r"[a-z][a-z0-9_]{0,39}", key):
         raise ConnError("Action key: chhote akshar / ank / _ .", 400)
+    if str(a.get("kind") or "") == "composio":
+        return _clean_composio(a, key, sch)
     method = str(a.get("method") or "POST").upper()
     if method not in METHODS:
         raise ConnError("Method: GET / POST / PUT / PATCH / DELETE.", 400)
@@ -203,20 +207,7 @@ def _clean(a: dict[str, Any], sch: dict[str, Any]) -> dict[str, Any]:
         raise ConnError("Address sirf https://<public host>/... (koi user:password / port nahi).", 400)
     if PH.search(urlparse(url).netloc or ""):
         raise ConnError("Host mein {{...}} nahi chalega - host pakka likhiye.", 400)
-    colls = {c["key"]: c for c in sch.get("collections") or []}
-    coll = str(a.get("coll") or "")
-    if coll and coll not in colls:
-        raise ConnError(f"List '{coll}' app mein nahi.", 400)
-    trig = str(a.get("trigger") or "manual")
-    if trig not in TRIGGERS:
-        raise ConnError("Trigger: manual | create | status.", 400)
-    if trig in ("create", "status") and not coll:
-        raise ConnError("Automatic action ke liye list chahiye.", 400)
-    status = str(a.get("status") or "")
-    if trig == "status":
-        opts = next((f.get("options") or [] for f in colls[coll]["fields"] if f["key"] == "status"), [])
-        if status not in opts:
-            raise ConnError("Status list ke options mein se chuniye.", 400)
+    colls, coll, trig, status, when = _when(a, sch)
     auth = dict(a.get("auth") or {"type": "none"})
     if auth.get("type") not in AUTH_TYPES:
         raise ConnError("Auth: " + " | ".join(AUTH_TYPES), 400)
@@ -225,6 +216,8 @@ def _clean(a: dict[str, Any], sch: dict[str, Any]) -> dict[str, Any]:
         if tu.scheme != "https" or not _host_ok((tu.hostname or "").lower()):
             raise ConnError("Token address bhi https public host ho.", 400)
     mp = {str(k): str(v) for k, v in (a.get("map") or {}).items()}
+    if mp and coll == QUEUE_COLL:
+        raise ConnError("Queue token mein jawab nahi likha jaata (map khaali rakhiye).", 400)
     if mp:
         if not coll:
             raise ConnError("Jawab kis list mein jaaye? (coll)", 400)
@@ -243,9 +236,70 @@ def _clean(a: dict[str, Any], sch: dict[str, Any]) -> dict[str, Any]:
            "body": a.get("body"), "body_type": body_type, "auth": auth, "trigger": trig, "coll": coll, "status": status,
            "map": mp, "staff": bool(a.get("staff")), "retries": max(0, min(3, int(a.get("retries") or 0))),
            "per_min": max(1, min(600, int(a.get("per_min") or 30))), "idem": str(a.get("idem") or "")[:60],
-           "pack": str(a.get("pack") or "")[:30], "note": str(a.get("note") or "")[:300]}
+           "pack": str(a.get("pack") or "")[:30], "note": str(a.get("note") or "")[:300], **when}
     if NO_AADHAAR.search(json.dumps({k: out[k] for k in ("url", "headers", "query", "body", "map")}, default=str)):
         raise ConnError("Aadhaar wala connector Hoola nahi chalata - licensed provider se PAN / doosre document se KYC kijiye.", 400)
+    if len(json.dumps(out, default=str)) > 30000:
+        raise ConnError("Action bahut bada.", 400)
+    return out
+
+
+def _when(a: dict[str, Any], sch: dict[str, Any]) -> tuple[dict[str, Any], str, str, str, dict[str, Any]]:
+    """The list + the moment an action runs: (lists, coll, trigger, status, extra keys for remind)."""
+    colls = {c["key"]: c for c in sch.get("collections") or []}
+    coll = str(a.get("coll") or "")
+    trig = str(a.get("trigger") or "manual")
+    if trig not in TRIGGERS:
+        raise ConnError("Trigger: " + " | ".join(TRIGGERS) + ".", 400)
+    if trig == "queue" or coll == QUEUE_COLL:           # v0.459 the clinic queue: only 'your turn is near'
+        if trig != "queue" or coll not in ("", QUEUE_COLL):
+            raise ConnError("Queue ke liye trigger 'queue' aur list '_queue'.", 400)
+        return colls, QUEUE_COLL, trig, "", {}
+    if coll and coll not in colls:
+        raise ConnError(f"List '{coll}' app mein nahi.", 400)
+    if trig in ("create", "status", "remind") and not coll:
+        raise ConnError("Automatic action ke liye list chahiye.", 400)
+    status = str(a.get("status") or "")
+    if trig == "status":
+        opts = next((f.get("options") or [] for f in colls[coll]["fields"] if f["key"] == "status"), [])
+        if status not in opts:
+            raise ConnError("Status list ke options mein se chuniye.", 400)
+    when: dict[str, Any] = {}
+    if trig == "remind":                                # v0.459 a reminder before a booking's date (+ time)
+        own = {f["key"]: f for f in colls[coll]["fields"]}
+        df, tf = str(a.get("date_field") or "date"), str(a.get("time_field") or "")
+        if df not in own:
+            raise ConnError(f"Reminder ke liye tareekh wala field chahiye ('{df}' list mein nahi).", 400)
+        if tf and tf not in own:
+            raise ConnError(f"Samay wala field '{tf}' list mein nahi.", 400)
+        try:
+            before = int(a.get("before_min") or 120)
+        except (TypeError, ValueError):
+            raise ConnError("Kitne minute pehle? (ank)", 400)
+        if not 5 <= before <= 7 * 24 * 60:
+            raise ConnError("Reminder 5 minute se 7 din pehle tak.", 400)
+        when = {"date_field": df, "time_field": tf, "before_min": before}
+    return colls, coll, trig, status, when
+
+
+def _clean_composio(a: dict[str, Any], key: str, sch: dict[str, Any]) -> dict[str, Any]:
+    """v0.459 a Composio app SHE connected (Slack, Notion, HubSpot...) as a site / app action: the tool slug + its
+    arguments, filled from the row. Runs on HER Composio account only; no secrets of hers ride in the arguments."""
+    toolkit = str(a.get("toolkit") or "").strip().lower()
+    tool = str(a.get("tool") or "").strip().upper()
+    if not re.fullmatch(r"[a-z][a-z0-9_]{1,59}", toolkit) or not TOOL_RE.fullmatch(tool) or not tool.startswith(toolkit.upper() + "_"):
+        raise ConnError("Composio: toolkit (jaise slack) + us app ka tool (jaise SLACK_SEND_MESSAGE).", 400)
+    args = a.get("args") if isinstance(a.get("args"), dict) else {}
+    if any(m.group(1) == "secret" for m in PH.finditer(json.dumps(args, default=str))):
+        raise ConnError("Composio arguments mein {{secret...}} nahi - app ka sign-in Composio ke paas hai.", 400)
+    colls, coll, trig, status, when = _when(a, sch)
+    out = {"key": key, "kind": "composio", "label": str(a.get("label") or key)[:80], "toolkit": toolkit, "tool": tool, "args": args,
+           "method": "POST", "url": "https://backend.composio.dev/" + tool.lower(), "headers": {}, "query": {}, "body": None,
+           "body_type": "none", "auth": {"type": "none"}, "trigger": trig, "coll": coll, "status": status, "map": {},
+           "staff": bool(a.get("staff")), "retries": 0, "per_min": max(1, min(120, int(a.get("per_min") or 20))), "idem": "",
+           "pack": str(a.get("pack") or "")[:30], "note": str(a.get("note") or "")[:300], **when}
+    if NO_AADHAAR.search(json.dumps(args, default=str)):
+        raise ConnError("Aadhaar wala connector Hoola nahi chalata.", 400)
     if len(json.dumps(out, default=str)) > 30000:
         raise ConnError("Action bahut bada.", 400)
     return out
@@ -254,12 +308,15 @@ def _clean(a: dict[str, Any], sch: dict[str, Any]) -> dict[str, Any]:
 def _hash(a: dict[str, Any]) -> str:
     keep = {k: a.get(k) for k in ("method", "url", "headers", "query", "body", "body_type", "auth", "trigger", "coll", "status",
                                   "map", "staff", "idem")}
+    for k in ("kind", "toolkit", "tool", "args", "date_field", "time_field", "before_min"):   # v0.459 (absent = the old hash)
+        if a.get(k) not in (None, "", {}):
+            keep[k] = a.get(k)
     return hashlib.sha256(json.dumps(keep, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
 def what_leaves(a: dict[str, Any]) -> dict[str, Any]:
     """For her approval card: the host, and which of her data / secrets the action sends."""
-    blob = json.dumps({k: a.get(k) for k in ("url", "headers", "query", "body")}, default=str) + json.dumps(a.get("auth"), default=str)
+    blob = json.dumps({k: a.get(k) for k in ("url", "headers", "query", "body", "args")}, default=str) + json.dumps(a.get("auth"), default=str)
     rows = sorted({m.group(2) for m in PH.finditer(blob) if m.group(1) == "row" and m.group(2)})
     secs = sorted({m.group(2) for m in PH.finditer(blob) if m.group(1) == "secret" and m.group(2)} |
                   {v for k, v in (a.get("auth") or {}).items() if k.endswith("secret") or k in ("token", "key", "password", "user")
@@ -471,6 +528,8 @@ def _row_ctx(r: AppProject, row_id: str) -> tuple[dict[str, Any], str]:
 
 
 def _call(r: AppProject, a: dict[str, Any], row_id: str, run_id: str) -> tuple[int, Any, str]:
+    if a.get("kind") == "composio":
+        return _call_composio(r, a, row_id, run_id)
     sec = _secrets_of(r)
     row, coll = _row_ctx(r, row_id)
     if a.get("coll") and row_id and coll != a["coll"]:
@@ -514,6 +573,39 @@ def _call(r: AppProject, a: dict[str, Any], row_id: str, run_id: str) -> tuple[i
     except ValueError:
         data = resp.text
     return resp.status_code, data, _scrub(f"{resp.status_code} in {ms} ms", sec)
+
+
+_COMPOSIO = None                                          # tests: a fake Composio client
+
+
+def _call_composio(r: AppProject, a: dict[str, Any], row_id: str, run_id: str) -> tuple[int, Any, str]:
+    """Her Composio account for that app (the server finds it from HER tenant, never from the action)."""
+    from ..bazar import composio as cmp
+    row, coll = _row_ctx(r, row_id)
+    if a.get("coll") and row_id and coll != a["coll"]:
+        raise ConnError("Yeh entry is action ki list ki nahi.", 400)
+    args = _fill(a.get("args") or {}, {"row": row, "app": {"name": r.name or "", "id": r.id}, "facts": _facts(r), "run": {"id": run_id}}, set())
+    client = _COMPOSIO or cmp.client()
+    if _COMPOSIO is None and not cmp.configured():
+        raise ConnError("Composio apps abhi server par chalu nahi hain.", 409)
+    user = cmp.composio_user(r.tenant_id)
+    with session() as s:
+        _, ca = cmp.account(s, user, a["toolkit"], check=_COMPOSIO is None)
+        if not ca and cmp.mode(a["toolkit"]) != "no_auth":
+            raise ConnError(f"{a['toolkit']} aapke Hoola mein juda nahi (Connect > Apps).", 409)
+        try:
+            cmp.take_call(s, user)
+        except cmp.CapReached as e:
+            raise ConnError(str(e), 429)
+    t0 = time.time()
+    try:
+        res = client.execute(a["tool"], user, ca, args if isinstance(args, dict) else {})
+    except cmp.ComposioError as e:
+        return int(getattr(e, "status", 0) or 502), {"error": str(e)[:300]}, f"composio {a['tool']}"
+    ms = int((time.time() - t0) * 1000)
+    if not res.get("successful", True):
+        return 422, {"error": str(res.get("error") or "")[:300]}, f"composio {a['tool']} in {ms} ms"
+    return 200, res.get("data"), f"composio {a['tool']} in {ms} ms"
 
 
 def _write_back(r: AppProject, a: dict[str, Any], row_id: str, data: Any) -> list[str]:
@@ -618,7 +710,8 @@ def _do(r: AppProject, rid: str) -> dict[str, Any]:
 def _finish(rid: str, st: str, code: int, tries: int, note: str) -> None:
     with session() as s:
         x = s.get(AppConnRun, rid)
-        x.status, x.code, x.attempts, x.note, x.done = st, code, tries, note[:600], now()
+        keep = (x.note or "") if (x.note or "").startswith("[") else ""      # v0.459 a reminder's booking time stays
+        x.status, x.code, x.attempts, x.note, x.done = st, code, tries, (keep + " " + note).strip()[:600], now()
         if x.created:
             x.ms = int((now() - (x.created if x.created.tzinfo else x.created.replace(tzinfo=timezone.utc))).total_seconds() * 1000)
 
@@ -658,6 +751,10 @@ def staff_run(r: AppProject, w: W.Who, key: str, row_id: str) -> dict[str, Any]:
 def tick(force: bool = False) -> int:
     """Runs queued for more than a minute (the server restarted mid-way) are done now; running > 10 min = failed."""
     ensure_tables()
+    try:
+        remind_tick()                                         # v0.459 reminders before a booking
+    except Exception:                                          # noqa: BLE001
+        log.exception("connector reminders")
     cut = now() - timedelta(seconds=60)
     with session() as s:
         stuck = s.scalars(select(AppConnRun).where(AppConnRun.status == "queued", AppConnRun.created <= cut,
@@ -673,6 +770,80 @@ def tick(force: bool = False) -> int:
                 s.expunge(a)
         if a is not None:
             _safe_do(a, rid)
+            n += 1
+    return n
+
+
+# ---------------------------------------------------------------- v0.459 reminders before a booking (SMS / WhatsApp / email)
+IST = timezone(timedelta(hours=5, minutes=30))
+REMIND_SCAN = 5000
+
+
+def _start_of(d: dict[str, Any], a: dict[str, Any]) -> datetime | None:
+    """A booking's date (+ time) as an IST moment; a date with no time = 9 am."""
+    raw = str(d.get(a.get("date_field") or "date") or "").strip()[:10]
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", raw)
+    if not m:
+        return None
+    hh, mm = 9, 0
+    t = str(d.get(a.get("time_field") or "") or "").strip() if a.get("time_field") else ""
+    tm = re.match(r"(\d{1,2})[:.](\d{2})\s*([ap]\.?m\.?)?", t, re.I)
+    if tm:
+        hh, mm = int(tm.group(1)), int(tm.group(2))
+        ap = (tm.group(3) or "").lower()[:1]
+        if ap == "p" and hh < 12:
+            hh += 12
+        if ap == "a" and hh == 12:
+            hh = 0
+    try:
+        return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)), min(hh, 23), min(mm, 59), tzinfo=IST)
+    except ValueError:
+        return None
+
+
+def due_reminders(r: AppProject, at: datetime | None = None) -> list[tuple[str, str, str]]:
+    """(action key, row id) whose reminder is due now and was not sent for this booking time. Cancelled rows never."""
+    at = at or now()
+    out: list[tuple[str, str, str]] = []
+    acts = [x for x in _cfg(r).get("actions") or [] if x.get("trigger") == "remind" and _approved(x)]
+    if not acts:
+        return out
+    ensure_tables()
+    with session() as s:
+        for a in acts:
+            rows = s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == _site(r), W.SiteAppRow.coll == a["coll"],
+                                                        W.SiteAppRow.created_at >= at - timedelta(days=120))
+                             .order_by(W.SiteAppRow.created_at.desc()).limit(REMIND_SCAN)).all()
+            for x in rows:
+                d = _j(x.data, {})
+                if re.search(r"cancel|radd|reject", str(d.get("status") or ""), re.I):
+                    continue
+                st = _start_of(d, a)
+                if st is None or not (st - timedelta(minutes=int(a.get("before_min") or 120)) <= at < st):
+                    continue
+                stamp = st.strftime("%Y-%m-%d %H:%M")
+                sent = s.scalar(select(AppConnRun.id).where(AppConnRun.app_id == r.id, AppConnRun.action == a["key"],
+                                                            AppConnRun.row_id == x.id, AppConnRun.trigger == "remind",
+                                                            AppConnRun.note.like(f"%[{stamp}]%")).limit(1))
+                if sent is None:
+                    out.append((a["key"], x.id, stamp))
+    return out
+
+
+def remind_tick(at: datetime | None = None) -> int:
+    """Every app with an approved reminder action: queue the due ones (each booking time once)."""
+    ensure_tables()
+    with session() as s:
+        apps = s.scalars(select(AppProject).where(AppProject.backend.like('%"trigger": "remind"%'))).all()
+        for x in apps:
+            s.expunge(x)
+    n = 0
+    for r in apps:
+        for key, row_id, stamp in due_reminders(r, at):
+            rid = new_id("crun")
+            with session() as s:
+                s.add(AppConnRun(id=rid, app_id=r.id, action=key, trigger="remind", row_id=row_id, note=f"[{stamp}]"))
+            _POOL.submit(_safe_do, r, rid)
             n += 1
     return n
 

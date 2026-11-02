@@ -95,6 +95,7 @@ jobs:
           cache: pip
           cache-dependency-path: server/requirements.txt
       - name: A real Hoola server for the app's backend (e2e)
+        id: e2e_server
         working-directory: server
         env:
           DATABASE_URL: sqlite:///${{ runner.temp }}/e2e.db
@@ -112,7 +113,7 @@ jobs:
       - name: The iPhone app against the real server (sign up, order, paid claim, crash report)
         run: bash server/app/appmaker/ios/ci_e2e.sh in.hoola.preview.fixture ios-shots "$(find "$RUNNER_TEMP/ios/dd/Build/Products/Debug-iphonesimulator" -maxdepth 1 -name '*.app' | head -1)"
       - name: The order the iPhone app placed is on the server (priced by the server, sent once)
-        if: always()
+        if: always() && steps.e2e_server.outcome == 'success'
         working-directory: server
         env:
           DATABASE_URL: sqlite:///${{ runner.temp }}/e2e.db
