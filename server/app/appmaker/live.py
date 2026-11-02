@@ -537,7 +537,7 @@ def replay(sub: Sub, last: str) -> tuple[list[dict[str, Any]], int, bool]:
 
 async def stream(r: AppProject, w: W.Who, token: str, colls: str = "", last: str = "",
                  gone=None, seconds: float | None = None, check=None) -> AsyncIterator[str]:
-    """The SSE body. `gone` = an async callable that says the phone hung up (request.is_disconnected). `check` (v0.456) =
+    """The SSE body. `gone` = an async callable that says the phone hung up (request.is_disconnected). `check` (v0.459) =
     a callable that says the login is still good - a website's own rule (its old site-signed logins, ended sessions)."""
     want = {c.strip() for c in str(colls or "").split(",") if c.strip()} or None
     sub = Sub(r, w, want, asyncio.get_running_loop())

@@ -1,4 +1,4 @@
-/* v0.456 Hoola web push: shows a notification the visitor said yes to (her tap + the browser's permission). No caching,
+/* v0.459 Hoola web push: shows a notification the visitor said yes to (her tap + the browser's permission). No caching,
    no fetch handling - this worker only receives pushes and opens the site when one is tapped. */
 self.addEventListener('push', function (e) {
   var j = {};

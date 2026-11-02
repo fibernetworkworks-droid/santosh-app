@@ -208,7 +208,7 @@ def test_every_pack_drafts_valid_actions():
                 "brevo": {"from_email": "a@b.in"}, "resend": {"from_email": "a@b.in"}, "google_sheets": {"sheet_id": "abcDEF123"},
                 "google_calendar": {"calendar_id": "x@group.calendar.google.com"}, "zoho_books": {"organization_id": "1"},
                 "quickbooks": {"realm_id": "123"}, "kyc": {"url": "https://kyc.example.in/v1/pan", "coll": "orders"}, "tally": {},
-                # v0.456 ABHI ABHI WEBSITE packs: reminders before a booking, the queue, HubSpot, a Composio app she connected
+                # v0.459 ABHI ABHI WEBSITE packs: reminders before a booking, the queue, HubSpot, a Composio app she connected
                 "sms_reminder": {"coll": "bookings", "template_id": "r1"}, "sms_queue": {"template_id": "q1"},
                 "wa_reminder": {"coll": "bookings", "phone_number_id": "1234567890", "template": "visit_reminder"},
                 "hubspot": {"coll": "orders"}, "composio": {"coll": "orders"}}

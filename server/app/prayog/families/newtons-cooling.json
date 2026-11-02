@@ -1,0 +1,33 @@
+{
+  "base": "newtons-cooling",
+  "chapter": "Thermal Properties of Matter",
+  "variants": [
+    {"key": "winter-room", "title": "Newton's law of cooling: hot water in a winter laboratory (15 °C)",
+     "sample": "Water in the copper calorimeter", "method": "Cooling curve, ln(T - Ts) against t",
+     "unknown": "the cooling constant k", "params": {"T0": 90, "Ts": 15, "k": 0.02},
+     "note": "Same vessel as the base lab; only the room is colder, so the excess temperature starts at 75 °C. k does not depend on Ts.",
+     "source": {"title": "NCERT Physics Part 2, Class XI, Ch. 10 (Newton's law of cooling)", "note": "Condition: room at 15 °C, a typical North Indian winter laboratory."}},
+    {"key": "summer-room", "title": "Newton's law of cooling: hot water in a summer laboratory (35 °C)",
+     "sample": "Water in the copper calorimeter", "method": "Cooling curve, ln(T - Ts) against t",
+     "unknown": "the cooling constant k", "params": {"T0": 90, "Ts": 35, "k": 0.02},
+     "note": "Same vessel; the room is hot, so the water starts only 55 °C above it and the curve flattens sooner.",
+     "source": {"title": "NCERT Physics Part 2, Class XI, Ch. 10 (Newton's law of cooling)", "note": "Condition: room at 35 °C, a typical Indian summer laboratory without air conditioning."}},
+    {"key": "start-70", "title": "Newton's law of cooling: water starting at 70 °C",
+     "sample": "Water in the copper calorimeter", "method": "Cooling curve, ln(T - Ts) against t",
+     "unknown": "the cooling constant k", "params": {"T0": 70, "Ts": 30, "k": 0.02},
+     "note": "A smaller excess temperature (40 °C) keeps the experiment inside the range where Newton's law holds well; the readings are closer together.",
+     "source": {"title": "NCERT Physics Part 2, Class XI, Ch. 10: the law holds for small temperature differences", "note": "Condition: water heated to 70 °C, room 30 °C."}},
+    {"key": "glycerine", "title": "Newton's law of cooling: hot glycerine in the same calorimeter",
+     "sample": "Glycerine (glycerol), same volume as the water", "method": "Method of cooling: same vessel, same volume, same surface",
+     "unknown": "the cooling constant k of glycerine",
+     "params": {"T0": 90, "Ts": 30, "k": 0.02785},
+     "note": "With the same vessel, volume and surface, k is inversely proportional to the heat capacity per volume rho*c. Water: 998 kg/m3 x 4182 J/(kg K); glycerol: 1261 kg/m3 x 2377 J/(kg K), so k(glycerine) = 0.02 x 1.393 = 0.0279 1/s.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics: glycerol density 1.261 g/cm3, Cp 218.9 J/(mol K) at 25 °C; water 0.998 g/cm3, 4.182 J/(g K)"}},
+    {"key": "olive-oil", "title": "Newton's law of cooling: hot olive oil in the same calorimeter",
+     "sample": "Olive oil, same volume as the water", "method": "Method of cooling: same vessel, same volume, same surface",
+     "unknown": "the cooling constant k of olive oil",
+     "params": {"T0": 90, "Ts": 30, "k": 0.04631},
+     "note": "Olive oil stores far less heat per volume than water (915 kg/m3 x 1970 J/(kg K) against 998 x 4182), so it cools about 2.3 times faster in the same vessel: k = 0.02 x 2.315 = 0.0463 1/s.",
+     "source": {"title": "Engineering ToolBox, Liquids - specific heats (olive oil 1.97 kJ/(kg K)) and densities (olive oil 0.915 g/cm3 at 20 °C)"}}
+  ]
+}

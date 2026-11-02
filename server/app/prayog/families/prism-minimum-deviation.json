@@ -1,0 +1,26 @@
+{
+  "base": "prism-minimum-deviation",
+  "chapter": "Ray Optics and Optical Instruments",
+  "variants": [
+    {"key": "crown-bk7", "title": "Prism: refractive index of crown glass (BK7)", "sample": "Equilateral prism of crown glass (borosilicate crown, BK7)", "unknown": "the refractive index n of the glass",
+     "params": {"n": 1.5168}, "source": {"title": "SCHOTT optical glass data sheet N-BK7: nd = 1.5168 (587.6 nm); refractiveindex.info"}},
+    {"key": "barium-crown", "title": "Prism: refractive index of barium crown glass (BaK4)", "sample": "Equilateral prism of barium crown glass (BaK4), the glass of binocular prisms", "unknown": "the refractive index n of the glass",
+     "params": {"n": 1.56883}, "source": {"title": "SCHOTT optical glass data sheet N-BAK4: nd = 1.56883 (587.6 nm); refractiveindex.info"}},
+    {"key": "flint-f2", "title": "Prism: refractive index of flint glass (F2)", "sample": "Equilateral prism of flint glass (F2)", "unknown": "the refractive index n of the glass",
+     "params": {"n": 1.62004}, "note": "Flint glass contains lead oxide: it bends light more, and spreads the colours more, than crown glass.",
+     "source": {"title": "SCHOTT optical glass data sheet F2: nd = 1.62004 (587.6 nm); refractiveindex.info"}},
+    {"key": "dense-flint", "title": "Prism: refractive index of dense flint glass (SF10)", "sample": "Equilateral prism of dense flint glass (SF10)", "unknown": "the refractive index n of the glass",
+     "params": {"n": 1.72825}, "note": "A very dense glass: at small angles of incidence the light is totally reflected inside and you cannot see the pins.",
+     "source": {"title": "SCHOTT optical glass data sheet N-SF10: nd = 1.72825 (587.6 nm); refractiveindex.info"}},
+    {"key": "acrylic", "title": "Prism: refractive index of acrylic (PMMA)", "sample": "Equilateral prism of clear acrylic plastic (PMMA, Perspex)", "unknown": "the refractive index n of the acrylic",
+     "params": {"n": 1.4905}, "source": {"title": "PMMA refractive index 1.4905 at 589 nm (refractiveindex.info, Szczurowski data)"}},
+    {"key": "fused-quartz", "title": "Prism: refractive index of fused quartz", "sample": "Equilateral prism of fused quartz (fused silica)", "unknown": "the refractive index n of fused quartz",
+     "params": {"n": 1.4585}, "source": {"title": "I. H. Malitson, J. Opt. Soc. Am. 55, 1205 (1965): fused silica n = 1.4585 at 589.3 nm; refractiveindex.info"}},
+    {"key": "water", "title": "Prism: refractive index of water (hollow prism)", "sample": "Hollow glass prism filled with water", "method": "Thin parallel glass walls do not change the deviation: the liquid alone bends the light.",
+     "unknown": "the refractive index n of water", "params": {"n": 1.333},
+     "source": {"title": "CRC Handbook of Chemistry and Physics: water, nD = 1.3330 at 20 °C"}},
+    {"key": "glycerol", "title": "Prism: refractive index of glycerol (hollow prism)", "sample": "Hollow glass prism filled with glycerol (glycerine)", "method": "Thin parallel glass walls do not change the deviation: the liquid alone bends the light.",
+     "unknown": "the refractive index n of glycerol", "params": {"n": 1.4729},
+     "source": {"title": "CRC Handbook of Chemistry and Physics: glycerol, nD = 1.4729 at 20 °C"}}
+  ]
+}

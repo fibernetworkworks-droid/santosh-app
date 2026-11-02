@@ -1,4 +1,4 @@
-"""v0.456 ABHI ABHI WEBSITE (web Step 5, W6 live features; plan checkpoint "Clinic live queue + SMS reminders").
+"""v0.459 ABHI ABHI WEBSITE (web Step 5, W6 live features; plan checkpoint "Clinic live queue + SMS reminders").
 
 A website linked to its App Sahayak brain (v0.407 EK DIMAAG) gets the same real time the native apps have had since v0.409:
   * LIVE CHANNEL: /api/site-app/<site>/live = appmaker/live.py's SSE stream on the linked project, so every write from any

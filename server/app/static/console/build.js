@@ -1996,7 +1996,7 @@ window.HoolaBuild = function (C) {
     box.appendChild(sec);
   }
 
-  /* v0.456 ABHI ABHI WEBSITE: live chat (her reply = her tap), the clinic queue, browser notifications, connectors */
+  /* v0.459 ABHI ABHI WEBSITE: live chat (her reply = her tap), the clinic queue, browser notifications, connectors */
   async function liveBox(o, box, link, siteId, apiBase) {
     const A = `/api/apps/${encodeURIComponent(S(link.app))}`;
     let q = {}, ch = {}, cn = {}, pu = {};

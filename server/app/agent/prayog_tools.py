@@ -30,7 +30,7 @@ async def prayog(ctx: Ctx, action, q: str = "", field: str = "", id: str = "", *
 
     action = str(action or "").strip()
     if action == "all":
-        return {"url": S.catalogue_link(), "count": len(S.labs()), "note": S.NOTE}
+        return {"url": S.catalogue_link(), "count": len(S.index()), "note": S.NOTE}
     if action == "find":
         rows = S.search(q, field, 8)
         if not rows and q:                          # loose match: any word

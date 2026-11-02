@@ -1,4 +1,4 @@
-"""v0.456 ABHI ABHI WEBSITE (web Step 5 = W6 live features + W7 connectors of docs/WEB_PLATFORM_PLAN.md; checkpoint
+"""v0.459 ABHI ABHI WEBSITE (web Step 5 = W6 live features + W7 connectors of docs/WEB_PLATFORM_PLAN.md; checkpoint
 "Clinic live queue + SMS reminders").
 
 W6: a linked website's live channel (the native apps' SSE on the same project, filtered by each list's read rule, replay on
@@ -28,7 +28,7 @@ PUBLIC = lambda host, port: [(2, 1, 6, "", ("93.184.216.34", port))]  # noqa: E7
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.456.0"
+    assert APP_VERSION == "0.459.0"
 
 
 def _events(body: str) -> list[dict]:

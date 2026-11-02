@@ -1,12 +1,22 @@
 /* Prayogshala studio walk-through: opens each lab in headless Chromium (test mode = no animations, physics driven by
    the test), runs every experiment step's own `auto` action exactly as a student would (through the same buttons'
    code paths), checks each step's `ok`, then checks the final result against the lab's true value within `tol`.
-   Usage: node tools/prayog_walk.js http://localhost:8791 [id ...]   (needs playwright; screenshots -> $SHOTS if set) */
+   Usage: node tools/prayog_walk.js http://localhost:8791 [id ...]   (needs playwright; screenshots -> $SHOTS if set)
+   With no ids it walks EVERY experiment (catalogue labs + their variants), paged from the server.
+   BASE=<lab id> walks one family; SHARD=i/n walks every n-th experiment starting at i (CI runs n shards in parallel). */
 const { chromium } = require('playwright');
 const base = process.argv[2] || 'http://localhost:8791';
 const only = process.argv.slice(3);
 (async () => {
-  const ids = only.length ? only : (await (await fetch(base + '/api/prayog/labs')).json()).labs.map((l) => l.id);
+  let ids = only;
+  if (!ids.length) {
+    for (let page = 1; ; page++) {
+      const d = await (await fetch(`${base}/api/prayog/labs?limit=200&page=${page}${process.env.BASE ? '&base=' + process.env.BASE : ''}`)).json();
+      ids = ids.concat(d.labs.map((l) => l.id));
+      if (ids.length >= d.total || !d.labs.length) break;
+    }
+  }
+  if (process.env.SHARD) { const [i, n] = process.env.SHARD.split('/').map(Number); ids = ids.filter((_, k) => k % n === i); }
   const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   let bad = 0;
   for (const id of ids) {

@@ -91,7 +91,7 @@ PACKS: dict[str, dict[str, Any]] = {
         "label": "SMS reminder before a booking (MSG91, DLT)", "group": "SMS", "secrets": ["msg91_authkey"],
         "settings": {"coll": "appointments", "date_field": "date", "time_field": "time", "before_min": "120", "template_id": ""},
         "needs_fields": ["name", "phone", "date"],
-        "note": "v0.456: DLT par approve reminder template (var1 = naam, var2 = tareekh, var3 = samay) MSG91 mein jodiye. "
+        "note": "v0.459: DLT par approve reminder template (var1 = naam, var2 = tareekh, var3 = samay) MSG91 mein jodiye. "
                 "Har booking ko EK baar, us samay se itne minute pehle; cancel hui booking ko kabhi nahi.",
     },
     "wa_reminder": {
@@ -99,12 +99,12 @@ PACKS: dict[str, dict[str, Any]] = {
         "settings": {"coll": "appointments", "date_field": "date", "time_field": "time", "before_min": "120",
                      "phone_number_id": "", "template": "", "lang": "en"},
         "needs_fields": ["name", "phone", "date"],
-        "note": "v0.456: aapka APPROVED UTILITY template, body {{1}} = naam, {{2}} = tareekh, {{3}} = samay. Sirf official Cloud API.",
+        "note": "v0.459: aapka APPROVED UTILITY template, body {{1}} = naam, {{2}} = tareekh, {{3}} = samay. Sirf official Cloud API.",
     },
     "sms_queue": {
         "label": "SMS when a queue turn is near (MSG91, DLT)", "group": "SMS", "secrets": ["msg91_authkey"],
         "settings": {"template_id": ""},
-        "note": "v0.456 clinic queue: jab token ke aage itne hi log bachen (queue settings > 'kitne pehle'), EK SMS. "
+        "note": "v0.459 clinic queue: jab token ke aage itne hi log bachen (queue settings > 'kitne pehle'), EK SMS. "
                 "DLT template: var1 = naam, var2 = token number.",
     },
     "hubspot": {

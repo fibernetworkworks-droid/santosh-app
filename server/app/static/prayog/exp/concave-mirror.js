@@ -8,6 +8,13 @@ HoolaStudio.define('concave-mirror', function (S) {
   var AP = 0.05;                                                // mirror aperture radius (m): the kernel's rays strike within it
   var CARD_W = 0.10, CARD_H = 0.135, CARD_TOP = -0.004;         // white screen card, held just below the axis
   var st = { lit: false, cPos: 55, sPos: 40, cSet: 55, sSet: 40, rays: false, view: null };
+  var FCM = p.R / 2 * 100;                                       // this mirror's focal length (cm): sets the walk-through's positions
+  function fmt1(v) { return String(Math.round(v * 2) / 2); }
+  var SAMPLE = ((S.lab.variant || {}).sample || '');
+  function autoU() {                                            // object distances a careful student picks: beyond C (a short mirror keeps the base set, so the flame stays near the axis), image on the bench
+    var us = [8 / 3, 3, 10 / 3, 4, 14 / 3].map(function (m) { return Math.round(m * Math.max(FCM, 15) * 2) / 2; }), hi = LEN * 100 - 3 - MIR - 2;
+    if (us[us.length - 1] > hi) { var lo = Math.round(2.4 * FCM * 2) / 2; us = [0, 1, 2, 3, 4].map(function (k) { return Math.round((lo + (hi - lo) * k / 4) * 2) / 2; }); }
+    return us; }
   function xAt(cm) { return X0 + cm / 100; }
   function uCm() { return st.cPos - MIR; }
   function vCm() { return st.sPos - MIR; }
@@ -118,7 +125,7 @@ HoolaStudio.define('concave-mirror', function (S) {
   for (var ri = 0; ri < 6; ri++) { var ln = new T.Line(new T.BufferGeometry(), rayMat); ln.visible = false; ln.renderOrder = 7; S.scene.add(ln); rayLines.push(ln); }
 
   S.addApparatus('bench', bench, 'Optical bench', 'A rigid iron bed with a centimetre scale (least count 1 mm). Each upright has an index mark that you read on the scale.');
-  S.addApparatus('mirror', mirCar, 'Concave mirror', 'A spherical mirror in a ring holder, clamped with its pole exactly at the 10.0 cm mark.');
+  S.addApparatus('mirror', mirCar, 'Concave mirror', (SAMPLE ? SAMPLE + '. ' : '') + 'A spherical mirror in a ring holder, clamped with its pole exactly at the 10.0 cm mark.');
   S.addApparatus('candle', canCar, 'Candle on an upright', 'The lit flame is the bright object. It stands just above the principal axis.');
   S.addApparatus('screen', scrCar, 'White screen', 'A white card held just below the axis. Slide it until the inverted image of the flame is sharp.');
   S.addApparatus('box', box, 'Safety matches', 'To light the candle. Keep the box away from the flame.');
@@ -266,7 +273,7 @@ HoolaStudio.define('concave-mirror', function (S) {
     theory: { principle: 'A concave mirror converges the light from a bright object to a real, inverted image in front of it. A white screen placed exactly there shows a sharp image; anywhere else the light is spread into a blur.',
       formula: '1/v + 1/u = 1/f', formulaNote: 'u, v = distances of the object and the image from the pole (both real, taken positive) · f = uv/(u + v) = R/2',
       more: ['For an object beyond C (u > 2f) the image is between F and C and smaller; between F and C it is beyond C and larger. A graph of 1/v against 1/u is a straight line that cuts both axes at 1/f.',
-        'The flame is a few centimetres from the axis, so rays strike the mirror away from its centre. Keep u well beyond f (35 cm or more here) so the image stays close to the axis and the formula holds closely.'],
+        'The flame is a few centimetres from the axis, so rays strike the mirror away from its centre. Keep u well beyond f (' + (Math.ceil(2.3 * FCM / 5) * 5) + ' cm or more here) so the image stays close to the axis and the formula holds closely.'],
       precautions: 'Keep the flame, the pole of the mirror and the screen at the right heights. Find the sharpest image by moving the screen both ways in small steps. Read each upright at its index mark, with your eye straight above it. Keep paper and the matchbox away from the flame.' },
     book: { title: 'Expt. — Concave Mirror (u–v)', lines: ['Aim: to find f of a concave mirror.', 'Mirror pole at 10.0 cm on the bench scale.', 'u = candle − mirror,  v = screen − mirror', '1/v + 1/u = 1/f  →  f = uv/(u + v)', 'Precaution: sharpest image, no parallax.'],
       columns: [{ label: 'No.', get: function (r, i) { return i + 1; } }, { label: 'Candle', get: function (r) { return r.c.toFixed(1); } },
@@ -320,7 +327,7 @@ HoolaStudio.define('concave-mirror', function (S) {
         },
         ok: function () { return S.rows.length >= 4; },
         auto: function () {
-          return [40, 45, 50, 60, 70].reduce(function (pr, uu) { return pr.then(function () {
+          return autoU().reduce(function (pr, uu) { return pr.then(function () {
             st.cSet = MIR + uu; return moveUpright('c', MIR + uu).then(function () { st.sSet = bestScreen(); return moveUpright('s', st.sSet); }).then(function () { record(); }); }); }, Promise.resolve()); } },
     ],
 
