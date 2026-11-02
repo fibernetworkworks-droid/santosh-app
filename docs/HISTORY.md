@@ -17188,3 +17188,43 @@ EDUCATION & RESEARCH & LAB".
 - Tests: `test_v0453_edu_ent_hub.py` (departments complete and live, English text, caps named, hire / pause / leave through the
   API, tools stay open, console hub + desk wiring, CSS rules, escaping, the phone mapping matches the catalogue); v0.447's
   export assertion updated. NOT VERIFIED: the Flutter change is checked by CI's analyzer, not run on a phone here.
+
+## v0.454.0 ABHI ABHI WEBSITE (web Step 5 = W6 live features + W7 connectors; checkpoint "Clinic live queue + SMS reminders")
+Owner: "Step 5 (live features + connectors)." Everything below runs on a website LINKED to its App Sahayak project (v0.407 EK
+DIMAAG); a plain v0.305 site answers these routes with "pehle jodiye" (404).
+- LIVE CHANNEL `/api/site-app/<site>/live` = `appmaker/live.py`'s SSE on the linked project (journal-fed, every process,
+  filtered per person by the list's read rule, `?last=j<id>` / Last-Event-ID replay, 3 streams per member, 429 over caps).
+  New `check=` on `LV.stream`: the website's own login rule (`livesite.still` -> `applink._who`: old site-signed logins and
+  ended sessions) ends a stream within a minute. Page script reads it with fetch + the Authorization header (EventSource
+  cannot send one), redraws the open view on row events (never while she is typing in a form, never a new / edit page),
+  shows "Live · Team online: n", reconnects with backoff, stops on 'bye login'.
+- LIVE CHAT: `/chat` (member: her thread; staff `?all=1` threads + unread, `?member=` one), POST `/chat`, POST `/chat/<member>`
+  (website staff), `/live/typing`, `/live/presence` - `appmaker/baat.py` + live typing/presence. Her own replies only via
+  `/api/apps/<id>/chat/<member>` with her_tap (console Live panel).
+- CLINIC QUEUE `site/livesite.py`: settings on the project backend `queue` (on, label, self_take, open, avg_min, near,
+  max_day) via `/api/apps/<id>/queue` PUT; tokens = SiteAppRow coll `_queue` {token, name, phone, status waiting/called/
+  done/skipped, day IST}; numbers given under `locks.app` (8 parallel desks -> 1..8, tested); one active token per member
+  a day; `call_next` (called -> done, next / token n -> called, browser push "your turn"), `mark` done/skipped/waiting.
+  Public `/queue` + `/queue/live` (SSE, 1 s cache per site, 6 per address / 3000 per process) + `/queue/board` (TV page)
+  carry NUMBERS ONLY (now, next 8, waiting, measured minutes each = median of today's call gaps). `near()` tells the front N
+  ONCE each: `CN.fire(p, "_queue", row, "queue")` (her approved SMS / WhatsApp action) + browser push.
+- WEB PUSH `site/webpush.py`: RFC 8291 aes128gcm + RFC 8292 VAPID with `cryptography` (no new package); VAPID key derived
+  from the server secret (HKDF), never stored; endpoints only on the browser makers' push services; subscribe needs login +
+  consent:true (the page asks only inside the "Notify me" button's click, then the browser's prompt); 404/410 = deleted;
+  5 browsers per member; account delete forgets them. `turant.later` now also sends the same news to subscribed browsers
+  (status moved, chat reply, assignment, new order to staff). Service worker `assets/hoola-push-sw.js` (push + click only).
+- CONNECTORS (`appmaker/connect.py`): triggers `remind` (date_field / time_field / before_min 5 min..7 days; `remind_tick`
+  in the worker's connector tick; once per booking time via the run note `[YYYY-MM-DD HH:MM]`; cancelled / rejected never)
+  and `queue` (coll `_queue` only); `kind: composio` actions (toolkit + tool + args from the row; her tenant's connected
+  account found by the server; `{{secret.*}}` refused; approval hash includes tool + args). Packs: sms_reminder,
+  wa_reminder, sms_queue, hubspot, composio. Signed inbound webhooks on `/api/site-app/<site>/hook/<key>`.
+- CONSOLE: website App & data > Live panel (`build.js liveBox`): browsers count, messages + reply (her tap), queue settings
+  / TV board link / call next / walk-in / today's tokens, connectors (packs with sealed secrets, approve with a confirm,
+  remove, runs, hook addresses). `app_info` returns `site_id`.
+- Tests `tests/test_v0454_abhi_abhi_website.py`: RFC 8291 round trip decrypted from the browser's side, VAPID signature
+  verified, host allowlist, push consent / 410 / delete, website live stream filtering + replay + logout check, chat,
+  the clinic queue end to end with SMS bodies, parallel tokens, board caps, reminders once / cancelled never / not before
+  approval, HubSpot + Composio, signed webhook, page script asks only on a tap.
+- NOT VERIFIED live: no real MSG91 / WhatsApp / HubSpot / Composio account answered; browser push not yet tried on a real
+  Chrome / Firefox / Safari (the encryption is proven against the RFC, delivery is not). Shop orders (`hoola-shop.js`
+  tracking) are not on the live channel yet - they are not app rows.

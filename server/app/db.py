@@ -771,6 +771,7 @@ def init_db(url: str | None = None):
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
     from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
+    from .site import webpush as _site_webpush  # noqa: F401  (v0.454 browser notifications, visitor's yes)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)

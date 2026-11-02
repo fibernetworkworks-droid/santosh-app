@@ -926,6 +926,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     shutil.copy(CHART_JS, out / "assets" / "hoola-chart.js")          # v0.357 tiny; pages load it only when they draw a chart
     if site.get("app_api"):
         shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
+        shutil.copy(ASSETS / "hoola-push-sw.js", out / "assets" / "hoola-push-sw.js")   # v0.454 browser notifications (her yes)
     plan = with_app_pages(site, plan)
     plan = with_shop_pages(site, plan)            # v0.351
     plan, blog_extra = with_blog_pages(site, plan)   # v0.366
