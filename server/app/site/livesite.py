@@ -204,7 +204,9 @@ def take(p, w: W.Who, body: dict[str, Any]) -> dict[str, Any]:
     if w.m is None:
         raise QueueError("Token lene ke liye pehle login kijiye.", 401)
     q = cfg(p)
-    if not q.get("on") or not q.get("self_take"):
+    if not q.get("on"):
+        raise QueueError("Queue abhi band hai.", 409)
+    if not q.get("self_take"):
         raise QueueError("Token reception par milta hai.", 403)
     if not q.get("open"):
         raise QueueError("Aaj ki queue band ho gayi.", 409)
