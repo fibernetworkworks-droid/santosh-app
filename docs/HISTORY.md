@@ -16754,3 +16754,90 @@ tools; tool `game_bigstudio`; console Game Desk > Big studio; phone Game Desk > 
   editor has run the plugin. Everything engine-side comes from the vendors' documented APIs; the first real editor is
   what will confirm or correct them. Godot keeps the v0.427 Ask Hoola dock (a Godot project here gets board tasks
   through any MCP client, with no new dock).
+
+## v0.445.0 KHUD KA REVIEW — ECC Phase 2 (owner: "ECC Phase 2: Hoola reviews its own PR before marking it 'Ready for review'. --- GO")
+
+**The hole.** Since v0.352 a Developer Sahayak PR went: commit → DRAFT PR → her CI → (red: up to `dev_ci_rounds`
+fix rounds) → green → `mark_ready` → her desk. The only *review* in the whole product was of **other people's** pull
+requests (v0.377 DEKH KE REVIEW, v0.402 ECC specialists). Hoola's own code was handed over on the strength of a green
+CI, and CI only catches what a test already covers — not a leftover debug print, not a caller it forgot to update, not
+"the task asked for three things and the PR does two".
+
+**The gate.** `service._ready_or_self_review()` now sits in front of every `_ci_ready()` call. It reads Hoola's own
+draft PR with the **same** exploring reviewer used on anyone else's (`explore_review` → `loop.review_run`, specialist
+passes included), plus a new system block `specialists.SELF_REVIEW` (adapted from ECC's reviewer-before-handoff), which
+puts the own-work questions first: did the change do what the task asked or only part of it; does any caller, test or
+import of the touched code now break (name it, don't guess); a leftover (debug print, commented-out code, TODO, stray
+file, half-renamed symbol); then the same security / silent-failure / edge-case bar. The no-filler rule is repeated
+verbatim — **zero comments is the right review of a small, correct, tested change** — because a self-review that
+invents work is worse than none.
+
+- **Blocking** (`_self_blocking`) = its own `high` / `medium` comments + the automatic **HIGH** findings (a secret or an
+  injection on an added line). `low` comments and the `[Hoola check]` notes never block.
+- **A problem** → `self_round += 1`, the PR **stays a draft**, and `_round()` gets a `<self_review>` block listing
+  `path:line [severity] body` with "you reviewed your OWN pull request … fix every one that is real (explore first; a
+  caller or test may be the real break), and for anything you decide NOT to change, say why in risk. Do not widen the
+  task." Her CI then runs on the new commit and the gate runs again. At most `dev_self_rounds` = **2**.
+- **Clean** → handed over with "Maine khud bhi poora review kiya - koi problem nahi mili."
+- **Rounds used up** → handed over **anyway**, saying plainly what is still open (`path:line` + the comment, 3 shown):
+  the one thing it must not do is hide its own open findings.
+- The own review **never goes to GitHub**: her chat + the task log only (`task_view.self_review`). Merge is still only
+  her tap, and the gate never blocks a PR — any failure (model down, no files, GhError) falls through to the old
+  `_ci_ready`.
+
+**A repo with no CI is no longer the unread one.** Before, such a repo opened a normal PR with no check of any kind.
+Now it also gets the draft + the gate, and because there is nothing to wait for, the own review runs **inside the push**
+(no 15-minute `dev_ci_wait_min`) and its answer *is* the card she gets. With CI, `_ci_step`'s green / no-CI-ran /
+pending-too-long paths all route through the gate instead of `_ci_ready`.
+
+**Refactor that made it honest:** `review()`'s diff builder came out as `service.pr_diff(files)` → (automatic findings,
+`<pr_diff>` parts, commentable lines, added lines), so Hoola's own PR is read through exactly the same code as a
+stranger's — same secret-scrubbing of added lines, same added-lines-only commenting. `explore_review` gained
+`extra=` (an extra system block, appended to the main and focused passes).
+
+**Files:** `server/app/devsahayak/service.py` (`pr_diff`, `_self_blocking`, `_ready_or_self_review`, `push`, `_ci_step`
++ `say_tail`, `task_view`), `specialists.py` (`SELF_REVIEW`), `models.py` (nullable `self_round`, `self_review`),
+`config.py` (`dev_self_review` = True, `dev_self_rounds` = 2), `agent/devsahayak_tools.py` (the tool now says every PR
+opens as a draft and is self-reviewed first). Tests `server/tests/test_v0445_khud_review.py` (9): the fix round with the
+PR still a draft, the clean handover, rounds used up + what is still open said, no-CI repo, the gate never blocking,
+the switch off, `_self_blocking`'s severities, and one run through the real review loop proving `OWN WORK` +
+`REVIEW DISCIPLINE` are both in the system prompt. v0.352's "a repo without CI opens the PR as before" test was
+rewritten to the new truth (it is now reviewed before the handover).
+
+**NOT VERIFIED:** no live job has run through this gate yet — her Anthropic credit is empty, so the live cards and a
+real own-review round on her own repo are still to come.
+
+## v0.446.0 DUKAAN PAISA (web Step 4 part 1 = W4 for websites + the first of W5, owner: "START STEP 4")
+
+Her website shop (v0.351) now takes ONLINE payments through HER OWN gateway account, on the same engine her apps use
+(`appmaker/pay.py`, v0.419 PAISA) - one set of sealed keys, one webhook, one refund path, one settlement view.
+- `site/shoppay.py`: Shop tab "Set up online payments" links the site to its App Sahayak project (applink) so the app's own
+  key routes take her keys (typed only in the console, checked with the gateway, sealed, returned by no route). The shop
+  gets payment method `online` (shown only when a gateway is connected; products API says `online`).
+- Online checkout: the order is made first (her prices, stock under the conditional update, delivery, coupon - all on the
+  server), then a gateway order for exactly that total (`AppPayment kind=site`, guest customer); the customer is sent to the
+  gateway's own page. PAID only from the gateway's signed webhook or a server-side status read with her keys, and only when
+  the amount matches (`pay._paid` kind site -> `shoppay.on_paid`: order -> confirmed, payment id kept, history says "verified");
+  a mismatch is held, never paid. The reconcile tick now covers site orders too.
+- An online order still unpaid after 3 h is cancelled by the worker (`release_unpaid`; stock + coupon back). Money that
+  arrives after that is never lost: the order keeps the payment id and its history + her chat say refund or re-confirm.
+- Refunds: POST /api/sites/<ref>/shop/orders/<n>/refund = her tap (console "Refund…", amount or all that is left), on the
+  gateway's refund API with a fixed number (v0.419 rules: never more than paid, an unsure one is checked, never resent);
+  UPI / COD orders answer 409 (she refunds those herself).
+- Coupons (W5): her codes in the app coupon store (console Shop tab), checked by POST /api/site-shop/<site>/coupon and
+  APPLIED by the server at order time (never trusted from the page); "once per customer" counts the mobile number; a
+  failing code never loses the order (coupon_note); a cancel gives the use back; free delivery is judged after the discount.
+- Reviews (W5, verified buyers only): POST /api/site-shop/<site>/order/<n>/review with the order's private token, only when
+  the order is DELIVERED and the item was in it, once per item per order, 1-5 + a line; first name only, never the phone;
+  GET .../reviews + stars on product cards / buy boxes; her console hides / shows (never edits the words).
+- Shop page (`hoola-shop.js`): online method, coupon box with the server's check, "Abhi pay karein" for a waiting online
+  order, review forms after delivery, stars. Console Shop tab: gateway card (keys, webhook address + how-to, totals),
+  coupons, reviews, order rows show online paid / not paid + Refund.
+Tests: tests/test_v0446_dukaan_paisa.py (7) against the v0.419 fake Razorpay - paid only by signed webhook / status read,
+mismatch held, pay-again reuses the window, refund rules, abandoned release + late money, coupons once per mobile + give
+back, reviews only from delivered buyers + hide.
+NOT BUILT (rest of Step 4): GST tax invoices / credit notes for WEBSITE orders (the app's Rule 46 series lives on app rows;
+website orders need their own adapter on the same series), AutoPay plans / payment links on the website (they exist for
+apps and in her console's app page), multi-vendor marketplace (vendor sign-up / approval / dashboards / commissions /
+split rules per vendor), courier connector (Shiprocket / Delhivery), abandoned-cart reminders (needs opted-in messaging),
+wishlists. NOT VERIFIED: a real gateway account (fake gateway in tests, same as v0.419).

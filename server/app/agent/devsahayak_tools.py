@@ -11,7 +11,9 @@ from .tools import Ctx, ToolError
 DEV_TOOLS = [
     {"name": "dev", "description": (
         "Software developer in the owner's OWN GitHub repos (official API, her token set in the app; never ask for the token in chat). "
-        "Work always goes on a hoola/<task> branch + pull request; tests run in HER CI, never on this server. "
+        "Work always goes on a hoola/<task> branch + pull request; tests run in HER CI, never on this server. Every PR opens as "
+        "a DRAFT: her CI runs, Hoola fixes what fails, then Hoola reviews its OWN code and fixes what it finds, and only then is "
+        "the PR marked 'Ready for review' - so a new PR card may say the work is still being checked. "
         "action=write (new code / feature: text = what she wants), fix (bug: text = her words + error / stack trace / log pasted, or "
         "issue = issue number; Hoola finds the files, explains in Hinglish and opens a fix PR WITH a test), tests (write tests for code "
         "she names), docs (README / docstrings / API docs), explain (only explain a bug, no PR). files = paths she names (optional), repo "
