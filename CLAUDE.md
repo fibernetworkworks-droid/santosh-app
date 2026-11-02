@@ -267,6 +267,23 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.381 SHIKSHA SUITE 0+1: `app/pylab` locked Python sandbox (tool `pylab`), `app/shiksha` (classes, learners + guardian
   consent, shared question bank, gradebook, `frameworks.json`), `app/pathyakram` curriculum & exam designer (papers, plans, rubrics).
 - v0.382 DIMAAG (App Phases 43-46 = Pillar A, `appmaker/logic/`: lang.py own locked interpreter, spec.py checker, engine.py hooks + approvals + schedules/SLA, service.py Opus draft -> her tap): links / formulas / rules / unique / workflows + maker-checker approvals / triggers / timed jobs / tested functions; kits Logic.kt / Logic.swift (RefField, WorkflowBox, RelatedBlock, AutoForm, hoola_approvals, hoola_data); `/api/apps/<ref>/logic*`, app `/approvals`, `/related/`, `/fn/`.
+- PLAN: `docs/GAME_MOAT_PLAN.md` - the Game AI Employee's moat, researched (competitors, Indian market + law, engine gates).
+  THE FINDINGS: (1) "AI drives a real engine over MCP" is COMMODITY - 7+ free Godot MCP servers, Unity ships its own free
+  first-party MCP server into Claude Code, Roblox opened MCP to Claude/Cursor; our Phase 10 plugins are table stakes, the value
+  is behind them. (2) The WHITE SPACE nobody owns, named by two researchers independently: QA -> builds -> store -> live ops as
+  ONE product for a non-studio user = exactly v0.416 + v0.432, built but unproven and unpositioned. (3) No game Arena exists, so
+  nothing measures whether a Hoola game is GOOD (QA only proves it RUNS) - transplant `site/arena.py`; originality is now
+  Apple 4.3(b) COMPLIANCE, not taste. (4) The ceiling is 12 GDScript files / 120 KB / no .tscn scenes -> T1/T2 only until scenes
+  + animation become checked data. (5) The money is schools (AVGC labs in 15,000 schools + 500 colleges, Parliament-confirmed,
+  joins our Shiksha suite), outsourcing shops ($15-65/hr, computable ROI), agencies (playables) - NOT solo creators: India mobile
+  game IAP ~$400M/yr (~0.3% global), median Steam release earns ~$300, and AI-disclosed games reach 100 reviews at 55% of the
+  non-AI rate (Haro, 53,597 games) = a volume effect, not a quality effect. Flops disclose AI ART (72%), successes disclose AI
+  VOICE + LOCALIZATION - lean where we already are. (6) LIVE LIABILITY: `service.MONEY` misses Rule 9's test (rewards
+  transferable / redeemable / monetisable OUTSIDE the game) - "coins withdrawable to UPI" passes the guard today and is a
+  NON-BAILABLE offence for the user who publishes it. (7) Our /mcp/gamedesk speaks only the dead dialect: MCP is now 2026-07-28,
+  the `initialize` handshake is GONE (_meta + MCP-Protocol-Version header, `server/discover` MUST) - a modern-only client FAILS.
+  (8) AI output is NOT copyrightable without human authorship (USCO Part 2; India s.2(d)(vi) + the 2026 DABUS rejection), so
+  record provenance + what she chose / changed. (9) Consoles = NEVER, not later (Godot ships no console templates by design).
 - PLAN: `docs/WEB_PLATFORM_PLAN.md` - any complexity website, smoothly + reliably (W0 gate = 100-page proof + her own site, W1-W14: one backend with apps (DIMAAG), app pages, OTP login, gateway, marketplace, live, connectors, 10k-page catalogues, speed / resume / staging, gates, architect).
 - v0.390 PAKKI NEEV (Pillar B): `appmaker/locks.py` (one cross-process lock per app: pg advisory / fcntl), `BE.patch_backend` (the ONLY safe write of backend JSON), `backup.py` (journal hook + snapshots + point-in-time restore + export), `refs.py` (indexed links), `meter.py` (usage + limits), `app/dbmove.py` (SQLite -> Postgres); tests run on Postgres with HOOLA_TEST_PG; CI `app-load.yml` = 1,000 customers / 4 workers proof.
 - v0.404 APNA DATABASE 2 (`appmaker/owndb_drivers.py` + `owndb_conns.py`): her MySQL family / MongoDB / Firebase too - sealed conns (`/api/owndb/conns`), outside edits via timestamp + row fingerprint `_hv` (MySQL), change streams (Mongo), listener (Firestore), foreign ids re-keyed; tests need HOOLA_MYSQL_ADMIN / HOOLA_MONGO / HOOLA_FIRESTORE_EMU (CI app-load.yml).
