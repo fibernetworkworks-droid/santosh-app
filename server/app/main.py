@@ -5081,7 +5081,7 @@ for _mk in (_shiksha_router, _pathyakram_router, _guru_router, _daftar_router, _
 # v0.415 Prayogshala (3D practical labs): the catalogue is public teaching material (no user data), read without a key
 from .prayog.api import make_router as _prayog_router  # noqa: E402
 
-app.include_router(_prayog_router())
+app.include_router(_prayog_router(require_key, current_tenant))   # catalogue public; /api/prayog/ask needs the key
 
 # v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (under /api/<mod>/*, key-protected; homestay's router also holds
 # the public calendar feed /api/homestay-ical/{tenant}/{token}.ics, which checks its own random token)
