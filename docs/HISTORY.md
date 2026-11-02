@@ -16189,3 +16189,139 @@ Owner: "cam and slot joints, dynamic simulation — fix and develop".
   > 1.5x, weak motor saturates, cam torque = follower force x ds/dθ (12 %), desk redesigns a steep cam.
 - NOT VERIFIED: no friction, backlash, link flex or contact force at the cam (the follower is a driven coordinate);
   VPS needs `pip install mujoco` for the simulation (it says so when missing).
+
+
+## v0.427.0 (built as 0.425.0) HOOLA RUNTIME + ASK HOOLA IN THE EDITOR (Hoola Game Engine plan Phase 8) - 2 Nov 2026
+Owner: "GO PHASE 8" (plan row: "Replay / bot / telemetry modules, Godot editor 'ask Hoola' panel via MCP").
+
+HOOLA RUNTIME (`gamedesk/runtime.py`, a role pack: HoolaRuntime autoload in every Studio build, default on; GDScript, not
+a C++ GDExtension - it runs on every export without a build per platform):
+- REPLAY + BOT: started only by Hoola's test runner (`--hoola-bot=seed,frames` / `--hoola-replay=<base64>` after `--`):
+  the in-engine bot injects seeded keys + taps with Input.parse_input_event (headless, no browser) and records them per
+  physics frame; the end state is fingerprinted (probe state + every Node2D / Node3D / Control position, sha256).
+  replay_test = bot run, the same seed again, then the recording played back - all three must match. A mismatch is
+  named with its likely cause from her code (randomize(), Time / OS clock). Real Godot 4.7.2: a deterministic test
+  game PASSES (600 frames, 116 bot inputs, three identical fingerprints); the same game with randomize() FAILS with
+  "randomize(" named; the replay is kept as a download (repro for any bug the bot finds).
+- FOUND before shipping: (1) the first version seeded the RNG on EVERY start - every player would have got the same
+  "random" game each session; the seed now applies ONLY in test runs; (2) the cause scan flagged Hoola's own runtime
+  file (it randomizes a separate generator for the install id) - Hoola's own files are excluded; (3) the guard caught
+  ConfigFile.load("user://...") as "loading files from outside the game" - a const path, as the haptics pack does.
+- TELEMETRY: OFF by default; needs her switch AND the player's yes (HoolaRuntime.ask_consent / needs_consent, saved in
+  user://); refused for a children's game (design-doc words; DPDP); a random install id on the device, event names +
+  frame numbers only, no device ids, no IP stored; posted only to POST /play/<token>/t on the play link's own host
+  (the page CSP allows nothing else) - the endpoint always answers 204, stores only when everything holds, caps 60
+  events / 16 KB a post and 30 posts / 10 min per install. Dashboard: installs, sessions by day, D1 / D7 retention from
+  install cohorts (a cohort too young says so), top events, the play funnel; she can delete it all.
+  The guard lets ONLY hoola_runtime.gd use HTTPRequest (and _own_packs replaces any file of that name the model writes).
+
+ASK HOOLA IN THE EDITOR (`gamedesk/editor.py`):
+- editor tokens: made in the console, shown ONCE, stored as sha256 (+ a 4-char hint), revocable, last use recorded;
+  scope = read her game projects, ask Hoola, add a To-do task (nothing else).
+- a real MCP server: POST /mcp/gamedesk, Streamable HTTP JSON-RPC 2.0 (initialize with protocol negotiation 2025-06-18
+  / 2025-03-26 / 2024-11-05, notifications -> 202, ping, tools/list, tools/call, batches; -32601 / -32602 / -32700
+  errors; GET 405), Bearer editor token (401 + WWW-Authenticate otherwise). Tools: hoola_projects, hoola_tasks,
+  hoola_bible, hoola_bugs, hoola_ask (her question + the open script -> an answer from her design doc, Bible and live
+  code; 30 an hour per token), hoola_add_task. Answers never change her files.
+- FOUND by the tests: my task tools read a field called "state" - tasks use "status", so "open tasks" was always empty.
+- the Godot plugin (addons/hoola: plugin.cfg, plugin.gd EditorPlugin dock, dock.gd: Ask / Tasks / Bible / Bugs over the
+  same MCP endpoint; server + token in HER EditorSettings, never in the project) is LOADED BY THE REAL GODOT EDITOR
+  (headless `--editor`) in the tests: "Hoola panel ready", no errors. Any MCP client (Claude Desktop, Cursor, a Godot
+  MCP bridge) can use the same address; the console shows the config snippet.
+
+Tool `game_runtime` (status / replay_test / telemetry / set; tokens never in chat). Console: "Runtime & editor" page
+(board) + "Editor" on the desk home (tokens, plugin download, MCP address + client config). Phone: GameRuntimeScreen
+(switches, replay test, telemetry numbers). Tests: test_v0425_game_runtime.py (8, two run the real Godot).
+NOT VERIFIED: telemetry from a real browser to the live server (the endpoint and the GDScript are tested separately),
+the plugin talking to the live server from her Godot (the build box has no network), and other MCP clients live.
+Not built from the plan's runtime list: save-game cloud sync, in-game feedback, Indian-language text-shaping checks,
+store billing hooks.
+
+## v0.428.0 MASTER ARCHITECT (built as 0.426; owner: "MAKE THIS Principal Software Architect -- MORE PRO AND ADVANCE THAT CAN WORK ANY COMPLEX TASK OF HIS FIELD -- MAKE A MASTER")
+The Architect did ONE job (a new-system design). A principal architect is asked for six, and each now has its own
+rules, its own section in the document and its own sums in CODE (`app/archdesk/master.py`):
+- **design** (new system) · **assess** (her EXISTING repo judged as it is: scorecard 1-5 on 8 dimensions with the
+  average + weakest computed, problems each with EVIDENCE) · **migrate** (strategy, phases each with a ROLLBACK and a
+  done-when, data move, cut-over) · **decide** (one technology choice: options x weighted criteria -> weighted totals
+  /100, ranking, margin, "close call", and a SENSITIVITY check - does the winner change when any one weight moves by 1;
+  a missing score is NAMED, never guessed) · **threat** (STRIDE: risk = likelihood x impact 1-9, sorted, open high
+  risks counted, target x letter coverage grid, letters never considered + components with no threats NAMED) ·
+  **scale** (what breaks first at 10x / 100x). assess / migrate refuse without her repo.
+- **Module map from the real code** (`archdesk/repomap.py`): up to 160 source files read through her Developer Sahayak
+  token, import lines of Python / JS / TS / Go / Java / Kotlin / C# / PHP / Rust resolved INSIDE the repo only (outside
+  packages counted as external, never guessed), module graph, dependency CYCLES (Tarjan), fan-in / fan-out hot-spots,
+  biggest modules; fed to the model as facts AND drawn as an extra "As-is module dependencies (from the code)" diagram.
+- **Boundary rules (fitness functions)**: every design states rules ("app/orders must not depend on app/riders");
+  code checks them on today's repo (breaks shown in the document) and on every PR review - only the lines the PR ADDS
+  are read, so an old import is never blamed on it; a break is a high finding "boundary (checked by code)" and turns a
+  model 'fits' into 'drifts'. Posting is still her tap.
+- **Growth scenarios** for every design with users-a-day: the capacity sheet at 1x / 10x / 100x, and what crosses a
+  limit first (single DB primary vs the db_write_rps limit she gave / the design states, app fleet > 20 servers,
+  > 2 TB storage) - no limit invented.
+- **Peer review + one revision**: a second principal-architect pass reviews every draft (NFRs measurable, SPOFs, data
+  ownership, security / DPDP, capacity agrees with the COMPUTED sheet, the kind's own section complete); any high /
+  medium issue -> one revision call; the document says how many issues and whether they were fixed.
+- **API contract**: the main public API as OpenAPI 3.1, parsed and checked in code (3.x, operations, responses),
+  delivered as api.yaml.
+- **Design checks** (code, free): measurable targets, alternatives on every ADR, mitigations, done-when on phases,
+  every component in a diagram, every diagram drawn, security + failure handling, plus per kind (every option scored /
+  all six STRIDE letters / every component has threats / rollback per phase / evidence per problem), valid API, her code
+  following the rules today. Shown as n/m pass on the cover and at the end.
+- Document: kind on the cover, peer-review line, 6 at-a-glance boxes (checks added), the kind's section right after
+  the summary, then the usual sections, growth scenarios, boundary rules, API contract, peer review, design checks.
+- Tool `software_architect` kind=..., POST /api/arch/projects kind, GET lists kinds + needs_repo; console + phone kind
+  picker and every new section; model columns `kind` + `extra` (nullable, old designs = design).
+- Cost: a design is now 2-3 Opus calls (draft, peer review, revision when needed) instead of 1; the daily limit of 6
+  is unchanged. NOT VERIFIED LIVE yet: the six kinds against a real Opus run (the sample PDFs were made through the real
+  pipeline with a hand-written design), and the module map on her real repos (tested on fixtures in 4 languages).
+- Tests: NEW test_v0426_master_architect.py (file name kept) (module map + cycles, JS/Go/Java resolution, rules on repo + PR-added lines
+  only, decision sums + sensitivity + named gaps, STRIDE scoring + coverage, scenarios + first break, OpenAPI check,
+  assess with peer review + revision end to end, decide + threat documents, PR boundary break by code, tool + route,
+  console + phone wiring).
+
+
+## v0.429.0 SOCH KE JAWAB step 2 — hard asks on Opus with room to think (2 Nov 2026)
+Owner: "GO STEP 2" (step 2 of the 7-step hard-reasoning plan). Built as 0.425.0, re-versioned past the parallel
+v0.425.0-v0.428.0.
+- Already there before this step: v0.272 `agent/hard.py` spots a hard ask -> adaptive thinking from the first call;
+  v0.331/0.336 SOCH GEHRI: effort high for a hard ask (agent_hard_effort), xhigh + Claude + 16,000 tokens for long jobs.
+  Still missing: the MODEL (a hard ask ran on the chat model, Sonnet 5.5) and ROOM (a hard ask outside a long job kept
+  agent_max_tokens 2,000 while thinking tokens count against max_tokens - the answer got cut and stitched by nudges).
+- Now (`agent/santosh.py`): `_MODEL_NOW` contextvar set once per step (like `_EFFORT_NOW`) by `model_for(settings, hard,
+  long_job)` = agent_hard_model (claude-opus-5-5) for a hard ask that is not a long job, '' otherwise; `_call_brain`'s
+  Claude path tries that model first via the new `_claude_call(model, ...)` (the old body, model as a parameter) and on
+  ANY failure retries the same call on settings.anthropic_model; `_model_refused` (404 / not_found / unknown model)
+  sets HARD_MODEL["ok"] False for the process. A hard ask's state["max_tokens"] = agent_hard_max_tokens (16,000);
+  agent_hard_on_claude moves a hard ask from a cheaper CHAT_LLM brain to Claude. Usage pricing already knew Opus 5.5.
+- Unchanged: ordinary chat (Sonnet, 2,000, no thinking, default effort), long jobs (Sonnet, xhigh, 16,000), sub-agents,
+  the voice call.
+- Tests `server/tests/test_v0426_hard_opus.py` (7): model_for; a hard turn = Opus + 16,000 + thinking + effort high, a
+  chat turn = Sonnet + 2,000; Opus overloaded -> same call on Sonnet (switch stays on); 404 -> switch off, asked once;
+  switch off keeps Sonnet. Turn / cache / usage / context / team / compaction / soch suites: 257 pass, same as main.
+  Not measured here: answer quality (no API key) - step 7 adds the scored set. Version 0.429.0 (pubspec 0.429.0+473).
+
+## v0.430.0 SOCH KE JAWAB step 3 — every worked-out number comes from real code (2 Nov 2026)
+Owner: "GO STEP 3" (step 3 of the 7-step hard-reasoning plan: a calculator / analysis tool).
+- Found: no new tool was needed. `pylab` (Shiksha suite, `app/pylab/runner.py` + `service.py`) is a locked Python
+  sandbox - pandas, numpy, scipy, statsmodels, matplotlib, openpyxl; its own empty work folder (her data_fetch datasets
+  copied in as <id>.csv, her chat files by name), a clean environment (-I, no keys), its own empty network namespace
+  (unshare -rn) plus an audit hook refusing sockets, subprocess / exec / fork, ctypes and any write outside the folder,
+  CPU / memory / file-size / open-file limits and a wall-clock kill; charts / tables it writes come back to her chat.
+  But it sat in the "shiksha" family and was in view for 1 of 50 hard asks (only "statistic" words loaded it), so
+  Hoola did EMIs, CAGRs, break-evens and forecasts in its head.
+- `agent/admit.py`: `calc_needed(text, why)` = a hard ask (agent/hard.py rules), a data / business-numbers intent, or
+  calculation words (`_CALC`: calculate, compute, statistics, average / mean / median, correlation, regression, trend,
+  growth rate, chart / graph / plot, hisaab laga, total kitna, percent / N%, ganana, forecast, projection); plan_for
+  adds ONLY pylab via adm.extra (not the five Shiksha tools). `santosh`: a hard ask the judge (not the rules) found also
+  gets pylab. Measured: HARD 50/50 with pylab (was 1/50), EASY + HOLDOUT_EASY 0/50, tool-choice asks 19/163 (data jobs).
+- What the model reads: pylab's description opens "CALCULATOR + ANALYSIS: every number you work out (EMI, CAGR, %,
+  totals, break-even, forecast, statistics) is computed here and quoted from its printed output - never mental maths";
+  the pinned TOOL CHOOSER: "A number you WORK OUT ... = pylab: write the code, run it, quote its printed result - never
+  mental maths; her Excel / CSV goes into pylab by its file id, a data_fetch dataset by its dataset id."
+- Checked here: EMI 20 lakh / 9% / 20 yr = 17,994.52 a month, interest 23,18,684.59 (0.41 s, network isolated); her
+  CSV via dispatch -> 460 / 115.0 / Apr; a socket connect is refused.
+- Tests `server/tests/test_v0430_pylab_calc.py` (14). Router / tool choice / pylab / shiksha / turn suites: same as main
+  (main's own failures: test_v0314_app_backend x3, test_v0381_shiksha pylab files). Not measured: whether the live model
+  now calls pylab for every figure (no key here) - step 5 (self-check) and step 7 (scored set) cover that.
+  Version 0.430.0 (pubspec 0.430.0+474, console ?v=0.430.0, pins). Server-only deploy; her VPS needs the pylab libraries
+  (`app.pylab.service.status()` / the Shiksha pylab status route shows them).

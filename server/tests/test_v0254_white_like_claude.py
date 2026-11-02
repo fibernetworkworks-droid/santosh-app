@@ -8,8 +8,8 @@ CSS = (CON / "v2.css").read_text()
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.426.0"
-    assert "0.426.0+470" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.430.0"
+    assert "0.430.0+474" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_light_is_white_and_neutral_brand_kept():

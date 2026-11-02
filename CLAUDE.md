@@ -218,13 +218,20 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.426.0 (pubspec 0.426.0+470). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.430.0 (pubspec 0.430.0+474). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.430 SOCH KE JAWAB 3/7: pylab (locked Python sandbox) rides with every hard / data / calculation ask (admit.calc_needed),
+  'a number you work out = pylab, never mental maths'. Next: step 4 the reasoning recipe.
+- v0.429 SOCH KE JAWAB 2/7: a hard reasoning ask runs on Opus 5.5 (agent_hard_model) at effort high with 16k tokens and
+  thinking; Opus failure = same call on Sonnet. Chat + long jobs unchanged. Next: step 3 a calculator / analysis tool.
 - v0.418 PRAYOGSHALA IN ENGLISH: all lab text, runtime, catalogue, phone screen and checker messages English (en-IN narration); a test blocks Hinglish.
 - v0.415 PRAYOGSHALA L0+L1: `app/prayog` 3D practical labs - lab = data (LSL checker), behaviour = kernel in code with a JS twin
   (same numbers, tested), 22 NCERT physics practicals within 1 %, lab3d.js runtime, tool prayog, console Lab + phone Prayogshala.
 - v0.414 EK DIMAAG 2 (web Step 2 finished): old v0.305 web apps move by themselves (`applink.migrate_all`, worker) + new ones link at once; `kind: web` backends never re-made; full school portal proof (admission -> approval -> student -> fee -> attendance -> report card, 3 roles; relation `share`); `applink.phone_app` = phone app on the SAME project / data; spec card + stories / payments / notifications / integrations + `architect.revise`; phone `SiteSpecCard`; vps-ops `architect_check` / `arena_numbers`.
 - v0.410 ECC ON: review card old vs new = 8/8 caught both, false alarms 8 -> 4, nits 3 -> 0; fix card 6/6 + 6/6 with the fixer -> `dev_spec_review` + `dev_spec_fix` default ON; card rows keep what each false alarm said.
+- v0.428 MASTER ARCHITECT (built as 0.426; `archdesk/master.py` + `repomap.py` + `sections.py`): 6 kinds design / assess / migrate /
+  decide / threat / scale, module map + cycles from real imports, boundary rules checked on repo + PR-added lines, decision scores +
+  sensitivity / STRIDE risk / 1x-10x-100x scenarios in CODE, peer review + 1 revision, OpenAPI checked, design checks n/m.
 - v0.413 PRINCIPAL SOFTWARE ARCHITECT (`docs/SOFTWARE_DESK_PLAN.md`, `app/archdesk/`): Hub group "Software Architecture, Engineering &
   Core Systems" (10 roles, 1 live); repo read -> Opus design -> capacity in CODE -> Mermaid (vendored) diagrams -> PDF -> her OK;
   PRs vs the approved design (draft, her tap posts); tool `software_architect`, /api/arch/*; POST /api/game checks the hire.
@@ -251,6 +258,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- v0.427 HOOLA RUNTIME + EDITOR (built as 0.425; Game Engine plan Phase 8; `gamedesk/runtime.py` + `editor.py`): HoolaRuntime in every Studio build (replay + in-engine bot only in test runs - seeded ONLY then; opt-in telemetry = her switch + player's yes, never kids, POST /play/<token>/t, D1/D7), replay tests in real Godot, real MCP server /mcp/gamedesk (hashed editor tokens) + Godot 'Ask Hoola' dock plugin loaded by the real editor.
 - v0.423 GAME DESK ROLES 4 (Phase 7 done: all ten roles live): Simulation Engineer (`sim.py`, tool game_sim: orbit / flight / driving vs textbook cases, sources cited, HoolaSim checked in Godot, weapons refused) + Digital Twin (`twin.py`, tool game_twin: traceable numbers, read-only, engine vs exact answers + Erlang C, NOT ASSESSED without her week) + VFX TD (`vfx.py`, tool game_vfx: naming, ACES measured, EXR read back, render queue + cost).
 - v0.422 GAME DESK ROLES 3 (Phase 7 batch 3): Multiplayer Programmer (`netcode.py`, tool game_net: bot run over 3 networks, desync 0, bandwidth, lag comp; bots found stale-snapshot + lost-tail-input bugs (fixed); Godot netcode run in-engine; kit for HER cloud, not in the game build yet) + AR / VR Engineer (`xr.py`, tool game_xr: comfort rules, gestures on synthetic hands 97.9% + Godot 80/80, WebXR demo room, HoolaXR).
 - v0.421 GAME DESK ROLES 2 (Phase 7 batch 2): Spatial Audio Programmer (`audio.py`, tool game_audio: Brown-Duda head + reverb zones, ITD / ILD / 6 dB / RT60 / LUFS measured, headphone demos, HoolaAudio; no front/back cue, said) + Haptic Feedback Engineer (`haptics.py`, tool game_haptics: one pattern per meaning, motor fit + distinctness + battery, AHAP / Kotlin / DRV2605 C compiled, off switch always, HoolaHaptics).

@@ -929,6 +929,8 @@ def init_db(url: str | None = None):
     from .gamedesk import sim as _gamesim  # noqa: F401  (v0.423 training simulators)
     from .gamedesk import twin as _gametwin  # noqa: F401  (v0.423 digital twin)
     from .gamedesk import vfx as _gamevfx  # noqa: F401  (v0.423 VFX pipeline)
+    from .gamedesk import runtime as _gameruntime  # noqa: F401  (v0.425 Hoola Runtime telemetry)
+    from .gamedesk import editor as _gameeditor  # noqa: F401  (v0.425 editor tokens + MCP)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401

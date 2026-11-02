@@ -192,3 +192,20 @@ def test_custom_component_rules_approval_and_build(droid_env, monkeypatch):
     CU.mark(r, "CustomRatingBars", "failed", log)
     assert CU.for_build(r) == [] and c.get(base).json()["components"][0]["status"] == "failed"
     assert c.delete(f"{base}/CustomRatingBars").json()["components"] == []
+
+
+def test_generators_run_as_plain_scripts_in_ci(tmp_path):
+    """CI runs `python3 gen.py spec out` (no package): v0.425 broke that with `from .. import custom`."""
+    import json, subprocess, sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1] / "app/appmaker"
+    sp = json.loads((root / "android/fixture/spec.json").read_text())
+    sp["custom"] = [{"name": "StarBadge", "kotlin": "package hoola.kit\n", "swift": "import SwiftUI\n",
+                     "sample_kt": "StarBadge()", "sample_swift": "StarBadge()"}]
+    spec = tmp_path / "spec.json"
+    spec.write_text(json.dumps(sp))
+    for plat, want in (("android", "app/src/main/java/hoola/kit/custom/StarBadge.kt"), ("ios", "Sources/Kit/Custom/StarBadge.swift")):
+        out = tmp_path / plat
+        r = subprocess.run([sys.executable, str(root / plat / "gen.py"), str(spec), str(out)], capture_output=True, text=True, cwd=str(tmp_path))
+        assert r.returncode == 0, r.stderr[-800:]
+        assert (out / want).exists()
