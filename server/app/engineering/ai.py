@@ -146,6 +146,13 @@ Rules:
   'overhung' | 'poor'. A failing check comes back to you: a BIGGER MODULE helps most (bending stress falls as
   1/module²), then a wider face, more teeth, or a case-hardened steel ('case hardened' as the material). Fewer than
   ~17 teeth undercuts: add shift=0.5 to H.spur_gear or use more teeth.
+  H.analyze('plastic', fixed='<Z', loads=[{'faces': '>Z', 'force': (0, 0, -8000)}], max_set_mm=0.2)
+     PAST YIELD. Add this when the static check says it yields but she needs to know WHAT HAPPENS - or when she
+     says "it must not bend permanently", "even if overloaded", "what if someone stands on it", "how much before it
+     gives way", or the part is a hook / lug / bracket / press / jack / stand that gets abused. It puts the load on
+     in steps with the metal really yielding (von Mises radial return), then takes it off, and reports the PERMANENT
+     SET left behind plus the load factor at which the part COLLAPSES. max_set_mm = the permanent bend she can live
+     with. Too much set, or collapse under her own load, comes back to you.
   STRUT BY HAND (no CAD needed, when she just asks "will this pipe / leg hold 500 kg"): the eng_calc tool's
   kind=column gives Euler / Johnson critical load from length, section and end condition.
 - HOW IT IS MADE (always when she names a process - 3D print / FDM / resin / SLS / MJF / metal print, CNC /

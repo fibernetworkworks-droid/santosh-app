@@ -459,6 +459,19 @@ def _weak(ana: dict[str, Any]) -> list[str]:
                        f"gives a fatigue safety factor {fat['fatigue_sf']} but she needs {fat['need_sf']} for "
                        f"{fat['target_cycles']:.0e} cycles: lower the stress there (bigger fillet radius, thicker section, "
                        "no sharp notch / hole at the hot spot); keep H.analyze unchanged")
+        if st.get("kind") == "plastic" and st.get("passes") is False:       # v0.450 it bends for good, or folds up
+            hl = st.get("at_her_load") or {}
+            if not hl:
+                out.append(f"it COLLAPSES under her own load (it gives way at about x{st.get('collapse_factor')} of "
+                           "it): this is not a small overload, the part has to carry the load a different way - a "
+                           "deeper section, a rib along the bending direction, a shorter span, or more material at "
+                           "the place that is yielding. Keep her fixed sizes and the H.analyze call unchanged")
+            else:
+                out.append(f"it keeps a PERMANENT BEND of {hl.get('permanent_set_mm')} mm after her load comes off "
+                           f"(she allows {st.get('max_set_mm')} mm; {hl.get('yielded_pct')}% of the part has yielded "
+                           f"and it collapses at about x{st.get('collapse_factor') or st.get('collapse_at_least')}): "
+                           "take the stress below yield where it is yielding - thicker there, a bigger fillet, a rib, "
+                           "or a stronger material. Keep her fixed sizes and the H.analyze call unchanged")
         if st.get("kind") == "buckling" and st.get("passes") is False:      # v0.432 slender: it folds, not breaks
             out.append(f"it FOLDS (buckles) too easily: the buckling load factor is {st['load_factor']:.3g} but it must "
                        f"be at least {st['need_lf']:g}"
@@ -779,7 +792,8 @@ def _ana_card(st: dict[str, Any]) -> dict[str, Any]:
                                    "mass_balance_pct", "flow_lpm", "fluid", "contact", "friction", "parts", "contacts",
                                    "bolts", "separated", "slipped", "valid", "load_factor", "factors", "need_lf",
                                    "buckles", "critical_load_N", "yield_factor", "governs", "not_a_buckling_case",
-                                   "note")
+                                   "note", "first_yield_factor", "collapse_factor", "collapse_at_least", "steps",
+                                   "at_her_load", "max_set_mm", "collapse_note", "yield_MPa", "hardening_MPa")
             if st.get(k) is not None}
     keep["lines"] = summary_rows(st)
     return keep
@@ -797,6 +811,10 @@ def _ana_lines(ana: dict[str, Any]) -> list[str]:
         elif st["kind"] == "static":
             out.append(f"safety factor {st['safety_factor']:g} (max jhukav {st['max_disp_mm']:.3g} mm)"
                        + (f", fatigue SF {st['fatigue']['fatigue_sf']:g}" if st.get("fatigue") else ""))
+        elif st["kind"] == "plastic":
+            hl = st.get("at_her_load") or {}
+            out.append(f"pakka jhukav {hl.get('permanent_set_mm', '-')} mm, collapse x"
+                       f"{st.get('collapse_factor') or st.get('collapse_at_least')}")
         elif st["kind"] == "buckling":
             out.append(f"buckling factor {st['load_factor']:.3g}" if st.get("load_factor")
                        else "buckling: compression mein nahi hai")
