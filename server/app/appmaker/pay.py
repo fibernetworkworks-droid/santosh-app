@@ -490,6 +490,13 @@ def _paid(r: AppProject, pid: str, payment_id: str, amount: int, method: str, so
         if kind == "order" and row_id:
             BE._merge(row_id, {"paid": "Verified", "_pay": {"gateway": gw, "payment_id": payment_id, "amount": amount,
                                                             "method": method, "at": now().isoformat(), "by": source}})
+    if kind == "site" and row_id:                       # v0.446 a website shop order (site/shoppay.py), same verified rule
+        from ..site import shoppay as SP
+        _site_id, what = SP.on_paid(row_id, payment_id, amount, gw, label)
+        _note(r, (f"Website order ka online payment aaya: {label} - {_rs(amount)} ({gw.title()}, {payment_id}). Order pakka ho gaya."
+                  if what == "confirmed" else
+                  f"{label}: {_rs(amount)} ka payment order radd hone ke BAAD aaya - refund kijiye ya order dobara pakka kijiye."))
+        return
     if kind in ("order", "link"):
         _note(r, f"Online payment aaya: {label} - {_rs(amount)} ({gw.title()}, {payment_id}). Paisa aapke bank mein gateway se aayega.")
     if kind == "order":
@@ -923,7 +930,7 @@ def tick(force: bool = False) -> int:
     ensure_tables()
     lo, hi = now() - timedelta(minutes=120), now() - timedelta(seconds=60)
     with session() as s:
-        ps = s.scalars(select(AppPayment).where(AppPayment.kind == "order", AppPayment.status == "created",
+        ps = s.scalars(select(AppPayment).where(AppPayment.kind.in_(("order", "site")), AppPayment.status == "created",
                                                 AppPayment.created >= lo, AppPayment.created <= hi).limit(200)).all()
         for p in ps:
             s.expunge(p)

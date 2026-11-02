@@ -1674,6 +1674,57 @@ window.HoolaBuild = function (C) {
     if (lists.length) put('app', {type: 'line', labels: dl, series: lists.slice(0, 6).map(x => ({name: S(x.label), values: L(x.days)}))}, 'No new records in this period.');
   }
 
+  /* v0.446 DUKAAN PAISA: her own gateway (keys typed HERE only, sealed, shown nowhere), payments, coupons, reviews */
+  async function payBox(o, box, info, reload) {
+    const on = M(info.online), sec = document.createElement('section'); sec.className = 'stcol stpay';
+    box.prepend(sec);
+    if (!on.app) {
+      sec.innerHTML = `<h4>Online payments <span>off</span></h4><p class="stnote">Take card / UPI / netbanking through YOUR own Razorpay, Cashfree or PhonePe account. Orders are marked paid only when the gateway confirms.</p><div class="acts"><button class="btn go" type="button" data-p="connect">Set up online payments</button></div>`;
+      sec.querySelector('[data-p=connect]').onclick = async e => { e.target.disabled = true; try { await api('POST', base(o) + '/payments/connect'); reload(); } catch (er) { toast(er.message, true); e.target.disabled = false; } };
+      return;
+    }
+    const A = `/api/apps/${encodeURIComponent(S(on.app))}`;
+    let st = {}, cps = {}, rv = [];
+    try { [st, cps, rv] = await Promise.all([api('GET', A + '/pay'), api('GET', A + '/coupons').catch(() => ({})), api('GET', base(o) + '/shop/reviews').then(j => L(j.reviews)).catch(() => [])]); } catch (er) { sec.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const F = M(st.fields), gw = S(st.gateway) || 'razorpay';
+    const codes = L(M(cps).coupons || (Array.isArray(cps) ? cps : []));
+    sec.innerHTML = `<h4>Online payments <span>${st.on ? esc(S(st.gateway)) + (st.test ? ' · test mode' : ' · live') : 'not connected'}</span></h4>
+      ${st.on ? `<p class="stnote">Webhook address for your ${esc(S(st.gateway))} dashboard: <code>${esc(S(st.webhook_url))}</code><br>${esc(S(st.webhook_how))}</p>
+        <p class="stnote">${N(M(st.totals).count)} paid · ${esc(S(M(st.totals).paid))} paise received · ${N(M(st.totals).mismatch)} amount mismatches</p>` : ''}
+      <form class="stapp" data-p="keys" autocomplete="off"><b>${st.on ? 'Change gateway keys' : 'Connect your gateway'}</b>
+        <label><span>Gateway</span><select name="gateway">${L(st.gateways).map(g => `<option${g === gw ? ' selected' : ''}>${esc(S(g))}</option>`).join('')}</select></label>
+        <div class="row">${L(F[gw]).map(k => `<label><span>${esc(S(k))}</span><input name="k_${esc(S(k))}" type="password" autocomplete="off"></label>`).join('')}</div>
+        <label class="sted-kind"><input type="checkbox" name="test"> Test mode</label>
+        <div class="acts"><button class="btn go" type="submit">Check and save</button></div></form>
+      <h4 style="margin-top:12px">Coupons <span>${codes.length}</span></h4>
+      ${codes.length ? `<ul class="stmems">${codes.map(c => `<li><span>${esc(S(c.code))} · ${c.kind === 'flat' ? '₹' + esc(S(c.value)) : esc(S(c.value)) + '%'} off${c.min ? ' · min ₹' + esc(S(c.min)) : ''}${c.until ? ' · till ' + esc(S(c.until)) : ''} · used ${N(c.used)}</span></li>`).join('')}</ul>` : '<p class="stempty">No codes yet.</p>'}
+      <form class="stapp" data-p="coupon" autocomplete="off"><div class="row"><label><span>Code</span><input name="code" placeholder="DIWALI10" maxlength="16"></label>
+        <label><span>Kind</span><select name="kind"><option value="percent">% off</option><option value="flat">₹ off</option></select></label>
+        <label><span>Value</span><input name="value" inputmode="decimal"></label><label><span>Min order ₹</span><input name="min" inputmode="decimal"></label>
+        <label><span>Last date</span><input name="until" type="date"></label></div>
+        <label class="sted-kind"><input type="checkbox" name="once" checked> Once per customer</label>
+        <div class="acts"><button class="btn soft" type="submit">Add coupon</button></div></form>
+      <h4 style="margin-top:12px">Reviews (verified buyers) <span>${rv.length}</span></h4>
+      ${rv.length ? `<ul class="stmems">${rv.map(r => `<li data-r="${esc(S(r.id))}"><span>${'★'.repeat(N(r.stars))} ${esc(S(r.slug))} · ${esc(S(r.name))}: ${esc(S(r.text))}</span><button class="btn soft" type="button" data-hide="${r.status === 'hidden' ? '0' : '1'}">${r.status === 'hidden' ? 'Show' : 'Hide'}</button></li>`).join('')}</ul>` : '<p class="stempty">No reviews yet.</p>'}`;
+    const kf = sec.querySelector('[data-p=keys]');
+    kf.gateway.onchange = () => { const g = kf.gateway.value; kf.querySelector('.row').innerHTML = L(F[g]).map(k => `<label><span>${esc(S(k))}</span><input name="k_${esc(S(k))}" type="password" autocomplete="off"></label>`).join(''); };
+    kf.onsubmit = async e => {
+      e.preventDefault(); const keys = {}; [...kf.querySelectorAll('input[name^=k_]')].forEach(i => { keys[i.name.slice(2)] = i.value.trim(); });
+      const b = kf.querySelector('button'); b.disabled = true;
+      try { await api('PUT', A + '/pay/keys', {gateway: kf.gateway.value, keys, test: kf.test.checked}); toast('Gateway connected. Add the webhook address in its dashboard.'); reload(); }
+      catch (er) { toast(er.message, true); b.disabled = false; } finally { [...kf.querySelectorAll('input[type=password]')].forEach(i => { i.value = ''; }); }
+    };
+    sec.querySelector('[data-p=coupon]').onsubmit = async e => {
+      e.preventDefault(); const f = e.target, b = {code: f.code.value, kind: f.kind.value, value: f.value.value, once: f.once.checked};
+      if (f.min.value) b.min = f.min.value; if (f.until.value) b.until = f.until.value;
+      try { await api('PUT', A + '/coupons', b); toast('Coupon saved.'); reload(); } catch (er) { toast(er.message, true); }
+    };
+    sec.onclick = async e => {
+      const h = e.target.closest('[data-hide]'), li = e.target.closest('li[data-r]'); if (!h || !li) return;
+      try { await api('POST', base(o) + '/shop/reviews/' + encodeURIComponent(li.dataset.r), {hide: h.dataset.hide === '1'}); reload(); } catch (er) { toast(er.message, true); }
+    };
+  }
+
   async function loadShop(o, root) {
     const box = root.querySelector('.stshop'); if (!box) return;
     let info, ord;
@@ -1694,7 +1745,7 @@ window.HoolaBuild = function (C) {
         <td><b>${esc(S(x.number))}</b><br><small>${esc(S(x.created).slice(0, 16).replace('T', ' '))}</small></td>
         <td>${esc(S(x.name))}<br><small>${esc(S(x.phone))} · ${esc(S(x.address).slice(0, 60))} ${esc(S(x.pincode))}</small></td>
         <td>${L(x.items).map(i => `${esc(S(i.title))} × ${N(i.qty)}`).join('<br>')}</td>
-        <td>${esc(S(x.total))}<br><small>${x.method === 'cod' ? 'COD' : 'UPI'}${x.utr ? ' · UTR ' + esc(S(x.utr)) : ''}</small></td>
+        <td>${esc(S(x.total))}${x.discount ? `<br><small>${esc(S(x.coupon))} −${esc(S(x.discount))}</small>` : ''}<br><small>${x.method === 'cod' ? 'COD' : x.method === 'online' ? (x.paid_online ? 'Online · paid (gateway)' : 'Online · not paid yet') : 'UPI'}${x.utr ? ' · ' + (x.method === 'online' ? 'pay ' : 'UTR ') + esc(S(x.utr)) : ''}</small>${x.paid_online ? `<br><button class="btn soft" type="button" data-refund="${esc(S(x.number))}">Refund…</button>` : ''}</td>
         <td>${esc(S(x.status_text))}</td>
         <td>${L(x.next).map(t => `<button class="btn soft" type="button" data-to="${esc(S(t))}">${esc(OSTEP[t] || t)}</button>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No orders yet.</p>'}</section>
       <section class="stcol"><h4>Products <span>${prods.length}</span></h4>
@@ -1724,7 +1775,17 @@ window.HoolaBuild = function (C) {
       send({products}, e.target);
     });
     const fl = box.querySelector('[data-x=from-lists]'); if (fl) fl.addEventListener('click', e => send({from_lists: true}, e.target));
+    payBox(o, box, info, () => loadShop(o, root));
     box.addEventListener('click', async e => {
+      const rf = e.target.closest('[data-refund]');
+      if (rf) {                                          // v0.446 HER tap: the gateway's own refund for an online order
+        const amt = prompt(`Refund order ${rf.dataset.refund}: amount in ₹ (leave empty = the full amount left)`, '');
+        if (amt === null || !confirm(`Refund ${amt ? '₹' + amt : 'the full amount'} for ${rf.dataset.refund} through your gateway?`)) return;
+        rf.disabled = true;
+        try { const r = await api('POST', `${base(o)}/shop/orders/${encodeURIComponent(rf.dataset.refund)}/refund`, {amount: amt || null, why: 'refund'}); toast('Refund ' + S(r?.status || 'sent') + '.'); loadShop(o, root); }
+        catch (er) { toast(er.message, true); rf.disabled = false; }
+        return;
+      }
       const b = e.target.closest('[data-to]'), tr = e.target.closest('tr[data-n]'); if (!b || !tr) return;
       if (b.dataset.to === 'cancelled' && !confirm(`Cancel order ${tr.dataset.n}? Its stock goes back.`)) return;
       if (b.dataset.to === 'confirmed' && !confirm(`Did you see the money for ${tr.dataset.n} in your bank / UPI app?`)) return;
