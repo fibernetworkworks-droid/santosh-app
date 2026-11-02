@@ -39,6 +39,9 @@ on:
           - tool_card
           - hard_card
           - long_jobs
+          - long_card_try
+          - long_card
+          - long_card_status
           - proof
           - code_card
           - code_card_hard
@@ -353,6 +356,24 @@ jobs:
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.
                 echo 'cd $CORE && timeout 120 .venv/bin/python -m app.quality longjobs --hours 24 2>&1 | tail -60' ;;
+              long_card_try|long_card)
+                # v0.443 LONG CARD: how often Hoola FINISHES a long job, judged by code on the END STATE (files with their
+                # pages / rows / words, pages, lists, reminders, replies) - never on the model's word. Real long jobs on
+                # throw-away __longcard__ tenants (never her chats or budget); reminders / routines it makes are cancelled.
+                # long_card_try = 5 asks x 1 run (~Rs 300-1,100, ~30-60 min); long_card = all 25 asks x 3 runs (~Rs 4,500-
+                # 16,500, a few hours). Both start DETACHED (this job only starts it); read it with long_card_status.
+                if [ "$JOB" = long_card ]; then LC_ARGS="--k 3 --label vps-ops"; else LC_ARGS="--k 1 --limit 5 --label try"; fi
+                echo "LC_ARGS='$LC_ARGS'"
+                echo 'cd $CORE && mkdir -p data/quality'
+                echo 'if pgrep -f "app.quality longcard" >/dev/null; then echo "== a long card is already running:"; pgrep -af "app.quality longcard"; exit 0; fi'
+                echo 'timeout 60 .venv/bin/python -m app.quality longcard --check || exit 1'
+                echo 'nohup setsid .venv/bin/python -m app.quality longcard $LC_ARGS > data/quality/longcard.log 2>&1 < /dev/null &'
+                echo 'sleep 5; echo "== started (pid $(pgrep -f "app.quality longcard" | head -1)); read it with the long_card_status job"' ;;
+              long_card_status)
+                # v0.443 the newest long card (also while it is still running: it saves after every run) + the runner log tail
+                echo 'cd $CORE && (pgrep -af "app.quality longcard" >/dev/null && echo "== still running" || echo "== not running")'
+                echo 'timeout 60 .venv/bin/python -m app.quality longcard --status 2>&1 | tail -70'
+                echo 'echo "== runner log (last 15)"; tail -15 data/quality/longcard.log 2>/dev/null' ;;
               proof)
                 # v0.376 PROOF: the Arena's 100-page proofs + rival crawls, read straight from the database (free, read-only).
                 echo 'echo "== 100-page proofs (newest first)"; cd $CORE && timeout 60 .venv/bin/python - <<"PY" 2>&1 | tail -80'

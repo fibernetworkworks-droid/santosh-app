@@ -361,6 +361,7 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
                     "new": not c.get("old_sha")} for c in ch],
          "checks": _j(t.checks, []), "risk": t.risk, "test_plan": t.test_plan, "rounds": t.rounds,
          "self_round": int(t.self_round or 0), "self_review": _j(t.self_review or "", {}),
+         "proof": _j(t.proof or "", {}),
          "at": t.created_at.isoformat() if t.created_at else ""}
     if full:
         v["text"] = t.text
@@ -863,12 +864,20 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
                 _, sha_now = g.file(t.repo, c["path"], head_now)
                 if sha_now != c["old_sha"]:
                     raise DevError(f"{c['path']} is beech base branch par badal gayi; kaam dobara karwaiye.")
-        sha = g.commit_files(t.repo, t.branch, head_now, [(c["path"], c["new"]) for c in changes],
-                             f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
         cfg = _cfg(tenant)
         # v0.351 PEHLE CI, PHIR PR: a repo with CI gets a DRAFT PR first; the tick runs her CI, fixes until it passes
         # (up to DEV_CI_ROUNDS) and only then marks the PR ready for review
         has_ci = _has_ci(g, t.repo, head_now)
+        tests_first = _proof_tests(t, changes, has_ci)   # v0.447 ECC PHASE 3: the test commit goes in on its own, first
+        if tests_first:
+            sha = g.commit_files(t.repo, t.branch, head_now,
+                                 [(c["path"], c["new"]) for c in changes if c["path"] in tests_first],
+                                 f"test: {t.pr_title}\n\nTest that reproduces the bug. It is EXPECTED TO FAIL on this commit - "
+                                 f"that red run is the proof the bug is real. The fix is the next commit.\n"
+                                 f"{t.number} by Hoola Developer Sahayak")
+        else:
+            sha = g.commit_files(t.repo, t.branch, head_now, [(c["path"], c["new"]) for c in changes],
+                                 f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
         # v0.445 ECC PHASE 2: even a repo with no CI gets the draft + loop, because the loop now holds the OWN-REVIEW gate
         ci_loop = bool(_setting("dev_ci_loop", True)) and (has_ci or bool(_setting("dev_self_review", True)))
         pr = g.open_pr(t.repo, t.branch, t.base, t.pr_title, t.pr_body, True if ci_loop else cfg.draft_pr)
@@ -890,13 +899,20 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
             return _card(tenant, row, say.strip())
         row.status, row.ci_round, row.ci_since = "ci_running", 0, now()
         row.self_round, row.self_review = 0, json.dumps({"has_ci": has_ci})
-        _log(row, f"draft PR #{row.pr_number} khula" + (", CI chal raha" if has_ci else ""))
+        if tests_first:
+            row.proof = json.dumps({"state": "wait", "tests": tests_first, "test_sha": sha})
+        _log(row, (f"test pehle commit hua ({len(tests_first)} file), bug ka saboot CI se" if tests_first
+                   else f"draft PR #{row.pr_number} khula" + (", CI chal raha" if has_ci else "")))
         s.flush()
         mine = (" Uske baad PR dene se pehle main khud bhi apna code review karunga."
                 if _setting("dev_self_review", True) else "")
-        say = (f"{row.number}: badlav draft PR #{row.pr_number} par gaya ({len(changes)} file). "
-               + ("Aapka CI chal raha hai - fail hua to main khud theek karunga, aur PASS hone par hi PR review ke liye "
-                  "taiyaar karunga." if has_ci else "Is repo mein CI nahi hai.") + mine + warn)
+        if tests_first:
+            say = (f"{row.number}: pehle sirf test draft PR #{row.pr_number} par gaya. Aapka CI ise chalayega - test FAIL "
+                   "hona chahiye, wahi bug ka saboot hai; uske baad fix ka commit jayega." + mine + warn)
+        else:
+            say = (f"{row.number}: badlav draft PR #{row.pr_number} par gaya ({len(changes)} file). "
+                   + ("Aapka CI chal raha hai - fail hua to main khud theek karunga, aur PASS hone par hi PR review ke liye "
+                      "taiyaar karunga." if has_ci else "Is repo mein CI nahi hai.") + mine + warn)
         if has_ci:
             return _card(tenant, row, say)              # the tick watches her CI, then the own review runs
         tid = row.id
@@ -1631,6 +1647,95 @@ def _ci_ready(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str, Any]:
         return _card(tenant, row, say + note)
 
 
+PROOF_SAY = {
+    "proven": "Aapke CI ne test ko FAIL kiya - bug saabit ho gaya, phir fix ka commit gaya.",
+    "proven_unnamed": "Aapka CI test ke commit par RED hua (par fail ke log mein naya test naam se nahi dikha), phir fix gaya.",
+    "not_proven": "Saaf baat: naya test PURANE code par bhi PASS ho gaya, to yeh test bug ko saabit nahi karta. Fix commit "
+                  "ho gaya hai - test par dhyaan dijiye.",
+    "unknown": "Bug ka saboot naap nahi paya (test ke commit par koi CI nateeja nahi aaya). Fix commit ho gaya hai.",
+}
+PROOF_PR = {
+    "proven": "**Proven.** Her CI ran the test-only commit `{sha}` and it FAILED{named} - the bug is real. The fix is the "
+              "next commit on this branch.",
+    "proven_unnamed": "**Red, not named.** Her CI failed on the test-only commit `{sha}`, but the failure text does not "
+                      "name the new test, so the red run may have another cause. Read the run before trusting it.",
+    "not_proven": "**NOT proven.** Her CI ran the test-only commit `{sha}` and it PASSED - the test does not reproduce the "
+                  "bug, so this change is not shown to fix anything. The test needs to fail on the old code.",
+    "unknown": "**Not measured.** No CI result arrived for the test-only commit `{sha}`, so nothing proves the bug here.",
+}
+
+
+def _proof_tests(t: DevTask, changes: list[dict[str, Any]], has_ci: bool) -> list[str]:
+    """v0.447 ECC PHASE 3 (ECC's orch-fix-defect: "proving the bug exists first is what separates a fix from a tweak").
+    The test files of a FIX that go in as their own first commit, so her CI's RED run is the proof. [] = no proof run:
+    not a fix, no CI in the repo, the switch is off, no test in the change, or nothing but tests (no fix to split off)."""
+    if t.kind != "fix" or not has_ci or not bool(_setting("dev_fix_proof", True)):
+        return []
+    tests = [c["path"] for c in changes if R.is_test_path(c["path"])]
+    rest = [c["path"] for c in changes if not R.is_test_path(c["path"])]
+    return tests if tests and rest else []
+
+
+def _proof_named(ci: dict[str, Any], tests: list[str]) -> bool:
+    """Does the red run's own text name the new test (file, or its basename without extension)? Her CI may be red for an
+    unrelated reason, and a proof nobody can point at is not a proof."""
+    text = " ".join(str(f.get("text") or "") for f in (ci.get("failures") or []))
+    if not text:
+        return False
+    for p in tests:
+        base = p.rsplit("/", 1)[-1]
+        if p in text or base in text or base.rsplit(".", 1)[0] in text:
+            return True
+    return False
+
+
+def _proof_land(tenant: str, t: DevTask, g: Gh, verdict: str, ci: dict[str, Any]) -> dict[str, Any]:
+    """The proof run is over (whatever it said): the fix commit goes on top of the test commit and the CI wait starts
+    again. The verdict is REPORTED, never hidden - a test that passed on the old code says so on the card and in the PR."""
+    changes = _j(t.changes, [])
+    pf = _j(t.proof or "", {}) or {}
+    try:
+        parent = g.branch_sha(t.repo, t.branch)
+        sha = g.commit_files(t.repo, t.branch, parent, [(c["path"], c["new"]) for c in changes],
+                             f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
+    except GhError as e:
+        _set(t.id, status="failed", error=str(e))
+        raise DevError(str(e))
+    pf.update({"state": verdict, "fix_sha": sha, "failed": (ci.get("failed") or [])[:3]})
+    with session() as s:
+        row = s.get(DevTask, t.id)
+        row.proof, row.head_sha, row.ci_since = json.dumps(pf), sha, now()
+        row.ci = json.dumps({"state": "pending", "say": "CI shuru hone wala"})
+        _log(row, "bug ka saboot: " + verdict)
+        s.flush()
+        body = row.pr_body
+        s.expunge(row)
+    note = PROOF_PR.get(verdict, "").format(sha=str(pf.get("test_sha") or "")[:7],
+                                            named=" on the new test" if verdict == "proven" else "")
+    if body and note and row.pr_number:              # the PR says what her CI answered, for whoever reviews it
+        try:
+            g.update_pr(t.repo, row.pr_number, body=body + "\n\n### Proof of the bug (ECC phase 3)\n" + note)
+        except GhError as e:
+            log.info("devsahayak proof pr body %s: %s", t.id, e)
+    return _card(tenant, row, f"{row.number}: {PROOF_SAY.get(verdict, '')} Ab CI poore badlav par chal raha hai.")
+
+
+def _proof_step(tenant: str, t: DevTask, g: Gh, ci: dict[str, Any], state: str, waited: float) -> dict[str, Any] | None:
+    """One step of the proof run: her CI on the test-only commit. RED = the bug is real -> the fix lands. GREEN = the test
+    does not reproduce it -> the fix still lands, and she is TOLD. No result = said as not measured, never as proven."""
+    pf = _j(t.proof or "", {}) or {}
+    tests = [str(x) for x in (pf.get("tests") or [])]
+    if state == "failure":
+        return _proof_land(tenant, t, g, "proven" if _proof_named(ci, tests) else "proven_unnamed", ci)
+    if state == "success":
+        return _proof_land(tenant, t, g, "not_proven", ci)
+    if state in ("none", None, "") and waited >= float(_setting("dev_ci_wait_min", 15)):
+        return _proof_land(tenant, t, g, "unknown", ci)
+    if state == "pending" and waited >= float(_setting("dev_ci_max_min", 45)):
+        return _proof_land(tenant, t, g, "unknown", ci)
+    return None
+
+
 def _self_blocking(out: dict[str, Any], findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """What Hoola's own review found that must be fixed before she is asked to look: its own high / medium comments and the
     automatic HIGH findings (a secret / injection on an added line). Low comments and the [Hoola check] notes never block."""
@@ -1721,6 +1826,8 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = 
     waited = (at - since).total_seconds() / 60
     rounds = int(t.ci_round or 0)
     g = gh(tenant)
+    if (_j(t.proof or "", {}) or {}).get("state") == "wait":    # v0.447 her CI is running the test-only commit
+        return _proof_step(tenant, t, g, ci, state, waited)
     if state == "success":
         tail = f" ({rounds} fix round ke baad)" if rounds else ""
         return _ready_or_self_review(tenant, t, g, f"{t.number}: aapka CI PASS{tail}. PR #{t.pr_number} review ke liye "

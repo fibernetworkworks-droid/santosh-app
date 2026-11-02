@@ -72,6 +72,9 @@ def test_goal_plan_keeps_the_turn_going_until_every_step_is_done(gz, monkeypatch
         ([txt("Report taiyaar hai, bhej diya."), tu(7, "kaam_plan", action="finish", outcome="done",
                                                     reason="report bhej diya gaya")], "tool_use"),
         ([txt("Report taiyaar hai, bhej diya.")], "end_turn"),
+        # v0.443 item 2: goal mode is no longer exempt from the free claim check, and this scripted job really did
+        # NOT send anything (every tool it ran was kaam_plan), so the claim "bhej diya" is caught and sent back once
+        ([txt("Report taiyaar hai — bhejna abhi baaki hai.")], "end_turn"),
     ]))
     from app.agent.santosh import LAST_OUTCOME, run_turn
     out = asyncio.run(run_turn(conv, "Report banao end to end", tenant_id="default"))
@@ -79,7 +82,7 @@ def test_goal_plan_keeps_the_turn_going_until_every_step_is_done(gz, monkeypatch
     # the goal nudge really went back to the brain: it saw the baaki-steps message
     assert any("baaki hain" in (b.get("text") or "") for m in brain.seen for msg in m["messages"]
                for b in (msg["content"] if isinstance(msg["content"], list) else []) if isinstance(b, dict))
-    assert len(brain.seen) == 7                       # the text stop did NOT end the turn
+    assert len(brain.seen) == 8                       # the text stop did NOT end the turn (+1: v0.443 claim check)
     from app.db import Event, session
     from sqlalchemy import select
     with session() as s:
