@@ -284,30 +284,48 @@ async def _run_agent(spec: dict, team_id: str, mission: str, main_families: set[
 
 async def _run_crew(specs: list[dict], team_id: str, mission: str, main_families: set[str] | None,
                     tenant: str, conv: str, turn_id: str, settings,
-                    shared: dict | None = None, on_done=None) -> list[dict]:
+                    shared: dict | None = None, on_done=None, timeout: float | None = None) -> list[dict]:
     """All agents of one crew TOGETHER (the dsh bounded pool, Claude Code's parallel Tasks); results in spec order.
-    `on_done` (background crews): called after each agent's future settles, for live progress events."""
+    `on_done` (background crews): called after each agent's future settles, for live progress events.
+    v0.436 `timeout`: when the clock runs out, ONLY the agents still running are cut and marked "time out"; every
+    agent that already finished keeps its deliverable (before, one slow agent threw away the whole crew's work)."""
     tasks = [asyncio.ensure_future(_run_agent(s, team_id, mission, main_families, tenant, conv, turn_id,
                                               settings, shared)) for s in specs]
     if on_done is not None:
         for t in tasks:
             t.add_done_callback(on_done)
     try:
-        outs = await asyncio.gather(*tasks, return_exceptions=True)
+        _done, pending = await asyncio.wait(tasks, timeout=timeout)
     except asyncio.CancelledError:
         for t in tasks:
             t.cancel()
         raise
+    for t in pending:
+        t.cancel()
+    if pending:
+        STATS["timed_out"] = STATS.get("timed_out", 0) + len(pending)
+        await asyncio.gather(*pending, return_exceptions=True)     # let them unwind before the results are read
     out: list[dict] = []
-    for s, o in zip(specs, outs):
+    for s, t in zip(specs, tasks):
+        name = _clip(s.get("name"), 40)
+        if t in pending:
+            out.append({"name": name, "ok": False, "stopped": False, "timed_out": True,
+                        "seconds": float(timeout or 0), "tools": [],
+                        "deliverable": "time out - agent ko band karna pada"})
+            continue
+        if t.cancelled():
+            out.append({"name": name, "ok": False, "stopped": True, "seconds": 0.0, "tools": [],
+                        "deliverable": "roka gaya"})
+            continue
+        o = t.exception() or t.result()
         if isinstance(o, dict):
             out.append(o)
         elif isinstance(o, asyncio.CancelledError):
-            out.append({"name": _clip(s.get("name"), 40), "ok": False, "stopped": True, "seconds": 0.0,
-                        "tools": [], "deliverable": "roka gaya"})
+            out.append({"name": name, "ok": False, "stopped": True, "seconds": 0.0, "tools": [],
+                        "deliverable": "roka gaya"})
         else:
-            out.append({"name": _clip(s.get("name"), 40), "ok": False, "stopped": False, "seconds": 0.0,
-                        "tools": [], "deliverable": f"(crash: {o})"})
+            out.append({"name": name, "ok": False, "stopped": False, "seconds": 0.0, "tools": [],
+                        "deliverable": f"(crash: {o})"})
     return out
 
 
@@ -369,25 +387,9 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
     STATS["inline"] += 1
     per_agent_cap = min(int(settings.team_agent_timeout_s), 260)   # the main turn's tool clock is 300 s
     shared: dict = {"place": getattr(ctx, "place", "") or "", "research": bool(getattr(ctx, "research", False))}    # v0.270 her place for this turn rides to the crew
-    tasks = [asyncio.ensure_future(_run_agent(s, team_id, mission, main_fams, tenant, conv, turn_id,
-                                              settings, shared)) for s in specs]
-    try:
-        outs = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=per_agent_cap)
-    except asyncio.CancelledError:
-        for t in tasks:
-            t.cancel()
-        raise
-    except asyncio.TimeoutError:
-        for t in tasks:
-            if not t.done():
-                t.cancel()
-        outs = [dict({"name": _clip(s.get("name"), 40), "ok": False, "stopped": False, "seconds": per_agent_cap,
-                      "tools": [], "deliverable": "time out - agent ko band karna pada"}) for s in specs]
-    results = []
-    for s, o in zip(specs, outs):
-        results.append(o if isinstance(o, dict) else
-                       {"name": _clip(s.get("name"), 40), "ok": False, "stopped": False, "seconds": 0.0,
-                        "tools": [], "deliverable": f"(crash: {o})"})
+    # v0.439 a slow agent is cut at the clock; the agents that finished keep their work (team.py _run_crew)
+    results = await _run_crew(specs, team_id, mission, main_fams, tenant, conv, turn_id, settings, shared,
+                              timeout=per_agent_cap)
     _evlog.log_event(tenant, conv, "team_synthesized",
                      {"team": team_id, "line": _clip(_digest(results, 160), 380),
                       "ok": sum(1 for r in results if r.get("ok")), "agents": len(results)},
@@ -544,12 +546,12 @@ async def run_background(team_id: str) -> None:
             pass
 
     try:
-        results = await asyncio.wait_for(
-            _run_crew(spec.get("agents") or [], team_id, mission, None, tenant, conv,
-                      f"team_{team_id}", settings, shared, on_done=_one_settled),
-            timeout=max(60, int(settings.team_bg_timeout_s)))
-    except asyncio.TimeoutError:
-        err = f"crew time out ({settings.team_bg_timeout_s}s)"
+        results = await _run_crew(spec.get("agents") or [], team_id, mission, None, tenant, conv,
+                                  f"team_{team_id}", settings, shared, on_done=_one_settled,
+                                  timeout=max(60, int(settings.team_bg_timeout_s)))
+        late = sum(1 for x in results if x.get("timed_out"))
+        if late and not any(x.get("ok") for x in results):
+            err = f"crew time out ({settings.team_bg_timeout_s}s)"   # nothing came back at all
     except asyncio.CancelledError:
         _RUNNING.discard(team_id)
         raise

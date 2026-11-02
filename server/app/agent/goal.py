@@ -50,6 +50,10 @@ def _pend(goal_id: str, d: int) -> None:
         _PENDING.pop(goal_id, None)
 LIMIT = "limit"
 
+# v0.436 the long card's throw-away tenants (app.quality.longcard.PREFIX): its own process waits for their rounds,
+# so the live server's resume / recovery sweeps never pick them up (a second copy of the same job in another process)
+CARD_PREFIX = "__longcard__"
+
 # conversations whose owner pressed Rokiye on the goal (the goal stops, the chat stays usable)
 _STOPPED: set[str] = set()
 
@@ -572,7 +576,7 @@ def resume_tick() -> int:
     n = 0
     from .santosh import _locks
     for gid, tenant, conv, at in todo:
-        if conv in _STOPPED:
+        if conv in _STOPPED or str(tenant or "").startswith(CARD_PREFIX):
             continue
         if at is not None and at < cutoff:
             continue                     # too old: she moved on; her next message still sees the GOAL JAARI block
@@ -712,7 +716,7 @@ def recover_tick() -> int:
     from .santosh import _locks
     n = 0
     for gid, tenant, conv, upd, times in todo:
-        if gid in _PENDING or conv in _STOPPED:
+        if gid in _PENDING or conv in _STOPPED or str(tenant or "").startswith(CARD_PREFIX):
             continue
         if upd is None or upd > old or upd < too_old:
             continue                         # still moving, or so old she has moved on (her next message carries it)
