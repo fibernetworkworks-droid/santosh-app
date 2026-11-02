@@ -46,8 +46,8 @@ def quiet_bus(bz):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.443.0"
-    assert "0.443.0+488" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.444.0"
+    assert "0.444.0+489" in (REPO / "pubspec.yaml").read_text()
 
 
 def test_queue_bound_and_drop_oldest(quiet_bus):
