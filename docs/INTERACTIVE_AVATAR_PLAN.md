@@ -142,6 +142,29 @@ A public "make anyone talk" tool is a deepfake tool unless these hold, in code, 
 - **Indian law**: the IT Rules on synthetically generated content (labelling) and DPDP consent apply; reviewed with a
   lawyer before the public launch.
 
+
+## 10. Hoola Voice — our own "ElevenLabs" on the same GPU (her ask: "IS ON GPU WE CAN CLONE A 11LABS")
+
+Yes: realistic text-to-speech + voice cloning runs on the same GPU server as the face engine. Model licences checked on
+the Hugging Face model cards / repo LICENSE files on 2 Nov 2026:
+
+| Model | Licence | Indian languages | Cloning | Use? |
+|---|---|---|---|---|
+| **Chatterbox Multilingual V3** (Resemble AI, 0.5B) | MIT | Hindi (+ a Hindi single-language pack), 20+ others | yes, zero-shot from a short clip | **YES — main cloning voice.** Every output carries Resemble's Perth watermark (survives MP3) = built-in deepfake marking |
+| **IndicF5** (AI4Bharat) | MIT (weights) | 11: hi, mr, bn, gu, kn, ml, or, pa, ta, te, as | yes, from a reference clip | **YES — the Indian-language voice.** Gated download (accept terms); check its training-data terms in Phase 0 |
+| **Indic Parler-TTS** (AI4Bharat) | Apache-2.0 | 21 Indian languages | no — voice described in words ("calm female teacher") | **YES — stock voices, no cloning needed** |
+| CosyVoice 2 / 3 (Alibaba) | Apache-2.0 | not Indian-first | yes | Maybe, if Hindi quality passes |
+| Kokoro-82M | Apache-2.0 | limited | no | Small and fast fallback |
+| F5-TTS (original) | CC-BY-NC-4.0 | — | yes | **NO** (non-commercial) |
+| XTTS-v2 (Coqui) | Coqui Public Model Licence | Hindi | yes | **NO** (non-commercial) |
+| Fish Audio S1-mini | CC-BY-NC-SA-4.0 | — | yes | **NO** |
+| Higgs TTS 2 / IndexTTS-2 | custom / unclear | — | yes | Not until their licences are read |
+
+What "our ElevenLabs" becomes: voice library (stock Indian voices), My Voice (clone with a spoken consent line, same
+liveness rule as My Twin), text to speech API, long-form narration for lessons, and the voice that drives the face
+engine — one GPU box, two engines. Consent rules of section 9 apply to voices exactly as to faces; Perth watermarking
+stays ON for every cloned voice. Phase 10 in section 7 (My Voice) moves earlier: voice is needed by the lessons anyway.
+
 ## Sources (2 Nov 2026)
 - Licences read directly: github.com/TMElyralab/MuseTalk (LICENSE + README), huggingface.co/TMElyralab/MuseTalk (model card
   licence: mit), huggingface.co/stabilityai/sd-vae-ft-mse (mit), github.com/bytedance/LatentSync (Apache-2.0, README uses
