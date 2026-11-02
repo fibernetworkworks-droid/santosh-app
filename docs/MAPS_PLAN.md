@@ -176,23 +176,37 @@ real option and a commercial decision; it is not something code can route around
 
 ## 6. The cost trap, and the pattern that avoids it
 
-Billing rule, verbatim: ***"You are then billed at the highest SKU applicable to your request."***
-One Enterprise field bills the **whole** request at Enterprise — and the fields a useful result card wants are
-exactly the Enterprise ones: **phone, website, rating, review count, opening hours**.
-**Nearby Search has no cheap tier at all** — every field on it is Pro or above.
+Billing rule, verbatim: ***"You are then billed at the highest SKU applicable to your request."*** And the
+billable event is the **request**: each Places SKU's event is *"Successful request for &lt;tier&gt; fields"*,
+and *"The request is billed at the highest SKU applicable to the requested fields."* So the field mask picks
+the **tier** and the request is charged **once** - 20 places in one answer is **one** billable event, not
+twenty. (An earlier draft of this plan said twenty. It was wrong, and it made the saving below sound about
+20x bigger than it is.)
 
-**So the split goes in from the first line of code:**
-1. **List pass** — Text Search at **Essentials (IDs Only)** (free cap **Unlimited**) or Pro: ids, names,
-   addresses.
-2. **Details pass** — one `GET places/PLACE_ID` at **Enterprise**, only for the place she actually opens.
+The real trap is not the per-call price, which barely differs. It is **which free allowance gets burned**:
 
-Asking for phone and rating across a 20-row page bills 20 rows at Enterprise; asking on the one row she tapped
-bills one. Same screen, a twentyfold difference.
+| | India, USD/1,000 | free/month |
+|---|---|---|
+| Text Search / Nearby **Pro** (name, address, location, type) | 9.60 | **35,000** |
+| Text Search / Nearby **Enterprise** (adds phone, website, rating, hours) | 10.50 | **7,000** |
+| Place Details **Enterprise** (one place) | 6.00 | **7,000** |
 
-Ceilings to design around: **Nearby Search = circle only, radius ≤ 50 km, 20 results, no paging.**
+The Enterprise allowance is **five times scarcer**. So the split is about headroom, not unit price:
+
+1. **List pass at Pro** - every browse comes out of the 35,000 allowance.
+2. **Details pass at Enterprise** - only for the place she actually opens, out of the 7,000.
+
+**Said plainly, because it cuts both ways:** if she browses and does not open anything, the split is cheaper
+and sits five times further from ever paying. If she opens a place on *every* search, the split costs a little
+*more* than one rich search (9.60 + 6.00 against 10.50 per 1,000). Most searches end without opening one
+particular place, which is why Pro is the default - but it is a judgement, not a free lunch, and the first real
+month of her bill is what should settle it.
+
+**Nearby Search has no cheap tier at all** - every field on it is Pro or above - and `computeRouteMatrix` is
+the one SKU billed *"per ELEMENT returned from the request"*, so a 10x10 matrix is 100 billable events.
+
+Ceilings to design around: **Nearby Search = circle only, radius <= 50 km, 20 results, no paging.**
 **Text Search = 60 results across pages**, and it is the only one with an IDs-only tier.
-
----
 
 ## 7. The map card — and the correction to the first version of this plan
 

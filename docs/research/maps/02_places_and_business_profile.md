@@ -53,6 +53,12 @@ Source: https://developers.google.com/maps/documentation/places/web-service/text
 ### A3. THE COST TRAP, and the pattern that avoids it
 Billing rule, verbatim: ***"You are then billed at the highest SKU applicable to your request."***
 
+**And the billable event is the REQUEST, not the result.** Each Places SKU's event is *"Successful request for
+&lt;tier&gt; fields"*, and *"The request is billed at the highest SKU applicable to the requested fields."* So the
+field mask selects one tier and the request is charged once: **20 places in one answer is ONE billable event.**
+Counting results would overstate a search roughly twentyfold. The one exception is `computeRouteMatrix`,
+*"billed per ELEMENT returned from the request"* (origins x destinations). Full rates: `04_prices.md`.
+
 So **one** Enterprise field in a request bills the **whole** request at Enterprise. And the fields a useful
 result card wants are exactly the Enterprise ones:
 
@@ -67,12 +73,17 @@ result card wants are exactly the Enterprise ones:
 **Nearby Search has no Essentials tier at all** — every field on it is Pro or above.
 
 **The pattern, and it must be in from day one:**
-1. **List pass** — Text Search at **Essentials (IDs Only)** (free cap **Unlimited**) or Pro, to get ids,
-   names and addresses.
-2. **Details pass** — `GET .../places/PLACE_ID` at **Enterprise** only for the places she actually opens.
+1. **List pass at Pro** — name, address, location, type. India: $9.60/1,000, **35,000 free a month**.
+   (Essentials IDs-Only is free and unlimited but returns no `displayName` at all — only the resource name and
+   id — so it cannot render a list on its own.)
+2. **Details pass at Enterprise** — `GET .../places/PLACE_ID`, only for a place she actually opens.
+   India: $6.00/1,000, **7,000 free a month**.
 
-Asking for phone + rating across a 20-row page bills 20 rows at Enterprise. Asking for them on the one row she
-tapped bills one. Same screen, a twentyfold difference.
+**The gain is the free allowance, not the unit price.** Enterprise's allowance is five times scarcer (7,000
+against 35,000), so keeping browsing on Pro sits far further from ever paying. Honestly stated: if she opens a
+place on *every* search, the split costs slightly **more** than one rich Enterprise search
+(9.60 + 6.00 against 10.50 per 1,000). Pro-first is the right default because most searches end without
+opening one particular place — but it is a judgement, not a free lunch.
 
 Place Details adds **no field** that search cannot return (the only documented exclusivity runs the other way —
 `routingSummaries` is search-only). Its value is purely **economic**: it has the cheap tiers Nearby lacks, and it

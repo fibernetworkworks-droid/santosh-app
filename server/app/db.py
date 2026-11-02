@@ -751,6 +751,7 @@ def init_db(url: str | None = None):
     from .reels import models as _reels_models  # noqa: F401
     from .motion import models as _motion_models  # noqa: F401
     from . import idvault as _idvault  # noqa: F401
+    from . import mapsbill as _mapsbill  # noqa: F401  (v0.449 Maps spend, free caps, place_id cache)
     from . import voicestyle as _voicestyle  # noqa: F401  (v0.119 how she speaks, mis-hearings, her words)
     from .site import models as _site_models  # noqa: F401  (v0.121 Website Sahayak)
     from .site import hosting_models as _site_hosting  # noqa: F401  (v0.122 hosts, DNS plans, her keys)

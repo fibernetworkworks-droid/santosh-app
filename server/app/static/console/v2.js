@@ -885,6 +885,36 @@ function renderCard(kind, p, at, live) {
   }
   const el = cardShell(kind, p);
   switch (kind) {
+    // v0.449 Phase 2 NAKSHA DIKHE: places as readable cards instead of a wall of addresses.
+    // Deliberately NO map: Google's terms allow Places content with no map (SST 14.1) and forbid it on a
+    // non-Google map (SST 14.2 / ToS 3.2.3(e)), so free tiles here would be a licence breach. Attribution is
+    // required wherever this content is shown, with or without a map (ToS 3.2.2(b)).
+    case 'maps_places': {
+      const ps = Array.isArray(p.places) ? p.places : [];
+      const bits = x => [x.type, x.distance_km != null ? x.distance_km + ' km' : '',
+                         x.rating != null ? '\u2605 ' + x.rating + (x.reviews ? ' (' + x.reviews + ')' : '') : '',
+                         x.open_now === true ? 'Khula hai' : x.open_now === false ? 'Band hai' : '',
+                         x.status && x.status !== 'OPERATIONAL' ? x.status.replace(/_/g, ' ').toLowerCase() : '']
+                        .filter(Boolean).join(' \u00b7 ');
+      el.innerHTML = head(p.title || 'Jagahein', ps.length ? String(ps.length) : '', 'v') +
+        `<div class="bd">` + (p.near ? `<div class="faint" style="font-size:12.5px">${esc(p.near)} ke aas-paas</div>` : '') +
+        ps.map(x => {
+          const ml = safeLink(x.maps_link), web = safeLink(x.website);
+          return `<div class="ln" style="display:block;padding:7px 0">` +
+            `<b>${esc(x.name || '')}</b>` +
+            (bits(x) ? `<div class="faint" style="font-size:12.5px">${esc(bits(x))}</div>` : '') +
+            (x.address ? `<div style="font-size:13px">${esc(x.address)}</div>` : '') +
+            (Array.isArray(x.hours) && x.hours.length ? `<div class="faint" style="font-size:12px">${esc(x.hours.join(' \u00b7 '))}</div>` : '') +
+            `<div class="row" style="gap:10px;margin-top:3px;font-size:12.5px">` +
+            (x.phone ? `<a href="tel:${esc(String(x.phone).replace(/[^\d+]/g, ''))}">${esc(x.phone)}</a>` : '') +
+            (web ? `<a href="${esc(web)}" target="_blank" rel="noopener noreferrer">Website \u2197</a>` : '') +
+            (ml ? `<a href="${esc(ml)}" target="_blank" rel="noopener noreferrer">Google Maps \u2197</a>` : '') +
+            `</div></div>`;
+        }).join('') +
+        `<div class="faint" style="font-size:11.5px;margin-top:6px">${esc(p.attribution || 'Google')}` +
+        (p.cost_inr ? ` \u00b7 \u20b9${esc(String(p.cost_inr))}` : (p.cost_inr === 0 ? ' \u00b7 free' : '')) +
+        `</div></div>`;
+      break; }
     case 'bazar_approval': {
       el.innerHTML = head(p.title || 'Your approval is required', p.money ? 'paisa' : 'Your approval', p.money ? 'bad' : 'warn')
         + (p.amount ? `<div class="big">${esc(p.amount)}</div>` : '') + (p.payee ? `<div class="faint" style="font-size:13px">${esc(p.payee)}</div>` : '')

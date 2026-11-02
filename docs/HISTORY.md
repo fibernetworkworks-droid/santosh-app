@@ -16988,3 +16988,133 @@ real agent failures is finishing failures - above all a confident false "done".
   suite stays offline and deterministic - a link check otherwise makes a real HEAD call from the test box.
 - NOT VERIFIED on a live model: the sandbox has no API key. The long card (v0.443 step 0) is what will say whether
   false-done really falls - its target is under 5%. Version 0.443.0 (pubspec 0.443.0+488, console ?v=0.443.0, pins).
+
+---
+
+## v0.449.0 — GOOGLE MAPS Phases 1–3: PAISA PEHLE + NAKSHA DIKHE + PAAS KYA HAI
+
+Owner: *"Phases 1–3 as one version -- GO"* (2 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+Built on three research registers read the same day out of Google's own documents —
+`docs/research/maps/01_terms_caching_and_leads.md`, `02_places_and_business_profile.md`,
+`03_her_existing_map.md` — with every load-bearing quote re-verified by hand against the downloaded page.
+
+### Phase 1 — PAISA PEHLE (`server/app/mapsbill.py`, new)
+
+`maps.py` had **no cache, no cap and no budget anywhere**. Every call was billed, and `fleet/service.py:1088`
+loops `maps.route()` over a list of points — one row, one bill. Studio and Arena have had a ceiling for
+versions (`studio_project_usd`, `site_arena_max_inr`); Maps had none.
+
+**The cap.** `maps_daily_inr` (default ₹200) per tenant per day, checked **before** the HTTP call. A cap hit
+raises `MapsCapped`, which `maps._bill()` turns into a `MapsError` so every existing `except MapsError`
+handler already shows her a sensible line. `maps_daily_inr = 0` means no ceiling.
+
+**The price list, sourced.** India is the **default** and is a genuinely different list:
+
+| SKU | India (USD/1,000) | Global | India free/month | Global free |
+|---|---|---|---|---|
+| Text Search Pro | 9.60 | 32.00 | 35,000 | 5,000 |
+| Text Search Enterprise | 10.50 | 35.00 | 7,000 | 1,000 |
+| Nearby Search Pro | 9.60 | 32.00 | 35,000 | 5,000 |
+| Place Details Enterprise | 6.00 | 20.00 | 7,000 | 1,000 |
+| Geocoding | 1.50 | 5.00 | 70,000 | 10,000 |
+
+Using the global numbers for Indian traffic overstates the bill about **threefold**. Both lists are in USD;
+`maps_usd_inr` only converts for display, because Google bills the billing account's currency.
+
+**The free allowance is counted GLOBALLY, not per tenant.** It belongs to the billing account — *"Google
+aggregates service usage for all projects linked to the customer billing account"* — so `MapsFree` is one row
+per month per SKU across every tenant sharing the key. A per-tenant counter would hand the same free calls out
+many times and the real bill would arrive anyway. Consequence she will notice: her early calls genuinely cost
+**₹0**, and `usage()` reports `free_calls` separately from `calls`.
+
+**The billing unit, got right.** Each Places SKU's billable event is *"Successful request for &lt;tier&gt;
+fields"*, and *"The request is billed at the highest SKU applicable to the requested fields"* — the field mask
+picks the **tier** and the **request** is charged once. **20 places in one answer is ONE billable event, not
+twenty**; counting results would overstate a search ~20×. (The plan's first draft said twenty, which made the
+cheap-list/details-on-open split sound ~20× more valuable than it is — corrected in `docs/MAPS_PLAN.md` §6.
+The split's real gain is the free allowance: Pro has 35,000 free calls a month against Enterprise's 7,000, so
+browsing on Pro sits five times further from paying. If she opens a place on every search it costs slightly
+*more* than one rich call, and the doc now says so.) The one exception is `computeRouteMatrix`, *"billed
+per ELEMENT returned from the request"* (origins × destinations), so `charge()` takes an `n` that means
+elements for that SKU alone and requests for every other. Both are pinned by a test.
+
+**Honesty about what is not sourced.** A SKU with no sourced rate is charged at the dearest rate known, so an
+unknown price can only make the cap fire **early**, never overspend. Routes is tiered Essentials / Pro /
+Enterprise and no Google page we found maps *our* field mask (`TRAFFIC_AWARE` + `navigationInstruction`) to a
+tier, so it is charged at Enterprise and `ASSUMED_TIER` is **reported by `/api/maps/usage`** rather than
+hidden. That is the first thing to correct against her real bill.
+
+### Phase 1b — the cache has a licence shape, not a convenient one
+
+Maps Platform is licensed as a **live lookup service, not a data source**. The Places Service Specific Terms
+are exactly §14.1–14.3: `place_id` may be cached indefinitely (§A.3), lat/lng for 30 days — *"after which
+Customer must delete the cached latitude and longitude values"* — and **nothing** permits a name, address,
+phone, website, rating or opening hours, while ToS §3.2.3(b) makes the absence of a permission a prohibition.
+
+So `maps_place_cache` holds exactly `place_id`, `lat`, `lng`, `latlng_at`, **her own query text** (hers, not
+Google's — the Place IDs guide suggests keeping the original request for ID refresh) and `first_seen`.
+
+- `LATLNG_TTL = timedelta(days=30)` is the licence's clock, not a tuning knob.
+- Expiry is enforced on **read** as well as by `sweep()`, so a stale value can never be served because the
+  worker is late.
+- `sweep()` runs in `worker.py` and **deletes** lat/lng while keeping the place_id.
+- **A test pins the table's column set**, because a future session "optimising" a `name` column in would be a
+  licence breach and nothing else would catch it.
+
+### Phase 2 — NAKSHA DIKHE, and a correction to the plan
+
+Results are now a card — `maps_places` event, rendered in `console/v2.js` and `lib/ui/maps_card.dart` — with
+name, distance, type, rating where bought, address, hours, and tap-to-call / website / Maps links.
+
+**Deliberately no map, and the plan's earlier recommendation was withdrawn.** `docs/MAPS_PLAN.md`'s first
+draft recommended MapLibre with free OpenStreetMap tiles plus Google data, to make a map nearly free. That is
+a **licence breach**: ToS §3.2.3(e) — *"Customer will not … (i) display or use Places content on a non-Google
+Map"* — and SST §14.2 says the same. Meanwhile §14.1 expressly permits Places content **without** any map. So
+the card shows no map and is free; a Google map (Dynamic Maps SKU) is a paid option behind a setting. MapLibre
+stays where it was, drawing her customers' website maps, where no Google data is involved. Google's
+attribution is on the card because §3.2.2(b) requires it wherever this content is shown, map or not.
+
+### Phase 3 — PAAS KYA HAI
+
+- **`maps_nearby`** → Places Nearby Search. A *kind* of place around a point, by Google's own Table A place
+  types, ranked by real distance. Google's documented ceilings are **enforced here rather than discovered in
+  production**: circle only (there is no rectangle on Nearby Search), radius ≤ 50 km, ≤ 20 results, and **no
+  paging** — so a wider sweep means tiling circles, and the tool says so.
+- **`maps_place`** → Place Details for **one** place: phone, website, rating, review count, the week's hours.
+  These are the Enterprise-priced fields, bought for the place she actually opens.
+- **`maps_kharcha`** → what Maps cost today, how much was inside the free allowance, the cap and what is left.
+  Also the answer to "why did that just refuse?".
+- **`GET /api/maps/usage`** returns the same, plus `assumed_tier` and `unsourced_skus`.
+
+All three are declared on a voice call, are in `TOOL_LANES` (so the model stops reaching for `maps_search`
+when she names a category), and are named in `prompts.py`. `search_places` gained an explicit `tier` and kept
+its Enterprise default, so **nothing she has today got worse** — it is now merely priced and capped.
+
+### Found in my own code on the way
+
+`charge()` raised `MapsCapped` **inside** the session that recorded the refusal, so the increment was rolled
+back with the exception and `refused` always read 0 — a cap that worked but could not be seen working. The
+refusal is now counted in its own transaction, and `test_a_refusal_survives_the_exception_and_is_visible`
+exists for it.
+
+### Files
+
+New: `server/app/mapsbill.py`, `lib/ui/maps_card.dart`, `server/tests/test_v0449_maps_paisa.py` (27 tests),
+`docs/research/maps/` (5 files: index + terms + APIs + her existing map + prices).
+Changed: `maps.py` (billing hook, `nearby`, `place_details`, `tier`, tenant threading), `agent/maps_tools.py`
+(3 tools + the card), `agent/tools.py` (lanes), `agent/prompts.py`, `voice.py`, `events.py`, `worker.py`
+(sweep), `main.py` (route), `config.py` (6 settings), `db.py` (model registration),
+`console/v2.js`, `lib/state.dart`, `lib/ui/chat_screen.dart`, `docs/MAPS_PLAN.md`.
+
+### Not done yet (the plan's later phases)
+
+Phase 4 `computeRouteMatrix` ("nearest of these N") — the per-element billing is already modelled for it.
+Phase 5 Route Optimization. Phase 6 Autocomplete / reverse geocoding / Address Validation. Phase 7 Static Maps
+in PDFs + Street View. Phase 8 the Business Profile desk, which is **blocked on Google's application** (a
+profile *"verified and active for 60+ days"*, with no published review turnaround). Phase 9 her own pins via
+the Data layer + the My Maps / Takeout imports. Phases 10–11 the rest, and the proof card.
+
+**Not verified live:** no call in this version has been made against the real Google APIs with her key — the
+tests drive a `MockTransport`. The rupee figures are an estimate from Google's published USD list; her first
+real bill is what will confirm or correct the price table, and `assumed_tier` names where we guessed.

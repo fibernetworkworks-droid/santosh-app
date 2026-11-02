@@ -493,6 +493,13 @@ class Settings(BaseSettings):
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
     google_maps_api_key: str = ""           # Maps Platform key: Places API (New), Routes API, Geocoding API
+    # v0.449 PAISA PEHLE: Maps had no ceiling at all. These are the first ones.
+    maps_daily_inr: float = 200.0           # per tenant per day; a call that would cross it is REFUSED, not billed. 0 = no cap
+    maps_price_list: str = "india"           # india | global - Google has a SEPARATE India list (USD, ~3x cheaper, 7x free caps)
+    maps_usd_inr: float = 89.0              # only to show her rupees; Google bills in the billing account's currency
+    maps_unknown_sku_usd: float = 40.0      # per 1,000, used ONLY if no SKU rate could be sourced at all (cap fires early, never late)
+    maps_nearby_tier: str = "pro"           # the cheap list pass for maps_nearby: pro | enterprise (phone/rating/hours cost Enterprise)
+    maps_cache: bool = True                 # reuse the licence-permitted place_id + 30-day lat/lng instead of re-billing
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)
     wake_sensitivity: float = 0.25          # 0..1; higher = wakes more easily (threshold = 1.1 - sensitivity). 0.25 -> 0.85: ~95% recall, ~2 false wakes/hour on test speech

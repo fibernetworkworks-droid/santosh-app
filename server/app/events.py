@@ -35,6 +35,7 @@ LOCAL_KINDS = LIVE_ONLY | {
     "employee", "darzi_order", "phonedoc_open", "phonedoc_check", "device_action", "device_action_result", "home_device",
     "bt_request", "bazar_open", "bazar_link", "gyaan_sources", "memory_saved", "procedure", "compact", "open", "link",
     "call_receipt", "speaker", "voice", "biz_inbox", "biz_appointment", "propagent_listing", "chai_order",
+    "maps_places",   # v0.449 Phase 2: the places card belongs to the chat that asked
 }
 # phone actions are done once, live (or through pending actions): never replayed as chat history
 ACTIONS = {"device_action", "device_action_result", "home_device", "bt_request", "phonedoc_open", "bazar_open", "bazar_link"}

@@ -1090,7 +1090,7 @@ def _maps_distance(tenant: str, origin: str, destination: str, stops: list[str])
             nxt = await maps.resolve(p, tenant)
             if not prev or not nxt:
                 return None
-            r = await maps.route(prev, nxt, "DRIVE")
+            r = await maps.route(prev, nxt, "DRIVE", tenant_id=tenant)
             km += r["distance_km"]
             mins += r["duration_min"]
             prev = nxt

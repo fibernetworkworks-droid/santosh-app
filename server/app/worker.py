@@ -906,6 +906,11 @@ async def employee_jobs() -> None:
             seo.send_morning(tenant)
     except Exception:
         log.exception("seo weekly failed")
+    try:   # v0.449 the licence's own clock: lat/lng cached from Places must be DELETED after 30 days (SST 14.3)
+        from . import mapsbill
+        mapsbill.sweep()
+    except Exception:
+        log.exception("maps cache sweep failed")
     try:                                   # v0.317 the hired SEO Employee's 24/7 loop (hourly watch ... monthly report)
         from .seo import desk as seo_desk
         if not _SEO_DESK_BUSY["on"]:

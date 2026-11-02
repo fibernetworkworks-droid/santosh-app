@@ -1074,6 +1074,15 @@ DIET_STATS["raw_chars"] = _diet_size(_RAW_SPECS)
 # used, an AI agent can't be expected to do better." Renaming / merging the tools would touch every prompt, voice list
 # and saved procedure, so the lanes are drawn in the descriptions instead - first, so no cap can ever cut them.
 TOOL_LANES: dict[str, str] = {
+    # v0.449 maps: a KIND of place -> maps_nearby; a NAMED place -> maps_search; one place's details -> maps_place
+    "maps_search": "LANE: a place you can NAME ('Haldiram Nagpur', 'Akola station', a particular shop). A CATEGORY "
+                   "near somewhere ('chemist', 'petrol pump', 'hardware shop') -> maps_nearby, which ranks by real "
+                   "distance. Time / distance between two places -> maps_directions.",
+    "maps_nearby": "LANE: what is AROUND a point, by category (pharmacy, bank, gas_station...). A place you can name "
+                   "-> maps_search. Phone / website / rating / timings of one result -> maps_place. Circle only, "
+                   "50 km max, 20 results, no next page.",
+    "maps_place": "LANE: phone, website, rating and opening hours of ONE place you already have a place_id for. "
+                  "Finding places -> maps_nearby / maps_search. One at a time: these are the costly fields.",
     # web: answer -> quotes -> one page -> clicks -> forms
     "google_search": "LANE: quick facts that change (prices, news, timings) as a short answer. Need the sources' own "
                      "words -> web_sources; one known page -> open_website; clicking / logging in -> browse_web.",
