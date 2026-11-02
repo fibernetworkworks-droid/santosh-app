@@ -1,0 +1,18 @@
+{
+  "base": "concave-mirror",
+  "chapter": "Ray Optics and Optical Instruments",
+  "variants": [
+    {"key": "f10", "title": "Concave mirror: f of a short-focus mirror (R = 20 cm)", "sample": "Concave glass mirror from a school mirror set, radius of curvature 20 cm (generic)",
+     "unknown": "the focal length f of the mirror", "params": {"R": 0.2}, "note": "A short-focus mirror: the image moves a lot for a small change of u, so move the screen in 1 mm steps.",
+     "source": {"title": "NCERT Laboratory Manual Physics Class XII, Expt. 1: focal length of a concave mirror (u-v method); school mirror sets of 10-30 cm focal length"}},
+    {"key": "f20", "title": "Concave mirror: f of a mirror with R = 40 cm", "sample": "Concave glass mirror from a school mirror set, radius of curvature 40 cm (generic)",
+     "unknown": "the focal length f of the mirror", "params": {"R": 0.4},
+     "source": {"title": "NCERT Laboratory Manual Physics Class XII, Expt. 1: focal length of a concave mirror (u-v method); school mirror sets of 10-30 cm focal length"}},
+    {"key": "f25", "title": "Concave mirror: f of a mirror with R = 50 cm", "sample": "Concave glass mirror from a school mirror set, radius of curvature 50 cm (generic)",
+     "unknown": "the focal length f of the mirror", "params": {"R": 0.5},
+     "source": {"title": "NCERT Laboratory Manual Physics Class XII, Expt. 1: focal length of a concave mirror (u-v method); school mirror sets of 10-30 cm focal length"}},
+    {"key": "f30", "title": "Concave mirror: f of a long-focus mirror (R = 60 cm)", "sample": "Concave glass mirror from a school mirror set, radius of curvature 60 cm (generic)",
+     "unknown": "the focal length f of the mirror", "params": {"R": 0.6}, "note": "A long-focus mirror: the object must stand far back on the bench for the image to stay on it.",
+     "source": {"title": "NCERT Laboratory Manual Physics Class XII, Expt. 1: focal length of a concave mirror (u-v method); school mirror sets of 10-30 cm focal length"}}
+  ]
+}

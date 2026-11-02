@@ -7,6 +7,7 @@
    "title": "Stokes' law: η of glycerine (anhydrous) at 20 °C with steel balls",
    "sample": "Steel balls in glycerine (anhydrous) at 20 °C",
    "unknown": "the viscosity η of glycerine (anhydrous) at 20 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through glycerine (anhydrous) at 20 °C and find its viscosity η.",
    "params": {
     "eta": 1.412,
     "sigma": 1261,
@@ -23,6 +24,7 @@
    "title": "Stokes' law: η of glycerine (anhydrous) at 20 °C with glass balls",
    "sample": "Glass balls in glycerine (anhydrous) at 20 °C",
    "unknown": "the viscosity η of glycerine (anhydrous) at 20 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through glycerine (anhydrous) at 20 °C and find its viscosity η.",
    "params": {
     "eta": 1.412,
     "sigma": 1261,
@@ -39,6 +41,7 @@
    "title": "Stokes' law: η of glycerine (anhydrous) at 20 °C with lead balls",
    "sample": "Lead balls in glycerine (anhydrous) at 20 °C",
    "unknown": "the viscosity η of glycerine (anhydrous) at 20 °C",
+   "aim": "Measure the terminal velocity of lead balls falling through glycerine (anhydrous) at 20 °C and find its viscosity η.",
    "params": {
     "eta": 1.412,
     "sigma": 1261,
@@ -55,6 +58,7 @@
    "title": "Stokes' law: η of glycerine (anhydrous) at 30 °C with steel balls",
    "sample": "Steel balls in glycerine (anhydrous) at 30 °C",
    "unknown": "the viscosity η of glycerine (anhydrous) at 30 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through glycerine (anhydrous) at 30 °C and find its viscosity η.",
    "params": {
     "eta": 0.612,
     "sigma": 1255,
@@ -71,6 +75,7 @@
    "title": "Stokes' law: η of glycerine (anhydrous) at 30 °C with glass balls",
    "sample": "Glass balls in glycerine (anhydrous) at 30 °C",
    "unknown": "the viscosity η of glycerine (anhydrous) at 30 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through glycerine (anhydrous) at 30 °C and find its viscosity η.",
    "params": {
     "eta": 0.612,
     "sigma": 1255,
@@ -87,6 +92,7 @@
    "title": "Stokes' law: η of 90 % glycerine in water (by mass) at 20 °C with glass balls",
    "sample": "Glass balls in 90 % glycerine in water (by mass) at 20 °C",
    "unknown": "the viscosity η of 90 % glycerine in water (by mass) at 20 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through 90 % glycerine in water (by mass) at 20 °C and find its viscosity η.",
    "params": {
     "eta": 0.219,
     "sigma": 1235,
@@ -103,6 +109,7 @@
    "title": "Stokes' law: η of castor oil at 20 °C with steel balls",
    "sample": "Steel balls in castor oil at 20 °C",
    "unknown": "the viscosity η of castor oil at 20 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through castor oil at 20 °C and find its viscosity η.",
    "params": {
     "eta": 0.986,
     "sigma": 961,
@@ -119,6 +126,7 @@
    "title": "Stokes' law: η of castor oil at 20 °C with glass balls",
    "sample": "Glass balls in castor oil at 20 °C",
    "unknown": "the viscosity η of castor oil at 20 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through castor oil at 20 °C and find its viscosity η.",
    "params": {
     "eta": 0.986,
     "sigma": 961,
@@ -135,6 +143,7 @@
    "title": "Stokes' law: η of castor oil at 30 °C with steel balls",
    "sample": "Steel balls in castor oil at 30 °C",
    "unknown": "the viscosity η of castor oil at 30 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through castor oil at 30 °C and find its viscosity η.",
    "params": {
     "eta": 0.451,
     "sigma": 955,
@@ -151,6 +160,7 @@
    "title": "Stokes' law: η of castor oil at 20 °C with lead balls",
    "sample": "Lead balls in castor oil at 20 °C",
    "unknown": "the viscosity η of castor oil at 20 °C",
+   "aim": "Measure the terminal velocity of lead balls falling through castor oil at 20 °C and find its viscosity η.",
    "params": {
     "eta": 0.986,
     "sigma": 961,
@@ -167,6 +177,7 @@
    "title": "Stokes' law: η of silicone oil 1000 cSt at 25 °C with steel balls",
    "sample": "Steel balls in silicone oil 1000 cSt at 25 °C",
    "unknown": "the viscosity η of silicone oil 1000 cSt at 25 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through silicone oil 1000 cSt at 25 °C and find its viscosity η.",
    "params": {
     "eta": 0.971,
     "sigma": 971,
@@ -183,6 +194,7 @@
    "title": "Stokes' law: η of silicone oil 1000 cSt at 25 °C with glass balls",
    "sample": "Glass balls in silicone oil 1000 cSt at 25 °C",
    "unknown": "the viscosity η of silicone oil 1000 cSt at 25 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through silicone oil 1000 cSt at 25 °C and find its viscosity η.",
    "params": {
     "eta": 0.971,
     "sigma": 971,
