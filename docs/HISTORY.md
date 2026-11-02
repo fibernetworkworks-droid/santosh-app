@@ -16588,3 +16588,22 @@ Owner: "GO STEP 7" (the last step of the 7-step hard-reasoning plan).
 - Tests `server/tests/test_v0438_hard_card.py` (16). Quality / turn suites: same failures as main (App Sahayak bhasha /
   delivery, pre-existing). NOT RUN HERE: the live card itself (no API key in the sandbox) - run it on the VPS; its first
   numbers are the honest measure of steps 1-6. Version 0.438.0 (pubspec 0.438.0+482, console ?v=0.438.0, pins).
+
+
+## v0.439.0 GMAIL POORA CALL PAR (2 Nov 2026)
+Owner, testing Gmail by voice: "FIRST CHECK IS ALL GMAIL TOOLS IS ATTACHED TO VOICE TO VOICE", then "GO".
+- FOUND: the call's VOICE_TOOL_NAMES held 11 of the 23 Gmail tools (+ email_accounts via santosh_kaam). The other 11 -
+  email_thread, email_label, email_drafts, email_filters, email_forwarding, email_alias, email_threads, email_rule,
+  email_snooze, email_vacation, email_bulk, email_bulk_status - had no tool and no route, so 13 of the 36 Gmail test-sheet
+  prompts could only fail on a call (chat had all 23).
+- FIX (`app/voice.py`): declared to the call = email_thread, email_snooze, email_drafts (everyday, light: +~2k chars;
+  the call's tool JSON stays ~57k of VOICE_TOOL_BUDGET 150k). VOICE_VIA_KAAM = email_label, email_threads, email_bulk,
+  email_bulk_status, email_filters, email_rule, email_vacation, email_forwarding, email_alias (settings / bulk: the full
+  brain runs them, any confirm card still reaches her phone). The persona Email line names both groups. Gemini Live and
+  OpenAI real voice both read `_tool_specs()`, so both engines get it.
+- ALSO FOUND (not fixed here, config): her voice test said "Gmail API not enabled" = Google 403 SERVICE_DISABLED for the
+  OAuth client's Cloud project; she enables the Gmail API (and Calendar / Drive / Docs / Sheets / Forms / Slides /
+  YouTube / Photos) in that project. Gmail + Calendar clients still pass Google's raw 403 text through (Drive / Sheets /
+  Forms / Slides / Photos / YouTube already say it plainly) - next fix if she wants it.
+- Test `test_v0439_gmail_call.py`: every name in EMAIL_TOOLS is declared or via_kaam (a new mail tool cannot be left off
+  a call again), schemas clean, budget kept, persona names them, email_vacation on a call goes to santosh_kaam.

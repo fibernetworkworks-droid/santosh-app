@@ -184,6 +184,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.439 GMAIL POORA CALL PAR: all 23 Gmail tools reach a voice call - email_thread / snooze / drafts declared, labels / threads / bulk / filters / rules / vacation / forwarding / alias via santosh_kaam; test keeps every EMAIL_TOOLS name reachable.
 - v0.431 FRICTION + BACKLASH + CAM CONTACT: H.joint(bearing=..., pin_d, friction, damping) = mu x real joint load in the MuJoCo move (motors pay, energy lost), H.couple(backlash=) = tip play vs H.robot(accuracy_mm) + a gap in the sim (lost motion, knocks), H.disc_cam contact = designed return spring / jump check / Hertz / guide jam.
 - v0.426 CAMS + SLOTS + DYNAMICS (built as 0.425; `engineering/cams.py` H.disc_cam from the follower motion + pressure / undercut / cusp checks, joint kind `slot`, `dynamics.py` MuJoCo move in her time: torque / saturation / loop gap, motors sized x1.25); VPS `pip install mujoco`.
 - v0.435 PARIVAAR (Pillar H, built as 0.426 / 0.433, `appmaker/family.py`): rider / partner shop / staff apps = own projects on the MAIN backend (by_key -> home); partners apply, she approves; rider = ready jobs w/o phone, take under lock, his steps; shop = only its orders (no phone) + own menu; web admin /app-admin/<key>; kits Partner.kt/.swift.
