@@ -60,6 +60,7 @@ class SiteAppMember(Base):
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)   # v0.434 OTP login (10 digits)
     consent: Mapped[str | None] = mapped_column(Text, nullable=True)  # v0.434 DPDP consent {v, at, via}
     totp: Mapped[str | None] = mapped_column(Text, nullable=True)     # v0.434 staff 2FA secret (encrypted) {on, s}
+    ext: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)   # v0.446 "google:<sub>" / "apple:<sub>"
 
 
 class SiteAppRow(Base):

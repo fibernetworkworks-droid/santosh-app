@@ -1,4 +1,4 @@
-"""v0.442 SURAKSHIT LOGIN (App Sahayak Pillar I, Phase 60) - how the PEOPLE of her native apps sign in, and safely.
+"""v0.446 SURAKSHIT LOGIN (App Sahayak Pillar I, Phase 60) - how the PEOPLE of her native apps sign in, and safely.
 
 The engine is the one v0.434 built for her website (`site/security.py`: OTP hashed + rate limited, TOTP 2FA for staff,
 sessions she can end, DPDP consent / export, audit log, permissions matrix). It works on the app backend id
@@ -342,23 +342,32 @@ def social_login(r: AppProject, provider: str, body: dict[str, Any], ua: str = "
     site = _site(r)
     asked = str((body or {}).get("nonce") or "")
     claims = verify_token(r, provider, str((body or {}).get("id_token") or ""), asked)
-    email = claims["email"] or f"{provider}-{hashlib.sha256((provider + claims['sub']).encode()).hexdigest()[:16]}@{provider}.local"
+    # the provider's `sub` is the account's REAL id: Apple sends the e-mail only the first time, so matching on e-mail
+    # alone would make a second account on the next sign-in.
+    ext = f"{provider}:{claims['sub']}"[:120]
+    email = claims["email"] or f"{provider}-{hashlib.sha256(ext.encode()).hexdigest()[:16]}@{provider}.local"
     name = str((body or {}).get("name") or claims["name"] or "")[:120]
     W.ensure_tables()                              # makes the member / session / OTP tables on first need
     with session() as s:
-        m = s.scalars(select(W.SiteAppMember).where(W.SiteAppMember.site_id == site, W.SiteAppMember.email == email)).first()
+        m = s.scalars(select(W.SiteAppMember).where(W.SiteAppMember.site_id == site, W.SiteAppMember.ext == ext)).first()
+        if m is None and claims["email"]:          # her same person with a password / OTP account: linked, not doubled
+            m = s.scalars(select(W.SiteAppMember).where(W.SiteAppMember.site_id == site,
+                                                        W.SiteAppMember.email == email)).first()
         fresh = m is None
         if fresh:
             if not BE.schema(h).get("signup", True):
                 raise SignError("Is app par naye account band hain; dukaan se baat kijiye.", 403)
             if not (body or {}).get("consent"):
                 raise SignError("Account banane ke liye privacy notice par haan (tick) zaroori hai.", 400)
-            m = W.SiteAppMember(site_id=site, email=email, name=name, pw="", role="member",
+            m = W.SiteAppMember(site_id=site, email=email, name=name, pw="", role="member", ext=ext,
                                 consent=json.dumps(SEC.consent_record(provider)))
             s.add(m)
             s.flush()
-        elif name and not (m.name or "").strip():
-            m.name = name
+        else:
+            if not m.ext:
+                m.ext = ext
+            if name and not (m.name or "").strip():
+                m.name = name
         s.expunge(m)
     _nonce_use(site, asked)                       # everything else was fine: now the nonce is spent for good
     if SEC._two_fa_on(m):

@@ -282,7 +282,7 @@ object Strings {
     val ptRoute get() = t("Route", "रास्ता", "रस्ता", "Raasta")
     val ptRefresh get() = t("Refresh", "ताज़ा करें", "रिफ्रेश करा", "Taaza karein")
     val ptRetry get() = t("Try again", "फिर कोशिश करें", "पुन्हा प्रयत्न करा", "Phir koshish karein")
-    // v0.442 SURAKSHIT LOGIN
+    // v0.446 SURAKSHIT LOGIN
     val sgPhone get() = t("Mobile number", "मोबाइल नंबर", "मोबाइल नंबर", "Mobile number")
     val sgSendCode get() = t("Send the code", "कोड भेजें", "कोड पाठवा", "Code bhejiye")
     val sgSentTo get() = t("Code sent to", "कोड भेजा गया", "कोड पाठवला", "Code bheja gaya")

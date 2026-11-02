@@ -31,7 +31,7 @@ coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutin
 gms-code-scanner = { group = "com.google.android.gms", name = "play-services-code-scanner", version.ref = "codeScanner" }
 # v0.367 TURANT: Firebase Cloud Messaging - added to an app's build ONLY when she switches instant notifications on
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
-# v0.442 SURAKSHIT LOGIN: "Continue with Google" through Credential Manager - added ONLY when she turns Google login on
+# v0.446 SURAKSHIT LOGIN: "Continue with Google" through Credential Manager - added ONLY when she turns Google login on
 credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 credentials-play-services = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }

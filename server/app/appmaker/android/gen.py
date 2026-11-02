@@ -563,7 +563,7 @@ def _form_rows(coll: str, fields: list[dict[str, Any]], order: bool) -> list[str
 
 
 def sign_ways(spec: dict[str, Any]) -> list[str]:
-    """v0.442 SURAKSHIT LOGIN: the ways into this build, from the backend the app carries."""
+    """v0.446 SURAKSHIT LOGIN: the ways into this build, from the backend the app carries."""
     w = (((spec.get("seed") or {}).get("backend") or {}).get("sign") or {}).get("ways")
     return [str(x) for x in w] if isinstance(w, list) else []
 
@@ -742,7 +742,7 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
         g = tmp / "app/build.gradle.kts"
         g.write_text(g.read_text().replace("    implementation(libs.gms.code.scanner)\n",
                                            "    implementation(libs.gms.code.scanner)\n    implementation(libs.firebase.messaging)\n", 1))
-    if google_login(spec):                     # v0.442 SURAKSHIT LOGIN: the real Google button + its two libraries
+    if google_login(spec):                     # v0.446 SURAKSHIT LOGIN: the real Google button + its two libraries
         shutil.copy(HERE / "glogin/SignInGoogle.kt", main / "java/hoola/kit/SignInGoogle.kt")
         g = tmp / "app/build.gradle.kts"
         g.write_text(g.read_text().replace(

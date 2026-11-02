@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.454.0"   # v0.454.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA (owner: "START BOTH", after docs/GAME_MOAT_PLAN.md). (1) The money-game guard missed the test India's Online Gaming Act 2025 + Rules 2026 actually turn on - Rule 9's reward that is TRANSFERABLE / REDEEMABLE / MONETISABLE OUTSIDE the game: "a ludo game where players collect coins and withdraw them to UPI" passed the guard and got BUILT, and offering that is cognisable and non-bailable for whoever publishes it. service.MONEY_OUT + MONEY_OUT_FLAT now refuse it (21 phrasings tested, English + Hinglish, 0 false alarms on 10 legitimate games), and bible.money_out closes the other door (the economy block's words AND keys, every entity's text). (2) /mcp/gamedesk spoke only the dialect MCP REMOVED - the current revision 2026-07-28 has no `initialize`: the version rides in _meta / the MCP-Protocol-Version header and server/discover is MUST-implement, so a modern-only client (Claude Desktop, Cursor) failed outright; both eras now answer, with UnsupportedProtocolVersionError -32022. (3) THE GAME ARENA (gamedesk/arena.py, tool game_arena, console Game Desk > Game Arena, owner only): the QA farm proved a game RUNS, nothing proved it was worth playing - 500 fixed seeded briefs (20 genres x 25 Indian settings) so two Hoola versions are judged on exactly the same work, each built as the hidden tenant __gamearena__ then PLAYED by the QA bots (started, median fps, script errors, reached an ending, and RESPONDS = an input changed something the idle run never saw), originality measured as design-DNA distance from the closest other game of the run (Apple 4.3(b) rejects games indistinguishable from what exists, so it is a shippability number), an independent judge with its own rubric on the first thirty seconds, run-vs-run compare that says when a comparison is unfair, and blind duels against a rival's public web game played by the same bots. `fun` is always NOT ASSESSED, in those words. NOT VERIFIED: no real Arena run has been built yet, so there are no numbers for any Hoola version yet.
+APP_VERSION = "0.455.0"   # v0.455.0 (built as 0.442 / 0.446 / 0.453) SURAKSHIT LOGIN + SURAKSHA GATE (App Sahayak Pillar I, Phase 60; owner: "START PILLAR I"): the native apps get the login the website got in v0.434, on the SAME backend (one account for a website and its phone app, "sign out everywhere" ends both). Mobile OTP typed only into the app's own box (hashed, rate limited, never shown or logged); GOOGLE / APPLE verified ON THE SERVER - signature against the provider's own published keys, iss, aud must be one of HER PUBLIC client ids, exp, and a single-use server nonce (Apple's SHA-256 form too); a forged, re-aimed, expired or replayed token is refused, and native sign-in needs no provider secret at all. Sessions a member can end (an ended token dies at once, app side too), staff TOTP 2FA as step two of password and OTP login, her switch to make it compulsory, DPDP consent + "my data" in the app. Kits SignIn.kt / SignIn.swift (+ hoola_security screen, Credential Manager Google button only when she turns it on, Sign in with Apple entitlement only then too). SURAKSHA GATE (appmaker/gates.py): six gates read the REAL build - keys inside the app / APK, only permissions a feature needs and none from Play's restricted list, release settings (debuggable, backup, https, exported, v1+v2/v3 signature), library CVEs at OSV.dev (unreachable = NOT CHECKED, never a quiet pass), login rules (Apple where Google is offered, no password box outside the sign-in screen, in-app deletion) and data rules; a FAILING gate BLOCKS the Play upload and the App Store submit. Console Login & security box, phone panel, tool app_banao action=login / security_check. Previous: v0.454.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA (owner: "START BOTH", after docs/GAME_MOAT_PLAN.md). (1) The money-game guard missed the test India's Online Gaming Act 2025 + Rules 2026 actually turn on - Rule 9's reward that is TRANSFERABLE / REDEEMABLE / MONETISABLE OUTSIDE the game: "a ludo game where players collect coins and withdraw them to UPI" passed the guard and got BUILT, and offering that is cognisable and non-bailable for whoever publishes it. service.MONEY_OUT + MONEY_OUT_FLAT now refuse it (21 phrasings tested, English + Hinglish, 0 false alarms on 10 legitimate games), and bible.money_out closes the other door (the economy block's words AND keys, every entity's text). (2) /mcp/gamedesk spoke only the dialect MCP REMOVED - the current revision 2026-07-28 has no `initialize`: the version rides in _meta / the MCP-Protocol-Version header and server/discover is MUST-implement, so a modern-only client (Claude Desktop, Cursor) failed outright; both eras now answer, with UnsupportedProtocolVersionError -32022. (3) THE GAME ARENA (gamedesk/arena.py, tool game_arena, console Game Desk > Game Arena, owner only): the QA farm proved a game RUNS, nothing proved it was worth playing - 500 fixed seeded briefs (20 genres x 25 Indian settings) so two Hoola versions are judged on exactly the same work, each built as the hidden tenant __gamearena__ then PLAYED by the QA bots (started, median fps, script errors, reached an ending, and RESPONDS = an input changed something the idle run never saw), originality measured as design-DNA distance from the closest other game of the run (Apple 4.3(b) rejects games indistinguishable from what exists, so it is a shippability number), an independent judge with its own rubric on the first thirty seconds, run-vs-run compare that says when a comparison is unfair, and blind duels against a rival's public web game played by the same bots. `fun` is always NOT ASSESSED, in those words. NOT VERIFIED: no real Arena run has been built yet, so there are no numbers for any Hoola version yet.
 
 
 def _quiet_http_logs() -> None:
@@ -9968,7 +9968,7 @@ def _ua_of(request: Request) -> str:
 
 @app.post("/api/app-api/{app_key}/signup")
 async def app_api_signup(app_key: str, request: Request):
-    """v0.442 the sign-up records the DPDP consent tick and this login as a session she can end."""
+    """v0.446 the sign-up records the DPDP consent tick and this login as a session she can end."""
     from .appmaker import backend as BE
     from .appmaker import sign as SG
     body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
@@ -9977,14 +9977,14 @@ async def app_api_signup(app_key: str, request: Request):
 
 @app.post("/api/app-api/{app_key}/login")
 async def app_api_login(app_key: str, request: Request):
-    """v0.442 a staff account with 2FA on gets {need_2fa, ticket} here and finishes at /login/2fa."""
+    """v0.446 a staff account with 2FA on gets {need_2fa, ticket} here and finishes at /login/2fa."""
     from .appmaker import backend as BE
     from .appmaker import sign as SG
     body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
     return await asyncio.to_thread(_be_call, lambda: SG.password_login(BE.by_key(app_key), body, ua, ip))
 
 
-# ---- v0.442 SURAKSHIT LOGIN (App Sahayak Pillar I): phone OTP, Google / Apple checked on the SERVER, sessions she can
+# ---- v0.446 SURAKSHIT LOGIN (App Sahayak Pillar I): phone OTP, Google / Apple checked on the SERVER, sessions she can
 # end, staff 2FA, her own data (DPDP). The engine is the website's (site/security.py) on the same backend id.
 @app.post("/api/app-api/{app_key}/login/otp")
 async def app_api_login_otp(app_key: str, request: Request):
@@ -11047,7 +11047,7 @@ async def app_admin_page(app_key: str):
 
 @app.get("/api/apps/{ref}/sign", dependencies=[Depends(require_key)])
 async def apps_sign(ref: str, tenant: str = Depends(current_tenant)):
-    """v0.442 her login + security card: which ways are on, her client ids (masked where long), the permissions matrix,
+    """v0.446 her login + security card: which ways are on, her client ids (masked where long), the permissions matrix,
     the audit log, and the last security gate."""
     from .appmaker import gates as GT
     from .appmaker import sign as SG
@@ -11066,7 +11066,7 @@ async def apps_sign_save(ref: str, body: dict, tenant: str = Depends(current_ten
 
 @app.post("/api/apps/{ref}/security/check", dependencies=[Depends(require_key)])
 async def apps_security_check(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
-    """v0.442 run the security gates on the newest build (a failing gate blocks the store upload)."""
+    """v0.446 run the security gates on the newest build (a failing gate blocks the store upload)."""
     from .appmaker import gates as GT
     b = body or {}
     return await asyncio.to_thread(_be_owner_call,

@@ -76,7 +76,7 @@ struct AccountScreen: View {
                 if read == "public" || (auth.signedIn && (read != "admin" || auth.isStaff)) { RowsSection(coll: c) }
             }
             if auth.signedIn {
-                Button(Words.sgSecurity) { Router.shared.go("hoola_security") }   // v0.442 her logins + second step
+                Button(Words.sgSecurity) { Router.shared.go("hoola_security") }   // v0.446 her logins + second step
                 Button(Words.signOut) { auth.logout() }
                 Button(Words.deleteAccount, role: .destructive) { confirmDelete = true }
             }

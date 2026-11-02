@@ -1,4 +1,4 @@
-"""v0.442 SURAKSHIT LOGIN + SURAKSHA GATE (App Sahayak Pillar I, Phase 60).
+"""v0.446 SURAKSHIT LOGIN + SURAKSHA GATE (App Sahayak Pillar I, Phase 60).
 
 The native apps get the login the website got in v0.434, on the same backend: mobile OTP (hashed, rate limited, the
 code never shown), Google / Apple checked ON THE SERVER (signature, audience, single-use nonce - a forged or replayed
@@ -91,8 +91,10 @@ def test_her_switches_and_what_the_app_is_told(droid_env):
 
 
 def test_phone_otp_and_sessions_and_2fa(droid_env, monkeypatch):
+    from app.config import get_settings
     from app.site import security as SEC
     from app.site import webapp as W
+    monkeypatch.setattr(get_settings(), "secret_key", "test-secret-key-for-2fa-only-0123456789")   # the 2FA secret is encrypted
     c, aid, key, api = _setup(droid_env)
     c.put(f"/api/apps/{aid}/sign", json={"ways": ["email_password", "phone_otp"]})
     assert c.post(f"{api}/login/otp", json={"phone": "9876500002"}).status_code == 503   # no SMS provider yet: said
@@ -134,12 +136,12 @@ def test_phone_otp_and_sessions_and_2fa(droid_env, monkeypatch):
     start = c.post(f"{api}/security/2fa-start", json={}, headers=hr).json()
     assert start["secret"] and len(start["secret"]) >= 16
     assert c.post(f"{api}/security/2fa-on", json={"code": "000000"}, headers=hr).status_code == 400
-    now_code = SEC._totp_at(start["secret"], int(time.time() // 30))
-    assert c.post(f"{api}/security/2fa-on", json={"code": now_code}, headers=hr).json()["on"] is True
+    now_code = SEC._totp_at(start["secret"], int(time.time()))
+    assert c.post(f"{api}/security/2fa-on", json={"code": now_code}, headers=hr).json()["two_fa"] is True
     step1 = c.post(f"{api}/login", json={"email": "ravi@example.com", "password": "pass-ravi-1"}).json()
     assert step1.get("need_2fa") is True and step1.get("ticket") and "token" not in step1
     assert c.post(f"{api}/login/2fa", json={"ticket": step1["ticket"], "code": "000000"}).status_code == 400
-    done = c.post(f"{api}/login/2fa", json={"ticket": step1["ticket"], "code": SEC._totp_at(start["secret"], int(time.time() // 30))}).json()
+    done = c.post(f"{api}/login/2fa", json={"ticket": step1["ticket"], "code": SEC._totp_at(start["secret"], int(time.time()))}).json()
     assert done["token"]
     c.put(f"/api/apps/{aid}/sign", json={"staff_2fa": True})
     assert c.post(f"{api}/security/2fa-off", json={"code": now_code},
@@ -187,6 +189,11 @@ def test_google_and_apple_are_checked_on_the_server(droid_env):
         again = c.post(f"{api}/login/google", json={"id_token": _token(good, _google(nonce=n)), "nonce": n}).json()
         assert again["new"] is False and again["me"]["id"] == got["me"]["id"]
         assert len(c.get(f"{api}/security", headers={"Authorization": "Bearer " + again["token"]}).json()["sessions"]) == 2
+        # Apple sends the e-mail only the FIRST time: the next sign-in must find the SAME account, not make a second
+        n = c.get(f"{api}/login/nonce").json()["nonce"]
+        quiet = _token(good, {k: v for k, v in _google(nonce=n).items() if k != "email"})
+        q = c.post(f"{api}/login/google", json={"id_token": quiet, "nonce": n}).json()
+        assert q["new"] is False and q["me"]["id"] == got["me"]["id"], "the provider's sub must identify the account"
         # Apple: its own issuer and audience, and it hashes the nonce
         import hashlib
         n = c.get(f"{api}/login/nonce").json()["nonce"]

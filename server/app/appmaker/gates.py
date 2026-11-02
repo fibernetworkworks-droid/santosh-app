@@ -1,4 +1,4 @@
-"""v0.442 SURAKSHA GATE (App Sahayak Pillar I, Phase 60, second half): a security check on every build, and a FAILING
+"""v0.446 SURAKSHA GATE (App Sahayak Pillar I, Phase 60, second half): a security check on every build, and a FAILING
 gate blocks the store upload.
 
 Not a label on a sticker: every row here is a check that reads the REAL build - the generated project on disk, its
@@ -396,8 +396,12 @@ def gate_data(r: AppProject, proj: Path, spec: dict[str, Any], platform: str) ->
                      else "Sign-up par consent tick is build mein nahi mila (login screen uska apna tick deti hai)."))
     st = (spec.get("store") or {}) if platform == "android" else ((spec.get("ios") or {}).get("store") or {})
     said = _j(st.get("data_safety"), {}) if isinstance(st, dict) else {}
-    mf = proj / "app/src/main/AndroidManifest.xml"
-    has_loc = "ACCESS_FINE_LOCATION" in (mf.read_text(errors="ignore") if mf.exists() else "")
+    if platform == "android":
+        mf = proj / "app/src/main/AndroidManifest.xml"
+        has_loc = "ACCESS_FINE_LOCATION" in (mf.read_text(errors="ignore") if mf.exists() else "")
+    else:                                                  # on the iPhone the permission lives in Info.plist, not a manifest
+        pl = next(iter(proj.glob("**/Info.plist")), None)
+        has_loc = "NSLocation" in (pl.read_text(errors="ignore") if pl is not None else "")
     told_loc = "location" in json.dumps(said).lower()
     ok = (not has_loc) or told_loc or not said
     rows.append(_row("data", "Store answers match the build", "pass" if ok else "fail",

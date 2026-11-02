@@ -1,6 +1,6 @@
 package hoola.kit
 
-// Made by Hoola App Sahayak (v0.442 SURAKSHIT LOGIN). The ways into the app and the user's own security page.
+// Made by Hoola App Sahayak (v0.446 SURAKSHIT LOGIN). The ways into the app and the user's own security page.
 //
 // The OTP box is the app's OWN box: the 6 digits go straight to this app's server and are never stored here, shown
 // again or written to a log. Google / Apple give the app an ID token, and the SERVER checks its signature, audience

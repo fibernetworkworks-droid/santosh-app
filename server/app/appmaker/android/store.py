@@ -520,7 +520,7 @@ def publish(tenant: str, ref: str, track: str = "internal", her_tap: bool = Fals
         raise StoreError("Pehle Play Console ki service account key app mein daaliye (Play Store > Developer account).")
     if not st.get("bundle"):
         raise StoreError("Pehle store bundle banaiye.")
-    from .. import gates as GT                       # v0.442 SURAKSHA GATE: a failing security check blocks the upload
+    from .. import gates as GT                       # v0.446 SURAKSHA GATE: a failing security check blocks the upload
     try:
         GT.must_pass(r, "android")
     except GT.GateError as e:
