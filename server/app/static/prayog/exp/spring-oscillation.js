@@ -182,7 +182,7 @@ HoolaStudio.define('spring-oscillation', function (S) {
     camera: { pos: [0.82, 0.86, 1.76], look: [0.09, 0.5, -0.05] },
     views: { stand: [[0.45, 0.85, 1.1], [-0.05, 0.6, -0.05]], spring: [[0.2, 0.9, 0.5], [0.06, 0.84, -0.05]], hanger: [[0.2, 0.8, 0.45], [0.07, 0.76, -0.05]],
       ruler: [[0.22, 0.86, 0.42], [0.1, 0.8, -0.05]], masses: [[0.5, 0.25, 0.4], [0.34, 0.03, 0.02]], sw: [[0.45, 0.62, 1.05], [0.15, 0.42, 0.0]],
-      rig: [[0.7, 0.62, 1.3], [0.16, 0.44, 0.0]], swing: [[0.42, 0.78, 0.85], [0.1, 0.66, -0.04]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
+      rig: [[0.8, 0.66, 1.55], [0.17, 0.45, 0.0]], swing: [[0.42, 0.78, 0.85], [0.1, 0.66, -0.04]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'A mass m hanging on a spring of spring constant k, pulled down a little and released, moves up and down in simple harmonic motion about its rest position.',
       formula: 'T = 2π √(m / k)', formulaNote: 'so T² = (4π² / k) m, and k = 4π² / slope of T² against m',
       more: ['The graph of T² against m is a straight line through the origin. (The spring\'s own mass is small and is neglected here.)'],

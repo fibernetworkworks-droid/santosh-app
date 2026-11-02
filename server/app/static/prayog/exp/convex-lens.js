@@ -63,8 +63,8 @@ HoolaStudio.define('convex-lens', function (S) {
   var prof = [], NS = 24, rr, tt;
   for (var li = 0; li <= NS; li++) { rr = RIM * 0.995 * li / NS; tt = Math.max(0.00025, p.d / 2 - (p.R - Math.sqrt(p.R * p.R - rr * rr))); prof.push(new T.Vector2(rr, -tt)); }
   for (li = NS; li >= 0; li--) { rr = RIM * 0.995 * li / NS; tt = Math.max(0.00025, p.d / 2 - (p.R - Math.sqrt(p.R * p.R - rr * rr))); prof.push(new T.Vector2(rr, tt)); }
-  var glass = new T.MeshPhysicalMaterial({ color: 0xf4fbff, roughness: 0.02, metalness: 0, transmission: 0.96, thickness: p.d, ior: p.n, transparent: true, opacity: 0.9,
-    clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.4, side: T.DoubleSide });
+  var glass = new T.MeshPhysicalMaterial({ color: 0xdcefff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.32, depthWrite: false,
+    clearcoat: 1, clearcoatRoughness: 0.02, specularIntensity: 1, envMapIntensity: 1.7, side: T.DoubleSide });   // no transmission pass: cheap and clear
   var face = new T.Mesh(new T.LatheGeometry(prof, 72), glass); face.rotation.z = Math.PI / 2; face.renderOrder = 3; mirror.add(face);
   var ring = S.mesh(new T.TorusGeometry(RIM + 0.0018, 0.0026, 12, 64), M.bakelite); ring.rotation.y = Math.PI / 2; mirror.add(ring);
   var ringB = S.mesh(new T.CylinderGeometry(RIM + 0.0042, RIM + 0.0042, 0.006, 64, 1, true), new T.MeshStandardMaterial({ color: 0x1b1c1f, roughness: 0.5, side: T.DoubleSide }));
@@ -256,14 +256,14 @@ HoolaStudio.define('convex-lens', function (S) {
     lamp.intensity = st.lit ? 0.022 * f : 0; waxM.emissive.setRGB(st.lit ? 0.10 : 0, st.lit ? 0.055 : 0, st.lit ? 0.015 : 0);
     mFlame.scale.set(1, 1 + 0.08 * Math.sin(ft * 29), 1); });
 
-  var VIEWS = { bench: [[-0.05, 0.62, 1.3], [-0.05, 0.16, -0.2]], lens: [[MX + 0.1, AXY + 0.03, BZ + 0.16], [MX, AXY - 0.005, BZ]],
+  var VIEWS = { bench: [[-0.05, 0.74, 1.72], [-0.05, 0.12, -0.2]], lens: [[MX + 0.1, AXY + 0.03, BZ + 0.16], [MX, AXY - 0.005, BZ]],
     candle: [[0, AXY + 0.06, BZ + 0.22], [0, AXY, BZ]], screen: [[0, AXY, BZ + 0.21], [0, AXY - 0.05, BZ]],
     box: [[MB.x + 0.12, 0.16, MB.z + 0.22], [MB.x, 0.01, MB.z]], align: [[X0 - 0.1, AXY + 0.05, BZ + 0.03], [MX, AXY - 0.02, BZ]],
     book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] };
   update();
 
   return {
-    camera: { pos: [0.0, 0.78, 1.42], look: [0.0, 0.1, -0.2] },
+    camera: { pos: [-0.04, 0.72, 1.62], look: [-0.04, 0.12, -0.2] },
     views: VIEWS,
     theory: { principle: 'A convex lens bends the light from a bright object so that it meets again on the other side, forming a real, inverted image. A white screen placed exactly there shows a sharp image; anywhere else the light is spread into a blur.',
       formula: '1/v + 1/u = 1/f', formulaNote: 'u, v = distances of the object and the image from the lens (real image, both taken positive) · lensmaker: 1/f = (n − 1)(1/R₁ + 1/R₂)',

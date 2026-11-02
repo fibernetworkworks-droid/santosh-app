@@ -47,8 +47,9 @@ HoolaStudio.define('prism-minimum-deviation', function (S) {
   var A = p.A, SD = p.side, apex = [0, SD * Math.cos(A / 2)], bl = [-SD * Math.sin(A / 2), 0], br = [SD * Math.sin(A / 2), 0];
   var shape = new T.Shape(); shape.moveTo(apex[0], apex[1]); shape.lineTo(bl[0], bl[1]); shape.lineTo(br[0], br[1]); shape.closePath();
   var prismGeo = new T.ExtrudeGeometry(shape, { depth: 0.036, bevelEnabled: true, bevelThickness: 0.0008, bevelSize: 0.0008, bevelSegments: 2 });
-  var prismMat = new T.MeshPhysicalMaterial({ color: 0xf6fffc, roughness: 0, metalness: 0, transmission: 1, thickness: 0.035, ior: 1.5, specularIntensity: 1,
-    attenuationColor: new T.Color(0xa6dcca), attenuationDistance: 0.14, envMapIntensity: 1.2 });
+  // clear glass drawn without a transmission pass (one render per frame keeps slow devices smooth): faint green body, bright reflections
+  var prismMat = new T.MeshPhysicalMaterial({ color: 0xd2efe6, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.26, depthWrite: false, clearcoat: 1, clearcoatRoughness: 0.02,
+    specularIntensity: 1, envMapIntensity: 1.6, side: T.DoubleSide });
   var prism = new T.Group(); S.scene.add(prism);
   var glassM = S.mesh(prismGeo, prismMat); glassM.rotation.x = -Math.PI / 2; glassM.position.y = 0.0008; glassM.renderOrder = 3; prism.add(glassM);
   var edgeG = new T.EdgesGeometry(prismGeo, 30), edges = new T.LineSegments(edgeG, new T.LineBasicMaterial({ color: 0x9fc9c0, transparent: true, opacity: 0.6 }));

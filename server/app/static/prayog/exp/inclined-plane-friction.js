@@ -36,8 +36,8 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
   var wheel = S.mesh(new T.CylinderGeometry(PR, PR, 0.008, 40), M.alu); wheel.rotation.x = Math.PI / 2; pul.add(wheel);
   var groove = S.mesh(new T.TorusGeometry(PR, 0.0028, 10, 40), M.black); pul.add(groove);
   var axle = S.mesh(new T.CylinderGeometry(0.003, 0.003, 0.034, 12), M.chrome); axle.rotation.x = Math.PI / 2; pul.add(axle);
-  [-0.016, 0.016].forEach(function (z) { var ch = S.mesh(new T.BoxGeometry(0.05, 0.034, 0.003), M.iron); ch.position.set(-0.012, -0.004, z); pul.add(ch); });
-  var brk = S.mesh(new T.BoxGeometry(0.05, 0.004, 0.04), M.iron); brk.position.set(PL - 0.012, PT + 0.002, 0); plank.add(brk);
+  [-0.016, 0.016].forEach(function (z) { var ch = S.mesh(new T.BoxGeometry(0.05, 0.034, 0.003), M.alu); ch.position.set(-0.012, -0.004, z); pul.add(ch); });
+  var brk = S.mesh(new T.BoxGeometry(0.05, 0.004, 0.04), M.alu); brk.position.set(PL - 0.012, PT + 0.002, 0); plank.add(brk);
   // the block with its hook
   var block = new T.Group(); plank.add(block);
   var bm = S.rounded(BL, BH, BW, 0.006, new T.MeshStandardMaterial({ map: S.woodTex, color: 0xb98a58, roughness: 0.6 })); bm.position.y = BH / 2; block.add(bm);
@@ -77,13 +77,13 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
   [0, 2.094, 4.189].forEach(function (a) { var m = S.mesh(new T.CylinderGeometry(0.0006, 0.0006, 1, 5), thM, true, false); seg(m, new T.Vector3(0, -0.004, 0), new T.Vector3(Math.cos(a) * 0.047, -THR - 0.006 + 0.008, Math.sin(a) * 0.047)); pan.add(m); });
   var panShadow = S.contact(0.13, 0.13, 0, 0, 0.3);
   // the weight box and its brass weights
-  var BOX = new T.Vector3(0.8, 0, 0.06);
+  var BOX = new T.Vector3(0.7, 0, 0.15);
   var box = new T.Group(); box.position.copy(BOX); S.scene.add(box);
   var bxb = S.rounded(0.26, 0.11, 0.028, 0.006, M.darkWood); bxb.rotation.x = -Math.PI / 2; bxb.position.y = 0.014; box.add(bxb);
-  var lid = S.rounded(0.26, 0.11, 0.012, 0.006, M.darkWood); lid.rotation.x = -Math.PI / 2; lid.rotation.z = 0; lid.position.set(0, 0.006, -0.125); box.add(lid);
-  var lidLbl = S.label('WEIGHT BOX  1 g – 200 g', { w: 0.15, ratio: 0.12, color: '#f1e3c0' }); lidLbl.rotation.x = -Math.PI / 2; lidLbl.position.set(0, 0.0125, -0.125); box.add(lidLbl);
+  var lid = S.rounded(0.26, 0.11, 0.012, 0.006, M.darkWood); lid.rotation.x = -0.12; lid.position.set(0, 0.083, -0.058); box.add(lid);
+  var lidLbl = S.label('WEIGHT BOX  1 g – 200 g', { w: 0.15, ratio: 0.12, color: '#f1e3c0' }); lidLbl.rotation.x = -0.12; lidLbl.position.set(0, 0.083, -0.0515); box.add(lidLbl);
   var felt = S.mesh(new T.BoxGeometry(0.24, 0.001, 0.09), new T.MeshStandardMaterial({ color: 0x2c4f3a, roughness: 1 })); felt.position.y = 0.0285; box.add(felt);
-  S.contact(0.32, 0.3, BOX.x, BOX.z - 0.06, 0.5);
+  S.contact(0.32, 0.18, BOX.x, BOX.z, 0.5);
   var ringSlots = [[0, 0]].concat([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (i) { var a = i * 36 * DEG; return [Math.cos(a) * 0.033, Math.sin(a) * 0.033]; }));
   var panSlotOf = [0, 1, 3, 5, 2, 4, 7, 6, 8, 10, 9];   // 200 in the centre; big and small alternate round the ring
   var boxXZ = [[-0.095, -0.02], [-0.06, -0.025], [-0.03, -0.025], [-0.0, -0.025], [0.025, -0.025], [0.05, -0.025], [0.072, -0.025], [0.092, -0.025], [0.06, 0.02], [0.08, 0.02], [0.1, 0.02]];
@@ -187,8 +187,8 @@ HoolaStudio.define('inclined-plane-friction', function (S) {
   var EXP = {
     camera: { pos: [0.55, 0.74, 1.7], look: [0.3, 0.15, -0.02] },
     views: { plank: [[0.2, 0.5, 1.1], [0.05, 0.15, 0]], quad: [[-0.05, 0.28, 0.62], [-0.08, 0.12, 0.09]], block: [[0.05, 0.3, 0.55], [-0.15, 0.1, 0]],
-      pulley: [[0.75, 0.42, 0.5], [0.45, 0.28, 0]], pan: [[0.8, 0.35, 0.65], [0.5, 0.18, 0]], box: [[0.95, 0.32, 0.45], [0.78, 0.02, 0.04]],
-      angle: [[0.32, 0.5, 1.2], [0.1, 0.17, 0.02]], load: [[0.78, 0.48, 0.92], [0.46, 0.17, 0.0]],
+      pulley: [[0.75, 0.42, 0.5], [0.45, 0.28, 0]], pan: [[0.8, 0.35, 0.65], [0.5, 0.18, 0]], box: [[0.85, 0.32, 0.55], [0.7, 0.02, 0.13]],
+      angle: [[0.32, 0.5, 1.2], [0.1, 0.17, 0.02]], load: [[0.42, 0.62, 1.38], [0.28, 0.12, 0.05]],
       book: [[-0.56, 0.44, 0.5], [-0.66, 0.0, 0.06]] },
     theory: { principle: 'A block on an inclined plane is pulled up the slope by a thread over a pulley. It starts to move when the pull just exceeds the component of its weight down the slope plus the limiting friction μ R, where R = mg cos θ.',
       formula: 'F = mg (sin θ + μ cos θ)', formulaNote: 'so μ = (F − mg sin θ) / (mg cos θ) · F = least load × g',

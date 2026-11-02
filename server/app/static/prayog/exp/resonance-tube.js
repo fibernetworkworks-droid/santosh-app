@@ -160,7 +160,7 @@ HoolaStudio.define('resonance-tube', function (S) {
     camera: { pos: [0.95, 0.9, 1.85], look: [0.1, 0.5, -0.12] },
     views: { tube: [[0.5, 0.75, 1.2], [0.05, 0.6, TZ]], ruler: [[0.2, 0.85, 0.38], [0.04, 0.8, TZ]], res: [[0.6, 0.45, 0.6], [0.26, 0.3, TZ]],
       fork: [[0.52, 0.25, 0.42], [0.37, 0.03, 0.08]], pad: [[0.7, 0.22, 0.45], [0.56, 0.02, 0.14]], meter: [[-0.05, 0.25, 0.32], [-0.2, 0.05, -0.08]],
-      thermo: [[0.05, 0.6, 0.25], [-0.05, 0.6, -0.19]], mouth: [[0.38, 1.15, 0.55], [0.06, 1.0, TZ]], work: [[0.62, 1.12, 0.78], [0.14, 0.9, -0.15]], work2: [[0.8, 1.02, 1.2], [0.14, 0.74, -0.15]],
+      thermo: [[0.05, 0.6, 0.25], [-0.05, 0.6, -0.19]], mouth: [[0.38, 1.15, 0.55], [0.06, 1.0, TZ]], work: [[0.62, 1.16, 0.8], [0.14, 0.94, -0.15]], work2: [[0.8, 1.02, 1.2], [0.14, 0.74, -0.15]],
       book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'A tuning fork held over a tube closed at one end sets the air column vibrating. When the column\'s natural frequency matches the fork, it resonates and the sound swells. This happens when the column (plus a small end correction e at the open end) is a quarter wavelength, then three quarters.',
       formula: 'l₁ + e = λ/4,  l₂ + e = 3λ/4', formulaNote: 'so l₂ − l₁ = λ/2 and v = fλ = 2f(l₂ − l₁) · e ≈ 0.3 d cancels out',
