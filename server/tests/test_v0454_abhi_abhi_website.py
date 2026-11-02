@@ -285,7 +285,7 @@ def test_clinic_queue_tokens_board_numbers_only_and_one_sms_when_near(linked, fa
     LS.add(p, owner, {"name": "Sita"})                                                   # no phone: no SMS, still a token
     # the two at the front were told ONCE each (near = 2); the SMS carries name + token through her template
     sms = [json.loads(x.content) for x in fake]
-    assert [(m["recipients"][0]["var1"], m["recipients"][0]["var2"]) for m in sms] == [("Ram", "1"), ("Asha Rao", "2")]
+    assert [(m["recipients"][0]["var1"], m["recipients"][0]["var2"]) for m in sms] == [("Ram", 1), ("Asha Rao", 2)]
     assert sms[0]["template_id"] == "tpl-q" and sms[0]["recipients"][0]["mobiles"] == "919876543210"
     assert fake[0].headers["authkey"] == "MSG-SECRET-KEY"
     # the public board: numbers only - never a name, never a phone
