@@ -214,10 +214,33 @@ def _texts(e: dict) -> str:
     return " ".join(str(v) for v in e.values() if isinstance(v, str))
 
 
+def money_out(data: dict) -> str:
+    """v0.447: the Bible is the other door into the game's economy, so Rule 9 is checked HERE too - a currency, item or
+    quest whose reward leaves the game as money makes an 'online money game' (non-bailable for whoever publishes it).
+    Checks the economy block's own words and keys, plus every entity's text."""
+    from . import service as G
+    econ = data.get("economy") or {}
+    words = [str(v) for v in econ.values() if isinstance(v, str)] + list(econ)
+    for k, v in econ.items():
+        if v is True and re.search(r"withdraw|cash|redeem|payout|pay_?out|transfer|convert|real|upi|bank|trade|sell", str(k), re.I):
+            return G.MONEY_OUT_SAY
+    for kind, rows in (data.get("entities") or {}).items():
+        for e in rows or []:
+            if isinstance(e, dict):
+                words.append(_texts(e))
+    blob = " ".join(words)
+    if blob.strip() and (G.MONEY_OUT.search(blob) or G.MONEY_OUT_FLAT.search(blob) or G.MONEY.search(blob)):
+        return G.MONEY_OUT_SAY
+    return ""
+
+
 def check(data: dict) -> dict[str, list[str]]:
     """Every rule of the Bible, in code. errors block a change; warnings are shown."""
     errors: list[str] = []
     warns: list[str] = []
+    why = money_out(data)
+    if why:
+        errors.append(why)
     ents = data.get("entities") or {}
     palette = {c.upper() for c in (data.get("style") or {}).get("palette") or [] if isinstance(c, str)}
     for c in palette:

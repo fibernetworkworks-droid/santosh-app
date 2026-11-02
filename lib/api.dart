@@ -1110,6 +1110,12 @@ class Api {
   // v0.428 Live ops (A/B tests, live events, crashes, patch check, money)
   Future<Map<String, dynamic>> gameLiveops(String sid, [String part = '']) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/liveops/${Uri.encodeComponent(sid)}$part') as Map);
+  // v0.433 Big-studio mode (Unity / Unreal projects on her machines)
+  Future<Map<String, dynamic>> gameBig() async => Map<String, dynamic>.from(await _send('GET', '/api/gamedesk/big') as Map);
+  Future<Map<String, dynamic>> gameBigNew(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/big', body: body) as Map);
+  Future<Map<String, dynamic>> gameBigTask(String pid, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/big/${Uri.encodeComponent(pid)}/tasks', body: body) as Map);
   Future<Map<String, dynamic>> gameLiveopsDo(String sid, String part, [Map<String, dynamic>? body]) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/gamedesk/liveops/${Uri.encodeComponent(sid)}$part', body: body ?? {}) as Map);
   Future<Map<String, dynamic>> gameStudioSettings(String id, Map<String, dynamic> body) async =>

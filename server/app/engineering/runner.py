@@ -151,7 +151,7 @@ def main() -> None:
             import geom
             res["expect"] = geom.check_expect(shape, _parts.EXPECT)
         studies = []
-        for i, st in enumerate(_parts.STUDIES[:3]):        # v0.381 a flow study carries its FLUID body as a STEP
+        for i, st in enumerate(_parts.STUDIES[:4]):        # v0.381 a flow study carries its FLUID body as a STEP
             st = dict(st)
             dom = st.pop("domain", None)
             if dom is not None:
@@ -200,6 +200,21 @@ def main() -> None:
                 res.setdefault("notes", []).append(f"hlr {view}: {type(e).__name__}")
         (out / "hlr.json").write_text(json.dumps(hlr), encoding="utf-8")
         res["drawing"] = {**_parts.DRAWING, "fits": _parts.FITS[:20]}
+        if _parts.GEARS:                                  # v0.432 the gears drawn (undercut is a shape problem)
+            res["gears"] = _parts.GEARS[:8]
+        if _parts.GEAR_DUTY:                              # v0.432 will the gear teeth last? ISO 6336
+            import gears as _gear
+            rows = []
+            for i, duty in enumerate(_parts.GEAR_DUTY[:4]):
+                d = dict(duty)
+                try:
+                    rows.append({"n": i, **_gear.pair(d.pop("module"), d.pop("pinion_teeth"), d.pop("wheel_teeth"),
+                                                      d.pop("width_mm"), d.pop("torque_Nm"), d.pop("rpm"),
+                                                      material=d.pop("material") or job.get("material") or "steel",
+                                                      **d)})
+                except Exception as e:
+                    rows.append({"n": i, "ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}", "rows": []})
+            res["gear_duty"] = rows
         if _parts.CAMS:                                   # v0.425 cam designer checks (pressure angle, undercut ...)
             res["cams"] = {k: {kk: vv for kk, vv in v.items()} for k, v in _parts.CAMS.items()}
         if _parts.JOINTS:                                 # v0.406 a mechanism: motion check + URDF + motion frames

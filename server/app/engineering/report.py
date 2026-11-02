@@ -156,7 +156,8 @@ def cam_png(paths: list[dict[str, Any]], size_xy: list[float], size: int = 900) 
 
 
 def analysis_pdf(title: str, part: dict[str, Any], studies: list[dict[str, Any]], pictures: list[Image.Image],
-                 cam: dict[str, Any] | None, dfm: dict[str, Any] | None = None) -> bytes:
+                 cam: dict[str, Any] | None, dfm: dict[str, Any] | None = None,
+                 gear_duty: list[dict[str, Any]] | None = None) -> bytes:
     W, H = 1654, 2339                                # A4 portrait at 200 dpi
     pages = []
     page = Image.new("RGB", (W, H), BG)
@@ -178,6 +179,14 @@ def analysis_pdf(title: str, part: dict[str, Any], studies: list[dict[str, Any]]
         y += 56
         for line in rows[1:]:
             d.text((120, y), line, fill=INK if not line.startswith("!") else (180, 40, 30), font=fs)
+            y += 38
+        y += 30
+    for gd in gear_duty or []:                       # v0.432 will the gear teeth last
+        rows = gear_rows(gd)
+        d.text((90, y), rows[0], fill=INK, font=_font(34))
+        y += 56
+        for line in rows[1:]:
+            d.text((120, y), line[:118], fill=INK if not line.startswith("!") else (180, 40, 30), font=fs)
             y += 38
         y += 30
     if cam:
@@ -285,12 +294,81 @@ def summary_rows(st: dict[str, Any]) -> list[str]:
         if st.get("max_dp_pa") is not None:
             rows.append(("OK: " if st.get("passes") else "! Above ") + f"her pressure-drop limit {st['max_dp_pa']:g} Pa")
         return rows
+    if k == "plastic":                                            # v0.450 past yield: permanent set and collapse
+        rows = [f"Past yield (elastic-plastic, von Mises) · {st['material']} (yield {st['yield_MPa']:g} MPa)",
+                f"First yields at x{st['first_yield_factor']:.3g} of her load"]
+        hl = st.get("at_her_load")
+        if hl:
+            rows += [f"At her own load: moves {hl['max_disp_mm']:.4g} mm (a linear check would say "
+                     f"{hl['elastic_would_be_mm']:.4g} mm), {hl['yielded_pct']:g} % of the part has yielded, worst "
+                     f"permanent strain {hl['max_plastic_strain_pct']:.3g} %",
+                     f"PERMANENT SET once the load comes off: {hl['permanent_set_mm']:.4g} mm"
+                     + (f" (she allows {st['max_set_mm']:g} mm: {'PASS' if st.get('passes') else 'FAIL'})"
+                        if st.get("max_set_mm") else "")]
+        else:
+            rows.append("! It does not even hold her own load")
+        if st.get("collapse_factor"):
+            rows.append(f"COLLAPSES at about x{st['collapse_factor']:.3g} of her load")
+        else:
+            rows.append(f"No collapse up to x{st['collapse_at_least']:.3g} (as far as it was pushed)")
+        rows += [f"  x{h['factor']:g}: {h['max_disp_mm']:.4g} mm, {h['yielded_pct']:g} % yielded"
+                 for h in (st.get("steps") or [])[-6:]]
+        rows.append(mline)
+        if st.get("collapse_note"):
+            rows.append("~ " + st["collapse_note"])
+        rows.append("~ " + st["note"])
+        return [r for r in rows if r]
+    if k == "buckling":                                           # v0.432 does it FOLD before it breaks
+        if st.get("load_factor") is None:
+            return [f"Buckling · {st['material']}", f"Cannot buckle: {st['note']}", mline]
+        conv = st.get("convergence") or {}
+        rows = [f"Buckling (linear eigenvalue) · {st['material']} (E {st['E_MPa']:,} MPa)",
+                f"Buckling load factor {st['load_factor']:.4g}" + (f" -> folds at {st['critical_load_N']:,.0f} N "
+                f"(loads {st['applied_N']} N)" if st.get("critical_load_N") else ""),
+                "Next modes: " + ", ".join(f"x{x:g}" for x in st["factors"][1:]) if len(st.get("factors") or []) > 1 else "",
+                f"Needs x{st['need_lf']:g}" + ("" if st.get("need_given") else " (Hoola's default for a strut)")
+                + f": {'PASS' if st.get('passes') else 'FAIL'}",
+                f"Folds at x{st['load_factor']:.3g}, yields at x{st['yield_factor']:.3g} -> "
+                + ("BUCKLING is what limits this part" if st.get("governs") == "buckling"
+                   else "STRENGTH is what limits this part, not folding"),
+                (f"Mesh check: the factor changed {conv.get('change_pct')} % from a 3x coarser mesh "
+                 f"({'converged' if conv.get('ok') else 'NOT converged - treat with care'})") if conv else "", mline]
+        if st.get("buckles"):
+            rows.append(f"! IT FOLDS under her own load (factor {st['load_factor']:.3g} < 1)")
+        elif not st.get("passes"):
+            rows.append("! Below the buckling factor asked for")
+        rows.append("~ " + st["note"])
+        return [r for r in rows if r]
     rows = [f"Vibration (modal) · {st['material']} · supports {st['supports']}",
             "Natural frequencies: " + ", ".join(f"{x:g} Hz" for x in st["frequencies_hz"]), mline]
     rz = st.get("resonance")
     if rz:
         rows.append(("OK: no mode inside " if rz["ok"] else "! Mode(s) inside ") + f"{rz['band_hz']} Hz"
                     + ("" if rz["ok"] else f": {rz['inside']}"))
+    return rows
+
+
+def gear_rows(gd: dict[str, Any]) -> list[str]:
+    """v0.432 the gear duty for the analysis PDF."""
+    if gd.get("error"):
+        return [f"Gear duty: did not run - {gd['error'][:110]}"]
+    f = gd["factors"]
+    rows = [f"Gear pair {gd['pinion_teeth']} / {gd['wheel_teeth']} teeth, module {gd['module']:g} mm, face "
+            f"{gd['width_mm']:g} mm, ratio {gd['ratio']:g} ({gd['material']})",
+            f"Pinion {gd['torque_Nm']:g} N·m at {gd['rpm']:g} rpm -> {gd['tangential_N']:,.0f} N on the tooth, "
+            f"pitch-line speed {gd['speed_m_s']:g} m/s",
+            f"Tooth bending {gd['bending_MPa']:.1f} MPa vs {gd['bending_allow_MPa']:g} MPa allowed -> safety "
+            f"{gd['bending_sf']:.2f} (needs {gd['need_sf']:g}: {'PASS' if gd['bending_sf'] >= gd['need_sf'] else 'FAIL'})",
+            f"Flank pitting {gd['contact_MPa']:.0f} MPa vs {gd['contact_allow_MPa']:g} MPa allowed -> safety "
+            f"{gd['pitting_sf']:.2f} (needs {gd['need_sf']:g}: {'PASS' if gd['pitting_sf'] >= gd['need_sf'] else 'FAIL'})",
+            f"Contact ratio {gd['contact_ratio']:g} teeth in mesh, {gd['cycles']:.3g} tooth loads in "
+            f"{gd['life_hours']:g} h",
+            "Factors: " + ", ".join(f"{k} {v:g}" for k, v in f.items()),
+            "Assumed: " + "; ".join(gd.get("assumed") or [])]
+    bad = [r["check"] for r in gd.get("rows") or [] if not r["ok"]]
+    if bad:
+        rows.append("! " + ", ".join(bad))
+    rows.append("~ " + gd["note"])
     return rows
 
 

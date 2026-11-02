@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.442.0"   # v0.442.0 SAB KAAM CALL PAR (owner: "ALSO CHECK IS VOICE TO VOICE CAN PERFORM ALL TOOL TASK END TO END"): checked all 483 chat tools against the call - 105 declared, 256 via_kaam, and 122 with NO route at all (Sheets formatting / tabs / share, Drive access / comments / versions, Forms edit / export / share, YouTube upload / edits, Slides arrange, WhatsApp campaigns + templates, the 10 enterprise desks, MoSPI, IndiaMART, data files, Tally, doc / create studio, game / CAD / architect): Gemini naming one got {"error": "Unknown tool"} and the persona never said santosh_kaam could do it. Now voice.registered() reads the chat registry once and _execute sends ANY registered-but-undeclared tool to santosh_kaam with her words (cards still come to her phone); voice.call_route(name) = declared | kaam | ""; the persona names the families and forbids "nahi kar sakta" before santosh_kaam has tried. The declared list and its JSON size are unchanged, so no call gets slower. ALSO v0.441 PAKKA KAAM in the same version: a call's santosh_kaam job goes through the durable turn_inbox (accept before it starts -> run_owned), so a deploy / crash mid-job re-runs it once with its place (new nullable turn_inbox.place), and the call drop note names a job that was still running (OTPs masked). (built as 0.440 / 0.441, re-versioned past the parallel v0.440 / v0.441) Previous: v0.441.0 PRAYOGSHALA STUDIO (owner: "NOW BUILD ALL 22 LABS LIKE THIS IN HOOLA. MAKE EVERY EXPERIMENT PERFECT AND ROBUST"). All 22 physics labs now open in the realistic studio approved in the prototype: a real lab room and bench with real equipment, the gloved hand does every manipulation, theory first then a guided step-by-step workflow, readings written into a handwritten record book, result with graph and viva, and Ask Hoola inside the page answering only about this experiment (POST /api/prayog/ask, key-protected, 150 a day per account). Every number still comes from the tested kernels; a headless walk-through runs every lab through its real buttons and lands within tolerance of the true value (22/22). Previous: v0.440.0 SOCH KE JAWAB - the live hard card measures for real (owner ran hardcard --live --judge: RIGHT 0/28, median 1.0 s, errors 0). (1) The card scored the APOLOGY: a turn whose model call failed returns "Maaf kijiye, abhi kuch gadbad ho gayi (ref ...)" and that line was scored as an answer, so dead turns read as wrong answers with errors 0 and the cause went to 2>/dev/null. Now a turn that published its error / budget line is an ERROR row with the server's own log lines (the real exception), the card stops after 3 dead turns in a row, and `hardcard --ping` makes one tiny real call per model x shape (plain / thinking / thinking+effort) so the API's own words say what it refuses. (2) Holding a hard answer for the self-check (v0.436) had switched the API call itself to ONE blocking request - 16k tokens + thinking, the only such call in Hoola - and its thinking never reached the Soch card. A held answer (hard check, Gyaan) or any answer above 8,192 tokens now STREAMS from the API; the live reply alone decides what she sees. Previous: v0.439.0 v0.439.0 GMAIL POORA CALL PAR (owner: "FIRST CHECK IS ALL GMAIL TOOLS IS ATTACHED TO VOICE TO VOICE" -> GO): her voice test found 11 of the 23 Gmail tools had NO way in on a call (not declared, not routed), so labels / snooze / drafts / filters / rules / vacation / bulk / forwarding / aliases / whole-thread work said "nahi ho sakta". Now email_thread, email_snooze, email_drafts are declared to the call (+~2k chars, tool JSON still ~57k of the 150k budget) and email_label, email_threads, email_bulk, email_bulk_status, email_filters, email_rule, email_vacation, email_forwarding, email_alias go to santosh_kaam (full brain, cards still to her phone); the call persona's Email line names them. Test: every tool in EMAIL_TOOLS must be declared or via_kaam, so a new mail tool cannot be left off a call again. Both voice engines (Gemini + OpenAI share _tool_specs). Previous: v0.438.0 SOCH KE JAWAB step 7 - the HARD CARD (owner: "GO STEP 7"): steps 1-6 changed how a hard ask is handled but nothing measured whether the ANSWERS were right. app/quality/hard_card.py: 28 hard asks with known answers (13 money maths - EMI, break-even, CAGR, SIP, payback, price-volume, doubling time, quarterly FD, GST, real return, LTV/CAC, chained discounts, unit economics; 6 word problems / logic; 2 proofs; GST composition, TDS 194J, rent vs buy, ads root cause, GTM plan; 2 research), the key computed in Python and re-derived in the test. free_card (no model): spotted hard 28/28, pylab in view 28/28, own recipe line 28/28, research routed 2/2. live_card: ONE real turn per ask on tenant __quality__ through the whole pipeline, scored in code - numbers within tolerance read the Indian way (Rs / commas / lakh / crore / k / negatives), must-have points, pylab used for a calculation, 2+ source links for research, the self-check ran (the jaanch step); optional Opus judge 0-10 on the open asks. CLI python -m app.quality hardcard [--live] [--judge] [--quick] [--only] [--limit] [--label], GET /api/quality/hardcard, vps-ops job hard_card (free + the 10-ask quick set live). Previous: v0.437.0 v0.437.0 SOCH KE JAWAB step 6 - deep research (owner: "GO STEP 6"): 5 of 5 deep-research asks scored 0 in agent/hard.py, so research got no Opus, no thinking, no recipe, no self-check; the crew had 8 steps / 1,500 tokens an agent, ~8-line reports with no sources asked, and a crew past its clock lost everything. Now a "research" signal (3 points = hard: deep research, research karo / report / on, market / industry / sector / competitor / feasibility study | analysis | report | size, detailed report, with sources, white paper, literature review, trends in, shodh) -> Opus + thinking + the DEEP RESEARCH recipe line first (4-6 sub-questions, deploy_agents + own reading, primary sources incl. MoSPI, [n] sources with dates, two sources for key numbers, pylab for derived figures, summary first + Sources list, PDF when asked / long, never a link no tool returned); ctx.research -> the crew (inline + background spec) gets team_research_max_steps 14, team_research_max_tokens 4000, RESEARCH_RULE (open real pages, link + date per fact) and a graceful WRAP_UP (soft deadline team_research_soft_s 170 inline / 75% of team_bg_timeout_s, or steps used up mid-search) so what was found comes back with sources; the self-check's free hard.research_check refuses an answer with no sources or with a link no tool returned (full evidence, not the reviewer's 9 KB). 15/15 research asks spotted, 0 everyday. Previous: v0.436.0 v0.436.0 SOCH KE JAWAB step 5 - the self-check before a hard answer goes out (owner: "GO STEP 5"): a hard answer streamed to her as it was written, and the only later look (draftcheck: a cheap model, numbers nobody recomputed) could add a note AFTER she had read it. Now her hard answer is HELD (live.block stream off; thinking still streams on the Soch card) and checked before it is saved or shown: hard.code_check (free: a calculation ask whose draft carries 2+ worked-out numbers while pylab never ran) then hard.review - ONE independent reviewer call (hard_check_model, "" = the chat model) that sees her question, the draft and the real tool evidence (hard.evidence: this turn's tool calls + results, pylab code + output first-class) and answers JSON ok / problems (wrong number, uncomputed figure, logic gap, wrong rule, part unanswered; never style). A problem goes back ONCE as the JAANCH fix note; the draft is saved hidden (display None, the model keeps it) and the corrected answer is what she sees; never a second review. Step chip "Jawab jaanch raha hoon". A failing / slow reviewer (hard_check_timeout_s 60) returns [] and never blocks. draftcheck skips a turn that already passed the self-check. Ordinary chat never held. Previous: v0.435.0 v0.435.0 PARIVAAR (built as 0.426 / 0.433) (App Sahayak Pillar H, Phases 58-59; owner: "START PILLAR H"): one business, several apps, one backend + a web admin. A face (delivery partner / partner shop / staff / customer app) is its own project (plan, design, builds, store listing) whose app_key lands on the MAIN backend (backend.by_key -> family.home); partners apply from their app and only she / an app admin approves; a rider sees READY jobs without the phone, takes one under a lock (first tap wins, max open jobs), then only his steps + proof; a partner shop is tied to one row of her partner list, sees only orders pointing at it (no phone / e-mail / location, first name only), moves them only through its steps until a rider has it, and keeps its own menu rows (the shop link set by the server); live stream + shift follow the same scope; removed partner = signed out + open jobs back in the pool. Web admin /app-admin/<app_key> (lists, search, filters, edit, assign, CSV export Excel-safe, dashboard, partner approvals, member roles; textContent only, strict CSP). Kits Partner.kt / Partner.swift + hoola_jobs screen only in partner builds; console App family box, phone App parivaar panel, tool app_banao action=family. Previous: v0.434.0 APP PAGES + LOGIN AUR SURAKSHA (web Step 3 = W2 + W3, owner: "START STEP 3"). The website's account and staff pages are now a real in-page app per role: a menu by role, tables you sort / search / filter / page / bulk-select, detail pages with linked lists, multi-step forms that check before sending and upload photos / files, kanban, month calendar, approvals, members, who-can-do-what and the audit log, dressed in the site's own design. People log in safely: phone OTP through a DLT SMS provider (only a hash kept, 5 minutes, 5 tries, rate limits), 2-step login (authenticator code) for staff, every logged-in device listed with "log out" and "sign out everywhere", DPDP consent on sign-up, download-my-data and delete-my-account, every change journaled with WHO made it, staff-only fields. Fixed on the way: a wrong OTP rolled back its own try counter (unlimited guesses), two logins in one second shared a token, the staff page lost its charts. Previous: v0.433.0 SOCH KE JAWAB step 4 - the reasoning recipe (owner: "GO STEP 4"): steps 1-3 decided WHO thinks (a hard ask), on WHAT (Opus 5.5, effort high, 16k, thinking) and WITH WHAT (pylab); nothing said HOW - the reply rulebook is tuned for crisp chat. A hard turn's system prompt now carries hard.RECIPE_CORE "SOCH KA TAREEKA" (~1.6 KB): the real question (most likely reading in one line, ask only when a wrong guess costs her), facts first (missing fact = a stated assumption, never made up; changing rules / rates = check or look up), work in parts with EVERY number from pylab, check before writing (totals, units, magnitudes, strongest objection, re-run the key figure), then the answer / decision FIRST + compact reasoning + assumptions + what would change it + next step, uncertainty said plainly, private thinking never pasted - plus up to 3 kind lines (calculation, word problem, maths, decision, plan, diagnosis, analysis, rules, impact, deep) picked from assess() labels; 74 of 75 hard asks get their own lines. Ordinary chat never carries it (hard_recipe switch). Previous: v0.432.0 v0.432.0 (built as 0.430.0) LIVE OPS (Hoola Game Engine plan Phase 9, owner: "GO PHASE 9"; gamedesk/liveops.py, tool game_liveops). The game reads GET /play/<token>/live from its own host (cached on the device): running A/B tests + approved live events, values via HoolaRuntime.num / flag - only Game Bible numbers within 1/4x - 4x, or flag.<name>. A/B tests: sha256(install:key) groups (same sum in GDScript, checked in the real Godot), sample-size target, sample-ratio check, z-test + Bonferroni, NOT ENOUGH PLAYERS before the target, start / stop = her tap, ship = a board task. Live events calendar (India time, her tap, no clashes with each other or a running test). Crashes caught by Godot's Logger (4.5+) from consenting players, grouped + scrubbed, crash-free per version, one-tap hotfix task. Patch check: saved replays + a bot run on the newest version in the real engine. Dashboard + D30 / DAU / balance outliers / difficulty spikes; money only from her imported store CSV (ARPDAU an upper bound). Console Live ops page, phone Live ops screen.
+APP_VERSION = "0.457.0"   # v0.457.0 PAST YIELD (the third hole in the CAD desk, after v0.450 buckling + gear teeth): fea.plastic = real elastic-plastic analysis - the load goes on in steps with the metal yielding for real (von Mises radial return at every integration point), equilibrium re-solved by modified Newton on ONE cached factorisation with Aitken extrapolation of the tail (the elastic stiffness under-corrects badly once a region goes soft: the residual crept down at 0.96 per round, so it never converged before - that is what the acceleration fixed), then the load is taken off elastically and whatever is left is the PERMANENT SET. Reports: where it first yields, the set after her load comes off, how much of the part has yielded, the load factor at which it runs away (plastic hinge: it moves 4x further per extra kilo than when elastic), the last load it clearly still carries, and a TEAR check - linear hardening would otherwise carry any load by stretching for ever, so a spot past the material's elongation (steel 15 %, cast iron 1 %) is reported as splitting, not bending. Measured against both textbook limit loads within ~20 % (a bar in tension 1.75 vs 2.0, a stubby cantilever 1.75 vs 1.5), said plainly in the module and the note. H.analyze('plastic', max_set_mm=...) -> too much permanent bend or collapse under her own load goes back to be redesigned. Previous: v0.456.0 PRAYOGSHALA - the coding lab, step 1: the box (owner answered the three questions from docs/CODING_HARNESS_PLAN.md: "Docker on the VPS -- YES, OWN AS WELL AS THIRD PARTY CLONEING FOR CHECKING, setup command + cached snapshot acceptable to maintain -- SAME AS CLAUDE CODE"). The research found that without a command that comes back pass or fail a coding agent only knows "looks done" and SHE is the test suite - which was exactly Hoola's position, because her repo's code never ran anywhere but her CI (minutes a round, three rounds). New `app/devlab`: (1) box.py = Docker with the only walls the research accepts - a CHECK runs with --network none, as uid 1000, --read-only root + tmpfs, --cap-drop ALL, no-new-privileges, memory / cpus / pids caps and a hard timeout, and NO secret of any kind in its environment; (2) spec.py = the command is DECLARED, never invented - her own word first, then `.hoola/lab.json`, then the repo's AGENTS.md / CLAUDE.md labelled lines, then its CI `run:` steps, then a language default, each answer carrying WHERE it came from, a command Hoola merely READ waiting for one tap, a sudo / docker / secret-bearing command refused and SAID instead of quietly swapped, and "nothing declared" meaning nothing runs; (3) service.py = clone her branch OUTSIDE the box with the token handed over through a deleted askpass file (never in argv, never in the config) then `rm -rf .git` so no credential and no remote can ever be inside, the dependency install run ONCE per lock-file hash with the network on and committed as a per-repo image snapshot (Codex's cached container, Jules's Run-and-Snapshot), then the check itself sealed; (4) out.py = failure-first output, correcting the contract Claude Code ships: a PASS is shown short because nobody debugs a pass, a FAIL keeps its END (the traceback is at the bottom) with the real byte count and a log file the model can `grep_log` for a second question. `python -m app.devlab check` proves the walls on the VPS (passing test, failing test, network blocked, root FS read-only, non-root user); vps-ops jobs lab_check / lab_setup / lab_images / lab_prune. Switch dev_lab stays OFF: nothing in the dev loop can reach the lab until she has seen lab_check pass. Previous: v0.455.0 (built as 0.442 / 0.446 / 0.453) SURAKSHIT LOGIN + SURAKSHA GATE (App Sahayak Pillar I, Phase 60; owner: "START PILLAR I"): the native apps get the login the website got in v0.434, on the SAME backend (one account for a website and its phone app, "sign out everywhere" ends both). Mobile OTP typed only into the app's own box (hashed, rate limited, never shown or logged); GOOGLE / APPLE verified ON THE SERVER - signature against the provider's own published keys, iss, aud must be one of HER PUBLIC client ids, exp, and a single-use server nonce (Apple's SHA-256 form too); a forged, re-aimed, expired or replayed token is refused, and native sign-in needs no provider secret at all. Sessions a member can end (an ended token dies at once, app side too), staff TOTP 2FA as step two of password and OTP login, her switch to make it compulsory, DPDP consent + "my data" in the app. Kits SignIn.kt / SignIn.swift (+ hoola_security screen, Credential Manager Google button only when she turns it on, Sign in with Apple entitlement only then too). SURAKSHA GATE (appmaker/gates.py): six gates read the REAL build - keys inside the app / APK, only permissions a feature needs and none from Play's restricted list, release settings (debuggable, backup, https, exported, v1+v2/v3 signature), library CVEs at OSV.dev (unreachable = NOT CHECKED, never a quiet pass), login rules (Apple where Google is offered, no password box outside the sign-in screen, in-app deletion) and data rules; a FAILING gate BLOCKS the Play upload and the App Store submit. Console Login & security box, phone panel, tool app_banao action=login / security_check. Previous: v0.454.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA (owner: "START BOTH", after docs/GAME_MOAT_PLAN.md). (1) The money-game guard missed the test India's Online Gaming Act 2025 + Rules 2026 actually turn on - Rule 9's reward that is TRANSFERABLE / REDEEMABLE / MONETISABLE OUTSIDE the game: "a ludo game where players collect coins and withdraw them to UPI" passed the guard and got BUILT, and offering that is cognisable and non-bailable for whoever publishes it. service.MONEY_OUT + MONEY_OUT_FLAT now refuse it (21 phrasings tested, English + Hinglish, 0 false alarms on 10 legitimate games), and bible.money_out closes the other door (the economy block's words AND keys, every entity's text). (2) /mcp/gamedesk spoke only the dialect MCP REMOVED - the current revision 2026-07-28 has no `initialize`: the version rides in _meta / the MCP-Protocol-Version header and server/discover is MUST-implement, so a modern-only client (Claude Desktop, Cursor) failed outright; both eras now answer, with UnsupportedProtocolVersionError -32022. (3) THE GAME ARENA (gamedesk/arena.py, tool game_arena, console Game Desk > Game Arena, owner only): the QA farm proved a game RUNS, nothing proved it was worth playing - 500 fixed seeded briefs (20 genres x 25 Indian settings) so two Hoola versions are judged on exactly the same work, each built as the hidden tenant __gamearena__ then PLAYED by the QA bots (started, median fps, script errors, reached an ending, and RESPONDS = an input changed something the idle run never saw), originality measured as design-DNA distance from the closest other game of the run (Apple 4.3(b) rejects games indistinguishable from what exists, so it is a shippability number), an independent judge with its own rubric on the first thirty seconds, run-vs-run compare that says when a comparison is unfair, and blind duels against a rival's public web game played by the same bots. `fun` is always NOT ASSESSED, in those words. NOT VERIFIED: no real Arena run has been built yet, so there are no numbers for any Hoola version yet.
 
 
 def _quiet_http_logs() -> None:
@@ -8961,7 +8961,9 @@ async def site_shop_products(site_id: str):
         _r, cfg = S.shop_public(site_id)
         if not cfg["on"]:
             raise SH.ShopError("shop off", 404)
-        return {"products": [{k: p[k] for k in ("slug", "title", "price", "price_text", "unit", "in_stock")} for p in SH.products(site_id)]}
+        from .site import shoppay as SP                        # v0.446 online payment on? + verified-buyer stars
+        return {"products": [{k: p[k] for k in ("slug", "title", "price", "price_text", "unit", "in_stock")} for p in SH.products(site_id)],
+                "online": bool(cfg.get("online")), "ratings": SP.reviews(site_id)["summary"]}
     return await asyncio.to_thread(_shop_call, go)
 
 
@@ -8994,6 +8996,236 @@ async def site_shop_paid(site_id: str, number: str, request: Request):
     body = body if isinstance(body, dict) else {}
     return await asyncio.to_thread(_shop_call, lambda: S.shop_paid(site_id, number, str(body.get("token") or ""),
                                                                    str(body.get("utr") or ""), _ip(request)))
+
+
+# v0.446 DUKAAN PAISA: coupons, online payment again, verified-buyer reviews (public) + her side (connect, refund, reviews)
+async def _shop_body(request: Request) -> dict:
+    try:
+        b = await request.json()
+    except Exception:
+        b = {}
+    return b if isinstance(b, dict) else {}
+
+
+@app.post("/api/site-shop/{site_id}/coupon")
+async def site_shop_coupon(site_id: str, request: Request):
+    from .site import shoppay as SP
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SP.coupon_check(site_id, str(b.get("code") or ""), b.get("items")))
+
+
+@app.post("/api/site-shop/{site_id}/order/{number}/pay")
+async def site_shop_pay_again(site_id: str, number: str, request: Request):
+    from .site import shoppay as SP
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SP.again(site_id, number, str(b.get("token") or "")))
+
+
+@app.post("/api/site-shop/{site_id}/order/{number}/review")
+async def site_shop_review(site_id: str, number: str, request: Request):
+    from .site import shoppay as SP
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SP.review(site_id, number, str(b.get("token") or ""), str(b.get("slug") or ""),
+                                                                 b.get("stars"), str(b.get("text") or "")))
+
+
+@app.get("/api/site-shop/{site_id}/reviews")
+async def site_shop_reviews(site_id: str, slug: str = ""):
+    from .site import shoppay as SP
+    return await asyncio.to_thread(_shop_call, lambda: SP.reviews(site_id, slug))
+
+
+def _shop_owner(fn, *a):
+    from .site import shop as SH
+    from .site import webapp as W
+    try:
+        return fn(*a)
+    except SH.ShopError as e:
+        raise HTTPException(e.code, str(e))
+    except W.AppError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.post("/api/sites/{ref}/payments/connect", dependencies=[Depends(require_key)])
+async def sites_payments_connect(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.446 her website's online payments live on its app project: link it, then the app pay routes take her keys."""
+    from .site import shoppay as SP
+    return await asyncio.to_thread(_shop_owner, SP.connect, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/shop/orders/{number}/refund", dependencies=[Depends(require_key)])
+async def sites_shop_refund(ref: str, number: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER tap only: refund a website order paid online {amount? (rupees, blank = all that is left), why}."""
+    from .site import shoppay as SP
+    b = body or {}
+    return await asyncio.to_thread(_shop_owner, SP.refund, tenant, ref, number, b.get("amount"), str(b.get("why") or ""))
+
+
+@app.get("/api/sites/{ref}/shop/reviews", dependencies=[Depends(require_key)])
+async def sites_shop_reviews(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import shoppay as SP
+    return {"reviews": await asyncio.to_thread(_shop_owner, SP.owner_reviews, tenant, ref)}
+
+
+@app.post("/api/sites/{ref}/shop/reviews/{rid}", dependencies=[Depends(require_key)])
+async def sites_shop_review_hide(ref: str, rid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import shoppay as SP
+    return await asyncio.to_thread(_shop_owner, SP.hide_review, tenant, ref, rid, bool((body or {}).get("hide", True)))
+
+
+# v0.452 DUKAAN PLUS: GST invoices for website orders, marketplace sellers, Shiprocket, opted-in cart reminders, AutoPay
+@app.get("/api/site-app/{site_id}/pay/plans")
+async def site_app_pay_plans(site_id: str, request: Request):
+    return await _site_pub(site_id, "pay_plans", request)
+
+
+@app.post("/api/site-app/{site_id}/pay/plans/{key}/subscribe")
+async def site_app_pay_subscribe(site_id: str, key: str, request: Request):
+    return await _site_pub(site_id, "pay_subscribe", request, key=key)
+
+
+@app.get("/api/site-app/{site_id}/pay/subs")
+async def site_app_pay_subs(site_id: str, request: Request):
+    return await _site_pub(site_id, "pay_subs", request)
+
+
+@app.post("/api/site-app/{site_id}/pay/subs/{sid}/cancel")
+async def site_app_pay_cancel(site_id: str, sid: str, request: Request):
+    return await _site_pub(site_id, "pay_cancel", request, sid=sid)
+
+
+def _pdf_resp(go):
+    from .site import shop as SH
+    try:
+        data, name = go()
+    except SH.ShopError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SHOP_CORS)
+    return Response(data, media_type="application/pdf", headers={**_SHOP_CORS, "Cache-Control": "private, no-store",
+                                                                 "Content-Disposition": f'inline; filename="{name}.pdf"'})
+
+
+@app.get("/api/site-shop/{site_id}/order/{number}/invoice")
+async def site_shop_invoice(site_id: str, number: str, t: str = "", doc: str = ""):
+    """The buyer's own GST invoice / credit note (by the order's private link)."""
+    from .site import shop as SH
+    from .site import shopplus as SPL
+    from .db import session as _ses
+
+    def go():
+        with _ses() as s:
+            SH._mine(s, site_id, number, t)
+        return SPL.invoice_pdf(site_id, number, "credit" if doc == "credit" else "")
+    return await asyncio.to_thread(_pdf_resp, go)
+
+
+@app.get("/api/site-shop/{site_id}/order/{number}/track")
+async def site_shop_courier_track(site_id: str, number: str, t: str = ""):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_call, lambda: SPL.track(site_id, number, t))
+
+
+@app.post("/api/site-shop/{site_id}/vendor/apply")
+async def site_shop_vendor_apply(site_id: str, request: Request):
+    from .site import shopplus as SPL
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SPL.apply_vendor(site_id, b, _ip(request)))
+
+
+@app.get("/api/site-shop/{site_id}/vendor/{token}")
+async def site_shop_vendor_portal(site_id: str, token: str):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_call, lambda: SPL.vendor_portal(site_id, token))
+
+
+@app.post("/api/site-shop/{site_id}/vendor/{token}/product")
+async def site_shop_vendor_product(site_id: str, token: str, request: Request):
+    from .site import shopplus as SPL
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SPL.vendor_add_product(site_id, token, b))
+
+
+@app.get("/api/site-shop/{site_id}/seller", response_class=HTMLResponse)
+async def site_shop_seller_page(site_id: str):
+    """The seller page (apply + the private seller dashboard when ?k=<their link>)."""
+    from .site import shopplus as SPL
+    return HTMLResponse(SPL.SELLER_PAGE.replace("__API__", f"/api/site-shop/{site_id}"),
+                        headers={"Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+                                                            "connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"})
+
+
+@app.post("/api/site-shop/{site_id}/cart/remind")
+async def site_shop_cart_hold(site_id: str, request: Request):
+    from .site import shopplus as SPL
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SPL.hold_cart(site_id, b, _ip(request)))
+
+
+@app.post("/api/site-shop/{site_id}/cart/stop")
+async def site_shop_cart_stop(site_id: str, request: Request):
+    from .site import shopplus as SPL
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SPL.stop_cart(site_id, str(b.get("token") or "")))
+
+
+@app.get("/api/sites/{ref}/shop/orders/{number}/invoice", dependencies=[Depends(require_key)])
+async def sites_shop_invoice(ref: str, number: str, doc: str = "", gstin: str = "", tenant: str = Depends(current_tenant)):
+    """Her tax invoice (buyer GSTIN optional, for a B2B bill) / credit note of a website order."""
+    from .site import shopplus as SPL
+
+    def go():
+        return SPL.invoice_pdf(SPL._site_id(tenant, ref), number, "credit" if doc == "credit" else "", gstin.strip().upper()[:15])
+    return await asyncio.to_thread(_pdf_resp, go)
+
+
+@app.get("/api/sites/{ref}/shop/vendors", dependencies=[Depends(require_key)])
+async def sites_shop_vendors(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.vendors, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/shop/vendors/{vid}", dependencies=[Depends(require_key)])
+async def sites_shop_vendor_set(ref: str, vid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER tap: approve / block a seller, their commission %, their Razorpay Route linked account."""
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.set_vendor, tenant, ref, vid, body or {})
+
+
+@app.post("/api/sites/{ref}/shop/products/{slug}/approve", dependencies=[Depends(require_key)])
+async def sites_shop_product_ok(ref: str, slug: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.approve_product, tenant, ref, slug, bool((body or {}).get("ok", True)))
+
+
+@app.put("/api/sites/{ref}/shop/courier", dependencies=[Depends(require_key)])
+async def sites_shop_courier(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her Shiprocket API user (typed here only, checked with a real login, sealed, returned by no route)."""
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.set_courier, tenant, ref, body or {})
+
+
+@app.get("/api/sites/{ref}/shop/courier", dependencies=[Depends(require_key)])
+async def sites_shop_courier_view(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, lambda: SPL.courier_view(SPL._site_id(tenant, ref)))
+
+
+@app.post("/api/sites/{ref}/shop/orders/{number}/ship", dependencies=[Depends(require_key)])
+async def sites_shop_ship(ref: str, number: str, tenant: str = Depends(current_tenant)):
+    """HER tap: Shiprocket order + AWB + label for a confirmed order."""
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.ship, tenant, ref, number)
+
+
+@app.get("/api/sites/{ref}/shop/carts", dependencies=[Depends(require_key)])
+async def sites_shop_carts(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.carts, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/shop/carts/{cid}/reminded", dependencies=[Depends(require_key)])
+async def sites_shop_cart_reminded(ref: str, cid: str, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.mark_reminded, tenant, ref, cid)
 
 
 @app.get("/api/sites/{ref}/shop", dependencies=[Depends(require_key)])
@@ -9730,20 +9962,110 @@ async def app_api_schema(app_key: str):
     return await asyncio.to_thread(_be_call, lambda: BE.public_schema(BE.by_key(app_key)))
 
 
+def _ua_of(request: Request) -> str:
+    return (request.headers.get("user-agent") or "")[:160]
+
+
 @app.post("/api/app-api/{app_key}/signup")
 async def app_api_signup(app_key: str, request: Request):
+    """v0.455 the sign-up records the DPDP consent tick and this login as a session she can end."""
     from .appmaker import backend as BE
-    body, ip = await _json_body(request), _ip(request)
-    return await asyncio.to_thread(_be_call, lambda: BE.signup(BE.by_key(app_key), str(body.get("email") or ""),
-                                                               str(body.get("password") or ""), str(body.get("name") or ""), ip))
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    return await asyncio.to_thread(_be_call, lambda: SG.password_signup(BE.by_key(app_key), body, ua, ip))
 
 
 @app.post("/api/app-api/{app_key}/login")
 async def app_api_login(app_key: str, request: Request):
+    """v0.455 a staff account with 2FA on gets {need_2fa, ticket} here and finishes at /login/2fa."""
     from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    return await asyncio.to_thread(_be_call, lambda: SG.password_login(BE.by_key(app_key), body, ua, ip))
+
+
+# ---- v0.455 SURAKSHIT LOGIN (App Sahayak Pillar I): phone OTP, Google / Apple checked on the SERVER, sessions she can
+# end, staff 2FA, her own data (DPDP). The engine is the website's (site/security.py) on the same backend id.
+@app.post("/api/app-api/{app_key}/login/otp")
+async def app_api_login_otp(app_key: str, request: Request):
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
     body, ip = await _json_body(request), _ip(request)
-    return await asyncio.to_thread(_be_call, lambda: BE.login(BE.by_key(app_key), str(body.get("email") or ""),
-                                                              str(body.get("password") or ""), ip))
+    return await asyncio.to_thread(_be_call, lambda: SG.otp_start(BE.by_key(app_key), str(body.get("phone") or ""), ip))
+
+
+@app.post("/api/app-api/{app_key}/login/otp/check")
+async def app_api_login_otp_check(app_key: str, request: Request):
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    return await asyncio.to_thread(_be_call, lambda: SG.otp_verify(BE.by_key(app_key), body, ua, ip))
+
+
+@app.get("/api/app-api/{app_key}/login/nonce")
+async def app_api_login_nonce(app_key: str):
+    """One single-use nonce per Google / Apple attempt (the app passes it to the provider, the server checks it back)."""
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    return await asyncio.to_thread(_be_call, lambda: SG.nonce(BE.by_key(app_key)))
+
+
+@app.post("/api/app-api/{app_key}/login/{provider}")
+async def app_api_login_social(app_key: str, provider: str, request: Request):
+    """Google / Apple: the app sends the provider's ID token; this server checks its signature, audience and nonce."""
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    if provider == "2fa":
+        return await asyncio.to_thread(_be_call, lambda: SG.two_fa_login(BE.by_key(app_key), str(body.get("ticket") or ""),
+                                                                         str(body.get("code") or ""), ua, ip))
+    if provider not in ("google", "apple"):
+        return JSONResponse({"ok": False, "error": "login: google / apple / 2fa"}, status_code=404)
+    return await asyncio.to_thread(_be_call, lambda: SG.social_login(BE.by_key(app_key), provider, body, ua, ip))
+
+
+@app.get("/api/app-api/{app_key}/security")
+async def app_api_security(app_key: str, request: Request):
+    """The member's own security page in the app: her logins, 2FA, what consent she gave."""
+    from .appmaker import sign as SG
+
+    def go():
+        r, w = _be_app(app_key, request)
+        tok = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        return SG.my_security(r, w, tok)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/security/{what}")
+async def app_api_security_do(app_key: str, what: str, request: Request):
+    from .appmaker import sign as SG
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        if what == "end":
+            return SG.end_session(r, w, str(body.get("id") or ""))
+        if what == "end-all":
+            return SG.end_everywhere(r, w)
+        if what == "2fa-start":
+            return SG.two_fa_start(r, w)
+        if what == "2fa-on":
+            return SG.two_fa_confirm(r, w, str(body.get("code") or ""))
+        if what == "2fa-off":
+            return SG.two_fa_off(r, w, str(body.get("code") or ""))
+        raise SG.SignError("security: end / end-all / 2fa-start / 2fa-on / 2fa-off", 404)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/my-data")
+async def app_api_my_data(app_key: str, request: Request):
+    """DPDP: this account downloads everything of its own, from inside the app."""
+    from .appmaker import sign as SG
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return SG.my_data(r, w)
+    return await asyncio.to_thread(_be_call, go)
 
 
 @app.get("/api/app-api/{app_key}/me")
@@ -10721,6 +11043,34 @@ async def app_admin_page(app_key: str):
     return FileResponse(STATIC / "appadmin" / "index.html", media_type="text/html",
                         headers={"Content-Security-Policy": _ADMIN_CSP, "Cache-Control": "no-cache", "X-Frame-Options": "DENY",
                                  "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/apps/{ref}/sign", dependencies=[Depends(require_key)])
+async def apps_sign(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.455 her login + security card: which ways are on, her client ids (masked where long), the permissions matrix,
+    the audit log, and the last security gate."""
+    from .appmaker import gates as GT
+    from .appmaker import sign as SG
+
+    def go():
+        r = _be_data(tenant, ref)
+        return {**SG.view(r), "gate": GT.last(r)}
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.put("/api/apps/{ref}/sign", dependencies=[Depends(require_key)])
+async def apps_sign_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import sign as SG
+    return await asyncio.to_thread(_be_owner_call, lambda: SG.save_settings(_be_data(tenant, ref), body or {}))
+
+
+@app.post("/api/apps/{ref}/security/check", dependencies=[Depends(require_key)])
+async def apps_security_check(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """v0.455 run the security gates on the newest build (a failing gate blocks the store upload)."""
+    from .appmaker import gates as GT
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call,
+                                   lambda: GT.scan(_be_owner(tenant, ref), str(b.get("platform") or "android")))
 
 
 @app.get("/api/apps/{ref}/family", dependencies=[Depends(require_key)])

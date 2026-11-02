@@ -514,8 +514,10 @@ class _DevTaskPageState extends State<DevTaskPage> {
   }
 }
 
-/// `devsahayak_task` and `devsahayak_push`: one card per task (key data['task']['id']), updated in place.
+/// `devsahayak_task`, `devsahayak_push` and `devsahayak_plan`: one card per task (key data['task']['id']), updated in place.
 /// A 'ready' task (public repo / ask_before_pr) shows "Haan, PR kholo": only this tap opens the PR.
+/// v0.451 ECC PHASE 4: a 'plan_wait' task shows the plan (what will change, in what order, how we know it is done) and
+/// "Haan, shuru karo" - no file is touched until that tap.
 class DevTaskCard extends StatefulWidget {
   const DevTaskCard({super.key, required this.app, required this.data, this.onDone});
   final Santosh app;
@@ -530,6 +532,16 @@ class _DevTaskCardState extends State<DevTaskCard> {
   Map<String, dynamic>? _after;
 
   Map<String, dynamic> get _t => _after ?? _m(widget.data['task']);
+
+  Future<void> _planOk() async {
+    setState(() => _busy = true);
+    final r = await _call(context, widget.app, 'POST', '/api/devsahayak/tasks/${_s(_t['id'])}/plan-ok', {'hash': _s(_t['hash'])});
+    if (mounted) setState(() {
+      _busy = false;
+      if (r != null && _s(r['id']).isNotEmpty) _after = r;
+    });
+    widget.onDone?.call();
+  }
 
   Future<void> _push() async {
     setState(() => _busy = true);
@@ -546,9 +558,11 @@ class _DevTaskCardState extends State<DevTaskCard> {
     final t = _t;
     final ci = _m(t['ci']);
     final ready = t['status'] == 'ready' && _s(t['hash']).isNotEmpty;
+    final plan = _m(t['plan']);
+    final planWait = t['status'] == 'plan_wait' && _s(t['hash']).isNotEmpty;
     final say = _s(widget.data['say']);
     return Glass(
-      border: ready ? C.accent : (t['status'] == 'refused' || t['status'] == 'checks_failed' ? C.bad : null),
+      border: (ready || planWait) ? C.accent : (t['status'] == 'refused' || t['status'] == 'checks_failed' ? C.bad : null),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Icon(Icons.terminal_rounded, color: C.accent),
@@ -564,6 +578,29 @@ class _DevTaskCardState extends State<DevTaskCard> {
           const SizedBox(height: 6),
           Text(_s(t['explain']), style: const TextStyle(fontSize: 12.5, height: 1.35)),
         ],
+        if (plan.isNotEmpty) ...[
+          if (_s(plan['goal']).isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(_s(plan['goal']), style: const TextStyle(fontSize: 13, height: 1.35, fontWeight: FontWeight.w600)),
+          ],
+          for (final f in _list(plan['files']).take(12))
+            Text('• ${_s(f['path'])}${f['new'] == true ? ' (nayi)' : ''} — ${_s(f['why'])}',
+                style: const TextStyle(fontSize: 12, height: 1.3)),
+          if (_list(plan['steps']).isNotEmpty) ...[
+            const SizedBox(height: 4),
+            const Text('Kadam', style: TextStyle(fontSize: 12, color: C.muted)),
+            for (var i = 0; i < _list(plan['steps']).length && i < 12; i++)
+              Text('${i + 1}. ${_s(_list(plan['steps'])[i])}', style: const TextStyle(fontSize: 12, height: 1.3)),
+          ],
+          if (_list(plan['done_when']).isNotEmpty) ...[
+            const SizedBox(height: 4),
+            const Text('Kaam poora kab mana jayega', style: TextStyle(fontSize: 12, color: C.muted)),
+            for (final d in _list(plan['done_when']).take(8))
+              Text('✓ ${_s(d)}', style: const TextStyle(fontSize: 12, height: 1.3)),
+          ],
+          for (final q in _list(plan['questions']).take(3))
+            Text('? ${_s(q)}', style: const TextStyle(fontSize: 12.5, height: 1.3, color: C.warn)),
+        ],
         for (final f in _list(t['files']))
           Text('• ${_s(f['path'])}  +${f['added'] ?? 0} −${f['removed'] ?? 0}${f['new'] == true ? ' (nayi)' : ''}',
               style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
@@ -575,7 +612,23 @@ class _DevTaskCardState extends State<DevTaskCard> {
           Text(_s(ci['say']), style: TextStyle(fontSize: 12.5, color: _ciColor(_s(ci['state'])))),
         if (_s(t['risk']).isNotEmpty) Text('Khatra: ${_s(t['risk'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 8),
-        if (ready)
+        if (planWait)
+          Row(children: [
+            Expanded(child: GradientButton(label: 'Haan, shuru karo', icon: Icons.play_arrow_rounded, height: 44, onTap: _busy ? null : _planOk)),
+            const SizedBox(width: 8),
+            Expanded(
+                child: GlassButton(
+                    label: 'Mana',
+                    icon: Icons.close_rounded,
+                    height: 44,
+                    onTap: _busy
+                        ? null
+                        : () async {
+                            await _call(context, widget.app, 'POST', '/api/devsahayak/tasks/${_s(t['id'])}/cancel');
+                            widget.onDone?.call();
+                          })),
+          ])
+        else if (ready)
           Row(children: [
             Expanded(child: GradientButton(label: 'Haan, PR kholo', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : _push)),
             const SizedBox(width: 8),

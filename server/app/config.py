@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     hard_check_timeout_s: float = 60.0      # v0.436 a slow reviewer never blocks the answer
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
+    goal_verify_links: bool = True           # v0.443 the gate may reach the link the job produced (one HEAD).
+    #                                         Off = links read as "unknown" (tests / an offline box)
+    goal_verify: bool = True                # v0.443 DONE = VERIFIED: `kaam_plan finish done` passes verify.gate
+    #                                         first (files on disk, pages ready, links alive, step checks) - a
+    #                                         failure reopens the step instead of closing the card on a claim
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
     doc_hold_drafts: bool = True            # v0.315 EK HI FILE: a doc_studio draft with QA problems is held for one fix, not shown
     dev_ci_loop: bool = True                # v0.351 a repo with CI gets a DRAFT PR; Hoola fixes until her CI passes, then marks it ready
@@ -72,6 +77,16 @@ class Settings(BaseSettings):
     dev_review_steps: int = 25              # v0.377 a PR review explores at most this many steps (read-only tools)
     dev_review_minutes: int = 10            # ... and this many minutes, then the one-shot review is the fallback
     dev_spec_review: bool = True            # v0.402 ECC specialists in PR reviews; ON since the review card (same 8/8 caught, false alarms 8 -> 4, nits 3 -> 0)
+    dev_lab: bool = False                   # v0.456 PRAYOGSHALA: Hoola may run her declared checks in the Docker box. OFF until `python -m app.devlab check` passes on the VPS
+    dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
+    dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
+    dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
+    dev_plan_gate: bool = True              # ... and a LARGE job waits for her Haan on that plan (ECC's Gate 1)
+    dev_plan_steps: int = 18                # ... the plan pass explores at most this many steps
+    dev_plan_minutes: int = 8               # ... and at most this long
+    dev_fix_proof: bool = True              # v0.447 ECC PHASE 3: a fix's test is pushed FIRST, so her CI proves the bug (red) before the fix lands
+    dev_self_review: bool = True            # v0.445 ECC PHASE 2: Hoola reviews its OWN PR before marking it ready for review
+    dev_self_rounds: int = 2                # ... its own review may send the work back for a fix this many times
     dev_spec_fix: bool = True               # v0.402 ECC fixer specialist in CI fix rounds; ON since the fix card (6/6 + 6/6 with it, no harm)
     dev_spec_focus_lines: int = 150         # a PR this big (added lines) gets every focused pass
     dev_spec_focus_steps: int = 12          # steps for one focused pass

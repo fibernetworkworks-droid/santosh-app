@@ -34,8 +34,20 @@ from ..db import Base, new_id, now, session
 from . import service as G
 
 log = logging.getLogger("santosh.gamedesk")
-PROTOCOLS = ("2025-06-18", "2025-03-26", "2024-11-05")
+# v0.447: MCP's CURRENT revision is 2026-07-28, which REMOVED the `initialize` handshake - a request now declares its
+# version in `_meta["io.modelcontextprotocol/protocolVersion"]` (and, on HTTP, the MCP-Protocol-Version header), and
+# `server/discover` is MUST-implement. The spec's own compatibility table: a dual-era client falls back to `initialize`
+# and works against a legacy server, but a MODERN-ONLY client FAILS. So both eras are served here.
+PV_KEY = "io.modelcontextprotocol/protocolVersion"
+CLIENT_KEY = "io.modelcontextprotocol/clientInfo"
+MODERN = ("2026-07-28",)
+LEGACY = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
+PROTOCOLS = MODERN + LEGACY
+UNSUPPORTED = -32022
 SERVER_INFO = {"name": "hoola-gamedesk", "title": "Hoola Game Desk", "version": "1.0.0"}
+INSTRUCTIONS = ("Hoola Game Desk: her Hoola-built game projects (tasks, Game Bible, bugs, Ask Hoola) and her big-studio "
+                "projects in Unity / Unreal / Godot (hoola_studio_*: next task + a checked proposal, report the editor's "
+                "compile result). The server never writes her files: a proposal is applied only by her, in her editor.")
 _ASK_RATE: dict[str, deque] = defaultdict(deque)
 TOKEN_PREFIX = "hoola_ed_"
 
@@ -170,9 +182,12 @@ def _rate(tid: str, limit: int = 30, window: float = 3600.0) -> bool:
 
 
 def call_tool(tenant: str, tid: str, name: str, args: dict) -> Any:
+    from . import bigstudio as BIG
     from . import qa as Q
     from . import studio as S
     args = args if isinstance(args, dict) else {}
+    if name in BIG.NAMES:                                # v0.433 big-studio mode (Unity / Unreal / outside Godot)
+        return BIG.call_tool(tenant, tid, name, args)
     if name == "hoola_projects":
         out = []
         for p in S.studios(tenant):
@@ -220,26 +235,52 @@ def _err(rid: Any, code: int, msg: str) -> dict:
     return {"jsonrpc": "2.0", "id": rid, "error": {"code": code, "message": msg}}
 
 
-def handle_one(tenant: str, tid: str, msg: Any) -> dict | None:
+def _asked_version(msg: dict, header: str = "") -> str:
+    """The protocol version a request declares: `_meta` first (the spec's own place), then the HTTP header."""
+    meta = (msg.get("params") or {}).get("_meta") or {}
+    v = meta.get(PV_KEY) if isinstance(meta, dict) else None
+    if not v and isinstance(msg.get("_meta"), dict):
+        v = msg["_meta"].get(PV_KEY)
+    return str(v or header or "")
+
+
+def discover() -> dict[str, Any]:
+    """server/discover - MUST-implement in the current revision: supported versions, capabilities and identity at once."""
+    from . import bigstudio as BIG
+    return {"resultType": "complete", "supportedVersions": list(PROTOCOLS),
+            "capabilities": {"tools": {"listChanged": False}},
+            "instructions": INSTRUCTIONS, "ttlMs": 3600000, "cacheScope": "public",
+            "_meta": {"io.modelcontextprotocol/serverInfo": SERVER_INFO},
+            "tools": [t["name"] for t in TOOLS + BIG.TOOLS]}
+
+
+def handle_one(tenant: str, tid: str, msg: Any, header: str = "") -> dict | None:
     if not isinstance(msg, dict) or msg.get("jsonrpc") != "2.0" or not isinstance(msg.get("method"), str):
         return _err(msg.get("id") if isinstance(msg, dict) else None, -32600, "Invalid Request")
     rid, method, params = msg.get("id"), msg["method"], msg.get("params") or {}
     if "id" not in msg:                                  # a notification: no answer
         return None
+    want = _asked_version(msg, header)
+    if want and want not in PROTOCOLS:
+        return {"jsonrpc": "2.0", "id": rid, "error": {"code": UNSUPPORTED, "message": "Unsupported protocol version",
+                                                       "data": {"supported": list(PROTOCOLS), "requested": want}}}
+    if method == "server/discover":
+        return {"jsonrpc": "2.0", "id": rid, "result": discover()}
     if method == "initialize":
         want = str((params or {}).get("protocolVersion") or "")
         return {"jsonrpc": "2.0", "id": rid, "result": {
             "protocolVersion": want if want in PROTOCOLS else PROTOCOLS[0], "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": SERVER_INFO,
-            "instructions": "Hoola Game Desk: her game projects, tasks, Game Bible, bugs, and Ask Hoola. Read-only except "
-                            "adding a To-do task. Answers never change her files."}}
+            "instructions": INSTRUCTIONS}}
     if method == "ping":
         return {"jsonrpc": "2.0", "id": rid, "result": {}}
     if method == "tools/list":
-        return {"jsonrpc": "2.0", "id": rid, "result": {"tools": TOOLS}}
+        from . import bigstudio as BIG
+        return {"jsonrpc": "2.0", "id": rid, "result": {"tools": TOOLS + BIG.TOOLS}}
     if method == "tools/call":
         name = str((params or {}).get("name") or "")
-        if name not in {t["name"] for t in TOOLS}:
+        from . import bigstudio as BIG
+        if name not in {t["name"] for t in TOOLS} | BIG.NAMES:
             return _err(rid, -32602, f"Unknown tool: {name}")
         try:
             out = call_tool(tenant, tid, name, (params or {}).get("arguments") or {})
@@ -254,13 +295,13 @@ def handle_one(tenant: str, tid: str, msg: Any) -> dict | None:
     return _err(rid, -32601, f"Method not found: {method}")
 
 
-def handle(tenant: str, tid: str, body: Any) -> Any:
+def handle(tenant: str, tid: str, body: Any, header: str = "") -> Any:
     if isinstance(body, list):
         if not body:
             return _err(None, -32600, "Invalid Request")
-        out = [r for r in (handle_one(tenant, tid, m) for m in body[:20]) if r is not None]
+        out = [r for r in (handle_one(tenant, tid, m, header) for m in body[:20]) if r is not None]
         return out or None
-    return handle_one(tenant, tid, body)
+    return handle_one(tenant, tid, body, header)
 
 
 # ================================================================ the Godot editor plugin

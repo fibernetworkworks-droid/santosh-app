@@ -7,6 +7,7 @@ body, volume, the size the model promised vs the real box) -> up to 2 fixes from
 kharcha), and nothing is sent anywhere."""
 from __future__ import annotations
 
+import math
 import hashlib
 import hmac
 import json
@@ -125,7 +126,7 @@ def view(r: EngProject) -> dict[str, Any]:
         vs.append({**{k: v.get(k) for k in ("n", "title", "size", "bbox", "volume_mm3", "checks", "assumed", "notes",
                                             "at", "seconds", "words", "plan", "material", "mass_g", "com", "parts",
                                             "print", "review", "expect", "analysis", "cam", "sheet", "dfm",
-                                            "kinematics")},
+                                            "kinematics", "gears", "gear_duty")},
                    "files": files})
     return {"id": r.id, "kind": r.kind, "title": r.title or "Part", "brief": r.brief, "status": r.status, "stage": r.stage,
             "error": r.error, "versions": vs, "latest": vs[-1] if vs else None,
@@ -386,6 +387,30 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
                             "note": f"free {r['free'][0]:g} .. {r['free'][1]:g} {r['unit']} (asked {r['asked'][0]:g} .. "
                                     f"{r['asked'][1]:g})" + "".join(f"; hits {' / '.join(h['parts'])} at {h['at']:g}"
                                                                     for h in hits)})
+    for g in res.get("gears") or []:                 # v0.432 the gear as DRAWN: undercut is a shape problem
+        if g.get("undercut"):
+            out.append({"name": f"Gear {g['teeth']}T x {g['module']}mm: undercut", "ok": False,
+                        "note": f"the hob cuts into the working flank ({g['teeth']} teeth, needs about "
+                                f"{g['teeth_for_no_undercut']:g} without a profile shift)"})
+            probs.append(f"the {g['teeth']}-tooth gear is UNDERCUT: the cutter eats into the part of the flank that "
+                         f"does the driving, so the tooth is weaker and runs rougher. Use at least "
+                         f"{math.ceil(g['teeth_for_no_undercut'])} teeth, or keep the tooth count and pass "
+                         "shift=0.5 to H.spur_gear (a profile shift), or a bigger pressure angle")
+        elif g.get("below_classical_limit"):
+            out.append({"name": f"Gear {g['teeth']}T x {g['module']}mm", "ok": True,
+                        "note": f"below the classical {g['teeth_for_no_undercut']:g}-tooth limit, but the real hob "
+                                "fillet does not cut the flank here - no undercut measured on the tooth"})
+    for gd in res.get("gear_duty") or []:            # v0.432 will the teeth last? ISO 6336
+        if gd.get("error"):
+            out.append({"name": "Gear duty", "ok": False, "note": gd["error"]})
+            continue
+        tag = f"Gear {gd['pinion_teeth']}/{gd['wheel_teeth']}T x {gd['module']}mm"
+        for r in gd.get("rows") or []:
+            out.append({"name": f"{tag}: {r['check']}", "ok": bool(r["ok"]), "note": f"{r['measured']} ({r['limit']})"})
+            if not r["ok"]:
+                probs.append(f"gear {gd['pinion_teeth']}/{gd['wheel_teeth']} teeth, module {gd['module']}: "
+                             f"{r['check']} - {r['measured']}, limit {r['limit']}. {r['fix']}. Keep her fixed sizes "
+                             "and the H.gear_duty call unchanged")
     for cname, cm_ in (res.get("cams") or {}).items():   # v0.425 the cam designer's checks
         for r in cm_.get("rows") or []:
             out.append({"name": f"Cam {cname}: {r['check']}", "ok": bool(r["ok"]), "note": f"{r['measured']} ({r['limit']})"})
@@ -434,6 +459,27 @@ def _weak(ana: dict[str, Any]) -> list[str]:
                        f"gives a fatigue safety factor {fat['fatigue_sf']} but she needs {fat['need_sf']} for "
                        f"{fat['target_cycles']:.0e} cycles: lower the stress there (bigger fillet radius, thicker section, "
                        "no sharp notch / hole at the hot spot); keep H.analyze unchanged")
+        if st.get("kind") == "plastic" and st.get("passes") is False:       # v0.450 it bends for good, or folds up
+            hl = st.get("at_her_load") or {}
+            if not hl:
+                out.append(f"it COLLAPSES under her own load (it gives way at about x{st.get('collapse_factor')} of "
+                           "it): this is not a small overload, the part has to carry the load a different way - a "
+                           "deeper section, a rib along the bending direction, a shorter span, or more material at "
+                           "the place that is yielding. Keep her fixed sizes and the H.analyze call unchanged")
+            else:
+                out.append(f"it keeps a PERMANENT BEND of {hl.get('permanent_set_mm')} mm after her load comes off "
+                           f"(she allows {st.get('max_set_mm')} mm; {hl.get('yielded_pct')}% of the part has yielded "
+                           f"and it collapses at about x{st.get('collapse_factor') or st.get('collapse_at_least')}): "
+                           "take the stress below yield where it is yielding - thicker there, a bigger fillet, a rib, "
+                           "or a stronger material. Keep her fixed sizes and the H.analyze call unchanged")
+        if st.get("kind") == "buckling" and st.get("passes") is False:      # v0.432 slender: it folds, not breaks
+            out.append(f"it FOLDS (buckles) too easily: the buckling load factor is {st['load_factor']:.3g} but it must "
+                       f"be at least {st['need_lf']:g}"
+                       + (f" - at her own load it already folds" if st.get("buckles") else "")
+                       + ". A slender part in compression folds long before the stress breaks it, so thickening it a "
+                       "little will not do: make the section DEEPER across the folding direction (the second moment "
+                       "goes as depth^3), use a tube / box instead of a flat bar, shorten the free length, or add a "
+                       "brace / tie in the middle. Keep her fixed sizes, holes and the H.analyze call unchanged")
         if st.get("kind") == "flow" and st.get("passes") is False:
             out.append(f"flow: pressure drop {st['pressure_drop_Pa']:.4g} Pa is above her limit {st['max_dp_pa']:g} Pa: "
                        "widen / shorten the channel, round sharp bends; keep H.analyze unchanged")
@@ -509,9 +555,10 @@ def _after_files(vdir: Path, res: dict[str, Any], ana: dict[str, Any], title: st
             report.flat_png(res["sheet"]).save(vdir / "flat.png", "PNG", optimize=True)
         except Exception as e:
             log.info("flat pattern: %s", e)
-    if ana.get("studies") or cam or res.get("dfm"):
+    if ana.get("studies") or cam or res.get("dfm") or res.get("gear_duty"):
         (vdir / "analysis.pdf").write_bytes(report.analysis_pdf(title, {**res, "material": material},
-                                                                ana.get("studies") or [], pics, cam, res.get("dfm")))
+                                                                ana.get("studies") or [], pics, cam, res.get("dfm"),
+                                                                res.get("gear_duty")))
 
 
 def printability(mesh: dict[str, Any], bbox: dict[str, Any]) -> dict[str, Any]:
@@ -713,7 +760,8 @@ def _run(pid: str) -> None:
            "checks": chk, "assumed": d.get("assumed", ""), "notes": d.get("notes", ""), "words": words,
            "plan": d.get("plan", ""), "material": material, "mass_g": mass, "com": res.get("com"), "parts": parts,
            "print": pr, "review": review, "expect": res.get("expect") or [], "sheet": res.get("sheet"),
-           "dfm": res.get("dfm"),
+           "dfm": res.get("dfm"), "gears": res.get("gears"),
+           "gear_duty": [{k: v for k, v in g.items() if k != "root"} for g in res.get("gear_duty") or []] or None,
            "kinematics": {k: v for k, v in (res.get("kinematics") or {}).items() if k != "urdf"} or None,
            "analysis": [_ana_card(st) for st in ana.get("studies") or []],
            "cam": {k: v for k, v in (ana.get("cam") or {}).items() if k != "paths"} or None,
@@ -728,6 +776,9 @@ def _run(pid: str) -> None:
               + "".join(f", {line}" for line in _ana_lines(ana))
               + (f", banane ki jaanch ({res['dfm']['process']}): {res['dfm']['fails']} fail / {res['dfm']['reviews']} dekhna"
                  if (res.get("dfm") or {}).get("rows") else "")
+              + "".join(f", gear {g['pinion_teeth']}/{g['wheel_teeth']}T: daant {g['bending_sf']:.2f}, "
+                        f"ghisav {g['pitting_sf']:.2f} safety" for g in (res.get("gear_duty") or [])[:2]
+                        if not g.get("error"))
               + (f" (jaanch mein dikkat: {', '.join(bad)})" if bad else "")
               + ". STEP, STL, 3MF, drawing CAD Desk par hain.")
 
@@ -739,7 +790,10 @@ def _ana_card(st: dict[str, Any]) -> dict[str, Any]:
                                    "t_max_C", "t_min_C", "frequencies_hz", "resonance", "mesh", "error", "glued_assembly",
                                    "fatigue", "pressure_drop_Pa", "reynolds", "regime", "valid", "max_speed_mm_s",
                                    "mass_balance_pct", "flow_lpm", "fluid", "contact", "friction", "parts", "contacts",
-                                   "bolts", "separated", "slipped", "valid")
+                                   "bolts", "separated", "slipped", "valid", "load_factor", "factors", "need_lf",
+                                   "buckles", "critical_load_N", "yield_factor", "governs", "not_a_buckling_case",
+                                   "note", "first_yield_factor", "collapse_factor", "collapse_at_least", "steps",
+                                   "at_her_load", "max_set_mm", "collapse_note", "yield_MPa", "hardening_MPa")
             if st.get(k) is not None}
     keep["lines"] = summary_rows(st)
     return keep
@@ -757,6 +811,13 @@ def _ana_lines(ana: dict[str, Any]) -> list[str]:
         elif st["kind"] == "static":
             out.append(f"safety factor {st['safety_factor']:g} (max jhukav {st['max_disp_mm']:.3g} mm)"
                        + (f", fatigue SF {st['fatigue']['fatigue_sf']:g}" if st.get("fatigue") else ""))
+        elif st["kind"] == "plastic":
+            hl = st.get("at_her_load") or {}
+            out.append(f"pakka jhukav {hl.get('permanent_set_mm', '-')} mm, collapse x"
+                       f"{st.get('collapse_factor') or st.get('collapse_at_least')}")
+        elif st["kind"] == "buckling":
+            out.append(f"buckling factor {st['load_factor']:.3g}" if st.get("load_factor")
+                       else "buckling: compression mein nahi hai")
         elif st["kind"] == "thermal":
             out.append(f"max garmi {st['t_max_C']:.3g} °C")
         elif st["kind"] == "flow":
