@@ -16325,3 +16325,27 @@ Owner: "GO STEP 3" (step 3 of the 7-step hard-reasoning plan: a calculator / ana
   now calls pylab for every figure (no key here) - step 5 (self-check) and step 7 (scored set) cover that.
   Version 0.430.0 (pubspec 0.430.0+474, console ?v=0.430.0, pins). Server-only deploy; her VPS needs the pylab libraries
   (`app.pylab.service.status()` / the Shiksha pylab status route shows them).
+
+## v0.431.0 FRICTION + BACKLASH + CAM CONTACT (2 Nov 2026)
+Owner: "friction, backlash and cam contact force — fix and develop".
+- FRICTION (`dynamics.BEARINGS`, `friction_of`): H.joint(bearing='ball' 0.0015 | 'roller' 0.002 | 'needle' 0.0025 | 'bush' 0.08 |
+  'dry' 0.2 | 'rail' 0.005 | 'slide' 0.12, pin_d mm (10 default), friction = constant N·m / N, damping). In the MuJoCo move:
+  mu x |radial joint load| (mj_rnePostConstraint cfrc_int) x pin radius + constant (tanh through zero speed) + damping,
+  applied on every such joint, fed forward to the motors; rows Friction <joint> (peak, J lost) + Energy lost to friction (%).
+  URDF `<dynamics>`, SDF `<dynamics>`, MJCF damping / frictionloss written. Checked: dry pin 20 mm = 0.2 m g r exactly.
+- BACKLASH: H.couple(..., backlash=deg | mm at the follower). `kinematics.backlash_play`: tip play = angle x farthest
+  downstream point from the axis, summed vs H.robot(accuracy_mm) -> problem -> redesign. In the sim the coupling's
+  equality is dropped and replaced by a gap with a stiff mesh (150 Hz on the follower's inertia, flanks only push), the
+  follower starting on its loaded flank: lost motion, knocks (flank changes), peak mesh torque. Slow move: 0 knocks,
+  lost motion = half the play; fast move: knocks + a mesh spike.
+- CAM CONTACT (`cams.contact`, `kinematics.cam_contact`): follower force from the MuJoCo move (fine per-angle samples,
+  whole turn covered) else m (s'' w² − g·u); return spring designed (smallest preload per stiffness, x1.3 on the
+  pull-off, floor 2 % / 0.5 N) or hers checked ("Follower stays on the cam" fails = jump -> redesign); normal force
+  N = push / (cos φ − μ sin φ ...); Hertz line contact (roller + profile radius, cam thickness) vs CONTACT_ALLOW
+  (steel 640 = AGMA 2001 grade 1 at ~200 HB, hardened 1240, ... her contact_allow_mpa wins); guide jam (≥ 0.5);
+  cam torque incl. guide friction; camcurve.png gains the push / normal force panel.
+- FIX: H.robot(move_time_s=...) was in the v0.426 guide but robot() refused it - now accepted (0.05..120 s).
+- Tests `test_v0427_friction_backlash_contact.py` (Hertz = Shigley eq. 3-73/3-74, spring, jam, MuJoCo vs motion force,
+  friction = mu m g r, tip play, knocks, desk redesigns a jumping follower).
+- NOT VERIFIED: allowables / friction coefficients are published starting points; no gear-tooth flex beyond the mesh
+  spring, no Stribeck static-friction peak, roller slip not modelled.
