@@ -57,7 +57,7 @@ indicf5_image = (_base.pip_install("git+https://github.com/ai4bharat/IndicF5.git
                  .add_local_python_source("registry"))
 parler_image = _base.pip_install("git+https://github.com/huggingface/parler-tts.git", "soundfile", "huggingface_hub").add_local_python_source("registry")
 face_image = (
-    modal.Image.debian_slim(python_version="3.10")
+    modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg", "git", "libgl1", "libglib2.0-0")
     .pip_install("torch==2.0.1", "torchvision==0.15.2", "torchaudio==2.0.2", index_url="https://download.pytorch.org/whl/cu118")
     .run_commands(
