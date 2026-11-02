@@ -1,4 +1,4 @@
-"""v0.440 DONE = VERIFIED (long-task report items 1 + 2, RCA fix 7).
+"""v0.443 DONE = VERIFIED (long-task report items 1 + 2, RCA fix 7).
 
 1. `kaam_plan finish done` no longer closes a goal card on the model's word: `verify.gate` checks in CODE that the
    files / pages / links / datasets in `made` are really there and that every step's own `check` holds. A failure
@@ -113,6 +113,8 @@ def test_link_check_404_is_a_failure_but_unreachable_is_unknown(env, monkeypatch
             return _R(self.code)
 
     import httpx
+    monkeypatch.setattr(get_settings(), "goal_verify_links", True)   # conftest keeps the suite offline; this test
+    #                                                                 is the link checker itself (httpx is faked)
     monkeypatch.setattr(httpx, "Client", lambda **k: _C(200))
     assert V.check_link("https://x.in/a")["state"] == "ok"
     monkeypatch.setattr(httpx, "Client", lambda **k: _C(404))
@@ -126,6 +128,9 @@ def test_link_check_404_is_a_failure_but_unreachable_is_unknown(env, monkeypatch
         raise RuntimeError("dns")
     monkeypatch.setattr(httpx, "Client", boom)
     assert V.check_link("https://x.in/a")["state"] == "unknown"
+    monkeypatch.setattr(get_settings(), "goal_verify_links", False)
+    r = V.check_link("https://x.in/a")
+    assert r["state"] == "unknown" and "band hai" in r["why"]        # the switch: no call at all
 
 
 def test_dataset_check(env):

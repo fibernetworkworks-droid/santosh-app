@@ -1,4 +1,4 @@
-"""v0.439 LONG CARD (long-task report item 0b): how often does Hoola FINISH a long job - measured on the end state,
+"""v0.443 LONG CARD (long-task report item 0b): how often does Hoola FINISH a long job - measured on the end state,
 never on the model's own word.
 
 Each ask of `long_asks.ASKS` runs k times (default 3) through the REAL `santosh.run_turn` on its own throw-away tenant

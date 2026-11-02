@@ -2,7 +2,7 @@
    | tools [--live] [--fresh] [--limit N] [--brain claude|glm] [--label "..."]   (v0.245 tool-choice card)
    | longjobs [--hours 24]   (v0.347 how her real long jobs went)
    | longcard [--check | --status | --k 3 --only id,id --limit N --parallel 3 --max-min 75 --label x]
-     (v0.439 LONG CARD: 25 long jobs x k through the real loop, judged on the end state)
+     (v0.443 LONG CARD: 25 long jobs x k through the real loop, judged on the end state)
    | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
    | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
@@ -49,7 +49,7 @@ def _hardcard(argv: list[str]) -> int:
 
     def arg(name, default=""):
         return argv[argv.index(name) + 1] if name in argv and len(argv) > argv.index(name) + 1 else default
-    if "--ping" in argv:                   # v0.439 one tiny real call per model + shape: which part does the API refuse?
+    if "--ping" in argv:                   # v0.443 one tiny real call per model + shape: which part does the API refuse?
         print("\n".join(asyncio.run(H.ping())))
         return 0
     items = H.pick(only=arg("--only"), limit=int(arg("--limit", "0") or 0), quick="--quick" in argv)
@@ -88,7 +88,7 @@ def _longcard(argv: list[str]) -> int:
 
 
 def main(argv: list[str]) -> int:
-    if argv and argv[0] == "longcard":      # v0.439 LONG CARD (real long jobs: costs model calls unless --check)
+    if argv and argv[0] == "longcard":      # v0.443 LONG CARD (real long jobs: costs model calls unless --check)
         return _longcard(argv[1:])
     if argv and argv[0] == "review":        # v0.401 PR review card (old vs ECC specialists)
         from . import reviewcard as RC

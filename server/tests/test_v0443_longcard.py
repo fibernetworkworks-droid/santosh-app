@@ -1,4 +1,4 @@
-"""v0.439 LONG CARD (long-task report item 0b): the set is valid, the end-state reader reads real files, the scorer
+"""v0.443 LONG CARD (long-task report item 0b): the set is valid, the end-state reader reads real files, the scorer
 tells finished / false done / false stuck / stopped-by-a-cap apart, pass^k is strict, a real run_turn is judged on
 what it left behind, the card cleans up, and the live server's goal sweeps never touch the card's tenants."""
 import asyncio

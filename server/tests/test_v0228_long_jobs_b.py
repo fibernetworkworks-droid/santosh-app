@@ -123,13 +123,17 @@ def test_milestones_push_at_most_twice_never_every_step(gz):  # noqa: F811
 
 
 # ---------------------------------------------------------------- (4) the four-part report
-def test_finish_builds_the_four_part_report(gz):  # noqa: F811
+def test_finish_builds_the_four_part_report(gz, monkeypatch):  # noqa: F811
     from app import push
     from app.agent import goal
     conv = gz["conv"]
     v = goal.set_goal("default", conv, "Report", ["data", "draft", "bhejo"], origin="owner")
     goal.mark_step("default", v["id"], 1, "done", "https://docs.google.com/x/abc")
     goal.mark_step("default", v["id"], 2, "done", "report.pdf bana")
+    # v0.443 DONE = VERIFIED: a `done` finish is gated, and this test's Drive link is made up (the gate is right
+    # to hold that). The report itself is what this test is about, so the gate is switched off for this one call.
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "goal_verify", False)
     out = goal.finish("default", v["id"], "done", "Report taiyaar", made=["https://drive.google.com/file/d/9"],
                       your_turn="Report dekh ke haan bolo")
     r = out["report"]

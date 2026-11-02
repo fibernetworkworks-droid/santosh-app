@@ -60,7 +60,9 @@ class Settings(BaseSettings):
     hard_check_timeout_s: float = 60.0      # v0.436 a slow reviewer never blocks the answer
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
-    goal_verify: bool = True                # v0.440 DONE = VERIFIED: `kaam_plan finish done` passes verify.gate
+    goal_verify_links: bool = True           # v0.443 the gate may reach the link the job produced (one HEAD).
+    #                                         Off = links read as "unknown" (tests / an offline box)
+    goal_verify: bool = True                # v0.443 DONE = VERIFIED: `kaam_plan finish done` passes verify.gate
     #                                         first (files on disk, pages ready, links alive, step checks) - a
     #                                         failure reopens the step instead of closing the card on a claim
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)

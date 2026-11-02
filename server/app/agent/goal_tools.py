@@ -102,7 +102,7 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
     except ValueError as e:
         raise ToolError(str(e)) from None
     if action == "finish" and v.get("verified") is False:
-        # v0.440 DONE = VERIFIED: the job stays open; the model must really do the failing part
+        # v0.443 DONE = VERIFIED: the job stays open; the model must really do the failing part
         from . import verify as _verify
         g = v.get("verify") or {}
         return {"result": "goal band NAHI hua - jaanch fail", "goal_id": v["id"], "status": v["status"],

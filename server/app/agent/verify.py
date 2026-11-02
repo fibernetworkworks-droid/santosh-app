@@ -1,4 +1,4 @@
-"""v0.440 DONE = VERIFIED (long-task report item 1, RCA fix 7): a long job may only close as `done` when the things
+"""v0.443 DONE = VERIFIED (long-task report item 1, RCA fix 7): a long job may only close as `done` when the things
 it says it made are REALLY there.
 
 Until now `kaam_plan finish done` was taken on the model's word: `made` could hold a link that 404s, a file name that
@@ -129,8 +129,13 @@ def check_dataset(tenant: str, item: str) -> dict[str, Any] | None:
 
 
 def check_link(url: str) -> dict[str, Any]:
-    """One HEAD (then a ranged GET where HEAD is refused). Unreachable = unknown, 404 / 410 = failed."""
+    """One HEAD (then a ranged GET where HEAD is refused). Unreachable = unknown, 404 / 410 = failed.
+    `goal_verify_links` off (tests, an offline box) = unknown without any call."""
     import httpx
+
+    from ..config import get_settings
+    if not getattr(get_settings(), "goal_verify_links", True):
+        return _unknown(url, "link check band hai")
     STATS["links_checked"] += 1
     try:
         with httpx.Client(timeout=LINK_TIMEOUT_S, follow_redirects=True) as c:

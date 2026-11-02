@@ -51,7 +51,7 @@ def _pend(goal_id: str, d: int) -> None:
         _PENDING.pop(goal_id, None)
 LIMIT = "limit"
 
-# v0.439 the long card's throw-away tenants (app.quality.longcard.PREFIX): its own process waits for their rounds,
+# v0.443 the long card's throw-away tenants (app.quality.longcard.PREFIX): its own process waits for their rounds,
 # so the live server's resume / recovery sweeps never pick them up (a second copy of the same job in another process)
 CARD_PREFIX = "__longcard__"
 
@@ -154,7 +154,7 @@ def round_actor(origin: str | None) -> str:
 def set_goal(tenant: str, conv: str, goal: str, steps: list[str], origin: str = "") -> dict[str, Any]:
     """A new goal for this conversation: any previous working goal is marked stopped (one plan at a time).
     v0.222 `origin` = whose job it is (the actor of the turn that wrote the plan)."""
-    # v0.440 a step may be given as "text" or as {"text":..., "check":...} (the check is proved in code at finish)
+    # v0.443 a step may be given as "text" or as {"text":..., "check":...} (the check is proved in code at finish)
     pairs: list[tuple[str, str]] = []
     for x in (steps or []):
         if isinstance(x, dict):
@@ -200,7 +200,7 @@ def mark_step(tenant: str, goal_id: str, n: int, state: str, note: str = "", con
             raise ValueError(f"step {n} plan mein nahi hai (1..{len(steps)})")
         hit["state"], hit["note"] = state, str(note or "")[:200]
         if check:
-            hit["check"] = str(check)[:60]      # v0.440 the step says HOW its own doneness is proved
+            hit["check"] = str(check)[:60]      # v0.443 the step says HOW its own doneness is proved
         r.steps = json.dumps(steps, ensure_ascii=False)
         if state == "done" and (r.status or "working") == "working":
             mark = _milestone(sum(1 for x in steps if x.get("state") == "done"), len(steps), r.milestones or 0)
@@ -304,7 +304,7 @@ def finish(tenant: str, goal_id: str, outcome: str, reason: str = "", conv: str 
            left: str = "", your_turn: str = "", calls: list[dict] | None = None) -> dict[str, Any]:
     """done | blocked_on_her | failed | stopped. blocked_on_her = only a real dependency on her (tap / OTP / fact).
     v0.228 every finish carries the four-part report (kya hua / kya bana / kya baaki / aapko kya karna hai).
-    v0.440 DONE = VERIFIED: `done` passes through verify.gate first - the files / pages / links / step checks it
+    v0.443 DONE = VERIFIED: `done` passes through verify.gate first - the files / pages / links / step checks it
     claims must really be there. A failure does NOT close the goal: the failing step reopens and the tool result
     tells the model to go and really do it (`verified: False` + `nudge`)."""
     why = {"done": "done", "blocked_on_her": "blocked", "failed": "failed", "stopped": "stopped"}.get(outcome)
@@ -332,7 +332,7 @@ def finish(tenant: str, goal_id: str, outcome: str, reason: str = "", conv: str 
 
 def _verify_done(tenant: str, goal_id: str, conv: str, made: list[str] | None,
                  calls: list[dict] | None) -> dict[str, Any] | None:
-    """v0.440 the gate. None = the job may close. A view with `verified: False` = it may not: the failing step is
+    """v0.443 the gate. None = the job may close. A view with `verified: False` = it may not: the failing step is
     open again (`current`), the goal stays `working`, and the card shows what was not there."""
     from . import verify
     r = _load(tenant, goal_id)
