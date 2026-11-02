@@ -395,6 +395,32 @@ def _model_refused(e: Exception) -> bool:
     return ("not_found" in m or "404" in m or "unknown model" in m or "model:" in m) and "model" in m
 
 
+def _hard_held(state: dict, settings) -> bool:
+    """v0.436 is this turn's answer held for the self-check? Her hard question, check switched on."""
+    return bool(state.get("hard") and getattr(settings, "hard_check", True))
+
+
+async def _hard_check(conversation_id: str, state: dict, draft: str, history: list[dict], settings) -> list[str]:
+    """v0.436 SOCH KE JAWAB step 5: the free code check, then ONE independent reviewer call. Problems or []."""
+    from . import hard as _hardc
+    bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch raha hoon", "state": "running",
+                                          "id": "hard-check"})
+    try:
+        ev, names = _hardc.evidence(history)
+        why = ((state.get("hard_why") or {}).get("why")) or []
+        problems = _hardc.code_check(state.get("request", ""), draft, why, names)
+        if not problems:
+            problems = await _hardc.review(state.get("request", ""), draft, ev, settings)
+        state["hard_check"] = {"problems": problems, "tools": names[:12]}
+        return problems
+    except Exception:
+        log.exception("hard check failed")
+        return []
+    finally:
+        bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch liya", "state": "done",
+                                              "id": "hard-check"})
+
+
 def model_for(settings, hard: bool, long_job: bool) -> str:
     """'' = the chat model. A hard reasoning ask (not a long job - those run many steps and stay on the chat model at
     agent_long_effort) gets agent_hard_model."""
@@ -803,7 +829,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                           "routine" if actor == "goal" else actor)
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
-    if user_text and actor == "owner" and settings.draft_check:
+    if user_text and actor == "owner" and settings.draft_check and not state.get("hard_checked"):
+        # (v0.436 a hard answer already passed the self-check before she saw it - no second, weaker look after)
         # v0.223 the last look, in the background: the reply is already on her screen, so nothing waits for this
         from . import draftcheck
         state["chat_tail"] = _chat_tail(history)
@@ -1022,7 +1049,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or
                                                    (state.get("hard") and getattr(settings, "hard_thinking", True)))))
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
-            live.block(stream=not _gyaan.used(conversation_id))
+            # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
+            # still streams on the Soch card)
+            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings)))
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
@@ -1071,6 +1100,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _ctx.CONV.reset(_conv_tok)
         history.append({"role": "assistant", "content": blocks})
         texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
+        if texts and stop not in ("tool_use", "max_tokens") and _hard_held(state, settings) \
+                and not state.get("hard_checked"):
+            state["hard_checked"] = True
+            problems = await _hard_check(conversation_id, state, "\n\n".join(texts), history, settings)
+            if problems:   # v0.436 the draft is kept for the model but never shown; the fixed answer replaces it
+                _save(conversation_id, "assistant", blocks, display=None)
+                from . import hard as _hardc
+                nudge = _hardc.fix_note(problems)
+                history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": nudge}])
+                continue
         _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
         if texts:
             final_text = "\n\n".join(texts)

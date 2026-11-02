@@ -16506,3 +16506,29 @@ Owner: "START PILLAR H" (docs/COMPLEX_APPS_PLAN.md: multi-app products + web adm
   opened in a browser here (its JS was syntax-checked, routes tested); the plan's "React" admin is plain JS on purpose
   (no build step, same server rules). Not built: a separate partner store listing flow beyond the normal per-app one,
   payouts to riders (Pillar E's split payouts exist for shops), the food-delivery proof on real phones.
+
+## v0.436.0 SOCH KE JAWAB step 5 — the self-check before a hard answer goes out (2 Nov 2026)
+Owner: "GO STEP 5" (step 5 of the 7-step hard-reasoning plan).
+- Before: a hard answer streamed to her while it was written (live reply); the only later look was draftcheck
+  (v0.223: a cheap model, after the words were on her screen, numbers never recomputed) - a wrong figure could only be
+  followed by a note.
+- Now (`agent/hard.py` + `santosh._hard_held` / `_hard_check`): her hard question's answer is HELD - live.block(stream
+  False), the Soch card still streams the thinking - and before it is saved or shown:
+  1. `code_check` (free): a calculation-kind ask (calculation / word problem / maths / numbers / how-long / impact)
+     whose draft carries 2+ worked-out figures (3+ digits, not her own numbers) while pylab never ran this turn.
+  2. `review` - ONE independent reviewer call (hard_check_model, '' = the chat model; max_tokens 900; timeout
+     hard_check_timeout_s 60): CHECK_SYSTEM asks only for REAL problems (a number that does not follow, a figure not
+     in the evidence, a logic gap / wrong formula / unit / total, a wrong rule or a hidden assumption, a part of her
+     question unanswered; never style) as JSON {ok} / {ok:false, problems[<=4]}. `evidence(history)` = this turn's
+     tool calls + results from her last real message on (pylab code + output first-class), capped 9,000 chars.
+  A problem -> the draft is saved with display None (the model keeps it, she never sees it), the JAANCH fix note goes
+  back (run pylab again, write the COMPLETE corrected answer, do not mention the check) and the corrected answer is
+  what she sees. ONE check per turn (state hard_checked) - never a second review round. Step chip "Jawab jaanch raha
+  hoon" -> "Jawab jaanch liya". Any reviewer failure / timeout / bad JSON = [] = the draft goes out (never blocks).
+  draftcheck.after_turn is skipped for a turn that passed the self-check. Ordinary chat is never held or checked.
+- Settings hard_check (on), hard_check_model, hard_check_timeout_s; conftest HARD_CHECK=false (scripted turns), the
+  suite turns it on. `_text_of` reads SDK objects and dict blocks (judge + review).
+- Tests `server/tests/test_v0436_self_check.py` (12): code check, evidence, reviewer verdicts + failure, a mental-maths
+  EMI fixed before she sees it (draft hidden, only the fixed answer shown), a right answer passes the reviewer, a
+  reviewer-found wrong rate fixed in exactly one round, chat never held. Turn suites (25 files): 288 pass, same as main.
+  Not measured here: live reviewer quality (no key) - step 7 scores whole answers. Version 0.436.0 (pubspec 0.436.0+480).

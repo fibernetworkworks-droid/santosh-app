@@ -137,6 +137,11 @@ JUDGE = ("Does answering this message well need careful multi-step reasoning - a
 _CACHE: dict[str, bool] = {}
 
 
+def _text_of(b) -> str:
+    """A content block's text - SDK objects and plain dicts alike."""
+    return str(b.get("text") or "") if isinstance(b, dict) else str(getattr(b, "text", "") or "")
+
+
 async def judge(text: str, settings) -> bool | None:
     """One tiny model call (Haiku, 1 output token, hard time limit) for the 'maybe' zone. None = could not decide
     (no key, timeout, error) - the caller then stays on the fast path, exactly as before."""
@@ -151,7 +156,7 @@ async def judge(text: str, settings) -> bool | None:
         resp = await asyncio.wait_for(get_client().messages.create(
             model=getattr(settings, "hard_judge_model", "") or "claude-haiku-5-5", max_tokens=3, system=JUDGE,
             messages=[{"role": "user", "content": key}]), timeout=float(getattr(settings, "hard_judge_timeout_s", 2.5)))
-        word = "".join(getattr(b, "text", "") for b in resp.content).strip().upper()
+        word = "".join(_text_of(b) for b in resp.content).strip().upper()
         STATS["judged"] = STATS.get("judged", 0) + 1
         out = word.startswith("HARD")
         _CACHE[key] = out
@@ -228,3 +233,103 @@ def recipe(why: list[str] | None) -> str:
             kinds.append(k)
     lines = [RECIPE_KIND[k] for k in kinds[:3]]
     return RECIPE_CORE + ("\n" + "\n".join("- " + x for x in lines) if lines else "")
+
+
+# ---------------------------------------------------------------- v0.436 SOCH KE JAWAB step 5: the self-check
+# A hard answer is HELD (not streamed) and checked before she sees it - like a careful analyst who re-reads the
+# working before sending. Two checks: a free one in code (a calculation answered without running pylab), then ONE
+# independent reviewer call that sees her question, the draft and the real tool evidence (pylab code + output). Any
+# problem goes back to the same brain ONCE as a fix note; the corrected answer replaces the draft (she never sees the
+# wrong one). A failing / slow reviewer never blocks the answer.
+CHECK_SYSTEM = """You are the REVIEWER of a draft answer an AI assistant wrote for a hard question. Do not rewrite it.
+Find only REAL problems that would make the answer wrong or misleading for her:
+- a number that does not follow from the inputs (re-derive the key figures yourself; compare with the tool evidence),
+- a figure stated as computed but not present in the tool evidence,
+- a logical gap, a wrong formula, a wrong unit, a total that does not add up,
+- a wrong rule / law / rate stated as fact, or an assumption hidden instead of stated,
+- the draft does not actually answer the question she asked (or skips a part of it).
+Style, tone, length and formatting are NOT problems. If the answer is right, say so.
+Reply with ONLY a JSON object: {"ok": true} or {"ok": false, "problems": ["short, specific problem with the correct value if you know it", ...]} (max 4 problems)."""
+
+_CALC_KINDS = {"calculation", "word problem", "maths", "numbers", "how-long", "impact"}
+_DIGITS = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def code_check(question: str, draft: str, why: list[str] | None, tools_run: list[str]) -> list[str]:
+    """Free check: a calculation ask whose draft carries worked-out numbers while pylab never ran."""
+    if "pylab" in (tools_run or []):
+        return []
+    if not (set(why or []) & _CALC_KINDS):
+        return []
+    asked = set(_DIGITS.findall(question or ""))
+    new = [n for n in _DIGITS.findall(draft or "") if n not in asked and len(n.replace(",", "")) >= 3]
+    if len(new) >= 2:
+        return [f"These figures were worked out without running pylab: {', '.join(new[:6])}. Compute them in pylab "
+                "and use its printed results."]
+    return []
+
+
+def evidence(history: list[dict], limit: int = 9000) -> tuple[str, list[str]]:
+    """This turn's tool calls and their results (pylab code + output first-class), newest last, capped."""
+    start = 0
+    for i in range(len(history) - 1, -1, -1):
+        m = history[i]
+        c = m.get("content")
+        if m.get("role") == "user" and (isinstance(c, str) or not any(
+                isinstance(b, dict) and b.get("type") == "tool_result" for b in (c or []))):
+            txt = c if isinstance(c, str) else " ".join(str(b.get("text") or "") for b in c if isinstance(b, dict))
+            if not txt.lstrip().startswith("[System"):
+                start = i
+                break
+    parts: list[str] = []
+    names: list[str] = []
+    for m in history[start:]:
+        for b in (m.get("content") if isinstance(m.get("content"), list) else []):
+            if not isinstance(b, dict):
+                continue
+            if b.get("type") == "tool_use":
+                names.append(str(b.get("name")))
+                inp = b.get("input") or {}
+                shown = inp.get("code") if b.get("name") == "pylab" else inp
+                parts.append(f"TOOL {b.get('name')} input: {str(shown)[:1500]}")
+            elif b.get("type") == "tool_result":
+                cont = b.get("content")
+                cont = cont if isinstance(cont, str) else " ".join(str(x.get("text") or "") for x in (cont or [])
+                                                                  if isinstance(x, dict))
+                parts.append(f"RESULT: {cont[:2000]}")
+    text = "\n".join(parts)
+    return (text[-limit:] if len(text) > limit else text), names
+
+
+async def review(question: str, draft: str, ev: str, settings) -> list[str]:
+    """One independent reviewer call. [] = no problem found (or the reviewer failed - never blocks the answer)."""
+    import asyncio
+    import json as _json
+    try:
+        from .santosh import get_client
+        model = getattr(settings, "hard_check_model", "") or settings.anthropic_model
+        user = (f"HER QUESTION:\n{question[:3000]}\n\nTOOL EVIDENCE FROM THIS TURN (pylab code + outputs, data):\n"
+                f"{ev or '(no tools ran)'}\n\nDRAFT ANSWER:\n{draft[:8000]}")
+        resp = await asyncio.wait_for(get_client().messages.create(
+            model=model, max_tokens=900, system=CHECK_SYSTEM, messages=[{"role": "user", "content": user}]),
+            timeout=float(getattr(settings, "hard_check_timeout_s", 60)))
+        raw = "".join(_text_of(b) for b in resp.content).strip()
+        m = re.search(r"\{.*\}", raw, re.S)
+        v = _json.loads(m.group(0)) if m else {}
+        STATS["reviewed"] = STATS.get("reviewed", 0) + 1
+        if v.get("ok") is False:
+            probs = [str(p)[:400] for p in (v.get("problems") or []) if str(p).strip()][:4]
+            if probs:
+                STATS["review_found"] = STATS.get("review_found", 0) + 1
+            return probs
+        return []
+    except Exception:
+        STATS["review_failed"] = STATS.get("review_failed", 0) + 1
+        return []
+
+
+def fix_note(problems: list[str]) -> str:
+    return ("[System: JAANCH - your draft answer was checked before she saw it, and these problems were found:\n" +
+            "\n".join(f"- {p}" for p in problems) +
+            "\nFix them (run pylab again for any number), then write the COMPLETE corrected answer from the start, "
+            "in her language - she has not seen the draft. Keep what was right. Do not mention this check.]")

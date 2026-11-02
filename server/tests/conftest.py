@@ -80,6 +80,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SITE_LOOK_SECTIONS", "1")   # v0.292: looks stay hero-only unless a test asks for more
     monkeypatch.setenv("KAAM_WATCH", "false")        # v0.136: job-watch notes only in its own tests
     monkeypatch.setenv("HARD_JUDGE", "false")        # v0.272: no tiny judge model call in tests (the rules still run)
+    monkeypatch.setenv("HARD_CHECK", "false")        # v0.436: no reviewer call in scripted turns (its own tests switch it on)
     monkeypatch.setenv("CALL_RECEIPT", "false")      # v0.91: scripted calls don't expect the extra receipt message
     monkeypatch.setenv("BLENDER3D_WORKER", "false")   # v0.141: tests run 3D jobs themselves
     monkeypatch.setenv("BLENDER_LOOK", "false")

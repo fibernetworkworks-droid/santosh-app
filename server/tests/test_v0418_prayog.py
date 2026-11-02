@@ -352,4 +352,4 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.435.0"
+    assert APP_VERSION == "0.436.0"
