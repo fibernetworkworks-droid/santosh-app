@@ -384,7 +384,7 @@ THINK = {"ok": True, "calls": 0, "refused": 0}   # v0.232 PHASE C: Claude's adap
 # v0.331 SOCH GEHRI: a long job / hard ask runs at a higher Claude effort (output_config.effort, set once per turn so the
 # prompt cache inside the turn holds). Sent via extra_body so any SDK version carries it; a 400 about it turns it off.
 _EFFORT_NOW: _cv.ContextVar[str] = _cv.ContextVar("hoola_effort_now", default="")
-# v0.427 SOCH KE JAWAB step 2: the model for THIS step ('' = settings.anthropic_model). Set once per step from the
+# v0.429 SOCH KE JAWAB step 2: the model for THIS step ('' = settings.anthropic_model). Set once per step from the
 # turn's state, like _EFFORT_NOW, so sub-agents and every caller of _call_brain keep their signature.
 _MODEL_NOW: _cv.ContextVar[str] = _cv.ContextVar("hoola_model_now", default="")
 HARD_MODEL = {"ok": True, "calls": 0, "failed": 0}
@@ -474,7 +474,7 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         return blocks, stop
     over = _MODEL_NOW.get()
     if over and over != settings.anthropic_model and HARD_MODEL["ok"]:
-        # v0.427 SOCH KE JAWAB step 2: a hard reasoning ask runs on the strongest model (agent_hard_model, Opus). Any
+        # v0.429 SOCH KE JAWAB step 2: a hard reasoning ask runs on the strongest model (agent_hard_model, Opus). Any
         # failure there (not available on this key, overloaded, ...) retries the SAME call on the chat model once, so
         # she always gets an answer; a 404 / unknown model turns the switch off for this process.
         try:
@@ -494,7 +494,7 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
 
 async def _claude_call(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
                        think: bool, streaming: bool) -> tuple[list[dict], str]:
-    """One Claude call on `model` (v0.427 split out of _call_brain so a hard ask can try Opus and fall back)."""
+    """One Claude call on `model` (v0.429 split out of _call_brain so a hard ask can try Opus and fall back)."""
     from . import cache
     kw = cache.shape(dict(model=model, max_tokens=cap,
                           system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
@@ -753,7 +753,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
             from . import hard as _hard
             _hv = await _hard.decide(user_text or "", settings)
             state["hard"], state["hard_why"] = bool(_hv["hard"]), _hv
-            if state["hard"]:   # v0.427 thinking tokens count against max_tokens: a hard answer gets real room
+            if state["hard"]:   # v0.429 thinking tokens count against max_tokens: a hard answer gets real room
                 state["max_tokens"] = max(state.get("max_tokens") or 0,
                                           int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
         except Exception:
@@ -1010,7 +1010,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if _long_now and brain != "claude" and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
             brain = "claude"   # v0.331 a long job runs on Claude even when a cheaper brain answers ordinary chat
         if state.get("hard") and brain != "claude" and _claude_ready() and getattr(settings, "agent_hard_on_claude", True):
-            brain = "claude"   # v0.427 a hard reasoning ask runs on Claude even when a cheaper brain answers chat
+            brain = "claude"   # v0.429 a hard reasoning ask runs on Claude even when a cheaper brain answers chat
         _EFFORT_NOW.set(effort_for(settings, _long_now, bool(state.get("hard"))))
         _MODEL_NOW.set(model_for(settings, bool(state.get("hard")), _long_now) if brain == "claude" else "")
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or

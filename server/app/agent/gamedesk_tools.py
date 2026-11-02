@@ -301,6 +301,23 @@ GAMEDESK_TOOLS.append(
 GAMEDESK_LABELS.update({"game_sim": "Simulator jaanch raha hoon", "game_twin": "Digital twin chala raha hoon",
                         "game_vfx": "VFX pipeline jaanch raha hoon"})
 
+# v0.425 Phase 8: Hoola Runtime (replay / bot / telemetry) + Ask Hoola in the editor
+GAMEDESK_TOOLS.append(
+    {"name": "game_runtime", "description": (
+        "Hoola Runtime of a Studio project (part of the Game Developer desk): HoolaRuntime goes into every build - a replay "
+        "recorder, an in-engine test bot and OPT-IN telemetry. Actions: status (settings + last replay tests) / replay_test: "
+        "the bot plays the live version headless, the same seed again, then its recording is played back - the end states "
+        "must match (deterministic, and every bug comes with a replay); a mismatch names its cause (randomize(), the clock) "
+        "/ telemetry: the dashboard (installs, sessions, D1 / D7, funnel) / set (on, telemetry): telemetry needs her switch "
+        "AND each player's yes, is refused for a children's game, keeps no personal data. Editor tokens and the Godot plugin "
+        "are made in the console (Game Desk > Editor) - never in chat. id = S-0001 (optional with one project)."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["status", "replay_test", "telemetry", "set"]},
+         "id": {"type": "string"}, "on": {"type": "boolean"}, "telemetry": {"type": "boolean"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_runtime": "Game runtime jaanch raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -899,8 +916,39 @@ async def game_vfx(ctx: Ctx, action="", words="", plan=None, setup="", **_):
                             {"not_here": "Blender / OpenColorIO / OpenUSD are not installed on the server"})
 
 
+async def game_runtime(ctx: Ctx, action="", id="", on=None, telemetry=None, **_):
+    from ..employee import hire
+    from ..gamedesk import runtime as R
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action in ("replay_test", "set"):
+        _owner_only(ctx, "Runtime")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "status":
+            st = await run(R.settings, t, id)
+            return {k: st[k] for k in ("on", "telemetry", "kids")} | {"tests": [{k: x.get(k) for k in ("at", "version", "verdict", "deterministic", "frames", "inputs", "errors")} for x in st["tests"][-3:]]}
+        if action == "replay_test":
+            return await run(R.start_replay_test, t, id) | {"note": "Runs in the background (about half a minute); the result shows on the Runtime page. Do not poll."}
+        if action == "telemetry":
+            return await run(R.dashboard, t, id)
+        if action == "set":
+            return await run(R.set_runtime, t, id, on, telemetry)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = status | replay_test | telemetry | set")
+
+
 GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets,
                      "game_qa": game_qa, "game_release": game_release, "game_world": game_world,
                      "game_physics": game_physics, "game_audio": game_audio, "game_haptics": game_haptics,
                      "game_net": game_net, "game_xr": game_xr, "game_sim": game_sim, "game_twin": game_twin,
-                     "game_vfx": game_vfx}
+                     "game_vfx": game_vfx, "game_runtime": game_runtime}

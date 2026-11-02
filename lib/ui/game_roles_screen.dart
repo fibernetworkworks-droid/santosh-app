@@ -745,3 +745,146 @@ class GameVfxScreen extends StatelessWidget {
       app: app, studio: studio, base: 'vfx', title: 'VFX pipeline', listKey: 'setups', hireName: 'Pipeline TD',
       intro: 'Naming and versions, ACES colour measured, an EXR test frame, a render queue with cost per shot. Blender is not run on Hoolas server.');
 }
+
+// ================================================================ v0.425 Hoola Runtime (replay tests + opt-in telemetry)
+class GameRuntimeScreen extends StatefulWidget {
+  const GameRuntimeScreen({super.key, required this.app, required this.studio});
+  final Santosh app;
+  final String studio;
+  @override
+  State<GameRuntimeScreen> createState() => _GameRuntimeScreenState();
+}
+
+class _GameRuntimeScreenState extends State<GameRuntimeScreen> {
+  Map<String, dynamic> _rt = {};
+  Map<String, dynamic> _tel = {};
+  bool _loaded = false;
+  bool _busy = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    _timer?.cancel();
+    try {
+      final rt = await widget.app.api!.gameRuntime(widget.studio);
+      Map<String, dynamic> tel = {};
+      try {
+        tel = await widget.app.api!.gameTelemetry(widget.studio);
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _rt = rt;
+        _tel = tel;
+        _loaded = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loaded = true);
+        _snack(context, '$e');
+      }
+    }
+  }
+
+  Future<void> _call(Future<dynamic> Function() f, String ok) async {
+    setState(() => _busy = true);
+    try {
+      await f();
+      if (mounted && ok.isNotEmpty) _snack(context, ok);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+    await _load();
+  }
+
+  String _pct(dynamic v) => v is num ? '${(v * 100).round()}%' : '-';
+
+  @override
+  Widget build(BuildContext context) {
+    final tests = _list(_rt['tests']);
+    final last = tests.isEmpty ? <String, dynamic>{} : tests.last;
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Runtime')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+            const Text('HoolaRuntime goes into every build: a replay recorder and a test bot (used only when Hoola tests the game) '
+                'and opt-in telemetry - each player is asked first. Editor tokens and the Godot plugin: web console.',
+                style: TextStyle(color: C.muted, fontSize: 13.5, height: 1.35)),
+            const SizedBox(height: 10),
+            if (!_loaded)
+              const Center(child: CircularProgressIndicator())
+            else ...[
+              Glass(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Hoola Runtime (replay tests)'),
+                      value: _rt['on'] == true,
+                      onChanged: _busy ? null : (v) => _call(() => widget.app.api!.gameRuntimeSet(widget.studio, {'on': v}), 'Saved.')),
+                  SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Telemetry (players asked first)'),
+                      subtitle: _rt['kids'] == true ? const Text('Not for a children\'s game') : null,
+                      value: _rt['telemetry'] == true,
+                      onChanged: _busy || _rt['kids'] == true
+                          ? null
+                          : (v) => _call(() => widget.app.api!.gameRuntimeSet(widget.studio, {'telemetry': v}), 'Saved.')),
+                  GradientButton(
+                      label: 'Run a replay test',
+                      icon: Icons.replay_rounded,
+                      height: 48,
+                      onTap: _busy
+                          ? null
+                          : () {
+                              _call(() => widget.app.api!.gameReplayTest(widget.studio), 'The bot is playing; pull down in half a minute.');
+                              _timer = Timer(const Duration(seconds: 30), _load);
+                            }),
+                ]),
+              ),
+              if (last.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Last test: v${_s(last['version'])} · ${_s(last['verdict'])}',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: _s(last['verdict']) == 'PASS' ? C.ok : C.bad)),
+                    Text('${_s(last['frames'])} frames · ${_s(last['inputs'])} bot inputs', style: const TextStyle(color: C.muted, fontSize: 12)),
+                    for (final c in _list(last['checks']))
+                      Text('${c['ok'] == true ? '✓' : '✕'} ${_s(c['check'])}: ${_s(c['note'])}',
+                          style: TextStyle(fontSize: 12, color: c['ok'] == true ? null : C.bad)),
+                  ]),
+                ),
+              if (_tel.isNotEmpty && _rt['telemetry'] == true)
+                Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Telemetry', style: display(15)),
+                    Text('${_s(_tel['installs'])} players · ${_s(_tel['events'])} events · next day ${_pct(_map(_tel['d1'])['share'])} · '
+                        'day 7 ${_pct(_map(_tel['d7'])['share'])}'),
+                    for (final f in _list(_tel['funnel'])) Text('${_s(f['step'])}: ${_s(f['players'])}', style: const TextStyle(fontSize: 12)),
+                    Text(_s(_tel['privacy']), style: const TextStyle(color: C.muted, fontSize: 11.5)),
+                  ]),
+                ),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}

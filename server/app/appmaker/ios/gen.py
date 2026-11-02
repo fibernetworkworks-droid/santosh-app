@@ -665,6 +665,16 @@ def privacy_manifest() -> str:
 '''
 
 
+def _custom_files():
+    """v0.425 custom_files works inside the package and when this file runs as a script in CI."""
+    if __package__:
+        from .. import custom_files
+        return custom_files
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import custom_files                                    # type: ignore[no-redef]
+    return custom_files
+
+
 def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     out = Path(out)
     tmp = out.with_name(out.name + ".tmp")
@@ -726,8 +736,7 @@ def write_project(spec: dict[str, Any], out: Path) -> dict[str, Any]:
     (qa / "bundle.txt").write_text(bid + "\n")
     every = [x for x in ids if x not in AUTH_IDS] + list(CODE_SCREENS) + list(KIT_SCREENS) + (["hoola_components"] if spec.get("custom") else [])
     (qa / "screens.txt").write_text(" ".join(every) + "\n")
-    from .. import custom as CU                              # v0.425 RANG: her approved custom components (Swift)
-    for rel, srcx in CU.swift_files(spec.get("custom") or []).items():
+    for rel, srcx in _custom_files().swift_files(spec.get("custom") or []).items():
         p = src / "Kit" / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(srcx)

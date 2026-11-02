@@ -42,6 +42,8 @@ def problems(scripts: dict[str, str]) -> list[str]:
             out.append(f"bad file name: {name!r} (lowercase .gd names only)")
             continue
         for pat, why in BANNED:
+            if name == "hoola_runtime.gd" and why == "network":   # v0.425 Hoola's own telemetry, to its baked-in URL only
+                continue
             m = re.search(pat, code or "")
             if m:
                 out.append(f"{name}: '{m.group(0)}' not allowed ({why})")

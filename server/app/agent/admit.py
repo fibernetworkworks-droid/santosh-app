@@ -126,7 +126,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "ar game", "headset", "oculus", "quest 3", "hand tracking",
                  # v0.423 batch 4: simulators, digital twin, VFX pipeline
                  "flight simulator", "training simulator", "orbit simulation", "driving simulator", "digital twin",
-                 "factory simulation", "line simulation", "vfx pipeline", "render farm", "aces colour", "aces color", "exr"),
+                 "factory simulation", "line simulation", "vfx pipeline", "render farm", "aces colour", "aces color", "exr",
+                 # v0.425 Phase 8: runtime + editor
+                 "replay test", "game replay", "game telemetry", "retention", "godot editor", "godot plugin", "ask hoola panel"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",
