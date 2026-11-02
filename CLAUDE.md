@@ -279,6 +279,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   is schools (AVGC labs, joins Shiksha) + outsourcing shops + agencies, NOT solo creators. TWO LIVE DEFECTS: `service.MONEY` misses
   Rule 9 (withdrawable in-game coins = NON-BAILABLE for her user), and /mcp/gamedesk speaks only the removed `initialize` handshake
   (MCP is 2026-07-28 now). Read the doc before touching the game desk's direction.
+- PLAN: `docs/MAPS_PLAN.md` + `docs/research/maps/` - every Google Maps task, researched from Google's own terms. Maps is a
+  LIVE LOOKUP, not a data source: only place_id (kept) + lat/lng (30 days) may be stored, so a lead list / scraper cannot be
+  built (ToS 3.2.3(d)(iii) + GBP policies' "lead generation ... immediate revocation"), and Places data may NOT go on a
+  non-Google map (3.2.3(e)) - no map at all is free and allowed (14.1). Her own listing = Business Profile APIs, gated behind
+  an application needing a profile verified 60+ days. 11 phases; nearby things ships first.
 - PLAN: `docs/WEB_PLATFORM_PLAN.md` - any complexity website, smoothly + reliably (W0 gate = 100-page proof + her own site, W1-W14: one backend with apps (DIMAAG), app pages, OTP login, gateway, marketplace, live, connectors, 10k-page catalogues, speed / resume / staging, gates, architect).
 - v0.390 PAKKI NEEV (Pillar B): `appmaker/locks.py` (one cross-process lock per app: pg advisory / fcntl), `BE.patch_backend` (the ONLY safe write of backend JSON), `backup.py` (journal hook + snapshots + point-in-time restore + export), `refs.py` (indexed links), `meter.py` (usage + limits), `app/dbmove.py` (SQLite -> Postgres); tests run on Postgres with HOOLA_TEST_PG; CI `app-load.yml` = 1,000 customers / 4 workers proof.
 - v0.404 APNA DATABASE 2 (`appmaker/owndb_drivers.py` + `owndb_conns.py`): her MySQL family / MongoDB / Firebase too - sealed conns (`/api/owndb/conns`), outside edits via timestamp + row fingerprint `_hv` (MySQL), change streams (Mongo), listener (Firestore), foreign ids re-keyed; tests need HOOLA_MYSQL_ADMIN / HOOLA_MONGO / HOOLA_FIRESTORE_EMU (CI app-load.yml).
