@@ -7,7 +7,15 @@ HoolaStudio.define('spring-oscillation', function (S) {
   function hidden(id, dflt) { var k = (S.lab.knobs || []).filter(function (q) { return q.id === id; })[0]; return k ? k.value * (k.k || 1) : dflt; }
   var p = window.HoolaKernels.paramsFor('spring', S.lab.params);
   p.k = hidden('k', 20);
-  var G = p.g, HANGER = 0.05, DISC = 0.05, MAXN = 9;
+  // rig: the slotted-mass set suits the spring (10, 20, 50, 100 or 200 g, hanger = one mass) so 10 loads stretch it at most 30 cm
+  var vs = ((S.lab.variant || {}).sample || '').toLowerCase(), MAXN = 9;
+  var DISC = [0.2, 0.1, 0.05, 0.02, 0.01].filter(function (d) { return (MAXN + 1) * d * p.g / p.k <= 0.3 + 1e-9; })[0] || 0.01;
+  var DG = Math.round(DISC * 1000), SZ = Math.max(0.6, Math.min(1.6, Math.cbrt(DISC / 0.05)));   // grams; the disc's size follows its mass
+  var wm = /wire (\d+(?:\.\d+)?) mm/.exec(vs);   // the spring's wire (drawn thicker than life, in the same ratio as the base spring)
+  var SPR = /phosphor/.test(vs) ? { n: 'phosphor bronze', c: 0xc08a4a, r: 0.3 } : /beryllium/.test(vs) ? { n: 'beryllium copper', c: 0xcf9668, r: 0.28 }
+    : /stainless/.test(vs) ? { n: 'stainless steel', c: 0xd3d7db, r: 0.2 } : /music/.test(vs) ? { n: 'music wire (spring steel)', c: 0x8d939a, r: 0.32 }
+    : /hard-drawn/.test(vs) ? { n: 'hard-drawn steel', c: 0x9fa4a9, r: 0.38 } : { n: 'steel', c: 0xb9bec4, r: 0.28 };
+  var G = p.g, HANGER = DISC;
   var st = { n: 0, pull: Math.round((p.x0 || 0.03) * 1000) / 10, running: false, held: false };
   p.m = HANGER;
   var sim = K.init(p); sim.y = [0, 0];
@@ -15,8 +23,8 @@ HoolaStudio.define('spring-oscillation', function (S) {
 
   // ---------- geometry constants
   var JX = 0.06, JZ = -0.05;
-  var YTOP = 0.95, LC0 = 0.08, TURNS = 20, CR = 0.012, WIRE = 0.0011;
-  var DR = 0.02, DT = 0.0045, STEM = 0.1;
+  var YTOP = 0.95, LC0 = 0.08, TURNS = 20, CR = 0.012, WIRE = wm ? 0.0011 * (+wm[1]) / 0.86 : 0.0011;
+  var DR = 0.02 * SZ, DT = 0.0045 * SZ, STEM = 0.1;
   var RX = 0.11, RZ = -0.05, RY = 0.03, RLEN = 1.0, MM = RLEN * 1000;
   function markY(cm) { return RY + RLEN - cm / 100; }   // true-scale ruler: zero at RY + RLEN
   function cmAt(y) { return (RY + RLEN - y) * 100; }
@@ -52,7 +60,7 @@ HoolaStudio.define('spring-oscillation', function (S) {
   var hk = S.mesh(new T.CylinderGeometry(0.0016, 0.0016, 0.016, 12), M.steel); hk.position.set(JX, 0.984, JZ); hookG.add(hk);
   var hk2 = S.mesh(new T.TorusGeometry(0.0055, 0.0014, 10, 28), M.steel); hk2.rotation.y = Math.PI / 2; hk2.position.set(JX, 0.9705, JZ); hookG.add(hk2);
   var spring = new T.Group(); spring.position.set(JX, YTOP, JZ); S.scene.add(spring);
-  var springM = new T.MeshStandardMaterial({ color: 0xb9bec4, roughness: 0.28, metalness: 1 });
+  var springM = new T.MeshStandardMaterial({ color: SPR.c, roughness: SPR.r, metalness: 1 });
   var hgeo = helix(TURNS, CR, WIRE, 26, 8); var coil = S.mesh(hgeo, springM); coil.frustumCulled = false; spring.add(coil);
   var topLoop = S.mesh(new T.TorusGeometry(0.0075, WIRE, 8, 28), springM); topLoop.position.set(0, 0.0085, 0); spring.add(topLoop);
   var topLeg = S.mesh(new T.CylinderGeometry(WIRE, WIRE, 1, 8), springM); spring.add(topLeg);
@@ -70,11 +78,11 @@ HoolaStudio.define('spring-oscillation', function (S) {
   var STACK0 = -STEM + 0.003;
   var ruler = S.ruler(RLEN, { title: 'METRE SCALE · cm · LC 1 mm', labelEvery: 10 }); ruler.position.set(RX, RY, RZ);
   var rfoot = S.rounded(0.08, 0.05, 0.03, 0.008, M.darkWood); rfoot.rotation.x = -Math.PI / 2; rfoot.position.set(RX, 0.015, RZ); S.scene.add(rfoot); S.contact(0.14, 0.1, RX, RZ, 0.5);
-  var discGeo = slotted(), lblTex = S.canvasTex(128, 64, function (x) { x.fillStyle = '#5a3d0c'; x.font = '700 40px "Public Sans", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('50 g', 64, 34); });
-  var lblMat = new T.MeshStandardMaterial({ map: lblTex, transparent: true, roughness: 0.5, depthWrite: false }), lblGeo = new T.PlaneGeometry(0.014, 0.007);
+  var discGeo = slotted(), lblTex = S.canvasTex(128, 64, function (x) { x.fillStyle = '#5a3d0c'; x.font = '700 40px "Public Sans", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(DG + ' g', 64, 34); });
+  var lblMat = new T.MeshStandardMaterial({ map: lblTex, transparent: true, roughness: 0.5, depthWrite: false }), lblGeo = new T.PlaneGeometry(0.014 * SZ, 0.007 * SZ);
   var PILE = new T.Vector3(0.36, 0, 0.0), discs = [], onHanger = [];
   for (var i = 0; i < MAXN; i++) { var d = new T.Group(); d.add(S.mesh(discGeo, M.brass));
-    var lb = new T.Mesh(lblGeo, lblMat); lb.rotation.x = -Math.PI / 2; lb.rotation.z = Math.PI / 2; lb.position.set(0.0115, DT / 2 + 0.0002, 0); lb.renderOrder = 2; d.add(lb);
+    var lb = new T.Mesh(lblGeo, lblMat); lb.rotation.x = -Math.PI / 2; lb.rotation.z = Math.PI / 2; lb.position.set(0.0115 * SZ, DT / 2 + 0.0002, 0); lb.renderOrder = 2; d.add(lb);
     d.position.set(PILE.x, DT / 2 + i * DT, PILE.z); S.scene.add(d); discs.push(d); }
   S.contact(0.08, 0.08, PILE.x, PILE.z, 0.5);
   var hangShadow = S.contact(0.07, 0.07, JX, JZ, 0.25);
@@ -82,10 +90,10 @@ HoolaStudio.define('spring-oscillation', function (S) {
   var watch = S.stopwatch([0.24, 0.035, 0.17], [-1.15, 0, 0.25]);
 
   S.addApparatus('stand', stand, 'Retort stand with clamp', 'A heavy iron base and a rigid rod: the top of the spring stays fixed.');
-  S.addApparatus('spring', spring, 'Helical spring', 'A steel spring. The mass on it moves up and down in simple harmonic motion.');
-  S.addApparatus('hanger', hanger, 'Slotted-mass hanger with pointer', 'The hanger itself is 50 g. The pointer shows the mean position on the scale.');
+  S.addApparatus('spring', spring, 'Helical spring', 'A ' + SPR.n + ' spring. The mass on it moves up and down in simple harmonic motion.');
+  S.addApparatus('hanger', hanger, 'Slotted-mass hanger with pointer', 'The hanger itself is ' + DG + ' g. The pointer shows the mean position on the scale.');
   S.addApparatus('ruler', ruler, 'Metre scale', 'Shows how far the hanger is pulled down. Least count 1 mm.');
-  S.addApparatus('masses', discs[0], 'Slotted masses', 'Nine slotted masses of 50 g each. The oscillating mass m = hanger + slotted masses.');
+  S.addApparatus('masses', discs[0], 'Slotted masses', 'Nine slotted masses of ' + DG + ' g each. The oscillating mass m = hanger + slotted masses.');
   S.addApparatus('sw', watch.group, 'Digital stopwatch', 'Least count 0.01 s. Time 10 oscillations, not one.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
   var hudM = S.hudCard('Mass m'), hudX = S.hudCard('Displacement'), hudN = S.hudCard('Oscillations');
@@ -112,7 +120,7 @@ HoolaStudio.define('spring-oscillation', function (S) {
   }
   function addMass() {
     if (busyOrMoving()) return Promise.resolve();
-    if (st.n >= MAXN) { S.say('That is 500 g in all. More would stretch the spring past its elastic limit.'); return Promise.resolve(); }
+    if (st.n >= MAXN) { S.say('That is ' + ((MAXN + 1) * DG) + ' g in all. More would stretch the spring past its elastic limit.'); return Promise.resolve(); }
     var d = pile.pop(), from = d.position.clone(), nn = st.n, top = slotPos(nn), x1 = 0, on = false;
     var path = along([from, from.clone().setY(from.y + 0.07), top.clone().add(new T.Vector3(0.05, 0.05, 0)), top.clone().add(new T.Vector3(0.05, 0.001, 0)), top.clone().setY(top.y + 0.001)]);
     // the hand slides the mass on, then lowers the hanger gently to its new rest position (so it does not bounce)
@@ -136,10 +144,11 @@ HoolaStudio.define('spring-oscillation', function (S) {
     for (var i = 0; i < Math.abs(target - st.n); i++) pr = pr.then(function () { return target > st.n ? addMass() : removeMass(); });
     return pr; }
   function maxPull() { return Math.min(4, (p.m * G / p.k) * 100 - 0.5); }   // cm: the spring must stay stretched at the top of the swing
+  function goodPull() { return Math.max(1, Math.min(3, Math.floor(maxPull() * 2) / 2)); }   // cm: 3 cm when the spring allows it
   function pullRelease(cm) {
     if (S.hand.busy) return Promise.resolve();
     if (st.running) { S.say('It is already oscillating. Steady it first if you want to start again.'); return Promise.resolve(); }
-    if (p.m < 0.1 - 1e-9) { S.say('Load at least one slotted mass first (m ≥ 100 g), or the spring goes slack at the top of each swing.'); return Promise.resolve(); }
+    if (p.m < HANGER + DISC - 1e-9) { S.say('Load at least one slotted mass first (m ≥ ' + (2 * DG) + ' g), or the spring goes slack at the top of each swing.'); return Promise.resolve(); }
     if (cm < 1) { S.say('Pull it down at least 1 cm, so you can see and count the oscillations.'); return Promise.resolve(); }
     if (cm > maxPull() + 1e-9) { S.say('Too far: pull at most ' + maxPull().toFixed(1) + ' cm for this mass, or the coils go slack at the top.'); return Promise.resolve(); }
     var a = cm / 100, b0 = basePt(); st.held = true;
@@ -187,7 +196,7 @@ HoolaStudio.define('spring-oscillation', function (S) {
       formula: 'T = 2π √(m / k)', formulaNote: 'so T² = (4π² / k) m, and k = 4π² / slope of T² against m',
       more: ['The graph of T² against m is a straight line through the origin. (The spring\'s own mass is small and is neglected here.)'],
       precautions: 'Pull the mass down only a little and release it without a sideways push, so it moves straight up and down. Start timing as the pointer passes the mean position. Time 10 oscillations.' },
-    book: { title: 'Expt. — Spring-mass oscillation', lines: ['Aim: to find k from T against m.', 'm = hanger (50 g) + slotted masses', 'T = 2π √(m/k)  →  T² = (4π²/k) m', 'k = 4π² / slope of T² vs m', 'Precautions: small pull, vertical motion, time 10 osc.'],
+    book: { title: 'Expt. — Spring-mass oscillation', lines: ['Aim: to find k from T against m.', 'm = hanger (' + DG + ' g) + slotted masses', 'T = 2π √(m/k)  →  T² = (4π²/k) m', 'k = 4π² / slope of T² vs m', 'Precautions: small pull, vertical motion, time 10 osc.'],
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'm (g)', get: function (r) { return String(Math.round(r.m * 1000)); } },
         { label: 't₁₀ (s)', get: function (r) { return r.t.toFixed(2); } }, { label: 'T (s)', get: function (r) { return r.T.toFixed(3); } }, { label: 'T² (s²)', get: function (r) { return (r.T * r.T).toFixed(3); } }] },
     graph: { x: function (r) { return r.m; }, y: function (r) { return r.T * r.T; }, xlabel: 'm (kg)', ylabel: 'T² (s²)', x0: 0, y0: 0,
@@ -204,15 +213,15 @@ HoolaStudio.define('spring-oscillation', function (S) {
     steps: [
       { id: 'load', title: 'Load', view: 'rig', render: function (u) {
           u.h2('Load the hanger');
-          u.p('Choose the mass m. The hand slides 50 g slotted masses onto the hanger and lowers it gently to rest. m = hanger (50 g) + slotted masses.');
+          u.p('Choose the mass m. The hand slides ' + DG + ' g slotted masses onto the hanger and lowers it gently to rest. m = hanger (' + DG + ' g) + slotted masses.');
           u.live(function () { return 'm = ' + Math.round(p.m * 1000) + ' g' + (st.running ? ' · oscillating' : ''); });
-          u.row(u.button('Add a 50 g mass', function () { addMass(); }, true, S.hand.busy || st.n >= MAXN),
+          u.row(u.button('Add a ' + DG + ' g mass', function () { addMass(); }, true, S.hand.busy || st.n >= MAXN),
             u.button('Remove a mass', function () { removeMass(); }, false, S.hand.busy || !st.n));
           if (st.running) u.row(u.button('Steady the hanger', function () { steady(); }, false, S.hand.busy));
-          if (p.m < 0.1 - 1e-9) u.note('Use at least 100 g: with only the light hanger the spring goes slack at the top of each swing.');
-          u.next('Next: pull and release', p.m >= 0.1 - 1e-9);
+          if (p.m < HANGER + DISC - 1e-9) u.note('Use at least ' + (2 * DG) + ' g: with only the light hanger the spring goes slack at the top of each swing.');
+          u.next('Next: pull and release', p.m >= HANGER + DISC - 1e-9);
         },
-        ok: function () { return p.m >= 0.1 - 1e-9; },
+        ok: function () { return p.m >= HANGER + DISC - 1e-9; },
         auto: function () { return setDiscs(1); } },
       { id: 'pull', title: 'Pull and release', view: 'swing', render: function (u) {
           u.h2('Pull down and release');
@@ -220,11 +229,11 @@ HoolaStudio.define('spring-oscillation', function (S) {
           u.slider('Pull down by', 0.5, 5, 0.5, function () { return st.pull; }, function (v) { st.pull = v; }, 'cm', 1);
           u.row(u.button(st.running ? 'Oscillating…' : 'Pull and release', function () { pullRelease(st.pull); }, true, st.running || S.hand.busy),
             u.button('Steady the hanger', function () { steady(); }, false, !st.running || S.hand.busy));
-          u.note('About 3 cm is right. Too big a pull lets the spring go slack at the top.');
+          u.note(goodPull() === 3 ? 'About 3 cm is right. Too big a pull lets the spring go slack at the top.' : 'About ' + goodPull().toFixed(1) + ' cm is right for this mass. Too big a pull lets the spring go slack at the top.');
           u.next('Next: time 10 oscillations', st.running);
         },
         ok: function () { return st.running; },
-        auto: function () { st.pull = 3; return pullRelease(3); } },
+        auto: function () { st.pull = goodPull(); return pullRelease(st.pull); } },
       { id: 'time', title: 'Time it', view: 'sw', render: function (u) {
           u.h2('Time 10 oscillations');
           u.p('Press START as the pointer passes its mean position (the middle of its swing). Count 10 full oscillations and press STOP.');
@@ -239,7 +248,7 @@ HoolaStudio.define('spring-oscillation', function (S) {
         ok: function () { return S.rows.length >= 3; },
         auto: function () {
           return timeOne().then(function () { return [3, 5, 7, 9].reduce(function (pr, nd) { return pr.then(function () {
-            return steady().then(function () { return setDiscs(nd); }).then(function () { return pullRelease(3); }).then(timeOne); }); }, Promise.resolve()); }); } },
+            return steady().then(function () { return setDiscs(nd); }).then(function () { return pullRelease(goodPull()); }).then(timeOne); }); }, Promise.resolve()); }); } },
     ],
 
     tick: function (dt) {

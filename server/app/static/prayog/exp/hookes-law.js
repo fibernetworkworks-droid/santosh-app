@@ -7,15 +7,23 @@ HoolaStudio.define('hookes-law', function (S) {
   function hidden(id, dflt) { var k = (S.lab.knobs || []).filter(function (q) { return q.id === id; })[0]; return k ? k.value * (k.k || 1) : dflt; }
   var p = window.HoolaKernels.paramsFor('spring', S.lab.params);
   p.k = hidden('k', 20); p.x0 = 0;
-  var G = p.g, HANGER = 0.05, DISC = 0.05, MAXN = 9;        // hanger 50 g, slotted masses 50 g, 9 masses = 500 g in all
+  // rig: the slotted-mass set suits the spring (10, 20, 50, 100 or 200 g, hanger = one mass) so 10 loads stretch it at most 30 cm
+  var vs = ((S.lab.variant || {}).sample || '').toLowerCase(), MAXN = 9;
+  var DISC = [0.2, 0.1, 0.05, 0.02, 0.01].filter(function (d) { return (MAXN + 1) * d * p.g / p.k <= 0.3 + 1e-9; })[0] || 0.01;
+  var DG = Math.round(DISC * 1000), SZ = Math.max(0.6, Math.min(1.6, Math.cbrt(DISC / 0.05)));   // grams; the disc's size follows its mass
+  var wm = /wire (\d+(?:\.\d+)?) mm/.exec(vs);   // the spring's wire (drawn thicker than life, in the same ratio as the base spring)
+  var SPR = /phosphor/.test(vs) ? { n: 'phosphor bronze', c: 0xc08a4a, r: 0.3 } : /beryllium/.test(vs) ? { n: 'beryllium copper', c: 0xcf9668, r: 0.28 }
+    : /stainless/.test(vs) ? { n: 'stainless steel', c: 0xd3d7db, r: 0.2 } : /music/.test(vs) ? { n: 'music wire (spring steel)', c: 0x8d939a, r: 0.32 }
+    : /hard-drawn/.test(vs) ? { n: 'hard-drawn steel', c: 0x9fa4a9, r: 0.38 } : { n: 'steel', c: 0xb9bec4, r: 0.28 };
+  var G = p.g, HANGER = DISC;        // hanger + 9 slotted masses, all of one size (base: 50 g each, 500 g in all)
   var st = { n: 0, zero: null };
   p.m = HANGER;
   var sim = K.init(p); sim.y = [0, 0];
 
   // ---------- geometry constants
   var JX = 0.06, JZ = -0.05;                     // the clamp jaw: the spring hangs below it
-  var YTOP = 0.95, LC0 = 0.08, TURNS = 20, CR = 0.012, WIRE = 0.0011;
-  var DR = 0.02, DT = 0.0045, STEM = 0.1;        // slotted mass radius / thickness, hanger stem length
+  var YTOP = 0.95, LC0 = 0.08, TURNS = 20, CR = 0.012, WIRE = wm ? 0.0011 * (+wm[1]) / 0.86 : 0.0011;
+  var DR = 0.02 * SZ, DT = 0.0045 * SZ, STEM = 0.1;        // slotted mass radius / thickness, hanger stem length
   var RX = 0.11, RZ = -0.05, RY = 0.03, RLEN = 1.0;   // metre scale (standing in a foot)
   var MM = RLEN * 1000;
   function markY(cm) { return RY + RLEN - cm / 100; }   // true-scale ruler: zero at RY + RLEN   // where the printed mark sits
@@ -55,7 +63,7 @@ HoolaStudio.define('hookes-law', function (S) {
   var hk = S.mesh(new T.CylinderGeometry(0.0016, 0.0016, 0.016, 12), M.steel); hk.position.set(JX, 0.984, JZ); hookG.add(hk);
   var hk2 = S.mesh(new T.TorusGeometry(0.0055, 0.0014, 10, 28), M.steel); hk2.rotation.y = Math.PI / 2; hk2.position.set(JX, 0.9705, JZ); hookG.add(hk2);
   var spring = new T.Group(); spring.position.set(JX, YTOP, JZ); S.scene.add(spring);
-  var springM = new T.MeshStandardMaterial({ color: 0xb9bec4, roughness: 0.28, metalness: 1 });
+  var springM = new T.MeshStandardMaterial({ color: SPR.c, roughness: SPR.r, metalness: 1 });
   var hgeo = helix(TURNS, CR, WIRE, 26, 8); var coil = S.mesh(hgeo, springM); coil.frustumCulled = false; spring.add(coil);
   var topLoop = S.mesh(new T.TorusGeometry(0.0075, WIRE, 8, 28), springM); topLoop.position.set(0, 0.0085, 0); spring.add(topLoop);
   var topLeg = S.mesh(new T.CylinderGeometry(WIRE, WIRE, 1, 8), springM); spring.add(topLeg);
@@ -77,21 +85,21 @@ HoolaStudio.define('hookes-law', function (S) {
   var ruler = S.ruler(RLEN, { title: 'METRE SCALE · cm · LC 1 mm', labelEvery: 10 }); ruler.position.set(RX, RY, RZ);
   var rfoot = S.rounded(0.08, 0.05, 0.03, 0.008, M.darkWood); rfoot.rotation.x = -Math.PI / 2; rfoot.position.set(RX, 0.015, RZ); S.scene.add(rfoot); S.contact(0.14, 0.1, RX, RZ, 0.5);
   // slotted masses: a pile on the bench, the hand takes the top one
-  var discGeo = slotted(), lblTex = S.canvasTex(128, 64, function (x) { x.fillStyle = '#5a3d0c'; x.font = '700 40px "Public Sans", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('50 g', 64, 34); });
-  var lblMat = new T.MeshStandardMaterial({ map: lblTex, transparent: true, roughness: 0.5, depthWrite: false }), lblGeo = new T.PlaneGeometry(0.014, 0.007);
+  var discGeo = slotted(), lblTex = S.canvasTex(128, 64, function (x) { x.fillStyle = '#5a3d0c'; x.font = '700 40px "Public Sans", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(DG + ' g', 64, 34); });
+  var lblMat = new T.MeshStandardMaterial({ map: lblTex, transparent: true, roughness: 0.5, depthWrite: false }), lblGeo = new T.PlaneGeometry(0.014 * SZ, 0.007 * SZ);
   var PILE = new T.Vector3(0.27, 0, 0.08), discs = [], onHanger = [];
   for (var i = 0; i < MAXN; i++) { var d = new T.Group(), dm = S.mesh(discGeo, M.brass); d.add(dm);
-    var lb = new T.Mesh(lblGeo, lblMat); lb.rotation.x = -Math.PI / 2; lb.position.set(0.0115, DT / 2 + 0.0002, 0); lb.rotation.z = Math.PI / 2; lb.renderOrder = 2; d.add(lb);
+    var lb = new T.Mesh(lblGeo, lblMat); lb.rotation.x = -Math.PI / 2; lb.position.set(0.0115 * SZ, DT / 2 + 0.0002, 0); lb.rotation.z = Math.PI / 2; lb.renderOrder = 2; d.add(lb);
     d.position.set(PILE.x, DT / 2 + i * DT, PILE.z); S.scene.add(d); discs.push(d); }
   S.contact(0.08, 0.08, PILE.x, PILE.z, 0.5);
   var hangShadow = S.contact(0.07, 0.07, JX, JZ, 0.25);
   var pile = discs.slice();   // discs still on the bench, bottom first
 
   S.addApparatus('stand', stand, 'Retort stand with clamp', 'A heavy iron base and a rigid rod: the top of the spring stays fixed.');
-  S.addApparatus('spring', spring, 'Helical spring', 'A steel spring. Within its elastic limit the extension is proportional to the load.');
-  S.addApparatus('hanger', hanger, 'Slotted-mass hanger with pointer', 'The hanger itself is 50 g. Its steel pointer moves along the metre scale.');
+  S.addApparatus('spring', spring, 'Helical spring', 'A ' + SPR.n + ' spring. Within its elastic limit the extension is proportional to the load.');
+  S.addApparatus('hanger', hanger, 'Slotted-mass hanger with pointer', 'The hanger itself is ' + DG + ' g. Its steel pointer moves along the metre scale.');
   S.addApparatus('ruler', ruler, 'Metre scale', 'Fixed upright beside the spring. Read the pointer on it with your eye level with the pointer. Least count 1 mm.');
-  S.addApparatus('masses', discs[0], 'Slotted masses', 'Nine slotted masses of 50 g each. The slot lets each one slide onto the hanger stem.');
+  S.addApparatus('masses', discs[0], 'Slotted masses', 'Nine slotted masses of ' + DG + ' g each. The slot lets each one slide onto the hanger stem.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
   var hudL = S.hudCard('Load on hanger'), hudR = S.hudCard('Pointer reading'), hudX = S.hudCard('Extension');
 
@@ -105,13 +113,13 @@ HoolaStudio.define('hookes-law', function (S) {
   function setLoad(nn) { var e = ext(); st.n = nn; p.m = HANGER + nn * DISC; sim.y[0] = e - p.m * G / p.k; }
   function addMass() {
     if (S.hand.busy) return Promise.resolve();
-    if (st.n >= MAXN) { S.say('That is 500 g in all. More load would stretch the spring past its elastic limit.'); return Promise.resolve(); }
+    if (st.n >= MAXN) { S.say('That is ' + ((MAXN + 1) * DG) + ' g in all. More load would stretch the spring past its elastic limit.'); return Promise.resolve(); }
     if (st.zero === null) { S.say('Take the zero reading first, with only the hanger on the spring.'); return Promise.resolve(); }
     if (Math.abs(sim.y[1]) > 0.02) { S.say('Let the hanger come to rest before adding the next mass.'); return Promise.resolve(); }
     var d = pile.pop(), from = d.position.clone(), nn = st.n;
     var top = stackTopWorld(nn) + DT / 2 + 0.0008, path = along([from, from.clone().setY(from.y + 0.07), new T.Vector3(JX + 0.05, top + 0.05, JZ), new T.Vector3(JX + 0.05, top, JZ), new T.Vector3(JX, top, JZ)]);
     return S.hand.pinchMove(from.clone().add(GRIP), function (k) { return path(k).add(GRIP); }, function (k) { d.position.copy(path(k)); d.rotation.y = 0; }, { ms: 1700 })
-      .then(function () { onHanger.push(d); setLoad(nn + 1); S.render(); S.say('Mass added: the load on the hanger is now ' + (st.n * 50) + ' g. Wait for the pointer to settle, then read it.'); });
+      .then(function () { onHanger.push(d); setLoad(nn + 1); S.render(); S.say('Mass added: the load on the hanger is now ' + (st.n * DG) + ' g. Wait for the pointer to settle, then read it.'); });
   }
   function removeMass() {
     if (S.hand.busy) return Promise.resolve();
@@ -121,7 +129,7 @@ HoolaStudio.define('hookes-law', function (S) {
     var path = along([from, new T.Vector3(JX + 0.05, from.y, JZ), new T.Vector3(JX + 0.05, from.y + 0.05, JZ), to.clone().setY(to.y + 0.07), to]);
     var taken = false, nn = st.n;
     return S.hand.pinchMove(from.clone().add(GRIP), function (k) { return path(k).add(GRIP); }, function (k) { if (!taken) { taken = true; onHanger.pop(); setLoad(nn - 1); } d.position.copy(path(k)); }, { ms: 1600 })
-      .then(function () { pile.push(d); S.render(); S.say('Mass removed. The load on the hanger is now ' + (st.n * 50) + ' g.'); });
+      .then(function () { pile.push(d); S.render(); S.say('Mass removed. The load on the hanger is now ' + (st.n * DG) + ' g.'); });
   }
   function readPointer() {
     if (S.hand.busy) return;
@@ -130,11 +138,11 @@ HoolaStudio.define('hookes-law', function (S) {
     if (st.zero === null) {
       if (st.n) { S.say('Take the zero reading with only the hanger on: remove the slotted masses first.'); return; }
       st.zero = r; S.addRow({ n: 0, m: 0, F: 0, R: r, x: 0 });
-      S.say('Zero reading ' + r.toFixed(1) + ' cm written in your record book. Now add the first 50 g mass.'); S.render(); return; }
-    if (S.rows.some(function (row) { return row.n === st.n; })) { S.say('You already recorded the reading for ' + (st.n * 50) + ' g. Add another mass.'); return; }
+      S.say('Zero reading ' + r.toFixed(1) + ' cm written in your record book. Now add the first ' + DG + ' g mass.'); S.render(); return; }
+    if (S.rows.some(function (row) { return row.n === st.n; })) { S.say('You already recorded the reading for ' + (st.n * DG) + ' g. Add another mass.'); return; }
     var x = Math.round((r - st.zero) * 10) / 10, m = st.n * DISC;
     S.addRow({ n: st.n, m: m, F: m * G, R: r, x: x / 100 });
-    S.say('Written in your record book: load ' + (st.n * 50) + ' g, reading ' + r.toFixed(1) + ' cm, extension ' + x.toFixed(1) + ' cm.');
+    S.say('Written in your record book: load ' + (st.n * DG) + ' g, reading ' + r.toFixed(1) + ' cm, extension ' + x.toFixed(1) + ' cm.');
   }
 
   var EXP = {
@@ -147,7 +155,7 @@ HoolaStudio.define('hookes-law', function (S) {
       formula: 'F = mg = k x', formulaNote: 'so k = slope of the graph of load F against extension x',
       more: ['The pointer reading with only the hanger is the zero reading. Each extension is the pointer reading minus the zero reading. A graph of F against x is a straight line through the origin; its slope is k.'],
       precautions: 'Add the masses gently and wait for the pointer to come to rest before reading. Keep your eye level with the pointer to avoid parallax. Do not load beyond the elastic limit.' },
-    book: { title: 'Expt. — Hooke\'s Law', lines: ['Aim: to find the spring constant k of a spring.', 'Each slotted mass = 50 g, hanger = 50 g', 'g = 9.8 m/s²', 'Extension x = reading − zero reading', 'F = mg = k x   →   k = slope of F vs x', 'Precautions: wait for the pointer to rest, no parallax.'],
+    book: { title: 'Expt. — Hooke\'s Law', lines: ['Aim: to find the spring constant k of a spring.', 'Each slotted mass = ' + DG + ' g, hanger = ' + DG + ' g', 'g = ' + (+G.toFixed(2)) + ' m/s²', 'Extension x = reading − zero reading', 'F = mg = k x   →   k = slope of F vs x', 'Precautions: wait for the pointer to rest, no parallax.'],
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'Load (g)', get: function (r) { return String(Math.round(r.m * 1000)); } },
         { label: 'F = mg (N)', get: function (r) { return r.F.toFixed(2); } }, { label: 'Reading (cm)', get: function (r) { return r.R.toFixed(1); } },
         { label: 'Ext. x (cm)', get: function (r) { return (r.x * 100).toFixed(1); } }] },
@@ -159,13 +167,13 @@ HoolaStudio.define('hookes-law', function (S) {
     chips: ['What is the elastic limit?', 'Why take a zero reading?', 'Why wait for the pointer to settle?', 'Check my readings', 'Why is the graph a straight line?'],
     viva: [['Why do we wait before reading the pointer after adding a mass?', ['The spring oscillates for a while before it comes to rest', 'The spring gets heavier', 'The scale expands'], 0, 'A reading taken while the hanger still bobs is too high or too low.'],
       ['What does the slope of the load–extension graph give?', ['The spring constant k', 'The mass of the spring', 'g'], 0, 'F = k x, so F/x = k.']],
-    askState: function () { return { slotted_masses_on_hanger: st.n, load_on_hanger_g: st.n * 50, hanger_mass_g: 50, pointer_reading_cm: +reading().toFixed(1),
+    askState: function () { return { slotted_masses_on_hanger: st.n, load_on_hanger_g: st.n * DG, hanger_mass_g: DG, pointer_reading_cm: +reading().toFixed(1),
       zero_reading_cm: st.zero, extension_cm: st.zero === null ? null : +(reading() - st.zero).toFixed(1), pointer_settled: settled() }; },
 
     steps: [
       { id: 'zero', title: 'Zero reading', view: 'rig', render: function (u) {
           u.h2('Set up and take the zero reading');
-          u.p('The spring hangs from the clamp of the retort stand. The hanger (50 g) hangs from its lower end, and the pointer on the hanger lies along the metre scale.');
+          u.p('The spring hangs from the clamp of the retort stand. The hanger (' + DG + ' g) hangs from its lower end, and the pointer on the hanger lies along the metre scale.');
           u.task('1. Check the spring hangs freely', true, 'It does not touch the scale or the stand rod.');
           u.task('2. Read the pointer with only the hanger', st.zero !== null, st.zero !== null ? 'Zero reading = ' + st.zero.toFixed(1) + ' cm' : 'Keep your eye level with the pointer')
             .add(u.button(st.zero !== null ? 'Recorded' : 'Read the pointer', function () { S.focus('read'); readPointer(); }, st.zero === null, st.zero !== null));
@@ -174,15 +182,15 @@ HoolaStudio.define('hookes-law', function (S) {
           u.next('Next: add the masses', st.zero !== null);
         },
         ok: function () { return st.zero !== null; },
-        auto: function () { S.advance(20, settled); readPointer(); return Promise.resolve(); } },
+        auto: function () { S.advance(120, settled); readPointer(); return Promise.resolve(); } },
       { id: 'load', title: 'Add masses', view: 'rig', render: function (u) {
           u.h2('Add masses one by one');
-          u.p('Let the hand slide a 50 g slotted mass onto the hanger. Wait until the pointer comes to rest, then read it. Repeat for each mass.');
-          u.live(function () { return 'Load ' + (st.n * 50) + ' g · reading ' + reading().toFixed(1) + ' cm' + (settled() ? ' · at rest' : ' · settling…'); });
-          u.row(u.button('Add a 50 g mass', function () { addMass(); }, true, S.hand.busy || st.n >= MAXN),
+          u.p('Let the hand slide a ' + DG + ' g slotted mass onto the hanger. Wait until the pointer comes to rest, then read it. Repeat for each mass.');
+          u.live(function () { return 'Load ' + (st.n * DG) + ' g · reading ' + reading().toFixed(1) + ' cm' + (settled() ? ' · at rest' : ' · settling…'); });
+          u.row(u.button('Add a ' + DG + ' g mass', function () { addMass(); }, true, S.hand.busy || st.n >= MAXN),
             u.button('Read the pointer', function () { S.focus('read'); readPointer(); }, false, S.hand.busy),
             u.button('Remove a mass', function () { removeMass(); }, false, S.hand.busy || !st.n));
-          if (st.n >= MAXN) u.note('All nine masses are on (500 g). Do not load the spring any further.');
+          if (st.n >= MAXN) u.note('All nine masses are on (' + ((MAXN + 1) * DG) + ' g). Do not load the spring any further.');
           u.h3('Observation table'); u.table();
           var have = S.rows.filter(function (r) { return r.x > 0; }).length;
           u.next('Next: plot the graph', have >= 4);
@@ -190,7 +198,7 @@ HoolaStudio.define('hookes-law', function (S) {
         },
         ok: function () { return S.rows.filter(function (r) { return r.x > 0; }).length >= 4; },
         auto: function () { var pr = Promise.resolve();
-          for (var i = 0; i < 7; i++) pr = pr.then(function () { return addMass(); }).then(function () { S.advance(40, settled); readPointer(); });
+          for (var i = 0; i < 7; i++) pr = pr.then(function () { return addMass(); }).then(function () { S.advance(120, settled); readPointer(); });
           return pr; } },
     ],
 
@@ -203,7 +211,7 @@ HoolaStudio.define('hookes-law', function (S) {
       hanger.position.set(JX, py, JZ);
       onHanger.forEach(function (d, i) { d.position.set(JX, py + STACK0 + DT / 2 + i * DT, JZ); });
       var hgt = py - STEM; hangShadow.material.opacity = Math.max(0.08, 0.32 - hgt * 0.25); hangShadow.scale.setScalar(0.8 + hgt);
-      hudL.set((st.n * 50) + ' g'); hudR.set(reading().toFixed(1) + ' cm'); hudX.set(st.zero === null ? '—' : (reading() - st.zero).toFixed(1) + ' cm');
+      hudL.set((st.n * DG) + ' g'); hudR.set(reading().toFixed(1) + ' cm'); hudX.set(st.zero === null ? '—' : (reading() - st.zero).toFixed(1) + ' cm');
   }
   pose();
   return EXP;

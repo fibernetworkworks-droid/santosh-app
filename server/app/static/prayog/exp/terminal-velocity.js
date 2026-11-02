@@ -7,8 +7,24 @@ HoolaStudio.define('terminal-velocity', function (S) {
   function hidden(id, dflt) { var k = (S.lab.knobs || []).filter(function (q) { return q.id === id; })[0]; return k ? k.value * (k.k || 1) : dflt; }
   var p = window.HoolaKernels.paramsFor('stokes', S.lab.params);
   p.eta = hidden('eta', 1.49);
-  var DIAS = [2, 3, 4, 5, 6];   // mm, measured with a screw gauge (given)
-  var st = { pick: 3, dist: null, b1: null, b2: null, phase: 'none', air: 0, airV: 0, t1: null, y1: null, left: [4, 4, 4, 4, 4], drops: 0 };
+  // rig: the liquid and the balls come from the variant (default: steel balls in glycerine). The ball sizes suit the pair:
+  // Stokes' law needs a slow, creeping fall (Reynolds number <= 0.5) and the 30 cm between the bands must take 2.5-120 s.
+  var vs = ((S.lab.variant || {}).sample || '').toLowerCase();
+  var LIQ = /castor/.test(vs) ? { name: 'Castor oil', tag: 'CASTOR OIL', c: 0xe9d17c, top: 0xf4e2a2, op: 0.42 }
+    : /silicone/.test(vs) ? { name: 'Silicone oil', tag: 'SILICONE OIL', c: 0xe4eef2, top: 0xf2f8fa, op: 0.22 }
+    : /water/.test(vs) ? { name: 'Glycerine solution', tag: 'GLYCERINE 90 %', c: 0xe2cf8c, top: 0xf1e4b4, op: 0.32 }
+    : { name: 'Glycerine', tag: 'GLYCERINE', c: 0xdcb95c, top: 0xf3dc98, op: 0.4 };
+  var BALL = p.rho > 10000 ? { name: 'Lead', m: new T.MeshStandardMaterial({ color: 0x80858d, roughness: 0.45, metalness: 0.7 }) }
+    : p.rho > 8200 ? { name: 'Brass', m: M.brass }
+    : p.rho > 6000 ? { name: 'Steel', m: new T.MeshStandardMaterial({ color: 0xe6e9ec, roughness: 0.08, metalness: 1 }) }
+    : p.rho > 2600 ? { name: 'Aluminium', m: new T.MeshStandardMaterial({ color: 0xcdd2d7, roughness: 0.3, metalness: 0.9 }) }
+    : { name: 'Glass', m: new T.MeshPhysicalMaterial({ color: 0xe8f4f2, roughness: 0.02, metalness: 0, transmission: 0.6, transparent: true, opacity: 0.75, clearcoat: 1 }) };
+  var tcm = /at (\d+(?:\.\d+)?) °c/.exec(vs), TC = tcm ? +tcm[1] : null;   // the liquid's temperature, when the variant names one
+  function vT(d) { var r = d / 2000; return 2 * r * r * (p.rho - p.sigma) * p.g / (9 * p.eta); }
+  var DIAS = [1, 1.5, 2, 3, 4, 5, 6].filter(function (d) { var v = vT(d), t = 0.3 / v; return p.sigma * v * d / 1000 / p.eta <= 0.5 && t >= 2.5 && t <= 120; }).slice(-5);
+  if (DIAS.length < 3) DIAS = [2, 3, 4, 5, 6];   // mm, measured with a screw gauge (given)
+  var NB = DIAS.length;
+  var st = { pick: Math.min(3, NB - 1), dist: null, b1: null, b2: null, phase: 'none', air: 0, airV: 0, t1: null, y1: null, left: DIAS.map(function () { return 4; }), drops: 0 };
   p.r = DIAS[st.pick] / 2000;
   var sim = K.init(p);
 
@@ -25,28 +41,28 @@ HoolaStudio.define('terminal-velocity', function (S) {
   function yOf(depth) { return markY(RS + depth * 100); }
 
   var glassM = new T.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.2, clearcoat: 1, clearcoatRoughness: 0.05, depthWrite: false, side: T.DoubleSide });
-  var glyM = new T.MeshStandardMaterial({ color: 0xdcb95c, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.4, depthWrite: false, side: T.DoubleSide });
+  var glyM = new T.MeshStandardMaterial({ color: LIQ.c, roughness: 0.05, metalness: 0, transparent: true, opacity: LIQ.op, depthWrite: false, side: T.DoubleSide });
   var jar = new T.Group(); S.scene.add(jar);
   var prof = [[0, FOOT], [RO, FOOT], [RO, RIM - 0.002], [RO + 0.0025, RIM], [RI, RIM], [RI, FLOOR], [0, FLOOR]].map(function (q) { return new T.Vector2(q[0], q[1]); });
   var wall = new T.Mesh(new T.LatheGeometry(prof, 64), glassM); wall.renderOrder = 4; jar.add(wall);
   var foot = S.rounded(0.1, 0.1, FOOT, 0.02, new T.MeshPhysicalMaterial({ color: 0xdfe8ea, roughness: 0.08, transparent: true, opacity: 0.55 })); foot.rotation.x = -Math.PI / 2; foot.position.y = FOOT / 2; jar.add(foot);
   var gly = new T.Mesh(new T.CylinderGeometry(RI - 0.0003, RI - 0.0003, SURF - FLOOR, 48, 1, true), glyM); gly.position.y = (SURF + FLOOR) / 2; gly.renderOrder = 2; jar.add(gly);
-  var top = new T.Mesh(new T.CircleGeometry(RI - 0.0003, 48), new T.MeshStandardMaterial({ color: 0xf3dc98, roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.6, depthWrite: false }));
+  var top = new T.Mesh(new T.CircleGeometry(RI - 0.0003, 48), new T.MeshStandardMaterial({ color: LIQ.top, roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.6, depthWrite: false }));
   top.rotation.x = -Math.PI / 2; top.position.y = SURF; top.renderOrder = 3; jar.add(top);
   var bottomG = new T.Mesh(new T.CircleGeometry(RI - 0.0003, 48), glyM); bottomG.rotation.x = -Math.PI / 2; bottomG.position.y = FLOOR + 0.0004; jar.add(bottomG);
-  var men = S.mesh(new T.TorusGeometry(RI - 0.0012, 0.0012, 8, 48), new T.MeshStandardMaterial({ color: 0xf2dc9c, roughness: 0.05, transparent: true, opacity: 0.5 }), false); men.rotation.x = Math.PI / 2; men.position.y = SURF + 0.0004; jar.add(men);
+  var men = S.mesh(new T.TorusGeometry(RI - 0.0012, 0.0012, 8, 48), new T.MeshStandardMaterial({ color: LIQ.top === 0xf3dc98 ? 0xf2dc9c : LIQ.top, roughness: 0.05, transparent: true, opacity: 0.5 }), false); men.rotation.x = Math.PI / 2; men.position.y = SURF + 0.0004; jar.add(men);
   var bandM = new T.MeshStandardMaterial({ color: 0x8a2a1e, roughness: 0.7 });
   var bands = [BAND1, BAND2].map(function (cm) { var b = S.mesh(new T.TorusGeometry(RO + 0.0016, 0.0017, 10, 56), bandM); b.rotation.x = Math.PI / 2; b.position.y = markY(cm); jar.add(b); return b; });
-  var jl = S.label('GLYCERINE', { w: 0.05, ratio: 0.22, color: '#3b2a10', bg: '#f3ecd6' }); jl.position.set(0, FOOT + 0.07, RO + 0.0012); jar.add(jl);
+  var jl = S.label(LIQ.tag, { w: LIQ.tag.length > 10 ? 0.07 : 0.05, ratio: 0.22, color: '#3b2a10', bg: '#f3ecd6' }); jl.position.set(0, FOOT + 0.07, RO + 0.0012); jar.add(jl);
   jar.position.set(JX, 0, JZ); S.contact(0.16, 0.16, JX, JZ, 0.5);
   var ruler = S.ruler(RLEN, { title: 'METRE SCALE · cm · LC 1 mm', labelEvery: 10 }); ruler.position.set(RX, RY, RZ);
   var rfoot = S.rounded(0.08, 0.06, 0.05, 0.008, M.darkWood); rfoot.rotation.x = -Math.PI / 2; rfoot.position.set(RX + 0.012, 0.025, RZ); S.scene.add(rfoot); S.contact(0.14, 0.11, RX + 0.012, RZ, 0.5);
   // steel balls in five small petri dishes, each with its size written on a paper slip
-  var steel = new T.MeshStandardMaterial({ color: 0xe6e9ec, roughness: 0.08, metalness: 1 });
+  var steel = BALL.m;
   var dishGeo = new T.LatheGeometry([[0, 0], [0.019, 0], [0.0205, 0.001], [0.0205, 0.009], [0.0192, 0.009], [0.0192, 0.0012], [0, 0.0012]].map(function (q) { return new T.Vector2(q[0], q[1]); }), 40);
   var tray = new T.Group(); S.scene.add(tray);
   var sheet = new T.Mesh(new T.PlaneGeometry(0.25, 0.085), M.paper); sheet.rotation.x = -Math.PI / 2; sheet.position.set(0, 0.0006, 0); sheet.receiveShadow = true; tray.add(sheet);
-  var dishX = [-0.096, -0.048, 0, 0.048, 0.096], ballsIn = [];
+  var dishX = DIAS.map(function (d, i) { return (i - (NB - 1) / 2) * 0.048; }), ballsIn = [];
   DIAS.forEach(function (d, i) { var dish = new T.Mesh(dishGeo, glassM); dish.position.set(dishX[i], 0.0008, -0.008); dish.renderOrder = 4; tray.add(dish);
     var lb = S.label(d + ' mm', { w: 0.03, ratio: 0.35, color: '#22305a', weight: 600 }); lb.rotation.x = -Math.PI / 2; lb.position.set(dishX[i], 0.0012, 0.026); tray.add(lb);
     var list = [];
@@ -55,14 +71,16 @@ HoolaStudio.define('terminal-velocity', function (S) {
     ballsIn.push(list); });
   var TRAY = new T.Vector3(0.24, 0, 0.1); tray.position.copy(TRAY); S.contact(0.3, 0.12, TRAY.x, TRAY.z, 0.3);
   var watch = S.stopwatch([-0.14, 0.035, 0.18], [-1.15, 0, -0.15]);
+  var therm = TC === null ? null : S.thermometer({ len: 0.3, min: 0, max: 50, value: TC, pos: [JX - 0.019, 0.36, JZ + 0.006] });   // dipped in the liquid, clear of the balls
   // the falling ball (moved out of its dish when the hand picks it), and the ones already at the bottom
   var ball = null, landed = [];
   var OFFS = [[0.004, 0.002], [-0.005, 0.003], [0.002, -0.006], [-0.003, -0.004], [0.007, -0.001], [-0.007, 0.0], [0.0, 0.007], [0.005, 0.006]];
 
-  S.addApparatus('jar', jar, 'Tall jar of glycerine', 'A tall, wide glass jar full of glycerine (density 1260 kg/m³). Its walls have little effect on a small ball at the centre.');
+  S.addApparatus('jar', jar, 'Tall jar of ' + LIQ.name.toLowerCase(), 'A tall, wide glass jar full of ' + LIQ.name.toLowerCase() + ' (density ' + Math.round(p.sigma) + ' kg/m³). Its walls have little effect on a small ball at the centre.');
   S.addApparatus('bands', bands[0], 'Rubber bands', 'Two bands round the jar 30 cm apart. The upper one is well below the surface, so the ball is already at terminal velocity when it passes it.');
   S.addApparatus('ruler', ruler, 'Metre scale', 'Measures the distance between the two bands. Least count 1 mm.');
-  S.addApparatus('balls', tray, 'Steel balls', 'Steel (density 7800 kg/m³), diameters 2–6 mm, measured with a screw gauge.');
+  S.addApparatus('balls', tray, BALL.name + ' balls', BALL.name + ' (density ' + Math.round(p.rho) + ' kg/m³), diameters ' + DIAS[0] + '–' + DIAS[NB - 1] + ' mm, measured with a screw gauge.');
+  if (therm) S.addApparatus('therm', therm, 'Thermometer', 'Dipped in the liquid: ' + TC + ' °C. The viscosity of an oil or of glycerine changes a lot with temperature.');
   S.addApparatus('sw', watch.group, 'Digital stopwatch', 'Least count 0.01 s. Start it at the upper band, stop it at the lower band.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
   var hudB = S.hudCard('Ball diameter'), hudD = S.hudCard('Depth below surface'), hudT = S.hudCard('Stopwatch');
@@ -114,21 +132,21 @@ HoolaStudio.define('terminal-velocity', function (S) {
     S.say('Written in your record book: ' + DIAS[st.pick] + ' mm ball, ' + st.dist.toFixed(1) + ' cm in ' + t.toFixed(2) + ' s, v = ' + (v * 100).toFixed(2) + ' cm/s.');
   }
   function timeOne() {   // auto: start at the upper band, stop at the lower band
-    S.advance(120, function () { return st.phase === 'liquid' && sim.y[0] >= D1; });
-    return pressWatch().then(function () { S.advance(120, function () { return sim.y[0] >= D2; }); return pressWatch(); })
-      .then(function () { S.advance(60, function () { return st.phase === 'rest'; }); });
+    S.advance(600, function () { return st.phase === 'liquid' && sim.y[0] >= D1; });
+    return pressWatch().then(function () { S.advance(600, function () { return sim.y[0] >= D2; }); return pressWatch(); })
+      .then(function () { S.advance(600, function () { return st.phase === 'rest'; }); });
   }
 
   var EXP = {
     camera: { pos: [0.62, 0.62, 1.42], look: [0.03, 0.3, -0.04] },
     views: { jar: [[0.38, 0.5, 0.78], [0.0, 0.33, -0.05]], bands: [[0.26, 0.4, 0.55], [0.04, 0.35, -0.05]], ruler: [[0.26, 0.4, 0.55], [0.05, 0.35, -0.05]],
       setup: [[0.42, 0.48, 0.92], [0.06, 0.32, -0.04]], drop: [[0.5, 0.74, 0.98], [0.05, 0.44, -0.04]], fall: [[0.42, 0.42, 0.95], [0.02, 0.33, -0.04]],
-      balls: [[0.38, 0.22, 0.38], [0.24, 0.0, 0.1]], sw: [[0.1, 0.5, 0.95], [-0.08, 0.3, 0.02]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
+      balls: [[0.38, 0.22, 0.38], [0.24, 0.0, 0.1]], therm: [[0.2, 0.62, 0.42], [-0.02, 0.56, -0.04]], sw: [[0.1, 0.5, 0.95], [-0.08, 0.3, 0.02]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'A small sphere falling through a viscous liquid soon stops accelerating: its weight is balanced by the upthrust and the viscous drag 6πηrv. It then falls at a steady terminal velocity.',
-      formula: 'v = 2 r² (ρ − σ) g / 9η', formulaNote: 'so η = 2 r² (ρ − σ) g / 9v · ρ = 7800 kg/m³ (steel), σ = 1260 kg/m³ (glycerine)',
+      formula: 'v = 2 r² (ρ − σ) g / 9η', formulaNote: 'so η = 2 r² (ρ − σ) g / 9v · ρ = ' + Math.round(p.rho) + ' kg/m³ (' + BALL.name.toLowerCase() + '), σ = ' + Math.round(p.sigma) + ' kg/m³ (' + LIQ.name.toLowerCase() + ')',
       more: ['v is proportional to r². A graph of v against r² is a straight line through the origin, and η = 2 (ρ − σ) g / (9 × slope).'],
       precautions: 'Drop each ball gently at the centre of the surface, away from the walls. Start timing only below the upper band, when the speed is steady. Keep your eye level with each band as the ball passes it.' },
-    book: { title: 'Expt. — Stokes\' Law', lines: ['Aim: to find η of glycerine from terminal velocity.', 'ρ (steel) = 7800 kg/m³, σ (glycerine) = 1260 kg/m³', 'Distance between bands D = ' + (BAND2 - BAND1).toFixed(1) + ' cm', 'v = D / t', 'η = 2 r² (ρ − σ) g / 9v', 'Precautions: drop at centre, time below upper band.'],
+    book: { title: 'Expt. — Stokes\' Law', lines: ['Aim: to find η of ' + LIQ.name.toLowerCase() + ' from terminal velocity.', 'ρ (' + BALL.name.toLowerCase() + ') = ' + Math.round(p.rho) + ' kg/m³, σ (' + LIQ.name.toLowerCase() + ') = ' + Math.round(p.sigma) + ' kg/m³', 'Distance between bands D = ' + (BAND2 - BAND1).toFixed(1) + ' cm', 'v = D / t', 'η = 2 r² (ρ − σ) g / 9v', 'Precautions: drop at centre, time below upper band.'],
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'd (mm)', get: function (r) { return r.d.toFixed(1); } },
         { label: 'r² (mm²)', get: function (r) { return (r.d * r.d / 4).toFixed(2); } }, { label: 't (s)', get: function (r) { return r.t.toFixed(2); } }, { label: 'v (cm/s)', get: function (r) { return (r.v * 100).toFixed(2); } }] },
     graph: { x: function (r) { return r.r * r.r * 1e6; }, y: function (r) { return r.v * 100; }, xlabel: 'r² (mm²)', ylabel: 'v (cm/s)', x0: 0, y0: 0,
@@ -169,7 +187,7 @@ HoolaStudio.define('terminal-velocity', function (S) {
           if (ns < 3) u.p(ns + ' of at least 3 ball sizes timed (4 or 5 is better). Small balls fall slowly: be patient.');
         },
         ok: function () { var sz = {}; S.rows.forEach(function (q) { sz[q.d] = 1; }); return Object.keys(sz).length >= 3; },
-        auto: function () { return [1, 2, 3, 4].reduce(function (pr, i) { return pr.then(function () { choose(i); return drop(); }).then(timeOne); }, Promise.resolve()); } },
+        auto: function () { return DIAS.map(function (d, i) { return i; }).slice(-4).reduce(function (pr, i) { return pr.then(function () { choose(i); return drop(); }).then(timeOne); }, Promise.resolve()); } },
     ],
 
     tick: function (dt) {
