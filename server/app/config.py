@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     hard_judge: bool = True                 # v0.272 the 'not sure' zone asks one tiny model call (1 token, time-limited)
     hard_judge_model: str = "claude-haiku-5-5"
     hard_judge_timeout_s: float = 2.5
+    hard_recipe: bool = True                # v0.433 a hard ask gets the reasoning recipe in its system prompt (agent/hard.py)
+    hard_check: bool = True                 # v0.436 SOCH KE JAWAB 5: a hard answer is held + checked (code + one reviewer call) before she sees it
+    hard_check_model: str = ""              # v0.436 the reviewer's model ('' = anthropic_model)
+    hard_check_timeout_s: float = 60.0      # v0.436 a slow reviewer never blocks the answer
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
     agent_goal_milestones: int = 2          # v0.228 at most this many 'aadha kaam ho gaya' pushes per long job (0 = off)
@@ -114,6 +118,9 @@ class Settings(BaseSettings):
     team_agent_max_steps: int = 8           # model steps per sub-agent
     team_agent_timeout_s: int = 240         # per-agent wall clock (inline clamps to 260: the main tool clock is 300 s)
     team_max_tokens: int = 1500             # per sub-agent model call
+    team_research_max_steps: int = 14       # v0.437 a deep-research crew's agents: more steps (pages to open, sources to check)
+    team_research_max_tokens: int = 4000    # v0.437 ... and room for a sourced report (~15 lines with links)
+    team_research_soft_s: float = 170.0     # v0.437 a research agent writes its sourced report at this mark (the inline crew clock is 260 s)
     team_background: bool = True            # mode="background" crews (persisted, worker-run, self-reporting)
     team_bg_max_running: int = 2            # running background crews per tenant
     team_bg_timeout_s: int = 1200           # a whole background crew's wall clock
@@ -263,6 +270,9 @@ class Settings(BaseSettings):
     site_parallel_big: int = 8             # v0.315 sections written at the same time on a big site (v0.400: 5 -> 8)
     site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
+    site_sms_provider: str = ""            # v0.434 website phone-OTP login: "" off | msg91 (DLT registered, her account)
+    msg91_authkey: str = ""                # v0.434 MSG91 auth key (VPS .env only)
+    msg91_otp_template: str = ""           # v0.434 MSG91 OTP template id (DLT approved)
     site_app_link: bool = True             # v0.414 every website web app runs on App Sahayak's backend + DIMAAG (old v0.305 sites moved by the worker)
     site_journeys: bool = True             # v0.402 visitor journeys (menu / form / shop / blog / language) on every version
     site_arena_max_inr: float = 3000       # v0.307 Design Arena: rupee ceiling of one run (each site ~Rs 100-300 with Opus)

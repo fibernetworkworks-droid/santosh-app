@@ -184,8 +184,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.442 SAB KAAM CALL PAR + PAKKA KAAM (built as 0.440 / 0.441): every one of the 483 chat tools is reachable on a call (122 had NO route -> `voice.registered()` + `call_route()`, undeclared ones go to santosh_kaam, never 'Unknown tool'); and a call's santosh_kaam job runs through the durable turn_inbox, so a restart re-runs it once with its place (new turn_inbox.place) and the drop note names a running job.
+- v0.439 GMAIL POORA CALL PAR: all 23 Gmail tools reach a voice call - email_thread / snooze / drafts declared, labels / threads / bulk / filters / rules / vacation / forwarding / alias via santosh_kaam; test keeps every EMAIL_TOOLS name reachable.
 - v0.431 FRICTION + BACKLASH + CAM CONTACT: H.joint(bearing=..., pin_d, friction, damping) = mu x real joint load in the MuJoCo move (motors pay, energy lost), H.couple(backlash=) = tip play vs H.robot(accuracy_mm) + a gap in the sim (lost motion, knocks), H.disc_cam contact = designed return spring / jump check / Hertz / guide jam.
 - v0.426 CAMS + SLOTS + DYNAMICS (built as 0.425; `engineering/cams.py` H.disc_cam from the follower motion + pressure / undercut / cusp checks, joint kind `slot`, `dynamics.py` MuJoCo move in her time: torque / saturation / loop gap, motors sized x1.25); VPS `pip install mujoco`.
+- v0.435 PARIVAAR (Pillar H, built as 0.426 / 0.433, `appmaker/family.py`): rider / partner shop / staff apps = own projects on the MAIN backend (by_key -> home); partners apply, she approves; rider = ready jobs w/o phone, take under lock, his steps; shop = only its orders (no phone) + own menu; web admin /app-admin/<key>; kits Partner.kt/.swift.
 - v0.417 META ADS (A1, built as 0.409, `ads/metaads.py`): Facebook Login for her Meta ad account (no pasted token), drafts by goal (WhatsApp / Messenger / IG chats, website, boost) -> Check (validate_only) -> Create ALL PAUSED -> Start on confirm (end_time set) -> auto-ended; NOT VERIFIED live.
 - v0.389 SACH BOLO: the enterprise write rails made real from the vendors' OWN docs - SAP needs X-CSRF-Token
   (403 without) + If-Match (428 without) on ONE held session + its documented RequestID idempotency; Windchill needs
@@ -219,8 +222,19 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.432.0 (pubspec 0.432.0+476). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.443.0 (pubspec 0.443.0+488). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
+- v0.441 PRAYOGSHALA STUDIO (built as 0.435): all 22 labs in the realistic studio (`static/prayog/studio/studio.js` engine + `exp/<id>.js` per lab, contract `docs/PRAYOG_STUDIO.md`): real equipment, gloved hand, theory -> steps -> record book -> graph -> viva, Ask Hoola per lab (`/api/prayog/ask`); `tools/prayog_walk.js` = 22/22 within tolerance.
+- v0.434 APP PAGES + SURAKSHA (web Step 3, W2 + W3): `hoola-app.js` = in-page app per role (tables sort/search/filter/pages/bulk, detail + linked lists, multi-step forms + uploads, kanban, calendar, approvals, members, audit, matrix, My account); `site/security.py` = phone OTP (MSG91 DLT, hash only), staff TOTP 2FA, sessions + sign out everywhere, DPDP consent / export / delete, journal `by` = audit log, `private` fields. Not built: Google / magic link / passkeys / custom roles.
+- v0.440 HARD CARD SACH: a failed turn's apology was scored as an answer (her 0/28, 1 s) -> ERROR row + server log lines, stop after 3 dead, `hardcard --ping`; a held hard answer now STREAMS from the API (was one blocking 16k+thinking call).
+- v0.438 SOCH KE JAWAB 7/7: HARD CARD `quality/hard_card.py` - 28 hard asks with Python-computed answers, free card 28/28,
+  live card through the real pipeline scored in code (+ Opus judge); `python -m app.quality hardcard --live`, vps-ops hard_card.
+- v0.437 SOCH KE JAWAB 6/7: deep research = hard (research signal) + DEEP RESEARCH recipe; research crew 14 steps / 4k /
+  RESEARCH_RULE / graceful WRAP_UP; research_check refuses no / invented sources. Next: step 7 the scored hard set.
+- v0.436 SOCH KE JAWAB 5/7: a hard answer is HELD and checked before she sees it (hard.code_check + one reviewer call with
+  the pylab evidence); a problem = ONE fix round, the draft never shown; draftcheck skips it. Next: step 6 deep research.
+- v0.433 SOCH KE JAWAB 4/7: a hard turn's system prompt carries the reasoning recipe (hard.RECIPE_CORE 'SOCH KA TAREEKA'
+  + up to 3 kind lines from assess() labels); chat never. Next: step 5 a self-check before a hard answer goes out.
 - v0.430 SOCH KE JAWAB 3/7: pylab (locked Python sandbox) rides with every hard / data / calculation ask (admit.calc_needed),
   'a number you work out = pylab, never mental maths'. Next: step 4 the reasoning recipe.
 - v0.429 SOCH KE JAWAB 2/7: a hard reasoning ask runs on Opus 5.5 (agent_hard_model) at effort high with 16k tokens and

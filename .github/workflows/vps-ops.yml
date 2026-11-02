@@ -37,6 +37,7 @@ on:
           - rea_setup
           - studio_apis
           - tool_card
+          - hard_card
           - long_jobs
           - proof
           - code_card
@@ -340,6 +341,14 @@ jobs:
                 # run it on the VPS itself - python -m app.quality tools --live.)
                 echo 'cd $CORE && echo "== router (free)"; timeout 120 .venv/bin/python -m app.quality tools 2>&1 | head -3; timeout 120 .venv/bin/python -m app.quality tools --fresh 2>&1 | head -3'
                 echo 'echo "== live first picks, FRESH set"; cd $CORE && timeout 720 .venv/bin/python -m app.quality tools --live --fresh --label vps-ops 2>&1 | tail -40' ;;
+              hard_card)
+                # v0.438 SOCH KE JAWAB step 7: are hard ANSWERS right? The free card (every ask spotted / pylab / recipe),
+                # then the QUICK set (10 asks with exact answers) through the REAL pipeline on tenant __quality__ - Opus,
+                # pylab, the self-check, all of it - scored in code. ~10-15 min, about Rs 60-120. The full 28 with the
+                # judge: on the VPS itself - python -m app.quality hardcard --live --judge.
+                echo 'cd $CORE && echo "== free card"; timeout 120 .venv/bin/python -m app.quality hardcard 2>&1 | head -5'
+                echo 'echo "== ping (v0.440: each model x plain / thinking / effort)"; cd $CORE && timeout 120 .venv/bin/python -m app.quality hardcard --ping 2>&1 | grep -v httpx | tail -10'
+                echo 'echo "== live, quick set"; cd $CORE && timeout 1200 .venv/bin/python -m app.quality hardcard --live --quick --label vps-ops 2>&1 | tail -30' ;;
               long_jobs)
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.

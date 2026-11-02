@@ -129,6 +129,9 @@ animations instead), offline map tiles, barcode inventory flow (scan field + sto
 - Design: her design can be any style; the visual match score (v0.346) guards every screen.
 
 ### H. Multi-app products + web admin — Phases 58–59
+**Status: BUILT in v0.435.0 PARIVAAR** (`server/app/appmaker/family.py`, kits `Partner.kt` / `Partner.swift`, web admin
+`/app-admin/<app_key>`) — faces = own projects on the main backend, partner roles checked in code (rider offers / take /
+steps, partner shop = only its orders + menu), web admin (plain JS, not React). Not yet: the food-delivery proof on real phones.
 - One backend, several apps: customer app, partner / rider / vendor app, staff app — each with its own screens, roles,
   store listing; plus a generated **web admin panel** (React, v0.305 web-app engine grown up) for the business.
 - Proof: Swiggy-class food delivery = customer app + rider app + restaurant app + admin web, end to end.

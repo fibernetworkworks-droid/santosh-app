@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.432.0"   # v0.432.0 (built as 0.430.0) LIVE OPS (Hoola Game Engine plan Phase 9, owner: "GO PHASE 9"; gamedesk/liveops.py, tool game_liveops). The game reads GET /play/<token>/live from its own host (cached on the device): running A/B tests + approved live events, values via HoolaRuntime.num / flag - only Game Bible numbers within 1/4x - 4x, or flag.<name>. A/B tests: sha256(install:key) groups (same sum in GDScript, checked in the real Godot), sample-size target, sample-ratio check, z-test + Bonferroni, NOT ENOUGH PLAYERS before the target, start / stop = her tap, ship = a board task. Live events calendar (India time, her tap, no clashes with each other or a running test). Crashes caught by Godot's Logger (4.5+) from consenting players, grouped + scrubbed, crash-free per version, one-tap hotfix task. Patch check: saved replays + a bot run on the newest version in the real engine. Dashboard + D30 / DAU / balance outliers / difficulty spikes; money only from her imported store CSV (ARPDAU an upper bound). Console Live ops page, phone Live ops screen.
+APP_VERSION = "0.443.0"   # v0.443.0 (built as 0.433.0) BIG-STUDIO MODE (Hoola Game Engine plan Phase 10, owner: "Phase 10 START END TO END"; gamedesk/bigstudio.py, tool game_bigstudio). The Hoola Crew works inside HER OWN Unity / Unreal / Godot project on HER machines, through each engine's official editor scripting: a Unity UPM package (Editor-only asmdef, Window > Hoola Crew, CompilationPipeline for the real CS errors, backups in Library/HoolaBackups + revert) and an Unreal Engine 5 content-only Python plugin (PythonScriptPlugin + EditorScriptingUtilities, a ToolMenus "Hoola Crew" menu, EditorDialog yes / no, Saved/HoolaCrew backups + revert), both MCP clients of the same /mcp/gamedesk server (7 new hoola_studio_* tools behind hashed editor tokens, so Claude Desktop / Cursor drive the same board). One small board task at a time: her editor asks for the next task with what it sees (engine version, selection, open scripts, console errors) -> Hoola proposes files + steps for that engine -> the SERVER checks them (paths only inside the project's own code folders, never settings / packages / binaries; banned calls per language; UnityEditor outside an Editor folder refused; real syntax by Python ast and C# / C++ tree-sitter, missing parser = NOT ASSESSED) -> nothing is written until she clicks Apply in her editor -> her editor compiles or runs it and reports back; errors are a fix round (max 3) with the REAL compiler errors, a clean compile marks it done, and "compiles" is said only when HER editor said so. Console Game Desk > Big studio + phone Big studio. NOT VERIFIED in a real Unity / Unreal editor (neither is installable in the sandbox); the real Unreal plugin code is run in tests against a stand-in unreal module and the real MCP endpoint.
 
 
 def _quiet_http_logs() -> None:
@@ -5081,7 +5081,7 @@ for _mk in (_shiksha_router, _pathyakram_router, _guru_router, _daftar_router, _
 # v0.415 Prayogshala (3D practical labs): the catalogue is public teaching material (no user data), read without a key
 from .prayog.api import make_router as _prayog_router  # noqa: E402
 
-app.include_router(_prayog_router())
+app.include_router(_prayog_router(require_key, current_tenant))   # catalogue public; /api/prayog/ask needs the key
 
 # v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (under /api/<mod>/*, key-protected; homestay's router also holds
 # the public calendar feed /api/homestay-ical/{tenant}/{token}.ics, which checks its own random token)
@@ -8466,6 +8466,7 @@ async def _site_pub(site_id: str, op: str, request: Request, body: dict | None =
     backend + DIMAAG logic for a linked one (site/applink.py). The site's pages keep the same addresses."""
     from .site import applink as AL
     tok, ip = _site_tok(request), _ip(request)
+    kw.setdefault("ua", (request.headers.get("user-agent") or "")[:160])     # v0.434 the sessions list names the device
     return await asyncio.to_thread(_app_call, lambda: AL.call(site_id, op, tok, body or {}, ip, **kw))
 
 
@@ -8548,6 +8549,95 @@ async def site_app_decide(site_id: str, appr_id: str, request: Request):
     return await _site_pub(site_id, "decide", request, await _json_body(request), appr_id=appr_id)
 
 
+# v0.434 LOGIN AUR SURAKSHA: phone OTP, staff 2FA, sessions, her data (export / delete), audit log, permissions, uploads
+@app.post("/api/site-app/{site_id}/otp/start")
+async def site_app_otp_start(site_id: str, request: Request):
+    return await _site_pub(site_id, "otp_start", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/otp/verify")
+async def site_app_otp_verify(site_id: str, request: Request):
+    return await _site_pub(site_id, "otp_verify", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/2fa/login")
+async def site_app_2fa_login(site_id: str, request: Request):
+    return await _site_pub(site_id, "2fa_login", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/2fa/{step}")
+async def site_app_2fa(site_id: str, step: str, request: Request):
+    if step not in ("start", "confirm", "off"):
+        raise HTTPException(404, "not found")
+    return await _site_pub(site_id, "2fa_" + step, request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/sessions")
+async def site_app_sessions(site_id: str, request: Request):
+    return await _site_pub(site_id, "sessions", request)
+
+
+@app.post("/api/site-app/{site_id}/sessions/{sid}/end")
+async def site_app_session_end(site_id: str, sid: str, request: Request):
+    return await _site_pub(site_id, "session_end", request, sid=sid)
+
+
+@app.post("/api/site-app/{site_id}/logout-all")
+async def site_app_logout_all(site_id: str, request: Request):
+    return await _site_pub(site_id, "logout_all", request)
+
+
+@app.get("/api/site-app/{site_id}/me/export")
+async def site_app_export(site_id: str, request: Request):
+    return await _site_pub(site_id, "export", request)
+
+
+@app.post("/api/site-app/{site_id}/me/delete")
+async def site_app_delete_me(site_id: str, request: Request):
+    return await _site_pub(site_id, "delete_me", request)
+
+
+@app.get("/api/site-app/{site_id}/audit")
+async def site_app_audit(site_id: str, request: Request, limit: int = 200, coll: str = ""):
+    return await _site_pub(site_id, "audit", request, limit=limit, coll=coll)
+
+
+@app.get("/api/site-app/{site_id}/matrix")
+async def site_app_matrix(site_id: str, request: Request):
+    return await _site_pub(site_id, "matrix", request)
+
+
+@app.post("/api/site-app/{site_id}/upload")
+async def site_app_upload(site_id: str, request: Request):
+    raw = await request.body()
+    if len(raw) > 12 * 1024 * 1024:
+        raise HTTPException(413, "File bahut badi hai (12 MB tak).")
+    return await _site_pub(site_id, "upload", request, raw=raw)
+
+
+@app.get("/api/site-app/{site_id}/file/{fid}")
+async def site_app_file(site_id: str, fid: str, request: Request):
+    """v0.434 a photo / PDF from a form, for whoever may see it (the page fetches it with the login header)."""
+    from .appmaker import backend as BE
+    from .site import applink as AL
+    from .site import service as S
+    from .site import webapp as W
+
+    def go():
+        r, _ = S.public_app(site_id)
+        p = AL.project(r)
+        if p is None:
+            raise W.AppError("not found", 404)
+        return BE.file_for(p, fid, AL._who(site_id, p, _site_tok(request)))
+    try:
+        path = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    from fastapi.responses import FileResponse
+    return FileResponse(path, media_type="application/pdf" if str(path).endswith(".pdf") else "image/jpeg",
+                        headers={**_SITE_APP_CORS, "Cache-Control": "private, max-age=300"})
+
+
 @app.post("/api/site-app/{site_id}/fn/{name}")
 async def site_app_fn(site_id: str, name: str, request: Request):
     """v0.407 a callable locked function of the site's logic (its own tests passed before it went live)."""
@@ -8598,6 +8688,13 @@ async def sites_logic_apply(ref: str, body: dict, tenant: str = Depends(current_
     """ONLY her tap: the draft she saw (by its hash) goes live on the site + its app."""
     from .site import applink as AL
     return await asyncio.to_thread(_site_logic, AL.logic_apply, tenant, ref, str(body.get("hash") or ""))
+
+
+@app.get("/api/sites/{ref}/audit", dependencies=[Depends(require_key)])
+async def sites_audit(ref: str, limit: int = 100, tenant: str = Depends(current_tenant)):
+    """v0.434 her website app's audit log (every change, who made it) + the permissions matrix."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.owner_audit, tenant, ref, max(1, min(limit, 500)))
 
 
 @app.post("/api/sites/{ref}/link-app", dependencies=[Depends(require_key)])
@@ -9494,7 +9591,7 @@ async def apps_act(ref: str, action: str, body: dict | None = None, tenant: str 
 
         def go_dc():
             try:
-                return BE.change_schema(_be_owner(tenant, ref), body.get("ops") if isinstance(body.get("ops"), dict) else {},
+                return BE.change_schema(_be_data(tenant, ref), body.get("ops") if isinstance(body.get("ops"), dict) else {},
                                         str(body.get("words") or ""))
             except W.AppError as e:
                 raise HTTPException(e.code, str(e))
@@ -10229,7 +10326,7 @@ async def apps_live(ref: str, request: Request, colls: str = "", tenant: str = D
 async def apps_live_presence(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import live as LV
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: LV.online(_be_owner(tenant, ref), W.Who(owner=True)))
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.online(_be_data(tenant, ref), W.Who(owner=True)))
 
 
 @app.post("/api/apps/{ref}/live/typing", dependencies=[Depends(require_key)])
@@ -10237,7 +10334,7 @@ async def apps_live_typing(ref: str, body: dict, tenant: str = Depends(current_t
     """Her 'typing...' in a customer's chat thread {thread}."""
     from .appmaker import live as LV
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: LV.typing(_be_owner(tenant, ref), W.Who(owner=True),
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.typing(_be_data(tenant, ref), W.Who(owner=True),
                                                                      str((body or {}).get("thread") or "")))
 
 
@@ -10284,7 +10381,7 @@ async def apps_track(ref: str, tenant: str = Depends(current_tenant)):
     from .site import webapp as W
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         return {**TR.settings(r), **TR.riders(r, W.Who(owner=True))}
     return await asyncio.to_thread(_be_owner_call, go)
 
@@ -10293,14 +10390,14 @@ async def apps_track(ref: str, tenant: str = Depends(current_tenant)):
 async def apps_track_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """Her tap: {on, coll, statuses} - which list is tracked and which statuses mean 'on the way'."""
     from .appmaker import track as TR
-    return await asyncio.to_thread(_be_owner_call, lambda: TR.save_settings(_be_owner(tenant, ref), body or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.save_settings(_be_data(tenant, ref), body or {}))
 
 
 @app.get("/api/apps/{ref}/track/c/{coll}/{row_id}", dependencies=[Depends(require_key)])
 async def apps_track_order(ref: str, coll: str, row_id: str, tenant: str = Depends(current_tenant)):
     from .appmaker import track as TR
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: TR.order(_be_owner(tenant, ref), W.Who(owner=True), coll, row_id))
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.order(_be_data(tenant, ref), W.Who(owner=True), coll, row_id))
 
 
 def html_escape(s: str) -> str:
@@ -10386,7 +10483,7 @@ async def app_api_pay_sub_cancel(app_key: str, sid: str, request: Request):
 async def apps_pay(ref: str, tenant: str = Depends(current_tenant)):
     """Her payments page: gateway (never the keys), webhook address, payments + refunds, plans, AutoPay, split rule."""
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.status(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.status(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/pay/keys", dependencies=[Depends(require_key)])
@@ -10394,7 +10491,7 @@ async def apps_pay_keys(ref: str, body: dict, tenant: str = Depends(current_tena
     """{gateway, keys: {...}, test}: typed in the app, checked with the gateway, sealed; returned by no route."""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_keys(_be_owner(tenant, ref), str(b.get("gateway") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_keys(_be_data(tenant, ref), str(b.get("gateway") or ""),
                                                                        b.get("keys") if isinstance(b.get("keys"), dict) else {},
                                                                        bool(b.get("test"))))
 
@@ -10402,7 +10499,7 @@ async def apps_pay_keys(ref: str, body: dict, tenant: str = Depends(current_tena
 @app.delete("/api/apps/{ref}/pay/keys", dependencies=[Depends(require_key)])
 async def apps_pay_keys_forget(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.forget_keys(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.forget_keys(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/pay/{pid}/refund", dependencies=[Depends(require_key)])
@@ -10410,20 +10507,20 @@ async def apps_pay_refund(ref: str, pid: str, body: dict, tenant: str = Depends(
     """Her tap only {amount? (rupees, blank = the rest), why, her_tap: true}."""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund(_be_owner(tenant, ref), pid, b.get("amount"),
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund(_be_data(tenant, ref), pid, b.get("amount"),
                                                                      str(b.get("why") or ""), bool(b.get("her_tap"))))
 
 
 @app.post("/api/apps/{ref}/pay/refunds/{fid}/check", dependencies=[Depends(require_key)])
 async def apps_pay_refund_check(ref: str, fid: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund_check(_be_owner(tenant, ref), fid))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund_check(_be_data(tenant, ref), fid))
 
 
 @app.get("/api/apps/{ref}/pay/settlements", dependencies=[Depends(require_key)])
 async def apps_pay_settlements(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.settlements(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.settlements(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/pay/link", dependencies=[Depends(require_key)])
@@ -10431,7 +10528,7 @@ async def apps_pay_link(ref: str, body: dict, tenant: str = Depends(current_tena
     """{amount, purpose, name?, phone?, her_tap: true} -> a payment link she sends herself."""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.link(_be_owner(tenant, ref), b.get("amount"), str(b.get("purpose") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.link(_be_data(tenant, ref), b.get("amount"), str(b.get("purpose") or ""),
                                                                    str(b.get("name") or ""), str(b.get("phone") or ""), bool(b.get("her_tap"))))
 
 
@@ -10440,21 +10537,21 @@ async def apps_pay_plan_add(ref: str, body: dict, tenant: str = Depends(current_
     """{name, amount, period: week|month|year, count, her_tap: true}"""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.add_plan(_be_owner(tenant, ref), str(b.get("name") or ""), b.get("amount"),
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.add_plan(_be_data(tenant, ref), str(b.get("name") or ""), b.get("amount"),
                                                                        str(b.get("period") or ""), b.get("count"), bool(b.get("her_tap"))))
 
 
 @app.delete("/api/apps/{ref}/pay/plans/{key}", dependencies=[Depends(require_key)])
 async def apps_pay_plan_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.drop_plan(_be_owner(tenant, ref), key))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.drop_plan(_be_data(tenant, ref), key))
 
 
 @app.post("/api/apps/{ref}/pay/subs/{sid}/cancel", dependencies=[Depends(require_key)])
 async def apps_pay_sub_cancel(ref: str, sid: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.cancel_sub(_be_owner(tenant, ref), W.Who(owner=True), sid))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.cancel_sub(_be_data(tenant, ref), W.Who(owner=True), sid))
 
 
 @app.put("/api/apps/{ref}/pay/split", dependencies=[Depends(require_key)])
@@ -10462,7 +10559,7 @@ async def apps_pay_split(ref: str, body: dict, tenant: str = Depends(current_ten
     """{vendors: [{key, name, account}], rules: [{vendor, percent}], her_tap: true} - her approved payout rule."""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_split(_be_owner(tenant, ref), b.get("vendors") or [], b.get("rules") or [],
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_split(_be_data(tenant, ref), b.get("vendors") or [], b.get("rules") or [],
                                                                         bool(b.get("her_tap"))))
 
 
@@ -10487,10 +10584,177 @@ async def app_api_connect_hook(app_key: str, key: str, request: Request):
     return await asyncio.to_thread(_be_call, lambda: CN.hook(BE.by_key(app_key), key, hdrs, raw))
 
 
+# ---- v0.435 PARIVAAR (App Sahayak Pillar H): one backend, several apps (customer / delivery partner / partner shop /
+# staff) + the web admin. The partner app's jobs screen and the web admin talk to these; every rule is checked in
+# appmaker/family.py on the server, never by the app.
+@app.get("/api/app-api/{app_key}/partner/me")
+async def app_api_partner_me(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.me(r, w, FA.kind_for_key(app_key))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/partner/request")
+async def app_api_partner_request(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.request(r, w, FA.kind_for_key(app_key))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/partner/jobs")
+async def app_api_partner_jobs(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.jobs(r, w, app_key)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/partner/jobs/{row_id}/take")
+async def app_api_partner_take(app_key: str, row_id: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.take(r, w, row_id)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/partner/jobs/{row_id}/step")
+async def app_api_partner_step(app_key: str, row_id: str, request: Request):
+    from .appmaker import family as FA
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.step(r, w, row_id, str(body.get("status") or ""))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/admin/overview")
+async def app_api_admin_overview(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.admin_overview(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/admin/members")
+async def app_api_admin_members(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return {"members": FA.admin_members(r, w)}
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/admin/members/{member}/role")
+async def app_api_admin_role(app_key: str, member: str, request: Request):
+    from .appmaker import family as FA
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.admin_role(r, w, member, str(body.get("role") or ""))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/admin/partners")
+async def app_api_admin_partners(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.admin_partners(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/admin/partners/{pid}")
+async def app_api_admin_partner(app_key: str, pid: str, request: Request):
+    from .appmaker import family as FA
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.admin_decide(r, w, pid, body)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/admin/export/{coll}")
+async def app_api_admin_export(app_key: str, coll: str, request: Request):
+    from .appmaker import family as FA
+    from .site import webapp as W
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.export_csv(r, coll, w)
+    try:
+        text, name = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+    return Response(text.encode("utf-8"), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store",
+                             "X-Content-Type-Options": "nosniff"})
+
+
+_ADMIN_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+              "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+
+
+@app.get("/app-admin/{app_key}")
+async def app_admin_page(app_key: str):
+    """The business's web admin: a page that signs in with an app staff / admin account and talks only to its own
+    /api/app-api/<app_key>/ addresses (the server checks every rule)."""
+    import re as _re
+    if not _re.fullmatch(r"ak[0-9a-f]{8,38}", app_key or ""):
+        raise HTTPException(404, "not found")
+    return FileResponse(STATIC / "appadmin" / "index.html", media_type="text/html",
+                        headers={"Content-Security-Policy": _ADMIN_CSP, "Cache-Control": "no-cache", "X-Frame-Options": "DENY",
+                                 "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/apps/{ref}/family", dependencies=[Depends(require_key)])
+async def apps_family(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import family as FA
+    return await asyncio.to_thread(_be_owner_call, lambda: FA.view(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/family/face", dependencies=[Depends(require_key)])
+async def apps_family_face(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap: a delivery partner / partner shop / staff / customer app on the SAME backend (its own plan card next)."""
+    from .appmaker import family as FA
+    return await asyncio.to_thread(_be_owner_call, lambda: FA.add_face(tenant, ref, str(body.get("kind") or ""),
+                                                                       str(body.get("words") or ""), str(body.get("conv") or "")))
+
+
+@app.put("/api/apps/{ref}/family/settings", dependencies=[Depends(require_key)])
+async def apps_family_settings(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import family as FA
+    return await asyncio.to_thread(_be_owner_call, lambda: FA.save_settings(_be_data(tenant, ref), body))
+
+
+@app.post("/api/apps/{ref}/family/partners/{pid}", dependencies=[Depends(require_key)])
+async def apps_family_partner(ref: str, pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her Haan / Na / remove on a delivery partner or partner shop."""
+    from .appmaker import family as FA
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: FA.admin_decide(_be_data(tenant, ref), W.Who(owner=True), pid, body))
+
+
 @app.get("/api/apps/{ref}/connect", dependencies=[Depends(require_key)])
 async def apps_connect(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.status(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.status(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/connect/pack", dependencies=[Depends(require_key)])
@@ -10498,7 +10762,7 @@ async def apps_connect_pack(ref: str, body: dict, tenant: str = Depends(current_
     """{pack, settings, secrets}: secrets sealed at once; the drafted actions wait for her approval tap."""
     from .appmaker import connect as CN
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.apply_pack(_be_owner(tenant, ref), str(b.get("pack") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.apply_pack(_be_data(tenant, ref), str(b.get("pack") or ""),
                                                                          b.get("settings") if isinstance(b.get("settings"), dict) else {},
                                                                          b.get("secrets") if isinstance(b.get("secrets"), dict) else {}))
 
@@ -10506,19 +10770,19 @@ async def apps_connect_pack(ref: str, body: dict, tenant: str = Depends(current_
 @app.put("/api/apps/{ref}/connect/actions", dependencies=[Depends(require_key)])
 async def apps_connect_action(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_action(_be_owner(tenant, ref), (body or {}).get("action") or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_action(_be_data(tenant, ref), (body or {}).get("action") or {}))
 
 
 @app.post("/api/apps/{ref}/connect/actions/{key}/approve", dependencies=[Depends(require_key)])
 async def apps_connect_approve(ref: str, key: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.approve(_be_owner(tenant, ref), key, bool((body or {}).get("her_tap"))))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.approve(_be_data(tenant, ref), key, bool((body or {}).get("her_tap"))))
 
 
 @app.delete("/api/apps/{ref}/connect/actions/{key}", dependencies=[Depends(require_key)])
 async def apps_connect_action_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_action(_be_owner(tenant, ref), key))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_action(_be_data(tenant, ref), key))
 
 
 @app.post("/api/apps/{ref}/connect/actions/{key}/run", dependencies=[Depends(require_key)])
@@ -10531,7 +10795,7 @@ async def apps_connect_run(ref: str, key: str, body: dict, tenant: str = Depends
     def go():
         if not b.get("her_tap"):
             raise W.AppError("Sirf aapke tap se.", 403)
-        return CN.run(_be_owner(tenant, ref), key, str(b.get("row") or ""), "her_tap", wait=True)
+        return CN.run(_be_data(tenant, ref), key, str(b.get("row") or ""), "her_tap", wait=True)
     return await asyncio.to_thread(_be_owner_call, go)
 
 
@@ -10539,25 +10803,25 @@ async def apps_connect_run(ref: str, key: str, body: dict, tenant: str = Depends
 async def apps_connect_secret(ref: str, name: str, body: dict, tenant: str = Depends(current_tenant)):
     """{value}: typed in the app, sealed at once, returned by no route."""
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.set_secret(_be_owner(tenant, ref), name, str((body or {}).get("value") or "")))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.set_secret(_be_data(tenant, ref), name, str((body or {}).get("value") or "")))
 
 
 @app.delete("/api/apps/{ref}/connect/secrets/{name}", dependencies=[Depends(require_key)])
 async def apps_connect_secret_drop(ref: str, name: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.forget_secret(_be_owner(tenant, ref), name))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.forget_secret(_be_data(tenant, ref), name))
 
 
 @app.put("/api/apps/{ref}/connect/hooks", dependencies=[Depends(require_key)])
 async def apps_connect_hook_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_hook(_be_owner(tenant, ref), (body or {}).get("hook") or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_hook(_be_data(tenant, ref), (body or {}).get("hook") or {}))
 
 
 @app.delete("/api/apps/{ref}/connect/hooks/{key}", dependencies=[Depends(require_key)])
 async def apps_connect_hook_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_hook(_be_owner(tenant, ref), key))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_hook(_be_data(tenant, ref), key))
 
 
 # ---- v0.425 RANG (App Sahayak Pillar G): custom native components (Kotlin + Swift) - house rules in code, her tap, build-proved.
@@ -10594,6 +10858,12 @@ def _be_owner(tenant: str, ref: str):
     return r
 
 
+def _be_data(tenant: str, ref: str):
+    """v0.435 PARIVAAR: the app whose DATA she means - a rider / shop / staff app runs on its main app's backend."""
+    from .appmaker import family as FA
+    return FA.home(_be_owner(tenant, ref))
+
+
 def _be_owner_call(fn):
     from .site import webapp as W
     try:
@@ -10606,26 +10876,26 @@ def _be_owner_call(fn):
 async def apps_data(ref: str, tenant: str = Depends(current_tenant)):
     """Her app's backend: lists, fields, rules, counts, the address the installed app talks to."""
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_view(_be_data(tenant, ref)))
 
 
 @app.get("/api/apps/{ref}/data/{coll}", dependencies=[Depends(require_key)])
 async def apps_data_rows(ref: str, coll: str, tenant: str = Depends(current_tenant)):
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: {"rows": BE.owner_rows(_be_owner(tenant, ref), coll)})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"rows": BE.owner_rows(_be_data(tenant, ref), coll)})
 
 
 @app.patch("/api/apps/{ref}/data/{coll}/{row_id}", dependencies=[Depends(require_key)])
 async def apps_data_update(ref: str, coll: str, row_id: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_update(_be_owner(tenant, ref), coll, row_id, body))
+    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_update(_be_data(tenant, ref), coll, row_id, body))
 
 
 @app.post("/api/apps/{ref}/data/{coll}/{row_id}/credit-note", dependencies=[Depends(require_key)])
 async def apps_credit_note(ref: str, coll: str, row_id: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
     """v0.356 WAPSI: her credit note for an invoiced row (a return / a wrong bill), full value, with her reason."""
     from .appmaker import gst as G
-    return await asyncio.to_thread(_be_owner_call, lambda: G.credit(_be_owner(tenant, ref), coll, row_id,
+    return await asyncio.to_thread(_be_owner_call, lambda: G.credit(_be_data(tenant, ref), coll, row_id,
                                                                     str((body or {}).get("reason") or "")))
 
 
@@ -10659,7 +10929,7 @@ async def apps_turant_set(ref: str, body: dict, tenant: str = Depends(current_te
 async def apps_owndb(ref: str, tenant: str = Depends(current_tenant)):
     """The link, her connected databases (Profile > Postgres database), the provider list, sync lag."""
     from .appmaker import owndb as OD
-    return await asyncio.to_thread(_be_owner_call, lambda: OD.status(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.status(_be_data(tenant, ref)))
 
 
 @app.post("/api/owndb/conns", dependencies=[Depends(require_key)])
@@ -10683,20 +10953,20 @@ async def apps_owndb_link(ref: str, body: dict, tenant: str = Depends(current_te
     """HER TAP {conn, mode: primary|mirror}: backup, her tables, every row copied, counts compared, then live."""
     from .appmaker import owndb as OD
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: OD.link(_be_owner(tenant, ref), str(b.get("conn") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.link(_be_data(tenant, ref), str(b.get("conn") or ""),
                                                                    str(b.get("mode") or "primary")))
 
 
 @app.post("/api/apps/{ref}/owndb/unlink", dependencies=[Depends(require_key)])
 async def apps_owndb_unlink(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import owndb as OD
-    return await asyncio.to_thread(_be_owner_call, lambda: OD.unlink(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.unlink(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/owndb/verify", dependencies=[Depends(require_key)])
 async def apps_owndb_verify(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import owndb as OD
-    return await asyncio.to_thread(_be_owner_call, lambda: OD.verify(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.verify(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/owndb/sync", dependencies=[Depends(require_key)])
@@ -10705,12 +10975,12 @@ async def apps_owndb_sync(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import owndb as OD
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         o = OD.cfg(r, fresh=True)
         if not o:
             raise OD.OwnDbError("Yeh app kisi database se judi nahi hai.", 404)
         n = OD.tick(force=True)
-        return {"ok": True, "synced": n, **OD.status(_be_owner(tenant, ref))}
+        return {"ok": True, "synced": n, **OD.status(_be_data(tenant, ref))}
     return await asyncio.to_thread(_be_owner_call, go)
 
 
@@ -10718,14 +10988,14 @@ async def apps_owndb_sync(ref: str, tenant: str = Depends(current_tenant)):
 @app.get("/api/apps/{ref}/backups", dependencies=[Depends(require_key)])
 async def apps_backups(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import backup as BK
-    return await asyncio.to_thread(_be_owner_call, lambda: {"backups": BK.snapshots(_be_owner(tenant, ref))})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"backups": BK.snapshots(_be_data(tenant, ref))})
 
 
 @app.post("/api/apps/{ref}/backups/now", dependencies=[Depends(require_key)])
 async def apps_backup_now(ref: str, tenant: str = Depends(current_tenant)):
     """A snapshot now (her button)."""
     from .appmaker import backup as BK
-    return await asyncio.to_thread(_be_owner_call, lambda: BK.snapshot(_be_owner(tenant, ref), "by hand", "manual"))
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.snapshot(_be_data(tenant, ref), "by hand", "manual"))
 
 
 @app.post("/api/apps/{ref}/backups/preview", dependencies=[Depends(require_key)])
@@ -10733,7 +11003,7 @@ async def apps_backup_preview(ref: str, body: dict, tenant: str = Depends(curren
     """{at: "YYYY-MM-DDTHH:MM" IST} or {name}: what a restore would change - nothing is changed."""
     from .appmaker import backup as BK
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: BK.preview(_be_owner(tenant, ref), str(b.get("at") or ""), str(b.get("name") or "")))
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.preview(_be_data(tenant, ref), str(b.get("at") or ""), str(b.get("name") or "")))
 
 
 @app.post("/api/apps/{ref}/backups/restore", dependencies=[Depends(require_key)])
@@ -10741,7 +11011,7 @@ async def apps_backup_restore(ref: str, body: dict, tenant: str = Depends(curren
     """HER TAP: the app's rows back to a snapshot {name} or a minute {at} (a safety snapshot is taken first)."""
     from .appmaker import backup as BK
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: BK.restore(_be_owner(tenant, ref), str(b.get("at") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.restore(_be_data(tenant, ref), str(b.get("at") or ""),
                                                                       str(b.get("name") or ""), bool(b.get("members"))))
 
 
@@ -10751,7 +11021,7 @@ async def apps_export(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import backup as BK
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         return r, BK.export(r)
     r, data = await asyncio.to_thread(_be_owner_call, go)
     name = re.sub(r"[^A-Za-z0-9_-]+", "-", f"{r.name or 'app'}-{r.number}-data").strip("-") + ".zip"
@@ -10762,41 +11032,41 @@ async def apps_export(ref: str, tenant: str = Depends(current_tenant)):
 @app.get("/api/apps/{ref}/usage", dependencies=[Depends(require_key)])
 async def apps_usage(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import meter as MT
-    return await asyncio.to_thread(_be_owner_call, lambda: MT.usage(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: MT.usage(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/usage", dependencies=[Depends(require_key)])
 async def apps_usage_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """Her limits {rows, files_mb, writes_day} (never above the ceiling, never below what is used)."""
     from .appmaker import meter as MT
-    return await asyncio.to_thread(_be_owner_call, lambda: MT.set_limits(_be_owner(tenant, ref), body or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: MT.set_limits(_be_data(tenant, ref), body or {}))
 
 
 # ---- v0.382 DIMAAG: her side of the app's logic (Opus drafts, the checker proves, HER tap applies)
 @app.get("/api/apps/{ref}/logic", dependencies=[Depends(require_key)])
 async def apps_logic(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.view(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/logic/draft", dependencies=[Depends(require_key)])
 async def apps_logic_draft(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
     """{words}: Opus writes the logic for this app's real lists; checked; kept as a DRAFT (her live app unchanged)."""
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.draft(_be_owner(tenant, ref), str((body or {}).get("words") or "")))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.draft(_be_data(tenant, ref), str((body or {}).get("words") or "")))
 
 
 @app.delete("/api/apps/{ref}/logic/draft", dependencies=[Depends(require_key)])
 async def apps_logic_discard(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.discard(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.discard(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/logic/apply", dependencies=[Depends(require_key)])
 async def apps_logic_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """HER TAP: {hash} = the exact draft she saw goes live (new lists / fields first, then the logic, then a recompute)."""
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.apply(_be_owner(tenant, ref), str((body or {}).get("hash") or "")))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.apply(_be_data(tenant, ref), str((body or {}).get("hash") or "")))
 
 
 @app.put("/api/apps/{ref}/logic", dependencies=[Depends(require_key)])
@@ -10804,13 +11074,13 @@ async def apps_logic_save(ref: str, body: dict, tenant: str = Depends(current_te
     """The console editor {logic, lists, fields}: the same checker; saved + applied only when it has zero errors."""
     from .appmaker.logic import service as LS
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.save(_be_owner(tenant, ref), b.get("logic") or {}, b.get("lists"), b.get("fields")))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.save(_be_data(tenant, ref), b.get("logic") or {}, b.get("lists"), b.get("fields")))
 
 
 @app.post("/api/apps/{ref}/logic/switch", dependencies=[Depends(require_key)])
 async def apps_logic_switch(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.switch(_be_owner(tenant, ref), bool((body or {}).get("on"))))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.switch(_be_data(tenant, ref), bool((body or {}).get("on"))))
 
 
 @app.post("/api/apps/{ref}/logic/test", dependencies=[Depends(require_key)])
@@ -10818,7 +11088,7 @@ async def apps_logic_test(ref: str, body: dict, tenant: str = Depends(current_te
     """Try a formula {coll, expr, row} on a real row - nothing saved."""
     from .appmaker.logic import service as LS
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.test(_be_owner(tenant, ref), str(b.get("coll") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.test(_be_data(tenant, ref), str(b.get("coll") or ""),
                                                                    str(b.get("expr") or ""), str(b.get("row") or "")))
 
 
@@ -10826,20 +11096,20 @@ async def apps_logic_test(ref: str, body: dict, tenant: str = Depends(current_te
 async def apps_logic_run(ref: str, name: str, tenant: str = Depends(current_tenant)):
     """Run one scheduled job now (her button)."""
     from .appmaker.logic import engine as LE
-    return await asyncio.to_thread(_be_owner_call, lambda: LE.run_schedule(_be_owner(tenant, ref), name, force=True))
+    return await asyncio.to_thread(_be_owner_call, lambda: LE.run_schedule(_be_data(tenant, ref), name, force=True))
 
 
 @app.get("/api/apps/{ref}/logic/audit", dependencies=[Depends(require_key)])
 async def apps_logic_audit(ref: str, row: str = "", limit: int = 100, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import engine as LE
-    return await asyncio.to_thread(_be_owner_call, lambda: {"audit": LE.audit_list(_be_owner(tenant, ref), limit, row)})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"audit": LE.audit_list(_be_data(tenant, ref), limit, row)})
 
 
 @app.get("/api/apps/{ref}/approvals", dependencies=[Depends(require_key)])
 async def apps_approvals(ref: str, all: int = 0, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import engine as LE
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: {"approvals": LE.approvals(_be_owner(tenant, ref), W.Who(owner=True), bool(all))})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"approvals": LE.approvals(_be_data(tenant, ref), W.Who(owner=True), bool(all))})
 
 
 @app.post("/api/apps/{ref}/approvals/{appr_id}", dependencies=[Depends(require_key)])
@@ -10848,7 +11118,7 @@ async def apps_decide(ref: str, appr_id: str, body: dict, tenant: str = Depends(
     from .appmaker.logic import engine as LE
     from .site import webapp as W
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: LE.decide(_be_owner(tenant, ref), appr_id, str(b.get("decision") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: LE.decide(_be_data(tenant, ref), appr_id, str(b.get("decision") or ""),
                                                                      str(b.get("note") or ""), W.Who(owner=True)))
 
 
@@ -10856,7 +11126,7 @@ async def apps_decide(ref: str, appr_id: str, body: dict, tenant: str = Depends(
 async def apps_variants(ref: str, tenant: str = Depends(current_tenant)):
     """v0.362 VARIANTS: each product's sizes (name + own price)."""
     from .appmaker import variants as VR
-    return await asyncio.to_thread(_be_owner_call, lambda: VR.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: VR.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/variants", dependencies=[Depends(require_key)])
@@ -10864,7 +11134,7 @@ async def apps_variants_set(ref: str, body: dict, tenant: str = Depends(current_
     """v0.362 one product's sizes {product: id or name, variants: [{name, price}]} ([] removes them)."""
     from .appmaker import variants as VR
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: VR.save(_be_owner(tenant, ref), str(b.get("product") or ""), b.get("variants")))
+    return await asyncio.to_thread(_be_owner_call, lambda: VR.save(_be_data(tenant, ref), str(b.get("product") or ""), b.get("variants")))
 
 
 @app.get("/api/apps/{ref}/hisaab", dependencies=[Depends(require_key)])
@@ -10873,7 +11143,7 @@ async def apps_hisaab(ref: str, month: str = "", download: int = 0, tenant: str 
     from .appmaker import hisaab as HS
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         if download:
             return HS.zip_bytes(r, month)
         rep = HS.build(r, month)
@@ -10890,7 +11160,7 @@ async def apps_hisaab(ref: str, month: str = "", download: int = 0, tenant: str 
 async def apps_tally(ref: str, month: str = "", tenant: str = Depends(current_tenant)):
     """v0.374 TALLY EXPORT: the month's invoices + credit notes as Tally XML vouchers (Import > Vouchers in her Tally)."""
     from .appmaker import tally as TL
-    data, name, _n = await asyncio.to_thread(_be_owner_call, lambda: TL.file_bytes(_be_owner(tenant, ref), month))
+    data, name, _n = await asyncio.to_thread(_be_owner_call, lambda: TL.file_bytes(_be_data(tenant, ref), month))
     return Response(data, media_type="application/xml", headers={"Content-Disposition": f'attachment; filename="{name}"',
                                                                  "Cache-Control": "private, no-store"})
 
@@ -10899,14 +11169,14 @@ async def apps_tally(ref: str, month: str = "", tenant: str = Depends(current_te
 async def apps_tally_names(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """v0.374 her Tally ledger names {party, sales, cgst, sgst, igst, round}."""
     from .appmaker import tally as TL
-    return await asyncio.to_thread(_be_owner_call, lambda: TL.set_names(_be_owner(tenant, ref), body))
+    return await asyncio.to_thread(_be_owner_call, lambda: TL.set_names(_be_data(tenant, ref), body))
 
 
 @app.get("/api/apps/{ref}/gstr1", dependencies=[Depends(require_key)])
 async def apps_gstr1(ref: str, month: str = "", tenant: str = Depends(current_tenant)):
     """v0.373 GSTR-1 FILE: the month's GSTR-1 JSON (GST offline tool shape) from her invoices + credit notes. Nothing is filed."""
     from .appmaker import gstr1 as GR
-    data, name = await asyncio.to_thread(_be_owner_call, lambda: GR.file_bytes(_be_owner(tenant, ref), month))
+    data, name = await asyncio.to_thread(_be_owner_call, lambda: GR.file_bytes(_be_data(tenant, ref), month))
     return Response(data, media_type="application/json", headers={"Content-Disposition": f'attachment; filename="{name}"',
                                                                   "Cache-Control": "private, no-store"})
 
@@ -10915,7 +11185,7 @@ async def apps_gstr1(ref: str, month: str = "", tenant: str = Depends(current_te
 async def apps_delivery(ref: str, tenant: str = Depends(current_tenant)):
     """v0.360 DELIVERY: fee, free above, PIN codes, opening hours."""
     from .appmaker import delivery as DL
-    return await asyncio.to_thread(_be_owner_call, lambda: DL.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: DL.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/delivery", dependencies=[Depends(require_key)])
@@ -10924,10 +11194,10 @@ async def apps_delivery_set(ref: str, body: dict, tenant: str = Depends(current_
     from .appmaker import delivery as DL
     b = body or {}
     if "holidays" in b:                                  # v0.377 her holidays
-        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_holidays(_be_owner(tenant, ref), b.get("holidays")))
+        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_holidays(_be_data(tenant, ref), b.get("holidays")))
     if "slots" in b:
-        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_slots(_be_owner(tenant, ref), b.get("slots"), b.get("days"), b.get("cutoff")))
-    return await asyncio.to_thread(_be_owner_call, lambda: DL.save(_be_owner(tenant, ref), body))
+        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_slots(_be_data(tenant, ref), b.get("slots"), b.get("days"), b.get("cutoff")))
+    return await asyncio.to_thread(_be_owner_call, lambda: DL.save(_be_data(tenant, ref), body))
 
 
 @app.get("/api/apps/{ref}/chat", dependencies=[Depends(require_key)])
@@ -10935,8 +11205,8 @@ async def apps_chat(ref: str, member: str = "", tenant: str = Depends(current_te
     """v0.378 BAAT: her customers' threads (member= one thread)."""
     from .appmaker import baat as BT
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: BT.thread(_be_owner(tenant, ref), W.Who(owner=True), member) if member
-                                   else BT.threads(_be_owner(tenant, ref), W.Who(owner=True)))
+    return await asyncio.to_thread(_be_owner_call, lambda: BT.thread(_be_data(tenant, ref), W.Who(owner=True), member) if member
+                                   else BT.threads(_be_data(tenant, ref), W.Who(owner=True)))
 
 
 @app.post("/api/apps/{ref}/chat/{member}", dependencies=[Depends(require_key)])
@@ -10945,7 +11215,7 @@ async def apps_chat_reply(ref: str, member: str, body: dict, tenant: str = Depen
     from .appmaker import baat as BT
     from .site import webapp as W
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: BT.reply(_be_owner(tenant, ref), W.Who(owner=True), member,
+    return await asyncio.to_thread(_be_owner_call, lambda: BT.reply(_be_data(tenant, ref), W.Who(owner=True), member,
                                                                     str(b.get("text") or ""), bool(b.get("her_tap"))))
 
 
@@ -10954,15 +11224,15 @@ async def apps_khata(ref: str, member: str = "", tenant: str = Depends(current_t
     """v0.359 KHATA: who owes how much (member= one customer's entries)."""
     from .appmaker import khata as KH
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: KH.summary(_be_owner(tenant, ref), member) if member
-                                   else KH.dues(_be_owner(tenant, ref), W.Who(owner=True)))
+    return await asyncio.to_thread(_be_owner_call, lambda: KH.summary(_be_data(tenant, ref), member) if member
+                                   else KH.dues(_be_data(tenant, ref), W.Who(owner=True)))
 
 
 @app.get("/api/apps/{ref}/khata-yaad", dependencies=[Depends(require_key)])
 async def apps_khata_yaad(ref: str, tenant: str = Depends(current_tenant)):
     """v0.375 KHATA YAAD: customers who owe + the ready reminder (wa.me link for her own phone, template allowed or not)."""
     from .appmaker import khata as KH
-    return await asyncio.to_thread(_be_owner_call, lambda: KH.reminders(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: KH.reminders(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/khata-yaad/{member}", dependencies=[Depends(require_key)])
@@ -10971,7 +11241,7 @@ async def apps_khata_yaad_send(ref: str, member: str, body: dict, tenant: str = 
     from .appmaker import khata as KH
     from .site import webapp as W
     b = body or {}
-    r = await asyncio.to_thread(_be_owner_call, lambda: _be_owner(tenant, ref))
+    r = await asyncio.to_thread(_be_owner_call, lambda: _be_data(tenant, ref))
     try:
         return await KH.send_reminder(r, member, str(b.get("template") or ""), bool(b.get("her_tap")))
     except W.AppError as e:
@@ -10983,7 +11253,7 @@ async def apps_khata_pay(ref: str, member: str, body: dict, tenant: str = Depend
     """v0.359 she records a customer's payment (cash / UPI ...; money never moves here)."""
     from .appmaker import khata as KH
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: KH.payment(_be_owner(tenant, ref), member, (body or {}).get("amount"),
+    return await asyncio.to_thread(_be_owner_call, lambda: KH.payment(_be_data(tenant, ref), member, (body or {}).get("amount"),
                                                                       str((body or {}).get("mode") or "cash"),
                                                                       str((body or {}).get("note") or ""), W.Who(owner=True)))
 
@@ -10992,42 +11262,42 @@ async def apps_khata_pay(ref: str, member: str, body: dict, tenant: str = Depend
 async def apps_coupons(ref: str, tenant: str = Depends(current_tenant)):
     """v0.358 COUPON: her discount codes (uses, customers, live or not)."""
     from .appmaker import coupon as CP
-    return await asyncio.to_thread(_be_owner_call, lambda: CP.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: CP.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/coupons", dependencies=[Depends(require_key)])
 async def apps_coupons_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """v0.358 make / change / delete one code."""
     from .appmaker import coupon as CP
-    return await asyncio.to_thread(_be_owner_call, lambda: CP.save(_be_owner(tenant, ref), body))
+    return await asyncio.to_thread(_be_owner_call, lambda: CP.save(_be_data(tenant, ref), body))
 
 
 @app.get("/api/apps/{ref}/stock", dependencies=[Depends(require_key)])
 async def apps_stock(ref: str, tenant: str = Depends(current_tenant)):
     """v0.357 STOCK: each product's stock + warning level (blank = unlimited)."""
     from .appmaker import stock as SK
-    return await asyncio.to_thread(_be_owner_call, lambda: SK.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: SK.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/stock", dependencies=[Depends(require_key)])
 async def apps_stock_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """v0.357 set stock {items: {product id: {qty: n | null, low: n}}}."""
     from .appmaker import stock as SK
-    return await asyncio.to_thread(_be_owner_call, lambda: SK.set_items(_be_owner(tenant, ref), (body or {}).get("items") or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: SK.set_items(_be_data(tenant, ref), (body or {}).get("items") or {}))
 
 
 @app.get("/api/apps/{ref}/gst", dependencies=[Depends(require_key)])
 async def apps_gst(ref: str, tenant: str = Depends(current_tenant)):
     """v0.355 GST BILL: her GST details for this app (GSTIN, legal name, default rate / HSN, per-product HSN + rate)."""
     from .appmaker import gst as G
-    return await asyncio.to_thread(_be_owner_call, lambda: G.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: G.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/gst", dependencies=[Depends(require_key)])
 async def apps_gst_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """v0.355 set them; gstin "" = plain receipts again (issued invoice numbers are kept)."""
     from .appmaker import gst as G
-    return await asyncio.to_thread(_be_owner_call, lambda: G.set_settings(_be_owner(tenant, ref), body))
+    return await asyncio.to_thread(_be_owner_call, lambda: G.set_settings(_be_data(tenant, ref), body))
 
 
 @app.get("/api/apps/{ref}/data/{coll}/{row_id}/receipt", dependencies=[Depends(require_key)])
@@ -11036,7 +11306,7 @@ async def apps_data_receipt(ref: str, coll: str, row_id: str, doc: str = "", ten
     from .appmaker import receipt as RC
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         doc_ = "invoice" if doc == "invoice" else ""
         data = RC.for_owner(r, coll, row_id, doc_)
         row = RC._load(r, coll, row_id)[1]
@@ -11179,14 +11449,14 @@ async def apps_crashes(ref: str, tenant: str = Depends(current_tenant)):
 @app.get("/api/apps/{ref}/members", dependencies=[Depends(require_key)])
 async def apps_members(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: {"members": BE.members(_be_owner(tenant, ref))})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"members": BE.members(_be_data(tenant, ref))})
 
 
 @app.post("/api/apps/{ref}/members/{member_id}/role", dependencies=[Depends(require_key)])
 async def apps_member_role(ref: str, member_id: str, body: dict, tenant: str = Depends(current_tenant)):
     """She makes an account staff / admin (a new account of a staff app sees nothing until she does)."""
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: BE.set_role(_be_owner(tenant, ref), member_id,
+    return await asyncio.to_thread(_be_owner_call, lambda: BE.set_role(_be_data(tenant, ref), member_id,
                                                                        str(body.get("role") or "")))
 
 
