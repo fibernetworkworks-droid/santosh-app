@@ -278,6 +278,16 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.381 SHIKSHA SUITE 0+1: `app/pylab` locked Python sandbox (tool `pylab`), `app/shiksha` (classes, learners + guardian
   consent, shared question bank, gradebook, `frameworks.json`), `app/pathyakram` curriculum & exam designer (papers, plans, rubrics).
 - v0.382 DIMAAG (App Phases 43-46 = Pillar A, `appmaker/logic/`: lang.py own locked interpreter, spec.py checker, engine.py hooks + approvals + schedules/SLA, service.py Opus draft -> her tap): links / formulas / rules / unique / workflows + maker-checker approvals / triggers / timed jobs / tested functions; kits Logic.kt / Logic.swift (RefField, WorkflowBox, RelatedBlock, AutoForm, hoola_approvals, hoola_data); `/api/apps/<ref>/logic*`, app `/approvals`, `/related/`, `/fn/`.
+- PLAN: `docs/CODING_HARNESS_PLAN.md` - researched (Claude Code docs, Anthropic engineering, SWE-agent paper, Cursor / Codex /
+  Jules / Devin / Aider / OpenHands): how long continuous coding + debugging actually works, and the 4 gaps in Hoola's dev loop.
+  The short of it: the HARNESS scores as much as the model (SWE-agent, model fixed: a linter guardrail on the edit tool +3.0,
+  whole file instead of a 100-line window -5.3, full history instead of last-5 observations -3.0); without a pass/fail command
+  the agent only knows "looks done" and SHE is the test suite; "compaction isn't sufficient" for long work - Anthropic use a
+  JSON feature list (flip `passes` only), progress notes, a commit per session and a session-start ritual; every competitor runs
+  code in a container / VM with the network off by default. Hoola gaps: no execution of her code, no context management in the
+  coding loop, no failure-first truncation / searchable log, no session handoff. Phases H1-H7; H3 (the lab) is blocked on an
+  isolation decision - this VPS has no `unshare -rn` and the per-user cloud VM is inside the PC freeze. Read it before touching
+  the dev loop.
 - v0.454 TWO DEFECTS + GAME ARENA (built as 0.447; `gamedesk/arena.py`, tool game_arena, owner only): (1) `service.MONEY_OUT`
   + `bible.money_out` refuse a reward that leaves the game as money (Rule 9 - "coins withdrawable to UPI" was being BUILT and is
   non-bailable for her user); (2) /mcp/gamedesk now serves MCP 2026-07-28 too (no `initialize`: version in `_meta` / the
