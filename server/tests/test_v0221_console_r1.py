@@ -20,8 +20,11 @@ def test_one_stylesheet():
     css = _read("v2.css")
     tail = css[css.index("v0.221 R1: the web workspace layer"):]
     # the workspace rules sit AFTER the base rules (same cascade position as the old separate file)
+    # v0.461: `#app .progress-avatar` was pinned here until v0.298 KHULI JAGAH stopped DRAWING the avatar and
+    # deleted the rule - the pin went stale that day and has been red ever since. The working row it belonged to
+    # is still there under its own name, so the pin moves to the new truth rather than being dropped.
     for rule in ("#app #slotDock{width:min(880px,100%);margin-inline:auto}", "#app #slotDock #composer{width:100%}",
-                 "#app .progress-avatar", "#app .side{width:224px"):
+                 "#app .simple-progress{", "#app .side{width:224px"):
         assert rule in tail, rule
     assert css.index("--bg:#FFFFFF") < css.index("v0.221 R1")   # brand tokens first (v0.243 Light / Dark / System)
     assert css.count("{") == css.count("}")                       # the merged file still balances
@@ -71,5 +74,5 @@ def test_console_chrome_speaks_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.461.0"    # conscious-bump guard: moves with every release (bump with pubspec)
-    assert "0.461.0+506" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.462.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert "0.462.0+507" in (ROOT / "pubspec.yaml").read_text()

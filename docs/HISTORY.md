@@ -17768,3 +17768,58 @@ GPU costs nothing while idle and so a wrong licence cannot ship.
   before upload, caps, the key only ever in the header, engine failures as plain errors, the GPU app's own guards, the
   workflow's hand-run + artifact. **NOT VERIFIED: this sandbox has no GPU.** Nothing has been generated yet; the first
   `smoke` run is what will confirm or correct every speed figure in the plan.
+## v0.462.0 (built as 0.461.0) HOOLA KA NISHAAN — her own logo as the app's mark (2 Nov 2026)
+
+Owner: "DEPLOYE THIS APP LOGO EVERYWHERE FOR HOOLA APP", with a 1024x1024 master — a white-blue core with a
+diagonal spark and two orbit arcs, blue above and violet below, on a flat navy `#090F32`.
+
+**What it replaced.** The Android launcher icon was `assets/images/santosh_head.png` on a lavender
+`#EDE9FE` adaptive background — the AVATAR's face. So the mark on her home screen, in the app switcher and on
+the Android 12 splash was the character, not the product. Three of Hoola's own pages carried the same face as
+their favicon and nine pages carried none at all.
+
+**Where it now is**
+
+- **Android launcher icon** — `flutter_launcher_icons` in `pubspec.yaml` reads `assets/images/hoola_logo.png`
+  for the legacy square, and a proper adaptive pair: foreground `assets/images/hoola_logo_fg.png`, background
+  `#090F32`. The foreground matters. A launcher masks an adaptive icon to a circle or squircle at about 66 % of
+  the canvas, so handing it the full square would have cut the outer orbit rings off. The foreground is
+  therefore the glow ALONE, cut out on transparent and scaled to 63 %, with the navy given to the background
+  colour instead — which also means the glow sits on the same navy it was drawn on, so it looks like the master
+  and not like a sticker.
+- **The cut-out itself** is taken from how far each pixel is from that flat navy, not from a hard colour key, so
+  the glow keeps the soft falloff it has on the master instead of getting a visible edge.
+- **Android 12+ splash** follows the launcher icon, so it changed with it; nothing else to set.
+- **Notification + quick-settings tile icon** (`tool/android/res/drawable/ic_stat_santosh.xml`) redrawn as the
+  logo in silhouette: the two orbits as stroked arcs, the spark as a four-point sliver, the core as a disc.
+  Android strips every colour from a status-bar icon and keeps only the shape, so a glow cannot survive there —
+  the form can. Strokes no thinner than 1.4dp, rendered and looked at before it shipped. It had been a white
+  speech bubble with two eyes.
+- **Favicon, 192px icon and Apple touch icon on all twelve pages Hoola serves** — `index.html`, `terms.html`,
+  `privacy.html`, both consoles, the app-admin panel, the two Prayogshala lab pages and the four site pages.
+  Nine of those twelve had no icon of any kind, so a pinned tab or a home-screen shortcut showed a blank sheet.
+- **The brand mark beside the word "Hoola"** in both consoles (`.brand` and `.mk`), and the Studio page's mark
+  where it falls back from the avatar.
+- `server/app/static/hoola-icon-512.png` is also exactly the 512x512 Play Console wants for the store listing.
+
+**Deliberately NOT changed**
+
+- The avatar pictures (`santosh-head.png`, `santosh-happy.png`, `assets/images/santosh_*.png`). That is the
+  person the user named; it changes with her chosen voice and look, and it is not the product's mark. The chat
+  avatar, the account row and the greeting still show the face, and a test pins that it is still there.
+- `desktop/` — frozen by the owner.
+- App Sahayak's generated apps and generated websites. Those carry HER CUSTOMERS' own icons; putting Hoola's
+  mark on a customer's app would be a bug, not a rollout.
+
+**One master, one generator.** `tool/make_logo.py` builds every size from `assets/images/hoola_logo.png`, so
+they cannot drift apart: `python3 tool/make_logo.py assets/images/hoola_logo.png .`
+
+Tests: `server/tests/test_v0462_logo.py` (13) — every size exists, is square and is the size it claims (a 192
+that is really a 512 is a wasted download on a phone); the adaptive foreground carries alpha, is not empty and
+keeps at least 14 % margin so the circular mask cannot reach the rings; the launcher config is the logo and not
+the avatar; all twelve pages carry all three links; the brand marks are the logo AND the avatar picture is still
+present; the status icon is white-on-transparent with both orbits and a readable stroke width; and every size is
+one `tool/make_logo.py` builds. In `app-load.yml`.
+
+**Not verified:** the real launcher icon comes out of `dart run flutter_launcher_icons` in CI, which cannot run
+in this sandbox (no Flutter). The APK this version builds is what will show the icon on her phone.
