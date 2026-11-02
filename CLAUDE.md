@@ -184,6 +184,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.442 SAB KAAM CALL PAR + PAKKA KAAM (built as 0.440 / 0.441): every one of the 483 chat tools is reachable on a call (122 had NO route -> `voice.registered()` + `call_route()`, undeclared ones go to santosh_kaam, never 'Unknown tool'); and a call's santosh_kaam job runs through the durable turn_inbox, so a restart re-runs it once with its place (new turn_inbox.place) and the drop note names a running job.
 - v0.439 GMAIL POORA CALL PAR: all 23 Gmail tools reach a voice call - email_thread / snooze / drafts declared, labels / threads / bulk / filters / rules / vacation / forwarding / alias via santosh_kaam; test keeps every EMAIL_TOOLS name reachable.
 - v0.431 FRICTION + BACKLASH + CAM CONTACT: H.joint(bearing=..., pin_d, friction, damping) = mu x real joint load in the MuJoCo move (motors pay, energy lost), H.couple(backlash=) = tip play vs H.robot(accuracy_mm) + a gap in the sim (lost motion, knocks), H.disc_cam contact = designed return spring / jump check / Hertz / guide jam.
 - v0.426 CAMS + SLOTS + DYNAMICS (built as 0.425; `engineering/cams.py` H.disc_cam from the follower motion + pressure / undercut / cusp checks, joint kind `slot`, `dynamics.py` MuJoCo move in her time: torque / saturation / loop gap, motors sized x1.25); VPS `pip install mujoco`.
@@ -221,7 +222,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.441.0 (pubspec 0.441.0+485). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.442.0 (pubspec 0.442.0+487). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.441 PRAYOGSHALA STUDIO (built as 0.435): all 22 labs in the realistic studio (`static/prayog/studio/studio.js` engine + `exp/<id>.js` per lab, contract `docs/PRAYOG_STUDIO.md`): real equipment, gloved hand, theory -> steps -> record book -> graph -> viva, Ask Hoola per lab (`/api/prayog/ask`); `tools/prayog_walk.js` = 22/22 within tolerance.
 - v0.434 APP PAGES + SURAKSHA (web Step 3, W2 + W3): `hoola-app.js` = in-page app per role (tables sort/search/filter/pages/bulk, detail + linked lists, multi-step forms + uploads, kanban, calendar, approvals, members, audit, matrix, My account); `site/security.py` = phone OTP (MSG91 DLT, hash only), staff TOTP 2FA, sessions + sign out everywhere, DPDP consent / export / delete, journal `by` = audit log, `private` fields. Not built: Google / magic link / passkeys / custom roles.
