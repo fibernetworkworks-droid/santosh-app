@@ -1692,7 +1692,8 @@ class Call:
         work ('haan, line aa gayi - wahi kaam pe chalte hain') instead of greeting her like a stranger."""
         if self._drop_saved:
             return   # v0.224 one note per call (grace timer, shutdown and the call's end may all try)
-        if not (self.recent or self.user_buf.strip() or self.stats.get("turns")):
+        kaam = [r for r in (getattr(self, "_kaam_running", None) or {}).values() if r]
+        if not (self.recent or self.user_buf.strip() or self.stats.get("turns") or kaam):
             return   # nobody said anything: nothing to remember, no note (an abandoned dial is not a dropped chat)
         self._drop_saved = True
         user = self.recent[-1][0] if self.recent else ""
@@ -1706,6 +1707,12 @@ class Call:
             bits.append(f"aakhri poori baat: {user[-600:]}")
         if partial:
             bits.append(f"beech mein ye keh rahi thi (aadha hi suna): {partial[:400]}")
+        for r in kaam[:3]:   # v0.440 a job still running when the call ended: the next call knows it is still on
+            if self._otp_said:
+                from .operator.otpwords import mask
+                for v in self._otp_said:
+                    r = mask(r, v)
+            bits.append(f"ek bada kaam chal raha tha (rukta nahi, natija chat mein aayega): {r[:300]}")
         from . import yaad
         yaad.note_call_drop(self.conv, self.tenant, " | ".join(bits) or "(baat adhoori chal rahi thi)")
 
@@ -2383,11 +2390,21 @@ class Call:
     async def _delegate(self, request: str) -> dict:
         """Hand a big job to the full agent. A call never sits in silence for it: after a short wait the job
         carries on by itself and its result is spoken into the call when it is done."""
-        from .agent import run_turn
+        from . import turn_inbox
         place = self._place(request)     # v0.93 her PC vs Hoola's own browser travels with the job
-        job = asyncio.create_task(run_turn(self.conv, request, tenant_id=self.ctx.tenant_id, **({"place": place} if place else {})))
+        # v0.440 PAKKA KAAM: the job is saved in the durable turn inbox BEFORE it starts (like a chat message), so a
+        # server restart / deploy / crash mid-job re-runs it once by itself (turn_inbox.sweep) instead of losing it.
+        inbox_id = await asyncio.to_thread(turn_inbox.accept, self.ctx.tenant_id, self.conv, request, False, "", "",
+                                           place)
+        job = asyncio.create_task(turn_inbox.run_owned(inbox_id, self.conv, request, self.ctx.tenant_id, False,
+                                                       place=place))
         _JOBS.add(job)
         job.add_done_callback(_JOBS.discard)
+        running = getattr(self, "_kaam_running", None)
+        if running is None:
+            running = self._kaam_running = {}
+        running[id(job)] = request
+        job.add_done_callback(lambda j: running.pop(id(j), None))
         done, _ = await asyncio.wait({job}, timeout=max(1, get_settings().voice_tool_wait_s))
         if job in done:
             return {"result": job.result()}
