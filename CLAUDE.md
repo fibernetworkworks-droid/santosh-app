@@ -184,6 +184,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.439 PAKKA KHATAM step 0 (`reports/How AI agents finish long tasks.md`): crew timeout keeps finished agents' work (team._run_crew timeout); LONG CARD `python -m app.quality longcard` = 25 long jobs x 3 on __longcard__ tenants judged by code on the END STATE (finished / false done / false stuck / cap / Rs / pass^3), vps-ops long_card_try / long_card / long_card_status.
 - v0.431 FRICTION + BACKLASH + CAM CONTACT: H.joint(bearing=..., pin_d, friction, damping) = mu x real joint load in the MuJoCo move (motors pay, energy lost), H.couple(backlash=) = tip play vs H.robot(accuracy_mm) + a gap in the sim (lost motion, knocks), H.disc_cam contact = designed return spring / jump check / Hertz / guide jam.
 - v0.426 CAMS + SLOTS + DYNAMICS (built as 0.425; `engineering/cams.py` H.disc_cam from the follower motion + pressure / undercut / cusp checks, joint kind `slot`, `dynamics.py` MuJoCo move in her time: torque / saturation / loop gap, motors sized x1.25); VPS `pip install mujoco`.
 - v0.435 PARIVAAR (Pillar H, built as 0.426 / 0.433, `appmaker/family.py`): rider / partner shop / staff apps = own projects on the MAIN backend (by_key -> home); partners apply, she approves; rider = ready jobs w/o phone, take under lock, his steps; shop = only its orders (no phone) + own menu; web admin /app-admin/<key>; kits Partner.kt/.swift.
@@ -220,7 +221,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.438.0 (pubspec 0.438.0+482). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.439.0 (pubspec 0.439.0+483). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
 - v0.434 APP PAGES + SURAKSHA (web Step 3, W2 + W3): `hoola-app.js` = in-page app per role (tables sort/search/filter/pages/bulk, detail + linked lists, multi-step forms + uploads, kanban, calendar, approvals, members, audit, matrix, My account); `site/security.py` = phone OTP (MSG91 DLT, hash only), staff TOTP 2FA, sessions + sign out everywhere, DPDP consent / export / delete, journal `by` = audit log, `private` fields. Not built: Google / magic link / passkeys / custom roles.
 - v0.438 SOCH KE JAWAB 7/7: HARD CARD `quality/hard_card.py` - 28 hard asks with Python-computed answers, free card 28/28,

@@ -50,7 +50,7 @@ def _pend(goal_id: str, d: int) -> None:
         _PENDING.pop(goal_id, None)
 LIMIT = "limit"
 
-# v0.436 the long card's throw-away tenants (app.quality.longcard.PREFIX): its own process waits for their rounds,
+# v0.439 the long card's throw-away tenants (app.quality.longcard.PREFIX): its own process waits for their rounds,
 # so the live server's resume / recovery sweeps never pick them up (a second copy of the same job in another process)
 CARD_PREFIX = "__longcard__"
 

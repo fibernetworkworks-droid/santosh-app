@@ -287,7 +287,7 @@ async def _run_crew(specs: list[dict], team_id: str, mission: str, main_families
                     shared: dict | None = None, on_done=None, timeout: float | None = None) -> list[dict]:
     """All agents of one crew TOGETHER (the dsh bounded pool, Claude Code's parallel Tasks); results in spec order.
     `on_done` (background crews): called after each agent's future settles, for live progress events.
-    v0.436 `timeout`: when the clock runs out, ONLY the agents still running are cut and marked "time out"; every
+    v0.439 `timeout`: when the clock runs out, ONLY the agents still running are cut and marked "time out"; every
     agent that already finished keeps its deliverable (before, one slow agent threw away the whole crew's work)."""
     tasks = [asyncio.ensure_future(_run_agent(s, team_id, mission, main_families, tenant, conv, turn_id,
                                               settings, shared)) for s in specs]

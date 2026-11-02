@@ -1,4 +1,4 @@
-"""v0.436 LONG CARD set 1 (long-task report item 0b): 25 multi-step asks of the kinds her real long jobs are made of -
+"""v0.439 LONG CARD set 1 (long-task report item 0b): 25 multi-step asks of the kinds her real long jobs are made of -
 research -> a file, her own numbers -> sums -> a file, lists + reminders, pages, a routine, data tables, and three asks
 where the RIGHT move is to stop and ask her (a fact or a tap only she has).
 

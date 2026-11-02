@@ -16588,3 +16588,41 @@ Owner: "GO STEP 7" (the last step of the 7-step hard-reasoning plan).
 - Tests `server/tests/test_v0438_hard_card.py` (16). Quality / turn suites: same failures as main (App Sahayak bhasha /
   delivery, pre-existing). NOT RUN HERE: the live card itself (no API key in the sandbox) - run it on the VPS; its first
   numbers are the honest measure of steps 1-6. Version 0.438.0 (pubspec 0.438.0+482, console ?v=0.438.0, pins).
+
+## v0.439.0 PAKKA KHATAM step 0 - crew timeout keeps finished work + the LONG CARD (owner: "0a and 0b - start", 2 Nov 2026)
+
+From the research report `reports/How AI agents finish long tasks.md` (notes in `research_notes/How AI agents finish long
+tasks/`): every agent that finishes long jobs reliably decides "done" by something the model cannot fake, and measures
+pass^k. Hoola had no number for how often a long job really finishes. Step 0 = fix the one confirmed bug and build the
+measurement BEFORE changing the loop.
+
+- 0a CREW TIMEOUT (`agent/team.py`): inline crews used `asyncio.wait_for(gather(...))`; on the 260 s clock EVERY agent's
+  deliverable was replaced with "time out", also the ones that had already finished. Background crews lost all results
+  the same way (`results = []` on the crew timeout). `_run_crew(..., timeout=)` now uses `asyncio.wait`: only agents
+  still running are cancelled and marked `timed_out`; finished agents keep their deliverables (spec order kept,
+  `STATS["timed_out"]`). A background crew is `failed` only when nothing at all came back. Inline deploy now goes
+  through `_run_crew` (one code path). Tests `test_v0439_team_timeout.py` (3); `test_v0193_harness3` fakes take `timeout`.
+- 0b LONG CARD (`app/quality/long_asks.py` set `long-1`, `app/quality/longcard.py`): 25 multi-step asks of her real job
+  kinds - research -> PDF / Excel / Word, her numbers -> sums -> file (keys computed: 47,149 / 5,65,788; EMI 17,356),
+  lists + reminders, routine, memory, pages, slides, translation, data tables (MoSPI, states), and 3 asks where the
+  right move is to ASK her (supplier email, annual report numbers, cab). Each ask runs k times (default 3) through the
+  real `santosh.run_turn` on its own tenant `__longcard__<stamp>_<id>_<k>` (never her chats / budget); the card waits
+  for the goal's background rounds (lock + goal._PENDING) until nothing runs or its clock (75 min) ends. Then CODE
+  reads the end state: delivered files (PcFile on disk) opened with pypdf / openpyxl / python-docx / python-pptx -
+  pages / rows / slides / words / links; ready Artifacts (latest version html); list items; active reminders /
+  routines; memory facts; every assistant reply; step events (tool ok). `judge()` -> rows per check; `score_run()`:
+  passed, claimed_done (goal `done`, or the turn's TaskRun outcome `done`), FALSE DONE, false stuck (blocked / stuck
+  with nothing needed from her), cap stopped (hold=limit, turn timeout, card clock). `summarise()`: finished %,
+  false-done %, false-stuck %, cap-stopped %, Rs per finished job (usage.month_usd of the run's tenant x usd_inr),
+  pass@k, pass^k, median minutes. Saved after EVERY run (`data/quality/longcard-*.json`). Reminders / routines the card
+  made are cancelled after each run. `goal.CARD_PREFIX`: the live server's resume / recover sweeps skip card tenants
+  (no second copy of a card job in the pm2 process).
+- CLI `python -m app.quality longcard --check` (free: set valid + cost estimate) | `--status` | `[--k 3] [--only] [--limit]
+  [--parallel 3] [--max-min 75] [--label]`. vps-ops `long_card_try` (5 asks x 1, ~Rs 300-1,100), `long_card` (25 x 3,
+  ~Rs 4,500-16,500, hours) - both start DETACHED (nohup setsid, refuses a second copy) - and `long_card_status`.
+- Tests `test_v0439_longcard.py` (12): set valid / broken sets caught, real pdf / xlsx / docx / pptx read (a junk file is
+  not a file), every check kind, asked_her needs a question AND nothing made, the four outcomes, strict pass^k + rupees,
+  evidence from the DB + cleanup, a REAL run_turn judged on what it left behind (scripted brain), sweeps skip card tenants.
+- NOT RUN HERE: the live card (no model key in the sandbox). Its first numbers are the baseline every next step (done =
+  verified, one nudge per step, mid-turn clearing...) must beat. Cost estimate is a guess until the first card fills it.
+  Version 0.439.0 (pubspec 0.439.0+483, console ?v=0.439.0, pins).

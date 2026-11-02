@@ -1,4 +1,4 @@
-"""v0.436 (long-task report item 0a): a sub-agent crew that runs out of time keeps the work of the agents that
+"""v0.439 (long-task report item 0a): a sub-agent crew that runs out of time keeps the work of the agents that
 already finished. Before, `asyncio.wait_for(gather(...))` threw away EVERY deliverable on the timeout and replaced
 all of them with "time out" - one slow agent cost the whole crew (team.py, inline AND background crews)."""
 import asyncio
