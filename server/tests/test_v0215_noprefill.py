@@ -81,8 +81,8 @@ def _rows(conv: str, role: str) -> int:
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.417.0"
-    assert "0.417.0+461" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.424.0"
+    assert "0.424.0+468" in (REPO / "pubspec.yaml").read_text()
 
 
 def test_wake_turn_ends_user_and_carries_its_words(claude_only, bz):

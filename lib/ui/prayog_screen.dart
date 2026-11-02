@@ -38,7 +38,7 @@ class _PrayogScreenState extends State<PrayogScreen> {
       final d = _map(await widget.app.api!.call('GET', '/api/prayog/labs'));
       if (mounted) setState(() => _labs = _list(d['labs']));
     } catch (e) {
-      if (mounted) setState(() => _err = 'Labs load nahi hue: $e');
+      if (mounted) setState(() => _err = 'Labs did not load: $e');
     }
   }
 
@@ -62,12 +62,12 @@ class _PrayogScreenState extends State<PrayogScreen> {
       body: _labs == null && _err.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(16), children: [
-              Text('Asli practical, 3D mein: knob ghumaiye, meter padhiye, table bhariye. Har reading simulation code se aati hai '
-                  'aur NCERT ke formula se 1% ke andar jaanchi gayi hai.',
+              Text('Real practicals in 3D: turn the knobs, read the meters, fill the table. Every reading comes from simulation code '
+                  'and is checked against the NCERT formula to within 1%.',
                   style: const TextStyle(color: C.muted, fontSize: 13.5)),
               const SizedBox(height: 12),
               TextField(
-                decoration: const InputDecoration(hintText: 'Lab dhoondhiye: pendulum, lens, Ohm…', prefixIcon: Icon(Icons.search_rounded)),
+                decoration: const InputDecoration(hintText: 'Search labs: pendulum, lens, Ohm…', prefixIcon: Icon(Icons.search_rounded)),
                 onChanged: (v) => setState(() => _q = v.trim()),
               ),
               if (_err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 16), child: Text(_err, style: const TextStyle(color: C.bad))),
@@ -88,7 +88,7 @@ class _PrayogScreenState extends State<PrayogScreen> {
                   ),
               ],
               if (_labs != null && labs.isEmpty)
-                const Padding(padding: EdgeInsets.only(top: 16), child: Text('Koi lab nahi mila.', style: TextStyle(color: C.muted))),
+                const Padding(padding: EdgeInsets.only(top: 16), child: Text('No lab found.', style: TextStyle(color: C.muted))),
             ]),
     );
   }
@@ -127,7 +127,7 @@ class _PrayogLabViewState extends State<PrayogLabView> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: Text(widget.title.isEmpty ? 'Prayogshala' : widget.title), actions: [
-          IconButton(tooltip: 'Dobara kholiye', icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.reload()),
+          IconButton(tooltip: 'Reload', icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.reload()),
         ]),
         body: Stack(children: [
           WebViewWidget(controller: _web),

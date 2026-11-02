@@ -104,6 +104,18 @@ object Strings {
     val isOnline get() = t("online", "ऑनलाइन", "ऑनलाइन", "online")
     val isTyping get() = t("typing…", "लिख रहे हैं…", "लिहित आहेत…", "likh rahe hain…")
     val live get() = t("Live", "लाइव", "लाइव्ह", "Live")
+    val connDone get() = t("Done.", "हो गया।", "झाले.", "Ho gaya.")     // v0.424 JODO
+    // v0.419 PAISA
+    val payOnline get() = t("Pay online", "ऑनलाइन भुगतान", "ऑनलाइन पैसे भरा", "Online pay karein")
+    val opening get() = t("Opening…", "खुल रहा है…", "उघडत आहे…", "Khul raha hai…")
+    val payWaiting get() = t("Waiting for the payment to be confirmed by the gateway…", "गेटवे से भुगतान की पुष्टि का इंतज़ार…", "गेटवेकडून पेमेंटची खात्री होत आहे…", "Gateway se payment confirm hone ka intezaar…")
+    val autoPay get() = t("AutoPay plans", "ऑटोपे प्लान", "ऑटोपे प्लॅन", "AutoPay plans")
+    val autoPayOn get() = t("AutoPay on", "ऑटोपे चालू", "ऑटोपे चालू", "AutoPay chalu")
+    val charged get() = t("payments made", "भुगतान हुए", "पेमेंट झाले", "payment hue")
+    val cancelAutoPay get() = t("Cancel AutoPay", "ऑटोपे बंद करें", "ऑटोपे बंद करा", "AutoPay band karein")
+    val autoPayOff get() = t("AutoPay cancelled. Nothing more will be charged.", "ऑटोपे बंद। आगे कुछ नहीं कटेगा।", "ऑटोपे बंद. पुढे काही कापले जाणार नाही.", "AutoPay band. Aage kuch nahi katega.")
+    val autoPayWhy get() = t("Charged automatically {n} times through your bank's mandate. You approve it on the next page and can cancel any time here.", "आपके बैंक मैंडेट से {n} बार अपने आप कटेगा। अगले पेज पर आप मंज़ूर करेंगे, और यहाँ कभी भी बंद कर सकते हैं।", "तुमच्या बँक मँडेटमधून {n} वेळा आपोआप कापले जाईल. पुढील पानावर मंजूर करा, इथे कधीही बंद करू शकता.", "Aapke bank mandate se {n} baar apne aap katega. Agle page par aap manzoor karenge, aur yahan kabhi bhi band kar sakte hain.")
+    val startAutoPay get() = t("Start AutoPay", "ऑटोपे शुरू करें", "ऑटोपे सुरू करा", "AutoPay shuru karein")
     // v0.412 NAKSHA LIVE
     val startShift get() = t("Start shift", "शिफ़्ट शुरू करें", "शिफ्ट सुरू करा", "Shift shuru karein")
     val endShift get() = t("End shift", "शिफ़्ट ख़त्म करें", "शिफ्ट संपवा", "Shift khatam karein")

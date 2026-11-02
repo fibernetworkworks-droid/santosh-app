@@ -141,6 +141,166 @@ GAMEDESK_LABELS = {"game_desk": "Game bana raha hoon", "game_studio": "Game proj
                    "game_bible": "Game Bible dekh raha hoon", "game_assets": "Game ke assets dekh raha hoon",
                    "game_qa": "Game ki QA dekh raha hoon", "game_release": "Game ki release dekh raha hoon"}
 
+# v0.420 Phase 7 batch 1: the Game Desk ROLE PACKS - each its own employee, each gated on ITS hire
+GAMEDESK_TOOLS.append(
+    {"name": "game_world", "description": (
+        "Procedural World Generation Engineer employee: makes a world from RULES and a SEED in code (no model, free) - "
+        "kind terrain (island / map: biomes, rivers, villages), dungeon (rooms + corridors, exit), city (roads, blocks, "
+        "buildings) or level (side-view platformer: gaps, steps, platforms, spikes, goal; jump_h / jump_w = her player's "
+        "jump in tiles). Every world is CHECKED in code: made twice (same seed = same world), every village / room / exit "
+        "/ goal reachable from the spawn, a level walked with her jump. Actions: make (words; or kind + params, seed, key, "
+        "id = S-0001 to attach it to her game project) -> a DRAFT with preview + checks / list / status (world W-001) / "
+        "approve / reject / demo (world): Hoola builds a walk-it link in Godot and plays it (background) / apply (id): "
+        "the approved worlds go into her game as HoolaWorld, no new code. Quote only the checks and numbers it returns. "
+        "Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["make", "list", "status", "approve", "reject", "demo", "apply"]},
+         "words": {"type": "string", "description": "action=make: her world in her words"},
+         "kind": {"type": "string", "enum": ["terrain", "dungeon", "city", "level"]},
+         "params": {"type": "object", "description": "exact numbers, e.g. {w, h, sea, rivers, rooms, jump_h, jump_w}"},
+         "seed": {"type": "integer"}, "key": {"type": "string", "description": "the name the game uses (default = kind)"},
+         "id": {"type": "string", "description": "Studio project (S-0001) - attach / apply"},
+         "world": {"type": "string", "description": "W-001 or the id"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_physics", "description": (
+        "Physics Engine Developer employee: sets up her game's physics and PROVES it in the real engine (Godot run "
+        "headless, free). Her numbers - fastest body speed (px/s), thinnest wall (px), physics ticks, gravity (px/s^2) - "
+        "come from her words, the inputs, or her Game Bible's biggest 'speed'. Settings are worked out in code (ticks or "
+        "cast-ray continuous collision so nothing tunnels: safe without CCD only when one step <= half the wall), then "
+        "Hoola's lab checks free fall, projectile range, an elastic collision, tunnelling at HER speed (6 start points, "
+        "with and without CCD), a box stack, a 3D drop, and the whole lab run twice - each against its formula. Actions: "
+        "setup (words / inputs, id = S-0001) -> the lab runs in the background / list / status (setup P-001) / approve "
+        "(only a PASS) / reject / apply (id): HoolaPhysics goes into her game. Quote only measured numbers. Fluids are "
+        "not part of this yet - say so if asked. Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"},
+         "inputs": {"type": "object", "description": "{speed, wall, ticks, gravity, g3d}"},
+         "id": {"type": "string", "description": "Studio project (S-0001)"},
+         "setup": {"type": "string", "description": "P-001 or the id"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_world": "World bana raha hoon", "game_physics": "Game ki physics jaanch raha hoon"})
+
+# v0.421 Phase 7 batch 2: Spatial Audio + Haptics
+GAMEDESK_TOOLS.append(
+    {"name": "game_audio", "description": (
+        "Spatial Audio Systems Programmer employee: her game's sound space, MEASURED in code (free). Reverb zones (room, "
+        "hall, cave, cathedral, outdoor or her own RT60 seconds), distance (min_d / max_d metres) and walls (occlusion "
+        "-10 dB + low-pass). Renders binaural headphone demos (a sound walking round the head, distances, each zone) and "
+        "measures: ear-to-ear time per direction vs Woodworth, level difference by side, 6 dB per doubling, each zone's "
+        "RT60 measured back, loudness -16 LUFS / peak -1 dBFS, the render twice. Actions: setup (words / plan, id = "
+        "S-0001) -> runs in the background / list / status (setup A-001) / approve (only a PASS) / reject / apply (id): "
+        "HoolaAudio goes into her game. A round-head model gives no front/back or height cue - say so if asked; in-game "
+        "sound uses Godot's panning + distance + zones. Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"}, "plan": {"type": "object", "description": "{zones: [{key, rt60, wet}], min_d, max_d}"},
+         "id": {"type": "string", "description": "Studio project (S-0001)"}, "setup": {"type": "string", "description": "A-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_haptics", "description": (
+        "Haptic Feedback Systems Engineer employee: ONE vibration pattern per meaning (jump, coin, hit, game over, level "
+        "up...; from her words or exact patterns {name: [{t, d, a, s}]} in ms / 0-1), for actuator phone_lra | phone_erm "
+        "| controller | drv2605_lra | drv2605_erm. Checked in code: pulse length for that motor, gaps >= 20 ms, no two "
+        "patterns that feel the same, battery per play; an off switch + intensity always. Kit: iPhone .ahap files + "
+        "Swift, Android Kotlin waveforms, a DRV2605 C driver compiled here, a pattern picture. Actions: make / list / "
+        "status (set H-001) / approve (only a PASS) / reject / apply (id = S-0001): HoolaHaptics goes into her game. "
+        "iPhone browsers have no vibration - say so. Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["make", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"}, "patterns": {"type": "object"},
+         "actuator": {"type": "string", "enum": ["phone_lra", "phone_erm", "controller", "drv2605_lra", "drv2605_erm"]},
+         "id": {"type": "string"}, "set": {"type": "string", "description": "H-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_audio": "Game ki awaaz jaanch raha hoon", "game_haptics": "Game ki vibration bana raha hoon"})
+
+# v0.422 Phase 7 batch 3: Multiplayer + AR / VR
+GAMEDESK_TOOLS.append(
+    {"name": "game_net", "description": (
+        "Multiplayer Network Programmer employee: netcode for her game proved by bots (free). Her numbers: players, tick "
+        "(Hz), send (snapshots/s), speed (px/s), size (px), interest (px). Bots play over three networks (good 40 ms; the "
+        "plan's 150 ms / 2 % loss / 20 ms jitter; bad mobile 300 ms / 5 % / 60 ms) with an authoritative server, client "
+        "prediction + reconciliation, interpolation and lag compensation; MEASURED: rubber-banding, desync (must be 0), "
+        "bandwidth per player, interpolation dry-outs, lag-compensated hit agreement; then the Godot netcode itself runs "
+        "with a server + 3 clients. Actions: setup (words / inputs, id = S-0001) -> background / list / status (setup "
+        "N-001) / approve / reject. A kit (game server for HER cloud + client code) is on the Multiplayer page. Hoola hosts "
+        "no game server; the netcode is not inside the game build yet (the game cannot open sockets) - say so. Only while "
+        "this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject"]},
+         "words": {"type": "string"}, "inputs": {"type": "object"}, "id": {"type": "string"},
+         "setup": {"type": "string", "description": "N-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_xr", "description": (
+        "AR / VR Interaction Engineer employee: a WebXR setup (mode vr | ar, teleport, snap turn 30/45, seated mode, panel "
+        "distance, text size, fps 72/90) with the comfort rules checked in code, hand gestures (pinch / grab / point / open) "
+        "scored on a labelled set of SYNTHETIC hands and cross-checked in the real Godot, and a demo room that opens in a "
+        "headset or phone browser (a play link). Actions: setup (words / settings, id = S-0001) -> background / list / "
+        "status (setup X-001) / approve / reject / apply (id): HoolaXR goes into her game. Frame rate on her headset is not "
+        "measured here - say so. Only while this employee is hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"}, "settings": {"type": "object"}, "id": {"type": "string"},
+         "setup": {"type": "string", "description": "X-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_net": "Multiplayer netcode jaanch raha hoon", "game_xr": "VR / AR setup jaanch raha hoon"})
+
+# v0.423 Phase 7 batch 4: training simulators, digital twin, VFX pipeline
+GAMEDESK_TOOLS.append(
+    {"name": "game_sim", "description": (
+        "Simulation Software Engineer employee: a TRAINING model validated now (seconds, free). kind orbit (two-body + J2: "
+        "params alt_km, inc_deg, dt_s, hours; scenario events {kind: burn, t, dv_mps}), flight (generic light aircraft glide: "
+        "mass_kg, S_m2, CD0, k, V_mps; events {kind: gust, t, w_mps}) or driving (single-track car: mass_kg, a_m, b_m, Cf, "
+        "Cr, V_mps, steer_deg). Each model is checked against its textbook case (orbit period, energy, J2 node drift; glide "
+        "angle, phugoid; steady yaw rate) and run twice; the source, step and integrator are stated; an orbit model is also "
+        "checked in the real Godot. Actions: setup / list / status (setup M-001) / approve / reject / apply (id = S-0001, "
+        "orbit only). REFUSE weapon / targeting / combat simulators. A training aid, not a certified device. Only while hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject", "apply"]},
+         "words": {"type": "string"}, "kind": {"type": "string", "enum": ["orbit", "flight", "driving"]},
+         "params": {"type": "object"}, "scenario": {"type": "object"}, "id": {"type": "string"},
+         "setup": {"type": "string", "description": "M-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_twin", "description": (
+        "Digital Twin Architect employee: her line as data (stations: machines, cycle_s, cv, mtbf_h, mttr_min, buffer - each "
+        "{value, source: 'tag:<her tag>' | 'assumption: ...'}; data_map entries READ-only: csv / mqtt-subscribe / opcua-read / "
+        "historian-read), simulated by Hoola's event engine (checked against exact answers and queueing theory): throughput, "
+        "utilisation, WIP, lead time, bottleneck, and what-ifs (one more machine, 20 % faster, a second shift). actual = her "
+        "real daily output to validate (within 10 %); without it say NOT ASSESSED. No model given = a worked example to copy. "
+        "Actions: setup / list / status (D-001) / approve / reject. It NEVER writes / commands / controls her plant. Only while hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject"]},
+         "words": {"type": "string"}, "model": {"type": "object"}, "actual": {"type": "array", "items": {"type": "number"}},
+         "setup": {"type": "string", "description": "D-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_TOOLS.append(
+    {"name": "game_vfx", "description": (
+        "VFX Pipeline Technical Director employee: a CG pipeline checked now (free): naming <show>_<seq>_<shot>_<task>_v###.####.ext "
+        "with versions, colour end to end (sources declared: srgb_texture / lin_srgb / logc3 / slog3 / acescg; working ACEScg; "
+        "view srgb_display / rec709_display) converted and measured, a real ACEScg EXR test frame written and read back, a "
+        "render queue with failed frames re-queued and cost per shot (her workers, cores, rate, fail_rate), every frame traced "
+        "to its scene sha256. plan = {show, seq, shots: [{shot, frames: [a, b], frame_min}], sources, view, workers, cores, "
+        "rate_inr_per_core_h, fail_rate}; none = a worked example. Actions: setup / list / status (V-001) / approve / reject. "
+        "Blender / OpenColorIO / OpenUSD are not installed on the server - the render script is for her machines. Only while hired."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["setup", "list", "status", "approve", "reject"]},
+         "words": {"type": "string"}, "plan": {"type": "object"}, "setup": {"type": "string", "description": "V-001"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_sim": "Simulator jaanch raha hoon", "game_twin": "Digital twin chala raha hoon",
+                        "game_vfx": "VFX pipeline jaanch raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -508,5 +668,239 @@ async def game_release(ctx: Ctx, action="", id="", platforms=None, android_forma
     raise ToolError("action = targets | build | list | store_kit | rating | itch")
 
 
+def _owner_only(ctx: Ctx, what: str) -> None:
+    if str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
+        raise ToolError(f"{what} sirf owner ka kaam hai.")
+
+
+def _world_short(v: dict) -> dict:
+    out = {k: v.get(k) for k in ("number", "key", "kind", "seed", "status", "version") if v.get(k) not in (None, "")}
+    ch = v.get("checks") or {}
+    out["checks"] = {"errors": ch.get("errors", []), "warnings": ch.get("warnings", []), "passed": ch.get("passed", [])[:6]}
+    st = v.get("stats") or {}
+    out["numbers"] = {k: st.get(k) for k in ("w", "h", "ms", "rivers", "rivers_to_sea", "rooms", "buildings", "reachable_share") if st.get(k) is not None}
+    if (v.get("demo") or {}).get("status"):
+        out["demo"] = {k: v["demo"].get(k) for k in ("status", "play_url", "errors", "numbers") if v["demo"].get(k)}
+    return out
+
+
+async def game_world(ctx: Ctx, action="", words="", kind="", params=None, seed=None, key="", id="", world="", **_):
+    from ..employee import hire
+    from ..gamedesk import service as G
+    from ..gamedesk import world as W
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, W.KEY):
+        raise ToolError("Procedural World Engineer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, "World banana / badalna")
+    run = asyncio.to_thread
+    try:
+        if action == "make":
+            v = await run(W.make, t, words, kind, seed, params if isinstance(params, dict) else None, id, key)
+            return _world_short(v) | {"note": ("Show her the checks in one or two lines and ask OK / another seed. The preview "
+                                               "is on the World page; a walk-it link: action=demo.")}
+        if action == "list":
+            return {"worlds": [_world_short(v) for v in (await run(W.worlds, t, id))[:12]]}
+        if action in ("status", "approve", "reject", "demo"):
+            fn = {"status": W.get, "approve": W.approve, "reject": W.reject, "demo": W.demo}[action]
+            v = await run(fn, t, world)
+            out = _world_short(v)
+            if action == "demo":
+                out["note"] = "Building in the background; the walk-it link appears on the World page. Do not poll."
+            return out
+        if action == "apply":
+            return await run(W.apply, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = make | list | status | approve | reject | demo | apply")
+
+
+def _phys_short(v: dict) -> dict:
+    lab = v.get("lab") or {}
+    out = {"number": v.get("number"), "status": v.get("status"), "inputs": v.get("inputs"),
+           "settings": {k: (v.get("settings") or {}).get(k) for k in ("ticks", "gravity", "ccd", "ccd_min_speed", "why")},
+           "risk": v.get("risk"), "fluids": "not built yet"}
+    if lab:
+        out["lab"] = {"verdict": lab.get("verdict"), "passed": f"{lab.get('passed')}/{lab.get('total')}",
+                      "cases": [{"case": c["case"], "ok": c["ok"], "note": c["note"]} for c in lab.get("cases", [])],
+                      "before": (lab.get("before") or {}).get("say")}
+    if v.get("error"):
+        out["error"] = v["error"]
+    if v.get("status") == "testing":
+        out["note"] = "The lab runs in the background (well under a minute); its result shows on the Physics page. Do not poll."
+    return out
+
+
+async def game_physics(ctx: Ctx, action="", words="", inputs=None, id="", setup="", **_):
+    from ..employee import hire
+    from ..gamedesk import physics as P
+    from ..gamedesk import service as G
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, P.KEY):
+        raise ToolError("Physics Engine Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, "Physics setup")
+    run = asyncio.to_thread
+    try:
+        if action == "setup":
+            return _phys_short(await run(P.setup, t, words, inputs if isinstance(inputs, dict) else None, id))
+        if action == "list":
+            return {"setups": [_phys_short(v) for v in (await run(P.setups, t, id))[:10]]}
+        if action in ("status", "approve", "reject"):
+            fn = {"status": P.get, "approve": P.approve, "reject": P.reject}[action]
+            return _phys_short(await run(fn, t, setup))
+        if action == "apply":
+            return await run(P.apply, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = setup | list | status | approve | reject | apply")
+
+
+def _audio_short(v: dict) -> dict:
+    rep = v.get("report") or {}
+    out = {"number": v.get("number"), "status": v.get("status"), "zones": (v.get("plan") or {}).get("zones"),
+           "distance_m": {k: (v.get("plan") or {}).get(k) for k in ("min_d", "max_d")}}
+    if rep:
+        out["report"] = {"verdict": rep.get("verdict"), "passed": f"{rep.get('passed')}/{rep.get('total')}",
+                         "checks": [{"check": c["check"], "ok": c["ok"], "note": c["note"]} for c in rep.get("checks", [])],
+                         "limits": rep.get("limits"), "numbers": rep.get("numbers")}
+    if v.get("status") == "testing":
+        out["note"] = "Rendering and measuring in the background (a few seconds); the demos appear on the Audio page."
+    if v.get("error"):
+        out["error"] = v["error"]
+    return out
+
+
+async def game_audio(ctx: Ctx, action="", words="", plan=None, id="", setup="", **_):
+    from ..employee import hire
+    from ..gamedesk import audio as A
+    from ..gamedesk import service as G
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, A.KEY):
+        raise ToolError("Spatial Audio Systems Programmer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, "Audio setup")
+    run = asyncio.to_thread
+    try:
+        if action == "setup":
+            return _audio_short(await run(A.setup, t, words, plan if isinstance(plan, dict) else None, id))
+        if action == "list":
+            return {"setups": [_audio_short(v) for v in (await run(A.setups, t, id))[:10]]}
+        if action in ("status", "approve", "reject"):
+            return _audio_short(await run({"status": A.get, "approve": A.approve, "reject": A.reject}[action], t, setup))
+        if action == "apply":
+            return await run(A.apply, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = setup | list | status | approve | reject | apply")
+
+
+def _haptics_short(v: dict) -> dict:
+    rep = v.get("report") or {}
+    return {"number": v.get("number"), "status": v.get("status"), "actuator": v.get("actuator_name"),
+            "patterns": {k: len(e) for k, e in (v.get("patterns") or {}).items()}, "verdict": rep.get("verdict"),
+            "errors": rep.get("errors", []), "warnings": rep.get("warnings", []), "passed": rep.get("passed", []),
+            "battery": rep.get("rows"), "drv2605_compile": ((rep.get("kit") or {}).get("drv2605_compile") or {}).get("status")}
+
+
+async def game_haptics(ctx: Ctx, action="", words="", patterns=None, actuator="phone_lra", id="", set="", **_):  # noqa: A002
+    from ..employee import hire
+    from ..gamedesk import haptics as H
+    from ..gamedesk import service as G
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, H.KEY):
+        raise ToolError("Haptic Feedback Systems Engineer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, "Haptics")
+    run = asyncio.to_thread
+    try:
+        if action == "make":
+            return _haptics_short(await run(H.make, t, words, patterns if isinstance(patterns, dict) else None, actuator, id))
+        if action == "list":
+            return {"sets": [_haptics_short(v) for v in (await run(H.sets, t, id))[:10]]}
+        if action in ("status", "approve", "reject"):
+            return _haptics_short(await run({"status": H.get, "approve": H.approve, "reject": H.reject}[action], t, set))
+        if action == "apply":
+            return await run(H.apply, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = make | list | status | approve | reject | apply")
+
+
+def _report_short(v: dict, extra: dict) -> dict:
+    rep = v.get("report") or {}
+    out = {"number": v.get("number"), "status": v.get("status"), **extra}
+    if rep:
+        out["report"] = {"verdict": rep.get("verdict"), "passed": f"{rep.get('passed')}/{rep.get('total')}",
+                         "checks": [{"check": c["check"], "ok": c["ok"], "note": c["note"]} for c in rep.get("checks", [])]}
+    if v.get("status") == "testing":
+        out["note"] = "Running in the background (under a minute); the result shows on its page. Do not poll."
+    if v.get("error"):
+        out["error"] = v["error"]
+    return out
+
+
+async def _pack_tool(ctx: Ctx, mod_name: str, who: str, action: str, ref: str, make, extra) -> dict:
+    import importlib
+    from ..employee import hire
+    from ..gamedesk import service as G
+    M = importlib.import_module(f"..gamedesk.{mod_name}", __package__)
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, M.KEY):
+        raise ToolError(f"{who} hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action not in ("list", "status"):
+        _owner_only(ctx, who)
+    run = asyncio.to_thread
+    try:
+        if action == "setup":
+            return _report_short(await run(make, M), extra)
+        if action == "list":
+            return {"setups": [_report_short(v, extra) for v in (await run(M.setups, t, ""))[:10]]}
+        if action in ("status", "approve", "reject"):
+            v = await run({"status": M.get, "approve": M.approve, "reject": M.reject}[action], t, ref)
+            return _report_short(v, extra | ({"demo": v.get("demo")} if v.get("demo") else {}))
+        if action == "apply":
+            return await run(M.apply, t, ref)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = setup | list | status | approve | reject" + (" | apply" if mod_name in ("xr", "sim") else ""))
+
+
+async def game_net(ctx: Ctx, action="", words="", inputs=None, id="", setup="", **_):
+    return await _pack_tool(ctx, "netcode", "Multiplayer Network Programmer", action, setup,
+                            lambda M: M.setup(ctx.tenant_id, words, inputs if isinstance(inputs, dict) else None, id),
+                            {"hosting": "her own cloud - Hoola hosts no game server", "in_game": "not yet (the game cannot open sockets)"})
+
+
+async def game_xr(ctx: Ctx, action="", words="", settings=None, id="", setup="", **_):
+    return await _pack_tool(ctx, "xr", "AR / VR Interaction Engineer", action, setup if action != "apply" else id,
+                            lambda M: M.setup(ctx.tenant_id, words, settings if isinstance(settings, dict) else None, id),
+                            {"headset_fps": "not measured here (no headset)"})
+
+
+async def game_sim(ctx: Ctx, action="", words="", kind="", params=None, scenario=None, id="", setup="", **_):
+    return await _pack_tool(ctx, "sim", "Simulation Software Engineer", action, setup if action != "apply" else id,
+                            lambda M: M.setup(ctx.tenant_id, words, kind, params if isinstance(params, dict) else None,
+                                              scenario if isinstance(scenario, dict) else None, id),
+                            {"note_device": "a training aid, not a certified flight training device"})
+
+
+async def game_twin(ctx: Ctx, action="", words="", model=None, actual=None, setup="", **_):
+    out = await _pack_tool(ctx, "twin", "Digital Twin Architect", action, setup,
+                           lambda M: M.setup(ctx.tenant_id, words, model if isinstance(model, dict) else None,
+                                             actual if isinstance(actual, list) else None),
+                           {"read_only": "the twin reads her data and never writes / commands / controls her plant"})
+    return out
+
+
+async def game_vfx(ctx: Ctx, action="", words="", plan=None, setup="", **_):
+    return await _pack_tool(ctx, "vfx", "VFX Pipeline Technical Director", action, setup,
+                            lambda M: M.setup(ctx.tenant_id, words, plan if isinstance(plan, dict) else None),
+                            {"not_here": "Blender / OpenColorIO / OpenUSD are not installed on the server"})
+
+
 GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_bible": game_bible, "game_assets": game_assets,
-                     "game_qa": game_qa, "game_release": game_release}
+                     "game_qa": game_qa, "game_release": game_release, "game_world": game_world,
+                     "game_physics": game_physics, "game_audio": game_audio, "game_haptics": game_haptics,
+                     "game_net": game_net, "game_xr": game_xr, "game_sim": game_sim, "game_twin": game_twin,
+                     "game_vfx": game_vfx}

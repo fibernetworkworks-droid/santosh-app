@@ -15803,6 +15803,322 @@ Owner, after the India ad-market check (artifact "Hoola Ad Platforms India"): "G
   to main (Architecture Desk section + ar-dia styles present); /api/arch/projects answers 401 without a key.
 - Tests: 3 more in test_v0410_architect.py (inline design + full clean-up, model failure reported not raised, vps-ops job).
 
+## v0.418.0 PRAYOGSHALA IN ENGLISH (owner: "FIRST MAKE ENTIER THING IN ENGLISH")
+
+Everything a learner sees in Prayogshala is English.
+- **The 22 labs**: titles, aims, part names and info, knob and meter labels, table columns and hints, steps, theory, safety notes, tour narration and quiz.
+- **Narration**: `lang` is now `en-IN`, so the browser speaks it in English.
+- **The runtime** (`static/prayog/lab3d.js`): the buttons are Run / Reset / Tour / Record reading / Zero, the tabs are Knobs / Meters / Table / Steps / Predict / About, plus the result line "True value in this lab ... your error" and every empty-state text.
+- **The pages and surfaces**: the catalogue and lab pages, the phone Prayogshala screen and its Profile tile, the tool's notes and errors, the catalogue NOTE, and the LSL checker's messages.
+
+Nothing else changed. The old and new catalogues were compared with all text stripped and are structurally identical: every number, the 3D layout, the kernels and the NCERT checks.
+
+The meter bridge was re-run in Chromium: S = 6.01 Ω against the lab's true 6.00 Ω.
+
+A new test, `test_everything_the_learner_sees_is_english`, fails if Hinglish words return to the labs, the runtime, the pages or the phone screen.
+
+The static `?v=` stamps and the service-worker cache name moved to 0.418.0, so phones fetch the new runtime.
+## v0.419.0 PAISA (App Sahayak Pillar E, Phases 52-53 — owner: "START PILLAR E"; built as 0.417 / 0.418, re-versioned on rebase)
+Online payments in her native apps through HER own gateway. Hoola never holds money.
+- `server/app/paygate/gw.py`: Razorpay / Cashfree PG / PhonePe PG (Standard Checkout v2) through their official server APIs
+  (httpx, injectable transport for tests). It covers create order, order state, webhook verification, event parsing, refund,
+  refund state, settlements, payment links, plans, subscriptions, cancel, and transfers. A timeout is reported as
+  `ambiguous`. PhonePe does orders + refunds only.
+  - Razorpay webhook: hex HMAC-SHA256 of the body with her webhook secret.
+  - Cashfree webhook: base64 HMAC-SHA256 of timestamp + body with her client secret.
+  - PhonePe webhook: sha256(user:password).
+- `server/app/appmaker/pay.py` + tables app_pay_keys / app_payment / app_refund / app_sub (registered in db.init_db, with
+  ensure_tables):
+  - Keys: PUT /api/apps/<ref>/pay/keys. The gateway checks them first (wrong keys are never saved), then they are sealed
+    (vault). No route returns them.
+  - Pay start: POST /api/app-api/<key>/pay/c/<coll>/<id>/start, the customer's own unpaid order only. The amount is the
+    SERVER's total in paise. The same order within 25 minutes reuses the same payment.
+  - Pay page: GET /pay/p/<token>, an HMAC-signed link that lasts 30 minutes (forged = 404, expired = 410). It shows the
+    gateway's own checkout (Razorpay Checkout / Cashfree JS / PhonePe redirect) under a strict CSP. GET /pay/s/<token>
+    returns the state.
+  - Paid: `_paid` is the ONE place a payment becomes paid. It takes only what the gateway said: a verified webhook,
+    the pay-page status read (at most every 4 s), or the tick for orders still "created" 1-120 min old. The amount
+    must match; a different amount is held as `mismatch` + a chat note. A paid order gets paid=Verified + `_pay` on the
+    row (journaled -> live).
+  - Refunds: her_tap only, at most paid minus refunded minus refunds in flight. The refund number is recorded BEFORE the
+    call (the gateway's idempotency). A timeout becomes `ambiguous`; /refunds/<id>/check and the tick ask with the SAME
+    number. The webhook counts each refund once.
+  - Payment links (her tap), settlements (read-only).
+  - AutoPay: plans (her tap) live in backend.pay.plans. The customer subscribes and approves the mandate on the gateway
+    page; the consent text shows the amount, how often, how many times, and that she can cancel any time. One live
+    subscription per plan. The customer cancels her own, the owner cancels any.
+  - Split: a vendor rule she approved (hash + time; any change = approve again; at most 100%). Cashfree sends
+    order_splits on the order. Razorpay Route transfers run once per payment, recorded before sending.
+- Apps get `pay: {on, plans}` in the backend hint.
+  - Android `Pay.kt` and iPhone `Pay.swift`: PayButton on the customer's unpaid order (opens the page in the browser,
+    then waits for the gateway's word) and PlansBlock (plans + her own subscriptions with Cancel).
+  - Console: Payments box (join, webhook address + how, payments, refund / check, settlements, link, plans,
+    subscriptions, payout rule). Phone: `lib/ui/app_pay.dart` (join, payments, refund after a confirm, link).
+- Tests: tests/test_v0419_paisa.py (5) against a fake gateway in the documented shapes.
+- NOT VERIFIED: no live merchant account has answered. Cashfree subscription field names and the PhonePe v2 shapes follow
+  the docs from memory and need checking against her first real test payment. Native gateway SDKs are not used; the
+  hosted checkout is official.
+
+## v0.420.0 GAME DESK ROLES 1: PROCEDURAL WORLDS + PHYSICS LAB (Hoola Game Engine plan Phase 7 batch 1 = Game Desk plan phase 2) - 1 Nov 2026
+Owner: "GO PHASE 7". Phase 7 = the nine other Game Desk roles in batches (docs/GAME_DESK_PLAN.md section 5). This is
+batch 1: the Procedural World Generation Engineer and the Physics Engine Developer, both LIVE hire cards now. Batches 2-4
+(spatial audio + haptics; multiplayer + AR/VR; VFX TD + simulation + digital twin) are not built yet.
+
+ROLE PACKS (`gamedesk/packs.py`): each role writes its OWN autoload into every build of her game, the same rule as the
+Bible and the assets - Hoola writes it from data she approved, the model only reads it (ai.GUIDE) and never edits or
+re-outputs it. `template.HOOLA_OWN` lists Hoola's autoloads (bible, assets, world, physics) for the project file and the
+guard; `service._own_packs` drops anything the model wrote under those names and leaves no stale file behind; a pack
+that fails never breaks a build. A pack can also serve a Hoola-made demo at /play/<token>/ (`packs.demo_build`).
+
+PROCEDURAL WORLDS (`gamedesk/world.py`, table `game_worlds`, tool `game_world`, /api/gamedesk/world*):
+- kinds terrain (fbm value noise + island mask, biomes from height + moisture, rivers by steepest descent that carve on
+  through pits to the sea, passes cut so the land joins, villages), dungeon (rooms, Prim MST corridors + loops, exit =
+  farthest room, treasure), city (road grid with gaps that never split the network, blocks, buildings only where a
+  real road is beside them, taller near the centre, parks / squares), level (side view: ground, gaps, steps, floating
+  platforms, spikes, coins, goal). numpy only, no model, no money; her words -> params via a small model call that
+  only PICKS numbers (clamped in code), rules when there is no model.
+- CHECKED in code: generated twice (fingerprints must match = same seed same world); flood-fill reachability from the
+  spawn for every village / room / exit / treasure, a stuck spawn named, a cut-off landmass named with its share; a
+  level is walked by a jump graph that follows the real ARC (`can_jump`: full height only up to half the jump width,
+  level at full width) with head room - the first generator failed 18 of 60 levels against this check (two gaps in a
+  row, spikes on jump edges, back-to-back spikes, steps right after a gap) and was fixed until 0 of 560 fail across 7
+  jump settings; cities first left buildings with no road beside them (fixed: frontage is checked on real road cells).
+- files: preview.png, world.json, 16-bit heightmap.png, world.glb (glTF 2.0 binary written from numpy, parsed back by
+  `read_glb` before it is kept), each behind a signed link.
+- walk-it demo: Hoola's own explorer (top view: walk by keys / taps) or runner (side view: the jump is worked out from
+  the level's own jump height / width) built in Godot, exported to Web and played by the usual playtest; served at
+  /play/<token>/.
+- her OK -> HoolaWorld in her game (tile / walkable / solid / height / spawn / points / sprite / image...), rebuilt
+  through G.data_build with no model call; one approved world per key.
+
+PHYSICS LAB (`gamedesk/physics.py`, table `game_physics`, tool `game_physics`, /api/gamedesk/physics*):
+- her numbers (fastest body px/s, thinnest wall px, ticks, gravity) from the inputs, her words or the biggest 'speed'
+  in her Game Bible; settings chosen in CODE (`choose`): keep her ticks when safe, raise them when <= 120 is enough,
+  else continuous collision on fast bodies.
+- the lab = Hoola's own GDScript run headless with --fixed-fps: free fall (vs 1/2 g t^2 AND vs the integrator's own
+  step answer y_n = g dt^2 n(n+1)/2 - measured 498.17 px = 0.0% from the step answer, 1.67% from the textbook, so the
+  error is explained), projectile range (2.04%), elastic collision masses 1 / 2 (v -100 / 200 exactly, momentum and
+  energy 0.0%), tunnelling at HER speed into HER wall (six bullets per mode from six start points, without CCD /
+  cast-ray / cast-shape), six-box stack (drift 0.23 px, sink 1.7 px), 3D drop (1.67%), and the whole lab twice
+  (fingerprints must match). When Hoola changes her settings, her old settings run once more as the evidence.
+- FOUND IN THE REAL ENGINE (Godot 4.7.2), and the rules were changed to match: (1) without CCD a body is pushed out on
+  whichever side its centre is nearer, so once a step can carry the centre past the MIDDLE of the wall it stops or
+  goes through depending on where the steps land (the first lab showed 900 px/s "through" a 16 px wall but 3000 px/s
+  "stopped" by an 8 px one - luck, not physics; with six start points 3000 / 8 goes through 5 of 6) -> safe without
+  CCD only when one step <= half the wall; (2) of the two CCD modes only CAST_RAY stopped every case; CAST_SHAPE
+  behaved like no CCD -> HoolaPhysics.fast() uses cast-ray, and the lab keeps measuring both.
+- only a PASS can be approved; her OK -> HoolaPhysics in her game (ticks, gravity, fast(), needs_ccd(), step_ok(),
+  jump_velocity / jump_height / air_time / range_of with the formulas the lab checked).
+- Fluids are NOT part of this pack yet (said on the card, in the tool and in the hire card).
+
+Console: Game Desk home "Game Desk team" + board buttons Worlds / Physics (gsWorld / gsPhysics), the Game Desk shows in
+the sidebar when any Game Desk role is hired. Phone: lib/ui/game_roles_screen.dart (GameWorldsScreen /
+GamePhysicsScreen) from the desk and the project screen. Tests: test_v0420_game_roles.py (20, two run the real Godot
+when it is installed).
+Verified here with Godot 4.7.2: terrain and level walk-it demos built, exported and played (46 / 45 fps on the server,
+2.8 / 1.4 s load); the physics lab PASS 7/7 for 400/16, 900/16 (113 ticks), 3000/8 and 20000/4 (cast-ray), each in
+about half a second. NOT VERIFIED: on her VPS, and a model-written game actually reading HoolaWorld / HoolaPhysics
+(the guide tells it how; the next real game build will show it).
+
+## v0.421.0 GAME DESK ROLES 2: SPATIAL AUDIO + HAPTICS (Hoola Game Engine plan Phase 7 batch 2 = Game Desk plan phase 3) - 1 Nov 2026
+Owner: "GO PHASE 7" (batch 2 of 4). Two more Game Desk employees went live, each a role pack (v0.420's packs.py: a
+Hoola-owned autoload in every build, the model only reads it). Batches 3-4 (multiplayer + AR/VR; VFX TD + simulation +
+digital twin) are not built yet.
+
+SPATIAL AUDIO SYSTEMS PROGRAMMER (`gamedesk/audio.py`, table `game_audio`, tool `game_audio`, /api/gamedesk/audio*):
+- renderer in numpy + scipy, licence-clean (no recorded HRTF set): Brown & Duda (1998) spherical head - Woodworth ITD
+  + a one-pole / one-zero head-shadow filter per ear (bilinear transform at 48 kHz), inverse-distance gain + air
+  absorption, occlusion = -10 dB + 800 Hz low-pass, reverb zones = early reflections + exponentially decaying noise
+  designed to an RT60.
+- every claim MEASURED (`judge`): ear-to-ear time at 13 directions by cross-correlation vs Woodworth; level
+  difference 2-8 kHz by side; 6 dB per doubling (measured -6.02 / -6.02 / -6.02); occlusion -11.6 dB overall with
+  highs -32.6 dB; each zone's RT60 measured back by Schroeder T20 (0.6 / 1.8 / 3.0 s designed -> 0.598 / 1.792 /
+  2.993 s); loudness by ITU-R BS.1770 (K-weighting + both gates) to -16 LUFS with the true peak (4x oversampled) under
+  -1 dBFS; the render twice (byte-identical).
+- THREE expectations were wrong and the checks were corrected to the physics, not loosened to pass: the measured ITD
+  runs up to 11% over Woodworth's pure delay because the head-shadow filter delays the far ear too (a real head does
+  the same at low frequencies) -> limit 40 us or 12%; the level difference PEAKS NEAR 60 degrees, not 90 (sound bends
+  round a sphere and meets behind the far ear - the bright spot) -> it must grow 0 -> 30 -> 60 and stay above the
+  30-degree value at 90; a clap cannot reach -16 LUFS without clipping -> such a demo is reported "peak-limited" at
+  its real loudness, never squashed by a compressor. Also found by the tests: numpy floats / bools leaking into the
+  report would have broken saving it (cast to Python types).
+- said plainly on the card, the tool and the hire card: a spherical head gives no front / back or height cue (the
+  cone of confusion - 30 and 150 degrees measure the same), and in-game positional sound is Godot's own panning +
+  distance + zones; the binaural render is for the headphone demos and baked ambience.
+- demos: walkaround.wav (a sound circling the head in 8 s), distance.wav, zones.wav (48 kHz stereo, signed links).
+- her OK -> HoolaAudio: a bus per zone with AudioEffectReverb (room_size / damping mapped from RT60 - an approximation,
+  said), an occlusion bus (-10 dB + low-pass), player2d / player3d set to inverse distance with her min / max,
+  set_zone(), occlude().
+
+HAPTIC FEEDBACK SYSTEMS ENGINEER (`gamedesk/haptics.py`, table `game_haptics`, tool `game_haptics`, /api/gamedesk/haptics*):
+- patterns as data (events t / d ms, amplitude, sharpness), 15 library patterns, her moments matched by words (jump,
+  coin, hit, game over...); library patterns are FITTED to the chosen motor (pulses lengthened, later pulses moved to
+  keep the gap); numbers she types are checked as they are, never changed.
+- checks in code: shortest felt pulse per actuator (phone LRA 10 ms, phone ERM 30 ms, controller 40 ms, DRV2605 LRA /
+  ERM), gaps >= 20 ms, feedback <= 1.5 s, no two patterns that feel the same (5 ms envelope + pulse count distance <
+  0.18 is named), battery per play and per 1,000 plays from on-time x amplitude^2 x a stated drive power, an off switch
+  and an intensity slider always.
+- kit.zip: Core Haptics .ahap per pattern (validated: Version, EventType, Time, EventDuration, parameters 0-1) +
+  HoolaHaptics.swift, Android HoolaHaptics.kt (VibrationEffect waveforms, amplitudes 1-255, hasAmplitudeControl
+  fallback, VIBRATE permission noted), a DRV2605 real-time-playback C driver COMPILED here with gcc -Wall -Werror
+  against stand-in Arduino / Wire headers (no compiler = NOT ASSESSED), patterns.json + a pattern picture.
+- her OK -> HoolaHaptics: play(name) on phones (Input.vibrate_handheld; on the web Android Chrome only - iPhone browsers
+  have no vibration, said) and controllers (start_joy_vibration), set_enabled / set_intensity saved in user://. The
+  console can play the set on the phone it is opened on (navigator.vibrate).
+
+Console: Audio + Haptics pages (gsAudio / gsHaptics) on the Game Desk home and every board; the Game Desk shows when any
+of its roles is hired. Phone: GameAudioScreen / GameHapticsScreen (game_roles_screen.dart). Tests:
+test_v0421_game_audio_haptics.py (10, one runs both autoloads in the real Godot).
+Verified here with Godot 4.7.2: both autoloads load and run headless (zone bus, occlusion bus, haptics with the saved
+intensity); the audio report PASS 11/11 (3 zones) and 10/10 (2 zones), render ~1.7 s; the DRV2605 driver compiles.
+NOT VERIFIED: how the demos sound to her ears, the Android / iPhone kit code compiled in a real app (not here), and a
+real DRV2605 board.
+
+## v0.422.0 GAME DESK ROLES 3: MULTIPLAYER NETCODE + AR / VR (Hoola Game Engine plan Phase 7 batch 3 = Game Desk plan phase 4) - 1 Nov 2026
+Owner: "GO PHASE 7" (batch 3 of 4). Two more Game Desk employees live. Batch 4 (VFX TD + simulation + digital twin)
+not built yet. Also carries a re-trigger of the APK build: v0.421.0's CI run failed BEFORE any code ran (the Flutter
+setup step could not download Flutter, curl exit 35) and this session may not re-run workflows.
+
+MULTIPLAYER NETWORK PROGRAMMER (`gamedesk/netcode.py`, table `game_net`, tool `game_net`, /api/gamedesk/net*):
+- the bot run (`simulate`, deterministic event simulation): N bots at her speed through an authoritative server at her
+  tick rate, snapshots at her send rate with interest management + delta sizing against the last acknowledged
+  snapshot, a simulated network per packet (latency, jitter = out-of-order arrival, loss); clients predict their own
+  player, reconcile on every snapshot (server answer + replay of unconfirmed inputs), draw others 100 ms behind
+  (interpolation); the server rewinds for hits (lag compensation). Three networks: good 40 ms, the plan's 150 ms /
+  2 % / 20 ms, bad mobile 300 ms / 5 % / 60 ms.
+- MEASURED: rubber-banding (p95 / max correction, limit = a quarter of the player's size on the plan's network),
+  desync after inputs stop (must be exactly 0), bandwidth per player down / up (and without interest + deltas),
+  interpolation dry-outs (with the buffer this network needs: two send intervals + twice the jitter), lag-compensated
+  hit agreement vs none (100% vs 13% on the plan's network), the run twice.
+- THE BOTS FOUND TWO REAL NETCODE BUGS, both fixed in the simulation AND the Godot code: (1) a late OLDER snapshot
+  arriving after a newer one was applied - the client stepped back without the inputs it needed to replay - 12.8 px
+  of permanent desync on the bad mobile network -> snapshots older than the newest applied are dropped (2,264 dropped
+  in that run); (2) an input lost at the very end was never seen by the server (no later input revealed the gap) ->
+  4-13 px desync -> every client resends ALL unacknowledged inputs (up to 8) every tick, and the server waits 3 ticks
+  for a missing one before skipping it. After both: desync 0 px on every network, setting and seed tried, no input had
+  to be skipped; the cost (~1.8 KB/s up per player) is stated. Also corrected: my first interpolation measure mixed a
+  server-clock estimate with local arrival times (it read 45% dry); it now uses arrival times, as the Godot code does.
+- the Godot netcode (`GD_NET`, Hoola's own GDScript: shared quantised step, server tick + history, snapshot_for with
+  interest, rewind_hit, client_input / unacked / client_snapshot / remote) RUN IN THE REAL ENGINE by `godot_lab`: a
+  server + 3 clients in one headless process over an in-memory lossy link (the build box has no sockets): desync 0 px
+  on all three networks, interpolation works.
+- kit.zip: server/ (HoolaNet + a WebSocket server.gd + Dockerfile) for HER cloud, client/ HoolaNet, settings.
+- said plainly: Hoola hosts no game server (a Hoola box is an open owner decision, GAME_DESK_PLAN section 8); the
+  socket transport is not tested here; HoolaNet is NOT inside the game build yet (game code may not open sockets and
+  play links allow only their own host) - set_server stores HER wss:// address for the next step.
+
+AR / VR INTERACTION ENGINEER (`gamedesk/xr.py`, table `game_xr`, tool `game_xr`, /api/gamedesk/xr*):
+- comfort in code: teleport (smooth movement only with a vignette), snap turning 30 / 45, a seated mode, panels 1-3 m,
+  text >= 1.2 degrees (its mm height at that distance stated), fps target + triangle budget - headset frame rate NOT
+  ASSESSED (no headset).
+- gestures (pinch / grab / point / open) by rules on the 25 WebXR joints; a jointed synthetic hand model posed per
+  gesture with random size / rotation / position + 3 mm noise = 240 labelled hands: 97.9% (pinch 100, grab 97, point
+  95, open 100) with the confusion table; synthetic, said plainly. The SAME rules in GDScript (HoolaXR.gesture) agreed
+  on 80 of 80 hands in the real Godot.
+- demo: Hoola's WebXR room (floor, teleport pads, a panel sized from the text rule) built, exported and played (59 fps
+  on the server, 2.9 s load). FOUND in the screenshot: without a headset the XRCamera3D sits at the tracker pose = the
+  floor -> a normal camera at head height until a real XR session starts.
+- her OK -> HoolaXR (start from a tap via WebXR / OpenXR, snap_turn, teleport, seated_offset, gesture).
+
+Console: Multiplayer + VR / AR pages (gsNet / gsXr). Phone: GameNetScreen / GameXrScreen. Tests:
+test_v0422_game_net_xr.py (9, one runs the netcode + gestures in the real Godot).
+NOT VERIFIED: a real game server on her cloud, a real headset / phone XR session, her own hands.
+
+## v0.423.0 GAME DESK ROLES 4: SIMULATORS + DIGITAL TWIN + VFX PIPELINE (Hoola Game Engine plan Phase 7 batch 4 = Game Desk plan phase 5) - 1 Nov 2026
+Owner: "GO PHASE 7" (batch 4 of 4 - Phase 7 is now built: all ten Game Desk employees are live hire cards). None of
+Blender, OpenColorIO, OpenEXR, OpenUSD, SimPy or SGP4 is installed on the server, so all three packs are numpy / scipy
+and Hoola's own code, with every limit said.
+
+SIMULATION SOFTWARE ENGINEER (`gamedesk/sim.py`, table `game_sims`, tool `game_sim`, /api/gamedesk/sim*):
+- orbit (two-body + J2, RK4; mu / Re / J2 from WGS 84 / EGM96), flight (point-mass longitudinal light aircraft, drag
+  polar, ISA sea-level air; GENERIC parameters stated as assumptions), driving (linear single-track car). Every model
+  validated against its textbook case: orbit period vs 2 pi sqrt(a^3/mu) (5676.98 s = 5676.98 s), energy drift
+  (2.9e-11), J2 node regression vs -3/2 n J2 (Re/p)^2 cos i (-4.84 vs -4.75 deg/day at 500 km / 51.6 deg; +0.90 deg/day
+  at 98 deg = the sun-synchronous behaviour; GEO period 86,164 s = a sidereal day); glide angle vs atan(CD/CL); phugoid
+  20.4 s vs Lanchester 20.4 s; steady yaw rate vs V / (L + K V^2) (exact) + understeer / characteristic speed.
+  Scenarios = data (gust, burn), run twice (identical logs). log.csv + plot.png.
+- FOUND by a test case: the first period check assumed the orbit crosses y = 0 going up, so a 98-degree orbit "failed";
+  it now measures the swept angle reaching 360 degrees (any inclination / direction).
+- HoolaSim (the orbit RK4 step in GDScript) agrees with the Python model to < 1e-4 relative after 360 steps in the
+  REAL Godot (Godot vectors are 32-bit floats - said); an approved orbit simulator goes into her game; flight / driving
+  are reports + logs (GDScript ports not built). Weapon / targeting / combat simulators are refused in code; "a
+  training aid, not a certified flight training device".
+
+DIGITAL TWIN ARCHITECT (`gamedesk/twin.py`, table `game_twins`, tool `game_twin`, /api/gamedesk/twin*):
+- her line as data (stations: machines, cycle time + variation, MTBF / MTTR, buffers; shifts, days); Hoola's own
+  discrete-event engine (blocking buffers, lognormal cycles, breakdowns, per-machine seeded streams = common random
+  numbers for what-ifs); throughput, utilisation, WIP, lead time, bottleneck, what-ifs (one more machine at the
+  bottleneck, 20 % faster, a second shift), a layout picture.
+- checks: traceability (every number {value, source: tag:<her tag> | assumption: ...}; untraced numbers and tags not in
+  the data map are NAMED), read-only (data-map kinds csv / mqtt-subscribe / opcua-read / historian-read only; write /
+  setpoint / command words refused), the LINE engine on exact answers (one steady station 90.02 vs 90 / h, the slower
+  station sets the pace 80.0 vs 80 / h, breakdowns 53.29 vs 53.33 / h over 200 days), random queueing vs theory (M/M/1
+  and M/M/3 Erlang C within 5 % at 300,000 arrivals), the run twice, and her real week (within 10 %) - without it NOT
+  ASSESSED, never "validated".
+- FOUND: my first engine check used a separate little queue loop (not the line engine the twin uses) and too few
+  customers (6-7 % off at rho 0.8); the line engine now has its own exact-answer cases and the queueing check runs long
+  enough. A 3D twin view is not built (a 2D layout is).
+
+VFX PIPELINE TECHNICAL DIRECTOR (`gamedesk/vfx.py`, table `game_vfx`, tool `game_vfx`, /api/gamedesk/vfx*):
+- naming <show>_<seq>_<shot>_<task>_v###.####.ext with versions; colour end to end (declared sources: sRGB texture,
+  linear sRGB, ARRI LogC3, Sony S-Log3, ACEScg -> working ACEScg -> sRGB / Rec.709 view), the conversion DONE and
+  measured (round-trip on a 1,485-patch chart; LogC3 and S-Log3 decode their published 18 % grey codes to 0.1800);
+  a real OpenEXR (scanline, uncompressed, HALF RGB, AP1 chromaticities) written and read back by Hoola's own reader -
+  pixels exact; a render queue (workers, per-frame failure chance, re-queue up to 3 times, every frame done or named,
+  cost per shot from core-hours x her rate, farm wall time); a publish manifest tracing every frame to shot, version,
+  scene sha256, colour space, worker, attempt.
+- kit.zip: manifest, pipeline, a Blender (Cycles, EXR) render script for HER machines, the ACEScg test EXR, README -
+  Blender / OCIO / OpenUSD are not run on the server (said).
+
+Console: Simulators / Digital twin / VFX pipeline pages (one shared report page). Phone: GameSimScreen /
+GameTwinScreen / GameVfxScreen. Tests: test_v0423_game_sim_twin_vfx.py (12, one runs HoolaSim in the real Godot).
+NOT VERIFIED: a real plant week, a real render farm / Blender run, the EXR opened in Nuke / Resolve, a certified sim.
+
+PHASE 7 SUMMARY (v0.420 - v0.423): ten Game Desk roles live as role packs on the shared desk - World, Physics, Audio,
+Haptics, Netcode, XR, Simulator (Hoola-owned autoloads HoolaWorld / HoolaPhysics / HoolaAudio / HoolaHaptics / HoolaXR /
+HoolaSim, HoolaNet kit-only) + Digital Twin and VFX Pipeline (reports + kits). Real findings that changed code: Godot
+4.7.2 tunnels past HALF a wall and only cast-ray CCD works; a sphere's level difference peaks near 60 degrees; two
+netcode bugs (stale snapshots, lost tail inputs); the XR camera sits on the floor without a headset; the platformer
+generator made unwinnable levels (fixed until 0 of 560 fail).
+
+## v0.424.0 JODO (App Sahayak Pillar F, Phase 54 — owner: "START PILLAR F")
+Her apps talk to outside services through DECLARED HTTP actions (data, never code).
+- `server/app/appmaker/connect.py` + tables app_conn_secret / app_conn_run (registered in db.init_db + ensure_tables).
+  Actions live in backend.connect.actions.
+  - Approval: an action runs only after her approve tap. The approval is bound to `_hash` of method, url, headers, query,
+    body, auth, trigger, list, status, map, staff and idem; any change clears it.
+  - Save-time checks (`_clean`): https, a public host (no port, no user:pass, no {{}} in the host), the list and its
+    fields exist, a status is one of the list's options, the auth type is known, and any mention of Aadhaar is refused.
+  - Run-time checks: the host is resolved and refused when private / loopback / link-local / reserved (incl.
+    169.254.169.254); redirects are off; answers are capped at 1 MB with a 15 s timeout; per-action and per-app
+    per-minute limits.
+  - Auth: bearer / basic / header / query / login_token (Shiprocket) / oauth_refresh (Zoho; QuickBooks client
+    credentials as Basic, and a rotated refresh token is re-sealed) / google_sa (an RS256 JWT -> oauth2 token). Tokens
+    are cached in memory only.
+  - Placeholders {{row.x}} {{app.name}} {{facts.x}} {{now}} {{today}} {{run.id}} {{secret.x}}. A whole-placeholder
+    string keeps its type. Form bodies JSON-encode nested values (Delhivery data=).
+  - Secrets are sealed (vault) and returned by no route. Every stored note is scrubbed of their values.
+  - Write-back: `map` takes JSON paths into existing fields only, through W._value; values that don't fit are dropped.
+  - Retries happen only for GET or an idempotency header. A POST that timed out becomes `ambiguous` and is never resent.
+    A run stuck in `running` > 10 min becomes ambiguous, and the worker tick finishes `queued` ones.
+  - Triggers: `fire()` from BE._create (create) and BE.status_moved (status) queues the run in a thread pool, so the
+    order never waits. Staff buttons go through POST /api/app-api/<key>/connect/<action>/run (staff only, actions she
+    marked staff + manual); the backend hint lists them under `connect`.
+  - Inbound hooks: POST /api/app-api/<key>/hook/<name> with HMAC-SHA256 hex / base64 or a token in a header she names.
+    The secret is generated and shown once. One row is matched by a field; `set` paths are typed per field; the payload
+    is data (a status goes through status_moved).
+  - Owner routes: /api/apps/<ref>/connect (status, pack, actions, approve, run, secrets, hooks).
+- `connect_packs.py`: 13 packs from the providers' docs: Shiprocket (create + track), Delhivery (create + track), MSG91
+  flow, Fast2SMS DLT, WhatsApp Cloud template, Brevo, Resend (Idempotency-Key), Google Sheets append, Google Calendar
+  event, Zoho Books contact, QuickBooks sales receipt, Tally (export only, since Tally is local), licensed KYC.
+  A pack names the list fields it needs. An action whose fields are missing is reported, never invented.
+- Kits `Connect.kt` / `Connect.swift`: staff buttons on row cards (ConnectButtons).
+  Console Connectors box: packs, approve card with what leaves (host, fields, keys, write-back, when), run on an entry,
+  keys, webhooks, run log. Phone: `lib/ui/app_connect.dart` (approve + runs).
+- Tests: tests/test_v0424_jodo.py (4), against a fake service and a fake resolver.
+- NOT VERIFIED: no live provider account has answered. The pack shapes follow each provider's docs, and the first real
+  run on a test entry will confirm or correct them. The Google service account and the KYC provider's URL are hers to set up.
+
 ### follow-up: ARCHITECTURE PDF LIKE A REAL DOCUMENT (owner: "SHOW ME A PERFECT PROTOTYPE OF IT HOW OUTPUT LOOK LIKE")
 - Live check passed on the VPS (v0.424.0): 2/2 diagrams in 2.7 s, capacity sums, one real Opus design in 326 s
   (14 components, 6 ADRs, 7 risks, 4/4 diagrams, PDF 254 KB). Rendering a sample through the real pipeline then showed

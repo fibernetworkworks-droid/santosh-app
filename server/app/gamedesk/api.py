@@ -26,6 +26,45 @@ POST   /api/gamestudio/{id}/nightly    build + play the live version again now
 POST   /api/gamestudio/{id}/restore    {n}  an old version's code back as a new version
 POST   /api/gamestudio/{id}/github     {repo?, private?}  the GitHub card (her tap sends it)
 
+v0.420 Role packs (Phase 7: the Game Desk roles; each needs ITS employee hired for changes; reading is free):
+GET    /api/gamedesk/worlds?studio=             Procedural World Engineer: worlds + kinds + defaults
+POST   /api/gamedesk/worlds                     {words?, kind?, seed?, params?, studio?, key?}  generate + check (a draft)
+GET    /api/gamedesk/world/{wid}                one world (checks, stats, files, demo)
+POST   /api/gamedesk/world/{wid}/approve|reject|demo   her OK / no / build the walk-it demo (background)
+POST   /api/gamedesk/worlds/apply               {studio}  approved worlds into the live game (HoolaWorld, no model)
+GET    /api/gamedesk/world/{wid}/file/{name}?sig   preview.png | world.json | heightmap.png | world.glb (signed)
+GET    /api/gamedesk/physics?studio=            Physics Engine Developer: setups (inputs, chosen settings, lab)
+POST   /api/gamedesk/physics                    {words?, inputs?: {speed, wall, ticks, gravity, g3d}, studio?}  lab runs
+GET    /api/gamedesk/physics/{pid}
+POST   /api/gamedesk/physics/{pid}/approve|reject
+POST   /api/gamedesk/physics/apply              {studio}  approved settings into the live game (HoolaPhysics)
+GET    /api/gamedesk/audio?studio=              Spatial Audio Programmer: setups (zones, distances, measured report)
+POST   /api/gamedesk/audio                      {words?, plan?: {zones: [{key, rt60, wet}], min_d, max_d, px_per_m}, studio?}
+GET    /api/gamedesk/audio/{aid}                one setup
+POST   /api/gamedesk/audio/{aid}/approve|reject
+POST   /api/gamedesk/audio/apply                {studio}  approved setup into the live game (HoolaAudio)
+GET    /api/gamedesk/audio/{aid}/file/{name}?sig   walkaround.wav | distance.wav | zones.wav (signed)
+GET    /api/gamedesk/haptics?studio=            Haptics Engineer: pattern sets + checks + library + actuators
+POST   /api/gamedesk/haptics                    {words?, patterns?: {name: [{t, d, a, s}]}, actuator?, studio?}
+GET    /api/gamedesk/haptics/{hid}
+POST   /api/gamedesk/haptics/{hid}/approve|reject
+POST   /api/gamedesk/haptics/apply              {studio}  approved patterns into the live game (HoolaHaptics)
+GET    /api/gamedesk/haptics/{hid}/file/{name}?sig   kit.zip | patterns.png (signed)
+GET    /api/gamedesk/net?studio=                Multiplayer Programmer: setups (her numbers, the bot runs, verdict)
+POST   /api/gamedesk/net                        {words?, inputs?: {players, tick, send, speed, size, interest}, studio?}
+GET    /api/gamedesk/net/{nid}  POST /api/gamedesk/net/{nid}/approve|reject   GET .../file/kit.zip?sig
+POST   /api/gamedesk/net/{nid}/server           {url}  HER game server (wss:// only; Hoola hosts nothing)
+GET    /api/gamedesk/xr?studio=                 AR / VR Engineer: setups (comfort, gestures, demo play link)
+POST   /api/gamedesk/xr                         {words?, settings?: {mode, locomotion, turn, snap_deg, seated, ui_m, text_deg, fps}, studio?}
+GET    /api/gamedesk/xr/{xid}  POST /api/gamedesk/xr/{xid}/approve|reject  POST /api/gamedesk/xr/apply {studio}
+GET    /api/gamedesk/sim?studio=    POST /api/gamedesk/sim {words?, kind?: orbit|flight|driving, params?, scenario?, studio?}
+GET    /api/gamedesk/sim/{id}       POST /api/gamedesk/sim/{id}/approve|reject   POST /api/gamedesk/sim/apply {studio}
+GET    /api/gamedesk/sim/{id}/file/log.csv|plot.png?sig
+GET    /api/gamedesk/twin           POST /api/gamedesk/twin {words?, model?: {stations, data_map, shift_hours, days}, actual?: [per day]}
+GET    /api/gamedesk/twin/{id}      POST /api/gamedesk/twin/{id}/approve|reject   GET .../file/layout.png?sig
+GET    /api/gamedesk/vfx            POST /api/gamedesk/vfx {plan?: {show, seq, shots, sources, working, view, workers, fail_rate...}}
+GET    /api/gamedesk/vfx/{id}       POST /api/gamedesk/vfx/{id}/approve|reject   GET .../file/kit.zip?sig
+
 v0.416 Game platforms (desktop on this server, Android in her builds repo; uploads only by her tap):
 GET    /api/gamestudio/{id}/releases            releases + where each platform can be built + package + itch key set?
 POST   /api/gamestudio/{id}/releases            {platforms: [linux, windows, macos, android], android_format: apk|aab}
@@ -471,6 +510,184 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def rel_itch_push(sid: str, rid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
         """HER TAP on the itch.io card - the only way anything is uploaded."""
         return await pcall(PF.itch_push, tenant, sid, rid, str(_b(body).get("hash") or ""))
+
+    # ------------------------------------------------------------ v0.420 role packs: Procedural World + Physics
+    from . import physics as PH
+    from . import world as WD
+
+    def _working(tenant: str, key: str, name: str) -> None:
+        from ..employee import hire
+        if not hire.is_working(tenant, key):
+            raise HTTPException(400, f"{name} abhi hired nahi hai (ya paused hai). Employees mein hire kijiye.")
+
+    @r.get("/api/gamedesk/worlds", dependencies=[Depends(require_key)])
+    async def worlds_list(studio: str = "", tenant: str = Depends(current_tenant)):
+        from ..employee import hire
+        return {"worlds": await call(WD.worlds, tenant, studio), "kinds": list(WD.KINDS), "defaults": WD.DEFAULTS,
+                "legend": {k: [n for n, _c, _w in v] for k, v in WD.LEGEND.items()},
+                "hired": await asyncio.to_thread(hire.is_working, tenant, WD.KEY)}
+
+    @r.post("/api/gamedesk/worlds", dependencies=[Depends(require_key)])
+    async def worlds_make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        _working(tenant, WD.KEY, "Procedural World Engineer")
+        seed = b.get("seed")
+        return await call(WD.make, tenant, str(b.get("words") or ""), str(b.get("kind") or ""),
+                          int(seed) if str(seed or "").lstrip("-").isdigit() else None,
+                          b.get("params") if isinstance(b.get("params"), dict) else None,
+                          str(b.get("studio") or ""), str(b.get("key") or ""))
+
+    @r.post("/api/gamedesk/worlds/apply", dependencies=[Depends(require_key)])
+    async def worlds_apply(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _working(tenant, WD.KEY, "Procedural World Engineer")
+        return await call(WD.apply, tenant, str(_b(body).get("studio") or ""))
+
+    @r.get("/api/gamedesk/world/{wid}", dependencies=[Depends(require_key)])
+    async def world_get(wid: str, tenant: str = Depends(current_tenant)):
+        return await call(WD.get, tenant, wid)
+
+    @r.post("/api/gamedesk/world/{wid}/{what}", dependencies=[Depends(require_key)])
+    async def world_do(wid: str, what: str, tenant: str = Depends(current_tenant)):
+        _working(tenant, WD.KEY, "Procedural World Engineer")
+        fn = {"approve": WD.approve, "reject": WD.reject, "demo": WD.demo}.get(what)
+        if fn is None:
+            raise HTTPException(404, "approve | reject | demo")
+        return await call(fn, tenant, wid)
+
+    @r.get("/api/gamedesk/world/{wid}/file/{name}")
+    def world_file(wid: str, name: str, sig: str = ""):
+        p = WD.world_file(wid, name, sig)
+        if p is None:
+            raise HTTPException(404, "link purana / galat hai")
+        media = {".png": "image/png", ".json": "application/json", ".glb": "model/gltf-binary"}.get(p.suffix, "application/octet-stream")
+        return FileResponse(p, media_type=media, headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=600"},
+                            filename=None if p.suffix == ".png" else p.name)
+
+    @r.get("/api/gamedesk/physics", dependencies=[Depends(require_key)])
+    async def physics_list(studio: str = "", tenant: str = Depends(current_tenant)):
+        from ..employee import hire
+        return {"setups": await call(PH.setups, tenant, studio), "defaults": PH.DEFAULTS, "limits": PH.LIMITS,
+                "hired": await asyncio.to_thread(hire.is_working, tenant, PH.KEY)}
+
+    @r.post("/api/gamedesk/physics", dependencies=[Depends(require_key)])
+    async def physics_make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        _working(tenant, PH.KEY, "Physics Engine Developer")
+        return await call(PH.setup, tenant, str(b.get("words") or ""),
+                          b.get("inputs") if isinstance(b.get("inputs"), dict) else None, str(b.get("studio") or ""))
+
+    @r.post("/api/gamedesk/physics/apply", dependencies=[Depends(require_key)])
+    async def physics_apply(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _working(tenant, PH.KEY, "Physics Engine Developer")
+        return await call(PH.apply, tenant, str(_b(body).get("studio") or ""))
+
+    @r.get("/api/gamedesk/physics/{pid}", dependencies=[Depends(require_key)])
+    async def physics_get(pid: str, tenant: str = Depends(current_tenant)):
+        return await call(PH.get, tenant, pid)
+
+    @r.post("/api/gamedesk/physics/{pid}/{what}", dependencies=[Depends(require_key)])
+    async def physics_do(pid: str, what: str, tenant: str = Depends(current_tenant)):
+        _working(tenant, PH.KEY, "Physics Engine Developer")
+        fn = {"approve": PH.approve, "reject": PH.reject}.get(what)
+        if fn is None:
+            raise HTTPException(404, "approve | reject")
+        return await call(fn, tenant, pid)
+
+    # ------------------------------------------------------------ v0.421 role packs: Spatial Audio + Haptics
+    from . import audio as AU
+    from . import haptics as HP
+
+    def _pack_routes(base: str, mod, key: str, name: str, lister: str, maker, files_fn, media: dict) -> None:
+        @r.get(f"/api/gamedesk/{base}", dependencies=[Depends(require_key)])
+        async def _list(studio: str = "", tenant: str = Depends(current_tenant)):
+            from ..employee import hire
+            extra = ({"library": sorted(HP.LIBRARY), "actuators": HP.ACTUATORS} if mod is HP else
+                     {"zone_presets": AU.ZONE_PRESETS} if mod is AU else
+                     {"networks": NC.NETWORKS, "defaults": NC.DEFAULTS} if mod is NC else
+                     {"defaults": SM.DEFAULTS, "kinds": list(SM.KINDS)} if mod is SM else
+                     {"example": TW.EXAMPLE} if mod is TW else {"example": VX.EXAMPLE} if mod is VX else {"defaults": XR.DEFAULTS})
+            return {lister: await call(getattr(mod, lister), tenant, studio), "hired": await asyncio.to_thread(hire.is_working, tenant, key), **extra}
+
+        @r.post(f"/api/gamedesk/{base}", dependencies=[Depends(require_key)])
+        async def _make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+            _working(tenant, key, name)
+            return await call(maker, tenant, _b(body))
+
+        @r.post(f"/api/gamedesk/{base}/apply", dependencies=[Depends(require_key)])
+        async def _apply(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+            _working(tenant, key, name)
+            return await call(mod.apply, tenant, str(_b(body).get("studio") or ""))
+
+        @r.get(f"/api/gamedesk/{base}/{{xid}}", dependencies=[Depends(require_key)])
+        async def _get(xid: str, tenant: str = Depends(current_tenant)):
+            return await call(mod.get, tenant, xid)
+
+        @r.post(f"/api/gamedesk/{base}/{{xid}}/{{what}}", dependencies=[Depends(require_key)])
+        async def _do(xid: str, what: str, tenant: str = Depends(current_tenant)):
+            _working(tenant, key, name)
+            fn = {"approve": mod.approve, "reject": mod.reject}.get(what)
+            if fn is None:
+                raise HTTPException(404, "approve | reject")
+            return await call(fn, tenant, xid)
+
+        @r.get(f"/api/gamedesk/{base}/{{xid}}/file/{{fname}}")
+        def _file(xid: str, fname: str, sig: str = ""):
+            p = files_fn(xid, fname, sig)
+            if p is None:
+                raise HTTPException(404, "link purana / galat hai")
+            return FileResponse(p, media_type=media.get(p.suffix, "application/octet-stream"),
+                                headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=600"},
+                                filename=p.name if p.suffix == ".zip" else None)
+
+    def _audio_make(tenant: str, b: dict):
+        return AU.setup(tenant, str(b.get("words") or ""), b.get("plan") if isinstance(b.get("plan"), dict) else None,
+                        str(b.get("studio") or ""))
+
+    def _haptics_make(tenant: str, b: dict):
+        return HP.make(tenant, str(b.get("words") or ""), b.get("patterns") if isinstance(b.get("patterns"), dict) else None,
+                       str(b.get("actuator") or "phone_lra"), str(b.get("studio") or ""))
+
+    from . import netcode as NC
+    from . import xr as XR
+
+    @r.post("/api/gamedesk/net/{nid}/server", dependencies=[Depends(require_key)])
+    async def net_server(nid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _working(tenant, NC.KEY, "Multiplayer Network Programmer")
+        return await call(NC.set_server, tenant, nid, str(_b(body).get("url") or ""))
+
+    def _net_make(tenant: str, b: dict):
+        return NC.setup(tenant, str(b.get("words") or ""), b.get("inputs") if isinstance(b.get("inputs"), dict) else None,
+                        str(b.get("studio") or ""))
+
+    def _xr_make(tenant: str, b: dict):
+        return XR.setup(tenant, str(b.get("words") or ""), b.get("settings") if isinstance(b.get("settings"), dict) else None,
+                        str(b.get("studio") or ""))
+
+    from . import sim as SM
+    from . import twin as TW
+    from . import vfx as VX
+
+    def _sim_make(tenant: str, b: dict):
+        return SM.setup(tenant, str(b.get("words") or ""), str(b.get("kind") or ""),
+                        b.get("params") if isinstance(b.get("params"), dict) else None,
+                        b.get("scenario") if isinstance(b.get("scenario"), dict) else None, str(b.get("studio") or ""))
+
+    def _twin_make(tenant: str, b: dict):
+        return TW.setup(tenant, str(b.get("words") or ""), b.get("model") if isinstance(b.get("model"), dict) else None,
+                        b.get("actual") if isinstance(b.get("actual"), list) else None, str(b.get("name") or ""))
+
+    def _vfx_make(tenant: str, b: dict):
+        return VX.setup(tenant, str(b.get("words") or ""), b.get("plan") if isinstance(b.get("plan"), dict) else None)
+
+    _pack_routes("sim", SM, SM.KEY, "Simulation Software Engineer", "setups", _sim_make, SM.sim_file,
+                 {".csv": "text/csv", ".png": "image/png"})
+    _pack_routes("twin", TW, TW.KEY, "Digital Twin Architect", "setups", _twin_make, TW.twin_file, {".png": "image/png"})
+    _pack_routes("vfx", VX, VX.KEY, "VFX Pipeline Technical Director", "setups", _vfx_make, VX.vfx_file, {".zip": "application/zip"})
+    _pack_routes("net", NC, NC.KEY, "Multiplayer Network Programmer", "setups", _net_make, NC.net_file, {".zip": "application/zip"})
+    _pack_routes("xr", XR, XR.KEY, "AR / VR Interaction Engineer", "setups", _xr_make, lambda *a: None, {})
+    _pack_routes("audio", AU, AU.KEY, "Spatial Audio Systems Programmer", "setups", _audio_make, AU.audio_file, {".wav": "audio/wav"})
+    _pack_routes("haptics", HP, HP.KEY, "Haptic Feedback Systems Engineer", "sets", _haptics_make, HP.haptics_file,
+                 {".zip": "application/zip", ".png": "image/png"})
 
     @r.get("/play/{token}")
     def play_root(token: str):

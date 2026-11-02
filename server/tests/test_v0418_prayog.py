@@ -195,24 +195,24 @@ def _bad(mutate, word):
 
 
 def test_checker_refuses_anything_that_is_not_data():
-    _bad(lambda l: l.update(script="alert(1)"), "anjaan key")
-    _bad(lambda l: l["bodies"][0].update(onload="x()"), "anjaan key")
+    _bad(lambda l: l.update(script="alert(1)"), "unknown key")
+    _bad(lambda l: l["bodies"][0].update(onload="x()"), "unknown key")
     _bad(lambda l: l["bodies"].append({"id": "h", "kind": "html", "text": "<b>"}), "kind")
-    _bad(lambda l: l.update(kernel="rocket"), "anjaan kernel")
-    _bad(lambda l: l["bodies"][4].update(bind={"x": "made_up"}), "kernel / param / knob mein nahi")
-    _bad(lambda l: l["knobs"][0].update(param="nope"), "kernel ka param nahi")
-    _bad(lambda l: l["knobs"][0].update(value=999), "value beech mein")
+    _bad(lambda l: l.update(kernel="rocket"), "unknown kernel")
+    _bad(lambda l: l["bodies"][4].update(bind={"x": "made_up"}), "is not a kernel var")
+    _bad(lambda l: l["knobs"][0].update(param="nope"), "is not a kernel param")
+    _bad(lambda l: l["knobs"][0].update(value=999), "value between")
     _bad(lambda l: l.update(sources=[]), "source")
-    _bad(lambda l: l.pop("check"), "jaanch")
-    _bad(lambda l: l["bodies"][4].update(pos=[0, 1e9, 0]), "seema")
-    _bad(lambda l: l["bodies"][4].update(pos=[0, float("nan"), 0]), "number")
+    _bad(lambda l: l.pop("check"), "NCERT formula")
+    _bad(lambda l: l["bodies"][4].update(pos=[0, 1e9, 0]), "out of range")
+    _bad(lambda l: l["bodies"][4].update(pos=[0, float("nan"), 0]), "needs a number")
     _bad(lambda l: l["bodies"].extend({"id": f"s{i}", "kind": "spring", "a": [0, 0, 0], "b": [0, 1, 0]} for i in range(30)), "triangles")
     _bad(lambda l: l["table"].update(calc="spring_k_shm", columns=[{"id": "x", "label": "x", "from": "manual"}]), "columns")
     _bad(lambda l: l["table"]["columns"][0].update({"from": "inst:nope"}), "from")
     _bad(lambda l: l["tour"][0].update(say="x" * 400), "say")
     _bad(lambda l: l["questions"][0].update(answer=9), "answer")
-    _bad(lambda l: l["bodies"].append({"id": "r", "kind": "rope", "a": "ghost", "b": [0, 0, 0]}), "pehle")
-    _bad(lambda l: l["tour"].append({"say": "x", "set": {"L": 9999}}), "seema")
+    _bad(lambda l: l["bodies"].append({"id": "r", "kind": "rope", "a": "ghost", "b": [0, 0, 0]}), "listed earlier")
+    _bad(lambda l: l["tour"].append({"say": "x", "set": {"L": 9999}}), "out of the knob's range")
 
 
 def test_checker_refuses_a_broken_circuit():
@@ -238,6 +238,32 @@ def test_a_lab_that_fails_its_ncert_check_is_left_out(monkeypatch):
         assert "broken-pendulum" not in S.labs() and len(S.labs()) == 22
     finally:
         S.labs.cache_clear()
+
+
+HINGLISH = ("kijiye", "dekhiye", "nahi", "chahiye", "mein ", " hai", "aur ", "raftaar", "guna", "chhupa", "taapmaan",
+            "pratirodh", "kiranen", "Chalao", "Andaaza", "Shoonya", "Siddhant", "dhoondh")
+
+
+def test_everything_the_learner_sees_is_english():
+    """Owner, 1 Nov 2026: "FIRST MAKE ENTIRE THING IN ENGLISH"."""
+    def walk(v, where):
+        if isinstance(v, str):
+            low = f" {v} "
+            for w in HINGLISH:
+                assert w not in low, (where, w, v)
+        elif isinstance(v, dict):
+            for k, x in v.items():
+                walk(x, f"{where}.{k}")
+        elif isinstance(v, list):
+            for i, x in enumerate(v):
+                walk(x, f"{where}[{i}]")
+    for lab in _labs():
+        assert lab["lang"] == "en-IN"
+        walk(lab, lab["id"])
+    for f in ("lab3d.js", "index.html", "lab.html"):
+        walk((STATIC / f).read_text(), f)
+    walk((ROOT.parent / "lib" / "ui" / "prayog_screen.dart").read_text(), "prayog_screen.dart")
+    walk(S.NOTE, "NOTE")
 
 
 def test_every_string_is_plain_text():
@@ -297,7 +323,7 @@ def test_prayog_tool(env):
     assert r["labs"][0]["id"] == "simple-pendulum" and r["labs"][0]["url"].endswith("/static/prayog/lab.html?id=simple-pendulum")
     assert asyncio.run(prayog(ctx, "find", q="convex lens kaise"))["labs"][0]["id"] == "convex-lens"   # loose match
     card = asyncio.run(prayog(ctx, "open", id="meter-bridge"))
-    assert card["url"] and card["steps"] and "Anjaan" not in " ".join(card["knobs"])                 # hidden knobs stay hidden
+    assert card["url"] and card["steps"] and "Unknown wire" not in " ".join(card["knobs"])                 # hidden knobs stay hidden
     chk = asyncio.run(prayog(ctx, "check", id="resonance-tube"))
     assert chk["ok"] and chk["error_percent"] < 1
     with pytest.raises(T.ToolError):
@@ -326,4 +352,4 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.417.0"
+    assert APP_VERSION == "0.424.0"

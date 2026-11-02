@@ -28,13 +28,14 @@ def problems(scripts: dict[str, str]) -> list[str]:
     out: list[str] = []
     if "main.gd" not in scripts:
         out.append("main.gd is missing (the game starts there)")
-    if len([n for n in scripts if n not in ("hoola_bible.gd", "hoola_assets.gd")]) > MAX_FILES:
+    from .template import HOOLA_OWN
+    if len([n for n in scripts if n not in HOOLA_OWN]) > MAX_FILES:
         out.append(f"too many files ({len(scripts)} > {MAX_FILES})")
     total = 0
     for name, code in scripts.items():
-        if name in ("hoola_bible.gd", "hoola_assets.gd"):   # Hoola's own data files (Bible v0.395, assets v0.416), own cap
+        if name in HOOLA_OWN:                           # Hoola's own data files (Bible v0.395, assets v0.416, packs v0.420), own cap
             if len(code or "") > 600_000:
-                out.append("hoola_bible.gd too long")
+                out.append(f"{name} too long")
         else:
             total += len(code or "")
         if not NAME.match(name or "") or name == "hoola_probe.gd":
@@ -50,8 +51,8 @@ def problems(scripts: dict[str, str]) -> list[str]:
         if re.search(r"FileAccess\s*\.\s*open\s*\(\s*[^\"'\s]", code or ""):
             out.append(f"{name}: FileAccess.open needs a fixed 'user://...' path")
     for name, code in scripts.items():                  # v0.406 class_name works (import step); never Hoola's own names
-        m = re.search(r"^\s*class_name\s+(HoolaBible|HoolaProbe|HoolaAssets)\b", code or "", re.M)
-        if m and name not in ("hoola_bible.gd", "hoola_assets.gd"):
+        m = re.search(r"^\s*class_name\s+(Hoola[A-Za-z]+)\b", code or "", re.M)
+        if m and name not in HOOLA_OWN:
             out.append(f"{name}: class_name {m.group(1)} is Hoola's own name; pick another")
     if total > MAX_CHARS:
         out.append(f"code too long ({total} > {MAX_CHARS} characters)")

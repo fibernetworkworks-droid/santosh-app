@@ -114,7 +114,19 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "game bible", "game ki bible", "balance pass", "difficulty curve", "enemy stats", "level design",
                  "game art", "sprite", "game sound", "sound effect", "game music", "game assets", "3d model for my game",
                  "game qa", "game test", "game bug", "game ke bug", "playtest", "golden screen",
-                 "itch.io", "steam page", "game release", "game ki release", "windows build", "mac build", "linux build", "age rating"),
+                 "itch.io", "steam page", "game release", "game ki release", "windows build", "mac build", "linux build", "age rating",
+                 # v0.420 role packs: worlds + physics
+                 "procedural world", "world generation", "dungeon", "game map", "game world", "level generator",
+                 "game physics", "physics engine", "game ki physics",
+                 # v0.421 batch 2: spatial audio + haptics
+                 "spatial audio", "3d sound", "3d audio", "binaural", "reverb zone", "game ki awaaz", "haptic", "haptics",
+                 "vibration pattern", "game vibration", "rumble",
+                 # v0.422 batch 3: multiplayer + AR / VR
+                 "multiplayer", "netcode", "game server", "lag compensation", "webxr", "virtual reality", "vr game",
+                 "ar game", "headset", "oculus", "quest 3", "hand tracking",
+                 # v0.423 batch 4: simulators, digital twin, VFX pipeline
+                 "flight simulator", "training simulator", "orbit simulation", "driving simulator", "digital twin",
+                 "factory simulation", "line simulation", "vfx pipeline", "render farm", "aces colour", "aces color", "exr"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",

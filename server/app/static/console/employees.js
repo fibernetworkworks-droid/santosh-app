@@ -15,7 +15,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', architect: 'archdesk'};   // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
+  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk'};   // v0.420 the Game Desk roles share it
+    // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
   async function hub(el) {
@@ -894,8 +895,11 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
   let GS_QA = false;           // v0.416 the QA farm + bugs page of the open project
   let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
+  let GS_ROLE = '';            // v0.420 a role page open: 'world' | 'physics' ('' = none)
+  let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
+    if (GS_ROLE) return ({world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -909,8 +913,19 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         <div class="acts"><select id="gdOr" aria-label="Screen">${(d.orientations || ['portrait']).map(o => `<option value="${esc(o)}">${esc(o[0].toUpperCase() + o.slice(1))}</option>`).join('')}</select>
           <button class="btn go" type="button" id="gdNew"${h.ready ? '' : ' disabled'}>Write the design</button></div>
         <p class="muted em-small">A short design doc comes first; nothing is built until you say OK. The play link stays private until you share it.</p></div>
+      <div class="tile gl gd-team"><h3>Game Desk team</h3><p class="muted em-small">Each role is its own employee (hire it in Employees). Open a project's board to work on that game, or try them here on their own.</p>
+        <div class="acts"><button class="btn soft" type="button" data-gs-role="world">Worlds (Procedural World Engineer)</button>
+          <button class="btn soft" type="button" data-gs-role="physics">Physics (Physics Engine Developer)</button>
+          <button class="btn soft" type="button" data-gs-role="audio">Audio (Spatial Audio Programmer)</button>
+          <button class="btn soft" type="button" data-gs-role="haptics">Haptics (Haptic Feedback Engineer)</button>
+          <button class="btn soft" type="button" data-gs-role="net">Multiplayer (Network Programmer)</button>
+          <button class="btn soft" type="button" data-gs-role="xr">VR / AR (Interaction Engineer)</button>
+          <button class="btn soft" type="button" data-gs-role="sim">Simulators (Simulation Engineer)</button>
+          <button class="btn soft" type="button" data-gs-role="twin">Digital twin (Twin Architect)</button>
+          <button class="btn soft" type="button" data-gs-role="vfx">VFX pipeline (Pipeline TD)</button></div></div>
       ${gsHome(sp.projects || [], d.games || [])}
       ${(d.games || []).map(gcard).join('') || '<div class="empty">No games yet.</div>'}`;
+    el.querySelectorAll('[data-gs-role]').forEach(b => b.addEventListener('click', () => { GS_ROLE = b.dataset.gsRole; GS_ROLE_SID = ''; game(el); }));
     el.querySelectorAll('[data-gs-open]').forEach(b => b.addEventListener('click', () => { GS_OPEN = b.dataset.gsOpen; game(el); }));
     el.querySelector('#gsNew')?.addEventListener('click', async e => {
       const game_ = el.querySelector('#gsGame').value, goal = el.querySelector('#gsGoal').value.trim();
@@ -1290,6 +1305,304 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
     if ((d.releases || []).some(r => r.status === 'building')) GTIMER = setTimeout(() => { if (visible(el) && GS_REL) gsRelease(el, id); }, 6000);
   }
 
+  // ---------------------------------------------------------------- v0.420 Game Desk roles: Worlds + Physics
+  const WST = {draft: ['warn', 'Waiting for your OK'], approved: ['ok', 'In the game'], rejected: ['', 'Not used'], failed: ['bad', 'Failed its checks'],
+               testing: ['v', 'Lab running']};
+  function roleBack(el) { GS_ROLE = ''; if (GS_ROLE_SID) { GS_OPEN = GS_ROLE_SID; gsBoard(el, GS_ROLE_SID); } else game(el); }
+  function checkList(ch) {
+    return `${(ch.errors || []).map(e => `<div class="badc em-small">✕ ${esc(e)}</div>`).join('')}${(ch.warnings || []).map(w => `<div class="muted em-small">! ${esc(w)}</div>`).join('')}
+      ${(ch.passed || []).map(x => `<div class="em-small">✓ ${esc(x)}</div>`).join('')}`;
+  }
+  async function gsWorld(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/worlds' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="wdBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Worlds</h2>
+        ${d.hired ? tag('ok', 'Procedural World Engineer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">Worlds made from rules and a seed by code (no AI picture, free). Each one is made twice to prove the same seed gives the same world, and every village, room, exit and goal is checked reachable. Nothing goes into your game before your OK.</p>
+      <div class="tile gl wd-new"><h3>New world</h3>
+        <textarea id="wdWords" rows="2" maxlength="600" placeholder="e.g. a big island with two rivers and a snowy mountain · a dungeon with 15 rooms · a short platformer level, my player jumps 3 tiles up" aria-label="Your world"></textarea>
+        <div class="acts"><select id="wdKind" aria-label="Kind"><option value="">Kind: from my words</option>${(d.kinds || []).map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('')}</select>
+          <input id="wdSeed" type="number" min="0" placeholder="Seed (optional)" aria-label="Seed">
+          <button class="btn go" type="button" id="wdGo"${d.hired ? '' : ' disabled'}>Make the world</button>
+          ${sid ? '<button class="btn soft" type="button" id="wdApply">Put approved worlds in the game</button>' : ''}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Procedural World Generation Engineer in Employees to make worlds.</p>'}</div>
+      ${(d.worlds || []).map(w => { const [c, n] = WST[w.status] || ['', w.status]; const f = w.files || {}, st = w.stats || {}, dm = w.demo || {};
+        return `<section class="tile gl wd-card"><div class="em-h"><h3>${esc(w.number)} · ${esc(w.key)} <span class="muted">${esc(w.kind)} · seed ${num(w.seed)} · v${num(w.version)}</span></h3>${tag(c, n)}</div>
+          <div class="wd-body">${f['preview.png'] ? `<img class="wd-prev" src="${esc(f['preview.png'])}" alt="Preview of world ${esc(w.number)}" loading="lazy">` : ''}
+          <div class="wd-info"><p class="muted em-small">${num(st.w)} × ${num(st.h)} cells · made in ${num(st.ms)} ms${st.reachable_share != null ? ' · ' + Math.round(st.reachable_share * 100) + '% reachable' : ''}${st.glb ? ' · 3D mesh ' + num(st.glb.triangles) + ' triangles' : ''}</p>
+            ${checkList(w.checks || {})}
+            <div class="acts">${['world.json', 'heightmap.png', 'world.glb'].filter(k => f[k]).map(k => `<a class="btn soft gs-mini" href="${esc(f[k])}">${esc(k)}</a>`).join('')}</div>
+            <div class="acts">${w.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-wd="approve" data-id="${esc(w.id)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-wd="reject" data-id="${esc(w.id)}">No</button>` : ''}
+              ${w.status !== 'failed' ? `<button class="btn soft gs-mini" type="button" data-wd="demo" data-id="${esc(w.id)}"${dm.status === 'building' ? ' disabled' : ''}>${dm.status === 'building' ? 'Building the walk-it link…' : dm.play_url ? 'Build the walk-it link again' : 'Walk it in the browser'}</button>` : ''}
+              <button class="btn soft gs-mini" type="button" data-wd-again="${esc(w.id)}">Same settings, new seed</button>
+              ${dm.play_url ? `<a class="btn go gs-mini" href="${esc(dm.play_url)}" target="_blank" rel="noopener">Walk it</a>` : ''}</div>
+            ${dm.status === 'failed' ? `<div class="badc em-small">Walk-it link did not build: ${esc((dm.errors || []).join('; '))}</div>` : ''}
+            ${dm.numbers && dm.numbers.fps_server ? `<p class="muted em-small">Played by Hoola: ${num(dm.numbers.fps_server)} fps on the server, loads in ${num(dm.numbers.load_s)} s, ${num(dm.numbers.download_mb)} MB</p>` : ''}</div></div></section>`; }).join('') || '<div class="empty">No worlds yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsWorld(el); };
+    el.querySelector('#wdBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#wdGo').addEventListener('click', e => {
+      const words = el.querySelector('#wdWords').value.trim(), kind = el.querySelector('#wdKind').value, seed = el.querySelector('#wdSeed').value;
+      if (!words && !kind) { toast('Write your world in a line, or pick a kind.', true); return; }
+      e.target.disabled = true; e.target.textContent = 'Making…';
+      go(() => api('POST', '/api/gamedesk/worlds', {words, kind, seed: seed === '' ? null : Number(seed), studio: sid}), 'Made and checked.');
+    });
+    el.querySelector('#wdApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/worlds/apply', {studio: sid}), 'Rebuilding the game with the approved worlds.'));
+    el.querySelectorAll('[data-wd]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/world/${encodeURIComponent(b.dataset.id)}/${b.dataset.wd}`),
+      {approve: 'Approved. Put it in the game when you are ready.', reject: '', demo: 'Building the walk-it link (under a minute).'}[b.dataset.wd])));
+    el.querySelectorAll('[data-wd-again]').forEach(b => b.addEventListener('click', () => { const w = (d.worlds || []).find(x => x.id === b.dataset.wdAgain); if (!w) return;
+      go(() => api('POST', '/api/gamedesk/worlds', {kind: w.kind, params: w.params, key: w.key, studio: sid}), 'A new seed, same rules.'); }));
+    if ((d.worlds || []).some(w => (w.demo || {}).status === 'building')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'world') gsWorld(el); }, 5000);
+  }
+
+  async function gsPhysics(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/physics' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const df = d.defaults || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="phBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Physics</h2>
+        ${d.hired ? tag('ok', 'Physics Engine Developer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">Hoola works out the settings from your numbers, then proves them in Godot itself: free fall, a jump's range, a bounce, your fastest body against your thinnest wall (with and without continuous collision), a box stack, a 3D drop, and the whole lab twice. Every case is compared with its formula. Fluids are not part of this yet.</p>
+      <div class="tile gl ph-new"><h3>New physics setup</h3>
+        <div class="ph-grid"><label>Fastest body (px/s)<input id="phSpeed" type="number" min="1" value="${num(df.speed)}"></label>
+          <label>Thinnest wall (px)<input id="phWall" type="number" min="1" value="${num(df.wall)}"></label>
+          <label>Physics ticks / s<input id="phTicks" type="number" min="30" max="240" value="${num(df.ticks)}"></label>
+          <label>Gravity (px/s²)<input id="phG" type="number" min="0" value="${num(df.gravity)}"></label></div>
+        <div class="acts"><button class="btn go" type="button" id="phGo"${d.hired ? '' : ' disabled'}>Run the physics lab</button>
+          ${sid ? '<button class="btn soft" type="button" id="phApply">Put approved physics in the game</button>' : ''}</div>
+        ${sid ? '<p class="muted em-small">With a project, the fastest speed in your Game Bible is used when you leave the speed as it is.</p>' : ''}
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Physics Engine Developer in Employees to run the lab.</p>'}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const lab = x.lab || {}, st = x.settings || {}, i = x.inputs || {};
+        return `<section class="tile gl ph-card"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${num(i.speed)} px/s · ${num(i.wall)} px wall · ${num(i.ticks)} ticks · g ${num(i.gravity)}</span></h3>${tag(c, n)}${lab.verdict ? tag(lab.verdict === 'PASS' ? 'ok' : 'bad', lab.verdict + ' ' + num(lab.passed) + '/' + num(lab.total)) : ''}</div>
+          <p class="em-small"><b>Settings:</b> ${num(st.ticks)} ticks · gravity ${num(st.gravity)}${st.ccd ? ' · continuous collision (cast-ray) above ' + num(st.ccd_min_speed) + ' px/s' : ''} - ${esc(st.why || '')}</p>
+          ${(lab.before || {}).say ? `<p class="em-small"><b>Why:</b> ${esc(lab.before.say)}</p>` : ''}
+          ${(lab.cases || []).length ? `<table class="ph-tbl"><thead><tr><th>Case</th><th>Measured</th><th>Formula</th><th></th></tr></thead><tbody>${lab.cases.map(k => `<tr><td>${esc(k.case)}<div class="muted em-small">${esc(k.note)}</div></td>
+            <td>${esc(typeof k.measured === 'object' ? Object.entries(k.measured).map(([a, b]) => a + ': ' + b).join(' · ') : String(k.measured))}</td><td>${esc(String(typeof k.expected === 'object' ? Object.entries(k.expected).map(([a, b]) => a + ': ' + b).join(' · ') : k.expected))}</td>
+            <td>${tag(k.ok ? 'ok' : 'bad', k.ok ? 'pass' : 'fail')}</td></tr>`).join('')}</tbody></table>` : (x.status === 'testing' ? '<p class="muted em-small">The lab is running in Godot…</p>' : '')}
+          ${x.error ? `<div class="badc em-small">${esc(x.error)}</div>` : ''}
+          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-ph="approve" data-id="${esc(x.id)}">OK, use these settings</button><button class="btn soft gs-mini" type="button" data-ph="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">No physics setups yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsPhysics(el); };
+    el.querySelector('#phBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#phGo').addEventListener('click', e => {
+      const v = id => Number(el.querySelector(id).value);
+      const inputs = {wall: v('#phWall'), ticks: v('#phTicks'), gravity: v('#phG')};
+      if (!(sid && v('#phSpeed') === Number(df.speed))) inputs.speed = v('#phSpeed');
+      e.target.disabled = true; e.target.textContent = 'Starting…';
+      go(() => api('POST', '/api/gamedesk/physics', {inputs, studio: sid}), 'The lab is running in Godot.');
+    });
+    el.querySelector('#phApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/physics/apply', {studio: sid}), 'Rebuilding the game with the approved physics.'));
+    el.querySelectorAll('[data-ph]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/physics/${encodeURIComponent(b.dataset.id)}/${b.dataset.ph}`),
+      b.dataset.ph === 'approve' ? 'Approved. Put it in the game when you are ready.' : '')));
+    if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'physics') gsPhysics(el); }, 4000);
+  }
+
+  // ---------------------------------------------------------------- v0.421 Game Desk roles: Audio + Haptics
+  function checksTable(rows) {
+    return `<table class="ph-tbl"><tbody>${(rows || []).map(c => `<tr><td>${esc(c.check)}<div class="muted em-small">${esc(c.note)}</div></td><td>${tag(c.ok ? 'ok' : 'bad', c.ok ? 'pass' : 'fail')}</td></tr>`).join('')}</tbody></table>`;
+  }
+  async function gsAudio(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/audio' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const zp = d.zone_presets || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="auBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Audio</h2>
+        ${d.hired ? tag('ok', 'Spatial Audio Programmer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">Reverb zones, distance and walls for your game, with headphone demos. Every number is measured: ear-to-ear timing for 13 directions, 6 dB per doubling of distance, each zone's echo time, demo loudness. A round-head model gives no front / back or height cue; in the game, Godot's own panning, distance and zones play it.</p>
+      <div class="tile gl"><h3>New audio setup</h3><div class="acts">${Object.keys(zp).map(k => `<label class="gs-sw"><input type="checkbox" data-au-z="${esc(k)}"${['room', 'hall'].includes(k) ? ' checked' : ''}> ${esc(k.replace('_', ' '))} <span class="muted em-small">${num(zp[k])} s</span></label>`).join('')}</div>
+        <div class="ph-grid"><label>Full volume up to (m)<input id="auMin" type="number" min="0.1" step="0.1" value="1"></label><label>Silent beyond (m)<input id="auMax" type="number" min="1" value="40"></label></div>
+        <div class="acts"><button class="btn go" type="button" id="auGo"${d.hired ? '' : ' disabled'}>Render and measure</button>${sid ? '<button class="btn soft" type="button" id="auApply">Put approved audio in the game</button>' : ''}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Spatial Audio Systems Programmer in Employees first.</p>'}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {}, nb = rp.numbers || {};
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(((x.plan || {}).zones || []).map(z => z.key + ' ' + z.rt60 + ' s').join(' · '))}</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
+          ${Object.keys(f).length ? `<div class="au-demos">${Object.entries(f).map(([k, u]) => `<div><b class="em-small">${esc(k.replace('.wav', ''))}</b><audio controls preload="none" src="${esc(u)}"></audio></div>`).join('')}</div><p class="muted em-small">Use headphones. Render ${num(nb.render_s)} s · ${num(nb.cpu_per_voice_s_per_s)} s CPU per voice per second · latency ${num(nb.latency_ms)} ms</p>` : (x.status === 'testing' ? '<p class="muted em-small">Rendering and measuring…</p>' : '')}
+          ${checksTable(rp.checks)}${rp.limits ? `<p class="muted em-small">${esc(rp.limits)}</p>` : ''}${x.error ? `<div class="badc em-small">${esc(x.error)}</div>` : ''}
+          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-au="approve" data-id="${esc(x.id)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-au="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">No audio setups yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsAudio(el); };
+    el.querySelector('#auBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#auGo').addEventListener('click', e => {
+      const zones = [...el.querySelectorAll('[data-au-z]:checked')].map(x => ({key: x.dataset.auZ, rt60: zp[x.dataset.auZ]}));
+      if (!zones.length) { toast('Pick at least one place.', true); return; }
+      e.target.disabled = true;
+      go(() => api('POST', '/api/gamedesk/audio', {plan: {zones, min_d: Number(el.querySelector('#auMin').value), max_d: Number(el.querySelector('#auMax').value)}, studio: sid}), 'Rendering and measuring.');
+    });
+    el.querySelector('#auApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/audio/apply', {studio: sid}), 'Rebuilding the game with the approved audio.'));
+    el.querySelectorAll('[data-au]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/audio/${encodeURIComponent(b.dataset.id)}/${b.dataset.au}`), b.dataset.au === 'approve' ? 'Approved.' : '')));
+    if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'audio') gsAudio(el); }, 3000);
+  }
+
+  async function gsHaptics(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/haptics' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const acts = d.actuators || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="hpBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Haptics</h2>
+        ${d.hired ? tag('ok', 'Haptic Feedback Engineer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">One vibration pattern per moment, checked for the motor (pulse length, gaps you can feel, no two that feel the same) with battery per play. Every player gets an off switch and intensity. The kit has iPhone Core Haptics files, Android code and a DRV2605 driver compiled here. iPhone browsers have no vibration.</p>
+      <div class="tile gl"><h3>New pattern set</h3>
+        <textarea id="hpWords" rows="2" maxlength="600" placeholder="The moments that should buzz, e.g. jump, coin, hit, game over, level up" aria-label="Moments"></textarea>
+        <div class="acts"><select id="hpAct" aria-label="Device">${Object.entries(acts).map(([k, a]) => `<option value="${esc(k)}">${esc(a.name)}</option>`).join('')}</select>
+          <button class="btn go" type="button" id="hpGo"${d.hired ? '' : ' disabled'}>Make and check</button>${sid ? '<button class="btn soft" type="button" id="hpApply">Put approved haptics in the game</button>' : ''}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Haptic Feedback Systems Engineer in Employees first.</p>'}</div>
+      ${(d.sets || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {}, comp = ((rp.kit || {}).drv2605_compile || {});
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(x.actuator_name)} · ${esc(Object.keys(x.patterns || {}).join(', '))}</span></h3>${tag(c, n)}</div>
+          ${f['patterns.png'] ? `<img class="wd-prev hp-img" src="${esc(f['patterns.png'])}" alt="Pattern shapes" loading="lazy">` : ''}
+          ${checkList(rp)}
+          <table class="ph-tbl"><thead><tr><th>Pattern</th><th>Length</th><th>Pulses</th><th>Energy / play</th><th>Per 1,000 plays</th></tr></thead><tbody>${Object.entries(rp.rows || {}).map(([k, r]) => `<tr><td>${esc(k)}</td><td>${num(r.ms)} ms</td><td>${num(r.pulses)}</td><td>${num(r.energy_mj)} mJ</td><td>${num(r.per_1000_plays_mwh)} mWh</td></tr>`).join('')}</tbody></table>
+          <p class="muted em-small">${esc(rp.battery_note || '')} · DRV2605 driver: ${esc(comp.status || '')}${comp.compiler ? ' (' + esc(comp.compiler) + ')' : ''}</p>
+          <div class="acts">${f['kit.zip'] ? `<a class="btn soft gs-mini" href="${esc(f['kit.zip'])}">Download the kit (ZIP)</a>` : ''}
+            <button class="btn soft gs-mini" type="button" data-hp-try="${esc(x.id)}">Feel it on this phone</button>
+            ${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-hp="approve" data-id="${esc(x.id)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-hp="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">No pattern sets yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsHaptics(el); };
+    el.querySelector('#hpBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#hpGo').addEventListener('click', e => { e.target.disabled = true;
+      go(() => api('POST', '/api/gamedesk/haptics', {words: el.querySelector('#hpWords').value.trim(), actuator: el.querySelector('#hpAct').value, studio: sid}), 'Made and checked.'); });
+    el.querySelector('#hpApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/haptics/apply', {studio: sid}), 'Rebuilding the game with the approved haptics.'));
+    el.querySelectorAll('[data-hp]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/haptics/${encodeURIComponent(b.dataset.id)}/${b.dataset.hp}`), b.dataset.hp === 'approve' ? 'Approved.' : '')));
+    el.querySelectorAll('[data-hp-try]').forEach(b => b.addEventListener('click', async () => {
+      const x = (d.sets || []).find(s => s.id === b.dataset.hpTry); if (!x) return;
+      if (!navigator.vibrate) { toast('This browser cannot vibrate (iPhone browsers and most computers cannot).', true); return; }
+      for (const [name, ev] of Object.entries(x.patterns || {})) {   // each pattern in turn, 600 ms apart: off/on timings for navigator.vibrate
+        const seq = []; let t = 0; ev.forEach(e => { seq.push(Math.max(0, e.t - t), e.d); t = e.t + e.d; }); seq.shift();
+        toast(name); navigator.vibrate(seq); await new Promise(r => setTimeout(r, t + 600));
+      }
+    }));
+  }
+
+  // ---------------------------------------------------------------- v0.422 Game Desk roles: Multiplayer + VR / AR
+  async function gsNet(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/net' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    const df = d.defaults || {};
+    const F = [['players', 'Players'], ['tick', 'Server ticks / s'], ['send', 'Snapshots / s'], ['speed', 'Player speed (px/s)'], ['size', 'Player size (px)'], ['interest', 'Sees players within (px)']];
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="ncBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>Multiplayer</h2>
+        ${d.hired ? tag('ok', 'Network Programmer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">Bots play your game's movement over a good network, the plan's 150 ms / 2 % loss network and a bad mobile one, through an authoritative server with prediction, reconciliation, interpolation and lag compensation. Measured: rubber-banding, desync (must be 0), bandwidth, hits the server agrees with. Then the Godot netcode itself runs with a server and three clients. The game server runs on your own cloud - Hoola hosts none - and the netcode is not inside the game build yet.</p>
+      <div class="tile gl"><h3>New netcode setup</h3><div class="ph-grid">${F.map(([k, l]) => `<label>${l}<input data-nc="${k}" type="number" value="${num(df[k])}"></label>`).join('')}</div>
+        <div class="acts"><button class="btn go" type="button" id="ncGo"${d.hired ? '' : ' disabled'}>Run the bots</button></div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the Multiplayer Network Programmer in Employees first.</p>'}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, i = x.inputs || {}, runs = rp.runs || {};
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${num(i.players)} players · ${num(i.tick)} Hz · ${num(i.send)} snapshots/s</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
+          ${Object.keys(runs).length ? `<table class="ph-tbl"><thead><tr><th>Network</th><th>Correction p95 / max</th><th>Desync</th><th>Down / up per player</th><th>Lag-comp hits</th></tr></thead><tbody>${Object.values(runs).map(r => `<tr><td>${esc(r.net)}</td><td>${num(r.corr_p95_px)} / ${num(r.corr_max_px)} px</td><td>${num(r.desync_px_max)} px</td><td>${num(r.down_bps_per_player)} / ${num(r.up_bps_per_player)} B/s</td><td>${Math.round((r.lagcomp_agree || 0) * 100)}% (without: ${Math.round((r.no_lagcomp_agree || 0) * 100)}%)</td></tr>`).join('')}</tbody></table>` : (x.status === 'testing' ? '<p class="muted em-small">Bots are playing…</p>' : '')}
+          ${checksTable(rp.checks)}${x.error ? `<div class="badc em-small">${esc(x.error)}</div>` : ''}
+          <div class="acts">${(x.files || {})['kit.zip'] ? `<a class="btn soft gs-mini" href="${esc(x.files['kit.zip'])}">Download the kit (server for your cloud + client)</a>` : ''}
+            ${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-nc-do="approve" data-id="${esc(x.id)}">OK</button><button class="btn soft gs-mini" type="button" data-nc-do="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">No netcode setups yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsNet(el); };
+    el.querySelector('#ncBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#ncGo').addEventListener('click', e => { e.target.disabled = true;
+      const inputs = {}; el.querySelectorAll('[data-nc]').forEach(x => { inputs[x.dataset.nc] = Number(x.value); });
+      go(() => api('POST', '/api/gamedesk/net', {inputs, studio: sid}), 'The bots are playing.'); });
+    el.querySelectorAll('[data-nc-do]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/net/${encodeURIComponent(b.dataset.id)}/${b.dataset.ncDo}`), b.dataset.ncDo === 'approve' ? 'Approved.' : '')));
+    if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'net') gsNet(el); }, 4000);
+  }
+
+  async function gsXr(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', '/api/gamedesk/xr' + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="xrBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>VR / AR</h2>
+        ${d.hired ? tag('ok', 'AR / VR Engineer hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">A WebXR setup that opens in a headset or phone browser: teleport, snap turning, a seated mode, readable panels - the comfort rules are checked in code. Hand gestures are scored on a test set of synthetic hands and checked in Godot itself. Frame rate on your headset is not measured here.</p>
+      <div class="tile gl"><h3>New VR / AR setup</h3><div class="acts">
+          <select id="xrMode" aria-label="Mode"><option value="vr">VR (headset)</option><option value="ar">AR (phone or headset camera view)</option></select>
+          <select id="xrSnap" aria-label="Snap turn"><option value="30">Snap turn 30°</option><option value="45">Snap turn 45°</option></select>
+          <select id="xrFps" aria-label="Device"><option value="72">Quest-class (72 fps)</option><option value="90">90 fps headset</option></select>
+          <label class="gs-sw"><input type="checkbox" id="xrSeat" checked> Seated mode</label>
+          <button class="btn go" type="button" id="xrGo"${d.hired ? '' : ' disabled'}>Check and build the demo room</button>${sid ? '<button class="btn soft" type="button" id="xrApply">Put approved VR / AR in the game</button>' : ''}</div>
+        ${d.hired ? '' : '<p class="muted em-small">Hire the AR / VR Interaction Engineer in Employees first.</p>'}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, st = x.settings || {}, dm = x.demo || {}, gs = rp.gestures || {};
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc((st.mode || '').toUpperCase())} · snap ${num(st.snap_deg)}° · ${num(st.fps)} fps</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
+          ${x.status === 'testing' ? '<p class="muted em-small">Checking and building…</p>' : ''}
+          ${checkList(rp.comfort || {})}${checksTable(rp.checks)}
+          ${gs.confusion ? `<table class="ph-tbl"><thead><tr><th>Shown → read as</th>${Object.keys(gs.confusion).map(g => `<th>${esc(g)}</th>`).join('')}</tr></thead><tbody>${Object.entries(gs.confusion).map(([g, row]) => `<tr><td>${esc(g)}</td>${Object.values(row).map(v => `<td>${num(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
+          <div class="acts">${dm.play_url ? `<a class="btn go gs-mini" href="${esc(dm.play_url)}" target="_blank" rel="noopener">Open the demo room</a><span class="muted em-small">On a headset or phone browser tap to enter XR</span>` : ''}
+            ${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-xr-do="approve" data-id="${esc(x.id)}">OK, use it</button><button class="btn soft gs-mini" type="button" data-xr-do="reject" data-id="${esc(x.id)}">No</button>` : ''}</div>
+          ${dm.status === 'failed' ? `<div class="badc em-small">Demo did not build: ${esc((dm.errors || []).join('; '))}</div>` : ''}</section>`; }).join('') || '<div class="empty">No VR / AR setups yet.</div>'}`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsXr(el); };
+    el.querySelector('#xrBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#xrGo').addEventListener('click', e => { e.target.disabled = true;
+      go(() => api('POST', '/api/gamedesk/xr', {studio: sid, settings: {mode: el.querySelector('#xrMode').value, snap_deg: Number(el.querySelector('#xrSnap').value),
+        fps: Number(el.querySelector('#xrFps').value), seated: el.querySelector('#xrSeat').checked}}), 'Checking and building the demo room.'); });
+    el.querySelector('#xrApply')?.addEventListener('click', () => go(() => api('POST', '/api/gamedesk/xr/apply', {studio: sid}), 'Rebuilding the game with VR / AR.'));
+    el.querySelectorAll('[data-xr-do]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/xr/${encodeURIComponent(b.dataset.id)}/${b.dataset.xrDo}`), b.dataset.xrDo === 'approve' ? 'Approved.' : '')));
+    if ((d.setups || []).some(x => x.status === 'testing')) GTIMER = setTimeout(() => { if (visible(el) && GS_ROLE === 'xr') gsXr(el); }, 5000);
+  }
+
+  // ---------------------------------------------------------------- v0.423 Game Desk roles: Simulators, Digital Twin, VFX
+  async function gsReportPage(el, cfg) {
+    // one page shape for the three report-style roles: a form, then each setup's checks + numbers + files
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID, qs = sid ? `?studio=${encodeURIComponent(sid)}` : '';
+    let d;
+    try { d = await api('GET', `/api/gamedesk/${cfg.base}` + qs); }
+    catch (e) { toast(e.message, true); GS_ROLE = ''; return game(el); }
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="rpBack">← ${sid ? 'Board' : 'Game Desk'}</button><h2>${esc(cfg.title)}</h2>
+        ${d.hired ? tag('ok', cfg.who + ' hired') : tag('warn', 'Not hired yet')}</div>
+      <p class="muted em-sub">${esc(cfg.intro)}</p>
+      <div class="tile gl"><h3>${esc(cfg.formTitle)}</h3>${cfg.form(d)}
+        <div class="acts"><button class="btn go" type="button" id="rpGo"${d.hired ? '' : ' disabled'}>${esc(cfg.go)}</button>
+          ${sid && cfg.apply ? '<button class="btn soft" type="button" id="rpApply">Put the approved one in the game</button>' : ''}</div>
+        ${d.hired ? '' : `<p class="muted em-small">Hire the ${esc(cfg.who)} in Employees first.</p>`}</div>
+      ${(d.setups || []).map(x => { const [c, n] = WST[x.status] || ['', x.status]; const rp = x.report || {}, f = x.files || {};
+        return `<section class="tile gl"><div class="em-h"><h3>${esc(x.number)} <span class="muted">${esc(cfg.sub(x))}</span></h3>${tag(c, n)}${rp.verdict ? tag(rp.verdict === 'PASS' ? 'ok' : 'bad', rp.verdict + ' ' + num(rp.passed) + '/' + num(rp.total)) : ''}</div>
+          ${(rp.cases || []).length ? `<table class="ph-tbl"><thead><tr><th>Reference case</th><th>Measured</th><th>Expected</th><th></th></tr></thead><tbody>${rp.cases.map(k => `<tr><td>${esc(k.case)}<div class="muted em-small">${esc(k.note)}</div></td><td>${esc(String(k.measured))}</td><td>${esc(String(k.expected))}</td><td>${tag(k.ok ? 'ok' : 'bad', k.ok ? 'pass' : 'fail')}</td></tr>`).join('')}</tbody></table>` : ''}
+          ${(rp.checks || []).length ? checksTable(rp.checks) : ''}
+          ${cfg.extra ? cfg.extra(x) : ''}
+          ${f['plot.png'] || f['layout.png'] ? `<img class="wd-prev hp-img" src="${esc(f['plot.png'] || f['layout.png'])}" alt="${esc(cfg.title)} picture" loading="lazy">` : ''}
+          <div class="acts">${Object.entries(f).filter(([k]) => !k.endsWith('.png')).map(([k, u]) => `<a class="btn soft gs-mini" href="${esc(u)}">${esc(k)}</a>`).join('')}
+            ${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-rp="approve" data-id="${esc(x.id)}">OK</button><button class="btn soft gs-mini" type="button" data-rp="reject" data-id="${esc(x.id)}">No</button>` : ''}</div></section>`; }).join('') || '<div class="empty">Nothing yet.</div>'}`;
+    const again = () => gsReportPage(el, cfg);
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } again(); };
+    el.querySelector('#rpBack').addEventListener('click', () => roleBack(el));
+    el.querySelector('#rpGo').addEventListener('click', e => { e.target.disabled = true; e.target.textContent = 'Checking…';
+      go(() => api('POST', `/api/gamedesk/${cfg.base}`, {...cfg.body(el), studio: sid}), 'Checked.'); });
+    el.querySelector('#rpApply')?.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/${cfg.base}/apply`, {studio: sid}), 'Rebuilding the game.'));
+    el.querySelectorAll('[data-rp]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamedesk/${cfg.base}/${encodeURIComponent(b.dataset.id)}/${b.dataset.rp}`), b.dataset.rp === 'approve' ? 'Approved.' : '')));
+  }
+
+  function gsSim(el) {
+    return gsReportPage(el, {base: 'sim', title: 'Simulators', who: 'Simulation Engineer', formTitle: 'New training model', go: 'Validate the model', apply: true,
+      intro: 'Orbit, light-aircraft and car-handling models, each checked against its textbook answer, with the data source, time step and integrator stated and every scenario run twice. A training aid, not a certified device. Weapon or combat simulators are refused.',
+      form: d => `<div class="acts"><select id="smKind" aria-label="Kind">${(d.kinds || []).map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('')}</select>
+        <input id="smWords" maxlength="300" placeholder="Anything special (e.g. 800 km orbit at 98 degrees)" aria-label="Notes"></div>`,
+      body: el2 => ({kind: el2.querySelector('#smKind').value, words: el2.querySelector('#smWords').value.trim()}),
+      sub: x => `${x.kind} · ${(x.report || {}).integrator || ''}`,
+      extra: x => (x.report || {}).source ? `<p class="muted em-small">Data: ${esc(x.report.source)}</p>` : ''});
+  }
+
+  function gsTwin(el) {
+    return gsReportPage(el, {base: 'twin', title: 'Digital twin', who: 'Digital Twin Architect', formTitle: 'Check and simulate a twin', go: 'Run the twin', apply: false,
+      intro: 'Your line as data, simulated: throughput, load per station, work in progress, lead time, the bottleneck and what-ifs. Every number must trace to your data tag or a stated assumption; the engine is checked against exact answers and queueing theory; it reads your data and never controls your plant. Without your real week it is NOT ASSESSED.',
+      form: () => `<textarea id="twModel" rows="4" placeholder='Your model as JSON (leave empty for the worked example to copy)' aria-label="Model JSON"></textarea>
+        <input id="twActual" maxlength="200" placeholder="Your real daily output, e.g. 540, 560, 548 (optional)" aria-label="Actual output">`,
+      body: el2 => { let model = null; const t = el2.querySelector('#twModel').value.trim(); if (t) { try { model = JSON.parse(t); } catch { toast('The model is not valid JSON.', true); } }
+        const actual = el2.querySelector('#twActual').value.split(/[,\s]+/).filter(Boolean).map(Number).filter(v => !isNaN(v)); return {model, actual}; },
+      sub: x => `${(x.model.stations || []).length} stations · read-only`,
+      extra: x => { const b = (x.report || {}).base, w = (x.report || {}).what_ifs || []; return b ? `<p class="em-small"><b>${num(b.per_day)} parts / day</b> · bottleneck ${esc(b.bottleneck)} · WIP ${num(b.wip_avg)} · lead time ${num(b.lead_time_min)} min</p>
+        <table class="ph-tbl"><thead><tr><th>What if</th><th>Parts / day</th><th>Change</th><th>Bottleneck then</th></tr></thead><tbody>${w.map(r => `<tr><td>${esc(r.what_if)}</td><td>${num(r.per_day)}</td><td>${num(r.change_pct)}%</td><td>${esc(r.bottleneck)}</td></tr>`).join('')}</tbody></table>` : ''; }});
+  }
+
+  function gsVfx(el) {
+    return gsReportPage(el, {base: 'vfx', title: 'VFX pipeline', who: 'VFX Pipeline TD', formTitle: 'Check a pipeline', go: 'Check the pipeline', apply: false,
+      intro: 'Naming and versions, ACES colour from every source to your screen (converted and measured), a real ACEScg EXR test frame read back, a render queue with re-queued frames and cost per shot, and every frame traced to its scene. Blender and OpenColorIO are not installed on Hoola\'s server - the render script is for your machines.',
+      form: () => `<textarea id="vxPlan" rows="4" placeholder='Your pipeline as JSON (leave empty for the worked example)' aria-label="Pipeline JSON"></textarea>`,
+      body: el2 => { const t = el2.querySelector('#vxPlan').value.trim(); let plan = null; if (t) { try { plan = JSON.parse(t); } catch { toast('The pipeline is not valid JSON.', true); } } return {plan}; },
+      sub: x => `${x.show} · ${((x.plan || {}).shots || []).length} shots`,
+      extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
+  }
+
   async function gsBoard(el, id) {
     clearTimeout(GTIMER);
     if (GS_BIBLE) return gsBible(el, id);
@@ -1310,6 +1623,13 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
         ${url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Play v${num(g.version)}</a>` : ''}
         <button class="btn soft" type="button" id="gsBib">Game Bible${(p.bible || {}).version ? ' v' + num(p.bible.version) : ''}${(p.bible || {}).errors ? ' · ' + num(p.bible.errors) + ' to fix' : ''}${(p.bible || {}).draft ? ' · draft waiting' : ''}</button>
         <button class="btn soft" type="button" id="gsRelBtn">Release</button>
+        <button class="btn soft" type="button" id="gsWorldBtn">Worlds</button>
+        <button class="btn soft" type="button" id="gsPhysBtn">Physics</button>
+        <button class="btn soft" type="button" id="gsAudBtn">Audio</button>
+        <button class="btn soft" type="button" id="gsHapBtn">Haptics</button>
+        <button class="btn soft" type="button" id="gsNetBtn">Multiplayer</button>
+        <button class="btn soft" type="button" id="gsXrBtn">VR / AR</button>
+        <button class="btn soft" type="button" id="gsSimBtn">Simulator</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
@@ -1355,11 +1675,18 @@ window.HoolaEmployees = function ({api, esc, toast, changed}) {
       </div>`;
     const q = encodeURIComponent(p.id);
     const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
-    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; GS_REL = false; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; GS_REL = false; GS_ROLE = ''; el.innerHTML = ''; game(el); });
     el.querySelector('#gsBib').addEventListener('click', () => { GS_BIBLE = true; gsBible(el, id); });
     el.querySelector('#gsAst').addEventListener('click', () => { GS_ASSETS = true; gsAssets(el, id); });
     el.querySelector('#gsQaBtn').addEventListener('click', () => { GS_QA = true; gsQa(el, id); });
     el.querySelector('#gsRelBtn').addEventListener('click', () => { GS_REL = true; gsRelease(el, id); });
+    el.querySelector('#gsWorldBtn').addEventListener('click', () => { GS_ROLE = 'world'; GS_ROLE_SID = id; gsWorld(el); });
+    el.querySelector('#gsPhysBtn').addEventListener('click', () => { GS_ROLE = 'physics'; GS_ROLE_SID = id; gsPhysics(el); });
+    el.querySelector('#gsAudBtn').addEventListener('click', () => { GS_ROLE = 'audio'; GS_ROLE_SID = id; gsAudio(el); });
+    el.querySelector('#gsHapBtn').addEventListener('click', () => { GS_ROLE = 'haptics'; GS_ROLE_SID = id; gsHaptics(el); });
+    el.querySelector('#gsNetBtn').addEventListener('click', () => { GS_ROLE = 'net'; GS_ROLE_SID = id; gsNet(el); });
+    el.querySelector('#gsXrBtn').addEventListener('click', () => { GS_ROLE = 'xr'; GS_ROLE_SID = id; gsXr(el); });
+    el.querySelector('#gsSimBtn').addEventListener('click', () => { GS_ROLE = 'sim'; GS_ROLE_SID = id; gsSim(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

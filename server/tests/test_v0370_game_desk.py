@@ -236,7 +236,8 @@ def test_hire_card_group_and_tool_gate(gd):
     cat = {e["key"]: e for e in hire.catalog("default")}
     assert cat["game_dev"]["live"] and cat["game_dev"]["group"] == hire.GAME_GROUP
     soon = [k for k, e in cat.items() if e.get("group") == hire.GAME_GROUP and not e["live"]]
-    assert len(soon) == 9
+    assert len(soon) == 0                                                         # v0.420-v0.423: all ten Game Desk roles live
+    assert cat["procgen_dev"]["live"] and cat["physics_dev"]["live"]
     ctx = Ctx(tenant_id="default", conversation_id="c1")
     with pytest.raises(tools.ToolError, match="hire"):
         asyncio.run(tools.HANDLERS["game_desk"](ctx, action="new", brief="ek tap wala game chai ka cup"))

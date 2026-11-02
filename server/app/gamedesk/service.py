@@ -126,9 +126,24 @@ def play_file(token: str, path: str) -> tuple[Path | None, str]:
     ensure_table()
     with session() as s:
         r = s.scalars(select(GameProject).where(GameProject.token == token)).first()
-        if r is None:
+        if r is not None:
+            s.expunge(r)
+    if r is None:                                       # v0.420 a role pack's demo (e.g. walk the generated world)
+        from . import packs
+        d = packs.demo_build(token)
+        if d is None:
             return None, ""
-        s.expunge(r)
+        m = re.fullmatch(r"shots/(shot\d\.png|preview\.png)", path)
+        if m:
+            p = d.parent / "shots" / m.group(1) if m.group(1).startswith("shot") else d.parent / m.group(1)
+            return (p, "image/png") if p.is_file() else (None, "")
+        if not re.fullmatch(r"index(\.[a-z0-9.]+)?|index\.(html|js|wasm|pck|png|icon\.png|apple-touch-icon\.png|"
+                            r"audio\.worklet\.js|audio\.position\.worklet\.js)", path):
+            return None, ""
+        p = d / path
+        media = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".wasm": "application/wasm",
+                 ".pck": "application/octet-stream", ".png": "image/png"}.get(p.suffix, "application/octet-stream")
+        return (p, media) if p.is_file() else (None, "")
     m = re.fullmatch(r"shots/v(\d{1,3})/(shot\d\.png)", path)
     if m:
         p = _vdir(r, int(m.group(1))) / "shots" / m.group(2)
@@ -351,6 +366,25 @@ def _assets(r: GameProject) -> tuple[str, dict[str, Path]] | None:
     except Exception:                                   # noqa: BLE001 - a game without assets builds as before
         log.exception("assets for game %s", r.id)
         return None
+
+
+def _packs(r: GameProject) -> dict[str, tuple[str, dict[str, Path]]]:
+    try:
+        from . import packs
+        return packs.for_game(r.tenant_id, r.id)
+    except Exception:                                   # noqa: BLE001 - a game without packs builds as before
+        log.exception("packs for game %s", r.id)
+        return {}
+
+
+def _own_packs(files: dict[str, str], pk: dict[str, tuple[str, dict[str, Path]]]) -> None:
+    """v0.420: the role packs' files are Hoola's: whatever the model wrote under those names is dropped, a pack whose
+    data is gone leaves no stale file behind, and the current ones go in."""
+    from . import packs
+    for name in packs.files():
+        files.pop(name, None)
+    for name, (txt, _x) in pk.items():
+        files[name] = txt
 
 
 def _copy_assets(proj: Path, ast: tuple[str, dict[str, Path]] | None) -> None:
@@ -589,6 +623,8 @@ def _build(r: GameProject, holder: dict) -> None:
     files.pop("hoola_assets.gd", None)
     if ast:
         files["hoola_assets.gd"] = ast[0]
+    pk = _packs(r)                                      # v0.420 role packs (HoolaWorld, HoolaPhysics...): Hoola's own
+    _own_packs(files, pk)
     checks: list[dict[str, Any]] = []
     fixed = 0
     smoke: dict[str, Any] = {}
@@ -605,6 +641,8 @@ def _build(r: GameProject, holder: dict) -> None:
             _stage(r, "building", "Godot mein chala kar dekh raha hoon", 45 + rnd * 3)
             _write(vdir / "proj", r, files)
             _copy_assets(vdir / "proj", ast)
+            for _f, (_t, extra) in pk.items():
+                _copy_assets(vdir / "proj", ("", extra))
             smoke = engine.smoke(vdir, holder=holder)
             checks.append({"step": "play_headless", "ok": smoke["ok"], "errors": smoke["errors"][:6]})
             bad = smoke["errors"]
@@ -633,6 +671,7 @@ def _build(r: GameProject, holder: dict) -> None:
             files.pop("hoola_assets.gd", None)
             if ast:
                 files["hoola_assets.gd"] = ast[0]
+            _own_packs(files, pk)
     shutil.rmtree(vdir / "build_debug", ignore_errors=True)    # v0.416 the played debug build is not kept
     ok = bool(checks) and all(c["ok"] for c in checks[-3:]) and checks[-1]["step"] == "playtest" and checks[-1]["ok"]
     if fixed and ok:
@@ -640,7 +679,7 @@ def _build(r: GameProject, holder: dict) -> None:
     errors = [] if ok else (checks[-1]["errors"] if checks else ["kuch nahi bana"])
     ver = {"n": n, "at": now().isoformat(), "words": words, "ok": ok, "task": task, "base": (_good(r)[-1]["n"] if _good(r) else 0),
            "src": _src_hash(vdir / "proj"), "bible": bib[1] if bib else 0,
-           "assets": sorted(((ast or ("", {}))[1]).keys()), "notes": notes, "fixed": fixed, "checks": checks[-4:],
+           "assets": sorted(((ast or ("", {}))[1]).keys()), "packs": sorted(pk), "notes": notes, "fixed": fixed, "checks": checks[-4:],
            "errors": errors[:6], "files": sorted(files), "shots": play.get("shots", []) if ok else [],
            "warnings": play.get("warnings", []),
            "numbers": {"fps_server": play.get("fps"), "load_s": play.get("load_s"),
