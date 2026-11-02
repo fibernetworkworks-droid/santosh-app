@@ -16691,3 +16691,38 @@ Owner: "NOW ALSO CHECK IS VOICE TO VOICE CAN PERFORM ALL TOOL TASK END TO END", 
 - Also fixed here: v0.441's `run_owned` passed `context=""` / `client_id=""` / `save_user=True` to run_turn always, which
   broke two older voice tests whose fake run_turn takes only the arguments the old call site used; it now passes only what
   is set.
+
+## v0.443.0 DUKAAN PAISA (web Step 4 part 1 = W4 for websites + the first of W5, owner: "START STEP 4")
+
+Her website shop (v0.351) now takes ONLINE payments through HER OWN gateway account, on the same engine her apps use
+(`appmaker/pay.py`, v0.419 PAISA) - one set of sealed keys, one webhook, one refund path, one settlement view.
+- `site/shoppay.py`: Shop tab "Set up online payments" links the site to its App Sahayak project (applink) so the app's own
+  key routes take her keys (typed only in the console, checked with the gateway, sealed, returned by no route). The shop
+  gets payment method `online` (shown only when a gateway is connected; products API says `online`).
+- Online checkout: the order is made first (her prices, stock under the conditional update, delivery, coupon - all on the
+  server), then a gateway order for exactly that total (`AppPayment kind=site`, guest customer); the customer is sent to the
+  gateway's own page. PAID only from the gateway's signed webhook or a server-side status read with her keys, and only when
+  the amount matches (`pay._paid` kind site -> `shoppay.on_paid`: order -> confirmed, payment id kept, history says "verified");
+  a mismatch is held, never paid. The reconcile tick now covers site orders too.
+- An online order still unpaid after 3 h is cancelled by the worker (`release_unpaid`; stock + coupon back). Money that
+  arrives after that is never lost: the order keeps the payment id and its history + her chat say refund or re-confirm.
+- Refunds: POST /api/sites/<ref>/shop/orders/<n>/refund = her tap (console "Refund…", amount or all that is left), on the
+  gateway's refund API with a fixed number (v0.419 rules: never more than paid, an unsure one is checked, never resent);
+  UPI / COD orders answer 409 (she refunds those herself).
+- Coupons (W5): her codes in the app coupon store (console Shop tab), checked by POST /api/site-shop/<site>/coupon and
+  APPLIED by the server at order time (never trusted from the page); "once per customer" counts the mobile number; a
+  failing code never loses the order (coupon_note); a cancel gives the use back; free delivery is judged after the discount.
+- Reviews (W5, verified buyers only): POST /api/site-shop/<site>/order/<n>/review with the order's private token, only when
+  the order is DELIVERED and the item was in it, once per item per order, 1-5 + a line; first name only, never the phone;
+  GET .../reviews + stars on product cards / buy boxes; her console hides / shows (never edits the words).
+- Shop page (`hoola-shop.js`): online method, coupon box with the server's check, "Abhi pay karein" for a waiting online
+  order, review forms after delivery, stars. Console Shop tab: gateway card (keys, webhook address + how-to, totals),
+  coupons, reviews, order rows show online paid / not paid + Refund.
+Tests: tests/test_v0443_dukaan_paisa.py (7) against the v0.419 fake Razorpay - paid only by signed webhook / status read,
+mismatch held, pay-again reuses the window, refund rules, abandoned release + late money, coupons once per mobile + give
+back, reviews only from delivered buyers + hide.
+NOT BUILT (rest of Step 4): GST tax invoices / credit notes for WEBSITE orders (the app's Rule 46 series lives on app rows;
+website orders need their own adapter on the same series), AutoPay plans / payment links on the website (they exist for
+apps and in her console's app page), multi-vendor marketplace (vendor sign-up / approval / dashboards / commissions /
+split rules per vendor), courier connector (Shiprocket / Delhivery), abandoned-cart reminders (needs opted-in messaging),
+wishlists. NOT VERIFIED: a real gateway account (fake gateway in tests, same as v0.419).

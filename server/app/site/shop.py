@@ -79,6 +79,9 @@ class SiteShopOrder(Base):
     ip_hash: Mapped[str] = mapped_column(String(24), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    discount: Mapped[int | None] = mapped_column(Integer, nullable=True)       # v0.443 paise off by her coupon
+    coupon: Mapped[str | None] = mapped_column(String(20), nullable=True)      # v0.443 the code used
+    pay_id: Mapped[str | None] = mapped_column(String(40), nullable=True)      # v0.443 her gateway payment (app_payment.id)
 
 
 _TABLES_OK = False
@@ -93,6 +96,10 @@ def ensure_tables() -> None:
     if eng is not None:
         SiteShopProduct.__table__.create(eng, checkfirst=True)
         SiteShopOrder.__table__.create(eng, checkfirst=True)
+        try:                                            # v0.443 discount / coupon / pay_id on older databases
+            _db._add_missing_columns(eng)
+        except Exception:                               # noqa: BLE001
+            pass
         _TABLES_OK = True
 
 
@@ -258,7 +265,8 @@ def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any
             raise ShopError("Poora pata aur 6 ankon ka pincode chahiye.")
         if cfg.get("pincodes") and pin not in cfg["pincodes"]:
             raise ShopError("Is pincode par abhi delivery nahi hoti.")
-    if method not in ("upi", "cod") or (method == "cod" and not cfg.get("cod")):
+    if method not in ("upi", "cod", "online") or (method == "cod" and not cfg.get("cod")) or \
+            (method == "online" and not cfg.get("online")):
         raise ShopError("Payment ka tareeka chuniye.")
     if method == "upi" and not cfg.get("upi"):
         raise ShopError("Dukaan ka UPI ID abhi set nahi; Cash on delivery chuniye ya dukaan ko call kijiye.")
@@ -289,8 +297,13 @@ def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any
             sub += p.price * q
         if cfg.get("min_order") and sub < cfg["min_order"]:
             raise ShopError(f"Kam se kam {rupees(cfg['min_order'])} ka order.")
-        delivery = 0 if pickup or (cfg.get("free_above") and sub >= cfg["free_above"]) else int(cfg.get("delivery") or 0)
-        total = sub + delivery
+        off, code, cnote = 0, "", ""
+        if str(body.get("coupon") or "").strip():          # v0.443 her code, applied by the server (never trusted from the page)
+            from . import shoppay as SP
+            off, code, cnote = SP.coupon_apply(site_id, str(body.get("coupon")), sub, phone)
+        goods = sub - off
+        delivery = 0 if pickup or (cfg.get("free_above") and goods >= cfg["free_above"]) else int(cfg.get("delivery") or 0)
+        total = goods + delivery
         if total > MAX_TOTAL_PAISE:
             raise ShopError("Itna bada order online nahi; dukaan ko call kijiye.")
         for sg, q in want.items():     # one conditional UPDATE each: two buyers can never both take the last piece
@@ -299,15 +312,28 @@ def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any
             res = s.execute(update(SiteShopProduct).where(SiteShopProduct.id == prods[sg].id, SiteShopProduct.stock >= q)
                             .values(stock=SiteShopProduct.stock - q).execution_options(synchronize_session=False))
             if res.rowcount != 1:
+                if code:
+                    from . import shoppay as SP
+                    SP.give_back(site_id, code, phone)
                 raise ShopError(f"{prods[sg].title}: abhi-abhi khatam ho gaya; cart dobara dekhiye.", 409)
         o = SiteShopOrder(site_id=site_id, tenant_id=tenant_id, number=_number(s, site_id), token=secrets.token_urlsafe(16),
                           name=name, phone=phone, address="Dukaan se le jayenge" if pickup else address,
                           pincode="" if pickup else pin, note=_tidy(body.get("note"), 400), items=json.dumps(lines, ensure_ascii=False),
                           subtotal=sub, delivery=delivery, total=total, method=method, ip_hash=iph,
-                          history=json.dumps([{"at": _iso(), "to": "new"}]))
+                          discount=off or None, coupon=code or None,
+                          history=json.dumps([{"at": _iso(), "to": "new"}] + ([{"at": _iso(), "note": cnote}] if cnote else [])))
         s.add(o)
         s.flush()
         out = public_view(o)
+        start_view = {"id": o.id, "number": o.number, "name": name, "phone": phone, "total_paise": total}
+    if cnote:
+        out["coupon_note"] = cnote
+    if method == "online":                                # v0.443 her own gateway; PAID only from its verified answer
+        from . import shoppay as SP
+        try:
+            out["online"] = SP.start(site_id, start_view)
+        except ShopError as e:
+            out["online"] = {"error": str(e)}
     if method == "upi":
         from . import live as LV
         link = LV.upi_link(cfg["upi"], cfg.get("shop_name") or "Shop", f"{total / 100:.2f}", f"Order {out['number']}")
@@ -322,9 +348,10 @@ def _iso() -> str:
 def public_view(o: SiteShopOrder) -> dict[str, Any]:
     """What the customer sees of THEIR order (never other orders, never her notes)."""
     return {"number": o.number, "token": o.token, "status": o.status, "status_text": WORDS.get(o.status, o.status),
-            "items": [{k: x[k] for k in ("title", "unit", "qty")} | {"amount": rupees(x["amount"])} for x in json.loads(o.items or "[]")],
+            "items": [{k: x[k] for k in ("slug", "title", "unit", "qty")} | {"amount": rupees(x["amount"])} for x in json.loads(o.items or "[]")],
             "subtotal": rupees(o.subtotal), "delivery": rupees(o.delivery), "total": rupees(o.total), "method": o.method,
-            "utr_told": bool(o.utr)}
+            "utr_told": bool(o.utr) and o.method != "online", "discount": rupees(o.discount or 0) if o.discount else "",
+            "coupon": o.coupon or "", "paid_online": o.method == "online" and o.status not in ("new", "cancelled")}
 
 
 def _mine(s, site_id: str, number: str, token: str) -> SiteShopOrder:
@@ -358,7 +385,8 @@ def tell_paid(site_id: str, number: str, token: str, utr: str, ip: str = "") -> 
 
 # ---------------------------------------------------------------- her side
 def owner_view(o: SiteShopOrder) -> dict[str, Any]:
-    return {**public_view(o), "id": o.id, "name": o.name, "phone": o.phone, "address": o.address, "pincode": o.pincode,
+    return {**public_view(o), "id": o.id, "pay_id": getattr(o, "pay_id", None) or "", "name": o.name, "phone": o.phone,
+            "address": o.address, "pincode": o.pincode,
             "note": o.note, "utr": o.utr, "next": list(NEXT.get(o.status, ())), "created": o.created_at.isoformat() if o.created_at else "",
             "history": json.loads(o.history or "[]")}
 
@@ -389,7 +417,11 @@ def set_status(site_id: str, number: str, to: str) -> dict[str, Any]:
                               .values(stock=SiteShopProduct.stock + int(x["qty"])).execution_options(synchronize_session=False))
         o.status, o.updated_at = to, now()
         o.history = json.dumps(json.loads(o.history or "[]") + [{"at": _iso(), "to": to}])
-        return owner_view(o)
+        view, code, phone = owner_view(o), (getattr(o, "coupon", None) or ""), o.phone
+    if to == "cancelled" and code:                     # v0.443 the coupon use goes back with a cancel
+        from . import shoppay as SP
+        SP.give_back(site_id, code, phone)
+    return view
 
 
 def summary(site_id: str) -> dict[str, Any]:
