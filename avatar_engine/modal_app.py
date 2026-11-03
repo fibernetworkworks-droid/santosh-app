@@ -36,7 +36,7 @@ import registry
 APP = "hoola-lab"
 GPU = os.environ.get("HOOLA_LAB_GPU", "L4")          # L4 is in Modal's free monthly credit range; A10G / L40S for speed tests
 WARM = int(os.environ.get("HOOLA_LAB_WARM", "0"))      # containers kept running (0 = scale to zero); 1 = a teacher mid-lesson never meets a cold start
-VOICES = int(os.environ.get("HOOLA_LAB_VOICES", "2" if WARM else "0"))   # voice containers kept warm: chunks 2, 3... are made at the SAME time as chunk 1 on the others
+VOICE_WARM = int(os.environ.get("HOOLA_LAB_VOICES", "3" if WARM else "0"))   # voice containers kept warm (one per early chunk: two chunks sharing a card each ran ~30 % slower): chunks 2, 3... are made at the SAME time as chunk 1 on the others
 IDLE = 120                                          # seconds an idle container lives (credit saver)
 MODELS_DIR = "/models"
 HF_ENV = {"HF_HOME": f"{MODELS_DIR}/hf", "HF_HUB_ENABLE_HF_TRANSFER": "0"}
@@ -115,7 +115,7 @@ def _tmp(data: bytes | None, suffix: str) -> str | None:
 
 # ---------------------------------------------------------------- voice engines
 @app.cls(gpu=GPU, image=chatterbox_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600,
-         min_containers=VOICES, max_containers=4)
+         min_containers=VOICE_WARM, max_containers=4)
 class Chatterbox:
     @modal.enter()
     def load(self):
@@ -134,12 +134,16 @@ class Chatterbox:
         ref = _tmp(ref_audio, ".wav")
         t = time.time()
         # Guard: a short line can make this voice ramble (one word -> 12 s of audio). A line of N words should speak for
-        # about N x 0.45 s (Hindi); more than N x 0.9 s + 1.5 s is a runaway - make it again, keep the shortest take.
-        limit = len(text.split()) * 0.9 + 1.5
+        # about N x 0.45 s (Hindi); more than N x 1.0 s + 2.5 s is a runaway - make it again, keep the shortest take.
+        limit = len(text.split()) * 1.0 + 2.5
         best, tries = None, 0
         for _ in range(3):
             tries += 1
             w = self.model.generate(text, language_id=lang, **({"audio_prompt_path": ref} if ref else {}))
+            peak = float(w.abs().max()) or 1.0                       # cut the silent tail the sampler leaves after the last word (keep 0.2 s)
+            loud = (w.abs() > 0.02 * peak).nonzero()
+            if loud.numel():
+                w = w[..., : min(w.shape[-1], int(loud[:, -1].max()) + int(0.2 * self.model.sr))]
             secs = w.shape[-1] / self.model.sr
             if best is None or secs < best[1]:
                 best = (w, secs)
@@ -881,9 +885,9 @@ def bench_streams():
         note(f"streams FAILED: {type(e).__name__} {str(e)[:500]}")
 
 
-def split_speech(text: str, first_words: int = 4) -> list:
-    """Cut a teacher's answer so speech starts early AND never runs dry: a first chunk of about four words (about
-    1.5-2 s of speech, ending at a comma / full stop when one is near), then chunks that GROW (~8, ~16, ~32 words),
+def split_speech(text: str, first_words: int = 5) -> list:
+    """Cut a teacher's answer so speech starts early AND never runs dry: a first chunk of about five words (about
+    2 s of speech, ending at a comma / full stop when one is near), then chunks that GROW (~8, ~16, ~32 words),
     each cut at a natural pause. Measured: voice time ~ 0.75 x the speech it makes, so every chunk must speak longer
     than the next one takes to make; a chunk of 4-5 words (1.5 s of speech) left a 1.2 s gap. Never fewer than 3 words
     in a chunk: a one-word line made the voice ramble for 12 s."""
