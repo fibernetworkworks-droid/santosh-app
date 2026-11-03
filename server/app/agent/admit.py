@@ -540,6 +540,13 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     if calc_needed(text, why):
         adm.extra.add("pylab")          # v0.430 SOCH KE JAWAB 3: every worked-out number comes from real code
         adm.why = {**adm.why, "pylab": "calculation"}
+    try:                            # v0.473 R2: a research ask brings Hoola's own research engine into view
+        from . import hard as _hard
+        if "research" in set(FAMILY_OF.values()) and _hard.research_wanted(text):
+            adm.admit_families(["research"])
+            adm.why = {**adm.why, "research": "research ask"}
+    except Exception:               # noqa: BLE001 - routing never fails a turn
+        pass
     STATS["turns"] += 1
     if adm.size() > max(40, int(getattr(settings, "tool_admit_cap", 220))):
         STATS["full_fallback"] += 1     # router over-matched: never worse than the full registry

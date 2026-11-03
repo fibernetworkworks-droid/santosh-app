@@ -348,6 +348,8 @@ def free_card(asks: list[dict] | None = None) -> dict[str, Any]:
         miss = []
         if not in_view("web_sources"):
             miss.append("web_sources")
+        if not in_view("research_run"):         # v0.473 R2: Hoola's own engine must be in view for every research ask
+            miss.append("research_run")
         if a.get("calc") and not in_view("pylab"):
             miss.append("pylab")
         for u in a.get("uses") or ():

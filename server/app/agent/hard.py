@@ -223,8 +223,10 @@ RECIPE_CORE = """SOCH KA TAREEKA (this is a hard question - think it through lik
 
 RECIPE_KIND = {
     "research": "DEEP RESEARCH: (a) split the topic into 4-6 sub-questions that together answer her real question; "
-                "(b) gather - deploy_agents with one agent per independent sub-question (mode inline), plus "
-                "web_sources / google_search / open_website yourself; prefer primary sources (government, regulator, "
+                "(b) gather - call research_run with the question and the sub-questions (Hoola's own engine: it reads "
+                "the real pages in parallel and returns a dossier you write from; use its notes, never memory), and fall back to "
+                "deploy_agents with one agent per sub-question plus web_sources / google_search / open_website if it is "
+                "unavailable; prefer primary sources (government, regulator, "
                 "company filings and reports, MoSPI for Indian official numbers) over blogs; (c) every fact and number "
                 "carries its source as [n] with the date; the key numbers from two sources when you can, and say when "
                 "they disagree; (d) derived figures (growth, share, CAGR, totals) from pylab; (e) write: a 5-7 line "

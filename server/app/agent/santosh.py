@@ -322,6 +322,10 @@ def _pending_worker_notes(conversation_id: str) -> list[str]:
 TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 
 
+# v0.473 R2: the research dossier IS the evidence (its source list ends it), so it is not cut at the usual 6,000 characters
+RESULT_LIMIT = {"research_run": 40000}
+
+
 def _short(obj, limit: int = 6000) -> str:
     """A tool result for the model, at most `limit` characters.
     v0.331 SAAF KATAI: it used to be cut mid-JSON with "…(truncated)" - broken JSON, ids / links lost, and no hint how
@@ -1214,7 +1218,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
                 fine = not (isinstance(out, dict) and out.get("error"))
                 breaker.after(b["name"], fine)
-                content = _short(out)
+                content = _short(out, RESULT_LIMIT.get(b["name"], 6000))
                 call = {"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:300],
                         "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else content[:300]}
                 if not fine:

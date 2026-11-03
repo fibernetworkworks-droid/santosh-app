@@ -85,6 +85,17 @@ class Settings(BaseSettings):
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
+    research_engine_on: bool = True         # v0.473 R2: the `research_run` tool (Hoola's own research engine) is available
+    research_engine: str = "hoola"          # v0.473 which engine runs it; only "hoola" exists until R6 adds the paid ones
+    research_tasks_max: int = 6             # goals in the first round
+    research_steps: int = 8                 # model steps one goal may take
+    research_pages_per_task: int = 6        # pages one goal may read
+    research_pages_total: int = 30          # pages a whole run may read
+    research_calcs_max: int = 8             # pylab calculations a whole run may make
+    research_rounds: int = 2                # the first plan + at most one re-plan
+    research_parallel: int = 3              # goals worked at once
+    research_soft_s: float = 420.0          # after this the workers finish with what they have (a turn is capped at 900 s)
+    research_read_chars: int = 12000        # characters of one page shown to a worker
     research_plan_gate: bool = True         # v0.472 R1 PLAN PEHLE: a LARGE research ask shows its plan and waits for her Haan
     dev_plan_gate: bool = True              # ... and a LARGE job waits for her Haan on that plan (ECC's Gate 1)
     dev_plan_steps: int = 18                # ... the plan pass explores at most this many steps

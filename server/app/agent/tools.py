@@ -482,6 +482,13 @@ TOOLS.extend(MOSPI_TOOLS)
 TOOL_LABELS.update(MOSPI_LABELS)
 HANDLERS.update(MOSPI_HANDLERS)
 
+# v0.473 R2 APNA ENGINE: Hoola's own research engine (plan -> parallel workers that READ pages -> re-plan or stop -> a dossier)
+from .research_tools import RESEARCH_HANDLERS, RESEARCH_LABELS, RESEARCH_TOOLS  # noqa: E402
+
+TOOLS.extend(RESEARCH_TOOLS)
+TOOL_LABELS.update(RESEARCH_LABELS)
+HANDLERS.update(RESEARCH_HANDLERS)
+
 # v0.381 GAME DESK: the Game Developer employee (Godot 4 games, built + test-played in a locked box)
 from .gamedesk_tools import GAMEDESK_HANDLERS, GAMEDESK_LABELS, GAMEDESK_TOOLS  # noqa: E402
 

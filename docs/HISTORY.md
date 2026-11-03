@@ -18195,3 +18195,33 @@ own house pattern (`devsahayak/plan.py`: score in code, a LARGE ask waits for he
 - NOT BUILT: a tappable card with buttons on the phone / console (the Haan is typed, which works on every surface); the estimates are ASSUMED until the live
   research card runs; no live research run has happened.
 
+## v0.473.0 - RESEARCH Phase R2 APNA ENGINE
+
+Owner: "GO R2". Parts 3-6 of `docs/RESEARCH_PRO_PLAN.md` (BAANTO, KAHAN DEKHO, PADHO, GINO); the loop is Exa's own (planner -> tasks ->
+goal-tagged search / read / think -> more tasks or stop, `docs/research/research_apis/01_techniques.md` s5) with the best of the others.
+
+- `server/app/research/engine.py` (pure loop; every outside part injected as `Deps`, so it is tested with no model / network / clock):
+  `Policy` (the source policy as data: include / exclude domains, after_date, budgets - `from_settings` lets a caller only LOWER a budget, Valyu's
+  "max_calls can only be lowered"), `State` (admitted links, pages read, counts), `run_worker` (<= `research_steps` steps; tools search / read / note /
+  calc / finish; words instead of a tool call = the summary; a crash = a task with an error), `replan` (JSON more-tasks-or-stop, never repeats a done goal,
+  a failing planner = stop), `run` (round 1 = the approved goals in parallel behind a semaphore, then <= rounds-1 re-plans; ends on stop / time / page budget /
+  round limit), `dossier` + `render`.
+- URL DISCIPLINE (Anthropic `web_fetch.url_sources`, our "data is never instructions"): `read` only accepts a link that came from her ask, a search of THIS run, or
+  the SAME site as a page already read (`admit_from_page`, last two labels / three for gov.in-style); an off-site link inside a page is refused and counted.
+- NOTE CHECK: `note(claim, url, excerpt)` - the excerpt must be found on the page that was read (or in the search excerpt for that url): every fragment >= 12 chars,
+  split at an ellipsis, whitespace / case aside. Not found = KEPT but `verified: false` and rendered "NOT VERIFIED - do not state as fact" (dropping it would hide the fault).
+- `calc` = pylab (`PL.run(..., publish=False)`) with the code and output kept on the dossier; a failed calc is a result the worker reads.
+- `agent/research_tools.py`: tool `research_run(question, sub_questions, include_domains, exclude_domains, after_date)`, owner / goal / routine only, family `research`
+  (registered in `tools.py`; `admit.plan_for` brings the family in for a research ask via `hard.research_wanted`), the real Deps (model = `santosh._think`,
+  search = Parallel then Google, fetch = `web.open_website`, calc = pylab), live step events per goal. `santosh.RESULT_LIMIT = {"research_run": 40000}`: the dossier
+  ends with its source list and the usual 6,000-char cut would lose it (and the research_check would then call real links invented).
+- R1 hand-off: the approved-plan block now tells the model to call `research_run` with EXACTLY the approved sub-questions (+ her change); `RECIPE_KIND["research"]` (b) names it, with
+  deploy_agents kept as the fallback. The R0 free card checks `research_run` is in view for all 20 asks.
+- Config: `research_engine_on`, `research_engine` ("hoola"; R6 adds the paid ones), `research_tasks_max` 6, `research_steps` 8, `research_pages_per_task` 6, `research_pages_total` 30,
+  `research_calcs_max` 8, `research_rounds` 2, `research_parallel` 3, `research_soft_s` 420, `research_read_chars` 12000.
+- BUG FOUND BY ITS OWN FIRST TEST RUN: the re-plan prompt holds JSON braces and went through `str.format()`, which raised and was swallowed, so the planner ALWAYS answered stop. Fixed
+  (`.replace("{n}", ...)`) and pinned by a test on the prompt itself.
+- Tests: `test_v0473_research_engine.py` (20).
+- NOT BUILT: claims as per-field evidence with a page re-read (R3); a background run that survives a restart (R4 - today the whole run lives inside ONE turn, capped by the 900 s turn clock, soft
+  stop at 420 s); a rupee ceiling and cost per run (R5 - only counts so far); the paid engines (R6). NOT VERIFIED: the engine has only run against scripted fakes; no live research run, no live card.
+
