@@ -41,11 +41,14 @@ import re
 import time
 from typing import Any
 
+from ..research import engine as _eng
+from ..research import figures as FG
+from ..research import claims as _claims
 from .research_asks import ASKS, RESEARCH_SET_V
 
 log = logging.getLogger("santosh.quality.research")
 
-RUBRIC_V = 1
+RUBRIC_V = 2        # v0.474 R3: + claims_supported (only when the turn used the research engine)
 
 # ---- thresholds, in one place so a change is visible on the card
 UNTRACED_MAX = 0.10          # share of key figures allowed to be untraceable
@@ -118,57 +121,12 @@ def docs_from_history(history: list[dict]) -> tuple[list[dict], list[str], list[
 
 
 # ---------------------------------------------------------------- the pieces of a report
-def norm_url(u: str) -> str:
-    return re.sub(r"^https?://(www\.)?", "", u.rstrip(".,;:)")).split("#")[0].rstrip("/").lower()
-
-
-def host_of(u: str) -> str:
-    return norm_url(u).split("/")[0].split("?")[0]
-
-
 def is_primary(host: str) -> bool:
     h = host.lower()
     return h.endswith(_PRIMARY_SUFFIX) or any(h == p or h.endswith("." + p) for p in _PRIMARY_HOST)
 
 
-def split_report(report: str) -> tuple[str, list[str]]:
-    """(body, source lines). The Sources section starts at the LAST heading called Sources / References."""
-    text = str(report or "")
-    heads = list(_SRC_HEAD.finditer(text))
-    if not heads:
-        return text, []
-    h = heads[-1]
-    body, tail = text[:h.start()], text[h.end():]
-    lines = [ln.strip() for ln in tail.splitlines() if ln.strip() and not ln.strip().startswith(("---", "==="))]
-    return body, lines
-
-
-def _clean_for_numbers(body: str, asked: str) -> str:
-    t = _URL.sub(" ", body)
-    t = _REF.sub(" ", t)
-    t = re.sub(r"\b\d{1,2}[-/ ](?:\d{1,2}|[A-Za-z]{3,9})[-/ ,]+(?:19|20)\d{2}\b", " ", t)       # 12 March 2025, 3/4/2025
-    t = re.sub(r"\b(?:19|20)\d{2}\s*[-–]\s*(?:\d{2}|(?:19|20)\d{2})\b", " ", t)                   # 2024-25, FY 2023-2024
-    t = re.sub(r"(?m)^\s*\d{1,2}[.)]\s", " ", t)                                                  # list numerals
-    t = re.sub(r"\b(?:19|20)\d{2}\b", " ", t)                                                     # a bare year
-    t = re.sub(r"\bQ[1-4]\b|\bFY\s?\d{2,4}\b", " ", t)
-    return t
-
-
-def key_figures(body: str, asked: str) -> list[float]:
-    """The numbers that make a claim: not a year, a date, a [n], a list numeral, a small count, or a number the ask
-    itself already contained."""
-    from .hard_card import numbers
-    asked_set = {round(v, 4) for v in numbers(asked)}
-    out, seen = [], set()
-    for v in numbers(_clean_for_numbers(body, asked)):
-        a = abs(v)
-        if round(v, 4) in asked_set or round(v, 4) in seen:
-            continue
-        if a < MIN_KEY and float(a).is_integer():
-            continue
-        seen.add(round(v, 4))
-        out.append(v)
-    return out
+norm_url, host_of, split_report, key_figures = FG.norm_url, FG.host_of, FG.split_report, FG.key_figures
 
 
 def _near(v: float, pool: list[float]) -> bool:
@@ -419,6 +377,16 @@ async def _one(ask: dict, tenant: str, judge: bool) -> dict[str, Any]:
     docs, tools, opened = docs_from_history(yaad.full_history(conv))
     tools = tools or [str(c.get("tool")) for c in _calls_of(conv)]
     row = score_report(reply or "", docs, ask, tools, opened)
+    dos = _eng.recall(conv)             # v0.474 R3: the turn used Hoola's own engine -> every figure must be a FIELD's or a calc's
+    if dos is not None:
+        found = _claims.check_report(reply or "", dos)
+        row["checks"]["claims_supported"] = not found
+        row["claim_findings"] = found
+        row["field_confidence"] = dos["stats"].get("confidence")
+        if found:
+            row["right"] = False
+            row["failed"] = [*row["failed"], "claims_supported"]
+            row["misses"] = [*row["misses"], "claims_supported: " + "; ".join(found[:3])]
     row.update({"inr": spent, "seconds": secs, "tools": tools[:30], "pages": len(docs), "reply": (reply or "")[:2500],
                 "conv": conv})
     if judge and ask["kind"] == "topic":

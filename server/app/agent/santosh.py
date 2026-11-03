@@ -414,6 +414,12 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
         full, _ = _hardc.evidence(history, limit=400_000, per=200_000)   # v0.437 every link a tool returned
         why = ((state.get("hard_why") or {}).get("why")) or []
         problems = _hardc.code_check(state.get("request", ""), draft, why, names, full)
+        if not problems and "research_run" in names:
+            try:    # v0.474 R3 SABOOT: every figure in the report must be carried by a note's own words or a calculation
+                from ..research import claims as _claims, engine as _reng
+                problems = _claims.check_report(draft, _reng.recall(conversation_id))
+            except Exception:
+                log.exception("claim check failed")
         if not problems:
             problems = await _hardc.review(state.get("request", ""), draft, ev, settings)
         state["hard_check"] = {"problems": problems, "tools": names[:12]}

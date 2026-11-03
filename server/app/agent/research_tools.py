@@ -107,13 +107,16 @@ async def research_run(ctx: Ctx, question="", sub_questions=None, include_domain
                                  after_date=after_date)
     asked = E._URL.findall(q + " " + " ".join(goals))
     d = await E.run(q or goals[0], goals, pol, _deps(ctx, st), asked_urls=asked)
+    E.remember(ctx.conversation_id, d)           # v0.474 R3: the report check reads it back
     s = d["stats"]
     if s["verified_notes"] == 0 and s["pages_read"] == 0:
         say = ("The engine found no readable pages for this. Say so plainly; do not write findings from memory. "
                "Offer to try other words, another source, or google_search.")
     else:
         say = ("Write the report from this dossier only. A note marked NOT VERIFIED is unconfirmed - say so. Keep what was "
-               "NOT CONFIRMED in the report. Cite only the listed sources as [n] with their dates.")
+               "NOT CONFIRMED in the report. Cite only the listed sources as [n] with their dates. Every figure you write must "
+               "be one a note's words carry (cited to THAT source) or one a calculation printed - a figure from memory is "
+               "refused by a check before she sees the report.")
     return {"dossier": E.render(d), "stats": s, "stop_reason": d["stop_reason"], "say": say}
 
 

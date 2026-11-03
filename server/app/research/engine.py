@@ -30,14 +30,37 @@ import json
 import logging
 import re
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 from urllib.parse import urlparse
 
+from . import claims as _claims
+from . import figures as _fig
+
 log = logging.getLogger("santosh.research")
 
-ENGINE_V = 1
-STATS = {"runs": 0, "tasks": 0, "pages": 0, "notes": 0, "unverified_notes": 0, "refused_reads": 0, "replans": 0}
+ENGINE_V = 2          # v0.474 R3: the dossier carries FIELDS with a confidence; the report is checked against them
+STATS = {"runs": 0, "tasks": 0, "pages": 0, "notes": 0, "unverified_notes": 0, "refused_reads": 0, "replans": 0,
+         "figure_gaps": 0}
+
+# v0.474 R3: the newest dossier of each conversation, so the report check (agent/santosh._hard_check) can read it. In memory on
+# purpose: a restart drops it and the check falls back to the older link-only check (R4 persists runs).
+LAST: "OrderedDict[str, dict]" = OrderedDict()
+LAST_MAX = 50
+
+
+def remember(conv: str, d: dict) -> None:
+    if not conv:
+        return
+    LAST[conv] = d
+    LAST.move_to_end(conv)
+    while len(LAST) > LAST_MAX:
+        LAST.popitem(last=False)
+
+
+def recall(conv: str) -> dict | None:
+    return LAST.get(conv)
 
 _URL = re.compile(r"https?://[^\s)\]>\"'*]+")
 PRIMARY_SUFFIX = (".gov.in", ".nic.in", ".gov", ".mil", ".edu", ".ac.in", ".edu.in", ".int", ".res.in")
@@ -390,7 +413,15 @@ async def _tool(state: State, deps: Deps, res: TaskResult, name: str, inp: dict,
                 STATS["unverified_notes"] += 1
                 return ("RECORDED, BUT NOT VERIFIED: those words were not found on that page. Re-read the page and copy the "
                         "exact words, or drop the claim.")
-            return "recorded (verified: the words are on the page)"
+            # v0.474 R3: the quoted words are on the page - but do they carry the FIGURE the claim states?
+            calc_nums = [v for c in res.calcs if c.ok for v in _fig.numbers(c.output)]
+            gaps = [v for v in _fig.key_figures(claim) if not _fig.near(v, _fig.numbers(excerpt)) and not _fig.near(v, calc_nums)]
+            if gaps:
+                STATS["figure_gaps"] += 1
+                return ("recorded (words verified) BUT the figure(s) " + ", ".join(f"{v:g}" for v in gaps) + " in your claim are not in "
+                        "the words you quoted. If you worked it out, run `calc` and the note will stand; otherwise quote the sentence "
+                        "that carries the figure and record the note again. Until then it counts as LOW confidence.")
+            return "recorded (verified: the words are on the page and carry the figure)"
         if name == "calc":
             if state.counts["calcs"] >= pol.calcs_total:
                 return "REFUSED: this run has used its calculation budget."
@@ -501,15 +532,28 @@ def dossier(question: str, policy: Policy, state: State, results: list[TaskResul
     sources = [{"n": i, "url": u, "host": _host(u), "primary_looking": is_primary(_host(u)),
                 "read": u in {p.url for p in state.pages.values()}} for u, i in sorted(order.items(), key=lambda kv: kv[1])]
     notes = [n for r in results for n in r.notes]
+    ptext = {p.url: p.text for p in state.pages.values()}
+    for u, tx in state.seen_text.items():
+        ptext.setdefault(u, tx)
+    calc_nums = [v for r in results for c in r.calcs if c.ok for v in _fig.numbers(c.output)]
+    tasks = [{"goal": r.goal, "round": r.round, "summary": r.summary, "unresolved": r.unresolved, "error": r.error,
+              "steps": r.steps, "pages": r.pages,
+              "notes": [{"claim": n.claim, "url": n.url, "n": order.get(n.url), "excerpt": n.excerpt,
+                         "verified": n.verified, "date": n.date} for n in r.notes],
+              "calcs": [{"purpose": c.purpose, "code": c.code, "output": c.output, "ok": c.ok} for c in r.calcs]}
+             for r in results]
+    fields = _claims.build_fields(tasks, sources, ptext, calc_nums, is_primary)
+    by_claim = {(f["goal"], f["claim"], f["url"]): f for f in fields}
+    for t in tasks:
+        for n in t["notes"]:
+            f = by_claim.get((t["goal"], n["claim"], n["url"]))
+            if f:
+                n["confidence"], n["supported"], n["why"] = f["confidence"], f["supported"], f["why"]
     return {"v": ENGINE_V, "question": question[:1500], "after_date": policy.after_date, "stop_reason": stop_reason,
-            "tasks": [{"goal": r.goal, "round": r.round, "summary": r.summary, "unresolved": r.unresolved, "error": r.error,
-                       "steps": r.steps, "pages": r.pages,
-                       "notes": [{"claim": n.claim, "url": n.url, "n": order.get(n.url), "excerpt": n.excerpt,
-                                  "verified": n.verified, "date": n.date} for n in r.notes],
-                       "calcs": [{"purpose": c.purpose, "code": c.code, "output": c.output, "ok": c.ok} for c in r.calcs]}
-                      for r in results],
+            "tasks": tasks, "fields": fields,
             "sources": sources, "rounds": rounds,
             "stats": {"goals": len(results), "notes": len(notes), "verified_notes": sum(n.verified for n in notes),
+                      "confidence": _claims.summary(fields),
                       "pages_read": len({p.url for p in state.pages.values()}), "searches": state.counts["searches"],
                       "calcs": state.counts["calcs"], "refused_reads": state.counts["refused"],
                       "llm_calls": state.counts["llm_calls"], "seconds": round(time.time() - state.started, 1)}}
@@ -521,6 +565,10 @@ def render(d: dict[str, Any], limit: int = 30000) -> str:
     s = d["stats"]
     out.append(f"Run: {s['goals']} goals, {s['pages_read']} pages read, {s['searches']} searches, {s['verified_notes']}/{s['notes']} "
                f"notes verified against their page, {s['calcs']} calculations, {s['seconds']} s. Ended: {d['stop_reason']}.")
+    cf = s.get("confidence") or {}
+    if cf:
+        out.append("Field confidence (a rule, not a feeling): " + ", ".join(f"{k} {cf.get(k, 0)}" for k in ("high", "medium", "low", "unconfirmed"))
+                   + ". Lead with high / medium; state low as tentative and unconfirmed as NOT confirmed.")
     if d.get("after_date"):
         out.append(f"Source policy: material on or after {d['after_date']} preferred.")
     for t in d["tasks"]:
@@ -529,7 +577,11 @@ def render(d: dict[str, Any], limit: int = 30000) -> str:
             out.append(f"Worker summary: {t['summary']}")
         for n in t["notes"]:
             tag = "" if n["verified"] else "  [NOT VERIFIED - the quoted words were not found on that page; do not state this as fact]"
-            out.append(f"- {n['claim']} [{n['n']}]" + (f" (period: {n['date']})" if n["date"] else "") + tag
+            conf = n.get("confidence", "")
+            if n["verified"] and not n.get("supported", True):
+                tag = "  [FIGURE NOT IN THE QUOTED WORDS - state it as unconfirmed unless a calculation below backs it]"
+            out.append(f"- {n['claim']} [{n['n']}]" + (f" (period: {n['date']})" if n["date"] else "")
+                       + (f"  confidence: {conf}" if conf else "") + tag
                        + f"\n    page's words: \"{_clip(n['excerpt'], 300)}\"")
         for c in t["calcs"]:
             out.append(f"- CALC ({'ok' if c['ok'] else 'FAILED'}) {c['purpose']}:\n    code: {_clip(c['code'], 500)}\n    output: {_clip(c['output'], 300)}")

@@ -18225,3 +18225,28 @@ goal-tagged search / read / think -> more tasks or stop, `docs/research/research
 - NOT BUILT: claims as per-field evidence with a page re-read (R3); a background run that survives a restart (R4 - today the whole run lives inside ONE turn, capped by the 900 s turn clock, soft
   stop at 420 s); a rupee ceiling and cost per run (R5 - only counts so far); the paid engines (R6). NOT VERIFIED: the engine has only run against scripted fakes; no live research run, no live card.
 
+## v0.474.0 - RESEARCH Phase R3 SABOOT
+
+Owner: "GO R3". Part 7 of `docs/RESEARCH_PRO_PLAN.md`: the report is built from FIELDS and checked against them before she sees it
+(Parallel's `field_basis`: reasoning + citations with excerpts + a confidence, per field - here all computed in code).
+
+- `server/app/research/figures.py` (new, shared): `numbers` (Indian way), `key_figures`, `near`, `split_report`, `norm_url`, `host_of`, `UNSURE` words. The R0 card
+  now delegates to it, so the card and the live check can never disagree about what a key figure is.
+- `server/app/research/claims.py` (new): `build_fields(tasks, sources, page_text, calc_numbers, is_primary)` = one field per note: claim, url, [n], excerpt, verified (R2),
+  `supported` (every key figure of the CLAIM is in the quoted words or in a calculation of the run), `unsupported_figures`, primary-looking, read, dated (the year of its date is on the
+  page), `corroborated_by` (different websites carrying the same figure in their own words). `confidence()` = unconfirmed (words not on the page) / low (verified but the figure is not in
+  the words, or the page was never read) / high (verified + supported + corroborated by another site, or primary-looking and dated) / medium (the rest), each with printed reasons.
+  `check_report(report, dossier)`: a link that is not a source of the run; a figure carried by no verified+supported field and no calc ("from memory"); a figure cited to [n] whose
+  source's words do not carry it (names the right one); a figure only a NOT VERIFIED / unsupported note carries; gaps hidden (dossier has unresolved / unverified items, report says nothing
+  uncertain). Max 5 findings, written as fix notes.
+- `engine.py` (ENGINE_V 2): the dossier carries `fields` + `stats.confidence`, notes carry confidence / supported / why; `render` shows confidence per note, "FIGURE NOT IN THE QUOTED WORDS"
+  and a confidence line; `note()` tells the worker at once when the claim's figure is not in its quoted words (run `calc`, or quote the sentence that carries it); `remember` / `recall` keep
+  the newest dossier per conversation (50, in memory).
+- `research_tools.research_run` remembers the dossier; its `say` tells the model every figure must be a note's or a calc's. `santosh._hard_check`: after the free code check and when
+  `research_run` ran, `claims.check_report(draft, recall(conv))` - a problem list = ONE fix round, the draft never shown (the v0.436 mechanism); a failing check is logged and never blocks the answer.
+- `quality/researchcard.py` RUBRIC_V 2: when the turn used the engine the live row gains `claims_supported` (+ the claim findings + field confidence) and a finding fails the row.
+- Tests: `test_v0474_research_claims.py` (21). First run of them found no code fault; three failures were test mistakes (a play with no date is "medium", `99999` prints without a comma, a card
+  test cited a link its dossier did not have).
+- NOT DONE, said plainly: it cannot tell whether a page is RIGHT (traceable is not true); it does not re-open the live page (the worker's read is the evidence); it does not detect two sources that
+  disagree; the dossier lives in memory per conversation (a restart drops it and the check falls back to the older link-only check - R4 persists runs). NOT VERIFIED live: the check has only run on scripted fakes.
+
