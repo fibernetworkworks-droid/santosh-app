@@ -409,6 +409,131 @@ class Face:
 
 
 # ---------------------------------------------------------------- the locked web endpoint (Hoola server -> lab)
+# ---------------------------------------------------------------- live face (warm, in-process, streams frames)
+@app.cls(gpu=GPU, image=face_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=1800,
+         max_containers=1)          # ONE container = ONE GPU: the concurrency test must share a single card, never spread out
+@modal.concurrent(max_inputs=8)
+class Live:
+    """The face the way a live teacher needs it: every model loaded ONCE when the container starts, prepared faces kept in
+    memory, and `stream` hands back JPEG frames batch by batch as they are made (the lab's Face class starts a new process
+    per call). Lab-only until a consented face exists; uses MuseTalk's own Avatar class so the maths is unchanged."""
+
+    @modal.enter()
+    def start(self):
+        import sys
+        import threading
+        from types import SimpleNamespace
+
+        import torch
+        from transformers import WhisperModel
+        for k in ("musetalk", "sd_vae", "whisper_tiny", "dwpose", "face_parse_bisenet"):
+            registry.check(k, "lab")
+        for name, sub in (("models", "musetalk_models"), ("results", "musetalk_results")):
+            target = f"{MODELS_DIR}/{sub}"
+            os.makedirs(target, exist_ok=True)
+            link = f"{MUSE_DIR}/{name}"
+            if os.path.islink(link):
+                os.unlink(link)
+            if not os.path.exists(link):
+                os.symlink(target, link)
+        if _fetch_muse_weights(f"{MUSE_DIR}/models"):
+            volume.commit()
+        os.chdir(MUSE_DIR)
+        sys.path.insert(0, MUSE_DIR)
+        from musetalk.utils.audio_processor import AudioProcessor
+        from musetalk.utils.face_parsing import FaceParsing
+        from musetalk.utils.utils import load_all_model
+        from scripts import realtime_inference as rt
+        t = time.time()
+        rt.args = SimpleNamespace(version="v15", extra_margin=10, parsing_mode="jaw", skip_save_images=True,
+                                  audio_padding_length_left=2, audio_padding_length_right=2)
+        device = torch.device("cuda:0")
+        vae, unet, pe = load_all_model(unet_model_path="models/musetalkV15/unet.pth", vae_type="sd-vae",
+                                       unet_config="models/musetalkV15/musetalk.json", device=device)
+        rt.timesteps = torch.tensor([0], device=device)
+        pe = pe.half().to(device)
+        vae.vae = vae.vae.half().to(device)
+        unet.model = unet.model.half().to(device)
+        rt.audio_processor = AudioProcessor(feature_extractor_path="models/whisper")
+        rt.weight_dtype = unet.model.dtype
+        whisper = WhisperModel.from_pretrained("models/whisper").to(device=device, dtype=rt.weight_dtype).eval()
+        whisper.requires_grad_(False)
+        rt.fp = FaceParsing(left_cheek_width=90, right_cheek_width=90)
+        rt.device, rt.vae, rt.unet, rt.pe, rt.whisper = device, vae, unet, pe, whisper
+        self.rt, self.torch = rt, torch
+        self.avatars: dict = {}
+        self.lock = threading.Lock()
+        self.load_s = round(time.time() - t, 1)
+        self.commit = open(f"{MUSE_DIR}/COMMIT").read().strip()[:12]
+
+    @modal.method()
+    def prepare(self, avatar_id: str, video: bytes, consent: str) -> dict:
+        if not AVATAR_ID.match(avatar_id or ""):
+            raise ValueError("avatar_id: lower-case letters, digits, - and _ (max 40)")
+        if not CONSENT.match(consent or ""):
+            raise ValueError("consent must be 'ai_generated' or 'signed:<record id>' - no face without it")
+        if not video or len(video) > MAX_FACE_VIDEO:
+            raise ValueError("reference video missing or over 30 MB")
+        with self.lock:
+            if avatar_id in self.avatars:
+                return {"avatar_id": avatar_id, "prepare_s": 0.0, "cached": True, "load_s": self.load_s}
+            raw = _tmp(video, ".mp4")
+            src = f"/tmp/{uuid.uuid4().hex}_25.mp4"
+            subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-r", "25", src], check=True)
+            shutil.rmtree(f"{MUSE_DIR}/results/v15/avatars/{avatar_id}", ignore_errors=True)   # the script would ask y/n
+            t = time.time()
+            self.avatars[avatar_id] = self.rt.Avatar(avatar_id=avatar_id, video_path=src, bbox_shift=0,
+                                                     batch_size=8, preparation=True)
+            return {"avatar_id": avatar_id, "prepare_s": round(time.time() - t, 1), "cached": False, "load_s": self.load_s}
+
+    @modal.method()
+    def stream(self, avatar_id: str, audio: bytes, batch: int = 8, loops: int = 1):
+        """Generator: yields {first, frames:[jpeg bytes], ready_s, audio_prep_s}. `ready_s` = seconds since this call began
+        when that batch was finished; the caller turns it into stalls against a 25 fps playhead."""
+        import copy
+
+        import cv2
+        import numpy as np
+        from musetalk.utils.blending import get_image_blending
+        from musetalk.utils.utils import datagen
+        av = self.avatars.get(avatar_id)
+        if av is None:
+            raise ValueError("unknown avatar (prepare it first, with consent)")
+        if not audio or len(audio) > MAX_SPEAK_AUDIO:
+            raise ValueError("audio missing or over 8 MB")
+        if not 1 <= int(batch) <= 32 or not 1 <= int(loops) <= 8:
+            raise ValueError("batch 1-32, loops 1-8")
+        rt, torch = self.rt, self.torch
+        wav = _tmp(audio, ".wav")
+        if int(loops) > 1:   # a longer clip to show sustained speed (the same speech repeated)
+            long_wav = f"/tmp/{uuid.uuid4().hex}.wav"
+            subprocess.run(["ffmpeg", "-y", "-v", "error", "-stream_loop", str(int(loops) - 1), "-i", wav, "-c", "copy", long_wav],
+                           check=True)
+            wav = long_wav
+        t0 = time.time()
+        n = len(av.coord_list_cycle)
+        idx = 0
+        with torch.no_grad():
+            feats, length = rt.audio_processor.get_audio_feature(wav, weight_dtype=rt.weight_dtype)
+            chunks = rt.audio_processor.get_whisper_chunk(feats, rt.device, rt.weight_dtype, rt.whisper, length, fps=25,
+                                                          audio_padding_length_left=2, audio_padding_length_right=2)
+            prep = round(time.time() - t0, 2)
+            for wb, lb in datagen(chunks, av.input_latent_list_cycle, int(batch)):
+                af = rt.pe(wb.to(rt.device))
+                lb = lb.to(device=rt.device, dtype=rt.unet.model.dtype)
+                pred = rt.unet.model(lb, rt.timesteps, encoder_hidden_states=af).sample.to(device=rt.device, dtype=rt.vae.vae.dtype)
+                out, first = [], idx
+                for res in rt.vae.decode_latents(pred):
+                    x1, y1, x2, y2 = av.coord_list_cycle[idx % n]
+                    res = cv2.resize(res.astype(np.uint8), (x2 - x1, y2 - y1))
+                    frame = get_image_blending(copy.deepcopy(av.frame_list_cycle[idx % len(av.frame_list_cycle)]), res,
+                                               [x1, y1, x2, y2], av.mask_list_cycle[idx % len(av.mask_list_cycle)],
+                                               av.mask_coords_list_cycle[idx % len(av.mask_coords_list_cycle)])
+                    out.append(cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])[1].tobytes())
+                    idx += 1
+                yield {"first": first, "frames": out, "ready_s": round(time.time() - t0, 3), "audio_prep_s": prep}
+
+
 @app.function(image=web_image, secrets=[secret], timeout=1800)
 @modal.asgi_app()
 def web():
@@ -623,6 +748,79 @@ def bench_face():
     print(text, flush=True)
     with open("lab_out/REPORT_bench.txt", "w") as f:
         f.write(text + "\n")
+
+
+def _playback(batches: list) -> dict:
+    """Replay one stream's batches against a 25 fps playhead: playback starts when the first batch is ready, and every time
+    the next batch is not ready when the playhead needs it, the picture freezes (a stall) until it is."""
+    if not batches:
+        return {"first_s": None, "stall_s": None, "stalls": 0, "fps": 0.0}
+    t = batches[0][0]
+    stall, stalls = 0.0, 0
+    for k, (ready, frames) in enumerate(batches):
+        if k and ready > t:
+            stall += ready - t
+            stalls += 1
+            t = ready
+        t += frames / 25.0
+    total = sum(f for _, f in batches)
+    return {"first_s": round(batches[0][0], 2), "stall_s": round(stall, 2), "stalls": stalls,
+            "fps": round(total / batches[-1][0], 1) if batches[-1][0] else 0.0}
+
+
+@app.local_entrypoint()
+def bench_streams():
+    """How many students can ONE GPU hold at once? 1, 2, 3, 4 simultaneous streams of the same face on one warm container.
+    A stream is smooth when its pictures are ready before the 25 fps playhead needs them (stall ~ 0)."""
+    import threading
+    os.makedirs("lab_out", exist_ok=True)
+    lines = [f"GPU {GPU}  one container, one card, batch 8, 24 s of speech per stream (the 8 s sample, 3 times)"]
+
+    def note(text: str) -> None:
+        lines.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_streams.txt", "w") as f:
+            f.write("\n".join(lines) + "\n")
+
+    try:
+        live = Live()
+        p = _call("live prepare", live.prepare, "lab-live", _sample_face.remote(), "ai_generated", wait=2700)
+        audio = _sample_audio.remote()
+        note(f"models loaded once: {p['load_s']}s   face prepared: {p['prepare_s']}s")
+        _ = list(live.stream.remote_gen("lab-live", audio, 8, 1))                      # warm-up, not counted
+        note("streams  first_batch_s(worst)  stall_s(worst)  stalls(worst)  fps/stream(worst)  smooth?")
+        smooth_max = 0
+        for n in (1, 2, 3, 4):
+            res: list = [None] * n
+
+            def one(i: int) -> None:
+                t = time.time()
+                got, first_wall = [], None
+                for b in live.stream.remote_gen("lab-live", audio, 8, 3):
+                    if first_wall is None:
+                        first_wall = round(time.time() - t, 2)
+                    got.append((b["ready_s"], len(b["frames"])))
+                r = _playback(got)
+                r["first_wall"] = first_wall
+                res[i] = r
+
+            th = [threading.Thread(target=one, args=(i,)) for i in range(n)]
+            [x.start() for x in th]
+            [x.join() for x in th]
+            ok = [r for r in res if r]
+            if len(ok) < n:
+                note(f"{n:>7}  FAILED: only {len(ok)} of {n} streams finished")
+                continue
+            worst_first = max(r["first_wall"] for r in ok)
+            worst_stall = max(r["stall_s"] for r in ok)
+            worst_stalls = max(r["stalls"] for r in ok)
+            worst_fps = min(r["fps"] for r in ok)
+            smooth = worst_stall <= 0.25
+            smooth_max = n if smooth and smooth_max == n - 1 else smooth_max
+            note(f"{n:>7}  {worst_first:>19}  {worst_stall:>14}  {worst_stalls:>13}  {worst_fps:>17}  {'yes' if smooth else 'NO'}")
+        note(f"RESULT: {smooth_max} simultaneous smooth stream(s) on one {GPU}")
+    except Exception as e:
+        note(f"streams FAILED: {type(e).__name__} {str(e)[:500]}")
 
 
 @app.function(image=face_image, timeout=300)

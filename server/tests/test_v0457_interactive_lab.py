@@ -188,3 +188,28 @@ def test_face_bench_and_face_only_jobs_exist_and_the_embedded_script_parses():
     assert "inputs.job == 'bench'" in WORKFLOW and "REPORT_bench.txt" in MODAL_SRC
     # the lab never hangs a whole run on one call again
     assert "def _call(" in MODAL_SRC and "fc.get(timeout=wait)" in MODAL_SRC
+
+
+def _playback_fn():
+    """Pull `_playback` out of the GPU app's source (the app itself needs Modal to import) so its maths can be tested."""
+    tree = ast.parse(MODAL_SRC)
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_playback")
+    ns: dict = {}
+    exec(compile(ast.Module([fn], []), "modal_app", "exec"), ns)
+    return ns["_playback"]
+
+
+def test_stall_maths_for_the_concurrency_test():
+    """The 'how many students per GPU' verdict is only as good as this replay: a stream is smooth when each batch is ready
+    before the 25 fps playhead needs it, and every late batch freezes the picture for exactly how late it was."""
+    play = _playback_fn()
+    # 8 frames = 0.32 s of picture. Ready every 0.20 s (faster than playback): no stall, however long it runs.
+    fast = play([(0.30 + 0.20 * k, 8) for k in range(10)])
+    assert fast["stall_s"] == 0 and fast["stalls"] == 0 and fast["first_s"] == 0.3
+    # Ready every 0.50 s (slower than the 0.32 s each batch plays): the picture waits 0.18 s for every batch after the first.
+    slow = play([(0.30 + 0.50 * k, 8) for k in range(5)])
+    assert slow["stalls"] == 4 and abs(slow["stall_s"] - 4 * 0.18) < 0.01
+    # Nothing came back: reported as nothing, never as 'smooth'.
+    assert play([])["first_s"] is None
+    assert "max_containers=1" in MODAL_SRC and "@modal.concurrent(max_inputs=8)" in MODAL_SRC   # one card, shared on purpose
+    assert "streams" in WORKFLOW and "modal_app.py::bench_streams" in WORKFLOW and "REPORT_streams.txt" in MODAL_SRC
