@@ -51,6 +51,15 @@ def make_router(require_key) -> APIRouter:
                 "saved": await asyncio.to_thread(T.saved),
                 "how": "live: python -m app.quality tools --live   (one model call per ask, nothing is run)"}
 
+    @r.get("/maps")
+    async def maps_card():
+        """v0.470 Phase 11 PROOF: the free maps card now (tools in view, reachable, guards, rupees per answer) +
+        the saved live cards (python -m app.quality maps --live)."""
+        from . import mapscard as MC
+        card = await asyncio.to_thread(MC.free_card)
+        return {"free": {k: v for k, v in card.items() if k != "rows"}, "lines": MC.lines(card),
+                "rows": card["rows"], "cards": MC.saved()}
+
     @r.get("/report/{name}")
     async def report(name: str):
         try:

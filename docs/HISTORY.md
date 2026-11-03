@@ -17888,3 +17888,252 @@ Measured: Chatterbox hi 14 s / en 3 s synth (L4, ~41 tokens/s); Indic Parler hi 
 of audio = 12x real time through the per-call path (reloads models every call - NOT the live speed). `bench` = models loaded once, MuseTalk's
 own Avatar class, batch 4/8/20, warm-up excluded: x_realtime <= 1.0 means live-capable.
 NOT VERIFIED: IndicF5 after the pin; bench numbers; clip quality (her ears / eyes); any consented or AI-made teacher face; GPU provider + price.
+## v0.463.0 — GOOGLE MAPS Phase 4: SABSE PAAS (computeRouteMatrix, "nearest of these N")
+
+Owner: *"GO PHASE 4"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+- **`maps.matrix()`** → Routes `computeRouteMatrix`. Real road distance + traffic-aware time from every origin to
+  every destination. Field mask is only `originIndex,destinationIndex,status,condition,distanceMeters,duration`
+  (no polyline, no steps). Results are matched by the element's own indexes, never by arrival order (the API
+  streams them in no promised order). An element Google could not route comes back `ok: False` and is reported
+  as unreachable - **never filled with a straight-line guess**. Two-wheeler falls back to car on a 4xx, like `route()`.
+- **Billed per ELEMENT, refused first.** The matrix is the one SKU Google charges per origin x destination, so the
+  call is charged as `n = origins x destinations` BEFORE the HTTP call; the daily cap refuses it up front, and a
+  failed call is refunded exactly (`Receipt`). Our own ceiling is the new `maps_matrix_max` setting (default 100
+  pairs), below Google's 625 (100 for transit).
+- **Tool `maps_nearest`** (owner chat + voice call + TOOL_LANES + prompt): `candidates` = names, `lat,lng`, or
+  `{name, lat, lng}` objects (coordinates she already has - e.g. from `maps_nearby` - cost no lookup; a plain name is
+  one geocode). `origins` empty = where she is. Up to 25 candidates, 5 origins. With ONE origin and more candidates
+  than the cap, the closest by straight line are checked on the road and the answer says `prefiltered`; with several
+  origins over the cap it REFUSES rather than silently trimming. Output: ranked list per origin with road km, minutes,
+  straight-line km, `unreachable` and `not_found` named. Draws the existing `maps_places` card (road time in `type`,
+  so no phone/console UI change), Google attribution on it.
+- Nothing from the matrix is stored: it is live traffic and Google content.
+- **Not done / not verified:** `ASSUMED_TIER` for the matrix is still Enterprise (dearest) - no Google page maps our
+  field mask to Essentials/Pro/Enterprise, so the cap can only fire early; her first real bill settles it. No live
+  call has been made (mock transport only). Phase 4's plan line also names wiring into field_service / fleet /
+  courier / helpdesk: NOT done in this version - `fleet/service.py:_maps_distance` still loops `route()`. The tool is
+  the first-class answer; the module wiring is the next small step.
+- Tests: `server/tests/test_v0463_maps_nearest.py`.
+- **Fleet wiring (same version):** `fleet_dekho what=nearest place=<pickup> [day] [load_t]` →
+  `fleet.service.nearest_vehicle`: which FREE truck is closest to a pickup by road time. The fleet module has no live
+  GPS, so a truck's position is the DESTINATION OF ITS LAST FINISHED trip (stated in the answer as "last drop"); a
+  truck with no finished trip is listed in `no_known_position`, never guessed. Workshop/sold, busy that day, and
+  too-small (when `load_t` is given) trucks are left out and named in `skipped`. One matrix call = trucks x 1 pickup,
+  billed per truck through the Maps cap. Tests: `server/tests/test_v0463_fleet_nearest.py` (maps mocked at
+  `maps.resolve` / `maps.matrix`). `_maps_distance` (trip km) untouched.
+- **Courier: NOT wired, on purpose.** `app/courier` has ONE warehouse per tenant and no multi-candidate decision
+  (carrier choice is by rate/rules, not distance), so there is nothing for "nearest of N" to decide. Wiring it would
+  mean inventing a feature. Needs her answer: does she have several pickup points / branches?
+
+## v0.464.0 — GOOGLE MAPS Phase 6: PATA PAKKA (address check + reverse geocode)
+
+Owner: *"GO PHASE 6"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**Source note.** `developers.google.com` was blocked in the session, so the prose docs (pricing, auth, ToS) were NOT
+read. The request / response SHAPES come from Google's own machine-readable discovery document
+(`https://addressvalidation.googleapis.com/$discovery/rest?version=v1`, reachable) - the primary source for field
+names, enums and the 280-character input limit. Phase 5's `routeoptimization.googleapis.com/$discovery/rest` is
+reachable the same way (not yet read).
+
+- **`maps.validate_address()` + tool `maps_address_check`**: Address Validation `v1:validateAddress`, `regionCode IN`,
+  one address per call, key in the `X-Goog-Api-Key` header. Graded IN CODE from Google's own flags (`grade_address`):
+  **pakka** (validationGranularity PREMISE / SUB_PREMISE, nothing unconfirmed), **sadak_tak** (matched only to
+  ROUTE / BLOCK / PREMISE_PROXIMITY - very common for Indian landmark addresses and deliberately NOT called wrong; the
+  reason says to confirm by phone), **galat** (unconfirmed / missing / unresolved parts, a REPLACED component such as a
+  wrong PIN - the right one is named, a suspicious part, or incomplete). Spelling fixes and inferred parts are listed
+  but do not fail a good address. Input over 280 chars or empty is refused BEFORE any call.
+- **`maps.reverse_geocode()` + tool `maps_pata`**: Geocoding `latlng=` -> the address there; empty lat/lng = where she is.
+- Billed through the cap: address check = ONE request at `address.enterprise` (the dearest; added to `ASSUMED_TIER`
+  so `/api/maps/usage` reports the guess), reverse geocode = one Geocoding event; both refunded if the call fails.
+- Nothing from either answer is stored (customer address + Google content); a test asserts the place cache stays empty.
+- On voice calls, in TOOL_LANES, in the prompt. Tests: `server/tests/test_v0464_maps_address.py` (mocked transport).
+- **NOT done:** Autocomplete (session-billed). It exists to power a typing box, and no typing surface calls it yet
+  (tools don't type); building the endpoint with no caller is the dead-code trap CLAUDE.md warns about. Needs a UI
+  decision. Courier `check` does not call `maps_address_check` yet (it would bill per parcel - her call).
+- **NOT verified:** no live call. Whether Address Validation accepts the plain API key (vs OAuth), whether India is a
+  supported region at the tier we assume, and Pro vs Enterprise billing - all unconfirmed because the prose docs were
+  unreachable. The first real call settles auth + region; the first bill settles the tier.
+
+## v0.465.0 — GOOGLE MAPS Phase 5: DIN KA RASTA (Route Optimization)
+
+Owner: *"GO PHASE 5"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**Source note.** `developers.google.com` is blocked in the session and the API's own discovery document needs a key,
+so the prose docs and the pricing page were NOT read. The spec came from Google's official proto in the public repo
+`googleapis/googleapis` (`google/maps/routeoptimization/v1/route_optimization_service.proto`, fetched from
+raw.githubusercontent.com): field names, enums, the HTTP binding, the auth scope.
+
+**Two facts from it that change the design vs Phases 1-4:**
+1. **Auth is NOT the Maps API key.** The service declares one OAuth scope (`cloud-platform`) and the REST path is
+   `POST /v1/{parent=projects/*}:optimizeTours` - a Google Cloud PROJECT id in the URL. So it needs a service-account JSON
+   on the VPS and a project: new settings `ROUTE_OPT_PROJECT` + `ROUTE_OPT_SA_FILE`. Without them the tool says exactly
+   that and costs nothing (it does not reuse the FCM service account: that is a different project).
+2. **proto3 drops zero values from JSON**, so a response visit with no `shipmentIndex` is shipment 0 and a route with no
+   `vehicleIndex` is vehicle 0 - parsed that way and pinned by a test (this is the bug that would have silently
+   mis-ordered the first stop).
+
+- **`server/app/mapsopt.py`**: `build_request` (stops -> mandatory shipments - no `penaltyCost` = infinite per the proto;
+  vehicles with start/end, capacity as a `units` load limit, start/end time windows; day in IST -> UTC timestamps;
+  int64 amounts as strings; durations `"300s"`; `considerRoadTraffic`), `parse_response` (ordered stops with local
+  arrival times, per-leg km/min, route totals, back-to-start leg, Google's skip reason codes in Hinglish - unknown
+  codes passed through - and `complete` false if submitted != placed + skipped), `optimize()` (token via the service
+  account in a thread BEFORE billing, then billed, refunded on failure; 401/403 explained).
+- **Tool `maps_route_plan`** (voice call, TOOL_LANES, prompt): stops = names / `lat,lng` / `{name,lat,lng,service_min,
+  window:'10:00-12:00',load}`, vehicles optional (default one from her location back to it), up to 5 vehicles and
+  `maps_opt_max_stops` (40) stops. Draws the places card per vehicle (order, arrival time, leg).
+- **It only PROPOSES.** Nothing is assigned or sent; the plan's `note` says so. Feeding an approved plan into fleet trips /
+  courier is a separate step needing her tap and is NOT built.
+- Billing: new SKU `routeopt.fleet` at the India FleetRouting rate ($2.40/1000, free 7000), charged PER SHIPMENT. Google's
+  billing unit (per request vs per shipment) and tier for our request were NOT confirmed, so the dearer reading is used
+  (cap fires early, never late) and `ASSUMED_TIER` reports it in `/api/maps/usage`.
+- Our cost weights (`costPerTraveledHour 1.0`, `costPerKilometer 0.05`) are OUR relative choice - time first, distance
+  as a tie-break - not rupees.
+- Tests: `server/tests/test_v0465_route_plan.py` (12; mocked transport + fake token).
+- **NOT verified:** no real call (needs her project + service account + the API enabled); the 40-stop cap and 30 s
+  timeout are our choices, not Google's published limits; whether a time-windowed plan returns what we parse is proven
+  against a hand-built response shaped by the proto, not a live one.
+
+## v0.466.0 — GOOGLE MAPS Phase 7: KAAGAZ PAR (as LINKS, not pictures)
+
+Owner: *"GO PHASE 7"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**The plan's Phase 7 was changed, not just built.** It said "Static Maps in docstudio PDFs and WhatsApp". Google's
+Maps Platform ToS and Service Specific Terms ARE reachable at cloud.google.com (only developers.google.com is blocked), so
+they were read before building: ToS 3.2.3(a)(i) forbids to *"pre-fetch, index, store, reshare, or rehost Google Maps
+Content outside the services"*, (a)(ii) names *"Street View images"*, (b) forbids caching except where the SST
+permits, and the SST has **no** Maps Static / Street View Static section (only the general "Google ID caching": place_id,
+pano_ID). A map picture inside a PDF or a WhatsApp image is a stored, re-shared copy. Full quotes + what stays allowed:
+`docs/research/maps/05_static_maps_licence.md`.
+
+- **Tool `maps_links`**: name / address / `lat,lng` (or lat+lng+place_id) -> a "view on Google Maps" link, optional
+  directions link, and a Street View link ONLY when `maps.streetview_check` (the free Street View Metadata SKU) says a
+  panorama exists (`pano_id` is the one thing the terms let anyone cache; not stored anyway). No image is ever requested -
+  a test fails the build if a `staticmap` or image `streetview` URL is called. Works without a key (search link).
+  The model puts the links in a PDF (doc_studio) or WhatsApp text as ordinary text/hyperlinks; no docstudio code changed.
+- Cost: Street View Metadata is free; a name/address costs one geocode (cap + cache apply).
+- Chat only (not declared on voice calls: calls reach it via santosh_kaam).
+- Tests: `server/tests/test_v0466_maps_links.py` (8).
+- **Not done / open:** a map shown LIVE on a page the customer opens (img loaded from Google at view time, restricted browser
+  key, billed per view) is lawful in principle but is a separate decision, not built. The Maps URLs `pano` parameters are
+  from memory of the documented `api=1` scheme (docs unreachable) - first real tap settles it.
+- Side result of the same read: Route Optimization SST 18.1-18.3 and Address Validation SST 1.3 match what Phases 5 and 6 do
+  (nothing stored).
+
+## v0.467.0 — GOOGLE MAPS Phase 8a: APNI DUKAAN, the READ side
+
+Owner: *"GO PHASE 8"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**Phase 8 is only partly buildable now, and this says which part.**
+- **Spec sources.** Google's discovery documents for `mybusinessaccountmanagement` v1, `mybusinessbusinessinformation` v1 and
+  `businessprofileperformance` v1 were fetched (the account / location / Performance shapes below come from them, also
+  bundled in the `google-api-python-client` wheel). **Reviews, local posts and Q&A are in the legacy My Business v4 API,
+  whose discovery document is not published anywhere reachable** (404 on googleapis.com, absent from the Python client's
+  bundled set, absent from the Go/Node/PHP client repos) and `developers.google.com` is blocked. Writing review code from
+  memory of v4 would break this project's rule - so **no review / post / Q&A code exists**.
+- **`server/app/gbp.py` + tools `gbp_locations`, `gbp_numbers`** (chat, owner only): her accounts -> locations with a
+  `readMask` (title, address, phone, website, regular hours, Maps link, review link, place id, pending edits) and the
+  Performance counts over N days (shown on Search / Maps by device; directions, calls, website clicks, messages, bookings),
+  summed from the string values; no data reads as "none", never a guess. A call asked for `days=0` used to be silently turned
+  into 30 - found by its own test, fixed (0 is refused).
+- **Read-only by construction and stores NOTHING**: Business Profile policies forbid to *"pre-fetch, cache, index, or store"*
+  its content and to aggregate it (research 02). A test asserts only GETs are sent and that the module never touches our DB.
+- **Errors are named**: scope missing (`business.manage`), API not enabled, quota 0 = the project is not approved for Basic API
+  Access yet, 403 = no access to that profile, no Google login.
+- Tests: `server/tests/test_v0467_gbp_read.py` (9).
+
+**What gates it (hers to do - no code shortens it):**
+1. Apply for Basic API Access (profile verified 60+ days, website on it, Organization account) - until the quota reads
+   300 QPM every call fails with the quota-0 message above.
+2. Her Google sign-in must carry the `business.manage` scope. The current Google connect flow does not request it; adding a
+   sensitive scope to the shared consent for every user is a decision (it can trigger Google's app verification), so it was NOT
+   changed. Until then the tool says to reconnect with the permission.
+
+**Not built:** reviews read + drafted replies, posts, photos, Q&A (v4 spec); listing writes (hours / phone / description via
+`locations.patch` + `updateMask`, whose shape IS in the discovery doc) - they need a hash-bound approval tap and the documented
+10-edits-per-minute-per-profile cap, and are the next step once approval is real; the connect screen.
+**NOT verified:** no live call (project unapproved).
+
+## v0.468.0 — GOOGLE MAPS Phase 9: APNA NAKSHA (her own pins and areas, kept on Hoola)
+
+Owner: *"GO PHASE 9"* (3 Nov 2026), on `docs/MAPS_PLAN.md` and `docs/research/maps/03_her_existing_map.md`.
+
+The research settled the shape: Google gives NO way to write to a My Maps map and NO way to read or write her saved lists, so
+she hands the data over ONCE and Hoola owns it. Nothing in this version calls Google.
+- **`server/app/ownmap.py`**: tables `own_maps` / `own_features` (registered in `db.init_db` + `ensure_tables()` self-heal);
+  `parse_kml` (KML + KMZ; **lon,lat order**; folders -> layers; description tags stripped; ExtendedData kept; points, lines,
+  polygon outer rings; DOCTYPE/ENTITY refused, 5 MB file ceiling = My Maps' own, 20 MB unzipped ceiling against zip bombs);
+  `parse_takeout` which **sniffs** GeoJSON or CSV and REPORTS what it found, because the Takeout "Saved" format is documented
+  nowhere and third parties disagree - an unknown JSON shape is refused, not guessed; a row with no coordinates is kept as
+  `unlocated` (name + the Maps link she saved) and is NEVER geocoded behind her back (a billed call, and Google's geocodes may only be kept
+  30 days); `near()` = straight-line distance over her own data, no Google call; `geojson()` for the Maps JS Data layer; pins; delete.
+  Limits: 20 maps, 5,000 entries each. Tenants cannot see each other's maps ("not found", never "forbidden").
+- **Tools** (chat, owner only): `ownmap_import` (file_id of an uploaded KML/KMZ/Takeout file), `ownmap_list`, `ownmap_near`
+  (a place NAME costs one live geocode, then pure arithmetic), `ownmap_pin`, `ownmap_delete` (needs `confirm=true`, i.e. her yes).
+- **Routes** `/api/ownmap`: list, `POST /import` (multipart), `GET /{id}/geojson` (what `map.data.addGeoJson` takes - her data
+  never leaves her server), `DELETE /{id}`; a test calls them through the real router, and the real app is checked for mounting.
+- Tests: `server/tests/test_v0468_ownmap.py` (15), including a guard that the module never imports httpx / calls googleapis.
+- **Stated assumption:** a My Maps export and a Takeout file are HER data (user-authored / her own export), not "Google Maps
+  Content" obtained from the Maps Platform, so the Maps caching rules (ToS 3.2.3) do not apply to them. Rows that came from
+  Google's place data (Takeout "Saved" names/addresses) are the grey part; nothing from the Maps APIs is ever merged in or refreshed.
+- **NOT built:** the screen that DRAWS it (Maps JS Data layer in the console / phone - needs a restricted browser key and bills
+  Dynamic Maps per load), the Datasets API (Google-hosted, OAuth + a project), the Data Portability API route to pull a My Maps
+  map without her exporting (restricted scopes + Google app verification), syncing with later edits in Google (no route exists -
+  she must re-import). **NOT verified** against a real My Maps export or a real Takeout file.
+
+## v0.469.0 — GOOGLE MAPS Phase 10: BAAKI SAB (Solar + Roads built; four APIs deliberately not)
+
+Owner: *"GO PHASE 10"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+Each API's own Service Specific Terms were read FIRST (cloud.google.com is reachable) - the result is in
+`docs/research/maps/06_phase10_terms.md` with the quotes. Two are built, four are not, for stated reasons:
+- **BUILT `solar_check`** (`maps.solar_building`): Solar API Building Insights for the building nearest a point. SST 20.1 permits
+  feasibility for an address, so one-building feasibility is inside the licence. Returns Google's numbers only: roof area, max panels,
+  max array area, sunshine hours, panel watts and three layouts (about 25 / 50 / 100 % of the maximum) with Google's yearly DC kWh
+  untouched. Google's `financialAnalyses` are NOT used (they are US-tariff based); the tool tells the model to get her bill/tariff and
+  use pylab for payback and never invent savings. `requiredQuality=BASE` (the lowest bar, widest coverage). A 404 = no imagery there:
+  reported `covered:false`, refunded (not a successful request), never filled in.
+- **BUILT `maps_snap`** (`maps.snap_to_roads`): Roads snapToRoads for a recorded GPS trail, at most 100 points, driving / walking /
+  cycling, returns the snapped points, the snapped km and the indexes that could not be placed.
+- New SKUs `solar.building` (India $4.00, 70,000 free; global $10.00, 10,000) and `roads.snap` (India $3.00, 35,000; global $10.00,
+  5,000) from `04_prices.md`; the Roads billing unit is not confirmed so `/api/maps/usage` lists it under `assumed_tier`.
+- **NOT built, by the terms:** Air Quality (SST 2.1 permits only air-quality-based routing and environmental risk indices/research -
+  a plain "what is the AQI" answer is outside it) and Pollen (SST 16.1, same); Elevation (no SST section, and ToS 3.2.3(c)(iii) bars
+  terrain models from it; no sourced price); Time Zone (India has one zone).
+- Tests: `server/tests/test_v0469_solar_roads.py` (8). Nothing is stored; a test asserts neither function touches the database.
+- **NOT verified live:** no real call; Solar coverage for her city unknown (it falls back to "not covered"); the 100-point Roads ceiling
+  is from memory of the blocked prose docs.
+
+## v0.470.0 — GOOGLE MAPS Phase 11: PROOF (the MAPS card)
+
+Owner: *"GO PHASE 11"* (3 Nov 2026), on `docs/MAPS_PLAN.md` - the last of the eleven Maps phases.
+
+**The honest-key problem first.** A geographic "right answer" must never be a fact remembered about the world (how far
+one town is from another, where a station stands) - this project's rule, and the one that would quietly poison a card.
+So `app/quality/maps_asks.py` stores NO answer at all (a test asserts it): a geo ask carries its own coordinates in its
+own text, and `mapscard.key_for()` works the answer out with the SAME haversine the server uses. Points are spaced so
+the straight-line winner cannot differ from the road winner, and where a tie was possible (203 km vs 217 km) the ask
+says *seedhi doori* so the arithmetic answer IS the asked answer.
+
+**26 asks, three kinds:** 4 **geo** (nearest of four, within 150 km, order of three, the straight-line km - checked in
+code, with tolerance), 17 **tool** (is the right one of the 20 maps / listing / own-map tools the first pick - this is
+what measures whether Phases 4-10 are reachable from her words at all), 5 **rule** (the guards everything rests on: a
+lead list refused *with a reason*, a map in a PDF as a link and never a picture, the day's plan only proposing, a roof
+Google has no imagery for reported not covered, the daily cap refusing before it spends).
+
+- **`free_card()`** - no model, no Google, no key: the right tool in view per ask, every maps tool **registered AND
+  reachable from a real ask** (the v0.393 lesson: green tests never prove a feature can be reached), the five guards
+  (four read in the code, the **cap one proved by running it** - `_cap_fires()` spends the day's room and asserts
+  `MapsCapped`), and **what one answer costs** from `mapsbill`'s own table, never a number typed in the card. Today:
+  **in view 26/26, wrong family 0, registered 20/20, reachable 20/20, guards 5/5, ~Rs 23.67 for one of every answer**
+  (dearest: nearest-of-N, because the matrix bills per pair).
+- **`live_card()`** - one real turn per ask on `__quality__`, scored in code, and **the rupees that ask really spent**
+  read from `mapsbill.usage()` around the turn (`inr` per row, `inr_per_answer` on the card). Three dead turns in a row
+  stop the run with the server's own log lines, as the hard card does.
+- `python -m app.quality maps [--live] [--kind geo|tool|rule] [--only id,id] [--limit N]`, **GET /api/quality/maps**,
+  vps-ops job **`maps_card`** (free card, then the geo + guard asks live with the usage line before them).
+- A test pins `MAPS_TOOLS == set(MAPS_HANDLERS)`, so a maps tool added later cannot go unmeasured.
+- Tests: `server/tests/test_v0470_maps_card.py` (11).
+- **NOT VERIFIED, said plainly:** the live card has never run - it needs a real Maps key on the VPS and spends real
+  money. Every Phase 4-10 number in this repo is still "built and unit-tested", never "answered by Google". The three
+  assumed rates (Routes/matrix tier, Route Optimization unit, Roads unit) are settled only by that first real bill.

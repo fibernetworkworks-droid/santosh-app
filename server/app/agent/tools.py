@@ -1091,6 +1091,26 @@ TOOL_LANES: dict[str, str] = {
     "maps_nearby": "LANE: what is AROUND a point, by category (pharmacy, bank, gas_station...). A place you can name "
                    "-> maps_search. Phone / website / rating / timings of one result -> maps_place. Circle only, "
                    "50 km max, 20 results, no next page.",
+    "maps_nearest": "LANE: which of a LIST she already has is nearest by real road time (godowns, branches, workers vs "
+                    "a customer). Finding places of a kind -> maps_nearby. One trip's route -> maps_directions.",
+    "maps_address_check": "LANE: is THIS delivery address good (PIN, completeness, how far Google matched it). One address "
+                          "per call. Finding places -> maps_nearby / maps_search. A point's address -> maps_pata.",
+    "maps_pata": "LANE: lat/lng -> the address there (reverse geocode). Address -> check it with maps_address_check.",
+    "maps_route_plan": "LANE: the ORDER to visit many stops in a day (time windows, capacity). Which ONE is nearest -> "
+                       "maps_nearest. One trip's route -> maps_directions. Proposes only, assigns nothing.",
+    "maps_links": "LANE: a Google Maps LINK (view / directions / Street View) to put in a PDF, WhatsApp message or bill. "
+                  "Never a map picture. Route steps -> maps_directions; open navigation on her phone -> maps_navigate.",
+    "gbp_locations": "LANE: HER OWN Google Business Profile listing(s) (her shop on Google Maps). Other places -> maps_search / "
+                     "maps_nearby. How people found her -> gbp_numbers.",
+    "gbp_numbers": "LANE: how many people saw / called / asked directions to HER business on Google. Not a competitor "
+                   "or any other place.",
+    "ownmap_import": "LANE: bring HER OWN My Maps export (KML/KMZ) or Takeout 'Saved' file into Hoola once. Not for finding "
+                     "new places (maps_nearby / maps_search).",
+    "ownmap_near": "LANE: which of HER OWN imported pins / areas are near somewhere. Other businesses -> maps_nearby. Her "
+                   "Google listing -> gbp_locations.",
+    "solar_check": "LANE: is rooftop SOLAR workable at one building (roof area, panels, sunshine, kWh). Not electricity "
+                   "prices or payback maths (pylab).",
+    "maps_snap": "LANE: clean a recorded GPS trail onto roads. Finding places / routes -> maps_nearby / maps_directions.",
     "maps_place": "LANE: phone, website, rating and opening hours of ONE place you already have a place_id for. "
                   "Finding places -> maps_nearby / maps_search. One at a time: these are the costly fields.",
     # web: answer -> quotes -> one page -> clicks -> forms

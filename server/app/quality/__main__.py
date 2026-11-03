@@ -5,6 +5,7 @@
      (v0.443 LONG CARD: 25 long jobs x k through the real loop, judged on the end state)
    | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
    | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
+   | maps [--live] [--only id,id] [--limit N] [--kind geo|tool|rule] [--label x]   (v0.470 MAPS card: proof + rupees)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -27,6 +28,17 @@ def _tools(argv: list[str]) -> int:
     card = asyncio.run(T.live_card(asks, brain=brain)) if "--live" in argv else T.router_card(asks)
     card = T.save(card, label)
     print("\n".join(T.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0
+
+
+def _mapscard(argv: list[str]) -> int:
+    from . import mapscard as MC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    items = MC.pick(only=val("--only"), limit=int(val("--limit") or 0), kind=val("--kind"))
+    card = asyncio.run(MC.live_card(items)) if "--live" in argv else MC.free_card(items)
+    card = MC.save(card, val("--label"))
+    print("\n".join(MC.lines(card)))
     print(f"\n  saved: {card['file']}")
     return 0
 
@@ -105,6 +117,8 @@ def main(argv: list[str]) -> int:
             print("\n".join(sdk.setup()))
         print("\n".join(sdk.status()))
         return 0
+    if argv and argv[0] == "maps":          # v0.470 MAPS card (free; --live costs model calls + real Maps rupees)
+        return _mapscard(argv[1:])
     if argv and argv[0] == "code":          # v0.360 coding card (model calls: ~12 Opus jobs)
         return _code(argv[1:])
     if argv and argv[0] == "tools":

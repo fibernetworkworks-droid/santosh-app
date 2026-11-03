@@ -60,12 +60,14 @@ FLEET_TOOLS = [
         "Read the fleet (nothing changes). what=day (today's trips, expired / due papers, service due, tyres, diesel signals, challans, "
         "spends waiting, idle vehicles) | vehicles | vehicle (vehicle: papers, service, tyres, fuel, events) | docs (days) | fuel "
         "(vehicle, days: km/l and signals) | cost (vehicle, days: cost per km + idle days) | idle | trips (status, day) | trip (trip) | "
-        "spends (status) | settings | steps (step=echallan|vahan: official steps she follows) | rules."),
+        "spends (status) | nearest (place = pickup; day, load_t: which FREE truck is closest by real road time, from where each last "
+        "dropped; costs Maps money per truck) | settings | steps (step=echallan|vahan: official steps she follows) | rules."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["day", "vehicles", "vehicle", "docs", "fuel", "cost", "idle", "trips", "trip", "spends",
+         "what": {"type": "string", "enum": ["day", "vehicles", "vehicle", "docs", "fuel", "cost", "idle", "trips", "trip", "spends", "nearest",
                                              "settings", "steps", "rules"]},
          "vehicle": {"type": "string"}, "days": {"type": "integer"}, "status": {"type": "string"}, "day": {"type": "string"},
-         "trip": {"type": "string"}, "step": {"type": "string"}},
+         "trip": {"type": "string"}, "step": {"type": "string"}, "place": {"type": "string"},
+         "load_t": {"type": "number"}},
          "required": ["what"]}},
 ]
 FLEET_LABELS = {"fleet": "Fleet ka kaam kar raha hoon", "fleet_dekho": "Gaadiyan aur kaagaz dekh raha hoon"}
@@ -177,6 +179,8 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"trips": S.trips(t, _s(a.get("status")), _s(a.get("day")))}
         if what == "trip":
             return S.trip_view(t, _s(a.get("trip")))
+        if what == "nearest":
+            return S.nearest_vehicle(t, _s(a.get("place")), _s(a.get("day")), a.get("load_t"))
         if what == "spends":
             return {"spends": S.spends(t, _s(a.get("status")))}
         if what == "settings":

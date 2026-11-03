@@ -38,6 +38,7 @@ on:
           - studio_apis
           - tool_card
           - hard_card
+          - maps_card
           - long_jobs
           - long_card_try
           - long_card
@@ -359,6 +360,17 @@ jobs:
                 echo 'cd $CORE && echo "== free card"; timeout 120 .venv/bin/python -m app.quality hardcard 2>&1 | head -5'
                 echo 'echo "== ping (v0.440: each model x plain / thinking / effort)"; cd $CORE && timeout 120 .venv/bin/python -m app.quality hardcard --ping 2>&1 | grep -v httpx | tail -10'
                 echo 'echo "== live, quick set"; cd $CORE && timeout 1200 .venv/bin/python -m app.quality hardcard --live --quick --label vps-ops 2>&1 | tail -30' ;;
+              maps_card)
+                # v0.470 Phase 11 PROOF: the free maps card (right tool in view, every maps tool registered AND reachable
+                # from a real ask, the licence / cap guards, and what one of each answer costs at full rate), then the geo
+                # + guard asks through the REAL pipeline on tenant __quality__ with the RUPEES each answer spent. The geo
+                # answers are arithmetic from the ask's own coordinates, so they are checkable. ~5-10 min; the live part
+                # spends real Maps money (a few rupees) and model calls. All 26 live: on the VPS itself -
+                # python -m app.quality maps --live.
+                echo 'cd $CORE && echo "== free card"; timeout 180 .venv/bin/python -m app.quality maps 2>&1 | tail -12'
+                echo 'echo "== usage before"; cd $CORE && timeout 60 .venv/bin/python -c "from app.mapsbill import usage; import json; print(json.dumps(usage(\"__quality__\"), default=str))" 2>&1 | tail -2'
+                echo 'echo "== live, geo answers (arithmetic key)"; cd $CORE && timeout 900 .venv/bin/python -m app.quality maps --live --kind geo --label vps-ops 2>&1 | tail -20'
+                echo 'echo "== live, the guards"; cd $CORE && timeout 900 .venv/bin/python -m app.quality maps --live --kind rule --label vps-ops 2>&1 | tail -20' ;;
               long_jobs)
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.
