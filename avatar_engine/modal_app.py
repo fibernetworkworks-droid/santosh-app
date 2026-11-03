@@ -108,7 +108,10 @@ class Chatterbox:
         registry.check("chatterbox", "lab")
         from chatterbox.mtl_tts import ChatterboxMultilingualTTS
         t = time.time()
-        self.model = ChatterboxMultilingualTTS.from_pretrained(device="cuda", t3_model="v3")
+        try:   # newer releases choose the T3 checkpoint; the PyPI 0.1.7 we pin does not take the argument
+            self.model = ChatterboxMultilingualTTS.from_pretrained(device="cuda", t3_model="v3")
+        except TypeError:
+            self.model = ChatterboxMultilingualTTS.from_pretrained(device="cuda")
         self.load_s = round(time.time() - t, 1)
         volume.commit()
 
