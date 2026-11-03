@@ -1950,9 +1950,19 @@ class Call:
                 return self._last_mcp_defs
             return await self._load_mcp()
 
+        async def _coder_blk() -> str:
+            try:   # v0.473 HOOLA CODER: the session-start memory primer rides AFTER the KAAM YAAD
+                   # block, never instead of it (undelivered news outranks history)
+                from . import coder
+                return await asyncio.to_thread(coder.inject.voice_block, self.ctx.tenant_id,
+                                               self.ctx.conversation_id) or ""
+            except Exception:
+                log.exception("voice coder block failed")
+                return ""
+
         if self._safe >= 1:
             self._mcp_off = True      # v0.150 her MCP servers are listed, used through bazar_run
-        ymem, kb, mcp_defs = await asyncio.gather(_yaad_block(), _kaam_block(), _mcp())
+        ymem, kb, cb, mcp_defs = await asyncio.gather(_yaad_block(), _kaam_block(), _coder_blk(), _mcp())
         self._last_mcp_defs = mcp_defs
         context = await asyncio.to_thread(life.context_block, self.ctx.tenant_id,   # v0.221 off the audio loop
                                           self.ctx.conversation_id)                    # v0.246 Session fence
@@ -1960,6 +1970,8 @@ class Call:
             context += "\n\n" + ymem
         if kb:
             context += "\n\n" + kb
+        if cb:
+            context += "\n\n" + cb
         context += "\n\n" + self._mcp_block
         return context, mcp_defs
 
@@ -3012,6 +3024,12 @@ class Call:
         ACTIVE.setdefault(self.ctx.conversation_id, []).append(me)
         CALLS[self.call_id] = self
         await self._setup_voiceid()
+        try:   # v0.473 HOOLA CODER: this call becomes a memory session (best-effort, fail-open)
+            from . import coder as _coder
+            await asyncio.to_thread(_coder.session_started, self.ctx.tenant_id,
+                                    self.ctx.conversation_id, "voice")
+        except Exception:
+            pass
         try:
             while not self.closed.is_set():
                 # v0.181 the context blocks load in PARALLEL; v0.224 a GoAway already built them in the background
@@ -3211,6 +3229,11 @@ class Call:
             self._orphan_note("call ke ant tak yeh notes useh nahi bataye ja sake: "
                               + " | ".join(self._quiet_pending)[:900])
             self._quiet_pending.clear()
+        try:   # v0.473 HOOLA CODER: the call closes its memory session and arms the summary
+            from . import coder as _coder
+            await asyncio.to_thread(_coder.session_ended, self.ctx.tenant_id, self.ctx.conversation_id)
+        except Exception:
+            pass
         self.stats["ended"] = time.time()
         self.stats["end"] = getattr(self, "_end_reason", "") or ("hung_up" if self._hung_up else "dropped")   # v0.231
         if self.hold:
