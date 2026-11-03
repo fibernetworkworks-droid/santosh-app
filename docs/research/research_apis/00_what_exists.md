@@ -1,3 +1,6 @@
+> Companion file: **`01_techniques.md`** — the exact research technique of each vendor, one by one, with the
+> SDK file that proves each line.
+
 # Deep-research APIs — what exists, read from the vendors' OWN shipped SDKs (3 Nov 2026)
 
 **How this was read, and why it matters.** Every vendor's documentation host is BLOCKED from this sandbox
