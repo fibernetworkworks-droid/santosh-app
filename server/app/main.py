@@ -5003,6 +5003,8 @@ app.include_router(_notebook_router(require_key, current_tenant))
 from .quality.api import make_router as _quality_router  # noqa: E402
 
 app.include_router(_quality_router(require_key))
+from .interactive.api import router as _interactive_router
+app.include_router(_interactive_router(require_key, current_tenant))   # live-talk ticket (the engine key never reaches a browser)
 
 from .drive.api import make_router as _drive_router  # noqa: E402
 from .forms.api import make_router as _forms_router  # noqa: E402

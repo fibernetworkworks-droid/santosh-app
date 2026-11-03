@@ -129,3 +129,29 @@ def face_forget(avatar_id: str) -> dict:
     if not AVATAR_ID.match(avatar_id or ""):
         raise LabError("Unknown face.")
     return _call("/face/forget", {"avatar_id": avatar_id}, timeout=120.0).json()
+
+
+# ---------------------------------------------------------------- v0.462.x live talk: a 2-minute ticket, never the key
+def make_ticket(avatar_id: str, ttl: int = 120) -> str:
+    """A signed pass for ONE live talk with ONE avatar: '<expires>.<avatar>.<hmac>'. The browser never sees the engine key;
+    the engine checks the signature with its own copy of the key (avatar_engine/modal_app.py `_ticket_ok`, same maths)."""
+    import hashlib
+    import hmac
+    import time
+    s = get_settings()
+    key = getattr(s, "avatar_engine_key", "")
+    if not key:
+        raise LabError("Interactive engine key is not on the server yet (run vps-ops > engine_attach).")
+    if not AVATAR_ID.match(avatar_id or ""):
+        raise LabError("avatar id: lowercase letters, digits, - or _ (1-40 characters)")
+    exp = int(time.time()) + max(10, min(int(ttl), 300))
+    sig = hmac.new(key.encode(), f"live|{exp}|{avatar_id}".encode(), hashlib.sha256).hexdigest()
+    return f"{exp}.{avatar_id}.{sig}"
+
+
+def live_address() -> str:
+    """The engine's address as a websocket base (wss://...), for the browser. Not secret."""
+    url = (getattr(get_settings(), "avatar_engine_url", "") or "").rstrip("/")
+    if not url:
+        raise LabError("Interactive engine address is not on the server yet (run vps-ops > engine_attach).")
+    return re.sub(r"^http", "ws", url)

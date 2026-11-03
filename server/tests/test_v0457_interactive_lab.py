@@ -289,7 +289,58 @@ def test_live_socket_and_student_page():
     assert "the live talk stopped" in body and "str(e)" not in body.split("say(type=\"error\", msg=\"the live")[1][:80]   # no internals to the browser
     root = Path(__file__).resolve().parents[1] / "app" / "static" / "interactive"
     html = (root / "live.html").read_text()
-    assert "live.js" in html and 'type="password"' in html and "localStorage" not in html and "sessionStorage" not in html
+    assert "live.js" in html and 'type="password"' not in html and 'id="key"' not in html     # no key box: the page gets a pass
+    assert "/api/interactive/ticket" in html and 'localStorage.getItem("hoola.console.token")' in html
+    assert "localStorage.setItem" not in html and "sessionStorage" not in html
     if shutil.which("node"):
         r = subprocess.run(["node", str(Path(__file__).with_name("live_js_check.js")), str(root / "live.js")], capture_output=True, text=True)
         assert r.returncode == 0 and "live.js ok" in r.stdout, r.stdout + r.stderr
+
+
+def test_live_ticket_end_to_end(env, monkeypatch):
+    """The Hoola server signs a 2-minute pass; the engine's own check accepts it for that avatar only, and nothing else."""
+    import re
+    import time
+
+    lab = _lab(monkeypatch, url="https://x--hoola-lab-web.us-east.modal.run", key="k" * 40)
+    ns: dict = {"time": time}
+    exec(re.search(r"def _ticket_ok.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    ok = ns["_ticket_ok"]
+    t = lab.make_ticket("lab-live")
+    assert ok(t, "lab-live", "k" * 40)
+    assert not ok(t, "someone-else", "k" * 40)                  # one avatar only
+    assert not ok(t, "lab-live", "j" * 40)                      # wrong key
+    assert not ok(t[:-2] + "00", "lab-live", "k" * 40)          # tampered
+    old = f"{int(time.time()) - 5}.lab-live." + t.split(".", 2)[2]
+    assert not ok(old, "lab-live", "k" * 40)                    # expired (and the signature no longer matches the new time)
+    assert "k" * 10 not in t                                    # the key is not in the pass
+    assert lab.live_address().startswith("wss://x--hoola-lab-web")
+    with pytest.raises(lab.LabError):
+        lab.make_ticket("Bad Name!")
+    _lab(monkeypatch, url="", key="")
+    with pytest.raises(lab.LabError):
+        lab.make_ticket("lab-live")
+
+
+def test_ticket_route_is_owner_only_and_never_returns_the_key(env, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app import main
+    from app.config import get_settings
+    monkeypatch.setenv("AVATAR_ENGINE_URL", "https://x--hoola-lab-web.us-east.modal.run")
+    monkeypatch.setenv("AVATAR_ENGINE_KEY", "secret-engine-key-" + "z" * 20)
+    get_settings.cache_clear()
+    with TestClient(main.app) as c:
+        r = c.post("/api/interactive/ticket", json={"avatar_id": "lab-live"})
+        assert r.status_code == 200, r.text
+        assert r.json()["address"].startswith("wss://") and r.json()["ticket"].count(".") == 2
+        assert "secret-engine-key" not in r.text
+        assert c.post("/api/interactive/ticket", json={"avatar_id": "Not Valid"}).status_code == 503
+
+
+def test_engine_attach_job_uses_the_saved_secret():
+    wf = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text(encoding="utf-8")
+    assert "- engine_attach" in wf and "secrets.HOOLA_ENGINE_KEY" in wf and "engine_attach)" in wf
+    body = wf[wf.index("engine_attach)"):wf.index("zoo_check)")]
+    assert "AVATAR_ENGINE_KEY" in body and "value hidden" in body and "echo \"$ENGINE_KEY_IN" not in body
+    assert "ENGINE_KEY_IN" in wf.split("jobs:")[1][:3000]       # passed through env, never typed into a script by hand

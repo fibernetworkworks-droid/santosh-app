@@ -251,3 +251,8 @@ engine's new `/live` WebSocket sends exactly those, and the page plays them with
   STUDENT sees it (adds network + decode to the 2.8 s measured inside Modal), many students, the tutor brain feeding it text.
 - Run it: Actions > Interactive lab > `deploy` (prints the engine's web address; `lab-live` was prepared by the e2e runs and
   lives on the volume), open `/static/interactive/live.html` on the Hoola server, paste the address + engine key, Speak.
+- **No key in the browser (owner: "ATTACH THE SAVED GITHUB KEY DIRECTLY TO WEB")**: vps-ops > `engine_attach` copies the repo
+  secret `HOOLA_ENGINE_KEY` into the server's `.env` (`AVATAR_ENGINE_KEY` + the engine address) the same runner-side way as
+  `zoo_key`; the page asks `POST /api/interactive/ticket` (owner only, signed-in console token) and gets a 2-minute pass for ONE
+  avatar (`lab.make_ticket`, HMAC over `live|expires|avatar`); the engine's `/live` accepts that pass (`_ticket_ok`, same maths)
+  or the raw key. The key itself never leaves the server and Modal.

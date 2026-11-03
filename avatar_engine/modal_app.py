@@ -695,10 +695,12 @@ def web():
         try:
             hello = json.loads(await asyncio.wait_for(ws.receive_text(), 15))
             want = os.environ.get("ENGINE_KEY", "")
-            if not want or not hmac.compare_digest(str(hello.get("key") or ""), want):
+            avatar = str(hello.get("avatar_id") or "")
+            ok = bool(want) and (hmac.compare_digest(str(hello.get("key") or ""), want)
+                                 or _ticket_ok(str(hello.get("ticket") or ""), avatar, want))
+            if not ok:
                 await say(type="error", msg="locked")
                 return
-            avatar = str(hello.get("avatar_id") or "")
             text = str(hello.get("text") or "").strip()
             if not AVATAR_ID.match(avatar) or not text or len(text) > MAX_TEXT:
                 await say(type="error", msg=f"avatar_id or text (1-{MAX_TEXT} characters) is not valid")
@@ -954,6 +956,21 @@ def bench_streams():
         note(f"RESULT: {smooth_max} simultaneous students all smooth, one {GPU} each")
     except Exception as e:
         note(f"streams FAILED: {type(e).__name__} {str(e)[:500]}")
+
+
+def _ticket_ok(ticket: str, avatar: str, key: str) -> bool:
+    """A pass made by the Hoola server (server/app/interactive/lab.py make_ticket): '<expires>.<avatar>.<hmac>' for ONE
+    avatar, valid for minutes. Same maths on both sides, so the browser never needs the key itself."""
+    import hashlib
+    import hmac
+    try:
+        exp, who, sig = ticket.split(".", 2)
+        if who != avatar or int(exp) < time.time():
+            return False
+        good = hmac.new(key.encode(), f"live|{exp}|{who}".encode(), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(sig, good)
+    except Exception:
+        return False
 
 
 def split_speech(text: str, first_words: int = 5) -> list:
