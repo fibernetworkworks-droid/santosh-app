@@ -53,10 +53,13 @@ secret = modal.Secret.from_name("hoola-lab")
 _base = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg", "git").env(HF_ENV)
 chatterbox_image = _base.pip_install("chatterbox-tts==0.1.7", "soundfile", "huggingface_hub").add_local_python_source("registry")
 indicf5_image = (_base.pip_install("git+https://github.com/ai4bharat/IndicF5.git", "soundfile", "huggingface_hub")
-                 .pip_install("pyarrow==16.1.0")   # newer pyarrow wheels need NumPy 2; IndicF5's stack is on NumPy 1.26
+                 # newest `datasets` needs pyarrow>=24, which needs NumPy 2; this stack is on NumPy 1.26 -> pin a matching pair
+                 .pip_install("pyarrow==16.1.0", "datasets==2.21.0")
                  .run_commands("git clone --depth 1 https://github.com/AI4Bharat/IndicF5.git /opt/IndicF5")
                  .add_local_python_source("registry"))
-parler_image = _base.pip_install("git+https://github.com/huggingface/parler-tts.git", "soundfile", "huggingface_hub").add_local_python_source("registry")
+parler_image = (_base.pip_install("git+https://github.com/huggingface/parler-tts.git", "soundfile", "huggingface_hub")
+                .pip_install("pyarrow==16.1.0", "datasets==2.21.0")   # same datasets / pyarrow / NumPy pairing as IndicF5
+                .add_local_python_source("registry"))
 face_image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg", "git", "libgl1", "libglib2.0-0")
