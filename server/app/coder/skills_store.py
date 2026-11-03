@@ -1,4 +1,4 @@
-"""HOOLA SKILLS (v0.477.0) - the reusable-skill store, the Hermes SKILL.md discipline ported.
+"""HOOLA SKILLS (v0.478.0) - the reusable-skill store, the Hermes SKILL.md discipline ported.
 
 A skill is ONE markdown file under <coder_dir>/skills/<tenant>/:
 

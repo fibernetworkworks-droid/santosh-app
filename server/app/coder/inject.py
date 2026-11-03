@@ -1,4 +1,4 @@
-"""HOOLA CODER injection - the session-start primer (v0.477.0).
+"""HOOLA CODER injection - the session-start primer (v0.478.0).
 
 claude-mem's context primer, ported with the house ordering rules: her KAAM YAAD block stays
 first (undelivered news outranks history); the coder primer rides AFTER it and NEVER displaces

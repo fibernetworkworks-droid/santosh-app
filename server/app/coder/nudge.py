@@ -1,4 +1,4 @@
-"""HOOLA NUDGE (v0.477.0) - the self-teaching fork, Hermes's background review ported.
+"""HOOLA NUDGE (v0.478.0) - the self-teaching fork, Hermes's background review ported.
 
 Every coder_nudge_every turns (default 10, Hermes's nudge_interval) ONE quiet reflection run
 wakes up BETWEEN turns, rereads the conversation's redacted digest from the vault, and writes

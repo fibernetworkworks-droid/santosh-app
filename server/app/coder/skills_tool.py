@@ -1,4 +1,4 @@
-"""HOOLA SKILLS tool (v0.477.0) - ONE tool for the whole skill surface, the Hermes skill_manage
+"""HOOLA SKILLS tool (v0.478.0) - ONE tool for the whole skill surface, the Hermes skill_manage
 shape: an operations array, batch-capped, applied atomically. Santosh herself can author and
 improve skills mid-conversation (Hermes's precondition: skill_manage in valid tool names is what
 arms the nudge's reset-on-use rule too).

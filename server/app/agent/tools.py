@@ -1022,13 +1022,23 @@ TOOL_LABELS.update(ZOO_LABELS)
 HANDLERS.update(ZOO_HANDLERS)
 del _seen
 
-# v0.474 HOOLA SELF-TEACH: ONE skill_manage tool (the coder/skills_tool surface) - Santosh can
+# v0.477 HOOLA SELF-TEACH: ONE skill_manage tool (the coder/skills_tool surface) - Santosh can
 # author and improve reusable skills mid-conversation; the coder nudge resets its counter on use.
 from ..coder.skills_tool import SKILL_HANDLERS, SKILL_LABELS, SKILL_TOOLS  # noqa: E402
 _seen = {t["name"] for t in TOOLS}
 TOOLS.extend(t for t in SKILL_TOOLS if t["name"] not in _seen)
 TOOL_LABELS.update(SKILL_LABELS)
 HANDLERS.update(SKILL_HANDLERS)
+del _seen
+
+# v0.478 HOOLA SWARM: ONE delegate_task tool (the coder/delegate surface) - parallel bounded
+# child agents; every child tool call rides _run_tool so capture sees the whole picture; the
+# voice allowlist never admits it (a call routes it to a kaam job instead).
+from ..coder.delegate import DELEGATE_HANDLERS, DELEGATE_LABELS, DELEGATE_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in DELEGATE_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(DELEGATE_LABELS)
+HANDLERS.update(DELEGATE_HANDLERS)
 del _seen
 
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)

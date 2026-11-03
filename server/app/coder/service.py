@@ -1,4 +1,4 @@
-"""HOOLA CODER HTTP surface (v0.477.0) - the three memory layers as routes, plus the manual
+"""HOOLA CODER HTTP surface (v0.478.0) - the three memory layers as routes, plus the manual
 write path and the admin drain. Loopback-keyed like every house router (require_key), scoped to
 the caller's tenant. Read paths never return another tenant's rows."""
 from __future__ import annotations

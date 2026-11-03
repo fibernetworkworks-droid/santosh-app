@@ -1,4 +1,4 @@
-"""v0.477.0 HOOLA SELF-TEACH - skills + the nudge fork (the Hermes self-teaching loop ported).
+"""v0.478.0 HOOLA SELF-TEACH - skills + the nudge fork (the Hermes self-teaching loop ported).
 
 What this suite pins, piece by piece:
 (1) SKILLS STORE: SKILL.md files under <coder_dir>/skills/<tenant>/, frontmatter lint HARD
@@ -379,4 +379,4 @@ def test_stats_carry_skills_and_nudge(sk, nud, monkeypatch):
 
 def test_version_stamp(sk):
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.477.0"
+    assert APP_VERSION == "0.478.0"

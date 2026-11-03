@@ -1,4 +1,4 @@
-"""v0.477.0 SCRAPLING - Hoola can scrape any website smoothly.
+"""v0.478.0 SCRAPLING - Hoola can scrape any website smoothly.
 
 Owner: "NOW DEPLOY THIS SCRAPER FOR HOOLA --- THUS HOOLA CAN SCRAP ANY WEBSITE SMOOTHLY".
 
@@ -61,10 +61,10 @@ def test_registry_wired():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.477.0"
+    assert APP_VERSION == "0.478.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.477.0+522" in pub.read_text()
+    assert "0.478.0+523" in pub.read_text()
 
 
 # ---------------------------------------------------------------- SSRF guard

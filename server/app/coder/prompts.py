@@ -1,4 +1,4 @@
-"""HOOLA CODER prompts - the observer's instructions (v0.477.0).
+"""HOOLA CODER prompts - the observer's instructions (v0.478.0).
 
 The claude-mem prompt architecture, ported: one cacheable system prefix (identity, role, focus,
 skip rules), one per-event user turn (<observed_from_santosh_session> blocks with capped fields),

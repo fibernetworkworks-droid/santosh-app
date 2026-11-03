@@ -1,4 +1,4 @@
-"""HOOLA CODER storage - the observations vault (v0.477.0).
+"""HOOLA CODER storage - the observations vault (v0.478.0).
 
 A raw-sqlite3 store, one file, following the gyan/store.py house pattern (per-process RLock,
 WAL, idempotent schema). It keeps the durable memory the coder observer compresses out of
