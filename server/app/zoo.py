@@ -1,19 +1,28 @@
-"""v0.463 ZOO: the BYOK model zoo - 200+ image & video models behind ONE Muapi.ai gateway.
+"""v0.463 ZOO: the BYOK model zoo - 200+ image & video models behind BYOK gateways.
 
 Purely additive to the curated studios (studio/catalog.py video_studio, photogen.py photo_banao):
 nothing here replaces or changes them. The curated studios stay the everyday path; the zoo is for
 when she needs a specific model / style / aspect the studios don't cover.
 
 - catalog: server/app/zoo_catalog.json (211 real Muapi endpoints, converted mechanically from the
-  upstream Open-Higgsfield-AI registry). Add models by appending entries - no code change.
-  HOOLA_ZOO_CATALOG can point at a bigger private catalog file with the same shape.
-- BYOK: the owner's Muapi key sits in the server env (ZOO_MUAPI_KEY, MUAPI_KEY also accepted) and is
-  sent ONLY to api.muapi.ai as the x-api-key header - never logged, never echoed.
-- pattern: POST /api/v1/{endpoint} -> {request_id}; poll GET /api/v1/predictions/{id}/result until
-  status completed | succeeded | failed. Images usually finish inside a minute; videos run minutes.
+  upstream Open-Higgsfield-AI registry; v0.463.1 adds the kie.ai section - entries marked
+  "gateway": "kie", endpoints = kie's createTask model names). Add models by appending entries -
+  no code change. HOOLA_ZOO_CATALOG can point at a bigger private catalog file with the same shape.
+- BYOK, TWO gateways: the owner's keys sit in the server env and go ONLY to their gateway -
+  ZOO_MUAPI_KEY (MUAPI_KEY also accepted) -> api.muapi.ai as x-api-key;
+  ZOO_KIE_KEY (KIE_API_KEY also accepted) -> api.kie.ai as Bearer.
+  Never logged, never echoed. An entry without "gateway" rides the catalog root default (muapi).
+- muapi pattern: POST /api/v1/{endpoint} -> {request_id}; poll GET /api/v1/predictions/{id}/result
+  until status completed | succeeded | failed.
+- kie pattern (the Open-Higgsfield transport): POST /api/v1/jobs/createTask {model, input} ->
+  data.taskId; poll GET /api/v1/jobs/recordInfo?taskId= -> data.state success|fail|waiting...,
+  resultJson.resultUrls. Local / data-URI references upload to kie's CDN first. kie request ids
+  come back prefixed "kie:" so status() knows which transport to poll; bare ids stay muapi.
+- Images usually finish inside a minute; videos run minutes.
 - safety: the SAME refusals as photo_banao run BEFORE any gateway call (imported, not copied).
-- usage: every finished job is counted in app/usage.py as model "zoo:{endpoint}" (call + seconds;
-  rupee cost shows once the owner adds real contract prices to the catalog's usd fields).
+- usage: every finished job is counted in app/usage.py as "zoo:{endpoint}" (muapi) or
+  "zoo:kie:{endpoint}" (kie) - call + seconds; rupee cost shows once the owner adds real
+  contract prices to the catalog's usd fields.
 """
 from __future__ import annotations
 
@@ -31,6 +40,8 @@ log = logging.getLogger("zoo")
 
 BASE = os.environ.get("MUAPI_BASE", "https://api.muapi.ai").rstrip("/")
 POLL_S = 2.0
+KIE_BASE = os.environ.get("KIE_BASE", "https://api.kie.ai").rstrip("/")
+KIE_UPLOAD = os.environ.get("KIE_UPLOAD", "https://kieai.redpandaai.co/api/file-base64-upload").rstrip("/")
 
 
 class ZooError(Exception):
@@ -90,8 +101,26 @@ def key() -> str:
     return (os.environ.get("ZOO_MUAPI_KEY") or os.environ.get("MUAPI_KEY") or "").strip()
 
 
+def muapi_key() -> str:
+    return key()
+
+
+def kie_key() -> str:
+    """The kie.ai key (v0.463.1). Server env only - never logged, never echoed."""
+    return (os.environ.get("ZOO_KIE_KEY") or os.environ.get("KIE_API_KEY") or "").strip()
+
+
+def gateway_of(m: dict) -> str:
+    """Which transport a model rides: the entry's own "gateway", else the catalog root default."""
+    return str(m.get("gateway") or load_catalog().get("gateway") or "muapi").strip().lower()
+
+
+def ready_for(m: dict) -> bool:
+    return bool(kie_key() if gateway_of(m) == "kie" else key())
+
+
 def ready() -> bool:
-    return bool(key())
+    return bool(key() or kie_key())
 
 
 # ----------------------------------------------------------------------------- safety
@@ -131,20 +160,20 @@ def _payload(m: dict, prompt: str, image_urls: list[str], aspect: str = "", reso
         p["aspect_ratio"] = aspect
     if resolution:
         res = m.get("resolutions") or []
-        fld = "quality" if (res and res[0] in ("basic", "high", "standard", "hd")) else "resolution"
+        fld = m.get("resolution_field") or ("quality" if (res and res[0] in ("basic", "high", "standard", "hd")) else "resolution")
         if not res or resolution in res:
             p[fld] = resolution
     if duration and m.get("durations"):
         d = str(int(duration))
         p["duration"] = d if d in [str(x) for x in m["durations"]] else m["durations"][0]
-    if num:
+    if num and gateway_of(m) != "kie":        # kie has no standard num field; extra passthrough covers it
         fld = "num_images" if m.get("kind") == "image" else "num_videos"
         p[fld] = max(1, int(num))
     if mode in ("i2i", "i2v"):
         if not image_urls:
             raise ZooError("is model ko kam se kam EK image URL chahiye (reference photo / start frame).")
         if m.get("max_images") and len(image_urls) > 1:
-            p["images_list"] = image_urls[: int(m["max_images"])]
+            p[m.get("images_param") or "images_list"] = image_urls[: int(m["max_images"])]
         else:
             p[m.get("image_field") or "image_url"] = image_urls[0]
     for k, v in (extra or {}).items():
@@ -152,9 +181,111 @@ def _payload(m: dict, prompt: str, image_urls: list[str], aspect: str = "", reso
     return p
 
 
+async def kie_upload(data_url: str) -> str:
+    """A data-URI / local reference -> a public kie CDN URL (their base64 upload), for kie models."""
+    k = kie_key()
+    if not k:
+        raise ZooError("zoo kie: reference upload ke liye ZOO_KIE_KEY chahiye (server env).")
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120, connect=20)) as c:
+            r = await c.post(KIE_UPLOAD, headers={"Authorization": f"Bearer {k}", "Content-Type": "application/json"},
+                             json={"base64Data": data_url, "uploadPath": "hoola-zoo",
+                                   "fileName": f"ref-{int(time.time() * 1000)}.jpg"})
+            if r.status_code >= 400:
+                raise ZooError(f"zoo kie upload HTTP {r.status_code}: {r.text[:300]}",
+                               transient=r.status_code == 429 or r.status_code >= 500)
+            j = r.json() if r.content else {}
+    except httpx.HTTPError as e:
+        raise ZooError(f"zoo kie upload failed: {e}", transient=True) from None
+    d = j.get("data") if isinstance(j.get("data"), dict) else {}
+    url = d.get("downloadUrl") or d.get("url") or j.get("downloadUrl") or j.get("url")
+    if not url:
+        raise ZooError(f"zoo kie upload ne URL nahi diya: {json.dumps(j)[:200]}")
+    return str(url)
+
+
+async def _kie_images(image_urls: list[str]) -> list[str]:
+    """kie wants public URLs: http(s) passes, data-URIs and local files upload to their CDN first."""
+    out: list[str] = []
+    for u in image_urls:
+        u = str(u or "").strip()
+        if u.startswith("http://") or u.startswith("https://"):
+            out.append(u)
+        elif u.startswith("data:"):
+            out.append(await kie_upload(u))
+        elif Path(u).is_file():
+            from .studio.providers import data_uri
+            out.append(await kie_upload(data_uri(u)))
+        else:
+            out.append(u)               # not ours to fix - the gateway says what is wrong
+    return out
+
+
+async def _kie_submit(m: dict, prompt: str, image_urls: list[str], aspect: str = "",
+                      resolution: str = "", duration=None, num=None, extra: dict | None = None) -> str:
+    """POST /api/v1/jobs/createTask {model, input} -> "kie:<taskId>" (the prefix routes poll/status)."""
+    k = kie_key()
+    if not k:
+        raise ZooError("zoo key server par set nahi hai: owner ZOO_KIE_KEY env add karein (kie.ai key). "
+                       "Tab tak zoo list/search kaam karta hai, generate nahi.")
+    input_body = _payload(m, prompt, await _kie_images(image_urls), aspect, resolution, duration, num, extra)
+    body = {"model": m["endpoint"], "input": input_body}
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=20)) as c:
+            r = await c.post(f"{KIE_BASE}/api/v1/jobs/createTask", json=body,
+                             headers={"Authorization": f"Bearer {k}", "Content-Type": "application/json"})
+            if r.status_code >= 400:
+                raise ZooError(f"zoo kie submit HTTP {r.status_code}: {r.text[:300]}",
+                               transient=r.status_code in (408, 429) or r.status_code >= 500)
+            j = r.json() if r.content else {}
+    except httpx.HTTPError as e:
+        raise ZooError(f"zoo kie submit failed: {e}", transient=True) from None
+    d = j.get("data") if isinstance(j.get("data"), dict) else {}
+    tid = d.get("taskId") or d.get("task_id")
+    if j.get("code") not in (200, 505) or not tid:
+        raise ZooError(f"zoo kie submit rejected ({j.get('code')}): {str(j.get('msg') or j.get('message') or '')[:200]} "
+                       f"{json.dumps(j)[:200]}")
+    return f"kie:{tid}"
+
+
+async def _kie_poll(task_id: str) -> dict:
+    """GET /api/v1/jobs/recordInfo?taskId= -> state success|fail|waiting...; resultJson.resultUrls."""
+    k = kie_key()
+    if not k:
+        raise ZooError("zoo kie key server par set nahi hai (ZOO_KIE_KEY).")
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=20)) as c:
+            r = await c.get(f"{KIE_BASE}/api/v1/jobs/recordInfo", params={"taskId": task_id},
+                            headers={"Authorization": f"Bearer {k}"})
+            if r.status_code >= 400:
+                raise ZooError(f"zoo kie poll HTTP {r.status_code}: {r.text[:300]}",
+                               transient=r.status_code in (408, 429) or r.status_code >= 500)
+            j = r.json() if r.content else {}
+    except httpx.HTTPError as e:
+        raise ZooError(f"zoo kie poll failed: {e}", transient=True) from None
+    rec = j.get("data") if isinstance(j.get("data"), dict) else {}
+    st = str(rec.get("state", "")).lower()
+    if st in ("success", "completed", "done"):
+        urls: list[str] = []
+        try:
+            rj = json.loads(rec.get("resultJson") or "{}")
+            urls = [str(x) for x in (rj.get("resultUrls") or []) if str(x).startswith("http")]
+        except (ValueError, TypeError):
+            pass
+        for u in urls:
+            _public(u)
+        return {"status": "done", "urls": urls, "elapsed": rec.get("completedAt") or rec.get("completed_at"), "raw": st}
+    if st in ("fail", "failed", "error", "cancelled", "canceled"):
+        why = str(rec.get("failMsg") or rec.get("failmsg") or rec.get("error") or "unknown reason")[:300]
+        return {"status": "failed", "urls": [], "error": why, "raw": st}
+    return {"status": "pending", "urls": [], "raw": st or "unknown"}
+
+
 async def submit(m: dict, prompt: str, image_urls: list[str] | None = None, aspect: str = "",
                  resolution: str = "", duration=None, num=None, extra: dict | None = None) -> str:
-    if not ready():
+    if gateway_of(m) == "kie":
+        return await _kie_submit(m, prompt, list(image_urls or []), aspect, resolution, duration, num, extra)
+    if not ready_for(m):
         raise ZooError("zoo key server par set nahi hai: owner ZOO_MUAPI_KEY env add karein (Muapi.ai key). "
                        "Tab tak zoo list/search kaam karta hai, generate nahi.")
     url = f"{BASE}/api/v1/{m['endpoint']}"
@@ -199,7 +330,10 @@ def _urls(j: dict) -> list[str]:
 
 
 async def poll(request_id: str) -> dict:
-    """One poll: {'status': 'pending'|'done'|'failed', 'urls': [...], 'elapsed': s, 'raw': status}."""
+    """One poll: {'status': 'pending'|'done'|'failed', 'urls': [...], 'elapsed': s, 'raw': status}.
+    "kie:"-prefixed ids ride the kie recordInfo transport; bare ids stay muapi (old jobs keep working)."""
+    if str(request_id).startswith("kie:"):
+        return await _kie_poll(str(request_id)[4:])
     url = f"{BASE}/api/v1/predictions/{request_id}/result"
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=20)) as c:
@@ -238,7 +372,8 @@ def _count(m: dict, tenant: str, seconds: float = 0.0) -> None:
     """Count one finished job in usage (never raises - counting must not break the work)."""
     try:
         from . import usage
-        usage.record(f"zoo:{m['endpoint']}", sec_out=float(seconds or 0.0), tenant=tenant)
+        tag = f"zoo:{m['endpoint']}" if gateway_of(m) != "kie" else f"zoo:kie:{m['endpoint']}"
+        usage.record(tag, sec_out=float(seconds or 0.0), tenant=tenant)
     except Exception:
         log.exception("zoo: usage record failed")
 
