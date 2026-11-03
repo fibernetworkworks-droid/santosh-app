@@ -8,9 +8,9 @@ window.HoolaWorkspace = ctx => {
     image: {label:'Image', title:'An idea, ready to take shape.', tool:'Image creation',
       hint:'Describe the subject, setting, style and words to include.',
       starter:'Create a premium product launch image for FNW AI Node. Use violet, indigo and a small orange accent. Keep the product name readable.'},
-    video: {label:'Video & motion', title:'Give your idea a story.', tool:'Video studio',
-      hint:'Describe the shots, subject and movement. Hoola prepares the storyboard first.',
-      starter:'Plan a product launch film for FNW AI Node: a wide product reveal, a close-up of the hardware, then the brand ending. English voiceover. No unverified product claims.'},
+    video: {label:'Video & motion', title:'Give your idea a story.', tool:'Video & motion (HOOLA FRAMES)',
+      hint:'Describe the story. The free engine renders an animated MP4 in ~2 minutes; AI film makes the filmed look (paid).',
+      starter:'Diwali sale ka 15 second vertical video: "Sharma Electronics", 30% off, festive glow, Hindi text, 9:16.'},
     research: {label:'Research', title:'A clearer view of what’s next.', tool:'Research brief',
       hint:'Describe your question, scope and the decision the research should support.',
       starter:'Research the Indian ISP automation market. Compare existing tools using official sources, identify operator workflow gaps, and give a cited launch plan. Separate evidence from assumptions.'},
@@ -30,13 +30,13 @@ window.HoolaWorkspace = ctx => {
     if (!$('#cw-prompt')) return;
     drafts[mode] = {text:$('#cw-prompt').value, aspect:$('#cw-aspect')?.value,
       quality:$('#cw-quality')?.value, seconds:$('#cw-seconds')?.value, style:drafts[mode]?.style||'',
-      language:$('#cw-language')?.value, format:$('#cw-format')?.value, sources:$('#cw-sources')?.value};
+      vengine:$('#cw-vengine')?.value, language:$('#cw-language')?.value, format:$('#cw-format')?.value, sources:$('#cw-sources')?.value};
   };
   const chips = (group, list, cur, label) => `<div class="cw-chips" role="group" aria-label="${label}">${list.map(([v, n]) =>
     `<button type="button" class="cw-chip" data-${group}="${esc(v)}" aria-pressed="${v === cur}">${n}</button>`).join('')}</div>`;
   function submitLabel(d) {
     if (mode === 'image') return `Create image · ${COST[d.quality === 'best' ? 'best' : 'fast']}`;
-    if (mode === 'video') return 'Prepare storyboard · free';
+    if (mode === 'video') return d.vengine === 'film' ? 'Prepare storyboard · free' : 'Render video · free · ~2 min';
     return mode === 'research' ? 'Start research' : 'Create document';
   }
   function render() {
@@ -44,7 +44,7 @@ window.HoolaWorkspace = ctx => {
     root.innerHTML=`<div class="cw-studio"><form class="cw-form cw-rail" id="cw-form">
         <div class="cw-head"><span class="cw-eyebrow">Create</span><h2>${m.title}</h2></div>
         <div class="cw-tabs" role="group" aria-label="Creation type">${Object.entries(MODES).map(([k,v])=>`<button type="button" data-mode="${k}" aria-pressed="${k===mode}">${v.label}</button>`).join('')}</div>
-        <div class="cw-tool"><b>${m.tool}</b><span>${mode==='image'?'Readable text in Hindi, Marathi or English':mode==='video'?'Storyboard and price first, video only on your Haan':mode==='research'?'Cited sources, facts kept apart from guesses':'Word, PDF, Excel or slides from your sources'}</span></div>
+        <div class="cw-tool"><b>${m.tool}</b><span>${mode==='image'?'Readable text in Hindi, Marathi or English':mode==='video'?(d.vengine==='film'?'Storyboard and price first, video only on your Haan':'Free in-house render: animated MP4 in chat in about 2 minutes'):mode==='research'?'Cited sources, facts kept apart from guesses':'Word, PDF, Excel or slides from your sources'}</span></div>
         <div class="cw-box">
           <div class="cw-lrow"><label class="cw-label" for="cw-prompt">${mode==='research'?'What do you want to find out?':'Prompt'}</label><button class="cw-link" type="button" data-cw="example">Try an example</button></div>
           <textarea id="cw-prompt" maxlength="12000" required placeholder="${esc(m.hint)}">${esc(d.text||'')}</textarea>
@@ -58,12 +58,12 @@ window.HoolaWorkspace = ctx => {
         ${mode==='image'?`<div class="cw-sec"><span class="cw-sl">Quality</span>${chips('quality',[['fast',`Standard <small>${COST.fast}</small>`],['best',`Best <small>${COST.best}</small>`]],d.quality==='best'?'best':'fast','Quality')}
           <select id="cw-quality" hidden aria-hidden="true" tabindex="-1"><option value="fast"${d.quality!=='best'?' selected':''}>Standard</option><option value="best"${d.quality==='best'?' selected':''}>Best</option></select></div>`:''}
         <div class="cw-options">
-          ${mode==='video'?`<label>Length<select id="cw-seconds">${[15,30,60].map(n=>`<option value="${n}"${String(n)===(d.seconds||'15')?' selected':''}>${n} seconds</option>`).join('')}</select></label><label>Voiceover<select id="cw-language">${['Hindi','Marathi','English'].map(l=>`<option${l===(d.language||'English')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
+          ${mode==='video'?`<div class="cw-sec"><span class="cw-sl">Engine</span>${chips('vengine',[['frames','HOOLA FRAMES <small>animated · free · ~2 min</small>'],['film','AI film <small>storyboard first · paid</small>']],d.vengine==='film'?'film':'frames','Engine')}<select id="cw-vengine" hidden aria-hidden="true" tabindex="-1"><option value="frames"${d.vengine!=='film'?' selected':''}>frames</option><option value="film"${d.vengine==='film'?' selected':''}>film</option></select></div><label>Length<select id="cw-seconds">${[15,30,60].map(n=>`<option value="${n}"${String(n)===(d.seconds||'15')?' selected':''}>${n} seconds</option>`).join('')}</select></label>${d.vengine==='film'?`<label>Voiceover<select id="cw-language">${['Hindi','Marathi','English'].map(l=>`<option${l===(d.language||'English')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}`:''}
           ${mode==='research'?`<label>Source preference<select id="cw-sources"><option value="web"${d.sources!=='files'?' selected':''}>Public web + attached files</option><option value="files"${d.sources==='files'?' selected':''}>Attached files only</option></select></label>`:''}
           ${mode==='document'?`<label>Output<select id="cw-format">${['Word (.docx)','PDF (.pdf)','Excel (.xlsx)','Presentation (.pptx)'].map(l=>`<option${l===(d.format||'Word (.docx)')?' selected':''}>${l}</option>`).join('')}</select></label>`:''}
         </div>
         <div class="cw-send"><span id="cw-sending" role="status" aria-live="polite"></span><button class="btn go" id="cw-submit" type="submit">${submitLabel(d)}</button></div>
-        <p class="cw-note">${mode==='video'?'You see the storyboard and the price before any paid video is made.':mode==='image'?'Prices are estimates; the real cost shows in AI spend. Every picture carries the "AI se bana" label.':'Hoola works with the sources and services available to your account.'}</p>
+        <p class="cw-note">${mode==='video'?(d.vengine==='film'?'You see the storyboard and the price before any paid video is made.':'The free engine renders your text, shapes and attached images into a real MP4. It cannot film real people, and voiceover needs the AI film engine.'):mode==='image'?'Prices are estimates; the real cost shows in AI spend. Every picture carries the "AI se bana" label.':'Hoola works with the sources and services available to your account.'}</p>
       </form>${ctx.gallery?.()?`<section class="cw-gallery" aria-label="Your creations"><div class="cw-ghead"><h3>Your creations</h3><button class="btn soft" type="button" data-cw="library">Open library ↗</button></div>
         <div class="cw-gbar">${chips('gk',GALLERY.map(([k,n])=>[k,n]),gal.kind,'Show')}<label class="cw-gq"><span aria-hidden="true">⌕</span><input id="cw-gq" placeholder="Search creations" aria-label="Search creations" value="${esc(gal.q)}"></label></div>
         <div class="cw-ggrid" id="cw-ggrid"></div></section>`
@@ -128,7 +128,8 @@ window.HoolaWorkspace = ctx => {
     const refs=files.map(f=>`${f.name} [file_id: ${f.file_id}]`).join('\n');
     const context=refs?`\nAttached references:\n${refs}`:'';
     if(mode==='image')return `Create ${files.length?'an edited image using my reference images':'a new image'} with photo_banao. Aspect ${d.aspect||'16:9'}, quality ${d.quality||'fast'}.${d.style?` Style: ${d.style}.`:''}\nBrief: ${d.text}${context}\nReturn the actual image result. Preserve any provided product identity and exact requested wording.`;
-    if(mode==='video')return `Use video_studio to prepare a ${d.seconds||15}-second ${d.aspect||'16:9'} video storyboard with ${d.language||'English'} voiceover.\nBrief: ${d.text}${context}\nPrepare the shot plan and estimate. Do not start paid generation until I approve its cost. Return the storyboard and existing project card. Do not claim a completed video before generation and assembly.`;
+    if(mode==='video' && d.vengine==='film')return `Use video_studio to prepare a ${d.seconds||15}-second ${d.aspect||'16:9'} video storyboard with ${d.language||'English'} voiceover.\nBrief: ${d.text}${context}\nPrepare the shot plan and estimate. Do not start paid generation until I approve its cost. Return the storyboard and existing project card. Do not claim a completed video before generation and assembly.`;
+    if(mode==='video')return `Use hoola_frames to render a real MP4 with the free in-house engine: a ${d.seconds||15}-second ${d.aspect||'16:9'} animated video.\nBrief: ${d.text}${context}\nWrite the composition HTML yourself per the HOOLA FRAMES contract (app/studio/frames_contract.md): clips with data-start/data-duration, one paused GSAP timeline on window.__timelines, no network fetch, no wall clock, no Math.random, safe margins, fonts with fallbacks. Copy the attached reference images into the project and use them as assets.\nRun action=check first and fix every error it reports, then action=render. Put the MP4 file card in this chat. Do not claim the video is ready before action=render succeeds.`;
     if(mode==='research')return `Research this question: ${d.text}${context}\nSource preference: ${d.sources==='files'?'Use ONLY the attached files; do not browse or use external sources. State what these files do not establish.':'Use current public sources and the attached files. Prefer primary sources.'}\nShow a work plan, then research. Cite sources, distinguish facts from inference, and state gaps. Return the report here in chat, and create a downloadable document if supported.`;
     return `Create a real ${d.format||'Word (.docx)'} document.\nBrief: ${d.text}${context}\nUse the provided source material. Do not invent company facts. Show the finished file in chat with a download and preview. If information is missing, mark it clearly.`;
   }
@@ -150,6 +151,7 @@ window.HoolaWorkspace = ctx => {
       root.querySelectorAll('[data-style]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.style===d.style));return;}
     if(b.dataset.aspect||b.dataset.quality){const k=b.dataset.aspect?'aspect':'quality',sel=$(`#cw-${k}`);sel.value=b.dataset[k];take();
       root.querySelectorAll(`[data-${k}]`).forEach(x=>x.setAttribute('aria-pressed',x===b));$('#cw-submit').textContent=submitLabel(drafts[mode]);return;}
+    if(b.dataset.vengine){take();drafts[mode].vengine=b.dataset.vengine;render();return;}
     if(b.dataset.gk!==undefined){gal.kind=b.dataset.gk;root.querySelectorAll('[data-gk]').forEach(x=>x.setAttribute('aria-pressed',x===b));fillGallery();return;}
     if(b.dataset.rm!==undefined){if(sending)return;files.splice(+b.dataset.rm,1);drawFiles();return;}
     if(b.dataset.cw==='attach')$('#cw-files').click();

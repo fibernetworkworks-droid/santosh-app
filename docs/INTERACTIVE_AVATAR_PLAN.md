@@ -197,3 +197,83 @@ during an answer; frame streaming + WebRTC to a phone; MORE THAN ONE student on 
 two streams, but that is untested); a real consented / AI-made teacher face (the test used MuseTalk's own demo person); IndicF5 after
 its transformers pin. The per-call lab path (models reloaded each call) measured 12x - never use it as the speed.
 Next (Phase 1/3): an always-warm face service on the L40S with a streaming output, then the concurrency test.
+
+**First concurrency measurement (3 Nov 2026, L40S, `streams`, batch 8, 24 s of speech per stream, one container):**
+1 student 23.5 fps (NOT smooth: 1.5 s frozen over 24 s), 2 students 18.1 fps each (36 fps total), 3 students 14.4 fps each (43 fps total),
+4 students hung to Modal's 1800 s limit (cause unknown; ~$1 of idle L40S). Total ~43 fps = the GPU ceiling = about 1.7 real-time streams
+of GPU AT MOST, so ONE L40S holds roughly 1-2 live students, not 4+; a single stream was CPU-bound (blend + JPEG in line with the GPU,
+default 0.125 CPU). Fix tried next: 4 CPU cores, CPU half on a thread pool overlapped with the next GPU batch, a 420 s client watchdog.
+The cost per student-minute is therefore between $0.033 (one stream per GPU) and ~$0.02 (1.7), NOT the optimistic "several per GPU".
+
+**Second concurrency run (3 Nov 2026, L40S, after 4 CPU cores + CPU/GPU overlap): ONE live student is SMOOTH** - first frames 0.79 s
+(includes analysing the whole 24 s clip up front; a streaming voice would start sooner), **37.7 fps, 0 stalls, 0.0 s frozen** (needs 25).
+So one L40S can hold one live student with ~1.5x headroom. TWO students hung (no error text) until the 420 s watchdog; the previous
+non-overlapped build managed 2-3 slowly, so the new thread pool deadlocks under two streams. Next: OpenCV set to 1 thread, a faulthandler
+thread dump every 240 s in the container log, watchdog 240 s, then re-run `streams`. Until two is proven, plan CAPACITY = 1 student per
+L40S -> $0.033 per student-minute (+~$0.065 idle tail per session).
+
+
+
+**Why two students per GPU is off the table (3rd concurrency run, same day):** the faulthandler dump of the hung 2-student run shows BOTH
+threads inside the UNet forward (modal_app.py `stream`, diffusers `unet_2d_condition.forward` -> `Linear`), the CPU pool idle: two Python
+threads calling the GPU at once stalled it. And even if they did not, the card's total is ~43 fps (the bench ceiling), two students need 2 x 25.
+**Decision: ONE student per GPU container** (Live has no `@modal.concurrent`, `max_containers=4`); a second student gets a second card from Modal
+(a cold start: image + models ~7 s + face from the volume), so a WARM POOL (`min_containers`) is the next product question - it is what
+decides how long a student waits, and what it costs while nobody is talking.
+Cost of one live student-minute on an L40S, all-in: GPU $0.0325 + 4 CPU cores ~$0.0031 (Modal $0.0000131 per physical core-second) + memory
+~$0.001 (est., $0.00000222 per GiB-second) = **~$0.036 per student-minute** (+ the 120 s idle tail ~$0.07 per session), vs ~$0.08 HeyGen.
+
+**Third concurrency run (3 Nov 2026, L40S, one student per container, run #23):** 3 students arriving at once, each on its OWN L40S (Modal
+started the extra cards; the prepared face loaded from the volume): all smooth, 0.0 s frozen, 0 stalls, "3 simultaneous students all smooth".
+First frames: 1.01 s on the warm card, 36.1 s worst (cold container: start + models ~7 s + face from the volume + the card's first-call
+warm-up - the warm-up part is a likely cause, not confirmed). The "19.1 fps" in that row counts from the start of the call and so includes
+that slow first batch; playback (stall) is the measure. Decision still open for her: warm pool (one L40S kept warm ~ $1.95/h, ~$16 per
+8-hour school day) vs cold starts (~36 s for a student when no card is free, $0 idle). Not yet measured: voice -> face end to end, video
+delivery to a phone (WebRTC), the real teacher face.
+
+
+## 12. Live to a phone / browser (built, NOT yet run on a GPU)
+
+Transport decision: **WebSocket, not WebRTC, for the lab.** Modal exposes TCP / HTTPS / WebSocket but no UDP, and WebRTC
+needs UDP (or a TURN relay we do not have). The engine already makes 25 fps JPEG pictures and a WAV per speech chunk, so the
+engine's new `/live` WebSocket sends exactly those, and the page plays them with the audio as the clock. A WebRTC front
+(aiortc on our own GPU server, later) can replace the transport without touching the pipeline.
+
+- Engine: `/live` in `avatar_engine/modal_app.py`. First message `{key, avatar_id, text, lang}` (key never in the address);
+  `split_speech` chunks; every chunk's voice starts at once on the warm voice containers; the face is made chunk by chunk;
+  binary frames `[type u8][chunk u16][index u32][payload]` (2 = WAV, 1 = JPEG); status lines as JSON. The face stream is
+  always read to its end (cancelling a Modal call restarts the container); voice calls are never cancelled.
+- Student side: `server/app/static/interactive/live.html` + `live.js` (served at `/static/interactive/live.html`): jitter
+  buffer 0.35 s before the first word, each next chunk starts exactly when the previous ends, the picture shown is the one
+  for the audio clock's moment, a missing picture holds the last one and counts a stall. The key is typed in, kept in memory
+  only, never stored.
+- NOT verified: a real browser / phone against the real engine, stalls over mobile data, the first-picture time as the
+  STUDENT sees it (adds network + decode to the 2.8 s measured inside Modal), many students, the tutor brain feeding it text.
+- Run it: Actions > Interactive lab > `deploy` (prints the engine's web address; `lab-live` was prepared by the e2e runs and
+  lives on the volume), open `/static/interactive/live.html` on the Hoola server, paste the address + engine key, Speak.
+- **No key in the browser (owner: "ATTACH THE SAVED GITHUB KEY DIRECTLY TO WEB")**: vps-ops > `engine_attach` copies the repo
+  secret `HOOLA_ENGINE_KEY` into the server's `.env` (`AVATAR_ENGINE_KEY` + the engine address) the same runner-side way as
+  `zoo_key`; the page asks `POST /api/interactive/ticket` (owner only, signed-in console token) and gets a 2-minute pass for ONE
+  avatar (`lab.make_ticket`, HMAC over `live|expires|avatar`); the engine's `/live` accepts that pass (`_ticket_ok`, same maths)
+  or the raw key. The key itself never leaves the server and Modal.
+
+## 13. HOOLA STUDIO - the HeyGen feature set on our own engine (built in code, GPU card NOT yet run)
+
+Engine side (`avatar_engine/modal_app.py`, `studio_job` + `/studio/<op>` + `/studio/job/<id>`; run the whole set once with
+Actions > Interactive lab > `studio`, which writes `lab_out/REPORT_studio.txt` + the videos to watch):
+
+| HeyGen feature | Op | How | State |
+|---|---|---|---|
+| Text to talking video | `video` | chunked Hindi voice (parallel) -> joined -> `Live.render` MP4 + WebVTT captions | code + tests; GPU card pending |
+| Photo avatar | `photo_face` + `video` | photo -> 6 s loop clip -> prepared face (mouth moves, head still) | pending |
+| Voice cloning (My Voice) | `voice_save` + `voice_id` | Chatterbox reference clip on the volume, consent `signed:<record>` mandatory | pending |
+| Speech to text | `transcribe` | faster-whisper small, CPU, language + word times | pending |
+| Video Translate / lip-sync dub | `dub` | speaker's own voice cloned -> new text spoken -> MuseTalk on their own video; the CALLER translates the text | pending |
+| Two-host video podcast | `podcast` | each line voiced + rendered with its host's face, cut together + captions | pending |
+| Personalised video at scale | `personalised` | `{name}` template x up to 20 names | pending |
+| Live avatar | `/live` | built earlier | built; her test pending |
+| Stock avatars / Digital Twin | `video` + prepared faces | needs consented faces + a consent-recording flow in the app | NOT built |
+| Avatar IV expressive gestures / full body | - | MuseTalk repaints the mouth only | NOT possible with this engine |
+| Background change / green screen | - | needs a commercially licensed matting model (licence sweep first) | NOT built |
+| Burned-in captions | - | WebVTT file only (Devanagari fonts + libass untested) | NOT built |
+| API / MCP / metering | - | Hoola server door + minute meter | NEXT |

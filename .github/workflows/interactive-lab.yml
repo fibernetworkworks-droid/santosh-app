@@ -15,12 +15,17 @@ on:
         description: What to run
         type: choice
         default: smoke
-        options: [setup, prefetch, smoke, face, bench, streams, deploy, down]
+        options: [setup, prefetch, smoke, face, bench, streams, e2e, studio, deploy, down]
       gpu:
         description: GPU for this run (T4 is cheapest, L4 is the free-credit default, A10G / L40S are faster)
         type: choice
         default: L4
         options: [T4, L4, A10G, L40S]
+      warm:
+        description: Keep one voice + one face container running for this run (1) so no cold start; 0 = scale to zero. Never use 1 with 'deploy' unless you want a GPU billed all day.
+        type: choice
+        default: '0'
+        options: ['0', '1']
 
 concurrency:
   group: interactive-lab
@@ -34,6 +39,8 @@ jobs:
       MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
       MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
       HOOLA_LAB_GPU: ${{ inputs.gpu }}
+      HOOLA_LAB_WARM: ${{ inputs.warm }}
+      HOOLA_LAB_VOICES: ${{ inputs.warm == '1' && '3' || '0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -82,6 +89,16 @@ jobs:
         working-directory: avatar_engine
         run: modal run modal_app.py::bench_streams
 
+      - name: End to end - Hindi text to voice to first picture (two containers)
+        if: inputs.job == 'e2e'
+        working-directory: avatar_engine
+        run: modal run modal_app.py::bench_e2e
+
+      - name: Studio card - every HeyGen-style feature once (text to video, photo avatar, my voice, transcribe, dub, podcast, one video many names)
+        if: inputs.job == 'studio'
+        working-directory: avatar_engine
+        run: modal run modal_app.py::studio_card
+
       - name: Deploy the engine endpoint
         if: inputs.job == 'deploy'
         working-directory: avatar_engine
@@ -95,7 +112,7 @@ jobs:
         run: modal app stop hoola-lab
 
       - name: Keep the clips and the timing report
-        if: (inputs.job == 'smoke' || inputs.job == 'face' || inputs.job == 'bench' || inputs.job == 'streams') && always()
+        if: (inputs.job == 'smoke' || inputs.job == 'face' || inputs.job == 'bench' || inputs.job == 'streams' || inputs.job == 'e2e' || inputs.job == 'studio') && always()
         uses: actions/upload-artifact@v4
         with:
           name: lab-output-${{ inputs.gpu }}

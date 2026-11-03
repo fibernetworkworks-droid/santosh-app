@@ -35,6 +35,8 @@ import registry
 
 APP = "hoola-lab"
 GPU = os.environ.get("HOOLA_LAB_GPU", "L4")          # L4 is in Modal's free monthly credit range; A10G / L40S for speed tests
+WARM = int(os.environ.get("HOOLA_LAB_WARM", "0"))      # containers kept running (0 = scale to zero); 1 = a teacher mid-lesson never meets a cold start
+VOICE_WARM = int(os.environ.get("HOOLA_LAB_VOICES", "3" if WARM else "0"))   # voice containers kept warm (one per early chunk: two chunks sharing a card each ran ~30 % slower): chunks 2, 3... are made at the SAME time as chunk 1 on the others
 IDLE = 120                                          # seconds an idle container lives (credit saver)
 MODELS_DIR = "/models"
 HF_ENV = {"HF_HOME": f"{MODELS_DIR}/hf", "HF_HUB_ENABLE_HF_TRANSFER": "0"}
@@ -85,6 +87,9 @@ face_image = (
     .env(HF_ENV)
     .add_local_python_source("registry")
 )
+hear_image = (modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg")
+              .pip_install("faster-whisper==1.1.0").add_local_python_source("registry"))
+studio_image = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg").add_local_python_source("registry")
 web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi[standard]").add_local_python_source("registry")
 
 
@@ -112,7 +117,8 @@ def _tmp(data: bytes | None, suffix: str) -> str | None:
 
 
 # ---------------------------------------------------------------- voice engines
-@app.cls(gpu=GPU, image=chatterbox_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600)
+@app.cls(gpu=GPU, image=chatterbox_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600,
+         min_containers=VOICE_WARM, max_containers=4)
 class Chatterbox:
     @modal.enter()
     def load(self):
@@ -127,12 +133,71 @@ class Chatterbox:
         volume.commit()
 
     @modal.method()
-    def speak(self, text: str, lang: str = "hi", ref_audio: bytes | None = None, **_) -> dict:
+    def save_voice(self, voice_id: str, wav: bytes, consent: str) -> dict:
+        """My Voice: keep ONE recorded reference clip of a person who agreed (consent = 'signed:<record id>'). Cloning a
+        voice that is not hers is exactly what the consent tag exists to stop."""
+        if not AVATAR_ID.match(voice_id or ""):
+            raise ValueError("voice_id: lower-case letters, digits, - and _ (max 40)")
+        if not re.match(r"^signed:[A-Za-z0-9_-]{4,64}$", consent or ""):
+            raise ValueError("a cloned voice needs consent 'signed:<record id>' - the person must have agreed")
+        if not wav or len(wav) > MAX_SPEAK_AUDIO:
+            raise ValueError("voice sample missing or over 8 MB")
+        os.makedirs(f"{MODELS_DIR}/voices", exist_ok=True)
+        with open(f"{MODELS_DIR}/voices/{voice_id}.wav", "wb") as f:
+            f.write(wav)
+        with open(f"{MODELS_DIR}/voices/{voice_id}.consent", "w") as f:
+            f.write(consent)
+        volume.commit()
+        return {"voice_id": voice_id, "bytes": len(wav)}
+
+    @modal.method()
+    def delete_voice(self, voice_id: str) -> dict:
+        if not AVATAR_ID.match(voice_id or ""):
+            raise ValueError("bad voice_id")
+        for ext in (".wav", ".consent"):
+            pth = f"{MODELS_DIR}/voices/{voice_id}{ext}"
+            if os.path.exists(pth):
+                os.remove(pth)
+        volume.commit()
+        return {"deleted": voice_id}
+
+    def _voice_ref(self, voice_id: str):
+        path = f"{MODELS_DIR}/voices/{voice_id}.wav"
+        if not os.path.exists(path):
+            volume.reload()
+        if not os.path.exists(path):
+            raise ValueError(f"voice '{voice_id}' is not saved")
+        with open(path, "rb") as f:
+            return f.read()
+
+    @modal.method()
+    def speak(self, text: str, lang: str = "hi", ref_audio: bytes | None = None, voice_id: str = "", **_) -> dict:
+        if voice_id:
+            if not AVATAR_ID.match(voice_id):
+                raise ValueError("bad voice_id")
+            ref_audio = self._voice_ref(voice_id)
         ref = _tmp(ref_audio, ".wav")
         t = time.time()
-        wav = self.model.generate(text, language_id=lang, **({"audio_prompt_path": ref} if ref else {}))
+        # Guard: a short line can make this voice ramble (one word -> 12 s of audio). A line of N words should speak for
+        # about N x 0.45 s (Hindi); more than N x 1.0 s + 2.5 s is a runaway - make it again, keep the shortest take.
+        limit = len(text.split()) * 1.0 + 2.5
+        best, tries = None, 0
+        for _ in range(3):
+            tries += 1
+            w = self.model.generate(text, language_id=lang, **({"audio_prompt_path": ref} if ref else {}))
+            peak = float(w.abs().max()) or 1.0                       # cut the silent tail the sampler leaves after the last word (keep 0.2 s)
+            loud = (w.abs() > 0.02 * peak).nonzero()
+            if loud.numel():
+                w = w[..., : min(w.shape[-1], int(loud[:, -1].max()) + int(0.2 * self.model.sr))]
+            secs = w.shape[-1] / self.model.sr
+            if best is None or secs < best[1]:
+                best = (w, secs)
+            if secs <= limit:
+                break
+        wav, secs = best
         out = _wav_bytes(wav, self.model.sr)
-        return {"wav": out, "sr": self.model.sr, "synth_s": round(time.time() - t, 2), "load_s": self.load_s}
+        return {"wav": out, "sr": self.model.sr, "synth_s": round(time.time() - t, 2), "load_s": self.load_s,
+                "tries": tries, "runaway": secs > limit}
 
 
 @app.cls(gpu=GPU, image=indicf5_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600)
@@ -343,6 +408,9 @@ class Face:
 
     @modal.method()
     def prepare(self, avatar_id: str, video: bytes, consent: str) -> dict:
+        return self._prepare_impl(avatar_id, video, consent)
+
+    def _prepare_impl(self, avatar_id: str, video: bytes, consent: str) -> dict:
         if not AVATAR_ID.match(avatar_id or ""):
             raise ValueError("avatar_id: lower-case letters, digits, - and _ (max 40)")
         if not CONSENT.match(consent or ""):
@@ -410,9 +478,10 @@ class Face:
 
 # ---------------------------------------------------------------- the locked web endpoint (Hoola server -> lab)
 # ---------------------------------------------------------------- live face (warm, in-process, streams frames)
-@app.cls(gpu=GPU, image=face_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=1800,
-         max_containers=1)          # ONE container = ONE GPU: the concurrency test must share a single card, never spread out
-@modal.concurrent(max_inputs=8)
+@app.cls(gpu=GPU, image=face_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600,
+         cpu=4,                     # the CPU half of every frame (blend + JPEG) needs real cores, not Modal's 0.125 default
+         min_containers=WARM, max_containers=4)          # ONE student per container (input concurrency stays off): measured, a second student on the same card
+                                    # hangs the GPU call AND could never be smooth (~43 fps total < 2 x 25), so Modal adds a card
 class Live:
     """The face the way a live teacher needs it: every model loaded ONCE when the container starts, prepared faces kept in
     memory, and `stream` hands back JPEG frames batch by batch as they are made (the lab's Face class starts a new process
@@ -460,6 +529,14 @@ class Live:
         whisper.requires_grad_(False)
         rt.fp = FaceParsing(left_cheek_width=90, right_cheek_width=90)
         rt.device, rt.vae, rt.unet, rt.pe, rt.whisper = device, vae, unet, pe, whisper
+        import faulthandler
+
+        import cv2
+        from concurrent.futures import ThreadPoolExecutor
+        cv2.setNumThreads(1)       # we run our own threads; OpenCV's inner pool on top of them is a classic stall / oversubscription
+        faulthandler.enable()
+        faulthandler.dump_traceback_later(240, repeat=True)   # a hang must show WHERE every thread is stuck, in the logs
+        self.pool = ThreadPoolExecutor(max_workers=6)      # CPU half of the frames, shared by every stream
         self.rt, self.torch = rt, torch
         self.avatars: dict = {}
         self.lock = threading.Lock()
@@ -484,10 +561,80 @@ class Live:
             t = time.time()
             self.avatars[avatar_id] = self.rt.Avatar(avatar_id=avatar_id, video_path=src, bbox_shift=0,
                                                      batch_size=8, preparation=True)
+            volume.commit()      # results/ is the volume: any container that starts later can load this face in seconds
             return {"avatar_id": avatar_id, "prepare_s": round(time.time() - t, 1), "cached": False, "load_s": self.load_s}
+
+    def _avatar(self, avatar_id: str):
+        """The prepared face: from memory, else from the volume (a fresh container for a second student)."""
+        av = self.avatars.get(avatar_id)
+        if av is not None:
+            return av
+        with self.lock:
+            av = self.avatars.get(avatar_id)
+            if av is None:
+                try:
+                    volume.reload()
+                except Exception:
+                    pass
+                if not AVATAR_ID.match(avatar_id or "") or not os.path.exists(
+                        f"{MUSE_DIR}/results/v15/avatars/{avatar_id}/latents.pt"):
+                    raise ValueError("unknown avatar (prepare it first, with consent)")
+                av = self.rt.Avatar(avatar_id=avatar_id, video_path="", bbox_shift=0, batch_size=8, preparation=False)
+                self.avatars[avatar_id] = av
+        return av
 
     @modal.method()
     def stream(self, avatar_id: str, audio: bytes, batch: int = 8, loops: int = 1):
+        yield from self._frames(avatar_id, audio, batch, loops)
+
+    @modal.method()
+    def prepare_photo(self, avatar_id: str, photo: bytes, consent: str) -> dict:
+        """Photo avatar: one still picture becomes a 6 s 25 fps clip and is prepared like a recorded face. The mouth
+        moves, the head does not (MuseTalk only repaints the mouth area)."""
+        if not photo or len(photo) > 10 * 1024 * 1024:
+            raise ValueError("photo missing or over 10 MB")
+        src = _tmp(photo, ".img")
+        out = f"/tmp/{uuid.uuid4().hex}_photo.mp4"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-loop", "1", "-i", src, "-t", "6", "-r", "25",
+                        "-vf", "scale='min(768,iw)':-2,pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p",
+                        "-c:v", "libx264", out], check=True)
+        with open(out, "rb") as f:
+            video = f.read()
+        return self._prepare_impl(avatar_id, video, consent)
+
+    @modal.method()
+    def render(self, avatar_id: str, audio: bytes) -> bytes:
+        """Not live: the whole speech as one MP4 (picture from the face, sound from `audio`)."""
+        d = f"/tmp/{uuid.uuid4().hex}"
+        os.makedirs(d)
+        n = 0
+        for b in self._frames(avatar_id, audio, 8, 1):
+            for jpg in b["frames"]:
+                with open(f"{d}/{n:06d}.jpg", "wb") as f:
+                    f.write(jpg)
+                n += 1
+        if not n:
+            raise ValueError("no pictures were made")
+        wav = _tmp(audio, ".wav")
+        out = f"{d}.mp4"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-framerate", "25", "-i", f"{d}/%06d.jpg", "-i", wav,
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", out], check=True)
+        with open(out, "rb") as f:
+            data = f.read()
+        shutil.rmtree(d, ignore_errors=True)
+        return data
+
+    @modal.method()
+    def forget(self, avatar_id: str) -> dict:
+        if not AVATAR_ID.match(avatar_id or ""):
+            raise ValueError("bad avatar_id")
+        with self.lock:
+            self.avatars.pop(avatar_id, None)
+        shutil.rmtree(f"{MUSE_DIR}/results/v15/avatars/{avatar_id}", ignore_errors=True)
+        volume.commit()
+        return {"forgotten": avatar_id}
+
+    def _frames(self, avatar_id: str, audio: bytes, batch: int = 8, loops: int = 1):
         """Generator: yields {first, frames:[jpeg bytes], ready_s, audio_prep_s}. `ready_s` = seconds since this call began
         when that batch was finished; the caller turns it into stalls against a 25 fps playhead."""
         import copy
@@ -496,9 +643,7 @@ class Live:
         import numpy as np
         from musetalk.utils.blending import get_image_blending
         from musetalk.utils.utils import datagen
-        av = self.avatars.get(avatar_id)
-        if av is None:
-            raise ValueError("unknown avatar (prepare it first, with consent)")
+        av = self._avatar(avatar_id)
         if not audio or len(audio) > MAX_SPEAK_AUDIO:
             raise ValueError("audio missing or over 8 MB")
         if not 1 <= int(batch) <= 32 or not 1 <= int(loops) <= 8:
@@ -518,20 +663,32 @@ class Live:
             chunks = rt.audio_processor.get_whisper_chunk(feats, rt.device, rt.weight_dtype, rt.whisper, length, fps=25,
                                                           audio_padding_length_left=2, audio_padding_length_right=2)
             prep = round(time.time() - t0, 2)
+            def finish(res, i):
+                """The CPU half of one frame: put the new mouth back into the full picture, then JPEG it."""
+                x1, y1, x2, y2 = av.coord_list_cycle[i % n]
+                res = cv2.resize(res.astype(np.uint8), (x2 - x1, y2 - y1))
+                frame = get_image_blending(copy.deepcopy(av.frame_list_cycle[i % len(av.frame_list_cycle)]), res,
+                                           [x1, y1, x2, y2], av.mask_list_cycle[i % len(av.mask_list_cycle)],
+                                           av.mask_coords_list_cycle[i % len(av.mask_coords_list_cycle)])
+                return cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])[1].tobytes()
+
+            def out_of(pend):
+                return {"first": pend[0], "frames": [f.result() for f in pend[1]], "ready_s": round(time.time() - t0, 3),
+                        "audio_prep_s": prep}
+
+            pending = None      # the previous batch: its CPU work runs on the pool while the GPU makes the next one
             for wb, lb in datagen(chunks, av.input_latent_list_cycle, int(batch)):
                 af = rt.pe(wb.to(rt.device))
                 lb = lb.to(device=rt.device, dtype=rt.unet.model.dtype)
                 pred = rt.unet.model(lb, rt.timesteps, encoder_hidden_states=af).sample.to(device=rt.device, dtype=rt.vae.vae.dtype)
-                out, first = [], idx
-                for res in rt.vae.decode_latents(pred):
-                    x1, y1, x2, y2 = av.coord_list_cycle[idx % n]
-                    res = cv2.resize(res.astype(np.uint8), (x2 - x1, y2 - y1))
-                    frame = get_image_blending(copy.deepcopy(av.frame_list_cycle[idx % len(av.frame_list_cycle)]), res,
-                                               [x1, y1, x2, y2], av.mask_list_cycle[idx % len(av.mask_list_cycle)],
-                                               av.mask_coords_list_cycle[idx % len(av.mask_coords_list_cycle)])
-                    out.append(cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])[1].tobytes())
-                    idx += 1
-                yield {"first": first, "frames": out, "ready_s": round(time.time() - t0, 3), "audio_prep_s": prep}
+                recon = list(rt.vae.decode_latents(pred))
+                cur = (idx, [self.pool.submit(finish, r, idx + k) for k, r in enumerate(recon)])
+                idx += len(recon)
+                if pending is not None:
+                    yield out_of(pending)
+                pending = cur
+            if pending is not None:
+                yield out_of(pending)
 
 
 @app.function(image=web_image, secrets=[secret], timeout=1800)
@@ -539,7 +696,7 @@ class Live:
 def web():
     import hmac
 
-    from fastapi import Depends, FastAPI, Header, HTTPException
+    from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket
     from fastapi.responses import Response
 
     api = FastAPI(title="Hoola Interactive Model Lab")
@@ -604,6 +761,110 @@ def web():
     @api.post("/face/forget", dependencies=[Depends(key)])
     def face_forget(body: dict):
         return Face().forget.remote(str(body.get("avatar_id") or ""))
+
+    BYTES_IN = {"photo": 10 * 1024 * 1024, "wav": MAX_SPEAK_AUDIO, "media": MAX_FACE_VIDEO, "video": MAX_FACE_VIDEO}
+
+    @api.post("/studio/{op}", dependencies=[Depends(key)])
+    def studio_start(op: str, body: dict):
+        """Start a Studio job (video / photo_face / voice_save / transcribe / dub / podcast / personalised). Returns a job id;
+        the work takes seconds to minutes, so the caller polls GET /studio/job/<id>."""
+        if op not in STUDIO_OPS:
+            raise HTTPException(404, "unknown studio op")
+        p = dict(body)
+        for k, cap in BYTES_IN.items():
+            if k in p:
+                p[k] = b64(p[k], cap, k)
+        fc = studio_job.spawn(op, p)
+        return {"job": fc.object_id}
+
+    @api.get("/studio/job/{job_id}", dependencies=[Depends(key)])
+    def studio_poll(job_id: str):
+        import modal as _m
+        try:
+            fc = _m.FunctionCall.from_id(job_id)
+            r = fc.get(timeout=0)
+        except TimeoutError:
+            return {"state": "running"}
+        except ValueError as e:                         # our own checks (consent, size, text length): safe and useful to show
+            return {"state": "failed", "error": str(e)[:300]}
+        except Exception as e:
+            print("studio job:", type(e).__name__, str(e)[:300], flush=True)
+            return {"state": "failed", "error": "the job failed - check the engine log"}
+        files = {k: base64.b64encode(v if isinstance(v, bytes) else str(v).encode()).decode() for k, v in (r.get("files") or {}).items()}
+        return {"state": "done", "info": r.get("info") or {}, "files": files}
+
+    async def live_socket(ws):
+        """One student, one live talk. The browser sends ONE json line {key, avatar_id, text, lang} (the key travels
+        in the message, never in the address), then receives: json status lines, and binary frames
+        [type u8][chunk u16][index u32][payload]: type 2 = a WAV chunk, type 1 = a JPEG picture of that chunk (25 fps).
+        Voice for every chunk starts at once on the warm voice containers; the face is made chunk by chunk."""
+        import asyncio
+        import struct
+
+        await ws.accept()
+        gone = False
+
+        async def say(**m):
+            nonlocal gone
+            if not gone:
+                try:
+                    await ws.send_text(json.dumps(m))
+                except Exception:
+                    gone = True
+
+        async def push(kind: int, k: int, i: int, data: bytes):
+            nonlocal gone
+            if not gone:
+                try:
+                    await ws.send_bytes(struct.pack(">BHI", kind, k, i) + data)
+                except Exception:
+                    gone = True
+
+        tasks: list = []
+        try:
+            hello = json.loads(await asyncio.wait_for(ws.receive_text(), 15))
+            want = os.environ.get("ENGINE_KEY", "")
+            avatar = str(hello.get("avatar_id") or "")
+            ok = bool(want) and (hmac.compare_digest(str(hello.get("key") or ""), want)
+                                 or _ticket_ok(str(hello.get("ticket") or ""), avatar, want))
+            if not ok:
+                await say(type="error", msg="locked")
+                return
+            text = str(hello.get("text") or "").strip()
+            if not AVATAR_ID.match(avatar) or not text or len(text) > MAX_TEXT:
+                await say(type="error", msg=f"avatar_id or text (1-{MAX_TEXT} characters) is not valid")
+                return
+            chunks = split_speech(text)
+            lang = str(hello.get("lang") or "hi")[:5]
+            await say(type="start", fps=25, chunks=len(chunks))
+            voice, face = Chatterbox(), Live()
+            tasks = [asyncio.create_task(voice.speak.remote.aio(c, lang)) for c in chunks]
+            for k, t in enumerate(tasks):
+                r = await asyncio.wait_for(t, 180)
+                await push(2, k, 0, r["wav"])
+                n = 0
+                # The stream is ALWAYS read to its end, even if the student left: cancelling a Modal call restarts its
+                # container (a cold start for the next student). A gone student just stops being sent to.
+                async for b in face.stream.remote_gen.aio(avatar, r["wav"], 8, 1):
+                    for jpg in b["frames"]:
+                        await push(1, k, n, jpg)
+                        n += 1
+                await say(type="chunk_done", id=k, frames=n)
+            await say(type="end")
+        except Exception as e:                          # never show internals to the browser
+            print("live socket:", type(e).__name__, str(e)[:300], flush=True)
+            await say(type="error", msg="the live talk stopped - try again")
+        finally:
+            for t in tasks:                              # voice calls are NOT cancelled (same restart rule): let them finish
+                if not t.done():
+                    t.add_done_callback(lambda f: f.exception())
+            try:
+                await ws.close()
+            except Exception:
+                pass
+
+    live_socket.__annotations__ = {"ws": WebSocket}      # this file uses postponed annotations: FastAPI could not find a name imported inside web()
+    api.websocket("/live")(live_socket)
 
     return api
 
@@ -770,11 +1031,12 @@ def _playback(batches: list) -> dict:
 
 @app.local_entrypoint()
 def bench_streams():
-    """How many students can ONE GPU hold at once? 1, 2, 3, 4 simultaneous streams of the same face on one warm container.
-    A stream is smooth when its pictures are ready before the 25 fps playhead needs them (stall ~ 0)."""
+    """What happens when 1, 2, 3 students arrive at once? Each is one stream of the same face; Modal gives each its own GPU
+    container (the first is warm, the others are cold starts). A stream is smooth when its pictures are ready before the
+    25 fps playhead needs them (stall ~ 0); first_batch_s shows how long a student waits when no card is free."""
     import threading
     os.makedirs("lab_out", exist_ok=True)
-    lines = [f"GPU {GPU}  one container, one card, batch 8, 24 s of speech per stream (the 8 s sample, 3 times)"]
+    lines = [f"GPU {GPU}  one student per container, batch 8, 24 s of speech per stream (the 8 s sample, 3 times)"]
 
     def note(text: str) -> None:
         lines.append(text)
@@ -788,9 +1050,9 @@ def bench_streams():
         audio = _sample_audio.remote()
         note(f"models loaded once: {p['load_s']}s   face prepared: {p['prepare_s']}s")
         _ = list(live.stream.remote_gen("lab-live", audio, 8, 1))                      # warm-up, not counted
-        note("streams  first_batch_s(worst)  stall_s(worst)  stalls(worst)  fps/stream(worst)  smooth?")
+        note("students  first_batch_s(best/worst)  stall_s(worst)  stalls(worst)  fps/student(worst)  smooth?")
         smooth_max = 0
-        for n in (1, 2, 3, 4):
+        for n in (1, 2, 3):
             res: list = [None] * n
 
             def one(i: int) -> None:
@@ -804,23 +1066,181 @@ def bench_streams():
                 r["first_wall"] = first_wall
                 res[i] = r
 
-            th = [threading.Thread(target=one, args=(i,)) for i in range(n)]
+            th = [threading.Thread(target=one, args=(i,), daemon=True) for i in range(n)]
             [x.start() for x in th]
-            [x.join() for x in th]
+            deadline = time.time() + 420      # cold starts of the extra containers take minutes; a hang must still cost only minutes
+            [x.join(max(0.0, deadline - time.time())) for x in th]
             ok = [r for r in res if r]
             if len(ok) < n:
-                note(f"{n:>7}  FAILED: only {len(ok)} of {n} streams finished")
-                continue
+                note(f"{n:>7}  FAILED: only {len(ok)} of {n} streams finished within 420 s - stopping here")
+                break
             worst_first = max(r["first_wall"] for r in ok)
+            best_first = min(r["first_wall"] for r in ok)
             worst_stall = max(r["stall_s"] for r in ok)
             worst_stalls = max(r["stalls"] for r in ok)
             worst_fps = min(r["fps"] for r in ok)
             smooth = worst_stall <= 0.25
             smooth_max = n if smooth and smooth_max == n - 1 else smooth_max
-            note(f"{n:>7}  {worst_first:>19}  {worst_stall:>14}  {worst_stalls:>13}  {worst_fps:>17}  {'yes' if smooth else 'NO'}")
-        note(f"RESULT: {smooth_max} simultaneous smooth stream(s) on one {GPU}")
+            note(f"{n:>8}  {str(best_first) + ' / ' + str(worst_first):>24}  {worst_stall:>14}  {worst_stalls:>13}  {worst_fps:>18}  {'yes' if smooth else 'NO'}")
+        note(f"RESULT: {smooth_max} simultaneous students all smooth, one {GPU} each")
     except Exception as e:
         note(f"streams FAILED: {type(e).__name__} {str(e)[:500]}")
+
+
+def _ticket_ok(ticket: str, avatar: str, key: str) -> bool:
+    """A pass made by the Hoola server (server/app/interactive/lab.py make_ticket): '<expires>.<avatar>.<hmac>' for ONE
+    avatar, valid for minutes. Same maths on both sides, so the browser never needs the key itself."""
+    import hashlib
+    import hmac
+    try:
+        exp, who, sig = ticket.split(".", 2)
+        if who != avatar or int(exp) < time.time():
+            return False
+        good = hmac.new(key.encode(), f"live|{exp}|{who}".encode(), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(sig, good)
+    except Exception:
+        return False
+
+
+def split_speech(text: str, first_words: int = 5) -> list:
+    """Cut a teacher's answer so speech starts early AND never runs dry: a first chunk of about five words (about
+    2 s of speech, ending at a comma / full stop when one is near), then chunks that GROW (~8, ~16, ~32 words),
+    each cut at a natural pause. Measured: voice time ~ 0.75 x the speech it makes, so every chunk must speak longer
+    than the next one takes to make; a chunk of 4-5 words (1.5 s of speech) left a 1.2 s gap. Never fewer than 3 words
+    in a chunk: a one-word line made the voice ramble for 12 s."""
+    import re
+    words = " ".join(text.split()).split(" ")
+    if not words or words == [""]:
+        return []
+    stop = re.compile(r"[,;:।.?!]$")
+
+    def cut_at(start: int, target: int) -> int:
+        end = min(len(words), start + target)
+        if end >= len(words):
+            return len(words)
+        lo, hi = start + max(3, int(target * 0.6)), min(len(words), start + int(target * 1.4) + 1)
+        best = None
+        for i in range(lo, hi):                                  # the pause closest to the target wins
+            if stop.search(words[i - 1]) and (best is None or abs(i - end) < abs(best - end)):
+                best = i
+        cut = best or end
+        if len(words) - cut < 3:                                 # no stub left over at the end
+            cut = len(words)
+        return cut
+
+    out, i, target = [], 0, max(3, first_words)
+    while i < len(words):
+        j = cut_at(i, target)
+        out.append(" ".join(words[i:j]))
+        i, target = j, min(target * 2, 40)
+    return out
+
+
+def _wav_seconds(wav: bytes) -> float:
+    """Length of a WAV in seconds, read from its header (no audio library needed on the runner)."""
+    i = wav.find(b"data")
+    if i < 0 or len(wav) < 36:
+        return 0.0
+    sr = int.from_bytes(wav[24:28], "little")
+    align = int.from_bytes(wav[32:34], "little") or 2
+    size = int.from_bytes(wav[i + 4:i + 8], "little")
+    size = min(size, len(wav) - i - 8)
+    return size / align / sr if sr else 0.0
+
+
+@app.local_entrypoint()
+def bench_e2e():
+    """Voice + face together: from 'the teacher decides to speak' to 'the first picture exists'. Two containers
+    (Chatterbox voice, then MuseTalk face), so this includes the hand-over of the audio between them."""
+    os.makedirs("lab_out", exist_ok=True)
+    lines = [f"GPU {GPU}  Hindi teacher lines: text -> Chatterbox voice -> MuseTalk face (warm, first 4 frames)"]
+
+    def note(text: str) -> None:
+        lines.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_e2e.txt", "w") as f:
+            f.write("\n".join(lines) + "\n")
+
+    cases = [
+        ("short greeting", "नमस्ते आरव, आज हम गति के बारे में सीखेंगे।"),
+        ("one sentence", "गति का मतलब है कि कोई चीज़ समय के साथ अपनी जगह कितनी तेज़ी से बदलती है।"),
+        ("long sentence", "अगर एक गाड़ी दो घंटे में एक सौ बीस किलोमीटर जाती है, तो उसकी औसत चाल साठ किलोमीटर प्रति घंटा होगी।"),
+        ("first clause only", "अगर एक गाड़ी दो घंटे में एक सौ बीस किलोमीटर जाती है,"),
+    ]
+    try:
+        voice, live = Chatterbox(), Live()
+        p = _call("live prepare", live.prepare, "lab-live", _sample_face.remote(), "ai_generated", wait=2700)
+        note(f"face prepared: {p['prepare_s']}s   (warm-up below is not counted)")
+        w = _call("voice warm-up", voice.speak, "नमस्ते।", "hi", wait=900)
+        _ = list(live.stream.remote_gen("lab-live", w["wav"], 4, 1))
+        _call("voice warm-up 2", voice.speak, cases[1][1], "hi", wait=900)      # a second, longer line so no row below is a first-use row
+        note("case               audio_s  tts_s  (gpu_s)  tts/audio  face_first_s  e2e_first_frame_s")
+        e2e_all, rtf_all = [], []
+        for name, text in cases:
+            t0 = time.time()
+            r = _call(f"voice: {name}", voice.speak, text, "hi", wait=300)
+            t_tts = time.time() - t0
+            audio_s = _wav_seconds(r["wav"])
+            first, e2e = None, None
+            for b in live.stream.remote_gen("lab-live", r["wav"], 4, 1):      # drain it ALL: cancelling a call makes Modal restart the container (= a cold start for the next row)
+                if first is None:
+                    first, e2e = b["ready_s"], time.time() - t0
+            rtf = round(t_tts / audio_s, 2) if audio_s else 0
+            e2e_all.append(e2e)
+            rtf_all.append(rtf)
+            note(f"{name:<18} {audio_s:>7.1f} {t_tts:>6.1f} {r['synth_s']:>8} {rtf:>10} {str(first):>13} {e2e:>18.1f}")
+        def keep(name: str, wav: bytes) -> None:          # the audio goes into the artifact so a person can LISTEN to it
+            with open(f"lab_out/e2e_{name}.wav", "wb") as f:
+                f.write(wav)
+
+        # A line of one word used to ramble for 12 s; the voice now makes it again when audio runs far past the words.
+        tiny = _call("voice: one word", voice.speak, "हाँ, ठीक है।", "hi", wait=300)
+        note(f"short-line probe: gpu {tiny['synth_s']}s for {_wav_seconds(tiny['wav']):.1f}s of audio, tries {tiny.get('tries')}, runaway {tiny.get('runaway')}")
+        keep("shortline", tiny["wav"])
+        # The real answer path: first chunk ~7 words, then chunks that grow. Voice runs ahead of playback.
+        long_text = " ".join(c[1] for c in (cases[1], cases[2])) + " अब आप बताइए कि अगर वही गाड़ी तीन घंटे चले, तो कितने किलोमीटर जाएगी?"
+        chunks = split_speech(long_text)
+        note(f"chunked answer: {len(chunks)} chunks of {[len(c.split()) for c in chunks]} words")
+        import threading
+        t0 = time.time()
+        done: dict = {}
+
+        def make(i: int, c: str) -> None:                  # every chunk is asked for at once; free voice containers pick them up in order
+            done[i] = (_call(f"voice: chunk {i}", voice.speak, c, "hi", wait=300), time.time() - t0)
+
+        th = []
+        for i, c in enumerate(chunks, 1):
+            x = threading.Thread(target=make, args=(i, c), daemon=True)
+            x.start()
+            th.append(x)
+            time.sleep(0.15)                               # keep the order: chunk 1 first
+        th[0].join(300)
+        r, ready = done[1]
+        keep("chunk1", r["wav"])
+        chunk_e2e = None
+        for b in live.stream.remote_gen("lab-live", r["wav"], 4, 1):
+            if chunk_e2e is None:
+                chunk_e2e = time.time() - t0
+        play_end = chunk_e2e + _wav_seconds(r["wav"])     # chunk 1 starts playing at its first picture
+        note(f"chunk 1 ({len(chunks[0].split())} words): voice ready at {ready:.1f}s, first picture {chunk_e2e:.1f}s, speaks {_wav_seconds(r['wav']):.1f}s, tries {r.get('tries')}")
+        gaps = 0.0
+        for i, c in enumerate(chunks[1:], 2):
+            th[i - 1].join(300)
+            r, ready = done[i]
+            keep(f"chunk{i}", r["wav"])
+            gap = max(0.0, ready - play_end)
+            gaps += gap
+            play_end = max(ready, play_end) + _wav_seconds(r["wav"])
+            note(f"chunk {i} ({len(c.split())} words): ready at {ready:.1f}s, speaks {_wav_seconds(r['wav']):.1f}s, tries {r.get('tries')}, wait before it: {gap:.1f}s")
+        e2e_all.append(chunk_e2e)
+        note(f"CHUNKED: first picture after {chunk_e2e:.1f} s; total waiting between chunks {gaps:.1f} s -> " + ("no gaps" if gaps < 0.3 else "audible gaps"))
+        best, worst = min(e2e_all), max(e2e_all)
+        word = "conversational (<=2 s)" if worst <= 2 else "acceptable (<=4 s)" if worst <= 4 else "slow (>4 s)"
+        note(f"RESULT: first picture after {best:.1f}-{worst:.1f} s -> {word}")
+        note("Voice keeps up with real time: " + ("yes, a long answer can be spoken sentence by sentence without gaps"
+             if max(rtf_all) < 1 else "NO - voice is slower than speech, long answers need the first clause sent early"))
+    except Exception as e:
+        note(f"e2e FAILED: {type(e).__name__} {str(e)[:500]}")
 
 
 @app.function(image=face_image, timeout=300)
@@ -835,3 +1255,285 @@ def _sample_face() -> bytes:
     """MuseTalk's own demo clip (shipped in its MIT repo) - a lab stand-in until our consented / AI-made face exists."""
     with open(f"{MUSE_DIR}/data/video/yongen.mp4", "rb") as f:
         return f.read()
+
+
+# ================================================================ HOOLA STUDIO - the HeyGen feature set on our own engine
+MAX_VIDEO_TEXT = 1800          # about 3 minutes of speech; longer scripts are cut into several videos by the caller
+MAX_DUB_VIDEO = MAX_FACE_VIDEO
+STUDIO_OPS = ("video", "photo_face", "voice_save", "transcribe", "dub", "podcast", "personalised")
+
+
+def _wav_concat(wavs: list, gap_s: float = 0.0) -> bytes:
+    """Join WAV files with the same format into one (stdlib only, so the small studio container can do it)."""
+    import io
+    import wave
+    out_params, frames = None, []
+    for w in wavs:
+        with wave.open(io.BytesIO(w), "rb") as r:
+            params = (r.getnchannels(), r.getsampwidth(), r.getframerate())
+            if out_params is None:
+                out_params = params
+            elif params != out_params:
+                raise ValueError("voice chunks do not share one audio format")
+            frames.append(r.readframes(r.getnframes()))
+    if out_params is None:
+        raise ValueError("nothing to join")
+    ch, width, rate = out_params
+    gap = b"\0" * (int(gap_s * rate) * ch * width)
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as o:
+        o.setnchannels(ch)
+        o.setsampwidth(width)
+        o.setframerate(rate)
+        o.writeframes(gap.join(frames))
+    return buf.getvalue()
+
+
+def _vtt(cues: list) -> str:
+    """WebVTT captions from [(start_s, end_s, text)]."""
+    def t(x: float) -> str:
+        h, rem = divmod(max(0.0, x), 3600)
+        m, sec = divmod(rem, 60)
+        return f"{int(h):02d}:{int(m):02d}:{sec:06.3f}"
+    lines = ["WEBVTT", ""]
+    for i, (a, b, text) in enumerate(cues, 1):
+        lines += [str(i), f"{t(a)} --> {t(b)}", text.strip(), ""]
+    return "\n".join(lines)
+
+
+def _mp4_concat(clips: list) -> bytes:
+    """Cut several MP4 clips together (re-encoded once so mixed sources always join)."""
+    d = f"/tmp/{uuid.uuid4().hex}"
+    os.makedirs(d)
+    names = []
+    for i, c in enumerate(clips):
+        n = f"{d}/c{i:03d}.mp4"
+        with open(n, "wb") as f:
+            f.write(c)
+        names.append(n)
+    with open(f"{d}/list.txt", "w") as f:
+        f.write("".join(f"file '{n}'\n" for n in names))
+    out = f"{d}/out.mp4"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", f"{d}/list.txt",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", out], check=True)
+    with open(out, "rb") as f:
+        data = f.read()
+    shutil.rmtree(d, ignore_errors=True)
+    return data
+
+
+@app.cls(image=hear_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=900, cpu=4, memory=4096)
+class Hear:
+    """Speech to text (faster-whisper small, MIT code + MIT weights, CPU int8): what was said, in which language, and when."""
+
+    @modal.enter()
+    def load(self):
+        from faster_whisper import WhisperModel
+        t = time.time()
+        self.model = WhisperModel("small", device="cpu", compute_type="int8", download_root=f"{MODELS_DIR}/whisper_small")
+        self.load_s = round(time.time() - t, 1)
+
+    @modal.method()
+    def transcribe(self, media: bytes, lang: str = "") -> dict:
+        if not media or len(media) > MAX_DUB_VIDEO:
+            raise ValueError("media missing or over 30 MB")
+        src = _tmp(media, ".bin")
+        wav = f"/tmp/{uuid.uuid4().hex}_16k.wav"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "16000", wav], check=True)
+        segs, info = self.model.transcribe(wav, language=(lang or None), word_timestamps=True, vad_filter=True)
+        out = []
+        for sg in segs:
+            out.append({"start": round(sg.start, 2), "end": round(sg.end, 2), "text": sg.text.strip(),
+                        "words": [{"w": w.word.strip(), "start": round(w.start, 2), "end": round(w.end, 2)} for w in (sg.words or [])]})
+        return {"language": info.language, "language_probability": round(float(info.language_probability), 2),
+                "duration": round(float(info.duration), 2), "segments": out, "load_s": self.load_s}
+
+
+def _speak_chunks(text: str, lang: str, voice_id: str, first_words: int = 14) -> tuple:
+    """Chunk the text, make every chunk's voice at once on the voice containers, return (joined wav, cues, seconds)."""
+    chunks = split_speech(text, first_words=first_words)
+    if not chunks:
+        raise ValueError("nothing to say")
+    voice = Chatterbox()
+    calls = [voice.speak.spawn(c, lang, None, voice_id) for c in chunks]
+    wavs = [c.get(timeout=300)["wav"] for c in calls]
+    cues, t = [], 0.0
+    for c, w in zip(chunks, wavs):
+        d = _wav_seconds(w)
+        cues.append((t, t + d, c))
+        t += d
+    return _wav_concat(wavs), cues, t
+
+
+@app.function(image=studio_image, secrets=[secret], timeout=1800, max_containers=8)
+def studio_job(op: str, p: dict) -> dict:
+    """One HeyGen-style job. Every op is data in, data out ({files: {name: bytes}, info: {...}}), key-locked at the door
+    (web()), consent-checked here. Nothing is stored except a prepared face / saved voice the caller asked for."""
+    if op not in STUDIO_OPS:
+        raise ValueError("unknown studio op")
+    lang = str(p.get("lang") or "hi")[:5]
+    voice_id = str(p.get("voice_id") or "")
+    t0 = time.time()
+    face = Live()
+    if op == "photo_face":
+        r = face.prepare_photo.remote(str(p.get("avatar_id") or ""), p.get("photo") or b"", str(p.get("consent") or ""))
+        return {"files": {}, "info": r}
+    if op == "voice_save":
+        r = Chatterbox().save_voice.remote(str(p.get("voice_id") or ""), p.get("wav") or b"", str(p.get("consent") or ""))
+        return {"files": {}, "info": r}
+    if op == "transcribe":
+        return {"files": {}, "info": Hear().transcribe.remote(p.get("media") or b"", str(p.get("lang") or ""))}
+    if op == "video":
+        text = str(p.get("text") or "").strip()
+        if not text or len(text) > MAX_VIDEO_TEXT:
+            raise ValueError(f"text: 1-{MAX_VIDEO_TEXT} characters")
+        avatar = str(p.get("avatar_id") or "")
+        wav, cues, secs = _speak_chunks(text, lang, voice_id)
+        mp4 = face.render.remote(avatar, wav)
+        return {"files": {"video.mp4": mp4, "captions.vtt": _vtt(cues).encode()},
+                "info": {"seconds": round(secs, 1), "chunks": len(cues), "made_s": round(time.time() - t0, 1)}}
+    if op == "dub":
+        # Video Translate: the same person, the same voice, new words. The caller translated the text (its own brain);
+        # here: voice from the speaker's own sound -> lip-sync onto their own video.
+        consent = str(p.get("consent") or "")
+        if not re.match(r"^signed:[A-Za-z0-9_-]{4,64}$", consent):
+            raise ValueError("dubbing a real person needs consent 'signed:<record id>'")
+        video = p.get("video") or b""
+        text = str(p.get("text") or "").strip()
+        if not video or len(video) > MAX_DUB_VIDEO:
+            raise ValueError("video missing or over 30 MB")
+        if not text or len(text) > MAX_VIDEO_TEXT:
+            raise ValueError(f"text: 1-{MAX_VIDEO_TEXT} characters")
+        tmp_id = "dub-" + uuid.uuid4().hex[:10]
+        src = _tmp(video, ".mp4")
+        sample = f"/tmp/{uuid.uuid4().hex}_ref.wav"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "24000", "-t", "20", sample], check=True)
+        with open(sample, "rb") as f:
+            Chatterbox().save_voice.remote(tmp_id, f.read(), consent)
+        try:
+            face.prepare.remote(tmp_id, video, "ai_generated" if p.get("consent_face_ai") else consent)
+            wav, cues, secs = _speak_chunks(text, lang, tmp_id)
+            mp4 = face.render.remote(tmp_id, wav)
+        finally:
+            for fn in (lambda: face.forget.remote(tmp_id), lambda: Chatterbox().delete_voice.remote(tmp_id)):
+                try:
+                    fn()
+                except Exception:
+                    pass
+        return {"files": {"video.mp4": mp4, "captions.vtt": _vtt(cues).encode()},
+                "info": {"seconds": round(secs, 1), "made_s": round(time.time() - t0, 1)}}
+    if op == "podcast":
+        lines = p.get("lines") or []
+        hosts = p.get("hosts") or {}
+        if not 1 <= len(lines) <= 24 or not all(k in hosts for k in ("a", "b")):
+            raise ValueError("podcast: 1-24 lines and two hosts (a, b)")
+        clips, cues, t = [], [], 0.0
+        for ln in lines:
+            h = hosts[str(ln.get("host") or "a")]
+            text = str(ln.get("text") or "").strip()
+            if not text or len(text) > 500:
+                raise ValueError("each line: 1-500 characters")
+            wav, _, secs = _speak_chunks(text, lang, str(h.get("voice_id") or ""))
+            clips.append(face.render.remote(str(h.get("avatar_id") or ""), wav))
+            cues.append((t, t + secs, text))
+            t += secs
+        return {"files": {"video.mp4": _mp4_concat(clips), "captions.vtt": _vtt(cues).encode()},
+                "info": {"seconds": round(t, 1), "lines": len(lines), "made_s": round(time.time() - t0, 1)}}
+    if op == "personalised":
+        template = str(p.get("template") or "")
+        names = [str(n).strip() for n in (p.get("names") or []) if str(n).strip()]
+        if "{name}" not in template or not 1 <= len(names) <= 20 or len(template) > 400:
+            raise ValueError("personalised: a template with {name} (max 400 chars) and 1-20 names")
+        avatar = str(p.get("avatar_id") or "")
+        wavs = []
+        for n in names:
+            wav, _, _ = _speak_chunks(template.replace("{name}", n), lang, voice_id)
+            wavs.append(wav)
+        calls = [face.render.spawn(avatar, w) for w in wavs]
+        files = {f"video_{i + 1:02d}.mp4": c.get(timeout=600) for i, c in enumerate(calls)}
+        return {"files": files, "info": {"names": names, "made_s": round(time.time() - t0, 1)}}
+    raise ValueError("unknown studio op")
+
+
+
+@app.function(image=face_image, timeout=300)
+def _sample_photo() -> bytes:
+    """One still picture from MuseTalk's sample clip - stands in for a photo until a real one is given."""
+    out = "/tmp/sample_photo.jpg"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", f"{MUSE_DIR}/data/video/yongen.mp4", "-vframes", "1", out], check=True)
+    with open(out, "rb") as f:
+        return f.read()
+
+
+@app.local_entrypoint()
+def studio_card():
+    """Every Studio feature once, on the GPU: text to video, photo avatar, my voice, transcribe, dub, podcast, one video many
+    names. A row per feature (PASS / FAIL, seconds, size) in lab_out/REPORT_studio.txt, the videos beside it to WATCH."""
+    os.makedirs("lab_out", exist_ok=True)
+    lines = [f"GPU {GPU}  Hoola Studio card - every feature once (sample face and sample voice, lab consent tags)"]
+
+    def note(text: str) -> None:
+        lines.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_studio.txt", "w") as f:
+            f.write("\n".join(lines) + "\n")
+
+    results: dict = {}
+
+    def run(name: str, op: str, payload: dict, save: dict | None = None) -> dict | None:
+        t = time.time()
+        try:
+            r = studio_job.remote(op, payload)
+        except Exception as e:
+            note(f"{name:<22} FAIL  {type(e).__name__}: {str(e)[:300]}")
+            results[name] = False
+            return None
+        for fn, out_name in (save or {}).items():
+            if fn in r["files"]:
+                with open(f"lab_out/{out_name}", "wb") as f:
+                    f.write(r["files"][fn])
+        sizes = ", ".join(f"{k} {len(v) // 1024} KB" for k, v in r["files"].items())
+        note(f"{name:<22} PASS  {time.time() - t:5.1f}s  {sizes or '-'}  {json.dumps(r['info'], ensure_ascii=False)[:200]}")
+        results[name] = True
+        return r
+
+    consent = "signed:labtest0001"          # the lab uses MuseTalk's sample speaker; a real person's consent record is never faked
+    text = "नमस्ते, मैं आपकी शिक्षक हूँ। आज हम गति के बारे में सीखेंगे। गति का मतलब है कि कोई चीज़ समय के साथ अपनी जगह कितनी तेज़ी से बदलती है।"
+    try:
+        live = Live()
+        p = _call("live prepare", live.prepare, "lab-live", _sample_face.remote(), "ai_generated", wait=2700)
+        note(f"sample face prepared: {p['prepare_s']}s")
+    except Exception as e:
+        note(f"face prepare FAILED: {type(e).__name__} {str(e)[:300]}")
+        return
+    run("1 text to video", "video", {"avatar_id": "lab-live", "text": text, "lang": "hi"},
+        {"video.mp4": "studio_1_text_to_video.mp4", "captions.vtt": "studio_1_captions.vtt"})
+    run("2 photo avatar", "photo_face", {"avatar_id": "lab-photo", "photo": _sample_photo.remote(), "consent": "ai_generated"})
+    run("2b photo -> video", "video", {"avatar_id": "lab-photo", "text": "यह एक तस्वीर से बना वीडियो है।", "lang": "hi"},
+        {"video.mp4": "studio_2_photo_avatar.mp4"})
+    audio = _sample_audio.remote()
+    run("3 my voice (save)", "voice_save", {"voice_id": "lab-voice", "wav": audio, "consent": consent})
+    run("3b my voice -> video", "video", {"avatar_id": "lab-live", "voice_id": "lab-voice", "text": "यह मेरी अपनी आवाज़ में बोला गया वाक्य है।", "lang": "hi"},
+        {"video.mp4": "studio_3_my_voice.mp4"})
+    try:
+        studio_job.remote("voice_save", {"voice_id": "lab-bad", "wav": audio, "consent": "ai_generated"})
+        note("3c no-consent clone     FAIL  a voice was saved WITHOUT a consent record")
+        results["3c refused"] = False
+    except Exception as e:
+        note(f"3c no-consent clone     PASS  refused: {str(e)[:120]}")
+        results["3c refused"] = True
+    r = run("4 transcribe", "transcribe", {"media": audio, "lang": ""})
+    if r:
+        note(f"   heard: language {r['info']['language']} ({r['info']['language_probability']}), {len(r['info']['segments'])} segments: "
+             + " ".join(sg["text"] for sg in r["info"]["segments"])[:200])
+    run("5 dub (video translate)", "dub", {"video": _sample_face.remote(), "text": "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", "lang": "hi", "consent": consent},
+        {"video.mp4": "studio_5_dub.mp4"})
+    run("6 podcast (2 hosts)", "podcast", {"lang": "hi", "hosts": {"a": {"avatar_id": "lab-live", "voice_id": ""}, "b": {"avatar_id": "lab-photo", "voice_id": "lab-voice"}},
+        "lines": [{"host": "a", "text": "आज हम बात करेंगे गति की।"}, {"host": "b", "text": "गति यानी चाल और दिशा, है न?"}, {"host": "a", "text": "बिल्कुल सही।"}]},
+        {"video.mp4": "studio_6_podcast.mp4", "captions.vtt": "studio_6_captions.vtt"})
+    run("7 one video, many names", "personalised", {"avatar_id": "lab-live", "lang": "hi", "template": "नमस्ते {name}, आपकी कक्षा कल सुबह दस बजे है।", "names": ["आरव", "सिया"]},
+        {"video_01.mp4": "studio_7_aarav.mp4", "video_02.mp4": "studio_7_siya.mp4"})
+    ok = sum(1 for v in results.values() if v)
+    note(f"RESULT: {ok} of {len(results)} features passed")
+    if ok < len(results):
+        note("FAILED: " + ", ".join(k for k, v in results.items() if not v))

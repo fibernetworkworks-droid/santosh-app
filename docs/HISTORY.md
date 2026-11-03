@@ -18138,6 +18138,129 @@ Google has no imagery for reported not covered, the daily cap refusing before it
   money. Every Phase 4-10 number in this repo is still "built and unit-tested", never "answered by Google". The three
   assumed rates (Routes/matrix tier, Route Optimization unit, Roads unit) are settled only by that first real bill.
 
+---
+
+## v0.475.0 HOOLA FRAMES on the web console — the free video engine is now OFFERED where the user already is (owner: "DEPLOYE IT TO WEB CONSOLE ALSO"; collision #9: the dev's SCRAPLING took 0.474.0+519 first, both works kept, mine re-versioned 0.475.0+520)
+
+What was already true (no change needed): hoola_frames is a server-side tool on the same chat brain, so console chat could
+always ask for a video; the delivered pc_file card already renders as an inline <video> in results.js (fetched with the
+Bearer token into a blob: URL, only for the media the server marks inline) and opens as a video tab in panel.js
+(media() maps .mp4 -> video). The gap was OFFERING: the Creative workspace "Video & motion" form hard-routed to the PAID
+video_studio storyboard flow, and the Kaam "What Santosh can do" catalog had no frames row - a console user would never
+learn the free engine exists.
+
+Three client-side touch-ups (server untouched, already live since v0.471.0):
+1. workspace.js video mode grows an ENGINE choice, HOOLA FRAMES (animated, free, ~2 min) as the DEFAULT, "AI film"
+   (storyboard first, paid) as the opt-in. The Voiceover select renders only for film - the free engine is honest: it
+   cannot fake a voice yet. Submit label, tool line and the note under the form all speak per engine ("Render video ·
+   free · ~2 min" / "It cannot film real people, and voiceover needs the AI film engine"). The frames request tells the
+   model to write the composition per app/studio/frames_contract.md (data-start/data-duration clips, one paused GSAP
+   timeline on window.__timelines, no network fetch / wall clock / Math.random, safe margins, font fallbacks), copy the
+   attached reference images into the project as assets, run action=check, fix every error, then action=render, and put
+   the MP4 file card in chat - never claiming ready before render succeeds. The film branch is byte-identical to before,
+   just gated on vengine==='film'. A data-vengine chip handler preserves the draft (take() first) and redraws.
+2. kaam.js "Photos & video" group gains the "HOOLA FRAMES video" job (Free animated MP4, ~2 min, example "Is product ka
+   15 second ka Diwali sale video banao (animated)", icon 📼) right beside AI video (Studio) so free vs paid is visible.
+3. Chat itself: nothing - same brain, same tool registry, same mailbox delivery.
+
+Version ritual 0.475.0 (APP_VERSION story, pubspec 0.475.0+520, console ?v=0.475.0 x20, pins ->0.475.0 in 146 suites;
+the dev's 76 full-string 0.474.0+519 pins moved coherently to 0.475.0+520 in the same sweep). Tests: NEW
+test_v0475_console_frames.py (14): engine chips + frames default, voiceover-only-for-film, the frames request pillow
+texts (contract pointer, check-then-render, never-claim-ready), film branch intact and gated, per-engine labels + note,
+take()/chip-handler wiring, the old storyboard hint gone, kaam row + icon beside studio, receive-side pins (results.js
+inline video, panel.js .mp4), stamp count 20 @ 0.475.0, APP_VERSION story, pubspec. KNOWN PRE-EXISTING RED (dev's,
+stash-proven on pristine HEAD, untouched): test_v142_console.py::test_conversations_recent_and_isolation expects two
+conversations in the console list and gets one - fails on pristine HEAD too. Desktop untouched - server-only deploy,
+old APKs keep working.
+
+## v0.474.0 SCRAPLING — Hoola can scrape any website smoothly
+
+**Owner:** "NOW DEPLOY THIS SCRAPER FOR HOOLA --- THUS HOOLA CAN SCRAP ANY WEBSITE SMOOTHLY"
+**Re-versioned twice while building:** the dev's parallel chain took 0.217-0.473 — both works kept, REBASE PROTOCOL respected (rebuilt from a fresh origin/main checkout as v0.474.0).
+
+### What shipped
+
+New dependency: the **Scrapling library** (PyPI v0.5, github.com/D4Vinci/Scrapling, ~13.8k stars, **BSD-3-Clause** — embed-friendly; `server/requirements.txt`: `scrapling[fetchers,rag]>=0.5`). New tool module **`server/app/agent/scrape_tools.py`** — 5 tools registered in `agent/tools.py` beside web_tools, the structured/bulk scraping lane `open_website` / `browse_web` never had:
+
+- **scrape_page** — fast public-page read: curl_cffi TLS-impersonated fetch (1-3 s, no browser); markdown (default) / text / html, optional `css` focus, optional 60 outgoing links, title + status.
+- **scrape_extract** — THE tool: one css/xpath selector over repeating elements -> JSON rows; optional `fields` map `{"title": "h3 a@title", "price": "p.price_color"}` (`@attr` = attribute, plain = deep text via get_all_text, `xpath:` prefix supported). **ADAPTIVE by default**: Scrapling remembers the element per tenant (Simhash text similarity + DOM-tree relative positioning) in `data/scraping/<tenant>/elements.db` (SQLite), so the same pull keeps working after the site redesigns. `similar=true` expands one matched card to all its siblings.
+- **scrape_many** — the same selector across up to 15 urls; per-page rows + per-page errors (one dead page never kills the batch); polite 0.25 s pauses.
+- **scrape_site** — polite same-host BFS crawl, max 25 pages, robots respected, 0.4 s delays, `include` regex on urls; per-page title + text head — to MAP a site, then scrape_extract the right page.
+- **scrape_stealth** — last resort for Cloudflare / anti-bot / JS-only pages: Scrapling StealthyFetcher (real browser engine) with optional `solve_cloudflare`. **OFF by default** behind the `scrape_stealth_enabled` setting (default false) AND a one-time `scrapling install`; process-wide `BoundedSemaphore(1)` so only one stealth browser ever runs — the MEM-CURE RAM discipline: the default engine is pure HTTP, no browser, no heavy RAM.
+
+### Fixes made while bringing up (all verified against the scrapling 0.5 source)
+
+- `StealthyFetcher.fetch` timeout is **milliseconds** in scrapling 0.5 (default 30_000) — seconds in, ms out, capped 180 s.
+- The robots gate runs `protego.can_fetch(url, user_agent)` — the classic `(user_agent, url)` order of stdlib robotparser silently always-allows.
+- DNS resolution (`_guard_url`) and the robots fetch run **off the event loop** (`asyncio.to_thread`) — they can block for seconds.
+- Field specs return **deep text** (`get_all_text`), not just the node's direct text (`<h3><a>T</a></h3>` would have come back empty).
+
+### Safety rails (server-side, before any fetch)
+
+- **SSRF guard**: http/https only; the host must resolve to a PUBLIC ip — loopback / RFC1918 / link-local / 169.254.169.254 metadata / ULA never fetched (documented TOCTOU: the fetcher re-resolves DNS; Scrapling's own `follow_redirects="safe"` is the second layer).
+- **robots.txt gate** (`scrape_respect_robots`, default True): disallowed paths refused honestly in Hinglish; unreachable robots fail open; 1 h per-host cache.
+- **Caps everywhere**: 24k char output default / 60k hard, 15 urls, 25 pages, 60 s per fetch; all handlers run scrapling in `asyncio.to_thread` (house pattern); outputs pass `operator.browser.mask_ids` like every other tool.
+- Per-tenant adaptive storage paths (`data/scraping/<sanitised-tenant>/elements.db`) — no cross-tenant memory.
+
+### Config (config.py)
+
+- `scrape_respect_robots: bool = True` — robots.txt gate.
+- `scrape_stealth_enabled: bool = False` — stealth browser gate (RAM).
+
+### prompts.py
+
+Internet routing section grew the scrape bullet: structured/bulk data = scrape tools; login pages / typing / forms stay with browse_web / computer_operator.
+
+### Tests
+
+`server/tests/test_v0474_scrapling.py` (27): registry wiring, SSRF guard (private/loopback/metadata/junk refused, public passes), robots gate on+off+unreachable-fail-open, field syntax (attr/text/xpath/deep text), offline extraction via a local scrapling Response (rows, fields, similar-expansion, xpath, 404 refusal), page flow (markdown/links/css focus), cap truncation, per-tenant storage path sanitising, scrape_many error isolation + 15-url cap, scrape_site same-host-only + include filter, stealth gate refusal without the setting + stealth run offline with ms-timeout cap and semaphore release, version pin.
+
+### Sweeps + live proof
+
+- All version-pin suites re-pointed to 0.474.0 and green (one pytest process per suite), with the ONE documented sandbox-only red (`test_v0185_pc_browser::test_desktop_version_is_140`, byte-identical on pristine main).
+- Live smoke through the real handlers on books.toscrape.com: scrape_page 200 + markdown + title; scrape_extract 5 structured rows (title/price/link correct); per-tenant `elements.db` created; robots.txt gate exercised (404 -> fail open).
+
+### Version
+
+0.474.0 (pubspec 0.474.0+519, console ?v=0.474.0 x20, pins ->0.474.0 in all pin suites). Desktop untouched — server-only deploy, old APKs keep working.
+
+### VPS deploy note
+
+`pip install "scrapling[fetchers,rag]>=0.5"` in the venv once (no browser download needed for the default engine), then the usual ritual: checkout tag -> `cp -r server/app ~/apps/santosh-core/` -> `pm2 restart santosh --update-env` -> sleep 20 -> healthz grep version.
+
+## v0.462.x INTERACTIVE LAB - live to a browser (avatar_engine/modal_app.py `/live`, static/interactive/live.html + live.js)
+Chunked speech (first chunk ~5 words, then growing), three warm voice containers, face read to the end, WebSocket stream of
+JPEG + WAV chunks, student page with audio-clock playback. Measured inside Modal (L40S, warm): first picture 2.8 s, no gaps.
+NOT verified: a real browser / phone, network cost, many students, tutor brain wiring. WebSocket chosen over WebRTC because
+Modal has no UDP (docs/INTERACTIVE_AVATAR_PLAN.md S12).
+
+## v0.476.0 HOOLA FRAMES Phase 2: AVATAR FILMS — the "our own HeyGen" moment (owner: "WHAT PAHSE 2 DOES" then "GO"; docs/HYPERFRAMES_PLAN.md section 7)
+
+Phase 1 made Hoola render animated films. Phase 2 gives them a VOICE and a FACE: the model sends a SPEC, the server makes a talking film - her voice speaking the script, captions timed word-by-word, scenes at sentence beats, her real data on screen. No HeyGen anywhere.
+
+### The flow (`hoola_frames action=avatar_film`, spec only - no HTML)
+
+1. `app/studio/avatar.py::validate_spec` refuses everything wrong BEFORE any GPU minute: unknown shape, empty script, >12 sentences, >2400 chars, product shape without items, asset names outside `assets/*.(png|jpg|jpeg|webp)`, unknown aspect; reels are forced 9:16; brand colors must be `#RRGGBB` (else the shape's default); prices come from the spec exactly as given - the builder invents nothing.
+2. The Model Lab speaks each sentence (`interactive/lab.py::voice`, Chatterbox on Modal; `lang`/`voice` from the spec). Lab down = honest `NotConfigured` with the `silent:true` escape hatch. Lab error on sentence k = "awaaz nahi bani (vaakya k)".
+3. Real ffmpeg pads every WAV to its scene span - `avatar.scene_span`: speech + 0.35 s breath (1.2 s hold on the last scene, 2.2 s when a closing card exists), snapped UP to whole 30 fps frames, re-encoded 48 kHz mono PCM - then concatenates one `assets/voice.wav`. Scene starts are the cumulative spans, so the voice track is frame-aligned with the film by construction (test: `abs(track - total) < 0.05`).
+4. Word timings: `videoedit/captions.py::whisper_words` (faster-whisper, CPU int8) on the final track; without it, `words_from_segments` shares words out by length inside each sentence - deterministic, and the result honestly says `words_estimated: true`. `captions.cues` groups words into <=5-word captions that break at sentence punctuation; cues are grouped PER SCENE so no caption straddles a scene boundary.
+5. `avatar.build_html` renders the composition deterministically - same spec + same audio lengths -> byte-identical HTML (hash-pinned): talking-head (avatar photo left, captions right, brand bar), product film (opening title card, one scene per item with photo/name/price/note from her DUKAAN data), reel (1080x1920 kinetic captions, gradient ground, avatar disc). The closing card (`cta`: text + optional UPI QR image) opens only AFTER the last spoken word. The 12-rule contract holds: root `data-composition-id` + one paused GSAP timeline on `window.__timelines.main`, `<audio id="voice">` separate and silent-mode emits NO audio tag, bundled Noto fonts (incl Devanagari), `data-var-text` editability, no clock/dice/network/`repeat:-1`/crossorigin, no CSS transforms on GSAP nodes.
+6. The SAME `do_render` gate: `hyperframes check --json` first (failures come back as fixable errors), then the one-at-a-time lowest-priority render, probe, and the MP4 lands as a chat card with shape/scenes/duration/silent flags.
+
+### Tool surface
+
+- `frames_tools.py`: schema gains `avatar_film` in the action enum + the `spec` object (shape/script/title/brand/items/cta/avatar_file_id/lang/voice/aspect/silent); `_resolve_spec` maps `file_id`s to asset names (`assets/avatar.png`, `assets/item-2.jpg`, `assets/cta.png`) owner-checked through the same mailbox intake, photos only; handler delivers the MP4 through the house mailbox path. Voice wiring unchanged - `hoola_frames` rides VOICE_TOOL_NAMES + VOICE_VIA_KAAM exactly as in v0.471 (a talking film is minutes-deep; the call hears progress, santosh_kaam runs it).
+- `prompts.py`: the FRAMES bullet grows the AVATAR FILMS paragraph (when she wants a video where someone TALKS, spec not HTML, silent fallback, real data only).
+- `frames.status()` reports the `avatar` block (shapes, lab configured?, voice models, whisper installed?) so deploys can assert it.
+
+### Tests
+
+`server/tests/test_v476_avatar_films.py` (16 + 1 env-gated): version pin, registry/spec/enum pins, status avatar block, sentence beats + TTS-cap hard split, spec guards, frame-alignment + estimate timing math, whisper words stay in their scene, determinism hash, contract pins (audio/bans/timelines/fonts/cta-after-speech), product + reel shapes, silent e2e, VOICE e2e with REAL ffmpeg + fake lab (voice track length == film length), lab-down honesty, lab-failure honesty, missing-asset refusal, whisper path used when present, `_resolve_spec` mapping + photo gate, dispatch delivery, spec-required, opt-in real Modal round (`HOOLA_TEST_LAB=1`).
+
+### Sweeps + known reds
+
+- `test_v0_frames.py` pins moved to 7 actions (22 green), `test_v0475_console_frames.py` 14 (stamps stay 0.475.0 x20 - server-only release, the Phase 1 precedent; APP_VERSION story now v0.476), mem 13, interactive-lab 21, scrapling 27, sample swept suites 21 green; `test_v0400_fast_reliable` 5 reds STASH-PROVEN on pristine HEAD (Playwright chromium cache missing in the recycled sandbox + site-service state - environment-only).
+- Version ritual 0.476.0: pubspec 0.476.0+521, APP_VERSION story, pins ->0.476.0(+521) in 146 suites, console stamps unchanged. Server-only deploy; desktop untouched, old APKs keep working.
 ## v0.471.0 - RESEARCH Phase R0 NAAP (the scorecard first)
 
 Owner: "GO R0" (plan: `docs/RESEARCH_PRO_PLAN.md`). Nothing in that plan may be called "perfect" until a number exists.

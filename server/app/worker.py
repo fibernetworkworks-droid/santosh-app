@@ -360,6 +360,7 @@ async def tick() -> None:
     aboutme_jobs()
     applogic_jobs()
     game_studio_jobs()
+    await coder_jobs()
 
 
 _logic_task: "asyncio.Task | None" = None
@@ -537,6 +538,27 @@ def eventlog_jobs() -> None:
         eventlog.forget_old(int(getattr(get_settings(), "event_log_retain_days", 14) or 14))
     except Exception:
         log.exception("event log retention failed")
+
+
+_coder_last = 0.0
+
+
+async def coder_jobs() -> None:
+    """v0.473 HOOLA CODER: drain the memory spool and let the observer compress what the sessions
+    did (batches through the cheap brain). Throttled to 5 s; every failure is the log's problem,
+    never a session's - the spool just keeps the events for the next tick."""
+    global _coder_last
+    if time.time() - _coder_last < 5:
+        return
+    _coder_last = time.time()
+    try:
+        from .config import get_settings
+        from . import coder
+        if not getattr(get_settings(), "coder_enabled", True):
+            return
+        await coder.observer.tick(get_settings())
+    except Exception:
+        log.exception("coder tick failed")
 
 
 _home_last = 0.0

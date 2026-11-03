@@ -143,6 +143,22 @@ How to work:
     number. If the site is already open in a tab, switch_tab THERE — never open a second copy of the same site.
   - downloads shows what actually landed in her Downloads folder (a .crdownload file is STILL downloading — wait
     and check again before you say the download finished).
+- DESKTOP APPS - SEMANTIC FIRST (v0.471: page_elements, but for Excel, Word, Tally, File Explorer, any software):
+  - ax_snapshot lists every button / field / menu item of a DESKTOP app with a ref (@snapshot:element).
+    ax_click / ax_set_value act BY REF - the PC finds the real control, so layout, DPI scaling, scroll position
+    and window size can never make a click miss, and two identical buttons are REFUSED (not clicked by luck).
+    In ANY desktop app try ax_snapshot BEFORE pixel clicks; use pixels only when ax_snapshot shows nothing
+    (image-only UI, canvas, PDF) or the tree refused a twin control.
+  - ax_text reads the app's visible text exactly (menus, labels, cell contents, error messages) - far better
+    than reading the screenshot. ax_find jumps straight to elements by role/name (role=button name=Save).
+  - ax_set_value writes into a field BY REF with readback verification; the value never comes back to you, only
+    its length + whether it verified. Never submit after an unverified write - re-read first.
+  - A menu / dialog that just opened is its own surface: ax_click's result names it - then ax_snapshot with
+    surface=menu / sheet / alert to read THAT, never the whole window again.
+  - Dense apps (Excel, Tally): first ax_snapshot with skeleton=true, then ax_snapshot with root=<ref> to drill
+    into one region. Slow apps (Chromium, Electron): raise timeout_ms before deciding the tree is empty.
+  - If the PC answers that the agent-desktop helper is missing, say pixel mode bhi kaam karta hai and continue
+    with the pixel lane - do not get stuck retrying ax_*.
 - Remember what is already open (never redo work):
   - The screenshot lists the open windows. If the app or site the task needs is ALREADY open (a window, or a tab in
     her browser), switch to it (focus_window / alt+tab / switch_tab) and continue THERE. Never open a second copy
@@ -246,6 +262,59 @@ TOOLS = [
     {"name": "downloads", "description": "Recent files in her Downloads folder; a .crdownload file is still downloading. "
                                           "Use to confirm a download really finished.",
      "input_schema": {"type": "object", "properties": {"minutes": {"type": "integer"}}}},
+    # v0.471 SEMANTIC DESKTOP (ax_*): the page_* cure for DESKTOP apps. agent-desktop (an accessibility-tree
+    # helper beside SantoshDesktop.exe) reads any app's UI the way Windows itself sees it (UIA): ax_snapshot
+    # lists every button / field / link with a ref like @s8f3k2p9:e12, and ax_click / ax_set_value land on the
+    # ref - headless, no focus steal, layout / DPI / scroll can never make a click miss, and identical twin
+    # buttons are REFUSED instead of clicked by luck. When the helper is missing the error says so and the
+    # pixel lane (screenshot + click x,y) keeps working exactly as before.
+    {"name": "ax_apps", "description": "List RUNNING apps and their windows as the accessibility tree sees them (with "
+                                        "window ids for ax_snapshot --window_id). Use when list_apps is not enough or "
+                                        "ax_snapshot needs the exact app name / window id.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "ax_snapshot", "description": "THE exact way to work a DESKTOP app (Excel, Word, TallyPrime, File Explorer, "
+                                            "any software): list every button / field / link / tab of the app as flat "
+                                            "refs (@snapshot:element). Then ax_click / ax_set_value BY REF - the PC finds "
+                                            "the element itself, so a click cannot miss because of layout, scaling or "
+                                            "scroll. Try this BEFORE pixel clicks in any desktop app; pixels stay for "
+                                            "image-only UI or twin controls the tree refuses. app='' reads the focused "
+                                            "window; a menu / dialog that just opened often needs surface menu / sheet "
+                                            "or its own ax_snapshot.",
+     "input_schema": {"type": "object", "properties": {"app": {"type": "string"}, "window_id": {"type": "string"},
+                                                      "skeleton": {"type": "boolean", "description": "shallow map first for dense apps, then ax_snapshot --root <ref> to drill in"},
+                                                      "root": {"type": "string", "description": "drill into one region: a ref from the previous snapshot"},
+                                                      "surface": {"type": "string", "enum": ["window", "focused", "menu", "sheet", "alert", "popover"]},
+                                                      "timeout_ms": {"type": "integer", "description": "raise (up to 20000) for slow apps like Chromium/Electron before concluding the tree is empty"}}}},
+    {"name": "ax_text", "description": "Read the whole visible text of a desktop app (labels, menu items, cell contents, "
+                                        "error messages) - page_text for the desktop. Cheaper and far more exact than "
+                                        "reading a screenshot.",
+     "input_schema": {"type": "object", "properties": {"app": {"type": "string"}, "max_chars": {"type": "integer"}}}},
+    {"name": "ax_find", "description": "Find elements in a desktop app by role / name / text and get their refs directly "
+                                        "(e.g. role=button name=Save). Faster than a full ax_snapshot when you know what "
+                                        "you are looking for.",
+     "input_schema": {"type": "object", "properties": {"app": {"type": "string"}, "role": {"type": "string"},
+                                                      "name": {"type": "string"}, "text": {"type": "string"},
+                                                      "exact": {"type": "boolean"}}}},
+    {"name": "ax_click", "description": "Click a desktop-app element BY REF from ax_snapshot / ax_find (not by pixels). "
+                                        "Result tells you if a menu / sheet / alert opened - snapshot that surface next.",
+     "input_schema": {"type": "object", "properties": {"ref": {"type": "string"}}, "required": ["ref"]}},
+    {"name": "ax_set_value", "description": "Write text into a desktop-app field BY REF (Excel cell, Word, form fields) - "
+                                            "verified by readback, and the value itself never travels back, only the "
+                                            "length. Prefer over click+type; ID references {id:...} are filled exactly "
+                                            "like type.",
+     "input_schema": {"type": "object", "properties": {"ref": {"type": "string"}, "text": {"type": "string"}},
+                      "required": ["ref", "text"]}},
+    {"name": "ax_press", "description": "Send a key or shortcut to a desktop app (enter, ctrl+s, ctrl+f...). Refused for "
+                                        "dangerous combos (win+r, alt+f4...) - use open_app / ax_launch instead.",
+     "input_schema": {"type": "object", "properties": {"keys": {"type": "string"}, "app": {"type": "string"}},
+                      "required": ["keys"]}},
+    {"name": "ax_launch", "description": "Launch an app and wait for it (the accessibility-tree launcher). Same refusals "
+                                            "as open_app (no command-line / system tools).", 
+     "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
+    {"name": "ax_wait", "description": "Wait until a text or window appears in a desktop app's real UI (max 20s) - "
+                                        "smarter than a blind wait when Excel / Tally is loading.",
+     "input_schema": {"type": "object", "properties": {"app": {"type": "string"}, "text": {"type": "string"},
+                                                      "window": {"type": "string"}, "seconds": {"type": "integer"}}}},
     {"name": "screenshot", "description": "Look again without doing anything. monitor 'primary' (default) or 'all' = every "
                                           "monitor stitched into one picture (use when the thing you need may be on her "
                                           "second screen).",
@@ -443,13 +512,15 @@ LIVE_EVERY_S = 0.9      # v0.86 while the model decides the next step, the phone
 # the LAST screenshot it took; v0.86 took the live frames at 960 px while the model looked at 1280 px, so every click
 # after a live frame landed ~1/3 too far right and down ("clicking randomly"). Never use two sizes.
 SHOT_WIDTH = 1280
-MOVES_SCREEN = {"click", "scroll", "drag", "open_app", "focus_window", "open_url", "window", "screenshot", "switch_tab"}
-POINTING = {"click", "scroll", "drag", "done"}
+MOVES_SCREEN = {"click", "scroll", "drag", "open_app", "focus_window", "open_url", "window", "screenshot", "switch_tab",
+                "ax_click", "ax_launch"}   # v0.471 the two ax_* steps that change what is on screen
+POINTING = {"click", "scroll", "drag", "done", "ax_click"}
 # after any of these the WHOLE screen may have moved: even type / key in the same turn is held back
-FOCUS_MOVERS = {"open_app", "focus_window", "open_url", "window", "screenshot", "switch_tab"}
+FOCUS_MOVERS = {"open_app", "focus_window", "open_url", "window", "screenshot", "switch_tab", "ax_launch"}
 STATS = {"held_blind": 0}
 SETTLE_S = {"click": 0.35, "key": 0.35, "type": 0.2, "scroll": 0.25, "drag": 0.3, "focus_window": 0.3, "open_app": 0.8,
-            "open_url": 1.0, "window": 0.4, "switch_tab": 0.6}   # v0.184 open_url shorter: the desktop itself waits for the page
+            "open_url": 1.0, "window": 0.4, "switch_tab": 0.6,   # v0.184 open_url shorter: the desktop itself waits for the page
+            "ax_click": 0.5, "ax_launch": 1.5, "ax_set_value": 0.3}   # v0.471 semantic desktop steps
 
 
 def _tapgate(op: Op, what: str) -> tuple[bool, str]:
@@ -521,6 +592,21 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return "page ke elements gin raha hoon (exact mode)"
     if name == "page_click":
         return f"page ke element #{a.get('ref', '?')} par click kar raha hoon"
+    if name in ("ax_snapshot", "ax_text", "ax_find"):
+        app = str(a.get("app") or "")[:28]
+        return f"{app} ke screen ka naksha padh raha hoon (exact mode)" if app else "screen ka naksha padh raha hoon (exact mode)"
+    if name == "ax_click":
+        return f"{str(a.get('ref', ''))[:22]} par click kar raha hoon (exact mode)"
+    if name == "ax_set_value":
+        return f"field mein likh raha hoon ({len(str(a.get('text', '')))} akshar, exact mode)"
+    if name == "ax_press":
+        return f"'{str(a.get('keys', ''))[:24]}' daba raha hoon (exact mode)"
+    if name == "ax_launch":
+        return f"{str(a.get('name', ''))[:30]} khol raha hoon (exact mode)"
+    if name == "ax_wait":
+        return "kholne ka intezaar kar raha hoon (exact mode)"
+    if name in ("ax_status", "ax_apps"):
+        return "apps ki asli list dekh raha hoon (exact mode)"
     if name == "page_type":
         return f"field #{a.get('ref', '?')} bhar raha hoon"
     if name == "page_select":
@@ -562,7 +648,9 @@ def _say(name: str, a: dict[str, Any]) -> str:
 def _desktop_says(e: Exception, action: str) -> str | None:
     msg = str(e)
     if action in ("open_url", "window", "screenshot", "page_text", "tabs", "switch_tab", "downloads",
-                  "page_elements", "page_click", "page_type", "page_select", "page_fill_form", "wait_for") and "Unknown action" in msg:
+                  "page_elements", "page_click", "page_type", "page_select", "page_fill_form", "wait_for",
+                  "ax_status", "ax_apps", "ax_snapshot", "ax_text", "ax_find", "ax_click", "ax_set_value",
+                  "ax_press", "ax_launch", "ax_wait") and "Unknown action" in msg:
         return _OLD_DESKTOP
     return None
 
@@ -942,6 +1030,138 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         lines = [f"- {f.get('name', '')} ({f.get('size_text', '?')}" +
                  (", STILL DOWNLOADING" if f.get("partial") else ", finished") + ")" for f in fs[:15]]
         return f"Recent downloads ({r.get('folder', 'Downloads')}):\n" + "\n".join(lines)
+    # v0.471 SEMANTIC DESKTOP: ax_* rides the same bridge actions on her PC (desktop 1.6.0's axtree.py). An old
+    # desktop answers 'Unknown action ax_*' and gets the _OLD_DESKTOP upgrade line, so nothing breaks.
+    if name == "ax_apps":
+        try:
+            r = await _pc(op, "ax_apps", {}, timeout=30)
+        except Exception as e:
+            return _desktop_says(e, "ax_apps") or f"ERROR: {e}"
+        apps = ", ".join(str(a.get("name", "")) for a in (r.get("apps") or [])[:40])
+        wins = "; ".join(f"'{w.get('title', '')[:60]}' (id {w.get('id', '')})" for w in (r.get("windows") or [])[:12])
+        return f"Running apps: {apps or '(none listed)'}\nWindows: {wins or '(none)'}"
+    if name == "ax_snapshot":
+        try:
+            r = await _pc(op, "ax_snapshot", {"app": str(a.get("app") or "")[:60], "window_id": str(a.get("window_id") or "")[:24],
+                                              "skeleton": bool(a.get("skeleton")), "root": str(a.get("root") or "")[:40],
+                                              "surface": str(a.get("surface") or "")[:20],
+                                              "timeout_ms": min(max(int(a.get("timeout_ms") or 6000), 1500), 20000)}, timeout=45)
+        except Exception as e:
+            return _desktop_says(e, "ax_snapshot") or f"ERROR: {e}"
+        els = r.get("elements") or []
+        head = f"App: {r.get('app') or a.get('app') or '-'}" + (f" | window: {r.get('window')}" if r.get("window") else "")
+        if r.get("surfaces"):
+            head += f" | open surfaces: {', '.join(r['surfaces'])} (ax_snapshot surface=<kind> to read one)"
+        if r.get("identity_unproven") or not els:
+            hint = (" The window could not be read whole - re-run with a longer timeout_ms (Chromium/Electron apps read "
+                    "thin before they settle)." if r.get("identity_unproven") else
+                    " No interactive elements (image-only UI, a canvas or a PDF viewer - use the screenshot and pixel "
+                    "clicks for this one).")
+            return head + hint
+        lines = [f"{e.get('ref', '?')} {e.get('role', '?')} '{(e.get('name') or '')[:70]}'"
+                 + (f" = '{e.get('value', '')[:40]}'" if e.get("value") else "")
+                 + (" [DISABLED]" if e.get("disabled") else "") for e in els]
+        out = head + f" - {len(els)} elements:\n" + "\n".join(lines) + \
+              "\n(Act by ref: ax_click / ax_set_value; drill into one region with root=<ref>.)"
+        if not r.get("complete"):
+            out += "\n(tree truncated - use skeleton=true first, then root=<ref> to drill into the region you need)"
+        return out[:7000]
+    if name == "ax_text":
+        try:
+            n = max(500, min(int(a.get("max_chars") or 3000), 8000))
+        except (TypeError, ValueError):
+            n = 3000
+        try:
+            r = await _pc(op, "ax_text", {"app": str(a.get("app") or "")[:60], "max_chars": n}, timeout=45)
+        except Exception as e:
+            return _desktop_says(e, "ax_text") or f"ERROR: {e}"
+        t = (r.get("text") or "").strip()
+        head = f"App: {r.get('app') or a.get('app') or '-'}" + (f" | window: {r.get('window')}" if r.get("window") else "")
+        return head + "\n" + t if t else head + " (no readable text - use the screenshot)"
+    if name == "ax_find":
+        if not (a.get("role") or a.get("name") or a.get("text")):
+            return "REFUSED: ax_find needs role, name or text."
+        try:
+            r = await _pc(op, "ax_find", {"app": str(a.get("app") or "")[:60], "role": str(a.get("role") or "")[:24],
+                                          "name": str(a.get("name") or "")[:80], "text": str(a.get("text") or "")[:80],
+                                          "exact": bool(a.get("exact"))}, timeout=30)
+        except Exception as e:
+            return _desktop_says(e, "ax_find") or f"ERROR: {e}"
+        ms = r.get("matches") or []
+        if not ms:
+            return "No element matched (check the name spelling with ax_text / ax_snapshot)."
+        lines = [f"{m.get('ref', '?')} {m.get('role', '?')} '{(m.get('name') or '')[:70]}'" +
+                 (f" = '{m.get('value', '')[:40]}'" if m.get("value") else "") for m in ms]
+        return f"{len(ms)} matches:\n" + "\n".join(lines)
+    if name == "ax_click":
+        ref = str(a.get("ref") or "").strip()
+        if not ref.startswith("@"):
+            return "REFUSED: ref must be a @snapshot:element ref from ax_snapshot / ax_find."
+        try:
+            r = await _pc(op, "ax_click", {"ref": ref[:40]}, timeout=40)
+        except Exception as e:
+            return _desktop_says(e, "ax_click") or f"ERROR: {e}"
+        out = f"clicked {ref}"
+        if r.get("surfaces"):
+            out += f"; a surface opened: {', '.join(r['surfaces'])} (ax_snapshot surface=<kind> to read it)"
+        if not r.get("verified"):
+            out += " (delivered, readback not proven - verify with ax_text / ax_snapshot before the next step)"
+        return out
+    if name == "ax_set_value":
+        text = str(a.get("text", ""))[:4000]
+        if not text:
+            return "REFUSED: empty text."
+        from .. import idvault
+        if idvault.REF.search(text):      # the real ID number only goes to the PC, never back to the model
+            try:
+                text, _kinds = idvault.fill_value(text, op.tenant)
+            except idvault.VaultError as e:
+                return f"REFUSED: {e}"
+        ref = str(a.get("ref") or "").strip()
+        if not ref.startswith("@"):
+            return "REFUSED: ref must be a @snapshot:element ref from ax_snapshot / ax_find."
+        try:
+            r = await _pc(op, "ax_set_value", {"ref": ref[:40], "text": text}, timeout=45)
+        except Exception as e:
+            return _desktop_says(e, "ax_set_value") or f"ERROR: {e}"
+        if r.get("verified"):
+            return f"typed into {ref} ({r.get('length', '?')} chars, verified by readback)"
+        return (f"typed into {ref} ({r.get('length', '?')} chars) BUT the field did not confirm it - re-read with "
+                "ax_text / ax_snapshot before submitting, never submit blindly.")
+    if name == "ax_press":
+        keys = str(a.get("keys", ""))
+        parts = tuple(p.strip().lower() for p in re.split(r"[+ ]+", keys) if p.strip())
+        if parts in BLOCKED_KEYS:
+            return "REFUSED: that shortcut is not allowed (Run dialog / system tools). Use open_app instead."
+        try:
+            r = await _pc(op, "ax_press", {"keys": keys[:40], "app": str(a.get("app") or "")[:60]}, timeout=30)
+        except Exception as e:
+            return _desktop_says(e, "ax_press") or f"ERROR: {e}"
+        return f"pressed {keys}" + ("" if r.get("delivery") != "delivered_verified" else " (verified)")
+    if name == "ax_launch":
+        app = str(a.get("name", ""))
+        if BLOCKED_APPS.search(app):
+            return "REFUSED: Santosh doesn't open command-line or system tools. Use the normal app instead."
+        try:
+            r = await _pc(op, "ax_launch", {"name": app}, timeout=45)
+        except Exception as e:
+            return _desktop_says(e, "ax_launch") or f"ERROR: {e}"
+        return f"launched {r.get('launched', app)}"
+    if name == "ax_wait":
+        if not (a.get("text") or a.get("window")):
+            return "REFUSED: say which text or window to wait for."
+        try:
+            secs = max(2, min(int(a.get("seconds") or 10), 20))
+        except (TypeError, ValueError):
+            secs = 10
+        try:
+            r = await _pc(op, "ax_wait", {"app": str(a.get("app") or "")[:60], "text": str(a.get("text") or "")[:80],
+                                          "window": str(a.get("window") or "")[:80], "seconds": secs}, timeout=secs + 25)
+        except Exception as e:
+            return _desktop_says(e, "ax_wait") or f"ERROR: {e}"
+        if r.get("found"):
+            return "it is there now - take ax_snapshot / ax_text to continue"
+        return f"did NOT appear within {secs}s - take a screenshot to see what is happening instead."
     if name == "wait":
         await asyncio.sleep(max(0.5, min(float(a.get("seconds") or 2), 30)))   # v0.166 heavy software loads slowly
         return "waited"

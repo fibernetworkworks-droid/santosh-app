@@ -50,7 +50,7 @@ def test_lab_only_models_cannot_ship(reg):
 
 def test_shippable_models_are_the_licence_checked_ones(reg):
     ship = {k for k, m in reg.MODELS.items() if m["use"] == "commercial"}
-    assert ship == {"chatterbox", "indic_parler", "musetalk", "sd_vae", "whisper_tiny"}
+    assert ship == {"chatterbox", "faster_whisper_small", "indic_parler", "musetalk", "sd_vae", "whisper_tiny"}   # whisper small: MIT code + MIT weights, read 3 Nov 2026
     assert "hi" in reg.MODELS["chatterbox"]["langs"] and reg.MODELS["chatterbox"]["clone"] is True
     assert {"hi", "mr", "ta", "te", "bn"} <= set(reg.MODELS["indic_parler"]["langs"])
     assert reg.MODELS["indic_parler"]["clone"] is False                  # described in words, never cloned
@@ -211,5 +211,174 @@ def test_stall_maths_for_the_concurrency_test():
     assert slow["stalls"] == 4 and abs(slow["stall_s"] - 4 * 0.18) < 0.01
     # Nothing came back: reported as nothing, never as 'smooth'.
     assert play([])["first_s"] is None
-    assert "max_containers=1" in MODAL_SRC and "@modal.concurrent(max_inputs=8)" in MODAL_SRC   # one card, shared on purpose
+    assert "max_containers=4" in MODAL_SRC and "@modal.concurrent" not in MODAL_SRC   # one student per card: sharing hung the GPU
     assert "streams" in WORKFLOW and "modal_app.py::bench_streams" in WORKFLOW and "REPORT_streams.txt" in MODAL_SRC
+
+
+def test_live_face_overlaps_cpu_with_gpu_and_the_streams_test_cannot_hang_for_half_an_hour():
+    """The first `streams` run on an L40S showed one student at 23.5 fps (< 25) although the GPU alone does ~40: the CPU
+    half of each frame (blend + JPEG) ran in line with the GPU half, and 4 streams hung until Modal's 1800 s limit."""
+    assert "cpu=4" in MODAL_SRC and "ThreadPoolExecutor(max_workers=6)" in MODAL_SRC
+    assert "pending = None" in MODAL_SRC and "self.pool.submit(finish" in MODAL_SRC      # next GPU batch runs while this one is blended
+    assert "deadline = time.time() + 420" in MODAL_SRC and "timeout=600" in MODAL_SRC      # a stuck stream costs minutes
+
+
+def test_a_hung_live_stream_leaves_a_thread_dump_and_opencv_does_not_add_its_own_threads():
+    """The second `streams` run: ONE student 37.7 fps and smooth, TWO students hung with no error text. The next hang must say
+    where every thread is stuck (faulthandler dump into the container log) and OpenCV must not spawn a second pool."""
+    assert "faulthandler.dump_traceback_later(240, repeat=True)" in MODAL_SRC and "cv2.setNumThreads(1)" in MODAL_SRC
+
+
+def test_a_prepared_face_is_shared_through_the_volume_so_any_container_can_stream_it():
+    """One student per card means a second student lands on a COLD container, which has never prepared the face (84-160 s):
+    it must load it from the volume (committed by `prepare`), and an unknown or badly named face must still be refused."""
+    assert "volume.commit()      # results/ is the volume" in MODAL_SRC
+    assert "def _avatar(self, avatar_id: str):" in MODAL_SRC and "preparation=False" in MODAL_SRC
+    assert "av = self._avatar(avatar_id)" in MODAL_SRC and "latents.pt" in MODAL_SRC
+
+
+def test_e2e_bench_wired():
+    import re
+    import struct
+    wf = open("../.github/workflows/interactive-lab.yml").read()
+    assert "bench_e2e" in wf and "e2e, studio, deploy" in wf
+    assert "def bench_e2e" in MODAL_SRC and "REPORT_e2e.txt" in MODAL_SRC
+    ns: dict = {}
+    exec(re.search(r"def _wav_seconds.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    pcm = b"\0\0" * 24000
+    hdr = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, 24000, 48000, 2, 16) + b"data" + struct.pack("<I", len(pcm))
+    assert abs(ns["_wav_seconds"](hdr + pcm) - 1.0) < 0.01
+
+
+def test_chunker_and_warm_switch():
+    import re
+    ns: dict = {}
+    exec(re.search(r"def split_speech.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    sp = ns["split_speech"]
+    long_t = " ".join(["शब्द%d" % i + ("," if i % 6 == 0 else "") for i in range(1, 61)])
+    parts = sp(long_t)
+    sizes = [len(p.split()) for p in parts]
+    assert 3 <= sizes[0] <= 7 and len(parts) >= 3
+    assert sizes[1] > sizes[0] and min(sizes) >= 3                       # chunks grow, none is a stub
+    assert " ".join(parts).split() == long_t.split()                     # nothing lost, nothing added
+    assert sp("") == [] and sp("नमस्ते") == ["नमस्ते"]
+    assert len(sp("एक दो तीन चार पाँच")) == 1
+    assert "min_containers=WARM" in MODAL_SRC and 'HOOLA_LAB_WARM", "0"' in MODAL_SRC
+    assert "HOOLA_LAB_WARM" in open("../.github/workflows/interactive-lab.yml").read()
+    assert '"runaway"' in MODAL_SRC and "e2e_chunk" in MODAL_SRC or 'keep(f"chunk' in MODAL_SRC
+
+
+def test_parallel_voice_containers():
+    assert "min_containers=VOICE_WARM" in MODAL_SRC and 'HOOLA_LAB_VOICES' in MODAL_SRC
+    assert "HOOLA_LAB_VOICES" in open("../.github/workflows/interactive-lab.yml").read()
+    assert "make(i: int, c: str)" in MODAL_SRC                   # chunks are asked for at once, not one after another
+
+
+def test_live_socket_and_student_page():
+    import shutil
+    import subprocess
+    from pathlib import Path
+    src = MODAL_SRC
+    assert 'api.websocket("/live")(live_socket)' in src and "live_socket.__annotations__" in src
+    body = src[src.index("async def live_socket"):src.index('api.websocket("/live")')]
+    assert 'hello.get("key")' in body and "compare_digest" in body          # key in the first message, never in the address
+    assert "AVATAR_ID.match(avatar)" in body and "MAX_TEXT" in body          # same guards as the other doors
+    assert "asyncio.create_task(voice.speak.remote.aio" in body              # every chunk's voice starts at once
+    assert "async for b in face.stream.remote_gen.aio" in body               # read to the end: cancelling restarts a container
+    assert ".cancel()" not in body                                           # voice calls are never cancelled
+    assert "the live talk stopped" in body and "str(e)" not in body.split("say(type=\"error\", msg=\"the live")[1][:80]   # no internals to the browser
+    root = Path(__file__).resolve().parents[1] / "app" / "static" / "interactive"
+    html = (root / "live.html").read_text()
+    assert "live.js" in html and 'type="password"' not in html and 'id="key"' not in html     # no key box: the page gets a pass
+    assert "/api/interactive/ticket" in html and 'localStorage.getItem("hoola.console.token")' in html
+    assert "localStorage.setItem" not in html and "sessionStorage" not in html
+    if shutil.which("node"):
+        r = subprocess.run(["node", str(Path(__file__).with_name("live_js_check.js")), str(root / "live.js")], capture_output=True, text=True)
+        assert r.returncode == 0 and "live.js ok" in r.stdout, r.stdout + r.stderr
+
+
+def test_live_ticket_end_to_end(env, monkeypatch):
+    """The Hoola server signs a 2-minute pass; the engine's own check accepts it for that avatar only, and nothing else."""
+    import re
+    import time
+
+    lab = _lab(monkeypatch, url="https://x--hoola-lab-web.us-east.modal.run", key="k" * 40)
+    ns: dict = {"time": time}
+    exec(re.search(r"def _ticket_ok.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    ok = ns["_ticket_ok"]
+    t = lab.make_ticket("lab-live")
+    assert ok(t, "lab-live", "k" * 40)
+    assert not ok(t, "someone-else", "k" * 40)                  # one avatar only
+    assert not ok(t, "lab-live", "j" * 40)                      # wrong key
+    assert not ok(t[:-2] + "00", "lab-live", "k" * 40)          # tampered
+    old = f"{int(time.time()) - 5}.lab-live." + t.split(".", 2)[2]
+    assert not ok(old, "lab-live", "k" * 40)                    # expired (and the signature no longer matches the new time)
+    assert "k" * 10 not in t                                    # the key is not in the pass
+    assert lab.live_address().startswith("wss://x--hoola-lab-web")
+    with pytest.raises(lab.LabError):
+        lab.make_ticket("Bad Name!")
+    _lab(monkeypatch, url="", key="")
+    with pytest.raises(lab.LabError):
+        lab.make_ticket("lab-live")
+
+
+def test_ticket_route_is_owner_only_and_never_returns_the_key(env, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app import main
+    from app.config import get_settings
+    monkeypatch.setenv("AVATAR_ENGINE_URL", "https://x--hoola-lab-web.us-east.modal.run")
+    monkeypatch.setenv("AVATAR_ENGINE_KEY", "secret-engine-key-" + "z" * 20)
+    get_settings.cache_clear()
+    with TestClient(main.app) as c:
+        r = c.post("/api/interactive/ticket", json={"avatar_id": "lab-live"})
+        assert r.status_code == 200, r.text
+        assert r.json()["address"].startswith("wss://") and r.json()["ticket"].count(".") == 2
+        assert "secret-engine-key" not in r.text
+        assert c.post("/api/interactive/ticket", json={"avatar_id": "Not Valid"}).status_code == 503
+
+
+def test_engine_attach_job_uses_the_saved_secret():
+    wf = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text(encoding="utf-8")
+    assert "- engine_attach" in wf and "secrets.HOOLA_ENGINE_KEY" in wf and "engine_attach)" in wf
+    body = wf[wf.index("engine_attach)"):wf.index("zoo_check)")]
+    assert "AVATAR_ENGINE_KEY" in body and "value hidden" in body and "echo \"$ENGINE_KEY_IN" not in body
+    assert "ENGINE_KEY_IN" in wf.split("jobs:")[1][:3000]       # passed through env, never typed into a script by hand
+
+
+def test_studio_helpers_and_door():
+    """Hoola Studio (the HeyGen feature set): the pure helpers work, every op is behind the key and its consent rules."""
+    import io
+    import re
+    import struct
+    import wave
+
+    ns: dict = {}
+    for fn in ("_wav_seconds", "_wav_concat", "_vtt"):
+        exec(re.search(rf"def {fn}\(.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+
+    def wav(sec, rate=24000):
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(rate)
+            w.writeframes(struct.pack("<h", 0) * int(rate * sec))
+        return buf.getvalue()
+
+    joined = ns["_wav_concat"]([wav(1.0), wav(0.5)], gap_s=0.25)
+    assert abs(ns["_wav_seconds"](joined) - 1.75) < 0.02
+    with pytest.raises(ValueError):
+        ns["_wav_concat"]([wav(1.0, 24000), wav(1.0, 16000)])            # mixed formats are refused, not played at the wrong speed
+    v = ns["_vtt"]([(0.0, 2.5, "नमस्ते"), (2.5, 61.0, "दूसरा")])
+    assert v.startswith("WEBVTT") and "00:00:00.000 --> 00:00:02.500" in v and "00:01:01.000" in v
+
+    assert 'STUDIO_OPS = ("video", "photo_face", "voice_save", "transcribe", "dub", "podcast", "personalised")' in MODAL_SRC
+    door = MODAL_SRC[MODAL_SRC.index('@api.post("/studio/{op}"'):MODAL_SRC.index("async def live_socket")]
+    assert "Depends(key)" in door and door.count("Depends(key)") == 2 and "b64(p[k], cap, k)" in door
+    job = MODAL_SRC[MODAL_SRC.index("def studio_job"):MODAL_SRC.index("def _sample_photo")]
+    assert "signed:" in job and "dubbing a real person needs consent" in job and "finally:" in job   # consent + temp face / voice always removed
+    save = MODAL_SRC[MODAL_SRC.index("def save_voice"):MODAL_SRC.index("def _voice_ref")]
+    assert "signed:" in save and "ai_generated" not in save                    # a cloned voice can never be 'ai generated'
+    assert "faster_whisper_small" in (ROOT / "avatar_engine" / "registry.py").read_text()
+    assert "studio_card" in WORKFLOW and "inputs.job == 'studio'" in WORKFLOW

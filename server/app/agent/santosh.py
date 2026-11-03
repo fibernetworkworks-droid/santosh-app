@@ -261,13 +261,13 @@ def _api_ready(history: list[dict]) -> list[dict]:
 
 
 STATS_LONG: dict[str, int] = {"extended": 0, "wake_saved": 0, "deadline_extended": 0, "narrate": 0, "plan_now": 0,
-                               "plan_first": 0, "auto_plan": 0}   # v0.221 long-job counters
-_LONG_TURN: set[str] = set()     # v0.221 turns that moved to the long-job caps mid-way (no plan when they began)
+                               "plan_first": 0, "auto_plan": 0}   # v0.473 long-job counters
+_LONG_TURN: set[str] = set()     # v0.473 turns that moved to the long-job caps mid-way (no plan when they began)
 _PROGRESS: dict[str, float] = {}  # v0.311 conv -> when its running turn last finished a tool (the deadline reads it)
 
 
 async def _with_deadline(coro, conversation_id: str, first: float, long: float):
-    """v0.221 the turn's lock deadline. A turn that became a long job mid-way (kaam_plan written, or the short cap
+    """v0.473 the turn's lock deadline. A turn that became a long job mid-way (kaam_plan written, or the short cap
     reached with work going) gets the long-job deadline instead of being killed at the short one."""
     task = asyncio.ensure_future(coro)
     try:
@@ -793,6 +793,15 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
                                                     "ok": not (isinstance(out, dict) and out.get("error")),
                                                     "ms": int((time.time() - _t0) * 1000), "line": _line},
                      _meta.get("turn_id", ""), _meta.get("actor", ""))
+    try:   # v0.473 HOOLA CODER: the same funnel the harness log rides becomes the memory capture -
+           # best-effort, redacted at the capture boundary, a memory failure can never touch the call
+        from .. import coder as _coder
+        _coder.tool_observed(_ev_t, _ev_c, name, args or {}, out,
+                             not (isinstance(out, dict) and out.get("error")),
+                             int((time.time() - _t0) * 1000), _meta.get("turn_id", ""),
+                             _meta.get("actor", ""))
+    except Exception:
+        pass
     return out
 
 
@@ -1062,7 +1071,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 
     def _system(fams) -> str:
-        # v0.221 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
+        # v0.473 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
         text = system_prompt(settings.wa_dry_run, _ctxb, tenant_id,
                              families=None if (fams is None or not settings.prompt_slim) else fams) + tail
         return text + (_admit.unloaded_note(text, adm) if adm is not None else "")
@@ -1175,7 +1184,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if stop != "tool_use":
             if stop == "max_tokens":
                 # v0.187 the words were cut mid-thought: continue exactly where the cut happened, in goal mode and out
-                # v0.221 and give the next call more room (a big tool input cut at 2,000 tokens would be cut again)
+                # v0.473 and give the next call more room (a big tool input cut at 2,000 tokens would be cut again)
                 state["max_tokens"] = min(16000, 2 * (state.get("max_tokens") or settings.agent_max_tokens))
                 state["cuts"] = state.get("cuts", 0) + 1
                 nudge = "[System: aapka jawab beech mein cut gaya (max_tokens). Wahi se exactly aage badho — kaam ya " \
@@ -1400,7 +1409,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if (settings.agent_goal and not state.get("goal") and not state.get("extended")
                 and ran_steps >= settings.agent_max_steps
                 and (getattr(ctx, "actor", "owner") or "owner") in ("owner", "routine", "wake", "goal")):
-            # v0.221 the short-job cap is reached while work is still going (the model never wrote a plan): instead of
+            # v0.473 the short-job cap is reached while work is still going (the model never wrote a plan): instead of
             # "Yeh kaam lamba ho gaya, yahin ruk raha hoon" the turn moves to the long-job caps ONCE and the model is
             # told to write the plan of what is left - long jobs no longer die at step 24.
             state["extended"] = True
@@ -1435,7 +1444,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                      **_tag(live, True)})
-            # v0.221 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
+            # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         return final_text
     if not final_text.strip():
@@ -1787,11 +1796,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             log.exception("compact before turn failed")
         saved_wake = False
         if save_user:
-            # v0.221 a goal's background round is not her words: kept in history, but never shown as her message
+            # v0.473 a goal's background round is not her words: kept in history, but never shown as her message
             _save(conversation_id, "user", agent_text,
                   display=None if (who in ("routine", "goal") and user_text.startswith("[Goal jaari")) else user_text)
         elif who == "wake" and agent_text.strip():
-            # v0.221 a finished job's RESULT is saved into the chat history (display None = never shown as her words,
+            # v0.473 a finished job's RESULT is saved into the chat history (display None = never shown as her words,
             # never in her focus words). Before, only Hoola's reply about it was kept: from the next turn on the real
             # result - ids, links, what failed - was gone.
             _save(conversation_id, "user", agent_text, display=None)
@@ -1804,6 +1813,18 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         _evlog.log_event(tenant_id, conversation_id, "turn_started", {"line": str(user_text or "")[:160],
                                                                        "voice": bool(voice)},
                          turn_id=_turn_id, actor=who)
+        try:   # v0.473 HOOLA CODER: her ask itself is memory (redacted at the boundary; a <private>
+               # turn stores nothing but its privacy marker)
+            from .. import coder as _coder
+            await asyncio.to_thread(_coder.turn_prompt, tenant_id, conversation_id, user_text or "")
+        except Exception:
+            pass
+        try:   # v0.477 HOOLA NUDGE: a live turn began - any background reflection fork thinking
+               # about this conversation drops its writes (it never makes the live turn wait)
+            from .. import coder as _coder
+            _coder.nudge.poke(conversation_id)
+        except Exception:
+            pass
 
         history = _load_history(conversation_id)
         if not save_user and not saved_wake and agent_text.strip():
@@ -1825,6 +1846,15 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                         block = (block + "\n\n" + kb) if block else kb
                 except Exception:
                     log.exception("kaam block failed")
+                try:   # v0.473 HOOLA CODER: the compact coder-memory primer rides BESIDE yaad, never
+                       # instead of it - KAAM KA HAAL and the diary keep their order, this lands after
+                    from .. import coder as _coder
+                    cb = await asyncio.to_thread(_coder.inject.turn_block, tenant_id, conversation_id,
+                                                 query=user_text or "")
+                    if cb:
+                        block = (block + "\n\n" + cb) if block else cb
+                except Exception:
+                    log.exception("coder block failed")
                 if settings.agent_goal:   # v0.187 an open goal rides above everything: this turn continues it
                     from . import goal as _goalb
                     gb = _goalb.goal_block(conversation_id)
@@ -1899,6 +1929,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                                 "owner" if who == "owner" else ("routine" if who == "goal" else who))
             except Exception:
                 log.exception("memory after turn failed")
+            try:   # v0.477 HOOLA NUDGE: the turn counter - at coder_nudge_every turns ONE quiet
+                   # reflection writes memories + skills in the background (never this turn's path)
+                from .. import coder as _coder
+                _coder.nudge.count_turn(tenant_id, conversation_id)
+            except Exception:
+                log.exception("coder nudge count failed")
         if who == "owner":
             from .. import chats
             if chats.enabled():   # v0.162 the chat gets a short title after her first exchange (background)

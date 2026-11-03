@@ -327,6 +327,12 @@ TOOLS.extend(WEB_TOOLS)
 TOOL_LABELS.update(WEB_LABELS)
 HANDLERS.update(WEB_HANDLERS)
 
+from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
+
+TOOLS.extend(SCRAPE_TOOLS)
+TOOL_LABELS.update(SCRAPE_LABELS)
+HANDLERS.update(SCRAPE_HANDLERS)
+
 from .army_tools import ARMY_HANDLERS, ARMY_LABELS, ARMY_TOOLS  # noqa: E402
 
 TOOLS.extend(ARMY_TOOLS)
@@ -365,6 +371,7 @@ from .photo_tools import PHOTO_HANDLERS, PHOTO_LABELS, PHOTO_TOOLS  # noqa: E402
 from .create_tools import CREATE_HANDLERS, CREATE_LABELS, CREATE_TOOLS  # noqa: E402
 from .appcheck_tools import APPCHECK_HANDLERS, APPCHECK_LABELS, APPCHECK_TOOLS  # noqa: E402
 from .rea_tools import REA_HANDLERS, REA_LABELS, REA_TOOLS  # noqa: E402
+from .frames_tools import FRAMES_HANDLERS, FRAMES_LABELS, FRAMES_TOOLS  # noqa: E402
 from .hoola_tools import HOOLA_HANDLERS, HOOLA_LABELS, HOOLA_TOOLS  # noqa: E402
 
 # Google Sheets and Google Drive have their own full toolsets now (per-user sign-in, service account as fallback);
@@ -377,7 +384,7 @@ for _t, _l, _h in ((SHEETS_TOOLS, SHEETS_LABELS, SHEETS_HANDLERS), (DRIVE_TOOLS,
                    (FORMS_TOOLS, FORMS_LABELS, FORMS_HANDLERS), (SLIDES_TOOLS, SLIDES_LABELS, SLIDES_HANDLERS),
                    (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS), (NOTEBOOK_TOOLS, NOTEBOOK_LABELS, NOTEBOOK_HANDLERS),
                    (YOUTUBE_TOOLS, YOUTUBE_LABELS, YOUTUBE_HANDLERS), (PHOTO_TOOLS, PHOTO_LABELS, PHOTO_HANDLERS), (CREATE_TOOLS, CREATE_LABELS, CREATE_HANDLERS), (APPCHECK_TOOLS, APPCHECK_LABELS, APPCHECK_HANDLERS),
-                   (REA_TOOLS, REA_LABELS, REA_HANDLERS), (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS)):
+                   (REA_TOOLS, REA_LABELS, REA_HANDLERS), (FRAMES_TOOLS, FRAMES_LABELS, FRAMES_HANDLERS), (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS)):
     TOOLS.extend(_t)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
@@ -1020,6 +1027,36 @@ _seen = {t["name"] for t in TOOLS}
 TOOLS.extend(t for t in ZOO_TOOLS if t["name"] not in _seen)
 TOOL_LABELS.update(ZOO_LABELS)
 HANDLERS.update(ZOO_HANDLERS)
+del _seen
+
+# v0.477 HOOLA SELF-TEACH: ONE skill_manage tool (the coder/skills_tool surface) - Santosh can
+# author and improve reusable skills mid-conversation; the coder nudge resets its counter on use.
+from ..coder.skills_tool import SKILL_HANDLERS, SKILL_LABELS, SKILL_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in SKILL_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(SKILL_LABELS)
+HANDLERS.update(SKILL_HANDLERS)
+del _seen
+
+# v0.478 HOOLA SWARM: ONE delegate_task tool (the coder/delegate surface) - parallel bounded
+# child agents; every child tool call rides _run_tool so capture sees the whole picture; the
+# voice allowlist never admits it (a call routes it to a kaam job instead).
+from ..coder.delegate import DELEGATE_HANDLERS, DELEGATE_LABELS, DELEGATE_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in DELEGATE_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(DELEGATE_LABELS)
+HANDLERS.update(DELEGATE_HANDLERS)
+del _seen
+
+# v0.479 HOOLA SMART HOME: ghar ke devices Home Assistant ke official REST se - home_link /
+# home_devices / home_on / home_off / home_state. Reads gate-free (link ke bina kabhi nahi
+# chalte), controls `home_control` gate ke peeche (PC se alag). Locks confirm-only, routine
+# turns se kabhi nahi; fridge/washer/geyser read-only; AC 20-28 °C; volume <= 90 %.
+from .home_tools import HOME_HANDLERS, HOME_LABELS, HOME_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in HOME_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(HOME_LABELS)
+HANDLERS.update(HOME_HANDLERS)
 del _seen
 
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)

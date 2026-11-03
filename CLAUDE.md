@@ -33,6 +33,14 @@ Muse / Grok Bot" and approved "START PHASE 1", so `server/app/pc/hub.py` + `oper
 `agent/pc_tools.py` gained the multi-PC kind routing and the coworker VM mode (her-PC behaviour kept
 byte-identical), and the NEW `desktop-linux/` agent was added (the Windows `desktop/` app stays untouched,
 1.4.0). The freeze is back in force for everything else the moment this ships.
+Exception recorded (3 Nov 2026): v0.472.0 SEMANTIC DESKTOP — the owner asked in chat "NOW LETS WORK ON
+DESKTOP ACCESS FOR THIS" (repo vercel-labs/agent-desktop) and said "START", so `server/app/pc/operator.py`
+gained the 9 ax_* tools + dispatch + prompt (additive; pixel and browser lanes byte-identical) and
+`desktop/` gained NEW `santosh_desktop/axtree.py` + the `do_ax_*` block in `actions.py` (desktop 1.5.0 ->
+1.6.0; every action behind the existing control switch; PyInstaller spec untouched; the helper binary
+ships BESIDE the exe via build-desktop.yml). Re-versioned 0.471.0->0.472.0: the dev's parallel HOOLA
+FRAMES took 0.471.0 — both works kept, REBASE PROTOCOL respected. The freeze is back in force for
+everything else the moment this ships.
 Exception recorded (29 Oct 2026): v0.238.0 DATA DESK — the owner said "GO for 1–3 (server only)" after the
 100-repo PDF root cause, so ONLY the `hoola_pc_do` description in `agent/pc_tools.py` was rewritten (desktop software
 only, never data; a VM file does not come back to the chat). No PC behaviour, endpoint or desktop file changed; fix 4
@@ -227,6 +235,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.473 RESEARCH R2 APNA ENGINE (plan `docs/RESEARCH_PRO_PLAN.md` parts 3-6): `app/research/engine.py` + tool `research_run` (`agent/research_tools.py`, family `research`, in view only for a research ask) - Hoola's OWN loop, the shape Exa's SDK exposes: the approved sub-questions become goals, one worker each IN PARALLEL (search -> READ the page -> `note` with the page's own words -> `calc` in pylab -> finish), then a planner adds goals for real gaps or STOPS (rounds 2). Source policy is DATA (allow / block domains, after-date; a caller can only LOWER a budget); url discipline = a page may be read only if its link came from her ask, a search of THIS run, or the same site as an admitted page (never another site's page); a note's words are CHECKED against the page - not found = kept but `NOT VERIFIED`; budgets per goal / per run (pages, calcs, steps, soft clock 420 s inside the 900 s turn). Returns a DOSSIER (notes with [n], calcs with code, NOT CONFIRMED items, numbered sources) the main model writes from; result limit 40,000 chars (`santosh.RESULT_LIMIT`, the usual 6,000 would cut the source list). Switches `research_engine_on`, `research_engine`. BUG FOUND BY ITS OWN TEST: the planner prompt went through str.format() with JSON braces and always answered stop. NOT BUILT: claims as per-field evidence + a page re-read (R3), background run + resume (R4: today the run lives inside one turn), the rupee ceiling (R5: counts only, no cost), paid engines (R6). NOT VERIFIED: no live run - the engine has only run against scripted fakes.
 - v0.472 RESEARCH R1 PLAN PEHLE (plan `docs/RESEARCH_PRO_PLAN.md` parts 1+2): `agent/research_plan.py` - her ask is sized IN CODE (small / standard / large: deep-report words, things asked, figures to work out); a LARGE research ask answers with a PLAN first (4-6 sub-questions from one cheap call, template fallback; where to look; as-of; est. minutes + rupees labelled ASSUMED) and NOTHING runs until her Haan (`Haan, shuru karo`; `Haan, par X bhi` = the change; `nahi` drops it; other words revise the plan; a different big ask replaces it; 24 h stale). The same turn then gets the ask + `<approved_research_plan>` (her bubble shows only her words). Hook in `santosh._run_turn` before the approval shortcut; table `research_plans` (self-heals); switch `research_plan_gate`. ALSO fixed: `hard.research_wanted` saw 9 of the R0 card's 20 asks - now 20/20 (verb at sentence start, 'do research', 'official sources', 'date every price'), with a no-list for 'research notes / team / folder / gate'. NOT BUILT: a tappable card with buttons (text reply works on every surface), the phone/console drawing; estimates are assumed until the live research card runs (R5).
 - v0.471 RESEARCH R0 NAAP (plan `docs/RESEARCH_PRO_PLAN.md`, vendor techniques `docs/research/research_apis/01_techniques.md`): the RESEARCH card `app/quality/researchcard.py` + `research_asks.py` - 20 asks (17 topics in her world + 3 TRAPS whose subject was invented for the card) scored IN CODE on provenance, never on a remembered fact: every key figure traceable to a page or pylab result the turn fetched, every link opened by a tool, as-of, dated sources, [n] match, uncertainty stated, pylab / first-stop tool where the ask needs them; corroboration + primary-looking domains measured only. The scorer is CALIBRATED (11 planted-fault cases must each fail for their own reason - it already caught its own bug: a year inside a URL counted as a date). `python -m app.quality research [--live] [--judge]`, `research verdict <id> right|wrong` (HER verdict outranks every number), GET /api/quality/research, vps-ops `research_card`. FINDING: Hoola's research signal (`hard.research_wanted`) recognises only 9 of the 20 asks - 'Research the X...' and 'Compare...' are missed (R1 fixes). NOT VERIFIED: no live card has run yet.
+- v0.479 HOOLA SMART HOME (owner: 'START bolo aur W1 (0.473.0 smart home)' on the Platforms plan from the sindresorhus/awesome read; re-versioned 0.473.0->0.479.0 - the dev's parallel chain took 0.473..0.478, REBASE PROTOCOL respected, rebuilt fresh on ae5bfc58): ghar ka control via Home Assistant's OFFICIAL REST API (`/api/states`, `/api/services/<domain>/<service>`, Bearer) - ESPHome/Zigbee/Matter devices all arrive through HA; raw MQTT deliberately deferred. NEW `app/home.py` + `agent/home_tools.py`: 5 tools - home_link (link status + the full setup guide + a MASKED token preview), home_devices / home_state (reads, gate-free, die without the link), home_on / home_off (controls behind the HOME gate). THE LINK: HOME_ASSISTANT_URL + HOME_ASSISTANT_TOKEN in the VPS .env only (zoo BYOK pattern; the non-negotiable 'keys never in chat' rule), the token never returns to the model. THE HOME GATE `home_control` (default OFF - bake on the VPS, then flip) is SEPARATE from PC control; every gate-off control attempt is refused AND audited. FROZEN-BRIEF GUARDS executable: AC 20-28 C clamp (climate without a temperature asks for one), volume <= 90 %, fridge/washer/geyser/heater/oven READ-ONLY by name-match (even as switch.*), sensor/camera/vacuum not switchable, locks CONFIRM-ONLY (confirm=true the model may pass only after she said haan; a routine turn refuses locks outright - 'raat 11 baje saari lights band' works free because routines ride the same tool surface). Domain-native services (cover open/close, scene/script turn_on, button press, lock lock/unlock, climate set_temperature/set_hvac_mode, light brightness), a settle re-read makes the Hinglish say honest ('Hall Light band kar di'). AUDIT: every attempt (success or refusal) lands in home_audit (init_db day one + engine-id-keyed ensure_table self-heal, the v0.190.1 lesson). ADMISSION: the 'home' family keyword-admitted (ghar ki light band karo, pankha, ac 24, parde, taala, smart plug; fridge/geyser words admit so Hoola can refuse politely). VOICE deliberately NOT in VOICE_TOOL_NAMES this release (its own pass once the gate is baked). PC FROZEN LANES byte-identical (server/app/pc/*, agent/pc_tools.py, desktop/ untouched) - server-only deploy, old APKs keep working. Tests test_v0479_home.py 24. Version ritual 0.479.0 (pubspec 0.479.0+524, pins ->0.479.0, console stamps stay 0.475.0 x20 - the v0.476 precedent; console story pin moved to the v0.479 story). PRE-EXISTING stash-proven red at ae5bfc58, untouched: test_v0230_voice_phase3.py::test_tool_diet 113<=110 (the dev's parallel chain filled the voice budget).
+- v0.476 AVATAR FILMS - FRAMES Phase 2 (owner: "WHAT PAHSE 2 DOES" then "GO"; docs/HYPERFRAMES_PLAN.md section 7, the "our own HeyGen" moment): `hoola_frames` grows action=avatar_film - the model sends a SPEC (shape talking_head|product|reel + script + real data), never HTML, and `app/studio/avatar.py` + `frames.do_avatar_film` make the talking film: the Model Lab speaks each sentence (lab.voice Chatterbox; honest NotConfigured when the lab is down, silent:true = same film without voice), real ffmpeg pads every WAV to a whole-frame scene span (30 fps snap, 0.35 s breath, last hold 1.2 s / 2.2 s with a closing card) and concatenates one track, on-box faster-whisper aligns words (videoedit/captions.py whisper_words; without it words are shared by length, deterministic, marked words_estimated), then the SAME check->render gate and the MP4 card. Three shapes: talking-head (her photo by file_id or an illustrated disc), product film (DUKAAN items, prices never invented), 9:16 reel (kinetic captions); cta card (UPI QR etc.) opens only after the last spoken word; determinism pinned byte-identical; 12-rule contract holds (one paused GSAP timeline, <audio id="voice">, bundled Noto incl Devanagari). Tool schema grows spec + _resolve_spec (file_id -> assets/avatar.jpg, photos only png/jpg/webp, owner-checked); status() reports the avatar block (shapes/lab/voices/whisper) for deploy asserts. Tests test_v476_avatar_films.py 16 + the v0_frames pins moved to 7 actions. Server-only: pubspec 0.476.0+521, stamps stay 0.475.0 x20 (console unchanged - Phase 1 precedent), pins ->0.476.0 in 146 suites.
+- v0.475 HOOLA FRAMES on the web console (owner: "DEPLOYE IT TO WEB CONSOLE ALSO"; collision #9 - the dev's SCRAPLING took 0.474.0, both kept, mine re-versioned): the console could already RECEIVE a frames MP4 (pc_file card = inline <video> in results.js, video tab in panel.js) but nothing OFFERED the free engine - workspace.js "Video & motion" only knew the paid video_studio path and the Kaam catalog had no frames row. Now: an Engine choice in the video form (HOOLA FRAMES animated/free/~2 min DEFAULT vs AI film storyboard-first/paid; voiceover select only for film - the free engine is honest about no AI voiceover; per-engine submit label, tool line and note), the frames request points the model at app/studio/frames_contract.md with action=check -> fix -> action=render and "never claim ready before render succeeds", and kaam.js "Photos & video" gains the "HOOLA FRAMES video" job (free animated MP4, ~2 min). Chat itself needed nothing - same brain, same tools. Server-only; pubspec 0.475.0+520, stamps ?v=0.475.0 x20, pins ->0.475.0 in 146 suites (the dev's 76 full-string +519 pins moved coherently to +520). Tests test_v0475_console_frames.py 14.
+- v0.474 SCRAPLING (owner: "NOW DEPLOY THIS SCRAPER FOR HOOLA --- THUS HOOLA CAN SCRAP ANY WEBSITE SMOOTHLY"): new Scrapling-powered tool module `agent/scrape_tools.py` - 5 tools beside web_tools: scrape_page (fast TLS-impersonated HTTP read, markdown/text, no browser), scrape_extract (css/xpath -> JSON rows with a fields map, ADAPTIVE per-tenant element memory in data/scraping/<tenant>/elements.db that survives site redesigns, similar= expands one card to its siblings), scrape_many (up to 15 urls), scrape_site (polite same-host BFS map, robots respected), scrape_stealth (real-browser last resort for Cloudflare/anti-bot/JS-only, OFF by default behind scrape_stealth_enabled + one-time `scrapling install`, semaphore(1) - MEM-CURE RAM discipline: default engine is pure HTTP). SSRF guard (public IPs only, metadata/loopback/RFC1918 refused), robots.txt gate (scrape_respect_robots, default on), caps everywhere, outputs masked like every tool. Dep scrapling[fetchers,rag]>=0.5 (BSD-3-Clause). Full section in docs/HISTORY.md "v0.474.0 SCRAPLING".
+- v0.471 HOOLA FRAMES (owner: "GO and start Phase 0 + Phase 1" on docs/HYPERFRAMES_PLAN.md): the avatar composes and renders a REAL MP4 from chat - ONE new tool `hoola_frames` (action=render|check|timeline|snapshot|add|status) on the rea_khoj shape; the model writes the HTML composition (data attributes + one paused GSAP timeline), `app/studio/frames.py` runs HeyGen's open-source HyperFrames engine (Apache 2.0, PINNED hyperframes@0.9.6, installed by the new vps-ops `hf_setup` job / `install_hyperframes.sh`) - deterministic frame-clock seek -> Chrome capture -> FFmpeg; Phase 0 measured 4 s 1080p30 in 9.4 s (~13 fps on 4 vCPU). Discipline: ONE render at a time, nice -n 19, process group killed on timeout, per-tenant sha1 LRU projects + 10 GB janitor, `check --json` determinism gate first; assets are HER files owner-resolved; the MP4 lands as a chat file card. Voice: VOICE_TOOL_NAMES + VOICE_VIA_KAAM (never declared to Live). Safety: model-authored HTML only, no HeyGen keys, nothing she has no right to use. Tests test_v0_frames.py 22. Server-only; pubspec 0.471.0+516, stamps ?v=0.471.0.
 - v0.470 GOOGLE MAPS Phase 11 PROOF (all 11 phases now addressed): the MAPS card `app/quality/maps_asks.py` + `mapscard.py` - 26 asks whose answers are CHECKABLE (4 geo computed from the coordinates the ask carries, so no remembered world fact; 17 tool-choice; 5 licence / cap guards, the cap one proved by running it), every maps tool registered AND reachable 20/20, rupees per answer from mapsbill; `python -m app.quality maps [--live]`, GET /api/quality/maps, vps-ops `maps_card`. Free card today: 26/26 in view, guards 5/5, ~Rs 23.67 for one of every answer. NOT VERIFIED: the live card has never run (needs her Maps key on the VPS); read `docs/MAPS_PLAN.md` §11 for the four things only she can unblock.
 - v0.469 GOOGLE MAPS Phase 10 BAAKI SAB: tools `solar_check` (Solar API Building Insights, Google's numbers only, 404 = not covered + not billed) + `maps_snap` (Roads snap-to-road, <=100 points). Air Quality / Pollen (SST permits only routing + risk indices), Elevation (no SST section; terrain models barred), Time Zone (India = 1 zone) deliberately NOT built - `docs/research/maps/06_phase10_terms.md`. Only Maps phase 11 PROOF (scored card + rupees) is left. NOT verified live.
 - v0.468 GOOGLE MAPS Phase 9 APNA NAKSHA: `server/app/ownmap.py` + `ownmap_api.py` + tools `ownmap_import/list/near/pin/delete` + `/api/ownmap` (+ `/{id}/geojson` for the Maps JS Data layer). Her My Maps KML/KMZ or Takeout 'Saved' file is imported ONCE and lives on Hoola (Google has no API to read/write My Maps or saved lists); Takeout format is SNIFFED (GeoJSON/CSV) and reported, rows without coordinates kept 'unlocated' and never geocoded; nothing calls Google. NOT built: the drawing UI, Datasets API, Data Portability, sync. NOT verified on a real export.
@@ -235,7 +248,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - v0.465 GOOGLE MAPS Phase 5 DIN KA RASTA: `server/app/mapsopt.py` + tool `maps_route_plan` (Route Optimization: PROPOSED stop order with time windows / capacity, never assigns). Auth is OAuth service account + Cloud project (`ROUTE_OPT_PROJECT`, `ROUTE_OPT_SA_FILE`), NOT the Maps key - spec read from Google's proto, not the blocked docs. Billing unit/tier ASSUMED (per shipment, FleetRouting rate). NOT verified live; not wired to fleet/courier.
 - v0.464 GOOGLE MAPS Phase 6 PATA PAKKA: tools `maps_address_check` (Address Validation, graded pakka / sadak_tak / galat in code - a road-only match is NOT called wrong) + `maps_pata` (reverse geocode); shapes from Google's discovery doc because developers.google.com was blocked. NOT done: Autocomplete (no typing UI), courier wiring. NOT verified live (auth by key, India region, tier). Phase 5 (Route Optimization) still unbuilt: its discovery doc is reachable at routeoptimization.googleapis.com/$discovery/rest.
 - v0.463 GOOGLE MAPS Phase 4 SABSE PAAS: `maps.matrix()` (computeRouteMatrix, billed per ELEMENT and refused by the cap before the call, unreachable pair reported never guessed) + tool `maps_nearest` (nearest of her own list by road time, straight-line shortlist over `maps_matrix_max`=100). Fleet wired (`fleet_dekho what=nearest`: free truck closest to a pickup, position = last finished drop). Courier NOT wired (single warehouse, no choice to make). Not done: field_service/helpdesk; matrix tier still ASSUMED; no live call yet.
-- v0.461 HOOLA INTERACTIVE MODEL LAB (Phase 0, built + RUN on Modal L4 over v0.461-v0.462.x): `avatar_engine/` = our own HeyGen + ElevenLabs lab - registry.py (licence verdict per model: refused F5-TTS / XTTS-v2 / Fish / Wav2Lip, lab_only IndicF5 / DWPose / face-parser, check(ship) refuses those), modal_app.py (3 voices + MuseTalk 1.5, per-second GPUs, key-locked, idle shutdown, every call has a hard wait), `server/app/interactive/lab.py` (Hoola's only door), Actions > Interactive lab (setup / prefetch / smoke / face / bench / deploy / down). VERIFIED ON A GPU: Chatterbox hi+en OK, Indic Parler hi+en OK, MuseTalk face prepared + rendered (96 s for 8 s audio = 12x, BUT that path reloads every model per call - the `bench` job loads once and times batch 4/8/20 for the real number). NOT verified: IndicF5 after its transformers 4.49 pin, live speed, any real teacher face (needs her consent-video / AI-person decision). RULE learned: every failure here was a library pin (numpy / pyarrow / datasets / transformers / matplotlib), found one per run from the REAL log - read the log, never guess; a silent run = the call never got a container (Modal Face page shows Enqueued without Started).
+- v0.461 HOOLA INTERACTIVE MODEL LAB (Phase 0, built + RUN on Modal L4 over v0.461-v0.462.x): `avatar_engine/` = our own HeyGen + ElevenLabs lab - registry.py (licence verdict per model: refused F5-TTS / XTTS-v2 / Fish / Wav2Lip, lab_only IndicF5 / DWPose / face-parser, check(ship) refuses those), modal_app.py (3 voices + MuseTalk 1.5, per-second GPUs, key-locked, idle shutdown, every call has a hard wait), `server/app/interactive/lab.py` (Hoola's only door), Actions > Interactive lab (setup / prefetch / smoke / face / bench / deploy / down). VERIFIED ON A GPU: Chatterbox hi+en OK, Indic Parler hi+en OK, MuseTalk face prepared + rendered (96 s for 8 s audio = 12x, BUT that path reloads every model per call - the `bench` job loads once and times batch 4/8/20 for the real number). LIVE SPEED MEASURED (L40S, warm face, one student per GPU container): 37 fps, 0 frozen, first frames ~1 s warm / ~36 s cold; 3 students at once on 3 cards all smooth; two students on ONE card hang + could never be smooth (43 fps total) -> `Live` has no input concurrency; ~$0.036 per student-minute (`docs/INTERACTIVE_AVATAR_PLAN.md` S11). NOT verified: IndicF5 after its transformers 4.49 pin, voice -> face end to end, video to a phone (WebRTC), any real teacher face (needs her consent-video / AI-person decision), warm pool vs cold start. RULE learned: every failure here was a library pin (numpy / pyarrow / datasets / transformers / matplotlib), found one per run from the REAL log - read the log, never guess; a silent run = the call never got a container (Modal Face page shows Enqueued without Started).
 - v0.456 NO DESK ROWS + NO LAB / SYSTEMS (built as 0.455): hired employees' desks, Lab and Systems are no longer sidebar rows (her asks) - desks open from AI Employees > Open desk, labs from the Education Desk Lab tab, Systems from an Enterprise employee's Open desk; AI Employees stays lit on a desk. Console only.
 - v0.460 GOOGLE MAPS 1-3 (built as 0.449): `mapsbill.py` = daily rupee cap that REFUSES before the call + Google's real
   INDIA price list (3x cheaper than global, 7x free caps) + the free monthly allowance counted per BILLING ACCOUNT (so early
@@ -382,6 +395,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 - PLAN: `docs/COMPLEX_APPS_PLAN.md` - any very hard / complex app end to end (pillars A-L, Phases 43-62, proof apps; Phase 0 = merge 11-42 + one real app on her phone first).
 - v0.367 CRM DESK (`enterprise/`): crm_arch is a desk of 12 parts (admin, config, flows, Apex, data...) with 100% Salesforce read + write (describe, SOQL, `api`), writes through the ERP plan -> dry run -> her tap path.
   `server/tests`). If a parallel session took your number, re-version on rebase and keep both works (REBASE PROTOCOL).
+- WORKLOG MIRROR (SAVE THE STATE, since 2026-11-03): the multi-session worklog lives at `docs/WORKLOG.md` IN THE REPO (append-only, one `Task ID:` entry per task) - the local `/home/z/my-project/worklog.md` copy is disposable and has been rolled back by sandbox recycles four times (Tasks 12-14 were lost that way). Ritual: after every task, append the entry locally AND copy the file to `docs/WORKLOG.md`, commit, push. Fresh env: restore the local copy from the repo. NEVER put tokens or credentials in the worklog.
 - v0.444 BIG-STUDIO MODE (built as 0.433; Game Engine plan Phase 10; `gamedesk/bigstudio.py`, tool game_bigstudio): her OWN Unity / Unreal / Godot project on her machines - Unity UPM package (Editor-only asmdef) + Unreal Python plugin as MCP clients of /mcp/gamedesk (7 hoola_studio_* tools), one board task at a time, proposals checked on the server (paths per engine, banned calls, real C# / C++ / Python syntax via tree-sitter + ast), written ONLY on her Apply in the editor, backups + revert, her editor's compile / run errors = fix rounds (max 3). NOT VERIFIED in a real Unity / Unreal editor.
 - v0.432 LIVE OPS (built as 0.430; Game Engine plan Phase 9; `gamedesk/liveops.py`, tool game_liveops): GET /play/<token>/live -> HoolaRuntime.num / flag (Bible numbers 1/4x-4x only), A/B tests measured (sample-size target, SRM, z-test, no early winner, ship = board task), live events (her tap, no clashes), crashes via Godot Logger + hotfix task, patch check replays saved runs, D30 / balance, money from her CSV only.
 - v0.427 HOOLA RUNTIME + EDITOR (built as 0.425; Game Engine plan Phase 8; `gamedesk/runtime.py` + `editor.py`): HoolaRuntime in every Studio build (replay + in-engine bot only in test runs - seeded ONLY then; opt-in telemetry = her switch + player's yes, never kids, POST /play/<token>/t, D1/D7), replay tests in real Godot, real MCP server /mcp/gamedesk (hashed editor tokens) + Godot 'Ask Hoola' dock plugin loaded by the real editor.
@@ -853,3 +867,133 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   pay/install/settings changes. REA runs static-analysis only (7-tool allowlist, child env without secrets).
 - Home safety: AC 20–28 °C, speaker ≤ 90 % volume, fridge/washer read-only, no geyser control.
 
+
+## v0.473.0 HOOLA CODER — persistent session memory for Santosh, the claude-mem architecture ported into the house stack (owner: "I WANT EVERYTHING FROM THIS FOR HOOLA CODER")
+
+The owner read github.com/thedotmack/claude-mem end to end and wanted all of it for Santosh.
+Every session Santosh works — a chat turn or a voice call — now leaves behind compressed,
+searchable memory instead of evaporating when the session ends. New module `server/app/coder/`
+(store, spool, redact, modes, prompts, parser, dedup, observer, search, inject, capture, service),
+one worker slot, ten routes under `/api/coder/*`. **Seven pieces, all fail-open:**
+
+1. **Capture** — `santosh._run_tool` (the single funnel every tool call of the main agent AND the
+   team crew passes) spools one atomic JSON event per completed call beside the harness log;
+   `_run_turn` records her ask; a new chat or `Call.run` opens a session row and the call's
+   `finally` closes it; INCOGNITO chats never open one (her own promise: "yahan ki baatein yaad
+   mein nahi jayengi" — v0.250's incognito respected on day one). Redaction happens at the
+   boundary: `<private>` blocks stripped, ~13 secret patterns masked BEFORE spool/model/store —
+   labels survive, values never do (the Hoola secrets floor, now for memory).
+2. **Spool** — the durable hand-off (`data/coder/spool/`): the filename IS the dedupe key,
+   exactly-once via consumed markers stamped only after the row commits, 7-day retry window,
+   `corrupt/` and `expired/` quarantine, 1 MB per-event bound.
+3. **Observer** — a stateful per-session conversation with the CHEAPEST existing brain
+   (`llm.cheap_brain` then the pakka-style Claude fallback, usage-gated per tenant like enrich):
+   batches of tool events in, XML observations out (9 types × 7 concepts; the taxonomy is data in
+   `modes/`, a JSON override file changes it — the claude-mem modes lesson); noise sentinels
+   consume for free; prose answers are salvaged as discovery; one fresh-context retry then drop;
+   3 consecutive failures park the session for 10 min; overflow recycles the history; at
+   session_end one checkpoint call writes request/investigated/learned/completed/next_steps (one
+   row per conversation, rewritten each time).
+4. **Vault** — raw-sqlite3 store (`data/coder/coder.db`, the gyan pattern): sessions, observations,
+   summaries, prompts (the privacy gate: a wholly `<private>` ask marks the turn so nothing from it
+   is stored), tool_uses, work_state, dedup_candidates, consumed; FTS5 external-content tables +
+   triggers with a probed fallback (no FTS5 = LIKE search — memory never depends on an optional
+   extension).
+5. **Dedup ladder** — the exact content hash re-confirms (`occurrence_count++`, ACT-R
+   `reinforcement_dates`, 10-day FIFO); Tier-0 normalized-title merge across a tenant's sessions;
+   Tier-1 TF-IDF cosine ≥ 0.80 near-duplicates become REVIEW-ONLY candidates with the
+   Fellegi-Sunter IDF veto (a token rarer than 10-of-project records on one side vetoes the merge)
+   — nothing is ever auto-merged on Tier 1.
+6. **Search** — the claude-mem three-layer discipline: `/api/coder/search` (the index: ids +
+   titles, tens of tokens per row), `/api/coder/timeline` (the neighbourhood around an id or date),
+   `/api/coder/observations/batch` (full rows, caller's order), plus `/api/coder/tool-uses/batch`
+   (the deep dig), `/api/coder/work-state` GET/POST (cross-session to-do lists),
+   `/api/coder/memory` (the manual save_memory), `/api/coder/stats`, `/api/coder/context` (primer
+   preview), `/api/coder/drain` (admin).
+7. **Inject** — the session-start primer rides AFTER the KAAM YAAD block, never instead of it
+   (undelivered news outranks history): open work-state lists → recent observations by day → the
+   last summary → a footer advertising the deeper layers; voice gets the 10,000-char budget (the
+   whole-item fitter: narratives drop first, then the summary, then rows halve; the header and ≥1
+   row always survive), chat turns get the compact 1,600-char block beside `yaad.turn_block`. On
+   the rebased shape the primer rides `_build_context`'s parallel gather, so the v0.224 prebuild
+   path gets it for free.
+
+Worker slot `coder_jobs` (5 s throttle) drains and observes. Kill switch `coder_enabled`: off =
+nothing is written or read (capture, observe, inject, routes all gate on it; conftest defaults it
+off — coder memory writes only in its own tests); `coder_observe` separately stops only the model
+calls. **Tests:** NEW `test_v0473_hoola_coder.py` (24) — settings + kill-switch-writes-nothing,
+capture redacts before spool AND store (the secret never lands), strip_private + the privacy gate,
+secret patterns (labels survive), spool dedupe-key + exactly-once + too-big-dropped, dedup
+exact-hash re-confirm, Tier-0 title merge + reinforcement, IDF veto (a rare token on one side
+vetoes a 0.80-cosine pair) + review-only candidates, parser (cap, invalid-type fallback, skip
+sentinel, prose salvage, junk words), observer end to end (capture → observation → spool consumed
+after commit → session_end → summary → row completed), noise consumed free + prose salvaged,
+no-brain leaves spooled + parks after 3 failures, history recycle, the three search layers,
+work-state + primer, primer budgets (10k/1.6k), the voice-order pin (coder block after KAAM), the
+capture-funnel pin, session-lifecycle pins, routes mounted, retention typo never purges, version.
+Version 0.473.0 (APP_VERSION story, pubspec 0.473.0+518, pins ->0.473.0 in 144 suites; re-versioned
+0.221.0 → 0.473.0 on rebase — the dev's v0.222…v0.472 SEMANTIC DESKTOP stretch took ~250 numbers
+first, EIGHTH collision, both works kept); Mera PC freeze respected; desktop untouched —
+server-only deploy, old APKs keep working.
+
+## v0.475.0 HOOLA FRAMES on the web console — the free video engine is now OFFERED where the user already is (owner: "DEPLOYE IT TO WEB CONSOLE ALSO"; collision #9: the dev's SCRAPLING took 0.474.0+519 first, both works kept, mine re-versioned 0.475.0+520)
+
+What was already true (no change needed): hoola_frames is a server-side tool on the same chat brain, so console chat could
+always ask for a video; the delivered pc_file card already renders as an inline <video> in results.js (fetched with the
+Bearer token into a blob: URL, only for the media the server marks inline) and opens as a video tab in panel.js
+(media() maps .mp4 -> video). The gap was OFFERING: the Creative workspace "Video & motion" form hard-routed to the PAID
+video_studio storyboard flow, and the Kaam "What Santosh can do" catalog had no frames row - a console user would never
+learn the free engine exists.
+
+Three client-side touch-ups (server untouched, already live since v0.471.0):
+1. workspace.js video mode grows an ENGINE choice, HOOLA FRAMES (animated, free, ~2 min) as the DEFAULT, "AI film"
+   (storyboard first, paid) as the opt-in. The Voiceover select renders only for film - the free engine is honest: it
+   cannot fake a voice yet. Submit label, tool line and the note under the form all speak per engine ("Render video ·
+   free · ~2 min" / "It cannot film real people, and voiceover needs the AI film engine"). The frames request tells the
+   model to write the composition per app/studio/frames_contract.md (data-start/data-duration clips, one paused GSAP
+   timeline on window.__timelines, no network fetch / wall clock / Math.random, safe margins, font fallbacks), copy the
+   attached reference images into the project as assets, run action=check, fix every error, then action=render, and put
+   the MP4 file card in chat - never claiming ready before render succeeds. The film branch is byte-identical to before,
+   just gated on vengine==='film'. A data-vengine chip handler preserves the draft (take() first) and redraws.
+2. kaam.js "Photos & video" group gains the "HOOLA FRAMES video" job (Free animated MP4, ~2 min, example "Is product ka
+   15 second ka Diwali sale video banao (animated)", icon 📼) right beside AI video (Studio) so free vs paid is visible.
+3. Chat itself: nothing - same brain, same tool registry, same mailbox delivery.
+
+Version ritual 0.475.0 (APP_VERSION story, pubspec 0.475.0+520, console ?v=0.475.0 x20, pins ->0.475.0 in 146 suites;
+the dev's 76 full-string 0.474.0+519 pins moved coherently to 0.475.0+520 in the same sweep - no stale build number this
+time, the v0.473 +517 lesson applied at sweep time). Tests: NEW test_v0475_console_frames.py (14): engine chips + frames
+default, voiceover-only-for-film, the frames request pillow texts (contract pointer, check-then-render, never-claim-ready),
+film branch intact and gated, per-engine labels + note, take()/chip-handler wiring, the old storyboard hint gone, kaam row
++ icon beside studio, receive-side pins (results.js inline video, panel.js .mp4), stamp count 20 @ 0.475.0, APP_VERSION
+story, pubspec. KNOWN PRE-EXISTING RED (dev's, stash-proven on pristine HEAD, untouched):
+test_v142_console.py::test_conversations_recent_and_isolation expects two conversations in the console list and gets one -
+fails on pristine HEAD too. Desktop untouched - server-only deploy, old APKs keep working.
+
+
+## v0.479.0 HOOLA SMART HOME — ghar ka control via Home Assistant REST (owner: "START bolo aur W1 (0.473.0 smart home)"; W1 of the Platforms plan from the sindresorhus/awesome read)
+
+The W1 workstream of the 4-workstream Platforms plan (W2 launcher, W3 extension, W4 flutter pass follow in later
+releases). Server-only — no desktop file, no new binary, no APK; the PC freeze respected byte-identically.
+
+- **The link (zoo BYOK pattern)**: `HOME_ASSISTANT_URL` + `HOME_ASSISTANT_TOKEN` in the VPS `.env` ONLY. The owner
+  makes the token in HA (profile → Security → Long-lived access tokens). No tool result ever carries the token —
+  `home_link` shows linked/not + a masked preview (`eyJh…CJ9`) + the full setup guide. The non-negotiable "keys never
+  in chat" rule is why there is NO paste-your-token flow in chat.
+- **The HOME gate**: `home_control` (default OFF — bake on the VPS, then `HOME_CONTROL=1`). SEPARATE from PC control.
+  Reads (link status, devices, state) are gate-free but die without the link; controls refuse with the flip line and
+  the attempt is still audited.
+- **Guards (the frozen brief made executable)**: AC 20–28 °C (19/32 refused; climate with no temperature asks for one
+  instead of guessing), volume ≤ 90 % (1.0 clamps to 0.9), fridge/washer/geyser/heater/oven/dishwasher READ-ONLY by
+  name-match (they surface as switch.* and are still refused), sensor/camera/vacuum domains not switchable.
+- **Locks confirm-only, never autonomous**: `home_on(lock)`=band, `home_off(lock)`=khol, both need `confirm=true`
+  (the model passes it only after she said haan in chat). In a routine turn (actor="routine") locks refuse outright.
+  Routines ride the same tool surface, so "raat 11 baje saari lights band" works the moment the gate is on.
+- **Files**: NEW `app/home.py` (REST client + guards + audit + ensure_table engine-id-keyed self-heal), NEW
+  `agent/home_tools.py` (5 tools + Hinglish labels), mount in `agent/tools.py`, EXTRA_KEYS["home"] in `agent/admit.py`,
+  `home_control` + 2 env fields in `config.py`, register in `db.init_db`.
+- **Tests**: `test_v0479_home.py` 24 (registry/router/voice-absence, gate, token privacy, reads, guards, locks,
+  fake-HA REST round trips via httpx.MockTransport, settle, audit readback, version). PRE-EXISTING stash-proven red
+  at ae5bfc58 (untouched): `test_v0230_voice_phase3.py::test_tool_diet` 113<=110 — the dev's parallel chain filled
+  the voice budget; not mine, not fixed here.
+- **Deploy**: bake `HOME_CONTROL=1` (+ URL/token) on the VPS, then the normal vps-ops deploy. Console stamps stay
+  0.475.0 x20 (server-only release, the v0.476 precedent); story pin moved to the v0.479 story.

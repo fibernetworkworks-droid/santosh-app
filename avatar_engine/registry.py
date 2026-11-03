@@ -48,6 +48,11 @@ MODELS: dict[str, dict] = {
         "note": "Face-parsing model commonly trained on CelebAMask-HQ, whose terms are non-commercial: must be replaced "
                 "by a commercially licensed segmenter before any public release.",
     },
+    # ------------------------------------------------------------------ speech to text (Hoola Studio: transcribe + dubbing)
+    "faster_whisper_small": {
+        "kind": "speech_to_text", "repo": "Systran/faster-whisper-small", "licence": "MIT (code + weights; OpenAI Whisper is MIT)",
+        "use": "commercial", "note": "CPU int8; says what was spoken, in which language, with word times.",
+    },
     # ------------------------------------------------------------------ refused (non-commercial)
     "f5_tts": {"kind": "voice", "repo": "SWivid/F5-TTS", "licence": "CC-BY-NC-4.0", "use": "refused"},
     "xtts_v2": {"kind": "voice", "repo": "coqui/XTTS-v2", "licence": "Coqui Public Model Licence", "use": "refused"},

@@ -25,7 +25,7 @@ jobs:
         working-directory: desktop
         run: |
           python -m santosh_desktop --version
-          python -c "import santosh_desktop.app, santosh_desktop.tally, santosh_desktop.index"
+          python -c "import santosh_desktop.app, santosh_desktop.tally, santosh_desktop.index, santosh_desktop.axtree"
       - name: Build SantoshDesktop.exe
         working-directory: desktop
         run: pyinstaller --noconfirm santosh_desktop.spec
@@ -33,10 +33,24 @@ jobs:
         working-directory: desktop
         run: |
           python -c "from PyInstaller.archive.readers import CArchiveReader; toc = CArchiveReader('dist/SantoshDesktop.exe').toc; names = list(toc) if hasattr(toc, 'keys') else [n for n, _ in toc]; bad = [n for n in names if 'avif' in n.lower()]; print('AVIF entries:', bad); assert not bad, 'AVIF module bundled - build must use santosh_desktop.spec excludes'"
+      - name: Bundle agent-desktop helper (v1.6.0 semantic desktop mode)
+        working-directory: desktop
+        shell: bash
+        run: |
+          # vercel-labs/agent-desktop v1.1.0 (Apache-2.0): the accessibility-tree helper that powers ax_*.
+          # Downloaded at BUILD time from the official release, checksum-verified, and shipped BESIDE
+          # SantoshDesktop.exe (axtree.py looks for it there). Never bundled into the exe payload itself.
+          AD=agent-desktop-v1.1.0-x86_64-pc-windows-msvc.tar.gz
+          curl -sSL -o "$AD" "https://github.com/vercel-labs/agent-desktop/releases/download/v1.1.0/$AD"
+          curl -sSL -o checksums.txt https://github.com/vercel-labs/agent-desktop/releases/download/v1.1.0/checksums.txt
+          grep "$AD" checksums.txt | sha256sum -c -
+          tar xzf "$AD" -C dist
+          rm -rf "$AD" checksums.txt
+          ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
           name: SantoshDesktop
-          path: desktop/dist/SantoshDesktop.exe
+          path: desktop/dist/*
       - name: Publish (main branch)
         if: github.ref == 'refs/heads/main'
         env:
@@ -45,8 +59,10 @@ jobs:
         run: |
           SIZE=$(stat -c%s desktop/dist/SantoshDesktop.exe)
           SHA=$(sha256sum desktop/dist/SantoshDesktop.exe | cut -d' ' -f1)
+          ADSIZE=$(stat -c%s desktop/dist/agent-desktop.exe)
           gh release delete desktop-latest --yes --cleanup-tag || true
-          gh release create desktop-latest desktop/dist/SantoshDesktop.exe \
+          gh release create desktop-latest desktop/dist/SantoshDesktop.exe desktop/dist/agent-desktop*.exe \
             --title "Santosh Desktop (Windows)" --latest=false \
             --notes "Connects your office PC to Santosh on your phone. Download: https://github.com/${{ github.repository }}/releases/download/desktop-latest/SantoshDesktop.exe
-          Verify your download: size ${SIZE} bytes, sha256 ${SHA}. If the exe shows \"Failed to extract ...\", the download was cut short or antivirus interfered - re-download and compare the size (see desktop/README.md)."
+          ALSO download agent-desktop.exe (and any agent-desktop-windows-*.exe helper) into the SAME folder as SantoshDesktop.exe - it enables semantic desktop mode (v1.6.0: Hoola reads Excel / Word / Tally by real UI elements, not pixel guesses).
+          Verify your download: size ${SIZE} bytes, sha256 ${SHA} (SantoshDesktop.exe), ${ADSIZE} bytes (agent-desktop.exe). If the exe shows \"Failed to extract ...\", the download was cut short or antivirus interfered - re-download and compare the size (see desktop/README.md)."

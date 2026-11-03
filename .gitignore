@@ -25,3 +25,6 @@ pubspec.lock
 server/data/create/
 server/data/pc_files/
 server/data/studio/
+
+# the sandbox test venv lives inside the repo tree - NEVER commit it (GitHub 100 MB cap)
+server/venv/
