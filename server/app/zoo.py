@@ -11,6 +11,8 @@ when she needs a specific model / style / aspect the studios don't cover.
 - BYOK, TWO gateways: the owner's keys sit in the server env and go ONLY to their gateway -
   ZOO_MUAPI_KEY (MUAPI_KEY also accepted) -> api.muapi.ai as x-api-key;
   ZOO_KIE_KEY (KIE_API_KEY also accepted) -> api.kie.ai as Bearer.
+  Read from os.environ first, then from the app's .env file (pydantic reads only its declared
+  fields there, so the zoo keys ride along via a tiny local parser - cwd is $CORE in prod).
   Never logged, never echoed. An entry without "gateway" rides the catalog root default (muapi).
 - muapi pattern: POST /api/v1/{endpoint} -> {request_id}; poll GET /api/v1/predictions/{id}/result
   until status completed | succeeded | failed.
@@ -97,8 +99,26 @@ def list_models(kind: str = "", mode: str = "", q: str = "", limit: int = 40) ->
     return out[: max(1, min(int(limit or 40), 100))]
 
 
+def _dotenv_val(name: str) -> str:
+    """One KEY=VALUE from the app's .env in the working directory ($CORE in prod).
+    pydantic Settings only carries its DECLARED fields, so zoo keys would be dropped by
+    extra=ignore - this tiny parser lets the owner add zoo keys to the same .env file."""
+    try:
+        for line in (Path.cwd() / ".env").read_text().splitlines():
+            line = line.strip()
+            if line.startswith(f"{name}="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return ""
+
+
+def _env(name: str) -> str:
+    return os.environ.get(name, "").strip() or _dotenv_val(name)
+
+
 def key() -> str:
-    return (os.environ.get("ZOO_MUAPI_KEY") or os.environ.get("MUAPI_KEY") or "").strip()
+    return _env("ZOO_MUAPI_KEY") or _env("MUAPI_KEY")
 
 
 def muapi_key() -> str:
@@ -106,8 +126,8 @@ def muapi_key() -> str:
 
 
 def kie_key() -> str:
-    """The kie.ai key (v0.463.1). Server env only - never logged, never echoed."""
-    return (os.environ.get("ZOO_KIE_KEY") or os.environ.get("KIE_API_KEY") or "").strip()
+    """The kie.ai key (v0.463.1). Server env / .env only - never logged, never echoed."""
+    return _env("ZOO_KIE_KEY") or _env("KIE_API_KEY")
 
 
 def gateway_of(m: dict) -> str:

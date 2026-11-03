@@ -115,6 +115,23 @@ def _kie_env(monkeypatch):
     _KieClient.calls, _KieClient.script = [], []
 
 
+def test_key_falls_back_to_the_app_dotenv(monkeypatch, tmp_path):
+    """Prod reality: the owner's keys live in $CORE/.env; pydantic only carries declared fields,
+    so zoo reads the file itself when os.environ does not have the key (cwd = $CORE there)."""
+    for v in ("ZOO_KIE_KEY", "KIE_API_KEY"):
+        monkeypatch.delenv(v, raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("OTHER=x\nZOO_KIE_KEY=dotenv-key-1\n")
+    assert zoo.kie_key() == "dotenv-key-1"
+    (tmp_path / ".env").write_text('ZOO_KIE_KEY="quoted-key"\n')
+    assert zoo.kie_key() == "quoted-key"
+    (tmp_path / ".env").unlink()
+    assert zoo.kie_key() == ""
+    monkeypatch.setenv("ZOO_KIE_KEY", "env-wins")
+    (tmp_path / ".env").write_text("ZOO_KIE_KEY=dotenv-loses\n")
+    assert zoo.kie_key() == "env-wins"          # os.environ first, .env only as fallback
+
+
 def test_kie_make_without_key_is_a_clear_error(monkeypatch):
     for v in ("ZOO_KIE_KEY", "KIE_API_KEY"):
         monkeypatch.delenv(v, raising=False)

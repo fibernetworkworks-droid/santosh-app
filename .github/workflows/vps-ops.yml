@@ -481,6 +481,7 @@ jobs:
                 echo 'print("status:", r["status"], "| request_id:", r["request_id"])'
                 echo 'print("urls:", r.get("urls"))'
                 echo 'print("error:", str(r.get("error", ""))[:200])'
+                echo 'raise SystemExit(0 if r["status"] == "done" else 3)'
                 echo 'PY' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
