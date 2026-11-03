@@ -14,12 +14,14 @@ from .. import zoo
 from .tools import Ctx, ToolError
 
 GUIDE = (
-    "ZOO GUIDE. Do BYOK gateways ke through 233 image/video models (Muapi + kie.ai - har entry batati hai kaunsa "
-    "gateway). "
-    "1) action=models se dhoondein: kind image|video, mode t2i| i2i (image edit) | t2v | i2v (start frame), "
-    "q=search text (name ya maker, jaise 'flux', 'kling', 'nano-banana'). Har entry: id, name, mode, gateway, "
-    "aspects / resolutions / durations (allowed values), max_images (multi-reference models), audio_field (talk "
-    "models: extra mein audio URL yahan bhejein). "
+    "ZOO GUIDE. Do BYOK gateways ke through 200+ image/video models (Muapi + kie.ai - har entry batati hai kaunsa "
+    "gateway; poori count action=models ya guide se milti hai). "
+    "1) action=models se dhoondein: kind image|video|audio, mode t2i| i2i (image edit) | t2v | i2v (start frame) | "
+    "v2v (video edit) | t2s/t2m/a2a (speech/music/audio), q=search text (name ya maker, jaise 'flux', 'kling', "
+    "'nano-banana'). Har entry: id, name, mode, gateway, aspects / resolutions / durations (allowed values), "
+    "max_images (multi-reference models), audio_field (talk models: extra mein audio URL yahan bhejein), params "
+    "(documented input fields - inme se jo prompt/aspect/duration ke alawa chahiye, extra mein bhejein, jaise TTS "
+    "ke liye extra = {\"text\": ..., \"voice\": ...}). "
     "2) action=make: model_id + prompt zaroori; i2i/i2v models ko image_urls mein kam se kam EK reference chahiye "
     "(public URL, local file path ya data-URI chalega - kie use apne CDN par daal dega). talk models ke liye extra "
     "= {audio_field_value: audio_url} zaroori. aspect / resolution / duration sirf catalog wali values hi bhejein. "
@@ -73,7 +75,8 @@ async def zoo_tool(ctx: Ctx, action: str = "guide", **a: Any):
                 "note": ("key server par hai - make chal sakta hai" if zoo.ready()
                          else "key server par NAHI hai: generate se pehle owner zoo key (ZOO_MUAPI_KEY / ZOO_KIE_KEY) set karein"),
                 "models": [{**{k: m.get(k) for k in ("id", "name", "mode", "kind", "aspects", "resolutions",
-                                                     "durations", "max_images", "family", "audio_field") if m.get(k)},
+                                                     "durations", "max_images", "family", "audio_field",
+                                                     "params") if m.get(k)},
                             "gateway": zoo.gateway_of(m)} for m in rows]}
     if action == "make":
         mid = (a.get("model_id") or "").strip()

@@ -24,12 +24,15 @@ CTX = Ctx(tenant_id="t1", conversation_id="c1")
 def test_kie_entries_shape():
     cat = zoo.load_catalog()
     ms = [m for m in cat["models"] if m.get("gateway") == "kie"]
-    assert len(ms) == 22, f"expected the 22 kie entries, got {len(ms)}"
-    assert cat["count"] == len(cat["models"]) == 233
+    # v0.463.2: the 22 curated kie entries remain, the FULL kie.ai catalog (229 live models,
+    # chat excluded) is appended after them - entries grow by appending, pins stay structural.
+    assert len(ms) >= 22, f"expected the 22 curated kie entries + full-catalog additions, got {len(ms)}"
+    assert cat["count"] == len(cat["models"]) >= 233
     ids = [m["id"] for m in cat["models"]]
     assert len(ids) == len(set(ids)), "kie ids must not collide with the muapi ones"
     for m in ms:
-        assert m["endpoint"] and m["kind"] in ("image", "video") and m["mode"] in ("t2i", "i2i", "t2v", "i2v")
+        assert m["endpoint"] and m["kind"] in ("image", "video", "audio") \
+            and m["mode"] in ("t2i", "i2i", "t2v", "i2v", "v2v", "t2s", "t2m", "a2a")
     modes = {(m["kind"], m["mode"]) for m in ms}
     assert {("image", "t2i"), ("image", "i2i"), ("video", "t2v"), ("video", "i2v")} <= modes
     assert zoo.gateway_of(zoo.model("t2i:kie:nano-banana-2")) == "kie"
@@ -213,12 +216,12 @@ def test_kie_local_reference_uploads_to_cdn(monkeypatch):
 # ------------------------------------------------------------------ the tool handler
 def test_tool_models_rows_carry_gateway():
     out = asyncio.run(zoo_tool(CTX, "guide"))
-    assert out["count"] == 233 and "233" in out["guide"]
+    assert out["count"] == len(zoo.load_catalog()["models"]) >= 233 and "200+" in out["guide"]
     out = asyncio.run(zoo_tool(CTX, "models", q="kling", limit=100))
     assert out["count"] >= 4
     assert all("gateway" in m for m in out["models"])            # every row says which gateway
     kie_rows = [m for m in out["models"] if m["gateway"] == "kie"]
-    assert kie_rows and all(m["id"].startswith(("t2v:kie:", "i2v:kie:")) for m in kie_rows)
+    assert kie_rows and all(m["id"].startswith(("t2v:kie:", "i2v:kie:", "v2v:kie:")) for m in kie_rows)
 
 
 def test_tool_make_kie_end_to_end(monkeypatch):

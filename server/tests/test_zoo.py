@@ -31,7 +31,10 @@ def test_catalog_shape():
     assert len(ids) == len(set(ids)), "zoo ids must be unique"
     for m in ms:
         assert m.get("id") and m.get("name") and m.get("endpoint"), f"bare entry: {m}"
-        assert m["kind"] in ("image", "video") and m["mode"] in ("t2i", "i2i", "t2v", "i2v")
+        # v0.463.2: the full kie.ai catalog adds kind audio (tts / music / audio-to-audio)
+        # and modes v2v / t2s / t2m / a2a on top of the four core media modes
+        assert m["kind"] in ("image", "video", "audio") \
+            and m["mode"] in ("t2i", "i2i", "t2v", "i2v", "v2v", "t2s", "t2m", "a2a")
     modes = {m["mode"] for m in ms}
     assert {"t2i", "i2i", "t2v", "i2v"} <= modes
 
