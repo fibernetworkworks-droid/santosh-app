@@ -461,7 +461,13 @@ class Live:
         whisper.requires_grad_(False)
         rt.fp = FaceParsing(left_cheek_width=90, right_cheek_width=90)
         rt.device, rt.vae, rt.unet, rt.pe, rt.whisper = device, vae, unet, pe, whisper
+        import faulthandler
+
+        import cv2
         from concurrent.futures import ThreadPoolExecutor
+        cv2.setNumThreads(1)       # we run our own threads; OpenCV's inner pool on top of them is a classic stall / oversubscription
+        faulthandler.enable()
+        faulthandler.dump_traceback_later(240, repeat=True)   # a hang must show WHERE every thread is stuck, in the logs
         self.pool = ThreadPoolExecutor(max_workers=6)      # CPU half of the frames, shared by every stream
         self.rt, self.torch = rt, torch
         self.avatars: dict = {}
@@ -821,11 +827,11 @@ def bench_streams():
 
             th = [threading.Thread(target=one, args=(i,), daemon=True) for i in range(n)]
             [x.start() for x in th]
-            deadline = time.time() + 420      # a stuck stream must cost minutes, never the half hour it cost once
+            deadline = time.time() + 240      # a stuck stream must cost minutes, never the half hour it cost once
             [x.join(max(0.0, deadline - time.time())) for x in th]
             ok = [r for r in res if r]
             if len(ok) < n:
-                note(f"{n:>7}  FAILED: only {len(ok)} of {n} streams finished within 420 s - stopping here")
+                note(f"{n:>7}  FAILED: only {len(ok)} of {n} streams finished within 240 s - stopping here")
                 break
             worst_first = max(r["first_wall"] for r in ok)
             worst_stall = max(r["stall_s"] for r in ok)

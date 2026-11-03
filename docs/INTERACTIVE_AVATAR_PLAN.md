@@ -205,3 +205,10 @@ of GPU AT MOST, so ONE L40S holds roughly 1-2 live students, not 4+; a single st
 default 0.125 CPU). Fix tried next: 4 CPU cores, CPU half on a thread pool overlapped with the next GPU batch, a 420 s client watchdog.
 The cost per student-minute is therefore between $0.033 (one stream per GPU) and ~$0.02 (1.7), NOT the optimistic "several per GPU".
 
+**Second concurrency run (3 Nov 2026, L40S, after 4 CPU cores + CPU/GPU overlap): ONE live student is SMOOTH** - first frames 0.79 s
+(includes analysing the whole 24 s clip up front; a streaming voice would start sooner), **37.7 fps, 0 stalls, 0.0 s frozen** (needs 25).
+So one L40S can hold one live student with ~1.5x headroom. TWO students hung (no error text) until the 420 s watchdog; the previous
+non-overlapped build managed 2-3 slowly, so the new thread pool deadlocks under two streams. Next: OpenCV set to 1 thread, a faulthandler
+thread dump every 240 s in the container log, watchdog 240 s, then re-run `streams`. Until two is proven, plan CAPACITY = 1 student per
+L40S -> $0.033 per student-minute (+~$0.065 idle tail per session).
+
