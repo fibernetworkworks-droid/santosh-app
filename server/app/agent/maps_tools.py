@@ -116,6 +116,20 @@ MAPS_TOOLS = [
          "place_id": {"type": "string"}, "name": {"type": "string"},
          "directions": {"type": "boolean", "description": "also a directions link from where she is"},
          "streetview": {"type": "boolean", "description": "also check Street View (default true)"}}}},
+    # v0.467 Phase 8a APNI DUKAAN (read)
+    {"name": "gbp_locations", "description": (
+        "HER OWN Google Business Profile listings (the shop's entry on Google Maps / Search): name, address, phone, "
+        "website, opening hours, Maps link, the link where customers leave a review. Read live, owner only. Needs her "
+        "Google sign-in with the Business Profile permission AND Google's approval of the project (quota 0 until then - "
+        "the tool says which is missing). It cannot edit anything yet and cannot read reviews yet."),
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "gbp_numbers", "description": (
+        "How people found HER business on Google over the last N days (default 30): times shown on Search / Maps, "
+        "and the actions - asked for directions, called, opened the website, messaged, booked. Counts only, from the "
+        "Business Profile Performance API. 'location' is locations/<number> from gbp_locations; empty = her only "
+        "listing. Owner only, read live, nothing kept."),
+     "input_schema": {"type": "object", "properties": {
+         "location": {"type": "string"}, "days": {"type": "integer", "description": "1-540, default 30"}}}},
     {"name": "maps_kharcha", "description": (
         "Today's Google Maps spend for this user: calls made, how many were inside Google's free monthly "
         "allowance, rupees spent, the daily cap and what is left. Use it when she asks what Maps is costing, or "
@@ -130,6 +144,7 @@ MAPS_LABELS = {"maps_search": "Google Maps par dhoondh raha hoon", "maps_directi
                "maps_address_check": "Address jaanch raha hoon", "maps_pata": "Is jagah ka pata dekh raha hoon",
                "maps_route_plan": "Din ka rasta bana raha hoon",
                "maps_links": "Map ke links bana raha hoon",
+               "gbp_locations": "Aapki Google listing dekh raha hoon", "gbp_numbers": "Google par kitne log aaye dekh raha hoon",
                "maps_kharcha": "Maps ka kharcha dekh raha hoon"}
 
 
@@ -508,6 +523,44 @@ async def maps_links(ctx: Ctx, place="", lat=None, lng=None, place_id="", name="
     return out
 
 
+def _owner_only(ctx: Ctx) -> None:
+    if (getattr(ctx, "actor", "owner") or "owner") != "owner":
+        raise ToolError("Yeh sirf malik ke liye hai.")
+
+
+async def gbp_locations(ctx: Ctx, **_):
+    from .. import gbp
+    _owner_only(ctx)
+    try:
+        rows = await gbp.locations(ctx.tenant_id)
+    except gbp.GbpError as e:
+        raise ToolError(str(e))
+    if not rows:
+        return {"locations": [], "message": "Is Google account par koi Business Profile listing nahi mili."}
+    return {"locations": rows, "note": ("Read live from Google and not stored (its policies forbid keeping this content). "
+                                        "Show name, address, phone and hours briefly. Editing and reviews are not "
+                                        "available yet - say so if she asks.")}
+
+
+async def gbp_numbers(ctx: Ctx, location="", days=None, **_):
+    from .. import gbp
+    _owner_only(ctx)
+    try:
+        loc = str(location or "").strip()
+        if not loc:
+            rows = await gbp.locations(ctx.tenant_id)
+            if len(rows) != 1:
+                raise ToolError("Kaun si listing? gbp_locations se location chuniye." if rows
+                                else "Koi Business Profile listing nahi mili.")
+            loc = rows[0]["location"]
+        r = await gbp.numbers(ctx.tenant_id, loc, None if days is None else int(days))
+    except gbp.GbpError as e:
+        raise ToolError(str(e))
+    r["note"] = ("Counts from Google's Performance API for these dates; recent days may still be filling in. If "
+                 "has_data is false say there is nothing yet - do not invent numbers. Not stored.")
+    return r
+
+
 async def maps_kharcha(ctx: Ctx, **_):
     u = mapsbill.usage(ctx.tenant_id)
     return {**u, "note": ("Rupees are an estimate: Google's own list is in USD and bills the billing account's "
@@ -518,4 +571,5 @@ async def maps_kharcha(ctx: Ctx, **_):
 MAPS_HANDLERS = {"maps_search": maps_search, "maps_directions": maps_directions, "maps_navigate": maps_navigate,
                  "maps_nearby": maps_nearby, "maps_place": maps_place, "maps_nearest": maps_nearest,
                  "maps_address_check": maps_address_check, "maps_pata": maps_pata,
-                 "maps_route_plan": maps_route_plan, "maps_links": maps_links, "maps_kharcha": maps_kharcha}
+                 "maps_route_plan": maps_route_plan, "maps_links": maps_links,
+                 "gbp_locations": gbp_locations, "gbp_numbers": gbp_numbers, "maps_kharcha": maps_kharcha}

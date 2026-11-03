@@ -18000,3 +18000,37 @@ pano_ID). A map picture inside a PDF or a WhatsApp image is a stored, re-shared 
   from memory of the documented `api=1` scheme (docs unreachable) - first real tap settles it.
 - Side result of the same read: Route Optimization SST 18.1-18.3 and Address Validation SST 1.3 match what Phases 5 and 6 do
   (nothing stored).
+
+## v0.467.0 — GOOGLE MAPS Phase 8a: APNI DUKAAN, the READ side
+
+Owner: *"GO PHASE 8"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**Phase 8 is only partly buildable now, and this says which part.**
+- **Spec sources.** Google's discovery documents for `mybusinessaccountmanagement` v1, `mybusinessbusinessinformation` v1 and
+  `businessprofileperformance` v1 were fetched (the account / location / Performance shapes below come from them, also
+  bundled in the `google-api-python-client` wheel). **Reviews, local posts and Q&A are in the legacy My Business v4 API,
+  whose discovery document is not published anywhere reachable** (404 on googleapis.com, absent from the Python client's
+  bundled set, absent from the Go/Node/PHP client repos) and `developers.google.com` is blocked. Writing review code from
+  memory of v4 would break this project's rule - so **no review / post / Q&A code exists**.
+- **`server/app/gbp.py` + tools `gbp_locations`, `gbp_numbers`** (chat, owner only): her accounts -> locations with a
+  `readMask` (title, address, phone, website, regular hours, Maps link, review link, place id, pending edits) and the
+  Performance counts over N days (shown on Search / Maps by device; directions, calls, website clicks, messages, bookings),
+  summed from the string values; no data reads as "none", never a guess. A call asked for `days=0` used to be silently turned
+  into 30 - found by its own test, fixed (0 is refused).
+- **Read-only by construction and stores NOTHING**: Business Profile policies forbid to *"pre-fetch, cache, index, or store"*
+  its content and to aggregate it (research 02). A test asserts only GETs are sent and that the module never touches our DB.
+- **Errors are named**: scope missing (`business.manage`), API not enabled, quota 0 = the project is not approved for Basic API
+  Access yet, 403 = no access to that profile, no Google login.
+- Tests: `server/tests/test_v0467_gbp_read.py` (9).
+
+**What gates it (hers to do - no code shortens it):**
+1. Apply for Basic API Access (profile verified 60+ days, website on it, Organization account) - until the quota reads
+   300 QPM every call fails with the quota-0 message above.
+2. Her Google sign-in must carry the `business.manage` scope. The current Google connect flow does not request it; adding a
+   sensitive scope to the shared consent for every user is a decision (it can trigger Google's app verification), so it was NOT
+   changed. Until then the tool says to reconnect with the permission.
+
+**Not built:** reviews read + drafted replies, posts, photos, Q&A (v4 spec); listing writes (hours / phone / description via
+`locations.patch` + `updateMask`, whose shape IS in the discovery doc) - they need a hash-bound approval tap and the documented
+10-edits-per-minute-per-profile cap, and are the next step once approval is real; the connect screen.
+**NOT verified:** no live call (project unapproved).
