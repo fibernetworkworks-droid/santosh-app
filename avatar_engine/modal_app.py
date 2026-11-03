@@ -926,22 +926,24 @@ def bench_e2e():
         w = _call("voice warm-up", voice.speak, "नमस्ते।", "hi", wait=900)
         _ = list(live.stream.remote_gen("lab-live", w["wav"], 4, 1))
         _call("voice warm-up 2", voice.speak, cases[1][1], "hi", wait=900)      # a second, longer line so no row below is a first-use row
-        note("case               audio_s  tts_s  tts/audio  face_first_s  e2e_first_frame_s")
+        note("case               audio_s  tts_s  (gpu_s)  tts/audio  face_first_s  e2e_first_frame_s")
         e2e_all, rtf_all = [], []
         for name, text in cases:
             t0 = time.time()
             r = _call(f"voice: {name}", voice.speak, text, "hi", wait=300)
             t_tts = time.time() - t0
             audio_s = _wav_seconds(r["wav"])
-            first = None
-            for b in live.stream.remote_gen("lab-live", r["wav"], 4, 1):
-                first = b["ready_s"]
-                break
-            e2e = time.time() - t0
+            first, e2e = None, None
+            for b in live.stream.remote_gen("lab-live", r["wav"], 4, 1):      # drain it ALL: cancelling a call makes Modal restart the container (= a cold start for the next row)
+                if first is None:
+                    first, e2e = b["ready_s"], time.time() - t0
             rtf = round(t_tts / audio_s, 2) if audio_s else 0
             e2e_all.append(e2e)
             rtf_all.append(rtf)
-            note(f"{name:<18} {audio_s:>7.1f} {t_tts:>6.1f} {rtf:>10} {str(first):>13} {e2e:>18.1f}")
+            note(f"{name:<18} {audio_s:>7.1f} {t_tts:>6.1f} {r['synth_s']:>8} {rtf:>10} {str(first):>13} {e2e:>18.1f}")
+        # Fixed cost of one voice call: a one-word line. If this is still ~3 s, the time is overhead per call, not speech length.
+        tiny = _call("voice: one word", voice.speak, "हाँ।", "hi", wait=300)
+        note(f"one-word probe: gpu {tiny['synth_s']}s for {_wav_seconds(tiny['wav']):.1f}s of audio (fixed cost per call)")
         # The real answer path: a SHORT first chunk, the rest sentence by sentence behind it.
         long_text = cases[2][1]
         chunks = split_speech(long_text)
@@ -949,9 +951,10 @@ def bench_e2e():
         t0 = time.time()
         r1 = _call("voice: chunk 1", voice.speak, chunks[0], "hi", wait=300)
         tts1 = time.time() - t0
+        chunk_e2e = None
         for b in live.stream.remote_gen("lab-live", r1["wav"], 4, 1):
-            break
-        chunk_e2e = time.time() - t0
+            if chunk_e2e is None:
+                chunk_e2e = time.time() - t0
         note(f"chunk 1 '{chunks[0]}': voice {tts1:.1f}s, picture at {chunk_e2e:.1f}s, speaks for {_wav_seconds(r1['wav']):.1f}s")
         gapless, prev_audio, spent = True, _wav_seconds(r1["wav"]), 0.0
         for i, c in enumerate(chunks[1:], 2):
