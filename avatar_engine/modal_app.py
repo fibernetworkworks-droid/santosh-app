@@ -87,6 +87,9 @@ face_image = (
     .env(HF_ENV)
     .add_local_python_source("registry")
 )
+hear_image = (modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg")
+              .pip_install("faster-whisper==1.1.0").add_local_python_source("registry"))
+studio_image = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg").add_local_python_source("registry")
 web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi[standard]").add_local_python_source("registry")
 
 
@@ -130,7 +133,49 @@ class Chatterbox:
         volume.commit()
 
     @modal.method()
-    def speak(self, text: str, lang: str = "hi", ref_audio: bytes | None = None, **_) -> dict:
+    def save_voice(self, voice_id: str, wav: bytes, consent: str) -> dict:
+        """My Voice: keep ONE recorded reference clip of a person who agreed (consent = 'signed:<record id>'). Cloning a
+        voice that is not hers is exactly what the consent tag exists to stop."""
+        if not AVATAR_ID.match(voice_id or ""):
+            raise ValueError("voice_id: lower-case letters, digits, - and _ (max 40)")
+        if not re.match(r"^signed:[A-Za-z0-9_-]{4,64}$", consent or ""):
+            raise ValueError("a cloned voice needs consent 'signed:<record id>' - the person must have agreed")
+        if not wav or len(wav) > MAX_SPEAK_AUDIO:
+            raise ValueError("voice sample missing or over 8 MB")
+        os.makedirs(f"{MODELS_DIR}/voices", exist_ok=True)
+        with open(f"{MODELS_DIR}/voices/{voice_id}.wav", "wb") as f:
+            f.write(wav)
+        with open(f"{MODELS_DIR}/voices/{voice_id}.consent", "w") as f:
+            f.write(consent)
+        volume.commit()
+        return {"voice_id": voice_id, "bytes": len(wav)}
+
+    @modal.method()
+    def delete_voice(self, voice_id: str) -> dict:
+        if not AVATAR_ID.match(voice_id or ""):
+            raise ValueError("bad voice_id")
+        for ext in (".wav", ".consent"):
+            pth = f"{MODELS_DIR}/voices/{voice_id}{ext}"
+            if os.path.exists(pth):
+                os.remove(pth)
+        volume.commit()
+        return {"deleted": voice_id}
+
+    def _voice_ref(self, voice_id: str):
+        path = f"{MODELS_DIR}/voices/{voice_id}.wav"
+        if not os.path.exists(path):
+            volume.reload()
+        if not os.path.exists(path):
+            raise ValueError(f"voice '{voice_id}' is not saved")
+        with open(path, "rb") as f:
+            return f.read()
+
+    @modal.method()
+    def speak(self, text: str, lang: str = "hi", ref_audio: bytes | None = None, voice_id: str = "", **_) -> dict:
+        if voice_id:
+            if not AVATAR_ID.match(voice_id):
+                raise ValueError("bad voice_id")
+            ref_audio = self._voice_ref(voice_id)
         ref = _tmp(ref_audio, ".wav")
         t = time.time()
         # Guard: a short line can make this voice ramble (one word -> 12 s of audio). A line of N words should speak for
@@ -363,6 +408,9 @@ class Face:
 
     @modal.method()
     def prepare(self, avatar_id: str, video: bytes, consent: str) -> dict:
+        return self._prepare_impl(avatar_id, video, consent)
+
+    def _prepare_impl(self, avatar_id: str, video: bytes, consent: str) -> dict:
         if not AVATAR_ID.match(avatar_id or ""):
             raise ValueError("avatar_id: lower-case letters, digits, - and _ (max 40)")
         if not CONSENT.match(consent or ""):
@@ -537,6 +585,56 @@ class Live:
 
     @modal.method()
     def stream(self, avatar_id: str, audio: bytes, batch: int = 8, loops: int = 1):
+        yield from self._frames(avatar_id, audio, batch, loops)
+
+    @modal.method()
+    def prepare_photo(self, avatar_id: str, photo: bytes, consent: str) -> dict:
+        """Photo avatar: one still picture becomes a 6 s 25 fps clip and is prepared like a recorded face. The mouth
+        moves, the head does not (MuseTalk only repaints the mouth area)."""
+        if not photo or len(photo) > 10 * 1024 * 1024:
+            raise ValueError("photo missing or over 10 MB")
+        src = _tmp(photo, ".img")
+        out = f"/tmp/{uuid.uuid4().hex}_photo.mp4"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-loop", "1", "-i", src, "-t", "6", "-r", "25",
+                        "-vf", "scale='min(768,iw)':-2,pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p",
+                        "-c:v", "libx264", out], check=True)
+        with open(out, "rb") as f:
+            video = f.read()
+        return self._prepare_impl(avatar_id, video, consent)
+
+    @modal.method()
+    def render(self, avatar_id: str, audio: bytes) -> bytes:
+        """Not live: the whole speech as one MP4 (picture from the face, sound from `audio`)."""
+        d = f"/tmp/{uuid.uuid4().hex}"
+        os.makedirs(d)
+        n = 0
+        for b in self._frames(avatar_id, audio, 8, 1):
+            for jpg in b["frames"]:
+                with open(f"{d}/{n:06d}.jpg", "wb") as f:
+                    f.write(jpg)
+                n += 1
+        if not n:
+            raise ValueError("no pictures were made")
+        wav = _tmp(audio, ".wav")
+        out = f"{d}.mp4"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-framerate", "25", "-i", f"{d}/%06d.jpg", "-i", wav,
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", out], check=True)
+        with open(out, "rb") as f:
+            data = f.read()
+        shutil.rmtree(d, ignore_errors=True)
+        return data
+
+    @modal.method()
+    def forget(self, avatar_id: str) -> dict:
+        if not AVATAR_ID.match(avatar_id or ""):
+            raise ValueError("bad avatar_id")
+        with self.lock:
+            self.avatars.pop(avatar_id, None)
+        shutil.rmtree(f"{MUSE_DIR}/results/v15/avatars/{avatar_id}", ignore_errors=True)
+        volume.commit()
+        return {"forgotten": avatar_id}
+
+    def _frames(self, avatar_id: str, audio: bytes, batch: int = 8, loops: int = 1):
         """Generator: yields {first, frames:[jpeg bytes], ready_s, audio_prep_s}. `ready_s` = seconds since this call began
         when that batch was finished; the caller turns it into stalls against a 25 fps playhead."""
         import copy
@@ -663,6 +761,37 @@ def web():
     @api.post("/face/forget", dependencies=[Depends(key)])
     def face_forget(body: dict):
         return Face().forget.remote(str(body.get("avatar_id") or ""))
+
+    BYTES_IN = {"photo": 10 * 1024 * 1024, "wav": MAX_SPEAK_AUDIO, "media": MAX_FACE_VIDEO, "video": MAX_FACE_VIDEO}
+
+    @api.post("/studio/{op}", dependencies=[Depends(key)])
+    def studio_start(op: str, body: dict):
+        """Start a Studio job (video / photo_face / voice_save / transcribe / dub / podcast / personalised). Returns a job id;
+        the work takes seconds to minutes, so the caller polls GET /studio/job/<id>."""
+        if op not in STUDIO_OPS:
+            raise HTTPException(404, "unknown studio op")
+        p = dict(body)
+        for k, cap in BYTES_IN.items():
+            if k in p:
+                p[k] = b64(p[k], cap, k)
+        fc = studio_job.spawn(op, p)
+        return {"job": fc.object_id}
+
+    @api.get("/studio/job/{job_id}", dependencies=[Depends(key)])
+    def studio_poll(job_id: str):
+        import modal as _m
+        try:
+            fc = _m.FunctionCall.from_id(job_id)
+            r = fc.get(timeout=0)
+        except TimeoutError:
+            return {"state": "running"}
+        except ValueError as e:                         # our own checks (consent, size, text length): safe and useful to show
+            return {"state": "failed", "error": str(e)[:300]}
+        except Exception as e:
+            print("studio job:", type(e).__name__, str(e)[:300], flush=True)
+            return {"state": "failed", "error": "the job failed - check the engine log"}
+        files = {k: base64.b64encode(v if isinstance(v, bytes) else str(v).encode()).decode() for k, v in (r.get("files") or {}).items()}
+        return {"state": "done", "info": r.get("info") or {}, "files": files}
 
     async def live_socket(ws):
         """One student, one live talk. The browser sends ONE json line {key, avatar_id, text, lang} (the key travels
@@ -1126,3 +1255,285 @@ def _sample_face() -> bytes:
     """MuseTalk's own demo clip (shipped in its MIT repo) - a lab stand-in until our consented / AI-made face exists."""
     with open(f"{MUSE_DIR}/data/video/yongen.mp4", "rb") as f:
         return f.read()
+
+
+# ================================================================ HOOLA STUDIO - the HeyGen feature set on our own engine
+MAX_VIDEO_TEXT = 1800          # about 3 minutes of speech; longer scripts are cut into several videos by the caller
+MAX_DUB_VIDEO = MAX_FACE_VIDEO
+STUDIO_OPS = ("video", "photo_face", "voice_save", "transcribe", "dub", "podcast", "personalised")
+
+
+def _wav_concat(wavs: list, gap_s: float = 0.0) -> bytes:
+    """Join WAV files with the same format into one (stdlib only, so the small studio container can do it)."""
+    import io
+    import wave
+    out_params, frames = None, []
+    for w in wavs:
+        with wave.open(io.BytesIO(w), "rb") as r:
+            params = (r.getnchannels(), r.getsampwidth(), r.getframerate())
+            if out_params is None:
+                out_params = params
+            elif params != out_params:
+                raise ValueError("voice chunks do not share one audio format")
+            frames.append(r.readframes(r.getnframes()))
+    if out_params is None:
+        raise ValueError("nothing to join")
+    ch, width, rate = out_params
+    gap = b"\0" * (int(gap_s * rate) * ch * width)
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as o:
+        o.setnchannels(ch)
+        o.setsampwidth(width)
+        o.setframerate(rate)
+        o.writeframes(gap.join(frames))
+    return buf.getvalue()
+
+
+def _vtt(cues: list) -> str:
+    """WebVTT captions from [(start_s, end_s, text)]."""
+    def t(x: float) -> str:
+        h, rem = divmod(max(0.0, x), 3600)
+        m, sec = divmod(rem, 60)
+        return f"{int(h):02d}:{int(m):02d}:{sec:06.3f}"
+    lines = ["WEBVTT", ""]
+    for i, (a, b, text) in enumerate(cues, 1):
+        lines += [str(i), f"{t(a)} --> {t(b)}", text.strip(), ""]
+    return "\n".join(lines)
+
+
+def _mp4_concat(clips: list) -> bytes:
+    """Cut several MP4 clips together (re-encoded once so mixed sources always join)."""
+    d = f"/tmp/{uuid.uuid4().hex}"
+    os.makedirs(d)
+    names = []
+    for i, c in enumerate(clips):
+        n = f"{d}/c{i:03d}.mp4"
+        with open(n, "wb") as f:
+            f.write(c)
+        names.append(n)
+    with open(f"{d}/list.txt", "w") as f:
+        f.write("".join(f"file '{n}'\n" for n in names))
+    out = f"{d}/out.mp4"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", f"{d}/list.txt",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", out], check=True)
+    with open(out, "rb") as f:
+        data = f.read()
+    shutil.rmtree(d, ignore_errors=True)
+    return data
+
+
+@app.cls(image=hear_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=900, cpu=4, memory=4096)
+class Hear:
+    """Speech to text (faster-whisper small, MIT code + MIT weights, CPU int8): what was said, in which language, and when."""
+
+    @modal.enter()
+    def load(self):
+        from faster_whisper import WhisperModel
+        t = time.time()
+        self.model = WhisperModel("small", device="cpu", compute_type="int8", download_root=f"{MODELS_DIR}/whisper_small")
+        self.load_s = round(time.time() - t, 1)
+
+    @modal.method()
+    def transcribe(self, media: bytes, lang: str = "") -> dict:
+        if not media or len(media) > MAX_DUB_VIDEO:
+            raise ValueError("media missing or over 30 MB")
+        src = _tmp(media, ".bin")
+        wav = f"/tmp/{uuid.uuid4().hex}_16k.wav"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "16000", wav], check=True)
+        segs, info = self.model.transcribe(wav, language=(lang or None), word_timestamps=True, vad_filter=True)
+        out = []
+        for sg in segs:
+            out.append({"start": round(sg.start, 2), "end": round(sg.end, 2), "text": sg.text.strip(),
+                        "words": [{"w": w.word.strip(), "start": round(w.start, 2), "end": round(w.end, 2)} for w in (sg.words or [])]})
+        return {"language": info.language, "language_probability": round(float(info.language_probability), 2),
+                "duration": round(float(info.duration), 2), "segments": out, "load_s": self.load_s}
+
+
+def _speak_chunks(text: str, lang: str, voice_id: str, first_words: int = 14) -> tuple:
+    """Chunk the text, make every chunk's voice at once on the voice containers, return (joined wav, cues, seconds)."""
+    chunks = split_speech(text, first_words=first_words)
+    if not chunks:
+        raise ValueError("nothing to say")
+    voice = Chatterbox()
+    calls = [voice.speak.spawn(c, lang, None, voice_id) for c in chunks]
+    wavs = [c.get(timeout=300)["wav"] for c in calls]
+    cues, t = [], 0.0
+    for c, w in zip(chunks, wavs):
+        d = _wav_seconds(w)
+        cues.append((t, t + d, c))
+        t += d
+    return _wav_concat(wavs), cues, t
+
+
+@app.function(image=studio_image, secrets=[secret], timeout=1800, max_containers=8)
+def studio_job(op: str, p: dict) -> dict:
+    """One HeyGen-style job. Every op is data in, data out ({files: {name: bytes}, info: {...}}), key-locked at the door
+    (web()), consent-checked here. Nothing is stored except a prepared face / saved voice the caller asked for."""
+    if op not in STUDIO_OPS:
+        raise ValueError("unknown studio op")
+    lang = str(p.get("lang") or "hi")[:5]
+    voice_id = str(p.get("voice_id") or "")
+    t0 = time.time()
+    face = Live()
+    if op == "photo_face":
+        r = face.prepare_photo.remote(str(p.get("avatar_id") or ""), p.get("photo") or b"", str(p.get("consent") or ""))
+        return {"files": {}, "info": r}
+    if op == "voice_save":
+        r = Chatterbox().save_voice.remote(str(p.get("voice_id") or ""), p.get("wav") or b"", str(p.get("consent") or ""))
+        return {"files": {}, "info": r}
+    if op == "transcribe":
+        return {"files": {}, "info": Hear().transcribe.remote(p.get("media") or b"", str(p.get("lang") or ""))}
+    if op == "video":
+        text = str(p.get("text") or "").strip()
+        if not text or len(text) > MAX_VIDEO_TEXT:
+            raise ValueError(f"text: 1-{MAX_VIDEO_TEXT} characters")
+        avatar = str(p.get("avatar_id") or "")
+        wav, cues, secs = _speak_chunks(text, lang, voice_id)
+        mp4 = face.render.remote(avatar, wav)
+        return {"files": {"video.mp4": mp4, "captions.vtt": _vtt(cues).encode()},
+                "info": {"seconds": round(secs, 1), "chunks": len(cues), "made_s": round(time.time() - t0, 1)}}
+    if op == "dub":
+        # Video Translate: the same person, the same voice, new words. The caller translated the text (its own brain);
+        # here: voice from the speaker's own sound -> lip-sync onto their own video.
+        consent = str(p.get("consent") or "")
+        if not re.match(r"^signed:[A-Za-z0-9_-]{4,64}$", consent):
+            raise ValueError("dubbing a real person needs consent 'signed:<record id>'")
+        video = p.get("video") or b""
+        text = str(p.get("text") or "").strip()
+        if not video or len(video) > MAX_DUB_VIDEO:
+            raise ValueError("video missing or over 30 MB")
+        if not text or len(text) > MAX_VIDEO_TEXT:
+            raise ValueError(f"text: 1-{MAX_VIDEO_TEXT} characters")
+        tmp_id = "dub-" + uuid.uuid4().hex[:10]
+        src = _tmp(video, ".mp4")
+        sample = f"/tmp/{uuid.uuid4().hex}_ref.wav"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "24000", "-t", "20", sample], check=True)
+        with open(sample, "rb") as f:
+            Chatterbox().save_voice.remote(tmp_id, f.read(), consent)
+        try:
+            face.prepare.remote(tmp_id, video, "ai_generated" if p.get("consent_face_ai") else consent)
+            wav, cues, secs = _speak_chunks(text, lang, tmp_id)
+            mp4 = face.render.remote(tmp_id, wav)
+        finally:
+            for fn in (lambda: face.forget.remote(tmp_id), lambda: Chatterbox().delete_voice.remote(tmp_id)):
+                try:
+                    fn()
+                except Exception:
+                    pass
+        return {"files": {"video.mp4": mp4, "captions.vtt": _vtt(cues).encode()},
+                "info": {"seconds": round(secs, 1), "made_s": round(time.time() - t0, 1)}}
+    if op == "podcast":
+        lines = p.get("lines") or []
+        hosts = p.get("hosts") or {}
+        if not 1 <= len(lines) <= 24 or not all(k in hosts for k in ("a", "b")):
+            raise ValueError("podcast: 1-24 lines and two hosts (a, b)")
+        clips, cues, t = [], [], 0.0
+        for ln in lines:
+            h = hosts[str(ln.get("host") or "a")]
+            text = str(ln.get("text") or "").strip()
+            if not text or len(text) > 500:
+                raise ValueError("each line: 1-500 characters")
+            wav, _, secs = _speak_chunks(text, lang, str(h.get("voice_id") or ""))
+            clips.append(face.render.remote(str(h.get("avatar_id") or ""), wav))
+            cues.append((t, t + secs, text))
+            t += secs
+        return {"files": {"video.mp4": _mp4_concat(clips), "captions.vtt": _vtt(cues).encode()},
+                "info": {"seconds": round(t, 1), "lines": len(lines), "made_s": round(time.time() - t0, 1)}}
+    if op == "personalised":
+        template = str(p.get("template") or "")
+        names = [str(n).strip() for n in (p.get("names") or []) if str(n).strip()]
+        if "{name}" not in template or not 1 <= len(names) <= 20 or len(template) > 400:
+            raise ValueError("personalised: a template with {name} (max 400 chars) and 1-20 names")
+        avatar = str(p.get("avatar_id") or "")
+        wavs = []
+        for n in names:
+            wav, _, _ = _speak_chunks(template.replace("{name}", n), lang, voice_id)
+            wavs.append(wav)
+        calls = [face.render.spawn(avatar, w) for w in wavs]
+        files = {f"video_{i + 1:02d}.mp4": c.get(timeout=600) for i, c in enumerate(calls)}
+        return {"files": files, "info": {"names": names, "made_s": round(time.time() - t0, 1)}}
+    raise ValueError("unknown studio op")
+
+
+
+@app.function(image=face_image, timeout=300)
+def _sample_photo() -> bytes:
+    """One still picture from MuseTalk's sample clip - stands in for a photo until a real one is given."""
+    out = "/tmp/sample_photo.jpg"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", f"{MUSE_DIR}/data/video/yongen.mp4", "-vframes", "1", out], check=True)
+    with open(out, "rb") as f:
+        return f.read()
+
+
+@app.local_entrypoint()
+def studio_card():
+    """Every Studio feature once, on the GPU: text to video, photo avatar, my voice, transcribe, dub, podcast, one video many
+    names. A row per feature (PASS / FAIL, seconds, size) in lab_out/REPORT_studio.txt, the videos beside it to WATCH."""
+    os.makedirs("lab_out", exist_ok=True)
+    lines = [f"GPU {GPU}  Hoola Studio card - every feature once (sample face and sample voice, lab consent tags)"]
+
+    def note(text: str) -> None:
+        lines.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_studio.txt", "w") as f:
+            f.write("\n".join(lines) + "\n")
+
+    results: dict = {}
+
+    def run(name: str, op: str, payload: dict, save: dict | None = None) -> dict | None:
+        t = time.time()
+        try:
+            r = studio_job.remote(op, payload)
+        except Exception as e:
+            note(f"{name:<22} FAIL  {type(e).__name__}: {str(e)[:300]}")
+            results[name] = False
+            return None
+        for fn, out_name in (save or {}).items():
+            if fn in r["files"]:
+                with open(f"lab_out/{out_name}", "wb") as f:
+                    f.write(r["files"][fn])
+        sizes = ", ".join(f"{k} {len(v) // 1024} KB" for k, v in r["files"].items())
+        note(f"{name:<22} PASS  {time.time() - t:5.1f}s  {sizes or '-'}  {json.dumps(r['info'], ensure_ascii=False)[:200]}")
+        results[name] = True
+        return r
+
+    consent = "signed:labtest0001"          # the lab uses MuseTalk's sample speaker; a real person's consent record is never faked
+    text = "नमस्ते, मैं आपकी शिक्षक हूँ। आज हम गति के बारे में सीखेंगे। गति का मतलब है कि कोई चीज़ समय के साथ अपनी जगह कितनी तेज़ी से बदलती है।"
+    try:
+        live = Live()
+        p = _call("live prepare", live.prepare, "lab-live", _sample_face.remote(), "ai_generated", wait=2700)
+        note(f"sample face prepared: {p['prepare_s']}s")
+    except Exception as e:
+        note(f"face prepare FAILED: {type(e).__name__} {str(e)[:300]}")
+        return
+    run("1 text to video", "video", {"avatar_id": "lab-live", "text": text, "lang": "hi"},
+        {"video.mp4": "studio_1_text_to_video.mp4", "captions.vtt": "studio_1_captions.vtt"})
+    run("2 photo avatar", "photo_face", {"avatar_id": "lab-photo", "photo": _sample_photo.remote(), "consent": "ai_generated"})
+    run("2b photo -> video", "video", {"avatar_id": "lab-photo", "text": "यह एक तस्वीर से बना वीडियो है।", "lang": "hi"},
+        {"video.mp4": "studio_2_photo_avatar.mp4"})
+    audio = _sample_audio.remote()
+    run("3 my voice (save)", "voice_save", {"voice_id": "lab-voice", "wav": audio, "consent": consent})
+    run("3b my voice -> video", "video", {"avatar_id": "lab-live", "voice_id": "lab-voice", "text": "यह मेरी अपनी आवाज़ में बोला गया वाक्य है।", "lang": "hi"},
+        {"video.mp4": "studio_3_my_voice.mp4"})
+    try:
+        studio_job.remote("voice_save", {"voice_id": "lab-bad", "wav": audio, "consent": "ai_generated"})
+        note("3c no-consent clone     FAIL  a voice was saved WITHOUT a consent record")
+        results["3c refused"] = False
+    except Exception as e:
+        note(f"3c no-consent clone     PASS  refused: {str(e)[:120]}")
+        results["3c refused"] = True
+    r = run("4 transcribe", "transcribe", {"media": audio, "lang": ""})
+    if r:
+        note(f"   heard: language {r['info']['language']} ({r['info']['language_probability']}), {len(r['info']['segments'])} segments: "
+             + " ".join(sg["text"] for sg in r["info"]["segments"])[:200])
+    run("5 dub (video translate)", "dub", {"video": _sample_face.remote(), "text": "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", "lang": "hi", "consent": consent},
+        {"video.mp4": "studio_5_dub.mp4"})
+    run("6 podcast (2 hosts)", "podcast", {"lang": "hi", "hosts": {"a": {"avatar_id": "lab-live", "voice_id": ""}, "b": {"avatar_id": "lab-photo", "voice_id": "lab-voice"}},
+        "lines": [{"host": "a", "text": "आज हम बात करेंगे गति की।"}, {"host": "b", "text": "गति यानी चाल और दिशा, है न?"}, {"host": "a", "text": "बिल्कुल सही।"}]},
+        {"video.mp4": "studio_6_podcast.mp4", "captions.vtt": "studio_6_captions.vtt"})
+    run("7 one video, many names", "personalised", {"avatar_id": "lab-live", "lang": "hi", "template": "नमस्ते {name}, आपकी कक्षा कल सुबह दस बजे है।", "names": ["आरव", "सिया"]},
+        {"video_01.mp4": "studio_7_aarav.mp4", "video_02.mp4": "studio_7_siya.mp4"})
+    ok = sum(1 for v in results.values() if v)
+    note(f"RESULT: {ok} of {len(results)} features passed")
+    if ok < len(results):
+        note("FAILED: " + ", ".join(k for k, v in results.items() if not v))

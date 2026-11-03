@@ -50,7 +50,7 @@ def test_lab_only_models_cannot_ship(reg):
 
 def test_shippable_models_are_the_licence_checked_ones(reg):
     ship = {k for k, m in reg.MODELS.items() if m["use"] == "commercial"}
-    assert ship == {"chatterbox", "indic_parler", "musetalk", "sd_vae", "whisper_tiny"}
+    assert ship == {"chatterbox", "faster_whisper_small", "indic_parler", "musetalk", "sd_vae", "whisper_tiny"}   # whisper small: MIT code + MIT weights, read 3 Nov 2026
     assert "hi" in reg.MODELS["chatterbox"]["langs"] and reg.MODELS["chatterbox"]["clone"] is True
     assert {"hi", "mr", "ta", "te", "bn"} <= set(reg.MODELS["indic_parler"]["langs"])
     assert reg.MODELS["indic_parler"]["clone"] is False                  # described in words, never cloned
@@ -241,7 +241,7 @@ def test_e2e_bench_wired():
     import re
     import struct
     wf = open("../.github/workflows/interactive-lab.yml").read()
-    assert "bench_e2e" in wf and "e2e, deploy" in wf
+    assert "bench_e2e" in wf and "e2e, studio, deploy" in wf
     assert "def bench_e2e" in MODAL_SRC and "REPORT_e2e.txt" in MODAL_SRC
     ns: dict = {}
     exec(re.search(r"def _wav_seconds.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
@@ -344,3 +344,41 @@ def test_engine_attach_job_uses_the_saved_secret():
     body = wf[wf.index("engine_attach)"):wf.index("zoo_check)")]
     assert "AVATAR_ENGINE_KEY" in body and "value hidden" in body and "echo \"$ENGINE_KEY_IN" not in body
     assert "ENGINE_KEY_IN" in wf.split("jobs:")[1][:3000]       # passed through env, never typed into a script by hand
+
+
+def test_studio_helpers_and_door():
+    """Hoola Studio (the HeyGen feature set): the pure helpers work, every op is behind the key and its consent rules."""
+    import io
+    import re
+    import struct
+    import wave
+
+    ns: dict = {}
+    for fn in ("_wav_seconds", "_wav_concat", "_vtt"):
+        exec(re.search(rf"def {fn}\(.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+
+    def wav(sec, rate=24000):
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(rate)
+            w.writeframes(struct.pack("<h", 0) * int(rate * sec))
+        return buf.getvalue()
+
+    joined = ns["_wav_concat"]([wav(1.0), wav(0.5)], gap_s=0.25)
+    assert abs(ns["_wav_seconds"](joined) - 1.75) < 0.02
+    with pytest.raises(ValueError):
+        ns["_wav_concat"]([wav(1.0, 24000), wav(1.0, 16000)])            # mixed formats are refused, not played at the wrong speed
+    v = ns["_vtt"]([(0.0, 2.5, "नमस्ते"), (2.5, 61.0, "दूसरा")])
+    assert v.startswith("WEBVTT") and "00:00:00.000 --> 00:00:02.500" in v and "00:01:01.000" in v
+
+    assert 'STUDIO_OPS = ("video", "photo_face", "voice_save", "transcribe", "dub", "podcast", "personalised")' in MODAL_SRC
+    door = MODAL_SRC[MODAL_SRC.index('@api.post("/studio/{op}"'):MODAL_SRC.index("async def live_socket")]
+    assert "Depends(key)" in door and door.count("Depends(key)") == 2 and "b64(p[k], cap, k)" in door
+    job = MODAL_SRC[MODAL_SRC.index("def studio_job"):MODAL_SRC.index("def _sample_photo")]
+    assert "signed:" in job and "dubbing a real person needs consent" in job and "finally:" in job   # consent + temp face / voice always removed
+    save = MODAL_SRC[MODAL_SRC.index("def save_voice"):MODAL_SRC.index("def _voice_ref")]
+    assert "signed:" in save and "ai_generated" not in save                    # a cloned voice can never be 'ai generated'
+    assert "faster_whisper_small" in (ROOT / "avatar_engine" / "registry.py").read_text()
+    assert "studio_card" in WORKFLOW and "inputs.job == 'studio'" in WORKFLOW

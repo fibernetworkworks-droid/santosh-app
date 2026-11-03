@@ -256,3 +256,24 @@ engine's new `/live` WebSocket sends exactly those, and the page plays them with
   `zoo_key`; the page asks `POST /api/interactive/ticket` (owner only, signed-in console token) and gets a 2-minute pass for ONE
   avatar (`lab.make_ticket`, HMAC over `live|expires|avatar`); the engine's `/live` accepts that pass (`_ticket_ok`, same maths)
   or the raw key. The key itself never leaves the server and Modal.
+
+## 13. HOOLA STUDIO - the HeyGen feature set on our own engine (built in code, GPU card NOT yet run)
+
+Engine side (`avatar_engine/modal_app.py`, `studio_job` + `/studio/<op>` + `/studio/job/<id>`; run the whole set once with
+Actions > Interactive lab > `studio`, which writes `lab_out/REPORT_studio.txt` + the videos to watch):
+
+| HeyGen feature | Op | How | State |
+|---|---|---|---|
+| Text to talking video | `video` | chunked Hindi voice (parallel) -> joined -> `Live.render` MP4 + WebVTT captions | code + tests; GPU card pending |
+| Photo avatar | `photo_face` + `video` | photo -> 6 s loop clip -> prepared face (mouth moves, head still) | pending |
+| Voice cloning (My Voice) | `voice_save` + `voice_id` | Chatterbox reference clip on the volume, consent `signed:<record>` mandatory | pending |
+| Speech to text | `transcribe` | faster-whisper small, CPU, language + word times | pending |
+| Video Translate / lip-sync dub | `dub` | speaker's own voice cloned -> new text spoken -> MuseTalk on their own video; the CALLER translates the text | pending |
+| Two-host video podcast | `podcast` | each line voiced + rendered with its host's face, cut together + captions | pending |
+| Personalised video at scale | `personalised` | `{name}` template x up to 20 names | pending |
+| Live avatar | `/live` | built earlier | built; her test pending |
+| Stock avatars / Digital Twin | `video` + prepared faces | needs consented faces + a consent-recording flow in the app | NOT built |
+| Avatar IV expressive gestures / full body | - | MuseTalk repaints the mouth only | NOT possible with this engine |
+| Background change / green screen | - | needs a commercially licensed matting model (licence sweep first) | NOT built |
+| Burned-in captions | - | WebVTT file only (Devanagari fonts + libass untested) | NOT built |
+| API / MCP / metering | - | Hoola server door + minute meter | NEXT |
