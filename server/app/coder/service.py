@@ -1,4 +1,4 @@
-"""HOOLA CODER HTTP surface (v0.478.0) - the three memory layers as routes, plus the manual
+"""HOOLA CODER HTTP surface (v0.480.0) - the three memory layers as routes, plus the manual
 write path and the admin drain. Loopback-keyed like every house router (require_key), scoped to
 the caller's tenant. Read paths never return another tenant's rows."""
 from __future__ import annotations
@@ -104,6 +104,31 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def stats_route(request: Request):
         await require_key(request)
         return store.stats()
+
+    @r.get("/curator")
+    async def curator_route(request: Request):
+        """The curator's ledger (v0.480): its own stats, the vault's pending pile, whether a run is due."""
+        await require_key(request)
+        from . import curator
+        from ..config import get_settings
+        st = get_settings()
+        return {"armed": curator.armed(), "due": curator.due(),
+                "every_hours": curator._every_hours(), "stats": curator.stats(),
+                "vault": store.curator_counts(),
+                "config": {"coder_enabled": getattr(st, "coder_enabled", True),
+                           "coder_curator": getattr(st, "coder_curator", False),
+                           "coder_skills": getattr(st, "coder_skills", True)}}
+
+    @r.post("/curator/run")
+    async def curator_run(request: Request):
+        """Admin: run one consolidation now, due-gate bypassed (also the test entry). The kill
+        switch stays absolute - a switched-off curator cannot be invoked through this route."""
+        await require_key(request)
+        from . import curator
+        from ..config import get_settings
+        if not curator.armed():
+            return {"ran": False, "error": "curator is switched off (coder_curator)"}
+        return await curator.tick(get_settings(), force=True)
 
     @r.post("/drain")
     async def drain(request: Request):
