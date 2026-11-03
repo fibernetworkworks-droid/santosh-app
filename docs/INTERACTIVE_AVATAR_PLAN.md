@@ -197,3 +197,11 @@ during an answer; frame streaming + WebRTC to a phone; MORE THAN ONE student on 
 two streams, but that is untested); a real consented / AI-made teacher face (the test used MuseTalk's own demo person); IndicF5 after
 its transformers pin. The per-call lab path (models reloaded each call) measured 12x - never use it as the speed.
 Next (Phase 1/3): an always-warm face service on the L40S with a streaming output, then the concurrency test.
+
+**First concurrency measurement (3 Nov 2026, L40S, `streams`, batch 8, 24 s of speech per stream, one container):**
+1 student 23.5 fps (NOT smooth: 1.5 s frozen over 24 s), 2 students 18.1 fps each (36 fps total), 3 students 14.4 fps each (43 fps total),
+4 students hung to Modal's 1800 s limit (cause unknown; ~$1 of idle L40S). Total ~43 fps = the GPU ceiling = about 1.7 real-time streams
+of GPU AT MOST, so ONE L40S holds roughly 1-2 live students, not 4+; a single stream was CPU-bound (blend + JPEG in line with the GPU,
+default 0.125 CPU). Fix tried next: 4 CPU cores, CPU half on a thread pool overlapped with the next GPU batch, a 420 s client watchdog.
+The cost per student-minute is therefore between $0.033 (one stream per GPU) and ~$0.02 (1.7), NOT the optimistic "several per GPU".
+

@@ -213,3 +213,11 @@ def test_stall_maths_for_the_concurrency_test():
     assert play([])["first_s"] is None
     assert "max_containers=1" in MODAL_SRC and "@modal.concurrent(max_inputs=8)" in MODAL_SRC   # one card, shared on purpose
     assert "streams" in WORKFLOW and "modal_app.py::bench_streams" in WORKFLOW and "REPORT_streams.txt" in MODAL_SRC
+
+
+def test_live_face_overlaps_cpu_with_gpu_and_the_streams_test_cannot_hang_for_half_an_hour():
+    """The first `streams` run on an L40S showed one student at 23.5 fps (< 25) although the GPU alone does ~40: the CPU
+    half of each frame (blend + JPEG) ran in line with the GPU half, and 4 streams hung until Modal's 1800 s limit."""
+    assert "cpu=4" in MODAL_SRC and "ThreadPoolExecutor(max_workers=6)" in MODAL_SRC
+    assert "pending = None" in MODAL_SRC and "self.pool.submit(finish" in MODAL_SRC      # next GPU batch runs while this one is blended
+    assert "deadline = time.time() + 420" in MODAL_SRC and "timeout=600" in MODAL_SRC      # a stuck stream costs minutes

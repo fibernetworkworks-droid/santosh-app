@@ -410,7 +410,8 @@ class Face:
 
 # ---------------------------------------------------------------- the locked web endpoint (Hoola server -> lab)
 # ---------------------------------------------------------------- live face (warm, in-process, streams frames)
-@app.cls(gpu=GPU, image=face_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=1800,
+@app.cls(gpu=GPU, image=face_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600,
+         cpu=4,                     # the CPU half of every frame (blend + JPEG) needs real cores, not Modal's 0.125 default
          max_containers=1)          # ONE container = ONE GPU: the concurrency test must share a single card, never spread out
 @modal.concurrent(max_inputs=8)
 class Live:
@@ -460,6 +461,8 @@ class Live:
         whisper.requires_grad_(False)
         rt.fp = FaceParsing(left_cheek_width=90, right_cheek_width=90)
         rt.device, rt.vae, rt.unet, rt.pe, rt.whisper = device, vae, unet, pe, whisper
+        from concurrent.futures import ThreadPoolExecutor
+        self.pool = ThreadPoolExecutor(max_workers=6)      # CPU half of the frames, shared by every stream
         self.rt, self.torch = rt, torch
         self.avatars: dict = {}
         self.lock = threading.Lock()
@@ -518,20 +521,32 @@ class Live:
             chunks = rt.audio_processor.get_whisper_chunk(feats, rt.device, rt.weight_dtype, rt.whisper, length, fps=25,
                                                           audio_padding_length_left=2, audio_padding_length_right=2)
             prep = round(time.time() - t0, 2)
+            def finish(res, i):
+                """The CPU half of one frame: put the new mouth back into the full picture, then JPEG it."""
+                x1, y1, x2, y2 = av.coord_list_cycle[i % n]
+                res = cv2.resize(res.astype(np.uint8), (x2 - x1, y2 - y1))
+                frame = get_image_blending(copy.deepcopy(av.frame_list_cycle[i % len(av.frame_list_cycle)]), res,
+                                           [x1, y1, x2, y2], av.mask_list_cycle[i % len(av.mask_list_cycle)],
+                                           av.mask_coords_list_cycle[i % len(av.mask_coords_list_cycle)])
+                return cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])[1].tobytes()
+
+            def out_of(pend):
+                return {"first": pend[0], "frames": [f.result() for f in pend[1]], "ready_s": round(time.time() - t0, 3),
+                        "audio_prep_s": prep}
+
+            pending = None      # the previous batch: its CPU work runs on the pool while the GPU makes the next one
             for wb, lb in datagen(chunks, av.input_latent_list_cycle, int(batch)):
                 af = rt.pe(wb.to(rt.device))
                 lb = lb.to(device=rt.device, dtype=rt.unet.model.dtype)
                 pred = rt.unet.model(lb, rt.timesteps, encoder_hidden_states=af).sample.to(device=rt.device, dtype=rt.vae.vae.dtype)
-                out, first = [], idx
-                for res in rt.vae.decode_latents(pred):
-                    x1, y1, x2, y2 = av.coord_list_cycle[idx % n]
-                    res = cv2.resize(res.astype(np.uint8), (x2 - x1, y2 - y1))
-                    frame = get_image_blending(copy.deepcopy(av.frame_list_cycle[idx % len(av.frame_list_cycle)]), res,
-                                               [x1, y1, x2, y2], av.mask_list_cycle[idx % len(av.mask_list_cycle)],
-                                               av.mask_coords_list_cycle[idx % len(av.mask_coords_list_cycle)])
-                    out.append(cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])[1].tobytes())
-                    idx += 1
-                yield {"first": first, "frames": out, "ready_s": round(time.time() - t0, 3), "audio_prep_s": prep}
+                recon = list(rt.vae.decode_latents(pred))
+                cur = (idx, [self.pool.submit(finish, r, idx + k) for k, r in enumerate(recon)])
+                idx += len(recon)
+                if pending is not None:
+                    yield out_of(pending)
+                pending = cur
+            if pending is not None:
+                yield out_of(pending)
 
 
 @app.function(image=web_image, secrets=[secret], timeout=1800)
@@ -804,13 +819,14 @@ def bench_streams():
                 r["first_wall"] = first_wall
                 res[i] = r
 
-            th = [threading.Thread(target=one, args=(i,)) for i in range(n)]
+            th = [threading.Thread(target=one, args=(i,), daemon=True) for i in range(n)]
             [x.start() for x in th]
-            [x.join() for x in th]
+            deadline = time.time() + 420      # a stuck stream must cost minutes, never the half hour it cost once
+            [x.join(max(0.0, deadline - time.time())) for x in th]
             ok = [r for r in res if r]
             if len(ok) < n:
-                note(f"{n:>7}  FAILED: only {len(ok)} of {n} streams finished")
-                continue
+                note(f"{n:>7}  FAILED: only {len(ok)} of {n} streams finished within 420 s - stopping here")
+                break
             worst_first = max(r["first_wall"] for r in ok)
             worst_stall = max(r["stall_s"] for r in ok)
             worst_stalls = max(r["stalls"] for r in ok)
