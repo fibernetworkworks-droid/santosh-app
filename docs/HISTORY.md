@@ -17974,3 +17974,29 @@ raw.githubusercontent.com): field names, enums, the HTTP binding, the auth scope
 - **NOT verified:** no real call (needs her project + service account + the API enabled); the 40-stop cap and 30 s
   timeout are our choices, not Google's published limits; whether a time-windowed plan returns what we parse is proven
   against a hand-built response shaped by the proto, not a live one.
+
+## v0.466.0 — GOOGLE MAPS Phase 7: KAAGAZ PAR (as LINKS, not pictures)
+
+Owner: *"GO PHASE 7"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**The plan's Phase 7 was changed, not just built.** It said "Static Maps in docstudio PDFs and WhatsApp". Google's
+Maps Platform ToS and Service Specific Terms ARE reachable at cloud.google.com (only developers.google.com is blocked), so
+they were read before building: ToS 3.2.3(a)(i) forbids to *"pre-fetch, index, store, reshare, or rehost Google Maps
+Content outside the services"*, (a)(ii) names *"Street View images"*, (b) forbids caching except where the SST
+permits, and the SST has **no** Maps Static / Street View Static section (only the general "Google ID caching": place_id,
+pano_ID). A map picture inside a PDF or a WhatsApp image is a stored, re-shared copy. Full quotes + what stays allowed:
+`docs/research/maps/05_static_maps_licence.md`.
+
+- **Tool `maps_links`**: name / address / `lat,lng` (or lat+lng+place_id) -> a "view on Google Maps" link, optional
+  directions link, and a Street View link ONLY when `maps.streetview_check` (the free Street View Metadata SKU) says a
+  panorama exists (`pano_id` is the one thing the terms let anyone cache; not stored anyway). No image is ever requested -
+  a test fails the build if a `staticmap` or image `streetview` URL is called. Works without a key (search link).
+  The model puts the links in a PDF (doc_studio) or WhatsApp text as ordinary text/hyperlinks; no docstudio code changed.
+- Cost: Street View Metadata is free; a name/address costs one geocode (cap + cache apply).
+- Chat only (not declared on voice calls: calls reach it via santosh_kaam).
+- Tests: `server/tests/test_v0466_maps_links.py` (8).
+- **Not done / open:** a map shown LIVE on a page the customer opens (img loaded from Google at view time, restricted browser
+  key, billed per view) is lawful in principle but is a separate decision, not built. The Maps URLs `pano` parameters are
+  from memory of the documented `api=1` scheme (docs unreachable) - first real tap settles it.
+- Side result of the same read: Route Optimization SST 18.1-18.3 and Address Validation SST 1.3 match what Phases 5 and 6 do
+  (nothing stored).

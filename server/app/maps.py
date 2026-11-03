@@ -355,6 +355,42 @@ async def matrix(origins: list[dict], destinations: list[dict], mode: str = "DRI
     return rows
 
 
+# ---------------------------------------------------------------- v0.466 Phase 7: KAAGAZ PAR (links, not pictures)
+STREETVIEW_META_URL = "https://maps.googleapis.com/maps/api/streetview/metadata"
+
+
+def view_link(lat: float, lng: float, place_id: str = "", name: str = "") -> str:
+    """Opens the place on Google's own map (Maps URLs). No key, no fee, nothing of Google's stored."""
+    q = {"api": "1", "query": (name or f"{lat},{lng}")}
+    if place_id:
+        q["query_place_id"] = place_id
+    return "https://www.google.com/maps/search/?" + urlencode(q, quote_via=quote)
+
+
+def streetview_link(lat: float, lng: float, pano_id: str = "") -> str:
+    q = {"api": "1", "map_action": "pano", "viewpoint": f"{lat},{lng}"}
+    if pano_id:
+        q["pano"] = pano_id
+    return "https://www.google.com/maps/@?" + urlencode(q, quote_via=quote)
+
+
+async def streetview_check(lat: float, lng: float, tenant_id: str = "") -> dict:
+    """Is there a Street View panorama here? The metadata call is a FREE SKU (charged as 0 through the same path
+    so it still shows up in usage). Nothing is stored; pano_id is the only thing the terms let anyone cache."""
+    rc = _bill(tenant_id, mapsbill.SKU_STREETVIEW_META)
+    r = await _client().get(STREETVIEW_META_URL, params={"location": f"{float(lat)},{float(lng)}", "key": _key()})
+    if r.status_code >= 400:
+        _unbill(rc)
+        raise MapsError(_explain(r))
+    d = r.json() or {}
+    st = d.get("status", "")
+    if st not in ("OK", "ZERO_RESULTS", "NOT_FOUND"):
+        _unbill(rc)
+        raise MapsError(f"Google Maps: {st} {d.get('error_message', '')}"[:200])
+    return {"available": st == "OK", "pano_id": d.get("pano_id", "") if st == "OK" else "",
+            "date": d.get("date", "") if st == "OK" else ""}
+
+
 # ---------------------------------------------------------------- v0.464 Phase 6: PATA PAKKA
 _FINE = ("PREMISE", "SUB_PREMISE")                 # the house / flat itself was matched
 _ROAD = ("ROUTE", "BLOCK", "PREMISE_PROXIMITY")    # only as far as the street / block / near the building

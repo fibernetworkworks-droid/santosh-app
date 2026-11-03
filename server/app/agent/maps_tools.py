@@ -103,6 +103,19 @@ MAPS_TOOLS = [
          "stops": {"type": "array", "items": {}, "description": "Places to visit"},
          "vehicles": {"type": "array", "items": {}, "description": "Optional vehicles; empty = one from her location"},
          "day": {"type": "string", "description": "YYYY-MM-DD; default today"}}, "required": ["stops"]}},
+    # v0.466 Phase 7 KAAGAZ PAR (links, never a stored map picture - see docs/research/maps/05_static_maps_licence.md)
+    {"name": "maps_links", "description": (
+        "Google Maps LINKS for a place, to put in a PDF, a WhatsApp message or a bill: 'is jagah ka map bhej do', "
+        "'Street View dikhao'. Gives a 'view on Google Maps' link, optionally a directions link, and a Street View "
+        "link ONLY if Google really has a panorama there (checked free). Free; nothing is stored.\n"
+        "Use LINKS, never a downloaded map picture: Google's terms forbid saving or re-sharing its map / Street View "
+        "images in a file (a picture pasted into a PDF is exactly that), but a link that opens Google's own map is fine.\n"
+        "'place' is a name / address / 'lat,lng', or pass lat+lng (+ place_id from a maps_nearby result)."),
+     "input_schema": {"type": "object", "properties": {
+         "place": {"type": "string"}, "lat": {"type": "number"}, "lng": {"type": "number"},
+         "place_id": {"type": "string"}, "name": {"type": "string"},
+         "directions": {"type": "boolean", "description": "also a directions link from where she is"},
+         "streetview": {"type": "boolean", "description": "also check Street View (default true)"}}}},
     {"name": "maps_kharcha", "description": (
         "Today's Google Maps spend for this user: calls made, how many were inside Google's free monthly "
         "allowance, rupees spent, the daily cap and what is left. Use it when she asks what Maps is costing, or "
@@ -116,6 +129,7 @@ MAPS_LABELS = {"maps_search": "Google Maps par dhoondh raha hoon", "maps_directi
                "maps_nearest": "Sabse paas wala dekh raha hoon",
                "maps_address_check": "Address jaanch raha hoon", "maps_pata": "Is jagah ka pata dekh raha hoon",
                "maps_route_plan": "Din ka rasta bana raha hoon",
+               "maps_links": "Map ke links bana raha hoon",
                "maps_kharcha": "Maps ka kharcha dekh raha hoon"}
 
 
@@ -449,6 +463,51 @@ async def maps_route_plan(ctx: Ctx, stops, vehicles=None, day="", **_):
     return plan
 
 
+async def maps_links(ctx: Ctx, place="", lat=None, lng=None, place_id="", name="", directions=False,
+                     streetview=True, **_):
+    if lat is None or lng is None:
+        if not str(place or "").strip():
+            raise ToolError("Kis jagah ka link chahiye? Naam, pata ya lat/lng bataiye.")
+        if not maps.configured():
+            # no key: the search link still works - it needs none
+            link = maps.search_link(str(place), maps.where_am_i(ctx.tenant_id))
+            return {"name": str(place), "view": link, "streetview": None,
+                    "note": "Maps key set nahi, isliye Street View nahi dekh paya; search link diya."}
+        try:
+            pt = await maps.resolve(str(place), ctx.tenant_id, near=maps.where_am_i(ctx.tenant_id))
+        except maps.MapsError as e:
+            raise ToolError(str(e))
+        if pt is None:
+            raise ToolError(f"'{place}' Google Maps par nahi mila. Area / shehar ke saath bataiye.")
+        lat, lng = pt["lat"], pt["lng"]
+        name = name or pt.get("name") or str(place)
+    try:
+        la, lo = float(lat), float(lng)
+    except (TypeError, ValueError):
+        raise ToolError("lat/lng sahi nahi hain.")
+    if not (-90 <= la <= 90 and -180 <= lo <= 180):
+        raise ToolError("lat/lng sahi nahi hain.")
+    out: dict = {"name": name or f"{la},{lo}", "view": maps.view_link(la, lo, str(place_id or ""), str(name or ""))}
+    if directions:
+        out["directions"] = maps.nav_link({"lat": la, "lng": lo}, None, "DRIVE", navigate=False)
+    out["streetview"] = None
+    if streetview and maps.configured():
+        try:
+            sv = await maps.streetview_check(la, lo, tenant_id=ctx.tenant_id)
+        except maps.MapsError as e:
+            out["streetview_note"] = f"Street View nahi dekh paya: {e}"
+        else:
+            if sv["available"]:
+                out["streetview"] = maps.streetview_link(la, lo, sv["pano_id"])
+                out["streetview_date"] = sv["date"]
+            else:
+                out["streetview_note"] = "Yahan Street View nahi hai."
+    out["attribution"] = maps.ATTRIBUTION
+    out["note"] = ("Put these LINKS in the PDF / message as plain text or hyperlinks. Do not fetch or embed a map "
+                   "or Street View picture: the terms forbid storing or re-sharing Google's images in a file.")
+    return out
+
+
 async def maps_kharcha(ctx: Ctx, **_):
     u = mapsbill.usage(ctx.tenant_id)
     return {**u, "note": ("Rupees are an estimate: Google's own list is in USD and bills the billing account's "
@@ -459,4 +518,4 @@ async def maps_kharcha(ctx: Ctx, **_):
 MAPS_HANDLERS = {"maps_search": maps_search, "maps_directions": maps_directions, "maps_navigate": maps_navigate,
                  "maps_nearby": maps_nearby, "maps_place": maps_place, "maps_nearest": maps_nearest,
                  "maps_address_check": maps_address_check, "maps_pata": maps_pata,
-                 "maps_route_plan": maps_route_plan, "maps_kharcha": maps_kharcha}
+                 "maps_route_plan": maps_route_plan, "maps_links": maps_links, "maps_kharcha": maps_kharcha}

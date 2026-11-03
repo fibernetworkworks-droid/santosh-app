@@ -1088,6 +1088,8 @@ TOOL_LANES: dict[str, str] = {
     "maps_pata": "LANE: lat/lng -> the address there (reverse geocode). Address -> check it with maps_address_check.",
     "maps_route_plan": "LANE: the ORDER to visit many stops in a day (time windows, capacity). Which ONE is nearest -> "
                        "maps_nearest. One trip's route -> maps_directions. Proposes only, assigns nothing.",
+    "maps_links": "LANE: a Google Maps LINK (view / directions / Street View) to put in a PDF, WhatsApp message or bill. "
+                  "Never a map picture. Route steps -> maps_directions; open navigation on her phone -> maps_navigate.",
     "maps_place": "LANE: phone, website, rating and opening hours of ONE place you already have a place_id for. "
                   "Finding places -> maps_nearby / maps_search. One at a time: these are the costly fields.",
     # web: answer -> quotes -> one page -> clicks -> forms
