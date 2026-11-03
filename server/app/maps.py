@@ -25,6 +25,7 @@ PLACES_URL = "https://places.googleapis.com/v1/places:searchText"
 NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby"    # v0.449 Phase 3
 DETAILS_URL = "https://places.googleapis.com/v1/places/"               # v0.449 Phase 3: + place_id
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+VALIDATE_URL = "https://addressvalidation.googleapis.com/v1:validateAddress"          # v0.464 Phase 6
 MATRIX_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"   # v0.463 Phase 4
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 
@@ -352,6 +353,118 @@ async def matrix(origins: list[dict], destinations: list[dict], mode: str = "DRI
         rows[i][j] = {"ok": True, "distance_km": round((el.get("distanceMeters") or 0) / 1000, 1),
                       "duration_min": round(secs / 60), "duration": _human(secs)}
     return rows
+
+
+# ---------------------------------------------------------------- v0.464 Phase 6: PATA PAKKA
+_FINE = ("PREMISE", "SUB_PREMISE")                 # the house / flat itself was matched
+_ROAD = ("ROUTE", "BLOCK", "PREMISE_PROXIMITY")    # only as far as the street / block / near the building
+
+
+def grade_address(verdict: dict, address: dict) -> tuple[str, list[str]]:
+    """Plain verdict from Google's own flags, in code. Three grades, because Indian addresses ("Ram Mandir ke
+    paas, Tilak Road") very often validate only to the road - that is NOT a wrong address and must not be
+    called one:  pakka (house matched) | sadak_tak (matched to the road / block only) | galat (something in it
+    is unconfirmed, missing or was replaced).  Returns (grade, reasons in Hinglish)."""
+    v, a = verdict or {}, address or {}
+    why: list[str] = []
+    bad = False
+    if v.get("hasUnconfirmedComponents") or a.get("unconfirmedComponentTypes"):
+        bad = True
+        why.append("Kuch hissa confirm nahi hua: " + ", ".join(a.get("unconfirmedComponentTypes") or ["address ka ek hissa"]))
+    if a.get("missingComponentTypes"):
+        bad = True
+        why.append("Address mein yeh kam hai: " + ", ".join(a["missingComponentTypes"]))
+    if a.get("unresolvedTokens"):
+        bad = True
+        why.append("Yeh shabd samajh nahi aaye: " + ", ".join(a["unresolvedTokens"]))
+    if not v.get("addressComplete") and not bad:
+        bad = True
+        why.append("Address poora nahi lag raha.")
+    for c in a.get("addressComponents") or []:
+        nm = (c.get("componentName") or {}).get("text", "")
+        t = c.get("componentType", "")
+        if c.get("replaced"):
+            bad = True
+            why.append(f"{t} badal diya gaya (ab: {nm}) - likha hua galat tha")
+        elif c.get("confirmationLevel") == "UNCONFIRMED_AND_SUSPICIOUS":
+            bad = True
+            why.append(f"{t} '{nm}' shak wala hai")
+        if c.get("spellCorrected"):
+            why.append(f"{t} ki spelling theek ki: {nm}")
+        if c.get("inferred"):
+            why.append(f"{t} apne aap jodi gayi: {nm}")
+    if bad:
+        return "galat", why
+    if v.get("validationGranularity") in _FINE:
+        return "pakka", why
+    if v.get("validationGranularity") in _ROAD:
+        why.append("Sirf sadak / block tak pakka hua, ghar ka number nahi - delivery se pehle landmark ya phone confirm karein.")
+        return "sadak_tak", why
+    why.append("Google itna pakka nahi bata saka.")
+    return "sadak_tak", why
+
+
+async def validate_address(address: str, pin: str = "", city: str = "", state: str = "",
+                           tenant_id: str = "") -> dict:
+    """Address Validation API for an Indian address. Billed per request (assumed Enterprise tier - the dearest -
+    until her bill says otherwise), refused first by the cap, refunded if the call fails.
+
+    NOTHING is stored: this is a customer's address and Google content. Only the live answer is returned."""
+    text = re.sub(r"\s+", " ", str(address or "")).strip()
+    if not text:
+        raise MapsError("Address chahiye.")
+    body_addr: dict = {"regionCode": "IN", "addressLines": [text]}
+    if pin:
+        body_addr["postalCode"] = re.sub(r"\D", "", str(pin))[:6]
+    if city:
+        body_addr["locality"] = str(city).strip()
+    if state:
+        body_addr["administrativeArea"] = str(state).strip()
+    if sum(len(str(x)) for x in body_addr.values() if not isinstance(x, list)) + len(text) > 280:
+        raise MapsError("Address bahut lamba hai (280 akshar tak chalta hai).")
+    rc = _bill(tenant_id, mapsbill.SKU_ADDRESS_ENT)
+    r = await _client().post(VALIDATE_URL, json={"address": body_addr},
+                             headers={"X-Goog-Api-Key": _key()})
+    if r.status_code >= 400:
+        _unbill(rc)
+        raise MapsError(_explain(r))
+    res = (r.json() or {}).get("result") or {}
+    verdict, addr, geo = res.get("verdict") or {}, res.get("address") or {}, res.get("geocode") or {}
+    grade, why = grade_address(verdict, addr)
+    loc = geo.get("location") or {}
+    flagged = [{"type": c.get("componentType"), "text": (c.get("componentName") or {}).get("text", ""),
+                "confirmation": c.get("confirmationLevel", "").replace("CONFIRMATION_LEVEL_", "").lower(),
+                **{k: True for k in ("replaced", "spellCorrected", "inferred", "unexpected") if c.get(k)}}
+               for c in addr.get("addressComponents") or []]
+    return {"grade": grade, "reasons": why, "corrected": addr.get("formattedAddress", ""),
+            "granularity": verdict.get("validationGranularity", ""),
+            "geocode_granularity": verdict.get("geocodeGranularity", ""),
+            "lat": loc.get("latitude"), "lng": loc.get("longitude"), "place_id": geo.get("placeId", ""),
+            "components": flagged, "business": (res.get("metadata") or {}).get("business"),
+            "residential": (res.get("metadata") or {}).get("residential"),
+            "next_action": verdict.get("possibleNextAction", ""), "attribution": ATTRIBUTION}
+
+
+async def reverse_geocode(lat: float, lng: float, tenant_id: str = "") -> dict | None:
+    """A point -> the address Google gives it (Geocoding API, latlng). Live only, never stored."""
+    if not (-90 <= float(lat) <= 90 and -180 <= float(lng) <= 180):
+        raise MapsError("Location sahi nahi hai")
+    rc = _bill(tenant_id, mapsbill.SKU_GEOCODE)
+    r = await _client().get(GEOCODE_URL, params={"latlng": f"{float(lat)},{float(lng)}", "region": "in",
+                                                 "language": "en", "key": _key()})
+    if r.status_code >= 400:
+        _unbill(rc)
+        raise MapsError(_explain(r))
+    data = r.json()
+    if data.get("status") not in ("OK", "ZERO_RESULTS"):
+        _unbill(rc)
+        raise MapsError(f"Google Maps: {data.get('status')} {data.get('error_message', '')}"[:200])
+    res = data.get("results") or []
+    if not res:
+        return None
+    g = res[0]
+    return {"address": g.get("formatted_address", ""), "place_id": g.get("place_id", ""),
+            "types": g.get("types", []), "attribution": ATTRIBUTION}
 
 
 # ---------------------------------------------------------------- v0.449 Phase 3: nearby + details

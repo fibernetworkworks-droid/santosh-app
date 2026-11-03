@@ -17906,3 +17906,32 @@ Owner: *"GO PHASE 4"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
 - **Courier: NOT wired, on purpose.** `app/courier` has ONE warehouse per tenant and no multi-candidate decision
   (carrier choice is by rate/rules, not distance), so there is nothing for "nearest of N" to decide. Wiring it would
   mean inventing a feature. Needs her answer: does she have several pickup points / branches?
+
+## v0.464.0 — GOOGLE MAPS Phase 6: PATA PAKKA (address check + reverse geocode)
+
+Owner: *"GO PHASE 6"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**Source note.** `developers.google.com` was blocked in the session, so the prose docs (pricing, auth, ToS) were NOT
+read. The request / response SHAPES come from Google's own machine-readable discovery document
+(`https://addressvalidation.googleapis.com/$discovery/rest?version=v1`, reachable) - the primary source for field
+names, enums and the 280-character input limit. Phase 5's `routeoptimization.googleapis.com/$discovery/rest` is
+reachable the same way (not yet read).
+
+- **`maps.validate_address()` + tool `maps_address_check`**: Address Validation `v1:validateAddress`, `regionCode IN`,
+  one address per call, key in the `X-Goog-Api-Key` header. Graded IN CODE from Google's own flags (`grade_address`):
+  **pakka** (validationGranularity PREMISE / SUB_PREMISE, nothing unconfirmed), **sadak_tak** (matched only to
+  ROUTE / BLOCK / PREMISE_PROXIMITY - very common for Indian landmark addresses and deliberately NOT called wrong; the
+  reason says to confirm by phone), **galat** (unconfirmed / missing / unresolved parts, a REPLACED component such as a
+  wrong PIN - the right one is named, a suspicious part, or incomplete). Spelling fixes and inferred parts are listed
+  but do not fail a good address. Input over 280 chars or empty is refused BEFORE any call.
+- **`maps.reverse_geocode()` + tool `maps_pata`**: Geocoding `latlng=` -> the address there; empty lat/lng = where she is.
+- Billed through the cap: address check = ONE request at `address.enterprise` (the dearest; added to `ASSUMED_TIER`
+  so `/api/maps/usage` reports the guess), reverse geocode = one Geocoding event; both refunded if the call fails.
+- Nothing from either answer is stored (customer address + Google content); a test asserts the place cache stays empty.
+- On voice calls, in TOOL_LANES, in the prompt. Tests: `server/tests/test_v0464_maps_address.py` (mocked transport).
+- **NOT done:** Autocomplete (session-billed). It exists to power a typing box, and no typing surface calls it yet
+  (tools don't type); building the endpoint with no caller is the dead-code trap CLAUDE.md warns about. Needs a UI
+  decision. Courier `check` does not call `maps_address_check` yet (it would bill per parcel - her call).
+- **NOT verified:** no live call. Whether Address Validation accepts the plain API key (vs OAuth), whether India is a
+  supported region at the tier we assume, and Pro vs Enterprise billing - all unconfirmed because the prose docs were
+  unreachable. The first real call settles auth + region; the first bill settles the tier.

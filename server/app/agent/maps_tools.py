@@ -72,6 +72,23 @@ MAPS_TOOLS = [
          "mode": {"type": "string", "enum": ["car", "bike", "walk", "transit"]},
          "top": {"type": "integer", "description": "How many best to return per origin. Default 3"}},
          "required": ["candidates"]}},
+    # v0.464 Phase 6 PATA PAKKA
+    {"name": "maps_address_check", "description": (
+        "Check ONE Indian delivery address with Google before it becomes a failed delivery: is it complete, is the "
+        "PIN right, was anything unreadable, and how far did Google get - 'pakka' (the house matched), 'sadak_tak' "
+        "(only the road / block matched - very common for landmark-style addresses and NOT wrong; confirm by phone "
+        "or landmark) or 'galat' (something unconfirmed, missing, or the PIN was replaced). Returns the corrected "
+        "single-line address and its location. One address per call, each is billed - never run it over a whole "
+        "customer list. Read live, not stored."),
+     "input_schema": {"type": "object", "properties": {
+         "address": {"type": "string", "description": "The address as written (house, street, landmark, area)"},
+         "pin": {"type": "string", "description": "6-digit PIN if known"},
+         "city": {"type": "string"}, "state": {"type": "string"}}, "required": ["address"]}},
+    {"name": "maps_pata", "description": (
+        "What address is AT this spot (reverse geocode): a latitude/longitude -> the nearest address. Empty "
+        "lat/lng = where the user is now. For turning a pin / shared location / driver position into words."),
+     "input_schema": {"type": "object", "properties": {
+         "lat": {"type": "number"}, "lng": {"type": "number"}}}},
     {"name": "maps_kharcha", "description": (
         "Today's Google Maps spend for this user: calls made, how many were inside Google's free monthly "
         "allowance, rupees spent, the daily cap and what is left. Use it when she asks what Maps is costing, or "
@@ -83,6 +100,7 @@ MAPS_LABELS = {"maps_search": "Google Maps par dhoondh raha hoon", "maps_directi
                "maps_navigate": "Phone par navigation bhej raha hoon",
                "maps_nearby": "Aas-paas dekh raha hoon", "maps_place": "Jagah ki poori detail le raha hoon",
                "maps_nearest": "Sabse paas wala dekh raha hoon",
+               "maps_address_check": "Address jaanch raha hoon", "maps_pata": "Is jagah ka pata dekh raha hoon",
                "maps_kharcha": "Maps ka kharcha dekh raha hoon"}
 
 
@@ -317,6 +335,41 @@ async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **
     return out
 
 
+async def maps_address_check(ctx: Ctx, address, pin="", city="", state="", **_):
+    if not maps.configured():
+        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+    try:
+        before = mapsbill.usage(ctx.tenant_id)["inr"]
+        r = await maps.validate_address(str(address), str(pin or ""), str(city or ""), str(state or ""),
+                                        tenant_id=ctx.tenant_id)
+    except maps.MapsError as e:
+        raise ToolError(str(e))
+    r["cost_inr"] = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
+    r["note"] = ("Say the grade in one plain line, then the reasons that matter and the corrected address. "
+                 "'sadak_tak' is normal for landmark addresses - suggest confirming by phone, do not call it wrong. "
+                 "Read live from Google: do not store it as a customer record.")
+    return r
+
+
+async def maps_pata(ctx: Ctx, lat=None, lng=None, **_):
+    if not maps.configured():
+        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+    if lat is None or lng is None:
+        here = maps.where_am_i(ctx.tenant_id)
+        if here is None:
+            raise ToolError("Aap abhi kahan hain? Phone mein location permission dijiye ya lat/lng bataiye.")
+        lat, lng = here["lat"], here["lng"]
+    try:
+        before = mapsbill.usage(ctx.tenant_id)["inr"]
+        r = await maps.reverse_geocode(float(lat), float(lng), tenant_id=ctx.tenant_id)
+    except (maps.MapsError, ValueError) as e:
+        raise ToolError(str(e))
+    if r is None:
+        return {"address": "", "message": "Is point ka koi pata Google ke paas nahi."}
+    r["cost_inr"] = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
+    return r
+
+
 async def maps_kharcha(ctx: Ctx, **_):
     u = mapsbill.usage(ctx.tenant_id)
     return {**u, "note": ("Rupees are an estimate: Google's own list is in USD and bills the billing account's "
@@ -326,4 +379,4 @@ async def maps_kharcha(ctx: Ctx, **_):
 
 MAPS_HANDLERS = {"maps_search": maps_search, "maps_directions": maps_directions, "maps_navigate": maps_navigate,
                  "maps_nearby": maps_nearby, "maps_place": maps_place, "maps_nearest": maps_nearest,
-                 "maps_kharcha": maps_kharcha}
+                 "maps_address_check": maps_address_check, "maps_pata": maps_pata, "maps_kharcha": maps_kharcha}

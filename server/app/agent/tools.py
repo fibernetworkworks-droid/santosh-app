@@ -1083,6 +1083,9 @@ TOOL_LANES: dict[str, str] = {
                    "50 km max, 20 results, no next page.",
     "maps_nearest": "LANE: which of a LIST she already has is nearest by real road time (godowns, branches, workers vs "
                     "a customer). Finding places of a kind -> maps_nearby. One trip's route -> maps_directions.",
+    "maps_address_check": "LANE: is THIS delivery address good (PIN, completeness, how far Google matched it). One address "
+                          "per call. Finding places -> maps_nearby / maps_search. A point's address -> maps_pata.",
+    "maps_pata": "LANE: lat/lng -> the address there (reverse geocode). Address -> check it with maps_address_check.",
     "maps_place": "LANE: phone, website, rating and opening hours of ONE place you already have a place_id for. "
                   "Finding places -> maps_nearby / maps_search. One at a time: these are the costly fields.",
     # web: answer -> quotes -> one page -> clicks -> forms

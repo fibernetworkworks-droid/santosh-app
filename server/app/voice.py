@@ -86,7 +86,7 @@ VOICE_TOOL_NAMES = {
     "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_banao", "blender_3d", "postgres", "kaam_status", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest", "kaam_plan",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain", "hoola_deal", "hoola_pick", "hoola_market", "hoola_booking", "hoola_dosti", "a2a_bahar", "consent_jaanch", "digilocker", "ondc_listing", "hoola_seekha", "website", "website_dekho", "app_banao", "app_dekho",
     "sheets_find", "sheet_info", "sheet_query", "sheet_update", "sheet_create", "sheet_export",
-    "maps_search", "maps_directions", "maps_navigate", "maps_nearby", "maps_place", "maps_nearest",   # v0.449 / v0.463
+    "maps_search", "maps_directions", "maps_navigate", "maps_nearby", "maps_place", "maps_nearest", "maps_address_check", "maps_pata",   # v0.449 / v0.463 / v0.464
     "pc_status", "pc_search", "pc_read", "pc_send_to_phone", "tally_report",
     "bluetooth", "tv_remote", "music_control", "ac_control",
     "tv_channel",                  # Hoola TV: free channels on the phone or the TV

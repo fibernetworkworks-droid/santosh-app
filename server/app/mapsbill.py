@@ -104,7 +104,7 @@ _GLOBAL: dict[str, float] = {
 # maps OUR field mask (TRAFFIC_AWARE + navigationInstruction) to a tier. We charge the DEAREST tier for
 # routes and the matrix, which can only make the cap fire early. ASSUMED_TIER is reported by /api/maps/usage
 # so the guess is visible instead of silent, and is the first thing to fix against her real bill.
-ASSUMED_TIER = {SKU_ROUTES: "enterprise", SKU_MATRIX: "enterprise"}
+ASSUMED_TIER = {SKU_ROUTES: "enterprise", SKU_MATRIX: "enterprise", SKU_ADDRESS_ENT: "enterprise"}
 
 # Free events a MONTH, per SKU. These belong to the BILLING ACCOUNT, not to one user: "Google aggregates
 # service usage for all projects linked to the customer billing account", so the counter below is global
