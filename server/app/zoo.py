@@ -249,6 +249,10 @@ async def _kie_submit(m: dict, prompt: str, image_urls: list[str], aspect: str =
         raise ZooError("zoo key server par set nahi hai: owner ZOO_KIE_KEY env add karein (kie.ai key). "
                        "Tab tak zoo list/search kaam karta hai, generate nahi.")
     input_body = _payload(m, prompt, await _kie_images(image_urls), aspect, resolution, duration, num, extra)
+    if "aspect_ratio" not in input_body and m.get("aspects"):
+        # kie models require aspect_ratio (probe-proven on nano-banana-2-lite, 2026-11-03:
+        # prompt-only -> "This field is required"; +aspect -> success). Default to the entry's first.
+        input_body["aspect_ratio"] = m["aspects"][0]
     body = {"model": m["endpoint"], "input": input_body}
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=20)) as c:

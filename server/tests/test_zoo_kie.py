@@ -173,6 +173,20 @@ def test_kie_run_against_fake_gateway(monkeypatch):
     assert get[1].endswith("/api/v1/jobs/recordInfo") and get[2] == {"taskId": "kie-task-9"}
 
 
+def test_kie_aspect_default_injected_and_muapi_not(monkeypatch):
+    """kie requires aspect_ratio (probe-proven): when she gives none, the entry's first is used.
+    muapi keeps its exact old shape - no aspect invented there."""
+    _kie_env(monkeypatch)
+    _KieClient.script = [{"code": 200, "data": {"state": "success",
+                                                "resultJson": json.dumps({"resultUrls": ["https://example.com/kv3.jpg"]})}}]
+    r = asyncio.run(zoo.run(zoo.model("t2i:kie:nano-banana-2-lite"), "ek laal chhata beach par", wait_s=5))
+    assert r["status"] == "done"
+    post = next(c for c in _KieClient.calls if c[1].endswith("/api/v1/jobs/createTask"))
+    assert post[2]["input"]["aspect_ratio"] == "1:1"            # first aspect of the entry
+    p = zoo._payload(zoo.model("t2i:nano-banana"), "a red umbrella", [])
+    assert "aspect_ratio" not in p                              # muapi untouched
+
+
 def test_kie_poll_failed_carries_failmsg(monkeypatch):
     _kie_env(monkeypatch)
     _KieClient.script = [
