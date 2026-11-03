@@ -15,6 +15,17 @@ from tests.test_v0186_long_goal import FakeBrain, _set_brain, gz, tu, txt  # noq
 
 
 # ---------------------------------------------------------------- 1. a promise is not a finished job
+
+@pytest.fixture(autouse=True)
+def _no_plan_gate(monkeypatch):
+    """v0.472 R1: a big research ask now shows its plan and waits for her Haan. This file tests what happens AFTER
+    that (long-job mode / effort / plan card), so the gate steps aside; test_v0472_research_plan.py covers the gate."""
+    from app.agent import research_plan
+
+    async def _off(*a, **k):
+        return None
+    monkeypatch.setattr(research_plan, "gate", _off)
+
 def test_a_promise_line_no_longer_ends_the_job(gz, monkeypatch):  # noqa: F811
     conv = gz["conv"]
     brain = _set_brain(monkeypatch, FakeBrain([

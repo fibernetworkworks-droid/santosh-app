@@ -1665,6 +1665,23 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
+        if not voice and save_user and not str(user_text or "").lstrip().startswith(("[", "(")):
+            try:   # v0.472 R1 PLAN PEHLE: a big research ask shows its plan and waits for her Haan; her Haan starts it
+                from . import research_plan as _rplan
+                _rp = await _rplan.gate(tenant_id, conversation_id, user_text, settings)
+            except Exception:
+                log.exception("research plan gate failed")      # a broken gate never blocks her ask
+                _rp = None
+            if _rp and _rp["action"] == "say":
+                _save(conversation_id, "user", user_text, display=user_text)
+                _save(conversation_id, "assistant", [{"type": "text", "text": _rp["text"]}], display=_rp["text"])
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": _rp["text"], "source": "research_plan"})
+                bus.publish(conversation_id, "typing", {"on": False})
+                return _rp["text"]
+            if _rp and _rp["action"] == "start":
+                # her words are what the chat shows; the SAME turn gets the ask + the plan she approved (never saved twice)
+                _save(conversation_id, "user", _rp["words"], display=_rp["words"])
+                user_text, save_user = _rp["text"], False
         try:   # v0.191 SAMAJHDAR CARD: PC/browser step uski haan ka intezaar hai aur usne LIKH diya ('haan karo',
                # 'approve hai', 'confirm'...) — card khud resolve, tap ki zaroorat nahi (paise wali card par hi).
                # Sirf POORA uttar hi manzoori ho tabhi ('haan, address yeh raha' ka baaki hissa brain dekhega).

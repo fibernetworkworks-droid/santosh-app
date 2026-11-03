@@ -18168,3 +18168,30 @@ Owner: "GO R0" (plan: `docs/RESEARCH_PRO_PLAN.md`). Nothing in that plan may be 
   and the document tool are in view for 20/20.
 - NOT VERIFIED: no live card has run. The free card proves the scorer, not the engine.
 
+## v0.472.0 - RESEARCH Phase R1 PLAN PEHLE
+
+Owner: "GO R1". Parts 1 (SAMAJHO) and 2 (PLAN) of `docs/RESEARCH_PRO_PLAN.md`; the shape is Google's `collaborative_planning` on Hoola's
+own house pattern (`devsahayak/plan.py`: score in code, a LARGE ask waits for her Haan, her note rides along).
+
+- `server/app/agent/research_plan.py`: `assess(text)` -> tier small / standard / large from deep-report words, number of things asked, figures
+  to work out, length (no model call; a lookup never waits). `build()` = the plan card: 4-6 sub-questions (one cheap Haiku call, JSON; a template
+  fallback by corpus official / scholarly / web when the call fails, so the card always comes), where to look, as-of, minutes + rupees
+  (ASSUMED sizes x the model's list price via `usage.cost`; the card says "andaza"). `card_text()` in her language (Hinglish or English).
+  `gate()` = the four outcomes: new plan / Haan (start) / Haan + a change (`approve_lead`; the change rides in the block) / no (`is_pure_rejection`);
+  other short words revise the plan and show it again; a different big research ask supersedes; a plan older than 24 h expires; per tenant + chat.
+  Table `research_plans` (ResearchPlan, `ensure_table()` + registered in `db.init_db`). Switch `research_plan_gate` (config).
+- `santosh._run_turn`: the gate runs before the pure-approval shortcut, only for her typed chat words (not voice, not `[`/`(` system notes).
+  Plan shown -> user bubble + plan saved, turn ends, NOTHING runs. Haan -> her words saved as her bubble, `user_text` becomes the ask +
+  `<approved_research_plan>` and `save_user=False` (the v0.213 in-memory path), so the SAME turn researches it and the chat never shows the block.
+  A gate that throws never blocks her ask.
+- `hard.py` research signal: the R0 card found it recognised only 9 of the 20 asks. Added the verb at a sentence start ("Research the...",
+  "Research India's..."), "do / need / want research", "research chahiye", "official sources / guidance / documents", "sources and dates",
+  "date every price", "own pricing page", "cite the" - with a no-list so "research notes / team / folder / file / gate / lab / dept" stay plain asks.
+  Free research card: recognised 20/20.
+- Tests: `test_v0472_research_plan.py` (15, incl. a run_turn end to end: plan first with zero steps run, Haan -> same turn gets the plan, her bubbles are
+  only her words, a broken gate does not block the ask). Eight existing tests that send big research asks through `run_turn` to test what happens AFTER the
+  gate (v0437 research, v0311, v0315, v0331) now step the gate aside with an autouse fixture. 5 other failures in the files touched
+  (v0268 x1, v0311 campaign, v155 notebook x3) fail identically on the commit before this change.
+- NOT BUILT: a tappable card with buttons on the phone / console (the Haan is typed, which works on every surface); the estimates are ASSUMED until the live
+  research card runs; no live research run has happened.
+

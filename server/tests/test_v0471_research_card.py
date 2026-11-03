@@ -110,7 +110,7 @@ def test_primary_looking_domains_are_a_named_heuristic(env):
 def test_free_card_reports_calibration_and_reachability(env):
     c = R.free_card()
     assert c["asks"] == len(ASKS) and c["calibration_ok"] == len(c["calibration"])
-    assert c["doc_tool_in_view"] >= 1 and 0 <= c["recognised"] <= c["asks"]
+    assert c["doc_tool_in_view"] >= 1 and c["recognised"] == c["asks"]       # v0.472: R1 fixed the 11 misses
     text = "\n".join(R.lines(c))
     assert "scorer calibration" in text and "trap asks" in text
 

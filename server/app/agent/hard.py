@@ -24,7 +24,16 @@ _SIGNALS: list[tuple[re.Pattern, int, str]] = [
                 r"paper)|\b(?:market|industry|sector|competitor\w*|feasibility|landscape)\s+(?:study|research|analysis|"
                 r"report|overview|size|sizing|map)|\bdetailed\s+(?:report|study|analysis)|\b(?:with|ke\s+saath)\s+"
                 r"sources?|\bsources?\s+ke\s+saath|\bliterature\s+review|\bwhite\s*paper|\bstate\s+of\s+the\b|"
-                r"\btrends?\s+in\b|\b(?:pe|par|on)\s+(?:ek\s+)?(?:poori|detailed|in.?depth)?\s*report\b|शोध|रिसर्च",
+                r"\btrends?\s+in\b|\b(?:pe|par|on)\s+(?:ek\s+)?(?:poori|detailed|in.?depth)?\s*report\b|शोध|रिसर्च|"
+                # v0.472 R1: the R0 card found 11 of 20 real research asks NOT seen ("Research the cotton...", "Research
+                # India's...", "Compare ... date every price"). The VERB at the start of a sentence, "do / need research",
+                # and the phrases only a sourced report asks for. "meri research ki file kholo" stays a plain ask.
+                r"(?:^|[.!?\n]\s*)(?:please\s+|zara\s+)?research\s+(?!notes?\b|team\b|folder\b|files?\b|gate\b|lab\b|wing\b|dept\b|department\b|"
+                r"cent(?:re|er)\b|institute\b|tab\b|sheet\b)\S|"
+                r"\b(?:do|run|need|want|make|start)\s+(?:some\s+|a\s+|proper\s+)?research\b|"
+                r"\bresearch\s+(?:chahiye|karna|karni)\b|\bofficial\s+(?:sources?|guidance|documents?)\b|"
+                r"\bsources?\s+(?:and|aur)\s+dates?\b|\bdate\s+every\s+(?:price|point|figure|number)\b|"
+                r"\bown\s+pricing\s+page\b|\bcite\s+the\b",
                 re.I), 3, "research"),
     (re.compile(r"\banaly[sz]\w*|\bvishleshan|विश्लेषण|\bevaluat\w*|\bassess\w*|\bcritique|\binterpret\w*|"
                 r"\bjaanch\s*ke\s*batao|\bdeep\s*dive", re.I), 2, "analysis"),

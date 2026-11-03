@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
+    research_plan_gate: bool = True         # v0.472 R1 PLAN PEHLE: a LARGE research ask shows its plan and waits for her Haan
     dev_plan_gate: bool = True              # ... and a LARGE job waits for her Haan on that plan (ECC's Gate 1)
     dev_plan_steps: int = 18                # ... the plan pass explores at most this many steps
     dev_plan_minutes: int = 8               # ... and at most this long
