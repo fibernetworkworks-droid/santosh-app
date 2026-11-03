@@ -1,4 +1,4 @@
-"""HOOLA CODER HTTP surface (v0.473.0) - the three memory layers as routes, plus the manual
+"""HOOLA CODER HTTP surface (v0.477.0) - the three memory layers as routes, plus the manual
 write path and the admin drain. Loopback-keyed like every house router (require_key), scoped to
 the caller's tenant. Read paths never return another tenant's rows."""
 from __future__ import annotations
@@ -77,6 +77,28 @@ def make_router(require_key, current_tenant) -> APIRouter:
         oid = capture.save_memory(current_tenant(request), conv, text,
                                   str(title) if title else None)
         return {"id": oid}
+
+    @r.get("/skills")
+    async def skills_list(request: Request):
+        """The skill index (v0.474): the vault rows behind the SKILL.md files."""
+        await require_key(request)
+        from ..config import get_settings
+        if not getattr(get_settings(), "coder_skills", True):
+            return {"skills": []}
+        from . import skills_store
+        return {"skills": skills_store.listing(current_tenant(request))}
+
+    @r.post("/skills")
+    async def skills_apply(request: Request):
+        """The same operations the skill_manage tool takes (read/list/create/update/delete),
+        applied atomically for the owner's console / the nudge's tests."""
+        await require_key(request)
+        from ..config import get_settings
+        if not getattr(get_settings(), "coder_skills", True):
+            return {"error": "skills are switched off (coder_skills)"}
+        body = await request.json()
+        from . import skills_store
+        return skills_store.apply(current_tenant(request), body.get("operations") or [])
 
     @r.get("/stats")
     async def stats_route(request: Request):
