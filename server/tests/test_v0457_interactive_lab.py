@@ -174,3 +174,17 @@ def test_workflow_runs_only_by_hand_and_keeps_the_proof():
     assert "upload-artifact" in WORKFLOW and "lab_out" in WORKFLOW         # the clips + REPORT.txt come back
     assert "secrets.MODAL_TOKEN_ID" in WORKFLOW and "secrets.HOOLA_ENGINE_KEY" in WORKFLOW
     assert "modal app stop hoola-lab" in WORKFLOW                          # a way to stop paying
+
+
+def test_face_bench_and_face_only_jobs_exist_and_the_embedded_script_parses():
+    """v0.462: the speed benchmark runs a script inside the face container, so a syntax slip would only show after a
+    45-minute GPU run. Parse it here, and keep the two extra hand-run jobs wired to their entrypoints + the artifact."""
+    m = re.search(r'_BENCH_SCRIPT = """(.*?)\n"""\n', MODAL_SRC, re.S)
+    assert m and ast.parse(m.group(1))
+    assert "from scripts import realtime_inference as rt" in m.group(1)       # MuseTalk's own Avatar class, not a copy
+    for job, entry in (("face", "smoke_face"), ("bench", "bench_face")):
+        assert job in WORKFLOW and f"modal_app.py::{entry}" in WORKFLOW, job
+        assert f"def {entry}" in MODAL_SRC
+    assert "inputs.job == 'bench'" in WORKFLOW and "REPORT_bench.txt" in MODAL_SRC
+    # the lab never hangs a whole run on one call again
+    assert "def _call(" in MODAL_SRC and "fc.get(timeout=wait)" in MODAL_SRC

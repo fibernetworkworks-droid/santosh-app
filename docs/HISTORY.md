@@ -17868,3 +17868,23 @@ first time since the iPad check started hiding them.
 
 **The lesson, again:** a failing check hides every check behind it. Fifteen runs of "the iPad crashed" were also
 fifteen runs in which the sign-up, the order, the paid claim and the crash report were never exercised at all.
+
+## v0.461 -> v0.462.x - HOOLA INTERACTIVE MODEL LAB, run on a GPU (Phase 0)
+What exists: `avatar_engine/registry.py` + `modal_app.py`, `server/app/interactive/lab.py`, `.github/workflows/interactive-lab.yml`
+(hand-run only: setup / prefetch / smoke / face / bench / deploy / down), plan in `docs/INTERACTIVE_AVATAR_PLAN.md`.
+
+What the first real runs found (Modal L4, ~20 runs; each failure was ONE thing, read from the real log):
+- token ID malformed (secret pasted wrong); face image asked Python 3.10 (Modal 2026.10 builder: 3.11+); `chumpy` needs `pip` in its build
+  (`--no-build-isolation`); IndicF5 is gated (accept AI4Bharat terms); Chatterbox 0.1.7 has no `t3_model` argument; IndicF5 stack:
+  newest `datasets` needs pyarrow>=24 which needs NumPy 2 -> pin pyarrow 16.1 + datasets 2.21; IndicF5 on newest `transformers` builds on the
+  `meta` device (its own requirements say <4.50 -> 4.49); MuseTalk's `download_weights.sh` upgrades huggingface_hub (kills `huggingface-cli`),
+  needs curl and prints "success" regardless -> weights are fetched by `_fetch_muse_weights` with a file check; cv2 needs NumPy 1 but matplotlib
+  needs >=1.25 -> numpy 1.26.4.
+- Silent runs: a call "Enqueued" in Modal with no "Started" never got a container (GPU capacity); the first run looked stuck for 14 min on
+  cold start (image pull) - synthesis itself was 14 s then 3 s.
+- Process: every remote call now has a hard wait + progress lines + a report written after each row; the artifact is uploaded on cancel.
+
+Measured: Chatterbox hi 14 s / en 3 s synth (L4, ~41 tokens/s); Indic Parler hi 7.4 s / en 6.4 s; MuseTalk prepare 181 s, render 96 s for 8 s
+of audio = 12x real time through the per-call path (reloads models every call - NOT the live speed). `bench` = models loaded once, MuseTalk's
+own Avatar class, batch 4/8/20, warm-up excluded: x_realtime <= 1.0 means live-capable.
+NOT VERIFIED: IndicF5 after the pin; bench numbers; clip quality (her ears / eyes); any consented or AI-made teacher face; GPU provider + price.

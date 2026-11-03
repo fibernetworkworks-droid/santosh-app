@@ -21,6 +21,7 @@ except a prepared face, which lives only under its avatar id until deleted.
 from __future__ import annotations
 
 import base64
+import json
 import os
 import re
 import shutil
@@ -191,6 +192,72 @@ VOICES = {"chatterbox": Chatterbox, "indicf5": IndicF5, "indic_parler": IndicPar
 
 # ---------------------------------------------------------------- face engine (MuseTalk 1.5)
 
+# Run INSIDE the face container (cwd = MuseTalk). It imports MuseTalk's own realtime script as a module, fills in the
+# globals its Avatar class reads (the script normally builds them under __main__), loads every model ONCE, then times the
+# same clip again and again at several batch sizes. That is the steady-state speed the one-process-per-call lab path hides.
+_BENCH_SCRIPT = """
+import argparse, json, os, shutil, subprocess, time
+from types import SimpleNamespace
+import torch
+from transformers import WhisperModel
+from musetalk.utils.audio_processor import AudioProcessor
+from musetalk.utils.face_parsing import FaceParsing
+from musetalk.utils.utils import load_all_model
+from scripts import realtime_inference as rt
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--video"); ap.add_argument("--audio"); ap.add_argument("--out")
+    ap.add_argument("--batches", default="4,8,20"); ap.add_argument("--timed", type=int, default=2)
+    a = ap.parse_args()
+    rt.args = SimpleNamespace(version="v15", extra_margin=10, parsing_mode="jaw", skip_save_images=True,
+                              audio_padding_length_left=2, audio_padding_length_right=2)
+    t0 = time.time()
+    device = torch.device("cuda:0")
+    vae, unet, pe = load_all_model(unet_model_path="models/musetalkV15/unet.pth", vae_type="sd-vae",
+                                   unet_config="models/musetalkV15/musetalk.json", device=device)
+    rt.timesteps = torch.tensor([0], device=device)
+    pe = pe.half().to(device)
+    vae.vae = vae.vae.half().to(device)
+    unet.model = unet.model.half().to(device)
+    rt.audio_processor = AudioProcessor(feature_extractor_path="models/whisper")
+    rt.weight_dtype = unet.model.dtype
+    whisper = WhisperModel.from_pretrained("models/whisper").to(device=device, dtype=rt.weight_dtype).eval()
+    whisper.requires_grad_(False)
+    rt.fp = FaceParsing(left_cheek_width=90, right_cheek_width=90)
+    rt.device, rt.vae, rt.unet, rt.pe, rt.whisper = device, vae, unet, pe, whisper
+    load_s = round(time.time() - t0, 1)
+
+    shutil.rmtree("results/v15/avatars/bench", ignore_errors=True)
+    t1 = time.time()
+    av = rt.Avatar(avatar_id="bench", video_path=a.video, bbox_shift=0, batch_size=20, preparation=True)
+    prepare_s = round(time.time() - t1, 1)
+    audio_s = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", a.audio],
+                                   capture_output=True, text=True).stdout.strip() or 0)
+    frames = round(audio_s * 25)
+    rows = []
+    for b in [int(x) for x in a.batches.split(",")]:
+        av.batch_size = b
+        for i in range(1 + a.timed):                 # the first pass of each size is a warm-up and is not counted
+            torch.cuda.synchronize()
+            t = time.time()
+            av.inference(a.audio, None, 25, True)
+            torch.cuda.synchronize()
+            dt = time.time() - t
+            if i == 0:
+                continue
+            batches = -(-frames // b)
+            rows.append({"batch": b, "secs": round(dt, 2), "frames": frames, "fps": round(frames / dt, 1),
+                         "x_realtime": round(dt / audio_s, 2), "ms_per_batch": round(dt * 1000 / batches)})
+    json.dump({"load_s": load_s, "prepare_s": prepare_s, "audio_s": round(audio_s, 2), "frames": frames, "rows": rows},
+              open(a.out, "w"))
+
+
+main()
+"""
+
+
 # What MuseTalk 1.5 needs, from its own download_weights.sh: (repo, file, folder under models/). The v1.0 weights are not
 # fetched - this lab runs --version v15. We do not use that script: it upgrades huggingface_hub (which removes the
 # `huggingface-cli` it then calls), needs curl, and prints "downloaded successfully" whatever happened.
@@ -310,6 +377,24 @@ class Face:
                                    capture_output=True, text=True).stdout.strip() or 0)
         return {"mp4": data, "render_s": secs, "audio_s": round(dur, 2),
                 "x_realtime": round(secs / dur, 2) if dur else None, "musetalk_commit": self.commit}
+
+    @modal.method()
+    def bench(self, audio: bytes, video: bytes) -> dict:
+        """Steady-state speed: models loaded once, the same clip timed again and again (see _BENCH_SCRIPT)."""
+        raw, wav = _tmp(video, ".mp4"), _tmp(audio, ".wav")
+        src = f"/tmp/{uuid.uuid4().hex}_25.mp4"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-r", "25", src], check=True)
+        with open(f"{MUSE_DIR}/scripts/hoola_bench.py", "w") as f:
+            f.write(_BENCH_SCRIPT)
+        out = f"/tmp/{uuid.uuid4().hex}.json"
+        r = subprocess.run(["python", "-m", "scripts.hoola_bench", "--video", src, "--audio", wav, "--out", out],
+                           cwd=MUSE_DIR, stdin=subprocess.DEVNULL, capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError("bench failed: " + (r.stderr or r.stdout)[-1500:])
+        with open(out) as f:
+            data = json.load(f)
+        data["gpu"], data["musetalk_commit"] = GPU, self.commit
+        return data
 
     @modal.method()
     def forget(self, avatar_id: str) -> dict:
@@ -513,6 +598,30 @@ def smoke_face():
         Face().forget.remote("lab-sample")
     except Exception as e:
         note(f"face          FAILED: {type(e).__name__} {str(e)[:300]}")
+
+
+@app.local_entrypoint()
+def bench_face():
+    """How fast is the face once it is warm? One run, models loaded once, three batch sizes. Real time needs
+    x_realtime <= 1.0 (>= 25 frames a second); ms_per_batch is the wait before the first frames of a live answer."""
+    os.makedirs("lab_out", exist_ok=True)
+    try:
+        d = _call("face bench", Face().bench, _sample_audio.remote(), _sample_face.remote(), wait=3000)
+        lines = [f"GPU {d['gpu']}  (MuseTalk {d['musetalk_commit']})",
+                 f"models loaded once: {d['load_s']}s   face prepared: {d['prepare_s']}s   clip: {d['audio_s']}s = {d['frames']} frames",
+                 "batch  secs  frames/s  x_realtime  ms_per_batch"]
+        lines += [f"{r['batch']:>5}  {r['secs']:>4}  {r['fps']:>8}  {r['x_realtime']:>10}  {r['ms_per_batch']:>12}" for r in d["rows"]]
+        best = min(d["rows"], key=lambda r: r["x_realtime"]) if d["rows"] else None
+        if best:
+            ok = best["x_realtime"] <= 1.0
+            lines.append(f"best: batch {best['batch']} at {best['x_realtime']}x real time -> "
+                         + ("LIVE-CAPABLE on this GPU (>= 25 fps)" if ok else "NOT live on this GPU: slower than the speech"))
+        text = "\n".join(lines)
+    except Exception as e:
+        text = f"bench FAILED: {type(e).__name__} {str(e)[:600]}"
+    print(text, flush=True)
+    with open("lab_out/REPORT_bench.txt", "w") as f:
+        f.write(text + "\n")
 
 
 @app.function(image=face_image, timeout=300)
