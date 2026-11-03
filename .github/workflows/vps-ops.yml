@@ -190,6 +190,7 @@ jobs:
                 echo 'cp $CORE/santosh.db $CORE/santosh.db.bak-$(date +%F-%H%M)'
                 echo 'ls -1t $CORE/santosh.db.bak-* | tail -n +6 | xargs -r rm -f   # keep the newest 5 backups'
                 echo 'cd $REPO && git fetch origin main && git checkout main && git reset --hard origin/main'
+                echo 'cd $REPO/server && $CORE/.venv/bin/pip install -q -r requirements.txt 2>&1 | tail -2   # a release may add deps (the v0.474 SCRAPLING lesson); before cp+restart so a pip failure aborts safely'
                 echo 'git log --oneline -1'
                 echo 'cp -r $REPO/server/app $CORE/'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
