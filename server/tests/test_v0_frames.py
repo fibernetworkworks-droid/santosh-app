@@ -91,15 +91,15 @@ def run(name, args, ctx):
 # ---------------------------------------------------------------- registry + version
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.475.0"
+    assert APP_VERSION == "0.476.0"
 
 
-def test_registry_one_tool_six_actions():
+def test_registry_one_tool_seven_actions():
     assert len(ft.FRAMES_TOOLS) == 1
     spec = ft.FRAMES_TOOLS[0]
     assert spec["name"] == "hoola_frames"
     assert set(spec["input_schema"]["properties"]["action"]["enum"]) == \
-        {"render", "check", "timeline", "snapshot", "add", "status"}
+        {"render", "check", "timeline", "snapshot", "add", "status", "avatar_film"}
     names = [t["name"] for t in TOOLS]
     assert names.count("hoola_frames") == 1, "registered exactly once in the global registry"
     assert "hoola_frames" in HANDLERS and "hoola_frames" in TOOL_LABELS
@@ -112,7 +112,7 @@ def test_status_unconfigured(env, monkeypatch):
     get_settings.cache_clear()
     st = frames.status()
     assert st["enabled"] is False and st["bin"] == "" and st["pin"] == "hyperframes@0.9.6"
-    assert set(st["actions"]) == {"render", "check", "timeline", "snapshot", "add", "status"}
+    assert set(st["actions"]) == {"render", "check", "timeline", "snapshot", "add", "status", "avatar_film"}
     assert "FRAMES_BIN" in st["note"]
     ctx = conv_ctx()
     out = run("hoola_frames", {"action": "status"}, ctx)   # handler answers honestly, no raise

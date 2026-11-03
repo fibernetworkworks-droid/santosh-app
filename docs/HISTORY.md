@@ -18233,3 +18233,31 @@ Chunked speech (first chunk ~5 words, then growing), three warm voice containers
 JPEG + WAV chunks, student page with audio-clock playback. Measured inside Modal (L40S, warm): first picture 2.8 s, no gaps.
 NOT verified: a real browser / phone, network cost, many students, tutor brain wiring. WebSocket chosen over WebRTC because
 Modal has no UDP (docs/INTERACTIVE_AVATAR_PLAN.md S12).
+
+## v0.476.0 HOOLA FRAMES Phase 2: AVATAR FILMS — the "our own HeyGen" moment (owner: "WHAT PAHSE 2 DOES" then "GO"; docs/HYPERFRAMES_PLAN.md section 7)
+
+Phase 1 made Hoola render animated films. Phase 2 gives them a VOICE and a FACE: the model sends a SPEC, the server makes a talking film - her voice speaking the script, captions timed word-by-word, scenes at sentence beats, her real data on screen. No HeyGen anywhere.
+
+### The flow (`hoola_frames action=avatar_film`, spec only - no HTML)
+
+1. `app/studio/avatar.py::validate_spec` refuses everything wrong BEFORE any GPU minute: unknown shape, empty script, >12 sentences, >2400 chars, product shape without items, asset names outside `assets/*.(png|jpg|jpeg|webp)`, unknown aspect; reels are forced 9:16; brand colors must be `#RRGGBB` (else the shape's default); prices come from the spec exactly as given - the builder invents nothing.
+2. The Model Lab speaks each sentence (`interactive/lab.py::voice`, Chatterbox on Modal; `lang`/`voice` from the spec). Lab down = honest `NotConfigured` with the `silent:true` escape hatch. Lab error on sentence k = "awaaz nahi bani (vaakya k)".
+3. Real ffmpeg pads every WAV to its scene span - `avatar.scene_span`: speech + 0.35 s breath (1.2 s hold on the last scene, 2.2 s when a closing card exists), snapped UP to whole 30 fps frames, re-encoded 48 kHz mono PCM - then concatenates one `assets/voice.wav`. Scene starts are the cumulative spans, so the voice track is frame-aligned with the film by construction (test: `abs(track - total) < 0.05`).
+4. Word timings: `videoedit/captions.py::whisper_words` (faster-whisper, CPU int8) on the final track; without it, `words_from_segments` shares words out by length inside each sentence - deterministic, and the result honestly says `words_estimated: true`. `captions.cues` groups words into <=5-word captions that break at sentence punctuation; cues are grouped PER SCENE so no caption straddles a scene boundary.
+5. `avatar.build_html` renders the composition deterministically - same spec + same audio lengths -> byte-identical HTML (hash-pinned): talking-head (avatar photo left, captions right, brand bar), product film (opening title card, one scene per item with photo/name/price/note from her DUKAAN data), reel (1080x1920 kinetic captions, gradient ground, avatar disc). The closing card (`cta`: text + optional UPI QR image) opens only AFTER the last spoken word. The 12-rule contract holds: root `data-composition-id` + one paused GSAP timeline on `window.__timelines.main`, `<audio id="voice">` separate and silent-mode emits NO audio tag, bundled Noto fonts (incl Devanagari), `data-var-text` editability, no clock/dice/network/`repeat:-1`/crossorigin, no CSS transforms on GSAP nodes.
+6. The SAME `do_render` gate: `hyperframes check --json` first (failures come back as fixable errors), then the one-at-a-time lowest-priority render, probe, and the MP4 lands as a chat card with shape/scenes/duration/silent flags.
+
+### Tool surface
+
+- `frames_tools.py`: schema gains `avatar_film` in the action enum + the `spec` object (shape/script/title/brand/items/cta/avatar_file_id/lang/voice/aspect/silent); `_resolve_spec` maps `file_id`s to asset names (`assets/avatar.png`, `assets/item-2.jpg`, `assets/cta.png`) owner-checked through the same mailbox intake, photos only; handler delivers the MP4 through the house mailbox path. Voice wiring unchanged - `hoola_frames` rides VOICE_TOOL_NAMES + VOICE_VIA_KAAM exactly as in v0.471 (a talking film is minutes-deep; the call hears progress, santosh_kaam runs it).
+- `prompts.py`: the FRAMES bullet grows the AVATAR FILMS paragraph (when she wants a video where someone TALKS, spec not HTML, silent fallback, real data only).
+- `frames.status()` reports the `avatar` block (shapes, lab configured?, voice models, whisper installed?) so deploys can assert it.
+
+### Tests
+
+`server/tests/test_v476_avatar_films.py` (16 + 1 env-gated): version pin, registry/spec/enum pins, status avatar block, sentence beats + TTS-cap hard split, spec guards, frame-alignment + estimate timing math, whisper words stay in their scene, determinism hash, contract pins (audio/bans/timelines/fonts/cta-after-speech), product + reel shapes, silent e2e, VOICE e2e with REAL ffmpeg + fake lab (voice track length == film length), lab-down honesty, lab-failure honesty, missing-asset refusal, whisper path used when present, `_resolve_spec` mapping + photo gate, dispatch delivery, spec-required, opt-in real Modal round (`HOOLA_TEST_LAB=1`).
+
+### Sweeps + known reds
+
+- `test_v0_frames.py` pins moved to 7 actions (22 green), `test_v0475_console_frames.py` 14 (stamps stay 0.475.0 x20 - server-only release, the Phase 1 precedent; APP_VERSION story now v0.476), mem 13, interactive-lab 21, scrapling 27, sample swept suites 21 green; `test_v0400_fast_reliable` 5 reds STASH-PROVEN on pristine HEAD (Playwright chromium cache missing in the recycled sandbox + site-service state - environment-only).
+- Version ritual 0.476.0: pubspec 0.476.0+521, APP_VERSION story, pins ->0.476.0(+521) in 146 suites, console stamps unchanged. Server-only deploy; desktop untouched, old APKs keep working.

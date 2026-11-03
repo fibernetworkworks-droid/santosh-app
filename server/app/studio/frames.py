@@ -38,7 +38,7 @@ from typing import Any
 
 from ..config import get_settings
 
-_ACTIONS = ("render", "check", "timeline", "snapshot", "add", "status")
+_ACTIONS = ("render", "check", "timeline", "snapshot", "add", "status", "avatar_film")
 _NAME_OK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,120}$")
 
 
@@ -370,6 +370,114 @@ def do_add(tenant: str, block: str) -> dict[str, Any]:
     return {"ok": True, "files": added[:12], "note": out[-400:]}
 
 
+# ---------------------------------------------------------------- avatar films ---
+
+def _audio_duration(path: Path) -> float:
+    try:
+        rc, out = _run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                        "-of", "json", str(path)], cwd=path.parent, timeout=60)
+        return float(json.loads(out)["format"]["duration"])
+    except Exception as e:
+        raise FramesError(f"awaz file {path.name} ki lambai nahi naap paye: {type(e).__name__}") from None
+
+
+def _pad_wav(src: Path, dest: Path, seconds: float) -> None:
+    """Exact-length mono 48k WAV: the scene spans and the voice track stay frame-aligned."""
+    rc, out = _run(["ffmpeg", "-y", "-v", "error", "-i", str(src), "-af", "apad",
+                    "-ar", "48000", "-ac", "1", "-c:a", "pcm_s16le", "-t", f"{seconds:.3f}",
+                    str(dest)], cwd=src.parent, timeout=120)
+    if rc != 0 or not dest.is_file():
+        raise FramesError(f"awaz {src.name} ko scene ki lambai par la nahi paye: {out[-300:]}")
+
+
+def _concat_wavs(padded: list[Path], dest: Path) -> None:
+    lst = dest.parent / "concat.txt"
+    lst.write_text("".join(f"file '{p.resolve()}'\n" for p in padded), encoding="utf-8")
+    rc, out = _run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
+                    "-c:a", "pcm_s16le", str(dest)], cwd=dest.parent, timeout=300)
+    lst.unlink(missing_ok=True)
+    if rc != 0 or not dest.is_file():
+        raise FramesError(f"awaz track jod nahi paye: {out[-300:]}")
+
+
+def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None = None,
+                   out_name: str = "film") -> dict[str, Any]:
+    """AVATAR FILMS: spec -> lab voice -> word-timed composition -> the normal check->render gate.
+
+    The slow parts (TTS, alignment) run BEFORE the render lock, so a busy queue never
+    blocks them and a voice call is never stuck behind a render that is still scripting.
+    `files` come from the tool layer owner-checked (name = the spec's asset name, e.g.
+    assets/avatar.jpg; path = the stored file); the worker adds the voice track it made.
+    """
+    from . import avatar as av
+    from ..videoedit import captions as cap
+    parts = av.validate_spec(spec)
+    sentences = parts["sentences"]
+    if not sentences:
+        raise FramesError("script khaali hai - bina vaakya ki film nahi banti.")
+
+    provided = list(files or [])
+    for f in provided:
+        if not Path(str(f.get("path", ""))).is_file():
+            raise FramesError(f"asset {f.get('name')!r} ki file nahi mili.")
+    referenced = {parts["avatar"], parts["cta_image"]} | {it["photo"] for it in parts["items"]}
+    missing = {r for r in referenced if r and r not in {f["name"] for f in provided}}
+    if missing:
+        raise FramesError(
+            f"asset {', '.join(sorted(missing))} spec mein hai par file_id se aayi nahi - dobara bhejiye.")
+
+    tmp = _root() / f"_voice-{uuid.uuid4().hex[:10]}"
+    tmp.mkdir(parents=True)
+    try:
+        if parts["silent"]:
+            # honest silent mode: no voice engine needed; scenes timed at reading speed
+            has_cta = bool(parts["cta_text"] or parts["cta_image"])
+            spans = [av.scene_span(len(s) / av.ESTIMATE_CPS, is_last=(i == len(sentences) - 1),
+                                   has_cta=has_cta) for i, s in enumerate(sentences)]
+            speech, words, voice_asset = spans, None, None
+        else:
+            from ..interactive import lab
+            if not lab.configured():
+                raise NotConfigured(
+                    "AVATAR FILM ko awaaz chahiye: Model Lab is server par set nahi hai "
+                    "(AVATAR_ENGINE_URL / AVATAR_ENGINE_KEY). Chaho to spec mein silent:true "
+                    "bhejo - wahi film, bina awaaz.")
+            raw: list[Path] = []
+            for i, s in enumerate(sentences):
+                try:
+                    data = lab.voice(s, lang=parts["lang"], model=parts["voice_model"])
+                except Exception as e:
+                    raise FramesError(f"awaaz nahi bani (vaakya {i + 1}): {e}") from None
+                p = tmp / f"raw-{i:02d}.wav"
+                p.write_bytes(data)
+                raw.append(p)
+            speech = [_audio_duration(p) for p in raw]
+            has_cta = bool(parts["cta_text"] or parts["cta_image"])
+            spans = [av.scene_span(d, is_last=(i == len(sentences) - 1), has_cta=has_cta)
+                     for i, d in enumerate(speech)]
+            padded = []
+            for i, (p, span) in enumerate(zip(raw, spans)):
+                q = tmp / f"pad-{i:02d}.wav"
+                _pad_wav(p, q, span)
+                padded.append(q)
+            voice = tmp / "voice.wav"
+            _concat_wavs(padded, voice)
+            words = cap.whisper_words(str(voice), parts["lang"] if parts["lang"] not in ("hi", "en") else "hi")
+            voice_asset = str(voice)
+
+        plan = av.timing_plan(sentences, spans, speech, words)
+        all_files = ([{"name": "assets/voice.wav", "path": voice_asset}] if voice_asset else []) + provided
+        html = av.build_html(parts, plan)
+        res = do_render(tenant, html, all_files, out_name=out_name)
+        if res.get("ok"):
+            res |= {"avatar": True, "shape": parts["shape"], "scenes": len(plan["scenes"]),
+                    "cues": len(plan["cues"]), "total_s": plan["total"],
+                    "words_estimated": plan["estimated"], "silent": parts["silent"]}
+        return res
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def status() -> dict[str, Any]:
     st = get_settings()
     binp = frames_bin()
@@ -395,11 +503,21 @@ def status() -> dict[str, Any]:
         base["disk"] = sweep()
     except Exception:
         pass
+    try:
+        from . import avatar as _av
+        from ..interactive import lab as _lab
+        import importlib.util
+        base["avatar"] = {"shapes": list(_av.SHAPES), "lab": bool(_lab.configured()),
+                          "voices": list(_lab.VOICE_MODELS),
+                          "whisper": importlib.util.find_spec("faster_whisper") is not None}
+    except Exception:
+        pass
     return base
 
 
 def run(tenant: str, action: str, html: str = "", files: list[dict[str, Any]] | None = None,
-        out_name: str = "film", block: str = "", times: list[float] | None = None) -> dict[str, Any]:
+        out_name: str = "film", block: str = "", times: list[float] | None = None,
+        spec: dict | None = None) -> dict[str, Any]:
     if action not in _ACTIONS:
         raise FramesError(f"action galat: {action!r}. Inme se ek: {', '.join(_ACTIONS)}")
     if action == "status":
@@ -408,6 +526,8 @@ def run(tenant: str, action: str, html: str = "", files: list[dict[str, Any]] | 
         raise NotConfigured("HOOLA FRAMES is server par configured nahi hai (FRAMES_BIN).")
     if action == "add":
         return do_add(tenant, block)
+    if action == "avatar_film":
+        return do_avatar_film(tenant, spec or {}, files=files, out_name=out_name)
     if action == "render":
         return do_render(tenant, html, files, out_name=out_name)
     if not (html or "").strip():
