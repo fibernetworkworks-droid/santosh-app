@@ -58,6 +58,7 @@ on:
           - zoo_key
           - zoo_check
           - engine_attach
+          - coder_flip
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -538,6 +539,19 @@ jobs:
                 echo 'print("error:", str(r.get("error", ""))[:200])'
                 echo 'raise SystemExit(0 if r["status"] == "done" else 3)'
                 echo 'PY' ;;
+              coder_flip)
+                # v0.480.0 Phase D - the owner's FLIP: CODER_NUDGE=true in $CORE/.env, the opt-in for the
+                # self-teaching reflection fork (coder/nudge.py). The code default stays OFF and the tests
+                # pin it - the deployment opts in here, the zoo_key pattern minus the secret (a boolean
+                # hides nothing). Idempotent upsert, restart, health, then the EFFECTIVE value is printed
+                # back from a fresh process reading the same .env.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^CODER_NUDGE=" $CORE/.env; then sed -i "s#^CODER_NUDGE=.*#CODER_NUDGE=true#" $CORE/.env; else printf "CODER_NUDGE=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^CODER_NUDGE=true$" $CORE/.env && echo "== CODER_NUDGE=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_nudge =\", get_settings().coder_nudge)"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
