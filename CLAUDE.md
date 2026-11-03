@@ -72,7 +72,18 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   Google's own machine-readable specs and terms and unit-tested, never answered by Google. The first `maps_card --live`
   run (or any real maps ask on the VPS) is what confirms or corrects it, and it is also the first real bill: three rates
   stay assumed until then (the Routes / matrix tier, Route Optimization's billing unit, the Roads unit; `/api/maps/usage`
-  names them). APK release for this commit: `v0.470.0-b1360` (CI run 41605635744 was still building at the save).
+  names them). APK release: `v0.470.0-b1360`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.470.0-b1360/app-release.apk
+  **DEPLOYED AND CHECKED after the save** (owner ran vps-ops > deploy, run 41606176146, 3 Nov 08:50 UTC): the VPS
+  checkout is main `51a87a2d` (which contains this checkpoint's commits), the server came up in ~40 s and its own
+  healthz reads **version 0.470.0** with `maps` in features - so caveat (1) above is settled; caveat (2) (no live
+  Google Maps call, three assumed rates) still stands.
+  FOUND IN THAT SAME DEPLOY LOG, live and not from this work: her Google sign-in is dead -
+  `invalid_grant: Token has been expired or revoked` every two minutes for BOTH kunaltlgt23@gmail.com and
+  meghanaingle93@gmail.com, so Drive / Gmail / Calendar / Sheets are refusing, and so would `gbp_locations` /
+  `gbp_numbers` (Phase 8a reads her Business Profile through that same sign-in). Fix = Profile > Google Drive >
+  'Google Drive jodiye' with every box ticked, and publish the OAuth consent screen out of Testing so it stops
+  expiring every 7 days.
   Roll back to it exactly like the ones below, with `stable-2026-11-03-v470` as the branch.
 - WEB STEP 2 (1 Nov 2026, end of web Step 2 = W1 one backend + W13 Architect, docs/WEB_PLATFORM_PLAN.md): branch
   `stable-2026-11-01-v414` = commit 35caab6c = v0.414.0, pubspec 0.414.0+458, APK release `v0.414.0-b1112`:
