@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .. import maps, mapsbill
+from ..config import get_settings
 from ..events import bus
 from .tools import Ctx, ToolError
 
@@ -53,6 +54,24 @@ MAPS_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "place_id": {"type": "string", "description": "From a maps_nearby or maps_search result"}},
          "required": ["place_id"]}},
+    # v0.463 Phase 4 SABSE PAAS
+    {"name": "maps_nearest", "description": (
+        "Which of THESE places is nearest by real road time - 'in 8 mein se kaun sa godown sabse paas hai', 'which "
+        "of my 5 workers is closest to this customer', 'nearest branch'. Gives true road distance and travel time "
+        "with live traffic from the starting point (or points) to every candidate, ranked, using Google's route "
+        "matrix. Use this when she already HAS the list; to FIND places of a kind use maps_nearby; one trip's "
+        "route and steps = maps_directions.\n"
+        "'candidates' are place names, 'lat,lng', or objects {name, lat, lng} (objects from a maps_nearby result "
+        "cost nothing to locate; a plain name costs one lookup). 'origins' empty = where she is now.\n"
+        "Every origin x candidate pair is billed, so it is capped (default 100 pairs). With ONE origin and more "
+        "candidates than that, the closest by straight line are checked on the road and the answer says so. A "
+        "pair Google cannot route is reported as unreachable, never guessed."),
+     "input_schema": {"type": "object", "properties": {
+         "candidates": {"type": "array", "items": {}, "description": "Places to compare (names, 'lat,lng' or {name,lat,lng})"},
+         "origins": {"type": "array", "items": {}, "description": "Where from; empty = the user's location"},
+         "mode": {"type": "string", "enum": ["car", "bike", "walk", "transit"]},
+         "top": {"type": "integer", "description": "How many best to return per origin. Default 3"}},
+         "required": ["candidates"]}},
     {"name": "maps_kharcha", "description": (
         "Today's Google Maps spend for this user: calls made, how many were inside Google's free monthly "
         "allowance, rupees spent, the daily cap and what is left. Use it when she asks what Maps is costing, or "
@@ -63,6 +82,7 @@ MAPS_TOOLS = [
 MAPS_LABELS = {"maps_search": "Google Maps par dhoondh raha hoon", "maps_directions": "Rasta aur samay dekh raha hoon",
                "maps_navigate": "Phone par navigation bhej raha hoon",
                "maps_nearby": "Aas-paas dekh raha hoon", "maps_place": "Jagah ki poori detail le raha hoon",
+               "maps_nearest": "Sabse paas wala dekh raha hoon",
                "maps_kharcha": "Maps ka kharcha dekh raha hoon"}
 
 
@@ -196,6 +216,107 @@ async def maps_place(ctx: Ctx, place_id, **_):
     return row
 
 
+async def _locate(ctx: Ctx, item, near) -> dict | None:
+    """One candidate/origin -> {name, lat, lng}. Objects with coordinates and 'lat,lng' text cost nothing; a
+    plain name is one geocode (billed, capped, cached place_id)."""
+    if isinstance(item, dict):
+        lat, lng = item.get("lat"), item.get("lng", item.get("lon"))
+        try:
+            if lat is not None and lng is not None:
+                la, lo = float(lat), float(lng)
+                if -90 <= la <= 90 and -180 <= lo <= 180:
+                    return {"name": str(item.get("name") or f"{la},{lo}"), "lat": la, "lng": lo,
+                            "place_id": item.get("place_id", ""), "address": item.get("address", "")}
+        except (TypeError, ValueError):
+            return None
+        item = item.get("name") or item.get("address") or ""
+    text = str(item or "").strip()
+    if not text:
+        return None
+    if maps._is_here(text):
+        return maps.where_am_i(ctx.tenant_id)
+    g = await maps.geocode(text, near=near, tenant_id=ctx.tenant_id)
+    return {**g, "name": text if not g else (g.get("name") or text)} if g else None
+
+
+MAX_CANDIDATES = 25
+MAX_ORIGINS = 5
+
+
+async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **_):
+    if not maps.configured():
+        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+    cands = candidates if isinstance(candidates, list) else [candidates]
+    cands = [c for c in cands if c not in (None, "", {})]
+    if not cands:
+        raise ToolError("Kin jagahon mein se sabse paas dhoondhna hai? Unke naam ya location bataiye.")
+    if len(cands) > MAX_CANDIDATES:
+        raise ToolError(f"Ek baar mein {MAX_CANDIDATES} jagah tak hi dekh sakta hoon; {len(cands)} hain. "
+                        f"Do hisson mein baant dein.")
+    srcs = origins if isinstance(origins, list) else ([origins] if origins else [])
+    srcs = [o for o in srcs if o not in (None, "", {})] or ["here"]
+    if len(srcs) > MAX_ORIGINS:
+        raise ToolError(f"Ek baar mein {MAX_ORIGINS} shuruaati jagah tak.")
+    m = _mode(mode)
+    here = maps.where_am_i(ctx.tenant_id)
+    try:
+        o_pts, d_pts, missing = [], [], []
+        for o in srcs:
+            pt = await _locate(ctx, o, here)
+            if pt is None:
+                raise ToolError("Aap abhi kahan hain? Phone mein location permission dijiye ya jagah ka naam bataiye."
+                                if maps._is_here(str(o)) else f"'{o}' Google Maps par nahi mila.")
+            o_pts.append(pt)
+        for c in cands:
+            pt = await _locate(ctx, c, o_pts[0])
+            if pt is None:
+                missing.append(str(c.get("name") if isinstance(c, dict) else c))
+            else:
+                d_pts.append(pt)
+        if not d_pts:
+            raise ToolError("Inmein se koi jagah Google Maps par nahi mili: " + ", ".join(missing)[:200])
+        cap = max(1, int(get_settings().maps_matrix_max or 100))
+        prefiltered = False
+        if len(o_pts) * len(d_pts) > cap:
+            if len(o_pts) == 1:       # shortlist by straight line, then ask the road about the shortlist only
+                d_pts.sort(key=lambda d: maps._km(o_pts[0], d))
+                d_pts, prefiltered = d_pts[:cap], True
+            else:
+                raise ToolError(f"{len(o_pts)} x {len(d_pts)} jodiyan hain; ek baar mein {cap} tak hi "
+                                f"(har jodi ka alag paisa lagta hai). Kam jagah dein.")
+        before = mapsbill.usage(ctx.tenant_id)["inr"]
+        rows = await maps.matrix(o_pts, d_pts, m, tenant_id=ctx.tenant_id)
+    except maps.MapsError as e:
+        raise ToolError(str(e))
+    spent = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
+    n = max(1, min(int(top or 3), 10))
+    result, card = [], []
+    for o, row in zip(o_pts, rows):
+        ranked = sorted(((d, c) for d, c in zip(d_pts, row) if c["ok"]), key=lambda t: t[1]["duration_min"])
+        bad = [d["name"] for d, c in zip(d_pts, row) if not c["ok"]]
+        best = [{"name": d["name"], "address": d.get("address", ""), "distance_km": c["distance_km"],
+                 "duration_min": c["duration_min"], "duration": c["duration"],
+                 "straight_km": round(maps._km(o, d), 1)} for d, c in ranked[:n]]
+        result.append({"from": o.get("name"), "nearest": best[0] if best else None, "ranked": best,
+                       "unreachable": bad})
+        if not card:
+            card = [{"name": b["name"], "address": b.get("address", ""), "distance_km": b["distance_km"],
+                     "type": f"{b['duration']} · {'gaadi se' if m == 'DRIVE' else 'raste se'}"} for b in best]
+    if card:
+        _places_card(ctx, "Sabse paas", card, near=o_pts[0].get("name", ""), cost_inr=spent)
+    out = {"mode": m, "compared": len(d_pts), "results": result, "cost_inr": spent,
+           "attribution": maps.ATTRIBUTION}
+    if prefiltered:
+        out["prefiltered"] = (f"{len(cands)} mein se straight-line par sabse paas {cap} ko road par check kiya "
+                              f"(har jodi ka paisa lagta hai). Baaki door hain, par road se alag ho sakta hai.")
+    if missing:
+        out["not_found"] = missing
+    out["note"] = ("Card shown for the first starting point. Name the winner with minutes and km in one line, "
+                   "then the runner-up. These are live road times with traffic and change - never store them. "
+                   "Say plainly anything in 'unreachable' / 'not_found' / 'prefiltered'.")
+    return out
+
+
 async def maps_kharcha(ctx: Ctx, **_):
     u = mapsbill.usage(ctx.tenant_id)
     return {**u, "note": ("Rupees are an estimate: Google's own list is in USD and bills the billing account's "
@@ -204,4 +325,5 @@ async def maps_kharcha(ctx: Ctx, **_):
 
 
 MAPS_HANDLERS = {"maps_search": maps_search, "maps_directions": maps_directions, "maps_navigate": maps_navigate,
-                 "maps_nearby": maps_nearby, "maps_place": maps_place, "maps_kharcha": maps_kharcha}
+                 "maps_nearby": maps_nearby, "maps_place": maps_place, "maps_nearest": maps_nearest,
+                 "maps_kharcha": maps_kharcha}

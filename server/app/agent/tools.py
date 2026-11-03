@@ -1081,6 +1081,8 @@ TOOL_LANES: dict[str, str] = {
     "maps_nearby": "LANE: what is AROUND a point, by category (pharmacy, bank, gas_station...). A place you can name "
                    "-> maps_search. Phone / website / rating / timings of one result -> maps_place. Circle only, "
                    "50 km max, 20 results, no next page.",
+    "maps_nearest": "LANE: which of a LIST she already has is nearest by real road time (godowns, branches, workers vs "
+                    "a customer). Finding places of a kind -> maps_nearby. One trip's route -> maps_directions.",
     "maps_place": "LANE: phone, website, rating and opening hours of ONE place you already have a place_id for. "
                   "Finding places -> maps_nearby / maps_search. One at a time: these are the costly fields.",
     # web: answer -> quotes -> one page -> clicks -> forms

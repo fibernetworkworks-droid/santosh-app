@@ -510,6 +510,7 @@ class Settings(BaseSettings):
     maps_usd_inr: float = 89.0              # only to show her rupees; Google bills in the billing account's currency
     maps_unknown_sku_usd: float = 40.0      # per 1,000, used ONLY if no SKU rate could be sourced at all (cap fires early, never late)
     maps_nearby_tier: str = "pro"           # the cheap list pass for maps_nearby: pro | enterprise (phone/rating/hours cost Enterprise)
+    maps_matrix_max: int = 100              # v0.463: most origins x destinations in ONE matrix call (each pair is billed; Google's own ceiling is 625)
     maps_cache: bool = True                 # reuse the licence-permitted place_id + 30-day lat/lng instead of re-billing
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)

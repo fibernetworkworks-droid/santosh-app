@@ -25,6 +25,7 @@ PLACES_URL = "https://places.googleapis.com/v1/places:searchText"
 NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby"    # v0.449 Phase 3
 DETAILS_URL = "https://places.googleapis.com/v1/places/"               # v0.449 Phase 3: + place_id
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+MATRIX_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"   # v0.463 Phase 4
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 
 # v0.449 Phase 3. The field mask picks the SKU, so these ARE the price list - see docs/research/maps/
@@ -42,6 +43,10 @@ _DETAILS_FIELDS = ("id,displayName,formattedAddress,location,primaryTypeDisplayN
 # Nearby Search: circle only (no rectangle), radius <= 50 km, 20 results, NO paging. Documented ceilings.
 NEARBY_MAX_RADIUS_M = 50000
 NEARBY_MAX_RESULTS = 20
+# computeRouteMatrix documented ceilings: 625 elements (origins x destinations); 100 for TRANSIT. Our own
+# per-call limit (maps_matrix_max setting) sits below these because EVERY element is a billable event.
+MATRIX_HARD_MAX = 625
+MATRIX_HARD_MAX_TRANSIT = 100
 # Google requires its attribution wherever this content is shown, with or without a map (ToS 3.2.2(b)).
 ATTRIBUTION = "Google"
 MAPS_PACKAGE = "com.google.android.apps.maps"
@@ -286,6 +291,67 @@ async def route(origin: dict, destination: dict, mode: str = "DRIVE", language: 
     return {"distance_km": round((rt.get("distanceMeters") or 0) / 1000, 1), "duration": _human(secs),
             "duration_min": round(secs / 60), "traffic": traffic, "via": rt.get("description", ""), "mode": mode,
             "first_steps": steps[:6], "warnings": rt.get("warnings", [])}
+
+
+# ---------------------------------------------------------------- v0.463 Phase 4: SABSE PAAS
+async def matrix(origins: list[dict], destinations: list[dict], mode: str = "DRIVE", language: str = "en-IN",
+                 tenant_id: str = "") -> list[list[dict]]:
+    """Routes computeRouteMatrix: real road distance + time from every origin to every destination.
+
+    Returns rows[origin][destination] = {"ok": True, "distance_km", "duration_min", "duration"} or
+    {"ok": False, "reason"} - an element Google could not route is REPORTED as unreachable, never filled in
+    with a straight-line guess (a wrong ETA looks exactly as confident as a right one).
+
+    Billing: this is the one SKU Google charges PER ELEMENT (origins x destinations), so a 10x10 matrix is 100
+    events and is charged as 100 BEFORE the call - the cap refuses it rather than discovering the bill after.
+    """
+    if not origins or not destinations:
+        raise MapsError("Matrix ke liye kam se kam ek shuruaat aur ek manzil chahiye.")
+    n = len(origins) * len(destinations)
+    ceiling = MATRIX_HARD_MAX_TRANSIT if mode == "TRANSIT" else MATRIX_HARD_MAX
+    mine = max(1, int(get_settings().maps_matrix_max or 100))
+    if n > min(ceiling, mine):
+        raise MapsError(f"{len(origins)} x {len(destinations)} = {n} jodiyan hain; ek baar mein {min(ceiling, mine)} "
+                        f"tak hi (har jodi ka alag paisa lagta hai). Kam jagah dein.")
+
+    def wp(x):
+        return {"waypoint": {"location": {"latLng": {"latitude": x["lat"], "longitude": x["lng"]}}}}
+    body: dict = {"origins": [wp(o) for o in origins], "destinations": [wp(d) for d in destinations],
+                  "travelMode": mode, "languageCode": language, "units": "METRIC"}
+    if mode in ("DRIVE", "TWO_WHEELER"):
+        body["routingPreference"] = "TRAFFIC_AWARE"
+    fields = "originIndex,destinationIndex,status,condition,distanceMeters,duration"
+    rc = _bill(tenant_id, mapsbill.SKU_MATRIX, n)
+    r = await _client().post(MATRIX_URL, json=body, headers={"X-Goog-Api-Key": _key(), "X-Goog-FieldMask": fields})
+    if r.status_code >= 400:
+        _unbill(rc)
+        if mode == "TWO_WHEELER":                     # not offered everywhere; fall back to car, as route() does
+            return await matrix(origins, destinations, "DRIVE", language, tenant_id)
+        raise MapsError(_explain(r))
+    try:
+        data = r.json()
+    except ValueError:
+        _unbill(rc)
+        raise MapsError("Google Maps ka jawab samajh nahi aaya.")
+    if isinstance(data, dict):
+        data = [data]
+    rows: list[list[dict]] = [[{"ok": False, "reason": "Google ne is jodi ka jawab nahi diya"}
+                               for _ in destinations] for _ in origins]
+    for el in data:
+        try:
+            i, j = int(el.get("originIndex", 0)), int(el.get("destinationIndex", 0))
+        except (TypeError, ValueError):
+            continue
+        if not (0 <= i < len(origins) and 0 <= j < len(destinations)):
+            continue
+        st = el.get("status") or {}
+        if (st.get("code") or 0) != 0 or el.get("condition") not in (None, "ROUTE_EXISTS"):
+            rows[i][j] = {"ok": False, "reason": "Is jagah tak rasta nahi mila"}
+            continue
+        secs = _secs(el.get("duration"))
+        rows[i][j] = {"ok": True, "distance_km": round((el.get("distanceMeters") or 0) / 1000, 1),
+                      "duration_min": round(secs / 60), "duration": _human(secs)}
+    return rows
 
 
 # ---------------------------------------------------------------- v0.449 Phase 3: nearby + details

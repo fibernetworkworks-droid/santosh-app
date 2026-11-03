@@ -17868,3 +17868,31 @@ first time since the iPad check started hiding them.
 
 **The lesson, again:** a failing check hides every check behind it. Fifteen runs of "the iPad crashed" were also
 fifteen runs in which the sign-up, the order, the paid claim and the crash report were never exercised at all.
+
+## v0.463.0 — GOOGLE MAPS Phase 4: SABSE PAAS (computeRouteMatrix, "nearest of these N")
+
+Owner: *"GO PHASE 4"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+- **`maps.matrix()`** → Routes `computeRouteMatrix`. Real road distance + traffic-aware time from every origin to
+  every destination. Field mask is only `originIndex,destinationIndex,status,condition,distanceMeters,duration`
+  (no polyline, no steps). Results are matched by the element's own indexes, never by arrival order (the API
+  streams them in no promised order). An element Google could not route comes back `ok: False` and is reported
+  as unreachable - **never filled with a straight-line guess**. Two-wheeler falls back to car on a 4xx, like `route()`.
+- **Billed per ELEMENT, refused first.** The matrix is the one SKU Google charges per origin x destination, so the
+  call is charged as `n = origins x destinations` BEFORE the HTTP call; the daily cap refuses it up front, and a
+  failed call is refunded exactly (`Receipt`). Our own ceiling is the new `maps_matrix_max` setting (default 100
+  pairs), below Google's 625 (100 for transit).
+- **Tool `maps_nearest`** (owner chat + voice call + TOOL_LANES + prompt): `candidates` = names, `lat,lng`, or
+  `{name, lat, lng}` objects (coordinates she already has - e.g. from `maps_nearby` - cost no lookup; a plain name is
+  one geocode). `origins` empty = where she is. Up to 25 candidates, 5 origins. With ONE origin and more candidates
+  than the cap, the closest by straight line are checked on the road and the answer says `prefiltered`; with several
+  origins over the cap it REFUSES rather than silently trimming. Output: ranked list per origin with road km, minutes,
+  straight-line km, `unreachable` and `not_found` named. Draws the existing `maps_places` card (road time in `type`,
+  so no phone/console UI change), Google attribution on it.
+- Nothing from the matrix is stored: it is live traffic and Google content.
+- **Not done / not verified:** `ASSUMED_TIER` for the matrix is still Enterprise (dearest) - no Google page maps our
+  field mask to Essentials/Pro/Enterprise, so the cap can only fire early; her first real bill settles it. No live
+  call has been made (mock transport only). Phase 4's plan line also names wiring into field_service / fleet /
+  courier / helpdesk: NOT done in this version - `fleet/service.py:_maps_distance` still loops `route()`. The tool is
+  the first-class answer; the module wiring is the next small step.
+- Tests: `server/tests/test_v0463_maps_nearest.py`.
