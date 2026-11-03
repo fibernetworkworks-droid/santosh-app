@@ -35,6 +35,7 @@ import registry
 
 APP = "hoola-lab"
 GPU = os.environ.get("HOOLA_LAB_GPU", "L4")          # L4 is in Modal's free monthly credit range; A10G / L40S for speed tests
+WARM = int(os.environ.get("HOOLA_LAB_WARM", "0"))      # containers kept running (0 = scale to zero); 1 = a teacher mid-lesson never meets a cold start
 IDLE = 120                                          # seconds an idle container lives (credit saver)
 MODELS_DIR = "/models"
 HF_ENV = {"HF_HOME": f"{MODELS_DIR}/hf", "HF_HUB_ENABLE_HF_TRANSFER": "0"}
@@ -112,7 +113,8 @@ def _tmp(data: bytes | None, suffix: str) -> str | None:
 
 
 # ---------------------------------------------------------------- voice engines
-@app.cls(gpu=GPU, image=chatterbox_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600)
+@app.cls(gpu=GPU, image=chatterbox_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600,
+         min_containers=WARM)
 class Chatterbox:
     @modal.enter()
     def load(self):
@@ -412,7 +414,7 @@ class Face:
 # ---------------------------------------------------------------- live face (warm, in-process, streams frames)
 @app.cls(gpu=GPU, image=face_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600,
          cpu=4,                     # the CPU half of every frame (blend + JPEG) needs real cores, not Modal's 0.125 default
-         max_containers=4)          # ONE student per container (input concurrency stays off): measured, a second student on the same card
+         min_containers=WARM, max_containers=4)          # ONE student per container (input concurrency stays off): measured, a second student on the same card
                                     # hangs the GPU call AND could never be smooth (~43 fps total < 2 x 25), so Modal adds a card
 class Live:
     """The face the way a live teacher needs it: every model loaded ONCE when the container starts, prepared faces kept in
@@ -865,6 +867,27 @@ def bench_streams():
         note(f"streams FAILED: {type(e).__name__} {str(e)[:500]}")
 
 
+def split_speech(text: str, first_words: int = 5) -> list:
+    """Cut a teacher's answer so speech can start early: a SHORT first chunk (about five words, ending at a comma /
+    full stop if one is near), then the rest one sentence at a time. Voice time grows with length, so the first chunk
+    decides how long the student waits; the later chunks only have to be ready before the earlier audio ends."""
+    import re
+    text = " ".join(text.split())
+    if not text:
+        return []
+    words = text.split(" ")
+    cut = min(first_words, len(words))
+    for i in range(2, min(len(words), first_words + 3)):          # a natural pause close to the target wins
+        if re.search(r"[,;:।.?!]$", words[i - 1]):
+            cut = i
+            break
+    first, rest = " ".join(words[:cut]), " ".join(words[cut:])
+    out = [first]
+    if rest:
+        out += [x.strip() for x in re.split(r"(?<=[।.?!])\s+", rest) if x.strip()]
+    return out
+
+
 def _wav_seconds(wav: bytes) -> float:
     """Length of a WAV in seconds, read from its header (no audio library needed on the runner)."""
     i = wav.find(b"data")
@@ -902,6 +925,7 @@ def bench_e2e():
         note(f"face prepared: {p['prepare_s']}s   (warm-up below is not counted)")
         w = _call("voice warm-up", voice.speak, "नमस्ते।", "hi", wait=900)
         _ = list(live.stream.remote_gen("lab-live", w["wav"], 4, 1))
+        _call("voice warm-up 2", voice.speak, cases[1][1], "hi", wait=900)      # a second, longer line so no row below is a first-use row
         note("case               audio_s  tts_s  tts/audio  face_first_s  e2e_first_frame_s")
         e2e_all, rtf_all = [], []
         for name, text in cases:
@@ -918,6 +942,29 @@ def bench_e2e():
             e2e_all.append(e2e)
             rtf_all.append(rtf)
             note(f"{name:<18} {audio_s:>7.1f} {t_tts:>6.1f} {rtf:>10} {str(first):>13} {e2e:>18.1f}")
+        # The real answer path: a SHORT first chunk, the rest sentence by sentence behind it.
+        long_text = cases[2][1]
+        chunks = split_speech(long_text)
+        note(f"chunked answer: {len(chunks)} chunks -> " + " | ".join(chunks))
+        t0 = time.time()
+        r1 = _call("voice: chunk 1", voice.speak, chunks[0], "hi", wait=300)
+        tts1 = time.time() - t0
+        for b in live.stream.remote_gen("lab-live", r1["wav"], 4, 1):
+            break
+        chunk_e2e = time.time() - t0
+        note(f"chunk 1 '{chunks[0]}': voice {tts1:.1f}s, picture at {chunk_e2e:.1f}s, speaks for {_wav_seconds(r1['wav']):.1f}s")
+        gapless, prev_audio, spent = True, _wav_seconds(r1["wav"]), 0.0
+        for i, c in enumerate(chunks[1:], 2):
+            t = time.time()
+            ri = _call(f"voice: chunk {i}", voice.speak, c, "hi", wait=300)
+            dt = time.time() - t
+            spent += dt
+            ok = dt <= prev_audio
+            gapless = gapless and ok
+            note(f"chunk {i}: voice {dt:.1f}s, previous audio lasts {prev_audio:.1f}s -> {'ready in time' if ok else 'GAP'}")
+            prev_audio = _wav_seconds(ri["wav"])
+        e2e_all.append(chunk_e2e)
+        note(f"CHUNKED: first picture after {chunk_e2e:.1f} s; rest of the answer " + ("arrives without gaps" if gapless else "has gaps - needs a faster voice"))
         best, worst = min(e2e_all), max(e2e_all)
         word = "conversational (<=2 s)" if worst <= 2 else "acceptable (<=4 s)" if worst <= 4 else "slow (>4 s)"
         note(f"RESULT: first picture after {best:.1f}-{worst:.1f} s -> {word}")

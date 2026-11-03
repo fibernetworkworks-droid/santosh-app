@@ -21,6 +21,11 @@ on:
         type: choice
         default: L4
         options: [T4, L4, A10G, L40S]
+      warm:
+        description: Keep one voice + one face container running for this run (1) so no cold start; 0 = scale to zero. Never use 1 with 'deploy' unless you want a GPU billed all day.
+        type: choice
+        default: '0'
+        options: ['0', '1']
 
 concurrency:
   group: interactive-lab
@@ -34,6 +39,7 @@ jobs:
       MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
       MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
       HOOLA_LAB_GPU: ${{ inputs.gpu }}
+      HOOLA_LAB_WARM: ${{ inputs.warm }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

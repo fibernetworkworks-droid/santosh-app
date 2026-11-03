@@ -248,3 +248,17 @@ def test_e2e_bench_wired():
     pcm = b"\0\0" * 24000
     hdr = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, 24000, 48000, 2, 16) + b"data" + struct.pack("<I", len(pcm))
     assert abs(ns["_wav_seconds"](hdr + pcm) - 1.0) < 0.01
+
+
+def test_chunker_and_warm_switch():
+    import re
+    ns: dict = {}
+    exec(re.search(r"def split_speech.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    sp = ns["split_speech"]
+    long_t = "अगर एक गाड़ी दो घंटे में एक सौ बीस किलोमीटर जाती है, तो उसकी औसत चाल साठ किलोमीटर प्रति घंटा होगी। अब आप बताइए?"
+    parts = sp(long_t)
+    assert len(parts[0].split()) <= 8 and len(parts) >= 3
+    assert " ".join(parts).split() == long_t.split()                      # nothing lost, nothing added
+    assert sp("") == [] and sp("नमस्ते") == ["नमस्ते"]
+    assert "min_containers=WARM" in MODAL_SRC and 'HOOLA_LAB_WARM", "0"' in MODAL_SRC
+    assert "HOOLA_LAB_WARM" in open("../.github/workflows/interactive-lab.yml").read()
