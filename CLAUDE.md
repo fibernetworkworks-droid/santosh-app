@@ -852,3 +852,71 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   pay/install/settings changes. REA runs static-analysis only (7-tool allowlist, child env without secrets).
 - Home safety: AC 20–28 °C, speaker ≤ 90 % volume, fridge/washer read-only, no geyser control.
 
+
+## v0.473.0 HOOLA CODER — persistent session memory for Santosh, the claude-mem architecture ported into the house stack (owner: "I WANT EVERYTHING FROM THIS FOR HOOLA CODER")
+
+The owner read github.com/thedotmack/claude-mem end to end and wanted all of it for Santosh.
+Every session Santosh works — a chat turn or a voice call — now leaves behind compressed,
+searchable memory instead of evaporating when the session ends. New module `server/app/coder/`
+(store, spool, redact, modes, prompts, parser, dedup, observer, search, inject, capture, service),
+one worker slot, ten routes under `/api/coder/*`. **Seven pieces, all fail-open:**
+
+1. **Capture** — `santosh._run_tool` (the single funnel every tool call of the main agent AND the
+   team crew passes) spools one atomic JSON event per completed call beside the harness log;
+   `_run_turn` records her ask; a new chat or `Call.run` opens a session row and the call's
+   `finally` closes it; INCOGNITO chats never open one (her own promise: "yahan ki baatein yaad
+   mein nahi jayengi" — v0.250's incognito respected on day one). Redaction happens at the
+   boundary: `<private>` blocks stripped, ~13 secret patterns masked BEFORE spool/model/store —
+   labels survive, values never do (the Hoola secrets floor, now for memory).
+2. **Spool** — the durable hand-off (`data/coder/spool/`): the filename IS the dedupe key,
+   exactly-once via consumed markers stamped only after the row commits, 7-day retry window,
+   `corrupt/` and `expired/` quarantine, 1 MB per-event bound.
+3. **Observer** — a stateful per-session conversation with the CHEAPEST existing brain
+   (`llm.cheap_brain` then the pakka-style Claude fallback, usage-gated per tenant like enrich):
+   batches of tool events in, XML observations out (9 types × 7 concepts; the taxonomy is data in
+   `modes/`, a JSON override file changes it — the claude-mem modes lesson); noise sentinels
+   consume for free; prose answers are salvaged as discovery; one fresh-context retry then drop;
+   3 consecutive failures park the session for 10 min; overflow recycles the history; at
+   session_end one checkpoint call writes request/investigated/learned/completed/next_steps (one
+   row per conversation, rewritten each time).
+4. **Vault** — raw-sqlite3 store (`data/coder/coder.db`, the gyan pattern): sessions, observations,
+   summaries, prompts (the privacy gate: a wholly `<private>` ask marks the turn so nothing from it
+   is stored), tool_uses, work_state, dedup_candidates, consumed; FTS5 external-content tables +
+   triggers with a probed fallback (no FTS5 = LIKE search — memory never depends on an optional
+   extension).
+5. **Dedup ladder** — the exact content hash re-confirms (`occurrence_count++`, ACT-R
+   `reinforcement_dates`, 10-day FIFO); Tier-0 normalized-title merge across a tenant's sessions;
+   Tier-1 TF-IDF cosine ≥ 0.80 near-duplicates become REVIEW-ONLY candidates with the
+   Fellegi-Sunter IDF veto (a token rarer than 10-of-project records on one side vetoes the merge)
+   — nothing is ever auto-merged on Tier 1.
+6. **Search** — the claude-mem three-layer discipline: `/api/coder/search` (the index: ids +
+   titles, tens of tokens per row), `/api/coder/timeline` (the neighbourhood around an id or date),
+   `/api/coder/observations/batch` (full rows, caller's order), plus `/api/coder/tool-uses/batch`
+   (the deep dig), `/api/coder/work-state` GET/POST (cross-session to-do lists),
+   `/api/coder/memory` (the manual save_memory), `/api/coder/stats`, `/api/coder/context` (primer
+   preview), `/api/coder/drain` (admin).
+7. **Inject** — the session-start primer rides AFTER the KAAM YAAD block, never instead of it
+   (undelivered news outranks history): open work-state lists → recent observations by day → the
+   last summary → a footer advertising the deeper layers; voice gets the 10,000-char budget (the
+   whole-item fitter: narratives drop first, then the summary, then rows halve; the header and ≥1
+   row always survive), chat turns get the compact 1,600-char block beside `yaad.turn_block`. On
+   the rebased shape the primer rides `_build_context`'s parallel gather, so the v0.224 prebuild
+   path gets it for free.
+
+Worker slot `coder_jobs` (5 s throttle) drains and observes. Kill switch `coder_enabled`: off =
+nothing is written or read (capture, observe, inject, routes all gate on it; conftest defaults it
+off — coder memory writes only in its own tests); `coder_observe` separately stops only the model
+calls. **Tests:** NEW `test_v0473_hoola_coder.py` (24) — settings + kill-switch-writes-nothing,
+capture redacts before spool AND store (the secret never lands), strip_private + the privacy gate,
+secret patterns (labels survive), spool dedupe-key + exactly-once + too-big-dropped, dedup
+exact-hash re-confirm, Tier-0 title merge + reinforcement, IDF veto (a rare token on one side
+vetoes a 0.80-cosine pair) + review-only candidates, parser (cap, invalid-type fallback, skip
+sentinel, prose salvage, junk words), observer end to end (capture → observation → spool consumed
+after commit → session_end → summary → row completed), noise consumed free + prose salvaged,
+no-brain leaves spooled + parks after 3 failures, history recycle, the three search layers,
+work-state + primer, primer budgets (10k/1.6k), the voice-order pin (coder block after KAAM), the
+capture-funnel pin, session-lifecycle pins, routes mounted, retention typo never purges, version.
+Version 0.473.0 (APP_VERSION story, pubspec 0.473.0+518, pins ->0.473.0 in 144 suites; re-versioned
+0.221.0 → 0.473.0 on rebase — the dev's v0.222…v0.472 SEMANTIC DESKTOP stretch took ~250 numbers
+first, EIGHTH collision, both works kept); Mera PC freeze respected; desktop untouched —
+server-only deploy, old APKs keep working.

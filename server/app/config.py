@@ -35,9 +35,9 @@ class Settings(BaseSettings):
     agent_hard_model: str = "claude-opus-5-5"   # v0.429 SOCH KE JAWAB 2: a hard reasoning ask runs on the strongest model ('' = anthropic_model)
     agent_hard_max_tokens: int = 16000      # v0.429 per call for a hard ask (thinking counts; 2000 cut the answer)
     agent_hard_on_claude: bool = True       # v0.429 a hard ask goes to Claude even when CHAT_LLM picks a cheaper brain
-    agent_goal_rounds: int = 6              # background continuation turns per goal (v0.221: 3 -> 6; resumes after her tap are free)
-    agent_goal_minutes: int = 180           # WORKING minutes of one goal (v0.221: 60 -> 180; time waiting on her never counts)
-    agent_goal_resume: bool = True          # v0.221 a goal paused on her tap / OTP / answer restarts by itself once she answers
+    agent_goal_rounds: int = 6              # background continuation turns per goal (v0.473: 3 -> 6; resumes after her tap are free)
+    agent_goal_minutes: int = 180           # WORKING minutes of one goal (v0.473: 60 -> 180; time waiting on her never counts)
+    agent_goal_resume: bool = True          # v0.473 a goal paused on her tap / OTP / answer restarts by itself once she answers
     agent_goal_resume_hours: int = 24       # ... if she answers within this many hours
     # v0.223 PHASE A (long jobs like Claude): restart-proof, steerable, never "failed" just because a limit ran out
     agent_goal_recover: bool = True         # a goal still 'working' with nothing running it (server restart) is picked up again
@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     # tool families her words (and any open goal) actually need; the rest stay one tool_search away. Stable for the
     # WHOLE turn, so the Anthropic prompt cache holds; a family admitted mid-turn re-caches once, by design.
     agent_tool_admission: bool = True
-    prompt_slim: bool = True               # v0.221 PATLA PROMPT: only the admitted families' guides ride in the system prompt (false = the full ~130 KB guide, as before)
+    prompt_slim: bool = True               # v0.473 PATLA PROMPT: only the admitted families' guides ride in the system prompt (false = the full ~130 KB guide, as before)
     # v0.237 FULL CLAUDE MODE Phase 1 (agent/context.py): the whole chat word for word while it fits the model's window
     chat_context: str = "claude"           # claude = whole chat, gauge + safety net | hoola = the v0.108 40-49 exchange window (instant rollback)
     chat_context_limit_glm: int = 200000   # GLM's context window in tokens (check your Z.ai plan)
@@ -384,7 +384,7 @@ class Settings(BaseSettings):
     voice_ack_tts_model: str = "gemini-3.8-flash-tts"   # v0.181 (was gemini-2.5-flash-preview-tts): new TTS, far more natural delivery; legacy model is the automatic fallback
     voice_compress_trigger: int = 60000    # v0.224 Gemini Live context compression starts here (0 = Google's default near the limit)
     voice_compress_target: int = 35000     # ...and slides the window back to about this many tokens
-    voice_tool_behavior: bool = True       # v0.221 slow call tools NON_BLOCKING (he keeps talking), quick ones BLOCKING (exact answer, no guessing); false = model default for all
+    voice_tool_behavior: bool = True       # v0.473 slow call tools NON_BLOCKING (he keeps talking), quick ones BLOCKING (exact answer, no guessing); false = model default for all
     voice_affective: bool = True           # v0.181 affective dialog: he answers with the emotional tone he HEARS (happy with her, gentle when she is low). If Gemini refuses the field for a model, the call retries without it and remembers (voice.py _AFFECTIVE_OK)
     # --- Awaaz Pehchaan: who is talking (owner / family) from the voice; free models, CPU (sherpa-onnx) ---
     voiceid_models_dir: str = "./data/voiceid_models"   # tools/setup_voiceid.sh downloads the two models here
@@ -412,6 +412,14 @@ class Settings(BaseSettings):
     voice_ring: bool = True                # v0.219 ON: the native side learned the kind (SantoshPush turns the push into the wake: path + auto-call); off = the v0.214 behaviour
     voice_ring_max_day: int = 2            # v0.211 rings per tenant per day (the phone is not an alarm clock)
     voice_ring_quiet: str = "22-8"         # v0.211 quiet hours in the tenant's own timezone - no rings inside
+
+    # --- Hoola Coder (v0.473): persistent session memory - capture -> spool -> observer -> vault ---
+    coder_enabled: bool = True             # the whole surface (capture, observe, inject, routes); off = no memory is written or read
+    coder_observe: bool = True             # the observer model calls; false keeps capture+search but writes nothing new
+    coder_dir: str = "./data/coder"        # the vault: coder.db + spool/ + modes/
+    coder_mode: str = "code"               # the observer taxonomy (modes/<name>.json overrides the builtin)
+    coder_batch_max: int = 6               # tool events per observer model call (claude-mem batch discipline)
+    coder_retain_days: int = 0             # 0 = keep forever (a malformed value is read as 0, never a purge)
 
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""
