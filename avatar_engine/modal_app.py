@@ -372,41 +372,65 @@ def prefetch():
         raise SystemExit("No model could be downloaded.")
 
 
+def _call(label: str, method, *args, wait: int = 600, **kw):
+    """Run one remote call with a hard wait, so one hung model costs `wait` seconds and not the whole run."""
+    t = time.time()
+    print(f"[{time.strftime('%H:%M:%S')}] {label}: start (waiting up to {wait}s)", flush=True)
+    fc = method.spawn(*args, **kw)
+    try:
+        out = fc.get(timeout=wait)
+    except Exception:
+        try:
+            fc.cancel()
+        except Exception:
+            pass
+        print(f"[{time.strftime('%H:%M:%S')}] {label}: gave up after {round(time.time() - t)}s", flush=True)
+        raise
+    print(f"[{time.strftime('%H:%M:%S')}] {label}: done in {round(time.time() - t)}s", flush=True)
+    return out
+
+
 @app.local_entrypoint()
 def smoke():
     """One Hindi and one English line per voice model, then one talking clip from MuseTalk's own sample face (lab
-    only, never shipped). Files + a timing table land in ./lab_out for the workflow to upload."""
+    only, never shipped). Files + a timing table land in ./lab_out for the workflow to upload; the report is rewritten
+    after every row, so a cancelled run still keeps what finished."""
     os.makedirs("lab_out", exist_ok=True)
     lines = {"hi": "नमस्ते आरव! आज हम सीखेंगे कि ग्राफ से गति कैसे दिखती है।",
              "en": "Hello Aarav! Today we will see how a simple graph can show motion."}
-    rows = []
+    rows: list[str] = []
+
+    def note(row: str) -> None:
+        rows.append(row)
+        print(row, flush=True)
+        with open("lab_out/REPORT.txt", "w") as f:
+            f.write(f"GPU {GPU}\n" + "\n".join(rows) + "\n")
+
     for name, cls in VOICES.items():
         for lang, text in lines.items():
             if lang not in (registry.MODELS[name].get("langs") or []):
                 continue
             try:
-                r = cls().speak.remote(text=text, lang=lang)
+                r = _call(f"{name} {lang}", cls().speak, text=text, lang=lang, wait=900)
                 with open(f"lab_out/{name}_{lang}.wav", "wb") as f:
                     f.write(r["wav"])
-                rows.append(f"{name:13} {lang}  load {r['load_s']}s  synth {r['synth_s']}s  OK")
+                note(f"{name:13} {lang}  load {r['load_s']}s  synth {r['synth_s']}s  OK")
             except Exception as e:   # one broken model must not hide the others' results
-                rows.append(f"{name:13} {lang}  FAILED: {str(e)[:200]}")
+                note(f"{name:13} {lang}  FAILED: {type(e).__name__} {str(e)[:200]}")
     try:
-        sample = Face().prepare.remote("lab-sample", _sample_face.remote(), "ai_generated")
+        sample = _call("face prepare", Face().prepare, "lab-sample", _sample_face.remote(), "ai_generated", wait=1500)
         hi = open("lab_out/chatterbox_hi.wav", "rb").read() if os.path.exists("lab_out/chatterbox_hi.wav") else None
         if hi:
-            r = Face().speak.remote("lab-sample", hi)
+            r = _call("face speak", Face().speak, "lab-sample", hi, wait=1200)
             with open("lab_out/face_hi.mp4", "wb") as f:
                 f.write(r["mp4"])
-            rows.append(f"face          hi  prepare {sample['prepare_s']}s  render {r['render_s']}s for {r['audio_s']}s audio "
-                        f"= {r['x_realtime']}x real time  (MuseTalk {r['musetalk_commit']})")
+            note(f"face          hi  prepare {sample['prepare_s']}s  render {r['render_s']}s for {r['audio_s']}s audio "
+                 f"= {r['x_realtime']}x real time  (MuseTalk {r['musetalk_commit']})")
+        else:
+            note("face          hi  SKIPPED: no Chatterbox Hindi clip to drive it")
         Face().forget.remote("lab-sample")
     except Exception as e:
-        rows.append(f"face              FAILED: {str(e)[:300]}")
-    report = "\n".join(rows)
-    print(report)
-    with open("lab_out/REPORT.txt", "w") as f:
-        f.write(f"GPU {GPU}\n{report}\n")
+        note(f"face              FAILED: {type(e).__name__} {str(e)[:300]}")
 
 
 @app.function(image=face_image, timeout=300)
