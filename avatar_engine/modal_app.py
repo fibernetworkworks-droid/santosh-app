@@ -71,9 +71,11 @@ face_image = (
         "mim install mmengine", 'mim install "mmcv==2.0.1"', 'mim install "mmdet==3.1.0"',
         # chumpy's setup.py imports pip, which pip's isolated build env lacks -> build it in this env first
         "pip install --no-build-isolation chumpy", 'mim install "mmpose==1.1.0"',
-        "pip install 'huggingface_hub[cli]' gdown",
+        "pip install gdown",
         # MuseTalk's script points downloads at a mirror; the lab downloads from the source.
         f"sed -i '/HF_ENDPOINT/d' {MUSE_DIR}/download_weights.sh",
+        # last: the pins MuseTalk's own requirements.txt uses (a later install had pulled NumPy 2, which cv2 cannot load)
+        "pip install 'numpy==1.23.5' 'huggingface_hub==0.30.2'",
     )
     .env(HF_ENV)
     .add_local_python_source("registry")
@@ -184,6 +186,54 @@ VOICES = {"chatterbox": Chatterbox, "indicf5": IndicF5, "indic_parler": IndicPar
 
 
 # ---------------------------------------------------------------- face engine (MuseTalk 1.5)
+
+# What MuseTalk 1.5 needs, from its own download_weights.sh: (repo, file, folder under models/). The v1.0 weights are not
+# fetched - this lab runs --version v15. We do not use that script: it upgrades huggingface_hub (which removes the
+# `huggingface-cli` it then calls), needs curl, and prints "downloaded successfully" whatever happened.
+_MUSE_FILES = [
+    ("TMElyralab/MuseTalk", "musetalkV15/musetalk.json", ""),
+    ("TMElyralab/MuseTalk", "musetalkV15/unet.pth", ""),
+    ("stabilityai/sd-vae-ft-mse", "config.json", "sd-vae"),
+    ("stabilityai/sd-vae-ft-mse", "diffusion_pytorch_model.bin", "sd-vae"),
+    ("openai/whisper-tiny", "config.json", "whisper"),
+    ("openai/whisper-tiny", "pytorch_model.bin", "whisper"),
+    ("openai/whisper-tiny", "preprocessor_config.json", "whisper"),
+    ("yzd-v/DWPose", "dw-ll_ucoco_384.pth", "dwpose"),
+    ("ByteDance/LatentSync", "latentsync_syncnet.pt", "syncnet"),
+]
+_FACE_PARSE_GDRIVE = "154JgKpzCPW82qINcVieuPH3fZ2e0P812"
+_RESNET18 = "https://download.pytorch.org/models/resnet18-5c106cde.pth"
+
+
+def _fetch_muse_weights(models: str) -> bool:
+    """Download what is missing, then check every file is really there. Returns True when it downloaded something."""
+    import urllib.request
+
+    from huggingface_hub import hf_hub_download
+    got = False
+    for sub in ("musetalkV15", "sd-vae", "whisper", "dwpose", "syncnet", "face-parse-bisent"):
+        os.makedirs(f"{models}/{sub}", exist_ok=True)
+    for repo, name, folder in _MUSE_FILES:
+        dest = f"{models}/{folder}/{name}" if folder else f"{models}/{name}"
+        if os.path.exists(dest) and os.path.getsize(dest) > 0:
+            continue
+        hf_hub_download(repo, name, local_dir=f"{models}/{folder}" if folder else models, token=os.environ.get("HF_TOKEN") or None)
+        got = True
+    parse = f"{models}/face-parse-bisent/79999_iter.pth"
+    if not (os.path.exists(parse) and os.path.getsize(parse) > 0):
+        import gdown
+        gdown.download(id=_FACE_PARSE_GDRIVE, output=parse, quiet=True)
+        got = True
+    resnet = f"{models}/face-parse-bisent/resnet18-5c106cde.pth"
+    if not (os.path.exists(resnet) and os.path.getsize(resnet) > 0):
+        urllib.request.urlretrieve(_RESNET18, resnet)
+        got = True
+    missing = [n for _, n, f in _MUSE_FILES if not os.path.exists(f"{models}/{f}/{n}" if f else f"{models}/{n}")]
+    missing += [os.path.basename(x) for x in (parse, resnet) if not (os.path.exists(x) and os.path.getsize(x) > 0)]
+    if missing:
+        raise RuntimeError("MuseTalk weights missing after download: " + ", ".join(missing))
+    return got
+
 @app.cls(gpu=GPU, image=face_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=1800)
 class Face:
     """Lab wrapper around MuseTalk's own real-time script. It reloads the weights on every call (slow, fine for the
@@ -201,8 +251,7 @@ class Face:
                 if os.path.islink(link):
                     os.unlink(link)
                 os.symlink(target, link)
-        if not os.path.exists(f"{MUSE_DIR}/models/musetalkV15/unet.pth"):
-            subprocess.run(["bash", "download_weights.sh"], cwd=MUSE_DIR, check=True)
+        if _fetch_muse_weights(f"{MUSE_DIR}/models"):
             volume.commit()
         self.commit = open(f"{MUSE_DIR}/COMMIT").read().strip()[:12]
 
