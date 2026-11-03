@@ -242,9 +242,13 @@ object Auth {
     // so a late sign-out can never end the token that sign-in just got
     private var bye: Job? = null
 
-    suspend fun signup(ctx: Context, email: String, password: String, name: String): String? {
+    /** v0.462 `consent` is null when this app does not ask for it; the tick used to be collected on the sign-in
+     *  screen and never sent, so the server never recorded it. */
+    suspend fun signup(ctx: Context, email: String, password: String, name: String, consent: Boolean? = null): String? {
         bye?.join()
-        return keep(ctx, Cloud.call("POST", "/signup", JSONObject().put("email", email.trim()).put("password", password).put("name", name.trim())))
+        val body = JSONObject().put("email", email.trim()).put("password", password).put("name", name.trim())
+        if (consent != null) body.put("consent", consent)
+        return keep(ctx, Cloud.call("POST", "/signup", body))
     }
 
     suspend fun login(ctx: Context, email: String, password: String): String? {

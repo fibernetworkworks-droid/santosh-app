@@ -47,7 +47,8 @@ struct SignInScreen: View {
                     SecureField(Words.password, text: $pw).textFieldStyle(.roundedBorder).textContentType(.password)
                     MainButton(text: busy ? Words.sending : Words.signIn) { go { await auth.login(email: email, password: pw) } }
                     if Ways.signupOpen {
-                        Button(Words.newHere) { go { await auth.signup(email: email, password: pw, name: name, consent: consent) } }.buttonStyle(.borderless)
+                        Button(Words.newHere) { go { await auth.signup(email: email, password: pw, name: name,
+                                                       consent: Ways.consentNeeded ? consent : nil) } }.buttonStyle(.borderless)
                     }
                 } else if phone.isEmpty {
                     TextField(Words.sgPhone, text: $phone).textFieldStyle(.roundedBorder).keyboardType(.phonePad)

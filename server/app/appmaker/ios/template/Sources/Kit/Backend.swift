@@ -130,9 +130,14 @@ final class Auth: ObservableObject {
         return nil
     }
 
-    func signup(email: String, password: String, name: String, consent: Bool = false) async -> String? {
-        await keep(await Cloud.call("POST", "/signup", ["email": email.trimmingCharacters(in: .whitespaces), "password": password,
-                                                        "name": name.trimmingCharacters(in: .whitespaces), "consent": consent]))
+    /// v0.462 `consent` is nil when this app does not ask for it. It used to default to FALSE and always ride
+    /// along, and the server refuses an explicit no - so in an app whose owner turned the privacy tick OFF every
+    /// sign-up was refused, citing a box that was not on the screen.
+    func signup(email: String, password: String, name: String, consent: Bool? = nil) async -> String? {
+        var body: [String: Any] = ["email": email.trimmingCharacters(in: .whitespaces), "password": password,
+                                   "name": name.trimmingCharacters(in: .whitespaces)]
+        if let consent { body["consent"] = consent }
+        return await keep(await Cloud.call("POST", "/signup", body))
     }
 
     func login(email: String, password: String) async -> String? {

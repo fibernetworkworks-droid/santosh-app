@@ -60,7 +60,8 @@ fun AuthScreen() {
             err = ""
             scope.launch {
                 val email = AppState.form["auth_email"] ?: ""
-                val e = if (signup) Auth.signup(c, email, pw, AppState.form["auth_name"] ?: "") else Auth.login(c, email, pw)
+                val e = if (signup) Auth.signup(c, email, pw, AppState.form["auth_name"] ?: "",
+                    if (Ways.consentNeeded) AppState.form["sg_consent"] == "1" else null) else Auth.login(c, email, pw)
                 busy = false
                 if (e == null) {
                     pw = ""
@@ -74,6 +75,9 @@ fun AuthScreen() {
         if (signup) block { Field(Strings.name, "auth_name") }
         block { Field(Strings.email, "auth_email", keyboard = KeyboardType.Email) }
         block { PasswordBox(pw) { pw = it } }
+        // v0.462 this screen creates accounts too, so where the app asks for the privacy tick it has to ask HERE
+        // as well - otherwise the server refuses a sign-up for a box the user was never shown.
+        if (signup && Ways.consentNeeded) block { CheckRow(Strings.sgConsent, "sg_consent") }
         if (err.isNotEmpty()) block { Pill(err, "bad") }
         if (Db.signupOpen) block {
             Btn(if (signup) Strings.haveAccount else Strings.newHere, kind = BtnKind.Ghost, small = true) { signup = !signup; err = "" }
