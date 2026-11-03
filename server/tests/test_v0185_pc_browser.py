@@ -326,11 +326,11 @@ def test_page_text_degrades_quietly_off_windows():
         browser.page_text()
 
 
-def test_desktop_version_is_140():
+def test_desktop_version_moves_with_every_release():
     import santosh_desktop
-    assert santosh_desktop.__version__ == "1.4.0"
+    assert santosh_desktop.__version__ == "1.6.0"   # v0.471: the conscious-bump guard moves with each desktop release
 
 
 def test_app_version_is_0185():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.471.0"
+    assert APP_VERSION == "0.472.0"

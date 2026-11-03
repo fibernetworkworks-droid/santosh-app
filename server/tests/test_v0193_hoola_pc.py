@@ -326,10 +326,11 @@ async def test_report_words_for_hoolapc(bz, monkeypatch):  # noqa: F811
     op = operator.Op(id="pcop_r", tenant="t1", conv="c1", task="https://x.com video compress karo",
                      kind=HOOLA_PC_KIND)
     op.status, op.summary, op.reported = "partial", "video ban gayi", True   # partial carries the PC name line
+    from app.agent import where
+    where.remember("c1", "hoola ka apna pc pe video compress karo")   # v0.238: the cloud-PC lock sticks only when SHE named it
     operator._report(op)
     assert "Hoola ke apne PC par poora nahi ho paya" in sent["notify"]
     assert "HOOLA'S OWN PC" in sent["inject"]
-    from app.agent import where
     assert where.working("c1") == "hoolapc"   # a webby task keeps its place on the Hoola PC
     where.forget("c1")
 
