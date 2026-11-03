@@ -17896,3 +17896,13 @@ Owner: *"GO PHASE 4"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
   courier / helpdesk: NOT done in this version - `fleet/service.py:_maps_distance` still loops `route()`. The tool is
   the first-class answer; the module wiring is the next small step.
 - Tests: `server/tests/test_v0463_maps_nearest.py`.
+- **Fleet wiring (same version):** `fleet_dekho what=nearest place=<pickup> [day] [load_t]` →
+  `fleet.service.nearest_vehicle`: which FREE truck is closest to a pickup by road time. The fleet module has no live
+  GPS, so a truck's position is the DESTINATION OF ITS LAST FINISHED trip (stated in the answer as "last drop"); a
+  truck with no finished trip is listed in `no_known_position`, never guessed. Workshop/sold, busy that day, and
+  too-small (when `load_t` is given) trucks are left out and named in `skipped`. One matrix call = trucks x 1 pickup,
+  billed per truck through the Maps cap. Tests: `server/tests/test_v0463_fleet_nearest.py` (maps mocked at
+  `maps.resolve` / `maps.matrix`). `_maps_distance` (trip km) untouched.
+- **Courier: NOT wired, on purpose.** `app/courier` has ONE warehouse per tenant and no multi-candidate decision
+  (carrier choice is by rate/rules, not distance), so there is nothing for "nearest of N" to decide. Wiring it would
+  mean inventing a feature. Needs her answer: does she have several pickup points / branches?
