@@ -17935,3 +17935,42 @@ reachable the same way (not yet read).
 - **NOT verified:** no live call. Whether Address Validation accepts the plain API key (vs OAuth), whether India is a
   supported region at the tier we assume, and Pro vs Enterprise billing - all unconfirmed because the prose docs were
   unreachable. The first real call settles auth + region; the first bill settles the tier.
+
+## v0.465.0 — GOOGLE MAPS Phase 5: DIN KA RASTA (Route Optimization)
+
+Owner: *"GO PHASE 5"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+**Source note.** `developers.google.com` is blocked in the session and the API's own discovery document needs a key,
+so the prose docs and the pricing page were NOT read. The spec came from Google's official proto in the public repo
+`googleapis/googleapis` (`google/maps/routeoptimization/v1/route_optimization_service.proto`, fetched from
+raw.githubusercontent.com): field names, enums, the HTTP binding, the auth scope.
+
+**Two facts from it that change the design vs Phases 1-4:**
+1. **Auth is NOT the Maps API key.** The service declares one OAuth scope (`cloud-platform`) and the REST path is
+   `POST /v1/{parent=projects/*}:optimizeTours` - a Google Cloud PROJECT id in the URL. So it needs a service-account JSON
+   on the VPS and a project: new settings `ROUTE_OPT_PROJECT` + `ROUTE_OPT_SA_FILE`. Without them the tool says exactly
+   that and costs nothing (it does not reuse the FCM service account: that is a different project).
+2. **proto3 drops zero values from JSON**, so a response visit with no `shipmentIndex` is shipment 0 and a route with no
+   `vehicleIndex` is vehicle 0 - parsed that way and pinned by a test (this is the bug that would have silently
+   mis-ordered the first stop).
+
+- **`server/app/mapsopt.py`**: `build_request` (stops -> mandatory shipments - no `penaltyCost` = infinite per the proto;
+  vehicles with start/end, capacity as a `units` load limit, start/end time windows; day in IST -> UTC timestamps;
+  int64 amounts as strings; durations `"300s"`; `considerRoadTraffic`), `parse_response` (ordered stops with local
+  arrival times, per-leg km/min, route totals, back-to-start leg, Google's skip reason codes in Hinglish - unknown
+  codes passed through - and `complete` false if submitted != placed + skipped), `optimize()` (token via the service
+  account in a thread BEFORE billing, then billed, refunded on failure; 401/403 explained).
+- **Tool `maps_route_plan`** (voice call, TOOL_LANES, prompt): stops = names / `lat,lng` / `{name,lat,lng,service_min,
+  window:'10:00-12:00',load}`, vehicles optional (default one from her location back to it), up to 5 vehicles and
+  `maps_opt_max_stops` (40) stops. Draws the places card per vehicle (order, arrival time, leg).
+- **It only PROPOSES.** Nothing is assigned or sent; the plan's `note` says so. Feeding an approved plan into fleet trips /
+  courier is a separate step needing her tap and is NOT built.
+- Billing: new SKU `routeopt.fleet` at the India FleetRouting rate ($2.40/1000, free 7000), charged PER SHIPMENT. Google's
+  billing unit (per request vs per shipment) and tier for our request were NOT confirmed, so the dearer reading is used
+  (cap fires early, never late) and `ASSUMED_TIER` reports it in `/api/maps/usage`.
+- Our cost weights (`costPerTraveledHour 1.0`, `costPerKilometer 0.05`) are OUR relative choice - time first, distance
+  as a tie-break - not rupees.
+- Tests: `server/tests/test_v0465_route_plan.py` (12; mocked transport + fake token).
+- **NOT verified:** no real call (needs her project + service account + the API enabled); the 40-stop cap and 30 s
+  timeout are our choices, not Google's published limits; whether a time-windowed plan returns what we parse is proven
+  against a hand-built response shaped by the proto, not a live one.

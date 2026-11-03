@@ -89,6 +89,20 @@ MAPS_TOOLS = [
         "lat/lng = where the user is now. For turning a pin / shared location / driver position into words."),
      "input_schema": {"type": "object", "properties": {
          "lat": {"type": "number"}, "lng": {"type": "number"}}}},
+    # v0.465 Phase 5 DIN KA RASTA
+    {"name": "maps_route_plan", "description": (
+        "Plan the DAY'S STOP ORDER: which order to visit these stops so the driving is least, with time windows, "
+        "service time and truck capacity (Google Route Optimization). 'aaj ke 12 delivery kis kram mein', 'driver "
+        "ka din plan karo'. It only PROPOSES an order - nothing is assigned or sent; she decides. For 'which ONE of "
+        "these is nearest' use maps_nearest; for one trip's route and steps use maps_directions.\n"
+        "'stops': names / 'lat,lng' / objects {name, lat, lng, service_min, window:'10:00-12:00', load}. "
+        "'vehicles': optional list {name, start, end, capacity, from:'09:00', until:'19:00'}; empty = one vehicle "
+        "from where she is, returning there. Each stop is billed, so it is capped (default 40). A stop Google "
+        "cannot fit is reported with its reason, never dropped quietly."),
+     "input_schema": {"type": "object", "properties": {
+         "stops": {"type": "array", "items": {}, "description": "Places to visit"},
+         "vehicles": {"type": "array", "items": {}, "description": "Optional vehicles; empty = one from her location"},
+         "day": {"type": "string", "description": "YYYY-MM-DD; default today"}}, "required": ["stops"]}},
     {"name": "maps_kharcha", "description": (
         "Today's Google Maps spend for this user: calls made, how many were inside Google's free monthly "
         "allowance, rupees spent, the daily cap and what is left. Use it when she asks what Maps is costing, or "
@@ -101,6 +115,7 @@ MAPS_LABELS = {"maps_search": "Google Maps par dhoondh raha hoon", "maps_directi
                "maps_nearby": "Aas-paas dekh raha hoon", "maps_place": "Jagah ki poori detail le raha hoon",
                "maps_nearest": "Sabse paas wala dekh raha hoon",
                "maps_address_check": "Address jaanch raha hoon", "maps_pata": "Is jagah ka pata dekh raha hoon",
+               "maps_route_plan": "Din ka rasta bana raha hoon",
                "maps_kharcha": "Maps ka kharcha dekh raha hoon"}
 
 
@@ -370,6 +385,70 @@ async def maps_pata(ctx: Ctx, lat=None, lng=None, **_):
     return r
 
 
+async def _stop_with_extras(ctx: Ctx, item, near) -> dict | None:
+    pt = await _locate(ctx, item, near)
+    if pt is None:
+        return None
+    if isinstance(item, dict):
+        for k in ("service_min", "window", "load"):
+            if item.get(k) not in (None, ""):
+                pt[k] = item[k]
+    return pt
+
+
+async def maps_route_plan(ctx: Ctx, stops, vehicles=None, day="", **_):
+    from datetime import date
+    from .. import mapsopt
+    if not maps.configured():
+        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+    if not mapsopt.configured():
+        raise ToolError("Din ka rasta ke liye Google Cloud project aur service-account file chahiye (server par "
+                        "ROUTE_OPT_PROJECT aur ROUTE_OPT_SA_FILE) - Maps ki API key isme nahi chalti. "
+                        "Abhi order tay nahi kar sakta; maps_nearest se sabse paas wala dekh sakta hoon.")
+    raw = [x for x in (stops if isinstance(stops, list) else [stops]) if x not in (None, "", {})]
+    if not raw:
+        raise ToolError("Kin jagahon ka rasta banana hai? Stops bataiye.")
+    try:
+        d = date.fromisoformat(str(day)) if day else None
+    except ValueError:
+        raise ToolError("Taarikh YYYY-MM-DD mein chahiye.")
+    here = maps.where_am_i(ctx.tenant_id)
+    try:
+        vs_in = [v for v in (vehicles if isinstance(vehicles, list) else []) if v]
+        veh = []
+        for i, v in enumerate(vs_in or [{}]):
+            v = v if isinstance(v, dict) else {"start": v}
+            start = await _locate(ctx, v.get("start") or "here", here) if (v.get("start") or here) else None
+            if start is None:
+                raise ToolError("Gaadi kahan se chalegi? Phone mein location permission dijiye ya shuruaat ki jagah bataiye.")
+            end = await _locate(ctx, v["end"], here) if v.get("end") else None
+            veh.append({"name": v.get("name") or f"Gaadi {i + 1}", "start": start, "end": end,
+                        "capacity": v.get("capacity"), "from": v.get("from"), "until": v.get("until")})
+        pts, missing = [], []
+        for item in raw:
+            pt = await _stop_with_extras(ctx, item, veh[0]["start"])
+            (pts if pt else missing).append(pt or str(item.get("name") if isinstance(item, dict) else item))
+        if not pts:
+            raise ToolError("Inmein se koi jagah Google Maps par nahi mili: " + ", ".join(missing)[:200])
+        before = mapsbill.usage(ctx.tenant_id)["inr"]
+        plan = await mapsopt.optimize(pts, veh, d, tenant_id=ctx.tenant_id)
+    except (maps.MapsError, ValueError) as e:
+        raise ToolError(str(e))
+    plan["cost_inr"] = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
+    for r in plan["routes"][:3]:
+        _places_card(ctx, f"Din ka rasta - {r['vehicle']}",
+                     [{"name": f"{s['order']}. {s['stop']}", "distance_km": s["leg_km"],
+                       "type": f"{s['arrive']} pahunchenge · {s['leg_min']} min", "lat": s["lat"], "lng": s["lng"]}
+                      for s in r["stops"]], near="", cost_inr=plan["cost_inr"])
+    if missing:
+        plan["not_found"] = missing
+    plan["attribution"] = maps.ATTRIBUTION
+    plan["note"] = ("This is a PROPOSED order only - nothing was assigned or sent. Give her the order in one short "
+                    "list per vehicle (stop, arrival time) with total km and drive time, then say plainly anything in "
+                    "'skipped' / 'not_found' / a false 'complete'. Times are live-traffic estimates for that day.")
+    return plan
+
+
 async def maps_kharcha(ctx: Ctx, **_):
     u = mapsbill.usage(ctx.tenant_id)
     return {**u, "note": ("Rupees are an estimate: Google's own list is in USD and bills the billing account's "
@@ -379,4 +458,5 @@ async def maps_kharcha(ctx: Ctx, **_):
 
 MAPS_HANDLERS = {"maps_search": maps_search, "maps_directions": maps_directions, "maps_navigate": maps_navigate,
                  "maps_nearby": maps_nearby, "maps_place": maps_place, "maps_nearest": maps_nearest,
-                 "maps_address_check": maps_address_check, "maps_pata": maps_pata, "maps_kharcha": maps_kharcha}
+                 "maps_address_check": maps_address_check, "maps_pata": maps_pata,
+                 "maps_route_plan": maps_route_plan, "maps_kharcha": maps_kharcha}
