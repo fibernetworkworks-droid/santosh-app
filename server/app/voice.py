@@ -82,6 +82,7 @@ VOICE_TOOL_NAMES = {
     "notebook_studio", "notebook_output", "notebook_discover", "notebook_sources", "notebook_chat_config", "notebook_note",
     "youtube_search", "youtube_play", "youtube_video", "youtube_watch", "youtube_channel", "youtube_comments", "youtube_my_channel",
     "youtube_analytics", "app_check", "rea_khoj",   # rea_khoj v0.212: REA Khoj on a call goes through santosh_kaam (the loop takes minutes)
+    "hoola_frames",   # v0.471 HOOLA FRAMES: a render is minutes of CPU, one at a time - on a call it rides santosh_kaam, she hears progress, the MP4 lands as a card
     "hoola_me", "hoola_connect", "hoola_connections", "hoola_answer_connect", "hoola_send", "hoola_reply", "hoola_inbox",
     "hoola_decide", "hoola_threads", "hoola_handle", "hoola_look", "hoola_make", "file_read", "phone_health", "hoola_jaanch", "ask_form", "ai_kharcha", "video_edit", "computer_operator", "video_studio", "india_info", "pdf_tools", "employee", "seekhe_kaam", "api_find", "api_docs", "api_call", "make_document", "photo_banao", "blender_3d", "postgres", "kaam_status", "photo_clean", "id_photo", "memory_search", "hoola_groups", "hoola_group_post", "hoola_group_digest", "kaam_plan",
     "hoola_learn", "hoola_learned", "hoola_samaj", "hoola_community_search", "hoola_business", "hoola_chain", "hoola_deal", "hoola_pick", "hoola_market", "hoola_booking", "hoola_dosti", "a2a_bahar", "consent_jaanch", "digilocker", "ondc_listing", "hoola_seekha", "website", "website_dekho", "app_banao", "app_dekho",
@@ -255,6 +256,7 @@ VOICE_VIA_KAAM = {
     "notebook_sources", "notebook_chat_config", "notebook_note",
     "form_settings", "form_alerts", "youtube_analytics", "youtube_comments", "app_check", "hoola_chain",
     "rea_khoj",   # v0.212 REA Khoj: the decompile loop (overview -> classes -> method -> refs) is minutes-deep; kaam goal turn runs it, the call hears progress
+    "hoola_frames",   # v0.471 HOOLA FRAMES: the render loop (check -> render) is minutes-deep; kaam goal turn runs it, the call hears progress, the film lands as a card
     "hoola_community_search", "hoola_samaj", "hoola_learn", "hoola_learned", "slides_edit", "slides_export", "hoola_dosti",
     "kaam_plan",   # v0.186 the goal plan tool belongs to the full brain; the call hears the progress as notes
     # v0.230 PHASE 3 tool diet: making / editing documents and admin settings is not conversation. These still work

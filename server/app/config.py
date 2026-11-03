@@ -462,6 +462,17 @@ class Settings(BaseSettings):
     rea_timeout_s: int = 300                # per REA call
     rea_node_heap_mb: int = 2048
     appcheck_max_mb: int = 400              # biggest file App Jaanch accepts
+    # --- HOOLA FRAMES (v0.471): HyperFrames render worker — HTML composed by the model, deterministic MP4 out ---
+    frames_enabled: bool = True             # also needs FRAMES_BIN; off automatically when the CLI is not installed
+    frames_bin: str = ""                    # absolute path to the pinned `hyperframes` launcher (npm hyperframes@0.9.6)
+    frames_node_dir: str = ""               # optional Node 22+ bin dir ONLY for the worker (never touches pm2's node)
+    frames_root: str = ""                   # per-tenant project root (default ./data/frames)
+    frames_timeout_s: int = 900             # hard wall for one render (process group killed past it)
+    frames_queue_wait_s: int = 3            # how long a second render waits for the one-at-a-time lock before refusing
+    frames_disk_cap_gb: float = 10.0        # janitor trims finished projects when the root passes this
+    frames_keep_h: int = 6                  # finished projects older than this are swept
+    frames_per_tenant: int = 6              # LRU project slots per tenant
+    frames_max_mb: int = 200                # biggest single asset file accepted into a project
     # --- Hoola Network: avatars talking to avatars (on this server and, with federation, on others) ---
     hoola_domain: str = ""                  # this server's Hoola domain (default: host of PUBLIC_BASE_URL)
     hoola_federation: bool = True           # talk to Hoola avatars on other servers (public https only)
